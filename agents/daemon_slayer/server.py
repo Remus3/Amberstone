@@ -273,9 +273,9 @@ def _opt_str(body: dict, key: str, default: Optional[str] = None) -> Optional[st
 # 2026-05-09 (s156): RC's coaches feed `champion` from coaching_data.json
 # as the *display name* ("Kai'Sa", "Twisted Fate", "Wukong"), but DDragon
 # / DS keys the snapshot by ID ("Kaisa", "TwistedFate", "MonkeyKing").
-# Direct lookup raised 404 → coaches caught + dropped DS rows silently
-# → daemon_slayer_picks never written → dashboard #ds-pill stayed hidden
-# → user saw "ds not loaded at all" mid-game on Kai'Sa.
+# Direct lookup raised 404 -> coaches caught + dropped DS rows silently
+# -> daemon_slayer_picks never written -> dashboard #ds-pill stayed hidden
+# -> user saw "ds not loaded at all" mid-game on Kai'Sa.
 #
 # Fix at the server: try the input as a DDragon ID first (no behavior
 # change for callers that already pass IDs), then fall back to a lazy
@@ -294,7 +294,7 @@ def _build_display_revmap(snap: DataSnapshot) -> dict[str, str]:
         if not display:
             continue
         # Three keys per champion so we tolerate punctuation drift:
-        #   exact display ("Kai'Sa") · lowercase display ("kai'sa")
+        #   exact display ("Kai'Sa") * lowercase display ("kai'sa")
         #   alnum-stripped lower ("kaisa", "monkeyking", "twistedfate")
         rev[display] = cid
         rev[display.lower()] = cid
@@ -320,7 +320,7 @@ def _resolve_champion_id(snap: DataSnapshot, name: str) -> str:
     stripped = "".join(c for c in name if c.isalnum()).lower()
     if stripped in rev:
         return rev[stripped]
-    return name  # let the engine raise the canonical KeyError → 404
+    return name  # let the engine raise the canonical KeyError -> 404
 
 
 # ---------------------------------------------------------------- route handlers

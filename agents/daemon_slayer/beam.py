@@ -21,7 +21,7 @@ Algorithm:
        * Keep top ``beam_width`` by weighted DPS.
   4. Sort final survivors and return top ``top_n``.
 
-Cost: ``slots × beam_width × |candidate_pool|`` compute_dps calls in the
+Cost: ``slots x beam_width x |candidate_pool|`` compute_dps calls in the
 worst case (no dedup hits). Default ``beam_width=10`` over the SR pool
 (~175 candidates) lands a 6-slot search in ~10k evaluations - sub-second
 on the warm snapshot. Tune ``beam_width`` for thoroughness vs. wall time.

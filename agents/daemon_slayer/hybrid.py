@@ -78,7 +78,7 @@ def get_weights_for(champion_id: str) -> tuple[float, float]:
 
     ``champion_id`` is the DDragon canonical id (e.g. ``"JarvanIV"``,
     ``"MonkeyKing"``), not the display name. Server-side
-    ``_resolve_champion_id`` runs display→id resolution before this is
+    ``_resolve_champion_id`` runs display->id resolution before this is
     called.
     """
     table = _load_archetype_weights()
@@ -605,7 +605,7 @@ def rank_items_by_hybrid(
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
 ) -> HybridRankResult:
-    """Rank items by weighted (α·dps + β·ehp) delta when added to ``current_item_ids``.
+    """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
     Sort keys:
       * ``delta``       - weighted percentage delta (alpha*dps_pct + beta*ehp_pct); default

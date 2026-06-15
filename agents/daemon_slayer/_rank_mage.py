@@ -28,7 +28,7 @@ from .rank import (
 )
 from .stats import clamp_level
 
-# ─── ranker (Phase 4c, s179) ─────────────────────────────────────────────────
+# --- ranker (Phase 4c, s179) -------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -90,7 +90,7 @@ class AbilityDpsRankResult:
     form_index_source: str                # "override" | "champion" | "default"
     form_index_resolved: dict[str, int]   # merged map actually used
     block_index_source: str               # "override" | "champion" | "default"
-    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]"  # merged (champion, key) → block_index map
+    block_index_resolved: "dict[str, int | list[int] | dict[str, int | list[int]]]"  # merged (champion, key) -> block_index map
     block_strategy: str
     mode_multiplier: float                # aramDamageDealt; 1.0 outside ARAM
     budget: Optional[int]

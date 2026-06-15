@@ -7,8 +7,8 @@ non-terminal components by default - ranking Long Sword above Bloodthirster
 is rarely useful). Sort by absolute ``delta_dps`` (default) or by
 ``dps_per_gold``.
 
-This is pure Python on top of ``compute_dps`` - N×DPS where N is the
-filtered candidate count (≈125-175 in 16.9.1 for the common modes).
+This is pure Python on top of ``compute_dps`` - NxDPS where N is the
+filtered candidate count (~125-175 in 16.9.1 for the common modes).
 Sub-second on a warm snapshot. No conditional effects (passives,
 on-hit) - those live in Phase 4 alongside ability damage.
 """
@@ -23,7 +23,7 @@ from .dps import compute_dps
 from .effects import ITEM_EFFECTS
 from .stats import clamp_level
 
-# Mode → DDragon map id. Items whose ``maps[map_id]`` is False are unbuyable
+# Mode -> DDragon map id. Items whose ``maps[map_id]`` is False are unbuyable
 # in that mode (e.g. ARAM bans non-completed components like Phage). Modes
 # without a wired map id pass through with no validity filter.
 #
@@ -361,7 +361,7 @@ def _filter_candidates(
       * purchasable + ``gold.total`` > 0
       * mode validity via ``maps`` (only when mode is known)
       * terminal-only (``into`` empty) unless ``include_components``
-      * gold ≤ ``budget`` when budget is set
+      * gold <= ``budget`` when budget is set
     """
     out: list[tuple[str, dict]] = []
     for item_id, rec in snapshot.items.items():
@@ -468,8 +468,8 @@ def rank_items(
     ``filter_shared_uniques=True`` (default) drops candidates whose
     ``unique_passive_key`` matches a unique already in
     ``current_item_ids`` - operator gets no value from the second proc
-    even though stat-only delta_dps would be positive (Trinity → ER,
-    Sterak's → Maw, Sunfire → Hollow Radiance). Pass ``False`` to surface
+    even though stat-only delta_dps would be positive (Trinity -> ER,
+    Sterak's -> Maw, Sunfire -> Hollow Radiance). Pass ``False`` to surface
     them with ``shares_dead_unique=True`` set on the result.
 
     ``fight_length`` is the OPTIONAL fight-length-reweight knob (item 219 C

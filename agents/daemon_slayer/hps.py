@@ -16,7 +16,7 @@ current HP, no buff-uptime tracking). The "average teammate" model is:
 * Single-target heals/shields hit 1 ally (the bonded ally for Knight's
   Vow, the lowest-HP ally for Mikael)
 * Proc rate for actives = 1/CD (Redemption 120s, Mikael 120s, Locket 90s)
-* Proc rate for passives = curated per-item (Helia Soul Siphon ≈ 0.4/s;
+* Proc rate for passives = curated per-item (Helia Soul Siphon ~ 0.4/s;
   Moonstone chain rides whatever the caster heals/shields)
 
 Formulas live in ``data/daemon_slayer/<patch>/enchanter_items.json`` - a
@@ -34,7 +34,7 @@ The total throughput score is::
 
 ``heal_per_proc`` scales linearly with caster level and additively with
 caster AP. ``ally_buff_credit`` is a calibrated, dimensionless number
-(10 ≈ 10 HPS-equivalent) to make Ardent / Staff of Flowing Water / Knight's
+(10 ~ 10 HPS-equivalent) to make Ardent / Staff of Flowing Water / Knight's
 Vow rankable next to direct-heal items. Phase 6.5 may overhaul this with
 real ally-state plumbing, but it's not blocking.
 
@@ -51,7 +51,7 @@ Phase 6 deliberate omissions (Phase 6.5+):
 
 Phase 6 ALSO models per-target multiplier overrides via
 ``targets_per_proc_override`` on the API, so callers can tune the
-"average teammate" assumption per scenario (e.g. 2v2 Arena → 1 ally).
+"average teammate" assumption per scenario (e.g. 2v2 Arena -> 1 ally).
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ class EnchanterFormulasNotFound(FileNotFoundError):
     """Raised when the requested enchanter_items.json snapshot is missing."""
 
 
-# ─── Curated formula loader ─────────────────────────────────────────────
+# --- Curated formula loader ---------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -226,7 +226,7 @@ def reset_formulas_cache() -> None:
     _formulas_cache = None
 
 
-# ─── ARAM modifier helper ───────────────────────────────────────────────
+# --- ARAM modifier helper -----------------------------------------------
 
 
 def _aram_heal_shield_modifiers(
@@ -279,7 +279,7 @@ def _aram_healing_modifier(
     return _aram_heal_shield_modifiers(snapshot, champion_id, mode)[0]
 
 
-# ─── Result types ───────────────────────────────────────────────────────
+# --- Result types -------------------------------------------------------
 
 
 @dataclass(frozen=True)
@@ -291,7 +291,7 @@ class HpsItemContribution:
     heal_per_proc: float           # post-level + AP scaling
     heal_procs_per_second: float
     heal_targets_per_proc: float
-    healing_hps_raw: float         # heal_per_proc × procs × targets (pre-amp)
+    healing_hps_raw: float         # heal_per_proc x procs x targets (pre-amp)
     shield_per_proc: float
     shield_procs_per_second: float
     shield_targets_per_proc: float
@@ -329,15 +329,15 @@ class HpsResult:
     mode: str
     ap: float
     # Aggregate components (pre-amp, summed across items):
-    healing_hps_raw: float         # sum of per-item heal × proc × targets
-    shielding_hps_raw: float       # sum of per-item shield × proc × targets
+    healing_hps_raw: float         # sum of per-item heal x proc x targets
+    shielding_hps_raw: float       # sum of per-item shield x proc x targets
     # Multipliers:
     amp_multiplier: float          # product(1 + heal_shield_amp_pct)
     heal_mult: float               # aramHealing; 1.0 outside ARAM
     shield_mult: float             # aramShielding; 1.0 outside ARAM
     # Final score components:
-    healing_hps: float             # healing_hps_raw × amp × heal_mult
-    shielding_hps: float           # shielding_hps_raw × amp × shield_mult
+    healing_hps: float             # healing_hps_raw x amp x heal_mult
+    shielding_hps: float           # shielding_hps_raw x amp x shield_mult
     direct_throughput: float       # healing_hps + shielding_hps (item-only)
     ally_buff_credit: float        # sum of ally_buff_credit_per_second
     total_throughput: float        # direct + buff + ability_hps_total
@@ -447,7 +447,7 @@ class HpsResult:
         return "\n".join(rows)
 
 
-# ─── Core scorer ────────────────────────────────────────────────────────
+# --- Core scorer --------------------------------------------------------
 
 
 def _empty_result(
@@ -505,7 +505,7 @@ def compute_hps(
 
     ``targets_per_proc_override`` replaces the curated per-item
     ``heal_targets_per_proc`` / ``shield_targets_per_proc`` values for ALL
-    items in the build - useful for Arena (2v2 → override=1) or solo-lane
+    items in the build - useful for Arena (2v2 -> override=1) or solo-lane
     pre-grouping scenarios. None preserves the per-item curated defaults.
     """
     level = clamp_level(level)
@@ -679,7 +679,7 @@ def compute_hps(
     )
 
 
-# ─── Ranker ─────────────────────────────────────────────────────────────
+# --- Ranker -------------------------------------------------------------
 
 
 @dataclass(frozen=True)
