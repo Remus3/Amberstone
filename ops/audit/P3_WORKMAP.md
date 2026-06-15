@@ -9,6 +9,34 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 24 (item 420): DS-engine ASCII sweep slice B1b - string-token + JSON _meta glyphs (750 subs / 13 files + Share re-sync)
+
+- Completes the DS-engine ASCII retro-sweep B1a began. B1a swept comment+docstring
+  tokens; B1b sweeps the residual STRING-token glyphs: 76 across 9 .py (emit-notes /
+  f-string display text / server HTML help) + 674 across the 4 registry JSONs' _meta
+  description/rationale fields (champion_block_index 651 / form_index 11 /
+  archetype_weights 9 / max_priority 3; verified glyph-free outside _meta - no key or
+  data-value glyph, no test asserts on _meta content). DS tree now 100% ASCII except
+  CHANGELOG.md (.md, 246, Share-excluded -> P8). commit `d8f7f93c`.
+- Per-hit judgement (NOT a sed): sole structural consumer tree-wide =
+  tests/test_effects_expansion.py:3892 (re.search on the "armor X -> Y" emit-note),
+  regex + stale comment updated in lockstep. Mappings = the cycle 19-23 GLYPH_MAP
+  (-> x / <= alpha beta *) with ONE override: beam.py:142 item-name separator
+  U+00B7 -> " / " (separator, not multiply "*"); server.py's 2 U+00B7 ARE multiply
+  (alpha*dps + beta*ehp) so stay "*".
+- NEW durable ops/audit/p3c24_b1b_sweep.py (transform, LF-atomic) +
+  p3c24_token_equiv.py (proof).
+- Gate (Tier-2, DS tree + Share): token-equiv PROOF 9/9 (every NON-string token
+  byte-identical to HEAD = engine logic untouched; every changed string token ==
+  transform(HEAD-token)); py_compile 9/9; JSON parse 4/4; DS-dir 7095p/1s/1942sub
+  exit 0 (byte-identical count to B1a); tests/ 7887p/2s/109sub exit 0; ds_share_sync
+  rewrote Share/src (336 files) + --check in-sync. NO ENGINE bump (computed output
+  byte-identical, proven). An accidental operator reboot mid-slice restarted
+  RC-DaemonSlayer -> live :8893 already serves ASCII notes (1.121.0, 172 champs,
+  healthy). NO live RC restart.
+
+---
+
 ## DONE - cycle 23 (item 419): DS-engine ASCII sweep slice B1a - comment+docstring-token-only (1714 subs / 19 .py + Share re-sync)
 
 - First P3 touch of the DS-engine tree (agents/daemon_slayer/*.py) - the last tree
@@ -203,10 +231,13 @@ Run order: A3b-2 last (judgement). web/ .js/.css glyphs are NOT python-tokenizab
      reused p3_ascii_sweep --apply/--doc-apply). 1649 comment + 65 docstring subs / 19
      .py + Share re-sync; token-equiv PROOF 19/19 + DS suite byte-identical. DS-engine
      non-ASCII 2036 -> 322 (all string-token). See above.
-   - B1b REMAINING: the residual 322 STRING-token EMIT-arrows (U+2192 124 + U+00D7 169
-     + greek/middot/etc). U+2192 arrows EMITTED into output that tests regex-match
-     (c17 DEFER test_effects_expansion.py:3892 <- dps.py "armor X -> Y" note). Coordinated
-     engine-emit + regex + test slice; Tier-2 full DS suite + Share re-sync + DS :8893 restart.
+   - B1b DONE cycle 24 (item 420): the residual STRING-token glyphs - 76 across 9 .py
+     (emit-notes / f-string display / server HTML) + 674 in the 4 registry JSON _meta
+     fields. The c17-flagged U+2192 arrow (test_effects_expansion.py:3892 <- dps.py
+     "armor X -> Y" note) converted with its regex in lockstep; token-equiv PROOF 9/9
+     (non-string tokens byte-identical) + dual suite byte-identical + Share re-sync.
+     NO ENGINE bump (computed output byte-identical). DS tree now ASCII-COMPLETE except
+     CHANGELOG.md (.md -> P8). See above.
 2. coaches/aram_coach.py 28xU+2192: the item_build wire-convention arrow (c16 DEFER) -
    production coach splits on the LITERAL arrow; needs coordinated coach + Haiku-prompt +
    11 peer tests (tests/phase2_smoke/test_aram_coach_item_class_peers.py).
