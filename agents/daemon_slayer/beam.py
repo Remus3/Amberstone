@@ -139,7 +139,7 @@ class BeamResult:
                     f"{'g/1k':>6}  build")
         rows.append("  " + "-" * 78)
         for i, r in enumerate(self.ranked, 1):
-            names = " · ".join(n[:14] for n in r.item_names)
+            names = " / ".join(n[:14] for n in r.item_names)
             rows.append(
                 f"  {i:>3}  {r.delta_dps:>7.2f}  {r.final_dps:>7.2f}  "
                 f"{r.total_gold:>5}  {r.dps_per_1k_gold:>6.2f}  {names}"
@@ -262,7 +262,7 @@ def beam_search_build(
 
     notes: list[str] = []
     if mode in MODE_MAP_ID:
-        notes.append(f"mode={mode} → maps id {MODE_MAP_ID[mode]}")
+        notes.append(f"mode={mode} -> maps id {MODE_MAP_ID[mode]}")
     else:
         notes.append(f"mode={mode} not in MODE_MAP_ID - no per-mode item filter applied")
     if stripped_trinkets:

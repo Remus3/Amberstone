@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "description": "Phase 2 (s175, 2026-05-12) - bruiser archetype weights for ds.hybrid scorer. α weights DPS, β weights EHP. Per-champion overrides keyed by DDragon champion id (NOT display name - display→id resolution happens server-side in _resolve_champion_id). Fallback to default for any champion not listed.",
-    "default_rationale": "α=β=0.50 means equal-weight balanced fighter. Bumping α makes the scorer prefer offensive items; bumping β makes it prefer defensive items. Sum doesn't have to equal 1.0 but the recommended convention is α+β=1.0 so operators can think of (0.65, 0.35) as '65/35 toward DPS'."
+    "description": "Phase 2 (s175, 2026-05-12) - bruiser archetype weights for ds.hybrid scorer. alpha weights DPS, beta weights EHP. Per-champion overrides keyed by DDragon champion id (NOT display name - display->id resolution happens server-side in _resolve_champion_id). Fallback to default for any champion not listed.",
+    "default_rationale": "alpha=beta=0.50 means equal-weight balanced fighter. Bumping alpha makes the scorer prefer offensive items; bumping beta makes it prefer defensive items. Sum doesn't have to equal 1.0 but the recommended convention is alpha+beta=1.0 so operators can think of (0.65, 0.35) as '65/35 toward DPS'."
   },
   "default": [0.5, 0.5],
   "champions": {
