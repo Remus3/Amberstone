@@ -52,9 +52,61 @@ asserting the dominant item axis matches the kit axis. Grep for sibling cases ac
 + DS :8893 restart + Share re-sync (Tier-2). Do-not-flip-blind: this changes recommendations, so
 gate on a re-rank sanity pass.
 
-### G2 - low overlap (59 champs, axis agrees but <=1 shared item)
+### G2 - low overlap - CLOSED 2026-06-15 (item 425; re-measured, NOT a separate bug; routed)
 
-Not a separate bug - downstream of G3-G6. Re-measure after G1/G4/G5 land; only chase residual.
+ORIGINAL: 59 champs, damage axis agrees but <=1 shared item vs the lolmath ULTIMATE. The
+workmap predicted this is downstream of G3/G5/G6, re-measure after they land, chase only residual.
+
+RE-MEASURE RESULT (durable probe `lolmath_ds_sweep/g2_remeasure_probe.py`, in-repo paths, run
+post-G1/G4 at the live ENGINE 1.123.0 / patch 16.12.1; the snapshot was 1.120.0):
+
+```
+BEFORE (1.120.0): G1=20  G2=59
+AFTER  (1.123.0): G1=8   G2=60  ok=101  nodata=3  (covered 169)
+```
+
+1. G1 dropped 20 -> 8. All 8 residuals are by-design, per-champion verified - ZERO accidental
+   regressions from item 421's axis fix:
+   - **Lulu** = operator pick `carry` (`data/cs_archetype_picks.json` source=user_cs, set 2026-05-17);
+     the axis correction is applied ONLY to source=default and never touches an operator pick
+     (`core/archetype_picks.py:121`). Crit-Lulu is an intentional off-axis operator build.
+   - **Amumu, Blitzcrank, Galio, Singed, Tahm Kench** = tank archetype, axis-neutral
+     (`_ARCHETYPE_AXIS["tank"]=None`, `archetype_picks.py:124`); a tank kit that deals magic still
+     wants durability, never a glass-cannon pivot. BACKLOG role-reassignment, not an axis bug.
+   - **Taric** (kit 0.61 AP, DS builds AP = matches kit) + **Xin Zhao** (kit 0.87 AD, DS builds AD =
+     matches kit): DS is CORRECT; lolmath builds the opposite axis = lolmath quirk (item 421 finding).
+   (Nunu dropped out of the residual because lolmath has no data for its "Nunu & Willump" slug ->
+   counted in nodata, not G1.)
+2. G2 held ~flat (59 -> 60). The axis fix correctly pulled the AP-damage champs (Diana, Gwen, Teemo,
+   Rumble, Lillia, Mordekaiser, Kog'Maw, Gragas, Nidalee, Elise) OUT of G1 - they are now `ok` or
+   sit in G2 with the RIGHT axis but different items. Fixing the axis does not make the SPECIFIC
+   items match; that needs the design-level tracks. So the count is stable by construction, not noise.
+   NOTE: G4 boots refresh does NOT move this metric - the overlap set subtracts BOOTS by design
+   (`gen_md.py`), so G2 is purely a non-boots item-overlap measure.
+
+G2 RESIDUAL = 3 root-cause buckets, every one downstream of an ALREADY-ROUTED track (per-champ
+verified, builds dumped):
+- **A. role-item vs lolmath-glass-cannon** (enchanters / supports / tanks: Janna, Sona, Alistar,
+  Braum, Leona, Maokai, Milio, Nami, Nautilus, Ornn, Rell, Thresh, Yuumi, Zilean, Bard, Ivern,
+  Seraphine, Morgana, ...): DS builds role-appropriate utility / heal / shield / durability (Janna ->
+  Echoes of Helia / Ardent Censer / Staff of Flowing Water / Redemption / Moonstone), lolmath - a
+  pure damage maximizer - builds raw AP ignoring utility (Janna -> Rabadon / Blackfire / Archangel's).
+  overlap is the single durability/AP slot the optimizer keeps (Warmog's / Shadowflame). NOT a DS bug
+  -> G6 / by-design (DS ships a role recommendation, not a damage-max).
+- **B. AD scorer-valuation** (Aatrox, Fiora, Nasus, Darius, Jhin, Renekton, Riven, Senna, ...): axis
+  agrees, lolmath loads lethality + kill-state passives (Hubris, Endless Hunger, Death's Dance, Spear
+  of Shojin, Serylda's, The Collector), DS builds sustained-DPS / bruiser (BORK, Trinity, Sterak's,
+  Heartsteel, Runaan's). overlap=1 = LDR, the one anti-tank slot both keep for the lone enemy tank.
+  -> G5-residual (scorer valuation: passives needing kill-state, lethality-vs-sustained).
+- **C. AP DoT-valuation** (Anivia, Swain, Lissandra, Aurelion Sol, Vladimir): axis agrees, lolmath
+  loads AP damage-over-time burn (Liandry's Torment, Blackfire Torch, Hextech Gunblade), DS builds
+  burst AP (Rabadon / Void Staff / Shadowflame / Stormsurge / Mejai's). overlap=1 = Shadowflame.
+  -> G5-residual (AP DoT vs the single-rotation `ability` model).
+
+CONCLUSION: G2 is NOT a separate fixable bug (workmap premise confirmed). The G1 axis fix landed
+with zero regressions; the entire G2 residual is the G3 (runes) + G5-residual (scorer valuation) +
+G6 (cost model / no-utility) class, already on the Gemini-consult queue. No new bounded slice. No
+ENGINE bump, no build_orders regen, no DS restart, no Share re-sync (Tier-0 diagnosis).
 
 ### G3 - runes (DS models none; lolmath emits a full page per champ+comp)
 
