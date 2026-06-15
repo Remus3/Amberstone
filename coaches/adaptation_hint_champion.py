@@ -188,14 +188,14 @@ def format_hint_line(
         f"{wr*100:.0f}% wr (n={n})"
     ]
     if recent is not None and data["recent_sample_size"] >= 5:
-        direction = "↑" if recent > wr + 0.05 else ("↓" if recent < wr - 0.05 else "·")
+        direction = "^" if recent > wr + 0.05 else ("v" if recent < wr - 0.05 else "-")
         parts.append(f"recent {recent*100:.0f}% {direction}")
 
     # 30-day meta-trend bucket (separate from last-N rolling).
     r30 = data.get("recency_30d")
     if r30 and r30.get("games", 0) >= 5:
         dv = r30.get("delta_vs_alltime", 0.0) or 0.0
-        direction = "↑" if dv > 0.05 else ("↓" if dv < -0.05 else "·")
+        direction = "^" if dv > 0.05 else ("v" if dv < -0.05 else "-")
         parts.append(
             f"30d {r30.get('win_rate', 0)*100:.0f}% {direction} "
             f"(n={r30.get('games')})"
@@ -212,10 +212,10 @@ def format_hint_line(
         rkda = data.get("recent_kda")
         if rkda and rkda.get("sample", 0) >= 5:
             delta = rkda.get("delta_ratio", 0.0)
-            direction = "↑" if delta > 0.3 else ("↓" if delta < -0.3 else "·")
+            direction = "^" if delta > 0.3 else ("v" if delta < -0.3 else "-")
             sign = "+" if delta >= 0 else ""
             seg += (
-                f" · recent {rkda['ratio']} {direction} "
+                f" | recent {rkda['ratio']} {direction} "
                 f"({sign}{delta} vs baseline, n={rkda['sample']})"
             )
         parts.append(seg)
@@ -275,10 +275,10 @@ def insight_card(
     """Compact copy-to-clipboard summary - one line, bounded.
 
     Returns "" when no champion data. Format:
-      "Tristana ARAM 72% wr (n=61) ^ * rush Statikk Shiv (+19%) *
+      "Tristana ARAM 72% wr (n=61) ^ | rush Statikk Shiv (+19%) |
        vs Morgana -52% (n=5)"
 
-    Always ends after cutting at a ``*`` boundary so the card never
+    Always ends after cutting at a ``|`` boundary so the card never
     ends mid-phrase. ``max_chars`` defaults to 240 - long enough for
     two lines on iPad, short enough for a Discord paste.
     """
@@ -292,7 +292,7 @@ def insight_card(
     r30 = data.get("recency_30d")
     if r30 and r30.get("games", 0) >= 5:
         dv = r30.get("delta_vs_alltime") or 0
-        arrow = "↑" if dv > 0.05 else ("↓" if dv < -0.05 else "·")
+        arrow = "^" if dv > 0.05 else ("v" if dv < -0.05 else "-")
         head += f" {arrow}30d {r30.get('win_rate',0)*100:.0f}%"
     segs.append(head)
 
@@ -304,7 +304,7 @@ def insight_card(
         if rkda and rkda.get("sample", 0) >= 5:
             dr = rkda.get("delta_ratio", 0.0) or 0.0
             if abs(dr) >= 0.3:
-                arrow = "↑" if dr > 0 else "↓"
+                arrow = "^" if dr > 0 else "v"
                 kseg += f" {arrow}{rkda['ratio']}"
         segs.append(kseg)
 
@@ -333,11 +333,11 @@ def insight_card(
             segs.append(f"vs {c['opponent']} {sign}{c['delta']*100:.0f}% (n={c['sample']})")
             break
 
-    out = " · ".join(segs)
+    out = " | ".join(segs)
     if len(out) <= max_chars:
         return out
-    # Trim at a bullet boundary to keep the card grammatical.
+    # Trim at a separator boundary to keep the card grammatical.
     trimmed = out[:max_chars]
-    if " · " in trimmed:
-        trimmed = trimmed.rsplit(" · ", 1)[0]
+    if " | " in trimmed:
+        trimmed = trimmed.rsplit(" | ", 1)[0]
     return trimmed
