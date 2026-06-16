@@ -170,7 +170,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * PLACEHOLDER - slots are empty/dummy until ingest captures items[]. */
 .home-recent-items {
   display: inline-flex;
-  gap: 4px;
+  gap: var(--space-1);
   align-items: center;
   flex: none;
 }
@@ -210,7 +210,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-recent-stripe.tier-good { background: var(--good); }
 .home-recent-stripe.tier-mid  { background: var(--info); }
 .home-recent-stripe.tier-bad  { background: var(--bad); }
-.home-recent-main { min-width: 0; padding-left: 4px; }
+.home-recent-main { min-width: 0; padding-left: var(--space-1); }
 .home-recent-champ {
   font-size: var(--fs-md); font-weight: 800; color: var(--text);
   letter-spacing: 0.02em;
@@ -346,22 +346,22 @@ body[data-view="home"] .home-overlay { display: flex !important; }
    * floating mid-column when Section 1's content is short. */
   display: grid !important;
   grid-template-columns: auto 1fr 1fr;
-  gap: 28px;
+  gap: var(--panel-padding-loose);
   align-items: start;
 }
 .home-pick-section { min-width: 0; }
 .home-pick-section-1 {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: var(--panel-gap);
 }
 .home-pick-section-2 {
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: var(--space-1);
 }
 .home-pick-tip-row {
   display: grid;
   /* s218 v3: tightened from 110px → 88px so "The Good/Bad/Ugly"
    * labels sit closer to the "-" value (operator: was too far). */
   grid-template-columns: 88px 1fr;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: baseline;
 }
 .home-pick-tip-label {
@@ -386,8 +386,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
    * Streak/Advisories sit symmetric with The Good/Bad/Ugly. Pre-rename
    * "Open Advisories" overflowed 130px column and crowded the value. */
   grid-template-columns: 88px 1fr;
-  column-gap: 16px;
-  row-gap: 14px;
+  column-gap: var(--space-4);
+  row-gap: var(--panel-gap);
   align-items: baseline;
 }
 .home-pick-meta-label {
