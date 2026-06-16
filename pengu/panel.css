@@ -1,0 +1,67 @@
+/* Riot Commander - Pengu plugin panel styles (OVL2 Surface C stub).
+ *
+ * Consumes the dashboard design tokens (web/css/tokens.css, injected by
+ * index.js from RC_ORIGIN/css/tokens.css). The --fs-*, --signal-*, --space-*
+ * and --panel-radius tokens come from that injected tokens.css and resolve
+ * live; the surface vars (--fg / --panel-bg / --panel-border / --font-ui)
+ * live in the dashboard primitives layer which is NOT injected in-client, so
+ * they intentionally resolve to the literal fallbacks here. Every reference
+ * carries a literal fallback so the panel stays legible regardless.
+ * Typography uses the v2.1 --fs-* scale; the smallest value is the metadata
+ * floor --fs-xs (16px). No interactive controls in the stub, so the
+ * --hit-min (42px) hit-target rule is not yet exercised. ASCII only.
+ */
+
+#rc-pengu-panel.rc-pengu {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483000;
+  width: 240px;
+  box-sizing: border-box;
+  font-family: var(--font-ui, "Segoe UI", system-ui, sans-serif);
+  color: var(--fg, #e8eaf0);
+  background: var(--panel-bg, rgba(18, 20, 28, 0.92));
+  border: 1px solid var(--panel-border, rgba(138, 142, 156, 0.35));
+  border-radius: var(--panel-radius, 18px);
+  padding: var(--space-3, 12px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+#rc-pengu-panel .rc-pengu-head {
+  font-size: var(--fs-lg, 29px);
+  font-weight: 700;
+  color: var(--signal-gold, #f5b87c);
+  margin-bottom: var(--space-2, 8px);
+}
+
+#rc-pengu-panel .rc-pengu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2, 8px);
+  padding: var(--space-1, 4px) 0;
+}
+
+#rc-pengu-panel .rc-pengu-k {
+  font-size: var(--fs-xs, 16px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--signal-dim, #8a8e9c);
+}
+
+#rc-pengu-panel .rc-pengu-v {
+  font-size: var(--fs-sm, 18px);
+  font-weight: 600;
+  text-align: right;
+}
+
+#rc-pengu-panel .rc-pengu-foot {
+  margin-top: var(--space-2, 8px);
+  font-size: var(--fs-xs, 16px);
+  color: var(--signal-good, #6ec977);
+}
+
+#rc-pengu-panel.rc-pengu-offline .rc-pengu-foot {
+  color: var(--signal-warn, #f1b04a);
+}
