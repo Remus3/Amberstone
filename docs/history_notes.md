@@ -57,6 +57,17 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 30: P3 A3b-2 sub-slice - dashboard/summary cluster glyphs -> ASCII [item 427]
+
+- Second A3b-2 sub-slice off the cycle-24 list. `dashboard/builders_last_match.py` + `core/{defensive_picks,aftergame_summary}.py` (commit `c55f47da`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
+- builders: 8 readable-math glyphs (U+2212->`-`, U+00D7->`x`, U+2264/U+2265->`<=`/`>=`, U+00B1->`+/-`) in PGR-tip prose. defensive_picks + aftergame_summary: the three `" * ".join()` middot LIST separators -> `" | "` (NOT GLYPH_MAP `*` = multiply; per-hit, items carry `/`,`()`,` - `), L118 clause middot -> ` - `, L343 `{n}x {w}` count -> `x`.
+- DEFERRED to P8 (cycle-22 precedent): aftergame_summary.py:406 keeps the win/loss status pair U+2713 check + U+26A0 warn (warn unmapped in GLYPH_MAP). builders+defensive 100% ASCII; aftergame residual == exactly [U+26A0, U+2713], guard-pinned.
+- Blast-radius proof (per-hit, NOT a sed): the ONLY split/regex consumers of any of these glyph classes repo-wide = aram_coach.py:147 + audit_ddragon_items.py:86, both on U+2192 (the B2 wire-arrow, separate slice) - neither touches this cluster. Workmap "snapshot-fixture-backed" flag was an OVER-FLAG: cluster strings in 0 test asserts; sr.json glyphs are INPUT (wave/map) not output -> snapshot suite passes, no fixture regen.
+- Gate (Tier-1): py_compile 3/3; ruff clean; builders+defensive 0 non-ASCII; owning suite (test_last_match_by_ts + test_p2w1_core_d + test_p2w1_dash_e + snapshot_panels last_match/active_match/panel_snapshots) 55 passed / 15 subtests; NEW guard tests/test_last_match_ascii_item427.py (3) green.
+- DONT-REDO: this cluster is ASCII-COMPLETE + guard-locked (aftergame's 2 status markers are the only intended residual -> P8). NEXT A3b-2 = aram/brawl/arena coach prompt banners + item_build wire-arrow B2 (11 peer tests), rebuild_sim_fixtures golden arrows, role_profiles bullets, tft_pbe_*/tft_vision_reader LLM prompts, coach_integration/{_profiles,_sr_prompt}. Map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 29: P3 A3b-2 sub-slice - adaptation_hint coach-emit glyphs -> ASCII [item 426]
 
 - First A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 NEXT list. `coaches/adaptation_hint_{champion,cli}.py` (commit `04dbc6a4`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
