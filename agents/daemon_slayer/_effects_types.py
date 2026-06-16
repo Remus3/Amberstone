@@ -747,3 +747,14 @@ class ItemEffect:
     # axis via ItemHeal.takedown_gated (ENGINE 1.57.0) - crediting it offense
     # here would double-count phantom damage.
     execute_max_hp_pct: float = 0.0
+    # DSV4 (1.127.0): Spear of Shojin 3161 Focused Will - a stacking
+    # ability/passive damage amp (Meraki 16.12.1: "3% per stack ... max 4
+    # stacks" = 12%). NOT an auto-attack amp (the generic ``damage_amp_pct``
+    # stays unused on Shojin since it would amp AAs too). Valued only on the
+    # ABILITY damage paths (``compute_ability_dps`` spell sum + burst
+    # ``ability_total``) when the ``assume_ability_amp`` seam is ON; the consumer
+    # assumes ``dps._ASSUMED_ABILITY_AMP_STACKS`` (= 4, a developed fight at max
+    # stacks). Default 0.0 / 0 keeps every existing item + caller byte-identical;
+    # appended at the END per the dataclass convention.
+    ability_damage_amp_per_stack: float = 0.0
+    ability_damage_amp_max_stacks: int = 0
