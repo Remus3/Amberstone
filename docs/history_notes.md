@@ -57,6 +57,18 @@
 
 ---
 
+# 2026-06-16 - cycle 45: competitor-lift teardown + LBAND1 live personal-percentile band [item 443]
+
+- item 443 (`a8158629`). Tier-1 (NEW core/live_benchmark_band.py + test), NO ENGINE/DS/Share, NO RC restart. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
+- ORIENT: run -01 cost 7/7 CLEAN + DS saturated; run -02 HZ-precompute scout (item 442); bounded queue DRAINED + Gemini director/consult down (429). This run = 2-agent fanout on net-new headless-safe lanes: L1 Section-7b competitor deep-dive (8 days since LIFT1) + L2 robustness/coverage scout on post-2026-06-03-baseline NEW modules (items 285-442).
+- L2 = NOW=0 FUTURE=0 CLEAN=20 (post-baseline surface fail-soft + per-mode-tested + ASCII-clean + no cost regression; clean-baseline holds). L1 = 8 findings (Aggregator C GPI / Overlay App E / Overlay App F), docs/COMPETITOR_LIFT_2026-06-16.md.
+- VERIFY-FIRST overturned the 1 HIGH flag (overlay app E live-benchmarking): RC PARTIALLY supersedes - lead_projection bands live cs/gold/level vs a FLAT heuristic; benchmarks.rank_value has per-champion personal p25/p50/p75 (champion_benchmarks.json, 186) but consumed only POST-GAME. Net-new delta = wire the personal percentile into a LIVE read.
+- SLICE (LBAND1): NEW core/live_benchmark_band.py bands live cs+level vs the player's own champion percentile at a checkpoint (~10/~15min, +/-45s), SR-only, >=5-games gate, gold excluded (on-hand-vs-total mismatch). Pure generator, no live consumer yet (lead_projection/laning_verdicts ship-generator-wire-later precedent); live wire-in FUTURE (do-not-flip-blind). +10 hermetic tests (monkeypatch benchmarks._cache, clean-checkout safe). py_compile+ruff+ASCII clean, 10/10 green.
+- BACKLOG (5 FUTURE): Aggregator C skill radar, Overlay App F lobby-tags, Overlay App F ward heatmap, Overlay App E enemy ult-CD, Overlay App E LCU rune-write + personal-WR override. SUPERSEDED: Overlay App F per-ability dmg (DS richer), Overlay App E grading (PGR-parity).
+- NEXT: bounded headless-safe queue drained again; remaining = LBAND1/HZ live-flip + DS Phase-D + visual captures + P6 G3/G6/G7 (live/operator/Gemini-gated). Gemini still down (429).
+
+---
+
 # 2026-06-16 - cycle 44: HZ shadow-routing guard - tft/brawl off the SR precompute tables [item 442]
 
 - item 442 (`0fa8f83e`). Tier-1 (one dashboard module + test), NO ENGINE/DS/Share, RC restarted pid 11728. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
