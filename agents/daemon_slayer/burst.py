@@ -82,12 +82,17 @@ from .ability_dps import (
     rank_at_level,
 )
 from .data_loader import DataSnapshot
-from .dps import _ASSUMED_TAKEDOWN_STACKS, compute_dps
+from .dps import (
+    _ASSUMED_ABILITY_AMP_STACKS,
+    _ASSUMED_TAKEDOWN_STACKS,
+    compute_dps,
+)
 from .effects import (
     ITEM_EFFECTS,
     collect_effects,
     effective_target_armor,
     effective_target_mr,
+    total_ability_damage_amp,
     total_ap_amp_multiplier,
     total_bonus_ap_from_hp,
     total_caster_hp_scaled_ap_amp,
@@ -469,6 +474,7 @@ def compute_burst_damage(
     game_time_s: float = 0.0,
     aoe_targets_hit: int = 1,
     assume_takedown: bool = False,
+    assume_ability_amp: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -841,6 +847,19 @@ def compute_burst_damage(
 
     ability_total = sum(c.final_damage for c in per_cast if c.is_ability)
     aa_total = sum(c.final_damage for c in per_cast if not c.is_ability)
+    # DSV4 (1.127.0): Spear of Shojin Focused Will ability/passive amp seam.
+    # assume_ability_amp=False -> ability_amp_bonus stays 0.0, total_burst is the
+    # plain sum (byte-identical). When True, Focused Will's per-stack amp (3%/
+    # stack, 4 stacks = 12%) multiplies ONLY ability_total (Focused Will amps
+    # abilities/passives, never auto-attacks - aa_total is untouched). Applied
+    # before the rune + execute layers so they build on the amped base; the
+    # result's ``ability_damage`` mirrors the amped value.
+    if assume_ability_amp:
+        ability_amp_bonus = total_ability_damage_amp(
+            item_effects, _ASSUMED_ABILITY_AMP_STACKS
+        )
+        if ability_amp_bonus > 0.0:
+            ability_total *= 1.0 + ability_amp_bonus
     total_burst = ability_total + aa_total
 
     # DS V2 S3 - optional rune-proc layer. Byte-identical when ``runes`` is
@@ -1353,6 +1372,7 @@ def rank_items_by_burst(
     aoe_targets_hit: int = 1,
     assume_takedown: bool = False,
     assume_squishy_target: bool = False,
+    assume_ability_amp: bool = False,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1452,6 +1472,7 @@ def rank_items_by_burst(
         runes=runes_norm,
         aoe_targets_hit=aoe_targets_hit,
         assume_takedown=assume_takedown,
+        assume_ability_amp=assume_ability_amp,
     )
 
     candidates = _filter_candidates(
@@ -1489,6 +1510,7 @@ def rank_items_by_burst(
                 runes=runes_norm,
                 aoe_targets_hit=aoe_targets_hit,
                 assume_takedown=assume_takedown,
+                assume_ability_amp=assume_ability_amp,
             )
         except (KeyError, ValueError):
             continue

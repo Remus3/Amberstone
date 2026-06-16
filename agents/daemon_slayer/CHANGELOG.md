@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.127.0 (DSV4 - Spear of Shojin Focused Will ability-amp valuation, 2026-06-16. P6-G5
+residual / G2-residual bucket-B. The ability scorers had NO seam for Spear of Shojin
+3161 Focused Will, a stacking ability/passive damage amp (Meraki 16.12.1: 3% per stack,
+max 4 stacks = 12%); the item carried defensive_only=True with the note "ability damage
+not DPS-modeled", so an ability-reliant build that bought Shojin saw zero damage value
+from it - only its raw AD/AH stats. Focused Will amps ABILITIES and PASSIVES only, never
+basic attacks (the generic damage_amp_pct was deliberately left off Shojin since it would
+amp AAs too). FIX: NEW ItemEffect.ability_damage_amp_per_stack / ability_damage_amp_max_stacks
+(0.0 / 0 default = byte-identical) + effects.total_ability_damage_amp helper +
+dps._ASSUMED_ABILITY_AMP_STACKS=4 (a developed fight at max stacks). A default-OFF
+assume_ability_amp seam on compute_ability_dps (multiplies the spell ability sum; the item
+DoT procs are NOT amped - conservative), compute_burst_damage (multiplies ONLY ability_total,
+never aa_total), and rank_items_by_burst (threads into both compute_burst_damage call sites).
+Data: Shojin 3161 + Arena 223161 pinned to 0.03 / 4. Ships DEFAULT-OFF (byte-identical when
+off); the live rank scorers do NOT pass assume_ability_amp=True yet - the flip is a separate
+real-game-validation-gated step (DS Phase-D class). +14 Meraki-anchored tests. DS :8893
+bounced -> 1.127.0.)
+
 1.126.0 (DSV3 - lethality-vs-sustained-AD burst-ranker valuation, 2026-06-16. P6-G5
 residual 3. rank_items_by_burst defaulted target_armor=0.0; against zero armor
 effective_target_armor floors its penetration tail at zero, so lethality (flat armor
