@@ -1,0 +1,255 @@
+/* Player-GPI radar panel. Renders the operator's cross-game profile as an
+ * eight-spoke SVG radar (aggression / farming / vision / objectives /
+ * survival / tempo / versatility / consistency) plus an overall 0..100 score
+ * and a caption (mode / games / window / confidence). Mounts as a sibling of
+ * the DS-profile card inside the champ-select Suggestions card.
+ *
+ * Uses the semantic tokens from web/css/tokens.css (semantic colors + the
+ * v2.1 4-tier font scale + 8px spacing + interaction tokens). The radar fill +
+ * overall chip are tier-tinted off the overall score: HIGH success, MED info,
+ * LOW muted - so the operator reads their overall shape at a glance.
+ *
+ * ASCII only (no em / en dashes, no smart quotes).
+ */
+
+.player-gpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding: var(--panel-padding);
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #8a8cf0);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.player-gpi[hidden] {
+  display: none;
+}
+
+.gpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.gpi-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Mode toggle (SR / ARAM). Each button clears the --hit-min target floor so
+ * the click area is comfortable; the visible chrome stays compact. */
+.gpi-modes {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.gpi-mode {
+  min-height: var(--hit-min);
+  padding: 0 var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--panel-radius-sm, 10px);
+  cursor: pointer;
+}
+
+.gpi-mode:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.gpi-mode-on {
+  color: var(--signal-info, #8a8cf0);
+  border-color: var(--signal-info, #8a8cf0);
+  background: rgba(138, 140, 240, 0.16);
+}
+
+.gpi-mode:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Body lays the radar beside the prominent overall chip. The radar takes the
+ * remaining width and is bounded so it cannot push the row past the card edge
+ * at 1920 (no horizontal scroll). */
+.gpi-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.gpi-radar-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 380px;
+}
+
+.gpi-radar {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Grid rings + radial spokes - faint chrome so the data polygon reads over it.
+ * Stroke widths are SVG user-units (200-unit viewBox), not CSS px, so the
+ * --fs floor does not apply. */
+.gpi-ring {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 0.5;
+}
+
+.gpi-spoke {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 0.5;
+}
+
+/* The filled data polygon. Fill + stroke colors come from the tier modifier
+ * below; the dim default keeps a partial / untiered payload visible. */
+.gpi-area {
+  fill: rgba(138, 142, 156, 0.22);
+  stroke: var(--signal-dim, #8a8e9c);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+
+.gpi-dot {
+  fill: rgba(255, 255, 255, 0.85);
+}
+
+/* Per-vertex axis label + score. SVG text scales with the viewBox; font-size
+ * here is in user-units so the rendered glyph tracks the radar size rather
+ * than a fixed CSS px - the --fs floor governs HTML text, not in-SVG marks. */
+.gpi-axis-label {
+  fill: rgba(255, 255, 255, 0.75);
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.gpi-axis-score {
+  fill: rgba(255, 255, 255, 0.95);
+  font-size: 8.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Overall score chip - the prominent hero number for the panel. */
+.gpi-overall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 5em;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--panel-radius-sm, 10px);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.gpi-overall-num {
+  font-size: var(--fs-display);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--signal-dim, #8a8e9c);
+}
+
+.gpi-overall-lbl {
+  margin-top: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Caption row - mode / games / window / confidence, dim metadata. */
+.gpi-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.gpi-cap-mode {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.gpi-cap-sep {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.gpi-cap-conf {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.gpi-conf-high {
+  color: var(--signal-good, #6ec977);
+}
+
+.gpi-conf-low {
+  color: var(--signal-warn, #f1b04a);
+}
+
+.gpi-conf-insufficient {
+  color: var(--signal-dim, #8a8e9c);
+}
+
+/* Empty / unavailable line - centered muted message in place of the radar. */
+.gpi-msg {
+  padding: var(--space-4) 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.gpi-msg-dim {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Tier tints driven by the overall score - applied to the radar fill/stroke
+ * and the overall chip number. high = success, med = info, low = muted. */
+.gpi-area.gpi-tier-high {
+  fill: var(--signal-good-soft, rgba(110, 201, 119, 0.18));
+  stroke: var(--signal-good, #6ec977);
+}
+
+.gpi-area.gpi-tier-med {
+  fill: rgba(138, 140, 240, 0.18);
+  stroke: var(--signal-info, #8a8cf0);
+}
+
+.gpi-area.gpi-tier-low {
+  fill: rgba(138, 142, 156, 0.18);
+  stroke: var(--signal-dim, #8a8e9c);
+}
+
+.gpi-overall.gpi-tier-high .gpi-overall-num {
+  color: var(--signal-good, #6ec977);
+}
+
+.gpi-overall.gpi-tier-med .gpi-overall-num {
+  color: var(--signal-info, #8a8cf0);
+}
+
+.gpi-overall.gpi-tier-low .gpi-overall-num {
+  color: var(--signal-dim, #8a8e9c);
+}
