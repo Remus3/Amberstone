@@ -1,10 +1,11 @@
 /* ───── Next panel ─────────────────────────────────────────────── */
 /* Fixed font with hard 2-line cap via line-clamp. Coach is expected to
  * produce 1-2 line copy; anything longer is ellipsized rather than shrunk
- * to an unreadable font size. Size history (2026-04-24): 28 → 24 → 20.
- * The Right Now headline is now pinned to this same 20px so the two
- * panel heroes share a size grammar; differentiation is by color (info
- * lavender here vs gold on Right Now) and vertical position, not size. */
+ * to an unreadable font size. Size history (2026-04-24): 28 -> 24 -> 21
+ * (RN1 audit corrected the stale "20" doc value to the implemented 21px).
+ * The Right Now headline shares this same 21px so the two panel heroes
+ * share a size grammar; differentiation is by color (info lavender here
+ * vs gold on Right Now) and vertical position, not size. */
 .action-mid {
   font-size: 21px;
   color: var(--info);
