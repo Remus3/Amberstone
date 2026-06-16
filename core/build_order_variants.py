@@ -118,6 +118,7 @@ if str(_PKG_ROOT) not in sys.path:
 # bias-splitting / persist / patch helpers (build_order_precompute). The A3
 # signal source is core.ds_antitank_hint (read-only consumer of the DS
 # antitank scorer).
+from core.archetype_picks import canonical_champion_id
 from core.build_order import DEFAULT_SLOTS, plan_build_order
 from core.build_order_precompute import (
     DS_MODE_BY_KEY,
@@ -372,7 +373,7 @@ def generate_table(
     """
     build_orders: dict[str, dict] = {}
     for champ in champions:
-        build_orders[champ] = variants_for_champion(
+        build_orders[canonical_champion_id(champ)] = variants_for_champion(
             champ, mode=mode, level=level, rank_fn=rank_fn,
         )
     return {

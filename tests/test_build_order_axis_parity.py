@@ -20,9 +20,9 @@ from core import build_order_precompute as bop
 _ROOT = Path(__file__).resolve().parent.parent
 
 # Every champion the kit-axis correction re-based (see test_archetype_axis_correction).
-# Keyed by the DDragon DISPLAY name the build_orders tables use ("Kog'Maw",
-# "LeBlanc"), not the canonical id - the resolver accepts either, the table
-# does not.
+# Listed by DDragon DISPLAY name for readability; the build_orders tables are
+# canonical-keyed (the HZ canonical-keyspace fix), so the table lookup below
+# canonicalizes the name first. kit_damage_axis accepts either form.
 FLIPPED = [
     "Gwen", "Teemo", "Rumble", "Diana", "Mordekaiser", "Kog'Maw", "Nidalee",
     "Elise", "Gragas", "Lillia", "Akali", "Ekko", "Evelynn", "Fizz",
@@ -71,7 +71,8 @@ def axes() -> dict[str, str]:
 @pytest.mark.parametrize("champ", FLIPPED)
 def test_mixed_build_axis_matches_kit(champ, table, axes):
     ap._invalidate_axis_cache()
-    order = (bop.lookup(table, champ, "mixed") or {}).get("order") or []
+    champ_id = ap.canonical_champion_id(champ)
+    order = (bop.lookup(table, champ_id, "mixed") or {}).get("order") or []
     assert order, f"{champ}: mixed build order is empty"
     built = _dominant_axis(order, axes)
     kit = ap.kit_damage_axis(champ)
