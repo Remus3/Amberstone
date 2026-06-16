@@ -176,6 +176,16 @@ class PeriodicProc:
     # docstring above. Default 0.0 = no ramp (backward-compat). Only
     # meaningful when every_n_attacks > 0 (XOR with every_n_seconds).
     stack_ramp_seconds: float = 0.0
+    # DSV1 (1.124.0): marks an ability-triggered AP damage-over-time burn
+    # (Liandry's Torment, Blackfire's Baleful Blaze, Demonic's Azakana's
+    # Gaze) that belongs in the AP / ability scorer as well as the auto
+    # scorer. ``compute_ability_dps`` folds ONLY ability_dot procs (via
+    # ``_periodic_proc_dps(ability_dot_only=True)``) so tank Immolate auras
+    # (Sunfire), physical spellblades (Iceborn / Trinity Force), and on-cast
+    # nukes (Luden's) - all every_n_seconds procs too - do NOT pollute the
+    # AP item ranking. compute_dps ignores the flag (counts every proc).
+    # Default False = byte-identical for every existing proc.
+    ability_dot: bool = False
 
     def __post_init__(self) -> None:
         if self.damage_type not in _DAMAGE_TYPES:
