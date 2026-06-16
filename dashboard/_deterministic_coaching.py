@@ -373,8 +373,13 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
     dict. Wrapped by compute_deterministic in a try/except so a raise here can
     never escape."""
     mk = str(mode_key or "").strip().lower()
-    upper = _MODE_KEY_TO_UPPER.get(mk, "SR")
-    lower = _MODE_KEY_TO_LOWER.get(mk, "sr")
+    upper = _MODE_KEY_TO_UPPER.get(mk)
+    lower = _MODE_KEY_TO_LOWER.get(mk)
+    if upper is None or lower is None:
+        # tft / brawl / unknown have no laning / build / SR-objective model;
+        # serve empty rather than silently scoring them against the SR tables
+        # (and skip the needless DS matchup call every tick).
+        return dict(_EMPTY_RESULT)
 
     # choices (deterministic A/B from the DS matchup engine).
     choices = laning_choices(gs, mode=upper)
@@ -603,7 +608,9 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
         if not (isinstance(lc, dict) and lc.get("champion")):
             return
         mk = str(mode_key or "").strip().lower()
-        lower = _MODE_KEY_TO_LOWER.get(mk, "sr")
+        lower = _MODE_KEY_TO_LOWER.get(mk)
+        if lower is None:
+            return  # tft / brawl have no laning table; do not score vs SR
 
         from core import precomputed_laning_coach as plc  # lazy import
         from core.laning_scenario_precompute import load_laning_scenarios
@@ -674,7 +681,9 @@ def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
         if not (isinstance(lc, dict) and lc.get("champion")):
             return
         mk = str(mode_key or "").strip().lower()
-        lower = _MODE_KEY_TO_LOWER.get(mk, "sr")
+        lower = _MODE_KEY_TO_LOWER.get(mk)
+        if lower is None:
+            return  # tft / brawl have no build table; do not score vs SR
 
         from core import precomputed_build_coach as pbc  # lazy import
         from core.build_order_variants import load_build_order_variants
