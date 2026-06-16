@@ -57,6 +57,20 @@
 
 ---
 
+# 2026-06-16 - DEEP-AUDIT cycle 41: gemini CLI-wrapper headless robustness hardening [item 438]
+
+- item 438 (code commit `63486e8a` + docs follow-up). Tier-1 tooling, NO ENGINE bump, NO DS/Share change, NO live RC restart. Source: operator directive "continue open items headlessly - multi-agent fanout orchestrated".
+- ORIENT: the A1-UIX3 + DSV1-4 bounded ship-or-close queue is DRAINED; the P2 code-audit FIX-NOW class is exhausted (W1-W5); the P3 safe-bulk ASCII sweep is DONE (cycles 18-31); bare-py + P2b fixtures already resolved (16.9.1 dir gone, guard + 2 .ps1 fixed item 400). The remaining deep-audit work is Gemini-scope-consult-gated (P3-D gamepc prune 1791 hits, P3-E vanguard, P6 G3/G6/G7) or LLM-prompt-input / live / UI-gated.
+- LIVE BLOCKER (re-probed, not assumed): `gemini -p` returns `429 RESOURCE_EXHAUSTED - prepayment credits depleted` -> the director/consult/auditor channel + RC-GeminiAudit + RC-WeeklyHygiene are down. The Legion ANTHROPIC key is HEALTHY (live RC + this session fine; 0 credit/429 in logs/2026-06-16.log). RC-WeeklyHygiene LastTaskResult=1 = this transient-external credit, NOT a code defect.
+- SLICE (the genuinely-open, safe, no-Gemini-ruling-needed FIX-NOW the outage exposed): harden the 2 gemini CLI wrappers. (1) `gemini_ask.ps1` exit-code masking - `Write-Error;exit N` under EAP=Stop masked the intended code (2/3) as a bare 1 with no diagnostic (the 2026-06-07 incident class its sibling `gemini_audit.ps1` already fixed) -> ported the `Fail()` helper. (2) No retry wall-clock cap (both wrappers, P2-W4-deferred) -> shared `$deadline=(Get-Date).AddSeconds($MaxWaitSec)` (ask 120 / audit 180) gating the loop + skipping Start-Sleep past it.
+- DEFERRED (recorded P2_FINDINGS): single in-flight `& gemini` call internal-backoff process-kill timeout (MED-risk PS5.1 Start-Job machinery); `loop_controller.gemini()` same no-loop-cap class (already degrades to "" gracefully, lower urgency, loop STOPped).
+- TDD: NEW `tests/test_gemini_wrapper_robustness.py` (5) red-first (3 fail) -> green: wrappers exist + ASCII + no live Write-Error command (comment-aware) + both define Fail + both bound the loop by AddSeconds/$deadline.
+- ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator - 3 coupled files (2 .ps1 + guard), R9 + DSV1-4 precedent (worktree fanout unwarranted for a coupled PS5.1 fix); verifier SKIPPED per R7 (single-thread inline) - fresh re-verify instead.
+- Gate (Tier-1 per R5): RC `tests/` 7987 passed / 2 skip / 109 subtests, exit 0 (+5 = the new guard); `test_ps1_encoding_hygiene` + `test_bare_py_ban` green; PS5.1 ParseFile OK both wrappers; ruff + py_compile clean; 3/3 files ASCII. No frozen files touched.
+- NEXT / OPERATOR DECISION (the real blocker): top up Google AI Studio billing to restore the Gemini director/consult/auditor + RC-GeminiAudit, OR hand a fresh operator-scoped headless batch. Until then the bounded queue is DRAINED and the remaining work is Gemini-scope-gated.
+
+---
+
 # 2026-06-16 - DEEP-AUDIT cycle 40: DSV4 Spear of Shojin Focused Will ability-amp valuation [item 437]
 
 - DSV4 (commit `c5fe019d`). Tier-2 ENGINE 1.126.0 -> 1.127.0, DS :8893 restarted -> 1.127.0, Share re-synced (340 files) in the SAME commit. Source: operator directive "continue open items headlessly - multi-agent fanout orchestrated" (the A1-UIX3 plan set was DONE + the loop STOPped, so this was a director-refill continuation of the SAME DSV P6-G5 / G2-residual scorer-valuation lane).

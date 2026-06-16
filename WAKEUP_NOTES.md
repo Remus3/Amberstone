@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-16 - cycle 44: HZ shadow-routing guard - tft/brawl off the SR precompute tables [item 442]
+
+- item 442 (`0fa8f83e`). Tier-1 (one dashboard module + test), NO ENGINE/DS/Share, RC restarted pid 11728. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
+- ORIENT (run -02): cost (7/7) + DS (saturated) were swept CLEAN in run -01, so this run focused the 4-lane scout fanout on the PRIMARY north-star HZ precompute pipeline. scout-HZ-A laning = CLEAN (355,008-leaf live math/keyspace verification, full 172x172 roster); scout-HZ-B build = CLEAN (full-roster, canonical both sides); scout-HZ-C wiring = 1 real bug (H1); scout-new-substrate = replay-narrative is the only headless-buildable NEW substrate but its call site is DORMANT -> BACKLOG.
+- ROOT CAUSE (H1, item-439 class): resolve_mode_key emits tft/brawl (_state_builder.py:102) but _MODE_KEY_TO_{UPPER,LOWER} (_deterministic_coaching.py:142-155) omit them, so `.get(mk,"sr"/"SR")` silently routed those ticks vs the SR tables - a needless DS matchup call + wrong SR callouts live, and SR-scored rows logged under a tft/brawl label into the flip-gating shadow dataset. Verify-first confirmed resolve_mode_key DOES emit those modes.
+- FIX (blast radius = tft/brawl/unknown only; sr/client/game/aram/arena unchanged map keys): the mode maps are the source of truth; all 3 consumers drop the SR default - _compute_uncached -> dict(_EMPTY_RESULT) (no matchup call); both shadow writers early-return (no row). SHADOW-only, no live flip. /api/state 200 mode_key=client (mapped, byte-identical).
+- TDD: NEW tests/test_deterministic_coaching_mode_routing.py (6) red-first (5 fail) -> green. Gate: 111 det/shadow blast-radius tests, py_compile+ruff clean, ASCII-added 0, CI green. No frozen files.
+- NEXT: bounded headless-safe HZ-pipeline queue drained again (pipeline CLEAN bar H1; coverage full-roster; remaining = the live-flip gate + 3 BACKLOG product calls: replay-narrative substrate, HZ-A always-recall B-choice content, HZ-B static-regen). Gemini director/consult still down (429 prepay-depleted).
+
+---
+
 # 2026-06-16 - cycle 43: UI fixture-audit (right_now/next + diagnostics) + HZ per-mode test coverage [items 440-441]
 
 - items 440 (`ed9c709c`) + 441 (`9da9358a`). Tier-1 frontend + test-only, NO ENGINE/DS/Share, NO RC restart (ADR-008). Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
@@ -24,17 +35,3 @@
 - SCOPE: HZ precompute tables only (data/daemon_slayer/build_orders/ subdir; read only by the 2 readers via the 2 shadow fns; B1 has 0 live callers). The OLDER item-265/266 balanced table (data/daemon_slayer/<patch>/, read by _next_build_item/laning_verdicts) is display-keyed + display-looked-up = consistent, UNTOUCHED -> _build_game_state NOT edited (live coach byte-identical). SHADOW-only (no live coach flip). New memory reference_build_order_tables_two_keyspaces.
 - TDD: NEW tests/test_hz_precompute_canonical_keyspace.py (6) red-first (4 fail) -> green. scout C1 (16.11.1 ARAM/Arena backfill) REJECTED (stale non-live patch, ~130MB LFS churn, read-path fail-softs); C3 (truncated-path test) SKIPPED (redundant with existing test_lookup_missing_returns_empty + isinstance-guarded lookup).
 - NEXT: bounded queue drained again; HZ live-coach FLIP still gated on real-game shadow-accrual + precompute-vs-Haiku agreement (do-not-flip-blind). FUTURE (noted, not a bug): unify the two build-order tables onto one canonical key-space. Gemini director/consult still down (429 prepay-depleted) - operator billing top-up unblocks P6 G3/G6/G7 + the orchestration refill.
-
----
-
-# 2026-06-16 - DEEP-AUDIT cycle 41: gemini CLI-wrapper headless robustness hardening [item 438]
-
-- item 438 (code commit `63486e8a` + docs follow-up). Tier-1 tooling, NO ENGINE bump, NO DS/Share change, NO live RC restart. Source: operator directive "continue open items headlessly - multi-agent fanout orchestrated".
-- ORIENT: the A1-UIX3 + DSV1-4 bounded ship-or-close queue is DRAINED; the P2 code-audit FIX-NOW class is exhausted (W1-W5); the P3 safe-bulk ASCII sweep is DONE (cycles 18-31); bare-py + P2b fixtures already resolved (16.9.1 dir gone, guard + 2 .ps1 fixed item 400). The remaining deep-audit work is Gemini-scope-consult-gated (P3-D gamepc prune 1791 hits, P3-E vanguard, P6 G3/G6/G7) or LLM-prompt-input / live / UI-gated.
-- LIVE BLOCKER (re-probed, not assumed): `gemini -p` returns `429 RESOURCE_EXHAUSTED - prepayment credits depleted` -> the director/consult/auditor channel + RC-GeminiAudit + RC-WeeklyHygiene are down. The Legion ANTHROPIC key is HEALTHY (live RC + this session fine; 0 credit/429 in logs/2026-06-16.log). RC-WeeklyHygiene LastTaskResult=1 = this transient-external credit, NOT a code defect.
-- SLICE (the genuinely-open, safe, no-Gemini-ruling-needed FIX-NOW the outage exposed): harden the 2 gemini CLI wrappers. (1) `gemini_ask.ps1` exit-code masking - `Write-Error;exit N` under EAP=Stop masked the intended code (2/3) as a bare 1 with no diagnostic (the 2026-06-07 incident class its sibling `gemini_audit.ps1` already fixed) -> ported the `Fail()` helper. (2) No retry wall-clock cap (both wrappers, P2-W4-deferred) -> shared `$deadline=(Get-Date).AddSeconds($MaxWaitSec)` (ask 120 / audit 180) gating the loop + skipping Start-Sleep past it.
-- DEFERRED (recorded P2_FINDINGS): single in-flight `& gemini` call internal-backoff process-kill timeout (MED-risk PS5.1 Start-Job machinery); `loop_controller.gemini()` same no-loop-cap class (already degrades to "" gracefully, lower urgency, loop STOPped).
-- TDD: NEW `tests/test_gemini_wrapper_robustness.py` (5) red-first (3 fail) -> green: wrappers exist + ASCII + no live Write-Error command (comment-aware) + both define Fail + both bound the loop by AddSeconds/$deadline.
-- ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator - 3 coupled files (2 .ps1 + guard), R9 + DSV1-4 precedent (worktree fanout unwarranted for a coupled PS5.1 fix); verifier SKIPPED per R7 (single-thread inline) - fresh re-verify instead.
-- Gate (Tier-1 per R5): RC `tests/` 7987 passed / 2 skip / 109 subtests, exit 0 (+5 = the new guard); `test_ps1_encoding_hygiene` + `test_bare_py_ban` green; PS5.1 ParseFile OK both wrappers; ruff + py_compile clean; 3/3 files ASCII. No frozen files touched.
-- NEXT / OPERATOR DECISION (the real blocker): top up Google AI Studio billing to restore the Gemini director/consult/auditor + RC-GeminiAudit, OR hand a fresh operator-scoped headless batch. Until then the bounded queue is DRAINED and the remaining work is Gemini-scope-gated.
