@@ -535,6 +535,14 @@ names, LLM coach text, OCR text, DDragon/engine names) interpolated raw into inn
   "override in prod"; server binds 127.0.0.1).
 - tools/gemini_audit.ps1:56 + gemini_ask.ps1:27 native gemini CLI calls have retry/backoff
   bounding attempts but no hard wall-clock cap - a hung CLI stalls the scheduled run.
+  [PARTIAL-RESOLVED item 438 (commit 63486e8a, cycle 41): both wrappers' retry LOOP is now
+  bounded by a shared $deadline=(Get-Date).AddSeconds($MaxWaitSec) (ask 120 / audit 180) +
+  the Start-Sleep is skipped past the deadline; and gemini_ask.ps1's separate Write-Error-
+  under-EAP=Stop exit-code masking (the 2026-06-07 incident class) was ported to the sibling
+  Fail() helper. Guard tests/test_gemini_wrapper_robustness.py. STILL DEFERRED: a single
+  in-flight `& gemini` call's internal 429-backoff is not killable without Start-Job/Wait-Job
+  process-kill (MED-risk PS5.1); ops/loop/loop_controller.py:93 gemini() has the same
+  no-loop-cap class (already returns "" gracefully, loop STOPped, lower urgency).]
 - tools/usage-mcp-server.js:105,119 echoes JSON.stringify(API error body) on non-200 - the
   Anthropic error envelope does NOT contain the key (no secret leak); NaN path already fail-soft.
 - The test_bare_py_ban.py guard regex (_BARE_PY) has a GAP: it does not match the `& py (...)`
