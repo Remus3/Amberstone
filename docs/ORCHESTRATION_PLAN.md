@@ -66,6 +66,10 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 7417a7a8 |
 | DSV4 | DS-Valuation | DIRECTOR-REFILL continuation (the A1-UIX3 set drained; operator directive "continue open items headlessly"). The SAME DSV P6-G5 / G2-residual scorer-valuation lane: value Spear of Shojin 3161 Focused Will, a stacking ability/passive damage amp (Meraki 3%/stack x 4 = 12%) that was defensive_only "ability damage not DPS-modeled". Default-OFF assume_ability_amp seam on compute_ability_dps + compute_burst_damage (ability-only, never AA) + rank_items_by_burst; NEW ItemEffect ability_damage_amp_* fields + effects helper + dps._ASSUMED_ABILITY_AMP_STACKS=4. Offline Meraki-anchored tests, ENGINE bump + DS restart + Share re-sync. Ships DEFAULT-OFF (live flip validation-gated, EXCLUDED). | DONE | c5fe019d |
 
+| RN1 | UI-Audit | DIRECTOR-REFILL cycle 43 (A1-UIX3+DSV1-4 drained; operator "continue open items headlessly - multi-agent fanout"). 5-phase fixture audit of the un-audited active-match RIGHT NOW + NEXT coaching panels (right_now.css + next.css). Fix MUST-FIX in-slice. | DONE | ed9c709c |
+| DIAG1 | UI-Audit | DIRECTOR-REFILL cycle 43. 5-phase fixture audit of the un-audited Diagnostics developer view (dev.js diag section + header.css .diag-*). Fix MUST-FIX in-slice. | DONE | ed9c709c |
+| HZ-T1 | haiku-zero | DIRECTOR-REFILL cycle 43. Hermetic per-mode (sr/aram/arena) fail-soft path-routing coverage for the HZ precompute SOURCE-module tests (load_*(mode) was tested only for sr; aram/arena tables items 386/388 untested on that path). | DONE | 9da9358a |
+
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
 - DS Phase-D default-ON flag flips (apply_passive_damage, non-every-AA on_hit, per-stack assumed_stacks) - need real-game re-ranking validation.
@@ -76,6 +80,18 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-16 RN1+DIAG1 (440, ed9c709c) + HZ-T1 (441, 9da9358a) DONE. Director-refill
+  cycle 43 (A1-UIX3+DSV1-4 drained, Gemini down 429). 4 read-only scouts: DS-engine-lift
+  CLOSED (DSV1-4 done, 174/174 tier-3 items, P6 design-level); Electron-overlay CLOSED
+  (Phases 1-6 code-side shipped, rest live-gated/packaging); HZ + UI = NOW. 3 Section-3b UI-audits:
+  ds_profile/ds_matchup CLOSED (tokenized); ds_sweep/ds_combo CLOSED (spacing-px only, NOT
+  the font-floor/hit-target bar - no churn); right_now/next + diagnostics NOW. RN1:
+  .rn-sr-btn hit-target (~26px -> 42px) + sub-floor compliance; DIAG1: rogue inline 10px
+  dropped + dense-surface operator-exception. HZ-T1: per-mode fail-soft routing (scout's
+  reader-test parametrize REJECTED on verify-first - mode bypassed by payload=). NEXT:
+  bounded headless-safe queue DRAINED again; remaining = live/operator/Gemini-gated. Visual
+  capture OWED (Game-PC :8892 down).
 
 - 2026-06-16 DSV4 DONE (commit c5fe019d, item 437). DIRECTOR-REFILL continuation:
   the A1-UIX3 plan set was DONE, so under the operator directive "continue open
