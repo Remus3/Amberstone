@@ -198,6 +198,54 @@ def test_overlay_change_pulse_hook(mock_server, pw_browser):
     assert not errors, f"JS errors [pulse]: {errors[:3]}"
 
 
+def test_overlay_pulse_suppressed_when_toggle_off(mock_server, pw_browser):
+    """OVL1: pulseNotify=false (operator muted the change-pulse via the overlay
+    settings toggle) suppresses the .ov-pulse glow even on a real content
+    change. The gate reads the shared localStorage mirror at fire time."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    # Mute the pulse BEFORE any page script runs (init scripts run pre-load on
+    # every navigation), mirroring the operator having toggled it off earlier.
+    page.add_init_script(
+        "try { localStorage.setItem('rc_overlay_settings',"
+        " JSON.stringify({pulseNotify:false, activeRevertSec:20})); } catch (e) {}"
+    )
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        page.goto(mock_server.url + "/?ui_mock=1&mode=sr&overlay=1",
+                  wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_function(
+            "document.querySelector('#am-sub') && "
+            "document.querySelector('#am-sub').textContent.indexOf('InProgress') >= 0",
+            timeout=10_000,
+        )
+        # Let the initial mock-render pulse window + throttle expire.
+        page.wait_for_timeout(1700)
+        page.evaluate(
+            "() => {"
+            "  const d = document.createElement('div');"
+            "  d.textContent = 'ROTATE MID - spike online';"
+            "  document.getElementById('am-call-body').appendChild(d);"
+            "}"
+        )
+        # Give the observer + any timer a beat, then assert the glow never landed.
+        page.wait_for_timeout(700)
+        assert not page.evaluate(
+            "document.querySelector('.am-pane-call').classList.contains('ov-pulse')"
+        ), "pulse must be suppressed when pulseNotify=false"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [pulse off]: {errors[:3]}"
+
+
 def test_no_overlay_param_keeps_normal_shell(mock_server, pw_browser):
     """Control: the C2 drive path without overlay=1 must not pick up the
     overlay shell - header stays visible, no data-shell attribute."""
