@@ -314,6 +314,38 @@ def total_conditional_as(effects: Iterable[ItemEffect]) -> float:
     return sum(e.bonus_as_conditional for e in effects)
 
 
+def total_takedown_bonus_ad(
+    effects: Iterable[ItemEffect],
+    assumed_stacks: float,
+) -> float:
+    """Sum on-takedown bonus AD across the build (DSV2, kill-state seam).
+
+    Hubris Eminence grants ``base + per_stack * stacks`` bonus AD on a
+    champion takedown (Meraki 16.12.1: "15 (+2 per stack)"). ``assumed_stacks``
+    is the consumer's kill-state assumption (``dps._ASSUMED_TAKEDOWN_STACKS``
+    = 1 -> 15 + 2*1 = 17 AD). Returns 0.0 when no item carries the field, so a
+    build without Hubris contributes nothing even with the seam ON. Additive
+    across items per the engine's stat-stacking convention (no current pair of
+    takedown-AD items, but sums commute if one lands later).
+    """
+    return sum(
+        e.takedown_bonus_ad_base + e.takedown_bonus_ad_per_stack * assumed_stacks
+        for e in effects
+    )
+
+
+def total_execute_max_hp_pct(effects: Iterable[ItemEffect]) -> float:
+    """Sum the kill-state execute threshold across the build (DSV2 seam).
+
+    The Collector's Death executes a champion left below 5% of their MAXIMUM
+    health (Meraki 16.12.1). Returned as a fraction of target max HP; the burst
+    scorer multiplies by ``target_max_hp`` for the finisher's true-damage worth.
+    Returns 0.0 when no item carries the field. Summed additively (only one
+    Collector exists today, so in practice this is 0.0 or 0.05).
+    """
+    return sum(e.execute_max_hp_pct for e in effects)
+
+
 def effective_target_armor(
     target_armor: float,
     effects: Iterable[ItemEffect],
