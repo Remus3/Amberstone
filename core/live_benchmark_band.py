@@ -39,6 +39,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional
 
 from core import benchmarks
+from core.archetype_picks import canonical_champion_id
 
 # SR benchmark-mode keys, most-specific first. A coarse "SR" live mode resolves
 # to the first family member that clears the games gate (a ranked game prefers
@@ -150,7 +151,11 @@ def band_metrics(
     if gts < 0:
         return out
 
-    bench_mode = _resolve_sr_mode(champion, mode, min_games)
+    # Benchmarks are keyed on canonical ids (TahmKench); the live coach passes the
+    # Live Client display name ("Tahm Kench"). Look up canonically, but keep the
+    # readable display name for the coach line.
+    lookup = canonical_champion_id(champion) if champion else ""
+    bench_mode = _resolve_sr_mode(lookup, mode, min_games)
     if bench_mode is None:
         return out
 
@@ -164,13 +169,13 @@ def band_metrics(
                 continue
             value = float(raw)
             try:
-                band = benchmarks.rank_value(champion, bench_mode, metric_key, value)
+                band = benchmarks.rank_value(lookup, bench_mode, metric_key, value)
             except Exception:
                 continue
             if band == "no-data":
                 continue
             try:
-                p50 = benchmarks.get(champion, bench_mode, metric_key).get("p50")
+                p50 = benchmarks.get(lookup, bench_mode, metric_key).get("p50")
             except Exception:
                 p50 = None
             display = _METRIC_DISPLAY.get(metric_key, metric_key)
