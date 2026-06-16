@@ -57,6 +57,19 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 35: DSV2 takedown / kill-state item-passive valuation [item 432]
+
+- DSV2 (commit `f1075c38`). Tier-2 ENGINE 1.124.0 -> 1.125.0; DS :8893 restarted (taskkill pid 20352 + `Start-ScheduledTask RC-DaemonSlayer`, live `/health` confirms 1.125.0); Share re-synced (338 files) in the SAME commit. Source: `docs/ORCHESTRATION_PLAN.md` DSV2 (P6-G5 residual 2).
+- GAP (P6-G5 ledger 424): the burst + auto scorers had NO seam for the on-takedown item passives, so Hubris (Eminence bonus AD) + The Collector (5% execute) were under-ranked among lethality items (~#13 / ~#12 live).
+- FIX (DEFAULT-OFF kill-state OFFENSE seam, byte-identical when off): NEW `ItemEffect` fields `takedown_bonus_ad_base`/`takedown_bonus_ad_per_stack` (Hubris Eminence Meraki 16.12.1 "15 (+2 per stack)") + `execute_max_hp_pct` (Collector Death "<5% max health"), all default 0.0; NEW `effects` helpers `total_takedown_bonus_ad(stacks)` + `total_execute_max_hp_pct`; `dps._ASSUMED_TAKEDOWN_STACKS=1` + an `assume_takedown` kwarg on `compute_dps` (folds Hubris AD 15+2*1=17 into rotation AD + bonus_ad ctx; Collector execute NOT credited - one-shot finisher != sustained DPS) and on `compute_burst_damage`+`rank_items_by_burst` (threads into the AA probe + ability ctx so Hubris raises BOTH ability and AA, and credits the Collector execute as a 5%*target_max_hp TRUE `execute_finisher_damage` folded into total_burst). Data: Hubris 6697/226697/126697 + Collector 6676/667666/226676.
+- DESIGN GUARD (root-cause-honest): Death's Dance carries NEITHER offense field - its takedown payoff is the Defy HEAL, already valued on the survivability axis (`ehp.py ItemHeal.takedown_gated`, ENGINE 1.57.0); crediting it offense would double-count phantom damage, so the seam is a deliberate no-op for DD (a test pins DD offense byte-identical seam-on vs seam-off).
+- ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator (one coupled contract across 6 engine files - schema + 2 scorers share `assume_takedown`; R9 + DSV1/OVL2 precedent). Verifier SKIPPED per R7 (single-thread inline, no stale pipe) - fresh re-verify instead. TDD: `test_dsv2_killstate_passives.py` (16) red-first (ImportError on `_ASSUMED_TAKEDOWN_STACKS`) -> green.
+- SEAM-FIRST scope (per directive + EXCLUDED): ships DEFAULT-OFF; `rank.py` does NOT pass `assume_takedown=True` yet - flipping it ON is a separate real-game-validation-gated step (Phase-D default-ON flag-flip class). Live rankings byte-identical this cycle.
+- Gate (Tier-2 dual suite): DS-dir **7119 passed / 1 skip / 1942 subtests**; RC tests/ **7982 passed / 2 skip / 109 subtests** (the 7 pre-fix failures = 1 live-:8893 stale-version + 6 Share doc/ingest anchors, ALL green post DS-restart + ds_share_sync, re-run 18/18); ruff + py_compile clean; `ds_share_sync --check` in sync (338). ENGINE bump touched 75 quoted pins; 2 historical DSV1 (1.124.0) changelog refs kept (`feedback_engine_bump_quoted_literal_only`). No frozen files touched.
+- NEXT (plan order): DSV3 (lethality-vs-sustained AD tradeoff in burst.py), then UIX1/2/3 (5-phase UI audits).
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 34: DSV1 AP damage-over-time burn valuation [item 431]
 
 - DSV1 (commit `597ffc95`). Tier-2 ENGINE 1.123.0 -> 1.124.0; DS :8893 restarted (taskkill pid 5464 + `schtasks /Run /TN RC-DaemonSlayer`, live `/health` confirms 1.124.0); Share re-synced (337 files) in the SAME commit. Source: `docs/ORCHESTRATION_PLAN.md` DSV1 (P6-G5 residual 1).
