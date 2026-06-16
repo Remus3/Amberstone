@@ -58,7 +58,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | P6-G5 | ds-engine | P6 LOLMATH PARITY G5 (item-pool gaps) - CLOSED as NO pool gap, premise falsified (Tier-0 diagnosis; NO ENGINE bump / regen / DS restart / Share sync). DS has no per-archetype pool whitelist - rank.py::_filter_candidates iterates ALL 706 items.json (purchasable + terminal + map-legal + budget + 2-item deny). Of 48 lolmath-favored items, REAL SR pool gaps = 0; every one resolves to a canonical map11 id and ranks just below top-6 live @ ENGINE 1.123.0 (Talon Umbral #7 / Hubris #13 / Profane #33; Lux Liandry's #23; Jhin Collector #12). DS recommends ~60 distinct items / 172 champs - the breadth gap is SCORER VALUATION (item passives needing kill-state, AP DoT burn vs single-rotation ability model, lethality-vs-sustained in burst), NOT pool membership (lethality pen modeled, effects.py:326). Durable probes ops/audit/lolmath_ds_sweep/g5_{pool,live_rank}_probe.py. Re-routed to the G3/G6 Gemini-consult track. | CLOSED | (docs) |
 | OVL1 | Electron-Phase4 | Electron Phase 4 interactive tail (headless-safe): add overlay-settings controls (pulse-notification toggle + ACTIVE auto-revert timer) to the ?overlay=1 surface (web/js/panels/overlay_ds_controls.js) and persist them in the rc-shell config (rc-shell/ main-process config.json). Tests in the rc-shell harness + a dashboard fixture render. Live-visual capture OWED (Game-PC MCP :8892 down). | DONE | 4d09f8ac |
 | OVL2 | Electron-Phase6 | Electron Phase 6 Pengu Surface C code-only stub: scaffold a pengu/ plugin skeleton that fetches RC_ORIGIN/api/state + renders a panel with tokens.css, and add a client-origin-gated Access-Control-Allow-Origin header in dashboard/_handler.py (non-frozen). No live client needed; live validation OWED. Tests for the CORS-header origin gating. | DONE | aab53e37 |
-| DSV1 | DS-Valuation | DS P6-G5 residual 1 (AP DoT/burn valuation): extend the DS damage model (agents/daemon_slayer/dps.py compute_dps + effects.py) to value AP damage-over-time burn (Liandry's / Blackfire Torch) beyond the single-rotation ability model. Root-cause-first, offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
+| DSV1 | DS-Valuation | DS P6-G5 residual 1 (AP DoT/burn valuation): extend the DS damage model (agents/daemon_slayer/dps.py compute_dps + effects.py) to value AP damage-over-time burn (Liandry's / Blackfire Torch) beyond the single-rotation ability model. Root-cause-first, offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 597ffc95 |
 | DSV2 | DS-Valuation | DS P6-G5 residual 2 (kill-state item passives): add a takedown/kill-state assumption seam to agents/daemon_slayer/burst.py + dps.py so on-takedown passives (Hubris / Collector / Death's Dance) are valued. Default-OFF byte-identical seam first, offline tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
 | DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
 | UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | OPEN | - |
@@ -75,6 +75,42 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-15 DSV1 DONE (commit 597ffc95, item 431). AP damage-over-time burn
+  valuation - P6-G5 residual 1, Tier-2 ENGINE 1.123.0 -> 1.124.0, DS :8893
+  restarted, Share re-synced (337) in the SAME commit. ROOT CAUSE:
+  compute_ability_dps (the AP/mage item scorer) mirrors compute_dps's item amp +
+  pen handling but never folded the item PERIODIC procs, so ability-triggered AP
+  burn DoTs (Liandry Torment, Blackfire Baleful Blaze, Demonic Azakana) were
+  invisible to the mage ranking even though the auto scorer has valued them via
+  _periodic_proc_dps since Phase 4 - the exact P6-G5 "AP DoT burn vs single-
+  rotation ability model" gap (Veigar/Lux Liandry buried ~#23). FIX completed the
+  mirror: PeriodicProc gains an ability_dot flag (default False = byte-identical);
+  _periodic_proc_dps gains ability_dot_only (default False = compute_dps byte-
+  identical); compute_ability_dps folds ability_dot proc DPS into
+  total_ability_dps. Data: ADD Liandry Torment (6653 + Arena 226653) 2% target max
+  HP/s magic (Meraki 6% over 3s, the Azakana sibling); FIX Blackfire Baleful
+  (2503 + Arena 222503) to the Meraki total 60+6%AP/3s = 10+1%AP per 0.5s tick
+  (prior 6+6%AP mis-read the wiki {{ap|60/6}} tick-count as a melee/ranged split);
+  TAG Demonic Azakana (4637 + Arena 224637) ability_dot. DESIGN GUARD: the first
+  cut folded ALL time-based procs -> polluted the mage ranking with tank Immolate
+  auras (Sunfire), physical spellblades (Iceborn/Trinity Force), on-cast nukes;
+  narrowed via the curated ability_dot tag (the _AA_ROUTED_ON_HIT_KEYS allowlist
+  precedent) so only the 3 named/sibling burn families lift. LIVE-PROVEN: Veigar
+  L11 SR mage ranking now Liandry #1 (delta 45.5) at target_max_hp=2500, Blackfire
+  #1 at tmh=0; no pollution. ORCHESTRATION (auto-pick, logged): INLINE sole
+  orchestrator (4 coupled engine files share one proc contract; R9 + OVL1/OVL2
+  precedent); verifier subagent SKIPPED per R7 (single-thread inline edit, no stale
+  pipe) - fresh re-verify done instead. TDD: 8 Meraki-anchored tests red-first ->
+  green. Churn fixed: 2 Blackfire data pins + 1 LiandrysSuffering pin re-pinned to
+  Meraki; 3 rank_mage ranking pins resolved by the ability_dot narrowing (no test
+  edit). Gate: DS-dir 7103 passed / 1 skip / 1942 subtests; RC tests/ 7981 passed /
+  2 skip / 109 subtests (lone failure = pre-restart live-:8893 version assertion,
+  green post-restart); ruff + py_compile clean; ds_share_sync --check in sync.
+  FUTURE (untagged, deliberate scope line): Luden's / Malignance / Stormsurge /
+  Night Harvester (magic on-cast/ult-zone, not sustained DoTs) + Pyromancer's Cloak
+  (Arena flat burn). NEXT (plan order): DSV2 (kill-state passives, burst.py seam),
+  then DSV3, then UIX1/2/3.
 
 - 2026-06-15 OVL2 DONE (commit aab53e37, item 430). Electron Phase 6 Pengu
   Surface-C code-only stub + client-origin-gated CORS. NEW pengu/ Pengu Loader
