@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.124.0 (DSV1 - AP damage-over-time burn valuation, 2026-06-15. P6-G5 residual 1.
+compute_ability_dps (the AP / ability scorer) mirrored compute_dps's item amp + pen
+handling but never folded item PERIODIC procs, so ability-triggered AP burn DoTs were
+invisible to the mage item ranking even though the auto scorer has valued them since
+Phase 4 - P6-G5's "AP DoT burn vs single-rotation ability model" gap. Completed the
+mirror: PeriodicProc gains an ability_dot flag (default False = byte-identical);
+_periodic_proc_dps gains ability_dot_only (default False = compute_dps byte-identical);
+compute_ability_dps folds _periodic_proc_dps(ability_dot_only=True) into
+total_ability_dps. Data: ADDED Liandry's Torment burn (6653 + Arena 226653) - 2% target
+max HP/s magic (16.12.1 Meraki 6% over 3s, the Azakana's Gaze sibling); FIXED Blackfire
+Baleful Blaze (2503 + Arena 222503) to the Meraki total 60 (+6% AP) over 3s / 6 ticks =
+10 (+1% AP) per 0.5s tick (the prior 6+6%/tick mis-read the wiki {{ap|60/6}} tick-count
+as a melee/ranged split); TAGGED Demonic Azakana (4637 + Arena 224637) ability_dot for
+sibling completeness. Only the 3 named/sibling burn families lift - tank Immolate auras,
+physical spellblades, and on-cast nukes (all every_n_seconds procs too) stay out of the
+AP scorer via the curated ability_dot tag. Live: Veigar L11 SR mage ranking now Liandry
+#1 at target_max_hp=2500 (was buried ~#23), Blackfire #1 at tmh=0; no pollution. DS :8893
+bounced -> 1.124.0. Sources: Riot Data Dragon / CommunityDragon / Meraki Analytics.)
+
 1.123.0 (P6 lolmath build-engine parity G4, 2026-06-15 - boots-pool refresh to the
 16.12.1 tier-3 boots. DDragon 16.12.1 added Summoner's-Rift-only tier-3 upgraded boots
 (Spellslinger's Shoes / Gunmetal Greaves / Armored Advance / Chainlaced Crushers /
