@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-16 - cycle 48: GPI longitudinal player skill radar + weakest-axis tip [items 450-451]
+
+- 8 commits (`df892688` S1 + `5e9f1865` S2 + `876e8440` S3 + `24375fe7` wiring + `67a02980` docs450 + `65164b98` 451 + `240f0d8a` docs451 + 2 merge commits), CI green. Source: operator "continue open items headlessly - multi-agent fanout orchestrated; Gemini stands in for operator on flips/approvals". No DS/ENGINE/Share, no frozen files. RC restarted pid 7116 -> 24088 (last_reload_ok).
+- ORIENT: bounded headless-safe NEXT queue drained (cycles 43-47); the net-new lane this run = competitor-lift #1 (Aggregator C GPI radar, docs/COMPETITOR_LIFT_2026-06-16.md "best BACKLOG pickup"). Gemini operator-proxy UNREACHABLE (pro AND flash empty/exit 3, quota - same as 43/45/47); proceeded on logged defaults (D1-D3 in the Desktop synopsis) per skill section 9.
+- item 450 (3-slice orchestrated worktree fanout): NEW core/player_gpi.py 8-axis longitudinal profile over LOCAL rewind_history.db (6 self-relative percentile axes agg/farm/vision/obj/survival/tempo + 2 absolute shape vers/consistency; self-relative NOT rank-cohort - LBAND1 precedent; operator row = (champ,team)==tracked_* join, deduped; tracked_kp/ttmga empty so agg/tempo from participant dmg/gold). NEW /api/player-profile route (TTL-300s, fail-soft 503). NEW web radar panel in champ-select. S2 verifier CONFIRM; S3 verifier REFUTE was a count-attribution nit (132 snapshot + 4 parity all green) - code verified-clean; truth_gate PROCEED. UI-audit found 1 real MUST-FIX (panel had no caller) -> wired showPlayerGpi into champ_select. Live route 619 SR games -> overall 47.2.
+- item 451 (tail): GPI weakest-axis improvement tip (Aggregator C finding 1.2 bundle) - static _AXIS_TIPS, relative axes only (shape axes ineligible), no LLM; warn-tinted panel call-out. Live weakest=survival -> "Die less ...". +4 backend + snapshot tip assertion.
+- REJECTED competitor #3 ward-heatmap (Riot timeline WARD_PLACED has NO x/y - data-blocked, premise false); #2 lobby-tags + #4 enemy-CD need a live game.
+- OWED: in-game visual capture (Game-PC :8892 down + Legion Claude_Preview holds port 8888, won't reuse live RC). Substantiated by live-route curl + 4 snapshot tests + analytical 5-phase UI-audit. Do NOT re-investigate the radar - it is shipped + live; only the visual screenshot is owed.
+- NEXT: bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip (do-not-flip-blind, accrues on real SR games) + GPI per-champion drill-down UI (the `champion=` param already serves it) + DS Phase-D + visual captures + P6, all live/operator/Gemini-gated. Gemini still down (quota).
+
+---
+
 # 2026-06-16 - cycle 47: LBAND1 canonical-id fix + cost lever + HZ flip-gate accuracy [items 447-449]
 
 - 3 slices (`e0b119fd` S1 / `4d20ef17` S2 / `fd156f04` S3), all Tier-1, CI green; cost 7-lever re-sweep = 6 CLEAN + 1 SHIP. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share. No frozen files. RC restarted pid 1228 -> 23280 (S1).
@@ -23,15 +35,3 @@
 - S2 (445): NEW core/live_benchmark_band_shadow.py - records what LBAND1 WOULD band per live SR tick (gated live-tick + SR-only + fired-band), alongside live coaching, no output change. Wrapper in _deterministic_coaching + wired into _state_builder beside the HZ shadows; conftest hermetic. Caught+fixed a to_jsonable-on-plain-dict bug in-slice. +8 tests, 31+71 green. RC restarted pid 1228 (last_reload_ok).
 - S3 (446): NEW tools/live_benchmark_band_report.py - flip-readiness report over the shadow jsonl (volume / checkpoint+metric / band distribution / per-champion / top_band_skew degeneracy flag), mirrors hz_shadow_report.py. +6 tests. LBAND1 lane now coherent (generator+shadow+report = full apparatus, matches HZ).
 - NEXT: LBAND1 live wire-in stays do-not-flip-blind - the shadow now ACCRUES validation data on real SR games; review via tools/live_benchmark_band_report.py before any flip. Bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip + DS Phase-D + visual captures + P6 G3/G6/G7 (all live/operator/Gemini-gated). Gemini still down (429).
-
----
-
-# 2026-06-16 - cycle 45: competitor-lift teardown + LBAND1 live personal-percentile band [item 443]
-
-- item 443 (`a8158629`). Tier-1 (NEW core/live_benchmark_band.py + test), NO ENGINE/DS/Share, NO RC restart. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
-- ORIENT: run -01 cost 7/7 CLEAN + DS saturated; run -02 HZ-precompute scout (item 442); bounded queue DRAINED + Gemini director/consult down (429). This run = 2-agent fanout on net-new headless-safe lanes: L1 Section-7b competitor deep-dive (8 days since LIFT1) + L2 robustness/coverage scout on post-2026-06-03-baseline NEW modules (items 285-442).
-- L2 = NOW=0 FUTURE=0 CLEAN=20 (post-baseline surface fail-soft + per-mode-tested + ASCII-clean + no cost regression; clean-baseline holds). L1 = 8 findings (Aggregator C GPI / Overlay App E / Overlay App F), docs/COMPETITOR_LIFT_2026-06-16.md.
-- VERIFY-FIRST overturned the 1 HIGH flag (overlay app E live-benchmarking): RC PARTIALLY supersedes - lead_projection bands live cs/gold/level vs a FLAT heuristic; benchmarks.rank_value has per-champion personal p25/p50/p75 (champion_benchmarks.json, 186) but consumed only POST-GAME. Net-new delta = wire the personal percentile into a LIVE read.
-- SLICE (LBAND1): NEW core/live_benchmark_band.py bands live cs+level vs the player's own champion percentile at a checkpoint (~10/~15min, +/-45s), SR-only, >=5-games gate, gold excluded (on-hand-vs-total mismatch). Pure generator, no live consumer yet (lead_projection/laning_verdicts ship-generator-wire-later precedent); live wire-in FUTURE (do-not-flip-blind). +10 hermetic tests (monkeypatch benchmarks._cache, clean-checkout safe). py_compile+ruff+ASCII clean, 10/10 green.
-- BACKLOG (5 FUTURE): Aggregator C skill radar, Overlay App F lobby-tags, Overlay App F ward heatmap, Overlay App E enemy ult-CD, Overlay App E LCU rune-write + personal-WR override. SUPERSEDED: Overlay App F per-ability dmg (DS richer), Overlay App E grading (PGR-parity).
-- NEXT: bounded headless-safe queue drained again; remaining = LBAND1/HZ live-flip + DS Phase-D + visual captures + P6 G3/G6/G7 (live/operator/Gemini-gated). Gemini still down (429).
