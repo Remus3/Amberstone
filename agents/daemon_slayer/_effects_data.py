@@ -646,11 +646,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # ability CDs" which is from an older patch - current passives
         # are "Dragonforce" (25 basic ability haste, stat-side) and
         # "Focused Will" (3% damage amp per stack to abilities/passives,
-        # max 4 stacks = 12%). The amp is ABILITY-only, not auto-attack
-        # - engine doesn't model ability damage, so this stays
-        # defensive_only. Generic damage_amp_pct (batch 14) intentionally
-        # not used since it would amp AAs too.
-        note="Spear of Shojin: Dragonforce (25 basic AH, stat) + Focused Will (3% per stack ability/passive amp, max 4 stacks; ability damage not DPS-modeled)",
+        # max 4 stacks = 12%). The amp is ABILITY-only, not auto-attack.
+        # DSV4 (1.127.0): Focused Will is now valued via the
+        # ability_damage_amp_* fields, consumed by the assume_ability_amp
+        # seam on the ability scorers (default-OFF byte-identical). The
+        # generic damage_amp_pct stays unused since it would amp AAs too.
+        # defensive_only stays True - the item's STATS are defensive; the
+        # amp is a conditional ability-scorer seam, not a direct DPS proc.
+        ability_damage_amp_per_stack=0.03,
+        ability_damage_amp_max_stacks=4,
+        note="Spear of Shojin: Dragonforce (25 basic AH, stat) + Focused Will (3% per stack ability/passive amp, max 4 stacks = 12%; valued on the ability scorers via assume_ability_amp, DSV4)",
     ),
     # Phase 4 batch 21 (2026-05-04): ER promoted from defensive_only via
     # the new CallContext.crit_chance schema. Per Meraki bulk text:
@@ -4198,7 +4203,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223161",
         name="Spear of Shojin",
         defensive_only=True,
-        note="Spear of Shojin (Arena 223161): Dragonforce ability-CDR-on-hit - ability-bound, no DPS proc",
+        # DSV4 (1.127.0): mirror the SR 3161 Focused Will ability/passive amp
+        # (3% per stack, 4 max = 12%), valued via the assume_ability_amp seam.
+        ability_damage_amp_per_stack=0.03,
+        ability_damage_amp_max_stacks=4,
+        note="Spear of Shojin (Arena 223161): Dragonforce ability-CDR-on-hit + Focused Will (3% per stack ability/passive amp, max 4 stacks = 12%; valued via assume_ability_amp, DSV4)",
     ),
     "223165": ItemEffect(
         item_id="223165",

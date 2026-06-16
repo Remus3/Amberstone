@@ -116,7 +116,7 @@ from .abilities import (
     DamageBlock,
 )
 from .data_loader import DataSnapshot
-from .dps import _armor_factor, _periodic_proc_dps
+from .dps import _ASSUMED_ABILITY_AMP_STACKS, _armor_factor, _periodic_proc_dps
 from ._effects_types import CallContext
 from .ehp import effective_cc_duration
 from .effects import (
@@ -124,6 +124,7 @@ from .effects import (
     collect_effects,
     effective_target_armor,
     effective_target_mr,
+    total_ability_damage_amp,
     total_ap_amp_multiplier,
     total_bonus_ap_from_hp,
     total_caster_hp_scaled_ap_amp,
@@ -845,6 +846,7 @@ def compute_ability_dps(
     form_index_overrides: Optional[dict[str, int]] = None,
     block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     apply_ability_amps: bool = False,
+    assume_ability_amp: bool = False,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -1168,6 +1170,17 @@ def compute_ability_dps(
         ))
 
     total_dps = sum(s.dps for s in per_spell)
+    # DSV4 (1.127.0): Spear of Shojin Focused Will ability/passive amp.
+    # assume_ability_amp=False -> no multiply, byte-identical. When True, the
+    # per-stack amp (3%/stack, 4 stacks = 12%) scales the spell ability damage;
+    # the item DoT procs added below are NOT amped (conservative - they are a
+    # separately-modeled passive layer the single-rotation model already counts).
+    if assume_ability_amp:
+        ability_amp_bonus = total_ability_damage_amp(
+            item_effects, _ASSUMED_ABILITY_AMP_STACKS
+        )
+        if ability_amp_bonus > 0.0:
+            total_dps *= 1.0 + ability_amp_bonus
     # DSV1 (P6-G5 residual 1): complete the compute_dps item-handling mirror.
     # The amp + pen layers above (lines ~950-995) already mirror compute_dps so
     # the two scorers agree on item value; the time-based item PERIODIC procs

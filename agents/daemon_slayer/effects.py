@@ -346,6 +346,30 @@ def total_execute_max_hp_pct(effects: Iterable[ItemEffect]) -> float:
     return sum(e.execute_max_hp_pct for e in effects)
 
 
+def total_ability_damage_amp(
+    effects: Iterable[ItemEffect],
+    assumed_stacks: float,
+) -> float:
+    """Sum the stacking ability/passive damage amp across the build (DSV4).
+
+    Spear of Shojin's Focused Will grants ``per_stack`` ability/passive damage
+    amp per stack, capped at the item's ``max_stacks`` (Meraki 16.12.1: 3% per
+    stack, 4 max = 12%). ``assumed_stacks`` is the consumer's fight-state
+    assumption (``dps._ASSUMED_ABILITY_AMP_STACKS`` = 4 -> the full 0.12). Each
+    item contributes ``per_stack * min(assumed_stacks, max_stacks)``; an item
+    with no Focused Will field (``max_stacks == 0``) contributes nothing, so a
+    build without Shojin is unchanged even with the seam ON. Additive across
+    items (no current pair carries it, but sums commute if one lands later).
+    Returns a damage-amp FRACTION (0.12 for full Shojin), NOT a multiplier.
+    """
+    return sum(
+        e.ability_damage_amp_per_stack
+        * min(assumed_stacks, e.ability_damage_amp_max_stacks)
+        for e in effects
+        if e.ability_damage_amp_max_stacks > 0
+    )
+
+
 def effective_target_armor(
     target_armor: float,
     effects: Iterable[ItemEffect],

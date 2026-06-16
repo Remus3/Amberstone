@@ -88,6 +88,15 @@ PHASES: tuple[str, ...] = ("early", "mid", "late")
 # (assume_takedown=False) regardless of this value.
 _ASSUMED_TAKEDOWN_STACKS = 1
 
+# DSV4 (1.127.0): Spear of Shojin Focused Will stacks assumed when the ability
+# scorers' ``assume_ability_amp`` seam is ON. 4 = the item's max stacks (a
+# developed fight at full Focused Will), so the steady-state ability scorers
+# value the full 12% amp. Operator-tunable like ``_ASSUMED_TAKEDOWN_STACKS``;
+# the seam is inert at the default flag (assume_ability_amp=False) regardless of
+# this value. Consumed by ``ability_dps.compute_ability_dps`` +
+# ``burst.compute_burst_damage`` via ``effects.total_ability_damage_amp``.
+_ASSUMED_ABILITY_AMP_STACKS = 4
+
 
 @dataclass(frozen=True)
 class DpsResult:
