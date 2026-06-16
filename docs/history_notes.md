@@ -2,6 +2,15 @@
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
+# 2026-06-15 - DEEP-AUDIT cycle 28: P6 LOLMATH PARITY G2 low-overlap re-measure CLOSED (not a separate bug) [item 425] (relocated 2026-06-15, cycle-31 wrap)
+
+- G2 re-measured post-G1/G4 at live ENGINE 1.123.0 (durable probe `ops/audit/lolmath_ds_sweep/g2_remeasure_probe.py`, in-repo paths). Tier-0 diagnosis - NO ENGINE bump, NO build_orders regen, NO DS :8893 restart, NO Share re-sync (1 probe + 3 doc files).
+- `BEFORE(1.120.0) G1=20 G2=59` -> `AFTER(1.123.0) G1=8 G2=60 ok=101 nodata=3` (covered 169). G1 20->8: all 8 residuals by-design + per-champ verified, ZERO regressions from item 421. Lulu = operator pick `carry` source=user_cs (never touched, archetype_picks.py:121); Amumu/Blitzcrank/Galio/Singed/TahmKench = tank axis-neutral (:124, BACKLOG); Taric (kit 0.61 AP, DS AP) + XinZhao (kit 0.87 AD, DS AD) = DS-correct, lolmath quirk. Nunu -> nodata (lolmath has no "Nunu & Willump" data).
+- G2 held ~flat: the axis fix correctly pulled the AP-damage champs (Diana/Gwen/Teemo/Rumble/Lillia/Mordekaiser/KogMaw/Gragas/Nidalee/Elise) OUT of G1; matching SPECIFIC items needs the design tracks, not an axis flip. G4 boots don't move the metric (overlap subtracts BOOTS by design in gen_md.py).
+- G2 residual = 3 buckets, all downstream of already-routed tracks (per-champ build dumps): A role-item-vs-glass-cannon (Janna/Sona/Alistar... DS utility/heal/shield, lolmath raw AP) -> G6/by-design; B AD scorer-valuation (Aatrox/Fiora/Nasus/Darius/Jhin lethality+kill-state passives) -> G5-residual; C AP DoT (Anivia/Swain/Lissandra Liandry's/Blackfire burn vs DS burst) -> G5-residual.
+- DONT-REDO: G2 is NOT a fixable bug (premise confirmed); do NOT re-measure as a fix target or re-pitch a low-overlap "fix" - the residual is the design-level scorer/runes/cost class. G1/G2/G4/G5 = the bounded-slice set, all DONE/CLOSED. NEXT P6 = G3 runes / G6 cost-model / G7 harness + G5 scorer-valuation residual = Gemini-consult first (no bounded slice remains).
+
+
 # 2026-06-14 - DEEP-AUDIT cycle 21: P3 SAFE-BULK ASCII glyph sweep slice A3a [item 417] (relocated 2026-06-15, cycle-24 wrap)
 
 - Extended tools/p3_ascii_sweep.py with an opt-in --doc-apply mode: same conservative GLYPH_MAP applied inside module/func/class DOCSTRING STRING tokens (located via AST - never an f-string, never a split-on/regex-matched code string). Docstrings are not emitted to coach output, not split-on, not regex-matched by production; only consumers = argparse --help (cosmetic) + 2 __doc__ tests that assertIn() ASCII substrings (immune; neither target module is in the changed set). Same provable-safe class as the cycle-19/20 comment-token sweep. commit `74e3b659`.
