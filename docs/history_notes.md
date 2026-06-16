@@ -57,6 +57,17 @@
 
 ---
 
+# 2026-06-16 - cycle 46: weekly-hygiene API-transient hardening + LBAND1 shadow apparatus [items 444-446]
+
+- 3 slices (`85065ff6` S1 / `1cdbc716` S2 / `718b4a27` S3), all Tier-1, CI green; cost 7-lever re-sweep = 7/7 CLEAN. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share, no frozen files.
+- ORIENT: bounded headless-safe queue drained (cycles 43-45, same day) + Gemini director/consult down (429). Net-new lanes only: an ops-reliability anomaly + completing the freshly-shipped LBAND1 (item 443) do-not-flip-blind apparatus.
+- S1 (444): RC-WeeklyHygiene LastResult=1 = transient "Credit balance is too low" on the 2026-06-14 scheduled `claude -p` (external billing, not a repo fault). weekly_hygiene_run.ps1 now exits 0 + loud SKIPPED on the transient-API class (credit/rate/429/529) instead of red. Verified vs the real log; PS ParseFile OK; ASCII. Mirrors item 438.
+- S2 (445): NEW core/live_benchmark_band_shadow.py - records what LBAND1 WOULD band per live SR tick (gated live-tick + SR-only + fired-band), alongside live coaching, no output change. Wrapper in _deterministic_coaching + wired into _state_builder beside the HZ shadows; conftest hermetic. Caught+fixed a to_jsonable-on-plain-dict bug in-slice. +8 tests, 31+71 green. RC restarted pid 1228 (last_reload_ok).
+- S3 (446): NEW tools/live_benchmark_band_report.py - flip-readiness report over the shadow jsonl (volume / checkpoint+metric / band distribution / per-champion / top_band_skew degeneracy flag), mirrors hz_shadow_report.py. +6 tests. LBAND1 lane now coherent (generator+shadow+report = full apparatus, matches HZ).
+- NEXT: LBAND1 live wire-in stays do-not-flip-blind - the shadow now ACCRUES validation data on real SR games; review via tools/live_benchmark_band_report.py before any flip. Bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip + DS Phase-D + visual captures + P6 G3/G6/G7 (all live/operator/Gemini-gated). Gemini still down (429).
+
+---
+
 # 2026-06-16 - cycle 45: competitor-lift teardown + LBAND1 live personal-percentile band [item 443]
 
 - item 443 (`a8158629`). Tier-1 (NEW core/live_benchmark_band.py + test), NO ENGINE/DS/Share, NO RC restart. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
