@@ -64,7 +64,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | DONE | 3c123060 |
 | UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 4b1804da |
 | UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 7417a7a8 |
-| DSV4 | DS-Valuation | DIRECTOR-REFILL continuation (the A1-UIX3 set drained; operator directive "continue open items headlessly"). The SAME DSV P6-G5 / G2-residual scorer-valuation lane: value Spear of Shojin 3161 Focused Will, a stacking ability/passive damage amp (Meraki 3%/stack x 4 = 12%) that was defensive_only "ability damage not DPS-modeled". Default-OFF assume_ability_amp seam on compute_ability_dps + compute_burst_damage (ability-only, never AA) + rank_items_by_burst; NEW ItemEffect ability_damage_amp_* fields + effects helper + dps._ASSUMED_ABILITY_AMP_STACKS=4. Offline Meraki-anchored tests, ENGINE bump + DS restart + Share re-sync. Ships DEFAULT-OFF (live flip validation-gated, EXCLUDED). | DONE | c5fec82d |
+| DSV4 | DS-Valuation | DIRECTOR-REFILL continuation (the A1-UIX3 set drained; operator directive "continue open items headlessly"). The SAME DSV P6-G5 / G2-residual scorer-valuation lane: value Spear of Shojin 3161 Focused Will, a stacking ability/passive damage amp (Meraki 3%/stack x 4 = 12%) that was defensive_only "ability damage not DPS-modeled". Default-OFF assume_ability_amp seam on compute_ability_dps + compute_burst_damage (ability-only, never AA) + rank_items_by_burst; NEW ItemEffect ability_damage_amp_* fields + effects helper + dps._ASSUMED_ABILITY_AMP_STACKS=4. Offline Meraki-anchored tests, ENGINE bump + DS restart + Share re-sync. Ships DEFAULT-OFF (live flip validation-gated, EXCLUDED). | DONE | c5fe019d |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -77,7 +77,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## Findings log (executor appends; newest first)
 
-- 2026-06-16 DSV4 DONE (commit c5fec82d, item 437). DIRECTOR-REFILL continuation:
+- 2026-06-16 DSV4 DONE (commit c5fe019d, item 437). DIRECTOR-REFILL continuation:
   the A1-UIX3 plan set was DONE, so under the operator directive "continue open
   items headlessly - multi-agent fanout orchestrated" the next bounded ship-or-
   close slice was drawn from the SAME DSV P6-G5 / G2-residual scorer-valuation
