@@ -271,11 +271,28 @@ def summarize_laning(records: list[dict]) -> dict:
 
 
 def summarize_build(records: list[dict]) -> dict:
-    """Coverage + anti_tank/anti_squishy lean distribution (build)."""
+    """Coverage + anti_tank/anti_squishy lean distribution (build).
+
+    ``by_lean`` counts every covered ROW. The shadow dedup signature includes
+    item_count + a 5s game-time bucket, so one long game emits many rows for the
+    same comp and ``by_lean`` over-weights long games (a single durable game can
+    dominate the tally). ``by_lean_per_game`` first collapses each distinct
+    (mode, my_champion, enemy_comp) game-instance to a single lean, giving the
+    honest per-game balance the do-not-flip-blind decision actually needs."""
     block = _coverage_block(records)
     covered = [r for r in records if r.get("covered")]
     leans = Counter(str(r.get("lean") or "?") for r in covered)
     block["by_lean"] = dict(sorted(leans.items()))
+    per_game: dict = {}
+    for r in covered:
+        gkey = (
+            str(r.get("mode") or "?"),
+            str(r.get("my_champion") or "?"),
+            tuple(r.get("enemy_comp") or ()),
+        )
+        per_game[gkey] = str(r.get("lean") or "?")
+    block["distinct_games"] = len(per_game)
+    block["by_lean_per_game"] = dict(sorted(Counter(per_game.values()).items()))
     return block
 
 
@@ -335,6 +352,12 @@ def _print_human(report: dict) -> None:
         if key == "build" and sec.get("by_lean"):
             for lean, n in sec["by_lean"].items():
                 print(f"    lean: {lean} x{n}")
+            if sec.get("by_lean_per_game"):
+                pg = ", ".join(
+                    f"{lean} x{n}" for lean, n in sec["by_lean_per_game"].items()
+                )
+                print(f"    lean per-game ({sec.get('distinct_games', 0)} "
+                      f"distinct): {pg}")
         agr = agreement.get(key) or {}
         print(f"    agreement: {agr.get('agree', 0)}/"
               f"{agr.get('comparable_covered', 0)} "
