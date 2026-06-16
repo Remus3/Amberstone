@@ -353,8 +353,10 @@ def generate_table(
     """
     build_orders: dict[str, dict] = {}
     for champ in champions:
-        build_orders[champ] = build_orders_for_champion(
-            champ, mode=mode, level=level, rank_fn=rank_fn,
+        build_orders[archetype_picks.canonical_champion_id(champ)] = (
+            build_orders_for_champion(
+                champ, mode=mode, level=level, rank_fn=rank_fn,
+            )
         )
     return {
         "version": resolve_patch(),

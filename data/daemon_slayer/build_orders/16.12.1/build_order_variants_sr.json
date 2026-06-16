@@ -616,7 +616,7 @@
         "variant": "anti_tank"
       }
     },
-    "Aurelion Sol": {
+    "AurelionSol": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -840,7 +840,7 @@
         "variant": "anti_tank"
       }
     },
-    "Bel'Veth": {
+    "Belveth": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -1288,7 +1288,7 @@
         "variant": "anti_tank"
       }
     },
-    "Cho'Gath": {
+    "Chogath": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -1512,7 +1512,7 @@
         "variant": "anti_tank"
       }
     },
-    "Dr. Mundo": {
+    "DrMundo": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -2800,7 +2800,7 @@
         "variant": "anti_tank"
       }
     },
-    "Jarvan IV": {
+    "JarvanIV": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3080,7 +3080,7 @@
         "variant": "anti_tank"
       }
     },
-    "K'Sante": {
+    "KSante": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3136,7 +3136,7 @@
         "variant": "anti_tank"
       }
     },
-    "Kai'Sa": {
+    "Kaisa": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3640,7 +3640,7 @@
         "variant": "anti_tank"
       }
     },
-    "Kha'Zix": {
+    "Khazix": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3808,7 +3808,7 @@
         "variant": "anti_tank"
       }
     },
-    "Kog'Maw": {
+    "KogMaw": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3864,7 +3864,7 @@
         "variant": "anti_tank"
       }
     },
-    "LeBlanc": {
+    "Leblanc": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -3920,7 +3920,7 @@
         "variant": "anti_tank"
       }
     },
-    "Lee Sin": {
+    "LeeSin": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -4480,7 +4480,7 @@
         "variant": "anti_tank"
       }
     },
-    "Master Yi": {
+    "MasterYi": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -4648,7 +4648,7 @@
         "variant": "anti_tank"
       }
     },
-    "Miss Fortune": {
+    "MissFortune": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -4700,6 +4700,62 @@
           "3085",
           "3032",
           "6694"
+        ],
+        "variant": "anti_tank"
+      }
+    },
+    "MonkeyKing": {
+      "anti_squishy": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.5,
+          "enemy_ap_share": 0.5,
+          "target_armor": 35.0,
+          "target_bonus_hp": 300.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 1500.0,
+          "target_mr": 30.0
+        },
+        "order": [
+          "3153",
+          "3174",
+          "3085",
+          "3078",
+          "3072",
+          "2520"
+        ],
+        "variant": "anti_squishy"
+      },
+      "anti_tank": {
+        "antitank": {
+          "lean_in": false,
+          "my_antitank_score": 0.0,
+          "recommend_antitank_items": true,
+          "shreds_resist": false,
+          "top_kind": ""
+        },
+        "bias": {
+          "enemy_ad_share": 0.6,
+          "enemy_ap_share": 0.4,
+          "target_armor": 200.0,
+          "target_bonus_hp": 2700.0,
+          "target_current_hp_pct": 1.0,
+          "target_max_hp": 4200.0,
+          "target_mr": 130.0
+        },
+        "order": [
+          "3153",
+          "3173",
+          "3036",
+          "3084",
+          "3085",
+          "3071"
         ],
         "variant": "anti_tank"
       }
@@ -5264,7 +5320,7 @@
         "variant": "anti_tank"
       }
     },
-    "Nunu & Willump": {
+    "Nunu": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -5880,7 +5936,7 @@
         "variant": "anti_tank"
       }
     },
-    "Rek'Sai": {
+    "RekSai": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -5992,7 +6048,7 @@
         "variant": "anti_tank"
       }
     },
-    "Renata Glasc": {
+    "Renata": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -7336,7 +7392,7 @@
         "variant": "anti_tank"
       }
     },
-    "Tahm Kench": {
+    "TahmKench": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -7840,7 +7896,7 @@
         "variant": "anti_tank"
       }
     },
-    "Twisted Fate": {
+    "TwistedFate": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -8232,7 +8288,7 @@
         "variant": "anti_tank"
       }
     },
-    "Vel'Koz": {
+    "Velkoz": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
@@ -8680,62 +8736,6 @@
         "variant": "anti_tank"
       }
     },
-    "Wukong": {
-      "anti_squishy": {
-        "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
-        },
-        "bias": {
-          "enemy_ad_share": 0.5,
-          "enemy_ap_share": 0.5,
-          "target_armor": 35.0,
-          "target_bonus_hp": 300.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 1500.0,
-          "target_mr": 30.0
-        },
-        "order": [
-          "3153",
-          "3174",
-          "3085",
-          "3078",
-          "3072",
-          "2520"
-        ],
-        "variant": "anti_squishy"
-      },
-      "anti_tank": {
-        "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
-        },
-        "bias": {
-          "enemy_ad_share": 0.6,
-          "enemy_ap_share": 0.4,
-          "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
-          "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
-          "target_mr": 130.0
-        },
-        "order": [
-          "3153",
-          "3173",
-          "3036",
-          "3084",
-          "3085",
-          "3071"
-        ],
-        "variant": "anti_tank"
-      }
-    },
     "Xayah": {
       "anti_squishy": {
         "antitank": {
@@ -8848,7 +8848,7 @@
         "variant": "anti_tank"
       }
     },
-    "Xin Zhao": {
+    "XinZhao": {
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
