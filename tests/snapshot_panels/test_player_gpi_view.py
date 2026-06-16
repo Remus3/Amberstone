@@ -50,7 +50,9 @@ _GPI_STUB = """
       const body = {
         ok: true, mode: 'sr', champion: null,
         n_games: 619, window: 20, min_games: 10,
-        confidence: 'high', axes: AXES, overall: 55.0
+        confidence: 'high', axes: AXES, overall: 55.0,
+        weakest_axis: 'vision',
+        tip: 'Ward more - your vision per minute is low; carry a control ward and sweep before objectives.'
       };
       return Promise.resolve(new Response(
         JSON.stringify(body),
@@ -183,6 +185,17 @@ def test_player_gpi_radar_renders(mock_server, pw_browser):
             "els => els.map(e => e.getAttribute('data-gpi-mode'))",
         )
         assert active == ["sr"], f"expected SR active in toggle, got {active}"
+
+        # Weakest-axis tip (item 451): the lead chip names the axis (Vision was
+        # the lowest relative axis in the stub) and the tip text renders.
+        tip_axis = page.eval_on_selector(
+            "#player-gpi-panel .gpi-tip-axis", "el => el.textContent.trim()"
+        )
+        assert tip_axis == "Vision", f"tip axis chip != Vision: {tip_axis!r}"
+        tip_text = page.eval_on_selector(
+            "#player-gpi-panel .gpi-tip-text", "el => el.textContent.trim()"
+        )
+        assert "Ward more" in tip_text, f"tip text wrong: {tip_text!r}"
 
         SCREENSHOTS.mkdir(exist_ok=True)
         block.screenshot(path=str(SCREENSHOTS / "player-gpi_radar.png"))

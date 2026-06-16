@@ -119,6 +119,46 @@ class GpiCoreTests(unittest.TestCase):
         self.assertGreater(agg["recent_value"], 0)
         self.assertIsNotNone(agg["baseline_p50"])
 
+    def test_weakest_axis_is_a_relative_skill_axis_with_tip(self):
+        self.assertIn(self.res["weakest_axis"], player_gpi._AXIS_TIPS)
+        self.assertEqual(self.res["tip"],
+                         player_gpi._AXIS_TIPS[self.res["weakest_axis"]])
+
+
+class GpiTipTests(unittest.TestCase):
+    def test_weakest_axis_drives_the_tip(self):
+        b = _Builder()
+        # Older games: strong vision. Recent games: vision craters, everything
+        # else improves -> vision is unambiguously the weakest relative axis.
+        for _ in range(20):
+            b.add(vis=60, dmg=9000, deaths=12, cs=120, gold=9000, obj=0)
+        for _ in range(10):
+            b.add(vis=2, dmg=27000, deaths=3, cs=240, gold=18000, obj=4)
+        res = player_gpi.compute_gpi(mode="sr", window=10, conn=b.conn)
+        self.assertEqual(res["weakest_axis"], "vision")
+        self.assertEqual(res["tip"], player_gpi._AXIS_TIPS["vision"])
+        b.close()
+
+    def test_shape_axes_never_selected_as_weakest(self):
+        # All-same champ (versatility=0) must NOT win the tip - shape axes are
+        # ineligible; a relative axis is always chosen.
+        b = _Builder()
+        for _ in range(12):
+            b.add(champ=22)
+        res = player_gpi.compute_gpi(mode="sr", window=12, conn=b.conn)
+        self.assertNotIn(res["weakest_axis"], ("versatility", "consistency"))
+        self.assertIn(res["weakest_axis"], player_gpi._AXIS_TIPS)
+        b.close()
+
+    def test_insufficient_has_null_tip(self):
+        b = _Builder()
+        for _ in range(5):
+            b.add()
+        res = player_gpi.compute_gpi(mode="sr", conn=b.conn)
+        self.assertIsNone(res["weakest_axis"])
+        self.assertIsNone(res["tip"])
+        b.close()
+
 
 class GpiThresholdTests(unittest.TestCase):
     def test_insufficient_below_min_games(self):

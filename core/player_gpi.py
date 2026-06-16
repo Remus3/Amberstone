@@ -54,6 +54,25 @@ _RELATIVE_AXES: tuple[tuple[str, str, str, bool, Callable[[dict], float]], ...] 
     ("tempo", "Tempo", "gold/min", True, lambda g: g["gpm"]),
 )
 
+# Static improvement tip per relative skill axis (the Aggregator C weakest-axis
+# call-out, finding 1.2). Only the 6 relative axes get tips - the two shape axes
+# (versatility / consistency) are not skill deficits (a one-trick reads low on
+# versatility by choice, not weakness), so they never drive the tip.
+_AXIS_TIPS: dict[str, str] = {
+    "aggression": "Look for more fights - your damage to champions trails your "
+                  "norm; group and trade when your cooldowns are up.",
+    "farming": "Farm tighter - your CS per minute is below your baseline; catch "
+               "the side waves between objectives.",
+    "vision": "Ward more - your vision per minute is low; carry a control ward "
+              "and sweep before objectives.",
+    "objectives": "Contest objectives - you take fewer dragons / towers than "
+                  "usual; rotate with your team on spawns.",
+    "survival": "Die less - your deaths per minute are up; respect enemy power "
+                "spikes and ward your flanks.",
+    "tempo": "Build a lead - your gold per minute is low; punish recalls and "
+             "convert kills into plates and CS.",
+}
+
 
 def _empty(mode: str, window: int, n_games: int, champion: Optional[int],
            confidence: str) -> dict:
@@ -67,6 +86,8 @@ def _empty(mode: str, window: int, n_games: int, champion: Optional[int],
         "confidence": confidence,
         "axes": [],
         "overall": None,
+        "weakest_axis": None,
+        "tip": None,
     }
 
 
@@ -271,4 +292,11 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     out = _empty(mode, window, n_games, champion, confidence)
     out["axes"] = axes
     out["overall"] = overall
+
+    # Weakest-axis call-out drives the single improvement tip. Only the relative
+    # skill axes are eligible (see _AXIS_TIPS); ties break on axis order.
+    tip_axes = [a for a in axes if a["key"] in _AXIS_TIPS]
+    weakest = min(tip_axes, key=lambda a: a["score"]) if tip_axes else None
+    out["weakest_axis"] = weakest["key"] if weakest else None
+    out["tip"] = _AXIS_TIPS.get(weakest["key"]) if weakest else None
     return out
