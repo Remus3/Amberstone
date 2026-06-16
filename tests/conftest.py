@@ -35,6 +35,7 @@ _SHADOW_MODULES = (
     "core.hz_choice_shadow",
     "core.hz_build_shadow",
     "core.det_coach_shadow",
+    "core.live_benchmark_band_shadow",
 )
 
 

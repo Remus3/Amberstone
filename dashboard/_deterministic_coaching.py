@@ -717,3 +717,47 @@ def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
         )
     except Exception:
         return
+
+
+def shadow_log_live_benchmark_band(coach: dict, lc: dict | None, mode_key: str,
+                                   *, path=None) -> None:
+    """Fail-soft LBAND1 validation shadow-log. Records the live personal-
+    percentile benchmark bands (``core.live_benchmark_band``) that WOULD be
+    surfaced for this game state to data/live_benchmark_band_shadow.jsonl,
+    alongside live coaching. Never raises and has NO effect on live output.
+    SR-only (LBAND1's benchmark data is SR-family); fires only when the
+    LIVECLIENT champion is present (a real in-game tick) AND a band actually
+    fired (a checkpoint moment with a trustworthy distribution). ``path``
+    overrides the jsonl target (test seam)."""
+    try:
+        gs = _build_game_state(coach, lc, mode_key)
+        champ = gs.get("my_champion")
+        if not champ:
+            return
+        # Live-game gate - same rationale as shadow_log_precomputed_choices:
+        # only a real in-game liveclient tick carries lc["champion"].
+        if not (isinstance(lc, dict) and lc.get("champion")):
+            return
+        mk = str(mode_key or "").strip().lower()
+        if _MODE_KEY_TO_LOWER.get(mk) != "sr":
+            return  # LBAND1 bands SR-family only
+
+        from core import live_benchmark_band as lbb  # lazy import
+        from core.live_benchmark_band_shadow import log_live_bands
+
+        bands = lbb.band_metrics(
+            str(champ), gs.get("game_time_s") or 0.0,
+            cs=gs.get("cs"), level=gs.get("level"), mode="SR",
+        )
+        if not bands:
+            return
+
+        log_live_bands(
+            mk, str(champ), bands=bands,
+            game_time_s=gs.get("game_time_s"), cs=gs.get("cs"),
+            level=gs.get("level"),
+            native_action=coach.get("action") if isinstance(coach, dict) else None,
+            path=path,
+        )
+    except Exception:
+        return
