@@ -33,11 +33,46 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from http.server import BaseHTTPRequestHandler
 
 from dashboard import _dispatch
 
 log = logging.getLogger("rc.web_dashboard")
+
+# OVL2 (Electron Phase 6, Pengu Surface C): loopback origins always allowed
+# to read responses cross-origin. The Pengu Loader plugin (pengu/) runs in
+# the League client UX at https://127.0.0.1:<port> and fetches /api/state.
+_CORS_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def _cors_allowed_origin(origin: str) -> str | None:
+    """Return the Origin to echo in Access-Control-Allow-Origin, or None.
+
+    Client-origin-GATED, never wildcard: only a loopback origin (the Pengu
+    Loader plugin's League-client origin) or an exact match in the optional
+    ``RC_CORS_ALLOW_ORIGINS`` env allowlist (comma-separated) is echoed back.
+    Everything else (remote hosts, the LAN bind, ``null``, absent) returns
+    None so the browser blocks the cross-origin read. RC is LAN-only and this
+    only governs READING GET responses (cross-origin POSTs are still rejected
+    by ``_csrf_ok``), so echoing a same-machine loopback origin is safe.
+    """
+    if not origin or origin == "null":
+        return None
+    from urllib.parse import urlparse
+    try:
+        host = (urlparse(origin).hostname or "").lower()
+    except Exception:
+        return None
+    if not host:
+        return None
+    if host in _CORS_LOOPBACK_HOSTS:
+        return origin
+    allow = os.environ.get("RC_CORS_ALLOW_ORIGINS", "")
+    if allow:
+        if origin in {o.strip() for o in allow.split(",") if o.strip()}:
+            return origin
+    return None
 
 
 def proxy_error_status(path: str, upstream_code: int | None) -> int:
@@ -168,6 +203,17 @@ class Handler(BaseHTTPRequestHandler):
             sock = self.connection
             if hasattr(sock, "cipher") and callable(sock.cipher):
                 self.send_header("Strict-Transport-Security", "max-age=31536000")
+        except Exception:
+            pass
+        # OVL2: client-origin-gated CORS. Echo the request Origin only when it
+        # is an allowed cross-origin client (loopback / env allowlist), never
+        # wildcard, so the Pengu Loader plugin can read /api/state. Vary:Origin
+        # keeps any cache from serving one origin's ACAO to another.
+        try:
+            allow_origin = _cors_allowed_origin(self.headers.get("Origin", "") or "")
+            if allow_origin:
+                self.send_header("Access-Control-Allow-Origin", allow_origin)
+                self.send_header("Vary", "Origin")
         except Exception:
             pass
         self.end_headers()
