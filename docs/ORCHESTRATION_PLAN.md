@@ -62,7 +62,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | DSV2 | DS-Valuation | DS P6-G5 residual 2 (kill-state item passives): add a takedown/kill-state assumption seam to agents/daemon_slayer/burst.py + dps.py so on-takedown passives (Hubris / Collector / Death's Dance) are valued. Default-OFF byte-identical seam first, offline tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | f1075c38 |
 | DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 27873cc1 |
 | UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | DONE | 3c123060 |
-| UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
+| UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 4b1804da |
 | UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
@@ -75,6 +75,47 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-16 UIX2 DONE (commit 4b1804da, item 435). Home + Settings 5-phase
+  fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per
+  docs/UI_SCALE_SPEC_V2.md v2.1) on the Home view (.home-* home.css + main.js
+  _homeRender*/renderHomePanel 2614-3325 + builders_home.py data) and the
+  Settings page (.settings-*/.spend-gate-*/.loop-*/.view-section-head h2 in
+  header.css + index.html #view-settings + dev.js). Tier-1 frontend, NO ENGINE
+  bump, NO DS/Share, NO RC restart (ADR-008 asset-hash auto-reload). AUDIT: a
+  read-only general-purpose audit agent ran all 5 phases vs the v2.1 tokens ->
+  0 MUST-FIX + 0 SHOULD-FIX (both surfaces already v2.1-migrated: Home .home-*
+  2026-05-23, Settings the worked-example page), every in-scope font-size
+  already a token + every clickable already min-height var(--hit-min); the
+  orchestrator ground-truth re-verified the full rule set + the index.html view
+  structure + tokens.css values before acting. SCOPE: Diagnostics (.diag-* incl
+  the inline 10px) is a SEPARATE view (confirmed via index.html - Settings cards
+  = VOICE/CHAMP-SELECT/DISPLAY/SPEND-GATES/DATA/HEADLESS-LOOP/PGR/LOBBY; Diag +
+  Replay are their own #view-*), EXCLUDED; .view-section-sub (12px) does not
+  render on the SETTINGS head (h2 only) = shared chrome, EXCLUDED. ORCHESTRATION
+  (auto-pick, logged): INLINE sole orchestrator + ONE read-only audit subagent
+  (2 CSS files in the merge set, R9 - the UIX1/DSV inline precedent). SHIPPED (8
+  byte-identical token subs so the audited panels are fully token-driven; every
+  sub token==literal vs tokens.css, zero render change): home.css
+  .home-recent-main padding-left 4px -> var(--space-1), .home-recent-items gap
+  4px -> var(--space-1), .home-coach-pick-body gap 28px ->
+  var(--panel-padding-loose), .home-pick-section-1 gap 14px -> var(--panel-gap),
+  .home-pick-section-2 gap 4px -> var(--space-1), .home-pick-tip-row gap 16px ->
+  var(--space-4), .home-pick-section-3 column-gap 16px / row-gap 14px ->
+  var(--space-4) / var(--panel-gap); header.css .loop-btn min-height 42px ->
+  var(--hit-min). The spec's "spacing literals NOT auto-swept" line means these
+  were optional consistency (byte-identical), not defects. LEFT: 4px radii (no
+  4px radius token) + 6px kda gap = decorative, NICE-deferred. TDD: a CSS-only
+  audit has no failing-test-first target; gate = snapshot + render suite green.
+  Gate (Tier-1 per R5): RC tests/ 7982 passed / 2 skip / 109 subtests, exit 0
+  (ZERO delta vs cycle 37, CSS cannot touch Python logic); ASCII hygiene green
+  in-suite (added only ASCII var() tokens). VISUAL: Claude_Preview OWED - the
+  preview MCP refuses to attach to the live external pythonw :8888 (PID 2104,
+  "not a preview server"; it only manages servers it starts) + spawning a 2nd
+  main.py on autoPort would conflict on :8889/LCU singletons; render deltas
+  proven deterministically (8x byte-identical token==literal + snapshot_panels
+  green). No frozen files touched. NEXT (plan order): UIX3 (Session + detached-
+  PGR 5-phase audit).
 
 - 2026-06-16 UIX1 DONE (commit 3c123060, item 434). Champ-Select SR 5-phase
   fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per
