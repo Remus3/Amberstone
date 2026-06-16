@@ -5605,7 +5605,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
   // faster than that. We pick the interval based on which path served
   // the last response: JPEG = fast stream, PNG = slow re-crop.
   const MINIMAP_MODES = new Set(["sr", "aram", "brawl"]);
-  const MINIMAP_INTERVAL_FAST = 250;    // 4Hz when fast stream is live
+  const MINIMAP_INTERVAL_FAST = 500;    // 2Hz when fast stream is live
   const MINIMAP_INTERVAL_SLOW = 2000;   // 0.5Hz fallback
   let minimapTimer = null;
   let minimapInterval = MINIMAP_INTERVAL_SLOW;
