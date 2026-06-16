@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-16 - cycle 46: weekly-hygiene API-transient hardening + LBAND1 shadow apparatus [items 444-446]
+
+- 3 slices (`85065ff6` S1 / `1cdbc716` S2 / `718b4a27` S3), all Tier-1, CI green; cost 7-lever re-sweep = 7/7 CLEAN. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share, no frozen files.
+- ORIENT: bounded headless-safe queue drained (cycles 43-45, same day) + Gemini director/consult down (429). Net-new lanes only: an ops-reliability anomaly + completing the freshly-shipped LBAND1 (item 443) do-not-flip-blind apparatus.
+- S1 (444): RC-WeeklyHygiene LastResult=1 = transient "Credit balance is too low" on the 2026-06-14 scheduled `claude -p` (external billing, not a repo fault). weekly_hygiene_run.ps1 now exits 0 + loud SKIPPED on the transient-API class (credit/rate/429/529) instead of red. Verified vs the real log; PS ParseFile OK; ASCII. Mirrors item 438.
+- S2 (445): NEW core/live_benchmark_band_shadow.py - records what LBAND1 WOULD band per live SR tick (gated live-tick + SR-only + fired-band), alongside live coaching, no output change. Wrapper in _deterministic_coaching + wired into _state_builder beside the HZ shadows; conftest hermetic. Caught+fixed a to_jsonable-on-plain-dict bug in-slice. +8 tests, 31+71 green. RC restarted pid 1228 (last_reload_ok).
+- S3 (446): NEW tools/live_benchmark_band_report.py - flip-readiness report over the shadow jsonl (volume / checkpoint+metric / band distribution / per-champion / top_band_skew degeneracy flag), mirrors hz_shadow_report.py. +6 tests. LBAND1 lane now coherent (generator+shadow+report = full apparatus, matches HZ).
+- NEXT: LBAND1 live wire-in stays do-not-flip-blind - the shadow now ACCRUES validation data on real SR games; review via tools/live_benchmark_band_report.py before any flip. Bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip + DS Phase-D + visual captures + P6 G3/G6/G7 (all live/operator/Gemini-gated). Gemini still down (429).
+
+---
+
 # 2026-06-16 - cycle 45: competitor-lift teardown + LBAND1 live personal-percentile band [item 443]
 
 - item 443 (`a8158629`). Tier-1 (NEW core/live_benchmark_band.py + test), NO ENGINE/DS/Share, NO RC restart. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
@@ -24,14 +35,3 @@
 - FIX (blast radius = tft/brawl/unknown only; sr/client/game/aram/arena unchanged map keys): the mode maps are the source of truth; all 3 consumers drop the SR default - _compute_uncached -> dict(_EMPTY_RESULT) (no matchup call); both shadow writers early-return (no row). SHADOW-only, no live flip. /api/state 200 mode_key=client (mapped, byte-identical).
 - TDD: NEW tests/test_deterministic_coaching_mode_routing.py (6) red-first (5 fail) -> green. Gate: 111 det/shadow blast-radius tests, py_compile+ruff clean, ASCII-added 0, CI green. No frozen files.
 - NEXT: bounded headless-safe HZ-pipeline queue drained again (pipeline CLEAN bar H1; coverage full-roster; remaining = the live-flip gate + 3 BACKLOG product calls: replay-narrative substrate, HZ-A always-recall B-choice content, HZ-B static-regen). Gemini director/consult still down (429 prepay-depleted).
-
----
-
-# 2026-06-16 - cycle 43: UI fixture-audit (right_now/next + diagnostics) + HZ per-mode test coverage [items 440-441]
-
-- items 440 (`ed9c709c`) + 441 (`9da9358a`). Tier-1 frontend + test-only, NO ENGINE/DS/Share, NO RC restart (ADR-008). Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
-- ORIENT: bounded queue drained + Gemini consult/director down (429 prepay-depleted). Dispatched a 4-lane READ-ONLY scout fanout (DS-engine-lift / Electron-overlay / HZ-precompute / UI-audit) + 3 Section-3b UI-audit agents. scout-DS = CLOSED (DSV1-4 done, 174/174 tier-3, P6 design-level); scout-OVL = CLOSED (Phases 1-6 code-side shipped, rest live-gated); scout-HZ + scout-UI = NOW.
-- 440 RN1 (right_now.css+next.css): real HIT-TARGET MUST-FIX `.rn-sr-btn` ~26px -> +min-height var(--hit-min) + inline-flex + 13px->--fs-xs; `.rn-sr-pill.is-error` drops sub-floor 13px -> inherits documented 15px floor; `.copied-bubble` 12px + `.immediate.is-pregame` 13px = documented operator-exceptions (ward-heat item-184 precedent); next.css comment 20->21 doc-fix + de-arrowed. 21px headlines left (no token, tuned slots) - SHOULD-FIX deferred (visual OWED). DIAG1 (dev.js+header.css): rogue inline 10px dropped (inherits 12px) + dense-dev-surface micro-density documented. DS-panel "must-fix" were spacing-px not the font/hit bar -> CLOSED no churn; ds_profile/ds_matchup already tokenized.
-- 441 HZ-T1: load_*(mode) per-mode fail-soft routing was tested only for sr; extended both source-module tests to loop sr/aram/arena (items 386/388 routing, hermetic patch=0.0.0 no-LFS). Scout's reader-test parametrize proposal REJECTED on verify-first (mode bypassed by payload=).
-- Gate: snapshot_panels 128 + DOM-regression 35 + HZ-T1 46 green; ASCII-added 0; CI green. VISUAL OWED (Game-PC :8892 down). No frozen files.
-- NEXT: bounded headless-safe queue DRAINED again (DS/OVL CLOSED w/ evidence; UI fixture-audit lane exhausted; HZ live-flip + DS Phase-D flips + visual captures all live/operator-gated). Gemini director/consult down (429) - operator billing top-up unblocks P6 G3/G6/G7 + orchestration refill.
