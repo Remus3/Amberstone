@@ -57,6 +57,18 @@
 
 ---
 
+# 2026-06-16 - cycle 42: HZ precompute canonical-keyspace bug fix [item 439]
+
+- item 439 (commit `637633c6`). Tier-1 (RC core/ + precompute data), NO ENGINE bump, NO DS/Share change, RC restarted pid 20536, full RC suite 7993 green, CI green. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
+- ORIENT: bounded queue still drained + Gemini consult/director down (429 prepay-depleted), so dispatched a 3-lane READ-ONLY scout fanout over the STANDING charter objectives (no Gemini needed). scout-cost = CLEAN 7/7 (matches item 386); scout-DS-unmodeled-effect = CLEAN-SATURATED (0 deterministic mechanical gaps); scout-Haiku-elim = found ONE real bug.
+- ROOT CAUSE: item-388 canonicalized the HZ-A laning table but the HZ-B1 build_orders + HZ-B2 build_order_variants tables stayed DISPLAY-keyed AND the precompute readers never canonicalized lookup keys. The live HZ-C shadow path passes the raw Live Client display name, so 21/172 renamed/multi-word champs (Wukong/MonkeyKing, Aurelion Sol, Tahm Kench, ...) silently MISSED the canonical laning table as my_champion AND as enemy - biasing the flip-readiness agreement metric. Verify-first overturned the scout's premise that the tables were already canonical.
+- FIX (canonical-everywhere; display-everywhere would reintroduce the item-388 6783-skipped-pairs laning bug): readers (precomputed_laning_coach + precomputed_build_coach) canonicalize my_champion+enemy at the lookup boundary (resolve_enemy returns the covered enemy verbatim so labels stay readable); generators (build_order_precompute + build_order_variants) key by canonical_champion_id; content-preserving key remap of the 6 committed build tables (21/172 each, no collision, ASCII); sibling test_build_order_axis_parity.py lookup canonicalized.
+- SCOPE: HZ precompute tables only (data/daemon_slayer/build_orders/ subdir; read only by the 2 readers via the 2 shadow fns; B1 has 0 live callers). The OLDER item-265/266 balanced table (data/daemon_slayer/<patch>/, read by _next_build_item/laning_verdicts) is display-keyed + display-looked-up = consistent, UNTOUCHED -> _build_game_state NOT edited (live coach byte-identical). SHADOW-only (no live coach flip). New memory reference_build_order_tables_two_keyspaces.
+- TDD: NEW tests/test_hz_precompute_canonical_keyspace.py (6) red-first (4 fail) -> green. scout C1 (16.11.1 ARAM/Arena backfill) REJECTED (stale non-live patch, ~130MB LFS churn, read-path fail-softs); C3 (truncated-path test) SKIPPED (redundant with existing test_lookup_missing_returns_empty + isinstance-guarded lookup).
+- NEXT: bounded queue drained again; HZ live-coach FLIP still gated on real-game shadow-accrual + precompute-vs-Haiku agreement (do-not-flip-blind). FUTURE (noted, not a bug): unify the two build-order tables onto one canonical key-space. Gemini director/consult still down (429 prepay-depleted) - operator billing top-up unblocks P6 G3/G6/G7 + the orchestration refill.
+
+---
+
 # 2026-06-16 - DEEP-AUDIT cycle 41: gemini CLI-wrapper headless robustness hardening [item 438]
 
 - item 438 (code commit `63486e8a` + docs follow-up). Tier-1 tooling, NO ENGINE bump, NO DS/Share change, NO live RC restart. Source: operator directive "continue open items headlessly - multi-agent fanout orchestrated".
