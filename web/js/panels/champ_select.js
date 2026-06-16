@@ -46,6 +46,7 @@ import {
 import {
   renderDsProfileForChampSelect, getDsProfileCacheCount, setDsProfileScheduler,
 } from './ds_profile.js';
+import { showPlayerGpi } from './player_gpi.js';
 import { renderDsKnobs, getDsKnobsCacheCount } from './ds_knobs.js';
 import { renderDsStatcheck, getDsStatcheckCacheCount } from './ds_statcheck.js';
 
@@ -1083,6 +1084,9 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // ds-profile / ds-knobs / ds-statcheck stay on champ-select for the pick.
   setDsProfileScheduler(_csvScheduleRender);
   renderDsProfileForChampSelect(cs);
+  // GPI radar is history-based (not champ-select-state-driven) so it ignores cs;
+  // the server + client caches make the per-tick re-show idempotent + cheap.
+  showPlayerGpi("sr");
   { const _dskBlock = document.getElementById("csv-ds-knobs");
     if (_dskBlock) renderDsKnobs(_dskBlock, cs); }
   { const _dssBlock = document.getElementById("csv-ds-statcheck");
