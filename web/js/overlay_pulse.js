@@ -17,6 +17,8 @@
 //     back into the observer;
 //   - GPU-light: the glow is a one-shot box-shadow animation, no loop.
 
+import { readOverlaySettings } from './lib/overlay_settings.js';
+
 const PULSE_CLASS = "ov-pulse";
 const PULSE_MS = 1200;     // matches the 1.2s ov-pulse-edge keyframe
 const THROTTLE_MS = 1500;  // min gap between pulses per container
@@ -35,6 +37,9 @@ const TARGETS = [
 function _wire(mountEl, containerEl) {
   const slot = { last: 0, timer: null };
   const obs = new MutationObserver(() => {
+    // OVL1: the operator can mute the change-pulse. Checked at fire time so the
+    // toggle takes effect live without re-wiring the observers.
+    if (!readOverlaySettings().pulseNotify) return;
     const now = Date.now();
     if (now - slot.last < THROTTLE_MS) return;
     slot.last = now;

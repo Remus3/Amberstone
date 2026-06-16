@@ -256,10 +256,89 @@ function mergeOverlayPatch(prevState, patch) {
   return Object.assign({}, prev, { overlay: Object.assign({}, prevOverlay, p) });
 }
 
+// --- OVL1: operator overlay settings (pulse-notify + ACTIVE auto-revert sec) -
+// Two user-configurable overlay behaviors, persisted under overlay.settings in
+// the same state file (so they never clobber position/panelSet/companion keys).
+// The renderer (?overlay=1 dashboard) reads/writes them over the preload IPC
+// bridge; main.js is the authority that applies them (revert delay) + returns
+// the resolved values. activeRevertSec is the seconds form of the legacy
+// OVERLAY_DEFAULTS.activeRevertDelayMs - one default, two units.
+const OVERLAY_SETTINGS_DEFAULTS = Object.freeze({
+  pulseNotify: true,
+  activeRevertSec: Math.round(OVERLAY_DEFAULTS.activeRevertDelayMs / 1000),
+});
+
+// ACTIVE auto-revert bounds: a 3s floor (an instantly-reverting overlay is
+// useless) and a 120s ceiling. Non-finite -> null so the caller can fall back
+// to the default rather than persist garbage.
+const ACTIVE_REVERT_MIN_SEC = 3;
+const ACTIVE_REVERT_MAX_SEC = 120;
+
+function clampRevertSec(v) {
+  if (!(typeof v === "number" && Number.isFinite(v))) {
+    return null;
+  }
+  return Math.min(ACTIVE_REVERT_MAX_SEC, Math.max(ACTIVE_REVERT_MIN_SEC, Math.round(v)));
+}
+
+// Resolve the operator overlay settings out of a saved state blob. Every field
+// is validated against the hand-editable file: pulseNotify must be a real
+// boolean (else default true), activeRevertSec a finite number clamped to
+// [3,120] (else default). Never throws.
+function overlaySettingsFrom(saved) {
+  const s = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  const o = s.overlay && typeof s.overlay === "object" && !Array.isArray(s.overlay) ? s.overlay : {};
+  const set = o.settings && typeof o.settings === "object" && !Array.isArray(o.settings) ? o.settings : {};
+  const sec = clampRevertSec(set.activeRevertSec);
+  return {
+    pulseNotify: typeof set.pulseNotify === "boolean" ? set.pulseNotify : OVERLAY_SETTINGS_DEFAULTS.pulseNotify,
+    activeRevertSec: sec === null ? OVERLAY_SETTINGS_DEFAULTS.activeRevertSec : sec,
+  };
+}
+
+// Sanitize a settings patch to only the known, well-typed fields. pulseNotify
+// must be boolean; activeRevertSec must clamp to a finite [3,120]. Unknown keys
+// and wrong types are dropped (never persisted).
+function sanitizeSettingsPatch(patch) {
+  const p = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+  const out = {};
+  if (typeof p.pulseNotify === "boolean") {
+    out.pulseNotify = p.pulseNotify;
+  }
+  const sec = clampRevertSec(p.activeRevertSec);
+  if (sec !== null) {
+    out.activeRevertSec = sec;
+  }
+  return out;
+}
+
+// Merge a settings patch into overlay.settings WITHOUT touching the overlay's
+// position/panelSet or the companion's top-level keys (mirrors mergeOverlayPatch
+// one level deeper). Returns a new object; never mutates; garbage prev starts
+// fresh.
+function mergeOverlaySettingsPatch(prevState, patch) {
+  const prev =
+    prevState && typeof prevState === "object" && !Array.isArray(prevState) ? prevState : {};
+  const prevOverlay =
+    prev.overlay && typeof prev.overlay === "object" && !Array.isArray(prev.overlay)
+      ? prev.overlay
+      : {};
+  const prevSettings =
+    prevOverlay.settings && typeof prevOverlay.settings === "object" && !Array.isArray(prevOverlay.settings)
+      ? prevOverlay.settings
+      : {};
+  const clean = sanitizeSettingsPatch(patch);
+  const nextOverlay = Object.assign({}, prevOverlay, {
+    settings: Object.assign({}, prevSettings, clean),
+  });
+  return Object.assign({}, prev, { overlay: nextOverlay });
+}
+
 module.exports = {
   SURFACES,
   GAME_MODES,
   OVERLAY_DEFAULTS,
+  OVERLAY_SETTINGS_DEFAULTS,
   PANEL_SETS,
   normMode,
   surfaceForMode,
@@ -272,4 +351,6 @@ module.exports = {
   overlayStateFrom,
   resolveOverlayBounds,
   mergeOverlayPatch,
+  overlaySettingsFrom,
+  mergeOverlaySettingsPatch,
 };

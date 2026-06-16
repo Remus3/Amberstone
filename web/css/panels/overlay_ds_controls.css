@@ -121,3 +121,69 @@
   color: rgba(255, 255, 255, 0.45);
   padding: 4px 0;
 }
+
+/* OVL1: overlay settings strip (change-pulse toggle + ACTIVE auto-revert
+ * seconds). Sits above the fight-model knob strip in the same overlay-only
+ * pane. Reuses the ds_knobs alpha chrome + the v2.1 token scale - no new hex
+ * literals beyond the existing tokens.css palette fallbacks. */
+.ovset {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 0 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ovset-cap {
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ovset-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--hit-min, 42px);
+}
+
+.ovset-row > span {
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.60);
+}
+
+.ovset-toggle {
+  cursor: pointer;
+}
+
+.ovset-toggle > input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  accent-color: var(--signal-info, #8a8cf0);
+  cursor: pointer;
+}
+
+.ovset-num {
+  justify-content: space-between;
+}
+
+.ovset-num > input[type="number"] {
+  width: 84px;
+  box-sizing: border-box;
+  min-height: var(--hit-min, 42px);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--panel-radius-sm, 10px);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-sm, 18px);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.ovset-num > input[type="number"]:focus {
+  outline: none;
+  border-color: var(--signal-info, #8a8cf0);
+}

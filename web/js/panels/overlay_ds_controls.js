@@ -29,6 +29,7 @@
 
 import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
 import { CHAMPS, _resolveItemId } from '../lib/items_index.js';
+import { readOverlaySettings, writeOverlaySettings, hydrateOverlaySettings } from '../lib/overlay_settings.js';
 
 const _OVDS_DEBOUNCE_MS = 350;
 const _OVDS_ROW_CAP = 5;
@@ -224,6 +225,62 @@ function _wireInputs(body, champ) {
   });
 }
 
+// --- OVL1: overlay settings strip (pulse toggle + ACTIVE auto-revert sec) -----
+// Mounted once at the top of the pane, independent of a resolved champion, so
+// the operator can set them out of a fight model. Persisted via the shared
+// helper (localStorage mirror + rc-shell IPC when inside the Electron shell).
+function _settingsHtml() {
+  return (
+    `<div class="ovset" id="ovset">`
+    + `<div class="ovset-cap">OVERLAY</div>`
+    + `<label class="ovset-row ovset-toggle">`
+    + `<input type="checkbox" id="ovset-pulse">`
+    + `<span>Change pulse</span></label>`
+    + `<label class="ovset-row ovset-num"><span>Auto-passive (s)</span>`
+    + `<input type="number" id="ovset-revert" min="3" max="120" step="1" inputmode="numeric"></label>`
+    + `</div>`
+  );
+}
+
+function _applySettingsToDom(body, s) {
+  const pulse = body.querySelector("#ovset-pulse");
+  const rev = body.querySelector("#ovset-revert");
+  if (pulse) pulse.checked = !!s.pulseNotify;
+  // Do not clobber the seconds field while the operator is typing in it.
+  if (rev && document.activeElement !== rev) rev.value = String(s.activeRevertSec);
+}
+
+function _wireSettings(body) {
+  const pulse = body.querySelector("#ovset-pulse");
+  const rev = body.querySelector("#ovset-revert");
+  if (pulse) {
+    pulse.addEventListener("change", () => {
+      writeOverlaySettings({ pulseNotify: !!pulse.checked });
+    });
+  }
+  if (rev) {
+    rev.addEventListener("change", () => {
+      const next = writeOverlaySettings({ activeRevertSec: rev.value });
+      rev.value = String(next.activeRevertSec); // reflect the [3,120] clamp
+    });
+  }
+}
+
+// Build the pane scaffold once: the settings strip + an empty knob-strip wrap.
+// data-ovds-init guards the 1Hz tick from re-mounting (stacking settings
+// handlers + wiping the knob strip).
+function _ensureScaffold(body) {
+  if (body.getAttribute("data-ovds-init") === "1") return;
+  body.innerHTML = _settingsHtml() + `<div id="ovds-knobwrap"></div>`;
+  body.setAttribute("data-ovds-init", "1");
+  body.removeAttribute("data-ovds-champ"); // knob strip is (re)built below
+  _wireSettings(body);
+  _applySettingsToDom(body, readOverlaySettings());
+  // Hydrate from the rc-shell config (authoritative across launches), then
+  // reflect into the controls. No-op / local-mirror in a plain browser.
+  hydrateOverlaySettings().then((s) => _applySettingsToDom(body, s)).catch(() => {});
+}
+
 // Render the overlay fight-model pane from the per-mode coach payload p
 // (p.champion display name, p.level, p.items) + ctx.mode (lowercase rc
 // mode string). Hidden everywhere except the overlay shell with a
@@ -241,11 +298,24 @@ export function renderOverlayDsControls(p, ctx) {
   ctx = ctx || {};
   _OVDS_LAST.p = p;
   _OVDS_LAST.ctx = ctx;
-  // Gate 2: display name -> canonical DDragon slug. No champion yet, or
-  // CHAMPS index still loading -> stay hidden; resolves on a later tick.
+
+  const body = document.getElementById("ovds-body");
+  if (!body) return;
+
+  // OVL1: the overlay-settings strip mounts once and shows on the overlay shell
+  // regardless of a resolved champion - the pane is visible for it. The
+  // fight-model knob strip + rows only populate once a champion resolves.
+  _ensureScaffold(body);
+  pane.hidden = false;
+  const knobwrap = body.querySelector("#ovds-knobwrap");
+
+  // Gate 2: display name -> canonical DDragon slug. No champion yet (or CHAMPS
+  // index still loading) -> keep just the settings strip; resolves on a later tick.
   const champ = _canonicalChamp(p.champion || "");
   if (!champ) {
-    pane.hidden = true;
+    if (knobwrap) knobwrap.innerHTML = "";
+    body.removeAttribute("data-ovds-champ");
+    _ovdsSig = null;
     return;
   }
   const mode = _modeForCtx(ctx.mode);
@@ -259,19 +329,16 @@ export function renderOverlayDsControls(p, ctx) {
     () => renderOverlayDsControls(p, ctx));
   const payload = getCachedDsKnobs(champ, mode, items, knobs, level);
 
-  const body = document.getElementById("ovds-body");
-  if (!body) return;
-
-  // Build the knob strip once per champion (data-ovds-champ guard);
-  // re-wiring every tick would stack input handlers.
-  if (body.getAttribute("data-ovds-champ") !== champ) {
+  // Build the knob strip once per champion (data-ovds-champ guard); re-wiring
+  // every tick would stack input handlers. It mounts into #ovds-knobwrap so the
+  // settings strip above it survives a champion change.
+  if (body.getAttribute("data-ovds-champ") !== champ && knobwrap) {
     const resolved = payload && payload.knobs ? payload.knobs : null;
-    body.innerHTML = _stripHtml(knobs, resolved);
+    knobwrap.innerHTML = _stripHtml(knobs, resolved);
     body.setAttribute("data-ovds-champ", champ);
     _wireInputs(body, champ);
     _ovdsSig = null;  // force first rows paint for this champion
   }
-  pane.hidden = false;
 
   const sig = _signature(payload, knobs);
   if (_ovdsSig === sig) return;
