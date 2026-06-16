@@ -2405,7 +2405,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .loop-controls { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .loop-btn {
-  min-height: 42px; padding: 0 var(--space-3);
+  min-height: var(--hit-min); padding: 0 var(--space-3);
   font-size: var(--fs-sm); font-weight: 700;
   color: var(--text); background: var(--surface-alt);
   border: 1px solid var(--text-faint); border-radius: 4px;
