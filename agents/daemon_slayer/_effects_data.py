@@ -385,10 +385,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6676",
         name="The Collector",
         lethality=10.0,
+        # DSV2 (1.125.0): Death execute valued by the kill-state finisher seam
+        # (compute_burst_damage assume_takedown). Meraki 16.12.1: "If you deal
+        # post-mitigation damage that would leave a champion below 5% of their
+        # maximum health, execute them". Credited as 5% target max HP true
+        # damage in the execute window; still NOT a sustained-DPS proc
+        # (compute_dps ignores it). Taxes (25g/kill) stays out-of-combat.
+        execute_max_hp_pct=0.05,
         note="The Collector: 50 AD + 10 Lethality + 25% Crit stat block; "
-             "Death execute below 5% HP is a finisher, not a per-rotation DPS proc; "
-             "Taxes passive (25g per kill) is out-of-combat. The lethality stat "
-             "feeds the rest of the rotation; iter-10 audit promote off defensive_only.",
+             "Death execute below 5% HP valued as a kill-state finisher under "
+             "assume_takedown; Taxes passive (25g per kill) is out-of-combat. The "
+             "lethality stat feeds the rest of the rotation.",
     ),
     "3142": ItemEffect(
         item_id="3142",
@@ -1270,15 +1277,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Hubris",
         # Phase 4 batch 30 (2026-05-04): promoted from defensive_only via
         # the lethality plumbing schema. 18 Lethality is now level-scaled
-        # via effective_target_armor's level parameter. Eminence remains
-        # defensive - takedown-bound bonus AD stack stays not-modeled
-        # (would need an event-driven AD-bonus schema; same family as
-        # Hubris-shape items: Opportunity's takedown lethality bonus,
-        # Stormsurge's Stormraider applies-on-burst, etc.).
+        # via effective_target_armor's level parameter.
         lethality=18.0,
+        # DSV2 (1.125.0): Eminence is now valued by the takedown / kill-state
+        # OFFENSE seam (compute_dps / compute_burst_damage assume_takedown).
+        # Meraki 16.12.1: "Scoring a takedown ... generates a permanent stack
+        # and grants you 15 (+2 per stack) bonus attack damage for 90 seconds".
+        takedown_bonus_ad_base=15.0,
+        takedown_bonus_ad_per_stack=2.0,
         note=(
             "Hubris: 18 Lethality (level-scaled flat pen) + Eminence "
-            "takedown-bound bonus AD stack (90s, not modeled)"
+            "takedown bonus AD 15 (+2/stack), 90s - valued under assume_takedown"
         ),
     ),
 
@@ -1691,9 +1700,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="667666",
         name="The Collector",
         lethality=10.0,
+        # DSV2 (1.125.0): Death execute valued by the kill-state finisher seam.
+        execute_max_hp_pct=0.05,
         note=(
             "The Collector: 10 Lethality (level-scaled flat pen). "
-            "Death execute (<5% HP) is utility, not modeled"
+            "Death execute (<5% HP) valued as a kill-state finisher under assume_takedown"
         ),
     ),
     "6693": ItemEffect(
@@ -3264,7 +3275,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226697",
         name="Hubris",
         lethality=18.0,
-        note="Hubris (Arena 226697): same as SR 6697 - 18 lethality",
+        # DSV2 (1.125.0): Arena mirror of SR 6697 Eminence takedown AD.
+        takedown_bonus_ad_base=15.0,
+        takedown_bonus_ad_per_stack=2.0,
+        note="Hubris (Arena 226697): 18 lethality + Eminence takedown AD 15 (+2/stack)",
     ),
     "226698": ItemEffect(
         item_id="226698",
@@ -3403,11 +3417,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226676",
         name="The Collector",
         lethality=10.0,
+        # DSV2 (1.125.0): Arena mirror of SR 6676 Death execute finisher.
+        execute_max_hp_pct=0.05,
         note="The Collector (Arena 226676): mirrors SR 6676 - 50 AD + 10 Lethality + 25% Crit; "
-             "Iter 14 (2026-05-20): synced arena variant to iter-10 SR fix - promoted off "
-             "defensive_only and exposed lethality=10.0 so the stat feeds the rotation. "
-             "Death execute below 5% HP is a finisher (not per-rotation DPS) and Taxes (25g) "
-             "is out-of-combat - both correctly excluded.",
+             "Death execute below 5% HP valued as a kill-state finisher under assume_takedown; "
+             "Taxes (25g) is out-of-combat. lethality=10.0 feeds the rotation.",
     ),
     "226695": ItemEffect(
         item_id="226695",
@@ -5100,7 +5114,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="126697",
         name="Hubris",
         lethality=18.0,
-        note="Hubris (ARAM 126697): same as SR 6697 - 55 AD + 18 lethality",
+        # DSV2 (1.125.0): ARAM mirror of SR 6697 Eminence takedown AD.
+        takedown_bonus_ad_base=15.0,
+        takedown_bonus_ad_per_stack=2.0,
+        note="Hubris (ARAM 126697): 55 AD + 18 lethality + Eminence takedown AD 15 (+2/stack)",
     ),
     "446693": ItemEffect(
         item_id="446693",

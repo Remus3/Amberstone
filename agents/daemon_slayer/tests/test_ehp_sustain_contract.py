@@ -32,7 +32,7 @@ Coverage classes:
   * ``SpellvampOmnivampWiringTests`` - structural: the stats are consumed but
     resolve to 0 on current builds (no item grants them).
   * ``ByteIdenticalGuardTests`` - blended_ehp / heal_lifesteal unchanged.
-  * ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.124.0.
+  * ``EngineVersionCurrentTests`` - pin ENGINE_VERSION 1.125.0.
 """
 from __future__ import annotations
 
@@ -244,7 +244,7 @@ class ByteIdenticalGuardTests(_SnapBase):
 
 class EngineVersionCurrentTests(unittest.TestCase):
     def test_engine_version_is_1_121_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.124.0")
+        self.assertEqual(ENGINE_VERSION, "1.125.0")
 
 
 if __name__ == "__main__":
