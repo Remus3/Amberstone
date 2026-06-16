@@ -302,12 +302,25 @@ export function renderPlayerGpi(blockEl, payload, activeMode) {
     + '<span class="gpi-overall-lbl">overall</span>'
     + "</div>";
 
+  // Weakest-axis improvement tip (static, no LLM). Rendered only when the
+  // backend names a weakest axis; the axis label is surfaced as the lead chip.
+  let tipBlock = "";
+  if (payload.tip && payload.weakest_axis) {
+    const wax = axes.find((a) => a.key === payload.weakest_axis);
+    const waxLabel = wax ? wax.label : payload.weakest_axis;
+    tipBlock = '<div class="gpi-tip">'
+      + '<span class="gpi-tip-axis">' + _esc(String(waxLabel)) + "</span>"
+      + '<span class="gpi-tip-text">' + _esc(String(payload.tip)) + "</span>"
+      + "</div>";
+  }
+
   blockEl.innerHTML = head
     + '<div class="gpi-body">'
     + '<div class="gpi-radar-wrap">' + svg + "</div>"
     + overallBlock
     + "</div>"
-    + caption;
+    + caption
+    + tipBlock;
 }
 
 // Standalone entry point. Fetches the profile for ``mode`` and renders into the

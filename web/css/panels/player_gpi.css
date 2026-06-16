@@ -253,3 +253,31 @@
 .gpi-overall.gpi-tier-low .gpi-overall-num {
   color: var(--signal-dim, #8a8e9c);
 }
+
+/* Weakest-axis improvement tip - a single coaching call-out under the caption.
+ * The axis chip uses the warn tint (it marks the area to work on). */
+.gpi-tip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--signal-warn, #f1b04a);
+  background: rgba(241, 176, 74, 0.08);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.gpi-tip-axis {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--signal-warn, #f1b04a);
+}
+
+.gpi-tip-text {
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.35;
+}
