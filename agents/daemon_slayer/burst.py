@@ -1296,6 +1296,34 @@ class BurstRankResult:
         return "\n".join(rows)
 
 
+# DSV3 (1.126.0): burst-archetype squishy-target armor assumption.
+# rank_items_by_burst defaults target_armor=0.0, and against zero armor
+# effective_target_armor floors its penetration tail at zero - so lethality
+# (flat armor pen, Riot V14.1 1:1) contributes NOTHING to a ranked item's
+# delta and an equal-cost raw-AD item out-ranks a lethality item. That
+# under-values the lethality-vs-sustained-AD tradeoff a burst assassin
+# actually faces: the target is a squishy carry WITH armor, against which
+# flat pen bites. These model a representative squishy carry's armor curve
+# (~22 base, +4.5 per level - a mage / ADC) so lethality flows through
+# effective_target_armor and out-values raw AD. Opt-in via
+# assume_squishy_target (default False -> byte-identical to today).
+_SQUISHY_TARGET_BASE_ARMOR = 22.0
+_SQUISHY_TARGET_ARMOR_PER_LEVEL = 4.5
+
+
+def _assumed_squishy_target_armor(level: int) -> float:
+    """Representative squishy-carry armor at ``level`` (DSV3 burst seam).
+
+    Models a mage / ADC armor curve (~22 base, +4.5 per level above 1) so the
+    burst ranker's lethality penetration has real armor to bite into. ``level``
+    is clamped to the engine's valid range; the result is positive and
+    monotonically increasing in level. The burst ranker substitutes this for a
+    zero / absent ``target_armor`` when ``assume_squishy_target=True``.
+    """
+    lvl = clamp_level(level)
+    return _SQUISHY_TARGET_BASE_ARMOR + _SQUISHY_TARGET_ARMOR_PER_LEVEL * (lvl - 1)
+
+
 def rank_items_by_burst(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -1324,6 +1352,7 @@ def rank_items_by_burst(
     runes: Optional[Sequence[int]] = None,
     aoe_targets_hit: int = 1,
     assume_takedown: bool = False,
+    assume_squishy_target: bool = False,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1350,10 +1379,28 @@ def rank_items_by_burst(
     stacking_amp + keystone_amp; Conqueror adaptive excluded), so the
     delta still isolates the item's marginal gain over a rune-equipped
     baseline.
+
+    ``assume_squishy_target`` (DSV3, default False) refines the
+    lethality-vs-sustained-AD tradeoff. With the default zero ``target_armor``
+    lethality penetrates nothing, so a raw-AD item out-ranks an equal-cost
+    lethality item. When True and the caller did not pin a positive
+    ``target_armor``, the ranker substitutes ``_assumed_squishy_target_armor``
+    (a representative squishy carry) for BOTH the baseline and every candidate,
+    so lethality flows through ``effective_target_armor`` and out-values raw AD
+    for burst archetypes. OFF or with an explicit ``target_armor>0`` the
+    ranking is byte-identical.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
+    # DSV3 (1.126.0): burst-archetype squishy-target armor assumption. When ON
+    # and the caller did not pin a positive target_armor, substitute a
+    # representative squishy-carry armor so lethality (flat pen) is valued over
+    # raw AD in the ranking. OFF (default) or an explicit target_armor>0 ->
+    # ranking_target_armor == target_armor, so the ranking is byte-identical.
+    ranking_target_armor = target_armor
+    if assume_squishy_target and target_armor <= 0.0:
+        ranking_target_armor = _assumed_squishy_target_armor(level)
     # Normalize once so baseline + every candidate share the same rune list.
     # None when absent/empty -> compute_burst_damage stays byte-identical.
     runes_norm = list(runes) if runes else None
@@ -1392,7 +1439,7 @@ def rank_items_by_burst(
         snapshot,
         champion_id=champion_id, level=level,
         item_ids=current_ids, mode=mode,
-        target_armor=target_armor, target_mr=target_mr,
+        target_armor=ranking_target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         target_current_hp_pct=target_current_hp_pct,
         augments=augments,
@@ -1429,7 +1476,7 @@ def rank_items_by_burst(
                 snapshot,
                 champion_id=champion_id, level=level,
                 item_ids=new_build, mode=mode,
-                target_armor=target_armor, target_mr=target_mr,
+                target_armor=ranking_target_armor, target_mr=target_mr,
                 target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
                 target_current_hp_pct=target_current_hp_pct,
                 augments=augments,
@@ -1477,6 +1524,11 @@ def rank_items_by_burst(
     )
     notes.append(f"combo={' -> '.join(combo_norm)} (source={combo_source})")
     notes.append(f"primary_scaling={baseline.primary_scaling}")
+    if assume_squishy_target and ranking_target_armor != target_armor:
+        notes.append(
+            f"assume_squishy_target=True - ranked vs assumed squishy armor "
+            f"{ranking_target_armor:.0f} (level {level}); lethality valued over raw AD"
+        )
     if stripped_trinkets:
         notes.append(
             f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "
@@ -1512,7 +1564,7 @@ def rank_items_by_burst(
         current_item_ids=current_ids,
         baseline_burst=baseline.total_burst_damage,
         primary_scaling=baseline.primary_scaling,
-        target_armor=target_armor,
+        target_armor=ranking_target_armor,
         target_mr=target_mr,
         target_max_hp=target_max_hp,
         target_bonus_hp=target_bonus_hp,

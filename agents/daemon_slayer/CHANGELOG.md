@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.126.0 (DSV3 - lethality-vs-sustained-AD burst-ranker valuation, 2026-06-16. P6-G5
+residual 3. rank_items_by_burst defaulted target_armor=0.0; against zero armor
+effective_target_armor floors its penetration tail at zero, so lethality (flat armor
+pen, Riot V14.1 1:1) contributed NOTHING to a ranked item's delta and an equal-cost
+raw-AD item out-ranked a lethality item - the exact lethality-vs-sustained tradeoff a
+burst assassin's squishy target inverts. Adds a DEFAULT-OFF assume_squishy_target seam,
+byte-identical when off: burst.py gains _assumed_squishy_target_armor(level) (a
+representative squishy-carry curve, 22 base + 4.5 per level above 1 -> 67 at level 11)
+and rank_items_by_burst gains assume_squishy_target. When True AND the caller did not
+pin a positive target_armor, the ranker substitutes the assumed squishy armor for BOTH
+the baseline and every candidate compute_burst_damage call, so lethality flows through
+effective_target_armor and out-values raw AD; an explicit target_armor>0 is respected
+(the seam only fills a zero/absent target). The lethality math itself is unchanged
+(effects.effective_target_armor, ENGINE 1.5.1 V14.1 1:1) - only the ranker's target
+assumption is refined. The seam ships DEFAULT-OFF; the live rank scorers do not pass
+assume_squishy_target=True yet (a validation-gated flip). DS :8893 bounced -> 1.126.0.
+Sources: Riot Data Dragon / CommunityDragon / Meraki Analytics.)
+
 1.125.0 (DSV2 - takedown / kill-state item-passive valuation, 2026-06-15. P6-G5
 residual 2. The burst + auto scorers had no seam for the on-takedown item passives, so
 Hubris (Eminence bonus AD) + The Collector (5% execute) were under-ranked among lethality
