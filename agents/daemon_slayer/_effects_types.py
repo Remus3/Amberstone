@@ -718,3 +718,32 @@ class ItemEffect:
     # pairs Spirit Visage with a lifeline item). Default 0.0 -> no
     # contribution.
     heal_amp_pct: float = 0.0
+    # DSV2 (1.125.0): takedown / kill-state OFFENSE seam (P6-G5 residual 2).
+    # The auto / burst scorers had no way to value the on-takedown item
+    # passives, so three lethality-adjacent items were under-ranked. These
+    # fields are read ONLY when the consumer (compute_dps / compute_burst_damage)
+    # is called with ``assume_takedown=True`` - the kill-state assumption.
+    # Default 0.0 keeps every existing item + caller byte-identical (the seam
+    # is inert until both the data field AND the flag are set). Appended at the
+    # END per the repo dataclass convention (a mid-class insert breaks positional
+    # construction + every existing test).
+    #
+    # Hubris 6697 Eminence: a champion takedown grants bonus AD = base +
+    # per_stack * stacks, lasting 90s (Meraki 16.12.1: "15 (+2 per stack)").
+    # The consumer assumes ``dps._ASSUMED_TAKEDOWN_STACKS`` (= 1) stack worth
+    # when the seam is ON -> 15 + 2*1 = 17 bonus AD folded into the wielder's
+    # bonus AD for both the AA rotation and the ability scaling.
+    takedown_bonus_ad_base: float = 0.0
+    takedown_bonus_ad_per_stack: float = 0.0
+    # The Collector 6676 Death: post-mitigation damage that would leave a
+    # champion below this fraction of their MAXIMUM health executes them
+    # (Meraki 16.12.1: "below 5% of their maximum health"). On the offense
+    # axis the burst scorer credits this as a kill-state finisher of
+    # ``execute_max_hp_pct * target_max_hp`` TRUE damage (the execute's worth
+    # in its trigger window) when ``assume_takedown`` is set and a target max
+    # HP is supplied. compute_dps deliberately does NOT credit it - a one-shot
+    # execute is not sustained DPS. Death's Dance carries NEITHER field: its
+    # takedown payoff is the Defy HEAL, already valued on the survivability
+    # axis via ItemHeal.takedown_gated (ENGINE 1.57.0) - crediting it offense
+    # here would double-count phantom damage.
+    execute_max_hp_pct: float = 0.0
