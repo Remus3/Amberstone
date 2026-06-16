@@ -60,7 +60,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | OVL2 | Electron-Phase6 | Electron Phase 6 Pengu Surface C code-only stub: scaffold a pengu/ plugin skeleton that fetches RC_ORIGIN/api/state + renders a panel with tokens.css, and add a client-origin-gated Access-Control-Allow-Origin header in dashboard/_handler.py (non-frozen). No live client needed; live validation OWED. Tests for the CORS-header origin gating. | DONE | aab53e37 |
 | DSV1 | DS-Valuation | DS P6-G5 residual 1 (AP DoT/burn valuation): extend the DS damage model (agents/daemon_slayer/dps.py compute_dps + effects.py) to value AP damage-over-time burn (Liandry's / Blackfire Torch) beyond the single-rotation ability model. Root-cause-first, offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 597ffc95 |
 | DSV2 | DS-Valuation | DS P6-G5 residual 2 (kill-state item passives): add a takedown/kill-state assumption seam to agents/daemon_slayer/burst.py + dps.py so on-takedown passives (Hubris / Collector / Death's Dance) are valued. Default-OFF byte-identical seam first, offline tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | f1075c38 |
-| DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
+| DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 27873cc1 |
 | UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | OPEN | - |
 | UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
 | UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
@@ -75,6 +75,30 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-16 DSV3 DONE (commit 27873cc1, item 433). Lethality-vs-sustained-AD
+  burst-ranker valuation - P6-G5 residual 3, Tier-2 ENGINE 1.125.0 -> 1.126.0, DS
+  :8893 restarted -> 1.126.0, Share re-synced (339, --check in sync) in the SAME
+  commit. ROOT CAUSE: rank_items_by_burst defaulted target_armor=0.0, and against
+  zero armor effective_target_armor floors its penetration tail at zero - so
+  lethality (flat armor pen, Riot V14.1 1:1) contributed NOTHING to a ranked item's
+  delta and an equal-cost raw-AD item out-ranked a lethality item. A burst assassin's
+  real target is a squishy carry WITH armor. FIX (DEFAULT-OFF assume_squishy_target
+  seam, byte-identical off; INLINE sole orchestrator per directive + R9, verifier
+  GATE PASS 7/7): burst.py NEW _assumed_squishy_target_armor(level) (22 base + 4.5
+  per level -> 67 at L11) + assume_squishy_target on rank_items_by_burst; when ON and
+  the caller did not pin a positive target_armor, the assumed squishy armor is
+  substituted for the baseline AND every candidate so lethality flows through
+  effective_target_armor and out-values raw AD; an explicit target_armor>0 is
+  respected. Lethality math itself unchanged (effects.effective_target_armor) - only
+  the ranker target assumption is refined. Ships DEFAULT-OFF; live rank scorers do not
+  pass assume_squishy_target=True yet (validation-gated flip). TDD: new 7-case
+  characterization test (difference-of-differences, not fragile cross-item). Gate:
+  DS-dir 7126 passed / 1 skip / 1942 subtests; tests/ green after DS restart +
+  ds_share_sync (the 7 pre-fix failures = 1 live-:8893 stale-version + 6 Share
+  doc/ingest anchors, all 18 green re-run); 75 quoted pins bumped across 67 files;
+  CHANGELOG prepended. No frozen files touched. NEXT (plan order): UIX1/2/3 (5-phase
+  UI audits).
 
 - 2026-06-15 DSV2 DONE (commit f1075c38, item 432). Takedown / kill-state item
   passive valuation - P6-G5 residual 2, Tier-2 ENGINE 1.124.0 -> 1.125.0, DS
