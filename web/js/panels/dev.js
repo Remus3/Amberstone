@@ -168,7 +168,8 @@ function _diagFetchAndRender() {
           nm.textContent = c.name;
           const det = document.createElement("span");
           det.className = "dim";
-          det.style.fontSize = "10px";
+          // DIAG1 audit: dropped the inline 10px sub-floor; the detail span
+          // inherits the .diag-conn-row 12px dense-surface size.
           det.textContent = c.detail || "";
           li.append(dot, nm, det);
           ul.appendChild(li);
