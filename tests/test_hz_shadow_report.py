@@ -55,6 +55,30 @@ def test_build_lean_distribution(tmp_path):
     assert out["by_lean"] == {"anti_squishy": 1, "anti_tank": 1}  # covered only
 
 
+def test_build_lean_per_game_collapses_row_multiplicity(tmp_path):
+    # The shadow dedup sig includes item_count + a game-time bucket, so one long
+    # game logs many rows for the same comp. by_lean counts rows (inflated);
+    # by_lean_per_game collapses each (mode, champ, enemy_comp) game to one lean.
+    p = tmp_path / "b.jsonl"
+    rows = []
+    for i in range(8):  # one long anti_tank game -> 8 rows, same comp
+        rows.append({"mode": "aram", "my_champion": "Caitlyn",
+                     "enemy_comp": ["Poppy", "Leona", "Yorick"],
+                     "lean": "anti_tank", "covered": True,
+                     "item_count": i, "choices": [1, 2]})
+    rows.append({"mode": "aram", "my_champion": "Caitlyn",  # distinct game
+                 "enemy_comp": ["Irelia"], "lean": "anti_squishy",
+                 "covered": True, "item_count": 0, "choices": [1]})
+    rows.append({"mode": "aram", "my_champion": "Viktor",  # distinct game
+                 "enemy_comp": ["Akali", "Katarina"], "lean": "anti_squishy",
+                 "covered": True, "item_count": 0, "choices": [1]})
+    _write(p, rows)
+    out = rep.summarize_build(rep.load_jsonl(p))
+    assert out["by_lean"] == {"anti_squishy": 2, "anti_tank": 8}  # by row
+    assert out["distinct_games"] == 3
+    assert out["by_lean_per_game"] == {"anti_squishy": 2, "anti_tank": 1}  # by game
+
+
 def test_comparable_counts_native_signal(tmp_path):
     p = tmp_path / "c.jsonl"
     _write(p, [
