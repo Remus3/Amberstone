@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 33: OVL2 Pengu Surface-C plugin stub + client-origin-gated CORS [item 430]
+
+- OVL2 (commit `aab53e37`). Tier-1 frontend + route. NO ENGINE bump, NO DS/Share change. RC restarted pid 2104 (handler re-import). Source: `docs/ORCHESTRATION_PLAN.md` OVL2.
+- NEW `pengu/` Pengu Loader plugin skeleton (ESM `index.js` + `panel.css` + `README.md`): runs INSIDE the League client via Pengu Loader (not served by :8888); fetches `RC_ORIGIN/api/state` every 2s (RC_ORIGIN default `https://127.0.0.1:8888`, localStorage `rc_origin` override), injects the dashboard tokens (`tokens.css` from RC_ORIGIN) + a sibling `panel.css` via `import.meta.url`, renders a mode/champion/coach card, fail-soft "RC offline" with NO raw API error surfaced.
+- `dashboard/_handler.py` (non-frozen): NEW `_cors_allowed_origin` gate + `_send` echoes `Access-Control-Allow-Origin` + `Vary:Origin` ONLY for an allowed cross-origin client (loopback 127.0.0.1/localhost/::1, or an exact `RC_CORS_ALLOW_ORIGINS` env allowlist), NEVER wildcard (distinct from vision_server :8889 `*`). Cross-origin POSTs still blocked by `_csrf_ok`; ACAO only governs READING GET responses -> a same-machine loopback echo is a controlled LAN-only widening.
+- INLINE sole orchestrator (auto-pick, logged): 2 coupled disjoint slices, ~6 files sharing the CORS-origin contract (R9 + OVL1/HZ-A2 precedent) + the read-only verifier subagent as the pre-commit ground-truth gate (ALL 6 CONFIRM: 13 new tests fresh, gate gated + grep-proven no `*`, ASCII clean, full suite green). TDD (CORS test red on missing `_cors_allowed_origin` -> green).
+- Gate (Tier-1): +13 tests (test_handler_cors 7 + test_pengu_plugin_skeleton 6); RC **7982 passed / 2 skipped / 109 subtests, exit 0**; ruff + py_compile clean. 5-phase pengu UI audit CODE-SIDE: **MUST-FIX 0**; 2 SHOULD-FIX applied in-slice (border-radius `8px` -> `var(--panel-radius,18px)` resolves live; precise comment that surface vars `--fg/--panel-bg/--panel-border/--font-ui` are fallback-only - primitives layer not injected in-client).
+- OWED: the live in-client visual (League client + Pengu Loader; no client headless). The pengu panel is NOT served by :8888 so Claude_Preview cannot capture it; capture in-client next League session.
+- NEXT (plan order): **DSV1** (P6-G5 AP DoT/burn valuation - agents/daemon_slayer dps.py/effects.py, ENGINE bump + DS restart + Share re-sync), then DSV2/DSV3, then UIX1/2/3.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 32: OVL1 Electron Phase-4 overlay settings - change-pulse toggle + ACTIVE auto-revert seconds [item 429]
 
 - First session of the operator-directed plan REFILL (the A1-F1 + HZ + LIFT/CS + P6 set drained -> director NO_WORK -> loop stopped; operator chose "gemini proposes batch + relaunch" with scope = Electron + DS + UI/UX). 8 new OPEN sessions seeded into `docs/ORCHESTRATION_PLAN.md` (OVL1/2, DSV1/2/3, UIX1/2/3, gemini-3-pro planning pass); relaunched; director picked OVL1.
