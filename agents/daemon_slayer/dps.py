@@ -61,6 +61,7 @@ from .effects import (
     total_giant_slayer_multiplier,
     total_magic_amp_multiplier,
     total_stacked_ap,
+    total_takedown_bonus_ad,
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
@@ -75,6 +76,17 @@ EARLY_LEVEL_MAX = 6
 MID_LEVEL_MAX = 12
 
 PHASES: tuple[str, ...] = ("early", "mid", "late")
+
+# DSV2 (1.125.0): takedown / kill-state OFFENSE seam assumption. When
+# ``compute_dps`` / ``compute_burst_damage`` is called with
+# ``assume_takedown=True`` the wielder is assumed to hold this many Hubris
+# Eminence stacks worth of bonus AD (15 + 2*stacks). One stack -> 17 bonus AD,
+# the value the moment after a single takedown (Eminence grants the first stack
+# on the takedown that triggers it). Operator-tunable, mirroring ehp.py's
+# ``_TAKEDOWN_RATE_PER_FIGHT`` doctrine; bumping it models a snowballing carry
+# that has banked several takedowns. The seam is inert at the default flag
+# (assume_takedown=False) regardless of this value.
+_ASSUMED_TAKEDOWN_STACKS = 1
 
 
 @dataclass(frozen=True)
@@ -570,6 +582,7 @@ def compute_dps(
     apply_mode_modifiers: bool = False,
     apply_ability_amps: bool = False,
     apply_passive_damage: bool = False,
+    assume_takedown: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -595,6 +608,13 @@ def compute_dps(
     a chunked target; %-max-HP procs (Eclipse, Titanic Hydra, ...) are
     unaffected. Default 1.0 is an identity multiply - byte-identical to
     pre-lever output.
+
+    ``assume_takedown`` (DSV2, 2026-06-15): the takedown / kill-state OFFENSE
+    seam. Default False -> byte-identical. When True, Hubris Eminence's bonus
+    AD (15 + 2 * ``_ASSUMED_TAKEDOWN_STACKS``) is folded into the wielder's
+    bonus AD, raising AA + bonus-AD-scaling-proc DPS. The Collector execute is
+    deliberately NOT valued here (a one-shot finisher is not sustained DPS - it
+    is credited by ``compute_burst_damage`` instead).
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -672,6 +692,21 @@ def compute_dps(
     base_ad = float(resolved.base_stats.get("ad", 0.0)) if resolved.base_stats else 0.0
     total_ad = float(stats.get("ad", 0.0))
     bonus_ad = max(0.0, total_ad - base_ad)
+    # DSV2 (1.125.0): takedown / kill-state OFFENSE seam. assume_takedown=False
+    # (the default) -> takedown_bonus_ad stays 0.0 and every line below is
+    # byte-identical. When True, Hubris Eminence's bonus AD (15 + 2*stacks at
+    # _ASSUMED_TAKEDOWN_STACKS) folds into the wielder's bonus AD so it raises
+    # both the AA rotation (via stats_for_rotation["ad"]) and bonus_ad-scaling
+    # procs (via CallContext.bonus_ad). The Collector execute is NOT credited
+    # here - a one-shot finisher is not sustained DPS; the burst scorer values
+    # it. A build without a takedown-AD item contributes 0 even when the flag
+    # is set (total_takedown_bonus_ad returns 0.0).
+    takedown_bonus_ad = 0.0
+    if assume_takedown:
+        takedown_bonus_ad = total_takedown_bonus_ad(
+            item_effects, _ASSUMED_TAKEDOWN_STACKS
+        )
+        bonus_ad += takedown_bonus_ad
     ap = float(stats.get("ap", 0.0))
     base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
     caster_max_hp = float(stats.get("hp", 0.0))
@@ -758,6 +793,15 @@ def compute_dps(
         stats_for_rotation["as"] = min(
             2.5, stats_for_rotation.get("as", 0.0) + cond_as
         )
+    # DSV2 (1.125.0): fold the takedown bonus AD into the rotation AD so the
+    # AA damage reflects Hubris Eminence. Gated on > 0 so the OFF path (and any
+    # non-Hubris build) never copies stats - byte-identical to pre-DSV2.
+    if takedown_bonus_ad > 0:
+        if stats_for_rotation is stats:
+            stats_for_rotation = dict(stats)
+        stats_for_rotation["ad"] = (
+            stats_for_rotation.get("ad", 0.0) + takedown_bonus_ad
+        )
     # Phase 4 batch 63 (2026-05-05): per-champion ult cast rate for
     # ability-triggered items (Malignance Hatefog). Looked up from
     # ult_cast_rates.json derived from rewind_history.db spell4_casts.
@@ -799,7 +843,10 @@ def compute_dps(
     weighted_dps = phase_dps[selected_phase]
 
     crit = crit_total
-    ad = float(stats.get("ad", 0.0))
+    # DSV2 (1.125.0): the per-hit display AD (avg_attack_dmg / raw_attack_dps,
+    # read by burst.compute_burst_damage as the AA per-hit) includes the
+    # takedown bonus AD. 0.0 when the seam is OFF -> byte-identical.
+    ad = float(stats.get("ad", 0.0)) + takedown_bonus_ad
     eff_as = float(stats.get("as", 0.0))
     # Phase 4 batch 14: per-hit display value reflects the same amp the
     # rotation DPS uses, so /dps clients see consistent numbers. Item 247:
@@ -840,6 +887,13 @@ def compute_dps(
     )
 
     notes = list(resolved.notes)
+
+    if takedown_bonus_ad > 0:
+        notes.append(
+            f"takedown bonus AD +{takedown_bonus_ad:.0f} "
+            f"(Hubris Eminence at {_ASSUMED_TAKEDOWN_STACKS} assumed stack(s); "
+            "assume_takedown kill-state seam)"
+        )
 
     # Section-2 cadence routing (04_GAPS_AND_ROADMAP): route an on_hit
     # passive's damage onto the AUTO-ATTACK cadence. OPT-IN -

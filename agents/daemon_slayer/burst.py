@@ -82,7 +82,7 @@ from .ability_dps import (
     rank_at_level,
 )
 from .data_loader import DataSnapshot
-from .dps import compute_dps
+from .dps import _ASSUMED_TAKEDOWN_STACKS, compute_dps
 from .effects import (
     ITEM_EFFECTS,
     collect_effects,
@@ -92,9 +92,11 @@ from .effects import (
     total_bonus_ap_from_hp,
     total_caster_hp_scaled_ap_amp,
     total_damage_amp_multiplier,
+    total_execute_max_hp_pct,
     total_giant_slayer_multiplier,
     total_magic_amp_multiplier,
     total_stacked_ap,
+    total_takedown_bonus_ad,
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
@@ -338,6 +340,15 @@ class BurstResult:
     # ``total_burst_damage`` when runes were supplied; 0.0 by default so
     # the no-runes path is byte-identical.
     rune_proc_damage: float = 0.0
+    # DSV2 (2026-06-15) - takedown / kill-state OFFENSE seam (assume_takedown).
+    # ``takedown_bonus_ad`` is the Hubris Eminence bonus AD folded into the
+    # build's bonus AD (already reflected in ability_damage + auto_attack_damage
+    # when > 0). ``execute_finisher_damage`` is the Collector kill-state execute
+    # credit (5% target max HP true damage), already folded into
+    # ``total_burst_damage``. Both 0.0 by default so the assume_takedown=False
+    # path is byte-identical - same convention as ``rune_proc_damage``.
+    takedown_bonus_ad: float = 0.0
+    execute_finisher_damage: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -377,6 +388,8 @@ class BurstResult:
             "lightshield_strike_damage": self.lightshield_strike_damage,
             "lightshield_strike_item_name": self.lightshield_strike_item_name,
             "rune_proc_damage": self.rune_proc_damage,
+            "takedown_bonus_ad": self.takedown_bonus_ad,
+            "execute_finisher_damage": self.execute_finisher_damage,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -455,6 +468,7 @@ def compute_burst_damage(
     caster_hp_pct: float = 1.0,
     game_time_s: float = 0.0,
     aoe_targets_hit: int = 1,
+    assume_takedown: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -484,6 +498,15 @@ def compute_burst_damage(
     Qiyana/Pyke/Naafiri/Briar/Yone), this captures the lethality-driven
     burst correctly because lethality flows through ``effective_target_armor``
     for both the ability and the AA hits.
+
+    ``assume_takedown`` (DSV2, 2026-06-15): the takedown / kill-state OFFENSE
+    seam. Default False -> byte-identical. When True: (1) Hubris Eminence bonus
+    AD (15 + 2 * ``_ASSUMED_TAKEDOWN_STACKS``) raises both the AA per-hit and the
+    AD-ratio ability damage; (2) the Collector execute is credited as a
+    kill-state finisher of 5% target max HP TRUE damage (``execute_finisher_damage``,
+    folded into ``total_burst_damage``) when a ``target_max_hp`` is supplied.
+    Death's Dance contributes nothing on this axis - its takedown payoff is the
+    Defy heal, valued on the survivability axis (ehp.py, ENGINE 1.57.0).
     """
     if block_strategy not in {"first", "sum", "max"}:
         raise ValueError(
@@ -551,6 +574,9 @@ def compute_burst_damage(
         target_armor=target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         augments=augments,
+        # DSV2: the AA per-hit (avg_attack_dmg) picks up Hubris Eminence's
+        # bonus AD when the kill-state seam is ON. Byte-identical when OFF.
+        assume_takedown=assume_takedown,
     )
     aa_base_per_hit = max(0.0, float(aa_probe.avg_attack_dmg))
     # Phase 5.6 (s188, 2026-05-13): on-hit proc contribution per AA -
@@ -603,6 +629,19 @@ def compute_burst_damage(
     if hp_ap_amp != 1.0:
         ap_total *= hp_ap_amp
     ctx = replace(ctx, ap=ap_total)
+
+    # DSV2 (1.125.0): takedown / kill-state OFFENSE seam. assume_takedown=False
+    # -> takedown_bonus_ad stays 0.0, ctx unchanged, every line below is
+    # byte-identical. When True, Hubris Eminence's bonus AD folds into the
+    # ability scaling context so AD-ratio abilities (Talon/Zed/Pyke) reflect
+    # the post-takedown power; the AA per-hit already picked it up via aa_probe.
+    takedown_bonus_ad = 0.0
+    if assume_takedown:
+        takedown_bonus_ad = total_takedown_bonus_ad(
+            item_effects, _ASSUMED_TAKEDOWN_STACKS
+        )
+        if takedown_bonus_ad:
+            ctx = replace(ctx, bonus_ad=ctx.bonus_ad + takedown_bonus_ad)
 
     # Build-wide damage amps and target-conditional amps.
     damage_amp = total_damage_amp_multiplier(item_effects)
@@ -850,6 +889,21 @@ def compute_burst_damage(
             )
         total_burst = amped_base + rune_proc_damage
 
+    # DSV2 (1.125.0): Collector kill-state execute finisher. assume_takedown=
+    # False -> execute_finisher_damage stays 0.0, total_burst unchanged. When
+    # True AND a target max HP is supplied, credit the execute (5% target max
+    # HP, TRUE damage - the execute ignores resists) as the finisher's worth in
+    # its trigger window. Needs target_max_hp to size the 5%; with no HP signal
+    # the execute can't be valued. Applied on top of the rune layer (a finisher
+    # after the combo + rune procs). compute_dps deliberately does NOT credit
+    # this - a one-shot execute is not sustained DPS.
+    execute_finisher_damage = 0.0
+    if assume_takedown and target_max_hp > 0:
+        execute_pct = total_execute_max_hp_pct(item_effects)
+        if execute_pct > 0:
+            execute_finisher_damage = execute_pct * target_max_hp
+            total_burst += execute_finisher_damage
+
     primary = _classify_primary_scaling(per_cast, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
@@ -945,6 +999,18 @@ def compute_burst_damage(
             "keystone amp applied to ability+AA base"
         )
 
+    if takedown_bonus_ad > 0:
+        notes.append(
+            f"takedown bonus AD +{takedown_bonus_ad:.0f} "
+            f"(Hubris Eminence at {_ASSUMED_TAKEDOWN_STACKS} assumed stack(s)) "
+            "raised ability+AA damage (assume_takedown kill-state seam)"
+        )
+    if execute_finisher_damage > 0:
+        notes.append(
+            f"Collector execute finisher +{execute_finisher_damage:.0f} true "
+            f"(5% of {target_max_hp:.0f} target max HP, kill-state seam)"
+        )
+
     return BurstResult(
         champion_id=resolved.champion_id,
         champion_name=resolved.champion_name,
@@ -980,6 +1046,8 @@ def compute_burst_damage(
         lightshield_strike_damage=lightshield_damage_total,
         lightshield_strike_item_name=aa_lightshield_name,
         rune_proc_damage=rune_proc_damage,
+        takedown_bonus_ad=takedown_bonus_ad,
+        execute_finisher_damage=execute_finisher_damage,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
@@ -1255,6 +1323,7 @@ def rank_items_by_burst(
     filter_shared_uniques: bool = True,
     runes: Optional[Sequence[int]] = None,
     aoe_targets_hit: int = 1,
+    assume_takedown: bool = False,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1335,6 +1404,7 @@ def rank_items_by_burst(
         combo_sequence=combo_norm,
         runes=runes_norm,
         aoe_targets_hit=aoe_targets_hit,
+        assume_takedown=assume_takedown,
     )
 
     candidates = _filter_candidates(
@@ -1371,6 +1441,7 @@ def rank_items_by_burst(
                 combo_sequence=combo_norm,
                 runes=runes_norm,
                 aoe_targets_hit=aoe_targets_hit,
+                assume_takedown=assume_takedown,
             )
         except (KeyError, ValueError):
             continue
