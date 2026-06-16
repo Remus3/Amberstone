@@ -35,8 +35,25 @@ make engine/code changes and do NOT run /sync-all-md.
 $tools = "Edit,Read,Write,Bash,Grep,Glob,TaskCreate,TaskUpdate,TaskList"
 
 Write-Host "[weekly_hygiene] $stamp start (model=$Model)"
-& claude -p $prompt --model $Model --allowedTools $tools --dangerously-skip-permissions *>&1 |
+$out = & claude -p $prompt --model $Model --allowedTools $tools --dangerously-skip-permissions *>&1 |
     Tee-Object -FilePath $log
 $code = $LASTEXITCODE
 Write-Host "[weekly_hygiene] exit=$code log=$log"
+
+# A weekly maintenance pass that fails ONLY because the Anthropic account hit a
+# transient billing / availability limit (credit exhausted, rate limit, 429 /
+# 529 overloaded) is not a repo fault. Leaving the task red on that condition
+# fires a false anomaly at every session-start probe until the next weekly run.
+# Detect the transient class, log it loudly, and exit 0 (it self-resolves).
+# Mirrors item 438's gemini-wrapper credit-depletion hardening. The detection
+# scans the captured in-memory stream (not the on-disk log) to dodge the
+# UTF-16/BOM re-read encoding pitfall.
+if ($code -ne 0) {
+    $text = ($out | Out-String)
+    $transient = 'credit balance is too low|rate limit|rate_limit|overloaded|too many requests|status(?: code)? (?:429|529)|insufficient (?:credit|quota)'
+    if ($text -imatch $transient) {
+        Write-Host "[weekly_hygiene] SKIPPED: transient Anthropic API condition (credit/rate/availability) - not a hygiene failure; exiting 0 so the scheduled task is not falsely red."
+        exit 0
+    }
+}
 exit $code
