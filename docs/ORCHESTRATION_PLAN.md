@@ -61,7 +61,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | DSV1 | DS-Valuation | DS P6-G5 residual 1 (AP DoT/burn valuation): extend the DS damage model (agents/daemon_slayer/dps.py compute_dps + effects.py) to value AP damage-over-time burn (Liandry's / Blackfire Torch) beyond the single-rotation ability model. Root-cause-first, offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 597ffc95 |
 | DSV2 | DS-Valuation | DS P6-G5 residual 2 (kill-state item passives): add a takedown/kill-state assumption seam to agents/daemon_slayer/burst.py + dps.py so on-takedown passives (Hubris / Collector / Death's Dance) are valued. Default-OFF byte-identical seam first, offline tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | f1075c38 |
 | DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 27873cc1 |
-| UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | OPEN | - |
+| UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | DONE | 3c123060 |
 | UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
 | UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
 
@@ -75,6 +75,52 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-16 UIX1 DONE (commit 3c123060, item 434). Champ-Select SR 5-phase
+  fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per
+  docs/UI_SCALE_SPEC_V2.md v2.1) on web/js/panels/champ_select.js +
+  champ_select_view.css. Tier-1 frontend, NO ENGINE bump, NO DS/Share change, NO
+  RC restart (ADR-008 asset-hash auto-reload). AUDIT: a read-only general-purpose
+  audit agent ran all 5 phases against the v2.1 tokens; returned 0 MUST-FIX + 4
+  SHOULD-FIX, EVERY claim ground-truth re-verified by the orchestrator (grep
+  hardcoded-px / non-ASCII + targeted reads + the JS click-wiring) before acting -
+  no merge on the agent's word. ORCHESTRATION (auto-pick, logged): INLINE sole
+  orchestrator + ONE read-only audit subagent for the ritual - 2 files (js + css),
+  so per R9 a worktree fan-out was unwarranted; the audit subagent IS the
+  UI-fixture-ritual independent perspective, the orchestrator implements +
+  ground-truth-gates. ASCII PASS (0 non-ASCII both files, re-confirmed post-edit).
+  FIXES (all CSS, zero/low render risk): (1+2) .csv-pr-champ-name +
+  .csv-pr-champ-wr 18px -> var(--fs-sm) - the SR foregrounded YOUR RECORD headline;
+  --fs-sm == 18px (tokens.css:50) so byte-identical render, pure tokenization. (3)
+  .csv-lock-btn 32px min-height documented inline as a SANCTIONED hit-floor
+  exception (full-width display:block button on a mouse-driven 1920x1080 desktop =
+  the horizontal target is the whole card width; the short vertical height is the
+  operator's deliberate de-emphasis) - converts an undocumented sub-42 flag into a
+  rationale'd exception, NO render change (the reduced height is preserved, not
+  re-grown). (4) .csv-build-row + min-height: var(--hit-min) (42px, tokens.css:91)
+  - hit-target parity with the compliant sibling .csv-build-path-row (2298);
+  collapsed SR-primary rows carry the base class but stack multiple 42px path-rows
+  so the floor is a no-op there (JS 3180/3187), a real fix on the non-collapsed SR
+  experimental / ARAM / Arena variant click row. NOT-FINDINGS (verified): below-floor
+  10px (2209) + 11px (2219) = decorative ::after / empty-cell pseudo-glyph markers
+  on 20px spell icons (not a text tier); 11px (2520) = .csv-duo-cell-tag with a
+  DOCUMENTED operator exception inline (item 178 ledger s234) AND Arena-scoped (out
+  of SR scope); .csv-pr-chip 14px operator-directed exception + the body-zoom popup
+  workaround (spec 200-204 OUT OF SCOPE) per the don't-flag set. NICE-TO-HAVE
+  (logged FUTURE): tokenize the display:none dead rules (.csv-sugg-pickorder-cell
+  16px, .csv-pb-mood-* 14/16px) + decorative-glyph normalization - non-rendering /
+  decorative, deferred. TDD note: a CSS-only fixture audit has no failing-test-first
+  target (no Python logic changed); the gate is the snapshot + render suite staying
+  green. Gate (Tier-1 frontend per R5): RC tests/ 7982 passed / 2 skip / 109
+  subtests, exit 0 (ZERO delta vs cycle 35/36 - a CSS edit cannot touch the Python
+  logic suite); ASCII grep clean post-edit; no DS suite / Share / restart. VISUAL:
+  Claude_Preview capture OWED - the preview MCP refuses to attach to the live
+  pythonw :8888 (PID 2104) and freeing / duplicating the port would destabilize the
+  running RC + this loop, so the visual is a carry-forward (per the directive's
+  "live capture is OWED" + the EXCLUDED Game-PC :8892 note); render deltas proven
+  deterministically instead (--fs-sm=18px byte-identical, --hit-min=42px floor). No
+  frozen files touched. NEXT (plan order): UIX2 (Home + Settings 5-phase audit),
+  then UIX3 (Session + detached-PGR).
 
 - 2026-06-16 DSV3 DONE (commit 27873cc1, item 433). Lethality-vs-sustained-AD
   burst-ranker valuation - P6-G5 residual 3, Tier-2 ENGINE 1.125.0 -> 1.126.0, DS

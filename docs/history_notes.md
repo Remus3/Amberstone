@@ -57,6 +57,18 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 34: DSV1 AP damage-over-time burn valuation [item 431]
+
+- DSV1 (commit `597ffc95`). Tier-2 ENGINE 1.123.0 -> 1.124.0; DS :8893 restarted (taskkill pid 5464 + `schtasks /Run /TN RC-DaemonSlayer`, live `/health` confirms 1.124.0); Share re-synced (337 files) in the SAME commit. Source: `docs/ORCHESTRATION_PLAN.md` DSV1 (P6-G5 residual 1).
+- ROOT CAUSE: `compute_ability_dps` (the AP/mage item scorer) mirrors `compute_dps`'s item AMP + PEN handling (ability_dps.py:950-965) but NEVER folded the item PERIODIC procs, so ability-triggered AP burn DoTs (Liandry Torment, Blackfire Baleful Blaze, Demonic Azakana) were invisible to the mage ranking even though the auto scorer has valued them via `_periodic_proc_dps` since Phase 4 - exactly the P6-G5 "AP DoT burn vs single-rotation `ability` model" gap (Veigar/Lux Liandry buried ~#23).
+- FIX (completed the mirror): `_effects_types.py` PeriodicProc gains `ability_dot` (default False = byte-identical); `dps.py _periodic_proc_dps` gains `ability_dot_only` (default False = compute_dps byte-identical) folding ONLY tagged procs; `ability_dps.py` builds a `CallContext` + folds `_periodic_proc_dps(ability_dot_only=True)` into `total_ability_dps`. DATA: ADD Liandry Torment (6653 + Arena 226653) 2% target max HP/s magic (16.12.1 Meraki 6%/3s, the Azakana sibling); FIX Blackfire Baleful (2503 + Arena 222503) to the Meraki total 60+6%AP/3s = 10+1%AP per 0.5s tick (the prior 6+6%AP mis-read the wiki `{{ap|60/6}}` tick-count as a melee/ranged split); TAG Demonic Azakana (4637 + Arena 224637).
+- DESIGN GUARD (the hard part): the first cut folded ALL time-based procs and POLLUTED the mage ranking with tank Immolate auras (Sunfire/Hollow Radiance), physical spellblades (Iceborn/Trinity Force), on-cast nukes. Narrowed via the curated `ability_dot` tag (mirrors the `_AA_ROUTED_ON_HIT_KEYS` allowlist precedent) so only the 3 named/sibling burn families lift. LIVE-PROVEN: Veigar L11 SR mage ranking now Liandry 6653 #1 (delta 45.5) at target_max_hp=2500 (was ~#23), Blackfire 2503 #1 at tmh=0; no pollution.
+- ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator (4 coupled engine files share one proc contract; R9 + OVL1/OVL2 precedent). Verifier subagent SKIPPED per R7 (single-thread inline edit, no stale pipe) - fresh re-verify done instead. TDD: `test_dsv1_ability_burn_valuation.py` (8 tests) red-first -> green, anchored to verbatim 16.12.1 Meraki + the exact mitigated burn delta.
+- Gate (Tier-2 dual suite): DS-dir **7103 passed / 1 skip / 1942 subtests**; RC tests/ **7981 passed / 2 skip / 109 subtests** (the lone failure was the pre-restart live-:8893 version assertion in test_sr_draft_profile_engine, confirmed green post-restart); ruff + py_compile clean; `ds_share_sync --check` in sync (337 files); CHANGELOG prepended. Churn fixed: 2 Blackfire data pins + 1 LiandrysSuffering pin re-pinned to Meraki; 3 rank_mage ranking pins resolved by the `ability_dot` narrowing (no test edit).
+- FUTURE (untagged, deliberate scope line): Luden's / Malignance / Stormsurge / Night Harvester (magic on-cast/ult-zone procs, not sustained DoTs) + Pyromancer's Cloak (Arena flat burn). NEXT (plan order): DSV2 (kill-state item passives, burst.py seam), then DSV3, then UIX1/2/3.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 33: OVL2 Pengu Surface-C plugin stub + client-origin-gated CORS [item 430]
 
 - OVL2 (commit `aab53e37`). Tier-1 frontend + route. NO ENGINE bump, NO DS/Share change. RC restarted pid 2104 (handler re-import). Source: `docs/ORCHESTRATION_PLAN.md` OVL2.
