@@ -9,6 +9,39 @@ P3 charter scope (DEEP_AUDIT_CHARTER line 52): vanguard/CV/capture caveats out;
 
 ---
 
+## DONE - cycle 31 (item 428): A3b-2 sub-slice - role/SR-profile prompt-substrate raw glyphs -> ASCII (3 files, Tier-1)
+
+- The role-profile + SR/champion-profile Haiku prompt-substrate raw non-ASCII BYTES.
+  `role_profiles.py` (5 U+2192 combo arrows in role prose -> `->`; 39 U+2022 leading
+  laning/ARAM list bullets in VAYNE_TOP_PROFILE + ARAM_ITEM_RULES -> `- `),
+  `coach_integration/_profiles.py` (2 U+2192 in CHAMPION_PROFILES mechanics prose),
+  `coach_integration/_sr_prompt.py` (1 U+2192 in the SR `full_build` `" -> ".join(fb)`).
+  commit `fcd05f3d`.
+- Per-hit override (NOT GLYPH_MAP `*` = multiply): the U+2022 are LEADING LIST markers
+  -> `- ` (a `re.sub(r'(?m)^-(?=\S)','- ')` restored the bullet space the raw
+  `"• "`->`"-"` replace dropped).
+- Split-on proof (per-hit, NOT a sed): the ONLY repo U+2192 `re.split` consumers are
+  `aram_coach.py:147` (Haiku item_build wire) + `audit_ddragon_items.py:86` (golden
+  fixtures) - NEITHER reads these 3 files (`aram_item_context`/`ARAM_ITEM_RULES` are
+  imported ONLY by `_profiles.py`, never `coaches/`); the SR `full_build` `" -> ".join`
+  is producer-only (never split back). ZERO test asserts these glyphs.
+- SCOPE = SOURCE BYTES only (the P3 byte-purge invariant). DEFERRED new sub-slice:
+  `_sr_prompt` (the whole SR + ARAM Haiku system prompt) + `role_profiles.aram_item_context`
+  still carry `\uXXXX` ESCAPES emitting U+2014 EM-DASHES / U+2550 banners / U+2192 -
+  7-bit-ASCII SOURCE, OUT of P3 byte-scope (cycle-22 precedent: ASCII-escapes are a
+  separate runtime-output concern), so this slice asserts source bytes NOT emitted output.
+  The escaped-glyph emitted normalization (esp. the em-dashes in a live Haiku prompt) is an
+  LLM-prompt-INPUT change (a byte change = a model-input change) -> its own validated gate.
+- Gate (Tier-1, prompt-substrate local logic, no engine/schema/Share/ENGINE/DS-restart/
+  live-RC-restart): py_compile 3/3; all 3 files ZERO raw non-ASCII; ruff clean; owning
+  suite (test_role_profiles_ascii_item428 + test_coach_prompt_format_safe +
+  test_sr_coach_choices_emit + test_coach_choices_alt_hotkey + test_cc_conditional_impact_context
+  + test_enemy_cc_threat_context + test_cc_blended_ehp_context + test_ds_pick_consumption_p1l11
+  + test_p2w1_app_b) = 226 passed / 31 subtests; NEW guard
+  `tests/test_role_profiles_ascii_item428.py` (3) green.
+
+---
+
 ## DONE - cycle 30 (item 427): A3b-2 sub-slice - dashboard/summary cluster glyphs -> ASCII (3 files, Tier-1)
 
 - The user-facing last-match / defensive-picks / aftergame-summary readable-math +
@@ -260,13 +293,18 @@ TOOL = tools/p3_ascii_sweep.py (comment-token + docstring-token + log/print-stri
   - scripts/rebuild_sim_fixtures.py: the U+2192 / U+00B7 in GOLDEN fixture item_build /
     next / dragon_state values = the SAME wire arrow scripts/audit_ddragon_items.py:86
     re.split consumes; change fixtures + splitter together.
-  - role_profiles.py: U+2022 emitted laning bullets + U+2192 combo arrows (emitted text).
+  - role_profiles.py: DONE cycle 31 (item 428) - 39 U+2022 leading bullets -> `- ` + 5
+    U+2192 combo arrows -> `->` (raw bytes). The aram_item_context `→` ESCAPES remain
+    (ASCII source, emitted-glyph deferred sub-slice). See above.
   - coaches/adaptation_hint_{champion,cli}.py: DONE cycle 29 (item 426) - arrows/marker -> ^/v/-,
     separator + the line-342 rsplit boundary -> " | " (Discord-safe, not GLYPH_MAP "*"). See above.
   - tft/tft_pbe_{engine,data}.py notes + tft/tft_vision_reader.py Sonnet vision-prompt
     U+2550 banners (LLM prompt content - a byte change = a model-input change).
-  - coach_integration/{_profiles,_sr_prompt}.py: SR-prompt mechanics text + the U+2192
-    build-string join.
+  - coach_integration/{_profiles,_sr_prompt}.py: DONE cycle 31 (item 428) - the RAW BYTES
+    (2 U+2192 CHAMPION_PROFILES prose + the 1 U+2192 SR `full_build` join) -> `->`. DEFERRED
+    escaped-glyph sub-slice: `_sr_prompt`'s whole SR + ARAM Haiku system prompt is authored
+    in `\uXXXX` ESCAPES emitting U+2014 EM-DASHES + U+2550/U+2500 banners + U+2192/U+2022
+    (ASCII source, out of P3 byte-scope) - an LLM-prompt-INPUT change, own validated gate.
   - dashboard/builders_last_match.py + core/{defensive_picks,aftergame_summary}.py:
     DONE cycle 30 (item 427) - readable-math (U+2212/U+00D7/U+2264/U+2265/U+00B1) + the 3 middot
     `.join` separators -> ASCII (` | ` / ` - `, per-hit not GLYPH_MAP `*`). builders+defensive 100%
