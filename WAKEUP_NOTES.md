@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 32: OVL1 Electron Phase-4 overlay settings - change-pulse toggle + ACTIVE auto-revert seconds [item 429]
+
+- First session of the operator-directed plan REFILL (the A1-F1 + HZ + LIFT/CS + P6 set drained -> director NO_WORK -> loop stopped; operator chose "gemini proposes batch + relaunch" with scope = Electron + DS + UI/UX). 8 new OPEN sessions seeded into `docs/ORCHESTRATION_PLAN.md` (OVL1/2, DSV1/2/3, UIX1/2/3, gemini-3-pro planning pass); relaunched; director picked OVL1.
+- OVL1 (commit `4d09f8ac`). Tier-1 frontend + rc-shell. NO ENGINE bump, NO DS/Share, NO live RC restart (web = ADR-008 asset-hash; rc-shell is a separate Electron app).
+- `?overlay=1` gains 2 operator settings in the in-overlay controls pane: a **change-pulse toggle** + the **ACTIVE auto-revert delay (s)**. Both wired to REAL consumers: `pulseNotify` gates the existing `web/js/overlay_pulse.js` glow (observer short-circuits when off, fire-time check); `activeRevertSec` replaces the hardcoded 20s in the rc-shell main-process auto-revert.
+- Persistence: NEW shared helper `web/js/lib/overlay_settings.js` (localStorage mirror + rc-shell IPC mirror). NEW preload `window.rcShell` bridge (`rc-shell:overlay-settings:{get,set}`) - rc-shell was Phase-1 (empty preload), this is the FIRST renderer<->main IPC. `overlay_state.js`: `overlaySettingsFrom` + `mergeOverlaySettingsPatch` (pure, [3,120] clamp, position/panelSet/companion keys preserved). `main.js` (rc-shell, NOT frozen main.py): ipcMain handlers + applyOverlaySettings.
+- Panel restructure: settings strip mounts once (`data-ovds-init`), shows independent of a resolved champion; knob strip relocated to `#ovds-knobwrap` (champ change no longer wipes settings).
+- INLINE not worktree-fanned (auto-pick, logged): web + rc-shell share a tight IPC contract + rc-shell node_modules is gitignored (worktree cannot npm test) -> one coherent impl + fresh full-suite gate (R9).
+- Gate: rc-shell **163 node tests** (+13 settings cases + IPC wiring pin); RC **7969 passed / 2 skipped / 109 subtests exit 0** (+ new DOM-contract test + a Playwright pulse-suppression gate test); ruff/py_compile/node --check clean. **5-phase UI audit PASS (0 MUST-FIX)**, rendered proof `overlay_sr.png`. OWED: in-game visual over a real match (Game-PC MCP :8892 down).
+- NEXT (plan order): **OVL2** (Pengu Surface-C code-stub + CORS in dashboard/_handler.py), then DSV1/2/3 (P6-G5 scorer-valuation residual), then UIX1/2/3 (5-phase audits).
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 31: P3 A3b-2 sub-slice - role/SR-profile prompt-substrate raw glyphs -> ASCII [item 428]
 
 - Third A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 list. `role_profiles.py` + `coach_integration/{_profiles,_sr_prompt}.py` (commit `fcd05f3d`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
@@ -23,14 +36,3 @@
 - Blast-radius proof (per-hit, NOT a sed): the ONLY split/regex consumers of any of these glyph classes repo-wide = aram_coach.py:147 + audit_ddragon_items.py:86, both on U+2192 (the B2 wire-arrow, separate slice) - neither touches this cluster. Workmap "snapshot-fixture-backed" flag was an OVER-FLAG: cluster strings in 0 test asserts; sr.json glyphs are INPUT (wave/map) not output -> snapshot suite passes, no fixture regen.
 - Gate (Tier-1): py_compile 3/3; ruff clean; builders+defensive 0 non-ASCII; owning suite (test_last_match_by_ts + test_p2w1_core_d + test_p2w1_dash_e + snapshot_panels last_match/active_match/panel_snapshots) 55 passed / 15 subtests; NEW guard tests/test_last_match_ascii_item427.py (3) green.
 - DONT-REDO: this cluster is ASCII-COMPLETE + guard-locked (aftergame's 2 status markers are the only intended residual -> P8). NEXT A3b-2 = aram/brawl/arena coach prompt banners + item_build wire-arrow B2 (11 peer tests), rebuild_sim_fixtures golden arrows, role_profiles bullets, tft_pbe_*/tft_vision_reader LLM prompts, coach_integration/{_profiles,_sr_prompt}. Map: ops/audit/P3_WORKMAP.md.
-
----
-
-# 2026-06-15 - DEEP-AUDIT cycle 29: P3 A3b-2 sub-slice - adaptation_hint coach-emit glyphs -> ASCII [item 426]
-
-- First A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 NEXT list. `coaches/adaptation_hint_{champion,cli}.py` (commit `04dbc6a4`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
-- 18 glyph lines / 2 files, per-hit (NOT a sed): U+2191->^, U+2193->v, U+2192->-> (GLYPH_MAP); flat/unknown marker U+00B7->- (repo no-data sentinel); the SEPARATOR U+00B7 -> " | " (the " | ".join + the line-342 insight_card rsplit trim boundary + the 4 cli table separators, all in lockstep).
-- Per-hit override: separator is " | " NOT the GLYPH_MAP default "*" - insight_card is a clipboard/Discord-paste card where *text* renders italic (the original middot was chosen for the same reason). Also fixed a pre-existing doc/code drift (docstring claimed a "*" boundary while code rsplit on the middot - both now " | ").
-- Blast radius = exactly 2 files (repo grep: sole glyph-splitting consumer = adaptation_hint_champion.py:342; no test asserts the glyphs; _supervisor_http serves the card as opaque text). pre-existing `str | None` + `today|24h` help pipes untouched.
-- Gate (Tier-1): py_compile 2/2; both modules ZERO non-ASCII; ruff clean; owning suite (test_p2w1_coach_b format_hint_line + test_round18 insight_card max_chars-trim + test_coach_prompt_format_safe) 30 passed; NEW guard tests/test_adaptation_hint_ascii_item426.py (2) green.
-- DONT-REDO: this pair is ASCII-COMPLETE + guard-locked. NEXT A3b-2 = the remaining load-bearing strings (aram/brawl/arena coach prompt banners + item_build wire-arrow B2 w/ 11 peer tests, rebuild_sim_fixtures golden arrows, role_profiles bullets, tft_pbe_*/tft_vision_reader LLM prompts, coach_integration/{_profiles,_sr_prompt}, builders_last_match + core/{defensive_picks,aftergame_summary} snapshot text). Map: ops/audit/P3_WORKMAP.md.
