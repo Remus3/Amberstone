@@ -119,3 +119,19 @@ _(SHIPPED 2026-05-20 `ab3f553` + `00051f3`: `core/draft_elo.py` + `core/draft_el
 - **Fandom `leagueoflegends.fandom.com` wiki** - the OLD fork; the official wiki moved to `wiki.leagueoflegends.com` in 2023 and Fandom is stale within ~1 patch.
 - **CommunityDragon/LeaguePatchNotes** - archived 2020, patches 8.13-8.22 only, 0 active forks. Patch-aware change tracking stays manual in the DS audit loop.
 - **All other generic LCU client repos, OCR HUDs, win-predictor clones, replay parsers** - duplicates or subsets of RC's existing surfaces. The complete CLOSED list across the 5 research slices is in the agent transcripts; do not re-research.
+
+### Competitor lift teardown - 2026-06-16 (Section 7b deep-dive, run -03)
+
+Full artifact: `docs/COMPETITOR_LIFT_2026-06-16.md`. 3 net-new targets (Aggregator C GPI / Overlay App E overlay / Overlay App F companion); RC-HAVE flags ground-truth re-verified. The overlay app E live-benchmarking finding's net-new half SHIPPED in-run (item 443, `core/live_benchmark_band.py` - live cs+level vs the player's own per-champion percentile; the personal-percentile half RC only used post-game).
+
+**FUTURE (worth noting; condition to act):**
+- **Aggregator C GPI 8-axis player skill radar** - rolling per-axis percentile (Fighting/Farming/Vision/Aggression/Toughness/Teamplay/Versatility/Consistency) over the player's own rewind_history.db, with a weakest-axis tip. MED: new compute + radar UI, all-local data, no new dep. Methodology-only (Aggregator C GPI is closed SaaS, see CLOSED line above) - reimplement clean. Trigger: a "Player Profile" page after PGR S2.
+- **Overlay App F pre-game lobby player-tags** (smurf / loss-streak / one-trick / tilt) - rule classifiers over each lobby participant's recent Match-V5. MED: new per-lobby Riot fan-out (10 players, rate-limit + caching work); uses the existing key (ADR-006 champ-select team context). Trigger: when champ-select wants opponent reads.
+- **Overlay App F post-game warding heatmap** - WARD_PLACED x/y from rewind_history timelines binned to a grid + canvas over a static minimap. MED: post-game only (RC's live-no-coordinates constraint), new canvas panel. Pairs with the s220 PGR reframe.
+- **Overlay App E enemy ult / ability CD timers** - DS already has ability-haste-aware CD math; the gap is the ENEMY cast-detection trigger (Live Client does not expose enemy CDs). MED: cast-detect plumbing (vision / event heuristics). Self/ally ult timers are the cheaper subset.
+- **Overlay App E LCU rune-page auto-write + personal-WR build override** - push DS-recommended runes into the client (mirror lcu_rune_writer) + promote the player's own high-WR build over the DS default when rewind_history beats it. MED: rune-write touches frozen lcu_client.py (needs a non-frozen wrapper); the personal-WR override is the cheaper local-data half.
+- **LBAND1 live wire-in** - feed `core/live_benchmark_band` into the deterministic-coaching `/api/state` surface + the overlay, validate vs a real/replayed game, then flip (do-not-flip-blind). Item 443 shipped the generator; this is the wire + validate + flip.
+
+**SUPERSEDED (no lift):**
+- **Overlay App F per-ability/per-phase damage breakdown** - DS per-spell DPS/burst is already richer than the observed split. No lift.
+- **Overlay App E post-game behavioral grading** - mostly at-parity with RC's PGR + the aggregator G reframe; only the "biggest swing moment" timeline-delta localizer is net-new and folds into the PGR work.
