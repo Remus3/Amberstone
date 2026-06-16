@@ -57,6 +57,19 @@
 
 ---
 
+# 2026-06-16 - DEEP-AUDIT cycle 39: UIX3 Session/History detached-PGR 5-phase fixture audit [item 436]
+
+- UIX3 (commit `7417a7a8`). Tier-1 frontend, NO ENGINE bump, NO DS/Share change, NO RC restart (ADR-008 asset-hash auto-reload). Source: `docs/ORCHESTRATION_PLAN.md` UIX3 (last of the UIX-* UI-audit batch + the last OPEN plan session).
+- TASK: 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per `docs/UI_SCALE_SPEC_V2.md` v2.1) on the HIST2 detached historical PGR surface - `web/js/panels/historical_pgr.js` + `last_match.js` + `post_game_phases.js` + CSS + the `#view-historical-pgr` DOM (index.html 1905-1988).
+- SCOPE TRUTH: the historical view reuses lm-* / lm-wpa-* classes (all in `last_match.css`, ALREADY fully item-182 v2.1-swept - every font-size a token or a documented OPERATOR EXCEPTION) -> 0 MUST-FIX there; `historical_pgr.js` + `post_game_phases.js` 0 non-ASCII; DOM reuses globally-swept lm-*/view-section-* classes. The ONLY never-audited chrome = the bespoke `.hpgr-back` (Back button) + `.hpgr-tag` (ARCHIVE pill) in `home.css` (HIST2 item ac404c13).
+- AUDIT: read-only general-purpose audit subagent ran all 5 phases vs the v2.1 tokens (verified live tokens.css: --fs-xs 16 / --fs-sm 18 / --hit-min 42); the orchestrator ground-truth re-verified EVERY claim against the files before acting (no merge on the agent's word).
+- ORCHESTRATION (auto-pick under no-AskUserQuestion, logged): INLINE sole orchestrator + ONE read-only audit subagent (2 CSS files in the merge set - home.css + last_match.css, R9 - the UIX1/UIX2/DSV/OVL inline precedent).
+- 3 MUST-FIX SHIPPED (all `home.css`, ASCII-only, HEAD/work non-ASCII byte delta 0 = 612==612): (1) `.hpgr-back` font-size 13px -> `var(--fs-xs)` (bare sub-16, no rationale; rule bar >= --fs-xs); (2) `.hpgr-back` + `min-height: var(--hit-min)` 42 hit-floor + `display:inline-flex` centering for the `<- Back` label (~21px clickable was below 42 + NOT a full-width display:block exception, so the floor applies; the reused lm-tab/lm-rank-select/lm-section-head-btn already carry it); (3) `.hpgr-tag` font-size 11px -> `var(--fs-xs)` (7-char ARCHIVE pill, not the 3-char badge-density case the sanctioned lm-tc-score-badge 14px exceptions cite - tokenize to floor, not a NEW unapproved operator-exception). NICE-deferred (FUTURE): `.hpgr-tag` 999px pill radius + 1px/7px off-grid padding (pre-existing decorative; spec bans only NEW off-grid).
+- Gate (Tier-1 frontend per R5): RC `tests/` (incl `snapshot_panels/`) 7982 passed / 2 skip / 109 subtests, exit 0 - ZERO delta vs cycles 37/38 (CSS-only cannot touch the Python suite); ASCII delta 0 (proven by diffing HEAD vs working non-ASCII byte count of home.css, 612==612; added only ASCII `var()` tokens + comments); no `.py` touched so no `py_compile`/`ruff` + NO DS suite / `ds_share_sync`. VISUAL: Claude_Preview OWED - the preview MCP refuses to attach to the live external `pythonw` :8888 (PID 2104; only manages servers IT starts) + a 2nd `main.py` conflicts on :8889/LCU singletons + carries no historical match state; render deltas proven DETERMINISTICALLY (token == tokens.css value). No frozen files touched.
+- NEXT: the A1-UIX3 orchestration plan set is now FULLY DONE/CLOSED - the Gemini director should refill `docs/ORCHESTRATION_PLAN.md` with a new operator-scoped batch or emit NO_WORK and let the loop self-terminate.
+
+---
+
 # 2026-06-16 - DEEP-AUDIT cycle 38: UIX2 Home + Settings 5-phase fixture audit [item 435]
 
 - UIX2 (commit `4b1804da`). Tier-1 frontend, NO ENGINE bump, NO DS/Share change, NO RC restart (ADR-008 asset-hash auto-reload). Source: `docs/ORCHESTRATION_PLAN.md` UIX2 (second of the UIX-* UI-audit batch).
