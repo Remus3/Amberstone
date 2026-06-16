@@ -381,3 +381,139 @@ test("mergeOverlayPatch: non-object previous overlay is discarded", () => {
   const next = ov.mergeOverlayPatch({ overlay: "junk" }, { x: 3 });
   assert.deepStrictEqual(next.overlay, { x: 3 });
 });
+
+// --- OVL1: overlay-settings model (pulse-notify + ACTIVE auto-revert seconds) --
+
+test("OVERLAY_SETTINGS_DEFAULTS: pulseNotify on, revert 20s (== activeRevertDelayMs)", () => {
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.pulseNotify, true);
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.activeRevertSec, 20);
+  // the seconds setting and the legacy ms default must agree (one truth).
+  assert.strictEqual(
+    ov.OVERLAY_SETTINGS_DEFAULTS.activeRevertSec * 1000,
+    ov.OVERLAY_DEFAULTS.activeRevertDelayMs
+  );
+});
+
+test("overlaySettingsFrom: defaults when nothing saved", () => {
+  assert.deepStrictEqual(ov.overlaySettingsFrom({}), {
+    pulseNotify: true,
+    activeRevertSec: 20,
+  });
+});
+
+test("overlaySettingsFrom: reads saved overlay.settings", () => {
+  const s = ov.overlaySettingsFrom({
+    overlay: { settings: { pulseNotify: false, activeRevertSec: 45 } },
+  });
+  assert.deepStrictEqual(s, { pulseNotify: false, activeRevertSec: 45 });
+});
+
+test("overlaySettingsFrom: activeRevertSec clamped to [3,120] and rounded", () => {
+  const f = (v) =>
+    ov.overlaySettingsFrom({ overlay: { settings: { activeRevertSec: v } } })
+      .activeRevertSec;
+  assert.strictEqual(f(0), 3);
+  assert.strictEqual(f(-99), 3);
+  assert.strictEqual(f(9999), 120);
+  assert.strictEqual(f(12.7), 13);
+});
+
+test("overlaySettingsFrom: non-boolean pulse / non-finite revert -> defaults", () => {
+  const s = ov.overlaySettingsFrom({
+    overlay: { settings: { pulseNotify: "yes", activeRevertSec: NaN } },
+  });
+  assert.deepStrictEqual(s, { pulseNotify: true, activeRevertSec: 20 });
+});
+
+test("overlaySettingsFrom: pulseNotify false is honored (boolean false valid)", () => {
+  assert.strictEqual(
+    ov.overlaySettingsFrom({ overlay: { settings: { pulseNotify: false } } })
+      .pulseNotify,
+    false
+  );
+});
+
+test("overlaySettingsFrom: garbage-safe (null / arrays / strings / junk overlay)", () => {
+  for (const g of [
+    null,
+    undefined,
+    [],
+    "junk",
+    42,
+    {},
+    { overlay: null },
+    { overlay: "junk" },
+    { overlay: { settings: "junk" } },
+    { overlay: { settings: [] } },
+  ]) {
+    assert.deepStrictEqual(
+      ov.overlaySettingsFrom(g),
+      { pulseNotify: true, activeRevertSec: 20 },
+      JSON.stringify(g)
+    );
+  }
+});
+
+test("mergeOverlaySettingsPatch: writes overlay.settings, preserving x/y/panelSet + companion keys", () => {
+  const prev = {
+    x: 1,
+    width: 520,
+    overlay: { x: 9, y: 8, panelSet: "build", settings: { pulseNotify: true, activeRevertSec: 20 } },
+  };
+  const next = ov.mergeOverlaySettingsPatch(prev, { activeRevertSec: 30 });
+  assert.strictEqual(next.x, 1);
+  assert.strictEqual(next.width, 520);
+  assert.strictEqual(next.overlay.x, 9);
+  assert.strictEqual(next.overlay.y, 8);
+  assert.strictEqual(next.overlay.panelSet, "build");
+  assert.deepStrictEqual(next.overlay.settings, { pulseNotify: true, activeRevertSec: 30 });
+});
+
+test("mergeOverlaySettingsPatch: clamps + drops unknown / wrong-typed patch fields", () => {
+  const next = ov.mergeOverlaySettingsPatch({}, {
+    activeRevertSec: 1, // clamp up to 3
+    pulseNotify: "nope", // wrong type -> dropped
+    bogus: 5, // unknown -> dropped
+  });
+  assert.strictEqual(next.overlay.settings.activeRevertSec, 3);
+  assert.ok(!("pulseNotify" in next.overlay.settings));
+  assert.ok(!("bogus" in next.overlay.settings));
+});
+
+test("mergeOverlaySettingsPatch: pulseNotify false persists", () => {
+  const next = ov.mergeOverlaySettingsPatch({}, { pulseNotify: false });
+  assert.strictEqual(next.overlay.settings.pulseNotify, false);
+});
+
+test("mergeOverlaySettingsPatch: never mutates inputs", () => {
+  const prev = { overlay: { settings: { activeRevertSec: 20 } } };
+  const patch = { activeRevertSec: 40 };
+  const next = ov.mergeOverlaySettingsPatch(prev, patch);
+  assert.deepStrictEqual(prev, { overlay: { settings: { activeRevertSec: 20 } } });
+  assert.deepStrictEqual(patch, { activeRevertSec: 40 });
+  assert.notStrictEqual(next.overlay.settings, prev.overlay.settings);
+});
+
+test("mergeOverlaySettingsPatch: garbage prev -> fresh object carrying just the clean patch", () => {
+  for (const g of [null, undefined, [], "junk", 42]) {
+    const next = ov.mergeOverlaySettingsPatch(g, { activeRevertSec: 25 });
+    assert.deepStrictEqual(
+      next,
+      { overlay: { settings: { activeRevertSec: 25 } } },
+      JSON.stringify(g)
+    );
+  }
+});
+
+test("overlaySettingsFrom round-trips a mergeOverlaySettingsPatch write (position survives)", () => {
+  const saved = ov.mergeOverlaySettingsPatch(
+    { overlay: { x: 5, panelSet: "coach" } },
+    { pulseNotify: false, activeRevertSec: 33 }
+  );
+  assert.deepStrictEqual(ov.overlaySettingsFrom(saved), {
+    pulseNotify: false,
+    activeRevertSec: 33,
+  });
+  assert.strictEqual(saved.overlay.x, 5);
+  assert.strictEqual(saved.overlay.panelSet, "coach");
+});

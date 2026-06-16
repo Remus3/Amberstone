@@ -1,17 +1,25 @@
 // rc-shell/src/preload.js
 //
-// Phase 1 preload: intentionally near-empty.
+// Minimal, allow-listed renderer<->main bridge (OVL1, Phase 4).
 //
-// The dashboard at RC_ORIGIN is a self-contained web app - it does not need any
-// Node/Electron APIs injected to render. We keep contextIsolation: true and
-// nodeIntegration: false in main.js, so the loaded page runs as a plain web
-// page with no privileged bridge. That is the safest posture for Phase 1
-// (Vanguard-safe, no attack surface).
-//
-// When Phase 2+ needs the renderer to talk to the main process (e.g. report a
-// preset change from an in-page control), expose a minimal, allow-listed bridge
-// here via contextBridge.exposeInMainWorld. Do NOT expose ipcRenderer raw.
+// The dashboard at RC_ORIGIN is a self-contained web app and needs no Node /
+// Electron APIs to render. The ONLY privileged surface we expose is the overlay
+// settings round-trip: the ?overlay=1 surface lets the operator toggle the
+// change-pulse and set the ACTIVE auto-revert delay, and those persist into the
+// shell config (across launches) over these two channels. contextIsolation is
+// on and the raw ipcRenderer is NEVER handed to the page - only two thin,
+// promise-returning wrappers over named invoke channels. main.js owns the
+// ipcMain handlers + applies the settings.
 
 "use strict";
 
-// No bridge exposed in Phase 1.
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("rcShell", {
+  // -> Promise<{ pulseNotify: boolean, activeRevertSec: number }>
+  getOverlaySettings: () => ipcRenderer.invoke("rc-shell:overlay-settings:get"),
+  // patch: { pulseNotify?: boolean, activeRevertSec?: number }
+  // -> Promise<resolved settings>
+  setOverlaySettings: (patch) =>
+    ipcRenderer.invoke("rc-shell:overlay-settings:set", patch),
+});

@@ -48,7 +48,7 @@
 const path = require("path");
 const https = require("https");
 const http = require("http");
-const { app, BrowserWindow, Menu, screen, shell, globalShortcut } = require("electron");
+const { app, BrowserWindow, Menu, screen, shell, globalShortcut, ipcMain } = require("electron");
 
 const cfgmod = require("./config");
 const store = require("./store");
@@ -86,7 +86,8 @@ let lastSurface = null; // de-dupe redundant show/hide churn.
 let lastMode = ""; // last mode_key seen by the poll (for hotkey re-apply).
 let panelSet = null; // current overlay panel set; null = plain overlay=1.
 let activeRevertTimer = null; // setTimeout wakeup for the ACTIVE auto-revert.
-const activeRevert = ov.makeActiveRevert({}); // pure deadline state (20s default).
+let overlaySettings = ov.overlaySettingsFrom({}); // operator overlay settings (OVL1); loaded from saved at boot.
+let activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 }); // pure deadline state.
 let updateChannel = upd.DEFAULT_CHANNEL; // stable/dev release channel (Phase 5).
 let updateInitialTimer = null; // one-shot delay before the first update check.
 let updateIntervalTimer = null; // recurring update-check handle.
@@ -404,6 +405,11 @@ function createWindow() {
   const saved = store.load(statePath(), {});
   const cfg = cfgmod.resolveConfig(saved, process.env);
 
+  // OVL1: load the operator overlay settings + aim the ACTIVE auto-revert at
+  // the saved delay before any hotkey can arm it.
+  overlaySettings = ov.overlaySettingsFrom(saved);
+  activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 });
+
   originHost = cfgmod.originHost(cfg.origin);
   resolvedOrigin = cfg.origin;
 
@@ -575,7 +581,36 @@ function scheduleActiveRevert() {
       overlayClickThrough = true; // auto-revert to the passive HUD.
       applyClickThrough();
     }
-  }, ov.OVERLAY_DEFAULTS.activeRevertDelayMs);
+  }, overlaySettings.activeRevertSec * 1000);
+}
+
+// --- OVL1: apply changed overlay settings live -------------------------------
+// Rebuild the pure deadline state on the new delay so the next arm() honors it,
+// and if the overlay is ACTIVE right now, re-arm immediately so a just-changed
+// timer takes effect without waiting for the next hotkey press.
+function applyOverlaySettings() {
+  activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 });
+  if (!overlayClickThrough) {
+    scheduleActiveRevert();
+  }
+}
+
+// IPC bridge handlers (OVL1). The ?overlay=1 renderer reads + writes the
+// operator overlay settings through the preload bridge; the state file is the
+// authority. set persists via the pure merger (overlay position/panelSet +
+// companion keys survive), re-resolves, and applies the new delay live.
+function registerIpc() {
+  ipcMain.handle("rc-shell:overlay-settings:get", () => {
+    overlaySettings = ov.overlaySettingsFrom(store.load(statePath(), {}));
+    return overlaySettings;
+  });
+  ipcMain.handle("rc-shell:overlay-settings:set", (_event, patch) => {
+    const merged = ov.mergeOverlaySettingsPatch(store.load(statePath(), {}), patch);
+    store.save(statePath(), merged);
+    overlaySettings = ov.overlaySettingsFrom(merged);
+    applyOverlaySettings();
+    return overlaySettings;
+  });
 }
 
 // Show/hide the two surfaces to match a resolved surface, skipping no-op churn.
@@ -765,6 +800,7 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
+    registerIpc();
     createWindow();
     setupAutoUpdater();
     registerHotkeys();
