@@ -95,8 +95,13 @@ class PersistAndReaderTests(unittest.TestCase):
         self.assertEqual(lsp.lookup({}, "Garen", "Darius", "L6", "full", "all_up"), {})
 
     def test_load_missing_db_failsoft(self) -> None:
-        # A patch with no committed file must degrade to {} (never raise).
-        self.assertEqual(lsp.load_laning_scenarios(mode="sr", patch="0.0.0"), {})
+        # A patch with no committed file must degrade to {} (never raise),
+        # for every mode's per-mode table path (sr/aram/arena all shipped,
+        # items 377/386/388) - guards the per-mode load routing hermetically.
+        for mode in ("sr", "aram", "arena"):
+            self.assertEqual(
+                lsp.load_laning_scenarios(mode=mode, patch="0.0.0"), {}
+            )
 
 
 class EngineCharacterizationTests(unittest.TestCase):
