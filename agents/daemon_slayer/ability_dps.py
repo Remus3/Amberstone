@@ -116,7 +116,8 @@ from .abilities import (
     DamageBlock,
 )
 from .data_loader import DataSnapshot
-from .dps import _armor_factor
+from .dps import _armor_factor, _periodic_proc_dps
+from ._effects_types import CallContext
 from .ehp import effective_cc_duration
 from .effects import (
     ITEM_EFFECTS,
@@ -143,7 +144,7 @@ from .rank import (
     strip_arena_trinkets,
 )
 from .stats import clamp_level
-from .ult_rates import get_spell_casts_per_sec
+from .ult_rates import get_spell_casts_per_sec, get_ult_casts_per_sec
 
 # --- relocated seams (item 241 A2); re-exported so consumer import paths
 # (from .ability_dps import ...) and the cache-reset / cc monkeypatch seams
@@ -1167,6 +1168,39 @@ def compute_ability_dps(
         ))
 
     total_dps = sum(s.dps for s in per_spell)
+    # DSV1 (P6-G5 residual 1): complete the compute_dps item-handling mirror.
+    # The amp + pen layers above (lines ~950-995) already mirror compute_dps so
+    # the two scorers agree on item value; the time-based item PERIODIC procs
+    # were the missing half. Ability-triggered burn DoTs (Liandry's Torment
+    # %max-HP burn, Blackfire's Baleful Blaze, Demonic's Azakana's Gaze) plus
+    # the other every_n_seconds AP procs (Malignance, Stormsurge, Luden's,
+    # spellblades) deal real sustained magic the single-rotation ability model
+    # omitted - the same "always-active convention" compute_dps already uses.
+    # Reuse _periodic_proc_dps directly: every_n_attacks procs are skipped
+    # (total_attacks=0.0), and duration cancels for time-based procs so 1.0 is
+    # a unit anchor. The proc DPS already carries magic-amp + effective-resist
+    # mitigation (magic->MR, physical->armor, true unmitigated).
+    proc_ctx = CallContext(
+        base_ad=ctx.base_ad,
+        bonus_ad=ctx.bonus_ad,
+        level=level,
+        target_armor=target_armor_eff,
+        target_mr=target_mr_eff,
+        ap=ctx.ap,
+        target_max_hp=target_max_hp,
+        caster_max_hp=ctx.caster_max_hp,
+        caster_bonus_hp=ctx.caster_bonus_hp,
+        target_bonus_hp=target_bonus_hp,
+        caster_max_mp=ctx.caster_max_mp,
+        ult_casts_per_sec=get_ult_casts_per_sec(resolved.champion_name, mode),
+        target_current_hp_pct=target_current_hp_pct,
+    )
+    item_proc_dps = _periodic_proc_dps(
+        item_effects, 0.0, 1.0, target_armor_eff, target_mr_eff,
+        mode_mult, proc_ctx, magic_amp=magic_amp, ability_dot_only=True,
+    )
+    if item_proc_dps > 0.0:
+        total_dps += item_proc_dps
     primary = _classify_primary_scaling(per_spell, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
@@ -1210,6 +1244,11 @@ def compute_ability_dps(
         notes.append(
             f"magic damage amp x{magic_amp:.3f} on magic-typed spells "
             "(Abyssal Mask Unmake)"
+        )
+    if item_proc_dps > 0.0:
+        notes.append(
+            f"item burn/proc DPS +{item_proc_dps:.1f} folded into total "
+            "(time-based item periodics: Liandry / Blackfire / Demonic burns etc.)"
         )
     if target_armor_eff != target_armor:
         notes.append(
