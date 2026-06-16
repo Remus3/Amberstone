@@ -63,7 +63,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 27873cc1 |
 | UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | DONE | 3c123060 |
 | UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 4b1804da |
-| UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
+| UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 7417a7a8 |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -75,6 +75,43 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-16 UIX3 DONE (commit 7417a7a8, item 436). Session / History detached
+  historical-PGR (HIST2) 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-
+  TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md v2.1) on
+  historical_pgr.js + last_match.js + post_game_phases.js + CSS + the
+  #view-historical-pgr DOM. Tier-1 frontend, NO ENGINE bump, NO DS/Share, NO RC
+  restart (ADR-008 asset-hash). SCOPE TRUTH: the reused lm-* / lm-wpa-* surface
+  (last_match.css) was already fully v2.1-swept in item 182 (every font-size a
+  token or a documented inline OPERATOR EXCEPTION) -> 0 MUST-FIX there;
+  historical_pgr.js + post_game_phases.js 0 non-ASCII; the DOM reuses globally-
+  swept lm-* / view-section-* classes. The ONLY never-audited chrome = the
+  bespoke .hpgr-back (Back button) + .hpgr-tag (ARCHIVE pill) in home.css
+  (HIST2 item ac404c13). AUDIT: read-only general-purpose audit subagent ran all
+  5 phases vs the v2.1 tokens (verified live tokens.css: --fs-xs 16 / --fs-sm 18
+  / --hit-min 42); the orchestrator ground-truth re-verified EVERY claim against
+  the files before acting - no merge on the agent's word. ORCHESTRATION (auto-
+  pick, logged): INLINE sole orchestrator + ONE read-only audit subagent (2 CSS
+  files in the merge set, R9 - the UIX1/UIX2/DSV/OVL inline precedent). 3 MUST-FIX
+  SHIPPED (all home.css, ASCII-only, HEAD/work non-ASCII byte delta 0 = 612==612):
+  (1) .hpgr-back font-size 13px -> var(--fs-xs) (bare sub-16, no rationale; the
+  rule bar is >= --fs-xs); (2) .hpgr-back + min-height var(--hit-min) 42 hit-floor
+  + display:inline-flex label centering (~21px clickable, NOT a full-width
+  display:block exception -> the floor applies; the reused lm-tab / lm-rank-select
+  / lm-section-head-btn already carry it); (3) .hpgr-tag font-size 11px ->
+  var(--fs-xs) (7-char ARCHIVE pill, not the 3-char badge-density case the
+  sanctioned lm-tc-score-badge 14px exceptions cite - tokenize to floor rather
+  than claim a NEW operator-exception without approval). NICE-deferred (FUTURE):
+  .hpgr-tag 999px pill radius + 1px/7px off-grid padding (pre-existing decorative;
+  spec bans only NEW off-grid). TDD: a CSS-only audit has no failing-test-first
+  target; gate = snapshot + render suite green. Gate (Tier-1 per R5): RC tests/
+  7982 passed / 2 skip / 109 subtests, exit 0 (ZERO delta vs cycles 37/38, CSS
+  cannot touch Python logic); ASCII delta 0. VISUAL: Claude_Preview OWED (preview
+  MCP refuses to attach to the live external pythonw :8888 PID 2104; a 2nd main.py
+  conflicts on :8889/LCU singletons; Game-PC :8892 down post-1PC) - render deltas
+  proven deterministically (token == tokens.css value). No frozen files touched.
+  NEXT: the A1-UIX3 plan set is now FULLY DONE -> the director should refill the
+  plan with a new operator-scoped batch or emit NO_WORK.
 
 - 2026-06-16 UIX2 DONE (commit 4b1804da, item 435). Home + Settings 5-phase
   fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per
