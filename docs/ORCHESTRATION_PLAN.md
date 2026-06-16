@@ -57,7 +57,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | P6-G4 | core/build_order | P6 LOLMATH BUILD-ENGINE PARITY G4 (boots-pool refresh, low-risk): DS emitted only legacy tier-2 boots (Mercury's x140 / Berserker's x30 in the sweep) while lolmath uses the 16.12.1 SR-only tier-3 upgrades. core/build_order._select_boots now upgrades the resolved tier-2 family to its tier-3 form on SR (map 11) via the new _BOOTS_SR_UPGRADE map (each DDragon into verified map11-only); ARAM (12) + Arena (30) keep tier-2 (no tier-3 there); assassin default moved off the out-of-store Mobility Boots (3117) to Ionian -> Crimson Lucidity. No engine MATH change (ranker byte-identical, never imports core/build_order; the AH/tenacity registries + items.json already carried the tier-3 ids). All 9 build_orders tables regenerated at ENGINE 1.122.0 -> 1.123.0; DS :8893 restarted; Share re-synced (336). 9/9 tables verified (SR tier-3, ARAM/Arena tier-2, 0 Mobility); boots test 29; DS-dir 7095 + RC 7943 green. Deferred: Arena should use the 22xxxx boots mirror (3xxx are map30=False). | DONE | a58a1f10 |
 | P6-G5 | ds-engine | P6 LOLMATH PARITY G5 (item-pool gaps) - CLOSED as NO pool gap, premise falsified (Tier-0 diagnosis; NO ENGINE bump / regen / DS restart / Share sync). DS has no per-archetype pool whitelist - rank.py::_filter_candidates iterates ALL 706 items.json (purchasable + terminal + map-legal + budget + 2-item deny). Of 48 lolmath-favored items, REAL SR pool gaps = 0; every one resolves to a canonical map11 id and ranks just below top-6 live @ ENGINE 1.123.0 (Talon Umbral #7 / Hubris #13 / Profane #33; Lux Liandry's #23; Jhin Collector #12). DS recommends ~60 distinct items / 172 champs - the breadth gap is SCORER VALUATION (item passives needing kill-state, AP DoT burn vs single-rotation ability model, lethality-vs-sustained in burst), NOT pool membership (lethality pen modeled, effects.py:326). Durable probes ops/audit/lolmath_ds_sweep/g5_{pool,live_rank}_probe.py. Re-routed to the G3/G6 Gemini-consult track. | CLOSED | (docs) |
 | OVL1 | Electron-Phase4 | Electron Phase 4 interactive tail (headless-safe): add overlay-settings controls (pulse-notification toggle + ACTIVE auto-revert timer) to the ?overlay=1 surface (web/js/panels/overlay_ds_controls.js) and persist them in the rc-shell config (rc-shell/ main-process config.json). Tests in the rc-shell harness + a dashboard fixture render. Live-visual capture OWED (Game-PC MCP :8892 down). | DONE | 4d09f8ac |
-| OVL2 | Electron-Phase6 | Electron Phase 6 Pengu Surface C code-only stub: scaffold a pengu/ plugin skeleton that fetches RC_ORIGIN/api/state + renders a panel with tokens.css, and add a client-origin-gated Access-Control-Allow-Origin header in dashboard/_handler.py (non-frozen). No live client needed; live validation OWED. Tests for the CORS-header origin gating. | OPEN | - |
+| OVL2 | Electron-Phase6 | Electron Phase 6 Pengu Surface C code-only stub: scaffold a pengu/ plugin skeleton that fetches RC_ORIGIN/api/state + renders a panel with tokens.css, and add a client-origin-gated Access-Control-Allow-Origin header in dashboard/_handler.py (non-frozen). No live client needed; live validation OWED. Tests for the CORS-header origin gating. | DONE | aab53e37 |
 | DSV1 | DS-Valuation | DS P6-G5 residual 1 (AP DoT/burn valuation): extend the DS damage model (agents/daemon_slayer/dps.py compute_dps + effects.py) to value AP damage-over-time burn (Liandry's / Blackfire Torch) beyond the single-rotation ability model. Root-cause-first, offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
 | DSV2 | DS-Valuation | DS P6-G5 residual 2 (kill-state item passives): add a takedown/kill-state assumption seam to agents/daemon_slayer/burst.py + dps.py so on-takedown passives (Hubris / Collector / Death's Dance) are valued. Default-OFF byte-identical seam first, offline tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
 | DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
@@ -75,6 +75,37 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-15 OVL2 DONE (commit aab53e37, item 430). Electron Phase 6 Pengu
+  Surface-C code-only stub + client-origin-gated CORS. NEW pengu/ Pengu Loader
+  plugin skeleton (ESM index.js + panel.css + README): runs in the League client
+  UX (not served by :8888), fetches RC_ORIGIN/api/state every 2s (RC_ORIGIN default
+  https://127.0.0.1:8888, localStorage rc_origin override), injects the dashboard
+  tokens (tokens.css from RC_ORIGIN) + a sibling panel.css via import.meta.url,
+  renders a mode/champion/coach card, fail-soft "RC offline" with NO raw API error
+  surfaced. dashboard/_handler.py (non-frozen): NEW _cors_allowed_origin gate +
+  _send echoes Access-Control-Allow-Origin + Vary:Origin ONLY for an allowed
+  cross-origin client (loopback 127.0.0.1/localhost/::1, or an exact
+  RC_CORS_ALLOW_ORIGINS env allowlist), NEVER wildcard (distinct from the
+  vision_server :8889 "*"). Cross-origin POSTs still blocked by _csrf_ok; ACAO only
+  governs READING GET responses -> echoing a same-machine loopback origin is a
+  controlled LAN-only widening. ORCHESTRATION (auto-pick, logged): INLINE sole
+  orchestrator (2 coupled disjoint slices, ~6 files sharing the CORS-origin
+  contract; R9 + the OVL1/HZ-A2 precedent) + the read-only verifier subagent as the
+  pre-commit ground-truth gate (ALL 6 CONFIRM: 13 new tests fresh, gate present +
+  grep-proven no "*", ASCII clean, full suite green). TDD (CORS test red on the
+  missing _cors_allowed_origin import -> green). +13 tests (test_handler_cors 7 +
+  test_pengu_plugin_skeleton 6). 5-phase pengu UI audit CODE-SIDE (panel not served
+  by :8888 -> no Claude_Preview capture): MUST-FIX 0; 2 SHOULD-FIX applied in-slice
+  (panel.css border-radius 8px -> var(--panel-radius, 18px), resolves live from the
+  injected tokens.css; + a precise comment that the surface vars
+  --fg/--panel-bg/--panel-border/--font-ui are fallback-only since the primitives
+  layer is not injected in-client). Gate (Tier-1 frontend + route): RC suite 7982
+  passed / 2 skipped / 109 subtests, exit 0; ruff + py_compile clean; RC restarted
+  pid 2104 last_reload_ok (handler re-import). No engine/DS/Share change
+  (ds_share_sync N/A - 0 DS file touched). OWED: the live in-client visual (League
+  client + Pengu Loader; no client in the headless run). NEXT (plan order): DSV1
+  (P6-G5 AP DoT/burn valuation), then DSV2/DSV3, then UIX1/2/3.
 
 - 2026-06-15 OVL1 DONE (commit 4d09f8ac, item 429). Electron Phase-4 overlay
   settings: a change-pulse toggle + an ACTIVE auto-revert-seconds control on the

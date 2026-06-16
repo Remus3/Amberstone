@@ -43,10 +43,12 @@ def test_panel_css_uses_design_tokens():
 @pytest.mark.parametrize("path", [INDEX, PANEL, README])
 def test_plugin_files_are_ascii_clean(path):
     raw = path.read_bytes()
-    # No non-ASCII bytes (bans em/en dashes + smart quotes repo-wide).
-    assert raw.decode("ascii")
-    for bad in ("—", "–", "‘", "’", "“", "”"):
-        assert bad not in raw.decode("utf-8")
+    # decode("ascii") raises on ANY non-ASCII byte - that alone bans em/en
+    # dashes + smart quotes (all > U+007F) repo-wide. Codepoints are spelled
+    # as escapes, never literal glyphs, so this test file stays pure ASCII.
+    text = raw.decode("ascii")
+    for cp in (0x2014, 0x2013, 0x2018, 0x2019, 0x201C, 0x201D):
+        assert chr(cp) not in text
 
 
 if __name__ == "__main__":  # pragma: no cover
