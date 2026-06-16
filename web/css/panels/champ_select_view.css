@@ -261,6 +261,12 @@
    * spell strip + build chooser carry equal weight now. */
   margin: 4px 0 10px;
   padding: 6px 12px;
+  /* UIX1 audit 2026-06-16 documented hit-floor exception: 32px sits below
+   * --hit-min (42px) BY DESIGN. This is a full-width (display:block
+   * width:100%) button on a mouse-driven 1920x1080 desktop surface - the
+   * horizontal click target is the entire card width; the reduced vertical
+   * height is the operator's deliberate de-emphasis (see prominence note
+   * above). Sanctioned relaxation, not drift. */
   min-height: 32px;
   font-size: var(--fs-sm);
   font-weight: 800;
@@ -1255,12 +1261,13 @@
   gap: 8px;
 }
 .csv-pr-champ-name {
-  font-size: 18px;
+  /* UIX1 audit 2026-06-16: tokenize 18 -> --fs-sm (18px, byte-identical). */
+  font-size: var(--fs-sm);
   font-weight: 800;
   color: #e8eaed;
   letter-spacing: 0.02em;
 }
-.csv-pr-champ-wr   { font-size: 18px; font-weight: 800; }
+.csv-pr-champ-wr   { font-size: var(--fs-sm); font-weight: 800; }  /* UIX1: 18 -> --fs-sm */
 /* UI scale v2.1 (audit MUST FIX 2026-05-23): 13 -> --fs-xs (16) floor. */
 .csv-pr-champ-sub  { font-size: var(--fs-xs); color: #8b909a; }
 .csv-pr-champ-role { font-size: var(--fs-xs); color: #b8bdc7; }
@@ -2005,6 +2012,13 @@
   grid-template-columns: 14px 1fr auto auto;
   gap: 10px;
   align-items: center;
+  /* UIX1 audit 2026-06-16: hit-target floor on the non-collapsed (SR
+   * experimental / ARAM / Arena) variant click row. The collapsed
+   * SR-primary path delegates clicks to .csv-build-path-row which already
+   * meets --hit-min; collapsed rows carry this base class too but stack
+   * multiple 42px path-rows so the floor is a no-op there. Brings the
+   * legacy single-variant row to hit-min parity. */
+  min-height: var(--hit-min);
   padding: 6px 8px;
   background: #1a1d23;
   border: 1px solid #2a2f37;
