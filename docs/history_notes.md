@@ -57,6 +57,17 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 29: P3 A3b-2 sub-slice - adaptation_hint coach-emit glyphs -> ASCII [item 426]
+
+- First A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 NEXT list. `coaches/adaptation_hint_{champion,cli}.py` (commit `04dbc6a4`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
+- 18 glyph lines / 2 files, per-hit (NOT a sed): U+2191->^, U+2193->v, U+2192->-> (GLYPH_MAP); flat/unknown marker U+00B7->- (repo no-data sentinel); the SEPARATOR U+00B7 -> " | " (the " | ".join + the line-342 insight_card rsplit trim boundary + the 4 cli table separators, all in lockstep).
+- Per-hit override: separator is " | " NOT the GLYPH_MAP default "*" - insight_card is a clipboard/Discord-paste card where *text* renders italic (the original middot was chosen for the same reason). Also fixed a pre-existing doc/code drift (docstring claimed a "*" boundary while code rsplit on the middot - both now " | ").
+- Blast radius = exactly 2 files (repo grep: sole glyph-splitting consumer = adaptation_hint_champion.py:342; no test asserts the glyphs; _supervisor_http serves the card as opaque text). pre-existing `str | None` + `today|24h` help pipes untouched.
+- Gate (Tier-1): py_compile 2/2; both modules ZERO non-ASCII; ruff clean; owning suite (test_p2w1_coach_b format_hint_line + test_round18 insight_card max_chars-trim + test_coach_prompt_format_safe) 30 passed; NEW guard tests/test_adaptation_hint_ascii_item426.py (2) green.
+- DONT-REDO: this pair is ASCII-COMPLETE + guard-locked. NEXT A3b-2 = the remaining load-bearing strings (aram/brawl/arena coach prompt banners + item_build wire-arrow B2 w/ 11 peer tests, rebuild_sim_fixtures golden arrows, role_profiles bullets, tft_pbe_*/tft_vision_reader LLM prompts, coach_integration/{_profiles,_sr_prompt}, builders_last_match + core/{defensive_picks,aftergame_summary} snapshot text). Map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 27: P6 LOLMATH PARITY G5 item-pool gaps CLOSED (no pool gap) [item 424]
 
 - G5 premise FALSIFIED root-cause-first: there is NO DS item-pool gap. Tier-0 diagnosis only - NO ENGINE bump, NO build_orders regen, NO DS :8893 restart, NO Share re-sync (5 doc/probe files, 0 source/engine/data change).
