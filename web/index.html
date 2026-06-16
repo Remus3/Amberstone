@@ -1177,6 +1177,12 @@
                    the LIVE champion mid-game, not the champ-select pick). The
                    profile bars, engine knobs, and stat-check STAY here. -->
               <div class="ds-profile" id="csv-sugg-ds-profile" hidden></div>
+              <!-- item 450 S3: 8-axis player GPI radar. Player-level (cross-
+                   game) profile over /api/player-profile; rides the same
+                   audited Suggestions card as the DS-profile bars. Hidden on
+                   cold load - showPlayerGpi() reveals it once the first fetch
+                   lands. -->
+              <section class="player-gpi" id="player-gpi-panel" hidden></section>
               <div class="ds-knobs" id="csv-ds-knobs" hidden></div>
               <div class="ds-statcheck" id="csv-ds-statcheck" hidden></div>
               <div class="csv-sugg-section csv-sugg-pickorder"
