@@ -69,6 +69,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | RN1 | UI-Audit | DIRECTOR-REFILL cycle 43 (A1-UIX3+DSV1-4 drained; operator "continue open items headlessly - multi-agent fanout"). 5-phase fixture audit of the un-audited active-match RIGHT NOW + NEXT coaching panels (right_now.css + next.css). Fix MUST-FIX in-slice. | DONE | ed9c709c |
 | DIAG1 | UI-Audit | DIRECTOR-REFILL cycle 43. 5-phase fixture audit of the un-audited Diagnostics developer view (dev.js diag section + header.css .diag-*). Fix MUST-FIX in-slice. | DONE | ed9c709c |
 | HZ-T1 | haiku-zero | DIRECTOR-REFILL cycle 43. Hermetic per-mode (sr/aram/arena) fail-soft path-routing coverage for the HZ precompute SOURCE-module tests (load_*(mode) was tested only for sr; aram/arena tables items 386/388 untested on that path). | DONE | 9da9358a |
+| LBAND1 | haiku-zero | DIRECTOR-REFILL cycle 45 (bounded queue drained, Gemini down 429; operator "continue open items headlessly - multi-agent fanout"). Section-7b competitor deep-dive (L1) + post-baseline robustness/coverage scout (L2: NOW=0/CLEAN=20). NEW core/live_benchmark_band.py - bands live cs+level vs the player's OWN per-champion percentile (core.benchmarks) at the ~10/~15min checkpoint; the LIVE half of the personal-benchmark data RC only used post-game (aftergame_summary). SR-only, gold excluded (on-hand-vs-total), >=5-games gate. Pure generator, no live consumer yet (wire-in FUTURE, do-not-flip-blind). +10 hermetic tests. | DONE | a8158629 |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -80,6 +81,21 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-16 LBAND1 (443, a8158629) DONE. Cycle 45 director-refill (bounded queue
+  drained, Gemini down 429). 2-agent fanout: L2 robustness/coverage scout over
+  post-2026-06-03-baseline NEW modules (items 285-442) = NOW=0 FUTURE=0 CLEAN=20
+  (clean-baseline holds). L1 Section-7b competitor deep-dive (Aggregator C/Overlay App E/
+  Overlay App F, docs/COMPETITOR_LIFT_2026-06-16.md): 1 HIGH flag (overlay app E live-
+  benchmarking) VERIFY-FIRST-overturned to PARTIAL-supersede - lead_projection
+  bands live metrics vs a FLAT heuristic; benchmarks.rank_value has per-champion
+  personal percentiles but POST-GAME only. SHIPPED the net-new half: NEW
+  core/live_benchmark_band.py bands live cs+level vs the player's own champion
+  percentile at the ~10/~15 checkpoint (SR-only, gold excluded, >=5-games gate),
+  pure generator + 10 hermetic tests, no live consumer yet (wire-in FUTURE, do-
+  not-flip-blind). 5 competitor findings -> BACKLOG (Aggregator C skill radar,
+  Overlay App F lobby-tags + ward-heatmap, Overlay App E enemy ult-CD + LCU rune-write).
+  NEXT: bounded headless-safe queue drained again; remaining live/operator/Gemini-gated.
 
 - 2026-06-16 RN1+DIAG1 (440, ed9c709c) + HZ-T1 (441, 9da9358a) DONE. Director-refill
   cycle 43 (A1-UIX3+DSV1-4 drained, Gemini down 429). 4 read-only scouts: DS-engine-lift

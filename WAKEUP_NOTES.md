@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-16 - cycle 45: competitor-lift teardown + LBAND1 live personal-percentile band [item 443]
+
+- item 443 (`a8158629`). Tier-1 (NEW core/live_benchmark_band.py + test), NO ENGINE/DS/Share, NO RC restart. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
+- ORIENT: run -01 cost 7/7 CLEAN + DS saturated; run -02 HZ-precompute scout (item 442); bounded queue DRAINED + Gemini director/consult down (429). This run = 2-agent fanout on net-new headless-safe lanes: L1 Section-7b competitor deep-dive (8 days since LIFT1) + L2 robustness/coverage scout on post-2026-06-03-baseline NEW modules (items 285-442).
+- L2 = NOW=0 FUTURE=0 CLEAN=20 (post-baseline surface fail-soft + per-mode-tested + ASCII-clean + no cost regression; clean-baseline holds). L1 = 8 findings (Aggregator C GPI / Overlay App E / Overlay App F), docs/COMPETITOR_LIFT_2026-06-16.md.
+- VERIFY-FIRST overturned the 1 HIGH flag (overlay app E live-benchmarking): RC PARTIALLY supersedes - lead_projection bands live cs/gold/level vs a FLAT heuristic; benchmarks.rank_value has per-champion personal p25/p50/p75 (champion_benchmarks.json, 186) but consumed only POST-GAME. Net-new delta = wire the personal percentile into a LIVE read.
+- SLICE (LBAND1): NEW core/live_benchmark_band.py bands live cs+level vs the player's own champion percentile at a checkpoint (~10/~15min, +/-45s), SR-only, >=5-games gate, gold excluded (on-hand-vs-total mismatch). Pure generator, no live consumer yet (lead_projection/laning_verdicts ship-generator-wire-later precedent); live wire-in FUTURE (do-not-flip-blind). +10 hermetic tests (monkeypatch benchmarks._cache, clean-checkout safe). py_compile+ruff+ASCII clean, 10/10 green.
+- BACKLOG (5 FUTURE): Aggregator C skill radar, Overlay App F lobby-tags, Overlay App F ward heatmap, Overlay App E enemy ult-CD, Overlay App E LCU rune-write + personal-WR override. SUPERSEDED: Overlay App F per-ability dmg (DS richer), Overlay App E grading (PGR-parity).
+- NEXT: bounded headless-safe queue drained again; remaining = LBAND1/HZ live-flip + DS Phase-D + visual captures + P6 G3/G6/G7 (live/operator/Gemini-gated). Gemini still down (429).
+
+---
+
 # 2026-06-16 - cycle 44: HZ shadow-routing guard - tft/brawl off the SR precompute tables [item 442]
 
 - item 442 (`0fa8f83e`). Tier-1 (one dashboard module + test), NO ENGINE/DS/Share, RC restarted pid 11728. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
@@ -23,15 +35,3 @@
 - 441 HZ-T1: load_*(mode) per-mode fail-soft routing was tested only for sr; extended both source-module tests to loop sr/aram/arena (items 386/388 routing, hermetic patch=0.0.0 no-LFS). Scout's reader-test parametrize proposal REJECTED on verify-first (mode bypassed by payload=).
 - Gate: snapshot_panels 128 + DOM-regression 35 + HZ-T1 46 green; ASCII-added 0; CI green. VISUAL OWED (Game-PC :8892 down). No frozen files.
 - NEXT: bounded headless-safe queue DRAINED again (DS/OVL CLOSED w/ evidence; UI fixture-audit lane exhausted; HZ live-flip + DS Phase-D flips + visual captures all live/operator-gated). Gemini director/consult down (429) - operator billing top-up unblocks P6 G3/G6/G7 + orchestration refill.
-
----
-
-# 2026-06-16 - cycle 42: HZ precompute canonical-keyspace bug fix [item 439]
-
-- item 439 (commit `637633c6`). Tier-1 (RC core/ + precompute data), NO ENGINE bump, NO DS/Share change, RC restarted pid 20536, full RC suite 7993 green, CI green. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
-- ORIENT: bounded queue still drained + Gemini consult/director down (429 prepay-depleted), so dispatched a 3-lane READ-ONLY scout fanout over the STANDING charter objectives (no Gemini needed). scout-cost = CLEAN 7/7 (matches item 386); scout-DS-unmodeled-effect = CLEAN-SATURATED (0 deterministic mechanical gaps); scout-Haiku-elim = found ONE real bug.
-- ROOT CAUSE: item-388 canonicalized the HZ-A laning table but the HZ-B1 build_orders + HZ-B2 build_order_variants tables stayed DISPLAY-keyed AND the precompute readers never canonicalized lookup keys. The live HZ-C shadow path passes the raw Live Client display name, so 21/172 renamed/multi-word champs (Wukong/MonkeyKing, Aurelion Sol, Tahm Kench, ...) silently MISSED the canonical laning table as my_champion AND as enemy - biasing the flip-readiness agreement metric. Verify-first overturned the scout's premise that the tables were already canonical.
-- FIX (canonical-everywhere; display-everywhere would reintroduce the item-388 6783-skipped-pairs laning bug): readers (precomputed_laning_coach + precomputed_build_coach) canonicalize my_champion+enemy at the lookup boundary (resolve_enemy returns the covered enemy verbatim so labels stay readable); generators (build_order_precompute + build_order_variants) key by canonical_champion_id; content-preserving key remap of the 6 committed build tables (21/172 each, no collision, ASCII); sibling test_build_order_axis_parity.py lookup canonicalized.
-- SCOPE: HZ precompute tables only (data/daemon_slayer/build_orders/ subdir; read only by the 2 readers via the 2 shadow fns; B1 has 0 live callers). The OLDER item-265/266 balanced table (data/daemon_slayer/<patch>/, read by _next_build_item/laning_verdicts) is display-keyed + display-looked-up = consistent, UNTOUCHED -> _build_game_state NOT edited (live coach byte-identical). SHADOW-only (no live coach flip). New memory reference_build_order_tables_two_keyspaces.
-- TDD: NEW tests/test_hz_precompute_canonical_keyspace.py (6) red-first (4 fail) -> green. scout C1 (16.11.1 ARAM/Arena backfill) REJECTED (stale non-live patch, ~130MB LFS churn, read-path fail-softs); C3 (truncated-path test) SKIPPED (redundant with existing test_lookup_missing_returns_empty + isinstance-guarded lookup).
-- NEXT: bounded queue drained again; HZ live-coach FLIP still gated on real-game shadow-accrual + precompute-vs-Haiku agreement (do-not-flip-blind). FUTURE (noted, not a bug): unify the two build-order tables onto one canonical key-space. Gemini director/consult still down (429 prepay-depleted) - operator billing top-up unblocks P6 G3/G6/G7 + the orchestration refill.
