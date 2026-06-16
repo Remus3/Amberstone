@@ -1331,6 +1331,26 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.125.0 (DSV2 - takedown / kill-state item-passive valuation, 2026-06-15. P6-G5
+residual 2. The burst + auto scorers had no seam for the on-takedown item passives, so
+Hubris (Eminence bonus AD) + The Collector (5% execute) were under-ranked among lethality
+items. Adds a DEFAULT-OFF kill-state OFFENSE seam, byte-identical when off: ItemEffect
+gains takedown_bonus_ad_base / takedown_bonus_ad_per_stack (Hubris Eminence "15 (+2 per
+stack)" bonus AD on takedown, Meraki 16.12.1) + execute_max_hp_pct (The Collector Death
+execute below 5% target max HP), all default 0.0. effects.py gains total_takedown_bonus_ad
++ total_execute_max_hp_pct. dps.py gains _ASSUMED_TAKEDOWN_STACKS=1 + an assume_takedown
+kwarg on compute_dps (folds Hubris bonus AD 15 + 2*1 = 17 into the rotation AD + bonus_ad
+ctx; the Collector execute is NOT credited - a one-shot finisher is not sustained DPS).
+burst.py gains assume_takedown on compute_burst_damage + rank_items_by_burst (threads into
+the AA probe + the ability ctx so Hubris raises BOTH ability and AA, and credits the
+Collector execute as a 5% target-max-HP TRUE finisher execute_finisher_damage folded into
+total_burst_damage). Death's Dance carries NEITHER offense field: its takedown payoff is
+the Defy heal, already valued on the survivability axis (ehp.py takedown_gated, ENGINE
+1.57.0) - crediting offense would double-count phantom damage. Data: Hubris 6697 / 226697 /
+126697 + The Collector 6676 / 667666 / 226676 wired. The seam ships DEFAULT-OFF; the live
+rank scorers do not pass assume_takedown=True yet (a validation-gated flip). DS :8893
+bounced -> 1.125.0. Sources: Riot Data Dragon / CommunityDragon / Meraki Analytics.)
+
 1.124.0 (DSV1 - AP damage-over-time burn valuation, 2026-06-15. P6-G5 residual 1.
 compute_ability_dps (the AP / ability scorer) mirrored compute_dps's item amp + pen
 handling but never folded item PERIODIC procs, so ability-triggered AP burn DoTs were

@@ -57,6 +57,19 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 32: OVL1 Electron Phase-4 overlay settings - change-pulse toggle + ACTIVE auto-revert seconds [item 429]
+
+- First session of the operator-directed plan REFILL (the A1-F1 + HZ + LIFT/CS + P6 set drained -> director NO_WORK -> loop stopped; operator chose "gemini proposes batch + relaunch" with scope = Electron + DS + UI/UX). 8 new OPEN sessions seeded into `docs/ORCHESTRATION_PLAN.md` (OVL1/2, DSV1/2/3, UIX1/2/3, gemini-3-pro planning pass); relaunched; director picked OVL1.
+- OVL1 (commit `4d09f8ac`). Tier-1 frontend + rc-shell. NO ENGINE bump, NO DS/Share, NO live RC restart (web = ADR-008 asset-hash; rc-shell is a separate Electron app).
+- `?overlay=1` gains 2 operator settings in the in-overlay controls pane: a **change-pulse toggle** + the **ACTIVE auto-revert delay (s)**. Both wired to REAL consumers: `pulseNotify` gates the existing `web/js/overlay_pulse.js` glow (observer short-circuits when off, fire-time check); `activeRevertSec` replaces the hardcoded 20s in the rc-shell main-process auto-revert.
+- Persistence: NEW shared helper `web/js/lib/overlay_settings.js` (localStorage mirror + rc-shell IPC mirror). NEW preload `window.rcShell` bridge (`rc-shell:overlay-settings:{get,set}`) - rc-shell was Phase-1 (empty preload), this is the FIRST renderer<->main IPC. `overlay_state.js`: `overlaySettingsFrom` + `mergeOverlaySettingsPatch` (pure, [3,120] clamp, position/panelSet/companion keys preserved). `main.js` (rc-shell, NOT frozen main.py): ipcMain handlers + applyOverlaySettings.
+- Panel restructure: settings strip mounts once (`data-ovds-init`), shows independent of a resolved champion; knob strip relocated to `#ovds-knobwrap` (champ change no longer wipes settings).
+- INLINE not worktree-fanned (auto-pick, logged): web + rc-shell share a tight IPC contract + rc-shell node_modules is gitignored (worktree cannot npm test) -> one coherent impl + fresh full-suite gate (R9).
+- Gate: rc-shell **163 node tests** (+13 settings cases + IPC wiring pin); RC **7969 passed / 2 skipped / 109 subtests exit 0** (+ new DOM-contract test + a Playwright pulse-suppression gate test); ruff/py_compile/node --check clean. **5-phase UI audit PASS (0 MUST-FIX)**, rendered proof `overlay_sr.png`. OWED: in-game visual over a real match (Game-PC MCP :8892 down).
+- NEXT (plan order): **OVL2** (Pengu Surface-C code-stub + CORS in dashboard/_handler.py), then DSV1/2/3 (P6-G5 scorer-valuation residual), then UIX1/2/3 (5-phase audits).
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 31: P3 A3b-2 sub-slice - role/SR-profile prompt-substrate raw glyphs -> ASCII [item 428]
 
 - Third A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 list. `role_profiles.py` + `coach_integration/{_profiles,_sr_prompt}.py` (commit `fcd05f3d`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.

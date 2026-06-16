@@ -59,7 +59,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | OVL1 | Electron-Phase4 | Electron Phase 4 interactive tail (headless-safe): add overlay-settings controls (pulse-notification toggle + ACTIVE auto-revert timer) to the ?overlay=1 surface (web/js/panels/overlay_ds_controls.js) and persist them in the rc-shell config (rc-shell/ main-process config.json). Tests in the rc-shell harness + a dashboard fixture render. Live-visual capture OWED (Game-PC MCP :8892 down). | DONE | 4d09f8ac |
 | OVL2 | Electron-Phase6 | Electron Phase 6 Pengu Surface C code-only stub: scaffold a pengu/ plugin skeleton that fetches RC_ORIGIN/api/state + renders a panel with tokens.css, and add a client-origin-gated Access-Control-Allow-Origin header in dashboard/_handler.py (non-frozen). No live client needed; live validation OWED. Tests for the CORS-header origin gating. | DONE | aab53e37 |
 | DSV1 | DS-Valuation | DS P6-G5 residual 1 (AP DoT/burn valuation): extend the DS damage model (agents/daemon_slayer/dps.py compute_dps + effects.py) to value AP damage-over-time burn (Liandry's / Blackfire Torch) beyond the single-rotation ability model. Root-cause-first, offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | 597ffc95 |
-| DSV2 | DS-Valuation | DS P6-G5 residual 2 (kill-state item passives): add a takedown/kill-state assumption seam to agents/daemon_slayer/burst.py + dps.py so on-takedown passives (Hubris / Collector / Death's Dance) are valued. Default-OFF byte-identical seam first, offline tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
+| DSV2 | DS-Valuation | DS P6-G5 residual 2 (kill-state item passives): add a takedown/kill-state assumption seam to agents/daemon_slayer/burst.py + dps.py so on-takedown passives (Hubris / Collector / Death's Dance) are valued. Default-OFF byte-identical seam first, offline tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | DONE | f1075c38 |
 | DSV3 | DS-Valuation | DS P6-G5 residual 3 (lethality vs sustained AD): refine the lethality-vs-sustained tradeoff in agents/daemon_slayer/burst.py so lethality pen out-values raw sustained AD for burst archetypes. Offline characterization tests vs Meraki, ENGINE_VERSION bump + DS restart + Share re-sync. | OPEN | - |
 | UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | OPEN | - |
 | UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | OPEN | - |
@@ -75,6 +75,48 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-15 DSV2 DONE (commit f1075c38, item 432). Takedown / kill-state item
+  passive valuation - P6-G5 residual 2, Tier-2 ENGINE 1.124.0 -> 1.125.0, DS
+  :8893 restarted, Share re-synced (338, --check in sync) in the SAME commit.
+  GAP (P6-G5 ledger 424): the burst + auto scorers had NO seam for the on-takedown
+  item passives, so Hubris (Eminence bonus AD) + The Collector (5% execute) were
+  under-ranked among lethality items (Hubris ~#13, Collector ~#12 live). FIX adds a
+  DEFAULT-OFF kill-state OFFENSE seam, byte-identical when off: NEW ItemEffect
+  fields takedown_bonus_ad_base / takedown_bonus_ad_per_stack (Hubris Eminence
+  15 + 2/stack, Meraki 16.12.1) + execute_max_hp_pct (Collector Death <5% target
+  max HP); NEW effects helpers total_takedown_bonus_ad(stacks) +
+  total_execute_max_hp_pct; dps._ASSUMED_TAKEDOWN_STACKS=1 + an assume_takedown
+  kwarg on compute_dps (folds Hubris bonus AD into rotation AD + bonus_ad ctx ->
+  higher AA DPS; Collector execute deliberately NOT credited - a one-shot finisher
+  is not sustained DPS) and on compute_burst_damage + rank_items_by_burst (threads
+  into the internal AA probe + the ability ctx so Hubris AD raises BOTH ability and
+  AA, and credits the Collector execute as a 5% target-max-HP TRUE finisher
+  execute_finisher_damage folded into total_burst_damage). NEW BurstResult fields
+  mirror the rune_proc_damage convention (0.0 default = byte-identical). DESIGN
+  GUARD (root-cause-honest): Death's Dance carries NEITHER offense field - its
+  takedown payoff is the Defy HEAL, already valued on the survivability axis
+  (ehp.py ItemHeal.takedown_gated, ENGINE 1.57.0); crediting it offense here would
+  double-count phantom damage, so the seam is a deliberate no-op for DD (test pins
+  this). Data wired: Hubris 6697/226697/126697 + Collector 6676/667666/226676.
+  ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator (the seam is one
+  coupled contract across 6 engine files - schema + 2 scorers share assume_takedown;
+  R9 + the DSV1/OVL2 precedent); verifier subagent SKIPPED per R7 (single-thread
+  inline edit, no stale pipe) - fresh re-verify done instead (DS suite + RC suite +
+  the 7 expected post-restart/sync failures re-run green). TDD: 16 Meraki-anchored
+  tests red-first (ImportError on _ASSUMED_TAKEDOWN_STACKS) -> green: schema
+  defaults, data pins, helper math, OFF byte-identical (dps + burst + rank), Hubris
+  DPS/burst raise, Collector execute = 100 vs 2000 max HP folded into total, DD
+  offense byte-identical (no phantom). Gate: DS-dir 7119 passed / 1 skip / 1942
+  subtests; RC tests/ 7982 passed / 2 skip / 109 subtests (the 7 pre-fix failures =
+  1 live-:8893 stale-version integration + 6 Share doc/ingest anchors, all green
+  after the DS restart + ds_share_sync, re-run confirmed); ruff + py_compile clean;
+  ds_share_sync --check in sync. ENGINE bump touched 75 assertion pins; 2 historical
+  DSV1 (1.124.0) changelog refs deliberately kept (engine_bump_quoted_literal_only).
+  SEAM-FIRST scope (per directive + EXCLUDED): the seam ships DEFAULT-OFF; the live
+  rank scorers (rank.py) do NOT pass assume_takedown=True yet - flipping it ON is a
+  separate real-game-validation-gated step (DS Phase-D default-ON flag-flip class).
+  NEXT (plan order): DSV3 (lethality-vs-sustained AD in burst.py), then UIX1/2/3.
 
 - 2026-06-15 DSV1 DONE (commit 597ffc95, item 431). AP damage-over-time burn
   valuation - P6-G5 residual 1, Tier-2 ENGINE 1.123.0 -> 1.124.0, DS :8893
