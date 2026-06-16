@@ -64,6 +64,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | UIX1 | UI-Audit | Champ-Select SR 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-TARGETS / ASCII / HIERARCHY per docs/UI_SCALE_SPEC_V2.md) on web/js/panels/champ_select.js + its CSS; Claude_Preview visual validation vs /api/state on :8888 (?ui_mock=1). Fix every MUST-FIX in-slice. Live capture OWED. | DONE | 3c123060 |
 | UIX2 | UI-Audit | Home + Settings views 5-phase fixture audit on the Home render (web/js/main.js Home / Tonight-Pick path + builders_home.py surface) and the Settings panel (web/js/panels/dev.js); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 4b1804da |
 | UIX3 | UI-Audit | Session / History + detached PGR 5-phase fixture audit on web/js/panels/historical_pgr.js + last_match.js + post_game_phases.js + CSS (the HIST1/HIST2 detached-PGR surface); Claude_Preview visual validation vs /api/state on :8888. Fix every MUST-FIX in-slice. | DONE | 7417a7a8 |
+| DSV4 | DS-Valuation | DIRECTOR-REFILL continuation (the A1-UIX3 set drained; operator directive "continue open items headlessly"). The SAME DSV P6-G5 / G2-residual scorer-valuation lane: value Spear of Shojin 3161 Focused Will, a stacking ability/passive damage amp (Meraki 3%/stack x 4 = 12%) that was defensive_only "ability damage not DPS-modeled". Default-OFF assume_ability_amp seam on compute_ability_dps + compute_burst_damage (ability-only, never AA) + rank_items_by_burst; NEW ItemEffect ability_damage_amp_* fields + effects helper + dps._ASSUMED_ABILITY_AMP_STACKS=4. Offline Meraki-anchored tests, ENGINE bump + DS restart + Share re-sync. Ships DEFAULT-OFF (live flip validation-gated, EXCLUDED). | DONE | c5fec82d |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -75,6 +76,42 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-16 DSV4 DONE (commit c5fec82d, item 437). DIRECTOR-REFILL continuation:
+  the A1-UIX3 plan set was DONE, so under the operator directive "continue open
+  items headlessly - multi-agent fanout orchestrated" the next bounded ship-or-
+  close slice was drawn from the SAME DSV P6-G5 / G2-residual scorer-valuation
+  lane the operator seeded DSV1/2/3 against (the P6-G2 work-map bucket B names
+  Spear of Shojin explicitly). Tier-2 ENGINE 1.126.0 -> 1.127.0, DS :8893
+  restarted -> 1.127.0, Share re-synced (340) in the SAME commit. ROOT CAUSE:
+  the ability scorers had no seam for Spear of Shojin 3161 Focused Will, a
+  stacking ability/passive damage amp (Meraki 16.12.1: 3%/stack, max 4 = 12%);
+  the item was defensive_only "ability damage not DPS-modeled", so an ability-
+  reliant build that bought Shojin saw zero damage value from it. Focused Will
+  amps abilities/passives only, never basic attacks. FIX (DEFAULT-OFF
+  assume_ability_amp seam, byte-identical off; INLINE sole orchestrator per R9 +
+  the DSV1/2/3 precedent): NEW ItemEffect.ability_damage_amp_per_stack /
+  ability_damage_amp_max_stacks (0.0/0 default) + effects.total_ability_damage_amp
+  helper + dps._ASSUMED_ABILITY_AMP_STACKS=4; compute_ability_dps multiplies the
+  spell ability sum (DoT procs NOT amped - conservative), compute_burst_damage
+  multiplies ONLY ability_total (never aa_total), rank_items_by_burst threads
+  both call sites; compute_dps (AA scorer) untouched. Shojin 3161 + Arena 223161
+  pinned 0.03/4. SEAM-FIRST (EXCLUDED): ships DEFAULT-OFF, rank.py does not pass
+  assume_ability_amp=True yet (the validation-gated flip is the DS Phase-D class).
+  TDD: 14 Meraki-anchored tests red-first (ImportError) -> green (schema defaults,
+  data pins, helper cap/linear math, compute_ability_dps + burst OFF byte-identical
+  / ON exactly *1.12 ability-only / AA untouched / non-Shojin unchanged, rank
+  byte-identical). Gate: DS-dir 7140 passed / 1 skip / 1942 subtests; RC tests/
+  7982 passed / 2 skip / 109 subtests (run after DS restart + ds_share_sync so the
+  live-:8893 + Share anchors are green, no pre-fix failures); ruff + py_compile +
+  ASCII clean; ds_share_sync --check in sync (340, engine 1.127.0); 76 ENGINE pins
+  bumped across 67 files (3 DSV3 historical changelog refs kept). Verifier subagent
+  SKIPPED per R7 (single-thread inline) - fresh THIS-run re-verify instead. No
+  frozen files touched. NEXT: the named bucket-B/C scorer-valuation residual is now
+  covered (DSV1 AP DoT-burn + DSV2 kill-state + DSV3 lethality + DSV4 Shojin ability-
+  amp); the P6 design tail (G3 runes / G6 cost-model / G7 comp-harness) is Gemini-
+  consult-first per ops/audit/P6_LOLMATH_PARITY.md - NO bounded ship-or-close slice
+  remains. The plan stays drained pending an operator/Gemini refill.
 
 - 2026-06-16 UIX3 DONE (commit 7417a7a8, item 436). Session / History detached
   historical-PGR (HIST2) 5-phase fixture audit (STRUCTURE / TYPOGRAPHY / HIT-
