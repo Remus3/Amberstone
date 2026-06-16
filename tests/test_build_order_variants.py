@@ -355,9 +355,12 @@ class PersistAndReaderTests(unittest.TestCase):
         self.assertEqual(bov.lookup({}, "Caitlyn", "anti_tank"), {})
 
     def test_load_missing_db_failsoft(self) -> None:
-        self.assertEqual(
-            bov.load_build_order_variants(mode="sr", patch="0.0.0"), {}
-        )
+        # Per-mode table path must fail-soft to {} for every shipped mode
+        # (sr/aram/arena, items 377/386/388) - guards per-mode load routing.
+        for mode in ("sr", "aram", "arena"):
+            self.assertEqual(
+                bov.load_build_order_variants(mode=mode, patch="0.0.0"), {}
+            )
 
     def test_load_then_lookup_roundtrip(self) -> None:
         payload = self._payload()
