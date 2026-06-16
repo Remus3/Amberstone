@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from typing import Optional, Sequence, Tuple
 
+from core.archetype_picks import canonical_champion_id
 from core.coach_choices import CoachChoice
 from core.laning_scenario_precompute import (
     LEVEL_BANDS,
@@ -218,11 +219,11 @@ def resolve_enemy(
         return None
     data = payload if payload is not None else load_laning_scenarios(mode)
     scen = data.get("scenarios") if isinstance(data, dict) else None
-    per_enemy = scen.get(my_champion) if isinstance(scen, dict) else None
+    per_enemy = scen.get(canonical_champion_id(my_champion)) if isinstance(scen, dict) else None
     if not isinstance(per_enemy, dict):
         return None
     for enemy in enemy_comp:
-        if enemy and enemy in per_enemy:
+        if enemy and canonical_champion_id(enemy) in per_enemy:
             return str(enemy)
     return None
 
@@ -251,7 +252,10 @@ def precomputed_choices(
         mana = mana_state_for(mana_fraction)
         cd = cd_state_for(ult_up)
         data = payload if payload is not None else load_laning_scenarios(mode)
-        cell = lookup(data, my_champion, enemy, band, mana, cd)
+        cell = lookup(
+            data, canonical_champion_id(my_champion),
+            canonical_champion_id(enemy), band, mana, cd,
+        )
         if not cell:
             return []
         return _build_choices(cell, enemy, next_item=next_item)

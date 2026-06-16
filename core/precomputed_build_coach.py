@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from typing import Optional, Sequence, Tuple
 
+from core.archetype_picks import canonical_champion_id
 from core.aram_comp_verdict import compute_factors
 from core.build_order_variants import load_build_order_variants, lookup
 from core.coach_choices import CoachChoice
@@ -141,8 +142,9 @@ def build_choices(
         if lean is None:
             return []
         variant, conf = lean
+        my_id = canonical_champion_id(str(my_champion))
         data = payload if payload is not None else load_build_order_variants(mode)
-        rec = lookup(data, str(my_champion), variant)
+        rec = lookup(data, my_id, variant)
         if not rec:
             return []
         a = CoachChoice(
@@ -153,7 +155,7 @@ def build_choices(
             source_tag=SOURCE_TAG,
         )
         other = _other(variant)
-        other_cell = lookup(data, str(my_champion), other)
+        other_cell = lookup(data, my_id, other)
         b_outcome = (
             _variant_outcome(other_cell, owned_count, item_costs)
             if other_cell else "alternative durability build"
