@@ -57,6 +57,17 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 31: P3 A3b-2 sub-slice - role/SR-profile prompt-substrate raw glyphs -> ASCII [item 428]
+
+- Third A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 list. `role_profiles.py` + `coach_integration/{_profiles,_sr_prompt}.py` (commit `fcd05f3d`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
+- role_profiles: 5 raw U+2192 combo arrows (Viktor Q->E->W + W->Q, Swain E root->detonate, Alistar W->Q) -> `->`; 39 raw U+2022 leading laning/ARAM bullets (VAYNE_TOP_PROFILE + ARAM_ITEM_RULES) -> `- ` (list marker, NOT GLYPH_MAP `*` = multiply; re.sub `(?m)^-(?=\S)` restored the bullet space the raw replace dropped). _profiles: 2 U+2192 CHAMPION_PROFILES prose (Jinx Pow-Pow->Fishbones, Samira rank D->S). _sr_prompt: 1 U+2192 SR full_build join `" -> ".join(fb)`.
+- Split-on proof (NOT a sed): the ONLY repo U+2192 re.split consumers = aram_coach.py:147 (Haiku item_build wire) + audit_ddragon_items.py:86 (golden fixtures); neither reads these 3 files (aram_item_context/ARAM_ITEM_RULES imported only by _profiles.py, never coaches/); the join is producer-only. ZERO test asserts these glyphs.
+- SCOPE = source BYTES only (P3 byte-purge). DEFERRED new sub-slice: _sr_prompt (the whole SR/ARAM Haiku prompt) + role_profiles.aram_item_context still carry `\uXXXX` ESCAPES emitting U+2014 em-dashes / U+2550 banners / U+2192 - 7-bit-ASCII SOURCE, out of byte-scope (cycle-22 precedent); an LLM-prompt-INPUT change (byte change to a Haiku prompt = model-input change) -> own validated gate.
+- Gate (Tier-1): py_compile 3/3; all 3 files ZERO raw non-ASCII; ruff clean; owning suite (test_role_profiles_ascii_item428 + test_coach_prompt_format_safe + test_sr_coach_choices_emit + test_coach_choices_alt_hotkey + test_cc_conditional_impact_context + test_enemy_cc_threat_context + test_cc_blended_ehp_context + test_ds_pick_consumption_p1l11 + test_p2w1_app_b) = 226 passed / 31 subtests; NEW guard tests/test_role_profiles_ascii_item428.py (3) green.
+- DONT-REDO: these 3 files' source bytes ASCII-COMPLETE + guard-locked. NEXT A3b-2 = the DEFERRED escaped-glyph emitted sub-slice (_sr_prompt SR/ARAM prompt em-dashes/banners, LLM-input change) + aram/brawl/arena coach prompt banners + item_build wire-arrow B2 (11 peer tests) + rebuild_sim_fixtures golden arrows + tft_pbe_*/tft_vision_reader LLM prompts. Map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 30: P3 A3b-2 sub-slice - dashboard/summary cluster glyphs -> ASCII [item 427]
 
 - Second A3b-2 sub-slice off the cycle-24 list. `dashboard/builders_last_match.py` + `core/{defensive_picks,aftergame_summary}.py` (commit `c55f47da`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
