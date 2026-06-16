@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 34: DSV1 AP damage-over-time burn valuation [item 431]
+
+- DSV1 (commit `597ffc95`). Tier-2 ENGINE 1.123.0 -> 1.124.0; DS :8893 restarted (taskkill pid 5464 + `schtasks /Run /TN RC-DaemonSlayer`, live `/health` confirms 1.124.0); Share re-synced (337 files) in the SAME commit. Source: `docs/ORCHESTRATION_PLAN.md` DSV1 (P6-G5 residual 1).
+- ROOT CAUSE: `compute_ability_dps` (the AP/mage item scorer) mirrors `compute_dps`'s item AMP + PEN handling (ability_dps.py:950-965) but NEVER folded the item PERIODIC procs, so ability-triggered AP burn DoTs (Liandry Torment, Blackfire Baleful Blaze, Demonic Azakana) were invisible to the mage ranking even though the auto scorer has valued them via `_periodic_proc_dps` since Phase 4 - exactly the P6-G5 "AP DoT burn vs single-rotation `ability` model" gap (Veigar/Lux Liandry buried ~#23).
+- FIX (completed the mirror): `_effects_types.py` PeriodicProc gains `ability_dot` (default False = byte-identical); `dps.py _periodic_proc_dps` gains `ability_dot_only` (default False = compute_dps byte-identical) folding ONLY tagged procs; `ability_dps.py` builds a `CallContext` + folds `_periodic_proc_dps(ability_dot_only=True)` into `total_ability_dps`. DATA: ADD Liandry Torment (6653 + Arena 226653) 2% target max HP/s magic (16.12.1 Meraki 6%/3s, the Azakana sibling); FIX Blackfire Baleful (2503 + Arena 222503) to the Meraki total 60+6%AP/3s = 10+1%AP per 0.5s tick (the prior 6+6%AP mis-read the wiki `{{ap|60/6}}` tick-count as a melee/ranged split); TAG Demonic Azakana (4637 + Arena 224637).
+- DESIGN GUARD (the hard part): the first cut folded ALL time-based procs and POLLUTED the mage ranking with tank Immolate auras (Sunfire/Hollow Radiance), physical spellblades (Iceborn/Trinity Force), on-cast nukes. Narrowed via the curated `ability_dot` tag (mirrors the `_AA_ROUTED_ON_HIT_KEYS` allowlist precedent) so only the 3 named/sibling burn families lift. LIVE-PROVEN: Veigar L11 SR mage ranking now Liandry 6653 #1 (delta 45.5) at target_max_hp=2500 (was ~#23), Blackfire 2503 #1 at tmh=0; no pollution.
+- ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator (4 coupled engine files share one proc contract; R9 + OVL1/OVL2 precedent). Verifier subagent SKIPPED per R7 (single-thread inline edit, no stale pipe) - fresh re-verify done instead. TDD: `test_dsv1_ability_burn_valuation.py` (8 tests) red-first -> green, anchored to verbatim 16.12.1 Meraki + the exact mitigated burn delta.
+- Gate (Tier-2 dual suite): DS-dir **7103 passed / 1 skip / 1942 subtests**; RC tests/ **7981 passed / 2 skip / 109 subtests** (the lone failure was the pre-restart live-:8893 version assertion in test_sr_draft_profile_engine, confirmed green post-restart); ruff + py_compile clean; `ds_share_sync --check` in sync (337 files); CHANGELOG prepended. Churn fixed: 2 Blackfire data pins + 1 LiandrysSuffering pin re-pinned to Meraki; 3 rank_mage ranking pins resolved by the `ability_dot` narrowing (no test edit).
+- FUTURE (untagged, deliberate scope line): Luden's / Malignance / Stormsurge / Night Harvester (magic on-cast/ult-zone procs, not sustained DoTs) + Pyromancer's Cloak (Arena flat burn). NEXT (plan order): DSV2 (kill-state item passives, burst.py seam), then DSV3, then UIX1/2/3.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 33: OVL2 Pengu Surface-C plugin stub + client-origin-gated CORS [item 430]
 
 - OVL2 (commit `aab53e37`). Tier-1 frontend + route. NO ENGINE bump, NO DS/Share change. RC restarted pid 2104 (handler re-import). Source: `docs/ORCHESTRATION_PLAN.md` OVL2.
@@ -26,14 +38,3 @@
 - INLINE not worktree-fanned (auto-pick, logged): web + rc-shell share a tight IPC contract + rc-shell node_modules is gitignored (worktree cannot npm test) -> one coherent impl + fresh full-suite gate (R9).
 - Gate: rc-shell **163 node tests** (+13 settings cases + IPC wiring pin); RC **7969 passed / 2 skipped / 109 subtests exit 0** (+ new DOM-contract test + a Playwright pulse-suppression gate test); ruff/py_compile/node --check clean. **5-phase UI audit PASS (0 MUST-FIX)**, rendered proof `overlay_sr.png`. OWED: in-game visual over a real match (Game-PC MCP :8892 down).
 - NEXT (plan order): **OVL2** (Pengu Surface-C code-stub + CORS in dashboard/_handler.py), then DSV1/2/3 (P6-G5 scorer-valuation residual), then UIX1/2/3 (5-phase audits).
-
----
-
-# 2026-06-15 - DEEP-AUDIT cycle 31: P3 A3b-2 sub-slice - role/SR-profile prompt-substrate raw glyphs -> ASCII [item 428]
-
-- Third A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 list. `role_profiles.py` + `coach_integration/{_profiles,_sr_prompt}.py` (commit `fcd05f3d`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
-- role_profiles: 5 raw U+2192 combo arrows (Viktor Q->E->W + W->Q, Swain E root->detonate, Alistar W->Q) -> `->`; 39 raw U+2022 leading laning/ARAM bullets (VAYNE_TOP_PROFILE + ARAM_ITEM_RULES) -> `- ` (list marker, NOT GLYPH_MAP `*` = multiply; re.sub `(?m)^-(?=\S)` restored the bullet space the raw replace dropped). _profiles: 2 U+2192 CHAMPION_PROFILES prose (Jinx Pow-Pow->Fishbones, Samira rank D->S). _sr_prompt: 1 U+2192 SR full_build join `" -> ".join(fb)`.
-- Split-on proof (NOT a sed): the ONLY repo U+2192 re.split consumers = aram_coach.py:147 (Haiku item_build wire) + audit_ddragon_items.py:86 (golden fixtures); neither reads these 3 files (aram_item_context/ARAM_ITEM_RULES imported only by _profiles.py, never coaches/); the join is producer-only. ZERO test asserts these glyphs.
-- SCOPE = source BYTES only (P3 byte-purge). DEFERRED new sub-slice: _sr_prompt (the whole SR/ARAM Haiku prompt) + role_profiles.aram_item_context still carry `\uXXXX` ESCAPES emitting U+2014 em-dashes / U+2550 banners / U+2192 - 7-bit-ASCII SOURCE, out of byte-scope (cycle-22 precedent); an LLM-prompt-INPUT change (byte change to a Haiku prompt = model-input change) -> own validated gate.
-- Gate (Tier-1): py_compile 3/3; all 3 files ZERO raw non-ASCII; ruff clean; owning suite (test_role_profiles_ascii_item428 + test_coach_prompt_format_safe + test_sr_coach_choices_emit + test_coach_choices_alt_hotkey + test_cc_conditional_impact_context + test_enemy_cc_threat_context + test_cc_blended_ehp_context + test_ds_pick_consumption_p1l11 + test_p2w1_app_b) = 226 passed / 31 subtests; NEW guard tests/test_role_profiles_ascii_item428.py (3) green.
-- DONT-REDO: these 3 files' source bytes ASCII-COMPLETE + guard-locked. NEXT A3b-2 = the DEFERRED escaped-glyph emitted sub-slice (_sr_prompt SR/ARAM prompt em-dashes/banners, LLM-input change) + aram/brawl/arena coach prompt banners + item_build wire-arrow B2 (11 peer tests) + rebuild_sim_fixtures golden arrows + tft_pbe_*/tft_vision_reader LLM prompts. Map: ops/audit/P3_WORKMAP.md.
