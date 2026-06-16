@@ -3609,8 +3609,10 @@ class LiandrysSufferingTests(unittest.TestCase):
 
     Suffering: 2% bonus damage per second in champion combat, max 3
     stacks = 6%. Steady-state DPS pin = 6%, same shape as Riftmaker's
-    8% Void Corruption (batch 14). Torment burn (ability damage burn)
-    stays not-modeled per the ability-bound rule.
+    8% Void Corruption (batch 14). DSV1 (1.124.0): Torment burn (ability
+    damage burn) is now modeled as a 2% target max HP/s ability_dot
+    periodic - the Azakana's Gaze sibling (was "not-modeled per the
+    ability-bound rule"; that rule was inconsistent with Azakana/Blackfire).
     """
 
     @classmethod
@@ -3621,8 +3623,12 @@ class LiandrysSufferingTests(unittest.TestCase):
         e = ITEM_EFFECTS["6653"]
         self.assertEqual(e.name, "Liandry's Torment")
         self.assertFalse(e.defensive_only)
-        self.assertEqual(e.periodics, ())
+        # DSV1: Suffering amp unchanged; Torment burn now modeled as an
+        # ability_dot periodic (2% target max HP/s magic).
         self.assertAlmostEqual(e.damage_amp_pct, 0.06, places=4)
+        self.assertEqual(len(e.periodics), 1)
+        self.assertEqual(e.periodics[0].name, "Torment")
+        self.assertTrue(e.periodics[0].ability_dot)
         self.assertIn("suffering", e.note.lower())
 
     def test_liandrys_no_unique_passive_key(self) -> None:
@@ -4343,15 +4349,16 @@ class BlackfireTorchBurnTests(unittest.TestCase):
         from agents.daemon_slayer.effects import CallContext
         proc = ITEM_EFFECTS["2503"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=300.0)
-        # 6 + 6% * 300 = 6 + 18 = 24
-        self.assertAlmostEqual(proc.resolve_damage(ctx), 24.0, places=4)
+        # DSV1 Meraki re-pin: 10 + 1% * 300 = 10 + 3 = 13 per 0.5s tick
+        # (60 + 6% AP total over 3s / 6 ticks).
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 13.0, places=4)
 
     def test_proc_formula_zero_ap(self) -> None:
         from agents.daemon_slayer.effects import CallContext
         proc = ITEM_EFFECTS["2503"].periodics[0]
         ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11, ap=0.0)
-        # flat component only: 6
-        self.assertAlmostEqual(proc.resolve_damage(ctx), 6.0, places=4)
+        # DSV1 Meraki re-pin: flat component only, 10 per tick (60/6 ticks)
+        self.assertAlmostEqual(proc.resolve_damage(ctx), 10.0, places=4)
 
     def test_dps_lift_over_bare(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
@@ -7808,7 +7815,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.123.0")
+        self.assertEqual(ENGINE_VERSION, "1.124.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7869,7 +7876,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.123.0")
+        self.assertEqual(ENGINE_VERSION, "1.124.0")
 
 
 if __name__ == "__main__":

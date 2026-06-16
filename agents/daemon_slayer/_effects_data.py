@@ -1316,20 +1316,36 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6653",
         name="Liandry's Torment",
         # 60 AP + 300 HP stat block. Two passives:
-        # - Torment: ability damage burn - ~6% target max HP magic over
-        #   3s. Ability-bound, NOT in basic auto rotation. Same rule as
-        #   Spear of Shojin (batch 16) - engine doesn't model ability
-        #   damage.
+        # - Torment: ability damage burns the target for 6% of its MAXIMUM
+        #   health total magic damage over 3 seconds (16.12.1 Meraki champ
+        #   value; vs monsters 1%/0.5s capped 20/tick). DSV1 (P6-G5 residual
+        #   1): modeled as the sustained periodic burn it is - 2% max HP / s -
+        #   the exact sibling of Demonic Embrace's Azakana's Gaze (1%/s, 4637)
+        #   under the "always-active convention" (ability-triggered burn kept
+        #   up across the fight). The prior "ability-bound, not modeled" rule
+        #   was inconsistent with Azakana / Blackfire, which already modeled
+        #   the identical ability-triggered burn as sustained.
         # - Suffering: 2% bonus damage per second in combat, max 3
         #   stacks = 6%. Generic damage amp, not ability-restricted -
         #   applies to autos + procs same as Riftmaker's Void Corruption
         #   (batch 14). Steady-state DPS pin = 6% (full ramp after 3s
         #   in combat). Promoted via the existing damage_amp_pct schema.
         damage_amp_pct=0.06,
+        periodics=(
+            PeriodicProc(
+                name="Torment",
+                every_n_seconds=1.0,
+                bonus_damage=lambda c: 0.02 * c.target_max_hp,
+                damage_type=MAGICAL,
+                ability_dot=True,
+            ),
+        ),
         note=(
             "Liandry's Torment: Suffering ~6% damage amp at full ramp "
-            "(3s in champ combat; sustained-DPS approximation) + "
-            "Torment burn (ability-bound, not modeled)"
+            "(3s in champ combat; sustained-DPS approximation) + Torment "
+            "2% target max HP/s magic burn (6% over 3s; ability-trigger "
+            "modeled sustained per the always-active convention, sibling "
+            "of Azakana's Gaze)"
         ),
     ),
 
@@ -1729,6 +1745,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_seconds=1.0,
                 bonus_damage=lambda c: 0.01 * c.target_max_hp,
                 damage_type=MAGICAL,
+                ability_dot=True,
             ),
         ),
         note=(
@@ -1777,13 +1794,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             PeriodicProc(
                 name="Baleful Blaze",
                 every_n_seconds=0.5,
-                bonus_damage=lambda c: 6.0 + 0.06 * c.ap,
+                # DSV1 Meraki re-pin (16.12.1): Baleful Blaze deals 60 (+6% AP)
+                # magic TOTAL over 3 seconds across 6 ticks (every 0.5s) =
+                # 10 (+1% AP) per tick. The prior 6 (+6% AP)/tick mis-read the
+                # wiki {{ap|60/6}} tick-count (60 total / 6 ticks) as a
+                # melee/ranged split, over-scaling AP 6x at the per-tick level.
+                bonus_damage=lambda c: 10.0 + 0.01 * c.ap,
                 damage_type=MAGICAL,
+                ability_dot=True,
             ),
         ),
         note=(
-            "Blackfire Torch: Baleful Blaze 6 + 6% AP magic damage every 0.5s "
-            "(ranged value per Meraki {{ap|60/6}} melee/ranged split at 1/s cadence; "
+            "Blackfire Torch: Baleful Blaze 10 + 1% AP magic damage every 0.5s "
+            "(60 + 6% AP total over 3s / 6 ticks per 16.12.1 Meraki; "
             "ability-trigger modeled as sustained per the always-active convention; "
             "Blackfire AP stacking ramp utility-only)"
         ),
@@ -3151,7 +3174,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226653",
         name="Liandry's Anguish",
         damage_amp_pct=0.06,
-        note="Liandry's Anguish (Arena 226653): same as SR 6653 - Suffering 6% damage amp at full stacks",
+        periodics=(
+            PeriodicProc(
+                name="Torment",
+                every_n_seconds=1.0,
+                bonus_damage=lambda c: 0.02 * c.target_max_hp,
+                damage_type=MAGICAL,
+                ability_dot=True,
+            ),
+        ),
+        note="Liandry's Anguish (Arena 226653): same as SR 6653 - Suffering 6% damage amp + Torment 2% target max HP/s magic burn (DSV1)",
     ),
     "226662": ItemEffect(
         item_id="226662",
@@ -3408,10 +3440,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         periodics=(PeriodicProc(
             name="Baleful Blaze",
             every_n_seconds=0.5,
-            bonus_damage=lambda c: 6.0 + 0.06 * c.ap,
+            bonus_damage=lambda c: 10.0 + 0.01 * c.ap,
             damage_type=MAGICAL,
+            ability_dot=True,
         ),),
-        note="Blackfire Torch (Arena 222503): same as SR 2503 - Baleful Blaze 6+6% AP magic every 0.5s",
+        note="Blackfire Torch (Arena 222503): same as SR 2503 - Baleful Blaze 10+1% AP magic every 0.5s (60+6% AP total/3s, DSV1 Meraki re-pin)",
     ),
     "222504": ItemEffect(
         item_id="222504",
@@ -4518,6 +4551,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 0.010 * c.target_max_hp,
             damage_type=MAGICAL,
             every_n_seconds=1.0,
+            ability_dot=True,
         ),),
         note="Demonic Embrace (Arena 224637): same as SR 4637 - Dark Pact 2% bonus HP as AP + Azakana's Gaze 1% target max HP/s magic",
     ),

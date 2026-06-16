@@ -212,6 +212,7 @@ def _periodic_proc_dps(
     mode_dmg_mult: float,
     call_ctx: CallContext,
     magic_amp: float = 1.0,
+    ability_dot_only: bool = False,
 ) -> float:
     """Sum DPS contribution from every conditional proc in the build.
 
@@ -257,6 +258,17 @@ def _periodic_proc_dps(
                     procs = total_attacks / proc.every_n_attacks
             else:  # every_n_seconds > 0 enforced by PeriodicProc.__post_init__
                 procs = duration / proc.every_n_seconds
+            # DSV1: the ability/AP scorer (compute_ability_dps) passes
+            # ability_dot_only=True so it folds ONLY the ability-triggered AP
+            # damage-over-time burns explicitly tagged ability_dot (Liandry
+            # Torment, Blackfire Baleful Blaze, Demonic Azakana's Gaze). Every
+            # other every_n_seconds proc - tank Immolate auras (Sunfire),
+            # physical spellblades (Iceborn / Trinity Force), on-cast nukes
+            # (Luden's) - is skipped so it cannot pollute the AP item ranking.
+            # compute_dps keeps the default ability_dot_only=False (counts
+            # every proc - byte-identical).
+            if ability_dot_only and not proc.ability_dot:
+                continue
             is_physical = proc.damage_type == PHYSICAL
             is_true = proc.damage_type == TRUE
             resist = 0.0 if is_true else (target_armor_for_physical if is_physical else target_mr)
