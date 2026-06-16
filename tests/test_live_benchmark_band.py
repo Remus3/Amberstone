@@ -117,3 +117,38 @@ def test_band_from_state_adapter(monkeypatch):
     # non-dict + missing champion are fail-soft.
     assert lbb.band_from_state(None) == []
     assert lbb.band_from_state({"cs": 120.0, "game_time_s": 600.0}) == []
+
+
+def _tahm_kench(mode="sr_ranked", games=10):
+    # Benchmarks are keyed on the CANONICAL id (TahmKench), as the real file is.
+    return {
+        f"TahmKench|{mode}": {
+            "games": games,
+            "metrics": {
+                "cs_at_10": {"p25": 80.0, "p50": 90.0, "p75": 100.0},
+                "level_at_10": {"p25": 6.0, "p50": 7.0, "p75": 8.0},
+            },
+        }
+    }
+
+
+def test_multiword_champion_canonicalized_for_lookup(monkeypatch):
+    # The live coach passes the Live Client DISPLAY name ("Tahm Kench") while
+    # benchmarks are canonical-keyed (TahmKench). band_metrics must canonicalize
+    # the lookup or it silently never bands ~25 multiword champions. Regression
+    # guard for the item-439 canonical-keyspace fix LBAND1 originally missed.
+    _install(monkeypatch, _tahm_kench())
+    out = lbb.band_metrics("Tahm Kench", 600.0, cs=120.0, level=8.0)
+    by_metric = {b["metric"]: b for b in out}
+    assert set(by_metric) == {"cs_at_10", "level_at_10"}
+    assert by_metric["cs_at_10"]["band"] == "above-p75"
+    # the coach LINE keeps the readable display name, not the canonical id.
+    assert "Tahm Kench" in by_metric["cs_at_10"]["line"]
+    assert "TahmKench" not in by_metric["cs_at_10"]["line"]
+
+
+def test_band_from_state_multiword_champion(monkeypatch):
+    _install(monkeypatch, _tahm_kench())
+    state = {"champion": "Tahm Kench", "cs": 120.0, "level": 8.0, "game_time_s": 600.0}
+    out = lbb.band_from_state(state)
+    assert {b["metric"] for b in out} == {"cs_at_10", "level_at_10"}
