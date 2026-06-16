@@ -67,6 +67,9 @@
   border-radius: 999px;
   background: var(--good);
   color: var(--canvas);
+  /* operator-exception (RN1 audit): 12px sub-floor is intentional on this
+   * transient ~900ms "Copied" micro-pill - matches the ward-heat micro-density
+   * precedent (item 184); it is not primary reading content. */
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -100,6 +103,9 @@
 /* Arena pregame briefing - dense card (build + augments + combos +
  * round phasing). Clipped, not scrolled per round 44. */
 .immediate.is-pregame {
+  /* operator-exception (RN1 audit): 13px sub-floor is intentional - the Arena
+   * pregame briefing is a deliberately dense card (build + augments + combos +
+   * round phasing), clipped not scrolled; density is the design (round 44). */
   font-size: 13px;
   line-height: 1.45;
   color: var(--text-dim);
@@ -122,7 +128,9 @@
 }
 .rn-sr-btn {
   flex: 0 0 auto;
-  font-size: 13px;
+  /* RN1 fixture audit: 13px -> --fs-xs floor + a 42px --hit-min target.
+   * inline-flex centers the label in the taller min-height box. */
+  font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #cbb8ff;
@@ -130,6 +138,10 @@
   border: 1px solid #a78bfa;
   border-radius: 5px;
   padding: 6px 11px;
+  min-height: var(--hit-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
 }
@@ -168,6 +180,8 @@
 .rn-sr-pill.is-error {
   color: var(--signal-bad);
   border-left-color: #f87171;
-  font-size: 13px;
+  /* RN1 audit: dropped the sub-floor 13px override so the error state
+   * inherits the .rn-sr-pill 15px documented viewing-distance floor - the
+   * error text must not be smaller than the normal pill. */
 }
 
