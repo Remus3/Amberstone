@@ -6,7 +6,8 @@
 param(
   [string]$Model = $(if ($env:RC_GEMINI_MODEL) { $env:RC_GEMINI_MODEL } elseif ([Environment]::GetEnvironmentVariable("RC_GEMINI_MODEL", "User")) { [Environment]::GetEnvironmentVariable("RC_GEMINI_MODEL", "User") } else { "gemini-2.5-flash" }),
   [string]$RepoRoot = "C:\Riot Commander",
-  [string]$Since = ""
+  [string]$Since = "",
+  [int]$MaxWaitSec = 180
 )
 $ErrorActionPreference = "Stop"
 Set-Location $RepoRoot
@@ -52,14 +53,17 @@ $prompt = $tmpl + "`n`n=== COMMITS ($range) ===`n" + $commits +
 # throttling can return an empty body the cli's own backoff misses.
 function Invoke-GeminiAudit($model, $tries) {
   $out = ""
-  for ($try = 1; $try -le $tries -and -not $out.Trim(); $try++) {
+  for ($try = 1; $try -le $tries -and -not $out.Trim() -and (Get-Date) -lt $deadline; $try++) {
     $out = ($prompt | & gemini -p "Perform the read-only audit described in this input. Output the markdown review only." -m $model --approval-mode plan --skip-trust 2>$null | Out-String)
-    if (-not $out.Trim() -and $try -lt $tries) { Start-Sleep -Seconds (10 * $try) }
+    if (-not $out.Trim() -and $try -lt $tries -and (Get-Date).AddSeconds(10 * $try) -lt $deadline) { Start-Sleep -Seconds (10 * $try) }
   }
   return $out
 }
 $savedEAP = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
+# Bound the primary + fallback retry passes by one shared wall-clock deadline so
+# a 429-backoff or hung gemini CLI cannot stall the scheduled run (P2 gap).
+$deadline = (Get-Date).AddSeconds($MaxWaitSec)
 # Primary model = the operator's RC_GEMINI_MODEL. On persistent empty output
 # (quota / RPM / preview-model throttling - e.g. the gemini-3-pro-preview outage
 # that broke the 2026-06-07 nightly run while it had worked on 06-06) fall back to
