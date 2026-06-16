@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 35: DSV2 takedown / kill-state item-passive valuation [item 432]
+
+- DSV2 (commit `f1075c38`). Tier-2 ENGINE 1.124.0 -> 1.125.0; DS :8893 restarted (taskkill pid 20352 + `Start-ScheduledTask RC-DaemonSlayer`, live `/health` confirms 1.125.0); Share re-synced (338 files) in the SAME commit. Source: `docs/ORCHESTRATION_PLAN.md` DSV2 (P6-G5 residual 2).
+- GAP (P6-G5 ledger 424): the burst + auto scorers had NO seam for the on-takedown item passives, so Hubris (Eminence bonus AD) + The Collector (5% execute) were under-ranked among lethality items (~#13 / ~#12 live).
+- FIX (DEFAULT-OFF kill-state OFFENSE seam, byte-identical when off): NEW `ItemEffect` fields `takedown_bonus_ad_base`/`takedown_bonus_ad_per_stack` (Hubris Eminence Meraki 16.12.1 "15 (+2 per stack)") + `execute_max_hp_pct` (Collector Death "<5% max health"), all default 0.0; NEW `effects` helpers `total_takedown_bonus_ad(stacks)` + `total_execute_max_hp_pct`; `dps._ASSUMED_TAKEDOWN_STACKS=1` + an `assume_takedown` kwarg on `compute_dps` (folds Hubris AD 15+2*1=17 into rotation AD + bonus_ad ctx; Collector execute NOT credited - one-shot finisher != sustained DPS) and on `compute_burst_damage`+`rank_items_by_burst` (threads into the AA probe + ability ctx so Hubris raises BOTH ability and AA, and credits the Collector execute as a 5%*target_max_hp TRUE `execute_finisher_damage` folded into total_burst). Data: Hubris 6697/226697/126697 + Collector 6676/667666/226676.
+- DESIGN GUARD (root-cause-honest): Death's Dance carries NEITHER offense field - its takedown payoff is the Defy HEAL, already valued on the survivability axis (`ehp.py ItemHeal.takedown_gated`, ENGINE 1.57.0); crediting it offense would double-count phantom damage, so the seam is a deliberate no-op for DD (a test pins DD offense byte-identical seam-on vs seam-off).
+- ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator (one coupled contract across 6 engine files - schema + 2 scorers share `assume_takedown`; R9 + DSV1/OVL2 precedent). Verifier SKIPPED per R7 (single-thread inline, no stale pipe) - fresh re-verify instead. TDD: `test_dsv2_killstate_passives.py` (16) red-first (ImportError on `_ASSUMED_TAKEDOWN_STACKS`) -> green.
+- SEAM-FIRST scope (per directive + EXCLUDED): ships DEFAULT-OFF; `rank.py` does NOT pass `assume_takedown=True` yet - flipping it ON is a separate real-game-validation-gated step (Phase-D default-ON flag-flip class). Live rankings byte-identical this cycle.
+- Gate (Tier-2 dual suite): DS-dir **7119 passed / 1 skip / 1942 subtests**; RC tests/ **7982 passed / 2 skip / 109 subtests** (the 7 pre-fix failures = 1 live-:8893 stale-version + 6 Share doc/ingest anchors, ALL green post DS-restart + ds_share_sync, re-run 18/18); ruff + py_compile clean; `ds_share_sync --check` in sync (338). ENGINE bump touched 75 quoted pins; 2 historical DSV1 (1.124.0) changelog refs kept (`feedback_engine_bump_quoted_literal_only`). No frozen files touched.
+- NEXT (plan order): DSV3 (lethality-vs-sustained AD tradeoff in burst.py), then UIX1/2/3 (5-phase UI audits).
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 34: DSV1 AP damage-over-time burn valuation [item 431]
 
 - DSV1 (commit `597ffc95`). Tier-2 ENGINE 1.123.0 -> 1.124.0; DS :8893 restarted (taskkill pid 5464 + `schtasks /Run /TN RC-DaemonSlayer`, live `/health` confirms 1.124.0); Share re-synced (337 files) in the SAME commit. Source: `docs/ORCHESTRATION_PLAN.md` DSV1 (P6-G5 residual 1).
@@ -25,16 +38,3 @@
 - Gate (Tier-1): +13 tests (test_handler_cors 7 + test_pengu_plugin_skeleton 6); RC **7982 passed / 2 skipped / 109 subtests, exit 0**; ruff + py_compile clean. 5-phase pengu UI audit CODE-SIDE: **MUST-FIX 0**; 2 SHOULD-FIX applied in-slice (border-radius `8px` -> `var(--panel-radius,18px)` resolves live; precise comment that surface vars `--fg/--panel-bg/--panel-border/--font-ui` are fallback-only - primitives layer not injected in-client).
 - OWED: the live in-client visual (League client + Pengu Loader; no client headless). The pengu panel is NOT served by :8888 so Claude_Preview cannot capture it; capture in-client next League session.
 - NEXT (plan order): **DSV1** (P6-G5 AP DoT/burn valuation - agents/daemon_slayer dps.py/effects.py, ENGINE bump + DS restart + Share re-sync), then DSV2/DSV3, then UIX1/2/3.
-
----
-
-# 2026-06-15 - DEEP-AUDIT cycle 32: OVL1 Electron Phase-4 overlay settings - change-pulse toggle + ACTIVE auto-revert seconds [item 429]
-
-- First session of the operator-directed plan REFILL (the A1-F1 + HZ + LIFT/CS + P6 set drained -> director NO_WORK -> loop stopped; operator chose "gemini proposes batch + relaunch" with scope = Electron + DS + UI/UX). 8 new OPEN sessions seeded into `docs/ORCHESTRATION_PLAN.md` (OVL1/2, DSV1/2/3, UIX1/2/3, gemini-3-pro planning pass); relaunched; director picked OVL1.
-- OVL1 (commit `4d09f8ac`). Tier-1 frontend + rc-shell. NO ENGINE bump, NO DS/Share, NO live RC restart (web = ADR-008 asset-hash; rc-shell is a separate Electron app).
-- `?overlay=1` gains 2 operator settings in the in-overlay controls pane: a **change-pulse toggle** + the **ACTIVE auto-revert delay (s)**. Both wired to REAL consumers: `pulseNotify` gates the existing `web/js/overlay_pulse.js` glow (observer short-circuits when off, fire-time check); `activeRevertSec` replaces the hardcoded 20s in the rc-shell main-process auto-revert.
-- Persistence: NEW shared helper `web/js/lib/overlay_settings.js` (localStorage mirror + rc-shell IPC mirror). NEW preload `window.rcShell` bridge (`rc-shell:overlay-settings:{get,set}`) - rc-shell was Phase-1 (empty preload), this is the FIRST renderer<->main IPC. `overlay_state.js`: `overlaySettingsFrom` + `mergeOverlaySettingsPatch` (pure, [3,120] clamp, position/panelSet/companion keys preserved). `main.js` (rc-shell, NOT frozen main.py): ipcMain handlers + applyOverlaySettings.
-- Panel restructure: settings strip mounts once (`data-ovds-init`), shows independent of a resolved champion; knob strip relocated to `#ovds-knobwrap` (champ change no longer wipes settings).
-- INLINE not worktree-fanned (auto-pick, logged): web + rc-shell share a tight IPC contract + rc-shell node_modules is gitignored (worktree cannot npm test) -> one coherent impl + fresh full-suite gate (R9).
-- Gate: rc-shell **163 node tests** (+13 settings cases + IPC wiring pin); RC **7969 passed / 2 skipped / 109 subtests exit 0** (+ new DOM-contract test + a Playwright pulse-suppression gate test); ruff/py_compile/node --check clean. **5-phase UI audit PASS (0 MUST-FIX)**, rendered proof `overlay_sr.png`. OWED: in-game visual over a real match (Game-PC MCP :8892 down).
-- NEXT (plan order): **OVL2** (Pengu Surface-C code-stub + CORS in dashboard/_handler.py), then DSV1/2/3 (P6-G5 scorer-valuation residual), then UIX1/2/3 (5-phase audits).
