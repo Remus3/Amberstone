@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-15 - DEEP-AUDIT cycle 31: P3 A3b-2 sub-slice - role/SR-profile prompt-substrate raw glyphs -> ASCII [item 428]
+
+- Third A3b-2 (non-DS load-bearing code-string) sub-slice off the cycle-24 list. `role_profiles.py` + `coach_integration/{_profiles,_sr_prompt}.py` (commit `fcd05f3d`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
+- role_profiles: 5 raw U+2192 combo arrows (Viktor Q->E->W + W->Q, Swain E root->detonate, Alistar W->Q) -> `->`; 39 raw U+2022 leading laning/ARAM bullets (VAYNE_TOP_PROFILE + ARAM_ITEM_RULES) -> `- ` (list marker, NOT GLYPH_MAP `*` = multiply; re.sub `(?m)^-(?=\S)` restored the bullet space the raw replace dropped). _profiles: 2 U+2192 CHAMPION_PROFILES prose (Jinx Pow-Pow->Fishbones, Samira rank D->S). _sr_prompt: 1 U+2192 SR full_build join `" -> ".join(fb)`.
+- Split-on proof (NOT a sed): the ONLY repo U+2192 re.split consumers = aram_coach.py:147 (Haiku item_build wire) + audit_ddragon_items.py:86 (golden fixtures); neither reads these 3 files (aram_item_context/ARAM_ITEM_RULES imported only by _profiles.py, never coaches/); the join is producer-only. ZERO test asserts these glyphs.
+- SCOPE = source BYTES only (P3 byte-purge). DEFERRED new sub-slice: _sr_prompt (the whole SR/ARAM Haiku prompt) + role_profiles.aram_item_context still carry `\uXXXX` ESCAPES emitting U+2014 em-dashes / U+2550 banners / U+2192 - 7-bit-ASCII SOURCE, out of byte-scope (cycle-22 precedent); an LLM-prompt-INPUT change (byte change to a Haiku prompt = model-input change) -> own validated gate.
+- Gate (Tier-1): py_compile 3/3; all 3 files ZERO raw non-ASCII; ruff clean; owning suite (test_role_profiles_ascii_item428 + test_coach_prompt_format_safe + test_sr_coach_choices_emit + test_coach_choices_alt_hotkey + test_cc_conditional_impact_context + test_enemy_cc_threat_context + test_cc_blended_ehp_context + test_ds_pick_consumption_p1l11 + test_p2w1_app_b) = 226 passed / 31 subtests; NEW guard tests/test_role_profiles_ascii_item428.py (3) green.
+- DONT-REDO: these 3 files' source bytes ASCII-COMPLETE + guard-locked. NEXT A3b-2 = the DEFERRED escaped-glyph emitted sub-slice (_sr_prompt SR/ARAM prompt em-dashes/banners, LLM-input change) + aram/brawl/arena coach prompt banners + item_build wire-arrow B2 (11 peer tests) + rebuild_sim_fixtures golden arrows + tft_pbe_*/tft_vision_reader LLM prompts. Map: ops/audit/P3_WORKMAP.md.
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 30: P3 A3b-2 sub-slice - dashboard/summary cluster glyphs -> ASCII [item 427]
 
 - Second A3b-2 sub-slice off the cycle-24 list. `dashboard/builders_last_match.py` + `core/{defensive_picks,aftergame_summary}.py` (commit `c55f47da`). Tier-1: NO ENGINE bump, NO DS/Share change, NO live RC restart.
@@ -23,13 +34,3 @@
 - Blast radius = exactly 2 files (repo grep: sole glyph-splitting consumer = adaptation_hint_champion.py:342; no test asserts the glyphs; _supervisor_http serves the card as opaque text). pre-existing `str | None` + `today|24h` help pipes untouched.
 - Gate (Tier-1): py_compile 2/2; both modules ZERO non-ASCII; ruff clean; owning suite (test_p2w1_coach_b format_hint_line + test_round18 insight_card max_chars-trim + test_coach_prompt_format_safe) 30 passed; NEW guard tests/test_adaptation_hint_ascii_item426.py (2) green.
 - DONT-REDO: this pair is ASCII-COMPLETE + guard-locked. NEXT A3b-2 = the remaining load-bearing strings (aram/brawl/arena coach prompt banners + item_build wire-arrow B2 w/ 11 peer tests, rebuild_sim_fixtures golden arrows, role_profiles bullets, tft_pbe_*/tft_vision_reader LLM prompts, coach_integration/{_profiles,_sr_prompt}, builders_last_match + core/{defensive_picks,aftergame_summary} snapshot text). Map: ops/audit/P3_WORKMAP.md.
-
----
-
-# 2026-06-15 - DEEP-AUDIT cycle 28: P6 LOLMATH PARITY G2 low-overlap re-measure CLOSED (not a separate bug) [item 425]
-
-- G2 re-measured post-G1/G4 at live ENGINE 1.123.0 (durable probe `ops/audit/lolmath_ds_sweep/g2_remeasure_probe.py`, in-repo paths). Tier-0 diagnosis - NO ENGINE bump, NO build_orders regen, NO DS :8893 restart, NO Share re-sync (1 probe + 3 doc files).
-- `BEFORE(1.120.0) G1=20 G2=59` -> `AFTER(1.123.0) G1=8 G2=60 ok=101 nodata=3` (covered 169). G1 20->8: all 8 residuals by-design + per-champ verified, ZERO regressions from item 421. Lulu = operator pick `carry` source=user_cs (never touched, archetype_picks.py:121); Amumu/Blitzcrank/Galio/Singed/TahmKench = tank axis-neutral (:124, BACKLOG); Taric (kit 0.61 AP, DS AP) + XinZhao (kit 0.87 AD, DS AD) = DS-correct, lolmath quirk. Nunu -> nodata (lolmath has no "Nunu & Willump" data).
-- G2 held ~flat: the axis fix correctly pulled the AP-damage champs (Diana/Gwen/Teemo/Rumble/Lillia/Mordekaiser/KogMaw/Gragas/Nidalee/Elise) OUT of G1; matching SPECIFIC items needs the design tracks, not an axis flip. G4 boots don't move the metric (overlap subtracts BOOTS by design in gen_md.py).
-- G2 residual = 3 buckets, all downstream of already-routed tracks (per-champ build dumps): A role-item-vs-glass-cannon (Janna/Sona/Alistar... DS utility/heal/shield, lolmath raw AP) -> G6/by-design; B AD scorer-valuation (Aatrox/Fiora/Nasus/Darius/Jhin lethality+kill-state passives) -> G5-residual; C AP DoT (Anivia/Swain/Lissandra Liandry's/Blackfire burn vs DS burst) -> G5-residual.
-- DONT-REDO: G2 is NOT a fixable bug (premise confirmed); do NOT re-measure as a fix target or re-pitch a low-overlap "fix" - the residual is the design-level scorer/runes/cost class. G1/G2/G4/G5 = the bounded-slice set, all DONE/CLOSED. NEXT P6 = G3 runes / G6 cost-model / G7 harness + G5 scorer-valuation residual = Gemini-consult first (no bounded slice remains).
