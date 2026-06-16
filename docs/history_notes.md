@@ -57,6 +57,17 @@
 
 ---
 
+# 2026-06-16 - cycle 44: HZ shadow-routing guard - tft/brawl off the SR precompute tables [item 442]
+
+- item 442 (`0fa8f83e`). Tier-1 (one dashboard module + test), NO ENGINE/DS/Share, RC restarted pid 11728. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
+- ORIENT (run -02): cost (7/7) + DS (saturated) were swept CLEAN in run -01, so this run focused the 4-lane scout fanout on the PRIMARY north-star HZ precompute pipeline. scout-HZ-A laning = CLEAN (355,008-leaf live math/keyspace verification, full 172x172 roster); scout-HZ-B build = CLEAN (full-roster, canonical both sides); scout-HZ-C wiring = 1 real bug (H1); scout-new-substrate = replay-narrative is the only headless-buildable NEW substrate but its call site is DORMANT -> BACKLOG.
+- ROOT CAUSE (H1, item-439 class): resolve_mode_key emits tft/brawl (_state_builder.py:102) but _MODE_KEY_TO_{UPPER,LOWER} (_deterministic_coaching.py:142-155) omit them, so `.get(mk,"sr"/"SR")` silently routed those ticks vs the SR tables - a needless DS matchup call + wrong SR callouts live, and SR-scored rows logged under a tft/brawl label into the flip-gating shadow dataset. Verify-first confirmed resolve_mode_key DOES emit those modes.
+- FIX (blast radius = tft/brawl/unknown only; sr/client/game/aram/arena unchanged map keys): the mode maps are the source of truth; all 3 consumers drop the SR default - _compute_uncached -> dict(_EMPTY_RESULT) (no matchup call); both shadow writers early-return (no row). SHADOW-only, no live flip. /api/state 200 mode_key=client (mapped, byte-identical).
+- TDD: NEW tests/test_deterministic_coaching_mode_routing.py (6) red-first (5 fail) -> green. Gate: 111 det/shadow blast-radius tests, py_compile+ruff clean, ASCII-added 0, CI green. No frozen files.
+- NEXT: bounded headless-safe HZ-pipeline queue drained again (pipeline CLEAN bar H1; coverage full-roster; remaining = the live-flip gate + 3 BACKLOG product calls: replay-narrative substrate, HZ-A always-recall B-choice content, HZ-B static-regen). Gemini director/consult still down (429 prepay-depleted).
+
+---
+
 # 2026-06-16 - cycle 43: UI fixture-audit (right_now/next + diagnostics) + HZ per-mode test coverage [items 440-441]
 
 - items 440 (`ed9c709c`) + 441 (`9da9358a`). Tier-1 frontend + test-only, NO ENGINE/DS/Share, NO RC restart (ADR-008). Source: operator "continue open items headlessly - multi-agent fanout orchestrated".

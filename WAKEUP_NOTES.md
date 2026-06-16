@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-16 - cycle 47: LBAND1 canonical-id fix + cost lever + HZ flip-gate accuracy [items 447-449]
+
+- 3 slices (`e0b119fd` S1 / `4d20ef17` S2 / `fd156f04` S3), all Tier-1, CI green; cost 7-lever re-sweep = 6 CLEAN + 1 SHIP. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share. No frozen files. RC restarted pid 1228 -> 23280 (S1).
+- ORIENT: bounded headless-safe queue drained (cycles 43-46) + Gemini director/consult down (429). 3-agent scout fanout: cost-7-lever / robustness-on-net-new-modules(440-446) / build-shadow-skew-RCA. Real work surfaced from the scouts, not the (drained) NEXT queue.
+- S1 (447): robustness scout found a real NOW bug - core/live_benchmark_band.py keyed canonical-keyed benchmarks on the RAW Live Client DISPLAY name, so ~25 multiword champs (Miss Fortune/Lee Sin/Tahm Kench...) silently never banded (games_for("Miss Fortune")=0 vs MissFortune=51). Same item-439/388 canonical class LBAND1 missed; its tests all used "Tristana" (display==canonical) so CI was blind. FIX: canonicalize the lookup at band_metrics entry, keep display name in the line. +2 char tests (red->26 green). RC restarted (shadow logger picks it up next SR game).
+- S2 (448): cost re-sweep 6 CLEAN + 1 SHIP. SHIP = web/js/main.js MINIMAP_INTERVAL_FAST 250->500 - the only sub-500ms NETWORK poll; engages only on the retired Game-PC minimap fast-stream (dormant 1-PC/ADR-011, falls back to 2000). Numeric constant, no render change (no 3b ritual), ADR-008 auto-reload.
+- S3 (449): build-skew RCA = BY-DESIGN-but-misleading (one long game inflates rows via the item_count+5s-bucket dedup sig; live anti_tank x793/x81 ~91% is really 5/5 distinct GAMES). hz_shadow_report is the do-not-flip-blind gate, so added by_lean_per_game + distinct_games + a per-game print line (additive, schema v2). +1 test. Live: "lean per-game (10 distinct): anti_squishy x5, anti_tank x5".
+- NEXT: bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip (do-not-flip-blind, accrues on real SR games - now roster-unbiased post-S1) + DS Phase-D + visual captures (Game-PC :8892 down) + P6 G3/G6/G7, all live/operator/Gemini-gated. Gemini still down (429).
+
+---
+
 # 2026-06-16 - cycle 46: weekly-hygiene API-transient hardening + LBAND1 shadow apparatus [items 444-446]
 
 - 3 slices (`85065ff6` S1 / `1cdbc716` S2 / `718b4a27` S3), all Tier-1, CI green; cost 7-lever re-sweep = 7/7 CLEAN. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share, no frozen files.
@@ -24,14 +35,3 @@
 - SLICE (LBAND1): NEW core/live_benchmark_band.py bands live cs+level vs the player's own champion percentile at a checkpoint (~10/~15min, +/-45s), SR-only, >=5-games gate, gold excluded (on-hand-vs-total mismatch). Pure generator, no live consumer yet (lead_projection/laning_verdicts ship-generator-wire-later precedent); live wire-in FUTURE (do-not-flip-blind). +10 hermetic tests (monkeypatch benchmarks._cache, clean-checkout safe). py_compile+ruff+ASCII clean, 10/10 green.
 - BACKLOG (5 FUTURE): Aggregator C skill radar, Overlay App F lobby-tags, Overlay App F ward heatmap, Overlay App E enemy ult-CD, Overlay App E LCU rune-write + personal-WR override. SUPERSEDED: Overlay App F per-ability dmg (DS richer), Overlay App E grading (PGR-parity).
 - NEXT: bounded headless-safe queue drained again; remaining = LBAND1/HZ live-flip + DS Phase-D + visual captures + P6 G3/G6/G7 (live/operator/Gemini-gated). Gemini still down (429).
-
----
-
-# 2026-06-16 - cycle 44: HZ shadow-routing guard - tft/brawl off the SR precompute tables [item 442]
-
-- item 442 (`0fa8f83e`). Tier-1 (one dashboard module + test), NO ENGINE/DS/Share, RC restarted pid 11728. Source: operator "continue open items headlessly - multi-agent fanout orchestrated".
-- ORIENT (run -02): cost (7/7) + DS (saturated) were swept CLEAN in run -01, so this run focused the 4-lane scout fanout on the PRIMARY north-star HZ precompute pipeline. scout-HZ-A laning = CLEAN (355,008-leaf live math/keyspace verification, full 172x172 roster); scout-HZ-B build = CLEAN (full-roster, canonical both sides); scout-HZ-C wiring = 1 real bug (H1); scout-new-substrate = replay-narrative is the only headless-buildable NEW substrate but its call site is DORMANT -> BACKLOG.
-- ROOT CAUSE (H1, item-439 class): resolve_mode_key emits tft/brawl (_state_builder.py:102) but _MODE_KEY_TO_{UPPER,LOWER} (_deterministic_coaching.py:142-155) omit them, so `.get(mk,"sr"/"SR")` silently routed those ticks vs the SR tables - a needless DS matchup call + wrong SR callouts live, and SR-scored rows logged under a tft/brawl label into the flip-gating shadow dataset. Verify-first confirmed resolve_mode_key DOES emit those modes.
-- FIX (blast radius = tft/brawl/unknown only; sr/client/game/aram/arena unchanged map keys): the mode maps are the source of truth; all 3 consumers drop the SR default - _compute_uncached -> dict(_EMPTY_RESULT) (no matchup call); both shadow writers early-return (no row). SHADOW-only, no live flip. /api/state 200 mode_key=client (mapped, byte-identical).
-- TDD: NEW tests/test_deterministic_coaching_mode_routing.py (6) red-first (5 fail) -> green. Gate: 111 det/shadow blast-radius tests, py_compile+ruff clean, ASCII-added 0, CI green. No frozen files.
-- NEXT: bounded headless-safe HZ-pipeline queue drained again (pipeline CLEAN bar H1; coverage full-roster; remaining = the live-flip gate + 3 BACKLOG product calls: replay-narrative substrate, HZ-A always-recall B-choice content, HZ-B static-regen). Gemini director/consult still down (429 prepay-depleted).
