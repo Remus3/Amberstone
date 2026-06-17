@@ -97,7 +97,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | DONE | `a30cbba4` (code+mine, item 457) + docs this cycle |
 | LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | DONE | `ba3d3ea1` |
 | OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | DONE | 5445502e |
-| OPEN2 | test-hygiene | tests/test_p2w4_hw2_b.py git() error-path tests call the real loop_controller.git() and pollute the production ops/loop/control/controller.log (monkeypatch subprocess.run but not control_dir). Redirect control_dir to tmp_path in those tests (conftest SHADOW_PATH precedent, item 386). | OPEN | - |
+| OPEN2 | test-hygiene | tests/test_p2w4_hw2_b.py git() error-path tests call the real loop_controller.git() and pollute the production ops/loop/control/controller.log (monkeypatch subprocess.run but not control_dir). Redirect control_dir to tmp_path in those tests (conftest SHADOW_PATH precedent, item 386). | DONE | b96f17e1 |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -111,6 +111,24 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-17 OPEN2 (cycle 19) DONE (b96f17e1) - hermetic loop_controller tests.
+  test_p2w4_hw2_b.py git()/head() error-path tests monkeypatched subprocess.run
+  to raise but NOT the module-global CTL, so loop_controller.git() except ->
+  log() appended to the PROD ops/loop/control/controller.log every suite run
+  (3 lines/run: "git rev-parse failed: Command 'git' timed out after 30 seconds"
+  x2 + "...: git binary missing"; 684 accrued since 2026-06-13, 42 dated today).
+  FIX: the lc fixture monkeypatches mod.CTL -> tmp_path/control after reload
+  (mirror conftest SHADOW_PATH redirect, item 386). +2 hermeticity regression
+  tests (CTL off-prod; prod controller.log size unchanged across error-path
+  git()). Sibling sweep: done_sentinel/claude_stub head() degrade to "" with NO
+  log() call - never polluters; the 5 other loop-touching test files pass
+  explicit tmp paths. RC suite 8315 passed / 2 skip / 0 fail; full re-run added
+  0 new prod-log lines (today count held at 42).
+  NEW WORK (FUTURE, operator-gated): the historic ~684-line git-fail residue in
+  controller.log is left intact (CLAUDE.md *.log-immutable bucket;
+  feedback_no_history_rewrite). A surgical recovery (strip the 2 exact
+  test-signature lines, preserve every real loop event) needs operator OK before
+  rewriting a protected operational log.
 - 2026-06-17 OPEN1 (cycle 18) DONE (5445502e) - unify RC LCU page-name prefix.
   VERIFY-BEFORE-REDO: the directive's "4 divergent templates" premise is STALE.
   All 3 NON-frozen producers already emit the canonical "RC: " prefix -
