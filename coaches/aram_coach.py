@@ -674,6 +674,7 @@ class Coach(BaseCoach):
                     game_seconds=int(state.get("game_seconds", 0) or 0),
                     level=_lvl,
                     bonus_hp_override=_target_bhp if _target_bhp > 0 else None,
+                    enemy_champions=state.get("enemy_comp", []),
                 )
                 _ds_dispatch = _ds_dispatch_for_coach(
                     champion=champ,
