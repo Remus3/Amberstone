@@ -1,0 +1,12 @@
+{
+  "champion": "Sett",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Overlord's Bloodmail, Warmog's Armor, Sterak's Gage, Titanic Hydra to hybrid scorer candidate pool; all 4 are above-baseline empirical items (67.6/67.4/67.5/64.3% wr) absent from scorer top-12.",
+  "headline": "Hybrid scorer misses Sett's HP-stacking core (Bloodmail/Warmog/Sterak/Titanic absent); pure-DPS items rank 5+8 instead."
+}

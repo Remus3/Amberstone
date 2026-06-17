@@ -1,0 +1,12 @@
+{
+  "champion": "Shyvana",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": false,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "assign scorer = mage (AP-axis); Spear of Shojin 69.2% wr, Riftmaker 66.7%, Liandry's 62.5% all absent from hybrid top-8",
+  "headline": "Hybrid/AD scorer vs AP-dominant empirical build (Liandry's/Shojin/Riftmaker lead ARAM wr); top-8 scorer pool entirely misses all above-baseline items"
+}

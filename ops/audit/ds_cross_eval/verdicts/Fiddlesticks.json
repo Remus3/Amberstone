@@ -1,0 +1,12 @@
+{
+  "champion": "Fiddlesticks",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Malignance (id 3118) to ability scorer item pool; 84% pick rate in sample (n=107/128) but absent from scorer top-12. Also investigate Zhonya's scoring r12 despite 48.1% wr (above 46.1% baseline).",
+  "headline": "ability scorer correct axis/comp; Malignance (84% pick rate, n=107) absent from scorer pool entirely - add to item pool"
+}

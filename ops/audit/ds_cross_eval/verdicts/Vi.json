@@ -1,0 +1,12 @@
+{
+  "champion": "Vi",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Exclude ADC/marksman items (Runaan's, Essence Reaver, Kraken Slayer, Stormrazor) from Vi pool; promote Death's Dance and Sundered Sky; investigate hybrid DPS subcomponent over-weighting attack-speed/on-hit for melee divers",
+  "headline": "Hybrid scorer ranks full ADC stack for Vi (Runaan's #4, ER #5, KS #6); Death's Dance 60% wr ARAM staple absent from scorer output entirely"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Jax",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Spear of Shojin (60.7% wr n=28) and Death's Dance (68.0% wr n=25) absent from scorer top-8; audit AH-to-DPS frequency wiring and Death's Dance DR in d_ehp; also audit BotRK overcredited at rank-2 (empirical wr 43.5% below baseline)",
+  "headline": "Jax hybrid scorer misses top empirical staples Spear of Shojin + Death's Dance; BotRK overcredited at rank-2"
+}

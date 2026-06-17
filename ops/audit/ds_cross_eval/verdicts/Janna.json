@@ -1,0 +1,12 @@
+{
+  "champion": "Janna",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Tear/Seraph/Luden's/Dawncore/Ionian Boots to hps item pool; AP-mage build path wins at 65.2%/60.0% wr but is invisible to hps scorer.",
+  "headline": "hps scorer axis correct; pool gap: Tear 65.2% wr and Luden's 60.0% wr AP-mage path absent from scorer pool."
+}

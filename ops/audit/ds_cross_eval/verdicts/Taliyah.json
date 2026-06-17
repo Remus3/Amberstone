@@ -1,0 +1,12 @@
+{
+  "champion": "Taliyah",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Luden's Echo rank (rank #11 vs 71.4% empirical wr); add Blighting Jewel to scorer pool (missing, 57.1% wr); reduce Shadowflame weighting (rank #5 but 40.0% wr below 46.9% baseline)",
+  "headline": "Ability scorer axis correct; Luden's Echo (71.4% wr) stranded at rank 11 and Blighting Jewel absent; Shadowflame over-scored"
+}

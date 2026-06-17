@@ -1,0 +1,12 @@
+{
+  "champion": "Orianna",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo (6655), Seraph's Embrace (3040), Malignance (3118) to ability scorer pool - Luden's is #1 built item (n=43 ARAM self) but absent from pool",
+  "headline": "Orianna ability scorer: correct axis + comp responsiveness OK; pool missing Luden's Echo (#1 built), Seraph's, Malignance"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Alistar",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (3121) and Guardian's Horn (2051) to scorer item pool; investigate Heartsteel and Thornmail top-8 over-promotion vs below-baseline empirical wr.",
+  "headline": "EHP axis + comp responsiveness correct; Fimbulwinter (n=64) and Guardian's Horn (68.0 wr) absent from scorer pool."
+}

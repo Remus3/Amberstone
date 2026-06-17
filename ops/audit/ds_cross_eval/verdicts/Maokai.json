@@ -1,0 +1,12 @@
+{
+  "champion": "Maokai",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Heartsteel over-ranked (scorer rank 5-6, empirical wr=44.0 n=50 vs baseline 48.0); Fimbulwinter (n=56, wr=50.0) absent from scored pool despite mana-to-HP EHP value.",
+  "headline": "Tank/ehp axis correct, comp responsive; Heartsteel over-ranked (wr=44.0 n=50) and Fimbulwinter staple absent from pool."
+}

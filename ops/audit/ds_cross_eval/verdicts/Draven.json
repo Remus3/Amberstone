@@ -1,0 +1,12 @@
+{
+  "champion": "Draven",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Boost Collector/Bloodthirster/LDR/RFC scores; demote Runaan's Hurricane and Void Immolation which have zero empirical presence; verify crit-axe DPS model.",
+  "headline": "Scorer top pool (BotRK/Runaan's) diverges from empirical winners; Collector(n=35,60%),BT(73%),LDR(71%),RFC(86%) all missing from top-8."
+}

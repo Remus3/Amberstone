@@ -1,0 +1,12 @@
+{
+  "champion": "Teemo",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Malignance (id 3118) to ability scorer item pool; it is the top empirical staple (wr 33.3% self / 44.5% all vs 43.0% baseline) but is absent from all comp grid cells.",
+  "headline": "MINOR: Malignance absent from scorer pool despite being Teemo top-wr ARAM staple; Blackfire Torch rank2 but below baseline wr."
+}

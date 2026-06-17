@@ -1,0 +1,12 @@
+{
+  "champion": "Jayce",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add Muramana/Hubris/Serylda to pool; audit Trinity Force/Heartsteel/Iceborn Gauntlet over-scoring vs bruiser archetype mismatch with lethality empirical builds",
+  "headline": "Scorer top-8 (Trinity Force, Heartsteel, Essence Reaver) absent from empirical builds; Muramana missing from grid entirely despite 100% build rate"
+}

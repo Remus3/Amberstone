@@ -1,0 +1,12 @@
+{
+  "champion": "Belveth",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Death's Dance + Titanic Hydra to scored pool; audit BotRK and Kraken Slayer over-ranking (both below ARAM baseline wr); flag Liandry's AP-item-on-AD-champ pool edge case vs tanky enemies.",
+  "headline": "Axis OK; BotRK(r2) and Kraken(r5) below ARAM baseline wr; Death's Dance(52.9%) and Titanic Hydra(57.1%) missing from scorer pool"
+}

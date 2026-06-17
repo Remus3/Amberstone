@@ -1,0 +1,12 @@
+{
+  "champion": "Kindred",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Demote Runaan's Hurricane from rank 2 (empirical 57.1% wr, below 63.9% baseline); elevate Yun Tal Wildarrows from rank 8 (empirical 85.7% wr, n=14).",
+  "headline": "Kindred dps scorer: Runaan's over-weighted (rank 2, 57.1% wr) and Yun Tal under-weighted (rank 8, 85.7% wr); top-3 scorer items all below empirical baseline."
+}

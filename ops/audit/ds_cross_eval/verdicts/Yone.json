@@ -1,0 +1,12 @@
+{
+  "champion": "Yone",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Infinity Edge (3031) and Immortal Shieldbow (6673) to scorer item pool; both absent from all comp-cell top-12 despite 73.3% and 70.0% ARAM win rates above 63.6% baseline.",
+  "headline": "Hybrid axis correct; IE (73.3%) and Immortal Shieldbow (70.0%) absent from scorer pool across all comp cells - pool gap."
+}

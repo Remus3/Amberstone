@@ -1,0 +1,12 @@
+{
+  "champion": "Trundle",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "bruiser-hybrid DPS gate: require d_ehp > 0 OR bruiser-archetype whitelist for top-8; Essence Reaver rank 4, Runaan's Hurricane rank 5, Stormrazor rank 8 have d_ehp=0 and zero empirical presence (n=64)",
+  "headline": "ADC crit items (ER #4, Runaan's #5, Stormrazor #8) pollute bruiser top-8; d_ehp=0 and absent from 64-game empirical sample"
+}

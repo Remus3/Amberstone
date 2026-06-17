@@ -1,0 +1,12 @@
+{
+  "champion": "Karthus",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Promote Malignance into scorer pool (ult-haste passive is direct R DPS multiplier; 62.5% wr self n=8, 60.5% all n=76); demote Shadowflame (50.0% wr self, below baseline) and Stormsurge (below baseline, falls 2 ranks vs tanky).",
+  "headline": "Karthus ability scorer: Malignance missing from top-8 (62.5% wr); Shadowflame/Stormsurge over-ranked vs empirical."
+}

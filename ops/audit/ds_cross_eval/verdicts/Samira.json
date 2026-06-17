@@ -1,0 +1,12 @@
+{
+  "champion": "Samira",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Audit dps scorer passive credit for The Collector (6676), Immortal Shieldbow (6673), Bloodthirster (3072): all absent from squishy top-12 despite being top empirical winners (wr 62.8/62.5/64.3 vs 60.4 baseline).",
+  "headline": "Samira dps scorer: The Collector/Shieldbow/BT absent from top-12 squishy cells despite being top empirical staples above baseline wr."
+}

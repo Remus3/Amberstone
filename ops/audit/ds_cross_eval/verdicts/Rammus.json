@@ -1,0 +1,12 @@
+{
+  "champion": "Rammus",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Down-weight Jak'Sho in balanced comps (50% wr below 58.3% baseline at rank 4 bal_squishy); up-weight Unending Despair (84.6% wr at rank 8 bal_squishy); raise Thornmail rank in ad_squishy (n=32, 62.5% wr at rank 9).",
+  "headline": "EHP/tank axis correct, comp-responsive; Jak'Sho over-ranked and Unending Despair under-ranked in bal_squishy vs empirics."
+}

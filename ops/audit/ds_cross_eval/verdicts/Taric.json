@@ -1,0 +1,12 @@
+{
+  "champion": "Taric",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": false,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "flip to tank primary; add Fimbulwinter/Heartsteel/Spirit Visage/Unending Despair/Thornmail to item pool or route through tank scorer",
+  "headline": "hps enchanter pool has zero overlap with empirical winners; tank build (Unending Despair 72.7% wr) invisible to scorer"
+}
