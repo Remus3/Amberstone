@@ -1331,6 +1331,28 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.134.0 (DSP8 enemy-comp target-preset seam - generalizes the DSV3 assume_squishy_target binary
+armor assumption into four named enemy-comp target presets, DEFAULT-OFF, 2026-06-17.
+rank_items_by_burst gains target_preset (default None -> byte-identical): "squishy" / "bruiser" /
+"tank" / "high_cc", each a representative (armor, MR) defensive profile substituted for an absent /
+zero target so item valuation reflects the comp being burst - lethality / flat pen bites a tank's
+armor (50 base + 13/lvl -> 180 @ L11), magic pen bites a high-CC enchanter's MR (35 base + 3.5/lvl
+-> 70 @ L11). NEW agents/daemon_slayer/burst.py _TARGET_PRESETS table + _assumed_target_resists(
+preset, level) -> (armor, MR) curve (base + per_level * (level - 1)) + _resolve_target_preset(
+target_preset, assume_squishy_target). The squishy preset REUSES the DSV3 _SQUISHY_TARGET_BASE_ARMOR
+/ _PER_LEVEL constants so target_preset="squishy" and assume_squishy_target=True agree on armor (22 +
+4.5/lvl -> 67 @ L11); the preset adds the representative MR (30 base + 0.5/lvl) the binary seam
+omitted. BACK-COMPAT: assume_squishy_target is UNCHANGED - it still substitutes ARMOR only (the MR
+substitution requires an explicit target_preset), so the DSV3 ranking + its 7 tests stay byte-
+identical; an explicit positive target_armor / target_mr always wins. preset profiles at L11:
+squishy (67/35), bruiser (90/55), tank (180/110), high_cc (75/70) - tank tankiest + squishy
+squishiest on both axes. The result's existing target_armor / target_mr fields carry the substituted
+resists; a new note surfaces the active preset. compute_burst_damage is untouched (it takes explicit
+resists). DEFAULT-OFF: no live scorer passes target_preset, so /rank-assassin + compute_burst are
+byte-identical. The live default consumer flip (wire a burst / target-preset scorer to the live
+enemy comp) is operator-gated in docs/LIVE_GAME_GATED_SYNC.md. +16 hermetic tests. ENGINE 1.133.0 ->
+1.134.0.)
+
 1.133.0 (DSP7 ally aura/enchanter seam - ally SHIELD/HEAL flat-HP EHP-grant, DEFAULT-OFF,
 2026-06-17. The THIRD ally-grant survivability EHP mode and the SHIELD/HEAL bucket the item-289
 ally-grant registry deliberately EXCLUDED ("ally shields/heals are ability_hps THROUGHPUT, not a
