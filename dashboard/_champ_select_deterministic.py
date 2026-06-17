@@ -19,9 +19,10 @@ on ANY error - same fail-soft contract as the Haiku path so callers need
 not guard. Pure: import-only reuse of loadout_resolver + archetype_picks.
 NO Anthropic call, NO new dependency.
 
-This is the SUBSTRATE for an eventual Haiku flip. It does NOT replace the
-served brief; `_champ_select.py` keeps returning the live Haiku result and
-shadow-logs this alongside for the operator to validate before any flip.
+This WAS the substrate for the champ-select brief Haiku flip (items
+273/276/280/283, flipped 2026-06-06): `_champ_select.brief_via_coach` now
+serves THIS output DIRECTLY with zero Anthropic call, so the earlier
+shadow-validate lane is retired - no live Haiku brief is left to shadow.
 """
 from __future__ import annotations
 
