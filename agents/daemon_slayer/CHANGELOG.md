@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.135.0 (DSP11 Cluster-B2 kit-axis item-credit seam - the dps/burst scorers ranked a near-fixed
+generic AD template (BotRK / Kraken / Stormrazor / Trinity / Essence Reaver for carry; Sundered Sky /
+IE / Trinity for assassin) for every AD carry/assassin because compute_dps / compute_burst_damage
+model a generic rotation that cannot encode a kit's win-axis (Pyke R executes scale with lethality,
+Nilah doubles crit, Ezreal Q + Manamune ramp), so the engine buried the items the player base WINS on
+(the DSP10 consolidated buried winners). DEFAULT-OFF, 2026-06-17. NEW agents/daemon_slayer/
+kit_axis_credit.py loader over a WIN-anchored kit_axis_item_credit.json table (7 champs / 21 terminal
+items, built by ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py from the DSP10 buried-winner
+report + rewind_history.db). rank_items (dps) + rank_items_by_burst (burst) gain
+prefer_kit_axis_by_win (default False -> byte-identical, new kit_axis_score field stays 0.0): when ON
+and the champ is tabled, (1) the dps ranker un-strips the champ's kit-axis items from the
+ranged-marksman off-class deny set so a caster-ADC's hard-excluded Trinity Force becomes a candidate,
+and (2) both rankers float every positive-delta kit-axis item above the generic template (model order
+preserved within each tier via a (kit_axis_score,) + base_key sort prefix). A non-positive-delta item
+is a regression and is NOT floated. Champs absent from the table are a no-op. Cluster A
+(Zilean/Shaco/Kayle/Seraphine AP-in-ARAM archetype divergence) is a SEPARATE operator-gated routing
+decision, deliberately NOT in this table. The live default-ON flip is EXCLUDED
+(docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.)
+
 1.134.0 (DSP8 enemy-comp target-preset seam - generalizes the DSV3 assume_squishy_target binary
 armor assumption into four named enemy-comp target presets, DEFAULT-OFF, 2026-06-17.
 rank_items_by_burst gains target_preset (default None -> byte-identical): "squishy" / "bruiser" /

@@ -23,6 +23,7 @@ from typing import Iterable, Optional
 from .data_loader import DataSnapshot
 from .dps import compute_dps
 from .effects import ITEM_EFFECTS
+from .kit_axis_credit import kit_axis_item_ids, kit_axis_item_names
 from .stats import clamp_level
 
 # Mode -> DDragon map id. Items whose ``maps[map_id]`` is False are unbuyable
@@ -275,6 +276,12 @@ class RankedItem:
     # it. Both default 0.0 -> byte-identical when the knob is unused.
     mana_adjusted_score: float = 0.0
     mana_gained: float = 0.0
+    # DSP11 Cluster-B2 kit-axis credit marker (1.135.0). 0.0 on the default path
+    # (``prefer_kit_axis_by_win=False``) so the rows + sort stay byte-identical.
+    # When the seam is engaged this is 1.0 on a surfaced (positive-delta) WIN-
+    # anchored kit-axis item and 0.0 otherwise; the ranking then sorts by it
+    # first, floating those items above the generic AD template.
+    kit_axis_score: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -292,6 +299,7 @@ class RankedItem:
             "effective_score": self.effective_score,
             "mana_adjusted_score": self.mana_adjusted_score,
             "mana_gained": self.mana_gained,
+            "kit_axis_score": self.kit_axis_score,
         }
 
 
@@ -512,6 +520,7 @@ def rank_items(
     mana_value_per_point: Optional[float] = None,
     apply_mode_modifiers: bool = False,
     exempt_offclass_by_win: bool = False,
+    prefer_kit_axis_by_win: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -580,6 +589,20 @@ def rank_items(
     Spear of Shojin, Senna Black Cleaver) are un-stripped from the candidate
     pool. Pure crit ADCs (absent from the table) are untouched. The live
     default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``prefer_kit_axis_by_win`` is the OPTIONAL DSP11 Cluster-B2 seam (DEFAULT-OFF).
+    The generic auto-attack DPS model ranks a near-fixed AD template (BotRK /
+    Kraken / Stormrazor / Trinity / Essence Reaver) for every AD carry because it
+    cannot encode a kit's win-axis (Nilah doubles crit, Ezreal Q + Manamune ramp),
+    so the items the player base WINS on (the DSP10 buried winners) sink below it.
+    When ``False`` (default) the output is byte-identical - ``kit_axis_score``
+    stays 0.0 and the sort is unchanged. When ``True`` and the champ has a
+    WIN-anchored ``kit_axis_item_credit`` entry: (1) for a ranged marksman, the
+    champ's kit-axis items are also un-stripped from the off-class deny set (so
+    Ezreal's hard-excluded Trinity Force becomes a candidate), and (2) every
+    positive-delta kit-axis item is floated above the generic template (model
+    order preserved within each tier). Champs absent from the table are a no-op.
+    The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -655,6 +678,13 @@ def rank_items(
     # without touching mage (mage scorer) or melee fighter / tank builds.
     exclude_names: Optional[frozenset[str]] = None
     champ_rec = snapshot.champions.get(str(champion_id))
+    # DSP11 (DEFAULT-OFF): resolve the champ's WIN-anchored kit-axis item set.
+    # Empty unless the seam is on AND the champ is tabled -> byte-identical no-op.
+    kit_axis_ids: frozenset[str] = (
+        kit_axis_item_ids(str(champion_id), champ_rec)
+        if prefer_kit_axis_by_win else frozenset()
+    )
+    kit_axis_active = bool(kit_axis_ids)
     if champ_rec is not None and _is_ranged_marksman(champ_rec):
         exclude_names = OFFCLASS_MARKSMAN_ITEM_NAMES
         # DSP2 Cluster-B (DEFAULT-OFF): un-strip the off-class items this
@@ -665,6 +695,14 @@ def rank_items(
             exempt = _offclass_win_exemptions(str(champion_id), champ_rec)
             if exempt:
                 exclude_names = OFFCLASS_MARKSMAN_ITEM_NAMES - exempt
+        # DSP11 (DEFAULT-OFF): the kit-axis seam ALSO un-strips this champ's
+        # WIN-anchored kit-axis items from the off-class deny set, so a
+        # caster-ADC's hard-excluded Trinity Force / Muramana becomes a
+        # candidate it can then float. Byte-identical when the seam is off.
+        if kit_axis_active:
+            axis_names = kit_axis_item_names(str(champion_id), champ_rec)
+            if axis_names:
+                exclude_names = exclude_names - axis_names
 
     candidates = _filter_candidates(
         snapshot,
@@ -743,6 +781,12 @@ def rank_items(
                 - float(baseline.stats.get("mp", 0.0)),
             )
             mana_adjusted = delta + mana_value_per_point * mana_gained
+        # DSP11 kit-axis credit marker: 1.0 on a surfaced (positive-delta)
+        # WIN-anchored kit-axis item when the seam is engaged, else 0.0. A
+        # non-positive delta is a genuine regression and is NOT floated.
+        kit_axis_score = 1.0 if (
+            kit_axis_active and item_id in kit_axis_ids and delta > 0.0
+        ) else 0.0
         ranked.append(
             RankedItem(
                 item_id=item_id,
@@ -759,21 +803,30 @@ def rank_items(
                 effective_score=effective,
                 mana_adjusted_score=mana_adjusted,
                 mana_gained=mana_gained,
+                kit_axis_score=kit_axis_score,
             )
         )
 
-    if reweight:
-        # Fight-length knob engaged: order by total-damage-over-fight model.
-        ranked.sort(key=lambda r: (r.effective_score, r.delta_dps), reverse=True)
-    elif sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.dps_per_1k_gold, r.delta_dps), reverse=True)
-    elif mana_reweight:
-        # Bounded mana valuation knob (ENGINE 1.64.0): order by the
-        # mana-adjusted score so early mana items surface for mana-dependent
-        # casters; delta_dps breaks ties.
-        ranked.sort(key=lambda r: (r.mana_adjusted_score, r.delta_dps), reverse=True)
+    def _base_key(r: RankedItem) -> tuple:
+        if reweight:
+            # Fight-length knob engaged: order by total-damage-over-fight model.
+            return (r.effective_score, r.delta_dps)
+        if sort_by == "efficiency":
+            return (r.dps_per_1k_gold, r.delta_dps)
+        if mana_reweight:
+            # Bounded mana valuation knob (ENGINE 1.64.0): order by the
+            # mana-adjusted score so early mana items surface for mana-dependent
+            # casters; delta_dps breaks ties.
+            return (r.mana_adjusted_score, r.delta_dps)
+        return (r.delta_dps, r.dps_per_1k_gold)
+
+    if kit_axis_active:
+        # DSP11: float surfaced kit-axis items above the generic template,
+        # preserving the model order within each tier. Byte-identical when off
+        # (kit_axis_active False -> the prefix term is never added).
+        ranked.sort(key=lambda r: (r.kit_axis_score,) + _base_key(r), reverse=True)
     else:
-        ranked.sort(key=lambda r: (r.delta_dps, r.dps_per_1k_gold), reverse=True)
+        ranked.sort(key=_base_key, reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
