@@ -13,6 +13,18 @@
 
 ---
 
+# 2026-06-17 - RF1 ds-engine: default-OFF survivability item-credit seam for the hybrid/bruiser scorer (headless gemini-loop cycle 1, round-2 refill)
+
+- Executor cycle 1 of the round-2-refill swarm (`ops/loop`, gemini director; the perpetual gemini+AHK loop WAS launched - controller.log "loop start" 13:09 + "cycle 1: typed"). Directive = RF1 (largest DSP10 residual cluster). Seam commit `faeaeb4a` (ENGINE 1.135.0 -> 1.136.0) + closeout `e8a1f90f` pushed; CI green for both SHAs.
+- ROOT (verify-before-redo CONFIRMED distinct from DSP2/DSP11): the 10 directive-named bruisers all route the `hybrid` scorer `agents/daemon_slayer/hybrid.py::rank_items_by_hybrid`, NOT the dps/burst rankers DSP2/DSP11 patched. Its sort key `hybrid_delta_pct = alpha*dps_pct + beta*ehp_pct` is alpha-weighted toward damage + the default mixed-damage target preset under-credits the pure resist/sustain axis, so the generic AD-DPS template (Void Immolation/BotRK/Trinity/Heartsteel/ER/Runaan's) tops it and the WIN-correlated survivability items sink. KEY DISTINCTION: DSP11 floats kit-axis items GATED ON `delta_dps>0`; survivability items add EHP not DPS (hybrid delta ~0) so a delta gate would NEVER surface them -> RF1 floats by WIN-table MEMBERSHIP. DSP2 is ranged-marksman-only (never fired on bruisers).
+- FIX: NEW `survivability_credit.py` loader + `survivability_item_credit.json` (9 champs / 28 terminal items: Darius/Yasuo/Urgot/JarvanIV/Gnar/Udyr/Tryndamere/RekSai/Briar; built by `ops/audit/ds_perm_swarm/build_survivability_item_credit.py` from the report's hybrid lane); NEW `prefer_survivability_by_win` on `rank_items_by_hybrid` + `survivability_score` field on HybridRankedItem; float prefix `(survivability_score,) + base_key` (byte-identical when off).
+- SCOPE NOTE (principled, auto-pick): the directive's 10th champ MasterYi is DELIBERATELY NOT tabled - the survivability-only filter found his buried winners are pure DPS (Infinity Edge, Guinsoo's Rageblade) = a DSP11/within-axis matter, not a survivability burial (a wrong float is worse than none); Tryndamere reduces to 1 (Titanic Hydra) for the same reason. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) NOT touched (operator-gated).
+- SEAM-FIRST: live default-ON flip EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md` section B + ledger (wires `server.py _route_hybrid` / `daemon_slayer_client.hybrid_for`); NOT flipped (do-not-flip-blind).
+- GATE: ENGINE bump 83 quoted pins / 75 .py; DS :8893 bounced (taskkill PID 18816 + schtasks /Run) -> /health 1.136.0; ds_share_sync 357 --check "in sync"; DS + Share CHANGELOG prepended. TDD +10 (`test_survivability_item_credit_rf1.py`, RED-first). DS-dir 7293 passed / 1 skip / 1942 subtests exit 0 (+10 vs 7283 DSP11 baseline); full RC `tests/ --ignore=tests/daemon_slayer` 8315 passed / 2 skip / 109 subtests exit 0; ruff clean; py_compile OK; build --check in sync; hygiene 12 passed; CI green both SHAs. INLINE sole orchestrator (R9 coupled-seam, DSP2-11 precedent); verifier SKIPPED per R7 (own single-thread - fresh dual suite + live :8893 + build --check IS the verify). No frozen files. ORCHESTRATION_PLAN RF1 OPEN->DONE; LEDGER 482; ROADMAP synced.
+- NEXT: RF2 (enchanter-scorer survivability residual) or RF3 (tank-scorer itemization-order). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - OPEN2 test-hygiene: hermetic loop_controller tests, no prod controller.log pollution (gemini-loop cycle 19, MANUAL one-shot)
 
 - Executor of the pending `ops/loop/control/directive.md` (OPEN2). NOTE: a MANUAL one-shot execution per the operator's "execute directive.md now" override - the perpetual gemini+AHK controller loop was NOT launched (PART A skipped). Fix `b96f17e1` + docs closeout `c07db0ab` pushed; CI green.
