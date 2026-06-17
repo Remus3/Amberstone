@@ -279,6 +279,97 @@ def test_timing_report_empty():
     assert rep["n"] == 0 and rep["median_min"] is None
 
 
+# ----------------------------------------------------------------- item_outcomes
+def test_item_outcomes_emits_one_tuple_per_distinctive_item():
+    table = {"Cho": {"anti_tank": {"order": ["1", "2", "3"]},
+                     "anti_squishy": {"order": ["1", "4"]}}}
+    # recommended anti_tank -> distinctive {2,3}; build has 2 not 3.
+    out = gate.item_outcomes(
+        _row(items=("1", "2"), win=True),
+        lambda c: ("anti_tank", "high"), _lookup_from(table))
+    assert set(out) == {("anti_tank", "2", True, True),
+                        ("anti_tank", "3", False, True)}
+
+
+def test_item_outcomes_uncovered_comp_is_empty():
+    table = {"Cho": {"anti_tank": {"order": ["2"]}, "anti_squishy": {"order": ["4"]}}}
+    assert gate.item_outcomes(_row(), lambda c: None, _lookup_from(table)) == []
+
+
+def test_item_outcomes_uncovered_champ_is_empty():
+    assert gate.item_outcomes(
+        _row(champ="Ghost"), lambda c: ("anti_tank", "high"), _lookup_from({})) == []
+
+
+def test_item_outcomes_empty_distinctive_side_is_empty():
+    # anti_tank order is a subset of anti_squishy -> at_only empty.
+    table = {"Cho": {"anti_tank": {"order": ["1"]},
+                     "anti_squishy": {"order": ["1", "4"]}}}
+    assert gate.item_outcomes(
+        _row(items=("1",)), lambda c: ("anti_tank", "high"), _lookup_from(table)) == []
+
+
+def test_item_outcomes_includes_lean_ambiguous_row():
+    # build buys one of each distinctive item -> lean-AMBIGUOUS, but item-level
+    # still attributes the recommended lean's distinctive item.
+    table = {"Cho": {"anti_tank": {"order": ["2"]}, "anti_squishy": {"order": ["4"]}}}
+    out = gate.item_outcomes(
+        _row(items=("2", "4"), win=False),
+        lambda c: ("anti_tank", "high"), _lookup_from(table))
+    assert out == [("anti_tank", "2", True, False)]
+
+
+# --------------------------------------------------------------- per_item report
+def test_per_item_report_carrier_flag_and_rank():
+    pi = {v: {} for v in gate._VARIANTS}
+    # item "2": bought 70/100 win, not 50/100 -> diff +0.20, n>=min -> carrier.
+    pi["anti_tank"]["2"] = {"bought": gate._WinBucket(), "not_bought": gate._WinBucket()}
+    for _ in range(70):
+        pi["anti_tank"]["2"]["bought"].record(True)
+    for _ in range(30):
+        pi["anti_tank"]["2"]["bought"].record(False)
+    for _ in range(50):
+        pi["anti_tank"]["2"]["not_bought"].record(True)
+    for _ in range(50):
+        pi["anti_tank"]["2"]["not_bought"].record(False)
+    # item "9": tiny n -> not a carrier even if diff positive.
+    pi["anti_squishy"]["9"] = {"bought": gate._WinBucket(), "not_bought": gate._WinBucket()}
+    pi["anti_squishy"]["9"]["bought"].record(True)
+    pi["anti_squishy"]["9"]["not_bought"].record(False)
+    rep = gate._per_item_report(pi, min_n=50)
+    assert rep["n_items"] == 2
+    # highest diff first.
+    assert rep["items"][0]["item_id"] == "9"  # diff 1.0 ranks first
+    carriers = [d for d in rep["items"] if d["carrier"]]
+    assert [c["item_id"] for c in carriers] == ["2"]  # only "2" meets min_n + lo>0
+
+
+def test_run_validation_emits_per_item_section(tmp_path):
+    db = tmp_path / "t.db"
+    conn = sqlite3.connect(str(db))
+    conn.executescript(_make_db_schema())
+    # Cho vs tank wall -> recommended anti_tank, distinctive item "2".
+    # M1 buys 2 + wins; M2 skips 2 + loses.
+    conn.execute("INSERT INTO matches VALUES ('M1','CLASSIC',1,2)")
+    conn.execute("INSERT INTO matches VALUES ('M2','CLASSIC',1,1)")
+    _ins(conn, "M1", 1, 100, "Cho", True, [2])
+    _ins(conn, "M1", 6, 200, "Lux", False, [9])
+    _ins(conn, "M2", 1, 100, "Cho", False, [9])
+    _ins(conn, "M2", 6, 200, "Lux", True, [9])
+    conn.commit()
+    conn.close()
+    table = {"Cho": {"anti_tank": {"order": ["2"]}, "anti_squishy": {"order": ["4"]}}}
+    report = gate.run_validation(
+        db, limit=0, comp_lean_fn=lambda c: ("anti_tank", "high"),
+        table_lookup_fn=_lookup_from(table), with_timing=False)
+    pi = report["per_item"]
+    entry = next(d for d in pi["items"] if d["item_id"] == "2")
+    assert entry["lean"] == "anti_tank"
+    assert entry["bought"]["n"] == 1 and entry["bought"]["wins"] == 1
+    assert entry["not_bought"]["n"] == 1 and entry["not_bought"]["wins"] == 0
+    assert entry["diff_bought_minus_not"] == pytest.approx(1.0)
+
+
 # --- helpers reused by the run_validation tests (named schema string) ----------
 def _make_db_schema() -> str:
     return (

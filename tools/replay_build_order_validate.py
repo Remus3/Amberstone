@@ -98,6 +98,10 @@ _DEFAULT_LIMIT = 400
 # followed-vs-not winrate difference 95% interval excludes 0 AND each arm has at
 # least this many decisive rows. Below it, hold Haiku.
 _FLIP_MIN_N = 300
+# Per-item carrier flag: an individual recommended-lean item is a "carrier" only
+# when its bought-vs-not win-diff 95% interval excludes 0 AND it has at least this
+# many bought rows. The item-granularity analogue of the lean-level flip rail.
+_PER_ITEM_MIN_N = 50
 
 _VARIANTS = ("anti_tank", "anti_squishy")
 
@@ -310,6 +314,42 @@ def score_row(
     return ("decisive", recommended, actual, row.win)
 
 
+def item_outcomes(
+    row: BuildRow,
+    comp_lean_fn: Callable[[Sequence[str]], Optional[Tuple[str, str]]],
+    table_lookup_fn: Callable[[str, str], dict],
+) -> List[Tuple[str, str, bool, bool]]:
+    """Per-item bought-vs-win outcomes for one build row at ITEM granularity.
+
+    For the recommended lean ``L = comp_lean_fn(enemy_comp)[0]`` and the champion's
+    ``L``-distinctive item set (the items in the ``L`` variant order but not the
+    other), emit one ``(lean, item_id, bought, win)`` tuple per distinctive item:
+    whether the player's final build CONTAINED that item, and whether they won.
+
+    Returns ``[]`` when the comp is unresolvable, the champion is uncovered, or the
+    recommended lean has no distinctive item (nothing to attribute). This
+    DECOMPOSES the lean-level followed-vs-not gate into per-item carriers and
+    INCLUDES rows the lean gate calls ambiguous - a balanced build still bought or
+    skipped each individual recommended item, so its per-item signal is recovered
+    here where the lean gate discards the whole row."""
+    lean = comp_lean_fn(row.enemy_comp)
+    if not lean:
+        return []
+    recommended = lean[0]
+    sets = distinctive_sets(row.champion, table_lookup_fn)
+    if sets is None:
+        return []
+    at_only, as_only = sets
+    distinctive = at_only if recommended == "anti_tank" else as_only
+    if not distinctive:
+        return []
+    bag = {str(x) for x in row.items}
+    return [
+        (recommended, item_id, item_id in bag, row.win)
+        for item_id in sorted(distinctive)
+    ]
+
+
 # ----------------------------------------------------------------------- orchestration
 def run_validation(
     db_path: Path,
@@ -342,6 +382,12 @@ def run_validation(
         # Completion-timing: collect (minute, win) for FOLLOWED rows that bought a
         # recommended-lean distinctive item, then split at the median.
         timing: List[Tuple[float, bool]] = []
+        # Item granularity: per (recommended-lean, item_id) bought/not-bought win
+        # buckets. Populated for EVERY covered row incl lean-ambiguous, so it mines
+        # the rows the headline gate discards. Keyed lean -> item_id -> buckets.
+        per_item: Dict[str, Dict[str, Dict[str, _WinBucket]]] = {
+            v: {} for v in _VARIANTS
+        }
 
         n_matches_used = 0
         n_matches_skipped = 0
@@ -366,6 +412,15 @@ def run_validation(
                 status, recommended, actual, win = score_row(
                     row, comp_lean_fn, table_lookup_fn)
                 status_counts[status] = status_counts.get(status, 0) + 1
+                # Item-granularity pass first: runs on every covered row (decisive
+                # AND ambiguous), unlike the lean headline below which gates on
+                # decisive. This is where the ambiguous rows pay off.
+                for lean_v, item_id, bought, iwin in item_outcomes(
+                        row, comp_lean_fn, table_lookup_fn):
+                    slot = per_item[lean_v].setdefault(
+                        item_id,
+                        {"bought": _WinBucket(), "not_bought": _WinBucket()})
+                    slot["bought" if bought else "not_bought"].record(iwin)
                 if status != "decisive" or recommended is None or actual is None:
                     continue
                 did_follow = actual == recommended
@@ -421,6 +476,7 @@ def run_validation(
             for rec in _VARIANTS
         },
         "timing": _timing_report(timing),
+        "per_item": _per_item_report(per_item),
         "interpretation": (
             "Headline = winrate(actual build FOLLOWED the chip's recommended lean) "
             "vs winrate(did NOT). The win is a 10-player TEAM outcome and "
@@ -430,6 +486,42 @@ def run_validation(
             "difference) = no decision signal, hold Haiku. timing tests whether "
             "completing the recommended build sooner (<= median minute) wins more."
         ),
+    }
+
+
+def _per_item_report(
+    per_item: Dict[str, Dict[str, Dict[str, "_WinBucket"]]],
+    min_n: int = _PER_ITEM_MIN_N,
+) -> dict:
+    """Rank per-item carriers by bought-minus-not win-diff (highest first).
+
+    Each entry carries the two-proportion 95% (Wald) interval of
+    ``winrate(bought item) - winrate(did not buy item)`` among rows whose
+    recommended lean owns the item. ``carrier`` flags an item whose ``lo > 0`` at
+    ``>= min_n`` bought rows = a clean per-item win contributor (the item-level
+    analogue of the headline flip rail). None-diff (an empty arm) sorts last."""
+    items_out: List[dict] = []
+    for lean in _VARIANTS:
+        for item_id, slot in per_item.get(lean, {}).items():
+            b, nb = slot["bought"], slot["not_bought"]
+            diff, lo, hi = two_prop_diff_ci(b.wins, b.n, nb.wins, nb.n)
+            items_out.append({
+                "lean": lean,
+                "item_id": item_id,
+                "bought": b.to_dict(),
+                "not_bought": nb.to_dict(),
+                "diff_bought_minus_not": diff,
+                "wald_95_lo": lo,
+                "wald_95_hi": hi,
+                "carrier": bool(lo is not None and lo > 0.0 and b.n >= min_n),
+            })
+    items_out.sort(key=lambda d: (d["diff_bought_minus_not"] is None,
+                                  -(d["diff_bought_minus_not"] or 0.0)))
+    return {
+        "min_n": min_n,
+        "n_items": len(items_out),
+        "n_carriers": sum(1 for d in items_out if d["carrier"]),
+        "items": items_out,
     }
 
 
@@ -455,6 +547,24 @@ def _timing_report(timing: List[Tuple[float, bool]]) -> dict:
 
 
 # ----------------------------------------------------------------------------- output
+def _load_item_names() -> Dict[str, str]:
+    """Best-effort ``{item_id: name}`` from the newest DDragon ``item.json`` for
+    the per-item carrier summary. Fail-soft: ANY problem returns ``{}`` (the
+    printer then shows bare ids). Never raises; never touched by the unit tests."""
+    try:
+        base = _ROOT / "data" / "meta_build" / "ddragon"
+        patches = sorted((p for p in base.iterdir() if p.is_dir()), reverse=True)
+        for pdir in patches:
+            path = pdir / "item.json"
+            if not path.exists():
+                continue
+            data = json.loads(path.read_text(encoding="utf-8")).get("data") or {}
+            return {str(k): str(v.get("name", "")) for k, v in data.items()}
+    except Exception:
+        return {}
+    return {}
+
+
 def _fmt_pct(x: Optional[float]) -> str:
     return "  n/a" if x is None else f"{x * 100:5.1f}%"
 
@@ -505,6 +615,26 @@ def print_summary(report: dict) -> None:
         f"    fast(<=med) n={t['fast']['n']:>5} wr={_fmt_pct(t['fast']['winrate'])}   "
         f"slow(>med) n={t['slow']['n']:>5} wr={_fmt_pct(t['slow']['winrate'])}"
     )
+    pi = report.get("per_item") or {}
+    items = pi.get("items") or []
+    if items:
+        names = _load_item_names()
+        print("")
+        print(
+            f"  -- per-ITEM carriers (bought-vs-not win-diff, min_n={pi.get('min_n')}, "
+            f"{pi.get('n_carriers', 0)}/{pi.get('n_items', 0)} carriers) --"
+        )
+        shown = [d for d in items if d["bought"]["n"] >= pi.get("min_n", 0)][:12]
+        for d in shown:
+            nm = names.get(str(d["item_id"]), "")
+            tag = "*" if d["carrier"] else " "
+            lo = d["wald_95_lo"]
+            ci = f"[{lo * 100:+5.1f},{d['wald_95_hi'] * 100:+5.1f}]" if lo is not None else ""
+            print(
+                f"   {tag} {d['lean']:<12} {str(d['item_id']):>6} {nm[:18]:<18} "
+                f"bought n={d['bought']['n']:>5} wr={_fmt_pct(d['bought']['winrate'])} "
+                f"diff={_fmt_pct(d['diff_bought_minus_not'])} {ci}"
+            )
     print("")
     print("interpretation:")
     print("  " + report["interpretation"])
