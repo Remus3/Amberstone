@@ -98,16 +98,17 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
       supplies a real `runes` set. Adds Shield Bash's 5-30-by-level + 2.5% bonus-HP floor to a shielded
       Resolve carrier's burst. Eyeball that a Shield-Bash tank's burst rises sanely and a non-Shield-Bash
       build is unchanged. Future completion runes join `COMPLETION_RUNE_IDS` and ride the same flag.
-- [ ] DSP5 summoner-spell flip (substrate shipped default-OFF, ENGINE 1.131.0): no scorer consumes
-      `agents/daemon_slayer/summoners.py` yet. The flip WIRES a consumer that reads the registry to
-      adjust the caster's effective survivability / antiheal / CC at the right surface (fight_report /
-      matchup / a coach), keyed off the player's + enemy's actual summoner set from the live client:
+- [ ] DSP5 summoner-spell flip (substrate ENGINE 1.131.0): CONSUMER SHIPPED 1.140.0
+      (`dsp_live_consumers.summoner_fight_adjustments`). Remaining live work: PLUMB the player's +
+      enemy's live summoner set INTO it + eyeball. It adjusts the caster's effective survivability /
+      antiheal / CC at the consuming surface (fight_report / matchup / a coach), keyed off the live set:
       Ignite antiheal+true (id 14), Exhaust incoming-DR 0.35 (id 3), Heal/Barrier flat EHP (7/21),
       Cleanse 0.75 cc-discount (id 1), Ghost MS (id 6). Re-anchor the wiki magnitudes to the live
       patch at flip time (DDragon/CDragon zero them). Eyeball the adjusted readout vs a real game.
-- [ ] DSP6 enemy-rune threat flip (substrate shipped default-OFF, ENGINE 1.132.0): no scorer
-      consumes `agents/daemon_slayer/enemy_runes.py` yet. The flip WIRES an EHP / target-preset
-      consumer that reads the ENEMY's live rune set to modulate the player's effective survivability
+- [ ] DSP6 enemy-rune threat flip (substrate ENGINE 1.132.0): CONSUMER SHIPPED 1.140.0
+      (`dsp_live_consumers.enemy_rune_threat`). Remaining live work: PLUMB the ENEMY's live rune set
+      INTO it + eyeball. It is an EHP / target-preset consumer reading the rune set to modulate the
+      player's effective survivability
       and the enemy's poke-resist: enemy Press the Attack (id 8005) -> divide the player's EHP by
       1.08 (`enemy_incoming_amp_pct`); enemy Conqueror (id 8010) -> add `enemy_damage_ramp` raw
       bonus enemy damage (and treat its 8%/5% lifesteal as enemy fight-sustain in the target preset);
@@ -116,8 +117,10 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
       `enemy_antiheal_pct(True)` 0.40. Re-anchor magnitudes to the live patch at flip (DDragon
       16.12.1 today). Eyeball that vs a real game the player's anti-tank / sustain build shifts
       sanely when the enemy runs PtA / Conqueror / Grasp, and a no-threat lobby is unchanged.
-- [ ] DSP7 ally aura/enchanter flip (substrate shipped default-OFF, ENGINE 1.133.0): no scorer
-      passes `compute_ehp(external_flat_hp=)` yet. The flip WIRES a peel/EHP consumer that, for a
+- [ ] DSP7 ally aura/enchanter flip (substrate ENGINE 1.133.0): CONSUMER SHIPPED 1.140.0
+      (`dsp_live_consumers.ally_protected_ehp`, folds flat-HP AND resist grants - also the item-321
+      ehp ally-resist producer surface). Remaining live work: PLUMB the live ally team INTO it +
+      eyeball. It is a peel/EHP consumer that, for a
       protected ally, sources `_passive_ally_grant_overrides.ally_flat_hp_grant(granter, level, True)`
       from the live ally team's enchanter (Janna E / Lulu E / Karma E / Yuumi E / Seraphine W
       shields, Soraka W / Nami W heals) and feeds it as `external_flat_hp` into the protected ally's
@@ -255,6 +258,16 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 ---
 
 ## Live-flip ledger (loop appends; newest first)
+
+- 2026-06-17 DSP5/6/7 CONSUMERS (ENGINE 1.140.0): the three DSP substrate seams now have a
+  consumer layer - NEW `agents/daemon_slayer/dsp_live_consumers.py` (`summoner_fight_adjustments`
+  / `enemy_rune_threat` / `ally_protected_ehp`). Previously a flag-flip did nothing (no scorer read
+  the registries); now the seams are LIVE-TESTABLE - the remaining gated work is PLUMBING the real
+  live-client summoner/rune/ally set INTO the consumer + eyeballing the adjusted readout (NOT
+  building a consumer). Each is byte-identical on an EMPTY context. DSP7's `ally_protected_ehp` ALSO
+  covers the item-321 ehp ally-resist producer (Orianna E / Braum W / Taric W via `ally_resist_grant`
+  -> `external_resist_armor/mr`). +10 tests; DS 7334 / RC 8333 green; Share 364; DS :8893 restarted
+  -> 1.140.0. NOT flipped (do-not-flip-blind).
 
 - 2026-06-17 RF6 (ENGINE 1.139.0): tank-template survivability INJECT seam shipped DEFAULT-OFF -
   extends the RF3 ehp/tank float (no NEW scorer flag; the SAME `prefer_survivability_by_win` on
