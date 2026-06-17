@@ -127,6 +127,7 @@ from .rank import (
     strip_arena_trinkets,
 )
 from .stats import clamp_level
+from .survivability_credit import survivability_item_ids_tank
 
 
 def _armor_factor(resist: float) -> float:
@@ -1726,6 +1727,14 @@ class EhpRankedItem:
     # their no-enemy identity (cc == blended) so the row stays byte-identical.
     cc_blended_ehp: float = 0.0
     delta_cc_blended_ehp: float = 0.0
+    # RF3 (2026-06-17, ENGINE 1.138.0): 1.0 on a WIN-anchored survivability item
+    # floated by the DEFAULT-OFF ``prefer_survivability_by_win`` seam, else 0.0.
+    # The EHP scorer ALREADY pools these resist/HP items - its raw-EHP-max sort
+    # just buries the win-correlated mid-tier ones (KSante Thornmail/Iceborn,
+    # Rell Fimbulwinter). When the seam is ON the marker prefixes the sort key so
+    # the tabled rows float to the front BY MEMBERSHIP (no injection - RF1's shape,
+    # not RF2's). Default 0.0 leaves the row + sort byte-identical.
+    survivability_score: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -1742,6 +1751,7 @@ class EhpRankedItem:
             "unique_passive_key": self.unique_passive_key,
             "cc_blended_ehp": self.cc_blended_ehp,
             "delta_cc_blended_ehp": self.delta_cc_blended_ehp,
+            "survivability_score": self.survivability_score,
         }
 
 
@@ -1858,6 +1868,7 @@ def rank_items_by_ehp(
     apply_champion_tenacity: bool = False,
     apply_spell_shield: bool = False,
     apply_survival_window: bool = False,
+    prefer_survivability_by_win: bool = False,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -1888,6 +1899,19 @@ def rank_items_by_ehp(
     same enemy context. Both are no-ops on ``blended_ehp`` (compute_ehp computes
     ``blended_ehp`` before the enemy-CC block), so supplying them under the
     default ``score_by="blended"`` is still byte-identical to today.
+
+    RF3 (2026-06-17, ENGINE 1.138.0): ``prefer_survivability_by_win`` (default
+    False) is the OPTIONAL tank-template seam. The EHP scorer pools every terminal
+    resist/HP item but sorts purely by ``delta_ehp`` (blind to win-rate), so the
+    WIN-correlated mid-tier survivability items the player base wins on (KSante
+    Thornmail/Iceborn, Rell Fimbulwinter - the DSP10 ehp-lane buried winners) sink
+    below the raw-EHP-max stackers. When ON, the champ's WIN-anchored
+    ``survivability_item_credit_tank`` set is FLOATED above the rest BY MEMBERSHIP
+    (the marker prefixes the sort key, model order preserved within each tier) -
+    RF1's float shape, NOT RF2's inject (the items are already pooled here). OFF
+    (default) the output is byte-identical: ``survivability_score`` stays 0.0 and
+    the sort is unchanged. A champ ABSENT from the table is a no-op even when ON.
+    The live default-ON flip is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md).
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -1926,6 +1950,17 @@ def rank_items_by_ehp(
     only_ids: Optional[set[str]] = None
     if only_item_ids is not None:
         only_ids = {str(i) for i in only_item_ids}
+
+    # RF3 (DEFAULT-OFF): resolve the champ's WIN-anchored tank survivability item
+    # set. Empty unless the seam is ON AND the champ is tabled -> byte-identical
+    # no-op. These items are already in the candidate pool (the EHP scorer pools
+    # all terminal resist/HP items); the seam only floats them by membership.
+    champ_rec = snapshot.champions.get(str(champion_id))
+    surv_ids: frozenset[str] = (
+        survivability_item_ids_tank(str(champion_id), champ_rec)
+        if prefer_survivability_by_win else frozenset()
+    )
+    surv_active = bool(surv_ids)
 
     baseline = compute_ehp(
         snapshot,
@@ -1998,6 +2033,10 @@ def rank_items_by_ehp(
         # per-1k column - regressions, not efficiency.
         active_delta = cc_delta if score_by == "cc_blended" else delta
         eff = (active_delta / (gold / 1000.0)) if (gold > 0 and active_delta > 0) else 0.0
+        # RF3 survivability credit marker: 1.0 on a WIN-anchored survivability item
+        # when the seam is engaged, else 0.0. Floated BY MEMBERSHIP - these items
+        # are pooled but the raw-EHP-max delta sort buries the win-correlated ones.
+        survivability_score = 1.0 if (surv_active and item_id in surv_ids) else 0.0
         ranked.append(EhpRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -2012,6 +2051,7 @@ def rank_items_by_ehp(
             unique_passive_key=cand_key,
             cc_blended_ehp=scored.cc_blended_ehp,
             delta_cc_blended_ehp=cc_delta,
+            survivability_score=survivability_score,
         ))
 
     # Item 236: the sort key tracks score_by. Default "blended" sorts on
@@ -2021,10 +2061,19 @@ def rank_items_by_ehp(
         if score_by == "cc_blended"
         else (lambda r: r.delta_ehp)
     )
-    if sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.ehp_per_1k_gold, _active(r)), reverse=True)
+
+    def _base_key(r: EhpRankedItem) -> tuple:
+        if sort_by == "efficiency":
+            return (r.ehp_per_1k_gold, _active(r))
+        return (_active(r), r.ehp_per_1k_gold)
+
+    if surv_active:
+        # RF3: float surfaced survivability items above the max-EHP ordering,
+        # preserving model order within each tier. Byte-identical when off
+        # (surv_active False -> the prefix term is never added).
+        ranked.sort(key=lambda r: (r.survivability_score,) + _base_key(r), reverse=True)
     else:
-        ranked.sort(key=lambda r: (_active(r), r.ehp_per_1k_gold), reverse=True)
+        ranked.sort(key=_base_key, reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
@@ -2056,6 +2105,11 @@ def rank_items_by_ehp(
             f"score_by=cc_blended - ranked on CC-adjusted EHP vs "
             f"{len(enemy_champions)} enemy champ(s)"
             + ("" if enemy_champions else " (no enemies supplied -> identical to blended)")
+        )
+    if surv_active:
+        notes.append(
+            f"prefer_survivability_by_win=ON - {len(surv_ids)} WIN-anchored "
+            f"survivability item(s) floated above the max-EHP ordering"
         )
 
     return EhpRankResult(
