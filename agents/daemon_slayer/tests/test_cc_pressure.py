@@ -423,7 +423,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
     """Pin ENGINE_VERSION at 1.38.0 for the cc_conditional consumer wire slice."""
 
     def test_engine_version_is_1_38_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.127.0")
+        self.assertEqual(ENGINE_VERSION, "1.128.0")
 
 
 if __name__ == "__main__":

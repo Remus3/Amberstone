@@ -1331,6 +1331,20 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.128.0 (Aphelios dps zero-output fix - degenerate basic=0 scenario fallback, 2026-06-16.
+Found in the comprehensive per-champion DS scorer cross-eval (ops/audit/ds_cross_eval/
+SYSTEMIC_FINDINGS.md Cluster C). compute_dps reads settings.scenario.{early,mid,late}
+rotations and scores ONLY the basic-attack portion; the upstream lolmath scenario for
+Aphelios (weapon-swap kit) encodes basic=0 in every rotation, so weighted_dps collapsed to
+0.0 - every item delta became 0 and the carry ranker degenerated to an all-Doran's, all-zero
+ranking (the coach surfaced useless recommendations). FIX: when ALL phases have zero
+basic-attack DPS AND mode_mult>0 AND raw_attack_dps>0, fall back weighted_dps =
+raw_attack_dps*mode_mult (AD*AS*crit*mode, fully item-responsive) + an auditable note. The
+mode_mult>0 gate preserves the ARAM-disabled contract (aramDamageDealt=0 -> mode_mult=0 ->
+weighted stays 0, e.g. Yunara pre-16.11.1). Byte-identical for every champion with real
+basic-attack rotations. +4 regression tests (test_dps_aphelios_degenerate_scenario.py).
+DS :8893 bounced -> 1.128.0.)
+
 1.127.0 (DSV4 - Spear of Shojin Focused Will ability-amp valuation, 2026-06-16. P6-G5
 residual / G2-residual bucket-B. The ability scorers had NO seam for Spear of Shojin
 3161 Focused Will, a stacking ability/passive damage amp (Meraki 16.12.1: 3% per stack,
