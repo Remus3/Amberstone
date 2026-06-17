@@ -1907,11 +1907,21 @@ def rank_items_by_ehp(
     Thornmail/Iceborn, Rell Fimbulwinter - the DSP10 ehp-lane buried winners) sink
     below the raw-EHP-max stackers. When ON, the champ's WIN-anchored
     ``survivability_item_credit_tank`` set is FLOATED above the rest BY MEMBERSHIP
-    (the marker prefixes the sort key, model order preserved within each tier) -
-    RF1's float shape, NOT RF2's inject (the items are already pooled here). OFF
-    (default) the output is byte-identical: ``survivability_score`` stays 0.0 and
-    the sort is unchanged. A champ ABSENT from the table is a no-op even when ON.
-    The live default-ON flip is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md).
+    (the marker prefixes the sort key, model order preserved within each tier).
+
+    RF6 (2026-06-17, ENGINE 1.139.0): the float alone is a no-op for a tabled id
+    the pool DROPS. Rell's sole tabled winner Fimbulwinter 3121 is the
+    non-purchasable mana-line transform of Winter's Approach
+    (``gold.purchasable``=False), so ``_filter_candidates`` excludes it and RF3 has
+    nothing to lift (RF4 verified in_pool=False; RF3's "already pooled" premise
+    holds for KSante's Thornmail/Iceborn but is FALSE for Rell). RF6 therefore also
+    INJECTS the tabled set via ``_filter_candidates(inject_ids=...)``, force-admitting
+    it past the purchasable gate so it enters the pool and floats - RF2's inject
+    intent, extended to clear the ``_is_purchasable`` gate the RF2 hps ``only_ids``
+    union could not. OFF (default) the output is byte-identical: ``survivability_score``
+    stays 0.0, the pool is unchanged (``inject_ids`` None), and the sort is unchanged.
+    A champ ABSENT from the table is a no-op even when ON. The live default-ON flip
+    is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md).
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -1951,10 +1961,13 @@ def rank_items_by_ehp(
     if only_item_ids is not None:
         only_ids = {str(i) for i in only_item_ids}
 
-    # RF3 (DEFAULT-OFF): resolve the champ's WIN-anchored tank survivability item
-    # set. Empty unless the seam is ON AND the champ is tabled -> byte-identical
-    # no-op. These items are already in the candidate pool (the EHP scorer pools
-    # all terminal resist/HP items); the seam only floats them by membership.
+    # RF3/RF6 (DEFAULT-OFF): resolve the champ's WIN-anchored tank survivability
+    # item set. Empty unless the seam is ON AND the champ is tabled -> byte-identical
+    # no-op. Most tabled ids are already pooled (the EHP scorer pools every terminal
+    # resist/HP item) and the seam only FLOATS them by membership (RF3); RF6 also
+    # INJECTS the ids the pool DROPS - a non-purchasable mana-line transform like
+    # Rell's Fimbulwinter 3121 (gold.purchasable=False) is force-admitted via
+    # _filter_candidates(inject_ids=...) so it can float instead of being a no-op.
     champ_rec = snapshot.champions.get(str(champion_id))
     surv_ids: frozenset[str] = (
         survivability_item_ids_tank(str(champion_id), champ_rec)
@@ -1990,6 +2003,11 @@ def rank_items_by_ehp(
         budget=budget,
         include_components=include_components,
         only_ids=only_ids,
+        # RF6: force-admit the tabled WIN-anchored survivability ids past the
+        # _is_purchasable gate so a not-pooled mana-line transform (Rell's
+        # Fimbulwinter 3121, gold.purchasable=False) surfaces and can float.
+        # None when the seam is OFF / champ untabled -> byte-identical pool.
+        inject_ids=(set(surv_ids) if surv_active else None),
     )
 
     ranked: list[EhpRankedItem] = []
