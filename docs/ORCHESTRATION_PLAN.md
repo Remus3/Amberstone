@@ -87,7 +87,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP2 | ds-engine | Cross-eval Cluster B fix: generic-marksman-template leaking onto non-marksman AD scorers (named systemic bug). Root-cause-first, per-champ tests, ENGINE bump + DS restart + Share sync. See plan "DSP2". | DONE | 6f7a5756 |
 | DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | DONE | 97920f56 |
 | DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | DONE | 1f7dbe62 |
-| DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | OPEN | - |
+| DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | DONE | 790b0236 |
 | DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | OPEN | - |
 | DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | OPEN | - |
 | DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | OPEN | - |
@@ -109,6 +109,36 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP5 (470, 790b0236) DONE. Summoner-spell seam (ENGINE 1.130.0 ->
+  1.131.0). NEW agents/daemon_slayer/summoners.py - a self-contained substrate
+  (the rune_procs.RUNE_PROCS birth precedent) registering the 6 combat summoner
+  spells on their scoring axis: Ignite 14 antiheal_true (70-525 true DoT by level
+  + 0.40 Grievous Wounds), Exhaust 3 incoming_dr (0.35, level-independent), Heal 7
+  ehp_heal (80-346 flat heal by level + 0.30 MS), Barrier 21 ehp_shield (100-
+  502.35 by level), Cleanse 1 cc_discount (0.75 tenacity; QSS item analog), Ghost
+  6 move_speed (0.24-0.5082 by level). Public surface (compute_summoner_value + 3
+  flat-fraction getters + compute_summoner_ms_pct + compute_summoner_ehp_bonus)
+  all fail-soft (unknown id / bad level -> 0.0). MAGNITUDES: DDragon + CDragon
+  16.12.1 ZERO summoner magnitudes (prose-only descriptions, like stripped item
+  passives - verified by fetching both), so every coefficient is the LoL wiki
+  value (reference_lol_wiki_access), cited per spell in the formula string; the
+  wiki is the live patch (post-16.12.1) so the flip re-anchors the magnitudes at
+  flip. DEFAULT-OFF: SUMMONER_SEAM_IDS marks the ids but NO live scorer consumes
+  the module -> /rank byte-identical (rune_procs-at-birth + DSV1-4 precedent).
+  SEAM-FIRST (EXCLUDED): the live flip = wire a fight_report/matchup/coach
+  consumer; appended to LIVE_GAME_GATED_SYNC.md section B (a specific DSP5 row
+  replacing the generic DSP5-8 placeholder) + the live-flip ledger. ENGINE bump
+  (directive-mandated + a new agents/daemon_slayer module needs Share sync): 78
+  quoted pins / 70 .py; DS :8893 bounced -> 1.131.0; ds_share_sync 347 files
+  --check in sync; DS + Share CHANGELOG prepended + Share/docs/02 function-ref
+  subsection added. TDD +24 red-first -> green. Gate: DS-dir 7206 passed / 1 skip
+  / 1942 subtests; RC tests/ 8281 passed / 2 skip / 109 subtests (post-restart +
+  sync); 3 hygiene gates 12 passed; ruff + py_compile + ASCII/LF clean. INLINE
+  sole orchestrator (R9); verifier skipped per R7 (single-thread) - fresh dual-
+  suite + live :8893 probe + Share --check. External wiki fetch is a S7b data-
+  anchor (not S4 runtime budget). NEXT: DSP6 (enemy-rune threat seam). Source:
+  gemini director directive ops/loop/control/directive.md (DSP5).
 
 - 2026-06-17 DSP4 cycle REGRESS directive: 1 of 2 items REAL, 1 FALSE POSITIVE.
   No ENGINE bump (notes-string only; no scorer/schema/math change). VERIFIED both
