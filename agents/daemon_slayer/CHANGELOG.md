@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.138.0 (RF3 tank-template survivability item-credit seam - the ehp/tank scorer
+rank_items_by_ehp pools EVERY purchasable mode-legal terminal item and sorts PURELY by delta_ehp
+(or ehp_per_1k_gold in efficiency mode), blind to win-rate. The WIN-correlated mid-tier resist/HP
+items the player base wins ARAM on (KSante: Thornmail / Iceborn Gauntlet; Rell: Fimbulwinter - the
+DSP10 ehp-lane buried winners) ARE in the pool and DO earn a positive EHP delta, but the maximal
+raw-EHP stackers add more absolute EHP, so the win items sink below them. DEFAULT-OFF, 2026-06-17.
+NEW agents/daemon_slayer/survivability_item_credit_tank.json table (KSante: Iceborn Gauntlet /
+Thornmail; Rell: Fimbulwinter; built by ops/audit/ds_perm_swarm/build_survivability_item_credit_tank.py
+from the DSP10 report's ehp lane) + a survivability_item_ids_tank() loader added to
+survivability_credit.py (shared _parse_table, separate file + cache - the RF1 hybrid and RF2 enchanter
+tables stay byte-unaffected). rank_items_by_ehp gains prefer_survivability_by_win (default False ->
+byte-identical, new survivability_score field on EhpRankedItem stays 0.0): when ON and the champ is
+tabled, the tabled ids are FLOATED above the max-EHP ordering by WIN-table MEMBERSHIP (model order
+preserved within each tier via a (survivability_score,) + base_key sort prefix). ROOT-CAUSE distinction:
+RF3 mirrors RF1's FLOAT (the EHP scorer already pools these items, like the bruiser scorer) - it does
+NOT inject like RF2 (whose enchanter_only pool EXCLUDES them); and it is orthogonal to DSP6/DSP8, which
+alter the ENEMY damage profile (every item's EHP magnitude shifts under the same context, the relative
+SELF order is unchanged - the win items stay buried under any preset). Components (Giant's Belt /
+Negatron Cloak) + boots (Plated Steelcaps) + Cluster A deliberately NOT tabled. The live default-ON flip
+is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.)
+
 1.137.0 (RF2 enchanter-template survivability item-credit seam - the hps/enchanter scorer
 rank_items_by_hps defaults enchanter_only=True, restricting the candidate pool to the curated
 enchanter-throughput registry (Echoes of Helia / Ardent Censer / Staff of Flowing Water / Locket /

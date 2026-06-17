@@ -137,6 +137,20 @@ web changes); engine flips need a DS `:8893` restart.
       `agents/daemon_slayer/survivability_item_credit_enchanter.json` from a fresh rewind+DSP10 run each
       patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py`). Needs a DS `:8893`
       restart on flip.
+- [ ] RF3 tank-template survivability flip (seam shipped default-OFF, ENGINE 1.138.0): no live
+      scorer passes `rank_items_by_ehp(..., prefer_survivability_by_win=True)` yet (defaults False ->
+      byte-identical). The flip WIRES the EHP/tank scorer-dispatch (`agents/daemon_slayer/server.py`
+      the `rank_items_by_ehp` call ~L557, and/or the `core/daemon_slayer_client.rank_tank_for` wrapper)
+      to pass `prefer_survivability_by_win=True` so the WIN-anchored tank champs FLOAT their buried
+      mid-tier resist/HP winners (KSante: Thornmail / Iceborn Gauntlet; Rell: Fimbulwinter) above the
+      max-EHP ordering. UNLIKE the RF2 enchanter flip (inject + float - the enchanter_only pool EXCLUDES
+      HP/tank items), the EHP scorer ALREADY pools these resist/HP items so RF3 floats by WIN-table
+      MEMBERSHIP only (RF1's shape - no injection). Eyeball in a real ARAM that KSante surfaces
+      Thornmail / Iceborn at the front and a non-tabled tank (Malphite / Ornn) + any operator pick are
+      byte-identical. Components (Giant's Belt / Negatron Cloak) + boots (Plated Steelcaps) + Cluster A
+      deliberately NOT tabled. Re-anchor `agents/daemon_slayer/survivability_item_credit_tank.json` from
+      a fresh rewind+DSP10 run each patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit_tank.py`).
+      Needs a DS `:8893` restart on flip.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).

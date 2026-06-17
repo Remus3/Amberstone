@@ -34,10 +34,19 @@ _TABLE_PATH = Path(__file__).resolve().parent / "survivability_item_credit.json"
 _ENCHANTER_TABLE_PATH = (
     Path(__file__).resolve().parent / "survivability_item_credit_enchanter.json"
 )
+# RF3 tank/ehp-lane table (separate file + cache). UNLIKE the RF2 enchanter pool,
+# the EHP scorer ALREADY pools these resist/HP items (its whole job is EHP); its
+# raw-EHP-max sort merely BURIES the win-correlated mid-tier ones. So the RF3 seam
+# only FLOATS by membership (RF1's shape) - no pool injection - see
+# ``ehp.rank_items_by_ehp``.
+_TANK_TABLE_PATH = (
+    Path(__file__).resolve().parent / "survivability_item_credit_tank.json"
+)
 
 # champion key (DDragon id / display name) -> frozenset of terminal item ids.
 _CACHE: Optional[dict[str, frozenset[str]]] = None
 _CACHE_ENCHANTER: Optional[dict[str, frozenset[str]]] = None
+_CACHE_TANK: Optional[dict[str, frozenset[str]]] = None
 
 
 def _parse_table(path: Path) -> dict[str, frozenset[str]]:
@@ -75,11 +84,19 @@ def _load_enchanter() -> dict[str, frozenset[str]]:
     return _CACHE_ENCHANTER
 
 
+def _load_tank() -> dict[str, frozenset[str]]:
+    global _CACHE_TANK
+    if _CACHE_TANK is None:
+        _CACHE_TANK = _parse_table(_TANK_TABLE_PATH)
+    return _CACHE_TANK
+
+
 def reset_cache() -> None:
-    """Drop both cached tables so the next read re-pulls. Used by tests."""
-    global _CACHE, _CACHE_ENCHANTER
+    """Drop all cached tables so the next read re-pulls. Used by tests."""
+    global _CACHE, _CACHE_ENCHANTER, _CACHE_TANK
     _CACHE = None
     _CACHE_ENCHANTER = None
+    _CACHE_TANK = None
 
 
 def survivability_item_ids(champion_id: str, champ_rec: Optional[dict] = None) -> frozenset[str]:
@@ -112,6 +129,29 @@ def survivability_item_ids_enchanter(
     if not champion_id:
         return frozenset()
     tbl = _load_enchanter()
+    hit = tbl.get(str(champion_id))
+    if hit:
+        return hit
+    name = (champ_rec or {}).get("name") if isinstance(champ_rec, dict) else None
+    if name:
+        return tbl.get(str(name), frozenset())
+    return frozenset()
+
+
+def survivability_item_ids_tank(
+    champion_id: str, champ_rec: Optional[dict] = None
+) -> frozenset[str]:
+    """RF3 tank/ehp-lane WIN-anchored survivability item ids (empty if none).
+
+    Consumed by the DEFAULT-OFF ``prefer_survivability_by_win`` seam in
+    ``ehp.rank_items_by_ehp``. UNLIKE the RF2 enchanter lane, the EHP scorer
+    ALREADY pools these items, so the seam only FLOATS them by membership (RF1's
+    shape) - it does NOT inject. Independent file + cache from the RF1 hybrid and
+    RF2 enchanter tables.
+    """
+    if not champion_id:
+        return frozenset()
+    tbl = _load_tank()
     hit = tbl.get(str(champion_id))
     if hit:
         return hit

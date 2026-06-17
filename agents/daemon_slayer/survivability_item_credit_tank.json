@@ -1,0 +1,43 @@
+{
+  "_meta": {
+    "anchored_to": "ops/audit/ds_perm_swarm/report/dsp10_consolidated.json (tank/ehp scorer lane)",
+    "ds_patch": "16.12.1",
+    "min_rewind_n": 5,
+    "note": "DEFAULT-OFF prefer_survivability_by_win seam input (ehp/tank ranker). Tabled ids are already POOLED by the EHP scorer; the seam FLOATS them above the max-EHP ordering by win-table membership. Cluster A excluded (operator-gated). Components + boots excluded.",
+    "scorer_lane": "ehp",
+    "source": "RF3 build_survivability_item_credit_tank.py"
+  },
+  "champions": {
+    "KSante": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "6662",
+          "lift": 1.9,
+          "name": "Iceborn Gauntlet",
+          "rewind_n": 40,
+          "rewind_wr": 47.5
+        },
+        {
+          "id": "3075",
+          "lift": 11.5,
+          "name": "Thornmail",
+          "rewind_n": 14,
+          "rewind_wr": 57.1
+        }
+      ]
+    },
+    "Rell": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "3121",
+          "lift": 1.3,
+          "name": "Fimbulwinter",
+          "rewind_n": 22,
+          "rewind_wr": 40.9
+        }
+      ]
+    }
+  }
+}
