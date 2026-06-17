@@ -15,6 +15,47 @@ web changes); engine flips need a DS `:8893` restart.
 
 ---
 
+## Next-session play order (bundle plan, 2026-06-17)
+
+34 open gated boxes. Minimum game set to clear the ONE-SHOT items = 3 games
+(the HZ + producer-census items below need a CORPUS, not one eyeball):
+
+```
+GAME 1  SR (ranked or normal)
+  champ-select  -> section A (all 5: LCU push, CS2 spell push, brief-flip shadow, CC-pair UI)
+  in-game       -> section B (build-chooser push; eyeball the flag-ready re-rank seams via the
+                   harness output; inhibitor callout when an inhib is down; st-* census; vision :8889)
+  overlay       -> section E (launch rc-shell IN this game: Alt+Shift+A capture + ACTIVE knob)
+  post-game     -> section F (PGR S3/S4/S5 capture + @N metrics; 90s Match-V5 ingest freshness)
+GAME 2  ARAM (KIWI)
+  -> section A(aram) + section C (all 5) + re-eyeball the ARAM-validated DS seams
+     (RF1/RF2/RF3+RF6, DSP11, DSP3 - the doc rows below say "eyeball in a real ARAM")
+GAME 3  Arena (1750)
+  -> section A(arena 6x3 capture) + section D (all 3: augment OCR, set_augment_intent probe, boots mirror)
+```
+
+PREP (built headless 2026-06-17, so live = eyeball-and-tick, no mid-game restarts):
+
+- Flag-ready re-rank seams (9): DSV2/DSV3/DSV4, DSP2, DSP8, DSP11 (dps+burst),
+  RF1, RF2, RF3+RF6. Run `python ops/audit/ds_perm_swarm/live_flip_eyeball.py`
+  (or `--champions <csv>` / `--champion X --preset tank`) -> `report/live_flip_eyeball.{json,md}`
+  dumps OFF-vs-ON top-6 per (champ, seam). Eyeball that diff in-session instead of
+  flipping + restarting :8893 per seam. The seam-ON ranking matched every documented
+  intent on the 5-champ smoke (Ezreal Trinity Force, Pyke Axiom Arc/Youmuu's, KSante
+  Iceborn/Thornmail, Rakan Warmog's/Heartsteel, Rell Fimbulwinter).
+- NOT in the harness: DSP4 (`score_completion_runes`) is a burst-NUMBER delta on
+  `compute_burst_damage`/`compute_combo` (needs a runes set), not a re-rank - eyeball it
+  with a direct call at flip. DSP3 is an RC-side resolver (no :8893 restart). DSP5/6/7 +
+  anti-tank P3.2 need their consumer/producer wired first (in progress).
+
+ACCRUAL items (NOT one-shot - need many games, then re-run the report; do NOT flip on one game):
+HZ Lane-A laning agreement + HZ Lane-B build-flip gate (`tools/hz_shadow_report.py`,
+`tools/replay_build_order_validate.py --limit 0` as `rewind_history.db` grows - both HOLD
+until the rail clears); the ~88 `st-*` live-producer census; the champ-select brief Haiku-flip
+shadow accrual. These ride along the 3 games but close on a later cycle, not this session.
+
+---
+
 ## A. Champ-select (any mode - enter a lobby + lock a champ)
 
 - [ ] LCU push: rune pages + item sets + summoner spells push to the live client on champ-select enter
