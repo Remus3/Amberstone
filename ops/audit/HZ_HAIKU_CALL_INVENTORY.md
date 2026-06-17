@@ -15,7 +15,7 @@ Model across all sites: `claude-haiku-4-5-20251001`. North star = drive live in-
 HZ precompute TARGETS this tier. Status: laning verdict (action/choices) flip = data-blocked (capturer complete 456+458+459, awaiting alive ticks under guard); build lean = item-457 done / build agreement structurally N/A (item 456 finding).
 
 ### TIER 2 - per-champ-select (once/game, pre-game, debounced)
-- `coaches/champ_select_coach.py:130` purpose=`champ_select_coach` - has a deterministic substrate (`dashboard/_champ_select_deterministic.py`, item 280) and an item-273 AST guard keeping the SERVED brief on Haiku.
+- `coaches/champ_select_coach.py:130` purpose=`champ_select_coach` - the pick-advisor (`/api/champ-select-coach` POST via `dashboard/routes_coach.py:156`). STILL ON HAIKU. NOTE (cycle 56 correction): this is a DISTINCT surface from the champ-select BRIEF. The brief (`dashboard/_champ_select.py` brief_via_coach) + its substrate `_champ_select_deterministic.py` (item 280) were FLIPPED off Haiku 2026-06-06 (items 273/276/280/283); the "AST guard keeping the SERVED brief on Haiku" no longer holds. The pick-advisor has NO deterministic substrate of its own.
 
 ### TIER 3 - one-shot / on-demand = lowest spend
 - `coaches/aram_team_analyzer.py:201` purpose=`aram_team_analyzer` - item 280 RETIRED the main path; Haiku fallback only for <3-champ teams
@@ -28,6 +28,11 @@ HZ precompute TARGETS this tier. Status: laning verdict (action/choices) flip = 
 Every remaining live-Haiku flip is do-not-flip-blind = gated on real-game precompute-vs-Haiku shadow data. The #1-frequency Tier-1 laning flip is code-complete and blocked ONLY on game volume. So the program bottleneck right now is GAMES PLAYED, not code.
 
 ## Single best NEXT precompute target (Gemini-requested)
+**CYCLE-56 CORRECTION (verified against live code):** the target below is REFUTED. It was named off the STALE docstring at `dashboard/_champ_select_deterministic.py:24` ("shadow-logs this alongside"), NOT the live served surface. `dashboard/_champ_select.py` shows the champ-select BRIEF was already FLIPPED off Haiku 2026-06-06 (items 273/276/280/283; "Haiku eliminated"): `brief_via_coach` returns `brief_deterministic(...)` with zero Anthropic call. A shadow capturer for the brief would compare the deterministic output against itself = validates nothing. Cycle 56 did NOT build it; the stale docstring was corrected.
+
+CORRECTED remaining champ-select Haiku target = `coaches/champ_select_coach.py:130` (the pick-advisor, a DIFFERENT surface). It has NO deterministic substrate, so a shadow lane needs a NEW precompute pick-advisor candidate built FIRST (then shadow-validate, then flip) - a net-new design cycle + Gemini decision, NOT the "mirror hz_choice_shadow + wire" simple task named below.
+
+--- ORIGINAL cycle-55 recommendation (RETAINED for provenance, now refuted) ---
 **Tier-2 `champ_select_coach`: build the MISSING champ-select shadow capturer.**
 Root cause: the deterministic substrate exists (item 280) and its docstring (`dashboard/_champ_select_deterministic.py:24`) claims it "shadow-logs this alongside", but there is NO champ-select shadow module (`core/*shadow*.py` has det/ds/hz_build/hz_choice/live_benchmark - none for champ-select) and NO `data/*champ*select*shadow*.jsonl`. So the champ-select flip track accrues ZERO validation data on every game - permanently flip-blocked until a capturer is wired.
 
