@@ -13,6 +13,19 @@
 
 ---
 
+# 2026-06-17 - DSP5 summoner-spell seam: NEW summoners.py (headless gemini-loop cycle 7)
+
+- Executor cycle 7 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP5 (summoner-spell seam, NEW `agents/daemon_slayer/summoners.py`). Commits `790b0236` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + `f9929bbf` (living docs) + `9845586f` (ROADMAP <80KB trim) pushed.
+- ROOT: RC had ZERO summoner-spell layer (the `summoner combat set` permutation bucket was unmodeled).
+- FIX (Tier-2, ENGINE 1.130.0 -> 1.131.0): NEW `summoners.py` - a self-contained `SUMMONER_SPELLS` registry (the rune_procs-at-birth precedent), one pure level-scaled closure per spell, modeled on its scoring axis: Ignite 14 antiheal_true (70-525 true DoT + 0.40 Grievous Wounds), Exhaust 3 incoming_dr (0.35), Heal 7 ehp_heal (80-346 + 0.30 MS), Barrier 21 ehp_shield (100-502.35), Cleanse 1 cc_discount (0.75 tenacity; QSS analog), Ghost 6 move_speed (0.24-0.5082). Public surface fail-soft (unknown id / bad level -> 0.0).
+- MAGNITUDES: DDragon + CDragon 16.12.1 ZERO summoner magnitudes (prose-only, like stripped item passives - verified by fetching both); every coefficient is LoL-wiki-cited (`reference_lol_wiki_access`) per spell in the `formula` string. The wiki is the live patch (post-16.12.1) so the flip re-anchors at flip; DEFAULT-OFF means zero live impact this revision.
+- DEFAULT-OFF: `SUMMONER_SEAM_IDS` marks the 6 ids but NO live scorer consumes the module -> `/rank` byte-identical. Live flip (wire a fight_report/matchup/coach consumer) EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B.
+- DS :8893 bounced (taskkill 6560 + schtasks) -> 1.131.0; Share re-synced (347, --check green); DS+Share CHANGELOG prepended + Share/docs/02 function-ref subsection; 78 ENGINE pins / 70 .py bumped (quoted-literal-only). TDD +24 red->green. DS-dir 7206 / RC 8281 / 3 hygiene gates 12 green; ruff/py_compile/ASCII clean. INLINE (R9), verifier SKIPPED per R7 (fresh in-thread dual re-verify + live :8893 + Share --check). External wiki fetch = S7b data-anchor (not S4 budget).
+- POST-PUSH FIX: the swarm-progress prepend tipped ROADMAP to 82309 > 81920 (`test_doc_size_budget` ROADMAP_MAX) -> trimmed DSP1-3 detail to a LEDGER pointer (`9845586f`), now 81724. Lesson: run `tests/test_doc_size_budget.py` before committing a swarm-progress prepend.
+- NEXT: DSP6 (enemy-rune threat seam, NEW; default-OFF). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP4 REGRESS directive: 1 real fix + 1 false positive (headless gemini-loop cycle 6)
 
 - Executor cycle 6 (`ops/loop`, gemini director). Gemini AUDITOR returned REGRESS on item-468 DSP4 with 2 items; BOTH verified vs ground truth FIRST (S7 + the item-466 auditor-false-positive precedent).
