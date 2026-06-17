@@ -1,0 +1,12 @@
+{
+  "champion": "Kayn",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Hubris, Axiom Arc, Black Cleaver, Muramana in hybrid DPS sub-score; all wr>50% empirically but outside scorer top-8",
+  "headline": "Pool gap: Axiom Arc 61.5% wr, Hubris 54.5% wr, Black Cleaver 52.6% wr all missing from scorer top-8"
+}

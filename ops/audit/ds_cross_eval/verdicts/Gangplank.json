@@ -1,0 +1,12 @@
+{
+  "champion": "Gangplank",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Infinity Edge to scorer pool (wr 69.4%, n=62, above 64.8% baseline, absent from top-8); investigate Void Immolation rank-1 with zero empirical presence",
+  "headline": "Hybrid/AD axis correct; Infinity Edge (69.4% wr, n=62) missing from top-8; Void Immolation rank-1 has no empirical backing"
+}

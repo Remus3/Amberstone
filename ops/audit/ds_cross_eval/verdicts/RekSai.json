@@ -1,0 +1,12 @@
+{
+  "champion": "RekSai",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Demote Heartsteel (top-4 scorer, 28.6 wr empirical); elevate Eclipse (80.0 wr, rank 5 tanky cells only) and Sundered Sky (61.5 wr, rank 12 squishy cells); cap zero-d_ehp ADC items (Runaan's/Essence Reaver/Kraken Slayer/Stormrazor) that have no empirical presence on Rek'Sai.",
+  "headline": "MINOR: Heartsteel top-4 scorer but 28.6 wr; Eclipse 80.0 wr and Sundered Sky 61.5 wr buried in squishy-cell ranks 5/12."
+}

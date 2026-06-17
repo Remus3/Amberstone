@@ -1,0 +1,12 @@
+{
+  "champion": "Velkoz",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo (id 6655) to ability scorer item pool; verify no pool gate is excluding it for poke mages.",
+  "headline": "Velkoz ability scorer correct axis and comp-responsive; Luden's Echo (wr 66.7%) missing from scorer pool."
+}

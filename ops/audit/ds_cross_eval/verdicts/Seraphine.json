@@ -1,0 +1,12 @@
+{
+  "champion": "Seraphine",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add AP mage item layer (Malignance, Liandry, Shadowflame, Blackfire Torch) to hps scorer pool or implement dual-scorer dispatch (hps + mage) for secondary=mage champions; fix Moonstone Renewer near-zero score vs SR wr=68.2.",
+  "headline": "hps scorer top-8 is all enchanter support items; empirical dominant build is full AP mage (Malignance n=71 wr=59.2, Shadowflame wr=61.9) with zero scorer overlap."
+}

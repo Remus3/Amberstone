@@ -1,0 +1,12 @@
+{
+  "champion": "Nami",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Dawncore (6621) to hps scorer pool (52.2% ARAM wr, n=23, absent from all cells); audit Echoes of Helia #1 rank vs 42.9% empirical wr (below 46.8% baseline).",
+  "headline": "hps axis correct; Echoes of Helia #1 scorer but loses empirically (42.9%); Dawncore missing from pool despite 52.2% wr."
+}

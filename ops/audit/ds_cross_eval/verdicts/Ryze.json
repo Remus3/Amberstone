@@ -1,0 +1,12 @@
+{
+  "champion": "Ryze",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Rod of Ages/Seraph's Embrace/Cosmic Drive absent from scorer top-8 despite being Ryze's empirical win staples (wr 57-69%, n=32-96); ability scorer needs mana-scaling item credit for Ryze.",
+  "headline": "Ability scorer axis correct but misses Ryze mana-scaling core: RoA/Seraph/Cosmic Drive all above-baseline empirically yet absent from top-8."
+}

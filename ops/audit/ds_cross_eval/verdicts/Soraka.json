@@ -1,0 +1,12 @@
+{
+  "champion": "Soraka",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": null,
+  "severity": "MINOR",
+  "nominated_retune": "Add Warmog's Armor + Fimbulwinter to hps pool; lift Moonstone Renewer from r9 into top-5",
+  "headline": "hps pool misses ARAM HP-stack staples Warmog's (59% wr n=83) and Fimbulwinter (60% wr n=30); Moonstone rank-9 underweight"
+}

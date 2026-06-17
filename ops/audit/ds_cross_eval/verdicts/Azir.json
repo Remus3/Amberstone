@@ -1,0 +1,12 @@
+{
+  "champion": "Azir",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Nashor's Tooth (id 3115) to ability scorer item pool; audit why attack-speed AP items are excluded. Also check Rylai's (id 3116, wr=60.0%).",
+  "headline": "Azir ability scorer OK on axis/comp; Nashor's Tooth (n=75 wr=56.0%) absent from top-12 pool is a notable miss."
+}

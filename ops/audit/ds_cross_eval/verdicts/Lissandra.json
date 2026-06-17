@@ -1,0 +1,12 @@
+{
+  "champion": "Lissandra",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Malignance (id 3118) to ability scorer pool; investigate Blackfire Torch overrank (#3 scorer, 52.4 wr below baseline 56.9)",
+  "headline": "Malignance missing from scorer pool (n=54, wr=59.3 above baseline); Blackfire Torch overranked #3 at below-baseline wr; enemy damage-type axis fully blind"
+}

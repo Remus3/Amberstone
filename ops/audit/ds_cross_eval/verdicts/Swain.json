@@ -1,0 +1,12 @@
+{
+  "champion": "Swain",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add healing-amp item weighting (Spirit Visage, 80% wr) and slow-uptime synergy weighting (Rylai's, 50% wr) to ability scorer for drain-mage archetypes; both empirical winners are currently absent from scorer top-8.",
+  "headline": "Ability scorer correct axis; Spirit Visage (80% wr) and Rylai's (50% wr) absent from top-8; Liandry's rank-2 but loses (33.3% wr)."
+}

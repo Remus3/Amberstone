@@ -1,0 +1,818 @@
+{
+  "champion": "Ashe",
+  "db_name": "Ashe",
+  "archetype": {
+    "primary": "carry",
+    "secondary": "enchanter",
+    "source": "default"
+  },
+  "scorer": "dps",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_self",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 127.774,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 2,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 85.0147,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 3,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 81.2352,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 4,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 68.845,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 5,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 67.3964,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 6,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 63.9676,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 7,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 63.8225,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 8,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 63.7762,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 9,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 61.319,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 10,
+        "id": "6675",
+        "name": "Navori Flickerblade",
+        "score": 56.4803,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 11,
+        "id": "6699",
+        "name": "Voltaic Cyclosword",
+        "score": 52.33,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "3302",
+        "name": "Terminus",
+        "score": 51.0084,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 127.774,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 2,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 85.0147,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 3,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 81.2352,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 4,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 68.845,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 5,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 67.3964,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 6,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 63.9676,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 7,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 63.8225,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 8,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 63.7762,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 9,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 61.319,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 10,
+        "id": "6675",
+        "name": "Navori Flickerblade",
+        "score": 56.4803,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 11,
+        "id": "6699",
+        "name": "Voltaic Cyclosword",
+        "score": 52.33,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "3302",
+        "name": "Terminus",
+        "score": 51.0084,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 127.774,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 2,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 85.0147,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 3,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 81.2352,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 4,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 68.845,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 5,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 67.3964,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 6,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 63.9676,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 7,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 63.8225,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 8,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 63.7762,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 9,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 61.319,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 10,
+        "id": "6675",
+        "name": "Navori Flickerblade",
+        "score": 56.4803,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 11,
+        "id": "6699",
+        "name": "Voltaic Cyclosword",
+        "score": 52.33,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "3302",
+        "name": "Terminus",
+        "score": 51.0084,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 125.74,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 2,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 63.7762,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 3,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 50.7149,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 4,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 48.5798,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 5,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 46.4201,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 6,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 39.34,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 7,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 39.0122,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 8,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 36.5529,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 9,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 36.47,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 10,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 32.8478,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 11,
+        "id": "6675",
+        "name": "Navori Flickerblade",
+        "score": 32.2744,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 12,
+        "id": "3036",
+        "name": "Lord Dominik's Regards",
+        "score": 31.4204,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3300
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 125.74,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 2,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 63.7762,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 3,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 50.7149,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 4,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 48.5798,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 5,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 46.4201,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 6,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 39.34,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 7,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 39.0122,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 8,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 36.5529,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 9,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 36.47,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 10,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 32.8478,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 11,
+        "id": "6675",
+        "name": "Navori Flickerblade",
+        "score": 32.2744,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 12,
+        "id": "3036",
+        "name": "Lord Dominik's Regards",
+        "score": 31.4204,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3300
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "target_resist",
+    "comp_blind": false,
+    "enemy_damage_type": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    },
+    "target_resist": {
+      "max_positive_shift": 23,
+      "top_risers_when_ap": [
+        {
+          "name": "Liandry's Torment",
+          "shift": 23
+        },
+        {
+          "name": "Serylda's Grudge",
+          "shift": 7
+        },
+        {
+          "name": "Mortal Reminder",
+          "shift": 7
+        },
+        {
+          "name": "Lord Dominik's Regards",
+          "shift": 7
+        },
+        {
+          "name": "Void Immolation",
+          "shift": 6
+        }
+      ],
+      "top_fallers_when_ap": [
+        {
+          "name": "The Collector",
+          "shift": -6
+        },
+        {
+          "name": "Hexoptics C44",
+          "shift": -5
+        },
+        {
+          "name": "Immortal Shieldbow",
+          "shift": -5
+        },
+        {
+          "name": "Edge of Night",
+          "shift": -4
+        },
+        {
+          "name": "Spectral Cutlass",
+          "shift": -4
+        }
+      ],
+      "comp_blind": false
+    }
+  },
+  "rune_relevant": false,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 18,
+        "wr": 61.1,
+        "items": [
+          {
+            "id": "3153",
+            "name": "Blade of The Ruined King",
+            "n": 11,
+            "wr": 63.6
+          },
+          {
+            "id": "3006",
+            "name": "Berserker's Greaves",
+            "n": 9,
+            "wr": 66.7
+          },
+          {
+            "id": "3085",
+            "name": "Runaan's Hurricane",
+            "n": 7,
+            "wr": 42.9
+          },
+          {
+            "id": "3032",
+            "name": "Yun Tal Wildarrows",
+            "n": 6,
+            "wr": 83.3
+          },
+          {
+            "id": "6672",
+            "name": "Kraken Slayer",
+            "n": 6,
+            "wr": 66.7
+          },
+          {
+            "id": "3031",
+            "name": "Infinity Edge",
+            "n": 5,
+            "wr": 60.0
+          },
+          {
+            "id": "3087",
+            "name": "Statikk Shiv",
+            "n": 5,
+            "wr": 60.0
+          }
+        ]
+      },
+      "all": {
+        "n": 223,
+        "wr": 49.3,
+        "items": [
+          {
+            "id": "3006",
+            "name": "Berserker's Greaves",
+            "n": 158,
+            "wr": 47.5
+          },
+          {
+            "id": "3153",
+            "name": "Blade of The Ruined King",
+            "n": 123,
+            "wr": 51.2
+          },
+          {
+            "id": "3085",
+            "name": "Runaan's Hurricane",
+            "n": 86,
+            "wr": 53.5
+          },
+          {
+            "id": "3087",
+            "name": "Statikk Shiv",
+            "n": 68,
+            "wr": 54.4
+          },
+          {
+            "id": "6672",
+            "name": "Kraken Slayer",
+            "n": 63,
+            "wr": 49.2
+          },
+          {
+            "id": "3031",
+            "name": "Infinity Edge",
+            "n": 53,
+            "wr": 47.2
+          },
+          {
+            "id": "3032",
+            "name": "Yun Tal Wildarrows",
+            "n": 50,
+            "wr": 52.0
+          },
+          {
+            "id": "3091",
+            "name": "Wit's End",
+            "n": 43,
+            "wr": 48.8
+          },
+          {
+            "id": "1036",
+            "name": "Long Sword",
+            "n": 29,
+            "wr": 44.8
+          },
+          {
+            "id": "1043",
+            "name": "Recurve Bow",
+            "n": 27,
+            "wr": 55.6
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 4,
+        "wr": 25.0,
+        "items": []
+      },
+      "all": {
+        "n": 70,
+        "wr": 50.0,
+        "items": [
+          {
+            "id": "3006",
+            "name": "Berserker's Greaves",
+            "n": 50,
+            "wr": 48.0
+          },
+          {
+            "id": "6672",
+            "name": "Kraken Slayer",
+            "n": 44,
+            "wr": 47.7
+          },
+          {
+            "id": "1055",
+            "name": "Doran's Blade",
+            "n": 31,
+            "wr": 48.4
+          },
+          {
+            "id": "3046",
+            "name": "Phantom Dancer",
+            "n": 26,
+            "wr": 57.7
+          },
+          {
+            "id": "3085",
+            "name": "Runaan's Hurricane",
+            "n": 12,
+            "wr": 58.3
+          },
+          {
+            "id": "3153",
+            "name": "Blade of The Ruined King",
+            "n": 12,
+            "wr": 50.0
+          },
+          {
+            "id": "3078",
+            "name": "Trinity Force",
+            "n": 12,
+            "wr": 41.7
+          },
+          {
+            "id": "1038",
+            "name": "B. F. Sword",
+            "n": 11,
+            "wr": 63.6
+          },
+          {
+            "id": "1036",
+            "name": "Long Sword",
+            "n": 10,
+            "wr": 30.0
+          },
+          {
+            "id": "3072",
+            "name": "Bloodthirster",
+            "n": 9,
+            "wr": 66.7
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

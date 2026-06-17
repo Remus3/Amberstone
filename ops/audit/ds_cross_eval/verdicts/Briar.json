@@ -1,0 +1,12 @@
+{
+  "champion": "Briar",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "bruiser_hybrid_briar: BotRK (rank 2, wr 37.5%) and Heartsteel (rank 4, wr 44.4%) both lose empirically; reduce pure d_dps weighting; add shield/DR EHP credit to lift Sterak's Gage (63.6% wr, absent top-8) and Death's Dance (52.9%, absent); penalize zero-d_ehp items in bruiser hybrid scorer.",
+  "headline": "MISMATCH: BotRK rank-2 loses at 37.5% wr; Sterak's Gage 63.6% wr absent from top-8; Heartsteel rank-4 at 44.4% wr below baseline"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Rell",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (3121) to scorer item pool; Rell's mana-gated kit makes Fimbulwinter effective bulk that raw-stat EHP misses when the item is absent.",
+  "headline": "EHP axis/comp OK; Fimbulwinter absent from pool despite n=22 wr=40.9%; Warmog/Jak'Sho/Kaenic score top-8 but all lose empirically."
+}

@@ -1,0 +1,629 @@
+{
+  "champion": "Thresh",
+  "db_name": "Thresh",
+  "archetype": {
+    "primary": "enchanter",
+    "secondary": "tank",
+    "source": "default"
+  },
+  "scorer": "hps",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_self",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 26.548,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 11.3135,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 5,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 8.0026,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.9204,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 26.548,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 11.3135,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 5,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 8.0026,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.9204,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 26.548,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 11.3135,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 5,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 8.0026,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.9204,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 26.548,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 11.3135,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 5,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 8.0026,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.9204,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 26.548,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 11.3135,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 5,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 8.0026,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.9204,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "target_resist",
+    "comp_blind": true,
+    "enemy_damage_type": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    },
+    "target_resist": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    }
+  },
+  "rune_relevant": false,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 20,
+        "wr": 70.0,
+        "items": [
+          {
+            "id": "3121",
+            "name": "Fimbulwinter",
+            "n": 14,
+            "wr": 64.3
+          },
+          {
+            "id": "2502",
+            "name": "Unending Despair",
+            "n": 14,
+            "wr": 64.3
+          },
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 11,
+            "wr": 45.5
+          },
+          {
+            "id": "3084",
+            "name": "Heartsteel",
+            "n": 9,
+            "wr": 77.8
+          },
+          {
+            "id": "2051",
+            "name": "Guardian's Horn",
+            "n": 6,
+            "wr": 50.0
+          }
+        ]
+      },
+      "all": {
+        "n": 242,
+        "wr": 51.7,
+        "items": [
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 146,
+            "wr": 54.1
+          },
+          {
+            "id": "3121",
+            "name": "Fimbulwinter",
+            "n": 141,
+            "wr": 52.5
+          },
+          {
+            "id": "3084",
+            "name": "Heartsteel",
+            "n": 139,
+            "wr": 46.0
+          },
+          {
+            "id": "2502",
+            "name": "Unending Despair",
+            "n": 75,
+            "wr": 54.7
+          },
+          {
+            "id": "3083",
+            "name": "Warmog's Armor",
+            "n": 71,
+            "wr": 47.9
+          },
+          {
+            "id": "3075",
+            "name": "Thornmail",
+            "n": 56,
+            "wr": 60.7
+          },
+          {
+            "id": "2504",
+            "name": "Kaenic Rookern",
+            "n": 52,
+            "wr": 44.2
+          },
+          {
+            "id": "2051",
+            "name": "Guardian's Horn",
+            "n": 50,
+            "wr": 48.0
+          },
+          {
+            "id": "3047",
+            "name": "Plated Steelcaps",
+            "n": 49,
+            "wr": 53.1
+          },
+          {
+            "id": "6665",
+            "name": "Jak'Sho, The Protean",
+            "n": 38,
+            "wr": 73.7
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 4,
+        "wr": 25.0,
+        "items": []
+      },
+      "all": {
+        "n": 73,
+        "wr": 45.2,
+        "items": [
+          {
+            "id": "3190",
+            "name": "Locket of the Iron Solari",
+            "n": 52,
+            "wr": 50.0
+          },
+          {
+            "id": "2055",
+            "name": "Control Ward",
+            "n": 32,
+            "wr": 40.6
+          },
+          {
+            "id": "3869",
+            "name": "Celestial Opposition",
+            "n": 30,
+            "wr": 56.7
+          },
+          {
+            "id": "3876",
+            "name": "Solstice Sleigh",
+            "n": 28,
+            "wr": 35.7
+          },
+          {
+            "id": "3109",
+            "name": "Knight's Vow",
+            "n": 28,
+            "wr": 53.6
+          },
+          {
+            "id": "3067",
+            "name": "Kindlegem",
+            "n": 28,
+            "wr": 42.9
+          },
+          {
+            "id": "3009",
+            "name": "Boots of Swiftness",
+            "n": 20,
+            "wr": 40.0
+          },
+          {
+            "id": "1029",
+            "name": "Cloth Armor",
+            "n": 16,
+            "wr": 43.8
+          },
+          {
+            "id": "3047",
+            "name": "Plated Steelcaps",
+            "n": 13,
+            "wr": 23.1
+          },
+          {
+            "id": "3158",
+            "name": "Ionian Boots of Lucidity",
+            "n": 12,
+            "wr": 50.0
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Tryndamere",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Investigate Titanic Hydra (3748) and Navori Flickerblade (6675) absent from scorer top-8 despite 63.6% and 58.8% ARAM wr; hybrid scorer may underweight on-hit HP-ratio effects. BotRK (rank 2, 39.3% wr) and Heartsteel (rank 7, 44.1% wr) both below baseline - secondary calibration signal.",
+  "headline": "MINOR: Titanic Hydra (63.6% wr) and Navori Flickerblade (58.8% wr) absent from top-8; BotRK and Heartsteel rank high but lose in practice"
+}

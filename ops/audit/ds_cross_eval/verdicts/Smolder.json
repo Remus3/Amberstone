@@ -1,0 +1,12 @@
+{
+  "champion": "Smolder",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "BotRK ranks #1 with zero empirical presence - investigate AA-frequency overcount vs ability-cast pattern; elevate Rapid Firecannon (n=61 wr=52.5%) and Bloodthirster (n=20 wr=60.0%) in dps pool",
+  "headline": "dps/carry-AD axis correct; BotRK scores #1 with no empirical footprint; RFC and BT above-baseline but absent from scorer pool"
+}

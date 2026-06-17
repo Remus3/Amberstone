@@ -1,0 +1,12 @@
+{
+  "champion": "Yunara",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Reduce BotRK weight for crit-carry archetype; add crit-synergy bonus to pull Infinity Edge (empirical wr 75.0%, rank 11) and Runaan's Hurricane (wr 61.5%, rank 9) into top-8.",
+  "headline": "BotRK rank-1 scorer but wr 40.0% (below 52.9% baseline); IE (75.0%) and Runaan's (61.5%) ranked 11/9, outside top-8."
+}

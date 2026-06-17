@@ -1,0 +1,12 @@
+{
+  "champion": "Graves",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "BotRK score 89.77 vs rank-2 65.68 gap: verify on-hit/pct-hp formula weight for Graves; check IE rank-5 squishy vs empirical wr 46.7%",
+  "headline": "Graves dps scorer axis aligned, Eclipse rank-8 matches best empirical item; BotRK rank-1 gap unvalidated - investigate formula weight"
+}

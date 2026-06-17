@@ -1,0 +1,12 @@
+{
+  "champion": "DrMundo",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Void Immolation EHP score deflation (rank 1 at 4113 vs rank 2 at 1867, no empirical presence); review Thornmail armor EHP weight vs its above-baseline empirical wr=51.5 in AD comps",
+  "headline": "DrMundo ehp: Void Immolation over-dominates scorer (2.2x gap, zero empirical), Thornmail under-ranked vs above-baseline wr"
+}

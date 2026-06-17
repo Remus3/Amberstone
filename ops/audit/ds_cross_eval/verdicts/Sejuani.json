@@ -1,0 +1,12 @@
+{
+  "champion": "Sejuani",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (3121) to scored item pool; absent from all comp_grid cells despite n=23 wr=56.5% ARAM empirical. Likely scored near-zero due to mana-to-HP conversion not applying to Sejuani.",
+  "headline": "Sejuani ehp OK on axis/comp; Fimbulwinter (n=23 wr=56.5%) absent from scorer pool entirely - pool gap MINOR"
+}

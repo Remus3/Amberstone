@@ -1,0 +1,775 @@
+{
+  "champion": "Alistar",
+  "db_name": "Alistar",
+  "archetype": {
+    "primary": "tank",
+    "secondary": "enchanter",
+    "source": "default"
+  },
+  "scorer": "ehp",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_all",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 4400.9238,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3143",
+        "name": "Randuin's Omen",
+        "score": 2036.8119,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 3,
+        "id": "3083",
+        "name": "Warmog's Armor",
+        "score": 1744.6667,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 4,
+        "id": "2502",
+        "name": "Unending Despair",
+        "score": 1668.8905,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 5,
+        "id": "3742",
+        "name": "Dead Man's Plate",
+        "score": 1656.4976,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 6,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 1570.2,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "6665",
+        "name": "Jak'Sho, The Protean",
+        "score": 1567.0119,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 8,
+        "id": "3075",
+        "name": "Thornmail",
+        "score": 1566.45,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2450
+      },
+      {
+        "rank": 9,
+        "id": "3068",
+        "name": "Sunfire Aegis",
+        "score": 1561.419,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 10,
+        "id": "6662",
+        "name": "Iceborn Gauntlet",
+        "score": 1453.9476,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 11,
+        "id": "3039",
+        "name": "Atma's Reckoning",
+        "score": 1221.2667,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 12,
+        "id": "3110",
+        "name": "Frozen Heart",
+        "score": 1213.6786,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2500
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 4217.7738,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3083",
+        "name": "Warmog's Armor",
+        "score": 1647.2024,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 3,
+        "id": "6665",
+        "name": "Jak'Sho, The Protean",
+        "score": 1583.2351,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 4,
+        "id": "2504",
+        "name": "Kaenic Rookern",
+        "score": 1572.7857,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 5,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 1482.4821,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 6,
+        "id": "3143",
+        "name": "Randuin's Omen",
+        "score": 1415.4494,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 7,
+        "id": "4401",
+        "name": "Force of Nature",
+        "score": 1287.1905,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 8,
+        "id": "3065",
+        "name": "Spirit Visage",
+        "score": 1230.0714,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 9,
+        "id": "2502",
+        "name": "Unending Despair",
+        "score": 1230.0714,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 10,
+        "id": "3742",
+        "name": "Dead Man's Plate",
+        "score": 1191.7351,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 11,
+        "id": "3039",
+        "name": "Atma's Reckoning",
+        "score": 1153.0417,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 12,
+        "id": "3068",
+        "name": "Sunfire Aegis",
+        "score": 1135.8065,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 3708.0845,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "2504",
+        "name": "Kaenic Rookern",
+        "score": 2145.7405,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 3,
+        "id": "4401",
+        "name": "Force of Nature",
+        "score": 1660.2286,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 4,
+        "id": "3065",
+        "name": "Spirit Visage",
+        "score": 1563.1262,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 5,
+        "id": "3083",
+        "name": "Warmog's Armor",
+        "score": 1480.256,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 6,
+        "id": "6665",
+        "name": "Jak'Sho, The Protean",
+        "score": 1474.4682,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 7,
+        "id": "8020",
+        "name": "Abyssal Mask",
+        "score": 1373.7967,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 8,
+        "id": "6664",
+        "name": "Hollow Radiance",
+        "score": 1368.9214,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 9,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 1332.2304,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 10,
+        "id": "3156",
+        "name": "Maw of Malmortius",
+        "score": 1103.7839,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 11,
+        "id": "3039",
+        "name": "Atma's Reckoning",
+        "score": 1036.1792,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 12,
+        "id": "3050",
+        "name": "Zeke's Convergence",
+        "score": 964.0887,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 4400.9238,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3143",
+        "name": "Randuin's Omen",
+        "score": 2036.8119,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 3,
+        "id": "3083",
+        "name": "Warmog's Armor",
+        "score": 1744.6667,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 4,
+        "id": "2502",
+        "name": "Unending Despair",
+        "score": 1668.8905,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 5,
+        "id": "3742",
+        "name": "Dead Man's Plate",
+        "score": 1656.4976,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 6,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 1570.2,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "6665",
+        "name": "Jak'Sho, The Protean",
+        "score": 1567.0119,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 8,
+        "id": "3075",
+        "name": "Thornmail",
+        "score": 1566.45,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2450
+      },
+      {
+        "rank": 9,
+        "id": "3068",
+        "name": "Sunfire Aegis",
+        "score": 1561.419,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 10,
+        "id": "6662",
+        "name": "Iceborn Gauntlet",
+        "score": 1453.9476,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 11,
+        "id": "3039",
+        "name": "Atma's Reckoning",
+        "score": 1221.2667,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 12,
+        "id": "3110",
+        "name": "Frozen Heart",
+        "score": 1213.6786,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2500
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 3708.0845,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "2504",
+        "name": "Kaenic Rookern",
+        "score": 2145.7405,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 3,
+        "id": "4401",
+        "name": "Force of Nature",
+        "score": 1660.2286,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 4,
+        "id": "3065",
+        "name": "Spirit Visage",
+        "score": 1563.1262,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2700
+      },
+      {
+        "rank": 5,
+        "id": "3083",
+        "name": "Warmog's Armor",
+        "score": 1480.256,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 6,
+        "id": "6665",
+        "name": "Jak'Sho, The Protean",
+        "score": 1474.4682,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 7,
+        "id": "8020",
+        "name": "Abyssal Mask",
+        "score": 1373.7967,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2650
+      },
+      {
+        "rank": 8,
+        "id": "6664",
+        "name": "Hollow Radiance",
+        "score": 1368.9214,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 9,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 1332.2304,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 10,
+        "id": "3156",
+        "name": "Maw of Malmortius",
+        "score": 1103.7839,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 11,
+        "id": "3039",
+        "name": "Atma's Reckoning",
+        "score": 1036.1792,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 12,
+        "id": "3050",
+        "name": "Zeke's Convergence",
+        "score": 964.0887,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "enemy_damage_type",
+    "comp_blind": false,
+    "enemy_damage_type": {
+      "max_positive_shift": 29,
+      "top_risers_when_ap": [
+        {
+          "name": "Abyssal Mask",
+          "shift": 29
+        },
+        {
+          "name": "Spirit Visage",
+          "shift": 23
+        },
+        {
+          "name": "Force of Nature",
+          "shift": 23
+        },
+        {
+          "name": "Hollow Radiance",
+          "shift": 22
+        },
+        {
+          "name": "Kaenic Rookern",
+          "shift": 21
+        }
+      ],
+      "top_fallers_when_ap": [
+        {
+          "name": "Dead Man's Plate",
+          "shift": -27
+        },
+        {
+          "name": "Iceborn Gauntlet",
+          "shift": -27
+        },
+        {
+          "name": "Randuin's Omen",
+          "shift": -24
+        },
+        {
+          "name": "Sunfire Aegis",
+          "shift": -24
+        },
+        {
+          "name": "Unending Despair",
+          "shift": -19
+        }
+      ],
+      "comp_blind": false
+    },
+    "target_resist": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    }
+  },
+  "rune_relevant": false,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 4,
+        "wr": 50.0,
+        "items": []
+      },
+      "all": {
+        "n": 103,
+        "wr": 55.3,
+        "items": [
+          {
+            "id": "3121",
+            "name": "Fimbulwinter",
+            "n": 64,
+            "wr": 53.1
+          },
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 57,
+            "wr": 52.6
+          },
+          {
+            "id": "3084",
+            "name": "Heartsteel",
+            "n": 55,
+            "wr": 49.1
+          },
+          {
+            "id": "2502",
+            "name": "Unending Despair",
+            "n": 40,
+            "wr": 47.5
+          },
+          {
+            "id": "3075",
+            "name": "Thornmail",
+            "n": 31,
+            "wr": 45.2
+          },
+          {
+            "id": "3047",
+            "name": "Plated Steelcaps",
+            "n": 29,
+            "wr": 51.7
+          },
+          {
+            "id": "3083",
+            "name": "Warmog's Armor",
+            "n": 28,
+            "wr": 57.1
+          },
+          {
+            "id": "2051",
+            "name": "Guardian's Horn",
+            "n": 25,
+            "wr": 68.0
+          },
+          {
+            "id": "1011",
+            "name": "Giant's Belt",
+            "n": 17,
+            "wr": 47.1
+          },
+          {
+            "id": "3068",
+            "name": "Sunfire Aegis",
+            "n": 15,
+            "wr": 53.3
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 2,
+        "wr": 50.0,
+        "items": []
+      },
+      "all": {
+        "n": 39,
+        "wr": 43.6,
+        "items": [
+          {
+            "id": "3869",
+            "name": "Celestial Opposition",
+            "n": 16,
+            "wr": 68.8
+          },
+          {
+            "id": "3190",
+            "name": "Locket of the Iron Solari",
+            "n": 15,
+            "wr": 46.7
+          },
+          {
+            "id": "3050",
+            "name": "Zeke's Convergence",
+            "n": 12,
+            "wr": 50.0
+          },
+          {
+            "id": "2055",
+            "name": "Control Ward",
+            "n": 10,
+            "wr": 70.0
+          },
+          {
+            "id": "1028",
+            "name": "Ruby Crystal",
+            "n": 10,
+            "wr": 40.0
+          },
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 9,
+            "wr": 44.4
+          },
+          {
+            "id": "3067",
+            "name": "Kindlegem",
+            "n": 9,
+            "wr": 33.3
+          },
+          {
+            "id": "3117",
+            "name": "Mobility Boots",
+            "n": 9,
+            "wr": 44.4
+          },
+          {
+            "id": "3109",
+            "name": "Knight's Vow",
+            "n": 7,
+            "wr": 57.1
+          },
+          {
+            "id": "1029",
+            "name": "Cloth Armor",
+            "n": 7,
+            "wr": 14.3
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

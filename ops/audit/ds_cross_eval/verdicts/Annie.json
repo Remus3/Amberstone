@@ -1,0 +1,12 @@
+{
+  "champion": "Annie",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Malignance, Luden's Echo, Rylai's to scorer pool; review Shadowflame weight (scorer rank 5 but wr below baseline 55.8% vs 56.6%)",
+  "headline": "Scorer surfaces Liandry/Rabadon/Stormsurge correctly but misses Malignance (n=88 wr=58%), Luden's Echo (wr=61.3%), Rylai's (wr=57.1%)"
+}

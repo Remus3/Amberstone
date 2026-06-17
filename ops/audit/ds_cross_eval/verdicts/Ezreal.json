@@ -1,0 +1,12 @@
+{
+  "champion": "Ezreal",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add Muramana/Trinity Force Spellblade proc DPS to scorer or register Ezreal in a spell-carry sub-scorer; demote Runaan's Hurricane (no multi-target auto synergy on Ezreal).",
+  "headline": "Scorer top-1 BotRK wr=25.0 (-21 vs baseline); Muramana (n=35) and Trinity Force (n=31) absent from top-8 - generic ADC model fails spell-weaver."
+}

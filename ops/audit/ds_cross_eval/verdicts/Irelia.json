@@ -1,0 +1,12 @@
+{
+  "champion": "Irelia",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Gate Runaan's Hurricane to ranged/marksman archetypes (melee DPS inflation); audit Sundered Sky (id=6610) passive valuation - above-baseline staple missing from scorer top-8.",
+  "headline": "Irelia hybrid scorer: BotRK aligned; Runaan's rank-3 with zero empirical presence (melee inflation); Sundered Sky staple absent from pool."
+}

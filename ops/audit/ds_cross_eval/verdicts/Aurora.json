@@ -1,0 +1,12 @@
+{
+  "champion": "Aurora",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Audit Malignance + Luden's Echo scoring (both above-baseline empirical, absent scorer top-8); audit Wooglet's Witchcap rank1 vs zero ARAM empirical presence",
+  "headline": "Aurora ability scorer: Malignance/Luden's Echo missing from top-8 despite above-baseline wr; Wooglet's Witchcap overranked with no empirical backing"
+}

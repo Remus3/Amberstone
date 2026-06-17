@@ -1,0 +1,368 @@
+# DS comprehensive per-champion cross-eval - D1 REPORT
+
+Coverage: 172/172 champions judged (100.0%).
+Severity: {'MISMATCH': 42, 'MINOR': 129, 'OK': 1}
+
+Gate: report-first (Gemini-locked). Anchor: rewind WIN outcomes, mode-segregated (owned n>=8 else all-player else synthetic). Self-rune scope only. Root causes: SYSTEMIC_FINDINGS.md.
+
+## Per-scorer severity rollup
+
+| scorer | OK | MINOR | MISMATCH |
+|---|---|---|---|
+| ability | 1 | 47 | 5 |
+| burst | 0 | 5 | 4 |
+| dps | 0 | 19 | 9 |
+| ehp | 0 | 22 | 2 |
+| hps | 0 | 9 | 6 |
+| hybrid | 0 | 27 | 16 |
+
+## MISMATCH roster (42)
+
+- **Ahri** (ability, outcome_self): Ability scorer ranks Wooglet's #1 (zero empirical) and Liandry's #2 (wr 40.0%); Luden's Echo high-wr staple buried at rank 12.
+- **Katarina** (ability, outcome_self): Ability scorer top items lose badly (Rabadon's 16.7%, Shadowflame 33.3%); dominant ARAM winners Heartsteel+Titanic Hydra absent from pool.
+- **Kayle** (ability, outcome_self): Kayle ability scorer pushes pure AP build; empirical winners (BotRK 62%, Guinsoo 55%, Terminus 59%) are on-hit carry - zero top-8 overlap.
+- **KogMaw** (ability, outcome_self): KogMaw mage/ability scorer wrong axis: on-hit carry wins (Wit's End 51.4%, Terminus 51.5%), Liandry's rank-1 loses at 37.1% wr vs 42.6% base
+- **Mordekaiser** (ability, outcome_self): Scorer #1 Liandry's loses at 42.9% wr (baseline 52.4%); Rylai's 75% wr staple absent from pool entirely
+- **Khazix** (burst, outcome_all): Burst scorer ranks crit/ADC items (Essence Reaver #1, TF #2, IE #4) over lethality staples; Edge of Night (60% wr) and Opportunity (56.2% wr) absent from top-12.
+- **MissFortune** (burst, outcome_self): Burst scorer ranks AP items (Wooglet's #1, Lich Bane #5) over AD crit staples; 8/8 scorer top items absent or below baseline empirically.
+- **Shaco** (burst, outcome_all): Burst scorer recommends AD build (Trinity Force/IE/Eclipse) but ARAM empirical winners are all AP (Blackfire Torch 65.1%, Liandry 62.3%); AD Collector at 36.0% wr
+- **Talon** (burst, outcome_all): Burst scorer top-4 (Essence Reaver, Trinity Force, IE, BotRK) have zero empirical support; Eclipse wr 46.7% sits rank 10; Edge of Night wr 38.5% absent from top-8.
+- **Aphelios** (dps, outcome_self): All-zero scorer output: dps produces 0.0 for every item/comp; empirical winners (Collector 81.8% wr, IE 60.0%) absent from pool
+- **Draven** (dps, outcome_self): Scorer top pool (BotRK/Runaan's) diverges from empirical winners; Collector(n=35,60%),BT(73%),LDR(71%),RFC(86%) all missing from top-8.
+- **Ezreal** (dps, outcome_self): Scorer top-1 BotRK wr=25.0 (-21 vs baseline); Muramana (n=35) and Trinity Force (n=31) absent from top-8 - generic ADC model fails spell-weaver.
+- **Kaisa** (dps, outcome_self): Kaisa top-3 empirical winners (Guinsoo 60% wr, Statikk 58%, Nashor's 56%) absent from pool; scorer top-8 includes IE/Yun Tal/Navori all below 40% empirical wr
+- **Kalista** (dps, outcome_self): dps scorer comp-blind on damage type; crit-burst items dominate over empirical on-hit staples; Berserker's Greaves absent entirely
+- **Lulu** (dps, outcome_self): Lulu: AD/dps scorer mismatches AP mage kit; Guinsoo's Rageblade (66.7% wr) absent from scorer pool
+- **Nilah** (dps, outcome_self): BotRK rank-1 scorer but 28.6% wr (vs 60.0 baseline); The Collector/Navori (top empirical) absent from scorer top-8.
+- **Senna** (dps, outcome_self): Scorer #1 BotRK (44.4% wr) loses to baseline; Guinsoo's 85.7%, Black Cleaver 61.5%, Muramana 54.5% all absent from top-8.
+- **Xayah** (dps, outcome_self): BotRK scorer rank-1 wins only 25% empirically; Statikk Shiv 66.7% and The Collector 64.3% absent from top-8
+- **Malphite** (ehp, outcome_all): Malphite ehp scorer surfaces pure-tank items; empirical ARAM winners are AP mage items (Mercury's 54.5%, Rabadon's 51.4%, Sorcerer's 50.8%) with zero scorer-pool presence.
+- **Nunu** (ehp, outcome_all): EHP pool (tank armor/HP) has zero overlap with above-baseline ARAM wins; Luden's Echo 47.6% wr missing from scorer.
+- **Bard** (hps, outcome_all): hps scorer recommends pure enchanter kit but ARAM empirical winners are all AP/carry; zero scorer-top-8 overlap with above-baseline builds.
+- **Morgana** (hps, outcome_self): hps scorer recommends pure enchanter pool; ARAM winner is AP mage (Blackfire 54.2%, NLR 53.7%) - zero top-8 overlap
+- **Seraphine** (hps, outcome_all): hps scorer top-8 is all enchanter support items; empirical dominant build is full AP mage (Malignance n=71 wr=59.2, Shadowflame wr=61.9) with zero scorer overlap.
+- **Taric** (hps, outcome_all): hps enchanter pool has zero overlap with empirical winners; tank build (Unending Despair 72.7% wr) invisible to scorer
+- **Thresh** (hps, outcome_self): hps scorer top-8 has zero empirical overlap; Heartsteel (wr=77.8%) and Fimbulwinter absent; Thresh plays tank not enchanter in practice.
+- **Zilean** (hps, outcome_all): hps/enchanter scorer vs AP damage wins (Shadowflame 65.5wr, Rabadon's 61.8wr); zero scorer/empirical overlap; switch to mage scorer
+- **Aatrox** (hybrid, outcome_all): comp_blind=true on hybrid EHP + Death's Dance absent pool + Sundered Sky rank 11 vs staple wr 51.1/61.5
+- **Ambessa** (hybrid, outcome_self): comp_blind=TRUE hybrid EHP: near-zero AD/AP shift (max +1); Black Cleaver 71.4% wr and Sundered Sky 68.8% wr absent from scorer top-12
+- **Briar** (hybrid, outcome_all): MISMATCH: BotRK rank-2 loses at 37.5% wr; Sterak's Gage 63.6% wr absent from top-8; Heartsteel rank-4 at 44.4% wr below baseline
+- **Camille** (hybrid, outcome_all): comp_blind=TRUE on hybrid scorer; Death's Dance (73.7% wr) and Sundered Sky (60.9%) absent from top-8; Runaan's Hurricane rank 7 with zero empirical support
+- **Gnar** (hybrid, outcome_all): Gnar hybrid comp-blind (shift=2) + Heartsteel r4 at 36% wr (20pp below base); Black Cleaver 65% wr missing from top-8
+- **Jayce** (hybrid, outcome_self): Scorer top-8 (Trinity Force, Heartsteel, Essence Reaver) absent from empirical builds; Muramana missing from grid entirely despite 100% build rate
+- **Kled** (hybrid, outcome_all): Kled hybrid scorer comp-blind on enemy damage type (max_shift=0); Sterak's Gage 44.4% wr absent from top-12 pool
+- **LeeSin** (hybrid, outcome_self): comp_blind hybrid EHP + ADC item pool dominates scorer; Eclipse rank 10, Death's Dance absent; Runaan's/Essence Reaver rank 3-5
+- **MonkeyKing** (hybrid, outcome_all): comp_blind hybrid + pool mismatch: Death's Dance 50%wr and Black Cleaver 48.6%wr absent from top-8; Void Immolation 6000g at #1 with zero empirical presence
+- **Renekton** (hybrid, outcome_all): Scorer ranks crit ADC items (Essence Reaver #4, Runaan's #5, Stormrazor #7) while Sundered Sky/Sterak's/DD/BC (all above 55.8% baseline) are absent from top-8.
+- **Riven** (hybrid, outcome_self): comp_blind hybrid scorer buries Eclipse (66.7% wr, rank 10) and omits Sundered Sky (50% wr, absent); Runaan ranks 5th on melee
+- **Shyvana** (hybrid, outcome_all): Hybrid/AD scorer vs AP-dominant empirical build (Liandry's/Shojin/Riftmaker lead ARAM wr); top-8 scorer pool entirely misses all above-baseline items
+- **Udyr** (hybrid, outcome_all): Udyr hybrid comp_blind=True; Heartsteel rank-3 at wr=14.3%; Fimbulwinter/Jak'Sho/Spirit Visage absent from scorer top-8
+- **Vi** (hybrid, outcome_self): Hybrid scorer ranks full ADC stack for Vi (Runaan's #4, ER #5, KS #6); Death's Dance 60% wr ARAM staple absent from scorer output entirely
+- **XinZhao** (hybrid, outcome_self): Scorer #1 BotRK loses at wr 42.9 vs baseline 50.0; Sundered Sky (wr 52.0 n=25) and Death's Dance (wr 60.0) absent from top-8.
+- **Yasuo** (hybrid, outcome_self): Yasuo hybrid scorer comp_blind=True confirmed defect; ISB absent from top-12; IE buried despite 71% SR wr
+
+## MINOR roster (129)
+
+- Akali (ability): ability scorer AP-aligned; Stormsurge rank-7 loses empirically (30.8%), Heartsteel win-staple missing from pool
+- Anivia (ability): Pool gap: Rod of Ages (60.6% wr, n=104) and Seraph's Embrace (56.6%, n=113) absent; Shadowflame (rank 6) loses at 36.4%.
+- Annie (ability): Scorer surfaces Liandry/Rabadon/Stormsurge correctly but misses Malignance (n=88 wr=58%), Luden's Echo (wr=61.3%), Rylai's (wr=57.1%)
+- AurelionSol (ability): ability scorer correct axis/comp but misses Seraph's (56.4%/n=78) and RoA (54.2%/n=59) - no mana-scaling credit
+- Aurora (ability): Aurora ability scorer: Malignance/Luden's Echo missing from top-8 despite above-baseline wr; Wooglet's Witchcap overranked with no empirical backing
+- Azir (ability): Azir ability scorer OK on axis/comp; Nashor's Tooth (n=75 wr=56.0%) absent from top-12 pool is a notable miss.
+- Brand (ability): Brand ability scorer misses Rylai's (62.7% wr, n=118) and Malignance (59.2% wr, n=71) - strongest above-baseline empirical staples absent from top-8.
+- Cassiopeia (ability): ability scorer correct axis; Seraph's (53.4% wr n=58) and Rylai's (53.3% n=45) high-volume staples absent from top-8 pool
+- Diana (ability): Ability scorer misses top-2 wr staples Heartsteel 76.9% and Unending Despair 68.8%; Liandry's over-ranked at #1 with only 50.0% wr.
+- Ekko (ability): Ability scorer AP axis correct; Lich Bane (n=86 wr=50%) and Rocketbelt (n=50 wr=54%) absent from scorer pool entirely
+- Elise (ability): ability scorer OK on axis; Liandry #1 wr 50%, Void Staff #4 wr 40%, Luden's Echo absent from pool
+- Evelynn (ability): Ability scorer axis correct; Lich Bane (wr 57.1, n=14) absent from top-12 and Luden's Echo underranked (rank 12, wr 62.5) vs Void Staff rank 6 (wr 42.9).
+- Fiddlesticks (ability): ability scorer correct axis/comp; Malignance (84% pick rate, n=107) absent from scorer pool entirely - add to item pool
+- Fizz (ability): Fizz ability scorer: correct axis/comp responsiveness but Luden's Echo underranked (rank 11, wr 58.3%) and Stormsurge overranked (rank 7, wr 40.5%).
+- Gragas (ability): Gragas ability scorer aligned on archetype; Cosmic Drive (65% ARAM wr, n=20) and Luden's Echo absent from scorer pool
+- Gwen (ability): Gwen ability scorer: archetype+comp responsive OK; Spirit Visage and Cosmic Drive above-baseline winners absent from pool (MINOR).
+- Heimerdinger (ability): Ability scorer axis correct; Rylai's+Malignance absent from pool, Liandry's rank 1 but below-baseline wr 43.0
+- Hwei (ability): Ability scorer AP axis correct; Blackfire Torch rank 3 but wr 41.3 (7.7pp below baseline); Seraph's/Ionian Boots missing from pool
+- Karma (ability): Malignance (n=128, wr=49.2) missing from scorer top-8; Stormsurge rank-7 empirically losing (wr=45.5 < baseline 48.9)
+- Karthus (ability): Karthus ability scorer: Malignance missing from top-8 (62.5% wr); Shadowflame/Stormsurge over-ranked vs empirical.
+- Kassadin (ability): Kassadin ability scorer: Seraph's 54.3% wr and Lich Bane 66.7% wr absent from top-8; mana-synergy loop unweighted.
+- Kennen (ability): Kennen ability scorer axis-aligned; Malignance (63.6% wr) missing from pool; Liandry/Blackfire Torch top-3 with zero empirical buys in n=89 dataset.
+- Leblanc (ability): Ability scorer axis correct; Rabadon's overranked (scorer #4, empirical 31.6 wr) and Luden's Echo absent from pool
+- Lillia (ability): Ability scorer correct axis/comp; Rabadon's overvalued (rank 4, wr 18.2 vs 41.0 baseline) and Cosmic Drive absent from pool.
+- Lissandra (ability): Malignance missing from scorer pool (n=54, wr=59.3 above baseline); Blackfire Torch overranked #3 at below-baseline wr; enemy damage-type axis fully blind
+- Lux (ability): Lux ability scorer axis/comp correct; Wooglet's Witchcap rank-1 with zero empirical appearances flags a potential gold-cost normalisation gap.
+- Malzahar (ability): ability scorer correct axis; Rabadon's rank 4 empirically loses (-15.6pp) and Rylai's (wr 53.4, n=88) absent from pool
+- Mel (ability): Mel ability scorer core aligned; Seraph's Embrace and Cosmic Drive above-baseline but missing from scorer pool - MINOR gap.
+- Neeko (ability): Ability scorer axis correct; Wooglet's(#1) and Liandry's(#2) have zero empirical presence while Shadowflame/Stormsurge above-baseline winners rank 6-7
+- Nidalee (ability): Nidalee ability scorer correct AP axis; Luden's Echo (n=27, wr=33.3%) missing from scorer pool is a MINOR gap.
+- Orianna (ability): Orianna ability scorer: correct axis + comp responsiveness OK; pool missing Luden's Echo (#1 built), Seraph's, Malignance
+- Rumble (ability): Malignance (wr 48.1, n=27) absent from scorer pool; Riftmaker (wr 35.3) and Stormsurge unverified remain in top-10
+- Ryze (ability): Ability scorer axis correct but misses Ryze mana-scaling core: RoA/Seraph/Cosmic Drive all above-baseline empirically yet absent from top-8.
+- Swain (ability): Ability scorer correct axis; Spirit Visage (80% wr) and Rylai's (50% wr) absent from top-8; Liandry's rank-2 but loses (33.3% wr).
+- Sylas (ability): Sylas ability scorer misses 3 strong empirical winners (Rocketbelt 68%, Lich Bane 64%, Spirit Visage 61%); top scorer items lack outcome backing.
+- Syndra (ability): Syndra ability scorer axis-aligned and comp-responsive; Luden's Echo absent from scorer pool despite being most-bought empirical item.
+- Taliyah (ability): Ability scorer axis correct; Luden's Echo (71.4% wr) stranded at rank 11 and Blighting Jewel absent; Shadowflame over-scored
+- Teemo (ability): MINOR: Malignance absent from scorer pool despite being Teemo top-wr ARAM staple; Blackfire Torch rank2 but below baseline wr.
+- TwistedFate (ability): MINOR: Luden's Echo (55.9% wr, n=102) absent from scorer top-8; Rabadon's overranked at 43.2% wr
+- Veigar (ability): Veigar ability scorer correct axis and comp-responsive; pool gap: Luden's Echo + Rod of Ages above-baseline but absent from scorer top-8.
+- Velkoz (ability): Velkoz ability scorer correct axis and comp-responsive; Luden's Echo (wr 66.7%) missing from scorer pool.
+- Vex (ability): Vex ability scorer: Luden's Echo absent (n=78 empirical #1); Liandry's scorer #1 but 0 empirical plays - pool mismatch MINOR.
+- Vladimir (ability): Ability scorer axis correct; Cosmic Drive and Spirit Visage are above-baseline ARAM staples absent from scorer pool.
+- Xerath (ability): Luden's Echo absent from scorer top-12 despite n=128 wr=50.8; Stormsurge rank-7 but wr=30.4
+- Ziggs (ability): Ziggs ability scorer: Seraph's absent (wr 62.5), Shadowflame overranked (wr 39.3 all), Liandry's empirically losing on self sample.
+- Zoe (ability): Zoe ability scorer: Luden's Echo absent from pool (n=143 44.8% wr); Void Staff overrated at rank 6 (empirical 31.0% wr)
+- Zyra (ability): Zyra ability scorer correct axis; pool gap - Oblivion Orb (64.3% wr) and Malignance (62.5% wr) missing from top-8
+- Naafiri (burst): Burst scorer axis correct; Eclipse overranked (wr 35.1% vs 42.6% base), Serylda's Grudge underranked in squishy cell despite 50.0% wr.
+- Pyke (burst): Pool gap: ranks 1-5 have zero empirical presence; Opportunity (58.1% wr) missing from scorer top-12.
+- Qiyana (burst): Burst/AD axis aligned; The Collector (wr 47.2, n=36) missing from scorer top-12 - execute passive may be unregistered
+- Rengar (burst): Burst axis correct; Profane Hydra missing from top-12, Wooglet's Witchcap rank 2 with no empirical wins - pool calibration needed.
+- Zed (burst): Zed burst axis correct, comp responsive; Voltaic Cyclosword (SR wr 60.7) and Eclipse absent from scorer squishy pool
+- Akshan (dps): Akshan dps scorer correct axis+comp; pool gap: The Collector (top empirical item) missing from scorer top-12
+- Ashe (dps): Ashe dps scorer axis correct; Statikk Shiv pool gap + Runaan's overweighted vs empirical ARAM results
+- Caitlyn (dps): Pool gap: Collector(52.2wr) + LDR(54.5wr) absent from top-8; BotRK over-scored vs empirical; Yun Tal winning scorer rank but losing empirically.
+- Corki (dps): Corki scorer top-8 is pure ADC crit/AS; Muramana(wr=45.5%), TrinForce(46.2%), Bloodthirster(52.4%) all absent - hybrid mana-burst path not surfaced
+- Graves (dps): Graves dps scorer axis aligned, Eclipse rank-8 matches best empirical item; BotRK rank-1 gap unvalidated - investigate formula weight
+- Jhin (dps): MINOR: RFC (60.9% wr n=23) absent from scorer top-8; The Collector (56.7% wr n=30) ranked 11; BoRK rank-1 with no empirical backing.
+- Jinx (dps): Jinx dps/carry axis correct and comp-responsive; Yun Tal + Collector missing from scorer top-8 despite being highest-wr ARAM staples
+- Kindred (dps): Kindred dps scorer: Runaan's over-weighted (rank 2, 57.1% wr) and Yun Tal under-weighted (rank 8, 85.7% wr); top-3 scorer items all below empirical baseline.
+- Lucian (dps): MINOR: The Collector absent from scorer top-12 despite above-baseline wr; BotRK over-indexed vs empirical.
+- Quinn (dps): Quinn dps scorer overweights on-hit (BotRK rank 1, wr 43.8); crit staples Collector/Statikk Shiv/Phantom Dancer missing from top-8 pool.
+- Samira (dps): Samira dps scorer: The Collector/Shieldbow/BT absent from top-12 squishy cells despite being top empirical staples above baseline wr.
+- Sivir (dps): Sivir dps/carry scorer axes correct; The Collector absent from pool is a minor gap (self wr 50.0 but small n=6; all-data wr 39.2 below baseline).
+- Smolder (dps): dps/carry-AD axis correct; BotRK scores #1 with no empirical footprint; RFC and BT above-baseline but absent from scorer pool
+- Tristana (dps): MINOR: The Collector missing from scorer pool despite 78.3% ARAM wr; BotRK overranked at #1 vs empirical 61.5%.
+- Twitch (dps): Twitch dps scorer axis correct; Void Immolation at rank #2 with zero empirical buys is a minor pool distortion.
+- Varus (dps): Varus dps scorer OK on axis+comp; pool gap: Muramana (71.4% wr self) and Collector/Wit's End absent from top-8.
+- Vayne (dps): Vayne dps scorer misses top on-hit AS staples (Wit's End 73.7%, Guinsoo's 72.9%, Recurve Bow 70.8% all absent from top-8); Kraken Slayer over-ranked at #2 with only 50.0% wr.
+- Yunara (dps): BotRK rank-1 scorer but wr 40.0% (below 52.9% baseline); IE (75.0%) and Runaan's (61.5%) ranked 11/9, outside top-8.
+- Zeri (dps): Zeri dps scorer axis OK; Runaan's+Yun Tal absent from top-8, BotRK scorer-rank-3 but empirically losing (50% wr).
+- Alistar (ehp): EHP axis + comp responsiveness correct; Fimbulwinter (n=64) and Guardian's Horn (68.0 wr) absent from scorer pool.
+- Amumu (ehp): Fimbulwinter missing from scorer pool (n=58 wr=55.2, highest-volume above-baseline ARAM item); Sunfire over-ranked vs sub-baseline wr.
+- Blitzcrank (ehp): ehp axis and comp responsiveness correct; Fimbulwinter (#1 wr staple, 53.2%) and Frozen Heart (55.9%) absent from scorer pool - mana synergy unmodeled
+- Braum (ehp): Braum ehp: comp responsiveness OK; Fimbulwinter (n=52) absent from pool; Void Immolation 4455 anomaly needs investigation.
+- Chogath (ehp): Fimbulwinter absent from scorer pool (52.6% wr, n=38); Thornmail under-ranked in AD cells; comp responsiveness and archetype axis are correct
+- DrMundo (ehp): DrMundo ehp: Void Immolation over-dominates scorer (2.2x gap, zero empirical), Thornmail under-ranked vs above-baseline wr
+- Galio (ehp): Galio EHP pool gap: Fimbulwinter absent from all scorer cells despite being most-purchased item (n=44, wr=61.4% vs 58.9% baseline).
+- KSante (ehp): EHP scorer comp-responsive and axis-correct; Heartsteel overscored vs 31.2 wr empirical, Negatron Cloak missing from pool.
+- Leona (ehp): EHP axis correct, comp-responsive; Fimbulwinter/Merc's Treads/Guardian's Horn missing from top-8 despite above-baseline wr; Warmog's/Heartsteel over-ranked
+- Maokai (ehp): Tank/ehp axis correct, comp responsive; Heartsteel over-ranked (wr=44.0 n=50) and Fimbulwinter staple absent from pool.
+- Nautilus (ehp): Nautilus ehp OK on axis+comp; Fimbulwinter pool gap (wr 59.2 n=76) and Thornmail rank 9 (wr 62.2) indicate mana-HP conversion miss
+- Ornn (ehp): Ornn ehp scorer well-calibrated; Thornmail sits at rank 9 (wr 61.1%, n=18) - one rank outside top-8 in AD comps
+- Poppy (ehp): MINOR: Fimbulwinter (wr 54 on n=63 ARAM) missing from scorer pool; tank/ehp axis and comp responsiveness correct.
+- Rammus (ehp): EHP/tank axis correct, comp-responsive; Jak'Sho over-ranked and Unending Despair under-ranked in bal_squishy vs empirics.
+- Rell (ehp): EHP axis/comp OK; Fimbulwinter absent from pool despite n=22 wr=40.9%; Warmog/Jak'Sho/Kaenic score top-8 but all lose empirically.
+- Sejuani (ehp): Sejuani ehp OK on axis/comp; Fimbulwinter (n=23 wr=56.5%) absent from scorer pool entirely - pool gap MINOR
+- Shen (ehp): Shen ehp axis correct, comp responsive; Titanic Hydra pool gap + Unending Despair/Sunfire/Randuin's overscored vs empirical.
+- Singed (ehp): EHP scorer pool misses AP hybrid path (Rylai's n=56 wr=50%, RoA n=52 wr=53.8%, Liandry's n=42 wr=50% all absent)
+- Sion (ehp): EHP axis correct; Jak'Sho ranks top-7/8 in scorer but loses empirically at 42.1% wr (11.8 pp below baseline, n=19).
+- Skarner (ehp): Skarner ehp scorer aligned; Thornmail (46.2% wr) lands rank 9 in ad_squishy, one slot outside top-8 - minor pool depth gap only
+- TahmKench (ehp): TahmKench ehp scorer aligned on axis+comp; Fimbulwinter (62.5% wr, n=16) missing from scorer pool is only gap.
+- Zac (ehp): Zac ehp/tank MINOR: Sunfire Aegis overranked (rank 8 ad_squishy, 38.5% wr vs 44.9% baseline n=26); axis + comp responsiveness correct.
+- Ivern (hps): Imperial Mandate rank 7 at 28.6% wr (18pp below baseline); Moonstone Renewer rank 9 despite highest play-count and above-baseline wr.
+- Janna (hps): hps scorer axis correct; pool gap: Tear 65.2% wr and Luden's 60.0% wr AP-mage path absent from scorer pool.
+- Milio (hps): Milio hps scorer correct axis; Seraph's Embrace (wr=70.0 n=20) absent from pool; Moonstone underweighted at rank 9
+- Nami (hps): hps axis correct; Echoes of Helia #1 scorer but loses empirically (42.9%); Dawncore missing from pool despite 52.2% wr.
+- Rakan (hps): Rakan hps scorer: zero overlap with above-baseline ARAM items; tank/HP items win but absent from enchanter pool
+- Renata (hps): HPS axis correct; Seraph's Embrace (61.3% wr) and Fimbulwinter (55.0% wr) missing from pool; Echoes rank-1 scorer has no empirical entries.
+- Sona (hps): Sona hps scorer correctly axes enchanter; Moonstone Renewer (#1 ARAM item, 55.6% wr) ranks 9th while scorer-top Echoes of Helia is absent from ARAM empirical top-10.
+- Soraka (hps): hps pool misses ARAM HP-stack staples Warmog's (59% wr n=83) and Fimbulwinter (60% wr n=30); Moonstone rank-9 underweight
+- Yuumi (hps): hps axis correct; Moonstone Renewer rank 9 (0.58) despite being top ARAM item n=73 wr 58.9; Dawncore + Tear absent
+- Belveth (hybrid): Axis OK; BotRK(r2) and Kraken(r5) below ARAM baseline wr; Death's Dance(52.9%) and Titanic Hydra(57.1%) missing from scorer pool
+- Darius (hybrid): Stridebreaker (sole above-baseline staple, 75% wr) missing from top-8; marksman DPS items rank 4-5 with d_ehp=0.
+- Fiora (hybrid): Hybrid axis correct; pool gap: Ravenous Hydra absent, Trinity Force overranked, Sundered Sky underranked vs empirical
+- Gangplank (hybrid): Hybrid/AD axis correct; Infinity Edge (69.4% wr, n=62) missing from top-8; Void Immolation rank-1 has no empirical backing
+- Garen (hybrid): Hybrid AD axis correct; comp responsive; pool gaps - Thornmail/FoN/Stridebreaker/IE absent, Essence Reaver rank 4 inappropriate (no mana).
+- Hecarim (hybrid): Scorer top-8 polluted by ADC marksman items; Eclipse (72.7 wr), Spirit Visage (57.1), Muramana (52.2) all absent from squishy top-8.
+- Illaoi (hybrid): MINOR: top empirical winners (Steelcaps 47.8% wr, Black Cleaver 41.7%) absent from scorer pool; Essence Reaver+Dusk+Dawn over-ranked with 0 appearances.
+- Irelia (hybrid): Irelia hybrid scorer: BotRK aligned; Runaan's rank-3 with zero empirical presence (melee inflation); Sundered Sky staple absent from pool.
+- JarvanIV (hybrid): Runaan's rank 4 + Kraken rank 5 are melee-inapplicable; Sundered Sky (wr 42.5%) absent from scorer top-8
+- Jax (hybrid): Jax hybrid scorer misses top empirical staples Spear of Shojin + Death's Dance; BotRK overcredited at rank-2
+- Kayn (hybrid): Pool gap: Axiom Arc 61.5% wr, Hubris 54.5% wr, Black Cleaver 52.6% wr all missing from scorer top-8
+- MasterYi (hybrid): Scorer axis+comp correct; pool gap: Collector (76.9% wr n=13) and Guinsoo (63.3% all) absent; Kraken Slayer overranked at 38.9% empirical.
+- Nasus (hybrid): Hybrid DPS weight blocks 4 empirical tank staples (FoN 64.7% wr, Thornmail 59.3%, FH 55.9%, SV 55.3%) from top-8; Trinity Force rank-2 scores below baseline
+- Nocturne (hybrid): Axis+comp correct; scorer top-8 skews ADC-crit while empirical winners (Stridebreaker, Hexplate, Black Cleaver, Sundered Sky, Hubris) absent from pool.
+- Olaf (hybrid): Olaf hybrid scorer pools ADC crit items top-8 but empirical winners (Stridebreaker 62.5%, Hexplate 62.5%, Sundered Sky 60%) are all absent.
+- Pantheon (hybrid): Pantheon hybrid scorer top-8 has zero empirical overlap; Black Cleaver 61.3% wr and Death's Dance 57.8% wr absent; Void Immolation 6000g inflates EHP rank.
+- RekSai (hybrid): MINOR: Heartsteel top-4 scorer but 28.6 wr; Eclipse 80.0 wr and Sundered Sky 61.5 wr buried in squishy-cell ranks 5/12.
+- Sett (hybrid): Hybrid scorer misses Sett's HP-stacking core (Bloodmail/Warmog/Sterak/Titanic absent); pure-DPS items rank 5+8 instead.
+- Trundle (hybrid): ADC crit items (ER #4, Runaan's #5, Stormrazor #8) pollute bruiser top-8; d_ehp=0 and absent from 64-game empirical sample
+- Tryndamere (hybrid): MINOR: Titanic Hydra (63.6% wr) and Navori Flickerblade (58.8% wr) absent from top-8; BotRK and Heartsteel rank high but lose in practice
+- Urgot (hybrid): Scorer top-8 misses Jak'Sho (63.6% wr) and Overlord's Bloodmail (50% wr); promotes Essence Reaver and Runaan's Hurricane that Urgot rarely builds effectively.
+- Viego (hybrid): MINOR: 3 above-baseline staples (Sundered Sky, Death's Dance, Wit's End) missing from scorer top 8; Manamune and Runaan's over-ranked
+- Volibear (hybrid): Hybrid axis correct but scorer top-8 flooded with pure-ADC items absent empirically; top tank staples Unending Despair/Spirit Visage/Fimbulwinter missing from pool
+- Warwick (hybrid): Hybrid AD axis correct; top-8 has 4 ADC-crit items with 0 empirical presence; Sundered Sky (n=29 62.1%) missing from top-12
+- Yone (hybrid): Hybrid axis correct; IE (73.3%) and Immortal Shieldbow (70.0%) absent from scorer pool across all comp cells - pool gap.
+- Yorick (hybrid): Sundered Sky rank 12 (64.5% wr n=31) and Spirit Visage absent (63.2% wr n=19); Essence Reaver overranked with no empirical ARAM support
+- Zaahen (hybrid): Bruiser/hybrid axis correct, comp responsive; Trinity Force rank 4 scores well but only empirical item shows 40% wr (n=5, synthetic)
+
+## Nominated retunes (170) - validate per-champion vs rewind WIN outcomes before any Tier-2 code
+
+- Aatrox (hybrid): Fix hybrid EHP comp-blind (AP shift +1 only); add Death's Dance to pool (wr 52.8 n=53); surface Sundered Sky top-5 squishy (wr 51.1 n=94); fix Eclipse gap in squishy cells (wr 54.0 n=50)
+- Ahri (ability): Demote Wooglet's Witchcap (scorer rank 1, empirically absent) and Liandry's Torment (rank 2, wr 40.0% vs 54.1% baseline). Promote Luden's Echo (scorer rank 12, empirical wr 58.3% n=36) into top-5.
+- Akali (ability): Penalize Stormsurge (rank 7, empirical wr 30.8% < baseline 36.4%). Add Heartsteel to pool (wr 40.6%, n=32, absent from scorer). Audit Liandry's rank-1 claim vs absent empirical top-10.
+- Akshan (dps): The Collector (id=6676) absent from scorer top-12 despite n=87 wr=41.4% (baseline 37.7%); lethality/execute passive likely unweighted in dps formula - lift into ad_squishy top-8
+- Alistar (ehp): Add Fimbulwinter (3121) and Guardian's Horn (2051) to scorer item pool; investigate Heartsteel and Thornmail top-8 over-promotion vs below-baseline empirical wr.
+- Ambessa (hybrid): enable enemy_damage_type shift weight in hybrid scorer for bruiser; add Black Cleaver + Sundered Sky to scorer pool (missing high-wr staples 71.4%/68.8%)
+- Amumu (ehp): Add Fimbulwinter to tank EHP pool (n=58, wr=55.2 vs 50.4 baseline, absent from all scorer cells); audit Sunfire Aegis over-rank (scorer top-8, empirical wr=49.1 sub-baseline n=55).
+- Anivia (ability): Add Rod of Ages and Seraph's Embrace to ability scorer pool; deprioritize Shadowflame (empirical wr 36.4%, n=22, below 55.1% baseline) for sustained-AP mage archetype.
+- Annie (ability): Add Malignance, Luden's Echo, Rylai's to scorer pool; review Shadowflame weight (scorer rank 5 but wr below baseline 55.8% vs 56.6%)
+- Aphelios (dps): Fix all-zero dps scorer output for Aphelios (registration/base-stat failure); then verify target_resist shifts armor-pen items vs tanky comps
+- Ashe (dps): Statikk Shiv absent from scorer pool (n=68 all, wr=54.4% vs 49.3% baseline); Runaan's ranks #2 but empirically sub-baseline in self sample (42.9% vs 61.1%)
+- AurelionSol (ability): Add mana-pool credit to ability scorer: Seraph's Embrace (wr=56.4% n=78) and Rod of Ages (wr=54.2% n=59) both above baseline but absent from top-12; scorer lacks mana-to-power pathway for AS stardust mechanic.
+- Aurora (ability): Audit Malignance + Luden's Echo scoring (both above-baseline empirical, absent scorer top-8); audit Wooglet's Witchcap rank1 vs zero ARAM empirical presence
+- Azir (ability): Add Nashor's Tooth (id 3115) to ability scorer item pool; audit why attack-speed AP items are excluded. Also check Rylai's (id 3116, wr=60.0%).
+- Bard (hps): Blend hps+mage scorer or swap anchor archetype to mage-primary for ARAM; scorer top-8 has zero overlap with empirical above-baseline winners (Statikk Shiv 65.2%, Nashor's 60.0%, Rapid Firecannon 55.9%, Lich Bane 54.0%).
+- Belveth (hybrid): Add Death's Dance + Titanic Hydra to scored pool; audit BotRK and Kraken Slayer over-ranking (both below ARAM baseline wr); flag Liandry's AP-item-on-AD-champ pool edge case vs tanky enemies.
+- Blitzcrank (ehp): Add Fimbulwinter (3121) and Frozen Heart (3110) to ehp scorer item pool; Fimbulwinter is empirical #1 wr staple (53.2% ARAM all, 50.0% self) absent from all comp cells; mana-scaling synergy unmodeled.
+- Brand (ability): Add Rylai's Crystal Scepter (62.7% wr, n=118) and Malignance (59.2% wr, n=71) to ability scorer pool; both are high-frequency above-baseline ARAM staples absent from top-8.
+- Braum (ehp): Add Fimbulwinter (id 3121) to scorer pool; investigate Void Immolation 4455 score (2x next item, zero empirical games - likely scoring artifact).
+- Briar (hybrid): bruiser_hybrid_briar: BotRK (rank 2, wr 37.5%) and Heartsteel (rank 4, wr 44.4%) both lose empirically; reduce pure d_dps weighting; add shield/DR EHP credit to lift Sterak's Gage (63.6% wr, absent top-8) and Death's Dance (52.9%, absent); penalize zero-d_ehp items in bruiser hybrid scorer.
+- Caitlyn (dps): Boost The Collector and Lord Dominik's Regards in scorer pool; penalize Yun Tal Wildarrows (scorer rank 7, wr=35.0 self n=20); investigate BotRK rank-1 over-weighting (score 81.9 vs wr=47.2 empirical).
+- Camille (hybrid): Increase enemy_damage_type responsiveness weight in hybrid scorer; max_positive_shift=1 is de-facto comp-blind. Also boost Death's Dance and Sundered Sky above Runaan's Hurricane and Essence Reaver which lack empirical support.
+- Cassiopeia (ability): ability scorer underweights mana-scaling (Seraph's Embrace emp wr 53.4% n=58) and slow-utility (Rylai's emp wr 53.3% n=45); both above baseline and top-4 by volume but absent from scorer top-8; add mana-scaling bonus weight + slow-amplifier bonus for sustained AP mages
+- Chogath (ehp): Add Fimbulwinter (id 3121) to ehp pool (absent, wr 52.6% n=38 above baseline); boost Thornmail in AD cells from rank 9 to top-8 (wr 53.3% n=45)
+- Corki (dps): Add Muramana and Trinity Force to Corki item pool with mana/AH multipliers; evaluate The Collector; investigate BotRK rank-1 vs low empirical frequency
+- Darius (hybrid): Add Stridebreaker to scorer pool; suppress d_ehp=0 marksman items (Runaan's Hurricane rank 4, Essence Reaver rank 5) via melee/bruiser-role filter.
+- Diana (ability): Add Heartsteel and Unending Despair to ability scorer pool; recalibrate Liandry's (rank 1 but 50.0% wr below baseline 53.8%); boost Stormsurge weight (62.5% wr, rank 7).
+- DrMundo (ehp): Void Immolation EHP score deflation (rank 1 at 4113 vs rank 2 at 1867, no empirical presence); review Thornmail armor EHP weight vs its above-baseline empirical wr=51.5 in AD comps
+- Draven (dps): Boost Collector/Bloodthirster/LDR/RFC scores; demote Runaan's Hurricane and Void Immolation which have zero empirical presence; verify crit-axe DPS model.
+- Ekko (ability): Add Lich Bane and Hextech Rocketbelt to ability scorer pool; verify on-hit+AP proc-item scoring covers passive-interaction items
+- Elise (ability): Liandry's over-scored (burn vs burst kit, wr 50.0%); Void Staff over-scored (wr 40.0%); Luden's Echo absent from scorer pool despite being highest-n empirical staple
+- Evelynn (ability): Promote Lich Bane into top-8 pool (empirical wr 57.1 n=14 above baseline 52.8, absent from scorer top-12). Promote Luden's Echo (scorer rank 12, empirical wr 62.5 n=8). Demote Void Staff rank 6 (empirical wr 42.9).
+- Ezreal (dps): Add Muramana/Trinity Force Spellblade proc DPS to scorer or register Ezreal in a spell-carry sub-scorer; demote Runaan's Hurricane (no multi-target auto synergy on Ezreal).
+- Fiddlesticks (ability): Add Malignance (id 3118) to ability scorer item pool; 84% pick rate in sample (n=107/128) but absent from scorer top-12. Also investigate Zhonya's scoring r12 despite 48.1% wr (above 46.1% baseline).
+- Fiora (hybrid): Add Ravenous Hydra to pool (most-built, absent); recalibrate Trinity Force down (scorer rank 2, wr 42.9% < 53.8% baseline); lift Sundered Sky (scorer rank 11, wr 60.0%)
+- Fizz (ability): Boost Luden's Echo rank (empirical wr 58.3% n=36, scorer rank 11); reduce Stormsurge (scorer rank 7, empirical wr 40.5% below 46.7% baseline); reduce Zhonya's Hourglass (scorer rank 9, empirical wr 35.5%).
+- Galio (ehp): Add Fimbulwinter (id=3121) to EHP item pool; most-purchased ARAM item (n=44, wr=61.4% vs 58.9% baseline) absent from all scorer cells.
+- Gangplank (hybrid): Add Infinity Edge to scorer pool (wr 69.4%, n=62, above 64.8% baseline, absent from top-8); investigate Void Immolation rank-1 with zero empirical presence
+- Garen (hybrid): Add Stridebreaker/Thornmail/FoN/Infinity Edge to scorer pool; exclude or penalize Essence Reaver (Garen is mana-less, passive is dead value).
+- Gnar (hybrid): fix comp_blind in hybrid scorer (enemy_damage_type weight near-zero, shift=2 max); penalize Heartsteel D_EHP overweight (36% wr vs 56.5% baseline); add Black Cleaver + Randuin's Omen to effective pool
+- Gragas (ability): Add Cosmic Drive (4629) and Luden's Echo (6655) to ability scorer item pool; verify Wooglet's Witchcap ARAM availability
+- Graves (dps): BotRK score 89.77 vs rank-2 65.68 gap: verify on-hit/pct-hp formula weight for Graves; check IE rank-5 squishy vs empirical wr 46.7%
+- Gwen (ability): Add Spirit Visage (wr=54.5% n=11) and Cosmic Drive (wr=57.1% n=7) to scorer pool; consider reducing Riftmaker weight (rank 10, empirical wr=37.8% n=45 below baseline).
+- Hecarim (hybrid): Suppress Runaan's Hurricane/Essence Reaver/Stormrazor/Yun Tal from Hecarim pool; add Eclipse, Spirit Visage, Muramana to scored items.
+- Heimerdinger (ability): Add Rylai's Crystal Scepter (3116) and Malignance (3118) to ability scorer AP pool; investigate Liandry's score inflation (rank 1 scorer, wr 43.0 below 44.3 baseline); boost Zhonya's rank (wr 47.6 empirically highest, scorer rank 10)
+- Hwei (ability): Add Seraph's Embrace + Ionian Boots to pool; investigate Blackfire Torch rank inflation (wr 41.3 vs 49.0 baseline at rank 3)
+- Illaoi (hybrid): Add Plated Steelcaps + Black Cleaver to pool; gate or downweight items with zero empirical appearances (Essence Reaver, Dusk and Dawn absent from 79-game ARAM sample).
+- Irelia (hybrid): Gate Runaan's Hurricane to ranged/marksman archetypes (melee DPS inflation); audit Sundered Sky (id=6610) passive valuation - above-baseline staple missing from scorer top-8.
+- Ivern (hps): Demote Imperial Mandate below rank 9; promote Moonstone Renewer into top-8. hps scorer overweights Imperial Mandate (rank 7, wr 28.6%) vs Moonstone Renewer (rank 9, wr 47.1%, n=34).
+- Janna (hps): Add Tear/Seraph/Luden's/Dawncore/Ionian Boots to hps item pool; AP-mage build path wins at 65.2%/60.0% wr but is invisible to hps scorer.
+- JarvanIV (hybrid): Prune Runaan's Hurricane (rank 4) from melee hybrid pool; Sundered Sky and Death's Dance missing from top-8 despite being above-baseline empirical staples
+- Jax (hybrid): Spear of Shojin (60.7% wr n=28) and Death's Dance (68.0% wr n=25) absent from scorer top-8; audit AH-to-DPS frequency wiring and Death's Dance DR in d_ehp; also audit BotRK overcredited at rank-2 (empirical wr 43.5% below baseline)
+- Jayce (hybrid): Add Muramana/Hubris/Serylda to pool; audit Trinity Force/Heartsteel/Iceborn Gauntlet over-scoring vs bruiser archetype mismatch with lethality empirical builds
+- Jhin (dps): Jhin RFC-Collector lift: add champion-specific affinity weights for Rapid Firecannon (absent from top-8 despite 60.9% wr n=23) and The Collector (rank 11 scorer vs 56.7% wr n=30); investigate BoRK rank-1 overscoring with no empirical high-wr representation.
+- Jinx (dps): Lift Yun Tal Wildarrows and The Collector on dps carry scorer; both absent from top-8 despite wr 70.6% and 77.4% respectively (ARAM self n>=31)
+- KSante (ehp): Heartsteel scorer rank #6 but empirical wr 31.2 (baseline 45.6, n=16); investigate EHP weight or add K'Sante-specific Heartsteel cap. Also check Negatron Cloak exclusion from top-12 pools (wr 54.5, n=11).
+- Kaisa (dps): Add Guinsoo's Rageblade, Statikk Shiv, Nashor's Tooth to Kaisa DS item pool; audit Navori/Yun Tal/IE rank inflation
+- Kalista (dps): enemy_damage_type comp-blind (max_shift=0); add AP responsiveness so Wit's End rises vs AP comps; add Berserker's Greaves to item pool; audit Phantom Dancer (87.5% wr, absent top-8); demote crit-burst items absent from empirical Kalista builds
+- Karma (ability): audit Malignance ult-haste scoring path for ability scorer; add sustained-vs-burst profile gate to suppress Stormsurge on non-burst mage kits
+- Karthus (ability): Promote Malignance into scorer pool (ult-haste passive is direct R DPS multiplier; 62.5% wr self n=8, 60.5% all n=76); demote Shadowflame (50.0% wr self, below baseline) and Stormsurge (below baseline, falls 2 ranks vs tanky).
+- Kassadin (ability): Boost Seraph's Embrace and Lich Bane for Kassadin; ability scorer misses mana-synergy loop (Tear/Seraph mana->AP + Lich Bane R-proc); these are top empirical winners absent from scorer top 8.
+- Katarina (ability): Add Heartsteel/Titanic Hydra/Nashor's Tooth to ability scorer pool; Rabadon's rank-4 at 16.7% wr and Shadowflame rank-6 at 33.3% wr indicate AP amplifier overcount for Katarina ARAM.
+- Kayle (ability): Switch primary archetype from mage to carry; carry scorer surfaces Guinsoo/BotRK/Terminus that dominate empirical wr vs current AP-only top-8 with zero overlap.
+- Kayn (hybrid): Boost Hubris, Axiom Arc, Black Cleaver, Muramana in hybrid DPS sub-score; all wr>50% empirically but outside scorer top-8
+- Kennen (ability): Add Malignance (id 3118) to ability scorer item pool; above-baseline empirical wr 63.6% (n=11) with no scorer top-12 presence.
+- Khazix (burst): Add assassin-archetype item affinity weights in burst scorer: penalize crit-class items (Essence Reaver #1, Trinity Force #2, Infinity Edge #4, Bloodthirster #6) that dominate scorer top-4 but are absent from empirical ARAM builds; boost lethality+AH items (Edge of Night 60.0% wr absent from top-12, Opportunity 56.2% wr absent from top-12) that win empirically.
+- Kindred (dps): Demote Runaan's Hurricane from rank 2 (empirical 57.1% wr, below 63.9% baseline); elevate Yun Tal Wildarrows from rank 8 (empirical 85.7% wr, n=14).
+- Kled (hybrid): Fix hybrid scorer enemy_damage_type comp-blind defect (primary); add Sterak's Gage + Titanic Hydra to pool (secondary pool gap)
+- KogMaw (ability): Switch primary archetype to carry, scorer to carry or dps; on-hit items (Wit's End 51.4%, Terminus 51.5%, Berserker's 50.0%) win empirically while scorer-top Liandry's (rank 1) loses at 37.1% wr vs 42.6% baseline
+- Leblanc (ability): Add Luden's Echo to ability scorer item pool; investigate downweighting Rabadon's Deathcap for assassin-mage (empirical wr 31.6 vs 41.4 baseline, scorer rank 4, n=19 ARAM self)
+- LeeSin (hybrid): hybrid scorer: raise enemy_damage_type weight; investigate DPS over-weight surfacing ADC items (Runaan's, Essence Reaver) Lee Sin never builds over Eclipse/Death's Dance
+- Leona (ehp): Add Fimbulwinter, Mercury's Treads, Guardian's Horn to item pool; audit Warmog's/Heartsteel over-ranking vs empirical underperformance
+- Lillia (ability): Demote Rabadon's Deathcap (scorer rank 4, empirical wr=18.2 vs 41.0 baseline). Add Cosmic Drive to pool (wr=44.1, n=34, above baseline, currently absent).
+- Lissandra (ability): Add Malignance (id 3118) to ability scorer pool; investigate Blackfire Torch overrank (#3 scorer, 52.4 wr below baseline 56.9)
+- Lucian (dps): Add The Collector (6676) to dps scorer item pool; review BotRK on-hit weight inflating rank-1 vs empirical wr=37.5% (below baseline 40.7%).
+- Lulu (dps): Add Guinsoo's Rageblade to dps scorer pool (66.7% wr n=6 empirical, absent from top-8); flag archetype carry/dps vs AP kit for re-classification to enchanter/mage scorer
+- Lux (ability): Wooglet's Witchcap ranks 1st (score 41.9) but has 0 empirical appearances in n=16; verify gold-cost normalisation in ability scorer - 6000g item may be over-valued if gold penalty is absent or weak.
+- Malphite (ehp): Wire secondary=mage scorer contribution: dual-scorer blend (ehp primary + mage secondary at reduced weight) so AP items (Malignance, Rabadon's, Stormsurge, Sorcerer's Shoes) can enter the ranked pool.
+- Malzahar (ability): Rabadon's rank 4 but wr 36.7 (n=30, -15.6pp vs baseline); Rylai's absent from top-12 despite wr 53.4 (n=88). Audit AP-amp overflow in ability scorer for DoT mages; add Rylai's to pool.
+- Maokai (ehp): Heartsteel over-ranked (scorer rank 5-6, empirical wr=44.0 n=50 vs baseline 48.0); Fimbulwinter (n=56, wr=50.0) absent from scored pool despite mana-to-HP EHP value.
+- MasterYi (hybrid): Add The Collector (6676) and Guinsoo's Rageblade (3124) to scorer pool; review Kraken Slayer overweight (ARAM all wr 38.9% n=18).
+- Mel (ability): Add Seraph's Embrace (ARAM wr 58.3% n=24) and Cosmic Drive (54.5% n=33) to ability scorer pool; both above baseline but absent from top-12. Check Shadowflame rank 5 vs empirical 43.0% wr (n=79).
+- Milio (hps): Add Seraph's Embrace to HPS scorer pool; audit Moonstone Renewer weight (score 0.735 vs #1 Echoes 26.2 for most-built item n=55)
+- MissFortune (burst): Gate AP item inclusion by kit AP ratio; Wooglet's/Lich Bane rank 1/5 for AD marksman via mage secondary tag. Re-tag archetype to carry (marksman) not assassin.
+- MonkeyKing (hybrid): comp_blind fix (enemy_damage_type max_shift=1, near-zero); add Death's Dance + Black Cleaver to top pool; reduce Void Immolation bias (6000g #1 all cells, empirically absent); downweight Trinity Force (wr=38.2% below baseline)
+- Mordekaiser (ability): Add Rylai's to item pool; audit Liandry's DoT-tick multiplier inflating score vs 42.9% empirical wr
+- Morgana (hps): Switch ARAM anchor scorer from hps to mage; empirical above-baseline builds are AP mage (Blackfire Torch n=142 wr=54.2%, Needlessly Large Rod n=41 wr=53.7%, Shadowflame n=40 wr=52.5%) with zero overlap against hps top-8 enchanter pool.
+- Naafiri (burst): Reduce Eclipse weight vs squishy (wr 35.1% vs 42.6% baseline, n=37). Raise Serylda's Grudge in squishy cell (wr 50.0%, n=20, absent from top-8). Lift The Collector from rank 12 (wr 45.8%, n=24).
+- Nami (hps): Add Dawncore (6621) to hps scorer pool (52.2% ARAM wr, n=23, absent from all cells); audit Echoes of Helia #1 rank vs 42.9% empirical wr (below 46.8% baseline).
+- Nasus (hybrid): Reduce DPS weight in hybrid scorer when archetype secondary=tank so Spirit Visage/Frozen Heart/Thornmail/Force of Nature enter top-8
+- Nautilus (ehp): Fimbulwinter mana-to-HP passive not modeled: wr 59.2 n=76 but absent from all top-8 cells; secondary: Thornmail rank 9 vs AD at wr 62.2
+- Neeko (ability): review Wooglet's Witchcap + Liandry's scorer rank vs zero empirical presence; ability scorer may over-weight AP-ratio burst items at high gold cost in ARAM
+- Nidalee (ability): Add Luden's Echo to ability scorer item pool; it is the highest-n empirical item (n=27 self, wr=33.3% > 32.1% baseline) yet absent from scorer top-12.
+- Nilah (dps): BotRK overscored: apply champion-specific BotRK DPS discount for Nilah (LS share from passive reduces marginal on-hit value); verify The Collector execute and Navori crit-reset are captured in dps scorer.
+- Nocturne (hybrid): Add Stridebreaker, Experimental Hexplate, Black Cleaver, Sundered Sky, Hubris to scorer pool; down-weight Runaan's/Kraken Slayer/Stormrazor/Essence Reaver (ADC crit items, no above-baseline empirical signal for bruiser-assassin).
+- Nunu (ehp): Blend mage scorer into ARAM dispatch (Luden's/Shadowflame/Liandry's absent from ehp pool); consider mage primary for ARAM anchor, tank/ehp for SR.
+- Olaf (hybrid): Boost Stridebreaker (6631), Experimental Hexplate (3073), Sundered Sky (6610) in hybrid scorer pool; scorer over-weights ADC crit items (Runaan's, Kraken Slayer, Essence Reaver top-8) while all 3 above-baseline empirical staples are absent from scorer top-8.
+- Orianna (ability): Add Luden's Echo (6655), Seraph's Embrace (3040), Malignance (3118) to ability scorer pool - Luden's is #1 built item (n=43 ARAM self) but absent from pool
+- Ornn (ehp): Shift Thornmail from rank 9 to top-8 in AD-heavy comps (wr 61.1%, n=18 empirically)
+- Pantheon (hybrid): Reduce hybrid EHP term dominance for Void Immolation (6000g inflates d_ehp to 4495, score 1.89 vs #2 at 1.12); lift Black Cleaver (+7 target_resist shift), Death's Dance, Spear of Shojin into top-8 pool; consider per-gold DPS floor to stop 6000g items commanding rank 1.
+- Poppy (ehp): Add Fimbulwinter (id 3121) to ehp scorer item pool; empirical wr 45.5 (self n=11) / 54.0 (all n=63) but absent from top-8 in all comp cells.
+- Pyke (burst): Add Opportunity (6701) to lethality pool; downweight crit/on-hit top-5 (Sundered Sky, Essence Reaver, BotRK, Trinity Force, IE) which have zero empirical Pyke presence.
+- Qiyana (burst): Investigate The Collector (id 6676) absent from burst scorer top-12; execute passive likely unregistered in item-effect pool
+- Quinn (dps): BotRK overvalued (scorer rank 1, empirical wr 43.8 < baseline 50.0); Collector/Statikk Shiv/Phantom Dancer absent from scorer top-8 despite above-baseline empirical wr. Investigate crit-path item pool inclusion and on-hit weight calibration for Quinn dps scorer.
+- Rakan (hps): Add Guardian's Horn + Warmog's Armor to Rakan hps scorer ARAM item pool; investigate tank-archetype branch for ARAM playstyle
+- Rammus (ehp): Down-weight Jak'Sho in balanced comps (50% wr below 58.3% baseline at rank 4 bal_squishy); up-weight Unending Despair (84.6% wr at rank 8 bal_squishy); raise Thornmail rank in ad_squishy (n=32, 62.5% wr at rank 9).
+- RekSai (hybrid): Demote Heartsteel (top-4 scorer, 28.6 wr empirical); elevate Eclipse (80.0 wr, rank 5 tanky cells only) and Sundered Sky (61.5 wr, rank 12 squishy cells); cap zero-d_ehp ADC items (Runaan's/Essence Reaver/Kraken Slayer/Stormrazor) that have no empirical presence on Rek'Sai.
+- Rell (ehp): Add Fimbulwinter (3121) to scorer item pool; Rell's mana-gated kit makes Fimbulwinter effective bulk that raw-stat EHP misses when the item is absent.
+- Renata (hps): Add Seraph's Embrace (3040, 61.3% wr) and Fimbulwinter (3121, 55.0% wr) to HPS item pool; investigate Echoes of Helia rank-1 scorer vs zero empirical entries.
+- Renekton (hybrid): Add Sundered Sky/Sterak's Gage/Death's Dance/Black Cleaver to bruiser pool; demote Runaan's Hurricane/Essence Reaver/Stormrazor (marksman crit items, zero empirical support on Renekton).
+- Rengar (burst): Profane Hydra absent from top-12 (ARAM wr=42.9 n=21, SR wr=62.5 n=16); Wooglet's Witchcap rank 2 with zero empirical support - audit burst scorer passive registry for Profane Hydra on-kill reset and check Wooglet's raw-stat over-weighting.
+- Riven (hybrid): Elevate Eclipse (rank 10->top-5); add Sundered Sky to pool (absent, wr 50%); fix hybrid EHP comp-blind (shift=1, negligible); demote Runaan's Hurricane (melee ineligible at rank 5)
+- Rumble (ability): Add Malignance (id 3118) to pool; down-weight Riftmaker (wr 35.3) and Stormsurge vs Shadowflame (wr 54.8, underranked r6)
+- Ryze (ability): Rod of Ages/Seraph's Embrace/Cosmic Drive absent from scorer top-8 despite being Ryze's empirical win staples (wr 57-69%, n=32-96); ability scorer needs mana-scaling item credit for Ryze.
+- Samira (dps): Audit dps scorer passive credit for The Collector (6676), Immortal Shieldbow (6673), Bloodthirster (3072): all absent from squishy top-12 despite being top empirical winners (wr 62.8/62.5/64.3 vs 60.4 baseline).
+- Sejuani (ehp): Add Fimbulwinter (3121) to scored item pool; absent from all comp_grid cells despite n=23 wr=56.5% ARAM empirical. Likely scored near-zero due to mana-to-HP conversion not applying to Sejuani.
+- Senna (dps): Promote Muramana, Black Cleaver, Guinsoo's Rageblade, Runaan's Hurricane into dps pool. Penalize BotRK (empirical wr 44.4%, below baseline 46.7%; pct-max-hp proc underperforms vs on-hit/AS builds on Senna).
+- Seraphine (hps): Add AP mage item layer (Malignance, Liandry, Shadowflame, Blackfire Torch) to hps scorer pool or implement dual-scorer dispatch (hps + mage) for secondary=mage champions; fix Moonstone Renewer near-zero score vs SR wr=68.2.
+- Sett (hybrid): Add Overlord's Bloodmail, Warmog's Armor, Sterak's Gage, Titanic Hydra to hybrid scorer candidate pool; all 4 are above-baseline empirical items (67.6/67.4/67.5/64.3% wr) absent from scorer top-12.
+- Shaco (burst): Elevate secondary archetype mage to co-primary for ARAM; route to mage scorer or add AP hybrid-scalar so Liandry/Blackfire Torch/Luden score above Trinity Force and Essence Reaver
+- Shen (ehp): Add Titanic Hydra to scorer pool; audit Unending Despair/Sunfire Aegis/Randuin's Omen over-credit vs HP-stack items (all below 48.1% baseline empirically despite scorer top-8 placement).
+- Shyvana (hybrid): assign scorer = mage (AP-axis); Spear of Shojin 69.2% wr, Riftmaker 66.7%, Liandry's 62.5% all absent from hybrid top-8
+- Singed (ehp): Add Rylai's Crystal Scepter, Rod of Ages, Liandry's Torment to EHP scorer pool; these are the top-n AP hybrid items (n=56/52/42) with above-baseline wr that are fully absent from all scorer cells.
+- Sion (ehp): Penalize Jak'Sho (empirical wr 42.1% vs 53.9% baseline, n=19) and Thornmail (44.2%, n=43) in EHP tank scorer; small bonus for Hollow Radiance (60.9% wr, strong AP-comp riser).
+- Sivir (dps): Add The Collector (id 6676) to dps scorer item pool; it is absent from all comp cells but above-baseline wr in self data (50.0, n=6).
+- Smolder (dps): BotRK ranks #1 with zero empirical presence - investigate AA-frequency overcount vs ability-cast pattern; elevate Rapid Firecannon (n=61 wr=52.5%) and Bloodthirster (n=20 wr=60.0%) in dps pool
+- Sona (hps): Moonstone Renewer scores rank 9 (score 1.1) vs Echoes of Helia rank 1 (score 28.1), but empirical ARAM shows Moonstone is #1 by purchase count (n=81, wr 55.6%) and Echoes is absent from ARAM top-10. Investigate hps scorer weighting for flat sustain volume vs proc-on-heal mechanics; add secondary weight to lift Moonstone into top-8 for ARAM-anchor builds.
+- Soraka (hps): Add Warmog's Armor + Fimbulwinter to hps pool; lift Moonstone Renewer from r9 into top-5
+- Swain (ability): Add healing-amp item weighting (Spirit Visage, 80% wr) and slow-uptime synergy weighting (Rylai's, 50% wr) to ability scorer for drain-mage archetypes; both empirical winners are currently absent from scorer top-8.
+- Sylas (ability): Hextech Rocketbelt (68.4% wr), Lich Bane (63.6%), Spirit Visage (61.3%) all above baseline but absent from scorer top-12; investigate missing passive-on-hit and sustain-amplifier scoring paths. Liandry's/Wooglet's/Blackfire Torch over-rank with no empirical support.
+- Syndra (ability): Add Luden's Echo (id 6655) to Syndra ability scorer item pool; most-bought empirical item (ARAM all n=123) absent from all comp-cell top-8 lists.
+- TahmKench (ehp): Add Fimbulwinter to item pool - 62.5% wr at n=16 ARAM above 55.6% baseline, currently absent from all scorer cells.
+- Taliyah (ability): Boost Luden's Echo rank (rank #11 vs 71.4% empirical wr); add Blighting Jewel to scorer pool (missing, 57.1% wr); reduce Shadowflame weighting (rank #5 but 40.0% wr below 46.9% baseline)
+- Talon (burst): Boost Eclipse (wr 46.7%, rank 10->top-5); add Edge of Night to top-8 (wr 38.5%, absent); boost Serylda's (wr 38.1%, rank 11); reduce Essence Reaver/Trinity Force/IE/BotRK (ranks 1-4 but zero empirical); add The Collector to pool (n=41, unranked).
+- Taric (hps): flip to tank primary; add Fimbulwinter/Heartsteel/Spirit Visage/Unending Despair/Thornmail to item pool or route through tank scorer
+- Teemo (ability): Add Malignance (id 3118) to ability scorer item pool; it is the top empirical staple (wr 33.3% self / 44.5% all vs 43.0% baseline) but is absent from all comp grid cells.
+- Thresh (hps): Add tank secondary scorer dispatch (EHP/bruiser weight) or add Heartsteel/Fimbulwinter/Unending Despair to hps pool with partial credit; empirical top items score 0 while enchanter items have zero empirical presence.
+- Tristana (dps): The Collector (78.3% wr, n=23) absent from scorer top-8 in all cells; BotRK overranked at #1 vs empirical 61.5% wr. Check execute passive modeling and BotRK squishy %HP scaling.
+- Trundle (hybrid): bruiser-hybrid DPS gate: require d_ehp > 0 OR bruiser-archetype whitelist for top-8; Essence Reaver rank 4, Runaan's Hurricane rank 5, Stormrazor rank 8 have d_ehp=0 and zero empirical presence (n=64)
+- Tryndamere (hybrid): Investigate Titanic Hydra (3748) and Navori Flickerblade (6675) absent from scorer top-8 despite 63.6% and 58.8% ARAM wr; hybrid scorer may underweight on-hit HP-ratio effects. BotRK (rank 2, 39.3% wr) and Heartsteel (rank 7, 44.1% wr) both below baseline - secondary calibration signal.
+- TwistedFate (ability): Add Luden's Echo to scorer pool; review Rabadon's Deathcap overrank (43.2% wr vs 55.8% baseline); review Lich Bane + Rapid Firecannon weights
+- Twitch (dps): Void Immolation scores rank #2 (score 102.9) with 0 empirical purchases in ARAM self; investigate DoT/poison scoring interaction and consider suppressing or capping in pool when no empirical backing.
+- Udyr (hybrid): comp_blind hybrid defect + Heartsteel rank-3 overweight (wr=14.3%) + Fimbulwinter/Jak'Sho/Spirit Visage missing from top-8
+- Urgot (hybrid): Boost Jak'Sho/Titanic Hydra/Overlord's Bloodmail rank in hybrid scorer; demote pure-DPS zero-EHP items Essence Reaver and Runaan's Hurricane below top-8 for Urgot bruiser path.
+- Varus (dps): Add Muramana to scorer item pool; verify The Collector and Wit's End are evaluated - all three above ARAM baseline wr but absent from top-8.
+- Vayne (dps): Boost on-hit AS items (Guinsoo's Rageblade, Wit's End, Recurve Bow) in dps scorer; all three are top empirical wr winners absent from top-8. Revisit Kraken Slayer weight (scorer rank 2, empirical wr 50.0%). Likely missing Silver Bolts on-hit multiplier or AS value pathway.
+- Veigar (ability): Add Luden's Echo (id 6655, n=85 wr=52.9%) and Rod of Ages (id 6657, n=110 wr=52.7%) to ability scorer pool; both are above-baseline ARAM staples missing from top-8.
+- Velkoz (ability): Add Luden's Echo (id 6655) to ability scorer item pool; verify no pool gate is excluding it for poke mages.
+- Vex (ability): Add Luden's Echo to scorer item pool (empirical #1 by usage n=78, absent from scorer); investigate Liandry's scorer #1 (score=27.64) vs zero empirical presence.
+- Vi (hybrid): Exclude ADC/marksman items (Runaan's, Essence Reaver, Kraken Slayer, Stormrazor) from Vi pool; promote Death's Dance and Sundered Sky; investigate hybrid DPS subcomponent over-weighting attack-speed/on-hit for melee divers
+- Viego (hybrid): Sundered Sky (wr=43.2% n=81), Death's Dance (wr=44.2% n=43), Wit's End (wr=53.3% n=15) all above ARAM baseline but absent from scorer top 8; Manamune (#2) and Runaan's (#5) over-ranked vs empirical. Audit hybrid weighting for on-hit/proc and sustain items on Viego passive-reset kit.
+- Vladimir (ability): Add Cosmic Drive to scorer pool (ARAM n=51 wr 47.1 > baseline 45.2, absent from top-8); evaluate Spirit Visage (n=31 wr 48.4, heal-amp synergy with W self-heal).
+- Volibear (hybrid): Boost Unending Despair/Spirit Visage/Fimbulwinter in hybrid EHP arm; penalize Runaan's/Essence Reaver (pure-ADC ranged items, zero empirical presence on a melee bruiser)
+- Warwick (hybrid): Gate ADC-crit items (Runaan's, Essence Reaver, Kraken Slayer, Stormrazor) from bruiser hybrid scorer; investigate missing Sundered Sky and Titanic Hydra passive DPS credit
+- Xayah (dps): BotRK over-weighted (25% wr vs 55.8% baseline); add Statikk Shiv + The Collector to pool; lift Navori Flickerblade from rank 10
+- Xerath (ability): Add Luden's Echo to ability scorer pool; demote Stormsurge (wr=30.4, 18pts below baseline)
+- XinZhao (hybrid): Reduce BotRK weight; add Sundered Sky + Death's Dance to scorer pool; review hybrid DPS over-weighting on-hit/attack-speed items vs bruiser-diver staples.
+- Yasuo (hybrid): comp_blind EHP branch inert (max_shift=2); add ISB to pool; audit IE crit-weight underscoring in ad_squishy/bal_squishy
+- Yone (hybrid): Add Infinity Edge (3031) and Immortal Shieldbow (6673) to scorer item pool; both absent from all comp-cell top-12 despite 73.3% and 70.0% ARAM win rates above 63.6% baseline.
+- Yorick (hybrid): Boost Sundered Sky pool weight (rank 12 despite 64.5% wr n=31); add Spirit Visage to item pool (absent, 63.2% wr n=19, heals with Yorick W passive); demote Essence Reaver (rank 5, 0 empirical rows, d_ehp=0)
+- Yunara (dps): Reduce BotRK weight for crit-carry archetype; add crit-synergy bonus to pull Infinity Edge (empirical wr 75.0%, rank 11) and Runaan's Hurricane (wr 61.5%, rank 9) into top-8.
+- Yuumi (hps): Boost Moonstone Renewer in hps pool (rank 9 score 0.58 vs empirical #1 n=73 wr 58.9); add Dawncore + Tear of the Goddess; audit Echoes of Helia over-elevation
+- Zaahen (hybrid): Monitor Trinity Force rank (scorer rank 4 score=1.1259, empirical 40% wr at n=5; below 50.0 baseline but sample too thin for hard retune)
+- Zac (ehp): Apply empirical-underperform penalty to Sunfire Aegis for Zac (38.5% wr vs 44.9% baseline, n=26) to push it below scorer top-8 in ad_squishy cell.
+- Zed (burst): audit burst scorer item-effect weights for Voltaic Cyclosword (6699, SR wr 60.7) and Eclipse (6692, ARAM all wr 45.1) - both missing from squishy top-8 despite above-baseline WR
+- Zeri (dps): Boost Runaan's Hurricane and Yun Tal Wildarrows in scorer pool (both top empirical items absent from top-8); investigate BotRK overranking (scorer rank 3, empirical 50% wr vs 66.7% baseline).
+- Ziggs (ability): Add Seraph's Embrace to scorer pool (wr 62.5, n=24 in all, absent from top-12); reduce Shadowflame weight (wr 39.3, n=61 in all, scorer rank 6); review Liandry's rank vs small-sample self underperformance.
+- Zilean (hps): rearchetype primary=mage secondary=enchanter; switch scorer hps->mage so AP items (Luden's, Shadowflame, Rabadon's) rank top
+- Zoe (ability): Add Luden's Echo to ability-scorer pool (absent despite n=143 44.8% wr); audit Void Staff rank 6 vs empirical 31.0% wr
+- Zyra (ability): Oblivion Orb (id 3916, 64.3% wr n=28) and Malignance (id 3118, 62.5% wr n=24) absent from scorer top-8; check ability scorer GW and ult-haste item valuation
+

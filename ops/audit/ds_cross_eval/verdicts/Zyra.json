@@ -1,0 +1,12 @@
+{
+  "champion": "Zyra",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Oblivion Orb (id 3916, 64.3% wr n=28) and Malignance (id 3118, 62.5% wr n=24) absent from scorer top-8; check ability scorer GW and ult-haste item valuation",
+  "headline": "Zyra ability scorer correct axis; pool gap - Oblivion Orb (64.3% wr) and Malignance (62.5% wr) missing from top-8"
+}

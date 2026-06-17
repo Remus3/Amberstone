@@ -1,0 +1,12 @@
+{
+  "champion": "Zoe",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo to ability-scorer pool (absent despite n=143 44.8% wr); audit Void Staff rank 6 vs empirical 31.0% wr",
+  "headline": "Zoe ability scorer: Luden's Echo absent from pool (n=143 44.8% wr); Void Staff overrated at rank 6 (empirical 31.0% wr)"
+}

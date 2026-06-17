@@ -1,0 +1,12 @@
+{
+  "champion": "JarvanIV",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": null,
+  "severity": "MINOR",
+  "nominated_retune": "Prune Runaan's Hurricane (rank 4) from melee hybrid pool; Sundered Sky and Death's Dance missing from top-8 despite being above-baseline empirical staples",
+  "headline": "Runaan's rank 4 + Kraken rank 5 are melee-inapplicable; Sundered Sky (wr 42.5%) absent from scorer top-8"
+}

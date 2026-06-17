@@ -1,0 +1,12 @@
+{
+  "champion": "Twitch",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Void Immolation scores rank #2 (score 102.9) with 0 empirical purchases in ARAM self; investigate DoT/poison scoring interaction and consider suppressing or capping in pool when no empirical backing.",
+  "headline": "Twitch dps scorer axis correct; Void Immolation at rank #2 with zero empirical buys is a minor pool distortion."
+}

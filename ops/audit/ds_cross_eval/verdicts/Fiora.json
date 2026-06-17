@@ -1,0 +1,12 @@
+{
+  "champion": "Fiora",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Ravenous Hydra to pool (most-built, absent); recalibrate Trinity Force down (scorer rank 2, wr 42.9% < 53.8% baseline); lift Sundered Sky (scorer rank 11, wr 60.0%)",
+  "headline": "Hybrid axis correct; pool gap: Ravenous Hydra absent, Trinity Force overranked, Sundered Sky underranked vs empirical"
+}

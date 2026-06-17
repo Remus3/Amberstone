@@ -1,0 +1,12 @@
+{
+  "champion": "Udyr",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "comp_blind hybrid defect + Heartsteel rank-3 overweight (wr=14.3%) + Fimbulwinter/Jak'Sho/Spirit Visage missing from top-8",
+  "headline": "Udyr hybrid comp_blind=True; Heartsteel rank-3 at wr=14.3%; Fimbulwinter/Jak'Sho/Spirit Visage absent from scorer top-8"
+}

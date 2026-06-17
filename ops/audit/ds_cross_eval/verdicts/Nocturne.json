@@ -1,0 +1,12 @@
+{
+  "champion": "Nocturne",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Stridebreaker, Experimental Hexplate, Black Cleaver, Sundered Sky, Hubris to scorer pool; down-weight Runaan's/Kraken Slayer/Stormrazor/Essence Reaver (ADC crit items, no above-baseline empirical signal for bruiser-assassin).",
+  "headline": "Axis+comp correct; scorer top-8 skews ADC-crit while empirical winners (Stridebreaker, Hexplate, Black Cleaver, Sundered Sky, Hubris) absent from pool."
+}

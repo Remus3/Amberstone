@@ -1,0 +1,775 @@
+{
+  "champion": "Talon",
+  "db_name": "Talon",
+  "archetype": {
+    "primary": "assassin",
+    "secondary": "mage",
+    "source": "default"
+  },
+  "scorer": "burst",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_all",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 444.1775,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 2,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 428.2556,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3333
+      },
+      {
+        "rank": 3,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 395.6506,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 4,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 391.125,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 5,
+        "id": "3179",
+        "name": "Umbral Glaive",
+        "score": 381.6649,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 6,
+        "id": "3072",
+        "name": "Bloodthirster",
+        "score": 357.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3400
+      },
+      {
+        "rank": 7,
+        "id": "6696",
+        "name": "Axiom Arc",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2750
+      },
+      {
+        "rank": 8,
+        "id": "3142",
+        "name": "Youmuu's Ghostblade",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 9,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 10,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 338.625,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 11,
+        "id": "6694",
+        "name": "Serylda's Grudge",
+        "score": 326.4687,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "6610",
+        "name": "Sundered Sky",
+        "score": 323.8961,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 444.1775,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 2,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 428.2556,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3333
+      },
+      {
+        "rank": 3,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 395.6506,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 4,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 391.125,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 5,
+        "id": "3179",
+        "name": "Umbral Glaive",
+        "score": 381.6649,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 6,
+        "id": "3072",
+        "name": "Bloodthirster",
+        "score": 357.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3400
+      },
+      {
+        "rank": 7,
+        "id": "6696",
+        "name": "Axiom Arc",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2750
+      },
+      {
+        "rank": 8,
+        "id": "3142",
+        "name": "Youmuu's Ghostblade",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 9,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 10,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 338.625,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 11,
+        "id": "6694",
+        "name": "Serylda's Grudge",
+        "score": 326.4687,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "6610",
+        "name": "Sundered Sky",
+        "score": 323.8961,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 444.1775,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 2,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 428.2556,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3333
+      },
+      {
+        "rank": 3,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 395.6506,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 4,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 391.125,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 5,
+        "id": "3179",
+        "name": "Umbral Glaive",
+        "score": 381.6649,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 6,
+        "id": "3072",
+        "name": "Bloodthirster",
+        "score": 357.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3400
+      },
+      {
+        "rank": 7,
+        "id": "6696",
+        "name": "Axiom Arc",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2750
+      },
+      {
+        "rank": 8,
+        "id": "3142",
+        "name": "Youmuu's Ghostblade",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 9,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 356.5241,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 10,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 338.625,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 11,
+        "id": "6694",
+        "name": "Serylda's Grudge",
+        "score": 326.4687,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "6610",
+        "name": "Sundered Sky",
+        "score": 323.8961,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 338.25,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 2,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 253.8157,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 3,
+        "id": "6694",
+        "name": "Serylda's Grudge",
+        "score": 252.732,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 4,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 244.7175,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3333
+      },
+      {
+        "rank": 5,
+        "id": "3036",
+        "name": "Lord Dominik's Regards",
+        "score": 244.6776,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3300
+      },
+      {
+        "rank": 6,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 231.75,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 7,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 226.086,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 8,
+        "id": "3033",
+        "name": "Mortal Reminder",
+        "score": 220.5768,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 9,
+        "id": "3071",
+        "name": "Black Cleaver",
+        "score": 212.5139,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 10,
+        "id": "3072",
+        "name": "Bloodthirster",
+        "score": 204.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3400
+      },
+      {
+        "rank": 11,
+        "id": "3179",
+        "name": "Umbral Glaive",
+        "score": 188.2801,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 12,
+        "id": "6610",
+        "name": "Sundered Sky",
+        "score": 185.0835,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 338.25,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 2,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 253.8157,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3050
+      },
+      {
+        "rank": 3,
+        "id": "6694",
+        "name": "Serylda's Grudge",
+        "score": 252.732,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 4,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 244.7175,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3333
+      },
+      {
+        "rank": 5,
+        "id": "3036",
+        "name": "Lord Dominik's Regards",
+        "score": 244.6776,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3300
+      },
+      {
+        "rank": 6,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 231.75,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 7,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 226.086,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 8,
+        "id": "3033",
+        "name": "Mortal Reminder",
+        "score": 220.5768,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 9,
+        "id": "3071",
+        "name": "Black Cleaver",
+        "score": 212.5139,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 10,
+        "id": "3072",
+        "name": "Bloodthirster",
+        "score": 204.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3400
+      },
+      {
+        "rank": 11,
+        "id": "3179",
+        "name": "Umbral Glaive",
+        "score": 188.2801,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 12,
+        "id": "6610",
+        "name": "Sundered Sky",
+        "score": 185.0835,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "target_resist",
+    "comp_blind": false,
+    "enemy_damage_type": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    },
+    "target_resist": {
+      "max_positive_shift": 15,
+      "top_risers_when_ap": [
+        {
+          "name": "Black Cleaver",
+          "shift": 15
+        },
+        {
+          "name": "Mortal Reminder",
+          "shift": 10
+        },
+        {
+          "name": "Lord Dominik's Regards",
+          "shift": 9
+        },
+        {
+          "name": "Serylda's Grudge",
+          "shift": 8
+        },
+        {
+          "name": "Eclipse",
+          "shift": 4
+        }
+      ],
+      "top_fallers_when_ap": [
+        {
+          "name": "Edge of Night",
+          "shift": -9
+        },
+        {
+          "name": "Spectral Cutlass",
+          "shift": -9
+        },
+        {
+          "name": "Axiom Arc",
+          "shift": -6
+        },
+        {
+          "name": "Hubris",
+          "shift": -6
+        },
+        {
+          "name": "Umbral Glaive",
+          "shift": -6
+        }
+      ],
+      "comp_blind": false
+    }
+  },
+  "rune_relevant": true,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 2,
+        "wr": 0.0,
+        "items": []
+      },
+      "all": {
+        "n": 59,
+        "wr": 32.2,
+        "items": [
+          {
+            "id": "6696",
+            "name": "Axiom Arc",
+            "n": 43,
+            "wr": 32.6
+          },
+          {
+            "id": "6676",
+            "name": "The Collector",
+            "n": 41,
+            "wr": 31.7
+          },
+          {
+            "id": "126697",
+            "name": "Hubris",
+            "n": 33,
+            "wr": 33.3
+          },
+          {
+            "id": "3158",
+            "name": "Ionian Boots of Lucidity",
+            "n": 31,
+            "wr": 32.3
+          },
+          {
+            "id": "6694",
+            "name": "Serylda's Grudge",
+            "n": 21,
+            "wr": 38.1
+          },
+          {
+            "id": "6692",
+            "name": "Eclipse",
+            "n": 15,
+            "wr": 46.7
+          },
+          {
+            "id": "3814",
+            "name": "Edge of Night",
+            "n": 13,
+            "wr": 38.5
+          },
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 13,
+            "wr": 30.8
+          },
+          {
+            "id": "6698",
+            "name": "Profane Hydra",
+            "n": 10,
+            "wr": 30.0
+          },
+          {
+            "id": "1036",
+            "name": "Long Sword",
+            "n": 9,
+            "wr": 22.2
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 0,
+        "wr": null,
+        "items": []
+      },
+      "all": {
+        "n": 34,
+        "wr": 35.3,
+        "items": [
+          {
+            "id": "3142",
+            "name": "Youmuu's Ghostblade",
+            "n": 28,
+            "wr": 32.1
+          },
+          {
+            "id": "6697",
+            "name": "Hubris",
+            "n": 12,
+            "wr": 41.7
+          },
+          {
+            "id": "3158",
+            "name": "Ionian Boots of Lucidity",
+            "n": 10,
+            "wr": 60.0
+          },
+          {
+            "id": "3814",
+            "name": "Edge of Night",
+            "n": 10,
+            "wr": 50.0
+          },
+          {
+            "id": "3134",
+            "name": "Serrated Dirk",
+            "n": 8,
+            "wr": 37.5
+          },
+          {
+            "id": "1037",
+            "name": "Pickaxe",
+            "n": 7,
+            "wr": 0.0
+          },
+          {
+            "id": "2422",
+            "name": "Slightly Magical Footwear",
+            "n": 7,
+            "wr": 28.6
+          },
+          {
+            "id": "6696",
+            "name": "Axiom Arc",
+            "n": 6,
+            "wr": 33.3
+          },
+          {
+            "id": "1036",
+            "name": "Long Sword",
+            "n": 6,
+            "wr": 50.0
+          },
+          {
+            "id": "1055",
+            "name": "Doran's Blade",
+            "n": 6,
+            "wr": 33.3
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Aphelios",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Fix all-zero dps scorer output for Aphelios (registration/base-stat failure); then verify target_resist shifts armor-pen items vs tanky comps",
+  "headline": "All-zero scorer output: dps produces 0.0 for every item/comp; empirical winners (Collector 81.8% wr, IE 60.0%) absent from pool"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Nautilus",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Fimbulwinter mana-to-HP passive not modeled: wr 59.2 n=76 but absent from all top-8 cells; secondary: Thornmail rank 9 vs AD at wr 62.2",
+  "headline": "Nautilus ehp OK on axis+comp; Fimbulwinter pool gap (wr 59.2 n=76) and Thornmail rank 9 (wr 62.2) indicate mana-HP conversion miss"
+}

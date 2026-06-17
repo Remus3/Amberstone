@@ -1,0 +1,12 @@
+{
+  "champion": "Katarina",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add Heartsteel/Titanic Hydra/Nashor's Tooth to ability scorer pool; Rabadon's rank-4 at 16.7% wr and Shadowflame rank-6 at 33.3% wr indicate AP amplifier overcount for Katarina ARAM.",
+  "headline": "Ability scorer top items lose badly (Rabadon's 16.7%, Shadowflame 33.3%); dominant ARAM winners Heartsteel+Titanic Hydra absent from pool."
+}

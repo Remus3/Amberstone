@@ -1,0 +1,12 @@
+{
+  "champion": "Leblanc",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo to ability scorer item pool; investigate downweighting Rabadon's Deathcap for assassin-mage (empirical wr 31.6 vs 41.4 baseline, scorer rank 4, n=19 ARAM self)",
+  "headline": "Ability scorer axis correct; Rabadon's overranked (scorer #4, empirical 31.6 wr) and Luden's Echo absent from pool"
+}

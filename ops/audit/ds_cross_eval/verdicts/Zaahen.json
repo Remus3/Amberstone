@@ -1,0 +1,12 @@
+{
+  "champion": "Zaahen",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "synthetic",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Monitor Trinity Force rank (scorer rank 4 score=1.1259, empirical 40% wr at n=5; below 50.0 baseline but sample too thin for hard retune)",
+  "headline": "Bruiser/hybrid axis correct, comp responsive; Trinity Force rank 4 scores well but only empirical item shows 40% wr (n=5, synthetic)"
+}

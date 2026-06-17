@@ -1,0 +1,12 @@
+{
+  "champion": "Warwick",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Gate ADC-crit items (Runaan's, Essence Reaver, Kraken Slayer, Stormrazor) from bruiser hybrid scorer; investigate missing Sundered Sky and Titanic Hydra passive DPS credit",
+  "headline": "Hybrid AD axis correct; top-8 has 4 ADC-crit items with 0 empirical presence; Sundered Sky (n=29 62.1%) missing from top-12"
+}

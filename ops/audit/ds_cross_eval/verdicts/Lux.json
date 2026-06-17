@@ -1,0 +1,12 @@
+{
+  "champion": "Lux",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Wooglet's Witchcap ranks 1st (score 41.9) but has 0 empirical appearances in n=16; verify gold-cost normalisation in ability scorer - 6000g item may be over-valued if gold penalty is absent or weak.",
+  "headline": "Lux ability scorer axis/comp correct; Wooglet's Witchcap rank-1 with zero empirical appearances flags a potential gold-cost normalisation gap."
+}

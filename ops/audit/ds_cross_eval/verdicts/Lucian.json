@@ -1,0 +1,12 @@
+{
+  "champion": "Lucian",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add The Collector (6676) to dps scorer item pool; review BotRK on-hit weight inflating rank-1 vs empirical wr=37.5% (below baseline 40.7%).",
+  "headline": "MINOR: The Collector absent from scorer top-12 despite above-baseline wr; BotRK over-indexed vs empirical."
+}

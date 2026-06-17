@@ -1,0 +1,12 @@
+{
+  "champion": "Camille",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": "MINOR",
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Increase enemy_damage_type responsiveness weight in hybrid scorer; max_positive_shift=1 is de-facto comp-blind. Also boost Death's Dance and Sundered Sky above Runaan's Hurricane and Essence Reaver which lack empirical support.",
+  "headline": "comp_blind=TRUE on hybrid scorer; Death's Dance (73.7% wr) and Sundered Sky (60.9%) absent from top-8; Runaan's Hurricane rank 7 with zero empirical support"
+}

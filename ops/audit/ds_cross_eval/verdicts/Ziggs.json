@@ -1,0 +1,12 @@
+{
+  "champion": "Ziggs",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Seraph's Embrace to scorer pool (wr 62.5, n=24 in all, absent from top-12); reduce Shadowflame weight (wr 39.3, n=61 in all, scorer rank 6); review Liandry's rank vs small-sample self underperformance.",
+  "headline": "Ziggs ability scorer: Seraph's absent (wr 62.5), Shadowflame overranked (wr 39.3 all), Liandry's empirically losing on self sample."
+}

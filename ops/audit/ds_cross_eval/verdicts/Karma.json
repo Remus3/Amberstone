@@ -1,0 +1,12 @@
+{
+  "champion": "Karma",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "audit Malignance ult-haste scoring path for ability scorer; add sustained-vs-burst profile gate to suppress Stormsurge on non-burst mage kits",
+  "headline": "Malignance (n=128, wr=49.2) missing from scorer top-8; Stormsurge rank-7 empirically losing (wr=45.5 < baseline 48.9)"
+}

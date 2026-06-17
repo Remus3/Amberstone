@@ -1,0 +1,12 @@
+{
+  "champion": "Milio",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Seraph's Embrace to HPS scorer pool; audit Moonstone Renewer weight (score 0.735 vs #1 Echoes 26.2 for most-built item n=55)",
+  "headline": "Milio hps scorer correct axis; Seraph's Embrace (wr=70.0 n=20) absent from pool; Moonstone underweighted at rank 9"
+}

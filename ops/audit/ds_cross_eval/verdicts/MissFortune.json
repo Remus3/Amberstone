@@ -1,0 +1,12 @@
+{
+  "champion": "MissFortune",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": false,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "true",
+  "severity": "MISMATCH",
+  "nominated_retune": "Gate AP item inclusion by kit AP ratio; Wooglet's/Lich Bane rank 1/5 for AD marksman via mage secondary tag. Re-tag archetype to carry (marksman) not assassin.",
+  "headline": "Burst scorer ranks AP items (Wooglet's #1, Lich Bane #5) over AD crit staples; 8/8 scorer top items absent or below baseline empirically."
+}

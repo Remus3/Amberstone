@@ -1,0 +1,12 @@
+{
+  "champion": "Xerath",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo to ability scorer pool; demote Stormsurge (wr=30.4, 18pts below baseline)",
+  "headline": "Luden's Echo absent from scorer top-12 despite n=128 wr=50.8; Stormsurge rank-7 but wr=30.4"
+}

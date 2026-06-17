@@ -1,0 +1,12 @@
+{
+  "champion": "Malzahar",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Rabadon's rank 4 but wr 36.7 (n=30, -15.6pp vs baseline); Rylai's absent from top-12 despite wr 53.4 (n=88). Audit AP-amp overflow in ability scorer for DoT mages; add Rylai's to pool.",
+  "headline": "ability scorer correct axis; Rabadon's rank 4 empirically loses (-15.6pp) and Rylai's (wr 53.4, n=88) absent from pool"
+}

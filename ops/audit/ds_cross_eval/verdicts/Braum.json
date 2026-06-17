@@ -1,0 +1,12 @@
+{
+  "champion": "Braum",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (id 3121) to scorer pool; investigate Void Immolation 4455 score (2x next item, zero empirical games - likely scoring artifact).",
+  "headline": "Braum ehp: comp responsiveness OK; Fimbulwinter (n=52) absent from pool; Void Immolation 4455 anomaly needs investigation."
+}

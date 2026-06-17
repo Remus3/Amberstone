@@ -1,0 +1,12 @@
+{
+  "champion": "Illaoi",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Plated Steelcaps + Black Cleaver to pool; gate or downweight items with zero empirical appearances (Essence Reaver, Dusk and Dawn absent from 79-game ARAM sample).",
+  "headline": "MINOR: top empirical winners (Steelcaps 47.8% wr, Black Cleaver 41.7%) absent from scorer pool; Essence Reaver+Dusk+Dawn over-ranked with 0 appearances."
+}

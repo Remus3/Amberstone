@@ -1,0 +1,12 @@
+{
+  "champion": "Ornn",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Shift Thornmail from rank 9 to top-8 in AD-heavy comps (wr 61.1%, n=18 empirically)",
+  "headline": "Ornn ehp scorer well-calibrated; Thornmail sits at rank 9 (wr 61.1%, n=18) - one rank outside top-8 in AD comps"
+}

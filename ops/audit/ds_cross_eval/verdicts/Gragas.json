@@ -1,0 +1,12 @@
+{
+  "champion": "Gragas",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Cosmic Drive (4629) and Luden's Echo (6655) to ability scorer item pool; verify Wooglet's Witchcap ARAM availability",
+  "headline": "Gragas ability scorer aligned on archetype; Cosmic Drive (65% ARAM wr, n=20) and Luden's Echo absent from scorer pool"
+}

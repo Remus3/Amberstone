@@ -1,0 +1,12 @@
+{
+  "champion": "Akali",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Penalize Stormsurge (rank 7, empirical wr 30.8% < baseline 36.4%). Add Heartsteel to pool (wr 40.6%, n=32, absent from scorer). Audit Liandry's rank-1 claim vs absent empirical top-10.",
+  "headline": "ability scorer AP-aligned; Stormsurge rank-7 loses empirically (30.8%), Heartsteel win-staple missing from pool"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Yuumi",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Moonstone Renewer in hps pool (rank 9 score 0.58 vs empirical #1 n=73 wr 58.9); add Dawncore + Tear of the Goddess; audit Echoes of Helia over-elevation",
+  "headline": "hps axis correct; Moonstone Renewer rank 9 (0.58) despite being top ARAM item n=73 wr 58.9; Dawncore + Tear absent"
+}

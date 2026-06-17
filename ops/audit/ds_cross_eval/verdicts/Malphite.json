@@ -1,0 +1,12 @@
+{
+  "champion": "Malphite",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Wire secondary=mage scorer contribution: dual-scorer blend (ehp primary + mage secondary at reduced weight) so AP items (Malignance, Rabadon's, Stormsurge, Sorcerer's Shoes) can enter the ranked pool.",
+  "headline": "Malphite ehp scorer surfaces pure-tank items; empirical ARAM winners are AP mage items (Mercury's 54.5%, Rabadon's 51.4%, Sorcerer's 50.8%) with zero scorer-pool presence."
+}

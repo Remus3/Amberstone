@@ -1,0 +1,12 @@
+{
+  "champion": "Veigar",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo (id 6655, n=85 wr=52.9%) and Rod of Ages (id 6657, n=110 wr=52.7%) to ability scorer pool; both are above-baseline ARAM staples missing from top-8.",
+  "headline": "Veigar ability scorer correct axis and comp-responsive; pool gap: Luden's Echo + Rod of Ages above-baseline but absent from scorer top-8."
+}
