@@ -83,7 +83,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
-| DSP1 | ds-swarm | Build the permutation validation harness + WIN anchor under ops/audit/ds_perm_swarm/: score DS top-N vs data/rewind_history.db WIN-rate per (champ x context bucket), consume ops/audit/ds_cross_eval/data/<Champ>.json. BUILD only, no engine change. Hermetic tests. See plan "DSP1". | OPEN | - |
+| DSP1 | ds-swarm | Build the permutation validation harness + WIN anchor under ops/audit/ds_perm_swarm/: score DS top-N vs data/rewind_history.db WIN-rate per (champ x context bucket), consume ops/audit/ds_cross_eval/data/<Champ>.json. BUILD only, no engine change. Hermetic tests. See plan "DSP1". | DONE | 19f66829 |
 | DSP2 | ds-engine | Cross-eval Cluster B fix: generic-marksman-template leaking onto non-marksman AD scorers (named systemic bug). Root-cause-first, per-champ tests, ENGINE bump + DS restart + Share sync. See plan "DSP2". | OPEN | - |
 | DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | OPEN | - |
 | DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | OPEN | - |
@@ -109,6 +109,23 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP1 (464, 19f66829) DONE. Built the permutation WIN-anchor harness
+  ops/audit/ds_perm_swarm/ (BUILD-only, no engine change). Scores DS top-N (cross-eval
+  comp_grid) vs per-item rewind_history.db WIN-rate per (champ x mode) via difference-of-
+  differences: lift = mean(WR of DS-top-K items, n>=min_item_n) - baseline_wr. 4 modules
+  (cross_eval_loader / win_anchor [sqlite-conn injected, hermetic] / perm_score build_report
+  / run_harness CLI) + 9 hermetic tests (in-memory sqlite + cross-eval fixtures; the 1.8GB
+  rewind db is never opened - clean-checkout safe). LIVE RUN (report/perm_anchor_report.
+  {json,md}): 294 champ-modes scored (160 ARAM + 134 SR), 54.4% positive lift,
+  mean_lift_weighted +0.17 -> DS rankings weakly outcome-aligned. DIVERGENT TAIL
+  (DSP2/DSP3 targets, lowest lift): Ezreal SR -39 / Zilean ARAM -33 / Shaco ARAM -29 /
+  Pyke ARAM -22 - Ezreal+Pyke corroborate the Cluster-B generic-marksman-template
+  hypothesis; the harness IS the DSP2/3 consume-and-validate tool. INLINE sole orchestrator
+  (R9, coupled new package); verifier-gate = fresh in-thread exit-0 re-verify (R7, no
+  untrusted slice). Gate: new 9/9; full RC tests/ 8265 passed / 2 skip / 109 subtests exit
+  0; ruff + py_compile + ASCII/LF clean. NO DS paths -> no ENGINE bump / DS restart / Share
+  sync. NEXT: DSP2 (Cluster-B marksman-template fix), consuming this report's divergent tail.
 
 - 2026-06-16 LBAND1 (443, a8158629) DONE. Cycle 45 director-refill (bounded queue
   drained, Gemini down 429). 2-agent fanout: L2 robustness/coverage scout over
