@@ -92,7 +92,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | DONE | 69f9085d |
 | DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | DONE | f03dfc25 |
 | DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | DONE | 20d9f395 |
-| DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | WIP | `7b96328f` |
+| DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | DONE | `7b96328f` (p1) + `e1c996d0` (p2-DRY) |
 | DSP11 | ds-engine | Cluster B2 kit-axis item-crediting fix (Gemini PART C verdict 2026-06-17, from the DSP10 dsp10_consolidated report): the dps/burst scorers give caster-ADC / lethality-assassin / crit-melee kits a generic crit-marksman template instead of their WIN-axis - Pyke wins lethality (Opportunity/Youmuu's), Nilah wins crit (Immortal Shieldbow/IE/Navori), Ezreal wins Manamune/Trinity. Root-cause-first (WHY the template - candidate applicability vs DPS credit model), default-OFF seam, WIN-anchored vs report/dsp10_consolidated.md + rewind. ENGINE bump + DS restart + Share sync. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) stays a deferred operator policy decision (do-NOT-auto-flip). See plan "DSP10" + report/dsp10_consolidated.md. | DONE | `0c2b88e5` |
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | OPEN | - |
 | LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | OPEN | - |
@@ -110,6 +110,56 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP10 PASS 2 (`e1c996d0`) DONE - SWARM DRY. Loop-until-dry pass 2:
+  re-ran the cross-eval harness at live ENGINE 1.135.0 (run_all 172/172 OK,
+  byte-identical to pass 1 -> DSP11 did NOT regress the default-path rankings;
+  run_consolidate report stable) then verified the DSP11 prefer_kit_axis_by_win
+  seam. NEW ops/audit/ds_perm_swarm/dsp10_pass2_verify.py (audit-only; nothing
+  under agents/daemon_slayer touched -> NO ENGINE bump / DS restart / Share sync,
+  the DSP10-pass1 audit-only precedent). (1) verify_resolved re-ranks each
+  DSP11-tabled champ seam OFF vs ON IN-PROCESS (the live :8893 server is
+  seam-OFF, so the cross-eval data/ files are the default-path snapshot and the
+  seam-ON ranking must be exercised by calling rank_items / rank_items_by_burst
+  directly, the DSP11 test path): 7/7 RESOLVED - Pyke->Axiom/Youmuu's,
+  Naafiri->Collector/Hubris, Nilah->IE/Navori/Shieldbow/LDR, Quinn->IE/Statikk/
+  Collector/MR/LDR, Senna->Black Cleaver, Corki->Trinity/Collector,
+  Ezreal->ER + Trinity un-stripped; each floats its buried kit-axis winners into
+  the top-K (partition invariant holds). (2) classify_worst (pure, hermetic)
+  buckets the consolidated worst-40: a NEW B2 defect requires an untabled,
+  non-Cluster-A dps/burst champ burying a COHERENT kit-axis set (>=2 axis items
+  AND the strongest buried winner's lift >= 5.0, the magnitude floor of the real
+  DSP11-tabled defects: Pyke Opportunity +6.1, Nilah Immortal Shieldbow +15.8,
+  Senna Black Cleaver +11.5, Quinn IE +6.5). RESULT: 0 new B2 defects -> DRY.
+  The divergent tail is entirely: 6 covered_dsp11 + 5 cluster_a_deferred
+  (Zilean/Shaco/Kayle/Seraphine/Udyr - operator-gated, do-NOT-auto-flip) + 26
+  other_scorer (AP-mage / bruiser / tank lanes - the DSV1 AP-DoT + archetype
+  routing work, not B2) + 1 no_buried (Zaahen) + 2 within_axis_noise
+  (Caitlyn/Yunara - pure ranged crit marksmen whose model already targets crit
+  and only differ on WHICH crit item by a marginal +3.4/thin-n lift = the
+  DSP9-falsified G6 cost-axis residual, the DSP11 "pure crit ADCs untouched"
+  rationale). report/dsp10_pass2.{json,md} written. The min_axis_hits=2 count
+  alone first false-flagged Caitlyn (Collector is a cross-axis generic item +
+  RFC at ~baseline); the +5.0 strongest-lift floor (TDD'd) cleanly separates a
+  true off-axis burial from within-axis cost noise. TDD: tests/test_dsp10_pass2.py
+  +9 (RED-first on the missing module -> green: covered / cluster-A / no-buried /
+  other-scorer gating, single-hit + marginal-2-hit noise, strong-coherent-set
+  flagged not-dry on dps + burst, dry-when-only-benign). GATE (fresh this run):
+  DS-dir agents/daemon_slayer/tests/ 7283 passed / 1 skip / 1942 subtests exit 0
+  (unchanged vs DSP11 = no DS regression, no DS source touched); full RC tests/
+  --ignore=tests/daemon_slayer 8307 passed / 2 skip / 109 subtests exit 0 (+9 =
+  the new pass-2 hermetic tests, 0 regressions); ruff All checks passed
+  (repo-wide); py_compile OK; ds_share_sync --check "in sync" (no DS drift);
+  ASCII/LF clean. INLINE sole orchestrator (R9 - one cohesive audit module + its
+  test; a dependency chain (probe re-run -> in-process seam re-rank -> classify ->
+  report), not disjoint files, so parallel worktrees add only overhead; the
+  DSP1-11 inline precedent + the directive's "trivial one-file audit item may use
+  a single agent" clause); verifier subagent SKIPPED per R7 (own single-thread
+  edit, no untrusted slice) - fresh in-thread dual full-suite + live in-process
+  seam re-rank substituted. No frozen files touched. DSP10 loop-until-dry
+  contract SATISFIED (pass 1 surfaced DSP11; pass 2 dry). NEXT: HZU1 (item-level
+  build-order Haiku-flip gate) or LGS1/OPEN1/OPEN2. Source: gemini director
+  directive ops/loop/control/directive.md (DSP10 pass 2).
 
 - 2026-06-17 DSP11 (`0c2b88e5`) DONE. Cluster-B2 kit-axis item-credit seam (ENGINE
   1.134.0 -> 1.135.0, DEFAULT-OFF). ROOT-CAUSE (the directive's candidate-vs-credit
