@@ -1,0 +1,1239 @@
+{
+  "engine_version": "1.123.0",
+  "patch": "16.12.1",
+  "comp": [
+    "Jayce",
+    "Sejuani",
+    "Annie",
+    "Lucian",
+    "Thresh"
+  ],
+  "classified_bucket": "burst_heavy",
+  "comp_target_l11": {
+    "target_armor": 89.6,
+    "target_mr": 50.0,
+    "target_max_hp": 2160.0,
+    "target_bonus_hp": 760.0
+  },
+  "covered": 172,
+  "mean_overlap_ultimate_by_variant": {
+    "frontline_heavy": 2.0,
+    "burst_heavy": 1.488,
+    "poke": 1.86,
+    "mixed": 1.837
+  },
+  "mean_overlap_normal_by_variant": {
+    "frontline_heavy": 1.419,
+    "burst_heavy": 0.953,
+    "poke": 1.314,
+    "mixed": 1.291
+  },
+  "best_tracking_variant_ultimate": "frontline_heavy",
+  "comp_match_vs_mixed_delta_ultimate": -0.349,
+  "rows": [
+    {
+      "champ": "Aatrox",
+      "frontline_heavy": 1,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Ahri",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Akali",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Akshan",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 3
+    },
+    {
+      "champ": "Alistar",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Ambessa",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Amumu",
+      "frontline_heavy": 1,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Anivia",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 1
+    },
+    {
+      "champ": "Annie",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Aphelios",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Ashe",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 3
+    },
+    {
+      "champ": "AurelionSol",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 1
+    },
+    {
+      "champ": "Aurora",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Azir",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Bard",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Belveth",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Blitzcrank",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Brand",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Braum",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Briar",
+      "frontline_heavy": 1,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Caitlyn",
+      "frontline_heavy": 4,
+      "burst_heavy": 4,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Camille",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Cassiopeia",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Chogath",
+      "frontline_heavy": 2,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Corki",
+      "frontline_heavy": 1,
+      "burst_heavy": 0,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Darius",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Diana",
+      "frontline_heavy": 4,
+      "burst_heavy": 2,
+      "poke": 4,
+      "mixed": 3
+    },
+    {
+      "champ": "DrMundo",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Draven",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Ekko",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Elise",
+      "frontline_heavy": 4,
+      "burst_heavy": 2,
+      "poke": 4,
+      "mixed": 3
+    },
+    {
+      "champ": "Evelynn",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Ezreal",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Fiddlesticks",
+      "frontline_heavy": 4,
+      "burst_heavy": 2,
+      "poke": 4,
+      "mixed": 3
+    },
+    {
+      "champ": "Fiora",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Fizz",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Galio",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Gangplank",
+      "frontline_heavy": 1,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Garen",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Gnar",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Gragas",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Graves",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Gwen",
+      "frontline_heavy": 1,
+      "burst_heavy": 2,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Hecarim",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Heimerdinger",
+      "frontline_heavy": 4,
+      "burst_heavy": 4,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Hwei",
+      "frontline_heavy": 4,
+      "burst_heavy": 2,
+      "poke": 4,
+      "mixed": 3
+    },
+    {
+      "champ": "Illaoi",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Irelia",
+      "frontline_heavy": 2,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 4
+    },
+    {
+      "champ": "Ivern",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Janna",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "JarvanIV",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Jax",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Jayce",
+      "frontline_heavy": 1,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Jhin",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Jinx",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "KSante",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Kaisa",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Kalista",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 4
+    },
+    {
+      "champ": "Karma",
+      "frontline_heavy": 4,
+      "burst_heavy": 2,
+      "poke": 4,
+      "mixed": 3
+    },
+    {
+      "champ": "Karthus",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Kassadin",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Katarina",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Kayle",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Kayn",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Kennen",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Khazix",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Kindred",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Kled",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "KogMaw",
+      "frontline_heavy": 3,
+      "burst_heavy": 1,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Leblanc",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "LeeSin",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Leona",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Lillia",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 1
+    },
+    {
+      "champ": "Lissandra",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 1
+    },
+    {
+      "champ": "Lucian",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Lulu",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Lux",
+      "frontline_heavy": 3,
+      "burst_heavy": 1,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Malphite",
+      "frontline_heavy": 1,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Malzahar",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Maokai",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "MasterYi",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 3
+    },
+    {
+      "champ": "Mel",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Milio",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "MissFortune",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "MonkeyKing",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Mordekaiser",
+      "frontline_heavy": 0,
+      "burst_heavy": 1,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Morgana",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Naafiri",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Nami",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Nasus",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Nautilus",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Neeko",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Nidalee",
+      "frontline_heavy": 4,
+      "burst_heavy": 2,
+      "poke": 4,
+      "mixed": 3
+    },
+    {
+      "champ": "Nilah",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Nocturne",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Nunu",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Olaf",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 3
+    },
+    {
+      "champ": "Orianna",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "Ornn",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Pantheon",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Poppy",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Pyke",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Qiyana",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Quinn",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Rakan",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Rammus",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "RekSai",
+      "frontline_heavy": 0,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 0
+    },
+    {
+      "champ": "Rell",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Renata",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Renekton",
+      "frontline_heavy": 1,
+      "burst_heavy": 0,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Rengar",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Riven",
+      "frontline_heavy": 1,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 1
+    },
+    {
+      "champ": "Rumble",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Ryze",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Samira",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Sejuani",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Senna",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Seraphine",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Sett",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Shaco",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Shen",
+      "frontline_heavy": 1,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Shyvana",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Singed",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Sion",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Sivir",
+      "frontline_heavy": 4,
+      "burst_heavy": 4,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Skarner",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Smolder",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Sona",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Soraka",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Swain",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 1
+    },
+    {
+      "champ": "Sylas",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Syndra",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 2
+    },
+    {
+      "champ": "TahmKench",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Taliyah",
+      "frontline_heavy": 4,
+      "burst_heavy": 2,
+      "poke": 4,
+      "mixed": 3
+    },
+    {
+      "champ": "Talon",
+      "frontline_heavy": 3,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Taric",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Teemo",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Thresh",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Tristana",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 3
+    },
+    {
+      "champ": "Trundle",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Tryndamere",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 3
+    },
+    {
+      "champ": "TwistedFate",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Twitch",
+      "frontline_heavy": 5,
+      "burst_heavy": 4,
+      "poke": 5,
+      "mixed": 5
+    },
+    {
+      "champ": "Udyr",
+      "frontline_heavy": 1,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Urgot",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Varus",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Vayne",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Veigar",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Velkoz",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Vex",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Vi",
+      "frontline_heavy": 1,
+      "burst_heavy": 2,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Viego",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Viktor",
+      "frontline_heavy": 4,
+      "burst_heavy": 3,
+      "poke": 4,
+      "mixed": 4
+    },
+    {
+      "champ": "Vladimir",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 1
+    },
+    {
+      "champ": "Volibear",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Warwick",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Xayah",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Xerath",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "XinZhao",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Yasuo",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 2
+    },
+    {
+      "champ": "Yone",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Yorick",
+      "frontline_heavy": 1,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Yunara",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Yuumi",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Zaahen",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Zac",
+      "frontline_heavy": 2,
+      "burst_heavy": 2,
+      "poke": 2,
+      "mixed": 2
+    },
+    {
+      "champ": "Zed",
+      "frontline_heavy": 3,
+      "burst_heavy": 3,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Zeri",
+      "frontline_heavy": 2,
+      "burst_heavy": 1,
+      "poke": 1,
+      "mixed": 1
+    },
+    {
+      "champ": "Ziggs",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Zilean",
+      "frontline_heavy": 0,
+      "burst_heavy": 0,
+      "poke": 0,
+      "mixed": 0
+    },
+    {
+      "champ": "Zoe",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    },
+    {
+      "champ": "Zyra",
+      "frontline_heavy": 3,
+      "burst_heavy": 2,
+      "poke": 3,
+      "mixed": 3
+    }
+  ]
+}

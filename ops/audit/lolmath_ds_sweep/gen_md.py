@@ -109,7 +109,10 @@ L += ["# lolmath vs Daemon Slayer - all-champion build sweep\n",
  "the other builds **zero**. Where DS is AD on an AP-scaling kit (Gwen, Teemo, Rumble, ...), that is a DS archetype/scorer correctness "
  "bug (AP champ in an AD pool). Per-row flag `DS_AD_vs_LM_AP` / `DS_AP_vs_LM_AD`. **Highest priority.**\n",
  f"- **G2 Low overlap** ({len(lowov)} more champs, dmg-axis agrees but <=1 shared item): driven by G3-G6, not noise.\n",
- "- **G3 Runes**: lolmath emits a full rune page per champ+comp; DS models **none**.\n",
+ "- **G3 Runes** (DSP4, ENGINE 1.130.0): DS now SCORES self-rune procs into item value via the "
+ "`rune_procs` / `core/rune_wpa.py` completion-rune seam (Shield Bash 8401; DEFAULT-OFF, "
+ "`score_completion_runes=True`). The remaining gap is the full rune-PAGE EMITTER (lolmath emits a "
+ "rune page per champ+comp) - a champ-select surface, not a build-order parity item; tracked FUTURE/live.\n",
  f"- **G4 Boots pool drift**: lolmath uses current 16.x upgraded boots; DS uses legacy boots. "
  f"lolmath boots: {', '.join(f'{k}({v})' for k,v in boot_lm.most_common())}. "
  f"DS boots: {', '.join(f'{k}({v})' for k,v in boot_ds.most_common())}.\n",
@@ -119,9 +122,17 @@ L += ["# lolmath vs Daemon Slayer - all-champion build sweep\n",
  f"For **{len(ult_diff)}/{covered}** champs the cost-ignoring ultimate differs from the gold-aware normal build by >=1 item "
  "(usually dropping boots or a gold-efficient item for a pricier raw-stat / power-spike item) - so gold-efficiency actively shapes "
  "lolmath's normal recommendation. DS has **no cost model at all**: its order is a fixed list, neither gold-aware nor a cost-ignoring "
- "optimum. Full per-champ normal-vs-ultimate diff in the appendix below.\n",
- "- **G7 Comp-aware exact-match harness (research)**: feed DS the SAME 5-champ comp via `/api/ds-preview` (POST, resolves live enemy "
- "stats) instead of static `mixed`, to compare like-for-like. This sweep used static DS builds.\n",
+ "optimum. Full per-champ normal-vs-ultimate diff in the appendix below. **DSP9 Gemini-consult verdict: "
+ "leave as FUTURE/BACKLOG** - a raw gold cost model conflicts with DS's empirical-WIN-data anchoring and "
+ "the do-not-blind-build directive; the G7 harness confirms this axis (not comp/runes) is the residual driver.\n",
+ "- **G7 Comp-aware exact-match harness** (DSP9, IMPLEMENTED `g7_comp_harness.py`): classifies lolmath's "
+ "fixed comp (Jayce/Sejuani/Annie/Lucian/Thresh = 4 squishy + 1 tank -> `burst_heavy`) and scores the "
+ "lolmath-vs-DS item overlap against EACH of DS's four comp-archetype variants instead of the blind "
+ "`mixed`. FINDING: comp-matching does NOT close the residual - vs lolmath-ULTIMATE the mean overlap is "
+ "frontline_heavy 2.00 / poke 1.86 / mixed 1.84 / burst_heavy 1.49, so the comp-matched variant tracks "
+ "WORST. lolmath-ULTIMATE is the cost-IGNORING raw-stat pile, which aligns with the pricier-item variants "
+ "regardless of comp shape. The residual is the **G6 cost-model** axis, not comp-awareness (or runes). "
+ "Per-champ overlap matrix in `g7_comp_parity.json`.\n",
  "\n## Per-champion table (lolmath ULTIMATE vs DS mixed)\n",
  "`(g)` = lolmath ultimate differs from its gold-aware normal build (gold-efficiency mattered).\n",
  "| Champ | kit | lm | ds | lolmath ULTIMATE | DS mixed | overlap | flag |",
