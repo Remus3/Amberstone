@@ -6,6 +6,10 @@ _Shipped items live in git log + the CLAUDE.md "Active priorities" ledger; this 
 
 ---
 
+## Daemon Slayer scorer calibration
+
+- **DS cross-eval Tier-2 nominations** (from `ops/audit/ds_cross_eval/SYSTEMIC_FINDINGS.md`, 2026-06-16; report-first gate locked, each gated on per-champion rewind-WIN validation FIRST, each = ENGINE bump + dual suite + Share mirror). (A) ARAM archetype-override table - the kit-default archetype disagrees with the ARAM win-axis for a cluster (Malphite tank->AP, Shaco assassin->AP, Kayle/KogMaw mage->on-hit-carry, Bard/Morgana/Seraphine/Taric/Thresh/Zilean hps->mage/tank); the `data/cs_archetype_picks.json` override mechanism exists, needs the operator/Gemini off-meta-chase decision (NOT auto-flip). (B) champion-kit-aware DPS crediting - the AD scorers (dps/burst/hybrid) emit a near-identical BotRK/Runaan's/Kraken template for every AD champ regardless of kit, empirically losing 25-44% wr for several (Ezreal/Xayah/Nilah); B1 = melee-applicability gate (Runaan's bolts / crit-AS mis-credited on melee autos; widest reach: 16 hybrid MISMATCH). efficiency-sort REFUTED as the fix (buries staples further). (F2) gold-aware top - default sort_by="delta" surfaces the most expensive item (Void Immolation 6000g) at rank 1; a cost-aware top is a minor calibration. (Cluster C Aphelios dps zero-output was FIXED 2026-06-16, ENGINE 1.128.0.)
+
 ## Coaching depth
 
 _2026-05-21 sweep: aramAbilityHaste + augment formula evaluator + item-AH lane + ward-heat frontend entries all SHIPPED - see CLAUDE.md ledger items 113 (`4e5d818` + `21657eb`) + 119 + 121 (`f4938af`) + ENGINE 1.24.0 (`f273acb`); not duplicated here._
