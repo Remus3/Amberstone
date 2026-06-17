@@ -676,6 +676,15 @@ class EhpResult:
     ally_grant_armor: float = 0.0
     ally_grant_mr: float = 0.0
     ally_grant_revive_mult: float = 1.0
+    # DSP7 (2026-06-17, ENGINE 1.133.0): the THIRD ally-grant survivability axis -
+    # a flat EHP-numerator HP a TEAMMATE confers (enchanter shield / heal: Janna E
+    # / Lulu E / Karma E / Yuumi E / Seraphine W / Soraka W / Nami W), sourced
+    # from ``_passive_ally_grant_overrides.ally_flat_hp_grant`` and passed as
+    # ``external_flat_hp``. Default 0.0 leaves every EHP field above byte-
+    # identical; a positive value echoes the conferred shield/heal HP. Distinct
+    # from the SELF heal/shield item throughput (shield_*/heal_*) which is the
+    # protected ally's OWN sustain. Same sibling convention as ally_grant_armor.
+    ally_grant_flat_hp: float = 0.0
     # ENGINE 1.103.0 (2026-06-03): item 290 SEVENTH survivability axis - the
     # champion's INNATE tenacity / crowd-control-immunity ABILITY (Garen W / Olaf R
     # / Malzahar P) as a combined tenacity FRACTION sourced from
@@ -781,6 +790,7 @@ class EhpResult:
             "ally_grant_armor": self.ally_grant_armor,
             "ally_grant_mr": self.ally_grant_mr,
             "ally_grant_revive_mult": self.ally_grant_revive_mult,
+            "ally_grant_flat_hp": self.ally_grant_flat_hp,
             "champion_tenacity_frac": self.champion_tenacity_frac,
             "spell_shield_frac": self.spell_shield_frac,
             "survival_window_mult": self.survival_window_mult,
@@ -896,6 +906,7 @@ def compute_ehp(
     external_resist_armor: float = 0.0,
     external_resist_mr: float = 0.0,
     external_revive_multiplier: float = 1.0,
+    external_flat_hp: float = 0.0,
     apply_egg_resist: bool = True,
     enemy_lethality: float = 0.0,
     enemy_armor_pen_pct: float = 0.0,
@@ -1119,6 +1130,17 @@ def compute_ehp(
     ext_mr = max(0.0, float(external_resist_mr))
     eff_armor = armor + bonus_armor + ext_armor
     eff_mr = mr + bonus_mr + ext_mr
+    # DSP7 (2026-06-17, ENGINE 1.133.0): ally enchanter SHIELD / HEAL flat-HP
+    # grant - the THIRD ally-grant EHP mode (after the resist denominator add +
+    # the revive numerator multiplier). The caller sources it from
+    # ``_passive_ally_grant_overrides.ally_flat_hp_grant`` (Janna E / Lulu E /
+    # Karma E / Yuumi E / Seraphine W shields, Soraka W / Nami W heals) and passes
+    # the conferred raw HP as ``external_flat_hp``. A flat shield / heal sits at
+    # the TOP of the damage stack exactly like base HP (it is NOT amped by the
+    # protected ally's own shield/heal amp - the granter's value is final), so it
+    # adds RAW to every per-type numerator and rides the SAME armor/MR curve.
+    # Default 0.0 -> byte-identical. Negative clamped (never lowers EHP).
+    ext_flat_hp = max(0.0, float(external_flat_hp))
 
     # T1-F3 (2026-06-09, docs/COMPETITOR_LIFT_2026-06-08.md lines 59-66):
     # OPT-IN enemy-penetration seam. The five enemy_* kwargs default to 0.0
@@ -1155,9 +1177,9 @@ def compute_ehp(
     # share the same factor as HP. The mit_* DR multiplier divides the
     # whole denominator (it composes multiplicatively with armor/MR, the way
     # League stacks a flat-% reduction on top of the resistance curve).
-    physical_ehp = (hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
-    magical_ehp = (hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
-    true_ehp = (hp + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
+    physical_ehp = (hp + ext_flat_hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
+    magical_ehp = (hp + ext_flat_hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
+    true_ehp = (hp + ext_flat_hp + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
@@ -1245,13 +1267,13 @@ def compute_ehp(
     # so effective_ehp_with_sustain == blended_ehp today and diverges only when
     # such an item lands.
     def _blend_with_heal(heal_scalar: float) -> float:
-        p = (hp + shield_any_amped + shield_phys_amped + heal_scalar) / (
+        p = (hp + ext_flat_hp + shield_any_amped + shield_phys_amped + heal_scalar) / (
             _armor_factor(eff_armor) * safe_mult * mit_phys
         )
-        m = (hp + shield_any_amped + shield_mag_amped + heal_scalar) / (
+        m = (hp + ext_flat_hp + shield_any_amped + shield_mag_amped + heal_scalar) / (
             _armor_factor(eff_mr) * safe_mult * mit_mag
         )
-        t = (hp + shield_any_amped + shield_true_amped + heal_scalar) / (
+        t = (hp + ext_flat_hp + shield_any_amped + shield_true_amped + heal_scalar) / (
             safe_mult * mit_true
         )
         p *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
@@ -1436,11 +1458,12 @@ def compute_ehp(
             f"; window duration exact, avoided fraction window_s/{_FIGHT_WINDOW_S:.0f}s "
             f"amortized at the availability midpoint)"
         )
-    if ext_armor != 0.0 or ext_mr != 0.0 or ext_revive != 1.0:
+    if ext_armor != 0.0 or ext_mr != 0.0 or ext_revive != 1.0 or ext_flat_hp != 0.0:
         notes.append(
             f"ally_grant: teammate-conferred ally-targeted survivability folded in "
             f"(+{ext_armor:.1f} armor, +{ext_mr:.1f} MR into the denominator, "
-            f"x{ext_revive:.3f} on the numerator; sourced from "
+            f"+{ext_flat_hp:.1f} flat HP (enchanter shield/heal) on the numerator, "
+            f"x{ext_revive:.3f} revive on the numerator; sourced from "
             f"_passive_ally_grant_overrides, the sixth survivability axis)"
         )
     # T1-F3 (2026-06-09): surface the opt-in enemy-pen step when active. The
@@ -1498,6 +1521,7 @@ def compute_ehp(
         passive_resist_armor=bonus_armor,
         passive_resist_mr=bonus_mr,
         passive_revive_mult=revive_mult,
+        ally_grant_flat_hp=ext_flat_hp,
         ally_grant_armor=ext_armor,
         ally_grant_mr=ext_mr,
         ally_grant_revive_mult=ext_revive,
