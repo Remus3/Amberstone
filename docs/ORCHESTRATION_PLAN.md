@@ -85,7 +85,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 |----|-------|-------|--------|--------|
 | DSP1 | ds-swarm | Build the permutation validation harness + WIN anchor under ops/audit/ds_perm_swarm/: score DS top-N vs data/rewind_history.db WIN-rate per (champ x context bucket), consume ops/audit/ds_cross_eval/data/<Champ>.json. BUILD only, no engine change. Hermetic tests. See plan "DSP1". | DONE | 19f66829 |
 | DSP2 | ds-engine | Cross-eval Cluster B fix: generic-marksman-template leaking onto non-marksman AD scorers (named systemic bug). Root-cause-first, per-champ tests, ENGINE bump + DS restart + Share sync. See plan "DSP2". | DONE | 6f7a5756 |
-| DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | OPEN | - |
+| DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | DONE | 97920f56 |
 | DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | OPEN | - |
 | DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | OPEN | - |
 | DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | OPEN | - |
@@ -109,6 +109,37 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP3 (467, 97920f56) DONE. Cluster-A archetype-vs-ARAM-win
+  divergence. ROOT (cross-eval SYSTEMIC_FINDINGS Cluster A + the 8
+  archetype_ok=false verdicts): get_archetype_for routes each champ to its KIT
+  archetype (correct by DDragon tag / lolmath axis, P6-G1) but rewind ARAM win
+  data favors a DIFFERENT axis for a cluster, so the kit-default scorer's whole
+  pool misses the winning ARAM build. FIX (RC-side resolver seam, the DSP2
+  pattern): NEW builder ops/audit/ds_perm_swarm/build_aram_archetype_override.py
+  distills the cross-eval empirical (rewind WIN+usage) block into
+  core/aram_archetype_override.json - selection mechanical (verdict
+  archetype_ok=false AND archetype source=default; user_cs Lulu/MissFortune
+  skipped) + WIN-anchored (>=1 above-baseline ARAM item on the override axis,
+  n>=8 wr within 3pp baseline). 6 overrides: Zilean/Shaco/Shyvana->mage,
+  Taric->tank, KogMaw/Kayle->carry. SEAM (DEFAULT-OFF, byte-identical):
+  get_archetype_for(prefer_aram_win_axis=False); ON re-bases the kit default
+  (operator picks NEVER touched), source=aram_win (resolver-only, not in
+  VALID_SOURCES). SEAM-FIRST (EXCLUDED): live flip appended to
+  docs/LIVE_GAME_GATED_SYNC.md section C. NO ENGINE bump / DS restart / Share
+  sync - RC-side only, no engine math (the override changes WHICH scorer runs,
+  never the scorer math); the DSP1/Tier-1 precedent. TDD +13 red-first->green
+  (builder select/skip/win-gate/unmapped-raise hermetic; shipped-table 6
+  overrides + Lulu/MissFortune absent; seam OFF byte-identical, ON Kayle->carry,
+  non-override unchanged, operator-pick untouched, loader fail-soft). Gate: full
+  RC tests/ 8278 passed / 2 skip / 109 subtests exit 0; ruff + py_compile +
+  ASCII/LF clean. INLINE sole orchestrator (R9); verifier skipped per R7
+  (single-thread) - fresh in-thread full-suite re-verify. NEW FINDING (NOT this
+  cycle, queued): the Cluster-A OUTCOME-mismatch champs that are archetype_ok=TRUE
+  (Bard/Morgana/Seraphine/Thresh hps, Malphite/Nunu tank) are item-POOL gaps not
+  archetype swaps -> a separate pool-nomination lane, not DSP3. NEXT: DSP4
+  (self-rune completion seam). Source: gemini director directive
+  ops/loop/control/directive.md (DSP3).
 
 - 2026-06-17 cycle 3 audit REGRESS -> AUDITOR FALSE POSITIVE (docs only, no code
   change). The gemini auditor flagged "Behavior change in agents/daemon_slayer/
