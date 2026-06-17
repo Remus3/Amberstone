@@ -82,6 +82,17 @@ web changes); engine flips need a DS `:8893` restart.
       surfaces more lethality / armor-pen, vs a high-CC enchanter comp more magic pen, and a balanced /
       squishy comp matches the DSV3 squishy baseline. NO live default change is shipped by the loop
       (do-not-flip-blind). Needs a DS `:8893` restart on flip.
+- [ ] DSP11 kit-axis item-credit flip (seam shipped default-OFF, ENGINE 1.135.0): no live scorer
+      passes `rank_items(..., prefer_kit_axis_by_win=True)` or `rank_items_by_burst(...,
+      prefer_kit_axis_by_win=True)` yet (defaults False -> byte-identical). The flip WIRES the dps
+      (carry) + burst (assassin) scorer-dispatch (`core/daemon_slayer_client.rank_for_primary_archetype`
+      + the `/rank` + `/rank-assassin` routes) to pass `prefer_kit_axis_by_win=True` so the 7 WIN-anchored
+      Cluster-B2 champs (Pyke/Naafiri/Senna lethality, Nilah/Quinn crit, Ezreal/Corki manamune) surface
+      their kit-axis winners above the generic AD template. Eyeball in a real ARAM that Pyke surfaces
+      Opportunity/Youmuu's, Nilah surfaces IE/Navori/Shieldbow, Ezreal surfaces Trinity/Muramana/ER
+      (un-stripped), and a non-tabled champ (Caitlyn) + any operator pick are byte-identical. Re-anchor
+      `agents/daemon_slayer/kit_axis_item_credit.json` from a fresh rewind+DSP10 run each patch
+      (`ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py`). Needs a DS `:8893` restart on flip.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).
@@ -124,6 +135,17 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP11 (ENGINE 1.135.0): Cluster-B2 kit-axis item-credit seam shipped DEFAULT-OFF.
+  NEW `prefer_kit_axis_by_win` on `rank_items` (dps) + `rank_items_by_burst` (burst), driven by
+  the WIN-anchored `kit_axis_item_credit.json` table (7 champs / 21 terminal items, built by
+  `ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py` from the DSP10 buried-winner report +
+  rewind). When ON: (1) un-strips the champ's kit-axis items from the ranged-marksman off-class
+  deny set (Ezreal's hard-excluded Trinity Force becomes a candidate), and (2) floats every
+  positive-delta kit-axis item above the generic AD template (model order preserved within tiers).
+  NO live scorer passes the flag (default False -> byte-identical). FLIP = wire the dps + burst
+  scorer-dispatch to pass `prefer_kit_axis_by_win=True` (section B above). Validate the re-rank vs a
+  real Pyke/Nilah/Ezreal ARAM before flipping (do-not-flip-blind). Cluster A (Zilean/Shaco/Kayle/
+  Seraphine AP-in-ARAM) is a SEPARATE operator-gated archetype-routing decision, NOT in this table.
 - 2026-06-17 DSP9 (no ENGINE bump - offline AUDIT tooling): NO new seam, so NO new
   flip row. The G7 comp-aware parity harness (`ops/audit/lolmath_ds_sweep/g7_comp_harness.py`)
   found that feeding DS the comp-matched build variant does NOT improve parity vs

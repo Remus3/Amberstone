@@ -1,0 +1,193 @@
+{
+  "_meta": {
+    "anchored_to": "ops/audit/ds_perm_swarm/report/dsp10_consolidated.json + rewind_history.db (Ezreal)",
+    "ds_patch": "16.12.1",
+    "min_rewind_n": 15,
+    "note": "DEFAULT-OFF prefer_kit_axis_by_win seam input. Cluster A excluded (operator-gated).",
+    "source": "DSP11 build_kit_axis_item_credit.py"
+  },
+  "champions": {
+    "Corki": {
+      "axis": "manamune",
+      "items": [
+        {
+          "id": "3042",
+          "lift": 1.7,
+          "name": "Muramana",
+          "rewind_n": 99,
+          "rewind_wr": 45.5
+        },
+        {
+          "id": "3078",
+          "lift": 2.4,
+          "name": "Trinity Force",
+          "rewind_n": 80,
+          "rewind_wr": 46.2
+        },
+        {
+          "id": "6676",
+          "lift": 3.0,
+          "name": "The Collector",
+          "rewind_n": 62,
+          "rewind_wr": 46.8
+        }
+      ]
+    },
+    "Ezreal": {
+      "axis": "manamune",
+      "items": [
+        {
+          "id": "3042",
+          "lift": 1.5,
+          "name": "Muramana",
+          "rewind_n": 238,
+          "rewind_wr": 50.0
+        },
+        {
+          "id": "3078",
+          "lift": -0.6,
+          "name": "Trinity Force",
+          "rewind_n": 219,
+          "rewind_wr": 47.9
+        },
+        {
+          "id": "3508",
+          "lift": 7.7,
+          "name": "Essence Reaver",
+          "rewind_n": 16,
+          "rewind_wr": 56.2
+        }
+      ]
+    },
+    "Naafiri": {
+      "axis": "lethality",
+      "items": [
+        {
+          "id": "126697",
+          "lift": 0.3,
+          "name": "Hubris",
+          "rewind_n": 28,
+          "rewind_wr": 42.9
+        },
+        {
+          "id": "6676",
+          "lift": 3.2,
+          "name": "The Collector",
+          "rewind_n": 24,
+          "rewind_wr": 45.8
+        }
+      ]
+    },
+    "Nilah": {
+      "axis": "crit",
+      "items": [
+        {
+          "id": "3031",
+          "lift": 1.4,
+          "name": "Infinity Edge",
+          "rewind_n": 54,
+          "rewind_wr": 55.6
+        },
+        {
+          "id": "6675",
+          "lift": 0.3,
+          "name": "Navori Flickerblade",
+          "rewind_n": 44,
+          "rewind_wr": 54.5
+        },
+        {
+          "id": "6673",
+          "lift": 15.8,
+          "name": "Immortal Shieldbow",
+          "rewind_n": 20,
+          "rewind_wr": 70.0
+        },
+        {
+          "id": "3036",
+          "lift": 8.3,
+          "name": "Lord Dominik's Regards",
+          "rewind_n": 16,
+          "rewind_wr": 62.5
+        }
+      ]
+    },
+    "Pyke": {
+      "axis": "lethality",
+      "items": [
+        {
+          "id": "6696",
+          "lift": 1.6,
+          "name": "Axiom Arc",
+          "rewind_n": 125,
+          "rewind_wr": 53.6
+        },
+        {
+          "id": "3142",
+          "lift": 5.8,
+          "name": "Youmuu's Ghostblade",
+          "rewind_n": 45,
+          "rewind_wr": 57.8
+        },
+        {
+          "id": "6701",
+          "lift": 6.1,
+          "name": "Opportunity",
+          "rewind_n": 31,
+          "rewind_wr": 58.1
+        }
+      ]
+    },
+    "Quinn": {
+      "axis": "crit",
+      "items": [
+        {
+          "id": "6676",
+          "lift": 0.6,
+          "name": "The Collector",
+          "rewind_n": 130,
+          "rewind_wr": 50.0
+        },
+        {
+          "id": "3031",
+          "lift": 6.5,
+          "name": "Infinity Edge",
+          "rewind_n": 102,
+          "rewind_wr": 55.9
+        },
+        {
+          "id": "3087",
+          "lift": 5.0,
+          "name": "Statikk Shiv",
+          "rewind_n": 68,
+          "rewind_wr": 54.4
+        },
+        {
+          "id": "3036",
+          "lift": 8.5,
+          "name": "Lord Dominik's Regards",
+          "rewind_n": 38,
+          "rewind_wr": 57.9
+        },
+        {
+          "id": "3033",
+          "lift": 0.6,
+          "name": "Mortal Reminder",
+          "rewind_n": 24,
+          "rewind_wr": 50.0
+        }
+      ]
+    },
+    "Senna": {
+      "axis": "lethality",
+      "items": [
+        {
+          "id": "3071",
+          "lift": 11.5,
+          "name": "Black Cleaver",
+          "rewind_n": 38,
+          "rewind_wr": 63.2
+        }
+      ]
+    }
+  }
+}
