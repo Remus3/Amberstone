@@ -86,7 +86,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP1 | ds-swarm | Build the permutation validation harness + WIN anchor under ops/audit/ds_perm_swarm/: score DS top-N vs data/rewind_history.db WIN-rate per (champ x context bucket), consume ops/audit/ds_cross_eval/data/<Champ>.json. BUILD only, no engine change. Hermetic tests. See plan "DSP1". | DONE | 19f66829 |
 | DSP2 | ds-engine | Cross-eval Cluster B fix: generic-marksman-template leaking onto non-marksman AD scorers (named systemic bug). Root-cause-first, per-champ tests, ENGINE bump + DS restart + Share sync. See plan "DSP2". | DONE | 6f7a5756 |
 | DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | DONE | 97920f56 |
-| DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | OPEN | - |
+| DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | DONE | 1f7dbe62 |
 | DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | OPEN | - |
 | DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | OPEN | - |
 | DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | OPEN | - |
@@ -109,6 +109,46 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP4 (468, 1f7dbe62) DONE. Self-rune completion seam (ENGINE
+  1.129.0 -> 1.130.0). ROOT (catalog sweep of DDragon 16.12.1 runesReforged.json
+  vs RUNE_PROCS): of 62 catalog runes, 19 were modeled (8 item-226 + 6 S4 + 2
+  per_attack + 3 item-232 gated) and 42 unmodeled. A scan for unmodeled runes
+  with a damage component found exactly ONE LIVE, pickable, direct-champion-
+  damage proc still missing: Shield Bash 8401 (Resolve). FIX: add 8401 to
+  RUNE_PROCS (proc_type on_proc_burst, condition shield_gated, cooldown_s 0.0):
+  compute = (5-30 by level) + 0.025*bonus_hp + 0.15*shield_amount, verbatim from
+  the longDesc "5 - 30 (+2.5% Bonus Health) (+15.0% New Shield Amount) bonus
+  adaptive damage". "adaptive" is the damage TYPE not a coefficient (no AD/AP
+  scaling). Registry 19 -> 20. SEAM (DEFAULT-OFF, DSV1-4 precedent): new
+  COMPLETION_RUNE_IDS frozenset + score_completion_runes kwarg on
+  compute_burst_damage + compute_combo (default False -> completion runes
+  SKIPPED -> byte-identical to pre-DSP4 for every rune set). The burst scorer
+  has no live shield signal so it scores the shield-independent 5-30 + 2.5%
+  bonus-HP floor (best-case-shielded); shield_amount forward-compat for a live
+  producer. core/rune_wpa.py cross-links the empirical WPA lens with the proc
+  model: each row gains proc_modeled (fail-soft RUNE_PROCS-keys import). The 42
+  other unmodeled runes are honest exclusions: stat-grants (Waterwalking 8232,
+  Jack 8316), ult-only amp (Axiom Arcanist 8224), legacy (Deathfire Touch 8992),
+  non-damage utility. SEAM-FIRST (EXCLUDED): live flip score_completion_runes=
+  True appended to docs/LIVE_GAME_GATED_SYNC.md section B + ledger. ENGINE bump +
+  DS :8893 restart (1.130.0 live) + Share sync (--check green, 345 files) in the
+  SAME commit. TDD +27 red-first->green (Shield Bash math floor/hp/shield/no-AD-
+  AP/failsoft; COMPLETION set; burst+combo OFF byte-identical, ON contributes;
+  proc_modeled annotation); 2 registry-shape pins 19->20; 77 ENGINE_VERSION test
+  pins bumped. Gate: DS-dir 7177 passed / 1 skip / 1942 subtests exit 0; RC tests/
+  8281 passed (post-bump share/anchor/live-engine set re-ran green after DS
+  restart); ruff + py_compile + ASCII/LF clean. INLINE sole orchestrator (R9 -
+  one tightly-coupled rune-proc seam across rune_procs/burst/combo/rune_wpa;
+  parallel worktree slices would conflict on the shared scorer files - the
+  DSP4-as-single-seam reading of plan line 60); verifier skipped per R7 (single-
+  thread) - fresh in-thread dual full-suite re-verify. NEW FINDING (queued, NOT
+  this cycle): the adaptive stat-grant runes (Waterwalking/Jack/Eyeball-class)
+  are burst-neutral (proc_type adaptive is skipped by the burst consumer) so
+  modeling them is fight_report-cosmetic only - a LOW-value DSP-tail, not worth
+  an ENGINE bump unless a fight_report surfacing need appears. NEXT: DSP5
+  (summoner-spell seam, NEW summoners.py). Source: gemini director directive
+  ops/loop/control/directive.md (DSP4).
 
 - 2026-06-17 DSP3 (467, 97920f56) DONE. Cluster-A archetype-vs-ARAM-win
   divergence. ROOT (cross-eval SYSTEMIC_FINDINGS Cluster A + the 8

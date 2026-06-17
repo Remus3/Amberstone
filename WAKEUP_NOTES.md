@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-06-17 - DSP4 self-rune completion seam: Shield Bash 8401 (headless gemini-loop cycle 5)
+
+- Executor cycle 5 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP4 (self-rune completion). Commit `1f7dbe62` (code+Share+CHANGELOGs+LIVE_GAME_GATED) pushed; this living-docs commit follows.
+- ROOT (catalog sweep): DDragon 16.12.1 `runesReforged.json` has 62 runes; 19 were modeled, 42 unmodeled. Exactly ONE LIVE, pickable, direct-champion-damage proc was still missing -> Shield Bash 8401 (Resolve).
+- FIX (Tier-2, ENGINE 1.129.0 -> 1.130.0): add 8401 to `RUNE_PROCS` (on_proc_burst, shield_gated, cd 0): `compute = 5-30 by level + 0.025*bonus_hp + 0.15*shield_amount` (longDesc-verbatim; "adaptive" = damage TYPE, no AD/AP). NEW `shield_amount` kwarg. Registry 19 -> 20.
+- SEAM (DEFAULT-OFF, byte-identical off): NEW `COMPLETION_RUNE_IDS={8401}` + `score_completion_runes` on `compute_burst_damage` + `compute_combo` (default False -> completion runes SKIPPED). Burst scores the shield-independent 5-30 + 2.5% bonus-HP floor (no live shield signal); `shield_amount` forward-compat. Live flip EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B.
+- `core/rune_wpa.py`: each WPA row gains `proc_modeled` (fail-soft RUNE_PROCS-keys import, additive; panel-DOM subset test stays green) - cross-links the empirical WPA lens with the mechanical proc model.
+- COVERAGE: 42 other unmodeled runes are honest exclusions (stat-grants Waterwalking/Jack burst-neutral, ult-amp Axiom Arcanist, legacy Deathfire Touch, non-damage utility) - documented in-module + both CHANGELOGs.
+- DS :8893 bounced (taskkill 8076 + schtasks) -> 1.130.0; Share re-synced (345, --check green); DS+Share CHANGELOG prepended; 2 new DS test mirrors staged. TDD +27 subtests; 2 registry-shape pins 19->20; 77 ENGINE pins bumped. DS-dir 7177 / RC 8281 green; ruff clean. INLINE (R9 - one coupled seam), verifier SKIPPED per R7 (fresh in-thread dual re-verify).
+- DON'T REDO: DSP4 is DONE. The adaptive stat-grant runes (Waterwalking/Jack/Eyeball-class) are burst-neutral (proc_type adaptive is skipped by the burst consumer) -> modeling them is fight_report-cosmetic only, LOW value, do NOT bump ENGINE for them absent a surfacing need.
+- NEXT: DSP5 (summoner-spell seam, NEW `agents/daemon_slayer/summoners.py`). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP2 Cluster-B marksman off-class WIN-exemption seam (headless gemini-loop cycle 2)
 
 - Executor cycle 2 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP2 (Cluster-B fix), consuming the DSP1 divergent tail. Commit `6f7a5756` (code+Share) pushed; living-docs commit follows.
@@ -24,19 +38,3 @@
 - SYSTEMIC clusters (engine-grounded, refuted my own first guess): A archetype divergence vs ARAM win-axis (Malphite/Shaco/Kayle/hps cluster -> per-champ ARAM override candidates); B generic marksman template on AD scorers (BotRK/Runaan's #1 every ADC, loses 25-44% wr; melee mis-credit subsumes the seed); C Aphelios dps ZERO-OUTPUT bug (all items 0.0, pool collapses to Doran's - confirmed real). efficiency-sort fix REFUTED (staples drop further); F2 Void Immolation 6000g gold-blind top secondary; F3 "absent"=buried-below-rank-12 (top-12 truncation caveat on agent verdicts).
 - FOLLOW-UP (same session, all pushed): Cluster C Aphelios dps zero-output bug FIXED (ENGINE 1.127.0 -> 1.128.0, commit 27d6e2f2 + doc-accuracy c9735f6b). Root cause = compute_dps scores only the basic-attack rotation portion; Aphelios scenario encodes basic=0 every phase -> weighted_dps=0 -> all-Doran's/0.0. Fix = fall back weighted_dps = raw_attack_dps*mode_mult (mode_mult>0 gate preserves the ARAM-disabled contract; fires for Aphelios + casters Cassio/Fiddle/Sylas). +4 TDD tests; DS 7144 / Share re-synced 341; DS :8893 -> 1.128.0 live. Doc-hygiene: ROADMAP trimmed 83135->78057 (274be121) + Share CHANGELOG/docs/05 refresh (aa8336ad). LEDGER item 463.
 - NEXT (Tier-2, gated on per-champ rewind-WIN validation FIRST, operator/Gemini scoped; full record SYSTEMIC_FINDINGS.md + BACKLOG): (1) Aphelios DONE; (2) Cluster B1 melee-applicability DPS gate (widest reach: 16 hybrid + bruiser/carry); (3) Cluster A ARAM archetype-override table (cs_archetype_picks mechanism exists); (4) F2 gold-aware top. Each = ENGINE bump + dual suite + Share mirror.
-
----
-
-# 2026-06-16 - NEXT-SESSION DIRECTIVE + live-support fixes (post cycle 56)
-
-## >>> NEXT SESSION directive [DONE 2026-06-16, commit 89934b80 - see COMPREHENSIVE entry above]: comprehensive per-champion DS cross-evaluation (operator directive)
-- Launch a COMPREHENSIVE DS-engine cross-eval. EVERY champion evaluated INDIVIDUALLY - do NOT lump/group champions; one analysis unit per champion.
-- Cross dimensions: varying BUILDS x varying ENEMY COMPOSITIONS x RUNES (self AND enemy AND ally). The operator's own played champion varies too (cover each champion as the "self" pick, not only as an enemy).
-- Method: multi-agent FAN-OUT, one agent per champion. If it exceeds one session, drive HEADLESS via the Gemini + AHK loop (`gemini-headless-upgrade`): auto `**/done` then `**/clear` between sessions until the WHOLE roster is done (operator pre-authorized the multi-session loop).
-- SEED (read first): `ops/audit/DS_BRUISER_DAMAGE_TYPE_2026-06-16.md` - the bruiser scorer IS damage-type-aware but the visible top-N is DPS-tier-dominated; calibrate against rewind_history.db WIN outcomes, not eyeballed rankings. This is a SCORER-OUTPUT quality audit (NOT a registry-coverage audit - do not dismiss as "DS registries saturated").
-- KICKOFF gate before fanning out ~170 agents: confirm deliverable shape (calibration table / mismatch report / weight-retune proposals), validation anchor (rewind win-outcomes vs synthetic matrix), rune data source (live LCU vs DDragon presets). Weight/scorer changes are Tier-2 (ENGINE bump + dual suite + Share mirror). Memory: `project_ds_comprehensive_cross_eval`.
-
-## Live-support fixes shipped this session (after the cycle-56 docs entry below)
-- Coach OUTAGE root-caused + fixed: `config/coach_settings.json` `disabled_coaches` had ALL coaches off (Haiku-to-zero kill-switch left on after headless cycles) -> dashboard rendered a stale frozen coaching file on live play (split-brain: live telemetry flowed, coach text frozen). Re-enabled aram+vision hot via POST `/api/coach/toggle` (no restart; gate re-reads config per tick). Memory `reference_coach_disabled_killswitch_stale_render`.
-- DS comp-adaptation fix (commit `b896e761`): enemy AD/AP damage-type share is now derived from the comp (`aram_comp_verdict.compute_factors`) and threaded EnemyStats.ad_share/ap_share -> dispatch_for_coach -> rank_for_primary_archetype, wired in all 4 coaches. Was hardcoded 50/50. +7 tests, 129 affected-suite passed. RC restarted pid 9028. Tank/EHP scorer now comp-adaptive; bruiser stays DPS-leaning by design (see the bruiser note + the NEXT-SESSION program).
-- Bruiser damage-type investigation (commit `483e9567`, spawned task): NOT a bug - signal works, top-5 invariance is DPS-tier dominance. No weight change; calibration deferred to the comprehensive program above.

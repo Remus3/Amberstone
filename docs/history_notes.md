@@ -13,6 +13,22 @@
 
 ---
 
+# 2026-06-16 - NEXT-SESSION DIRECTIVE + live-support fixes (post cycle 56)
+
+## >>> NEXT SESSION directive [DONE 2026-06-16, commit 89934b80 - see COMPREHENSIVE entry above]: comprehensive per-champion DS cross-evaluation (operator directive)
+- Launch a COMPREHENSIVE DS-engine cross-eval. EVERY champion evaluated INDIVIDUALLY - do NOT lump/group champions; one analysis unit per champion.
+- Cross dimensions: varying BUILDS x varying ENEMY COMPOSITIONS x RUNES (self AND enemy AND ally). The operator's own played champion varies too (cover each champion as the "self" pick, not only as an enemy).
+- Method: multi-agent FAN-OUT, one agent per champion. If it exceeds one session, drive HEADLESS via the Gemini + AHK loop (`gemini-headless-upgrade`): auto `**/done` then `**/clear` between sessions until the WHOLE roster is done (operator pre-authorized the multi-session loop).
+- SEED (read first): `ops/audit/DS_BRUISER_DAMAGE_TYPE_2026-06-16.md` - the bruiser scorer IS damage-type-aware but the visible top-N is DPS-tier-dominated; calibrate against rewind_history.db WIN outcomes, not eyeballed rankings. This is a SCORER-OUTPUT quality audit (NOT a registry-coverage audit - do not dismiss as "DS registries saturated").
+- KICKOFF gate before fanning out ~170 agents: confirm deliverable shape (calibration table / mismatch report / weight-retune proposals), validation anchor (rewind win-outcomes vs synthetic matrix), rune data source (live LCU vs DDragon presets). Weight/scorer changes are Tier-2 (ENGINE bump + dual suite + Share mirror). Memory: `project_ds_comprehensive_cross_eval`.
+
+## Live-support fixes shipped this session (after the cycle-56 docs entry below)
+- Coach OUTAGE root-caused + fixed: `config/coach_settings.json` `disabled_coaches` had ALL coaches off (Haiku-to-zero kill-switch left on after headless cycles) -> dashboard rendered a stale frozen coaching file on live play (split-brain: live telemetry flowed, coach text frozen). Re-enabled aram+vision hot via POST `/api/coach/toggle` (no restart; gate re-reads config per tick). Memory `reference_coach_disabled_killswitch_stale_render`.
+- DS comp-adaptation fix (commit `b896e761`): enemy AD/AP damage-type share is now derived from the comp (`aram_comp_verdict.compute_factors`) and threaded EnemyStats.ad_share/ap_share -> dispatch_for_coach -> rank_for_primary_archetype, wired in all 4 coaches. Was hardcoded 50/50. +7 tests, 129 affected-suite passed. RC restarted pid 9028. Tank/EHP scorer now comp-adaptive; bruiser stays DPS-leaning by design (see the bruiser note + the NEXT-SESSION program).
+- Bruiser damage-type investigation (commit `483e9567`, spawned task): NOT a bug - signal works, top-5 invariance is DPS-tier dominance. No weight change; calibration deferred to the comprehensive program above.
+
+---
+
 # 2026-06-16 - cycle 56: laning-gate re-read (data-starved HOLD) + REFUTED item-460 champ-select target [item 461]
 
 - 0 code commits; Tier-0 doc-honesty only (this docs-sync). Source: operator cycle-56 directive "an ARAM match should now have run; re-run hz_shadow_report; probe native_action vocab FIRST to confirm genuine ALIVE laning verdicts captured; read laning agreement / by_native / comparable-covered n; if powered + clean consult Gemini for the flip; [else item-460 fallback]". Tier-0, docstring + ops/audit/ doc only, NO code/ENGINE/DS/Share/frozen, NO RC restart, NO backfill.
