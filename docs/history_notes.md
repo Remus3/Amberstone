@@ -13,6 +13,20 @@
 
 ---
 
+# 2026-06-17 - DSP4 self-rune completion seam: Shield Bash 8401 (headless gemini-loop cycle 5)
+
+- Executor cycle 5 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP4 (self-rune completion). Commit `1f7dbe62` (code+Share+CHANGELOGs+LIVE_GAME_GATED) pushed; this living-docs commit follows.
+- ROOT (catalog sweep): DDragon 16.12.1 `runesReforged.json` has 62 runes; 19 were modeled, 42 unmodeled. Exactly ONE LIVE, pickable, direct-champion-damage proc was still missing -> Shield Bash 8401 (Resolve).
+- FIX (Tier-2, ENGINE 1.129.0 -> 1.130.0): add 8401 to `RUNE_PROCS` (on_proc_burst, shield_gated, cd 0): `compute = 5-30 by level + 0.025*bonus_hp + 0.15*shield_amount` (longDesc-verbatim; "adaptive" = damage TYPE, no AD/AP). NEW `shield_amount` kwarg. Registry 19 -> 20.
+- SEAM (DEFAULT-OFF, byte-identical off): NEW `COMPLETION_RUNE_IDS={8401}` + `score_completion_runes` on `compute_burst_damage` + `compute_combo` (default False -> completion runes SKIPPED). Burst scores the shield-independent 5-30 + 2.5% bonus-HP floor (no live shield signal); `shield_amount` forward-compat. Live flip EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B.
+- `core/rune_wpa.py`: each WPA row gains `proc_modeled` (fail-soft RUNE_PROCS-keys import, additive; panel-DOM subset test stays green) - cross-links the empirical WPA lens with the mechanical proc model.
+- COVERAGE: 42 other unmodeled runes are honest exclusions (stat-grants Waterwalking/Jack burst-neutral, ult-amp Axiom Arcanist, legacy Deathfire Touch, non-damage utility) - documented in-module + both CHANGELOGs.
+- DS :8893 bounced (taskkill 8076 + schtasks) -> 1.130.0; Share re-synced (345, --check green); DS+Share CHANGELOG prepended; 2 new DS test mirrors staged. TDD +27 subtests; 2 registry-shape pins 19->20; 77 ENGINE pins bumped. DS-dir 7177 / RC 8281 green; ruff clean. INLINE (R9 - one coupled seam), verifier SKIPPED per R7 (fresh in-thread dual re-verify).
+- DON'T REDO: DSP4 is DONE. The adaptive stat-grant runes (Waterwalking/Jack/Eyeball-class) are burst-neutral (proc_type adaptive is skipped by the burst consumer) -> modeling them is fight_report-cosmetic only, LOW value, do NOT bump ENGINE for them absent a surfacing need.
+- NEXT: DSP5 (summoner-spell seam, NEW `agents/daemon_slayer/summoners.py`). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP2 Cluster-B marksman off-class WIN-exemption seam (headless gemini-loop cycle 2)
 
 - Executor cycle 2 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP2 (Cluster-B fix), consuming the DSP1 divergent tail. Commit `6f7a5756` (code+Share) pushed; living-docs commit follows.
