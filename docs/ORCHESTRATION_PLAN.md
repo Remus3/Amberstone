@@ -91,7 +91,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | DONE | f3563120 |
 | DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | DONE | 69f9085d |
 | DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | DONE | f03dfc25 |
-| DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | OPEN | - |
+| DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | DONE | 20d9f395 |
 | DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | OPEN | - |
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | OPEN | - |
 | LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | OPEN | - |
@@ -109,6 +109,56 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP9 (474, 20d9f395) DONE. lolmath parity fold - G7 comp-aware
+  harness built; CLEAN no-engine-change finding (NO ENGINE bump, NO Share sync,
+  NO DS restart - nothing under agents/daemon_slayer/** touched; the DSP4-8 seams
+  already exist, this is offline AUDIT tooling). DELIVERABLE
+  ops/audit/lolmath_ds_sweep/g7_comp_harness.py: pure helpers (LOLMATH_COMP /
+  classify_comp / resolve_comp_target [blends the DSP8 _TARGET_PRESETS per comp
+  member] / score_overlap, +13 hermetic tests tests/test_lolmath_g7_comp_harness.py)
+  + a standalone probe (g2/g5 precedent, NOT in pytest) writing g7_comp_parity.json.
+  THE G7 ASK ("feed DS the SAME 5-champ comp to compare like-for-like instead of
+  static mixed"): lolmath's fixed comp = Jayce/Sejuani/Annie/Lucian/Thresh =
+  4 squishy + 1 tank -> classify_comp -> burst_heavy. The probe scores the
+  lolmath-vs-DS item overlap against ALL FOUR DS comp-archetype variants (so the
+  conclusion is not hostage to one classification). RESULT @ ENGINE 1.123.0
+  build_orders (the live default-OFF static tables; live engine 1.134.0), 172
+  covered champs - mean item-overlap of lolmath-ULTIMATE vs each DS variant:
+  frontline_heavy 2.00 (BEST) / poke 1.86 / mixed 1.84 (the gen_md baseline) /
+  burst_heavy 1.49 (the comp-match). So comp-matching to burst_heavy tracks
+  lolmath-ULTIMATE WORST (-0.349 vs the mixed baseline); the variant that best
+  tracks it is the anti-tank frontline_heavy. ROOT: lolmath-ULTIMATE is the
+  cost-IGNORING global-optimum raw-stat pile, which aligns with the pricier-item /
+  penetration-heavy variants regardless of the enemy comp's squishiness - so the
+  residual is the G6 COST-MODEL axis, NOT comp-awareness (and NOT runes). This
+  FALSIFIES the G7 "comp-matching closes the gap" hypothesis with data and
+  REINFORCES the G6 finding. G6 GEMINI-CONSULT (PART C synchronous,
+  gemini_io/answer_20260617-062844.md): verdict (c) leave FUTURE/BACKLOG - "a raw
+  gold cost model conflicts with DS's empirical-WIN-data anchoring + violates the
+  do-not-blind-build directive"; logged to BACKLOG, NOT built. G3 (runes) stale
+  text in gen_md.py corrected: DS now SCORES self-rune procs via the DSP4
+  rune_procs/core/rune_wpa.py completion-rune seam (DEFAULT-OFF); only the full
+  rune-PAGE EMITTER (a champ-select surface) remains FUTURE/live - NOT a
+  build-order parity item. gen_md.py G3/G6/G7 work-item text updated to reflect
+  DSP4-8 + this finding. NO new default-OFF engine seam shipped (audit-only) ->
+  NO new docs/LIVE_GAME_GATED_SYNC.md FLIP row; a ledger note records the CLEAN
+  outcome + that the existing DSP8 target_preset live flip will NOT improve
+  lolmath-ULTIMATE parity (it is a comp axis; the residual is the cost axis).
+  GATE (fresh this run): DS-dir agents/daemon_slayer/tests/ 7272 passed / 1 skip /
+  1942 subtests exit 0 (unchanged vs the DSP8 baseline = no DS regression, as
+  expected with no DS source touched); full RC tests/ --ignore=tests/daemon_slayer
+  8294 passed / 2 skip / 109 subtests exit 0 (+13 = the new G7 hermetic tests, 0
+  regressions); ruff All checks passed (repo-wide); py_compile OK; ds_share_sync
+  --check "in sync" (no DS drift); ASCII/LF clean. INLINE sole orchestrator (R9 -
+  2 core files g7_comp_harness.py + its test + gen_md.py edit + docs; an audit
+  harness is one cohesive slice, parallel worktrees would only add merge overhead;
+  the DSP1-8 inline precedent + the directive's "trivial one-file items may use a
+  single agent" clause); verifier subagent SKIPPED per R7 (own single-thread edit,
+  no untrusted slice) - fresh in-thread dual full-suite substituted. No frozen
+  files touched. NEXT (DSP10): full permutation cross-eval re-run, all seams
+  harness-ON, WIN-anchored, loop-until-dry. Source: gemini director directive
+  ops/loop/control/directive.md (DSP9).
 
 - 2026-06-17 DSP8 REGRESS-recheck (director directive) -> FALSE POSITIVE, no-op,
   no fix. The gemini auditor's VERDICT: REGRESS claimed a clipboard paste artifact

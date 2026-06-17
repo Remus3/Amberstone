@@ -124,6 +124,16 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP9 (no ENGINE bump - offline AUDIT tooling): NO new seam, so NO new
+  flip row. The G7 comp-aware parity harness (`ops/audit/lolmath_ds_sweep/g7_comp_harness.py`)
+  found that feeding DS the comp-matched build variant does NOT improve parity vs
+  lolmath-ULTIMATE (burst_heavy 1.49 < mixed 1.84 < poke 1.86 < frontline_heavy 2.00
+  mean item-overlap); lolmath-ULTIMATE is the cost-ignoring raw-stat pile, so the
+  residual is the G6 cost-model axis, not comp-awareness. IMPLICATION for the live
+  pass: the existing DSP8 `target_preset` flip (section B) is still worth validating
+  for assassin-vs-comp correctness, but do NOT expect it to move lolmath-ULTIMATE
+  parity - that gap is G6 (deferred FUTURE/BACKLOG per the Gemini-consult, do NOT
+  blind-build a gold cost model). No new live-gated work added by DSP9.
 - 2026-06-17 DSP7 (ENGINE 1.133.0): ally aura/enchanter seam shipped DEFAULT-OFF. NEW separate
   registry `_ALLY_FLAT_HP_GRANT_OVERRIDES` (in `_passive_ally_grant_overrides.py`) models the flat
   EHP an enchanter's shield/heal CONFERS on a protected ally - the THIRD ally-grant EHP mode
