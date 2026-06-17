@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-16 - cycle 51: HZ-A laning L16 coverage fallback [item 456]
+
+- 1 code commit (`6c5104c7` fix) + this docs-sync. Source: operator "play live Aram Mayhem matches, proceed with gemini etc headlessly + multi-agent for gate items needing live stats; tell me when to queue; on run complete /done + /clear + next-cycle prompt; do multiple even mid-match". Tier-1, core+tests, NO DS/ENGINE/Share, NO frozen. RC restarted pid 24088 -> 23380 (last_reload_ok); mode=game (operator queued ARAM Mayhem mid-cycle).
+- ORIENT: operator is generating LIVE ARAM stats NOW. Baselined HZ shadow pre-fix: laning 23/880 covered (2.6%) vs build 874/874 (100%), agreement 0/0 both. Pivoted off the cycle-50 NEXT (item-level build gate - SR-historical, not time-sensitive) to the time-sensitive live-stat blocker: WHY laning is 2.6%.
+- item 456: ROOT CAUSE = item-370 v3 schema drops the L16 band (GEN_BANDS=L2/L6/L11) to halve the artifact; `precomputed_laning_coach` mapped lvl>=14 -> L16 -> empty lookup -> []. ARAM shared-XP rockets champs to 14-18, so ~97% of live laning ticks died in the empty L16 and never accrued shadow coverage for the precompute-vs-Haiku flip gate. FIX: `precomputed_choices` descend-only fallback to GEN_BANDS[-1] (=L11) when the band is ungenerated (rescues the level axis only; pair/mana/cd misses still []). band_for_level untouched (records truthful L16). +4 tests; 89 HZ-net + 23 report green; ruff clean; live re-probe L14/16/18 ARAM now covered=True.
+- SECONDARY FINDING (logged, NOT a bug): the build agreement section of hz_shadow_report is structurally N/A - native capture for BOTH shadows = the SAME live Haiku tactical `action` (trade/all_in/back_off); Haiku emits no per-tick anti_tank/anti_squishy build lean, so build agreement is 0/0 by construction. Build validates via rewind_history.db win-outcomes (cycle 50, SR-only), NOT Haiku-agreement. Do NOT chase build agreement to non-zero.
+- NEXT (cycle 52): after the operator's live ARAM games accrue, read the now-unblocked `tools/hz_shadow_report.py` laning agreement (precompute-vs-Haiku) -> assess flip-readiness; then the cycle-50-directed item-level build gate (per-item bought vs win over the 4627 ambiguous rows). HZ/LBAND live-flip stays do-not-flip-blind.
+
+---
+
 # 2026-06-16 - cycle 50: Lane-B BUILD-ORDER Haiku-flip gate [items 454-455]
 
 - 2 slices (`f8dfc53d` Slice A gate + 23 primary tests inline + `22faeb8b` merge of Slice B robustness), pushed `d1f60664..22faeb8b`. Source: operator "continue open items headlessly - multi-agent fanout orchestrated. use gemini in place of the operator for flips and approvals and decisions". Gemini operator-proxy REACHABLE (gemini-3-pro-preview) - approved the gate design + follow-vs-not headline + pre-authorized the flip rail + ruled WRAP/hold-Haiku + picked cycle 51. No DS/ENGINE/Share, no frozen files, no RC restart (tool + tests only). HEAD `21aca86e` -> `22faeb8b`.
@@ -24,14 +34,4 @@
 - GATE: merged tree 3 new test files 107 passed; manifest run 2026-06-16-49 both committed; worktree cleaned (0 left); cost 7-lever sweep = covered-by-recency (run twice TODAY - cycle 46 7/7 CLEAN + cycle 47 6 CLEAN + 1 SHIP). Gemini WRAP ruling: bank the 2-slice win, cycle 50 dedicates focus to the Lane-B build-order flip gate.
 - NEXT (cycle 50, Gemini-directed): build the **Lane-B BUILD-ORDER flip gate** (validate `core/precomputed_build_coach` + `core/build_order_precompute` vs rewind_history.db - item-path / completion-timing vs win correlation) - a different + likely stronger signal than the now-gate-proven-WEAK 1v1 laning verdict. Then remaining = HZ/LBAND live-flip (still do-not-flip-blind; laning verdict gate-proven coin-flip), visual captures (Game-PC :8892 down), Electron Phase-D - all live/operator-gated.
 
----
-
-# 2026-06-16 - cycle 48: GPI longitudinal player skill radar + weakest-axis tip [items 450-451]
-
-- 8 commits (`df892688` S1 + `5e9f1865` S2 + `876e8440` S3 + `24375fe7` wiring + `67a02980` docs450 + `65164b98` 451 + `240f0d8a` docs451 + 2 merge commits), CI green. Source: operator "continue open items headlessly - multi-agent fanout orchestrated; Gemini stands in for operator on flips/approvals". No DS/ENGINE/Share, no frozen files. RC restarted pid 7116 -> 24088 (last_reload_ok).
-- ORIENT: bounded headless-safe NEXT queue drained (cycles 43-47); the net-new lane this run = competitor-lift #1 (Aggregator C GPI radar, docs/COMPETITOR_LIFT_2026-06-16.md "best BACKLOG pickup"). Gemini operator-proxy UNREACHABLE (pro AND flash empty/exit 3, quota - same as 43/45/47); proceeded on logged defaults (D1-D3 in the Desktop synopsis) per skill section 9.
-- item 450 (3-slice orchestrated worktree fanout): NEW core/player_gpi.py 8-axis longitudinal profile over LOCAL rewind_history.db (6 self-relative percentile axes agg/farm/vision/obj/survival/tempo + 2 absolute shape vers/consistency; self-relative NOT rank-cohort - LBAND1 precedent; operator row = (champ,team)==tracked_* join, deduped; tracked_kp/ttmga empty so agg/tempo from participant dmg/gold). NEW /api/player-profile route (TTL-300s, fail-soft 503). NEW web radar panel in champ-select. S2 verifier CONFIRM; S3 verifier REFUTE was a count-attribution nit (132 snapshot + 4 parity all green) - code verified-clean; truth_gate PROCEED. UI-audit found 1 real MUST-FIX (panel had no caller) -> wired showPlayerGpi into champ_select. Live route 619 SR games -> overall 47.2.
-- item 451 (tail): GPI weakest-axis improvement tip (Aggregator C finding 1.2 bundle) - static _AXIS_TIPS, relative axes only (shape axes ineligible), no LLM; warn-tinted panel call-out. Live weakest=survival -> "Die less ...". +4 backend + snapshot tip assertion.
-- REJECTED competitor #3 ward-heatmap (Riot timeline WARD_PLACED has NO x/y - data-blocked, premise false); #2 lobby-tags + #4 enemy-CD need a live game.
-- OWED: in-game visual capture (Game-PC :8892 down + Legion Claude_Preview holds port 8888, won't reuse live RC). Substantiated by live-route curl + 4 snapshot tests + analytical 5-phase UI-audit. Do NOT re-investigate the radar - it is shipped + live; only the visual screenshot is owed.
-- NEXT: bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip (do-not-flip-blind, accrues on real SR games) + GPI per-champion drill-down UI (the `champion=` param already serves it) + DS Phase-D + visual captures + P6, all live/operator/Gemini-gated. Gemini still down (quota).
+_(cycle 48 GPI radar [items 450-451] pruned to docs/history_notes.md 2026-06-16, keeping WAKEUP at last 3.)_
