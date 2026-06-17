@@ -13,6 +13,19 @@
 
 ---
 
+# 2026-06-17 - RF2 ds-engine: default-OFF survivability item-credit seam for the hps/enchanter scorer (headless gemini-loop cycle 2, round-2 refill)
+
+- Executor cycle 2 of the round-2-refill swarm (`ops/loop`, gemini director; the perpetual gemini+AHK loop is RUNNING - controller.log "cycle 2: typed" 13:47). Directive = RF2 (enchanter-scorer residual). Seam commit `ee826cdc` (ENGINE 1.136.0 -> 1.137.0) pushed; closeout pending; CI verify in progress.
+- ROOT (verify-before-redo, DISTINCT from RF1): the hps/enchanter scorer `agents/daemon_slayer/hps.py::rank_items_by_hps` defaults `enchanter_only=True` -> candidate pool = curated enchanter-throughput registry (Helia/Ardent/Staff/Locket/Knight's Vow/Redemption). HP/tank survivability items add ZERO HPS throughput, so they are not in the registry and EXCLUDED from the pool entirely - NOT merely buried (RF1's hybrid scorer pools+buries; this one OMITS). So RF2 must INJECT the tabled ids into the pool BEFORE floating = the defining structural difference vs RF1's float-only seam.
+- SIBLING SWEEP: dsp10 `worst[]` hps lane = exactly 3 champs: Zilean + Seraphine (both AP/mage buried winners = Cluster-A, EXCLUDED per directive) + Rakan (HP/tank). After excluding Cluster A + boots (Mercury's Treads), Rakan is the ONLY enchanter-lane survivability defect in the report (no new cluster).
+- FIX: NEW `survivability_item_credit_enchanter.json` (Rakan: Guardian's Horn 2051 / Warmog's 3083 / Heartsteel 3084 / Fimbulwinter 3121) + builder `build_survivability_item_credit_enchanter.py` (hps lane); `survivability_item_ids_enchanter()` added to `survivability_credit.py` (shared `_parse_table`, separate cache - RF1 hybrid table byte-unaffected); NEW `prefer_survivability_by_win` on `rank_items_by_hps` + `survivability_score` field on HpsRankedItem; pool-injection `only_ids |= surv_ids` + float prefix `(survivability_score,) + base_key` (byte-identical when off).
+- SEAM-FIRST: live default-ON flip EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md` section B + ledger (wires `server.py _route_rank_enchanter` / `daemon_slayer_client.rank_enchanter_for`); NOT flipped (do-not-flip-blind).
+- GATE: ENGINE bump 88 quoted pins / 76 .py; DS :8893 bounced (taskkill PID 20148 + schtasks /Run) -> /health 1.137.0; ds_share_sync 359 --check "in sync"; DS + Share CHANGELOG prepended. TDD +9 (`test_survivability_item_credit_rf2.py`, RED-first). DS-dir 7302 passed / 1 skip / 1942 subtests exit 0 (+9 vs 7293 RF1 baseline); RC suite green (the 8 LiveFresh anchor-test failures were a SEQUENCING artifact - RC suite launched before ds_share_sync + DS restart finished; re-run post-sync 17 passed exit 0). ruff clean; py_compile OK; build --check in sync. VERIFIER subagent = CONFIRM (7 claims). INLINE sole orchestrator (R9 coupled-seam, DSP2-11/RF1 precedent); verifier gate RUN this cycle (instruction-5 explicit). No frozen files. ORCHESTRATION_PLAN RF2 OPEN->DONE; LEDGER 483.
+- LESSON (sequencing): with an ENGINE bump in flight, do NOT launch the RC `tests/` suite in the background until ds_share_sync + the DS :8893 restart have BOTH completed - the LiveFresh `test_ds_share_{doc_anchors,ingest_sync}` tests compare `__init__.py` vs the live /health + the Share ingest bundle, and a mid-window snapshot transiently fails. Sync first, then run the live-anchor RC tests.
+- NEXT: RF3 (tank-scorer itemization-order residual). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - RF1 ds-engine: default-OFF survivability item-credit seam for the hybrid/bruiser scorer (headless gemini-loop cycle 1, round-2 refill)
 
 - Executor cycle 1 of the round-2-refill swarm (`ops/loop`, gemini director; the perpetual gemini+AHK loop WAS launched - controller.log "loop start" 13:09 + "cycle 1: typed"). Directive = RF1 (largest DSP10 residual cluster). Seam commit `faeaeb4a` (ENGINE 1.135.0 -> 1.136.0) + closeout `e8a1f90f` pushed; CI green for both SHAs.
