@@ -86,6 +86,11 @@ SOURCE_DEFAULT     = "default"      # DDragon-tag derived
 SOURCE_USER_CS     = "user_cs"      # operator picked in champ-select
 SOURCE_USER_INGAME = "user_ingame"  # operator switched mid-match
 SOURCE_NUDGE       = "nudge"        # accepted first-purchase-mismatch toast
+# DSP3 Cluster-A: resolver-only label for an ARAM win-axis override. NOT a
+# saveable operator pick, so deliberately ABSENT from VALID_SOURCES (you cannot
+# save_archetype_pick(source="aram_win"); it is only ever returned by the
+# default-OFF get_archetype_for(prefer_aram_win_axis=True) seam).
+SOURCE_ARAM_WIN    = "aram_win"
 
 VALID_SOURCES: frozenset[str] = frozenset({
     SOURCE_DEFAULT, SOURCE_USER_CS, SOURCE_USER_INGAME, SOURCE_NUDGE,
@@ -143,6 +148,14 @@ _DS_DIR = _DATA_DIR / "daemon_slayer"
 # patch's champions.json, cached per process. None until first load.
 _DAMAGE_AXIS_CACHE: Optional[dict[str, str]] = None
 _AXIS_LOCK = threading.Lock()
+
+# DSP3 Cluster-A ARAM archetype-override table (built by
+# ops/audit/ds_perm_swarm/build_aram_archetype_override.py from the cross-eval
+# rewind-WIN data). champion -> override archetype string. Powers the DEFAULT-OFF
+# seam get_archetype_for(prefer_aram_win_axis=True). Cached per process.
+_ARAM_OVERRIDE_PATH = Path(__file__).resolve().parent / "aram_archetype_override.json"
+_ARAM_OVERRIDE_CACHE: Optional[dict[str, str]] = None
+_ARAM_OVERRIDE_LOCK = threading.Lock()
 
 
 def _axis_from_distribution(dd: dict) -> Optional[str]:
@@ -220,6 +233,50 @@ def _invalidate_axis_cache() -> None:
     global _DAMAGE_AXIS_CACHE
     with _AXIS_LOCK:
         _DAMAGE_AXIS_CACHE = None
+
+
+def _load_aram_overrides() -> dict[str, str]:
+    """champion -> ARAM win-axis override archetype. Fail-soft ``{}`` on any
+    missing/parse error (no override -> the kit default stands)."""
+    global _ARAM_OVERRIDE_CACHE
+    with _ARAM_OVERRIDE_LOCK:
+        if _ARAM_OVERRIDE_CACHE is not None:
+            return _ARAM_OVERRIDE_CACHE
+        out: dict[str, str] = {}
+        try:
+            raw = json.loads(_ARAM_OVERRIDE_PATH.read_text(encoding="utf-8"))
+            for champ, entry in (raw.get("champions") or {}).items():
+                ov = (entry or {}).get("override")
+                if champ and ov in ARCHETYPE_SET:
+                    out[champ] = ov
+        except FileNotFoundError:
+            _log.warning(
+                "archetype_picks: %s missing - no ARAM overrides",
+                _ARAM_OVERRIDE_PATH,
+            )
+        except Exception as exc:  # noqa: BLE001 - fail-soft, kit default stands
+            _log.warning("archetype_picks: ARAM override load failed: %s", exc)
+        _ARAM_OVERRIDE_CACHE = out
+        return out
+
+
+def _invalidate_aram_overrides_cache() -> None:
+    """Drop the ARAM-override cache so the next read re-pulls. Used by tests."""
+    global _ARAM_OVERRIDE_CACHE
+    with _ARAM_OVERRIDE_LOCK:
+        _ARAM_OVERRIDE_CACHE = None
+
+
+def aram_archetype_override(champion: str) -> Optional[str]:
+    """Return the WIN-anchored ARAM override archetype for ``champion`` or None.
+
+    Public for tests + the (live-gated) consumer. None when the champ has no
+    Cluster-A override or the table is unavailable. See
+    ``ops/audit/ds_perm_swarm/build_aram_archetype_override.py``.
+    """
+    if not champion:
+        return None
+    return _load_aram_overrides().get(champion)
 
 
 def axis_correct_archetype(champion: str, primary: str, tags: list[str]) -> str:
@@ -532,7 +589,7 @@ def _now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-def get_archetype_for(champion: str) -> dict:
+def get_archetype_for(champion: str, prefer_aram_win_axis: bool = False) -> dict:
     """Return the merged pick for ``champion``.
 
     Shape:
@@ -540,11 +597,18 @@ def get_archetype_for(champion: str) -> dict:
             "champion":  "Aatrox",
             "primary":   "bruiser",
             "secondary": "tank",
-            "source":    "default" | "user_cs" | "user_ingame" | "nudge",
+            "source":    "default" | "user_cs" | "user_ingame" | "nudge" | "aram_win",
             "set_at":    "2026-05-12T14:30:00Z"  # only when source != default
         }
 
     Blank ``champion`` returns the safe fallback (carry/bruiser, default).
+
+    DSP3 Cluster-A seam (DEFAULT-OFF): when ``prefer_aram_win_axis`` is True and
+    the champ has a rewind-WIN-anchored ARAM override that diverges from the kit
+    default, the override is surfaced as primary (kit default drops to secondary,
+    source=``aram_win``). Byte-identical when False. An operator pick is NEVER
+    re-based - only the kit-tag default. The live default-ON flip is EXCLUDED
+    (docs/LIVE_GAME_GATED_SYNC.md); do not flip blind.
     """
     if not champion:
         return {
@@ -560,11 +624,18 @@ def get_archetype_for(champion: str) -> dict:
         entry.setdefault("source", SOURCE_DEFAULT)
         return entry
     primary, secondary = default_for_champion(champion)
+    source = SOURCE_DEFAULT
+    if prefer_aram_win_axis:
+        override = aram_archetype_override(champion)
+        if override and override in ARCHETYPE_SET and override != primary:
+            secondary = primary
+            primary = override
+            source = SOURCE_ARAM_WIN
     return {
         "champion":  champion,
         "primary":   primary,
         "secondary": secondary,
-        "source":    SOURCE_DEFAULT,
+        "source":    source,
     }
 
 

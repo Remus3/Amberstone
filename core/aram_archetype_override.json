@@ -1,0 +1,192 @@
+{
+  "_comment": "DSP3 Cluster-A: per-champion ARAM archetype-override table. Consumed by core.archetype_picks.get_archetype_for(prefer_aram_win_axis=True) (DEFAULT-OFF seam). Built by ops/audit/ds_perm_swarm/build_aram_archetype_override.py from the cross-eval empirical (rewind WIN+usage) data; each override is WIN-anchored to above-baseline ARAM items on the override axis. ASCII only.",
+  "patch": "16.12.1",
+  "generated_from": "ops/audit/ds_cross_eval/{verdicts,data}",
+  "min_item_n": 8,
+  "wr_margin": 3.0,
+  "considered_archetype_mismatch": 8,
+  "skipped_user_pick": [
+    "Lulu",
+    "MissFortune"
+  ],
+  "skipped_no_win_anchor": [],
+  "champions": {
+    "Kayle": {
+      "default_primary": "mage",
+      "override": "carry",
+      "axis": "ad",
+      "evidence": [
+        {
+          "name": "Guinsoo's Rageblade",
+          "n": 92,
+          "wr": 54.3
+        },
+        {
+          "name": "Blade of The Ruined King",
+          "n": 69,
+          "wr": 62.3
+        },
+        {
+          "name": "Wit's End",
+          "n": 53,
+          "wr": 56.6
+        },
+        {
+          "name": "Terminus",
+          "n": 39,
+          "wr": 59.0
+        },
+        {
+          "name": "Recurve Bow",
+          "n": 28,
+          "wr": 53.6
+        }
+      ]
+    },
+    "KogMaw": {
+      "default_primary": "mage",
+      "override": "carry",
+      "axis": "ad",
+      "evidence": [
+        {
+          "name": "Blade of The Ruined King",
+          "n": 86,
+          "wr": 44.2
+        },
+        {
+          "name": "Guinsoo's Rageblade",
+          "n": 74,
+          "wr": 41.9
+        },
+        {
+          "name": "Runaan's Hurricane",
+          "n": 56,
+          "wr": 42.9
+        },
+        {
+          "name": "Wit's End",
+          "n": 35,
+          "wr": 51.4
+        },
+        {
+          "name": "Terminus",
+          "n": 33,
+          "wr": 51.5
+        }
+      ]
+    },
+    "Shaco": {
+      "default_primary": "assassin",
+      "override": "mage",
+      "axis": "ap",
+      "evidence": [
+        {
+          "name": "Liandry's Torment",
+          "n": 77,
+          "wr": 62.3
+        },
+        {
+          "name": "Shadowflame",
+          "n": 46,
+          "wr": 56.5
+        },
+        {
+          "name": "Blackfire Torch",
+          "n": 43,
+          "wr": 65.1
+        },
+        {
+          "name": "Luden's Echo",
+          "n": 35,
+          "wr": 60.0
+        },
+        {
+          "name": "Malignance",
+          "n": 26,
+          "wr": 53.8
+        }
+      ]
+    },
+    "Shyvana": {
+      "default_primary": "bruiser",
+      "override": "mage",
+      "axis": "ap",
+      "evidence": [
+        {
+          "name": "Liandry's Torment",
+          "n": 24,
+          "wr": 62.5
+        },
+        {
+          "name": "Riftmaker",
+          "n": 9,
+          "wr": 66.7
+        }
+      ]
+    },
+    "Taric": {
+      "default_primary": "enchanter",
+      "override": "tank",
+      "axis": "tank",
+      "evidence": [
+        {
+          "name": "Fimbulwinter",
+          "n": 33,
+          "wr": 57.6
+        },
+        {
+          "name": "Mercury's Treads",
+          "n": 27,
+          "wr": 55.6
+        },
+        {
+          "name": "Spirit Visage",
+          "n": 11,
+          "wr": 63.6
+        },
+        {
+          "name": "Unending Despair",
+          "n": 11,
+          "wr": 72.7
+        },
+        {
+          "name": "Thornmail",
+          "n": 10,
+          "wr": 60.0
+        },
+        {
+          "name": "Plated Steelcaps",
+          "n": 8,
+          "wr": 62.5
+        }
+      ]
+    },
+    "Zilean": {
+      "default_primary": "enchanter",
+      "override": "mage",
+      "axis": "ap",
+      "evidence": [
+        {
+          "name": "Luden's Echo",
+          "n": 80,
+          "wr": 57.5
+        },
+        {
+          "name": "Rabadon's Deathcap",
+          "n": 34,
+          "wr": 61.8
+        },
+        {
+          "name": "Stormsurge",
+          "n": 30,
+          "wr": 56.7
+        },
+        {
+          "name": "Shadowflame",
+          "n": 29,
+          "wr": 65.5
+        }
+      ]
+    }
+  }
+}
