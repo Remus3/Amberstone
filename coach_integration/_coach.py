@@ -309,6 +309,7 @@ class CoachIntegration:
                 mode="sr",
                 game_seconds=int(game_state.get("game_seconds", 0) or 0),
                 level=_lvl,
+                enemy_champions=game_state.get("enemy_comp", []),
             )
             _ds_dispatch = _ds_dispatch_for_coach(
                 champion=champion,

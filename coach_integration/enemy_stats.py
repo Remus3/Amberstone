@@ -38,6 +38,16 @@ class EnemyStats:
     mr:       float
     max_hp:   float
     bonus_hp: float
+    # Enemy damage-type split (fractions in [0,1], summing ~1.0), derived
+    # from the enemy comp when champion names are known. Feeds the
+    # bruiser/tank EHP-side scorer's enemy_ad_share / enemy_ap_share so DS
+    # recommends comp-appropriate resists (e.g. Wit's End vs an AP-heavy
+    # comp). Default 0.5/0.5 = "no comp info" - preserves pre-2026-06-16
+    # behavior for callers that pass no enemy_champions (dashboard preview
+    # routes, champ-select). Appended at the END with defaults so existing
+    # positional/keyword construction is unaffected.
+    ad_share: float = 0.5
+    ap_share: float = 0.5
 
 
 # Per-mode anchors. Each tuple is (armor_base, armor_per_level,
@@ -111,6 +121,7 @@ def compute_enemy_stats(
     *,
     bonus_hp_override: Optional[float] = None,
     enemy_levels: Optional[Iterable[float]] = None,
+    enemy_champions: Optional[Iterable[str]] = None,
 ) -> EnemyStats:
     """Compute aggregate enemy stats for a DS `rank_for` call.
 
@@ -177,9 +188,28 @@ def compute_enemy_stats(
     if bonus_hp > _BONUS_HP_CAP:
         bonus_hp = _BONUS_HP_CAP
 
+    # Enemy damage-type split from the comp (the EHP-side signal). DDragon
+    # info.attack/info.magic leans via core.aram_comp_verdict.compute_factors;
+    # hybrids split evenly. No comp / unresolved / all-unknown -> 0.5/0.5.
+    ad_share, ap_share = 0.5, 0.5
+    if enemy_champions:
+        try:
+            from core.aram_comp_verdict import compute_factors
+            f = compute_factors(list(enemy_champions))
+            ad = float(f.get("ad_count", 0) or 0) + 0.5 * float(f.get("hybrid_count", 0) or 0)
+            ap = float(f.get("ap_count", 0) or 0) + 0.5 * float(f.get("hybrid_count", 0) or 0)
+            tot = ad + ap
+            if tot > 0:
+                ad_share = ad / tot
+                ap_share = ap / tot
+        except Exception:
+            ad_share, ap_share = 0.5, 0.5
+
     return EnemyStats(
         armor=round(armor, 1),
         mr=round(mr, 1),
         max_hp=round(max_hp, 1),
         bonus_hp=round(bonus_hp, 1),
+        ad_share=round(ad_share, 3),
+        ap_share=round(ap_share, 3),
     )
