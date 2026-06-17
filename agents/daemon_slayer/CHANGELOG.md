@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.136.0 (RF1 generic-bruiser-template survivability item-credit seam - the hybrid/bruiser scorer
+rank_items_by_hybrid ranked a near-fixed generic AD-DPS template (Void Immolation / Blade of The
+Ruined King / Trinity Force / Heartsteel / Essence Reaver / Runaan's Hurricane) for every bruiser
+because its sort key hybrid_delta_pct = alpha*dps_pct + beta*ehp_pct is alpha-weighted toward damage
+and the default mixed-damage target preset under-credits the pure resist/sustain axis, so the
+WIN-correlated survivability items the player base wins ARAM on sank below it (the DSP10 consolidated
+buried winners). DEFAULT-OFF, 2026-06-17. NEW agents/daemon_slayer/survivability_credit.py loader over a
+WIN-anchored survivability_item_credit.json table (9 bruiser champs / 28 terminal items: Darius, Yasuo,
+Urgot, JarvanIV, Gnar, Udyr, Tryndamere, RekSai, Briar - items Spirit Visage / Jak'Sho / Sterak's Gage /
+Death's Dance / Black Cleaver / Force of Nature / Randuin's Omen / Thornmail / Titanic Hydra /
+Fimbulwinter / Sundered Sky / Stridebreaker / Iceborn Gauntlet / Overlord's Bloodmail / Wit's End; built
+by ops/audit/ds_perm_swarm/build_survivability_item_credit.py from the DSP10 buried-winner report
+hybrid/bruiser lane). rank_items_by_hybrid gains prefer_survivability_by_win (default False ->
+byte-identical, new survivability_score field stays 0.0): when ON and the champ is tabled, every tabled
+survivability item is floated above the generic template (model order preserved within each tier via a
+(survivability_score,) + base_key sort prefix). ROOT-CAUSE distinction from the DSP11 seam: DSP11 floats
+DPS/burst kit-axis items GATED ON delta_dps > 0; survivability items add EHP not DPS so their hybrid
+delta is ~0 and a delta gate would never surface them - RF1 floats by WIN-table MEMBERSHIP, the signal
+the damage-biased sort is blind to. MasterYi is NOT tabled (his buried winners are pure DPS - a
+DSP11/within-axis matter). Champs absent from the table are a no-op. Cluster A
+(Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) is a SEPARATE operator-gated decision, deliberately NOT
+tabled. The live default-ON flip is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.)
+
 1.135.0 (DSP11 Cluster-B2 kit-axis item-credit seam - the dps/burst scorers ranked a near-fixed
 generic AD template (BotRK / Kraken / Stormrazor / Trinity / Essence Reaver for carry; Sundered Sky /
 IE / Trinity for assassin) for every AD carry/assassin because compute_dps / compute_burst_damage

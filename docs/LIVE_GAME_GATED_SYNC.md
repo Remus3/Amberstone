@@ -106,6 +106,21 @@ web changes); engine flips need a DS `:8893` restart.
       (un-stripped), and a non-tabled champ (Caitlyn) + any operator pick are byte-identical. Re-anchor
       `agents/daemon_slayer/kit_axis_item_credit.json` from a fresh rewind+DSP10 run each patch
       (`ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py`). Needs a DS `:8893` restart on flip.
+- [ ] RF1 generic-bruiser-template survivability flip (seam shipped default-OFF, ENGINE 1.136.0): no live
+      scorer passes `rank_items_by_hybrid(..., prefer_survivability_by_win=True)` yet (defaults False ->
+      byte-identical). The flip WIRES the HYBRID (bruiser) scorer-dispatch (`agents/daemon_slayer/server.py`
+      `_route_hybrid` -> the `rank_items_by_hybrid` call ~L729, and/or the `core/daemon_slayer_client.hybrid_for`
+      wrapper) to pass `prefer_survivability_by_win=True` so the 9 WIN-anchored bruiser champs (Darius, Yasuo,
+      Urgot, JarvanIV, Gnar, Udyr, Tryndamere, RekSai, Briar) float their buried survivability winners (Spirit
+      Visage / Jak'Sho / Sterak's Gage / Death's Dance / Force of Nature / Randuin's Omen / Thornmail / Titanic
+      Hydra / Fimbulwinter) above the generic AD-DPS template (Void Immolation / BotRK / Trinity / Heartsteel /
+      ER / Runaan's). Eyeball in a real ARAM that Darius surfaces Force of Nature/Sterak's, Udyr surfaces
+      Jak'Sho/Spirit Visage, and a non-tabled bruiser (Garen) + any operator pick are byte-identical. MasterYi is
+      deliberately NOT tabled (his buried winners are pure DPS - a DSP11/within-axis matter). Distinct from the
+      DSP11 flip: that floats DPS/burst kit-axis items gated on `delta_dps>0`; survivability items add EHP not
+      DPS so RF1 floats by WIN-table membership. Re-anchor `agents/daemon_slayer/survivability_item_credit.json`
+      from a fresh rewind+DSP10 run each patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit.py`).
+      Needs a DS `:8893` restart on flip.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).
@@ -167,6 +182,16 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 RF1 (ENGINE 1.136.0): generic-bruiser-template survivability item-credit seam shipped
+  DEFAULT-OFF. NEW `prefer_survivability_by_win` on `hybrid.rank_items_by_hybrid` (the hybrid/bruiser
+  scorer lane), driven by the WIN-anchored `agents/daemon_slayer/survivability_item_credit.json` (9 bruiser
+  champs / 28 items). The flip wires `agents/daemon_slayer/server.py _route_hybrid` (+/- the
+  `core/daemon_slayer_client.hybrid_for` wrapper) to pass `prefer_survivability_by_win=True` so the buried
+  survivability winners float above the generic AD-DPS template (section B row above). NOT flipped
+  (do-not-flip-blind) - validate the re-rank in a real ARAM. Distinct from the DSP11 DPS/burst kit-axis
+  flip (which gates on `delta_dps>0`); survivability items add EHP not DPS so RF1 floats by WIN-table
+  membership. Re-anchor the table each patch via `ops/audit/ds_perm_swarm/build_survivability_item_credit.py`.
+  Needs a DS `:8893` restart on flip.
 - 2026-06-17 LGS1 (no ENGINE bump - pure docs audit): live-sync list audited authoritative. (1) CORRECTED
   the DSV seam-flip row's location - `assume_takedown`/`assume_squishy_target`/`assume_ability_amp` flip the
   BURST scorer `agents/daemon_slayer/burst.py rank_items_by_burst` (+ `compute_burst_damage`), NOT `rank.py`
