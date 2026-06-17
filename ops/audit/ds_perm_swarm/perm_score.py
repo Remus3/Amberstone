@@ -138,10 +138,19 @@ def build_report(
     win_by_champ_mode: dict[tuple[str, str], ChampModeWin],
     cfg: PermConfig | None = None,
     modes: tuple[str, ...] = ("ARAM", "SR"),
+    anchor_match_only: bool = True,
 ) -> dict:
     """Aggregate a per-(champ x mode) report from the DS rankings + WIN anchor.
 
     cross_evals: file-stem -> CrossEval. win_by_champ_mode: (champion, mode) -> ChampModeWin.
+
+    The comp_grid is computed ONCE at each champion's anchor_mode (with that mode's
+    modifiers applied). Scoring an ARAM-anchored ranking against SR win outcomes (or
+    vice versa) is apples-to-oranges - DS would recommend a different build for the
+    other mode - so anchor_match_only (default True) scores only the anchor-matched
+    mode. On the live roster 171/172 anchor ARAM, so this drops the spurious SR column
+    that otherwise dominated the divergent tail (e.g. Ezreal SR mean_wr 0.0). A valid
+    cross-mode score would need a per-mode re-probe (FUTURE).
     """
     cfg = cfg or PermConfig()
     champ_rows: list[dict] = []
@@ -149,6 +158,8 @@ def build_report(
     considered = 0
     for ce in cross_evals.values():
         for mode in modes:
+            if anchor_match_only and ce.anchor_mode and mode != ce.anchor_mode:
+                continue
             cmw = win_by_champ_mode.get((ce.champion, mode))
             if cmw is None or cmw.n == 0:
                 continue
@@ -168,7 +179,12 @@ def build_report(
     unweighted = round(sum(cs.mean_lift for cs in scored) / n_scored, 4) if n_scored else None
     champ_rows.sort(key=lambda r: (r["mean_lift"] is None, -(r["mean_lift"] or 0.0)))
     return {
-        "config": {"top_k": cfg.top_k, "min_item_n": cfg.min_item_n, "modes": list(modes)},
+        "config": {
+            "top_k": cfg.top_k,
+            "min_item_n": cfg.min_item_n,
+            "modes": list(modes),
+            "anchor_match_only": anchor_match_only,
+        },
         "aggregate": {
             "n_champ_mode_considered": considered,
             "n_champs_scored": n_scored,
