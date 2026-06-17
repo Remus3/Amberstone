@@ -122,7 +122,7 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 | RF3 | ds-engine | Tank-scorer itemization-order residual. The ehp/tank scorer ordering diverges from WIN-anchored tank itemization, burying core resist/HP items - Rell: Giant's Belt (9/66.7 +27.1); KSante: Thornmail (14/57.1 +11.5), Negatron Cloak, Plated Steelcaps, Iceborn Gauntlet. Root-cause WHY the resist/HP-vs-mythic-tank ordering diverges from win-rate; default-OFF WIN-anchored seam vs the report; per-champ tests. Verify-before-redo vs the DSP6/DSP8 ENEMY-preset seams (this is the SELF tank-scorer, distinct). | DONE | `869656a0` |
 | RF4 | ds-swarm | Residual re-run / loop-until-dry consolidation AFTER RF1-RF3 land. Re-run ops/audit/ds_perm_swarm with the new seams harness-ON, regenerate report/dsp10_consolidated, confirm the RF1-RF3 target clusters lifted (buried winners now ranked, or thin-sample-justified), append any NEW residual cluster to the Findings log. Loop-until-dry (1 no-new-cluster pass). BUILD/AUDIT only unless a clean per-champ fix surfaces. | DONE | `a63c0d47` |
 | RF5 | test-hygiene | Hermeticity sibling sweep (insurance, non-DS). OPEN2 found tests/test_p2w4_hw2_b.py wrote the PROD ops/loop/control/controller.log via the real loop_controller.git() except-path. Systematically grep tests/ + agents/daemon_slayer/tests/ for OTHER fixtures that touch a PROD path (ops/runtime/, data/, logs/, ops/loop/control/) instead of tmp_path / a monkeypatched module global; redirect each to tmp (mirror conftest SHADOW_PATH + item-386 precedent). Pure test-hygiene, headless-safe; +regression assert the prod artifact is unchanged across the suite. Record CLEAN if none found. | DONE | `e0f3da12` |
-| RF6 | ds-engine | RF4-surfaced residual (report/rf4_residual.md): the RF3 ehp/tank survivability seam is FLOAT-only, but Rell's sole tabled buried winner Fimbulwinter (3121) is NOT in Rell's ehp candidate pool (RF4 verified in_pool=False; a Winter's-Approach mana-line item the EHP _filter_candidates excludes), so the float seam (reorders POOLED items by win-table membership) is a no-op for Rell - RF3's "the EHP scorer ALREADY pools these resist/HP items" premise holds for KSante (3075/6662 pooled+floated) but is FALSE for Rell. Add an ehp-lane INJECT mode mirroring RF2's hps inject (only_ids |= surv_ids BEFORE the float prefix) so tabled-but-not-pooled survivability ids surface. Root-cause-first (confirm WHY Fimbulwinter is filtered for Rell - the mana-item gate); default-OFF WIN-anchored seam vs report/dsp10_consolidated.md + the survivability_item_credit_tank table; per-champ test (Rell Fimbulwinter floats ON, byte-identical OFF). ENGINE bump + DS :8893 restart + Share sync. Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | OPEN | |
+| RF6 | ds-engine | RF4-surfaced residual (report/rf4_residual.md): the RF3 ehp/tank survivability seam is FLOAT-only, but Rell's sole tabled buried winner Fimbulwinter (3121) is NOT in Rell's ehp candidate pool (RF4 verified in_pool=False; a Winter's-Approach mana-line item the EHP _filter_candidates excludes), so the float seam (reorders POOLED items by win-table membership) is a no-op for Rell - RF3's "the EHP scorer ALREADY pools these resist/HP items" premise holds for KSante (3075/6662 pooled+floated) but is FALSE for Rell. Add an ehp-lane INJECT mode mirroring RF2's hps inject (only_ids |= surv_ids BEFORE the float prefix) so tabled-but-not-pooled survivability ids surface. Root-cause-first (confirm WHY Fimbulwinter is filtered for Rell - the mana-item gate); default-OFF WIN-anchored seam vs report/dsp10_consolidated.md + the survivability_item_credit_tank table; per-champ test (Rell Fimbulwinter floats ON, byte-identical OFF). ENGINE bump + DS :8893 restart + Share sync. Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `700fa6a8` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -136,6 +136,53 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-17 RF6 (cycle 6, round-2 refill) DONE (700fa6a8) - ehp/tank survivability
+  INJECT seam, ENGINE 1.138.0 -> 1.139.0, DEFAULT-OFF. ROOT-CAUSE (probe-confirmed,
+  not the directive's assumed "mana-item gate" phrasing): Rell's Fimbulwinter 3121
+  is dropped by `_is_purchasable` - gold.purchasable=False because 3121 is the
+  non-purchasable mana-line TRANSFORM of Winter's Approach 3119 (terminal=True,
+  ARAM-legal=True; the off-class marksman deny-set does NOT apply - it fires only
+  for ranged marksmen and Rell is a tank). Live probe: 3121 NOT in Rell's ehp pool
+  OFF (124 items); RF3 float ON surfaced [] (confirms RF4 in_pool=False, the RED).
+  KEY DEVIATION FROM THE DIRECTIVE (feedback_audit_proposals_are_intent): the
+  literal "mirror RF2's only_ids |= surv_ids" is INSUFFICIENT - probed RF2's own hps
+  inject and it ALSO silently drops 3121 for Rakan (surfaces only purchasable
+  2051/3083/3084), because the only_ids UNION still runs through _is_purchasable. So
+  the union mechanism cannot surface a non-purchasable transform at all. Implemented
+  the INTENT ("tabled-but-not-pooled ids surface" / "Rell Fimbulwinter floats ON")
+  via a NEW `inject_ids` force-admit param on `rank._filter_candidates`: an id in
+  the set bypasses the only_ids whitelist + exclude_names deny + _is_purchasable gate
+  while still honoring already-equipped / non-coachable / mode-legality / terminal /
+  budget; None default = byte-identical for all 7 callers. `ehp.rank_items_by_ehp`
+  passes inject_ids=surv_ids ONLY when the RF3 prefer_survivability_by_win seam is ON
+  (the SAME flag, no new param), so the tabled set enters the pool before the existing
+  RF3 float prefix lifts it; OFF the pool + sort are unchanged. SCOPE: ehp lane only
+  per the directive; the hps lane (RF2, DONE) left byte-identical (no risk to a DONE
+  seam). DISCOVERED WORK (FUTURE, do-not-flip-blind): RF2's hps lane has the SAME
+  purchasable-gate gap for Rakan's tabled 3121 - the inject_ids mechanism now EXISTS
+  to fix it cheaply if a future RF wires the hps lane through it (logged in
+  docs/LIVE_GAME_GATED_SYNC.md RF6 ledger). ENGINE bump 174 quoted pins / 157 .py
+  (byte-replace, quoted-literal-only per feedback_engine_bump_quoted_literal_only,
+  EOL-preserved via read_bytes/write_bytes); DS :8893 bounced (taskkill PID 14148 +
+  schtasks /Run) -> /health 1.139.0 / patch 16.12.1 / 172 champs; ds_share_sync 362
+  files --check "in sync"; DS + Share CHANGELOG prepended. TDD +12
+  (test_survivability_item_credit_rf6.py): Rell Fimbulwinter injects+floats ON + NOT
+  pooled OFF (the defining RF6-vs-RF3 injected-not-floated property), KSante
+  already-pooled float unbroken, Malphite no-op, _filter_candidates inject-unit +
+  mode-legality (3121 still excluded in ARENA map30=False) + None byte-identical,
+  ENGINE pin 1.139.0. GATE (fresh this run): DS-dir agents/daemon_slayer/tests/ 7324
+  passed / 1 skip / 1942 subtests exit 0 (+12 vs the 7312 RF5 baseline); RC tests/
+  --ignore=tests/daemon_slayer 8333 passed / 2 skip / 109 subtests exit 0 (= RF5
+  baseline, RF6 adds no RC test) - run AFTER the DS restart + Share sync (RF2
+  sequencing lesson, no LiveFresh anchor flake); ruff clean (touched); py_compile OK;
+  ASCII clean. INLINE sole orchestrator (R9 + coupled-seam clause - one cohesive lane:
+  shared _filter_candidates param -> ehp ranker + shared ENGINE pin + Share mirror,
+  dependency-ordered NOT disjoint files; the RF1-RF3 inline precedent); verifier
+  SKIPPED per R7 (own single-thread, no untrusted slice - the RED probe + the dual
+  full-suite + live :8893 /health + ds_share_sync --check ARE the independent verify).
+  No frozen files. No blocking AskUserQuestion. NEXT: round-2 refill queue (RF1-RF6)
+  DRAINED -> expect director NO_WORK or a new refill. Source: gemini director directive
+  ops/loop/control/directive.md (RF6).
 - 2026-06-17 RF5 (cycle 5, round-2 refill) DONE (e0f3da12) - test-hermeticity
   sibling sweep, Tier-1 test-hygiene (NO ENGINE bump / DS restart / Share sync /
   frozen / RC restart / backfill). GROUND-TRUTH SWEEP: a before/after snapshot of
