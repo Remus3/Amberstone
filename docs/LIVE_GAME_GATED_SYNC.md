@@ -70,7 +70,18 @@ web changes); engine flips need a DS `:8893` restart.
       `compute_ehp`. Re-anchor the base shield/heal values + add the granter's live AP ratio at flip
       (the seam ships the base floor only). Eyeball that an ally beside a Janna/Lulu/Soraka shows a
       sanely higher effective-HP / peel-survivability and a solo ally is unchanged.
-- [ ] DSP seam flips (as each ships): enemy-comp target-preset (DSP8) - flip default-ON + eyeball.
+- [ ] DSP8 enemy-comp target-preset flip (seam shipped default-OFF, ENGINE 1.134.0): no live scorer
+      passes `rank_items_by_burst(..., target_preset=)` yet (it defaults None -> the DSV3
+      assume_squishy_target armor-only path or byte-identical). The flip WIRES the burst /
+      `/rank-assassin` scorer to pass a `target_preset` ("squishy" / "bruiser" / "tank" / "high_cc")
+      derived from the LIVE enemy comp (classify the enemy team's archetypes -> the dominant defensive
+      profile of the priority burst target), so the assassin item ranking values lethality vs raw AD
+      vs magic-pen against the comp it actually bursts. `_assumed_target_resists` substitutes the
+      preset's (armor, MR); re-anchor the four (armor, MR) curves to the live patch's role-norm resists
+      + representative defensive items at flip. Eyeball that vs a tank-heavy comp the assassin build
+      surfaces more lethality / armor-pen, vs a high-CC enchanter comp more magic pen, and a balanced /
+      squishy comp matches the DSV3 squishy baseline. NO live default change is shipped by the loop
+      (do-not-flip-blind). Needs a DS `:8893` restart on flip.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).

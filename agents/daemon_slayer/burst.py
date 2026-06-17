@@ -1375,6 +1375,76 @@ def _assumed_squishy_target_armor(level: int) -> float:
     return _SQUISHY_TARGET_BASE_ARMOR + _SQUISHY_TARGET_ARMOR_PER_LEVEL * (lvl - 1)
 
 
+# DSP8 (1.134.0): enemy-comp target-preset seam. Generalizes the DSV3
+# assume_squishy_target armor assumption into four representative enemy-comp
+# defensive profiles - (armor, MR), each ``base + per_level * (level - 1)`` like
+# the DSV3 squishy armor curve. The burst ranker substitutes a preset's resists
+# for an absent / zero target so item valuation reflects the comp it is bursting:
+# lethality / flat pen bites a tank's armor, magic pen bites a high-CC
+# enchanter's MR. The squishy preset REUSES the DSV3 armor constants so
+# target_preset="squishy" and assume_squishy_target=True agree on armor; the
+# preset adds the MR the binary seam omitted. Values model a typical mid-game
+# comp (role-norm base resists + 1-2 representative defensive items), not a
+# fully-itemized target. Opt-in via target_preset (default None -> byte-
+# identical); assume_squishy_target stays the DSV3 armor-only alias. The live
+# default flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md) - do not wire
+# a scorer to a preset blind.
+_TARGET_PRESETS: dict[str, tuple[float, float, float, float]] = {
+    # preset -> (armor_base, armor_per_level, mr_base, mr_per_level)
+    "squishy": (_SQUISHY_TARGET_BASE_ARMOR, _SQUISHY_TARGET_ARMOR_PER_LEVEL, 30.0, 0.5),
+    "bruiser": (35.0, 5.5, 30.0, 2.5),
+    "tank": (50.0, 13.0, 40.0, 7.0),
+    "high_cc": (30.0, 4.5, 35.0, 3.5),
+}
+
+
+def _assumed_target_resists(preset: str, level: int) -> tuple[float, float]:
+    """Representative ``(armor, MR)`` for a named enemy-comp ``preset`` at ``level``.
+
+    DSP8 burst seam. ``preset`` is one of ``_TARGET_PRESETS`` (squishy / bruiser
+    / tank / high_cc). Both resists follow ``base + per_level * (level - 1)``;
+    ``level`` is validated via ``clamp_level`` (raises outside the engine range,
+    the same contract as ``_assumed_squishy_target_armor``). The squishy preset's
+    armor is identical to ``_assumed_squishy_target_armor`` by construction.
+    Raises ``ValueError`` on an unknown preset.
+    """
+    try:
+        armor_base, armor_per, mr_base, mr_per = _TARGET_PRESETS[preset]
+    except KeyError:
+        raise ValueError(
+            f"unknown target_preset {preset!r}; expected one of "
+            f"{sorted(_TARGET_PRESETS)}"
+        ) from None
+    lvl = clamp_level(level)
+    return (
+        armor_base + armor_per * (lvl - 1),
+        mr_base + mr_per * (lvl - 1),
+    )
+
+
+def _resolve_target_preset(
+    target_preset: Optional[str],
+    assume_squishy_target: bool,
+) -> Optional[str]:
+    """Resolve the active preset name (or None) from the two opt-in inputs.
+
+    ``target_preset`` (DSP8) wins when supplied and is validated against
+    ``_TARGET_PRESETS``. Otherwise ``assume_squishy_target=True`` (DSV3) maps to
+    the ``"squishy"`` preset for ARMOR substitution only (the caller-side MR
+    guard keeps that path byte-identical to DSV3). None when neither is set.
+    """
+    if target_preset is not None:
+        if target_preset not in _TARGET_PRESETS:
+            raise ValueError(
+                f"unknown target_preset {target_preset!r}; expected one of "
+                f"{sorted(_TARGET_PRESETS)}"
+            )
+        return target_preset
+    if assume_squishy_target:
+        return "squishy"
+    return None
+
+
 def rank_items_by_burst(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -1405,6 +1475,7 @@ def rank_items_by_burst(
     assume_takedown: bool = False,
     assume_squishy_target: bool = False,
     assume_ability_amp: bool = False,
+    target_preset: Optional[str] = None,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1441,18 +1512,39 @@ def rank_items_by_burst(
     so lethality flows through ``effective_target_armor`` and out-values raw AD
     for burst archetypes. OFF or with an explicit ``target_armor>0`` the
     ranking is byte-identical.
+
+    ``target_preset`` (DSP8, default None) generalizes that binary seam into a
+    named enemy-comp profile - ``"squishy"`` / ``"bruiser"`` / ``"tank"`` /
+    ``"high_cc"`` - each substituting a representative ``(armor, MR)`` (see
+    ``_assumed_target_resists``) for an absent / zero target, so item valuation
+    reflects the comp being burst (lethality bites a tank's armor, magic pen
+    bites a high-CC enchanter's MR). ``target_preset`` wins over
+    ``assume_squishy_target`` and is the only path that also substitutes MR; the
+    legacy ``assume_squishy_target`` stays armor-only. None -> byte-identical.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
-    # DSV3 (1.126.0): burst-archetype squishy-target armor assumption. When ON
-    # and the caller did not pin a positive target_armor, substitute a
-    # representative squishy-carry armor so lethality (flat pen) is valued over
-    # raw AD in the ranking. OFF (default) or an explicit target_armor>0 ->
-    # ranking_target_armor == target_armor, so the ranking is byte-identical.
+    # DSV3 (1.126.0) + DSP8 (1.134.0): enemy-comp target-preset resist
+    # assumption. _resolve_target_preset maps target_preset (DSP8) or the legacy
+    # assume_squishy_target (DSV3 -> "squishy") to an active preset, or None.
+    # When a preset is active and the caller did not pin a positive resist, the
+    # preset's representative (armor, MR) is substituted for BOTH the baseline
+    # and every candidate, so item valuation reflects the comp being burst
+    # (lethality bites armor, magic pen bites MR). BACK-COMPAT: the
+    # assume_squishy_target path substitutes ARMOR only (the MR guard requires an
+    # explicit target_preset), so the DSV3 ranking stays byte-identical. OFF
+    # (default) -> ranking resists == caller resists, so the ranking is
+    # byte-identical.
     ranking_target_armor = target_armor
-    if assume_squishy_target and target_armor <= 0.0:
-        ranking_target_armor = _assumed_squishy_target_armor(level)
+    ranking_target_mr = target_mr
+    _active_preset = _resolve_target_preset(target_preset, assume_squishy_target)
+    if _active_preset is not None:
+        _preset_armor, _preset_mr = _assumed_target_resists(_active_preset, level)
+        if ranking_target_armor <= 0.0:
+            ranking_target_armor = _preset_armor
+        if target_preset is not None and ranking_target_mr <= 0.0:
+            ranking_target_mr = _preset_mr
     # Normalize once so baseline + every candidate share the same rune list.
     # None when absent/empty -> compute_burst_damage stays byte-identical.
     runes_norm = list(runes) if runes else None
@@ -1491,7 +1583,7 @@ def rank_items_by_burst(
         snapshot,
         champion_id=champion_id, level=level,
         item_ids=current_ids, mode=mode,
-        target_armor=ranking_target_armor, target_mr=target_mr,
+        target_armor=ranking_target_armor, target_mr=ranking_target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         target_current_hp_pct=target_current_hp_pct,
         augments=augments,
@@ -1529,7 +1621,7 @@ def rank_items_by_burst(
                 snapshot,
                 champion_id=champion_id, level=level,
                 item_ids=new_build, mode=mode,
-                target_armor=ranking_target_armor, target_mr=target_mr,
+                target_armor=ranking_target_armor, target_mr=ranking_target_mr,
                 target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
                 target_current_hp_pct=target_current_hp_pct,
                 augments=augments,
@@ -1578,10 +1670,19 @@ def rank_items_by_burst(
     )
     notes.append(f"combo={' -> '.join(combo_norm)} (source={combo_source})")
     notes.append(f"primary_scaling={baseline.primary_scaling}")
-    if assume_squishy_target and ranking_target_armor != target_armor:
+    if (
+        assume_squishy_target and target_preset is None
+        and ranking_target_armor != target_armor
+    ):
         notes.append(
             f"assume_squishy_target=True - ranked vs assumed squishy armor "
             f"{ranking_target_armor:.0f} (level {level}); lethality valued over raw AD"
+        )
+    if target_preset is not None and _active_preset is not None:
+        notes.append(
+            f"target_preset={_active_preset!r} - ranked vs assumed enemy-comp "
+            f"resists armor {ranking_target_armor:.0f} / MR "
+            f"{ranking_target_mr:.0f} (level {level})"
         )
     if stripped_trinkets:
         notes.append(
@@ -1619,7 +1720,7 @@ def rank_items_by_burst(
         baseline_burst=baseline.total_burst_damage,
         primary_scaling=baseline.primary_scaling,
         target_armor=ranking_target_armor,
-        target_mr=target_mr,
+        target_mr=ranking_target_mr,
         target_max_hp=target_max_hp,
         target_bonus_hp=target_bonus_hp,
         target_current_hp_pct=target_current_hp_pct,
