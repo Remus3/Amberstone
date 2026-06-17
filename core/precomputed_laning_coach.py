@@ -36,6 +36,7 @@ from typing import Optional, Sequence, Tuple
 from core.archetype_picks import canonical_champion_id
 from core.coach_choices import CoachChoice
 from core.laning_scenario_precompute import (
+    GEN_BANDS,
     LEVEL_BANDS,
     load_laning_scenarios,
     lookup,
@@ -252,10 +253,20 @@ def precomputed_choices(
         mana = mana_state_for(mana_fraction)
         cd = cd_state_for(ult_up)
         data = payload if payload is not None else load_laning_scenarios(mode)
-        cell = lookup(
-            data, canonical_champion_id(my_champion),
-            canonical_champion_id(enemy), band, mana, cd,
-        )
+        my_id = canonical_champion_id(my_champion)
+        enemy_id = canonical_champion_id(enemy)
+        cell = lookup(data, my_id, enemy_id, band, mana, cd)
+        if not cell and band not in GEN_BANDS:
+            # item 370 dropped L16 from the generated sweep to halve the
+            # full-roster artifact; the documented lvl>=14 fail-soft now reads
+            # the highest generated lane band (L11 / 2-item mid) rather than
+            # yielding no coaching. ARAM shared-XP rockets champs to 14-18, so
+            # without this nearest-band fallback most live ARAM laning ticks
+            # land in the empty L16 and never accrue shadow coverage for the
+            # flip gate. Descend-only: rescues the level axis, never the pair /
+            # mana / cd axes (a genuinely uncovered cell still yields []).
+            fallback_band = GEN_BANDS[-1] if GEN_BANDS else band
+            cell = lookup(data, my_id, enemy_id, fallback_band, mana, cd)
         if not cell:
             return []
         return _build_choices(cell, enemy, next_item=next_item)
