@@ -84,7 +84,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | DSP1 | ds-swarm | Build the permutation validation harness + WIN anchor under ops/audit/ds_perm_swarm/: score DS top-N vs data/rewind_history.db WIN-rate per (champ x context bucket), consume ops/audit/ds_cross_eval/data/<Champ>.json. BUILD only, no engine change. Hermetic tests. See plan "DSP1". | DONE | 19f66829 |
-| DSP2 | ds-engine | Cross-eval Cluster B fix: generic-marksman-template leaking onto non-marksman AD scorers (named systemic bug). Root-cause-first, per-champ tests, ENGINE bump + DS restart + Share sync. See plan "DSP2". | OPEN | - |
+| DSP2 | ds-engine | Cross-eval Cluster B fix: generic-marksman-template leaking onto non-marksman AD scorers (named systemic bug). Root-cause-first, per-champ tests, ENGINE bump + DS restart + Share sync. See plan "DSP2". | DONE | 6f7a5756 |
 | DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | OPEN | - |
 | DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | OPEN | - |
 | DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | OPEN | - |
@@ -109,6 +109,50 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP2 (465, 6f7a5756) DONE. Cluster-B off-class WIN-exemption seam,
+  Tier-2 ENGINE 1.128.0 -> 1.129.0, DS :8893 bounced -> 1.129.0, Share re-synced
+  (343, --check in sync) in the SAME commit. ROOT CAUSE (consumed the DSP1
+  divergent tail, Ezreal SR -39 the worst champ-mode): the item-213 ranged-
+  marksman off-class deny-set (rank.OFFCLASS_MARKSMAN_ITEM_NAMES) hard-strips
+  Sheen-line / on-hit items (Trinity Force, Spear of Shojin, Black Cleaver) from
+  EVERY ranged marksman - right for a crit ADC (Caitlyn/Jinx/Sivir) but WRONG for
+  a Sheen/ability caster-marksman: Trinity Force is Ezreal's most-built item
+  (rewind ARAM n=219, his BIS) yet excluded from the candidate pool; Spear of
+  Shojin / Black Cleaver are real Corki/Smolder/Senna builds. No kit-data axis
+  exists for "wants Sheen" (lolmath.damage_distribution is AD/AP only - cannot
+  separate Ezreal's ability-physical from Caitlyn's auto-physical), so the
+  exemption is WIN+usage anchored: NEW builder ops/audit/ds_perm_swarm/
+  build_marksman_offclass_exempt.py distills the cross-eval empirical block
+  (rewind WIN data) into agents/daemon_slayer/marksman_offclass_exempt.json
+  (exempt at n>=30 AND wr>=mode_baseline-3). FIX (DEFAULT-OFF seam, byte-identical
+  off, the DSV1-4 precedent): NEW rank_items(exempt_offclass_by_win=True) +
+  fail-soft cached table loader (_load_offclass_exemptions / _offclass_win_
+  exemptions); when ON + the champ is a ranged marksman, the exempt names are
+  subtracted from the deny-set so they re-enter the pool. 4 caster-marksmen
+  exempted (Corki/Ezreal/Senna/Smolder); pure crit ADCs (Caitlyn/Jinx/Sivir,
+  absent from the table) are byte-identical ON or OFF (verified). SEAM-FIRST
+  (EXCLUDED): rank.py does not pass exempt_offclass_by_win=True live yet; the flip
+  is appended to docs/LIVE_GAME_GATED_SYNC.md (do-not-flip-blind). TDD: 12 hermetic
+  tests red-first (ImportError) -> green (table shape, every exempt name in the
+  deny-set, crit-ADC empty, helper id/name resolution, loader fail-soft, OFF
+  preserves item-213, ON un-strips Ezreal/Corki/Smolder/Senna, ON adds ONLY the
+  exempt items over the full pool, crit-ADC byte-identical). Offline validation:
+  the seam re-includes exactly each champ's empirically-built off-class items with
+  their n/wr; crit ADCs identical. Gate: DS-dir 7156 passed / 1 skip / 1942
+  subtests; RC tests/ 8265 passed / 2 skip / 109 subtests (run after DS restart +
+  ds_share_sync so live-:8893 + Share anchors green); ruff + py_compile + ASCII/LF
+  clean; 155 ENGINE quoted pins bumped across 77 .py (0 historical refs in .py).
+  ORCHESTRATION (auto-pick, logged): INLINE sole orchestrator (R9 - one cohesive
+  engine seam, ~4 authored files, the DSP1 inline precedent); verifier subagent
+  SKIPPED per R7 (single-thread, no untrusted slice) - fresh in-thread dual-suite
+  + live :8893 probe + Share --check substituted. No frozen files touched. NEW
+  FINDING (NOT this cycle): Pyke ARAM -22 is a DISTINCT mechanism - Pyke is melee
+  (not Marksman-tagged) so he never hits the off-class filter; his burst scorer
+  ranks raw-AD/crit/AS/heal items (Sundered Sky/Essence Reaver/BORK/Triforce/IE)
+  ABOVE the lethality items he actually builds + wins on (Youmuu/Hubris/Axiom/
+  Opportunity). That is a burst-valuation gap (DSV-class), not a marksman-template
+  leak -> queue a DSP3-or-DSV row. NEXT: DSP3 (Cluster A archetype-vs-ARAM-win).
 
 - 2026-06-17 DSP1 (464, 19f66829) DONE. Built the permutation WIN-anchor harness
   ops/audit/ds_perm_swarm/ (BUILD-only, no engine change). Scores DS top-N (cross-eval
