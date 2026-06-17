@@ -206,6 +206,51 @@ def test_build_report_aggregates(db, ce_dir):
     json.dumps(rep)
 
 
+def test_build_report_anchor_match_only_excludes_cross_mode():
+    """An ARAM-anchored champ with BOTH ARAM and SR win data is scored only in ARAM by
+    default - its comp_grid is ARAM-built, so the SR row is apples-to-oranges. 171/172
+    of the live roster anchor ARAM, so this is what drops the spurious SR divergent tail.
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE matches (match_id TEXT, queue_id INTEGER, map_id INTEGER, game_mode TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE participants (match_id TEXT, champion_name TEXT, win INTEGER, "
+        "item0 INTEGER, item1 INTEGER, item2 INTEGER, item3 INTEGER, item4 INTEGER, "
+        "item5 INTEGER, item6 INTEGER)"
+    )
+    rows = []
+    mid = 0
+
+    def add(win, item0, mapid):
+        nonlocal mid
+        mid += 1
+        m = f"M{mid}"
+        conn.execute("INSERT INTO matches VALUES (?,?,?,?)", (m, 0, mapid, "X"))
+        rows.append((m, "C", win, item0, 0, 0, 0, 0, 0, 0))
+
+    for w in (1, 1, 1, 1):  # ARAM: item 1001 wins
+        add(w, 1001, 12)
+    for w in (0, 0, 0, 0):  # ARAM filler -> baseline 50%
+        add(w, 9999, 12)
+    for w in (0, 0, 0, 0, 0):  # SR: same item LOSES (would be a -lift row if scored)
+        add(w, 1001, 11)
+    conn.executemany("INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+    conn.commit()
+
+    ce = load_cross_eval_dict(_ce("C", ["1001", "7777"]))  # anchor_mode ARAM
+    win = compute_win_rates(conn)
+    rep = build_report({"C": ce}, win, PermConfig(min_item_n=1))
+    assert rep["config"]["anchor_match_only"] is True
+    assert rep["aggregate"]["n_champ_mode_considered"] == 1
+    assert {r["mode"] for r in rep["champs"]} == {"ARAM"}
+    # opt out -> the invalid cross-mode SR row reappears
+    rep2 = build_report({"C": ce}, win, PermConfig(min_item_n=1), anchor_match_only=False)
+    assert rep2["aggregate"]["n_champ_mode_considered"] == 2
+    conn.close()
+
+
 def test_load_cross_eval_parses_buckets_and_empirical(ce_dir):
     ce = load_cross_eval(ce_dir / "Goodpick.json")
     assert isinstance(ce, CrossEval)
