@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-16 - cycle 53: honest laning agreement gate [item 458]
+
+- 1 code commit (`34d3b749` fix) + this docs-sync. Source: operator cycle-53 directive "more live ARAM ticks accrued ... re-run hz_shadow_report ... consult Gemini for the laning flip/hold call; if under-powered pick the next charter-4b Haiku-to-zero headless item, root-cause-first TDD Tier-1; tell me when to queue; on run complete /done + /clear + next-cycle prompt". Tier-1, tools/+dashboard/+tests/, NO ENGINE/DS/Share, NO frozen, NO RC restart, NO backfill.
+- RE-READ: `tools/hz_shadow_report.py` laning 45/910 covered (4.95%); headline LOOKED powered (agreement 0/20 comparable-covered, by_native {hold n=20}). PROBED the raw log -> the ONLY native_action strings in the WHOLE `data/hz_choice_shadow.jsonl` are `"WAIT RESPAWN"` x105 (dead overlay) + `"COACHING DISABLED"` x8 = ZERO genuine Haiku laning verdicts. "WAIT RESPAWN" matched the `wait`->`hold` keyword, so all 20 "comparable" ticks were a dead player's respawn timer vs a live precompute trade rec = a FALSE 0% agreement + false 93-row uncovered denominator.
+- item 458 FIX 1 (report honesty): `_NON_LANING_STATE_MARKERS=("respawn","coaching disabled")`; classify_verdict returns None on a marker hit (before the phrase scan; genuine "wait for jungler" hold unaffected); `_is_non_laning_native_state` makes summarize_agreement skip dead/disabled ticks from comparable + unclassified-native + uncovered-with-native. Gate now honestly reports 0/0 comparable-covered, 0 uncovered.
+- item 458 FIX 2 (capture, Gemini-directed item (a)): `dashboard/_deterministic_coaching.py` native_action sourced only coach["action"], BLANK on some alive laning ticks (verdict in `immediate` prose) = the real alive-tick starvation. NEW `_native_laning_action` falls back action -> immediate (first non-blank), preserves a non-blank overlay action verbatim.
+- GEMINI (operator-proxy, gemini-3-pro-preview REACHABLE) ruled **HOLD** the laning coach on Haiku ("zero genuine laning verdicts captured means no signal to validate the flip") + endorsed both the report exclusion AND item (a) capture fix. +8 tests (3 report + 5 live-gate), 47 passed, py_compile + ASCII clean. INLINE (R9). NO backfill (dead/disabled rows are legit states, not corruption; capture fix forward-only).
+- NEXT (cycle 54): the alive-tick capture is now unstarved -> QUEUE another live ARAM match to accrue genuine ALIVE-state laning verdicts toward a powered precompute-vs-Haiku agreement sample, then re-read the gate (HOLD until comparable-covered is powered + agreement is clean per do-not-flip-blind). Remaining open = HZ/LBAND live-flip (do-not-flip-blind), DS Phase-D, visual captures (Game-PC :8892 down), P6 design-level - all live/operator/Gemini-gated.
+
+---
+
 # 2026-06-16 - cycle 51: HZ-A laning L16 coverage fallback [item 456]
 
 - 1 code commit (`6c5104c7` fix) + this docs-sync. Source: operator "play live Aram Mayhem matches, proceed with gemini etc headlessly + multi-agent for gate items needing live stats; tell me when to queue; on run complete /done + /clear + next-cycle prompt; do multiple even mid-match". Tier-1, core+tests, NO DS/ENGINE/Share, NO frozen. RC restarted pid 24088 -> 23380 (last_reload_ok); mode=game (operator queued ARAM Mayhem mid-cycle).
