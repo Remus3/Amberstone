@@ -71,12 +71,17 @@ the buried items are the rewind win-correlated ones.
 
 ## Cluster C: champion-specific engine bugs
 
-- Aphelios (CONFIRMED BUG, high priority): the dps scorer returns delta 0.0 for
-  EVERY item and the candidate pool collapses to Doran's starters only. His
-  gun-rotation kit breaks the dps model -> the coach surfaces a useless all-
-  Doran's, all-zero ranking. This is a genuine defect, not calibration. Root-
-  cause the dps model's Aphelios path (likely a stat/AA-model divide-by or a
-  missing base-AD path) and add a regression test. Tier-2.
+- Aphelios (FIXED - ENGINE 1.128.0, commit 27d6e2f2): the dps scorer returned
+  delta 0.0 for EVERY item and the pool collapsed to Doran's. ROOT CAUSE (not
+  a missing base-AD path - base AD was fine): compute_dps scores only the
+  basic-attack portion of the laning-scenario rotations, and Aphelios's upstream
+  lolmath scenario encodes basic=0 in every rotation, so weighted_dps was 0.
+  FIX: fall back weighted_dps = raw_attack_dps*mode_mult when all phases have
+  zero basic-attack DPS (gated on mode_mult>0 to preserve the ARAM-disabled
+  contract). Fires for 4 champs at 16.12.1 - Aphelios (the live dps bug) +
+  Cassiopeia / Fiddlesticks / Sylas (casters routed to the ability scorer, so
+  latent, but now sane). +4 regression tests. DS :8893 restarted -> 1.128.0;
+  live repro returns Yun Tal / IE / Stormrazor with real deltas.
 
 ## F2 (secondary): default sort_by="delta" is gold-blind at the top
 
@@ -104,7 +109,7 @@ limited. (Aphelios is a TRUE absence/zero - the exception.)
 
 ## Next pass (Tier-2, gated on this report, operator/Gemini scoped)
 
-1. Aphelios dps zero-output bug (Cluster C) - clearest, fix + regression test.
+1. ~~Aphelios dps zero-output bug (Cluster C)~~ DONE (ENGINE 1.128.0, 27d6e2f2).
 2. Cluster B1 melee-applicability DPS gate (highest roster reach: 16 hybrid +
    bruiser/carry MISMATCH).
 3. Cluster A ARAM archetype-override table (per-champion, override mechanism
