@@ -584,6 +584,26 @@ def _mana_fraction(coach: dict, lc: dict | None) -> float | None:
     return None
 
 
+def _native_laning_action(coach) -> str | None:
+    """The Haiku laning verdict to score against the precompute for the HZ-C1
+    agreement gate. The coach top-line ``action`` carries the laning verdict
+    when alive ("TRADE" / "FALL BACK" / "HOLD"), but on some alive ticks it is
+    blank (whitespace/empty), the intent only living in the ``immediate`` prose.
+    When ``action`` is blank, fall back to ``immediate`` so an alive laning tick
+    still captures a native signal instead of logging None (cycle-53: alive
+    ticks logged an empty native_action, starving the agreement sample). A
+    dead/disabled overlay action ("WAIT RESPAWN" / "COACHING DISABLED") is
+    non-blank, so it is preserved verbatim and excluded downstream by the
+    report's non-laning-state guard (never overridden by ``immediate``)."""
+    if not isinstance(coach, dict):
+        return None
+    for key in ("action", "immediate"):
+        val = coach.get(key)
+        if isinstance(val, str) and val.strip():
+            return val
+    return None
+
+
 def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
                                    *, path=None) -> None:
     """Fail-soft HZ-C1 validation shadow-log. Records what the PRECOMPUTED
@@ -650,7 +670,7 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             mk, str(champ), enemy,
             choices=choices, band=band, mana_state=mana_state, cd_state=cd_state,
             covered=covered,
-            native_action=coach.get("action") if isinstance(coach, dict) else None,
+            native_action=_native_laning_action(coach),
             native_choices=to_jsonable(parse_choices(coach)),
             game_time_s=gs.get("game_time_s"),
             level=level, item_count=item_count, path=path,

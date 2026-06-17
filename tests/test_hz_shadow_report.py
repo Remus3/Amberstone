@@ -146,6 +146,47 @@ def test_classify_verdict_back_off_not_recall():
     assert rep.classify_verdict("disengage now") == "back_off"
 
 
+def test_classify_verdict_non_laning_state_is_none():
+    # "WAIT RESPAWN" is a dead-player overlay state, NOT a laning verdict - it
+    # must NOT fall into the "wait"->hold keyword (cycle-53: 20/20 false ticks).
+    assert rep.classify_verdict("WAIT RESPAWN") is None
+    assert rep.classify_verdict("Wait for respawn fountain") is None
+    assert rep.classify_verdict("COACHING DISABLED") is None
+    # a genuine "wait" hold verdict is unaffected
+    assert rep.classify_verdict("wait for jungler") == "hold"
+
+
+def test_record_agreement_respawn_native_excluded():
+    # covered precompute trade rec vs a dead player's WAIT RESPAWN: the native
+    # side is not a laning verdict, so the pair is not comparable.
+    rec = {"covered": True, "choices": [{"label": "Trade Ashe"}],
+           "native_action": "WAIT RESPAWN", "native_choices": []}
+    assert rep.record_agreement(rec) is None
+
+
+def test_summarize_agreement_drops_non_laning_states():
+    records = [
+        # covered dead-state -> dropped from comparable AND unclassified
+        {"mode": "aram", "covered": True, "choices": [{"label": "Trade Ashe"}],
+         "native_action": "WAIT RESPAWN", "native_choices": []},
+        # uncovered dead-state -> dropped from uncovered_with_native too
+        {"mode": "aram", "covered": False, "choices": [],
+         "native_action": "WAIT RESPAWN", "native_choices": []},
+        # policy-disabled -> dropped
+        {"mode": "aram", "covered": True, "choices": [{"label": "Trade Ashe"}],
+         "native_action": "COACHING DISABLED", "native_choices": []},
+        # one genuine comparable agree tick survives
+        {"mode": "aram", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "TRADE", "native_choices": []},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["comparable_covered"] == 1
+    assert out["agree"] == 1
+    assert "hold" not in out["by_native"]
+    assert out["unclassified_native"] == 0
+    assert out["uncovered_with_native"] == 0
+
+
 def test_record_agreement_covered_both_classified():
     rec = {"covered": True, "choices": [{"label": "Trade now"}],
            "native_action": "TRADE", "native_choices": []}
