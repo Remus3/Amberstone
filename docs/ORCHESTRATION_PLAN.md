@@ -110,6 +110,28 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-17 DSP8 REGRESS-recheck (director directive) -> FALSE POSITIVE, no-op,
+  no fix. The gemini auditor's VERDICT: REGRESS claimed a clipboard paste artifact
+  ("67 @agents\agent2_backend\reports\20260428-223511-apply-p-audit4-m03-task-log-
+  redact.md @ L11") at agents/daemon_slayer/tests/test_burst_target_preset_dsp8.py
+  line 50. Ground-truth re-verify (CLAUDE.md Verify-before-declaring-broken, same
+  class as the 466 + 469 auditor false positives this run): the artifact is ABSENT
+  on 5 independent checks - (1) the full 192-line test file reads clean, L50 = the
+  bruiser preset dict row '"bruiser": (90.0, 55.0),'; (2) the Share/src mirror grep
+  for the artifact is empty; (3) git show HEAD:...test_burst_target_preset_dsp8.py
+  has no artifact (committed clean at f03dfc25, its only commit); (4) git status
+  working tree clean; (5) a signature sweep (".md @ L" / "@agents\" / "reports\2026"
+  / "task-log-redact") over BOTH agents/daemon_slayer/tests + Share/src/.../tests
+  returns 0 hits. The "task-log-redact" string lives ONLY in its legitimate
+  2026-04-28 agent6/agent2 report .md files, never pasted into a test - the auditor
+  conflated that real report's repo presence with a test-file paste. No file edit,
+  no Share resync (no DS source touched), no ENGINE change. DS suite re-run GREEN:
+  7272 passed / 1 skipped / 1942 subtests, exit 0 (test_burst_target_preset_dsp8.py
+  among them). ROADMAP line 12 already records DSP8 DONE @ f03dfc25 NEXT DSP9 - no
+  ROADMAP/LEDGER state change. Session status UNCHANGED (per directive). NEXT
+  director: DSP8 is verified shipped-clean - do NOT re-issue this REGRESS; advance
+  to the next OPEN item (DSP9 lolmath parity fold).
+
 - 2026-06-17 DSP8 (473, f03dfc25) DONE. Enemy-comp target-preset seam (ENGINE
   1.133.0 -> 1.134.0). Generalizes the DSV3 assume_squishy_target binary armor
   assumption into four named enemy-comp target presets on rank_items_by_burst,
