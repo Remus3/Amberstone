@@ -88,7 +88,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | DONE | 97920f56 |
 | DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | DONE | 1f7dbe62 |
 | DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | DONE | 790b0236 |
-| DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | OPEN | - |
+| DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | DONE | f3563120 |
 | DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | OPEN | - |
 | DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | OPEN | - |
 | DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | OPEN | - |
@@ -109,6 +109,54 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP6 (471, f3563120) DONE. Enemy-rune threat seam (ENGINE 1.131.0
+  -> 1.132.0). NEW agents/daemon_slayer/enemy_runes.py - the enemy-side mirror of
+  summoners.py (DSP5). ROOT (plan DSP6 + the permutation-bucket matrix): RC
+  modeled the player's OWN runes (rune_procs.py + core/rune_wpa.py) but had ZERO
+  model of the ENEMY's runes as a threat modulating the player's EHP preset
+  (survivability) or the enemy's target preset (tankiness) - the enemy-rune-
+  threat dimension was an unmodeled permutation. FIX (NEW self-contained
+  substrate, the summoners.py birth precedent): a frozen EnemyRuneThreat dataclass
+  + ENEMY_RUNE_THREATS registry keyed by Riot rune id, one pure formula closure
+  per rune on its threatened preset: Press the Attack 8005 incoming_amp (0.08 amp
+  on the player; the enemy's 8% damage-dealt amp = a 1/1.08 EHP-numerator
+  divisor), Conqueror 8010 damage_ramp (max-stack Adaptive Force 21.6-48.0 by
+  level = 12 * 1.8-4.0/stack, the legacy true-dmg-ramp lens; lifesteal 0.08 melee
+  / 0.05 ranged carried for the enemy-sustain target lens), Grasp 8437
+  poke_sustain (1.3% max-HP heal + 3.5% max-HP magic + 5 perm HP/proc, ranged
+  0.40), Second Wind 8444 poke_sustain (4% of missing HP over 10s). MAGNITUDES:
+  every coefficient is verbatim from DDragon runesReforged.json 16.12.1 longDesc
+  (authoritative; never aggregator D/aggregator A), cited per rune in the formula string -
+  unlike summoner spells, DDragon does NOT zero rune longDescs, so no wiki
+  fallback was needed (wiki cross-check only). ANTIHEAL (the 4th DSP6 bucket) is
+  NOT a rune - no rune grants Grievous Wounds (it comes from items + Ignite,
+  already in summoners.py id 14) - so it is carried as the non-rune constant
+  GRIEVOUS_WOUNDS_PCT 0.40 + the enemy_antiheal_pct(present) flag helper and is
+  EXCLUDED from ENEMY_RUNE_SEAM_IDS (documented inline). Public surface:
+  compute_enemy_rune_value + enemy_incoming_amp_pct / enemy_damage_ramp /
+  enemy_poke_sustain_pct / enemy_poke_sustain_hp / enemy_grasp_magic_proc /
+  enemy_antiheal_pct, all fail-soft (unknown id / empty / None / bad input ->
+  0.0). DEFAULT-OFF: ENEMY_RUNE_SEAM_IDS marks the ids but NO live scorer consumes
+  the module -> /rank + compute_dps + compute_ehp + compute_burst byte-identical
+  to pre-DSP6 (summoners-at-birth + DSV1-4 precedent). SEAM-FIRST (EXCLUDED): the
+  live flip = wire an EHP/target-preset consumer reading the enemy's live rune
+  set; appended to LIVE_GAME_GATED_SYNC.md section B (a specific DSP6 row +
+  dropping DSP6 from the generic placeholder) + the live-flip ledger. ENGINE bump
+  (directive-mandated + a new agents/daemon_slayer module needs Share sync): 79
+  quoted pins / 71 .py; DS :8893 bounced -> 1.132.0 live; ds_share_sync 349 files
+  --check in sync; DS + Share CHANGELOG prepended + Share/docs/02 function-ref
+  subsection added. TDD +29 (28 logic green pre-bump, the ENGINE pin red-first ->
+  green). Gate: DS-dir 7235 passed / 1 skip / 1942 subtests; RC tests/ 8281 passed
+  / 2 skip / 109 subtests (post-restart + sync); ruff + py_compile + ASCII/LF
+  clean (the 590 non-ASCII bytes in the DS CHANGELOG are pre-existing history,
+  0 introduced). INLINE sole orchestrator (R9 - one cohesive new module + its
+  ENGINE-pin bump across 71 files + Share mirror; parallel worktree slices would
+  conflict on the shared ENGINE_VERSION pins + Share; the DSP1-5 reading of plan
+  line 60); verifier skipped per R7 (single-thread) - fresh dual-suite + live
+  :8893 probe + Share --check substituted. NEXT: DSP7 (ally aura/enchanter seam,
+  extend allyamp.py + _passive_ally_grant_overrides.py). Source: gemini director
+  directive ops/loop/control/directive.md (DSP6).
 
 - 2026-06-17 DSP5 (470, 790b0236) DONE. Summoner-spell seam (ENGINE 1.130.0 ->
   1.131.0). NEW agents/daemon_slayer/summoners.py - a self-contained substrate
