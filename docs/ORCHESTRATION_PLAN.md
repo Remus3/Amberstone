@@ -89,7 +89,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | DONE | 1f7dbe62 |
 | DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | DONE | 790b0236 |
 | DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | DONE | f3563120 |
-| DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | OPEN | - |
+| DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | DONE | 69f9085d |
 | DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | OPEN | - |
 | DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | OPEN | - |
 | DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | OPEN | - |
@@ -109,6 +109,64 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP7 (472, 69f9085d) DONE. Ally aura/enchanter seam - ally enchanter
+  SHIELD/HEAL flat-HP EHP-grant (ENGINE 1.132.0 -> 1.133.0). ROOT (plan DSP7 + the
+  ally-team permutation bucket): RC modeled two ally-grant EHP modes - resist
+  (denominator add) + revive (numerator multiplier) in
+  _passive_ally_grant_overrides.py (item 289) - but item 289 DELIBERATELY EXCLUDED
+  ally shields/heals ("ability_hps THROUGHPUT, not a resist/revive term - a
+  different axis"), so the survivability an enchanter's shield/heal CONFERS on a
+  protected ally was an unmodeled permutation. FIX (the THIRD EHP-grant mode, a
+  flat NUMERATOR ADD): a flat shield/heal rides the protected ally's armor/MR curve
+  exactly like base HP, so +H raw HP scales every per-type EHP like +H max HP. NEW
+  SEPARATE registry _ALLY_FLAT_HP_GRANT_OVERRIDES (kept apart from the item-289
+  _PASSIVE_ALLY_GRANT_OVERRIDES so its 4-clean-entry shape + the exclusion test
+  test_ally_shields_heals_not_in_registry stay byte-identical) seeds 7 canonical
+  enchanter grants - Janna E / Lulu E / Karma E / Yuumi E shields + Seraphine W
+  shield + Soraka W / Nami W heals - with the verbatim per-rank BASE values probed
+  from data/daemon_slayer/16.12.1/champion_abilities.json (the source ability_hps.py
+  reads; AP ratio OMITTED - the granter's AP is a live Phase-D input, the
+  resist-registry "omit the cross-champion bonus half" precedent), amortized by NEW
+  _ALLY_SHIELD_HEAL_PROB 0.5 (the uptime midpoint between Braum-W 0.3 short-active
+  and a 1.0 permanent tether). NEW AllyGrantEntry.shield_hp/heal_hp fields (the 4
+  resist/revive entries leave both 0.0). Public: ally_flat_hp_grant(champion_id,
+  level, apply_ally_grant) fail-soft -> 0.0. CONSUMER seam (GENERIC, mirroring the
+  external_resist_* pattern): compute_ehp gains external_flat_hp (default 0.0 ->
+  byte-identical), a raw add to every per-type EHP numerator + _blend_with_heal; NEW
+  EhpResult.ally_grant_flat_hp + to_dict; negative clamped. DEFAULT-OFF: no live
+  scorer passes external_flat_hp -> /rank + compute_ehp + compute_dps + compute_burst
+  byte-identical (the DSP5/DSP6 seam-first precedent). allyamp.py (the OUTWARD
+  scorer) is SATURATED for the shield/heal buckets under its one-mechanism-per-(champ,
+  source) invariant (test_one_entry_per_champion_source + the 74-entry roster pin), so
+  it gains only a docstring cross-reference to this PROTECTED-ALLY seam (no
+  registry/score change) - the genuine gap was the EHP-grant view, implemented in the
+  correct home (feedback_audit_proposals_are_intent: implement the INTENT, confirm the
+  deviation). SEAM-FIRST (EXCLUDED): the live default-ON flip = wire a peel/EHP
+  consumer reading the live ally team's granter set; appended to
+  docs/LIVE_GAME_GATED_SYNC.md section B (a specific DSP7 row) + the live-flip ledger.
+  ENGINE bump (directive-mandated + the DS-package schema change forces a Share sync):
+  72 quoted pins / 72 .py; DS :8893 bounced (taskkill PID 17548 + schtasks /Run /TN
+  RC-DaemonSlayer) -> /health engine_version 1.133.0 confirmed; ds_share_sync 350 files
+  --check "Share/src + doc anchors + lolmath_ingest in sync"; DS + Share CHANGELOG
+  prepended. TDD: test_ally_flat_hp_grant_dsp7.py +24 (ImportError red-first -> green;
+  entry-field defaults, the 7-champ registry shape + probed base tuples, the separate
+  registry leaves item-289 at 4, flag-off 0.0, _value_at_level-anchored curve match
+  (no hardcoded rank), non-entry/blank 0.0, monotonic-by-level, compute_ehp default
+  byte-identical, positive raises every axis, +H scales like +H max HP, negative
+  clamped, to_dict carries it, end-to-end Janna grant -> ally EHP, ENGINE pin). GATE
+  (fresh this run): DS-dir 7256 passed / 1 skip / 1942 subtests exit 0 (+ vs the 7235
+  DSP6 baseline); RC tests/ 8281 passed / 2 skip / 109 subtests exit 0 (post-restart +
+  sync, 0 regressions = byte-identical confirmed); ruff All checks passed; py_compile
+  OK; ASCII/LF clean (0 introduced non-ASCII; the pre-existing DS-CHANGELOG history
+  bytes untouched). No web/* touched -> no UI ritual / snapshot (R5/R11). INLINE sole
+  orchestrator (R9 - one cohesive seam across ehp.py + _passive_ally_grant_overrides.py
+  + allyamp.py + the ENGINE-pin bump + Share mirror; parallel worktree slices would
+  conflict on the shared ENGINE pins + Share; the DSP1-6 precedent); verifier skipped
+  per R7 (single-thread) - fresh in-thread dual-suite + live :8893 probe + Share --check
+  substituted. No frozen files touched. NEXT: DSP8 (enemy-comp target-preset seam -
+  extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets).
+  Source: gemini director directive ops/loop/control/directive.md (DSP7).
 
 - 2026-06-17 DSP6 (471, f3563120) DONE. Enemy-rune threat seam (ENGINE 1.131.0
   -> 1.132.0). NEW agents/daemon_slayer/enemy_runes.py - the enemy-side mirror of
