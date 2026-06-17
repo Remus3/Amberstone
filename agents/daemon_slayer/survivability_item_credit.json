@@ -1,0 +1,253 @@
+{
+  "_meta": {
+    "anchored_to": "ops/audit/ds_perm_swarm/report/dsp10_consolidated.json (hybrid/bruiser scorer lane)",
+    "ds_patch": "16.12.1",
+    "min_rewind_n": 5,
+    "note": "DEFAULT-OFF prefer_survivability_by_win seam input (hybrid ranker). Cluster A excluded (operator-gated).",
+    "scorer_lane": "hybrid",
+    "source": "RF1 build_survivability_item_credit.py"
+  },
+  "champions": {
+    "Briar": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "6610",
+          "lift": 2.2,
+          "name": "Sundered Sky",
+          "rewind_n": 31,
+          "rewind_wr": 54.8
+        },
+        {
+          "id": "6333",
+          "lift": 0.3,
+          "name": "Death's Dance",
+          "rewind_n": 17,
+          "rewind_wr": 52.9
+        },
+        {
+          "id": "3053",
+          "lift": 11.0,
+          "name": "Sterak's Gage",
+          "rewind_n": 11,
+          "rewind_wr": 63.6
+        }
+      ]
+    },
+    "Darius": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "3053",
+          "lift": 14.5,
+          "name": "Sterak's Gage",
+          "rewind_n": 48,
+          "rewind_wr": 70.8
+        },
+        {
+          "id": "6631",
+          "lift": 1.1,
+          "name": "Stridebreaker",
+          "rewind_n": 47,
+          "rewind_wr": 57.4
+        },
+        {
+          "id": "6333",
+          "lift": 8.6,
+          "name": "Death's Dance",
+          "rewind_n": 37,
+          "rewind_wr": 64.9
+        },
+        {
+          "id": "4401",
+          "lift": 18.7,
+          "name": "Force of Nature",
+          "rewind_n": 24,
+          "rewind_wr": 75.0
+        }
+      ]
+    },
+    "Gnar": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "3071",
+          "lift": 8.7,
+          "name": "Black Cleaver",
+          "rewind_n": 23,
+          "rewind_wr": 65.2
+        },
+        {
+          "id": "3053",
+          "lift": 2.3,
+          "name": "Sterak's Gage",
+          "rewind_n": 17,
+          "rewind_wr": 58.8
+        },
+        {
+          "id": "3075",
+          "lift": 5.0,
+          "name": "Thornmail",
+          "rewind_n": 13,
+          "rewind_wr": 61.5
+        },
+        {
+          "id": "3143",
+          "lift": 18.5,
+          "name": "Randuin's Omen",
+          "rewind_n": 12,
+          "rewind_wr": 75.0
+        }
+      ]
+    },
+    "JarvanIV": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "6610",
+          "lift": 3.9,
+          "name": "Sundered Sky",
+          "rewind_n": 80,
+          "rewind_wr": 42.5
+        },
+        {
+          "id": "6333",
+          "lift": 1.9,
+          "name": "Death's Dance",
+          "rewind_n": 42,
+          "rewind_wr": 40.5
+        },
+        {
+          "id": "3053",
+          "lift": 3.3,
+          "name": "Sterak's Gage",
+          "rewind_n": 31,
+          "rewind_wr": 41.9
+        }
+      ]
+    },
+    "RekSai": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "6610",
+          "lift": 13.2,
+          "name": "Sundered Sky",
+          "rewind_n": 13,
+          "rewind_wr": 61.5
+        },
+        {
+          "id": "3065",
+          "lift": 1.7,
+          "name": "Spirit Visage",
+          "rewind_n": 10,
+          "rewind_wr": 50.0
+        }
+      ]
+    },
+    "Tryndamere": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "3748",
+          "lift": 14.5,
+          "name": "Titanic Hydra",
+          "rewind_n": 11,
+          "rewind_wr": 63.6
+        }
+      ]
+    },
+    "Udyr": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "3121",
+          "lift": 11.6,
+          "name": "Fimbulwinter",
+          "rewind_n": 22,
+          "rewind_wr": 54.5
+        },
+        {
+          "id": "3075",
+          "lift": 2.6,
+          "name": "Thornmail",
+          "rewind_n": 11,
+          "rewind_wr": 45.5
+        },
+        {
+          "id": "6665",
+          "lift": 17.1,
+          "name": "Jak'Sho, The Protean",
+          "rewind_n": 10,
+          "rewind_wr": 60.0
+        },
+        {
+          "id": "3065",
+          "lift": 19.6,
+          "name": "Spirit Visage",
+          "rewind_n": 8,
+          "rewind_wr": 62.5
+        }
+      ]
+    },
+    "Urgot": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "3748",
+          "lift": 3.1,
+          "name": "Titanic Hydra",
+          "rewind_n": 49,
+          "rewind_wr": 49.0
+        },
+        {
+          "id": "3071",
+          "lift": 2.2,
+          "name": "Black Cleaver",
+          "rewind_n": 27,
+          "rewind_wr": 48.1
+        },
+        {
+          "id": "3075",
+          "lift": 1.7,
+          "name": "Thornmail",
+          "rewind_n": 21,
+          "rewind_wr": 47.6
+        },
+        {
+          "id": "6665",
+          "lift": 17.7,
+          "name": "Jak'Sho, The Protean",
+          "rewind_n": 11,
+          "rewind_wr": 63.6
+        },
+        {
+          "id": "2501",
+          "lift": 4.1,
+          "name": "Overlord's Bloodmail",
+          "rewind_n": 10,
+          "rewind_wr": 50.0
+        }
+      ]
+    },
+    "Yasuo": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "6665",
+          "lift": 23.0,
+          "name": "Jak'Sho, The Protean",
+          "rewind_n": 20,
+          "rewind_wr": 65.0
+        },
+        {
+          "id": "3091",
+          "lift": 13.0,
+          "name": "Wit's End",
+          "rewind_n": 20,
+          "rewind_wr": 55.0
+        }
+      ]
+    }
+  }
+}
