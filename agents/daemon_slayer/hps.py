@@ -73,6 +73,7 @@ from .rank import (
     strip_arena_trinkets,
 )
 from .stats import clamp_level
+from .survivability_credit import survivability_item_ids_enchanter
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
@@ -700,6 +701,9 @@ class HpsRankedItem:
     # Phase 4(d): candidate's own unique-passive family key, always set
     # (collision-independent) - the positive "locks <family>" signal.
     unique_passive_key: str = ""
+    # RF2 enchanter survivability credit marker: 1.0 on a WIN-anchored survivability
+    # item injected + floated by the prefer_survivability_by_win seam, else 0.0.
+    survivability_score: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -714,6 +718,7 @@ class HpsRankedItem:
             "shares_dead_unique": self.shares_dead_unique,
             "dead_unique_key": self.dead_unique_key,
             "unique_passive_key": self.unique_passive_key,
+            "survivability_score": self.survivability_score,
         }
 
 
@@ -807,6 +812,7 @@ def rank_items_by_hps(
     targets_per_proc_override: Optional[float] = None,
     enchanter_only: bool = True,
     formulas: Optional[EnchanterFormulasSnapshot] = None,
+    prefer_survivability_by_win: bool = False,
 ) -> HpsRankResult:
     """Rank items by total-throughput contribution when added to current build.
 
@@ -824,6 +830,22 @@ def rank_items_by_hps(
       * ``efficiency``  - throughput gained per 1000 gold
 
     Same dead-unique dedup logic as ``rank.rank_items``.
+
+    ``prefer_survivability_by_win`` is the OPTIONAL RF2 enchanter-template seam
+    (DEFAULT-OFF). For an enchanter played front-to-back as a tank-support, the HP /
+    tank survivability items the player base wins ARAM on (Guardian's Horn / Warmog's
+    Armor / Heartsteel / Fimbulwinter; the DSP10 hps-lane buried winners) are EXCLUDED
+    from the ``enchanter_only`` pool entirely - they add zero HPS throughput, so the
+    throughput scorer never sees them and the generic enchanter template (Helia /
+    Ardent / Staff / Locket / Knight's Vow / Redemption) tops the list. When ``False``
+    (default) the output is byte-identical - ``survivability_score`` stays 0.0 and the
+    sort is unchanged. When ``True`` and the champ has a WIN-anchored
+    ``survivability_item_credit_enchanter`` entry, those tabled ids are INJECTED into
+    the candidate pool and floated above the generic template BY TABLE MEMBERSHIP
+    (model order preserved within each tier). UNLIKE the RF1 hybrid seam (which only
+    floats - the bruiser scorer already pools survivability items), RF2 must inject
+    first because ``enchanter_only`` drops them. Champs absent from the table are a
+    no-op. The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -861,6 +883,20 @@ def rank_items_by_hps(
             if eff.name in names_in_registry:
                 registry_ids.add(iid)
         only_ids = registry_ids
+
+    # RF2 (DEFAULT-OFF): resolve the champ's WIN-anchored enchanter survivability set
+    # and INJECT it into the candidate pool. The enchanter_only pool above EXCLUDES
+    # these HP/tank items (zero HPS throughput), so unlike the RF1 hybrid lane they
+    # must be added to the pool before they can be floated. Empty (-> byte-identical
+    # no-op) unless the seam is ON AND the champ is tabled.
+    champ_rec = snapshot.champions.get(str(champion_id))
+    surv_ids: frozenset[str] = (
+        survivability_item_ids_enchanter(str(champion_id), champ_rec)
+        if prefer_survivability_by_win else frozenset()
+    )
+    surv_active = bool(surv_ids)
+    if surv_active and only_ids is not None:
+        only_ids = set(only_ids) | set(surv_ids)
 
     baseline = compute_hps(
         snapshot,
@@ -909,6 +945,10 @@ def rank_items_by_hps(
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
         delta = scored.total_throughput - baseline.total_throughput
         eff = (delta / (gold / 1000.0)) if (gold > 0 and delta > 0) else 0.0
+        # RF2: 1.0 on a WIN-anchored survivability item when the seam is engaged
+        # (floated by MEMBERSHIP - these items add EHP/HP not HPS, so their delta is
+        # ~0 and a throughput sort would never surface them), else 0.0.
+        survivability_score = 1.0 if (surv_active and item_id in surv_ids) else 0.0
         ranked.append(HpsRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -921,17 +961,31 @@ def rank_items_by_hps(
             shares_dead_unique=shares_dead_unique,
             dead_unique_key=cand_key if shares_dead_unique else "",
             unique_passive_key=cand_key,
+            survivability_score=survivability_score,
         ))
 
-    if sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.hps_per_1k_gold, r.delta_hps), reverse=True)
+    def _base_key(r: HpsRankedItem) -> tuple:
+        if sort_by == "efficiency":
+            return (r.hps_per_1k_gold, r.delta_hps)
+        return (r.delta_hps, r.hps_per_1k_gold)
+
+    if surv_active:
+        # RF2: float injected survivability items above the generic enchanter
+        # template, preserving model order within each tier. Byte-identical when off
+        # (surv_active False -> the prefix term is never added).
+        ranked.sort(key=lambda r: (r.survivability_score,) + _base_key(r), reverse=True)
     else:
-        ranked.sort(key=lambda r: (r.delta_hps, r.hps_per_1k_gold), reverse=True)
+        ranked.sort(key=_base_key, reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
 
     notes: list[str] = []
+    if surv_active:
+        notes.append(
+            f"prefer_survivability_by_win=ON - {len(surv_ids)} WIN-anchored "
+            f"survivability item(s) injected + floated above the enchanter template"
+        )
     if stripped_trinkets:
         notes.append(
             f"mode=ARENA - stripped trinket(s) {list(stripped_trinkets)} "

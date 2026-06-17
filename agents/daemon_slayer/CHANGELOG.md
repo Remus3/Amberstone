@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.137.0 (RF2 enchanter-template survivability item-credit seam - the hps/enchanter scorer
+rank_items_by_hps defaults enchanter_only=True, restricting the candidate pool to the curated
+enchanter-throughput registry (Echoes of Helia / Ardent Censer / Staff of Flowing Water / Locket /
+Knight's Vow / Redemption). For an enchanter played front-to-back as a tank-support, the HP/tank
+survivability items the player base wins ARAM on are EXCLUDED from the pool entirely (zero HPS
+throughput, not in the registry), so the generic enchanter template tops the list and the
+WIN-correlated tank items never appear (the DSP10 hps-lane buried winners). DEFAULT-OFF, 2026-06-17.
+NEW agents/daemon_slayer/survivability_item_credit_enchanter.json table (Rakan: Guardian's Horn /
+Warmog's Armor / Heartsteel / Fimbulwinter; built by
+ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py from the DSP10 report's hps lane)
++ a survivability_item_ids_enchanter() loader added to survivability_credit.py (shared _parse_table,
+separate cache). rank_items_by_hps gains prefer_survivability_by_win (default False -> byte-identical,
+new survivability_score field on HpsRankedItem stays 0.0): when ON and the champ is tabled, the tabled
+ids are INJECTED into the enchanter_only pool then floated above the generic template by WIN-table
+MEMBERSHIP (model order preserved within each tier via a (survivability_score,) + base_key sort prefix).
+ROOT-CAUSE distinction from RF1: the hybrid/bruiser scorer ALREADY pools survivability items and merely
+buries them (RF1 only floats); the enchanter scorer EXCLUDES them via enchanter_only, so RF2 must INJECT
+first. Mercury's Treads (boots) + Cluster A (Zilean/Seraphine, both AP buried winners on the hps lane)
+deliberately NOT tabled. The live default-ON flip is EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md) - do not
+flip blind.)
+
 1.136.0 (RF1 generic-bruiser-template survivability item-credit seam - the hybrid/bruiser scorer
 rank_items_by_hybrid ranked a near-fixed generic AD-DPS template (Void Immolation / Blade of The
 Ruined King / Trinity Force / Heartsteel / Essence Reaver / Runaan's Hurricane) for every bruiser
