@@ -125,6 +125,47 @@ def test_live_tick_coverage_miss_still_recorded(tmp_path, monkeypatch):
     assert "covered" in rows_b[0]
 
 
+def test_native_laning_action_prefers_action():
+    assert dc._native_laning_action({"action": "TRADE", "immediate": "x"}) == "TRADE"
+
+
+def test_native_laning_action_falls_back_to_immediate_when_blank():
+    # cycle-53: alive ticks with an empty top-line action must still capture the
+    # laning intent from the immediate prose, not log a blank native signal.
+    assert dc._native_laning_action(
+        {"action": "", "immediate": "Trade now then back"}) == "Trade now then back"
+    assert dc._native_laning_action(
+        {"action": "   ", "immediate": "Back off"}) == "Back off"
+
+
+def test_native_laning_action_preserves_overlay_state():
+    # a non-blank overlay action is kept verbatim (the report's non-laning-state
+    # guard excludes it); it is never overridden by immediate.
+    assert dc._native_laning_action(
+        {"action": "WAIT RESPAWN", "immediate": "Trade now"}) == "WAIT RESPAWN"
+
+
+def test_native_laning_action_none_when_no_signal():
+    assert dc._native_laning_action({"action": "", "immediate": ""}) is None
+    assert dc._native_laning_action({}) is None
+    assert dc._native_laning_action(None) is None
+
+
+def test_live_tick_captures_immediate_when_action_blank(tmp_path, monkeypatch):
+    """Alive tick, blank top-line action, laning intent in immediate -> the
+    shadow row's native_action carries the immediate prose (the cycle-53
+    capture-starvation fix)."""
+    _patch_loaders(monkeypatch)
+    cp = tmp_path / "choice.jsonl"
+    coach = {"champion": "Ahri", "level": 6, "game_time_s": 300.0,
+             "action": "", "immediate": "Trade now then disengage"}
+    lc = {"champion": "Ahri", "enemy_team": ["Darius"]}
+    dc.shadow_log_precomputed_choices(coach, lc, "sr", path=cp)
+    rows = _read(cp)
+    assert len(rows) == 1
+    assert rows[0]["native_action"] == "Trade now then disengage"
+
+
 def test_hermeticity_default_path_redirected(tmp_path, monkeypatch):
     """A NO-path call inside a test must never touch the repo's real shadow
     log - the conftest autouse fixture redirects the module SHADOW_PATH."""
