@@ -11,9 +11,11 @@ ranker degenerates to starters. compute_dps now falls back to
 basic-attack DPS and raw is positive.
 
 Found 2026-06-16 in the comprehensive per-champion DS scorer cross-eval
-(ops/audit/ds_cross_eval/SYSTEMIC_FINDINGS.md Cluster C). 5 degenerate champs:
-Aphelios, Cassiopeia, Fiddlesticks, Sylas, Yunara (only the AD auto-attackers
-Aphelios + Yunara surface via the dps scorer; the casters route to ability).
+(ops/audit/ds_cross_eval/SYSTEMIC_FINDINGS.md Cluster C). The fallback fires for
+4 champs at patch 16.12.1: Aphelios (the live dps/carry bug) + the casters
+Cassiopeia / Fiddlesticks / Sylas (routed to the ability scorer, so latent).
+The mode_mult>0 gate keeps an ARAM-disabled champ (Yunara pre-16.11.1,
+aramDamageDealt=0) at weighted_dps=0.0.
 """
 from __future__ import annotations
 
