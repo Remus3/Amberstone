@@ -54,6 +54,23 @@ from core.smoothed_rates import shrink
 
 log = logging.getLogger("rc.rune_wpa")
 
+
+def _proc_modeled_rune_ids() -> frozenset:
+    """Rune ids the DS engine mechanically models as a combat proc
+    (``agents.daemon_slayer.rune_procs.RUNE_PROCS``). DSP4 cross-links the
+    EMPIRICAL WPA lens here with the MECHANICAL proc model so a WPA row can
+    flag whether the rune also has a modeled combat proc. Fail-soft: a
+    missing/broken engine import degrades to an empty set -> every row
+    proc_modeled=False, so the rune-WPA panel never breaks on the cross-link."""
+    try:
+        from agents.daemon_slayer.rune_procs import RUNE_PROCS  # noqa: PLC0415
+        return frozenset(RUNE_PROCS.keys())
+    except Exception:  # noqa: BLE001 - the panel must survive any engine error
+        return frozenset()
+
+
+_PROC_MODELED_RUNE_IDS = _proc_modeled_rune_ids()
+
 # DDragon runesReforged catalog for rune-id -> display name. The DEFAULT
 # resolves the patch-current bundle via _index.json ``latest_pulled`` (the
 # marker lib.ddragon.fetch maintains); _RUNES_JSON is the pinned
@@ -268,6 +285,7 @@ def compute_rune_wpa(
             "icon": icon,
             "slot_kind": slot_kind,
             "n": n,
+            "proc_modeled": rid in _PROC_MODELED_RUNE_IDS,
             "observed_winrate": round(observed, 4),
             "expected_winrate": round(expected, 4),
             "wpa": round(wpa, 4),

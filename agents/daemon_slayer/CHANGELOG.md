@@ -1331,6 +1331,30 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.130.0 (DSP4 self-rune completion seam - DEFAULT-OFF, 2026-06-17. Completes the self-rune
+combat-proc coverage in agents/daemon_slayer/rune_procs.py by adding the ONE remaining LIVE,
+pickable rune that deals direct champion proc damage and was unmodeled: Shield Bash 8401
+(Resolve). DDragon 16.12.1 runesReforged.json longDesc verbatim: "your next basic attack
+against a champion deals 5 - 30 (+2.5% Bonus Health) (+15.0% New Shield Amount) bonus adaptive
+damage" on gaining a shield. "adaptive" is the damage TYPE not a stat coefficient (scales on
+bonus health + shield amount, NO AD/AP), so compute = 5-30 by level + 0.025*bonus_hp +
+0.15*shield_amount (proc_type on_proc_burst, condition shield_gated, cooldown_s 0.0 - gated by
+shield-gain events). The registry grows 19 -> 20. DEFAULT-OFF seam: Shield Bash joins the new
+COMPLETION_RUNE_IDS frozenset; compute_burst_damage + compute_combo gain score_completion_runes
+(default False) and SKIP completion runes unless ON, so every existing rune set stays
+byte-identical to the pre-DSP4 engine (do-not-flip-blind; the live default-ON flip is
+operator-gated in docs/LIVE_GAME_GATED_SYNC.md section B + the ledger). The burst scorer has no
+live shield signal so it scores the shield-independent 5-30 + 2.5% bonus-HP floor (best-case-
+shielded approximation); shield_amount is forward-compat for a live caster-stat producer. The
+42 other unmodeled catalog runes are honest exclusions: stat-grants (Waterwalking 8232, Jack
+Of All Trades 8316), ult-only amp (Axiom Arcanist 8224), legacy/non-pickable (Deathfire Touch
+8992), and non-damage (move-speed / mana / heal / shield / armor / tenacity / gold / wards).
+core/rune_wpa.py cross-links the empirical WPA lens with the mechanical proc model: each WPA
+row now carries proc_modeled (fail-soft import of RUNE_PROCS keys, additive field). TDD: 27
+new subtests (Shield Bash math + COMPLETION_RUNE_IDS + burst/combo default-OFF byte-identical +
+ON contributes + proc_modeled annotation); 2 registry-shape pins updated 19 -> 20. Sources:
+Riot Data Dragon 16.12.1.)
+
 1.129.0 (DSP2 Cluster-B off-class WIN-exemption seam - DEFAULT-OFF, 2026-06-17. The DS
 permutation swarm DSP1 WIN-anchor (ops/audit/ds_perm_swarm) found Ezreal SR -39 the single
 worst outcome-divergent champ-mode: the item-213 ranged-marksman off-class deny-set
