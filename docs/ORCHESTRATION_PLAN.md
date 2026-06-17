@@ -118,7 +118,7 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | RF1 | ds-engine | Generic-bruiser-template cluster (HIGHEST, largest residual). The hybrid/bruiser scorer ranks a generic AD-DPS template on top (Void Immolation / Blade of The Ruined King / Trinity Force / Heartsteel / Essence Reaver / Runaan's) and BURIES the WIN-correlated survivability/sustain items that win ARAM: Spirit Visage, Jak'Sho The Protean, Sterak's Gage, Death's Dance, Black Cleaver, Force of Nature, Randuin's Omen, Thornmail, Titanic Hydra, Fimbulwinter. Affected (n>=5 buried, ARAM hybrid/bruiser per dsp10_consolidated.md): Darius (Force of Nature 24/75.0 +18.7), Yasuo (Jak'Sho 20/65.0 +23.0), Urgot, JarvanIV, Gnar, Udyr, Tryndamere, RekSai, Briar, MasterYi. Root-cause WHY the bruiser scorer under-weights the survivability axis (analogous to DSP2 generic-marksman + DSP11 generic-crit but a DISTINCT scorer lane - verify-before-redo it is not already covered). Default-OFF WIN-anchored seam vs report/dsp10_consolidated.md + rewind. Per-champ tests. NOT the deferred Cluster A set. | DONE | `faeaeb4a` |
-| RF2 | ds-engine | Enchanter-scorer survivability residual. The hps/enchanter scorer tops the generic enchanter template (Echoes of Helia / Ardent Censer / Staff of Flowing Water / Locket / Knight's Vow / Redemption) and buries the HP/tank items that win on enchanters played front-to-back as tank-support - Rakan: Guardian's Horn (11/54.5 +15.2), Warmog's, Fimbulwinter, Heartsteel, Mercury's Treads. Sibling-sweep the other enchanters in the report + grep the archetype scorers for the same template. EXCLUDE Zilean + Seraphine (deferred Cluster A AP-in-ARAM, do-NOT-touch). Root-cause-first, default-OFF WIN-anchored seam, per-champ tests. | OPEN | |
+| RF2 | ds-engine | Enchanter-scorer survivability residual. The hps/enchanter scorer tops the generic enchanter template (Echoes of Helia / Ardent Censer / Staff of Flowing Water / Locket / Knight's Vow / Redemption) and buries the HP/tank items that win on enchanters played front-to-back as tank-support - Rakan: Guardian's Horn (11/54.5 +15.2), Warmog's, Fimbulwinter, Heartsteel, Mercury's Treads. Sibling-sweep the other enchanters in the report + grep the archetype scorers for the same template. EXCLUDE Zilean + Seraphine (deferred Cluster A AP-in-ARAM, do-NOT-touch). Root-cause-first, default-OFF WIN-anchored seam, per-champ tests. | DONE | `ee826cdc` |
 | RF3 | ds-engine | Tank-scorer itemization-order residual. The ehp/tank scorer ordering diverges from WIN-anchored tank itemization, burying core resist/HP items - Rell: Giant's Belt (9/66.7 +27.1); KSante: Thornmail (14/57.1 +11.5), Negatron Cloak, Plated Steelcaps, Iceborn Gauntlet. Root-cause WHY the resist/HP-vs-mythic-tank ordering diverges from win-rate; default-OFF WIN-anchored seam vs the report; per-champ tests. Verify-before-redo vs the DSP6/DSP8 ENEMY-preset seams (this is the SELF tank-scorer, distinct). | OPEN | |
 | RF4 | ds-swarm | Residual re-run / loop-until-dry consolidation AFTER RF1-RF3 land. Re-run ops/audit/ds_perm_swarm with the new seams harness-ON, regenerate report/dsp10_consolidated, confirm the RF1-RF3 target clusters lifted (buried winners now ranked, or thin-sample-justified), append any NEW residual cluster to the Findings log. Loop-until-dry (1 no-new-cluster pass). BUILD/AUDIT only unless a clean per-champ fix surfaces. | OPEN | |
 | RF5 | test-hygiene | Hermeticity sibling sweep (insurance, non-DS). OPEN2 found tests/test_p2w4_hw2_b.py wrote the PROD ops/loop/control/controller.log via the real loop_controller.git() except-path. Systematically grep tests/ + agents/daemon_slayer/tests/ for OTHER fixtures that touch a PROD path (ops/runtime/, data/, logs/, ops/loop/control/) instead of tmp_path / a monkeypatched module global; redirect each to tmp (mirror conftest SHADOW_PATH + item-386 precedent). Pure test-hygiene, headless-safe; +regression assert the prod artifact is unchanged across the suite. Record CLEAN if none found. | OPEN | |
@@ -135,6 +135,48 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-17 RF2 (cycle 2, round-2 refill) DONE (ee826cdc) - enchanter-template
+  survivability item-credit seam, ENGINE 1.136.0 -> 1.137.0, DEFAULT-OFF.
+  ROOT-CAUSE (verify-before-redo, distinct from RF1): the hps/enchanter scorer
+  `rank_items_by_hps` defaults `enchanter_only=True` -> the candidate pool is the curated
+  enchanter-throughput registry (Helia / Ardent / Staff / Locket / Knight's Vow /
+  Redemption). The HP/tank survivability items a tank-support enchanter wins on add ZERO
+  HPS throughput, so they are not in the registry and are EXCLUDED from the pool entirely -
+  not merely buried (RF1's hybrid scorer POOLS + buries; this one OMITS). So the RF2 seam
+  must INJECT the tabled ids into the pool BEFORE floating them - the defining structural
+  difference from RF1's float-only seam. SIBLING SWEEP: the dsp10 `worst[]` hps lane has
+  exactly 3 champs - Zilean + Seraphine (both AP/mage buried winners = Cluster-A, EXCLUDED
+  per directive) + Rakan (HP/tank). After excluding Cluster A + boots (Mercury's Treads),
+  RAKAN IS THE ONLY enchanter-lane survivability defect in the report (no new cluster).
+  SHIPPED: NEW `agents/daemon_slayer/survivability_item_credit_enchanter.json` (Rakan:
+  Guardian's Horn 2051 / Warmog's 3083 / Heartsteel 3084 / Fimbulwinter 3121) + builder
+  `ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py` (hps lane);
+  `survivability_item_ids_enchanter()` added to `survivability_credit.py` (shared
+  `_parse_table`, separate cache - RF1's hybrid table byte-unaffected); NEW
+  `prefer_survivability_by_win` on `rank_items_by_hps` + `survivability_score` field on
+  HpsRankedItem; pool-injection (`only_ids |= surv_ids`) + float prefix
+  `(survivability_score,) + base_key` (byte-identical when off). SEAM-FIRST: live default-ON
+  flip EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md` section B + ledger (wires
+  `server.py _route_rank_enchanter` / `core/daemon_slayer_client.rank_enchanter_for`); NOT
+  flipped (do-not-flip-blind). ENGINE bump 88 quoted pins / 76 .py; DS :8893 bounced
+  (taskkill PID 20148 + schtasks /Run) -> /health 1.137.0; ds_share_sync 359 --check "in
+  sync"; DS + Share CHANGELOG prepended. TDD +9 (`test_survivability_item_credit_rf2.py`,
+  RED-first: loader ids + RF1-table-unaffected + unknown empty; off byte-identical w/ score
+  0.0; ON injects Heartsteel/Warmog's that OFF EXCLUDES; partition + membership +
+  membership-not-throughput proof; untabled Soraka no-op; ENGINE pin 1.137.0). GATE (fresh
+  this run): DS-dir 7302 passed / 1 skip / 1942 subtests exit 0 (+9 vs the 7293 RF1
+  baseline); RC `tests/ --ignore=tests/daemon_slayer` green (the 8 LiveFresh anchor tests
+  that transiently failed = a SEQUENCING artifact - the RC suite was launched BEFORE
+  ds_share_sync + the DS restart finished, so `__init__.py`=1.137.0 but the Share ingest
+  bundle/doc anchors + live /health still read 1.136.0 mid-window; re-run post-sync = 17
+  passed exit 0). ruff + py_compile clean; build --check in sync. VERIFIER subagent =
+  CONFIRM (all 7 claims: ENGINE pin, 3-file existence, loader fn, hps param/field, RF2 9
+  passed, builder --check in sync, json content Rakan-only / no Cluster-A / no boots).
+  INLINE sole orchestrator (R9 + coupled-seam: data -> loader -> hps ranker + shared ENGINE
+  pin + Share mirror are dependency-ordered, NOT disjoint files; the DSP2-11/RF1 inline
+  precedent) - BUT the verifier gate WAS run this cycle (instruction-5 explicit, operator
+  away). No frozen files. NEXT: RF3 (tank-scorer itemization-order residual). Source: gemini
+  director directive ops/loop/control/directive.md (RF2).
 - 2026-06-17 RF1 (cycle 1, round-2 refill) DONE (faeaeb4a) - generic-bruiser-template
   survivability item-credit seam, ENGINE 1.135.0 -> 1.136.0, DEFAULT-OFF.
   ROOT-CAUSE (verify-before-redo CONFIRMED distinct from DSP2/DSP11): the 10
