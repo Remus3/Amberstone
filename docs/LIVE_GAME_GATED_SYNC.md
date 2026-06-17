@@ -121,6 +121,22 @@ web changes); engine flips need a DS `:8893` restart.
       DPS so RF1 floats by WIN-table membership. Re-anchor `agents/daemon_slayer/survivability_item_credit.json`
       from a fresh rewind+DSP10 run each patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit.py`).
       Needs a DS `:8893` restart on flip.
+- [ ] RF2 enchanter-template survivability flip (seam shipped default-OFF, ENGINE 1.137.0): no live
+      scorer passes `rank_items_by_hps(..., prefer_survivability_by_win=True)` yet (defaults False ->
+      byte-identical). The flip WIRES the HPS/enchanter scorer-dispatch (`agents/daemon_slayer/server.py`
+      `_route_rank_enchanter` -> the `rank_items_by_hps` call ~L1571, and/or the
+      `core/daemon_slayer_client.rank_enchanter_for` wrapper) to pass `prefer_survivability_by_win=True`
+      so the WIN-anchored tank-support champ (Rakan) INJECTS + floats its buried HP/tank winners
+      (Guardian's Horn / Warmog's Armor / Heartsteel / Fimbulwinter) above the generic enchanter template
+      (Helia / Ardent / Staff / Locket / Knight's Vow / Redemption). UNLIKE the RF1 hybrid flip (float-only -
+      the bruiser scorer already pools survivability items), the enchanter `enchanter_only` pool EXCLUDES
+      these HP/tank items so the seam must INJECT them into the pool first, then float. Eyeball in a real
+      ARAM that Rakan-as-tank-support surfaces Warmog's / Heartsteel and a non-tabled enchanter
+      (Soraka / Janna) + any operator pick are byte-identical. Cluster A (Zilean / Seraphine AP-in-ARAM,
+      both with AP buried winners on the hps lane) deliberately NOT tabled. Re-anchor
+      `agents/daemon_slayer/survivability_item_credit_enchanter.json` from a fresh rewind+DSP10 run each
+      patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py`). Needs a DS `:8893`
+      restart on flip.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).
@@ -182,6 +198,19 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 RF2 (ENGINE 1.137.0): enchanter-template survivability item-credit seam shipped
+  DEFAULT-OFF. NEW `prefer_survivability_by_win` on `hps.rank_items_by_hps` (the hps/enchanter scorer
+  lane), driven by the WIN-anchored `agents/daemon_slayer/survivability_item_credit_enchanter.json`
+  (1 champ / 4 items - Rakan: Guardian's Horn / Warmog's Armor / Heartsteel / Fimbulwinter). The flip
+  wires `agents/daemon_slayer/server.py _route_rank_enchanter` (+/- the
+  `core/daemon_slayer_client.rank_enchanter_for` wrapper) to pass `prefer_survivability_by_win=True`.
+  KEY difference from RF1: the enchanter scorer's `enchanter_only` pool EXCLUDES HP/tank items entirely
+  (zero HPS throughput) so the seam INJECTS the tabled ids into the pool BEFORE floating them (RF1's
+  hybrid lane already pools them and only floats). NOT flipped (do-not-flip-blind) - validate the
+  re-rank in a real ARAM (Rakan-as-tank-support surfaces Warmog's/Heartsteel; non-tabled Soraka/Janna
+  byte-identical). Cluster A (Zilean/Seraphine AP-in-ARAM) NOT tabled. Re-anchor the table each patch
+  via `ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py`. Needs a DS `:8893`
+  restart on flip.
 - 2026-06-17 RF1 (ENGINE 1.136.0): generic-bruiser-template survivability item-credit seam shipped
   DEFAULT-OFF. NEW `prefer_survivability_by_win` on `hybrid.rank_items_by_hybrid` (the hybrid/bruiser
   scorer lane), driven by the WIN-anchored `agents/daemon_slayer/survivability_item_credit.json` (9 bruiser
