@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.131.0 (DSP5 summoner-spell seam - NEW agents/daemon_slayer/summoners.py, DEFAULT-OFF,
+2026-06-17. Net-new additive substrate: RC had ZERO summoner-spell layer. A self-contained
+registry in the rune_procs.RUNE_PROCS style modeling the 6 combat summoner spells on their
+scoring axis - Ignite 14 (antiheal_true: 70-525 true DoT by level + 40% Grievous Wounds),
+Exhaust 3 (incoming_dr: 35% damage-dealt cut on the exhausted enemy), Heal 7 (ehp_heal: 80-346
+flat heal by level + 30% MS), Barrier 21 (ehp_shield: 100-502.35 flat shield by level), Cleanse
+1 (cc_discount: 75% tenacity; the QSS item analog feeds the same lane), Ghost 6 (move_speed:
+24-50.82% MS by level). DDragon + CDragon 16.12.1 ZERO summoner magnitudes (prose-only
+descriptions, like stripped item passive formulas), so every coefficient is the LoL wiki value
+(reference_lol_wiki_access, fetched 2026-06-17), cited verbatim per spell in the formula string;
+the wiki reflects the live patch which post-dates 16.12.1, so the live default-ON flip re-anchors
+to the then-current patch. DEFAULT-OFF: SUMMONER_SEAM_IDS marks the modeled ids but NO live
+scorer consumes them, so /rank + compute_dps + compute_ehp are byte-identical to the pre-DSP5
+engine. Public surface: compute_summoner_value + summoner_antiheal_pct / summoner_incoming_dr_pct
+/ summoner_cc_discount_pct + compute_summoner_ms_pct + compute_summoner_ehp_bonus, all fail-soft
+(unknown id -> 0.0). The live default-ON consumer flip (fight_report / matchup / coach) is
+operator-gated in docs/LIVE_GAME_GATED_SYNC.md. +24 hermetic tests. ENGINE 1.130.0 -> 1.131.0.)
+
 1.130.0 (DSP4 self-rune completion seam - DEFAULT-OFF, 2026-06-17. Completes the self-rune
 combat-proc coverage in agents/daemon_slayer/rune_procs.py by adding the ONE remaining LIVE,
 pickable rune that deals direct champion proc damage and was unmodeled: Shield Bash 8401

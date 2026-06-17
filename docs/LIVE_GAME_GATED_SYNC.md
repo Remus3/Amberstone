@@ -44,8 +44,15 @@ web changes); engine flips need a DS `:8893` restart.
       supplies a real `runes` set. Adds Shield Bash's 5-30-by-level + 2.5% bonus-HP floor to a shielded
       Resolve carrier's burst. Eyeball that a Shield-Bash tank's burst rises sanely and a non-Shield-Bash
       build is unchanged. Future completion runes join `COMPLETION_RUNE_IDS` and ride the same flag.
-- [ ] DSP seam flips (as each ships): summoner-spell (DSP5), enemy-rune (DSP6),
-      ally-aura (DSP7), enemy-comp target-preset (DSP8) - flip default-ON + eyeball the re-rank.
+- [ ] DSP5 summoner-spell flip (substrate shipped default-OFF, ENGINE 1.131.0): no scorer consumes
+      `agents/daemon_slayer/summoners.py` yet. The flip WIRES a consumer that reads the registry to
+      adjust the caster's effective survivability / antiheal / CC at the right surface (fight_report /
+      matchup / a coach), keyed off the player's + enemy's actual summoner set from the live client:
+      Ignite antiheal+true (id 14), Exhaust incoming-DR 0.35 (id 3), Heal/Barrier flat EHP (7/21),
+      Cleanse 0.75 cc-discount (id 1), Ghost MS (id 6). Re-anchor the wiki magnitudes to the live
+      patch at flip time (DDragon/CDragon zero them). Eyeball the adjusted readout vs a real game.
+- [ ] DSP seam flips (as each ships): enemy-rune (DSP6), ally-aura (DSP7), enemy-comp target-preset
+      (DSP8) - flip default-ON + eyeball the re-rank.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).
@@ -88,6 +95,13 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP5 (ENGINE 1.131.0): summoner-spell seam shipped DEFAULT-OFF. NEW
+  `agents/daemon_slayer/summoners.py` registry models 6 combat summoner spells (Ignite/Exhaust/Heal/
+  Barrier/Cleanse/Ghost) on their scoring axis; no live scorer consumes it (`SUMMONER_SEAM_IDS` marks
+  the ids), so /rank is byte-identical. Live flip = wire a fight_report/matchup/coach consumer that
+  reads `summoners.py` against the live summoner set (section B above). Magnitudes are LoL-wiki-cited
+  (DDragon/CDragon zero them) and re-anchor to the live patch at flip. Validate the adjusted
+  survivability/antiheal/CC readout vs a real game before wiring.
 - 2026-06-17 DSP4 (ENGINE 1.130.0): self-rune completion seam shipped DEFAULT-OFF. Added Shield Bash
   8401 (Resolve) - the one unmodeled LIVE pickable direct-damage rune proc - to RUNE_PROCS behind
   `COMPLETION_RUNE_IDS`. Live flip = `score_completion_runes=True` on the burst/combo scorer call site
