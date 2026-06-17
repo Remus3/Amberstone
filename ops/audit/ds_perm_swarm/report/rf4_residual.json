@@ -1,0 +1,859 @@
+{
+  "dry": false,
+  "cluster_dry": true,
+  "resolution_residuals": [
+    "Rell"
+  ],
+  "resolved": [
+    {
+      "rf": "rf1",
+      "champion": "Briar",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3053",
+        "6333",
+        "6610"
+      ],
+      "off_top": [
+        "223069",
+        "3078",
+        "3084",
+        "3508",
+        "3085",
+        "6672"
+      ],
+      "on_top": [
+        "6610",
+        "3053",
+        "6333",
+        "223069",
+        "3078",
+        "3084"
+      ],
+      "surfaced": [
+        "6610",
+        "3053",
+        "6333"
+      ],
+      "floated_into_top": [
+        "6610",
+        "3053",
+        "6333"
+      ],
+      "injected": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "Darius",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3053",
+        "4401",
+        "6333",
+        "6631"
+      ],
+      "off_top": [
+        "3078",
+        "223069",
+        "3085",
+        "3508",
+        "3084",
+        "3097"
+      ],
+      "on_top": [
+        "3053",
+        "6333",
+        "6631",
+        "4401",
+        "3078",
+        "223069"
+      ],
+      "surfaced": [
+        "3053",
+        "6333",
+        "6631",
+        "4401"
+      ],
+      "floated_into_top": [
+        "3053",
+        "6333",
+        "6631",
+        "4401"
+      ],
+      "injected": [
+        "4401"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "Gnar",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3053",
+        "3071",
+        "3075",
+        "3143"
+      ],
+      "off_top": [
+        "223069",
+        "3078",
+        "3084",
+        "3508",
+        "3085",
+        "3097"
+      ],
+      "on_top": [
+        "3053",
+        "3071",
+        "3143",
+        "3075",
+        "223069",
+        "3078"
+      ],
+      "surfaced": [
+        "3053",
+        "3071",
+        "3143",
+        "3075"
+      ],
+      "floated_into_top": [
+        "3053",
+        "3071",
+        "3143",
+        "3075"
+      ],
+      "injected": [
+        "3143",
+        "3075"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "JarvanIV",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3053",
+        "6333",
+        "6610"
+      ],
+      "off_top": [
+        "223069",
+        "3078",
+        "3085",
+        "6672",
+        "3508",
+        "3084"
+      ],
+      "on_top": [
+        "6610",
+        "6333",
+        "3053",
+        "223069",
+        "3078",
+        "3085"
+      ],
+      "surfaced": [
+        "6610",
+        "6333",
+        "3053"
+      ],
+      "floated_into_top": [
+        "6610",
+        "6333",
+        "3053"
+      ],
+      "injected": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "RekSai",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3065",
+        "6610"
+      ],
+      "off_top": [
+        "223069",
+        "3078",
+        "3084",
+        "3085",
+        "3508",
+        "6672"
+      ],
+      "on_top": [
+        "6610",
+        "3065",
+        "223069",
+        "3078",
+        "3084",
+        "3085"
+      ],
+      "surfaced": [
+        "6610",
+        "3065"
+      ],
+      "floated_into_top": [
+        "6610",
+        "3065"
+      ],
+      "injected": [
+        "3065"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "Tryndamere",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3748"
+      ],
+      "off_top": [
+        "223069",
+        "3085",
+        "3078",
+        "6672",
+        "3508",
+        "3084"
+      ],
+      "on_top": [
+        "3748",
+        "223069",
+        "3085",
+        "3078",
+        "6672",
+        "3508"
+      ],
+      "surfaced": [
+        "3748"
+      ],
+      "floated_into_top": [
+        "3748"
+      ],
+      "injected": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "Udyr",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3065",
+        "3075",
+        "3121",
+        "6665"
+      ],
+      "off_top": [
+        "223069",
+        "3078",
+        "3084",
+        "3508",
+        "2510",
+        "6662"
+      ],
+      "on_top": [
+        "6665",
+        "3065",
+        "3075",
+        "223069",
+        "3078",
+        "3084"
+      ],
+      "surfaced": [
+        "6665",
+        "3065",
+        "3075"
+      ],
+      "floated_into_top": [
+        "6665",
+        "3065",
+        "3075"
+      ],
+      "injected": [
+        "6665",
+        "3065",
+        "3075"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "Urgot",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "2501",
+        "3071",
+        "3075",
+        "3748",
+        "6665"
+      ],
+      "off_top": [
+        "223069",
+        "3078",
+        "3084",
+        "3508",
+        "3085",
+        "6662"
+      ],
+      "on_top": [
+        "3748",
+        "2501",
+        "3071",
+        "6665",
+        "3075",
+        "223069"
+      ],
+      "surfaced": [
+        "3748",
+        "2501",
+        "3071",
+        "6665",
+        "3075"
+      ],
+      "floated_into_top": [
+        "3748",
+        "2501",
+        "3071",
+        "6665",
+        "3075"
+      ],
+      "injected": [
+        "6665",
+        "3075"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf1",
+      "champion": "Yasuo",
+      "lane": "hybrid",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3091",
+        "6665"
+      ],
+      "off_top": [
+        "223069",
+        "3078",
+        "3084",
+        "3508",
+        "3085",
+        "3097"
+      ],
+      "on_top": [
+        "3091",
+        "6665",
+        "223069",
+        "3078",
+        "3084",
+        "3508"
+      ],
+      "surfaced": [
+        "3091",
+        "6665"
+      ],
+      "floated_into_top": [
+        "3091",
+        "6665"
+      ],
+      "injected": [
+        "6665"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf2",
+      "champion": "Rakan",
+      "lane": "hps",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "2051",
+        "3083",
+        "3084",
+        "3121"
+      ],
+      "off_top": [
+        "6620",
+        "3504",
+        "6616",
+        "3190",
+        "3109",
+        "3107"
+      ],
+      "on_top": [
+        "2051",
+        "3083",
+        "3084",
+        "6620",
+        "3504",
+        "6616"
+      ],
+      "surfaced": [
+        "2051",
+        "3083",
+        "3084"
+      ],
+      "floated_into_top": [
+        "2051",
+        "3083",
+        "3084"
+      ],
+      "injected": [
+        "2051",
+        "3083",
+        "3084"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf3",
+      "champion": "KSante",
+      "lane": "ehp",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3075",
+        "6662"
+      ],
+      "off_top": [
+        "223069",
+        "3083",
+        "6665",
+        "2504",
+        "3084",
+        "3143"
+      ],
+      "on_top": [
+        "6662",
+        "3075",
+        "223069",
+        "3083",
+        "6665",
+        "2504"
+      ],
+      "surfaced": [
+        "6662",
+        "3075"
+      ],
+      "floated_into_top": [
+        "6662",
+        "3075"
+      ],
+      "injected": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "rf": "rf3",
+      "champion": "Rell",
+      "lane": "ehp",
+      "mode": "ARAM",
+      "tabled_ids": [
+        "3121"
+      ],
+      "off_top": [
+        "223069",
+        "3083",
+        "6665",
+        "2504",
+        "3084",
+        "3143"
+      ],
+      "on_top": [
+        "223069",
+        "3083",
+        "6665",
+        "2504",
+        "3084",
+        "3143"
+      ],
+      "surfaced": [],
+      "floated_into_top": [],
+      "injected": [],
+      "partitioned": true,
+      "resolved": false
+    }
+  ],
+  "classification": {
+    "n_worst": 40,
+    "by_champion": {
+      "Zilean": {
+        "category": "cluster_a_deferred",
+        "scorer": "hps",
+        "n_buried": 7,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Shaco": {
+        "category": "cluster_a_deferred",
+        "scorer": "burst",
+        "n_buried": 7,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Pyke": {
+        "category": "covered_dsp11",
+        "scorer": "burst",
+        "n_buried": 5,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Udyr": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 7,
+        "n_surv_hits": 3,
+        "top_surv_lift": 19.64,
+        "surv_hit_ids": [
+          "3065",
+          "6665",
+          "3121"
+        ]
+      },
+      "Nilah": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 6,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Zaahen": {
+        "category": "no_buried",
+        "scorer": "hybrid",
+        "n_buried": 0,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Kayle": {
+        "category": "cluster_a_deferred",
+        "scorer": "ability",
+        "n_buried": 6,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "TwistedFate": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 3,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Seraphine": {
+        "category": "cluster_a_deferred",
+        "scorer": "hps",
+        "n_buried": 4,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Rakan": {
+        "category": "covered_rf2",
+        "scorer": "hps",
+        "n_buried": 5,
+        "n_surv_hits": 2,
+        "top_surv_lift": 15.16,
+        "surv_hit_ids": [
+          "2051",
+          "3083"
+        ]
+      },
+      "Katarina": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 5,
+        "n_surv_hits": 2,
+        "top_surv_lift": 12.24,
+        "surv_hit_ids": [
+          "3748",
+          "3084"
+        ]
+      },
+      "Briar": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 5,
+        "n_surv_hits": 1,
+        "top_surv_lift": 10.97,
+        "surv_hit_ids": [
+          "3053"
+        ]
+      },
+      "Caitlyn": {
+        "category": "dps_burst_lane",
+        "scorer": "dps",
+        "n_buried": 4,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Yasuo": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 4,
+        "n_surv_hits": 2,
+        "top_surv_lift": 23.04,
+        "surv_hit_ids": [
+          "6665",
+          "3091"
+        ]
+      },
+      "Anivia": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 4,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Gnar": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 7,
+        "n_surv_hits": 2,
+        "top_surv_lift": 18.48,
+        "surv_hit_ids": [
+          "3143",
+          "3071"
+        ]
+      },
+      "Tryndamere": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 7,
+        "n_surv_hits": 1,
+        "top_surv_lift": 14.51,
+        "surv_hit_ids": [
+          "3748"
+        ]
+      },
+      "RekSai": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 3,
+        "n_surv_hits": 1,
+        "top_surv_lift": 13.22,
+        "surv_hit_ids": [
+          "6610"
+        ]
+      },
+      "Senna": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 3,
+        "n_surv_hits": 1,
+        "top_surv_lift": 11.51,
+        "surv_hit_ids": [
+          "3071"
+        ]
+      },
+      "Rell": {
+        "category": "covered_rf3",
+        "scorer": "ehp",
+        "n_buried": 2,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Vex": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 1,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Quinn": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 7,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Yunara": {
+        "category": "dps_burst_lane",
+        "scorer": "dps",
+        "n_buried": 3,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Darius": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 5,
+        "n_surv_hits": 3,
+        "top_surv_lift": 18.7,
+        "surv_hit_ids": [
+          "4401",
+          "3053",
+          "6333"
+        ]
+      },
+      "Xerath": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 3,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "KSante": {
+        "category": "covered_rf3",
+        "scorer": "ehp",
+        "n_buried": 4,
+        "n_surv_hits": 1,
+        "top_surv_lift": 11.49,
+        "surv_hit_ids": [
+          "3075"
+        ]
+      },
+      "Corki": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 5,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Heimerdinger": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 6,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Lillia": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 4,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Malzahar": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 2,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Ekko": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 7,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Zoe": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 4,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Fizz": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 4,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "MasterYi": {
+        "category": "thin_or_noise",
+        "scorer": "hybrid",
+        "n_buried": 3,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "KogMaw": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 6,
+        "n_surv_hits": 1,
+        "top_surv_lift": 8.83,
+        "surv_hit_ids": [
+          "3091"
+        ]
+      },
+      "Urgot": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 6,
+        "n_surv_hits": 1,
+        "top_surv_lift": 17.65,
+        "surv_hit_ids": [
+          "6665"
+        ]
+      },
+      "Elise": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 1,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "JarvanIV": {
+        "category": "covered_rf1",
+        "scorer": "hybrid",
+        "n_buried": 6,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Evelynn": {
+        "category": "ability_mage_lane",
+        "scorer": "ability",
+        "n_buried": 4,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      },
+      "Naafiri": {
+        "category": "covered_dsp11",
+        "scorer": "burst",
+        "n_buried": 3,
+        "n_surv_hits": 0,
+        "top_surv_lift": 0.0,
+        "surv_hit_ids": []
+      }
+    },
+    "new_clusters": [],
+    "dry": true
+  }
+}
