@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-17 - DSP4 REGRESS directive: 1 real fix + 1 false positive (headless gemini-loop cycle 6)
+
+- Executor cycle 6 (`ops/loop`, gemini director). Gemini AUDITOR returned REGRESS on item-468 DSP4 with 2 items; BOTH verified vs ground truth FIRST (S7 + the item-466 auditor-false-positive precedent).
+- (1) REAL - `burst.py` rune-procs note: gated on `if _scored_runes:` (post-filter), so `runes=[8401]` default-OFF swallowed the "rune procs +0.0 (0 known rune(s))" note; the pre-DSP4 engine fired it for any supplied rune set (8401 then unknown -> `_n=0`). Broke the burst.py docstring byte-identical contract. FIX: gate on `if runes:`, keep `_n` over `_scored_runes`. SCORING + totals unchanged; live `/rank` (runes=None) unaffected. NO ENGINE bump (notes-string only).
+- (2) FALSE POSITIVE - `frozenset[int]` "import crash on Py<3.9": refuted (`from __future__ import annotations` line 42 = lazy string; Python 3.14; `import rune_procs` -> `IMPORT_OK [8401] frozenset 20`). No change made.
+- Sibling sweep: `combo.py` gates its rune note on `if rune_proc > 0.0:` (damage value) -> already byte-identical, no change.
+- TDD: +2 subtests (notes byte-identical for `runes=[8401]`; `runes=None` emits no note) red->green. DS 7182 passed / 1942 subtests; RC 8281 passed; 0 regressions. ruff/py_compile/ASCII clean. Share re-synced (`--check` green). Commit `d5868799`; this living-docs commit follows.
+- NEXT: DSP5 summoner-spell seam (NEW `agents/daemon_slayer/summoners.py`, default-OFF).
+
+---
+
 # 2026-06-17 - DSP4 self-rune completion seam: Shield Bash 8401 (headless gemini-loop cycle 5)
 
 - Executor cycle 5 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP4 (self-rune completion). Commit `1f7dbe62` (code+Share+CHANGELOGs+LIVE_GAME_GATED) pushed; this living-docs commit follows.
@@ -26,15 +37,3 @@
 - DS :8893 bounced -> 1.129.0; Share re-synced (343, --check green). +12 hermetic tests. DS-dir 7156 / RC 8265 green. INLINE (R9), verifier SKIPPED per R7 (fresh in-thread re-verify).
 - DON'T REDO: DSP2 is DONE. Pyke ARAM -22 is a DISTINCT burst-scorer gap (Pyke is melee, never hits the marksman filter; burst over-values raw-AD/crit over lethality) -> queue a DSV/DSP3 row, do NOT re-attack via the off-class filter.
 - NEXT: DSP3 (Cluster A archetype-vs-ARAM-win divergence, `core/archetype_picks`). Tracker `docs/ORCHESTRATION_PLAN.md`.
-
----
-
-# 2026-06-16 - COMPREHENSIVE per-champion DS scorer cross-eval EXECUTED [172/172]
-
-- Executed the NEXT-SESSION directive end-to-end in ONE session (multi-session Gemini+AHK loop NOT needed - the 158-agent workflow finished the roster). Commit 89934b80 pushed. Deliverable: ops/audit/ds_cross_eval/ (PROGRAM.md gate+rubric, SYSTEMIC_FINDINGS.md, REPORT.md, data/ + reports/ + verdicts/ x172).
-- KICKOFF GATE locked with Gemini (operator-proxy, gemini-3-pro-preview, all 3 CONFIRM): D1 report-first (nominate retunes, no blind change); D2 anchor = rewind WIN outcomes, owned n>=8 else all-player else synthetic, mode-segregated; D3 self-rune scope only (enemy/ally runes have ZERO DS scorer surface -> BACKLOG net-new Tier-2). Gemini RISK = ARAM skew, honored via mode-segregated anchor + mode-matched scorer calls.
-- Harness (deterministic, regenerable on DS bump): tools/ds_cross_eval/probe_champion.py + run_all.py + aggregate.py. 172/172 data probes, 0 fail, 21.6s. Per champ: archetype, 5-cell comp grid (right axis per scorer: EHP->enemy-dmg-type, DPS/burst->target-resist), comp-blind flag full-40-deep, rewind win-correlated items mode/scope-segregated, evidence tier. Read-only audit - NO engine/ENGINE_VERSION/scorer/Share touched.
-- One agent per champion (14 pilot + 158 workflow, sonnet). Result 42 MISMATCH / 129 MINOR / 1 OK. Defect mass hybrid 16/43 + hps 6/15 + dps 9/28 + burst 4/9; ability 5/53 + ehp 2/24 sound.
-- SYSTEMIC clusters (engine-grounded, refuted my own first guess): A archetype divergence vs ARAM win-axis (Malphite/Shaco/Kayle/hps cluster -> per-champ ARAM override candidates); B generic marksman template on AD scorers (BotRK/Runaan's #1 every ADC, loses 25-44% wr; melee mis-credit subsumes the seed); C Aphelios dps ZERO-OUTPUT bug (all items 0.0, pool collapses to Doran's - confirmed real). efficiency-sort fix REFUTED (staples drop further); F2 Void Immolation 6000g gold-blind top secondary; F3 "absent"=buried-below-rank-12 (top-12 truncation caveat on agent verdicts).
-- FOLLOW-UP (same session, all pushed): Cluster C Aphelios dps zero-output bug FIXED (ENGINE 1.127.0 -> 1.128.0, commit 27d6e2f2 + doc-accuracy c9735f6b). Root cause = compute_dps scores only the basic-attack rotation portion; Aphelios scenario encodes basic=0 every phase -> weighted_dps=0 -> all-Doran's/0.0. Fix = fall back weighted_dps = raw_attack_dps*mode_mult (mode_mult>0 gate preserves the ARAM-disabled contract; fires for Aphelios + casters Cassio/Fiddle/Sylas). +4 TDD tests; DS 7144 / Share re-synced 341; DS :8893 -> 1.128.0 live. Doc-hygiene: ROADMAP trimmed 83135->78057 (274be121) + Share CHANGELOG/docs/05 refresh (aa8336ad). LEDGER item 463.
-- NEXT (Tier-2, gated on per-champ rewind-WIN validation FIRST, operator/Gemini scoped; full record SYSTEMIC_FINDINGS.md + BACKLOG): (1) Aphelios DONE; (2) Cluster B1 melee-applicability DPS gate (widest reach: 16 hybrid + bruiser/carry); (3) Cluster A ARAM archetype-override table (cs_archetype_picks mechanism exists); (4) F2 gold-aware top. Each = ENGINE bump + dual suite + Share mirror.
