@@ -96,7 +96,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP11 | ds-engine | Cluster B2 kit-axis item-crediting fix (Gemini PART C verdict 2026-06-17, from the DSP10 dsp10_consolidated report): the dps/burst scorers give caster-ADC / lethality-assassin / crit-melee kits a generic crit-marksman template instead of their WIN-axis - Pyke wins lethality (Opportunity/Youmuu's), Nilah wins crit (Immortal Shieldbow/IE/Navori), Ezreal wins Manamune/Trinity. Root-cause-first (WHY the template - candidate applicability vs DPS credit model), default-OFF seam, WIN-anchored vs report/dsp10_consolidated.md + rewind. ENGINE bump + DS restart + Share sync. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) stays a deferred operator policy decision (do-NOT-auto-flip). See plan "DSP10" + report/dsp10_consolidated.md. | DONE | `0c2b88e5` |
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | DONE | `a30cbba4` (code+mine, item 457) + docs this cycle |
 | LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | DONE | `ba3d3ea1` |
-| OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | OPEN | - |
+| OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | DONE | 5445502e |
 | OPEN2 | test-hygiene | tests/test_p2w4_hw2_b.py git() error-path tests call the real loop_controller.git() and pollute the production ops/loop/control/controller.log (monkeypatch subprocess.run but not control_dir). Redirect control_dir to tmp_path in those tests (conftest SHADOW_PATH precedent, item 386). | OPEN | - |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
@@ -110,6 +110,41 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 OPEN1 (cycle 18) DONE (5445502e) - unify RC LCU page-name prefix.
+  VERIFY-BEFORE-REDO: the directive's "4 divergent templates" premise is STALE.
+  All 3 NON-frozen producers already emit the canonical "RC: " prefix -
+  loadout_resolver.py:360/373 (item 178), routes_loadout.py:189/201 (item 213
+  removed "RC Experimental - "), routes_sr_draft.py:59/75 (born "RC: "), the
+  agent default gamepc_lcu_agent.py:1000/1158 "RC: Auto", and
+  lcu_rune_writer.RuneWriter.PAGE_PREFIX "RC: ". The ONLY remaining divergence
+  is the FROZEN lcu/lcu_client.py:405 _RC_PAGE_PREFIX = "RC - " - SKIPPED per
+  directive (frozen, self-contained internal constant, no non-frozen seam to
+  route around) and FUNCTIONALLY HARMLESS: the gamepc_lcu_agent delete filter
+  (L1183, ("RC ","RC:","RC-")) still reclaims an "RC - " page (name[:3]=="RC ").
+  Root of the stale premise = the Item-210 comment block at
+  gamepc_lcu_agent.py:1164 which still claimed routes_loadout.py emits
+  "RC Experimental - " (removed item 213). SHIPPED: (1) NEW
+  tests/test_rc_page_name_prefix_unified.py (+6) - pins the previously-UNPINNED
+  cross-producer contract ("RC: " on every non-frozen producer +
+  RuneWriter.PAGE_PREFIX; legacy "RC Experimental"/"RC - " absent from the 3
+  producers; the 3-prefix wipe filter never narrowed back to "RC: " only =
+  item-210 max-owned-pages incident guard; frozen lcu_client.py holdout
+  documented); (2) corrected the stale comment to the now-unified reality.
+  Tier-1 (test) + Tier-0 (comment); no engine/schema/ENGINE/web -> NO DS
+  restart / Share sync / UI ritual / full dual suite (R5). GATE (fresh this
+  run): page-name blast radius (the new guard + test_apply_runes_page_filter +
+  test_sr_draft_apply + test_champ_select_item213 + test_loadout_user_builds_
+  merge + test_csv_rune_push_on_selection_change) 78 passed exit 0; new guard
+  alone 6 passed; ASCII hygiene (smart-quote/mojibake/u2500) 12 passed; ruff
+  clean (touched files); py_compile OK. INLINE sole orchestrator (R9 - 1 new
+  test + 1 comment edit = 2 cohesive files; parallel worktrees add only
+  overhead + merge contention; the DSP/LGS inline precedent); verifier SKIPPED
+  per R7 (own single-thread, no untrusted slice - the cross-producer grep +
+  fresh blast-radius run IS the independent verify). No frozen files edited
+  (lcu_client.py skipped). No new OPEN work surfaced. NEXT: OPEN2 (test
+  control_dir leak). Source: gemini director directive
+  ops/loop/control/directive.md (OPEN1).
 
 - 2026-06-17 LGS1 (cycle 17) DONE - live-sync audit, pure docs (Tier-0, ZERO .py edits -> no ENGINE bump
   / DS restart / Share sync / py_compile). Audited the three sources the directive names. (1) rank.py
