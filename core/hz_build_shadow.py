@@ -30,6 +30,10 @@ SHADOW_PATH: Path = _APP_DIR / "data" / "hz_build_shadow.jsonl"
 # Per-target dedup keyed by str(target_path).
 _LAST_SIG: dict[str, str] = {}
 
+# Per-target last LOGGED game_time_s, for the stale-snapshot freshness guard
+# (see log_precomputed_build). Keyed by str(target_path) like _LAST_SIG.
+_LAST_GT: dict[str, float] = {}
+
 
 def log_precomputed_build(
     mode: str,
@@ -64,6 +68,19 @@ def log_precomputed_build(
         enemies = [str(e) for e in (enemy_comp or []) if e]
         choice_list = list(choices or [])
         target = path if path is not None else SHADOW_PATH
+        tkey = str(target)
+
+        # Stale-snapshot freshness guard: a post-game liveclient cache keeps
+        # serving the final snapshot at a FROZEN game_time_s (cycle 54 observed
+        # a ~22-min WAIT-RESPAWN tail at one identical game_time after a game
+        # ended). The coarse-state sig re-logs such a tick whenever an
+        # incidental field (item_count) drifts, bloating the jsonl + diluting
+        # the coverage/dedup denominator. Suppress a tick whose game_time_s is
+        # byte-identical to the last LOGGED tick for this target. Exact equality
+        # ONLY - a new game resets game_time below the frozen value, so a "<="
+        # test would wrongly suppress the entire opening of the next game.
+        if game_time_s is not None and _LAST_GT.get(tkey) == game_time_s:
+            return None
 
         try:
             gt_bucket = int((game_time_s or 0) // 5)
@@ -73,7 +90,7 @@ def log_precomputed_build(
             mode, my_champion, tuple(enemies), lean, item_count,
             gt_bucket, bool(covered), len(choice_list),
         ))
-        if _LAST_SIG.get(str(target)) == sig:
+        if _LAST_SIG.get(tkey) == sig:
             return None
 
         try:
@@ -101,7 +118,9 @@ def log_precomputed_build(
         target.parent.mkdir(parents=True, exist_ok=True)
         with target.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record) + "\n")
-        _LAST_SIG[str(target)] = sig
+        _LAST_SIG[tkey] = sig
+        if game_time_s is not None:
+            _LAST_GT[tkey] = game_time_s
 
         return record
 

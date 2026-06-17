@@ -84,9 +84,44 @@ def test_dedup_breaks_on_item_count(tmp_path):
     kw = dict(lean="anti_tank", choices=[], covered=True, item_count=1,
               game_time_s=601.0, path=p)
     hbs.log_precomputed_build("sr", "Ahri", ["Malphite"], **kw)
+    # item_count change at an ADVANCING game_time -> new sig -> writes (a real
+    # purchase lands on a fresh tick, not the frozen game_time the stale-
+    # snapshot guard suppresses).
     kw2 = dict(kw)
     kw2["item_count"] = 2
+    kw2["game_time_s"] = 601.5
     rec = hbs.log_precomputed_build("sr", "Ahri", ["Malphite"], **kw2)
+    assert rec is not None
+    assert len(_read(p)) == 2
+
+
+def test_freshness_guard_suppresses_frozen_snapshot(tmp_path):
+    # A post-game liveclient cache re-serves the final snapshot at a FROZEN
+    # game_time_s; an item_count drift would otherwise re-log it. The freshness
+    # guard suppresses a tick whose game_time_s is byte-identical to the last
+    # logged tick for the target.
+    p = tmp_path / "build.jsonl"
+    kw = dict(lean="anti_tank", choices=[], covered=True, item_count=5,
+              game_time_s=1406.19, path=p)
+    first = hbs.log_precomputed_build("aram", "Viktor", ["Ashe"], **kw)
+    kw2 = dict(kw)
+    kw2["item_count"] = 6
+    second = hbs.log_precomputed_build("aram", "Viktor", ["Ashe"], **kw2)
+    assert first is not None
+    assert second is None
+    assert len(_read(p)) == 1
+
+
+def test_new_game_after_frozen_logs(tmp_path):
+    # Exact-equality (not "<=") so a NEW game whose clock resets BELOW the
+    # frozen tail is never wrongly suppressed.
+    p = tmp_path / "build.jsonl"
+    hbs.log_precomputed_build("aram", "Viktor", ["Ashe"], lean="anti_tank",
+                              choices=[], covered=True, item_count=5,
+                              game_time_s=1406.19, path=p)
+    rec = hbs.log_precomputed_build("aram", "Viktor", ["Ashe"], lean="anti_tank",
+                                    choices=[], covered=True, item_count=0,
+                                    game_time_s=30.0, path=p)
     assert rec is not None
     assert len(_read(p)) == 2
 
