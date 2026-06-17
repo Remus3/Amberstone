@@ -62,8 +62,15 @@ web changes); engine flips need a DS `:8893` restart.
       `enemy_antiheal_pct(True)` 0.40. Re-anchor magnitudes to the live patch at flip (DDragon
       16.12.1 today). Eyeball that vs a real game the player's anti-tank / sustain build shifts
       sanely when the enemy runs PtA / Conqueror / Grasp, and a no-threat lobby is unchanged.
-- [ ] DSP seam flips (as each ships): ally-aura (DSP7), enemy-comp target-preset
-      (DSP8) - flip default-ON + eyeball the re-rank.
+- [ ] DSP7 ally aura/enchanter flip (substrate shipped default-OFF, ENGINE 1.133.0): no scorer
+      passes `compute_ehp(external_flat_hp=)` yet. The flip WIRES a peel/EHP consumer that, for a
+      protected ally, sources `_passive_ally_grant_overrides.ally_flat_hp_grant(granter, level, True)`
+      from the live ally team's enchanter (Janna E / Lulu E / Karma E / Yuumi E / Seraphine W
+      shields, Soraka W / Nami W heals) and feeds it as `external_flat_hp` into the protected ally's
+      `compute_ehp`. Re-anchor the base shield/heal values + add the granter's live AP ratio at flip
+      (the seam ships the base floor only). Eyeball that an ally beside a Janna/Lulu/Soraka shows a
+      sanely higher effective-HP / peel-survivability and a solo ally is unchanged.
+- [ ] DSP seam flips (as each ships): enemy-comp target-preset (DSP8) - flip default-ON + eyeball.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).
@@ -106,6 +113,15 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP7 (ENGINE 1.133.0): ally aura/enchanter seam shipped DEFAULT-OFF. NEW separate
+  registry `_ALLY_FLAT_HP_GRANT_OVERRIDES` (in `_passive_ally_grant_overrides.py`) models the flat
+  EHP an enchanter's shield/heal CONFERS on a protected ally - the THIRD ally-grant EHP mode
+  (after resist + revive) and the SHIELD/HEAL bucket item-289 excluded. 7 enchanter grants
+  (Janna/Lulu/Karma/Yuumi E + Seraphine W shields, Soraka/Nami W heals), base values from
+  `champion_abilities.json` 16.12.1. Generic consumer seam `compute_ehp(external_flat_hp=)` (default
+  0.0 -> byte-identical); no live scorer passes it. Live flip = wire a peel/EHP consumer reading the
+  live ally team's granter set (section B above). Re-anchor base + add the granter AP ratio at flip.
+  Validate the protected-ally EHP uplift vs a real game before wiring.
 - 2026-06-17 DSP6 (ENGINE 1.132.0): enemy-rune threat seam shipped DEFAULT-OFF. NEW
   `agents/daemon_slayer/enemy_runes.py` (the enemy-side mirror of `summoners.py`) models 4 enemy
   runes on the preset each threatens - Press the Attack 8005 (incoming_amp 0.08 on the player),

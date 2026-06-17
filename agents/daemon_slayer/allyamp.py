@@ -49,6 +49,17 @@ kind-weighted, reach-scaled value; the headline is their sum):
 
 Kinds, scopes and magnitudes are hand-authored from the verbatim patch-16.11
 champion kits by the item-304 ten-channel roster fan-out.
+
+DSP7 (2026-06-17) ally aura/enchanter seam - the OUTWARD-scorer half: this axis
+is the GRANTER view (how much combat value a champion pumps into her team) and
+is saturated under its one-mechanism-per-(champion, source) schema, so the
+enchanter SHIELD / HEAL buckets are already modeled here (Janna E SHIELD, Soraka
+W HEAL, ...). The complementary PROTECTED-ALLY view - the flat survivability
+(Effective HP) a teammate's shield / heal CONFERS on the ally who receives it -
+is the distinct DSP7 lift: ``_passive_ally_grant_overrides.ally_flat_hp_grant``
+(the THIRD ally-grant EHP mode, fed into ``ehp.compute_ehp(external_flat_hp=)``).
+This scorer measures the buff a champion SENDS; that seam measures the EHP an
+ally RECEIVES. Both default-OFF / inert until a Phase-D consumer reads them.
 """
 
 from __future__ import annotations
