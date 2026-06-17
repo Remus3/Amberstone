@@ -1,0 +1,12 @@
+{
+  "champion": "MasterYi",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add The Collector (6676) and Guinsoo's Rageblade (3124) to scorer pool; review Kraken Slayer overweight (ARAM all wr 38.9% n=18).",
+  "headline": "Scorer axis+comp correct; pool gap: Collector (76.9% wr n=13) and Guinsoo (63.3% all) absent; Kraken Slayer overranked at 38.9% empirical."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Varus",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Muramana to scorer item pool; verify The Collector and Wit's End are evaluated - all three above ARAM baseline wr but absent from top-8.",
+  "headline": "Varus dps scorer OK on axis+comp; pool gap: Muramana (71.4% wr self) and Collector/Wit's End absent from top-8."
+}

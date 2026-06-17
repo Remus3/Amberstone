@@ -1,0 +1,12 @@
+{
+  "champion": "Rakan",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Guardian's Horn + Warmog's Armor to Rakan hps scorer ARAM item pool; investigate tank-archetype branch for ARAM playstyle",
+  "headline": "Rakan hps scorer: zero overlap with above-baseline ARAM items; tank/HP items win but absent from enchanter pool"
+}

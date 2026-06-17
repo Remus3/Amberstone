@@ -1,0 +1,12 @@
+{
+  "champion": "Riven",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Elevate Eclipse (rank 10->top-5); add Sundered Sky to pool (absent, wr 50%); fix hybrid EHP comp-blind (shift=1, negligible); demote Runaan's Hurricane (melee ineligible at rank 5)",
+  "headline": "comp_blind hybrid scorer buries Eclipse (66.7% wr, rank 10) and omits Sundered Sky (50% wr, absent); Runaan ranks 5th on melee"
+}

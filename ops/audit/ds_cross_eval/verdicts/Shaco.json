@@ -1,0 +1,12 @@
+{
+  "champion": "Shaco",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": false,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "false",
+  "severity": "MISMATCH",
+  "nominated_retune": "Elevate secondary archetype mage to co-primary for ARAM; route to mage scorer or add AP hybrid-scalar so Liandry/Blackfire Torch/Luden score above Trinity Force and Essence Reaver",
+  "headline": "Burst scorer recommends AD build (Trinity Force/IE/Eclipse) but ARAM empirical winners are all AP (Blackfire Torch 65.1%, Liandry 62.3%); AD Collector at 36.0% wr"
+}

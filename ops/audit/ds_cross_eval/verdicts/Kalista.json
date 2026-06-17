@@ -1,0 +1,12 @@
+{
+  "champion": "Kalista",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "enemy_damage_type comp-blind (max_shift=0); add AP responsiveness so Wit's End rises vs AP comps; add Berserker's Greaves to item pool; audit Phantom Dancer (87.5% wr, absent top-8); demote crit-burst items absent from empirical Kalista builds",
+  "headline": "dps scorer comp-blind on damage type; crit-burst items dominate over empirical on-hit staples; Berserker's Greaves absent entirely"
+}

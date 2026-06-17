@@ -1,0 +1,611 @@
+{
+  "champion": "Seraphine",
+  "db_name": "Seraphine",
+  "archetype": {
+    "primary": "enchanter",
+    "secondary": "mage",
+    "source": "default"
+  },
+  "scorer": "hps",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_all",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 21.4263,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.2416,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.1879,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 5,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 9.0508,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 6.5631,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.3489,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.5363,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.1342,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 21.4263,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.2416,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.1879,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 5,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 9.0508,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 6.5631,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.3489,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.5363,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.1342,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 21.4263,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.2416,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.1879,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 5,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 9.0508,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 6.5631,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.3489,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.5363,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.1342,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 21.4263,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.2416,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.1879,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 5,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 9.0508,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 6.5631,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.3489,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.5363,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.1342,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "6620",
+        "name": "Echoes of Helia",
+        "score": 21.4263,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 2,
+        "id": "3504",
+        "name": "Ardent Censer",
+        "score": 15.2416,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 3,
+        "id": "6616",
+        "name": "Staff of Flowing Water",
+        "score": 12.1879,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2250
+      },
+      {
+        "rank": 4,
+        "id": "3109",
+        "name": "Knight's Vow",
+        "score": 10.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 5,
+        "id": "3190",
+        "name": "Locket of the Iron Solari",
+        "score": 9.0508,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 6,
+        "id": "3107",
+        "name": "Redemption",
+        "score": 6.5631,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 7,
+        "id": "4005",
+        "name": "Imperial Mandate",
+        "score": 6.3489,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2400
+      },
+      {
+        "rank": 8,
+        "id": "3222",
+        "name": "Mikael's Blessing",
+        "score": 3.5363,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2300
+      },
+      {
+        "rank": 9,
+        "id": "6617",
+        "name": "Moonstone Renewer",
+        "score": 0.1342,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "target_resist",
+    "comp_blind": true,
+    "enemy_damage_type": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    },
+    "target_resist": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    }
+  },
+  "rune_relevant": false,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 1,
+        "wr": 0.0,
+        "items": []
+      },
+      "all": {
+        "n": 136,
+        "wr": 56.6,
+        "items": [
+          {
+            "id": "3118",
+            "name": "Malignance",
+            "n": 71,
+            "wr": 59.2
+          },
+          {
+            "id": "6653",
+            "name": "Liandry's Torment",
+            "n": 70,
+            "wr": 51.4
+          },
+          {
+            "id": "3020",
+            "name": "Sorcerer's Shoes",
+            "n": 62,
+            "wr": 56.5
+          },
+          {
+            "id": "3116",
+            "name": "Rylai's Crystal Scepter",
+            "n": 62,
+            "wr": 56.5
+          },
+          {
+            "id": "3158",
+            "name": "Ionian Boots of Lucidity",
+            "n": 58,
+            "wr": 58.6
+          },
+          {
+            "id": "2503",
+            "name": "Blackfire Torch",
+            "n": 41,
+            "wr": 53.7
+          },
+          {
+            "id": "3040",
+            "name": "Seraph's Embrace",
+            "n": 36,
+            "wr": 52.8
+          },
+          {
+            "id": "4645",
+            "name": "Shadowflame",
+            "n": 21,
+            "wr": 61.9
+          },
+          {
+            "id": "6617",
+            "name": "Moonstone Renewer",
+            "n": 21,
+            "wr": 38.1
+          },
+          {
+            "id": "1052",
+            "name": "Amplifying Tome",
+            "n": 20,
+            "wr": 60.0
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 7,
+        "wr": 100.0,
+        "items": [
+          {
+            "id": "3158",
+            "name": "Ionian Boots of Lucidity",
+            "n": 6,
+            "wr": 100.0
+          },
+          {
+            "id": "6617",
+            "name": "Moonstone Renewer",
+            "n": 5,
+            "wr": 100.0
+          }
+        ]
+      },
+      "all": {
+        "n": 86,
+        "wr": 65.1,
+        "items": [
+          {
+            "id": "3158",
+            "name": "Ionian Boots of Lucidity",
+            "n": 49,
+            "wr": 65.3
+          },
+          {
+            "id": "3116",
+            "name": "Rylai's Crystal Scepter",
+            "n": 24,
+            "wr": 58.3
+          },
+          {
+            "id": "6617",
+            "name": "Moonstone Renewer",
+            "n": 22,
+            "wr": 68.2
+          },
+          {
+            "id": "6620",
+            "name": "Echoes of Helia",
+            "n": 21,
+            "wr": 47.6
+          },
+          {
+            "id": "1056",
+            "name": "Doran's Ring",
+            "n": 20,
+            "wr": 85.0
+          },
+          {
+            "id": "3870",
+            "name": "Dream Maker",
+            "n": 17,
+            "wr": 64.7
+          },
+          {
+            "id": "3040",
+            "name": "Seraph's Embrace",
+            "n": 17,
+            "wr": 64.7
+          },
+          {
+            "id": "2503",
+            "name": "Blackfire Torch",
+            "n": 17,
+            "wr": 82.4
+          },
+          {
+            "id": "6653",
+            "name": "Liandry's Torment",
+            "n": 16,
+            "wr": 93.8
+          },
+          {
+            "id": "3020",
+            "name": "Sorcerer's Shoes",
+            "n": 15,
+            "wr": 66.7
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

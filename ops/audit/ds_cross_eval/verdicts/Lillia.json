@@ -1,0 +1,12 @@
+{
+  "champion": "Lillia",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Demote Rabadon's Deathcap (scorer rank 4, empirical wr=18.2 vs 41.0 baseline). Add Cosmic Drive to pool (wr=44.1, n=34, above baseline, currently absent).",
+  "headline": "Ability scorer correct axis/comp; Rabadon's overvalued (rank 4, wr 18.2 vs 41.0 baseline) and Cosmic Drive absent from pool."
+}

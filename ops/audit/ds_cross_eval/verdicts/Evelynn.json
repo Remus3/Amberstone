@@ -1,0 +1,12 @@
+{
+  "champion": "Evelynn",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Promote Lich Bane into top-8 pool (empirical wr 57.1 n=14 above baseline 52.8, absent from scorer top-12). Promote Luden's Echo (scorer rank 12, empirical wr 62.5 n=8). Demote Void Staff rank 6 (empirical wr 42.9).",
+  "headline": "Ability scorer axis correct; Lich Bane (wr 57.1, n=14) absent from top-12 and Luden's Echo underranked (rank 12, wr 62.5) vs Void Staff rank 6 (wr 42.9)."
+}

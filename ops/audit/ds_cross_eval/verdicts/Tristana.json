@@ -1,0 +1,12 @@
+{
+  "champion": "Tristana",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "The Collector (78.3% wr, n=23) absent from scorer top-8 in all cells; BotRK overranked at #1 vs empirical 61.5% wr. Check execute passive modeling and BotRK squishy %HP scaling.",
+  "headline": "MINOR: The Collector missing from scorer pool despite 78.3% ARAM wr; BotRK overranked at #1 vs empirical 61.5%."
+}

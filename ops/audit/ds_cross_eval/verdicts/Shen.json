@@ -1,0 +1,12 @@
+{
+  "champion": "Shen",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Titanic Hydra to scorer pool; audit Unending Despair/Sunfire Aegis/Randuin's Omen over-credit vs HP-stack items (all below 48.1% baseline empirically despite scorer top-8 placement).",
+  "headline": "Shen ehp axis correct, comp responsive; Titanic Hydra pool gap + Unending Despair/Sunfire/Randuin's overscored vs empirical."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Jhin",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Jhin RFC-Collector lift: add champion-specific affinity weights for Rapid Firecannon (absent from top-8 despite 60.9% wr n=23) and The Collector (rank 11 scorer vs 56.7% wr n=30); investigate BoRK rank-1 overscoring with no empirical high-wr representation.",
+  "headline": "MINOR: RFC (60.9% wr n=23) absent from scorer top-8; The Collector (56.7% wr n=30) ranked 11; BoRK rank-1 with no empirical backing."
+}

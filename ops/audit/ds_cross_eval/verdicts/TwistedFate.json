@@ -1,0 +1,12 @@
+{
+  "champion": "TwistedFate",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo to scorer pool; review Rabadon's Deathcap overrank (43.2% wr vs 55.8% baseline); review Lich Bane + Rapid Firecannon weights",
+  "headline": "MINOR: Luden's Echo (55.9% wr, n=102) absent from scorer top-8; Rabadon's overranked at 43.2% wr"
+}

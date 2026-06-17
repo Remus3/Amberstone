@@ -1,0 +1,12 @@
+{
+  "champion": "Jinx",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": null,
+  "severity": "MINOR",
+  "nominated_retune": "Lift Yun Tal Wildarrows and The Collector on dps carry scorer; both absent from top-8 despite wr 70.6% and 77.4% respectively (ARAM self n>=31)",
+  "headline": "Jinx dps/carry axis correct and comp-responsive; Yun Tal + Collector missing from scorer top-8 despite being highest-wr ARAM staples"
+}

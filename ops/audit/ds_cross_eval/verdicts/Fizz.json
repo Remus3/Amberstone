@@ -1,0 +1,12 @@
+{
+  "champion": "Fizz",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Luden's Echo rank (empirical wr 58.3% n=36, scorer rank 11); reduce Stormsurge (scorer rank 7, empirical wr 40.5% below 46.7% baseline); reduce Zhonya's Hourglass (scorer rank 9, empirical wr 35.5%).",
+  "headline": "Fizz ability scorer: correct axis/comp responsiveness but Luden's Echo underranked (rank 11, wr 58.3%) and Stormsurge overranked (rank 7, wr 40.5%)."
+}

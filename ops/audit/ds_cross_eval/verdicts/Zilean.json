@@ -1,0 +1,12 @@
+{
+  "champion": "Zilean",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": false,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "rearchetype primary=mage secondary=enchanter; switch scorer hps->mage so AP items (Luden's, Shadowflame, Rabadon's) rank top",
+  "headline": "hps/enchanter scorer vs AP damage wins (Shadowflame 65.5wr, Rabadon's 61.8wr); zero scorer/empirical overlap; switch to mage scorer"
+}

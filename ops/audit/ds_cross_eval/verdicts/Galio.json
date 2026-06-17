@@ -1,0 +1,12 @@
+{
+  "champion": "Galio",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (id=3121) to EHP item pool; most-purchased ARAM item (n=44, wr=61.4% vs 58.9% baseline) absent from all scorer cells.",
+  "headline": "Galio EHP pool gap: Fimbulwinter absent from all scorer cells despite being most-purchased item (n=44, wr=61.4% vs 58.9% baseline)."
+}

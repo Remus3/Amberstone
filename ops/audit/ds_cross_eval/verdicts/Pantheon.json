@@ -1,0 +1,12 @@
+{
+  "champion": "Pantheon",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Reduce hybrid EHP term dominance for Void Immolation (6000g inflates d_ehp to 4495, score 1.89 vs #2 at 1.12); lift Black Cleaver (+7 target_resist shift), Death's Dance, Spear of Shojin into top-8 pool; consider per-gold DPS floor to stop 6000g items commanding rank 1.",
+  "headline": "Pantheon hybrid scorer top-8 has zero empirical overlap; Black Cleaver 61.3% wr and Death's Dance 57.8% wr absent; Void Immolation 6000g inflates EHP rank."
+}

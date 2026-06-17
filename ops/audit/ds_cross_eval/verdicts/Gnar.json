@@ -1,0 +1,12 @@
+{
+  "champion": "Gnar",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "fix comp_blind in hybrid scorer (enemy_damage_type weight near-zero, shift=2 max); penalize Heartsteel D_EHP overweight (36% wr vs 56.5% baseline); add Black Cleaver + Randuin's Omen to effective pool",
+  "headline": "Gnar hybrid comp-blind (shift=2) + Heartsteel r4 at 36% wr (20pp below base); Black Cleaver 65% wr missing from top-8"
+}

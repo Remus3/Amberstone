@@ -1,0 +1,12 @@
+{
+  "champion": "Singed",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Rylai's Crystal Scepter, Rod of Ages, Liandry's Torment to EHP scorer pool; these are the top-n AP hybrid items (n=56/52/42) with above-baseline wr that are fully absent from all scorer cells.",
+  "headline": "EHP scorer pool misses AP hybrid path (Rylai's n=56 wr=50%, RoA n=52 wr=53.8%, Liandry's n=42 wr=50% all absent)"
+}

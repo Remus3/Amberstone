@@ -1,0 +1,12 @@
+{
+  "champion": "Nasus",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Reduce DPS weight in hybrid scorer when archetype secondary=tank so Spirit Visage/Frozen Heart/Thornmail/Force of Nature enter top-8",
+  "headline": "Hybrid DPS weight blocks 4 empirical tank staples (FoN 64.7% wr, Thornmail 59.3%, FH 55.9%, SV 55.3%) from top-8; Trinity Force rank-2 scores below baseline"
+}

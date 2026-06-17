@@ -1,0 +1,758 @@
+{
+  "champion": "Aphelios",
+  "db_name": "Aphelios",
+  "archetype": {
+    "primary": "carry",
+    "secondary": "bruiser",
+    "source": "default"
+  },
+  "scorer": "dps",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_self",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "1054",
+        "name": "Doran's Shield",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 2,
+        "id": "1055",
+        "name": "Doran's Blade",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 3,
+        "id": "1056",
+        "name": "Doran's Ring",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 4,
+        "id": "1086",
+        "name": "Doran's Bow",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 5,
+        "id": "1120",
+        "name": "Doran's Helm",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 6,
+        "id": "123430",
+        "name": "Rite of Ruin",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "124011",
+        "name": "Sword of Blossoming Dawn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2350
+      },
+      {
+        "rank": 8,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 9,
+        "id": "2003",
+        "name": "Health Potion",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 50
+      },
+      {
+        "rank": 10,
+        "id": "2051",
+        "name": "Guardian's Horn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 950
+      },
+      {
+        "rank": 11,
+        "id": "2065",
+        "name": "Shurelya's Battlesong",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 12,
+        "id": "2138",
+        "name": "Elixir of Iron",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 500
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "1054",
+        "name": "Doran's Shield",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 2,
+        "id": "1055",
+        "name": "Doran's Blade",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 3,
+        "id": "1056",
+        "name": "Doran's Ring",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 4,
+        "id": "1086",
+        "name": "Doran's Bow",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 5,
+        "id": "1120",
+        "name": "Doran's Helm",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 6,
+        "id": "123430",
+        "name": "Rite of Ruin",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "124011",
+        "name": "Sword of Blossoming Dawn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2350
+      },
+      {
+        "rank": 8,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 9,
+        "id": "2003",
+        "name": "Health Potion",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 50
+      },
+      {
+        "rank": 10,
+        "id": "2051",
+        "name": "Guardian's Horn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 950
+      },
+      {
+        "rank": 11,
+        "id": "2065",
+        "name": "Shurelya's Battlesong",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 12,
+        "id": "2138",
+        "name": "Elixir of Iron",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 500
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "1054",
+        "name": "Doran's Shield",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 2,
+        "id": "1055",
+        "name": "Doran's Blade",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 3,
+        "id": "1056",
+        "name": "Doran's Ring",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 4,
+        "id": "1086",
+        "name": "Doran's Bow",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 5,
+        "id": "1120",
+        "name": "Doran's Helm",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 6,
+        "id": "123430",
+        "name": "Rite of Ruin",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "124011",
+        "name": "Sword of Blossoming Dawn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2350
+      },
+      {
+        "rank": 8,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 9,
+        "id": "2003",
+        "name": "Health Potion",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 50
+      },
+      {
+        "rank": 10,
+        "id": "2051",
+        "name": "Guardian's Horn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 950
+      },
+      {
+        "rank": 11,
+        "id": "2065",
+        "name": "Shurelya's Battlesong",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 12,
+        "id": "2138",
+        "name": "Elixir of Iron",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 500
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "1054",
+        "name": "Doran's Shield",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 2,
+        "id": "1055",
+        "name": "Doran's Blade",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 3,
+        "id": "1056",
+        "name": "Doran's Ring",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 4,
+        "id": "1086",
+        "name": "Doran's Bow",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 5,
+        "id": "1120",
+        "name": "Doran's Helm",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 6,
+        "id": "123430",
+        "name": "Rite of Ruin",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "124011",
+        "name": "Sword of Blossoming Dawn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2350
+      },
+      {
+        "rank": 8,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 9,
+        "id": "2003",
+        "name": "Health Potion",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 50
+      },
+      {
+        "rank": 10,
+        "id": "2051",
+        "name": "Guardian's Horn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 950
+      },
+      {
+        "rank": 11,
+        "id": "2065",
+        "name": "Shurelya's Battlesong",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 12,
+        "id": "2138",
+        "name": "Elixir of Iron",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 500
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "1054",
+        "name": "Doran's Shield",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 2,
+        "id": "1055",
+        "name": "Doran's Blade",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 3,
+        "id": "1056",
+        "name": "Doran's Ring",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 4,
+        "id": "1086",
+        "name": "Doran's Bow",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 400
+      },
+      {
+        "rank": 5,
+        "id": "1120",
+        "name": "Doran's Helm",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 450
+      },
+      {
+        "rank": 6,
+        "id": "123430",
+        "name": "Rite of Ruin",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "124011",
+        "name": "Sword of Blossoming Dawn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2350
+      },
+      {
+        "rank": 8,
+        "id": "126697",
+        "name": "Hubris",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2950
+      },
+      {
+        "rank": 9,
+        "id": "2003",
+        "name": "Health Potion",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 50
+      },
+      {
+        "rank": 10,
+        "id": "2051",
+        "name": "Guardian's Horn",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 950
+      },
+      {
+        "rank": 11,
+        "id": "2065",
+        "name": "Shurelya's Battlesong",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2200
+      },
+      {
+        "rank": 12,
+        "id": "2138",
+        "name": "Elixir of Iron",
+        "score": 0.0,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 500
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "target_resist",
+    "comp_blind": true,
+    "enemy_damage_type": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    },
+    "target_resist": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    }
+  },
+  "rune_relevant": false,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 22,
+        "wr": 54.5,
+        "items": [
+          {
+            "id": "3006",
+            "name": "Berserker's Greaves",
+            "n": 19,
+            "wr": 57.9
+          },
+          {
+            "id": "3031",
+            "name": "Infinity Edge",
+            "n": 15,
+            "wr": 60.0
+          },
+          {
+            "id": "6676",
+            "name": "The Collector",
+            "n": 11,
+            "wr": 81.8
+          },
+          {
+            "id": "3085",
+            "name": "Runaan's Hurricane",
+            "n": 9,
+            "wr": 66.7
+          },
+          {
+            "id": "3153",
+            "name": "Blade of The Ruined King",
+            "n": 6,
+            "wr": 33.3
+          },
+          {
+            "id": "3036",
+            "name": "Lord Dominik's Regards",
+            "n": 6,
+            "wr": 66.7
+          },
+          {
+            "id": "3032",
+            "name": "Yun Tal Wildarrows",
+            "n": 5,
+            "wr": 40.0
+          }
+        ]
+      },
+      "all": {
+        "n": 119,
+        "wr": 42.0,
+        "items": [
+          {
+            "id": "3031",
+            "name": "Infinity Edge",
+            "n": 84,
+            "wr": 42.9
+          },
+          {
+            "id": "3006",
+            "name": "Berserker's Greaves",
+            "n": 81,
+            "wr": 42.0
+          },
+          {
+            "id": "6676",
+            "name": "The Collector",
+            "n": 68,
+            "wr": 44.1
+          },
+          {
+            "id": "3085",
+            "name": "Runaan's Hurricane",
+            "n": 50,
+            "wr": 50.0
+          },
+          {
+            "id": "3072",
+            "name": "Bloodthirster",
+            "n": 32,
+            "wr": 53.1
+          },
+          {
+            "id": "3032",
+            "name": "Yun Tal Wildarrows",
+            "n": 29,
+            "wr": 37.9
+          },
+          {
+            "id": "3036",
+            "name": "Lord Dominik's Regards",
+            "n": 29,
+            "wr": 41.4
+          },
+          {
+            "id": "1038",
+            "name": "B. F. Sword",
+            "n": 17,
+            "wr": 47.1
+          },
+          {
+            "id": "3035",
+            "name": "Last Whisper",
+            "n": 16,
+            "wr": 37.5
+          },
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 16,
+            "wr": 50.0
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 0,
+        "wr": null,
+        "items": []
+      },
+      "all": {
+        "n": 25,
+        "wr": 36.0,
+        "items": [
+          {
+            "id": "3006",
+            "name": "Berserker's Greaves",
+            "n": 20,
+            "wr": 40.0
+          },
+          {
+            "id": "3031",
+            "name": "Infinity Edge",
+            "n": 16,
+            "wr": 37.5
+          },
+          {
+            "id": "6676",
+            "name": "The Collector",
+            "n": 11,
+            "wr": 36.4
+          },
+          {
+            "id": "1055",
+            "name": "Doran's Blade",
+            "n": 11,
+            "wr": 27.3
+          },
+          {
+            "id": "3036",
+            "name": "Lord Dominik's Regards",
+            "n": 6,
+            "wr": 66.7
+          },
+          {
+            "id": "1036",
+            "name": "Long Sword",
+            "n": 5,
+            "wr": 60.0
+          },
+          {
+            "id": "1037",
+            "name": "Pickaxe",
+            "n": 5,
+            "wr": 20.0
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

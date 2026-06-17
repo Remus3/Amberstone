@@ -1,0 +1,12 @@
+{
+  "champion": "Ekko",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Lich Bane and Hextech Rocketbelt to ability scorer pool; verify on-hit+AP proc-item scoring covers passive-interaction items",
+  "headline": "Ability scorer AP axis correct; Lich Bane (n=86 wr=50%) and Rocketbelt (n=50 wr=54%) absent from scorer pool entirely"
+}

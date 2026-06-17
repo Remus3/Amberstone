@@ -1,0 +1,12 @@
+{
+  "champion": "KogMaw",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": false,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Switch primary archetype to carry, scorer to carry or dps; on-hit items (Wit's End 51.4%, Terminus 51.5%, Berserker's 50.0%) win empirically while scorer-top Liandry's (rank 1) loses at 37.1% wr vs 42.6% baseline",
+  "headline": "KogMaw mage/ability scorer wrong axis: on-hit carry wins (Wit's End 51.4%, Terminus 51.5%), Liandry's rank-1 loses at 37.1% wr vs 42.6% base"
+}

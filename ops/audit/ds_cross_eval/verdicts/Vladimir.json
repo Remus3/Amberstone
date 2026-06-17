@@ -1,0 +1,12 @@
+{
+  "champion": "Vladimir",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Cosmic Drive to scorer pool (ARAM n=51 wr 47.1 > baseline 45.2, absent from top-8); evaluate Spirit Visage (n=31 wr 48.4, heal-amp synergy with W self-heal).",
+  "headline": "Ability scorer axis correct; Cosmic Drive and Spirit Visage are above-baseline ARAM staples absent from scorer pool."
+}

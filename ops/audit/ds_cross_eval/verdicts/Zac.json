@@ -1,0 +1,12 @@
+{
+  "champion": "Zac",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Apply empirical-underperform penalty to Sunfire Aegis for Zac (38.5% wr vs 44.9% baseline, n=26) to push it below scorer top-8 in ad_squishy cell.",
+  "headline": "Zac ehp/tank MINOR: Sunfire Aegis overranked (rank 8 ad_squishy, 38.5% wr vs 44.9% baseline n=26); axis + comp responsiveness correct."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Nidalee",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo to ability scorer item pool; it is the highest-n empirical item (n=27 self, wr=33.3% > 32.1% baseline) yet absent from scorer top-12.",
+  "headline": "Nidalee ability scorer correct AP axis; Luden's Echo (n=27, wr=33.3%) missing from scorer pool is a MINOR gap."
+}

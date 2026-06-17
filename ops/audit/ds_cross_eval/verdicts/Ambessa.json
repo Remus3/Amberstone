@@ -1,0 +1,12 @@
+{
+  "champion": "Ambessa",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "enable enemy_damage_type shift weight in hybrid scorer for bruiser; add Black Cleaver + Sundered Sky to scorer pool (missing high-wr staples 71.4%/68.8%)",
+  "headline": "comp_blind=TRUE hybrid EHP: near-zero AD/AP shift (max +1); Black Cleaver 71.4% wr and Sundered Sky 68.8% wr absent from scorer top-12"
+}

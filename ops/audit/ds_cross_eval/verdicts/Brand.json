@@ -1,0 +1,12 @@
+{
+  "champion": "Brand",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Rylai's Crystal Scepter (62.7% wr, n=118) and Malignance (59.2% wr, n=71) to ability scorer pool; both are high-frequency above-baseline ARAM staples absent from top-8.",
+  "headline": "Brand ability scorer misses Rylai's (62.7% wr, n=118) and Malignance (59.2% wr, n=71) - strongest above-baseline empirical staples absent from top-8."
+}

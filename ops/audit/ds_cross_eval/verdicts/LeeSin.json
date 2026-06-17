@@ -1,0 +1,12 @@
+{
+  "champion": "LeeSin",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "hybrid scorer: raise enemy_damage_type weight; investigate DPS over-weight surfacing ADC items (Runaan's, Essence Reaver) Lee Sin never builds over Eclipse/Death's Dance",
+  "headline": "comp_blind hybrid EHP + ADC item pool dominates scorer; Eclipse rank 10, Death's Dance absent; Runaan's/Essence Reaver rank 3-5"
+}

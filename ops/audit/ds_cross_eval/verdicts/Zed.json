@@ -1,0 +1,12 @@
+{
+  "champion": "Zed",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": true,
+  "severity": "MINOR",
+  "nominated_retune": "audit burst scorer item-effect weights for Voltaic Cyclosword (6699, SR wr 60.7) and Eclipse (6692, ARAM all wr 45.1) - both missing from squishy top-8 despite above-baseline WR",
+  "headline": "Zed burst axis correct, comp responsive; Voltaic Cyclosword (SR wr 60.7) and Eclipse absent from scorer squishy pool"
+}

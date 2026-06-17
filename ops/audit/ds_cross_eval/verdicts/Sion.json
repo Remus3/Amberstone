@@ -1,0 +1,12 @@
+{
+  "champion": "Sion",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Penalize Jak'Sho (empirical wr 42.1% vs 53.9% baseline, n=19) and Thornmail (44.2%, n=43) in EHP tank scorer; small bonus for Hollow Radiance (60.9% wr, strong AP-comp riser).",
+  "headline": "EHP axis correct; Jak'Sho ranks top-7/8 in scorer but loses empirically at 42.1% wr (11.8 pp below baseline, n=19)."
+}

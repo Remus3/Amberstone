@@ -1,0 +1,12 @@
+{
+  "champion": "Vayne",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost on-hit AS items (Guinsoo's Rageblade, Wit's End, Recurve Bow) in dps scorer; all three are top empirical wr winners absent from top-8. Revisit Kraken Slayer weight (scorer rank 2, empirical wr 50.0%). Likely missing Silver Bolts on-hit multiplier or AS value pathway.",
+  "headline": "Vayne dps scorer misses top on-hit AS staples (Wit's End 73.7%, Guinsoo's 72.9%, Recurve Bow 70.8% all absent from top-8); Kraken Slayer over-ranked at #2 with only 50.0% wr."
+}

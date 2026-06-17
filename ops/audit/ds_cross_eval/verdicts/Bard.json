@@ -1,0 +1,12 @@
+{
+  "champion": "Bard",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Blend hps+mage scorer or swap anchor archetype to mage-primary for ARAM; scorer top-8 has zero overlap with empirical above-baseline winners (Statikk Shiv 65.2%, Nashor's 60.0%, Rapid Firecannon 55.9%, Lich Bane 54.0%).",
+  "headline": "hps scorer recommends pure enchanter kit but ARAM empirical winners are all AP/carry; zero scorer-top-8 overlap with above-baseline builds."
+}

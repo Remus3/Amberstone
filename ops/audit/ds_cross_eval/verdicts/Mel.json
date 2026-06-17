@@ -1,0 +1,12 @@
+{
+  "champion": "Mel",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Seraph's Embrace (ARAM wr 58.3% n=24) and Cosmic Drive (54.5% n=33) to ability scorer pool; both above baseline but absent from top-12. Check Shadowflame rank 5 vs empirical 43.0% wr (n=79).",
+  "headline": "Mel ability scorer core aligned; Seraph's Embrace and Cosmic Drive above-baseline but missing from scorer pool - MINOR gap."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Caitlyn",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost The Collector and Lord Dominik's Regards in scorer pool; penalize Yun Tal Wildarrows (scorer rank 7, wr=35.0 self n=20); investigate BotRK rank-1 over-weighting (score 81.9 vs wr=47.2 empirical).",
+  "headline": "Pool gap: Collector(52.2wr) + LDR(54.5wr) absent from top-8; BotRK over-scored vs empirical; Yun Tal winning scorer rank but losing empirically."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Olaf",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Stridebreaker (6631), Experimental Hexplate (3073), Sundered Sky (6610) in hybrid scorer pool; scorer over-weights ADC crit items (Runaan's, Kraken Slayer, Essence Reaver top-8) while all 3 above-baseline empirical staples are absent from scorer top-8.",
+  "headline": "Olaf hybrid scorer pools ADC crit items top-8 but empirical winners (Stridebreaker 62.5%, Hexplate 62.5%, Sundered Sky 60%) are all absent."
+}

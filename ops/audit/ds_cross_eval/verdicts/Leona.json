@@ -1,0 +1,12 @@
+{
+  "champion": "Leona",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter, Mercury's Treads, Guardian's Horn to item pool; audit Warmog's/Heartsteel over-ranking vs empirical underperformance",
+  "headline": "EHP axis correct, comp-responsive; Fimbulwinter/Merc's Treads/Guardian's Horn missing from top-8 despite above-baseline wr; Warmog's/Heartsteel over-ranked"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Khazix",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "true",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add assassin-archetype item affinity weights in burst scorer: penalize crit-class items (Essence Reaver #1, Trinity Force #2, Infinity Edge #4, Bloodthirster #6) that dominate scorer top-4 but are absent from empirical ARAM builds; boost lethality+AH items (Edge of Night 60.0% wr absent from top-12, Opportunity 56.2% wr absent from top-12) that win empirically.",
+  "headline": "Burst scorer ranks crit/ADC items (Essence Reaver #1, TF #2, IE #4) over lethality staples; Edge of Night (60% wr) and Opportunity (56.2% wr) absent from top-12."
+}

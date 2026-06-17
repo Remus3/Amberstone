@@ -1,0 +1,12 @@
+{
+  "champion": "Ahri",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Demote Wooglet's Witchcap (scorer rank 1, empirically absent) and Liandry's Torment (rank 2, wr 40.0% vs 54.1% baseline). Promote Luden's Echo (scorer rank 12, empirical wr 58.3% n=36) into top-5.",
+  "headline": "Ability scorer ranks Wooglet's #1 (zero empirical) and Liandry's #2 (wr 40.0%); Luden's Echo high-wr staple buried at rank 12."
+}

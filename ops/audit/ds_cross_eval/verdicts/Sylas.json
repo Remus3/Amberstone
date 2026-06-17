@@ -1,0 +1,12 @@
+{
+  "champion": "Sylas",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Hextech Rocketbelt (68.4% wr), Lich Bane (63.6%), Spirit Visage (61.3%) all above baseline but absent from scorer top-12; investigate missing passive-on-hit and sustain-amplifier scoring paths. Liandry's/Wooglet's/Blackfire Torch over-rank with no empirical support.",
+  "headline": "Sylas ability scorer misses 3 strong empirical winners (Rocketbelt 68%, Lich Bane 64%, Spirit Visage 61%); top scorer items lack outcome backing."
+}

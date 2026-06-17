@@ -1,0 +1,12 @@
+{
+  "champion": "Senna",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Promote Muramana, Black Cleaver, Guinsoo's Rageblade, Runaan's Hurricane into dps pool. Penalize BotRK (empirical wr 44.4%, below baseline 46.7%; pct-max-hp proc underperforms vs on-hit/AS builds on Senna).",
+  "headline": "Scorer #1 BotRK (44.4% wr) loses to baseline; Guinsoo's 85.7%, Black Cleaver 61.5%, Muramana 54.5% all absent from top-8."
+}

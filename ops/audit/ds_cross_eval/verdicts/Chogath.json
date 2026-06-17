@@ -1,0 +1,12 @@
+{
+  "champion": "Chogath",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (id 3121) to ehp pool (absent, wr 52.6% n=38 above baseline); boost Thornmail in AD cells from rank 9 to top-8 (wr 53.3% n=45)",
+  "headline": "Fimbulwinter absent from scorer pool (52.6% wr, n=38); Thornmail under-ranked in AD cells; comp responsiveness and archetype axis are correct"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Renekton",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add Sundered Sky/Sterak's Gage/Death's Dance/Black Cleaver to bruiser pool; demote Runaan's Hurricane/Essence Reaver/Stormrazor (marksman crit items, zero empirical support on Renekton).",
+  "headline": "Scorer ranks crit ADC items (Essence Reaver #4, Runaan's #5, Stormrazor #7) while Sundered Sky/Sterak's/DD/BC (all above 55.8% baseline) are absent from top-8."
+}

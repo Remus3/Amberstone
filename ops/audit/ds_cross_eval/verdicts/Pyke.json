@@ -1,0 +1,12 @@
+{
+  "champion": "Pyke",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "true",
+  "severity": "MINOR",
+  "nominated_retune": "Add Opportunity (6701) to lethality pool; downweight crit/on-hit top-5 (Sundered Sky, Essence Reaver, BotRK, Trinity Force, IE) which have zero empirical Pyke presence.",
+  "headline": "Pool gap: ranks 1-5 have zero empirical presence; Opportunity (58.1% wr) missing from scorer top-12."
+}

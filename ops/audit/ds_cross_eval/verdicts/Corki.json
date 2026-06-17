@@ -1,0 +1,12 @@
+{
+  "champion": "Corki",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Muramana and Trinity Force to Corki item pool with mana/AH multipliers; evaluate The Collector; investigate BotRK rank-1 vs low empirical frequency",
+  "headline": "Corki scorer top-8 is pure ADC crit/AS; Muramana(wr=45.5%), TrinForce(46.2%), Bloodthirster(52.4%) all absent - hybrid mana-burst path not surfaced"
+}

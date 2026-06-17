@@ -1,0 +1,12 @@
+{
+  "champion": "Kled",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Fix hybrid scorer enemy_damage_type comp-blind defect (primary); add Sterak's Gage + Titanic Hydra to pool (secondary pool gap)",
+  "headline": "Kled hybrid scorer comp-blind on enemy damage type (max_shift=0); Sterak's Gage 44.4% wr absent from top-12 pool"
+}

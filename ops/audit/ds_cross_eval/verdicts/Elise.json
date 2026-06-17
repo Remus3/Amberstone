@@ -1,0 +1,12 @@
+{
+  "champion": "Elise",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Liandry's over-scored (burn vs burst kit, wr 50.0%); Void Staff over-scored (wr 40.0%); Luden's Echo absent from scorer pool despite being highest-n empirical staple",
+  "headline": "ability scorer OK on axis; Liandry #1 wr 50%, Void Staff #4 wr 40%, Luden's Echo absent from pool"
+}

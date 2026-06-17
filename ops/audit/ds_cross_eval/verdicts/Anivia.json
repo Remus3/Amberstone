@@ -1,0 +1,12 @@
+{
+  "champion": "Anivia",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Rod of Ages and Seraph's Embrace to ability scorer pool; deprioritize Shadowflame (empirical wr 36.4%, n=22, below 55.1% baseline) for sustained-AP mage archetype.",
+  "headline": "Pool gap: Rod of Ages (60.6% wr, n=104) and Seraph's Embrace (56.6%, n=113) absent; Shadowflame (rank 6) loses at 36.4%."
+}

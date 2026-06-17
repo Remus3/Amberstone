@@ -1,0 +1,12 @@
+{
+  "champion": "Morgana",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Switch ARAM anchor scorer from hps to mage; empirical above-baseline builds are AP mage (Blackfire Torch n=142 wr=54.2%, Needlessly Large Rod n=41 wr=53.7%, Shadowflame n=40 wr=52.5%) with zero overlap against hps top-8 enchanter pool.",
+  "headline": "hps scorer recommends pure enchanter pool; ARAM winner is AP mage (Blackfire 54.2%, NLR 53.7%) - zero top-8 overlap"
+}

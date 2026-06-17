@@ -1,0 +1,12 @@
+{
+  "champion": "Quinn",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "BotRK overvalued (scorer rank 1, empirical wr 43.8 < baseline 50.0); Collector/Statikk Shiv/Phantom Dancer absent from scorer top-8 despite above-baseline empirical wr. Investigate crit-path item pool inclusion and on-hit weight calibration for Quinn dps scorer.",
+  "headline": "Quinn dps scorer overweights on-hit (BotRK rank 1, wr 43.8); crit staples Collector/Statikk Shiv/Phantom Dancer missing from top-8 pool."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Cassiopeia",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "ability scorer underweights mana-scaling (Seraph's Embrace emp wr 53.4% n=58) and slow-utility (Rylai's emp wr 53.3% n=45); both above baseline and top-4 by volume but absent from scorer top-8; add mana-scaling bonus weight + slow-amplifier bonus for sustained AP mages",
+  "headline": "ability scorer correct axis; Seraph's (53.4% wr n=58) and Rylai's (53.3% n=45) high-volume staples absent from top-8 pool"
+}

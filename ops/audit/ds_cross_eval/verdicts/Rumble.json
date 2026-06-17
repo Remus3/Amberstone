@@ -1,0 +1,12 @@
+{
+  "champion": "Rumble",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Malignance (id 3118) to pool; down-weight Riftmaker (wr 35.3) and Stormsurge vs Shadowflame (wr 54.8, underranked r6)",
+  "headline": "Malignance (wr 48.1, n=27) absent from scorer pool; Riftmaker (wr 35.3) and Stormsurge unverified remain in top-10"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Kennen",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Malignance (id 3118) to ability scorer item pool; above-baseline empirical wr 63.6% (n=11) with no scorer top-12 presence.",
+  "headline": "Kennen ability scorer axis-aligned; Malignance (63.6% wr) missing from pool; Liandry/Blackfire Torch top-3 with zero empirical buys in n=89 dataset."
+}

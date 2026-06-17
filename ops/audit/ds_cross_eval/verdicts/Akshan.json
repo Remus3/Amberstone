@@ -1,0 +1,12 @@
+{
+  "champion": "Akshan",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "The Collector (id=6676) absent from scorer top-12 despite n=87 wr=41.4% (baseline 37.7%); lethality/execute passive likely unweighted in dps formula - lift into ad_squishy top-8",
+  "headline": "Akshan dps scorer correct axis+comp; pool gap: The Collector (top empirical item) missing from scorer top-12"
+}

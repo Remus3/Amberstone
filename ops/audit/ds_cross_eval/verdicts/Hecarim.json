@@ -1,0 +1,12 @@
+{
+  "champion": "Hecarim",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Suppress Runaan's Hurricane/Essence Reaver/Stormrazor/Yun Tal from Hecarim pool; add Eclipse, Spirit Visage, Muramana to scored items.",
+  "headline": "Scorer top-8 polluted by ADC marksman items; Eclipse (72.7 wr), Spirit Visage (57.1), Muramana (52.2) all absent from squishy top-8."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Lulu",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": false,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add Guinsoo's Rageblade to dps scorer pool (66.7% wr n=6 empirical, absent from top-8); flag archetype carry/dps vs AP kit for re-classification to enchanter/mage scorer",
+  "headline": "Lulu: AD/dps scorer mismatches AP mage kit; Guinsoo's Rageblade (66.7% wr) absent from scorer pool"
+}

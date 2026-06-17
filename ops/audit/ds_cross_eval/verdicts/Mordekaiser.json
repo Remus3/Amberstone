@@ -1,0 +1,12 @@
+{
+  "champion": "Mordekaiser",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add Rylai's to item pool; audit Liandry's DoT-tick multiplier inflating score vs 42.9% empirical wr",
+  "headline": "Scorer #1 Liandry's loses at 42.9% wr (baseline 52.4%); Rylai's 75% wr staple absent from pool entirely"
+}

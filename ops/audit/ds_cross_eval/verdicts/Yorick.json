@@ -1,0 +1,12 @@
+{
+  "champion": "Yorick",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Sundered Sky pool weight (rank 12 despite 64.5% wr n=31); add Spirit Visage to item pool (absent, 63.2% wr n=19, heals with Yorick W passive); demote Essence Reaver (rank 5, 0 empirical rows, d_ehp=0)",
+  "headline": "Sundered Sky rank 12 (64.5% wr n=31) and Spirit Visage absent (63.2% wr n=19); Essence Reaver overranked with no empirical ARAM support"
+}
