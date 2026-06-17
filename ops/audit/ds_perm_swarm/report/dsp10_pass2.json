@@ -1,0 +1,663 @@
+{
+  "dry": true,
+  "resolved": [
+    {
+      "champion": "Corki",
+      "scorer": "dps",
+      "mode": "ARAM",
+      "off_top": [
+        "6672",
+        "3085",
+        "3097",
+        "3508",
+        "3031",
+        "3032"
+      ],
+      "on_top": [
+        "3078",
+        "6676",
+        "6672",
+        "3085",
+        "3097",
+        "3508"
+      ],
+      "surfaced_kit_axis": [
+        "3078",
+        "6676"
+      ],
+      "floated_into_top": [
+        "3078",
+        "6676"
+      ],
+      "unstripped": [
+        "3078"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "champion": "Ezreal",
+      "scorer": "dps",
+      "mode": "ARAM",
+      "off_top": [
+        "3085",
+        "6672",
+        "3508",
+        "3097",
+        "3031",
+        "3032"
+      ],
+      "on_top": [
+        "3508",
+        "3078",
+        "3085",
+        "6672",
+        "3097",
+        "3031"
+      ],
+      "surfaced_kit_axis": [
+        "3508",
+        "3078"
+      ],
+      "floated_into_top": [
+        "3078"
+      ],
+      "unstripped": [
+        "3078"
+      ],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "champion": "Naafiri",
+      "scorer": "burst",
+      "mode": "ARAM",
+      "off_top": [
+        "3031",
+        "3508",
+        "3072",
+        "6610",
+        "6672",
+        "3078"
+      ],
+      "on_top": [
+        "6676",
+        "126697",
+        "3031",
+        "3508",
+        "3072",
+        "6610"
+      ],
+      "surfaced_kit_axis": [
+        "6676",
+        "126697"
+      ],
+      "floated_into_top": [
+        "6676",
+        "126697"
+      ],
+      "unstripped": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "champion": "Nilah",
+      "scorer": "dps",
+      "mode": "ARAM",
+      "off_top": [
+        "3078",
+        "3508",
+        "6672",
+        "3097",
+        "3084",
+        "3085"
+      ],
+      "on_top": [
+        "3031",
+        "6675",
+        "6673",
+        "3036",
+        "3078",
+        "3508"
+      ],
+      "surfaced_kit_axis": [
+        "3031",
+        "6675",
+        "6673",
+        "3036"
+      ],
+      "floated_into_top": [
+        "3031",
+        "6675",
+        "6673",
+        "3036"
+      ],
+      "unstripped": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "champion": "Pyke",
+      "scorer": "burst",
+      "mode": "ARAM",
+      "off_top": [
+        "6610",
+        "3508",
+        "3078",
+        "3031",
+        "3072",
+        "6672"
+      ],
+      "on_top": [
+        "6696",
+        "3142",
+        "6610",
+        "3508",
+        "3078",
+        "3031"
+      ],
+      "surfaced_kit_axis": [
+        "6696",
+        "3142"
+      ],
+      "floated_into_top": [
+        "6696",
+        "3142"
+      ],
+      "unstripped": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "champion": "Quinn",
+      "scorer": "dps",
+      "mode": "ARAM",
+      "off_top": [
+        "3085",
+        "6672",
+        "3508",
+        "3097",
+        "3031",
+        "3032"
+      ],
+      "on_top": [
+        "3031",
+        "3087",
+        "6676",
+        "3033",
+        "3036",
+        "3085"
+      ],
+      "surfaced_kit_axis": [
+        "3031",
+        "3087",
+        "6676",
+        "3033",
+        "3036"
+      ],
+      "floated_into_top": [
+        "3087",
+        "6676",
+        "3033",
+        "3036"
+      ],
+      "unstripped": [],
+      "partitioned": true,
+      "resolved": true
+    },
+    {
+      "champion": "Senna",
+      "scorer": "dps",
+      "mode": "ARAM",
+      "off_top": [
+        "6672",
+        "3097",
+        "3508",
+        "3031",
+        "223069",
+        "6699"
+      ],
+      "on_top": [
+        "3071",
+        "6672",
+        "3097",
+        "3508",
+        "3031",
+        "223069"
+      ],
+      "surfaced_kit_axis": [
+        "3071"
+      ],
+      "floated_into_top": [
+        "3071"
+      ],
+      "unstripped": [
+        "3071"
+      ],
+      "partitioned": true,
+      "resolved": true
+    }
+  ],
+  "classification": {
+    "n_worst": 40,
+    "by_champion": {
+      "Zilean": {
+        "category": "cluster_a_deferred",
+        "scorer": "hps",
+        "n_buried": 7,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Shaco": {
+        "category": "cluster_a_deferred",
+        "scorer": "burst",
+        "n_buried": 7,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Pyke": {
+        "category": "covered_dsp11",
+        "scorer": "burst",
+        "n_buried": 5,
+        "top_axis": "lethality",
+        "top_axis_lift": 6.1,
+        "axis_hits": {
+          "lethality": [
+            "6701",
+            "3142",
+            "6696"
+          ]
+        }
+      },
+      "Udyr": {
+        "category": "cluster_a_deferred",
+        "scorer": "hybrid",
+        "n_buried": 7,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Nilah": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 6,
+        "top_axis": "crit",
+        "top_axis_lift": 15.78,
+        "axis_hits": {
+          "crit": [
+            "6673",
+            "3036",
+            "3031",
+            "6675"
+          ]
+        }
+      },
+      "Zaahen": {
+        "category": "no_buried",
+        "scorer": "hybrid",
+        "n_buried": 0,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Kayle": {
+        "category": "cluster_a_deferred",
+        "scorer": "ability",
+        "n_buried": 6,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "TwistedFate": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 3,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Seraphine": {
+        "category": "cluster_a_deferred",
+        "scorer": "hps",
+        "n_buried": 4,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Rakan": {
+        "category": "other_scorer",
+        "scorer": "hps",
+        "n_buried": 5,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Katarina": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 5,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Briar": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 5,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Caitlyn": {
+        "category": "within_axis_noise",
+        "scorer": "dps",
+        "n_buried": 4,
+        "top_axis": "crit",
+        "top_axis_lift": 3.42,
+        "axis_hits": {
+          "lethality": [
+            "6676"
+          ],
+          "crit": [
+            "3036",
+            "6676",
+            "3094"
+          ],
+          "manamune": [
+            "6676"
+          ]
+        }
+      },
+      "Yasuo": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 4,
+        "top_axis": "crit",
+        "top_axis_lift": 10.64,
+        "axis_hits": {
+          "crit": [
+            "3087"
+          ]
+        }
+      },
+      "Anivia": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 4,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Gnar": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 7,
+        "top_axis": "lethality",
+        "top_axis_lift": 8.68,
+        "axis_hits": {
+          "lethality": [
+            "3071"
+          ]
+        }
+      },
+      "Tryndamere": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 7,
+        "top_axis": "crit",
+        "top_axis_lift": 9.71,
+        "axis_hits": {
+          "crit": [
+            "6675",
+            "3031"
+          ]
+        }
+      },
+      "RekSai": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 3,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Senna": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 3,
+        "top_axis": "lethality",
+        "top_axis_lift": 11.51,
+        "axis_hits": {
+          "lethality": [
+            "3071"
+          ],
+          "manamune": [
+            "3042"
+          ]
+        }
+      },
+      "Rell": {
+        "category": "other_scorer",
+        "scorer": "ehp",
+        "n_buried": 2,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Vex": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 1,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Quinn": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 7,
+        "top_axis": "crit",
+        "top_axis_lift": 8.47,
+        "axis_hits": {
+          "lethality": [
+            "6676"
+          ],
+          "crit": [
+            "3036",
+            "3031",
+            "3087",
+            "6676",
+            "3033"
+          ],
+          "manamune": [
+            "6676"
+          ]
+        }
+      },
+      "Yunara": {
+        "category": "within_axis_noise",
+        "scorer": "dps",
+        "n_buried": 3,
+        "top_axis": "crit",
+        "top_axis_lift": 22.06,
+        "axis_hits": {
+          "crit": [
+            "3031"
+          ]
+        }
+      },
+      "Darius": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 5,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Xerath": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 3,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "KSante": {
+        "category": "other_scorer",
+        "scorer": "ehp",
+        "n_buried": 4,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Corki": {
+        "category": "covered_dsp11",
+        "scorer": "dps",
+        "n_buried": 5,
+        "top_axis": "manamune",
+        "top_axis_lift": 2.95,
+        "axis_hits": {
+          "lethality": [
+            "6676"
+          ],
+          "crit": [
+            "3072",
+            "6676"
+          ],
+          "manamune": [
+            "6676",
+            "3078",
+            "3042"
+          ]
+        }
+      },
+      "Heimerdinger": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 6,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Lillia": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 4,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Malzahar": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 2,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Ekko": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 7,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Zoe": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 4,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Fizz": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 4,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "MasterYi": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 3,
+        "top_axis": "crit",
+        "top_axis_lift": 9.76,
+        "axis_hits": {
+          "crit": [
+            "3031"
+          ]
+        }
+      },
+      "KogMaw": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 6,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Urgot": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 6,
+        "top_axis": "lethality",
+        "top_axis_lift": 2.15,
+        "axis_hits": {
+          "lethality": [
+            "3071"
+          ]
+        }
+      },
+      "Elise": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 1,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "JarvanIV": {
+        "category": "other_scorer",
+        "scorer": "hybrid",
+        "n_buried": 6,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Evelynn": {
+        "category": "other_scorer",
+        "scorer": "ability",
+        "n_buried": 4,
+        "top_axis": null,
+        "top_axis_lift": 0.0,
+        "axis_hits": {}
+      },
+      "Naafiri": {
+        "category": "covered_dsp11",
+        "scorer": "burst",
+        "n_buried": 3,
+        "top_axis": "lethality",
+        "top_axis_lift": 3.21,
+        "axis_hits": {
+          "lethality": [
+            "6676",
+            "126697"
+          ],
+          "crit": [
+            "6676"
+          ],
+          "manamune": [
+            "6676"
+          ]
+        }
+      }
+    },
+    "new_b2_defects": [],
+    "dry": true
+  }
+}
