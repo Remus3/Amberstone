@@ -33,6 +33,11 @@ web changes); engine flips need a DS `:8893` restart.
       `apply_passive_damage`, the 4 non-every-AA `on_hit`, per-stack `assumed_stacks` (ROADMAP DS Phase-D).
 - [ ] DSV seam flips (default-OFF today): `assume_takedown` (DSV2), `assume_squishy_target` (DSV3),
       `assume_ability_amp` (DSV4) -> turn ON in `rank.py`, confirm the re-ranked build is saner.
+- [ ] DSP2 off-class WIN-exemption flip (default-OFF today): `rank.rank_items(exempt_offclass_by_win=True)`
+      -> un-strips the items the caster-marksmen genuinely build (Ezreal/Corki/Smolder Trinity Force +
+      Spear of Shojin, Senna Black Cleaver; `agents/daemon_slayer/marksman_offclass_exempt.json`). Flip ON
+      where the live carry/dps scorer calls `rank_items` for a ranged marksman, then eyeball that Ezreal's
+      build surfaces Trinity Force / Manamune and crit ADCs (Caitlyn/Jinx) are unchanged.
 - [ ] DSP seam flips (as each ships): self-rune (DSP4), summoner-spell (DSP5), enemy-rune (DSP6),
       ally-aura (DSP7), enemy-comp target-preset (DSP8) - flip default-ON + eyeball the re-rank.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
@@ -70,4 +75,7 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP2 (ENGINE 1.129.0): off-class WIN-exemption seam shipped DEFAULT-OFF. Live flip =
+  `rank_items(exempt_offclass_by_win=True)` at the carry/dps scorer call site (the caster-marksman
+  re-include; section B above). Validate the re-rank vs a real Ezreal/Corki game before flipping.
 - 2026-06-17 seeded from ROADMAP open-tail consolidation. DSP* seam flips append here as they ship.
