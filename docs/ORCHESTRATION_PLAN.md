@@ -95,7 +95,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | DONE | `7b96328f` (p1) + `e1c996d0` (p2-DRY) |
 | DSP11 | ds-engine | Cluster B2 kit-axis item-crediting fix (Gemini PART C verdict 2026-06-17, from the DSP10 dsp10_consolidated report): the dps/burst scorers give caster-ADC / lethality-assassin / crit-melee kits a generic crit-marksman template instead of their WIN-axis - Pyke wins lethality (Opportunity/Youmuu's), Nilah wins crit (Immortal Shieldbow/IE/Navori), Ezreal wins Manamune/Trinity. Root-cause-first (WHY the template - candidate applicability vs DPS credit model), default-OFF seam, WIN-anchored vs report/dsp10_consolidated.md + rewind. ENGINE bump + DS restart + Share sync. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) stays a deferred operator policy decision (do-NOT-auto-flip). See plan "DSP10" + report/dsp10_consolidated.md. | DONE | `0c2b88e5` |
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | DONE | `a30cbba4` (code+mine, item 457) + docs this cycle |
-| LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | OPEN | - |
+| LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | DONE | (this cycle) |
 | OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | OPEN | - |
 | OPEN2 | test-hygiene | tests/test_p2w4_hw2_b.py git() error-path tests call the real loop_controller.git() and pollute the production ops/loop/control/controller.log (monkeypatch subprocess.run but not control_dir). Redirect control_dir to tmp_path in those tests (conftest SHADOW_PATH precedent, item 386). | OPEN | - |
 
@@ -107,9 +107,31 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - Game-PC :8892 visual screenshot captures (MCP down post-1PC). C-phase visual validation uses the Claude_Preview MCP against :8888 instead.
 - Anything in the CLAUDE.md "Settled - do not re-litigate" set.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
-- DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
+- DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 LGS1 (cycle 17) DONE - live-sync audit, pure docs (Tier-0, ZERO .py edits -> no ENGINE bump
+  / DS restart / Share sync / py_compile). Audited the three sources the directive names. (1) rank.py
+  default-OFF seams = exactly TWO: `exempt_offclass_by_win` (DSP2, L522) + `prefer_kit_axis_by_win` (DSP11,
+  L523); both already had an accurately-located docs/LIVE_GAME_GATED_SYNC.md section-B row. The DSV2/3/4 +
+  DSP8 seams the docs colloquially called "rank.py flips" actually live in `agents/daemon_slayer/burst.py`
+  (`rank_items_by_burst` / `compute_burst_damage`), DSP4 `score_completion_runes` in `burst.py`+`combo.py`
+  (grep-verified) -> FIXED the sync-doc DSV row + the EXCLUDED meta-bullet to name the burst scorer. (2)
+  EXCLUDED section: every bullet maps to a sync-doc row EXCEPT "live caster-stat producer for /anti-tank
+  P3.2 + live survivability scorer (egg-resist/Orianna E)" -> ADDED a section-B row naming
+  `antitank.py effective_magnitude` (P3.2 ap/ad_ratio caster-stat scaling, needs a live AbilitiesSnapshot
+  producer) + `ehp.py compute_ehp(external_resist_*)` (Orianna-E/Braum-W/Taric-W ally-resist producer;
+  egg-resist already default-ON item 321). (3) ROADMAP open-tails: the live-gated tails (Phase-D flag flips,
+  champ-select Haiku flip, vision self-heal, st-* adaptation producers, augment OCR) are all already in the
+  sync doc; no missing row. NET: 2 doc fixes (DSV location + new anti-tank row) + a live-flip ledger entry;
+  the sync list is now COMPLETE with every row naming an accurate flip location. No new OPEN work
+  (OPEN1/OPEN2 remain). INLINE sole orchestrator (R9 - a docs audit + 4 .md edits, no disjoint code slices,
+  so parallel worktrees add only overhead); verifier SKIPPED per R7 (own single-thread, no untrusted slice;
+  the grep cross-checks ARE the independent verify). No frozen files. GATE: doc-hygiene suite (smart-quote /
+  mojibake / u2500) + ASCII clean; full dual suite skipped per R5 (Tier-0 docs, zero .py). NEXT: OPEN1
+  (page-name unify) or OPEN2 (test control_dir leak). Source: gemini director directive
+  ops/loop/control/directive.md (LGS1).
 
 - 2026-06-17 HZU1 (cycle 16) DONE - CODE was item 457, this cycle is the MINE-VERIFY + laning/flip
   doc-prep + status closeout. The directive's first two clauses (deepen
