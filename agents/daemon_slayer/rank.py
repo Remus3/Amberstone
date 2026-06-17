@@ -422,6 +422,7 @@ def _filter_candidates(
     include_components: bool,
     only_ids: Optional[set[str]],
     exclude_names: Optional[frozenset[str]] = None,
+    inject_ids: Optional[set[str]] = None,
 ) -> list[tuple[str, dict]]:
     """Return ``[(item_id, item_record), ...]`` passing all filters.
 
@@ -433,19 +434,32 @@ def _filter_candidates(
       * mode validity via ``maps`` (only when mode is known)
       * terminal-only (``into`` empty) unless ``include_components``
       * gold <= ``budget`` when budget is set
+
+    ``inject_ids`` is the RF6 (2026-06-17) force-admit set: an id in this set
+    bypasses the ``only_ids`` whitelist, the ``exclude_names`` deny, and the
+    ``_is_purchasable`` gate, so a WIN-anchored tabled item the pool would otherwise
+    drop can still enter. The motivating case is a non-purchasable mana-line
+    transform - Fimbulwinter 3121, the upgrade of Winter's Approach, carries
+    ``gold.purchasable``=False, so the ehp pool excludes it and the RF3 float has
+    nothing to lift. A forced id STILL respects already-equipped, the non-coachable
+    deny, mode-legality, terminal-only, and budget. None / empty (the default) is a
+    byte-identical no-op - every pre-RF6 caller is unchanged.
     """
+    inject = inject_ids or frozenset()
     out: list[tuple[str, dict]] = []
     for item_id, rec in snapshot.items.items():
         if item_id in current_ids:
             continue
         if item_id in _NON_COACHABLE_ITEM_IDS:
             continue
-        if only_ids is not None and item_id not in only_ids:
-            continue
-        if exclude_names and rec.get("name") in exclude_names:
-            continue
-        if not _is_purchasable(rec):
-            continue
+        forced = item_id in inject
+        if not forced:
+            if only_ids is not None and item_id not in only_ids:
+                continue
+            if exclude_names and rec.get("name") in exclude_names:
+                continue
+            if not _is_purchasable(rec):
+                continue
         if not _is_legal_in_mode(rec, mode):
             continue
         if not include_components and not _is_terminal(rec):
