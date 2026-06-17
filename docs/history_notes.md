@@ -13,6 +13,20 @@
 
 ---
 
+# 2026-06-17 - DSP7 ally aura/enchanter seam: ally shield/heal flat-HP EHP-grant (headless gemini-loop cycle 9)
+
+- Executor cycle 9 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP7 (ally aura/enchanter seam: extend `allyamp.py` + `_passive_ally_grant_overrides.py` to enchanter/shield/heal buckets). Commits `69f9085d` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + `6a2e5f8c` (living docs) + this WAKEUP pushed.
+- ROOT: `_passive_ally_grant_overrides.py` (item 289) modeled two ally-grant EHP modes - resist (denominator add) + revive (numerator mult) - but DELIBERATELY EXCLUDED ally shields/heals as `ability_hps` THROUGHPUT (a test enforces it), so the survivability an enchanter's shield/heal CONFERS on a protected ally was an unmodeled permutation.
+- FIX (Tier-2, ENGINE 1.132.0 -> 1.133.0): the THIRD ally-grant EHP mode - a flat NUMERATOR ADD (a shield/heal rides the protected ally's armor/MR curve like base HP). NEW SEPARATE registry `_ALLY_FLAT_HP_GRANT_OVERRIDES` (kept apart from the item-289 4-entry registry so its shape + exclusion test stay byte-identical), 7 enchanter grants (Janna/Lulu/Karma/Yuumi E + Seraphine W shields, Soraka/Nami W heals). NEW `AllyGrantEntry.shield_hp`/`heal_hp` + `_ALLY_SHIELD_HEAL_PROB` 0.5 + `ally_flat_hp_grant` fail-soft. GENERIC consumer seam: `compute_ehp(external_flat_hp=)` (default 0.0 byte-identical) + `EhpResult.ally_grant_flat_hp`.
+- MAGNITUDES: verbatim per-rank BASE shield/heal values PROBED (`_scratch/dsp7_probe.py`, read-only) from `data/daemon_slayer/16.12.1/champion_abilities.json` - the EXACT source `ability_hps.py` reads (Janna/Lulu E 80..240; Karma E 80..280; Yuumi E 65..165; Seraphine W 60..140; Soraka W 90..170; Nami W 55..155); AP ratio OMITTED (granter AP is a live Phase-D input, the resist-registry precedent).
+- `allyamp.py` (the OUTWARD scorer) is SATURATED for the shield/heal buckets under its one-mechanism-per-(champ,source) invariant (`test_one_entry_per_champion_source` + the 74-entry roster pin), so it gets only a docstring cross-reference - the genuine gap was the PROTECTED-ALLY EHP-grant view, built in the correct home (`feedback_audit_proposals_are_intent`).
+- DEFAULT-OFF: no live scorer passes `external_flat_hp` -> `/rank` + compute_ehp/dps/burst byte-identical (RC tests/ unchanged at 8281). Live flip (wire a peel/EHP consumer reading the live ally team's granter set) EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B + ledger.
+- DS :8893 bounced (taskkill 17548 + schtasks) -> 1.133.0; Share re-synced (350, --check green); DS+Share CHANGELOG prepended; 72 ENGINE pins / 72 .py bumped (quoted-literal-only). TDD +24 (ImportError red-first -> green). DS-dir 7256 / RC 8281 / hygiene gate 12 green; ruff/py_compile/ASCII clean (0 introduced banned chars). No web/* -> no UI ritual/snapshot (R5/R11). INLINE (R9), verifier SKIPPED per R7 (fresh in-thread dual re-verify + live :8893 + Share --check).
+- SIZE GUARD: applied the cycle-7/8 lesson - ran `tests/test_doc_size_budget.py` and the DSP7 swarm-progress prepend tipped ROADMAP to 82927 > 81920, so compressed the DSP5/DSP6 detail to LEDGER pointers + trimmed the DSP7 block -> 81818 (margin 102), guard green BEFORE this WAKEUP commit.
+- NEXT: DSP8 (enemy-comp target-preset seam: extend DSV3 `assume_squishy_target` into tank-heavy/squishy/bruiser/high-CC presets; default-OFF). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP6 enemy-rune threat seam: NEW enemy_runes.py (headless gemini-loop cycle 8)
 
 - Executor cycle 8 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP6 (enemy-rune threat seam, NEW `agents/daemon_slayer/enemy_runes.py`). Commits `f3563120` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + `4a9b820f` (living docs) pushed; CI green baseline confirmed pre-push.

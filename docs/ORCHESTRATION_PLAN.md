@@ -93,7 +93,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | DONE | f03dfc25 |
 | DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | DONE | 20d9f395 |
 | DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | WIP | `7b96328f` |
-| DSP11 | ds-engine | Cluster B2 kit-axis item-crediting fix (Gemini PART C verdict 2026-06-17, from the DSP10 dsp10_consolidated report): the dps/burst scorers give caster-ADC / lethality-assassin / crit-melee kits a generic crit-marksman template instead of their WIN-axis - Pyke wins lethality (Opportunity/Youmuu's), Nilah wins crit (Immortal Shieldbow/IE/Navori), Ezreal wins Manamune/Trinity. Root-cause-first (WHY the template - candidate applicability vs DPS credit model), default-OFF seam, WIN-anchored vs report/dsp10_consolidated.md + rewind. ENGINE bump + DS restart + Share sync. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) stays a deferred operator policy decision (do-NOT-auto-flip). See plan "DSP10" + report/dsp10_consolidated.md. | OPEN | - |
+| DSP11 | ds-engine | Cluster B2 kit-axis item-crediting fix (Gemini PART C verdict 2026-06-17, from the DSP10 dsp10_consolidated report): the dps/burst scorers give caster-ADC / lethality-assassin / crit-melee kits a generic crit-marksman template instead of their WIN-axis - Pyke wins lethality (Opportunity/Youmuu's), Nilah wins crit (Immortal Shieldbow/IE/Navori), Ezreal wins Manamune/Trinity. Root-cause-first (WHY the template - candidate applicability vs DPS credit model), default-OFF seam, WIN-anchored vs report/dsp10_consolidated.md + rewind. ENGINE bump + DS restart + Share sync. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) stays a deferred operator policy decision (do-NOT-auto-flip). See plan "DSP10" + report/dsp10_consolidated.md. | DONE | `0c2b88e5` |
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | OPEN | - |
 | LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | OPEN | - |
 | OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | OPEN | - |
@@ -110,6 +110,62 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP11 (`0c2b88e5`) DONE. Cluster-B2 kit-axis item-credit seam (ENGINE
+  1.134.0 -> 1.135.0, DEFAULT-OFF). ROOT-CAUSE (the directive's candidate-vs-credit
+  question, confirmed live): TWO failure modes, BOTH leaving caster-ADC /
+  lethality-assassin / crit-melee kits on a generic AD template. (1) CREDIT MODEL
+  (dominant): compute_dps / compute_burst_damage model a generic AA / single-combo
+  rotation that cannot encode a kit's win-axis (Pyke R executes scale with
+  lethality, Nilah doubles crit, Ezreal Q + Manamune ramp), so the items the player
+  base WINS on rank far below the generic on-hit/sheen template even vs a squishy
+  target (live probe @ squishy preset: Pyke Youmuu's #8 / Opportunity absent; Nilah
+  IE #12 / Navori #16 / Shieldbow #26; Ezreal Manamune #27) - the DSV3/DSP8
+  squishy/target-preset seams do NOT fix this (the ad_squishy cross-eval bucket still
+  buries them). (2) CANDIDATE APPLICABILITY (Ezreal only): Trinity Force is
+  hard-stripped by the item-213 ranged-marksman off-class deny set (DSP2's
+  exempt_offclass_by_win addressed it but is default-OFF + not the float). FIX: NEW
+  default-OFF prefer_kit_axis_by_win on rank_items (dps) + rank_items_by_burst
+  (burst), driven by a WIN-anchored kit_axis_item_credit.json table (7 champs / 21
+  terminal items: Pyke/Naafiri/Senna lethality, Nilah/Quinn crit, Ezreal/Corki
+  manamune) built by ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py from the
+  DSP10 buried-winner report + rewind (Ezreal seeded direct - he fell outside the
+  worst-40 anchor window). When ON for a tabled champ: (a) the dps ranker un-strips
+  the champ's kit-axis items from the off-class deny set (Ezreal Trinity becomes a
+  candidate), and (b) both rankers float every POSITIVE-delta kit-axis item above the
+  generic template via a (kit_axis_score,) + base_key sort prefix (model order
+  preserved within tiers; a regression item is NOT floated). NEW kit_axis_credit.py
+  loader + kit_axis_score field on RankedItem/BurstRankedItem. LIVE-VERIFIED (seam
+  ON): Pyke -> Axiom/Youmuu's #1-2, Nilah -> IE/Navori/Shieldbow/LDR #1-4, Ezreal ->
+  ER/Trinity #1-2; untabled Caitlyn byte-identical. SEAM-FIRST (EXCLUDED): the live
+  default-ON flip (wire the scorer-dispatch to pass the flag) is appended to
+  docs/LIVE_GAME_GATED_SYNC.md section B + ledger; NOT flipped (do-not-flip-blind).
+  Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) is a SEPARATE operator-gated
+  routing decision, deliberately NOT in this table (per the DSP10 Gemini PART C
+  verdict). ENGINE bump: 82 quoted pins / 74 .py; DS :8893 bounced (taskkill PID
+  19964 + schtasks /Run) -> /health 1.135.0 confirmed; ds_share_sync 354 files
+  --check "in sync"; DS + Share CHANGELOG prepended. TDD: test_kit_axis_item_credit_
+  dsp11.py +11 (RED-first on the missing params/loader/ENGINE pin -> green: loader
+  ids/names + unknown/blank empty; dps + burst off byte-identical w/ kit_axis_score
+  0.0; on partitions surfaced-above-rest; Nilah IE buried-off / floated-on; untabled
+  Caitlyn no-op; Ezreal Trinity un-stripped; ENGINE pin 1.135.0). GATE (fresh this
+  run): DS-dir agents/daemon_slayer/tests/ 7283 passed / 1 skip / 1942 subtests exit
+  0 (+11 vs the 7272 DSP10 baseline); full RC tests/ --ignore=tests/daemon_slayer
+  8297 passed / 2 skip / 109 subtests + 1 transient (test_live_three_profiles hit
+  :8893 mid-DS-bounce -> 2 profiles not 3; GREEN on a fresh re-run once :8893 settled
+  at 1.135.0, 0 real regressions = the default-OFF byte-identical proof); ruff All
+  checks passed; py_compile OK; ASCII/LF clean.
+  No web/* touched -> no UI ritual (R5/R11). INLINE sole orchestrator (R9 + the
+  directive's coupled-seam clause - ONE cohesive seam: a shared kit_axis_credit.py
+  loader imported by BOTH rank.py + burst.py, a shared kit_axis_score field pattern,
+  and the shared ENGINE pin + Share mirror; the candidate slices are NOT disjoint
+  (loader -> both scorers dependency + shared __init__ ENGINE pin + Share would
+  merge-contend), so parallel worktrees add only overhead - the DSP2-10 precedent);
+  verifier subagent SKIPPED per R7 (own single-thread edit, no untrusted slice) -
+  fresh in-thread dual full-suite + live :8893 probe + Share --check substituted. No
+  frozen files touched. NEXT: DSP10 loop-until-dry pass 2 (re-run the cross-eval with
+  DSP11 ON, confirm no new B2-class defect) or HZU1. Source: gemini director
+  directive ops/loop/control/directive.md (DSP11).
 
 - 2026-06-17 DSP10 (475, 7b96328f) WIP - pass 1 DONE. Full permutation
   cross-eval re-run + the smallest-benefit harness-validity fix + the
