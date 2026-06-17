@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-17 - HZU1 build-order Haiku-flip gate: HOLD (mine-verify item 457) + laning/flip live-sync prep (headless gemini-loop cycle 16)
+
+- Executor cycle 16 of the DS permutation swarm (`ops/loop`, gemini director). Directive = HZU1 (item-level build-order Haiku-flip gate). Tier-0 docs commit `2a839bfe` pushed. NO .py edits -> no ENGINE bump / DS restart / Share sync.
+- KEY (verify-before-redo): the directive's first 2 clauses (deepen `tools/replay_build_order_validate.py` to per-item bought-vs-win granularity + mine the 4627 lean-ambiguous rows for which items carry signal) were ALREADY SHIPPED at `a30cbba4` (item 457, 2026-06-16, confirmed ancestor of HEAD): `item_outcomes` + `_per_item_report` + the `per_item` accumulator + `_PER_ITEM_MIN_N=50` carrier rail + the per-ITEM print block, +7 tests. Did NOT re-implement - RE-RAN the gate `--mode sr --limit 0` on the live `data/rewind_history.db` as independent ground truth and reproduced item 457 byte-for-byte.
+- RESULT @651 SR / 6510 rows (decisive=1832 / ambiguous=4627 / uncovered_champ=51): lean-level FOLLOWED 56.4% (n=766) vs NOT 54.1% (n=1066) = +2.3pp (95%=[-2.3,+6.9], flip_ready=False, a coin flip); completion-timing flat (fast<=20.82min 56.1% vs slow 56.7%); 1/51 per-item carriers = Infinity Edge anti_squishy +12.6pp (95%=[+0.7,+24.4], n=90), Serylda's Grudge +11.3pp just misses (lo=-0.9). VERDICT HOLD - the build coach stays on Haiku (interim floor) until a larger replay corpus clears the rail and the chip is eyeballed live.
+- DOC-PREP (3rd clause): `docs/LIVE_GAME_GATED_SYNC.md` C gained the Lane-A laning-agreement read (`tools/hz_shadow_report.py`, confirmed present, item 456) + the Lane-B build-order item-level flip rows + a live-flip ledger entry (the cycle-52 HZ precompute->Haiku flip PAIR, both HOLD). ORCHESTRATION_PLAN HZU1 OPEN -> DONE + Findings; LEDGER 478; ROADMAP swarm-progress + NEXT synced (81333 < 81920).
+- GATE: `tests/test_replay_build_order_validate.py` + `_robustness` 65 passed + the live gate re-run as ground truth; doc-size + ASCII hygiene 14 passed; full dual suite skipped per R5 (Tier-0 docs, ZERO .py). INLINE sole orchestrator (R9 - docs + a re-run); verifier SKIPPED per R7 (the gate re-run IS the independent verify). No frozen files. Artifact `ops/runtime/build_order_validation.json`.
+- NEXT: LGS1 (live-sync audit) or OPEN1 / OPEN2. Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP10 pass 2 loop-until-dry verification: swarm DRY (headless gemini-loop cycle 15)
 
 - Executor cycle 15 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP10 pass 2 (re-run the cross-eval with the DSP11 seam ON, confirm the Cluster-B2 defects resolved + no new B2 defect, loop-until-dry). Commit `e1c996d0` (audit module + 9 tests + report) + this living-docs sync commit pushed. AUDIT TOOLING ONLY - nothing under `agents/daemon_slayer/` -> NO ENGINE bump / DS restart / Share sync (the item-475 pass-1 precedent).
@@ -24,16 +35,3 @@
 - DEFAULT-OFF -> byte-identical when the flag is unset; untabled champs (Caitlyn) no-op. LIVE-VERIFIED ON: Pyke->Axiom/Youmuu's #1-2, Nilah->IE/Navori/Shieldbow/LDR #1-4, Ezreal->ER/Trinity #1-2. Live flip EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B + ledger. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) = SEPARATE operator-gated routing, NOT in this table.
 - DS :8893 bounced (taskkill 19964 + schtasks) -> 1.135.0; Share re-synced (354, --check green); DS+Share CHANGELOG prepended; 82 ENGINE pins / 74 .py (quoted-literal-only). TDD +11 (TypeError red-first -> green). DS-dir 7283 / RC 8297+2skip green (1 transient `test_live_three_profiles` = mid-DS-bounce race, GREEN on fresh re-run = the byte-identical default-OFF proof); ruff/py_compile/ASCII clean. No web/* -> no UI ritual (R5/R11). INLINE (R9 + coupled-seam clause: shared loader imported by both scorers + shared ENGINE pin + Share, slices NOT disjoint), verifier SKIPPED per R7 (fresh dual-suite + live :8893 + Share --check).
 - NEXT: DSP10 loop-until-dry pass 2 (re-run cross-eval DSP11-ON, confirm no new B2 defect) or HZU1. Tracker `docs/ORCHESTRATION_PLAN.md`.
-
----
-
-# 2026-06-17 - DSP10 cross-eval re-run + anchor-match harness fix + consolidated mismatch report (headless gemini-loop cycle 13)
-
-- Executor cycle 13 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP10 (full permutation cross-eval re-run, all seams harness-ON, WIN-anchored, consolidated mismatch report + per-champ smallest-benefit fixes, loop-until-dry). Commit `7b96328f` (code/report/data/tests) + the living-docs sync commit (this) pushed. AUDIT TOOLING ONLY - no `agents/daemon_slayer` touched -> NO ENGINE bump / DS restart / Share sync.
-- RE-RUN: `tools/ds_cross_eval/run_all.py` regenerated all 172 cross-eval JSON at live ENGINE 1.134.0 (172 OK 0 FAIL 22.3s); 171/172 byte-identical (data already current across the DSP2-8 bumps), only `Aphelios.json` drifted -> proves DSP2-8 did NOT regress the rankings + catches the lone drift.
-- SMALLEST-BENEFIT FIX: the DSP1 WIN-anchor harness scored each champ's ARAM-anchored comp_grid against BOTH ARAM + SR win-data, but 171/172 champs anchor ARAM (only Zaahen=SR), so the SR column was apples-to-oranges (Ezreal SR -39.13 mean_wr 0.0 = pure cross-mode artifact). `perm_score.build_report anchor_match_only` (default True) scores only the anchor-matched mode; scored champ-modes 295 -> 162; mean_lift_weighted +0.1651 (mixed) -> -0.2825 (honest ARAM-only).
-- DELIVERABLE: NEW `ops/audit/ds_perm_swarm/consolidate.py` + `run_consolidate.py` -> `report/dsp10_consolidated.{json,md}` (DS-favored top-K + live rewind n/wr vs the above-baseline buried winners, worst-40 anchor-matched). +4 hermetic tests.
-- TRIAGE: (A) Cluster A operator-gated ARAM off-meta archetype (Zilean -32.8 AP-mage / Shaco -29.2 AP / Kayle -16.3 on-hit / Seraphine / Udyr -21.7 tank; SYSTEMIC_FINDINGS do-NOT-auto-flip); (B) Cluster B2 kit-axis (Pyke -22 lethality / Nilah -20.9 crit / Ezreal Manamune-Trinity = real defect, dedicated pass); (C) NOT-defects (TF/Katarina AP-correct cost-noise, Rakan ARAM-HP-stack, Zaahen n=7); (D) cost-axis (DSP9 BACKLOG). NO ship-blind-safe per-champ engine fix this cycle.
-- GEMINI PART C (`gemini_io/answer_20260617-070708.md`): verdict (a) dedicate DSP11 to Cluster B2; Cluster A = deferred operator policy. NEW DSP11 OPEN row seeded.
-- GATE: DS-dir 7272 / RC 8297 (+4 hermetic; the lone fail was the PRE-EXISTING ROADMAP 82540 > 81920 budget, FIXED by relocating 3 shipped prior-run cycle entries to `docs/ROADMAP_HISTORY.md` -> 78351); ruff/py_compile/ASCII clean. INLINE (R9 - 4 audit files + 2 tests; the per-champ worktree swarm is deferred to DSP11 where it applies), verifier SKIPPED per R7 (fresh dual-suite). loop-until-dry: pass 1 surfaced DSP11 (not dry).
-- NEXT: DSP11 (Cluster B2 kit-axis item-crediting fix, root-cause-first). Tracker `docs/ORCHESTRATION_PLAN.md`.

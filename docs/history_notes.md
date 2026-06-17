@@ -13,6 +13,19 @@
 
 ---
 
+# 2026-06-17 - DSP10 cross-eval re-run + anchor-match harness fix + consolidated mismatch report (headless gemini-loop cycle 13)
+
+- Executor cycle 13 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP10 (full permutation cross-eval re-run, all seams harness-ON, WIN-anchored, consolidated mismatch report + per-champ smallest-benefit fixes, loop-until-dry). Commit `7b96328f` (code/report/data/tests) + the living-docs sync commit (this) pushed. AUDIT TOOLING ONLY - no `agents/daemon_slayer` touched -> NO ENGINE bump / DS restart / Share sync.
+- RE-RUN: `tools/ds_cross_eval/run_all.py` regenerated all 172 cross-eval JSON at live ENGINE 1.134.0 (172 OK 0 FAIL 22.3s); 171/172 byte-identical (data already current across the DSP2-8 bumps), only `Aphelios.json` drifted -> proves DSP2-8 did NOT regress the rankings + catches the lone drift.
+- SMALLEST-BENEFIT FIX: the DSP1 WIN-anchor harness scored each champ's ARAM-anchored comp_grid against BOTH ARAM + SR win-data, but 171/172 champs anchor ARAM (only Zaahen=SR), so the SR column was apples-to-oranges (Ezreal SR -39.13 mean_wr 0.0 = pure cross-mode artifact). `perm_score.build_report anchor_match_only` (default True) scores only the anchor-matched mode; scored champ-modes 295 -> 162; mean_lift_weighted +0.1651 (mixed) -> -0.2825 (honest ARAM-only).
+- DELIVERABLE: NEW `ops/audit/ds_perm_swarm/consolidate.py` + `run_consolidate.py` -> `report/dsp10_consolidated.{json,md}` (DS-favored top-K + live rewind n/wr vs the above-baseline buried winners, worst-40 anchor-matched). +4 hermetic tests.
+- TRIAGE: (A) Cluster A operator-gated ARAM off-meta archetype (Zilean -32.8 AP-mage / Shaco -29.2 AP / Kayle -16.3 on-hit / Seraphine / Udyr -21.7 tank; SYSTEMIC_FINDINGS do-NOT-auto-flip); (B) Cluster B2 kit-axis (Pyke -22 lethality / Nilah -20.9 crit / Ezreal Manamune-Trinity = real defect, dedicated pass); (C) NOT-defects (TF/Katarina AP-correct cost-noise, Rakan ARAM-HP-stack, Zaahen n=7); (D) cost-axis (DSP9 BACKLOG). NO ship-blind-safe per-champ engine fix this cycle.
+- GEMINI PART C (`gemini_io/answer_20260617-070708.md`): verdict (a) dedicate DSP11 to Cluster B2; Cluster A = deferred operator policy. NEW DSP11 OPEN row seeded.
+- GATE: DS-dir 7272 / RC 8297 (+4 hermetic; the lone fail was the PRE-EXISTING ROADMAP 82540 > 81920 budget, FIXED by relocating 3 shipped prior-run cycle entries to `docs/ROADMAP_HISTORY.md` -> 78351); ruff/py_compile/ASCII clean. INLINE (R9 - 4 audit files + 2 tests; the per-champ worktree swarm is deferred to DSP11 where it applies), verifier SKIPPED per R7 (fresh dual-suite). loop-until-dry: pass 1 surfaced DSP11 (not dry).
+- NEXT: DSP11 (Cluster B2 kit-axis item-crediting fix, root-cause-first). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP8 enemy-comp target-preset seam: burst-ranker armor+MR presets (headless gemini-loop cycle 10)
 
 - Executor cycle 10 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP8 (enemy-comp target-preset seam: extend DSV3 `assume_squishy_target` into tank-heavy/squishy/bruiser/high-CC presets). Commits `f03dfc25` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + the living-docs sync commit (this) pushed.
