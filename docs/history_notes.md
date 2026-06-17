@@ -13,6 +13,18 @@
 
 ---
 
+# 2026-06-16 - COMPREHENSIVE per-champion DS scorer cross-eval EXECUTED [172/172]
+
+- Executed the NEXT-SESSION directive end-to-end in ONE session (multi-session Gemini+AHK loop NOT needed - the 158-agent workflow finished the roster). Commit 89934b80 pushed. Deliverable: ops/audit/ds_cross_eval/ (PROGRAM.md gate+rubric, SYSTEMIC_FINDINGS.md, REPORT.md, data/ + reports/ + verdicts/ x172).
+- KICKOFF GATE locked with Gemini (operator-proxy, gemini-3-pro-preview, all 3 CONFIRM): D1 report-first (nominate retunes, no blind change); D2 anchor = rewind WIN outcomes, owned n>=8 else all-player else synthetic, mode-segregated; D3 self-rune scope only (enemy/ally runes have ZERO DS scorer surface -> BACKLOG net-new Tier-2). Gemini RISK = ARAM skew, honored via mode-segregated anchor + mode-matched scorer calls.
+- Harness (deterministic, regenerable on DS bump): tools/ds_cross_eval/probe_champion.py + run_all.py + aggregate.py. 172/172 data probes, 0 fail, 21.6s. Per champ: archetype, 5-cell comp grid (right axis per scorer: EHP->enemy-dmg-type, DPS/burst->target-resist), comp-blind flag full-40-deep, rewind win-correlated items mode/scope-segregated, evidence tier. Read-only audit - NO engine/ENGINE_VERSION/scorer/Share touched.
+- One agent per champion (14 pilot + 158 workflow, sonnet). Result 42 MISMATCH / 129 MINOR / 1 OK. Defect mass hybrid 16/43 + hps 6/15 + dps 9/28 + burst 4/9; ability 5/53 + ehp 2/24 sound.
+- SYSTEMIC clusters (engine-grounded, refuted my own first guess): A archetype divergence vs ARAM win-axis (Malphite/Shaco/Kayle/hps cluster -> per-champ ARAM override candidates); B generic marksman template on AD scorers (BotRK/Runaan's #1 every ADC, loses 25-44% wr; melee mis-credit subsumes the seed); C Aphelios dps ZERO-OUTPUT bug (all items 0.0, pool collapses to Doran's - confirmed real). efficiency-sort fix REFUTED (staples drop further); F2 Void Immolation 6000g gold-blind top secondary; F3 "absent"=buried-below-rank-12 (top-12 truncation caveat on agent verdicts).
+- FOLLOW-UP (same session, all pushed): Cluster C Aphelios dps zero-output bug FIXED (ENGINE 1.127.0 -> 1.128.0, commit 27d6e2f2 + doc-accuracy c9735f6b). Root cause = compute_dps scores only the basic-attack rotation portion; Aphelios scenario encodes basic=0 every phase -> weighted_dps=0 -> all-Doran's/0.0. Fix = fall back weighted_dps = raw_attack_dps*mode_mult (mode_mult>0 gate preserves the ARAM-disabled contract; fires for Aphelios + casters Cassio/Fiddle/Sylas). +4 TDD tests; DS 7144 / Share re-synced 341; DS :8893 -> 1.128.0 live. Doc-hygiene: ROADMAP trimmed 83135->78057 (274be121) + Share CHANGELOG/docs/05 refresh (aa8336ad). LEDGER item 463.
+- NEXT (Tier-2, gated on per-champ rewind-WIN validation FIRST, operator/Gemini scoped; full record SYSTEMIC_FINDINGS.md + BACKLOG): (1) Aphelios DONE; (2) Cluster B1 melee-applicability DPS gate (widest reach: 16 hybrid + bruiser/carry); (3) Cluster A ARAM archetype-override table (cs_archetype_picks mechanism exists); (4) F2 gold-aware top. Each = ENGINE bump + dual suite + Share mirror.
+
+---
+
 # 2026-06-16 - NEXT-SESSION DIRECTIVE + live-support fixes (post cycle 56)
 
 ## >>> NEXT SESSION directive [DONE 2026-06-16, commit 89934b80 - see COMPREHENSIVE entry above]: comprehensive per-champion DS cross-evaluation (operator directive)
