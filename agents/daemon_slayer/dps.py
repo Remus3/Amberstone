@@ -897,6 +897,34 @@ def compute_dps(
 
     notes = list(resolved.notes)
 
+    # Degenerate-scenario fallback (Aphelios dps zero-output, found in the
+    # per-champion cross-eval - ops/audit/ds_cross_eval/SYSTEMIC_FINDINGS.md
+    # Cluster C). When the champion's laning-scenario rotations encode zero
+    # basic attacks in EVERY phase (Aphelios weapon-swap kit, whose upstream
+    # lolmath rotations are modeled as pure casts with basic=0), the basic-
+    # attack-portion weighted_dps collapses to 0.0 - every item delta becomes
+    # 0 and the ranker degenerates to starter items. Fall back to the mode-
+    # adjusted raw attack DPS (AD * AS * crit * mode_mult, fully item-
+    # responsive) so item ranking stays meaningful.
+    #
+    # The ``mode_mult > 0`` gate is load-bearing: a champion ARAM-DISABLED at
+    # the snapshot patch (aramDamageDealt=0, e.g. Yunara pre-16.11.1) has
+    # mode_mult=0 and MUST stay weighted_dps=0 - that is a real "deals no
+    # damage in this mode" zero, not a scenario gap. raw_attack_dps is mode-
+    # independent so it is >0 even for a disabled champ; multiplying by
+    # mode_mult keeps a disabled champ at 0 AND scales an enabled champ's
+    # fallback by the ARAM modifier, consistent with avg_attack_dmg. Guarded
+    # on ALL phases == 0, so the champs with real basic-attack rotations are
+    # byte-identical.
+    if raw_attack_dps > 0.0 and mode_mult > 0.0 and not any(phase_dps.values()):
+        fallback_dps = raw_attack_dps * mode_mult
+        weighted_dps = fallback_dps
+        phase_dps = {p: fallback_dps for p in PHASES}
+        notes.append(
+            "weighted_dps fell back to raw_attack_dps*mode_mult (scenario "
+            "rotations encode zero basic attacks for this champion)"
+        )
+
     if takedown_bonus_ad > 0:
         notes.append(
             f"takedown bonus AD +{takedown_bonus_ad:.0f} "
