@@ -239,6 +239,12 @@ def dispatch_for_coach(
             "target_mr":             float(getattr(enemy_stats, "mr", 0.0) or 0.0),
             "target_max_hp":         float(getattr(enemy_stats, "max_hp", 0.0) or 0.0),
             "target_bonus_hp":       float(getattr(enemy_stats, "bonus_hp", 0.0) or 0.0),
+            # EHP-side: enemy damage-type split so the bruiser/tank scorer
+            # values armor vs MR by the actual comp (carry/mage/assassin/
+            # enchanter branches ignore these). Default 0.5/0.5 when the
+            # EnemyStats predates the field (getattr fallback).
+            "enemy_ad_share":        float(getattr(enemy_stats, "ad_share", 0.5) or 0.5),
+            "enemy_ap_share":        float(getattr(enemy_stats, "ap_share", 0.5) or 0.5),
             "top":                   int(top),
             "augments":              list(augments) if augments else None,
         }
