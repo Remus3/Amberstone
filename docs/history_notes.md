@@ -13,6 +13,17 @@
 
 ---
 
+# 2026-06-17 - DSP2 Cluster-B marksman off-class WIN-exemption seam (headless gemini-loop cycle 2)
+
+- Executor cycle 2 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP2 (Cluster-B fix), consuming the DSP1 divergent tail. Commit `6f7a5756` (code+Share) pushed; living-docs commit follows.
+- ROOT CAUSE: DSP1 flagged Ezreal SR -39 (worst divergent champ-mode). The item-213 ranged-marksman off-class deny-set (`rank.OFFCLASS_MARKSMAN_ITEM_NAMES`) hard-strips Sheen/on-hit items (Trinity Force, Spear of Shojin, Black Cleaver) from EVERY ranged marksman - wrong for caster-marksmen. Trinity Force is Ezreal's most-built item (rewind ARAM n=219) yet was excluded. No kit-data axis for "wants Sheen" (damage_distribution is AD/AP only).
+- FIX (Tier-2, DEFAULT-OFF seam, ENGINE 1.128.0 -> 1.129.0): WIN+usage-anchored exemption table `agents/daemon_slayer/marksman_offclass_exempt.json` (builder `ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py`, gate n>=30 & wr>=base-3) + `rank_items(exempt_offclass_by_win=False)`. Byte-identical off; crit ADCs (Caitlyn/Jinx/Sivir) untouched. 4 champs exempted: Corki/Ezreal/Senna/Smolder. Live flip EXCLUDED -> `LIVE_GAME_GATED_SYNC.md`.
+- DS :8893 bounced -> 1.129.0; Share re-synced (343, --check green). +12 hermetic tests. DS-dir 7156 / RC 8265 green. INLINE (R9), verifier SKIPPED per R7 (fresh in-thread re-verify).
+- DON'T REDO: DSP2 is DONE. Pyke ARAM -22 is a DISTINCT burst-scorer gap (Pyke is melee, never hits the marksman filter; burst over-values raw-AD/crit over lethality) -> queue a DSV/DSP3 row, do NOT re-attack via the off-class filter.
+- NEXT: DSP3 (Cluster A archetype-vs-ARAM-win divergence, `core/archetype_picks`). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-16 - COMPREHENSIVE per-champion DS scorer cross-eval EXECUTED [172/172]
 
 - Executed the NEXT-SESSION directive end-to-end in ONE session (multi-session Gemini+AHK loop NOT needed - the 158-agent workflow finished the roster). Commit 89934b80 pushed. Deliverable: ops/audit/ds_cross_eval/ (PROGRAM.md gate+rubric, SYSTEMIC_FINDINGS.md, REPORT.md, data/ + reports/ + verdicts/ x172).

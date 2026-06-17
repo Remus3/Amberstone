@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-17 - DSP5 summoner-spell seam: NEW summoners.py (headless gemini-loop cycle 7)
+
+- Executor cycle 7 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP5 (summoner-spell seam, NEW `agents/daemon_slayer/summoners.py`). Commits `790b0236` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + `f9929bbf` (living docs) + `9845586f` (ROADMAP <80KB trim) pushed.
+- ROOT: RC had ZERO summoner-spell layer (the `summoner combat set` permutation bucket was unmodeled).
+- FIX (Tier-2, ENGINE 1.130.0 -> 1.131.0): NEW `summoners.py` - a self-contained `SUMMONER_SPELLS` registry (the rune_procs-at-birth precedent), one pure level-scaled closure per spell, modeled on its scoring axis: Ignite 14 antiheal_true (70-525 true DoT + 0.40 Grievous Wounds), Exhaust 3 incoming_dr (0.35), Heal 7 ehp_heal (80-346 + 0.30 MS), Barrier 21 ehp_shield (100-502.35), Cleanse 1 cc_discount (0.75 tenacity; QSS analog), Ghost 6 move_speed (0.24-0.5082). Public surface fail-soft (unknown id / bad level -> 0.0).
+- MAGNITUDES: DDragon + CDragon 16.12.1 ZERO summoner magnitudes (prose-only, like stripped item passives - verified by fetching both); every coefficient is LoL-wiki-cited (`reference_lol_wiki_access`) per spell in the `formula` string. The wiki is the live patch (post-16.12.1) so the flip re-anchors at flip; DEFAULT-OFF means zero live impact this revision.
+- DEFAULT-OFF: `SUMMONER_SEAM_IDS` marks the 6 ids but NO live scorer consumes the module -> `/rank` byte-identical. Live flip (wire a fight_report/matchup/coach consumer) EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B.
+- DS :8893 bounced (taskkill 6560 + schtasks) -> 1.131.0; Share re-synced (347, --check green); DS+Share CHANGELOG prepended + Share/docs/02 function-ref subsection; 78 ENGINE pins / 70 .py bumped (quoted-literal-only). TDD +24 red->green. DS-dir 7206 / RC 8281 / 3 hygiene gates 12 green; ruff/py_compile/ASCII clean. INLINE (R9), verifier SKIPPED per R7 (fresh in-thread dual re-verify + live :8893 + Share --check). External wiki fetch = S7b data-anchor (not S4 budget).
+- POST-PUSH FIX: the swarm-progress prepend tipped ROADMAP to 82309 > 81920 (`test_doc_size_budget` ROADMAP_MAX) -> trimmed DSP1-3 detail to a LEDGER pointer (`9845586f`), now 81724. Lesson: run `tests/test_doc_size_budget.py` before committing a swarm-progress prepend.
+- NEXT: DSP6 (enemy-rune threat seam, NEW; default-OFF). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP4 REGRESS directive: 1 real fix + 1 false positive (headless gemini-loop cycle 6)
 
 - Executor cycle 6 (`ops/loop`, gemini director). Gemini AUDITOR returned REGRESS on item-468 DSP4 with 2 items; BOTH verified vs ground truth FIRST (S7 + the item-466 auditor-false-positive precedent).
@@ -26,14 +39,3 @@
 - DS :8893 bounced (taskkill 8076 + schtasks) -> 1.130.0; Share re-synced (345, --check green); DS+Share CHANGELOG prepended; 2 new DS test mirrors staged. TDD +27 subtests; 2 registry-shape pins 19->20; 77 ENGINE pins bumped. DS-dir 7177 / RC 8281 green; ruff clean. INLINE (R9 - one coupled seam), verifier SKIPPED per R7 (fresh in-thread dual re-verify).
 - DON'T REDO: DSP4 is DONE. The adaptive stat-grant runes (Waterwalking/Jack/Eyeball-class) are burst-neutral (proc_type adaptive is skipped by the burst consumer) -> modeling them is fight_report-cosmetic only, LOW value, do NOT bump ENGINE for them absent a surfacing need.
 - NEXT: DSP5 (summoner-spell seam, NEW `agents/daemon_slayer/summoners.py`). Tracker `docs/ORCHESTRATION_PLAN.md`.
-
----
-
-# 2026-06-17 - DSP2 Cluster-B marksman off-class WIN-exemption seam (headless gemini-loop cycle 2)
-
-- Executor cycle 2 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP2 (Cluster-B fix), consuming the DSP1 divergent tail. Commit `6f7a5756` (code+Share) pushed; living-docs commit follows.
-- ROOT CAUSE: DSP1 flagged Ezreal SR -39 (worst divergent champ-mode). The item-213 ranged-marksman off-class deny-set (`rank.OFFCLASS_MARKSMAN_ITEM_NAMES`) hard-strips Sheen/on-hit items (Trinity Force, Spear of Shojin, Black Cleaver) from EVERY ranged marksman - wrong for caster-marksmen. Trinity Force is Ezreal's most-built item (rewind ARAM n=219) yet was excluded. No kit-data axis for "wants Sheen" (damage_distribution is AD/AP only).
-- FIX (Tier-2, DEFAULT-OFF seam, ENGINE 1.128.0 -> 1.129.0): WIN+usage-anchored exemption table `agents/daemon_slayer/marksman_offclass_exempt.json` (builder `ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py`, gate n>=30 & wr>=base-3) + `rank_items(exempt_offclass_by_win=False)`. Byte-identical off; crit ADCs (Caitlyn/Jinx/Sivir) untouched. 4 champs exempted: Corki/Ezreal/Senna/Smolder. Live flip EXCLUDED -> `LIVE_GAME_GATED_SYNC.md`.
-- DS :8893 bounced -> 1.129.0; Share re-synced (343, --check green). +12 hermetic tests. DS-dir 7156 / RC 8265 green. INLINE (R9), verifier SKIPPED per R7 (fresh in-thread re-verify).
-- DON'T REDO: DSP2 is DONE. Pyke ARAM -22 is a DISTINCT burst-scorer gap (Pyke is melee, never hits the marksman filter; burst over-values raw-AD/crit over lethality) -> queue a DSV/DSP3 row, do NOT re-attack via the off-class filter.
-- NEXT: DSP3 (Cluster A archetype-vs-ARAM-win divergence, `core/archetype_picks`). Tracker `docs/ORCHESTRATION_PLAN.md`.
