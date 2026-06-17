@@ -1163,18 +1163,23 @@ def execute_command(cmd: dict) -> dict:
             return {"ok": False, "err": "bad rune ids"}
         # Item 210 2026-05-27 fix: broaden the DELETE filter so RC's
         # apply_runes path can reclaim slots from RC-authored pages that
-        # used legacy naming conventions. The codebase has FOUR RC page-
-        # name templates in flight:
-        #   - "RC: <champ> <identity> (<MODE>)"     (loadout_resolver.py)
-        #   - "RC: Auto"                            (this agent's default)
-        #   - "RC Experimental - <champ>"           (routes_loadout.py)
-        #   - "RC - <champ> (<MODE>)"               (lcu_client.py _RC_PAGE_PREFIX)
-        # Pre-fix the filter only matched "RC: " so the legacy "RC " /
-        # "RC-" prefixes survived; with the operator's 3-slot account
-        # cap, that left zero free slots and POST /lol-perks/v1/pages
-        # returned 4xx "max owned page count reached", silently failing
+        # used legacy naming conventions. With the operator's 3-slot
+        # account cap, a pre-fix filter that only matched "RC: " left the
+        # legacy "RC " / "RC-" pages in place, so POST /lol-perks/v1/pages
+        # returned 4xx "max owned page count reached" and silently failed
         # the rune push for the entire champ select. Matching all three
         # 3-char prefixes covers every RC-authored variant + future drift.
+        #
+        # OPEN1 (item 210 follow-up, 2026-06-17): the live page-name
+        # producers are now UNIFIED on the "RC: " prefix -
+        #   - "RC: <champ> <identity> (<MODE>)"  loadout_resolver.py + routes_loadout.py
+        #   - "RC: <champ> <key> (SR)"           routes_sr_draft.py
+        #   - "RC: Auto"                         this agent's default
+        # The lone divergent holdout is the FROZEN lcu/lcu_client.py
+        # (_RC_PAGE_PREFIX = "RC - "), left as-is by OPEN1 and harmless
+        # precisely because this filter still reclaims it (its name starts
+        # "RC "). Keep the 3-prefix match - do NOT narrow it back to
+        # "RC: " only. tests/test_rc_page_name_prefix_unified.py guards it.
         pages, _ = lcu_request("GET", "/lol-perks/v1/pages")
         if isinstance(pages, list):
             for pg in pages:
