@@ -163,10 +163,54 @@ def test_uncovered_or_empty_returns_empty(champ, enemy, level):
     assert out == []
 
 
-def test_missing_band_cell_returns_empty():
-    # L16 band is absent for Annie/Caitlyn -> no cell -> [].
+def test_l16_falls_back_to_l11_but_empty_when_l11_cell_absent():
+    # L16 is not generated (item 370); precomputed_choices falls back to the
+    # highest generated band L11. Annie/Caitlyn L11 only has a full/no_ult
+    # cell, so a full/all_up L16 read finds no matching L11 cell either -> [].
     out = plc.precomputed_choices(
         "Annie", "Caitlyn", 16, mana_fraction=1.0, ult_up=True,
+        payload=_payload(),
+    )
+    assert out == []
+
+
+def test_l16_falls_back_to_l11_when_cell_present():
+    # ARAM ticks at lvl>=14 map to L16, which item 370 does not generate. The
+    # reader falls back to L11 (highest generated band) so the live tick
+    # accrues coverage for the flip gate instead of being silently dropped.
+    payload = {
+        "schema": "laning_scenarios/v3",
+        "scenarios": {
+            "Annie": {
+                "Caitlyn": {
+                    "L11": {"full": {"all_up": _cell("trade", 0.15, "hold")}},
+                },
+            },
+        },
+    }
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 18, mana_fraction=1.0, ult_up=True,
+        payload=payload,
+    )
+    assert len(out) == 2
+    assert "Trade" in out[0].label and "Caitlyn" in out[0].label
+
+
+def test_l16_fallback_does_not_invent_uncovered_pair():
+    # The band fallback rescues only the level axis; an uncovered (champ,enemy)
+    # pair still yields [] (no lower-band data to fall back to).
+    out = plc.precomputed_choices(
+        "Annie", "Zed", 18, mana_fraction=1.0, ult_up=True,
+        payload=_payload(),
+    )
+    assert out == []
+
+
+def test_generated_band_miss_does_not_fall_back():
+    # A miss INSIDE a generated band (L6 low/no_ult absent here) must NOT
+    # trigger the L16->L11 fallback - only non-generated bands fall back.
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 6, mana_fraction=0.2, ult_up=False,
         payload=_payload(),
     )
     assert out == []
