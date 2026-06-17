@@ -32,7 +32,20 @@ web changes); engine flips need a DS `:8893` restart.
 - [ ] DS Phase-D default-ON flag flips re-rank validation (each needs a real game, "saner not different"):
       `apply_passive_damage`, the 4 non-every-AA `on_hit`, per-stack `assumed_stacks` (ROADMAP DS Phase-D).
 - [ ] DSV seam flips (default-OFF today): `assume_takedown` (DSV2), `assume_squishy_target` (DSV3),
-      `assume_ability_amp` (DSV4) -> turn ON in `rank.py`, confirm the re-ranked build is saner.
+      `assume_ability_amp` (DSV4) -> turn ON in the BURST / assassin scorer
+      `agents/daemon_slayer/burst.py rank_items_by_burst(assume_takedown=/assume_squishy_target=/assume_ability_amp=True)`
+      (assume_takedown + assume_ability_amp also gate `compute_burst_damage`); NOT `rank.py` - the dps/carry
+      ranker `rank.py rank_items` carries only the DSP2/DSP11 seams. Confirm the re-ranked build is saner.
+- [ ] Anti-tank P3.2 live caster-stat producer + survivability-scorer validation (EXCLUDED item; needs a
+      live AbilitiesSnapshot / game; ORCH "live caster-stat producer for /anti-tank P3.2"). (1)
+      `agents/daemon_slayer/antitank.py effective_magnitude` applies an optional P3.2 (item 315)
+      `ap_ratio`/`ad_ratio` caster-stat scaling that stays dormant until a LIVE caster-stat producer feeds
+      the `stats` (champion AP/AD) object - confirm the scaled %max-HP anti-tank magnitudes match a real
+      game. (2) `agents/daemon_slayer/ehp.py compute_ehp(external_resist_armor=, external_resist_mr=)` (the
+      survivability axis) needs a LIVE ally producer feeding the teammate-conferred resist (Orianna E /
+      Braum W / Taric W via `_passive_ally_grant_overrides.ally_resist_grant`); the Anivia/Zac egg-resist
+      (`apply_egg_resist`) is already default-ON (item 321) and only needs live eyeball validation. This is a
+      missing LIVE INPUT producer + an eyeball check, NOT a seam-flag flip. No DS `:8893` restart.
 - [ ] DSP2 off-class WIN-exemption flip (default-OFF today): `rank.rank_items(exempt_offclass_by_win=True)`
       -> un-strips the items the caster-marksmen genuinely build (Ezreal/Corki/Smolder Trinity Force +
       Spear of Shojin, Senna Black Cleaver; `agents/daemon_slayer/marksman_offclass_exempt.json`). Flip ON
@@ -154,6 +167,17 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 LGS1 (no ENGINE bump - pure docs audit): live-sync list audited authoritative. (1) CORRECTED
+  the DSV seam-flip row's location - `assume_takedown`/`assume_squishy_target`/`assume_ability_amp` flip the
+  BURST scorer `agents/daemon_slayer/burst.py rank_items_by_burst` (+ `compute_burst_damage`), NOT `rank.py`
+  (verified by grep: `rank.py rank_items` carries ONLY the DSP2 `exempt_offclass_by_win` + DSP11
+  `prefer_kit_axis_by_win` seams; the DSV/DSP8 seams live in `burst.py`, DSP4 `score_completion_runes` in
+  `burst.py`+`combo.py`). (2) ADDED a section-B row for the EXCLUDED anti-tank P3.2 live caster-stat producer
+  (`antitank.py effective_magnitude` ap/ad_ratio scaling) + the `ehp.py compute_ehp(external_resist_*)`
+  Orianna-E/Braum-W/Taric-W ally-resist survivability producer (egg-resist already default-ON item 321) -
+  previously the only EXCLUDED live item with no checklist row. Every other rank.py/burst.py/combo.py
+  default-OFF seam (DSP2/DSP4/DSP8/DSP11) + the ROADMAP Phase-D flips + champ-select Haiku flip already had
+  an accurately-located row. No new seam shipped; no new OPEN work discovered (OPEN1/OPEN2 still pending).
 - 2026-06-17 HZU1 (no ENGINE bump - tooling + docs; the item-level CODE shipped item 457 @a30cbba4):
   the HZ Lane-B build-order Haiku-flip gate already mines item-level signal, but its VERDICT is HOLD.
   Fresh re-run @651 SR matches (`--limit 0`) independently REPRODUCED item 457 byte-for-byte: lean-level
