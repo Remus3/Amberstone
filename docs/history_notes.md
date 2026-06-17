@@ -13,6 +13,17 @@
 
 ---
 
+# 2026-06-17 - LGS1 live-game-gated sync list audit: DSV flip-loc fix + anti-tank/ehp row (headless gemini-loop cycle 17)
+
+- Executor cycle 17 of the DS permutation swarm (`ops/loop`, gemini director). Directive = LGS1 (audit ROADMAP open-tails + ORCHESTRATION_PLAN EXCLUDED + every default-OFF seam in `rank.py`; verify `docs/LIVE_GAME_GATED_SYNC.md` is COMPLETE + each row names its flip location). Pure docs. Commit `ba3d3ea1` + this WAKEUP/sync commit pushed. ZERO .py edits -> no ENGINE bump / DS restart / Share sync / py_compile.
+- AUDIT (1): `rank.py` default-OFF seams = exactly TWO - `exempt_offclass_by_win` (DSP2 L522) + `prefer_kit_axis_by_win` (DSP11 L523), both already accurately rowed. The DSV2/3/4 (`assume_takedown`/`assume_squishy_target`/`assume_ability_amp`) + DSP8 `target_preset` seams actually live in `agents/daemon_slayer/burst.py` (`rank_items_by_burst`/`compute_burst_damage`) and DSP4 `score_completion_runes` in `burst.py`+`combo.py` (grep-verified) -> FIXED the sync-doc DSV row + the plan EXCLUDED meta-bullet (both colloquially said "rank.py").
+- AUDIT (2): every EXCLUDED bullet maps to a sync row EXCEPT "live caster-stat producer for /anti-tank P3.2 + survivability scorer (egg-resist/Orianna E)" -> ADDED a section-B row naming `antitank.py effective_magnitude` (P3.2 ap/ad_ratio caster-stat scaling, dormant until a live AbilitiesSnapshot producer feeds champion AP/AD) + `ehp.py compute_ehp(external_resist_*)` Orianna-E/Braum-W/Taric-W ally-resist producer (egg-resist already default-ON item 321). AUDIT (3): ROADMAP live-gated tails (Phase-D flips, champ-select Haiku flip, vision self-heal, st-* adaptation, augment OCR) all already rowed.
+- NET: 2 sync-doc fixes + a live-flip ledger entry; the live-sync list is now COMPLETE with every row naming an accurate flip location. LGS1 OPEN->DONE; LEDGER 479; ROADMAP swarm-progress prepended + DSP1-7 detail compressed to a LEDGER/findings pointer (was 14 bytes under the 80KB budget -> 1183 margin). No new OPEN work (OPEN1/OPEN2 remain).
+- GATE: doc-size-budget + smart-quote + mojibake + u2500 hygiene 14 passed; 0 non-ASCII added (52 added lines scanned); full dual suite skipped per R5 (Tier-0 docs, ZERO .py). INLINE sole orchestrator (R9 - docs audit, no disjoint code slices); verifier SKIPPED per R7 (own single-thread; the grep cross-checks are the independent verify). No frozen files.
+- NEXT: OPEN1 (page-name unify) or OPEN2 (test control_dir leak). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - HZU1 build-order Haiku-flip gate: HOLD (mine-verify item 457) + laning/flip live-sync prep (headless gemini-loop cycle 16)
 
 - Executor cycle 16 of the DS permutation swarm (`ops/loop`, gemini director). Directive = HZU1 (item-level build-order Haiku-flip gate). Tier-0 docs commit `2a839bfe` pushed. NO .py edits -> no ENGINE bump / DS restart / Share sync.
