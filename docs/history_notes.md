@@ -13,6 +13,18 @@
 
 ---
 
+# 2026-06-17 - OPEN2 test-hygiene: hermetic loop_controller tests, no prod controller.log pollution (gemini-loop cycle 19, MANUAL one-shot)
+
+- Executor of the pending `ops/loop/control/directive.md` (OPEN2). NOTE: a MANUAL one-shot execution per the operator's "execute directive.md now" override - the perpetual gemini+AHK controller loop was NOT launched (PART A skipped). Fix `b96f17e1` + docs closeout `c07db0ab` pushed; CI green.
+- ROOT: `tests/test_p2w4_hw2_b.py` git()/head() error-path tests monkeypatched `subprocess.run` to raise but NOT the module-global `CTL`, so `loop_controller.git()` except -> `log()` (loop_controller.py:30,80) appended to the PROD `ops/loop/control/controller.log` every suite run (3 lines/run: 2x "git rev-parse failed: ... timed out after 30 seconds" + 1x "... git binary missing"; 684 accrued since 2026-06-13, 42 dated today).
+- FIX (mirror conftest SHADOW_PATH redirect, item 386): the `lc` fixture now takes `(monkeypatch, tmp_path)` and does `monkeypatch.setattr(mod, "CTL", tmp_path/"control")` after reload, so error-path log() writes land in tmp. +2 hermeticity regression tests (CTL off-prod; prod controller.log size unchanged across an error-path git()).
+- SIBLING SWEEP: `done_sentinel.head()` + `claude_stub.head()` both `return ""` with NO log() call -> never polluters; the 5 other loop-touching test files clear (override test passes explicit tmp_path; rest never call git()). test_p2w4_hw2_b.py was the SOLE polluter.
+- RECOVERY (operator-gated FUTURE): the historic ~684-line residue in controller.log is LEFT INTACT (*.log immutable bucket, feedback_no_history_rewrite); a surgical strip of the 2 exact test-signature lines is logged as NEW WORK in the ORCHESTRATION_PLAN Findings - do NOT rewrite the protected log unprompted.
+- GATE: target file 9 passed (7+2); full RC `tests/ --ignore=tests/daemon_slayer` 8315 passed / 2 skip / 0 fail (298s); full-suite re-run added 0 new prod-log lines (today count held at 42); ruff / py_compile / hygiene(14) green; CI green. No engine/route/DS/web -> no DS restart / Share sync / RC restart / UI ritual. INLINE (R9, one file), verifier SKIPPED (R7). ORCHESTRATION_PLAN OPEN2 OPEN->DONE; LEDGER 481; ROADMAP synced.
+- NEXT: OPEN2 was the last-listed OPEN session - the gemini director refills `docs/ORCHESTRATION_PLAN.md` or emits NO_WORK. To resume the continuous loop, re-invoke `/gemini-headless-upgrade` without the "execute now" override.
+
+---
+
 # 2026-06-17 - LGS1 live-game-gated sync list audit: DSV flip-loc fix + anti-tank/ehp row (headless gemini-loop cycle 17)
 
 - Executor cycle 17 of the DS permutation swarm (`ops/loop`, gemini director). Directive = LGS1 (audit ROADMAP open-tails + ORCHESTRATION_PLAN EXCLUDED + every default-OFF seam in `rank.py`; verify `docs/LIVE_GAME_GATED_SYNC.md` is COMPLETE + each row names its flip location). Pure docs. Commit `ba3d3ea1` + this WAKEUP/sync commit pushed. ZERO .py edits -> no ENGINE bump / DS restart / Share sync / py_compile.
