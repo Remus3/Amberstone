@@ -51,6 +51,13 @@ web changes); engine flips need a DS `:8893` restart.
       agreement (now unblocked, item 456) -> gate the precompute-vs-Haiku live coach FLIP (cycle 52 NEXT).
 - [ ] Build-chooser populates + pushes for ARAM picks; comp-aware row-3 MAYHEM tip renders.
 - [ ] ARAM comp-verdict swap/variant/stay surfaces correctly (`core/aram_comp_verdict.py`).
+- [ ] DSP3 ARAM archetype-override flip (default-OFF today): `core.archetype_picks.get_archetype_for(
+      prefer_aram_win_axis=True)` at the ARAM scorer-dispatch site -> re-bases the kit default to the
+      rewind-WIN archetype for the 6 Cluster-A champs (Zilean/Shaco/Shyvana -> mage, Taric -> tank,
+      KogMaw/Kayle -> carry; `core/aram_archetype_override.json`). Flip ON where the ARAM coach
+      resolves the archetype, then eyeball that Kayle/KogMaw surface on-hit (BotRK/Wit's End), Zilean/
+      Shaco/Shyvana surface AP, Taric surfaces tank, and a non-Cluster-A champ + any operator pick are
+      unchanged. NO DS :8893 restart needed (RC-side resolver, no engine math change).
 
 ## D. Arena / Cherry (queue 1750)
 
@@ -75,6 +82,11 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP3 (no ENGINE bump - RC-side resolver, no engine math): ARAM archetype-override seam
+  shipped DEFAULT-OFF. Live flip = `core.archetype_picks.get_archetype_for(champion,
+  prefer_aram_win_axis=True)` at the ARAM archetype-dispatch site (section C above). Re-bases the
+  kit-default archetype to the rewind-WIN archetype for 6 Cluster-A champs; operator picks untouched.
+  Validate the re-ranked scorer vs a real Kayle/KogMaw/Zilean/Shaco/Shyvana/Taric ARAM game first.
 - 2026-06-17 DSP2 (ENGINE 1.129.0): off-class WIN-exemption seam shipped DEFAULT-OFF. Live flip =
   `rank_items(exempt_offclass_by_win=True)` at the carry/dps scorer call site (the caster-marksman
   re-include; section B above). Validate the re-rank vs a real Ezreal/Corki game before flipping.
