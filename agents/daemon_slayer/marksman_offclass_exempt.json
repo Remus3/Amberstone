@@ -1,0 +1,24 @@
+{
+  "_comment": "DSP2 Cluster-B: per-ranged-marksman off-class WIN-exemption table. Consumed by rank.rank_items(exempt_offclass_by_win=True) (DEFAULT-OFF seam). Built by ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py from the cross-eval empirical (rewind WIN+usage) data. ASCII only.",
+  "patch": "16.12.1",
+  "generated_from": "ops/audit/ds_cross_eval/data",
+  "min_usage": 30,
+  "wr_margin": 3.0,
+  "ranged_marksmen_considered": 30,
+  "champions": {
+    "Corki": [
+      "Trinity Force"
+    ],
+    "Ezreal": [
+      "Spear of Shojin",
+      "Trinity Force"
+    ],
+    "Senna": [
+      "Black Cleaver"
+    ],
+    "Smolder": [
+      "Spear of Shojin",
+      "Trinity Force"
+    ]
+  }
+}

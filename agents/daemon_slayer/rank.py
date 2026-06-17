@@ -15,7 +15,9 @@ on-hit) - those live in Phase 4 alongside ability damage.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
@@ -154,6 +156,67 @@ def _is_ranged_marksman(champ_rec: dict) -> bool:
         return float(rng) >= RANGED_MARKSMAN_RANGE_FLOOR
     except (TypeError, ValueError):
         return False
+
+
+# DSP2 Cluster-B off-class WIN-exemption seam (DEFAULT-OFF, 2026-06-17).
+#
+# The OFFCLASS_MARKSMAN_ITEM_NAMES deny-set strips Sheen-line / on-hit-caster
+# items (Trinity Force, Spear of Shojin, Black Cleaver) from EVERY ranged
+# marksman - correct for a pure crit ADC (Caitlyn / Jinx / Sivir) but WRONG for
+# an ability / Sheen caster-marksman (Ezreal, Corki, Smolder, Senna) whose
+# actual winning build IS those items. The DSP1 WIN-anchor surfaced Ezreal SR
+# -39 (the worst outcome-divergent champ-mode) precisely because Trinity Force,
+# his most-built item (ARAM n=219), was hard excluded from the candidate pool.
+#
+# There is no clean kit-data axis for "wants Sheen" (lolmath.damage_distribution
+# is AD/AP only - it cannot separate Ezreal's ability-physical damage from
+# Caitlyn's auto-physical), so the exemption is anchored on the swarm's ground
+# truth: the per-champ rewind WIN+usage data, distilled offline into
+# ``marksman_offclass_exempt.json`` by
+# ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py. An off-class item
+# is exempted (un-stripped) for a champ when the player base genuinely builds it
+# (usage n + a loose win band). The seam is DEFAULT-OFF and byte-identical when
+# off (the DSV1-4 precedent); the live default-ON flip is EXCLUDED ->
+# docs/LIVE_GAME_GATED_SYNC.md. Fail-soft: a missing / unreadable table yields an
+# empty map so the seam is a no-op even when requested.
+_OFFCLASS_EXEMPT_PATH = Path(__file__).resolve().parent / "marksman_offclass_exempt.json"
+_OFFCLASS_EXEMPT_CACHE: Optional[dict[str, frozenset[str]]] = None
+
+
+def _load_offclass_exemptions() -> dict[str, frozenset[str]]:
+    """champion key (DDragon id / name) -> frozenset of exempt item names.
+
+    Loaded once and cached. Fail-soft to ``{}`` on any read / parse error so the
+    seam degrades to a no-op rather than raising.
+    """
+    global _OFFCLASS_EXEMPT_CACHE
+    if _OFFCLASS_EXEMPT_CACHE is not None:
+        return _OFFCLASS_EXEMPT_CACHE
+    out: dict[str, frozenset[str]] = {}
+    try:
+        raw = json.loads(_OFFCLASS_EXEMPT_PATH.read_text(encoding="utf-8"))
+        for champ, names in (raw.get("champions") or {}).items():
+            fs = frozenset(n for n in (names or ()) if isinstance(n, str))
+            if fs:
+                out[str(champ)] = fs
+    except Exception:  # noqa: BLE001 - fail-soft, no exemption on any error
+        out = {}
+    _OFFCLASS_EXEMPT_CACHE = out
+    return out
+
+
+def _offclass_win_exemptions(
+    champion_id: str, champ_rec: Optional[dict]
+) -> frozenset[str]:
+    """Exempt item names for this champion, by DDragon id then display name."""
+    tbl = _load_offclass_exemptions()
+    hit = tbl.get(str(champion_id))
+    if hit:
+        return hit
+    name = (champ_rec or {}).get("name") if isinstance(champ_rec, dict) else None
+    if name:
+        return tbl.get(str(name), frozenset())
+    return frozenset()
 
 
 def strip_arena_trinkets(
@@ -448,6 +511,7 @@ def rank_items(
     fight_length: Optional[float] = None,
     mana_value_per_point: Optional[float] = None,
     apply_mode_modifiers: bool = False,
+    exempt_offclass_by_win: bool = False,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -506,6 +570,16 @@ def rank_items(
     ``fight_length`` is engaged (those own the sort key). A sane starting
     value is small (e.g. 0.02); it is operator-tunable, not a claim that mana
     has a fixed DPS price. Non-positive is treated as ``None``.
+
+    ``exempt_offclass_by_win`` is the OPTIONAL DSP2 Cluster-B seam (DEFAULT-OFF).
+    When ``False`` (default) the output is byte-identical to before - the
+    item-213 ranged-marksman off-class deny-set applies unchanged. When ``True``
+    and the champion is a ranged marksman, the off-class items this champ
+    genuinely builds per the WIN+usage table
+    (``marksman_offclass_exempt.json``: Ezreal/Corki/Smolder Trinity Force +
+    Spear of Shojin, Senna Black Cleaver) are un-stripped from the candidate
+    pool. Pure crit ADCs (absent from the table) are untouched. The live
+    default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -583,6 +657,14 @@ def rank_items(
     champ_rec = snapshot.champions.get(str(champion_id))
     if champ_rec is not None and _is_ranged_marksman(champ_rec):
         exclude_names = OFFCLASS_MARKSMAN_ITEM_NAMES
+        # DSP2 Cluster-B (DEFAULT-OFF): un-strip the off-class items this
+        # caster-marksman genuinely builds per the WIN+usage table, so the
+        # ranker stops hard-excluding (Ezreal/Corki/Smolder) Trinity Force /
+        # Spear of Shojin. Byte-identical when the seam is off.
+        if exempt_offclass_by_win:
+            exempt = _offclass_win_exemptions(str(champion_id), champ_rec)
+            if exempt:
+                exclude_names = OFFCLASS_MARKSMAN_ITEM_NAMES - exempt
 
     candidates = _filter_candidates(
         snapshot,
