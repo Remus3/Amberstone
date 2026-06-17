@@ -100,8 +100,27 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## C. ARAM / ARAM Mayhem (KIWI)
 
-- [ ] HZ laning agreement read: after live ARAM games accrue, run `tools/hz_shadow_report.py` laning
-      agreement (now unblocked, item 456) -> gate the precompute-vs-Haiku live coach FLIP (cycle 52 NEXT).
+- [ ] HZ Lane-A laning-agreement read (HZU1 prep): after live ARAM games accrue, run
+      `tools/hz_shadow_report.py` laning agreement (now unblocked, item 456) -> measures how often the
+      HZ-A precompute trade/all-in/back-off verdict AGREES with the live Haiku laning call over real
+      ALIVE laning ticks. Gate the precompute-vs-Haiku live LANING-coach FLIP on a high agreement rate
+      (reference_hz_laning_agreement_gate: dead/disabled overlay states WAIT RESPAWN / COACHING DISABLED
+      are excluded; alive capture falls back action->immediate via the in-process logger, which needs an
+      RC restart - power it by accruing ALIVE ticks). Pairs with the HZ Lane-B build gate below: both
+      are the cycle-52 HZ precompute->Haiku flip pair and both HOLD until validated.
+- [ ] HZ Lane-B build-order item-level Haiku-flip gate (HZU1; item-level code shipped item 457
+      @a30cbba4, re-verified this cycle): the flip is `core.precomputed_build_coach`'s anti_tank vs
+      anti_squishy BUILD chip going OFF its Haiku "do I pivot anti-tank" call onto the deterministic
+      HZ-B2 lean. Rail = `tools/replay_build_order_validate.py` (win-anchored over rewind SR replays;
+      artifact `ops/runtime/build_order_validation.json`). VERDICT TODAY = HOLD: @651 SR matches the
+      lean-level followed-vs-not win is a coin flip (+2.3pp, 95%=[-2.3,+6.9], flip_ready=False), and
+      mining the 4627 lean-ambiguous rows at ITEM granularity surfaces only 1/51 clean per-item carriers
+      - Infinity Edge on anti_squishy (+12.6pp, 95%=[+0.7,+24.4]); Serylda's Grudge +11.3pp just misses
+      (lo=-0.9). FLIP only after the gate clears its rail (followed-minus-not 95% lo > 0 at >=300
+      rows/arm, OR a broad set of per-item carriers) on a LARGER replay corpus, then eyeball the
+      deterministic chip vs a real game. Re-run `replay_build_order_validate.py --limit 0` as
+      `data/rewind_history.db` grows; one Infinity-Edge carrier is too thin to flip on. Do NOT flip
+      blind (charter 4b). No DS `:8893` restart needed (RC-side coach, no engine math).
 - [ ] Build-chooser populates + pushes for ARAM picks; comp-aware row-3 MAYHEM tip renders.
 - [ ] ARAM comp-verdict swap/variant/stay surfaces correctly (`core/aram_comp_verdict.py`).
 - [ ] DSP3 ARAM archetype-override flip (default-OFF today): `core.archetype_picks.get_archetype_for(
@@ -135,6 +154,16 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 HZU1 (no ENGINE bump - tooling + docs; the item-level CODE shipped item 457 @a30cbba4):
+  the HZ Lane-B build-order Haiku-flip gate already mines item-level signal, but its VERDICT is HOLD.
+  Fresh re-run @651 SR matches (`--limit 0`) independently REPRODUCED item 457 byte-for-byte: lean-level
+  followed-vs-not +2.3pp (766 vs 1066 rows, 95%=[-2.3,+6.9], flip_ready=False); completion-timing also a
+  coin flip (fast<=20.82min 56.1% vs slow 56.7%); and 1/51 per-item carriers over the 4627
+  lean-ambiguous rows = Infinity Edge anti_squishy +12.6pp (95%=[+0.7,+24.4]), with Serylda's Grudge
+  +11.3pp just missing (lo=-0.9). NO live flip is shipped - the build coach AND the laning coach both
+  HOLD Haiku until the gate clears its flip rail on a larger corpus and is eyeballed live. The live-gated
+  rows for both the Lane-A laning read and the Lane-B build flip are recorded in section C above; re-run
+  the gate as `data/rewind_history.db` grows. Artifact: `ops/runtime/build_order_validation.json`.
 - 2026-06-17 DSP11 (ENGINE 1.135.0): Cluster-B2 kit-axis item-credit seam shipped DEFAULT-OFF.
   NEW `prefer_kit_axis_by_win` on `rank_items` (dps) + `rank_items_by_burst` (burst), driven by
   the WIN-anchored `kit_axis_item_credit.json` table (7 champs / 21 terminal items, built by
