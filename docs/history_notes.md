@@ -13,6 +13,19 @@
 
 ---
 
+# 2026-06-17 - DSP6 enemy-rune threat seam: NEW enemy_runes.py (headless gemini-loop cycle 8)
+
+- Executor cycle 8 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP6 (enemy-rune threat seam, NEW `agents/daemon_slayer/enemy_runes.py`). Commits `f3563120` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + `4a9b820f` (living docs) pushed; CI green baseline confirmed pre-push.
+- ROOT: RC modeled the player's OWN runes (`rune_procs.py` + `core/rune_wpa.py`) but had ZERO model of the ENEMY's runes as a threat modulating the player's EHP preset (survivability) or the enemy's target preset (tankiness) - an unmodeled permutation bucket.
+- FIX (Tier-2, ENGINE 1.131.0 -> 1.132.0): NEW `enemy_runes.py` - the enemy-side mirror of `summoners.py` (DSP5 birth precedent). Frozen `EnemyRuneThreat` dataclass + `ENEMY_RUNE_THREATS` registry, one pure closure per rune on the preset it threatens: PtA 8005 incoming_amp (0.08 amp on the player = 1/1.08 EHP divisor), Conqueror 8010 damage_ramp (max-stack Adaptive Force 21.6-48.0 by level + 0.08/0.05 lifesteal for the target lens), Grasp 8437 + Second Wind 8444 poke_sustain (1.3% max-HP heal + 5 perm HP + 3.5% magic / 4% missing-HP). Public surface fail-soft (unknown / empty / None / bad -> 0.0).
+- MAGNITUDES: every coefficient verbatim from DDragon `runesReforged.json` 16.12.1 longDesc (authoritative); UNLIKE summoner spells, DDragon does NOT zero rune longDescs, so NO wiki fallback (cross-check only). ANTIHEAL (4th bucket) is NOT a rune (no rune grants Grievous Wounds) -> carried as `GRIEVOUS_WOUNDS_PCT=0.40` + `enemy_antiheal_pct(present)`, EXCLUDED from `ENEMY_RUNE_SEAM_IDS`.
+- DEFAULT-OFF: `ENEMY_RUNE_SEAM_IDS` marks the 4 ids but NO live scorer consumes the module -> `/rank` + compute_dps/ehp/burst byte-identical. Live flip (wire an EHP/target-preset consumer) EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B + ledger.
+- DS :8893 bounced (taskkill 1976 + schtasks) -> 1.132.0; Share re-synced (349, --check green); DS+Share CHANGELOG prepended + Share/docs/02 function-ref subsection; 79 ENGINE pins / 71 .py bumped (quoted-literal-only). TDD +29 (28 logic-green pre-bump, the pin red-first -> green). DS-dir 7235 / RC 8281 green; ruff/py_compile/ASCII clean (0 introduced non-ASCII). INLINE (R9), verifier SKIPPED per R7 (fresh in-thread dual re-verify + live :8893 + Share --check).
+- SIZE GUARD: applied cycle-7's lesson - ran `tests/test_doc_size_budget.py` BEFORE committing the ROADMAP swarm-progress prepend; the DSP6 add tipped it to 82189 > 81920 so DSP4 detail was compressed to LEDGER pointers pre-commit -> 81800 (margin 120), guard green. No post-push fixup needed this cycle.
+- NEXT: DSP7 (ally aura/enchanter seam: extend `allyamp.py` + `_passive_ally_grant_overrides.py` to enchanter/shield/heal buckets; default-OFF). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP5 summoner-spell seam: NEW summoners.py (headless gemini-loop cycle 7)
 
 - Executor cycle 7 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP5 (summoner-spell seam, NEW `agents/daemon_slayer/summoners.py`). Commits `790b0236` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + `f9929bbf` (living docs) + `9845586f` (ROADMAP <80KB trim) pushed.
