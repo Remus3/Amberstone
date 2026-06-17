@@ -110,6 +110,33 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-17 DSP4 cycle REGRESS directive: 1 of 2 items REAL, 1 FALSE POSITIVE.
+  No ENGINE bump (notes-string only; no scorer/schema/math change). VERIFIED both
+  premises against ground truth before coding (S7 + feedback_audit_proposals_are
+  _intent). (1) REAL - burst.py notes byte-identical break: the DSP4 notes block
+  gated on `if _scored_runes:` (post-completion-filter), so a supplied
+  runes=[8401] default-OFF swallowed the rune-procs note entirely, whereas the
+  pre-DSP4 engine fired "rune procs +0.0 (0 known rune(s))" for any supplied rune
+  set (8401 was then an unknown id, _n=0). Violates burst.py docstring "byte-
+  identical to the pre-DSP4 engine for any supplied rune set". FIX: gate on
+  `if runes:` (supplied?), keep _n over _scored_runes so 8401 reads 0 known ->
+  exact pre-DSP4 string; SCORING stays gated on _scored_runes (rune_proc_damage
+  still 0.0, total unchanged). TDD: 2 new subtests in
+  test_burst_shield_bash_seam_dsp4.py (notes byte-identical for runes=[8401];
+  runes=None emits no note) - red before / green after. Sibling sweep: combo.py
+  gates its rune note on `if rune_proc > 0.0:` (damage value, not runes
+  truthiness) -> already byte-identical, no change. (2) FALSE POSITIVE -
+  rune_procs.py `COMPLETION_RUNE_IDS: frozenset[int]` "import crash on Python
+  <3.9": REFUTED. Line 42 `from __future__ import annotations` makes the
+  annotation a lazy string (never evaluated); RC runs Python 3.14 (PEP 585 valid
+  anyway); `typing.Dict` import is cosmetic. Proven: `import rune_procs` ->
+  `IMPORT_OK [8401] frozenset 20`. NO change made (cargo-cult downgrade avoided).
+  Suites: DS 7182 passed / 1942 subtests; RC 8281 passed. R7 verifier skipped
+  (own single-thread edit); R9 inline (1 code line + 1 test file + docs, < 3
+  files - directive's worktree-fanout boilerplate does not fit a 1-line revert).
+  Share/ re-synced (--check green). Source: gemini director REGRESS directive
+  ops/loop/control/directive.md.
+
 - 2026-06-17 DSP4 (468, 1f7dbe62) DONE. Self-rune completion seam (ENGINE
   1.129.0 -> 1.130.0). ROOT (catalog sweep of DDragon 16.12.1 runesReforged.json
   vs RUNE_PROCS): of 62 catalog runes, 19 were modeled (8 item-226 + 6 S4 + 2

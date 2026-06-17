@@ -1037,7 +1037,13 @@ def compute_burst_damage(
             + ", ".join(f"{k}={block_overrides[k]}" for k in sorted(block_overrides))
         )
 
-    if _scored_runes:
+    if runes:
+        # Gate on `runes` (supplied?) not `_scored_runes` (post-filter): the
+        # note fires byte-identically to the pre-DSP4 engine whenever a rune set
+        # is supplied, even one wholly filtered to completion runes. _n still
+        # counts over _scored_runes so a default-OFF completion rune reads as
+        # "0 known rune(s)" with +0.0 - the exact pre-DSP4 string for a
+        # then-unknown id. Scoring stays gated on _scored_runes above.
         _n = sum(1 for _r in _scored_runes if RUNE_PROCS.get(_r) is not None)
         notes.append(
             f"rune procs +{rune_proc_damage:.1f} ({_n} known rune(s)); "

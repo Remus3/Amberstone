@@ -50,6 +50,30 @@ class BurstSeamDefaultOffTests(unittest.TestCase):
         self.assertEqual(omitted.total_burst_damage, base.total_burst_damage)
         self.assertEqual(omitted.rune_proc_damage, 0.0)
 
+    def test_shield_bash_off_notes_byte_identical(self):
+        # The byte-identical contract (burst docstring: "byte-identical to the
+        # pre-DSP4 engine for any supplied rune set") covers the diagnostic
+        # notes too, not just the damage totals. Pre-DSP4 a supplied
+        # runes=[8401] (then an unknown id) still fired the rune-procs note with
+        # "0 known rune(s)" because the note emits whenever runes are supplied.
+        # The completion filter gates SCORING (rune_proc_damage), it must not
+        # swallow the note. _n counts over the filtered set so 8401 reads as 0
+        # known -> exact pre-DSP4 string.
+        off = _burst("Leona", runes=[8401], completion=False)
+        rune_notes = [n for n in off.notes if n.startswith("rune procs")]
+        self.assertEqual(len(rune_notes), 1)
+        self.assertIn("0 known rune(s)", rune_notes[0])
+        self.assertIn("+0.0", rune_notes[0])
+
+    def test_no_runes_emits_no_rune_note(self):
+        # runes=None (the live /rank default) supplies no runes, so the
+        # rune-procs note is absent - locking the runes-supplied vs not boundary
+        # against an over-broad fix that emits the note unconditionally.
+        base = _burst("Leona", runes=None)
+        self.assertEqual(
+            [n for n in base.notes if n.startswith("rune procs")], []
+        )
+
 
 class BurstSeamOnTests(unittest.TestCase):
     def test_shield_bash_on_adds_floor(self):
