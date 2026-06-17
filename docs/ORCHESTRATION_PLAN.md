@@ -71,6 +71,33 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 | HZ-T1 | haiku-zero | DIRECTOR-REFILL cycle 43. Hermetic per-mode (sr/aram/arena) fail-soft path-routing coverage for the HZ precompute SOURCE-module tests (load_*(mode) was tested only for sr; aram/arena tables items 386/388 untested on that path). | DONE | 9da9358a |
 | LBAND1 | haiku-zero | DIRECTOR-REFILL cycle 45 (bounded queue drained, Gemini down 429; operator "continue open items headlessly - multi-agent fanout"). Section-7b competitor deep-dive (L1) + post-baseline robustness/coverage scout (L2: NOW=0/CLEAN=20). NEW core/live_benchmark_band.py - bands live cs+level vs the player's OWN per-champion percentile (core.benchmarks) at the ~10/~15min checkpoint; the LIVE half of the personal-benchmark data RC only used post-game (aftergame_summary). SR-only, gold excluded (on-hand-vs-total), >=5-games gate. Pure generator, no live consumer yet (wire-in FUTURE, do-not-flip-blind). +10 hermetic tests. | DONE | a8158629 |
 
+## Sessions - OPERATOR REFILL 2026-06-17 (DS permutation swarm + drive ALL open items)
+
+Operator directive: drive ALL open ROADMAP items to completion across many cycles; centerpiece =
+the DS permutation swarm (maximize DS logic across self runes + summoner spells + ally team + ally
+runes/auras + enemy team + enemy runes), adapt to lolmath at minimum, implement findings to the
+smallest benefit. Each DSP row: READ `docs/DS_PERMUTATION_SWARM_PLAN.md` for the full contract +
+the seam pattern (default-OFF, Meraki + rewind WIN anchored, ENGINE bump + DS restart + Share sync,
+live flip EXCLUDED -> append to `docs/LIVE_GAME_GATED_SYNC.md`). Operator-gated forks -> Gemini PART C,
+pick the recommended path, NEVER block. Director picks ONE top-down.
+
+| ID | Theme | Scope | Status | Commit |
+|----|-------|-------|--------|--------|
+| DSP1 | ds-swarm | Build the permutation validation harness + WIN anchor under ops/audit/ds_perm_swarm/: score DS top-N vs data/rewind_history.db WIN-rate per (champ x context bucket), consume ops/audit/ds_cross_eval/data/<Champ>.json. BUILD only, no engine change. Hermetic tests. See plan "DSP1". | OPEN | - |
+| DSP2 | ds-engine | Cross-eval Cluster B fix: generic-marksman-template leaking onto non-marksman AD scorers (named systemic bug). Root-cause-first, per-champ tests, ENGINE bump + DS restart + Share sync. See plan "DSP2". | OPEN | - |
+| DSP3 | ds-engine | Cross-eval Cluster A fix: archetype-vs-ARAM-win divergence (weights / core/archetype_picks resolution). WIN-anchored. ENGINE bump if math changes. See plan "DSP3". | OPEN | - |
+| DSP4 | ds-engine | Self-rune completion seam: score keystones+minors not yet modeled; extend rune_procs + core/rune_wpa.py. Default-OFF. ENGINE bump + Share sync. See plan "DSP4". | OPEN | - |
+| DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | OPEN | - |
+| DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | OPEN | - |
+| DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | OPEN | - |
+| DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | OPEN | - |
+| DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | OPEN | - |
+| DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | OPEN | - |
+| HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | OPEN | - |
+| LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | OPEN | - |
+| OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | OPEN | - |
+| OPEN2 | test-hygiene | tests/test_p2w4_hw2_b.py git() error-path tests call the real loop_controller.git() and pollute the production ops/loop/control/controller.log (monkeypatch subprocess.run but not control_dir). Redirect control_dir to tmp_path in those tests (conftest SHADOW_PATH precedent, item 386). | OPEN | - |
+
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
 - DS Phase-D default-ON flag flips (apply_passive_damage, non-every-AA on_hit, per-stack assumed_stacks) - need real-game re-ranking validation.
@@ -79,6 +106,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 - Game-PC :8892 visual screenshot captures (MCP down post-1PC). C-phase visual validation uses the Claude_Preview MCP against :8888 instead.
 - Anything in the CLAUDE.md "Settled - do not re-litigate" set.
 - Haiku-to-ZERO LIVE coach flips: removing/replacing a live Haiku call with the HZ-* precompute tables. Per charter 4b "do not flip blind" - needs real/replayed-game validation + operator OK. The HZ-* sessions BUILD + PERSIST + SHADOW-LOG only; Haiku stays the interim floor until validated.
+- DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
 
