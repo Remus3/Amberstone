@@ -1331,6 +1331,23 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.129.0 (DSP2 Cluster-B off-class WIN-exemption seam - DEFAULT-OFF, 2026-06-17. The DS
+permutation swarm DSP1 WIN-anchor (ops/audit/ds_perm_swarm) found Ezreal SR -39 the single
+worst outcome-divergent champ-mode: the item-213 ranged-marksman off-class deny-set
+(rank.OFFCLASS_MARKSMAN_ITEM_NAMES) hard-strips Sheen-line / on-hit items from EVERY ranged
+marksman, but Trinity Force is Ezreal's most-built item (rewind ARAM n=219) and Spear of Shojin
++ Black Cleaver are real Ezreal/Corki/Smolder/Senna builds. There is no kit-data axis for
+"wants Sheen" (lolmath.damage_distribution is AD/AP only), so the exemption is WIN+usage
+anchored: ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py distills the cross-eval
+empirical block (rewind WIN data) into agents/daemon_slayer/marksman_offclass_exempt.json
+(an off-class item is exempted for a champ at n>=30 AND wr>=mode_baseline-3). NEW DEFAULT-OFF
+seam rank_items(exempt_offclass_by_win=True): when ON + the champ is a ranged marksman, the
+exempt items are subtracted from the deny-set so they re-enter the candidate pool. Byte-identical
+when off (the DSV1-4 precedent); pure crit ADCs (Caitlyn/Jinx/Sivir - absent from the table) are
+untouched ON or OFF. The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+4 caster-marksmen exempted (Corki/Ezreal/Senna/Smolder). +12 hermetic tests
+(test_rank_offclass_win_exempt.py). DS :8893 bounced -> 1.129.0.)
+
 1.128.0 (Aphelios dps zero-output fix - degenerate basic=0 scenario fallback, 2026-06-16.
 Found in the comprehensive per-champion DS scorer cross-eval (ops/audit/ds_cross_eval/
 SYSTEMIC_FINDINGS.md Cluster C). compute_dps reads settings.scenario.{early,mid,late}
