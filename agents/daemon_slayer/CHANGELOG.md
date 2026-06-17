@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.132.0 (DSP6 enemy-rune threat seam - NEW agents/daemon_slayer/enemy_runes.py, DEFAULT-OFF,
+2026-06-17. Net-new additive substrate: RC modeled the player's OWN runes (rune_procs.py,
+core/rune_wpa.py) but had ZERO model of the ENEMY's runes as a threat modulating the player's
+EHP preset or the enemy's target preset. The enemy-side mirror of summoners.py - a self-contained
+registry modeling 4 enemy runes on the preset each threatens: Press the Attack 8005 (incoming_amp:
+the enemy's 8% damage-dealt amp lands as an 8% incoming amp on the player, an EHP-numerator divisor
+1/1.08), Conqueror 8010 (damage_ramp: max-stack bonus Adaptive Force 21.6-48.0 by level = 12 *
+1.8-4.0/stack, the legacy true-dmg-ramp lens; lifesteal 8% melee / 5% ranged carried for the
+enemy-sustain target lens), Grasp of the Undying 8437 (poke_sustain: 1.3% max-HP heal + 3.5%
+max-HP magic + 5 perm HP per proc, ranged 40% effective), Second Wind 8444 (poke_sustain: 4% of
+missing HP over 10s). The 4th DSP6 bucket, ANTIHEAL, is NOT a rune (no rune grants Grievous
+Wounds - it comes from items + Ignite, already in summoners.py id 14), so it is carried as a
+non-rune constant GRIEVOUS_WOUNDS_PCT 0.40 + the enemy_antiheal_pct(present) flag helper and is
+NOT in ENEMY_RUNE_SEAM_IDS. Every coefficient is verbatim from DDragon runesReforged.json 16.12.1
+longDesc (authoritative; never aggregator D / aggregator A), cited per rune in the formula string.
+DEFAULT-OFF: ENEMY_RUNE_SEAM_IDS marks the modeled ids but NO live scorer consumes them, so /rank +
+compute_dps + compute_ehp + compute_burst are byte-identical to the pre-DSP6 engine. Public
+surface: compute_enemy_rune_value + enemy_incoming_amp_pct / enemy_damage_ramp / enemy_poke_
+sustain_pct / enemy_poke_sustain_hp / enemy_grasp_magic_proc / enemy_antiheal_pct, all fail-soft
+(unknown id / empty / bad input -> 0.0). The live default-ON consumer flip (an EHP/target-preset
+consumer reading the enemy's live rune set) is operator-gated in docs/LIVE_GAME_GATED_SYNC.md.
++29 hermetic tests. ENGINE 1.131.0 -> 1.132.0.)
+
 1.131.0 (DSP5 summoner-spell seam - NEW agents/daemon_slayer/summoners.py, DEFAULT-OFF,
 2026-06-17. Net-new additive substrate: RC had ZERO summoner-spell layer. A self-contained
 registry in the rune_procs.RUNE_PROCS style modeling the 6 combat summoner spells on their
