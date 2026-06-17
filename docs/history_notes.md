@@ -2,6 +2,17 @@
 
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
+# 2026-06-16 - cycle 47: LBAND1 canonical-id fix + cost lever + HZ flip-gate accuracy [items 447-449] (relocated 2026-06-16, cycle-50 wrap)
+
+- 3 slices (`e0b119fd` S1 / `4d20ef17` S2 / `fd156f04` S3), all Tier-1, CI green; cost 7-lever re-sweep = 6 CLEAN + 1 SHIP. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share. No frozen files. RC restarted pid 1228 -> 23280 (S1).
+- ORIENT: bounded headless-safe queue drained (cycles 43-46) + Gemini director/consult down (429). 3-agent scout fanout: cost-7-lever / robustness-on-net-new-modules(440-446) / build-shadow-skew-RCA. Real work surfaced from the scouts, not the (drained) NEXT queue.
+- S1 (447): robustness scout found a real NOW bug - core/live_benchmark_band.py keyed canonical-keyed benchmarks on the RAW Live Client DISPLAY name, so ~25 multiword champs (Miss Fortune/Lee Sin/Tahm Kench...) silently never banded (games_for("Miss Fortune")=0 vs MissFortune=51). Same item-439/388 canonical class LBAND1 missed; its tests all used "Tristana" (display==canonical) so CI was blind. FIX: canonicalize the lookup at band_metrics entry, keep display name in the line. +2 char tests (red->26 green). RC restarted (shadow logger picks it up next SR game).
+- S2 (448): cost re-sweep 6 CLEAN + 1 SHIP. SHIP = web/js/main.js MINIMAP_INTERVAL_FAST 250->500 - the only sub-500ms NETWORK poll; engages only on the retired Game-PC minimap fast-stream (dormant 1-PC/ADR-011, falls back to 2000). Numeric constant, no render change (no 3b ritual), ADR-008 auto-reload.
+- S3 (449): build-skew RCA = BY-DESIGN-but-misleading (one long game inflates rows via the item_count+5s-bucket dedup sig; live anti_tank x793/x81 ~91% is really 5/5 distinct GAMES). hz_shadow_report is the do-not-flip-blind gate, so added by_lean_per_game + distinct_games + a per-game print line (additive, schema v2). +1 test. Live: "lean per-game (10 distinct): anti_squishy x5, anti_tank x5".
+- NEXT: bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip (do-not-flip-blind, accrues on real SR games - now roster-unbiased post-S1) + DS Phase-D + visual captures (Game-PC :8892 down) + P6 G3/G6/G7, all live/operator/Gemini-gated. Gemini still down (429).
+
+---
+
 # 2026-06-15 - DEEP-AUDIT cycle 28: P6 LOLMATH PARITY G2 low-overlap re-measure CLOSED (not a separate bug) [item 425] (relocated 2026-06-15, cycle-31 wrap)
 
 - G2 re-measured post-G1/G4 at live ENGINE 1.123.0 (durable probe `ops/audit/lolmath_ds_sweep/g2_remeasure_probe.py`, in-repo paths). Tier-0 diagnosis - NO ENGINE bump, NO build_orders regen, NO DS :8893 restart, NO Share re-sync (1 probe + 3 doc files).
