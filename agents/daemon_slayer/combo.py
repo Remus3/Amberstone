@@ -241,6 +241,7 @@ def compute_combo(
     mode: str = "SR",
     snapshot: Optional[DataSnapshot] = None,
     runes: Optional[Sequence[int]] = None,
+    score_completion_runes: bool = False,
 ) -> ComboResult:
     """Walk a clock over an ordered cast/attack list; per-hit mitigated dmg.
 
@@ -288,6 +289,7 @@ def compute_combo(
             mode=mode, target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
             combo_sequence=seq, runes=runes,
+            score_completion_runes=score_completion_runes,
         )
     except Exception as exc:  # fail-soft: surface a note, never raise
         notes.append(f"burst walker failed: {str(exc)[:120]}")

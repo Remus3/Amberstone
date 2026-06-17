@@ -45,7 +45,7 @@ _CONDITIONAL_IDS = {
     8236,  # Gathering Storm - game_time adaptive (burst-excluded grant)
 }
 
-# The runes that ARE modeled (16 pre-lift + 3 item-232 gated = 19).
+# The runes that ARE modeled (16 pre-lift + 3 item-232 gated + 1 DSP4 = 20).
 _MODELED_IDS = {
     8112,  # Electrocute
     8128,  # Dark Harvest
@@ -66,6 +66,7 @@ _MODELED_IDS = {
     8299,  # Last Stand (item 232: caster_hp_below)
     8233,  # Absolute Focus (item 232: caster_hp_above)
     8236,  # Gathering Storm (item 232: game_time)
+    8401,  # Shield Bash (DSP4: shield_gated on_proc_burst, completion seam)
 }
 
 
@@ -125,14 +126,14 @@ class ConditionallyModeledRunesPresent(unittest.TestCase):
 
 
 class ModeledRunesStillPresent(unittest.TestCase):
-    """Guard the registry: exactly the known 19 runes are modeled."""
+    """Guard the registry: exactly the known 20 runes are modeled."""
 
-    def test_all_19_modeled_present(self):
+    def test_all_modeled_present(self):
         for rune_id in sorted(_MODELED_IDS):
             self.assertIn(rune_id, RUNE_PROCS, f"modeled rune {rune_id} missing")
 
-    def test_registry_is_exactly_the_19_modeled(self):
-        # No silent additions and no silent drops since the item-232 lift.
+    def test_registry_is_exactly_the_modeled_set(self):
+        # No silent additions and no silent drops since the DSP4 completion seam.
         self.assertEqual(set(RUNE_PROCS.keys()), _MODELED_IDS)
 
 

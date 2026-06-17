@@ -38,7 +38,13 @@ web changes); engine flips need a DS `:8893` restart.
       Spear of Shojin, Senna Black Cleaver; `agents/daemon_slayer/marksman_offclass_exempt.json`). Flip ON
       where the live carry/dps scorer calls `rank_items` for a ranged marksman, then eyeball that Ezreal's
       build surfaces Trinity Force / Manamune and crit ADCs (Caitlyn/Jinx) are unchanged.
-- [ ] DSP seam flips (as each ships): self-rune (DSP4), summoner-spell (DSP5), enemy-rune (DSP6),
+- [ ] DSP4 self-rune completion flip (default-OFF today, ENGINE 1.130.0): score Shield Bash 8401's
+      proc by passing `compute_burst_damage(..., score_completion_runes=True)` (and
+      `compute_combo(..., score_completion_runes=True)`) at the live burst/combo scorer call site that
+      supplies a real `runes` set. Adds Shield Bash's 5-30-by-level + 2.5% bonus-HP floor to a shielded
+      Resolve carrier's burst. Eyeball that a Shield-Bash tank's burst rises sanely and a non-Shield-Bash
+      build is unchanged. Future completion runes join `COMPLETION_RUNE_IDS` and ride the same flag.
+- [ ] DSP seam flips (as each ships): summoner-spell (DSP5), enemy-rune (DSP6),
       ally-aura (DSP7), enemy-comp target-preset (DSP8) - flip default-ON + eyeball the re-rank.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
@@ -82,6 +88,11 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP4 (ENGINE 1.130.0): self-rune completion seam shipped DEFAULT-OFF. Added Shield Bash
+  8401 (Resolve) - the one unmodeled LIVE pickable direct-damage rune proc - to RUNE_PROCS behind
+  `COMPLETION_RUNE_IDS`. Live flip = `score_completion_runes=True` on the burst/combo scorer call site
+  (section B above). Adds the 5-30 + 2.5% bonus-HP shield-proc floor to a shielded carrier's burst.
+  Validate vs a real Shield-Bash game (Leona/Braum/Shen) before flipping.
 - 2026-06-17 DSP3 (no ENGINE bump - RC-side resolver, no engine math): ARAM archetype-override seam
   shipped DEFAULT-OFF. Live flip = `core.archetype_picks.get_archetype_for(champion,
   prefer_aram_win_axis=True)` at the ARAM archetype-dispatch site (section C above). Re-bases the
