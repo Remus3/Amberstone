@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.139.0 (RF6 tank-template survivability INJECT seam - extends the RF3 ehp/tank float to the
+tabled winners the candidate pool DROPS. RF4 found RF3's float is a no-op for Rell: its sole tabled
+winner Fimbulwinter 3121 is the non-purchasable mana-line transform of Winter's Approach
+(gold.purchasable=False), so _filter_candidates excludes it from the pool and the RF3 float has
+nothing to lift (RF4 verified in_pool=False). RF3's "the EHP scorer ALREADY pools these resist/HP
+items" premise holds for KSante (Thornmail 3075 / Iceborn 6662 pooled+floated) but is FALSE for Rell.
+DEFAULT-OFF, 2026-06-17. ROOT-CAUSE: purchasable=False is the gate (the marksman deny-set is
+marksman-only; Rell is a tank). NEW inject_ids force-admit param on rank._filter_candidates - an id
+in the set bypasses the only_ids whitelist + exclude_names deny + _is_purchasable gate (still respects
+current / non-coachable / mode-legality / terminal / budget); None default -> byte-identical for every
+pre-RF6 caller. rank_items_by_ehp passes inject_ids=surv_ids only when the RF3 seam is ON, so the
+tabled set enters the pool before the existing float prefix lifts it; OFF the pool + sort are unchanged.
+The RF2 hps only_ids|=surv_ids union could NOT surface a non-purchasable transform either - RF6's
+force-admit clears the gate it could not (Rakan 3121 sibling gap logged FUTURE in ORCHESTRATION_PLAN).
+Per-champ test test_survivability_item_credit_rf6.py (12): Rell Fimbulwinter injects+floats ON +
+NOT-pooled OFF (injected not floated), KSante float unbroken, Malphite no-op, _filter_candidates
+inject-unit + mode-legality + None byte-identical. Live default-ON flip EXCLUDED ->
+docs/LIVE_GAME_GATED_SYNC.md.)
+
 1.138.0 (RF3 tank-template survivability item-credit seam - the ehp/tank scorer
 rank_items_by_ehp pools EVERY purchasable mode-legal terminal item and sorts PURELY by delta_ehp
 (or ehp_per_1k_gold in efficiency mode), blind to win-rate. The WIN-correlated mid-tier resist/HP

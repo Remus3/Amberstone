@@ -137,16 +137,19 @@ web changes); engine flips need a DS `:8893` restart.
       `agents/daemon_slayer/survivability_item_credit_enchanter.json` from a fresh rewind+DSP10 run each
       patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit_enchanter.py`). Needs a DS `:8893`
       restart on flip.
-- [ ] RF3 tank-template survivability flip (seam shipped default-OFF, ENGINE 1.138.0): no live
-      scorer passes `rank_items_by_ehp(..., prefer_survivability_by_win=True)` yet (defaults False ->
-      byte-identical). The flip WIRES the EHP/tank scorer-dispatch (`agents/daemon_slayer/server.py`
-      the `rank_items_by_ehp` call ~L557, and/or the `core/daemon_slayer_client.rank_tank_for` wrapper)
-      to pass `prefer_survivability_by_win=True` so the WIN-anchored tank champs FLOAT their buried
-      mid-tier resist/HP winners (KSante: Thornmail / Iceborn Gauntlet; Rell: Fimbulwinter) above the
-      max-EHP ordering. UNLIKE the RF2 enchanter flip (inject + float - the enchanter_only pool EXCLUDES
-      HP/tank items), the EHP scorer ALREADY pools these resist/HP items so RF3 floats by WIN-table
-      MEMBERSHIP only (RF1's shape - no injection). Eyeball in a real ARAM that KSante surfaces
-      Thornmail / Iceborn at the front and a non-tabled tank (Malphite / Ornn) + any operator pick are
+- [ ] RF3+RF6 tank-template survivability flip (seam shipped default-OFF, ENGINE 1.138.0 float; RF6
+      INJECT extended 1.139.0): no live scorer passes `rank_items_by_ehp(..., prefer_survivability_by_win=True)`
+      yet (defaults False -> byte-identical). The flip WIRES the EHP/tank scorer-dispatch
+      (`agents/daemon_slayer/server.py` the `rank_items_by_ehp` call ~L557, and/or the
+      `core/daemon_slayer_client.rank_tank_for` wrapper) to pass `prefer_survivability_by_win=True` so the
+      WIN-anchored tank champs surface their buried mid-tier resist/HP winners (KSante: Thornmail / Iceborn
+      Gauntlet; Rell: Fimbulwinter) above the max-EHP ordering. The SAME flag does BOTH: KSante's winners
+      are ALREADY POOLED so they FLOAT by WIN-table membership (RF3, RF1's shape), while Rell's Fimbulwinter
+      3121 is a non-purchasable mana-line transform of Winter's Approach the pool DROPS (`gold.purchasable`
+      =False), so RF6 INJECTS it (force-admit past `_is_purchasable` via `_filter_candidates(inject_ids=...)`)
+      before the float lifts it - RF2's inject intent, extended to clear the purchasable gate the RF2 hps
+      `only_ids` union could not. Eyeball in a real ARAM that KSante surfaces Thornmail / Iceborn AND Rell
+      surfaces Fimbulwinter at the front, and a non-tabled tank (Malphite / Ornn) + any operator pick are
       byte-identical. Components (Giant's Belt / Negatron Cloak) + boots (Plated Steelcaps) + Cluster A
       deliberately NOT tabled. Re-anchor `agents/daemon_slayer/survivability_item_credit_tank.json` from
       a fresh rewind+DSP10 run each patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit_tank.py`).
@@ -212,6 +215,21 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 RF6 (ENGINE 1.139.0): tank-template survivability INJECT seam shipped DEFAULT-OFF -
+  extends the RF3 ehp/tank float (no NEW scorer flag; the SAME `prefer_survivability_by_win` on
+  `ehp.rank_items_by_ehp`). RF4 found RF3's float is a no-op for Rell: its sole tabled winner
+  Fimbulwinter 3121 is the non-purchasable mana-line transform of Winter's Approach
+  (`gold.purchasable`=False), so `_filter_candidates` drops it (RF4 `in_pool=False`) and the float has
+  nothing to lift. NEW `inject_ids` force-admit param on `rank._filter_candidates` (bypasses the
+  `only_ids` whitelist + `exclude_names` deny + `_is_purchasable` gate; still honors current /
+  non-coachable / mode-legality / terminal / budget; `None` default = byte-identical for every caller);
+  `rank_items_by_ehp` passes `inject_ids=surv_ids` only when the seam is ON. The LIVE flip is the SAME
+  one tracked in section B above (wire `server.py` `rank_items_by_ehp` ~L557 / `rank_tank_for` to pass
+  `prefer_survivability_by_win=True`) - flipping it now ALSO surfaces Rell's Fimbulwinter, not just
+  KSante's already-pooled winners. NOT flipped (do-not-flip-blind); needs a real ARAM + a DS `:8893`
+  restart. KNOWN SIBLING (FUTURE): RF2's hps `only_ids |= surv_ids` union likewise cannot surface
+  Rakan's tabled 3121 (same purchasable gate) - the `inject_ids` mechanism now exists to fix it if a
+  future RF wires the hps lane through it; not done here (RF2 is a DONE seam).
 - 2026-06-17 RF2 (ENGINE 1.137.0): enchanter-template survivability item-credit seam shipped
   DEFAULT-OFF. NEW `prefer_survivability_by_win` on `hps.rank_items_by_hps` (the hps/enchanter scorer
   lane), driven by the WIN-anchored `agents/daemon_slayer/survivability_item_credit_enchanter.json`
