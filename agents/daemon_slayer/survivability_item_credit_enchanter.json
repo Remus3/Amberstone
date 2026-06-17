@@ -1,0 +1,45 @@
+{
+  "_meta": {
+    "anchored_to": "ops/audit/ds_perm_swarm/report/dsp10_consolidated.json (enchanter/hps scorer lane)",
+    "ds_patch": "16.12.1",
+    "min_rewind_n": 5,
+    "note": "DEFAULT-OFF prefer_survivability_by_win seam input (hps/enchanter ranker). Tabled ids are INJECTED into the enchanter_only pool then floated. Cluster A excluded (operator-gated). Boots excluded.",
+    "scorer_lane": "hps",
+    "source": "RF2 build_survivability_item_credit_enchanter.py"
+  },
+  "champions": {
+    "Rakan": {
+      "axis": "survivability",
+      "items": [
+        {
+          "id": "3121",
+          "lift": 0.1,
+          "name": "Fimbulwinter",
+          "rewind_n": 33,
+          "rewind_wr": 39.4
+        },
+        {
+          "id": "3084",
+          "lift": 0.7,
+          "name": "Heartsteel",
+          "rewind_n": 20,
+          "rewind_wr": 40.0
+        },
+        {
+          "id": "2051",
+          "lift": 15.2,
+          "name": "Guardian's Horn",
+          "rewind_n": 11,
+          "rewind_wr": 54.5
+        },
+        {
+          "id": "3083",
+          "lift": 6.2,
+          "name": "Warmog's Armor",
+          "rewind_n": 11,
+          "rewind_wr": 45.5
+        }
+      ]
+    }
+  }
+}
