@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.133.0 (DSP7 ally aura/enchanter seam - ally SHIELD/HEAL flat-HP EHP-grant, DEFAULT-OFF,
+2026-06-17. The THIRD ally-grant survivability EHP mode and the SHIELD/HEAL bucket the item-289
+ally-grant registry deliberately EXCLUDED ("ally shields/heals are ability_hps THROUGHPUT, not a
+resist-denominator add nor a revive-numerator multiplier - a different axis"). Here the SAME
+shield/heal HP is modeled on the SURVIVABILITY side as the flat EHP an enchanter CONFERS on a
+PROTECTED ally - distinct from the granter-side ability_hps throughput (it is the ally analog of
+base HP: a flat shield/heal rides the protected ally's armor/MR curve, so +H raw HP scales every
+per-type EHP exactly like +H max HP). NEW separate registry _ALLY_FLAT_HP_GRANT_OVERRIDES in
+_passive_ally_grant_overrides.py (kept apart from the item-289 _PASSIVE_ALLY_GRANT_OVERRIDES so its
+4-clean-entry shape + exclusion test stay byte-identical) seeds 7 canonical enchanter grants -
+Janna E / Lulu E / Karma E / Yuumi E / Seraphine W shields + Soraka W / Nami W heals - with the
+verbatim per-rank BASE values from data/daemon_slayer/16.12.1/champion_abilities.json (the source
+ability_hps.py reads; AP ratio omitted - the granter's AP is a live Phase-D input), amortized by
+_ALLY_SHIELD_HEAL_PROB 0.5. New AllyGrantEntry.shield_hp/heal_hp fields (the 4 resist/revive entries
+leave both 0.0). Public surface: ally_flat_hp_grant(champion_id, level, apply_ally_grant) fail-soft
+-> 0.0. CONSUMER seam (GENERIC): compute_ehp gains external_flat_hp (default 0.0 -> byte-identical),
+a raw add to every per-type EHP numerator + _blend_with_heal; new EhpResult.ally_grant_flat_hp
+field + to_dict. DEFAULT-OFF: apply_ally_grant=False -> 0.0 AND no live caller passes
+external_flat_hp, so /rank + compute_ehp + compute_dps + compute_burst are byte-identical. allyamp.py
+(the OUTWARD scorer) is saturated for the shield/heal buckets under its one-mechanism-per-(champ,
+source) schema, so it gains only a docstring cross-reference to this PROTECTED-ALLY seam (no
+registry/score change). The live default-ON consumer flip (an EHP/peel-target consumer reading the
+live ally's granter set) is operator-gated in docs/LIVE_GAME_GATED_SYNC.md. +24 hermetic tests.
+ENGINE 1.132.0 -> 1.133.0.)
+
 1.132.0 (DSP6 enemy-rune threat seam - NEW agents/daemon_slayer/enemy_runes.py, DEFAULT-OFF,
 2026-06-17. Net-new additive substrate: RC modeled the player's OWN runes (rune_procs.py,
 core/rune_wpa.py) but had ZERO model of the ENEMY's runes as a threat modulating the player's

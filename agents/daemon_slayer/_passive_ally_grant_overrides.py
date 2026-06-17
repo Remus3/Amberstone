@@ -112,6 +112,17 @@ from ._passive_resist_overrides import _ACTIVE_RESIST_PROB, _value_at_level
 # ``_passive_revive_overrides._REVIVE_PROB`` / ``_ACTIVE_RESIST_PROB``.
 _ALLY_REVIVE_PROB = 0.3
 
+# DSP7 (2026-06-17, ENGINE 1.133.0): operator-tunable midpoint for an ally
+# SHIELD / HEAL flat-HP grant - the expected fraction of the modeled fight in
+# which the granted shield / heal HP is PRESENT on the protected ally. A short
+# enchanter shield (Janna E / Lulu E) decays if not consumed and a heal restores
+# burst HP, but both reapply on a short cooldown, so the grant sits between the
+# 0.3 short-active (Braum W ``_ACTIVE_RESIST_PROB``) and a 1.0 permanent tether -
+# the 0.5 availability midpoint (the ``_ALLYAMP_CONDITIONAL_PROB`` shape).
+# Conservative + documented; a Phase D consumer feeds the live re-apply cadence
+# without re-authoring.
+_ALLY_SHIELD_HEAL_PROB = 0.5
+
 
 @dataclass(frozen=True)
 class AllyGrantEntry:
@@ -150,6 +161,16 @@ class AllyGrantEntry:
     level_scaled: bool = False
     attribute: str = "Ally Grant"
     note: str = ""
+    # DSP7 (2026-06-17): ally SHIELD / HEAL flat-HP grant - the THIRD EHP-grant
+    # mode (after the resist DENOMINATOR add + the revive NUMERATOR multiplier):
+    # a flat HP an enchanter CONFERS on a protected ally, modeled as an EHP
+    # NUMERATOR ADD (a shield / heal rides the SAME armor/MR curve as base HP, so
+    # +H raw HP scales every per-type EHP exactly like +H max HP). Used ONLY by
+    # the separate ``_ALLY_FLAT_HP_GRANT_OVERRIDES`` registry + ``ally_flat_hp_
+    # grant``; the 4 item-289 resist/revive entries leave both 0.0 (byte-
+    # identical). A per-ABILITY-RANK tuple when ``rank_scaled``.
+    shield_hp: float | tuple[float, ...] = 0.0
+    heal_hp: float | tuple[float, ...] = 0.0
 
 
 # (champion_id, key, form_index) -> AllyGrantEntry. Keyed for parity with the
@@ -214,12 +235,93 @@ _PASSIVE_ALLY_GRANT_OVERRIDES: dict[tuple[str, str, int], AllyGrantEntry] = {
     ),
 }
 
+# DSP7 (2026-06-17, ENGINE 1.133.0) - ally enchanter SHIELD / HEAL flat-HP grant
+# registry. The THIRD EHP-grant mode and the SHIELD/HEAL bucket the item-289
+# resist/revive registry deliberately EXCLUDED ("ally shields/heals are
+# ability_hps THROUGHPUT, not a resist-denominator add nor a revive-numerator
+# multiplier - a different axis"). Here the SAME shield/heal HP is modeled on the
+# survivability side as a flat EHP NUMERATOR ADD a teammate confers on a
+# PROTECTED ally - a distinct quantity from the granter-side ability_hps
+# throughput (the ally analog of base HP: it rides the protected ally's armor/MR
+# curve). Kept in a SEPARATE dict from _PASSIVE_ALLY_GRANT_OVERRIDES so the
+# item-289 4-clean-entry shape + its exclusion test stay byte-identical.
+#
+# MAGNITUDES are the verbatim per-rank BASE shield/heal values from
+# data/daemon_slayer/16.12.1/champion_abilities.json (the source ability_hps.py
+# reads; probed 2026-06-17). The AP ratio (e.g. Janna E +55% AP) is OMITTED: the
+# granter's resolved AP is a live Phase-D input, so the seam ships the
+# self-contained base floor (the resist-registry "omit the cross-champion bonus
+# half" precedent). conditional_probability = _ALLY_SHIELD_HEAL_PROB (the 0.5
+# uptime midpoint). rank_scaled (the grant ability's rank resolved from level).
+_ALLY_FLAT_HP_GRANT_OVERRIDES: dict[tuple[str, str, int], AllyGrantEntry] = {
+    # Janna E Eye of the Storm: shield 80/120/160/200/240 (+55% AP) by E rank.
+    ("Janna", "E", 0): AllyGrantEntry(
+        shield_hp=(80.0, 120.0, 160.0, 200.0, 240.0),
+        conditional_probability=_ALLY_SHIELD_HEAL_PROB,
+        note="Eye of the Storm: 80/120/160/200/240 base ally shield by E rank (+55% AP omitted - granter AP is a live input); champion_abilities.json 16.12.1; rank_scaled",
+        attribute="Eye of the Storm",
+        rank_scaled=True,
+    ),
+    # Lulu E Help, Pix!: shield 80/120/160/200/240 (+55% AP) by E rank.
+    ("Lulu", "E", 0): AllyGrantEntry(
+        shield_hp=(80.0, 120.0, 160.0, 200.0, 240.0),
+        conditional_probability=_ALLY_SHIELD_HEAL_PROB,
+        note="Help, Pix!: 80/120/160/200/240 base ally shield by E rank (+55% AP omitted); champion_abilities.json 16.12.1; rank_scaled",
+        attribute="Help, Pix!",
+        rank_scaled=True,
+    ),
+    # Karma E Inspire: shield 80/130/180/230/280 (+60% AP) by E rank.
+    ("Karma", "E", 0): AllyGrantEntry(
+        shield_hp=(80.0, 130.0, 180.0, 230.0, 280.0),
+        conditional_probability=_ALLY_SHIELD_HEAL_PROB,
+        note="Inspire: 80/130/180/230/280 base ally shield by E rank (+60% AP omitted); champion_abilities.json 16.12.1; rank_scaled",
+        attribute="Inspire",
+        rank_scaled=True,
+    ),
+    # Yuumi E Zoomies: shield 65/90/115/140/165 (+30% AP) by E rank.
+    ("Yuumi", "E", 0): AllyGrantEntry(
+        shield_hp=(65.0, 90.0, 115.0, 140.0, 165.0),
+        conditional_probability=_ALLY_SHIELD_HEAL_PROB,
+        note="Zoomies: 65/90/115/140/165 base ally shield by E rank (+30% AP omitted); champion_abilities.json 16.12.1; rank_scaled",
+        attribute="Zoomies",
+        rank_scaled=True,
+    ),
+    # Seraphine W Surround Sound: shield 60/80/100/120/140 (+20% AP) by W rank.
+    ("Seraphine", "W", 0): AllyGrantEntry(
+        shield_hp=(60.0, 80.0, 100.0, 120.0, 140.0),
+        conditional_probability=_ALLY_SHIELD_HEAL_PROB,
+        note="Surround Sound: 60/80/100/120/140 base ally shield by W rank (+20% AP omitted; the per-ally missing-HP heal half is target-relative -> omitted); champion_abilities.json 16.12.1; rank_scaled",
+        attribute="Surround Sound",
+        rank_scaled=True,
+    ),
+    # Soraka W Astral Infusion: heal 90/110/130/150/170 (+50% AP) by W rank.
+    ("Soraka", "W", 0): AllyGrantEntry(
+        heal_hp=(90.0, 110.0, 130.0, 150.0, 170.0),
+        conditional_probability=_ALLY_SHIELD_HEAL_PROB,
+        note="Astral Infusion: 90/110/130/150/170 base ally heal by W rank (+50% AP omitted); champion_abilities.json 16.12.1; rank_scaled",
+        attribute="Astral Infusion",
+        rank_scaled=True,
+    ),
+    # Nami W Ebb and Flow: heal 55/80/105/130/155 (+40% AP) by W rank (the bounce
+    # primary heal; the Minimum Heal band variant is omitted, not double-counted).
+    ("Nami", "W", 0): AllyGrantEntry(
+        heal_hp=(55.0, 80.0, 105.0, 130.0, 155.0),
+        conditional_probability=_ALLY_SHIELD_HEAL_PROB,
+        note="Ebb and Flow: 55/80/105/130/155 base ally heal by W rank (+40% AP omitted; Minimum Heal band variant omitted); champion_abilities.json 16.12.1; rank_scaled",
+        attribute="Ebb and Flow",
+        rank_scaled=True,
+    ),
+}
+
 __all__ = [
     "AllyGrantEntry",
     "_PASSIVE_ALLY_GRANT_OVERRIDES",
+    "_ALLY_FLAT_HP_GRANT_OVERRIDES",
     "ally_resist_grant",
     "ally_revive_multiplier",
+    "ally_flat_hp_grant",
     "_ALLY_REVIVE_PROB",
+    "_ALLY_SHIELD_HEAL_PROB",
 ]
 
 
@@ -329,3 +431,46 @@ def ally_revive_multiplier(
         )
         extra += max(0.0, frac) * float(entry.conditional_probability)
     return 1.0 + extra
+
+
+def ally_flat_hp_grant(
+    champion_id: str, level: int, apply_ally_grant: bool
+) -> float:
+    """Return the flat EHP-numerator HP a champion CONFERS on a protected ally.
+
+    DSP7 (ENGINE 1.133.0): sums, over every ``_ALLY_FLAT_HP_GRANT_OVERRIDES``
+    entry matching ``champion_id``, ``(shield_hp(level) + heal_hp(level)) *
+    conditional_probability`` - the enchanter shield / heal HP (Janna E / Lulu E
+    / Karma E / Yuumi E / Seraphine W shields, Soraka W / Nami W heals) amortized
+    by the ``_ALLY_SHIELD_HEAL_PROB`` uptime midpoint. The base value is resolved
+    at the grant ability's level-scaled rank (``rank_scaled``).
+
+    The CONSUMER adds this to the PROTECTED ally's EHP numerator
+    (``compute_ehp(ally, external_flat_hp=...)``); a flat shield / heal rides the
+    SAME armor/MR curve as base HP, so it scales every per-type Effective HP
+    exactly like the same bonus max HP = the correct "a teammate shielded me ->
+    I survive more" direction. When ``apply_ally_grant`` is False (the default)
+    the return is 0.0 - byte-identical. Fail-soft (unknown / blank champion ->
+    0.0); never raises.
+    """
+    if not apply_ally_grant:
+        return 0.0
+    cid = str(champion_id)
+    if not cid:
+        return 0.0
+    lvl = int(level)
+    total = 0.0
+    for (entry_cid, _key, _form), entry in _ALLY_FLAT_HP_GRANT_OVERRIDES.items():
+        if entry_cid != cid:
+            continue
+        prob = float(entry.conditional_probability)
+        s = _value_at_level(
+            entry.shield_hp, lvl, entry.level_scaled,
+            key=_key, rank_scaled=entry.rank_scaled,
+        )
+        h = _value_at_level(
+            entry.heal_hp, lvl, entry.level_scaled,
+            key=_key, rank_scaled=entry.rank_scaled,
+        )
+        total += (max(0.0, s) + max(0.0, h)) * prob
+    return total
