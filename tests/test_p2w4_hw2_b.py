@@ -22,10 +22,18 @@ FIX-NOW covered here (friction class #4 - subprocess no-timeout):
   The same one-line no-timeout pattern lived in ``head()`` of
   ops/loop/done_sentinel.py (Claude's FINAL cycle step) and
   ops/loop/claude_stub.py (dry-run typist sim); both now bound + degrade.
+
+HERMETICITY (OPEN2, test-hygiene): git()'s error branch calls log(), which
+appends to CTL/controller.log. The lc fixture redirects the module-global CTL
+to tmp_path so these error-path tests never pollute the PRODUCTION
+ops/loop/control/controller.log (mirror the conftest SHADOW_PATH precedent,
+item 386). done_sentinel / claude_stub head() degrade to "" with NO log() call,
+so they were never polluters.
 """
 from __future__ import annotations
 
 import importlib
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -36,13 +44,27 @@ _OPS_LOOP = Path(__file__).resolve().parent.parent / "ops" / "loop"
 if str(_OPS_LOOP) not in sys.path:
     sys.path.insert(0, str(_OPS_LOOP))
 
+# Production control dir (where loop_controller.log() appends controller.log).
+# Read from the SAME source the controller uses so the hermeticity assertions
+# below compare against the real path, never a hard-coded copy.
+_PROD_CFG = json.loads((_OPS_LOOP / "config.json").read_text(encoding="utf-8"))
+
 
 @pytest.fixture
-def lc():
-    """Import (or re-import) the controller module. Top-level loads config.json
-    and mkdir's the real control dir - both idempotent + side-effect-safe."""
+def lc(monkeypatch, tmp_path):
+    """Import (or re-import) the controller module, then redirect its module-
+    global control dir CTL to tmp so git()/head() error-path log() writes land
+    in tmp - never the production ops/loop/control/controller.log. Top-level
+    loads config.json and mkdir's the real control dir (both idempotent +
+    side-effect-safe); only log() appends, and we point that at tmp. Mirrors
+    the conftest SHADOW_PATH redirect precedent (item 386); monkeypatch
+    restores the real CTL after each test."""
     mod = importlib.import_module("loop_controller")
-    return importlib.reload(mod)
+    mod = importlib.reload(mod)
+    ctl = tmp_path / "control"
+    ctl.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(mod, "CTL", ctl)
+    return mod
 
 
 # --------------------------------------------------------------------------- git() bounds every call
@@ -151,3 +173,36 @@ class TestClaudeStubHeadHasTimeout:
         assert cs.head() == "0badf00d"
         assert captured.get("timeout") is not None
         assert captured["timeout"] > 0
+
+
+# --------------------------------------------------------------------------- hermeticity: no prod controller.log pollution
+class TestGitErrorPathDoesNotPolluteProductionLog:
+    """OPEN2 (test-hygiene) regression. git()'s error branch calls log(),
+    which appends to CTL/controller.log. With CTL on the real control dir,
+    every suite run wrote 3 'git rev-parse failed: ...' lines into the
+    PRODUCTION ops/loop/control/controller.log (test_git_timeout/oserror/
+    head error-path tests). The lc fixture must redirect CTL to tmp so no
+    test mutates the real loop log (mirror conftest SHADOW_PATH, item 386)."""
+
+    def test_lc_fixture_redirects_ctl_off_production(self, lc):
+        prod = Path(_PROD_CFG["control_dir"]).resolve()
+        assert lc.CTL.resolve() != prod, (
+            "lc fixture must redirect CTL off the production control dir so "
+            "error-path log() writes never touch the real controller.log")
+
+    def test_git_error_path_does_not_touch_production_log(self, lc, monkeypatch):
+        prod_log = Path(_PROD_CFG["control_dir"]) / "controller.log"
+        before = prod_log.stat().st_size if prod_log.exists() else -1
+
+        def fake_run(*args, **kwargs):
+            raise OSError("git binary missing")
+
+        monkeypatch.setattr(lc.subprocess, "run", fake_run)
+        assert lc.git("rev-parse", "HEAD") == ""  # still degrades to ""
+
+        after = prod_log.stat().st_size if prod_log.exists() else -1
+        assert after == before, (
+            "git() error path appended to the PRODUCTION controller.log "
+            "(suite-run pollution); CTL was not redirected to tmp")
+        # the degraded-call log line landed in the redirected tmp log instead
+        assert (lc.CTL / "controller.log").exists()
