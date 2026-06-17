@@ -152,19 +152,48 @@ def _normalize_verdict_text(text: str) -> str:
     return " ".join("".join(chars).split())
 
 
+# Coach status / overlay action strings that are NOT laning verdicts: a dead
+# player's respawn timer ("WAIT RESPAWN" - coaches/aram_coach.py) or a
+# policy-disabled placeholder ("COACHING DISABLED" - core/feature_policy.py).
+# These are not a laning trade decision at all, so scoring them against a
+# precompute laning recommendation is meaningless. Without this guard the
+# "wait" keyword maps "WAIT RESPAWN" to "hold" and floods the flip-readiness
+# gate with dead-state ticks (cycle-53 finding: 20/20 comparable-covered were
+# "WAIT RESPAWN" -> a false 0% agreement). A genuine "wait for jungler" hold
+# verdict is unaffected (no marker substring).
+_NON_LANING_STATE_MARKERS: tuple[str, ...] = ("respawn", "coaching disabled")
+
+
 def classify_verdict(text) -> Optional[str]:
     """Map free text (a precompute A-label or Haiku prose/chip label) to one
     coarse verdict: "trade" / "all_in" / "back_off" / "recall" / "hold" -
-    or None when no keyword hits (unclassifiable)."""
+    or None when no keyword hits (unclassifiable) or the text is a non-laning
+    coach status/overlay state (dead-state, policy-disabled)."""
     if not text or not isinstance(text, str):
         return None
     norm = _normalize_verdict_text(text)
     if not norm:
         return None
+    if any(marker in norm for marker in _NON_LANING_STATE_MARKERS):
+        return None
     for phrase, verdict in _VERDICT_PHRASES:
         if phrase in norm:
             return verdict
     return None
+
+
+def _is_non_laning_native_state(rec: dict) -> bool:
+    """True when the native (Haiku) signal is a coach status/overlay state
+    (dead player "WAIT RESPAWN", policy "COACHING DISABLED") rather than a
+    laning verdict. Such ticks are not a laning trade decision and are
+    excluded from EVERY agreement metric - they neither count as comparable,
+    as unclassified-native, nor as the uncovered-with-native table-gap
+    denominator (cycle-53 false-0% finding)."""
+    action = rec.get("native_action")
+    if not isinstance(action, str):
+        return False
+    norm = _normalize_verdict_text(action)
+    return any(marker in norm for marker in _NON_LANING_STATE_MARKERS)
 
 
 def _native_choice_label(rec: dict) -> Optional[str]:
@@ -221,6 +250,8 @@ def summarize_agreement(records: list[dict]) -> dict:
     unclassified_native = 0
     uncovered_with_native = 0
     for rec in records:
+        if _is_non_laning_native_state(rec):
+            continue  # dead-state / policy-disabled overlay - not a laning tick
         has_native = _has_native_signal(rec)
         if has_native and not rec.get("covered"):
             uncovered_with_native += 1
