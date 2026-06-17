@@ -51,7 +51,18 @@ web changes); engine flips need a DS `:8893` restart.
       Ignite antiheal+true (id 14), Exhaust incoming-DR 0.35 (id 3), Heal/Barrier flat EHP (7/21),
       Cleanse 0.75 cc-discount (id 1), Ghost MS (id 6). Re-anchor the wiki magnitudes to the live
       patch at flip time (DDragon/CDragon zero them). Eyeball the adjusted readout vs a real game.
-- [ ] DSP seam flips (as each ships): enemy-rune (DSP6), ally-aura (DSP7), enemy-comp target-preset
+- [ ] DSP6 enemy-rune threat flip (substrate shipped default-OFF, ENGINE 1.132.0): no scorer
+      consumes `agents/daemon_slayer/enemy_runes.py` yet. The flip WIRES an EHP / target-preset
+      consumer that reads the ENEMY's live rune set to modulate the player's effective survivability
+      and the enemy's poke-resist: enemy Press the Attack (id 8005) -> divide the player's EHP by
+      1.08 (`enemy_incoming_amp_pct`); enemy Conqueror (id 8010) -> add `enemy_damage_ramp` raw
+      bonus enemy damage (and treat its 8%/5% lifesteal as enemy fight-sustain in the target preset);
+      enemy Grasp + Second Wind (8437/8444) -> raise the enemy's effective HP vs poke
+      (`enemy_poke_sustain_hp`); ANY enemy antiheal source -> discount the player's heal-based EHP by
+      `enemy_antiheal_pct(True)` 0.40. Re-anchor magnitudes to the live patch at flip (DDragon
+      16.12.1 today). Eyeball that vs a real game the player's anti-tank / sustain build shifts
+      sanely when the enemy runs PtA / Conqueror / Grasp, and a no-threat lobby is unchanged.
+- [ ] DSP seam flips (as each ships): ally-aura (DSP7), enemy-comp target-preset
       (DSP8) - flip default-ON + eyeball the re-rank.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
@@ -95,6 +106,15 @@ web changes); engine flips need a DS `:8893` restart.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-17 DSP6 (ENGINE 1.132.0): enemy-rune threat seam shipped DEFAULT-OFF. NEW
+  `agents/daemon_slayer/enemy_runes.py` (the enemy-side mirror of `summoners.py`) models 4 enemy
+  runes on the preset each threatens - Press the Attack 8005 (incoming_amp 0.08 on the player),
+  Conqueror 8010 (damage_ramp 21.6-48.0 max-stack Adaptive Force + 8%/5% lifesteal), Grasp 8437 +
+  Second Wind 8444 (poke_sustain) - plus the non-rune antiheal constant (`GRIEVOUS_WOUNDS_PCT`
+  0.40 + `enemy_antiheal_pct`). No live scorer consumes it (`ENEMY_RUNE_SEAM_IDS` marks the ids),
+  so /rank is byte-identical. Live flip = wire an EHP / target-preset consumer that reads the
+  enemy's live rune set (section B above). Magnitudes are DDragon-16.12.1-cited and re-anchor at
+  flip. Validate the re-ranked anti-tank / sustain build vs a real game before wiring.
 - 2026-06-17 DSP5 (ENGINE 1.131.0): summoner-spell seam shipped DEFAULT-OFF. NEW
   `agents/daemon_slayer/summoners.py` registry models 6 combat summoner spells (Ignite/Exhaust/Heal/
   Barrier/Cleanse/Ghost) on their scoring axis; no live scorer consumes it (`SUMMONER_SEAM_IDS` marks
