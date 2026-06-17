@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-17 - DSP10 pass 2 loop-until-dry verification: swarm DRY (headless gemini-loop cycle 15)
+
+- Executor cycle 15 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP10 pass 2 (re-run the cross-eval with the DSP11 seam ON, confirm the Cluster-B2 defects resolved + no new B2 defect, loop-until-dry). Commit `e1c996d0` (audit module + 9 tests + report) + this living-docs sync commit pushed. AUDIT TOOLING ONLY - nothing under `agents/daemon_slayer/` -> NO ENGINE bump / DS restart / Share sync (the item-475 pass-1 precedent).
+- RE-RUN: `run_all.py` regenerated all 172 cross-eval JSON at live ENGINE 1.135.0 (172 OK 0 FAIL 22.6s) - 172/172 BYTE-IDENTICAL to pass 1 (git diff empty) -> DSP11 did NOT regress the default-path rankings (seam DEFAULT-OFF); `run_consolidate.py` report byte-identical (worst-40 stable).
+- DELIVERABLE NEW `ops/audit/ds_perm_swarm/dsp10_pass2_verify.py`: (1) `verify_resolved` re-ranks each DSP11-tabled champ seam OFF vs ON IN-PROCESS (live :8893 is seam-OFF, so the seam-ON ranking is exercised by calling `rank_items`/`rank_items_by_burst` directly, the DSP11 test path) -> 7/7 RESOLVED (Pyke/Naafiri lethality, Nilah/Quinn crit, Senna Black Cleaver, Corki Trinity, Ezreal ER + Trinity un-stripped; partition invariant holds). (2) `classify_worst` (pure, hermetic) buckets the worst-40: a NEW B2 defect = untabled, non-Cluster-A, dps/burst champ burying a coherent kit-axis set (>=2 axis items AND strongest lift >= 5.0, the floor of the real DSP11 defects). RESULT: 0 new B2 defects -> DRY.
+- DRY tail: 6 covered_dsp11 + 5 cluster_a_deferred (Zilean/Shaco/Kayle/Seraphine/Udyr - operator-gated, do-NOT-auto-flip) + 26 other_scorer (AP-mage/bruiser/tank lanes, not B2) + 1 no_buried (Zaahen) + 2 within_axis_noise (Caitlyn/Yunara - pure ranged crit marksmen, +3.4/thin lift = the DSP9 G6 cost-axis residual, the DSP11 "pure crit ADCs untouched" rationale). `report/dsp10_pass2.{json,md}` written.
+- AUTO-PICK (logged): `min_axis_hits=2` count alone first false-flagged Caitlyn (Collector is a cross-axis generic item + RFC ~baseline); the +5.0 strongest-lift floor (TDD'd) cleanly separates a true off-axis burial from within-axis cost noise - the safest reading matching DSP11's scoping, no re-table of a marginal pure-crit-ADC, no PART C needed.
+- GATE: DS-dir 7283 / 1 skip / 1942 subtests exit 0 (unchanged vs DSP11 = no DS regression); RC 8307 / 2 skip / 109 subtests exit 0 (+9 pass-2 tests, 0 regressions, no transient this run); ruff All checks passed (repo-wide); py_compile OK; ds_share_sync --check in sync (no DS drift); ASCII/LF clean. No web/* -> no UI ritual (R5/R11). INLINE (R9 - one cohesive audit module + test, a dependency chain not disjoint files), verifier SKIPPED per R7 (fresh dual-suite + in-process seam re-rank). DSP10 loop-until-dry contract SATISFIED.
+- NEXT: HZU1 (item-level build-order Haiku-flip gate) or LGS1 / OPEN1 / OPEN2. Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP11 Cluster-B2 kit-axis item-credit seam: dps/burst float win-axis items (headless gemini-loop cycle 14)
 
 - Executor cycle 14 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP11 (Cluster-B2 kit-axis item-crediting fix, the DSP10 pass-1 follow-up per the Gemini PART C verdict). Commit `0c2b88e5` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + this living-docs sync commit pushed.
