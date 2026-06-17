@@ -110,6 +110,33 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-17 cycle 3 audit REGRESS -> AUDITOR FALSE POSITIVE (docs only, no code
+  change). The gemini auditor flagged "Behavior change in agents/daemon_slayer/
+  rank.py (exempt_offclass_by_win seam) has no accompanying test." PROOF it is
+  false: the seam's 12 hermetic tests shipped in the SAME commit as the seam
+  (6f7a5756, item 465) at agents/daemon_slayer/tests/test_rank_offclass_win_
+  exempt.py; re-run fresh THIS cycle = 12 passed in 0.28s. The directive's exact
+  ask ("a test verifying the un-stripping logic when the seam is enabled") is
+  covered by THREE tests: test_seam_on_unstrips_ezreal_winning_items (L128-133:
+  Trinity Force + Spear of Shojin re-enter Ezreal's pool SR+ARAM when
+  exempt_offclass_by_win=True), test_seam_on_unstrips_corki_and_smolder
+  (L135-138: Corki/Smolder +Trinity, Senna +Black Cleaver when ON),
+  test_seam_on_adds_only_exempt_items_for_ezreal (L149-157: ON differs from OFF
+  ONLY by the exempt items over the full candidate pool). Seam-OFF control
+  test_default_off_preserves_item213 (L120-126) + no-collateral
+  test_crit_adc_unchanged_when_seam_on (L140-147) also covered. Branch map of the
+  seam (rank.py L656-667): 2a OFF = full deny-set (tested); 2b ON + non-empty
+  exempt = deny-set minus exempt (tested x3); 2c ON + empty exempt = unchanged
+  full deny-set (tested via Caitlyn). The only structurally-uncovered branch
+  (non-marksman + ON = no-op) is gated behind _is_ranged_marksman and unreachable
+  without a data-fragile scorer-routing assertion (Testing-Discipline banned), so
+  it was deliberately NOT added. RESOLUTION per the directive's explicit "if this
+  is an auditor false positive, document the proof" clause: documented here + in
+  LEDGER 466; NO redundant test fabricated (the comprehensive coverage already
+  exists; the seam was shipped TDD red-first per item 465). Full DS-dir suite
+  re-run green THIS cycle (LEDGER 466). NEXT remains DSP3 (Cluster A
+  archetype-vs-ARAM-win). Source: gemini director directive (cycle 3 REGRESS).
+
 - 2026-06-17 DSP2 (465, 6f7a5756) DONE. Cluster-B off-class WIN-exemption seam,
   Tier-2 ENGINE 1.128.0 -> 1.129.0, DS :8893 bounced -> 1.129.0, Share re-synced
   (343, --check in sync) in the SAME commit. ROOT CAUSE (consumed the DSP1
