@@ -47,6 +47,7 @@ from typing import Callable, Dict, Optional
 __all__ = [
     "RuneProc",
     "RUNE_PROCS",
+    "COMPLETION_RUNE_IDS",
     "compute_rune_proc_damage",
     "keystone_amp",
 ]
@@ -122,7 +123,9 @@ class RuneProc:
     ``condition`` is the gating tag (item 232 proc-signature lift). Default
     "unconditional" keeps every pre-lift rune byte-identical. Tags:
     "unconditional" | "caster_hp_below" | "caster_hp_above" | "target_hp_below"
-    | "target_hp_above" | "game_time" | "per_attack". A gated rune's closure /
+    | "target_hp_above" | "game_time" | "per_attack" | "shield_gated" (DSP4 -
+    Shield Bash, procs on the empowered AA after gaining a shield). A gated
+    rune's closure /
     amp consumes the gating-context kwargs (caster_hp_pct / game_time_s / role /
     bonus_as) threaded through ``**extra``; at the DEFAULT context every gate
     yields the no-contribution value (amp 1.0 / 0.0 burst), so a default-context
@@ -350,6 +353,31 @@ def _gathering_storm(*, ad=0.0, ap=0.0, game_time_s=0.0, **_kw) -> float:
     if t <= 0.0:
         return 0.0
     return _adaptive_grant(ad, ap, 5.0 * (t / 600.0), 8.0 * (t / 600.0))
+
+
+# ---------------------------------------------------------------------------
+# DSP4 self-rune completion seam (8401 Shield Bash). The ONE remaining LIVE,
+# pickable rune that deals direct champion proc damage and was unmodeled.
+# ---------------------------------------------------------------------------
+
+def _shield_bash(*, level=1.0, bonus_hp=0.0, shield_amount=0.0, **_kw) -> float:
+    # DDragon 16.12.1 longDesc: "Whenever you gain a new shield, your next basic
+    # attack against a champion deals 5 - 30 (+2.5% Bonus Health) (+15.0% New
+    # Shield Amount) bonus adaptive damage." "adaptive" is the damage TYPE
+    # (physical when bonus AD >= bonus AP else magic), NOT a stat-scaled
+    # coefficient - the scaling sources are bonus HEALTH + the new SHIELD
+    # AMOUNT, so there is NO AD/AP coefficient. shield_amount is a NEW optional
+    # kwarg (default 0.0 = the shield-independent floor); the burst scorer has
+    # no live shield signal and passes 0.0, scoring the 5-30 + 2.5% bonus HP
+    # floor (best-case-shielded approximation - a Resolve-tree carrier in a
+    # fight nearly always holds a shield). A future live caster-stat producer
+    # supplies the shield amount for the +15% term. 16.12.1 == 16.11.1 for this
+    # rune (identical longDesc both patches).
+    return (
+        _lerp_by_level(5.0, 30.0, level)
+        + 0.025 * _f(bonus_hp)
+        + 0.15 * _f(shield_amount)
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -740,7 +768,41 @@ RUNE_PROCS: Dict[int, RuneProc] = {
         compute=_gathering_storm,
         condition="game_time",
     ),
+    # --- DSP4 self-rune completion seam (1.130.0) ---
+    8401: RuneProc(
+        rune_id=8401,
+        name="Shield Bash",
+        tree="Resolve",
+        proc_type="on_proc_burst",
+        cooldown_s=0.0,
+        condition="shield_gated",
+        formula=(
+            "Whenever you gain a new shield, your next basic attack against a "
+            "champion deals 5 - 30 (+2.5% Bonus Health) (+15.0% New Shield "
+            "Amount) bonus adaptive damage; up to 2s after the shield expires. "
+            "adaptive = damage TYPE not a stat coefficient (scales on bonus "
+            "health + shield amount, NO AD/AP). compute = 5-30 by level + "
+            "0.025*bonus_hp + 0.15*shield_amount; shield_amount default 0.0 "
+            "(the shield-independent floor the burst scorer reads). No fixed "
+            "cooldown (gated by shield-gain events) -> cooldown_s 0.0. DEFAULT "
+            "-OFF behind COMPLETION_RUNE_IDS: the burst/combo scorers SKIP it "
+            "unless score_completion_runes=True (do-not-flip-blind; the live "
+            "flip is operator-gated in docs/LIVE_GAME_GATED_SYNC.md) "
+            "(DDragon 16.12.1; identical longDesc at 16.11.1)"
+        ),
+        compute=_shield_bash,
+    ),
 }
+
+
+# DSP4 self-rune completion seam: the rune ids gated behind the explicit
+# default-OFF ``score_completion_runes`` burst/combo flag. Members are in
+# RUNE_PROCS (usable by fight_report / rune_wpa / direct queries) but the
+# damage/amp SCORERS skip them unless the seam is flipped ON, so the live /rank
+# path stays byte-identical to the pre-DSP4 engine. The pre-DSP4 runes are NOT
+# in this set - they are consumed unconditionally (the item-226/229/232
+# precedent). Newly completed runes that change a scorer total join here.
+COMPLETION_RUNE_IDS: frozenset[int] = frozenset({8401})
 
 
 # ---------------------------------------------------------------------------
@@ -761,6 +823,7 @@ def compute_rune_proc_damage(
     role: str = "melee",
     bonus_as: float = 0.0,
     target_hp_pct: float = 1.0,
+    shield_amount: float = 0.0,
     **extra,
 ) -> float:
     """Compute a rune's per-proc damage (or per-stack adaptive value).
@@ -799,6 +862,7 @@ def compute_rune_proc_damage(
                 role=role,
                 bonus_as=bonus_as,
                 target_hp_pct=target_hp_pct,
+                shield_amount=shield_amount,
                 **extra,
             )
         )

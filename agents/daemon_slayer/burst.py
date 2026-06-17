@@ -106,7 +106,12 @@ from .effects import (
 )
 from .engine import build_champion
 from .geometry import spell_aoe_multiplier
-from .rune_procs import RUNE_PROCS, compute_rune_proc_damage, keystone_amp
+from .rune_procs import (
+    COMPLETION_RUNE_IDS,
+    RUNE_PROCS,
+    compute_rune_proc_damage,
+    keystone_amp,
+)
 
 # item 233 - melee/ranged split for per_attack rune scaling (Lethal Tempo melee
 # 9-30 vs ranged 6-24). No champion sits between melee (~125-175) and ranged
@@ -475,6 +480,7 @@ def compute_burst_damage(
     aoe_targets_hit: int = 1,
     assume_takedown: bool = False,
     assume_ability_amp: bool = False,
+    score_completion_runes: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -513,6 +519,14 @@ def compute_burst_damage(
     folded into ``total_burst_damage``) when a ``target_max_hp`` is supplied.
     Death's Dance contributes nothing on this axis - its takedown payoff is the
     Defy heal, valued on the survivability axis (ehp.py, ENGINE 1.57.0).
+
+    ``score_completion_runes`` (DSP4, 1.130.0): the self-rune completion seam.
+    Default False -> byte-identical. The completion runes (``COMPLETION_RUNE_IDS``,
+    e.g. Shield Bash 8401) are in RUNE_PROCS but SKIPPED by the rune layer unless
+    this is True, so a supplied ``runes`` set that includes a completion rune
+    stays byte-identical to the pre-DSP4 engine. When True they contribute
+    (Shield Bash's 5-30 + 2.5% bonus HP shield-proc floor). The live default-ON
+    flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
     """
     if block_strategy not in {"first", "sum", "max"}:
         raise ValueError(
@@ -871,7 +885,19 @@ def compute_burst_damage(
     # (3) total = amped base + proc burst. Caster scaling: adaptive AD on
     # rune_procs is BONUS AD (ctx.bonus_ad); AP is the final amplified AP.
     rune_proc_damage = 0.0
+    # DSP4 (1.130.0) self-rune completion seam. score_completion_runes default
+    # False filters the completion runes (COMPLETION_RUNE_IDS, e.g. Shield Bash
+    # 8401) OUT of the scored set -> byte-identical to the pre-DSP4 engine for
+    # any supplied rune set. ON -> they are scored. The pre-DSP4 runes are never
+    # members, so they are always consumed. The live default-ON flip is
+    # operator-gated (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+    _scored_runes: list = []
     if runes:
+        _scored_runes = [
+            _rid for _rid in runes
+            if score_completion_runes or _rid not in COMPLETION_RUNE_IDS
+        ]
+    if _scored_runes:
         # item 233 - role from attackrange feeds per_attack rune scaling (Lethal
         # Tempo melee 9-30 vs ranged 6-24). Only changes an explicit runes=[8008]
         # call on a ranged champ; the live default passes no runes so /rank is
@@ -882,7 +908,7 @@ def compute_burst_damage(
             snapshot.champion(champion_id).get("stats", {}).get("attackrange", 0.0)
         )
         _caster_role = "ranged" if _attack_range > _RANGED_ATTACK_RANGE else "melee"
-        for _rid in runes:
+        for _rid in _scored_runes:
             proc = RUNE_PROCS.get(_rid)
             if proc is None or proc.proc_type == "adaptive":
                 continue
@@ -900,7 +926,7 @@ def compute_burst_damage(
                 target_hp_pct=target_current_hp_pct,
             )
         amped_base = total_burst
-        for _rid in runes:
+        for _rid in _scored_runes:
             amped_base = keystone_amp(
                 _rid, amped_base,
                 caster_hp_pct=caster_hp_pct, game_time_s=game_time_s,
@@ -1011,8 +1037,8 @@ def compute_burst_damage(
             + ", ".join(f"{k}={block_overrides[k]}" for k in sorted(block_overrides))
         )
 
-    if runes:
-        _n = sum(1 for _r in runes if RUNE_PROCS.get(_r) is not None)
+    if _scored_runes:
+        _n = sum(1 for _r in _scored_runes if RUNE_PROCS.get(_r) is not None)
         notes.append(
             f"rune procs +{rune_proc_damage:.1f} ({_n} known rune(s)); "
             "keystone amp applied to ability+AA base"
