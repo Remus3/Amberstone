@@ -90,7 +90,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP5 | ds-engine | Summoner-spell seam (NEW agents/daemon_slayer/summoners.py): Ignite antiheal+true, Exhaust incoming-DR, Heal/Barrier EHP, Cleanse/QSS CC-discount, Ghost MS. Default-OFF. See plan "DSP5". | DONE | 790b0236 |
 | DSP6 | ds-engine | Enemy-rune threat seam (NEW): enemy Conqueror/PtA/Grasp+SecondWind/antiheal modulate target + EHP presets. Default-OFF. See plan "DSP6". | DONE | f3563120 |
 | DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | DONE | 69f9085d |
-| DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | OPEN | - |
+| DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | DONE | f03dfc25 |
 | DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | OPEN | - |
 | DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | OPEN | - |
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | OPEN | - |
@@ -109,6 +109,76 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP8 (473, f03dfc25) DONE. Enemy-comp target-preset seam (ENGINE
+  1.133.0 -> 1.134.0). Generalizes the DSV3 assume_squishy_target binary armor
+  assumption into four named enemy-comp target presets on rank_items_by_burst,
+  DEFAULT-OFF. ROOT (plan DSP8 + the enemy-team permutation bucket): DSV3 added a
+  single binary squishy-carry armor curve (assume_squishy_target -> 22 + 4.5/lvl,
+  armor-only); the enemy comp's actual defensive shape - a tank's stacked
+  armor+MR, a high-CC enchanter's MR, a bruiser's mixed resists - was an unmodeled
+  permutation, so the assassin item ranking valued lethality vs raw AD vs magic
+  pen against only one (squishy) target. FIX (burst.py, the DSV1-4 opt-in-seam
+  precedent): NEW _TARGET_PRESETS table (squishy / bruiser / tank / high_cc ->
+  (armor_base, armor_per_level, mr_base, mr_per_level)) + _assumed_target_resists(
+  preset, level) -> (armor, MR) on the base + per_level*(level-1) curve +
+  _resolve_target_preset. rank_items_by_burst gains target_preset (default None):
+  when a preset is active and the caller did not pin a positive resist, the
+  preset's (armor, MR) is substituted for BOTH the baseline and every candidate,
+  so lethality / flat pen bites a tank's armor and magic pen bites a high-CC
+  enchanter's MR; the result's existing target_armor/target_mr fields carry the
+  substituted resists + a new note surfaces the active preset. profiles at L11:
+  squishy 67/35, bruiser 90/55, tank 180/110, high_cc 75/70 - tank tankiest +
+  squishy squishiest on both axes; the squishy preset REUSES the DSV3
+  _SQUISHY_TARGET_BASE_ARMOR / _PER_LEVEL constants so target_preset="squishy" and
+  assume_squishy_target=True agree on armor (the preset adds the representative MR
+  30 + 0.5/lvl the binary seam omitted). MAGNITUDE: representative role-norm
+  resist curves (NOT a Meraki per-champion lookup - the target is an ABSTRACT comp
+  archetype, not a named champion); the values model a typical mid-game comp and
+  re-anchor to the live patch at the operator flip. BACK-COMPAT: assume_squishy_
+  target is UNCHANGED - still ARMOR-only (the MR substitution requires an explicit
+  target_preset), so the DSV3 ranking + its 7 tests stay byte-identical; an
+  explicit positive target_armor / target_mr always wins; compute_burst_damage is
+  untouched (it takes explicit resists). DEFAULT-OFF: no live scorer passes
+  target_preset, so /rank-assassin + compute_burst are byte-identical to pre-DSP8.
+  SEAM-FIRST (EXCLUDED, do-not-flip-blind): the live default flip (wire the burst /
+  /rank-assassin scorer to a target_preset derived from the live enemy comp)
+  replaces the generic DSP8 placeholder with a specific DSP8 row in
+  docs/LIVE_GAME_GATED_SYNC.md section B, NOT wired live. ENGINE bump (directive-
+  mandated; burst.py under agents/daemon_slayer/** forces a Share sync): 1.133.0 ->
+  1.134.0, 81 quoted-literal pins byte-replaced across 73 .py (__init__.py + 72 DS
+  test files; UNQUOTED docstring/changelog refs untouched per
+  feedback_engine_bump_quoted_literal_only); DS :8893 bounced (taskkill PID 19232 +
+  schtasks /Run /TN RC-DaemonSlayer) -> /health engine_version 1.134.0 confirmed;
+  ds_share_sync.py -> 351 files, --check "Share/src + doc anchors + lolmath_ingest
+  in sync"; DS + Share CHANGELOG entries prepended (the authored semantic half the
+  auto-rewrite cannot do; a burst.py seam is a CHANGELOG-only record like DSV1-4 -
+  it extends an existing module, so NO new Share/docs/02 subsection, UNLIKE the
+  DSP5/DSP6 new-module seams). TDD: agents/daemon_slayer/tests/
+  test_burst_target_preset_dsp8.py +16 tests, RED-first (ImportError on
+  _TARGET_PRESETS / _assumed_target_resists) -> green (4 presets registered;
+  squishy armor matches the DSV3 curve at L1/11/18; the four L11 anchor profiles;
+  monotonic-in-level both axes; tank tankiest + squishy squishiest; unknown preset
+  + out-of-range level raise; ranker default-off zero-target; assume_squishy_target
+  back-compat MR stays 0.0; each preset substitutes its profile; explicit targets
+  not overridden; tank mitigates Zed's physical burst more than squishy = a
+  computed-quantity assertion; ENGINE pin 1.134.0). GATE (fresh this run): DS-dir
+  agents/daemon_slayer/tests/ 7272 passed / 1 skip / 1942 subtests exit 0 (91.02s;
+  +16 vs the 7256 DSP7 baseline); full RC tests/ --ignore=tests/daemon_slayer 8281
+  passed / 2 skip / 109 subtests (the 6 Share doc-anchor + ingest-sync tests RED on
+  the first run = expected post-bump pre-sync drift, all green re-run after
+  ds_share_sync; 0 regressions = the byte-identical proof); ruff All checks passed;
+  py_compile OK; ASCII/LF clean (0 introduced non-ASCII). No web/* touched -> no UI
+  ritual / snapshot (R5/R11). INLINE sole orchestrator (R9 + the directive's
+  "tightly coupled engine seam -> execute inline" clause - one cohesive seam in
+  burst.py + 1 test file + the mechanical 73-file ENGINE-pin bump + Share mirror +
+  docs; parallel worktree slices would only contend on the shared ENGINE pins +
+  Share; the DSP1-7 precedent); verifier subagent SKIPPED per R7 (own single-thread
+  edit, no untrusted slice) - fresh in-thread dual full-suite + live :8893 probe +
+  Share --check substituted. No frozen files touched. NEXT (DSP9): lolmath parity
+  fold - re-run ops/audit/lolmath_ds_sweep with the DSP4-8 seams ON in-harness,
+  close residuals to >= lolmath parity (G6 cost-model = Gemini-consult, not blind
+  build). Source: gemini director directive ops/loop/control/directive.md (DSP8).
 
 - 2026-06-17 DSP7 (472, 69f9085d) DONE. Ally aura/enchanter seam - ally enchanter
   SHIELD/HEAL flat-HP EHP-grant (ENGINE 1.132.0 -> 1.133.0). ROOT (plan DSP7 + the
