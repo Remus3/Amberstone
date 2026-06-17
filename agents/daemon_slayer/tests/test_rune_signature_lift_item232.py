@@ -327,10 +327,10 @@ class HailOfBladesRoleParityTests(unittest.TestCase):
 
 
 class RegistryShapeTests(unittest.TestCase):
-    """Registry now has 19 entries; condition field present on all."""
+    """Registry now has 20 entries; condition field present on all."""
 
-    def test_registry_size_19(self):
-        self.assertEqual(len(RUNE_PROCS), 19)
+    def test_registry_size_20(self):
+        self.assertEqual(len(RUNE_PROCS), 20)
 
     def test_three_new_runes_present(self):
         for rid in _NEW_RUNE_IDS:
@@ -345,6 +345,7 @@ class RegistryShapeTests(unittest.TestCase):
             "target_hp_above",
             "game_time",
             "per_attack",
+            "shield_gated",
         }
         for rid, proc in RUNE_PROCS.items():
             self.assertTrue(
