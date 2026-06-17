@@ -53,6 +53,7 @@ from .rank import (
     strip_arena_trinkets,
 )
 from .stats import clamp_level
+from .survivability_credit import survivability_item_ids
 
 _ARCHETYPE_WEIGHTS_PATH = Path(__file__).resolve().parent / "archetype_weights.json"
 
@@ -409,6 +410,13 @@ class HybridRankedItem:
     # delta_ehp when no enemy_champions (the compute_ehp identity contract).
     cc_blended_ehp: float = 0.0
     delta_cc_blended_ehp: float = 0.0
+    # RF1 generic-bruiser-template survivability credit marker (1.136.0). 0.0 on
+    # the default path (``prefer_survivability_by_win=False``) so the rows + sort
+    # stay byte-identical. When the seam is engaged this is 1.0 on a WIN-anchored
+    # survivability item (by table membership, NOT by hybrid delta - the defect is
+    # that the damage-biased sort rates these low) and 0.0 otherwise; the ranking
+    # then sorts by it first, floating those items above the generic AD template.
+    survivability_score: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -429,6 +437,7 @@ class HybridRankedItem:
             "shares_dead_unique": self.shares_dead_unique,
             "dead_unique_key": self.dead_unique_key,
             "unique_passive_key": self.unique_passive_key,
+            "survivability_score": self.survivability_score,
         }
 
 
@@ -604,6 +613,7 @@ def rank_items_by_hybrid(
     filter_shared_uniques: bool = True,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
+    prefer_survivability_by_win: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -632,6 +642,24 @@ def rank_items_by_hybrid(
     (mirrors item 261's tank ``rank_items_by_ehp`` behavior - a champion
     passive cannot differentiate one candidate from another the way the
     build-dependent tenacity term does).
+
+    ``prefer_survivability_by_win`` is the OPTIONAL RF1 generic-bruiser-template
+    seam (DEFAULT-OFF). The hybrid sort key (alpha*dps_pct + beta*ehp_pct) is
+    alpha-weighted toward damage and the default mixed-damage target preset
+    under-credits the pure resist/sustain axis, so the WIN-correlated
+    survivability items the player base wins ARAM on (Spirit Visage / Jak'Sho /
+    Sterak's Gage / Death's Dance / Force of Nature / Randuin's Omen / Thornmail /
+    Titanic Hydra / Fimbulwinter; the DSP10 buried winners) sink below the generic
+    AD-DPS template. When ``False`` (default) the output is byte-identical -
+    ``survivability_score`` stays 0.0 and the sort is unchanged. When ``True`` and
+    the champ has a WIN-anchored ``survivability_item_credit`` entry, every tabled
+    survivability item is floated above the generic template (model order preserved
+    within each tier). UNLIKE the DSP11 DPS/burst kit-axis seam (which gates the
+    float on ``delta_dps > 0``), this floats by TABLE MEMBERSHIP - survivability
+    items add EHP not DPS, so their hybrid delta is ~0 and a delta gate would never
+    surface them; the win-rate membership IS the signal the damage-biased sort is
+    blind to. Champs absent from the table are a no-op. The live default-ON flip is
+    EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -737,6 +765,15 @@ def rank_items_by_hybrid(
         else baseline_ehp
     )
 
+    # RF1 (DEFAULT-OFF): resolve the champ's WIN-anchored survivability item set.
+    # Empty unless the seam is ON AND the champ is tabled -> byte-identical no-op.
+    champ_rec = snapshot.champions.get(str(champion_id))
+    surv_ids: frozenset[str] = (
+        survivability_item_ids(str(champion_id), champ_rec)
+        if prefer_survivability_by_win else frozenset()
+    )
+    surv_active = bool(surv_ids)
+
     candidates = _filter_candidates(
         snapshot,
         mode=mode,
@@ -813,6 +850,10 @@ def rank_items_by_hybrid(
         # Efficiency: weighted percentage gain per 1000 gold.
         # Zero or negative deltas zero out - regression isn't "efficient".
         eff = (delta_pct / (gold / 1000.0)) if (gold > 0 and delta_pct > 0) else 0.0
+        # RF1 survivability credit marker: 1.0 on a WIN-anchored survivability item
+        # when the seam is engaged, else 0.0. Floated BY MEMBERSHIP (these items add
+        # EHP not DPS, so a delta gate would never surface them).
+        survivability_score = 1.0 if (surv_active and item_id in surv_ids) else 0.0
         ranked.append(HybridRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -831,12 +872,21 @@ def rank_items_by_hybrid(
             unique_passive_key=cand_key,
             cc_blended_ehp=ehp_scored.cc_blended_ehp,
             delta_cc_blended_ehp=cc_delta_ehp,
+            survivability_score=survivability_score,
         ))
 
-    if sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.hybrid_per_1k_gold, r.hybrid_delta_pct), reverse=True)
+    def _base_key(r: HybridRankedItem) -> tuple:
+        if sort_by == "efficiency":
+            return (r.hybrid_per_1k_gold, r.hybrid_delta_pct)
+        return (r.hybrid_delta_pct, r.hybrid_per_1k_gold)
+
+    if surv_active:
+        # RF1: float surfaced survivability items above the generic template,
+        # preserving model order within each tier. Byte-identical when off
+        # (surv_active False -> the prefix term is never added).
+        ranked.sort(key=lambda r: (r.survivability_score,) + _base_key(r), reverse=True)
     else:
-        ranked.sort(key=lambda r: (r.hybrid_delta_pct, r.hybrid_per_1k_gold), reverse=True)
+        ranked.sort(key=_base_key, reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
