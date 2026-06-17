@@ -1,0 +1,12 @@
+{
+  "champion": "XinZhao",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Reduce BotRK weight; add Sundered Sky + Death's Dance to scorer pool; review hybrid DPS over-weighting on-hit/attack-speed items vs bruiser-diver staples.",
+  "headline": "Scorer #1 BotRK loses at wr 42.9 vs baseline 50.0; Sundered Sky (wr 52.0 n=25) and Death's Dance (wr 60.0) absent from top-8."
+}

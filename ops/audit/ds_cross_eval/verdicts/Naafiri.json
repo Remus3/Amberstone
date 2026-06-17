@@ -1,0 +1,12 @@
+{
+  "champion": "Naafiri",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "true",
+  "severity": "MINOR",
+  "nominated_retune": "Reduce Eclipse weight vs squishy (wr 35.1% vs 42.6% baseline, n=37). Raise Serylda's Grudge in squishy cell (wr 50.0%, n=20, absent from top-8). Lift The Collector from rank 12 (wr 45.8%, n=24).",
+  "headline": "Burst scorer axis correct; Eclipse overranked (wr 35.1% vs 42.6% base), Serylda's Grudge underranked in squishy cell despite 50.0% wr."
+}

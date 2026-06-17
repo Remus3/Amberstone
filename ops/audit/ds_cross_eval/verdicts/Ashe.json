@@ -1,0 +1,12 @@
+{
+  "champion": "Ashe",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Statikk Shiv absent from scorer pool (n=68 all, wr=54.4% vs 49.3% baseline); Runaan's ranks #2 but empirically sub-baseline in self sample (42.9% vs 61.1%)",
+  "headline": "Ashe dps scorer axis correct; Statikk Shiv pool gap + Runaan's overweighted vs empirical ARAM results"
+}

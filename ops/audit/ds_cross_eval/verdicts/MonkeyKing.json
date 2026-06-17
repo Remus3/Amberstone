@@ -1,0 +1,12 @@
+{
+  "champion": "MonkeyKing",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": false,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "comp_blind fix (enemy_damage_type max_shift=1, near-zero); add Death's Dance + Black Cleaver to top pool; reduce Void Immolation bias (6000g #1 all cells, empirically absent); downweight Trinity Force (wr=38.2% below baseline)",
+  "headline": "comp_blind hybrid + pool mismatch: Death's Dance 50%wr and Black Cleaver 48.6%wr absent from top-8; Void Immolation 6000g at #1 with zero empirical presence"
+}

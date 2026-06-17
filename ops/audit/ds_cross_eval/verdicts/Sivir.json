@@ -1,0 +1,12 @@
+{
+  "champion": "Sivir",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add The Collector (id 6676) to dps scorer item pool; it is absent from all comp cells but above-baseline wr in self data (50.0, n=6).",
+  "headline": "Sivir dps/carry scorer axes correct; The Collector absent from pool is a minor gap (self wr 50.0 but small n=6; all-data wr 39.2 below baseline)."
+}

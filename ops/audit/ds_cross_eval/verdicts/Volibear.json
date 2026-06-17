@@ -1,0 +1,12 @@
+{
+  "champion": "Volibear",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Unending Despair/Spirit Visage/Fimbulwinter in hybrid EHP arm; penalize Runaan's/Essence Reaver (pure-ADC ranged items, zero empirical presence on a melee bruiser)",
+  "headline": "Hybrid axis correct but scorer top-8 flooded with pure-ADC items absent empirically; top tank staples Unending Despair/Spirit Visage/Fimbulwinter missing from pool"
+}

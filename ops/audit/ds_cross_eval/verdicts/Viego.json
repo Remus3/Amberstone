@@ -1,0 +1,12 @@
+{
+  "champion": "Viego",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Sundered Sky (wr=43.2% n=81), Death's Dance (wr=44.2% n=43), Wit's End (wr=53.3% n=15) all above ARAM baseline but absent from scorer top 8; Manamune (#2) and Runaan's (#5) over-ranked vs empirical. Audit hybrid weighting for on-hit/proc and sustain items on Viego passive-reset kit.",
+  "headline": "MINOR: 3 above-baseline staples (Sundered Sky, Death's Dance, Wit's End) missing from scorer top 8; Manamune and Runaan's over-ranked"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Hwei",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Seraph's Embrace + Ionian Boots to pool; investigate Blackfire Torch rank inflation (wr 41.3 vs 49.0 baseline at rank 3)",
+  "headline": "Ability scorer AP axis correct; Blackfire Torch rank 3 but wr 41.3 (7.7pp below baseline); Seraph's/Ionian Boots missing from pool"
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Rengar",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "true",
+  "severity": "MINOR",
+  "nominated_retune": "Profane Hydra absent from top-12 (ARAM wr=42.9 n=21, SR wr=62.5 n=16); Wooglet's Witchcap rank 2 with zero empirical support - audit burst scorer passive registry for Profane Hydra on-kill reset and check Wooglet's raw-stat over-weighting.",
+  "headline": "Burst axis correct; Profane Hydra missing from top-12, Wooglet's Witchcap rank 2 with no empirical wins - pool calibration needed."
+}

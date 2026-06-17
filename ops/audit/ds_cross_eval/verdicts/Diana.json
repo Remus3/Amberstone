@@ -1,0 +1,12 @@
+{
+  "champion": "Diana",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Heartsteel and Unending Despair to ability scorer pool; recalibrate Liandry's (rank 1 but 50.0% wr below baseline 53.8%); boost Stormsurge weight (62.5% wr, rank 7).",
+  "headline": "Ability scorer misses top-2 wr staples Heartsteel 76.9% and Unending Despair 68.8%; Liandry's over-ranked at #1 with only 50.0% wr."
+}

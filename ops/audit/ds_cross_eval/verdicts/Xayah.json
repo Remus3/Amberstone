@@ -1,0 +1,12 @@
+{
+  "champion": "Xayah",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "BotRK over-weighted (25% wr vs 55.8% baseline); add Statikk Shiv + The Collector to pool; lift Navori Flickerblade from rank 10",
+  "headline": "BotRK scorer rank-1 wins only 25% empirically; Statikk Shiv 66.7% and The Collector 64.3% absent from top-8"
+}

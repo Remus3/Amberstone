@@ -1,0 +1,12 @@
+{
+  "champion": "Urgot",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Jak'Sho/Titanic Hydra/Overlord's Bloodmail rank in hybrid scorer; demote pure-DPS zero-EHP items Essence Reaver and Runaan's Hurricane below top-8 for Urgot bruiser path.",
+  "headline": "Scorer top-8 misses Jak'Sho (63.6% wr) and Overlord's Bloodmail (50% wr); promotes Essence Reaver and Runaan's Hurricane that Urgot rarely builds effectively."
+}

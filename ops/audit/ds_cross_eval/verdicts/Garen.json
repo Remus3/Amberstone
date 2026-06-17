@@ -1,0 +1,12 @@
+{
+  "champion": "Garen",
+  "scorer": "hybrid",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Stridebreaker/Thornmail/FoN/Infinity Edge to scorer pool; exclude or penalize Essence Reaver (Garen is mana-less, passive is dead value).",
+  "headline": "Hybrid AD axis correct; comp responsive; pool gaps - Thornmail/FoN/Stridebreaker/IE absent, Essence Reaver rank 4 inappropriate (no mana)."
+}

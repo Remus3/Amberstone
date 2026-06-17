@@ -1,0 +1,12 @@
+{
+  "champion": "Heimerdinger",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Rylai's Crystal Scepter (3116) and Malignance (3118) to ability scorer AP pool; investigate Liandry's score inflation (rank 1 scorer, wr 43.0 below 44.3 baseline); boost Zhonya's rank (wr 47.6 empirically highest, scorer rank 10)",
+  "headline": "Ability scorer axis correct; Rylai's+Malignance absent from pool, Liandry's rank 1 but below-baseline wr 43.0"
+}

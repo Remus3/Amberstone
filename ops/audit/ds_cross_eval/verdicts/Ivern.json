@@ -1,0 +1,12 @@
+{
+  "champion": "Ivern",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Demote Imperial Mandate below rank 9; promote Moonstone Renewer into top-8. hps scorer overweights Imperial Mandate (rank 7, wr 28.6%) vs Moonstone Renewer (rank 9, wr 47.1%, n=34).",
+  "headline": "Imperial Mandate rank 7 at 28.6% wr (18pp below baseline); Moonstone Renewer rank 9 despite highest play-count and above-baseline wr."
+}

@@ -1,0 +1,12 @@
+{
+  "champion": "Kaisa",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add Guinsoo's Rageblade, Statikk Shiv, Nashor's Tooth to Kaisa DS item pool; audit Navori/Yun Tal/IE rank inflation",
+  "headline": "Kaisa top-3 empirical winners (Guinsoo 60% wr, Statikk 58%, Nashor's 56%) absent from pool; scorer top-8 includes IE/Yun Tal/Navori all below 40% empirical wr"
+}

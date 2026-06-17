@@ -1,0 +1,12 @@
+{
+  "champion": "Vex",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo to scorer item pool (empirical #1 by usage n=78, absent from scorer); investigate Liandry's scorer #1 (score=27.64) vs zero empirical presence.",
+  "headline": "Vex ability scorer: Luden's Echo absent (n=78 empirical #1); Liandry's scorer #1 but 0 empirical plays - pool mismatch MINOR."
+}

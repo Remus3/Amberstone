@@ -1,0 +1,12 @@
+{
+  "champion": "Viktor",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "OK",
+  "nominated_retune": "",
+  "headline": "Ability scorer aligned: Liandry rank2 wr60/Shadowflame rank5 wr57 both in top-8; target-resist responsive (+6); no retune needed."
+}

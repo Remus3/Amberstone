@@ -1,0 +1,12 @@
+{
+  "champion": "Kayle",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": false,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Switch primary archetype from mage to carry; carry scorer surfaces Guinsoo/BotRK/Terminus that dominate empirical wr vs current AP-only top-8 with zero overlap.",
+  "headline": "Kayle ability scorer pushes pure AP build; empirical winners (BotRK 62%, Guinsoo 55%, Terminus 59%) are on-hit carry - zero top-8 overlap."
+}

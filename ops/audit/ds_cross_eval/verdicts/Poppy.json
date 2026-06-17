@@ -1,0 +1,12 @@
+{
+  "champion": "Poppy",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (id 3121) to ehp scorer item pool; empirical wr 45.5 (self n=11) / 54.0 (all n=63) but absent from top-8 in all comp cells.",
+  "headline": "MINOR: Fimbulwinter (wr 54 on n=63 ARAM) missing from scorer pool; tank/ehp axis and comp responsiveness correct."
+}

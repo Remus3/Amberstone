@@ -1,0 +1,12 @@
+{
+  "champion": "Zeri",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Boost Runaan's Hurricane and Yun Tal Wildarrows in scorer pool (both top empirical items absent from top-8); investigate BotRK overranking (scorer rank 3, empirical 50% wr vs 66.7% baseline).",
+  "headline": "Zeri dps scorer axis OK; Runaan's+Yun Tal absent from top-8, BotRK scorer-rank-3 but empirically losing (50% wr)."
+}

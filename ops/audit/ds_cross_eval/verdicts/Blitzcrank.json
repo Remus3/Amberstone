@@ -1,0 +1,12 @@
+{
+  "champion": "Blitzcrank",
+  "scorer": "ehp",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Fimbulwinter (3121) and Frozen Heart (3110) to ehp scorer item pool; Fimbulwinter is empirical #1 wr staple (53.2% ARAM all, 50.0% self) absent from all comp cells; mana-scaling synergy unmodeled.",
+  "headline": "ehp axis and comp responsiveness correct; Fimbulwinter (#1 wr staple, 53.2%) and Frozen Heart (55.9%) absent from scorer pool - mana synergy unmodeled"
+}

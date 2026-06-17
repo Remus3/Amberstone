@@ -1,0 +1,12 @@
+{
+  "champion": "Syndra",
+  "scorer": "ability",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": true,
+  "rune_ok": "n/a",
+  "severity": "MINOR",
+  "nominated_retune": "Add Luden's Echo (id 6655) to Syndra ability scorer item pool; most-bought empirical item (ARAM all n=123) absent from all comp-cell top-8 lists.",
+  "headline": "Syndra ability scorer axis-aligned and comp-responsive; Luden's Echo absent from scorer pool despite being most-bought empirical item."
+}

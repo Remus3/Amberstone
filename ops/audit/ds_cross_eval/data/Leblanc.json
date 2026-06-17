@@ -1,0 +1,820 @@
+{
+  "champion": "Leblanc",
+  "db_name": "Leblanc",
+  "archetype": {
+    "primary": "mage",
+    "secondary": "assassin",
+    "source": "default"
+  },
+  "scorer": "ability",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_self",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "228002",
+        "name": "Wooglet's Witchcap",
+        "score": 33.6224,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 32.4364,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 3,
+        "id": "2503",
+        "name": "Blackfire Torch",
+        "score": 21.8173,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 4,
+        "id": "3089",
+        "name": "Rabadon's Deathcap",
+        "score": 12.6271,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 5,
+        "id": "4645",
+        "name": "Shadowflame",
+        "score": 11.5106,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 6,
+        "id": "3135",
+        "name": "Void Staff",
+        "score": 11.4836,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "4646",
+        "name": "Stormsurge",
+        "score": 9.8503,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 8,
+        "id": "3137",
+        "name": "Cryptbloom",
+        "score": 8.605,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 9,
+        "id": "4633",
+        "name": "Riftmaker",
+        "score": 7.926,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 10,
+        "id": "3102",
+        "name": "Banshee's Veil",
+        "score": 7.8452,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 11,
+        "id": "3157",
+        "name": "Zhonya's Hourglass",
+        "score": 7.8452,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3250
+      },
+      {
+        "rank": 12,
+        "id": "8010",
+        "name": "Bloodletter's Curse",
+        "score": 7.7748,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "228002",
+        "name": "Wooglet's Witchcap",
+        "score": 33.6224,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 32.4364,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 3,
+        "id": "2503",
+        "name": "Blackfire Torch",
+        "score": 21.8173,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 4,
+        "id": "3089",
+        "name": "Rabadon's Deathcap",
+        "score": 12.6271,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 5,
+        "id": "4645",
+        "name": "Shadowflame",
+        "score": 11.5106,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 6,
+        "id": "3135",
+        "name": "Void Staff",
+        "score": 11.4836,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "4646",
+        "name": "Stormsurge",
+        "score": 9.8503,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 8,
+        "id": "3137",
+        "name": "Cryptbloom",
+        "score": 8.605,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 9,
+        "id": "4633",
+        "name": "Riftmaker",
+        "score": 7.926,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 10,
+        "id": "3102",
+        "name": "Banshee's Veil",
+        "score": 7.8452,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 11,
+        "id": "3157",
+        "name": "Zhonya's Hourglass",
+        "score": 7.8452,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3250
+      },
+      {
+        "rank": 12,
+        "id": "8010",
+        "name": "Bloodletter's Curse",
+        "score": 7.7748,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "228002",
+        "name": "Wooglet's Witchcap",
+        "score": 33.6224,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 32.4364,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 3,
+        "id": "2503",
+        "name": "Blackfire Torch",
+        "score": 21.8173,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 4,
+        "id": "3089",
+        "name": "Rabadon's Deathcap",
+        "score": 12.6271,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 5,
+        "id": "4645",
+        "name": "Shadowflame",
+        "score": 11.5106,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 6,
+        "id": "3135",
+        "name": "Void Staff",
+        "score": 11.4836,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "4646",
+        "name": "Stormsurge",
+        "score": 9.8503,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 8,
+        "id": "3137",
+        "name": "Cryptbloom",
+        "score": 8.605,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 9,
+        "id": "4633",
+        "name": "Riftmaker",
+        "score": 7.926,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 10,
+        "id": "3102",
+        "name": "Banshee's Veil",
+        "score": 7.8452,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 11,
+        "id": "3157",
+        "name": "Zhonya's Hourglass",
+        "score": 7.8452,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3250
+      },
+      {
+        "rank": 12,
+        "id": "8010",
+        "name": "Bloodletter's Curse",
+        "score": 7.7748,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 34.4219,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 2,
+        "id": "228002",
+        "name": "Wooglet's Witchcap",
+        "score": 20.1735,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 3,
+        "id": "2503",
+        "name": "Blackfire Torch",
+        "score": 13.0904,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 4,
+        "id": "3135",
+        "name": "Void Staff",
+        "score": 9.6599,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 5,
+        "id": "3089",
+        "name": "Rabadon's Deathcap",
+        "score": 7.5763,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 6,
+        "id": "3137",
+        "name": "Cryptbloom",
+        "score": 6.9198,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "8010",
+        "name": "Bloodletter's Curse",
+        "score": 6.3731,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 8,
+        "id": "4645",
+        "name": "Shadowflame",
+        "score": 6.0659,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 9,
+        "id": "4646",
+        "name": "Stormsurge",
+        "score": 5.1121,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 10,
+        "id": "4633",
+        "name": "Riftmaker",
+        "score": 4.7556,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 11,
+        "id": "3102",
+        "name": "Banshee's Veil",
+        "score": 4.7071,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "3157",
+        "name": "Zhonya's Hourglass",
+        "score": 4.7071,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3250
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 34.4219,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 2,
+        "id": "228002",
+        "name": "Wooglet's Witchcap",
+        "score": 20.1735,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 6000
+      },
+      {
+        "rank": 3,
+        "id": "2503",
+        "name": "Blackfire Torch",
+        "score": 13.0904,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 4,
+        "id": "3135",
+        "name": "Void Staff",
+        "score": 9.6599,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 5,
+        "id": "3089",
+        "name": "Rabadon's Deathcap",
+        "score": 7.5763,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3500
+      },
+      {
+        "rank": 6,
+        "id": "3137",
+        "name": "Cryptbloom",
+        "score": 6.9198,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "8010",
+        "name": "Bloodletter's Curse",
+        "score": 6.3731,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2900
+      },
+      {
+        "rank": 8,
+        "id": "4645",
+        "name": "Shadowflame",
+        "score": 6.0659,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3200
+      },
+      {
+        "rank": 9,
+        "id": "4646",
+        "name": "Stormsurge",
+        "score": 5.1121,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 2800
+      },
+      {
+        "rank": 10,
+        "id": "4633",
+        "name": "Riftmaker",
+        "score": 4.7556,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3100
+      },
+      {
+        "rank": 11,
+        "id": "3102",
+        "name": "Banshee's Veil",
+        "score": 4.7071,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3000
+      },
+      {
+        "rank": 12,
+        "id": "3157",
+        "name": "Zhonya's Hourglass",
+        "score": 4.7071,
+        "d_ehp": 0.0,
+        "d_dps": 0.0,
+        "gold": 3250
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "target_resist",
+    "comp_blind": false,
+    "enemy_damage_type": {
+      "max_positive_shift": 0,
+      "top_risers_when_ap": [],
+      "top_fallers_when_ap": [],
+      "comp_blind": true
+    },
+    "target_resist": {
+      "max_positive_shift": 5,
+      "top_risers_when_ap": [
+        {
+          "name": "Bloodletter's Curse",
+          "shift": 5
+        },
+        {
+          "name": "Void Staff",
+          "shift": 2
+        },
+        {
+          "name": "Cryptbloom",
+          "shift": 2
+        },
+        {
+          "name": "Liandry's Torment",
+          "shift": 1
+        }
+      ],
+      "top_fallers_when_ap": [
+        {
+          "name": "Shadowflame",
+          "shift": -3
+        },
+        {
+          "name": "Stormsurge",
+          "shift": -2
+        },
+        {
+          "name": "Banshee's Veil",
+          "shift": -1
+        },
+        {
+          "name": "Rabadon's Deathcap",
+          "shift": -1
+        },
+        {
+          "name": "Riftmaker",
+          "shift": -1
+        }
+      ],
+      "comp_blind": false
+    }
+  },
+  "rune_relevant": false,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 29,
+        "wr": 41.4,
+        "items": [
+          {
+            "id": "6655",
+            "name": "Luden's Echo",
+            "n": 25,
+            "wr": 40.0
+          },
+          {
+            "id": "3089",
+            "name": "Rabadon's Deathcap",
+            "n": 19,
+            "wr": 31.6
+          },
+          {
+            "id": "3020",
+            "name": "Sorcerer's Shoes",
+            "n": 18,
+            "wr": 38.9
+          },
+          {
+            "id": "4645",
+            "name": "Shadowflame",
+            "n": 17,
+            "wr": 52.9
+          },
+          {
+            "id": "4646",
+            "name": "Stormsurge",
+            "n": 12,
+            "wr": 50.0
+          },
+          {
+            "id": "1058",
+            "name": "Needlessly Large Rod",
+            "n": 7,
+            "wr": 42.9
+          },
+          {
+            "id": "3145",
+            "name": "Hextech Alternator",
+            "n": 6,
+            "wr": 16.7
+          },
+          {
+            "id": "3057",
+            "name": "Sheen",
+            "n": 6,
+            "wr": 66.7
+          },
+          {
+            "id": "3135",
+            "name": "Void Staff",
+            "n": 6,
+            "wr": 0.0
+          },
+          {
+            "id": "3158",
+            "name": "Ionian Boots of Lucidity",
+            "n": 5,
+            "wr": 60.0
+          }
+        ]
+      },
+      "all": {
+        "n": 145,
+        "wr": 44.1,
+        "items": [
+          {
+            "id": "6655",
+            "name": "Luden's Echo",
+            "n": 120,
+            "wr": 46.7
+          },
+          {
+            "id": "3020",
+            "name": "Sorcerer's Shoes",
+            "n": 118,
+            "wr": 42.4
+          },
+          {
+            "id": "4645",
+            "name": "Shadowflame",
+            "n": 102,
+            "wr": 44.1
+          },
+          {
+            "id": "4646",
+            "name": "Stormsurge",
+            "n": 76,
+            "wr": 44.7
+          },
+          {
+            "id": "3089",
+            "name": "Rabadon's Deathcap",
+            "n": 67,
+            "wr": 47.8
+          },
+          {
+            "id": "3135",
+            "name": "Void Staff",
+            "n": 39,
+            "wr": 51.3
+          },
+          {
+            "id": "1058",
+            "name": "Needlessly Large Rod",
+            "n": 32,
+            "wr": 50.0
+          },
+          {
+            "id": "2031",
+            "name": "Refillable Potion",
+            "n": 21,
+            "wr": 19.0
+          },
+          {
+            "id": "3145",
+            "name": "Hextech Alternator",
+            "n": 20,
+            "wr": 25.0
+          },
+          {
+            "id": "3157",
+            "name": "Zhonya's Hourglass",
+            "n": 16,
+            "wr": 68.8
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 0,
+        "wr": null,
+        "items": []
+      },
+      "all": {
+        "n": 28,
+        "wr": 39.3,
+        "items": [
+          {
+            "id": "6655",
+            "name": "Luden's Echo",
+            "n": 21,
+            "wr": 52.4
+          },
+          {
+            "id": "3020",
+            "name": "Sorcerer's Shoes",
+            "n": 18,
+            "wr": 27.8
+          },
+          {
+            "id": "4645",
+            "name": "Shadowflame",
+            "n": 10,
+            "wr": 40.0
+          },
+          {
+            "id": "1082",
+            "name": "Dark Seal",
+            "n": 10,
+            "wr": 40.0
+          },
+          {
+            "id": "1056",
+            "name": "Doran's Ring",
+            "n": 10,
+            "wr": 30.0
+          },
+          {
+            "id": "1052",
+            "name": "Amplifying Tome",
+            "n": 10,
+            "wr": 50.0
+          },
+          {
+            "id": "4646",
+            "name": "Stormsurge",
+            "n": 8,
+            "wr": 62.5
+          },
+          {
+            "id": "1058",
+            "name": "Needlessly Large Rod",
+            "n": 5,
+            "wr": 40.0
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

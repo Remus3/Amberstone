@@ -1,0 +1,12 @@
+{
+  "champion": "Talon",
+  "scorer": "burst",
+  "evidence_tier_aram": "outcome_all",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "true",
+  "severity": "MISMATCH",
+  "nominated_retune": "Boost Eclipse (wr 46.7%, rank 10->top-5); add Edge of Night to top-8 (wr 38.5%, absent); boost Serylda's (wr 38.1%, rank 11); reduce Essence Reaver/Trinity Force/IE/BotRK (ranks 1-4 but zero empirical); add The Collector to pool (n=41, unranked).",
+  "headline": "Burst scorer top-4 (Essence Reaver, Trinity Force, IE, BotRK) have zero empirical support; Eclipse wr 46.7% sits rank 10; Edge of Night wr 38.5% absent from top-8."
+}

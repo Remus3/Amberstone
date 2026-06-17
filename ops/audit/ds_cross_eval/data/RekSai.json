@@ -1,0 +1,793 @@
+{
+  "champion": "RekSai",
+  "db_name": "RekSai",
+  "archetype": {
+    "primary": "bruiser",
+    "secondary": "tank",
+    "source": "default"
+  },
+  "scorer": "hybrid",
+  "anchor_mode": "ARAM",
+  "evidence_tier": {
+    "ARAM": "outcome_all",
+    "SR": "outcome_all"
+  },
+  "comp_grid": {
+    "ad_squishy": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 1.6104,
+        "d_ehp": 4741.1,
+        "d_dps": 63.3,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 1.2737,
+        "d_ehp": 158.2,
+        "d_dps": 88.4,
+        "gold": 3200
+      },
+      {
+        "rank": 3,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 0.9734,
+        "d_ehp": 655.2,
+        "d_dps": 61.8,
+        "gold": 3333
+      },
+      {
+        "rank": 4,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 0.8641,
+        "d_ehp": 1770.8,
+        "d_dps": 42.2,
+        "gold": 3000
+      },
+      {
+        "rank": 5,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 0.86,
+        "d_ehp": 0.0,
+        "d_dps": 60.8,
+        "gold": 2650
+      },
+      {
+        "rank": 6,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 0.8123,
+        "d_ehp": 0.0,
+        "d_dps": 57.4,
+        "gold": 3050
+      },
+      {
+        "rank": 7,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 0.7945,
+        "d_ehp": 0.0,
+        "d_dps": 56.2,
+        "gold": 3000
+      },
+      {
+        "rank": 8,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 0.74,
+        "d_ehp": 0.0,
+        "d_dps": 52.3,
+        "gold": 3200
+      },
+      {
+        "rank": 9,
+        "id": "6662",
+        "name": "Iceborn Gauntlet",
+        "score": 0.6707,
+        "d_ehp": 1527.2,
+        "d_dps": 31.1,
+        "gold": 2900
+      },
+      {
+        "rank": 10,
+        "id": "2510",
+        "name": "Dusk and Dawn",
+        "score": 0.6455,
+        "d_ehp": 590.3,
+        "d_dps": 39.3,
+        "gold": 3100
+      },
+      {
+        "rank": 11,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 0.6304,
+        "d_ehp": 0.0,
+        "d_dps": 44.6,
+        "gold": 3500
+      },
+      {
+        "rank": 12,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 0.6296,
+        "d_ehp": 0.0,
+        "d_dps": 44.5,
+        "gold": 3100
+      }
+    ],
+    "bal_squishy": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 1.6154,
+        "d_ehp": 4565.8,
+        "d_dps": 63.3,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 1.2737,
+        "d_ehp": 151.3,
+        "d_dps": 88.4,
+        "gold": 3200
+      },
+      {
+        "rank": 3,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 0.9734,
+        "d_ehp": 626.6,
+        "d_dps": 61.8,
+        "gold": 3333
+      },
+      {
+        "rank": 4,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 0.8641,
+        "d_ehp": 1693.6,
+        "d_dps": 42.2,
+        "gold": 3000
+      },
+      {
+        "rank": 5,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 0.86,
+        "d_ehp": 0.0,
+        "d_dps": 60.8,
+        "gold": 2650
+      },
+      {
+        "rank": 6,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 0.8123,
+        "d_ehp": 0.0,
+        "d_dps": 57.4,
+        "gold": 3050
+      },
+      {
+        "rank": 7,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 0.7945,
+        "d_ehp": 0.0,
+        "d_dps": 56.2,
+        "gold": 3000
+      },
+      {
+        "rank": 8,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 0.74,
+        "d_ehp": 0.0,
+        "d_dps": 52.3,
+        "gold": 3200
+      },
+      {
+        "rank": 9,
+        "id": "2510",
+        "name": "Dusk and Dawn",
+        "score": 0.6455,
+        "d_ehp": 564.5,
+        "d_dps": 39.3,
+        "gold": 3100
+      },
+      {
+        "rank": 10,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 0.6304,
+        "d_ehp": 0.0,
+        "d_dps": 44.6,
+        "gold": 3500
+      },
+      {
+        "rank": 11,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 0.6296,
+        "d_ehp": 0.0,
+        "d_dps": 44.5,
+        "gold": 3100
+      },
+      {
+        "rank": 12,
+        "id": "6662",
+        "name": "Iceborn Gauntlet",
+        "score": 0.6162,
+        "d_ehp": 1115.7,
+        "d_dps": 31.1,
+        "gold": 2900
+      }
+    ],
+    "ap_squishy": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 1.5937,
+        "d_ehp": 4045.2,
+        "d_dps": 63.3,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 1.2737,
+        "d_ehp": 138.2,
+        "d_dps": 88.4,
+        "gold": 3200
+      },
+      {
+        "rank": 3,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 0.9734,
+        "d_ehp": 572.4,
+        "d_dps": 61.8,
+        "gold": 3333
+      },
+      {
+        "rank": 4,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 0.8641,
+        "d_ehp": 1547.1,
+        "d_dps": 42.2,
+        "gold": 3000
+      },
+      {
+        "rank": 5,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 0.86,
+        "d_ehp": 0.0,
+        "d_dps": 60.8,
+        "gold": 2650
+      },
+      {
+        "rank": 6,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 0.8123,
+        "d_ehp": 0.0,
+        "d_dps": 57.4,
+        "gold": 3050
+      },
+      {
+        "rank": 7,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 0.7945,
+        "d_ehp": 0.0,
+        "d_dps": 56.2,
+        "gold": 3000
+      },
+      {
+        "rank": 8,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 0.74,
+        "d_ehp": 0.0,
+        "d_dps": 52.3,
+        "gold": 3200
+      },
+      {
+        "rank": 9,
+        "id": "2510",
+        "name": "Dusk and Dawn",
+        "score": 0.6455,
+        "d_ehp": 515.7,
+        "d_dps": 39.3,
+        "gold": 3100
+      },
+      {
+        "rank": 10,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 0.6304,
+        "d_ehp": 0.0,
+        "d_dps": 44.6,
+        "gold": 3500
+      },
+      {
+        "rank": 11,
+        "id": "3032",
+        "name": "Yun Tal Wildarrows",
+        "score": 0.6296,
+        "d_ehp": 0.0,
+        "d_dps": 44.5,
+        "gold": 3100
+      },
+      {
+        "rank": 12,
+        "id": "6610",
+        "name": "Sundered Sky",
+        "score": 0.6137,
+        "d_ehp": 958.1,
+        "d_dps": 31.7,
+        "gold": 3100
+      }
+    ],
+    "ad_tanky": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 2.2817,
+        "d_ehp": 4741.1,
+        "d_dps": 63.3,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 2.1755,
+        "d_ehp": 158.2,
+        "d_dps": 86.9,
+        "gold": 3200
+      },
+      {
+        "rank": 3,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 0.9734,
+        "d_ehp": 655.2,
+        "d_dps": 35.3,
+        "gold": 3333
+      },
+      {
+        "rank": 4,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 0.8905,
+        "d_ehp": 590.3,
+        "d_dps": 32.4,
+        "gold": 3000
+      },
+      {
+        "rank": 5,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 0.8698,
+        "d_ehp": 0.0,
+        "d_dps": 35.1,
+        "gold": 2900
+      },
+      {
+        "rank": 6,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 0.8641,
+        "d_ehp": 1770.8,
+        "d_dps": 24.1,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 0.86,
+        "d_ehp": 0.0,
+        "d_dps": 34.7,
+        "gold": 2650
+      },
+      {
+        "rank": 8,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 0.8123,
+        "d_ehp": 0.0,
+        "d_dps": 32.8,
+        "gold": 3050
+      },
+      {
+        "rank": 9,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 0.7945,
+        "d_ehp": 0.0,
+        "d_dps": 32.1,
+        "gold": 3000
+      },
+      {
+        "rank": 10,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 0.7524,
+        "d_ehp": 0.0,
+        "d_dps": 30.4,
+        "gold": 3200
+      },
+      {
+        "rank": 11,
+        "id": "2510",
+        "name": "Dusk and Dawn",
+        "score": 0.671,
+        "d_ehp": 590.3,
+        "d_dps": 23.5,
+        "gold": 3100
+      },
+      {
+        "rank": 12,
+        "id": "6662",
+        "name": "Iceborn Gauntlet",
+        "score": 0.6707,
+        "d_ehp": 1527.2,
+        "d_dps": 17.8,
+        "gold": 2900
+      }
+    ],
+    "ap_tanky": [
+      {
+        "rank": 1,
+        "id": "223069",
+        "name": "Void Immolation",
+        "score": 2.2649,
+        "d_ehp": 4045.2,
+        "d_dps": 63.3,
+        "gold": 6000
+      },
+      {
+        "rank": 2,
+        "id": "3153",
+        "name": "Blade of The Ruined King",
+        "score": 2.1755,
+        "d_ehp": 138.2,
+        "d_dps": 86.9,
+        "gold": 3200
+      },
+      {
+        "rank": 3,
+        "id": "3078",
+        "name": "Trinity Force",
+        "score": 0.9734,
+        "d_ehp": 572.4,
+        "d_dps": 35.3,
+        "gold": 3333
+      },
+      {
+        "rank": 4,
+        "id": "6653",
+        "name": "Liandry's Torment",
+        "score": 0.8905,
+        "d_ehp": 515.7,
+        "d_dps": 32.4,
+        "gold": 3000
+      },
+      {
+        "rank": 5,
+        "id": "6692",
+        "name": "Eclipse",
+        "score": 0.8698,
+        "d_ehp": 0.0,
+        "d_dps": 35.1,
+        "gold": 2900
+      },
+      {
+        "rank": 6,
+        "id": "3084",
+        "name": "Heartsteel",
+        "score": 0.8641,
+        "d_ehp": 1547.1,
+        "d_dps": 24.1,
+        "gold": 3000
+      },
+      {
+        "rank": 7,
+        "id": "3085",
+        "name": "Runaan's Hurricane",
+        "score": 0.86,
+        "d_ehp": 0.0,
+        "d_dps": 34.7,
+        "gold": 2650
+      },
+      {
+        "rank": 8,
+        "id": "3508",
+        "name": "Essence Reaver",
+        "score": 0.8123,
+        "d_ehp": 0.0,
+        "d_dps": 32.8,
+        "gold": 3050
+      },
+      {
+        "rank": 9,
+        "id": "6672",
+        "name": "Kraken Slayer",
+        "score": 0.7945,
+        "d_ehp": 0.0,
+        "d_dps": 32.1,
+        "gold": 3000
+      },
+      {
+        "rank": 10,
+        "id": "3097",
+        "name": "Stormrazor",
+        "score": 0.7524,
+        "d_ehp": 0.0,
+        "d_dps": 30.4,
+        "gold": 3200
+      },
+      {
+        "rank": 11,
+        "id": "2510",
+        "name": "Dusk and Dawn",
+        "score": 0.671,
+        "d_ehp": 515.7,
+        "d_dps": 23.5,
+        "gold": 3100
+      },
+      {
+        "rank": 12,
+        "id": "3031",
+        "name": "Infinity Edge",
+        "score": 0.6304,
+        "d_ehp": 0.0,
+        "d_dps": 25.5,
+        "gold": 3500
+      }
+    ]
+  },
+  "responsiveness": {
+    "primary_axis": "enemy_damage_type",
+    "comp_blind": false,
+    "enemy_damage_type": {
+      "max_positive_shift": 11,
+      "top_risers_when_ap": [
+        {
+          "name": "Wit's End",
+          "shift": 11
+        },
+        {
+          "name": "Voltaic Cyclosword",
+          "shift": 2
+        },
+        {
+          "name": "Sundered Sky",
+          "shift": 2
+        },
+        {
+          "name": "Navori Flickerblade",
+          "shift": 2
+        },
+        {
+          "name": "Immortal Shieldbow",
+          "shift": 2
+        }
+      ],
+      "top_fallers_when_ap": [
+        {
+          "name": "Dead Man's Plate",
+          "shift": -13
+        },
+        {
+          "name": "Iceborn Gauntlet",
+          "shift": -10
+        },
+        {
+          "name": "Guinsoo's Rageblade",
+          "shift": -1
+        },
+        {
+          "name": "Liandry's Torment",
+          "shift": -1
+        },
+        {
+          "name": "Terminus",
+          "shift": -1
+        }
+      ],
+      "comp_blind": false
+    },
+    "target_resist": {
+      "max_positive_shift": 20,
+      "top_risers_when_ap": [
+        {
+          "name": "Liandry's Torment",
+          "shift": 20
+        },
+        {
+          "name": "Mortal Reminder",
+          "shift": 10
+        },
+        {
+          "name": "Lord Dominik's Regards",
+          "shift": 10
+        },
+        {
+          "name": "Eclipse",
+          "shift": 10
+        },
+        {
+          "name": "Black Cleaver",
+          "shift": 7
+        }
+      ],
+      "top_fallers_when_ap": [
+        {
+          "name": "The Collector",
+          "shift": -7
+        },
+        {
+          "name": "Edge of Night",
+          "shift": -5
+        },
+        {
+          "name": "Death's Dance",
+          "shift": -4
+        },
+        {
+          "name": "Hexoptics C44",
+          "shift": -4
+        },
+        {
+          "name": "Bloodthirster",
+          "shift": -3
+        }
+      ],
+      "comp_blind": false
+    }
+  },
+  "rune_relevant": false,
+  "empirical": {
+    "ARAM": {
+      "self": {
+        "n": 0,
+        "wr": null,
+        "items": []
+      },
+      "all": {
+        "n": 29,
+        "wr": 48.3,
+        "items": [
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 18,
+            "wr": 55.6
+          },
+          {
+            "id": "3084",
+            "name": "Heartsteel",
+            "n": 14,
+            "wr": 28.6
+          },
+          {
+            "id": "6610",
+            "name": "Sundered Sky",
+            "n": 13,
+            "wr": 61.5
+          },
+          {
+            "id": "3065",
+            "name": "Spirit Visage",
+            "n": 10,
+            "wr": 50.0
+          },
+          {
+            "id": "2502",
+            "name": "Unending Despair",
+            "n": 10,
+            "wr": 40.0
+          },
+          {
+            "id": "3047",
+            "name": "Plated Steelcaps",
+            "n": 6,
+            "wr": 33.3
+          },
+          {
+            "id": "6692",
+            "name": "Eclipse",
+            "n": 5,
+            "wr": 80.0
+          }
+        ]
+      }
+    },
+    "SR": {
+      "self": {
+        "n": 0,
+        "wr": null,
+        "items": []
+      },
+      "all": {
+        "n": 20,
+        "wr": 50.0,
+        "items": [
+          {
+            "id": "6631",
+            "name": "Stridebreaker",
+            "n": 10,
+            "wr": 50.0
+          },
+          {
+            "id": "3071",
+            "name": "Black Cleaver",
+            "n": 9,
+            "wr": 55.6
+          },
+          {
+            "id": "3047",
+            "name": "Plated Steelcaps",
+            "n": 8,
+            "wr": 50.0
+          },
+          {
+            "id": "3748",
+            "name": "Titanic Hydra",
+            "n": 7,
+            "wr": 57.1
+          },
+          {
+            "id": "2055",
+            "name": "Control Ward",
+            "n": 7,
+            "wr": 57.1
+          },
+          {
+            "id": "1028",
+            "name": "Ruby Crystal",
+            "n": 6,
+            "wr": 33.3
+          },
+          {
+            "id": "1037",
+            "name": "Pickaxe",
+            "n": 5,
+            "wr": 40.0
+          },
+          {
+            "id": "2021",
+            "name": "Tunneler",
+            "n": 5,
+            "wr": 40.0
+          },
+          {
+            "id": "3111",
+            "name": "Mercury's Treads",
+            "n": 5,
+            "wr": 60.0
+          }
+        ]
+      }
+    }
+  },
+  "level": 13
+}

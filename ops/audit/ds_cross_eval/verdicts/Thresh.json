@@ -1,0 +1,12 @@
+{
+  "champion": "Thresh",
+  "scorer": "hps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "Add tank secondary scorer dispatch (EHP/bruiser weight) or add Heartsteel/Fimbulwinter/Unending Despair to hps pool with partial credit; empirical top items score 0 while enchanter items have zero empirical presence.",
+  "headline": "hps scorer top-8 has zero empirical overlap; Heartsteel (wr=77.8%) and Fimbulwinter absent; Thresh plays tank not enchanter in practice."
+}

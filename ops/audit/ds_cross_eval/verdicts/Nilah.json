@@ -1,0 +1,12 @@
+{
+  "champion": "Nilah",
+  "scorer": "dps",
+  "evidence_tier_aram": "outcome_self",
+  "archetype_ok": true,
+  "comp_ok": true,
+  "outcome_ok": false,
+  "rune_ok": "n/a",
+  "severity": "MISMATCH",
+  "nominated_retune": "BotRK overscored: apply champion-specific BotRK DPS discount for Nilah (LS share from passive reduces marginal on-hit value); verify The Collector execute and Navori crit-reset are captured in dps scorer.",
+  "headline": "BotRK rank-1 scorer but 28.6% wr (vs 60.0 baseline); The Collector/Navori (top empirical) absent from scorer top-8."
+}
