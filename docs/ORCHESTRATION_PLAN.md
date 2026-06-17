@@ -94,7 +94,7 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | DONE | 20d9f395 |
 | DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | DONE | `7b96328f` (p1) + `e1c996d0` (p2-DRY) |
 | DSP11 | ds-engine | Cluster B2 kit-axis item-crediting fix (Gemini PART C verdict 2026-06-17, from the DSP10 dsp10_consolidated report): the dps/burst scorers give caster-ADC / lethality-assassin / crit-melee kits a generic crit-marksman template instead of their WIN-axis - Pyke wins lethality (Opportunity/Youmuu's), Nilah wins crit (Immortal Shieldbow/IE/Navori), Ezreal wins Manamune/Trinity. Root-cause-first (WHY the template - candidate applicability vs DPS credit model), default-OFF seam, WIN-anchored vs report/dsp10_consolidated.md + rewind. ENGINE bump + DS restart + Share sync. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) stays a deferred operator policy decision (do-NOT-auto-flip). See plan "DSP10" + report/dsp10_consolidated.md. | DONE | `0c2b88e5` |
-| HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | OPEN | - |
+| HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | DONE | `a30cbba4` (code+mine, item 457) + docs this cycle |
 | LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | OPEN | - |
 | OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | OPEN | - |
 | OPEN2 | test-hygiene | tests/test_p2w4_hw2_b.py git() error-path tests call the real loop_controller.git() and pollute the production ops/loop/control/controller.log (monkeypatch subprocess.run but not control_dir). Redirect control_dir to tmp_path in those tests (conftest SHADOW_PATH precedent, item 386). | OPEN | - |
@@ -110,6 +110,35 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 HZU1 (cycle 16) DONE - CODE was item 457, this cycle is the MINE-VERIFY + laning/flip
+  doc-prep + status closeout. The directive's first two clauses (deepen
+  `tools/replay_build_order_validate.py` to per-item bought-vs-win granularity + mine the 4627
+  lean-ambiguous rows for which items carry signal) were ALREADY SHIPPED at `a30cbba4` (item 457,
+  2026-06-16, ancestor of HEAD): `item_outcomes` + `_per_item_report` + the `per_item` accumulator +
+  `_PER_ITEM_MIN_N=50` carrier rail + the per-ITEM print block, with +7 tests. Per CLAUDE.md
+  verify-before-redo / do-not-re-litigate, this cycle did NOT re-implement; it RE-RAN the gate fresh on
+  the live `data/rewind_history.db` (`--mode sr --limit 0`) as independent ground truth and reproduced
+  item 457 byte-for-byte: 651 SR matches / 6510 rows, decisive=1832 / ambiguous=4627 (the named 4627) /
+  uncovered_champ=51. HEADLINE (lean level): FOLLOWED 56.4% (n=766) vs NOT 54.1% (n=1066) = +2.3pp,
+  95%=[-2.3,+6.9], flip_ready=False (a coin flip, dilution-consistent). COMPLETION-TIMING also flat
+  (fast<=20.82min 56.1% vs slow 56.7%). ITEM-GRANULARITY mining of the 4627 ambiguous rows = 1/51 clean
+  carriers: Infinity Edge anti_squishy +12.6pp (95%=[+0.7,+24.4], n=90 bought); Serylda's Grudge
+  +11.3pp just misses (lo=-0.9). VERDICT: HOLD - the lean recommendation carries no flippable
+  whole-build signal at this corpus and one IE carrier is too thin; the build coach stays on Haiku
+  (interim floor) until a larger replay corpus clears the rail and the chip is eyeballed live. DOC-PREP
+  (the 3rd clause): appended both HZ flip rows to `docs/LIVE_GAME_GATED_SYNC.md` section C - the Lane-A
+  laning-agreement read (`tools/hz_shadow_report.py`, confirmed present; item 456) and the Lane-B
+  build-order item-level flip (the gate as its rail, current HOLD numbers, re-run-as-corpus-grows
+  instruction) - plus a live-flip ledger entry; they are the cycle-52 HZ precompute->Haiku flip PAIR,
+  both HOLD. Tier-0 (only `.md` touched - LIVE_GAME_GATED_SYNC + this plan + LEDGER; ZERO `.py` edits ->
+  no ENGINE bump / DS restart / Share sync / py_compile). GATE: the relevant-module suite
+  `tests/test_replay_build_order_validate.py` + `_robustness` 65 passed exit 0 (the shipped tool still
+  green) + the live gate re-run as the ground-truth check; full dual suite skipped per R5 (Tier-0 docs).
+  INLINE sole orchestrator (R9 - docs + a re-run, no disjoint files); verifier SKIPPED per R7 (own
+  single-thread, no untrusted slice - the gate re-run IS the independent verify). No frozen files. NEXT:
+  LGS1 (live-sync audit) or OPEN1/OPEN2. Source: gemini director directive
+  ops/loop/control/directive.md (HZU1).
 
 - 2026-06-17 DSP10 PASS 2 (`e1c996d0`) DONE - SWARM DRY. Loop-until-dry pass 2:
   re-ran the cross-eval harness at live ENGINE 1.135.0 (run_all 172/172 OK,
