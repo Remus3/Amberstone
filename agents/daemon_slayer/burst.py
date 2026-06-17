@@ -106,6 +106,7 @@ from .effects import (
 )
 from .engine import build_champion
 from .geometry import spell_aoe_multiplier
+from .kit_axis_credit import kit_axis_item_ids
 from .rune_procs import (
     COMPLETION_RUNE_IDS,
     RUNE_PROCS,
@@ -1216,6 +1217,10 @@ class BurstRankedItem:
     # Phase 4(d): candidate's own unique-passive family key, always set
     # (collision-independent) - the positive "locks <family>" signal.
     unique_passive_key: str = ""
+    # DSP11 Cluster-B2 kit-axis credit marker (1.135.0). 0.0 on the default path
+    # (``prefer_kit_axis_by_win=False``) so the rows + sort stay byte-identical;
+    # 1.0 on a surfaced (positive-delta) WIN-anchored kit-axis item when engaged.
+    kit_axis_score: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -1230,6 +1235,7 @@ class BurstRankedItem:
             "shares_dead_unique": self.shares_dead_unique,
             "dead_unique_key": self.dead_unique_key,
             "unique_passive_key": self.unique_passive_key,
+            "kit_axis_score": self.kit_axis_score,
         }
 
 
@@ -1476,6 +1482,7 @@ def rank_items_by_burst(
     assume_squishy_target: bool = False,
     assume_ability_amp: bool = False,
     target_preset: Optional[str] = None,
+    prefer_kit_axis_by_win: bool = False,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -1521,10 +1528,29 @@ def rank_items_by_burst(
     bites a high-CC enchanter's MR). ``target_preset`` wins over
     ``assume_squishy_target`` and is the only path that also substitutes MR; the
     legacy ``assume_squishy_target`` stays armor-only. None -> byte-identical.
+
+    ``prefer_kit_axis_by_win`` is the OPTIONAL DSP11 Cluster-B2 seam (DEFAULT-OFF).
+    The single-combo burst model ranks a generic AD template (Sundered Sky / IE /
+    Trinity / Essence Reaver) for every assassin because it cannot encode a kit's
+    win-axis (Pyke R executes scale with lethality), so the lethality items the
+    player base WINS on (the DSP10 buried winners) sink below it. When ``False``
+    (default) the output is byte-identical - ``kit_axis_score`` stays 0.0 and the
+    sort is unchanged. When ``True`` and the champ has a WIN-anchored
+    ``kit_axis_item_credit`` entry, every positive-delta kit-axis item is floated
+    above the generic template (model order preserved within each tier). Champs
+    absent from the table are a no-op. The live default-ON flip is EXCLUDED ->
+    docs/LIVE_GAME_GATED_SYNC.md.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
     level = clamp_level(level)
+    # DSP11 (DEFAULT-OFF): resolve the champ's WIN-anchored kit-axis item ids.
+    # Empty unless the seam is on AND the champ is tabled -> byte-identical no-op.
+    # The burst ranker applies no off-class strip, so the seam is float-only here.
+    kit_axis_ids: frozenset[str] = (
+        kit_axis_item_ids(str(champion_id)) if prefer_kit_axis_by_win else frozenset()
+    )
+    kit_axis_active = bool(kit_axis_ids)
     # DSV3 (1.126.0) + DSP8 (1.134.0): enemy-comp target-preset resist
     # assumption. _resolve_target_preset maps target_preset (DSP8) or the legacy
     # assume_squishy_target (DSV3 -> "squishy") to an active preset, or None.
@@ -1641,6 +1667,12 @@ def rank_items_by_burst(
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
         delta = scored.total_burst_damage - baseline.total_burst_damage
         eff = (delta / (gold / 1000.0)) if (gold > 0 and delta > 0) else 0.0
+        # DSP11 kit-axis credit marker: 1.0 on a surfaced (positive-delta)
+        # WIN-anchored kit-axis item when engaged, else 0.0. A non-positive
+        # delta is a regression and is NOT floated.
+        kit_axis_score = 1.0 if (
+            kit_axis_active and item_id in kit_axis_ids and delta > 0.0
+        ) else 0.0
         ranked.append(BurstRankedItem(
             item_id=item_id,
             item_name=str(rec.get("name", item_id)),
@@ -1653,12 +1685,20 @@ def rank_items_by_burst(
             shares_dead_unique=shares_dead_unique,
             dead_unique_key=cand_key if shares_dead_unique else "",
             unique_passive_key=cand_key,
+            kit_axis_score=kit_axis_score,
         ))
 
-    if sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.burst_per_1k_gold, r.delta_burst), reverse=True)
+    def _base_key(r: BurstRankedItem) -> tuple:
+        if sort_by == "efficiency":
+            return (r.burst_per_1k_gold, r.delta_burst)
+        return (r.delta_burst, r.burst_per_1k_gold)
+
+    if kit_axis_active:
+        # DSP11: float surfaced kit-axis items above the generic template,
+        # preserving the model order within each tier. Byte-identical when off.
+        ranked.sort(key=lambda r: (r.kit_axis_score,) + _base_key(r), reverse=True)
     else:
-        ranked.sort(key=lambda r: (r.delta_burst, r.burst_per_1k_gold), reverse=True)
+        ranked.sort(key=_base_key, reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
