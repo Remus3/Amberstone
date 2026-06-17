@@ -13,6 +13,17 @@
 
 ---
 
+# 2026-06-17 - DSP4 REGRESS directive: 1 real fix + 1 false positive (headless gemini-loop cycle 6)
+
+- Executor cycle 6 (`ops/loop`, gemini director). Gemini AUDITOR returned REGRESS on item-468 DSP4 with 2 items; BOTH verified vs ground truth FIRST (S7 + the item-466 auditor-false-positive precedent).
+- (1) REAL - `burst.py` rune-procs note: gated on `if _scored_runes:` (post-filter), so `runes=[8401]` default-OFF swallowed the "rune procs +0.0 (0 known rune(s))" note; the pre-DSP4 engine fired it for any supplied rune set (8401 then unknown -> `_n=0`). Broke the burst.py docstring byte-identical contract. FIX: gate on `if runes:`, keep `_n` over `_scored_runes`. SCORING + totals unchanged; live `/rank` (runes=None) unaffected. NO ENGINE bump (notes-string only).
+- (2) FALSE POSITIVE - `frozenset[int]` "import crash on Py<3.9": refuted (`from __future__ import annotations` line 42 = lazy string; Python 3.14; `import rune_procs` -> `IMPORT_OK [8401] frozenset 20`). No change made.
+- Sibling sweep: `combo.py` gates its rune note on `if rune_proc > 0.0:` (damage value) -> already byte-identical, no change.
+- TDD: +2 subtests (notes byte-identical for `runes=[8401]`; `runes=None` emits no note) red->green. DS 7182 passed / 1942 subtests; RC 8281 passed; 0 regressions. ruff/py_compile/ASCII clean. Share re-synced (`--check` green). Commit `d5868799`; this living-docs commit follows.
+- NEXT: DSP5 summoner-spell seam (NEW `agents/daemon_slayer/summoners.py`, default-OFF).
+
+---
+
 # 2026-06-17 - DSP4 self-rune completion seam: Shield Bash 8401 (headless gemini-loop cycle 5)
 
 - Executor cycle 5 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP4 (self-rune completion). Commit `1f7dbe62` (code+Share+CHANGELOGs+LIVE_GAME_GATED) pushed; this living-docs commit follows.
