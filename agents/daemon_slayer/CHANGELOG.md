@@ -1331,6 +1331,23 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.140.0 (DSP5/6/7 live-context CONSUMERS - the three DSP substrate seams shipped registries
+(summoners.py 1.131.0 / enemy_runes.py 1.132.0 / the ally-grant overrides 1.133.0) but NO scorer
+consumed them, so a flag-flip did nothing. NEW dsp_live_consumers.py adds the consumer layer: three
+thin, pure, fail-soft functions a live surface (fight_report / matchup / coach / peel readout) calls
+with the real live-client context. DSP5 summoner_fight_adjustments folds the player's + enemy's
+summoner set (Heal/Barrier EHP, Cleanse tenacity, Ghost/Heal MS, self-Exhaust incoming-DR, enemy
+Ignite antiheal). DSP6 enemy_rune_threat folds the enemy's rune set (Press the Attack incoming-amp ->
+ehp_divisor 1+amp, Conqueror damage-ramp, Grasp+Second Wind poke-sustain, antiheal). DSP7
+ally_protected_ehp folds an ally's enchanter flat-HP grant (DSP7) AND resist grant (the item-321
+ally-resist producer surface: Orianna E / Braum W / Taric W) into compute_ehp via external_flat_hp /
+external_resist_armor / external_resist_mr. Each is byte-identical to the pre-DSP engine on an EMPTY
+context (no spells / no runes / no allies), so importing + wiring changes nothing until a live caller
+supplies data. The live default-ON wire (feeding the real summoner/rune/ally set from the live client
++ eyeballing the adjusted readout) stays operator-gated -> docs/LIVE_GAME_GATED_SYNC.md (do-not-flip
+-blind). +10 tests test_dsp_live_consumers.py (empty no-op + correct-direction per consumer + version
+pin). DEFAULT-OFF, 2026-06-17.)
+
 1.139.0 (RF6 tank-template survivability INJECT seam - extends the RF3 ehp/tank float to the
 tabled winners the candidate pool DROPS. RF4 found RF3's float is a no-op for Rell: its sole tabled
 winner Fimbulwinter 3121 is the non-purchasable mana-line transform of Winter's Approach
