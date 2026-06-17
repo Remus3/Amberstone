@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-17 - DSP10 cross-eval re-run + anchor-match harness fix + consolidated mismatch report (headless gemini-loop cycle 13)
+
+- Executor cycle 13 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP10 (full permutation cross-eval re-run, all seams harness-ON, WIN-anchored, consolidated mismatch report + per-champ smallest-benefit fixes, loop-until-dry). Commit `7b96328f` (code/report/data/tests) + the living-docs sync commit (this) pushed. AUDIT TOOLING ONLY - no `agents/daemon_slayer` touched -> NO ENGINE bump / DS restart / Share sync.
+- RE-RUN: `tools/ds_cross_eval/run_all.py` regenerated all 172 cross-eval JSON at live ENGINE 1.134.0 (172 OK 0 FAIL 22.3s); 171/172 byte-identical (data already current across the DSP2-8 bumps), only `Aphelios.json` drifted -> proves DSP2-8 did NOT regress the rankings + catches the lone drift.
+- SMALLEST-BENEFIT FIX: the DSP1 WIN-anchor harness scored each champ's ARAM-anchored comp_grid against BOTH ARAM + SR win-data, but 171/172 champs anchor ARAM (only Zaahen=SR), so the SR column was apples-to-oranges (Ezreal SR -39.13 mean_wr 0.0 = pure cross-mode artifact). `perm_score.build_report anchor_match_only` (default True) scores only the anchor-matched mode; scored champ-modes 295 -> 162; mean_lift_weighted +0.1651 (mixed) -> -0.2825 (honest ARAM-only).
+- DELIVERABLE: NEW `ops/audit/ds_perm_swarm/consolidate.py` + `run_consolidate.py` -> `report/dsp10_consolidated.{json,md}` (DS-favored top-K + live rewind n/wr vs the above-baseline buried winners, worst-40 anchor-matched). +4 hermetic tests.
+- TRIAGE: (A) Cluster A operator-gated ARAM off-meta archetype (Zilean -32.8 AP-mage / Shaco -29.2 AP / Kayle -16.3 on-hit / Seraphine / Udyr -21.7 tank; SYSTEMIC_FINDINGS do-NOT-auto-flip); (B) Cluster B2 kit-axis (Pyke -22 lethality / Nilah -20.9 crit / Ezreal Manamune-Trinity = real defect, dedicated pass); (C) NOT-defects (TF/Katarina AP-correct cost-noise, Rakan ARAM-HP-stack, Zaahen n=7); (D) cost-axis (DSP9 BACKLOG). NO ship-blind-safe per-champ engine fix this cycle.
+- GEMINI PART C (`gemini_io/answer_20260617-070708.md`): verdict (a) dedicate DSP11 to Cluster B2; Cluster A = deferred operator policy. NEW DSP11 OPEN row seeded.
+- GATE: DS-dir 7272 / RC 8297 (+4 hermetic; the lone fail was the PRE-EXISTING ROADMAP 82540 > 81920 budget, FIXED by relocating 3 shipped prior-run cycle entries to `docs/ROADMAP_HISTORY.md` -> 78351); ruff/py_compile/ASCII clean. INLINE (R9 - 4 audit files + 2 tests; the per-champ worktree swarm is deferred to DSP11 where it applies), verifier SKIPPED per R7 (fresh dual-suite). loop-until-dry: pass 1 surfaced DSP11 (not dry).
+- NEXT: DSP11 (Cluster B2 kit-axis item-crediting fix, root-cause-first). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP8 enemy-comp target-preset seam: burst-ranker armor+MR presets (headless gemini-loop cycle 10)
 
 - Executor cycle 10 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP8 (enemy-comp target-preset seam: extend DSV3 `assume_squishy_target` into tank-heavy/squishy/bruiser/high-CC presets). Commits `f03dfc25` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + the living-docs sync commit (this) pushed.
@@ -28,16 +41,3 @@
 - DS :8893 bounced (taskkill 17548 + schtasks) -> 1.133.0; Share re-synced (350, --check green); DS+Share CHANGELOG prepended; 72 ENGINE pins / 72 .py bumped (quoted-literal-only). TDD +24 (ImportError red-first -> green). DS-dir 7256 / RC 8281 / hygiene gate 12 green; ruff/py_compile/ASCII clean (0 introduced banned chars). No web/* -> no UI ritual/snapshot (R5/R11). INLINE (R9), verifier SKIPPED per R7 (fresh in-thread dual re-verify + live :8893 + Share --check).
 - SIZE GUARD: applied the cycle-7/8 lesson - ran `tests/test_doc_size_budget.py` and the DSP7 swarm-progress prepend tipped ROADMAP to 82927 > 81920, so compressed the DSP5/DSP6 detail to LEDGER pointers + trimmed the DSP7 block -> 81818 (margin 102), guard green BEFORE this WAKEUP commit.
 - NEXT: DSP8 (enemy-comp target-preset seam: extend DSV3 `assume_squishy_target` into tank-heavy/squishy/bruiser/high-CC presets; default-OFF). Tracker `docs/ORCHESTRATION_PLAN.md`.
-
----
-
-# 2026-06-17 - DSP6 enemy-rune threat seam: NEW enemy_runes.py (headless gemini-loop cycle 8)
-
-- Executor cycle 8 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP6 (enemy-rune threat seam, NEW `agents/daemon_slayer/enemy_runes.py`). Commits `f3563120` (code + ENGINE bump + Share + CHANGELOGs + LIVE_GAME_GATED) + `4a9b820f` (living docs) pushed; CI green baseline confirmed pre-push.
-- ROOT: RC modeled the player's OWN runes (`rune_procs.py` + `core/rune_wpa.py`) but had ZERO model of the ENEMY's runes as a threat modulating the player's EHP preset (survivability) or the enemy's target preset (tankiness) - an unmodeled permutation bucket.
-- FIX (Tier-2, ENGINE 1.131.0 -> 1.132.0): NEW `enemy_runes.py` - the enemy-side mirror of `summoners.py` (DSP5 birth precedent). Frozen `EnemyRuneThreat` dataclass + `ENEMY_RUNE_THREATS` registry, one pure closure per rune on the preset it threatens: PtA 8005 incoming_amp (0.08 amp on the player = 1/1.08 EHP divisor), Conqueror 8010 damage_ramp (max-stack Adaptive Force 21.6-48.0 by level + 0.08/0.05 lifesteal for the target lens), Grasp 8437 + Second Wind 8444 poke_sustain (1.3% max-HP heal + 5 perm HP + 3.5% magic / 4% missing-HP). Public surface fail-soft (unknown / empty / None / bad -> 0.0).
-- MAGNITUDES: every coefficient verbatim from DDragon `runesReforged.json` 16.12.1 longDesc (authoritative); UNLIKE summoner spells, DDragon does NOT zero rune longDescs, so NO wiki fallback (cross-check only). ANTIHEAL (4th bucket) is NOT a rune (no rune grants Grievous Wounds) -> carried as `GRIEVOUS_WOUNDS_PCT=0.40` + `enemy_antiheal_pct(present)`, EXCLUDED from `ENEMY_RUNE_SEAM_IDS`.
-- DEFAULT-OFF: `ENEMY_RUNE_SEAM_IDS` marks the 4 ids but NO live scorer consumes the module -> `/rank` + compute_dps/ehp/burst byte-identical. Live flip (wire an EHP/target-preset consumer) EXCLUDED -> `LIVE_GAME_GATED_SYNC.md` section B + ledger.
-- DS :8893 bounced (taskkill 1976 + schtasks) -> 1.132.0; Share re-synced (349, --check green); DS+Share CHANGELOG prepended + Share/docs/02 function-ref subsection; 79 ENGINE pins / 71 .py bumped (quoted-literal-only). TDD +29 (28 logic-green pre-bump, the pin red-first -> green). DS-dir 7235 / RC 8281 green; ruff/py_compile/ASCII clean (0 introduced non-ASCII). INLINE (R9), verifier SKIPPED per R7 (fresh in-thread dual re-verify + live :8893 + Share --check).
-- SIZE GUARD: applied cycle-7's lesson - ran `tests/test_doc_size_budget.py` BEFORE committing the ROADMAP swarm-progress prepend; the DSP6 add tipped it to 82189 > 81920 so DSP4 detail was compressed to LEDGER pointers pre-commit -> 81800 (margin 120), guard green. No post-push fixup needed this cycle.
-- NEXT: DSP7 (ally aura/enchanter seam: extend `allyamp.py` + `_passive_ally_grant_overrides.py` to enchanter/shield/heal buckets; default-OFF). Tracker `docs/ORCHESTRATION_PLAN.md`.

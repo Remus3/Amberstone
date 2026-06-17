@@ -92,7 +92,8 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 | DSP7 | ds-engine | Ally aura/enchanter seam: extend allyamp.py + _passive_ally_grant_overrides.py to enchanter/shield/heal buckets. Default-OFF. See plan "DSP7". | DONE | 69f9085d |
 | DSP8 | ds-engine | Enemy-comp target-preset seam: extend DSV3 assume_squishy_target into tank-heavy/squishy/bruiser/high-CC presets. Default-OFF. See plan "DSP8". | DONE | f03dfc25 |
 | DSP9 | ds-lolmath | lolmath parity fold (P6 G3 runes + G7 comp-harness): re-run ops/audit/lolmath_ds_sweep with DSP4-8 seams ON in-harness, close residuals to >= lolmath parity. G6 cost-model = Gemini-consult, not blind build. See plan "DSP9". | DONE | 20d9f395 |
-| DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | OPEN | - |
+| DSP10 | ds-swarm | Full permutation cross-eval re-run: per-champion worktree swarm over the bucket matrix, all seams harness-ON, WIN-anchored; consolidated mismatch report + per-champ implement-to-smallest-benefit fixes. Loop-until-dry (2 no-new-fix passes). See plan "DSP10". | WIP | `7b96328f` |
+| DSP11 | ds-engine | Cluster B2 kit-axis item-crediting fix (Gemini PART C verdict 2026-06-17, from the DSP10 dsp10_consolidated report): the dps/burst scorers give caster-ADC / lethality-assassin / crit-melee kits a generic crit-marksman template instead of their WIN-axis - Pyke wins lethality (Opportunity/Youmuu's), Nilah wins crit (Immortal Shieldbow/IE/Navori), Ezreal wins Manamune/Trinity. Root-cause-first (WHY the template - candidate applicability vs DPS credit model), default-OFF seam, WIN-anchored vs report/dsp10_consolidated.md + rewind. ENGINE bump + DS restart + Share sync. Cluster A (Zilean/Shaco/Kayle/Seraphine AP-in-ARAM) stays a deferred operator policy decision (do-NOT-auto-flip). See plan "DSP10" + report/dsp10_consolidated.md. | OPEN | - |
 | HZU1 | haiku-zero | HZ uplift (cycle 52 NEXT): item-level build-order Haiku-flip gate - deepen tools/replay_build_order_validate.py to per-item bought-vs-win granularity, mine the 4627 ambiguous rows for which items carry signal. Then prep the laning-agreement read (live-gated -> LIVE_GAME_GATED_SYNC.md). | OPEN | - |
 | LGS1 | live-sync | Audit ROADMAP open-tails + this plan's EXCLUDED + every default-OFF seam in rank.py; verify docs/LIVE_GAME_GATED_SYNC.md is COMPLETE and each row names its flip location. Pure docs. Keeps the operator's live-game sync list authoritative. | OPEN | - |
 | OPEN1 | hygiene | Unify the 4 divergent RC page-name templates to a single "RC: " prefix (dashboard/routes_loadout.py:120 + lcu/lcu_client.py:401 [FROZEN - route around or skip] + loadout_resolver.py:351 + agent default; ROADMAP item 210). Tests. | OPEN | - |
@@ -109,6 +110,62 @@ pick the recommended path, NEVER block. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-17 DSP10 (475, 7b96328f) WIP - pass 1 DONE. Full permutation
+  cross-eval re-run + the smallest-benefit harness-validity fix + the
+  consolidated mismatch report. Audit tooling only - NO agents/daemon_slayer
+  touched -> NO ENGINE bump / DS restart / Share sync / new
+  LIVE_GAME_GATED_SYNC flip. RE-RUN: regenerated all 172
+  ops/audit/ds_cross_eval/data/<Champ>.json at live ENGINE 1.134.0 via
+  tools/ds_cross_eval/run_all.py (172 OK 0 FAIL 22.3s); 171/172 byte-identical
+  (the data was already current across the DSP2-8 bumps) - ONLY Aphelios.json
+  drifted, which both proves DSP2-8 did NOT regress the cross-eval rankings and
+  catches the lone drift. SMALLEST-BENEFIT FIX (the one ship-this-cycle find):
+  the DSP1 WIN-anchor harness scored each champ's ARAM-anchored comp_grid
+  against BOTH ARAM and SR win-data, but 171/172 champs anchor ARAM (only
+  Zaahen anchors SR), so the whole SR column was apples-to-oranges (an
+  ARAM-built ranking judged on SR outcomes) - the worst divergent row Ezreal SR
+  -39.13 (mean_wr 0.0) was pure cross-mode artifact. perm_score.build_report
+  gains anchor_match_only (default True): only the anchor-matched mode scores.
+  Scored champ-modes 295 -> 162; mean_lift_weighted +0.1651 (mixed, polluted)
+  -> -0.2825 (the honest ARAM-only signal). DELIVERABLE: NEW
+  ops/audit/ds_perm_swarm/consolidate.py + run_consolidate.py -> the DSP10
+  consolidated mismatch report (report/dsp10_consolidated.{json,md}) joining
+  DS-favored top-K (union across the target-preset buckets, with live rewind
+  n/wr) vs the above-baseline empirical winners DS buries, for the worst-40
+  anchor-matched champ-modes. TRIAGE of the now-VALID divergent tail: (A)
+  Cluster A operator-gated ARAM off-meta archetype - Zilean -32.8 (enchanter
+  routed, wins AP-mage Shadowflame/Rabadon's/Luden's), Shaco -29.2 (assassin,
+  wins AP Blackfire/Liandry), Kayle -16.3 (mage, wins on-hit BotRK/Terminus),
+  Seraphine -15.0, Udyr -21.7 (bruiser, wins tank Spirit Visage/Jak'Sho) -
+  SYSTEMIC_FINDINGS says do-NOT-auto-flip (the cs_archetype_picks override
+  mechanism exists but WHICH off-meta builds to chase is an operator call); (B)
+  Cluster B2 kit-axis item-crediting - Pyke -22.0 (wins lethality
+  Opportunity/Youmuu's), Nilah -20.9 (wins crit Immortal Shieldbow 70%/IE/
+  Navori), Ezreal (wins Manamune/Trinity) - a REAL engine defect needing a
+  dedicated root-cause pass; (C) NOT-defects - TwistedFate/Katarina (AP axis
+  CORRECT, the negative lift is component + cost noise), Rakan (the known ARAM
+  HP-stack-on-enchanter not-defect), Zaahen n=7 thin; (D) cost-axis = the
+  DSP9-falsified G6 residual (Gemini-verdicted BACKLOG). NO ship-blind-safe
+  per-champ ENGINE fix this cycle (Cluster A is do-not-auto-flip; Cluster B2
+  needs root-cause-first - both would violate do-not-flip-blind if crammed in
+  blind). GEMINI PART C (synchronous gemini_ask,
+  gemini_io/answer_20260617-070708.md): verdict (a) - dedicate DSP11 to the
+  Cluster B2 kit-axis fix; Cluster A stays a deferred operator policy decision.
+  NEW DSP11 OPEN row seeded. GATE (fresh this run): DS-dir
+  agents/daemon_slayer/tests/ 7272 passed / 1 skip / 1942 subtests exit 0
+  (unchanged - no DS source touched); full RC tests/ --ignore=tests/daemon_slayer
+  8297 passed / 2 skip / 109 subtests (+4 = the anchor-match + consolidate
+  hermetic tests; the lone failure was the pre-existing ROADMAP.md 82540 > 81920
+  size budget, FIXED by relocating 3 shipped prior-run cycle entries to
+  docs/ROADMAP_HISTORY.md -> 78351); ruff All checks passed; py_compile OK;
+  ASCII/LF clean. INLINE sole orchestrator (R9 - 4 cohesive audit-tooling files
+  + 2 tests; no disjoint multi-file engine work this cycle, so the per-champ
+  worktree swarm is deferred to DSP11 where it applies; the DSP1-9 inline
+  precedent); verifier SKIPPED per R7 (own single-thread edit, no untrusted
+  slice) - fresh dual-suite substituted. loop-until-dry: pass 1 surfaced DSP11
+  (NOT a dry pass). NEXT (DSP11): Cluster B2 kit-axis fix, root-cause-first.
+  Source: gemini director directive ops/loop/control/directive.md (DSP10).
 
 - 2026-06-17 DSP9 (474, 20d9f395) DONE. lolmath parity fold - G7 comp-aware
   harness built; CLEAN no-engine-change finding (NO ENGINE bump, NO Share sync,
