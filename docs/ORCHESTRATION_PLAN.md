@@ -121,7 +121,7 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 | RF2 | ds-engine | Enchanter-scorer survivability residual. The hps/enchanter scorer tops the generic enchanter template (Echoes of Helia / Ardent Censer / Staff of Flowing Water / Locket / Knight's Vow / Redemption) and buries the HP/tank items that win on enchanters played front-to-back as tank-support - Rakan: Guardian's Horn (11/54.5 +15.2), Warmog's, Fimbulwinter, Heartsteel, Mercury's Treads. Sibling-sweep the other enchanters in the report + grep the archetype scorers for the same template. EXCLUDE Zilean + Seraphine (deferred Cluster A AP-in-ARAM, do-NOT-touch). Root-cause-first, default-OFF WIN-anchored seam, per-champ tests. | DONE | `ee826cdc` |
 | RF3 | ds-engine | Tank-scorer itemization-order residual. The ehp/tank scorer ordering diverges from WIN-anchored tank itemization, burying core resist/HP items - Rell: Giant's Belt (9/66.7 +27.1); KSante: Thornmail (14/57.1 +11.5), Negatron Cloak, Plated Steelcaps, Iceborn Gauntlet. Root-cause WHY the resist/HP-vs-mythic-tank ordering diverges from win-rate; default-OFF WIN-anchored seam vs the report; per-champ tests. Verify-before-redo vs the DSP6/DSP8 ENEMY-preset seams (this is the SELF tank-scorer, distinct). | DONE | `869656a0` |
 | RF4 | ds-swarm | Residual re-run / loop-until-dry consolidation AFTER RF1-RF3 land. Re-run ops/audit/ds_perm_swarm with the new seams harness-ON, regenerate report/dsp10_consolidated, confirm the RF1-RF3 target clusters lifted (buried winners now ranked, or thin-sample-justified), append any NEW residual cluster to the Findings log. Loop-until-dry (1 no-new-cluster pass). BUILD/AUDIT only unless a clean per-champ fix surfaces. | DONE | `a63c0d47` |
-| RF5 | test-hygiene | Hermeticity sibling sweep (insurance, non-DS). OPEN2 found tests/test_p2w4_hw2_b.py wrote the PROD ops/loop/control/controller.log via the real loop_controller.git() except-path. Systematically grep tests/ + agents/daemon_slayer/tests/ for OTHER fixtures that touch a PROD path (ops/runtime/, data/, logs/, ops/loop/control/) instead of tmp_path / a monkeypatched module global; redirect each to tmp (mirror conftest SHADOW_PATH + item-386 precedent). Pure test-hygiene, headless-safe; +regression assert the prod artifact is unchanged across the suite. Record CLEAN if none found. | OPEN | |
+| RF5 | test-hygiene | Hermeticity sibling sweep (insurance, non-DS). OPEN2 found tests/test_p2w4_hw2_b.py wrote the PROD ops/loop/control/controller.log via the real loop_controller.git() except-path. Systematically grep tests/ + agents/daemon_slayer/tests/ for OTHER fixtures that touch a PROD path (ops/runtime/, data/, logs/, ops/loop/control/) instead of tmp_path / a monkeypatched module global; redirect each to tmp (mirror conftest SHADOW_PATH + item-386 precedent). Pure test-hygiene, headless-safe; +regression assert the prod artifact is unchanged across the suite. Record CLEAN if none found. | DONE | `e0f3da12` |
 | RF6 | ds-engine | RF4-surfaced residual (report/rf4_residual.md): the RF3 ehp/tank survivability seam is FLOAT-only, but Rell's sole tabled buried winner Fimbulwinter (3121) is NOT in Rell's ehp candidate pool (RF4 verified in_pool=False; a Winter's-Approach mana-line item the EHP _filter_candidates excludes), so the float seam (reorders POOLED items by win-table membership) is a no-op for Rell - RF3's "the EHP scorer ALREADY pools these resist/HP items" premise holds for KSante (3075/6662 pooled+floated) but is FALSE for Rell. Add an ehp-lane INJECT mode mirroring RF2's hps inject (only_ids |= surv_ids BEFORE the float prefix) so tabled-but-not-pooled survivability ids surface. Root-cause-first (confirm WHY Fimbulwinter is filtered for Rell - the mana-item gate); default-OFF WIN-anchored seam vs report/dsp10_consolidated.md + the survivability_item_credit_tank table; per-champ test (Rell Fimbulwinter floats ON, byte-identical OFF). ENGINE bump + DS :8893 restart + Share sync. Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | OPEN | |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
@@ -136,6 +136,49 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-17 RF5 (cycle 5, round-2 refill) DONE (e0f3da12) - test-hermeticity
+  sibling sweep, Tier-1 test-hygiene (NO ENGINE bump / DS restart / Share sync /
+  frozen / RC restart / backfill). GROUND-TRUTH SWEEP: a before/after snapshot of
+  18 prod write-target artifacts across the FULL RC (8329) + DS (7312) suites =
+  NO DELTA - the suite has NO active polluter (the authors already stub
+  coach_trace.append, monkeypatch decision_detector _HEARTBEAT_PATH/etc to tmp,
+  and pass explicit path= to the shadow + DS writers). DIRECT vector clean: 0
+  repo-root-anchored (parent.parent / PROJECT_ROOT / __file__) writes in either
+  test dir; the 3 prod-token direct candidates all tmp-rooted (test_metrics_cache
+  TemporaryDirectory, test_p2w4_hw2_a _seed(tmp_path), test_loop_status_route
+  CONTROLLER_LOG monkeypatched to tmp). INDIRECT vector = the real gap:
+  coach_trace.append() + ds_calibration.log_ds_run() hardcode a module-global
+  prod path (data/coach_trace.jsonl / data/ds_calibration.jsonl) with NO path
+  parameter, so a caller has no tmp seam at all = latent polluters (vs the shadow
+  writers, already netted by the conftest SHADOW_PATH fixture, and ds_coach_shadow
+  / decision_detector / loop_controller, every caller of which already drives an
+  explicit path= or its own monkeypatch). SHIPPED a preventive net (mirror the
+  SHADOW_PATH precedent / item 386 + the OPEN2 CTL redirect): conftest autouse
+  redirect_prod_write_paths_to_tmp redirects core.coach_trace._TRACE_FILE +
+  core.ds_calibration._LOG_PATH to an ISOLATED tmp_path_factory dir (NOT the
+  test's own tmp_path - an initial tmp_path subdir leaked a stray "prodwrite"
+  entry into the cache-prune tests' tmp_path.iterdir(), caught by the full-suite
+  gate -> fixed via tmp_path_factory.mktemp); + the directive-mandated suite-wide
+  regression assert assert_prod_artifacts_unchanged (session-scoped, snapshots 12
+  coaching/loop/game-only prod artifacts at session start, asserts size-unchanged
+  at teardown; scoped OFF the live-daemon-touched set - health.json/logs/
+  lessons_*/bridge_monitor excluded so it cannot flake on the live supervisor +
+  bridge). ds_coach_shadow LEFT ALONE (already hermetic via explicit path=;
+  redirecting its SHADOW_PATH would break test_shadow_path_default's data/-default
+  assertion). TDD: +4 tests/test_hermeticity_prod_writes.py (RED-first: both
+  globals resolve under prod data/ -> 2 failed; GREEN after the net: globals
+  off-prod + the no-path writers land in tmp with prod byte-unchanged). GATE
+  (fresh this run): RC tests/ --ignore=tests/daemon_slayer 8333 passed / 2 skip /
+  109 subtests exit 0 (+4 vs the 8329 RF4 baseline, 0 regressions); DS-dir
+  untouched (tests/conftest.py is a separate conftest scope, trust the 7312);
+  ruff clean (touched); py_compile OK; ASCII clean. NO active offender found =
+  CLEAN sweep + preventive net + the regression guard. INLINE sole orchestrator
+  (R9 + the directive's "clean sweep may use a single agent" clause - 2 cohesive
+  files); verifier SKIPPED per R7 (own single-thread; the before/after full-suite
+  NO-DELTA snapshot + the RED->GREEN TDD ARE the independent verify); no blocking
+  AskUserQuestion. No frozen files. NEXT: RF6 (RF4-surfaced ehp INJECT seam for
+  Rell Fimbulwinter, not-pooled). Source: gemini director directive
+  ops/loop/control/directive.md (RF5).
 - 2026-06-17 RF4 (cycle 4, round-2 refill) DONE (a63c0d47) - residual re-run /
   loop-until-dry consolidation, AUDIT-only (no engine change; no ENGINE bump / DS
   restart / Share sync - new files live under ops/audit/ + tests/, NOT
