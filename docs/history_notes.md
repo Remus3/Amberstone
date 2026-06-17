@@ -13,6 +13,17 @@
 
 ---
 
+# 2026-06-17 - HZU1 build-order Haiku-flip gate: HOLD (mine-verify item 457) + laning/flip live-sync prep (headless gemini-loop cycle 16)
+
+- Executor cycle 16 of the DS permutation swarm (`ops/loop`, gemini director). Directive = HZU1 (item-level build-order Haiku-flip gate). Tier-0 docs commit `2a839bfe` pushed. NO .py edits -> no ENGINE bump / DS restart / Share sync.
+- KEY (verify-before-redo): the directive's first 2 clauses (deepen `tools/replay_build_order_validate.py` to per-item bought-vs-win granularity + mine the 4627 lean-ambiguous rows for which items carry signal) were ALREADY SHIPPED at `a30cbba4` (item 457, 2026-06-16, confirmed ancestor of HEAD): `item_outcomes` + `_per_item_report` + the `per_item` accumulator + `_PER_ITEM_MIN_N=50` carrier rail + the per-ITEM print block, +7 tests. Did NOT re-implement - RE-RAN the gate `--mode sr --limit 0` on the live `data/rewind_history.db` as independent ground truth and reproduced item 457 byte-for-byte.
+- RESULT @651 SR / 6510 rows (decisive=1832 / ambiguous=4627 / uncovered_champ=51): lean-level FOLLOWED 56.4% (n=766) vs NOT 54.1% (n=1066) = +2.3pp (95%=[-2.3,+6.9], flip_ready=False, a coin flip); completion-timing flat (fast<=20.82min 56.1% vs slow 56.7%); 1/51 per-item carriers = Infinity Edge anti_squishy +12.6pp (95%=[+0.7,+24.4], n=90), Serylda's Grudge +11.3pp just misses (lo=-0.9). VERDICT HOLD - the build coach stays on Haiku (interim floor) until a larger replay corpus clears the rail and the chip is eyeballed live.
+- DOC-PREP (3rd clause): `docs/LIVE_GAME_GATED_SYNC.md` C gained the Lane-A laning-agreement read (`tools/hz_shadow_report.py`, confirmed present, item 456) + the Lane-B build-order item-level flip rows + a live-flip ledger entry (the cycle-52 HZ precompute->Haiku flip PAIR, both HOLD). ORCHESTRATION_PLAN HZU1 OPEN -> DONE + Findings; LEDGER 478; ROADMAP swarm-progress + NEXT synced (81333 < 81920).
+- GATE: `tests/test_replay_build_order_validate.py` + `_robustness` 65 passed + the live gate re-run as ground truth; doc-size + ASCII hygiene 14 passed; full dual suite skipped per R5 (Tier-0 docs, ZERO .py). INLINE sole orchestrator (R9 - docs + a re-run); verifier SKIPPED per R7 (the gate re-run IS the independent verify). No frozen files. Artifact `ops/runtime/build_order_validation.json`.
+- NEXT: LGS1 (live-sync audit) or OPEN1 / OPEN2. Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - DSP10 pass 2 loop-until-dry verification: swarm DRY (headless gemini-loop cycle 15)
 
 - Executor cycle 15 of the DS permutation swarm (`ops/loop`, gemini director). Directive = DSP10 pass 2 (re-run the cross-eval with the DSP11 seam ON, confirm the Cluster-B2 defects resolved + no new B2 defect, loop-until-dry). Commit `e1c996d0` (audit module + 9 tests + report) + this living-docs sync commit pushed. AUDIT TOOLING ONLY - nothing under `agents/daemon_slayer/` -> NO ENGINE bump / DS restart / Share sync (the item-475 pass-1 precedent).
