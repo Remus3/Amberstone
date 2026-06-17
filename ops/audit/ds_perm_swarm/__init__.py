@@ -14,6 +14,13 @@ from .cross_eval_loader import (
     load_cross_eval,
     load_cross_eval_dir,
 )
+from .consolidate import (
+    BuriedWinner,
+    ChampMismatch,
+    TopItemView,
+    champ_mismatch,
+    consolidate,
+)
 from .perm_score import (
     BucketScore,
     ChampScore,
@@ -43,6 +50,11 @@ __all__ = [
     "PermConfig",
     "build_report",
     "score_champ",
+    "BuriedWinner",
+    "ChampMismatch",
+    "TopItemView",
+    "champ_mismatch",
+    "consolidate",
     "MODE_BY_MAP",
     "ChampModeWin",
     "ItemWinRate",

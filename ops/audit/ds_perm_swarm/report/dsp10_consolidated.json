@@ -1,0 +1,3847 @@
+{
+  "config": {
+    "top_k": 6,
+    "min_item_n": 5,
+    "worst_n": 40
+  },
+  "n_consolidated": 162,
+  "worst": [
+    {
+      "champion": "Zilean",
+      "mode": "ARAM",
+      "scorer": "hps",
+      "archetype": "enchanter",
+      "n_games": 125,
+      "baseline_wr": 52.8,
+      "mean_lift": -32.8,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6620",
+          "name": "Echoes of Helia",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3504",
+          "name": "Ardent Censer",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6616",
+          "name": "Staff of Flowing Water",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3190",
+          "name": "Locket of the Iron Solari",
+          "rewind_n": 4,
+          "rewind_wr": 25.0
+        },
+        {
+          "best_rank": 5,
+          "id": "3109",
+          "name": "Knight's Vow",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3107",
+          "name": "Redemption",
+          "rewind_n": 5,
+          "rewind_wr": 20.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "4645",
+          "name": "Shadowflame",
+          "n": 29,
+          "wr": 65.5,
+          "lift_over_baseline": 12.7
+        },
+        {
+          "id": "1058",
+          "name": "Needlessly Large Rod",
+          "n": 23,
+          "wr": 65.2,
+          "lift_over_baseline": 12.4
+        },
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 21,
+          "wr": 61.9,
+          "lift_over_baseline": 9.1
+        },
+        {
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "n": 34,
+          "wr": 61.8,
+          "lift_over_baseline": 9.0
+        },
+        {
+          "id": "6655",
+          "name": "Luden's Echo",
+          "n": 80,
+          "wr": 57.5,
+          "lift_over_baseline": 4.7
+        },
+        {
+          "id": "4646",
+          "name": "Stormsurge",
+          "n": 30,
+          "wr": 56.7,
+          "lift_over_baseline": 3.9
+        },
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 64,
+          "wr": 53.1,
+          "lift_over_baseline": 0.3
+        }
+      ]
+    },
+    {
+      "champion": "Shaco",
+      "mode": "ARAM",
+      "scorer": "burst",
+      "archetype": "assassin",
+      "n_games": 124,
+      "baseline_wr": 52.4194,
+      "mean_lift": -29.2143,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 1,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 3,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 6,
+          "rewind_wr": 16.6667
+        },
+        {
+          "best_rank": 5,
+          "id": "3100",
+          "name": "Lich Bane",
+          "rewind_n": 2,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3031",
+          "name": "Infinity Edge",
+          "rewind_n": 13,
+          "rewind_wr": 38.4615
+        },
+        {
+          "best_rank": 6,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "n": 43,
+          "wr": 65.1,
+          "lift_over_baseline": 12.6806
+        },
+        {
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "n": 77,
+          "wr": 62.3,
+          "lift_over_baseline": 9.8806
+        },
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 60,
+          "wr": 61.7,
+          "lift_over_baseline": 9.2806
+        },
+        {
+          "id": "6655",
+          "name": "Luden's Echo",
+          "n": 35,
+          "wr": 60.0,
+          "lift_over_baseline": 7.5806
+        },
+        {
+          "id": "4645",
+          "name": "Shadowflame",
+          "n": 46,
+          "wr": 56.5,
+          "lift_over_baseline": 4.0806
+        },
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 29,
+          "wr": 55.2,
+          "lift_over_baseline": 2.7806
+        },
+        {
+          "id": "3118",
+          "name": "Malignance",
+          "n": 26,
+          "wr": 53.8,
+          "lift_over_baseline": 1.3806
+        }
+      ]
+    },
+    {
+      "champion": "Pyke",
+      "mode": "ARAM",
+      "scorer": "burst",
+      "archetype": "assassin",
+      "n_games": 150,
+      "baseline_wr": 52.0,
+      "mean_lift": -22.0,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6610",
+          "name": "Sundered Sky",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "6694",
+          "name": "Serylda's Grudge",
+          "rewind_n": 20,
+          "rewind_wr": 30.0
+        },
+        {
+          "best_rank": 4,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3036",
+          "name": "Lord Dominik's Regards",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3031",
+          "name": "Infinity Edge",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3179",
+          "name": "Umbral Glaive",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "1036",
+          "name": "Long Sword",
+          "n": 31,
+          "wr": 67.7,
+          "lift_over_baseline": 15.7
+        },
+        {
+          "id": "6701",
+          "name": "Opportunity",
+          "n": 31,
+          "wr": 58.1,
+          "lift_over_baseline": 6.1
+        },
+        {
+          "id": "3142",
+          "name": "Youmuu's Ghostblade",
+          "n": 45,
+          "wr": 57.8,
+          "lift_over_baseline": 5.8
+        },
+        {
+          "id": "6696",
+          "name": "Axiom Arc",
+          "n": 125,
+          "wr": 53.6,
+          "lift_over_baseline": 1.6
+        },
+        {
+          "id": "3134",
+          "name": "Serrated Dirk",
+          "n": 44,
+          "wr": 52.3,
+          "lift_over_baseline": 0.3
+        }
+      ]
+    },
+    {
+      "champion": "Udyr",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 56,
+      "baseline_wr": 42.8571,
+      "mean_lift": -21.6988,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 4,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 2,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 37,
+          "rewind_wr": 48.6486
+        },
+        {
+          "best_rank": 3,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 7,
+          "rewind_wr": 14.2857
+        },
+        {
+          "best_rank": 4,
+          "id": "2510",
+          "name": "Dusk and Dawn",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "6662",
+          "name": "Iceborn Gauntlet",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 4,
+          "rewind_wr": 25.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3065",
+          "name": "Spirit Visage",
+          "n": 8,
+          "wr": 62.5,
+          "lift_over_baseline": 19.6429
+        },
+        {
+          "id": "6665",
+          "name": "Jak'Sho, The Protean",
+          "n": 10,
+          "wr": 60.0,
+          "lift_over_baseline": 17.1429
+        },
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 7,
+          "wr": 57.1,
+          "lift_over_baseline": 14.2429
+        },
+        {
+          "id": "3047",
+          "name": "Plated Steelcaps",
+          "n": 7,
+          "wr": 57.1,
+          "lift_over_baseline": 14.2429
+        },
+        {
+          "id": "3121",
+          "name": "Fimbulwinter",
+          "n": 22,
+          "wr": 54.5,
+          "lift_over_baseline": 11.6429
+        },
+        {
+          "id": "3075",
+          "name": "Thornmail",
+          "n": 11,
+          "wr": 45.5,
+          "lift_over_baseline": 2.6429
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 30,
+          "wr": 43.3,
+          "lift_over_baseline": 0.4429
+        }
+      ]
+    },
+    {
+      "champion": "Nilah",
+      "mode": "ARAM",
+      "scorer": "dps",
+      "archetype": "carry",
+      "n_games": 83,
+      "baseline_wr": 54.2169,
+      "mean_lift": -20.8836,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 9,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 2,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 1,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 4,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3097",
+          "name": "Stormrazor",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "6673",
+          "name": "Immortal Shieldbow",
+          "n": 20,
+          "wr": 70.0,
+          "lift_over_baseline": 15.7831
+        },
+        {
+          "id": "3036",
+          "name": "Lord Dominik's Regards",
+          "n": 16,
+          "wr": 62.5,
+          "lift_over_baseline": 8.2831
+        },
+        {
+          "id": "1038",
+          "name": "B. F. Sword",
+          "n": 13,
+          "wr": 61.5,
+          "lift_over_baseline": 7.2831
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 37,
+          "wr": 59.5,
+          "lift_over_baseline": 5.2831
+        },
+        {
+          "id": "3031",
+          "name": "Infinity Edge",
+          "n": 54,
+          "wr": 55.6,
+          "lift_over_baseline": 1.3831
+        },
+        {
+          "id": "6675",
+          "name": "Navori Flickerblade",
+          "n": 44,
+          "wr": 54.5,
+          "lift_over_baseline": 0.2831
+        }
+      ]
+    },
+    {
+      "champion": "Zaahen",
+      "mode": "SR",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 7,
+      "baseline_wr": 57.1429,
+      "mean_lift": -17.1429,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 5,
+          "rewind_wr": 40.0
+        },
+        {
+          "best_rank": 5,
+          "id": "3097",
+          "name": "Stormrazor",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": []
+    },
+    {
+      "champion": "Kayle",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 143,
+      "baseline_wr": 53.8462,
+      "mean_lift": -16.3462,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 16,
+          "rewind_wr": 37.5
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 3,
+          "rewind_wr": 66.6667
+        },
+        {
+          "best_rank": 6,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 3,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "n": 69,
+          "wr": 62.3,
+          "lift_over_baseline": 8.4538
+        },
+        {
+          "id": "3302",
+          "name": "Terminus",
+          "n": 39,
+          "wr": 59.0,
+          "lift_over_baseline": 5.1538
+        },
+        {
+          "id": "4633",
+          "name": "Riftmaker",
+          "n": 33,
+          "wr": 57.6,
+          "lift_over_baseline": 3.7538
+        },
+        {
+          "id": "3091",
+          "name": "Wit's End",
+          "n": 53,
+          "wr": 56.6,
+          "lift_over_baseline": 2.7538
+        },
+        {
+          "id": "3006",
+          "name": "Berserker's Greaves",
+          "n": 116,
+          "wr": 55.2,
+          "lift_over_baseline": 1.3538
+        },
+        {
+          "id": "3124",
+          "name": "Guinsoo's Rageblade",
+          "n": 92,
+          "wr": 54.3,
+          "lift_over_baseline": 0.4538
+        }
+      ]
+    },
+    {
+      "champion": "TwistedFate",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 147,
+      "baseline_wr": 55.7823,
+      "mean_lift": -15.8688,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 11,
+          "rewind_wr": 36.3636
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 5,
+          "rewind_wr": 20.0
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 37,
+          "rewind_wr": 43.2432
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 11,
+          "rewind_wr": 54.5455
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 38,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 23,
+          "wr": 73.9,
+          "lift_over_baseline": 18.1177
+        },
+        {
+          "id": "1058",
+          "name": "Needlessly Large Rod",
+          "n": 27,
+          "wr": 70.4,
+          "lift_over_baseline": 14.6177
+        },
+        {
+          "id": "6655",
+          "name": "Luden's Echo",
+          "n": 102,
+          "wr": 55.9,
+          "lift_over_baseline": 0.1177
+        }
+      ]
+    },
+    {
+      "champion": "Seraphine",
+      "mode": "ARAM",
+      "scorer": "hps",
+      "archetype": "enchanter",
+      "n_games": 136,
+      "baseline_wr": 56.6176,
+      "mean_lift": -14.9509,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6620",
+          "name": "Echoes of Helia",
+          "rewind_n": 3,
+          "rewind_wr": 66.6667
+        },
+        {
+          "best_rank": 2,
+          "id": "3504",
+          "name": "Ardent Censer",
+          "rewind_n": 6,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 3,
+          "id": "6616",
+          "name": "Staff of Flowing Water",
+          "rewind_n": 12,
+          "rewind_wr": 41.6667
+        },
+        {
+          "best_rank": 4,
+          "id": "3109",
+          "name": "Knight's Vow",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3190",
+          "name": "Locket of the Iron Solari",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3107",
+          "name": "Redemption",
+          "rewind_n": 9,
+          "rewind_wr": 33.3333
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "4645",
+          "name": "Shadowflame",
+          "n": 21,
+          "wr": 61.9,
+          "lift_over_baseline": 5.2824
+        },
+        {
+          "id": "1052",
+          "name": "Amplifying Tome",
+          "n": 20,
+          "wr": 60.0,
+          "lift_over_baseline": 3.3824
+        },
+        {
+          "id": "3118",
+          "name": "Malignance",
+          "n": 71,
+          "wr": 59.2,
+          "lift_over_baseline": 2.5824
+        },
+        {
+          "id": "3158",
+          "name": "Ionian Boots of Lucidity",
+          "n": 58,
+          "wr": 58.6,
+          "lift_over_baseline": 1.9824
+        }
+      ]
+    },
+    {
+      "champion": "Rakan",
+      "mode": "ARAM",
+      "scorer": "hps",
+      "archetype": "enchanter",
+      "n_games": 61,
+      "baseline_wr": 39.3443,
+      "mean_lift": -13.5548,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6620",
+          "name": "Echoes of Helia",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3504",
+          "name": "Ardent Censer",
+          "rewind_n": 2,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 3,
+          "id": "6616",
+          "name": "Staff of Flowing Water",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 4,
+          "id": "3190",
+          "name": "Locket of the Iron Solari",
+          "rewind_n": 19,
+          "rewind_wr": 31.5789
+        },
+        {
+          "best_rank": 5,
+          "id": "3109",
+          "name": "Knight's Vow",
+          "rewind_n": 3,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 6,
+          "id": "3107",
+          "name": "Redemption",
+          "rewind_n": 5,
+          "rewind_wr": 20.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "2051",
+          "name": "Guardian's Horn",
+          "n": 11,
+          "wr": 54.5,
+          "lift_over_baseline": 15.1557
+        },
+        {
+          "id": "3083",
+          "name": "Warmog's Armor",
+          "n": 11,
+          "wr": 45.5,
+          "lift_over_baseline": 6.1557
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 36,
+          "wr": 44.4,
+          "lift_over_baseline": 5.0557
+        },
+        {
+          "id": "3084",
+          "name": "Heartsteel",
+          "n": 20,
+          "wr": 40.0,
+          "lift_over_baseline": 0.6557
+        },
+        {
+          "id": "3121",
+          "name": "Fimbulwinter",
+          "n": 33,
+          "wr": 39.4,
+          "lift_over_baseline": 0.0557
+        }
+      ]
+    },
+    {
+      "champion": "Katarina",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 152,
+      "baseline_wr": 50.6579,
+      "mean_lift": -13.0248,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 3,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 35,
+          "rewind_wr": 37.1429
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 13,
+          "rewind_wr": 38.4615
+        },
+        {
+          "best_rank": 5,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 6,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 46,
+          "rewind_wr": 36.9565
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3748",
+          "name": "Titanic Hydra",
+          "n": 62,
+          "wr": 62.9,
+          "lift_over_baseline": 12.2421
+        },
+        {
+          "id": "3084",
+          "name": "Heartsteel",
+          "n": 71,
+          "wr": 60.6,
+          "lift_over_baseline": 9.9421
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 38,
+          "wr": 55.3,
+          "lift_over_baseline": 4.6421
+        },
+        {
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "n": 69,
+          "wr": 53.6,
+          "lift_over_baseline": 2.9421
+        },
+        {
+          "id": "3115",
+          "name": "Nashor's Tooth",
+          "n": 29,
+          "wr": 51.7,
+          "lift_over_baseline": 1.0421
+        }
+      ]
+    },
+    {
+      "champion": "Briar",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 38,
+      "baseline_wr": 52.6316,
+      "mean_lift": -11.6594,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 8,
+          "rewind_wr": 37.5
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 9,
+          "rewind_wr": 44.4444
+        },
+        {
+          "best_rank": 4,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "1028",
+          "name": "Ruby Crystal",
+          "n": 5,
+          "wr": 80.0,
+          "lift_over_baseline": 27.3684
+        },
+        {
+          "id": "3053",
+          "name": "Sterak's Gage",
+          "n": 11,
+          "wr": 63.6,
+          "lift_over_baseline": 10.9684
+        },
+        {
+          "id": "6610",
+          "name": "Sundered Sky",
+          "n": 31,
+          "wr": 54.8,
+          "lift_over_baseline": 2.1684
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 26,
+          "wr": 53.8,
+          "lift_over_baseline": 1.1684
+        },
+        {
+          "id": "6333",
+          "name": "Death's Dance",
+          "n": 17,
+          "wr": 52.9,
+          "lift_over_baseline": 0.2684
+        }
+      ]
+    },
+    {
+      "champion": "Caitlyn",
+      "mode": "ARAM",
+      "scorer": "dps",
+      "archetype": "carry",
+      "n_games": 262,
+      "baseline_wr": 50.3817,
+      "mean_lift": -10.9272,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 11,
+          "rewind_wr": 36.3636
+        },
+        {
+          "best_rank": 2,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 3,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 2,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 15,
+          "rewind_wr": 46.6667
+        },
+        {
+          "best_rank": 6,
+          "id": "3097",
+          "name": "Stormrazor",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3036",
+          "name": "Lord Dominik's Regards",
+          "n": 80,
+          "wr": 53.8,
+          "lift_over_baseline": 3.4183
+        },
+        {
+          "id": "1038",
+          "name": "B. F. Sword",
+          "n": 32,
+          "wr": 53.1,
+          "lift_over_baseline": 2.7183
+        },
+        {
+          "id": "6676",
+          "name": "The Collector",
+          "n": 164,
+          "wr": 51.2,
+          "lift_over_baseline": 0.8183
+        },
+        {
+          "id": "3094",
+          "name": "Rapid Firecannon",
+          "n": 131,
+          "wr": 50.4,
+          "lift_over_baseline": 0.0183
+        }
+      ]
+    },
+    {
+      "champion": "Yasuo",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 143,
+      "baseline_wr": 41.958,
+      "mean_lift": -10.5172,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 91,
+          "rewind_wr": 40.6593
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 9,
+          "rewind_wr": 22.2222
+        },
+        {
+          "best_rank": 4,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "6665",
+          "name": "Jak'Sho, The Protean",
+          "n": 20,
+          "wr": 65.0,
+          "lift_over_baseline": 23.042
+        },
+        {
+          "id": "3091",
+          "name": "Wit's End",
+          "n": 20,
+          "wr": 55.0,
+          "lift_over_baseline": 13.042
+        },
+        {
+          "id": "3087",
+          "name": "Statikk Shiv",
+          "n": 19,
+          "wr": 52.6,
+          "lift_over_baseline": 10.642
+        },
+        {
+          "id": "1037",
+          "name": "Pickaxe",
+          "n": 18,
+          "wr": 50.0,
+          "lift_over_baseline": 8.042
+        }
+      ]
+    },
+    {
+      "champion": "Anivia",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 147,
+      "baseline_wr": 55.102,
+      "mean_lift": -9.6493,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 101,
+          "rewind_wr": 55.4455
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 10,
+          "rewind_wr": 40.0
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 30,
+          "rewind_wr": 63.3333
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 6,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 5,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 6,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 6,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 22,
+          "rewind_wr": 36.3636
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 25,
+          "wr": 64.0,
+          "lift_over_baseline": 8.898
+        },
+        {
+          "id": "6657",
+          "name": "Rod of Ages",
+          "n": 104,
+          "wr": 60.6,
+          "lift_over_baseline": 5.498
+        },
+        {
+          "id": "3040",
+          "name": "Seraph's Embrace",
+          "n": 113,
+          "wr": 56.6,
+          "lift_over_baseline": 1.498
+        },
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 114,
+          "wr": 55.3,
+          "lift_over_baseline": 0.198
+        }
+      ]
+    },
+    {
+      "champion": "Gnar",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 69,
+      "baseline_wr": 56.5217,
+      "mean_lift": -9.6328,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 4,
+          "rewind_wr": 75.0
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 45,
+          "rewind_wr": 57.7778
+        },
+        {
+          "best_rank": 4,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 25,
+          "rewind_wr": 36.0
+        },
+        {
+          "best_rank": 4,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "6662",
+          "name": "Iceborn Gauntlet",
+          "rewind_n": 1,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3143",
+          "name": "Randuin's Omen",
+          "n": 12,
+          "wr": 75.0,
+          "lift_over_baseline": 18.4783
+        },
+        {
+          "id": "3071",
+          "name": "Black Cleaver",
+          "n": 23,
+          "wr": 65.2,
+          "lift_over_baseline": 8.6783
+        },
+        {
+          "id": "1028",
+          "name": "Ruby Crystal",
+          "n": 13,
+          "wr": 61.5,
+          "lift_over_baseline": 4.9783
+        },
+        {
+          "id": "3075",
+          "name": "Thornmail",
+          "n": 13,
+          "wr": 61.5,
+          "lift_over_baseline": 4.9783
+        },
+        {
+          "id": "3053",
+          "name": "Sterak's Gage",
+          "n": 17,
+          "wr": 58.8,
+          "lift_over_baseline": 2.2783
+        },
+        {
+          "id": "3047",
+          "name": "Plated Steelcaps",
+          "n": 24,
+          "wr": 58.3,
+          "lift_over_baseline": 1.7783
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 43,
+          "wr": 58.1,
+          "lift_over_baseline": 1.5783
+        }
+      ]
+    },
+    {
+      "champion": "Tryndamere",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 55,
+      "baseline_wr": 49.0909,
+      "mean_lift": -9.4481,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 28,
+          "rewind_wr": 39.2857
+        },
+        {
+          "best_rank": 3,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 5,
+          "rewind_wr": 40.0
+        },
+        {
+          "best_rank": 5,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "1053",
+          "name": "Vampiric Scepter",
+          "n": 6,
+          "wr": 83.3,
+          "lift_over_baseline": 34.2091
+        },
+        {
+          "id": "3748",
+          "name": "Titanic Hydra",
+          "n": 11,
+          "wr": 63.6,
+          "lift_over_baseline": 14.5091
+        },
+        {
+          "id": "3006",
+          "name": "Berserker's Greaves",
+          "n": 18,
+          "wr": 61.1,
+          "lift_over_baseline": 12.0091
+        },
+        {
+          "id": "6675",
+          "name": "Navori Flickerblade",
+          "n": 17,
+          "wr": 58.8,
+          "lift_over_baseline": 9.7091
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 26,
+          "wr": 53.8,
+          "lift_over_baseline": 4.7091
+        },
+        {
+          "id": "3031",
+          "name": "Infinity Edge",
+          "n": 16,
+          "wr": 50.0,
+          "lift_over_baseline": 0.9091
+        },
+        {
+          "id": "3046",
+          "name": "Phantom Dancer",
+          "n": 10,
+          "wr": 50.0,
+          "lift_over_baseline": 0.9091
+        }
+      ]
+    },
+    {
+      "champion": "RekSai",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 29,
+      "baseline_wr": 48.2759,
+      "mean_lift": -9.4188,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 14,
+          "rewind_wr": 28.5714
+        },
+        {
+          "best_rank": 4,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 5,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 5,
+          "rewind_wr": 80.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "6610",
+          "name": "Sundered Sky",
+          "n": 13,
+          "wr": 61.5,
+          "lift_over_baseline": 13.2241
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 18,
+          "wr": 55.6,
+          "lift_over_baseline": 7.3241
+        },
+        {
+          "id": "3065",
+          "name": "Spirit Visage",
+          "n": 10,
+          "wr": 50.0,
+          "lift_over_baseline": 1.7241
+        }
+      ]
+    },
+    {
+      "champion": "Senna",
+      "mode": "ARAM",
+      "scorer": "dps",
+      "archetype": "carry",
+      "n_games": 207,
+      "baseline_wr": 51.6908,
+      "mean_lift": -9.4097,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 34,
+          "rewind_wr": 41.1765
+        },
+        {
+          "best_rank": 2,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 25,
+          "rewind_wr": 44.0
+        },
+        {
+          "best_rank": 3,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 12,
+          "rewind_wr": 41.6667
+        },
+        {
+          "best_rank": 4,
+          "id": "3097",
+          "name": "Stormrazor",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 1,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 4,
+          "rewind_wr": 75.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3071",
+          "name": "Black Cleaver",
+          "n": 38,
+          "wr": 63.2,
+          "lift_over_baseline": 11.5092
+        },
+        {
+          "id": "3006",
+          "name": "Berserker's Greaves",
+          "n": 61,
+          "wr": 54.1,
+          "lift_over_baseline": 2.4092
+        },
+        {
+          "id": "3042",
+          "name": "Muramana",
+          "n": 92,
+          "wr": 53.3,
+          "lift_over_baseline": 1.6092
+        }
+      ]
+    },
+    {
+      "champion": "Rell",
+      "mode": "ARAM",
+      "scorer": "ehp",
+      "archetype": "tank",
+      "n_games": 53,
+      "baseline_wr": 39.6226,
+      "mean_lift": -8.9635,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3143",
+          "name": "Randuin's Omen",
+          "rewind_n": 1,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 2,
+          "id": "3083",
+          "name": "Warmog's Armor",
+          "rewind_n": 13,
+          "rewind_wr": 23.0769
+        },
+        {
+          "best_rank": 2,
+          "id": "2504",
+          "name": "Kaenic Rookern",
+          "rewind_n": 12,
+          "rewind_wr": 25.0
+        },
+        {
+          "best_rank": 3,
+          "id": "6665",
+          "name": "Jak'Sho, The Protean",
+          "rewind_n": 14,
+          "rewind_wr": 21.4286
+        },
+        {
+          "best_rank": 3,
+          "id": "4401",
+          "name": "Force of Nature",
+          "rewind_n": 4,
+          "rewind_wr": 75.0
+        },
+        {
+          "best_rank": 4,
+          "id": "2502",
+          "name": "Unending Despair",
+          "rewind_n": 20,
+          "rewind_wr": 40.0
+        },
+        {
+          "best_rank": 4,
+          "id": "3065",
+          "name": "Spirit Visage",
+          "rewind_n": 1,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 5,
+          "id": "3742",
+          "name": "Dead Man's Plate",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 27,
+          "rewind_wr": 51.8519
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "1011",
+          "name": "Giant's Belt",
+          "n": 9,
+          "wr": 66.7,
+          "lift_over_baseline": 27.0774
+        },
+        {
+          "id": "3121",
+          "name": "Fimbulwinter",
+          "n": 22,
+          "wr": 40.9,
+          "lift_over_baseline": 1.2774
+        }
+      ]
+    },
+    {
+      "champion": "Vex",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 105,
+      "baseline_wr": 41.9048,
+      "mean_lift": -8.422,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 14,
+          "rewind_wr": 35.7143
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 9,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 39,
+          "rewind_wr": 38.4615
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 14,
+          "rewind_wr": 28.5714
+        },
+        {
+          "best_rank": 5,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 5,
+          "rewind_wr": 20.0
+        },
+        {
+          "best_rank": 6,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 72,
+          "rewind_wr": 38.8889
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 20,
+          "wr": 45.0,
+          "lift_over_baseline": 3.0952
+        }
+      ]
+    },
+    {
+      "champion": "Quinn",
+      "mode": "ARAM",
+      "scorer": "dps",
+      "archetype": "carry",
+      "n_games": 174,
+      "baseline_wr": 49.4253,
+      "mean_lift": -8.0372,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 31,
+          "rewind_wr": 38.7097
+        },
+        {
+          "best_rank": 2,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 5,
+          "rewind_wr": 40.0
+        },
+        {
+          "best_rank": 2,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 22,
+          "rewind_wr": 45.4545
+        },
+        {
+          "best_rank": 3,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3097",
+          "name": "Stormrazor",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "1018",
+          "name": "Cloak of Agility",
+          "n": 27,
+          "wr": 63.0,
+          "lift_over_baseline": 13.5747
+        },
+        {
+          "id": "1036",
+          "name": "Long Sword",
+          "n": 24,
+          "wr": 62.5,
+          "lift_over_baseline": 13.0747
+        },
+        {
+          "id": "3036",
+          "name": "Lord Dominik's Regards",
+          "n": 38,
+          "wr": 57.9,
+          "lift_over_baseline": 8.4747
+        },
+        {
+          "id": "3031",
+          "name": "Infinity Edge",
+          "n": 102,
+          "wr": 55.9,
+          "lift_over_baseline": 6.4747
+        },
+        {
+          "id": "3087",
+          "name": "Statikk Shiv",
+          "n": 68,
+          "wr": 54.4,
+          "lift_over_baseline": 4.9747
+        },
+        {
+          "id": "6676",
+          "name": "The Collector",
+          "n": 130,
+          "wr": 50.0,
+          "lift_over_baseline": 0.5747
+        },
+        {
+          "id": "3033",
+          "name": "Mortal Reminder",
+          "n": 24,
+          "wr": 50.0,
+          "lift_over_baseline": 0.5747
+        }
+      ]
+    },
+    {
+      "champion": "Yunara",
+      "mode": "ARAM",
+      "scorer": "dps",
+      "archetype": "carry",
+      "n_games": 17,
+      "baseline_wr": 52.9412,
+      "mean_lift": -6.9412,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 5,
+          "rewind_wr": 40.0
+        },
+        {
+          "best_rank": 2,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 4,
+          "rewind_wr": 75.0
+        },
+        {
+          "best_rank": 3,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3097",
+          "name": "Stormrazor",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3032",
+          "name": "Yun Tal Wildarrows",
+          "rewind_n": 10,
+          "rewind_wr": 60.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3031",
+          "name": "Infinity Edge",
+          "n": 12,
+          "wr": 75.0,
+          "lift_over_baseline": 22.0588
+        },
+        {
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "n": 13,
+          "wr": 61.5,
+          "lift_over_baseline": 8.5588
+        },
+        {
+          "id": "3006",
+          "name": "Berserker's Greaves",
+          "n": 10,
+          "wr": 60.0,
+          "lift_over_baseline": 7.0588
+        }
+      ]
+    },
+    {
+      "champion": "Darius",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 135,
+      "baseline_wr": 56.2963,
+      "mean_lift": -6.7311,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 46,
+          "rewind_wr": 56.5217
+        },
+        {
+          "best_rank": 4,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 9,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 6,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "4401",
+          "name": "Force of Nature",
+          "n": 24,
+          "wr": 75.0,
+          "lift_over_baseline": 18.7037
+        },
+        {
+          "id": "3053",
+          "name": "Sterak's Gage",
+          "n": 48,
+          "wr": 70.8,
+          "lift_over_baseline": 14.5037
+        },
+        {
+          "id": "6333",
+          "name": "Death's Dance",
+          "n": 37,
+          "wr": 64.9,
+          "lift_over_baseline": 8.6037
+        },
+        {
+          "id": "3047",
+          "name": "Plated Steelcaps",
+          "n": 37,
+          "wr": 59.5,
+          "lift_over_baseline": 3.2037
+        },
+        {
+          "id": "6631",
+          "name": "Stridebreaker",
+          "n": 47,
+          "wr": 57.4,
+          "lift_over_baseline": 1.1037
+        }
+      ]
+    },
+    {
+      "champion": "Xerath",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 169,
+      "baseline_wr": 48.5207,
+      "mean_lift": -6.6022,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 46,
+          "rewind_wr": 45.6522
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 22,
+          "rewind_wr": 36.3636
+        },
+        {
+          "best_rank": 3,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 35,
+          "rewind_wr": 42.8571
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 51,
+          "rewind_wr": 41.1765
+        },
+        {
+          "best_rank": 6,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 75,
+          "rewind_wr": 44.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 7,
+          "rewind_wr": 42.8571
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 46,
+          "wr": 60.9,
+          "lift_over_baseline": 12.3793
+        },
+        {
+          "id": "1058",
+          "name": "Needlessly Large Rod",
+          "n": 48,
+          "wr": 58.3,
+          "lift_over_baseline": 9.7793
+        },
+        {
+          "id": "6655",
+          "name": "Luden's Echo",
+          "n": 128,
+          "wr": 50.8,
+          "lift_over_baseline": 2.2793
+        }
+      ]
+    },
+    {
+      "champion": "KSante",
+      "mode": "ARAM",
+      "scorer": "ehp",
+      "archetype": "tank",
+      "n_games": 57,
+      "baseline_wr": 45.614,
+      "mean_lift": -6.5558,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3143",
+          "name": "Randuin's Omen",
+          "rewind_n": 3,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 2,
+          "id": "3083",
+          "name": "Warmog's Armor",
+          "rewind_n": 7,
+          "rewind_wr": 14.2857
+        },
+        {
+          "best_rank": 2,
+          "id": "2504",
+          "name": "Kaenic Rookern",
+          "rewind_n": 10,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 3,
+          "id": "6665",
+          "name": "Jak'Sho, The Protean",
+          "rewind_n": 23,
+          "rewind_wr": 56.5217
+        },
+        {
+          "best_rank": 3,
+          "id": "4401",
+          "name": "Force of Nature",
+          "rewind_n": 6,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 4,
+          "id": "2502",
+          "name": "Unending Despair",
+          "rewind_n": 19,
+          "rewind_wr": 57.8947
+        },
+        {
+          "best_rank": 4,
+          "id": "3065",
+          "name": "Spirit Visage",
+          "rewind_n": 6,
+          "rewind_wr": 66.6667
+        },
+        {
+          "best_rank": 5,
+          "id": "3742",
+          "name": "Dead Man's Plate",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 16,
+          "rewind_wr": 31.25
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3075",
+          "name": "Thornmail",
+          "n": 14,
+          "wr": 57.1,
+          "lift_over_baseline": 11.486
+        },
+        {
+          "id": "1057",
+          "name": "Negatron Cloak",
+          "n": 11,
+          "wr": 54.5,
+          "lift_over_baseline": 8.886
+        },
+        {
+          "id": "3047",
+          "name": "Plated Steelcaps",
+          "n": 12,
+          "wr": 50.0,
+          "lift_over_baseline": 4.386
+        },
+        {
+          "id": "6662",
+          "name": "Iceborn Gauntlet",
+          "n": 40,
+          "wr": 47.5,
+          "lift_over_baseline": 1.886
+        }
+      ]
+    },
+    {
+      "champion": "Corki",
+      "mode": "ARAM",
+      "scorer": "dps",
+      "archetype": "carry",
+      "n_games": 130,
+      "baseline_wr": 43.8462,
+      "mean_lift": -6.3462,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 3,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 2,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 2,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 2,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 3,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 8,
+          "rewind_wr": 37.5
+        },
+        {
+          "best_rank": 5,
+          "id": "3097",
+          "name": "Stormrazor",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 2,
+          "rewind_wr": 50.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3072",
+          "name": "Bloodthirster",
+          "n": 21,
+          "wr": 52.4,
+          "lift_over_baseline": 8.5538
+        },
+        {
+          "id": "1036",
+          "name": "Long Sword",
+          "n": 16,
+          "wr": 50.0,
+          "lift_over_baseline": 6.1538
+        },
+        {
+          "id": "6676",
+          "name": "The Collector",
+          "n": 62,
+          "wr": 46.8,
+          "lift_over_baseline": 2.9538
+        },
+        {
+          "id": "3078",
+          "name": "Trinity Force",
+          "n": 80,
+          "wr": 46.2,
+          "lift_over_baseline": 2.3538
+        },
+        {
+          "id": "3042",
+          "name": "Muramana",
+          "n": 99,
+          "wr": 45.5,
+          "lift_over_baseline": 1.6538
+        }
+      ]
+    },
+    {
+      "champion": "Heimerdinger",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 122,
+      "baseline_wr": 44.2623,
+      "mean_lift": -6.3315,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 107,
+          "rewind_wr": 42.9907
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 76,
+          "rewind_wr": 46.0526
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 24,
+          "rewind_wr": 41.6667
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 9,
+          "rewind_wr": 22.2222
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 14,
+          "rewind_wr": 35.7143
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 2,
+          "rewind_wr": 50.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3157",
+          "name": "Zhonya's Hourglass",
+          "n": 21,
+          "wr": 47.6,
+          "lift_over_baseline": 3.3377
+        },
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 19,
+          "wr": 47.4,
+          "lift_over_baseline": 3.1377
+        },
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 96,
+          "wr": 46.9,
+          "lift_over_baseline": 2.6377
+        },
+        {
+          "id": "3118",
+          "name": "Malignance",
+          "n": 26,
+          "wr": 46.2,
+          "lift_over_baseline": 1.9377
+        },
+        {
+          "id": "3116",
+          "name": "Rylai's Crystal Scepter",
+          "n": 74,
+          "wr": 44.6,
+          "lift_over_baseline": 0.3377
+        },
+        {
+          "id": "1058",
+          "name": "Needlessly Large Rod",
+          "n": 27,
+          "wr": 44.4,
+          "lift_over_baseline": 0.1377
+        }
+      ]
+    },
+    {
+      "champion": "Lillia",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 100,
+      "baseline_wr": 41.0,
+      "mean_lift": -6.2273,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 88,
+          "rewind_wr": 44.3182
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 55,
+          "rewind_wr": 41.8182
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 11,
+          "rewind_wr": 18.1818
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 3,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 2,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 55,
+          "wr": 47.3,
+          "lift_over_baseline": 6.3
+        },
+        {
+          "id": "3108",
+          "name": "Fiendish Codex",
+          "n": 13,
+          "wr": 46.2,
+          "lift_over_baseline": 5.2
+        },
+        {
+          "id": "3158",
+          "name": "Ionian Boots of Lucidity",
+          "n": 18,
+          "wr": 44.4,
+          "lift_over_baseline": 3.4
+        },
+        {
+          "id": "4629",
+          "name": "Cosmic Drive",
+          "n": 34,
+          "wr": 44.1,
+          "lift_over_baseline": 3.1
+        }
+      ]
+    },
+    {
+      "champion": "Malzahar",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 172,
+      "baseline_wr": 52.3256,
+      "mean_lift": -6.0522,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 155,
+          "rewind_wr": 52.9032
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 113,
+          "rewind_wr": 53.0973
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 30,
+          "rewind_wr": 36.6667
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 16,
+          "rewind_wr": 37.5
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 50,
+          "rewind_wr": 52.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 6,
+          "rewind_wr": 50.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 140,
+          "wr": 53.6,
+          "lift_over_baseline": 1.2744
+        },
+        {
+          "id": "3116",
+          "name": "Rylai's Crystal Scepter",
+          "n": 88,
+          "wr": 53.4,
+          "lift_over_baseline": 1.0744
+        }
+      ]
+    },
+    {
+      "champion": "Ekko",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 125,
+      "baseline_wr": 44.8,
+      "mean_lift": -5.9968,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 37,
+          "rewind_wr": 54.0541
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 9,
+          "rewind_wr": 22.2222
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 41,
+          "rewind_wr": 41.4634
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3152",
+          "name": "Hextech Rocketbelt",
+          "n": 50,
+          "wr": 54.0,
+          "lift_over_baseline": 9.2
+        },
+        {
+          "id": "4646",
+          "name": "Stormsurge",
+          "n": 41,
+          "wr": 53.7,
+          "lift_over_baseline": 8.9
+        },
+        {
+          "id": "3100",
+          "name": "Lich Bane",
+          "n": 86,
+          "wr": 50.0,
+          "lift_over_baseline": 5.2
+        },
+        {
+          "id": "1058",
+          "name": "Needlessly Large Rod",
+          "n": 26,
+          "wr": 50.0,
+          "lift_over_baseline": 5.2
+        },
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 79,
+          "wr": 48.1,
+          "lift_over_baseline": 3.3
+        },
+        {
+          "id": "3157",
+          "name": "Zhonya's Hourglass",
+          "n": 26,
+          "wr": 46.2,
+          "lift_over_baseline": 1.4
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 20,
+          "wr": 45.0,
+          "lift_over_baseline": 0.2
+        }
+      ]
+    },
+    {
+      "champion": "Zoe",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 161,
+      "baseline_wr": 42.8571,
+      "mean_lift": -5.8108,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 2,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 3,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 59,
+          "rewind_wr": 47.4576
+        },
+        {
+          "best_rank": 3,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 29,
+          "rewind_wr": 31.0345
+        },
+        {
+          "best_rank": 4,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 8,
+          "rewind_wr": 25.0
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 86,
+          "rewind_wr": 44.186
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 11,
+          "rewind_wr": 45.4545
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "6655",
+          "name": "Luden's Echo",
+          "n": 143,
+          "wr": 44.8,
+          "lift_over_baseline": 1.9429
+        },
+        {
+          "id": "4646",
+          "name": "Stormsurge",
+          "n": 73,
+          "wr": 43.8,
+          "lift_over_baseline": 0.9429
+        },
+        {
+          "id": "1058",
+          "name": "Needlessly Large Rod",
+          "n": 35,
+          "wr": 42.9,
+          "lift_over_baseline": 0.0429
+        },
+        {
+          "id": "2031",
+          "name": "Refillable Potion",
+          "n": 28,
+          "wr": 42.9,
+          "lift_over_baseline": 0.0429
+        }
+      ]
+    },
+    {
+      "champion": "Fizz",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 107,
+      "baseline_wr": 46.729,
+      "mean_lift": -5.7428,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 3,
+          "rewind_wr": 66.6667
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 19,
+          "rewind_wr": 42.1053
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 9,
+          "rewind_wr": 33.3333
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 37,
+          "rewind_wr": 54.0541
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "6655",
+          "name": "Luden's Echo",
+          "n": 36,
+          "wr": 58.3,
+          "lift_over_baseline": 11.571
+        },
+        {
+          "id": "1058",
+          "name": "Needlessly Large Rod",
+          "n": 24,
+          "wr": 58.3,
+          "lift_over_baseline": 11.571
+        },
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 53,
+          "wr": 47.2,
+          "lift_over_baseline": 0.471
+        },
+        {
+          "id": "3100",
+          "name": "Lich Bane",
+          "n": 62,
+          "wr": 46.8,
+          "lift_over_baseline": 0.071
+        }
+      ]
+    },
+    {
+      "champion": "MasterYi",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 105,
+      "baseline_wr": 55.2381,
+      "mean_lift": -5.7188,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 71,
+          "rewind_wr": 56.338
+        },
+        {
+          "best_rank": 3,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 1,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 4,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 1,
+          "rewind_wr": 100.0
+        },
+        {
+          "best_rank": 5,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 18,
+          "rewind_wr": 38.8889
+        },
+        {
+          "best_rank": 6,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 7,
+          "rewind_wr": 57.1429
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3031",
+          "name": "Infinity Edge",
+          "n": 20,
+          "wr": 65.0,
+          "lift_over_baseline": 9.7619
+        },
+        {
+          "id": "3124",
+          "name": "Guinsoo's Rageblade",
+          "n": 30,
+          "wr": 63.3,
+          "lift_over_baseline": 8.0619
+        },
+        {
+          "id": "3006",
+          "name": "Berserker's Greaves",
+          "n": 72,
+          "wr": 55.6,
+          "lift_over_baseline": 0.3619
+        }
+      ]
+    },
+    {
+      "champion": "KogMaw",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 148,
+      "baseline_wr": 42.5676,
+      "mean_lift": -5.6747,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 35,
+          "rewind_wr": 37.1429
+        },
+        {
+          "best_rank": 2,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 5,
+          "rewind_wr": 20.0
+        },
+        {
+          "best_rank": 4,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 8,
+          "rewind_wr": 62.5
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 7,
+          "rewind_wr": 28.5714
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 14,
+          "rewind_wr": 35.7143
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3302",
+          "name": "Terminus",
+          "n": 33,
+          "wr": 51.5,
+          "lift_over_baseline": 8.9324
+        },
+        {
+          "id": "3091",
+          "name": "Wit's End",
+          "n": 35,
+          "wr": 51.4,
+          "lift_over_baseline": 8.8324
+        },
+        {
+          "id": "3006",
+          "name": "Berserker's Greaves",
+          "n": 91,
+          "wr": 46.2,
+          "lift_over_baseline": 3.6324
+        },
+        {
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "n": 86,
+          "wr": 44.2,
+          "lift_over_baseline": 1.6324
+        },
+        {
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "n": 56,
+          "wr": 42.9,
+          "lift_over_baseline": 0.3324
+        },
+        {
+          "id": "3040",
+          "name": "Seraph's Embrace",
+          "n": 35,
+          "wr": 42.9,
+          "lift_over_baseline": 0.3324
+        }
+      ]
+    },
+    {
+      "champion": "Urgot",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 74,
+      "baseline_wr": 45.9459,
+      "mean_lift": -5.2052,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3084",
+          "name": "Heartsteel",
+          "rewind_n": 54,
+          "rewind_wr": 40.7407
+        },
+        {
+          "best_rank": 4,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "6665",
+          "name": "Jak'Sho, The Protean",
+          "n": 11,
+          "wr": 63.6,
+          "lift_over_baseline": 17.6541
+        },
+        {
+          "id": "2501",
+          "name": "Overlord's Bloodmail",
+          "n": 10,
+          "wr": 50.0,
+          "lift_over_baseline": 4.0541
+        },
+        {
+          "id": "3748",
+          "name": "Titanic Hydra",
+          "n": 49,
+          "wr": 49.0,
+          "lift_over_baseline": 3.0541
+        },
+        {
+          "id": "3071",
+          "name": "Black Cleaver",
+          "n": 27,
+          "wr": 48.1,
+          "lift_over_baseline": 2.1541
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 48,
+          "wr": 47.9,
+          "lift_over_baseline": 1.9541
+        },
+        {
+          "id": "3075",
+          "name": "Thornmail",
+          "n": 21,
+          "wr": 47.6,
+          "lift_over_baseline": 1.6541
+        }
+      ]
+    },
+    {
+      "champion": "Elise",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 57,
+      "baseline_wr": 57.8947,
+      "mean_lift": -4.9559,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 26,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 2,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 8,
+          "rewind_wr": 62.5
+        },
+        {
+          "best_rank": 3,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 10,
+          "rewind_wr": 40.0
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 29,
+          "rewind_wr": 62.069
+        },
+        {
+          "best_rank": 5,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 4,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 6,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 21,
+          "rewind_wr": 57.1429
+        },
+        {
+          "best_rank": 6,
+          "id": "8010",
+          "name": "Bloodletter's Curse",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3020",
+          "name": "Sorcerer's Shoes",
+          "n": 48,
+          "wr": 58.3,
+          "lift_over_baseline": 0.4053
+        }
+      ]
+    },
+    {
+      "champion": "JarvanIV",
+      "mode": "ARAM",
+      "scorer": "hybrid",
+      "archetype": "bruiser",
+      "n_games": 127,
+      "baseline_wr": 38.5827,
+      "mean_lift": -4.6844,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "223069",
+          "name": "Void Immolation",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 2,
+          "rewind_wr": 0.0
+        },
+        {
+          "best_rank": 3,
+          "id": "3078",
+          "name": "Trinity Force",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3085",
+          "name": "Runaan's Hurricane",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "6672",
+          "name": "Kraken Slayer",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 59,
+          "rewind_wr": 33.8983
+        },
+        {
+          "best_rank": 6,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3133",
+          "name": "Caulfield's Warhammer",
+          "n": 16,
+          "wr": 50.0,
+          "lift_over_baseline": 11.4173
+        },
+        {
+          "id": "6610",
+          "name": "Sundered Sky",
+          "n": 80,
+          "wr": 42.5,
+          "lift_over_baseline": 3.9173
+        },
+        {
+          "id": "3053",
+          "name": "Sterak's Gage",
+          "n": 31,
+          "wr": 41.9,
+          "lift_over_baseline": 3.3173
+        },
+        {
+          "id": "3111",
+          "name": "Mercury's Treads",
+          "n": 68,
+          "wr": 41.2,
+          "lift_over_baseline": 2.6173
+        },
+        {
+          "id": "6333",
+          "name": "Death's Dance",
+          "n": 42,
+          "wr": 40.5,
+          "lift_over_baseline": 1.9173
+        },
+        {
+          "id": "3161",
+          "name": "Spear of Shojin",
+          "n": 20,
+          "wr": 40.0,
+          "lift_over_baseline": 1.4173
+        }
+      ]
+    },
+    {
+      "champion": "Evelynn",
+      "mode": "ARAM",
+      "scorer": "ability",
+      "archetype": "mage",
+      "n_games": 36,
+      "baseline_wr": 52.7778,
+      "mean_lift": -4.5238,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "228002",
+          "name": "Wooglet's Witchcap",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "6653",
+          "name": "Liandry's Torment",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "3089",
+          "name": "Rabadon's Deathcap",
+          "rewind_n": 16,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 3,
+          "id": "3135",
+          "name": "Void Staff",
+          "rewind_n": 7,
+          "rewind_wr": 42.8571
+        },
+        {
+          "best_rank": 4,
+          "id": "2503",
+          "name": "Blackfire Torch",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 5,
+          "id": "4645",
+          "name": "Shadowflame",
+          "rewind_n": 18,
+          "rewind_wr": 55.5556
+        },
+        {
+          "best_rank": 6,
+          "id": "3137",
+          "name": "Cryptbloom",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "3070",
+          "name": "Tear of the Goddess",
+          "n": 7,
+          "wr": 71.4,
+          "lift_over_baseline": 18.6222
+        },
+        {
+          "id": "6655",
+          "name": "Luden's Echo",
+          "n": 8,
+          "wr": 62.5,
+          "lift_over_baseline": 9.7222
+        },
+        {
+          "id": "4646",
+          "name": "Stormsurge",
+          "n": 17,
+          "wr": 58.8,
+          "lift_over_baseline": 6.0222
+        },
+        {
+          "id": "3100",
+          "name": "Lich Bane",
+          "n": 14,
+          "wr": 57.1,
+          "lift_over_baseline": 4.3222
+        }
+      ]
+    },
+    {
+      "champion": "Naafiri",
+      "mode": "ARAM",
+      "scorer": "burst",
+      "archetype": "assassin",
+      "n_games": 54,
+      "baseline_wr": 42.5926,
+      "mean_lift": -4.4845,
+      "ds_top": [
+        {
+          "best_rank": 1,
+          "id": "3153",
+          "name": "Blade of The Ruined King",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "3031",
+          "name": "Infinity Edge",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 2,
+          "id": "6692",
+          "name": "Eclipse",
+          "rewind_n": 37,
+          "rewind_wr": 35.1351
+        },
+        {
+          "best_rank": 3,
+          "id": "3179",
+          "name": "Umbral Glaive",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 3,
+          "id": "6694",
+          "name": "Serylda's Grudge",
+          "rewind_n": 20,
+          "rewind_wr": 50.0
+        },
+        {
+          "best_rank": 4,
+          "id": "3508",
+          "name": "Essence Reaver",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 4,
+          "id": "3036",
+          "name": "Lord Dominik's Regards",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3072",
+          "name": "Bloodthirster",
+          "rewind_n": 0,
+          "rewind_wr": null
+        },
+        {
+          "best_rank": 6,
+          "id": "3033",
+          "name": "Mortal Reminder",
+          "rewind_n": 0,
+          "rewind_wr": null
+        }
+      ],
+      "buried_winners": [
+        {
+          "id": "1036",
+          "name": "Long Sword",
+          "n": 10,
+          "wr": 50.0,
+          "lift_over_baseline": 7.4074
+        },
+        {
+          "id": "6676",
+          "name": "The Collector",
+          "n": 24,
+          "wr": 45.8,
+          "lift_over_baseline": 3.2074
+        },
+        {
+          "id": "126697",
+          "name": "Hubris",
+          "n": 28,
+          "wr": 42.9,
+          "lift_over_baseline": 0.3074
+        }
+      ]
+    }
+  ]
+}
