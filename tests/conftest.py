@@ -28,6 +28,7 @@ conftest collection stays dependency-free.
 from __future__ import annotations
 
 import importlib
+from pathlib import Path
 
 import pytest
 
@@ -64,3 +65,84 @@ def redirect_shadow_paths_to_tmp(monkeypatch, tmp_path):
         if hasattr(mod, "SHADOW_PATH"):
             fname = mod_name.rsplit(".", 1)[-1] + ".jsonl"
             monkeypatch.setattr(mod, "SHADOW_PATH", tmp_path / "shadow" / fname)
+
+
+# RF5 (test hermeticity sibling sweep). Two production writers hardcode a
+# module-global prod path and take NO ``path`` argument, so a caller has no tmp
+# seam at all - the only defense against pollution is redirecting the global:
+#   core.coach_trace.append()    -> _TRACE_FILE = data/coach_trace.jsonl
+#   core.ds_calibration.log_ds_run() -> _LOG_PATH = data/ds_calibration.jsonl
+# Both read the global at call time, so setattr redirects the write itself.
+# (The shadow writers are handled above; ds_coach_shadow / decision_detector /
+# loop_controller are already driven with an explicit path= or per-test
+# monkeypatch by every caller.) monkeypatch restores the real globals after
+# each test. Mirrors the SHADOW_PATH precedent (item 386) + the loop_controller
+# CTL redirect (test_p2w4_hw2_b, OPEN2).
+_PROD_WRITE_GLOBALS = (
+    ("core.coach_trace", "_TRACE_FILE", "coach_trace.jsonl"),
+    ("core.ds_calibration", "_LOG_PATH", "ds_calibration.jsonl"),
+)
+
+
+@pytest.fixture(autouse=True)
+def redirect_prod_write_paths_to_tmp(monkeypatch, tmp_path_factory):
+    # Mint an ISOLATED temp dir (not the test's own tmp_path) so this autouse
+    # net never leaves a stray "prodwrite" entry inside a test's tmp_path - the
+    # cache-prune tests scan tmp_path.iterdir() and a shared subdir breaks them.
+    base = tmp_path_factory.mktemp("prodwrite")
+    for mod_name, attr, fname in _PROD_WRITE_GLOBALS:
+        try:
+            mod = importlib.import_module(mod_name)
+        except Exception:
+            continue
+        if hasattr(mod, attr):
+            monkeypatch.setattr(mod, attr, base / fname)
+
+
+# RF5 suite-wide regression assert: no test may mutate a production
+# coaching / loop / in-game artifact across the whole session. These paths are
+# written ONLY by a live coach, the headless loop, or an in-game detector, so
+# they stay byte-stable during an offline test run; any size change means a
+# test wrote a prod path instead of tmp (the exact OPEN2 / RF5 regression).
+# Scoped to artifacts the idle-client daemon never touches - health.json,
+# logs/, lessons_*, and bridge_monitor are excluded because the live supervisor
+# + cross-Claude bridge legitimately tick those during a run.
+_PROD_ARTIFACT_GUARD = (
+    "ops/loop/control/controller.log",
+    "data/det_coach_shadow.jsonl",
+    "data/hz_choice_shadow.jsonl",
+    "data/hz_build_shadow.jsonl",
+    "data/ds_coach_hints_shadow.jsonl",
+    "data/live_benchmark_band_shadow.jsonl",
+    "data/coach_trace.jsonl",
+    "data/ds_calibration.jsonl",
+    "data/decisions_log.jsonl",
+    "data/decisions_pending.json",
+    "data/decisions_heartbeat.json",
+    "data/vision_state.json",
+)
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _prod_artifact_sizes() -> dict:
+    out = {}
+    for rel in _PROD_ARTIFACT_GUARD:
+        p = _REPO_ROOT / rel
+        out[rel] = p.stat().st_size if p.exists() else None
+    return out
+
+
+@pytest.fixture(scope="session", autouse=True)
+def assert_prod_artifacts_unchanged():
+    before = _prod_artifact_sizes()
+    yield
+    after = _prod_artifact_sizes()
+    changed = [
+        rel + " " + str(before[rel]) + "->" + str(after[rel])
+        for rel in _PROD_ARTIFACT_GUARD
+        if before[rel] != after[rel]
+    ]
+    assert not changed, (
+        "suite mutated a production artifact - a test wrote a prod path "
+        "instead of tmp (RF5 hermeticity regression): " + "; ".join(changed)
+    )
