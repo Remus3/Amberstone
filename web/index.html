@@ -1399,6 +1399,7 @@
           <button type="button" class="bi-tab" data-bi-tab="skills" role="tab" aria-selected="false">Skills</button>
           <button type="button" class="bi-tab" data-bi-tab="runes" role="tab" aria-selected="false">Runes</button>
           <button type="button" class="bi-tab" data-bi-tab="spells" role="tab" aria-selected="false">Spells</button>
+          <button type="button" class="bi-tab" data-bi-tab="duration" role="tab" aria-selected="false">Game Length</button>
         </div>
         <div class="bi-controls">
           <label for="bi-min-n">Min buys</label>
@@ -1419,6 +1420,9 @@
         <div class="bi-tab-pane" data-bi-pane="spells" hidden>
           <p class="bi-spell-caption">Summoner-spell performance: the win-rate residual for each spell you picked. A spell is a pre-game choice, so the baseline is the near-coinflip start frame; the residual is how much that spell correlates with winning beyond the lobby it was picked in. Spells are an even WEAKER per-choice signal than items (Flash is near-universal; many modes force the second pick), so shrink + min_n are load-bearing - trust rows by the sample bar.</p>
           <div id="bi-spell-table-mount"></div>
+        </div>
+        <div class="bi-tab-pane" data-bi-pane="duration" hidden>
+          <div id="bi-duration-mount"></div>
         </div>
       </div>
     </section>

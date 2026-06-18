@@ -30,6 +30,7 @@
  * rewind DB (mirrors the last_match.js _lmMockLoad pattern).
  */
 import { ITEMS, CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
+import { renderDurationWinrate } from './duration_winrate.js';
 
 const ITEM_MOUNT_ID = 'bi-table-mount';
 const SKILL_MOUNT_ID = 'bi-skill-table-mount';
@@ -402,6 +403,14 @@ function _ensureFetched(tab) {
   else _render(tab);
 }
 
+// The Game Length tab is a self-contained chart panel (duration_winrate.js),
+// not one of the sortable WPA tables - dispatch it directly; every other tab
+// flows through the shared table engine.
+function _renderActive() {
+  if (_ST.active === 'duration') { renderDurationWinrate(); return; }
+  _ensureFetched(_tabByKey(_ST.active));
+}
+
 function _activateTab(key) {
   _ST.active = key;
   // Toggle tab-button active state + pane visibility.
@@ -414,7 +423,7 @@ function _activateTab(key) {
   document.querySelectorAll('[data-bi-pane]').forEach((p) => {
     p.hidden = p.getAttribute('data-bi-pane') !== key;
   });
-  _ensureFetched(_tabByKey(key));
+  _renderActive();
 }
 
 function _wireControlsOnce() {
@@ -440,7 +449,7 @@ function _wireControlsOnce() {
       _ST.skills.loaded = false;
       _ST.runes.loaded = false;
       _ST.spells.loaded = false;
-      _ensureFetched(_tabByKey(_ST.active));
+      _renderActive();
     }, 300);
   });
   tabsEl.addEventListener('click', (e) => {
@@ -455,7 +464,7 @@ function _wireControlsOnce() {
 export function renderBuildInsights() {
   try {
     _wireControlsOnce();
-    _ensureFetched(_tabByKey(_ST.active));
+    _renderActive();
   } catch (_e) {
     const mount = document.getElementById(ITEM_MOUNT_ID);
     if (mount) mount.innerHTML = '<div class="bi-empty">unavailable</div>';
