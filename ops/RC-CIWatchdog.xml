@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <Date>2026-06-18T00:00:00</Date>
+    <Author>LEGION-RC\Administrator</Author>
+    <URI>\RC-CIWatchdog</URI>
+    <Description>CI Watchdog (item 204). Every 2 min: poll GitHub Actions for a failed main run, run a tool-restricted headless claude on the C:\RC-CIWatchdog worktree to produce a minimal lint/compile/import/single-test fix, open a ci-fix PR, auto-merge it once its own CI is green, cancel a fix whose target run is stale (main moved on), and escalate over core.bridge.send after two strikes. Kill-switch: ops\runtime\ci_watchdog\HALT. Runs as the logged-on Administrator so gh/claude/git auth resolves (NOT SYSTEM). See tools/ci_watchdog.py + docs/CI_WATCHDOG_PLAN.md.</Description>
+  </RegistrationInfo>
+  <Principals>
+    <Principal id="Author">
+      <UserId>Administrator</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <ExecutionTimeLimit>PT10M</ExecutionTimeLimit>
+    <RestartOnFailure>
+      <Interval>PT1M</Interval>
+      <Count>2</Count>
+    </RestartOnFailure>
+  </Settings>
+  <Triggers>
+    <TimeTrigger>
+      <StartBoundary>2026-06-18T00:00:00</StartBoundary>
+      <Repetition>
+        <Interval>PT2M</Interval>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
+      </Repetition>
+    </TimeTrigger>
+  </Triggers>
+  <Actions Context="Author">
+    <Exec>
+      <Command>"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\pythonw.exe"</Command>
+      <Arguments>"C:\Riot Commander\tools\ci_watchdog.py"</Arguments>
+      <WorkingDirectory>C:\Riot Commander</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
