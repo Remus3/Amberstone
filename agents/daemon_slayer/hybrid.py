@@ -213,6 +213,7 @@ def compute_hybrid(
     apply_survival_window: bool = False,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
+    apply_melee_aa_gate: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -301,6 +302,7 @@ def compute_hybrid(
         phase=phase,
         augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
+        apply_melee_aa_gate=apply_melee_aa_gate,
     )
     # ENGINE 1.39.0 (item 143 Slice B): pass include_conditional through
     # to compute_ehp ONLY when True. This preserves byte-identical
