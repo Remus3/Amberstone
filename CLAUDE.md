@@ -1,6 +1,6 @@
 # Riot Commander - Agent Context
 
-Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free; Daemon Slayer (`:8893`) computes real DPS math per champion.
+Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free (scheduler is asyncio AppLoop; 13 residual .after() files); Daemon Slayer (`:8893`) computes real DPS math per champion.
 
 > **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md` · `docs/API.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine - 705 items / 172 champs - ENGINE_VERSION 1.101.0 - all 6 archetype scorers wired + per-spell CC consumer + cc_blended_ehp ecosystem COMPLETE 4 consumers + per-spell CC wave 9 108/89 + cc_conditional ecosystem COMPLETE 5 consumers wave 6 36/32 + survivability axes heal/shield/DR/resist-grant COMPLETE across both EHP scorers incl flat + rank-scaled-block + percent-of-resist + unlabeled-multi-stat-block + form-occupancy + per-stack-unbounded modes + revive/second-life EHP-numerator multiplier Anivia/Zac) - `docs/AGENTS.md` (Phase 3 framework) - `BACKLOG.md` (aspirational)
@@ -154,7 +154,7 @@ False-negatives are recoverable (edit frontmatter later); false-positives are br
 
 ## TDD First
 
-All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (1300+ tests) before committing.
+All feature work and bug fixes follow TDD: write failing characterization/regression test first, then implement, then verify full suite (14,364 tests) before committing.
 
 ## Subagent Code Quality
 

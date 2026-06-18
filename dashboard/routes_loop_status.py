@@ -45,6 +45,7 @@ Response (always HTTP 200 unless an unexpected top-level error -> 500):
 from __future__ import annotations
 
 import json
+from dashboard._errors import send_error
 import logging
 import re
 import subprocess
@@ -205,8 +206,7 @@ def _serve_loop_status(h) -> None:
     except Exception as exc:  # noqa: BLE001 - last-resort guard
         log.warning("api/loop-status: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode("utf-8"),
-                    "application/json")
+            send_error(h, exc)
         except Exception:
             pass
 

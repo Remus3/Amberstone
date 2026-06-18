@@ -85,6 +85,8 @@ FAIL-SOFT (read side)
 """
 from __future__ import annotations
 
+import logging
+logger = logging.getLogger("rc.build_order_precompute")
 import argparse
 import json
 import os
@@ -530,7 +532,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     # A non-dry run requires a live engine (the planner makes :8893 calls when
     # rank_fn is None). A dry run never queries it.
     if not args.dry_run and not _engine_up():
-        print("DS engine at 127.0.0.1:8893 is not responding. Start it via "
+        logger.info("DS engine at 127.0.0.1:8893 is not responding. Start it via "
               '`"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
               "refuses to write tables against a dead engine).", file=sys.stderr)
         return 2
@@ -539,7 +541,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = out_dir_for(patch, args.out or None)
     target_modes = _MODE_KEYS if args.mode == "all" else (args.mode,)
 
-    print(f"build-order precompute gen patch={patch} modes={target_modes} "
+    logger.info(f"build-order precompute gen patch={patch} modes={target_modes} "
           f"champions={len(champions)} level={args.level} "
           f"dry_run={args.dry_run} out={out_dir}")
 
@@ -551,15 +553,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         champs, cells = _count_cells(payload)
         if args.dry_run:
-            print(f"  [dry-run] {mode_key:5s}: {champs} champions, "
+            logger.info(f"  [dry-run] {mode_key:5s}: {champs} champions, "
                   f"{cells} non-empty orders (not written)")
         else:
             out_path = out_dir / f"build_orders_{mode_key}.json"
             atomic_write(payload, out_path)
-            print(f"  {mode_key:5s}: {champs} champions, {cells} non-empty "
+            logger.info(f"  {mode_key:5s}: {champs} champions, {cells} non-empty "
                   f"orders -> {out_path.name}")
 
-    print(f"done in {time.time() - started:.1f}s")
+    logger.info(f"done in {time.time() - started:.1f}s")
     return 0
 
 

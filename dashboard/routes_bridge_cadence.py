@@ -17,6 +17,7 @@ active mode until cross-node cadence control is added later.
 from __future__ import annotations
 
 import json
+from dashboard._errors import send_error
 import logging
 import os
 import time
@@ -60,9 +61,7 @@ def _serve_get(h) -> None:
         data = json.loads(_MODE_PATH.read_text(encoding="utf-8"))
         h._send(200, json.dumps(data).encode(), "application/json")
     except (OSError, json.JSONDecodeError) as exc:
-        h._send(500,
-                json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_post(h, body) -> None:
@@ -78,9 +77,7 @@ def _serve_post(h, body) -> None:
         _atomic_write(_MODE_PATH, payload)
     except OSError as exc:
         log.warning("cadence write failed: %s", exc)
-        h._send(500,
-                json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
         return
     log.info("cadence set mode=%s", mode)
     h._send(200,

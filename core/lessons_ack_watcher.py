@@ -40,6 +40,7 @@ LEGION_BRIDGE = "https://legion-rc:8888/api/bridge"
 LOOKBACK_S = 7 * 24 * 3600  # last 7 days - acks arrive shortly after sends
 TIMEOUT = 4.0
 
+# Transport auth is delegated to Tailscale WireGuard; optional cert-pin later.
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE

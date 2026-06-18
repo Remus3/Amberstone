@@ -131,8 +131,9 @@ def send(*, source: str,
 
     # Self-signed certs are the norm for loopback/LAN dashboards. The
     # shared-secret bearer is the actual auth - TLS here is just transport
-    # confidentiality, not identity. When real certs land (cross-host),
-    # flip verify back on by passing context=ssl.create_default_context().
+    # confidentiality, not identity. Transport auth is delegated to Tailscale
+    # WireGuard. When real certs land (cross-host), flip verify back on by
+    # passing context=ssl.create_default_context() or optionally cert-pin.
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE

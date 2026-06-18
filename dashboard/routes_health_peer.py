@@ -15,6 +15,7 @@ bridge_watcher heartbeat hasn't refreshed in 5+ minutes.
 from __future__ import annotations
 
 import json
+from dashboard._errors import send_error
 import logging
 import os
 import time
@@ -94,8 +95,7 @@ def _serve_post_peer(h, body) -> None:
     try:
         _atomic_write(_PEER_DIR / f"{node}.json", record)
     except OSError as exc:
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
         return
 
     h._send(200, json.dumps({"ok": True, "node": node,

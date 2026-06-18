@@ -15,6 +15,7 @@ OCR handlers to avoid a circular import at module load time.
 (Tier 2 #2 helper-shake - no longer routed through web_dashboard).
 """
 import json
+from dashboard._errors import send_error
 import logging
 from urllib.parse import parse_qs, urlparse
 
@@ -215,8 +216,7 @@ def _serve_decisions_heartbeat(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/decisions/heartbeat: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_decisions_respond_active_post(h, payload) -> None:
@@ -266,8 +266,7 @@ def _serve_decisions_respond_active_post(h, payload) -> None:
         }).encode(), "application/json")
     except Exception as exc:
         log.warning("api/decisions/respond_active: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 GET_ROUTES = [

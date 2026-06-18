@@ -388,7 +388,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
         const body = mode ? { mode } : {};
         const resp = await fetch("/api/analyze", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
           body: JSON.stringify(body),
         });
         if (resp.ok) {
@@ -5921,7 +5921,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
     try {
       const resp = await fetch("/api/input", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
         body: JSON.stringify(body),
       });
       const ms = Math.round(performance.now() - t0);
