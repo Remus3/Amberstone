@@ -149,6 +149,32 @@ triage NOW/FUTURE/CLOSED only. Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-18 R1-regress-fix (cycle 2, REGRESS-fix) DONE - the auditor flagged R1 as
+  REGRESS: dashboard/routes_duration_winrate.py shipped with NO route test (only
+  core/duration_winrate.py was covered by tests/test_duration_winrate.py). Added
+  tests/test_routes_duration_winrate.py +14 covering the ROUTE layer: query parsing
+  (default mode=aram, valid-mode passthrough, bad mode -> 400 with compute-not-called,
+  champion int passthrough + non-int -> 400, omitted -> null, mode checked before
+  champion), the (mode, champion) 5min in-process response cache (second same-key call
+  cached with NO recompute via compute call-count, key separates by champion AND by
+  mode, _reset_caches forces recompute), the cached/elapsed_ms envelope fields, the 500
+  no-raw-leak path (compute raises -> body == "internal error - see logs", secret text
+  absent), and the _dispatch GET registration. compute_duration_winrate is patched to a
+  deterministic stub so the test touches NO real rewind_history.db (clean-checkout / CI
+  safe; mirrors the test_routes_player_profile harness). Characterization, not RED-first
+  - the route was already correct; the regression was absent coverage, not broken
+  behavior (the tests fail if the route's status/cache/leak contract regresses). Tier-1
+  test-only (NO engine / ENGINE_VERSION / DS / Share / frozen / RC restart / backfill).
+  GATE (fresh this run): the new file 14 passed / 0.24s; ruff All checks passed;
+  py_compile OK; ASCII + LF clean; full RC suite tests/ --ignore=tests/daemon_slayer
+  8363 passed / 2 skip / 109 subtests exit 0 (8349 R1 baseline +14; a trailing
+  logging-on-closed-file warning from the background TFT-OCR daemon thread at
+  interpreter teardown is benign, not a test failure). INLINE sole orchestrator (R9 +
+  the director's "trivial one-file item may use a single agent" clause - one test file,
+  no disjoint slices); verifier SKIPPED per R7 (own single-thread, no untrusted slice -
+  the characterization + ruff + the full RC suite ARE the independent verify). No frozen
+  files. Source: gemini director directive ops/loop/control/directive.md (R1 regression
+  fix). R1 itself stays DONE.
 - 2026-06-18 R1 (DIRECTOR REFILL cycle) DONE (e9f70e7d) - Section-7b heavyweight
   competitor deep-dive of Aggregator H (a not-yet-reviewed target) + shipped the
   lone HIGH-lift LOW-risk presentation finding IN-RUN. Tier-1 (new core module +
