@@ -4,6 +4,29 @@
 
 ---
 
+# 2026-06-18 (PM4) - B1 melee-applicability gate (DS Tier-2 nom B, DEFAULT-OFF)
+
+Operator "continue open items from last run". Shipped the single named highest-value DS
+Tier-2 follow-on from PM3's `TIER2_REPORT.md`. Commit `b2953489`, CI run 27796044261 GREEN.
+
+- **B1 melee-gate (item 496, ENGINE 1.140.0 -> 1.141.0; DS :8893 restarted pid 25116; Share 366).**
+  `dps.py`/`hybrid.py` had no attack-range gate -> Runaan's bolts (ranged-basic-only) credited on
+  melee autos. NEW `PeriodicProc.ranged_only` (on `3085`+`223085`) + `CallContext.is_melee`
+  (attackrange < new `dps.MELEE_RANGE_CEILING`=350) + `apply_melee_aa_gate` threaded compute_dps ->
+  _phase_weighted_dps -> _rotation_attack_dps -> _periodic_proc_dps + _per_attack_proc_damage +
+  compute_hybrid. ON+melee -> bolts contribute 0; OFF byte-identical; ranged unaffected. +9 TDD
+  (diff-of-differences). DS-dir 7348 / RC tests/ 8432 green. Hybrid RANKER call sites deliberately
+  NOT threaded (out of compute_hybrid scope; caught a NameError + reverted).
+- **NOT taken (logged ROADMAP + LIVE_GATED as next bounded Tier-2 slices):** B2 kit-agnostic AD-axis
+  (Ezreal Muramana/TF; Xayah/Nilah crit-not-on-hit) + F2 gold-aware top (223069 is Arena-prefixed
+  yet report says ARAM-exclusive -> id/mode subtlety, [[reference_items_index_alias_ids]]; mutates the
+  live ranking surface so do-not-flip-blind). Stopped at B1 to avoid stacking a subtler change.
+- **A (ARAM override) stays default-OFF** - only Shaco a clean CONFIRM (+26.9pp); operator off-meta call.
+- `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run loop tuning, untouched
+  PM2/PM3/PM4; gemini loop DOWN - RC-GeminiAudit result=3 external blip, not locally fixable).
+
+---
+
 # 2026-06-18 (PM3) - interactive headless: anomaly triage + 5-slice batch
 
 Operator dispatched the full open-items list interactively, chose "launch headless loop"
