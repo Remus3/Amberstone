@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-06-17 - verify + fix Antigravity repo-audit batch; ratify D5 frozen extraction (operator-directed)
+
+Antigravity implemented the `repo-audit.md` D-items; operator asked to verify + fix + flip gated items. Commits `a13d7496` (38 files) + `d16200b3` (ci.yml, separate workflow-scope push). Both pushed, CI green, RC redeployed pid 9012.
+
+- **CI-breaker FIXED:** Antigravity put `BLE001` in `ruff.toml` select with NO baseline -> `ruff check .` 1137 errors -> CI red. Reverted that line (ratchet deferred to a `--add-noqa` pass).
+- **Hot-path FIXED:** D4 narrowed `snapshot_normalizer.py` catches to a 5-type tuple (dropped IndexError/ZeroDivisionError on live data). Back to `except Exception as exc:`, kept the new `_log.debug`.
+- **D9 completed:** token header was on 2/4 guarded endpoints; added to dev.js (/api/loop-control) + screen_read.js (/api/command).
+- **D12 reverted:** print->logger on interactive result CLIs (daemon_slayer/cli.py, config_validator.py, adaptation_hint_cli.py, aftergame_summary.py) hid stdout; restored result->print, kept status->logger.
+- **D5 RATIFIED:** frozen `app/_game_lifecycle.py` map extracted to `core/coach_registry.py`. Verified-good as-shipped: D2 D3 D6 D8 D10 D13 D14. Deleted 7 scratch `scripts/fix_*/patch_*.py`; kept install_hooks.py.
+
+NEXT (OPEN, do NOT re-pitch the reverted changes as bugs): **D1** Share de-dup NOT done (only a local pre-commit auto-sync hook; it re-stamps `Share/MANIFEST.md` every commit). **D4 ruff ratchet** + **D9 200/401 test** + **D11 assert->raise** deferred. Precompute scripts + vision_token.py kept print->logger (status, by choice). Memory [[feedback_verify_antigravity_audit_batch]].
+
+---
+
 # 2026-06-17 - third-party-style repo audit + adapted auditor prompt (operator-directed)
 
 Operator pasted an external "brutally honest enterprise auditor" prompt (meant to feed Google Antigravity) and asked to vet+adapt it, then run it grounded. Commit `04e1a391` (pushed). Docs only, ZERO code/engine/frozen touch.
@@ -29,18 +43,3 @@ Operator ran `/insights`, then asked to validate its 3 "On the Horizon" suggesti
 GATE: ruff + ASCII + hygiene trio (smart-quote/mojibake/u2500) + 8 smoke = 20 passed. Tier-1 tooling, no engine/DS/Share/frozen/RC-restart touch.
 
 NEXT: mold the look later via `CSS`/`PALETTE` + `# SECTION:` blocks in `repo_insights.py`. Do NOT rebuild - all 3 /insights horizon items are confirmed already-shipped (memory [[reference_repo_insights_tool]]).
-
----
-
-# 2026-06-17 - live-session prep batch (operator-directed; eyeball harness + DSP5/6/7 consumers + anti-tank P3.2 producer)
-
-Operator asked to bundle-plan the live-game-gated open items for the next session, then (AskUserQuestion) to build all 4 prep items. Shipped 5 commits (`c0c46410` `b09c100d` `0357defb` `ce33870a` + LEDGER 488); ENGINE 1.139.0 -> 1.140.0.
-
-- **Eyeball harness** `ops/audit/ds_perm_swarm/live_flip_eyeball.py`: OFF-vs-ON top-6 dump for the 9 flag-ready seams (DSV2/3/4, DSP2, DSP8, DSP11 dps+burst, RF1, RF2, RF3+RF6) - one diff/champ, no mid-game `:8893` restarts. Smoke matched every documented intent.
-- **DSP5/6/7 consumers** `agents/daemon_slayer/dsp_live_consumers.py` (ENGINE 1.140.0): the substrate seams had NO consumer; now `summoner_fight_adjustments` / `enemy_rune_threat` / `ally_protected_ehp` exist (byte-identical on empty context). DS :8893 restarted 1.140.0; Share 365.
-- **Anti-tank P3.2 producer** `antitank.compute_antitank_live` (Tier-1, no bump): resolves live AP/AD via `build_champion` -> `compute_antitank(stats=)`. ehp ally-resist half folded into DSP7.
-- **Plan** `docs/LIVE_GAME_GATED_SYNC.md` "Next-session play order": 34 gated boxes -> 3-game min (SR/ARAM/Arena).
-
-GATE: DS 7334 / RC 8333 / Share --check green; +15 TDD; ruff+ASCII clean. (7 RC reds on the first 12min run were a Share-sync/DS-restart SEQUENCING artifact - all green on fresh re-run; the RF2/RF6 LiveFresh lesson.)
-
-NEXT (live session, all still DEFAULT-OFF, do-not-flip-blind): run the eyeball harness + tick the seams; DSP5/6/7 + anti-tank now need only live-input plumb + eyeball (NOT consumer-building); HZ Lane-A/B + st-* + brief-flip need a corpus (>1 game). Do NOT rebuild the consumers - they shipped. DAEMON_SLAYER.md changelog had drifted to 1.129.0 (loop skipped it); bumped to 1.140.0 + a gap-bridge pointer (1.130-1.139 canonical entries are in Share/CHANGELOG + LEDGER 464-487) - do NOT backfill those 10 versions.
