@@ -509,6 +509,43 @@ def _engine_up() -> bool:
         return False
 
 
+def _install_static_transport() -> None:
+    """Compute build orders in-process via the DS server's POST-route handlers,
+    with no :8893 HTTP and no running server.
+
+    ``rank_for_primary_archetype`` (the default rank_fn) reaches the engine
+    through ``daemon_slayer_client._post_json``; rebinding that one function to
+    call ``server._POST_ROUTES[path](body)`` directly makes regen self-contained
+    for a patch-refresh (reference_hz_precompute_patch_regen: the tables go dark
+    on a bump unless regenerated, and the live path needs :8893 up). The handlers
+    are the exact callables ``do_POST`` invokes, so the build orders are
+    identical to the live path by construction - only the transport changes.
+    """
+    from core import daemon_slayer_client as dsc
+    from agents.daemon_slayer import server as ds_server
+
+    # The route handlers read a module-level snapshot that serve_forever() loads
+    # at startup; load it here (same DataSnapshot.load the server uses) so the
+    # in-process calls resolve against identical data.
+    try:
+        ds_server._CACHE.get()
+    except RuntimeError:
+        ds_server._CACHE.set(ds_server._load_default_snapshot())
+
+    routes = ds_server._POST_ROUTES
+
+    def _inprocess_post(path, body, timeout=dsc.DEFAULT_TIMEOUT):
+        handler = routes.get(path)
+        if handler is None:
+            return None
+        try:
+            return handler(dict(body))
+        except Exception:  # noqa: BLE001 - mirror the HTTP path's None-on-failure
+            return None
+
+    dsc._post_json = _inprocess_post
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
@@ -525,13 +562,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--out", default="",
                     help="Override output directory (default: "
                          "data/daemon_slayer/build_orders/<patch>).")
+    ap.add_argument("--static", action="store_true",
+                    help="Compute in-process via the DS server handlers (no "
+                         ":8893 HTTP / no running server). Self-contained regen "
+                         "for patch-refresh; output is identical to the live "
+                         "path by construction.")
     args = ap.parse_args(argv)
 
     champions = _parse_csv(args.champions) or list(SEED_CHAMPIONS)
 
-    # A non-dry run requires a live engine (the planner makes :8893 calls when
-    # rank_fn is None). A dry run never queries it.
-    if not args.dry_run and not _engine_up():
+    # Static mode computes in-process via the DS server handlers (no :8893).
+    # Otherwise a non-dry run requires the live engine (the planner makes :8893
+    # calls when rank_fn is None). A dry run never queries it.
+    if args.static:
+        _install_static_transport()
+    elif not args.dry_run and not _engine_up():
         logger.info("DS engine at 127.0.0.1:8893 is not responding. Start it via "
               '`"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
               "refuses to write tables against a dead engine).", file=sys.stderr)

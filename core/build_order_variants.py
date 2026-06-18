@@ -534,13 +534,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--out", default="",
                     help="Override output directory (default: "
                          "data/daemon_slayer/build_orders/<patch>).")
+    ap.add_argument("--static", action="store_true",
+                    help="Compute in-process via the DS server handlers (no "
+                         ":8893 HTTP / no running server). Self-contained regen "
+                         "for patch-refresh; output is identical to the live "
+                         "path by construction.")
     args = ap.parse_args(argv)
 
     champions = _parse_csv(args.champions) or list(SEED_CHAMPIONS)
 
-    # A non-dry run requires a live engine (the planner makes :8893 calls when
-    # rank_fn is None). A dry run never queries it.
-    if not args.dry_run and not _engine_up():
+    # Static mode computes in-process via the DS server handlers (no :8893).
+    # Otherwise a non-dry run requires the live engine (the planner makes :8893
+    # calls when rank_fn is None). A dry run never queries it.
+    if args.static:
+        from core.build_order_precompute import _install_static_transport
+        _install_static_transport()
+    elif not args.dry_run and not _engine_up():
         logger.info("DS engine at 127.0.0.1:8893 is not responding. Start it via "
               '`"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe" tools/start_daemon_slayer.py` and re-run (a non-dry run '
               "refuses to write tables against a dead engine).", file=sys.stderr)
