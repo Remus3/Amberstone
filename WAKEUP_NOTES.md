@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-06-17 - live-session prep batch (operator-directed; eyeball harness + DSP5/6/7 consumers + anti-tank P3.2 producer)
+
+Operator asked to bundle-plan the live-game-gated open items for the next session, then (AskUserQuestion) to build all 4 prep items. Shipped 5 commits (`c0c46410` `b09c100d` `0357defb` `ce33870a` + LEDGER 488); ENGINE 1.139.0 -> 1.140.0.
+
+- **Eyeball harness** `ops/audit/ds_perm_swarm/live_flip_eyeball.py`: OFF-vs-ON top-6 dump for the 9 flag-ready seams (DSV2/3/4, DSP2, DSP8, DSP11 dps+burst, RF1, RF2, RF3+RF6) - one diff/champ, no mid-game `:8893` restarts. Smoke matched every documented intent.
+- **DSP5/6/7 consumers** `agents/daemon_slayer/dsp_live_consumers.py` (ENGINE 1.140.0): the substrate seams had NO consumer; now `summoner_fight_adjustments` / `enemy_rune_threat` / `ally_protected_ehp` exist (byte-identical on empty context). DS :8893 restarted 1.140.0; Share 365.
+- **Anti-tank P3.2 producer** `antitank.compute_antitank_live` (Tier-1, no bump): resolves live AP/AD via `build_champion` -> `compute_antitank(stats=)`. ehp ally-resist half folded into DSP7.
+- **Plan** `docs/LIVE_GAME_GATED_SYNC.md` "Next-session play order": 34 gated boxes -> 3-game min (SR/ARAM/Arena).
+
+GATE: DS 7334 / RC 8333 / Share --check green; +15 TDD; ruff+ASCII clean. (7 RC reds on the first 12min run were a Share-sync/DS-restart SEQUENCING artifact - all green on fresh re-run; the RF2/RF6 LiveFresh lesson.)
+
+NEXT (live session, all still DEFAULT-OFF, do-not-flip-blind): run the eyeball harness + tick the seams; DSP5/6/7 + anti-tank now need only live-input plumb + eyeball (NOT consumer-building); HZ Lane-A/B + st-* + brief-flip need a corpus (>1 game). Do NOT rebuild the consumers - they shipped. DAEMON_SLAYER.md changelog had drifted to 1.129.0 (loop skipped it); bumped to 1.140.0 + a gap-bridge pointer (1.130-1.139 canonical entries are in Share/CHANGELOG + LEDGER 464-487) - do NOT backfill those 10 versions.
+
+---
+
 # 2026-06-17 - RF6 ds-engine: ehp/tank survivability INJECT seam (headless gemini-loop cycle 6, round-2 refill)
 
 **Commit `700fa6a8`** (ENGINE 1.138.0 -> 1.139.0, DEFAULT-OFF). ORCHESTRATION_PLAN RF6, the last OPEN round-2 row.
@@ -26,15 +41,3 @@
 - SHIPPED (mirror SHADOW_PATH net / item 386 + OPEN2 CTL redirect): conftest autouse `redirect_prod_write_paths_to_tmp` -> `_TRACE_FILE` + `_LOG_PATH` redirected to an ISOLATED `tmp_path_factory.mktemp` dir (NOT the test's tmp_path - an initial `tmp_path/"prodwrite"` subdir leaked into the cache-prune tests' `iterdir()` and broke test_ddragon_mirror_prune x2 + test_meta_build_cache_retention; the full-suite gate caught it -> fixed via tmp_path_factory) + the directive-mandated session-scoped `assert_prod_artifacts_unchanged` regression guard (12 coaching/loop/game-only artifacts; health.json/logs/lessons_*/bridge_monitor excluded so it cannot flake on the live daemon). ds_coach_shadow left alone (already hermetic via explicit path=; redirecting would break test_shadow_path_default).
 - TDD +4 `tests/test_hermeticity_prod_writes.py` (RED-first: both globals under prod data/ = 2 failed -> GREEN: off-prod + no-path writers land in tmp, prod byte-unchanged). GATE: RC `tests/ --ignore=tests/daemon_slayer` 8333 passed / 2 skip / 109 subtests exit 0 (+4 vs 8329 RF4 baseline, 0 regress); DS-dir untouched (separate conftest scope, 7312 stands); ruff clean; py_compile OK; ASCII clean; doc hygiene 14 passed; ROADMAP 80556B under budget. INLINE sole orchestrator (R9 + clean-sweep clause); verifier SKIPPED per R7 (the before/after NO-DELTA snapshot + RED->GREEN IS the verify). No frozen files. ORCHESTRATION_PLAN RF5 OPEN->DONE; LEDGER 486; ROADMAP swarm sync.
 - NEXT: RF6 (RF4-surfaced ehp INJECT seam for Rell Fimbulwinter, not-pooled) - last OPEN row. Tracker `docs/ORCHESTRATION_PLAN.md`.
-
----
-
-# 2026-06-17 - RF4 ds-swarm: residual re-run / loop-until-dry consolidation after RF1-RF3 (headless gemini-loop cycle 4, round-2 refill)
-
-- Executor cycle 4 of the round-2-refill swarm (`ops/loop`, gemini director; perpetual loop RUNNING - controller.log cycle 4 typed 15:40, deadline 5400s). Directive = RF4. AUDIT-only commit `a63c0d47` pushed (no engine change - new files under `ops/audit/` + `tests/`, NOT `agents/daemon_slayer/`, so NO ENGINE bump / DS restart / Share sync).
-- REGEN: `run_consolidate.py` -> `report/dsp10_consolidated.{json,md}` = BYTE-IDENTICAL to the committed report (cross-eval `data/` static + live :8893 seam-OFF + `rewind_history.db` unchanged since the RF1-3 builds); all 3 `build_survivability_item_credit*.py --check` stay green (the report-anchored tables did NOT drift - safe no-op).
-- VERIFY (NEW `ops/audit/ds_perm_swarm/rf4_verify.py`, mirror `dsp10_pass2_verify`): in-process re-rank each RF-tabled champ OFF vs ON (`prefer_survivability_by_win=True` per lane, L13) = 11/12 RESOLVED - all 9 RF1 hybrid champs + RF2 Rakan + RF3 KSante float buried survivability winners into the top-K under the `survivability_score` partition invariant.
-- LOOP-UNTIL-DRY SATISFIED: `classify_survivability_worst` over the 40 worst rows = 0 NEW survivability clusters (1 pass). Tail = covered_rf1 9 / rf2 1 / rf3 2 / cluster_a_deferred 4 (Zilean/Shaco/Kayle/Seraphine) / covered_dsp11 6 / ability_mage_lane 14 (deferred DSV1 AP-DoT) / dps_burst_lane 2 (Caitlyn/Yunara) / no_buried 1 (Zaahen) / thin_or_noise 1 (MasterYi).
-- RESIDUAL (queued RF6): Rell ehp NOT-RESOLVED - its sole tabled id 3121 Fimbulwinter is NOT in Rell's ehp candidate pool (verified `in_pool=False`; a Winter's-Approach mana-line item the EHP `_filter_candidates` excludes), so RF3's FLOAT-only seam (reorders POOLED items) is a no-op for it. RF3's "the EHP scorer ALREADY pools these" premise holds for KSante (3075/6662 pooled+floated) but is FALSE for Rell. Fix = an ehp-lane INJECT mode (RF2's hps shape `only_ids |= surv_ids`) = an engine seam change -> queued RF6 (not shipped blind; a wrong float is worse than none).
-- TDD +14 hermetic `tests/test_rf4_verify.py` (classifier buckets + dry verdict). GATE: DS-dir 7312 passed / 1 skip / 1942 subtests exit 0 (unchanged - no DS edit); RC `tests/ --ignore=tests/daemon_slayer` 8329 passed / 2 skip / 109 subtests exit 0 (+14 vs the 8315 RF3 baseline, 0 regressions); ruff clean (touched); py_compile OK; ASCII clean. INLINE sole orchestrator (R9 - one cohesive audit module + its test); verifier SKIPPED per R7 (own single-thread - the live engine re-rank + the byte-identical regen + the 3 build --check IS the independent verify). No frozen files. ORCHESTRATION_PLAN RF4 OPEN->DONE + RF6 queued; LEDGER 485; ROADMAP synced.
-- NEXT: RF5 (test-hermeticity sweep) or RF6 (ehp INJECT seam for Rell). Tracker `docs/ORCHESTRATION_PLAN.md`.
