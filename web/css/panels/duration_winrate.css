@@ -1,0 +1,79 @@
+/* Build Insights "Game Length" tab - win-rate-by-game-length bars
+ * (core.duration_winrate over the local rewind corpus). Tokens per
+ * docs/UI_SCALE_SPEC_V2.md v2.1; ASCII only; no hardcoded px below --fs-xs. */
+
+#bi-duration-mount .dw-modes {
+  display: flex;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-4, 16px);
+}
+#bi-duration-mount .dw-mode-btn {
+  min-height: var(--hit-min, 42px);
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  font-size: var(--fs-sm, 18px);
+  color: var(--text-faint, #9ca3af);
+  background: var(--bg-elevated, #1c1c24);
+  border: 1px solid var(--border-soft, #2a2a35);
+  border-radius: var(--panel-radius-sm, 10px);
+  cursor: pointer;
+}
+#bi-duration-mount .dw-mode-btn.is-active {
+  color: var(--text-strong, #f0f0f5);
+  border-color: var(--signal-info, #8a8cf0);
+}
+#bi-duration-mount .dw-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap-tight, 10px);
+}
+#bi-duration-mount .dw-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 12px);
+}
+#bi-duration-mount .dw-label {
+  flex: 0 0 88px;
+  font-size: var(--fs-sm, 18px);
+  color: var(--text-faint, #9ca3af);
+  text-align: right;
+}
+#bi-duration-mount .dw-track {
+  flex: 1 1 auto;
+  height: 24px;
+  background: var(--bg-elevated, #1c1c24);
+  border: 1px solid var(--border-soft, #2a2a35);
+  border-radius: var(--panel-radius-sm, 10px);
+  overflow: hidden;
+}
+#bi-duration-mount .dw-fill {
+  height: 100%;
+  border-radius: var(--panel-radius-sm, 10px) 0 0 var(--panel-radius-sm, 10px);
+  transition: width 220ms ease;
+}
+#bi-duration-mount .dw-fill.dw-good { background: var(--signal-good, #6ec977); }
+#bi-duration-mount .dw-fill.dw-bad  { background: var(--signal-bad, #ff5050); }
+#bi-duration-mount .dw-fill.dw-dim  { background: var(--signal-dim, #8a8e9c); }
+#bi-duration-mount .dw-val {
+  flex: 0 0 116px;
+  font-size: var(--fs-sm, 18px);
+  font-variant-numeric: tabular-nums;
+}
+#bi-duration-mount .dw-val.dw-good { color: var(--signal-good, #6ec977); }
+#bi-duration-mount .dw-val.dw-bad  { color: var(--signal-bad, #ff5050); }
+#bi-duration-mount .dw-val.dw-dim  { color: var(--signal-dim, #8a8e9c); }
+#bi-duration-mount .dw-n {
+  margin-left: var(--space-2, 8px);
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-faint, #9ca3af);
+}
+#bi-duration-mount .dw-caption {
+  margin-top: var(--space-4, 16px);
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-faint, #9ca3af);
+  line-height: 1.5;
+}
+#bi-duration-mount .dw-empty {
+  font-size: var(--fs-sm, 18px);
+  color: var(--text-faint, #9ca3af);
+  padding: var(--space-5, 24px) 0;
+}
