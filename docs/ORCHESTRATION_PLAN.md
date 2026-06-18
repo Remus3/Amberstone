@@ -124,6 +124,19 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 | RF5 | test-hygiene | Hermeticity sibling sweep (insurance, non-DS). OPEN2 found tests/test_p2w4_hw2_b.py wrote the PROD ops/loop/control/controller.log via the real loop_controller.git() except-path. Systematically grep tests/ + agents/daemon_slayer/tests/ for OTHER fixtures that touch a PROD path (ops/runtime/, data/, logs/, ops/loop/control/) instead of tmp_path / a monkeypatched module global; redirect each to tmp (mirror conftest SHADOW_PATH + item-386 precedent). Pure test-hygiene, headless-safe; +regression assert the prod artifact is unchanged across the suite. Record CLEAN if none found. | DONE | `e0f3da12` |
 | RF6 | ds-engine | RF4-surfaced residual (report/rf4_residual.md): the RF3 ehp/tank survivability seam is FLOAT-only, but Rell's sole tabled buried winner Fimbulwinter (3121) is NOT in Rell's ehp candidate pool (RF4 verified in_pool=False; a Winter's-Approach mana-line item the EHP _filter_candidates excludes), so the float seam (reorders POOLED items by win-table membership) is a no-op for Rell - RF3's "the EHP scorer ALREADY pools these resist/HP items" premise holds for KSante (3075/6662 pooled+floated) but is FALSE for Rell. Add an ehp-lane INJECT mode mirroring RF2's hps inject (only_ids |= surv_ids BEFORE the float prefix) so tabled-but-not-pooled survivability ids surface. Root-cause-first (confirm WHY Fimbulwinter is filtered for Rell - the mana-item gate); default-OFF WIN-anchored seam vs report/dsp10_consolidated.md + the survivability_item_credit_tank table; per-champ test (Rell Fimbulwinter floats ON, byte-identical OFF). ENGINE bump + DS :8893 restart + Share sync. Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `700fa6a8` |
 
+## Sessions - DIRECTOR REFILL 2026-06-18
+
+Authored by the gemini director on REFILL after the round-2 queue (RF1-RF6) drained.
+Self-directed work unit: a Section-7b heavyweight competitor deep-dive lift. Output
+docs/COMPETITOR_LIFT_2026-06-18.md. A HIGH-lift LOW-risk presentation-only finding
+(over EXISTING DS math / existing local data, no new dependency or schema lift, testable)
+ships IN-RUN as its own slice (+Section-3b UI proof if frontend); otherwise research +
+triage NOW/FUTURE/CLOSED only. Director picks ONE top-down.
+
+| ID | Theme | Scope | Status | Commit |
+|----|-------|-------|--------|--------|
+| R1 | lift | Section-7b heavyweight deep-dive competitor lift of one major tool NOT yet reviewed (Aggregator H), 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-18.md (third-party names out of core repo code). ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); a HIGH-lift with a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. | DONE | `e9f70e7d` |
+
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
 - DS Phase-D default-ON flag flips (apply_passive_damage, non-every-AA on_hit, per-stack assumed_stacks) - need real-game re-ranking validation.
@@ -136,6 +149,45 @@ noise (DS audit loop allows it). Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-18 R1 (DIRECTOR REFILL cycle) DONE (e9f70e7d) - Section-7b heavyweight
+  competitor deep-dive of Aggregator H (a not-yet-reviewed target) + shipped the
+  lone HIGH-lift LOW-risk presentation finding IN-RUN. Tier-1 (new core module +
+  route + panel; NO engine / ENGINE_VERSION / DS / Share / frozen / backfill).
+  BOTTOM LINE: RC supersedes most of Aggregator H (DS build/dps/ehp, the
+  player_gpi radar, the build-insights WPA lane, live_benchmark_band); the one
+  genuine gap = the signature win-rate-by-game-length curve, a pure aggregation over
+  game_duration_s + tracked_win that RC already reads from rewind_history.db.
+  SHIPPED F1: core/duration_winrate.py (mode via player_gpi.MODE_MAPS map_id;
+  MIN_DURATION_S=300 remake gate + MAX_DURATION_S=7200 outlier drop - the VERIFY
+  GATE caught 4 ms-encoded/corrupt duration rows the agent's spec missed, MAX
+  game_duration_s=1988073 with a clean 3600-100000s zero gap; MIN_BUCKET_N=5 trust
+  gate; conn= test seam, clean-checkout safe) -> dashboard/routes_duration_winrate.py
+  GET /api/duration-winrate (mirrors routes_player_profile, 5min TTL, never leaks a
+  raw error) registered in _dispatch.py -> Build Insights "Game Length" tab
+  (web/js/panels/duration_winrate.js+css, self-contained chart panel, dispatched from
+  build_insights.js::_renderActive, table engine untouched) + ui_mock fixture. TDD +8
+  (RED-first: bucket tally, MIN_BUCKET_N gate, lo-incl/hi-excl boundaries,
+  remake+outlier drop, map_id mode filter, champion filter, empty fail-soft,
+  invalid-mode fallback). LIVE-VALIDATED over the real corpus: ARAM n=2044 downward
+  slope 56.2/51.1/49.4/48.2 (snowball tendency), SR n=683 peak 30-35m 60.2. GATE
+  (fresh this run): full RC suite tests/ --ignore=tests/daemon_slayer 8349 passed / 2
+  skip / 109 subtests exit 0; ruff + py_compile + node --check clean; ASCII byte-scan
+  clean for my additions (index.html pre-existing nav glyphs untouched). RC restarted
+  pid 11712, /api/duration-winrate live (aram/sr correct; bogus mode -> 400 with the
+  friendly error). 5-PHASE UI AUDIT code-side PASS, no MUST-FIX (1 SHOULD-FIX
+  deferred: the shared Min-buys control is inert on the chart tab; hiding it needs the
+  table engine, low value). LIVE VISUAL CAPTURE OWED (Game-PC :8892 down +
+  Claude_Preview cannot attach to RC-owned :8888 headless - carry-forward in WAKEUP +
+  synopsis). TRIAGE: F2 global win/pick/ban + F6 lobby-player-tags + F7 global
+  objective/tier/leaderboard = FUTURE (each needs a new external dependency; F6 is
+  already on BACKLOG as Overlay App F 3.1); F3 builds/WPA/matchup/synergy + F4 GPI
+  Power-Circle + F5 percentile = CLOSED (RC at-parity or superior). No new BACKLOG
+  item required. INLINE sole orchestrator (R9 coupled-seam: core -> route -> panel
+  dependency-ordered, not disjoint files; the RF1-RF6 inline precedent); verifier
+  SKIPPED per R7 (own single-thread, no untrusted slice - the RED->GREEN TDD + the
+  full-suite + the live endpoint probe ARE the independent verify). No frozen files.
+  Doc: docs/COMPETITOR_LIFT_2026-06-18.md. Source: gemini director directive
+  ops/loop/control/directive.md (R1 DIRECTOR REFILL).
 - 2026-06-17 RF6 (cycle 6, round-2 refill) DONE (700fa6a8) - ehp/tank survivability
   INJECT seam, ENGINE 1.138.0 -> 1.139.0, DEFAULT-OFF. ROOT-CAUSE (probe-confirmed,
   not the directive's assumed "mana-item gate" phrasing): Rell's Fimbulwinter 3121
