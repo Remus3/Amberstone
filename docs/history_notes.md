@@ -13,6 +13,20 @@
 
 ---
 
+# 2026-06-17 - verify + fix Antigravity repo-audit batch; ratify D5 frozen extraction (operator-directed)
+
+Antigravity implemented the `repo-audit.md` D-items; operator asked to verify + fix + flip gated items. Commits `a13d7496` (38 files) + `d16200b3` (ci.yml, separate workflow-scope push). Both pushed, CI green, RC redeployed pid 9012.
+
+- **CI-breaker FIXED:** Antigravity put `BLE001` in `ruff.toml` select with NO baseline -> `ruff check .` 1137 errors -> CI red. Reverted that line (ratchet deferred to a `--add-noqa` pass).
+- **Hot-path FIXED:** D4 narrowed `snapshot_normalizer.py` catches to a 5-type tuple (dropped IndexError/ZeroDivisionError on live data). Back to `except Exception as exc:`, kept the new `_log.debug`.
+- **D9 completed:** token header was on 2/4 guarded endpoints; added to dev.js (/api/loop-control) + screen_read.js (/api/command).
+- **D12 reverted:** print->logger on interactive result CLIs (daemon_slayer/cli.py, config_validator.py, adaptation_hint_cli.py, aftergame_summary.py) hid stdout; restored result->print, kept status->logger.
+- **D5 RATIFIED:** frozen `app/_game_lifecycle.py` map extracted to `core/coach_registry.py`. Verified-good as-shipped: D2 D3 D6 D8 D10 D13 D14. Deleted 7 scratch `scripts/fix_*/patch_*.py`; kept install_hooks.py.
+
+NEXT (OPEN, do NOT re-pitch the reverted changes as bugs): **D1** Share de-dup NOT done (only a local pre-commit auto-sync hook; it re-stamps `Share/MANIFEST.md` every commit). **D4 ruff ratchet** + **D9 200/401 test** + **D11 assert->raise** deferred. Precompute scripts + vision_token.py kept print->logger (status, by choice). Memory [[feedback_verify_antigravity_audit_batch]].
+
+---
+
 # 2026-06-17 - third-party-style repo audit + adapted auditor prompt (operator-directed)
 
 Operator pasted an external "brutally honest enterprise auditor" prompt (meant to feed Google Antigravity) and asked to vet+adapt it, then run it grounded. Commit `04e1a391` (pushed). Docs only, ZERO code/engine/frozen touch.
