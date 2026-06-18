@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-06-18 (PM2) - headless deep-research+lift: R2 competitor fan-out + Game Flow tab
+
+Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b17531e1`.
+
+- **R2 competitor fan-out** (aggregator B / aggregator A / Aggregator Z1 / aggregator G, 4 parallel deep-dive agents).
+  RC supersedes/has nearly the whole surface. **Verify-gate caught a wrong agent HAVE:** the
+  aggregator G "win-prob match-flow curve" NOW pick is ALREADY shipped (`web/js/panels/pgr_winprob.js`,
+  PGR S3) - the agent read only post_game_phases.js and missed the graph. Reclassified CLOSED.
+- **SHIPPED F-DPM per-minute performance curve** (the one genuine own-data gap = Aggregator Z1's
+  signature graph): `core/perf_curve.py` -> `/api/perf-curve?mode=&metric=&champion=` -> Build
+  Insights "Game Flow" tab (inline-SVG dual win/loss line, gold/cs toggle). Avg cumulative
+  gold/CS per game minute over the own rewind corpus, win-vs-loss split. Pure aggregation over
+  timeline_frames, no global/Riot/Claude dep, no DS schema. TDD +42 (11 module + 18 route + 13
+  DOM). Live aram/gold n=2004 (wins pull ahead by min5), sr/cs n=618. RC pid 22672. Tier-1.
+- **Section-3b UI audit 5/5 CLEAN, 0 MUST-FIX.** **VISUAL CAPTURE OWED** (Game-PC :8892 down +
+  Claude_Preview MCP not connected this session). Carry-forward.
+- **FUTURE -> BACKLOG** (`docs/COMPETITOR_LIFT_2026-06-18_R2.md`): aggregator B carry-efficiency grade
+  axes (gold_share verified 0 hits, Tier-2 grade re-baseline = product call); aggregator A OP-Score
+  per-interval performance curve (new scoring model); DPM damage-per-min (cumulative-all-units
+  trap, needs a to-champs frame field); aggregator G lane-vs-full WPA totals (marginal).
+- **NEXT:** F-UGG1 carry-efficiency as a DISPLAY-only stat (LOW-risk, no grade change).
+- **Still open from earlier today:** ops/loop/config.json + director_prompt.md modified
+  (operator pre-run loop tuning) - NOT committed; review/commit/discard next session.
+
+---
+
 # 2026-06-18 (PM) - headless: nightly CI green (deps + Linux-portability) + section-4b flip-gate evidence
 
 Direct /headless-upgrade run (the gemini loop I launched this AM self-stopped NO_WORK x2, so
@@ -51,27 +77,3 @@ RC supersedes most of it; the one genuine gap shipped in-run.
 - Triage: F2 global win/pick/ban + F6 lobby-player-tags + F7 global objective/tier = FUTURE
   (new external dep; F6 already BACKLOG as Overlay App F 3.1); F3/F4/F5 CLOSED (RC at-parity or
   superior). Doc `docs/COMPETITOR_LIFT_2026-06-18.md`.
-
----
-
-# 2026-06-17 - live-game-gated sync: ARAM Mayhem validation pass (operator playing live)
-
-Operator played 6 ARAM Mayhem games while I ran the LIVE_GAME_GATED_SYNC checklist in sync. Docs-only
-session (no code/engine touch); commit captures sync-doc ledger + WAKEUP. Champs: Olaf, Sivir,
-Senna->Mundo, Lissandra, Vex->Quinn, Caitlyn. Tooling: a persistent champ-select catcher (Monitor
-polling lcu.phase, emits on ChampSelect-enter - ARAM CS is too fast for a from-ReadyCheck poll) +
-per-champ `ops/audit/ds_perm_swarm/live_flip_eyeball.py` OFF-vs-ON re-rank + dashboard screenshots.
-
-- **DSP11 kit-axis = LIVE-VALIDATED, FLIP-READY** (Senna lethality +Black Cleaver; Quinn crit
-  +IE/Collector/Statikk; Caitlyn non-tabled control = byte-identical). Seam correctly scoped. The
-  actual flip (wire scorer + DS :8893 restart) is still operator-gated - do NOT flip blind.
-- **Comp-verdict renders correctly** on SWAP + STAY branches; build-chooser/bench-swap/MAYHEM all
-  render live. VARIANT branch still unobserved.
-- **OPEN BUG - section A LCU push FAIL:** RuneWriter (`lcu/lcu_rune_writer.py`) pushes runes ONLY on
-  the first champ-select per RC session, silent after. Memory `reference_runewriter_dies_after_game1`.
-  Fix post-session (needs RC restart). NOT frozen.
-- **Low-conf flag:** comp-verdict Vex(AP)->Garen(AD) reasoning reads inverted; check `core/aram_comp_verdict.py`.
-
-NEXT: (1) fix RuneWriter re-arm bug. (2) tabled half still un-validated for RF1/RF2/RF3+RF6/DSP3 +
-DSP11-manamune - needs one of those champs to roll (RF1 bruiser / Rakan / KSante|Rell / Cluster-A /
-Ezreal|Corki). Full detail in `docs/LIVE_GAME_GATED_SYNC.md` LGS2 ledger entry.
