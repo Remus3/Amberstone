@@ -135,6 +135,14 @@ class CallContext:
     # byte-identical. Appended at the END per the repo dataclass convention
     # (a mid-class insert breaks positional construction).
     target_current_hp_pct: float = 1.0
+    # B1 (1.141.0): the wielder's auto-attack is MELEE (attackrange <
+    # dps.MELEE_RANGE_CEILING). Engine-derived in compute_dps from the champion
+    # record's attackrange. Consumed by ``_periodic_proc_dps`` /
+    # ``_per_attack_proc_damage`` ONLY when ``apply_melee_aa_gate=True`` to skip
+    # a ``PeriodicProc.ranged_only`` proc (Runaan's bolts fire on ranged basics
+    # only). Default False -> the gate is a no-op and every existing caller is
+    # byte-identical. Appended at the END per the repo dataclass convention.
+    is_melee: bool = False
 
 
 # Scaling-damage callable type. Float still works as a constant.
@@ -186,6 +194,13 @@ class PeriodicProc:
     # AP item ranking. compute_dps ignores the flag (counts every proc).
     # Default False = byte-identical for every existing proc.
     ability_dot: bool = False
+    # B1 (1.141.0): this proc only applies on a RANGED basic attack (Runaan's
+    # Hurricane Wind's Fury - the two extra bolts fire on ranged autos only).
+    # The DPS consumers (``_periodic_proc_dps`` / ``_per_attack_proc_damage``)
+    # skip a ranged_only proc when ``apply_melee_aa_gate=True`` AND the wielder
+    # is melee (``CallContext.is_melee``). Default False -> the proc applies
+    # unconditionally (byte-identical to pre-B1 for every existing proc).
+    ranged_only: bool = False
 
     def __post_init__(self) -> None:
         if self.damage_type not in _DAMAGE_TYPES:

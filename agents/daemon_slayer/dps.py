@@ -72,6 +72,14 @@ from .ult_rates import get_ult_casts_per_sec
 # per-item bumps (e.g. Infinity Edge = +0.30) on top.
 DEFAULT_CRIT_BONUS = 0.75
 
+# B1 melee-applicability gate (DS Tier-2 cross-eval nomination B, 1.141.0):
+# a champion is melee when its base attackrange is below this ceiling. The big
+# data gap sits between the longest short-melee (Nilah 225) and the shortest
+# ranged carry (Xayah 525), so 350 separates them with no champion in between.
+# Consumed only when compute_dps(apply_melee_aa_gate=True); default-OFF the
+# value is never read. See ops/audit/ds_cross_eval/TIER2_REPORT.md (B1).
+MELEE_RANGE_CEILING = 350
+
 EARLY_LEVEL_MAX = 6
 MID_LEVEL_MAX = 12
 
@@ -234,6 +242,7 @@ def _periodic_proc_dps(
     call_ctx: CallContext,
     magic_amp: float = 1.0,
     ability_dot_only: bool = False,
+    apply_melee_aa_gate: bool = False,
 ) -> float:
     """Sum DPS contribution from every conditional proc in the build.
 
@@ -258,6 +267,10 @@ def _periodic_proc_dps(
     total = 0.0
     for e in effects:
         for proc in e.periodics:
+            # B1 (1.141.0): a ranged-only proc (Runaan's bolts) contributes
+            # nothing on a melee auto. Default-OFF -> never skips (byte-identical).
+            if apply_melee_aa_gate and call_ctx.is_melee and proc.ranged_only:
+                continue
             if proc.every_n_attacks > 0:
                 if total_attacks <= 0:
                     continue
@@ -409,6 +422,7 @@ def _per_attack_proc_damage(
     call_ctx: CallContext,
     magic_amp: float = 1.0,
     damage_amp: float = 1.0,
+    apply_melee_aa_gate: bool = False,
 ) -> float:
     """Per-attack on-hit proc damage (post-mit, post-mode, post-amps).
 
@@ -432,6 +446,10 @@ def _per_attack_proc_damage(
     total = 0.0
     for e in effects:
         for proc in e.periodics:
+            # B1 (1.141.0): ranged-only proc contributes nothing on a melee
+            # auto. Default-OFF -> never skips (byte-identical to pre-B1 burst).
+            if apply_melee_aa_gate and call_ctx.is_melee and proc.ranged_only:
+                continue
             if proc.every_n_attacks <= 0:
                 continue
             # ENGINE 1.26.0 (2026-05-21): stack-ramp-gated procs (Dead
@@ -467,6 +485,7 @@ def _rotation_attack_dps(
     damage_amp: float = 1.0,
     magic_amp: float = 1.0,
     aa_empower_amp: float = 1.0,
+    apply_melee_aa_gate: bool = False,
 ) -> float:
     """DPS contribution from basic attacks during a single rotation.
 
@@ -517,7 +536,7 @@ def _rotation_attack_dps(
     proc_dps = _periodic_proc_dps(
         effects, total_attacks, duration,
         target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
-        magic_amp=magic_amp,
+        magic_amp=magic_amp, apply_melee_aa_gate=apply_melee_aa_gate,
     )
     return (base_dps * aa_empower_amp + proc_dps) * damage_amp
 
@@ -534,6 +553,7 @@ def _phase_weighted_dps(
     damage_amp: float = 1.0,
     magic_amp: float = 1.0,
     aa_empower_amp: float = 1.0,
+    apply_melee_aa_gate: bool = False,
 ) -> float:
     """Weighted average of rotation DPS within a phase (weights from lolmath)."""
     if not rotations:
@@ -548,6 +568,7 @@ def _phase_weighted_dps(
             stats, r, target_armor_for_physical, target_mr,
             mode_dmg_mult, crit_bonus, effects, call_ctx, damage_amp,
             magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
+            apply_melee_aa_gate=apply_melee_aa_gate,
         )
         total_weight += w
     if total_weight <= 0:
@@ -592,6 +613,7 @@ def compute_dps(
     apply_ability_amps: bool = False,
     apply_passive_damage: bool = False,
     assume_takedown: bool = False,
+    apply_melee_aa_gate: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -624,6 +646,14 @@ def compute_dps(
     bonus AD, raising AA + bonus-AD-scaling-proc DPS. The Collector execute is
     deliberately NOT valued here (a one-shot finisher is not sustained DPS - it
     is credited by ``compute_burst_damage`` instead).
+
+    ``apply_melee_aa_gate`` (B1, 1.141.0): the melee-applicability gate. Default
+    False -> byte-identical. When True and the champion is melee (attackrange <
+    ``MELEE_RANGE_CEILING``), ``PeriodicProc.ranged_only`` procs (Runaan's
+    Hurricane bolts - a ranged-basic-only on-hit) contribute 0 DPS, so a melee
+    champion is no longer credited the two extra bolts. Ranged champions are
+    unaffected even when the seam is on. The live rank.py flip stays
+    validation-gated (do-not-flip-blind); see docs/LIVE_GAME_GATED_SYNC.md.
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -832,6 +862,7 @@ def compute_dps(
         caster_lethality=caster_lethality,
         ult_casts_per_sec=ult_casts_per_sec,
         target_current_hp_pct=target_current_hp_pct,
+        is_melee=float((champ.get("stats") or {}).get("attackrange", 0) or 0) < MELEE_RANGE_CEILING,
     )
 
     # Phase 4 batch 34 (2026-05-04): magic-only target-debuff amp.
@@ -846,6 +877,7 @@ def compute_dps(
             stats_for_rotation, rotations_by_phase[p], target_armor_eff, target_mr_eff,
             mode_mult, crit_bonus, item_effects, call_ctx, damage_amp,
             magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
+            apply_melee_aa_gate=apply_melee_aa_gate,
         )
         for p in PHASES
     }
@@ -873,6 +905,7 @@ def compute_dps(
     per_attack_on_hit_damage = _per_attack_proc_damage(
         item_effects, target_armor_eff, target_mr_eff, mode_mult,
         call_ctx, magic_amp=magic_amp, damage_amp=damage_amp,
+        apply_melee_aa_gate=apply_melee_aa_gate,
     )
     # Phase 5.7 (s189, 2026-05-13): Spellblade per-proc damage. Returned
     # to burst.py separately from per_attack_on_hit_damage because

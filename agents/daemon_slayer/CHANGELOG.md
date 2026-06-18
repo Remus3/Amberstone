@@ -1331,6 +1331,19 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.141.0 (B1 melee-applicability gate - DS Tier-2 cross-eval nomination B, default-OFF. dps.py /
+hybrid.py carried NO attack-range gate, so Runaan's Hurricane's two extra bolts - a RANGED-basic-only
+on-hit - were credited on melee autos (mis-valuing Runaan's on Briar / XinZhao / Nilah, who win on
+bruiser items not the Runaan's / crit-AS template; evidence ops/audit/ds_cross_eval/TIER2_REPORT.md).
+NEW PeriodicProc.ranged_only flag (set on Runaan's 3085 + Arena 223085 Wind's Fury) + CallContext.is_melee
+(engine-derived in compute_dps from the champion record attackrange < new MELEE_RANGE_CEILING=350) +
+apply_melee_aa_gate kwarg threaded compute_dps -> _phase_weighted_dps -> _rotation_attack_dps ->
+_periodic_proc_dps, plus _per_attack_proc_damage (burst) and compute_hybrid. When the gate is ON and the
+wielder is melee, a ranged_only proc contributes 0; default-OFF is byte-identical (the flag is never read,
+is_melee is set but unused). Ranged champions are unaffected even with the seam on. +9 difference-of-
+differences tests. Live rank.py / server.py flip stays validation-gated -> docs/LIVE_GAME_GATED_SYNC.md.
+The B2 kit-agnostic AD-axis residual (Ezreal Muramana / TF caster-ADC) is a SEPARATE future slice.)
+
 1.140.0 (DSP5/6/7 live-context CONSUMERS - the three DSP substrate seams shipped registries
 (summoners.py 1.131.0 / enemy_runes.py 1.132.0 / the ally-grant overrides 1.133.0) but NO scorer
 consumed them, so a flag-flip did nothing. NEW dsp_live_consumers.py adds the consumer layer: three

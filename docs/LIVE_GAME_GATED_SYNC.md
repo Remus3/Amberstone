@@ -200,6 +200,18 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
       deliberately NOT tabled. Re-anchor `agents/daemon_slayer/survivability_item_credit_tank.json` from
       a fresh rewind+DSP10 run each patch (`ops/audit/ds_perm_swarm/build_survivability_item_credit_tank.py`).
       Needs a DS `:8893` restart on flip.
+- [ ] B1 melee-applicability flip (seam shipped default-OFF, ENGINE 1.141.0): no live scorer passes
+      `compute_dps(..., apply_melee_aa_gate=True)` / `compute_hybrid(..., apply_melee_aa_gate=True)` yet
+      (defaults False -> byte-identical). The flip WIRES the DPS / hybrid scorer-dispatch
+      (`agents/daemon_slayer/server.py` the `compute_dps` + `compute_hybrid` call sites, and/or the
+      `core/daemon_slayer_client` wrappers) to pass `apply_melee_aa_gate=True` so a MELEE champion
+      (attackrange < `dps.MELEE_RANGE_CEILING` = 350) is no longer credited Runaan's Hurricane's two extra
+      bolts (a ranged-basic-only on-hit). Evidence: `ops/audit/ds_cross_eval/TIER2_REPORT.md` (B1) - melee
+      winners (Briar / XinZhao win on Sundered Sky / Death's Dance, never the mis-credited Runaan's / crit-AS
+      template). Eyeball in a real game that a melee bruiser's ranked build drops Runaan's (saner not
+      different) AND a ranged carry (Caitlyn / Senna / Xayah) is byte-identical. The B2 kit-agnostic AD-axis
+      residual (Ezreal Muramana / TF caster-ADC) is a SEPARATE future slice, NOT this flip. Needs a DS
+      `:8893` restart on flip.
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).
