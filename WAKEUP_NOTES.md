@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-06-18 (PM) - headless: nightly CI green (deps + Linux-portability) + section-4b flip-gate evidence
+
+Direct /headless-upgrade run (the gemini loop I launched this AM self-stopped NO_WORK x2, so
+operator-direct, not a director cycle). Commits `e33892c3` + `ee9c6b1c`.
+
+- **P0 RED nightly-full-suite FIXED end-to-end.** The schedule-only nightly ran the whole tree
+  on the pure-Python `check` job's minimal deps -> 7 collection ImportErrors (websockets /
+  portalocker / PIL / json5). `e33892c3`: nightly `pip install -r requirements.txt` + declared
+  the 2 undeclared prod deps (websockets==16.0, json5==0.14.0) + `workflow_dispatch`. Dispatch
+  -> 15642 pass / 4 fail / 10 err (collection fixed). `ee9c6b1c` cleared the 14 Linux-portability
+  residual: loop_controller config-load guard (CFG={} when the hardcoded C:\ path is absent; 10
+  errors), ddragon _safe_basename + ntpath (1), prune junction skipif win32 (1), 2 DS concurrency
+  _post transient-reset retries (2). **Nightly re-dispatch run 27769336101 (HEAD ee9c6b1c) =
+  SUCCESS: 15655 passed / 50 skipped / 0 failed / 0 errors.**
+- **P1 section-4b flip-gate evidence (offline, rewind_history.db replay):** ran all 3 replay
+  flip-gates; NONE flip-ready -> Haiku stays the floor on all. Lane A laning ~50% (engine
+  52-53%, table loses it); Lane B build-order +3.3% [-2.3,+9.0] (anti_tank carriers ~+9%, MOST
+  PROMISING); pickban ~46-49% (no signal). NEXT lever = Lane B build-order anti_tank ordering.
+  Artifacts ops/runtime/{laning_verdict,pickban}_validation.json.
+- **P2 cost sweep CLEAN:** no sub-500ms net poll; cache_control present on all 14 coach callers.
+- **Left for operator:** ops/loop/config.json + director_prompt.md modified (your pre-run loop
+  tuning) - NOT committed; review/commit/discard next session.
+
+---
+
 # 2026-06-18 - Aggregator H R1 lift: win-rate-by-game-length Build Insights tab
 
 Gemini DIRECTOR REFILL cycle (round-2 RF queue drained -> director synthesized R1: a
@@ -50,17 +75,3 @@ per-champ `ops/audit/ds_perm_swarm/live_flip_eyeball.py` OFF-vs-ON re-rank + das
 NEXT: (1) fix RuneWriter re-arm bug. (2) tabled half still un-validated for RF1/RF2/RF3+RF6/DSP3 +
 DSP11-manamune - needs one of those champs to roll (RF1 bruiser / Rakan / KSante|Rell / Cluster-A /
 Ezreal|Corki). Full detail in `docs/LIVE_GAME_GATED_SYNC.md` LGS2 ledger entry.
-
----
-
-# 2026-06-17 - verify + fix Antigravity repo-audit batch; ratify D5 frozen extraction (operator-directed)
-
-Antigravity implemented the `repo-audit.md` D-items; operator asked to verify + fix + flip gated items. Commits `a13d7496` (38 files) + `d16200b3` (ci.yml, separate workflow-scope push). Both pushed, CI green, RC redeployed pid 9012.
-
-- **CI-breaker FIXED:** Antigravity put `BLE001` in `ruff.toml` select with NO baseline -> `ruff check .` 1137 errors -> CI red. Reverted that line (ratchet deferred to a `--add-noqa` pass).
-- **Hot-path FIXED:** D4 narrowed `snapshot_normalizer.py` catches to a 5-type tuple (dropped IndexError/ZeroDivisionError on live data). Back to `except Exception as exc:`, kept the new `_log.debug`.
-- **D9 completed:** token header was on 2/4 guarded endpoints; added to dev.js (/api/loop-control) + screen_read.js (/api/command).
-- **D12 reverted:** print->logger on interactive result CLIs (daemon_slayer/cli.py, config_validator.py, adaptation_hint_cli.py, aftergame_summary.py) hid stdout; restored result->print, kept status->logger.
-- **D5 RATIFIED:** frozen `app/_game_lifecycle.py` map extracted to `core/coach_registry.py`. Verified-good as-shipped: D2 D3 D6 D8 D10 D13 D14. Deleted 7 scratch `scripts/fix_*/patch_*.py`; kept install_hooks.py.
-
-NEXT (OPEN, do NOT re-pitch the reverted changes as bugs): **D1** Share de-dup NOT done (only a local pre-commit auto-sync hook; it re-stamps `Share/MANIFEST.md` every commit). **D4 ruff ratchet** + **D9 200/401 test** + **D11 assert->raise** deferred. Precompute scripts + vision_token.py kept print->logger (status, by choice). Memory [[feedback_verify_antigravity_audit_batch]].
