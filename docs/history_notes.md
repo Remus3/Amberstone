@@ -13,6 +13,19 @@
 
 ---
 
+# 2026-06-17 - RF6 ds-engine: ehp/tank survivability INJECT seam (headless gemini-loop cycle 6, round-2 refill)
+
+**Commit `700fa6a8`** (ENGINE 1.138.0 -> 1.139.0, DEFAULT-OFF). ORCHESTRATION_PLAN RF6, the last OPEN round-2 row.
+
+- **Problem:** RF4 found RF3's ehp/tank survivability FLOAT is a no-op for Rell - its sole tabled winner Fimbulwinter 3121 is NOT in Rell's candidate pool, so there is nothing to float.
+- **Root-cause (probe-confirmed, NOT the directive's assumed "mana-item gate"):** 3121 is dropped by `_is_purchasable` - `gold.purchasable=False` because it is the non-purchasable mana-line TRANSFORM of Winter's Approach 3119 (terminal+ARAM-legal; the off-class marksman deny is marksman-only, Rell is a tank). Probe: 3121 NOT in Rell pool OFF (124 items); RF3 float ON surfaced `[]`.
+- **Deviation logged (feedback_audit_proposals_are_intent):** the directive's literal "mirror RF2's `only_ids |= surv_ids`" is INSUFFICIENT - RF2's hps inject ALSO silently drops 3121 for Rakan (the union still runs through `_is_purchasable`). Implemented the INTENT via a NEW `inject_ids` force-admit param on `rank._filter_candidates` (bypasses only_ids/exclude_names/`_is_purchasable`; still honors current/non-coachable/mode-legality/terminal/budget; `None` default byte-identical for all 7 callers). `ehp.rank_items_by_ehp` passes `inject_ids=surv_ids` only when the RF3 seam is ON.
+- **Scope:** ehp lane only; hps (RF2, DONE) left byte-identical. FUTURE: the same purchasable-gate gap exists for Rakan's hps 3121 - the `inject_ids` mechanism now exists to fix it (logged LIVE_GAME_GATED_SYNC.md RF6 ledger).
+- **Verify:** DS :8893 bounced (PID 14148 -> /health 1.139.0); ds_share_sync 362 --check in sync; DS+Share CHANGELOG. +12 TDD (`test_survivability_item_credit_rf6.py`). DS 7324 / RC 8333, ruff+py_compile clean, no frozen files.
+- **NEXT:** round-2 refill queue (RF1-RF6) DRAINED -> expect director NO_WORK or new refill.
+
+---
+
 # 2026-06-17 - RF5 test-hygiene: hermeticity sibling sweep (headless gemini-loop cycle 5, round-2 refill)
 
 - Executor cycle 5 of the round-2-refill swarm (`ops/loop`, gemini director). Directive = RF5 (test-hermeticity sibling sweep). Tier-1 test-hygiene work commit `e0f3da12` + this docs closeout; NO ENGINE bump / DS restart / Share sync / frozen / RC restart / backfill.
