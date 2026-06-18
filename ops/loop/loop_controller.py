@@ -18,10 +18,18 @@ from pathlib import Path
 
 _CFG_ARG = (sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].endswith(".json")
             else r"C:\Riot Commander\ops\loop\config.json")
-CFG = json.loads(Path(_CFG_ARG).read_text(encoding="utf-8"))
-ROOT = Path(CFG["repo_root"])
-CTL = Path(CFG["control_dir"]); CTL.mkdir(parents=True, exist_ok=True)
-DRY = bool(CFG["dry_run"])
+try:
+    CFG = json.loads(Path(_CFG_ARG).read_text(encoding="utf-8"))
+except (FileNotFoundError, OSError):
+    # Import-only fallback: a clean / non-Legion checkout (e.g. the Linux CI
+    # nightly) has no config.json, and the pure helpers under unit test never
+    # read CFG. A live launch always passes a real --config path, so production
+    # never reaches this branch.
+    CFG = {}
+ROOT = Path(CFG.get("repo_root", Path(__file__).resolve().parents[2]))
+CTL = Path(CFG.get("control_dir", Path(__file__).resolve().parent / "control"))
+CTL.mkdir(parents=True, exist_ok=True)
+DRY = bool(CFG.get("dry_run", False))
 GEMINI_USD = 0.0  # cumulative estimated Gemini spend - THIS is the capped budget (not Claude)
 
 def log(m):

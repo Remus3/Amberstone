@@ -9,6 +9,8 @@ archives) are explicitly out of scope.
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.ddragon_mirror_refresh import prune_stale_versions
@@ -58,6 +60,9 @@ def test_prune_missing_web_dir_is_noop(tmp_path):
     assert prune_stale_versions("16.12.1", retain=2, web_dir=tmp_path / "absent") == []
 
 
+@pytest.mark.skipif(sys.platform != "win32",
+                    reason="Windows junction / reparse-point prune semantics; "
+                           "POSIX symlinks differ and RC runs only on Windows")
 def test_prune_unlinks_stale_junction_without_touching_target(tmp_path):
     # Live mirror had 16.9.1 as a Windows junction -> 16.8.1; rmtree refuses
     # reparse points. Prune must unlink the link entry itself and leave the
