@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-06-17 - grounded /repo-insights report generator (operator-directed)
+
+Operator ran `/insights`, then asked to validate its 3 "On the Horizon" suggestions and build a grounded repo-insights variant that reads the codebase instead of transcripts. Commit `c0d7876b` (pushed).
+
+- **All 3 /insights suggestions = INVALID (already shipped) -> adjudicated docs-only, ZERO code.** (1) Anti-hallucination loop guard = `.claude/agents/verifier.md` + `tools/truth_gate.py` + ORCHESTRATION_PLAN "verifier-gate each slice". (2) Stale-premise sweeper = the director's per-cycle verify-before-redo + DRAINED queue (68 DONE / 0 OPEN). (3) Live-render sentinel = `tests/test_active_match_live_fixes.py` (null-items fixture) + `test_active_match_view.py` (coach.action + stale-map). Root cause: `/insights` reads transcripts, not the repo, so it re-pitches the very fixes that resolved its flagged friction.
+- **NEW `tools/repo_insights.py`:** grounded variant - git window + LEDGER + ORCHESTRATION_PLAN + ROADMAP + ENGINE_VERSION + DS patch -> the Claude-Code-Insights HTML layout + sidecar `.json`. Horizon = the REAL EXCLUDED gated rows, not invented suggestions. Local `/repo-insights` command (`--days N`; `.claude/` gitignored so command is local-only like all RC commands). +8 hermetic smoke tests.
+- First report: `~/.claude/usage-data/repo-insights-2026-06-17.html` (1475 commits / 163 ledger items / 68 DONE 0 OPEN, 30d).
+
+GATE: ruff + ASCII + hygiene trio (smart-quote/mojibake/u2500) + 8 smoke = 20 passed. Tier-1 tooling, no engine/DS/Share/frozen/RC-restart touch.
+
+NEXT: mold the look later via `CSS`/`PALETTE` + `# SECTION:` blocks in `repo_insights.py`. Do NOT rebuild - all 3 /insights horizon items are confirmed already-shipped (memory [[reference_repo_insights_tool]]).
+
+---
+
 # 2026-06-17 - live-session prep batch (operator-directed; eyeball harness + DSP5/6/7 consumers + anti-tank P3.2 producer)
 
 Operator asked to bundle-plan the live-game-gated open items for the next session, then (AskUserQuestion) to build all 4 prep items. Shipped 5 commits (`c0c46410` `b09c100d` `0357defb` `ce33870a` + LEDGER 488); ENGINE 1.139.0 -> 1.140.0.
@@ -29,15 +43,3 @@ NEXT (live session, all still DEFAULT-OFF, do-not-flip-blind): run the eyeball h
 - **Scope:** ehp lane only; hps (RF2, DONE) left byte-identical. FUTURE: the same purchasable-gate gap exists for Rakan's hps 3121 - the `inject_ids` mechanism now exists to fix it (logged LIVE_GAME_GATED_SYNC.md RF6 ledger).
 - **Verify:** DS :8893 bounced (PID 14148 -> /health 1.139.0); ds_share_sync 362 --check in sync; DS+Share CHANGELOG. +12 TDD (`test_survivability_item_credit_rf6.py`). DS 7324 / RC 8333, ruff+py_compile clean, no frozen files.
 - **NEXT:** round-2 refill queue (RF1-RF6) DRAINED -> expect director NO_WORK or new refill.
-
----
-
-# 2026-06-17 - RF5 test-hygiene: hermeticity sibling sweep (headless gemini-loop cycle 5, round-2 refill)
-
-- Executor cycle 5 of the round-2-refill swarm (`ops/loop`, gemini director). Directive = RF5 (test-hermeticity sibling sweep). Tier-1 test-hygiene work commit `e0f3da12` + this docs closeout; NO ENGINE bump / DS restart / Share sync / frozen / RC restart / backfill.
-- GROUND-TRUTH SWEEP: a before/after snapshot of 18 prod write-target artifacts (controller.log + 5 shadow jsonls + coach_trace + ds_calibration + decisions_* + lessons_*/bridge_monitor + post_game configs) across the FULL RC (8329) + DS (7312) suites = NO DELTA - the suite has NO active polluter. The authors already stub `coach_trace.append`, monkeypatch `decision_detector._HEARTBEAT_PATH` to tmp, and pass explicit `path=` to the shadow + DS writers.
-- DIRECT vector clean: 0 repo-root-anchored (`parent.parent`/`PROJECT_ROOT`/`__file__`) writes in either test dir; the 3 prod-token direct candidates all tmp-rooted (test_metrics_cache TemporaryDirectory / test_p2w4_hw2_a _seed(tmp_path) / test_loop_status_route CONTROLLER_LOG monkeypatched).
-- INDIRECT vector = the only gap: `coach_trace.append()` + `ds_calibration.log_ds_run()` HARDCODE a module-global prod path with NO `path` param, so a caller has no tmp seam = latent polluters.
-- SHIPPED (mirror SHADOW_PATH net / item 386 + OPEN2 CTL redirect): conftest autouse `redirect_prod_write_paths_to_tmp` -> `_TRACE_FILE` + `_LOG_PATH` redirected to an ISOLATED `tmp_path_factory.mktemp` dir (NOT the test's tmp_path - an initial `tmp_path/"prodwrite"` subdir leaked into the cache-prune tests' `iterdir()` and broke test_ddragon_mirror_prune x2 + test_meta_build_cache_retention; the full-suite gate caught it -> fixed via tmp_path_factory) + the directive-mandated session-scoped `assert_prod_artifacts_unchanged` regression guard (12 coaching/loop/game-only artifacts; health.json/logs/lessons_*/bridge_monitor excluded so it cannot flake on the live daemon). ds_coach_shadow left alone (already hermetic via explicit path=; redirecting would break test_shadow_path_default).
-- TDD +4 `tests/test_hermeticity_prod_writes.py` (RED-first: both globals under prod data/ = 2 failed -> GREEN: off-prod + no-path writers land in tmp, prod byte-unchanged). GATE: RC `tests/ --ignore=tests/daemon_slayer` 8333 passed / 2 skip / 109 subtests exit 0 (+4 vs 8329 RF4 baseline, 0 regress); DS-dir untouched (separate conftest scope, 7312 stands); ruff clean; py_compile OK; ASCII clean; doc hygiene 14 passed; ROADMAP 80556B under budget. INLINE sole orchestrator (R9 + clean-sweep clause); verifier SKIPPED per R7 (the before/after NO-DELTA snapshot + RED->GREEN IS the verify). No frozen files. ORCHESTRATION_PLAN RF5 OPEN->DONE; LEDGER 486; ROADMAP swarm sync.
-- NEXT: RF6 (RF4-surfaced ehp INJECT seam for Rell Fimbulwinter, not-pooled) - last OPEN row. Tracker `docs/ORCHESTRATION_PLAN.md`.
