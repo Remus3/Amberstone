@@ -120,6 +120,40 @@ def _match_exists(conn: sqlite3.Connection, match_id: str) -> bool:
     return cur.fetchone() is not None
 
 
+_LANE_END_S = 900  # 15:00 - standard laning-phase boundary (aggregator G lane-vs-full split)
+
+
+def _wpa_totals(events: list, lane_end_s: int = _LANE_END_S) -> dict:
+    """Lane-phase vs full-game WPA totals (aggregator G lane-vs-full lift).
+
+    Pure sum over the per-event ``wpa`` already in the response - no new data
+    source. ``net_wpa`` is the signed swing (the +/-), ``abs_wpa`` the total
+    magnitude of swing, ``lane_share`` the fraction of total magnitude that
+    landed at or before the laning-phase boundary. Events with a non-numeric
+    or absent ``wpa`` are skipped; an absent ``game_time`` counts as lane.
+    """
+    lane_net = lane_abs = full_net = full_abs = 0.0
+    lane_n = full_n = 0
+    for ev in events:
+        w = ev.get("wpa")
+        if not isinstance(w, (int, float)) or isinstance(w, bool):
+            continue
+        full_n += 1
+        full_net += w
+        full_abs += abs(w)
+        if (ev.get("game_time") or 0) <= lane_end_s:
+            lane_n += 1
+            lane_net += w
+            lane_abs += abs(w)
+    lane_share = (lane_abs / full_abs) if full_abs else 0.0
+    return {
+        "lane_end_s": lane_end_s,
+        "lane": {"events": lane_n, "net_wpa": round(lane_net, 4), "abs_wpa": round(lane_abs, 4)},
+        "full": {"events": full_n, "net_wpa": round(full_net, 4), "abs_wpa": round(full_abs, 4)},
+        "lane_share": round(lane_share, 4),
+    }
+
+
 def _serve_post_game_wpa(h) -> None:
     """GET /api/post-game-wpa?match_id=<id>"""
     try:
@@ -168,6 +202,7 @@ def _serve_post_game_wpa(h) -> None:
             body["match_id"] = match_id
             body["model"] = "trained" if model is not None else "fallback"
             body["model_version"] = WPA_MODEL_VERSION
+            body["totals"] = _wpa_totals(body.get("events", []))
             body["elapsed_ms"] = int((time.time() - t0) * 1000)
             body["cached"] = False
             h._send(200, json.dumps(body).encode("utf-8"), "application/json")
@@ -176,6 +211,7 @@ def _serve_post_game_wpa(h) -> None:
         payload = dict(body)
         payload["model"] = "trained" if model is not None else "fallback"
         payload["model_version"] = WPA_MODEL_VERSION
+        payload["totals"] = _wpa_totals(payload.get("events", []))
         # Cache the enriched payload (model fields included) so a cached
         # hit serves the same shape as a fresh response; only the
         # per-request fields (elapsed_ms / cached) are recomputed.
