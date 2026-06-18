@@ -31,6 +31,7 @@
  */
 import { ITEMS, CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 import { renderDurationWinrate } from './duration_winrate.js';
+import { renderPerfCurve } from './perf_curve.js';
 
 const ITEM_MOUNT_ID = 'bi-table-mount';
 const SKILL_MOUNT_ID = 'bi-skill-table-mount';
@@ -408,6 +409,7 @@ function _ensureFetched(tab) {
 // flows through the shared table engine.
 function _renderActive() {
   if (_ST.active === 'duration') { renderDurationWinrate(); return; }
+  if (_ST.active === 'flow') { renderPerfCurve(); return; }
   _ensureFetched(_tabByKey(_ST.active));
 }
 
