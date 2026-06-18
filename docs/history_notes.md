@@ -13,6 +13,20 @@
 
 ---
 
+# 2026-06-17 - grounded /repo-insights report generator (operator-directed)
+
+Operator ran `/insights`, then asked to validate its 3 "On the Horizon" suggestions and build a grounded repo-insights variant that reads the codebase instead of transcripts. Commit `c0d7876b` (pushed).
+
+- **All 3 /insights suggestions = INVALID (already shipped) -> adjudicated docs-only, ZERO code.** (1) Anti-hallucination loop guard = `.claude/agents/verifier.md` + `tools/truth_gate.py` + ORCHESTRATION_PLAN "verifier-gate each slice". (2) Stale-premise sweeper = the director's per-cycle verify-before-redo + DRAINED queue (68 DONE / 0 OPEN). (3) Live-render sentinel = `tests/test_active_match_live_fixes.py` (null-items fixture) + `test_active_match_view.py` (coach.action + stale-map). Root cause: `/insights` reads transcripts, not the repo, so it re-pitches the very fixes that resolved its flagged friction.
+- **NEW `tools/repo_insights.py`:** grounded variant - git window + LEDGER + ORCHESTRATION_PLAN + ROADMAP + ENGINE_VERSION + DS patch -> the Claude-Code-Insights HTML layout + sidecar `.json`. Horizon = the REAL EXCLUDED gated rows, not invented suggestions. Local `/repo-insights` command (`--days N`; `.claude/` gitignored so command is local-only like all RC commands). +8 hermetic smoke tests.
+- First report: `~/.claude/usage-data/repo-insights-2026-06-17.html` (1475 commits / 163 ledger items / 68 DONE 0 OPEN, 30d).
+
+GATE: ruff + ASCII + hygiene trio (smart-quote/mojibake/u2500) + 8 smoke = 20 passed. Tier-1 tooling, no engine/DS/Share/frozen/RC-restart touch.
+
+NEXT: mold the look later via `CSS`/`PALETTE` + `# SECTION:` blocks in `repo_insights.py`. Do NOT rebuild - all 3 /insights horizon items are confirmed already-shipped (memory [[reference_repo_insights_tool]]).
+
+---
+
 # 2026-06-17 - live-session prep batch (operator-directed; eyeball harness + DSP5/6/7 consumers + anti-tank P3.2 producer)
 
 Operator asked to bundle-plan the live-game-gated open items for the next session, then (AskUserQuestion) to build all 4 prep items. Shipped 5 commits (`c0c46410` `b09c100d` `0357defb` `ce33870a` + LEDGER 488); ENGINE 1.139.0 -> 1.140.0.
