@@ -149,6 +149,39 @@ triage NOW/FUTURE/CLOSED only. Director picks ONE top-down.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-18 HEADLESS-DIRECT (direct /headless-upgrade run; gemini loop self-stopped
+  NO_WORK x2 this AM, so this is operator-direct not director-driven) DONE. Three slices.
+  (P0) CI fix `e33892c3`: the schedule-only nightly-full-suite job ran the whole tree
+  (pytest tests/ agents/daemon_slayer/tests/) but copy-pasted the pure-Python `check` job's
+  minimal-deps install, so collection ImportError'd - websockets x3, portalocker x2, PIL x1,
+  json5 x1 (exit 2, run 27750548487 @09:37 UTC schedule). Fix: nightly now
+  `pip install -r requirements.txt` + test runner (Legion collect-only = 15705 tests / 0 err
+  with deps present, proving deps were the only gap); declared the 2 real-but-undeclared prod
+  deps (websockets==16.0 = agents/agent2_backend/ws_server.py + core/obs_publisher.py;
+  json5==0.14.0 = tools/daemon_slayer_extract.py); added workflow_dispatch for on-demand
+  verify. push `check` 27767581918 GREEN; nightly dispatch 27767592953 verifying.
+  (P1) Section-4b Haiku-elimination flip-gate snapshot - offline vs data/rewind_history.db
+  replay ground truth (400-651 matches); ran all 3 existing replay flip-gates to measure
+  whether any HZ-* precompute is ready to retire its live Haiku call:
+    - Lane A laning-verdict (replay_laning_verdict_validate, patch 16.12.1, 1998 pairs,
+      coverage 3978/3996): ~50% agreement every level + both proxies (Wilson straddles 50) =
+      NO signal. Engine fn compute_matchup tops ~52-53% solo-kill / ~55-56% TOP-role; the
+      SHIPPED table loses even that (table-build/baseline-cell degradation). HOLD on Haiku.
+    - Lane B build-order lean (replay_build_order_validate): followed-vs-not diff +3.3%
+      [-2.3,+9.0], flip_ready=False but DIRECTIONALLY positive - anti_tank carriers (Void
+      Staff / Black Cleaver / Lord Dominik's) ~+9% each, anti_squishy followed 58.2% vs not
+      48.3%. MOST PROMISING lever; HOLD (CI includes 0), rank as next Lane B target.
+    - Pickban (replay_pickban_validate, 651 matches): gold 46.1% [41.5,50.7] / trade 49.3%
+      [42.4,56.1], clears_coinflip=False = NO signal. Keep secondary hint; HOLD champ-select.
+    DECISION: no surface flip-ready -> Haiku stays interim floor on ALL three (validate-
+    before-flip, charter 4b; reinforces the EXCLUDED-list HZ rule above). NEXT lever ranked =
+    Lane B build-order anti_tank carrier ordering (strongest signal); Lane A blocked on the
+    engine-model ceiling (TOP lane ~55-56% is closest). Artifacts:
+    ops/runtime/{laning_verdict_validation,pickban_validation}.json.
+  (P2) Section-4 cost/latency 7-lever sweep CLEAN (no commit): no sub-500ms network poll
+  (only UI-local setInterval(applyStaleness,500)); cache_control present across all 14 coach
+  messages.create callers; haiku held as interim floor per P1; no net-positive fix surfaced.
+
 - 2026-06-18 R1-regress-fix (cycle 2, REGRESS-fix) DONE - the auditor flagged R1 as
   REGRESS: dashboard/routes_duration_winrate.py shipped with NO route test (only
   core/duration_winrate.py was covered by tests/test_duration_winrate.py). Added
