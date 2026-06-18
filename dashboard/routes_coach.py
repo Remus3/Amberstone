@@ -11,6 +11,7 @@ response via `h._send(code, body, ctype)`. Module-level GET_ROUTES is
 consumed by `dashboard._dispatch`.
 """
 import json
+from dashboard._errors import send_error
 import logging
 from urllib.parse import parse_qs, urlparse
 
@@ -45,8 +46,7 @@ def _serve_cost(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/cost: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_coach_trace(h) -> None:
@@ -59,8 +59,7 @@ def _serve_coach_trace(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/coach/trace: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_replay_matches(h) -> None:
@@ -75,8 +74,7 @@ def _serve_replay_matches(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/replay/matches: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_replay_match(h) -> None:
@@ -97,8 +95,7 @@ def _serve_replay_match(h) -> None:
         h._send(200, json.dumps(d).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/replay/match: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_spend_gates(h) -> None:
@@ -112,8 +109,7 @@ def _serve_spend_gates(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/spend/gates: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_coach_state(h) -> None:
@@ -128,8 +124,7 @@ def _serve_coach_state(h) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/coach/state: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 # -- POST handlers (slice 2C-7c) --------------------------------------
@@ -149,8 +144,7 @@ def _serve_speak_post(h, payload) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/speak: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_champ_select_coach_post(h, payload) -> None:
@@ -167,8 +161,7 @@ def _serve_champ_select_coach_post(h, payload) -> None:
         h._send(200, json.dumps(result).encode(), "application/json")
     except Exception as exc:
         log.warning("api/champ-select-coach: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_aram_comp_verdict_post(h, payload) -> None:
@@ -183,8 +176,7 @@ def _serve_aram_comp_verdict_post(h, payload) -> None:
         h._send(200, json.dumps(verdict).encode(), "application/json")
     except Exception as exc:
         log.warning("api/aram-comp-verdict: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_coach_toggle_post(h, payload) -> None:
@@ -204,8 +196,7 @@ def _serve_coach_toggle_post(h, payload) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("api/coach/toggle: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 # -- route table ------------------------------------------------------

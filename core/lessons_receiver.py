@@ -49,6 +49,7 @@ DECISION_TO_STATUS = {
     "discarded": "discarded",
 }
 
+# Transport auth is delegated to Tailscale WireGuard; optional cert-pin later.
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE

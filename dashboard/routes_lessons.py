@@ -12,6 +12,7 @@ without spawning a subprocess.
 from __future__ import annotations
 
 import json
+from dashboard._errors import send_error
 import logging
 import time
 from urllib.parse import parse_qs, urlparse
@@ -40,8 +41,7 @@ def _serve_lessons_status(h) -> None:
         h._send(200, json.dumps(payload).encode(), "application/json")
     except Exception as exc:
         log.warning("lessons/status failed: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 GET_ROUTES = [

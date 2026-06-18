@@ -70,6 +70,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dashboard._errors import send_error
 import logging
 import threading
 import time
@@ -520,8 +521,7 @@ def _serve_spike_curve(h) -> None:
     except Exception as exc:
         log.warning("api/spike-curve: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode(),
-                    "application/json")
+            send_error(h, exc)
         except Exception:
             pass
 

@@ -13,6 +13,7 @@ helper-shake).
 outside this handler reads it.
 """
 import json
+from dashboard._errors import send_error
 import logging
 import time
 from urllib.parse import parse_qs, urlparse
@@ -141,8 +142,7 @@ def _serve_bridge_inbox(h, payload) -> None:
                 "application/json")
     except Exception as exc:
         log.warning("bridge inbox failed: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_bridge_status(h) -> None:
@@ -151,8 +151,7 @@ def _serve_bridge_status(h) -> None:
         h._send(200, json.dumps(_bridge.status_summary()).encode("utf-8"),
                 "application/json")
     except Exception as exc:
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 # -- route table ------------------------------------------------------

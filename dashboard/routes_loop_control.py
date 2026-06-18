@@ -30,6 +30,7 @@ Response (HTTP 200 on a handled action; 400 on a bad / missing / empty action;
 from __future__ import annotations
 
 import json
+from dashboard._errors import send_error
 import logging
 import os
 from pathlib import Path
@@ -107,8 +108,7 @@ def _serve_loop_control(h, body) -> None:
     except Exception as exc:  # noqa: BLE001 - last-resort guard, never 500 the server
         log.warning("api/loop-control: %s", exc)
         try:
-            h._send(500, json.dumps({"ok": False, "error": str(exc)[:200]}).encode("utf-8"),
-                    "application/json")
+            send_error(h, exc)
         except Exception:
             pass
 

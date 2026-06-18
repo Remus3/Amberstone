@@ -9,6 +9,7 @@ Module-level GET_ROUTES is consumed by `dashboard._dispatch`.
 """
 import hashlib
 import json
+from dashboard._errors import send_error
 import logging
 import os
 import threading
@@ -350,8 +351,7 @@ def _serve_health_all(h) -> None:
         h._send(200, json.dumps(rollup).encode("utf-8"), "application/json")
     except Exception as exc:
         log.warning("api/health/all: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_ui_version(h) -> None:
@@ -729,8 +729,7 @@ def _serve_analyze_post(h, payload) -> None:
         h._send(200, body, ctype)
     except Exception as exc:
         log.warning("api/analyze: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_console_error_post(h, payload) -> None:
@@ -769,8 +768,7 @@ def _serve_console_error_post(h, payload) -> None:
         )
         h._send(200, b'{"ok":true}', "application/json")
     except Exception as exc:
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 def _serve_build_order_post(h, payload) -> None:
@@ -826,8 +824,7 @@ def _serve_build_order_post(h, payload) -> None:
         h._send(200, json.dumps(out).encode(), "application/json")
     except Exception as exc:
         log.warning("build-order: %s", exc)
-        h._send(500, json.dumps({"error": str(exc)[:200]}).encode(),
-                "application/json")
+        send_error(h, exc)
 
 
 # -- route table ------------------------------------------------------
