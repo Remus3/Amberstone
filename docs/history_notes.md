@@ -13,6 +13,21 @@
 
 ---
 
+# 2026-06-17 - live-session prep batch (operator-directed; eyeball harness + DSP5/6/7 consumers + anti-tank P3.2 producer)
+
+Operator asked to bundle-plan the live-game-gated open items for the next session, then (AskUserQuestion) to build all 4 prep items. Shipped 5 commits (`c0c46410` `b09c100d` `0357defb` `ce33870a` + LEDGER 488); ENGINE 1.139.0 -> 1.140.0.
+
+- **Eyeball harness** `ops/audit/ds_perm_swarm/live_flip_eyeball.py`: OFF-vs-ON top-6 dump for the 9 flag-ready seams (DSV2/3/4, DSP2, DSP8, DSP11 dps+burst, RF1, RF2, RF3+RF6) - one diff/champ, no mid-game `:8893` restarts. Smoke matched every documented intent.
+- **DSP5/6/7 consumers** `agents/daemon_slayer/dsp_live_consumers.py` (ENGINE 1.140.0): the substrate seams had NO consumer; now `summoner_fight_adjustments` / `enemy_rune_threat` / `ally_protected_ehp` exist (byte-identical on empty context). DS :8893 restarted 1.140.0; Share 365.
+- **Anti-tank P3.2 producer** `antitank.compute_antitank_live` (Tier-1, no bump): resolves live AP/AD via `build_champion` -> `compute_antitank(stats=)`. ehp ally-resist half folded into DSP7.
+- **Plan** `docs/LIVE_GAME_GATED_SYNC.md` "Next-session play order": 34 gated boxes -> 3-game min (SR/ARAM/Arena).
+
+GATE: DS 7334 / RC 8333 / Share --check green; +15 TDD; ruff+ASCII clean. (7 RC reds on the first 12min run were a Share-sync/DS-restart SEQUENCING artifact - all green on fresh re-run; the RF2/RF6 LiveFresh lesson.)
+
+NEXT (live session, all still DEFAULT-OFF, do-not-flip-blind): run the eyeball harness + tick the seams; DSP5/6/7 + anti-tank now need only live-input plumb + eyeball (NOT consumer-building); HZ Lane-A/B + st-* + brief-flip need a corpus (>1 game). Do NOT rebuild the consumers - they shipped. DAEMON_SLAYER.md changelog had drifted to 1.129.0 (loop skipped it); bumped to 1.140.0 + a gap-bridge pointer (1.130-1.139 canonical entries are in Share/CHANGELOG + LEDGER 464-487) - do NOT backfill those 10 versions.
+
+---
+
 # 2026-06-17 - RF6 ds-engine: ehp/tank survivability INJECT seam (headless gemini-loop cycle 6, round-2 refill)
 
 **Commit `700fa6a8`** (ENGINE 1.138.0 -> 1.139.0, DEFAULT-OFF). ORCHESTRATION_PLAN RF6, the last OPEN round-2 row.
