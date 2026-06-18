@@ -11,10 +11,11 @@ on:
     branches: [main]
   schedule:
     - cron: '0 8 * * *'  # Nightly run
+  workflow_dispatch:       # manual trigger to verify the full suite on demand
 
 jobs:
   nightly-full-suite:
-    if: github.event_name == 'schedule'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -23,10 +24,14 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install minimal test deps
+      - name: Install full runtime + test deps
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0 playwright
+          # The full tree imports the runtime stack (websockets / PIL / portalocker
+          # / json5 / anthropic), so the nightly installs requirements.txt - unlike
+          # the pure-Python `check` job which runs a minimal ImportError-guarded subset.
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-timeout ruff playwright
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
       - name: Full Dual Suite
