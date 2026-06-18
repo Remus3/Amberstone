@@ -77,16 +77,16 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
       `agents/daemon_slayer/burst.py rank_items_by_burst(assume_takedown=/assume_squishy_target=/assume_ability_amp=True)`
       (assume_takedown + assume_ability_amp also gate `compute_burst_damage`); NOT `rank.py` - the dps/carry
       ranker `rank.py rank_items` carries only the DSP2/DSP11 seams. Confirm the re-ranked build is saner.
-- [ ] Anti-tank P3.2 live caster-stat producer + survivability-scorer validation (EXCLUDED item; needs a
-      live AbilitiesSnapshot / game; ORCH "live caster-stat producer for /anti-tank P3.2"). (1)
-      `agents/daemon_slayer/antitank.py effective_magnitude` applies an optional P3.2 (item 315)
-      `ap_ratio`/`ad_ratio` caster-stat scaling that stays dormant until a LIVE caster-stat producer feeds
-      the `stats` (champion AP/AD) object - confirm the scaled %max-HP anti-tank magnitudes match a real
-      game. (2) `agents/daemon_slayer/ehp.py compute_ehp(external_resist_armor=, external_resist_mr=)` (the
-      survivability axis) needs a LIVE ally producer feeding the teammate-conferred resist (Orianna E /
-      Braum W / Taric W via `_passive_ally_grant_overrides.ally_resist_grant`); the Anivia/Zac egg-resist
-      (`apply_egg_resist`) is already default-ON (item 321) and only needs live eyeball validation. This is a
-      missing LIVE INPUT producer + an eyeball check, NOT a seam-flag flip. No DS `:8893` restart.
+- [ ] Anti-tank P3.2 live caster-stat producer + survivability-scorer validation. (1) PRODUCER SHIPPED
+      2026-06-17 (`antitank.compute_antitank_live`): it resolves the champion's AP/AD from its live build
+      via `engine.build_champion` and feeds them to `compute_antitank(stats=)` so the P3.2 (item 315)
+      `ap_ratio`/`ad_ratio` rows scale (Gwen P/KogMaw W/Varus W/Malzahar R AP; Vi W/Camille W/Udyr Q AD).
+      Remaining live work: wire a survivability/draft surface to call `compute_antitank_live` with the live
+      build + confirm the scaled %max-HP magnitudes match a real game (the /anti-tank route still calls the
+      static `compute_antitank`, byte-identical). (2) The ehp ally-resist producer is now covered by DSP7's
+      `dsp_live_consumers.ally_protected_ehp` (folds Orianna E / Braum W / Taric W via `ally_resist_grant`
+      -> `external_resist_armor/mr`); the Anivia/Zac egg-resist (`apply_egg_resist`) is already default-ON
+      (item 321). This is a LIVE-INPUT wire + an eyeball check, NOT a seam-flag flip. No DS `:8893` restart.
 - [ ] DSP2 off-class WIN-exemption flip (default-OFF today): `rank.rank_items(exempt_offclass_by_win=True)`
       -> un-strips the items the caster-marksmen genuinely build (Ezreal/Corki/Smolder Trinity Force +
       Spear of Shojin, Senna Black Cleaver; `agents/daemon_slayer/marksman_offclass_exempt.json`). Flip ON
