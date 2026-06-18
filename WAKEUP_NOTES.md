@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-17 - live-game-gated sync: ARAM Mayhem validation pass (operator playing live)
+
+Operator played 6 ARAM Mayhem games while I ran the LIVE_GAME_GATED_SYNC checklist in sync. Docs-only
+session (no code/engine touch); commit captures sync-doc ledger + WAKEUP. Champs: Olaf, Sivir,
+Senna->Mundo, Lissandra, Vex->Quinn, Caitlyn. Tooling: a persistent champ-select catcher (Monitor
+polling lcu.phase, emits on ChampSelect-enter - ARAM CS is too fast for a from-ReadyCheck poll) +
+per-champ `ops/audit/ds_perm_swarm/live_flip_eyeball.py` OFF-vs-ON re-rank + dashboard screenshots.
+
+- **DSP11 kit-axis = LIVE-VALIDATED, FLIP-READY** (Senna lethality +Black Cleaver; Quinn crit
+  +IE/Collector/Statikk; Caitlyn non-tabled control = byte-identical). Seam correctly scoped. The
+  actual flip (wire scorer + DS :8893 restart) is still operator-gated - do NOT flip blind.
+- **Comp-verdict renders correctly** on SWAP + STAY branches; build-chooser/bench-swap/MAYHEM all
+  render live. VARIANT branch still unobserved.
+- **OPEN BUG - section A LCU push FAIL:** RuneWriter (`lcu/lcu_rune_writer.py`) pushes runes ONLY on
+  the first champ-select per RC session, silent after. Memory `reference_runewriter_dies_after_game1`.
+  Fix post-session (needs RC restart). NOT frozen.
+- **Low-conf flag:** comp-verdict Vex(AP)->Garen(AD) reasoning reads inverted; check `core/aram_comp_verdict.py`.
+
+NEXT: (1) fix RuneWriter re-arm bug. (2) tabled half still un-validated for RF1/RF2/RF3+RF6/DSP3 +
+DSP11-manamune - needs one of those champs to roll (RF1 bruiser / Rakan / KSante|Rell / Cluster-A /
+Ezreal|Corki). Full detail in `docs/LIVE_GAME_GATED_SYNC.md` LGS2 ledger entry.
+
+---
+
 # 2026-06-17 - verify + fix Antigravity repo-audit batch; ratify D5 frozen extraction (operator-directed)
 
 Antigravity implemented the `repo-audit.md` D-items; operator asked to verify + fix + flip gated items. Commits `a13d7496` (38 files) + `d16200b3` (ci.yml, separate workflow-scope push). Both pushed, CI green, RC redeployed pid 9012.

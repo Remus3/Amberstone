@@ -58,8 +58,10 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## A. Champ-select (any mode - enter a lobby + lock a champ)
 
-- [ ] LCU push: rune pages + item sets + summoner spells push to the live client on champ-select enter
+- [FAIL 2026-06-17] LCU push: rune pages + item sets + summoner spells push to the live client on champ-select enter
       (`lcu/lcu_rune_writer.py`; ROADMAP item 215/259/212). Verify the pushed page matches the DS pick.
+      LIVE FINDING (LGS2 ledger): RuneWriter pushes ONLY on the first champ-select per RC session, then
+      goes silent (no re-arm after "champ select ended" L451). Fix post-session, needs RC restart.
 - [ ] CS2 summoner-spell auto-push: client defaults to wrong spells (Flash+Heal/TP random); confirm RC
       pushes the intended set via `/lol-champ-select/v1/session/my-selection` (ORCH CS2, commit 29cd2788).
 - [ ] Champ-select brief Haiku -> deterministic flip: flip ONLY after shadow-log accrues on real
@@ -139,7 +141,7 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
       surfaces more lethality / armor-pen, vs a high-CC enchanter comp more magic pen, and a balanced /
       squishy comp matches the DSV3 squishy baseline. NO live default change is shipped by the loop
       (do-not-flip-blind). Needs a DS `:8893` restart on flip.
-- [ ] DSP11 kit-axis item-credit flip (seam shipped default-OFF, ENGINE 1.135.0): no live scorer
+- [LIVE-VALIDATED 2026-06-17 - FLIP-READY] DSP11 kit-axis item-credit flip (seam shipped default-OFF, ENGINE 1.135.0): no live scorer
       passes `rank_items(..., prefer_kit_axis_by_win=True)` or `rank_items_by_burst(...,
       prefer_kit_axis_by_win=True)` yet (defaults False -> byte-identical). The flip WIRES the dps
       (carry) + burst (assassin) scorer-dispatch (`core/daemon_slayer_client.rank_for_primary_archetype`
@@ -258,6 +260,37 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 ---
 
 ## Live-flip ledger (loop appends; newest first)
+
+- 2026-06-17 LGS2 LIVE PLAY (no ENGINE bump - validation session, zero code change): operator ran
+  6 ARAM Mayhem champ-selects (Olaf, Sivir, Senna->Mundo, Lissandra, Vex->Quinn, Caitlyn) under a
+  persistent champ-select catcher (poll lcu.phase, emit on ChampSelect-enter; ARAM CS is too fast
+  for a from-ReadyCheck poll) + per-champ `live_flip_eyeball.py` OFF-vs-ON re-rank.
+  RESULTS:
+  * DSP11 kit-axis = LIVE-VALIDATED both sub-cases + negative control -> FLIP-READY pending operator
+    decision + DS :8893 restart. Senna (lethality) ON surfaces +Black Cleaver; Quinn (crit) ON
+    surfaces +Infinity Edge(top)/The Collector/Statikk Shiv/Lord Dominik's; Caitlyn (the documented
+    non-tabled control) shows ZERO DSP11 movement (byte-identical). Seam correctly scoped.
+  * Comp-verdict (section C) renders correctly on SWAP (Senna->Lux HIGH, Lissandra->Hecarim MEDIUM,
+    Vex->Garen MEDIUM) AND STAY (Caitlyn STAY LOW). VARIANT branch still unobserved. Bench-swap UI +
+    build-chooser (3 variants + runes) + MAYHEM flag all render live; build reasons are comp-aware.
+  * DSP3 / RF1 / RF2 / RF3+RF6 = no-op on every champ played (none tabled for those seams) ->
+    byte-identical half re-confirmed; the TABLED half for RF1/RF2/RF3+RF6/DSP3 + the DSP11-manamune
+    sub-case still needs a tabled champ to roll (RF1 bruiser / Rakan / KSante|Rell / Cluster-A /
+    Ezreal|Corki).
+  * DSP8/DSV3/DSV4 move saner per champ (theoretical - burst path, not the live ranker for most picks).
+  OPEN FINDINGS:
+  * SECTION A LCU PUSH = FAIL. RuneWriter (`lcu/lcu_rune_writer.py`) wrote runes ONLY on the first
+    champ-select of the RC session (game1 Yuumi->Olaf 21:56); SILENT on every later champ-select
+    despite RC detecting them (cs_pick updated). No crash/traceback -> champ-select re-detection does
+    not re-arm after the first "champ select ended" (L451). Item-set + summoner-spell push share the
+    CS-enter path = same suspect. Fix is post-session (needs RC restart), NOT frozen. See memory
+    reference_runewriter_dies_after_game1.
+  * Comp-verdict SOUNDNESS flag (low-confidence): Vex(AP)->Garen(AD) cited "all-AD comp - mix damage
+    type", which reads inverted (swapping the only AP to AD removes the mix). Verify the ally-comp
+    logic in `core/aram_comp_verdict.py`.
+  CS2 spell push inconclusive (summoner_override=False every game; client default was already
+  Flash+Mark, nothing to force). CC-pair UI not observed (no CC-pairing scenario rolled). HZ Lane-A/B
+  accrued ~6 ARAM games to rewind_history.db (still HOLD - need corpus + rail clear).
 
 - 2026-06-17 DSP5/6/7 CONSUMERS (ENGINE 1.140.0): the three DSP substrate seams now have a
   consumer layer - NEW `agents/daemon_slayer/dsp_live_consumers.py` (`summoner_fight_adjustments`
