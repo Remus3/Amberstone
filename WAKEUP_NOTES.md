@@ -4,6 +4,43 @@
 
 ---
 
+# 2026-06-18 (PM3) - interactive headless: anomaly triage + 5-slice batch
+
+Operator dispatched the full open-items list interactively, chose "launch headless loop"
+(Claude-directed; the gemini loop is DOWN). Run 2026-06-18-02, HEAD af46008c -> 917cbb89.
+
+ANOMALIES (preflight, all handled):
+- DS :8893 was DOWN (no proc) -> restarted detached, healthy ENGINE 1.140.0 / 16.12.1 / 172 champs.
+- RC-GeminiAudit result=3 = EXTERNAL Gemini blip: gemini-3-pro-preview AND gemini-2.5-flash both
+  time out (exit 124); clean nightly thru 06/17, broke 06/18 03:04. Not locally fixable; gates the
+  2 "Gemini-consult-first" items. Needs a quota/billing check or self-resolves. RC-WeeklyHygiene
+  result=1 stale (06/14, next 06/21).
+
+SHIPPED (5 slices, all on main):
+- 8ccbaa9c test(D9): control-endpoint auth 200/401 unit test (handler shipped; was untested).
+- 307273f8 lift(R2): aggregator G lane-vs-full WPA totals on /api/post-game-wpa (was FUTURE in PM2).
+- 391191be feat(ci): CI Watchdog item 204 BUILT (auto-merge / cancel-on-newest-HEAD /
+  core.bridge.send escalation; 19 tests). NOT live-armed (an unattended auto-merger must not race
+  the run building it). ARM step in docs/CI_WATCHDOG_PLAN.md; operator's 3 Qs answered + pinned.
+- ae47d0eb docs(ds): Tier-2 report-first (ops/audit/ds_cross_eval/TIER2_REPORT.md). Shaco the only
+  clean ARAM-override CONFIRM (+26.9pp); B kit-aware-DPS strongest + actionable (B1 melee-gate
+  structurally confirmed - no range gate in dps.py/hybrid.py); F2 confirmed across 66 champs. No
+  engine change (gated on verifier + operator).
+- 917cbb89 feat(hz-b): engine-less --static build-order regen (precompute + variants); in-process
+  via server _POST_ROUTES, byte-identical to live (diff-verified). Patch regen no longer needs :8893.
+
+DEFERRED / NEXT:
+- S4 D11 assert->if-raise sweep: judgment-heavy (validation-vs-sanity across 405 asserts; DS asserts
+  Tier-2). Do fresh, not under headless context pressure.
+- Parked for live aram/sr games: HZ coach FLIP, DS default-ON flag-flips, Electron capture, DS
+  calibration, Cherry Arena-1750 verify.
+- Gemini-gated: P6 G3/G6/G7, per-champion full cross-eval (~170 agents).
+- B1 melee-gate = highest-value DS Tier-2 follow-on (gated on verifier + per-champion re-rank).
+- ops/loop/config.json + director_prompt.md STILL uncommitted (operator pre-run loop tuning; left
+  untouched PM2 + PM3).
+
+---
+
 # 2026-06-18 (PM2) - headless deep-research+lift: R2 competitor fan-out + Game Flow tab
 
 Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b17531e1`.
