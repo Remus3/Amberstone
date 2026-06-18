@@ -49,6 +49,7 @@ from __future__ import annotations
 import copy
 import json
 import threading
+import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import FrozenInstanceError
@@ -429,13 +430,22 @@ class InProcessServerConcurrencyTests(unittest.TestCase):
     def _post(self, path: str, body: dict) -> tuple[int, dict]:
         url = f"http://{self.host}:{self.port}{path}"
         data = json.dumps(body).encode("utf-8")
-        req = Request(url, data=data, method="POST",
-                      headers={"Content-Type": "application/json"})
-        try:
-            with urlopen(req, timeout=20) as resp:
-                return resp.status, json.loads(resp.read().decode("utf-8"))
-        except HTTPError as e:
-            return e.code, json.loads(e.read().decode("utf-8"))
+        last: Exception | None = None
+        for _attempt in range(5):
+            req = Request(url, data=data, method="POST",
+                          headers={"Content-Type": "application/json"})
+            try:
+                with urlopen(req, timeout=20) as resp:
+                    return resp.status, json.loads(resp.read().decode("utf-8"))
+            except HTTPError as e:
+                return e.code, json.loads(e.read().decode("utf-8"))
+            except (ConnectionResetError, ConnectionAbortedError) as exc:
+                # A constrained CI runner RSTs some burst connections at the
+                # ThreadingHTTPServer accept backlog; the determinism invariant
+                # is unaffected, so re-issue the single dropped request.
+                last = exc
+                time.sleep(0.02 * (_attempt + 1))
+        raise last if last else RuntimeError("unreachable")
 
     def test_mixed_route_concurrent_requests_match_serial(self) -> None:
         """Issue a mix of /stats /dps /ehp /rank requests (SR + ARAM,

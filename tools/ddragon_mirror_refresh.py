@@ -40,6 +40,7 @@ import argparse
 import hashlib
 import json
 import logging
+import ntpath
 import os
 import re
 import shutil
@@ -169,7 +170,10 @@ def _safe_basename(name: str | None) -> str | None:
     if name in (".", "..") or name.startswith("."):
         return None
     cleaned = "".join(ch for ch in name if ch.isprintable() and ch != "\x00")
-    if cleaned != name or os.path.basename(name) != name:
+    # ntpath.basename also strips a Windows drive prefix ("C:foo" -> "foo") on
+    # POSIX, so a drive-letter asset name is rejected on the Linux CI too.
+    if (cleaned != name or os.path.basename(name) != name
+            or ntpath.basename(name) != name):
         return None
     return name
 
