@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-06-18 - Aggregator H R1 lift: win-rate-by-game-length Build Insights tab
+
+Gemini DIRECTOR REFILL cycle (round-2 RF queue drained -> director synthesized R1: a
+Section-7b heavyweight competitor deep-dive). Target = Aggregator H (not-yet-reviewed).
+RC supersedes most of it; the one genuine gap shipped in-run.
+
+- **SHIPPED F1 win-rate-by-game-length** (commit `e9f70e7d`): `core/duration_winrate.py`
+  -> `/api/duration-winrate` -> Build Insights "Game Length" tab. Win % bucketed by match
+  duration over the operator's OWN rewind corpus (no global / Riot / Claude dep, no DS
+  schema change). Tier-1, no engine/DS/frozen. TDD +8; full RC suite 8349 passed exit 0;
+  RC restarted pid 11712 (endpoint live; bogus mode -> 400).
+- **VERIFY-GATE catch:** `matches.game_duration_s` has 4 ms-encoded/corrupt rows
+  (MAX=1988073, clean 3600-100000s zero gap); MAX_DURATION_S=7200 + MIN_DURATION_S=300
+  drop them. Live: ARAM n=2044 downward slope 56.2/51.1/49.4/48.2 (snowball tendency),
+  SR n=683 peak 30-35m 60.2.
+- **OWED (carry-forward):** live visual capture of the Game Length tab (Game-PC :8892 down +
+  Claude_Preview cannot attach to RC-owned :8888 headless). Code-side 5-phase UI audit PASS,
+  no MUST-FIX (1 SHOULD-FIX deferred: shared Min-buys control inert on the chart tab). Drive
+  `?ui_mock=1#build-insights` -> Game Length tab when a visual path is available.
+- Triage: F2 global win/pick/ban + F6 lobby-player-tags + F7 global objective/tier = FUTURE
+  (new external dep; F6 already BACKLOG as Overlay App F 3.1); F3/F4/F5 CLOSED (RC at-parity or
+  superior). Doc `docs/COMPETITOR_LIFT_2026-06-18.md`.
+
+---
+
 # 2026-06-17 - live-game-gated sync: ARAM Mayhem validation pass (operator playing live)
 
 Operator played 6 ARAM Mayhem games while I ran the LIVE_GAME_GATED_SYNC checklist in sync. Docs-only
@@ -39,17 +64,3 @@ Antigravity implemented the `repo-audit.md` D-items; operator asked to verify + 
 - **D5 RATIFIED:** frozen `app/_game_lifecycle.py` map extracted to `core/coach_registry.py`. Verified-good as-shipped: D2 D3 D6 D8 D10 D13 D14. Deleted 7 scratch `scripts/fix_*/patch_*.py`; kept install_hooks.py.
 
 NEXT (OPEN, do NOT re-pitch the reverted changes as bugs): **D1** Share de-dup NOT done (only a local pre-commit auto-sync hook; it re-stamps `Share/MANIFEST.md` every commit). **D4 ruff ratchet** + **D9 200/401 test** + **D11 assert->raise** deferred. Precompute scripts + vision_token.py kept print->logger (status, by choice). Memory [[feedback_verify_antigravity_audit_batch]].
-
----
-
-# 2026-06-17 - third-party-style repo audit + adapted auditor prompt (operator-directed)
-
-Operator pasted an external "brutally honest enterprise auditor" prompt (meant to feed Google Antigravity) and asked to vet+adapt it, then run it grounded. Commit `04e1a391` (pushed). Docs only, ZERO code/engine/frozen touch.
-
-- **`repo-audit-prompt.md`** - the external prompt rewritten to RC reality: right-yardstick (solo 1-PC tool, not enterprise SaaS), on-disk grounding mandate, anti-drama, pillar-5 rewritten as invariants-as-guardrails (frozen/atomic/ASCII/ENGINE-bump/Share-mirror) so an autonomous refactor agent cannot break RC. 6-point CHANGELOG of what differed from the original.
-- **`repo-audit.md`** - deep/strict audit. Dual rating B+ (solo bar) / B- (strict bar). 14 grounded deficiencies D1-D14; biggest real ones: D9 unauth /api/command + /api/input on HOST="::" (tailnet-reachable); D10 floating unpinned deps / no lockfile; D2 CI runs ~5% of suite; D3 no mypy; D4 1137 broad-except; D11 405 runtime asserts (stripped under -O). Footgun-clean (eval/exec/pickle/mutable-defaults all 0). Per-item Antigravity exec specs (PRE/EDIT/VERIFY/ROLLBACK + frozen/approval gates).
-- **Ground truth re-derived from git** (not subagent claims): 1668 tracked .py, 14,364 `def test_` non-Share (CLAUDE.md "1300+" is a ~10x undercount), locks 134/96, type-hint ~78% return-annotated. Appendix A lists 5 downgraded subagent figures.
-
-GATE: hygiene trio (smart-quote/mojibake/u2500) 12 passed. No .py authored -> ruff/py_compile/DS-Share n/a.
-
-NEXT: artifacts exist to feed Antigravity; if pursued, D2+D10+D9+D3 are the cheap strict-bar wins. The 14 D-items are candidate work, NOT committed scope. Do NOT re-run the generic enterprise prompt literally - use the adapted version in repo-audit-prompt.md. CLAUDE.md "1300+ tests" is a confirmed ~10x undercount if a doc-sync ever wants it (left as-is this session).

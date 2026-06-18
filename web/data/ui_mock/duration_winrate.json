@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "mode": "aram",
+  "champion": null,
+  "n": 2044,
+  "min_bucket_n": 5,
+  "buckets": [
+    {"label": "<15m", "lo_s": 0, "hi_s": 900, "wins": 213, "games": 379, "winrate": 56.2},
+    {"label": "15-20m", "lo_s": 900, "hi_s": 1200, "wins": 434, "games": 849, "winrate": 51.1},
+    {"label": "20-25m", "lo_s": 1200, "hi_s": 1500, "wins": 284, "games": 575, "winrate": 49.4},
+    {"label": "25-30m", "lo_s": 1500, "hi_s": 1800, "wins": 96, "games": 199, "winrate": 48.2},
+    {"label": "30-35m", "lo_s": 1800, "hi_s": 2100, "wins": 18, "games": 36, "winrate": 50.0},
+    {"label": "35m+", "lo_s": 2100, "hi_s": null, "wins": 3, "games": 6, "winrate": 50.0}
+  ]
+}

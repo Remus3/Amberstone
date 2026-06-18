@@ -13,6 +13,20 @@
 
 ---
 
+# 2026-06-17 - third-party-style repo audit + adapted auditor prompt (operator-directed)
+
+Operator pasted an external "brutally honest enterprise auditor" prompt (meant to feed Google Antigravity) and asked to vet+adapt it, then run it grounded. Commit `04e1a391` (pushed). Docs only, ZERO code/engine/frozen touch.
+
+- **`repo-audit-prompt.md`** - the external prompt rewritten to RC reality: right-yardstick (solo 1-PC tool, not enterprise SaaS), on-disk grounding mandate, anti-drama, pillar-5 rewritten as invariants-as-guardrails (frozen/atomic/ASCII/ENGINE-bump/Share-mirror) so an autonomous refactor agent cannot break RC. 6-point CHANGELOG of what differed from the original.
+- **`repo-audit.md`** - deep/strict audit. Dual rating B+ (solo bar) / B- (strict bar). 14 grounded deficiencies D1-D14; biggest real ones: D9 unauth /api/command + /api/input on HOST="::" (tailnet-reachable); D10 floating unpinned deps / no lockfile; D2 CI runs ~5% of suite; D3 no mypy; D4 1137 broad-except; D11 405 runtime asserts (stripped under -O). Footgun-clean (eval/exec/pickle/mutable-defaults all 0). Per-item Antigravity exec specs (PRE/EDIT/VERIFY/ROLLBACK + frozen/approval gates).
+- **Ground truth re-derived from git** (not subagent claims): 1668 tracked .py, 14,364 `def test_` non-Share (CLAUDE.md "1300+" is a ~10x undercount), locks 134/96, type-hint ~78% return-annotated. Appendix A lists 5 downgraded subagent figures.
+
+GATE: hygiene trio (smart-quote/mojibake/u2500) 12 passed. No .py authored -> ruff/py_compile/DS-Share n/a.
+
+NEXT: artifacts exist to feed Antigravity; if pursued, D2+D10+D9+D3 are the cheap strict-bar wins. The 14 D-items are candidate work, NOT committed scope. Do NOT re-run the generic enterprise prompt literally - use the adapted version in repo-audit-prompt.md. CLAUDE.md "1300+ tests" is a confirmed ~10x undercount if a doc-sync ever wants it (left as-is this session).
+
+---
+
 # 2026-06-17 - grounded /repo-insights report generator (operator-directed)
 
 Operator ran `/insights`, then asked to validate its 3 "On the Horizon" suggestions and build a grounded repo-insights variant that reads the codebase instead of transcripts. Commit `c0d7876b` (pushed).
