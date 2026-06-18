@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-06-17 - third-party-style repo audit + adapted auditor prompt (operator-directed)
+
+Operator pasted an external "brutally honest enterprise auditor" prompt (meant to feed Google Antigravity) and asked to vet+adapt it, then run it grounded. Commit `04e1a391` (pushed). Docs only, ZERO code/engine/frozen touch.
+
+- **`repo-audit-prompt.md`** - the external prompt rewritten to RC reality: right-yardstick (solo 1-PC tool, not enterprise SaaS), on-disk grounding mandate, anti-drama, pillar-5 rewritten as invariants-as-guardrails (frozen/atomic/ASCII/ENGINE-bump/Share-mirror) so an autonomous refactor agent cannot break RC. 6-point CHANGELOG of what differed from the original.
+- **`repo-audit.md`** - deep/strict audit. Dual rating B+ (solo bar) / B- (strict bar). 14 grounded deficiencies D1-D14; biggest real ones: D9 unauth /api/command + /api/input on HOST="::" (tailnet-reachable); D10 floating unpinned deps / no lockfile; D2 CI runs ~5% of suite; D3 no mypy; D4 1137 broad-except; D11 405 runtime asserts (stripped under -O). Footgun-clean (eval/exec/pickle/mutable-defaults all 0). Per-item Antigravity exec specs (PRE/EDIT/VERIFY/ROLLBACK + frozen/approval gates).
+- **Ground truth re-derived from git** (not subagent claims): 1668 tracked .py, 14,364 `def test_` non-Share (CLAUDE.md "1300+" is a ~10x undercount), locks 134/96, type-hint ~78% return-annotated. Appendix A lists 5 downgraded subagent figures.
+
+GATE: hygiene trio (smart-quote/mojibake/u2500) 12 passed. No .py authored -> ruff/py_compile/DS-Share n/a.
+
+NEXT: artifacts exist to feed Antigravity; if pursued, D2+D10+D9+D3 are the cheap strict-bar wins. The 14 D-items are candidate work, NOT committed scope. Do NOT re-run the generic enterprise prompt literally - use the adapted version in repo-audit-prompt.md. CLAUDE.md "1300+ tests" is a confirmed ~10x undercount if a doc-sync ever wants it (left as-is this session).
+
+---
+
 # 2026-06-17 - grounded /repo-insights report generator (operator-directed)
 
 Operator ran `/insights`, then asked to validate its 3 "On the Horizon" suggestions and build a grounded repo-insights variant that reads the codebase instead of transcripts. Commit `c0d7876b` (pushed).
@@ -30,16 +44,3 @@ Operator asked to bundle-plan the live-game-gated open items for the next sessio
 GATE: DS 7334 / RC 8333 / Share --check green; +15 TDD; ruff+ASCII clean. (7 RC reds on the first 12min run were a Share-sync/DS-restart SEQUENCING artifact - all green on fresh re-run; the RF2/RF6 LiveFresh lesson.)
 
 NEXT (live session, all still DEFAULT-OFF, do-not-flip-blind): run the eyeball harness + tick the seams; DSP5/6/7 + anti-tank now need only live-input plumb + eyeball (NOT consumer-building); HZ Lane-A/B + st-* + brief-flip need a corpus (>1 game). Do NOT rebuild the consumers - they shipped. DAEMON_SLAYER.md changelog had drifted to 1.129.0 (loop skipped it); bumped to 1.140.0 + a gap-bridge pointer (1.130-1.139 canonical entries are in Share/CHANGELOG + LEDGER 464-487) - do NOT backfill those 10 versions.
-
----
-
-# 2026-06-17 - RF6 ds-engine: ehp/tank survivability INJECT seam (headless gemini-loop cycle 6, round-2 refill)
-
-**Commit `700fa6a8`** (ENGINE 1.138.0 -> 1.139.0, DEFAULT-OFF). ORCHESTRATION_PLAN RF6, the last OPEN round-2 row.
-
-- **Problem:** RF4 found RF3's ehp/tank survivability FLOAT is a no-op for Rell - its sole tabled winner Fimbulwinter 3121 is NOT in Rell's candidate pool, so there is nothing to float.
-- **Root-cause (probe-confirmed, NOT the directive's assumed "mana-item gate"):** 3121 is dropped by `_is_purchasable` - `gold.purchasable=False` because it is the non-purchasable mana-line TRANSFORM of Winter's Approach 3119 (terminal+ARAM-legal; the off-class marksman deny is marksman-only, Rell is a tank). Probe: 3121 NOT in Rell pool OFF (124 items); RF3 float ON surfaced `[]`.
-- **Deviation logged (feedback_audit_proposals_are_intent):** the directive's literal "mirror RF2's `only_ids |= surv_ids`" is INSUFFICIENT - RF2's hps inject ALSO silently drops 3121 for Rakan (the union still runs through `_is_purchasable`). Implemented the INTENT via a NEW `inject_ids` force-admit param on `rank._filter_candidates` (bypasses only_ids/exclude_names/`_is_purchasable`; still honors current/non-coachable/mode-legality/terminal/budget; `None` default byte-identical for all 7 callers). `ehp.rank_items_by_ehp` passes `inject_ids=surv_ids` only when the RF3 seam is ON.
-- **Scope:** ehp lane only; hps (RF2, DONE) left byte-identical. FUTURE: the same purchasable-gate gap exists for Rakan's hps 3121 - the `inject_ids` mechanism now exists to fix it (logged LIVE_GAME_GATED_SYNC.md RF6 ledger).
-- **Verify:** DS :8893 bounced (PID 14148 -> /health 1.139.0); ds_share_sync 362 --check in sync; DS+Share CHANGELOG. +12 TDD (`test_survivability_item_credit_rf6.py`). DS 7324 / RC 8333, ruff+py_compile clean, no frozen files.
-- **NEXT:** round-2 refill queue (RF1-RF6) DRAINED -> expect director NO_WORK or new refill.
