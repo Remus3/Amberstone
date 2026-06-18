@@ -192,6 +192,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 2.0 * 0.55 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
+            # B1 (1.141.0): bolts fire on RANGED basics only - gated off melee
+            # autos when compute_dps(apply_melee_aa_gate=True).
+            ranged_only=True,
         ),),
         note="Runaan's Hurricane: 2 extra bolts on-hit, 55% total AD each",
     ),
@@ -3820,6 +3823,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             bonus_damage=lambda c: 2.0 * 0.55 * (c.base_ad + c.bonus_ad),
             damage_type=PHYSICAL,
             every_n_attacks=1,
+            # B1 (1.141.0): ranged-only bolts (mirror SR 3085).
+            ranged_only=True,
         ),),
         note="Runaan's Hurricane (Arena 223085): same as SR 3085 - Wind's Fury 55% total AD x2 bolts",
     ),
