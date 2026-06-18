@@ -16,6 +16,7 @@ import os
 import sys
 import json
 import logging
+from core.safe_coach_output import safe_coach_output
 from pathlib import Path
 
 from coaches._base_coach import (
@@ -494,6 +495,7 @@ class Coach(BaseCoach):
 
     # -- Coach -----------------------------------------------------------------
 
+    @safe_coach_output("Arena")
     def _run_coach(self, state: dict) -> None:
         try:
             from core.feature_policy import is_allowed as _fp_ok, write_disabled_placeholder as _fp_wr
@@ -730,7 +732,7 @@ class Coach(BaseCoach):
             except Exception:
                 pass
         except Exception as exc:
-            logger.error("Arena coach: %s", exc)
+            raise exc
 
     def _handle_augment_select(self, vision_state: dict) -> None:
         if not self._client:

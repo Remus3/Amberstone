@@ -36,6 +36,7 @@ Usage:
 from __future__ import annotations
 import json
 import logging
+logger = logging.getLogger("rc.aftergame_summary")
 import re
 import sqlite3
 from pathlib import Path
@@ -447,9 +448,9 @@ if __name__ == "__main__":
     mid = args[0] if args else "NA1_5182398158"
     s = build_summary(mid)
     if not s:
-        print(f"no summary produced for match_id={mid}", file=sys.stderr)
+        logger.error(f"no summary produced for match_id={mid}")
         sys.exit(1)
     if write_flag:
         ok = write_to_client_coaching_data(s)
-        print(f"wrote data/coaching_data.json: {ok}", file=sys.stderr)
+        logger.error(f"wrote data/coaching_data.json: {ok}")
     print(json.dumps(s, indent=2, ensure_ascii=False))

@@ -293,7 +293,7 @@ function _diagWireOnce() {
 function _loopControl(action, extra) {
   fetch("/api/loop-control", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
     body: JSON.stringify(Object.assign({ action: action }, extra || {})),
   })
     .then((r) => (r ? r.json() : null))

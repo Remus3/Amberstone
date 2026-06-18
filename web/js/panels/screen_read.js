@@ -72,7 +72,7 @@ async function _trigger() {
   try {
     await fetch("/api/command", {
       method: "POST", cache: "no-store",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
       body: JSON.stringify({ command: "screen_read" }),
     });
   } catch (_) { /* swallow - backend always writes a terminal status */ }
