@@ -86,6 +86,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+logger = logging.getLogger("rc.laning_scenario_precompute")
 import math
 import os
 import sys
@@ -635,14 +636,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     bands = _parse_csv(args.bands) or list(GEN_BANDS)
     for band in bands:
         if band not in LEVEL_BANDS:
-            print(f"unknown band {band!r} (valid: {list(LEVEL_BANDS)})",
+            logger.info(f"unknown band {band!r} (valid: {list(LEVEL_BANDS)})",
                   file=sys.stderr)
             return 2
 
     try:
         snapshot = DataSnapshot.load()
     except Exception as exc:  # noqa: BLE001 - a dead data set must not write
-        print(f"DataSnapshot.load() failed ({exc}); refusing to write an empty "
+        logger.info(f"DataSnapshot.load() failed ({exc}); refusing to write an empty "
               "table.", file=sys.stderr)
         return 2
 
@@ -650,7 +651,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = out_dir_for(patch, args.out or None)
     target_modes = _MODE_KEYS if args.mode == "all" else (args.mode,)
 
-    print(f"laning-scenarios gen patch={patch} modes={target_modes} "
+    logger.info(f"laning-scenarios gen patch={patch} modes={target_modes} "
           f"champions={len(champions)} enemies={len(enemies)} bands={bands} "
           f"dry_run={args.dry_run} out={out_dir}")
 
@@ -662,13 +663,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         )
         leaves = _count_leaves(payload)
         if args.dry_run:
-            print(f"  [dry-run] {mode_key:5s}: {leaves} leaf cells (not written)")
+            logger.info(f"  [dry-run] {mode_key:5s}: {leaves} leaf cells (not written)")
         else:
             out_path = out_dir / f"laning_scenarios_{mode_key}.json"
             atomic_write(payload, out_path)
-            print(f"  {mode_key:5s}: {leaves} leaf cells -> {out_path.name}")
+            logger.info(f"  {mode_key:5s}: {leaves} leaf cells -> {out_path.name}")
 
-    print(f"done in {time.time() - started:.1f}s")
+    logger.info(f"done in {time.time() - started:.1f}s")
     return 0
 
 

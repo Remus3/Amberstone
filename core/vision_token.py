@@ -91,7 +91,7 @@ def debug() -> None:
         masked = f"{tok[:4]}...{tok[-4:]}"
     else:
         masked = "(short)"
-    print(f"vision_token source={src} token={masked} len={len(tok)}")
+    logger.info(f"vision_token source={src} token={masked} len={len(tok)}")
 
 
 # Log resolution source once at import time so operators see it in the

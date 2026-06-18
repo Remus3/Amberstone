@@ -321,6 +321,17 @@ class Handler(BaseHTTPRequestHandler):
             self._send(400, b'{"error":"bad_body"}', "application/json")
             return
 
+        # D9: Control Endpoint Auth
+        path_base = self.path.split("?", 1)[0]
+        if path_base in ("/api/command", "/api/input", "/api/analyze", "/api/loop-control"):
+            dash_token = os.environ.get("RC_DASH_TOKEN", "").strip()
+            if dash_token:
+                req_token = (self.headers.get("X-RC-Token") or "").strip()
+                if req_token != dash_token:
+                    log.warning("control endpoint auth reject: %s", path_base)
+                    self._send(401, b'{"error":"unauthorized"}', "application/json")
+                    return
+
         # Slice 2C-7d (2026-05-01): every POST route lives in
         # dashboard/routes_*. Dispatcher handled or it's a 404.
         if _dispatch.dispatch_post(self, payload):

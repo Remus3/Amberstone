@@ -14,6 +14,7 @@ import os
 import sys
 import json
 import logging
+from core.safe_coach_output import safe_coach_output
 from pathlib import Path
 
 from coaches._base_coach import (
@@ -573,6 +574,7 @@ class Coach(BaseCoach):
                 best = hp
         return min(1500.0, best) if best > 0 else 0.0
 
+    @safe_coach_output("ARAM")
     def _run_coach(self, state: dict) -> None:
         try:
             from core.feature_policy import is_allowed as _fp_ok, write_disabled_placeholder as _fp_wr
@@ -913,8 +915,9 @@ class Coach(BaseCoach):
             except Exception:
                 pass
         except Exception as exc:
-            logger.error("ARAM coach: %s", exc)
+            raise exc
 
+    @safe_coach_output("ARAM")
     def _handle_augment_select(self, vs: dict) -> None:
         if not self._client:
             return
@@ -955,7 +958,7 @@ class Coach(BaseCoach):
             })
             safe_write(self._out, cur)
         except Exception as exc:
-            logger.error("ARAM aug select: %s", exc)
+            raise exc
 
 
 # ==============================================================================

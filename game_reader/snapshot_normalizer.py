@@ -1012,8 +1012,8 @@ class _NormalizerMixin:
             sec_name  = secondary.get("displayName", "") if isinstance(secondary, dict) else ""
             if ks_name:
                 return f"{ks_name} | {pri_name} / {sec_name}".strip(" |/")
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.debug("swallowed exception: %s", exc)
         return ""
 
     def _read_enemy_runes(self, enemies: list) -> dict:
@@ -1041,8 +1041,8 @@ class _NormalizerMixin:
                 pri_name = primary.get("displayName", "")  if isinstance(primary, dict)  else ""
                 if ks_name:
                     result[name] = f"{ks_name} | {pri_name}".strip(" |")
-            except Exception:
-                pass
+            except Exception as exc:
+                _log.debug("swallowed exception: %s", exc)
         return result
 
     def _read_my_abilities(self) -> dict:
@@ -1069,7 +1069,8 @@ class _NormalizerMixin:
                         "level":    int(lvl) if lvl is not None else None,
                     }
             return result
-        except Exception:
+        except Exception as exc:
+            _log.debug("swallowed exception: %s", exc)
             return {}
 
     # ------------------------------------------------------------------
@@ -1083,37 +1084,37 @@ class _NormalizerMixin:
         try:
             from core.game_snapshot import RiftSnapshot
             return RiftSnapshot.from_state_dict(state_dict)
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import RiftSnapshot
             s = RiftSnapshot()
             s.raw_state = state_dict
             try: s.champion     = str(state_dict.get("champion",    ""))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.game_mode    = str(state_dict.get("game_mode",   "CLASSIC"))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.game_time    = str(state_dict.get("game_time",   "0:00"))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.game_seconds = float(state_dict.get("game_seconds", 0))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.level        = int(state_dict.get("level",        1))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.gold         = int(state_dict.get("gold",         0))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.hp_pct       = int(state_dict.get("hp_pct",       100))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.items        = list(state_dict.get("items",        []))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             return s
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import RiftSnapshot
             s = RiftSnapshot()
             s.raw_state = state_dict
             return s
-        except Exception:
+        except Exception as exc:
             return None
 
     @staticmethod
@@ -1123,35 +1124,35 @@ class _NormalizerMixin:
         try:
             from core.game_snapshot import AramSnapshot
             return AramSnapshot.from_state_dict(state_dict)
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import AramSnapshot
             s = AramSnapshot()
             s.raw_state = state_dict
             try: s.champion     = str(state_dict.get("champion",    ""))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.game_mode    = str(state_dict.get("game_mode",   "ARAM"))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.game_time    = str(state_dict.get("game_time",   "0:00"))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.game_seconds = float(state_dict.get("game_seconds", 0))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.level        = int(state_dict.get("level",        1))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.gold         = int(state_dict.get("gold",         0))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.hp_pct       = int(state_dict.get("hp_pct",       100))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             try: s.items        = list(state_dict.get("items",        []))
-            except Exception: pass
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)
             return s
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import AramSnapshot
             s = AramSnapshot()
             s.raw_state = state_dict
             return s
-        except Exception:
+        except Exception as exc:
             return None

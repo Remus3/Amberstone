@@ -82,18 +82,8 @@ class GameLifecycleManager:
         if _non_tft and app._sr_aram_worker is not None:
             app._sr_aram_worker.reset_reader_state(reason="game_start")
 
-        cmap = {
-            "_tft_mode":   ("coaches.tft_coach",   "Coach", "tft_coaching_data.json"),
-            "_arena_mode": ("coaches.arena_coach",  "Coach", "arena_coaching_data.json"),
-            "_brawl_mode": ("coaches.brawl_coach",  "Coach", "brawl_coaching_data.json"),
-            "_aram_mode":  ("coaches.aram_coach",   "Coach", "aram_coaching_data.json"),
-        }
-        _policy_map = {
-            "_tft_mode":   ("tft",   "live_coaching"),
-            "_arena_mode": ("arena", "live_coaching"),
-            "_brawl_mode": ("brawl", "live_coaching"),
-            "_aram_mode":  ("aram",  "live_coaching"),
-        }
+        from core.coach_registry import MODE_COACH_MAP as cmap
+        from core.coach_registry import MODE_POLICY_MAP as _policy_map
         for flag, (mp, cn, dn) in cmap.items():
             if getattr(app, flag, False):
                 _log.info("%s game detected", flag.replace("_mode", "").upper())
