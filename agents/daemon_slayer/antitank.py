@@ -587,8 +587,46 @@ __all__ = [
     "AntiTankResult",
     "AntiTankSourceEntry",
     "compute_antitank",
+    "compute_antitank_live",
     "_ANTITANK_KIND_WEIGHT",
     "_ANTITANK_CADENCE_MULT",
     "_ANTITANK_CONDITIONAL_PROB",
     "_ANTITANK_REGISTRY",
 ]
+
+
+def compute_antitank_live(
+    snapshot,
+    champion: str,
+    level: int,
+    item_ids=None,
+    mode: str = "SR",
+    augments=None,
+) -> AntiTankResult:
+    """Anti-tank score with the LIVE caster's resolved AP/AD folded in (P3.2).
+
+    The PRODUCER half of the P3.2 (item 315) caster-stat seam. ``compute_antitank``
+    leaves the optional ``stats`` None (the /anti-tank route passes no stats), so a
+    seeded row's ``ap_ratio`` / ``ad_ratio`` scaling stays dormant. This wrapper
+    resolves the champion's stats from its live build via ``engine.build_champion``
+    and feeds the ResolvedStats to ``compute_antitank(stats=...)`` so a seeded row's
+    %max-HP magnitude scales by ``base + ap*ap_ratio + ad*ad_ratio`` (Gwen P /
+    KogMaw W / Varus W / Malzahar R AP; Vi W / Camille W / Udyr Q AD).
+
+    A champion with NO seeded ratio is byte-identical to
+    ``compute_antitank(champion, mode=mode)``; a naked / zero-AP-AD build is too.
+    This is the live-input producer the section-B anti-tank P3.2 row in
+    docs/LIVE_GAME_GATED_SYNC.md asks for - additive (no engine-math change, no
+    :8893 restart); the live default-ON wire (a survivability scorer calling this
+    with the live build) + the eyeball check stay operator-gated. Fail-soft: a
+    build-resolution error falls back to the static score. ASCII only.
+    """
+    from .engine import build_champion  # deferred - avoid an import cycle
+
+    try:
+        stats = build_champion(
+            snapshot, champion, level, item_ids, mode=mode, augments=augments
+        )
+    except Exception:  # noqa: BLE001 - fail-soft to the static (no-stats) score
+        return compute_antitank(champion, mode=mode)
+    return compute_antitank(champion, mode=mode, stats=stats)
