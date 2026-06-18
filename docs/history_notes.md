@@ -13,6 +13,31 @@
 
 ---
 
+# 2026-06-18 - Aggregator H R1 lift: win-rate-by-game-length Build Insights tab
+
+Gemini DIRECTOR REFILL cycle (round-2 RF queue drained -> director synthesized R1: a
+Section-7b heavyweight competitor deep-dive). Target = Aggregator H (not-yet-reviewed).
+RC supersedes most of it; the one genuine gap shipped in-run.
+
+- **SHIPPED F1 win-rate-by-game-length** (commit `e9f70e7d`): `core/duration_winrate.py`
+  -> `/api/duration-winrate` -> Build Insights "Game Length" tab. Win % bucketed by match
+  duration over the operator's OWN rewind corpus (no global / Riot / Claude dep, no DS
+  schema change). Tier-1, no engine/DS/frozen. TDD +8; full RC suite 8349 passed exit 0;
+  RC restarted pid 11712 (endpoint live; bogus mode -> 400).
+- **VERIFY-GATE catch:** `matches.game_duration_s` has 4 ms-encoded/corrupt rows
+  (MAX=1988073, clean 3600-100000s zero gap); MAX_DURATION_S=7200 + MIN_DURATION_S=300
+  drop them. Live: ARAM n=2044 downward slope 56.2/51.1/49.4/48.2 (snowball tendency),
+  SR n=683 peak 30-35m 60.2.
+- **OWED (carry-forward):** live visual capture of the Game Length tab (Game-PC :8892 down +
+  Claude_Preview cannot attach to RC-owned :8888 headless). Code-side 5-phase UI audit PASS,
+  no MUST-FIX (1 SHOULD-FIX deferred: shared Min-buys control inert on the chart tab). Drive
+  `?ui_mock=1#build-insights` -> Game Length tab when a visual path is available.
+- Triage: F2 global win/pick/ban + F6 lobby-player-tags + F7 global objective/tier = FUTURE
+  (new external dep; F6 already BACKLOG as Overlay App F 3.1); F3/F4/F5 CLOSED (RC at-parity or
+  superior). Doc `docs/COMPETITOR_LIFT_2026-06-18.md`.
+
+---
+
 # 2026-06-17 - live-game-gated sync: ARAM Mayhem validation pass (operator playing live)
 
 Operator played 6 ARAM Mayhem games while I ran the LIVE_GAME_GATED_SYNC checklist in sync. Docs-only
