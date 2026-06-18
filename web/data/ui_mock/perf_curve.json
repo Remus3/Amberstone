@@ -1,0 +1,257 @@
+{
+  "ok": true,
+  "mode": "aram",
+  "metric": "gold",
+  "champion": null,
+  "n_games": 2004,
+  "min_games_n": 5,
+  "minutes": [
+    {
+      "minute": 0,
+      "win_avg": 1400.0,
+      "win_n": 1028,
+      "loss_avg": 1400.0,
+      "loss_n": 976
+    },
+    {
+      "minute": 1,
+      "win_avg": 1473.2,
+      "win_n": 1028,
+      "loss_avg": 1459.4,
+      "loss_n": 976
+    },
+    {
+      "minute": 2,
+      "win_avg": 2161.8,
+      "win_n": 1028,
+      "loss_avg": 2104.6,
+      "loss_n": 976
+    },
+    {
+      "minute": 3,
+      "win_avg": 2858.7,
+      "win_n": 1028,
+      "loss_avg": 2759.9,
+      "loss_n": 976
+    },
+    {
+      "minute": 4,
+      "win_avg": 3594.4,
+      "win_n": 1028,
+      "loss_avg": 3446.0,
+      "loss_n": 976
+    },
+    {
+      "minute": 5,
+      "win_avg": 4320.0,
+      "win_n": 1028,
+      "loss_avg": 4151.7,
+      "loss_n": 976
+    },
+    {
+      "minute": 6,
+      "win_avg": 5049.7,
+      "win_n": 1027,
+      "loss_avg": 4842.2,
+      "loss_n": 975
+    },
+    {
+      "minute": 7,
+      "win_avg": 5782.9,
+      "win_n": 1027,
+      "loss_avg": 5521.6,
+      "loss_n": 975
+    },
+    {
+      "minute": 8,
+      "win_avg": 6524.4,
+      "win_n": 1027,
+      "loss_avg": 6225.0,
+      "loss_n": 975
+    },
+    {
+      "minute": 9,
+      "win_avg": 7257.3,
+      "win_n": 1008,
+      "loss_avg": 6901.1,
+      "loss_n": 958
+    },
+    {
+      "minute": 10,
+      "win_avg": 7963.8,
+      "win_n": 986,
+      "loss_avg": 7572.3,
+      "loss_n": 950
+    },
+    {
+      "minute": 11,
+      "win_avg": 8700.8,
+      "win_n": 976,
+      "loss_avg": 8245.3,
+      "loss_n": 939
+    },
+    {
+      "minute": 12,
+      "win_avg": 9410.5,
+      "win_n": 946,
+      "loss_avg": 8927.5,
+      "loss_n": 923
+    },
+    {
+      "minute": 13,
+      "win_avg": 10121.7,
+      "win_n": 915,
+      "loss_avg": 9593.3,
+      "loss_n": 900
+    },
+    {
+      "minute": 14,
+      "win_avg": 10802.1,
+      "win_n": 872,
+      "loss_avg": 10249.4,
+      "loss_n": 854
+    },
+    {
+      "minute": 15,
+      "win_avg": 11503.3,
+      "win_n": 821,
+      "loss_avg": 10906.1,
+      "loss_n": 812
+    },
+    {
+      "minute": 16,
+      "win_avg": 12138.5,
+      "win_n": 750,
+      "loss_avg": 11597.9,
+      "loss_n": 750
+    },
+    {
+      "minute": 17,
+      "win_avg": 12837.7,
+      "win_n": 670,
+      "loss_avg": 12279.4,
+      "loss_n": 671
+    },
+    {
+      "minute": 18,
+      "win_avg": 13426.7,
+      "win_n": 562,
+      "loss_avg": 12946.8,
+      "loss_n": 589
+    },
+    {
+      "minute": 19,
+      "win_avg": 14018.7,
+      "win_n": 469,
+      "loss_avg": 13588.3,
+      "loss_n": 506
+    },
+    {
+      "minute": 20,
+      "win_avg": 14589.1,
+      "win_n": 396,
+      "loss_avg": 14154.8,
+      "loss_n": 411
+    },
+    {
+      "minute": 21,
+      "win_avg": 15189.3,
+      "win_n": 327,
+      "loss_avg": 14843.7,
+      "loss_n": 343
+    },
+    {
+      "minute": 22,
+      "win_avg": 15747.3,
+      "win_n": 244,
+      "loss_avg": 15541.9,
+      "loss_n": 271
+    },
+    {
+      "minute": 23,
+      "win_avg": 16207.6,
+      "win_n": 189,
+      "loss_avg": 16152.8,
+      "loss_n": 210
+    },
+    {
+      "minute": 24,
+      "win_avg": 16858.5,
+      "win_n": 156,
+      "loss_avg": 16740.8,
+      "loss_n": 162
+    },
+    {
+      "minute": 25,
+      "win_avg": 17309.7,
+      "win_n": 116,
+      "loss_avg": 17338.7,
+      "loss_n": 122
+    },
+    {
+      "minute": 26,
+      "win_avg": 18038.6,
+      "win_n": 92,
+      "loss_avg": 17917.1,
+      "loss_n": 89
+    },
+    {
+      "minute": 27,
+      "win_avg": 18775.3,
+      "win_n": 66,
+      "loss_avg": 18723.8,
+      "loss_n": 62
+    },
+    {
+      "minute": 28,
+      "win_avg": 19664.3,
+      "win_n": 48,
+      "loss_avg": 19218.6,
+      "loss_n": 45
+    },
+    {
+      "minute": 29,
+      "win_avg": 20577.3,
+      "win_n": 28,
+      "loss_avg": 19760.5,
+      "loss_n": 35
+    },
+    {
+      "minute": 30,
+      "win_avg": 21254.7,
+      "win_n": 22,
+      "loss_avg": 20129.6,
+      "loss_n": 20
+    },
+    {
+      "minute": 31,
+      "win_avg": 21788.4,
+      "win_n": 18,
+      "loss_avg": 20870.5,
+      "loss_n": 13
+    },
+    {
+      "minute": 32,
+      "win_avg": 23066.1,
+      "win_n": 14,
+      "loss_avg": 20616.4,
+      "loss_n": 8
+    },
+    {
+      "minute": 33,
+      "win_avg": 23809.8,
+      "win_n": 8,
+      "loss_avg": null,
+      "loss_n": 4
+    },
+    {
+      "minute": 34,
+      "win_avg": 25006.3,
+      "win_n": 6,
+      "loss_avg": null,
+      "loss_n": 3
+    }
+  ],
+  "cached": false,
+  "elapsed_ms": 3
+}
