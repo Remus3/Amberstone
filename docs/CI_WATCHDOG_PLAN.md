@@ -99,8 +99,12 @@ Per-invocation: 1 headless claude run with ~5k input tokens (CI log tail + diff 
 - `last_seen_run_id.txt` is the only state file the poller mutates; everything else is per-run.
 - The 2-strike escalation is per-run-id, not per-day.
 
-## Open questions for implementation session
+## Open questions - RESOLVED 2026-06-18 (operator)
 
-- Does the operator want PR auto-merge on green CI, or always leave for review?
-- Bridge-note format for ESCALATION.md (kind="ci_watchdog_escalation" envelope)?
-- Should the watchdog also self-cancel if the operator pushes a new commit to main while a ci-fix branch is in flight (avoid stale-fix PRs)?
+- PR auto-merge on green CI: YES, AUTO-MERGE (self-heal unattended). `tools/ci_watchdog._MERGE_METHOD` = `--squash` (ci-fix PRs are tiny + CI-green at merge; branch auto-deleted).
+- ESCALATION envelope: REUSE the existing `core.bridge.send` schema, `kind="ci_watchdog_escalation"`, `target="peer"` (see `send_escalation`). No bespoke envelope.
+- Self-cancel on a newer main commit: YES, CANCEL + restart on newest HEAD - `is_stale(run_head_sha, current_head_sha)` skips any fix whose target run is no longer at `origin/main` HEAD.
+
+## Build status - item 204 BUILT 2026-06-18 (NOT yet live-armed)
+
+`tools/ci_watchdog.py` (pure decision logic + thin I/O main), `tools/ci_watchdog_fix.md` (headless system prompt), `ops/RC-CIWatchdog.xml` (task artifact), `tests/test_ci_watchdog.py` (19 tests) all shipped. The scheduled task is NOT registered yet: an unattended auto-merger must not race the headless run that built it (it could try to auto-fix that run's own pushes). ARM step (operator, when ready): confirm the headless-claude dispatch block in `main()` is wired to the worktree, then `schtasks /Create /TN RC-CIWatchdog /XML "ops\RC-CIWatchdog.xml" /F` (runs as the logged-on Administrator so gh/claude/git auth resolves). Kill-switch: create `ops\runtime\ci_watchdog\HALT`.
