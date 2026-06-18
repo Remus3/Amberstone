@@ -13,6 +13,18 @@
 
 ---
 
+# 2026-06-17 - RF4 ds-swarm: residual re-run / loop-until-dry consolidation after RF1-RF3 (headless gemini-loop cycle 4, round-2 refill)
+
+- Executor cycle 4 of the round-2-refill swarm (`ops/loop`, gemini director; perpetual loop RUNNING - controller.log cycle 4 typed 15:40, deadline 5400s). Directive = RF4. AUDIT-only commit `a63c0d47` pushed (no engine change - new files under `ops/audit/` + `tests/`, NOT `agents/daemon_slayer/`, so NO ENGINE bump / DS restart / Share sync).
+- REGEN: `run_consolidate.py` -> `report/dsp10_consolidated.{json,md}` = BYTE-IDENTICAL to the committed report (cross-eval `data/` static + live :8893 seam-OFF + `rewind_history.db` unchanged since the RF1-3 builds); all 3 `build_survivability_item_credit*.py --check` stay green (the report-anchored tables did NOT drift - safe no-op).
+- VERIFY (NEW `ops/audit/ds_perm_swarm/rf4_verify.py`, mirror `dsp10_pass2_verify`): in-process re-rank each RF-tabled champ OFF vs ON (`prefer_survivability_by_win=True` per lane, L13) = 11/12 RESOLVED - all 9 RF1 hybrid champs + RF2 Rakan + RF3 KSante float buried survivability winners into the top-K under the `survivability_score` partition invariant.
+- LOOP-UNTIL-DRY SATISFIED: `classify_survivability_worst` over the 40 worst rows = 0 NEW survivability clusters (1 pass). Tail = covered_rf1 9 / rf2 1 / rf3 2 / cluster_a_deferred 4 (Zilean/Shaco/Kayle/Seraphine) / covered_dsp11 6 / ability_mage_lane 14 (deferred DSV1 AP-DoT) / dps_burst_lane 2 (Caitlyn/Yunara) / no_buried 1 (Zaahen) / thin_or_noise 1 (MasterYi).
+- RESIDUAL (queued RF6): Rell ehp NOT-RESOLVED - its sole tabled id 3121 Fimbulwinter is NOT in Rell's ehp candidate pool (verified `in_pool=False`; a Winter's-Approach mana-line item the EHP `_filter_candidates` excludes), so RF3's FLOAT-only seam (reorders POOLED items) is a no-op for it. RF3's "the EHP scorer ALREADY pools these" premise holds for KSante (3075/6662 pooled+floated) but is FALSE for Rell. Fix = an ehp-lane INJECT mode (RF2's hps shape `only_ids |= surv_ids`) = an engine seam change -> queued RF6 (not shipped blind; a wrong float is worse than none).
+- TDD +14 hermetic `tests/test_rf4_verify.py` (classifier buckets + dry verdict). GATE: DS-dir 7312 passed / 1 skip / 1942 subtests exit 0 (unchanged - no DS edit); RC `tests/ --ignore=tests/daemon_slayer` 8329 passed / 2 skip / 109 subtests exit 0 (+14 vs the 8315 RF3 baseline, 0 regressions); ruff clean (touched); py_compile OK; ASCII clean. INLINE sole orchestrator (R9 - one cohesive audit module + its test); verifier SKIPPED per R7 (own single-thread - the live engine re-rank + the byte-identical regen + the 3 build --check IS the independent verify). No frozen files. ORCHESTRATION_PLAN RF4 OPEN->DONE + RF6 queued; LEDGER 485; ROADMAP synced.
+- NEXT: RF5 (test-hermeticity sweep) or RF6 (ehp INJECT seam for Rell). Tracker `docs/ORCHESTRATION_PLAN.md`.
+
+---
+
 # 2026-06-17 - RF3 ds-engine: default-OFF survivability item-credit seam for the ehp/tank scorer (headless gemini-loop cycle 3, round-2 refill)
 
 - Executor cycle 3 of the round-2-refill swarm (`ops/loop`, gemini director; the perpetual gemini+AHK loop is RUNNING). Directive = RF3 (tank-scorer itemization-order residual). Seam commit `869656a0` (ENGINE 1.137.0 -> 1.138.0) pushed; docs closeout this commit.
