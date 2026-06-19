@@ -46,6 +46,7 @@ import argparse
 import json
 import re
 import shutil
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -499,11 +500,60 @@ def _check_ingest_bundle() -> int:
     return 0
 
 
+# Staged-path prefixes that mean a commit actually changes the mirror, so the
+# pre-commit hook must run the sync. A commit that touches none of these (a
+# pure web / coach / dashboard / docs commit) cannot change Share/src, so the
+# hook can skip the sync entirely - that skip is what removes the per-commit
+# MANIFEST re-stamp churn AND the spurious external gist upload that fired on
+# EVERY commit (D1). Manual `python tools/ds_share_sync.py` and CI `--check`
+# stay the hard gates; this only gates the convenience hook.
+_SYNC_TRIGGER_DIR_PREFIXES: tuple[str, ...] = (
+    "agents/daemon_slayer/",
+    "data/daemon_slayer/",
+    "Share/",
+)
+
+
+def _should_sync(staged: list[str]) -> bool:
+    """True if any staged path is a mirrored DS source (engine package, data
+    snapshot, a curated DS tool, or the Share package itself)."""
+    tool_paths = {f"tools/{name}" for name in _DS_TOOLS}
+    for s in staged:
+        if s in tool_paths:
+            return True
+        if any(s.startswith(p) for p in _SYNC_TRIGGER_DIR_PREFIXES):
+            return True
+    return False
+
+
+def _staged_files() -> list[str]:
+    """Staged paths (POSIX-style) from `git diff --cached --name-only`. Returns
+    [] on any git error; a sync is then skipped, which is safe because the
+    manual run and CI `--check` remain the authoritative gates."""
+    try:
+        out = subprocess.run(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=str(_REPO), capture_output=True, text=True, check=True)
+    except Exception:
+        return []
+    return [ln.strip() for ln in out.stdout.splitlines() if ln.strip()]
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Sync the DS Share review package.")
     ap.add_argument("--check", action="store_true",
                     help="verify Share/src matches the live engine; exit 1 on drift")
+    ap.add_argument("--precommit", action="store_true",
+                    help="hook mode: sync only when staged files include mirrored "
+                         "DS source (engine / data snapshot / curated tools / "
+                         "Share); otherwise a no-op so non-DS commits do not "
+                         "re-stamp MANIFEST or fire the external gist upload")
     args = ap.parse_args(argv)
+
+    if args.precommit and not _should_sync(_staged_files()):
+        print("ds_share_sync: no mirrored DS source staged - "
+              "skipping Share sync (no MANIFEST churn).")
+        return 0
 
     expected = _build_expected()
     version = _engine_version()
