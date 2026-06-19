@@ -305,15 +305,17 @@ def test_build_report_schema_v2_and_agreement(tmp_path):
                 "choices": [{"label": "Trade now"}],
                 "native_action": "TRADE", "native_choices": []}])
     _write(b, [{"mode": "aram", "my_champion": "A", "lean": "anti_tank",
-                "covered": True, "choices": [{"label": "Serylda rush"}],
-                "native_action": "hold and farm", "native_choices": []}])
+                "covered": True, "choices": [{"label": "Build anti-tank"}],
+                "native_action": "Rush Lord Dominik's vs their tanks",
+                "native_choices": []}])
     r = rep.build_report(c, b)
     assert r["schema"] == "hz_shadow_report/v2"
     assert r["agreement"]["laning"]["comparable_covered"] == 1
     assert r["agreement"]["laning"]["agree"] == 1
-    # build label "Serylda rush" is no verdict -> not comparable, native classified
-    assert r["agreement"]["build"]["comparable_covered"] == 0
-    assert r["agreement"]["build"]["unclassified_native"] == 0
+    # build runs on the lean axis: precompute lean anti_tank vs a Haiku build
+    # that classifies anti_tank -> comparable + agree (item 502 build gate).
+    assert r["agreement"]["build"]["comparable_covered"] == 1
+    assert r["agreement"]["build"]["agree"] == 1
 
 
 def test_build_report_empty_agreement_zeroed(tmp_path):
@@ -357,3 +359,107 @@ def test_main_json_runs(tmp_path, capsys):
     assert rc == 0
     out = json.loads(capsys.readouterr().out)
     assert out["laning"]["covered"] == 1
+
+
+# ---- build-lean agreement (item 502 - the build flip-gate axis) ----
+
+
+def test_classify_build_lean_table():
+    anti_tank = [
+        "Rush Lord Dominik's vs their tanks", "Black Cleaver into Liandry",
+        "Blade of the Ruined King on-hit", "Void Staff for magic pen",
+        "Kraken Slayer", "build anti-tank", "Serylda then Mortal Reminder",
+    ]
+    anti_squishy = [
+        "Youmuu's into Edge of Night", "Lethality Duskblade spike",
+        "Prowler's Claw burst", "The Collector + Opportunity", "build anti-squishy",
+        "Eclipse to one shot the carry",
+    ]
+    for t in anti_tank:
+        assert rep.classify_build_lean(t) == "anti_tank", t
+    for t in anti_squishy:
+        assert rep.classify_build_lean(t) == "anti_squishy", t
+
+
+def test_classify_build_lean_neutral_tie_and_empty_are_none():
+    assert rep.classify_build_lean("Infinity Edge into Phantom Dancer") is None
+    assert rep.classify_build_lean("poke phase") is None  # laning text, no lean
+    # one signal each way -> ambiguous hybrid -> None
+    assert rep.classify_build_lean("Lord Dominik's and Youmuu's") is None
+    assert rep.classify_build_lean("") is None
+    assert rep.classify_build_lean(None) is None
+
+
+def test_summarize_build_agreement_lean_axis(tmp_path):
+    records = [
+        # covered, lean anti_tank, native anti-tank build -> comparable agree
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "Rush Lord Dominik's vs their tanks"},
+        # covered, lean anti_tank, native anti-squishy build -> comparable disagree
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "Lethality Youmuu's to burst the carry"},
+        # covered, lean set, native carries no lean -> unclassified_native
+        {"mode": "aram", "covered": True, "lean": "anti_squishy",
+         "native_action": "Infinity Edge into Phantom Dancer"},
+        # uncovered with a native build signal -> table-gap denominator
+        {"mode": "sr", "covered": False, "lean": None,
+         "native_action": "Void Staff for magic pen"},
+        # no native signal at all -> excluded everywhere
+        {"mode": "sr", "covered": True, "lean": "anti_tank", "native_action": None},
+    ]
+    out = rep.summarize_build_agreement(records)
+    assert out["comparable_covered"] == 2
+    assert out["agree"] == 1
+    assert out["agreement_rate"] == 0.5
+    assert out["by_precompute"] == {"anti_tank": 2}
+    assert out["by_native"]["anti_tank"] == {"n": 1, "agree": 1}
+    assert out["by_native"]["anti_squishy"] == {"n": 1, "agree": 0}
+    assert out["unclassified_native"] == 1
+    assert out["uncovered_with_native"] == 1
+
+
+def test_summarize_build_agreement_empty():
+    out = rep.summarize_build_agreement([])
+    assert out["comparable_covered"] == 0
+    assert out["agreement_rate"] == 0.0
+    assert out["by_precompute"] == {}
+    assert out["confusion"] == []
+
+
+# ---- additive even-precompute disaggregation (laning; no rate change) ----
+
+
+def test_even_precompute_by_native_additive():
+    # The precompute "even" verdict A-label "Even trade on your cd window" folds
+    # into the trade bucket for the agreement rate (unchanged), but the additive
+    # breakdown tallies which native verdict the even ticks faced - the input to
+    # the gated even<->hold mapping decision.
+    records = [
+        {"mode": "aram", "covered": True,
+         "choices": [{"label": "Even trade on your cd window"}],
+         "native_action": "hold and farm"},
+        {"mode": "aram", "covered": True,
+         "choices": [{"label": "Even trade on your cd window"}],
+         "native_action": "TRADE"},
+        {"mode": "aram", "covered": True,
+         "choices": [{"label": "Even trade on your cd window"}],
+         "native_action": "hold the wave"},
+        # a genuine non-even trade rec - not counted in the even breakdown
+        {"mode": "aram", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "TRADE"},
+    ]
+    out = rep.summarize_agreement(records)
+    # all 4 are comparable; even folds to trade so the rate is unchanged behavior
+    assert out["comparable_covered"] == 4
+    assert out["by_precompute"] == {"trade": 4}
+    # only the 3 even-label ticks are in the breakdown, by native verdict
+    assert out["even_precompute_by_native"] == {"hold": 2, "trade": 1}
+
+
+def test_even_precompute_by_native_empty_when_no_even():
+    records = [
+        {"mode": "aram", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "TRADE"},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["even_precompute_by_native"] == {}
