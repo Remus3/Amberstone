@@ -604,6 +604,35 @@ def _native_laning_action(coach) -> str | None:
     return None
 
 
+def _native_build_text(coach) -> str | None:
+    """The Haiku BUILD recommendation to score against the precompute lean for
+    the HZ-C2 build-agreement gate. The build precompute side is a lean
+    (anti_tank / anti_squishy), so the native side must be the live build
+    advice, NOT the laning ``action`` (item 502 fix: capturing ``action`` here
+    scored the wrong axis, so build agreement was structurally 0/0). Joins the
+    Haiku ``item_build`` path + per-item reason keys + the Arena vs-tanks /
+    vs-healing hints into one text blob for the report's classify_build_lean.
+    Returns None when no build advice is present (then the tick is not
+    comparable, the honest no-signal state)."""
+    if not isinstance(coach, dict):
+        return None
+    parts: list[str] = []
+    ib = coach.get("item_build")
+    if isinstance(ib, str) and ib.strip():
+        parts.append(ib)
+    elif isinstance(ib, list):
+        parts.append(" ".join(str(x) for x in ib))
+    reasons = coach.get("item_build_reasons")
+    if isinstance(reasons, dict):
+        parts.append(" ".join(str(k) for k in reasons))
+    for key in ("vs_tanks", "vs_healing", "item_extra"):
+        val = coach.get(key)
+        if isinstance(val, str) and val.strip():
+            parts.append(val)
+    text = " ".join(p for p in parts if p).strip()
+    return text or None
+
+
 def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
                                    *, path=None) -> None:
     """Fail-soft HZ-C1 validation shadow-log. Records what the PRECOMPUTED
@@ -731,8 +760,8 @@ def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
         log_precomputed_build(
             mk, str(champ), enemy_comp, lean=lean,
             choices=choices, covered=covered,
-            native_action=coach.get("action") if isinstance(coach, dict) else None,
-            native_choices=to_jsonable(parse_choices(coach)),
+            native_action=_native_build_text(coach),
+            native_choices=[],
             item_count=item_count, game_time_s=gs.get("game_time_s"), path=path,
         )
     except Exception:
