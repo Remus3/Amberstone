@@ -85,24 +85,3 @@ drained; shipped the one named headless follow-up + a swarm-discovered miss.
   (`LIVE_GAME_GATED_SYNC.md`), operator-product (carry-eff flip; the CLAUDE.md ENGINE prose drift),
   or outward/Gemini-gated (D1 un-track slices 2-4; p6 g3/g6/g7). No headless-safe slice remains per
   the completeness scan.
-
----
-
-# 2026-06-19 (orchestrated Q&A swarm) - complete the non-live open items (LEDGER 508/509)
-
-Operator: "multi agent orchestrator Q&A swarm complete the open items" + a scope
-AskUserQuestion -> "Full autonomy, ship all". Read-only Workflow (20 agents = 10 items x
-Draft+Verify; 1.69M tok / 414s), all 10 CONFIRM; supervisor applied the safe slices serially.
-Commits `4623edd7` + `186a9165` + `a78fe657`, CI green (27847530746); Tier-1, NO ENGINE /
-0 frozen / no DS / no Share.
-
-- SHIPPED 2: 508 hz laning report `even` bucket + even<->hold map (`tools/hz_shadow_report.py`,
-  report-only, +57 ticks 39%->53%); 509 D1 slice-1 `test_ds_share_sync_determinism.py` lock.
-- ALREADY-SHIPPED 3 (do NOT redo): aram-override (467 `97920f56`), ci-watchdog (204 `391191be`
-  built-not-armed, ROADMAP fixed), weekly-hygiene red (444; stale, self-heals 06-21).
-- GATED-NOT-LIVE 5 (unblocks in LEDGER 509): carry-eff default-ON = operator A/B/C call (the
-  `_ROLE_BASELINES` lever is WRONG, collides w/ sum-5.0 invariant; literal flip = silent no-op);
-  gpi-drilldown needs a Tier-2 champ-pool source; universal-files out-of-repo; cdragon PGR-S2-gated;
-  p6-g6 FORBIDDEN_BLIND, g3/g7 Gemini-down.
-- NEXT (gated): hz engine threshold + LFS regen + live flip (`matchup.py`); D1 slices 2-4 (un-track
-  + CI flip + gist re-key, outward; + the `.pytest_cache` rglob leak).
