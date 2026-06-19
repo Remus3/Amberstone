@@ -166,6 +166,39 @@ def test_live_tick_captures_immediate_when_action_blank(tmp_path, monkeypatch):
     assert rows[0]["native_action"] == "Trade now then disengage"
 
 
+def test_native_build_text_joins_build_fields():
+    # item 502: the BUILD shadow native is the Haiku build advice (lean axis),
+    # NOT the laning action. Joins item_build + reason keys + Arena vs-tanks.
+    coach = {"action": "poke", "item_build": "Lord Dominik's -> Mortal Reminder",
+             "item_build_reasons": {"Lord Dominik's": "vs armor"},
+             "vs_tanks": "shred their frontline"}
+    txt = dc._native_build_text(coach)
+    assert "Lord Dominik's" in txt and "Mortal Reminder" in txt
+    assert "shred their frontline" in txt
+    assert "poke" not in txt  # the laning action must NOT leak into build native
+
+
+def test_native_build_text_none_when_no_build():
+    assert dc._native_build_text({"action": "poke", "immediate": "Trade"}) is None
+    assert dc._native_build_text({}) is None
+    assert dc._native_build_text(None) is None
+
+
+def test_live_build_row_captures_build_native_not_laning(tmp_path, monkeypatch):
+    """A live build shadow row carries the Haiku BUILD advice as native_action
+    (the lean-axis comparison), never the laning action (item 502 fix)."""
+    _patch_loaders(monkeypatch)
+    bp = tmp_path / "build.jsonl"
+    coach = {"champion": "Ahri", "level": 6, "game_time_s": 300.0,
+             "action": "poke", "item_build": "Rush Lord Dominik's vs their tanks"}
+    lc = {"champion": "Ahri", "enemy_team": ["Darius"]}
+    dc.shadow_log_precomputed_build(coach, lc, "sr", path=bp)
+    rows = _read(bp)
+    assert len(rows) == 1
+    assert rows[0]["native_action"] == "Rush Lord Dominik's vs their tanks"
+    assert rows[0]["native_choices"] == []
+
+
 def test_hermeticity_default_path_redirected(tmp_path, monkeypatch):
     """A NO-path call inside a test must never touch the repo's real shadow
     log - the conftest autouse fixture redirects the module SHADOW_PATH."""
