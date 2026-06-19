@@ -4,6 +4,26 @@
 
 ---
 
+# 2026-06-19 (interactive) - Arena coach same-state Haiku-skip debounce seam (LEDGER 507)
+
+Operator: "continue what is open" with the gemini+AHK loop STOPped (control/STOP since 06-18),
+ORCHESTRATION_PLAN fully drained (0 WIP/OPEN, last refill R1 DONE), bridge 0 tasks, tree clean.
+One scope AskUserQuestion -> "aram_coach Haiku-skip seam" lane. Commit `f40a91de` (code+test) +
+docs sync; Tier-1, NO ENGINE bump / 0 frozen / no DS restart / no Share mirror; targeted suite
+755 passed, ruff + ASCII clean.
+
+- Verify-before-build: item 506 already shipped the ARAM seam. Grep found SR ALREADY covered
+  (`coach_integration/_coach.py::_state_signature`, always-on 5.7 coarse skip; watchdog flagged
+  `aram_coach` not `sr_coach`). Only **Arena `_run_coach` had no skip** = the open sibling.
+- Ported the ARAM seam to `coaches/arena_coach.py` behind `RC_ARENA_STATE_DEBOUNCE` (DEFAULT-OFF,
+  45s ceiling, byte-identical off). Coarse sig buckets HP 10% / gold 300g / next-opp HP 25% + keys
+  round/level/kda/alive-teams/items/augments/next-opponent/camp+anvil. Event-driven aug-select +
+  anvil NOT debounced (discrete events). +14 tests mirror `test_aram_state_debounce.py`.
+- NEXT (operator-gated): the live default-ON FLIP of ARAM + Arena (+ SR ceiling) stays fidelity-
+  gated, do-not-flip-blind, awaiting live/replayed-game validation. BACKLOG L59 updated.
+
+---
+
 # 2026-06-19 (interactive) - orchestrated fan-out: 7 headless backlog items (LEDGER 506)
 
 Operator: "perform all listed headless open items via orchestrated multi-agent fan out, this
