@@ -786,6 +786,27 @@ class Coach(BaseCoach):
                 **reco_fields,
             })
             safe_write(self._out, current)
+            # Do-not-flip-blind: record the Haiku take vs the deterministic
+            # augment_recommender ranking for offline agreement analysis
+            # (core.augment_shadow.summarize_agreement). The served output
+            # above is unchanged - this appends a shadow row only, fail-soft.
+            try:
+                from core import augment_shadow as _augsh
+                _augsh.log_augment_advice(
+                    {
+                        "mode":     reco_fields.get("aug_reco_mode"),
+                        "champion": champ,
+                        "round":    gs.get("round", 0),
+                        "stage":    reco_fields.get("aug_reco_stage"),
+                        "offered":  list(choices or []),
+                        "picked":   list(picked_before),
+                    },
+                    {"take": take, "why": current.get("aug_why", ""),
+                     "plan": current.get("aug_plan", "")},
+                    reco_fields,
+                )
+            except Exception:
+                pass
         except Exception as exc:
             logger.error("Arena augment select: %s", exc)
             # The recommender is a parallel signal (S5) - persist it even
