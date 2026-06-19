@@ -4,6 +4,44 @@
 
 ---
 
+# 2026-06-19 (run 2026-06-19-02) - headless-upgrade: HZ shadow-report build-lean axis + laning even-disagg (4b)
+
+Operator launched `/headless-upgrade`. HEAD `d7f5e527` -> `278d0253` (1 code commit +
+docs sync), CI green, NO ENGINE bump / frozen edits / worktrees / DS restart. Prior
+manifest 2026-06-19-01 fully committed, so fresh run-id 2026-06-19-02.
+
+Thin-queue night (4th run in a row to confirm it): the headless-safe HIGH-value queue
+is genuinely thin - laning precompute improvement is operator-gated CALIBRATION, coach
+flips are data-gated (do-not-flip-blind), DS registries saturated, cost levers CLEAN,
+and the competitor-research lane is SATURATED (4 teardowns in 11 days), so I DROPPED a
+5th teardown to avoid re-pitching shipped work. Shipped the one clean PRIMARY-aligned,
+non-blind, headless-validatable slice that remained.
+
+- **P2 `278d0253` (4b PRIMARY, the one ship):** two report-correctness fixes to the
+  do-not-flip-blind substrate (`tools/hz_shadow_report.py` + the build-shadow call site
+  in `dashboard/_deterministic_coaching.py`) - report-only, NO live coach change, NO flip.
+  (a) BUILD lane: the build shadow logged the LANING action (`coach.action`) as its
+  native vs a build-LEAN precompute = wrong axis -> build agreement was structurally 0/0
+  with no path to ever measure. NEW `_native_build_text` (Haiku item_build advice) +
+  `classify_build_lean` + `summarize_build_agreement` (lean axis). Best-coverage lane
+  (100%/698) becomes measurable on NEW games; historical 698 rows correctly show
+  unclassified_native. (b) LANING lane: additive even-precompute-by-native breakdown -
+  the `even` verdict ("Even trade on your cd window"/B"Hold position") folds into trade,
+  understating agreement. Exposes the overlap WITHOUT changing the rate or the gated
+  even<->hold mapping. QUANTIFIED live: all 181 comparable precompute-"trade" ticks are
+  the even verdict; 57 faced Haiku-hold -> the gated mapping is worth +57 ticks (39%->53%).
+  +8 tests; 62 hz/shadow + 271 blast-radius green; validated over the live 1490/1488 logs.
+- **P3 cost sweep CLEAN:** 7/7 levers clean w/ evidence (no net-positive fix; matches last
+  3 runs). **DS audit (sec8) SKIP:** at the documented saturation wall (forward-marker
+  exhausted; registries machine-guarded) - needs a new-extractor-key dedicated session.
+- **NEXT (operator-gated):** (a) laning even<->hold mapping + back_off-threshold recalib,
+  now teed up with exact numbers (+57 ticks; the report's even-breakdown is the per-iter
+  gate); (b) build flip-gate agreement accrues on NEXT live games (axis now correct);
+  (c) personal-build UI consumer still capture-owed (Game-PC :8892 down).
+- ops/loop/{config.json,director_prompt.md} STILL uncommitted (operator gemini-loop tuning, left).
+
+---
+
 # 2026-06-19 (run 2026-06-19-01) - headless-upgrade: personal-build-wr + laning flip-gate diagnosis (4b)
 
 Operator launched `/headless-upgrade`. HEAD `bfc44e0a` -> `a4db6aab` (2 commits), CI green
