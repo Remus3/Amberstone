@@ -429,11 +429,38 @@ def test_summarize_build_agreement_empty():
 # ---- additive even-precompute disaggregation (laning; no rate change) ----
 
 
+def test_classify_verdict_even_distinct():
+    assert rep.classify_verdict("Even trade on your cd window") == "even"
+    assert rep.classify_verdict("even") == "even"
+    assert rep.classify_verdict("EVEN trade") == "even"
+    assert rep.classify_verdict("Trade now") == "trade"
+    assert rep.classify_verdict("poke him") == "trade"
+
+
+def test_record_agreement_even_maps_to_hold():
+    rec_hold = {"covered": True,
+                "choices": [{"label": "Even trade on your cd window"}],
+                "native_action": "hold the wave"}
+    pair = rep.record_agreement(rec_hold)
+    assert pair is not None
+    assert pair["precompute"] == "even"
+    assert pair["native"] == "hold"
+    assert pair["agree"] is True
+    rec_even = {"covered": True,
+                "choices": [{"label": "Even trade on your cd window"}],
+                "native_action": "even trade here"}
+    assert rep.record_agreement(rec_even)["agree"] is True
+    rec_bo = {"covered": True,
+              "choices": [{"label": "Even trade on your cd window"}],
+              "native_action": "back off"}
+    assert rep.record_agreement(rec_bo)["agree"] is False
+
+
 def test_even_precompute_by_native_additive():
-    # The precompute "even" verdict A-label "Even trade on your cd window" folds
-    # into the trade bucket for the agreement rate (unchanged), but the additive
-    # breakdown tallies which native verdict the even ticks faced - the input to
-    # the gated even<->hold mapping decision.
+    # The precompute "even" verdict A-label "Even trade on your cd window" now
+    # forms its own "even" bucket (item 508), and an even precompute counts as
+    # agreement against a Haiku "hold" (the even verdict's B-option is "Hold
+    # position"). The breakdown still tallies which native verdict even faced.
     records = [
         {"mode": "aram", "covered": True,
          "choices": [{"label": "Even trade on your cd window"}],
@@ -449,9 +476,11 @@ def test_even_precompute_by_native_additive():
          "native_action": "TRADE"},
     ]
     out = rep.summarize_agreement(records)
-    # all 4 are comparable; even folds to trade so the rate is unchanged behavior
+    # all 4 comparable; the 3 even ticks form the "even" bucket, "Trade now" trade
     assert out["comparable_covered"] == 4
-    assert out["by_precompute"] == {"trade": 4}
+    assert out["by_precompute"] == {"even": 3, "trade": 1}
+    # even<->hold maps to agreement: 2 even-hold + the 1 trade-trade = 3
+    assert out["agree"] == 3
     # only the 3 even-label ticks are in the breakdown, by native verdict
     assert out["even_precompute_by_native"] == {"hold": 2, "trade": 1}
 
