@@ -42,6 +42,43 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (run 2026-06-19-04) - headless-upgrade: ops-hygiene RC-GeminiAudit exit-0 + thin-night CLEAN
+
+Operator launched `/headless-upgrade`. HEAD `c1a13b2d` -> `b1f27bb1` (1 code commit +
+docs sync), CI green, NO ENGINE bump / frozen edits / worktrees / DS restart. Prior
+manifest 2026-06-19-03 fully committed, so fresh run-id 2026-06-19-04.
+
+Thin-queue night #6 (5 prior WAKEUPs agree). PRIMARY 4b Haiku-to-ZERO is now uniformly
+data/calibration-gated, NOT code-blocked: laning = calibration-gated (even<->hold,
+operator call); build = HOLD (rail +3.34pp, 95%lo=-0.0235, flip_ready=false, arms
+511/684); champ-select + augment flips = volume-gated, shadow logs EMPTY (no games since
+the capturers shipped today/-18-03); laning/build shadow 1490/1488 already exhausted by
+-01/-02/-03. So pivoted to the 2 operator-flagged FAILING scheduled tasks (session-start
+anomalies) - concrete headless ops-hygiene, not a blind flip.
+
+- **S1 `b1f27bb1` (the one ship):** RC-GeminiAudit failed daily (exit 3) since 2026-06-18.
+  Gemini returns empty on BOTH gemini-3-pro-preview AND the gemini-2.5-flash fallback
+  (same-second) = EXTERNAL quota/billing/availability, NOT a repo fault (the model id
+  worked daily 06-08..06-17 per `logs/gemini_audit.log`). The audit is PROVISIONAL
+  read-only advisory, so exit 3 left the task red firing a false anomaly every day.
+  `tools/gemini_audit.ps1`: on empty-after-retries log loudly + exit 0 (not 3), mirroring
+  the sibling `weekly_hygiene_run.ps1` item-444 hardening; exit 2 (key missing) stays red.
+  Verified LIVE: `schtasks /Run` -> LastTaskResult 3->0; SKIP code=0 line logged.
+- **S2 RC-WeeklyHygiene result=1 = NO ACTION (verify-before-declare-broken win):** the
+  06-14 failure was "Credit balance is too low". `git log -S` confirms the transient
+  detection (item 444, `85065ff6`) landed 06-16 16:17, AFTER the 06-14 04:17 run. So
+  result=1 is STALE - the current script already exits 0 on that class; it self-heals on
+  the next weekly run 06-21. No fix needed (almost wrote one for an already-fixed task).
+- **P3 cost sweep 6/7 CLEAN + lever-6 = the S1 fix:** 20 guard tests pass (cache-floor
+  item286 / bundle-parity / log-spam); 34 route-TTL sites intact; only 500ms timer is
+  UI-local (applyStaleness, no network); the 3 sonnet refs are post-call `r._model`
+  telemetry stamps not call-time picks. **DS audit SKIP:** saturation wall.
+- **NEXT (operator-gated, unchanged):** arena-augment + champ-select + build flips accrue
+  on real games; laning even<->hold mapping (+57 ticks). `ops/loop/{config.json,
+  director_prompt.md}` STILL uncommitted (operator gemini-loop relaunch tuning, left).
+
+---
+
 # 2026-06-19 (run 2026-06-19-03) - headless-upgrade: arena augment-select shadow capturer (4b)
 
 Operator launched `/headless-upgrade`. HEAD `98c04ea4` -> `72cd1681` (1 code commit +
