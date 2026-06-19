@@ -37,3 +37,11 @@ CORRECTED remaining champ-select Haiku target = `coaches/champ_select_coach.py:1
 Root cause: the deterministic substrate exists (item 280) and its docstring (`dashboard/_champ_select_deterministic.py:24`) claims it "shadow-logs this alongside", but there is NO champ-select shadow module (`core/*shadow*.py` has det/ds/hz_build/hz_choice/live_benchmark - none for champ-select) and NO `data/*champ*select*shadow*.jsonl`. So the champ-select flip track accrues ZERO validation data on every game - permanently flip-blocked until a capturer is wired.
 
 Recommendation: mirror `core/hz_choice_shadow.py` (fail-soft, atomic append, coarse-state dedup, native-vs-precompute capture) for the champ-select brief, wired at the champ-select state-build site, so EACH queued game feeds BOTH the laning track AND the champ-select track in parallel. Code-actionable now (capturer missing, not data-blocked), root-cause-first, TDD, Tier-1. Defer the flip itself to do-not-flip-blind after data accrues.
+
+## UPDATE 2026-06-18 (run 2026-06-18-03) - pick-advisor substrate + capturer BUILT
+
+The corrected Tier-2 target (the `champ_select_coach` PICK-ADVISOR, not the already-flipped brief) now has BOTH missing pieces (commit `a31ef769`):
+- `core/champ_select_advisor_deterministic.advise_pick` - the deterministic v1 candidate the pick-advisor lacked. Composes surfaces RC already trusts: `aram_comp_verdict` (ARAM bench swap + comp factors) + archetype tags. Mirrors coach_pick's advice fields {advice, swap, summoners, watchout}. No Anthropic call, fail-soft.
+- `core/champ_select_shadow.log_champ_select_advice` - the missing capturer (mirrors `hz_choice_shadow`), wired fail-soft at `dashboard/routes_coach.py` AFTER the live coach_pick. Records native Haiku advice vs the deterministic candidate to `data/champ_select_shadow.jsonl` per distinct pick state. NO change to served output.
+
+The pick-advisor flip is now DATA-BLOCKED, not code-blocked: each queued game with a champ-select feeds the validation lane. NEXT = accrue real-game shadow rows -> det-vs-Haiku agreement analysis -> THEN the flip (do-not-flip-blind). The v1 deterministic candidate is intentionally conservative (e.g. archetype-keyed summoners); refine it once agreement data shows where it diverges from Haiku.
