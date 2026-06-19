@@ -43,6 +43,7 @@
 @import './panels/player_gpi.css';
 @import './panels/duration_winrate.css';
 @import './panels/perf_curve.css';
+@import './panels/op_score.css';
 @import './panels/ds_matchup.css';
 @import './panels/ds_combo.css';
 @import './panels/ds_knobs.css';

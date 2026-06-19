@@ -41,6 +41,84 @@ from core.mayhem_detect import is_mayhem
 logger = logging.getLogger("rc.coaches.aram")
 _APP_DIR = Path(__file__).parent.parent
 
+# -- Same-state Haiku-skip debounce (BACKLOG.md:59) ----------------------------
+# DEFAULT-OFF, fidelity-gated. When OFF (default) behavior is byte-identical to
+# the always-call-Haiku path. When ON (RC_ARAM_STATE_DEBOUNCE=1), the coach
+# computes a COARSE signature of only the coaching-relevant snapshot fields
+# (continuous values bucketed so tiny jitter does not bust the cache); if the
+# signature equals the last-coached signature AND the cached coaching is younger
+# than the hard max-staleness ceiling, the redundant messages.create is skipped
+# and the prior coaching artifact is reused. The ceiling guarantees the coach
+# can never go truly stale: once it expires, the next tick always re-calls Haiku
+# even on an unchanged signature. Serves the cost objective + Haiku-to-ZERO north
+# star without trading fidelity (the cardinal "never trade fidelity for cost").
+# Validate against a live/replayed game before flipping ON (do-not-flip-blind).
+_STATE_DEBOUNCE = os.getenv("RC_ARAM_STATE_DEBOUNCE", "0") == "1"
+# Hard max-staleness ceiling (seconds): the longest the coach may reuse a cached
+# same-state coaching before it MUST re-call Haiku regardless of signature.
+# 45s sits above the stable poll cadence (_STABLE_DEBOUNCE_S=25s) so a stable
+# board skips at most ~1 redundant call between refreshes, yet is short enough
+# that the coach text never feels frozen mid-game.
+_STATE_DEBOUNCE_MAX_STALE_S = 45.0
+
+
+def _coach_state_signature(state: dict, vision_state: dict) -> tuple:
+    """COARSE signature of only the coaching-relevant snapshot fields.
+
+    Continuous / noisy values are BUCKETED so sub-bucket jitter (a 1% HP tick,
+    a few seconds of game time, a handful of gold) does NOT bust the cache and
+    force a redundant Haiku call. Discrete tactical state (level, dead-enemy
+    count, owned items, augments, augment-select, wave bucket, tower buckets,
+    pack availability) IS in the signature so any real change always re-calls.
+
+    Deliberately COARSE for cost, but NOT so coarse it hides a mid-fight shift:
+    HP is bucketed in 10% bands (aligns with the prompt's HP decision-tree
+    thresholds at 80/60/40/30), which keeps the action tier responsive while
+    collapsing micro-jitter. Used only when _STATE_DEBOUNCE is ON.
+    """
+    state = state or {}
+    vs = vision_state or {}
+
+    def _bucket(v, size, default=0):
+        try:
+            return int(float(v) // size)
+        except (TypeError, ValueError):
+            return default
+
+    hp_band = _bucket(state.get("hp_pct", 100), 10)
+    mana_band = _bucket(state.get("mana_pct", 100), 25)
+    # Gold in ~300g bands: enough to shift a completed-item recommendation,
+    # small enough to ignore per-tick passive income.
+    gold_band = _bucket(state.get("gold", 0), 300)
+    # Game time in 30s bands - coarse phase signal, not a per-second buster.
+    time_band = _bucket(state.get("game_seconds", 0), 30)
+    wave_band = _bucket(vs.get("wave_pct", 50), 25)
+    my_tower_band = _bucket(vs.get("my_tower_hp", 100), 25)
+    en_tower_band = _bucket(vs.get("enemy_tower_hp", 100), 25)
+    packs = vs.get("hp_packs", [True, True])
+    packs_t = tuple(bool(p) for p in packs) if isinstance(packs, list) else ()
+    augs = vs.get("augments", [])
+    augs_t = tuple(augs) if isinstance(augs, list) else ()
+
+    return (
+        state.get("champion", ""),
+        state.get("game_mode", "ARAM"),
+        int(state.get("level", 1) or 1),
+        hp_band,
+        mana_band,
+        gold_band,
+        time_band,
+        len(state.get("dead_enemies", [])),
+        tuple(state.get("items", []) or []),
+        tuple(state.get("enemy_comp", []) or []),
+        wave_band,
+        my_tower_band,
+        en_tower_band,
+        packs_t,
+        augs_t,
+        bool(vs.get("augment_select")),
+    )
+
 # Live metric recording: the enable gate (env RC_LIVE_METRICS=1 OR config
 # live_metrics_enabled, re-read live) + per-match streamer dispatch live in
 # core.live_metrics. Wired into the coaching write below via live_metrics.stream;
@@ -754,6 +832,31 @@ class Coach(BaseCoach):
                 event_line  = event_line,
             )
 
+            # -- Same-state Haiku-skip debounce (DEFAULT-OFF) --------------
+            # When ON, skip the redundant messages.create if the coarse
+            # coaching-relevant signature is unchanged AND the cached
+            # coaching is younger than the hard max-staleness ceiling. The
+            # prior coaching artifact is already on disk (written by the
+            # last non-skipped tick) so reuse is a no-op write. When OFF
+            # (default) this block is inert and behavior is byte-identical.
+            if _STATE_DEBOUNCE:
+                import time as _time_dbnc
+                _sig = _coach_state_signature(state, vs)
+                _last_sig = getattr(self, "_state_dbnc_sig", None)
+                _last_ts = getattr(self, "_state_dbnc_ts", 0.0)
+                _now_dbnc = _time_dbnc.time()
+                if (
+                    _last_sig is not None
+                    and _sig == _last_sig
+                    and (_now_dbnc - _last_ts) < _STATE_DEBOUNCE_MAX_STALE_S
+                ):
+                    logger.debug(
+                        "ARAM state-debounce: signature unchanged "
+                        "(age %.1fs < %.0fs ceiling) - reusing cached coaching",
+                        _now_dbnc - _last_ts, _STATE_DEBOUNCE_MAX_STALE_S,
+                    )
+                    return
+
             _cb = self._overlay.get("coach_bar") if self._overlay else None
             if _cb:
                 try:
@@ -896,6 +999,16 @@ class Coach(BaseCoach):
                 cur["daemon_slayer_picks"] = _ds_dispatch.display_rows
 
             safe_write(self._out, cur)
+
+            # -- Same-state Haiku-skip debounce: record the signature + ts
+            # of THIS just-coached state so the next tick can skip a
+            # redundant call. Only tracked when the gate is ON; inert (and
+            # byte-identical) when OFF. Computed from the same state/vs that
+            # drove this call so the cached artifact matches the signature.
+            if _STATE_DEBOUNCE:
+                import time as _time_dbnc2
+                self._state_dbnc_sig = _coach_state_signature(state, vs)
+                self._state_dbnc_ts = _time_dbnc2.time()
 
             # -- Live metric streaming (feature-flagged) --------------
             # Shared gate + per-match streamer dispatch in core.live_metrics

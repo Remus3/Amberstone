@@ -310,6 +310,33 @@ _ROLE_BASELINES: dict[str, dict[str, float]] = {
 }
 
 
+# Optional aggregator-B-style carry-efficiency axis (BACKLOG.md residual 1; folds the
+# DISPLAY-only gold_share from item 505 + the existing kill-participation into
+# the grade behind a DEFAULT-OFF switch). This is an ADDITIVE bonus axis - when
+# enabled it can only RAISE raw_total (never lower it), so a higher gold_share
+# or KP yields a non-worse grade (monotonic by construction). When the switch
+# is off (the default) the component is never computed and the grade is
+# byte-identical to the pre-fold calibration.
+#
+# The two sub-axes are normalized against neutral baselines:
+#   * gold_share_pct: 100/team_size is the even-split baseline. The operator's
+#     own roster size is not known here so we use the canonical 5-player SR even
+#     split (20.0). _component_score clamps the ratio to [0, 2], so a carry
+#     pulling 40% (2x the even split) saturates the gold-share sub-term.
+#   * kp_pct: 50.0 is a neutral KP baseline (half the team's kills); a 100% KP
+#     game saturates at 2x.
+# Each sub-axis carries half the carry-efficiency weight so the combined
+# contribution at "even split + neutral KP" equals _CARRY_EFFICIENCY_WEIGHT
+# (a median carry profile adds exactly _CARRY_EFFICIENCY_WEIGHT to raw_total ->
+# _CARRY_EFFICIENCY_WEIGHT * 10 points). The weight is deliberately modest (0.5)
+# so the additive axis is a nudge, not a re-baseline; the full grade re-anchor
+# remains a gated product call. Both sub-axes accept a 0-100 percent in `stats`
+# (gold_share_pct, kp_pct) and fail-soft to 0.0 when absent.
+_CARRY_EFFICIENCY_WEIGHT: float = 0.5
+_GOLD_SHARE_EVEN_BASELINE: float = 20.0  # 100 / 5-player SR team
+_KP_NEUTRAL_BASELINE: float = 50.0  # half the team's kills
+
+
 # Common Riot role aliases. Match-V5 carries TeamPosition strings like
 # "BOTTOM"/"UTILITY"/"JUNGLE"/"MIDDLE"/"TOP"; the rubric canonicalizes them.
 _ROLE_ALIASES: dict[str, str] = {
@@ -379,6 +406,7 @@ def compute_role_grade(
     stats: dict,
     role: str,
     weights: RoleWeights | None = None,
+    carry_efficiency: bool = False,
 ) -> dict:
     """Score a per-match per-role profile.
 
@@ -386,15 +414,26 @@ def compute_role_grade(
         stats: dict carrying kills, deaths, assists, cs, game_time_s,
             obj_participation_pct (0.0-1.0), vision_score,
             damage_dealt_to_champions. Missing keys are treated as 0
-            (fail-soft, never raise).
+            (fail-soft, never raise). When carry_efficiency is True, also
+            reads gold_share_pct (0-100, from core.carry_share.gold_share_pct)
+            and kp_pct (0-100 kill-participation); both fail-soft to 0.0.
         role: TeamPosition / role string. Canonicalized via
             _normalize_role; unknown -> MID.
         weights: optional RoleWeights override. Defaults to the
             calibration registry for the canonicalized role.
+        carry_efficiency: optional aggregator-B-style carry-efficiency fold
+            (BACKLOG.md residual 1). DEFAULT-OFF: when False the grade is
+            byte-identical to the pre-fold calibration - no carry component is
+            computed and `components` does not gain a `carry_efficiency` key.
+            When True an ADDITIVE bonus axis (gold_share + KP) contributes to
+            raw_total monotonically (a higher gold_share or KP can only raise,
+            never lower, the grade). Enabling it is a grade re-baseline and a
+            gated product call; the default-off path is what ships live.
 
     Returns:
         dict with keys: role, total_score, components (dict), and
-        percentile_grade ("S+", "S", "A", "B", "C", or "D").
+        percentile_grade ("S+", "S", "A", "B", "C", or "D"). The components
+        dict gains a `carry_efficiency` entry ONLY when carry_efficiency=True.
     """
     canonical_role = _normalize_role(role)
     role_weights = weights if weights is not None else _DEFAULT_WEIGHTS[canonical_role]
@@ -434,6 +473,20 @@ def compute_role_grade(
             role_weights.damage_per_min, damage_per_min, baselines["damage_per_min"]
         ),
     }
+
+    # Optional aggregator-B-style carry-efficiency fold (DEFAULT-OFF). Additive bonus
+    # axis: a gold-share sub-term + a kill-participation sub-term, each carrying
+    # half the carry-efficiency weight and clamped to [0, 2] by _component_score.
+    # Because it only ADDS to raw_total, a higher gold_share or KP yields a
+    # non-worse grade (monotonic). When the flag is off this block is skipped
+    # entirely, so the grade is byte-identical to the pre-fold calibration.
+    if carry_efficiency:
+        gold_share = float(stats.get("gold_share_pct", 0) or 0)
+        kp = float(stats.get("kp_pct", 0) or 0)
+        half_weight = _CARRY_EFFICIENCY_WEIGHT / 2.0
+        components["carry_efficiency"] = _component_score(
+            half_weight, gold_share, _GOLD_SHARE_EVEN_BASELINE
+        ) + _component_score(half_weight, kp, _KP_NEUTRAL_BASELINE)
 
     raw_total = sum(components.values())
     # Linear scaling: a 1.0-normalized profile across every axis maps to
