@@ -4,6 +4,43 @@
 
 ---
 
+# 2026-06-19 (run 2026-06-19-04) - headless-upgrade: ops-hygiene RC-GeminiAudit exit-0 + thin-night CLEAN
+
+Operator launched `/headless-upgrade`. HEAD `c1a13b2d` -> `b1f27bb1` (1 code commit +
+docs sync), CI green, NO ENGINE bump / frozen edits / worktrees / DS restart. Prior
+manifest 2026-06-19-03 fully committed, so fresh run-id 2026-06-19-04.
+
+Thin-queue night #6 (5 prior WAKEUPs agree). PRIMARY 4b Haiku-to-ZERO is now uniformly
+data/calibration-gated, NOT code-blocked: laning = calibration-gated (even<->hold,
+operator call); build = HOLD (rail +3.34pp, 95%lo=-0.0235, flip_ready=false, arms
+511/684); champ-select + augment flips = volume-gated, shadow logs EMPTY (no games since
+the capturers shipped today/-18-03); laning/build shadow 1490/1488 already exhausted by
+-01/-02/-03. So pivoted to the 2 operator-flagged FAILING scheduled tasks (session-start
+anomalies) - concrete headless ops-hygiene, not a blind flip.
+
+- **S1 `b1f27bb1` (the one ship):** RC-GeminiAudit failed daily (exit 3) since 2026-06-18.
+  Gemini returns empty on BOTH gemini-3-pro-preview AND the gemini-2.5-flash fallback
+  (same-second) = EXTERNAL quota/billing/availability, NOT a repo fault (the model id
+  worked daily 06-08..06-17 per `logs/gemini_audit.log`). The audit is PROVISIONAL
+  read-only advisory, so exit 3 left the task red firing a false anomaly every day.
+  `tools/gemini_audit.ps1`: on empty-after-retries log loudly + exit 0 (not 3), mirroring
+  the sibling `weekly_hygiene_run.ps1` item-444 hardening; exit 2 (key missing) stays red.
+  Verified LIVE: `schtasks /Run` -> LastTaskResult 3->0; SKIP code=0 line logged.
+- **S2 RC-WeeklyHygiene result=1 = NO ACTION (verify-before-declare-broken win):** the
+  06-14 failure was "Credit balance is too low". `git log -S` confirms the transient
+  detection (item 444, `85065ff6`) landed 06-16 16:17, AFTER the 06-14 04:17 run. So
+  result=1 is STALE - the current script already exits 0 on that class; it self-heals on
+  the next weekly run 06-21. No fix needed (almost wrote one for an already-fixed task).
+- **P3 cost sweep 6/7 CLEAN + lever-6 = the S1 fix:** 20 guard tests pass (cache-floor
+  item286 / bundle-parity / log-spam); 34 route-TTL sites intact; only 500ms timer is
+  UI-local (applyStaleness, no network); the 3 sonnet refs are post-call `r._model`
+  telemetry stamps not call-time picks. **DS audit SKIP:** saturation wall.
+- **NEXT (operator-gated, unchanged):** arena-augment + champ-select + build flips accrue
+  on real games; laning even<->hold mapping (+57 ticks). `ops/loop/{config.json,
+  director_prompt.md}` STILL uncommitted (operator gemini-loop relaunch tuning, left).
+
+---
+
 # 2026-06-19 (run 2026-06-19-03) - headless-upgrade: arena augment-select shadow capturer (4b)
 
 Operator launched `/headless-upgrade`. HEAD `98c04ea4` -> `72cd1681` (1 code commit +
@@ -71,34 +108,3 @@ non-blind, headless-validatable slice that remained.
   gate); (b) build flip-gate agreement accrues on NEXT live games (axis now correct);
   (c) personal-build UI consumer still capture-owed (Game-PC :8892 down).
 - ops/loop/{config.json,director_prompt.md} STILL uncommitted (operator gemini-loop tuning, left).
-
----
-
-# 2026-06-19 (run 2026-06-19-01) - headless-upgrade: personal-build-wr + laning flip-gate diagnosis (4b)
-
-Operator launched `/headless-upgrade`. HEAD `bfc44e0a` -> `a4db6aab` (2 commits), CI green
-(both runs success), NO ENGINE bump, NO frozen edits, NO worktrees, NO DS restart. Prior
-manifest 2026-06-18-03 fully committed, so fresh run-id 2026-06-19-01.
-
-Pre-flight established the headless-safe HIGH-value queue is genuinely thin: PRIMARY Tier-1/2
-coach flips are do-not-flip-blind (data-gated); the DS cross-eval clusters A(excluded)/B1/B2/C
-are all shipped-or-gated; DS registries saturated; cost levers CLEAN. So picked the two clean,
-PRIMARY-aligned, headless-VALIDATABLE slices that remained.
-
-- **S1 `43acb128` (4b / research-lift):** `core/personal_build_wr.py` + `GET /api/personal-build`.
-  Personal per-champion build win-rate from rewind_history.db - confidence-weighted item lift vs
-  own baseline (smoothed_rates blend toward the personal prior), legendary+boots gold floor so
-  end-of-game component noise drops out. Closes COMPETITOR_LIFT_2026-06-16 "personal-WR build
-  override (local-data half)". +18 tests, live-verified (Vayne SR 54g -> Terminus/Guinsoo/PD).
-  Deterministic, zero LLM. UI consumer DEFERRED (needs OWED Game-PC capture) -> BACKLOG.
-- **S2 `a4db6aab` (4b PRIMARY finding):** `tools/hz_shadow_report.py` now emits the precompute
-  x native confusion matrix + precompute verdict vocabulary. Run over the accrued 1490-row real-
-  game shadow log it reclassifies the laning bottleneck: NOT game volume (693 comparable ticks),
-  but AGREEMENT QUALITY = 39% (160/406). Precompute has only back_off/trade/even, NO hold band;
-  Haiku says hold 28% of ticks. Caveat (verified): the precompute `even` verdict (A="Even trade
-  on your cd window", B="Hold position") classifies coarse as "trade", so 39% understates true
-  agreement. Corrected HZ_HAIKU_CALL_INVENTORY "bottleneck=games" claim. +1 test (27 total).
-- **NEXT (operator-gated, in BACKLOG):** (a) personal-build UI consumer (capture-owed); (b) the
-  laning hold-band recalibration + LFS table regen (the 39% fix) - a product-calibration call,
-  explicitly NOT a blind overnight edit; the report's new confusion matrix is its per-iter gate.
-- ops/loop/{config.json,director_prompt.md} STILL uncommitted (operator pre-run loop tuning, left).
