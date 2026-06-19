@@ -23,7 +23,11 @@ then diff + replace ``_ITEM_ABILITY_HASTE`` below. The generator parses
 ``<attention>N</attention> Ability Haste`` from the first ``<stats>``
 block of each item description; subsequent matches (Mythic-passive AH
 grants, proc-on-takedown AH) are intentionally ignored - the static
-lane carries only the build-time base stat. Patch 16.10.1: 220 items.
+lane carries only the build-time base stat. Patch 16.10.1: 220 items
+(count unchanged at 16.12.1; the 16.12.1 refresh re-valued 3 Arena mirror
+ids - Imperial Mandate 224005 35->15, Iceborn 226662 10->15, Serylda's
+226694 10->15 - verified vs data/meta_build/ddragon/16.12.1/item.json).
+Drift-check tool: ops/audit/item_ah_drift_check.py (regen-and-diff).
 
 The registry is keyed by string item_id to match the engine's
 ``resolved.item_ids`` tuple shape (strings throughout).
@@ -177,7 +181,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "223190":  25.0,  # Locket of the Iron Solari
     "223193":  15.0,  # Gargoyle Stoneplate
     "223508":  20.0,  # Essence Reaver
-    "224005":  35.0,  # Imperial Mandate
+    "224005":  15.0,  # Imperial Mandate (16.12.1: Arena mirror 35->15)
     "224403":  20.0,  # The Golden Spatula
     "224628":  25.0,  # Horizon Focus
     "224629":  35.0,  # Cosmic Drive
@@ -195,13 +199,13 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "226655":  25.0,  # Luden's Echo
     "226656":  20.0,  # Everfrost
     "226660":   5.0,  # Bami's Cinder
-    "226662":  10.0,  # Iceborn Gauntlet
+    "226662":  15.0,  # Iceborn Gauntlet (16.12.1: Arena mirror 10->15)
     "226664":  10.0,  # Hollow Radiance
     "226667":  10.0,  # Radiant Virtue
     "226691":  15.0,  # Duskblade of Draktharr
     "226692":  10.0,  # Eclipse
     "226693":  15.0,  # Prowler's Claw
-    "226694":  10.0,  # Serylda's Grudge
+    "226694":  15.0,  # Serylda's Grudge (16.12.1: Arena mirror 10->15)
     "226696":  20.0,  # Axiom Arc
     "226697":  10.0,  # Hubris
     "226698":  15.0,  # Profane Hydra
