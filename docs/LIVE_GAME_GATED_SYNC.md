@@ -257,7 +257,7 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 - [ ] set_augment_intent 4-PATCH endpoint discovery: run the chain at a real Arena augment phase, log which
       of the 4 endpoints the live LCU exposes (`tools/gamepc_lcu_agent.py:1179`; ROADMAP item 187/188).
 - [DONE 2026-06-18 PM7, ENGINE 1.144.0 - headless, NOT live-gated] Arena boots 22xxxx mirror SHIPPED
-      (item 499, `<this commit>`). `core.build_order._select_boots` now remaps the resolved tier-2 boot
+      (item 499, `c258c4ab`). `core.build_order._select_boots` now remaps the resolved tier-2 boot
       to its `22`-prefixed map30-legal Arena mirror (`_BOOTS_ARENA_MIRROR`) on Arena/CHERRY; the bare
       3xxx tier-2 boots were map30=False (illegal on map 30). All 3 Arena build tables regenerated
       (flat 510 + HZ-B1 684 + HZ-B2 342 boots swaps, 0 other changes); SR/ARAM byte-identical. This was
