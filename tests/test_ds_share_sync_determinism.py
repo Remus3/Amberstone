@@ -34,6 +34,7 @@ def _is_artifact(rel: str) -> bool:
     parts = rel.split("/")
     return (
         "__pycache__" in parts
+        or ".pytest_cache" in parts
         or "logs" in parts
         or rel.endswith(".pyc")
         or rel.endswith(".log")
@@ -87,3 +88,24 @@ def test_every_tracked_src_path_is_reproduced():
         "tracked Share/src paths NOT reproduced by _build_expected (would be "
         f"lost on regenerate-at-checkout): {missing}"
     )
+
+
+def test_is_transient_skips_pytest_cache():
+    """The transient-artifact skip predicate excludes .pytest_cache as well as
+    __pycache__ / *.pyc (slice-3: the pytest cache dir is gitignored and must
+    never enter the deterministic generate set)."""
+    assert sync._is_transient(Path("agents/daemon_slayer/tests/.pytest_cache/v/cache/lastfailed"))
+    assert sync._is_transient(Path("agents/daemon_slayer/__pycache__/dps.cpython-314.pyc"))
+    assert sync._is_transient(Path("x/y.pyc"))
+    # Real source must NOT be skipped (no over-broad match).
+    assert not sync._is_transient(Path("agents/daemon_slayer/dps.py"))
+    assert not sync._is_transient(Path("agents/daemon_slayer/tests/test_dps.py"))
+
+
+def test_build_expected_excludes_pytest_cache():
+    """_build_expected emits no .pytest_cache path even when one exists in the
+    live engine dir (slice-3 regression: rglob picked them up because _is_pyc
+    skipped only __pycache__/.pyc, leaking 5 transient paths into the mirror)."""
+    expected = sync._build_expected()
+    leaked = [rel for rel in expected if ".pytest_cache" in rel.split("/")]
+    assert not leaked, f"transient .pytest_cache paths leaked into the generate set: {leaked}"

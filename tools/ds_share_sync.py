@@ -162,8 +162,16 @@ def _scrub(text: str) -> str:
     return text
 
 
-def _is_pyc(path: Path) -> bool:
-    return "__pycache__" in path.parts or path.suffix == ".pyc"
+def _is_transient(path: Path) -> bool:
+    """Transient, gitignored run-artifacts that must never enter the mirror:
+    bytecode caches (__pycache__ / *.pyc) and the pytest cache dir
+    (.pytest_cache - rglob otherwise leaks it from agents/daemon_slayer/tests/
+    into the deterministic generate set; slice-3 of the D1 de-dup)."""
+    return (
+        "__pycache__" in path.parts
+        or ".pytest_cache" in path.parts
+        or path.suffix == ".pyc"
+    )
 
 
 def _build_expected() -> dict[str, bytes]:
@@ -182,7 +190,7 @@ def _build_expected() -> dict[str, bytes]:
     # Engine package: copy every file; scrub .py text; clean-stub __init__.py.
     eng = _REPO / "agents" / "daemon_slayer"
     for p in sorted(eng.rglob("*")):
-        if p.is_dir() or _is_pyc(p):
+        if p.is_dir() or _is_transient(p):
             continue
         rel = f"agents/daemon_slayer/{p.relative_to(eng).as_posix()}"
         # The live engine CHANGELOG.md is the repo-internal release history
@@ -271,7 +279,7 @@ def _check(expected: dict[str, bytes]) -> int:
             # Ignore transient run-artifacts a test/import run may drop into
             # the mirror (bytecode caches, log files); they are gitignored and
             # are not part of the deterministic source mirror.
-            if p.is_dir() or _is_pyc(p) or p.suffix == ".log" or "logs" in p.parts:
+            if p.is_dir() or _is_transient(p) or p.suffix == ".log" or "logs" in p.parts:
                 continue
             on_disk[p.relative_to(_SRC).as_posix()] = p.read_bytes()
     drift = 0
