@@ -1331,6 +1331,20 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.145.0 (item 513 - passive_damage caster-defensive-stat scaling schema lift, default-OFF. Some
+empowered-AA passives deal bonus damage scaling on the CASTER's bonus armor / bonus magic resistance
+(the resist-tank "I hit harder the tankier I am" form). The DamageBlock.bonus_armor_pct / bonus_mr_pct
+fields + their _SCALING_TARGETS mappings (-> caster_bonus_armor / caster_bonus_mr) + the AbilityContext
+attributes already existed; this lift carries the two %-fields THROUGH the passive_damage registry -
+PassiveDamageEntry + PerStackTerm gain bonus_armor_pct / bonus_mr_pct, and to_damage_block copies them
+into the synthetic block so ability_dps._evaluate_block applies them with ZERO new evaluator math. SEEDED
+2 entries from verbatim 16.11.1 effects_descriptions, both default-OFF byte-identical: Taric P Bravado
+(25 : 93 based on level + 15% bonus armor) + Galio P Colossal Smash (15 : 115 based on level + 100% AD +
+45% AP + 60% bonus MR; crit interaction omitted -> AA-crit seam). Both stay metadata-only / NOT on the
+_AA_ROUTED_ON_HIT_KEYS allowlist (Taric post-spell-2-hit + Galio periodic gates, not every-AA). EXHAUSTED
+172-champ sweep found ONLY these two clean linear cases; K'Sante P (bilinear caster-resist * target-HP,
+All Out gated) + Rammus W (total-resist reflect) documented NOT-seeded. +18 characterization subtests.)
+
 1.141.0 (B1 melee-applicability gate - DS Tier-2 cross-eval nomination B, default-OFF. dps.py /
 hybrid.py carried NO attack-range gate, so Runaan's Hurricane's two extra bolts - a RANGED-basic-only
 on-hit - were credited on melee autos (mis-valuing Runaan's on Briar / XinZhao / Nilah, who win on
