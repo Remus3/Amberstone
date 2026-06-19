@@ -114,14 +114,11 @@ def _first_choice_label(rec: dict) -> Optional[str]:
 
 def _is_even_precompute_label(rec: dict) -> bool:
     """True when the precompute A-label is the ``even`` verdict ("Even trade on
-    your cd window", core/precomputed_laning_coach.py). classify_verdict folds
-    this into ``trade`` (the "trade" substring), so the agreement rate counts
-    even verdicts as trade. The even verdict's B-option is "Hold position", so
-    when Haiku says ``hold`` the even verdict already offered it - whether that
-    is an agreement is a product-calibration call (operator/Gemini-gated). This
-    additive breakdown exposes the even->native overlap WITHOUT deciding that
-    mapping (it changes no existing rate), so the gated recalibration is made on
-    the real disaggregated numbers, not the understated 39% folded view."""
+    your cd window", core/precomputed_laning_coach.py). classify_verdict now
+    maps this to its own ``even`` bucket (item 508), and record_agreement counts
+    an even precompute as agreement against a Haiku ``hold`` (the even verdict's
+    B-option is "Hold position"). This breakdown still tallies which native
+    verdict the even ticks faced, by native verdict."""
     label = _first_choice_label(rec)
     if not label:
         return False
@@ -145,6 +142,8 @@ _VERDICT_PHRASES: tuple[tuple[str, str], ...] = (
     ("disengage", "back_off"),
     ("engage", "all_in"),
     ("commit", "all_in"),
+    ("even trade", "even"),
+    ("even", "even"),
     ("trade", "trade"),
     ("poke", "trade"),
     ("harass", "trade"),
@@ -182,9 +181,9 @@ _NON_LANING_STATE_MARKERS: tuple[str, ...] = ("respawn", "coaching disabled")
 
 def classify_verdict(text) -> Optional[str]:
     """Map free text (a precompute A-label or Haiku prose/chip label) to one
-    coarse verdict: "trade" / "all_in" / "back_off" / "recall" / "hold" -
-    or None when no keyword hits (unclassifiable) or the text is a non-laning
-    coach status/overlay state (dead-state, policy-disabled)."""
+    coarse verdict: "trade" / "all_in" / "back_off" / "recall" / "hold" /
+    "even" - or None when no keyword hits (unclassifiable) or the text is a
+    non-laning coach status/overlay state (dead-state, policy-disabled)."""
     if not text or not isinstance(text, str):
         return None
     norm = _normalize_verdict_text(text)
@@ -286,15 +285,20 @@ def record_agreement(rec: dict) -> Optional[dict]:
     precompute = verdict of the recommended (A) choice label, only when the
     record is covered and carries choices; native = verdict of the Haiku
     output. Returns {"precompute", "native", "agree"} when BOTH sides
-    classified, else None (record excluded from the agreement sample)."""
+    classified, else None (record excluded from the agreement sample).
+
+    even<->hold mapping (item 508): the precompute "even" verdict's A-chip
+    B-option is literally "Hold position", so a precompute "even" counts as
+    agreement against a Haiku "hold" as well as a Haiku "even"; every other
+    pair agrees only on exact match (unchanged)."""
     precompute = None
     if rec.get("covered"):
         precompute = classify_verdict(_first_choice_label(rec))
     native = _native_verdict(rec)
     if precompute is None or native is None:
         return None
-    return {"precompute": precompute, "native": native,
-            "agree": precompute == native}
+    agree = (precompute == native) or (precompute == "even" and native == "hold")
+    return {"precompute": precompute, "native": native, "agree": agree}
 
 
 def summarize_agreement(records: list[dict]) -> dict:
