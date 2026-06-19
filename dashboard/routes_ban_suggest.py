@@ -216,7 +216,7 @@ def _compute(ally: list[int], enemy: list[int], candidates: list[int],
     finally:
         try:
             conn.close()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 
@@ -264,7 +264,7 @@ def _serve_ban_suggest(h) -> None:
 
         try:
             payload = _compute(ally_ids, enemy_ids, cand_ids, queue_ids)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/ban-suggest compute: %s", exc)
             h._send(503, json.dumps(
                 {"ok": False, "error": "rewind history unavailable"}
@@ -280,14 +280,14 @@ def _serve_ban_suggest(h) -> None:
         _cache_put(key, now, cacheable)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/ban-suggest: %s", exc)
         try:
             # Raw exception text stays in the log only.
             h._send(500, json.dumps(
                 {"ok": False, "error": "internal error - see logs"})
                 .encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

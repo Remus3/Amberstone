@@ -31,7 +31,7 @@ def _serve_session_summary(h) -> None:
     try:
         h._send(200, json.dumps(_build_session_summary()).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/session/summary: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")
@@ -43,7 +43,7 @@ def _serve_history(h) -> None:
         scope = (qs.get("scope") or ["14d"])[0]
         h._send(200, json.dumps(_build_history(scope)).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/history: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")
@@ -55,7 +55,7 @@ def _serve_loadouts_all(h) -> None:
         mode = (qs.get("mode") or ["aram"])[0]
         h._send(200, json.dumps(_build_loadouts_all(mode)).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/loadouts/all: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")
@@ -68,7 +68,7 @@ def _serve_home_summary(h) -> None:
     try:
         h._send(200, json.dumps(_build_home_summary()).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/home/summary: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(),
                 "application/json")

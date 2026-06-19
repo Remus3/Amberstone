@@ -98,7 +98,7 @@ def _check_writable(path: Path, label: str) -> None:
         tmp.write_text("x", encoding="utf-8")
         tmp.unlink()
         _ok(label, f"writable ({path})")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _err(label, f"not writable: {exc}")
 
 
@@ -220,7 +220,7 @@ def main() -> int:
             else:
                 _warn("embedded runtime: packages not importable",
                       "run install.bat to install packages into embedded runtime")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _warn("embedded runtime package check failed", str(exc))
     else:
         _info("python-embed/ not found -- Option A (PATH Python) in use")
@@ -250,7 +250,7 @@ def main() -> int:
             else:
                 _err("API key format invalid",
                      "does not start with sk-ant-; app will fail to start")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _err("API key file unreadable", str(exc))
 
     # -- Install / setup readiness ---------------------------------------------
@@ -274,7 +274,7 @@ def main() -> int:
                 else:
                     _warn("python -m pip not usable",
                           "install.bat pip install step may fail")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _warn("python -m pip check failed", str(exc))
         else:
             _err("python NOT found on PATH",
@@ -358,7 +358,7 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory() as td:
             _ok("system temp dir", td)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _err("system temp dir not usable", str(exc))
 
     # -- Summary -----------------------------------------------------------

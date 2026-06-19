@@ -55,7 +55,7 @@ def _primary_archetype(champ: str) -> str:
         tags = _load_champion_tags().get(champ) or []
         if tags:
             return tag_to_archetype(tags[0])
-    except Exception as exc:  # best-effort; never breaks the advisor
+    except Exception as exc:  # best-effort; never breaks the advisor  # noqa: BLE001
         logger.debug("primary_archetype(%s): %s", champ, exc)
     return ""
 
@@ -96,7 +96,7 @@ def _enemy_lean(enemies: list) -> str:
                 return "enemy AD-heavy, prioritize armor"
             if ap and not ad:
                 return "enemy AP-heavy, prioritize MR"
-    except Exception as exc:  # best-effort
+    except Exception as exc:  # best-effort  # noqa: BLE001
         logger.debug("enemy_lean: %s", exc)
     return ""
 
@@ -143,6 +143,6 @@ def advise_pick(state: dict) -> dict:
         else:
             out["advice"] = _clip(_stay(my, lean))
         return out
-    except Exception as exc:  # fail-soft: never raise into the route
+    except Exception as exc:  # fail-soft: never raise into the route  # noqa: BLE001
         logger.warning("advise_pick(%s): %s", state.get("my_champion"), exc)
         return dict(_EMPTY)

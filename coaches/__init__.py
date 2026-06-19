@@ -58,7 +58,7 @@ def _is_tft_pbe() -> bool:
         if cfg_path.exists():
             cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
             return bool(cfg.get("tft_pbe", False))
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return False
 
@@ -94,7 +94,7 @@ def load_coach(game_mode: str, data_file: str, debug: bool = False) -> object | 
         inst = mod.Coach(data_file, debug=debug)
         _loaded[module_path] = inst
         return inst
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.error("Failed to load coach %s: %s", module_path, exc)
         return None
 
@@ -104,6 +104,6 @@ def unload_all() -> None:
         try:
             if hasattr(coach, "shutdown"):
                 coach.shutdown()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("Error unloading %s: %s", path, exc)
     _loaded.clear()

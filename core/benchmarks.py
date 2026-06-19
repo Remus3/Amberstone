@@ -49,7 +49,7 @@ class _Cache:
                 try:
                     self._data = json.loads(BENCHMARKS_PATH.read_text(encoding="utf-8"))
                     self._mtime = mtime
-                except Exception:
+                except Exception:  # noqa: BLE001
                     self._data = {"champions": {}}
             return self._data or {"champions": {}}
 

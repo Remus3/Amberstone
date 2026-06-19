@@ -53,7 +53,7 @@ class CoachOutput(BaseModel):
                     parsed = json.loads(s)
                     if isinstance(parsed, list):
                         return parsed
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
         return []
 

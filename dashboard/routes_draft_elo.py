@@ -248,7 +248,7 @@ def _compute(ally: list[int], enemy: list[int],
     finally:
         try:
             conn.close()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 
@@ -293,7 +293,7 @@ def _serve_draft_elo(h) -> None:
 
         try:
             payload = _compute(ally_ids, enemy_ids, queue_ids)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/draft-elo compute: %s", exc)
             h._send(503, json.dumps(
                 {"ok": False, "error": "rewind history unavailable"}
@@ -312,14 +312,14 @@ def _serve_draft_elo(h) -> None:
             payload.pop("top_contributions", None)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/draft-elo: %s", exc)
         try:
             # Raw exception text stays in the log only.
             h._send(500, json.dumps(
                 {"ok": False, "error": "internal error - see logs"})
                 .encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

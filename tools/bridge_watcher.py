@@ -135,7 +135,7 @@ def _check_rc_health(health: dict, now: float) -> tuple:
             if age > _RC_HEALTH_STALE_S:
                 return True, (f"RC heartbeat stale {age:.0f}s "
                               f"(threshold={_RC_HEALTH_STALE_S}s)")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     # Recent restart - give RC time to stabilize.
     started_str = health.get("started_at") or ""
@@ -148,7 +148,7 @@ def _check_rc_health(health: dict, now: float) -> tuple:
             if age < _RC_RESTART_GRACE_S:
                 return True, (f"RC restarted {age:.0f}s ago "
                               f"(grace={_RC_RESTART_GRACE_S}s)")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     return False, ""
 
@@ -283,7 +283,7 @@ def _send_push_notification(summary: str, source: str, node: str,
     except (OSError, FileNotFoundError) as exc:
         _log.warning("push notif spawn failed (claude not in PATH?): %s", exc)
         return False
-    except Exception as exc:  # subprocess.TimeoutExpired or other
+    except Exception as exc:  # subprocess.TimeoutExpired or other  # noqa: BLE001
         _log.warning("push notif error: %s", exc)
         return False
     times = [t for t in (state.get("push_notif_times") or []) if now - t < _PUSH_THROTTLE_S]
@@ -908,7 +908,7 @@ def _run(node: str, poll_s: float, lookback_s: float, bridge_url: str, *,
             stats["errors_since_boot"]  += 1
             _ring_add(state, "error", time.time())
             _log.warning("poll failed: %s", exc)
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:  # pragma: no cover - defensive  # noqa: BLE001
             stats["last_poll_ok"] = False
             stats["errors_since_boot"]  += 1
             _ring_add(state, "error", time.time())

@@ -149,7 +149,7 @@ def send(*, source: str,
         # tiny; don't need more than a few hundred bytes).
         try:
             err_body = exc.read(500).decode("utf-8", errors="replace")
-        except Exception:
+        except Exception:  # noqa: BLE001
             err_body = ""
         return (False, f"http_{exc.code}: {err_body[:200]}")
     except urllib.error.URLError as exc:

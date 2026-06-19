@@ -95,7 +95,7 @@ def _read_processed() -> set:
     try:
         with open(PROCESSED_FILE, encoding="utf-8") as f:
             return {line.strip() for line in f if line.strip()}
-    except Exception:
+    except Exception:  # noqa: BLE001
         return set()
 
 
@@ -103,14 +103,14 @@ def _mark_processed(task_id: str) -> None:
     try:
         with open(PROCESSED_FILE, "a", encoding="utf-8") as f:
             f.write(task_id + "\n")
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
 
 def _read_last_seen() -> float:
     try:
         return float(open(LAST_SEEN_FILE, encoding="utf-8").read().strip())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return time.time() - FETCH_FALLBACK_LOOKBACK_S
 
 
@@ -118,7 +118,7 @@ def _write_last_seen(ts: float) -> None:
     try:
         with open(LAST_SEEN_FILE, "w", encoding="utf-8") as f:
             f.write(str(ts))
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
 
@@ -128,7 +128,7 @@ def _record_post(kind: str, target: str) -> None:
         from core.prom_metrics import BridgeMetrics
         BridgeMetrics.posts_total.inc(kind=kind or "note",
                                       target=target or "(none)")
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
 
@@ -136,7 +136,7 @@ def _record_fetch(status: str) -> None:
     try:
         from core.prom_metrics import BridgeMetrics
         BridgeMetrics.fetches_total.inc(status=status)
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
 
@@ -146,7 +146,7 @@ def _record_pull(target: str, found: int) -> None:
         BridgeMetrics.pulls_total.inc(target=target,
                                       status="found" if found else "empty")
         BridgeMetrics.pull_pending.set(float(found), target=target)
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
 
@@ -163,7 +163,7 @@ def cmd_task(args: argparse.Namespace) -> int:
         return 2
     try:
         extra = json.loads(args.body)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"bad --body JSON: {exc}", file=sys.stderr)
         return 2
     source = args.source or ("legion" if args.target == "gamepc" else "gamepc")
@@ -181,7 +181,7 @@ def cmd_task(args: argparse.Namespace) -> int:
     }
     try:
         ack = _post_envelope(envelope)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"bridge post failed: {exc}", file=sys.stderr)
         return 1
     print(json.dumps({"task_id": task_id, "ts": ack.get("ts"),
@@ -193,7 +193,7 @@ def cmd_task(args: argparse.Namespace) -> int:
 def cmd_post_result(args: argparse.Namespace) -> int:
     try:
         body_extra = json.loads(args.body)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"bad --body JSON: {exc}", file=sys.stderr)
         return 2
     body = {"completed": time.time(), **body_extra}
@@ -215,7 +215,7 @@ def cmd_post_result(args: argparse.Namespace) -> int:
             if root not in sys.path:
                 sys.path.insert(0, root)
             from core import bridge as _core_bridge
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"core.bridge import failed: {exc}", file=sys.stderr)
             return 1
         ok, detail = _core_bridge.send(
@@ -247,7 +247,7 @@ def cmd_post_result(args: argparse.Namespace) -> int:
     }
     try:
         ack = _post_envelope(envelope)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"bridge post failed: {exc}", file=sys.stderr)
         return 1
     if not args.no_mark:
@@ -262,7 +262,7 @@ def cmd_pull(args: argparse.Namespace) -> int:
     since = time.time() - LOOKBACK_S
     try:
         data = _fetch_messages(since)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _record_fetch("error")
         print(json.dumps({"error": str(exc), "tasks": []}), flush=True)
         return 0
@@ -295,7 +295,7 @@ def cmd_fetch(args: argparse.Namespace) -> int:
         url = f"{LEGION_BRIDGE}?since={since}&limit=20"
         with urllib.request.urlopen(url, timeout=1.5, context=_SSL_CTX) as r:
             data = json.loads(r.read())
-    except Exception:
+    except Exception:  # noqa: BLE001
         _record_fetch("error")
         return 0
     msgs = data.get("messages") or []
@@ -334,7 +334,7 @@ def cmd_ping(args: argparse.Namespace) -> int:
         print(f"         check: Legion running? HTTPS port 8888 reachable? "
               f"cert trusted? Try: curl -sk {LEGION_BRIDGE}?since=0")
         return 1
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"  [FAIL] POST     {type(e).__name__}: {e}")
         return 1
 
@@ -349,7 +349,7 @@ def cmd_ping(args: argparse.Namespace) -> int:
             print(f"  [WARN] GET     {read_ms:6.1f}ms   read-back missed "
                   f"({len(msgs)} msgs in window)")
             return 2
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"  [FAIL] GET      {type(e).__name__}: {e}")
         return 2
 
@@ -360,7 +360,7 @@ def cmd_ping(args: argparse.Namespace) -> int:
         uptime = h.get("uptime_s", 0)
         print(f"  [ok]  VISION   {hms:6.1f}ms   alive={h.get('alive')} "
               f"uptime={uptime/3600:.1f}h")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"  [WARN] VISION  {type(e).__name__}: {e}")
         return 3
 
@@ -419,7 +419,7 @@ def cmd_heartbeat(args: argparse.Namespace) -> int:
         except urllib.error.URLError as e:
             consec_fail += 1
             log.warning("post failed (%dx): %s", consec_fail, e.reason)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             consec_fail += 1
             log.warning("post error (%dx): %s", consec_fail, e)
         if once:
@@ -449,7 +449,7 @@ def cmd_post(args: argparse.Namespace) -> int:
     source = args.source or "unknown"
     try:
         payload = json.loads(sys.stdin.read() or "{}")
-    except Exception:
+    except Exception:  # noqa: BLE001
         payload = {}
     summary = _extract_summary(payload)
     if not summary:
@@ -457,7 +457,7 @@ def cmd_post(args: argparse.Namespace) -> int:
     try:
         _post_simple({"source": source, "summary": summary}, timeout=1.5)
         _record_post("note", "")
-    except Exception:
+    except Exception:  # noqa: BLE001
         # Bridge unreachable - fail silently per Stop-hook contract.
         pass
     return 0
@@ -470,12 +470,12 @@ def _extract_summary(payload: dict) -> str:
     try:
         with open(transcript_path, encoding="utf-8") as f:
             lines = [line for line in f.read().splitlines() if line.strip()]
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
     for line in reversed(lines):
         try:
             row = json.loads(line)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         if row.get("role") != "assistant" and row.get("type") != "assistant":
             continue

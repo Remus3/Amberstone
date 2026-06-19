@@ -42,7 +42,7 @@ def _serve_bridge(h) -> None:
         items = bridge_since(since, limit, kind=kind, target=target, source=source)
         payload = {"now": time.time(), "messages": items}
         h._send(200, json.dumps(payload).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
@@ -66,10 +66,10 @@ def _serve_champions(h) -> None:
                     cid = int(entry.get("key"))
                     out[str(cid)] = {"name": entry.get("name", slug),
                                       "slug": slug}
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             _CACHE = out
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/champions: %s", exc)
             _CACHE = {}
     h._send(200, json.dumps(_CACHE).encode(), "application/json")
@@ -98,7 +98,7 @@ def _serve_bridge_post(h, payload) -> None:
                                   "id": entry.get("id"),
                                   "kind": entry.get("kind")}).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
 
@@ -140,7 +140,7 @@ def _serve_bridge_inbox(h, payload) -> None:
         )
         h._send(200, json.dumps({"ok": True, "entry": entry}).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("bridge inbox failed: %s", exc)
         send_error(h, exc)
 
@@ -150,7 +150,7 @@ def _serve_bridge_status(h) -> None:
     try:
         h._send(200, json.dumps(_bridge.status_summary()).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         send_error(h, exc)
 
 

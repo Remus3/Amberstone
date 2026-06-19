@@ -231,7 +231,7 @@ def fetch_items(champion: str, archetype: str, mode: str, level: int) -> list[st
             # still leaves enough names to fill the pick budget.
             top=picks + 6,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"  ! DS error for {champion}/{archetype}/{mode}: {exc}", file=sys.stderr)
         return []
     if not result or not result.get("ranked"):

@@ -117,7 +117,7 @@ class LcuPregame:
             ctx.verify_mode = ssl.CERT_NONE
             with urllib.request.urlopen(req, context=ctx, timeout=3) as resp:
                 return resp.read()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("get_champion_icon_bytes(%d): %s", champion_id, exc)
             return None
 
@@ -280,6 +280,6 @@ class LcuPregame:
                 with urllib.request.urlopen(req, context=ctx, timeout=2) as resp:
                     raw = resp.read().decode()
                     return raw.strip().strip('"')
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("get_gameflow_phase: %s", exc)
         return "None"

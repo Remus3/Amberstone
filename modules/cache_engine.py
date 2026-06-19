@@ -167,7 +167,7 @@ class CacheEngine:
                     (float(multiplier), key),
                 )
             logger.debug("Cache bump key=%s mult=%.2f flag=%s", key[:8], multiplier, flag)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("bump_confidence failed key=%s: %s", key[:8], exc)
 
     def close(self):

@@ -99,7 +99,7 @@ def _lock_held() -> bool:
             LOCK_FILE.unlink(missing_ok=True)
             return False
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         LOCK_FILE.unlink(missing_ok=True)
         return False
 
@@ -142,7 +142,7 @@ def _check_count() -> int:
         )
         data = json.loads(r.stdout)
         return int(data.get("count", 0))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         _log.debug("check failed: %s", e)
         return 0
 
@@ -207,7 +207,7 @@ def main() -> None:
                     )
                 except subprocess.TimeoutExpired:
                     _log.warning("claude --print timed out after 180s")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     _log.error("claude invocation error: %s", e)
                 finally:
                     _set_lock(False)

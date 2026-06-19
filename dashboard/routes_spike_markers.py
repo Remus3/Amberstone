@@ -181,7 +181,7 @@ def _serve_spike_markers(h) -> None:
         try:
             from core.archetype_picks import canonical_champion_id
             champion = canonical_champion_id(champion) or champion
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
         level = _parse_int((qs.get("level") or [""])[0].strip(), 1)
@@ -211,7 +211,7 @@ def _serve_spike_markers(h) -> None:
                 "error": "DS engine unavailable",
             }).encode("utf-8"), "application/json")
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/spike-markers compute: %s", exc)
             h._send(503, json.dumps({
                 "ok":    False,
@@ -245,13 +245,13 @@ def _serve_spike_markers(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"),
                 "application/json")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/spike-markers: %s", exc)
         try:
             h._send(500, json.dumps({
                 "ok": False, "error": str(exc)[:200],
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

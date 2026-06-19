@@ -94,7 +94,7 @@ def _read_staged_manifest() -> dict:
     p = _STAGED_DIR / "BUILD_MANIFEST.json"
     try:
         return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return {}
 
 

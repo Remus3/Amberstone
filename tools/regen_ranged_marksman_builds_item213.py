@@ -109,7 +109,7 @@ def _start_worktree_engine(port: int) -> threading.Thread:
             ) as r:
                 if r.status == 200:
                     return t
-        except Exception:
+        except Exception:  # noqa: BLE001
             time.sleep(0.1)
     raise RuntimeError("worktree DS engine did not come up on temp port")
 

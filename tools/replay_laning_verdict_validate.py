@@ -127,7 +127,7 @@ def make_verdict_fn(table: object) -> Callable[[str, str, str], Tuple[Optional[s
                 "full",
                 "all_up",
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             return (None, None)
         if not isinstance(cell, dict):
             return (None, None)
@@ -276,7 +276,7 @@ def run_validation(
         for mid in match_ids:
             try:
                 pairs = extract_lane_pairs(conn, mid, gold_frame_min)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 n_matches_skipped += 1
                 continue
             if not pairs:
@@ -287,7 +287,7 @@ def run_validation(
             for pair in pairs:
                 try:
                     kc = extract_kill_counts(conn, mid, pair.pid_a, pair.pid_b)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     kc = {"solo": (0, 0), "any": (0, 0)}
                 a_solo, b_solo = kc["solo"]
                 for lvl in levels:

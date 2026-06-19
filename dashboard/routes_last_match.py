@@ -215,7 +215,7 @@ def _ensure_retry_thread() -> None:
             try:
                 time.sleep(INGEST_RETRY_TICK_S)
                 _drain_ingest_queue_once()
-            except Exception as exc:  # never let the thread die
+            except Exception as exc:  # never let the thread die  # noqa: BLE001
                 log.warning("ingest retry drain: %s", exc)
 
     t = threading.Thread(target=_loop, name="rc-last-match-ingest-drain",
@@ -269,7 +269,7 @@ def _serve_last_match(h) -> None:
         h._send(200,
                 json.dumps(_build_last_match(baseline, match_ts)).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/last-match: %s", exc)
         # Raw exception text can leak file paths - log it, never render it.
         h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
@@ -297,7 +297,7 @@ def _serve_last_match_ingest(h, body) -> None:
                 "game_id": info.get("game_id", 0),
                 "retry_deadline_s": INGEST_RETRY_DEADLINE_S}
         h._send(202, json.dumps(resp).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/last-match/ingest: %s", exc)
         # Raw exception text can leak file paths - log it, never render it.
         h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),

@@ -47,7 +47,7 @@ def read_api_key(app_dir: Path = _APP_DIR) -> str:
             k = p.read_text(encoding="utf-8").strip()
             if k.startswith("sk-ant-"):
                 return k
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     return os.environ.get("ANTHROPIC_API_KEY", "")
 
@@ -57,7 +57,7 @@ def load_json(path: Path) -> dict:
     try:
         if path.exists():
             return json.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("load_json %s: %s", path.name, exc)
     return {}
 
@@ -77,7 +77,7 @@ def safe_write(path: Path, data: dict) -> None:
     with _SAFE_WRITE_LOCK:
         try:
             tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.error("safe_write write %s: %s", path.name, exc)
             return
         for attempt in range(3):
@@ -88,10 +88,10 @@ def safe_write(path: Path, data: dict) -> None:
                 if attempt == 2:
                     _log.warning("safe_write %s: gave up after 3 retries", path.name)
                     try: tmp.unlink(missing_ok=True)
-                    except Exception: pass
+                    except Exception: pass  # noqa: BLE001
                 else:
                     import time as _tw; _tw.sleep(0.015 * (2 ** attempt))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.error("safe_write %s: %s", path.name, exc)
                 return
 
@@ -210,7 +210,7 @@ def fetch_game_data(ssl_ctx: "ssl.SSLContext | None" = None) -> "dict | None":
         )
         with urllib.request.urlopen(req, context=ctx, timeout=2) as r:
             return json.loads(r.read())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -316,7 +316,7 @@ class BaseCoach(abc.ABC):
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             _sched.spawn_task(self._poll_loop())
@@ -333,7 +333,7 @@ class BaseCoach(abc.ABC):
         try:
             from core.hotkeys import register_coach as _hk_reg
             _hk_reg(self)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
             "%s Coach started", _mn
@@ -353,7 +353,7 @@ class BaseCoach(abc.ABC):
         try:
             from core.hotkeys import unregister_coach as _hk_unreg
             _hk_unreg(self)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         logging.getLogger(f"rc.coaches.{self._MODE_NAME}").info(
             "%s Coach shutdown", self._MODE_NAME.capitalize()
@@ -365,7 +365,7 @@ class BaseCoach(abc.ABC):
         while self._running:
             try:
                 self._poll_tick()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
                     "%s poll: %s", self._MODE_NAME, exc
                 )
@@ -404,7 +404,7 @@ class BaseCoach(abc.ABC):
                         if _ft > self._last_force_check:
                             self._last_force_check = _ft
                             forced = True
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
                 if forced or now - self._last_vision >= self._VISION_INTERVAL:
                     self._last_vision = now
@@ -415,13 +415,13 @@ class BaseCoach(abc.ABC):
                     try:
                         from core.cost_tracker import get_tracker as _gt
                         _vision_off = _gt().gate_disabled("vision")
-                    except Exception:
+                    except Exception:  # noqa: BLE001
                         pass
                     if not _vision_off:
                         # _run_vision does blocking HTTP (vision relay + Sonnet);
                         # marshal to a thread so we don't stall the loop.
                         await asyncio.to_thread(self._run_vision)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
                     "%s vision: %s", self._MODE_NAME, exc
                 )
@@ -434,14 +434,14 @@ class BaseCoach(abc.ABC):
             from core.cost_tracker import get_tracker as _gt
             if _gt().coach_disabled(self._MODE_NAME):
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         # AUDIT 2026-04-28 (5.4): hard daily-budget gate.
         try:
             from core.cost_tracker import get_tracker as _gt
             if not _gt().allow_call():
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         now      = time.time()
         # prev is supplied by _poll_tick (the state from the PRIOR poll);
@@ -475,7 +475,7 @@ class BaseCoach(abc.ABC):
             try:
                 from app._loop import get_loop as _get_loop
                 _sched = _get_loop()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 _sched = None
             if _sched is not None:
                 _sched.spawn_task(asyncio.to_thread(self._run_coach, _state_copy))
@@ -492,7 +492,7 @@ class BaseCoach(abc.ABC):
             self._out.parent.mkdir(parents=True, exist_ok=True)
             if not self._out.exists():
                 self._write_blank_artifact()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logging.getLogger(f"rc.coaches.{self._MODE_NAME}").warning(
                 "%s data init: %s", self._MODE_NAME, exc
             )
@@ -501,7 +501,7 @@ class BaseCoach(abc.ABC):
         try:
             self._out.parent.mkdir(parents=True, exist_ok=True)
             safe_write(self._out, self._blank_artifact_data())
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logging.getLogger(f"rc.coaches.{self._MODE_NAME}").warning(
                 "%s blank artifact: %s", self._MODE_NAME, exc
             )
@@ -571,7 +571,7 @@ class BaseCoach(abc.ABC):
                     cache_read=cr, cache_write=cw,
                     purpose=purpose or f"{self._MODE_NAME}_coach",
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("cost_tracker record_call: %s", exc)
             try:
                 from core.coach_trace import append as _trace_append
@@ -591,9 +591,9 @@ class BaseCoach(abc.ABC):
                     cache_read=cr, cache_write=cw,
                     extra=extra,
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("coach_trace append: %s", exc)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_record_coach_call swallowed: %s", exc)
 
     def _shadow_log_hints(self, state: dict) -> None:
@@ -615,7 +615,7 @@ class BaseCoach(abc.ABC):
             def _cid(raw: str) -> str:
                 try:
                     return _canon(raw) or raw
-                except Exception:
+                except Exception:  # noqa: BLE001
                     return raw
 
             my_champ = _cid(state.get("champion") or "")
@@ -635,7 +635,7 @@ class BaseCoach(abc.ABC):
             log_coach_hints(
                 self._MODE_NAME, my_champ, enemies, game_time_s=game_time_s
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_shadow_log_hints swallowed: %s", exc)
 
     # -- Abstract --------------------------------------------------------------

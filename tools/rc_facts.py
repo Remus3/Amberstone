@@ -62,7 +62,7 @@ def _http_get_json(url: str, headers: dict | None = None) -> dict | None:
         req = urllib.request.Request(url, headers=headers or {})
         with urllib.request.urlopen(req, timeout=_TIMEOUT, context=_SSL) as r:
             return json.loads(r.read())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -73,7 +73,7 @@ def _http_get_status(url: str, headers: dict | None = None) -> int | None:
             return r.status
     except urllib.error.HTTPError as exc:
         return exc.code
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -120,7 +120,7 @@ def _legion_tasks() -> list[dict]:
         if isinstance(data, dict):
             data = [data]
         return data
-    except Exception:
+    except Exception:  # noqa: BLE001
         return []
 
 
@@ -134,7 +134,7 @@ def _last_boot_iso() -> str | None:
         )
         if p.returncode == 0:
             return p.stdout.strip() or None
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return None
 
@@ -146,7 +146,7 @@ def _watcher_summary() -> str | None:
         return None
     try:
         s = json.loads(state_path.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     pid = s.get("pid") or "?"
     cadence = s.get("cadence_mode") or "?"
@@ -187,7 +187,7 @@ def _lessons_summary() -> str | None:
             decision = entry.get("decision") or "?"
             counts.setdefault(peer, {})
             counts[peer][decision] = counts[peer].get(decision, 0) + 1
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     if not counts:
         return None
@@ -246,7 +246,7 @@ def main() -> int:
     health = {}
     try:
         health = json.loads(_HEALTH.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         anomalies.append("Legion: ops/runtime/health.json unreadable")
     pid = health.get("pid")
     alive = bool(health.get("alive"))
@@ -396,12 +396,12 @@ def main() -> int:
             for line in lines_raw[-200:]:
                 try:
                     j = json.loads(line)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     continue
                 if float(j.get("ts") or 0) >= cutoff_24h:
                     k = j.get("kind") or "?"
                     activity[k] = activity.get(k, 0) + 1
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         if activity:
             parts = ", ".join(f"{v} {k}s" for k, v in sorted(activity.items()))

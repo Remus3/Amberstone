@@ -78,7 +78,7 @@ def _read_json(path: Path) -> Optional[Dict[str, Any]]:
     try:
         if path.exists():
             return json.loads(path.read_text(encoding="utf-8-sig"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return None
 
@@ -289,7 +289,7 @@ class SelfMonitor:
         while not self._stop_event.is_set():
             try:
                 self._tick()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 self.incident_log.record(
                     severity="ERROR", subsystem="monitor",
                     trigger="monitor_loop_crash", action="none", result="failed",
@@ -329,7 +329,7 @@ class SelfMonitor:
                 self.state_validator.interval_s = float(
                     profile.get("screen_validation_interval_s", 30))
                 self.state_validator.maybe_run()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
         self._maybe_write_summary(profile)
@@ -512,7 +512,7 @@ class SelfMonitor:
         try:
             if status_path.exists():
                 return json.loads(status_path.read_text(encoding="utf-8-sig"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return None
 
@@ -635,7 +635,7 @@ class SelfMonitor:
                 try:
                     _bs_status_raw = json.loads(_status_path.read_text(encoding="utf-8-sig"))
                     _bs_kind = "ok"
-                except Exception:
+                except Exception:  # noqa: BLE001
                     _bs_kind = "invalid"   # exists but unreadable / bad JSON
             # else: _bs_kind stays "missing"
 
@@ -726,7 +726,7 @@ class SelfMonitor:
         try:
             age     = time.time() - self.health_file.stat().st_mtime
             payload = json.loads(self.health_file.read_text(encoding="utf-8-sig"))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self._worker_dead_since = None
             return "unhealthy", f"health_read_error: {exc}"
 
@@ -780,7 +780,7 @@ class SelfMonitor:
                     ).total_seconds()
                     if boot_age_s < self._startup_grace_s:
                         return "tolerated", "startup_grace: booting=True (started_at fallback)"
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             return "unhealthy", "booting=True (startup grace expired)"
 
@@ -875,14 +875,14 @@ class SelfMonitor:
             try:
                 for path in sorted(self._cmd_dir.glob("*.json")):
                     self._handle_command_file(path)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             self._stop_event.wait(self.CMD_INTERVAL)
 
     def _handle_command_file(self, path: Path) -> None:
         try:
             payload = json.loads(path.read_text(encoding="utf-8-sig"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             path.unlink(missing_ok=True)
             return
 
@@ -955,7 +955,7 @@ class SelfMonitor:
             else:
                 result["error"] = f"unknown_action: {action!r}"
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             result["error"] = f"{type(exc).__name__}: {exc}"
 
         res_path = self._cmd_dir / (path.stem + ".result.json")
@@ -982,7 +982,7 @@ class SelfMonitor:
                     return bool(json.loads(
                         result_path.read_text(encoding="utf-8-sig")
                     ).get("ok"))
-                except Exception:
+                except Exception:  # noqa: BLE001
                     return False
             time.sleep(0.2)
         return False
@@ -994,7 +994,7 @@ class SelfMonitor:
             profile = self._load_profile()
         try:
             _atomic_write(self._state_path, self._build_state_dict(profile))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     def _build_state_dict(self, profile: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -1057,6 +1057,6 @@ class SelfMonitor:
                 monitor_state=self._build_state_dict(profile)
             )
             self.incident_log.purge_old()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 

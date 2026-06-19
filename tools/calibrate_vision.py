@@ -48,7 +48,7 @@ def main() -> int:
     d = ImageDraw.Draw(ann)
     try:
         font = ImageFont.truetype("arial.ttf", 14)
-    except Exception:
+    except Exception:  # noqa: BLE001
         font = ImageFont.load_default()
     palette = ["#ff2244", "#44ff88", "#4a9eff", "#ffa84a",
                "#c77dff", "#ffdd00", "#3ddba8"]
@@ -76,7 +76,7 @@ def main() -> int:
         _ctx.verify_mode = _ssl.CERT_NONE
         r = urllib.request.urlopen("https://127.0.0.1:8888/api/ocr", timeout=10, context=_ctx)
         print("OCR result:", r.read().decode())
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print("OCR failed:", e)
 
     return 0

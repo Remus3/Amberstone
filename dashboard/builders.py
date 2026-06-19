@@ -68,7 +68,7 @@ def _ts_to_epoch(ts: str) -> int:
     from datetime import datetime
     try:
         return int(datetime.strptime(ts, "%Y-%m-%d %H:%M:%S").timestamp())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0
 
 
@@ -225,7 +225,7 @@ def _live_metrics_enabled() -> bool:
     try:
         from core import live_metrics
         return live_metrics.enabled()
-    except Exception:
+    except Exception:  # noqa: BLE001
         import os
         return os.environ.get("RC_LIVE_METRICS", "0") == "1"
 
@@ -252,7 +252,7 @@ def _build_diagnostics() -> dict:
         with _ur.urlopen("http://127.0.0.1:8889/health", timeout=1) as r:
             out["connections"].append({"name": "Vision relay", "ok": r.status == 200,
                                         "detail": "127.0.0.1:8889"})
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         out["connections"].append({"name": "Vision relay", "ok": False,
                                     "detail": f"down ({type(exc).__name__})"})
     # Live Client API (local on Legion post 1-PC consolidation)
@@ -262,7 +262,7 @@ def _build_diagnostics() -> dict:
         with _ur.urlopen(f"http://{GAME_HOST}:2999/liveclientdata/activeplayer", timeout=2) as r:
             out["connections"].append({"name": "Live Client API", "ok": r.status == 200,
                                         "detail": f"{GAME_HOST}:2999"})
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         out["connections"].append({"name": "Live Client API", "ok": False,
                                     "detail": f"unreachable ({type(exc).__name__}) - normal if no game"})
     # Tail today's log
@@ -272,7 +272,7 @@ def _build_diagnostics() -> dict:
         if log_path.exists():
             content = log_path.read_text(encoding="utf-8", errors="replace")
             out["log_tail"] = content.splitlines()[-40:]
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("diag log tail: %s", exc)
     return out
 

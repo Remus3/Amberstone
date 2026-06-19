@@ -191,7 +191,7 @@ def load_sent_ledger() -> dict[tuple[str, str], dict]:
             continue
         try:
             entry = json.loads(line)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         key = (entry.get("path", ""), entry.get("body_hash", ""))
         out[key] = entry

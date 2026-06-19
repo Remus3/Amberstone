@@ -145,7 +145,7 @@ def read_lockfile() -> tuple[str | None, str | None]:
                 parts = p.read_text(encoding="utf-8").strip().split(":")
                 if len(parts) >= 5:
                     return parts[2], parts[3]
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
     return None, None
 
@@ -359,7 +359,7 @@ def _capture_one_monitor(idx: int) -> tuple[str, str, int, int]:
     finally:
         try:
             cam.release()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     buf = io.BytesIO()
@@ -397,7 +397,7 @@ def capture_both_monitors() -> list[dict]:
     for idx in (0, 1):
         try:
             b64, fmt, w, h = _capture_one_monitor(idx)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("capture monitor %d failed: %s", idx, exc)
             continue
         out.append({
@@ -665,7 +665,7 @@ def _wamp_loop(sidecar_dir: Path) -> None:
                     handle_event(topic, data, queue_id,
                                  debouncer=debouncer,
                                  sidecar_dir=sidecar_dir)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     log.warning("handle_event %s failed: %s", topic, exc)
 
                 # Reset debouncer on EndOfGame so next cycle re-fires.
@@ -673,7 +673,7 @@ def _wamp_loop(sidecar_dir: Path) -> None:
                         and data == "EndOfGame"):
                     debouncer.reset_cycle()
                     log.info("cycle reset on EndOfGame")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("WAMP loop exited: %s; reconnecting in %.1fs",
                         exc, backoff)
             time.sleep(min(backoff, 30.0))

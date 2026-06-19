@@ -275,7 +275,7 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
         if own:
             try:
                 conn.close()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
     n_games = len(games)

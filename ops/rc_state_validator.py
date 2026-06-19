@@ -25,7 +25,7 @@ from typing import Any, Dict, Optional
 try:
     from tft.tft_ocr_reader import TftOcrReader as _TftOcrReader  # type: ignore
     _HAS_OCR = True
-except Exception:
+except Exception:  # noqa: BLE001
     _HAS_OCR = False
 
 
@@ -207,10 +207,10 @@ class StateValidator:
                             f"OCR={sr_ocr} live={live_sr} diff={diff}",
                             report,
                         )
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             report["checks"].append(f"ocr_sr={sr_ocr}")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     @staticmethod
@@ -218,7 +218,7 @@ class StateValidator:
         try:
             if path.exists():
                 return json.loads(path.read_text(encoding="utf-8-sig"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return None
 
@@ -235,7 +235,7 @@ def _valid_stage_round(sr: str) -> bool:
             return False
         s, r = int(parts[0]), int(parts[1])
         return 1 <= s <= 9 and 1 <= r <= 9
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 

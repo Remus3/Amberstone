@@ -212,7 +212,7 @@ def check_manifests(root: Path, tl: str) -> dict:
         try:
             build_m = json.loads(bm_path.read_text(encoding="utf-8"))
             _ok("BUILD_MANIFEST.json parseable")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             _fail("BUILD_MANIFEST.json parse error", str(e))
     else:
         _fail("BUILD_MANIFEST.json missing")
@@ -222,7 +222,7 @@ def check_manifests(root: Path, tl: str) -> dict:
         try:
             pkg_m = json.loads(pm_path.read_text(encoding="utf-8"))
             _ok("PACKAGE_MANIFEST.json parseable")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             _fail("PACKAGE_MANIFEST.json parse error", str(e))
     else:
         _fail("PACKAGE_MANIFEST.json missing")
@@ -340,7 +340,7 @@ def check_bootstrap_from_unpacked(root: Path, tl: str) -> None:
 
     except subprocess.TimeoutExpired:
         _fail("bootstrap check timed out (60s)")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         _fail("bootstrap check raised exception", str(e))
 
 
@@ -400,7 +400,7 @@ def run(archive_path: Path, keep_temp: bool = False) -> int:
             entries = set(zf.namelist())
             zf.extractall(str(tmp))
         _ok("archive extracted successfully", f"{len(entries)} entries")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"  ERROR  extraction failed: {e}", file=sys.stderr)
         if not keep_temp:
             shutil.rmtree(str(tmp), ignore_errors=True)

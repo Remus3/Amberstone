@@ -106,7 +106,7 @@ def wait_for_heartbeat(
                 return True   # different run, but caller explicitly permits it
             # Different run_id and allow_new_run=False: keep waiting for the
             # expected process to recover (or for timeout to expire).
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         time.sleep(0.25)
     return False
@@ -118,7 +118,7 @@ def compile_python_files(staged_paths: Sequence[Path]) -> List[Dict[str, str]]:
         if path.suffix.lower() == ".py":
             try:
                 py_compile.compile(str(path), doraise=True)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 errors.append({"path": str(path), "error": f"{type(exc).__name__}: {exc}"})
     return errors
 
@@ -186,7 +186,7 @@ def do_deploy(request_path: Path) -> Dict[str, Any]:
             _pre_run_id = str(
                 json.loads(health_file.read_text(encoding="utf-8-sig")).get("run_id") or ""
             ) or None
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     try:
@@ -289,7 +289,7 @@ def do_deploy(request_path: Path) -> Dict[str, Any]:
             all_bkps  = sorted((d for d in backups_root.iterdir() if d.is_dir()), reverse=True)
             for old in all_bkps[retention:]:
                 shutil.rmtree(old, ignore_errors=True)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
         return {
@@ -300,7 +300,7 @@ def do_deploy(request_path: Path) -> Dict[str, Any]:
             "command_results": command_results,
             "handled_at": utc_now(),
         }
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         restore_backup(backup_root, project_root, deployed_files)
         return {
             "request_id": request_id,

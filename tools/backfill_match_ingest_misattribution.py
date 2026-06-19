@@ -152,7 +152,7 @@ def main() -> int:
         def _has_detail(rd: str) -> bool:
             try:
                 return bool(json.loads(rd or "{}").get("lcu_match_detail"))
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return False
 
         idx_by_champ: dict[str, list[tuple[int, int, bool]]] = {}
@@ -169,7 +169,7 @@ def main() -> int:
             ts, _mode, db_champ, gid, raw = row[1], row[2], row[3], row[4], row[5]
             try:
                 rd = json.loads(raw or "{}")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 rd = {}
             detail = rd.get("lcu_match_detail") or {}
             if not detail:

@@ -79,7 +79,7 @@ def _load_items_by_name() -> dict[str, str]:
             nm = info.get("name") or ""
             if nm:
                 out[_norm(nm)] = str(item_id)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Do NOT cache on failure - a transient read error (file
         # mid-write) would otherwise poison resolution for the whole
         # process lifetime. Next call retries the read.
@@ -104,7 +104,7 @@ def _load_champ_id_by_name() -> dict[str, int]:
                     out[slug] = cid
             except (ValueError, TypeError):
                 pass
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Mirror _load_items_by_name: never poison the cache on a
         # transient read failure.
         _log.warning("ddragon champs load failed: %s", exc)
@@ -126,7 +126,7 @@ def _load_loadouts() -> dict:
         raw["_mtime"] = mt
         _loadouts_cache = raw
         return raw
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("loadouts load failed: %s", exc)
         return {"champions": {}}
 

@@ -317,7 +317,7 @@ def main():
             processed += 1
             if processed % 25 == 0:
                 print(f"  ...processed {processed}  (+{total_rows} rows so far)")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"  ! {m['match_id']}: {type(exc).__name__}: {exc}")
 
     src.close()

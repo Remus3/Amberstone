@@ -82,7 +82,7 @@ def bridge_hydrate_from_disk() -> None:
             entry = json.loads(line)
             if isinstance(entry, dict) and "ts" in entry and "summary" in entry:
                 _bridge_log.append(entry)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass  # tolerate a torn final write
 
 

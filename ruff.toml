@@ -12,6 +12,7 @@ select = [
     "I",    # isort (import ordering)
     "UP",   # pyupgrade (safe modern syntax)
     "B",    # flake8-bugbear (common bugs)
+    "BLE",  # flake8-blind-except - ratchet: no NEW bare `except Exception`
 ]
 ignore = [
     "E501",   # line too long - not enforced
@@ -50,16 +51,38 @@ exclude = [
 "ops/*.py" = ["B"]          # ops scripts are procedural, bugbear too strict
 "scripts/*.py" = ["B", "I"] # one-off scripts, ignore import order
 "*/__init__.py" = ["F401"]  # __init__.py re-exports are expected
+# DS engine + its curated tools + the generated Share mirror are a fail-soft
+# external compute package (mirrored verbatim to the Share/ handoff); the BLE001
+# ratchet is scoped to app code, not the engine package.
+"agents/daemon_slayer/**" = ["BLE001"]
+"Share/**" = ["BLE001"]
+"tools/daemon_slayer_*.py" = ["BLE001"]
+"tools/ds_*.py" = ["BLE001"]
+"tools/start_daemon_slayer.py" = ["BLE001"]
 # Frozen app/ submodules use quoted forward-refs to OverlayApp/GameEnvelope
-# (circular-import prevention) - ruff can't resolve them as F821
-"app/_game_lifecycle.py" = ["F821"]
-"app/_health_monitor.py" = ["F821"]
-"app/_overlay_manager.py" = ["F821"]
-"app/_remediation.py"    = ["F821"]
-"app/_state_authority.py" = ["F821"]
+# (circular-import prevention) - ruff can't resolve them as F821. BLE001 is
+# baselined here via config (frozen files take no inline noqa without approval).
+"app/_game_lifecycle.py" = ["F821", "BLE001"]
+"app/_health_monitor.py" = ["F821", "BLE001"]
+"app/_overlay_manager.py" = ["F821", "BLE001"]
+"app/_remediation.py"    = ["F821", "BLE001"]
+"app/_state_authority.py" = ["F821", "BLE001"]
+"main.py" = ["BLE001"]
+"app/__init__.py" = ["BLE001"]
+"app/_loop.py" = ["BLE001"]
+"core/log_setup.py" = ["BLE001"]
+"core/moon_proxy.py" = ["BLE001"]
+"core/game_snapshot.py" = ["BLE001"]
+"lcu/lcu_client.py" = ["BLE001"]
+"ops/rc_dev_runtime.py" = ["B", "BLE001"]
+"ops/rc_supervisor.py" = ["B", "BLE001"]
+"dashboard/routes_bridge_pending.py" = ["BLE001"]
 # Frozen bridge tools - exclude all lint upgrades to prevent auto-fix drift
-"tools/bridge_pull_tasks.py"   = ["UP", "E", "B"]
-"tools/bridge_post_result.py"  = ["UP", "E", "B"]
+"tools/bridge_pull_tasks.py"   = ["UP", "E", "B", "BLE001"]
+"tools/bridge_post_result.py"  = ["UP", "E", "B", "BLE001"]
+"tools/bridge_watcher_classify.py" = ["BLE001"]
+"tools/bridge_watcher_actions.py" = ["BLE001"]
+"tools/bridge_watcher_history.py" = ["BLE001"]
 
 [lint.isort]
 known-first-party = [

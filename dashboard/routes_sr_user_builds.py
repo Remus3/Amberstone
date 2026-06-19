@@ -46,7 +46,7 @@ def _serve_user_builds_get(h) -> None:
             "champion": champion,
             "builds":   builds,
         }).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/sr-draft/user-builds GET: %s", exc)
         # Raw exception text stays in the log only (was untruncated here).
         h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
@@ -113,7 +113,7 @@ def _serve_user_builds_post(h, payload) -> None:
         h._send(400,
                 json.dumps({"error": f"unknown action: {action}"}).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/sr-draft/user-builds POST: %s", exc)
         # Raw exception text stays in the log only (was untruncated here).
         h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),

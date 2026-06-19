@@ -65,7 +65,7 @@ def _load_obs_config() -> dict:
             return {}
         full = json.loads(cfg_path.read_text(encoding="utf-8"))
         return (full.get("obs") or {}) if isinstance(full, dict) else {}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("OBS config read failed: %s", exc)
         return {}
 
@@ -106,7 +106,7 @@ def _render_state() -> str:
             short = pregame[:50] + ("..." if len(pregame) > 50 else "")
             return f"{mode} · {short}"
         return mode
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("OBS render: %s", exc)
         return ""
 
@@ -140,7 +140,7 @@ class OBSPublisher:
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             self._task = _sched.spawn_task(self._async_loop(cfg))
@@ -165,7 +165,7 @@ class OBSPublisher:
             self._thread.join(timeout=3)
         if self._task is not None:
             try: self._task.cancel()
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
             self._task = None
 
     def _run(self, cfg: dict) -> None:
@@ -173,7 +173,7 @@ class OBSPublisher:
         we can use the `websockets` lib when not riding the main AppLoop."""
         try:
             asyncio.run(self._async_loop(cfg))
-        except Exception:
+        except Exception:  # noqa: BLE001
             _log.exception("OBS publisher loop crashed")
 
     async def _async_loop(self, cfg: dict) -> None:
@@ -214,7 +214,7 @@ class OBSPublisher:
                 # Mid-session disconnect - common on OBS restart.
                 _log.debug("OBS connection closed; reconnecting in %ds",
                            _BACKOFF_AFTER_DROP_S)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.warning("OBS publisher unexpected error: %s", exc)
             if not self._stop.is_set():
                 await asyncio.sleep(_BACKOFF_AFTER_DROP_S)
@@ -231,7 +231,7 @@ class OBSPublisher:
         hello_raw = await ws.recv()
         try:
             hello = json.loads(hello_raw)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
         if hello.get("op") != 0:
             return False
@@ -258,7 +258,7 @@ class OBSPublisher:
         idd_raw = await ws.recv()
         try:
             idd = json.loads(idd_raw)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
         return idd.get("op") == 2
 
@@ -276,7 +276,7 @@ class OBSPublisher:
                 await asyncio.wait_for(ws.recv(), timeout=0.05)
         except (asyncio.TimeoutError, TimeoutError):
             return
-        except Exception:
+        except Exception:  # noqa: BLE001
             return
 
     async def _set_text(self, ws, source_name: str, text: str) -> None:

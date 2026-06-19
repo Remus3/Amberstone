@@ -90,7 +90,7 @@ def _resolve_sr_mode(champion: str, mode: str, min_games: int) -> Optional[str]:
         try:
             if benchmarks.games_for(champion, bench_mode) >= min_games:
                 return bench_mode
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
     return None
 
@@ -170,13 +170,13 @@ def band_metrics(
             value = float(raw)
             try:
                 band = benchmarks.rank_value(lookup, bench_mode, metric_key, value)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 continue
             if band == "no-data":
                 continue
             try:
                 p50 = benchmarks.get(lookup, bench_mode, metric_key).get("p50")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 p50 = None
             display = _METRIC_DISPLAY.get(metric_key, metric_key)
             out.append(

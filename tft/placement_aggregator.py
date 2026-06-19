@@ -56,7 +56,7 @@ def build_heatmap(ratings_dir: Path = _RATINGS_DIR) -> dict:
     for f in sorted(ratings_dir.glob("*.json")):
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
 
         if d.get("mode_category") != "TFT":

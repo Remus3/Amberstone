@@ -65,7 +65,7 @@ class BridgeMonitor:
         try:
             from app._loop import get_loop as _get_loop
             sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             sched = None
         if sched is not None:
             self._task = sched.spawn_task(self._loop_async())
@@ -116,7 +116,7 @@ class BridgeMonitor:
                     self._inbound_count = int(d.get("inbound_count") or 0)
                     self._auto_pong_count = int(d.get("auto_pong_count") or 0)
                     return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("bridge_monitor hydrate failed: %s", exc)
         # Cold start - only react to entries posted from now on.
         self._last_seen_ts = time.time()
@@ -139,7 +139,7 @@ class BridgeMonitor:
                     return
                 except PermissionError:
                     continue
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("bridge_monitor state write failed: %s", exc)
 
     # -- Poll loop ---------------------------------------------------------
@@ -148,7 +148,7 @@ class BridgeMonitor:
         while not self._stop.is_set():
             try:
                 self._poll_once()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("bridge_monitor loop: %s", exc)
             self._stop.wait(self._poll_s)
 
@@ -156,7 +156,7 @@ class BridgeMonitor:
         while not self._stop.is_set():
             try:
                 self._poll_once()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("bridge_monitor loop: %s", exc)
             try:
                 await asyncio.sleep(self._poll_s)
@@ -214,7 +214,7 @@ class BridgeMonitor:
                         self._auto_pong_count += 1
                     _log.info("bridge_monitor: auto-pong fired in reply to %s",
                               entry.get("id"))
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     _log.warning("bridge_monitor: auto-pong failed: %s", exc)
             self._last_seen_ts = ts
             wrote_state = True

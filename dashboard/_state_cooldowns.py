@@ -259,7 +259,7 @@ def compute_state_cooldowns(lc: dict | None) -> list[dict] | None:
             return None
         events = _events_from_liveclient(snap.data)
         return compute_cooldowns(participants, events, now_s=time.time())
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("compute_state_cooldowns: %s", exc)
         return None
 

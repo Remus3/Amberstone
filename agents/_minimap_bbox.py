@@ -50,7 +50,7 @@ def load_persisted(mode: str) -> Optional[tuple[int, int, int, int]]:
         if not _REGIONS_FILE.exists():
             return None
         data = json.loads(_REGIONS_FILE.read_text(encoding="utf-8"))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("vision_regions.json read failed: %s", exc)
         return None
     if not isinstance(data, dict):

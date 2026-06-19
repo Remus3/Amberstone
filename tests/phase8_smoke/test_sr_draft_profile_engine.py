@@ -265,7 +265,7 @@ class TestLiveEngineIntegration(unittest.TestCase):
         try:
             with urllib.request.urlopen("http://127.0.0.1:8893/health", timeout=1) as r:
                 json.loads(r.read())
-        except Exception:
+        except Exception:  # noqa: BLE001
             self.skipTest("engine on :8893 unreachable - skipping live integration")
 
     def test_live_three_profiles(self):

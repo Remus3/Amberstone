@@ -215,7 +215,7 @@ def _compute_side_avg(snapshot, allies: list[str], enemies: list[str],
                 enemy_ap_share=0.5,
                 enemy_champions=enemies,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Unknown champion / registry miss - skip silently
             # (compute_ehp's fail-soft contract is the source of
             # truth; we mirror it).
@@ -352,7 +352,7 @@ def _serve_cc_blended_ehp_threat(h) -> None:
                 "error": "DS engine unavailable",
             }).encode("utf-8"), "application/json")
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/cc-blended-ehp-threat compute: %s", exc)
             h._send(503, json.dumps({
                 "ok":    False,
@@ -370,13 +370,13 @@ def _serve_cc_blended_ehp_threat(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"),
                 "application/json")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/cc-blended-ehp-threat: %s", exc)
         try:
             h._send(500, json.dumps({
                 "ok": False, "error": str(exc)[:200],
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

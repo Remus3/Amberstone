@@ -204,7 +204,7 @@ class MetricsCache:
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             self._task = _sched.spawn_task(self._loop_async())
@@ -223,7 +223,7 @@ class MetricsCache:
             self._thread.join(timeout=timeout_s)
         if self._task is not None:
             try: self._task.cancel()
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
             self._task = None
 
     def get_summary(self) -> MetricsSummary:
@@ -303,7 +303,7 @@ class MetricsCache:
             self._read_last_coaching_ts(new)   # Phase 3 Step 1: independent of process_running
             new.last_5_incidents = self._read_incident_tail()
             self._read_policy_state(new)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             new.refresh_error = f"{type(exc).__name__}: {exc}"
 
         with self._lock:
@@ -318,7 +318,7 @@ class MetricsCache:
             if not path.exists():
                 return None
             return json.loads(path.read_text(encoding="utf-8-sig"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _read_status(self, s: MetricsSummary) -> None:
@@ -426,7 +426,7 @@ class MetricsCache:
             s.policy_brawl_live_coaching = (dec.get("brawl") or {}).get("live_coaching")
             s.policy_tft_live_coaching   = (dec.get("tft")   or {}).get("live_coaching")
             s.policy_tft_vision_analysis = (dec.get("tft")   or {}).get("tft_vision_analysis")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass  # policy fields stay None on any error
 
     def _read_incident_tail(self) -> List[Dict[str, Any]]:
@@ -474,8 +474,8 @@ class MetricsCache:
                         "trigger":   e.get("trigger", ""),
                         "detail":    str(e.get("detail", ""))[:120],
                     })
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass  # skip malformed lines silently
             return entries[-MAX_INCIDENTS:]
-        except Exception:
+        except Exception:  # noqa: BLE001
             return []

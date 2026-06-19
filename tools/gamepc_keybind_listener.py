@@ -116,7 +116,7 @@ def _post_respond(*, choice_index: int | None = None,
             _log.warning("HTTPError %s: %s", exc.code, exc.reason)
     except urllib.error.URLError as exc:
         _log.warning("URLError: %s", exc.reason)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("post failed: %s", exc)
 
 

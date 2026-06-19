@@ -102,7 +102,7 @@ def _build_rune_cmd(champion: str, key: str, runes: dict) -> "dict | None":
         return None
     try:
         from lcu.lcu_rune_writer import _TREES, build_perk_ids
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/sr-draft/apply rune import: %s", exc)
         return None
     perk_ids = build_perk_ids(keystone, primary, secondary, is_aram=False)
@@ -164,7 +164,7 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
                 with _ur.urlopen(req, timeout=2) as r:
                     r.read()
                 queued.append(cmd_obj.get("cmd"))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 log.warning("sr-draft enqueue %s: %s", cmd_obj.get("cmd"), exc)
                 notes.append(f"{cmd_obj.get('cmd')}: {exc}")
 
@@ -188,7 +188,7 @@ def _serve_sr_draft_apply_post(h, payload) -> None:
             "item_ids":   [str(i) for i in (item_ids or [])],
             "notes":      notes,
         }).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/sr-draft/apply: %s", exc)
         # Raw exception text stays in the log only (was untruncated here).
         h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),

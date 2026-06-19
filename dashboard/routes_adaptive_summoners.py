@@ -138,7 +138,7 @@ def _load_id_to_name() -> dict[int, str]:
                     out[int(key)] = str(name)
                 except (TypeError, ValueError):
                     continue
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("adaptive-summoners: ddragon_champions load failed: %s", exc)
     _ID_TO_NAME = out
     return out
@@ -168,7 +168,7 @@ def _compute_threat(enemy_names: list[str]) -> dict:
     try:
         from core.defensive_picks import compute_threat_profile
         profile = compute_threat_profile(enemy_names) or {}
-    except Exception:
+    except Exception:  # noqa: BLE001
         profile = {}
     profile["cc_threat"] = round(_compute_cc_score(enemy_names), 1)
     return profile
@@ -247,7 +247,7 @@ def _serve_adaptive_summoners(h) -> None:
             "reason":      rec["reason"],
             "threat":      threat,
         }).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/champ-select/adaptive-summoners: %s", exc)
         # Raw exception text stays in the log only.
         h._send(500, json.dumps(

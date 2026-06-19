@@ -361,7 +361,7 @@ def compute_nudge_payload(
                 if str(raw_id).strip() == first_item_id:
                     first_item_name = str(name)
                     break
-    except Exception:
+    except Exception:  # noqa: BLE001
         first_item_name = ""
 
     level = int(lc.get("level") or 1)

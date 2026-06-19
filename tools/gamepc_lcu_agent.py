@@ -160,7 +160,7 @@ def read_lockfile() -> tuple[str | None, str | None]:
                 parts = p.read_text(encoding="utf-8").strip().split(":")
                 if len(parts) >= 5:
                     return parts[2], parts[3]
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
     return None, None
 
@@ -199,11 +199,11 @@ def lcu_request(method: str, path: str, body: dict | None = None) -> tuple[objec
                 return None, None
             try:
                 return json.loads(raw), None
-            except Exception:
+            except Exception:  # noqa: BLE001
                 return raw, None
     except urllib.error.HTTPError as e:
         return None, f"http {e.code}"
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return None, f"{type(e).__name__}"
 
 
@@ -2032,7 +2032,7 @@ def _recover_missed_ingest() -> None:
         else:
             print(f"[ingest-recovery] POST failed: {status}; will retry "
                   f"via EndOfGame path", flush=True)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"[ingest-recovery] error (non-fatal): {exc}", flush=True)
 
 
@@ -2154,7 +2154,7 @@ def _state_push_loop():
             try:
                 post("/upload-lcu", state)
                 consecutive_fail = 0
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 consecutive_fail += 1
                 print(f"  [push err {consecutive_fail}x] {e}", flush=True)
             # FU02 last-mile: edge-fire team-context refresh on
@@ -2163,16 +2163,16 @@ def _state_push_loop():
             # consecutive_fail or affect the upload-lcu cadence.
             try:
                 _maybe_refresh_team_context(state)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"  [team-context err] {e}", flush=True)
             # s219 Post Game Review: edge-fire LCU match-detail ingest
             # on EndOfGame transition so the Post Game Review page is
             # instant. Same isolation as team-context above.
             try:
                 _maybe_ingest_last_match(state)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"  [last-match-ingest err] {e}", flush=True)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"[state loop err] {e}", flush=True)
         if consecutive_fail >= 3:
             exp = min(consecutive_fail - 2, 6)
@@ -2190,7 +2190,7 @@ def _auto_features_loop():
         try:
             ensure_lcu_conn()
             auto_features()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"[auto loop err] {e}", flush=True)
         time.sleep(AUTO_INTERVAL)
 
@@ -2207,19 +2207,19 @@ def _cmd_poll_loop():
                 cmd = item.get("cmd") or {}
                 try:
                     result = execute_command(cmd)
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     result = {"ok": False, "err": f"{type(exc).__name__}: {exc}"}
                     print(f"  [cmd-exc] {cmd.get('cmd')} -> {result}", flush=True)
                 else:
                     print(f"  [cmd] {cmd.get('cmd')} -> {result}", flush=True)
                 try:
                     post("/lcu-cmd-done", {"id": cid, "result": result})
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
         except urllib.error.HTTPError as e:
             if e.code != 404:
                 print(f"  [cmd-poll err] {e}", flush=True)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"  [cmd-poll err] {e}", flush=True)
         time.sleep(CMD_INTERVAL)
 

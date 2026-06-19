@@ -77,7 +77,7 @@ def tracked_anthropic(
             from core.cost_tracker import record_anthropic_response
             mdl = kwargs.get("model") or default_model
             record_anthropic_response(resp, model=mdl, purpose=purpose)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("tracked_anthropic record swallowed: %s", exc)
         return resp
 

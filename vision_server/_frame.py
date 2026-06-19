@@ -60,7 +60,7 @@ def _fetch_frame_direct():
     tests."""
     try:
         from PIL import ImageGrab
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     try:
         img = ImageGrab.grab()  # primary virtual screen, single GDI BitBlt
@@ -73,7 +73,7 @@ def _fetch_frame_direct():
         img.convert("RGB").save(buf, format="JPEG",
                                 quality=_SELF_GRAB_JPEG_QUALITY, optimize=True)
         b64 = _b64.b64encode(buf.getvalue()).decode("ascii")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("frame self-grab failed: %s", exc)
         return None
     return {
@@ -152,7 +152,7 @@ def handle_upload_frame(body: bytes) -> dict:
     t0 = time.time()
     try:
         d = json.loads(body)
-    except Exception:
+    except Exception:  # noqa: BLE001
         _record("frame_upload", int((time.time() - t0) * 1000), ok=False)
         return {"error": "bad_json"}
     img = d.get("image_b64", "")
@@ -177,7 +177,7 @@ def handle_upload_frame(body: bytes) -> dict:
             return {"error": "not_an_image",
                     "head_hex": head.hex(),
                     "size": len(img)}
-    except Exception as _exc:
+    except Exception as _exc:  # noqa: BLE001
         log.debug("frame magic check failed: %s", _exc)
         # Don't fail-closed on validation glitches - let the frame through so
         # a corner-case base64 layout doesn't blackhole real captures.

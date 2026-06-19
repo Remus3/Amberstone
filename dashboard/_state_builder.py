@@ -171,7 +171,7 @@ def _active_champion(coach: dict, lc: dict | None, lcu_snapshot: dict | None) ->
                     name = champion_name_by_key(mc)
                     if name:
                         return name
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
     return ""
 
@@ -292,7 +292,7 @@ def build_state() -> dict:
         if champ:
             from core.archetype_picks import get_archetype_for
             cs_archetype_pick = get_archetype_for(champ)
-    except Exception:
+    except Exception:  # noqa: BLE001
         cs_archetype_pick = {}
 
     # s184 (2026-05-13) - first-purchase archetype-mismatch nudge. Reads
@@ -309,7 +309,7 @@ def build_state() -> dict:
             lcu_snapshot=lcu_snapshot,
             cs_archetype_pick=cs_archetype_pick,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         archetype_nudge = {}
     _mark("archetype")
 
@@ -323,7 +323,7 @@ def build_state() -> dict:
         sr = read_json("data/screen_read.json")
         if isinstance(sr, dict):
             screen_read = sr
-    except Exception:
+    except Exception:  # noqa: BLE001
         screen_read = {}
 
     # 2026-05-20 - summoner + ult cooldown ledger. Backend ships per-player
@@ -336,7 +336,7 @@ def build_state() -> dict:
     try:
         from dashboard._state_cooldowns import compute_state_cooldowns
         summoner_cooldowns = compute_state_cooldowns(lc)
-    except Exception:
+    except Exception:  # noqa: BLE001
         summoner_cooldowns = None
     _mark("cooldowns")
 
@@ -369,7 +369,7 @@ def build_state() -> dict:
         # (do-not-flip-blind). Fail-soft, additive, NO effect on live output.
         shadow_log_live_benchmark_band(coach, lc, mode_key)
         coach["choices"] = resolve_choices(coach, det)
-    except Exception:
+    except Exception:  # noqa: BLE001
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
     _mark("deterministic")

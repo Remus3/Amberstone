@@ -44,7 +44,7 @@ def _serve_cost(h) -> None:
             "allowed": t.allow_call(),
         }
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/cost: %s", exc)
         send_error(h, exc)
 
@@ -57,7 +57,7 @@ def _serve_coach_trace(h) -> None:
         from core.coach_trace import read_recent as _read_recent
         h._send(200, json.dumps({"records": _read_recent(limit)}).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/coach/trace: %s", exc)
         send_error(h, exc)
 
@@ -72,7 +72,7 @@ def _serve_replay_matches(h) -> None:
         out = _lm(limit=limit, queue_filter=int(queue) if queue.isdigit() else None)
         h._send(200, json.dumps({"matches": out}).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/replay/matches: %s", exc)
         send_error(h, exc)
 
@@ -93,7 +93,7 @@ def _serve_replay_match(h) -> None:
                     "application/json")
             return
         h._send(200, json.dumps(d).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/replay/match: %s", exc)
         send_error(h, exc)
 
@@ -107,7 +107,7 @@ def _serve_spend_gates(h) -> None:
         t = _gt()
         payload = {"gates": t.gates_state(), "per_match": t.recent_match_avg()}
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/spend/gates: %s", exc)
         send_error(h, exc)
 
@@ -122,7 +122,7 @@ def _serve_coach_state(h) -> None:
         state = {m: (m not in {x.lower() for x in disabled}) for m in modes}
         h._send(200, json.dumps({"enabled": state, "disabled": disabled}).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/coach/state: %s", exc)
         send_error(h, exc)
 
@@ -142,7 +142,7 @@ def _serve_speak_post(h, payload) -> None:
         spoken = speak(text, rate=rate)
         h._send(200, json.dumps({"ok": True, "spoken": spoken}).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/speak: %s", exc)
         send_error(h, exc)
 
@@ -166,10 +166,10 @@ def _serve_champ_select_coach_post(h, payload) -> None:
             from core.champ_select_shadow import log_champ_select_advice
             log_champ_select_advice(payload or {}, native=result,
                                     deterministic=advise_pick(payload or {}))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.debug("champ-select shadow: %s", exc)
         h._send(200, json.dumps(result).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/champ-select-coach: %s", exc)
         send_error(h, exc)
 
@@ -184,7 +184,7 @@ def _serve_aram_comp_verdict_post(h, payload) -> None:
         from core.aram_comp_verdict import comp_verdict
         verdict = comp_verdict(payload if isinstance(payload, dict) else {})
         h._send(200, json.dumps(verdict).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/aram-comp-verdict: %s", exc)
         send_error(h, exc)
 
@@ -204,7 +204,7 @@ def _serve_coach_toggle_post(h, payload) -> None:
         h._send(200, json.dumps({"ok": True,
                                   "disabled_modes": cur}).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/coach/toggle: %s", exc)
         send_error(h, exc)
 

@@ -255,7 +255,7 @@ def _build_prompt(state: dict) -> str:
         _comp = _live.get("comp", "") or ""
         if _comp:
             lines.append(f"Current comp: {_comp}")
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     lines += [
@@ -359,7 +359,7 @@ class TftPbeCoachEngine:
                 self._debounce_s = cfg.get("debounce_seconds", self._debounce_s)
                 self._timeout    = cfg.get("timeout",          self._timeout)
                 self._max_tokens = cfg.get("max_tokens",       self._max_tokens)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
         logger.info("TftPbeCoachEngine ready (model=%s debounce=%.0fs)",
@@ -406,7 +406,7 @@ class TftPbeCoachEngine:
             return
         try:
             self._run(state)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # HARD RULE: never surface a raw API/exception string in a
             # user-facing panel. risk is rendered by tft_pbe_coach
             # (coaches/tft_pbe_coach.py renders the risk field), so the raw
@@ -424,7 +424,7 @@ class TftPbeCoachEngine:
             from core.cost_tracker import get_tracker as _gt
             if _gt().gate_disabled("tft"):
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         t0     = time.time()
         prompt = _build_prompt(state)
@@ -443,7 +443,7 @@ class TftPbeCoachEngine:
         try:
             from core.cost_tracker import record_anthropic_response
             record_anthropic_response(response, model=self._model, purpose="tft_pbe")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("cost_tracker record: %s", exc)
         latency = int((time.time() - t0) * 1000)
         raw     = response.content[0].text
@@ -496,7 +496,7 @@ class TftPbeCoachEngine:
             tmp.write_text(json.dumps(output, indent=2), encoding="utf-8")
             tmp.replace(self._data_file)
             logger.debug("TFT PBE coaching data written (%d fields)", len(fields))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("Failed to write TFT PBE coaching data: %s", exc)
 
     def _write_status(self, msg: str):
@@ -507,5 +507,5 @@ class TftPbeCoachEngine:
             tmp = self._data_file.with_suffix(".tmp")
             tmp.write_text(payload, encoding="utf-8")
             tmp.replace(self._data_file)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass

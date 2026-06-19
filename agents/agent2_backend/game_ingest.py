@@ -186,7 +186,7 @@ def _already_ingested(
             ).fetchone()
             if row:
                 return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     return False
 

@@ -125,7 +125,7 @@ class TftVisionReader:
         try:
             from modes.shared_vision import _capture_screen as _relay_capture
             full_b64 = _relay_capture()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("TFT vision: relay fetch failed: %s", exc)
             return None
         if not full_b64:
@@ -133,7 +133,7 @@ class TftVisionReader:
 
         try:
             full_img = Image.open(io.BytesIO(base64.b64decode(full_b64))).convert("RGB")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("TFT vision: relay frame decode failed: %s", exc)
             return None
 
@@ -143,7 +143,7 @@ class TftVisionReader:
             # PIL.Image.crop expects a 4-tuple.
             try:
                 crops.append(full_img.crop(bbox))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.debug("TFT vision: crop %s failed: %s", bbox, exc)
                 return None
 
@@ -176,7 +176,7 @@ class TftVisionReader:
             result = moon_proxy.extract_vision(img_b64, model=self._model)
             if result is not None:
                 return result
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return self._extract_local(img_b64)
 
@@ -198,7 +198,7 @@ class TftVisionReader:
             try:
                 from core.cost_tracker import record_anthropic_response
                 record_anthropic_response(response, model=self._model, purpose="tft_vision")
-            except Exception as _exc:
+            except Exception as _exc:  # noqa: BLE001
                 logger.debug("cost_tracker record: %s", _exc)
             latency = int((time.time() - t0) * 1000)
             raw = response.content[0].text.strip()
@@ -232,7 +232,7 @@ class TftVisionReader:
             return None
         except json.JSONDecodeError:
             return None
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("Vision extract failed: %s", exc)
             return None
 

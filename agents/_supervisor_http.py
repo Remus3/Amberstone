@@ -337,7 +337,7 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
                 if self.command != "HEAD":
                     self.wfile.write(raw)
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
         # Slow path: crop on demand from the global full-frame cache.

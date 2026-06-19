@@ -39,7 +39,7 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path in ("/stats", "/stats/"):
             try:
                 self._j(200, get_stats())
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 log.error("Stats error: %s", e)
                 self._j(500, {"error": str(e)})
         elif self.path in ("/monitor", "/monitor.html"):
@@ -65,7 +65,7 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     self._j(404, {"error": "moon_monitor.html not found",
                                   "searched": [str(p) for p in candidates]})
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 log.error("Monitor serve error: %s", e)
                 self._j(500, {"error": str(e)})
         elif self.path == "/latest-frame" or self.path.startswith("/latest-frame?"):
@@ -189,7 +189,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._j(200, h(body))
             else:
                 self._j(404, {"error": "unknown"})
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log.error("%s: %s", self.path, e)
             self._j(500, {"error": str(e)})
 
@@ -207,7 +207,7 @@ class Handler(BaseHTTPRequestHandler):
             fp = SYNC_DIR / fname
             fp.write_bytes(data)
             self._j(200, {"ok": True})
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._j(500, {"error": str(e)})
 
     def _cors(self) -> None:

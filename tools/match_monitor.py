@@ -31,7 +31,7 @@ def fetch(url: str, headers: dict | None = None) -> dict | list | None:
     try:
         with urllib.request.urlopen(req, timeout=2, context=ctx) as r:
             return json.loads(r.read())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 

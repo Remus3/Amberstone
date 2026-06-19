@@ -137,7 +137,7 @@ def cc_conditional_impact_line(
             result = compute_cc_pressure(
                 name, mode, include_conditional=True
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         if result is None:
             continue

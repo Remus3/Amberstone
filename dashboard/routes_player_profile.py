@@ -133,7 +133,7 @@ def _serve_player_profile(h) -> None:
 
         try:
             payload = _compute(mode, window, champion)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/player-profile compute: %s", exc)
             h._send(503, json.dumps(
                 {"ok": False, "error": "rewind history unavailable"}
@@ -149,14 +149,14 @@ def _serve_player_profile(h) -> None:
         _cache_put(key, now, cacheable)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/player-profile: %s", exc)
         try:
             # Raw exception text stays in the log only.
             h._send(500, json.dumps(
                 {"ok": False, "error": "internal error - see logs"})
                 .encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

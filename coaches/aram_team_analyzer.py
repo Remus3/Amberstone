@@ -152,7 +152,7 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
                 "factors": det.get("factors") or {},
             })
             return out
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.debug("deterministic comp_verdict failed, falling back: %s", exc)
 
     # Spend-gate: champ-select Anthropic calls off via Settings kill-switch.
@@ -161,7 +161,7 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
         if _gt().gate_disabled("champ_select"):
             out["reason"] = "(champ-select coach disabled)"
             return out
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     bench = [c for c in (state.get("bench") or []) if c]
     variants = [v for v in (state.get("variants") or []) if v.get("key")]
@@ -211,10 +211,10 @@ def analyze(state: dict, api_key: str | None) -> dict[str, Any]:
         try:
             from core.cost_tracker import record_anthropic_response
             record_anthropic_response(resp, model=_MODEL, purpose="aram_team_analyzer")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Never surface raw exception details (type or message) in the
         # user-facing reason field - friendly degrade + log the raw error.
         out["reason"] = "(analyzer paused - retrying)"

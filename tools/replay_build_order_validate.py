@@ -400,7 +400,7 @@ def run_validation(
         for mid in match_ids:
             try:
                 rows = extract_build_rows(conn, mid)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 n_matches_skipped += 1
                 continue
             if not rows:
@@ -560,7 +560,7 @@ def _load_item_names() -> Dict[str, str]:
                 continue
             data = json.loads(path.read_text(encoding="utf-8")).get("data") or {}
             return {str(k): str(v.get("name", "")) for k, v in data.items()}
-    except Exception:
+    except Exception:  # noqa: BLE001
         return {}
     return {}
 
@@ -654,7 +654,7 @@ def make_table_lookup(mode: str) -> Callable[[str, str], dict]:
     def _lookup(champion: str, variant: str) -> dict:
         try:
             return lookup(table, canonical_champion_id(str(champion)), variant)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return {}
 
     return _lookup
@@ -667,7 +667,7 @@ def make_comp_lean_fn() -> Callable[[Sequence[str]], Optional[Tuple[str, str]]]:
     def _lean(enemy_comp: Sequence[str]) -> Optional[Tuple[str, str]]:
         try:
             return comp_lean(list(enemy_comp or []))
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     return _lean

@@ -86,7 +86,7 @@ def _try_one(url: str) -> tuple[bytes | None, str]:
         return None, f"http {e.code} {e.reason}"
     except urllib.error.URLError as e:
         return None, f"url {e.reason}"
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return None, f"{type(e).__name__}: {e}"
 
 
@@ -124,7 +124,7 @@ def loop() -> None:
             upload(payload)
             ms = int((time.time() - t0) * 1000)
             print(f"ok {len(payload)}B in {ms}ms", flush=True)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"err {exc}", flush=True)
         sleep_for = max(0.1, INTERVAL - (time.time() - t0))
         time.sleep(sleep_for)
