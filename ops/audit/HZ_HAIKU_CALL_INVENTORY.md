@@ -45,3 +45,30 @@ The corrected Tier-2 target (the `champ_select_coach` PICK-ADVISOR, not the alre
 - `core/champ_select_shadow.log_champ_select_advice` - the missing capturer (mirrors `hz_choice_shadow`), wired fail-soft at `dashboard/routes_coach.py` AFTER the live coach_pick. Records native Haiku advice vs the deterministic candidate to `data/champ_select_shadow.jsonl` per distinct pick state. NO change to served output.
 
 The pick-advisor flip is now DATA-BLOCKED, not code-blocked: each queued game with a champ-select feeds the validation lane. NEXT = accrue real-game shadow rows -> det-vs-Haiku agreement analysis -> THEN the flip (do-not-flip-blind). The v1 deterministic candidate is intentionally conservative (e.g. archetype-keyed summoners); refine it once agreement data shows where it diverges from Haiku.
+
+## UPDATE 2026-06-19 (run 2026-06-19-01) - laning bottleneck reclassified: CALIBRATION, not volume
+
+Ran `tools/hz_shadow_report.py` over the accrued real-game shadow logs (1490
+laning rows / 1488 build rows). The "Binding constraint" claim above ("bottleneck
+= GAMES PLAYED, not code") is now SUPERSEDED for the #1-frequency Tier-1 LANING
+flip: enough games have accrued for a clear signal (693 comparable-covered ticks,
+42% table coverage), and the binding constraint is AGREEMENT QUALITY, not volume.
+
+- **Laning agreement is 39% (160/406 comparable-covered).** Flipping today would
+  change ~60% of laning verdicts vs what Haiku says - the do-not-flip-blind gate
+  is correctly holding. The blocker is the precompute's calibration, not games.
+- **Root cause (confusion matrix, now emitted by the report):** the precompute
+  verdict vocabulary only ever produces `back_off` (225) or `trade` (181). It has
+  NO `hold` / `farm` band, but Haiku says `hold` on 114 of the 406 comparable
+  ticks (28%). And it is back_off-biased (precompute back_off 225 vs Haiku 69).
+  Top mismatches: precompute `back_off` while Haiku `trade` x112; precompute
+  `back_off` while Haiku `hold` x57; precompute `trade` while Haiku `hold` x57.
+- **NEXT (Tier-2, operator/Gemini-gated - a product-calibration call, NOT a blind
+  overnight edit):** add a `hold`/even band to the laning scenario verdict mapping
+  (`agents/daemon_slayer/scenario_matrix.py` / `fight_report.py`) + soften the
+  back_off threshold, regenerate the `data/daemon_slayer/laning_scenarios` tables
+  (LFS), then re-run `hz_shadow_report.py` and confirm agreement climbs before any
+  flip. The report's new confusion matrix is the per-iteration measurement.
+- The BUILD agreement lane is still 0/0 comparable (the native Haiku build side
+  logs no comparable verdict) - build flip-readiness remains unmeasured, separate
+  from laning.

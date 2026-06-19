@@ -254,6 +254,37 @@ def test_summarize_agreement_aggregates():
     assert out["uncovered_with_native"] == 1
 
 
+def test_summarize_agreement_confusion_matrix():
+    # The confusion matrix is the actionable flip-gate diagnosis: it shows WHICH
+    # precompute verdict the live coach disagrees with (e.g. precompute back_off
+    # while Haiku trades), and the precompute verdict vocabulary (a missing band
+    # surfaces as an absent precompute key).
+    records = [
+        {"mode": "aram", "covered": True, "choices": [{"label": "Back off Caitlyn"}],
+         "native_action": "TRADE", "native_choices": []},
+        {"mode": "aram", "covered": True, "choices": [{"label": "Back off Xerath"}],
+         "native_action": "TRADE", "native_choices": []},
+        {"mode": "aram", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "TRADE", "native_choices": []},
+        {"mode": "aram", "covered": True, "choices": [{"label": "Back off Ezreal"}],
+         "native_action": "hold and farm", "native_choices": []},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["comparable_covered"] == 4
+    assert out["agree"] == 1
+    assert out["agreement_rate"] == 0.25
+    # Precompute only ever emitted back_off / trade here (no hold/all_in band).
+    assert out["by_precompute"] == {"back_off": 3, "trade": 1}
+    # Confusion is a list of {precompute, native, n, agree}, sorted by n desc.
+    conf = out["confusion"]
+    assert conf[0] == {"precompute": "back_off", "native": "trade",
+                       "n": 2, "agree": False}
+    by_pair = {(c["precompute"], c["native"]): c["n"] for c in conf}
+    assert by_pair[("back_off", "hold")] == 1
+    assert by_pair[("trade", "trade")] == 1
+    assert all(c["agree"] == (c["precompute"] == c["native"]) for c in conf)
+
+
 def test_summarize_agreement_empty():
     out = rep.summarize_agreement([])
     assert out["comparable_covered"] == 0
@@ -261,6 +292,8 @@ def test_summarize_agreement_empty():
     assert out["agreement_rate"] == 0.0
     assert out["by_mode"] == {}
     assert out["by_native"] == {}
+    assert out["by_precompute"] == {}
+    assert out["confusion"] == []
     assert out["unclassified_native"] == 0
     assert out["uncovered_with_native"] == 0
 
