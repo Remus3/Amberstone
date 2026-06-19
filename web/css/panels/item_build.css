@@ -19,7 +19,7 @@
   border: 1px solid var(--border-soft);
   border-radius: 3px;
   padding: 2px 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
   white-space: nowrap;
   cursor: default;
@@ -27,28 +27,28 @@
 .ds-chip em {
   font-style: normal;
   color: var(--signal-good);
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 /* In-game build chooser block: tighter row spacing than the cs panel
  * since this lives in the small ITEM BUILD column. */
 .ib-builds-block .cs-build-list { gap: 4px; margin-top: 6px; }
 .ib-builds-block .cs-build-row { padding: 5px 7px; }
 .ib-builds-block .cs-build-row .cs-build-meta { min-width: 90px; }
-.ib-builds-block .cs-build-row .cs-build-label { font-size: 12px; }
-.ib-builds-block .cs-build-row .cs-build-runes { font-size: 10px; }
+.ib-builds-block .cs-build-row .cs-build-label { font-size: var(--fs-xs); }
+.ib-builds-block .cs-build-row .cs-build-runes { font-size: 10px; /* R4 operator-exception: sub--fs-xs retained - dense in-game build chooser in the narrow ITEM BUILD column; bumping to the 16px floor overflows the 2-up label/runes meta cell */ }
 .ib-builds-block .cs-build-row .cs-build-items .cs-build-item {
   width: 22px; height: 22px;
 }
 .ib-builds-block .build-label { display: flex; align-items: center; gap: 8px; }
 .ib-builds-status {
-  margin-left: auto; font-size: 11px; color: var(--label);
+  margin-left: auto; font-size: var(--fs-xs); color: var(--label);
   letter-spacing: 0.5px; text-transform: none;
 }
 .ib-builds-status.ok    { color: var(--signal-good); }
 .ib-builds-status.err   { color: var(--bad); }
 .ib-builds-status.busy  { color: var(--clock); }
 .build-label {
-  font-size: 14px;
+  font-size: var(--fs-xs);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-faint);
@@ -56,7 +56,7 @@
   margin-bottom: 8px;
 }
 .build-value {
-  font-size: 19px;
+  font-size: var(--fs-md);
   color: var(--text);
   font-weight: 400;
   line-height: 1.3;
@@ -125,7 +125,7 @@
 }
 .item-name {
   margin-top: 6px;
-  font-size: 14px;
+  font-size: 14px;   /* R4 operator-exception: sub--fs-xs retained - 70px tile width + 2-line -webkit-line-clamp; bumping to the 16px floor forces mid-word breaks / 3-line overflow */
   line-height: 1.18;
   color: var(--text);
   font-weight: 700;
@@ -180,7 +180,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--canvas);
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 900;
   letter-spacing: 0.04em;
   color: var(--text);
