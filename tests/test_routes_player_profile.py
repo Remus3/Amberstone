@@ -125,6 +125,27 @@ class PopulatedDbTests(unittest.TestCase):
         payload = json.loads(h.sent_body)
         self.assertIsNone(payload["champion"])
 
+    def test_champions_pool_present(self):
+        # The drilldown selector source: every ok payload carries the operator's
+        # played-champion pool for the mode (12 on champ 22, 8 on champ 64).
+        h = _RouteHarness("")
+        routes_player_profile._serve_player_profile(h)
+        payload = json.loads(h.sent_body)
+        self.assertEqual(payload["champions"], [
+            {"champion_id": 22, "n_games": 12},
+            {"champion_id": 64, "n_games": 8},
+        ])
+
+    def test_champions_pool_is_mode_wide_not_champion_filtered(self):
+        # A champion-filtered request still returns the FULL pool (so the
+        # selector keeps every option after a drilldown).
+        h = _RouteHarness("champion=64")
+        routes_player_profile._serve_player_profile(h)
+        payload = json.loads(h.sent_body)
+        self.assertEqual([c["champion_id"] for c in payload["champions"]],
+                         [22, 64])
+        self.assertEqual(payload["champion"], 64)
+
     def test_cache_hit_second_call(self):
         h1 = _RouteHarness("")
         routes_player_profile._serve_player_profile(h1)

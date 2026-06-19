@@ -289,5 +289,82 @@ class GpiAsciiTests(unittest.TestCase):
                          raw.replace(b"\r", b""))
 
 
+class ListChampionsTests(unittest.TestCase):
+    """list_champions: the per-champion drilldown pool (item 511)."""
+
+    def _db(self):
+        b = _Builder()
+        for _ in range(5):
+            b.add(champ=22)
+        for _ in range(3):
+            b.add(champ=64)
+        b.add(champ=99)
+        return b
+
+    def test_counts_and_desc_order(self):
+        b = self._db()
+        try:
+            out = player_gpi.list_champions("sr", conn=b.conn)
+        finally:
+            b.close()
+        self.assertEqual(out, [
+            {"champion_id": 22, "n_games": 5},
+            {"champion_id": 64, "n_games": 3},
+            {"champion_id": 99, "n_games": 1},
+        ])
+
+    def test_dedupes_multi_match_join_rows(self):
+        # A dup participant row sharing the join keys must NOT double-count the
+        # match (mirror _fetch_operator_games' per-match dedupe).
+        b = _Builder()
+        b.add(champ=22, dup=True)
+        b.add(champ=22)
+        try:
+            out = player_gpi.list_champions("sr", conn=b.conn)
+        finally:
+            b.close()
+        self.assertEqual(out, [{"champion_id": 22, "n_games": 2}])
+
+    def test_mode_map_filter_excludes_other_modes(self):
+        b = _Builder()
+        b.add(champ=22, map_id=11)        # SR
+        b.add(champ=777, map_id=12)       # ARAM
+        try:
+            sr = player_gpi.list_champions("sr", conn=b.conn)
+            aram = player_gpi.list_champions("aram", conn=b.conn)
+        finally:
+            b.close()
+        self.assertEqual([c["champion_id"] for c in sr], [22])
+        self.assertEqual([c["champion_id"] for c in aram], [777])
+
+    def test_excludes_no_stats_and_short_games(self):
+        b = _Builder()
+        b.add(champ=22)                                  # kept
+        b.add(champ=22, has_stats=0)                     # dropped (no stats)
+        b.add(champ=22, dur_s=player_gpi.MIN_DURATION_S - 1)  # dropped (remake)
+        try:
+            out = player_gpi.list_champions("sr", conn=b.conn)
+        finally:
+            b.close()
+        self.assertEqual(out, [{"champion_id": 22, "n_games": 1}])
+
+    def test_empty_db_returns_empty_list(self):
+        b = _Builder()
+        try:
+            self.assertEqual(player_gpi.list_champions("sr", conn=b.conn), [])
+        finally:
+            b.close()
+
+    def test_invalid_mode_falls_back_to_sr(self):
+        b = _Builder()
+        b.add(champ=22, map_id=11)
+        try:
+            self.assertEqual(
+                player_gpi.list_champions("urf", conn=b.conn),
+                [{"champion_id": 22, "n_games": 1}])
+        finally:
+            b.close()
+
+
 if __name__ == "__main__":
     unittest.main()

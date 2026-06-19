@@ -23,6 +23,7 @@ used - aggression and tempo come from participant damage + gold instead).
 
 Public API:
     compute_gpi(mode="sr", window=20, champion=None) -> dict   # the contract
+    list_champions(mode="sr") -> [{champion_id, n_games}, ...] # drilldown pool
 The dict is the /api/player-profile + radar-panel contract; see _empty().
 """
 from __future__ import annotations
@@ -300,3 +301,45 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     out["weakest_axis"] = weakest["key"] if weakest else None
     out["tip"] = _AXIS_TIPS.get(weakest["key"]) if weakest else None
     return out
+
+
+def list_champions(mode: str = "sr",
+                   conn: Optional[sqlite3.Connection] = None) -> list[dict]:
+    """Return the operator's played champions for ``mode`` as
+    ``[{"champion_id": int, "n_games": int}, ...]`` ordered by games desc.
+
+    Powers the GPI per-champion drilldown selector. Reuses the SAME operator-row
+    JOIN + has_stats / MIN_DURATION_S / map_id filter as ``_fetch_operator_games``
+    grouped by champion; COUNT(DISTINCT match_id) mirrors that function's
+    per-match dedupe (sentinel tracked ids can multi-match). Never raises on
+    empty/missing history - returns ``[]``.
+    """
+    if mode not in MODE_MAPS:
+        mode = "sr"
+    map_id = MODE_MAPS.get(mode)
+    where = ["m.has_stats = 1", "m.game_duration_s >= ?"]
+    params: list = [MIN_DURATION_S]
+    if map_id is not None:
+        where.append("m.map_id = ?")
+        params.append(map_id)
+    sql = (
+        "SELECT p.champion_id, COUNT(DISTINCT m.match_id) AS n "
+        "FROM matches m JOIN participants p ON p.match_id = m.match_id "
+        "AND p.champion_id = m.tracked_champion_id "
+        "AND p.team_id = m.tracked_team_id "
+        "WHERE " + " AND ".join(where) + " "
+        "GROUP BY p.champion_id ORDER BY n DESC, p.champion_id ASC"
+    )
+    own = conn is None
+    if own:
+        conn = draft_elo_db.open_ro()
+    try:
+        rows = list(conn.execute(sql, params))
+    finally:
+        if own:
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+    return [{"champion_id": int(cid), "n_games": int(n)}
+            for cid, n in rows if cid is not None]

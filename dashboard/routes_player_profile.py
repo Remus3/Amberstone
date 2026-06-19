@@ -14,7 +14,9 @@ Request shape:
   champion : optional champion id (Riot integer ``key``) to filter the
              history to one champion. Non-int -> 400. Omitted -> null.
 
-Response is exactly ``compute_gpi(...)``'s dict plus ``cached`` (bool) and
+Response is ``compute_gpi(...)``'s dict plus ``champions`` (the operator's
+played-champion pool for ``mode`` as ``[{champion_id, n_games}, ...]`` newest
+first - powers the per-champion drilldown selector), ``cached`` (bool) and
 ``elapsed_ms`` (int). See ``core.player_gpi._empty`` for the axis shape.
 
 Cache: 5min in-process LRU keyed by (mode, window, champion). The compute
@@ -34,7 +36,7 @@ import threading
 import time
 from urllib.parse import parse_qs, urlparse
 
-from core import player_gpi
+from core import draft_elo_db, player_gpi
 from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.web_dashboard")
@@ -92,7 +94,20 @@ def _parse_champion(raw: str) -> tuple[int | None, str | None]:
 
 
 def _compute(mode: str, window: int, champion: int | None) -> dict:
-    return player_gpi.compute_gpi(mode=mode, window=window, champion=champion)
+    # One RO connection shared by the GPI compute + the champion-pool list so a
+    # single uncached request opens the db once. compute_gpi/list_champions both
+    # leave a caller-supplied conn open (own=False); the route owns the close.
+    conn = draft_elo_db.open_ro()
+    try:
+        payload = player_gpi.compute_gpi(
+            mode=mode, window=window, champion=champion, conn=conn)
+        payload["champions"] = player_gpi.list_champions(mode, conn=conn)
+    finally:
+        try:
+            conn.close()
+        except Exception:  # noqa: BLE001
+            pass
+    return payload
 
 
 def _serve_player_profile(h) -> None:
