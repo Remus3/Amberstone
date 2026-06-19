@@ -20,6 +20,7 @@
     "gold": 14800,
     "gold_per_min": 965.2,
     "kp_pct": null,
+    "gold_share_pct": 55.0,
     "label": "Arena 2nd place - Crit augment scaling carried; Lulu shielded clean",
     "coach_action": "Stack on Crit augments + IE for Jinx; Lulu W bait the all-in.",
     "ds_picks": [],
