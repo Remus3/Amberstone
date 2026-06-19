@@ -158,6 +158,16 @@ def _serve_champ_select_coach_post(h, payload) -> None:
         if _key_path.exists():
             api_key = _key_path.read_text(encoding="utf-8").strip()
         result = coach_pick(payload or {}, api_key)
+        # Do-not-flip-blind shadow: record the deterministic pick-advisor
+        # alongside the live Haiku advice so the precompute path can be
+        # validated offline before any flip. Fail-soft; never blocks the route.
+        try:
+            from core.champ_select_advisor_deterministic import advise_pick
+            from core.champ_select_shadow import log_champ_select_advice
+            log_champ_select_advice(payload or {}, native=result,
+                                    deterministic=advise_pick(payload or {}))
+        except Exception as exc:
+            log.debug("champ-select shadow: %s", exc)
         h._send(200, json.dumps(result).encode(), "application/json")
     except Exception as exc:
         log.warning("api/champ-select-coach: %s", exc)
