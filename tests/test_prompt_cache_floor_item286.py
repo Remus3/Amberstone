@@ -14,6 +14,7 @@ THREE independent blockers that make it a verified dead end:
    corroborated by item 273's tft_pbe note "2450-tok > 2048 haiku floor"). The
    STATIC portion of each target prompt is far below that floor:
        aram_aug_select      static ~62 tok   (full template 279 chars)
+       arena_aug_select     static ~80 tok   (315 static chars)
        tft_live_analysis    static ~669 tok  (full template 2605 chars)
        tft_live_aug_select  static ~51 tok   (full template 242 chars)
    ``cache_control`` markers below the floor are inert (the API does not cache
@@ -68,6 +69,7 @@ def _static_chars(template: str) -> int:
 # (label, source file, module-level template constant)
 _TARGETS = [
     ("aram_aug_select", "coaches/aram_coach.py", "_AUG_SELECT_PROMPT"),
+    ("arena_aug_select", "coaches/arena_coach.py", "_AUGMENT_SELECT_PROMPT"),
     ("tft_live_analysis", "tft/tft_live_analysis.py", "_ANALYSIS_PROMPT_TEMPLATE"),
     ("tft_live_aug_select", "tft/tft_live_analysis.py", "_AUGMENT_SELECT_PROMPT"),
 ]
