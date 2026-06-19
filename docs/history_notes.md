@@ -42,6 +42,37 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (run 2026-06-19-01) - headless-upgrade: personal-build-wr + laning flip-gate diagnosis (4b)
+
+Operator launched `/headless-upgrade`. HEAD `bfc44e0a` -> `a4db6aab` (2 commits), CI green
+(both runs success), NO ENGINE bump, NO frozen edits, NO worktrees, NO DS restart. Prior
+manifest 2026-06-18-03 fully committed, so fresh run-id 2026-06-19-01.
+
+Pre-flight established the headless-safe HIGH-value queue is genuinely thin: PRIMARY Tier-1/2
+coach flips are do-not-flip-blind (data-gated); the DS cross-eval clusters A(excluded)/B1/B2/C
+are all shipped-or-gated; DS registries saturated; cost levers CLEAN. So picked the two clean,
+PRIMARY-aligned, headless-VALIDATABLE slices that remained.
+
+- **S1 `43acb128` (4b / research-lift):** `core/personal_build_wr.py` + `GET /api/personal-build`.
+  Personal per-champion build win-rate from rewind_history.db - confidence-weighted item lift vs
+  own baseline (smoothed_rates blend toward the personal prior), legendary+boots gold floor so
+  end-of-game component noise drops out. Closes COMPETITOR_LIFT_2026-06-16 "personal-WR build
+  override (local-data half)". +18 tests, live-verified (Vayne SR 54g -> Terminus/Guinsoo/PD).
+  Deterministic, zero LLM. UI consumer DEFERRED (needs OWED Game-PC capture) -> BACKLOG.
+- **S2 `a4db6aab` (4b PRIMARY finding):** `tools/hz_shadow_report.py` now emits the precompute
+  x native confusion matrix + precompute verdict vocabulary. Run over the accrued 1490-row real-
+  game shadow log it reclassifies the laning bottleneck: NOT game volume (693 comparable ticks),
+  but AGREEMENT QUALITY = 39% (160/406). Precompute has only back_off/trade/even, NO hold band;
+  Haiku says hold 28% of ticks. Caveat (verified): the precompute `even` verdict (A="Even trade
+  on your cd window", B="Hold position") classifies coarse as "trade", so 39% understates true
+  agreement. Corrected HZ_HAIKU_CALL_INVENTORY "bottleneck=games" claim. +1 test (27 total).
+- **NEXT (operator-gated, in BACKLOG):** (a) personal-build UI consumer (capture-owed); (b) the
+  laning hold-band recalibration + LFS table regen (the 39% fix) - a product-calibration call,
+  explicitly NOT a blind overnight edit; the report's new confusion matrix is its per-iter gate.
+- ops/loop/{config.json,director_prompt.md} STILL uncommitted (operator pre-run loop tuning, left).
+
+---
+
 # 2026-06-18 (run 2026-06-18-03) - headless-upgrade: champ-select pick-advisor shadow (4b) + 2 cost/bug slices
 
 Operator launched `/headless-upgrade`. Prior manifest 2026-06-18-02 fully resolved (superseded by
