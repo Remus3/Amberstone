@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-19 (interactive) - orchestrated fan-out: 7 headless backlog items (LEDGER 506)
+
+Operator: "perform all listed headless open items via orchestrated multi-agent fan out, this
+session." One scope AskUserQuestion -> "All buildable, gated=OFF". 5 commits `af04914f` ->
+`9f7ecff5`, CI green (27843999804), NO ENGINE bump, 0 frozen edits, tree clean.
+
+- Wave-1 `aeb7f1d2` (4 parallel worktree agents): aggregator A OP-Score curve (`core/op_score_curve.py`
+  + `/api/op-score-curve` + build_insights tab); replay-narrative substrate + shadow (no flip);
+  ARAM debounce DEFAULT-OFF (`RC_ARAM_STATE_DEBOUNCE`, 45s); aggregator B carry-eff grade axis DEFAULT-OFF.
+- D1 `f1c59fb8`: Share churn-fix - `ds_share_sync.py --precommit` gates sync on staged
+  mirrored-source (kills per-commit MANIFEST churn + spurious gist upload). Full mirror de-dup
+  DEFERRED (outward-facing gist + CI coupling, own session).
+- HZ-B `a5101e20`: SR/ARAM build-order regen @1.144.0 (58/62 champs; NO ENGINE bump - stamp
+  auto-refreshes on regen; Arena already current item 499).
+- D4 `6ee56952`: BLE001 blind-except ratchet, 954 app-code noqa; engine/Share/frozen exempt.
+  Config-FIRST is load-bearing or --add-noqa pollutes Share/src -> memory `reference_ruff_rule_share_mirror`.
+
+D11 = n/a (no 405 in repo). EXCLUDED (stated, not silent): name-scrub (destructive/release-gated),
+DPM damage-share (data-blocked), cdragon by-level (new schema axis). NEXT (operator-gated): the
+live FLIPs (ARAM debounce ON / aggregator B grade ON / HZ-B-final) await live/replay validation; D1 full
+de-dup is its own session.
+
+---
+
 # 2026-06-19 (run 2026-06-19-05) - headless-upgrade: gold-share PGR carry-efficiency stat (DISPLAY-only)
 
 Operator `/headless-upgrade`. HEAD `6d3d7e03` -> `67fe203d` (gemini-loop relaunch directive
@@ -64,35 +88,3 @@ anomalies) - concrete headless ops-hygiene, not a blind flip.
 - **NEXT (operator-gated, unchanged):** arena-augment + champ-select + build flips accrue
   on real games; laning even<->hold mapping (+57 ticks). `ops/loop/{config.json,
   director_prompt.md}` STILL uncommitted (operator gemini-loop relaunch tuning, left).
-
----
-
-# 2026-06-19 (run 2026-06-19-03) - headless-upgrade: arena augment-select shadow capturer (4b)
-
-Operator launched `/headless-upgrade`. HEAD `98c04ea4` -> `72cd1681` (1 code commit +
-docs sync), CI green, NO ENGINE bump / frozen edits / worktrees / DS version-restart.
-Prior manifest 2026-06-19-02 fully wrapped, so fresh run-id 2026-06-19-03.
-
-Thin-queue night #5 (4 prior WAKEUPs agree). Found the ONE clean PRIMARY-aligned,
-non-blind, headless-safe slice left: the last uncovered TIER-1 in-game Haiku site.
-
-- **S1 `72cd1681` (4b PRIMARY, the one ship):** arena augment-select shadow capturer.
-  Pre-flight (`ops/audit/HZ_HAIKU_CALL_INVENTORY.md`) mapped coverage: aram laning+build
-  + champ-select pick-advisor (item 500) covered; the genuine uncovered high-spend gap =
-  arena augment-select (`coaches/arena_coach.py:758` arena_aug_select). The deterministic
-  `core/augment_recommender.recommend` (pure win-rate ranker, mode=arena) ALREADY runs in
-  parallel (S5) and reco_fields are persisted alongside Haiku's aug_take, but the pair was
-  never recorded -> flip accrued ZERO validation data (identical to the champ-select gap
-  closed -18-03). NEW `core/augment_shadow.py` mirrors `core/champ_select_shadow.py`:
-  fail-soft atomic append to `data/augment_shadow.jsonl`, dedup on (mode,champion,offered,
-  picked), records native Haiku {take,why,plan} vs the deterministic ranking per offer
-  state. Plus `summarize_agreement()` (hz_shadow_report analog) = name-normalized top-1
-  agreement + Haiku-take rank in the det ranking. Wired fail-soft AFTER the served write,
-  NO flip (arena_coach not frozen). +9 tests; 117 aug + 37 arena green.
-- **P3 cost sweep 7/7 CLEAN** (matches last 3 runs): all coach max_tokens 100-650 << 2048
-  haiku floor so correctly uncached (item286 guard); no sub-500ms polls; guards 11 green.
-- **DS audit SKIP:** saturation wall (forward-marker exhausted, registries machine-guarded).
-- **NEXT (operator-gated):** (a) arena augment FLIP after shadow rows accrue on real Arena
-  games - read `core.augment_shadow.summarize_agreement('data/augment_shadow.jsonl')`;
-  (b) laning even<->hold mapping (+57 ticks 39%->53%); (c) champ-select+build flip-gates
-  accrue on next live games. ops/loop/{config.json,director_prompt.md} STILL uncommitted.
