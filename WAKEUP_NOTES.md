@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-06-18 (run 2026-06-18-03) - headless-upgrade: champ-select pick-advisor shadow (4b) + 2 cost/bug slices
+
+Operator launched `/headless-upgrade`. Prior manifest 2026-06-18-02 fully resolved (superseded by
+17 commits), so fresh run. HEAD `7e803410` -> `98816b05` (4 commits), CI green, NO ENGINE bump,
+NO frozen edits, NO worktrees. Item 500 in LEDGER.
+
+- **S1 `a31ef769` (PRIMARY 4b):** champ-select PICK-ADVISOR is the last champ-select Haiku call
+  (BRIEF flipped 2026-06-06; pick-advisor had NO det substrate + NO shadow). Built
+  `core/champ_select_advisor_deterministic.advise_pick` (reuses aram_comp_verdict + archetype tags)
+  + `core/champ_select_shadow` (mirrors hz_choice_shadow) wired fail-soft at `dashboard/routes_coach.py`.
+  NO flip (do-not-flip-blind) - FLIP waits on shadow data from REAL games (data-blocked headless). +19 tests.
+- **S2 `8c3a6ad6` (cost):** the cost-sweep's augment-select cache_control NOW-FIX was REFUTED (item 286:
+  static ~62/80 tok, sub the 2048 Haiku floor = inert). Shipped a guard EXTENSION (arena site pinned) instead.
+- **S3 `fb0dd83b` (open bug):** runewriter game-1-only silence ([[reference_runewriter_dies_after_game1]]) -
+  NOT reproducible headless (get_champ_select stale after game1). Added re-arm regression test (+4) +
+  INFO enter/exit diagnostics so the NEXT live session pinpoints the failing branch. Logging-only, no flip.
+- **GATED -> BACKLOG:** HZ-B build-order tables 21 ENGINE bumps stale (operator-gated regen, ENGINE-bump tax);
+  same-state coach Haiku-skip debounce (fidelity-gated; cost_health_watchdog exit 1 = by-design breach, not a crash).
+- **NEXT:** champ-select pick-advisor flip after shadow data accrues; both BACKLOG items operator-gated.
+
+---
+
 # 2026-06-18 (PM7) - Arena boots 22xxxx map30 mirror (P6-G4 deferred tail; ENGINE 1.144.0)
 
 Operator "continue open items from last run". TIER2_REPORT + RF round-2 queues DRAINED
@@ -69,31 +91,3 @@ DS data-correctness unit. Commit `8c63b79b`, CI run 27799329481.
   (already live at 1.143.0, not a default-OFF flip).
 - `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run
   loop tuning, untouched PM2-PM6; gemini loop DOWN).
-
----
-
-# 2026-06-18 (PM5) - F2 cost-aware-top gate (DS Tier-2 nom F2, DEFAULT-OFF; ENGINE 1.142.0)
-
-Operator "continue open items from last run". Shipped the second bounded DS Tier-2
-ship-or-close nomination from PM3's `TIER2_REPORT.md`. Commit `60c3d6f7`, CI GREEN.
-
-- **PREFLIGHT:** DS :8893 was DOWN (no proc) -> relaunched detached, healthy ENGINE 1.141.0 ->
-  (post-bump) 1.142.0. RC-DaemonSlayer result=1 / RC-GeminiAudit result=3 / RC-WeeklyHygiene
-  result=1 = same external/stale anomalies as PM3/PM4 (gemini loop DOWN, not locally fixable).
-- **F2 cost-aware-top (item 497, ENGINE 1.141.0 -> 1.142.0; DS :8893 restarted; Share 367).**
-  `rank.py` `sort_by="delta"` scales with cost -> 6000g ARAM/Arena Void Immolation `223069` ranks #1
-  on hybrid/bruiser + ehp/tank across ~66 champs (artifact, NO WIN gate). NEW DEFAULT-OFF
-  `cost_ceiling` param on the shared `_filter_candidates` (drop `gold.total` STRICTLY > ceiling)
-  threaded through `rank_items`/`rank_items_by_ehp`/`rank_items_by_hybrid`; other 4 callers unchanged
-  -> byte-identical OFF. +12 TDD (difference-of-differences). Reproduced live (Garen bruiser ARAM
-  rank-1 = 223069). PM4 id/mode subtlety RESOLVED: 223069 is a genuine base id (maps 12+30 ARAM+Arena),
-  NOT the `22`-alias quirk; report "ARAM-exclusive" imprecise. DS-dir 7360 / RC tests/ 8439 green;
-  87 ENGINE pins / 79 files; Share --check in sync.
-- **B2 found largely ALREADY SHIPPED** (DSP11 `prefer_kit_axis_by_win` + DSP2 `exempt_offclass_by_win`)
-  - only per-champion live re-rank validation remains. A ARAM-override stays default-OFF. B1+F2
-  bounded Tier-2 nominations now DONE; lane tail is live-validation-gated -> `LIVE_GAME_GATED_SYNC.md`.
-- **Doc-budget:** pre-existing `test_roadmap_md_under_budget` RED (82556 > 80KB; CI runs no pytest so
-  PM4 missed it) cleared by relocating the shipped item-320 `prefer_cdragon_ratios` block verbatim to
-  `ROADMAP_HISTORY.md` (now 81269 < 81920).
-- `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run loop tuning,
-  untouched PM2-PM5; gemini loop DOWN).

@@ -42,6 +42,34 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-18 (PM5) - F2 cost-aware-top gate (DS Tier-2 nom F2, DEFAULT-OFF; ENGINE 1.142.0)
+
+Operator "continue open items from last run". Shipped the second bounded DS Tier-2
+ship-or-close nomination from PM3's `TIER2_REPORT.md`. Commit `60c3d6f7`, CI GREEN.
+
+- **PREFLIGHT:** DS :8893 was DOWN (no proc) -> relaunched detached, healthy ENGINE 1.141.0 ->
+  (post-bump) 1.142.0. RC-DaemonSlayer result=1 / RC-GeminiAudit result=3 / RC-WeeklyHygiene
+  result=1 = same external/stale anomalies as PM3/PM4 (gemini loop DOWN, not locally fixable).
+- **F2 cost-aware-top (item 497, ENGINE 1.141.0 -> 1.142.0; DS :8893 restarted; Share 367).**
+  `rank.py` `sort_by="delta"` scales with cost -> 6000g ARAM/Arena Void Immolation `223069` ranks #1
+  on hybrid/bruiser + ehp/tank across ~66 champs (artifact, NO WIN gate). NEW DEFAULT-OFF
+  `cost_ceiling` param on the shared `_filter_candidates` (drop `gold.total` STRICTLY > ceiling)
+  threaded through `rank_items`/`rank_items_by_ehp`/`rank_items_by_hybrid`; other 4 callers unchanged
+  -> byte-identical OFF. +12 TDD (difference-of-differences). Reproduced live (Garen bruiser ARAM
+  rank-1 = 223069). PM4 id/mode subtlety RESOLVED: 223069 is a genuine base id (maps 12+30 ARAM+Arena),
+  NOT the `22`-alias quirk; report "ARAM-exclusive" imprecise. DS-dir 7360 / RC tests/ 8439 green;
+  87 ENGINE pins / 79 files; Share --check in sync.
+- **B2 found largely ALREADY SHIPPED** (DSP11 `prefer_kit_axis_by_win` + DSP2 `exempt_offclass_by_win`)
+  - only per-champion live re-rank validation remains. A ARAM-override stays default-OFF. B1+F2
+  bounded Tier-2 nominations now DONE; lane tail is live-validation-gated -> `LIVE_GAME_GATED_SYNC.md`.
+- **Doc-budget:** pre-existing `test_roadmap_md_under_budget` RED (82556 > 80KB; CI runs no pytest so
+  PM4 missed it) cleared by relocating the shipped item-320 `prefer_cdragon_ratios` block verbatim to
+  `ROADMAP_HISTORY.md` (now 81269 < 81920).
+- `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run loop tuning,
+  untouched PM2-PM5; gemini loop DOWN).
+
+---
+
 # 2026-06-18 (PM4) - B1 melee-applicability gate (DS Tier-2 nom B, DEFAULT-OFF)
 
 Operator "continue open items from last run". Shipped the single named highest-value DS
