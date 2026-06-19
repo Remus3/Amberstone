@@ -448,12 +448,21 @@ class RuneWriter:
         if not session or not isinstance(session, dict):
             # Not in champ select
             if self._in_champ_select:
-                _log.debug("RuneWriter: champ select ended")
+                _log.info("RuneWriter: champ select ended - re-armed for next pick")
                 self._in_champ_select = False
                 self._last_applied_champion = ""
                 self._last_applied_mode = ""
             return
 
+        # INFO on the enter transition so the game-1-only silence bug
+        # (reference_runewriter_dies_after_game1) is diagnosable from the day
+        # log: the re-arm above always clears _last_applied, so if a LATER
+        # champ-select produces no "champ select entered" line, get_champ_select()
+        # never returned a session for it (the writer's LCU view went stale) -
+        # NOT a re-arm failure. If the line IS present but no "applying runes"
+        # follows, the gap is in _detect_my_champion instead.
+        if not self._in_champ_select:
+            _log.info("RuneWriter: champ select entered")
         self._in_champ_select = True
 
         # Get game mode from lobby
