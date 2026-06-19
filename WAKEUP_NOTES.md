@@ -4,6 +4,37 @@
 
 ---
 
+# 2026-06-19 (gemini-loop R3 cycle) - DS passive_damage caster bonus-armor/MR scaling (LEDGER 513)
+
+Gemini DIRECTOR refill R3 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
+passive_damage caster-defensive-stat (bonus armor / bonus MR) scaling. Commit `ab23c32c`, CI
+pending push; Tier-2, ENGINE 1.144.0 -> 1.145.0, DS :8893 restarted -> 1.145.0 live, Share
+re-synced SAME commit, 0 frozen.
+
+- SCOPE (verify-before-build): the eval chain ALREADY existed end-to-end - DamageBlock
+  bonus_armor_pct/bonus_mr_pct + _SCALING_TARGETS (-> caster_bonus_armor/caster_bonus_mr) +
+  AbilityContext.from_build. The ONLY gap = the hand-authored passive_damage REGISTRY did not
+  carry the two %-fields. Thin bridge, not a new evaluator.
+- IMPL (_passive_damage_overrides.py, default-OFF byte-identical): added bonus_armor_pct/
+  bonus_mr_pct to PassiveDamageEntry + PerStackTerm; to_damage_block copies them -> evaluator
+  applies via existing _SCALING_TARGETS loop, ZERO new math. Seeded Taric P (25:93 + 15% bonus
+  armor) + Galio P (15:115 + 100% AD + 45% AP + 60% bonus MR; crit omitted -> AA-crit seam).
+  Both no_damage/empty-blocks (no double-count), both metadata-only (NOT AA-routed: Taric
+  post-spell-2-hit + Galio periodic gates).
+- SWEEP (172 champs): ONLY these 2 clean linear cases. FUTURE residual (not built blind):
+  K'Sante P (bilinear caster-resist x target-HP, All Out gated) + Rammus W (TOTAL-resist reflect,
+  needs a caster-total-MR field) - see ORCHESTRATION Findings.
+- TDD: test FIRST 10 fail/8 pass RED -> impl -> 18/18 GREEN (hand-computed: Taric L1@100armor=40,
+  L18=108; Galio L1 ad200/ap100/mr50=290, L18=390). ENGINE pins quoted-literal only (79 DS test
+  files byte-bumped, 0 residual). Share/docs/02 PassiveDamageEntry field list updated.
+- VERIFY: DS 7379 pass/1 skip/1942 subtests; RC 8634 pass/2 skip with 1 EXPECTED transient
+  (test_live_three_profiles caught the mid-suite DS-restart window at stale 1.144.0) -> re-ran
+  fresh = 1 passed, /health 1.145.0. ruff + Share --check green. Inline sole orchestrator (R9
+  single-file lift; verifier skip R7). [[reference_ds_bump_run_tests_dir]] /
+  [[feedback_engine_bump_quoted_literal_only]] / [[feedback_verify_before_declare_broken]].
+
+---
+
 # 2026-06-19 (gemini-loop R2 cycle) - Build Insights UI audit + doc-size unblock (LEDGER 512)
 
 Gemini DIRECTOR refill R2 (ops/loop/control/directive.md): Section-3b 5-phase UI audit of the
