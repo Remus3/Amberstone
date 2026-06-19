@@ -4,7 +4,7 @@
 try:
     from role_profiles import get_role_profile, aram_item_context, ARAM_ITEM_RULES
     HAS_ROLE_PROFILES = True
-except Exception:
+except Exception:  # noqa: BLE001
     HAS_ROLE_PROFILES = False
     def get_role_profile(champ, role="bot") -> str: return ""
     def aram_item_context(e, a, c) -> str: return ""

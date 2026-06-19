@@ -148,7 +148,7 @@ def _serve_personal_context(h) -> None:
                 .encode("utf-8"),
                 "application/json",
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

@@ -428,7 +428,7 @@ def test_safe_write_concurrent_writers_keep_valid_json(tmp_path):
         try:
             for _ in range(25):
                 safe_write(target, p)
-        except Exception as exc:  # pragma: no cover - failure surface
+        except Exception as exc:  # pragma: no cover - failure surface  # noqa: BLE001
             errs.append(exc)
 
     threads = [threading.Thread(target=_hammer, args=(p,)) for p in payloads]

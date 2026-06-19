@@ -89,7 +89,7 @@ def resolve_safe_icon(root: Path, rel: str) -> Path | None:
     try:
         candidate = (root / rel).resolve()
         root_resolved = root.resolve()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     try:
         candidate.relative_to(root_resolved)

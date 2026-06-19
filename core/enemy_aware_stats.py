@@ -166,7 +166,7 @@ def _load_stat_index() -> dict[str, dict]:
     except FileNotFoundError:
         _log.warning("enemy_aware_stats: %s missing - falling back to empty index",
                      _ITEMS_PATH)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("enemy_aware_stats: load failed: %s", exc)
     _STAT_INDEX = out
     return out

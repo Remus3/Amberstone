@@ -772,7 +772,7 @@ class Supervisor:
         try:
             from performance_tracker import _latest_rating_file as _lrf  # type: ignore
             rating_path = _lrf(str(_PROJECT_ROOT))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log.debug("rating-file locator import failed: %s", e)
             rating_path = None
         try:

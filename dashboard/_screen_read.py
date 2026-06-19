@@ -107,12 +107,12 @@ def run_screen_read(requested_ts: float = 0.0) -> dict:
     """
     try:
         reader = _build_reader()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("screen_read: reader build failed: %s", exc)
         return _result("error", error="no_api_key", requested_ts=requested_ts)
     try:
         raw = reader.read()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("screen_read: vision read failed: %s", exc)
         return _result("error", error="vision_failed", requested_ts=requested_ts)
     if raw is None:
@@ -142,12 +142,12 @@ def _worker(requested_ts: float) -> None:
         doc = run_screen_read(requested_ts=requested_ts)
         doc["requested_ts"] = requested_ts
         _write(doc)
-    except Exception as exc:  # belt + braces - worker must never die silently
+    except Exception as exc:  # belt + braces - worker must never die silently  # noqa: BLE001
         log.warning("screen_read worker: %s", exc)
         try:
             _write(_result("error", error="worker_failed",
                             requested_ts=requested_ts))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
     finally:
         with _inflight_lock:

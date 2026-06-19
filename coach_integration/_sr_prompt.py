@@ -42,7 +42,7 @@ def _load_sr_rune_rec(champion: str) -> str:
         if note:
             result += f" - {note}"
         return result
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -214,7 +214,7 @@ def _load_sr_build_note(champion: str) -> str:
         if vt:       result += f" | vs tanks: {vt}"
         if vh:       result += f" | vs healing: {vh}"
         return result[:400]
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -238,7 +238,7 @@ def _load_lane_matchup_note(enemy_adc: str) -> str:
         if mechanic:
             result += f" | Key: {mechanic}"
         return result[:280]
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -261,7 +261,7 @@ def _vision_tracker_locs() -> str:
         if (time.time() - p.stat().st_mtime) > 10:
             return ""
         d = json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
     enemies = d.get("enemies") or {}
     if not enemies:

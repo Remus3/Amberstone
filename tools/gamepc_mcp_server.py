@@ -173,7 +173,7 @@ def tool_run_powershell(command: str, timeout_s: int = SAFE_PS_LIMIT) -> dict:
     except subprocess.TimeoutExpired as e:
         return {"error": "timeout", "timeout_s": timeout_s,
                 "stdout": e.stdout or "", "stderr": e.stderr or ""}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
@@ -454,7 +454,7 @@ def _dispatch_tool(name: str, fn, args: dict):
     except TypeError as e:
         return {"isError": True,
                 "content": [{"type": "text", "text": f"bad arguments: {e}"}]}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {"isError": True,
                 "content": [{"type": "text",
                              "text": f"{type(e).__name__}: {e}\n"
@@ -516,7 +516,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         try: self.wfile.write(body)
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
 
     def _check_auth(self) -> bool:
         auth = self.headers.get("Authorization", "")
@@ -541,12 +541,12 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         if not self._check_auth(): return
         try:
             n = int(self.headers.get("Content-Length", "0"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             n = 0
         raw = self.rfile.read(n) if n else b""
         try:
             req = json.loads(raw.decode("utf-8")) if raw else {}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self._send_jsonrpc(None, error=(-32700, f"Parse error: {e}"))
             return
         # Notifications (no `id`) - no response body. Server ACKs with 202.
@@ -564,7 +564,7 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             return
         try:
             result = handler(params)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log.warning("handler %s raised: %s", method, e)
             self._send_jsonrpc(rid, error=(-32603, f"{type(e).__name__}: {e}"))
             return
@@ -607,7 +607,7 @@ def main() -> int:
         pass
     finally:
         try: probe.close()
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
     log.info("gamepc-mcp listening on %s:%d (tools=%d, token=...%s)",
              args.host, args.port, len(TOOL_FUNCS), AUTH_TOKEN[-4:])
     log.info("monitors: %s",

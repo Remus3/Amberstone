@@ -93,7 +93,7 @@ def _load_trait_augment_data() -> dict:
             try:
                 import json as _jx
                 _pbe = _jx.loads(_cs.read_text(encoding="utf-8")).get("pbe", False) if _cs.exists() else False
-            except Exception:
+            except Exception:  # noqa: BLE001
                 _pbe = False
             _mfn = "tft_set17_pbe_meta.json" if _pbe else "tft_set17_meta.json"
             meta_path = Path(__file__).parent.parent / "data" / "meta" / _mfn
@@ -101,7 +101,7 @@ def _load_trait_augment_data() -> dict:
                 meta_path = Path(__file__).parent.parent / "data" / "meta" / "tft_set17_meta.json"
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             _load_trait_augment_data._cache = meta.get("trait_augments", {})
-        except Exception:
+        except Exception:  # noqa: BLE001
             _load_trait_augment_data._cache = {}
     return _load_trait_augment_data._cache
 
@@ -117,7 +117,7 @@ def _load_double_up_rules() -> dict:
             try:
                 import json as _jy
                 _pbe = _jy.loads(_cs.read_text(encoding="utf-8")).get("pbe", False) if _cs.exists() else False
-            except Exception:
+            except Exception:  # noqa: BLE001
                 _pbe = False
             _mfn = "tft_set17_pbe_meta.json" if _pbe else "tft_set17_meta.json"
             meta_path = Path(__file__).parent.parent / "data" / "meta" / _mfn
@@ -125,7 +125,7 @@ def _load_double_up_rules() -> dict:
                 meta_path = Path(__file__).parent.parent / "data" / "meta" / "tft_set17_meta.json"
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             _load_double_up_rules._cache = meta.get("double_up", {})
-        except Exception:
+        except Exception:  # noqa: BLE001
             _load_double_up_rules._cache = {}
     return _load_double_up_rules._cache
 
@@ -248,7 +248,7 @@ def _build_prompt(state: dict) -> str:
         _live_traits = ", ".join(_ld.get("traits_active") or [])
         _live_board = ", ".join(u for u in (_ld.get("board_units") or []) if u and u != "empty")
         _live_augments = _ld.get("augments") or []
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     hp_display = _live_hp if _live_hp else state.get("health", "?")
     gold_display = _live_gold if _live_gold else "unknown"
@@ -260,7 +260,7 @@ def _build_prompt(state: dict) -> str:
         import json as _pj
         _pd = _pj.loads((_PP(__file__).parent.parent / "data" / "tft_live_data.json").read_text())
         _partner_hp = _pd.get("partner_hp", _partner_hp)
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     lines = [
@@ -332,7 +332,7 @@ def _build_prompt(state: dict) -> str:
             if _comp or _traits:
                 lines.append(f"Current comp: {_comp}  Active traits: {_traits}")
                 lines.append("Carousel/God boon advice: recommend completed items for this carry, or emblems for active traits.")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     if event == "pve":
@@ -436,7 +436,7 @@ def _build_prompt(state: dict) -> str:
                         _expected_traits = [t.lower() for t in (_cd.get("core_units", []) or [])]
                         lines.append("  Tailor all advice (Board/Items/Econ/Upgrade) to this comp.")
                         lines.append(f"  If current traits diverge significantly from {_comp_name}, advise pivot in Upgrade field.")
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     from tft.tft_data import TIER_ODDS
@@ -531,7 +531,7 @@ def _parse_response(text: str) -> dict:
         if "-" in str(_sr):
             _sp = str(_sr).split("-")
             _stage = int(_sp[0])
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     _action = fields.get("action", "").upper()
@@ -601,7 +601,7 @@ class TftCoachEngine:
                 self._debounce_s = cfg.get("debounce_seconds", self._debounce_s)
                 self._timeout    = cfg.get("timeout",          self._timeout)
                 self._max_tokens = cfg.get("max_tokens",       self._max_tokens)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
         logger.info("TftCoachEngine ready [v3-trait-augments] (model=%s debounce=%.0fs)",
@@ -629,7 +629,7 @@ class TftCoachEngine:
                 _hd = _hj.loads((_hp2(__file__).parent.parent / "data" / "tft_live_data.json").read_text())
                 _vhp = _hd.get("hp")
                 hp = int(float(_vhp)) if _vhp and 0 < float(_vhp) <= 100 else 100
-            except Exception:
+            except Exception:  # noqa: BLE001
                 hp = 100
         new_round = sr != self._last_round
         # Urgent: HP critical, but cap at one call per 30s to prevent end-game burst
@@ -665,7 +665,7 @@ class TftCoachEngine:
             tmp = self._data_file.with_suffix(".tmp")
             tmp.write_text(__import__("json").dumps(blank, indent=2), encoding="utf-8")
             tmp.replace(self._data_file)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     def shutdown(self) -> None:
@@ -677,7 +677,7 @@ class TftCoachEngine:
             return
         try:
             self._run(state)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Raw exception goes to the log only - the risk field rendered by
             # _write_status is user-facing, so degrade to a friendly message.
             logger.error("TFT coach error: %s", exc)
@@ -691,7 +691,7 @@ class TftCoachEngine:
             from core.cost_tracker import get_tracker as _gt
             if _gt().gate_disabled("tft"):
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         t0     = time.time()
         prompt = _build_prompt(state)
@@ -710,7 +710,7 @@ class TftCoachEngine:
         try:
             from core.cost_tracker import record_anthropic_response
             record_anthropic_response(response, model=self._model, purpose="tft_coach")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("cost_tracker record: %s", exc)
         latency = int((time.time() - t0) * 1000)
         raw     = response.content[0].text
@@ -745,7 +745,7 @@ class TftCoachEngine:
             _vision_hp = _ohd.get("hp")
             if _vision_hp and isinstance(_vision_hp, (int, float)) and 0 < float(_vision_hp) <= 100:
                 _out_hp = int(float(_vision_hp))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         if _out_hp is None:
             _out_hp = 100
@@ -790,9 +790,9 @@ class TftCoachEngine:
             try:
                 from core.coaching_timestamps import write_coaching_ts as _wcts
                 _wcts("tft")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass  # non-fatal
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("Failed to write TFT coaching data: %s", exc)
 
     def _write_status(self, msg: str):
@@ -802,5 +802,5 @@ class TftCoachEngine:
                            indent=2),
                 encoding="utf-8"
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass

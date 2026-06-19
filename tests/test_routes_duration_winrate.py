@@ -178,7 +178,7 @@ class DispatchRegistrationTests(unittest.TestCase):
 def _safe_match(pred, path: str) -> bool:
     try:
         return bool(pred(path))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 

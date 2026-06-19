@@ -359,5 +359,5 @@ def install_liveclient_listener() -> bool:
         liveclient_cache.add_listener(tick_from_snapshot)
         _LISTENER_INSTALLED = True
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False

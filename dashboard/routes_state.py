@@ -79,7 +79,7 @@ def _timed_build_state() -> dict:
         phase = ""
         try:
             phase = (state.get("lcu") or {}).get("phase") or ""
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         log.warning("state-build slow: %dms phase=%s",
                     int(elapsed * 1000), phase or "?")
@@ -112,7 +112,7 @@ def _serve_state(h) -> None:
     try:
         payload = _state_payload_cached()
         h._send(200, payload, "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/state: %s", exc)
         h._send(500, b'{"error":"state_build_failed"}', "application/json")
 
@@ -154,7 +154,7 @@ def _serve_state_stream(h) -> None:
             sock = h.connection
             if hasattr(sock, "cipher") and callable(sock.cipher):
                 h.send_header("Strict-Transport-Security", "max-age=31536000")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         h.end_headers()
 
@@ -174,7 +174,7 @@ def _serve_state_stream(h) -> None:
             # one build_state() per second instead of N+1.
             try:
                 payload = _state_payload_cached()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 log.warning("state-stream build: %s", exc)
                 payload = b"{}"
             ph = hashlib.md5(payload).digest()
@@ -200,7 +200,7 @@ def _serve_health(h) -> None:
     try:
         from core.version import version_string as _vs
         d["rc_version"] = _vs()
-    except Exception:
+    except Exception:  # noqa: BLE001
         d["rc_version"] = ""
     h._send(200, json.dumps(d).encode("utf-8"), "application/json")
 
@@ -214,13 +214,13 @@ def _serve_health_all(h) -> None:
         try:
             with urllib.request.urlopen("http://127.0.0.1:8889/health", timeout=2) as r:
                 rollup["vision"] = json.loads(r.read())
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             rollup["vision"] = {"alive": False, "error": str(e)[:120]}
         try:
             with urllib.request.urlopen("http://127.0.0.1:8893/health", timeout=2) as r:
                 ds_data = json.loads(r.read())
                 rollup["daemon_slayer"] = {**ds_data, "alive": ds_data.get("status") == "ok"}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             rollup["daemon_slayer"] = {"alive": False, "error": str(e)[:120]}
         try:
             sup = read_json("ops/runtime/supervisor.pid")
@@ -234,18 +234,18 @@ def _serve_health_all(h) -> None:
                 "locked_at": sup.get("locked_at"),
                 "oslock_present": oslock_path.exists(),
             }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             rollup["supervisor"] = {"error": str(e)[:120]}
         try:
             from core.version import version_string as _vs
             rollup["rc_version"] = _vs()
-        except Exception:
+        except Exception:  # noqa: BLE001
             rollup["rc_version"] = ""
         try:
             from core.cost_tracker import get_tracker as _gt
             rollup["cost"] = {"banner": _gt().banner_state(),
                               "today_usd": _gt().daily_spend().get("total_usd", 0.0)}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             rollup["cost"] = {"error": str(e)[:120]}
         try:
             age = gamepc_result_age_s()
@@ -281,12 +281,12 @@ def _serve_health_all(h) -> None:
                         "last_task_ts":            ld.get("last_task_ts"),
                         "last_check_age_s":        round(max(0.0, time.time() - last_check), 1) if last_check else None,
                     }
-                except Exception as _e:
+                except Exception as _e:  # noqa: BLE001
                     bridge_block["legion_daemon"] = {"error": str(_e)[:120]}
             else:
                 bridge_block["legion_daemon"] = {"status": "no_data"}
             rollup["bridge"] = bridge_block
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             rollup["bridge"] = {"error": str(e)[:120], "status": "unknown"}
         # (2026-05-03) Peer bridge_watcher heartbeats - published by the
         # sidecar tools/bridge_watcher_health_publisher.py on each peer
@@ -317,7 +317,7 @@ def _serve_health_all(h) -> None:
                     "tokens_today_usd": hb.get("tokens_used_today_usd"),
                 }
             rollup["peers"] = peers
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             rollup["peers"] = {"error": str(e)[:120]}
         rc_ok = bool(rollup.get("rc", {}).get("alive"))
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
@@ -349,7 +349,7 @@ def _serve_health_all(h) -> None:
         else:
             rollup["status"] = "green"
         h._send(200, json.dumps(rollup).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/health/all: %s", exc)
         send_error(h, exc)
 
@@ -369,7 +369,7 @@ def _serve_ui_version(h) -> None:
         from dashboard._static import compute_asset_hash
         digest = compute_asset_hash()
         h._send(200, json.dumps({"v": digest}).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         h._send(500, json.dumps({"error": str(exc)[:200]}).encode(), "application/json")
 
 
@@ -384,7 +384,7 @@ def _serve_asset_stamp(h) -> None:
                     if (root / f).exists())
         h._send(200, json.dumps({"mtime": stamp}).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("asset-stamp: %s", exc)
         h._send(200, b'{"mtime":0}', "application/json")
 
@@ -400,7 +400,7 @@ def _serve_input_post(h, payload) -> None:
         set_pregame(text)
         log.info("dashboard input: %d chars accepted", len(text))
         h._send(200, b'{"ok":true}', "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/input write: %s", exc)
         h._send(500, b'{"error":"write_failed"}', "application/json")
 
@@ -432,7 +432,7 @@ def _serve_command_post(h, payload) -> None:
             h._send(400, b'{"error":"unknown_command"}', "application/json"); return
         log.info("dashboard command: %s", cmd)
         h._send(200, b'{"ok":true}', "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/command %s: %s", cmd, exc)
         h._send(500, b'{"error":"command_failed"}', "application/json")
 
@@ -546,7 +546,7 @@ def _serve_ds_preview_post(h, payload) -> None:
                     threat, my_champion=champion,
                     my_owned_items=items, top_n=4,
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.debug("ds-preview defensive resolve: %s", exc)
         h._send(200, json.dumps({
             "ok": True, "ranked": result,
@@ -556,7 +556,7 @@ def _serve_ds_preview_post(h, payload) -> None:
             "threat":       threat,
             "defensive":    defensive,
         }).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("ds-preview: %s", exc)
         h._send(500, json.dumps({"error": str(exc)[:200]}).encode(), "application/json")
 
@@ -588,7 +588,7 @@ def _resolve_enemy_champions(payload: dict) -> list:
                 if isinstance(p, dict)
                 and p.get("team") != my_team
                 and p.get("championName")]
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("_resolve_enemy_champions: %s", exc)
         return []
 
@@ -684,7 +684,7 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
                 )
                 if stats.get("n_enemies", 0) > 0:
                     return stats
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("ds-preview live-enemy-items resolve: %s", exc)
 
     # Path 3: fallback to compute_enemy_stats curve.
@@ -700,7 +700,7 @@ def _resolve_ds_target_stats(payload: dict, mode: str, level: int) -> dict:
             "source":          "mode-level-curve",
             "aggregator":      "-",
         }
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("ds-preview mode-level-curve resolve: %s", exc)
 
     # Last resort.
@@ -727,7 +727,7 @@ def _serve_analyze_post(h, payload) -> None:
             body = r.read()
             ctype = r.headers.get("Content-Type", "application/json")
         h._send(200, body, ctype)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/analyze: %s", exc)
         send_error(h, exc)
 
@@ -767,7 +767,7 @@ def _serve_console_error_post(h, payload) -> None:
             ("\n  stack: " + stack) if stack else "",
         )
         h._send(200, b'{"ok":true}', "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         send_error(h, exc)
 
 
@@ -822,7 +822,7 @@ def _serve_build_order_post(h, payload) -> None:
         out["ok"] = True
         out["target_stats"] = tgt
         h._send(200, json.dumps(out).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("build-order: %s", exc)
         send_error(h, exc)
 

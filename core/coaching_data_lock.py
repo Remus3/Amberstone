@@ -73,7 +73,7 @@ class _CombinedLock:
             # Holder didn't release in time - fall through with TL only.
             self._has_file_lock = False
             self._fl = None
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Any other lock-infra failure (e.g. permissions, AV blocking
             # the lockfile) - also fall through. TL still serializes the
             # in-process callers.
@@ -86,7 +86,7 @@ class _CombinedLock:
         if self._fl and self._has_file_lock:
             try:
                 self._fl.release()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         self._fl = None
         self._has_file_lock = False

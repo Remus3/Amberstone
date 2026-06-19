@@ -165,7 +165,7 @@ def _serve_ward_heat(h) -> None:
                     _CACHE.pop(k, None)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/ward-heat: %s", exc)
         try:
             # Raw exception text can leak file paths - log it, never
@@ -173,7 +173,7 @@ def _serve_ward_heat(h) -> None:
             h._send(500, json.dumps({
                 "ok": False, "error": "internal error - see logs",
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Even the error-send failed - swallow so the dispatch loop
             # doesn't take the whole handler down.
             pass

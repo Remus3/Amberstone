@@ -207,7 +207,7 @@ def _serve_loop_status(h) -> None:
         log.warning("api/loop-status: %s", exc)
         try:
             send_error(h, exc)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

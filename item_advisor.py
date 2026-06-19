@@ -278,7 +278,7 @@ def _load_matchup_weights():
         p = _Path(__file__).parent / "data" / "meta_build" / "matchup_weights.json"
         if p.exists():
             _MATCHUP_WEIGHTS = _json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return _MATCHUP_WEIGHTS
 
@@ -398,7 +398,7 @@ def _load_exclusions():
         return _EXCLUSIONS_CACHE
     try:
         raw = _json.loads(_EXCLUSIONS_PATH.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         _EXCLUSIONS_CACHE = {}
         return _EXCLUSIONS_CACHE
     out = {}

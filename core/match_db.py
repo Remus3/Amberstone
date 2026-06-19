@@ -175,9 +175,9 @@ class MatchDB:
             try:
                 from core.cost_tracker import get_tracker as _gt
                 _gt().note_match_boundary()
-            except Exception as _exc:
+            except Exception as _exc:  # noqa: BLE001
                 _log.debug("cost note_match_boundary: %s", _exc)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.error("Match save failed: %s", exc)
 
     def get_recent(self, mode: str = "", limit: int = 20) -> list:
@@ -277,6 +277,6 @@ class MatchDB:
             return
         try:
             c.close()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("MatchDB close: %s", exc)
         self._tlocal.conn = None

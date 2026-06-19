@@ -48,7 +48,7 @@ def _serve_decisions(h) -> None:
         pending = DecisionStore().list_pending()
         h._send(200, json.dumps({"pending": pending}).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions: %s", exc)
         h._send(500, b'{"error":"decisions_read_failed"}', "application/json")
 
@@ -98,7 +98,7 @@ def _serve_decisions_log(h) -> None:
         entries = list(reversed(entries))[:limit]
         h._send(200, json.dumps({"entries": entries}).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions/log: %s", exc)
         h._send(500, b'{"error":"log_read_failed"}', "application/json")
 
@@ -107,7 +107,7 @@ def _serve_diagnostics(h) -> None:
     try:
         payload = diagnostics_cached()
         h._send(200, payload, "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/diagnostics: %s", exc)
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
@@ -132,7 +132,7 @@ def _serve_ocr(h) -> None:
             if (time.time() - lc.get("ts", 0)) < 3:
                 drop = {"cs", "kda", "gold", "level", "hp", "mana",
                         "score_blue", "score_red", "timer"}
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         from core.vision_tesseract import configure_drop_fields
         configure_drop_fields(drop)
@@ -147,7 +147,7 @@ def _serve_ocr(h) -> None:
                    "frame_age_s": time.time() - frame.get("ts", 0),
                    "ocr_ms": ms}
         h._send(200, json.dumps(payload).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/ocr: %s", exc)
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
@@ -198,7 +198,7 @@ def _serve_decision_choice_post(h, payload) -> None:
         h._send(200, json.dumps({"ok": True, "id": entry["id"],
                                   "choice": entry["choice"]}).encode(),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions POST: %s", exc)
         h._send(500, json.dumps({"error": str(exc)}).encode(), "application/json")
 
@@ -214,7 +214,7 @@ def _serve_decisions_heartbeat(h) -> None:
         from core.decision_detector import read_heartbeat
         payload = read_heartbeat()
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions/heartbeat: %s", exc)
         send_error(h, exc)
 
@@ -264,7 +264,7 @@ def _serve_decisions_respond_active_post(h, payload) -> None:
         h._send(200, json.dumps({
             "ok": True, "id": entry["id"], "choice": entry["choice"],
         }).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/decisions/respond_active: %s", exc)
         send_error(h, exc)
 

@@ -68,7 +68,7 @@ class TftStateReader:
                 logger.info("OCR subsystem started (free round/HP/level/gold reads)")
             else:
                 logger.warning("OCR subsystem unavailable - using time table for round")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("OCR init failed: %s - falling back to time table", e)
 
     def _ocr_loop(self):
@@ -79,7 +79,7 @@ class TftStateReader:
                 if data:
                     with self._ocr_lock:
                         self._ocr_cache.update(data)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.debug("OCR loop error: %s", e)
             time.sleep(2.0)
 
@@ -107,11 +107,11 @@ class TftStateReader:
         try:
             from core.game_snapshot import TftSnapshot
             return TftSnapshot.from_state_dict(state_dict)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
     def read(self) -> Optional[dict]:
         try: raw=self._fetch()
-        except Exception as e: logger.debug("TFT API: %s",e); return None
+        except Exception as e: logger.debug("TFT API: %s",e); return None  # noqa: BLE001
         if not raw or not isinstance(raw,dict): return None
         gd=raw.get("gameData",{})
         if "TFT" not in gd.get("gameMode",""): return None
@@ -191,7 +191,7 @@ class TftStateReader:
                         logger.debug("OCR round=%s rejected: %s (confirmed=%d-%d)",
                                      ocr["stage_round"], reason,
                                      self._confirmed_stage, self._confirmed_round)
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
         if ocr.get("level") and 1 <= ocr["level"] <= 10:
             lv = ocr["level"]
         if ocr.get("gold") is not None and 0 <= ocr["gold"] <= 999:

@@ -83,7 +83,7 @@ class ResourceManager:
             import signal
             signal.signal(signal.SIGINT,  self._signal_handler)
             signal.signal(signal.SIGTERM, self._signal_handler)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     # --- Registration -------------------------------------------------------
@@ -202,7 +202,7 @@ class ResourceManager:
         try:
             result = hook()
             _log.error("MEM-REMEDIATION result: %r", result)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.error(
                 "MEM-REMEDIATION hook error (swallowed; watchdog "
                 "continues, cooldown still latched): %s", exc,
@@ -252,7 +252,7 @@ class ResourceManager:
                 else:
                     _log.debug("Memory: %.0f MB", rss_mb)
                     self._mem_remediation_step(rss_mb)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("Watchdog error: %s", exc)
             time.sleep(interval_s)
 
@@ -285,7 +285,7 @@ class ResourceManager:
                 ctypes.windll.kernel32.GetCurrentProcess(),
                 ctypes.byref(pmc), ctypes.sizeof(pmc))
             return pmc.WorkingSetSize / _MB
-        except Exception:
+        except Exception:  # noqa: BLE001
             return 0.0
 
     # --- Shutdown -----------------------------------------------------------
@@ -317,7 +317,7 @@ class ResourceManager:
                 try:
                     if hasattr(obj, "shutdown"):
                         obj.shutdown()
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     _log.warning("Error shutting down %s: %s", obj, exc)
 
             # Join tracked daemon threads (give each 2s)
@@ -328,7 +328,7 @@ class ResourceManager:
                         t.join(timeout=2.0)
                         if t.is_alive():
                             _log.warning("Thread %s did not stop cleanly", t.name)
-                    except Exception:
+                    except Exception:  # noqa: BLE001
                         pass
 
             # Final GC

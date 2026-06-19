@@ -63,7 +63,7 @@ def read_or_escalate(
     try:
         from core.vision_tesseract import read_fast_fields
         ocr = read_fast_fields(img_b64, fields=targets, parallel=True) or {}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("vision_routing: Tesseract pass failed: %s", exc)
         ocr = {}
 
@@ -93,7 +93,7 @@ def read_or_escalate(
 
     try:
         sonnet = escalate_fn(img_b64, missing) or {}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("vision_routing: escalate_fn raised: %s", exc)
         sonnet = {}
     out.update({k: v for k, v in sonnet.items() if v is not None})

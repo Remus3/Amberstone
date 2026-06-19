@@ -33,7 +33,7 @@ from typing import Any, Dict, List, Optional
 try:
     from PIL import ImageGrab as _ImageGrab  # type: ignore
     _HAS_PIL = True
-except Exception:
+except Exception:  # noqa: BLE001
     _HAS_PIL = False
 
 
@@ -58,7 +58,7 @@ def _get_clipboard_native() -> Optional[str]:
             return text
         finally:
             win32clipboard.CloseClipboard()
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     try:
         import tkinter as _tk
@@ -66,7 +66,7 @@ def _get_clipboard_native() -> Optional[str]:
         t = r.clipboard_get()
         r.destroy()
         return t
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -81,7 +81,7 @@ def _set_clipboard_native(text: str) -> bool:
             return True
         finally:
             win32clipboard.CloseClipboard()
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     try:
         import tkinter as _tk
@@ -90,7 +90,7 @@ def _set_clipboard_native(text: str) -> bool:
         r.update()   # required to flush to OS clipboard
         r.destroy()
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -104,7 +104,7 @@ def _pid_alive(pid: int) -> bool:
             return False
         ctypes.windll.kernel32.CloseHandle(h)
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     try:
         import subprocess as _sp
@@ -113,7 +113,7 @@ def _pid_alive(pid: int) -> bool:
             stderr=_sp.DEVNULL, text=True, timeout=5,
         )
         return str(pid) in out
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -178,7 +178,7 @@ class FileBridge:
                     )
             except RuntimeError:
                 raise
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass  # stale / corrupt - overwrite
 
         # Write our lock
@@ -195,7 +195,7 @@ class FileBridge:
                 )
         except RuntimeError:
             raise
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass  # file unreadable - proceed
 
     def _write_bridge_pid(self) -> None:
@@ -208,7 +208,7 @@ class FileBridge:
         try:
             pid_path = self.runtime_dir / "bridge.pid"
             pid_path.write_text(__import__('json').dumps(pid_data), encoding="utf-8")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     def _release_bridge_pid(self) -> None:
@@ -222,7 +222,7 @@ class FileBridge:
                     pid = int(raw)
                 if pid == os.getpid():
                     pid_path.unlink(missing_ok=True)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     # -- Logging ---------------------------------------------------------------
@@ -231,7 +231,7 @@ class FileBridge:
         try:
             with self.log_file.open("a", encoding="utf-8") as f:
                 f.write(f"[{utc_now()}] {line}\n")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     # -- Main loop -------------------------------------------------------------
@@ -244,7 +244,7 @@ class FileBridge:
                 for path in sorted(self.request_dir.glob("*.json")):
                     self._safe_handle(path)
                 self._maybe_cleanup()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 # Top-level containment: bridge never dies from a loop error
                 self.log(f"bridge loop error (non-fatal): {type(exc).__name__}: {exc}")
             time.sleep(self.poll_s)
@@ -256,7 +256,7 @@ class FileBridge:
 
         try:
             raw = path.read_text(encoding="utf-8-sig")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.log(f"request read error {path.name}: {exc}")
             path.unlink(missing_ok=True)
             return
@@ -265,7 +265,7 @@ class FileBridge:
             req    = json.loads(raw)
             req_id = str(req.get("id") or path.stem or uuid.uuid4().hex)
             kind   = str(req.get("type") or "")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Bad JSON: write an error result and move on
             err_result: Dict[str, Any] = {
                 "id":           req_id,
@@ -277,7 +277,7 @@ class FileBridge:
             }
             try:
                 atomic_write_json(self.result_dir / f"{path.stem}.json", err_result)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             path.unlink(missing_ok=True)
             self.log(f"bad JSON in {path.name} - error result written")
@@ -334,13 +334,13 @@ class FileBridge:
             else:
                 result["error"] = f"unknown_request_type: {kind!r}"
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             result["error"] = f"{type(exc).__name__}: {exc}"
 
         self.log(f"handled {path.name} kind={kind} ok={result.get('ok')}")
         try:
             atomic_write_json(self.result_dir / f"{path.stem}.json", result)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         path.unlink(missing_ok=True)
 
@@ -393,7 +393,7 @@ class FileBridge:
                 capture_output=True, text=True, timeout=5.0, startupinfo=si,
             )
             return {"ok": completed.returncode == 0, "text": completed.stdout}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
 
     def _set_clipboard(self, req: Dict[str, Any]) -> Dict[str, Any]:
@@ -416,7 +416,7 @@ class FileBridge:
                 capture_output=True, text=True, timeout=5.0, startupinfo=si,
             )
             return {"ok": completed.returncode == 0, "stderr": completed.stderr}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
 
     def _screenshot_region(self, req: Dict[str, Any]) -> Dict[str, Any]:
@@ -459,7 +459,7 @@ class FileBridge:
             return {"ok": True, "health": {}}
         try:
             return {"ok": True, "health": json.loads(hf.read_text(encoding="utf-8-sig"))}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
 
     def _read_incident_summary(self) -> Dict[str, Any]:
@@ -469,7 +469,7 @@ class FileBridge:
             return {"ok": True, "summary": {}}
         try:
             return {"ok": True, "summary": json.loads(sf.read_text(encoding="utf-8-sig"))}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
 
     # -- Admin-only ------------------------------------------------------------
@@ -503,7 +503,7 @@ class FileBridge:
         try:
             self._cleanup_images()
             self._cleanup_result_files()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.log(f"cleanup error (non-fatal): {exc}")
 
     def _cleanup_images(self) -> None:
@@ -518,7 +518,7 @@ class FileBridge:
                 if f.stat().st_mtime < cutoff:
                     f.unlink(missing_ok=True)
                     removed += 1
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         if removed:
             self.log(f"cleanup: removed {removed} old screenshot(s)")
@@ -532,7 +532,7 @@ class FileBridge:
                 if f.stat().st_mtime < cutoff:
                     f.unlink(missing_ok=True)
                     removed += 1
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         # Also clean control command/result files
         for subdir in [
@@ -546,7 +546,7 @@ class FileBridge:
                     if f.stat().st_mtime < cutoff:
                         f.unlink(missing_ok=True)
                         removed += 1
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
         if removed:
             self.log(f"cleanup: removed {removed} stale result/command file(s)")

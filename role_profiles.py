@@ -310,7 +310,7 @@ def aram_item_context(enemy_champs: list, ally_champs: list, champion: str) -> s
         ap  = profile["ap"]
         tanks = profile["tank_count"]
         sustain = profile["sustain_count"]
-    except Exception:
+    except Exception:  # noqa: BLE001
         ad, ap, tanks, sustain = 0.5, 0.5, 1, 0
 
     lines = ["ARAM ITEM GUIDANCE:"]

@@ -156,15 +156,15 @@ class TftLiveAnalysis:
     def _notify_scanning(self, pct=0):
         try:
             if self._ai_bar: self._ai_bar.set_scanning(pct)
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
     def _notify_done(self):
         try:
             if self._ai_bar: self._ai_bar.set_done()
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
     def _notify_next_scan(self, at_mono):
         try:
             if self._ai_bar: self._ai_bar.notify_scan_scheduled(at_mono)
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
     def force_scan(self) -> None:
         # arch: phase 7 P2-C - clear stale choices on augment-select force scan
         # so the fresh vision read produces new advice
@@ -183,7 +183,7 @@ class TftLiveAnalysis:
                 _tmp = Path(str(self._data_file)).with_suffix(".json.tmp")
                 _tmp.write_text(_j.dumps(_d, indent=2), encoding="utf-8")
                 _tmp.replace(Path(str(self._data_file)))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         self._force_flag = True
         logger.info("Force vision scan triggered (augment reroll path)")
@@ -222,7 +222,7 @@ class TftLiveAnalysis:
                 if self._ai_bar:
                     _next = self._round_start_time + (1.5 if not self._scanned_planning else 12.0)
                     self._notify_next_scan(_next)
-            except Exception as e: logger.error("LiveAnalysis loop: %s",e)
+            except Exception as e: logger.error("LiveAnalysis loop: %s",e)  # noqa: BLE001
             time.sleep(1.5)
     def _run_cycle(self):
         if not self._lock.acquire(blocking=False): return
@@ -264,7 +264,7 @@ class TftLiveAnalysis:
         try:
             from core.cost_tracker import get_tracker as _gt
             if _gt().gate_disabled("tft"): return
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
         cs=self._coach_state; rt=vs.get("traits_active") or []
         tn={t.split()[0].lower() for t in rt if t}
         bc=self._clean_units(vs.get("board_units"),tn); bn=self._clean_units(vs.get("bench_units"),tn); sc=self._clean_units(vs.get("shop_units"),tn)
@@ -278,11 +278,11 @@ class TftLiveAnalysis:
             _pd=_pj.loads(_pf.read_text(encoding="utf-8")) if _pf.exists() else {}
             _bc=_pd.get("board_confirmed",[])
             _ep=_pd.get("extra_present",[])
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
         _ml = _pd.get("manual_level") if _bc or _ep else None
         if not _ml:
             try: _ml = _pj.loads(_pf.read_text(encoding="utf-8")).get("manual_level") if _pf.exists() else None
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
         if _bc: ac=(ac+"\nCONFIRMED ON BOARD: "+", ".join(_bc)+".").strip()
         if _ep: ac=(ac+"\nALSO PRESENT (not in comp): "+", ".join(_ep)+".").strip()
         if _ml: ac=(ac+f"\nCURRENT LEVEL: {_ml} (player-confirmed).").strip()
@@ -296,7 +296,7 @@ class TftLiveAnalysis:
             try:
                 from core.moon_proxy import moon_proxy
                 raw=moon_proxy.get_coaching(p,model=self._model)
-            except Exception as _exc:
+            except Exception as _exc:  # noqa: BLE001
                 logger.debug("moon_proxy.get_coaching primary path failed: %s", _exc)
             if raw is None:
                 resp=self._client.messages.create(model=self._model,max_tokens=500,messages=[{"role":"user","content":p}])
@@ -305,7 +305,7 @@ class TftLiveAnalysis:
                 try:
                     from core.cost_tracker import record_anthropic_response
                     record_anthropic_response(resp, model=self._model, purpose="tft_live_analysis")
-                except Exception as _exc:
+                except Exception as _exc:  # noqa: BLE001
                     logger.debug("cost_tracker record: %s", _exc)
                 raw=resp.content[0].text; logger.info("Live analysis in %dms",int((time.time()-t0)*1000))
             f=_parse_analysis(raw)
@@ -314,12 +314,12 @@ class TftLiveAnalysis:
             up=f.get("unitplacement","")
             if up: self._last_placement=up
             self._write(vs,f,cs)
-        except Exception as e: logger.error("Live analysis API: %s",e)
+        except Exception as e: logger.error("Live analysis API: %s",e)  # noqa: BLE001
     def _run_augment_select(self,vs):
         try:
             from core.cost_tracker import get_tracker as _gt
             if _gt().gate_disabled("tft"): return
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
         cs=self._coach_state; ch=vs.get("augment_choices") or []
         if not ch: return
         def _fc(c): return f"{c.get('name','?')}: {c.get('description','')}" if isinstance(c,dict) else str(c)
@@ -331,7 +331,7 @@ class TftLiveAnalysis:
             try:
                 from core.moon_proxy import moon_proxy
                 _araw=moon_proxy.get_coaching(p,model=self._model)
-            except Exception as _exc:
+            except Exception as _exc:  # noqa: BLE001
                 logger.debug("moon_proxy.get_coaching augment-select path failed: %s", _exc)
             if _araw is None:
                 _aresp=self._client.messages.create(model=self._model,max_tokens=300,messages=[{"role":"user","content":p}])
@@ -340,7 +340,7 @@ class TftLiveAnalysis:
                 try:
                     from core.cost_tracker import record_anthropic_response
                     record_anthropic_response(_aresp, model=self._model, purpose="tft_live_aug_select")
-                except Exception as _exc:
+                except Exception as _exc:  # noqa: BLE001
                     logger.debug("cost_tracker record: %s", _exc)
                 _araw=_aresp.content[0].text
             raw=re.sub(r'\*{1,3}(.*?)\*{1,3}',r'\1',_araw)
@@ -349,7 +349,7 @@ class TftLiveAnalysis:
             ex=_load(self._data_file)
             ex.update({"augment_select":True,"aug_take":tk,"aug_why":why or "","aug_plan":plan or "","augment_choices":[_fc(c) for c in ch]})
             _write(self._data_file,ex); logger.info("Augment select written")
-        except Exception as e: logger.error("Augment select: %s",e)
+        except Exception as e: logger.error("Augment select: %s",e)  # noqa: BLE001
     def _write(self,vs,f,cs):
         out={"mode":"tft_live","stage_round":cs.get("stage_round",""),"level":vs.get("level") or cs.get("level"),"hp":vs.get("hp"),
             "board_units":vs.get("board_units") or [],"bench_units":vs.get("bench_units") or [],
@@ -428,7 +428,7 @@ def _xf(text,key):
 def _load(path):
     try:
         if path.exists(): return json.loads(path.read_text(encoding="utf-8"))
-    except Exception: pass
+    except Exception: pass  # noqa: BLE001
     return {"mode":"tft_live"}
 def _write(path, data):
     try:
@@ -447,10 +447,10 @@ def _write(path, data):
                     curr_stage = int(curr_sr.split("-")[0]) if "-" in curr_sr else 0
                     if curr_stage >= prev_stage or prev_stage <= 2:
                         data["augments"] = prev_augs
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
         tmp.replace(path)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.error("Write failed: %s", e)

@@ -125,13 +125,13 @@ def _serve_loadout_list_post(h, payload) -> None:
                     "build_paths": [],
                     "_collapsed":  False,
                 })
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("loadout/list user-build merge: %s", exc)
         h._send(200, json.dumps({
             "champion": champ, "mode": mode,
             "variants": vs, "default": df,
         }).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/loadout/list: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
@@ -297,7 +297,7 @@ def _serve_loadout_apply_post(h, payload) -> None:
                 with _ur.urlopen(req, timeout=2) as r:
                     r.read()
                 queued.append(cmd_obj.get("cmd"))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 log.warning("loadout enqueue %s: %s",
                             cmd_obj.get("cmd"), exc)
         if push_runes: _enqueue(resolved.get("rune_cmd"))
@@ -319,7 +319,7 @@ def _serve_loadout_apply_post(h, payload) -> None:
             "raw_items": resolved.get("raw_items", []),
             "item_ids":  item_ids,
         }).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/loadout/apply: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
@@ -350,7 +350,7 @@ def _serve_lcu_cmd_post(h, payload) -> None:
         with _ur.urlopen(req, timeout=2) as r:
             body = r.read()
         h._send(200, body, "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/lcu-cmd: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
@@ -378,7 +378,7 @@ def _serve_lcu_cmd_result_get(h) -> None:
                 h._send(200, r.read(), "application/json")
         except urllib.error.HTTPError as e:
             h._send(e.code, e.read(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/lcu-cmd-result: %s", exc)
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 

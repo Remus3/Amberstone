@@ -93,7 +93,7 @@ def _keystone_id_to_name() -> dict:
                     name = rune.get("name")
                     if isinstance(rid, int) and name:
                         mapping[rid] = name
-        except Exception as exc:  # best-effort
+        except Exception as exc:  # best-effort  # noqa: BLE001
             log.debug("keystone id map load: %s", exc)
         _KEYSTONE_ID_TO_NAME = mapping
         return mapping
@@ -130,7 +130,7 @@ def _ally_notes(champ: str, allies: list) -> str:
     allies is empty/unknown."""
     try:
         from core.archetype_picks import _load_champion_tags, tag_to_archetype
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("ally_notes import: %s", exc)
         return ""
     names = [a for a in (allies or []) if isinstance(a, str) and a.strip()
@@ -187,7 +187,7 @@ def _enemy_itemization(enemies: list) -> str:
         if ap and not ad:
             return "Enemy comp is AP-heavy - prioritize magic resist."
         return ""
-    except Exception as exc:  # best-effort; never breaks the brief
+    except Exception as exc:  # best-effort; never breaks the brief  # noqa: BLE001
         log.debug("enemy_itemization: %s", exc)
         return ""
 
@@ -214,6 +214,6 @@ def brief_deterministic(champ: str, enemies: list, allies: list,
         if hint:
             notes = (notes + " " + hint).strip() if notes else hint
         return {"build": build, "runes": runes, "ally_notes": notes}
-    except Exception as exc:  # fail-soft: never raise
+    except Exception as exc:  # fail-soft: never raise  # noqa: BLE001
         log.warning("brief_deterministic(%s): %s", champ, exc)
         return dict(_EMPTY)

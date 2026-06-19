@@ -58,7 +58,7 @@ def _resolve_token(token_file: Path | None) -> str | None:
         secret = _b.shared_secret()
         if secret:
             return secret
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("core.bridge import failed: %s", exc)
 
     if token_file and token_file.exists():
@@ -72,7 +72,7 @@ def _resolve_token(token_file: Path | None) -> str | None:
                         or data.get("rc_peer_bridge_secret")
                         or data.get("bridge_secret")
                         or data.get("shared_secret"))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("token_file read failed: %s", exc)
     return None
 

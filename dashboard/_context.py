@@ -58,6 +58,6 @@ def read_json(rel: str) -> dict:
             if isinstance(d, dict):
                 return d
             log.debug("read %s: not a dict (%s)", rel, type(d).__name__)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("read %s: %s", rel, exc)
     return {}

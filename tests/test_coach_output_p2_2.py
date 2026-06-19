@@ -40,7 +40,7 @@ def _old_inline_decode(raw_value) -> list:
                 _parsed = json.loads(_choices_raw)
                 if isinstance(_parsed, list):
                     _choices_list = _parsed
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
     return _choices_list
 

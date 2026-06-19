@@ -111,5 +111,5 @@ class BaseCoachWorker:
         notices via the stale pulse_ts."""
         try:
             self._run(my_gen)
-        except Exception:
+        except Exception:  # noqa: BLE001
             _log.exception("%s gen=%d crashed", self._thread_name_prefix, my_gen)

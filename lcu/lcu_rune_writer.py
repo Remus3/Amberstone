@@ -133,7 +133,7 @@ def _perk_by_name() -> dict[str, int]:
                         nm, rid = r.get("name"), r.get("id")
                         if isinstance(nm, str) and isinstance(rid, int):
                             m[nm] = rid
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Audit cycle 10 (P2-W1-app-B): do NOT cache the failure -
             # pre-fix a transient read error pinned an empty map for the
             # process lifetime (cache-poisoning class), silently dropping
@@ -240,7 +240,7 @@ def load_rune_rec(champion: str, mode: str) -> Optional[tuple[str, str, str]]:
         if ks and pri and sec:
             return (ks, pri, sec)
         return None
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("load_rune_rec: %s", exc)
         return None
 
@@ -260,7 +260,7 @@ def build_champ_id_map() -> dict[int, str]:
                 pass
         _log.debug("Champion ID map: %d entries", len(result))
         return result
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("build_champ_id_map: %s", exc)
         return {}
 
@@ -291,7 +291,7 @@ def load_spell_pair(mode: str, is_aram: bool) -> tuple[int, int]:
             pref  = prefs.get(key, "snowball" if is_aram else "teleport")
         else:
             pref = "snowball" if is_aram else "teleport"
-    except Exception:
+    except Exception:  # noqa: BLE001
         pref = "snowball" if is_aram else "teleport"
 
     if is_aram:
@@ -366,7 +366,7 @@ def save_spell_pref(mode_key: str, value: str) -> None:
                             pass
                     else:
                         time.sleep(0.015 * (2 ** attempt))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("save_spell_pref: %s", exc)
 
 
@@ -403,7 +403,7 @@ class RuneWriter:
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             self._task = _sched.spawn_task(self._run_async())
@@ -419,7 +419,7 @@ class RuneWriter:
         self._stop_event.set()
         if self._task is not None:
             try: self._task.cancel()
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
             self._task = None
         _log.info("RuneWriter stopped")
 
@@ -427,7 +427,7 @@ class RuneWriter:
         while not self._stop_event.is_set():
             try:
                 self._poll()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("RuneWriter poll error: %s", exc)
             self._stop_event.wait(self.POLL_INTERVAL)
 
@@ -435,7 +435,7 @@ class RuneWriter:
         while not self._stop_event.is_set():
             try:
                 await asyncio.to_thread(self._poll)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("RuneWriter poll error: %s", exc)
             try:
                 await asyncio.sleep(self.POLL_INTERVAL)
@@ -529,7 +529,7 @@ class RuneWriter:
             want1, want2 = resolve_spell_pair("", mode)
             return bool(self._lcu.set_summoner_spells(
                 want1, want2, current_pair=cur))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("RuneWriter: _sync_spells: %s", exc)
             return False
 
@@ -540,7 +540,7 @@ class RuneWriter:
             if lobby and isinstance(lobby, dict):
                 gc = lobby.get("gameConfig", {})
                 return gc.get("gameMode", "CLASSIC").upper()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return "CLASSIC"
 
@@ -572,7 +572,7 @@ class RuneWriter:
 
                 return ""  # found my slot but no champ selected
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_detect_my_champion: %s", exc)
         return ""
 
@@ -648,7 +648,7 @@ class RuneWriter:
                     if page_id:
                         self._lcu._request("DELETE", f"/lol-perks/v1/pages/{page_id}")
                         _log.debug("Deleted old RC page: %s (id=%s)", p.get("name"), page_id)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_write_page delete step: %s", exc)
 
         # 2. POST new page
@@ -682,7 +682,7 @@ class RuneWriter:
                     return True
                 else:
                     _log.debug("POST page attempt %d failed: %s", attempt + 1, result)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 _log.debug("_write_page POST attempt %d: %s", attempt + 1, exc)
             if attempt < self.MAX_RETRIES - 1:

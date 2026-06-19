@@ -110,7 +110,7 @@ def _load_counters_index() -> dict:
             if not isinstance(v, list):
                 continue
             out[_norm_name(k)] = list(v)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("pickban: counters load failed: %s", exc)
     _COUNTERS_INDEX = out
     return out
@@ -141,7 +141,7 @@ def _load_champ_name_to_id() -> dict[str, int]:
             for variant in (name, slug):
                 if variant:
                     out[_norm_name(variant)] = cid
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("pickban: champ name->id load failed: %s", exc)
     _CHAMP_NAME_TO_ID = out
     return out
@@ -161,7 +161,7 @@ def _load_champ_id_to_name() -> dict[int, str]:
                     out[int(entry["key"])] = str(entry["name"])
                 except (TypeError, ValueError):
                     continue
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("pickban: champ id->name load failed: %s", exc)
     _CHAMP_ID_TO_NAME = out
     return out
@@ -718,14 +718,14 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
         from agents.daemon_slayer._per_spell_cc import (
             _PER_SPELL_CC_DURATIONS,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     try:
         # Registry keys are canonical DDragon ids ("TwistedFate",
         # "MonkeyKing"); DDragon hands us display names ("Twisted
         # Fate", "Wukong"). Same bridge routes_peel_priority uses.
         from core.archetype_picks import canonical_champion_id as _canon
-    except Exception:
+    except Exception:  # noqa: BLE001
         def _canon(n: str) -> str:
             return n
     # Reverse champion-id -> name via DDragon dictionary (already
@@ -753,7 +753,7 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
                 m = max(float(d) for d in durations if d is not None)
                 if m > max_cc:
                     max_cc = m
-            except Exception:
+            except Exception:  # noqa: BLE001
                 continue
         for entry in cond_entries:
             # ConditionalCcEntry carries per-rank ``durations_s`` (the
@@ -764,7 +764,7 @@ def _compose_cleanse_advisory(enemy_cids: tuple[int, ...],
                         default=0.0)
                 if d > max_cc:
                     max_cc = d
-            except Exception:
+            except Exception:  # noqa: BLE001
                 continue
         if max_cc >= HEAVY_THRESHOLD:
             heavy_cc_champs.append(name)
@@ -1121,7 +1121,7 @@ def _serve_pickban_recs(h) -> None:
         }
         _cache_put(cache_key, t0, payload)
         _send_json(h, 200, payload)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/champ-select/pickban-recs: %s", exc)
         # Raw exception text stays in the log only (CLAUDE.md error rule).
         _send_json_err(h, 500, "internal error - see logs")
@@ -1185,7 +1185,7 @@ def _serve_personal_record(h) -> None:
         }
         _cache_put(cache_key, t0, payload)
         _send_json(h, 200, payload)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/champ-select/personal-record: %s", exc)
         _send_json_err(h, 500, "internal error - see logs")
 

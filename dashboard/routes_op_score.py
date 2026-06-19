@@ -112,13 +112,13 @@ def _serve_op_score(h) -> None:
         _cache_put(key, now, cacheable)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/op-score-curve: %s", exc)
         try:
             h._send(500, json.dumps(
                 {"ok": False, "error": "internal error - see logs"})
                 .encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

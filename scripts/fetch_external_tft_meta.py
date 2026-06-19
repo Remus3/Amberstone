@@ -53,7 +53,7 @@ for q in QUERIES:
             data = json.loads(body)
             print(f"SUCCESS {q['url']}: {str(data)[:500]}")
             results[q["url"]] = data
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"FAILED {q['url']}: {e}")
 
 # Also try the static CDN data
@@ -72,7 +72,7 @@ for url in cdn_urls:
             data = json.loads(body)
             print(f"CDN SUCCESS {url}: {str(data)[:500]}")
             results[url] = data
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"CDN FAILED {url}: {e}")
 
 if results:

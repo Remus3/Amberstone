@@ -169,7 +169,7 @@ class _PolicyCache:
         """Check mtime and reload if changed. O(1) stat call when unchanged."""
         try:
             current_mtime = self._get_mtime()
-        except Exception:
+        except Exception:  # noqa: BLE001
             # File disappeared after prior load - keep last-known-good
             if self._lkg_matrix:
                 if self._status != _STATUS_LAST_KNOWN_GOOD:
@@ -212,7 +212,7 @@ class _PolicyCache:
         """
         try:
             raw = json.loads(self._path.read_text(encoding="utf-8"))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return None, f"JSON parse error: {exc}"
 
         if not isinstance(raw, dict):
@@ -273,7 +273,7 @@ class _PolicyCache:
                 "policy_last_warning":   self._last_warning,
                 "effective_decisions":   decisions,
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return {
                 "policy_source_status":  "error",
                 "policy_last_reload_ts": None,
@@ -316,7 +316,7 @@ def is_allowed(mode: str, feature: str) -> bool:
     """
     try:
         _cache._check_reload()
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass  # reload errors are non-fatal; proceed with cached matrix
 
     mode_key = mode.lower().strip()
@@ -362,11 +362,11 @@ def get_policy_state() -> Dict[str, Any]:
     """
     try:
         _cache._check_reload()
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass  # non-fatal; proceed with cached state
     try:
         return _cache.get_policy_state()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         return {
             "policy_source_status":  "error",
             "policy_last_reload_ts": None,
@@ -421,7 +421,7 @@ def write_disabled_placeholder(mode: str, feature: Optional[str] = None,
                             _TFT_LIVE_DISABLED_PAYLOAD)
         else:
             _log.warning("feature_policy: write_disabled_placeholder: unknown mode %r", mode_key)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.error(
             "feature_policy: write_disabled_placeholder(%r, %r) failed: %s",
             mode_key, feature, exc,
@@ -435,5 +435,5 @@ def _write_json(path: Path, data: dict) -> None:
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
         tmp.replace(path)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.error("feature_policy: _write_json(%s) failed: %s", path, exc)
