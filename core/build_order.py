@@ -113,6 +113,15 @@ _BOOTS_IDS: frozenset = frozenset({
     "3174",   # Armored Advance (<- Plated Steelcaps)
     "3175",   # Spellslinger's Shoes (<- Sorcerer's Shoes)
     "3176",   # Forever Forward (<- Synchronized Souls)
+    # Arena (map 30) mirrors - the 3xxx tier-2 boots are map30=False, so on
+    # Arena the build uses these 22-prefixed map30-legal forms (no tier-3
+    # on Arena). Included here for ownership detection + order-filtering.
+    "223006",  # Berserker's Greaves (Arena)
+    "223009",  # Boots of Swiftness (Arena)
+    "223020",  # Sorcerer's Shoes (Arena)
+    "223047",  # Plated Steelcaps (Arena)
+    "223111",  # Mercury's Treads (Arena)
+    "223158",  # Ionian Boots of Lucidity (Arena)
 })
 _BOOTS_NAMES: dict[str, str] = {
     "3006": "Berserker's Greaves",
@@ -132,6 +141,12 @@ _BOOTS_NAMES: dict[str, str] = {
     "3174": "Armored Advance",
     "3175": "Spellslinger's Shoes",
     "3176": "Forever Forward",
+    "223006": "Berserker's Greaves",
+    "223009": "Boots of Swiftness",
+    "223020": "Sorcerer's Shoes",
+    "223047": "Plated Steelcaps",
+    "223111": "Mercury's Treads",
+    "223158": "Ionian Boots of Lucidity",
 }
 # SR-only tier-2 -> tier-3 boots upgrade (DDragon 16.12.1 `into`, each
 # verified map11=True / map12=False / map30=False). The build_orders table
@@ -152,6 +167,22 @@ _BOOTS_SR_UPGRADE: dict[str, str] = {
 }
 # Mode strings treated as Summoner's Rift for the tier-3 boots upgrade.
 _SR_MODES: frozenset = frozenset({"SR", "CLASSIC"})
+# Arena (map 30) tier-2 boots mirror. The 3xxx tier-2 boots are map30=False
+# (illegal on the Arena map); Arena uses the 22-prefixed mirror ids (DDragon
+# 16.12.1, each verified map30=True). Symbiotic Soles (3010) is rune-granted
+# with no Arena mirror + is never a selection target. Applied by
+# _select_boots when mode is Arena/CHERRY (P6-G4 deferred tail; the SR tier-3
+# sibling shipped item 423).
+_BOOTS_ARENA_MIRROR: dict[str, str] = {
+    "3006": "223006",  # Berserker's Greaves
+    "3009": "223009",  # Boots of Swiftness
+    "3020": "223020",  # Sorcerer's Shoes
+    "3047": "223047",  # Plated Steelcaps
+    "3111": "223111",  # Mercury's Treads
+    "3158": "223158",  # Ionian Boots of Lucidity
+}
+# Mode strings treated as Arena (map 30) for the boots mirror remap.
+_ARENA_MODES: frozenset = frozenset({"ARENA", "CHERRY"})
 # Archetype/scorer -> default tier-2 boots family (fallback when enemy
 # AD/AP split is balanced); _select_boots upgrades to the tier-3 form on
 # SR. Carry/dps/marksman -> Berserker's; mage/burst -> Sorcerer's;
@@ -206,8 +237,11 @@ def _select_boots(
 
     On Summoner's Rift (``mode`` in :data:`_SR_MODES`) the resolved tier-2
     family is upgraded to its tier-3 boot via :data:`_BOOTS_SR_UPGRADE`
-    (the end-state form the build finishes on). ARAM (map 12) and Arena
-    (map 30) have no tier-3 upgrade and keep the tier-2 boot.
+    (the end-state form the build finishes on). ARAM (map 12) has no tier-3
+    upgrade and keeps the tier-2 boot (the 3xxx ids are map12-legal). Arena
+    (``mode`` in :data:`_ARENA_MODES`, map 30) has no tier-3 either, but the
+    3xxx tier-2 ids are map30=False, so the resolved boot is remapped to its
+    map30-legal 22-prefixed mirror via :data:`_BOOTS_ARENA_MIRROR`.
     """
     arch = (archetype or "carry").strip().lower() or "carry"
     is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
@@ -218,8 +252,11 @@ def _select_boots(
         iid = "3047"
     else:
         iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
-    if str(mode).strip().upper() in _SR_MODES:
+    mode_up = str(mode).strip().upper()
+    if mode_up in _SR_MODES:
         iid = _BOOTS_SR_UPGRADE.get(iid, iid)
+    elif mode_up in _ARENA_MODES:
+        iid = _BOOTS_ARENA_MIRROR.get(iid, iid)
     return (iid, _BOOTS_NAMES.get(iid, "Boots"))
 
 

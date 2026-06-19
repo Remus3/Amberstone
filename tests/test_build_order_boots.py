@@ -16,8 +16,11 @@ Boots / Symbiotic Soles left the store). Proves:
          - assassin/enchanter        -> Crimson Lucidity     (3171)
          - high-armor enemy comp     -> Armored Advance      (3174)
          - high-MR enemy comp        -> Chainlaced Crushers  (3173)
-       ARAM (map 12) / Arena (map 30) - no tier-3, keep tier-2:
+       ARAM (map 12) - no tier-3, keep tier-2 (3xxx are map12-legal):
          - carry -> Berserker's (3006), mage -> Sorcerer's (3020), ...
+       Arena (map 30) - no tier-3; the 3xxx tier-2 ids are map30=False so
+       the resolved boot is remapped to its 22-prefixed Arena mirror:
+         - carry -> 223006, mage -> 223020, tank -> 223047, ... (P6-G4 tail)
   3. Boots are NOT injected when the champion is in the bootsless-
      champion exception set (Yuumi, Cassiopeia).
   4. Boots are NOT re-injected when already present in owned_item_ids.
@@ -29,6 +32,7 @@ from __future__ import annotations
 import unittest
 
 from core.build_order import (
+    _BOOTS_ARENA_MIRROR,
     _BOOTS_IDS,
     _BOOTS_SR_UPGRADE,
     _BOOTSLESS_CHAMPS,
@@ -135,8 +139,9 @@ class SelectBootsSRTests(unittest.TestCase):
                 self.assertNotEqual(iid, "3117", f"{arch} a={armor} mr={mr}")
 
 
-class SelectBootsNonSRTests(unittest.TestCase):
-    """ARAM (map 12) / Arena (map 30) keep the tier-2 boot (no tier-3)."""
+class SelectBootsAramTests(unittest.TestCase):
+    """ARAM (map 12) keeps the tier-2 boot (no tier-3, and the bare 3xxx
+    tier-2 ids ARE map12-legal so no Arena-style mirror remap applies)."""
 
     def test_aram_carry_keeps_berserkers(self):
         iid, _ = _select_boots("carry", 50.0, 30.0, mode="ARAM")
@@ -152,16 +157,55 @@ class SelectBootsNonSRTests(unittest.TestCase):
         iid, _ = _select_boots("assassin", 50.0, 30.0, mode="ARAM")
         self.assertEqual(iid, "3158")
 
-    def test_arena_tank_vs_ad_keeps_steelcaps(self):
-        iid, _ = _select_boots("tank", 120.0, 30.0, mode="ARENA")
-        self.assertEqual(iid, "3047")
+    def test_aram_never_returns_a_22_mirror(self):
+        # The Arena mirror remap must NOT fire on ARAM (the 3xxx ids are
+        # map12-legal); every ARAM boot stays a 3xxx id.
+        for arch in ("carry", "mage", "tank", "assassin", "enchanter"):
+            for armor, mr in ((50.0, 30.0), (120.0, 30.0), (30.0, 70.0)):
+                iid, _ = _select_boots(arch, armor, mr, mode="ARAM")
+                self.assertFalse(iid.startswith("22"), f"{arch} a={armor} mr={mr}")
 
-    def test_cherry_mode_is_non_sr(self):
+
+class SelectBootsArenaMirrorTests(unittest.TestCase):
+    """Arena (map 30) remaps the resolved tier-2 boot to its 22-prefixed
+    Arena mirror. The bare 3xxx tier-2 boots are map30=False (illegal on
+    the Arena map); the 22xxxx mirrors are the map30-legal forms. Fixes the
+    P6-G4 deferred Arena boots tail (the SR sibling shipped item 423)."""
+
+    def test_arena_tank_vs_ad_mirrors_steelcaps(self):
+        # Plated Steelcaps (3047, map30=False) -> 223047 (map30=True).
+        iid, _ = _select_boots("tank", 120.0, 30.0, mode="ARENA")
+        self.assertEqual(iid, "223047")
+
+    def test_arena_carry_mirrors_berserkers(self):
+        iid, _ = _select_boots("carry", 50.0, 30.0, mode="ARENA")
+        self.assertEqual(iid, "223006")
+
+    def test_cherry_mage_mirrors_sorcerers(self):
+        # Riot's live gameMode string for Arena is CHERRY.
         iid, _ = _select_boots("mage", 50.0, 30.0, mode="CHERRY")
-        self.assertEqual(iid, "3020")
+        self.assertEqual(iid, "223020")
+
+    def test_arena_high_mr_mirrors_mercurys(self):
+        iid, _ = _select_boots("tank", 30.0, 70.0, mode="ARENA")
+        self.assertEqual(iid, "223111")
+
+    def test_arena_assassin_mirrors_ionian(self):
+        iid, _ = _select_boots("assassin", 50.0, 30.0, mode="ARENA")
+        self.assertEqual(iid, "223158")
+
+    def test_arena_mirror_map_covers_every_selectable_tier2(self):
+        # Every tier-2 id _select_boots can resolve has an Arena mirror,
+        # EXCEPT 3010 (Symbiotic Soles, rune-granted, no Arena form) which
+        # is never a selection TARGET (it has no archetype-default slot).
+        from core.build_order import _DEFAULT_BOOTS_BY_ARCHETYPE
+        selectable = set(_DEFAULT_BOOTS_BY_ARCHETYPE.values()) | {"3047", "3111"}
+        for iid in selectable:
+            self.assertIn(iid, _BOOTS_ARENA_MIRROR,
+                          f"selectable tier-2 {iid} missing an Arena mirror")
 
     def test_classic_mode_is_sr(self):
-        # Riot's gameMode for SR is CLASSIC - still upgrades.
+        # Riot's gameMode for SR is CLASSIC - still upgrades to tier-3.
         iid, _ = _select_boots("mage", 50.0, 30.0, mode="CLASSIC")
         self.assertEqual(iid, "3175")
 
@@ -283,10 +327,12 @@ class BootsInjectionTests(unittest.TestCase):
         )
 
     def test_boots_ids_pin(self):
-        # Sanity-pin the boots family set (tier-2 base + SR tier-3/4).
+        # Sanity-pin the boots family set (tier-2 base + SR tier-3/4 +
+        # the 22-prefixed Arena map30 mirrors).
         self.assertEqual(
             sorted(_BOOTS_IDS),
-            ["3006", "3009", "3010", "3013", "3020", "3047", "3111",
+            ["223006", "223009", "223020", "223047", "223111", "223158",
+             "3006", "3009", "3010", "3013", "3020", "3047", "3111",
              "3117", "3158", "3168", "3170", "3171", "3172", "3173",
              "3174", "3175", "3176"],
         )
@@ -295,6 +341,34 @@ class BootsInjectionTests(unittest.TestCase):
         # Every tier-3 upgrade target is a recognized boots id.
         for tier3 in _BOOTS_SR_UPGRADE.values():
             self.assertIn(tier3, _BOOTS_IDS)
+
+    def test_arena_mirror_targets_are_known(self):
+        # Every Arena mirror target is a recognized + named boots id.
+        from core.build_order import _BOOTS_NAMES
+        for mirror in _BOOTS_ARENA_MIRROR.values():
+            self.assertIn(mirror, _BOOTS_IDS)
+            self.assertIn(mirror, _BOOTS_NAMES)
+
+    def test_arena_mirror_ground_truth_map_legality(self):
+        # Data-anchored: the bare tier-2 ids are map30=False and the 22
+        # mirrors are map30=True in the live DS items.json. This is the
+        # definitional justification for the remap (P6-G4 deferred tail).
+        import json
+        import os
+        items_path = os.path.join(
+            "data", "daemon_slayer", "16.12.1", "items.json")
+        if not os.path.exists(items_path):
+            self.skipTest("items.json absent (clean checkout)")
+        with open(items_path, encoding="utf-8") as fh:
+            raw = json.load(fh)
+        items = raw.get("data", raw)
+        for bare, mirror in _BOOTS_ARENA_MIRROR.items():
+            be = items.get(bare) or {}
+            me = items.get(mirror) or {}
+            self.assertFalse(be.get("maps", {}).get("30", False),
+                             f"bare {bare} should be map30=False")
+            self.assertTrue(me.get("maps", {}).get("30", False),
+                            f"mirror {mirror} should be map30=True")
 
     def test_aram_mode_injects_tier2_boots(self):
         # Per operator: boots in EVERY mode. ARAM still pins, but tier-2.
@@ -312,8 +386,9 @@ class BootsInjectionTests(unittest.TestCase):
         self.assertEqual(boots[0].item_id, "3006",
                          "ARAM has no tier-3 - carry keeps Berserker's")
 
-    def test_arena_mode_injects_tier2_boots(self):
-        # Arena/CHERRY still pins one boot; no tier-3 upgrade on map 30.
+    def test_arena_mode_injects_mirror_boots(self):
+        # Arena/CHERRY still pins one boot; the resolved tier-2 boot is
+        # remapped to its map30-legal 22-prefixed Arena mirror.
         ranker = _FakeRanker()
         out = plan_build_order(
             "Jinx", "carry",
@@ -325,7 +400,8 @@ class BootsInjectionTests(unittest.TestCase):
         )
         boots = [s for s in out.order if s.item_id in _BOOTS_IDS]
         self.assertEqual(len(boots), 1)
-        self.assertEqual(boots[0].item_id, "3006")
+        self.assertEqual(boots[0].item_id, "223006",
+                         "carry on Arena -> Berserker's 22-mirror (223006)")
 
 
 if __name__ == "__main__":
