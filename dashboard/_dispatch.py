@@ -87,6 +87,7 @@ def _gather_get() -> list:
                                routes_pickban, routes_adaptive_summoners,
                                routes_ban_suggestions, routes_dictionary,
                                routes_personal_context,
+                               routes_personal_build,
                                routes_player_profile,
                                routes_duration_winrate,
                                routes_perf_curve,
@@ -139,6 +140,7 @@ def _gather_get() -> list:
                       + list(routes_ban_suggestions.GET_ROUTES)
                       + list(routes_dictionary.GET_ROUTES)
                       + list(routes_personal_context.GET_ROUTES)
+                      + list(routes_personal_build.GET_ROUTES)
                       + list(routes_player_profile.GET_ROUTES)
                       + list(routes_duration_winrate.GET_ROUTES)
                       + list(routes_perf_curve.GET_ROUTES)
