@@ -77,7 +77,22 @@ if (-not $review.Trim() -and $fallback -ne $Model) {
   $review = Invoke-GeminiAudit $fallback 2
 }
 $ErrorActionPreference = $savedEAP
-if (-not $review.Trim()) { Fail "gemini empty after retries (primary=$Model fallback=$fallback - check quota/billing/RPM)" 3 }
+# A nightly ADVISORY audit producing no review ONLY because the external Gemini
+# service returned empty after every primary + fallback retry (account quota /
+# billing / RPM throttle / preview-model availability - the gemini-3-pro-preview
+# emptiness that began 2026-06-18) is not a repo fault. The audit is PROVISIONAL
+# and read-only (Claude verifies before acting), so a missing review is
+# degraded-not-broken. Leaving the scheduled task red on this external condition
+# fires a false anomaly at every session-start probe until the next nightly run.
+# Log it loudly and exit 0. Mirrors item 444 / item 438 (the sibling
+# weekly_hygiene_run.ps1 transient-API hardening). A genuine config fault (missing
+# GEMINI_API_KEY) still exits 2 above and stays correctly red.
+if (-not $review.Trim()) {
+  $msg = "gemini empty after retries (primary=$Model fallback=$fallback) - external quota/billing/RPM/availability, not a repo fault; advisory audit skipped this run"
+  try { "$((Get-Date).ToString('s')) SKIP code=0 $msg" | Add-Content $logAbs } catch {}
+  Write-Warning $msg
+  exit 0
+}
 
 $date = Get-Date -Format "yyyy-MM-dd"
 $outAbs = Join-Path $RepoRoot "docs\EXTERNAL_REVIEW_$date.md"
