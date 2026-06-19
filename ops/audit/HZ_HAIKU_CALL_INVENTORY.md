@@ -63,6 +63,15 @@ flip: enough games have accrued for a clear signal (693 comparable-covered ticks
   ticks (28%). And it is back_off-biased (precompute back_off 225 vs Haiku 69).
   Top mismatches: precompute `back_off` while Haiku `trade` x112; precompute
   `back_off` while Haiku `hold` x57; precompute `trade` while Haiku `hold` x57.
+- **Caveat on the 39% (verified):** the precompute `even` verdict's A-chip is
+  "Even trade on your cd window" (`core/precomputed_laning_coach.py:62`, B="Hold
+  position", the x267 dominant rec). The coarse classifier maps it to `trade`
+  (the "trade" substring), so the `trade` precompute bucket is mostly `even`
+  verdicts and the 39% UNDERSTATES true agreement - the `even` verdict already
+  offers "Hold position" as its B option. So the gap is partly genuine
+  (back_off-bias) and partly coarse-bucketing (`even` folded into `trade`). The
+  recalibration NEXT should (a) give the report a distinct `even` bucket AND
+  (b) decide the `even`<->`hold` mapping, before changing engine thresholds.
 - **NEXT (Tier-2, operator/Gemini-gated - a product-calibration call, NOT a blind
   overnight edit):** add a `hold`/even band to the laning scenario verdict mapping
   (`agents/daemon_slayer/scenario_matrix.py` / `fight_report.py`) + soften the

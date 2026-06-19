@@ -4,6 +4,37 @@
 
 ---
 
+# 2026-06-19 (run 2026-06-19-01) - headless-upgrade: personal-build-wr + laning flip-gate diagnosis (4b)
+
+Operator launched `/headless-upgrade`. HEAD `bfc44e0a` -> `a4db6aab` (2 commits), CI green
+(both runs success), NO ENGINE bump, NO frozen edits, NO worktrees, NO DS restart. Prior
+manifest 2026-06-18-03 fully committed, so fresh run-id 2026-06-19-01.
+
+Pre-flight established the headless-safe HIGH-value queue is genuinely thin: PRIMARY Tier-1/2
+coach flips are do-not-flip-blind (data-gated); the DS cross-eval clusters A(excluded)/B1/B2/C
+are all shipped-or-gated; DS registries saturated; cost levers CLEAN. So picked the two clean,
+PRIMARY-aligned, headless-VALIDATABLE slices that remained.
+
+- **S1 `43acb128` (4b / research-lift):** `core/personal_build_wr.py` + `GET /api/personal-build`.
+  Personal per-champion build win-rate from rewind_history.db - confidence-weighted item lift vs
+  own baseline (smoothed_rates blend toward the personal prior), legendary+boots gold floor so
+  end-of-game component noise drops out. Closes COMPETITOR_LIFT_2026-06-16 "personal-WR build
+  override (local-data half)". +18 tests, live-verified (Vayne SR 54g -> Terminus/Guinsoo/PD).
+  Deterministic, zero LLM. UI consumer DEFERRED (needs OWED Game-PC capture) -> BACKLOG.
+- **S2 `a4db6aab` (4b PRIMARY finding):** `tools/hz_shadow_report.py` now emits the precompute
+  x native confusion matrix + precompute verdict vocabulary. Run over the accrued 1490-row real-
+  game shadow log it reclassifies the laning bottleneck: NOT game volume (693 comparable ticks),
+  but AGREEMENT QUALITY = 39% (160/406). Precompute has only back_off/trade/even, NO hold band;
+  Haiku says hold 28% of ticks. Caveat (verified): the precompute `even` verdict (A="Even trade
+  on your cd window", B="Hold position") classifies coarse as "trade", so 39% understates true
+  agreement. Corrected HZ_HAIKU_CALL_INVENTORY "bottleneck=games" claim. +1 test (27 total).
+- **NEXT (operator-gated, in BACKLOG):** (a) personal-build UI consumer (capture-owed); (b) the
+  laning hold-band recalibration + LFS table regen (the 39% fix) - a product-calibration call,
+  explicitly NOT a blind overnight edit; the report's new confusion matrix is its per-iter gate.
+- ops/loop/{config.json,director_prompt.md} STILL uncommitted (operator pre-run loop tuning, left).
+
+---
+
 # 2026-06-18 (run 2026-06-18-03) - headless-upgrade: champ-select pick-advisor shadow (4b) + 2 cost/bug slices
 
 Operator launched `/headless-upgrade`. Prior manifest 2026-06-18-02 fully resolved (superseded by
@@ -59,35 +90,3 @@ boots mirror (`docs/LIVE_GAME_GATED_SYNC.md` section D). Commit `c258c4ab`, item
   known default-OFF/gated F2 case, not actionable mid-game.
 - `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run loop tuning,
   untouched PM2-PM7; gemini loop DOWN).
-
----
-
-# 2026-06-18 (PM6) - 16.12.1 Arena ability-haste drift fix (3 mirror ids; ENGINE 1.143.0)
-
-Operator "continue open items from last run". PM3's `TIER2_REPORT.md` cross-eval
-bounded queue is fully DRAINED headless (Aphelios C=1.128.0, B1=1.141.0/PM4,
-F2=1.142.0/PM5; A ARAM-override stays default-OFF). Picked a fresh self-directed
-DS data-correctness unit. Commit `8c63b79b`, CI run 27799329481.
-
-- **PREFLIGHT:** PM5 (F2, 1.142.0) verified landed clean - HEAD==origin/main,
-  DS :8893 live 1.142.0 (it is HTTP not HTTPS - earlier "DS probe failed" was a
-  curl scheme mistake), Share in sync 367. Same external anomalies persist
-  (RC-GeminiAudit result=3 gemini loop DOWN / RC-WeeklyHygiene result=1; not
-  locally fixable).
-- **AH drift fix (item 498, ENGINE 1.142.0 -> 1.143.0; DS :8893 restarted pid-relaunch; Share 367).**
-  `_item_ability_haste.py` was pinned at 16.10.1 (no committed regen tool, exactly
-  as [[reference_item_ah_registry_drift]] warned). NEW `ops/audit/item_ah_drift_check.py`
-  (regen-from-DDragon + diff) found 3 stale `22`-prefixed Arena mirror ids that
-  Riot normalized DOWN in 16.12.1 - Imperial Mandate `224005` 35->15, Iceborn
-  `226662` 10->15, Serylda's `226694` 10->15 (ground-truthed vs 16.11.1-vs-16.12.1
-  DDragon stats blocks). SR/ARAM canonicals already 15. Feeds `compute_ability_dps`
-  Arena cooldowns -> Tier-2. **OVER-FIX GUARD:** a naive alias==canonical sweep
-  flagged 25, but 22/25 are legit Arena-boosted variants (verified vs DDragon) -
-  only the 3 true drifts touched ([[reference_items_index_alias_ids]]). TDD RED->GREEN;
-  the stale `224005==35` test (correct at 16.11.1) updated to 15 + a new normalization
-  test. 88 ENGINE pins / 80 files (quoted-only). DS-dir 7361 / 1 skip / 1942 subtests
-  + RC tests/ all green (7 anchor/live-engine fails were expected pre-sync, GREEN
-  after ds_share_sync + DS restart). Correct-by-construction -> NO LIVE_GATED entry
-  (already live at 1.143.0, not a default-OFF flip).
-- `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run
-  loop tuning, untouched PM2-PM6; gemini loop DOWN).
