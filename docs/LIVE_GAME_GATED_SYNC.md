@@ -36,8 +36,9 @@ GAME 3  Arena (1750)
 
 PREP (built headless 2026-06-17, so live = eyeball-and-tick, no mid-game restarts):
 
-- Flag-ready re-rank seams (9): DSV2/DSV3/DSV4, DSP2, DSP8, DSP11 (dps+burst),
-  RF1, RF2, RF3+RF6. Run `python ops/audit/ds_perm_swarm/live_flip_eyeball.py`
+- Flag-ready re-rank seams (11): DSV2/DSV3/DSV4, DSP2, DSP8, DSP11 (dps+burst),
+  RF1, RF2, RF3+RF6, B1 (apply_melee_aa_gate, dps+hybrid), F2 (cost_ceiling,
+  hybrid+ehp+dps). Run `python ops/audit/ds_perm_swarm/live_flip_eyeball.py`
   (or `--champions <csv>` / `--champion X --preset tank`) -> `report/live_flip_eyeball.{json,md}`
   dumps OFF-vs-ON top-6 per (champ, seam). Eyeball that diff in-session instead of
   flipping + restarting :8893 per seam. The seam-ON ranking matched every documented
@@ -273,6 +274,19 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-18 F2 (ENGINE 1.142.0): cost-aware-top seam shipped DEFAULT-OFF. NEW `cost_ceiling` param
+  on the shared `_filter_candidates`, threaded through `rank_items`/`rank_items_by_ehp`/
+  `rank_items_by_hybrid`; drops any candidate whose `gold.total` STRICTLY exceeds the ceiling. Live
+  flip = pass `cost_ceiling=<N>` (e.g. 4000) at the build-chooser /rank-bruiser + /rank-tank call
+  sites (section B), excluding the 6000g ARAM/Arena mega-item Void Immolation 223069 the
+  `sort_by="delta"` absolute-gain surface floats to rank-1. Byte-identical OFF (reproduced live:
+  Garen bruiser ARAM rank-1 = 223069). Validate the re-ranked ARAM/Arena bruiser+tank top-6 vs a
+  real game before flipping (do-not-flip-blind).
+- 2026-06-18 B1 (ENGINE 1.141.0): melee-applicability gate shipped DEFAULT-OFF (item 496, PM4). Live
+  flip = `apply_melee_aa_gate=True` on the dps/hybrid scorer call sites (section B), zeroing a
+  `PeriodicProc.ranged_only` proc (Runaan's Hurricane bolts) on a melee auto (attackrange <
+  `MELEE_RANGE_CEILING`=350). Validate the re-rank vs a real melee ARAM game (Briar/XinZhao/Nilah)
+  before flipping.
 - 2026-06-17 LGS2 LIVE PLAY (no ENGINE bump - validation session, zero code change): operator ran
   6 ARAM Mayhem champ-selects (Olaf, Sivir, Senna->Mundo, Lissandra, Vex->Quinn, Caitlyn) under a
   persistent champ-select catcher (poll lcu.phase, emit on ChampSelect-enter; ARAM CS is too fast

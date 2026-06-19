@@ -616,6 +616,7 @@ def rank_items_by_hybrid(
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
     prefer_survivability_by_win: bool = False,
+    cost_ceiling: Optional[int] = None,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -783,6 +784,10 @@ def rank_items_by_hybrid(
         budget=budget,
         include_components=include_components,
         only_ids=only_ids,
+        # F2 cost-aware-top seam (DEFAULT-OFF). Drops over-cost mega-items
+        # (e.g. 6000g Void Immolation 223069) the absolute weighted-delta floats
+        # to rank-1 on the bruiser scorer. None -> byte-identical pool.
+        cost_ceiling=cost_ceiling,
     )
 
     ranked: list[HybridRankedItem] = []
