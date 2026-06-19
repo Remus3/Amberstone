@@ -37,7 +37,7 @@
   background: rgba(255, 255, 255, 0.05);
   color: inherit;
   font-family: inherit;
-  font-size: var(--fs-md, 18px);
+  font-size: var(--fs-md, 22px);
   line-height: 1.25;
   cursor: pointer;
   user-select: none;
@@ -84,7 +84,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: var(--fs-md, 18px);
+  font-size: var(--fs-md, 22px);
 }
 
 /* ALT+N hotkey hint pill. Sits next to the label so the operator can
@@ -152,7 +152,7 @@
 .rc-band-high .rc-band-dot.filled { background: var(--signal-good, #6ec977); }
 
 .rc-src {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--signal-dim, #8a8e9c);
   padding: 1px 4px;
   border-radius: 3px;
