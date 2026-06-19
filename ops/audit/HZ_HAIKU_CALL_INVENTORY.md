@@ -81,3 +81,28 @@ flip: enough games have accrued for a clear signal (693 comparable-covered ticks
 - The BUILD agreement lane is still 0/0 comparable (the native Haiku build side
   logs no comparable verdict) - build flip-readiness remains unmeasured, separate
   from laning.
+
+## UPDATE 2026-06-19 (run 2026-06-19-02) - both measurement gaps closed (commit 278d0253)
+
+Report-only fixes (NO live coach change, NO flip). The two gaps flagged above are now
+measurable:
+
+- **BUILD lane root cause FIXED.** The 0/0 was not "Haiku logs no verdict" - the build
+  shadow call site (`dashboard/_deterministic_coaching.py`) captured the LANING action
+  (`coach.action`) as the native signal, scored against a build-LEAN precompute
+  (anti_tank / anti_squishy) = the wrong axis. NEW `_native_build_text` captures the
+  Haiku `item_build` advice; NEW `tools/hz_shadow_report.classify_build_lean` +
+  `summarize_build_agreement` score it on the lean axis. The best-coverage lane
+  (100% / 698 comparable) is now measurable on NEW games; the historical 698 rows
+  correctly surface as `unclassified_native` (the old wrong-axis native). Build
+  flip-readiness will accrue a real agreement number on the next live games.
+- **LANING `even` understatement QUANTIFIED (gated decision teed up).** The report now
+  emits an additive `even_precompute_by_native` breakdown (no change to the headline
+  rate, decides nothing). Over the live log: ALL 181 comparable precompute-"trade" ticks
+  are the `even` verdict, and 57 of them faced Haiku `hold`. The `even` verdict's B-option
+  is already "Hold position", so the operator/Gemini even<->hold mapping decision is worth
+  +57 ticks (39% -> 53%). This is the exact disaggregated input "step (a)" called for,
+  delivered WITHOUT making the gated threshold-recalibration call.
+- The laning hold-band / back_off-threshold recalibration (engine-side, gated) is
+  unchanged and still the operator's call; the report's confusion matrix + even-breakdown
+  are its per-iteration measurement.
