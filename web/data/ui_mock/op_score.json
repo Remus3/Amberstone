@@ -1,0 +1,242 @@
+{
+  "ok": true,
+  "mode": "aram",
+  "metric": "opscore",
+  "champion": null,
+  "n_games": 1610,
+  "min_games_n": 5,
+  "weights": {
+    "gold": 0.35,
+    "xp": 0.2,
+    "cs": 0.2,
+    "combat": 0.25
+  },
+  "minutes": [
+    {
+      "minute": 0,
+      "win_avg": 58.0,
+      "win_n": 819,
+      "loss_avg": 55.0,
+      "loss_n": 789
+    },
+    {
+      "minute": 1,
+      "win_avg": 58.5,
+      "win_n": 818,
+      "loss_avg": 55.5,
+      "loss_n": 788
+    },
+    {
+      "minute": 2,
+      "win_avg": 59.0,
+      "win_n": 817,
+      "loss_avg": 56.0,
+      "loss_n": 787
+    },
+    {
+      "minute": 3,
+      "win_avg": 59.5,
+      "win_n": 816,
+      "loss_avg": 56.5,
+      "loss_n": 786
+    },
+    {
+      "minute": 4,
+      "win_avg": 59.9,
+      "win_n": 815,
+      "loss_avg": 57.0,
+      "loss_n": 785
+    },
+    {
+      "minute": 5,
+      "win_avg": 60.4,
+      "win_n": 814,
+      "loss_avg": 57.5,
+      "loss_n": 784
+    },
+    {
+      "minute": 6,
+      "win_avg": 60.9,
+      "win_n": 813,
+      "loss_avg": 58.0,
+      "loss_n": 783
+    },
+    {
+      "minute": 7,
+      "win_avg": 61.3,
+      "win_n": 812,
+      "loss_avg": 58.4,
+      "loss_n": 782
+    },
+    {
+      "minute": 8,
+      "win_avg": 61.7,
+      "win_n": 811,
+      "loss_avg": 58.9,
+      "loss_n": 781
+    },
+    {
+      "minute": 9,
+      "win_avg": 62.2,
+      "win_n": 810,
+      "loss_avg": 59.4,
+      "loss_n": 780
+    },
+    {
+      "minute": 10,
+      "win_avg": 62.6,
+      "win_n": 809,
+      "loss_avg": 59.8,
+      "loss_n": 779
+    },
+    {
+      "minute": 11,
+      "win_avg": 63.0,
+      "win_n": 808,
+      "loss_avg": 60.2,
+      "loss_n": 778
+    },
+    {
+      "minute": 12,
+      "win_avg": 63.4,
+      "win_n": 807,
+      "loss_avg": 60.7,
+      "loss_n": 777
+    },
+    {
+      "minute": 13,
+      "win_avg": 63.8,
+      "win_n": 806,
+      "loss_avg": 61.1,
+      "loss_n": 776
+    },
+    {
+      "minute": 14,
+      "win_avg": 64.2,
+      "win_n": 805,
+      "loss_avg": 61.5,
+      "loss_n": 775
+    },
+    {
+      "minute": 15,
+      "win_avg": 64.6,
+      "win_n": 797,
+      "loss_avg": 61.9,
+      "loss_n": 767
+    },
+    {
+      "minute": 16,
+      "win_avg": 65.0,
+      "win_n": 789,
+      "loss_avg": 62.3,
+      "loss_n": 759
+    },
+    {
+      "minute": 17,
+      "win_avg": 65.3,
+      "win_n": 781,
+      "loss_avg": 62.7,
+      "loss_n": 751
+    },
+    {
+      "minute": 18,
+      "win_avg": 65.7,
+      "win_n": 773,
+      "loss_avg": 63.1,
+      "loss_n": 743
+    },
+    {
+      "minute": 19,
+      "win_avg": 66.1,
+      "win_n": 765,
+      "loss_avg": 63.4,
+      "loss_n": 735
+    },
+    {
+      "minute": 20,
+      "win_avg": 66.4,
+      "win_n": 757,
+      "loss_avg": 63.8,
+      "loss_n": 727
+    },
+    {
+      "minute": 21,
+      "win_avg": 66.7,
+      "win_n": 749,
+      "loss_avg": 64.2,
+      "loss_n": 719
+    },
+    {
+      "minute": 22,
+      "win_avg": 67.1,
+      "win_n": 741,
+      "loss_avg": 64.5,
+      "loss_n": 711
+    },
+    {
+      "minute": 23,
+      "win_avg": 67.4,
+      "win_n": 733,
+      "loss_avg": 64.8,
+      "loss_n": 703
+    },
+    {
+      "minute": 24,
+      "win_avg": 67.7,
+      "win_n": 725,
+      "loss_avg": 65.2,
+      "loss_n": 695
+    },
+    {
+      "minute": 25,
+      "win_avg": 68.0,
+      "win_n": 717,
+      "loss_avg": 65.5,
+      "loss_n": 687
+    },
+    {
+      "minute": 26,
+      "win_avg": 68.3,
+      "win_n": 709,
+      "loss_avg": 65.8,
+      "loss_n": 679
+    },
+    {
+      "minute": 27,
+      "win_avg": 68.6,
+      "win_n": 701,
+      "loss_avg": 66.1,
+      "loss_n": 671
+    },
+    {
+      "minute": 28,
+      "win_avg": 68.9,
+      "win_n": 693,
+      "loss_avg": 66.4,
+      "loss_n": 663
+    },
+    {
+      "minute": 29,
+      "win_avg": 69.1,
+      "win_n": 685,
+      "loss_avg": 66.7,
+      "loss_n": 655
+    },
+    {
+      "minute": 30,
+      "win_avg": 69.4,
+      "win_n": 677,
+      "loss_avg": 67.0,
+      "loss_n": 647
+    },
+    {
+      "minute": 31,
+      "win_avg": 69.4,
+      "win_n": 7,
+      "loss_avg": null,
+      "loss_n": 4
+    }
+  ],
+  "cached": false,
+  "elapsed_ms": 3
+}

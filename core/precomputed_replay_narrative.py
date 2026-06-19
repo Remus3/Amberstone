@@ -1,0 +1,478 @@
+"""core/precomputed_replay_narrative.py - deterministic replay-narrative substrate.
+
+The HZ (Haiku-to-ZERO) precompute substrate for postgame replay coaching. The
+served path, ``coaches/replay_coach.analyze_match`` (Haiku), is currently
+DORMANT; this module is the deterministic candidate that builds the SAME shape
+of output (a summary paragraph, an impact-ranked key-moments list, and
+per-component lessons) with NO Claude / Riot / live-game dependency - purely
+from the ``rewind_history.db`` blob that ``coaches/replay_coach._load_match``
+already returns.
+
+This is the do-not-flip-blind PRECOMPUTE side. It is SHADOW-ONLY: nothing here
+flips the live coach. ``core/replay_narrative_shadow.py`` records the
+deterministic narrative alongside the live coach output for offline validation,
+mirroring ``core/det_coach_shadow.py`` / ``core/champ_select_shadow.py``.
+
+Reused upstream (grounded, cited):
+  * ``coaches/replay_coach._load_match`` (replay_coach.py:55-74) returns
+    ``{"match": dict, "participants": [dict], "events": [dict]}``; this is the
+    exact blob shape ``build_narrative`` consumes.
+  * ``core.post_game_rubric.compute_role_grade`` (post_game_rubric.py:378) for
+    the numeric per-component scores feeding LESSONS. We do NOT re-derive the
+    rubric math.
+  * ``core.obj_participation`` column model (obj_participation.py:63-83) for the
+    objective-participation ratio. ``compute_obj_participation`` needs a live
+    sqlite connection (obj_participation.py:157), which the blob does not carry,
+    so we apply the SAME column model directly to the in-blob participant rows
+    (``_obj_participation_from_rows``). This keeps ``build_narrative`` a pure
+    function over the blob with no DB re-open.
+
+Pure function, fail-soft on every missing/malformed field - never raises.
+"""
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from core.obj_participation import _challenges_objectives
+from core.post_game_rubric import compute_role_grade
+
+log = logging.getLogger("rc.precomputed_replay_narrative")
+
+# Objective columns summed per participant row to approximate
+# objective-participation. Same set as core.obj_participation._OBJ_COLUMNS
+# (obj_participation.py:63-70) so the deterministic narrative scores the same
+# axis the live rubric route does.
+_OBJ_COLUMNS = (
+    "dragon_kills",
+    "baron_kills",
+    "objectives_stolen",
+    "objectives_stolen_assists",
+    "first_tower_kill",
+    "first_tower_assist",
+)
+
+# Timeline event types that we surface as candidate key-moments. Kept narrow so
+# the impact ranking is over genuinely match-shaping events, not every level-up.
+_MOMENT_EVENT_TYPES = frozenset(
+    {
+        "CHAMPION_KILL",
+        "ELITE_MONSTER_KILL",
+        "BUILDING_KILL",
+        "TURRET_PLATE_DESTROYED",
+    }
+)
+
+
+def _as_float(value: Any) -> float:
+    """Best-effort float coercion. Returns 0.0 on any failure."""
+    if value is None:
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _as_int(value: Any) -> int:
+    """Best-effort int coercion. Returns 0 on any failure."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _fmt_clock(ms: Any) -> str:
+    """Format a timestamp_ms as M:SS. Fail-soft to 0:00."""
+    seconds = _as_int(ms) // 1000
+    if seconds < 0:
+        seconds = 0
+    return f"{seconds // 60}:{seconds % 60:02d}"
+
+
+def _row_obj_total(row: dict[str, Any]) -> float:
+    """Sum one participant row's objective contribution.
+
+    Mirrors the core.obj_participation 9-column model: the 6 SQL columns plus
+    riftHeraldTakedowns + voidMonsterKill + the non-overlapping turret count
+    (turret_takedowns beyond the first-tower binary sentinels). Fail-soft on
+    every missing/malformed field.
+    """
+    base = sum(_as_float(row.get(col)) for col in _OBJ_COLUMNS)
+    herald, void, turret_raw = _challenges_objectives(row.get("challenges_json"))
+    # turret_takedowns is also a real participants column; prefer it when the
+    # challenges blob is absent so the credit is not silently dropped.
+    if turret_raw <= 0:
+        turret_raw = _as_float(row.get("turret_takedowns"))
+    ftk = _as_float(row.get("first_tower_kill"))
+    fta = _as_float(row.get("first_tower_assist"))
+    turret_extra = max(turret_raw - ftk - fta, 0.0)
+    return base + herald + void + turret_extra
+
+
+def _obj_participation_from_rows(
+    participants: list[dict[str, Any]],
+    team_id: Any,
+    puuid: Any,
+) -> float:
+    """Objective-participation ratio for the operator over their team total.
+
+    Applies the core.obj_participation column model (obj_participation.py:63-83)
+    to the in-blob participant rows so no live DB connection is needed. Returns
+    a float in [0.0, 1.0]; 0.0 when the team took no objectives (the rubric
+    correctly under-scores a zero-objective game) or on any degenerate input.
+    """
+    if not participants:
+        return 0.0
+    numerator = 0.0
+    denominator = 0.0
+    for row in participants:
+        if not isinstance(row, dict):
+            continue
+        if row.get("team_id") != team_id:
+            continue
+        row_total = _row_obj_total(row)
+        denominator += row_total
+        # Match the operator row by puuid when available, else by champion name
+        # equality is not reliable; puuid is the stable key.
+        if puuid and row.get("puuid") == puuid:
+            numerator = row_total
+    if denominator <= 0:
+        return 0.0
+    ratio = numerator / denominator
+    if ratio < 0.0:
+        return 0.0
+    if ratio > 1.0:
+        return 1.0
+    return ratio
+
+
+def _find_operator_row(
+    participants: list[dict[str, Any]],
+    match: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Locate the operator's participant row from the blob.
+
+    The matches row carries tracked_champion_id + tracked_team_id but no puuid,
+    so we match on champion_id within the tracked team, falling back to
+    champion_name, then to the first row of the tracked team.
+    """
+    if not participants:
+        return None
+    tracked_team = match.get("tracked_team_id")
+    tracked_cid = match.get("tracked_champion_id")
+    tracked_name = match.get("tracked_champion_name")
+
+    team_rows = [
+        r for r in participants
+        if isinstance(r, dict) and r.get("team_id") == tracked_team
+    ]
+    pool = team_rows or [r for r in participants if isinstance(r, dict)]
+    if not pool:
+        return None
+    if tracked_cid is not None:
+        for r in pool:
+            if r.get("champion_id") == tracked_cid:
+                return r
+    if tracked_name:
+        for r in pool:
+            if r.get("champion_name") == tracked_name:
+                return r
+    return pool[0]
+
+
+def _moment_impact(event: dict[str, Any], operator_pid: Any) -> float:
+    """Score a single timeline event for impact ranking.
+
+    Higher = more match-shaping. Epic monsters and buildings rank above plain
+    kills; a kill/death/assist the operator was directly involved in is boosted
+    so the operator's own moments float to the top. Bounty + shutdown_bounty add
+    a gold-swing signal. Fully deterministic.
+    """
+    etype = event.get("event_type") or ""
+    impact = 0.0
+    if etype == "ELITE_MONSTER_KILL":
+        monster = (event.get("monster_type") or "").upper()
+        impact = 60.0 if "BARON" in monster or "DRAGON" in monster else 45.0
+    elif etype == "BUILDING_KILL":
+        ttype = (event.get("tower_type") or "").upper()
+        impact = 50.0 if "NEXUS" in ttype or "INHIBITOR" in ttype else 35.0
+    elif etype == "TURRET_PLATE_DESTROYED":
+        impact = 20.0
+    elif etype == "CHAMPION_KILL":
+        impact = 30.0
+        impact += _as_float(event.get("bounty")) / 50.0
+        impact += _as_float(event.get("shutdown_bounty")) / 25.0
+
+    # Operator involvement boost (killer / victim / assist).
+    if operator_pid is not None:
+        if event.get("killer_id") == operator_pid:
+            impact += 25.0
+        elif event.get("victim_id") == operator_pid:
+            impact += 20.0
+        else:
+            assists = event.get("assisting_ids_json")
+            if assists:
+                try:
+                    parsed = json.loads(assists) if isinstance(assists, str) else assists
+                    if isinstance(parsed, list) and operator_pid in parsed:
+                        impact += 10.0
+                except (ValueError, TypeError):
+                    pass
+    return impact
+
+
+def _describe_moment(event: dict[str, Any], operator_pid: Any) -> str:
+    """Build a deterministic one-line description of a timeline event."""
+    clock = _fmt_clock(event.get("timestamp_ms"))
+    etype = event.get("event_type") or "EVENT"
+    if etype == "ELITE_MONSTER_KILL":
+        monster = (event.get("monster_type") or "objective").title()
+        who = "your team" if event.get("killer_id") == operator_pid else "a team"
+        return f"{clock} - {monster} taken by {who}"
+    if etype == "BUILDING_KILL":
+        building = (event.get("building_type") or "structure").replace("_", " ").title()
+        return f"{clock} - {building} destroyed"
+    if etype == "TURRET_PLATE_DESTROYED":
+        return f"{clock} - turret plate destroyed"
+    if etype == "CHAMPION_KILL":
+        if event.get("killer_id") == operator_pid:
+            tag = "you secured a kill"
+        elif event.get("victim_id") == operator_pid:
+            tag = "you were killed"
+        else:
+            tag = "a kill traded"
+        shutdown = _as_float(event.get("shutdown_bounty"))
+        suffix = " (shutdown)" if shutdown > 0 else ""
+        return f"{clock} - {tag}{suffix}"
+    return f"{clock} - {etype.replace('_', ' ').lower()}"
+
+
+# Per-component lesson templates keyed by the compute_role_grade component key.
+# Each entry is (low_lesson, high_lesson); the deterministic builder picks one
+# by comparing the component's normalized strength against the role weight.
+_LESSON_TEMPLATES: dict[str, tuple[str, str]] = {
+    "kda": (
+        "KDA trailed the role baseline - prioritise surviving fights and "
+        "trading deaths for objectives.",
+        "Strong KDA this game - your fight selection and positioning paid off.",
+    ),
+    "cs_per_min": (
+        "CS per minute was below the role median - tighten your wave farming "
+        "between skirmishes.",
+        "CS per minute beat the role median - your farming was efficient.",
+    ),
+    "obj_participation": (
+        "Low objective participation - rotate to drakes/baron/towers with your "
+        "team more often.",
+        "High objective participation - you were present for the key takedowns.",
+    ),
+    "vision": (
+        "Vision score lagged the role baseline - place and clear more wards "
+        "around objectives.",
+        "Good vision score - your warding gave the team map control.",
+    ),
+    "dpm": (
+        "Damage per minute was under the role median - look for more committed "
+        "fight windows to apply damage.",
+        "High damage per minute - you were a real threat in fights.",
+    ),
+}
+
+
+def _lessons_from_grade(grade: dict[str, Any]) -> list[str]:
+    """Turn the rubric component scores into deterministic LESSONS.
+
+    Reuses the numeric components from core.post_game_rubric.compute_role_grade
+    (post_game_rubric.py:422-436). We do NOT re-derive the rubric math; we only
+    interpret the per-component contribution as a low/high lesson. The two
+    weakest components yield improvement lessons; the single strongest yields a
+    reinforcement lesson, so the operator always gets at least one positive.
+    """
+    components = grade.get("components")
+    if not isinstance(components, dict) or not components:
+        return []
+    # Sort ascending by contribution; the lowest are the biggest gaps.
+    ranked = sorted(
+        (
+            (key, _as_float(val))
+            for key, val in components.items()
+            if key in _LESSON_TEMPLATES
+        ),
+        key=lambda kv: kv[1],
+    )
+    if not ranked:
+        return []
+    lessons: list[str] = []
+    # Up to two improvement lessons (lowest contributions).
+    for key, _val in ranked[:2]:
+        lessons.append(_LESSON_TEMPLATES[key][0])
+    # One reinforcement lesson (highest contribution), if distinct.
+    top_key, _top_val = ranked[-1]
+    if top_key not in {k for k, _ in ranked[:2]}:
+        lessons.append(_LESSON_TEMPLATES[top_key][1])
+    return lessons
+
+
+def _build_summary(
+    match: dict[str, Any],
+    operator_row: dict[str, Any] | None,
+    grade: dict[str, Any],
+    key_moment_count: int,
+) -> str:
+    """Compose the deterministic SUMMARY string from the match header + grade."""
+    champ = (
+        (operator_row or {}).get("champion_name")
+        or match.get("tracked_champion_name")
+        or "Unknown"
+    )
+    win = "WIN" if match.get("tracked_win") else "LOSS"
+    dur_min = _as_int(match.get("game_duration_s")) // 60
+    kills = _as_int(match.get("tracked_kills"))
+    deaths = _as_int(match.get("tracked_deaths"))
+    assists = _as_int(match.get("tracked_assists"))
+    mode = match.get("game_mode") or "?"
+    patch = match.get("patch") or "?"
+    role = grade.get("role") or "?"
+    g_score = grade.get("total_score")
+    g_bucket = grade.get("percentile_grade") or "?"
+    score_str = f"{g_score:.0f}" if isinstance(g_score, (int, float)) else "?"
+    return (
+        f"{champ} ({role}) {win} in {dur_min} min on patch {patch} ({mode}). "
+        f"KDA {kills}/{deaths}/{assists}, rubric grade {g_bucket} "
+        f"({score_str}/100) across {key_moment_count} key moments."
+    )
+
+
+def build_narrative(blob: dict[str, Any] | None) -> dict[str, Any]:
+    """Build a deterministic replay narrative from a rewind_history.db blob.
+
+    Args:
+        blob: the dict returned by ``coaches/replay_coach._load_match``
+            (replay_coach.py:55-74) - ``{"match": dict, "participants": [dict],
+            "events": [dict]}``. ``None`` or any malformed shape is fail-soft.
+
+    Returns:
+        A dict with keys:
+          * ``ok`` (bool): True when a summary was produced.
+          * ``summary`` (str): one-paragraph deterministic result + grade story.
+          * ``key_moments`` (list[dict]): impact-ranked timeline moments, each
+            ``{"clock", "event_type", "impact", "text"}``, highest impact first.
+          * ``lessons`` (list[str]): rubric-component improvement/reinforcement
+            lessons from core.post_game_rubric.
+          * ``grade`` (dict): the raw compute_role_grade result (role,
+            total_score, components, percentile_grade) for downstream use.
+
+    Pure + deterministic; never raises (fail-soft to an empty-but-shaped dict).
+    """
+    out: dict[str, Any] = {
+        "ok": False,
+        "summary": "",
+        "key_moments": [],
+        "lessons": [],
+        "grade": {},
+    }
+    try:
+        if not isinstance(blob, dict):
+            return out
+        match = blob.get("match")
+        if not isinstance(match, dict) or not match:
+            return out
+        participants = blob.get("participants")
+        if not isinstance(participants, list):
+            participants = []
+        events = blob.get("events")
+        if not isinstance(events, list):
+            events = []
+
+        operator_row = _find_operator_row(participants, match)
+
+        # Build rubric stats from the operator row (preferred) or the matches
+        # tracked_* fields (fallback). Reuses the exact stats keys
+        # compute_role_grade expects (post_game_rubric.py:403-410).
+        if operator_row is not None:
+            cs = _as_int(operator_row.get("total_minions_killed")) + _as_int(
+                operator_row.get("neutral_minions_killed")
+            )
+            obj_pct = _obj_participation_from_rows(
+                participants,
+                operator_row.get("team_id"),
+                operator_row.get("puuid"),
+            )
+            stats = {
+                "kills": _as_int(operator_row.get("kills")),
+                "deaths": _as_int(operator_row.get("deaths")),
+                "assists": _as_int(operator_row.get("assists")),
+                "cs": cs,
+                "game_time_s": _as_int(match.get("game_duration_s")),
+                "vision_score": _as_int(operator_row.get("vision_score")),
+                "damage_dealt_to_champions": _as_int(
+                    operator_row.get("total_damage_dealt_to_champs")
+                ),
+                "obj_participation_pct": obj_pct,
+            }
+            role = (
+                operator_row.get("team_position")
+                or operator_row.get("role")
+                or match.get("tracked_lane")
+                or ""
+            )
+        else:
+            stats = {
+                "kills": _as_int(match.get("tracked_kills")),
+                "deaths": _as_int(match.get("tracked_deaths")),
+                "assists": _as_int(match.get("tracked_assists")),
+                "cs": 0,
+                "game_time_s": _as_int(match.get("game_duration_s")),
+                "vision_score": 0,
+                "damage_dealt_to_champions": 0,
+                "obj_participation_pct": 0.0,
+            }
+            role = match.get("tracked_lane") or ""
+
+        grade = compute_role_grade(stats, role)
+
+        operator_pid = (
+            operator_row.get("participant_id") if operator_row is not None else None
+        )
+
+        # Impact-rank the timeline. Score every candidate event, sort by impact
+        # descending (stable on timestamp for ties), keep the top 5.
+        scored: list[tuple[float, int, dict[str, Any]]] = []
+        for ev in events:
+            if not isinstance(ev, dict):
+                continue
+            if (ev.get("event_type") or "") not in _MOMENT_EVENT_TYPES:
+                continue
+            impact = _moment_impact(ev, operator_pid)
+            scored.append((impact, _as_int(ev.get("timestamp_ms")), ev))
+        scored.sort(key=lambda t: (-t[0], t[1]))
+
+        key_moments: list[dict[str, Any]] = []
+        for impact, _ts, ev in scored[:5]:
+            key_moments.append(
+                {
+                    "clock": _fmt_clock(ev.get("timestamp_ms")),
+                    "event_type": ev.get("event_type") or "",
+                    "impact": round(impact, 1),
+                    "text": _describe_moment(ev, operator_pid),
+                }
+            )
+
+        lessons = _lessons_from_grade(grade)
+        summary = _build_summary(match, operator_row, grade, len(key_moments))
+
+        out.update(
+            {
+                "ok": bool(summary),
+                "summary": summary,
+                "key_moments": key_moments,
+                "lessons": lessons,
+                "grade": grade,
+            }
+        )
+        return out
+    except Exception:  # noqa: BLE001 - fail-soft, never raise on the build path
+        log.debug("build_narrative failed", exc_info=True)
+        return out
