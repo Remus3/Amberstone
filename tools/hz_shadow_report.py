@@ -247,6 +247,8 @@ def summarize_agreement(records: list[dict]) -> dict:
     agree = 0
     by_mode: dict[str, dict] = {}
     by_native: dict[str, dict] = {}
+    by_precompute: dict[str, int] = {}
+    confusion: dict[tuple[str, str], int] = {}
     unclassified_native = 0
     uncovered_with_native = 0
     for rec in records:
@@ -274,6 +276,9 @@ def summarize_agreement(records: list[dict]) -> dict:
         nslot["n"] += 1
         if agreed:
             nslot["agree"] += 1
+        pv, nv = pair["precompute"], pair["native"]
+        by_precompute[pv] = by_precompute.get(pv, 0) + 1
+        confusion[(pv, nv)] = confusion.get((pv, nv), 0) + 1
     for slot in by_mode.values():
         slot["rate"] = (round(slot["agree"] / slot["comparable"], 4)
                         if slot["comparable"] else 0.0)
@@ -283,6 +288,13 @@ def summarize_agreement(records: list[dict]) -> dict:
         "agreement_rate": round(agree / comparable, 4) if comparable else 0.0,
         "by_mode": dict(sorted(by_mode.items())),
         "by_native": dict(sorted(by_native.items())),
+        "by_precompute": dict(sorted(by_precompute.items())),
+        "confusion": [
+            {"precompute": pv, "native": nv, "n": n, "agree": pv == nv}
+            for (pv, nv), n in sorted(
+                confusion.items(), key=lambda kv: (-kv[1], kv[0])
+            )
+        ],
         "unclassified_native": unclassified_native,
         "uncovered_with_native": uncovered_with_native,
     }
@@ -396,6 +408,13 @@ def _print_human(report: dict) -> None:
               f"{agr.get('uncovered_with_native', 0)} uncovered-with-native")
         print(f"    native unclassified (covered): "
               f"{agr.get('unclassified_native', 0)}")
+        if agr.get("by_precompute"):
+            pv = ", ".join(f"{k} x{v}" for k, v in agr["by_precompute"].items())
+            print(f"    precompute verdicts: {pv}")
+        mism = [c for c in (agr.get("confusion") or []) if not c["agree"]]
+        for c in mism[:6]:
+            print(f"    MISMATCH pre={c['precompute']} -> "
+                  f"native={c['native']} x{c['n']}")
     print(f"hint: {report.get('flip_ready_hint')}")
 
 
