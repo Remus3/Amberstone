@@ -78,9 +78,9 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -102,12 +102,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "3089",
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -133,10 +133,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -158,12 +158,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -413,10 +413,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "2503",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -438,12 +438,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -470,9 +470,9 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -494,12 +494,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -523,12 +523,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "1054",
+          "3032",
           "3006",
-          "1055",
-          "1056",
-          "1086",
-          "1120"
+          "3031",
+          "3097",
+          "3046",
+          "6672"
         ],
         "variant": "anti_squishy"
       },
@@ -550,12 +550,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "1054",
+          "3032",
           "3047",
-          "1055",
-          "1056",
-          "1086",
-          "1120"
+          "3031",
+          "3097",
+          "3046",
+          "6672"
         ],
         "variant": "anti_tank"
       }
@@ -620,10 +620,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.7,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -638,36 +638,36 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.7,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 1849.5,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 2877.0,
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "3089",
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -693,10 +693,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "2503",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -718,12 +718,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -749,10 +749,10 @@
         "order": [
           "228002",
           "3020",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "6653",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -774,12 +774,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -973,10 +973,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -998,12 +998,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -1255,7 +1255,7 @@
           "3089",
           "4645",
           "4646",
-          "4633",
+          "2503",
           "6653"
         ],
         "variant": "anti_squishy"
@@ -1278,12 +1278,12 @@
           "target_mr": 130.0
         },
         "order": [
+          "6653",
           "228002",
           "3135",
           "3089",
           "3137",
-          "4645",
-          "4646"
+          "4645"
         ],
         "variant": "anti_tank"
       }
@@ -1292,10 +1292,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.35,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -1319,18 +1319,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.35,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 2274.8,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 3538.5,
           "target_mr": 130.0
         },
         "order": [
@@ -1475,12 +1475,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -1502,12 +1502,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -1516,10 +1516,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.42,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "CURRENT_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -1543,18 +1543,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.42,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "CURRENT_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 2189.7,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 3406.2,
           "target_mr": 130.0
         },
         "order": [
@@ -1643,12 +1643,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -1670,12 +1670,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -1699,12 +1699,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -1726,12 +1726,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -1759,8 +1759,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -1786,8 +1786,8 @@
           "3111",
           "3089",
           "3135",
-          "3137",
-          "4645"
+          "6653",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -1867,12 +1867,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -1894,12 +1894,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -1981,10 +1981,10 @@
         "order": [
           "228002",
           "3020",
+          "2503",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -2006,12 +2006,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
           "3135",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -2178,8 +2178,8 @@
           "3111",
           "3084",
           "3053",
-          "3083",
-          "3036"
+          "6653",
+          "3083"
         ],
         "variant": "anti_tank"
       }
@@ -2263,8 +2263,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -2288,10 +2288,10 @@
         "order": [
           "228002",
           "3111",
+          "6653",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -2371,12 +2371,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
-          "3089",
+          "2503",
+          "228002",
           "4645",
-          "4633",
-          "6653"
+          "3089"
         ],
         "variant": "anti_squishy"
       },
@@ -2398,12 +2398,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "2503",
+          "228002",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -2485,10 +2485,10 @@
         "order": [
           "228002",
           "3020",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "6653",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -2510,12 +2510,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
           "3135",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -2541,10 +2541,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "2503",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -2566,12 +2566,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -2803,11 +2803,11 @@
     "JarvanIV": {
       "anti_squishy": {
         "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "lean_in": true,
+          "my_antitank_score": 0.858,
+          "recommend_antitank_items": false,
+          "shreds_resist": true,
+          "top_kind": "CURRENT_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -2830,28 +2830,28 @@
       },
       "anti_tank": {
         "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "lean_in": true,
+          "my_antitank_score": 0.858,
+          "recommend_antitank_items": false,
+          "shreds_resist": true,
+          "top_kind": "CURRENT_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 1657.5,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 2578.4,
           "target_mr": 130.0
         },
         "order": [
-          "3153",
-          "3111",
           "223069",
-          "3036",
-          "3085",
-          "3053"
+          "3111",
+          "3153",
+          "3084",
+          "3053",
+          "3036"
         ],
         "variant": "anti_tank"
       }
@@ -3072,10 +3072,10 @@
         "order": [
           "223069",
           "3047",
+          "6653",
           "3153",
           "3036",
-          "3508",
-          "3033"
+          "3508"
         ],
         "variant": "anti_tank"
       }
@@ -3083,11 +3083,11 @@
     "KSante": {
       "anti_squishy": {
         "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "lean_in": true,
+          "my_antitank_score": 1.2362,
+          "recommend_antitank_items": false,
+          "shreds_resist": true,
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -3110,19 +3110,19 @@
       },
       "anti_tank": {
         "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "lean_in": true,
+          "my_antitank_score": 1.2362,
+          "recommend_antitank_items": false,
+          "shreds_resist": true,
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 1485.0,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 2310.0,
           "target_mr": 130.0
         },
         "order": [
@@ -3267,12 +3267,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -3294,12 +3294,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -3326,9 +3326,9 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -3350,12 +3350,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -3382,9 +3382,9 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -3406,12 +3406,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -3435,12 +3435,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3137"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -3462,12 +3462,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -3491,12 +3491,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
-          "3089",
+          "2503",
+          "228002",
           "4645",
-          "4633",
-          "3135"
+          "3089"
         ],
         "variant": "anti_squishy"
       },
@@ -3518,12 +3518,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "2503",
+          "228002",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -3578,8 +3578,8 @@
           "3111",
           "3084",
           "3053",
-          "3153",
-          "3036"
+          "6653",
+          "3083"
         ],
         "variant": "anti_tank"
       }
@@ -3605,10 +3605,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "2503",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -3630,12 +3630,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -3811,11 +3811,11 @@
     "KogMaw": {
       "anti_squishy": {
         "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "lean_in": true,
+          "my_antitank_score": 0.926,
+          "recommend_antitank_items": false,
+          "shreds_resist": true,
+          "top_kind": "SHRED"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -3827,39 +3827,39 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
       "anti_tank": {
         "antitank": {
-          "lean_in": false,
-          "my_antitank_score": 0.0,
-          "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "lean_in": true,
+          "my_antitank_score": 0.926,
+          "recommend_antitank_items": false,
+          "shreds_resist": true,
+          "top_kind": "SHRED"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 1574.9,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 2449.9,
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -3885,10 +3885,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -3910,12 +3910,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -4053,10 +4053,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -4078,12 +4078,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -4109,10 +4109,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -4134,12 +4134,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -4278,9 +4278,9 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -4302,12 +4302,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "3089",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -4389,10 +4389,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "2503",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -4414,12 +4414,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -4557,10 +4557,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -4582,12 +4582,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "3089",
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -4667,12 +4667,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "3153",
-          "3006",
-          "3085",
-          "6672",
-          "3032",
-          "3031"
+          "228002",
+          "3158",
+          "3100",
+          "3089",
+          "4645",
+          "4646"
         ],
         "variant": "anti_squishy"
       },
@@ -4694,12 +4694,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "3153",
-          "3047",
-          "3036",
-          "3085",
-          "3032",
-          "6694"
+          "228002",
+          "3111",
+          "3100",
+          "3089",
+          "3135",
+          "3036"
         ],
         "variant": "anti_tank"
       }
@@ -4708,10 +4708,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.6695,
           "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "shreds_resist": true,
+          "top_kind": "SHRED"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -4735,26 +4735,26 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.6695,
           "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "shreds_resist": true,
+          "top_kind": "SHRED"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 1886.6,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 2934.6,
           "target_mr": 130.0
         },
         "order": [
-          "3153",
-          "3111",
           "223069",
-          "3036",
+          "3111",
+          "3153",
           "3084",
+          "3036",
           "3053"
         ],
         "variant": "anti_tank"
@@ -4779,12 +4779,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -4806,12 +4806,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -5035,7 +5035,7 @@
           "3084",
           "3053",
           "3083",
-          "6662"
+          "6653"
         ],
         "variant": "anti_tank"
       }
@@ -5117,10 +5117,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "2503",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -5142,12 +5142,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -5175,8 +5175,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -5198,12 +5198,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -5453,10 +5453,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "2503",
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -5478,12 +5478,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "2503"
         ],
         "variant": "anti_tank"
       }
@@ -5595,7 +5595,7 @@
           "3084",
           "3053",
           "3083",
-          "3036"
+          "6653"
         ],
         "variant": "anti_tank"
       }
@@ -5940,10 +5940,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.26,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -5967,24 +5967,24 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.26,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 2384.1,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 3708.6,
           "target_mr": 130.0
         },
         "order": [
-          "3153",
-          "3111",
           "223069",
+          "3111",
+          "3153",
           "3084",
           "3053",
           "3036"
@@ -6052,10 +6052,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.55,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -6079,18 +6079,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.55,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 2031.7,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 3160.5,
           "target_mr": 130.0
         },
         "order": [
@@ -6295,8 +6295,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -6322,8 +6322,8 @@
           "3111",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "6653",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -6351,8 +6351,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -6374,12 +6374,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "3089",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -6658,8 +6658,8 @@
           "3111",
           "3084",
           "3053",
-          "3083",
-          "6662"
+          "6653",
+          "3083"
         ],
         "variant": "anti_tank"
       }
@@ -7246,9 +7246,9 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -7270,12 +7270,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -7299,12 +7299,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -7326,12 +7326,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -7359,8 +7359,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -7382,12 +7382,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -7396,10 +7396,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.195,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -7423,18 +7423,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.195,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "MAX_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 2463.1,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 3831.4,
           "target_mr": 130.0
         },
         "order": [
@@ -7471,8 +7471,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -7494,12 +7494,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "3089",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -7635,12 +7635,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "228002",
+          "6653",
           "3020",
+          "228002",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -7662,12 +7662,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -7917,10 +7917,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -7942,12 +7942,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -8058,8 +8058,8 @@
           "3111",
           "3084",
           "3053",
-          "3083",
-          "6662"
+          "6653",
+          "3083"
         ],
         "variant": "anti_tank"
       }
@@ -8254,9 +8254,9 @@
           "228002",
           "3020",
           "3089",
+          "2503",
           "4645",
-          "4633",
-          "3135"
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -8278,12 +8278,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -8309,10 +8309,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -8334,12 +8334,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -8365,10 +8365,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -8390,12 +8390,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -8535,8 +8535,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -8558,12 +8558,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
-          "3089",
+          "228002",
           "3135",
-          "3137",
-          "4645"
+          "3089",
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -8591,8 +8591,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -8616,10 +8616,10 @@
         "order": [
           "228002",
           "3111",
+          "6653",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -8815,8 +8815,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -8838,12 +8838,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -8852,10 +8852,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.1463,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "CURRENT_HP"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -8879,18 +8879,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.1463,
           "recommend_antitank_items": true,
           "shreds_resist": false,
-          "top_kind": ""
+          "top_kind": "CURRENT_HP"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 2522.2,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 3923.5,
           "target_mr": 130.0
         },
         "order": [
@@ -9011,7 +9011,7 @@
           "3084",
           "3053",
           "3083",
-          "3036"
+          "6653"
         ],
         "variant": "anti_tank"
       }
@@ -9400,10 +9400,10 @@
         "order": [
           "223069",
           "3047",
+          "6653",
           "3153",
           "3036",
-          "3508",
-          "3033"
+          "3508"
         ],
         "variant": "anti_tank"
       }
@@ -9431,8 +9431,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -9454,12 +9454,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
+          "228002",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -9543,8 +9543,8 @@
           "3020",
           "3089",
           "4645",
-          "4633",
-          "3135"
+          "2503",
+          "6653"
         ],
         "variant": "anti_squishy"
       },
@@ -9568,10 +9568,10 @@
         "order": [
           "228002",
           "3111",
+          "6653",
           "3135",
           "3089",
-          "3137",
-          "4645"
+          "3137"
         ],
         "variant": "anti_tank"
       }
@@ -9597,10 +9597,10 @@
         "order": [
           "228002",
           "3020",
+          "6653",
+          "2503",
           "3089",
-          "4645",
-          "4633",
-          "3135"
+          "4645"
         ],
         "variant": "anti_squishy"
       },
@@ -9622,12 +9622,12 @@
           "target_mr": 130.0
         },
         "order": [
-          "228002",
+          "6653",
           "3111",
           "3135",
-          "3089",
-          "3137",
-          "4645"
+          "228002",
+          "2503",
+          "3089"
         ],
         "variant": "anti_tank"
       }
@@ -9641,8 +9641,8 @@
       "anti_squishy"
     ]
   },
-  "engine_version": "1.123.0",
-  "generated_at": "2026-06-15T14:54:39Z",
+  "engine_version": "1.144.0",
+  "generated_at": "2026-06-19T18:25:44Z",
   "mode": "aram",
   "schema": "build_order_variants/v1",
   "version": "16.12.1"
