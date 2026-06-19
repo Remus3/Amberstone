@@ -42,6 +42,50 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (interactive) - Arena coach same-state Haiku-skip debounce seam (LEDGER 507)
+
+Operator: "continue what is open" with the gemini+AHK loop STOPped (control/STOP since 06-18),
+ORCHESTRATION_PLAN fully drained (0 WIP/OPEN, last refill R1 DONE), bridge 0 tasks, tree clean.
+One scope AskUserQuestion -> "aram_coach Haiku-skip seam" lane. Commit `f40a91de` (code+test) +
+docs sync; Tier-1, NO ENGINE bump / 0 frozen / no DS restart / no Share mirror; targeted suite
+755 passed, ruff + ASCII clean.
+
+- Verify-before-build: item 506 already shipped the ARAM seam. Grep found SR ALREADY covered
+  (`coach_integration/_coach.py::_state_signature`, always-on 5.7 coarse skip; watchdog flagged
+  `aram_coach` not `sr_coach`). Only **Arena `_run_coach` had no skip** = the open sibling.
+- Ported the ARAM seam to `coaches/arena_coach.py` behind `RC_ARENA_STATE_DEBOUNCE` (DEFAULT-OFF,
+  45s ceiling, byte-identical off). Coarse sig buckets HP 10% / gold 300g / next-opp HP 25% + keys
+  round/level/kda/alive-teams/items/augments/next-opponent/camp+anvil. Event-driven aug-select +
+  anvil NOT debounced (discrete events). +14 tests mirror `test_aram_state_debounce.py`.
+- NEXT (operator-gated): the live default-ON FLIP of ARAM + Arena (+ SR ceiling) stays fidelity-
+  gated, do-not-flip-blind, awaiting live/replayed-game validation. BACKLOG L59 updated.
+
+---
+
+# 2026-06-19 (interactive) - orchestrated fan-out: 7 headless backlog items (LEDGER 506)
+
+Operator: "perform all listed headless open items via orchestrated multi-agent fan out, this
+session." One scope AskUserQuestion -> "All buildable, gated=OFF". 5 commits `af04914f` ->
+`9f7ecff5`, CI green (27843999804), NO ENGINE bump, 0 frozen edits, tree clean.
+
+- Wave-1 `aeb7f1d2` (4 parallel worktree agents): aggregator A OP-Score curve (`core/op_score_curve.py`
+  + `/api/op-score-curve` + build_insights tab); replay-narrative substrate + shadow (no flip);
+  ARAM debounce DEFAULT-OFF (`RC_ARAM_STATE_DEBOUNCE`, 45s); aggregator B carry-eff grade axis DEFAULT-OFF.
+- D1 `f1c59fb8`: Share churn-fix - `ds_share_sync.py --precommit` gates sync on staged
+  mirrored-source (kills per-commit MANIFEST churn + spurious gist upload). Full mirror de-dup
+  DEFERRED (outward-facing gist + CI coupling, own session).
+- HZ-B `a5101e20`: SR/ARAM build-order regen @1.144.0 (58/62 champs; NO ENGINE bump - stamp
+  auto-refreshes on regen; Arena already current item 499).
+- D4 `6ee56952`: BLE001 blind-except ratchet, 954 app-code noqa; engine/Share/frozen exempt.
+  Config-FIRST is load-bearing or --add-noqa pollutes Share/src -> memory `reference_ruff_rule_share_mirror`.
+
+D11 = n/a (no 405 in repo). EXCLUDED (stated, not silent): name-scrub (destructive/release-gated),
+DPM damage-share (data-blocked), cdragon by-level (new schema axis). NEXT (operator-gated): the
+live FLIPs (ARAM debounce ON / aggregator B grade ON / HZ-B-final) await live/replay validation; D1 full
+de-dup is its own session.
+
+---
+
 # 2026-06-19 (run 2026-06-19-05) - headless-upgrade: gold-share PGR carry-efficiency stat (DISPLAY-only)
 
 Operator `/headless-upgrade`. HEAD `6d3d7e03` -> `67fe203d` (gemini-loop relaunch directive
