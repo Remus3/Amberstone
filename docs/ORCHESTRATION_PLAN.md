@@ -147,6 +147,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 |----|-------|-------|--------|--------|
 | R2 | ui-audit | 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Build Insights view + recent tabs (web/js/panels/build_insights.js, duration_winrate.js, op_score.js [directive said op_score_curve.js; real file is op_score.js], GPI drilldown player_gpi.js) + their CSS, vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness (Claude_Preview cannot attach to RC-owned :8888, per R1). | DONE | `9b55615d` |
 | R3 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_damage caster-defensive-stat scaling. Extend the passive_damage registry and to_damage_block to support caster bonus armor and bonus MR scaling (e.g., Taric P +15% bonus armor, Galio P +60% bonus MR). Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. | DONE | `ab23c32c` |
+| R4 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited core coaching panels - web/js/panels/team_context.js, coach_choices.js, item_build.js + their CSS - vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor (<--fs-xs 16px) hardcoded font-sizes; cross-panel .kv/#nx-wave/.minimap-grid blocks in item_build.css are OUT of scope (style already-audited Right Now/Next/Active-Match surfaces). Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview attempt (RC-owned :8888 self-signed blocker per R1/R2). | DONE | `9e56d23d` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -160,6 +161,31 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-19 R4 (DIRECTOR REFILL cycle) DONE (`9e56d23d`) - Section-3b 5-phase
+  typography-floor UI audit of three un-audited core coaching panels
+  (team_context / coach_choices / item_build, JS+CSS) vs UI_SCALE_SPEC_V2 v2.1.
+  Tier-1 CSS-only, NO ENGINE / 0 frozen / no DS / no Share / ADR-008 asset-hash
+  auto-reload (no RC restart). TYPOGRAPHY: 14 in-scope sub-floor (< --fs-xs 16px)
+  hardcoded font-sizes tokenized (team_context 7x -> --fs-xs + .tc-slot radius ->
+  --panel-radius-sm; coach_choices .rc-src 10 -> --fs-xs + stale 18px fallbacks ->
+  22; item_build ds-chip/em + build-label + item-cost + ib-builds-status +
+  cs-build-label -> --fs-xs, build-value 19 -> --fs-md). 2 documented operator-
+  exceptions kept sub-floor with inline rationale (.item-name 14px = 70px tile +
+  2-line clamp; .cs-build-runes 10px = dense narrow ITEM BUILD column).
+  STRUCTURE/HIT-TARGETS/ASCII/HIERARCHY PASS (independent 5-phase audit subagent =
+  SHIP, 0 MUST-FIX; .rc-chip keeps --hit-min 42). SCOPE: the cross-panel
+  .kv/#nx-wave/.minimap-grid blocks in item_build.css (style already-audited Right
+  Now/Next/Active-Match, C2) were EXCLUDED. DISCOVERY: Claude_Preview DOES attach
+  to https://localhost:8888/ (prior cycles' "cannot attach to :8888" was the
+  legion-rc hostname cert mismatch); a computed-style probe on the live stylesheet
+  proved every in-scope selector resolves >=16px + the 2 exceptions hold. TDD
+  drift-guard tests/test_core_panels_typography_v21_floor.py (7 tests). RC suite
+  8642 passed / 0 fail. Inline sole orchestrator (R9; 3 tiny disjoint CSS slices;
+  verifier role = the independent audit subagent + the live computed-style probe).
+- FUTURE (R4 NICE, deferred): .ib-builds-block .cs-build-row is clickable
+  (item_build.js click handler) but its tap target is not explicitly pinned to
+  --hit-min (renders ~42px incidentally); pre-existing, out of the typography
+  slice.
 - 2026-06-19 R3 (DIRECTOR REFILL cycle) DONE (`ab23c32c`) - DS passive_damage
   caster-defensive-stat scaling schema lift (ENGINE 1.144.0 -> 1.145.0). The
   DamageBlock.bonus_armor_pct / bonus_mr_pct fields + _SCALING_TARGETS mappings

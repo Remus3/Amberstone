@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-19 (gemini-loop R4 cycle) - core coaching panels typography-floor UI audit (LEDGER 514)
+
+Gemini DIRECTOR refill R4 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
+audit of three un-audited core coaching panels. Commit `9e56d23d`, CI pending push; Tier-1 CSS-only,
+0 ENGINE / 0 frozen / no DS / no Share / ADR-008 asset-hash auto-reload (no RC restart).
+
+- SCOPE: typography floor only (colors already tokenized). Tokenized 14 in-scope sub-floor (<16px)
+  font-sizes -> --fs-* (team_context 7x + .tc-slot radius; coach_choices .rc-src + stale fallbacks;
+  item_build ds-chip/em + build-label + item-cost + ib-builds-status + cs-build-label + build-value).
+  2 documented operator-exceptions kept sub-floor w/ inline rationale (.item-name 14px tile-clamp;
+  .cs-build-runes 10px dense column). EXCLUDED the cross-panel .kv/#nx-wave/.minimap-grid blocks in
+  item_build.css (already-audited Right Now/Next/Active-Match, C2).
+- TDD: tests/test_core_panels_typography_v21_floor.py FIRST (5 fail/2 pass RED) -> fix -> 7/7 GREEN
+  (mirrors test_csv_typography_v21_floor.py). Independent 5-phase audit subagent = SHIP, 0 MUST-FIX.
+- VISUAL + DISCOVERY: Claude_Preview ATTACHES to https://localhost:8888/ (prior cycles' "cannot
+  attach :8888" = the legion-rc hostname cert mismatch; localhost works). Computed-style probe on
+  the LIVE stylesheet: every in-scope selector resolves >=16px, the 2 exceptions hold, .rc-chip 42px
+  -> confirms the ADR-008 reload served the edits. [[reference_claude_preview_live_8888]]
+- VERIFY: RC suite 8642 passed/2 skip/0 fail (incl hygiene + bundle-parity guards); DS N/A (CSS,
+  Tier-1); ruff clean. Inline sole orchestrator (R9; verifier = audit subagent + live probe + fresh
+  suite). [[feedback_phase3_fixture_ritual]] / [[feedback_execution_efficiency_rules]].
+
+---
+
 # 2026-06-19 (gemini-loop R3 cycle) - DS passive_damage caster bonus-armor/MR scaling (LEDGER 513)
 
 Gemini DIRECTOR refill R3 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
@@ -56,32 +80,3 @@ Tier-0/1 CSS-only, 0 ENGINE / 0 frozen / no DS / no Share / ADR-008 auto-reload 
   ROADMAP-ref tests. Inline sole orchestrator (1 CSS line < worktree threshold; verifier skip R7).
 - NEXT: headless surface saturated (per LEDGER 511 completeness scan); remaining = live-gated /
   operator-product / outward-gated.
-
----
-
-# 2026-06-19 (re-run orchestrated Q&A swarm) - GPI drilldown swarm-found + shipped + D1 slice-3 (LEDGER 510/511)
-
-Operator re-fired the IDENTICAL "multi agent orchestrator Q&A swarm complete the open items" prompt
-(same as LEDGER 508/509, same day). Scope pre-resolved to full-autonomy ship-all (the identical prior
-run + overnight headless) - no re-ask. Repo unchanged since 508/509 so the disposition was nearly
-drained; shipped the one named headless follow-up + a swarm-discovered miss.
-
-- SHIPPED 2 (Tier-1, 0 ENGINE / 0 frozen / no DS / no Share): (510) D1 slice-3 `.pytest_cache` rglob
-  leak in `tools/ds_share_sync.py` (`_is_pyc` -> `_is_transient`, leak 5->0; cleaned the on-disk
-  working-tree pollution; commit `f4b8e0ee`); (511) GPI per-champion DRILLDOWN end-to-end (backend
-  `51b9e957` + UI selector `d050523b`, ADR-008 auto-reload). The re-run swarm's adversarial verifier
-  proved the prior swarm's "gpi-drilldown needs a Tier-2 champ-pool source" gate GROUND-TRUTH FALSE -
-  the source (`list_champions` = the join `compute_gpi` already runs) + the `?champion=` drilldown
-  backend already existed; only the UI selector was missing (BACKLOG L137 had it right). UI Fixture
-  Ritual: 5-phase PASS, 0 MUST-FIX (1 SHOULD-FIX `color-scheme: dark` applied in-slice); 5 snapshot
-  tests pass incl. a new drilldown interaction test.
-- DISCOVERY SWARM (`wf_afa19bf2`, 7 agents / 240s, read-only scan+verify over 6 open areas): 1 SHIP
-  (gpi-drill, shipped) + 1 GATED (carry-eff re-confirmed: the non-flip wiring is a provable no-op
-  under the DEFAULT-OFF read-gate; only lever = the operator product flip) + 4 CLOSED (d1-untrack
-  verb-redundant + un-track outward-coupled; universal-files out-of-repo; cdragon/p6 gated-or-done;
-  missed-scan found CLAUDE.md:6 ENGINE prose drift 1.101.0 vs 1.144.0 but correctly GATED on the
-  CLAUDE.md <60KB edit-discipline rule).
-- NEXT: the headless open surface is genuinely SATURATED - remaining work is live-game-gated
-  (`LIVE_GAME_GATED_SYNC.md`), operator-product (carry-eff flip; the CLAUDE.md ENGINE prose drift),
-  or outward/Gemini-gated (D1 un-track slices 2-4; p6 g3/g6/g7). No headless-safe slice remains per
-  the completeness scan.
