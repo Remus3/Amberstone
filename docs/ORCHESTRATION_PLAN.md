@@ -146,6 +146,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | R2 | ui-audit | 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Build Insights view + recent tabs (web/js/panels/build_insights.js, duration_winrate.js, op_score.js [directive said op_score_curve.js; real file is op_score.js], GPI drilldown player_gpi.js) + their CSS, vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness (Claude_Preview cannot attach to RC-owned :8888, per R1). | DONE | `9b55615d` |
+| R3 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_damage caster-defensive-stat scaling. Extend the passive_damage registry and to_damage_block to support caster bonus armor and bonus MR scaling (e.g., Taric P +15% bonus armor, Galio P +60% bonus MR). Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. | DONE | `ab23c32c` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -158,6 +159,28 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-19 R3 (DIRECTOR REFILL cycle) DONE (`ab23c32c`) - DS passive_damage
+  caster-defensive-stat scaling schema lift (ENGINE 1.144.0 -> 1.145.0). The
+  DamageBlock.bonus_armor_pct / bonus_mr_pct fields + _SCALING_TARGETS mappings
+  (-> caster_bonus_armor / caster_bonus_mr) + AbilityContext attrs ALREADY existed;
+  the gap was the hand-authored registry not carrying them. Added bonus_armor_pct /
+  bonus_mr_pct to PassiveDamageEntry + PerStackTerm; to_damage_block copies them
+  (ZERO new evaluator math). Seeded Taric P (25:93 + 15% bonus armor) + Galio P
+  (15:115 + 100% AD + 45% AP + 60% bonus MR), both default-OFF byte-identical, both
+  metadata-only (not AA-routed). EXHAUSTED 172-champ sweep: ONLY these 2 clean linear
+  cases. NEW residual (FUTURE, not built blind): K'Sante P "All Out Bonus" = bilinear
+  (caster bonus armor / MR x target max HP) + gated on the R-empowered All Out state -
+  needs a bilinear term keyed on caster_bonus_armor + a conditional_probability for the
+  All Out gate; Rammus W Defensive Ball Curl = 15 + 10% TOTAL armor + 10% TOTAL MR
+  on-being-hit reflect - needs a caster-total-MR _SCALING_TARGETS field (only
+  caster_armor total exists, no caster_mr) + a reflect cadence, wrong seam for the
+  empowered-AA registry. +18 characterization subtests; DS 7379 / RC 8634 green
+  (live-engine integration re-verified post-restart at 1.145.0). Share synced same
+  commit (--check green). Inline sole orchestrator (single-file schema lift < worktree
+  threshold per R9; verifier skip R7 - own single-thread, fresh dual suite + live curl
+  ARE the independent verify). [[reference_ds_bump_run_tests_dir]] /
+  [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_server_not_supervisor_watched]].
 
 - 2026-06-19 R2 (DIRECTOR REFILL cycle) DONE (`9b55615d`) - Section-3b 5-phase UI
   audit of the Build Insights surface + recent tabs + the item-511 GPI drilldown.
