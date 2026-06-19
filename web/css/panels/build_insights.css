@@ -86,7 +86,9 @@
 }
 .bi-table th.bi-sortable {
   cursor: pointer;
-  min-height: var(--hit-min);
+  /* height (not min-height) so the 42px --hit-min sort target is honored:
+   * min-height does not apply to a display:table-cell box, height does. */
+  height: var(--hit-min);
   user-select: none;
 }
 .bi-table th.bi-sortable:hover {
