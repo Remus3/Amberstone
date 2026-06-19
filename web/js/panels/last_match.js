@@ -8,7 +8,7 @@
  *   {
  *     found, match: {id, mode, champion, grade, kda_str, kda_ratio,
  *                    duration_s, kills/deaths/assists, cs, cs_per_min,
- *                    gold, gold_per_min, kp_pct, ds_picks: [...]},
+ *                    gold, gold_per_min, kp_pct, gold_share_pct, ds_picks: [...]},
  *     history_count, quick_review: {right, wrong_team, my_chronic}
  *   }
  * Each Quick Review item is {text, why} - `why` becomes the data-tt-html
@@ -922,11 +922,12 @@ function _rosterScores(roster) {
 }
 
 function _setStatsGrid(m, enriched) {
-  // s219 v6: section 2 of hero - 2 rows × 4 cols. Row 1: Vision / CS /
-  // Tanked. Row 2: KP% / Damage / CS/min / Heal+Shield.
+  // s219 v6: section 2 of hero - 2 rows x 4 cols. Row 1: Gold% / Vision /
+  // CS / Tanked. Row 2: KP% / Damage / CS/min / Heal+Shield.
   const cs       = document.getElementById("lm-cs");
   const cspm     = document.getElementById("lm-cs-per-min");
   const kp       = document.getElementById("lm-kp");
+  const gshare   = document.getElementById("lm-gold-share");
   const vision   = document.getElementById("lm-vision");
   const tankDmg  = document.getElementById("lm-tank-dmg");
   const damage   = document.getElementById("lm-damage");
@@ -937,6 +938,8 @@ function _setStatsGrid(m, enriched) {
                                 ? m.cs_per_min.toFixed(1) : "-";
   if (kp)   kp.textContent   = (typeof m.kp_pct === "number")
                                 ? `${Math.round(m.kp_pct)}%` : "-";
+  if (gshare) gshare.textContent = (typeof m.gold_share_pct === "number")
+                                ? `${Math.round(m.gold_share_pct)}%` : "-";
 
   // Enriched-only stats - Vision / Damage / Tanked / Heal+Shield.
   const e   = enriched || {};
@@ -1230,7 +1233,7 @@ function _setEmptyState(errMsg) {
   const champEl = document.getElementById("lm-champion-name");
   if (champEl) { champEl.textContent = "-"; champEl.dataset.champion = ""; }
   ["lm-mode-tag","lm-kda-text","lm-kda-ratio","lm-grade-badge",
-   "lm-cs","lm-cs-per-min","lm-kp",
+   "lm-cs","lm-cs-per-min","lm-kp","lm-gold-share",
    "lm-vision","lm-tank-dmg","lm-damage","lm-healing",
    "lm-rank-kda","lm-rank-vision","lm-rank-cs","lm-rank-tank",
    "lm-rank-kp","lm-rank-damage","lm-rank-cspm","lm-rank-heal"].forEach((id) => {

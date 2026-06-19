@@ -21,6 +21,7 @@ from dashboard.builders_lcu_enrich import (
     _attach_match_timeline,
     _enrich_from_lcu,
 )
+from core.carry_share import gold_share_pct
 
 
 def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a: int) -> list[dict]:
@@ -467,6 +468,8 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
             "gold":             int(gold or 0) if gold is not None else None,
             "gold_per_min":     float(gpm or 0.0) if gpm is not None else None,
             "kp_pct":           float(kp) if kp is not None else None,
+            "gold_share_pct":   (gold_share_pct(enriched.get("roster"))
+                                 if enriched else None),
             "label":            label or "",
             "coach_action":     coach_action,
             "ds_picks":         ds_picks,
