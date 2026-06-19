@@ -4,6 +4,27 @@
 
 ---
 
+# 2026-06-19 (orchestrated Q&A swarm) - complete the non-live open items (LEDGER 508/509)
+
+Operator: "multi agent orchestrator Q&A swarm complete the open items" + a scope
+AskUserQuestion -> "Full autonomy, ship all". Read-only Workflow (20 agents = 10 items x
+Draft+Verify; 1.69M tok / 414s), all 10 CONFIRM; supervisor applied the safe slices serially.
+Commits `4623edd7` + `186a9165` + `a78fe657`, CI green (27847530746); Tier-1, NO ENGINE /
+0 frozen / no DS / no Share.
+
+- SHIPPED 2: 508 hz laning report `even` bucket + even<->hold map (`tools/hz_shadow_report.py`,
+  report-only, +57 ticks 39%->53%); 509 D1 slice-1 `test_ds_share_sync_determinism.py` lock.
+- ALREADY-SHIPPED 3 (do NOT redo): aram-override (467 `97920f56`), ci-watchdog (204 `391191be`
+  built-not-armed, ROADMAP fixed), weekly-hygiene red (444; stale, self-heals 06-21).
+- GATED-NOT-LIVE 5 (unblocks in LEDGER 509): carry-eff default-ON = operator A/B/C call (the
+  `_ROLE_BASELINES` lever is WRONG, collides w/ sum-5.0 invariant; literal flip = silent no-op);
+  gpi-drilldown needs a Tier-2 champ-pool source; universal-files out-of-repo; cdragon PGR-S2-gated;
+  p6-g6 FORBIDDEN_BLIND, g3/g7 Gemini-down.
+- NEXT (gated): hz engine threshold + LFS regen + live flip (`matchup.py`); D1 slices 2-4 (un-track
+  + CI flip + gist re-key, outward; + the `.pytest_cache` rglob leak).
+
+---
+
 # 2026-06-19 (interactive) - Arena coach same-state Haiku-skip debounce seam (LEDGER 507)
 
 Operator: "continue what is open" with the gemini+AHK loop STOPped (control/STOP since 06-18),
@@ -45,29 +66,3 @@ D11 = n/a (no 405 in repo). EXCLUDED (stated, not silent): name-scrub (destructi
 DPM damage-share (data-blocked), cdragon by-level (new schema axis). NEXT (operator-gated): the
 live FLIPs (ARAM debounce ON / aggregator B grade ON / HZ-B-final) await live/replay validation; D1 full
 de-dup is its own session.
-
----
-
-# 2026-06-19 (run 2026-06-19-05) - headless-upgrade: gold-share PGR carry-efficiency stat (DISPLAY-only)
-
-Operator `/headless-upgrade`. HEAD `6d3d7e03` -> `67fe203d` (gemini-loop relaunch directive
-+ REFILL PROTOCOL) -> `a6c4d384` (S1 gold_share) -> docs sync. CI green, NO ENGINE bump /
-frozen edits / worktrees / DS restart. Fresh run-id 2026-06-19-05.
-
-Thin-queue night #7 (6 prior runs agree): Haiku-to-ZERO uniformly data/calibration-gated
-(no live games), DS saturated + forward-marker exhausted, competitor 4-5 teardowns/11d,
-RuneWriter open bug live-repro-gated (fb0dd83b unit state-machine already re-arms; real cause
-= stale LCU view post-game-1, unverifiable headless - do NOT re-investigate headless).
-
-- **S1 `a6c4d384`:** gold-share carry-efficiency stat on Post Game Review. Fills R2
-  competitor-lift residual 1 (gold_share had 0 producers; KP already existed). NEW
-  `core/carry_share.gold_share_pct(roster)` DISPLAY-only (no match_metrics grade fold = no
-  schema change/backfill). Wired to last_match match_row + the PGR hero grid (fills the empty
-  spacer cell, zero reflow) + last_match.js + 3 ui_mock fixtures. +8 tests. Visual PROVEN via
-  the PGR snapshot harness (GOLD% 23%, 0 JS errors) - NOT owed. Live /api/last-match=19.2.
-- **Cost 7-lever sweep:** CLEAN-by-inheritance (run -04 swept ~hours ago, no runtime code since).
-- **DS audit / competitor:** SKIP (saturation re-derive = anti-pattern).
-
-NEXT (operator-gated): aram_coach same-state Haiku-skip debounce (BACKLOG L59, biggest
-cost+Haiku lever, signature bucketing = fidelity judgment, do-not-flip-blind); Haiku flips +
-RuneWriter fix await live games. Committed the gemini-loop relaunch directive (uncommitted 4 prior runs).
