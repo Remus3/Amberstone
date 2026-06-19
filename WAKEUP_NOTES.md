@@ -4,6 +4,38 @@
 
 ---
 
+# 2026-06-18 (PM6) - 16.12.1 Arena ability-haste drift fix (3 mirror ids; ENGINE 1.143.0)
+
+Operator "continue open items from last run". PM3's `TIER2_REPORT.md` cross-eval
+bounded queue is fully DRAINED headless (Aphelios C=1.128.0, B1=1.141.0/PM4,
+F2=1.142.0/PM5; A ARAM-override stays default-OFF). Picked a fresh self-directed
+DS data-correctness unit. Commit `8c63b79b`, CI run 27799329481.
+
+- **PREFLIGHT:** PM5 (F2, 1.142.0) verified landed clean - HEAD==origin/main,
+  DS :8893 live 1.142.0 (it is HTTP not HTTPS - earlier "DS probe failed" was a
+  curl scheme mistake), Share in sync 367. Same external anomalies persist
+  (RC-GeminiAudit result=3 gemini loop DOWN / RC-WeeklyHygiene result=1; not
+  locally fixable).
+- **AH drift fix (item 498, ENGINE 1.142.0 -> 1.143.0; DS :8893 restarted pid-relaunch; Share 367).**
+  `_item_ability_haste.py` was pinned at 16.10.1 (no committed regen tool, exactly
+  as [[reference_item_ah_registry_drift]] warned). NEW `ops/audit/item_ah_drift_check.py`
+  (regen-from-DDragon + diff) found 3 stale `22`-prefixed Arena mirror ids that
+  Riot normalized DOWN in 16.12.1 - Imperial Mandate `224005` 35->15, Iceborn
+  `226662` 10->15, Serylda's `226694` 10->15 (ground-truthed vs 16.11.1-vs-16.12.1
+  DDragon stats blocks). SR/ARAM canonicals already 15. Feeds `compute_ability_dps`
+  Arena cooldowns -> Tier-2. **OVER-FIX GUARD:** a naive alias==canonical sweep
+  flagged 25, but 22/25 are legit Arena-boosted variants (verified vs DDragon) -
+  only the 3 true drifts touched ([[reference_items_index_alias_ids]]). TDD RED->GREEN;
+  the stale `224005==35` test (correct at 16.11.1) updated to 15 + a new normalization
+  test. 88 ENGINE pins / 80 files (quoted-only). DS-dir 7361 / 1 skip / 1942 subtests
+  + RC tests/ all green (7 anchor/live-engine fails were expected pre-sync, GREEN
+  after ds_share_sync + DS restart). Correct-by-construction -> NO LIVE_GATED entry
+  (already live at 1.143.0, not a default-OFF flip).
+- `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run
+  loop tuning, untouched PM2-PM6; gemini loop DOWN).
+
+---
+
 # 2026-06-18 (PM5) - F2 cost-aware-top gate (DS Tier-2 nom F2, DEFAULT-OFF; ENGINE 1.142.0)
 
 Operator "continue open items from last run". Shipped the second bounded DS Tier-2
