@@ -163,6 +163,26 @@ REJECTS (documented, NOT seeded):
 KogMaw P "Icathian Surprise" is explicitly NOT a damage passive (it is the
 death-state self-detonation zombie passive); do NOT author it.
 
+GAP-2 CASTER-DEFENSIVE-STAT passives (item 513, caster bonus armor / bonus MR
+schema lift): some empowered-AA passives deal bonus damage scaling on the
+CASTER's bonus armor or bonus magic resistance (the resist-tank "I hit harder
+the tankier I am" form). The ``DamageBlock.bonus_armor_pct`` /
+``bonus_mr_pct`` fields, their ``_SCALING_TARGETS`` mappings (->
+``caster_bonus_armor`` / ``caster_bonus_mr``), and the ``AbilityContext``
+attributes ALREADY existed; this lift only carries the two %-fields THROUGH the
+registry (``PassiveDamageEntry`` + ``PerStackTerm`` + ``to_damage_block``) so
+``_evaluate_block`` applies them with ZERO new evaluator math. SEEDED from
+verbatim 16.11.1 effects_descriptions, both default-OFF byte-identical: Taric P
+Bravado (25 : 93 based on level + 15% bonus armor) + Galio P Colossal Smash
+(15 : 115 based on level + 100% AD + 45% AP + 60% bonus MR). Both resolve to a
+pure flat base at the default no-build ctx (caster bonus resists 0), so they are
+not inert there. EXHAUSTED sweep (all 172 champs, no_damage forms with bonus-
+armor / bonus-MR + damage text) found ONLY these two clean linear cases;
+documented NOT-seeded: K'Sante P (bilinear caster_bonus_resist * target_max_hp
+PRODUCT, gated on the All Out state - needs the item-248 bilinear form +
+conditional_probability) and Rammus W (TOTAL-resist on-being-hit reflect - no
+caster total-MR field + wrong cadence).
+
 Applied at load time in ``abilities.AbilitiesSnapshot.load`` (behind the
 opt-in flag) so every consumer (ability_dps / burst / dps / fight_report /
 scenario / hps) would see the same corrected form uniformly when enabled.
@@ -268,6 +288,11 @@ class PerStackTerm:
     target_max_hp_pct: float | tuple[float, ...] = 0.0
     target_missing_hp_pct: float | tuple[float, ...] = 0.0
     target_current_hp_pct: float | tuple[float, ...] = 0.0
+    # item 513 caster-defensive-stat lift: % of the CASTER's bonus armor / bonus
+    # magic resistance, per stack (route to caster_bonus_armor / caster_bonus_mr
+    # via _SCALING_TARGETS). Default 0.0 = no per-stack caster-resist term.
+    bonus_armor_pct: float | tuple[float, ...] = 0.0
+    bonus_mr_pct: float | tuple[float, ...] = 0.0
 
 
 @dataclass(frozen=True)
@@ -310,6 +335,19 @@ class PassiveDamageEntry:
     # byte-identical at the default ctx and surfaces only under
     # resolve_target_relative + a sub-threshold target_current_hp_pct.
     target_missing_hp_pct: float | tuple[float, ...] = 0.0
+    # item 513 caster-defensive-stat lift: % of the CASTER's bonus armor / bonus
+    # magic resistance (the resist-tank "hit harder the tankier I am" form -
+    # Taric Bravado +15% bonus armor, Galio Colossal Smash +60% bonus MR). The
+    # DamageBlock.bonus_armor_pct / bonus_mr_pct fields + their _SCALING_TARGETS
+    # mappings (-> caster_bonus_armor / caster_bonus_mr) + the AbilityContext
+    # attributes already existed; this carries them THROUGH the registry. A flat
+    # float is a level-flat %; a tuple is per-level (value_at-indexed). Resolves
+    # to 0 at the default no-build ctx (caster_bonus_armor / caster_bonus_mr both
+    # 0 with no items), so an entry carrying only these terms is inert until a
+    # real build context feeds non-zero bonus resists - the same resting-lower-
+    # bound contract as the missing-HP terms. Default 0.0 = byte-identical.
+    bonus_armor_pct: float | tuple[float, ...] = 0.0
+    bonus_mr_pct: float | tuple[float, ...] = 0.0
     # Bilinear product terms (item 248 schema lift): each
     # ``(factor, ctx_attr_a, ctx_attr_b)`` from ``_per_100(...)`` rides the
     # synthetic block as ``factor * ctx[a] * ctx[b]`` (an AP-scaled %-of-HP
@@ -785,6 +823,57 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         note="Icebreaker frozen detonation: 10% target max HP bonus magic on the next hit vs a Sejuani-Frozen target; conditional_probability 0.5 = documented CC-detonation firing midpoint (operator-tunable); cap 250 vs epic champ-context",
         attribute="Icebreaker",
     ),
+    # ------------------------------------------------------------------
+    # GAP-2 CASTER-DEFENSIVE-STAT passives (item 513, caster bonus armor /
+    # bonus MR scaling). The resist-tank "I hit harder the tankier I am" form -
+    # an empowered basic attack whose bonus magic damage scales on the CASTER's
+    # bonus armor or bonus magic resistance. Both are no_damage P-forms with
+    # empty damage_blocks (verified 16.11.1 + 16.12.1), so the synthetic block
+    # is the only damage block - no double-count. cadence="on_hit" but NEITHER
+    # is on the _AA_ROUTED_ON_HIT_KEYS allowlist (Taric's is post-spell 2-hit,
+    # Galio's is periodic - both internally gated, not every-AA), so the block
+    # stays metadata-only / inert in scorers exactly like Lux / Ziggs. All
+    # default-OFF byte-identical. Sibling sweep (all 172 champs, no_damage forms
+    # with "bonus armor"/"bonus magic resist"+"damage" text) found ONLY these two
+    # clean linear cases; documented rejects:
+    #   - K'Sante P All Out Bonus (1% + 1%/100 bonus armor + 1%/100 bonus MR of
+    #     target max HP): bilinear (caster_bonus_resist * target_max_hp PRODUCT)
+    #     AND gated on the R-empowered "All Out" state - needs the item-248
+    #     bilinear form keyed on caster_bonus_armor + a conditional_probability
+    #     for the All Out gate. Staged, not seeded blind (over-models if always-on).
+    #   - Rammus W Defensive Ball Curl (15 + 10% total armor + 10% total MR
+    #     reflect): scales on TOTAL resists (no caster total-MR _SCALING_TARGETS
+    #     field) AND is a reactive on-being-hit reflect, not an empowered AA -
+    #     wrong cadence for this seam.
+    # ------------------------------------------------------------------
+    # Taric Bravado: "After casting an ability, Taric empowers his next two
+    # basic attacks ... deal 25 : 93 (based on level) (+ 15% bonus armor) bonus
+    # magic damage". Pure caster-bonus-armor scaling, smooth level lerp.
+    ("Taric", "P", 0): PassiveDamageEntry(
+        base=_lerp_per_level(25.0, 93.0),
+        bonus_armor_pct=15.0,
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Bravado: 25 : 93 (based on level) (+ 15% bonus armor) bonus magic on the next 2 post-cast basic attacks; metadata-only (NOT AA-routed: post-spell 2-hit gate, not every-AA)",
+        attribute="Bravado",
+    ),
+    # Galio Colossal Smash: "Periodically, Galio's next basic attack is empowered
+    # ... deal 15 : 115 (based on level) (+ 100% AD) (+ 45% AP) (+ 60% bonus
+    # magic resistance) modified magic damage to the target and all enemies near
+    # them". 100% AD = TOTAL AD (total_ad_pct). The crit interaction ("the AD
+    # ratio can critically strike for (175% + 40%)") is OMITTED - it belongs in
+    # the AA-crit seam, not a passive damage block; the modeled base + AD + AP +
+    # bonus-MR terms are exact.
+    ("Galio", "P", 0): PassiveDamageEntry(
+        base=_lerp_per_level(15.0, 115.0),
+        total_ad_pct=100.0,
+        ap_pct=45.0,
+        bonus_mr_pct=60.0,
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Colossal Smash: 15 : 115 (based on level) (+ 100% AD) (+ 45% AP) (+ 60% bonus MR) modified magic on the periodic empowered basic attack; crit interaction omitted (AA-crit seam); metadata-only (NOT AA-routed: periodic gate, not every-AA)",
+        attribute="Colossal Smash",
+    ),
 }
 
 
@@ -854,6 +943,9 @@ def to_damage_block(entry: PassiveDamageEntry):
         "target_max_hp_pct",
         "target_missing_hp_pct",
         "target_current_hp_pct",
+        # item 513 caster-defensive-stat lift (caster bonus armor / bonus MR).
+        "bonus_armor_pct",
+        "bonus_mr_pct",
     ):
         v = _eff(fld)
         if _present(v):
