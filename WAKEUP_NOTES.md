@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-06-19 (re-run orchestrated Q&A swarm) - GPI drilldown swarm-found + shipped + D1 slice-3 (LEDGER 510/511)
+
+Operator re-fired the IDENTICAL "multi agent orchestrator Q&A swarm complete the open items" prompt
+(same as LEDGER 508/509, same day). Scope pre-resolved to full-autonomy ship-all (the identical prior
+run + overnight headless) - no re-ask. Repo unchanged since 508/509 so the disposition was nearly
+drained; shipped the one named headless follow-up + a swarm-discovered miss.
+
+- SHIPPED 2 (Tier-1, 0 ENGINE / 0 frozen / no DS / no Share): (510) D1 slice-3 `.pytest_cache` rglob
+  leak in `tools/ds_share_sync.py` (`_is_pyc` -> `_is_transient`, leak 5->0; cleaned the on-disk
+  working-tree pollution; commit `f4b8e0ee`); (511) GPI per-champion DRILLDOWN end-to-end (backend
+  `51b9e957` + UI selector `d050523b`, ADR-008 auto-reload). The re-run swarm's adversarial verifier
+  proved the prior swarm's "gpi-drilldown needs a Tier-2 champ-pool source" gate GROUND-TRUTH FALSE -
+  the source (`list_champions` = the join `compute_gpi` already runs) + the `?champion=` drilldown
+  backend already existed; only the UI selector was missing (BACKLOG L137 had it right). UI Fixture
+  Ritual: 5-phase PASS, 0 MUST-FIX (1 SHOULD-FIX `color-scheme: dark` applied in-slice); 5 snapshot
+  tests pass incl. a new drilldown interaction test.
+- DISCOVERY SWARM (`wf_afa19bf2`, 7 agents / 240s, read-only scan+verify over 6 open areas): 1 SHIP
+  (gpi-drill, shipped) + 1 GATED (carry-eff re-confirmed: the non-flip wiring is a provable no-op
+  under the DEFAULT-OFF read-gate; only lever = the operator product flip) + 4 CLOSED (d1-untrack
+  verb-redundant + un-track outward-coupled; universal-files out-of-repo; cdragon/p6 gated-or-done;
+  missed-scan found CLAUDE.md:6 ENGINE prose drift 1.101.0 vs 1.144.0 but correctly GATED on the
+  CLAUDE.md <60KB edit-discipline rule).
+- NEXT: the headless open surface is genuinely SATURATED - remaining work is live-game-gated
+  (`LIVE_GAME_GATED_SYNC.md`), operator-product (carry-eff flip; the CLAUDE.md ENGINE prose drift),
+  or outward/Gemini-gated (D1 un-track slices 2-4; p6 g3/g6/g7). No headless-safe slice remains per
+  the completeness scan.
+
+---
+
 # 2026-06-19 (orchestrated Q&A swarm) - complete the non-live open items (LEDGER 508/509)
 
 Operator: "multi agent orchestrator Q&A swarm complete the open items" + a scope
