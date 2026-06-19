@@ -47,10 +47,13 @@ _GPI_STUB = """
   window.fetch = function (u, o) {
     const url = (typeof u === 'string') ? u : (u && u.url) || '';
     if (url.indexOf('/api/player-profile') >= 0) {
+      const cm = url.match(/[?&]champion=(\\d+)/);
+      const champ = cm ? parseInt(cm[1], 10) : null;
       const body = {
-        ok: true, mode: 'sr', champion: null,
+        ok: true, mode: 'sr', champion: champ,
         n_games: 619, window: 20, min_games: 10,
         confidence: 'high', axes: AXES, overall: 55.0,
+        champions: [{champion_id: 64, n_games: 20}, {champion_id: 99, n_games: 8}],
         weakest_axis: 'vision',
         tip: 'Ward more - your vision per minute is low; carry a control ward and sweep before objectives.'
       };
@@ -186,6 +189,21 @@ def test_player_gpi_radar_renders(mock_server, pw_browser):
         )
         assert active == ["sr"], f"expected SR active in toggle, got {active}"
 
+        # Champion drilldown selector (item 511): an "All champions" default plus
+        # one option per played champ; option values are the champion ids from
+        # the payload's champions[] pool. Asserting values (not names) is robust
+        # to the CHAMPS name table not being loaded in the mock context.
+        opt_vals = page.eval_on_selector_all(
+            "#player-gpi-panel .gpi-champ-select option",
+            "els => els.map(e => e.value)",
+        )
+        assert opt_vals == ["", "64", "99"], f"champ-select options: {opt_vals}"
+        first_opt = page.eval_on_selector(
+            "#player-gpi-panel .gpi-champ-select option",
+            "el => el.textContent.trim()",
+        )
+        assert first_opt == "All champions", f"first option: {first_opt!r}"
+
         # Weakest-axis tip (item 451): the lead chip names the axis (Vision was
         # the lowest relative axis in the stub) and the tip text renders.
         tip_axis = page.eval_on_selector(
@@ -203,6 +221,46 @@ def test_player_gpi_radar_renders(mock_server, pw_browser):
         page.close()
         ctx.close()
 
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_player_gpi_champion_drilldown(mock_server, pw_browser):
+    """Selecting a champion re-fetches the profile filtered to it (item 511).
+
+    The change handler re-shows for the picked champion; the stub echoes the
+    ?champion= from the URL so we can confirm the drilldown re-rendered with the
+    selected champion active (the radar stays rendered, not torn down)."""
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, _GPI_STUB)
+    page.evaluate(
+        """async () => {
+          const m = await import('/js/panels/player_gpi.js');
+          if (m._resetPlayerGpi) m._resetPlayerGpi();
+          m.showPlayerGpi('sr', 'player-gpi-panel');
+        }"""
+    )
+    page.wait_for_function(
+        "document.querySelectorAll('#player-gpi-panel .gpi-area').length > 0",
+        timeout=10_000,
+    )
+    try:
+        # Drill into champion 64 -> change fires -> re-fetch ?champion=64 -> the
+        # panel re-renders with 64 selected (and still shows the radar).
+        page.select_option("#player-gpi-panel .gpi-champ-select", "64")
+        page.wait_for_function(
+            "(() => { const s = document.querySelector("
+            "'#player-gpi-panel .gpi-champ-select');"
+            " return s && s.value === '64'"
+            " && document.querySelectorAll("
+            "'#player-gpi-panel .gpi-area').length > 0; })()",
+            timeout=10_000,
+        )
+        val = page.eval_on_selector(
+            "#player-gpi-panel .gpi-champ-select", "el => el.value"
+        )
+        assert val == "64", f"champion not selected after drilldown: {val!r}"
+    finally:
+        page.close()
+        ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
 
 
