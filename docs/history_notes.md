@@ -42,6 +42,38 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (run 2026-06-19-03) - headless-upgrade: arena augment-select shadow capturer (4b)
+
+Operator launched `/headless-upgrade`. HEAD `98c04ea4` -> `72cd1681` (1 code commit +
+docs sync), CI green, NO ENGINE bump / frozen edits / worktrees / DS version-restart.
+Prior manifest 2026-06-19-02 fully wrapped, so fresh run-id 2026-06-19-03.
+
+Thin-queue night #5 (4 prior WAKEUPs agree). Found the ONE clean PRIMARY-aligned,
+non-blind, headless-safe slice left: the last uncovered TIER-1 in-game Haiku site.
+
+- **S1 `72cd1681` (4b PRIMARY, the one ship):** arena augment-select shadow capturer.
+  Pre-flight (`ops/audit/HZ_HAIKU_CALL_INVENTORY.md`) mapped coverage: aram laning+build
+  + champ-select pick-advisor (item 500) covered; the genuine uncovered high-spend gap =
+  arena augment-select (`coaches/arena_coach.py:758` arena_aug_select). The deterministic
+  `core/augment_recommender.recommend` (pure win-rate ranker, mode=arena) ALREADY runs in
+  parallel (S5) and reco_fields are persisted alongside Haiku's aug_take, but the pair was
+  never recorded -> flip accrued ZERO validation data (identical to the champ-select gap
+  closed -18-03). NEW `core/augment_shadow.py` mirrors `core/champ_select_shadow.py`:
+  fail-soft atomic append to `data/augment_shadow.jsonl`, dedup on (mode,champion,offered,
+  picked), records native Haiku {take,why,plan} vs the deterministic ranking per offer
+  state. Plus `summarize_agreement()` (hz_shadow_report analog) = name-normalized top-1
+  agreement + Haiku-take rank in the det ranking. Wired fail-soft AFTER the served write,
+  NO flip (arena_coach not frozen). +9 tests; 117 aug + 37 arena green.
+- **P3 cost sweep 7/7 CLEAN** (matches last 3 runs): all coach max_tokens 100-650 << 2048
+  haiku floor so correctly uncached (item286 guard); no sub-500ms polls; guards 11 green.
+- **DS audit SKIP:** saturation wall (forward-marker exhausted, registries machine-guarded).
+- **NEXT (operator-gated):** (a) arena augment FLIP after shadow rows accrue on real Arena
+  games - read `core.augment_shadow.summarize_agreement('data/augment_shadow.jsonl')`;
+  (b) laning even<->hold mapping (+57 ticks 39%->53%); (c) champ-select+build flip-gates
+  accrue on next live games. ops/loop/{config.json,director_prompt.md} STILL uncommitted.
+
+---
+
 # 2026-06-19 (run 2026-06-19-02) - headless-upgrade: HZ shadow-report build-lean axis + laning even-disagg (4b)
 
 Operator launched `/headless-upgrade`. HEAD `d7f5e527` -> `278d0253` (1 code commit +
