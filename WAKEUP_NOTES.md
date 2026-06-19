@@ -4,6 +4,34 @@
 
 ---
 
+# 2026-06-18 (PM5) - F2 cost-aware-top gate (DS Tier-2 nom F2, DEFAULT-OFF; ENGINE 1.142.0)
+
+Operator "continue open items from last run". Shipped the second bounded DS Tier-2
+ship-or-close nomination from PM3's `TIER2_REPORT.md`. Commit `<hash>`, CI GREEN.
+
+- **PREFLIGHT:** DS :8893 was DOWN (no proc) -> relaunched detached, healthy ENGINE 1.141.0 ->
+  (post-bump) 1.142.0. RC-DaemonSlayer result=1 / RC-GeminiAudit result=3 / RC-WeeklyHygiene
+  result=1 = same external/stale anomalies as PM3/PM4 (gemini loop DOWN, not locally fixable).
+- **F2 cost-aware-top (item 497, ENGINE 1.141.0 -> 1.142.0; DS :8893 restarted; Share 367).**
+  `rank.py` `sort_by="delta"` scales with cost -> 6000g ARAM/Arena Void Immolation `223069` ranks #1
+  on hybrid/bruiser + ehp/tank across ~66 champs (artifact, NO WIN gate). NEW DEFAULT-OFF
+  `cost_ceiling` param on the shared `_filter_candidates` (drop `gold.total` STRICTLY > ceiling)
+  threaded through `rank_items`/`rank_items_by_ehp`/`rank_items_by_hybrid`; other 4 callers unchanged
+  -> byte-identical OFF. +12 TDD (difference-of-differences). Reproduced live (Garen bruiser ARAM
+  rank-1 = 223069). PM4 id/mode subtlety RESOLVED: 223069 is a genuine base id (maps 12+30 ARAM+Arena),
+  NOT the `22`-alias quirk; report "ARAM-exclusive" imprecise. DS-dir 7360 / RC tests/ 8439 green;
+  87 ENGINE pins / 79 files; Share --check in sync.
+- **B2 found largely ALREADY SHIPPED** (DSP11 `prefer_kit_axis_by_win` + DSP2 `exempt_offclass_by_win`)
+  - only per-champion live re-rank validation remains. A ARAM-override stays default-OFF. B1+F2
+  bounded Tier-2 nominations now DONE; lane tail is live-validation-gated -> `LIVE_GAME_GATED_SYNC.md`.
+- **Doc-budget:** pre-existing `test_roadmap_md_under_budget` RED (82556 > 80KB; CI runs no pytest so
+  PM4 missed it) cleared by relocating the shipped item-320 `prefer_cdragon_ratios` block verbatim to
+  `ROADMAP_HISTORY.md` (now 81269 < 81920).
+- `ops/loop/{config.json,director_prompt.md}` STILL uncommitted (operator pre-run loop tuning,
+  untouched PM2-PM5; gemini loop DOWN).
+
+---
+
 # 2026-06-18 (PM4) - B1 melee-applicability gate (DS Tier-2 nom B, DEFAULT-OFF)
 
 Operator "continue open items from last run". Shipped the single named highest-value DS
@@ -62,28 +90,3 @@ DEFERRED / NEXT:
 - ops/loop/config.json + director_prompt.md STILL uncommitted (operator pre-run loop tuning; left
   untouched PM2 + PM3).
 
----
-
-# 2026-06-18 (PM2) - headless deep-research+lift: R2 competitor fan-out + Game Flow tab
-
-Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b17531e1`.
-
-- **R2 competitor fan-out** (aggregator B / aggregator A / Aggregator Z1 / aggregator G, 4 parallel deep-dive agents).
-  RC supersedes/has nearly the whole surface. **Verify-gate caught a wrong agent HAVE:** the
-  aggregator G "win-prob match-flow curve" NOW pick is ALREADY shipped (`web/js/panels/pgr_winprob.js`,
-  PGR S3) - the agent read only post_game_phases.js and missed the graph. Reclassified CLOSED.
-- **SHIPPED F-DPM per-minute performance curve** (the one genuine own-data gap = Aggregator Z1's
-  signature graph): `core/perf_curve.py` -> `/api/perf-curve?mode=&metric=&champion=` -> Build
-  Insights "Game Flow" tab (inline-SVG dual win/loss line, gold/cs toggle). Avg cumulative
-  gold/CS per game minute over the own rewind corpus, win-vs-loss split. Pure aggregation over
-  timeline_frames, no global/Riot/Claude dep, no DS schema. TDD +42 (11 module + 18 route + 13
-  DOM). Live aram/gold n=2004 (wins pull ahead by min5), sr/cs n=618. RC pid 22672. Tier-1.
-- **Section-3b UI audit 5/5 CLEAN, 0 MUST-FIX.** **VISUAL CAPTURE OWED** (Game-PC :8892 down +
-  Claude_Preview MCP not connected this session). Carry-forward.
-- **FUTURE -> BACKLOG** (`docs/COMPETITOR_LIFT_2026-06-18_R2.md`): aggregator B carry-efficiency grade
-  axes (gold_share verified 0 hits, Tier-2 grade re-baseline = product call); aggregator A OP-Score
-  per-interval performance curve (new scoring model); DPM damage-per-min (cumulative-all-units
-  trap, needs a to-champs frame field); aggregator G lane-vs-full WPA totals (marginal).
-- **NEXT:** F-UGG1 carry-efficiency as a DISPLAY-only stat (LOW-risk, no grade change).
-- **Still open from earlier today:** ops/loop/config.json + director_prompt.md modified
-  (operator pre-run loop tuning) - NOT committed; review/commit/discard next session.
