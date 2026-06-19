@@ -137,6 +137,16 @@ triage NOW/FUTURE/CLOSED only. Director picks ONE top-down.
 |----|-------|-------|--------|--------|
 | R1 | lift | Section-7b heavyweight deep-dive competitor lift of one major tool NOT yet reviewed (Aggregator H), 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-18.md (third-party names out of core repo code). ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); a HIGH-lift with a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. | DONE | `e9f70e7d` |
 
+## Sessions - DIRECTOR REFILL 2026-06-19
+
+Authored by the gemini director on REFILL after R1 (Aggregator H lift) drained.
+Self-directed work unit: a Section-3b 5-phase UI audit of the newly expanded Build
+Insights surface + its recent tabs + the GPI drilldown selector. Director picks ONE.
+
+| ID | Theme | Scope | Status | Commit |
+|----|-------|-------|--------|--------|
+| R2 | ui-audit | 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Build Insights view + recent tabs (web/js/panels/build_insights.js, duration_winrate.js, op_score.js [directive said op_score_curve.js; real file is op_score.js], GPI drilldown player_gpi.js) + their CSS, vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness (Claude_Preview cannot attach to RC-owned :8888, per R1). | DONE | `9b55615d` |
+
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
 - DS Phase-D default-ON flag flips (apply_passive_damage, non-every-AA on_hit, per-stack assumed_stacks) - need real-game re-ranking validation.
@@ -148,6 +158,38 @@ triage NOW/FUTURE/CLOSED only. Director picks ONE top-down.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-19 R2 (DIRECTOR REFILL cycle) DONE (`9b55615d`) - Section-3b 5-phase UI
+  audit of the Build Insights surface + recent tabs + the item-511 GPI drilldown.
+  PREMISE CORRECTION ([[feedback_verify_before_declare_broken]]): the directive named
+  op_score_curve.js; the real file is web/js/panels/op_score.js (op_score_curve is the
+  BACKEND core module). Audited the 4 real panels JS+CSS (build_insights /
+  duration_winrate / op_score / player_gpi) vs docs/UI_SCALE_SPEC_V2.md. STRUCTURE PASS
+  (mounts/tabs/wiring test-locked); TYPOGRAPHY PASS (all DOM type on v2.1 --fs-* tokens;
+  the only sub-16px values are SVG <text> user-units in scaled viewBoxes - op-ylab/op-xlab
+  13px, gpi-axis 8/8.5px - each with an inline rationale = documented exceptions); ASCII
+  PASS (py byte-scan 0 bytes >0x7F across all 8); HIERARCHY PASS (max-width caps +
+  min-width:0 radar + ellipsis select, no h-scroll at 1920). HIT-TARGETS: 1 MUST-FIX ->
+  .bi-table th.bi-sortable set min-height for --hit-min, a no-op on a display:table-cell
+  box, so the 42px sortable-header target was never applied; fixed to height (honored as a
+  cell minimum). Deferred NICE-TO-HAVE: gpi-tip --radius-sm vs --panel-radius-sm (would
+  churn the gpi snapshot PNG); Min-buys control inert on chart/curve tabs (already
+  R1-logged). VISUAL PROOF: Claude_Preview cannot attach to RC-owned :8888 (per R1) -> the
+  Playwright snapshot harness tests/snapshot_panels/test_player_gpi_view.py 5/5 PASSED incl.
+  test_player_gpi_champion_drilldown (item-511 selector) + regenerated player-gpi_radar.png
+  (byte-identical; GPI panel unchanged). VERIFY: full RC suite tests/
+  --ignore=tests/daemon_slayer 8634 passed / 1 failed / 2 skip - the lone failure was
+  PRE-EXISTING (test_doc_size_budget::test_roadmap_md_under_budget; ROADMAP.md 82355 > 81920
+  after the item-510/511 commits; CI runs no pytest so it slipped). Fixed red-first by
+  relocating the 2026-06-01 DS Phase A/B/C + champ-select shipped epic (items 241-259) to
+  docs/ROADMAP_HISTORY.md (breadcrumb keeps the Phase-D + #7/#8 residual); ROADMAP 76587
+  bytes, doc-size 2 passed, 47 ROADMAP-ref tests re-verified. CSS-only -> asset-hash
+  auto-reload (ADR-008), no RC restart. NO DS / Share / frozen / ENGINE / backfill. INLINE
+  sole orchestrator (edit footprint 1 CSS line, below the worktree-slice threshold, so the
+  directive's worktree mechanism was applied inline - intent over mechanism,
+  [[feedback_audit_proposals_are_intent]]); verifier SKIPPED per R7 (own single-thread; the
+  full suite + the Playwright render + the targeted re-verify ARE the independent verify).
+  Source: gemini director directive ops/loop/control/directive.md (R2).
 
 - 2026-06-18 HEADLESS-DIRECT (direct /headless-upgrade run; gemini loop self-stopped
   NO_WORK x2 this AM, so this is operator-direct not director-driven) DONE. Three slices.
