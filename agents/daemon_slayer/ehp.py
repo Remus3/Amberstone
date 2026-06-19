@@ -1869,6 +1869,7 @@ def rank_items_by_ehp(
     apply_spell_shield: bool = False,
     apply_survival_window: bool = False,
     prefer_survivability_by_win: bool = False,
+    cost_ceiling: Optional[int] = None,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2008,6 +2009,10 @@ def rank_items_by_ehp(
         # Fimbulwinter 3121, gold.purchasable=False) surfaces and can float.
         # None when the seam is OFF / champ untabled -> byte-identical pool.
         inject_ids=(set(surv_ids) if surv_active else None),
+        # F2 cost-aware-top seam (DEFAULT-OFF). Drops over-cost mega-items
+        # (e.g. 6000g Void Immolation 223069) the absolute-EHP delta floats to
+        # rank-1. None -> byte-identical pool.
+        cost_ceiling=cost_ceiling,
     )
 
     ranked: list[EhpRankedItem] = []
