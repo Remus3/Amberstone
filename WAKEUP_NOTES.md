@@ -8,7 +8,7 @@
 
 Operator "continue open items from last run". TIER2_REPORT + RF round-2 queues DRAINED
 headless, so picked the next self-directed DS data-correctness unit: the G4-deferred Arena
-boots mirror (`docs/LIVE_GAME_GATED_SYNC.md` section D). Commit `<hash>`, item 499.
+boots mirror (`docs/LIVE_GAME_GATED_SYNC.md` section D). Commit `c258c4ab`, item 499.
 
 - **PREFLIGHT:** HEAD==origin/main `b644709f` (PM6 landed clean), DS :8893 live 1.143.0
   (HTTP not HTTPS), Share in sync 367. Same external anomalies (RC-GeminiAudit result=3
@@ -75,7 +75,7 @@ DS data-correctness unit. Commit `8c63b79b`, CI run 27799329481.
 # 2026-06-18 (PM5) - F2 cost-aware-top gate (DS Tier-2 nom F2, DEFAULT-OFF; ENGINE 1.142.0)
 
 Operator "continue open items from last run". Shipped the second bounded DS Tier-2
-ship-or-close nomination from PM3's `TIER2_REPORT.md`. Commit `<hash>`, CI GREEN.
+ship-or-close nomination from PM3's `TIER2_REPORT.md`. Commit `60c3d6f7`, CI GREEN.
 
 - **PREFLIGHT:** DS :8893 was DOWN (no proc) -> relaunched detached, healthy ENGINE 1.141.0 ->
   (post-bump) 1.142.0. RC-DaemonSlayer result=1 / RC-GeminiAudit result=3 / RC-WeeklyHygiene
