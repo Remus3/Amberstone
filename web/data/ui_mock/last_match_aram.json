@@ -20,6 +20,7 @@
     "gold": 13420,
     "gold_per_min": 716.5,
     "kp_pct": 89.4,
+    "gold_share_pct": 23.7,
     "label": "ARAM carry sweep - 12k DMG before 15min mark",
     "coach_action": "Permaspam Q autos vs the squishy enemy backline; rotate W to peel from poke.",
     "ds_picks": [],
