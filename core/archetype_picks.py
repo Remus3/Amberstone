@@ -339,7 +339,7 @@ def _load_champion_tags() -> dict[str, list[str]]:
                     out[key.replace("'", "").replace(" ", "")] = tags
         except FileNotFoundError:
             _log.warning("archetype_picks: %s missing - defaults will use carry", _CHAMPS_PATH)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("archetype_picks: tags load failed: %s", exc)
         _TAGS_CACHE = out
         return out
@@ -488,7 +488,7 @@ def _load_picks() -> dict[str, dict]:
                     "archetype_picks: %s not a dict (%s) - ignoring",
                     _PICKS_PATH, type(data).__name__,
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("archetype_picks: load failed: %s", exc)
         _PICKS_CACHE = {}
         return _PICKS_CACHE
@@ -578,7 +578,7 @@ def _read_picks_locked() -> dict[str, dict]:
             data = json.loads(_PICKS_PATH.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 return data
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("archetype_picks: re-read failed: %s", exc)
     return {}
 

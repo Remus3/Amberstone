@@ -362,7 +362,7 @@ def run_validation(db_path: Path, targets: Dict[str, Dict[str, set]], limit: int
         for mid in select_sr_match_ids(conn, limit):
             try:
                 pairs = extract_lane_pairs(conn, mid, gold_frame_min)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 n_skipped += 1
                 continue
             if not pairs:

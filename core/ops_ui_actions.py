@@ -87,7 +87,7 @@ def run_action_async(
         result = ActionResult(action, False, f"Unknown action: {action!r}")
         try:
             callback(result)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return
 
@@ -95,7 +95,7 @@ def run_action_async(
         result = ActionResult(action, False, "Rollback requires explicit confirmation.")
         try:
             callback(result)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return
 
@@ -138,12 +138,12 @@ def _run_worker(action: str, callback: Callable[[ActionResult], None]) -> None:
     except subprocess.TimeoutExpired:
         summary = f"{action} timed out after {_ACTION_TIMEOUT}s"
         _log.warning(summary)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         summary = f"{action} error: {exc}"
         _log.error(summary)
 
     result = ActionResult(action, ok, summary)
     try:
         callback(result)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.error("ops_ui_actions callback error: %s", exc)

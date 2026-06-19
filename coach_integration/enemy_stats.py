@@ -202,7 +202,7 @@ def compute_enemy_stats(
             if tot > 0:
                 ad_share = ad / tot
                 ap_share = ap / tot
-        except Exception:
+        except Exception:  # noqa: BLE001
             ad_share, ap_share = 0.5, 0.5
 
     return EnemyStats(

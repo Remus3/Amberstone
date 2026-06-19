@@ -58,7 +58,7 @@ def _load_json(path: Path) -> Optional[Dict[str, Any]]:
     """Load and return a JSON file, or None on error."""
     try:
         return json.loads(path.read_text(encoding="utf-8-sig"))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         return None  # caller handles missing/unreadable
 
 
@@ -342,7 +342,7 @@ def validate_all() -> List[ValidationResult]:
     for fn in validators:
         try:
             result = fn()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Validator itself crashed - log and continue
             result = ValidationResult(
                 file="<unknown>", status="ERROR",

@@ -467,7 +467,7 @@ def compute_deterministic(coach: dict, lc: dict | None, mode_key: str) -> dict:
         # Warm path: serve the last good result NOW, refresh in background.
         _spawn_refresh(sig, warm_key, gs, mode_key)
         return hit[1] if hit is not None else last
-    except Exception:
+    except Exception:  # noqa: BLE001
         return dict(_EMPTY_RESULT)
 
 
@@ -492,7 +492,7 @@ def _spawn_refresh(sig: tuple, warm_key: tuple[str, str], gs: dict,
         try:
             result = _compute_uncached(gs, mode_key)
             _store_result(sig, warm_key, result)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         finally:
             with _REFRESH_LOCK:
@@ -519,7 +519,7 @@ def resolve_choices(coach: dict, det: dict) -> list[dict]:
             return det_choices
         native = parse_choices(coach)
         return to_jsonable(native or synthesize_simple_choices(coach))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return (det or {}).get("choices") or []
 
 
@@ -553,7 +553,7 @@ def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str,
             item_count=item_count,
             path=path,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return
 
 
@@ -704,7 +704,7 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             game_time_s=gs.get("game_time_s"),
             level=level, item_count=item_count, path=path,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return
 
 
@@ -764,7 +764,7 @@ def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
             native_choices=[],
             item_count=item_count, game_time_s=gs.get("game_time_s"), path=path,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return
 
 
@@ -808,5 +808,5 @@ def shadow_log_live_benchmark_band(coach: dict, lc: dict | None, mode_key: str,
             native_action=coach.get("action") if isinstance(coach, dict) else None,
             path=path,
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return

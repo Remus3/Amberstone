@@ -359,14 +359,14 @@ def _serve_duo_synergy(h) -> None:
         _cache_put(cache_key, now, cacheable)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/duo-synergy: %s", exc)
         try:
             # Raw exception text stays in the log only.
             h._send(500, json.dumps(
                 {"ok": False, "error": "internal error - see logs"})
                 .encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

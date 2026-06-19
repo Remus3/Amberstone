@@ -344,13 +344,13 @@ class _NormalizerMixin:
 
         try:
             gank_threat, friendly_jg = self._gank_threat(enemies, allies, my_pos, game_time, my_team)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_gank_threat failed: %s", exc)
             gank_threat, friendly_jg = "", ""
 
         try:
             position_note = self._position_assessment(my_pos, allies, me, my_team)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_position_assessment failed: %s", exc)
             position_note = ""
 
@@ -360,13 +360,13 @@ class _NormalizerMixin:
                 ward_hint = self._ward_hint(game_time, obj_timers_dict)
             else:
                 ward_hint = ""
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_ward_hint failed: %s", exc)
             ward_hint = ""
 
         try:
             enemy_lane_str = self._enemy_lane_details(enemies, game_time)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("_enemy_lane_details failed: %s", exc)
             enemy_lane_str = ""
 
@@ -1012,7 +1012,7 @@ class _NormalizerMixin:
             sec_name  = secondary.get("displayName", "") if isinstance(secondary, dict) else ""
             if ks_name:
                 return f"{ks_name} | {pri_name} / {sec_name}".strip(" |/")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("swallowed exception: %s", exc)
         return ""
 
@@ -1041,7 +1041,7 @@ class _NormalizerMixin:
                 pri_name = primary.get("displayName", "")  if isinstance(primary, dict)  else ""
                 if ks_name:
                     result[name] = f"{ks_name} | {pri_name}".strip(" |")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("swallowed exception: %s", exc)
         return result
 
@@ -1069,7 +1069,7 @@ class _NormalizerMixin:
                         "level":    int(lvl) if lvl is not None else None,
                     }
             return result
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("swallowed exception: %s", exc)
             return {}
 
@@ -1084,37 +1084,37 @@ class _NormalizerMixin:
         try:
             from core.game_snapshot import RiftSnapshot
             return RiftSnapshot.from_state_dict(state_dict)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import RiftSnapshot
             s = RiftSnapshot()
             s.raw_state = state_dict
             try: s.champion     = str(state_dict.get("champion",    ""))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.game_mode    = str(state_dict.get("game_mode",   "CLASSIC"))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.game_time    = str(state_dict.get("game_time",   "0:00"))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.game_seconds = float(state_dict.get("game_seconds", 0))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.level        = int(state_dict.get("level",        1))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.gold         = int(state_dict.get("gold",         0))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.hp_pct       = int(state_dict.get("hp_pct",       100))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.items        = list(state_dict.get("items",        []))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             return s
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import RiftSnapshot
             s = RiftSnapshot()
             s.raw_state = state_dict
             return s
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return None
 
     @staticmethod
@@ -1124,35 +1124,35 @@ class _NormalizerMixin:
         try:
             from core.game_snapshot import AramSnapshot
             return AramSnapshot.from_state_dict(state_dict)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import AramSnapshot
             s = AramSnapshot()
             s.raw_state = state_dict
             try: s.champion     = str(state_dict.get("champion",    ""))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.game_mode    = str(state_dict.get("game_mode",   "ARAM"))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.game_time    = str(state_dict.get("game_time",   "0:00"))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.game_seconds = float(state_dict.get("game_seconds", 0))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.level        = int(state_dict.get("level",        1))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.gold         = int(state_dict.get("gold",         0))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.hp_pct       = int(state_dict.get("hp_pct",       100))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             try: s.items        = list(state_dict.get("items",        []))
-            except Exception as exc: _log.debug("swallowed exception: %s", exc)
+            except Exception as exc: _log.debug("swallowed exception: %s", exc)  # noqa: BLE001
             return s
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("swallowed exception: %s", exc)
         try:
             from core.game_snapshot import AramSnapshot
             s = AramSnapshot()
             s.raw_state = state_dict
             return s
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return None

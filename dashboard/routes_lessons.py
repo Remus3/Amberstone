@@ -39,7 +39,7 @@ def _serve_lessons_status(h) -> None:
         report = build_report(refresh=refresh)
         payload = {"now": time.time(), **report}
         h._send(200, json.dumps(payload).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("lessons/status failed: %s", exc)
         send_error(h, exc)
 

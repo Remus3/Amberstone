@@ -53,7 +53,7 @@ try:
         elif isinstance(data, dict):
             print(f"  Keys: {list(data.keys())[:10]}")
 
-except Exception as e:
+except Exception as e:  # noqa: BLE001
     print(f"team planner FAILED: {e}")
 
 # --- TFT en_us.json (champions, traits, items) ---
@@ -79,6 +79,6 @@ try:
         if s17t: print("  Sample traits:", [t.get("name","?") for t in s17t[:10] if isinstance(t,dict)])
     if "items" in data2:
         print(f"  Items: {len(data2['items'])}")
-except Exception as e:
+except Exception as e:  # noqa: BLE001
     print(f"TFT en_us FAILED: {e}")
     import traceback; traceback.print_exc()

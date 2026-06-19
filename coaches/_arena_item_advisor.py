@@ -75,7 +75,7 @@ def _load_arena_builds() -> dict:
     if _arena_builds_cache is None:
         try:
             _arena_builds_cache = json.loads(_ARENA_BUILDS_PATH.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             _arena_builds_cache = {}
     return _arena_builds_cache
 
@@ -85,7 +85,7 @@ def _load_aram_builds() -> dict:
     if _aram_builds_cache is None:
         try:
             _aram_builds_cache = json.loads(_ARAM_BUILDS_PATH.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             _aram_builds_cache = {}
     return _aram_builds_cache
 
@@ -125,7 +125,7 @@ def _load_tags() -> dict[str, list[str]]:
                 name = entry.get("name")
                 if name:
                     out[name] = list(entry.get("tags") or [])
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         _tags_cache = out
     return _tags_cache

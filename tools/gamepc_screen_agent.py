@@ -158,7 +158,7 @@ def _release_camera(output_idx: int) -> None:
     if cam is not None:
         try:
             cam.release()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 
@@ -187,7 +187,7 @@ def _bettercam_image(output_idx: int):
             # Cold start on a static screen: one short retry before giving up.
             time.sleep(0.05)
             frame = cam.grab()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.warning("bettercam grab error on output %d (%s); recreating camera",
                     output_idx, e)
         _release_camera(output_idx)
@@ -315,7 +315,7 @@ def loop(interval: float, monitor_index: int | None,
         except urllib.error.URLError as e:
             consecutive_fail += 1
             log.warning("upload failed (%dx): %s", consecutive_fail, e)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             consecutive_fail += 1
             log.warning("capture/upload failed (%dx): %s", consecutive_fail, e)
         # Backoff if Legion is unreachable; recover quickly when it returns.

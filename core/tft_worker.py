@@ -170,7 +170,7 @@ class TftWorker(BaseCoachWorker):
             if self._ai_bar is not None:
                 try:
                     self._live.set_ai_bar(self._ai_bar)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
 
             # Phase 1 Step 7: policy gate for tft_vision_analysis.
@@ -183,7 +183,7 @@ class TftWorker(BaseCoachWorker):
                     _vision_allowed = False
                     write_disabled_placeholder("tft", "tft_vision_analysis")
                     _log.info("TftWorker: tft_vision_analysis disabled by policy")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass  # policy unavailable - allow
 
             if _vision_allowed:
@@ -193,7 +193,7 @@ class TftWorker(BaseCoachWorker):
 
             _log.info("TftWorker: TFT components initialised (vision=%s)", _vision_allowed)
             return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.error("TftWorker: component init failed: %s", exc)
             return False
 
@@ -202,20 +202,20 @@ class TftWorker(BaseCoachWorker):
         if self._live is not None:
             try:
                 self._live.shutdown()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             self._live = None
         self._ai_bar = None  # clear stored reference on teardown
         if self._engine is not None:
             try:
                 self._engine.shutdown()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             self._engine = None
         if self._reader is not None:
             try:
                 self._reader.shutdown()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             self._reader = None
 
@@ -238,7 +238,7 @@ class TftWorker(BaseCoachWorker):
         if self._live is not None:
             try:
                 self._live.set_ai_bar(ai_bar)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
     def force_scan(self) -> None:
@@ -246,7 +246,7 @@ class TftWorker(BaseCoachWorker):
         if self._live is not None:
             try:
                 self._live.force_scan()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
     def _run(self, my_gen: int) -> None:
@@ -294,12 +294,12 @@ class TftWorker(BaseCoachWorker):
                             if not _fp_ok("tft", "live_coaching"):
                                 _fp_wr("tft", "live_coaching")
                                 _submit_ok = False
-                        except Exception:
+                        except Exception:  # noqa: BLE001
                             pass
                         if _submit_ok:
                             try:
                                 self._engine.submit(state)
-                            except Exception:
+                            except Exception:  # noqa: BLE001
                                 _log.debug("TftWorker: engine submit error", exc_info=True)
 
                     # Notify TftLiveAnalysis of round transitions
@@ -310,7 +310,7 @@ class TftWorker(BaseCoachWorker):
                             if sr != _last_sr:
                                 _last_sr = sr
                                 self._live.notify_round(state)
-                        except Exception:
+                        except Exception:  # noqa: BLE001
                             _log.debug("TftWorker: live notify error", exc_info=True)
 
                     self._enqueue(TftWorkerResult(
@@ -330,7 +330,7 @@ class TftWorker(BaseCoachWorker):
                             last_success=self.last_success_ts,
                         ))
 
-            except Exception:
+            except Exception:  # noqa: BLE001
                 _log.debug("TftWorker: read error", exc_info=True)
 
             self._stop_event.wait(POLL_INTERVAL_S)

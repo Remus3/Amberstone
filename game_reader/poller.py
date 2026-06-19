@@ -99,7 +99,7 @@ class _PollerMixin:
             if e.code == 404:
                 self._relay_says_no_game = True
             return None
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _try_lcu_game_id(self) -> str:
@@ -118,7 +118,7 @@ class _PollerMixin:
             if _time.time() - wrap.get("ts", 0) > LCU_RELAY_MAX_AGE:
                 return ""
             return str((wrap.get("data") or {}).get("game_id") or "")
-        except Exception:
+        except Exception:  # noqa: BLE001
             return ""
 
     def check_in_game(self):
@@ -128,7 +128,7 @@ class _PollerMixin:
         try:
             self._get(f"{LIVE_API}/gamestats")
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             return False
 
     def read_game(self):
@@ -165,7 +165,7 @@ class _PollerMixin:
                         else:
                             self._warn_once(f"allgamedata string: {raw[:120]!r}")
                             raw = self._read_game_fallback()
-                    except Exception:
+                    except Exception:  # noqa: BLE001
                         self._warn_once(f"allgamedata non-JSON string: {raw[:120]!r}")
                         raw = self._read_game_fallback()
                 else:
@@ -180,7 +180,7 @@ class _PollerMixin:
             self._read_error_count = 0
             return self._process_game(raw)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.is_in_game = False
             import traceback as _tb
             self._warn_once(f"{exc} | {_tb.format_exc().splitlines()[-2].strip()}")
@@ -216,7 +216,7 @@ class _PollerMixin:
                 data = self._get(url)
                 if isinstance(data, (dict, list)):
                     result[key] = data
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
         if not result:
@@ -239,7 +239,7 @@ class _PollerMixin:
         try:
             session = self._lcu_get("/lol-champ-select/v1/session")
             return self._process_champ_select(session)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     # ------------------------------------------------------------------
@@ -267,7 +267,7 @@ class _PollerMixin:
                         ).decode()
                         _log.debug("LCU lockfile connected: port %s", self._lcu_port)
                         return True
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("LCU lockfile %s: %s", lf, exc)
         # Fallback: wmic (Windows 10 only, deprecated on Win11)
         try:
@@ -284,7 +284,7 @@ class _PollerMixin:
                     f"riot:{token.group(1)}".encode()
                 ).decode()
                 return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return False
 

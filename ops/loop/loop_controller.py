@@ -55,7 +55,7 @@ def consume_directive_override(ctl=None):
         return None
     try:
         text = p.read_text(encoding="utf-8", errors="replace").strip()
-    except Exception:
+    except Exception:  # noqa: BLE001
         text = ""
     p.unlink(missing_ok=True)
     return text or None
@@ -66,7 +66,7 @@ def rjson(path, default=None):
         return default
     try:
         return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return default
 
 def stop(reason):
@@ -114,7 +114,7 @@ def gemini(prompt_body, instruction):
             r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
                                capture_output=True, text=True, timeout=300)
             out = (r.stdout or "").strip()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             out = ""
             log(f"gemini try {tryn} error: {e}")
         if out:
@@ -139,7 +139,7 @@ def director(last_done, last_audit):
     if ask.exists():
         try:
             q = ask.read_text(encoding="utf-8", errors="replace").strip()
-        except Exception:
+        except Exception:  # noqa: BLE001
             q = ""
         if q:
             ctx += ("\n\n=== EXECUTOR ESCALATION (resolve FIRST; the directive MUST encode this "
@@ -172,7 +172,7 @@ def _price(model, usage):
 def _iso(ts):
     try:
         return time.mktime(time.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return 0.0
 
 def session_files():
@@ -194,7 +194,7 @@ def meter(start_ts):
             for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
                 try:
                     o = json.loads(line)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     continue
                 msg = o.get("message", {})
                 usage = msg.get("usage")
@@ -204,7 +204,7 @@ def meter(start_ts):
                 if ts and ts < start_ts:
                     continue
                 spent += _price(msg.get("model", ""), usage)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
     return round(spent, 4)
 

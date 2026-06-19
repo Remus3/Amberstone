@@ -71,5 +71,5 @@ def write_coaching_ts(mode: str,
             encoding="utf-8",
         )
         ts_tmp.replace(ts_file)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("coaching_ts: write failed for mode %r: %s", mode_key, exc)

@@ -73,7 +73,7 @@ def _serve_coach_choice(h, body) -> None:
         )
         h._send(200, json.dumps({"ok": True, "logged_ts": entry["ts_unix"]}).encode("utf-8"),
                 "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("coach-choice POST failed: %s", exc)
         h._send(500, b'{"error":"log_append_failed"}', "application/json")
 

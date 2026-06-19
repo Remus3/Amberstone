@@ -32,7 +32,7 @@ def main():
     a = ap.parse_args()
     try:
         cycle = int((CTL / "cycle.txt").read_text(encoding="utf-8").strip())
-    except Exception:
+    except Exception:  # noqa: BLE001
         cycle = 0
     payload = {"cycle": cycle, "sha": head(), "tests_pass": a.tests,
                "regressions": bool(a.regressions), "ts": time.time()}

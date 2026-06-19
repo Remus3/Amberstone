@@ -75,7 +75,7 @@ def _capture_full_frame():
         if not full_b64:
             return None
         return _Image.open(_io.BytesIO(_b64.b64decode(full_b64))).convert("RGB")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.debug("TFT OCR: relay fetch failed: %s", exc)
         return None
 
@@ -93,7 +93,7 @@ def _grab_region(bbox, full_img=None):
             return None
     try:
         return full_img.crop(bbox)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -123,7 +123,7 @@ def _ocr_digits(img, tess) -> str:
     try:
         text = tess.image_to_string(processed, config=cfg, timeout=_OCR_TIMEOUT).strip()
         return re.sub(r"[^0-9]", "", text)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.debug("OCR digits error: %s", e)
         return ""
 
@@ -156,7 +156,7 @@ def _ocr_stage_round(img, tess) -> Optional[str]:
             if 1 <= s <= 7 and 1 <= r <= max_rnd:
                 return f"{s}-{r}"
         return None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.debug("OCR stage_round error: %s", e)
         return None
 
@@ -175,7 +175,7 @@ def _ocr_level(img, tess) -> Optional[int]:
             if 1 <= val <= 10:
                 return val
         return None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.debug("OCR level error: %s", e)
         return None
 
@@ -234,7 +234,7 @@ def _ocr_hp(img, tess) -> Optional[int]:
         ).strip()
         nums = [int(n) for n in re.findall(r"\d+", full_text) if 1 <= int(n) <= 100]
         return nums[0] if nums else None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logger.debug("OCR hp error: %s", e)
         return None
 
@@ -328,7 +328,7 @@ class TftOcrReader:
                         result["hp"] = hp
                         logger.debug("OCR hp=%d", hp)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.warning("OCR read error: %s", e)
 
         self._cache = dict(result)
@@ -344,7 +344,7 @@ class TftOcrReader:
             if img is None:
                 return None
             return _ocr_stage_round(img, self._tess)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def save_debug_crops(self, out_dir: str = r"C:\Riot Commander\data\ocr_debug") -> None:

@@ -387,7 +387,7 @@ def score_pair(
             level_b=level,
             mode="SR",
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ("engine_none", False)
 
     if result is None:
@@ -440,7 +440,7 @@ def score_pair_trade(
             snapshot, pair.champ_a, pair.champ_b,
             level_a=level, level_b=level, mode="SR",
         )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ("engine_none", False)
     if result is None:
         return ("engine_none", False)
@@ -487,7 +487,7 @@ def run_validation(
         for mid in match_ids:
             try:
                 pairs = extract_lane_pairs(conn, mid, gold_frame_min)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 n_matches_skipped += 1
                 continue
             if not pairs:
@@ -566,7 +566,7 @@ def run_trade_validation(
         for mid in match_ids:
             try:
                 pairs = extract_lane_pairs(conn, mid, gold_frame_min)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 n_matches_skipped += 1
                 continue
             if not pairs:
@@ -577,7 +577,7 @@ def run_trade_validation(
             for pair in pairs:
                 try:
                     kc = extract_kill_counts(conn, mid, pair.pid_a, pair.pid_b)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     kc = {"solo": (0, 0), "any": (0, 0)}
                 a_solo, b_solo = kc["solo"]
                 a_any, b_any = kc["any"]

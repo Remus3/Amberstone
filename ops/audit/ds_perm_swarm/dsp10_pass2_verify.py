@@ -147,7 +147,7 @@ def _scorer_for(champ: str) -> tuple[str, str]:
     try:
         d = json.loads(fp.read_text(encoding="utf-8"))
         return (d.get("scorer") or "", d.get("anchor_mode") or "ARAM")
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ("", "ARAM")
 
 

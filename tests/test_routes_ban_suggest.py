@@ -128,7 +128,7 @@ class DispatchRegistrationTests(unittest.TestCase):
                 if predicate("/api/ban-suggest"):
                     matched = True
                     break
-            except Exception:
+            except Exception:  # noqa: BLE001
                 continue
         self.assertTrue(matched, "/api/ban-suggest not registered")
 

@@ -342,7 +342,7 @@ def _serve_replay_events(h) -> None:
             h._send(500, json.dumps({
                 "ok": False, "error": "internal error - see logs",
             }).encode(), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

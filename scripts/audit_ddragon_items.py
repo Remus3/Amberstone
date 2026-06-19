@@ -75,7 +75,7 @@ def collect_from_fixtures() -> set[str]:
     for p in SIM_DIR.glob("*.json"):
         try:
             d = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         payload = (d.get("state", {}) or {}).get("payload", {}) or {}
         for field in ("items_display", "item_build"):

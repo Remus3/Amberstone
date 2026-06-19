@@ -183,7 +183,7 @@ def enemy_cc_threat_line(
             continue
         try:
             result = compute_cc_pressure(name, mode)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         if result is None:
             continue

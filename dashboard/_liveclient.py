@@ -60,7 +60,7 @@ def lcu_summary() -> dict:
         if (time.time() - wrap.get("ts", 0)) > 5:
             return {}
         return wrap.get("data", {}) or {}
-    except Exception:
+    except Exception:  # noqa: BLE001
         return {}
 
 
@@ -169,7 +169,7 @@ def liveclient_summary() -> dict:
                     involved = int(s.get("kills", 0)) + int(s.get("assists", 0))
                     pct = round(100 * involved / team_kills)
                     out["kill_participation_pct"] = f"{pct}%"
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         else:
             owned_item_ids = []
@@ -194,7 +194,7 @@ def liveclient_summary() -> dict:
                 if isinstance(t, (int, float)) and not isinstance(t, bool):
                     inhib_events.append({"down_at_s": float(t),
                                          "name": ev.get("InhibKilled")})
-        except Exception:
+        except Exception:  # noqa: BLE001
             inhib_events = []
         out["inhib_events"] = inhib_events
         # s184 - surface liveclient's gameId for per-game dedup tokens
@@ -239,8 +239,8 @@ def liveclient_summary() -> dict:
                     swap = endgame_boots_swap_target(champ, enemy_team, owned_items)
                     if swap and swap[0]:
                         out["sr_boots_swap"] = {"item": swap[0], "reason": swap[1]}
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
-    except Exception:
+    except Exception:  # noqa: BLE001
         return {}
     return out

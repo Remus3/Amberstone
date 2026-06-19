@@ -205,7 +205,7 @@ def _side_conditional(roster: list[str], mode: str) -> tuple[float, float, int]:
     for champ in roster:
         try:
             r = compute_cc_pressure(champ, mode, include_conditional=True)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Defensive belt-and-braces - cc_pressure already fail-softs
             # on unknown champions but a snapshot load failure would
             # raise; log + skip silently per the route's contract.
@@ -340,7 +340,7 @@ def _serve_cc_conditional_pressure(h) -> None:
                 "error": "DS engine unavailable",
             }).encode("utf-8"), "application/json")
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/cc-conditional-pressure compute: %s", exc)
             h._send(503, json.dumps({
                 "ok":    False,
@@ -358,13 +358,13 @@ def _serve_cc_conditional_pressure(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"),
                 "application/json")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/cc-conditional-pressure: %s", exc)
         try:
             h._send(500, json.dumps({
                 "ok": False, "error": str(exc)[:200],
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

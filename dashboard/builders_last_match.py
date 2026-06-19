@@ -436,7 +436,7 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
                 lcu_detail      = rd.get("lcu_match_detail") or {}
                 tracked_puuid   = (rd.get("tracked_puuid") or "").strip()
                 lcu_ingested_at = rd.get("lcu_ingested_at") or ""
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
         kda_ratio = round((int(k or 0) + int(a or 0)) / max(int(d or 0), 1), 2)
@@ -503,7 +503,7 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
         _log.warning("_build_last_match: %s", exc)
         out["error"] = "internal error - see logs"
         getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("_build_last_match: %s", exc)
         # Raw exception text can carry file paths - log it, never render it.
         out["error"] = "internal error - see logs"

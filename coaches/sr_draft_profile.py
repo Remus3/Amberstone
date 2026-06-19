@@ -209,7 +209,7 @@ def _engine_version() -> Optional[str]:
             _ENGINE_VERSION = v
             _ENGINE_VERSION_TS = now
             return v
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return None
 
@@ -263,7 +263,7 @@ def _load_presets() -> dict[str, Any]:
         _PRESETS_CACHE = raw
         _PRESETS_MTIME = mt
         return raw
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("sr_draft presets load failed: %s", exc)
         return _FALLBACK_PRESETS
 
@@ -295,12 +295,12 @@ def _call_beam(champion: str, preset: dict[str, Any]) -> tuple[dict[str, Any], O
     except urllib.error.HTTPError as exc:
         try:
             err_body = exc.read().decode("utf-8")
-        except Exception:
+        except Exception:  # noqa: BLE001
             err_body = str(exc)
         return {}, f"engine HTTP {exc.code}: {err_body[:200]}"
     except urllib.error.URLError as exc:
         return {}, f"engine unreachable: {exc.reason}"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         return {}, f"engine error: {exc}"
 
 

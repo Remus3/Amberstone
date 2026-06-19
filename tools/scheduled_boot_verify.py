@@ -72,7 +72,7 @@ def main() -> int:
     try:
         ack = _post(envelope)
         out["dispatched_ts"] = ack.get("ts")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         out["outcome"] = "dispatch_failed"
         out["error"] = str(exc)
         _write(out, started)
@@ -82,7 +82,7 @@ def main() -> int:
     while time.time() < deadline:
         try:
             items = _fetch(started - 5)
-        except Exception:
+        except Exception:  # noqa: BLE001
             time.sleep(3)
             continue
         for m in items:

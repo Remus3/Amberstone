@@ -224,7 +224,7 @@ class DispatchRegistrationTests(unittest.TestCase):
                 if predicate(path):
                     matched = True
                     break
-            except Exception:
+            except Exception:  # noqa: BLE001
                 continue
         self.assertTrue(matched, "/api/draft-elo not registered with dispatch")
 
