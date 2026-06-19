@@ -432,7 +432,7 @@ def _load_rune_rec(champion: str, mode: str = "aram") -> str:
         if note:
             result += f" - {note}"
         return result
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -450,7 +450,7 @@ def _load_build_note(champion: str) -> str:
         note = entry.get("build_note", "")
         result = f"{tier} tier - {note}" if tier and note else note or tier
         return result[:220]
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -516,7 +516,7 @@ class Coach(BaseCoach):
                 if cur.get("my_team") != mt:
                     cur["my_team"] = mt
                     safe_write(self._out, cur)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         # Dynamic debounce: relax polling rate when game state is stable
         prev = self._last_state
@@ -538,14 +538,14 @@ class Coach(BaseCoach):
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("aram", "live_coaching"):
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
         _ai = self._overlay.get("ai_bar") if self._overlay else None
         if _ai:
             try:
                 _ai.set_scanning(0)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         try:
             import anthropic
@@ -611,9 +611,9 @@ class Coach(BaseCoach):
             if _ai2:
                 try:
                     _ai2.set_done()
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("ARAM vision run: %s", exc)
 
     # -- Target-bonus-HP estimator (s74 - Phase 4 batch 19 wire-in) ----------
@@ -659,7 +659,7 @@ class Coach(BaseCoach):
             if not _fp_ok("aram", "live_coaching"):
                 _fp_wr("aram")
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         if not self._client:
             return
@@ -695,19 +695,19 @@ class Coach(BaseCoach):
                             "meta build for this champion this match."
                         )
                         aram_meta = (aram_meta or "unknown") + _exp_line
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             try:
                 from item_advisor import get_matchup_context as _gmc
                 matchup_ctx = _gmc(state.get("enemy_comp", []))
-            except Exception:
+            except Exception:  # noqa: BLE001
                 matchup_ctx = ""
             _hint = ""
             if os.environ.get("RC_COACH_ADAPTATION") == "1":
                 try:
                     from coaches.adaptation_hint import format_hint_line as _fhl
                     _hint = _fhl(champ, "aram", state.get("enemy_comp", []))
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             system   = _SYSTEM.format(
                 profile=profile, mayhem_tag=mayhem,
@@ -767,7 +767,7 @@ class Coach(BaseCoach):
                 if _ds_dispatch is not None:
                     _ds_picks_str = _ds_dispatch.picks_str
                     _ds_label = _ds_display_label(_ds_dispatch.scorer)
-            except Exception as _ds_exc:
+            except Exception as _ds_exc:  # noqa: BLE001
                 logger.debug("ARAM daemon_slayer pre-call: %s", _ds_exc)
             if _ds_dispatch is not None and _ds_dispatch.rows:
                 try:
@@ -778,7 +778,7 @@ class Coach(BaseCoach):
                                        "delta_dps": _r["delta_dps"], "gold": _r["gold"],
                                        "scorer": _r["scorer"]}
                                       for _r in _ds_dispatch.display_rows])
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
 
             user = _USER_TMPL.format(
@@ -861,7 +861,7 @@ class Coach(BaseCoach):
             if _cb:
                 try:
                     _cb.set_calling()
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
 
             import time as _time_a
@@ -890,7 +890,7 @@ class Coach(BaseCoach):
             try:
                 logger.info("ARAM Haiku raw (%d chars): %s",
                             len(raw or ""), (raw or "")[:600].replace("\n", " | "))
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             flds = parse_fields(raw, [
                 "action", "immediate", "fight rule",
@@ -1020,12 +1020,12 @@ class Coach(BaseCoach):
             if _cb:
                 try:
                     _cb.set_done(cur.get("action", ""))
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             try:
                 from core.coaching_timestamps import write_coaching_ts as _wts
                 _wts("aram")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         except Exception as exc:
             raise exc

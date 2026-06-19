@@ -385,13 +385,13 @@ def main() -> int:
                         )
                     pairs = fn()
                     all_results[key] = {label: st for label, st in pairs}
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     err_str = str(exc)
                     print(f"\n  SECTION FAILED [{key}]: {err_str}")
                     all_results[key] = {"_section_error": err_str}
                     section_errors.append((key, err_str))
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"\nHarness internal error: {exc}")
         return 1
 

@@ -117,7 +117,7 @@ def post_choice(decision_id: str, choice: str) -> bool:
     except urllib.error.HTTPError as exc:
         log.warning("POST %s choice=%s -> HTTP %s", decision_id, choice, exc.code)
         return False
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("POST %s choice=%s -> %s", decision_id, choice, exc)
         return False
 

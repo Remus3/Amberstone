@@ -188,7 +188,7 @@ def _augment_name_map() -> dict[str, str]:
                     out[name.lower().replace(" ", "")] = api
                 out[api.lower()] = api
             break
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.debug("arena augment name map: %s", exc)
     _AUG_NAME_MAP_CACHE = out
     return out
@@ -277,7 +277,7 @@ def _augment_recommendation(gs: dict, choices: list, picked_apinames: list) -> d
             "aug_reco_n_matches": res.n_matches,
             "aug_reco_external":  res.used_external,
         }
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.debug("Arena augment recommender: %s", exc)
         return {}
 
@@ -315,7 +315,7 @@ def _load_arena_build_note(champion: str) -> str:
         if vh:
             result += f" | vs healing: {vh}"
         return result[:350]
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -474,7 +474,7 @@ class Coach(BaseCoach):
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("arena", "live_coaching"):
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         try:
             reader = ArenaVisionReader(self._api_key)
@@ -490,7 +490,7 @@ class Coach(BaseCoach):
             # v2: panel is gone, so HUD slots are the canonical augment record.
             # Only overrides when ALL slots resolve - partial reads keep Haiku's list.
             self._reconcile_augment_hud(state)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("Arena vision run: %s", exc)
 
     # -- Coach -----------------------------------------------------------------
@@ -502,7 +502,7 @@ class Coach(BaseCoach):
             if not _fp_ok("arena", "live_coaching"):
                 _fp_wr("arena")
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         if not self._client:
             return
@@ -516,7 +516,7 @@ class Coach(BaseCoach):
                 try:
                     from coaches.adaptation_hint import format_hint_line as _fhl
                     _hint = _fhl(champ, "arena", None)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             system  = _SYSTEM_PROMPT.format(profile=profile, arena_meta=arena_meta, adaptation_hint=_hint)
 
@@ -575,7 +575,7 @@ class Coach(BaseCoach):
                 if _ds_dispatch is not None:
                     _ds_picks_str = _ds_dispatch.picks_str
                     _ds_label = _ds_display_label(_ds_dispatch.scorer)
-            except Exception as _ds_exc:
+            except Exception as _ds_exc:  # noqa: BLE001
                 logger.debug("Arena daemon_slayer pre-call: %s", _ds_exc)
             if _ds_dispatch is not None and _ds_dispatch.rows:
                 try:
@@ -586,7 +586,7 @@ class Coach(BaseCoach):
                                        "delta_dps": _r["delta_dps"], "gold": _r["gold"],
                                        "scorer": _r["scorer"]}
                                       for _r in _ds_dispatch.display_rows])
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
 
             # Arena enemy roster: every team-name that is not me, not my
@@ -716,7 +716,7 @@ class Coach(BaseCoach):
                 )
                 if new_build:
                     current["item_build"] = ", ".join(new_build)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.debug("arena item advisor: %s", exc)
 
             if _ds_dispatch is not None:
@@ -729,7 +729,7 @@ class Coach(BaseCoach):
             try:
                 from core.coaching_timestamps import write_coaching_ts as _wts
                 _wts("arena")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         except Exception as exc:
             raise exc
@@ -805,9 +805,9 @@ class Coach(BaseCoach):
                      "plan": current.get("aug_plan", "")},
                     reco_fields,
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("Arena augment select: %s", exc)
             # The recommender is a parallel signal (S5) - persist it even
             # when the Haiku call fails, so the data-driven ranking still
@@ -821,7 +821,7 @@ class Coach(BaseCoach):
                         **reco_fields,
                     })
                     safe_write(self._out, current)
-                except Exception as exc2:
+                except Exception as exc2:  # noqa: BLE001
                     logger.debug("Arena augment reco persist: %s", exc2)
 
     def _reconcile_augment_hud(self, vision_state: dict) -> None:
@@ -858,7 +858,7 @@ class Coach(BaseCoach):
                     current["augments_source"] = "vision_hud"
                     current["augments_picked"] = list(self._picked_augments)
                     safe_write(self._out, current)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.debug("HUD reconcile (confirm) write: %s", exc)
             return
         logger.info(
@@ -871,7 +871,7 @@ class Coach(BaseCoach):
             current["augments_picked"] = list(self._picked_augments)
             current["augments_source"] = "vision_hud"
             safe_write(self._out, current)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("HUD reconcile write: %s", exc)
 
     def _handle_anvil(self, vision_state: dict) -> None:
@@ -901,7 +901,7 @@ class Coach(BaseCoach):
             current = load_json(self._out)
             current["anvil_advice"] = f"Take: {parse_field(raw, 'Take')} - {parse_field(raw, 'Why')}"
             safe_write(self._out, current)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("Arena anvil: %s", exc)
 
 

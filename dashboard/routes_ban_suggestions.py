@@ -70,7 +70,7 @@ def _load_name_to_id() -> dict[str, int]:
             out[name.replace("'", "").replace(" ", "")] = cid
             if slug:
                 out[slug] = cid                        # DDragon slug ("KaiSa")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("ban-suggestions: ddragon_champions load failed: %s", exc)
     _NAME_TO_ID = out
     return out
@@ -95,7 +95,7 @@ def _load_bans_file() -> dict:
     except FileNotFoundError:
         log.warning("ban-suggestions: %s missing", _BANS_PATH)
         return {"top_bans": [], "patch": "unknown"}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("ban-suggestions: load failed: %s", exc)
         return {"top_bans": [], "patch": "unknown"}
 
@@ -146,7 +146,7 @@ def _serve_ban_suggestions(h) -> None:
             "excluded_count": len(excluded),
             "fell_back": len(suggestions) < top,
         }).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/champ-select/ban-suggestions: %s", exc)
         # Raw exception text stays in the log only.
         h._send(500, json.dumps(

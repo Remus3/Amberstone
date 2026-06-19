@@ -35,7 +35,7 @@ def _lcu_build_items(raw_data: str | None) -> list[int]:
     import json
     try:
         rd = json.loads(raw_data)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return []
     lcu_detail = rd.get("lcu_match_detail") or {}
     tracked_puuid = (rd.get("tracked_puuid") or "").strip()
@@ -189,7 +189,7 @@ def _build_home_summary() -> dict:
             out["services"].append({
                 "name": "Vision", "ok": r.status == 200, "detail": "127.0.0.1:8889",
             })
-    except Exception:
+    except Exception:  # noqa: BLE001
         out["services"].append({"name": "Vision", "ok": False, "detail": "down"})
 
     # -- V3 home extras (2026-04-30): tonight_pick, last_build, trends, streaks --

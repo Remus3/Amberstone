@@ -332,7 +332,7 @@ class Scheduler:
         while not self._compact_stop.is_set():
             try:
                 self._maybe_compact()
-            except Exception as exc:  # pragma: no cover - defensive
+            except Exception as exc:  # pragma: no cover - defensive  # noqa: BLE001
                 logger.warning("compact loop iteration failed: %s", exc)
             self._compact_stop.wait(self._compact_interval_s)
 

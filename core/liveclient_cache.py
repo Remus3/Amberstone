@@ -110,7 +110,7 @@ def _fire_listeners(snap: Snapshot) -> None:
     for fn in listeners:
         try:
             fn(snap)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("liveclient_cache listener %r: %s", fn, exc)
 
 
@@ -129,7 +129,7 @@ def _auth_headers() -> dict:
     try:
         from core.vision_token import get_vision_token
         return {"X-RC-Token": get_vision_token()}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("liveclient_cache: vision token unresolved: %s", exc)
         return {"X-RC-Token": ""}
 
@@ -145,7 +145,7 @@ def _fetch_once() -> Snapshot:
         if e.code == 404:
             return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=True)
         return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False)
     if not isinstance(wrap, dict) or "error" in wrap:
         return Snapshot(data=None, ts=0.0, fetched_at=fetched_at, no_game=False)
@@ -162,7 +162,7 @@ def _loop(poll_s: float) -> None:
         try:
             _snapshot = _fetch_once()
             _fire_listeners(_snapshot)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("liveclient_cache loop: %s", exc)
         _stop.wait(poll_s)
 
@@ -175,7 +175,7 @@ async def _loop_async(poll_s: float) -> None:
         try:
             _snapshot = await asyncio.to_thread(_fetch_once)
             _fire_listeners(_snapshot)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("liveclient_cache loop: %s", exc)
         try:
             await asyncio.sleep(poll_s)
@@ -194,7 +194,7 @@ def start(poll_s: float = _DEFAULT_POLL_S) -> None:
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             _task = _sched.spawn_task(_loop_async(poll_s))
@@ -217,7 +217,7 @@ def stop() -> None:
         _thread = None
     if _task is not None:
         try: _task.cancel()
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
         _task = None
 
 

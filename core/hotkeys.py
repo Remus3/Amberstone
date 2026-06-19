@@ -82,7 +82,7 @@ def _listen_loop() -> None:
 
             was_down = combo
             time.sleep(0.05)   # 50ms poll - low CPU, responsive enough
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             crash_count += 1
             # Exponential backoff (cap at 5s) so a permanent fault doesn't
             # spin a tight error loop, but a transient blip recovers fast.
@@ -102,7 +102,7 @@ def _trigger_force_scan() -> None:
     try:
         atomic_write_json(_APP_DIR / "data" / "force_scan.json",
                           {"force": time.time()})
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     # Direct signal to each registered coach's AI status bar
@@ -115,5 +115,5 @@ def _trigger_force_scan() -> None:
             # Reset vision timer to force immediate scan on next loop iteration
             if hasattr(coach, "_last_vision"):
                 coach._last_vision = 0.0
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             _log.debug("Force scan signal to coach: %s", e)

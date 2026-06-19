@@ -107,7 +107,7 @@ def _live_data_rows() -> list | None:
         from core.synergy_external_source import fetch_rows
         rows = fetch_rows("bottom", "support", tier=200)
         return rows or None
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
 
 
@@ -118,7 +118,7 @@ def _name_fallback(champ_id: int) -> str:
     try:
         from core.archetype_picks import champion_name_by_key
         return str(champion_name_by_key(champ_id) or "")
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 

@@ -34,7 +34,7 @@ def _is_running(script_fragment: str) -> bool:
         )
         count = int(result.stdout.strip() or "0")
         return count > 0
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -49,7 +49,7 @@ def _start(exe: str, args: list[str], tag: str) -> int | None:
         )
         _log.info("rc_bootstrap: started %s pid=%d", tag, proc.pid)
         return proc.pid
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.error("rc_bootstrap: failed to start %s: %s", tag, exc)
         return None
 

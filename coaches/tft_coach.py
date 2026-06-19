@@ -130,7 +130,7 @@ class Coach:
             if getattr(self._worker, "_engine", None) is not None:
                 try:
                     self._worker._engine.reset_state()
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             if getattr(self._worker, "_live", None) is not None:
                 try:
@@ -138,7 +138,7 @@ class Coach:
                     live._known_augments = []
                     live._last_write     = {}
                     live._last_round     = (0, 0)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
         # Clear data files (atomic - the dashboard polls these mid-write)
         for path, default in [
@@ -158,7 +158,7 @@ class Coach:
         ]:
             try:
                 safe_write(path, default)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         logger.info("TFT state reset - data files cleared")
 
@@ -182,7 +182,7 @@ class Coach:
         if self._worker is not None:
             try:
                 self._worker.force_scan()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             # Reset engine debounce so it re-runs at next poll
             if getattr(self._worker, "_engine", None) is not None:
@@ -190,7 +190,7 @@ class Coach:
                     self._worker._engine._last_call = 0
                     if self._last_data:
                         self._worker._engine.submit(self._last_data)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
 
     def _ensure_data_files(self) -> None:
@@ -210,5 +210,5 @@ class Coach:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 if not path.exists():
                     safe_write(path, default)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not create data file %s: %s", path, exc)

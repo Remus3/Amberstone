@@ -43,7 +43,7 @@ def _candidates(log_dir: Path) -> list[Path]:
     """All `*.log*` files (matches `log_setup._prune_old_logs` glob)."""
     try:
         return [p for p in log_dir.glob("*.log*") if p.is_file()]
-    except Exception:
+    except Exception:  # noqa: BLE001
         return []
 
 
@@ -77,14 +77,14 @@ def prune(
     for f in files:
         try:
             st = f.stat()
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         if st.st_mtime < cutoff:
             try:
                 f.unlink()
                 deleted += 1
                 freed += st.st_size
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("prune: unlink failed for %s: %s", f.name, exc)
                 survivors.append((f, st.st_mtime, st.st_size))
         else:
@@ -103,7 +103,7 @@ def prune(
                 deleted += 1
                 freed += sz
                 total -= sz
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("prune: unlink failed for %s: %s", f.name, exc)
 
     if deleted:
@@ -121,7 +121,7 @@ def _loop(log_dir: Path, interval_s: float, max_age_days: int, max_total_mb: int
     while not _stop.is_set():
         try:
             prune(log_dir, max_age_days, max_total_mb)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("prune sweep failed: %s", exc)
         _stop.wait(interval_s)
 
@@ -130,7 +130,7 @@ async def _loop_async(log_dir: Path, interval_s: float, max_age_days: int, max_t
     while not _stop.is_set():
         try:
             prune(log_dir, max_age_days, max_total_mb)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("prune sweep failed: %s", exc)
         try:
             await asyncio.sleep(interval_s)
@@ -154,7 +154,7 @@ def start(
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             _task = _sched.spawn_task(
@@ -186,5 +186,5 @@ def stop() -> None:
         _thread = None
     if _task is not None:
         try: _task.cancel()
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
         _task = None

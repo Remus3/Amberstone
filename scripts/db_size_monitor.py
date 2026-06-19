@@ -130,7 +130,7 @@ def main() -> int:
             OUT.parent.mkdir(parents=True, exist_ok=True)
             from core.polled_json import atomic_write_json
             atomic_write_json(OUT, report)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"warning: write {OUT}: {exc}", file=sys.stderr)
 
     if args.json:

@@ -97,7 +97,7 @@ def _serve_personal_build(h) -> None:
 
         try:
             payload = personal_build_wr.compute_personal_build(champ_raw, mode)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/personal-build compute: %s", exc)
             h._send(503, json.dumps(
                 {"ok": False, "error": "rewind history unavailable"}
@@ -113,13 +113,13 @@ def _serve_personal_build(h) -> None:
         _cache_put(key, now, cacheable)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/personal-build: %s", exc)
         try:
             h._send(500, json.dumps(
                 {"ok": False, "error": "internal error - see logs"})
                 .encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

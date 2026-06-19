@@ -219,7 +219,7 @@ def _bump_metric(endpoint: str, outcome: str) -> None:
         snap = _BUCKET.snapshot()
         _M_BUCKET_SHORT.set(snap["short_used"])
         _M_BUCKET_LONG.set(snap["long_used"])
-    except Exception:    # pragma: no cover - metrics must never fault callers
+    except Exception:    # pragma: no cover - metrics must never fault callers  # noqa: BLE001
         pass
 
 
@@ -260,7 +260,7 @@ def _http_get(url: str, api_key: str, timeout_s: float = _HTTP_TIMEOUT_S) -> _Ht
     except urllib.error.HTTPError as exc:
         try:
             body = exc.read(4096)
-        except Exception:
+        except Exception:  # noqa: BLE001
             body = b""
         return _HttpResp(int(exc.code), body, dict(exc.headers or {}))
 

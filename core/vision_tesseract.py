@@ -87,7 +87,7 @@ def _regions() -> dict:
                 k: list(v) for k, v in data.items()
                 if not k.startswith("_") and isinstance(v, (list, tuple))
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("vision_regions.json load failed: %s - using defaults", exc)
             _REGIONS_CACHE = dict(_DEFAULT_REGIONS)
             _BASE_CACHE = (BASE_W, BASE_H)
@@ -100,7 +100,7 @@ def _regions() -> dict:
             # a bare write_text could expose a partial file.
             from core.polled_json import atomic_write_json
             atomic_write_json(_REGIONS_FILE, _REGIONS_CACHE)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("vision_regions.json defaults write failed: %s", exc)
     return _REGIONS_CACHE
 
@@ -538,7 +538,7 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
         if name == "hp":
             try:
                 hp_known = _ocr_hp_mana(crop)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 hp_known = None
             break
 
@@ -556,7 +556,7 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
                     v = fut.result()
                     if v is not None:
                         out[name] = v
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     _log.debug("ocr %s: %s", name, exc)
     else:
         for name, crop in work:
@@ -564,7 +564,7 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
                 v = _parse_field(name, crop, hp_known)
                 if v is not None:
                     out[name] = v
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("ocr %s: %s", name, exc)
 
     # Slow-field cache: serve from cache on skip ticks, refresh on read ticks.

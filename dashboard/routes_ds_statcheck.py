@@ -174,7 +174,7 @@ def _resolve_targets(
                 armor = float(getattr(es, "armor", 0.0) or 0.0)
             if mr is None:
                 mr = float(getattr(es, "mr", 0.0) or 0.0)
-        except Exception:
+        except Exception:  # noqa: BLE001
             if armor is None:
                 armor = 0.0
             if mr is None:
@@ -268,7 +268,7 @@ def _serve_ds_statcheck(handler: Any) -> None:
 
         try:
             snap, dps_fn = _load_engine()
-        except Exception as exc:  # pragma: no cover - import guard
+        except Exception as exc:  # pragma: no cover - import guard  # noqa: BLE001
             log.warning("api/ds-statcheck engine load: %s", exc)
             _send(handler, 503, {"ok": False, "error": "DS engine unavailable"})
             return
@@ -295,7 +295,7 @@ def _serve_ds_statcheck(handler: Any) -> None:
                  "champion": champion, "detail": str(exc)[:120]},
             )
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/ds-statcheck compute: %s", exc)
             _send(handler, 503, {"ok": False, "error": "DS engine compute failed"})
             return
@@ -327,14 +327,14 @@ def _serve_ds_statcheck(handler: Any) -> None:
         with _CACHE_LOCK:
             _CACHE[ckey] = (now, payload)
         _send(handler, 200, payload)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Outer guard mirrors the sibling routes: a handler exception must
         # never escape into the HTTP server (pre-fix an OverflowError from
         # a non-finite query param dropped the connection with no response).
         log.warning("api/ds-statcheck: %s", exc)
         try:
             _send(handler, 500, {"ok": False, "error": "internal error"})
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 
@@ -347,7 +347,7 @@ def _send(handler: Any, code: int, body: dict) -> None:
     handler.end_headers()
     try:
         handler.wfile.write(raw)
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
 

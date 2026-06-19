@@ -40,7 +40,7 @@ def lcu(method, ep, body=None, silent=False):
     except urllib.error.HTTPError as e:
         if not silent: pass
         return e.code, e.read().decode()[:200]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return 0, str(e)
 
 # --- Get dynamic team_id ---

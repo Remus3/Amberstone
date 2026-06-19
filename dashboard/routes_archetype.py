@@ -117,7 +117,7 @@ def _serve_archetype_post(h, payload) -> None:
         h._send(400, json.dumps({"error": str(exc)}).encode(),
                 "application/json")
         return
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Raw exception text (may carry file paths from an OSError) stays
         # in the log; the UI gets a generic degraded-mode message.
         log.warning("cs-archetype-pick save: %s", exc)

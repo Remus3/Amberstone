@@ -196,7 +196,7 @@ def cmd_status() -> int:
             test_f.write_text("x")
             test_f.unlink()
             _ok(f"audit/ is writable ({audit_dir})")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _warn(f"audit/ not writable: {exc}")
     else:
         _miss(f"audit/ directory does not exist: {audit_dir}")

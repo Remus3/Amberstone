@@ -110,7 +110,7 @@ def _load() -> dict:
         return {}
     try:
         return json.loads(_BUILDS_PATH.read_text(encoding="utf-8")) or {}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("experimental load failed: %s", exc)
         return {}
 
@@ -200,7 +200,7 @@ def _call_haiku(champion: str, history: list[dict], api_key: str) -> dict | None
         from core.cost_tracker import get_tracker as _gt
         if _gt().gate_disabled("champ_select"):
             return None
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     try:
         import anthropic
@@ -224,7 +224,7 @@ def _call_haiku(champion: str, history: list[dict], api_key: str) -> dict | None
         try:
             from core.cost_tracker import record_anthropic_response
             record_anthropic_response(resp, model=_MODEL, purpose="experimental_builder")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
         parsed = _parse_haiku(raw)
@@ -233,7 +233,7 @@ def _call_haiku(champion: str, history: list[dict], api_key: str) -> dict | None
             return None
         parsed["raw"] = raw[:1500]
         return parsed
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("experimental Haiku call failed for %s: %s", champion, exc)
         return None
 
@@ -351,7 +351,7 @@ def mark_active(champion: str, mode: str) -> None:
             "champion": champion, "mode": mode, "marked_at": time.time(),
         }), encoding="utf-8")
         tmp.replace(_ACTIVE_PATH)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("mark_active failed: %s", exc)
 
 
@@ -364,8 +364,8 @@ def consume_active() -> dict | None:
         data = json.loads(_ACTIVE_PATH.read_text(encoding="utf-8"))
         _ACTIVE_PATH.unlink(missing_ok=True)
         return data
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("consume_active failed: %s", exc)
         try: _ACTIVE_PATH.unlink(missing_ok=True)
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
         return None

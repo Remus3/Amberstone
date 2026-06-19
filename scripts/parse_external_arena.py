@@ -12,7 +12,7 @@ def parse(path: Path) -> dict:
         wrapper = json.loads(raw)
         content = wrapper.get("content", "")
         url = wrapper.get("url", "")
-    except Exception:
+    except Exception:  # noqa: BLE001
         content = raw
         url = ""
 
@@ -139,7 +139,7 @@ def main() -> None:
             r = parse(f)
             r["_file"] = f.name
             results.append(r)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             results.append({"_file": f.name, "_error": str(e)})
     print(json.dumps(results, indent=2, ensure_ascii=False))
 

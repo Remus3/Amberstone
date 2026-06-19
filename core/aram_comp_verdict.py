@@ -320,7 +320,7 @@ def comp_verdict(state: dict) -> dict:
         top = gaps[0][0]
         reason = f"{_gap_phrase(top)}, but no bench champ or variant fixes it - stay."
         return _result(True, "stay", "", "", reason, "low", f)
-    except Exception as exc:  # never raise into the coach path
+    except Exception as exc:  # never raise into the coach path  # noqa: BLE001
         logger.debug("comp_verdict failed: %s", exc)
         return _stay_unknown()
 

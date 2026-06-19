@@ -30,7 +30,7 @@ try:
     from tft.tft_pbe_engine     import TftPbeCoachEngine
     from tft.tft_live_analysis  import TftLiveAnalysis
     _HAS_TFT = True
-except Exception as _e:
+except Exception as _e:  # noqa: BLE001
     logger.error("TFT PBE subsystem import failed: %s", _e)
     _HAS_TFT = False
 
@@ -138,7 +138,7 @@ class Coach:
                         _last_sr = sr
                         self._live.notify_round(state)
 
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.debug("TFT PBE poll error: %s", exc)
             time.sleep(1.5)
 
@@ -175,5 +175,5 @@ class Coach:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 if not path.exists():
                     safe_write(path, default)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not create PBE data file %s: %s", path, exc)

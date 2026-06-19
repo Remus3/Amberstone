@@ -83,7 +83,7 @@ def append(
             mode=mode or "_unknown",
             model=model or "_unknown",
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("prom_metrics coach_latency: %s", exc)
     try:
         with _lock:
@@ -94,7 +94,7 @@ def append(
             # Trim if oversize. Cheap to keep last MAX_LINES; rare path.
             if _TRACE_FILE.stat().st_size > 1 << 20:  # 1 MiB
                 _trim()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("coach_trace append failed: %s", exc)
 
 
@@ -107,7 +107,7 @@ def _trim() -> None:
         tmp = _TRACE_FILE.with_suffix(_TRACE_FILE.suffix + ".tmp")
         tmp.write_text("\n".join(kept) + "\n", encoding="utf-8")
         os.replace(tmp, _TRACE_FILE)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("coach_trace trim failed: %s", exc)
 
 
@@ -124,9 +124,9 @@ def read_recent(limit: int = 50) -> list:
                 continue
             try:
                 out.append(json.loads(line))
-            except Exception:
+            except Exception:  # noqa: BLE001
                 continue
         return out
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("coach_trace read_recent failed: %s", exc)
         return []

@@ -135,12 +135,12 @@ def _serve_damage_mix(h) -> None:
         })
         body = json.dumps(payload).encode("utf-8")
         h._send(200, body, "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("damage-mix failed: %s", exc, exc_info=True)
         try:
             body = json.dumps({"ok": False, "error": str(exc)[:200]}).encode("utf-8")
             h._send(500, body, "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

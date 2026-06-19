@@ -127,7 +127,7 @@ def _live_ally_roster() -> list[str]:
         roster = lc.get("ally_team") or []
         me = lc.get("champion") or ""
         return [canonical_champion_id(str(c)) for c in roster if c and c != me]
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("peel-priority: live roster read failed: %s", exc)
         return []
 
@@ -290,7 +290,7 @@ def _serve_peel_priority(h) -> None:
                 "ok": False, "error": "DS engine unavailable",
             }).encode("utf-8"), "application/json")
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/peel-priority compute: %s", exc)
             h._send(503, json.dumps({
                 "ok": False, "error": "DS engine compute failed",
@@ -305,13 +305,13 @@ def _serve_peel_priority(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"),
                 "application/json")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/peel-priority: %s", exc)
         try:
             h._send(500, json.dumps({
                 "ok": False, "error": str(exc)[:200],
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

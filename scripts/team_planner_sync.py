@@ -46,7 +46,7 @@ def lcu(method, ep, body=None, silent=False):
         msg = e.read().decode()[:200]
         if not silent: print(f"  HTTP {e.code}: {msg}")
         return e.code, msg
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         if not silent: print(f"  ERR: {e}")
         return 0, str(e)
 

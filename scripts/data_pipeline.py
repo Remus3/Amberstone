@@ -106,7 +106,7 @@ def _download_icon(url: str, dest: Path, label: str = "") -> bool:
             log.debug("  icon: %s", label)
         time.sleep(0.05)  # polite rate limit
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.warning("  icon failed %s: %s", url, e)
         return False
 
@@ -166,7 +166,7 @@ def cmd_items_index(force: bool = False) -> bool:
         return False
     try:
         d = json.loads(src.read_text(encoding="utf-8"))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.error("ddragon_items.json parse failed: %s", e)
         return False
 
@@ -180,7 +180,7 @@ def cmd_items_index(force: bool = False) -> bool:
             if existing.get("version") == version:
                 log.info("items_index.json already at patch %s - skipping (use force=True)", version)
                 return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     by_name: dict[str, str] = {}
@@ -229,7 +229,7 @@ def cmd_champions_index(force: bool = False) -> bool:
         return False
     try:
         d = json.loads(src.read_text(encoding="utf-8"))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.error("ddragon_champions.json parse failed: %s", e)
         return False
 
@@ -242,7 +242,7 @@ def cmd_champions_index(force: bool = False) -> bool:
             if existing.get("version") == version:
                 log.info("champions_index.json already at patch %s - skipping (use force=True)", version)
                 return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     by_id:   dict[str, str] = {}
@@ -291,7 +291,7 @@ def cmd_spells_index(force: bool = False) -> bool:
         return False
     try:
         d = json.loads(src.read_text(encoding="utf-8"))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.error("ddragon_summoner_spells.json parse failed: %s", e)
         return False
 
@@ -304,7 +304,7 @@ def cmd_spells_index(force: bool = False) -> bool:
             if existing.get("version") == version:
                 log.info("spells_index.json already at patch %s - skipping (use force=True)", version)
                 return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     def _norm(s: str) -> str:
@@ -359,7 +359,7 @@ def cmd_meta():
     cached = _get_cached_version()
     try:
         live = _get_live_version()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         live = f"(fetch failed: {e})"
     log.info("Cached patch: %s", cached or "(none)")
     log.info("Live patch:   %s", live)
@@ -374,7 +374,7 @@ def cmd_ddragon(force: bool = False):
     log.info("=== DDragon meta download ===")
     try:
         live = _get_live_version()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.error("Cannot fetch version list: %s", e)
         return False
 
@@ -400,7 +400,7 @@ def cmd_ddragon(force: bool = False):
             data = _fetch_json(url)
             _write_json(dest, data)
             log.info("  OK: %s (%d bytes)", filename, dest.stat().st_size)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log.error("  FAILED %s: %s", filename, e)
             ok = False
 
@@ -416,7 +416,7 @@ def cmd_runes(force: bool = False):
 
     try:
         live = _get_live_version()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.error("Cannot fetch version list: %s", e)
         return False
 
@@ -429,7 +429,7 @@ def cmd_runes(force: bool = False):
             data = _fetch_json(rune_url)
             _write_json(rune_dest, data)
             log.info("  OK: ddragon_runes.json (%d bytes)", rune_dest.stat().st_size)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             log.error("  FAILED rune JSON: %s", e)
             return False
     else:
@@ -467,7 +467,7 @@ def cmd_icons(force: bool = False):
 
     try:
         live = _get_live_version()
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.error("Cannot fetch version list: %s", e)
         return False
 
@@ -535,7 +535,7 @@ def cmd_aram_builds(force: bool = False) -> bool:
 
     try:
         builds = json.loads(BUILDS_FILE.read_text(encoding="utf-8"))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.error("Failed to load aram_champion_builds.json: %s", e); return False
 
     # --verify flag: print current tier distribution without updating
@@ -559,7 +559,7 @@ def cmd_aram_builds(force: bool = False) -> bool:
     live_version = ""
     try:
         live_version = _get_live_version()
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     note = builds.get("_note", "")
@@ -594,7 +594,7 @@ def cmd_aram_builds(force: bool = False) -> bool:
 
         if tier_data:
             log.info("Aggregator B: fetched tier data for %d champions", len(tier_data))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.warning("Aggregator B fetch failed (%s) - automated tier update unavailable", e)
 
     if not tier_data:

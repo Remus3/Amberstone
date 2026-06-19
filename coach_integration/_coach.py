@@ -44,7 +44,7 @@ class CoachIntegration:
                 self._debounce_s = cfg.get("debounce_seconds", self._debounce_s)
                 self._timeout_s  = cfg.get("timeout_seconds",  self._timeout_s)
                 self._model      = cfg.get("model",            self._model)
-            except Exception as _e:  # QUAL-002
+            except Exception as _e:  # QUAL-002  # noqa: BLE001
                 logger.debug("coach_settings reload: %s", _e)
 
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -74,7 +74,7 @@ class CoachIntegration:
             from core.cost_tracker import get_tracker as _gt
             if _gt().coach_disabled("sr"):
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         if not self._should_coach(game_state):
             return
@@ -118,7 +118,7 @@ class CoachIntegration:
                 tmp = self.data_file.with_suffix(".reset.tmp")
                 tmp.write_text(json.dumps(blank, indent=2), encoding="utf-8")
                 tmp.replace(self.data_file)
-        except Exception as _e:  # QUAL-002
+        except Exception as _e:  # QUAL-002  # noqa: BLE001
             import logging as _lg; _lg.getLogger(__name__).debug("blank artifact write: %s", _e)
         logger.info("Coach state reset for new game")
 
@@ -161,7 +161,7 @@ class CoachIntegration:
                     ) else 0
                 parts.append(f"{k}={v}")
             return hashlib.sha1("|".join(parts).encode("utf-8")).hexdigest()
-        except Exception:
+        except Exception:  # noqa: BLE001
             return ""
 
     def _should_coach(self, state: dict) -> bool:
@@ -254,7 +254,7 @@ class CoachIntegration:
                     )
                 else:
                     profile = GENERIC_PROFILE
-            except Exception:
+            except Exception:  # noqa: BLE001
                 profile = GENERIC_PROFILE
         game_mode  = game_state.get("game_mode", "CLASSIC")
         # SrAramWorker only submits CLASSIC/RANKED - always SR path.
@@ -269,7 +269,7 @@ class CoachIntegration:
                 from coaches.adaptation_hint import format_hint_line as _fhl
                 _adapt_hint = _fhl(champion, "sr_ranked",
                                    game_state.get("enemy_comp") or [])
-            except Exception:
+            except Exception:  # noqa: BLE001
                 _adapt_hint = ""
         system = SR_SYSTEM_PROMPT.format(
             profile=profile,
@@ -322,7 +322,7 @@ class CoachIntegration:
             if _ds_dispatch is not None:
                 _ds_picks_str = _ds_dispatch.picks_str
                 _ds_label = _ds_display_label(_ds_dispatch.scorer)
-        except Exception as _ds_exc:
+        except Exception as _ds_exc:  # noqa: BLE001
             logger.debug("SR daemon_slayer pre-call: %s", _ds_exc)
         self._last_ds_rows = _ds_dispatch.display_rows if _ds_dispatch is not None else None
         if _ds_dispatch is not None and _ds_dispatch.rows:
@@ -335,7 +335,7 @@ class CoachIntegration:
                                    "delta_dps": _r["delta_dps"], "gold": _r["gold"],
                                    "scorer": _r["scorer"]}
                                   for _r in _ds_dispatch.display_rows])
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         if _ds_picks_str != "unavailable":
             user += f"\nDS top items ({_ds_label} ranked, own-items-accounted): {_ds_picks_str}"
@@ -357,7 +357,7 @@ class CoachIntegration:
                 logger.warning("Coach call blocked: daily budget exceeded")
                 self._write_status_field("daily budget - paused until midnight")
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         try:
             # AUDIT 2026-04-28 (5.3): mark the system prompt with
@@ -388,7 +388,7 @@ class CoachIntegration:
                     _tout = getattr(u, "output_tokens", 0) or 0
                     _cr   = getattr(u, "cache_read_input_tokens", 0) or 0
                     _cw   = getattr(u, "cache_creation_input_tokens", 0) or 0
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             try:
                 from core.cost_tracker import get_tracker as _gt
@@ -398,7 +398,7 @@ class CoachIntegration:
                     cache_read=_cr, cache_write=_cw,
                     purpose="sr_coach",
                 )
-            except Exception as _exc:
+            except Exception as _exc:  # noqa: BLE001
                 logger.debug("cost_tracker record_call: %s", _exc)
             try:
                 from core.coach_trace import append as _trace_append
@@ -412,7 +412,7 @@ class CoachIntegration:
                     tokens_in=_tin, tokens_out=_tout,
                     cache_read=_cr, cache_write=_cw,
                 )
-            except Exception as _exc:
+            except Exception as _exc:  # noqa: BLE001
                 logger.debug("coach_trace append: %s", _exc)
             self._last_sig = sig
         except _APITimeoutError:
@@ -424,7 +424,7 @@ class CoachIntegration:
             logger.error("Claude API unreachable")
             self._write_status_field("API unreachable")
             return
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error("Claude error: %s", e)
             # 2026-05-25 item 201 fix: don't leak raw API error JSON into
             # the dashboard CALL/RIGHT NOW panel. Detect the common
@@ -663,7 +663,7 @@ class CoachIntegration:
                     try:
                         from core.coaching_timestamps import write_coaching_ts as _wts
                         _wts("sr")
-                    except Exception:
+                    except Exception:  # noqa: BLE001
                         pass  # non-fatal
                     # Live metric streaming (feature-flagged; core.live_metrics
                     # gate). Gated on update_ts so only genuine coaching writes
@@ -671,7 +671,7 @@ class CoachIntegration:
                     live_metrics.stream(
                         self, current, getattr(self, "_last_gs", None) or {}, "sr")
                 return
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 if attempt < retries - 1:
                     time.sleep(0.05)
                 else:

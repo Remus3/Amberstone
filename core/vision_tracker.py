@@ -203,7 +203,7 @@ class VisionTracker:
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             self._task = _sched.spawn_task(self._loop_async())
@@ -219,7 +219,7 @@ class VisionTracker:
             self._thread.join(timeout=3)
         if self._task is not None:
             try: self._task.cancel()
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
             self._task = None
 
     # -- Internals ---------------------------------------------------------
@@ -241,7 +241,7 @@ class VisionTracker:
                     continue
                 self.ingest(snap)
                 self._write_atomic()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("vision_tracker loop: %s", exc)
             self._stop.wait(self._poll_s)
 
@@ -261,7 +261,7 @@ class VisionTracker:
                 else:
                     self.ingest(snap)
                     self._write_atomic()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("vision_tracker loop: %s", exc)
             try:
                 await asyncio.sleep(self._poll_s)
@@ -394,7 +394,7 @@ class VisionTracker:
             self._out.parent.mkdir(parents=True, exist_ok=True)
             tmp.write_text(json.dumps(self.state(), indent=2), encoding="utf-8")
             tmp.replace(self._out)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("vision_state write failed: %s", exc)
 
 

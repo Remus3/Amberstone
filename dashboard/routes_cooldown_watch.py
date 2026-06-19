@@ -190,7 +190,7 @@ def _serve_cooldown_watch(h) -> None:
                 "error": "DS engine unavailable",
             }).encode("utf-8"), "application/json")
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/cooldown-watch compute: %s", exc)
             h._send(503, json.dumps({
                 "ok":    False,
@@ -206,13 +206,13 @@ def _serve_cooldown_watch(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"),
                 "application/json")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/cooldown-watch: %s", exc)
         try:
             h._send(500, json.dumps({
                 "ok": False, "error": str(exc)[:200],
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

@@ -109,7 +109,7 @@ def _serve_loop_control(h, body) -> None:
         log.warning("api/loop-control: %s", exc)
         try:
             send_error(h, exc)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

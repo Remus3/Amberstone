@@ -192,7 +192,7 @@ class WarmAgent7Session:
             try:
                 from core.cost_tracker import record_anthropic_response
                 record_anthropic_response(resp, model=self._model, purpose="agent7_warm")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.debug("cost_tracker record: %s", exc)
 
         return {

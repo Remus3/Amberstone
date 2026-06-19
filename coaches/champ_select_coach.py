@@ -95,7 +95,7 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
         if _gt().gate_disabled("champ_select"):
             out["advice"] = "(champ-select coach disabled)"
             return out
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     if not api_key:
         out["advice"] = "(API key missing - coach disabled)"
@@ -140,10 +140,10 @@ def coach_pick(state: dict, api_key: str | None) -> dict[str, Any]:
         try:
             from core.cost_tracker import record_anthropic_response
             record_anthropic_response(resp, model=_MODEL, purpose="champ_select_coach")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Never surface the raw exception (type or message) to the UI - the
         # advice field is user-facing. Friendly degrade + log the raw error.
         out["advice"] = "(coaching paused - retrying)"

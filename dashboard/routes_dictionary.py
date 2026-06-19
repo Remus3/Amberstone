@@ -36,7 +36,7 @@ def _serve_file(h, path: Path) -> None:
     try:
         h._send(200, path.read_bytes(), "application/json; charset=utf-8",
                 cache_control=_DICT_CACHE_CONTROL)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("dictionary serve %s: %s", path.name, exc)
         h._send(500, b'{"error":"dictionary_read_failed"}', "application/json")
 
@@ -133,7 +133,7 @@ def _serve_champion_tags(h) -> None:
                 out[slug] = tags_entry
         h._send(200, _json.dumps(out).encode("utf-8"), "application/json; charset=utf-8",
                 cache_control=_DICT_CACHE_CONTROL)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("dictionary champion-tags: %s", exc)
         h._send(500, b'{"error":"champion_tags_failed"}', "application/json")
 
@@ -155,7 +155,7 @@ _CDRAGON_GAMEDATA_BASE = (
 def _current_ds_patch() -> str:
     try:
         return (_DS_DATA_DIR / "current.txt").read_text(encoding="utf-8").strip()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -200,7 +200,7 @@ def _serve_augments(h) -> None:
         body = _json.dumps({"patch": patch, "augments": out}).encode("utf-8")
         h._send(200, body, "application/json; charset=utf-8",
                 cache_control=_DICT_CACHE_CONTROL)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("dictionary augments: %s", exc)
         h._send(500, b'{"error":"augments_read_failed"}', "application/json")
 

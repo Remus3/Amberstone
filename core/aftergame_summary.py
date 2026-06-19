@@ -334,7 +334,7 @@ def _game_sense_trend(champ: str, mode: str, phase: str) -> str:
     try:
         from core.benchmarks import text_freq
         freq = text_freq(champ, mode, f"game_sense_{phase}")
-    except Exception:
+    except Exception:  # noqa: BLE001
         freq = {}
     if not freq:
         return ""
@@ -433,7 +433,7 @@ def write_to_client_coaching_data(summary: dict,
                        encoding="utf-8")
         tmp.replace(target)
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Fail-soft boundary (caller treats False as "not written") but the
         # error must not vanish silently - log it for the ops trail.
         _log.warning("write_to_client_coaching_data failed for %s: %s",

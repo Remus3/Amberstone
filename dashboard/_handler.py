@@ -62,7 +62,7 @@ def _cors_allowed_origin(origin: str) -> str | None:
     from urllib.parse import urlparse
     try:
         host = (urlparse(origin).hostname or "").lower()
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     if not host:
         return None
@@ -175,11 +175,11 @@ class Handler(BaseHTTPRequestHandler):
             # still look like 404 to the dashboard, not 500 here.
             try:
                 body = e.read() or b""
-            except Exception:
+            except Exception:  # noqa: BLE001
                 body = b""
             ctype = e.headers.get("Content-Type", "application/json") if e.headers else "application/json"
             self._send(e.code, body, ctype)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.debug("proxy %s: %s", self.path, exc)
             if proxy_error_status(self.path, None) == 204:
                 self._minimap_no_frame()
@@ -203,7 +203,7 @@ class Handler(BaseHTTPRequestHandler):
             sock = self.connection
             if hasattr(sock, "cipher") and callable(sock.cipher):
                 self.send_header("Strict-Transport-Security", "max-age=31536000")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         # OVL2: client-origin-gated CORS. Echo the request Origin only when it
         # is an allowed cross-origin client (loopback / env allowlist), never
@@ -214,11 +214,11 @@ class Handler(BaseHTTPRequestHandler):
             if allow_origin:
                 self.send_header("Access-Control-Allow-Origin", allow_origin)
                 self.send_header("Vary", "Origin")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         self.end_headers()
         try: self.wfile.write(body)
-        except Exception: pass
+        except Exception: pass  # noqa: BLE001
 
     def do_GET(self) -> None:
         # Slice 2C (2026-05-01): all GET routes live in dashboard/routes_*.
@@ -285,7 +285,7 @@ class Handler(BaseHTTPRequestHandler):
                 # Anything else: reject.
                 return False
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Don't block POSTs on parse errors - fail open with a log.
             log.debug("csrf_ok parse failed; allowing")
             return True
@@ -316,7 +316,7 @@ class Handler(BaseHTTPRequestHandler):
                 return
             body = self.rfile.read(n) if n else b""
             payload = json.loads(body.decode("utf-8", errors="replace")) if body else {}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.debug("do_POST bad_body: %s", exc)
             self._send(400, b'{"error":"bad_body"}', "application/json")
             return

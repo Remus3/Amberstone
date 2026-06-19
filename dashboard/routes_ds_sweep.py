@@ -169,7 +169,7 @@ def _load_id_to_slug() -> dict[int, str]:
                     mapping[int(key)] = str(slug)
                 except (TypeError, ValueError):
                     continue
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("ds-sweep: id_to_slug load failed: %s", exc)
         _ID_TO_SLUG = mapping
         return mapping
@@ -201,7 +201,7 @@ def _resolve_archetype(slug: str) -> str:
         primary = str(entry.get("primary") or "").lower().strip()
         if primary in _ARCHETYPE_BUILDS:
             return primary
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("ds-sweep: archetype resolve failed for %s: %s", slug, exc)
     return _FALLBACK_ARCHETYPE
 
@@ -360,7 +360,7 @@ def _serve_ds_sweep(h) -> None:
                 "error": "DS engine unavailable",
             }).encode("utf-8"), "application/json")
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("api/ds-sweep compute: %s", exc)
             h._send(503, json.dumps({
                 "ok":    False,
@@ -376,13 +376,13 @@ def _serve_ds_sweep(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"),
                 "application/json")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/ds-sweep: %s", exc)
         try:
             h._send(500, json.dumps({
                 "ok": False, "error": str(exc)[:200],
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

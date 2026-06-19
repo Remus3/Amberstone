@@ -225,7 +225,7 @@ class CostTracker:
     def _cfg(self) -> dict:
         try:
             return self._cfg_provider() or {}
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("cost_tracker config load: %s", exc)
             return {}
 
@@ -270,7 +270,7 @@ class CostTracker:
             # population, not just the billed subset.
             _M_COACH_COST_PER_CALL.observe(
                 total_usd, model=model, purpose=purpose_lbl)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("prom_metrics record_call: %s", exc)
         with self._lock:
             cur = read_json_dict(self._spend_path(), default=_empty_ledger())
@@ -376,7 +376,7 @@ class CostTracker:
         try:
             (_M_VISION_TOKEN_GRANTED if granted
              else _M_VISION_TOKEN_DENIED).inc()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("prom_metrics vision_token: %s", exc)
         return granted
 
@@ -399,7 +399,7 @@ class CostTracker:
         try:
             (_M_VISION_DEDUPE_HITS if hit
              else _M_VISION_DEDUPE_MISSES).inc()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("prom_metrics vision_dedupe_get: %s", exc)
         return result
 
@@ -482,7 +482,7 @@ class CostTracker:
                 atomic_write_json(_recent_path, {"matches": matches})
                 atomic_write_json(_open_path,
                                   {"by_purpose": now_bp, "ts": time.time()})
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("note_match_boundary: %s", exc)
 
     def recent_match_avg(self) -> dict:
@@ -565,6 +565,6 @@ def record_anthropic_response(
             cache_read=cr, cache_write=cw,
             purpose=purpose or "_unspecified",
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("record_anthropic_response swallowed: %s", exc)
         return None

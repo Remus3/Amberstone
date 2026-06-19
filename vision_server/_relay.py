@@ -45,7 +45,7 @@ def handle_upload_lcu(body: bytes) -> dict:
         return {"error": "empty"}
     try:
         parsed = json.loads(body)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         return {"error": f"bad_json: {e}"}
     with _lcu_lock:
         _lcu_state.update({"data": parsed, "ts": time.time(),
@@ -120,7 +120,7 @@ def _fetch_liveclient_direct():
             req, context=_self_read_ssl, timeout=_SELF_READ_TIMEOUT_S
         ) as r:
             parsed = json.loads(r.read())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     return parsed if isinstance(parsed, dict) else None
 
@@ -165,7 +165,7 @@ def handle_upload_liveclient(body: bytes) -> dict:
         return {"error": "empty body"}
     try:
         parsed = json.loads(body)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         _record("liveclient_upload", int((time.time() - t0) * 1000), ok=False)
         return {"error": f"bad_json: {e}"}
     with _liveclient_lock:

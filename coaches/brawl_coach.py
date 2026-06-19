@@ -189,7 +189,7 @@ def _load_brawl_build_note(champion: str, mode: str = "") -> str:
             if build_str:
                 result += f" | Build: {build_str}"
             return result[:280]
-    except Exception:
+    except Exception:  # noqa: BLE001
         return ""
 
 
@@ -248,7 +248,7 @@ class Coach(BaseCoach):
             from core.feature_policy import is_allowed as _fp_ok
             if not _fp_ok("brawl", "live_coaching"):
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         try:
             reader = BrawlVisionReader(self._api_key, self._last_state.get("game_mode", ""))
@@ -267,7 +267,7 @@ class Coach(BaseCoach):
             if state.get("nexus_hp_enemy") is not None:
                 current["enemy_nexus_hp"] = state["nexus_hp_enemy"]
             safe_write(self._out, current)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("Brawl vision run: %s", exc)
 
     # -- Daemon Slayer mode routing (s75) ------------------------------------
@@ -332,7 +332,7 @@ class Coach(BaseCoach):
             if not _fp_ok("brawl", "live_coaching"):
                 _fp_wr("brawl")
                 return
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         if not self._client:
             return
@@ -347,7 +347,7 @@ class Coach(BaseCoach):
                 try:
                     from coaches.adaptation_hint import format_hint_line as _fhl
                     _hint = _fhl(champ, "brawl", state.get("enemy_comp", []))
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
             if "ULTBOOK" in mode or "URF" in mode:
                 brawl_meta  = _load_brawl_build_note(champ, "URF")
@@ -408,7 +408,7 @@ class Coach(BaseCoach):
                 if _ds_dispatch is not None:
                     _ds_picks_str = _ds_dispatch.picks_str
                     _ds_label = _ds_display_label(_ds_dispatch.scorer)
-            except Exception as _ds_exc:
+            except Exception as _ds_exc:  # noqa: BLE001
                 logger.debug("Brawl daemon_slayer pre-call: %s", _ds_exc)
             if _ds_dispatch is not None and _ds_dispatch.rows:
                 try:
@@ -419,7 +419,7 @@ class Coach(BaseCoach):
                                        "delta_dps": _r["delta_dps"], "gold": _r["gold"],
                                        "scorer": _r["scorer"]}
                                       for _r in _ds_dispatch.display_rows])
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
 
             _resp = state.get("dead_respawn_str", "")
@@ -545,7 +545,7 @@ class Coach(BaseCoach):
             try:
                 from core.coaching_timestamps import write_coaching_ts as _wts
                 _wts("brawl")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
         except Exception as exc:
             raise exc

@@ -68,7 +68,7 @@ def fetch_json(url: str, retries: int = MAX_RETRIES) -> dict | list | None:
                 if attempt == retries - 1:
                     return None
                 time.sleep(REQUEST_DELAY * 2)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"    Fetch error ({url}): {e}")
             if attempt == retries - 1:
                 return None

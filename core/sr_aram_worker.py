@@ -108,7 +108,7 @@ class SrAramWorker(BaseCoachWorker):
                 self._reader._enemy_death_time = {}
                 if reason:
                     _log.debug("SrAramWorker: reader state reset (%s)", reason)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.warning("SrAramWorker: reset_reader_state failed: %s", exc)
 
     def _init_reader(self) -> bool:
@@ -118,7 +118,7 @@ class SrAramWorker(BaseCoachWorker):
             from game_reader import GameReader
             self._reader = GameReader()
             return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.error("SrAramWorker: GameReader import failed: %s", exc)
             return False
 
@@ -158,7 +158,7 @@ class SrAramWorker(BaseCoachWorker):
                             from core.game_snapshot import mode_from_game_mode_string
                             gm = state.get("game_mode", "CLASSIC").upper()
                             canon_mode = mode_from_game_mode_string(gm)
-                        except Exception:
+                        except Exception:  # noqa: BLE001
                             canon_mode = "SR"
 
                     gm_upper = state.get("game_mode", "CLASSIC").upper()
@@ -198,7 +198,7 @@ class SrAramWorker(BaseCoachWorker):
                         none_streak = 0
                         backoff = BACKOFF_MIN_S
 
-            except Exception:
+            except Exception:  # noqa: BLE001
                 backoff = min(backoff * 1.5, BACKOFF_MAX_S)
                 _log.debug("SrAramWorker read error", exc_info=True)
 
@@ -213,7 +213,7 @@ class SrAramWorker(BaseCoachWorker):
                 if not is_allowed("sr", "live_coaching"):
                     write_disabled_placeholder("sr")
                     return
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass  # policy module unavailable - allow by default
 
             dead_enemies = state.get("dead_enemies", [])
@@ -231,11 +231,11 @@ class SrAramWorker(BaseCoachWorker):
                         enemy_items_flat=[],
                         game_mode=state.get("game_mode", "CLASSIC"),
                     )
-                except Exception as _exc:  # QUAL-002
+                except Exception as _exc:  # QUAL-002  # noqa: BLE001
                     _log.debug("item_advisor call: %s", _exc)
 
             self._coach.submit_state(swd)
-        except Exception:
+        except Exception:  # noqa: BLE001
             _log.debug("SrAramWorker: coaching submit failed", exc_info=True)
 
     def _enqueue(self, result: WorkerResult) -> None:

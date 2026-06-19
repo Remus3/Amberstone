@@ -96,7 +96,7 @@ def _crop_to_primary(img_b64: str) -> tuple[str, str]:
                   w, h, cropped.width, cropped.height,
                   len(raw) // 1024, len(buf.getvalue()) // 1024)
         return out, "image/jpeg"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("Vision crop failed (%s) - sending original frame", exc)
         mt = "image/jpeg" if img_b64.startswith("/9j/") else "image/png"
         return img_b64, mt
@@ -119,7 +119,7 @@ def _record_to_cost_tracker(resp, *, model: str, purpose: str) -> None:
             cache_write=getattr(u, "cache_creation_input_tokens", 0) or 0 if u else 0,
             purpose=purpose,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         log.debug("cost_tracker record_call: %s", e)
 
 
@@ -136,7 +136,7 @@ def handle_vision(body: bytes) -> dict:
         from core.cost_tracker import get_tracker as _gt
         if _gt().gate_disabled("vision"):
             return {"error": "vision_disabled"}
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     # AUDIT 2026-04-29 (gap C): crop stitched dual-monitor frame to the
     # primary 1920x1080 region before sending. Halves Sonnet input area.

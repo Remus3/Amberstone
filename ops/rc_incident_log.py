@@ -172,7 +172,7 @@ class IncidentLog:
 
         try:
             _atomic_write(self.summary_file, summary)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
     def purge_old(self) -> int:
@@ -188,7 +188,7 @@ class IncidentLog:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
             with self.log_file.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass  # never let logging crash the monitor
 
     def _load_recent_entries_locked(self, hours: int = 24) -> list[Dict[str, Any]]:
@@ -205,9 +205,9 @@ class IncidentLog:
                     e = json.loads(line)
                     if e.get("ts", "") >= cutoff:
                         entries.append(e)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return entries
 
@@ -229,10 +229,10 @@ class IncidentLog:
                         kept.append(line)
                     else:
                         removed += 1
-                except Exception:
+                except Exception:  # noqa: BLE001
                     kept.append(line)  # keep malformed lines
             if removed:
                 self.log_file.write_text("\n".join(kept) + "\n", encoding="utf-8")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         return removed

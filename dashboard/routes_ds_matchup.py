@@ -113,7 +113,7 @@ def _load_id_to_slug() -> dict[int, str]:
                     mapping[int(key)] = str(slug)
                 except (TypeError, ValueError):
                     continue
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("ds-matchup: id_to_slug load failed: %s", exc)
         _ID_TO_SLUG = mapping
         return mapping
@@ -238,7 +238,7 @@ def _serve_ds_matchup(h) -> None:
 
         try:
             payload = _compute(champ_a, champ_b, level_a, level_b, mode)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Raw exception text stays in the log; the UI gets the same
             # generic degraded-mode message as the sibling routes.
             log.warning("api/ds-matchup compute: %s", exc)
@@ -265,13 +265,13 @@ def _serve_ds_matchup(h) -> None:
         h._send(200, json.dumps(payload).encode("utf-8"),
                 "application/json")
 
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/ds-matchup: %s", exc)
         try:
             h._send(500, json.dumps({
                 "ok": False, "error": str(exc)[:200],
             }).encode("utf-8"), "application/json")
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

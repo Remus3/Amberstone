@@ -70,7 +70,7 @@ def _resolve_streamer():
     try:
         from core.metric_streamer import MetricStreamer
         _MetricStreamer = MetricStreamer
-    except Exception as exc:  # pragma: no cover - import-environment specific
+    except Exception as exc:  # pragma: no cover - import-environment specific  # noqa: BLE001
         logger.warning("live-metrics import failed: %s", exc)
         _MetricStreamer = None
     return _MetricStreamer
@@ -85,7 +85,7 @@ def _config_enabled() -> bool:
             data = json.loads(_COACH_CFG.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 return bool(data.get(_CFG_KEY, False))
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return False
 
@@ -150,6 +150,6 @@ def stream(holder, cur: dict, state: dict, mode: str) -> int:
                 mode=mode,
             )
         return holder._streamer.on_state(cur)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.debug("live-metrics stream error (%s): %s", mode, exc)
         return 0

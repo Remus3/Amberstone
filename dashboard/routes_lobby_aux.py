@@ -81,7 +81,7 @@ def _load_top8() -> list:
             log.warning("top8: not a list, returning empty (got %r)", type(data))
             return []
         return data
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("top8: load failed: %s", exc)
         return []
 
@@ -158,7 +158,7 @@ def _serve_top8_post(h, payload) -> None:
             sanitized.append(s)
     try:
         _save_top8(sanitized)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("top8 save: %s", exc)
         # Raw exception text stays in the log only (CLAUDE.md error rule).
         h._send(500, json.dumps({"error": "internal error - see logs"}).encode(),
@@ -317,7 +317,7 @@ def _read_live_mastery() -> dict:
         with _ur.urlopen(req, timeout=1.0, context=ctx) as r:
             body = json.loads(r.read())
         return ((body.get("lcu") or {}).get("mastery")) or {}
-    except Exception:
+    except Exception:  # noqa: BLE001
         return {}
 
 
@@ -338,7 +338,7 @@ def _serve_mains_get(h) -> None:
             "puuid": puuid,
             "main_champs": rows,
         }).encode(), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # Cycle-8 audit: this was the only slice handler doing real work
         # without a wrapper - an unexpected exception escaped do_GET and
         # reset the connection instead of answering.

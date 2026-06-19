@@ -252,7 +252,7 @@ def _regenerate_sr(champion: str, archetype: str) -> list[str] | None:
             inject_boots=True,
             timeout=15.0,
         )
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"WARN: plan_build_order raised for {champion}|{archetype}: {exc}",
               file=sys.stderr)
         return None
@@ -322,7 +322,7 @@ def build_patch(champ_names: list[str]) -> dict:
             continue
         try:
             delta = transform_champion(nm, champs[nm], fam_map, sr_cache)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"ERROR on {nm}: {exc}", file=sys.stderr)
             traceback.print_exc(file=sys.stderr)
             continue

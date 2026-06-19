@@ -28,7 +28,7 @@ class Coach(CoachIntegration):
         try:
             if hasattr(self, "_cache") and self._cache:
                 self._cache.close()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         try:
             if hasattr(self, "_lock"):
@@ -36,5 +36,5 @@ class Coach(CoachIntegration):
                 acquired = self._lock.acquire(timeout=3.0)
                 if acquired:
                     self._lock.release()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass

@@ -206,7 +206,7 @@ def _load_item_map() -> dict:
         raw = json.loads(_DDRAGON_ITEMS.read_text(encoding="utf-8"))
         data = raw.get("data", raw) if isinstance(raw, dict) else {}
         return {int(k): v.get("name", str(k)) for k, v in data.items() if k.isdigit()}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("item map load failed: %s", exc)
         return {}
 
@@ -220,7 +220,7 @@ def _load_rune_map() -> dict:
             for slot in tree.get("slots", []):
                 for rune in slot.get("runes", []):
                     out[int(rune.get("id", 0))] = rune.get("name", "")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("rune map load failed: %s", exc)
     return out
 
@@ -263,7 +263,7 @@ def _ensure_schema() -> None:
                         conn.execute(stmt)
             conn.commit()
             _log.debug("postgame_stats DB schema OK (%s)", _DB_PATH)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.error("postgame_stats schema error: %s", exc)
         finally:
             conn.close()
@@ -541,7 +541,7 @@ def _save_eog(eog: dict, game_mode: str, item_map: dict, rune_map: dict) -> None
                 "postgame: saved match %s  mode=%s  players=%d  duration=%ds",
                 match_id, mode, player_count, game_len
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             conn.rollback()
             _log.error("postgame: save failed for match %s: %s", match_id, exc)
         finally:
@@ -586,7 +586,7 @@ def _save_item_events(match_id: str, mode: str,
             )
             conn.commit()
             _log.info("postgame: saved %d item events for match %s", len(rows), match_id)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             conn.rollback()
             _log.debug("postgame: item events save failed: %s", exc)
         finally:
@@ -646,7 +646,7 @@ class PostgameCollector:
         try:
             from app._loop import get_loop as _get_loop
             _sched = _get_loop()
-        except Exception:
+        except Exception:  # noqa: BLE001
             _sched = None
         if _sched is not None:
             self._task = _sched.spawn_task(self._run_async())
@@ -664,7 +664,7 @@ class PostgameCollector:
         self._trigger.set()
         if self._task is not None:
             try: self._task.cancel()
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
             self._task = None
 
     def trigger(self, game_mode: str = "CLASSIC") -> None:
@@ -705,7 +705,7 @@ class PostgameCollector:
                 await asyncio.to_thread(self._capture_after_trigger, self._game_mode_hint)
             except asyncio.CancelledError:
                 return
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("PostgameCollector async tick: %s", exc)
 
     def _capture_after_trigger(self, game_mode: str) -> None:
@@ -774,7 +774,7 @@ class PostgameCollector:
                 raw_mode = adapted.get("gameMode") or game.get("gameMode") or game_mode
                 _save_eog(adapted, raw_mode, _ITEM_MAP, _RUNE_MAP)
                 return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("postgame history fallback failed: %s", exc)
         return False
 
@@ -798,7 +798,7 @@ class PostgameCollector:
                         for ev in (frame.get("events") or []):
                             events.append(ev)
                 _save_item_events(game_id, game_mode, events, _ITEM_MAP)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("postgame timeline fetch failed: %s", exc)
 
     def _adapt_match_history(self, game: dict) -> Optional[dict]:
@@ -902,7 +902,7 @@ class PostgameCollector:
         try:
             with urllib.request.urlopen(req, context=self._ssl, timeout=5) as r:
                 return json.loads(r.read())
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def _get_gameflow_phase(self) -> str:

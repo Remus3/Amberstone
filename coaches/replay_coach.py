@@ -72,14 +72,14 @@ def _load_match(match_id: str) -> dict[str, Any] | None:
             "ORDER BY timestamp_ms LIMIT 600", (match_id,)
         ).fetchall()]
         return {"match": dict(m), "participants": participants, "events": events}
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.warning("rewind read failed match=%s: %s", match_id, exc)
         return None
     finally:
         if conn is not None:
             try:
                 conn.close()
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
 
 
@@ -207,10 +207,10 @@ def analyze_match(match_id: str, *, api_key: str | None) -> dict[str, Any]:
         try:
             from core.cost_tracker import record_anthropic_response
             record_anthropic_response(resp, model=_MODEL, purpose="replay_coach")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("cost_tracker record: %s", exc)
         raw = resp.content[0].text if resp.content else ""
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # summary is user-facing - never leak the exception type/message. Log
         # the raw error, render a friendly degraded line.
         out["summary"] = "(coaching unavailable - try again)"

@@ -43,7 +43,7 @@ def _bench() -> dict:
         return {"champions": {}}
     try:
         return json.loads(BENCHMARKS.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception:  # noqa: BLE001
         return {"champions": {}}
 
 
@@ -167,7 +167,7 @@ def main() -> int:
                 "alerts": alerts,
                 "generated_at": datetime.now().isoformat(),
             })
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             print(f"warning: write {args.out}: {exc}", file=sys.stderr)
     return 0
 

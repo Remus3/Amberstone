@@ -88,7 +88,7 @@ def _load_champ_info() -> dict[str, dict]:
                 out[key.replace("'", "").replace(" ", "")] = slim
     except FileNotFoundError:
         _log.warning("defensive_picks: %s missing - using empty index", _CHAMPS_PATH)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("defensive_picks: champ info load failed: %s", exc)
     _CHAMP_INFO = out
     return out

@@ -40,7 +40,7 @@ def _serve_index(h) -> None:
             new_index = inject_asset_hash(new_index)
             h._send(200, new_index, "text/html; charset=utf-8")
             return
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("web/index.html serve failed, falling back to legacy: %s", exc)
     h._send(200, legacy_index_html(), "text/html; charset=utf-8")
 
@@ -81,7 +81,7 @@ def _serve_web_asset(h) -> None:
             ".png": "image/png",
         }.get(abs_path.suffix.lower(), "application/octet-stream")
         h._send(200, abs_path.read_bytes(), ctype)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("static serve %s: %s", h.path, exc)
         h._send(500, b'{"error":"static_serve_failed"}', "application/json")
 
@@ -107,7 +107,7 @@ def _make_icon_handler(subdir: str):
             if p is None:
                 h._send(404, b"not found", "text/plain"); return
             h._send(200, p.read_bytes(), "image/png")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("%s: %s", label, exc)
             h._send(500, b"icon_serve_failed", "text/plain")
     return _handler
@@ -122,7 +122,7 @@ def _serve_icon_items_route(h):
         if p is None:
             h._send(404, b"not found", "text/plain"); return
         h._send(200, p.read_bytes(), "image/png")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("icons/items: %s", exc)
         h._send(500, b"icon_serve_failed", "text/plain")
 
@@ -241,7 +241,7 @@ def _serve_agent_file(h) -> None:
         else:
             ctype = "text/x-python; charset=utf-8"
         h._send(200, body, ctype)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("agent serve %s: %s", name, exc)
         h._send(500, b"agent_read_failed", "text/plain")
 

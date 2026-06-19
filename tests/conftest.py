@@ -44,7 +44,7 @@ _SHADOW_MODULES = (
 def reset_cs_retention_between_tests():
     try:
         from dashboard._cs_retention import reset_cs_retention
-    except Exception:
+    except Exception:  # noqa: BLE001
         yield
         return
     reset_cs_retention()
@@ -60,7 +60,7 @@ def redirect_shadow_paths_to_tmp(monkeypatch, tmp_path):
     for mod_name in _SHADOW_MODULES:
         try:
             mod = importlib.import_module(mod_name)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         if hasattr(mod, "SHADOW_PATH"):
             fname = mod_name.rsplit(".", 1)[-1] + ".jsonl"
@@ -93,7 +93,7 @@ def redirect_prod_write_paths_to_tmp(monkeypatch, tmp_path_factory):
     for mod_name, attr, fname in _PROD_WRITE_GLOBALS:
         try:
             mod = importlib.import_module(mod_name)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         if hasattr(mod, attr):
             monkeypatch.setattr(mod, attr, base / fname)

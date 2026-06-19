@@ -81,7 +81,7 @@ def speak(text: str, *, dedup: bool = True, rate: int = 0) -> bool:
             creationflags=0x08000000,  # CREATE_NO_WINDOW
         )
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("voice speak failed: %s", exc)
         return False
 
@@ -98,5 +98,5 @@ def is_available() -> bool:
         )
         n = int((r.stdout or "0").strip() or "0")
         return n > 0
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False

@@ -24,7 +24,7 @@ try:
     )
     VERSION = versions[0]
     print(f"Using version: {VERSION}")
-except Exception as e:
+except Exception as e:  # noqa: BLE001
     print(f"ERROR fetching versions: {e}")
     sys.exit(1)
 
@@ -36,7 +36,7 @@ try:
             timeout=15
         ).read()
     )
-except Exception as e:
+except Exception as e:  # noqa: BLE001
     print(f"ERROR fetching item data: {e}")
     sys.exit(1)
 
@@ -95,7 +95,7 @@ for item_id, info in sorted(aram_items.items()):
         if downloaded % 25 == 0:
             print(f"  Downloaded {downloaded} items so far... ({name})")
         time.sleep(0.05)  # be nice to the CDN
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"  FAIL [{item_id}] {name}: {e}")
         failed += 1
 

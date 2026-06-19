@@ -77,7 +77,7 @@ def _capture_screen() -> Optional[str]:
             logger.warning("latest-frame stale: age=%.1fs (relay stalled?)", age)
         _fail_streak = 0
         return b64
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _fail_streak += 1
         if _fail_streak >= _FRAME_FAIL_WARN_STREAK:
             logger.warning(
@@ -229,7 +229,7 @@ class GameVisionReader:
             if not _ct.allow_call():
                 logger.warning("Vision call blocked: daily budget exceeded")
                 return None
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         try:
             from core.moon_proxy import moon_proxy as _mp
@@ -240,7 +240,7 @@ class GameVisionReader:
                 logger.debug("Vision via Moon-PC (moon_proxy) in %dms", ms)
                 # moon_proxy returns a dict directly; no JSON string to strip
                 return result if isinstance(result, dict) else None
-        except Exception as _e:
+        except Exception as _e:  # noqa: BLE001
             logger.debug("moon_proxy vision routing failed, falling back: %s", _e)
         # Fallback: call Anthropic directly
         try:
@@ -276,13 +276,13 @@ class GameVisionReader:
                         cache_write=getattr(u, "cache_creation_input_tokens", 0) or 0,
                         purpose="vision_direct",
                     )
-            except Exception:
+            except Exception:  # noqa: BLE001
                 pass
             raw = re.sub(r'^```(?:json)?', '', raw).strip().strip('`')
             return json.loads(raw)
         except json.JSONDecodeError as exc:
             logger.warning("Vision JSON parse failed: %s", exc)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("Vision extract failed: %s", exc)
         return None
 

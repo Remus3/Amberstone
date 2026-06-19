@@ -78,7 +78,7 @@ def surface_to_bridge(summary: str, body: dict) -> None:
             "summary": summary,
             "body":    body,
         })
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         # non-fatal - verdict file is the source of truth
         print(f"surface_to_bridge failed: {exc}", file=sys.stderr)
 
@@ -105,7 +105,7 @@ def main() -> int:
 
     try:
         post(envelope)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         verdict = {
             "verdict":  "ERROR_ISSUE",
             "task_id":  task_id,
@@ -122,7 +122,7 @@ def main() -> int:
         time.sleep(POLL_INTERVAL_S)
         try:
             last_messages = fetch_since(issued_at - 30)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         for m in last_messages:
             if m.get("kind") == "result" and m.get("in_reply_to") == task_id:

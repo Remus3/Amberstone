@@ -68,7 +68,7 @@ def _log_startup(msg: str) -> Path | None:
     try:
         sys.stderr.write(line)
         sys.stderr.flush()
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     return written
 
@@ -88,7 +88,7 @@ if __name__ == "__main__":
     _log_startup("starting serve_forever()")
     try:
         code = serve_forever()
-    except Exception:
+    except Exception:  # noqa: BLE001
         tb = traceback.format_exc()
         _log_startup(f"UNHANDLED EXCEPTION (exit 1):\n{tb}")
         sys.exit(1)

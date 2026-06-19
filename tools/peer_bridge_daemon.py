@@ -113,7 +113,7 @@ def _lock_held() -> bool:
             LOCK_FILE.unlink(missing_ok=True)
             return False
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001
         LOCK_FILE.unlink(missing_ok=True)
         return False
 
@@ -147,7 +147,7 @@ def _write_health(status: str, count: int, last_task_ts: float,
 def _read_processed() -> set:
     try:
         return set(line.strip() for line in PROCESSED_FILE.read_text().splitlines() if line.strip())
-    except Exception:
+    except Exception:  # noqa: BLE001
         return set()
 
 
@@ -162,7 +162,7 @@ def _fetch_messages() -> list:
         if isinstance(raw, list):
             return raw
         return (raw.get("messages") or raw.get("items") or [])
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         _log.debug("fetch failed: %s", e)
         return []
 
@@ -205,7 +205,7 @@ def main() -> None:
         signal.signal(signal.SIGBREAK, _on_signal)
     try:
         signal.signal(signal.SIGINT, _on_signal)
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
 
     sleep_s = POLL_IDLE_S
@@ -242,7 +242,7 @@ def main() -> None:
                     )
                 except subprocess.TimeoutExpired:
                     _log.warning("claude --print timed out after 180s")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     _log.error("claude invocation error: %s", e)
                 finally:
                     _set_lock(False)

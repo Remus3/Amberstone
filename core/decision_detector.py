@@ -86,7 +86,7 @@ def _decisions_critical_section() -> Iterator[None]:
             fl.acquire()
         except portalocker.LockException:
             fl = None
-        except Exception:
+        except Exception:  # noqa: BLE001
             fl = None
         try:
             yield
@@ -94,7 +94,7 @@ def _decisions_critical_section() -> Iterator[None]:
             if fl is not None:
                 try:
                     fl.release()
-                except Exception:
+                except Exception:  # noqa: BLE001
                     pass
 
 # Global rate cap (per-game): never spam more than _MAX_PER_GAME total
@@ -674,7 +674,7 @@ class DecisionStore:
             return json.loads(self._pending_path.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError):
             return []
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("pending read failed: %s", exc)
             return []
 
@@ -684,7 +684,7 @@ class DecisionStore:
             tmp = self._pending_path.with_suffix(self._pending_path.suffix + ".tmp")
             tmp.write_text(json.dumps(items, indent=2), encoding="utf-8")
             tmp.replace(self._pending_path)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("pending write failed: %s", exc)
 
     def reconcile(self, fresh: list[Decision], game_time: float) -> None:
@@ -735,7 +735,7 @@ class DecisionStore:
             self._log_path.parent.mkdir(parents=True, exist_ok=True)
             with self._log_path.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("coach_choice log append failed: %s", exc)
         return entry
 
@@ -764,7 +764,7 @@ class DecisionStore:
                 self._log_path.parent.mkdir(parents=True, exist_ok=True)
                 with self._log_path.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry) + "\n")
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.warning("decisions_log append failed: %s", exc)
             self._write_pending(remaining)
             return entry
@@ -825,7 +825,7 @@ class DecisionLoop:
     def _read_vision_state(self) -> dict:
         try:
             return json.loads(_VISION_STATE.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             return {}
 
     def _apply_rate_cap(self, fresh: list[Decision]) -> list[Decision]:
@@ -880,7 +880,7 @@ class DecisionLoop:
                         d = fn(snap, vs)
                         if d is not None:
                             fresh.append(d)
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001
                         _log.debug("detector %s failed: %s", fn.__name__, exc)
                 fresh = self._apply_rate_cap(fresh)
                 self._store.reconcile(fresh, game_time)
@@ -890,7 +890,7 @@ class DecisionLoop:
                     self._eval_count += 1
                     self._last_eval_unix = time.time()
                 self._write_heartbeat()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 _log.debug("decision_detector loop: %s", exc)
             self._stop.wait(self._poll_s)
 
@@ -904,7 +904,7 @@ class DecisionLoop:
             tmp = _HEARTBEAT_PATH.with_suffix(_HEARTBEAT_PATH.suffix + ".tmp")
             tmp.write_text(json.dumps(payload), encoding="utf-8")
             tmp.replace(_HEARTBEAT_PATH)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("heartbeat write failed: %s", exc)
 
     def heartbeat(self) -> dict:
@@ -971,7 +971,7 @@ def read_heartbeat() -> dict:
             "game_time": 0.0,
             "detectors": len(DECISION_REGISTRY),
         }
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("heartbeat read failed: %s", exc)
         return {
             "counter": 0,

@@ -101,7 +101,7 @@ def _load_ledger() -> dict[str, dict]:
             continue
         try:
             entry = json.loads(line)
-        except Exception:
+        except Exception:  # noqa: BLE001
             continue
         lid = entry.get("lesson_id")
         if lid:
@@ -174,7 +174,7 @@ def _ack(lesson_id: str, decision: str, rationale: str,
     """POST a kind=result ack to the peer per section 5 of the schema."""
     try:
         from core import bridge
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         return (False, f"bridge import failed: {exc}")
     body: dict = {"decision": decision, "rationale": rationale, "took": took}
     if memory_path:

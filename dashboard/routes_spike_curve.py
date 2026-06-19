@@ -181,7 +181,7 @@ def _load_id_to_slug() -> dict[int, str]:
                     mapping[int(key)] = str(slug)
                 except (TypeError, ValueError):
                     continue
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             log.warning("spike-curve: id_to_slug load failed: %s", exc)
         _ID_TO_SLUG = mapping
         return mapping
@@ -197,7 +197,7 @@ def _resolve_archetype(slug: str) -> str:
         primary = str(entry.get("primary") or "").lower().strip()
         if primary in _ARCHETYPE_BUILDS:
             return primary
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("spike-curve: archetype resolve failed for %s: %s", slug, exc)
     return _FALLBACK_ARCHETYPE
 
@@ -263,7 +263,7 @@ def _score_one(snapshot, scorer: str, slug: str, level: int,
             r = compute_hps(snapshot, slug, level=level, item_ids=item_ids,
                             mode=mode)
             return float(getattr(r, "total_throughput", 0.0) or 0.0)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("spike-curve: %s scorer failed for %s lvl %d items=%s: %s",
                   scorer, slug, level, item_ids, exc)
     return 0.0
@@ -488,7 +488,7 @@ def _serve_spike_curve(h) -> None:
         # the panel can render a sensible "engine offline" banner.
         try:
             _load_snapshot()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             # Raw exception text stays in the log; the UI gets a generic
             # degraded-mode message (never the raw error string).
             log.warning("spike-curve: snapshot load failed: %s", exc)
@@ -518,11 +518,11 @@ def _serve_spike_curve(h) -> None:
             _RESPONSE_CACHE[cache_key] = (now, payload)
 
         h._send(200, json.dumps(payload).encode("utf-8"), "application/json")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("api/spike-curve: %s", exc)
         try:
             send_error(h, exc)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

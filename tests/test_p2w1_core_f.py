@@ -50,7 +50,7 @@ def _run_coro(coro, timeout=10.0):
         loop = asyncio.new_event_loop()
         try:
             box["value"] = loop.run_until_complete(coro)
-        except BaseException as exc:  # re-raised on the caller thread
+        except BaseException as exc:  # re-raised on the caller thread  # noqa: BLE001
             box["error"] = exc
         finally:
             loop.close()

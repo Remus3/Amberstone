@@ -80,7 +80,7 @@ def apply_grade(grade: str, last_state: Optional[dict],
                 db_path = str(Path(__file__).resolve().parent.parent
                               / "data" / "decisions.db")
             cache = CacheEngine(db_path)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.debug("apply_grade: cache init failed: %s", exc)
             return False
 
@@ -97,6 +97,6 @@ def apply_grade(grade: str, last_state: Optional[dict],
             cache.bump_confidence(last_state, mult, flag=f"grade_{g}")
             _log.info("feedback: grade %s -> confidence x %.2f applied", g, mult)
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("apply_grade: cache update failed: %s", exc)
         return False

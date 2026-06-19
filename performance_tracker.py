@@ -48,7 +48,7 @@ def _get_db(sd):
     if _match_db is None:
         try:
             from core.match_db import MatchDB; _match_db = MatchDB(Path(sd) / "data" / "match_history.db")
-        except Exception as e: _log.warning("MatchDB init failed: %s", e)
+        except Exception as e: _log.warning("MatchDB init failed: %s", e)  # noqa: BLE001
     return _match_db
 
 
@@ -80,7 +80,7 @@ def _ds_picks_snapshot(sd, category):
         return []
     try:
         d = json.loads(p.read_text(encoding="utf-8"))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("ds picks snapshot read failed (%s): %s", fname, exc)
         return []
     if not isinstance(d, dict):
@@ -219,7 +219,7 @@ def _identify_comp(traits,units):
             parts = str(t).rsplit(" ", 1)
             name = parts[0]
             try: count = int(parts[1]) if len(parts) > 1 else 1
-            except Exception: count = 1
+            except Exception: count = 1  # noqa: BLE001
             parsed.append((name, count))
         parsed.sort(key=lambda x: -x[1])
         top = [f"{n} {c}" for n, c in parsed if c > 1][:3]
@@ -260,7 +260,7 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
     ss=tft_live.get("stage_round","");sn=0
     if ss:
         try:sn=int(str(ss).split("-")[0])
-        except Exception as _e: _log.debug("TFT stage parse: %s", _e)  # QUAL-002
+        except Exception as _e: _log.debug("TFT stage parse: %s", _e)  # QUAL-002  # noqa: BLE001
     if not sn and tft_coaching:sn=tft_coaching.get("stage",0)
     lv=tft_live.get("level") or (tft_coaching or {}).get("level",0) or 0
     gs=(tft_coaching or {}).get("game_time_s",0);gm=max(0,gs/60) if gs else 0
@@ -285,7 +285,7 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
                     units = _lv8 if _lv8 else units
                     traits = _traits_from_meta if _traits_from_meta else traits
                     augments = augments or _cd.get("augments_best", [])[:3]
-    except Exception as _e:  # QUAL-002
+    except Exception as _e:  # QUAL-002  # noqa: BLE001
         import logging as _lg; _lg.getLogger(__name__).debug("TFT data enrichment: %s", _e)
     comp=_sel if _sel else _identify_comp(traits,units);core=_core_units(units)
     if not comp:comp=_identify_comp(traits,units)
@@ -297,7 +297,7 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
     try:
         from tft.placement_aggregator import parse_unit_placement as _pup
         _unit_positions = _pup(_raw_placement)
-    except Exception:
+    except Exception:  # noqa: BLE001
         _unit_positions = {}
     data={"rating":grade,"label":lmap.get(placement,""),"champion":comp or f"TFT #{placement}",
         "game_mode":"TFT_DOUBLE_UP" if is_duo else "TFT","mode_category":"TFT",
@@ -309,16 +309,16 @@ def save_tft_rating(script_dir,tft_live,tft_coaching=None):
         "tft_unit_positions":_unit_positions,"tft_unit_placement":_raw_placement}
     try:
         _atomic_write_json(_mode_file(script_dir, "TFT"), data)
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         _log.warning("TFT rating save failed: %s", _e)  # QUAL-002
     db=_get_db(script_dir)
     if db:
         try:db.save_match({"mode":"TFT","champion":comp,"grade":grade,"game_time_s":gs,"tft_placement":placement,"tft_stage":sn,"tft_level":lv,"tft_comp":comp,"tft_traits":traits,"tft_units":units,"tft_augments":augments,"tft_items":"","notes":notes,"label":lmap.get(placement,"")})
-        except Exception as e:_log.warning("TFT DB save failed: %s",e)
+        except Exception as e:_log.warning("TFT DB save failed: %s",e)  # noqa: BLE001
     try:
         from tft.placement_aggregator import update_heatmap as _uh
         _uh()
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         _log.debug("Heatmap update: %s", _e)
     return grade, notes
 
@@ -339,7 +339,7 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
         "notes":notes,"timestamp":datetime.now().strftime("%Y-%m-%d %H:%M")}
     try:
         _atomic_write_json(_mode_file(script_dir, category), data)
-    except Exception as _e:
+    except Exception as _e:  # noqa: BLE001
         _log.warning("Rating save failed (%s): %s", category, _e)  # QUAL-002
     db=_get_db(script_dir)
     if db:
@@ -364,7 +364,7 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
         except (TypeError, ValueError):
             _gid = 0
         try:db.save_match({"mode":category,"champion":champion,"grade":grade,"game_time_s":game_secs,"kills":stats["kills"],"deaths":stats["deaths"],"assists":stats["assists"],"cs":game_state.get("cs",0),"cs_per_min":stats["cs_per_min"],"gold":game_state.get("gold",0),"gold_per_min":gpm,"kda_str":kda_str,"kp_pct":kp,"arena_rounds_won":game_state.get("arena_rounds_won",0),"arena_placement":game_state.get("arena_rank",0),"notes":notes,"label":GRADE_LABEL.get(grade,""),"raw_data":json.dumps(_raw,default=str),"game_id":_gid})
-        except Exception as e:_log.warning("Match DB save failed: %s",e)
+        except Exception as e:_log.warning("Match DB save failed: %s",e)  # noqa: BLE001
     # 2026-04-25: adaptation feedback loop. Translate the user's grade
     # (S/A/B/C/D/F) into a confidence multiplier on the cache entry for
     # this game's final state. Future similar states get advice weighted
@@ -372,7 +372,7 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
     try:
         from coaches.feedback import apply_grade
         apply_grade(grade, game_state)
-    except Exception as _fe:
+    except Exception as _fe:  # noqa: BLE001
         _log.debug("feedback.apply_grade failed: %s", _fe)
     # 2026-04-26: experimental-build adaptation hook. If the user opted
     # into the experimental variant for this match, archive the result
@@ -385,7 +385,7 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
             api_key = ""
             try:
                 api_key = (Path(script_dir) / "API-Key-Claude.txt").read_text(encoding="utf-8").strip()
-            except Exception: pass
+            except Exception: pass  # noqa: BLE001
             gs_for_record = {
                 "kda":         kda_str,
                 "kp_pct":      kp,
@@ -393,7 +393,7 @@ def save_rating(script_dir,champion,game_state,ally_kills_total):
                 "notes":        notes,
             }
             _eb.record_result(champion, grade, gs_for_record, api_key)
-    except Exception as _ee:
+    except Exception as _ee:  # noqa: BLE001
         _log.debug("experimental.record_result failed: %s", _ee)
     return grade, notes
 
@@ -401,7 +401,7 @@ def load_rating(sd,category=""):
     try:
         p = _mode_file(sd, category) if category else _latest_rating_file(sd)
         if p and p.exists(): return json.loads(p.read_text(encoding="utf-8"))
-    except Exception as _e: _log.debug("load_rating %s: %s", category or 'default', _e)  # QUAL-002
+    except Exception as _e: _log.debug("load_rating %s: %s", category or 'default', _e)  # QUAL-002  # noqa: BLE001
     return None
 def load_all_ratings(sd):
     r={}

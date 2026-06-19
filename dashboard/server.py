@@ -185,7 +185,7 @@ def start_dashboard(app_dir: Path) -> None:
             ctx.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
             srv = _DualProtocolHTTPServer((HOST, PORT), handler_class, ssl_ctx=ctx)
             scheme = "https"
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             _log.warning("TLS setup failed, falling back to HTTP: %s", exc)
             srv = None
     if srv is None:
@@ -225,7 +225,7 @@ def start_dashboard(app_dir: Path) -> None:
                 creationflags=0x08000000,  # CREATE_NO_WINDOW
             )
             _log.info("vision server not running - spawned %s", _vis.name)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("vision server startup check failed: %s", exc)
 
     # Daemon Slayer: ensure the local DPS engine on :8893 is running.
@@ -233,7 +233,7 @@ def start_dashboard(app_dir: Path) -> None:
     try:
         from core.daemon_slayer_client import ensure_running as _ds_ensure
         _ds_ensure()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("daemon_slayer startup check failed: %s", exc)
 
     # Vision tracker: derives fog-of-war state from Live Client position
@@ -242,7 +242,7 @@ def start_dashboard(app_dir: Path) -> None:
     try:
         from core.vision_tracker import get_tracker
         get_tracker().start_background()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("vision_tracker failed to start: %s", exc)
 
     # Decision detector loop now runs in the Phase 3 supervisor process
@@ -258,5 +258,5 @@ def start_dashboard(app_dir: Path) -> None:
     try:
         from core.obs_publisher import get_publisher
         get_publisher().start_background()
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("obs_publisher failed to start: %s", exc)

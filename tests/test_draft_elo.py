@@ -332,7 +332,7 @@ class DraftEloDbReadOnlyTests(unittest.TestCase):
     def tearDownClass(cls):
         try:
             cls.conn.close()
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         cls._fix.stop()
 

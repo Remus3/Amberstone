@@ -184,7 +184,7 @@ def format_for_display(
     try:
         from coaches.loadout_resolver import _resolve_item_ids
         item_ids = _resolve_item_ids(items)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.debug("user-build item-id resolve failed: %s", exc)
         item_ids = []
 
@@ -324,7 +324,7 @@ def _load() -> dict[str, Any]:
             raise ValueError("user_builds.json top-level must be an object")
         raw.setdefault("champions", {})
         raw.setdefault("_schema_version", _SCHEMA_VERSION)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         _log.warning("user_builds load failed: %s", exc)
         raw = {"champions": {}, "_schema_version": _SCHEMA_VERSION}
     _CACHE = raw

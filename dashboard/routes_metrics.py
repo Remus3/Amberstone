@@ -71,13 +71,13 @@ def _refresh_gauges() -> None:
         age = gamepc_result_age_s()
         if age is not None:
             _G_BRIDGE_AGE.set(age)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("metrics bridge_age refresh: %s", exc)
 
     try:
         from core.decision_detector import DecisionStore
         _G_DECISIONS_PENDING.set(len(DecisionStore().list_pending()))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("metrics decisions_pending refresh: %s", exc)
 
     try:
@@ -85,7 +85,7 @@ def _refresh_gauges() -> None:
         spend = get_tracker().daily_spend()
         _G_DAILY_SPEND_USD.set(float(spend.get("total_usd") or 0.0))
         _G_DAILY_CALLS.set(float(spend.get("calls") or 0))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.debug("metrics daily_spend refresh: %s", exc)
 
 
@@ -97,7 +97,7 @@ def _serve_metrics(h) -> None:
         log.debug("metrics rendered in %.1f ms (%d bytes)",
                   (time.monotonic() - t0) * 1000, len(body))
         h._send(200, body, "text/plain; version=0.0.4; charset=utf-8")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         log.warning("metrics: %s", exc)
         h._send(500, b"metrics_render_failed", "text/plain")
 

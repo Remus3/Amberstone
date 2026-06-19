@@ -390,7 +390,7 @@ def _fold_at_n_into_roster(enriched: dict) -> None:
                 entry["gold_at_n"] = snap.get("gold")
                 entry["cs_at_n"] = snap.get("cs")
                 entry["at_n_minute"] = minute
-    except Exception:  # never break the page over the @N fold
+    except Exception:  # never break the page over the @N fold  # noqa: BLE001
         return
 
 
@@ -433,5 +433,5 @@ def _attach_match_timeline(enriched: dict, lcu_detail: dict) -> None:
         if parsed:
             enriched["timeline"] = parsed
             _fold_at_n_into_roster(enriched)
-    except Exception as exc:  # never break the page over a timeline
+    except Exception as exc:  # never break the page over a timeline  # noqa: BLE001
         _log.warning("_attach_match_timeline: %s", exc)
