@@ -112,6 +112,22 @@ def _first_choice_label(rec: dict) -> Optional[str]:
     return None
 
 
+def _is_even_precompute_label(rec: dict) -> bool:
+    """True when the precompute A-label is the ``even`` verdict ("Even trade on
+    your cd window", core/precomputed_laning_coach.py). classify_verdict folds
+    this into ``trade`` (the "trade" substring), so the agreement rate counts
+    even verdicts as trade. The even verdict's B-option is "Hold position", so
+    when Haiku says ``hold`` the even verdict already offered it - whether that
+    is an agreement is a product-calibration call (operator/Gemini-gated). This
+    additive breakdown exposes the even->native overlap WITHOUT deciding that
+    mapping (it changes no existing rate), so the gated recalibration is made on
+    the real disaggregated numbers, not the understated 39% folded view."""
+    label = _first_choice_label(rec)
+    if not label:
+        return False
+    return "even" in _normalize_verdict_text(label)
+
+
 # Ordered verdict keyword table - multi-word phrases FIRST, then single
 # tokens with the more-specific ones ahead of any token they contain as a
 # substring ("back to base" before "base", "disengage" before "engage"),
@@ -182,6 +198,50 @@ def classify_verdict(text) -> Optional[str]:
     return None
 
 
+# Build-lean keyword tables - the BUILD shadow agreement runs on a DIFFERENT
+# axis than laning: the precompute side is the stored ``lean`` field
+# (anti_tank / anti_squishy), and the native (Haiku) side is the live
+# ``item_build`` text. classify_build_lean maps that free build text to the
+# same two-value lean by item-name / phrasing keywords. Disjoint sets; a build
+# that signals neither (a plain crit/AP core) or BOTH equally -> None
+# (excluded), the same "only score a clear signal" contract classify_verdict
+# uses. This is what makes the build flip-readiness gate measurable at all -
+# before item 502 the build native captured the LANING action (wrong axis), so
+# build agreement was structurally 0/0.
+_ANTI_TANK_KW: tuple[str, ...] = (
+    "anti tank", "dominik", "mortal reminder", "last whisper", "serylda",
+    "black cleaver", "cleaver", "void staff", "liandry", "demonic embrace",
+    "blade of the ruined king", "botrk", "kraken", "giant slayer", "wits end",
+    "terminus", "divine sunderer", "max health", "max hp", "percent hp",
+    "shred", "armor pen", "armor penetration", "magic pen", "magic penetration",
+    "their tanks", "vs tank", "tanky",
+)
+_ANTI_SQUISHY_KW: tuple[str, ...] = (
+    "anti squishy", "lethality", "youmuu", "duskblade", "edge of night",
+    "serpent", "eclipse", "prowler", "opportunity", "hubris", "profane",
+    "collector", "axiom", "ghostblade", "burst", "squish", "one shot",
+    "oneshot", "assassinate",
+)
+
+
+def classify_build_lean(text) -> Optional[str]:
+    """Map free build text (a precompute lean label or Haiku item_build prose)
+    to one coarse lean: "anti_tank" / "anti_squishy" - or None when no keyword
+    hits or the two leans tie (ambiguous hybrid build). Majority of distinct
+    keyword hits wins; a tie or zero hits returns None so only a clear lean is
+    ever scored."""
+    if not text or not isinstance(text, str):
+        return None
+    norm = _normalize_verdict_text(text)
+    if not norm:
+        return None
+    at = sum(1 for kw in _ANTI_TANK_KW if kw in norm)
+    asq = sum(1 for kw in _ANTI_SQUISHY_KW if kw in norm)
+    if at == asq:
+        return None
+    return "anti_tank" if at > asq else "anti_squishy"
+
+
 def _is_non_laning_native_state(rec: dict) -> bool:
     """True when the native (Haiku) signal is a coach status/overlay state
     (dead player "WAIT RESPAWN", policy "COACHING DISABLED") rather than a
@@ -249,6 +309,7 @@ def summarize_agreement(records: list[dict]) -> dict:
     by_native: dict[str, dict] = {}
     by_precompute: dict[str, int] = {}
     confusion: dict[tuple[str, str], int] = {}
+    even_by_native: dict[str, int] = {}
     unclassified_native = 0
     uncovered_with_native = 0
     for rec in records:
@@ -279,6 +340,79 @@ def summarize_agreement(records: list[dict]) -> dict:
         pv, nv = pair["precompute"], pair["native"]
         by_precompute[pv] = by_precompute.get(pv, 0) + 1
         confusion[(pv, nv)] = confusion.get((pv, nv), 0) + 1
+        if _is_even_precompute_label(rec):
+            even_by_native[nv] = even_by_native.get(nv, 0) + 1
+    for slot in by_mode.values():
+        slot["rate"] = (round(slot["agree"] / slot["comparable"], 4)
+                        if slot["comparable"] else 0.0)
+    return {
+        "comparable_covered": comparable,
+        "agree": agree,
+        "agreement_rate": round(agree / comparable, 4) if comparable else 0.0,
+        "by_mode": dict(sorted(by_mode.items())),
+        "by_native": dict(sorted(by_native.items())),
+        "by_precompute": dict(sorted(by_precompute.items())),
+        "confusion": [
+            {"precompute": pv, "native": nv, "n": n, "agree": pv == nv}
+            for (pv, nv), n in sorted(
+                confusion.items(), key=lambda kv: (-kv[1], kv[0])
+            )
+        ],
+        "unclassified_native": unclassified_native,
+        "uncovered_with_native": uncovered_with_native,
+        "even_precompute_by_native": dict(sorted(even_by_native.items())),
+    }
+
+
+def summarize_build_agreement(records: list[dict]) -> dict:
+    """Precompute-vs-Haiku agreement for the BUILD lane, on the lean axis.
+
+    Unlike laning (a trade verdict), the build precompute side is the stored
+    ``lean`` field (anti_tank / anti_squishy) and the native side is the live
+    Haiku ``item_build`` text classified by classify_build_lean. A record is
+    comparable when it is covered, carries a non-None precompute lean, AND the
+    native build text classifies to a lean. Same return shape as
+    summarize_agreement so the report + printer treat both lanes uniformly.
+
+    unclassified_native = covered records with a precompute lean + a native
+    build signal the classifier could not lean; uncovered_with_native = records
+    with a native build signal the seed table did not cover."""
+    comparable = 0
+    agree = 0
+    by_mode: dict[str, dict] = {}
+    by_native: dict[str, dict] = {}
+    by_precompute: dict[str, int] = {}
+    confusion: dict[tuple[str, str], int] = {}
+    unclassified_native = 0
+    uncovered_with_native = 0
+    for rec in records:
+        native_text = rec.get("native_action")
+        has_native = bool(native_text)
+        precompute = rec.get("lean") if rec.get("covered") else None
+        if has_native and not rec.get("covered"):
+            uncovered_with_native += 1
+        if precompute is None:
+            continue
+        native = classify_build_lean(native_text)
+        if native is None:
+            if has_native:
+                unclassified_native += 1
+            continue
+        comparable += 1
+        agreed = precompute == native
+        if agreed:
+            agree += 1
+        mode = str(rec.get("mode") or "?")
+        slot = by_mode.setdefault(mode, {"comparable": 0, "agree": 0})
+        slot["comparable"] += 1
+        if agreed:
+            slot["agree"] += 1
+        nslot = by_native.setdefault(native, {"n": 0, "agree": 0})
+        nslot["n"] += 1
+        if agreed:
+            nslot["agree"] += 1
+        by_precompute[precompute] = by_precompute.get(precompute, 0) + 1
+        confusion[(precompute, native)] = confusion.get((precompute, native), 0) + 1
     for slot in by_mode.values():
         slot["rate"] = (round(slot["agree"] / slot["comparable"], 4)
                         if slot["comparable"] else 0.0)
@@ -347,7 +481,7 @@ def build_report(choice_path: Path, build_path: Path) -> dict:
     build = summarize_build(build_records)
     agreement = {
         "laning": summarize_agreement(choice_records),
-        "build": summarize_agreement(build_records),
+        "build": summarize_build_agreement(build_records),
     }
     return {
         "schema": "hz_shadow_report/v2",
@@ -411,6 +545,10 @@ def _print_human(report: dict) -> None:
         if agr.get("by_precompute"):
             pv = ", ".join(f"{k} x{v}" for k, v in agr["by_precompute"].items())
             print(f"    precompute verdicts: {pv}")
+        if agr.get("even_precompute_by_native"):
+            ev = ", ".join(f"{k} x{v}"
+                           for k, v in agr["even_precompute_by_native"].items())
+            print(f"    even-precompute by native (gated even<->hold map): {ev}")
         mism = [c for c in (agr.get("confusion") or []) if not c["agree"]]
         for c in mism[:6]:
             print(f"    MISMATCH pre={c['precompute']} -> "
