@@ -279,7 +279,7 @@ class ExhaustTests(unittest.TestCase):
 
 class EnginePinTests(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.142.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.143.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):
