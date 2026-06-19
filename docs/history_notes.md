@@ -1,5 +1,34 @@
 # RC session history archive
 
+## Relocated 2026-06-18 (PM5 wakeup prune - keep last 3 sessions)
+
+# 2026-06-18 (PM2) - headless deep-research+lift: R2 competitor fan-out + Game Flow tab
+
+Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b17531e1`.
+
+- **R2 competitor fan-out** (aggregator B / aggregator A / Aggregator Z1 / aggregator G, 4 parallel deep-dive agents).
+  RC supersedes/has nearly the whole surface. **Verify-gate caught a wrong agent HAVE:** the
+  aggregator G "win-prob match-flow curve" NOW pick is ALREADY shipped (`web/js/panels/pgr_winprob.js`,
+  PGR S3) - the agent read only post_game_phases.js and missed the graph. Reclassified CLOSED.
+- **SHIPPED F-DPM per-minute performance curve** (the one genuine own-data gap = Aggregator Z1's
+  signature graph): `core/perf_curve.py` -> `/api/perf-curve?mode=&metric=&champion=` -> Build
+  Insights "Game Flow" tab (inline-SVG dual win/loss line, gold/cs toggle). Avg cumulative
+  gold/CS per game minute over the own rewind corpus, win-vs-loss split. Pure aggregation over
+  timeline_frames, no global/Riot/Claude dep, no DS schema. TDD +42 (11 module + 18 route + 13
+  DOM). Live aram/gold n=2004 (wins pull ahead by min5), sr/cs n=618. RC pid 22672. Tier-1.
+- **Section-3b UI audit 5/5 CLEAN, 0 MUST-FIX.** **VISUAL CAPTURE OWED** (Game-PC :8892 down +
+  Claude_Preview MCP not connected this session). Carry-forward.
+- **FUTURE -> BACKLOG** (`docs/COMPETITOR_LIFT_2026-06-18_R2.md`): aggregator B carry-efficiency grade
+  axes (gold_share verified 0 hits, Tier-2 grade re-baseline = product call); aggregator A OP-Score
+  per-interval performance curve (new scoring model); DPM damage-per-min (cumulative-all-units
+  trap, needs a to-champs frame field); aggregator G lane-vs-full WPA totals (marginal).
+- **NEXT:** F-UGG1 carry-efficiency as a DISPLAY-only stat (LOW-risk, no grade change).
+- **Still open from earlier today:** ops/loop/config.json + director_prompt.md modified
+  (operator pre-run loop tuning) - NOT committed; review/commit/discard next session.
+
+---
+
+
 ## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
 
 # 2026-06-16 - cycle 47: LBAND1 canonical-id fix + cost lever + HZ flip-gate accuracy [items 447-449] (relocated 2026-06-16, cycle-50 wrap)

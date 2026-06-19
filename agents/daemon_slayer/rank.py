@@ -423,6 +423,7 @@ def _filter_candidates(
     only_ids: Optional[set[str]],
     exclude_names: Optional[frozenset[str]] = None,
     inject_ids: Optional[set[str]] = None,
+    cost_ceiling: Optional[int] = None,
 ) -> list[tuple[str, dict]]:
     """Return ``[(item_id, item_record), ...]`` passing all filters.
 
@@ -434,6 +435,7 @@ def _filter_candidates(
       * mode validity via ``maps`` (only when mode is known)
       * terminal-only (``into`` empty) unless ``include_components``
       * gold <= ``budget`` when budget is set
+      * gold <= ``cost_ceiling`` when cost_ceiling is set (F2 cost-aware top)
 
     ``inject_ids`` is the RF6 (2026-06-17) force-admit set: an id in this set
     bypasses the ``only_ids`` whitelist, the ``exclude_names`` deny, and the
@@ -444,6 +446,15 @@ def _filter_candidates(
     nothing to lift. A forced id STILL respects already-equipped, the non-coachable
     deny, mode-legality, terminal-only, and budget. None / empty (the default) is a
     byte-identical no-op - every pre-RF6 caller is unchanged.
+
+    ``cost_ceiling`` is the F2 (2026-06-18) cost-aware-top seam: when a positive
+    int, any candidate whose ``gold.total`` STRICTLY exceeds the ceiling is
+    dropped from the pool (even a forced id - the ceiling is a hard surface cap,
+    applied uniformly like ``budget``). The motivating artifact is the 6000g
+    ARAM/Arena mega-item Void Immolation (223069), which the ``sort_by="delta"``
+    absolute-gain ranking floats to RANK 1 across every comp cell on the
+    hybrid/bruiser + ehp/tank scorers (ops/audit/ds_cross_eval/TIER2_REPORT.md F2).
+    None (the default) is a byte-identical no-op.
     """
     inject = inject_ids or frozenset()
     out: list[tuple[str, dict]] = []
@@ -466,6 +477,8 @@ def _filter_candidates(
             continue
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
         if budget is not None and gold > budget:
+            continue
+        if cost_ceiling is not None and gold > cost_ceiling:
             continue
         out.append((item_id, rec))
     return out
@@ -535,6 +548,7 @@ def rank_items(
     apply_mode_modifiers: bool = False,
     exempt_offclass_by_win: bool = False,
     prefer_kit_axis_by_win: bool = False,
+    cost_ceiling: Optional[int] = None,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -616,6 +630,13 @@ def rank_items(
     Ezreal's hard-excluded Trinity Force becomes a candidate), and (2) every
     positive-delta kit-axis item is floated above the generic template (model
     order preserved within each tier). Champs absent from the table are a no-op.
+    The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``cost_ceiling`` is the OPTIONAL F2 cost-aware-top seam (DEFAULT-OFF). When a
+    positive int, candidates whose ``gold.total`` exceeds it are dropped from the
+    pool (forwarded to ``_filter_candidates``), so the 6000g ARAM/Arena mega-item
+    Void Immolation (223069) - floated to RANK 1 by the cost-scaling
+    ``sort_by="delta"`` surface - is excluded. None (default) is byte-identical.
     The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     if sort_by not in SORT_KEYS:
@@ -726,6 +747,7 @@ def rank_items(
         include_components=include_components,
         only_ids=only_ids,
         exclude_names=exclude_names,
+        cost_ceiling=cost_ceiling,
     )
 
     ranked: list[RankedItem] = []
