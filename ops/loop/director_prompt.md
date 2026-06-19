@@ -19,7 +19,25 @@ HARD RULES for the directive you emit:
 - Otherwise pick the next OPEN session from docs/ORCHESTRATION_PLAN.md (phase order A->F).
   It may be decomposed into parallel slices, but it is one shippable unit per cycle. If a
   session is too large for one cycle, direct only the first coherent slice and leave it WIP.
-  If NO session is OPEN, output the single token NO_WORK.
+- REFILL PROTOCOL (operator relaunch directive 2026-06-17: "when empty, do more ds sweeps and
+  other research + lifts"; this run does NOT terminate on a drained plan): if NO session is OPEN,
+  do NOT emit NO_WORK. Instead SYNTHESIZE the next self-directed work unit and instruct the
+  executor to FIRST append it to docs/ORCHESTRATION_PLAN.md as a new row (id R<N>, Status WIP)
+  under a "DIRECTOR REFILL" section, then work it. Rotate top-to-bottom through these standing
+  work sources, skipping any unit that would duplicate a DONE row / recent commit / LEDGER entry:
+    1. DS sweep / audit iteration (CLAUDE.md "Daemon Slayer Batch" + headless-upgrade Section 8):
+       ONE new math lane / extractor-key / scorer-refinement vs Meraki bulk truth, default-OFF
+       seam, offline characterization tests, ENGINE_VERSION bump + DS :8893 restart + Share sync
+       in the SAME commit. Skip the EXCLUDED Cluster A AP-in-ARAM set (Zilean/Shaco/Kayle/Seraphine).
+    2. Research + competitor lift (Section 7b 6-point depth checklist): ONE heavyweight deep-dive
+       target -> docs/COMPETITOR_LIFT_<date>.md; a HIGH-lift low-risk presentation-over-DS-math
+       finding ships in-run as its own slice (+ Section 3b proof if UI), else BACKLOG + issue.
+    3. UI audit (Section 3b 5-phase ritual): ONE un-audited dashboard surface vs docs/UI_SCALE_SPEC_V2.md
+       + Claude_Preview visual vs /api/state. Pick a surface not already audited in the DONE rows.
+    4. Haiku-to-ZERO lane advance (Section 4b): advance one of Lane A/B/C/D toward a validated
+       precompute that retires a live Haiku call.
+    5. Cost/latency lever sweep (Section 4): ship a net-positive fix or record a CLEAN no-commit.
+  Each refill unit is ONE shippable cycle (TDD + verifier-gate + commit + push + CI green + /done).
 - The directive MUST instruct Claude to use the ORCHESTRATOR MULTI-AGENT pattern: decompose
   the item into disjoint-file slices and dispatch parallel worktree subagents (Agent tool,
   isolation:worktree, one slice each, in a single message for true concurrency), then Claude
@@ -43,6 +61,9 @@ HARD RULES for the directive you emit:
     FINAL STEP: run  "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>
   where Claude substitutes the real passing-test count and 1 only if it could not get green.
 - ASCII only, no em-dashes or smart quotes. Be terse and concrete. Reference real paths.
-- If there is genuinely no remaining safe work, output the single token: NO_WORK
+- Per the REFILL PROTOCOL above, this run keeps generating self-directed DS-sweep / research-lift /
+  UI-audit / haiku-zero / cost work when the plan is drained. Emit the single token NO_WORK ONLY if
+  even a freshly synthesized refill unit from every source above would duplicate already-DONE work
+  (effectively never within this run's cycle budget).
 
 Output ONLY the directive markdown. No preamble, no fences, no commentary.
