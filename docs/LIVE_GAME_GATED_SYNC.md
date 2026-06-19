@@ -153,7 +153,7 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
       (un-stripped), and a non-tabled champ (Caitlyn) + any operator pick are byte-identical. Re-anchor
       `agents/daemon_slayer/kit_axis_item_credit.json` from a fresh rewind+DSP10 run each patch
       (`ops/audit/ds_perm_swarm/build_kit_axis_item_credit.py`). Needs a DS `:8893` restart on flip.
-- [ ] RF1 generic-bruiser-template survivability flip (seam shipped default-OFF, ENGINE 1.136.0): no live
+- [LIVE-VALIDATED 2026-06-18 Yasuo - FLIP-READY] RF1 generic-bruiser-template survivability flip (seam shipped default-OFF, ENGINE 1.136.0): no live
       scorer passes `rank_items_by_hybrid(..., prefer_survivability_by_win=True)` yet (defaults False ->
       byte-identical). The flip WIRES the HYBRID (bruiser) scorer-dispatch (`agents/daemon_slayer/server.py`
       `_route_hybrid` -> the `rank_items_by_hybrid` call ~L729, and/or the `core/daemon_slayer_client.hybrid_for`
@@ -256,7 +256,14 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 - [ ] Augment recommender OCR -> rank vs the pick made (live Mayhem/Arena augment-select; ROADMAP medium).
 - [ ] set_augment_intent 4-PATCH endpoint discovery: run the chain at a real Arena augment phase, log which
       of the 4 endpoints the live LCU exposes (`tools/gamepc_lcu_agent.py:1179`; ROADMAP item 187/188).
-- [ ] Arena boots 22xxxx mirror: SR uses tier-3 3xxx, Arena needs the 22xxxx map30 mirror (P6-G4 deferred).
+- [DONE 2026-06-18 PM7, ENGINE 1.144.0 - headless, NOT live-gated] Arena boots 22xxxx mirror SHIPPED
+      (item 499, `<this commit>`). `core.build_order._select_boots` now remaps the resolved tier-2 boot
+      to its `22`-prefixed map30-legal Arena mirror (`_BOOTS_ARENA_MIRROR`) on Arena/CHERRY; the bare
+      3xxx tier-2 boots were map30=False (illegal on map 30). All 3 Arena build tables regenerated
+      (flat 510 + HZ-B1 684 + HZ-B2 342 boots swaps, 0 other changes); SR/ARAM byte-identical. This was
+      a DATA-correctness fix, not a re-rank flip - it needed NO live game (ground-truthed vs items.json
+      maps.30). The only OWED live piece = an Arena augment-phase VISUAL confirm that the pushed boot
+      renders (icon may 404 per [[reference_items_index_alias_ids]], display name is correct).
 
 ## E. Electron overlay (rc-shell, in a real match)
 
@@ -274,7 +281,14 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
-- 2026-06-18 F2 (ENGINE 1.142.0): cost-aware-top seam shipped DEFAULT-OFF. NEW `cost_ceiling` param
+- 2026-06-18 PM7 Arena boots mirror (ENGINE 1.144.0): NOT a default-OFF seam - a DATA-correctness
+  fix shipped LIVE (item 499). `core.build_order._select_boots` remaps Arena/CHERRY tier-2 boots to
+  their `22`-prefixed map30-legal mirror; all 3 Arena build tables regenerated (boots-only). No flip
+  pending (already live); the only live-OWED piece is the section-D visual confirm at an Arena augment
+  phase. ALSO logged here: an operator ARAM Yasuo this run produced the first live RF1-tabled-bruiser
+  eyeball - RF1 ON (hybrid `prefer_survivability_by_win`) floats Wit's End + Jak'Sho into Yasuo's top-6
+  and drops Runaan's + Stormrazor = SANER, clearing the LGS2-open "RF1 needs a tabled champ to roll"
+  gap. The RF1 default-ON flip itself stays operator-gated (section B; not flipped mid-game). NEW `cost_ceiling` param
   on the shared `_filter_candidates`, threaded through `rank_items`/`rank_items_by_ehp`/
   `rank_items_by_hybrid`; drops any candidate whose `gold.total` STRICTLY exceeds the ceiling. Live
   flip = pass `cost_ceiling=<N>` (e.g. 4000) at the build-chooser /rank-bruiser + /rank-tank call
