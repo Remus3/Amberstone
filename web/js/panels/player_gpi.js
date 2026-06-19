@@ -27,7 +27,9 @@
 // writes outside renderPlayerGpi(). The radar is SVG so the polygon scales
 // crisply at the 1920x1080 baseline with no raster blur.
 
-const _GPI_CACHE = Object.create(null);     // mode -> response JSON
+import { CHAMPS } from '../lib/items_index.js';
+
+const _GPI_CACHE = Object.create(null);     // mode|champ -> response JSON
 const _GPI_INFLIGHT = Object.create(null);
 const _GPI_TS = Object.create(null);
 const _GPI_SIG = Object.create(null);       // mount-id -> last-rendered sig
@@ -35,6 +37,14 @@ const _GPI_TTL_MS = 5 * 60 * 1000;
 
 const _DEFAULT_MOUNT = "player-gpi-panel";
 const _MODES = ["sr", "aram"];
+
+// Cache key: one profile per (mode, champion-filter). An empty champion is the
+// all-games profile; keeping both in the key lets the drilldown selector switch
+// champions without clobbering the all-games view. _mode() is hoisted below.
+function _key(mode, champion) {
+  const c = (champion == null || champion === "") ? "" : String(champion);
+  return _mode(mode) + "|" + c;
+}
 
 // SVG geometry. The viewBox is wider than it is tall so the left/right axis
 // labels (the longest words - CONSISTENCY / VERSATILITY / OBJECTIVES) have
@@ -83,13 +93,15 @@ function _round(x) {
 // Fetch + memoize for one mode. ``onLand`` re-render callback fires once the
 // payload lands. A 503 / network error caches a synthetic not-ok envelope so
 // the panel renders the muted unavailable line instead of spinning forever.
-export function fetchPlayerProfile(mode, onLand) {
-  const key = _mode(mode);
+export function fetchPlayerProfile(mode, champion, onLand) {
+  const key = _key(mode, champion);
   const fresh = _GPI_CACHE[key] && _GPI_TS[key]
                 && (Date.now() - _GPI_TS[key]) < _GPI_TTL_MS;
   if (fresh || _GPI_INFLIGHT[key]) return;
   _GPI_INFLIGHT[key] = true;
-  const qs = new URLSearchParams({ mode: key });
+  const params = { mode: _mode(mode) };
+  if (champion != null && champion !== "") params.champion = String(champion);
+  const qs = new URLSearchParams(params);
   fetch("/api/player-profile?" + qs.toString(), { cache: "no-store" })
     .then((r) => (r.ok ? r.json() : { ok: false, reason: "unavailable" }))
     .then((data) => {
@@ -107,8 +119,8 @@ export function fetchPlayerProfile(mode, onLand) {
     });
 }
 
-export function getCachedPlayerProfile(mode) {
-  return _GPI_CACHE[_mode(mode)] || null;
+export function getCachedPlayerProfile(mode, champion) {
+  return _GPI_CACHE[_key(mode, champion)] || null;
 }
 
 export function getPlayerProfileCacheCount() {
@@ -230,14 +242,45 @@ function _toggleSvgless(activeMode) {
   return out;
 }
 
+// Resolve a champion id to its display name via the shared CHAMPS byId index
+// (the same resolver champ_select.js uses); fall back to "cid:<n>" before the
+// name table loads or for an unknown id.
+function _champName(cid) {
+  const nm = CHAMPS && CHAMPS.byId ? CHAMPS.byId[String(cid)] : "";
+  return nm || ("cid:" + cid);
+}
+
+// Champion drilldown <select>: an "All champions" default plus one option per
+// played champ (name + game count), the active champion pre-selected. Populated
+// from the payload's mode-wide champions[] pool so every option persists after
+// a drilldown. activeChampion "" == the all-games view.
+function _champSelect(champions, activeChampion) {
+  const list = Array.isArray(champions) ? champions : [];
+  const active = (activeChampion == null ? "" : String(activeChampion));
+  let out = '<select class="gpi-champ-select" data-gpi-champ'
+          + ' aria-label="filter profile by champion">';
+  out += '<option value=""' + (active === "" ? " selected" : "")
+       + ">All champions</option>";
+  for (const c of list) {
+    const cid = String(c && c.champion_id);
+    const n = (c && c.n_games) | 0;
+    out += '<option value="' + _esc(cid) + '"'
+         + (cid === active ? " selected" : "") + ">"
+         + _esc(_champName(cid)) + " (" + n + ")</option>";
+  }
+  out += "</select>";
+  return out;
+}
+
 // Render the panel into ``blockEl``. ``payload`` is the backend response (may
 // be null on cold-load -> hidden). ``activeMode`` drives the toggle highlight
 // and is read back by the click handler the host wires via onModeChange.
-export function renderPlayerGpi(blockEl, payload, activeMode) {
+export function renderPlayerGpi(blockEl, payload, activeMode, activeChampion) {
   if (!blockEl) return;
   const sigKey = blockEl.id || "_gpi_default";
   const mode = _mode(activeMode || (payload && payload.mode));
-  const sig = mode + "::" + _signature(payload);
+  const champ = (activeChampion == null ? "" : String(activeChampion));
+  const sig = mode + "::" + champ + "::" + _signature(payload);
   if (_GPI_SIG[sigKey] === sig) return;
   _GPI_SIG[sigKey] = sig;
 
@@ -249,9 +292,14 @@ export function renderPlayerGpi(blockEl, payload, activeMode) {
   }
   blockEl.hidden = false;
 
+  const champs = (payload && Array.isArray(payload.champions))
+    ? payload.champions : [];
   const head = '<div class="gpi-head">'
     + '<span class="gpi-head-title">GPI radar</span>'
+    + '<div class="gpi-controls">'
     + _toggleSvgless(mode)
+    + (champs.length ? _champSelect(champs, champ) : "")
+    + "</div>"
     + "</div>";
 
   // Not-ok (503 / network) -> muted unavailable line, never a raw error.
@@ -326,20 +374,30 @@ export function renderPlayerGpi(blockEl, payload, activeMode) {
 // Standalone entry point. Fetches the profile for ``mode`` and renders into the
 // default mount (or ``blockId``). The host that owns the mode toggle wires a
 // click handler onto [data-gpi-mode] and re-invokes this with the new mode.
-export function showPlayerGpi(mode, blockId) {
+export function showPlayerGpi(mode, blockId, champion) {
   const block = document.getElementById(blockId || _DEFAULT_MOUNT);
   if (!block) return;
   const m = _mode(mode);
-  fetchPlayerProfile(m, () => renderPlayerGpi(
-    block, getCachedPlayerProfile(m), m));
-  renderPlayerGpi(block, getCachedPlayerProfile(m), m);
-  _wireModeToggle(block);
+  const c = (champion == null ? "" : String(champion));
+  fetchPlayerProfile(m, c, () => renderPlayerGpi(
+    block, getCachedPlayerProfile(m, c), m, c));
+  renderPlayerGpi(block, getCachedPlayerProfile(m, c), m, c);
+  _wireControls(block);
 }
 
-// Delegate-style click wiring for the mode toggle. Idempotent: a single
-// listener on the block re-reads the clicked [data-gpi-mode] and re-shows. The
-// listener is stamped so repeated showPlayerGpi calls do not stack handlers.
-function _wireModeToggle(block) {
+// Read the currently-active mode back from the rendered toggle so the champion
+// change handler (which has no mode in scope) re-shows in the right mode.
+function _activeMode(block) {
+  const on = block && block.querySelector
+    ? block.querySelector(".gpi-mode.gpi-mode-on[data-gpi-mode]") : null;
+  return _mode(on ? on.getAttribute("data-gpi-mode") : "sr");
+}
+
+// Delegate-style wiring for the head controls. Idempotent: one click listener
+// (mode toggle) + one change listener (champion drilldown) on the block, stamped
+// so repeated showPlayerGpi calls do not stack handlers. Switching mode resets
+// the champion filter (the champ pool is per-mode).
+function _wireControls(block) {
   if (!block || block.dataset.gpiWired === "1") return;
   block.dataset.gpiWired = "1";
   block.addEventListener("click", (ev) => {
@@ -347,7 +405,14 @@ function _wireModeToggle(block) {
       ? ev.target.closest("[data-gpi-mode]") : null;
     if (!btn) return;
     const next = _mode(btn.getAttribute("data-gpi-mode"));
-    showPlayerGpi(next, block.id || _DEFAULT_MOUNT);
+    showPlayerGpi(next, block.id || _DEFAULT_MOUNT, "");
+  });
+  block.addEventListener("change", (ev) => {
+    const sel = ev.target && ev.target.closest
+      ? ev.target.closest("[data-gpi-champ]") : null;
+    if (!sel) return;
+    showPlayerGpi(_activeMode(block), block.id || _DEFAULT_MOUNT,
+                  sel.value || "");
   });
 }
 
@@ -361,12 +426,15 @@ export function _resetPlayerGpi() {
 
 export const __test = {
   _mode,
+  _key,
   _clampScore,
   _vertex,
   _scoreTier,
   _signature,
   _fmtScore,
   _esc,
+  _champName,
+  _champSelect,
   _GPI_TTL_MS,
   _R,
   _CX,

@@ -79,6 +79,44 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Controls cluster in the head: mode toggle + champion drilldown, kept on one
+ * right-aligned row by .gpi-head's space-between. */
+.gpi-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Champion drilldown filter. Mirrors the mode-toggle chrome; --hit-min tall so
+ * the control clears the hit-target floor. Caps its width + truncates a long
+ * champion name rather than pushing the head past the card edge at 1920. */
+.gpi-champ-select {
+  min-height: var(--hit-min);
+  max-width: 150px;
+  padding: 0 var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--panel-radius-sm, 10px);
+  cursor: pointer;
+  text-overflow: ellipsis;
+  /* Tint the native arrow well + option popup dark so the control matches the
+   * dark panel chrome (the sibling .gpi-mode buttons are custom-styled). */
+  color-scheme: dark;
+}
+
+.gpi-champ-select:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.gpi-champ-select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 /* Body lays the radar beside the prominent overall chip. The radar takes the
  * remaining width and is bounded so it cannot push the row past the card edge
  * at 1920 (no horizontal scroll). */
