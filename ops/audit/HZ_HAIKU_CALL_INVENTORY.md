@@ -106,3 +106,25 @@ measurable:
 - The laning hold-band / back_off-threshold recalibration (engine-side, gated) is
   unchanged and still the operator's call; the report's confusion matrix + even-breakdown
   are its per-iteration measurement.
+
+## UPDATE 2026-06-19 (run 2026-06-19-03) - arena augment-select capturer BUILT (last uncovered TIER-1)
+
+The TIER-1 `arena_aug_select` Haiku call (`coaches/arena_coach.py:758`) was the last
+in-game per-tick Haiku site with NO validation lane. Like champ-select before run
+-18-03, its deterministic substrate already existed but the pair was never recorded:
+- `core/augment_recommender.recommend` (pure win-rate ranker, mode=arena/CHERRY) already
+  runs in parallel (S5 design) inside `_handle_augment_select` and its `reco_fields` are
+  persisted alongside Haiku's `aug_take` - but no shadow module captured the pair, so the
+  augment-select flip accrued ZERO det-vs-Haiku validation data.
+- NEW `core/augment_shadow.log_augment_advice` (mirrors `core/champ_select_shadow`) wired
+  fail-soft AFTER the served write in `_handle_augment_select`. Records native Haiku take
+  vs the deterministic ranking per distinct offer state to `data/augment_shadow.jsonl`.
+  NO change to served output. NEW `core/augment_shadow.summarize_agreement` is the offline
+  reader (top-1 agreement + native-take rank in the det ranking).
+
+The arena augment-select flip is now DATA-BLOCKED, not code-blocked: each real Arena game
+with an augment panel feeds the lane. NEXT = accrue rows ->
+`summarize_agreement('data/augment_shadow.jsonl')` -> THEN flip (do-not-flip-blind). With
+this, EVERY remaining live-Haiku flip in the program is now data-gated (laning =
+calibration-gated, build/champ-select/augment = volume-gated), NOT code-blocked - the
+program bottleneck is uniformly GAMES + the operator's calibration call, not missing code.

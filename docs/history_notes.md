@@ -42,6 +42,28 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-18 (run 2026-06-18-03) - headless-upgrade: champ-select pick-advisor shadow (4b) + 2 cost/bug slices
+
+Operator launched `/headless-upgrade`. Prior manifest 2026-06-18-02 fully resolved (superseded by
+17 commits), so fresh run. HEAD `7e803410` -> `98816b05` (4 commits), CI green, NO ENGINE bump,
+NO frozen edits, NO worktrees. Item 500 in LEDGER.
+
+- **S1 `a31ef769` (PRIMARY 4b):** champ-select PICK-ADVISOR is the last champ-select Haiku call
+  (BRIEF flipped 2026-06-06; pick-advisor had NO det substrate + NO shadow). Built
+  `core/champ_select_advisor_deterministic.advise_pick` (reuses aram_comp_verdict + archetype tags)
+  + `core/champ_select_shadow` (mirrors hz_choice_shadow) wired fail-soft at `dashboard/routes_coach.py`.
+  NO flip (do-not-flip-blind) - FLIP waits on shadow data from REAL games (data-blocked headless). +19 tests.
+- **S2 `8c3a6ad6` (cost):** the cost-sweep's augment-select cache_control NOW-FIX was REFUTED (item 286:
+  static ~62/80 tok, sub the 2048 Haiku floor = inert). Shipped a guard EXTENSION (arena site pinned) instead.
+- **S3 `fb0dd83b` (open bug):** runewriter game-1-only silence ([[reference_runewriter_dies_after_game1]]) -
+  NOT reproducible headless (get_champ_select stale after game1). Added re-arm regression test (+4) +
+  INFO enter/exit diagnostics so the NEXT live session pinpoints the failing branch. Logging-only, no flip.
+- **GATED -> BACKLOG:** HZ-B build-order tables 21 ENGINE bumps stale (operator-gated regen, ENGINE-bump tax);
+  same-state coach Haiku-skip debounce (fidelity-gated; cost_health_watchdog exit 1 = by-design breach, not a crash).
+- **NEXT:** champ-select pick-advisor flip after shadow data accrues; both BACKLOG items operator-gated.
+
+---
+
 # 2026-06-18 (PM7) - Arena boots 22xxxx map30 mirror (P6-G4 deferred tail; ENGINE 1.144.0)
 
 Operator "continue open items from last run". TIER2_REPORT + RF round-2 queues DRAINED
