@@ -584,6 +584,27 @@ def _mana_fraction(coach: dict, lc: dict | None) -> float | None:
     return None
 
 
+def _hp_fraction(coach: dict, lc: dict | None) -> float | None:
+    """Best-effort current HP as a 0..1 fraction of max, or None.
+
+    The activePlayer hp / hp_max is the truth (lc-first), with a coach fallback.
+    Returns None when no HP signal is present - the CV override's low-HP layer
+    then simply does not fire (RC2 P5.1). Fail-soft, mirrors _mana_fraction."""
+    for src in (lc, coach):
+        if not isinstance(src, dict):
+            continue
+        cur = src.get("hp")
+        mx = src.get("hp_max") or src.get("maxHealth")
+        try:
+            if cur is not None and mx:
+                f = float(cur) / float(mx)
+                if 0.0 <= f <= 1.5:
+                    return f
+        except (TypeError, ValueError, ZeroDivisionError):
+            continue
+    return None
+
+
 def _native_laning_action(coach) -> str | None:
     """The Haiku laning verdict to score against the precompute for the HZ-C1
     agreement gate. The coach top-line ``action`` carries the laning verdict
@@ -685,6 +706,7 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
 
         choices: list = []
         covered = False
+        cv = None
         if enemy:
             next_item = _next_build_item(champ, lower, item_count)
             cc = plc.precomputed_choices(
@@ -694,6 +716,20 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             )
             choices = to_jsonable(cc)
             covered = bool(cc)
+            # RC2 P5.1: compute the CV override (enemy dead/missing from
+            # data/vision_state.json, my low HP) against the STATIC band
+            # verdict. SHADOW-ONLY - rides the record so hz_shadow_report can
+            # re-measure agreement WITH CV applied; the served `choices` are
+            # NOT altered here (the flip is operator/Gemini-gated).
+            from core.laning_cv_overrides import resolve_cv_override  # lazy
+            base_verdict = plc.resolve_band(
+                str(champ), enemy, level,
+                mana_fraction=mana_fraction, ult_up=ult_up,
+                mode=lower, payload=payload,
+            )
+            cv = resolve_cv_override(
+                enemy, _hp_fraction(coach, lc), base_verdict,
+            )
 
         log_precomputed_choices(
             mk, str(champ), enemy,
@@ -702,7 +738,7 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             native_action=_native_laning_action(coach),
             native_choices=to_jsonable(parse_choices(coach)),
             game_time_s=gs.get("game_time_s"),
-            level=level, item_count=item_count, path=path,
+            level=level, item_count=item_count, cv_override=cv, path=path,
         )
     except Exception:  # noqa: BLE001
         return
