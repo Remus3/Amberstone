@@ -108,9 +108,15 @@
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
 /* Coach prompt fresh-update pulse (consumed by .action when state
- * changes - e.g. when classifyAction() flips good/warn/bad). The
- * animation is 1.2s steady ease-in-out so a single tick reads as
- * "something just updated" without distracting mid-game. */
+ * changes - e.g. when classifyAction() flips good/warn/bad). The live
+ * consumer (right_now.css .action.rn-pulse-*) runs these at 0.8s
+ * one-shot ease-in-out so a single tick reads as "something just
+ * updated" without distracting mid-game. (Drift fix 2026-06-19: this
+ * comment formerly said 1.2s while the only consumer was 0.8s; the
+ * comment was corrected to match live behavior - the lower-risk
+ * reconciliation, since the 0.8s value is the shipped, audited duration
+ * and sits inside the 100-500ms..sub-second band the motion research
+ * endorses. The keyframe duration is set by the consumer, not here.) */
 @keyframes coach-pulse-good {
   0%, 100% { box-shadow: none; }
   50%      { box-shadow: var(--pulse-good); }
@@ -122,4 +128,58 @@
 @keyframes coach-pulse-bad {
   0%, 100% { box-shadow: none; }
   50%      { box-shadow: var(--pulse-bad); }
+}
+
+/* ----- Redundant status glyphs (RC2 B3 + C5) --------------------
+ * WCAG 1.4.1 (Use of Color) + red-green color blindness: status must
+ * never be encoded by HUE ALONE. These additive, opt-in utility classes
+ * prepend a shape glyph so the good / warn / bad meaning survives
+ * grayscale and color-blind vision, mirroring the design reference
+ * (docs/design/RC2_DESIGN.html .s-good / .s-warn / .s-bad) and the
+ * Bloomberg-terminal "color must not stand alone" convention.
+ *
+ * Panels OPT IN by adding .status-good / .status-warn / .status-bad to a
+ * status-colored element. The glyph is a ::before pseudo so it never
+ * touches the element's own text content. Unicode is authored as CSS
+ * escapes (ASCII source, repo hard rule): \25B2 up-triangle, \25BC
+ * down-triangle, \26A0 warning sign. The trailing space in content
+ * separates the glyph from the value. aria-hidden is unnecessary - CSS
+ * generated content is already ignored by most screen readers, and the
+ * adjacent text label carries the meaning. */
+.status-good { color: var(--signal-good); }
+.status-warn { color: var(--signal-warn); }
+.status-bad  { color: var(--signal-bad); }
+.status-good::before { content: "\25B2 "; }   /* up triangle    */
+.status-warn::before { content: "\26A0 "; }   /* warning sign   */
+.status-bad::before  { content: "\25BC "; }   /* down triangle  */
+
+/* ----- Reduced-motion: REPLACE the signal, do not kill it (RC2 D2) -
+ * prefers-reduced-motion exists for vestibular reasons; the correct
+ * pattern (MDN) is to REPLACE motion with a static hold so the meaning
+ * survives - NOT to merely zero the animation (which silently drops the
+ * good/warn/bad "fresh data" signal). The prior repo state honored this
+ * setting in exactly one panel (input_activity.css) and that one zeroed
+ * the signal.
+ *
+ * Here, for users who minimize motion: the coach-pulse-* one-shots stop
+ * animating and instead land a STATIC tinted ring (box-shadow using the
+ * same --pulse-* tint) so a state transition still reads as "this just
+ * updated". Targets both the live right_now consumer (.action.rn-pulse-*)
+ * and any future panel that opts in via a bare .coach-pulse-* class. */
+@media (prefers-reduced-motion: reduce) {
+  .action.rn-pulse-good,
+  .coach-pulse-good {
+    animation: none !important;
+    box-shadow: var(--pulse-good);
+  }
+  .action.rn-pulse-warn,
+  .coach-pulse-warn {
+    animation: none !important;
+    box-shadow: var(--pulse-warn);
+  }
+  .action.rn-pulse-bad,
+  .coach-pulse-bad {
+    animation: none !important;
+    box-shadow: var(--pulse-bad);
+  }
 }
