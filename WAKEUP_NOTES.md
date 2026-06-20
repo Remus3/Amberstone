@@ -4,6 +4,37 @@
 
 ---
 
+# 2026-06-19 (gemini-loop R7 cycle) - DS per-stack self-Attack-Speed passive seam (LEDGER 517)
+
+Gemini DIRECTOR refill R7 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
+per-stack self-Attack-Speed passives. Commit `7c22e3bb`; Tier-2, ENGINE 1.146.0 -> 1.147.0,
+DS :8893 restarted -> 1.147.0 live, Share re-synced SAME commit (--check green, 366 files), 0 frozen.
+
+- GAP (verify-before-build): the stat pipeline has no signal for champion INNATE per-stack bonus
+  ATTACK SPEED, so compute_dps under-credited a champ at full passive stacks. The only existing
+  AS-fold lane is the item-effect total_conditional_as (Yun Tal) -> R7 is the champion-innate
+  ATTACK-SPEED sibling registry, mirroring the cond_as fold exactly (same 2.5 hard-cap re-clamp).
+- NEW agents/daemon_slayer/_passive_as_overrides.py (PassiveAsEntry: per-stack bonus-AS FRACTION
+  low/high by level + max_stacks + ap_per_stack_per_100; _lerp_by_level 1->18). compute_dps gains
+  default-OFF assume_passive_as_stacks; ON folds passive_as_bonus(cid, level, ap, fraction=1.0) into
+  stats_for_rotation["as"]. AP-scaled passives read the resolved post-amp ap; raw_attack_dps left at
+  the no-conditional baseline (matches cond_as).
+- SEEDED 4 (champion_abilities.json 16.12.1, Meraki 25.15 effects_descriptions): Irelia Ionian Fervor
+  10%:25% by lvl/stack max 4; Jax Relentless Assault 5%:12.5% by lvl/stack max 8; Ezreal Rising Spell
+  Force 10% flat/stack max 5; Volibear The Relentless Storm (5% + 4% per 100 AP)/stack max 5 (AP-scaled).
+  per_stack*max_stacks == documented max (self-clamping). on-hit/Lightning-Claws/Unsteady NOT the AS buff.
+- TDD: test_passive_as_overrides_r7.py RED-first (seam absent) -> GREEN (19/19). ENGINE bump =
+  quoted-literal pins only (80 test .py + __init__.py, 89 subs; CHANGELOG prose untouched).
+- VERIFY: DS-dir 7413 passed / 1 skip / 1942 subtests; RC 8645 passed / 2 skip / 110 subtests; exit 0,
+  ZERO mid-suite transients (sequenced ds_share_sync + DS restart BEFORE the RC suite, vs R3/R5). DS
+  /health 1.147.0; ruff clean; Share --check green. Inline sole orchestrator (R9, one coupled engine
+  change). Live flip operator-gated -> docs/LIVE_GAME_GATED_SYNC.md (R7 row; EXCLUDED L156 already
+  names "per-stack assumed_stacks"). [[feedback_verify_before_declare_broken]] /
+  [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]] /
+  [[reference_ds_server_not_supervisor_watched]].
+
+---
+
 # 2026-06-19 (gemini-loop R6 cycle) - dashboard-panel UI audit + dead-CSS removal (LEDGER 516)
 
 Gemini DIRECTOR refill R6 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
@@ -56,27 +87,3 @@ passive_heal missing_hp_heal_amp. Commit `dc2eb0c3`, CI pending push; Tier-2, EN
   ruff + Share --check clean; DS /health 1.146.0. Inline sole orchestrator (R9; verifier skip R7 -
   fresh dual suite + live :8893 + file:line grep = the verify). Live flip -> LIVE_GAME_GATED_SYNC.md.
   [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]].
-
----
-
-# 2026-06-19 (gemini-loop R4 cycle) - core coaching panels typography-floor UI audit (LEDGER 514)
-
-Gemini DIRECTOR refill R4 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
-audit of three un-audited core coaching panels. Commit `9e56d23d`, CI pending push; Tier-1 CSS-only,
-0 ENGINE / 0 frozen / no DS / no Share / ADR-008 asset-hash auto-reload (no RC restart).
-
-- SCOPE: typography floor only (colors already tokenized). Tokenized 14 in-scope sub-floor (<16px)
-  font-sizes -> --fs-* (team_context 7x + .tc-slot radius; coach_choices .rc-src + stale fallbacks;
-  item_build ds-chip/em + build-label + item-cost + ib-builds-status + cs-build-label + build-value).
-  2 documented operator-exceptions kept sub-floor w/ inline rationale (.item-name 14px tile-clamp;
-  .cs-build-runes 10px dense column). EXCLUDED the cross-panel .kv/#nx-wave/.minimap-grid blocks in
-  item_build.css (already-audited Right Now/Next/Active-Match, C2).
-- TDD: tests/test_core_panels_typography_v21_floor.py FIRST (5 fail/2 pass RED) -> fix -> 7/7 GREEN
-  (mirrors test_csv_typography_v21_floor.py). Independent 5-phase audit subagent = SHIP, 0 MUST-FIX.
-- VISUAL + DISCOVERY: Claude_Preview ATTACHES to https://localhost:8888/ (prior cycles' "cannot
-  attach :8888" = the legion-rc hostname cert mismatch; localhost works). Computed-style probe on
-  the LIVE stylesheet: every in-scope selector resolves >=16px, the 2 exceptions hold, .rc-chip 42px
-  -> confirms the ADR-008 reload served the edits. [[reference_claude_preview_live_8888]]
-- VERIFY: RC suite 8642 passed/2 skip/0 fail (incl hygiene + bundle-parity guards); DS N/A (CSS,
-  Tier-1); ruff clean. Inline sole orchestrator (R9; verifier = audit subagent + live probe + fresh
-  suite). [[feedback_phase3_fixture_ritual]] / [[feedback_execution_efficiency_rules]].

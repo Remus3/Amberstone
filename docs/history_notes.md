@@ -42,6 +42,30 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (gemini-loop R4 cycle) - core coaching panels typography-floor UI audit (LEDGER 514)
+
+Gemini DIRECTOR refill R4 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
+audit of three un-audited core coaching panels. Commit `9e56d23d`, CI pending push; Tier-1 CSS-only,
+0 ENGINE / 0 frozen / no DS / no Share / ADR-008 asset-hash auto-reload (no RC restart).
+
+- SCOPE: typography floor only (colors already tokenized). Tokenized 14 in-scope sub-floor (<16px)
+  font-sizes -> --fs-* (team_context 7x + .tc-slot radius; coach_choices .rc-src + stale fallbacks;
+  item_build ds-chip/em + build-label + item-cost + ib-builds-status + cs-build-label + build-value).
+  2 documented operator-exceptions kept sub-floor w/ inline rationale (.item-name 14px tile-clamp;
+  .cs-build-runes 10px dense column). EXCLUDED the cross-panel .kv/#nx-wave/.minimap-grid blocks in
+  item_build.css (already-audited Right Now/Next/Active-Match, C2).
+- TDD: tests/test_core_panels_typography_v21_floor.py FIRST (5 fail/2 pass RED) -> fix -> 7/7 GREEN
+  (mirrors test_csv_typography_v21_floor.py). Independent 5-phase audit subagent = SHIP, 0 MUST-FIX.
+- VISUAL + DISCOVERY: Claude_Preview ATTACHES to https://localhost:8888/ (prior cycles' "cannot
+  attach :8888" = the legion-rc hostname cert mismatch; localhost works). Computed-style probe on
+  the LIVE stylesheet: every in-scope selector resolves >=16px, the 2 exceptions hold, .rc-chip 42px
+  -> confirms the ADR-008 reload served the edits. [[reference_claude_preview_live_8888]]
+- VERIFY: RC suite 8642 passed/2 skip/0 fail (incl hygiene + bundle-parity guards); DS N/A (CSS,
+  Tier-1); ruff clean. Inline sole orchestrator (R9; verifier = audit subagent + live probe + fresh
+  suite). [[feedback_phase3_fixture_ritual]] / [[feedback_execution_efficiency_rules]].
+
+---
+
 # 2026-06-19 (gemini-loop R3 cycle) - DS passive_damage caster bonus-armor/MR scaling (LEDGER 513)
 
 Gemini DIRECTOR refill R3 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -

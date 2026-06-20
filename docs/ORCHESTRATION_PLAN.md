@@ -150,6 +150,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R4 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited core coaching panels - web/js/panels/team_context.js, coach_choices.js, item_build.js + their CSS - vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor (<--fs-xs 16px) hardcoded font-sizes; cross-panel .kv/#nx-wave/.minimap-grid blocks in item_build.css are OUT of scope (style already-audited Right Now/Next/Active-Match surfaces). Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview attempt (RC-owned :8888 self-signed blocker per R1/R2). | DONE | `9e56d23d` |
 | R6 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited dashboard panels web/js/panels/cooldown_watch.js + cc_conditional_pressure.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. | DONE | `139ef216` |
 | R5 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_heal missing_hp_heal_amp. Default-OFF `assume_missing_hp_heal_amp` seam on `ability_hps.py compute_ability_hps` + NEW `_MISSING_HP_HEAL_AMP` registry: a registered (champ, spell) heal_per_cast multiplied by `1 + max_bonus * caster_missing_hp_pct` (the heal-AMP multiplier class _passive_heal_overrides.py:27 deliberately excluded from the heal-MAGNITUDE registry). Seeded 4 from champion_abilities.json 16.12.1: Master Yi W / Lissandra R / Sylas W (0%:100% -> 1.0), Briar P (0%:40% -> 0.40); Nidalee E probed, no amp text, NOT seeded. Offline characterization tests vs Meraki ground truth. ENGINE 1.145.0 -> 1.146.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `dc2eb0c3` |
+| R7 | ds-sweep | DIRECTOR REFILL: DS schema lift - per-stack self-Attack-Speed passives. NEW `agents/daemon_slayer/_passive_as_overrides.py` registry (PassiveAsEntry: per-stack bonus-AS FRACTION low/high by level + max_stacks + ap_per_stack_per_100) + default-OFF `assume_passive_as_stacks` seam on `dps.py compute_dps` crediting the champ's innate per-stack bonus AS at `_ASSUMED_PASSIVE_AS_STACK_FRACTION`=1.0 (full stacks) into the AA rotation (same 2.5 hard-cap re-clamp as the Yun Tal cond_as path; raw_attack_dps left at the no-conditional baseline). Seeded 4 from champion_abilities.json 16.12.1 effects_descriptions: Irelia Ionian Fervor (10%:25% by lvl/stack, max 4), Jax Relentless Assault (5%:12.5% by lvl/stack, max 8), Ezreal Rising Spell Force (10% flat/stack, max 5), Volibear The Relentless Storm ((5% + 4% per 100 AP)/stack, max 5 - the AP-scaled one, reads resolved post-amp AP). per_stack*max_stacks == documented max (self-clamping). Offline characterization tests (RED-first, 19/19). ENGINE 1.146.0 -> 1.147.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `7c22e3bb` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -163,6 +164,55 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-19 R7 (DIRECTOR REFILL cycle) DONE (`7c22e3bb`) - DS schema lift: per-stack
+  champion self-Attack-Speed passive seam on the AA DPS scorer (ENGINE 1.146.0 ->
+  1.147.0). NEW `agents/daemon_slayer/_passive_as_overrides.py` registry - the
+  ATTACK-SPEED sibling of the item-effect `total_conditional_as` (Yun Tal) lane, keyed
+  on the CHAMPION's innate per-stack passive. `compute_dps` gains a default-OFF
+  `assume_passive_as_stacks` seam: when ON, `passive_as_bonus(cid, level, ap,
+  stack_fraction=_ASSUMED_PASSIVE_AS_STACK_FRACTION=1.0)` folds the champ's per-stack
+  bonus AS at full stacks into the rotation AS with the SAME 2.5 hard-cap re-clamp as
+  cond_as (raw_attack_dps left at the no-conditional baseline, matching cond_as). **GROUND
+  TRUTH (file-cited, [[feedback_verify_before_declare_broken]]):** seeded 4 from
+  `data/daemon_slayer/16.12.1/champion_abilities.json` (Meraki content patch 25.15)
+  effects_descriptions - Irelia Ionian Fervor 10%:25% by level/stack max 4 -> 40%:100%;
+  Jax Relentless Assault 5%:12.5% by level/stack max 8 -> 40%:100%; Ezreal Rising Spell
+  Force 10% flat/stack max 5 -> 50%; Volibear The Relentless Storm (5% + 4% per 100 AP)/
+  stack max 5 -> 25% + 20% per 100 AP (the one AP-scaled passive, reads the resolved
+  post-amp `ap`). per_stack * max_stacks == the documented max by construction, so the
+  full-stack assumption is self-clamping (no separate ceiling). The on-hit / Lightning
+  Claws / Unsteady mechanics on these passives are SEPARATE, not the AS buff - deliberately
+  not modeled here. **TDD red->green:** `test_passive_as_overrides_r7.py` RED first
+  (ImportError, seam absent) -> implemented -> GREEN (19/19): registry pins vs Meraki +
+  full-stack-max-matches-documented (both level endpoints) + level-interp midpoint +
+  Volibear AP scaling + stack-fraction clamp + compute_dps OFF byte-identical (4 champs,
+  weighted+phase+raw) + ON raises DPS + note + unregistered-champ byte-identical-even-ON.
+  **VERIFY (Tier-2 dual suite, [[reference_ds_bump_run_tests_dir]]):** DS-dir 7413 passed
+  / 1 skip / 1942 subtests (exit 0); RC `tests/ --ignore=tests/daemon_slayer` 8645 passed
+  / 2 skip / 110 subtests (exit 0) - NO mid-suite transients this cycle because the Share
+  sync + DS :8893 restart were sequenced BEFORE the RC suite (vs R3/R5 which ran through
+  the restart window). DS `/health` confirmed live 1.147.0 ([[reference_ds_server_not_supervisor_watched]]
+  taskkill /F + `schtasks /Run /TN RC-DaemonSlayer`). ruff clean; Share `--check` green
+  (366 files + doc anchors + lolmath_ingest). ENGINE bump = quoted-literal pins only
+  ([[feedback_engine_bump_quoted_literal_only]]): byte-level replace of the assertion/
+  assignment `"1.146.0"` patterns across 80 DS test .py (89 subs) + `__init__.py`; CHANGELOG
+  bare-version prose untouched; CHANGELOG + Share/CHANGELOG dated entries prepended. **ORCHESTRATION
+  (auto-pick, logged):** sole orchestrator, INLINE per R9 (registry + seam + consumer + test
+  interlock - a single tightly-coupled engine change, not disjoint slices; the directive's
+  parallel-worktree mechanism applied inline, intent over mechanism
+  [[feedback_audit_proposals_are_intent]]); verifier SKIPPED per R7 (own single-thread; the
+  fresh dual suite + the live :8893 re-verify + the file-cited Meraki ground-truth grep ARE
+  the independent verify); no blocking AskUserQuestion (operator away). Live default-ON flip
+  operator-gated -> appended `docs/LIVE_GAME_GATED_SYNC.md` live-flip ledger (R7 row); EXCLUDED
+  L156 already names "per-stack assumed_stacks" as a gated flip class, so this seam slots into
+  the existing live-sync plan. **NEW residual (FUTURE, not built):** the registry is the seed
+  of an innate-per-stack-self-AS class - a per-patch re-scan of champion_abilities.json for
+  new "X% : Y% per stack ... bonus attack speed" passive lines (+ any other AP-scaled AS
+  passive beyond Volibear) joins the per-patch re-anchor; the live default-ON flip wires the
+  dps/hybrid scorer-dispatch (the same site the B1 melee gate flips) to pass the flag for the
+  4 tabled champs. Source: gemini director directive (R7). [[feedback_verify_before_declare_broken]]
+  / [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]] /
+  [[reference_ds_server_not_supervisor_watched]] / [[feedback_execution_efficiency_rules]].
 - 2026-06-19 R6 (DIRECTOR REFILL cycle) DONE (`139ef216`) - Section-3b 5-phase UI
   audit of two un-audited dashboard panels (cooldown_watch + cc_conditional_pressure,
   JS+CSS) vs UI_SCALE_SPEC_V2 v2.1. **TYPOGRAPHY = verified no-op:** both CSS files were
