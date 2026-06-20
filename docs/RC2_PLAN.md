@@ -10,7 +10,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Phase 2 of 9 (design DELIVERED - GATE: awaiting greenlight) - Stage 16 of 50 - approx 32% complete**
+> **Phase 2 GATE (design, awaiting greenlight); backend P5/P6/P8 in flight - Stage 17 of 50 - approx 34% complete**
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -130,7 +130,7 @@ so the operator sees gray/blue progress live.
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
 | 6.1 | LCU/LiveClient push/pull function + timing map (document RC<->League I/O cadences) | DONE | docs/research/RC2_RESEARCH_io_timing_map.md |
-| 6.2 | Faster champ-select LCU polling (all modes), port-safe | OPEN | |
+| 6.2 | Faster champ-select LCU polling (all modes), port-safe | DONE | RuneWriter 2.0s->1.0s env-tunable; tests/test_runewriter_poll_interval_rc2.py |
 | 6.3 | UI responsiveness (render cadence, debounce, no-store idempotency) | OPEN | |
 | 6.4 | Port-safety audit (connection reuse, no fan-out storms) | OPEN | |
 | 6.5 | State-pipeline latency reduction | OPEN | |
