@@ -30,7 +30,7 @@ let _chipByKey = {};
 
 function _chipsSignature(choices) {
   if (!Array.isArray(choices) || choices.length === 0) return "";
-  return choices.map((c) => `${c.key}:${c.label}:${c.confidence}:${c.source_tag || ""}:${c.trigger || ""}`).join("|");
+  return choices.map((c) => `${c.key}:${c.label}:${c.confidence}:${c.source_tag || ""}:${c.trigger || ""}:${c.rebranch_when || ""}:${c.rebranch_to || ""}`).join("|");
 }
 
 function _bandDots(band) {
@@ -66,6 +66,8 @@ function _chipHtml(c) {
   const outcome = (c.expected_outcome || "").slice(0, 160);
   const src = (c.source_tag || "").slice(0, 32);
   const trigger = (c.trigger || "").slice(0, 120);
+  const rebranchWhen = (c.rebranch_when || "").slice(0, 120);
+  const rebranchTo = (c.rebranch_to || "").slice(0, 1).toUpperCase();
   const confidence = String(c.confidence == null ? "" : c.confidence);
   const srcPill = src ? `<span class="rc-src">${_esc(src)}</span>` : "";
   const digit = _KEY_TO_DIGIT[k] || "";
@@ -77,6 +79,11 @@ function _chipHtml(c) {
   const triggerLine = trigger
     ? `<span class="rc-trigger">${_esc(trigger)}</span>`
     : "";
+  // RC2 5.4: the condition-change branch ("-> B if enemy goes missing"). Both
+  // halves are required to render; muted, dashboard-only (overlay HUD hides it).
+  const rebranchLine = (rebranchWhen && rebranchTo)
+    ? `<span class="rc-rebranch">-&gt; ${_esc(rebranchTo)} if ${_esc(rebranchWhen)}</span>`
+    : "";
   return `
     <button type="button" class="rc-chip" data-key="${_esc(k)}" data-label="${_esc(label)}"
             data-confidence="${_esc(confidence)}" data-source="${_esc(src)}"
@@ -85,6 +92,7 @@ function _chipHtml(c) {
       <span class="rc-labelcol">
         <span class="rc-label">${_esc(label)}</span>
         ${triggerLine}
+        ${rebranchLine}
       </span>
       ${hotkeyPill}
       ${_bandDots(confidence)}

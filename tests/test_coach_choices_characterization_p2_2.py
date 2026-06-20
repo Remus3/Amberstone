@@ -22,19 +22,20 @@ class WireShapeTests(unittest.TestCase):
         self.assertEqual(
             keys,
             {"key", "label", "expected_outcome", "confidence", "source_tag",
-             "trigger"},
+             "trigger", "rebranch_when", "rebranch_to"},
         )
 
     def test_to_dict_full_dict_equality(self):
         c = cc.CoachChoice(
             key="A", label="Contest", expected_outcome="Win drake",
             confidence="high", source_tag="archetype_sim",
-            trigger="Zed, lvl 6",
+            trigger="Zed, lvl 6", rebranch_when="if Zed roams", rebranch_to="B",
         )
         self.assertEqual(c.to_dict(), {
             "key": "A", "label": "Contest", "expected_outcome": "Win drake",
             "confidence": "high", "source_tag": "archetype_sim",
-            "trigger": "Zed, lvl 6",
+            "trigger": "Zed, lvl 6", "rebranch_when": "if Zed roams",
+            "rebranch_to": "B",
         })
 
     def test_to_dict_defaults(self):
@@ -42,6 +43,7 @@ class WireShapeTests(unittest.TestCase):
         self.assertEqual(c.to_dict(), {
             "key": "B", "label": "Concede", "expected_outcome": "",
             "confidence": "mid", "source_tag": "", "trigger": "",
+            "rebranch_when": "", "rebranch_to": "",
         })
 
     def test_to_jsonable_empty_list(self):
@@ -54,9 +56,11 @@ class WireShapeTests(unittest.TestCase):
         ]
         self.assertEqual(cc.to_jsonable(cs), [
             {"key": "A", "label": "Engage", "expected_outcome": "",
-             "confidence": "mid", "source_tag": "", "trigger": ""},
+             "confidence": "mid", "source_tag": "", "trigger": "",
+             "rebranch_when": "", "rebranch_to": ""},
             {"key": "B", "label": "Disengage", "expected_outcome": "",
-             "confidence": "mid", "source_tag": "", "trigger": ""},
+             "confidence": "mid", "source_tag": "", "trigger": "",
+             "rebranch_when": "", "rebranch_to": ""},
         ])
 
 
@@ -70,9 +74,11 @@ class ParsePipelineWireTests(unittest.TestCase):
         ]}
         self.assertEqual(cc.to_jsonable(cc.parse_choices(coach)), [
             {"key": "A", "label": "Contest", "expected_outcome": "Win drake",
-             "confidence": "high", "source_tag": "archetype_sim", "trigger": ""},
+             "confidence": "high", "source_tag": "archetype_sim", "trigger": "",
+             "rebranch_when": "", "rebranch_to": ""},
             {"key": "B", "label": "Concede", "expected_outcome": "Trade top",
-             "confidence": "mid", "source_tag": "winrate_hist", "trigger": ""},
+             "confidence": "mid", "source_tag": "winrate_hist", "trigger": "",
+             "rebranch_when": "", "rebranch_to": ""},
         ])
 
     def test_key_coercion_multichar_to_first_upper(self):
@@ -110,9 +116,11 @@ class SynthesizeWireTests(unittest.TestCase):
         })
         self.assertEqual(cc.to_jsonable(out), [
             {"key": "A", "label": "Contest", "expected_outcome": "5v5 mid",
-             "confidence": "mid", "source_tag": "synth", "trigger": ""},
+             "confidence": "mid", "source_tag": "synth", "trigger": "",
+             "rebranch_when": "", "rebranch_to": ""},
             {"key": "B", "label": "Concede", "expected_outcome": "Stall til 6 items",
-             "confidence": "mid", "source_tag": "synth", "trigger": ""},
+             "confidence": "mid", "source_tag": "synth", "trigger": "",
+             "rebranch_when": "", "rebranch_to": ""},
         ])
 
 
