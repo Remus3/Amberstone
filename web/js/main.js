@@ -1903,6 +1903,12 @@ import { initOverlayPulse } from './overlay_pulse.js';
       // (sessionStorage "rc-history-focus-ts") can scroll + highlight
       // the matching row after the session is selected.
       if (m.timestamp) li.dataset.matchTs = m.timestamp;
+      // WIN-CAPTURE keystone (item 77): expose the loaded win/loss as a
+      // data-result attr + result-win/result-loss class so the
+      // result-first row + the later Hextech tint can key off it. win is
+      // true/false when known, null for pre-LCU-ingest rows (no tint).
+      if (m.win === true) { li.dataset.result = "win"; li.classList.add("result-win"); }
+      else if (m.win === false) { li.dataset.result = "loss"; li.classList.add("result-loss"); }
       const grade = String(m.grade || "-")[0];
       li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
         `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +

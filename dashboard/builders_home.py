@@ -60,6 +60,63 @@ def _lcu_build_items(raw_data: str | None) -> list[int]:
     return []
 
 
+def _lcu_match_stats(raw_data: str | None) -> dict | None:
+    """Resolve the tracked player's ``stats`` dict from a match row's
+    ``raw_data`` blob via the same puuid -> participantId -> stats walk
+    that :func:`_lcu_build_items` uses for item ids.
+
+    Returns ``None`` for rows that predate the s219 LCU-ingest pipeline
+    (no ``lcu_match_detail``) or on any structural mismatch. Centralises
+    the walk so per-stat accessors (win, items, ...) stay consistent.
+    """
+    if not raw_data:
+        return None
+    import json
+    try:
+        rd = json.loads(raw_data)
+    except Exception:  # noqa: BLE001
+        return None
+    lcu_detail = rd.get("lcu_match_detail") or {}
+    tracked_puuid = (rd.get("tracked_puuid") or "").strip()
+    if not lcu_detail or not tracked_puuid:
+        return None
+    identities = lcu_detail.get("participantIdentities") or []
+    participants = lcu_detail.get("participants") or []
+    if not identities or not participants:
+        return None
+    me_pid = None
+    for ident in identities:
+        player = ident.get("player") or {}
+        if str(player.get("puuid") or "").strip() == tracked_puuid:
+            me_pid = ident.get("participantId")
+            break
+    if me_pid is None:
+        return None
+    for p in participants:
+        if p.get("participantId") == me_pid:
+            return p.get("stats") or {}
+    return None
+
+
+def _lcu_win(raw_data: str | None) -> bool | None:
+    """Win/loss of the tracked player for a match row, read from the
+    end-of-game ``lcu_match_detail`` already stored in ``raw_data``.
+
+    This is the WIN-CAPTURE keystone source (TODO item 77): match_history.db
+    has no win column, but the LCU ingest blob carries ``stats.win`` for
+    the tracked player. Returns ``True``/``False`` when resolvable, or
+    ``None`` for matches that predate the ingest pipeline (the row then
+    renders with no win/loss tint - unknown, not a guessed result).
+    """
+    stats = _lcu_match_stats(raw_data)
+    if not stats:
+        return None
+    win = stats.get("win")
+    if win is None:
+        return None
+    return bool(win)
+
+
 def _build_home_summary() -> dict:
     """Aggregate read-only data for the dashboard home view.
 
@@ -109,6 +166,9 @@ def _build_home_summary() -> dict:
                 # split ARAM Classic from ARAM Mayhem - passthrough hook.
                 "items": _lcu_build_items(raw_data),
                 "mode_subtype": None,
+                # WIN-CAPTURE keystone (item 77): win/loss from the LCU
+                # ingest blob already in raw_data; None for pre-ingest rows.
+                "win": _lcu_win(raw_data),
             })
         # Today's session - group all rows whose timestamp date == today.
         # TFT excluded for the same reason as Recent 5: keeps the "N
