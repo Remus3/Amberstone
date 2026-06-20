@@ -552,3 +552,21 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   MAIN process needs a relaunch first to pick up the new main.js logic + the separateWindows authority;
   the web renderer half (the #ovset toggle) auto-reloads via ADR-008 asset-hash. Does NOT block any
   further stage.
+- 2026-06-20 RC2 P4.4 settings-UI no-hotkey overlay actions (UI control surface, NOT a DS seam; this
+  cycle shipped the code safe - additive #ovset controls, no render-path flip). The overlay's last
+  keyboard-only behaviors are now on-screen #ovset controls over a new one-way `overlay-action` IPC: a
+  Coach/Build/Threat panel-set segmented selector (the twin of Alt+Shift+C; lights the active segment from
+  the body panelset, a pick fires `set-panel` and the shell persists + reloads the overlay onto that set)
+  and an "Interact now" button (twin of Alt+Shift+A; fires `set-active`, forces ACTIVE with the same 20s
+  auto-revert). `overlay_state.normOverlayAction` is the pure allow-list the main process trusts;
+  `main.js applyPanelSet`/`setOverlayActive` are shared by the hotkeys AND the IPC so the two paths never
+  drift. Hide/show (Alt+Shift+O) STAYS a hotkey by design (it clears BOTH surfaces, so a self-hiding on-
+  screen control would have no way back). Headless-verified: rc-shell node 240/240 (+5 normOverlayAction,
+  +3 action-IPC wiring), `test_overlay_settings_panel_dom` 33 (+8), real-Chromium `test_overlay_view` 19
+  (+2: the selector + button render at the 42px floor with ASCII labels; panelset=build lights exactly the
+  Build segment), live `:8888` serves the controls. OWED (operator-gated, NOT headless): eyeball it OVER A
+  REAL LEAGUE GAME at 2560x1440 borderless - confirm (a) clicking Coach/Build/Threat in #ovset swaps the
+  overlay panel set (no Alt+Shift+C), (b) the lit segment matches the shown set, (c) "Interact now" makes
+  the HUD interactive then auto-reverts after ~20s. The rc-shell Electron MAIN process needs a relaunch
+  first to pick up the new IPC handler + applyPanelSet/setOverlayActive; the web renderer half (the #ovset
+  selector + button) auto-reloads via ADR-008 asset-hash. Does NOT block any further stage.
