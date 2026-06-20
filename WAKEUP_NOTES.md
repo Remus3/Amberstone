@@ -4,6 +4,34 @@
 
 ---
 
+# 2026-06-19 (gemini-loop R6 cycle) - dashboard-panel UI audit + dead-CSS removal (LEDGER 516)
+
+Gemini DIRECTOR refill R6 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
+audit of the un-audited cooldown_watch + cc_conditional_pressure dashboard panels (JS+CSS) vs
+UI_SCALE_SPEC_V2 v2.1. Commit `139ef216`; Tier-1 CSS+test only, NO ENGINE bump / 0 frozen / no DS
+restart / no Share mirror / ADR-008 asset-hash auto-reload (no RC restart).
+
+- SCOPE (verify-before-build): the directive's "tokenize sub-floor hardcoded font-sizes" = a verified
+  NO-OP. The 2 JS files are pure ESM (no style decls); both CSS files were ALREADY fully tokenized
+  (every font-size = var(--fs-*), all >= --fs-xs 16px; grep font-size:\d+px = 0 hits). Did NOT
+  fabricate edits to manufacture a diff.
+- MUST-FIX (genuine dead CSS): cc_conditional_pressure.css carried .cc-conditional-pressure-ratio +
+  -ratio-value (3 rules / ~24 lines) ORPHANED since item 213 (2026-05-28) swapped the ratio render
+  for the verdict line. Grep across web/ + tests/ = ZERO consumers -> removed. Zero pixel delta.
+  cooldown_watch CSS classes all match JS-emitted (no dead CSS) -> guard test only.
+- 5-phase: STRUCTURE/TYPOGRAPHY/ASCII/HIERARCHY PASS; HIT-TARGETS N/A (display-only chips).
+- TDD red->green: test_no_orphan_ratio_selectors RED (1 fail) -> removed -> GREEN (44 passed); +2
+  test_font_sizes_are_tokenized characterization guards (both panel test files) lock token compliance.
+- VERIFY: verifier subagent CONFIRM all 4 claims (selector gone, 0 bare-px, 44 passed fresh, 0
+  non-ASCII); full RC suite tests/ --ignore=tests/daemon_slayer = 8645 passed / 2 skip / exit 0
+  (8642 + 3 new); ruff clean. Inline sole orchestrator (R9). [[feedback_phase3_fixture_ritual]] /
+  [[feedback_verify_before_declare_broken]] / [[feedback_audit_proposals_are_intent]].
+- NEW residuals (FUTURE): overlay.css 12/13px sub-floor (Electron, Lane D); next.css:10 21px
+  hardcoded (above floor); cc-conditional-pressure-verdict actionable sentence at --fs-xs 16px
+  (clears floor; tier-bump is a subjective readability call - not shipped blind).
+
+---
+
 # 2026-06-19 (gemini-loop R5 cycle) - DS missing-HP heal-amplification seam (LEDGER 515)
 
 Gemini DIRECTOR refill R5 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
@@ -52,34 +80,3 @@ audit of three un-audited core coaching panels. Commit `9e56d23d`, CI pending pu
 - VERIFY: RC suite 8642 passed/2 skip/0 fail (incl hygiene + bundle-parity guards); DS N/A (CSS,
   Tier-1); ruff clean. Inline sole orchestrator (R9; verifier = audit subagent + live probe + fresh
   suite). [[feedback_phase3_fixture_ritual]] / [[feedback_execution_efficiency_rules]].
-
----
-
-# 2026-06-19 (gemini-loop R3 cycle) - DS passive_damage caster bonus-armor/MR scaling (LEDGER 513)
-
-Gemini DIRECTOR refill R3 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
-passive_damage caster-defensive-stat (bonus armor / bonus MR) scaling. Commit `ab23c32c`, CI
-pending push; Tier-2, ENGINE 1.144.0 -> 1.145.0, DS :8893 restarted -> 1.145.0 live, Share
-re-synced SAME commit, 0 frozen.
-
-- SCOPE (verify-before-build): the eval chain ALREADY existed end-to-end - DamageBlock
-  bonus_armor_pct/bonus_mr_pct + _SCALING_TARGETS (-> caster_bonus_armor/caster_bonus_mr) +
-  AbilityContext.from_build. The ONLY gap = the hand-authored passive_damage REGISTRY did not
-  carry the two %-fields. Thin bridge, not a new evaluator.
-- IMPL (_passive_damage_overrides.py, default-OFF byte-identical): added bonus_armor_pct/
-  bonus_mr_pct to PassiveDamageEntry + PerStackTerm; to_damage_block copies them -> evaluator
-  applies via existing _SCALING_TARGETS loop, ZERO new math. Seeded Taric P (25:93 + 15% bonus
-  armor) + Galio P (15:115 + 100% AD + 45% AP + 60% bonus MR; crit omitted -> AA-crit seam).
-  Both no_damage/empty-blocks (no double-count), both metadata-only (NOT AA-routed: Taric
-  post-spell-2-hit + Galio periodic gates).
-- SWEEP (172 champs): ONLY these 2 clean linear cases. FUTURE residual (not built blind):
-  K'Sante P (bilinear caster-resist x target-HP, All Out gated) + Rammus W (TOTAL-resist reflect,
-  needs a caster-total-MR field) - see ORCHESTRATION Findings.
-- TDD: test FIRST 10 fail/8 pass RED -> impl -> 18/18 GREEN (hand-computed: Taric L1@100armor=40,
-  L18=108; Galio L1 ad200/ap100/mr50=290, L18=390). ENGINE pins quoted-literal only (79 DS test
-  files byte-bumped, 0 residual). Share/docs/02 PassiveDamageEntry field list updated.
-- VERIFY: DS 7379 pass/1 skip/1942 subtests; RC 8634 pass/2 skip with 1 EXPECTED transient
-  (test_live_three_profiles caught the mid-suite DS-restart window at stale 1.144.0) -> re-ran
-  fresh = 1 passed, /health 1.145.0. ruff + Share --check green. Inline sole orchestrator (R9
-  single-file lift; verifier skip R7). [[reference_ds_bump_run_tests_dir]] /
-  [[feedback_engine_bump_quoted_literal_only]] / [[feedback_verify_before_declare_broken]].
