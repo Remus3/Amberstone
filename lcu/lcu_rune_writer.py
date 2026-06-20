@@ -1,7 +1,7 @@
 """
 lcu/lcu_rune_writer.py - Champion select rune auto-writer for Riot Commander.
 
-Polls LCU champ select session every 2s.
+Polls LCU champ select session every ~1s (RC2 P6.2; env RC_RUNEWRITER_POLL_SEC).
 When a champion is selected (intent OR locked), loads the recommended
 rune page from rune_recommendations_{aram|sr}.json and writes it to
 the LCU immediately - replacing the Overlay App E workflow.
@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import threading
 import time
 from pathlib import Path
@@ -384,7 +385,10 @@ class RuneWriter:
     """
 
     PAGE_PREFIX = "RC: "
-    POLL_INTERVAL = 2.0   # seconds between champ-select polls
+    # RC2 P6.2: tightened 2.0 -> 1.0s for faster rune/spell auto-apply across
+    # ALL modes (slowest champ-select cadence per the IO timing map). Port-safe:
+    # a single loop adds ~0.5 calls/s to the lockfile port. Env-tunable.
+    POLL_INTERVAL = float(os.environ.get("RC_RUNEWRITER_POLL_SEC", "1.0"))
     MAX_RETRIES   = 3     # attempts to write rune page on failure
 
     def __init__(self, lcu_client) -> None:
