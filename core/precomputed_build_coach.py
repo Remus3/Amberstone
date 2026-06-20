@@ -30,7 +30,7 @@ FAIL-SOFT
 """
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from typing import Iterable, Optional, Sequence, Tuple
 
 from core.archetype_picks import canonical_champion_id
 from core.aram_comp_verdict import compute_factors
@@ -72,21 +72,9 @@ def comp_lean(enemy_comp: Sequence[str]) -> Optional[Tuple[str, str]]:
     return "anti_squishy", conf
 
 
-def _next_item_str(
-    order: Sequence[object],
-    owned_count: int,
-    item_costs: Optional[dict],
-) -> Optional[str]:
-    """``"Name (Ng)"`` (or ``"item <id>"``) for the next un-bought core item,
-    or None when the build order is finished / empty. ``item_costs`` maps
-    ``item_id_str -> (display_name, total_gold)``."""
-    try:
-        oc = int(owned_count)
-    except (TypeError, ValueError):
-        oc = 0
-    if not order or not (0 <= oc < len(order)):
-        return None
-    iid = str(order[oc])
+def _fmt_item(iid: object, item_costs: Optional[dict]) -> str:
+    """``"Name (Ng)"`` for a known id, else ``"item <id>"``."""
+    iid = str(iid)
     if item_costs and iid in item_costs:
         name, cost = item_costs[iid]
         if name:
@@ -97,15 +85,50 @@ def _next_item_str(
     return f"item {iid}"
 
 
+def _next_item_str(
+    order: Sequence[object],
+    owned_count: int,
+    item_costs: Optional[dict],
+    owned_ids: Optional[Iterable[object]] = None,
+) -> Optional[str]:
+    """``"Name (Ng)"`` (or ``"item <id>"``) for the next un-bought core item,
+    or None when the build order is finished / empty. ``item_costs`` maps
+    ``item_id_str -> (display_name, total_gold)``.
+
+    When ``owned_ids`` (the live owned completed-item id set) is supplied, the
+    next item is the first order entry whose id is NOT owned - deviation-robust,
+    so the chip never recommends an item the player already holds even when they
+    built off the canonical sequence (the live 'recommends an item you already
+    own / conflicts with your build' bug). With ``owned_ids`` None/empty it
+    falls back to the legacy ``order[owned_count]`` index - byte-identical for
+    every prior caller."""
+    if not order:
+        return None
+    owned_set = {str(x) for x in owned_ids} if owned_ids else None
+    if owned_set is not None:
+        for entry in order:
+            if str(entry) not in owned_set:
+                return _fmt_item(entry, item_costs)
+        return None  # every core item in the order is already owned
+    try:
+        oc = int(owned_count)
+    except (TypeError, ValueError):
+        oc = 0
+    if not (0 <= oc < len(order)):
+        return None
+    return _fmt_item(order[oc], item_costs)
+
+
 def _variant_outcome(
     cell: dict,
     owned_count: int,
     item_costs: Optional[dict],
+    owned_ids: Optional[Iterable[object]] = None,
 ) -> str:
     """DS-backed expected-outcome line for one variant choice: the next item +
     the A3 anti-tank provenance note."""
     order = cell.get("order") if isinstance(cell.get("order"), list) else []
-    nxt = _next_item_str(order, owned_count, item_costs)
+    nxt = _next_item_str(order, owned_count, item_costs, owned_ids)
     at = cell.get("antitank") if isinstance(cell.get("antitank"), dict) else {}
     variant = str(cell.get("variant") or "")
     if variant == "anti_tank":
@@ -128,6 +151,7 @@ def build_choices(
     payload: Optional[dict] = None,
     item_costs: Optional[dict] = None,
     owned_count: int = 0,
+    owned_ids: Optional[Iterable[object]] = None,
 ) -> list[CoachChoice]:
     """Two BUILD A/B choices for the live (champ vs comp) state, or ``[]``.
 
@@ -150,14 +174,14 @@ def build_choices(
         a = CoachChoice(
             key="A",
             label=_VARIANT_LABELS[variant],
-            expected_outcome=_variant_outcome(rec, owned_count, item_costs),
+            expected_outcome=_variant_outcome(rec, owned_count, item_costs, owned_ids),
             confidence=conf,
             source_tag=SOURCE_TAG,
         )
         other = _other(variant)
         other_cell = lookup(data, my_id, other)
         b_outcome = (
-            _variant_outcome(other_cell, owned_count, item_costs)
+            _variant_outcome(other_cell, owned_count, item_costs, owned_ids)
             if other_cell else "alternative durability build"
         )
         b = CoachChoice(
