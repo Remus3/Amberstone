@@ -56,8 +56,32 @@ def _peer_health_status(age_s: float) -> str:
 log = logging.getLogger("rc.web_dashboard")
 
 
+# RC2 6.3 (L4): the dashboard update cadence is ONE tunable shared by the
+# /api/state TTL cache AND the SSE re-build tick. The IO timing map
+# (docs/research/RC2_RESEARCH_io_timing_map.md) flagged that these two MUST
+# match (a TTL shorter than the tick wastes builds; longer stalls the stream)
+# yet they were two independent 1.0s literals that could silently drift.
+# Folding them into one constant makes the invariant structural. Default
+# halved 1.0 -> 0.5s (operator-approved E12/L4): halves worst-case "champ
+# select updates slow" latency with no new connections (SSE is push) and the
+# 2x build/s bounded by the _deterministic_coaching 3.0s DS-call TTL. Clamped
+# to a floor so a 0/garbage override never spins a 0s-sleep SSE loop or a 0s
+# TTL (every tick rebuilds). Env-tunable to restore 1.0 if ever needed.
+_STATE_CADENCE_FLOOR_S = 0.1
+
+
+def _state_cadence_s() -> float:
+    try:
+        v = float(os.environ.get("RC_STATE_CADENCE_SEC", "0.5"))
+    except (TypeError, ValueError):
+        v = 0.5
+    return v if v >= _STATE_CADENCE_FLOOR_S else _STATE_CADENCE_FLOOR_S
+
+
+_STATE_CADENCE_S = _state_cadence_s()
+
 # /api/state cache - populated lazily on first hit; declared at module
-# scope so the request handler can rebind it. 1.0 s TTL absorbs
+# scope so the request handler can rebind it. _STATE_CADENCE_S TTL absorbs
 # high-frequency dashboard polls (5+ tabs polling tightly would
 # otherwise duplicate the vision-relay round-trip in _build_state).
 _STATE_CACHE_PAYLOAD: bytes | None = None
@@ -93,14 +117,14 @@ def _state_payload_cached() -> bytes:
     cache while every SSE subscriber re-ran a full build_state() per 1s
     tick - N tabs duplicated the LCU/liveclient round-trips + the
     deterministic compute N times per second. Both paths share this
-    helper now; the SSE tick (1.0s) equals the TTL so freshness is
-    unchanged. Unlocked on purpose: a concurrent rebuild is benign
+    helper now; the SSE tick equals the TTL (both _STATE_CADENCE_S, RC2
+    6.3) so freshness is unchanged. Unlocked on purpose: a concurrent rebuild is benign
     (last-write-wins, both payloads valid) and cheaper than serializing
     the hot path. Raises on build failure - callers keep their own
     degradation (500 for /api/state, "{}" event for SSE)."""
     global _STATE_CACHE_PAYLOAD, _STATE_CACHE_TS
     now = time.time()
-    if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < 1.0:
+    if _STATE_CACHE_PAYLOAD is not None and (now - _STATE_CACHE_TS) < _STATE_CADENCE_S:
         return _STATE_CACHE_PAYLOAD
     payload = json.dumps(_timed_build_state()).encode("utf-8")
     _STATE_CACHE_PAYLOAD = payload
@@ -123,7 +147,7 @@ def _serve_state(h) -> None:
 # while a stream is connected. EventSource on the client auto-reconnects
 # on disconnect, so we cap connection lifetime at _SSE_MAX_DURATION_S
 # to keep dispatcher threads from accumulating across long sessions.
-_SSE_TICK_S         = 1.0     # how often we re-build state to compare
+_SSE_TICK_S         = _STATE_CADENCE_S  # re-build cadence; SHARED with the TTL (RC2 6.3)
 _SSE_HEARTBEAT_S    = 15.0    # max idle gap before a forced emit
 _SSE_MAX_DURATION_S = 600.0   # close + let client reconnect after 10min
 _SSE_MAX_SUBSCRIBERS = 8      # cap concurrent open streams
