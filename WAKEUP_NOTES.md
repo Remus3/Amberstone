@@ -4,6 +4,33 @@
 
 ---
 
+# 2026-06-19 (gemini-loop R7-regress-fix cycle) - passive_as unit-mismatch fix (LEDGER 518)
+
+Gemini AUDITOR flagged R7 (item 517) REGRESS. `agents/daemon_slayer/dps.py` per-stack self-AS
+seam added `passive_as_bonus()`'s bonus-AS FRACTION (Irelia full L18 = 1.0; Jax L11 ~0.75)
+directly to `stats_for_rotation["as"]` = FINAL attacks/sec (engine.py:195 `base_as*(1+bonus)`,
+2.5-capped) -> over-credited AS by 1/base_as (~1.5x). Commit `ee90195d`; Tier-2, NO ENGINE bump
+(stays 1.147.0), 0 frozen, Share re-synced same commit.
+
+- FIX: fold the fraction onto the champ INNATE base AS - `+ innate_base_as * passive_as`
+  (`champ["stats"]["attackspeed"]`, champ = snapshot.champion(...) dps.py:695 in scope); 2.5
+  re-clamp kept; seam note reworded to "+X% bonus AS ... folded onto base AS".
+- TDD RED-first: NEW `SeamAddsBaseAsScaledFraction` pins by colinearity (weighted_dps affine in
+  rotation AS; off / pure-AS-Dagger(1042)-cal / on colinear; ON gain == c1*(base_as*pa) NOT
+  c1*pa). RED 135.24 vs predicted_correct 118.75 -> GREEN (20/20). R7's 19 tests only asserted
+  direction (on>off), true under both formulas -> missed the magnitude bug.
+- NO bump: seam DEFAULT-OFF + operator-gated (not live), buggy math never hit a live consumer.
+  SIBLING (FUTURE, not touched): Yun Tal cond_as (0.08, dps.py:849, batch 54) is the same unit
+  class, pre-existing+tiny+separately pinned -> logged ORCH Findings.
+- VERIFY: R7 20; DS-dir 7414 / 1 skip / 1942 subs; RC 8644 / 2 skip / 110 subs (lone fail = the
+  expected Share-drift guard -> ds_share_sync re-mirror GREEN, --check in sync, 366 files);
+  verifier CONFIRM all 6 claims (determinism teardown ERROR = live vision daemon mutating
+  data/vision_state.json mid-run, environmental); ruff+py_compile clean; Share staged same commit.
+- [[feedback_verify_before_declare_broken]] / [[reference_share_mirror_tools_drift]] /
+  [[reference_ds_bump_run_tests_dir]] / [[feedback_ds_commit_share_test_mirror]].
+
+---
+
 # 2026-06-19 (gemini-loop R7 cycle) - DS per-stack self-Attack-Speed passive seam (LEDGER 517)
 
 Gemini DIRECTOR refill R7 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
@@ -60,30 +87,3 @@ restart / no Share mirror / ADR-008 asset-hash auto-reload (no RC restart).
 - NEW residuals (FUTURE): overlay.css 12/13px sub-floor (Electron, Lane D); next.css:10 21px
   hardcoded (above floor); cc-conditional-pressure-verdict actionable sentence at --fs-xs 16px
   (clears floor; tier-bump is a subjective readability call - not shipped blind).
-
----
-
-# 2026-06-19 (gemini-loop R5 cycle) - DS missing-HP heal-amplification seam (LEDGER 515)
-
-Gemini DIRECTOR refill R5 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
-passive_heal missing_hp_heal_amp. Commit `dc2eb0c3`, CI pending push; Tier-2, ENGINE 1.145.0 ->
-1.146.0, DS :8893 restarted -> 1.146.0 live, Share re-synced SAME commit (--check green, 364 files),
-0 frozen.
-
-- SCOPE (verify-before-build): `ability_hps.py` ALREADY resolves missing-HP heal MAGNITUDE
-  (`resolve_target_relative` v2 path). R5 = the SIBLING heal-AMP MULTIPLIER class - the one
-  `_passive_heal_overrides.py:27` (item-253 header) explicitly EXCLUDED from the magnitude registry.
-  Mirrors the `assume_ability_amp` seam (default-OFF bool, byte-identical off).
-- IMPL (single coupled file, byte-identical at default): NEW `_MISSING_HP_HEAL_AMP[champ][spell] =
-  max_bonus` registry + `_missing_hp_heal_amp_factor` (co-located w/ `_AOE_HEAL_TARGETS`);
-  `compute_ability_hps` gains `assume_missing_hp_heal_amp` -> `heal_per_cast *= 1 + max_bonus *
-  caster_missing_hp_pct` (HEAL-only, reuses the existing missing-HP param, full-HP = identity).
-- SEEDED 4 (champion_abilities.json 16.12.1 effects_descriptions, file:line grep): Master Yi W
-  Meditate (35042) / Lissandra R Frozen Tomb (31869) / Sylas W Kingslayer (56205) 0%:100% -> 1.0;
-  Briar P Crimson Curse (7903) 0%:40% -> 0.40 (sub-term omitted, lower bound). Nidalee E probed
-  (39896), NO amp text -> NOT seeded (3/4 directive examples verified, 1 corrected, +Briar bonus).
-- TDD test_missing_hp_heal_amp_item515.py RED-first (ImportError) -> GREEN (~17 tests). VERIFY:
-  DS 7394 / RC 8642 green (8 mid-suite restart/sync-window transients re-verified fresh = 40 passed);
-  ruff + Share --check clean; DS /health 1.146.0. Inline sole orchestrator (R9; verifier skip R7 -
-  fresh dual suite + live :8893 + file:line grep = the verify). Live flip -> LIVE_GAME_GATED_SYNC.md.
-  [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]].
