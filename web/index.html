@@ -147,6 +147,14 @@
       <div class="home-hero-greet">
         <div class="home-hero-time" id="home-hero-time">Welcome back</div>
         <div class="home-hero-sub"  id="home-hero-sub">no games yet today</div>
+        <!-- RC 2.0 E9 rank-identity badge. Solo-queue tier/division/LP from
+             the local LCU (no Riot key). Operator plays mostly ARAM/Arena/
+             event modes so this is often "Unranked" - a graceful state,
+             never a fabricated rank. data-tier drives the CSS accent. -->
+        <div class="home-hero-rank" id="home-hero-rank" data-tier="" hidden>
+          <span class="home-hero-rank-tier" id="home-hero-rank-tier">Unranked</span>
+          <span class="home-hero-rank-wr"   id="home-hero-rank-wr"></span>
+        </div>
       </div>
       <div class="home-hero-headline" id="home-hero-headline">Ready when you are</div>
       <!-- 3 stat chips with inline 14-day sparklines (V3 redesign

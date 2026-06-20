@@ -172,6 +172,7 @@ def _gather_post() -> list:
                                routes_health_peer,
                                routes_loadout, routes_loop_control,
                                routes_lobby_aux, routes_metrics,
+                               routes_scouting,
                                routes_sr_draft, routes_sr_user_builds,
                                routes_team_context,
                                routes_archetype, routes_last_match)
@@ -190,6 +191,7 @@ def _gather_post() -> list:
                        + list(routes_loop_control.POST_ROUTES)
                        + list(routes_lobby_aux.POST_ROUTES)
                        + list(routes_metrics.POST_ROUTES)
+                       + list(routes_scouting.POST_ROUTES)
                        + list(routes_sr_draft.POST_ROUTES)
                        + list(routes_sr_user_builds.POST_ROUTES)
                        + list(routes_team_context.POST_ROUTES)

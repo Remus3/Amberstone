@@ -2938,6 +2938,30 @@ import { initOverlayPulse } from './overlay_pulse.js';
   function _homeIsMock() {
     return document.body && document.body.dataset.uiMock === "1";
   }
+  // RC 2.0 E9: paint the rank-identity badge in the home hero greeting.
+  // `rank` is the home payload's rank dict (core/lcu_ranked shape):
+  //   {ranked, tier, division, lp, win_rate_pct, display, ...}
+  // Graceful: a null payload or ranked=false shows "Unranked" - we never
+  // fabricate a rank. data-tier drives the CSS accent colour.
+  function _homeRenderRank(rank) {
+    const box = document.getElementById("home-hero-rank");
+    if (!box) return;
+    const tierEl = document.getElementById("home-hero-rank-tier");
+    const wrEl = document.getElementById("home-hero-rank-wr");
+    box.hidden = false;
+    if (!rank || !rank.ranked) {
+      box.dataset.tier = "";
+      if (tierEl) tierEl.textContent = (rank && rank.display) || "Unranked";
+      if (wrEl) wrEl.textContent = "";
+      return;
+    }
+    box.dataset.tier = String(rank.tier || "").toLowerCase();
+    if (tierEl) tierEl.textContent = rank.display || "Unranked";
+    if (wrEl) {
+      wrEl.textContent =
+        (rank.win_rate_pct != null) ? `${rank.win_rate_pct}% WR` : "";
+    }
+  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
@@ -2953,6 +2977,7 @@ import { initOverlayPulse } from './overlay_pulse.js';
         // s218 v7: cache streaks so _homeMirrorAlerts can read them
         // when populating Section 3 of Tonight's Pick.
         _HOME.streaks = data.streaks || {};
+        _homeRenderRank(data.rank || null);
         _homeRenderToday(data.today || {}, data.streaks || {});
         _homeRenderRecent(data.recent || []);
         _homeRenderWeek(data.this_week || []);
