@@ -63,7 +63,13 @@ const PANEL_SETS = Object.freeze(["coach", "build", "threat"]);
 // active toggle). The hide/show toggle (Alt+Shift+O) stays a hotkey on purpose:
 // it hides BOTH surfaces (panic clear-screen), so a self-hiding on-screen control
 // would leave no on-screen way back. This is the allow-list of action names.
-const OVERLAY_ACTIONS = Object.freeze(["set-panel", "set-active"]);
+// RC2 Stage 4.5 (overlay + dashboard coexistence) adds two payload-free
+// COEXISTENCE commands on the same validated channel: "rearrange" (re-separate
+// the overlay + kept dashboard on a single monitor, on demand) and
+// "raise-companion" (bring the kept dashboard forward beside the HUD). Neither
+// hides the overlay, so - unlike the toggle-hidden hotkey - there is no
+// stranding risk and they are safe to surface as on-screen buttons.
+const OVERLAY_ACTIONS = Object.freeze(["set-panel", "set-active", "rearrange", "raise-companion"]);
 
 // Normalize a mode_key to the canonical lower-case token. Non-string -> "".
 function normMode(modeKey) {

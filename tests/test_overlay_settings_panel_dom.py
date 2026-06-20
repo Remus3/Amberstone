@@ -212,6 +212,40 @@ class Rc2Stage44ControlsTests(unittest.TestCase):
         self.assertIsNotNone(m, ".ovset-seg-btn must use a --fs- token, not a hardcoded px")
 
 
+class Rc2Stage45ControlsTests(unittest.TestCase):
+    """RC2 4.5 overlay + dashboard coexistence: the #ovset strip gains two
+    coexistence actions over the same one-way overlay-action channel -
+    "Re-arrange" (re-separate the overlay + kept dashboard on demand) and
+    "Show dashboard" (raise the kept dashboard forward beside the HUD). Both
+    fire sendOverlayAction; neither hides the overlay, so there is no stranding.
+    Each control clears the 42px game-distance hit floor."""
+
+    def setUp(self):
+        self.panel = PANEL_JS.read_text(encoding="utf-8")
+        self.css = PANEL_CSS.read_text(encoding="utf-8")
+
+    def test_coexistence_buttons_present(self):
+        self.assertIn('id="ovset-rearrange"', self.panel)
+        self.assertIn('id="ovset-raise"', self.panel)
+
+    def test_buttons_fire_coexistence_actions(self):
+        self.assertIn('action: "rearrange"', self.panel)
+        self.assertIn('action: "raise-companion"', self.panel)
+
+    def test_buttons_use_the_action_sender(self):
+        # runtime COMMANDS over the rc-shell bridge, not persisted settings.
+        self.assertIn("sendOverlayAction", self.panel)
+
+    def test_action_pair_row_styled_at_hit_floor(self):
+        # the coexistence buttons reuse the audited .ovset-act 42px floor inside
+        # a paired row so the two sit side-by-side on the 460px dock.
+        self.assertIn(".ovset-actpair", self.css)
+        m = re.search(
+            r"\.ovset-act\s*\{[^}]*min-height:\s*var\(--hit-min", self.css, re.DOTALL
+        )
+        self.assertIsNotNone(m, ".ovset-act must set min-height: var(--hit-min ...)")
+
+
 class PulseGateTests(unittest.TestCase):
     """The pulse toggle must actually gate the change-pulse hook."""
 
