@@ -28,6 +28,14 @@ body[data-shell="overlay"] {
   background: transparent !important;
   align-items: flex-end;
   overflow: hidden;
+  /* RC2 4.1: DPI + resolution-aware content zoom. main.js sets
+   * --rc-overlay-scale from the ovscale query param (the same work-area scale
+   * the Electron shell sized the overlay WINDOW by, rc-shell
+   * resolveOverlayMetrics) so the ~460px dock CONTENT grows to fill the scaled
+   * window at 2560x1440 instead of shrinking to a tiny corner. Default 1 is an
+   * exact no-op at the 1920/100% baseline; zoom (not transform) so layout +
+   * the right-edge dock reflow with the content. */
+  zoom: var(--rc-overlay-scale, 1);
 }
 
 /* 2. Chrome + every non-subset surface off. */

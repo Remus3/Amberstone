@@ -85,6 +85,7 @@ let pollFailures = 0; // consecutive /api/state failures (drives the backoff).
 let lastSurface = null; // de-dupe redundant show/hide churn.
 let lastMode = ""; // last mode_key seen by the poll (for hotkey re-apply).
 let panelSet = null; // current overlay panel set; null = plain overlay=1.
+let overlayScale = 1; // RC2 4.1: resolution scale for the overlay box + renderer zoom.
 let activeRevertTimer = null; // setTimeout wakeup for the ACTIVE auto-revert.
 let overlaySettings = ov.overlaySettingsFrom({}); // operator overlay settings (OVL1); loaded from saved at boot.
 let activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 }); // pure deadline state.
@@ -510,9 +511,17 @@ function createOverlayWindow() {
     return overlayWindow;
   }
   const primary = screen.getPrimaryDisplay();
+  // RC2 4.1: DPI + resolution-aware sizing. Grow the box by the work area scale
+  // (no-op at the 1920/100% baseline) and hand the same scale to the renderer so
+  // its content zoom matches the scaled window.
+  const metrics = ov.resolveOverlayMetrics({
+    workArea: primary.workArea,
+    scaleFactor: primary.scaleFactor,
+  });
+  overlayScale = metrics.scale;
   // Saved overlay position (clamped on-screen) wins; first launch docks to
   // the right edge of the primary work area (ov.resolveOverlayBounds).
-  const bounds = ov.resolveOverlayBounds(store.load(statePath(), {}), primary.workArea);
+  const bounds = ov.resolveOverlayBounds(store.load(statePath(), {}), primary.workArea, metrics);
   overlayWindow = new BrowserWindow({
     width: bounds.width,
     height: bounds.height,
@@ -546,7 +555,7 @@ function createOverlayWindow() {
     }
     return { action: "deny" };
   });
-  overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet));
+  overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet, overlayScale));
   // Inert while click-through (events forward to the game); once the ACTIVE
   // hotkey flips interactivity the same strip makes the overlay user-movable.
   overlayWindow.webContents.on("did-finish-load", () => {
@@ -797,7 +806,7 @@ function registerHotkeys() {
         ov.mergeOverlayPatch(store.load(statePath(), {}), { panelSet: panelSet })
       );
       if (overlayWindow && !overlayWindow.isDestroyed()) {
-        overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet));
+        overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet, overlayScale));
       }
       scheduleActiveRevert();
     });
