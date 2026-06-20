@@ -332,7 +332,7 @@ _PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>RC Loop Monitor</title>
 <style>
 :root{--bg:#0a1428;--panel:#0f1c2e;--line:#1e2d44;--gold:#c8aa6e;--teal:#0ac8b9;
---tx:#cdd2e0;--mut:#5b6478;--red:#c8455a;--grn:#3fb950;--org:#d29922}
+--tx:#cdd2e0;--mut:#7c869c;--red:#c8455a;--grn:#3fb950;--org:#d29922}
 *{box-sizing:border-box}
 body{margin:0 auto;max-width:1180px;background:var(--bg);color:var(--tx);padding:14px;
 font:14px/1.5 'Segoe UI',system-ui,sans-serif}
