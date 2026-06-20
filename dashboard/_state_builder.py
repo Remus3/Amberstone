@@ -353,7 +353,7 @@ def build_state() -> dict:
         from dashboard._deterministic_coaching import (
             compute_deterministic, resolve_choices, shadow_log_det,
             shadow_log_precomputed_choices, shadow_log_precomputed_build,
-            shadow_log_live_benchmark_band,
+            shadow_log_live_benchmark_band, shadow_log_objective_playbook,
         )
         det = compute_deterministic(coach, lc, mode_key)
         # Shadow-log BEFORE resolve_choices overwrites coach["choices"] - the
@@ -365,6 +365,10 @@ def build_state() -> dict:
         # (do-not-flip-blind). Fail-soft, additive, NO effect on live output.
         shadow_log_precomputed_choices(coach, lc, mode_key)
         shadow_log_precomputed_build(coach, lc, mode_key)
+        # RC2 P5.5 (WS3): shadow-log the deterministic objective playbook row vs
+        # the native Haiku objective prose (do-not-flip-blind for a future served
+        # objective-field flip). Fail-soft, additive, NO effect on live output.
+        shadow_log_objective_playbook(coach, lc, det, mode_key)
         # LBAND1: also shadow-log the live personal-percentile benchmark bands
         # (do-not-flip-blind). Fail-soft, additive, NO effect on live output.
         shadow_log_live_benchmark_band(coach, lc, mode_key)
