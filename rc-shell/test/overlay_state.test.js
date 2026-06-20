@@ -642,3 +642,162 @@ test("mergeOverlaySettingsPatch: non-boolean keepCompanion / companionAlwaysOnTo
   assert.ok(!("keepCompanion" in next.overlay.settings));
   assert.ok(!("companionAlwaysOnTop" in next.overlay.settings));
 });
+
+// --- RC2 Stage 4.1: DPI + resolution-aware overlay sizing --------------------
+// LIFT-C (docs/research/RC2_RESEARCH_overlay_sizing.md): size the overlay box
+// against the measured display so a non-1920 borderless res (operator now runs
+// 2560x1440) or a 125%/150% Windows scale does not clip/shrink the HUD. Pure
+// logic here; main.js wires it from screen.getPrimaryDisplay().
+
+test("normScaleFactor: electron#6571 guard - non-finite / <=0 -> 1", () => {
+  assert.strictEqual(ov.normScaleFactor(0), 1);
+  assert.strictEqual(ov.normScaleFactor(-2), 1);
+  assert.strictEqual(ov.normScaleFactor(NaN), 1);
+  assert.strictEqual(ov.normScaleFactor(undefined), 1);
+  assert.strictEqual(ov.normScaleFactor("1.5"), 1); // non-number -> 1
+});
+
+test("normScaleFactor: valid scale passes through", () => {
+  assert.strictEqual(ov.normScaleFactor(1), 1);
+  assert.strictEqual(ov.normScaleFactor(1.25), 1.25);
+  assert.strictEqual(ov.normScaleFactor(1.5), 1.5);
+  assert.strictEqual(ov.normScaleFactor(2), 2);
+});
+
+test("resolveOverlayScale: 1920x1080 design baseline -> exactly 1.0 (no-op)", () => {
+  assert.strictEqual(
+    ov.resolveOverlayScale({ x: 0, y: 0, width: 1920, height: 1080 }),
+    1
+  );
+});
+
+test("resolveOverlayScale: 2560x1440 scales up (min of the two ratios)", () => {
+  // min(2560/1920, 1440/1080) = min(1.333, 1.333) = 1.33 (2-dp)
+  assert.strictEqual(
+    ov.resolveOverlayScale({ x: 0, y: 0, width: 2560, height: 1440 }),
+    1.33
+  );
+});
+
+test("resolveOverlayScale: ultrawide clamps by the smaller (height) ratio", () => {
+  // 3440x1440: min(3440/1920=1.79, 1440/1080=1.33) -> 1.33, not 1.79
+  assert.strictEqual(
+    ov.resolveOverlayScale({ x: 0, y: 0, width: 3440, height: 1440 }),
+    1.33
+  );
+});
+
+test("resolveOverlayScale: clamps to [0.8, 1.6]", () => {
+  // tiny work area floors at 0.8
+  assert.strictEqual(
+    ov.resolveOverlayScale({ x: 0, y: 0, width: 800, height: 600 }),
+    0.8
+  );
+  // 4K ceils at 1.6 (min(2.0, 2.0) -> 1.6)
+  assert.strictEqual(
+    ov.resolveOverlayScale({ x: 0, y: 0, width: 3840, height: 2160 }),
+    1.6
+  );
+});
+
+test("resolveOverlayScale: garbage work area -> 1920x1080 fallback -> 1.0", () => {
+  assert.strictEqual(ov.resolveOverlayScale(null), 1);
+  assert.strictEqual(ov.resolveOverlayScale({}), 1);
+  assert.strictEqual(ov.resolveOverlayScale({ width: -1, height: 0 }), 1);
+});
+
+test("resolveOverlayMetrics: baseline display -> default box, scale 1, sf 1", () => {
+  const m = ov.resolveOverlayMetrics({
+    workArea: { x: 0, y: 0, width: 1920, height: 1080 },
+    scaleFactor: 1,
+  });
+  assert.strictEqual(m.scale, 1);
+  assert.strictEqual(m.scaleFactor, 1);
+  assert.strictEqual(m.width, ov.OVERLAY_DEFAULTS.width); // 460
+  assert.strictEqual(m.height, ov.OVERLAY_DEFAULTS.height); // 900
+});
+
+test("resolveOverlayMetrics: 2560x1440 grows the box by the scale", () => {
+  const m = ov.resolveOverlayMetrics({
+    workArea: { x: 0, y: 0, width: 2560, height: 1400 },
+    scaleFactor: 1,
+  });
+  assert.strictEqual(m.scale, 1.3); // min(1.333, 1400/1080=1.296) -> 1.30
+  assert.strictEqual(m.width, Math.round(460 * 1.3)); // 598
+  assert.strictEqual(m.height, Math.round(900 * 1.3)); // 1170
+});
+
+test("resolveOverlayMetrics: height never exceeds the work area", () => {
+  // A short work area must clamp the scaled height so the dock fits on-screen.
+  const m = ov.resolveOverlayMetrics({
+    workArea: { x: 0, y: 0, width: 3840, height: 1000 },
+    scaleFactor: 1,
+  });
+  assert.ok(m.height <= 1000, `height ${m.height} <= 1000`);
+});
+
+test("resolveOverlayMetrics: bad scaleFactor guarded to 1 (electron#6571)", () => {
+  const m = ov.resolveOverlayMetrics({
+    workArea: { x: 0, y: 0, width: 1920, height: 1080 },
+    scaleFactor: 0,
+  });
+  assert.strictEqual(m.scaleFactor, 1);
+});
+
+test("resolveOverlayMetrics: garbage display -> safe baseline box", () => {
+  const m = ov.resolveOverlayMetrics(null);
+  assert.strictEqual(m.scale, 1);
+  assert.strictEqual(m.width, ov.OVERLAY_DEFAULTS.width);
+  assert.strictEqual(m.height, ov.OVERLAY_DEFAULTS.height);
+});
+
+test("resolveOverlayBounds: metrics override the default box size", () => {
+  const area = { x: 0, y: 0, width: 2560, height: 1440 };
+  const metrics = { width: 600, height: 1200 };
+  const b = ov.resolveOverlayBounds({}, area, metrics);
+  assert.strictEqual(b.width, 600);
+  assert.strictEqual(b.height, 1200);
+  // right-edge dock with the SCALED width: 2560 - 600 = 1960
+  assert.strictEqual(b.x, 1960);
+  assert.strictEqual(b.y, 0);
+});
+
+test("resolveOverlayBounds: no metrics -> default box (backward compatible)", () => {
+  const b = ov.resolveOverlayBounds({}, { x: 0, y: 0, width: 1920, height: 1080 });
+  assert.strictEqual(b.width, ov.OVERLAY_DEFAULTS.width);
+  assert.strictEqual(b.height, ov.OVERLAY_DEFAULTS.height);
+});
+
+test("resolveOverlayBounds: garbage metrics fall back to default box", () => {
+  const area = { x: 0, y: 0, width: 1920, height: 1080 };
+  const b = ov.resolveOverlayBounds({}, area, { width: 0, height: -5 });
+  assert.strictEqual(b.width, ov.OVERLAY_DEFAULTS.width);
+  assert.strictEqual(b.height, ov.OVERLAY_DEFAULTS.height);
+});
+
+test("overlayUrl: scale != 1 appends ovscale", () => {
+  assert.strictEqual(
+    ov.overlayUrl("https://legion-rc:8888/", null, 1.3),
+    "https://legion-rc:8888/?overlay=1&ovscale=1.3"
+  );
+});
+
+test("overlayUrl: scale == 1 omits ovscale (baseline URL unchanged)", () => {
+  assert.strictEqual(
+    ov.overlayUrl("https://legion-rc:8888/", null, 1),
+    "https://legion-rc:8888/?overlay=1"
+  );
+});
+
+test("overlayUrl: garbage / absent scale omits ovscale", () => {
+  assert.ok(!ov.overlayUrl("https://x:8888/", null, NaN).includes("ovscale"));
+  assert.ok(!ov.overlayUrl("https://x:8888/", null, 0).includes("ovscale"));
+  assert.ok(!ov.overlayUrl("https://x:8888/", null).includes("ovscale"));
+});
+
+test("overlayUrl: scale composes with panelSet", () => {
+  const out = ov.overlayUrl("https://x:8888/", "build", 1.3);
+  assert.ok(out.includes("overlay=1"));
+  assert.ok(out.includes("panelset=build"));
+  assert.ok(out.includes("ovscale=1.3"));
+});

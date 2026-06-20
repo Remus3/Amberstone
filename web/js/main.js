@@ -69,6 +69,18 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (psm) {
       document.body.dataset.panelset = psm[1];
     }
+    // RC2 4.1: DPI + resolution-aware content zoom. The Electron shell sizes the
+    // overlay WINDOW by the work-area scale (rc-shell resolveOverlayMetrics) and
+    // passes the same scale here as ovscale so the dock CONTENT zooms to fill it
+    // (overlay.css --rc-overlay-scale). Clamp to the shell's [0.8,1.6] band and
+    // ignore garbage; absent/1 -> the CSS default 1 (a true baseline no-op).
+    const ovm = location.search.match(/[?&]ovscale=([0-9.]+)/);
+    if (ovm) {
+      const s = parseFloat(ovm[1]);
+      if (Number.isFinite(s) && s >= 0.8 && s <= 1.6) {
+        document.body.style.setProperty("--rc-overlay-scale", String(s));
+      }
+    }
   }
 
   const WS_HOST = location.hostname || "legion-pc.local";

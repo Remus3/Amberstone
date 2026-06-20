@@ -474,6 +474,99 @@ def test_panelset_unknown_or_absent_keeps_full_subset(mock_server, pw_browser):
     assert not errors, f"JS errors [panelset unknown]: {errors[:3]}"
 
 
+def _open_overlay_scaled(pw_browser, mock_server, query, vw, vh):
+    """Open the overlay route at an arbitrary viewport (RC2 4.1 multi-res)."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": vw, "height": vh}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    page.goto(mock_server.url + "/" + query,
+              wait_until="domcontentloaded", timeout=15_000)
+    page.wait_for_function(
+        "document.querySelector('#am-sub') && "
+        "document.querySelector('#am-sub').textContent.indexOf('InProgress') >= 0",
+        timeout=10_000,
+    )
+    return ctx, page, errors
+
+
+def test_overlay_ovscale_zooms_dock_at_1440(mock_server, pw_browser):
+    """RC2 4.1: at 2560x1440 the Electron shell sizes the overlay WINDOW by the
+    work-area scale and passes it as ovscale; the renderer sets
+    --rc-overlay-scale and overlay.css zooms the ~460px dock CONTENT to fill the
+    scaled window instead of shrinking to a tiny corner (Overlay App F clip)."""
+    ctx, page, errors = _open_overlay_scaled(
+        pw_browser, mock_server,
+        "?ui_mock=1&mode=sr&overlay=1&ovscale=1.3", 2560, 1440,
+    )
+    try:
+        # Renderer parsed ovscale -> the CSS var is set on body.
+        var = page.evaluate(
+            "getComputedStyle(document.body).getPropertyValue('--rc-overlay-scale').trim()"
+        )
+        assert var == "1.3", f"--rc-overlay-scale not applied: {var!r}"
+
+        # The zoomed dock renders ~460*1.3 = 598 CSS px wide (vs the ~460
+        # baseline) and stays right-anchored on the 2560 viewport.
+        box = page.locator("#view-active-match").bounding_box()
+        assert box is not None, "#view-active-match has no box"
+        assert 560 <= box["width"] <= 640, (
+            f"zoomed dock width {box['width']} not ~598 (460*1.3)"
+        )
+        assert box["x"] + box["width"] >= 1900, (
+            f"dock not right-anchored at 1440 (right edge {box['x'] + box['width']})"
+        )
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_1440_scaled.png"))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [ovscale 1440]: {errors[:3]}"
+
+
+def test_overlay_ovscale_absent_is_baseline_noop(mock_server, pw_browser):
+    """Baseline guard: no ovscale param -> the CSS var stays unset and the dock
+    renders at the unscaled ~460px (zero behavior change at 1920/100%)."""
+    ctx, page, errors = _open_overlay_scaled(
+        pw_browser, mock_server, "?ui_mock=1&mode=sr&overlay=1", 1920, 1080,
+    )
+    try:
+        var = page.evaluate(
+            "getComputedStyle(document.body).getPropertyValue('--rc-overlay-scale').trim()"
+        )
+        assert var == "", f"--rc-overlay-scale must be unset at baseline: {var!r}"
+        box = page.locator("#view-active-match").bounding_box()
+        assert 420 <= box["width"] <= 480, f"baseline dock width {box['width']} not ~460"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [ovscale baseline]: {errors[:3]}"
+
+
+def test_overlay_ovscale_out_of_band_ignored(mock_server, pw_browser):
+    """Defensive: an ovscale outside the shell's [0.8,1.6] band is ignored by
+    the renderer (never trust a hand-edited URL) -> baseline no-op."""
+    ctx, page, errors = _open_overlay_scaled(
+        pw_browser, mock_server,
+        "?ui_mock=1&mode=sr&overlay=1&ovscale=2.5", 2560, 1440,
+    )
+    try:
+        var = page.evaluate(
+            "getComputedStyle(document.body).getPropertyValue('--rc-overlay-scale').trim()"
+        )
+        assert var == "", f"out-of-band ovscale must be ignored: {var!r}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [ovscale out-of-band]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the
     overlay-route files this slice adds."""

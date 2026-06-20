@@ -91,7 +91,10 @@ function cyclePanelSet(current) {
 // Malformed origin -> returned unchanged (defensive; never throws).
 // Optional panelSet (a PANEL_SETS member) adds panelset=NAME; absent/unknown
 // panelSet keeps the plain overlay=1 URL (backward compatible).
-function overlayUrl(origin, panelSet) {
+// Optional scale (RC2 4.1, resolveOverlayMetrics.scale) adds ovscale=N so the
+// renderer can match its content zoom to the scaled overlay WINDOW; only a
+// finite scale meaningfully != 1 is appended, so the baseline URL is unchanged.
+function overlayUrl(origin, panelSet, scale) {
   if (typeof origin !== "string" || !origin.trim()) {
     return origin;
   }
@@ -101,6 +104,9 @@ function overlayUrl(origin, panelSet) {
     const p = normPanelSet(panelSet);
     if (p) {
       u.searchParams.set("panelset", p);
+    }
+    if (typeof scale === "number" && Number.isFinite(scale) && scale > 0 && Math.abs(scale - 1) > 0.001) {
+      u.searchParams.set("ovscale", String(scale));
     }
     return u.toString();
   } catch (_e) {
@@ -235,14 +241,80 @@ function overlayStateFrom(saved) {
   };
 }
 
-// Where the overlay window goes at create time. Size is always the fixed
-// OVERLAY_DEFAULTS box (the overlay is not resizable). Saved coords win but
-// are clamped on-screen - a display that shrank or vanished since the save
-// must not strand the HUD off-screen; no saved coords -> right-edge dock.
-function resolveOverlayBounds(saved, workArea) {
+// --- RC2 Stage 4.1: DPI + resolution-aware overlay sizing --------------------
+// LIFT-C (docs/research/RC2_RESEARCH_overlay_sizing.md): a family-#2 compositor
+// overlay must SIZE itself against the measured display, not a hard 1920/100%
+// baseline, or it clips/shrinks at a non-1920 borderless res (the operator now
+// runs 2560x1440) or under 125%/150% Windows scaling (Overlay App F's documented
+// "content too big" failure). Electron sizes windows in DIPs and Chromium maps
+// CSS px -> DIPs -> device px by deviceScaleFactor, so the CORRECT DPI model is
+// to size the DIP box against the DIP work area (NOT to multiply by scaleFactor,
+// which would double-apply). scaleFactor is read only to GUARD electron#6571
+// (scaleFactor returns 1 under Windows scaling) and for diagnostics.
+
+// The DIP design baseline the overlay box (OVERLAY_DEFAULTS 460x900) was authored
+// against. The resolution scale is the work area measured relative to this.
+const OVERLAY_SIZE_BASELINE = Object.freeze({ width: 1920, height: 1080 });
+
+// Scale clamp: never below 0.8 (a tiny laptop work area should not crush the
+// HUD past readability) nor above 1.6 (4K should not balloon the dock to fill
+// the screen). 1.0 is the exact design baseline -> a true no-op.
+const OVERLAY_SCALE_MIN = 0.8;
+const OVERLAY_SCALE_MAX = 1.6;
+
+// electron#6571 guard: screen.getPrimaryDisplay().scaleFactor has a documented
+// history of returning a non-positive / non-number under Windows display
+// scaling. Coerce anything that is not a finite positive number to 1.
+function normScaleFactor(scaleFactor) {
+  return typeof scaleFactor === "number" && Number.isFinite(scaleFactor) && scaleFactor > 0
+    ? scaleFactor
+    : 1;
+}
+
+// Resolution scale for the overlay box from a work area. min() of the two axis
+// ratios preserves the box aspect and avoids over-scaling on ultrawide (a wide
+// 21:9 work area must not grow the column by its width ratio). Clamped to
+// [MIN, MAX] and rounded to 2 decimals so the value is stable + URL-clean.
+function resolveOverlayScale(workArea) {
   const area = normWorkArea(workArea);
-  const w = OVERLAY_DEFAULTS.width;
-  const h = OVERLAY_DEFAULTS.height;
+  const ratio = Math.min(
+    area.width / OVERLAY_SIZE_BASELINE.width,
+    area.height / OVERLAY_SIZE_BASELINE.height
+  );
+  const clamped = Math.min(OVERLAY_SCALE_MAX, Math.max(OVERLAY_SCALE_MIN, ratio));
+  return Math.round(clamped * 100) / 100;
+}
+
+// Resolve the full overlay sizing metrics from a display descriptor
+// ({ workArea, scaleFactor } - the shape of electron's screen.getPrimaryDisplay
+// subset). Returns { scale, scaleFactor, width, height }: the box is the
+// OVERLAY_DEFAULTS box grown by the resolution scale, with height never
+// exceeding the work area so the dock always fits on-screen. Garbage display
+// -> the safe 1.0 baseline box (zero behavior change at 1920/100%).
+function resolveOverlayMetrics(display) {
+  const d = display && typeof display === "object" && !Array.isArray(display) ? display : {};
+  const area = normWorkArea(d.workArea);
+  const scale = resolveOverlayScale(area);
+  const height = Math.min(Math.round(OVERLAY_DEFAULTS.height * scale), area.height);
+  return Object.freeze({
+    scale,
+    scaleFactor: normScaleFactor(d.scaleFactor),
+    width: Math.round(OVERLAY_DEFAULTS.width * scale),
+    height,
+  });
+}
+
+// Where the overlay window goes at create time. Size is the OVERLAY_DEFAULTS box
+// scaled by an optional metrics {width,height} (resolveOverlayMetrics) - garbage
+// or absent metrics fall back to the fixed default box (backward compatible).
+// Saved coords win but are clamped on-screen - a display that shrank or vanished
+// since the save must not strand the HUD off-screen; no saved coords -> right-
+// edge dock against the SCALED width.
+function resolveOverlayBounds(saved, workArea, metrics) {
+  const area = normWorkArea(workArea);
+  const m = metrics && typeof metrics === "object" && !Array.isArray(metrics) ? metrics : {};
+  const w = Number.isFinite(m.width) && m.width > 0 ? m.width : OVERLAY_DEFAULTS.width;
+  const h = Number.isFinite(m.height) && m.height > 0 ? m.height : OVERLAY_DEFAULTS.height;
   const o = overlayStateFrom(saved);
   if (o.x !== null && o.y !== null) {
     const clamped = cfg.clampPosition({ x: o.x, y: o.y, width: w, height: h }, area);
@@ -387,6 +459,10 @@ module.exports = {
   nextPollDelay,
   overlayStateFrom,
   resolveOverlayBounds,
+  normScaleFactor,
+  resolveOverlayScale,
+  resolveOverlayMetrics,
+  OVERLAY_SIZE_BASELINE,
   mergeOverlayPatch,
   overlaySettingsFrom,
   mergeOverlaySettingsPatch,
