@@ -51,6 +51,7 @@ def log_precomputed_choices(
     game_time_s: float | None = None,
     level=None,
     item_count=None,
+    cv_override: dict | None = None,
     path: Path | None = None,
     now_iso: str | None = None,
 ) -> dict | None:
@@ -93,9 +94,15 @@ def log_precomputed_choices(
             gt_bucket = int((game_time_s or 0) // 5)
         except (TypeError, ValueError):
             gt_bucket = 0
+        # The CV override (enemy dead/missing, my low HP) flips intra-bucket
+        # without any band/mana/cd change, so its kind is part of the coarse
+        # sig - a CV transition (e.g. enemy laner dies) logs a fresh row rather
+        # than being deduped away. None when CV adds nothing (RC2 P5.1).
+        cv_kind = cv_override.get("kind") if isinstance(cv_override, dict) else None
         sig = str((
             mode, my_champion, enemy, band, mana_state, cd_state,
             level, item_count, gt_bucket, bool(covered), len(choice_list),
+            cv_kind,
         ))
         if _LAST_SIG.get(tkey) == sig:
             return None
@@ -123,6 +130,10 @@ def log_precomputed_choices(
             "choices": choice_list,
             "native_action": native_action,
             "native_choices": list(native_choices or []),
+            # RC2 P5.1 CV override ({verdict,confidence,reason,kind}) or None.
+            # Shadow-only: hz_shadow_report re-measures agreement WITH this
+            # layer applied before any served flip (do-not-flip-blind).
+            "cv_override": cv_override if isinstance(cv_override, dict) else None,
         }
 
         target.parent.mkdir(parents=True, exist_ok=True)
