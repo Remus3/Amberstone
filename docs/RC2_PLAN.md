@@ -10,7 +10,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Phase 1 of 9 (research COMPLETE) - Stage 11 of 50 - approx 22% complete**
+> **Phase 2 of 9 (design DELIVERED - GATE: awaiting greenlight) - Stage 16 of 50 - approx 32% complete**
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -89,11 +89,11 @@ so the operator sees gray/blue progress live.
 ### Phase 2 - DESIGN SYNTHESIS (the greenlight gate)
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 2.1 | Information architecture: what info lives where across surfaces, single-monitor model | OPEN | |
-| 2.2 | Color-theme + design-language options (>=3 themes) | OPEN | |
-| 2.3 | Overlay layout mockups (in-game, non-intrusive, glanceable) | OPEN | |
-| 2.4 | Dashboard layout mockups (single-monitor, settings-without-hotkeys) | OPEN | |
-| 2.5 | DELIVERABLE: docs/design/RC2_DESIGN.html (visual+text, multiple options) | GATE | |
+| 2.1 | Information architecture: what info lives where across surfaces, single-monitor model | DONE | docs/design/RC2_DESIGN.html |
+| 2.2 | Color-theme + design-language options (>=3 themes) | DONE | docs/design/RC2_DESIGN.html |
+| 2.3 | Overlay layout mockups (in-game, non-intrusive, glanceable) | DONE | docs/design/RC2_DESIGN.html |
+| 2.4 | Dashboard layout mockups (single-monitor, settings-without-hotkeys) | DONE | docs/design/RC2_DESIGN.html |
+| 2.5 | DELIVERABLE: docs/design/RC2_DESIGN.html (visual+text, multiple options) | GATE | docs/design/RC2_DESIGN.html (awaiting operator greenlight) |
 
 ### Phase 3 - OVERLAY + DASHBOARD QUICK-GLANCE (multi UI-agent)
 | # | Stage | Status | Out |
