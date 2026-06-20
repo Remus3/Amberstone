@@ -281,6 +281,20 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-19 R5 missing-HP heal-amp (ENGINE 1.146.0): the missing-HP heal-AMPLIFICATION seam shipped
+  DEFAULT-OFF on the ability-HPS scorer. NEW `assume_missing_hp_heal_amp` on
+  `agents/daemon_slayer/ability_hps.py compute_ability_hps`; when ON, a `(champ, spell)` in
+  `_MISSING_HP_HEAL_AMP` has its `heal_per_cast` multiplied by `1 + max_bonus * caster_missing_hp_pct`
+  (Master Yi W Meditate / Lissandra R Frozen Tomb / Sylas W Kingslayer = 1.0; Briar P Crimson Curse =
+  0.40). No live scorer passes the flag yet (default False -> byte-identical; full-HP / 0-missing also
+  byte-identical). LIVE FLIP = wire the HPS/enchanter scorer-dispatch
+  (`agents/daemon_slayer/server.py _route_rank_enchanter` -> `rank_items_by_hps`, and/or any coach
+  surface calling `compute_ability_hps`) to pass `assume_missing_hp_heal_amp=True` AND feed the live
+  caster's missing-HP fraction as `caster_missing_hp_pct`. Validate in a real game that a low-HP
+  Sylas/Master Yi/Lissandra/Briar shows a sanely higher ability-heal throughput and a full-HP cast +
+  any non-tabled champ are byte-identical. Re-anchor `_MISSING_HP_HEAL_AMP` from the live patch's
+  `champion_abilities.json` effects_descriptions each patch (re-scan for new 0%:X%-based-on-missing-
+  health heal lines). Needs a DS `:8893` restart on flip. Do NOT flip blind (charter 4b).
 - 2026-06-18 PM7 Arena boots mirror (ENGINE 1.144.0): NOT a default-OFF seam - a DATA-correctness
   fix shipped LIVE (item 499). `core.build_order._select_boots` remaps Arena/CHERRY tier-2 boots to
   their `22`-prefixed map30-legal mirror; all 3 Arena build tables regenerated (boots-only). No flip

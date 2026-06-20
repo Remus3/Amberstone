@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.146.0 (item 515 - missing-HP heal-AMPLIFICATION seam on the ability-HPS scorer, default-OFF,
+byte-identical. A heal-AMP MULTIPLIER class distinct from the heal-MAGNITUDE units: several abilities
+scale their OWN heal output UP as the caster's health drops ("healing increased by 0% : X% based on
+missing health") - the class the item-253 _passive_heal_overrides header explicitly EXCLUDED from the
+heal-magnitude registry (a comeback multiplier on the heal already computed, not a heal amount scaling
+on a stat). NEW _MISSING_HP_HEAL_AMP[champion_id][spell_key] = max_bonus registry in ability_hps.py
+(co-located with _AOE_HEAL_TARGETS) + _missing_hp_heal_amp_factor(champ, spell, missing_pct) = 1 +
+max_bonus * clamp(missing_pct, 0, 1). compute_ability_hps gains assume_missing_hp_heal_amp: bool=False;
+when ON, a registered (champ, spell) heal_per_cast is multiplied by the factor using the existing
+caster_missing_hp_pct param (HEAL-only - every seeded entry amps healing, not shielding). SEEDED 4
+(ground truth champion_abilities.json 16.12.1 effects_descriptions): Master Yi W Meditate, Lissandra R
+Frozen Tomb, Sylas W Kingslayer all "0% : 100% (based on missing health)" -> 1.0; Briar P Crimson Curse
+"increases healing from all sources by 0% : 40% (based on missing health)" -> 0.40 (its + per-100-bonus-
+health sub-term omitted = conservative lower bound). Nidalee E (Primal Surge, a directive example) was
+probed and carries NO missing-HP amp text -> NOT seeded (never fabricate). Default OFF + full-HP (0
+missing) are both byte-identical; the live default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+DS :8893 bounced -> 1.146.0.)
+
 1.145.0 (item 513 - passive_damage caster-defensive-stat scaling schema lift, default-OFF. Some
 empowered-AA passives deal bonus damage scaling on the CASTER's bonus armor / bonus magic resistance
 (the resist-tank "I hit harder the tankier I am" form). The DamageBlock.bonus_armor_pct / bonus_mr_pct
