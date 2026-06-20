@@ -10,9 +10,9 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Design GREENLIT (Hextech); operator batch E1-E12 added - Stage 23 of 62 - approx 37% complete**
+> **Design GREENLIT (Hextech); operator batch E1-E12 added - Stage 24 of 62 - approx 39% complete**
 >
-> _(% recomputed DOWN per the operator directive: 12 approved execution stages E1-E12 added to the 50 base = 62 total. Done: 18 base + E3 win-capture + E5 hold-band + E8 design-system + E6 spell-fix + E9 rank/scouting = 23.)_
+> _(% recomputed DOWN per the operator directive: 12 approved execution stages E1-E12 added to the 50 base = 62 total. Done: 18 base + E3 win-capture + E5 hold-band + E8 design-system + E6 spell-fix + E9 rank/scouting + E4 counter-picks/ban-collapse = 24.)_
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -88,7 +88,7 @@ TOP-10 answers (from docs/RC2_TODO_QA.md):
 | E1 | Dashboard persist-in-bg + pinned-on-top + per-panel in/out-game toggles | OPEN | |
 | E2 | DS 3-game live-flip eyeball pass (operator-played, live-gated) | OPEN | |
 | E3 | End-of-game win capture (history/home W/L + season WR) | DONE | ad4c9906 |
-| E4 | Counter-picks vs live enemy comp + ban-phase collapse | OPEN | |
+| E4 | Counter-picks vs live enemy comp + ban-phase collapse | DONE | GET /api/champ-select/counter-picks + _csvBanPhaseComplete collapse |
 | E5 | Laning hold-band recalibration (shadow vocabulary) | DONE | 4da01fbe |
 | E6 | Spell flip-back fix + WR% under spells + highest-role-WR on lock + remember last-used per champ/mode | DONE | _sync_spells per-lock idempotency + manual-override + WR route |
 | E7 | ARAM bench-swap responsiveness + LCU connection pooling (frozen lcu_client.py) | OPEN | |

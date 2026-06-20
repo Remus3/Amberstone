@@ -994,6 +994,25 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
 //   Row 4 (DS items)       -> DS engine top-6 for the operator's champion;
 //                            mirrors what the build chooser used to show
 //                            as the "DS engine top picks" pseudo-row.
+// RC2 E4: ban-phase-complete detector. True once the draft has moved off
+// the ban rounds into picks/finalization, so the banned-champions display
+// can collapse out of the operator's pick-window eyeline.
+//
+// LCU ground truth (tools/gamepc_lcu_agent.py): cs.phase = sess.timer.phase
+// (PLANNING -> BAN_PICK -> FINALIZATION); cs.active_round.type is "ban"
+// while a ban round is on the clock and flips to "pick" once picks begin
+// (gamepc_lcu_agent.py:495 _active_round). So ban phase is DONE when the
+// active round is a pick round, OR the phase has advanced past BAN_PICK /
+// PLANNING (e.g. FINALIZATION). No-bans draft modes (Blind 430 / Quickplay
+// 490) never enter a ban round, so they read as complete the moment picks
+// start - correct: there is no ban display to keep open.
+function _csvBanPhaseComplete(cs) {
+  if (!cs) return false;
+  if (cs.active_round && cs.active_round.type === "pick") return true;
+  if (cs.phase && cs.phase !== "BAN_PICK" && cs.phase !== "PLANNING") return true;
+  return false;
+}
+
 function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // ---- Row 2: bans block ----
   // Phase-aware: during the ban phase show 4 suggested bans for the
@@ -1007,16 +1026,36 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   if (bansGrid) {
     const allyBans  = (cs.bans && Array.isArray(cs.bans.my_team)) ? cs.bans.my_team : [];
     const enemyBans = (cs.bans && Array.isArray(cs.bans.their_team)) ? cs.bans.their_team : [];
-    const isPickPhase = !!(cs.active_round && cs.active_round.type === "pick")
-                       || (cs.phase && cs.phase !== "BAN_PICK" && cs.phase !== "PLANNING");
+    // RC2 E4: ban-phase-complete is the single detection helper now, so the
+    // collapse decision below shares the exact same condition.
+    const isPickPhase = _csvBanPhaseComplete(cs);
     if (isPickPhase && (allyBans.length || enemyBans.length)) {
       bansGrid.classList.add("is-banned-grid");
       bansGrid.classList.remove("is-suggestions-grid");
-      bansGrid.innerHTML = _csvBannedListRow(allyBans, "ALLY")
+      // RC2 E4 (operator-reported): once the ban phase is DONE the banned
+      // list no longer needs full vertical space during the pick window.
+      // Collapse it to a compact summary line via the is-collapsed class
+      // (CSS shrinks the 2x5 icon grid to a single quiet count line); a
+      // click on the header toggles it back open if the operator wants
+      // the full grid. State persists across re-renders via _csvBansOpen.
+      bansGrid.classList.add("is-collapsed");
+      if (_csvBansOpen) bansGrid.classList.remove("is-collapsed");
+      bansGrid.innerHTML = _csvBannedCollapseHeader(allyBans, enemyBans)
+                         + _csvBannedListRow(allyBans, "ALLY")
                          + _csvBannedListRow(enemyBans, "ENEMY");
+      const hdr = bansGrid.querySelector(".csv-sugg-banned-toggle");
+      if (hdr) {
+        hdr.addEventListener("click", () => {
+          _csvBansOpen = !_csvBansOpen;
+          bansGrid.classList.toggle("is-collapsed", !_csvBansOpen);
+          const caret = hdr.querySelector(".csv-sugg-banned-caret");
+          if (caret) caret.textContent = _csvBansOpen ? "[-]" : "[+]";
+        });
+      }
     } else {
       bansGrid.classList.add("is-suggestions-grid");
       bansGrid.classList.remove("is-banned-grid");
+      bansGrid.classList.remove("is-collapsed");
       // Collect already-banned ids so the suggestion fetch can skip them.
       const banned = new Set();
       allyBans.forEach((id) => banned.add(id | 0));
@@ -1056,6 +1095,10 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
       _csvRenderBanSuggestToggle(cs, cached);
     }
   }
+  // RC2 E4 (P2): live counter-picks vs the enemy comp. Glanceable
+  // "pick into this comp" list for the operator's open slot, driven by
+  // the existing counters index via /api/champ-select/counter-picks.
+  _csvRenderCounterPicks(cs);
   // 2026-05-22 (item 139 carry (a)): FIRST dashboard UI consumer of
   // cc_blended_ehp. Renders the ally-vs-enemy CC-blended EHP balance
   // chip beside the legacy bans grid so the operator can see at a
@@ -1147,6 +1190,129 @@ function _csvBannedListRow(banIds, sideLabel) {
             <span class="csv-sugg-banned-side">${sideLabel}</span>
             <div class="csv-sugg-banned-cells">${cells.join("")}</div>
           </div>`;
+}
+
+// RC2 E4: collapse-state for the post-ban-phase banned-champions display.
+// Default collapsed (false) so the pick window isn't dominated by a 2x5
+// icon grid the operator has already seen during bans; the header toggle
+// re-opens it. Module-level so it survives the per-tick innerHTML rebuild.
+let _csvBansOpen = false;
+
+// RC2 E4: compact header for the collapsed banned display. Shows a count
+// ("BANS - 8 banned") + a [+]/[-] caret; the whole strip is the click
+// target that toggles _csvBansOpen. When expanded (is-collapsed removed)
+// the 2x5 grid below it shows; when collapsed only this line is visible.
+function _csvBannedCollapseHeader(allyBans, enemyBans) {
+  const n = ((allyBans || []).filter((x) => (x | 0) > 0).length)
+          + ((enemyBans || []).filter((x) => (x | 0) > 0).length);
+  const caret = _csvBansOpen ? "[-]" : "[+]";
+  return `<div class="csv-sugg-banned-toggle" role="button" tabindex="0"
+               title="Show / hide the full banned-champions grid">
+            <span class="csv-sugg-banned-toggle-label">BANS</span>
+            <span class="csv-sugg-banned-toggle-count">${n} banned</span>
+            <span class="csv-sugg-banned-caret">${caret}</span>
+          </div>`;
+}
+
+// RC2 E4 (P2): live counter-picks vs the enemy comp. The single-decision
+// "pick into this comp" prompt that wins the short pick window. Resolves
+// the live enemy ids off the session, excludes everything already on the
+// board (ally picks + ally/enemy bans + the operator's own hover), fetches
+// the aggregated counters from /api/champ-select/counter-picks, and renders
+// a glanceable top-5 list.
+const _CSV_COUNTER_CACHE = {};   // {key: {data, fetchedAt}}
+const _CSV_COUNTER_INFLIGHT = {};
+const _CSV_COUNTER_TTL_MS = 30_000;
+
+function _csvFetchCounterPicks(role, enemyIds, excludeIds, onLoad) {
+  const e = (enemyIds || []).filter((x) => (x | 0) > 0).slice().sort((a, b) => a - b);
+  const x = (excludeIds || []).filter((v) => (v | 0) > 0).slice().sort((a, b) => a - b);
+  if (!e.length) return null;
+  const key = [role || "-", `e:${e.join(",")}`, `x:${x.join(",")}`].join("|");
+  const now = Date.now();
+  const cached = _CSV_COUNTER_CACHE[key];
+  if (cached && (now - cached.fetchedAt) < _CSV_COUNTER_TTL_MS) return cached.data;
+  if (_CSV_COUNTER_INFLIGHT[key]) return cached ? cached.data : null;
+  _CSV_COUNTER_INFLIGHT[key] = true;
+  let url = "/api/champ-select/counter-picks?top=5"
+          + `&enemies=${encodeURIComponent(e.join(","))}`;
+  if (role && role !== "-") url += `&role=${encodeURIComponent(role)}`;
+  if (x.length) url += `&exclude=${encodeURIComponent(x.join(","))}`;
+  fetch(url)
+    .then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _CSV_COUNTER_INFLIGHT[key] = false;
+      if (j && j.ok) {
+        _CSV_COUNTER_CACHE[key] = { data: j, fetchedAt: Date.now() };
+        if (typeof onLoad === "function") onLoad();
+      }
+    })
+    .catch(() => { _CSV_COUNTER_INFLIGHT[key] = false; });
+  return cached ? cached.data : null;
+}
+
+function _csvRenderCounterPicks(cs) {
+  const box = document.getElementById("csv-sugg-counter-picks");
+  if (!box) return;
+  // Live enemy comp (numeric LCU championIds) off the session, same
+  // resolution the build-order card uses (champ_select.js enemy ids).
+  const enemyIds = (cs && cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (!enemyIds.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  // Exclude everything already off the table: ally locked picks, the
+  // operator's own hover, and both sides' bans - so we never recommend a
+  // champ that can't be picked.
+  const excl = new Set();
+  (cs.my_team || []).forEach((p) => { if (p && (p.championId | 0) > 0) excl.add(p.championId | 0); });
+  ((cs.bans && cs.bans.my_team) || []).forEach((id) => excl.add(id | 0));
+  ((cs.bans && cs.bans.their_team) || []).forEach((id) => excl.add(id | 0));
+  const excludeIds = Array.from(excl).filter((x) => x > 0);
+  const role = _csvResolveRole(cs);
+  const data = _csvFetchCounterPicks(role, enemyIds, excludeIds, _csvScheduleRender);
+  const counters = (data && Array.isArray(data.counters)) ? data.counters : [];
+  if (!counters.length) {
+    // Keep the panel visible with a quiet placeholder while the first
+    // fetch lands (or when the enemy comp has no known counters yet).
+    box.hidden = false;
+    box.innerHTML = `<div class="csv-counter-head">PICK INTO THIS COMP</div>`
+                  + `<div class="csv-sugg-empty">no counter data for this comp yet</div>`;
+    return;
+  }
+  box.hidden = false;
+  const rows = counters.slice(0, 5).map((c) => {
+    const cid = c.champId | 0;
+    const img = _csChampImg(cid);
+    const name = String(c.name || (cid ? "cid:" + cid : "?"));
+    const note = String(c.note || "");
+    const isClickable = cid > 0;
+    return `
+      <div class="csv-counter-pick${isClickable ? " is-clickable" : ""}"
+           data-champ-id="${cid}"
+           title="Hover ${name} - ${note}">
+        <div class="csv-counter-icon">
+          ${img ? `<img src="${img}" alt="${name}" onerror="this.style.display='none'">` : ""}
+        </div>
+        <div class="csv-counter-text">
+          <span class="csv-counter-name">${name}</span>
+          <span class="csv-counter-note">${note}</span>
+        </div>
+      </div>`;
+  }).join("");
+  box.innerHTML = `<div class="csv-counter-head">PICK INTO THIS COMP</div>`
+                + `<div class="csv-counter-list">${rows}</div>`;
+  // Click a counter -> hover it on the operator's pick action (same
+  // set_pick_intent path the Pick & Ban cells use). Skips empty ids.
+  box.querySelectorAll(".csv-counter-pick.is-clickable").forEach((el) => {
+    el.addEventListener("click", () => {
+      const cid = parseInt(el.dataset.champId, 10) | 0;
+      if (cid > 0) { try { lcuCmd({ cmd: "set_pick_intent", championId: cid }); } catch (_) {} }
+    });
+  });
 }
 
 // s211: variant key -> badge CSS class. Each known variant gets a
@@ -1453,6 +1619,9 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   const dspCount = getDsProfileCacheCount();
   const dskCount = getDsKnobsCacheCount();
   const dssCount = getDsStatcheckCacheCount();
+  // RC2 E4: counter-picks cache state - count keys so the "pick into this
+  // comp" list re-renders when /api/champ-select/counter-picks lands.
+  const counterCount = Object.keys(_CSV_COUNTER_CACHE).length;
   // ARAM comp-verdict presence stamp - flips 0->1 when the verdict fetch
   // lands so the idempotent render gate re-fires and the bench banner
   // (plus the is-verdict-swap cell highlight) draws.
@@ -1469,7 +1638,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|dsk:${dskCount}|dss:${dssCount}|dsp:${dspCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|dsk:${dskCount}|dss:${dssCount}|dsp:${dspCount}|cnt:${counterCount}`,
     verdictKey,
   ].join("|");
 }
@@ -4110,9 +4279,19 @@ function _csvRenderPickBan(cs, myCid) {
       <div class="csv-pb168-head">PICK</div>
       <div class="csv-pb168-row">${pickCells}</div>
     </div>`;
+  // RC2 E4 (operator-reported): the BAN recommendation sub-panel is only
+  // actionable while bans are open. Once the ban phase is DONE
+  // (_csvBanPhaseComplete) it can no longer be acted on, so collapse it
+  // out of the pick-window eyeline - the CSS .is-collapsed rule hides the
+  // 4-cell ban row and leaves a one-line "BAN - locked" header, freeing
+  // the vertical space for PICK + ALLY PICKS BY ROLE during picks.
+  const bansCollapsed = _csvBanPhaseComplete(cs);
+  const banSectCls = "csv-pb168-section csv-pb168-bans"
+                   + (bansCollapsed ? " is-collapsed" : "");
+  const banHeadTxt = bansCollapsed ? "BAN - phase over" : "BAN";
   const html = `
-    <div class="csv-pb168-section csv-pb168-bans">
-      <div class="csv-pb168-head">BAN</div>
+    <div class="${banSectCls}">
+      <div class="csv-pb168-head">${banHeadTxt}</div>
       <div class="csv-pb168-row">${banCells}</div>
     </div>
     <div class="csv-pb168-section csv-pb168-expl">
