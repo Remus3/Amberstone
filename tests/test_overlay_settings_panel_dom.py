@@ -92,6 +92,44 @@ class PanelControlsTests(unittest.TestCase):
         self.assertIn("data-ovds-champ", self.js)
 
 
+class Rc2Stage42ControlsTests(unittest.TestCase):
+    """RC2 4.2 non-intrusive overlay: the #ovset strip gains a hover-to-interact
+    (click-through zones) toggle + an opacity slider, both hotkey-free and
+    mirrored to the rc-shell over IPC. The shared helper carries the two new
+    fields so the control and the shell never drift."""
+
+    def setUp(self):
+        self.panel = PANEL_JS.read_text(encoding="utf-8")
+        self.helper = HELPER_JS.read_text(encoding="utf-8")
+        self.css = PANEL_CSS.read_text(encoding="utf-8")
+
+    def test_new_control_ids_present(self):
+        self.assertIn('id="ovset-zones"', self.panel)
+        self.assertIn('id="ovset-opacity"', self.panel)
+
+    def test_opacity_is_a_bounded_range(self):
+        self.assertIn('type="range"', self.panel)
+        self.assertIn('min="30"', self.panel)
+        self.assertIn('max="100"', self.panel)
+
+    def test_controls_write_the_new_settings(self):
+        self.assertIn("clickThroughZones", self.panel)
+        self.assertIn("overlayOpacity", self.panel)
+
+    def test_helper_carries_new_fields(self):
+        self.assertIn("overlayOpacity", self.helper)
+        self.assertIn("clickThroughZones", self.helper)
+
+    def test_opacity_row_meets_hit_floor(self):
+        m = re.search(
+            r"\.ovset-range[^{]*\{[^}]*\}\s*\.ovset-range\s*>\s*input",
+            self.css, re.DOTALL,
+        )
+        # the range input carries the --hit-min height floor for game-distance use
+        self.assertIn("--hit-min", self.css)
+        self.assertIn(".ovset-range", self.css)
+
+
 class PulseGateTests(unittest.TestCase):
     """The pulse toggle must actually gate the change-pulse hook."""
 
