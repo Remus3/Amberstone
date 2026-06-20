@@ -42,6 +42,33 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (gemini-loop R5 cycle) - DS missing-HP heal-amplification seam (LEDGER 515)
+
+Gemini DIRECTOR refill R5 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
+passive_heal missing_hp_heal_amp. Commit `dc2eb0c3`, CI pending push; Tier-2, ENGINE 1.145.0 ->
+1.146.0, DS :8893 restarted -> 1.146.0 live, Share re-synced SAME commit (--check green, 364 files),
+0 frozen.
+
+- SCOPE (verify-before-build): `ability_hps.py` ALREADY resolves missing-HP heal MAGNITUDE
+  (`resolve_target_relative` v2 path). R5 = the SIBLING heal-AMP MULTIPLIER class - the one
+  `_passive_heal_overrides.py:27` (item-253 header) explicitly EXCLUDED from the magnitude registry.
+  Mirrors the `assume_ability_amp` seam (default-OFF bool, byte-identical off).
+- IMPL (single coupled file, byte-identical at default): NEW `_MISSING_HP_HEAL_AMP[champ][spell] =
+  max_bonus` registry + `_missing_hp_heal_amp_factor` (co-located w/ `_AOE_HEAL_TARGETS`);
+  `compute_ability_hps` gains `assume_missing_hp_heal_amp` -> `heal_per_cast *= 1 + max_bonus *
+  caster_missing_hp_pct` (HEAL-only, reuses the existing missing-HP param, full-HP = identity).
+- SEEDED 4 (champion_abilities.json 16.12.1 effects_descriptions, file:line grep): Master Yi W
+  Meditate (35042) / Lissandra R Frozen Tomb (31869) / Sylas W Kingslayer (56205) 0%:100% -> 1.0;
+  Briar P Crimson Curse (7903) 0%:40% -> 0.40 (sub-term omitted, lower bound). Nidalee E probed
+  (39896), NO amp text -> NOT seeded (3/4 directive examples verified, 1 corrected, +Briar bonus).
+- TDD test_missing_hp_heal_amp_item515.py RED-first (ImportError) -> GREEN (~17 tests). VERIFY:
+  DS 7394 / RC 8642 green (8 mid-suite restart/sync-window transients re-verified fresh = 40 passed);
+  ruff + Share --check clean; DS /health 1.146.0. Inline sole orchestrator (R9; verifier skip R7 -
+  fresh dual suite + live :8893 + file:line grep = the verify). Live flip -> LIVE_GAME_GATED_SYNC.md.
+  [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]].
+
+---
+
 # 2026-06-19 (gemini-loop R4 cycle) - core coaching panels typography-floor UI audit (LEDGER 514)
 
 Gemini DIRECTOR refill R4 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
