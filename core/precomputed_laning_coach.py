@@ -294,6 +294,44 @@ def resolve_enemy(
     return None
 
 
+def _resolve_cell(
+    my_champion: str,
+    enemy: str,
+    level: object,
+    *,
+    mana_fraction: Optional[float],
+    ult_up: Optional[bool],
+    mode: str,
+    payload: Optional[dict],
+) -> Optional[dict]:
+    """Look up the one laning cell for the live state (or ``None``).
+
+    Shared by ``precomputed_choices`` (which shapes A/B chips) and
+    ``resolve_band`` (which only needs the recalibrated verdict for the CV
+    shadow column). Resolves band / mana-state / cd-state and applies the
+    item-370 L16->L11 descend-only fallback. No exception handling here - the
+    public callers wrap it so the hot path never raises."""
+    band = band_for_level(level)
+    mana = mana_state_for(mana_fraction)
+    cd = cd_state_for(ult_up)
+    data = payload if payload is not None else load_laning_scenarios(mode)
+    my_id = canonical_champion_id(my_champion)
+    enemy_id = canonical_champion_id(enemy)
+    cell = lookup(data, my_id, enemy_id, band, mana, cd)
+    if not cell and band not in GEN_BANDS:
+        # item 370 dropped L16 from the generated sweep to halve the
+        # full-roster artifact; the documented lvl>=14 fail-soft now reads
+        # the highest generated lane band (L11 / 2-item mid) rather than
+        # yielding no coaching. ARAM shared-XP rockets champs to 14-18, so
+        # without this nearest-band fallback most live ARAM laning ticks
+        # land in the empty L16 and never accrue shadow coverage for the
+        # flip gate. Descend-only: rescues the level axis, never the pair /
+        # mana / cd axes (a genuinely uncovered cell still yields []).
+        fallback_band = GEN_BANDS[-1] if GEN_BANDS else band
+        cell = lookup(data, my_id, enemy_id, fallback_band, mana, cd)
+    return cell if cell else None
+
+
 def precomputed_choices(
     my_champion: str,
     enemy: str,
@@ -314,29 +352,44 @@ def precomputed_choices(
     try:
         if not my_champion or not enemy:
             return []
-        band = band_for_level(level)
-        mana = mana_state_for(mana_fraction)
-        cd = cd_state_for(ult_up)
-        data = payload if payload is not None else load_laning_scenarios(mode)
-        my_id = canonical_champion_id(my_champion)
-        enemy_id = canonical_champion_id(enemy)
-        cell = lookup(data, my_id, enemy_id, band, mana, cd)
-        if not cell and band not in GEN_BANDS:
-            # item 370 dropped L16 from the generated sweep to halve the
-            # full-roster artifact; the documented lvl>=14 fail-soft now reads
-            # the highest generated lane band (L11 / 2-item mid) rather than
-            # yielding no coaching. ARAM shared-XP rockets champs to 14-18, so
-            # without this nearest-band fallback most live ARAM laning ticks
-            # land in the empty L16 and never accrue shadow coverage for the
-            # flip gate. Descend-only: rescues the level axis, never the pair /
-            # mana / cd axes (a genuinely uncovered cell still yields []).
-            fallback_band = GEN_BANDS[-1] if GEN_BANDS else band
-            cell = lookup(data, my_id, enemy_id, fallback_band, mana, cd)
+        cell = _resolve_cell(
+            my_champion, enemy, level, mana_fraction=mana_fraction,
+            ult_up=ult_up, mode=mode, payload=payload,
+        )
         if not cell:
             return []
         return _build_choices(cell, enemy, next_item=next_item)
     except Exception:  # noqa: BLE001 - the coach hot path must never raise
         return []
+
+
+def resolve_band(
+    my_champion: str,
+    enemy: str,
+    level: object,
+    *,
+    mana_fraction: Optional[float] = None,
+    ult_up: Optional[bool] = None,
+    mode: str = "sr",
+    payload: Optional[dict] = None,
+) -> Optional[str]:
+    """The recalibrated ``laning_band`` verdict for the live cell, or ``None``.
+
+    RC2 P5.1: the CV-override layer (``core.laning_cv_overrides``) needs the
+    STATIC band verdict to decide whether a low-HP read should veto an
+    aggressive call. This exposes exactly that - the same cell resolution as
+    ``precomputed_choices`` (incl. the L16 fallback), reduced to its verdict.
+    Fail-soft ``None`` on a missing table or uncovered cell (never raises)."""
+    try:
+        if not my_champion or not enemy:
+            return None
+        cell = _resolve_cell(
+            my_champion, enemy, level, mana_fraction=mana_fraction,
+            ult_up=ult_up, mode=mode, payload=payload,
+        )
+        return laning_band(cell) if cell else None
+    except Exception:  # noqa: BLE001 - the coach hot path must never raise
+        return None
 
 
 # Re-export so a caller never reaches past this module for the band set.
@@ -348,5 +401,6 @@ __all__ = [
     "cd_state_for",
     "laning_band",
     "resolve_enemy",
+    "resolve_band",
     "precomputed_choices",
 ]
