@@ -97,7 +97,7 @@ def test_hint_line_shows_recent_delta(tmp_path: Path, monkeypatch) -> None:
     line = adaptation_hint.format_hint_line("Ahri", "aram")
     assert "typical KDA 4.2" in line
     assert "recent 1.25" in line
-    assert "↓" in line           # -2.95 is below the -0.3 threshold
+    assert "1.25 v" in line      # -2.95 is below the -0.3 threshold (ASCII down-arrow)
     assert "-2.95" in line
 
 
