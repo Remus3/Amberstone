@@ -2,6 +2,7 @@
 import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
+import { condenseKvRows } from '../lib/condense.js';
 
 // RC2 P3.3 SHADOW: the previous S0 cue across renders, for shouldPulse's
 // cross-detection. Module scope so it survives between renderRightNow calls.
@@ -596,6 +597,12 @@ function renderRightNow(p) {
     RN.reset.textContent = safe(p.reset_item) || "-";
     RN.reset.parentElement.firstElementChild.textContent = "Base";
   }
+  // RC2 P3.6 dashboard condensation: collapse the supporting KV rows
+  // (Watch / Fight / Base) that paint the "-" no-data sentinel in
+  // client / pregame / ARAM states so the glance lands on populated rows.
+  // Idempotent; overlay-inert (those .kv rows are display:none !important in
+  // the ?overlay=1 shell, so this only reshapes the dashboard surface).
+  condenseKvRows(RN.root);
   state.lastTouch.right_now = Date.now() / 1000;
 }
 
