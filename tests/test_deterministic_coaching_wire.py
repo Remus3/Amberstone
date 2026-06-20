@@ -652,6 +652,130 @@ class Rc2Stage55PlaybookTests(unittest.TestCase):
             self.assertFalse(p.exists())  # objectives are SR-only
 
 
+class Rc2Stage57MacroResponseTests(unittest.TestCase):
+    """RC2 P5.7 (WS4): lost-objective / stagnation macro row splice + objective
+    events stamp + cache sig + shadow log."""
+
+    def setUp(self) -> None:
+        _reset_cache()
+
+    def tearDown(self) -> None:
+        _reset_cache()
+
+    def _compute(self, coach: dict, lc: dict, mode: str) -> dict:
+        import core.laning_cv_overrides as cvo
+        orig_laning = dc.laning_choices
+        orig_vis = cvo.load_vision_state
+        try:
+            dc.laning_choices = lambda gs, mode="SR": []
+            cvo.load_vision_state = lambda path=None: {}
+            return dc.compute_deterministic(coach, lc, mode)
+        finally:
+            dc.laning_choices = orig_laning
+            cvo.load_vision_state = orig_vis
+
+    def test_objective_events_stamped_into_game_state(self) -> None:
+        oes = [{"name": "baron", "killer_team": "enemy", "down_at_s": 1290.0}]
+        gs = dc._build_game_state({"champion": "Aatrox"},
+                                  {"objective_events": oes}, "sr")
+        self.assertEqual(gs["objective_events"], oes)
+
+    def test_lost_objective_row_spliced_into_sr_callouts(self) -> None:
+        coach = {"champion": "Aatrox", "level": 14, "game_time_s": 1300}
+        lc = {"champion": "Aatrox", "enemy_team": ["Garen"],
+              "objective_events": [{"name": "baron", "killer_team": "enemy",
+                                    "down_at_s": 1290.0}]}
+        out = self._compute(coach, lc, "sr")
+        kinds = [c.get("kind") for c in out["callouts"]]
+        self.assertIn("macro_response", kinds)
+        macro = next(c for c in out["callouts"]
+                     if c.get("kind") == "macro_response")
+        self.assertEqual(macro["tag"], "macro_lost_objective")
+        self.assertIn("baron", macro["line"].lower())
+
+    def test_no_macro_without_objective_event(self) -> None:
+        coach = {"champion": "Aatrox", "level": 14, "game_time_s": 1300}
+        out = self._compute(coach, {"champion": "Aatrox",
+                                    "enemy_team": ["Garen"]}, "sr")
+        self.assertNotIn("macro_response", [c.get("kind") for c in out["callouts"]])
+
+    def test_aram_has_no_macro_response(self) -> None:
+        coach = {"champion": "Lux", "level": 14, "game_time_s": 1300}
+        lc = {"champion": "Lux", "enemy_team": ["Garen"],
+              "objective_events": [{"name": "baron", "killer_team": "enemy",
+                                    "down_at_s": 1290.0}]}
+        out = self._compute(coach, lc, "aram")
+        self.assertNotIn("macro_response", [c.get("kind") for c in out["callouts"]])
+
+    def test_objective_events_change_cache_sig(self) -> None:
+        base = {"my_champion": "Aatrox", "enemy_comp": ["Garen"], "level": 14,
+                "game_time_s": 1300}
+        s0 = dc._cache_sig(base, "sr")
+        s1 = dc._cache_sig(
+            {**base, "objective_events": [{"name": "baron", "killer_team": "enemy",
+                                           "down_at_s": 1290.0}]}, "sr")
+        self.assertNotEqual(s0, s1)
+
+    def test_state_stable_for_s_tracks_and_resets(self) -> None:
+        key = ("Aatrox", "sr")
+        self.assertEqual(dc._state_stable_for_s(key, "even", 1000.0), 0.0)  # first
+        self.assertEqual(dc._state_stable_for_s(key, "even", 1120.0), 120.0)  # held
+        self.assertEqual(dc._state_stable_for_s(key, "ahead", 1130.0), 0.0)  # swung
+        self.assertEqual(dc._state_stable_for_s(key, "ahead", 1300.0), 170.0)
+
+    def test_state_stable_for_s_failsoft_bad_time(self) -> None:
+        self.assertEqual(dc._state_stable_for_s(("X", "sr"), "even", "nope"), 0.0)
+
+    def test_shadow_log_macro_response_writes(self) -> None:
+        import json
+        from tempfile import TemporaryDirectory
+        import core.macro_response_shadow as mrs
+        mrs._LAST_SIG.clear()
+        mrs._LAST_GT.clear()
+        with TemporaryDirectory() as d:
+            p = Path(d) / "m.jsonl"
+            coach = {"champion": "Aatrox", "objective": "defend base",
+                     "game_time_s": 1310}
+            lc = {"champion": "Aatrox", "enemy_team": ["Garen"]}
+            det = {"callouts": [{"tag": "macro_lost_objective",
+                                 "line": "Baron lost - defend", "eta_s": None,
+                                 "kind": "macro_response"}],
+                   "lead_projection": {"state": "behind"}}
+            dc.shadow_log_macro_response(coach, lc, det, "sr", path=p)
+            rows = [json.loads(x) for x in
+                    p.read_text(encoding="utf-8").splitlines() if x.strip()]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["macro_tag"], "macro_lost_objective")
+            self.assertEqual(rows[0]["native_objective"], "defend base")
+            self.assertEqual(rows[0]["lead_state"], "behind")
+
+    def test_shadow_gated_no_lc_champion(self) -> None:
+        from tempfile import TemporaryDirectory
+        import core.macro_response_shadow as mrs
+        mrs._LAST_SIG.clear()
+        mrs._LAST_GT.clear()
+        with TemporaryDirectory() as d:
+            p = Path(d) / "m.jsonl"
+            det = {"callouts": [], "lead_projection": {}}
+            dc.shadow_log_macro_response(
+                {"champion": "Aatrox", "objective": "x"},
+                {"enemy_team": ["Garen"]}, det, "sr", path=p)
+            self.assertFalse(p.exists())
+
+    def test_shadow_gated_non_sr_mode(self) -> None:
+        from tempfile import TemporaryDirectory
+        import core.macro_response_shadow as mrs
+        mrs._LAST_SIG.clear()
+        mrs._LAST_GT.clear()
+        with TemporaryDirectory() as d:
+            p = Path(d) / "m.jsonl"
+            det = {"callouts": [], "lead_projection": {}}
+            dc.shadow_log_macro_response(
+                {"champion": "Lux", "objective": "x"}, {"champion": "Lux"},
+                det, "aram", path=p)
+            self.assertFalse(p.exists())
+
+
 class AsciiHygieneTests(unittest.TestCase):
     """The 2 new/edited files must be ASCII-clean in their content."""
 

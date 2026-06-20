@@ -197,6 +197,40 @@ def liveclient_summary() -> dict:
         except Exception:  # noqa: BLE001
             inhib_events = []
         out["inhib_events"] = inhib_events
+        # RC2 P5.7 (WS4): neutral-objective kill events (dragon/baron/herald) for
+        # the lost-objective macro response (core.macro_response). Same Live Client
+        # events stream + EventTime (s) pattern as inhib_events above. KillerName is
+        # a champion display name, so classify killer_team against the rosters built
+        # above (enemy_team / ally_team) - macro_response keys on enemy kills.
+        # Isolated try so a malformed events block degrades to [] without dropping
+        # the rest of the summary.
+        objective_events: list = []
+        try:
+            _obj_names = {"DragonKill": "dragon", "BaronKill": "baron",
+                          "HeraldKill": "herald"}
+            enemy_set = {c for c in enemy_team if c}
+            ally_set = {c for c in ally_team if c}
+            for ev in (gd.get("events") or {}).get("Events") or []:
+                if not isinstance(ev, dict):
+                    continue
+                obj = _obj_names.get(ev.get("EventName"))
+                if obj is None:
+                    continue
+                t = ev.get("EventTime")
+                if not isinstance(t, (int, float)) or isinstance(t, bool):
+                    continue
+                killer = ev.get("KillerName")
+                if killer in enemy_set:
+                    killer_team = "enemy"
+                elif killer in ally_set:
+                    killer_team = "ally"
+                else:
+                    killer_team = "unknown"
+                objective_events.append({"name": obj, "killer_team": killer_team,
+                                         "down_at_s": float(t)})
+        except Exception:  # noqa: BLE001
+            objective_events = []
+        out["objective_events"] = objective_events
         # s184 - surface liveclient's gameId for per-game dedup tokens
         # (archetype-nudge state). Live Client doesn't always expose this
         # at gameData root; fall back to "" so callers detect absence.
