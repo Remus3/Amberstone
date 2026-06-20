@@ -188,6 +188,25 @@ class CssTierVariantsTests(unittest.TestCase):
         # the chip would still occupy layout space when hidden.
         self.assertIn("[hidden]", self.panel_css)
 
+    def test_no_orphan_ratio_selectors(self) -> None:
+        # item 213 (2026-05-28) replaced the ratio summary line with the
+        # plain-language verdict line; renderCcConditionalPressure no
+        # longer emits .cc-conditional-pressure-ratio / -ratio-value.
+        # R6 ui-audit (2026-06-19) removed the orphaned CSS. Guard it
+        # stays gone so a refactor can't resurrect dead selectors.
+        self.assertNotIn(".cc-conditional-pressure-ratio", self.panel_css)
+
+    def test_font_sizes_are_tokenized(self) -> None:
+        # Every font-size resolves through a --fs-* token (no sub-floor
+        # hardcoded px). R6 typography audit 2026-06-19.
+        import re
+        decls = re.findall(r"font-size\s*:\s*([^;]+);", self.panel_css)
+        self.assertTrue(decls)
+        for d in decls:
+            self.assertIn(
+                "var(--fs-", d,
+                f"non-token font-size in cc_conditional_pressure.css: {d!r}")
+
 
 # ---------------------------------------------------------------------
 # AsciiHygieneTests - the new JS + CSS files MUST be pure-ASCII

@@ -130,6 +130,17 @@ class CssTests(unittest.TestCase):
     def test_hidden_rule_present(self) -> None:
         self.assertIn("[hidden]", self.panel_css)
 
+    def test_font_sizes_are_tokenized(self) -> None:
+        # Every font-size resolves through a --fs-* token (no sub-floor
+        # hardcoded px). R6 typography audit 2026-06-19.
+        import re
+        decls = re.findall(r"font-size\s*:\s*([^;]+);", self.panel_css)
+        self.assertTrue(decls)
+        for d in decls:
+            self.assertIn(
+                "var(--fs-", d,
+                f"non-token font-size in cooldown_watch.css: {d!r}")
+
 
 class AsciiHygieneTests(unittest.TestCase):
     _BAD = (chr(0x2013), chr(0x2014), chr(0x2018), chr(0x2019),
