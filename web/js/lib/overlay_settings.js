@@ -20,7 +20,18 @@
 
 const LS_KEY = "rc_overlay_settings";
 
-export const OVERLAY_SETTINGS_DEFAULTS = { pulseNotify: true, activeRevertSec: 20 };
+// keepCompanion / companionAlwaysOnTop default ON: RC2 3.4 (E1) - the full
+// dashboard window STAYS available alongside the in-game overlay and is pinned
+// on top unless the operator opts out. The rc-shell main process is the
+// authority (overlay_state.overlaySettingsFrom mirrors these same defaults); the
+// helper carries them so a dashboard toggle reaches the shell over IPC instead
+// of being silently dropped here.
+export const OVERLAY_SETTINGS_DEFAULTS = {
+  pulseNotify: true,
+  activeRevertSec: 20,
+  keepCompanion: true,
+  companionAlwaysOnTop: true,
+};
 
 // Clamp the ACTIVE auto-revert seconds to [3,120] (mirrors the rc-shell
 // overlaySettingsFrom bounds). Non-finite -> the default.
@@ -35,6 +46,11 @@ function _coerce(raw) {
   return {
     pulseNotify: typeof o.pulseNotify === "boolean" ? o.pulseNotify : OVERLAY_SETTINGS_DEFAULTS.pulseNotify,
     activeRevertSec: _clampSec(o.activeRevertSec),
+    keepCompanion: typeof o.keepCompanion === "boolean" ? o.keepCompanion : OVERLAY_SETTINGS_DEFAULTS.keepCompanion,
+    companionAlwaysOnTop:
+      typeof o.companionAlwaysOnTop === "boolean"
+        ? o.companionAlwaysOnTop
+        : OVERLAY_SETTINGS_DEFAULTS.companionAlwaysOnTop,
   };
 }
 
@@ -57,6 +73,8 @@ export function writeOverlaySettings(patch) {
   const next = { ...cur };
   if (patch && typeof patch.pulseNotify === "boolean") next.pulseNotify = patch.pulseNotify;
   if (patch && patch.activeRevertSec !== undefined) next.activeRevertSec = _clampSec(patch.activeRevertSec);
+  if (patch && typeof patch.keepCompanion === "boolean") next.keepCompanion = patch.keepCompanion;
+  if (patch && typeof patch.companionAlwaysOnTop === "boolean") next.companionAlwaysOnTop = patch.companionAlwaysOnTop;
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(next));
   } catch (_e) {
