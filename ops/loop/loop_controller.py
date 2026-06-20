@@ -60,6 +60,23 @@ def consume_directive_override(ctl=None):
     p.unlink(missing_ok=True)
     return text or None
 
+def cycle_source(cfg, override):
+    """Pure: which directive source feeds this cycle. Precedence:
+    operator override > cycle_command > fixed_directive > gemini director.
+
+    cycle_command (e.g. a self-directing slash command like /RC2-Continue) is
+    typed VERBATIM after /clear and SKIPS the gemini director - the command
+    self-directs from its own living plan - but KEEPS the gemini auditor each
+    cycle. fixed_directive skips BOTH director and auditor. Default-absent both
+    => 'director' (byte-identical to the historical loop)."""
+    if override:
+        return "override"
+    if cfg.get("cycle_command"):
+        return "cycle_command"
+    if cfg.get("fixed_directive"):
+        return "fixed"
+    return "director"
+
 def rjson(path, default=None):
     p = Path(path)
     if not p.exists():
@@ -245,12 +262,16 @@ def main():
     log(f"loop start dry_run={DRY} ceiling={CFG['ceiling_usd']} head={prev_sha[:8]}")
 
     FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip gemini director+auditor entirely
+    CYCLE_CMD = CFG.get("cycle_command")  # self-directing slash command typed verbatim; director SKIPPED, auditor KEPT
     for cycle in range(1, CFG["max_cycles"] + 1):
         override = consume_directive_override()
-        if override:
+        src = cycle_source(CFG, override)
+        if src == "override":
             body = override
             log(f"cycle {cycle}: operator directive override applied ({len(body)} chars)")
-        elif FIXED:
+        elif src == "cycle_command":
+            body = CYCLE_CMD
+        elif src == "fixed":
             body = FIXED
         else:
             body = director(last_done, last_audit)
@@ -259,7 +280,7 @@ def main():
         awrite(CTL / "directive.md", body)
         awrite(CTL / "cycle.txt", str(cycle))
         clear_line = "/clear\n" if CFG.get("clear_each_cycle", True) else ""
-        if FIXED:
+        if src in ("cycle_command", "fixed"):
             # type the literal task line (single line, no embedded newlines) after /clear
             awrite(CTL / "gemini.ready", f"CYCLE={cycle}\n{clear_line}{body}")
         else:
@@ -297,7 +318,7 @@ def main():
             if same_sha_streak >= 2:
                 stop("no progress: same sha 2 cycles")
 
-        verdict = "VERDICT: CLEAN\n(fixed-directive mode: gemini auditor disabled)" if FIXED else auditor(prev_sha, new_sha)
+        verdict = "VERDICT: CLEAN\n(fixed-directive mode: gemini auditor disabled)" if src == "fixed" else auditor(prev_sha, new_sha)
         if done.get("regressions"):
             verdict = ("VERDICT: REGRESS\nClaude self-reported it could NOT reach green this "
                        "cycle (regressions flag). Fix this before any new work.\n\n" + verdict)
