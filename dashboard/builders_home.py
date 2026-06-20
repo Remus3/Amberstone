@@ -257,7 +257,47 @@ def _build_home_summary() -> dict:
     out["last_build"]   = _home_last_build()
     out["trends"]       = _home_trends_14d(db_path)
     out["streaks"]      = _home_streaks(db_path)
+    # RC 2.0 E9 rank-identity header. Local-LCU read (no Riot key); the
+    # operator plays mostly ARAM/Arena/event modes so this is frequently
+    # "Unranked" - a graceful placeholder, never a fabricated rank.
+    out["rank"]         = _home_rank_identity(_get_lcu_for_rank())
     return out
+
+
+# -- RC 2.0 E9 rank-identity header -----------------------------------------
+
+def _get_lcu_for_rank():
+    """Construct + connect a short-lived LcuClient for the rank read.
+
+    Fail-soft: any import / connect error returns None and the home
+    builder renders the graceful "Unranked" placeholder. Kept tiny + at
+    module scope so tests can monkeypatch it without a live client.
+    """
+    try:
+        from lcu.lcu_client import LcuClient
+        client = LcuClient()
+        if not client.connect():
+            return None
+        return client
+    except Exception:  # noqa: BLE001 - never fault the home payload
+        return None
+
+
+def _home_rank_identity(lcu) -> dict:
+    """Solo-queue rank identity for the home header.
+
+    Delegates the LCU read to :mod:`core.lcu_ranked`. A None result
+    (client missing / not connected / error) is normalised to the
+    graceful unranked placeholder so the payload always carries a
+    well-formed ``rank`` dict - the header never has to guess.
+    """
+    from core import lcu_ranked
+    identity = lcu_ranked.read_ranked_identity(lcu)
+    if identity is None:
+        # Could-not-read -> same shape as definitively-unranked so the
+        # frontend renders one placeholder path. We do NOT fabricate rank.
+        return lcu_ranked.parse_ranked_stats({"queueMap": {}})
+    return identity
 
 
 def _home_pick_tips(pick_row: dict) -> dict:

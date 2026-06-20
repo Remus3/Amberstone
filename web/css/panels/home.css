@@ -89,6 +89,38 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   letter-spacing: 0.06em; text-transform: uppercase;
   margin-top: var(--space-1);
 }
+/* RC 2.0 E9 rank-identity badge. Sits under the greeting sub-line. The
+   default (no data-tier) is the muted "Unranked" pill; a populated
+   data-tier swaps the accent. Tiers map to a small accent set; unknown
+   tiers fall back to the default border. */
+.home-hero-rank {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: baseline; gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2, rgba(255,255,255,0.03));
+}
+.home-hero-rank-tier {
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.home-hero-rank-wr {
+  font-size: var(--fs-xs); color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.home-hero-rank[data-tier=""] .home-hero-rank-tier { color: var(--text-faint); }
+.home-hero-rank[data-tier="iron"],
+.home-hero-rank[data-tier="bronze"]   { border-color: #8a5a3b; }
+.home-hero-rank[data-tier="silver"]   { border-color: #9fb0bd; }
+.home-hero-rank[data-tier="gold"]     { border-color: #d4af37; }
+.home-hero-rank[data-tier="platinum"] { border-color: #3bb6a6; }
+.home-hero-rank[data-tier="emerald"]  { border-color: #2ecc71; }
+.home-hero-rank[data-tier="diamond"]  { border-color: #5aa9ff; }
+.home-hero-rank[data-tier="master"],
+.home-hero-rank[data-tier="grandmaster"],
+.home-hero-rank[data-tier="challenger"] { border-color: #c879ff; }
 .home-hero-headline {
   font-size: var(--fs-xl); font-weight: 800; color: var(--text);
   letter-spacing: 0.01em;
