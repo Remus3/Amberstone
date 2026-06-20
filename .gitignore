@@ -50,6 +50,7 @@ data/hz_choice_shadow.jsonl
 data/hz_build_shadow.jsonl
 data/live_benchmark_band_shadow.jsonl
 data/objective_playbook_shadow.jsonl
+data/macro_response_shadow.jsonl
 data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json
