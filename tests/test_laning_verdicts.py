@@ -205,6 +205,59 @@ class LaningChoicesTests(unittest.TestCase):
         self.assertEqual(captured["level_b"], 1)
 
 
+class LaningChoicesCvTests(unittest.TestCase):
+    """RC2 P5.2: laning_choices(apply_cv=...) folds the CV laning override onto
+    the served chips. apply_cv defaults False -> byte-identical."""
+
+    def setUp(self) -> None:
+        self._orig_matchup = lv.matchup
+        self._orig_dir = lv._DS_DATA_DIR
+        self._tmp = tempfile.mkdtemp()
+        lv._DS_DATA_DIR = Path(self._tmp)  # type: ignore[assignment]
+
+    def tearDown(self) -> None:
+        lv.matchup = self._orig_matchup  # type: ignore[assignment]
+        lv._DS_DATA_DIR = self._orig_dir  # type: ignore[assignment]
+        shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def test_apply_cv_false_is_byte_identical(self) -> None:
+        lv.matchup = lambda *a, **k: _matchup_dict("all_in", 0.5)  # type: ignore[assignment]
+        gs = {"champion": "Caitlyn", "level": 6, "enemy_comp": ["Ezreal"]}
+        base = lv.laning_choices(gs, mode="SR")
+        cv_off = lv.laning_choices(gs, mode="SR", apply_cv=False)
+        self.assertEqual([c.to_dict() for c in base],
+                         [c.to_dict() for c in cv_off])
+
+    def test_apply_cv_true_no_fog_unchanged(self) -> None:
+        # apply_cv True but the fog yields no override -> identical to base.
+        lv.matchup = lambda *a, **k: _matchup_dict("trade", 0.2)  # type: ignore[assignment]
+        gs = {"champion": "Caitlyn", "level": 6, "enemy_comp": ["Ezreal"]}
+        base = lv.laning_choices(gs, mode="SR")
+        out = lv.laning_choices(gs, mode="SR", apply_cv=True, hp_fraction=0.9,
+                                vision_state={"enemies": {}})
+        self.assertEqual([c.to_dict() for c in base],
+                         [c.to_dict() for c in out])
+
+    def test_apply_cv_enemy_dead_overrides_served(self) -> None:
+        lv.matchup = lambda *a, **k: _matchup_dict("back_off", -0.3)  # type: ignore[assignment]
+        gs = {"champion": "Caitlyn", "level": 6, "enemy_comp": ["Ezreal"]}
+        vs = {"enemies": {"Ezreal": {"champion": "Ezreal", "is_dead": True,
+                                     "respawn_in_s": 14.0, "visible": False}}}
+        out = lv.laning_choices(gs, mode="SR", apply_cv=True, hp_fraction=0.9,
+                                vision_state=vs)
+        self.assertEqual(out[0].label, "Shove + take plates/prio")
+        self.assertEqual(out[0].source_tag, "cv-laning")
+
+    def test_apply_cv_low_hp_overrides_aggressive_served(self) -> None:
+        lv.matchup = lambda *a, **k: _matchup_dict("all_in", 0.5)  # type: ignore[assignment]
+        gs = {"champion": "Caitlyn", "level": 6, "enemy_comp": ["Ezreal"]}
+        vs = {"enemies": {"Ezreal": {"champion": "Ezreal", "visible": True}}}
+        out = lv.laning_choices(gs, mode="SR", apply_cv=True, hp_fraction=0.2,
+                                vision_state=vs)
+        self.assertEqual(out[0].label, "Disengage")
+        self.assertEqual(out[0].source_tag, "cv-laning")
+
+
 class EnemyLanerResolutionTests(unittest.TestCase):
     """_resolve_enemy_laner picks the right opponent per mode."""
 

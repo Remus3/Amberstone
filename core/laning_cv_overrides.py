@@ -40,6 +40,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.archetype_picks import canonical_champion_id
+from core.coach_choices import CoachChoice
 
 _APP_DIR = Path(__file__).parent.parent
 _VISION_STATE_PATH: Path = _APP_DIR / "data" / "vision_state.json"
@@ -183,6 +184,78 @@ def resolve_cv_override(
         return None
 
 
+# RC2 P5.2 - the served-chip integration. The shadow layer (5.1) only records
+# the override; 5.2 lets it DRIVE the served A/B chips. The mapping from an
+# override verdict to the on-screen pair lives here next to the pipeline that
+# produces the verdict. The A-chip's expected_outcome is the override ``reason``
+# (it already carries the live timing, e.g. "Enemy dead 15s ...").
+_SOURCE_CV = "cv-laning"
+
+# verdict -> (A label, default A confidence, B label, B expected_outcome, B confidence)
+_CV_CHIP_PLAN: dict[str, tuple[str, str, str, str, str]] = {
+    "shove": ("Shove + take plates/prio", "high", "Hold",
+              "play safe; reassess next tick", "low"),
+    "back_off": ("Back off + ward", "mid", "Keep farming",
+                 "risky - enemy may be ganking", "low"),
+    "disengage": ("Disengage", "high", "Trade anyway",
+                  "risky at low HP", "low"),
+}
+
+
+def cv_choice_pair(override: object) -> list[CoachChoice]:
+    """Map a CV override dict (from ``cv_override`` / ``resolve_cv_override``) to
+    the served A/B ``CoachChoice`` pair, or ``[]`` for a ``None`` / unrecognized
+    verdict. The A-chip carries the override ``reason`` + ``confidence``."""
+    if not isinstance(override, dict):
+        return []
+    plan = _CV_CHIP_PLAN.get(str(override.get("verdict") or ""))
+    if plan is None:
+        return []
+    a_label, a_conf, b_label, b_expected, b_conf = plan
+    reason = str(override.get("reason") or "").strip()
+    confidence = str(override.get("confidence") or "").strip() or a_conf
+    return [
+        CoachChoice(key="A", label=a_label, expected_outcome=reason,
+                    confidence=confidence, source_tag=_SOURCE_CV),
+        CoachChoice(key="B", label=b_label, expected_outcome=b_expected,
+                    confidence=b_conf, source_tag=_SOURCE_CV),
+    ]
+
+
+def apply_cv_to_choices(
+    choices: object,
+    enemy_name: object,
+    hp_fraction: object,
+    *,
+    base_verdict: object = None,
+    vision_state: Optional[dict] = None,
+    path: Optional[Path] = None,
+) -> list:
+    """Drive the served laning chips from the live CV override when it fires.
+
+    ``choices`` is the base served A/B(+C) ``CoachChoice`` list. Resolves the CV
+    override (enemy dead/missing from the fog model, my low HP vs an aggressive
+    base verdict); when it fires, REPLACES the static A/B with the CV pair and
+    PRESERVES a trailing build ``C`` choice from the base set, so the most-common
+    real laning decision drives the live chip. Returns ``choices`` UNCHANGED when
+    no override fires (or on any error). Never raises (coach hot path)."""
+    try:
+        override = resolve_cv_override(
+            enemy_name, hp_fraction, base_verdict,
+            vision_state=vision_state, path=path,
+        )
+        if override is None:
+            return choices  # type: ignore[return-value]
+        pair = cv_choice_pair(override)
+        if not pair:
+            return choices  # type: ignore[return-value]
+        base = list(choices) if choices else []
+        tail = [c for c in base if getattr(c, "key", None) == "C"]
+        return pair + tail
+    except Exception:  # noqa: BLE001 - the coach hot path must never raise
+        return choices  # type: ignore[return-value]
+
+
 __all__ = [
     "MISS_THRESHOLD_S",
     "LOW_HP_FRACTION",
@@ -190,4 +263,6 @@ __all__ = [
     "enemy_cv_status",
     "cv_override",
     "resolve_cv_override",
+    "cv_choice_pair",
+    "apply_cv_to_choices",
 ]

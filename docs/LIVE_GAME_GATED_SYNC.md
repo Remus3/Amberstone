@@ -281,6 +281,29 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-20 RC2 P5.2 CV served integration (COACHING, NOT a DS seam; shipped code-safe
+  DEFAULT-OFF). 5.1 built the CV override + shadow column; 5.2 builds the SERVED-FLIP
+  MECHANISM: `core.laning_cv_overrides.apply_cv_to_choices` maps a fired override onto the
+  served A/B chips (`cv_choice_pair`: enemy DEAD -> "Shove + take plates/prio" high;
+  MISSING >=3s -> "Back off + ward" mid; my HP <0.35 vs an aggressive verdict -> "Disengage"
+  high; source_tag `cv-laning`; a trailing build `C` choice is preserved). Wired through
+  `core.laning_verdicts.laning_choices(apply_cv=, hp_fraction=, vision_state=)` (default
+  apply_cv=False -> byte-identical) and gated in `dashboard/_deterministic_coaching._compute_uncached`
+  behind `_cv_served_enabled()` (env `RC_LANING_CV_SERVED`, DEFAULT-OFF). `_build_game_state`
+  now stamps `gs["hp_fraction"]` (lc-first; additive, only the gated path reads it). OFF is
+  byte-identical (the `laning_choices(gs, mode=upper)` call is unchanged). THE SERVED FLIP =
+  `RC_LANING_CV_SERVED=1` in the RC runtime env (no restart for the env read on next RC
+  start; the producer runs in-process). OWED (operator/Gemini-gated, NOT headless): (a) accrue
+  real laning games so `data/hz_choice_shadow.jsonl` `cv_override` rows fill (5.1's shadow);
+  (b) re-run `tools/hz_shadow_report.py` and read det-vs-Haiku agreement WITH the CV layer;
+  (c) when agreement climbs toward the >=70% target (`HZ_HAIKU_CALL_INVENTORY.md:75`), set
+  `RC_LANING_CV_SERVED=1` to flip the served chips. KNOWN at flip time: the served `_CACHE`
+  sig (`_cache_sig`) is intentionally UNCHANGED (off-path byte-identical), so a flipped-ON CV
+  transition (enemy dies / my HP drops mid-bucket) can serve a stale chip for up to the 3.0s
+  TTL + 5s game-time bucket - acceptable for a gated/eyeballed flip; tighten the sig (coarse
+  low-HP bool + a cheap fog-freshness key) in the same flip slice if the live eyeball shows lag.
+  Does NOT block any further stage.
+
 - 2026-06-19 R7 per-stack self-AS passive (ENGINE 1.147.0): the per-stack champion self-Attack-Speed
   passive seam shipped DEFAULT-OFF on the AA DPS scorer. NEW `agents/daemon_slayer/_passive_as_overrides.py`
   registry (`PassiveAsEntry` per champion_id: per-stack bonus-AS FRACTION low/high by level + max_stacks +
@@ -570,23 +593,23 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   the HUD interactive then auto-reverts after ~20s. The rc-shell Electron MAIN process needs a relaunch
   first to pick up the new IPC handler + applyPanelSet/setOverlayActive; the web renderer half (the #ovset
   selector + button) auto-reloads via ADR-008 asset-hash. Does NOT block any further stage.
-- 2026-06-20 RC2 P4.5 overlay + dashboard coexistence (UI control surface, NOT a DS seam; shipped
-  code-safe - two additive #ovset action buttons over the existing 4.4 IPC, no render-path flip). Two
-  payload-free coexistence commands on the `rc-shell:overlay-action` channel: `rearrange` (re-separate
-  the overlay + kept dashboard NOW, forcing past the separateWindows auto kill switch) + `raise-companion`
-  (showInactive-if-hidden + moveTop the kept dashboard, then a forced re-arrange). overlay_state
-  OVERLAY_ACTIONS grew to 4 members (still frozen); main.js applySingleMonitorLayout({force}) bypasses the
-  auto gate; raiseCompanion() reposition-only (no resize). #ovset .ovset-actpair = Re-arrange + Show
-  dashboard. Headless-verified: rc-shell node 245/245, test_overlay_settings_panel_dom 37 (+4),
-  real-Chromium test_overlay_view 20 (+1: both buttons at the 42px floor, ASCII labels, one row); 0 banned
-  glyphs; live `:8888` serves the controls + CSS HTTP 200. OWED (operator-gated, NOT headless): eyeball it
-  OVER A REAL LEAGUE GAME at 2560x1440 borderless - with the dashboard kept beside the HUD, confirm (a)
-  dragging the dashboard under the overlay then clicking Re-arrange re-separates them side-by-side, (b)
-  Show dashboard brings a buried/behind dashboard forward beside the HUD without resizing it, (c) neither
-  button ever hides the overlay (no stranding). The rc-shell Electron MAIN process needs a relaunch first
-  to pick up the new IPC dispatch + raiseCompanion/force-layout; the web renderer half (the #ovset buttons)
-  auto-reloads via ADR-008 asset-hash. P4.6 (live-game visual validation, flipped LIVE) IS this whole-of-
-  Phase-4 eyeball - this entry plus the P4.1-4.4 entries above are its checklist. Does NOT block any stage.
+- 2026-06-20 RC2 P4.5 overlay + dashboard coexistence (UI control surface, NOT a DS seam; shipped
+  code-safe - two additive #ovset action buttons over the existing 4.4 IPC, no render-path flip). Two
+  payload-free coexistence commands on the `rc-shell:overlay-action` channel: `rearrange` (re-separate
+  the overlay + kept dashboard NOW, forcing past the separateWindows auto kill switch) + `raise-companion`
+  (showInactive-if-hidden + moveTop the kept dashboard, then a forced re-arrange). overlay_state
+  OVERLAY_ACTIONS grew to 4 members (still frozen); main.js applySingleMonitorLayout({force}) bypasses the
+  auto gate; raiseCompanion() reposition-only (no resize). #ovset .ovset-actpair = Re-arrange + Show
+  dashboard. Headless-verified: rc-shell node 245/245, test_overlay_settings_panel_dom 37 (+4),
+  real-Chromium test_overlay_view 20 (+1: both buttons at the 42px floor, ASCII labels, one row); 0 banned
+  glyphs; live `:8888` serves the controls + CSS HTTP 200. OWED (operator-gated, NOT headless): eyeball it
+  OVER A REAL LEAGUE GAME at 2560x1440 borderless - with the dashboard kept beside the HUD, confirm (a)
+  dragging the dashboard under the overlay then clicking Re-arrange re-separates them side-by-side, (b)
+  Show dashboard brings a buried/behind dashboard forward beside the HUD without resizing it, (c) neither
+  button ever hides the overlay (no stranding). The rc-shell Electron MAIN process needs a relaunch first
+  to pick up the new IPC dispatch + raiseCompanion/force-layout; the web renderer half (the #ovset buttons)
+  auto-reloads via ADR-008 asset-hash. P4.6 (live-game visual validation, flipped LIVE) IS this whole-of-
+  Phase-4 eyeball - this entry plus the P4.1-4.4 entries above are its checklist. Does NOT block any stage.
 - 2026-06-20 RC2 P5.1 local-CV laning overrides (COACHING, NOT a DS seam; shipped code-safe SHADOW-ONLY -
   the served `choices` are NOT altered). The CV override (`core/laning_cv_overrides.py`: enemy DEAD ->
   shove, MISSING >=3s -> back off, my HP <0.35 vs an aggressive verdict -> disengage) currently rides ONLY
