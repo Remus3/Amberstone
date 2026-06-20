@@ -268,6 +268,15 @@ function _settingsHtml() {
     + `<button type="button" class="ovset-seg-btn" data-panelset="threat" aria-pressed="false">Threat</button>`
     + `</div>`
     + `<button type="button" class="ovset-row ovset-act" id="ovset-interact">Interact now</button>`
+    // RC2 4.5: overlay + dashboard coexistence. Two on-screen buttons, both
+    // one-way overlay ACTIONS (no persisted setting): Re-arrange re-separates
+    // the overlay + kept dashboard on demand; Show dashboard raises the kept
+    // dashboard forward beside the HUD. Neither hides the overlay, so there is
+    // no stranding (unlike the Alt+Shift+O clear-both hotkey).
+    + `<div class="ovset-row ovset-actpair">`
+    + `<button type="button" class="ovset-act" id="ovset-rearrange">Re-arrange</button>`
+    + `<button type="button" class="ovset-act" id="ovset-raise">Show dashboard</button>`
+    + `</div>`
     + `</div>`
   );
 }
@@ -386,6 +395,20 @@ function _wireSettings(body) {
   if (interact) {
     interact.addEventListener("click", () => {
       sendOverlayAction({ action: "set-active" });
+    });
+  }
+  // RC2 4.5: coexistence actions - re-separate the windows / raise the kept
+  // dashboard. One-way overlay ACTIONS; a plain browser (no rcShell) is a no-op.
+  const rearrange = body.querySelector("#ovset-rearrange");
+  if (rearrange) {
+    rearrange.addEventListener("click", () => {
+      sendOverlayAction({ action: "rearrange" });
+    });
+  }
+  const raise = body.querySelector("#ovset-raise");
+  if (raise) {
+    raise.addEventListener("click", () => {
+      sendOverlayAction({ action: "raise-companion" });
     });
   }
 }
