@@ -884,8 +884,17 @@ def compute_dps(
         if passive_as > 0:
             if stats_for_rotation is stats:
                 stats_for_rotation = dict(stats)
+            # passive_as is a bonus-AS FRACTION (Irelia full stacks L18 = 1.0 =
+            # +100%), but stats["as"] is FINAL attacks/sec (engine resolves it as
+            # base_as * (1 + bonus_pct)). League folds bonus AS onto the INNATE
+            # base AS, so scale the fraction by base_as before adding to the
+            # final AS - adding the raw fraction over-credits by 1/base_as. The
+            # 2.5 League hard-cap re-clamp still applies after the fold.
+            innate_base_as = float(
+                (champ.get("stats") or {}).get("attackspeed", 0.0) or 0.0
+            )
             stats_for_rotation["as"] = min(
-                2.5, stats_for_rotation.get("as", 0.0) + passive_as
+                2.5, stats_for_rotation.get("as", 0.0) + innate_base_as * passive_as
             )
     # Phase 4 batch 63 (2026-05-05): per-champion ult cast rate for
     # ability-triggered items (Malignance Hatefog). Looked up from
@@ -1115,9 +1124,9 @@ def compute_dps(
         )
     if passive_as > 0:
         notes.append(
-            f"per-stack self-AS passive: +{passive_as:.3f} AS "
+            f"per-stack self-AS passive: +{passive_as * 100:.1f}% bonus AS "
             f"({resolved.champion_name} at {_ASSUMED_PASSIVE_AS_STACK_FRACTION:.0%} "
-            "of max stacks; assume_passive_as_stacks seam)"
+            "of max stacks; assume_passive_as_stacks seam, folded onto base AS)"
         )
     if ap_amp != 1.0:
         notes.append(

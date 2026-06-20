@@ -173,5 +173,61 @@ class ComputeDpsSeam(unittest.TestCase):
         self.assertGreater(with_ap.stats.get("ap", 0.0), no_ap.stats.get("ap", 0.0))
 
 
+class SeamAddsBaseAsScaledFraction(unittest.TestCase):
+    """R7 regression guard: ``passive_as_bonus`` returns a bonus-AS FRACTION
+    (Jax L11 full stacks ~= 0.75 = +75%), but ``stats['as']`` is FINAL attacks
+    per second (engine.py: ``base_as * (1 + bonus_pct)``). The seam must fold
+    the passive in as ``base_as * fraction``, NOT add the raw fraction to the
+    final AS - otherwise it over-credits AS by a factor of ``1 / base_as``.
+
+    ``weighted_dps`` is exactly affine in rotation AS (``total_attacks =
+    basic + basic_time * as``; ``base_dps = total_attacks * avg_dmg / duration``;
+    duration is AS-independent), so three builds that differ ONLY in attack speed
+    are colinear. Infinity Edge (3031) adds no AS and no every_n_attacks proc;
+    Dagger (1042) is pure +12% AS (no AD/crit/AP/on-hit), the AS calibration
+    point. The ON build's DPS gain must match a ``base_as * fraction`` AS delta,
+    not a raw ``fraction`` delta.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.snap = DataSnapshot.load()
+
+    def test_seam_gain_matches_base_as_scaled_fraction(self) -> None:
+        cid, level = "Jax", 11  # AP-independent passive; AS bruiser with autos
+        off = compute_dps(self.snap, cid, level=level, item_ids=["3031"],
+                          target_armor=80)
+        cal = compute_dps(self.snap, cid, level=level, item_ids=["3031", "1042"],
+                          target_armor=80)
+        on = compute_dps(self.snap, cid, level=level, item_ids=["3031"],
+                         target_armor=80, assume_passive_as_stacks=True)
+        a0 = off.stats["as"]
+        a_cal = cal.stats["as"]
+        base_as = float((self.snap.champion(cid).get("stats") or {}).get("attackspeed", 0.0))
+        pa = passive_as_bonus(cid, level, ap=off.stats.get("ap", 0.0),
+                              stack_fraction=_ASSUMED_PASSIVE_AS_STACK_FRACTION)
+        # Preconditions (fail loudly if the fixture stops exercising the seam).
+        self.assertGreater(pa, 0.0)
+        self.assertGreater(base_as, 0.0)
+        self.assertLess(base_as, 1.0)          # base AS < 1, so the bug is large
+        self.assertGreater(a_cal, a0)          # Dagger really raised AS
+        self.assertNotEqual(on.weighted_dps, off.weighted_dps)  # seam did fire
+        self.assertLess(a0 + base_as * pa, 2.5)   # stays under the AS hard cap
+        # weighted_dps = c0 + c1*AS; c1 from the pure-AS calibration build.
+        c1 = (cal.weighted_dps - off.weighted_dps) / (a_cal - a0)
+        predicted_correct = off.weighted_dps + c1 * (base_as * pa)
+        predicted_wrong = off.weighted_dps + c1 * pa  # the regression
+        # The fix must land on the base_as-scaled prediction...
+        self.assertAlmostEqual(
+            on.weighted_dps, predicted_correct,
+            delta=abs(predicted_correct) * 0.005,
+        )
+        # ...and be unambiguously NOT the raw-fraction (buggy) magnitude.
+        self.assertLess(
+            abs(on.weighted_dps - predicted_correct),
+            abs(on.weighted_dps - predicted_wrong),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
