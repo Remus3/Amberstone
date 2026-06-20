@@ -47,10 +47,12 @@ from core.coach_choices import (
     synthesize_simple_choices,
     to_jsonable,
 )
+from core.event_callouts import _sort_key as _callout_sort_key
 from core.event_callouts import next_callouts
 from core.heal_threat import heal_threat_callout
 from core.laning_verdicts import laning_choices
-from core.lead_projection import project_lead
+from core.lead_projection import phase_for, project_lead
+from core.objective_playbook import playbook_callout
 
 _DS_DATA = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
 
@@ -314,6 +316,35 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     return gs
 
 
+def _stamp_vision_summary(gs: dict) -> None:
+    """Stamp the fog-model ``summary`` counts onto ``gs`` for the RC2 P5.5
+    objective playbook's CV upgrades + the cache sig. Read ONCE per compute (the
+    spec contract; cheap - ``core.vision_tracker`` writes vision_state.json
+    atomically). Additive + fail-soft: omitted on any error / absent file."""
+    try:
+        from core.laning_cv_overrides import load_vision_state  # lazy
+        summary = load_vision_state().get("summary")
+        if isinstance(summary, dict) and summary:
+            gs["vision_summary"] = summary
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _vision_sig(gs: dict) -> tuple[int, int, int]:
+    """The (visible, missing, dead) enemy counts for the cache sig so a CV
+    transition near an objective re-computes the playbook row. (0,0,0) when no
+    fog summary is stamped."""
+    vs = gs.get("vision_summary")
+    if not isinstance(vs, dict):
+        return (0, 0, 0)
+
+    def _vc(key: str) -> int:
+        v = vs.get(key)
+        return int(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else 0
+
+    return (_vc("visible_count"), _vc("missing_count"), _vc("dead_count"))
+
+
 def _cache_sig(gs: dict, mode_key: str) -> tuple:
     """Coarse cache signature. game_time bucketed to 5s so callouts/lead refresh
     on a sane cadence while matchup() (inside laning_choices) is not hammered.
@@ -371,6 +402,7 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         inhib_key,
         enemy_items_key,
         ally_items_key,
+        _vision_sig(gs),
     )
 
 
@@ -429,24 +461,39 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
         gold=gold, next_item_name=next_name, next_item_cost=next_cost,
         inhib_events=gs.get("inhib_events"),
     )
+    if not isinstance(callouts, list):
+        callouts = []
+
+    # lead_projection (pure diff). Computed BEFORE the playbook so the playbook
+    # row can read the macro state (ahead/even/behind).
+    lead = project_lead(gs, mode=upper)
+
+    # RC2 P5.5 (WS3): the objective playbook row joins the objective schedule +
+    # the lead read into one kind="playbook" directive for the soonest
+    # contestable objective. Additive (no Haiku replacement, no flip gate) and
+    # eta-sorted in beside its schedule row.
+    play = playbook_callout(callouts, lead, gs.get("vision_summary"), phase_for(gt))
+    if play is not None:
+        callouts = sorted([*callouts, play], key=_callout_sort_key)
 
     # Heal-threat / anti-heal nudge (pure set-membership over the live item
     # pools). Standing advisory (eta_s None) - keep the 2 most-urgent timed
-    # objectives and append it as the 3rd row so it is always visible when it
-    # fires without crowding out an active "Baron NOW".
+    # rows and append it as the 3rd so it is always visible when it fires
+    # without crowding out an active "Baron NOW". When heal does not fire, cap
+    # to 3 so the playbook splice cannot grow the list past the dashboard's
+    # 3-row density (the overlay clamps to 2).
     heal = heal_threat_callout(
         gs.get("enemy_comp"), gs.get("enemy_item_ids"),
         gs.get("ally_item_ids"), mode=lower,
     )
     if heal is not None:
-        callouts = (callouts[:2] if isinstance(callouts, list) else []) + [heal]
-
-    # lead_projection (pure diff).
-    lead = project_lead(gs, mode=upper)
+        callouts = callouts[:2] + [heal]
+    else:
+        callouts = callouts[:3]
 
     return {
         "choices": choices_json,
-        "callouts": callouts if isinstance(callouts, list) else [],
+        "callouts": callouts,
         "lead_projection": lead if isinstance(lead, dict) else {},
     }
 
@@ -472,6 +519,9 @@ def compute_deterministic(coach: dict, lc: dict | None, mode_key: str) -> dict:
     """
     try:
         gs = _build_game_state(coach, lc, mode_key)
+        # RC2 P5.5: read the fog summary once here so the cache sig + the
+        # objective playbook (in _compute_uncached) share one vision read.
+        _stamp_vision_summary(gs)
         sig = _cache_sig(gs, mode_key)
         now = time.monotonic()
         hit = _CACHE.get(sig)
@@ -763,6 +813,56 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             native_choices=to_jsonable(parse_choices(coach)),
             game_time_s=gs.get("game_time_s"),
             level=level, item_count=item_count, cv_override=cv, path=path,
+        )
+    except Exception:  # noqa: BLE001
+        return
+
+
+def shadow_log_objective_playbook(coach: dict, lc: dict | None, det: dict,
+                                  mode_key: str, *, path=None) -> None:
+    """Fail-soft RC2 P5.5 (WS3) do-not-flip-blind shadow-log. Records the
+    deterministic objective playbook directive (the ``kind="playbook"`` row
+    already produced inside ``det['callouts']``) alongside the native Haiku
+    ``objective`` prose to data/objective_playbook_shadow.jsonl, so a FUTURE flip
+    of the served ``objective`` FIELD onto the deterministic directive can be
+    agreement-gated. The callout ROW itself ships additive today (no flip); this
+    only validates the field flip. Never raises and has NO effect on live output.
+    Fires only on a real SR in-game tick (lc champion present + SR objective
+    model). ``path`` overrides the jsonl target (test seam)."""
+    try:
+        # HZ-D4 live-game gate: lc["champion"] is only populated during a real
+        # game; the stale coach file keeps `champion` after a game ends.
+        if not (isinstance(lc, dict) and lc.get("champion")):
+            return
+        mk = str(mode_key or "").strip().lower()
+        # Objectives are SR-only (next_callouts emits them only for "sr"); ARAM /
+        # Arena / tft / brawl never produce a playbook row, so do not log them.
+        if _MODE_KEY_TO_LOWER.get(mk) != "sr":
+            return
+        gs = _build_game_state(coach, lc, mode_key)
+        champ = gs.get("my_champion")
+        if not champ:
+            return
+
+        play = None
+        callouts = (det or {}).get("callouts")
+        if isinstance(callouts, list):
+            for row in callouts:
+                if isinstance(row, dict) and row.get("kind") == "playbook":
+                    play = row
+                    break
+
+        lead = (det or {}).get("lead_projection")
+        lead_state = lead.get("state") if isinstance(lead, dict) else None
+        gt = gs.get("game_time_s")
+        native_obj = coach.get("objective") if isinstance(coach, dict) else None
+
+        from core.objective_playbook_shadow import log_objective_playbook
+        log_objective_playbook(
+            mk, str(champ), playbook=play,
+            native_objective=native_obj if isinstance(native_obj, str) else None,
+            lead_state=lead_state, phase=phase_for(gt),
+            game_time_s=gt, path=path,
         )
     except Exception:  # noqa: BLE001
         return

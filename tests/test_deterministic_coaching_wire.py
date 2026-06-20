@@ -521,6 +521,137 @@ class CvServedFlagTests(unittest.TestCase):
         self.assertAlmostEqual(captured.get("hp_fraction"), 0.05)
 
 
+class Rc2Stage55PlaybookTests(unittest.TestCase):
+    """RC2 P5.5 (WS3): objective playbook row splice + vision sig + shadow log."""
+
+    def setUp(self) -> None:
+        _reset_cache()
+
+    def tearDown(self) -> None:
+        _reset_cache()
+
+    def test_playbook_row_spliced_into_sr_callouts(self) -> None:
+        import core.laning_cv_overrides as cvo
+        orig_laning = dc.laning_choices
+        orig_vis = cvo.load_vision_state
+        try:
+            dc.laning_choices = lambda gs, mode="SR": []
+            cvo.load_vision_state = lambda path=None: {}  # no CV upgrade noise
+            coach = {"champion": "Aatrox", "level": 9, "game_time_s": 270}
+            out = dc.compute_deterministic(coach, {"enemy_team": ["Garen"]}, "sr")
+        finally:
+            dc.laning_choices = orig_laning
+            cvo.load_vision_state = orig_vis
+        kinds = [c.get("kind") for c in out["callouts"]]
+        self.assertIn("playbook", kinds)
+        play = next(c for c in out["callouts"] if c.get("kind") == "playbook")
+        self.assertTrue(play["tag"].startswith("playbook_"))
+        self.assertTrue(play["line"])
+
+    def test_aram_callouts_have_no_playbook(self) -> None:
+        import core.laning_cv_overrides as cvo
+        orig_laning = dc.laning_choices
+        orig_vis = cvo.load_vision_state
+        try:
+            dc.laning_choices = lambda gs, mode="SR": []
+            cvo.load_vision_state = lambda path=None: {}
+            out = dc.compute_deterministic(
+                {"champion": "Lux", "level": 9, "game_time_s": 600},
+                {"enemy_team": ["Garen"]}, "aram")
+        finally:
+            dc.laning_choices = orig_laning
+            cvo.load_vision_state = orig_vis
+        self.assertNotIn("playbook", [c.get("kind") for c in out["callouts"]])
+
+    def test_vision_summary_changes_cache_sig(self) -> None:
+        base = {"my_champion": "Aatrox", "enemy_comp": ["Garen"], "level": 9,
+                "game_time_s": 270}
+        s0 = dc._cache_sig(base, "sr")
+        s1 = dc._cache_sig(
+            {**base, "vision_summary": {"visible_count": 4, "missing_count": 0,
+                                        "dead_count": 1}}, "sr")
+        s2 = dc._cache_sig(
+            {**base, "vision_summary": {"visible_count": 1, "missing_count": 3,
+                                        "dead_count": 0}}, "sr")
+        self.assertNotEqual(s0, s1)
+        self.assertNotEqual(s1, s2)
+
+    def test_vision_sig_failsoft(self) -> None:
+        self.assertEqual(dc._vision_sig({}), (0, 0, 0))
+        self.assertEqual(dc._vision_sig({"vision_summary": "junk"}), (0, 0, 0))
+        self.assertEqual(dc._vision_sig({"vision_summary": {"dead_count": True}}),
+                         (0, 0, 0))
+
+    def test_stamp_vision_summary_sets_and_failsoft(self) -> None:
+        import core.laning_cv_overrides as cvo
+        orig = cvo.load_vision_state
+        try:
+            cvo.load_vision_state = lambda path=None: {
+                "summary": {"visible_count": 2, "missing_count": 1,
+                            "dead_count": 0, "total": 3}}
+            gs: dict = {}
+            dc._stamp_vision_summary(gs)
+            self.assertEqual(gs["vision_summary"]["missing_count"], 1)
+
+            def _boom(path=None):
+                raise RuntimeError("x")
+
+            cvo.load_vision_state = _boom
+            gs2: dict = {}
+            dc._stamp_vision_summary(gs2)  # must not raise
+            self.assertNotIn("vision_summary", gs2)
+        finally:
+            cvo.load_vision_state = orig
+
+    def test_shadow_log_objective_playbook_writes(self) -> None:
+        import json
+        from tempfile import TemporaryDirectory
+        import core.objective_playbook_shadow as obs
+        obs._LAST_SIG.clear()
+        obs._LAST_GT.clear()
+        with TemporaryDirectory() as d:
+            p = Path(d) / "ob.jsonl"
+            coach = {"champion": "Aatrox", "objective": "take drake now",
+                     "game_time_s": 270}
+            lc = {"champion": "Aatrox", "enemy_team": ["Garen"]}
+            det = {"callouts": [{"tag": "playbook_dragon", "line": "Drake: x",
+                                 "eta_s": 30.0, "kind": "playbook"}],
+                   "lead_projection": {"state": "ahead"}}
+            dc.shadow_log_objective_playbook(coach, lc, det, "sr", path=p)
+            rows = [json.loads(x) for x in
+                    p.read_text(encoding="utf-8").splitlines() if x.strip()]
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["playbook_tag"], "playbook_dragon")
+            self.assertEqual(rows[0]["native_objective"], "take drake now")
+            self.assertEqual(rows[0]["lead_state"], "ahead")
+
+    def test_shadow_gated_no_lc_champion(self) -> None:
+        from tempfile import TemporaryDirectory
+        import core.objective_playbook_shadow as obs
+        obs._LAST_SIG.clear()
+        obs._LAST_GT.clear()
+        with TemporaryDirectory() as d:
+            p = Path(d) / "ob.jsonl"
+            det = {"callouts": [], "lead_projection": {}}
+            dc.shadow_log_objective_playbook(
+                {"champion": "Aatrox", "objective": "x"},
+                {"enemy_team": ["Garen"]}, det, "sr", path=p)
+            self.assertFalse(p.exists())  # no live lc champion -> no write
+
+    def test_shadow_gated_non_sr_mode(self) -> None:
+        from tempfile import TemporaryDirectory
+        import core.objective_playbook_shadow as obs
+        obs._LAST_SIG.clear()
+        obs._LAST_GT.clear()
+        with TemporaryDirectory() as d:
+            p = Path(d) / "ob.jsonl"
+            det = {"callouts": [], "lead_projection": {}}
+            dc.shadow_log_objective_playbook(
+                {"champion": "Lux", "objective": "x"}, {"champion": "Lux"},
+                det, "aram", path=p)
+            self.assertFalse(p.exists())  # objectives are SR-only
+
+
 class AsciiHygieneTests(unittest.TestCase):
     """The 2 new/edited files must be ASCII-clean in their content."""
 
