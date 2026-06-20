@@ -1331,6 +1331,26 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.147.0 (R7 - per-stack champion self-Attack-Speed passive seam on the AA DPS scorer, default-OFF,
+byte-identical. A class of champion INNATE passives grant the champion a per-stack bonus ATTACK SPEED
+that ramps to a documented ceiling at max stacks; the stat pipeline (engine.build_champion) has no
+signal for these innate stacking self-AS buffs, so compute_dps under-credited a champ at full stacks.
+NEW _passive_as_overrides.py registry (PassiveAsEntry per champion_id: per_stack_low/high bonus-AS
+FRACTION by level + max_stacks + ap_per_stack_per_100) - the ATTACK-SPEED sibling of the item-effect
+total_conditional_as (Yun Tal) lane. compute_dps gains assume_passive_as_stacks: bool=False; when ON,
+passive_as_bonus(cid, level, ap, stack_fraction=_ASSUMED_PASSIVE_AS_STACK_FRACTION=1.0) =
+per_stack_at(level, ap) * max_stacks * fraction folds into the rotation AS with the SAME 2.5 League
+hard-cap re-clamp as the Yun Tal conditional-AS path (raw_attack_dps left at the no-conditional
+baseline, matching cond_as). per_stack * max_stacks == the documented max by construction, so the
+full-stack assumption is self-clamping. SEEDED 4 (ground truth champion_abilities.json 16.12.1, Meraki
+content patch 25.15, effects_descriptions): Irelia Ionian Fervor 10%:25% by level/stack max 4 ->
+40%:100%; Jax Relentless Assault 5%:12.5% by level/stack max 8 -> 40%:100%; Ezreal Rising Spell Force
+10% flat/stack max 5 -> 50%; Volibear The Relentless Storm (5% + 4% per 100 AP)/stack max 5 -> 25% +
+20% per 100 AP (the one AP-scaled passive, reads the resolved post-amp AP). A champion with no
+registered passive is byte-identical even with the flag on. Default OFF byte-identical; the live
+default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md; CLAUDE-Settled "per-stack
+assumed_stacks"). DS :8893 bounced -> 1.147.0.)
+
 1.146.0 (item 515 - missing-HP heal-AMPLIFICATION seam on the ability-HPS scorer, default-OFF,
 byte-identical. A heal-AMP MULTIPLIER class distinct from the heal-MAGNITUDE units: several abilities
 scale their OWN heal output UP as the caster's health drops ("healing increased by 0% : X% based on

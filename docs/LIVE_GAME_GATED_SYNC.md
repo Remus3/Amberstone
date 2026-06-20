@@ -281,6 +281,28 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-19 R7 per-stack self-AS passive (ENGINE 1.147.0): the per-stack champion self-Attack-Speed
+  passive seam shipped DEFAULT-OFF on the AA DPS scorer. NEW `agents/daemon_slayer/_passive_as_overrides.py`
+  registry (`PassiveAsEntry` per champion_id: per-stack bonus-AS FRACTION low/high by level + max_stacks +
+  ap_per_stack_per_100) + `assume_passive_as_stacks` on `agents/daemon_slayer/dps.py compute_dps`; when ON,
+  `passive_as_bonus(cid, level, ap, stack_fraction=_ASSUMED_PASSIVE_AS_STACK_FRACTION=1.0)` folds the
+  champ's innate per-stack bonus AS at full stacks into the rotation AS (same 2.5 hard-cap re-clamp as the
+  Yun Tal conditional-AS path; raw_attack_dps left at the no-conditional baseline). Seeded 4 from
+  champion_abilities.json 16.12.1 effects_descriptions: Irelia Ionian Fervor (10%:25% by level/stack, max 4),
+  Jax Relentless Assault (5%:12.5% by level/stack, max 8), Ezreal Rising Spell Force (10% flat/stack, max 5),
+  Volibear The Relentless Storm ((5% + 4% per 100 AP)/stack, max 5 - the one AP-scaled passive, reads the
+  resolved post-amp AP). A champion with no registered passive is byte-identical even with the flag on. No
+  live scorer passes the flag yet (default False -> byte-identical). LIVE FLIP = wire the DPS / hybrid
+  scorer-dispatch (`agents/daemon_slayer/server.py` the `compute_dps` call sites + `rank.py rank_items` /
+  `core/daemon_slayer_client` wrappers - the same dispatch the B1 melee gate flips) to pass
+  `assume_passive_as_stacks=True` for the 4 tabled champs (extend `core/archetype_picks` or the scorer call
+  to thread the flag). Validate in a real game that Irelia/Jax/Ezreal/Volibear show a sanely higher
+  auto-attack DPS / item ranking that favors AS-synergy items at full stacks, and a non-tabled champ
+  (Caitlyn) + any operator pick are byte-identical. The assumed stack count
+  (`_ASSUMED_PASSIVE_AS_STACK_FRACTION`) is operator-tunable; dial it below 1.0 if full-stack steady state
+  over-credits a poke kit (Ezreal). Re-anchor the registry from the live patch's `champion_abilities.json`
+  effects_descriptions each patch (re-scan for new per-stack self-AS passive lines). Needs a DS `:8893`
+  restart on flip. Do NOT flip blind (charter 4b; CLAUDE-Settled "per-stack assumed_stacks").
 - 2026-06-19 R5 missing-HP heal-amp (ENGINE 1.146.0): the missing-HP heal-AMPLIFICATION seam shipped
   DEFAULT-OFF on the ability-HPS scorer. NEW `assume_missing_hp_heal_amp` on
   `agents/daemon_slayer/ability_hps.py compute_ability_hps`; when ON, a `(champ, spell)` in
