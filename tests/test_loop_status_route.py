@@ -13,6 +13,7 @@ only a tmp dir; the single git call is monkeypatched.
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -155,6 +156,31 @@ def test_last_commit_passthrough(loopdir):
         "sha": "deadbeef", "subject": "test commit",
         "iso": "2026-06-07T00:00:00-05:00",
     }
+
+
+def test_last_commit_suppresses_console_window(monkeypatch):
+    """Regression: the git subprocess must pass CREATE_NO_WINDOW so pythonw does
+    not pop a console window on every 4s loop-monitor poll (focus-steal bug)."""
+    captured = {}
+
+    class _Done:
+        stdout = "abc1234\x1fsubject here\x1f2026-06-20T00:00:00-05:00"
+
+    def _fake_run(cmd, **kwargs):
+        captured["cmd"] = cmd
+        captured["kwargs"] = kwargs
+        return _Done()
+
+    monkeypatch.setattr(mod.subprocess, "run", _fake_run)
+    result = mod._last_commit()
+    assert result == {
+        "sha": "abc1234", "subject": "subject here",
+        "iso": "2026-06-20T00:00:00-05:00",
+    }
+    assert "creationflags" in captured["kwargs"]
+    assert captured["kwargs"]["creationflags"] == mod._NO_WINDOW
+    if os.name == "nt":
+        assert mod._NO_WINDOW == 0x08000000  # CREATE_NO_WINDOW
 
 
 def test_log_tail_is_last_lines(loopdir):
