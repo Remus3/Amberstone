@@ -107,6 +107,19 @@
   text-overflow: ellipsis;
 }
 
+/* RC2 5.4: condition-change branch ("-> B if Caitlyn goes missing"). Muted
+ * supporting sub-line under the trigger; hidden in the overlay HUD
+ * (overlay.css) to keep the glance lean. Slightly dimmer than the trigger so
+ * the hierarchy is label > trigger > rebranch. */
+.rc-rebranch {
+  font-size: var(--fs-xs, 16px);
+  color: var(--signal-dim, #8a8e9c);
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ALT+N hotkey hint pill. Sits next to the label so the operator can
  * see the digit -> chip binding without hovering. Dimmed when no
  * choices currently rendered (chip is inert) - handled by chip-level

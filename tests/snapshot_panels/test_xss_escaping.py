@@ -115,7 +115,7 @@ def test_state_payload_never_executes_or_injects(mock_server, pw_browser):
     coach["choices"] = [
         {"key": "A", "label": _PAYLOAD, "confidence": "high",
          "source_tag": _PAYLOAD, "expected_outcome": _PAYLOAD,
-         "trigger": _PAYLOAD},
+         "trigger": _PAYLOAD, "rebranch_when": _PAYLOAD, "rebranch_to": "B"},
         {"key": "B", "label": "safe choice", "confidence": "mid",
          "source_tag": "synth"},
     ]

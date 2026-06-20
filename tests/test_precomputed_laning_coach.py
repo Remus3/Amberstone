@@ -408,3 +408,120 @@ def test_precomputed_choices_trigger_reflects_no_ult():
         payload=_payload(),
     )
     assert out[0].trigger == "Caitlyn, full mana, ult down, lvl 11"
+
+
+# --------------------------------------------------------------------------- #
+# RC2 5.4 - condition-change branching (WS2 second half): rebranch_when /
+# rebranch_to. docs/research/RC2_COACHING_SPEC.md WS2 2.2/2.3: each chip can
+# pre-state "if this observable changes, switch to chip <key>". The pure
+# ``laning_rebranch`` is a truth table; ``precomputed_choices`` probes the
+# adjacent (ult-up / full-mana) cell from the SAME loaded payload (no engine
+# call) to confirm a more-aggressive verdict actually unlocks before stamping.
+# --------------------------------------------------------------------------- #
+def test_laning_rebranch_aggressive_points_to_safe_on_enemy_missing():
+    # An aggressive recommendation (all_in / trade) re-branches to the safe B
+    # option when the enemy laner roams or goes missing (the CV downgrade).
+    for verdict in ("all_in", "trade"):
+        when, to = plc.laning_rebranch(verdict, enemy="Caitlyn")
+        assert to == "B"
+        assert "Caitlyn" in when and "missing" in when
+
+
+def test_laning_rebranch_aggressive_fail_soft_enemy_name():
+    when, to = plc.laning_rebranch("all_in", enemy="")
+    assert to == "B"
+    assert "enemy" in when
+
+
+def test_laning_rebranch_cautious_ult_axis_unlocks_to_aggressive():
+    # back_off/hold/even with the ult down: when the ult-up probe is MORE
+    # aggressive, the rec re-branches to B "when your ult comes up".
+    when, to = plc.laning_rebranch(
+        "back_off", enemy="Caitlyn", upgrade_axis="ult", upgrade_unlocks=True)
+    assert to == "B"
+    assert "ult" in when
+
+
+def test_laning_rebranch_cautious_mana_axis_unlocks_to_aggressive():
+    when, to = plc.laning_rebranch(
+        "hold", enemy="Caitlyn", upgrade_axis="mana", upgrade_unlocks=True)
+    assert to == "B"
+    assert "mana" in when
+
+
+def test_laning_rebranch_cautious_no_unlock_is_empty():
+    # The probed adjacent cell is no more aggressive -> nothing to branch to.
+    when, to = plc.laning_rebranch(
+        "back_off", enemy="Caitlyn", upgrade_axis="ult", upgrade_unlocks=False)
+    assert (when, to) == ("", "")
+
+
+def test_laning_rebranch_cautious_recall_b_is_empty():
+    # When B is an economy recall directive (not the aggressive alt) there is no
+    # aggressive option to point at - skip the unlock branch.
+    when, to = plc.laning_rebranch(
+        "even", enemy="Caitlyn", upgrade_axis="ult", upgrade_unlocks=True,
+        b_is_recall=True)
+    assert (when, to) == ("", "")
+
+
+def test_precomputed_choices_aggressive_stamps_enemy_missing_rebranch():
+    # L6 full/all_up resolves to all_in -> A re-branches to B if enemy roams.
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 6, mana_fraction=1.0, ult_up=True,
+        payload=_payload(),
+    )
+    assert out[0].rebranch_to == "B"
+    assert "Caitlyn" in out[0].rebranch_when and "missing" in out[0].rebranch_when
+    # The B alternative carries no pre-stated branch in v1.
+    assert out[1].rebranch_when == "" and out[1].rebranch_to == ""
+
+
+def test_precomputed_choices_cautious_mana_unlock_rebranch():
+    # low mana routes to L6 low/all_up = back_off; the full-mana probe (L6
+    # full/all_up = all_in) is more aggressive, so A re-branches to B after a back.
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 6, mana_fraction=0.2, ult_up=True,
+        payload=_payload(),
+    )
+    assert "Back off" in out[0].label  # cautious recommendation
+    assert out[0].rebranch_to == "B"
+    assert "mana" in out[0].rebranch_when
+
+
+def test_precomputed_choices_recall_b_no_rebranch():
+    # L11 full/no_ult = even with an economy back_soon (B is the recall chip);
+    # the ult-up probe cell is absent, so no rebranch is stamped.
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 11, mana_fraction=1.0, ult_up=False,
+        payload=_payload(),
+    )
+    assert out[1].label == "Back soon"  # B is the recall directive
+    assert out[0].rebranch_when == "" and out[0].rebranch_to == ""
+
+
+def test_precomputed_choices_cautious_ult_unlock_rebranch():
+    # A cautious cell with the ult DOWN whose ult-up sibling is more aggressive
+    # re-branches "when your ult comes up". Dedicated fixture (B is NOT recall).
+    payload = {
+        "schema": "laning_scenarios/v3",
+        "scenarios": {
+            "Annie": {
+                "Caitlyn": {
+                    "L6": {
+                        "full": {
+                            "no_ult": _cell("hold", -0.10, "hold"),
+                            "all_up": _cell("all_in", 0.30, "hold",
+                                            my_rm=0.30, en_rm=1.0),
+                        },
+                    },
+                },
+            },
+        },
+    }
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 6, mana_fraction=1.0, ult_up=False, payload=payload,
+    )
+    assert out[1].label == "Force a short trade on your cd"  # B is the alt
+    assert out[0].rebranch_to == "B"
+    assert "ult" in out[0].rebranch_when

@@ -40,6 +40,7 @@ _MAX_CHOICES = 3
 _MAX_LABEL_LEN = 80
 _MAX_OUTCOME_LEN = 160
 _MAX_TRIGGER_LEN = 120
+_MAX_REBRANCH_LEN = 120
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -65,6 +66,15 @@ class CoachChoice:
     # Conventions); the LLM is not asked to emit it. Empty when no condition is
     # known, so old consumers + the chip renderer ignore it until the UI opts in.
     trigger: str = ""
+    # RC2 5.4 (2026-06-20): condition-change branching (WS2 second half). The
+    # pre-stated "if X changes, switch to chip <rebranch_to>" for this option:
+    # rebranch_when names the observable change ("if Caitlyn goes missing",
+    # "when your ult comes up"), rebranch_to is the A/B/C key whose verdict then
+    # holds. Both SERVER-DERIVED + appended at END with defaults (CLAUDE.md
+    # Python Conventions); empty for chips with no pre-stated branch + for old /
+    # native consumers, so the wire stays back-compatible.
+    rebranch_when: str = ""
+    rebranch_to: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -91,6 +101,15 @@ def _coerce_key(v: object, fallback: str) -> str:
     if not s:
         return fallback
     return s[:1]
+
+
+def _coerce_rebranch_to(v: object) -> str:
+    """One upper-case key letter (A/B/C) or "" when absent.
+
+    Unlike ``_coerce_key`` this allows EMPTY (a chip with no pre-stated branch);
+    a non-empty value is normalized to its first upper-case character."""
+    s = _coerce_str(v, 4).upper()
+    return s[:1] if s else ""
 
 
 def parse_choices(coach: dict | None) -> list[CoachChoice]:
@@ -124,6 +143,8 @@ def parse_choices(coach: dict | None) -> list[CoachChoice]:
                 confidence=_coerce_band(entry.get("confidence")),
                 source_tag=_coerce_str(entry.get("source_tag"), 32),
                 trigger=_coerce_str(entry.get("trigger"), _MAX_TRIGGER_LEN),
+                rebranch_when=_coerce_str(entry.get("rebranch_when"), _MAX_REBRANCH_LEN),
+                rebranch_to=_coerce_rebranch_to(entry.get("rebranch_to")),
             )
         )
     return out
