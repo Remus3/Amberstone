@@ -23,8 +23,11 @@ from dashboard import routes_loop_monitor as mod
 
 
 # --------------------------------------------------------------------------- fixture builders
-def _line(ts: str, blocks: list) -> str:
-    return json.dumps({"timestamp": ts, "type": "x", "message": {"content": blocks}})
+def _line(ts: str, blocks: list, tur=None) -> str:
+    ev = {"timestamp": ts, "type": "x", "message": {"content": blocks}}
+    if tur is not None:
+        ev["toolUseResult"] = tur
+    return json.dumps(ev)
 
 
 def _use(tid: str, name: str, inp: dict) -> dict:
@@ -153,10 +156,13 @@ def test_garbage_lines_skipped(tmp_path):
 # --------------------------------------------------------------------------- route surface
 def test_route_is_get_only():
     assert mod.POST_ROUTES == []
-    assert len(mod.GET_ROUTES) == 1
-    matcher, _fn = mod.GET_ROUTES[0]
-    assert matcher("/api/loop-monitor") is True
-    assert matcher("/api/loop-status") is False
+    assert len(mod.GET_ROUTES) == 2          # JSON api + the HTML page
+    matchers = [m for m, _ in mod.GET_ROUTES]
+    assert any(m("/api/loop-monitor") for m in matchers)   # data
+    assert any(m("/loop-monitor") for m in matchers)        # page
+    api = mod.GET_ROUTES[0][0]
+    assert api("/api/loop-monitor") is True
+    assert api("/api/loop-status") is False
 
 
 def test_serve_sends_json(tmp_path, monkeypatch):
@@ -180,3 +186,60 @@ def test_serve_sends_json(tmp_path, monkeypatch):
     assert status == 200 and ctype == "application/json"
     payload = json.loads(raw.decode("utf-8"))
     assert payload["ok"] is True and payload["tool_count"] == 1
+
+
+# --------------------------------------------------------------------------- exec-time vs stalls
+def test_embedded_exec_preferred_over_wall_gap(tmp_path):
+    # WebFetch carries a true durationMs; a 10-min wall gap must NOT win over it.
+    sp = _write(tmp_path, [
+        _line(T00, [_use("w1", "WebFetch", {"url": "http://x"})]),
+        _line("2026-06-20T10:10:00.000Z", [_result("w1")],
+              tur={"durationMs": 6317, "url": "http://x"}),
+    ])
+    out = mod.build_loop_timeline(session_path=sp)
+    row = next(r for r in out["summary"] if r["sig"] == "WebFetch")
+    assert row["total_s"] == 6.32          # 6317ms, not the 600s wall gap
+    assert out["recent"][0]["approx"] is False
+    assert out["stalls"] == []
+
+
+def test_fast_tool_long_gap_is_stall_not_tool_time(tmp_path):
+    # an Edit cannot really take 10 min - a straddling model/API/hook stall is
+    # billed to `stalls`, contributing 0 to the Edit summary total.
+    sp = _write(tmp_path, [
+        _line(T00, [_use("e1", "Edit", {"file_path": "a.py"})]),
+        _line("2026-06-20T10:10:00.000Z", [_result("e1")]),
+    ])
+    out = mod.build_loop_timeline(session_path=sp)
+    assert len(out["stalls"]) == 1 and out["stalls"][0]["after_sig"] == "Edit"
+    assert abs(out["stalls"][0]["gap_s"] - 600.0) < 0.5
+    row = next(r for r in out["summary"] if r["sig"] == "Edit")
+    assert row["count"] == 1 and row["total_s"] == 0.0
+    assert out["recent"][0]["suspect"] is True
+
+
+def test_shell_stall_at_retry_quantum_is_billed_away(tmp_path):
+    # a PowerShell call landing on the ~10-min API-retry boundary is a stall, not
+    # a 10-min command -> reclassified to `stalls` so it can't headline the table.
+    sp = _write(tmp_path, [
+        _line(T00, [_use("p1", "PowerShell", {"command": "pytest -q"})]),
+        _line("2026-06-20T10:10:00.200Z", [_result("p1")]),   # 600.2s ~ quantum
+    ])
+    out = mod.build_loop_timeline(session_path=sp)
+    assert len(out["stalls"]) == 1
+    assert out["stalls"][0]["after_sig"] == "PowerShell:pytest"
+    row = next(r for r in out["summary"] if r["sig"] == "PowerShell:pytest")
+    assert row["count"] == 1 and row["total_s"] == 0.0
+
+
+def test_long_shell_run_counts_as_real_time(tmp_path):
+    # a genuine 26-min pytest battery (Bash is a LONG tool) is real work, not a
+    # stall - this is the "why is the step slow" answer the panel exists for.
+    sp = _write(tmp_path, [
+        _line(T00, [_use("b1", "Bash", {"command": "python -m pytest -x"})]),
+        _line("2026-06-20T10:26:00.000Z", [_result("b1")]),
+    ])
+    out = mod.build_loop_timeline(session_path=sp)
+    assert out["stalls"] == []
+    row = next(r for r in out["summary"] if r["sig"] == "Bash:pytest")
+    assert row["count"] == 1 and abs(row["total_s"] - 1560.0) < 1.0
