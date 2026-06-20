@@ -148,6 +148,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R2 | ui-audit | 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Build Insights view + recent tabs (web/js/panels/build_insights.js, duration_winrate.js, op_score.js [directive said op_score_curve.js; real file is op_score.js], GPI drilldown player_gpi.js) + their CSS, vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness (Claude_Preview cannot attach to RC-owned :8888, per R1). | DONE | `9b55615d` |
 | R3 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_damage caster-defensive-stat scaling. Extend the passive_damage registry and to_damage_block to support caster bonus armor and bonus MR scaling (e.g., Taric P +15% bonus armor, Galio P +60% bonus MR). Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. | DONE | `ab23c32c` |
 | R4 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited core coaching panels - web/js/panels/team_context.js, coach_choices.js, item_build.js + their CSS - vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor (<--fs-xs 16px) hardcoded font-sizes; cross-panel .kv/#nx-wave/.minimap-grid blocks in item_build.css are OUT of scope (style already-audited Right Now/Next/Active-Match surfaces). Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview attempt (RC-owned :8888 self-signed blocker per R1/R2). | DONE | `9e56d23d` |
+| R6 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited dashboard panels web/js/panels/cooldown_watch.js + cc_conditional_pressure.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. | DONE | `139ef216` |
 | R5 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_heal missing_hp_heal_amp. Default-OFF `assume_missing_hp_heal_amp` seam on `ability_hps.py compute_ability_hps` + NEW `_MISSING_HP_HEAL_AMP` registry: a registered (champ, spell) heal_per_cast multiplied by `1 + max_bonus * caster_missing_hp_pct` (the heal-AMP multiplier class _passive_heal_overrides.py:27 deliberately excluded from the heal-MAGNITUDE registry). Seeded 4 from champion_abilities.json 16.12.1: Master Yi W / Lissandra R / Sylas W (0%:100% -> 1.0), Briar P (0%:40% -> 0.40); Nidalee E probed, no amp text, NOT seeded. Offline characterization tests vs Meraki ground truth. ENGINE 1.145.0 -> 1.146.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `dc2eb0c3` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
@@ -162,6 +163,42 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-19 R6 (DIRECTOR REFILL cycle) DONE (`139ef216`) - Section-3b 5-phase UI
+  audit of two un-audited dashboard panels (cooldown_watch + cc_conditional_pressure,
+  JS+CSS) vs UI_SCALE_SPEC_V2 v2.1. **TYPOGRAPHY = verified no-op:** both CSS files were
+  ALREADY fully tokenized (every font-size resolves through `var(--fs-*)`, all >= --fs-xs
+  16px; grep `font-size:\d+px` = 0 hits) - the directive's "tokenize sub-floor hardcoded
+  font-sizes" had nothing to do (R4 typography-floor sweep / original ship already
+  compliant; do-not-fabricate, [[feedback_verify_before_declare_broken]]). **MUST-FIX
+  (genuine dead CSS):** cc_conditional_pressure.css carried `.cc-conditional-pressure-ratio`
+  + `-ratio-value` (3 rules, ~24 lines) ORPHANED since item 213 (2026-05-28) replaced the
+  ratio summary render with the plain-language verdict line - `renderCcConditionalPressure`
+  never emits those classes. Grep across web/ + tests/ proved ZERO consumers -> removed.
+  ZERO pixel delta (selectors never matched a DOM). cooldown_watch CSS classes all match
+  JS-emitted (no dead CSS). **HIT-TARGETS N/A** (both are display-only chips, no clickable
+  surface). **ASCII** 0 non-ASCII bytes (all 4 files; existing AsciiHygieneTests already
+  guard JS+CSS). **STRUCTURE / HIERARCHY** PASS (small chips in the Suggestions / My-Pick
+  cards, readable at 1920x1080). **TDD red->green:** `test_no_orphan_ratio_selectors` RED
+  (dead CSS present) -> removed -> GREEN; +2 `test_font_sizes_are_tokenized` characterization
+  guards (one per panel test file) lock token compliance against future sub-floor regress.
+  **VERIFY:** verifier subagent CONFIRM all 4 claims (44 panel tests fresh; selector gone;
+  tokenized; ASCII clean); full RC suite `tests/ --ignore=tests/daemon_slayer` 8645 passed
+  / 2 skip / 110 subtests / exit 0 (8642 + 3 new). DS suite N/A (CSS+test cannot affect
+  engine math, Tier-1 not Tier-2 tax per R5/R6). ruff clean. **VISUAL:** dead-CSS removal
+  = zero rendered delta; the champ_select_view snapshot harness (in the RC suite) covers
+  the panel render; Claude_Preview :8888 + Game-PC :8892 per documented env constraints.
+  **ORCHESTRATION (auto-pick, logged):** sole orchestrator, INLINE per R9 (1 CSS file + 2
+  test files, far below the worktree-slice threshold; the directive's parallel-worktree
+  mechanism applied inline, intent over mechanism [[feedback_audit_proposals_are_intent]]);
+  verifier subagent run on the slice claim BEFORE commit (directive step 3). Tier-1 CSS+test:
+  no ENGINE bump / 0 frozen / no DS restart / no Share mirror / ADR-008 asset-hash
+  auto-reload (no RC restart). **NEW residuals (FUTURE, not built - disjoint scope):**
+  (1) overlay.css 12/13px hardcoded sub-floor sizes (Electron overlay surface, separate
+  audit pass); (2) next.css:10 font-size 21px hardcoded (above floor, not in named scope);
+  (3) `.cc-conditional-pressure-verdict` renders the actionable coaching sentence at --fs-xs
+  (16px) - clears the floor but is the smallest tier for primary actionable text; a tier
+  bump is a subjective readability call -> logged FUTURE, not shipped blind. Source: gemini
+  director directive (R6). [[feedback_phase3_fixture_ritual]] / [[feedback_verify_before_declare_broken]] / [[feedback_audit_proposals_are_intent]] / [[feedback_execution_efficiency_rules]].
 - 2026-06-19 R5 (DIRECTOR REFILL cycle) DONE (`dc2eb0c3`) - DS schema lift:
   missing-HP heal-AMPLIFICATION seam on the ability-HPS scorer (ENGINE 1.145.0 ->
   1.146.0). The heal-AMP MULTIPLIER class `_passive_heal_overrides.py:27` (item-253
