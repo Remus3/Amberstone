@@ -118,31 +118,6 @@
   color: rgba(255, 255, 255, 0.92);
 }
 
-/* Ratio summary line. */
-.cc-conditional-pressure-ratio {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  margin-top: 2px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  font-variant-numeric: tabular-nums;
-}
-
-.cc-conditional-pressure-ratio-value {
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.cc-conditional-pressure[data-cc-cond-tier="good"] .cc-conditional-pressure-ratio-value {
-  color: var(--signal-good, #6ec977);
-}
-
-.cc-conditional-pressure[data-cc-cond-tier="bad"] .cc-conditional-pressure-ratio-value {
-  color: var(--signal-bad, #ff5050);
-}
-
 /* item 213 (2026-05-28): plain-language verdict line - the actionable
  * one-liner ("Enemy out-chains you ... consider Cleanse"). Replaces the
  * bare ratio number with a sentence the operator can act on. */
