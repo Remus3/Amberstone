@@ -52,6 +52,7 @@ from core.event_callouts import next_callouts
 from core.heal_threat import heal_threat_callout
 from core.laning_verdicts import laning_choices
 from core.lead_projection import phase_for, project_lead
+from core.macro_response import macro_response_callout
 from core.objective_playbook import playbook_callout
 
 _DS_DATA = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
@@ -190,14 +191,42 @@ _REFRESH_LOCK = threading.Lock()
 # (champion, mode_key) -> last computed result for the warm-path fallback.
 _LAST_GOOD: dict[tuple[str, str], dict] = {}
 
+# RC2 P5.7 (WS4): the stagnation WINDOW memory the pure core.macro_response is
+# deliberately stateless about. (champion, mode_key) -> (lead_state, game_time_s
+# when that state was entered). The resolver tracks how long the macro lead has
+# been STABLE (no swing) and feeds the duration to stagnation_response, so the
+# pure module stays testable with explicit timestamps.
+_STATE_SINCE: dict[tuple[str, str], tuple[str, float]] = {}
+
 
 def _reset_caches_for_tests() -> None:
     """Test seam: clear ALL module caches (TTL cache + warm-path last-good +
-    inflight markers) so cases stay hermetic under the warm-path policy."""
+    inflight markers + the stagnation state-stability memory) so cases stay
+    hermetic under the warm-path policy."""
     _CACHE.clear()
     _LAST_GOOD.clear()
+    _STATE_SINCE.clear()
     with _REFRESH_LOCK:
         _REFRESH_INFLIGHT.clear()
+
+
+def _state_stable_for_s(key: tuple[str, str], state: object,
+                        game_time_s: object) -> float:
+    """Seconds the macro lead ``state`` has been continuously held for ``key``.
+
+    Resets to 0.0 on a state swing OR a new game (game_time regressed below the
+    stored entry time). The WS4 stagnation window memory; fail-soft 0.0 on a
+    non-numeric game_time (never raises)."""
+    try:
+        gt = float(game_time_s)
+    except (TypeError, ValueError):
+        return 0.0
+    st = state if isinstance(state, str) else "even"
+    prev = _STATE_SINCE.get(key)
+    if prev is None or prev[0] != st or gt < prev[1]:
+        _STATE_SINCE[key] = (st, gt)
+        return 0.0
+    return gt - prev[1]
 
 
 def _first(*vals: object) -> object:
@@ -297,6 +326,13 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     if isinstance(inhib_events, list) and inhib_events:
         gs["inhib_events"] = inhib_events
 
+    # RC2 P5.7 (WS4): neutral-objective kill events for the lost-objective macro
+    # response. Liveclient-only (SR live events); absent -> omitted, the pure
+    # macro_response handles the gap.
+    objective_events = lc.get("objective_events")
+    if isinstance(objective_events, list) and objective_events:
+        gs["objective_events"] = objective_events
+
     # Per-team item-id pools (for the heal-threat nudge) come only from the
     # liveclient scoreboard - the coach dict never carries the other players'
     # items. Absent / empty -> omitted, heal_threat_callout handles the gap.
@@ -377,6 +413,17 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
                      if isinstance(e, dict)))
         if isinstance(inhib, list) else ()
     )
+    # RC2 P5.7 (WS4): objective kill events drive the lost-objective macro row,
+    # so they must change the sig too (same completeness rule) - key on
+    # (name, killer_team, down_at_s) so a fresh enemy objective kill re-computes
+    # the row mid-bucket instead of serving the stale callouts.
+    obj_events = gs.get("objective_events")
+    obj_events_key = (
+        tuple(sorted(
+            f"{e.get('name')}:{e.get('killer_team')}:{e.get('down_at_s')}"
+            for e in obj_events if isinstance(e, dict)))
+        if isinstance(obj_events, list) else ()
+    )
     # Per-team item pools drive the heal-threat callout, so they must change
     # the sig too (same sig-completeness rule as item ids / inhib events) - an
     # enemy completing a sustain item or an ally buying anti-heal must re-compute
@@ -400,6 +447,7 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         int(gt // 5),
         item_ids_key,
         inhib_key,
+        obj_events_key,
         enemy_items_key,
         ally_items_key,
         _vision_sig(gs),
@@ -476,18 +524,36 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
     if play is not None:
         callouts = sorted([*callouts, play], key=_callout_sort_key)
 
+    # RC2 P5.7 (WS4): lost-objective / stagnation reactive macro advisory. Like
+    # the heal nudge it is a standing row (eta_s None); when it fires it is a
+    # higher-priority reactive directive (you just lost baron / the game has
+    # stalled), so it takes the single trailing advisory slot AHEAD of the heal
+    # nudge (the two rarely co-fire). SR-only (objective_events + the side-lane
+    # stagnation calls are SR concepts). Additive (no Haiku replacement, no flip
+    # gate). The stagnation window duration comes from the resolver state memory.
+    macro = None
+    if lower == "sr":
+        lead_state = lead.get("state") if isinstance(lead, dict) else None
+        warm_key = (str(gs.get("my_champion") or ""), str(mode_key or ""))
+        macro = macro_response_callout(
+            gs.get("objective_events"), lead, gt, gs.get("inhib_events"),
+            stable_for_s=_state_stable_for_s(warm_key, lead_state, gt),
+        )
+
     # Heal-threat / anti-heal nudge (pure set-membership over the live item
     # pools). Standing advisory (eta_s None) - keep the 2 most-urgent timed
-    # rows and append it as the 3rd so it is always visible when it fires
-    # without crowding out an active "Baron NOW". When heal does not fire, cap
+    # rows and append ONE advisory as the 3rd so it is always visible when it
+    # fires without crowding out an active "Baron NOW". The WS4 macro response
+    # wins the slot over the heal nudge when both fire. When neither fires, cap
     # to 3 so the playbook splice cannot grow the list past the dashboard's
     # 3-row density (the overlay clamps to 2).
     heal = heal_threat_callout(
         gs.get("enemy_comp"), gs.get("enemy_item_ids"),
         gs.get("ally_item_ids"), mode=lower,
     )
-    if heal is not None:
-        callouts = callouts[:2] + [heal]
+    advisory = macro or heal
+    if advisory is not None:
+        callouts = callouts[:2] + [advisory]
     else:
         callouts = callouts[:3]
 
@@ -860,6 +926,57 @@ def shadow_log_objective_playbook(coach: dict, lc: dict | None, det: dict,
         from core.objective_playbook_shadow import log_objective_playbook
         log_objective_playbook(
             mk, str(champ), playbook=play,
+            native_objective=native_obj if isinstance(native_obj, str) else None,
+            lead_state=lead_state, phase=phase_for(gt),
+            game_time_s=gt, path=path,
+        )
+    except Exception:  # noqa: BLE001
+        return
+
+
+def shadow_log_macro_response(coach: dict, lc: dict | None, det: dict,
+                              mode_key: str, *, path=None) -> None:
+    """Fail-soft RC2 P5.7 (WS4) shadow-log. Records the deterministic macro
+    response (the ``kind="macro_response"`` lost-objective / stagnation row
+    already produced inside ``det['callouts']``) alongside the native Haiku
+    ``objective`` prose to data/macro_response_shadow.jsonl, so the WS4 triggers
+    can be confirmed to fire at the right moments on real games before the row is
+    trusted (and a future served-field flip can be agreement-gated). The callout
+    ROW itself ships additive today (no flip); this only validates. Never raises
+    and has NO effect on live output. Fires only on a real SR in-game tick (lc
+    champion present + SR objective model). ``path`` overrides the jsonl target
+    (test seam)."""
+    try:
+        # HZ-D4 live-game gate: lc["champion"] is only populated during a real
+        # game; the stale coach file keeps `champion` after a game ends.
+        if not (isinstance(lc, dict) and lc.get("champion")):
+            return
+        mk = str(mode_key or "").strip().lower()
+        # Lost-objective + the side-lane stagnation calls are SR concepts; ARAM /
+        # Arena / tft / brawl never produce a macro_response row, so do not log.
+        if _MODE_KEY_TO_LOWER.get(mk) != "sr":
+            return
+        gs = _build_game_state(coach, lc, mode_key)
+        champ = gs.get("my_champion")
+        if not champ:
+            return
+
+        macro = None
+        callouts = (det or {}).get("callouts")
+        if isinstance(callouts, list):
+            for row in callouts:
+                if isinstance(row, dict) and row.get("kind") == "macro_response":
+                    macro = row
+                    break
+
+        lead = (det or {}).get("lead_projection")
+        lead_state = lead.get("state") if isinstance(lead, dict) else None
+        gt = gs.get("game_time_s")
+        native_obj = coach.get("objective") if isinstance(coach, dict) else None
+
+        from core.macro_response_shadow import log_macro_response
+        log_macro_response(
+            mk, str(champ), macro=macro,
             native_objective=native_obj if isinstance(native_obj, str) else None,
             lead_state=lead_state, phase=phase_for(gt),
             game_time_s=gt, path=path,
