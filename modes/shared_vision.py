@@ -18,8 +18,8 @@ from typing import Optional
 
 logger = logging.getLogger("rc.vision")
 
-# League window dimensions (Game-PC native). Used by region-aware vision only;
-# screenshots themselves come from the Game-PC screen agent (full screen).
+# League window dimensions (Legion native). Used by region-aware vision only;
+# screenshots themselves come from the Legion-local screen agent (full screen).
 GAME_W, GAME_H = 1920, 1080
 
 _VISION_SERVER = "http://127.0.0.1:8889"
@@ -35,7 +35,7 @@ _FRAME_HARD_AGE_S = 90.0 # skip clearly stale frames so a wedged relay does not
 
 # AUDIT (2026-04-22): track consecutive failures so we escalate from
 # DEBUG to WARNING after the issue persists - a silent debug-only log
-# made "Game-PC agent is dead" invisible until someone spotted the
+# made "screen agent is dead" invisible until someone spotted the
 # absence of frames in the dashboard.
 _FRAME_FAIL_WARN_STREAK = 3
 _fail_streak = 0
@@ -45,8 +45,8 @@ def _capture_screen() -> Optional[str]:
     """Fetch the latest screenshot from the local vision-server cache.
 
     Post 1-PC (ADR-011, 2026-05-29): RC runs on a single Legion machine.
-    The screen agent (`tools/gamepc_screen_agent.py`, a 2-PC-era name now
-    running Legion-local) pushes frames to `/upload-frame`; this function
+    The Legion-local screen agent (`tools/screen_agent.py`, relocated
+    2026-05-29) pushes frames to `/upload-frame`; this function
     pulls the latest from `/latest-frame`.
     """
     global _fail_streak
@@ -82,7 +82,7 @@ def _capture_screen() -> Optional[str]:
         if _fail_streak >= _FRAME_FAIL_WARN_STREAK:
             logger.warning(
                 "latest-frame fetch failed %dx in a row: %s "
-                "(Game-PC agent or vision server likely down)",
+                "(screen agent or vision server likely down)",
                 _fail_streak, exc,
             )
         else:

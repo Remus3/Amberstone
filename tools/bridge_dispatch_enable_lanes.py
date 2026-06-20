@@ -1,7 +1,7 @@
 # arch: dispatch bridge ops_request to enable auto-action lanes on peer | section=bridge | frozen=no
 """tools/bridge_dispatch_enable_lanes.py - item 199 Slice A helper.
 
-Builds an ops_request bridge task envelope that asks a peer (gamepc or peer)
+Builds an ops_request bridge task envelope that asks the Peer peer
 to re-run tools/bridge_watcher_install.ps1 with -EnableLanes set, so the
 peer's RC-BridgeWatcher-<Node> scheduled task XML carries the
 --enable-auto-action-lanes flag.
@@ -22,9 +22,9 @@ ops_request that the peer's process-bridge-tasks skill or its
 bridge_watcher_actions classifier can pick up + execute.
 
 Usage:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target gamepc --lanes read
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target peer --lanes read
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target peer --lanes read,ops
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target gamepc --dry-run
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_dispatch_enable_lanes.py --target peer --dry-run
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ LEGION_BRIDGE = "https://legion-rc:8888/api/bridge"
 DEFAULT_TIMEOUT = 4.0
 
 VALID_LANE_STRINGS = {"", "read", "ops", "read,ops", "ops,read"}
-VALID_TARGETS = ("gamepc", "peer")
+VALID_TARGETS = ("peer",)
 VERB = "reinstall_bridge_watcher_with_lanes"
 
 _SSL_CTX = ssl.create_default_context()
@@ -93,9 +93,9 @@ def build_envelope(target: str, lanes: str, *, checksum: str,
         "carries --enable-auto-action-lanes. Pull the install.ps1 from "
         f"{INSTALL_PS1_URL} (sha256 verify against checksum_sha256 in this "
         "body). Then run: powershell -ExecutionPolicy Bypass -File "
-        "<pulled-path> -Node <gamepc|peer> -EnableLanes "
+        "<pulled-path> -Node peer -EnableLanes "
         f"{lanes!r}. Verify via: schtasks /Query /TN "
-        "RC-BridgeWatcher-<Node> /XML | findstr enable-auto-action-lanes."
+        "RC-BridgeWatcher-peer /XML | findstr enable-auto-action-lanes."
     )
     body = {
         "issued":          issued,

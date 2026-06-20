@@ -1,7 +1,7 @@
-"""gamepc_phase_watcher.py - LCU WAMP push-event capture watcher.
+"""phase_watcher.py - LCU WAMP push-event capture watcher.
 
 Item 207 implementation of docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md.
-Runs on Game-PC (192.168.8.237) alongside gamepc_lcu_agent.py (polling).
+Runs Legion-local (1-PC, ADR-011) alongside the LCU polling agent.
 This file is event-driven: subscribes to LCU push events via WAMP-JSON v2
 and fires DXGI capture on phase transitions. The polling agent stays as
 the dashboard's primary state push; this watcher is additive.
@@ -12,20 +12,20 @@ Operator scope-fork answers (session 2026-05-27):
   reference_gamepc_monitor_index_volatility memory)
 - Q2 debounce: 1 capture per (topic, sub_phase, queue_id) per gameflow
   cycle. reset_cycle() called on Lobby -> EndOfGame transition.
-- Q3 frame format: JPEG q75 (inherits gamepc_screen_agent.py contract)
+- Q3 frame format: JPEG q75 (inherits screen_agent.py contract)
 - Q4 Cherry urgency: standard per-tuple debounce; operator can flip
   CHERRY_NO_DEBOUNCE = True later if they need every available[] change
   per Arena game.
 - Q5 bridge envelope: YES emit kind=ui_capture envelope on Legion bridge
   for UI-audit-ritual subagent subscription.
 
-Deploy on Game-PC (one-time):
+Deploy (one-time):
   1. Copy this file to C:\\RC-Agent\\
   2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install websocket-client (optional; falls back to
      periodic re-poll if the WAMP socket import fails - the watcher
      stays alive but degrades to 5s polling cadence)
-  3. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_phase_watcher.py
-  4. Register scheduled task via tools/gamepc_phase_watcher_install.ps1
+  3. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\phase_watcher.py
+  4. Register scheduled task via tools/phase_watcher_install.ps1
 """
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ LOCKFILE_PATHS = [
     Path(r"D:\Riot Games\League of Legends\lockfile"),
 ]
 
-# Q3: inherit gamepc_screen_agent.py JPEG q75 contract (plan said
+# Q3: inherit screen_agent.py JPEG q75 contract (plan said
 # inherit; the plan doc cited q75 even though the screen agent's
 # constant is 85 - the plan's intent is explicit q75 to keep
 # event-capture payload smaller than per-2s polling payload).
@@ -328,9 +328,9 @@ class Debouncer:
 def _capture_one_monitor(idx: int) -> tuple[str, str, int, int]:
     """Capture monitor at output index ``idx``. Returns (b64, fmt, w, h).
 
-    Lifts the bettercam-or-degraded path from gamepc_screen_agent.py.
+    Lifts the bettercam-or-degraded path from screen_agent.py.
     Kept as a thin wrapper here so tests can stub the import; live
-    Game-PC deployment requires bettercam + PIL on the path.
+    Legion deployment requires bettercam + PIL on the path.
     """
     # Import inline so tests can patch this function at the module level
     # without needing bettercam installed in the test environment.
@@ -488,7 +488,7 @@ def build_bridge_envelope(*, topic: str, sub_phase: str,
     return {
         "kind": "ui_capture",
         "id": f"uicap-{uuid.uuid4().hex[:12]}",
-        "source": "gamepc",
+        "source": "legion",
         "target": "legion",
         "summary": summary,
         "body": {
@@ -706,13 +706,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--sidecar-dir", default=None,
                    help="Override sidecar destination (default: "
                         "<repo>/data/event_captures or "
-                        "C:/RC-Agent/event_captures on Game-PC)")
+                        "C:/RC-Agent/event_captures when deployed)")
     args = p.parse_args(argv)
 
     if args.sidecar_dir:
         sidecar_dir = Path(args.sidecar_dir)
     else:
-        # Repo dev path; Game-PC deployment overrides via flag.
+        # Repo dev path; Legion deployment overrides via flag.
         sidecar_dir = (Path(__file__).resolve().parent.parent
                        / "data" / "event_captures")
     sidecar_dir.mkdir(parents=True, exist_ok=True)

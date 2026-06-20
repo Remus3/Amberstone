@@ -72,9 +72,9 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-BridgeDaemon` | At logon | Administrator | Zero-cost bridge task sentinel (`tools/legion_bridge_daemon.py`) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
 | `RC-GeminiAudit` | Daily | Administrator | Gemini read-only auditor (`tools/gemini_audit.ps1`) |
-| `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/gamepc_hotkey_listener.py`) |
-| `RC-LCUAgent` | At logon | Administrator | LCU relay agent (`tools/gamepc_lcu_agent.py`) |
-| `RC-LiveClientRelay` | At logon | Administrator | Live Client `:2999` relay agent (`tools/gamepc_liveclient_relay.py`) |
+| `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/hotkey_listener.py`) |
+| `RC-LCUAgent` | At logon | Administrator | LCU relay agent (`tools/lcu_agent.py`) |
+| `RC-LiveClientRelay` | At logon | Administrator | Live Client `:2999` relay agent (`tools/liveclient_relay.py`) |
 | `RC-PostmortemAnalyze` | Weekly | Administrator | Postmortem analyze + restart (`ops/run_postmortem_with_restart.ps1`) |
 | `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector ddragon/meraki/cdragon (`tools/upstream_drift_check.py`) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
@@ -149,7 +149,7 @@ curl http://127.0.0.1:8889/health
 curl http://127.0.0.1:8889/latest-frame     # check if frames flowing
 ```
 
-Vision token is in `config/vision_token.txt` (Legion) and `tools/vision_token.txt` (Game-PC). Rotate quarterly - next rotation ~2026-08-01.
+Vision token is in `config/vision_token.txt` (Legion). Rotate quarterly - next rotation ~2026-08-01.
 
 ---
 
@@ -180,9 +180,9 @@ Client wiring (also operator-gated - editing `.mcp.json` changes a live
 Claude session's own tool surface): add an `mcpServers` entry with
 `"type": "http"`, `"url": "http://127.0.0.1:8894/mcp"`, and the bearer
 token from `--show-token`. Full snippet in the server-file docstring.
-Token resolution mirrors the Game-PC MCP (env `RC_MCP_TOKEN` ->
+Token resolution chain (env `RC_MCP_TOKEN` ->
 `tools/mcp_token.txt` -> `tools/vision_token.txt` -> dev fallback) so one
-token covers both RC MCP servers.
+token covers both local RC MCP servers.
 
 ---
 
@@ -305,19 +305,19 @@ curl -k -X POST https://127.0.0.1:8888/api/bridge/cadence  # POST - toggle activ
 
 Or use `/sleep` and `/wake` skills from the Claude session.
 
-Peer watcher drift check (Game-PC / Peer side):
+Peer watcher drift check (Peer side):
 ```
 iex (iwr -UseBasicParsing `
   https://legion-rc:8888/agent/bridge_watcher_update_check.ps1).Content
 ```
 
-This pulls `/agent/_watcher_manifest.json` (sha256+size for the 7-file watcher runtime set), diffs against the local install copy, prints any stale or missing files, and exits 0 (up-to-date), 1 (stale), 2 (manifest fetch failed), or 3 (install dir not found). Pass `-Apply` to re-pull stale files, `-Restart` to bounce the watcher's scheduled task, or `-Quiet` for cron-friendly output. Auto-detects install dir from `C:\RC-Agent` (Game-PC) or `.\tools` (Peer) when not passed explicitly.
+This pulls `/agent/_watcher_manifest.json` (sha256+size for the 7-file watcher runtime set), diffs against the local install copy, prints any stale or missing files, and exits 0 (up-to-date), 1 (stale), 2 (manifest fetch failed), or 3 (install dir not found). Pass `-Apply` to re-pull stale files, `-Restart` to bounce the watcher's scheduled task, or `-Quiet` for cron-friendly output. Auto-detects the Peer `.\tools` install dir when not passed explicitly.
 
 The manifest covers the full runtime fileset the watcher imports at module load (`bridge_watcher.py` + `classify` + `actions` + `history` + the config json + hook ps1 + action prompt md), which is wider than the original `bridge_watcher_install.ps1` 4-file pull set - drift in any of the 7 is caught.
 
 ### Fresh peer install ritual (2-step)
 
-`bridge_watcher_install.ps1` is frozen (CLAUDE.md hard-rule) and only pulls 4 of the 7 files the daemon imports at module load. A fresh peer install on Game-PC or Peer therefore needs a second step to fill the gap (`bridge_watcher_actions.py`, `bridge_watcher_history.py`, `bridge_watcher_action_prompt.md`) before the watcher will boot.
+`bridge_watcher_install.ps1` is frozen (CLAUDE.md hard-rule) and only pulls 4 of the 7 files the daemon imports at module load. A fresh peer install on Peer therefore needs a second step to fill the gap (`bridge_watcher_actions.py`, `bridge_watcher_history.py`, `bridge_watcher_action_prompt.md`) before the watcher will boot.
 
 ```
 # Step 1: installer (4 files + scheduled task + heartbeat verify)
@@ -369,7 +369,7 @@ Phase 4 framing).
 
 Dashboard cert: `tools/regen_rc_cert.ps1` (run elevated, restarts dashboard).
 
-Game-PC's Riot CA: `install-cert.cmd` on Game-PC (admin-elevated). RC itself uses `verify=False`; browsers need it for port 2999.
+Riot CA (browser-side only): `install-cert.cmd` (admin-elevated) on the game host. RC itself uses `verify=False`; only browsers need it for port 2999.
 
 ---
 

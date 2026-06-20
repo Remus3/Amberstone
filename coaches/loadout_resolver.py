@@ -2,7 +2,7 @@
 
 Reads `data/champion_loadouts.json` (single mode-keyed file with per-
 champion variants) and resolves a variant choice to concrete LCU
-payloads ready for the gamepc_lcu_agent command queue:
+payloads ready for the lcu_agent command queue:
 
   - rune perk_ids + tree IDs  -> apply_runes command
   - item ID list              -> apply_item_set command

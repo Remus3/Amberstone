@@ -1,9 +1,9 @@
 """
-gamepc_keybind_listener.py - Left Alt + 1/2/3 keybinds for decision_detector.
+keybind_listener.py - Left Alt + 1/2/3 keybinds for decision_detector.
 
-Run on Game-PC. Hooks global keypresses (left alt+1 / left alt+2 /
-left alt+3) and POSTs to Legion's /api/decisions/respond_active so the
-operator can answer mid-game without alt-tabbing to the dashboard.
+Runs Legion-local (1-PC, ADR-011). Hooks global keypresses (left alt+1 /
+left alt+2 / left alt+3) and POSTs to Legion's /api/decisions/respond_active
+so the operator can answer mid-game without alt-tabbing to the dashboard.
 
 Left Alt + number row was chosen for tenkeyless keyboards (no numpad)
 and because Alt+1..6 are NOT bound in League's default keymap - unlike
@@ -21,15 +21,15 @@ Default keymap:
 Override via env vars RC_KEY_A / RC_KEY_B / RC_KEY_DISMISS (use `keyboard`
 names - see https://github.com/boppreh/keyboard).
 
-Deploy on Game-PC (one time):
+Deploy (one time):
     1. Install dependency:  C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install keyboard
-    2. Copy this file to:   C:\\RC-Agent\\gamepc_keybind_listener.py
-    3. Run:                 C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_keybind_listener.py
+    2. Copy this file to:   C:\\RC-Agent\\keybind_listener.py
+    3. Run:                 C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\keybind_listener.py
 
 Scheduled task (run as user, ONLOGON - same elevation tier as other
-RC-* Game-PC agents):
+RC-* Legion agents):
     schtasks /Create /TN "RC-KeybindListener" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_keybind_listener.py"
+        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\keybind_listener.py"
 
 Note on permissions: the `keyboard` library hooks the Win32 low-level
 keyboard event API. On Windows it works without admin for most users;
@@ -79,7 +79,7 @@ _log = logging.getLogger("rc.keybind")
 # Trust the RC dashboard's mkcert cert without per-cert verification - the
 # operator's machine doesn't have legion's CA installed and the bridge is
 # already mTLS-equivalent via tailnet. Mirrors the pattern in
-# tools/gamepc_lcu_agent.py.
+# tools/lcu_agent.py.
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE

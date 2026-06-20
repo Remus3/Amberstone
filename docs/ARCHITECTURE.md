@@ -9,12 +9,11 @@ _Living document. Update after topology or module changes. See `docs/_archive/` 
 | Machine | Tailnet hostname | Tailnet IP | LAN IP | Role |
 |---|---|---|---|---|
 | **Legion** | `legion-rc` | `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): League + Vanguard + RC main process + vision server `:8889` + dashboard `:8888` + OBS. Relocated agents run local: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Windows hostname now `DESKTOP-JKZECV9`; Tailscale node stays `legion-rc` |
-| **Game-PC** | `gamepc-rc` | `100.95.66.128` | `192.168.8.237` | Out of the League/RC pipeline (2026-05-29). Cross-Claude bridge daemons remain |
 | **Peer** | `peer-host` | `<peer-tailnet-ip>` | - | Cross-Claude peer; RC<->Peer bridge |
 
-All three in tailnet `tailc150de.ts.net`. Prefer tailnet hostnames for all cross-machine HTTP.
+Both in tailnet `tailc150de.ts.net` (Game-PC retired from the League/RC pipeline 2026-05-29, ADR-011). Prefer tailnet hostnames for all cross-machine HTTP.
 
-Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` agents below now run on Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`) and is retained by design - it is NOT a Game-PC dependency. Full relay-agent-task retirement + `gamepc_*` rename/archive is a deferred operator-gated slice, NOT pending engine work: verified NOT-safe to do headless (items 215/276) - no `gamepc_*.py` is zero-consumer (3 running tasks RC-LCUAgent/RC-LiveClientRelay/RC-HotkeyListener + live tests + `routes_static.py` deploy allowlist).
+Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The relocated relay agents (`lcu_agent` / `liveclient_relay` / `screen_agent`) run Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`) and is retained by design. The relocated-agent rename + Game-PC-bridge teardown executed 2026-06-20; the 3 running tasks (RC-LCUAgent/RC-LiveClientRelay/RC-HotkeyListener) launch the renamed Legion-local files.
 
 ---
 
@@ -22,18 +21,18 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The `gamepc_*` ag
 
 | From | To | Protocol | Purpose | Cadence |
 |---|---|---|---|---|
-| `gamepc_screen_agent` | `:8889/upload-frame` | HTTP POST (JPEG b64) | Screenshots for vision + OCR - retired in favor of the in-process self-grab relay (single GDI BitBlt fallback, item 276) | n/a |
-| `gamepc_liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry (Legion-local; self-heals in-process, item 267) | every 1s |
-| `gamepc_lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state (Legion-local) | every 1s |
+| `screen_agent` | `:8889/upload-frame` | HTTP POST (JPEG b64) | Screenshots for vision + OCR - retired in favor of the in-process self-grab relay (single GDI BitBlt fallback, item 276) | n/a |
+| `liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry (Legion-local; self-heals in-process, item 267) | every 1s |
+| `lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state (Legion-local) | every 1s |
 | `lcu_agent` (local) | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
 | Dashboard | `:8889/lcu-cmd` | HTTP POST | Queue a command for LCU (accept, bench, runes) | on user action |
 | Browser (Chrome) | `:8888/` | HTTP GET | Dashboard HTML + state polling | every 500ms |
 | Claude sessions | `:8888/api/bridge` | HTTP POST + GET | Cross-Claude activity log | per prompt / daemon poll |
 
-Post-1-PC (ADR-011) all relay agents run Legion-local (not Game-PC). Both relay
+Post-1-PC (ADR-011) all relay agents run Legion-local. Both relay
 halves now self-heal in-process when stale + host local: liveclient reads `:2999`
 (item 267) and the vision-frame relay grabs one frame via a single GDI BitBlt
-(item 276) - so both are non-integral. The continuous `gamepc_screen_agent` loop
+(item 276) - so both are non-integral. The continuous `screen_agent` loop
 is retired in favor of the in-process self-grab relay (1-PC, ADR-011); the
 self-grab is on-demand only, never a loop.
 
@@ -152,30 +151,26 @@ self-grab is on-demand only, never a loop.
 
 ---
 
-## RC agents - `tools/gamepc_*.py` (post-1-PC status, ADR-011)
+## RC relocated agents - `tools/*.py` (Legion-local, ADR-011)
 
-Despite the `gamepc_` prefix (a 2-PC-era name), these run LEGION-LOCAL as
-ONLOGON scheduled tasks post-1-PC; the prefix is kept to avoid a churny rename.
-Verified status 2026-06-02 (task state + consumer grep):
+These run LEGION-LOCAL as ONLOGON scheduled tasks post-1-PC. The 2-PC-era
+`gamepc_` filename prefix was dropped 2026-06-20 (relocated-agent rename).
 
 | File | Status | Role |
 |---|---|---|
-| `gamepc_lcu_agent.py` | RUNNING (RC-LCUAgent) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
-| `gamepc_liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; self-heals in-process when stale + host local (item 267) |
-| `gamepc_hotkey_listener.py` | RUNNING (RC-HotkeyListener) | A/B tutoring-coach choice hotkeys (RegisterHotKey; anti-cheat-safe) |
-| `gamepc_screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - retired in favor of the in-process self-grab relay (1-PC, ADR-011). Now non-integral: the frame relay self-grabs in-process (single GDI BitBlt fallback, item 276). Deploy-allowlisted |
-| `gamepc_phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - retired with the 1-PC consolidation (ADR-011). Patched item 209, has a test, deploy-allowlisted; kept as reference |
-| `gamepc_mcp_server.py` | DOWN (`:8892`, no task) | Game-PC MCP tooling; deploy-allowlisted; manual start only if Game-PC is re-used (project_gamepc_mcp_boot_gap) |
-| `gamepc_bridge_daemon.py` | OPTIONAL (Game-PC) | Zero-cost cross-Claude bridge sentinel -> headless `claude --print`. KEPT per item 215; bridge peering only, not in the League/RC pipeline |
-| `gamepc_keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |
+| `lcu_agent.py` | RUNNING (RC-LCUAgent) | LCU auth + champ-select/lobby state + command drain; reads local lockfile |
+| `liveclient_relay.py` | RUNNING (RC-LiveClientRelay) | Live Client `:2999` -> `:8889/upload-liveclient`; self-heals in-process when stale + host local (item 267) |
+| `hotkey_listener.py` | RUNNING (RC-HotkeyListener) | A/B tutoring-coach choice hotkeys (RegisterHotKey; anti-cheat-safe) |
+| `screen_agent.py` | DISABLED (no task) | Continuous DXGI screen capture - retired in favor of the in-process self-grab relay (1-PC, ADR-011). Now non-integral: the frame relay self-grabs in-process (single GDI BitBlt fallback, item 276). Deploy-allowlisted |
+| `phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - retired with the 1-PC consolidation (ADR-011). Patched item 209, has a test, deploy-allowlisted; kept as reference |
+| `keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |
 
-**Archival DEFERRED (verify-before-declare-broken, item 269 L8):** none of the 8
-is truly dead-zero-consumer-safe - 3 are running, screen_agent + phase_watcher
-are kept references (and phase_watcher has a test), mcp_server +
-bridge_daemon + screen_agent + phase_watcher sit in the `routes_static.py`
-Game-PC-deploy allowlist, and keybind_listener is an optional working feature.
-A clean archival would prune the deploy allowlist + relocate the phase_watcher
-test - a dedicated cleanup slice, not a blind move.
+The Game-PC cross-Claude bridge daemon + `:8892` MCP server were severed with
+the Game-PC retirement (2026-06-20); the Peer bridge peer stays. `screen_agent` +
+`phase_watcher` are kept references (phase_watcher has a test) and sit in the
+`routes_static.py` deploy allowlist; `keybind_listener` is an optional working
+feature. A clean archival would prune the deploy allowlist + relocate the
+phase_watcher test - a dedicated cleanup slice, not a blind move.
 
 **Vision-frame in-process self-heal LANDED (item 276):** like the liveclient half
 (item 267), `vision_server/_frame.py` `get_latest_frame()` now grabs ONE frame
@@ -245,7 +240,7 @@ Full decomposition plan: `C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.
 
 ## Key gotchas
 
-1. **Riot's LCU + Live Client APIs are `127.0.0.1`-only.** Refuse LAN. Hence the Game-PC relay agent pattern.
+1. **Riot's LCU + Live Client APIs are `127.0.0.1`-only.** Refuse LAN. Hence the Legion-local relay agent pattern (`liveclient_relay` / `lcu_agent` feed `:8889` from localhost).
 2. **`iphlpsvc` portproxy self-loops on port 2999.** When Riot API stops responding, check `netsh interface portproxy show all` before anything else.
 3. **`pythonw.exe` crashes silently on syntax errors.** Always `py_compile` before restart.
 4. **`tk.Tk()` root in `app/__init__.py` is a scheduler, not UI.** Tkinter overlays were fully removed; `root.after()` drives the game polling loop. Full asyncio refactor is Phase T2 #8 (not started).

@@ -49,11 +49,11 @@ npm test        # node --test test/  (pure logic, no electron needed)
 ## RC_ORIGIN (config, not code)
 
 The window loads `RC_ORIGIN`. This single value is the only thing that changes
-between the 2-PC and 1-PC topologies - no JS, no panel, no Electron code change.
+if the game host ever moves - no JS, no panel, no Electron code change.
 
 ```
-RC_ORIGIN=https://legion-rc:8888   # default (2-PC topology, today)
-RC_ORIGIN=https://127.0.0.1:8888   # after 1-PC consolidation (ADR-011)
+RC_ORIGIN=https://legion-rc:8888   # default (Legion 1-PC, ADR-011)
+RC_ORIGIN=https://127.0.0.1:8888   # equivalent local origin on Legion
 ```
 
 Override it for a single launch:

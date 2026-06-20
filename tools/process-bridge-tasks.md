@@ -1,11 +1,11 @@
 ---
-description: Poll the cross-Claude bridge for tasks targeted at Game-PC and execute each one. Always runs the fetch - only chat output is suppressed on empty result.
+description: Poll the cross-Claude bridge for tasks targeted at this peer node and execute each one. Always runs the fetch - only chat output is suppressed on empty result.
 ---
 
 **Step 1 - ALWAYS RUN THIS FIRST.** Do not skip; it is the ONLY way to know if there is new work:
 
 ```
-py C:\RC-Agent\bridge_pull_tasks.py --target gamepc
+py C:\RC-Agent\bridge_pull_tasks.py --target peer
 ```
 
 **Step 2 - Parse the JSON output.** Shape is `{now, target, count, tasks: [...]}`. The `count` field is the source of truth.
@@ -20,8 +20,8 @@ py C:\RC-Agent\bridge_pull_tasks.py --target gamepc
   3. As soon as execution completes (success OR failure), post the result back:
      ```
      py C:\RC-Agent\bridge_post_result.py <task_id> \
-         --source gamepc \
-         --reply-to <the task's source field, e.g. legion or peer> \
+         --source peer \
+         --reply-to <the task's source field, e.g. legion> \
          --summary "<one-line description of what you did>" \
          --body '<valid JSON Legion can parse with json.loads>' \
          --exit-code <0 if success, non-zero if failed>

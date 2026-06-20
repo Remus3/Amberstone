@@ -69,9 +69,12 @@ League + Vanguard + RC + OBS all run on Legion. Concretely:
 - Tailscale kept the node name `legion-rc` despite the Windows hostname
   rename to DESKTOP-JKZECV9. `legion-rc` MagicDNS stays canonical for RC and
   the Peer bridge; do not "reconcile" it to the local hostname.
-- Deferred Phase-11 cleanup: Legion<->Game-PC bridge teardown (pending
-  Game-PC's fate), full in-process vision-frame (mss) collapse, archive of the
-  `gamepc_*.py` originals, ARCHITECTURE topology rewrite.
+- Phase-11 cleanup (DONE 2026-06-20): Legion<->Game-PC bridge teardown,
+  relocated-agent `gamepc_*.py` rename (-> `lcu_agent` / `liveclient_relay` /
+  `hotkey_listener` / `keybind_listener` / `screen_agent` / `phase_watcher`),
+  and the ARCHITECTURE topology rewrite to Legion-only all executed. Game-PC is
+  retired from the pipeline. (Full in-process vision-frame (mss) collapse is the
+  one remaining deferred tail - the GDI BitBlt self-grab landed item 276.)
 
 ## Update 2026-06-02: relay self-heal (DS & RC are non-integral to Game-PC)
 
@@ -92,3 +95,24 @@ optimization, not a dependency. The Game-PC cross-Claude bridge may remain as a
 comms convenience but is not integral to DS or RC. (Full vision-FRAME collapse
 - dropping the mss frame relay - is still deferred.) Guarded by
 `tests/test_liveclient_self_heal_1pc.py`. RC-VisionServer restarted to pid 476.
+
+## Update 2026-06-20: Game-PC retired - Phase-11 cleanup executed
+
+The operator declared Game-PC fully out of the pipeline, and the deferred
+Phase-11 cleanup landed:
+
+- **Bridge teardown.** The Legion<->Game-PC cross-Claude bridge peer was severed:
+  the `gamepc` MCP entry, the `gamepc_bridge_daemon.py` / `gamepc_mcp_server.py`
+  producers, the Game-PC peer slash-commands, and the `gamepc` health/dashboard
+  peer rows were removed. Peer stays as the sole cross-Claude peer.
+- **Relocated-agent rename.** The 2-PC-era `gamepc_*.py` filenames were renamed
+  to Legion-neutral names (`lcu_agent`, `liveclient_relay`, `hotkey_listener`,
+  `keybind_listener`, `screen_agent`, `phase_watcher`); every referencer + test +
+  the `routes_static.py` deploy allowlist moved with them. Task NAMES
+  (RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener) were already
+  Legion-neutral and are unchanged - their live action paths re-point to the new
+  filenames.
+- **Topology rewrite.** ARCHITECTURE / OPERATIONS / BRIDGE / CLAUDE topology prose
+  is now Legion-only.
+
+Game-PC is referenced below only as the retired 2-PC origin of record.

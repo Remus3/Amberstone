@@ -9,10 +9,8 @@ memory entries.
 Probes (all should complete within ~3s total):
   - Legion: health.json (pid, alive, mode, rc_version), listener ports
     8888/8889, RC scheduled tasks state, last boot.
-  - Game-PC: /api/state's lcu block freshness (proves the LCU agent is
-    posting), /api/health for vision server alive, plus a quick curl to
-    192.168.8.237:8892/health (MCP listener) - flags any silently-down
-    component.
+  - Legion-local agents: /api/state's lcu block freshness (proves the
+    relocated LCU agent is posting) + the Live Client relay age.
   - Anomaly summary: anything unexpected, listed first.
 
 Cheap and idempotent. Caller (the hook) gets stdout; non-zero exit just
@@ -23,21 +21,17 @@ Run manually any time:  C:/Users/Administrator/AppData/Local/Programs/Python/Pyt
 from __future__ import annotations
 
 import json
-import os
 import socket
 import ssl
 import subprocess
 import sys
 import time
-import urllib.error
 import urllib.request
 from pathlib import Path
 
 _APP = Path(__file__).resolve().parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
 _LEGION_BASE = "https://legion-rc:8888"
-_GAMEPC_MCP_HEALTH = "http://gamepc-rc:8892/health"
-_GAMEPC_TOKEN = "8e8f131e212b329438218eca27372dde"
 _TIMEOUT = 2.5
 
 _SSL = ssl.create_default_context()
@@ -45,34 +39,11 @@ _SSL.check_hostname = False
 _SSL.verify_mode = ssl.CERT_NONE
 
 
-def _parse_retired(val: str | None) -> bool:
-    """Parse the RC_GAMEPC_RETIRED env flag. Unset/empty -> retired (quiet)."""
-    return (val or "1").strip().lower() not in ("0", "false", "no")
-
-
-# Game-PC left the League/RC pipeline at the 1-PC consolidation (2026-05-29,
-# ADR-011). Its MCP :8892 and bridge health publisher are EXPECTED absent/stale,
-# so rc_facts demotes those from anomalies to annotated info lines. Set
-# RC_GAMEPC_RETIRED=0 to re-arm them as anomalies if gamepc returns to service.
-_GAMEPC_RETIRED = _parse_retired(os.environ.get("RC_GAMEPC_RETIRED"))
-
-
 def _http_get_json(url: str, headers: dict | None = None) -> dict | None:
     try:
         req = urllib.request.Request(url, headers=headers or {})
         with urllib.request.urlopen(req, timeout=_TIMEOUT, context=_SSL) as r:
             return json.loads(r.read())
-    except Exception:  # noqa: BLE001
-        return None
-
-
-def _http_get_status(url: str, headers: dict | None = None) -> int | None:
-    try:
-        req = urllib.request.Request(url, headers=headers or {})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT, context=_SSL) as r:
-            return r.status
-    except urllib.error.HTTPError as exc:
-        return exc.code
     except Exception:  # noqa: BLE001
         return None
 
@@ -204,30 +175,16 @@ def _lessons_summary() -> str | None:
     return "\n".join(lines)
 
 
-def _gamepc_mcp_anomaly(mcp_status: int | None, *, retired: bool) -> str | None:
-    """Anomaly string for a non-200 Game-PC MCP probe, or None when ok/expected.
-
-    Post-1PC (ADR-011) Game-PC is out of the pipeline, so a down MCP is the
-    expected steady state and suppressed unless the retired flag is disabled.
-    """
-    if mcp_status == 200 or retired:
-        return None
-    return f"Game-PC: MCP /health returned {mcp_status}"
-
-
 def _bridge_peer_anomalies(peer_name: str, *, watcher_alive: bool, stale: bool,
-                           age_str: str, queue: int, retired: bool) -> list[str]:
-    """Bridge-peer anomaly strings.
+                           age_str: str, queue: int) -> list[str]:
+    """Bridge-peer anomaly strings for the live Peer peer.
 
-    Game-PC's dead/stale publisher is the expected post-1PC steady state and is
-    suppressed when retired; Peer (live peer) and a real queue backlog always
-    flag regardless.
+    A dead watcher, a stale publisher, or a real queue backlog each flag.
     """
     out: list[str] = []
-    expected_down = (peer_name == "gamepc" and retired)
-    if not watcher_alive and not expected_down:
+    if not watcher_alive:
         out.append(f"Bridge: {peer_name} watcher dead")
-    elif stale and not expected_down:
+    elif stale:
         out.append(f"Bridge: {peer_name} health publisher stale ({age_str})")
     if queue > 10:
         out.append(f"Bridge: {peer_name} task queue backed up ({queue} tasks)")
@@ -323,8 +280,8 @@ def main() -> int:
         if not ds_alive or ds_status != "ok":
             anomalies.append(f"Legion: DS server not healthy (status={ds_status})")
 
-    # -- Game-PC ---------------------------------------------------------
-    out.append("\n## Game-PC (gamepc-rc · 100.95.66.128 · 192.168.8.237)\n")
+    # -- Legion-local agents (relocated 2026-05-29, ADR-011) -------------
+    out.append("\n## Legion-local agents (LCU + Live Client relay)\n")
 
     # LCU agent freshness via Legion's /api/state
     state = _http_get_json(f"{_LEGION_BASE}/api/state") or {}
@@ -335,10 +292,10 @@ def main() -> int:
     if lcu_age is not None:
         out.append(f"- LCU agent: phase={lcu_phase} age={lcu_age}s")
         if lcu_age > 30:
-            anomalies.append(f"Game-PC: LCU agent stale ({lcu_age}s old)")
+            anomalies.append(f"Legion: LCU agent stale ({lcu_age}s old)")
     else:
         out.append("- LCU agent: NO RECENT POST")
-        anomalies.append("Game-PC: LCU agent not posting")
+        anomalies.append("Legion: LCU agent not posting")
 
     # Liveclient block from /api/state
     lc = state.get("liveclient") or {}
@@ -349,23 +306,12 @@ def main() -> int:
     else:
         out.append("- Liveclient relay: empty (no game in progress)")
 
-    # MCP server
-    mcp_status = _http_get_status(
-        _GAMEPC_MCP_HEALTH, headers={"Authorization": f"Bearer {_GAMEPC_TOKEN}"}
-    )
-    out.append(f"- MCP server :8892: HTTP {mcp_status}"
-               + (" (expected - gamepc retired post-1PC, ADR-011)"
-                  if mcp_status != 200 and _GAMEPC_RETIRED else ""))
-    mcp_anom = _gamepc_mcp_anomaly(mcp_status, retired=_GAMEPC_RETIRED)
-    if mcp_anom:
-        anomalies.append(mcp_anom)
-
     # -- Cross-Claude bridge ----------------------------------------------
     out.append("\n## Cross-Claude bridge\n")
 
     # Peer daemon health probed via /api/health/all peers block
     peers = health_all.get("peers") or {}
-    for peer_name in ("gamepc", "peer"):
+    for peer_name in ("peer",):
         p = peers.get(peer_name) or {}
         if not p:
             continue
@@ -375,15 +321,13 @@ def main() -> int:
         stale = bool(p.get("stale"))
         age_str = f"{int(age_s)}s" if age_s is not None else "?"
         stale_str = " ⚠ STALE" if stale else ""
-        if peer_name == "gamepc" and _GAMEPC_RETIRED and (stale or not w_alive):
-            stale_str += " (expected - gamepc retired post-1PC)"
         out.append(
             f"- {peer_name} bridge daemon: watcher={'alive' if w_alive else '⚠ DEAD'}"
             f" queue={queue} age={age_str}{stale_str}"
         )
         anomalies.extend(_bridge_peer_anomalies(
             peer_name, watcher_alive=w_alive, stale=stale, age_str=age_str,
-            queue=queue, retired=_GAMEPC_RETIRED))
+            queue=queue))
 
     # 24h activity from bridge_log (informational only)
     bridge_log = _APP / "ops" / "runtime" / "bridge_log.jsonl"

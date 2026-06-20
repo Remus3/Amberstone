@@ -1,17 +1,17 @@
-# gamepc_phase_watcher_install.ps1 -- Game-PC scheduled-task installer.
+# phase_watcher_install.ps1 -- Legion-local scheduled-task installer.
 #
-# Item 207 LCU phase-capture watcher. Run on Game-PC:
+# Item 207 LCU phase-capture watcher. Run on Legion:
 #
-#   .\gamepc_phase_watcher_install.ps1
+#   .\phase_watcher_install.ps1
 #
 # What it does (idempotent -- safe to re-run):
-#   1. Pulls latest gamepc_phase_watcher.py from Legion's /agent/.
-#   2. Writes to C:\RC-Agent\gamepc_phase_watcher.py.
+#   1. Pulls latest phase_watcher.py from Legion's /agent/.
+#   2. Writes to C:\RC-Agent\phase_watcher.py.
 #   3. Ensures sidecar dir C:\RC-Agent\event_captures exists.
 #   4. Creates scheduled task RC-PhaseWatcher with at-logon trigger.
 #   5. Starts the task immediately + verifies the process is alive.
 #
-# Prereqs on Game-PC (one-time):
+# Prereqs (one-time):
 #   py -m pip install bettercam websocket-client
 #
 # Operator scope-fork (item 207 session):
@@ -62,8 +62,8 @@ foreach ($d in @($InstallDir, $SidecarDir)) {
 
 # 2. Pull watcher source from Legion
 
-$WatcherPath = Join-Path $InstallDir "gamepc_phase_watcher.py"
-$Url = "$LegionAgentBase/gamepc_phase_watcher.py"
+$WatcherPath = Join-Path $InstallDir "phase_watcher.py"
+$Url = "$LegionAgentBase/phase_watcher.py"
 Write-Step "Pulling watcher source from $Url"
 if ($DryRun) {
     Write-Warn "DryRun: would download to $WatcherPath"
@@ -91,7 +91,7 @@ Write-Step "Killing any running watcher python pid"
 try {
     $existing = Get-CimInstance Win32_Process -Filter "Name='python.exe'" `
         -ErrorAction SilentlyContinue | Where-Object {
-            $_.CommandLine -like "*gamepc_phase_watcher*"
+            $_.CommandLine -like "*phase_watcher*"
         }
     if ($existing) {
         foreach ($p in $existing) {
@@ -156,7 +156,7 @@ if ($DryRun) {
         $info.LastTaskResult, $info.NextRunTime)
     $alive = Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" `
         -ErrorAction SilentlyContinue | Where-Object {
-            $_.CommandLine -like "*gamepc_phase_watcher*"
+            $_.CommandLine -like "*phase_watcher*"
         }
     if ($alive) {
         Write-Ok ("pid={0} alive" -f $alive.ProcessId)

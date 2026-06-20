@@ -6,10 +6,12 @@ _Living document. Covers RC↔Peer bridge wire format + Bridge Watcher daemon ar
 
 ## Overview
 
-Three Claude Code sessions coordinate via a shared HTTPS bridge:
+Two Claude Code sessions coordinate via a shared HTTPS bridge:
 - **Legion** (`legion-rc`) - RC runtime + primary bridge host
-- **Game-PC** (`gamepc-rc`) - Game agent; sends notes/results to Legion
 - **Peer** (`peer-host`) - Separate Claude Code project; bidirectional lessons/tasks
+
+The Game-PC (`gamepc-rc`) bridge peer was severed 2026-06-20 with the Game-PC
+retirement (ADR-011); Peer is the sole cross-Claude peer now.
 
 Bridge is **opt-in**. Both sides must share a secret in `ops/local_paths.json` (gitignored). Nothing happens if unconfigured.
 
@@ -37,7 +39,7 @@ POST body to `/api/bridge/inbox` (both directions):
 | `summary` | yes | Human-readable line (≤2000 chars) |
 | `kind` | no | `note` \| `result` \| `ask` \| `task` \| `ack` (≤20 chars) |
 | `id` | no | Caller-assigned ID (≤80 chars) |
-| `target` | no | Addressed recipient - `rc` \| `gamepc` \| `peer` |
+| `target` | no | Addressed recipient - `rc` \| `peer` |
 | `body` | no | Structured payload |
 | `in_reply_to` | no | Prior message ID |
 
@@ -99,9 +101,8 @@ peer machines → POST /api/bridge/inbox
 | Node | Task | What it does |
 |---|---|---|
 | Legion | `RC-BridgeWatcher` | Silent bridge poll daemon |
-| Game-PC | `RC-BridgeDaemon` | `gamepc_bridge_daemon.py` - polls Legion, invokes `claude --print` only when inbox > 0 |
-| Game-PC | `RC-BridgeWatcher-GamePC` | Watcher health publisher |
-| Game-PC | `RC-WatcherHealthPublisher-GamePC` | Pushes peer health to Legion |
+| Legion | `RC-BridgeDaemon` | `tools/legion_bridge_daemon.py` - zero-cost bridge task sentinel |
+| Peer | `RC-BridgeWatcher` | Peer-side silent bridge poll daemon (`tools/peer_bridge_daemon.py`) |
 
 ---
 

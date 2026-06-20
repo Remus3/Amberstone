@@ -1,18 +1,14 @@
 """
-gamepc_lcu_agent.py - Game-PC agent that bridges the LCU API to Legion.
+lcu_agent.py - Legion-local LCU agent (relocated 2026-05-29, ADR-011).
 
-Runs on Game-PC (192.168.8.237). Reads the LCU lockfile, polls champ-select /
-gameflow / ready-check, and pushes state to Legion's vision server. Also polls
-Legion for queued commands (auto-accept, bench swap, summoner-spell change,
-lock pick, reroll) and executes them via LCU.
+Runs Legion-local (1-PC consolidation, ADR-011). Reads the LCU lockfile, polls
+champ-select / gameflow / ready-check, and pushes state to the in-process
+vision server. Also drains the dashboard command queue (auto-accept, bench
+swap, summoner-spell change, lock pick, reroll) and executes them via LCU.
 
-Deploy on Game-PC (one time):
-  1. Copy this file to C:\\RC-Agent\\
-  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install (none - stdlib only)
-  3. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_lcu_agent.py
-  4. (optional) schtasks /Create /TN "RC-LCU" /SC ONLOGON /F /RL HIGHEST /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_lcu_agent.py"
+Registered as the RC-LCUAgent ONLOGON task (Legion-neutral task name).
 
-Endpoints used on Legion:
+Endpoints used (all Legion-local now):
   POST http://192.168.8.230:8889/upload-lcu        - push state snapshot
   GET  http://192.168.8.230:8889/lcu-cmd-pending   - drain command queue
   POST http://192.168.8.230:8889/lcu-cmd-done      - report results
@@ -116,8 +112,8 @@ CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence
 TEAM_CONTEXT_REPOST_S = 3.0
 
 # ARAM-family queue IDs. Mirror of the aram keys in
-# core/queue_modes.QUEUE_ID_TO_MODE_KEY (this agent runs standalone on
-# Game-PC and can't import core.*, so it's a hand-kept mirror - keep
+# core/queue_modes.QUEUE_ID_TO_MODE_KEY (this agent runs standalone and
+# can't import core.*, so it's a hand-kept mirror - keep
 # the two in sync). 2400 = ARAM Mayhem (KIWI gameMode); its absence
 # here is why is_aram was False for Mayhem -> the dashboard's
 # _csvDetectMode fell through to "sr" and the bench / quick-swap UI
@@ -657,8 +653,8 @@ def capture_state() -> dict:
     # "ChampSelect", or flip straight to "InProgress"?). Free - phase
     # is already fetched. Enriched below with the champ-select session
     # shape when that block runs. Rides the existing 1s push -> cached
-    # on Legion's vision server -> no Game-PC console / screen capture
-    # needed to root-cause the remaining uncertainty.
+    # on the in-process vision server -> no separate console / screen
+    # capture needed to root-cause the remaining uncertainty.
     state["cs_debug"] = {"raw_phase": state["phase"], "ts": time.time()}
 
     if state["phase"] in ("ReadyCheck", "Matchmaking", "Lobby"):
@@ -1916,8 +1912,8 @@ def _maybe_refresh_team_context(state: dict) -> None:
 #
 # Tracked state survives the loop iteration so we only fire once per game
 # end (until phase leaves EndOfGame OR a new gameId appears). The
-# last_game_id_ingested ALSO persists to disk (INGEST_STATE_FILE) so a
-# Game-PC crash right at game end is recovered on next agent boot via
+# last_game_id_ingested ALSO persists to disk (INGEST_STATE_FILE) so an
+# agent crash right at game end is recovered on next agent boot via
 # _recover_missed_ingest().
 
 _post_match_ingest_state = {
@@ -1975,7 +1971,7 @@ def _save_ingest_state() -> None:
 def _recover_missed_ingest() -> None:
     """One-shot startup check: fetch latest LCU gameId and POST ingest if
     it doesn't match our persisted last_game_id_ingested. Handles the
-    "Game-PC crashed right at game end" case where the agent died
+    "agent crashed right at game end" case where the agent died
     before /api/last-match/ingest was POSTed. Also catches "agent was
     offline when game ended" - operator restarts agent later, we
     auto-recover.

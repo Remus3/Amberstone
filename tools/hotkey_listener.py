@@ -1,4 +1,4 @@
-"""gamepc_hotkey_listener.py - Game-PC global hotkeys for coach decisions.
+"""hotkey_listener.py - Legion-local global hotkeys for coach decisions.
 
 Background process that registers Ctrl+Shift+1 / Ctrl+Shift+2 as Win32
 global hotkeys (NOT a keyboard hook - uses RegisterHotKey, which is the
@@ -17,13 +17,13 @@ of League. The Edge dashboard updates from its own poll loop within a
 second of the POST landing, so the banner clears whether the player
 glances over or not.
 
-Deploy on Game-PC:
-  curl.exe -sk -o C:\\RC-Agent\\gamepc_hotkey_listener.py \\
-      https://192.168.8.230:8888/agent/gamepc_hotkey_listener.py
-  Start-Process -WindowStyle Hidden py -ArgumentList "C:\\RC-Agent\\gamepc_hotkey_listener.py"
+Deploy:
+  curl.exe -sk -o C:\\RC-Agent\\hotkey_listener.py \\
+      https://192.168.8.230:8888/agent/hotkey_listener.py
+  Start-Process -WindowStyle Hidden py -ArgumentList "C:\\RC-Agent\\hotkey_listener.py"
 
-Or - preferred - let `gamepc_boot.ps1` start it at logon (it's now in
-the canonical agent list).
+Or - preferred - let the logon boot script start it at logon (it's now
+in the canonical agent list).
 
 Stops on Ctrl+C (when run interactively) or when the process is killed
 via taskkill /F. No state to flush - pending decisions live on Legion.
@@ -181,7 +181,7 @@ def message_loop(cache: DecisionCache) -> None:
 
 
 def main() -> int:
-    log.info("gamepc_hotkey_listener starting (Ctrl+Shift+1 / Ctrl+Shift+2)")
+    log.info("hotkey_listener starting (Ctrl+Shift+1 / Ctrl+Shift+2)")
     cache = DecisionCache()
     stop = threading.Event()
     worker = threading.Thread(
@@ -206,7 +206,7 @@ def main() -> int:
         _unregister(1)
         _unregister(2)
         stop.set()
-        log.info("gamepc_hotkey_listener shutting down")
+        log.info("hotkey_listener shutting down")
     return 0
 
 

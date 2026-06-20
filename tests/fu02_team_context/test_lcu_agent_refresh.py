@@ -1,6 +1,6 @@
-"""FU02 last-mile - Game-PC LCU agent -> /api/team-context/refresh wiring.
+"""FU02 last-mile - Legion-local LCU agent -> /api/team-context/refresh wiring.
 
-Pins the contract for the new helpers added to `tools/gamepc_lcu_agent.py`:
+Pins the contract for the new helpers added to `tools/lcu_agent.py`:
   - bridge-secret resolver (env -> bridge_secret.txt -> local_paths.json -> "")
   - _picks_signature edge-detection
   - _build_team_context_body wire-shape translation
@@ -8,7 +8,7 @@ Pins the contract for the new helpers added to `tools/gamepc_lcu_agent.py`:
   - _maybe_refresh_team_context edge-trigger + rate-limit + leave-CS reset
   - post_team_context_refresh bearer-auth header + skip-when-no-secret
 
-The agent runs on Game-PC and is stdlib-only; tests import via
+The agent runs standalone (Legion-local) and is stdlib-only; tests import via
 `sys.path.insert("tools")` since tools/ has no __init__.py.
 """
 from __future__ import annotations
@@ -23,7 +23,7 @@ from unittest import mock
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT / "tools"))
 
-import gamepc_lcu_agent as agent  # noqa: E402
+import lcu_agent as agent  # noqa: E402
 
 
 def _reset_module_state():

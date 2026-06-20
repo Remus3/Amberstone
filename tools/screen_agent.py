@@ -1,13 +1,14 @@
 """
-gamepc_screen_agent.py - Captures Game-PC screen and pushes to Legion's vision server.
+screen_agent.py - Legion-local screen agent (self-grab source, relocated
+2026-05-29). Captures the Legion screen and pushes to the vision server.
 
-Run on Game-PC (192.168.8.237). Legion (192.168.8.230:8889) caches the latest
-frame; coaches read it via /latest-frame and pass to /vision, /ocr, /coach.
+Post 1-PC consolidation (ADR-011) League runs on Legion; the in-process
+vision server (127.0.0.1:8889) caches the latest frame and coaches read it
+via /latest-frame, passing to /vision, /ocr, /coach.
 
-Deploy on Game-PC (one time):
-    1. Copy this file to C:\\RC-Agent\\gamepc_screen_agent.py
-    2. Install deps:    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install Pillow bettercam numpy comtypes
-    3. Run:             C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_screen_agent.py --monitor 0
+Run (one time):
+    1. Install deps:    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install Pillow bettercam numpy comtypes
+    2. Run:             C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0
 
 Capture backend: DXGI Desktop Duplication via `bettercam`, bound to the
 single real GPU adapter. The legacy PIL ImageGrab(all_screens=True)
@@ -32,16 +33,16 @@ monitor (e.g. the RC dashboard on monitor 1) without clobbering the game
 frame. Fetch the secondary stream via `/latest-frame?source=<channel>`.
 
     # League (primary): monitor 0, primary slot (coaches read this)
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe gamepc_screen_agent.py --monitor 0 --channel game-pc-league
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe screen_agent.py --monitor 0 --channel legion-league
 
     # UI debug (secondary): monitor 1, NOT primary, addressable by channel
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe gamepc_screen_agent.py --monitor 1 --channel game-pc-ui --no-primary
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe screen_agent.py --monitor 1 --channel legion-ui --no-primary
 
 Scheduled tasks (run as user, ONLOGON):
     schtasks /Create /TN "RC-ScreenAgent-League" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_screen_agent.py --monitor 0 --channel game-pc-league"
+        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 0 --channel legion-league"
     schtasks /Create /TN "RC-ScreenAgent-UI" /SC ONLOGON /RL HIGHEST /F ^
-        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_screen_agent.py --monitor 1 --channel game-pc-ui --no-primary"
+        /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\screen_agent.py --monitor 1 --channel legion-ui --no-primary"
 """
 import argparse
 import base64
@@ -58,8 +59,8 @@ from ctypes import wintypes
 LEGION_URL = "http://192.168.8.230:8889/upload-frame"
 
 # AUDIT (2026-04-22): self-contained token resolver - env var ->
-# local config file -> hardcoded fallback. The Game-PC has no access to
-# core.vision_token, so we re-implement the same order in 6 lines.
+# local config file -> hardcoded fallback. This standalone agent does not
+# import core.vision_token, so we re-implement the same order in 6 lines.
 import os as _os_tok
 from pathlib import Path as _Path_tok
 def _resolve_auth_token() -> str:
@@ -91,7 +92,7 @@ MAX_WIDTH      = None         # set e.g. 1280 to downscale; None = native
 # to override (or `-1` / pass --all-monitors via env to opt back into
 # the old virtual-desktop behaviour).
 MONITOR_INDEX  = 0            # was None; primary monitor only by default
-CHANNEL        = "game-pc"    # upload `source` field; distinguishes concurrent streams
+CHANNEL        = "legion"     # upload `source` field; distinguishes concurrent streams
 PRIMARY        = True         # False = don't update the global /latest-frame slot
 
 # Stall-warn threshold (seconds). A single cycle slower than this gets
@@ -128,8 +129,9 @@ def _enum_monitor_rects() -> list[tuple[int, int, int, int]]:
 # --- Capture backend: DXGI Desktop Duplication via bettercam ----------------
 # AUDIT 2026-05-16 (capture-stability fix). The previous backend was
 # PIL ImageGrab.grab(all_screens=True): a GDI BitBlt across the entire
-# VIRTUAL DESKTOP, which on Game-PC spans the real Intel Xe GPU PLUS the
-# Parsec + secondary VIRTUAL display adapters. A BitBlt landing during the
+# VIRTUAL DESKTOP, which in the retired 2-PC topology spanned the real
+# Intel Xe GPU PLUS the Parsec + secondary VIRTUAL display adapters. A
+# BitBlt landing during the
 # fullscreen-game -> desktop mode switch at match-end was unreliable
 # against those virtual adapters. bettercam uses DXGI Desktop Duplication
 # bound to the single real adapter (device 0): it never touches the
@@ -213,7 +215,7 @@ def capture(monitor_index: int | None = MONITOR_INDEX,
     monitor, 1 = secondary). None maps to the primary output.
 
     crop: optional (left, top, right, bottom) bbox in output-local coords
-    applied AFTER the grab. Used by the fast minimap stream so Game-PC
+    applied AFTER the grab. Used by the fast minimap stream so the agent
     sends a ~30KB region instead of a full frame.
     """
     global _BETTERCAM_DISABLED

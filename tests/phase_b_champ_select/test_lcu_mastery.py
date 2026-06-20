@@ -1,6 +1,6 @@
 """Priority 8 (2026-05-10) - LCU mastery cache + capture_state plumbing.
 
-Validates the new gamepc_lcu_agent path:
+Validates the new lcu_agent path:
   /lol-summoner/v1/current-summoner -> summonerId (cached once, surfaced for downstream)
   /lol-champion-mastery/v1/local-player/champion-mastery -> mastery map
 
@@ -20,7 +20,7 @@ from unittest import mock
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT / "tools"))
 
-import gamepc_lcu_agent as agent  # noqa: E402
+import lcu_agent as agent  # noqa: E402
 
 
 def _patch_lcu(responses: dict[tuple[str, str], object]):

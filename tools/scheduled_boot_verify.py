@@ -1,8 +1,9 @@
 """scheduled_boot_verify.py - runs from Windows Task Scheduler on Legion.
 
-Fires once at the scheduled time, dispatches a no-op bridge task to
-Game-PC, and watches /api/bridge for an in_reply_to kind:result for up
-to 120 s. Exits 0 on success, 1 on no-result, 2 on dispatch failure.
+Fires once at the scheduled time, dispatches a no-op bridge task targeted
+at Legion's own /process-bridge-tasks consumer, and watches /api/bridge
+for an in_reply_to kind:result for up to 120 s. Exits 0 on success, 1 on
+no-result, 2 on dispatch failure.
 
 Outputs a single JSON line to %LOCALAPPDATA%\\rc-boot-verify\\<ts>.jsonl
 so the result is durable even though the task itself is fire-and-forget.
@@ -57,12 +58,12 @@ def main() -> int:
         "kind":   "task",
         "id":     task_id,
         "source": "legion-scheduled",
-        "target": "gamepc",
+        "target": "legion",
         "summary": "post-boot auto-flow check (Task Scheduler)",
         "body": {
             "issued": started,
             "prompt": (
-                "Reply via C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:/RC-Agent/bridge_post_result.py with hostname + "
+                "Reply via C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:/Riot Commander/tools/bridge_post_result.py with hostname + "
                 "(Get-CimInstance Win32_OperatingSystem).LastBootUpTime as ISO. "
                 "JSON body must be valid (ConvertTo-Json -Compress). No chat output."
             ),

@@ -57,7 +57,7 @@ _ALLOWLIST = (
     "*.jsonl",                   # immutable ledgers
     # --- P2b: deferred tail SWEPT (cycle 6, item 400); residue below is
     # gamepc-foreign or quotes the banned pattern by design ---
-    "tools/gamepc_phase_watcher_install.ps1",  # retired gamepc surface - P3 prunes
+    "tools/phase_watcher_install.ps1",  # Legion-local installer surface (carries bare py)
     "ROADMAP.md",                # gamepc-machine historical recipes - P3 gamepc prune removes them
     "ops/audit/P0_WORKMAP.md",   # P0 audit workmap - quotes the banned pattern by design
     "ops/tls/_bridge_msg.txt",   # gamepc-era bridge message artifact (foreign C:/RC-Agent path)

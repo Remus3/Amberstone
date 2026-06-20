@@ -1,11 +1,11 @@
 # install_RC_LegionBridgeDaemon.ps1 - register RC-BridgeDaemon on Legion.
 #
-# Mirrors the gamepc_boot.ps1 section-5 RC-BridgeDaemon installer (Game-PC
-# side) but for Legion. Idempotent: safe to re-run; the registration is
-# -Force so a stale def gets replaced.
+# Registers the autonomous /process-bridge-tasks consumer for Legion.
+# Idempotent: safe to re-run; the registration is -Force so a stale def
+# gets replaced.
 #
 # Operator decision 2026-05-20: Legion needed an autonomous /process-bridge-
-# tasks consumer to match gamepc/peer; without it, kind=task envelopes
+# tasks consumer to match the Peer peer; without it, kind=task envelopes
 # escalated by the watcher classifier but never auto-actioned (the
 # push-notif spawn in the frozen bridge_watcher.py uses bare argv[0]='claude'
 # which subprocess.run cannot resolve to claude.cmd on Windows -> tasks sat
@@ -35,7 +35,7 @@ Register-ScheduledTask `
     -Trigger $trigger `
     -Settings $settings `
     -Principal $prin `
-    -Description 'Zero-cost bridge sentinel - polls /api/bridge for tasks targeted at legion + invokes claude --print /process-bridge-tasks (mirrors gamepc/peer daemons, added 2026-05-20 to close fleet symmetry gap).' `
+    -Description 'Zero-cost bridge sentinel - polls /api/bridge for tasks targeted at legion + invokes claude --print /process-bridge-tasks (mirrors the Peer daemon, added 2026-05-20 to close fleet symmetry gap).' `
     -Force | Out-Null
 
 Write-Host 'RC-BridgeDaemon registered' -ForegroundColor Green
