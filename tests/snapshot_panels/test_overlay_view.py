@@ -250,6 +250,44 @@ def test_overlay_panelset_selector_reflects_active_set(mock_server, pw_browser):
     assert not errors, f"JS errors [4.4 reflect]: {errors[:3]}"
 
 
+def test_overlay_settings_strip_has_coexistence_actions(mock_server, pw_browser):
+    """RC2 4.5: the #ovset strip exposes the two overlay+dashboard coexistence
+    actions as on-screen buttons - Re-arrange (re-separate the windows now) and
+    Show dashboard (raise the kept dashboard beside the HUD). ASCII labels; both
+    clear the >=42px hit floor and sit side-by-side on the dock."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.wait_for_selector("#ovset #ovset-rearrange", timeout=10_000)
+        assert page.locator("#ovset-rearrange").count() == 1, "#ovset-rearrange missing"
+        assert page.locator("#ovset-raise").count() == 1, "#ovset-raise missing"
+
+        # ASCII labels.
+        for sel, want in (
+            ("#ovset-rearrange", "Re-arrange"),
+            ("#ovset-raise", "Show dashboard"),
+        ):
+            txt = page.eval_on_selector(sel, "el => el.textContent")
+            assert txt == want, f"unexpected label {txt!r} for {sel}"
+            assert txt.isascii(), f"non-ASCII label {txt!r}"
+
+        # HIT-TARGETS: both coexistence buttons clear the 42px floor.
+        for sel in ("#ovset-rearrange", "#ovset-raise"):
+            h = page.eval_on_selector(sel, "el => el.getBoundingClientRect().height")
+            assert h >= 42, f"{sel} height {h} below 42px floor"
+
+        # STRUCTURE: the two buttons share one row (side-by-side, no reflow).
+        same_row = page.evaluate(
+            "() => document.querySelector('#ovset-rearrange').closest('.ovset-actpair')"
+            " === document.querySelector('#ovset-raise').closest('.ovset-actpair')"
+            " && document.querySelector('#ovset-rearrange').closest('.ovset-actpair') !== null"
+        )
+        assert same_row, "coexistence buttons must share one .ovset-actpair row"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [4.5 coexistence]: {errors[:3]}"
+
+
 def test_overlay_right_dock_geometry(mock_server, pw_browser):
     """The visible column is ~460px wide and docked to the right edge of
     the 1920 viewport (the rest of the window stays transparent for the

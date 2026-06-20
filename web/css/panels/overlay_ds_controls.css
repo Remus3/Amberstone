@@ -267,3 +267,15 @@
   outline: none;
   border-color: var(--signal-info, #8a8cf0);
 }
+
+/* RC2 4.5: overlay + dashboard coexistence actions. Two .ovset-act buttons
+ * (Re-arrange + Show dashboard) share one row side-by-side on the 460px dock;
+ * each keeps the --hit-min game-distance floor inherited from .ovset-act. */
+.ovset-actpair {
+  gap: 6px;
+}
+
+.ovset-actpair > .ovset-act {
+  flex: 1 1 0;
+  min-width: 0;
+}
