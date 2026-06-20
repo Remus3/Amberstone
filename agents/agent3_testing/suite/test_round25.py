@@ -231,7 +231,7 @@ def test_insight_card_shows_recent_arrow(tmp_path: Path, monkeypatch) -> None:
         conn.commit()
     card = adaptation_hint.insight_card("Kaisa", "aram")
     assert "KDA 7.4" in card
-    assert "↓1.4" in card
+    assert "v1.4" in card
 
 
 def test_insight_card_suppresses_small_kda_drift(tmp_path: Path, monkeypatch) -> None:
@@ -254,5 +254,5 @@ def test_insight_card_suppresses_small_kda_drift(tmp_path: Path, monkeypatch) ->
         conn.commit()
     card = adaptation_hint.insight_card("Ahri", "aram")
     assert "KDA 5.0" in card
-    # No recent-arrow annotation, since |delta| < 0.3
-    assert "↑" not in card and "↓" not in card
+    # No recent-arrow annotation, since |delta| < 0.3 (ASCII arrows ^ / v)
+    assert "^" not in card and " v" not in card

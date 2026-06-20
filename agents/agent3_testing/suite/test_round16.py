@@ -168,4 +168,4 @@ def test_hint_line_mentions_30d_when_present(seeded_recency: Path, monkeypatch) 
     line = ah.format_hint_line("Ahri", "aram")
     assert "30d" in line
     # Directional arrow: 83% > 56% baseline -> ^
-    assert "↑" in line
+    assert "^" in line
