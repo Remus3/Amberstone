@@ -1484,6 +1484,18 @@
           </label>
         </div>
         <div class="settings-card">
+          <div class="settings-card-head">COACHING ACTIONS</div>
+          <div class="settings-row settings-row-static set-action-row">
+            <button type="button" id="set-force-scan-btn" class="set-action-btn"
+                    aria-describedby="set-force-scan-status"
+                    data-tt="Run an immediate coach vision scan now. This is the no-hotkey equivalent of the Ctrl+Tab hotkey - it pokes every active non-TFT coach to re-read the screen on its next loop. Use it from the dashboard (or your phone) when you want a fresh read without touching the keyboard.">Force vision scan</button>
+            <span id="set-force-scan-status" class="dim" aria-live="polite"></span>
+          </div>
+          <div class="settings-row settings-row-static set-action-note">
+            <span class="dim">No-hotkey equivalent of the Ctrl+Tab force-scan hotkey - triggers an immediate coach vision pass without the keyboard.</span>
+          </div>
+        </div>
+        <div class="settings-card">
           <div class="settings-card-head">API SPEND GATES</div>
           <label class="settings-row"
                  data-tt="Reveal the per-gate Anthropic spend kill-switches. Each gate turns its credit-spending calls on or off independently; the choice persists server-side and applies live (no restart). A checked gate is ENABLED (spends credits); unchecking blocks it. The cost beside each gate is USD + tokens averaged over the last 2 full matches.">

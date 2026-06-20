@@ -2290,6 +2290,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   cursor: pointer;
 }
 .settings-row-static { cursor: default; }
+/* RC2 P3.5: COACHING ACTIONS - the no-hotkey Force vision scan button
+   (the Ctrl+Tab equivalent surfaced in Settings). Mirrors .loop-btn
+   chrome + carries the --hit-min fingertip floor. */
+.set-action-btn {
+  min-height: var(--hit-min); padding: 0 var(--space-4);
+  font-size: var(--fs-sm); font-weight: 700;
+  color: var(--text); background: var(--surface-alt);
+  border: 1px solid var(--text-faint); border-radius: 4px;
+  cursor: pointer;
+}
+.set-action-btn:hover { border-color: var(--text-dim); }
+.set-action-btn:disabled { opacity: 0.5; cursor: default; }
+.set-action-row { gap: var(--space-3); }
+.set-action-note { min-height: 0; padding-top: 0; }
 /* API spend gates (dev): per-gate kill-switch row - label/explain left,
    per-match cost right. align-items:flex-start so the 2-line text + cost
    top-align with the checkbox. */

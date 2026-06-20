@@ -94,6 +94,34 @@ function _settingsRefresh() {
     });
     if (devCb.checked) renderSpendGates();
   }
+
+  // COACHING ACTIONS (RC2 P3.5): the no-hotkey Force vision scan button.
+  // POSTs the SAME force_vision command the legacy dashboard's btn-scan
+  // used (-> dashboard/_writers.py force_vision_scan -> data/force_scan.json),
+  // which is the keyboard-free equivalent of the Ctrl+Tab hotkey
+  // (core/hotkeys.py). Token-header aware (mirrors screen_read /
+  // loop-control). A client-side 3s cooldown matches CTRL_TAB_COOLDOWN so a
+  // double-tap can't spam the marker; the button disables for the window.
+  const fsBtn = document.getElementById("set-force-scan-btn");
+  const fsStatus = document.getElementById("set-force-scan-status");
+  if (fsBtn) {
+    let fsLast = 0;
+    fsBtn.addEventListener("click", () => {
+      const now = Date.now();
+      if (fsBtn.disabled || now - fsLast < 3000) return;   // CTRL_TAB_COOLDOWN
+      fsLast = now;
+      fsBtn.disabled = true;
+      if (fsStatus) fsStatus.textContent = "scan requested...";
+      fetch("/api/command", {
+        method: "POST", cache: "no-store",
+        headers: { "Content-Type": "application/json", ...(localStorage.getItem("rc_dash_token") ? {"X-RC-Token": localStorage.getItem("rc_dash_token")} : {}) },
+        body: JSON.stringify({ command: "force_vision" }),
+      })
+        .then((r) => { if (fsStatus) fsStatus.textContent = (r && r.ok) ? "scan requested" : "request failed"; })
+        .catch(() => { if (fsStatus) fsStatus.textContent = "request failed"; })
+        .finally(() => { setTimeout(() => { fsBtn.disabled = false; }, 3000); });
+    });
+  }
 }
 
 // Re-entrant: fetch the gate registry + per-match cost and (re)build the
