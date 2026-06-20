@@ -55,6 +55,7 @@ const store = require("./store");
 const ov = require("./overlay_state");
 const drag = require("./drag_region");
 const ind = require("./active_indicator");
+const ctz = require("./clickthrough_zones");
 const upd = require("./update_channel");
 const cg = require("./crash_guard");
 
@@ -80,6 +81,7 @@ let originHost = ""; // host:port we trust the self-signed cert for.
 let resolvedOrigin = ""; // the origin resolved at boot (companion + overlay + poll).
 let surfaceHidden = false; // hotkey-driven force-hide override.
 let overlayClickThrough = ov.OVERLAY_DEFAULTS.clickThrough;
+let overlayZoneHover = false; // RC2 4.2: cursor-over-an-interactive-zone (renderer-reported, transient).
 let pollTimer = null; // chained setTimeout handle (variable cadence, Phase 4b).
 let pollFailures = 0; // consecutive /api/state failures (drives the backoff).
 let lastSurface = null; // de-dupe redundant show/hide churn.
@@ -546,7 +548,13 @@ function createOverlayWindow() {
   });
   // screen-saver level keeps it above a Borderless game.
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
-  overlayWindow.setIgnoreMouseEvents(overlayClickThrough, { forward: true });
+  // RC2 4.2: passive click-through via the pure zones decision (zoneHover is
+  // false at create), and the operator opacity so the HUD recedes into the game.
+  overlayWindow.setIgnoreMouseEvents(
+    ov.effectiveIgnoreMouse(overlayClickThrough, overlayZoneHover, overlaySettings.clickThroughZones),
+    { forward: true }
+  );
+  overlayWindow.setOpacity(overlaySettings.overlayOpacity);
   overlayWindow.webContents.setWindowOpenHandler(({ url }) => {
     try {
       shell.openExternal(url);
@@ -561,6 +569,7 @@ function createOverlayWindow() {
   overlayWindow.webContents.on("did-finish-load", () => {
     injectDragRegion(overlayWindow);
     injectActiveIndicator(overlayWindow);
+    injectClickThroughZones(overlayWindow);
   });
   attachCrashGuard(overlayWindow, "overlay");
   overlayWindow.on("move", persistOverlayState);
@@ -570,11 +579,38 @@ function createOverlayWindow() {
   return overlayWindow;
 }
 
+// Inject the RC2 4.2 click-through-zones hover detector (overlay-only). The
+// page reports cursor-over-a-zone over the preload bridge so a PASSIVE HUD
+// becomes interactive on hover without the global ACTIVE hotkey. Idempotent
+// (window flag), self-heals on reload, no-ops with no bridge.
+function injectClickThroughZones(win) {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+  win.webContents.executeJavaScript(ctz.clickThroughZonesMountJS(), true).catch(() => {});
+}
+
+// RC2 4.2: apply the persisted operator overlay opacity (the HUD recedes into
+// the game without disappearing). setOpacity is a no-op-safe live call.
+function applyOverlayOpacity() {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.setOpacity(overlaySettings.overlayOpacity);
+  }
+}
+
 function applyClickThrough() {
   if (overlayWindow && !overlayWindow.isDestroyed()) {
-    overlayWindow.setIgnoreMouseEvents(overlayClickThrough, { forward: true });
-    overlayWindow.setFocusable(!overlayClickThrough);
-    // The glow tracks ACTIVE/PASSIVE flips live, not just at load time.
+    // RC2 4.2: the EFFECTIVE ignore layers the transient zone-hover + the
+    // zones-enabled setting over the operator/hotkey clickThrough intent.
+    const ignore = ov.effectiveIgnoreMouse(
+      overlayClickThrough,
+      overlayZoneHover,
+      overlaySettings.clickThroughZones
+    );
+    overlayWindow.setIgnoreMouseEvents(ignore, { forward: true });
+    overlayWindow.setFocusable(!ignore);
+    // The ACTIVE glow tracks the operator intent (clickThrough), NOT the
+    // transient zone hover - a micro-hover should not light the full frame.
     overlayWindow.webContents
       .executeJavaScript(ind.activeIndicatorSetJS(!overlayClickThrough), true)
       .catch(() => {});
@@ -634,6 +670,10 @@ function applyOverlaySettings() {
     scheduleActiveRevert();
   }
   applyCompanionAlwaysOnTop();
+  // RC2 4.2: apply opacity + re-resolve click-through live (a just-flipped
+  // clickThroughZones or opacity slider takes effect without a relaunch).
+  applyOverlayOpacity();
+  applyClickThrough();
   lastSurface = null;
   refreshSurface(lastMode);
 }
@@ -653,6 +693,13 @@ function registerIpc() {
     overlaySettings = ov.overlaySettingsFrom(merged);
     applyOverlaySettings();
     return overlaySettings;
+  });
+  // RC2 4.2: a one-way hover ping from the overlay page (no reply needed). The
+  // renderer's zone detector reports cursor-over-a-zone; we re-resolve the
+  // effective click-through so the HUD captures clicks only over a control.
+  ipcMain.on("rc-shell:overlay-zone-hover", (_event, on) => {
+    overlayZoneHover = on === true;
+    applyClickThrough();
   });
 }
 

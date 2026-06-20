@@ -187,3 +187,22 @@
   outline: none;
   border-color: var(--signal-info, #8a8cf0);
 }
+
+/* RC2 4.2: opacity slider row. Label left, range right; the row carries the
+ * --hit-min floor so the whole strip stays game-distance tappable. */
+.ovset-range {
+  justify-content: space-between;
+}
+
+.ovset-range > input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 140px;
+  height: var(--hit-min, 42px);
+  accent-color: var(--signal-info, #8a8cf0);
+  cursor: pointer;
+}
+
+.ovset-range > input[type="range"]:focus {
+  outline: none;
+}
