@@ -497,3 +497,13 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   `rank_items(exempt_offclass_by_win=True)` at the carry/dps scorer call site (the caster-marksman
   re-include; section B above). Validate the re-rank vs a real Ezreal/Corki game before flipping.
 - 2026-06-17 seeded from ROADMAP open-tail consolidation. DSP* seam flips append here as they ship.
+- 2026-06-20 RC2 P3.3 overlay pulse-rationing flip (UI behavior, NOT a DS seam; `87f41baf` shipped
+  the SHADOW). Shadow: `right_now.js` stamps `data-s0-cue` / `data-s0-tier` / `data-s0-pulse` on
+  `#right-now` each render via `overlay_priority.signalFromState` -> `selectPrimary` -> `shouldPulse`,
+  with ZERO live pulse change. LIVE FLIP (operator-gated, eyeball-owed): re-point the `.action`
+  per-band pulse (`right_now.js:490-500`, currently fires on every headline text change across BOTH
+  dashboard + overlay) AND `overlay_pulse.js` (MutationObserver, currently fires on any mount content
+  change) to CONSUME the stamped `data-s0-pulse` instead - so motion fires ONLY for the Emergency tier
+  + a one-shot Urgent cross (spec section 5 / acceptance A5). It is a SHARED dashboard+overlay change,
+  so eyeball the live headline on a real game (confirm the suppressed pulses were all benign re-emits)
+  before flipping. The arbitration single-winner (A2) + 44px choice hit-target already ship live.
