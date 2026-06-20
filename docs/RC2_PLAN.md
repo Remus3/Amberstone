@@ -10,7 +10,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Phase 2 GATE (design, awaiting greenlight); backend P5/P6/P8 in flight - Stage 17 of 50 - approx 34% complete**
+> **Phase 2 GATE (design, awaiting greenlight); backend P5/P6/P7/P8 in flight - Stage 18 of 50 - approx 36% complete**
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -148,7 +148,7 @@ so the operator sees gray/blue progress live.
 ### Phase 8 - TODO/FUTURE + DS-COMPLETENESS
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 8.1 | Massive operator-Q/A TODO + future list -> docs/RC2_TODO_QA.md | OPEN | |
+| 8.1 | Massive operator-Q/A TODO + future list -> docs/RC2_TODO_QA.md | DONE | docs/RC2_TODO_QA.md (97 items, 9 sections, TOP-10 decisions) |
 | 8.2 | DS true-completeness gap analysis -> docs/DS_COMPLETENESS_GAP.md | DONE | docs/DS_COMPLETENESS_GAP.md |
 | 8.3 | Operator Q/A consolidation | OPEN | |
 
@@ -179,3 +179,9 @@ TOTAL_stages = 50.
 - Operator Q/A TODO: `docs/RC2_TODO_QA.md`
 - DS completeness gap: `docs/DS_COMPLETENESS_GAP.md`
 - Per-item ledger: `docs/LEDGER.md` (RC2-* entries)
+
+## FINDINGS LOG (RC2)
+
+- **P6.2 SHIPPED** (1011f47d): RuneWriter.POLL_INTERVAL 2.0s -> 1.0s (env RC_RUNEWRITER_POLL_SEC), port-safe. Applies on next RC restart. Remaining P6 levers (from io_timing_map): halve SSE+build TTL 1.0->0.5s together (S/LOW, touches state pipeline); pool one keep-alive LCU socket (M/MED, frozen grant). The dashboard champ-select render envelope (champ_select.js ~2s) is the UI-responsiveness lever for 6.3.
+- **P7.1 ASCII warning** = `tools/edit_lint_check.py` (PostToolUse) + `tools/precommit_gate.py` scan 6 banned glyphs only: em-dash U+2014, en-dash U+2013, smart quotes U+2018/2019/201C/201D. Box-drawing / arrows / math are NOT banned (functional, leave them). Census: 53 em-dashes total, ALL in `_archive/2026-05-01-audit/**` (dead pre-1PC tkinter code) + `agents/agent6_auditor/reports/*.md` (generated weekly reports); ZERO smart quotes; the live authored tree is CLEAN. These dirs are normally sweep-excluded (immutable). FIX: strip em-dashes in those files (tools/strip_em_dashes.py) AND extend the hook `_FROZEN_SKIP` to root `_archive/` + agent6 reports so it never re-warns; OR delete the dead `_archive/2026-05-01-audit` in P7.2/7.3 (it is the "unused >1wk" target).
+- **P5 coaching** spec = `docs/research/RC2_COACHING_SPEC.md`. The laning Haiku-flip is blocked at 39% det-vs-Haiku agreement by CALIBRATION (precompute verdict vocabulary has no hold/farm band, back_off-biased), NOT games-played (`ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108`). Top lever: hold-band + `even` relabel in `core/precomputed_laning_coach.py` `_VERDICT_LABELS` (Tier-1, shadow-logged, 39% -> ~53%+). Then CV overrides (new core/laning_cv_overrides.py reading data/vision_state.json) + objective playbook row.
