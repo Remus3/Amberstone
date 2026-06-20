@@ -2,6 +2,7 @@
 import { el, safe, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { formatDsDelta } from '../lib/scorer_units.js';
+import { condenseKvRows } from '../lib/condense.js';
 
 const NX = {
   root: el("next"),
@@ -205,6 +206,11 @@ function renderNext(p) {
     if (rows[1]) rows[1].textContent = "Position";
     if (rows[2]) rows[2].textContent = "Waves";
   }
+  // RC2 P3.6 dashboard condensation: collapse any supporting KV row left at
+  // the "-" no-data sentinel (mode-dependent: SR aftergame Key Points/Clips,
+  // arena pre-game partner, etc.) so the NEXT glance carries only live rows.
+  // Idempotent; overlay-inert (the overlay does not mount the NEXT panel).
+  condenseKvRows(NX.root);
   state.lastTouch.next = Date.now() / 1000;
 }
 
