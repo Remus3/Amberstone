@@ -169,6 +169,39 @@ def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
     assert not errors, f"JS errors [callouts whitelist]: {errors[:3]}"
 
 
+def test_overlay_callouts_clamp_to_two_rows(mock_server, pw_browser):
+    """RC2 P3.2 density clamp: the overlay S1 slot shows only the 2
+    nearest-ETA callout rows; a third row is display:none on the HUD (the
+    dashboard keeps all 3). Spec RC2_OVERLAY_CONDENSATION_SPEC section 2."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.evaluate(
+            "() => {"
+            "  const co = document.getElementById('rn-callouts');"
+            "  co.hidden = false;"
+            "  co.innerHTML ="
+            " '<div class=\"rc-co-row\"><span class=\"rc-co-line\">Drake 0:30</span></div>'"
+            "+'<div class=\"rc-co-row\"><span class=\"rc-co-line\">Herald 1:10</span></div>'"
+            "+'<div class=\"rc-co-row\"><span class=\"rc-co-line\">Baron 9:50</span></div>';"
+            "}"
+        )
+        assert page.locator("#rn-callouts .rc-co-row").count() == 3, (
+            "fixture should mount 3 callout rows"
+        )
+        # First two render; the third is clamped off on the HUD.
+        for n in (1, 2):
+            assert _display(page, f"#rn-callouts .rc-co-row:nth-child({n})") != "none", (
+                f"callout row {n} must render in overlay"
+            )
+        assert _display(page, "#rn-callouts .rc-co-row:nth-child(3)") == "none", (
+            "3rd callout row must be clamped (display:none) in overlay"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [callouts clamp]: {errors[:3]}"
+
+
 def test_overlay_change_pulse_hook(mock_server, pw_browser):
     """overlay_pulse.js: a content change inside an overlay panel adds the
     .ov-pulse edge-glow class to its container for ~1.2s, then drops it."""

@@ -164,6 +164,14 @@ body[data-shell="overlay"] #right-now .panel-body > #rn-callouts:not([hidden]) {
   border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);
 }
+/* Density clamp (RC2 P3.2, RC2_OVERLAY_CONDENSATION_SPEC section 2): the
+ * overlay S1 slot shows the 2 nearest-ETA callout rows only. callouts.js
+ * emits up to 3 (slice(0,3)); the dashboard keeps all 3, but a third
+ * competing ETA chip breaks the 1.5s glance budget on the HUD. Pure
+ * presentation - the row data + dashboard render are unchanged. */
+body[data-shell="overlay"] #rn-callouts .rc-co-row:nth-child(n+3) {
+  display: none !important;
+}
 /* Lead pill state accents survive the overlay chrome override
  * (audit MUST-FIX 3). */
 body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-ahead:not([hidden]) {
