@@ -10,7 +10,7 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Phase 2 GATE (design, awaiting greenlight); backend P5/P6/P7/P8 in flight - Stage 18 of 50 - approx 36% complete**
+> **Design GREENLIT (Hextech) - P3/P4 unblocked; P3/P5/P6/P7 in flight - Stage 19 of 50 - approx 38% complete**
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -61,6 +61,25 @@ iteration (Gemini-gated to make headless). This becomes RC 2.0.
 - **League window:** 1920 fullscreen OR borderless default-res both acceptable; the overlay may assume this.
 - **Greenlight = HARD PAUSE on redesign code (Phase 3 + Phase 4) after the Phase 2 HTML.** The non-redesign phases CONTINUE meanwhile: P5 coaching, P6 responsiveness, P7 hygiene, P8 TODO/DS-gap (none are "redesign code"). Resume P3/P4 only on operator greenlight of `RC2_DESIGN.html`.
 
+## GREENLIGHT + OPERATOR DECISIONS (2026-06-20)
+
+Design GREENLIT: theme = **Hextech Tactical**. P3/P4 redesign code is UNBLOCKED
+(reskin to Hextech). League now runs **borderless @ 2560x1440** (overlay sizing
+target). New global ask: **per-panel visibility toggles, separate for in-game vs
+out-of-game** (Settings).
+
+TOP-10 answers (from docs/RC2_TODO_QA.md):
+1. **Dashboard persists in background while overlay active** + add a **pinned-on-top** setting. [P3.4]
+2. **DS 3-game live-flip eyeball pass - APPROVED ("ready to start").** 11 default-OFF seams; needs live games. Prep the flip checklist/harness; flips are operator-played. [P2-DS / docs/LIVE_GAME_GATED_SYNC.md]
+3. **End-of-game win capture - APPROVED.** Keystone (tracked_win on disk, not loaded). Operator note: after a match + honor page, re-entering lobby auto-flipped to PGR - verify the win was captured + that PGR auto-show does not clobber a wanted lobby view. [#3 win-capture]
+4. **Counter-picks vs live enemy comp - APPROVED** + banned champions display COLLAPSES when the ban phase ends. [champ-select]
+5. **Laning off Haiku + hold-band recalibration - APPROVED** (Tier-2 recalibration + regen, not blind). [P5.1]
+6. **Responsiveness levers L1/L2/L4 - APPROVED** + FIX the summoner-spell flip-back: stop the poll loop re-pushing the default over a manual change; **% under spells = champion regional WR% for the mode**; on first lock pick the **highest-role-centric-WR spells**; **remember the operator's last-used spells per champion per mode**. [P6 + spell feature]
+7. **LCU connection pooling - APPROVED now** (frozen lcu_client.py edit OK) + **ARAM bench-swap must be EXTREMELY responsive** (bench_swap_fast already bypasses the 5s client delay; tighten detection/latency). [P6.4 + bench]
+8. **Accessibility/design HIGH-lifts - APPROVED** (reduced-motion-done-right + redundant status glyphs + threshold helper). [P3 design-system]
+9. **Rank header + player scouting - PROMOTE BOTH to NOW.** [home rank + Riot scouting]
+10. **ASCII retro-sweep - APPROVED: ALL files, frozen INCLUDED, git HISTORY INCLUDED** (history rewrite + force-push, pre-authorized). [P7.1 + history filter]
+
 ## EXECUTION MODEL
 
 Headless via the Gemini-directed loop (`.claude/commands/gemini-headless-upgrade.md`
@@ -93,7 +112,7 @@ so the operator sees gray/blue progress live.
 | 2.2 | Color-theme + design-language options (>=3 themes) | DONE | docs/design/RC2_DESIGN.html |
 | 2.3 | Overlay layout mockups (in-game, non-intrusive, glanceable) | DONE | docs/design/RC2_DESIGN.html |
 | 2.4 | Dashboard layout mockups (single-monitor, settings-without-hotkeys) | DONE | docs/design/RC2_DESIGN.html |
-| 2.5 | DELIVERABLE: docs/design/RC2_DESIGN.html (visual+text, multiple options) | GATE | docs/design/RC2_DESIGN.html (awaiting operator greenlight) |
+| 2.5 | DELIVERABLE: docs/design/RC2_DESIGN.html (visual+text, multiple options) | DONE | GREENLIT 2026-06-20: theme=Hextech; replaces current design on P3/P4 |
 
 ### Phase 3 - OVERLAY + DASHBOARD QUICK-GLANCE (multi UI-agent)
 | # | Stage | Status | Out |
