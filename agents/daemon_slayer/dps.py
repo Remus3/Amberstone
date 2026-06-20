@@ -105,6 +105,18 @@ _ASSUMED_TAKEDOWN_STACKS = 1
 # ``burst.compute_burst_damage`` via ``effects.total_ability_damage_amp``.
 _ASSUMED_ABILITY_AMP_STACKS = 4
 
+# R7 (1.147.0): per-stack champion self-Attack-Speed passive seam. When
+# ``compute_dps(assume_passive_as_stacks=True)`` the wielder is assumed to hold
+# this fraction of the champion's max passive stacks (1.0 = full stacks, a
+# developed fight at steady state). Operator-tunable like
+# ``_ASSUMED_TAKEDOWN_STACKS`` / ``_ASSUMED_ABILITY_AMP_STACKS``; the seam is
+# inert at the default flag (assume_passive_as_stacks=False) regardless of this
+# value. Consumed via ``_passive_as_overrides.passive_as_bonus`` - only the 4
+# registered innate per-stack self-AS passives (Irelia Ionian Fervor / Jax
+# Relentless Assault / Ezreal Rising Spell Force / Volibear The Relentless
+# Storm) contribute; every other champion is byte-identical even with the flag on.
+_ASSUMED_PASSIVE_AS_STACK_FRACTION = 1.0
+
 
 @dataclass(frozen=True)
 class DpsResult:
@@ -614,6 +626,7 @@ def compute_dps(
     apply_passive_damage: bool = False,
     assume_takedown: bool = False,
     apply_melee_aa_gate: bool = False,
+    assume_passive_as_stacks: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -654,6 +667,17 @@ def compute_dps(
     champion is no longer credited the two extra bolts. Ranged champions are
     unaffected even when the seam is on. The live rank.py flip stays
     validation-gated (do-not-flip-blind); see docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``assume_passive_as_stacks`` (R7, 1.147.0): the per-stack champion self-AS
+    passive seam. Default False -> byte-identical (no stats copy). When True, the
+    champion's registered innate per-stack bonus attack speed (Irelia Ionian
+    Fervor / Jax Relentless Assault / Ezreal Rising Spell Force / Volibear The
+    Relentless Storm) at ``_ASSUMED_PASSIVE_AS_STACK_FRACTION`` of max stacks is
+    folded into the rotation AS (same 2.5 hard-cap re-clamp as the Yun Tal
+    conditional-AS path). The AP-scaled passive (Volibear) reads the resolved
+    post-amp AP. A champion with no registered passive contributes 0 even with
+    the flag on. The live default-ON flip stays validation-gated (do-not-flip-
+    blind); see docs/LIVE_GAME_GATED_SYNC.md.
     """
     level = clamp_level(level)
     selected_phase = phase or _select_phase(level)
@@ -841,6 +865,28 @@ def compute_dps(
         stats_for_rotation["ad"] = (
             stats_for_rotation.get("ad", 0.0) + takedown_bonus_ad
         )
+    # R7 (1.147.0): per-stack champion self-Attack-Speed passive seam.
+    # assume_passive_as_stacks=False (the default) -> passive_as stays 0.0, no
+    # stats copy, no note - byte-identical. When True, the champion's registered
+    # innate per-stack bonus AS (Irelia/Jax/Ezreal/Volibear) at
+    # _ASSUMED_PASSIVE_AS_STACK_FRACTION of max stacks folds into the rotation AS
+    # with the same 2.5 League hard-cap re-clamp as the Yun Tal conditional-AS
+    # path above. The AP-scaled passive (Volibear) reads the resolved post-amp
+    # `ap`. A champion with no registered passive contributes 0.
+    passive_as = 0.0
+    if assume_passive_as_stacks:
+        from ._passive_as_overrides import passive_as_bonus
+
+        passive_as = passive_as_bonus(
+            resolved.champion_id, level, ap=ap,
+            stack_fraction=_ASSUMED_PASSIVE_AS_STACK_FRACTION,
+        )
+        if passive_as > 0:
+            if stats_for_rotation is stats:
+                stats_for_rotation = dict(stats)
+            stats_for_rotation["as"] = min(
+                2.5, stats_for_rotation.get("as", 0.0) + passive_as
+            )
     # Phase 4 batch 63 (2026-05-05): per-champion ult cast rate for
     # ability-triggered items (Malignance Hatefog). Looked up from
     # ult_cast_rates.json derived from rewind_history.db spell4_casts.
@@ -1066,6 +1112,12 @@ def compute_dps(
     if cond_as > 0:
         notes.append(
             f"conditional AS bonus: +{cond_as:.3f} (Yun Tal Flurry ~27% uptime)"
+        )
+    if passive_as > 0:
+        notes.append(
+            f"per-stack self-AS passive: +{passive_as:.3f} AS "
+            f"({resolved.champion_name} at {_ASSUMED_PASSIVE_AS_STACK_FRACTION:.0%} "
+            "of max stacks; assume_passive_as_stacks seam)"
         )
     if ap_amp != 1.0:
         notes.append(
