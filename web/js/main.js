@@ -48,6 +48,8 @@ import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRend
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
 import { initOverlayPulse } from './overlay_pulse.js';
+// RC2 E1: per-panel visibility gate (separate in-game / out-of-game toggles).
+import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibility.js';
 
   // Overlay shell flag (HZ-D1, docs/ELECTRON_OVERLAY.md sec 6+7).
   // Stamped FIRST - before the view router boots and before any state
@@ -520,6 +522,10 @@ import { initOverlayPulse } from './overlay_pulse.js';
     const rnT    = el("rn-panel-title");    if (rnT)    rnT.textContent    = titles.rn;
     const nxT    = el("nx-panel-title");    if (nxT)    nxT.textContent    = titles.nx;
     const adaptT = el("adapt-panel-title"); if (adaptT) adaptT.textContent = titles.adapt;
+    // RC2 E1: the in-game <-> out-game context just flipped (mode changed), so
+    // re-resolve the per-panel visibility for the new context. Self-guards on
+    // the overlay shell + fail-opens, so this is a cheap no-op there.
+    try { applyPanelVisibility(); } catch (_) {}
   }
 
   // ── View router (2026-04-26) ──────────────────────────────────────
@@ -6271,6 +6277,10 @@ import { initOverlayPulse } from './overlay_pulse.js';
   // shell flag stamped at module top is set (?overlay=1); the mounts
   // are static HTML so wiring once at boot is sufficient.
   if (document.body.dataset.shell === "overlay") initOverlayPulse();
+  // RC2 E1: build the Panel Visibility settings card + apply the persisted
+  // per-context (in-game / out-of-game) panel toggles. Self-guards on the
+  // overlay shell (overlay.css owns that surface). Wires its own re-apply.
+  initPanelVisibility();
   // Map underlay brightness override: ?map-br=0.55&map-sat=0.6
   (function mapFilterOverride() {
     const q = new URLSearchParams(location.search);

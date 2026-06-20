@@ -398,6 +398,8 @@ test("overlaySettingsFrom: defaults when nothing saved", () => {
   assert.deepStrictEqual(ov.overlaySettingsFrom({}), {
     pulseNotify: true,
     activeRevertSec: 20,
+    keepCompanion: true,
+    companionAlwaysOnTop: true,
   });
 });
 
@@ -405,7 +407,12 @@ test("overlaySettingsFrom: reads saved overlay.settings", () => {
   const s = ov.overlaySettingsFrom({
     overlay: { settings: { pulseNotify: false, activeRevertSec: 45 } },
   });
-  assert.deepStrictEqual(s, { pulseNotify: false, activeRevertSec: 45 });
+  assert.deepStrictEqual(s, {
+    pulseNotify: false,
+    activeRevertSec: 45,
+    keepCompanion: true,
+    companionAlwaysOnTop: true,
+  });
 });
 
 test("overlaySettingsFrom: activeRevertSec clamped to [3,120] and rounded", () => {
@@ -422,7 +429,12 @@ test("overlaySettingsFrom: non-boolean pulse / non-finite revert -> defaults", (
   const s = ov.overlaySettingsFrom({
     overlay: { settings: { pulseNotify: "yes", activeRevertSec: NaN } },
   });
-  assert.deepStrictEqual(s, { pulseNotify: true, activeRevertSec: 20 });
+  assert.deepStrictEqual(s, {
+    pulseNotify: true,
+    activeRevertSec: 20,
+    keepCompanion: true,
+    companionAlwaysOnTop: true,
+  });
 });
 
 test("overlaySettingsFrom: pulseNotify false is honored (boolean false valid)", () => {
@@ -448,7 +460,12 @@ test("overlaySettingsFrom: garbage-safe (null / arrays / strings / junk overlay)
   ]) {
     assert.deepStrictEqual(
       ov.overlaySettingsFrom(g),
-      { pulseNotify: true, activeRevertSec: 20 },
+      {
+        pulseNotify: true,
+        activeRevertSec: 20,
+        keepCompanion: true,
+        companionAlwaysOnTop: true,
+      },
       JSON.stringify(g)
     );
   }
@@ -513,7 +530,115 @@ test("overlaySettingsFrom round-trips a mergeOverlaySettingsPatch write (positio
   assert.deepStrictEqual(ov.overlaySettingsFrom(saved), {
     pulseNotify: false,
     activeRevertSec: 33,
+    keepCompanion: true,
+    companionAlwaysOnTop: true,
   });
   assert.strictEqual(saved.overlay.x, 5);
   assert.strictEqual(saved.overlay.panelSet, "coach");
+});
+
+// --- RC2 E1: dashboard-persist policy + on-screen pin toggle ------------------
+// Root cause of the operator "dashboard disappears" bug: windowActions(OVERLAY)
+// hard-hides the companion, so entering a game strands the full dashboard. The
+// keepCompanion policy keeps the companion window available alongside the HUD.
+
+test("windowActionsWithPolicy: keepCompanion shows companion alongside the overlay", () => {
+  assert.deepStrictEqual(
+    ov.windowActionsWithPolicy(ov.SURFACES.OVERLAY, { keepCompanion: true }),
+    { companion: "show", overlay: "show" }
+  );
+});
+
+test("windowActionsWithPolicy: keepCompanion=false matches the legacy hide-companion behavior", () => {
+  assert.deepStrictEqual(
+    ov.windowActionsWithPolicy(ov.SURFACES.OVERLAY, { keepCompanion: false }),
+    ov.windowActions(ov.SURFACES.OVERLAY)
+  );
+  assert.deepStrictEqual(
+    ov.windowActionsWithPolicy(ov.SURFACES.OVERLAY, { keepCompanion: false }),
+    { companion: "hide", overlay: "show" }
+  );
+});
+
+test("windowActionsWithPolicy: keepCompanion never resurrects a HIDDEN surface", () => {
+  // The hotkey force-hide must still clear BOTH windows, policy regardless.
+  assert.deepStrictEqual(
+    ov.windowActionsWithPolicy(ov.SURFACES.HIDDEN, { keepCompanion: true }),
+    { companion: "hide", overlay: "hide" }
+  );
+});
+
+test("windowActionsWithPolicy: COMPANION surface is unchanged by the policy", () => {
+  for (const keep of [true, false]) {
+    assert.deepStrictEqual(
+      ov.windowActionsWithPolicy(ov.SURFACES.COMPANION, { keepCompanion: keep }),
+      { companion: "show", overlay: "hide" }
+    );
+  }
+});
+
+test("windowActionsWithPolicy: missing / garbage opts default to legacy actions", () => {
+  for (const g of [undefined, null, {}, [], "junk", 42]) {
+    assert.deepStrictEqual(
+      ov.windowActionsWithPolicy(ov.SURFACES.OVERLAY, g),
+      ov.windowActions(ov.SURFACES.OVERLAY),
+      JSON.stringify(g)
+    );
+  }
+});
+
+// --- RC2 E1: keepCompanion + companionAlwaysOnTop overlay settings -----------
+
+test("OVERLAY_SETTINGS_DEFAULTS: keepCompanion on, companionAlwaysOnTop on", () => {
+  // Default ON for keepCompanion is the bug fix - the dashboard PERSISTS unless
+  // the operator opts out.
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.keepCompanion, true);
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.companionAlwaysOnTop, true);
+});
+
+test("overlaySettingsFrom: defaults include keepCompanion + companionAlwaysOnTop", () => {
+  const s = ov.overlaySettingsFrom({});
+  assert.strictEqual(s.keepCompanion, true);
+  assert.strictEqual(s.companionAlwaysOnTop, true);
+});
+
+test("overlaySettingsFrom: reads saved keepCompanion + companionAlwaysOnTop booleans", () => {
+  const s = ov.overlaySettingsFrom({
+    overlay: { settings: { keepCompanion: false, companionAlwaysOnTop: false } },
+  });
+  assert.strictEqual(s.keepCompanion, false);
+  assert.strictEqual(s.companionAlwaysOnTop, false);
+});
+
+test("overlaySettingsFrom: non-boolean keepCompanion / companionAlwaysOnTop -> default true", () => {
+  const s = ov.overlaySettingsFrom({
+    overlay: { settings: { keepCompanion: "no", companionAlwaysOnTop: 0 } },
+  });
+  assert.strictEqual(s.keepCompanion, true);
+  assert.strictEqual(s.companionAlwaysOnTop, true);
+});
+
+test("mergeOverlaySettingsPatch: keepCompanion false persists; preserves siblings", () => {
+  const prev = {
+    overlay: { x: 9, panelSet: "build", settings: { pulseNotify: true } },
+  };
+  const next = ov.mergeOverlaySettingsPatch(prev, { keepCompanion: false });
+  assert.strictEqual(next.overlay.settings.keepCompanion, false);
+  assert.strictEqual(next.overlay.settings.pulseNotify, true);
+  assert.strictEqual(next.overlay.x, 9);
+  assert.strictEqual(next.overlay.panelSet, "build");
+});
+
+test("mergeOverlaySettingsPatch: companionAlwaysOnTop true persists", () => {
+  const next = ov.mergeOverlaySettingsPatch({}, { companionAlwaysOnTop: true });
+  assert.strictEqual(next.overlay.settings.companionAlwaysOnTop, true);
+});
+
+test("mergeOverlaySettingsPatch: non-boolean keepCompanion / companionAlwaysOnTop dropped", () => {
+  const next = ov.mergeOverlaySettingsPatch({}, {
+    keepCompanion: "nope",
+    companionAlwaysOnTop: 1,
+  });
+  assert.ok(!("keepCompanion" in next.overlay.settings));
+  assert.ok(!("companionAlwaysOnTop" in next.overlay.settings));
 });

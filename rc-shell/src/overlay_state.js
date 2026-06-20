@@ -184,6 +184,25 @@ function windowActions(surface) {
   }
 }
 
+// --- RC2 E1: dashboard-persist policy ----------------------------------------
+// The base windowActions() hard-hides the companion the moment a game starts -
+// that is the operator-reported "dashboard disappears" bug. The overlay-centric
+// model wants the full dashboard to STAY available (a second window) while the
+// HUD is up. windowActionsWithPolicy layers a keepCompanion override on top of
+// the base actions: when set AND the resolved surface is OVERLAY, the companion
+// is kept SHOWN alongside the overlay instead of hidden. The HIDDEN force-hide
+// (hotkey) is never overridden - clearing the screen must clear both windows.
+// Garbage / missing opts fall through to the legacy windowActions (no behavior
+// change), so an old saved state with no policy is exactly backward compatible.
+function windowActionsWithPolicy(surface, opts) {
+  const base = windowActions(surface);
+  const o = opts && typeof opts === "object" && !Array.isArray(opts) ? opts : {};
+  if (surface === SURFACES.OVERLAY && o.keepCompanion === true) {
+    return { companion: "show", overlay: base.overlay };
+  }
+  return base;
+}
+
 // --- HZ-D1 slice 2: overlay position + panel-set persistence -----------------
 // The overlay rides the SAME state file as the companion, under one "overlay"
 // sub-object, so the two surfaces can never clobber each other's keys. These
@@ -266,6 +285,12 @@ function mergeOverlayPatch(prevState, patch) {
 const OVERLAY_SETTINGS_DEFAULTS = Object.freeze({
   pulseNotify: true,
   activeRevertSec: Math.round(OVERLAY_DEFAULTS.activeRevertDelayMs / 1000),
+  // RC2 E1: keepCompanion default TRUE is the dashboard-persist bug fix - the
+  // full dashboard window stays available while the in-game overlay is shown
+  // unless the operator opts out. companionAlwaysOnTop is the persisted
+  // on-screen pin toggle for the companion/dashboard window.
+  keepCompanion: true,
+  companionAlwaysOnTop: true,
 });
 
 // ACTIVE auto-revert bounds: a 3s floor (an instantly-reverting overlay is
@@ -293,6 +318,11 @@ function overlaySettingsFrom(saved) {
   return {
     pulseNotify: typeof set.pulseNotify === "boolean" ? set.pulseNotify : OVERLAY_SETTINGS_DEFAULTS.pulseNotify,
     activeRevertSec: sec === null ? OVERLAY_SETTINGS_DEFAULTS.activeRevertSec : sec,
+    keepCompanion: typeof set.keepCompanion === "boolean" ? set.keepCompanion : OVERLAY_SETTINGS_DEFAULTS.keepCompanion,
+    companionAlwaysOnTop:
+      typeof set.companionAlwaysOnTop === "boolean"
+        ? set.companionAlwaysOnTop
+        : OVERLAY_SETTINGS_DEFAULTS.companionAlwaysOnTop,
   };
 }
 
@@ -308,6 +338,12 @@ function sanitizeSettingsPatch(patch) {
   const sec = clampRevertSec(p.activeRevertSec);
   if (sec !== null) {
     out.activeRevertSec = sec;
+  }
+  if (typeof p.keepCompanion === "boolean") {
+    out.keepCompanion = p.keepCompanion;
+  }
+  if (typeof p.companionAlwaysOnTop === "boolean") {
+    out.companionAlwaysOnTop = p.companionAlwaysOnTop;
   }
   return out;
 }
@@ -345,6 +381,7 @@ module.exports = {
   resolveSurface,
   overlayUrl,
   windowActions,
+  windowActionsWithPolicy,
   cyclePanelSet,
   makeActiveRevert,
   nextPollDelay,

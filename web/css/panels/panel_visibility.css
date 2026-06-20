@@ -1,0 +1,86 @@
+/* web/css/panels/panel_visibility.css
+ *
+ * RC2 E1: per-panel visibility gate + its settings card.
+ *
+ * Two halves:
+ *   1. The GATE: a panel the operator hid for the current context carries
+ *      data-pv-hidden="1" (set by panel_visibility.js per body[data-mode]).
+ *      We collapse it to display:none. Scoped to the top-level game panels so
+ *      we never touch a panel inside the overlay shell (overlay.css owns that).
+ *   2. The SETTINGS CARD: a compact matrix of panels x {In-game, Out-of-game}
+ *      checkboxes, reusing the existing .settings-card design tokens.
+ */
+
+/* --- 1. the gate --------------------------------------------------------- */
+/* Only the in-game dashboard <main> panels opt in; the [data-shell="overlay"]
+ * guard keeps the compact HUD immune to the full-dashboard prefs. */
+body:not([data-shell="overlay"]) main > .panel[data-pv-hidden="1"] {
+  display: none !important;
+}
+
+/* --- 2. the settings card ----------------------------------------------- */
+#panel-visibility-card .pv-note {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+  line-height: 1.4;
+  margin-bottom: var(--space-3);
+}
+
+#panel-visibility-card .pv-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+#panel-visibility-card .pv-row {
+  display: grid;
+  grid-template-columns: 1fr 7.5em 7.5em;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  min-height: var(--hit-min);
+}
+
+#panel-visibility-card .pv-row-head {
+  min-height: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+#panel-visibility-card .pv-col-head {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+  text-align: center;
+}
+
+#panel-visibility-card .pv-panel-name {
+  font-size: var(--fs-md);
+  color: var(--text-dim);
+}
+
+#panel-visibility-card .pv-row-head .pv-panel-name {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--label);
+}
+
+/* The clickable cell - center the box, give it a full fingertip target. */
+#panel-visibility-card .pv-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hit-min);
+  cursor: pointer;
+}
+
+#panel-visibility-card .pv-cell input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--clock);
+  cursor: pointer;
+}
