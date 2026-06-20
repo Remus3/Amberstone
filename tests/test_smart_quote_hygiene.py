@@ -39,8 +39,12 @@ em-dash / box-drawing characters that need separate hand-fix and are
 NOT smart-quote drift.
 
 FROZEN files: per CLAUDE.md the strip tool refuses to rewrite frozen
-files; this test asserts on tracked source EXCLUDING the frozen list
-(any stray codepoint in a frozen file is operator-gated to fix).
+files. As of the RC2 P7.1 ASCII-sweep close (operator greenlight
+2026-06-20, TOP-10 #10 "frozen INCLUDED"), this guard NO LONGER skips
+frozen files - the banned-set walk now asserts on EVERY tracked authored
+file including the frozen list, so a banned glyph cannot hide in a frozen
+file undetected. The _FROZEN set is retained for the explicit per-file
+regression lock test_frozen_files_clean_of_banned_glyphs.
 """
 from __future__ import annotations
 
@@ -143,9 +147,11 @@ def _should_skip(path: Path, rel_posix: str) -> bool:
 
 
 # Frozen files per CLAUDE.md hard-rule. The strip tool refuses to rewrite
-# these by default; this test also excludes them from the assertion (any
-# stray codepoint inside a frozen file is operator-gated to fix separately
-# via --allow-frozen).
+# these by default. RC2 P7.1 (operator greenlight 2026-06-20, "frozen
+# INCLUDED") promotes them INTO the main banned-set assertion - they are no
+# longer skipped. This set now powers ONLY the explicit per-file regression
+# lock test_frozen_files_clean_of_banned_glyphs (a banned glyph in any frozen
+# file fails both that test and the tree-wide walk).
 #
 # (Item 156 note: ops/rc_supervisor.py is deliberately OMITTED from this
 # set because it was repaired in item 156 - the drift guard NOW covers it
@@ -232,8 +238,8 @@ def test_no_smart_quotes_in_authored_source() -> None:
         rel_posix = p.relative_to(_REPO_ROOT).as_posix()
         if _should_skip(p, rel_posix):
             continue
-        if rel_posix in _FROZEN:
-            continue
+        # RC2 P7.1: frozen files are NO LONGER skipped (operator greenlight
+        # 2026-06-20 "frozen INCLUDED"); the banned-set walk now covers them.
         try:
             raw = p.read_bytes()
         except OSError:
@@ -266,6 +272,33 @@ def test_no_smart_quotes_in_authored_source() -> None:
             "to rewrite. Violations:\n" + "\n".join(lines)
         )
         pytest.fail(msg)
+
+
+def test_frozen_files_clean_of_banned_glyphs() -> None:
+    """RC2 P7.1 regression lock: every tracked frozen file is free of the
+    banned set (em/en-dash, smart quotes, NBSP, ellipsis). Frozen files were
+    historically skipped by the tree-wide walk; the operator greenlit
+    'frozen INCLUDED' (2026-06-20) so this asserts them explicitly. A miss
+    here also surfaces in test_no_smart_quotes_in_authored_source now."""
+    violations: list[tuple[str, int, str, int]] = []
+    for rel_posix in sorted(_FROZEN):
+        p = _REPO_ROOT / rel_posix
+        if not p.is_file():
+            continue
+        raw = p.read_bytes()
+        try:
+            raw.decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        for cp, name in _BANNED.items():
+            n = raw.count(_BANNED_BYTES[cp])
+            if n:
+                violations.append((rel_posix, cp, name, n))
+    assert not violations, (
+        "Banned glyph(s) in frozen file(s) (operator-gated to fix):\n"
+        + "\n".join(f"  {rel}: U+{cp:04X} ({name}) x{n}"
+                    for rel, cp, name, n in violations)
+    )
 
 
 def test_strip_smart_quotes_tool_is_ascii() -> None:
