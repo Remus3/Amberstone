@@ -1,5 +1,11 @@
 # RC 2.0 - Operator Q/A TODO + Future List
 
+> **CONSOLIDATED 2026-06-20 (Stage 8.3).** This is the RAW 97-item queue as
+> authored. For CURRENT status (what shipped, what is still OPEN/GATED), read
+> `docs/RC2_QA_CONSOLIDATED.md` - it reconciles every item below against HEAD so
+> only the genuine residue (31 OPEN + 13 GATED-LIVE + 18 GATED) needs a decision.
+> The original TOP-10 are fully spent (-> E-batch E1-E12).
+
 > RC 2.0 Phase 8.1 deliverable (Stage 8.1 of `docs/RC2_PLAN.md`). Authored 2026-06-19.
 > ASCII only - no em-dashes, en-dashes, or smart quotes (repo hard rule).
 >
