@@ -10,9 +10,9 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Design GREENLIT (Hextech); operator batch E1-E12 added - Stage 22 of 62 - approx 35% complete**
+> **Design GREENLIT (Hextech); operator batch E1-E12 added - Stage 23 of 62 - approx 37% complete**
 >
-> _(% recomputed DOWN per the operator directive: 12 approved execution stages E1-E12 added to the 50 base = 62 total. Done: 18 base + E3 win-capture + E5 hold-band + E8 design-system + E6 spell-fix = 22.)_
+> _(% recomputed DOWN per the operator directive: 12 approved execution stages E1-E12 added to the 50 base = 62 total. Done: 18 base + E3 win-capture + E5 hold-band + E8 design-system + E6 spell-fix + E9 rank/scouting = 23.)_
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -93,7 +93,7 @@ TOP-10 answers (from docs/RC2_TODO_QA.md):
 | E6 | Spell flip-back fix + WR% under spells + highest-role-WR on lock + remember last-used per champ/mode | DONE | _sync_spells per-lock idempotency + manual-override + WR route |
 | E7 | ARAM bench-swap responsiveness + LCU connection pooling (frozen lcu_client.py) | OPEN | |
 | E8 | Design system: reduced-motion-done-right + status glyphs + threshold statusFor() | DONE | 19f8116f |
-| E9 | Rank/tier/LP header + player scouting (both NOW) | WIP | |
+| E9 | Rank/tier/LP header + player scouting (both NOW) | DONE | core/lcu_ranked.py + routes_scouting.py; Riot key = API-Key-Riot.txt via core/riot_api.py |
 | E10 | ASCII retro sweep (all files, frozen) + git-history rewrite + force-push | OPEN | |
 | E11 | Hextech reskin across surfaces (P3/P4 visual cutover) | OPEN | |
 | E12 | Responsiveness levers L1/L2/L4 (SSE/build TTL halve, etc.) | OPEN | |
