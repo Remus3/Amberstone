@@ -204,6 +204,12 @@ body[data-shell="overlay"] #rn-choices .rc-chip {
   min-height: 44px;
 }
 
+/* RC2 5.3: the trigger condition sub-line is dashboard-only supporting detail;
+ * the lean glance HUD keeps just the A/B verb (condensation spec S0). */
+body[data-shell="overlay"] #rn-choices .rc-trigger {
+  display: none;
+}
+
 /* 4b. Panel-set subsets (item-378 tail; rc-shell overlay_state.js
  * PANEL_SETS contract). main.js stamps body[data-panelset] only for a
  * canonical name from ?panelset=; no attribute = the S1 full compact
