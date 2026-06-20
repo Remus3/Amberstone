@@ -41,21 +41,27 @@ def _load_match_rows(limit: int | None = None) -> list[dict]:
     # loader so every consumer (`_build_home_summary`, `_build_history`,
     # `_build_session_summary`) inherits the same exclusion. Underlying
     # rows stay in match_history.db for any TFT-aware consumer.
+    # raw_data carries the LCU end-of-game blob (lcu_match_detail) from
+    # which the per-match win/loss is resolved (item 77 WIN-CAPTURE
+    # keystone) - match_history.db has no win column. Pre-ingest rows
+    # resolve to win=None (no result tint, not a guessed outcome).
+    from dashboard.builders_home import _lcu_win
     sql = ("SELECT timestamp, mode, champion, grade, kda_str, "
-           "       game_time_s, kills, deaths, assists, label "
+           "       game_time_s, kills, deaths, assists, label, raw_data "
            "FROM matches WHERE mode != 'TFT' "
            "ORDER BY timestamp DESC")
     if limit:
         sql += f" LIMIT {int(limit)}"
     try:
         rows = []
-        for ts, mode, champ, grade, kda, dur, k, d, a, label in conn.execute(sql):
+        for ts, mode, champ, grade, kda, dur, k, d, a, label, raw_data in conn.execute(sql):
             rows.append({
                 "timestamp": ts, "mode": mode or "?", "champion": champ or "?",
                 "grade": grade or "-", "kda": kda or f"{k}/{d}/{a}",
                 "duration_s": int(dur or 0),
                 "kills": int(k or 0), "deaths": int(d or 0), "assists": int(a or 0),
                 "label": label or "",
+                "win": _lcu_win(raw_data),
             })
         return rows
     except sqlite3.Error:
@@ -175,8 +181,15 @@ def _build_history(scope: str) -> dict:
         s["date"] = date
         s["duration_label"] = f"{dur_min}m"
         sessions_out.append(s)
-    # Season stats from rewind_history.db (full historical set)
+    # Season stats from rewind_history.db (full historical set).
+    # WIN-CAPTURE keystone P2 (item 77): rewind.matches.tracked_win is the
+    # clean single-account 0/1 win column for 2900+ matches, so the real
+    # season win-rate + a last-20 W/L strip come straight from it (retires
+    # the History "(needs Riot key)" WR stub). match_history.db has no win
+    # column, so these aggregates intentionally read rewind, not the
+    # session rows above.
     season_stats = {}
+    last20: dict = {}
     rdb = _APP_DIR / "data" / "rewind_history.db"
     rconn = _ro_conn(rdb)
     if rconn is not None:
@@ -188,18 +201,43 @@ def _build_history(scope: str) -> dict:
                 "  (SELECT tracked_champion_name FROM matches "
                 "   WHERE tracked_champion_name != '' "
                 "   GROUP BY tracked_champion_name "
-                "   ORDER BY COUNT(*) DESC LIMIT 1) "
+                "   ORDER BY COUNT(*) DESC LIMIT 1), "
+                "  SUM(CASE WHEN tracked_win = 1 THEN 1 ELSE 0 END), "
+                "  SUM(CASE WHEN tracked_win = 0 THEN 1 ELSE 0 END) "
                 "FROM matches"
             ).fetchone()
+            wins = int(row[3] or 0)
+            losses = int(row[4] or 0)
+            decided = wins + losses
             season_stats = {
                 "total":     int(row[0] or 0),
                 "avg_kda":   round(float(row[1] or 0), 2),
                 "favorite":  row[2] or "-",
+                "wins":      wins,
+                "losses":    losses,
+                "win_rate":  round(wins * 100.0 / decided, 1) if decided else None,
+            }
+            # Last 20 decided matches, newest-first, as a W/L pip trail.
+            recent = [
+                int(r[0]) for r in rconn.execute(
+                    "SELECT tracked_win FROM matches "
+                    "WHERE tracked_win IS NOT NULL "
+                    "ORDER BY game_creation_ts DESC LIMIT 20")
+            ]
+            lw = sum(1 for w in recent if w == 1)
+            ll = sum(1 for w in recent if w == 0)
+            ld = lw + ll
+            last20 = {
+                "results":  ["W" if w == 1 else "L" for w in recent],
+                "wins":     lw,
+                "losses":   ll,
+                "win_rate": round(lw * 100.0 / ld, 1) if ld else None,
             }
         except sqlite3.Error as exc:
             getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(rdb), None)
             _log.debug("history season stats: %s", exc)
-    return {"scope": scope, "sessions": sessions_out, "season_stats": season_stats}
+    return {"scope": scope, "sessions": sessions_out,
+            "season_stats": season_stats, "last20": last20}
 
 
 def _build_loadouts_all(mode: str) -> dict:
