@@ -42,6 +42,30 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (gemini-loop R2 cycle) - Build Insights UI audit + doc-size unblock (LEDGER 512)
+
+Gemini DIRECTOR refill R2 (ops/loop/control/directive.md): Section-3b 5-phase UI audit of the
+Build Insights surface + recent tabs + the item-511 GPI drilldown. Commit `9b55615d`, CI green;
+Tier-0/1 CSS-only, 0 ENGINE / 0 frozen / no DS / no Share / ADR-008 auto-reload (no RC restart).
+
+- AUDIT: build_insights / duration_winrate / op_score / player_gpi (JS+CSS) vs UI_SCALE_SPEC_V2.
+  STRUCTURE/TYPOGRAPHY/ASCII/HIERARCHY PASS. Directive premise corrected: op_score_curve.js ->
+  real file op_score.js (the curve is the backend module). 1 MUST-FIX: `.bi-table th.bi-sortable`
+  used `min-height` (a no-op on a display:table-cell) so the 42px sort-header hit target was never
+  applied -> switched to `height`. Deferred NICE-TO-HAVE: gpi-tip radius token; Min-buys inert on
+  chart/curve tabs (R1-logged).
+- VISUAL: Claude_Preview cannot attach to :8888 (per R1) -> Playwright harness
+  test_player_gpi_view.py 5/5 PASS incl. the item-511 drilldown interaction + regen radar PNG.
+- RED-FIRST UNBLOCK: full suite surfaced a PRE-EXISTING doc-size fail (ROADMAP.md 82355 > 81920
+  after the 510/511 commits; CI runs no pytest). Relocated the 2026-06-01 items-241-259 shipped
+  epic to ROADMAP_HISTORY.md (breadcrumb keeps Phase-D + #7/#8). ROADMAP 76587, doc-size green.
+- VERIFY: full RC suite 8634 passed / 2 skip (CSS fix + 5 GPI snapshots in it) + doc-size 2 + 47
+  ROADMAP-ref tests. Inline sole orchestrator (1 CSS line < worktree threshold; verifier skip R7).
+- NEXT: headless surface saturated (per LEDGER 511 completeness scan); remaining = live-gated /
+  operator-product / outward-gated.
+
+---
+
 # 2026-06-19 (re-run orchestrated Q&A swarm) - GPI drilldown swarm-found + shipped + D1 slice-3 (LEDGER 510/511)
 
 Operator re-fired the IDENTICAL "multi agent orchestrator Q&A swarm complete the open items" prompt

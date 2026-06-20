@@ -148,6 +148,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R2 | ui-audit | 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Build Insights view + recent tabs (web/js/panels/build_insights.js, duration_winrate.js, op_score.js [directive said op_score_curve.js; real file is op_score.js], GPI drilldown player_gpi.js) + their CSS, vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness (Claude_Preview cannot attach to RC-owned :8888, per R1). | DONE | `9b55615d` |
 | R3 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_damage caster-defensive-stat scaling. Extend the passive_damage registry and to_damage_block to support caster bonus armor and bonus MR scaling (e.g., Taric P +15% bonus armor, Galio P +60% bonus MR). Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. | DONE | `ab23c32c` |
 | R4 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited core coaching panels - web/js/panels/team_context.js, coach_choices.js, item_build.js + their CSS - vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor (<--fs-xs 16px) hardcoded font-sizes; cross-panel .kv/#nx-wave/.minimap-grid blocks in item_build.css are OUT of scope (style already-audited Right Now/Next/Active-Match surfaces). Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview attempt (RC-owned :8888 self-signed blocker per R1/R2). | DONE | `9e56d23d` |
+| R5 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_heal missing_hp_heal_amp. Default-OFF `assume_missing_hp_heal_amp` seam on `ability_hps.py compute_ability_hps` + NEW `_MISSING_HP_HEAL_AMP` registry: a registered (champ, spell) heal_per_cast multiplied by `1 + max_bonus * caster_missing_hp_pct` (the heal-AMP multiplier class _passive_heal_overrides.py:27 deliberately excluded from the heal-MAGNITUDE registry). Seeded 4 from champion_abilities.json 16.12.1: Master Yi W / Lissandra R / Sylas W (0%:100% -> 1.0), Briar P (0%:40% -> 0.40); Nidalee E probed, no amp text, NOT seeded. Offline characterization tests vs Meraki ground truth. ENGINE 1.145.0 -> 1.146.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `dc2eb0c3` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -161,6 +162,30 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-19 R5 (DIRECTOR REFILL cycle) DONE (`dc2eb0c3`) - DS schema lift:
+  missing-HP heal-AMPLIFICATION seam on the ability-HPS scorer (ENGINE 1.145.0 ->
+  1.146.0). The heal-AMP MULTIPLIER class `_passive_heal_overrides.py:27` (item-253
+  header) explicitly EXCLUDED from the heal-MAGNITUDE registry. NEW
+  `_MISSING_HP_HEAL_AMP[champ][spell] = max_bonus` registry + `_missing_hp_heal_amp_
+  factor` in `ability_hps.py` (co-located with `_AOE_HEAL_TARGETS`); `compute_ability_
+  hps` gains `assume_missing_hp_heal_amp` (default OFF byte-identical, full-HP also
+  identity), `heal_per_cast *= 1 + max_bonus * caster_missing_hp_pct` (HEAL-only,
+  reuses the existing missing-HP param). Seeded 4 (champion_abilities.json 16.12.1
+  effects_descriptions, file:line probed): Master Yi W Meditate / Lissandra R Frozen
+  Tomb / Sylas W Kingslayer 0%:100% -> 1.0, Briar P Crimson Curse 0%:40% -> 0.40
+  (+per-100-bonus-health sub-term omitted, lower bound). Nidalee E (a directive e.g.)
+  probed, NO amp text -> NOT seeded (3/4 examples verified, 1 corrected, +Briar bonus).
+  TDD test_missing_hp_heal_amp_item515.py RED-first. DS 7394 / RC 8642 green (8 mid-
+  suite restart/sync-window transients re-verified fresh = 40 passed); ruff + Share
+  --check clean. Inline sole orchestrator (R9; one coupled file + test, registry+seam+
+  consumer interlock = no disjoint slices; verifier skip R7, fresh dual suite + live
+  :8893 1.146.0 + file:line grep = the independent verify). Live default-ON flip ->
+  docs/LIVE_GAME_GATED_SYNC.md (operator-gated). NEW residual (FUTURE, not built):
+  the `_MISSING_HP_HEAL_AMP` registry is the seed of a heal-amp class - a patch
+  re-scan for new "0%:X% based on missing health" heal lines + a possible heal-amp
+  sibling for the SHIELD path (none found 16.12.1) join the per-patch re-anchor.
+  [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]] /
+  [[reference_ds_server_not_supervisor_watched]] / [[feedback_verify_before_declare_broken]].
 - 2026-06-19 R4 (DIRECTOR REFILL cycle) DONE (`9e56d23d`) - Section-3b 5-phase
   typography-floor UI audit of three un-audited core coaching panels
   (team_context / coach_choices / item_build, JS+CSS) vs UI_SCALE_SPEC_V2 v2.1.
