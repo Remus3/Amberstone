@@ -156,6 +156,53 @@ class TriggerFieldTests(unittest.TestCase):
         self.assertEqual(out[0].trigger, "123")
 
 
+class RebranchFieldTests(unittest.TestCase):
+    """RC2 5.4 - the optional server-derived condition-change branch fields."""
+
+    def test_rebranch_defaults_empty(self):
+        c = cc.CoachChoice(key="A", label="X")
+        self.assertEqual(c.rebranch_when, "")
+        self.assertEqual(c.rebranch_to, "")
+
+    def test_parse_choices_reads_rebranch(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "Trade", "rebranch_when": "if Zed roams",
+             "rebranch_to": "B"},
+        ]})
+        self.assertEqual(out[0].rebranch_when, "if Zed roams")
+        self.assertEqual(out[0].rebranch_to, "B")
+
+    def test_parse_choices_rebranch_absent_defaults_empty(self):
+        out = cc.parse_choices({"choices": [{"key": "A", "label": "Trade"}]})
+        self.assertEqual(out[0].rebranch_when, "")
+        self.assertEqual(out[0].rebranch_to, "")
+
+    def test_parse_choices_rebranch_when_length_capped(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "x", "rebranch_when": "z" * 500},
+        ]})
+        self.assertTrue(out[0].rebranch_when.endswith("..."))
+        self.assertLessEqual(len(out[0].rebranch_when), cc._MAX_REBRANCH_LEN + 3)
+
+    def test_parse_choices_rebranch_to_first_upper_letter(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "x", "rebranch_to": "bcd"},
+        ]})
+        self.assertEqual(out[0].rebranch_to, "B")
+
+    def test_parse_choices_rebranch_to_empty_stays_empty(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "x", "rebranch_to": ""},
+        ]})
+        self.assertEqual(out[0].rebranch_to, "")
+
+    def test_parse_choices_rebranch_when_coerced_to_str(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "x", "rebranch_when": 123},
+        ]})
+        self.assertEqual(out[0].rebranch_when, "123")
+
+
 class SerializationTests(unittest.TestCase):
     def test_to_jsonable_round_trip(self):
         cs = [cc.CoachChoice(key="A", label="X")]
@@ -163,6 +210,7 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(out, [{
             "key": "A", "label": "X", "expected_outcome": "",
             "confidence": "mid", "source_tag": "", "trigger": "",
+            "rebranch_when": "", "rebranch_to": "",
         }])
 
     def test_frozen_dataclass(self):

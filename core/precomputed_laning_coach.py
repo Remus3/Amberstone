@@ -89,6 +89,60 @@ _RECALL_LABELS: dict[str, str] = {
 _MANA_WORD: dict[str, str] = {"full": "full mana", "low": "low mana"}
 _CD_WORD: dict[str, str] = {"all_up": "ult up", "no_ult": "ult down"}
 
+# RC2 5.4 - condition-change branching. The aggression ladder ranks the 5 bands
+# so a payload probe can tell whether an adjacent (ult-up / full-mana) cell is
+# MORE aggressive than the current verdict (i.e. whether waiting on that axis
+# actually unlocks a trade). Verdicts the operator should keep playing
+# aggressively (the rec already IS the all-in/trade) vs the cautious set.
+_AGGRESSIVE_VERDICTS: frozenset = frozenset({"all_in", "trade"})
+_AGGRESSION_RANK: dict[str, int] = {
+    "back_off": 0, "hold": 1, "even": 2, "trade": 3, "all_in": 4,
+}
+# Human clause for the axis whose change unlocks aggression (the rebranch_when).
+_REBRANCH_AXIS_WORD: dict[str, str] = {
+    "ult": "when your ult comes up",
+    "mana": "after you back to full mana",
+}
+
+
+def _more_aggressive(a: object, b: object) -> bool:
+    """True when verdict ``a`` outranks verdict ``b`` on the aggression ladder."""
+    return _AGGRESSION_RANK.get(str(a), -1) > _AGGRESSION_RANK.get(str(b), -1)
+
+
+def laning_rebranch(
+    verdict: object,
+    *,
+    enemy: object,
+    upgrade_axis: Optional[str] = None,
+    upgrade_unlocks: bool = False,
+    b_is_recall: bool = False,
+) -> Tuple[str, str]:
+    """The pre-stated condition-change branch for the recommendation chip A.
+
+    RC2 5.4 (WS2 2.3): returns ``(rebranch_when, rebranch_to)`` for the primary
+    A chip - "if this observable changes, switch to chip <to>". PURE truth table
+    (the impure adjacent-cell probe is done by the resolver and passed in as
+    ``upgrade_axis`` / ``upgrade_unlocks``); fail-soft empties, never raises.
+
+    * AGGRESSIVE rec (all_in / trade): re-branch to the safe B option when the
+      enemy laner roams or goes missing - the dominant real CV downgrade (spec
+      2.3 bullet 1; the WS1 override layer flips the served chip, this names it).
+    * CAUTIOUS rec (back_off / hold / even): re-branch to the aggressive B option
+      WHEN an adjacent axis unlocks a more aggressive verdict (ult comes up /
+      full mana). Skipped when B is an economy recall directive (no aggressive
+      alt to point at) or no axis unlocks (the cautious rec is stable)."""
+    name = str(enemy or "").strip() or "enemy"
+    v = str(verdict or "").strip().lower()
+    if v in _AGGRESSIVE_VERDICTS:
+        return (f"if {name} roams or goes missing", "B")
+    if b_is_recall or not upgrade_unlocks:
+        return ("", "")
+    when = _REBRANCH_AXIS_WORD.get(str(upgrade_axis or ""))
+    if not when:
+        return ("", "")
+    return (when, "B")
+
 
 def laning_trigger(
     enemy: object,
@@ -260,6 +314,8 @@ def _build_choices(
     *,
     next_item: Optional[Tuple[str, int]] = None,
     trigger: str = "",
+    rebranch_when: str = "",
+    rebranch_to: str = "",
 ) -> list[CoachChoice]:
     """Two grounded A/B choices from one resolved laning cell.
 
@@ -284,6 +340,11 @@ def _build_choices(
         confidence=_confidence_for(cell.get("net_swing")),
         source_tag=SOURCE_TAG,
         trigger=trigger,
+        # RC2 5.4: the pre-stated branch lives on the primary recommendation
+        # (A); B is the already-named alternative the branch points back to, so
+        # it carries no branch of its own in v1.
+        rebranch_when=rebranch_when,
+        rebranch_to=rebranch_to,
     )
 
     economy = cell.get("economy") if isinstance(cell.get("economy"), dict) else {}
@@ -334,6 +395,49 @@ def resolve_enemy(
     return None
 
 
+def _resolve_cell_ctx(
+    my_champion: str,
+    enemy: str,
+    level: object,
+    *,
+    mana_fraction: Optional[float],
+    ult_up: Optional[bool],
+    mode: str,
+    payload: Optional[dict],
+) -> Tuple[Optional[dict], dict]:
+    """Resolve the laning cell AND the lookup context it was found at.
+
+    Returns ``(cell_or_None, ctx)`` where ctx carries the loaded ``data`` + the
+    canonical ids + the RESOLVED axes (``band`` is the post-fallback band the
+    cell was actually read from, so a rebranch probe varies the SAME band). The
+    item-370 L16->L11 descend-only fallback is applied here. No exception
+    handling - the public callers wrap it so the hot path never raises."""
+    band = band_for_level(level)
+    mana = mana_state_for(mana_fraction)
+    cd = cd_state_for(ult_up)
+    data = payload if payload is not None else load_laning_scenarios(mode)
+    my_id = canonical_champion_id(my_champion)
+    enemy_id = canonical_champion_id(enemy)
+    band_used = band
+    cell = lookup(data, my_id, enemy_id, band, mana, cd)
+    if not cell and band not in GEN_BANDS:
+        # item 370 dropped L16 from the generated sweep to halve the
+        # full-roster artifact; the documented lvl>=14 fail-soft now reads
+        # the highest generated lane band (L11 / 2-item mid) rather than
+        # yielding no coaching. ARAM shared-XP rockets champs to 14-18, so
+        # without this nearest-band fallback most live ARAM laning ticks
+        # land in the empty L16 and never accrue shadow coverage for the
+        # flip gate. Descend-only: rescues the level axis, never the pair /
+        # mana / cd axes (a genuinely uncovered cell still yields []).
+        band_used = GEN_BANDS[-1] if GEN_BANDS else band
+        cell = lookup(data, my_id, enemy_id, band_used, mana, cd)
+    ctx = {
+        "data": data, "my_id": my_id, "enemy_id": enemy_id,
+        "band": band_used, "mana": mana, "cd": cd,
+    }
+    return (cell if cell else None), ctx
+
+
 def _resolve_cell(
     my_champion: str,
     enemy: str,
@@ -348,28 +452,42 @@ def _resolve_cell(
 
     Shared by ``precomputed_choices`` (which shapes A/B chips) and
     ``resolve_band`` (which only needs the recalibrated verdict for the CV
-    shadow column). Resolves band / mana-state / cd-state and applies the
-    item-370 L16->L11 descend-only fallback. No exception handling here - the
-    public callers wrap it so the hot path never raises."""
-    band = band_for_level(level)
-    mana = mana_state_for(mana_fraction)
-    cd = cd_state_for(ult_up)
-    data = payload if payload is not None else load_laning_scenarios(mode)
-    my_id = canonical_champion_id(my_champion)
-    enemy_id = canonical_champion_id(enemy)
-    cell = lookup(data, my_id, enemy_id, band, mana, cd)
-    if not cell and band not in GEN_BANDS:
-        # item 370 dropped L16 from the generated sweep to halve the
-        # full-roster artifact; the documented lvl>=14 fail-soft now reads
-        # the highest generated lane band (L11 / 2-item mid) rather than
-        # yielding no coaching. ARAM shared-XP rockets champs to 14-18, so
-        # without this nearest-band fallback most live ARAM laning ticks
-        # land in the empty L16 and never accrue shadow coverage for the
-        # flip gate. Descend-only: rescues the level axis, never the pair /
-        # mana / cd axes (a genuinely uncovered cell still yields []).
-        fallback_band = GEN_BANDS[-1] if GEN_BANDS else band
-        cell = lookup(data, my_id, enemy_id, fallback_band, mana, cd)
-    return cell if cell else None
+    shadow column). Thin wrapper over ``_resolve_cell_ctx`` that drops the
+    context the band probe needs."""
+    cell, _ctx = _resolve_cell_ctx(
+        my_champion, enemy, level, mana_fraction=mana_fraction,
+        ult_up=ult_up, mode=mode, payload=payload,
+    )
+    return cell
+
+
+def _resolve_rebranch(cell: dict, ctx: dict, enemy: str, verdict: str) -> Tuple[str, str]:
+    """Probe the adjacent cell + derive the A-chip rebranch (RC2 5.4).
+
+    Impure glue: reads the SAME loaded payload (no engine call, no network) to
+    decide whether the axis currently limiting aggression (ult down, then low
+    mana) would unlock a more aggressive verdict, then defers the wording to the
+    pure ``laning_rebranch``. Fail-soft to ``("", "")`` on any lookup miss."""
+    economy = cell.get("economy") if isinstance(cell.get("economy"), dict) else {}
+    b_is_recall = str(economy.get("recall") or "") in _RECALL_LABELS
+
+    upgrade_axis: Optional[str] = None
+    probe_cell: Optional[dict] = None
+    if ctx["cd"] == "no_ult":
+        upgrade_axis = "ult"
+        probe_cell = lookup(
+            ctx["data"], ctx["my_id"], ctx["enemy_id"], ctx["band"], ctx["mana"], "all_up")
+    elif ctx["mana"] == "low":
+        upgrade_axis = "mana"
+        probe_cell = lookup(
+            ctx["data"], ctx["my_id"], ctx["enemy_id"], ctx["band"], "full", ctx["cd"])
+
+    upgrade_unlocks = bool(probe_cell) and _more_aggressive(
+        laning_band(probe_cell), verdict)
+    return laning_rebranch(
+        verdict, enemy=enemy, upgrade_axis=upgrade_axis,
+        upgrade_unlocks=upgrade_unlocks, b_is_recall=b_is_recall,
+    )
 
 
 def precomputed_choices(
@@ -392,18 +510,24 @@ def precomputed_choices(
     try:
         if not my_champion or not enemy:
             return []
-        cell = _resolve_cell(
+        cell, ctx = _resolve_cell_ctx(
             my_champion, enemy, level, mana_fraction=mana_fraction,
             ult_up=ult_up, mode=mode, payload=payload,
         )
         if not cell:
             return []
         trigger = laning_trigger(
-            enemy, level,
-            mana_state=mana_state_for(mana_fraction),
-            cd_state=cd_state_for(ult_up),
+            enemy, level, mana_state=ctx["mana"], cd_state=ctx["cd"],
         )
-        return _build_choices(cell, enemy, next_item=next_item, trigger=trigger)
+        # RC2 5.4: derive the condition-change branch from the recalibrated
+        # verdict + an adjacent-cell probe over the same loaded payload.
+        rebranch_when, rebranch_to = _resolve_rebranch(
+            cell, ctx, enemy, laning_band(cell),
+        )
+        return _build_choices(
+            cell, enemy, next_item=next_item, trigger=trigger,
+            rebranch_when=rebranch_when, rebranch_to=rebranch_to,
+        )
     except Exception:  # noqa: BLE001 - the coach hot path must never raise
         return []
 
@@ -446,6 +570,7 @@ __all__ = [
     "cd_state_for",
     "laning_band",
     "laning_trigger",
+    "laning_rebranch",
     "resolve_enemy",
     "resolve_band",
     "precomputed_choices",

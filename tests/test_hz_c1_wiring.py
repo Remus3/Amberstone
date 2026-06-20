@@ -53,7 +53,8 @@ def test_wiring_covered_hit(tmp_path, monkeypatch):
     # native coach signal captured for the precompute-vs-Haiku comparison
     assert r["native_action"] == "Trade with Q"
     assert r["native_choices"] == [{"key": "A", "label": "Trade", "expected_outcome": "",
-                                    "confidence": "mid", "source_tag": "", "trigger": ""}]
+                                    "confidence": "mid", "source_tag": "", "trigger": "",
+                                    "rebranch_when": "", "rebranch_to": ""}]
     assert r["band"] == "L6"
     assert r["mana_state"] == "full"
     assert r["cd_state"] == "all_up"
