@@ -37,6 +37,7 @@ the cache clock is fine.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -162,6 +163,16 @@ _CACHE_MAX = 64
 _CACHE: dict[tuple, tuple[float, dict]] = {}
 
 _EMPTY_RESULT = {"choices": [], "callouts": [], "lead_projection": {}}
+
+
+def _cv_served_enabled() -> bool:
+    """RC2 P5.2 served-flip gate. DEFAULT-OFF: the local-CV laning override
+    (``core.laning_cv_overrides``) drives the served A/B chips only when
+    ``RC_LANING_CV_SERVED`` is truthy. The flip is operator/Gemini-gated on the
+    ``tools/hz_shadow_report`` agreement delta (``docs/LIVE_GAME_GATED_SYNC.md``);
+    OFF is byte-identical (the call into ``laning_choices`` is unchanged)."""
+    return os.environ.get("RC_LANING_CV_SERVED", "0").strip().lower() in (
+        "1", "true", "yes", "on")
 
 # S7 (2026-06-10): the matchup call inside laning_choices costs ~690ms (live
 # stage breakdown: deterministic=692ms of a 706ms build). Paying it inline on
@@ -294,6 +305,12 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     if isinstance(ally_item_ids, list) and ally_item_ids:
         gs["ally_item_ids"] = ally_item_ids
 
+    # RC2 P5.2: my HP fraction (lc-first) for the CV override's low-HP layer.
+    # Additive - omitted when no HP signal; only the gated served path reads it.
+    hp_fraction = _hp_fraction(coach, lc)
+    if hp_fraction is not None:
+        gs["hp_fraction"] = hp_fraction
+
     return gs
 
 
@@ -381,8 +398,15 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
         # (and skip the needless DS matchup call every tick).
         return dict(_EMPTY_RESULT)
 
-    # choices (deterministic A/B from the DS matchup engine).
-    choices = laning_choices(gs, mode=upper)
+    # choices (deterministic A/B from the DS matchup engine). RC2 P5.2: when the
+    # served-flip gate is ON, fold the live-CV laning override onto the chips;
+    # OFF keeps the call byte-identical (so the static path is unchanged).
+    if _cv_served_enabled():
+        choices = laning_choices(
+            gs, mode=upper, apply_cv=True, hp_fraction=gs.get("hp_fraction"),
+        )
+    else:
+        choices = laning_choices(gs, mode=upper)
     choices_json = to_jsonable(choices) if choices else []
 
     # callouts (pure objective/spike table).

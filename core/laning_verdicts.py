@@ -232,7 +232,14 @@ def _resolve_enemy_laner(game_state: dict, *, mode: str) -> Optional[str]:
     return str(enemy_comp[0])
 
 
-def laning_choices(game_state: dict, *, mode: str = "SR") -> list[CoachChoice]:
+def laning_choices(
+    game_state: dict,
+    *,
+    mode: str = "SR",
+    apply_cv: bool = False,
+    hp_fraction: Optional[float] = None,
+    vision_state: Optional[dict] = None,
+) -> list[CoachChoice]:
     """Deterministic laning A/B (+optional buy) choices from the DS matchup engine.
 
     Resolves my champ + level + items + the enemy laner from ``game_state``,
@@ -244,6 +251,12 @@ def laning_choices(game_state: dict, *, mode: str = "SR") -> list[CoachChoice]:
     when unknown, and enemy item ids are empty (no live enemy-build feed on this
     seam). Both are honest lower-fidelity inputs to the deterministic verdict, not
     fabricated values.
+
+    RC2 P5.2 (default OFF): when ``apply_cv`` is True, the resolved enemy laner's
+    live CV status (``data/vision_state.json``: dead/missing) + my ``hp_fraction``
+    can OVERRIDE the static matchup chips via ``core.laning_cv_overrides``. Off ->
+    byte-identical. The served-flip is operator/Gemini-gated
+    (``docs/LIVE_GAME_GATED_SYNC.md``); ``vision_state`` is a test seam.
     """
     if not isinstance(game_state, dict):
         return []
@@ -283,4 +296,14 @@ def laning_choices(game_state: dict, *, mode: str = "SR") -> list[CoachChoice]:
         return []
 
     build_item = _next_build_item(my_champ, owned, mode=mode)
-    return verdict_to_choices(result, build_next_item=build_item)
+    choices = verdict_to_choices(result, build_next_item=build_item)
+    if apply_cv:
+        # Lazy import avoids a core import cycle (laning_cv_overrides imports
+        # coach_choices, which laning_verdicts already binds at module load).
+        from core.laning_cv_overrides import apply_cv_to_choices
+        choices = apply_cv_to_choices(
+            choices, enemy, hp_fraction,
+            base_verdict=result.get("verdict"),
+            vision_state=vision_state,
+        )
+    return choices

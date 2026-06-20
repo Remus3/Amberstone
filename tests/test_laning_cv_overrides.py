@@ -8,6 +8,7 @@ Pure - operates on synthetic in-memory vision_state dicts (no file, no network).
 from __future__ import annotations
 
 from core import laning_cv_overrides as cvo
+from core.coach_choices import CoachChoice
 
 
 # --------------------------------------------------------------------------- #
@@ -161,3 +162,101 @@ def test_resolve_never_raises_on_garbage():
 
 def test_load_vision_state_missing_file(tmp_path):
     assert cvo.load_vision_state(tmp_path / "absent.json") == {}
+
+
+# --------------------------------------------------------------------------- #
+# RC2 P5.2 - cv_choice_pair + apply_cv_to_choices (the served-chip integration)
+# --------------------------------------------------------------------------- #
+def _base_choices(a_label="Trade now", *, with_c=False):
+    base = [
+        CoachChoice(key="A", label=a_label, source_tag="ds-matchup"),
+        CoachChoice(key="B", label="Farm safe", source_tag="ds-matchup"),
+    ]
+    if with_c:
+        base.append(CoachChoice(key="C", label="Buy Kraken Slayer",
+                                source_tag="ds-build"))
+    return base
+
+
+def test_cv_choice_pair_none_or_unknown_empty():
+    assert cvo.cv_choice_pair(None) == []
+    assert cvo.cv_choice_pair({"verdict": "bogus"}) == []
+    assert cvo.cv_choice_pair("garbage") == []
+
+
+def test_cv_choice_pair_shove():
+    ov = {"verdict": "shove", "confidence": "high",
+          "reason": "Enemy dead 15s - shove + take plates/prio",
+          "kind": "enemy_dead"}
+    pair = cvo.cv_choice_pair(ov)
+    assert [c.key for c in pair] == ["A", "B"]
+    assert pair[0].label == "Shove + take plates/prio"
+    assert pair[0].confidence == "high"
+    assert pair[0].source_tag == "cv-laning"
+    assert "15s" in pair[0].expected_outcome
+    assert pair[1].label == "Hold"
+    assert all(c.source_tag == "cv-laning" for c in pair)
+
+
+def test_apply_cv_no_override_returns_base_unchanged():
+    vs = _vs({"Zed": _enemy("Zed", visible=True)})
+    base = _base_choices()
+    out = cvo.apply_cv_to_choices(base, "Zed", 0.9, base_verdict="even",
+                                  vision_state=vs)
+    assert out is base  # identity - no copy, no mutation
+
+
+def test_apply_cv_enemy_dead_drives_shove_preserves_c():
+    vs = _vs({"Zed": _enemy("Zed", is_dead=True, respawn=15.0, visible=False)})
+    base = _base_choices(with_c=True)
+    out = cvo.apply_cv_to_choices(base, "Zed", 0.9, base_verdict="back_off",
+                                  vision_state=vs)
+    assert [c.key for c in out] == ["A", "B", "C"]
+    assert out[0].label == "Shove + take plates/prio"
+    assert out[0].confidence == "high"
+    assert out[0].source_tag == "cv-laning"
+    assert "15s" in out[0].expected_outcome
+    # the build 'C' choice is preserved from the base set.
+    assert out[2].label == "Buy Kraken Slayer"
+    assert out[2].source_tag == "ds-build"
+
+
+def test_apply_cv_enemy_missing_drives_back_off():
+    vs = _vs({"Zed": _enemy("Zed", visible=False, missing=6.0)})
+    out = cvo.apply_cv_to_choices(_base_choices(), "Zed", 0.9,
+                                  base_verdict="trade", vision_state=vs)
+    assert out[0].label == "Back off + ward"
+    assert out[0].confidence == "mid"
+    assert out[0].source_tag == "cv-laning"
+
+
+def test_apply_cv_low_hp_drives_disengage():
+    vs = _vs({"Zed": _enemy("Zed", visible=True)})
+    out = cvo.apply_cv_to_choices(_base_choices(), "Zed", 0.20,
+                                  base_verdict="all_in", vision_state=vs)
+    assert out[0].label == "Disengage"
+    assert out[0].confidence == "high"
+    assert out[0].source_tag == "cv-laning"
+
+
+def test_apply_cv_low_hp_ignored_when_verdict_passive():
+    vs = _vs({"Zed": _enemy("Zed", visible=True)})
+    base = _base_choices()
+    out = cvo.apply_cv_to_choices(base, "Zed", 0.20, base_verdict="even",
+                                  vision_state=vs)
+    assert out is base
+
+
+def test_apply_cv_empty_base_still_emits_pair():
+    vs = _vs({"Zed": _enemy("Zed", is_dead=True, respawn=10.0)})
+    out = cvo.apply_cv_to_choices([], "Zed", 0.9, base_verdict="back_off",
+                                  vision_state=vs)
+    assert [c.key for c in out] == ["A", "B"]
+    assert out[0].source_tag == "cv-laning"
+
+
+def test_apply_cv_failsoft_on_garbage_returns_base():
+    base = _base_choices()
+    out = cvo.apply_cv_to_choices(base, None, "x", base_verdict=None,
+                                  vision_state="garbage")
+    assert out is base

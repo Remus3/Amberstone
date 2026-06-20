@@ -11,6 +11,7 @@
 # All laning calls are monkeypatched so NO real DS-engine network call happens.
 from __future__ import annotations
 
+import os
 import time
 import unittest
 from pathlib import Path
@@ -102,6 +103,17 @@ class BuildGameStateTests(unittest.TestCase):
         gs = dc._build_game_state(coach, lc, "sr")
         self.assertEqual(gs["items"], ["Eclipse", "Plated Steelcaps"])
         self.assertEqual(gs["my_item_ids"], ["6692", "3047"])
+
+    def test_hp_fraction_mapped(self) -> None:
+        # RC2 P5.2: hp_fraction (lc-first) is stamped onto gs for the CV layer.
+        coach = {"champion": "Aatrox", "hp": 600, "hp_max": 1000}
+        gs = dc._build_game_state(coach, {"enemy_team": ["Teemo"]}, "sr")
+        self.assertAlmostEqual(gs["hp_fraction"], 0.6)
+
+    def test_hp_fraction_absent_omitted(self) -> None:
+        gs = dc._build_game_state({"champion": "Aatrox"},
+                                  {"enemy_team": ["Teemo"]}, "sr")
+        self.assertNotIn("hp_fraction", gs)
 
     def test_team_item_pools_mapped_from_lc(self) -> None:
         # enemy_item_ids + ally_item_ids (for the heal-threat nudge) come only
@@ -441,6 +453,72 @@ class CacheSigItemIdsTests(unittest.TestCase):
         self.assertEqual(
             dc._cache_sig({**base, "ally_item_ids": ["3165", "3047"]}, "sr"),
             dc._cache_sig({**base, "ally_item_ids": ["3047", "3165"]}, "sr"))
+
+
+class CvServedFlagTests(unittest.TestCase):
+    """RC2 P5.2: the CV served override is DEFAULT-OFF. _cv_served_enabled gates
+    it on RC_LANING_CV_SERVED; the off path must not pass apply_cv (byte-
+    identical call), the on path passes apply_cv=True + hp_fraction."""
+
+    def setUp(self) -> None:
+        _reset_cache()
+        self._prior = os.environ.get("RC_LANING_CV_SERVED")
+        os.environ.pop("RC_LANING_CV_SERVED", None)
+
+    def tearDown(self) -> None:
+        _reset_cache()
+        if self._prior is None:
+            os.environ.pop("RC_LANING_CV_SERVED", None)
+        else:
+            os.environ["RC_LANING_CV_SERVED"] = self._prior
+
+    def test_flag_default_off(self) -> None:
+        self.assertFalse(dc._cv_served_enabled())
+
+    def test_flag_truthy_values_on(self) -> None:
+        for v in ("1", "true", "TRUE", "yes", "on"):
+            os.environ["RC_LANING_CV_SERVED"] = v
+            self.assertTrue(dc._cv_served_enabled(), v)
+
+    def test_flag_falsey_values_off(self) -> None:
+        for v in ("0", "false", "no", "off", ""):
+            os.environ["RC_LANING_CV_SERVED"] = v
+            self.assertFalse(dc._cv_served_enabled(), v)
+
+    def test_off_path_does_not_pass_apply_cv(self) -> None:
+        captured: dict = {}
+        orig = dc.laning_choices
+
+        def _stub(gs, mode="SR", **kw):  # noqa: ANN001, ANN003
+            captured.update(kw)
+            return []
+
+        try:
+            dc.laning_choices = _stub
+            dc.compute_deterministic({"champion": "Aatrox"},
+                                     {"enemy_team": ["Garen"]}, "sr")
+        finally:
+            dc.laning_choices = orig
+        self.assertNotIn("apply_cv", captured)
+        self.assertNotIn("hp_fraction", captured)
+
+    def test_on_path_passes_apply_cv_true_and_hp(self) -> None:
+        os.environ["RC_LANING_CV_SERVED"] = "1"
+        captured: dict = {}
+        orig = dc.laning_choices
+
+        def _stub(gs, mode="SR", **kw):  # noqa: ANN001, ANN003
+            captured.update(kw)
+            return []
+
+        try:
+            dc.laning_choices = _stub
+            coach = {"champion": "Aatrox", "hp": 50, "hp_max": 1000}
+            dc.compute_deterministic(coach, {"enemy_team": ["Garen"]}, "sr")
+        finally:
+            dc.laning_choices = orig
+        self.assertTrue(captured.get("apply_cv"))
+        self.assertAlmostEqual(captured.get("hp_fraction"), 0.05)
 
 
 class AsciiHygieneTests(unittest.TestCase):
