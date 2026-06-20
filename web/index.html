@@ -1148,6 +1148,15 @@
                   <div class="csv-sugg-empty">waiting for champ-select...</div>
                 </div>
               </div>
+              <!-- RC2 E4 (P2): live counter-picks vs the enemy comp. A
+                   glanceable "pick into this comp" list for the operator's
+                   open slot, driven by the existing counters index via
+                   /api/champ-select/counter-picks. Hidden until at least
+                   one enemy is committed (no comp = nothing to counter).
+                   Renderer: _csvRenderCounterPicks in champ_select.js. -->
+              <div class="csv-sugg-section csv-sugg-counter-picks"
+                   id="csv-sugg-counter-picks"
+                   hidden></div>
               <!-- Operator 2026-05-31 (#8): the CC CHAIN (cc_blended_ehp)
                    + CONDITIONAL CC (cc_conditional) mounts moved to the
                    center My Pick card, below the DS-vs-Enemy-Comp build.

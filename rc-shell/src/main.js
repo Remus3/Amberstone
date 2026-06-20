@@ -193,6 +193,19 @@ function toggleAlwaysOnTop() {
   const next = !mainWindow.isAlwaysOnTop();
   mainWindow.setAlwaysOnTop(next);
   persistWindowState();
+  // RC2 E1: keep the persisted overlay-settings companionAlwaysOnTop coherent
+  // with the menu toggle so the on-screen control and the menu never disagree.
+  overlaySettings = ov.overlaySettingsFrom(
+    ov.mergeOverlaySettingsPatch(store.load(statePath(), {}), {
+      companionAlwaysOnTop: next,
+    })
+  );
+  store.save(
+    statePath(),
+    ov.mergeOverlaySettingsPatch(store.load(statePath(), {}), {
+      companionAlwaysOnTop: next,
+    })
+  );
   buildMenu(); // refresh the checkbox state
 }
 
@@ -584,15 +597,36 @@ function scheduleActiveRevert() {
   }, overlaySettings.activeRevertSec * 1000);
 }
 
+// --- RC2 E1: companion pin (always-on-top) -----------------------------------
+// Apply the persisted companionAlwaysOnTop setting to the companion/dashboard
+// window. This is the on-screen pin toggle (no hotkey): the ?overlay=1 renderer
+// flips it through the IPC bridge and main.js applies it live + persists it.
+function applyCompanionAlwaysOnTop() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  if (mainWindow.isAlwaysOnTop() !== overlaySettings.companionAlwaysOnTop) {
+    mainWindow.setAlwaysOnTop(overlaySettings.companionAlwaysOnTop);
+    persistWindowState(); // mirror into the top-level alwaysOnTop key
+    buildMenu(); // refresh the menu checkbox
+  }
+}
+
 // --- OVL1: apply changed overlay settings live -------------------------------
 // Rebuild the pure deadline state on the new delay so the next arm() honors it,
 // and if the overlay is ACTIVE right now, re-arm immediately so a just-changed
-// timer takes effect without waiting for the next hotkey press.
+// timer takes effect without waiting for the next hotkey press. RC2 E1: also
+// re-apply the companion pin and force a surface re-resolve so a just-flipped
+// keepCompanion shows/hides the dashboard immediately (lastSurface = null
+// defeats the no-op-churn guard in applySurface).
 function applyOverlaySettings() {
   activeRevert = ov.makeActiveRevert({ delayMs: overlaySettings.activeRevertSec * 1000 });
   if (!overlayClickThrough) {
     scheduleActiveRevert();
   }
+  applyCompanionAlwaysOnTop();
+  lastSurface = null;
+  refreshSurface(lastMode);
 }
 
 // IPC bridge handlers (OVL1). The ?overlay=1 renderer reads + writes the
@@ -614,12 +648,18 @@ function registerIpc() {
 }
 
 // Show/hide the two surfaces to match a resolved surface, skipping no-op churn.
+// RC2 E1: keepCompanion (operator setting, default ON) keeps the full dashboard
+// window available alongside the in-game overlay instead of hiding it - the fix
+// for the "dashboard disappears in a game" bug. windowActionsWithPolicy layers
+// that override on the base surface actions.
 function applySurface(surface) {
   if (surface === lastSurface) {
     return;
   }
   lastSurface = surface;
-  const actions = ov.windowActions(surface);
+  const actions = ov.windowActionsWithPolicy(surface, {
+    keepCompanion: overlaySettings.keepCompanion,
+  });
   if (mainWindow && !mainWindow.isDestroyed()) {
     if (actions.companion === "show") {
       mainWindow.showInactive();
@@ -802,6 +842,10 @@ if (!gotLock) {
   app.whenReady().then(() => {
     registerIpc();
     createWindow();
+    // RC2 E1: apply the persisted companion pin once the window exists. The
+    // saved top-level alwaysOnTop already seeded the BrowserWindow at create;
+    // this aligns the overlay-settings companionAlwaysOnTop with it.
+    applyCompanionAlwaysOnTop();
     setupAutoUpdater();
     registerHotkeys();
     startPoll();
