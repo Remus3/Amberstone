@@ -10,9 +10,9 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Design GREENLIT (Hextech); operator batch E1-E12 added - Stage 25 of 62 - approx 40% complete**
+> **Design GREENLIT (Hextech); operator batch E1-E12 added - Stage 26 of 62 - approx 42% complete**
 >
-> _(% recomputed DOWN per the operator directive: 12 approved execution stages E1-E12 added to the 50 base = 62 total. Done: 18 base + E3 win-capture + E5 hold-band + E8 design-system + E6 spell-fix + E9 rank/scouting + E4 counter-picks/ban-collapse + E1 persist/pinned/panel-toggles = 25.)_
+> _(% recomputed: 12 approved execution stages E1-E12 added to the 50 base = 62 total. Done: 19 base (+3.1 overlay condensation spec) + E3 win-capture + E5 hold-band + E8 design-system + E6 spell-fix + E9 rank/scouting + E4 counter-picks/ban-collapse + E1 persist/pinned/panel-toggles = 26. 26/62 = 41.9% -> ~42%.)_
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -137,7 +137,7 @@ so the operator sees gray/blue progress live.
 ### Phase 3 - OVERLAY + DASHBOARD QUICK-GLANCE (multi UI-agent)
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 3.1 | In-game priority-info condensation spec (glance test) | OPEN | |
+| 3.1 | In-game priority-info condensation spec (glance test) | DONE | docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md |
 | 3.2 | Overlay UI-agent pass 1 (structure/density) | OPEN | |
 | 3.3 | Overlay UI-agent pass 2 (typography/hit-targets/hierarchy) | OPEN | |
 | 3.4 | Dashboard STAYS when overlay active (currently disappears) - fix | OPEN | |
@@ -223,4 +223,5 @@ TOTAL_stages = 50.
 
 - **P6.2 SHIPPED** (1011f47d): RuneWriter.POLL_INTERVAL 2.0s -> 1.0s (env RC_RUNEWRITER_POLL_SEC), port-safe. Applies on next RC restart. Remaining P6 levers (from io_timing_map): halve SSE+build TTL 1.0->0.5s together (S/LOW, touches state pipeline); pool one keep-alive LCU socket (M/MED, frozen grant). The dashboard champ-select render envelope (champ_select.js ~2s) is the UI-responsiveness lever for 6.3.
 - **P7.1 ASCII warning** = `tools/edit_lint_check.py` (PostToolUse) + `tools/precommit_gate.py` scan 6 banned glyphs only: em-dash U+2014, en-dash U+2013, smart quotes U+2018/2019/201C/201D. Box-drawing / arrows / math are NOT banned (functional, leave them). Census: 53 em-dashes total, ALL in `_archive/2026-05-01-audit/**` (dead pre-1PC tkinter code) + `agents/agent6_auditor/reports/*.md` (generated weekly reports); ZERO smart quotes; the live authored tree is CLEAN. These dirs are normally sweep-excluded (immutable). FIX: strip em-dashes in those files (tools/strip_em_dashes.py) AND extend the hook `_FROZEN_SKIP` to root `_archive/` + agent6 reports so it never re-warns; OR delete the dead `_archive/2026-05-01-audit` in P7.2/7.3 (it is the "unused >1wk" target).
+- **P3.1 SHIPPED**: `docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md`. Reframes the 460px dock as 1 PRIMARY (S0) + 3 SUPPORT (S1-S3) fixed slots with a 3-tier model (Ambient/Urgent/Emergency) mapped onto the existing `classifyAction()` bands (`right_now.js:472`: urgent->Emergency, fight->Urgent, good->Ambient). Adds a deterministic S0 single-winner arbitration (priority 100 lethal -> 0 empty) so exactly ONE pop-out exists at any tick, and NARROWS the pulse channel from every-band-on-text-change to Emergency + one-shot-Urgent-cross only (kills alarm fatigue). 3.2 OWNS new `web/js/lib/overlay_priority.js` (selectPrimary + tier map, TDD fixture table) + callout 2-row clamp; 3.3 OWNS Hextech color-bin bindings (#E84057 lethal reserved for the lone S0 Emergency; gold caution; cyan info; green good) + per-element glance acceptance bars + the 5-phase fixture audit at `?overlay=1`. Open: Q2 lethal-incoming predicate field (grep coach.fight_rule / liveclient hp before wiring), Q1 minimap-anchor projection deferred to P4.1.
 - **P5 coaching** spec = `docs/research/RC2_COACHING_SPEC.md`. The laning Haiku-flip is blocked at 39% det-vs-Haiku agreement by CALIBRATION (precompute verdict vocabulary has no hold/farm band, back_off-biased), NOT games-played (`ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108`). Top lever: hold-band + `even` relabel in `core/precomputed_laning_coach.py` `_VERDICT_LABELS` (Tier-1, shadow-logged, 39% -> ~53%+). Then CV overrides (new core/laning_cv_overrides.py reading data/vision_state.json) + objective playbook row.
