@@ -19,6 +19,7 @@ and `read_json` directly from `dashboard._context`.
 """
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
 import time
@@ -35,6 +36,19 @@ from dashboard.routes_team_context import get_team_context
 
 
 log = logging.getLogger("rc.web_dashboard")
+
+# RC2 6.5 - state-pipeline latency reduction. build_state() opens two
+# independent localhost relay round-trips: lcu_summary() (champ-select /
+# lobby, needed immediately) and liveclient_summary() (in-game fields,
+# not needed until the overlay merge well below). Running them back-to-
+# back stacked two ~1s-timeout waits on the /api/state critical path. We
+# overlap the liveclient round-trip with the lcu + coach-file work via a
+# tiny shared thread pool. Small bounded worker count: the build is gated
+# to ~2/s by the routes_state TTL, with a handful of SSE subscribers +
+# pollers at worst - never a fan-out. Port-safe: same two connections,
+# briefly overlapped, never multiplied.
+_RELAY_POOL = concurrent.futures.ThreadPoolExecutor(
+    max_workers=4, thread_name_prefix="rc-state-relay")
 
 MODE_TO_FILE = {
     "aram":   "data/aram_coaching_data.json",
@@ -229,6 +243,19 @@ def build_state() -> dict:
         _stages.append((name, now - _t))
         _t = now
 
+    # RC2 6.5: kick off the independent liveclient relay round-trip
+    # concurrently with the lcu snapshot + coach-file reads below. Its
+    # result (lc) isn't consumed until the overlay merge ~30 lines down,
+    # so overlapping removes that localhost round-trip from the serial
+    # critical path (and bounds a hung relay at max() of the two 1s
+    # timeouts, not their sum). Submitted via the module global so tests
+    # patching _state_builder.liveclient_summary still take effect. Falls
+    # back to an inline call if the pool can't accept the task.
+    try:
+        _lc_future = _RELAY_POOL.submit(liveclient_summary)
+    except Exception:  # noqa: BLE001
+        _lc_future = None
+
     health = read_json("ops/runtime/health.json")
     lcu_snapshot = lcu_summary()
     _mark("lcu")
@@ -248,7 +275,17 @@ def build_state() -> dict:
     # Overlay live API fields onto coach data so the dashboard placeholders
     # (game_time, kda, level, gold, hp, mana, cs) populate immediately.
     # Coach values win when present (e.g. coach computes win_pct from comp).
-    lc = liveclient_summary()
+    # Join the liveclient round-trip started up top (RC2 6.5). It almost
+    # always completed during the lcu/coach work above, so this rarely
+    # blocks. Any pool/future failure degrades to a fresh inline call so
+    # behavior is identical to the pre-6.5 serial path.
+    if _lc_future is not None:
+        try:
+            lc = _lc_future.result()
+        except Exception:  # noqa: BLE001
+            lc = liveclient_summary()
+    else:
+        lc = liveclient_summary()
     _mark("liveclient")
     # item 281: honor a force-clear sentinel BEFORE the overlay so a cleared
     # artifact can never leak stale game fields into /api/state.
