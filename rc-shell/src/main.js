@@ -703,6 +703,53 @@ function registerIpc() {
   });
 }
 
+// --- RC2 Stage 4.3: single-monitor separated-window arrangement ----------------
+// When the in-game overlay shows alongside the kept companion (E1/3.4) on a
+// SINGLE monitor, a companion left under the right-docked overlay is visible but
+// covered - the dashboard is "available" yet useless. Nudge an overlapping
+// companion to the free side so the two windows are SEPARATED side-by-side (the
+// dashboard sits beside the HUD, not on top of it). Multi-monitor setups are
+// untouched (the operator can punt the dashboard to a 2nd screen). Reposition
+// only - never resize - so the size preset survives. ov.resolveSeparatedCompanion
+// Bounds is the pure decision (respects a companion already clear of the overlay).
+function applySingleMonitorLayout() {
+  if (!overlaySettings.separateWindows) {
+    return; // operator kill switch (no-hotkey #ovset toggle).
+  }
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    return;
+  }
+  let displays;
+  let work;
+  try {
+    displays = screen.getAllDisplays();
+    work = screen.getPrimaryDisplay().workArea;
+  } catch (_e) {
+    return; // screen API hiccup -> leave the windows where they are.
+  }
+  // Single-monitor only: with >= 2 displays the operator arranges freely.
+  if (!Array.isArray(displays) || displays.length > 1) {
+    return;
+  }
+  const next = ov.resolveSeparatedCompanionBounds(
+    mainWindow.getBounds(),
+    overlayWindow.getBounds(),
+    work
+  );
+  if (next.moved && typeof next.x === "number" && typeof next.y === "number") {
+    mainWindow.setBounds({
+      x: next.x,
+      y: next.y,
+      width: next.width,
+      height: next.height,
+    });
+    persistWindowState(); // remember where the auto-arrange parked it.
+  }
+}
+
 // Show/hide the two surfaces to match a resolved surface, skipping no-op churn.
 // RC2 E1: keepCompanion (operator setting, default ON) keeps the full dashboard
 // window available alongside the in-game overlay instead of hiding it - the fix
@@ -730,6 +777,10 @@ function applySurface(surface) {
     }
   } else if (overlayWindow && !overlayWindow.isDestroyed()) {
     overlayWindow.hide();
+  }
+  // RC2 4.3: with both windows up on one monitor, separate them side-by-side.
+  if (actions.companion === "show" && actions.overlay === "show") {
+    applySingleMonitorLayout();
   }
 }
 

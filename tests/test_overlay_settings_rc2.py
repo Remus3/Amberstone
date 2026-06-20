@@ -75,6 +75,18 @@ s = readOverlaySettings();
 assert.strictEqual(s.keepCompanion, true, "garbage keepCompanion -> true");
 assert.strictEqual(s.companionAlwaysOnTop, true, "garbage companionAlwaysOnTop -> true");
 
+// (7) RC2 4.3 separateWindows: default ON, round-trips false, sibling-safe,
+// garbage -> default true (mirrors the rc-shell overlay_state authority).
+store.clear();
+assert.strictEqual(OVERLAY_SETTINGS_DEFAULTS.separateWindows, true, "default separateWindows");
+assert.strictEqual(readOverlaySettings().separateWindows, true, "read default separateWindows");
+r = writeOverlaySettings({ separateWindows: false });
+assert.strictEqual(r.separateWindows, false, "write returns separateWindows false");
+assert.strictEqual(readOverlaySettings().separateWindows, false, "separateWindows persisted");
+assert.strictEqual(readOverlaySettings().keepCompanion, true, "sibling keepCompanion preserved");
+store.set("rc_overlay_settings", JSON.stringify({ separateWindows: "yes" }));
+assert.strictEqual(readOverlaySettings().separateWindows, true, "garbage separateWindows -> true");
+
 console.log("OK");
 """
 
