@@ -1,0 +1,26 @@
+{
+  "repo_root": "C:\\Riot Commander",
+  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
+  "ceiling_usd": 200.0,
+  "_ceiling_note": "ceiling_usd caps GEMINI (auditor) spend only. Claude/executor spend UNCAPPED per the RC2 program policy. 200 = runaway backstop only.",
+  "max_cycles": 50,
+  "cycle_deadline_sec": 5400,
+  "poll_sec": 5,
+  "dry_run": false,
+  "ignore_no_progress": false,
+  "clear_each_cycle": true,
+  "session_jsonl": "",
+  "cycle_command": "/RC2-Continue headlessly: execute the FIRST non-DONE/CLOSED/LIVE stage in docs/RC2_PLAN.md end-to-end (TDD where logic, py_compile before any restart, tiered verification R5-R7; UI stages run the 5-phase fixture audit + Claude_Preview vs /api/state; commit + push + CI green + the /done docs sync appending docs/LEDGER.md and syncing docs/RC2_PLAN.md + ROADMAP), then flip that stage row with the commit sha and re-derive the PROGRESS banner. P3/P4 redesign code is greenlit (Hextech). DS seams ship DEFAULT-OFF + ENGINE bump + DS :8893 restart + Share sync in the same commit; operator-gated live flips append to docs/LIVE_GAME_GATED_SYNC.md and NEVER block. Auto-pick the recommended option, ask no questions. FINAL STEP (required, even if no commit this cycle): \"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>",
+  "_cycle_command_note": "Self-directing slash command typed verbatim after /clear each cycle. The gemini DIRECTOR is skipped (the command self-directs from docs/RC2_PLAN.md); the gemini AUDITOR still reviews every commit. The executor's /RC2-Continue runs its own /done (commit+push+CI) before the done_sentinel final step.",
+  "claude_window_title": "Claude",
+  "gemini_model": "gemini-3-pro-preview",
+  "gemini_cmd": "gemini",
+  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "gemini_price_per_mtok": {"input": 2.0, "output": 12.0},
+  "price_per_mtok": {
+    "opus":   {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
+    "sonnet": {"input": 3.0,  "output": 15.0, "cache_write": 3.75,  "cache_read": 0.3},
+    "haiku":  {"input": 1.0,  "output": 5.0,  "cache_write": 1.25,  "cache_read": 0.1},
+    "default":{"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
+  }
+}
