@@ -289,6 +289,18 @@ class _PollerMixin:
         return False
 
     def _lcu_get(self, endpoint):
+        # RC2 P6.4 (L6): opt-in pooled keep-alive connection reuse to cut the
+        # per-call LCU TCP+TLS handshake churn. DEFAULT-OFF (RC_LCU_POOL) so the
+        # urlopen path below stays byte-identical until a port-safety pilot
+        # enables it; a pooled fail-soft None falls through to the per-call read.
+        from core import lcu_pool
+        if lcu_pool.pool_enabled():
+            res = lcu_pool.get_shared_pool().request(
+                GAME_HOST, self._lcu_port, "GET", endpoint,
+                headers={"Authorization": f"Basic {self._lcu_auth}"},
+            )
+            if res is not None:
+                return json.loads(res[1])
         url = f"https://{GAME_HOST}:{self._lcu_port}{endpoint}"
         req = urllib.request.Request(url)
         req.add_header("Authorization", f"Basic {self._lcu_auth}")
