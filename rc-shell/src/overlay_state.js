@@ -370,6 +370,11 @@ const OVERLAY_SETTINGS_DEFAULTS = Object.freeze({
   // hover-to-interact without changing the legacy global ACTIVE hotkey.
   overlayOpacity: 1,
   clickThroughZones: true,
+  // RC2 4.3 (single-monitor window management): when both the overlay and the
+  // kept companion are shown on ONE monitor, auto-arrange them as SEPARATED
+  // side-by-side windows so the dashboard sits beside the HUD, not under it.
+  // Default ON; the no-hotkey kill switch lives in the #ovset strip.
+  separateWindows: true,
 });
 
 // ACTIVE auto-revert bounds: a 3s floor (an instantly-reverting overlay is
@@ -421,6 +426,84 @@ function effectiveIgnoreMouse(clickThrough, zoneHover, zonesEnabled) {
   return zoneHover !== true; // PASSIVE: click-through except over a zone
 }
 
+// --- RC2 Stage 4.3: single-monitor window management (separated windows) ------
+// On a SINGLE monitor the keepCompanion fix (E1/3.4) shows the full dashboard
+// alongside the right-docked in-game overlay - but a companion last left under
+// the overlay is visible-yet-covered, which defeats "the dashboard stays
+// available". You cannot punt it to a 2nd screen on one monitor, so arrange the
+// two as SEPARATED non-overlapping side-by-side windows: the overlay keeps its
+// HUD anchor; the companion is docked to whichever side of the overlay has more
+// free room (top-aligned), KEEPING its size (reposition only - never resize, so
+// the size preset is never corrupted). Operator intent wins: a companion that
+// does NOT already overlap the overlay is left exactly where it is.
+
+// Coerce a window-bounds blob to a fully-finite, positive-size rect, else null.
+// A garbage rect makes the geometry no-op (the caller treats null/false as
+// "do not auto-arrange"), which is the safe default for a window move.
+function _finiteRect(r) {
+  const o = r && typeof r === "object" && !Array.isArray(r) ? r : null;
+  if (!o) {
+    return null;
+  }
+  if (!(Number.isFinite(o.x) && Number.isFinite(o.y))) {
+    return null;
+  }
+  if (!(Number.isFinite(o.width) && o.width > 0 && Number.isFinite(o.height) && o.height > 0)) {
+    return null;
+  }
+  return { x: o.x, y: o.y, width: o.width, height: o.height };
+}
+
+// Strict axis-aligned overlap test. Touching edges do NOT count as overlap
+// (a.right === b.left is a clean tile, not a collision). A garbage rect on
+// either side -> false (no overlap -> the caller no-ops the auto-arrange).
+function rectsOverlap(a, b) {
+  const ra = _finiteRect(a);
+  const rb = _finiteRect(b);
+  if (!ra || !rb) {
+    return false;
+  }
+  return (
+    ra.x < rb.x + rb.width &&
+    rb.x < ra.x + ra.width &&
+    ra.y < rb.y + rb.height &&
+    rb.y < ra.y + ra.height
+  );
+}
+
+// Where the companion window should sit so it does NOT cover the overlay on a
+// single monitor. Returns { x, y, width, height, moved }:
+//   - companion garbage            -> { x:null, ..., moved:false } (no-op)
+//   - overlay garbage / no overlap -> echo the companion (moved:false): respect
+//                                     the operator's existing placement.
+//   - overlapping                  -> dock the companion to the work-area edge
+//                                     on whichever side of the overlay has more
+//                                     free room, top-aligned, size preserved
+//                                     (moved:true). Best effort if the screen is
+//                                     too narrow for a full clear (still reduces
+//                                     the overlap; the kill switch disables it).
+function resolveSeparatedCompanionBounds(companion, overlayBounds, workArea) {
+  const c = _finiteRect(companion);
+  if (!c) {
+    return { x: null, y: null, width: null, height: null, moved: false };
+  }
+  const ovb = _finiteRect(overlayBounds);
+  if (!ovb || !rectsOverlap(c, ovb)) {
+    return { x: c.x, y: c.y, width: c.width, height: c.height, moved: false };
+  }
+  const area = normWorkArea(workArea);
+  const leftRoom = ovb.x - area.x;
+  const rightRoom = area.x + area.width - (ovb.x + ovb.width);
+  const x = leftRoom >= rightRoom ? area.x : area.x + area.width - c.width;
+  return {
+    x: Math.round(x),
+    y: Math.round(area.y),
+    width: c.width,
+    height: c.height,
+    moved: true,
+  };
+}
+
 // Resolve the operator overlay settings out of a saved state blob. Every field
 // is validated against the hand-editable file: pulseNotify must be a real
 // boolean (else default true), activeRevertSec a finite number clamped to
@@ -444,6 +527,10 @@ function overlaySettingsFrom(saved) {
       typeof set.clickThroughZones === "boolean"
         ? set.clickThroughZones
         : OVERLAY_SETTINGS_DEFAULTS.clickThroughZones,
+    separateWindows:
+      typeof set.separateWindows === "boolean"
+        ? set.separateWindows
+        : OVERLAY_SETTINGS_DEFAULTS.separateWindows,
   };
 }
 
@@ -472,6 +559,9 @@ function sanitizeSettingsPatch(patch) {
   }
   if (typeof p.clickThroughZones === "boolean") {
     out.clickThroughZones = p.clickThroughZones;
+  }
+  if (typeof p.separateWindows === "boolean") {
+    out.separateWindows = p.separateWindows;
   }
   return out;
 }
@@ -526,4 +616,6 @@ module.exports = {
   OVERLAY_OPACITY_MAX,
   clampOpacity,
   effectiveIgnoreMouse,
+  rectsOverlap,
+  resolveSeparatedCompanionBounds,
 };

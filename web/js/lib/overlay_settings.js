@@ -30,6 +30,10 @@ const LS_KEY = "rc_overlay_settings";
 // + clickThroughZones (PASSIVE captures the cursor over an interactive control
 // without the global ACTIVE hotkey). Defaults match the rc-shell authority
 // (overlay_state.OVERLAY_SETTINGS_DEFAULTS): opacity 1, zones on.
+// RC2 4.3: separateWindows default ON - on a single monitor the rc-shell arranges
+// the overlay + kept dashboard as SEPARATED side-by-side windows instead of
+// leaving the dashboard under the HUD. Mirrors overlay_state.OVERLAY_SETTINGS_
+// DEFAULTS; the #ovset toggle is the no-hotkey kill switch.
 export const OVERLAY_SETTINGS_DEFAULTS = {
   pulseNotify: true,
   activeRevertSec: 20,
@@ -37,6 +41,7 @@ export const OVERLAY_SETTINGS_DEFAULTS = {
   companionAlwaysOnTop: true,
   overlayOpacity: 1,
   clickThroughZones: true,
+  separateWindows: true,
 };
 
 // Clamp the ACTIVE auto-revert seconds to [3,120] (mirrors the rc-shell
@@ -70,6 +75,10 @@ function _coerce(raw) {
       typeof o.clickThroughZones === "boolean"
         ? o.clickThroughZones
         : OVERLAY_SETTINGS_DEFAULTS.clickThroughZones,
+    separateWindows:
+      typeof o.separateWindows === "boolean"
+        ? o.separateWindows
+        : OVERLAY_SETTINGS_DEFAULTS.separateWindows,
   };
 }
 
@@ -96,6 +105,7 @@ export function writeOverlaySettings(patch) {
   if (patch && typeof patch.companionAlwaysOnTop === "boolean") next.companionAlwaysOnTop = patch.companionAlwaysOnTop;
   if (patch && patch.overlayOpacity !== undefined) next.overlayOpacity = _clampOpacity(patch.overlayOpacity);
   if (patch && typeof patch.clickThroughZones === "boolean") next.clickThroughZones = patch.clickThroughZones;
+  if (patch && typeof patch.separateWindows === "boolean") next.separateWindows = patch.separateWindows;
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(next));
   } catch (_e) {

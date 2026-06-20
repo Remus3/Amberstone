@@ -402,6 +402,7 @@ test("overlaySettingsFrom: defaults when nothing saved", () => {
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
+    separateWindows: true,
   });
 });
 
@@ -416,6 +417,7 @@ test("overlaySettingsFrom: reads saved overlay.settings", () => {
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
+    separateWindows: true,
   });
 });
 
@@ -440,6 +442,7 @@ test("overlaySettingsFrom: non-boolean pulse / non-finite revert -> defaults", (
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
+    separateWindows: true,
   });
 });
 
@@ -473,6 +476,7 @@ test("overlaySettingsFrom: garbage-safe (null / arrays / strings / junk overlay)
         companionAlwaysOnTop: true,
         overlayOpacity: 1,
         clickThroughZones: true,
+        separateWindows: true,
       },
       JSON.stringify(g)
     );
@@ -542,6 +546,7 @@ test("overlaySettingsFrom round-trips a mergeOverlaySettingsPatch write (positio
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
+    separateWindows: true,
   });
   assert.strictEqual(saved.overlay.x, 5);
   assert.strictEqual(saved.overlay.panelSet, "coach");
@@ -925,4 +930,125 @@ test("mergeOverlaySettingsPatch: clickThroughZones false persists; non-boolean d
   );
   const dropped = ov.mergeOverlaySettingsPatch({}, { clickThroughZones: 1 });
   assert.ok(!("clickThroughZones" in dropped.overlay.settings));
+});
+
+// --- RC2 Stage 4.3: single-monitor separated-window management ----------------
+// rectsOverlap (AABB intersection) + resolveSeparatedCompanionBounds (side-dock
+// an overlapping companion off the right-docked overlay) + the separateWindows
+// operator setting (no-hotkey kill switch, default ON).
+
+test("rectsOverlap: clearly overlapping rects -> true", () => {
+  const a = { x: 0, y: 0, width: 100, height: 100 };
+  const b = { x: 50, y: 50, width: 100, height: 100 };
+  assert.strictEqual(ov.rectsOverlap(a, b), true);
+  assert.strictEqual(ov.rectsOverlap(b, a), true); // symmetric
+});
+
+test("rectsOverlap: disjoint rects -> false", () => {
+  const a = { x: 0, y: 0, width: 100, height: 100 };
+  const b = { x: 200, y: 0, width: 100, height: 100 };
+  assert.strictEqual(ov.rectsOverlap(a, b), false);
+});
+
+test("rectsOverlap: touching edges do NOT count as overlap", () => {
+  const a = { x: 0, y: 0, width: 100, height: 100 };
+  const b = { x: 100, y: 0, width: 100, height: 100 }; // a.right === b.left
+  assert.strictEqual(ov.rectsOverlap(a, b), false);
+});
+
+test("rectsOverlap: garbage rect -> false (auto-arrange no-ops safely)", () => {
+  const a = { x: 0, y: 0, width: 100, height: 100 };
+  assert.strictEqual(ov.rectsOverlap(a, null), false);
+  assert.strictEqual(ov.rectsOverlap(a, { x: NaN, y: 0, width: 10, height: 10 }), false);
+  assert.strictEqual(ov.rectsOverlap(a, { x: 0, y: 0, width: 0, height: 10 }), false);
+  assert.strictEqual(ov.rectsOverlap(undefined, a), false);
+});
+
+test("resolveSeparatedCompanionBounds: a companion clear of the overlay is left put (moved=false)", () => {
+  // Companion docked left, overlay docked right on a 2560 work area - no overlap.
+  const companion = { x: 0, y: 0, width: 520, height: 900 };
+  const overlay = { x: 1962, y: 0, width: 598, height: 1080 };
+  const area = { x: 0, y: 0, width: 2560, height: 1440 };
+  const r = ov.resolveSeparatedCompanionBounds(companion, overlay, area);
+  assert.strictEqual(r.moved, false);
+  assert.strictEqual(r.x, 0);
+  assert.strictEqual(r.y, 0);
+  assert.strictEqual(r.width, 520);
+  assert.strictEqual(r.height, 900);
+});
+
+test("resolveSeparatedCompanionBounds: an overlapping companion docks to the free LEFT and clears the overlay", () => {
+  // Companion centered ON TOP of the right-docked overlay -> must move left.
+  const companion = { x: 1700, y: 200, width: 520, height: 900 };
+  const overlay = { x: 1962, y: 0, width: 598, height: 1080 };
+  const area = { x: 0, y: 0, width: 2560, height: 1440 };
+  const r = ov.resolveSeparatedCompanionBounds(companion, overlay, area);
+  assert.strictEqual(r.moved, true);
+  assert.strictEqual(r.x, 0); // left work-area edge (the bigger free side)
+  assert.strictEqual(r.y, 0); // top-aligned
+  assert.strictEqual(r.width, 520); // size preserved (reposition only)
+  assert.strictEqual(r.height, 900);
+  // The arranged companion no longer overlaps the overlay.
+  assert.strictEqual(
+    ov.rectsOverlap({ x: r.x, y: r.y, width: r.width, height: r.height }, overlay),
+    false
+  );
+});
+
+test("resolveSeparatedCompanionBounds: a LEFT-docked overlay sends the companion to the right edge", () => {
+  // Overlay on the left, more free room on the right -> dock companion right.
+  const companion = { x: 100, y: 100, width: 520, height: 900 };
+  const overlay = { x: 0, y: 0, width: 598, height: 1080 };
+  const area = { x: 0, y: 0, width: 2560, height: 1440 };
+  const r = ov.resolveSeparatedCompanionBounds(companion, overlay, area);
+  assert.strictEqual(r.moved, true);
+  assert.strictEqual(r.x, 2560 - 520); // right work-area edge
+  assert.strictEqual(r.y, 0);
+  assert.strictEqual(
+    ov.rectsOverlap({ x: r.x, y: r.y, width: r.width, height: r.height }, overlay),
+    false
+  );
+});
+
+test("resolveSeparatedCompanionBounds: garbage companion -> moved=false, null coords", () => {
+  const overlay = { x: 1962, y: 0, width: 598, height: 1080 };
+  const area = { x: 0, y: 0, width: 2560, height: 1440 };
+  const r = ov.resolveSeparatedCompanionBounds(null, overlay, area);
+  assert.strictEqual(r.moved, false);
+  assert.strictEqual(r.x, null);
+});
+
+test("resolveSeparatedCompanionBounds: garbage overlay -> respect the companion as-is", () => {
+  const companion = { x: 300, y: 200, width: 520, height: 900 };
+  const area = { x: 0, y: 0, width: 2560, height: 1440 };
+  const r = ov.resolveSeparatedCompanionBounds(companion, null, area);
+  assert.strictEqual(r.moved, false);
+  assert.strictEqual(r.x, 300);
+  assert.strictEqual(r.y, 200);
+});
+
+test("OVERLAY_SETTINGS_DEFAULTS: separateWindows defaults ON", () => {
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.separateWindows, true);
+});
+
+test("overlaySettingsFrom: separateWindows default true; reads saved false; garbage -> true", () => {
+  assert.strictEqual(ov.overlaySettingsFrom({}).separateWindows, true);
+  assert.strictEqual(
+    ov.overlaySettingsFrom({ overlay: { settings: { separateWindows: false } } }).separateWindows,
+    false
+  );
+  assert.strictEqual(
+    ov.overlaySettingsFrom({ overlay: { settings: { separateWindows: "no" } } }).separateWindows,
+    true
+  );
+});
+
+test("mergeOverlaySettingsPatch: separateWindows false persists; non-boolean dropped; siblings intact", () => {
+  const prev = { overlay: { x: 7, settings: { keepCompanion: true } } };
+  const next = ov.mergeOverlaySettingsPatch(prev, { separateWindows: false });
+  assert.strictEqual(next.overlay.settings.separateWindows, false);
+  assert.strictEqual(next.overlay.settings.keepCompanion, true);
+  assert.strictEqual(next.overlay.x, 7);
+  const dropped = ov.mergeOverlaySettingsPatch({}, { separateWindows: 1 });
+  assert.ok(!("separateWindows" in dropped.overlay.settings));
 });

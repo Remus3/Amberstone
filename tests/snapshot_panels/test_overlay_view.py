@@ -158,6 +158,23 @@ def test_overlay_settings_strip_has_dashboard_persist_toggles(mock_server, pw_br
             "#ovset-keep", "el => el.closest('.ovset-row').getBoundingClientRect().height"
         )
         assert h >= 42, f"Keep-dashboard row height {h} below 42px hit floor"
+
+        # RC2 4.3: the Separate-windows toggle (single-monitor side-by-side
+        # arrangement kill switch) is present, defaults CHECKED, ASCII label,
+        # and its row clears the same 42px hit floor.
+        assert page.locator("#ovset-separate").count() == 1, "#ovset-separate missing"
+        assert page.eval_on_selector("#ovset-separate", "el => el.checked") is True, (
+            "Separate windows must default checked"
+        )
+        sep_txt = page.eval_on_selector(
+            "#ovset-separate ~ span, #ovset-separate + span", "el => el.textContent"
+        )
+        assert sep_txt == "Separate windows", f"unexpected separate label {sep_txt!r}"
+        assert sep_txt.isascii(), f"non-ASCII separate label {sep_txt!r}"
+        hs = page.eval_on_selector(
+            "#ovset-separate", "el => el.closest('.ovset-row').getBoundingClientRect().height"
+        )
+        assert hs >= 42, f"Separate-windows row height {hs} below 42px hit floor"
     finally:
         page.close()
         ctx.close()
