@@ -233,6 +233,14 @@ function _settingsHtml() {
   return (
     `<div class="ovset" id="ovset">`
     + `<div class="ovset-cap">OVERLAY</div>`
+    // RC2 3.4: keep the full dashboard window available in-game + pin it on top,
+    // both toggleable WITHOUT a hotkey (writes mirror to the rc-shell over IPC).
+    + `<label class="ovset-row ovset-toggle">`
+    + `<input type="checkbox" id="ovset-keep">`
+    + `<span>Keep dashboard</span></label>`
+    + `<label class="ovset-row ovset-toggle">`
+    + `<input type="checkbox" id="ovset-pin">`
+    + `<span>Pin on top</span></label>`
     + `<label class="ovset-row ovset-toggle">`
     + `<input type="checkbox" id="ovset-pulse">`
     + `<span>Change pulse</span></label>`
@@ -243,16 +251,34 @@ function _settingsHtml() {
 }
 
 function _applySettingsToDom(body, s) {
+  const keep = body.querySelector("#ovset-keep");
+  const pin = body.querySelector("#ovset-pin");
   const pulse = body.querySelector("#ovset-pulse");
   const rev = body.querySelector("#ovset-revert");
+  // keepCompanion / companionAlwaysOnTop default ON, so an absent field reads as
+  // checked (the dashboard-persist fix is the default state).
+  if (keep) keep.checked = s.keepCompanion !== false;
+  if (pin) pin.checked = s.companionAlwaysOnTop !== false;
   if (pulse) pulse.checked = !!s.pulseNotify;
   // Do not clobber the seconds field while the operator is typing in it.
   if (rev && document.activeElement !== rev) rev.value = String(s.activeRevertSec);
 }
 
 function _wireSettings(body) {
+  const keep = body.querySelector("#ovset-keep");
+  const pin = body.querySelector("#ovset-pin");
   const pulse = body.querySelector("#ovset-pulse");
   const rev = body.querySelector("#ovset-revert");
+  if (keep) {
+    keep.addEventListener("change", () => {
+      writeOverlaySettings({ keepCompanion: !!keep.checked });
+    });
+  }
+  if (pin) {
+    pin.addEventListener("change", () => {
+      writeOverlaySettings({ companionAlwaysOnTop: !!pin.checked });
+    });
+  }
   if (pulse) {
     pulse.addEventListener("change", () => {
       writeOverlaySettings({ pulseNotify: !!pulse.checked });
