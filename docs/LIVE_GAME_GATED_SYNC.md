@@ -507,3 +507,13 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   + a one-shot Urgent cross (spec section 5 / acceptance A5). It is a SHARED dashboard+overlay change,
   so eyeball the live headline on a real game (confirm the suppressed pulses were all benign re-emits)
   before flipping. The arbitration single-winner (A2) + 44px choice hit-target already ship live.
+- 2026-06-20 RC2 P4.1 DPI/resolution overlay sizing live eyeball (UI geometry, NOT a DS seam; `4d5d54f0`
+  shipped the code). The shell now sizes the overlay window by the work-area scale (resolveOverlayMetrics)
+  and zooms the dock content to match (overlay.css `--rc-overlay-scale`). Headless-verified via the
+  real-Chromium `test_overlay_view` fixture audit at 2560x1440 (dock zooms to ~598px right-anchored,
+  screenshot `overlay_sr_1440_scaled.png`) + baseline-1920 no-op. OWED (operator-gated, NOT headless):
+  eyeball the overlay COMPOSITED OVER A REAL LEAGUE GAME at 2560x1440 borderless - confirm the zoomed
+  dock reads cleanly over a bright game scene, does not clip the bottom panes against the work area, and
+  the right-edge dock lands where expected over the HUD (stage 4.6, live-game visual validation). The
+  rc-shell Electron MAIN process needs a relaunch first to pick up the new window-size logic (the web
+  renderer half auto-reloads via ADR-008 asset-hash). Does NOT block any further stage.
