@@ -215,6 +215,176 @@ def _recommend(base: list[int], role: str, threat: dict) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# E6: per-champion-per-mode summoner-spell win rates over RC's OWN postgame
+# corpus (data/postgame_stats.db, written by lcu.lcu_postgame_collector).
+#
+# The corpus has one {mode}_player_stats table per mode with champion_name,
+# spell1_id, spell2_id, team_result (WIN/LOSS) columns. We group by the
+# UNORDERED spell pair (D-vs-F slot order is a keybind preference, not a
+# distinct choice) and report observed local win rate + sample size per pair.
+#
+# HONEST FRAMING: this is the operator's PERSONAL corpus, not a global meta
+# winrate and not redistributable - same lens as core.summoner_spell_wpa.
+# It is the WR source the RuneWriter uses to tailor the FIRST-lock spell pair
+# and what the dashboard surfaces as the per-pair %.
+# ---------------------------------------------------------------------------
+
+# Maps an LCU game-mode string (CLASSIC / KIWI / CHERRY / ...) to the
+# postgame DB table prefix. Mirrors lcu.lcu_postgame_collector._MODE_MAP so
+# the WR lookup keys the same table the collector writes.
+_MODE_TO_TBL: dict[str, str] = {
+    "CLASSIC": "sr", "SR": "sr",
+    "ARAM": "aram", "KIWI": "aram", "ARAM_5V5": "aram", "ARAM_MAYHEM": "aram",
+    "CHERRY": "arena", "ARENA": "arena",
+    "NEXUSBLITZ": "brawl", "URF": "brawl", "BRAWL": "brawl",
+    "TFT": "tft",
+}
+
+
+def _mode_table_prefix(mode: str) -> str:
+    """LCU/dashboard mode string -> postgame DB table prefix ('sr' default)."""
+    m = (mode or "").upper()
+    if m in _MODE_TO_TBL:
+        return _MODE_TO_TBL[m]
+    if "ARAM" in m:
+        return "aram"
+    return "sr"
+
+
+def compute_champ_spell_winrates(
+    conn, champion: str, mode: str, min_n: int = 1,
+) -> list[dict]:
+    """Per-spell-pair observed win rate for a champion in one mode.
+
+    Reads the {prefix}_player_stats table out of the supplied sqlite
+    connection (injected so a test can pass an in-memory fixture; the route
+    opens data/postgame_stats.db read-only). Returns a list of
+    ``{"pair": [s1, s2], "n": int, "wins": int, "wr_pct": float}`` sorted by
+    win rate descending then sample size descending, filtered to pairs with
+    ``n >= min_n``. The pair is normalised so the lower spell-id is first,
+    collapsing D/F slot-order duplicates. Empty list when the table is
+    missing, the champion is absent, or no pair clears ``min_n``.
+    """
+    prefix = _mode_table_prefix(mode)
+    tbl = f"{prefix}_player_stats"
+    try:
+        rows = conn.execute(
+            f"SELECT spell1_id, spell2_id, team_result FROM {tbl} "
+            f"WHERE champion_name = ?",
+            (champion,),
+        ).fetchall()
+    except Exception as exc:  # noqa: BLE001 - missing table / bad champ -> empty
+        log.debug("spell-winrates: query failed for %s/%s: %s",
+                  champion, mode, exc)
+        return []
+
+    agg: dict[tuple[int, int], list[int]] = {}  # pair -> [n, wins]
+    for r in rows:
+        try:
+            s1 = int(r[0] or 0)
+            s2 = int(r[1] or 0)
+        except (TypeError, ValueError):
+            continue
+        if s1 <= 0 or s2 <= 0:
+            continue
+        pair = (s1, s2) if s1 <= s2 else (s2, s1)  # order-insensitive
+        win = 1 if str(r[2] or "").upper() == "WIN" else 0
+        slot = agg.setdefault(pair, [0, 0])
+        slot[0] += 1
+        slot[1] += win
+
+    out: list[dict] = []
+    for pair, (n, wins) in agg.items():
+        if n < min_n:
+            continue
+        out.append({
+            "pair":   [pair[0], pair[1]],
+            "n":      n,
+            "wins":   wins,
+            "wr_pct": round(100.0 * wins / n, 1) if n else 0.0,
+            "spell_names": [
+                _SPELL_NAMES.get(pair[0], str(pair[0])),
+                _SPELL_NAMES.get(pair[1], str(pair[1])),
+            ],
+        })
+    out.sort(key=lambda d: (d["wr_pct"], d["n"]), reverse=True)
+    return out
+
+
+def best_wr_spell_pair(
+    conn, champion: str, mode: str, min_n: int = 4,
+) -> tuple[int, int] | None:
+    """Highest-win-rate spell pair for a champion+mode, or None.
+
+    Thin wrapper over compute_champ_spell_winrates: returns the top pair as
+    an ordered (s1, s2) tuple, or None when no pair clears ``min_n``. The
+    RuneWriter uses this to tailor the FIRST-lock spell pair, falling back to
+    spells_for_role when this returns None.
+    """
+    ranked = compute_champ_spell_winrates(conn, champion, mode, min_n=min_n)
+    if not ranked:
+        return None
+    top = ranked[0]["pair"]
+    return (int(top[0]), int(top[1]))
+
+
+# Anchored on the package root (not CWD) so a non-root working directory
+# does not silently fail-soft - mirrors routes_summspell_wpa._REWIND_DB.
+def _postgame_db_path():
+    from pathlib import Path
+    return (Path(__file__).resolve().parent.parent
+            / "data" / "postgame_stats.db")
+
+
+def _serve_spell_winrates(h) -> None:
+    """GET /api/champ-select/spell-winrates?champion=<Name>&mode=<LCU mode>&min_n=
+
+    Read-only. Exposes the per-pair regional WR% for the operator's pick so
+    the (separate, later) champ-select UI pass can render the % under each
+    candidate spell pair. Data-only here - no UI coupling.
+    """
+    try:
+        qs = parse_qs(urlparse(h.path).query)
+        champion = (qs.get("champion") or [""])[0].strip()
+        mode     = (qs.get("mode")     or ["CLASSIC"])[0].strip() or "CLASSIC"
+        min_n    = (qs.get("min_n")    or ["1"])[0].strip()
+        try:
+            min_n_i = max(1, int(min_n))
+        except ValueError:
+            min_n_i = 1
+
+        if not champion:
+            h._send(400, b'{"ok":false,"error":"champion required"}',
+                    "application/json")
+            return
+
+        db = _postgame_db_path()
+        pairs: list[dict] = []
+        if db.exists():
+            import sqlite3
+            conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5.0)
+            try:
+                pairs = compute_champ_spell_winrates(
+                    conn, champion, mode, min_n=min_n_i)
+            finally:
+                conn.close()
+
+        h._send(200, json.dumps({
+            "ok":       True,
+            "champion": champion,
+            "mode":     mode,
+            "min_n":    min_n_i,
+            "pairs":    pairs,          # [] when corpus empty / no data
+            "best":     (pairs[0]["pair"] if pairs else None),
+        }).encode("utf-8"), "application/json")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/champ-select/spell-winrates: %s", exc)
+        h._send(500, json.dumps(
+            {"ok": False, "error": "internal error - see logs"}).encode(),
+            "application/json")
+
+
 def _serve_adaptive_summoners(h) -> None:
     try:
         qs = parse_qs(urlparse(h.path).query)
@@ -263,5 +433,6 @@ def _equals(p: str):
 
 GET_ROUTES = [
     (_equals("/api/champ-select/adaptive-summoners"), _serve_adaptive_summoners),
+    (_equals("/api/champ-select/spell-winrates"), _serve_spell_winrates),
 ]
 POST_ROUTES: list = []

@@ -10,7 +10,9 @@ ASCII only. No em-dashes, en-dashes, or smart quotes.
 
 ## PROGRESS
 
-> **Design GREENLIT (Hextech) - P3/P4 unblocked; P3/P5/P6/P7 in flight - Stage 19 of 50 - approx 38% complete**
+> **Design GREENLIT (Hextech); operator batch E1-E12 added - Stage 22 of 62 - approx 35% complete**
+>
+> _(% recomputed DOWN per the operator directive: 12 approved execution stages E1-E12 added to the 50 base = 62 total. Done: 18 base + E3 win-capture + E5 hold-band + E8 design-system + E6 spell-fix = 22.)_
 
 Recompute on every stage flip: `% = DONE_stages / TOTAL_stages * 100`.
 If stages are added or removed, update TOTAL and re-derive the percent so the
@@ -79,6 +81,24 @@ TOP-10 answers (from docs/RC2_TODO_QA.md):
 8. **Accessibility/design HIGH-lifts - APPROVED** (reduced-motion-done-right + redundant status glyphs + threshold helper). [P3 design-system]
 9. **Rank header + player scouting - PROMOTE BOTH to NOW.** [home rank + Riot scouting]
 10. **ASCII retro-sweep - APPROVED: ALL files, frozen INCLUDED, git HISTORY INCLUDED** (history rewrite + force-push, pre-authorized). [P7.1 + history filter]
+
+### Operator-approved execution batch (E-stages, added to TOTAL)
+| E | Item | Status | Commit |
+|---|------|--------|--------|
+| E1 | Dashboard persist-in-bg + pinned-on-top + per-panel in/out-game toggles | OPEN | |
+| E2 | DS 3-game live-flip eyeball pass (operator-played, live-gated) | OPEN | |
+| E3 | End-of-game win capture (history/home W/L + season WR) | DONE | ad4c9906 |
+| E4 | Counter-picks vs live enemy comp + ban-phase collapse | OPEN | |
+| E5 | Laning hold-band recalibration (shadow vocabulary) | DONE | 4da01fbe |
+| E6 | Spell flip-back fix + WR% under spells + highest-role-WR on lock + remember last-used per champ/mode | DONE | _sync_spells per-lock idempotency + manual-override + WR route |
+| E7 | ARAM bench-swap responsiveness + LCU connection pooling (frozen lcu_client.py) | OPEN | |
+| E8 | Design system: reduced-motion-done-right + status glyphs + threshold statusFor() | DONE | 19f8116f |
+| E9 | Rank/tier/LP header + player scouting (both NOW) | WIP | |
+| E10 | ASCII retro sweep (all files, frozen) + git-history rewrite + force-push | OPEN | |
+| E11 | Hextech reskin across surfaces (P3/P4 visual cutover) | OPEN | |
+| E12 | Responsiveness levers L1/L2/L4 (SSE/build TTL halve, etc.) | OPEN | |
+
+TOTAL_stages = 62 (50 base + 12 E-batch).
 
 ## EXECUTION MODEL
 

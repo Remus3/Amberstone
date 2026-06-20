@@ -371,6 +371,124 @@ def save_spell_pref(mode_key: str, value: str) -> None:
         _log.debug("save_spell_pref: %s", exc)
 
 
+# -- Per-champion-per-mode spell memory (RC2 E6) ---------------------------
+#
+# data/spell_prefs.json gains a per-champ map alongside the existing
+# aram_mode / sr_mode keys (which stay the generic fallback):
+#
+#   {"by_champ": {"<MODE_TAG>": {"<champion display name>": [s1, s2]}}}
+#
+# MODE_TAG is the collector-aligned tag ("SR" / "ARAM" / ...), so a
+# remembered pair never leaks across modes. The champion key is the DDragon
+# DISPLAY name (e.g. "Miss Fortune") - the same string the RuneWriter's
+# _id_to_name returns and the postgame corpus stores in champion_name.
+
+# LCU/dashboard mode string -> collector mode tag. Mirrors
+# lcu.lcu_postgame_collector._MODE_MAP + dashboard.routes_adaptive_summoners.
+_MODE_TAGS = {
+    "CLASSIC": "SR", "SR": "SR",
+    "ARAM": "ARAM", "KIWI": "ARAM", "ARAM_5V5": "ARAM", "ARAM_MAYHEM": "ARAM",
+    "CHERRY": "ARENA", "ARENA": "ARENA",
+    "NEXUSBLITZ": "BRAWL", "URF": "BRAWL", "BRAWL": "BRAWL",
+    "TFT": "TFT",
+}
+
+
+def mode_tag(mode: str) -> str:
+    """LCU game-mode string -> collector mode tag ('SR' default)."""
+    m = (mode or "").upper()
+    if m in _MODE_TAGS:
+        return _MODE_TAGS[m]
+    if "ARAM" in m:
+        return "ARAM"
+    return "SR"
+
+
+def load_champ_spell_pref(champion: str, mode: str) -> Optional[tuple[int, int]]:
+    """Remembered (s1, s2) for a champion+mode, or None.
+
+    Reads spell_prefs.json["by_champ"][<mode_tag>][<champion>]. Returns None
+    when the file is missing/malformed, the mode or champion has no entry, or
+    the stored value is not a 2-element int list - callers then fall back to
+    the WR pick / role default.
+    """
+    if not champion:
+        return None
+    try:
+        if not _SPELL_PREFS_PATH.exists():
+            return None
+        prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding="utf-8"))
+        by_champ = prefs.get("by_champ")
+        if not isinstance(by_champ, dict):
+            return None
+        per_mode = by_champ.get(mode_tag(mode))
+        if not isinstance(per_mode, dict):
+            return None
+        pair = per_mode.get(champion)
+        if (isinstance(pair, (list, tuple)) and len(pair) == 2
+                and all(isinstance(x, int) for x in pair)):
+            return (int(pair[0]), int(pair[1]))
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("load_champ_spell_pref(%s/%s): %s", champion, mode, exc)
+    return None
+
+
+def save_champ_spell_pref(champion: str, mode: str,
+                          pair: tuple[int, int]) -> None:
+    """Persist a remembered (s1, s2) for champion+mode (atomic, locked).
+
+    Writes spell_prefs.json["by_champ"][<mode_tag>][<champion>] = [s1, s2],
+    creating the nested maps as needed and preserving every other key.
+    Shares _SPELL_PREFS_LOCK + the bounded replace-retry with save_spell_pref
+    so concurrent writers never share a .tmp or drop a write on a transient
+    WinError 5.
+    """
+    if not champion:
+        return
+    try:
+        s1, s2 = int(pair[0]), int(pair[1])
+    except (TypeError, ValueError, IndexError):
+        return
+    try:
+        with _SPELL_PREFS_LOCK:
+            if _SPELL_PREFS_PATH.exists():
+                prefs = json.loads(_SPELL_PREFS_PATH.read_text(encoding="utf-8"))
+                if not isinstance(prefs, dict):
+                    prefs = {}
+            else:
+                prefs = {}
+            by_champ = prefs.get("by_champ")
+            if not isinstance(by_champ, dict):
+                by_champ = {}
+                prefs["by_champ"] = by_champ
+            tag = mode_tag(mode)
+            per_mode = by_champ.get(tag)
+            if not isinstance(per_mode, dict):
+                per_mode = {}
+                by_champ[tag] = per_mode
+            per_mode[champion] = [s1, s2]
+
+            tmp = _SPELL_PREFS_PATH.with_suffix(".tmp")
+            tmp.write_text(json.dumps(prefs, indent=2, ensure_ascii=False),
+                           encoding="utf-8")
+            for attempt in range(3):
+                try:
+                    tmp.replace(_SPELL_PREFS_PATH)
+                    break
+                except PermissionError:
+                    if attempt == 2:
+                        _log.warning(
+                            "save_champ_spell_pref: replace gave up after 3 tries")
+                        try:
+                            tmp.unlink(missing_ok=True)
+                        except OSError:
+                            pass
+                    else:
+                        time.sleep(0.015 * (2 ** attempt))
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("save_champ_spell_pref(%s/%s): %s", champion, mode, exc)
+
+
 # ==============================================================================
 # RuneWriter
 # ==============================================================================
@@ -400,6 +518,14 @@ class RuneWriter:
         self._last_applied_champion: str = ""  # champion we last wrote runes for
         self._last_applied_mode: str = ""
         self._in_champ_select = False
+        # RC2 E6 - spell auto-push state, mirrors the rune idempotency above.
+        # Spells are pushed ONCE per (champion, mode) lock; after that a live
+        # pair that differs from _spell_pushed_pair is treated as an operator
+        # MANUAL change - we stop overwriting it and remember it.
+        self._spell_pushed_champion: str = ""
+        self._spell_pushed_mode: str = ""
+        self._spell_pushed_pair: Optional[tuple[int, int]] = None
+        self._spell_manual_override = False
 
     def start(self) -> None:
         self._champ_id_map = build_champ_id_map()
@@ -456,6 +582,7 @@ class RuneWriter:
                 self._in_champ_select = False
                 self._last_applied_champion = ""
                 self._last_applied_mode = ""
+                self._reset_spell_state()
             return
 
         # INFO on the enter transition so the game-1-only silence bug
@@ -500,19 +627,85 @@ class RuneWriter:
         else:
             _log.warning("RuneWriter: rune write failed for %s/%s", champion_name, mode)
 
+    def _reset_spell_state(self) -> None:
+        """Clear per-lock spell-push state (champ-select exit / champ change)."""
+        self._spell_pushed_champion = ""
+        self._spell_pushed_mode = ""
+        self._spell_pushed_pair = None
+        self._spell_manual_override = False
+
+    def _wr_spell_pair(self, champion: str, mode: str) -> Optional[tuple[int, int]]:
+        """Highest-win-rate spell pair for champion+mode from the postgame
+        corpus, or None.
+
+        Thin, fail-soft adapter over
+        dashboard.routes_adaptive_summoners.best_wr_spell_pair, which reads
+        data/postgame_stats.db read-only. Any import / DB / query failure (or
+        an empty corpus) returns None so the caller falls back to the role
+        default. Overridable in tests.
+        """
+        if not champion:
+            return None
+        try:
+            from dashboard.routes_adaptive_summoners import (
+                _postgame_db_path, best_wr_spell_pair,
+            )
+            db = _postgame_db_path()
+            if not db.exists():
+                return None
+            import sqlite3
+            conn = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=3.0)
+            try:
+                return best_wr_spell_pair(conn, champion, mode)
+            finally:
+                conn.close()
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("RuneWriter: _wr_spell_pair(%s/%s): %s",
+                       champion, mode, exc)
+            return None
+
+    def _resolve_intended_pair(self, champion: str, mode: str) -> tuple[int, int]:
+        """Pick the spell pair to push on a fresh (champion, mode) lock.
+
+        Priority (RC2 E6):
+          1. REMEMBERED pair for this champ+mode (spell_prefs.json by_champ).
+          2. HIGHEST-WR pair for this champ+mode from the postgame corpus.
+          3. Role-centric default (spells_for_role on the assignedPosition),
+             with the generic resolve_spell_pair as a final mode-level
+             fallback when the role is unknown.
+
+        ``champion`` may be "" (mid-pick, no lock) - then steps 1-2 no-op and
+        we return the mode/role default.
+        """
+        remembered = load_champ_spell_pref(champion, mode)
+        if remembered is not None:
+            return remembered
+        wr = self._wr_spell_pair(champion, mode)
+        if wr is not None:
+            return wr
+        return resolve_spell_pair(champion, mode)
+
     def _sync_spells(self, session: dict, mode: str) -> bool:
-        """CS2: push the intended summoner-spell pair when it differs.
+        """RC2 E6: push the intended spell pair ONCE per champion lock, then
+        respect a manual change instead of flipping it back.
 
-        Reads the live (spell1Id, spell2Id) for my cell out of the champ-
-        select session, resolves the intended pair for the mode via
-        resolve_spell_pair (spell_prefs.json: Flash+TP for SR, Flash+
-        Snowball for ARAM), and delegates to LcuClient.set_summoner_spells
-        with current_pair set so the PATCH is skipped when already correct.
+        The pre-E6 code (CS2) re-resolved the generic mode default and PATCHed
+        whenever the live pair differed - on every 1.0s poll. That reverted an
+        operator's manual spell change within ~1s (the operator-reported
+        flip-back). E6 mirrors the rune _last_applied idempotency:
 
-        Fail-soft: returns False without raising / without an LCU write when
-        the session is missing, my cell can't be found, or the LCU call
-        errors. Returns True when the spells are correct (either already, or
-        after a successful PATCH).
+          * On a NEW (champion, mode) lock: resolve the intended pair
+            (remembered > WR > role default), PATCH it once, and record it.
+          * On a later poll of the SAME lock: if the live pair equals what RC
+            pushed, do nothing. If it DIFFERS, the operator changed it by hand
+            - stop overwriting AND remember that pair for champ+mode.
+
+        Before a champion is locked (champion == "") the generic mode default
+        is still self-corrected every poll (preserves the CS2 mid-pick
+        behavior) but is NOT recorded as a preference.
+
+        Fail-soft: returns False (no write, no raise) when the session is
+        missing, my cell can't be found, or an LCU call errors.
         """
         if not session or not isinstance(session, dict):
             return False
@@ -525,17 +718,83 @@ class RuneWriter:
                     break
             if my_pick is None:
                 return False  # my cell not in the session yet - nothing to do
+
             try:
                 cur = (int(my_pick.get("spell1Id", 0) or 0),
                        int(my_pick.get("spell2Id", 0) or 0))
             except (TypeError, ValueError):
                 cur = (0, 0)
-            want1, want2 = resolve_spell_pair("", mode)
-            return bool(self._lcu.set_summoner_spells(
-                want1, want2, current_pair=cur))
+
+            champion = self._detect_my_champion(session)
+
+            # --- mid-pick (no champion locked): legacy self-correct only ---
+            if not champion:
+                want1, want2 = resolve_spell_pair("", mode)
+                return bool(self._lcu.set_summoner_spells(
+                    want1, want2, current_pair=cur))
+
+            role = my_pick.get("assignedPosition") or ""
+
+            # --- NEW (champion, mode) lock: push the intended pair ONCE ---
+            if (champion != self._spell_pushed_champion
+                    or mode != self._spell_pushed_mode):
+                self._reset_spell_state()
+                want = self._resolve_intended_pair_for(champion, mode, role)
+                ok = bool(self._lcu.set_summoner_spells(
+                    want[0], want[1], current_pair=cur))
+                # Record what we intended regardless of whether the PATCH was
+                # needed (cur may already equal want) so the next poll won't
+                # mistake the already-correct pair for a manual change.
+                self._spell_pushed_champion = champion
+                self._spell_pushed_mode = mode
+                self._spell_pushed_pair = (int(want[0]), int(want[1]))
+                self._spell_manual_override = False
+                return ok
+
+            # --- SAME lock, already pushed once ---
+            if self._spell_manual_override:
+                return True  # operator owns the spells now - never re-push
+
+            if self._spell_pushed_pair is not None and cur == self._spell_pushed_pair:
+                return True  # still our pair - nothing to do, no re-push
+
+            if self._spell_pushed_pair is not None and cur != (0, 0):
+                # Live pair drifted from what RC pushed -> operator changed it
+                # by hand. Stop overwriting AND remember it for next time.
+                self._spell_manual_override = True
+                save_champ_spell_pref(champion, mode, cur)
+                _log.info(
+                    "RuneWriter: manual spell change %s detected for %s/%s "
+                    "- remembered, will not re-push", cur, champion, mode)
+                return True
+
+            return True
         except Exception as exc:  # noqa: BLE001
             _log.debug("RuneWriter: _sync_spells: %s", exc)
             return False
+
+    def _resolve_intended_pair_for(
+        self, champion: str, mode: str, role: str,
+    ) -> tuple[int, int]:
+        """Intended pair with a role-aware final fallback.
+
+        Like _resolve_intended_pair but, when there is no remembered pair and
+        no WR data, prefers the role-centric default (spells_for_role on the
+        champ-select assignedPosition) over the generic mode default.
+        """
+        remembered = load_champ_spell_pref(champion, mode)
+        if remembered is not None:
+            return remembered
+        wr = self._wr_spell_pair(champion, mode)
+        if wr is not None:
+            return wr
+        try:
+            from lcu.lcu_pregame import spells_for_role
+            if role:
+                return spells_for_role(role)
+        except Exception:  # noqa: BLE001
+            pass
+        return resolve_spell_pair(champion, mode)
 
     def _detect_game_mode(self) -> str:
         """Detect current game mode from lobby config."""

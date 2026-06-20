@@ -11,5 +11,7 @@
     "teleport": "Flash(4) + Teleport(12) - SR ADC default",
     "exhaust": "Flash(4) + Exhaust(3)",
     "ignite": "Flash(4) + Ignite(14)"
-  }
+  },
+  "_by_champ_note": "RC2 E6 remember-last-used: by_champ[MODE_TAG][champion display name] = [spell1_id, spell2_id]. MODE_TAG is SR/ARAM/ARENA/BRAWL/TFT. RuneWriter pushes this remembered pair on the next lock of that champ+mode (highest over the generic default); a manual in-champ-select spell change records here automatically.",
+  "by_champ": {}
 }
