@@ -119,10 +119,43 @@ function shouldPulse(prevCue, sel) {
   return eligible && prevCue !== sel.cue;
 }
 
+/**
+ * Normalize a live coach state envelope into the selectPrimary() signal
+ * object. This is the single mapping point the shadow consumer
+ * (right_now.js, RC2 P3.3) and the eventual operator-gated live flip share,
+ * so flipping from shadow to authoritative is a one-line swap (consume the
+ * sel/pulse result instead of stamping it).
+ *
+ * @param {object|null} p - the coach payload (state.coach). null/garbage is
+ *   safe (reads as empty).
+ * @param {string} band - the classifyAction band already computed by the
+ *   caller (right_now.js:472). Non-strings fall back to "empty".
+ * @returns {{band:string, hasChoices:boolean, spikeCrossed:boolean,
+ *   objectiveStealNow:boolean, lethal:boolean}} the selectPrimary input.
+ */
+function signalFromState(p, band) {
+  const s = p || {};
+  const choices = s.choices;
+  return {
+    band: typeof band === 'string' ? band : 'empty',
+    hasChoices: Array.isArray(choices) && choices.length > 0,
+    // Phase-4 crossing-edge predicates (spec section 9 Q1/Q2): NOT present in
+    // today's coach payload, so they read as the named optional booleans if a
+    // future producer (spike_markers crossing edge, objective-ETA==NOW,
+    // lethal-hp-at-fight) sets them, else false. Keeping them false makes the
+    // shadow a faithful image of the headline+choices channel until those
+    // feeds wire in - no assumed surface (grep-before-wire, spec Q2).
+    spikeCrossed: s.spike_crossed === true,
+    objectiveStealNow: s.objective_steal_now === true,
+    lethal: s.lethal_incoming === true,
+  };
+}
+
 // Dual export: ES module for the browser overlay (import { selectPrimary }
 // from './lib/overlay_priority.js') AND CommonJS for the node-run test. The
 // browser never sees `module`; node (22+ require-of-ESM) takes the export.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { selectPrimary, shouldPulse, BAND_TIER, PRIORITY };
+  module.exports = { selectPrimary, shouldPulse, signalFromState,
+                     BAND_TIER, PRIORITY };
 }
-export { selectPrimary, shouldPulse, BAND_TIER, PRIORITY };
+export { selectPrimary, shouldPulse, signalFromState, BAND_TIER, PRIORITY };

@@ -29,7 +29,8 @@ NODE = shutil.which("node")
 def _run_js(snippet: str) -> str:
     require_path = PRIORITY_JS.as_posix()
     program = (
-        f"const {{ selectPrimary, shouldPulse, BAND_TIER, PRIORITY }} = "
+        f"const {{ selectPrimary, shouldPulse, signalFromState, "
+        f"BAND_TIER, PRIORITY }} = "
         f"require({json.dumps(require_path)});\n"
         f"{snippet}\n"
     )
@@ -182,6 +183,61 @@ class OverlayPriorityTest(unittest.TestCase):
     def test_pulse_silent_on_sustained_spike(self):
         self.assertFalse(self._pulse(
             "spike", {"band": "fight", "spikeCrossed": True}))
+
+    # ----- signalFromState: coach payload -> normalized S0 signal (3.3) -----
+    # The shadow consumer (right_now.js) maps the live coach envelope into the
+    # selectPrimary() signal through this one pure function, so the eventual
+    # operator-gated live flip is a one-line swap (consume sel/pulse instead of
+    # stamping). Pins band passthrough, choices detection, and the Phase-4
+    # crossing-edge predicates (default false, honored when a producer sets
+    # the named optional booleans - spec section 9 Q1/Q2).
+    def _signal(self, p, band) -> dict:
+        out = _run_js(
+            "console.log(JSON.stringify(signalFromState("
+            + json.dumps(p) + ", " + json.dumps(band) + ")));"
+        )
+        return json.loads(out)
+
+    def test_signal_band_passthrough(self):
+        self.assertEqual(self._signal({}, "fight")["band"], "fight")
+
+    def test_signal_band_defaults_empty_on_non_string(self):
+        self.assertEqual(self._signal({}, None)["band"], "empty")
+
+    def test_signal_has_choices_true(self):
+        sig = self._signal({"choices": [{"key": "A"}, {"key": "B"}]}, "good")
+        self.assertTrue(sig["hasChoices"])
+
+    def test_signal_has_choices_false_when_empty_or_absent(self):
+        self.assertFalse(self._signal({"choices": []}, "good")["hasChoices"])
+        self.assertFalse(self._signal({}, "good")["hasChoices"])
+
+    def test_signal_combat_predicates_default_false(self):
+        sig = self._signal({"choices": []}, "fight")
+        self.assertFalse(sig["spikeCrossed"])
+        self.assertFalse(sig["objectiveStealNow"])
+        self.assertFalse(sig["lethal"])
+
+    def test_signal_combat_predicates_honored_when_present(self):
+        sig = self._signal(
+            {"spike_crossed": True, "objective_steal_now": True,
+             "lethal_incoming": True}, "fight")
+        self.assertTrue(sig["spikeCrossed"])
+        self.assertTrue(sig["objectiveStealNow"])
+        self.assertTrue(sig["lethal"])
+
+    def test_signal_feeds_select_primary_choices(self):
+        out = _run_js(
+            "const sig = signalFromState("
+            "{choices:[{key:'A'},{key:'B'}]}, 'fight');\n"
+            "console.log(JSON.stringify(selectPrimary(sig).cue));"
+        )
+        self.assertEqual(json.loads(out), "choices")
+
+    def test_signal_null_payload_safe(self):
+        sig = self._signal(None, "empty")
+        self.assertEqual(sig["band"], "empty")
+        self.assertFalse(sig["hasChoices"])
 
 
 if __name__ == "__main__":
