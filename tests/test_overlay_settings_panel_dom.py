@@ -155,6 +155,63 @@ class Rc2Stage43ControlsTests(unittest.TestCase):
         self.assertIn("separateWindows", self.helper)
 
 
+class Rc2Stage44ControlsTests(unittest.TestCase):
+    """RC2 4.4 no-hotkey control of everything: the #ovset strip gains a
+    panel-set segmented selector (the on-screen twin of the Alt+Shift+C cycle)
+    and an "Interact now" button (twin of the Alt+Shift+A passive<->active
+    toggle). Both fire one-way overlay ACTIONS at the rc-shell via the shared
+    helper's sendOverlayAction. The hide/show hotkey (Alt+Shift+O) stays a
+    hotkey on purpose - it clears BOTH surfaces, so a self-hiding on-screen
+    control has no way back."""
+
+    def setUp(self):
+        self.panel = PANEL_JS.read_text(encoding="utf-8")
+        self.helper = HELPER_JS.read_text(encoding="utf-8")
+        self.css = PANEL_CSS.read_text(encoding="utf-8")
+
+    def test_panelset_selector_present(self):
+        self.assertIn('id="ovset-panelset"', self.panel)
+        for ps in ("coach", "build", "threat"):
+            self.assertIn(f'data-panelset="{ps}"', self.panel)
+
+    def test_interact_now_button_present(self):
+        self.assertIn('id="ovset-interact"', self.panel)
+
+    def test_controls_fire_overlay_actions(self):
+        self.assertIn("sendOverlayAction", self.panel)
+        self.assertIn('action: "set-panel"', self.panel)
+        self.assertIn('action: "set-active"', self.panel)
+
+    def test_helper_exports_action_sender(self):
+        self.assertIn("export function sendOverlayAction", self.helper)
+        # the sender goes through the rc-shell bridge, not localStorage.
+        self.assertIn("overlayAction", self.helper)
+
+    def test_active_segment_reflects_live_panelset(self):
+        # the selector lights the current set from the body dataset / URL.
+        self.assertIn("_markActivePanelset", self.panel)
+        self.assertIn("dataset.panelset", self.panel)
+
+    def test_seg_and_act_meet_hit_floor(self):
+        # both new controls carry the --hit-min game-distance floor.
+        self.assertIn(".ovset-seg-btn", self.css)
+        self.assertIn(".ovset-act", self.css)
+        m = re.search(
+            r"\.ovset-seg-btn\s*\{[^}]*min-height:\s*var\(--hit-min", self.css, re.DOTALL
+        )
+        self.assertIsNotNone(m, ".ovset-seg-btn must set min-height: var(--hit-min ...)")
+        m2 = re.search(
+            r"\.ovset-act\s*\{[^}]*min-height:\s*var\(--hit-min", self.css, re.DOTALL
+        )
+        self.assertIsNotNone(m2, ".ovset-act must set min-height: var(--hit-min ...)")
+
+    def test_seg_label_typography_uses_tokens(self):
+        m = re.search(
+            r"\.ovset-seg-btn\s*\{[^}]*font-size:\s*var\(--fs-", self.css, re.DOTALL
+        )
+        self.assertIsNotNone(m, ".ovset-seg-btn must use a --fs- token, not a hardcoded px")
+
+
 class PulseGateTests(unittest.TestCase):
     """The pulse toggle must actually gate the change-pulse hook."""
 
