@@ -586,14 +586,22 @@ import { initOverlayPulse } from './overlay_pulse.js';
         // sticky is now null) + one delayed retry to cover the LCU
         // end-of-game ingest lag, so the just-played match surfaces without
         // a manual reload. Guarded on still being on the last-match view.
-        if (_VIEW.current === "last-match") {
-          try { fetchAndRenderLastMatch(); } catch (_) {}
-          try {
-            setTimeout(function () {
-              if (_VIEW.current === "last-match") fetchAndRenderLastMatch();
-            }, 10000);
-          } catch (_) {}
-        }
+        // Auto-show the Post Game Review on game-end: set the last-match view
+        // as a manual selection so the just-played review surfaces without a
+        // click, even when the operator was on active-match through the game.
+        // Safe from a view-fight: post-game auto-derive is the non-urgent
+        // "home" (mode=client/!live), so a later manual "home" is NOT force-
+        // cleared by the _midFlight stale-manual guard; the next game's
+        // champ-select (urgent) auto-clears this stale last-match manual and
+        // advances normally. One delayed retry covers the LCU end-of-game
+        // ingest lag so the just-played match surfaces without a reload.
+        try { _viewSaveManual("last-match"); } catch (_) {}
+        try { fetchAndRenderLastMatch(); } catch (_) {}
+        try {
+          setTimeout(function () {
+            if (_VIEW.current === "last-match") fetchAndRenderLastMatch();
+          }, 10000);
+        } catch (_) {}
       }
       // s171.8: dodge handling - ChampSelect → Lobby/Matchmaking/etc.
       // means user backed out before game start. Clear the sticky guard
