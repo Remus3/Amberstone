@@ -121,6 +121,49 @@ def test_overlay_shell_renders_compact_subset(mock_server, pw_browser):
     assert not errors, f"JS errors [overlay]: {errors[:3]}"
 
 
+def test_overlay_settings_strip_has_dashboard_persist_toggles(mock_server, pw_browser):
+    """RC2 3.4: the overlay settings strip exposes Keep-dashboard +
+    Pin-on-top toggles (no hotkey needed) so the operator controls the
+    dashboard-persist + pin behavior from the dashboard UI. Both default
+    CHECKED - the disappear-bug fix is the default state. ASCII labels;
+    each row meets the >=42px hit-target floor."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        # The strip mounts via renderOverlayDsControls -> _ensureScaffold on
+        # the overlay shell (independent of a resolved champion).
+        page.wait_for_selector("#ovset #ovset-keep", timeout=10_000)
+
+        # STRUCTURE: all four controls present in the one OVERLAY strip.
+        for sel in ("#ovset-keep", "#ovset-pin", "#ovset-pulse", "#ovset-revert"):
+            assert page.locator(sel).count() == 1, f"{sel} missing from #ovset"
+
+        # The two new toggles default CHECKED (keepCompanion +
+        # companionAlwaysOnTop default ON = dashboard persists + pinned).
+        assert page.eval_on_selector("#ovset-keep", "el => el.checked") is True, (
+            "Keep dashboard must default checked"
+        )
+        assert page.eval_on_selector("#ovset-pin", "el => el.checked") is True, (
+            "Pin on top must default checked"
+        )
+
+        # ASCII labels (no smart quotes / dashes).
+        keep_txt = page.eval_on_selector(
+            "#ovset-keep ~ span, #ovset-keep + span", "el => el.textContent"
+        )
+        assert keep_txt == "Keep dashboard", f"unexpected keep label {keep_txt!r}"
+        assert keep_txt.isascii(), f"non-ASCII keep label {keep_txt!r}"
+
+        # HIT-TARGETS: the toggle row clears the >=42px floor.
+        h = page.eval_on_selector(
+            "#ovset-keep", "el => el.closest('.ovset-row').getBoundingClientRect().height"
+        )
+        assert h >= 42, f"Keep-dashboard row height {h} below 42px hit floor"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [overlay settings]: {errors[:3]}"
+
+
 def test_overlay_right_dock_geometry(mock_server, pw_browser):
     """The visible column is ~460px wide and docked to the right edge of
     the 1920 viewport (the rest of the window stays transparent for the
