@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-06-19 (live ARAM session) - 2 live bug fixes + supervisor 72h-ETL fleet fix (LEDGER 519-521)
+
+Live ARAM Mayhem play, operator-directed mid-game fixes + continuous overlay/dashboard monitoring.
+3 commits, pushed, CI green. NO DS/ENGINE touch (no Share sync).
+
+- BUILD-CHIP owned-aware (d90badb5, L519): _next_item_str indexed order[owned_count], blind to WHICH
+  items owned -> recommended items already held on a deviation (live: Wooglet's over a burn line vs an
+  87-MR comp). Threaded owned_ids through build_choices->_variant_outcome->_next_item_str; returns
+  first UN-owned; legacy count-index when owned_ids absent. Caller passes gs[my_item_ids]. 4 TDD tests.
+- PGR AUTO-SHOW (68b6cc54, L520): view router dropped to home post-game; PGR only refetched if already
+  on last-match, but mid-game you are on active-match -> never surfaced. main.js game-end edge now sets
+  last-match as the MANUAL view (one-shot, not an auto-derive change -> no view-fight; next CS clears
+  it). asset-hashed -> browser auto-reload, no restart. Python view-router mirror unchanged.
+- SUPERVISOR 72h-ETL (d53ae8bb + live tasks, L521): found dead (State=Ready) ~21:18; NO
+  <ExecutionTimeLimit> -> Windows default PT72H; boot 6/16 21:16 + 72h = 6/19 21:17 hard-kill,
+  RestartCount=0 -> app unsupervised ~1h. Not a crash (Operational log disabled). Same default killed
+  RC-BridgeWatcher (revived) + threatened DaemonSlayer. Live fix: ETL=PT0S on all 3 + RestartOnFailure
+  on the 2 logon daemons; frozen rc_supervisor.py + RC-BridgeWatcher.xml NOT edited. Documented
+  RC-Supervisor.xml.
+
+GATED eyeballed (report for loop to flip): DSP3 resolver proven (6 Cluster-A ON->override primary,
+source=aram_win; all default-OFF, flip-point=ARAM archetype-resolve); Lux DSP8(tank)->mag-pen +
+DSV3(squishy)->Shadowflame SANE; build-chooser ARAM push verified (Wooglet's=OFF-rank #1).
+NEXT: verify build-chip + PGR auto-show LIVE next game (fixes deploy on next game-end). RECO: enable
+TaskScheduler Operational log; operator-approve persisting ETL into frozen RC-BridgeWatcher.xml.
+[[reference_two_supervisors]] [[project_rc_supervisor_restart]]
+
+---
+
 # 2026-06-19 (gemini-loop R7-regress-fix cycle) - passive_as unit-mismatch fix (LEDGER 518)
 
 Gemini AUDITOR flagged R7 (item 517) REGRESS. `agents/daemon_slayer/dps.py` per-stack self-AS
@@ -59,31 +88,3 @@ DS :8893 restarted -> 1.147.0 live, Share re-synced SAME commit (--check green, 
   names "per-stack assumed_stacks"). [[feedback_verify_before_declare_broken]] /
   [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]] /
   [[reference_ds_server_not_supervisor_watched]].
-
----
-
-# 2026-06-19 (gemini-loop R6 cycle) - dashboard-panel UI audit + dead-CSS removal (LEDGER 516)
-
-Gemini DIRECTOR refill R6 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
-audit of the un-audited cooldown_watch + cc_conditional_pressure dashboard panels (JS+CSS) vs
-UI_SCALE_SPEC_V2 v2.1. Commit `139ef216`; Tier-1 CSS+test only, NO ENGINE bump / 0 frozen / no DS
-restart / no Share mirror / ADR-008 asset-hash auto-reload (no RC restart).
-
-- SCOPE (verify-before-build): the directive's "tokenize sub-floor hardcoded font-sizes" = a verified
-  NO-OP. The 2 JS files are pure ESM (no style decls); both CSS files were ALREADY fully tokenized
-  (every font-size = var(--fs-*), all >= --fs-xs 16px; grep font-size:\d+px = 0 hits). Did NOT
-  fabricate edits to manufacture a diff.
-- MUST-FIX (genuine dead CSS): cc_conditional_pressure.css carried .cc-conditional-pressure-ratio +
-  -ratio-value (3 rules / ~24 lines) ORPHANED since item 213 (2026-05-28) swapped the ratio render
-  for the verdict line. Grep across web/ + tests/ = ZERO consumers -> removed. Zero pixel delta.
-  cooldown_watch CSS classes all match JS-emitted (no dead CSS) -> guard test only.
-- 5-phase: STRUCTURE/TYPOGRAPHY/ASCII/HIERARCHY PASS; HIT-TARGETS N/A (display-only chips).
-- TDD red->green: test_no_orphan_ratio_selectors RED (1 fail) -> removed -> GREEN (44 passed); +2
-  test_font_sizes_are_tokenized characterization guards (both panel test files) lock token compliance.
-- VERIFY: verifier subagent CONFIRM all 4 claims (selector gone, 0 bare-px, 44 passed fresh, 0
-  non-ASCII); full RC suite tests/ --ignore=tests/daemon_slayer = 8645 passed / 2 skip / exit 0
-  (8642 + 3 new); ruff clean. Inline sole orchestrator (R9). [[feedback_phase3_fixture_ritual]] /
-  [[feedback_verify_before_declare_broken]] / [[feedback_audit_proposals_are_intent]].
-- NEW residuals (FUTURE): overlay.css 12/13px sub-floor (Electron, Lane D); next.css:10 21px
-  hardcoded (above floor); cc-conditional-pressure-verdict actionable sentence at --fs-xs 16px
-  (clears floor; tier-bump is a subjective readability call - not shipped blind).
