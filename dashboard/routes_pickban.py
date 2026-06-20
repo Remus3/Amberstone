@@ -189,6 +189,76 @@ def _counters_for_champion(name: str) -> list[dict]:
             })
     return out
 
+
+def _counters_vs_comp(enemy_ids: tuple[int, ...],
+                      exclude_ids: tuple[int, ...],
+                      limit: int = 5) -> list[dict]:
+    """RC2 E4 (P2): aggregate "pick into this comp" counters vs the LIVE
+    enemy team.
+
+    Walks the per-champion counters index for every enemy champion and
+    tallies, for each candidate counter, HOW MANY of the enemy champs it
+    counters (its coverage of the comp). Candidates that hit more of the
+    enemy comp rank higher - the glanceable single-decision prompt that
+    wins the short pick window.
+
+    `enemy_ids` are LCU numeric championIds; `exclude_ids` are already
+    picked/banned ids (and need not include the enemy ids - those are
+    skipped automatically so a candidate already on the enemy team is
+    never recommended back). Returns up to `limit` rows shaped:
+        {champId, name, counters_count, vs_names: [str, ...], note}
+    Ranked by counters_count desc, then name asc (stable). Empty when the
+    comp is empty or the counters index yields no candidates.
+    """
+    enemy_ids = tuple(int(x) for x in enemy_ids if int(x) > 0)
+    if not enemy_ids:
+        return []
+    counters_idx = _load_counters_index()
+    name_to_id = _load_champ_name_to_id()
+    id_to_name = _load_champ_id_to_name()
+    # Never recommend a champion already on the enemy team or already
+    # picked/banned on the board.
+    skip = set(int(x) for x in exclude_ids if int(x) > 0)
+    skip.update(enemy_ids)
+
+    # candidate champId -> {"name": str, "vs": [enemy display names]}
+    agg: dict[int, dict] = {}
+    for ecid in enemy_ids:
+        enemy_name = id_to_name.get(int(ecid))
+        if not enemy_name:
+            continue
+        for counter_name in (counters_idx.get(_norm_name(enemy_name)) or []):
+            cand_id = name_to_id.get(_norm_name(counter_name))
+            if not cand_id or int(cand_id) in skip:
+                continue
+            slot = agg.setdefault(int(cand_id),
+                                  {"name": str(counter_name), "vs": []})
+            if enemy_name not in slot["vs"]:
+                slot["vs"].append(enemy_name)
+
+    rows: list[dict] = []
+    for cand_id, slot in agg.items():
+        vs_names = slot["vs"]
+        count = len(vs_names)
+        if count <= 0:
+            continue
+        if count == 1:
+            note = f"counters {vs_names[0]}"
+        elif count == 2:
+            note = f"counters {vs_names[0]} + {vs_names[1]}"
+        else:
+            note = f"counters {count} of their comp"
+        rows.append({
+            "champId":        int(cand_id),
+            "name":           str(slot["name"]),
+            "counters_count": int(count),
+            "vs_names":       list(vs_names),
+            "note":           note,
+        })
+    # Coverage desc, then name asc for a stable glance order.
+    rows.sort(key=lambda r: (-r["counters_count"], r["name"]))
+    return rows[:max(1, int(limit))]
+
 # Role normalization. Front-end uses TOP/JNG/MID/BOT/SUP; LCU uses
 # TOP/JUNGLE/MIDDLE/BOTTOM/UTILITY; the DB stores LCU form. Accept
 # both at the endpoint boundary and translate to LCU form for the query.
@@ -1190,6 +1260,47 @@ def _serve_personal_record(h) -> None:
         _send_json_err(h, 500, "internal error - see logs")
 
 
+def _serve_counter_picks(h) -> None:
+    """RC2 E4 (P2) - GET /api/champ-select/counter-picks. Given the live
+    enemy comp (``enemies`` = locked enemy championIds) and the operator's
+    already picked/banned ids (``exclude``), return the top counter picks
+    for the operator's OPEN slot - the at-a-glance "pick into this comp"
+    list. ``role`` is accepted for parity with pickban-recs (and future
+    role-aware filtering) but the counters index is role-agnostic today.
+
+    Reads only the counters index + DDragon name maps (no rewind_history.db
+    query), so it stays cheap + always available even when the operator
+    history DB is missing.
+    """
+    try:
+        qs = parse_qs(urlparse(h.path).query)
+        enemy_ids = _parse_csv_ints((qs.get("enemies") or [""])[0])
+        exclude_ids = _parse_csv_ints((qs.get("exclude") or [""])[0])
+        # role is optional + advisory only; normalize for the echo field.
+        role = _normalize_role((qs.get("role") or [""])[0])
+        try:
+            top_raw = int((qs.get("top") or ["5"])[0])
+        except ValueError:
+            top_raw = 5
+        limit = max(1, min(5, top_raw))
+
+        counters = _counters_vs_comp(enemy_ids, exclude_ids, limit=limit)
+        # Attach a champion icon path so the JS renders the portrait without
+        # a second id->slug round-trip. DDragon slug = the counters index
+        # display name resolved back through name->id is the numeric id; the
+        # JS already owns CHAMPS.byId for the slug, so we pass champId only.
+        payload = {
+            "ok": True,
+            "role": role,
+            "enemy_ids": list(int(x) for x in enemy_ids if int(x) > 0),
+            "counters": counters,
+        }
+        _send_json(h, 200, payload)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/champ-select/counter-picks: %s", exc)
+        _send_json_err(h, 500, "internal error - see logs")
+
+
 # Route table - imported by dashboard/_dispatch.py at module load.
 
 def _equals(p: str):
@@ -1201,4 +1312,5 @@ def _equals(p: str):
 GET_ROUTES = [
     (_equals("/api/champ-select/pickban-recs"), _serve_pickban_recs),
     (_equals("/api/champ-select/personal-record"), _serve_personal_record),
+    (_equals("/api/champ-select/counter-picks"), _serve_counter_picks),
 ]

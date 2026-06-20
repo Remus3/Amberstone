@@ -1064,6 +1064,15 @@
 }
 .csv-pb168-picks { flex: 1 1 auto; }
 .csv-pb168-bans  { flex: 0 0 auto; }
+/* RC2 E4 (operator-reported): once the ban phase is over the BAN
+ * recommendation grid is no longer actionable - collapse it so the 4
+ * ban cells stop eating vertical space during the pick window. The head
+ * row stays ("BAN - phase over") so the section is still labelled; only
+ * the cell row is removed from layout. Applied by _csvRenderPickBan via
+ * _csvBanPhaseComplete(cs). */
+.csv-pb168-bans.is-collapsed { flex: 0 0 auto; opacity: 0.6; }
+.csv-pb168-bans.is-collapsed .csv-pb168-row { display: none; }
+.csv-pb168-bans.is-collapsed .csv-pb168-head { border-bottom: none; color: #6a7280; }
 .csv-pb168-expl  { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 /* item 213 (2026-05-28): PICK / BAN heads reformatted for a clearer
  * visual hierarchy - the head is now a left-aligned labeled bar with a
@@ -1957,6 +1966,126 @@
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
+}
+
+/* RC2 E4 (operator-reported): ban-phase-complete COLLAPSE. Once bans are
+ * done the banned-champions display no longer needs full vertical space
+ * during the pick window. The toggle header is always shown in banned
+ * mode; when .is-collapsed is set the 2x5 icon grid below it is hidden so
+ * only the one-line "BANS - N banned [+]" summary remains. Clicking the
+ * header flips _csvBansOpen which removes .is-collapsed and reveals the
+ * full grid. The header is hidden in suggestion mode (ban phase active)
+ * since the grid there is the live ban-suggestion list, not committed bans. */
+.csv-sugg-banned-toggle {
+  display: none;            /* shown only in banned mode (rule below) */
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  background: #16191f;
+  border: 1px solid #232830;
+  border-radius: 4px;
+  cursor: pointer;
+  /* Mouse-driven 1920x1080 desktop surface; the full-width strip is the
+   * horizontal click target. Vertical height is the operator's collapse
+   * affordance - sanctioned sub --hit-min relaxation like .csv-lock-btn. */
+  min-height: 30px;
+  transition: border-color 0.12s, background 0.12s;
+}
+.csv-sugg-banned-toggle:hover { border-color: #3a4150; background: #1a1e25; }
+.csv-sugg-bans-grid.is-banned-grid .csv-sugg-banned-toggle { display: flex; }
+.csv-sugg-banned-toggle-label {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+.csv-sugg-banned-toggle-count {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: #6b7280;
+  flex: 1 1 auto;
+}
+.csv-sugg-banned-caret {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  color: #6b7280;
+  letter-spacing: 0.04em;
+}
+/* When collapsed, hide the committed-ban rows (the icon grid) but keep the
+ * toggle header visible. */
+.csv-sugg-bans-grid.is-banned-grid.is-collapsed .csv-sugg-banned-row {
+  display: none;
+}
+
+/* RC2 E4 (P2): "PICK INTO THIS COMP" counter-pick list. Glanceable
+ * top-5 portrait + name + short note; the whole row is a click target
+ * that hovers the counter on the operator's pick action. Green left
+ * accent reads as "use this" (matches the Pick & Ban pick stripe). */
+.csv-counter-head {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: #4ade80;
+  padding: 0 2px 2px;
+}
+.csv-counter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.csv-counter-pick {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  background: #1a1d23;
+  border: 1px solid #2a2f37;
+  border-left: 3px solid #2c6a3c;
+  border-radius: 4px;
+  min-height: var(--hit-min);
+}
+.csv-counter-pick.is-clickable {
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.12s;
+}
+.csv-counter-pick.is-clickable:hover {
+  border-color: #4ade80;
+  border-left-color: #4ade80;
+  background: #1d2630;
+  transform: translateY(-1px);
+}
+.csv-counter-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background: #14171c;
+  border: 1px solid #2a2f37;
+  overflow: hidden;
+}
+.csv-counter-icon img { width: 100%; height: 100%; object-fit: cover; }
+.csv-counter-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.csv-counter-name {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.csv-counter-note {
+  font-size: var(--fs-xs);
+  color: #8b909a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Row 3: pick-order list. s212 v2: stack cells vertically (each tip on
  * its own row, full-width) so they fill the column rather than wrap

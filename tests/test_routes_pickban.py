@@ -1300,5 +1300,162 @@ class TestPickBanEndToEndItem168(unittest.TestCase):
         self.assertIsNone(payload["cleanse_advisory"])
 
 
+class TestCountersVsComp(unittest.TestCase):
+    """RC2 E4 (P2): aggregate counter-picks vs the LIVE enemy comp.
+
+    `_counters_vs_comp` takes the enemy champion ids, walks the existing
+    per-champion counters index, and ranks candidate counters by how many
+    of the enemy champs each one counters (the at-a-glance "pick into this
+    comp" list). Excludes already-picked/banned ids and the enemy ids
+    themselves.
+    """
+
+    # A tiny self-contained counters graph so the test never depends on the
+    # live champion_counters.json content. The index is keyed by the champ
+    # being countered -> the champions that beat it (same shape as the real
+    # champion_counters.json: "Caitlyn" -> ["Draven","Lucian","Pyke"]).
+    # So: Caitlyn(51) counters BOTH enemies (she beats Draven + Lucian);
+    # Vayne(67) counters only Draven.
+    _COUNTERS = {
+        "draven": ["Caitlyn", "Vayne"],   # who beats Draven
+        "lucian": ["Caitlyn"],            # who beats Lucian
+    }
+    _NAME_TO_ID = {"caitlyn": 51, "vayne": 67, "draven": 119, "lucian": 236}
+    _ID_TO_NAME = {51: "Caitlyn", 67: "Vayne", 119: "Draven", 236: "Lucian"}
+
+    def _patches(self):
+        return (
+            mock.patch.object(routes_pickban, "_load_counters_index",
+                              return_value=self._COUNTERS),
+            mock.patch.object(routes_pickban, "_load_champ_name_to_id",
+                              return_value=self._NAME_TO_ID),
+            mock.patch.object(routes_pickban, "_load_champ_id_to_name",
+                              return_value=self._ID_TO_NAME),
+        )
+
+    def test_aggregates_and_ranks_by_coverage(self):
+        # Enemy comp = Draven(119) + Lucian(236). Caitlyn counters BOTH;
+        # Vayne counters only Draven. So Caitlyn ranks first with count=2.
+        with self._patches()[0], self._patches()[1], self._patches()[2]:
+            out = routes_pickban._counters_vs_comp((119, 236), (), limit=5)
+        self.assertTrue(out)
+        self.assertEqual(out[0]["name"], "Caitlyn")
+        self.assertEqual(out[0]["counters_count"], 2)
+        self.assertEqual(out[0]["champId"], 51)
+        # Vayne present but ranked below Caitlyn (counters only 1).
+        names = [c["name"] for c in out]
+        self.assertIn("Vayne", names)
+        self.assertLess(names.index("Caitlyn"), names.index("Vayne"))
+
+    def test_excludes_picked_and_banned(self):
+        # Caitlyn already banned/picked -> excluded; Vayne surfaces.
+        with self._patches()[0], self._patches()[1], self._patches()[2]:
+            out = routes_pickban._counters_vs_comp((119, 236), (51,), limit=5)
+        names = [c["name"] for c in out]
+        self.assertNotIn("Caitlyn", names)
+        self.assertIn("Vayne", names)
+
+    def test_excludes_enemy_ids_themselves(self):
+        # A candidate that is itself on the enemy team must not be
+        # recommended back to the operator. Make Lucian a "counter" of
+        # Draven in the index; since Lucian(236) is an enemy it must be
+        # dropped from the output.
+        counters = dict(self._COUNTERS)
+        counters["draven"] = ["Caitlyn", "Vayne", "Lucian"]
+        with mock.patch.object(routes_pickban, "_load_counters_index",
+                               return_value=counters), \
+             self._patches()[1], self._patches()[2]:
+            out = routes_pickban._counters_vs_comp((119, 236), (), limit=5)
+        names = [c["name"] for c in out]
+        self.assertNotIn("Draven", names)   # Draven(119) is an enemy
+        self.assertNotIn("Lucian", names)   # Lucian(236) is an enemy
+
+    def test_empty_comp_returns_empty(self):
+        with self._patches()[0], self._patches()[1], self._patches()[2]:
+            self.assertEqual(routes_pickban._counters_vs_comp((), (), limit=5), [])
+
+    def test_limit_caps_results(self):
+        with self._patches()[0], self._patches()[1], self._patches()[2]:
+            out = routes_pickban._counters_vs_comp((119, 236), (), limit=1)
+        self.assertEqual(len(out), 1)
+
+    def test_each_row_has_note_and_vs_names(self):
+        with self._patches()[0], self._patches()[1], self._patches()[2]:
+            out = routes_pickban._counters_vs_comp((119, 236), (), limit=5)
+        top = out[0]
+        self.assertIn("note", top)
+        self.assertTrue(top["note"])
+        self.assertIn("vs_names", top)
+        # Caitlyn counters both Draven + Lucian.
+        self.assertIn("Draven", top["vs_names"])
+        self.assertIn("Lucian", top["vs_names"])
+
+
+class TestCounterPicksRoute(unittest.TestCase):
+    """RC2 E4: /api/champ-select/counter-picks route surface."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self._tmp.close()
+        self.db_path = Path(self._tmp.name)
+        routes_pickban._reset_caches()
+        self._db_patch = mock.patch.object(
+            routes_pickban, "_REWIND_DB", self.db_path)
+        self._db_patch.start()
+
+    def tearDown(self):
+        self._db_patch.stop()
+        self.db_path.unlink(missing_ok=True)
+
+    def _make_handler(self, path):
+        h = mock.MagicMock()
+        h.path = path
+        return h
+
+    def test_route_registered(self):
+        paths = [
+            "/api/champ-select/counter-picks",
+        ]
+        registered = [p for (m, _fn) in routes_pickban.GET_ROUTES
+                      for p in paths if m(p)]
+        self.assertIn("/api/champ-select/counter-picks", registered)
+
+    def test_returns_counter_list(self):
+        # No DB rows needed - counter-picks reads the counters index, not
+        # the operator history. Patch the index helpers to a known graph.
+        counters = {"draven": ["Caitlyn", "Vayne"], "lucian": ["Caitlyn"]}
+        n2i = {"caitlyn": 51, "vayne": 67, "draven": 119, "lucian": 236}
+        i2n = {51: "Caitlyn", 67: "Vayne", 119: "Draven", 236: "Lucian"}
+        h = self._make_handler(
+            "/api/champ-select/counter-picks?role=BOT&enemies=119,236")
+        with mock.patch.object(routes_pickban, "_load_counters_index",
+                               return_value=counters), \
+             mock.patch.object(routes_pickban, "_load_champ_name_to_id",
+                               return_value=n2i), \
+             mock.patch.object(routes_pickban, "_load_champ_id_to_name",
+                               return_value=i2n):
+            routes_pickban._serve_counter_picks(h)
+        code, body, ctype = h._send.call_args[0]
+        self.assertEqual(code, 200)
+        import json as _json
+        payload = _json.loads(body)
+        self.assertTrue(payload["ok"])
+        self.assertIn("counters", payload)
+        self.assertTrue(payload["counters"])
+        self.assertEqual(payload["counters"][0]["name"], "Caitlyn")
+        # icon path present so the JS can render the portrait directly.
+        self.assertIn("champId", payload["counters"][0])
+
+    def test_empty_enemies_returns_ok_empty(self):
+        h = self._make_handler("/api/champ-select/counter-picks?enemies=")
+        routes_pickban._serve_counter_picks(h)
+        code, body, ctype = h._send.call_args[0]
+        self.assertEqual(code, 200)
+        import json as _json
+        payload = _json.loads(body)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["counters"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
