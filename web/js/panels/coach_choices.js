@@ -30,7 +30,7 @@ let _chipByKey = {};
 
 function _chipsSignature(choices) {
   if (!Array.isArray(choices) || choices.length === 0) return "";
-  return choices.map((c) => `${c.key}:${c.label}:${c.confidence}:${c.source_tag || ""}`).join("|");
+  return choices.map((c) => `${c.key}:${c.label}:${c.confidence}:${c.source_tag || ""}:${c.trigger || ""}`).join("|");
 }
 
 function _bandDots(band) {
@@ -47,10 +47,11 @@ function _bandDots(band) {
 const _KEY_TO_DIGIT = { A: "1", B: "2", C: "3" };
 
 // HTML-escape for the LLM-derived choice text (label / expected_outcome /
-// source_tag). parse_choices (core/coach_choices.py) only length-limits
-// these fields - it does NOT escape markup, so the Haiku/Sonnet output is
-// untrusted at this boundary. Escape both the element-content and the
-// attribute interpolations (& < > " all matter in an HTML attribute).
+// source_tag / trigger). parse_choices (core/coach_choices.py) only
+// length-limits these fields - it does NOT escape markup, so the
+// Haiku/Sonnet output is untrusted at this boundary. Escape both the
+// element-content and the attribute interpolations (& < > " all matter
+// in an HTML attribute).
 function _esc(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;")
@@ -64,18 +65,27 @@ function _chipHtml(c) {
   const label = (c.label || "").slice(0, 80);
   const outcome = (c.expected_outcome || "").slice(0, 160);
   const src = (c.source_tag || "").slice(0, 32);
+  const trigger = (c.trigger || "").slice(0, 120);
   const confidence = String(c.confidence == null ? "" : c.confidence);
   const srcPill = src ? `<span class="rc-src">${_esc(src)}</span>` : "";
   const digit = _KEY_TO_DIGIT[k] || "";
   const hotkeyPill = digit
     ? `<span class="rc-hotkey" title="Press Alt+${digit} to pick">Alt+${digit}</span>`
     : "";
+  // RC2 5.3: the trigger names the live condition the option assumes, shown
+  // as a muted sub-line under the label (overlay HUD hides it - lean glance).
+  const triggerLine = trigger
+    ? `<span class="rc-trigger">${_esc(trigger)}</span>`
+    : "";
   return `
     <button type="button" class="rc-chip" data-key="${_esc(k)}" data-label="${_esc(label)}"
             data-confidence="${_esc(confidence)}" data-source="${_esc(src)}"
             title="${_esc(outcome)}">
       <span class="rc-key">${_esc(k)}</span>
-      <span class="rc-label">${_esc(label)}</span>
+      <span class="rc-labelcol">
+        <span class="rc-label">${_esc(label)}</span>
+        ${triggerLine}
+      </span>
       ${hotkeyPill}
       ${_bandDots(confidence)}
       ${srcPill}

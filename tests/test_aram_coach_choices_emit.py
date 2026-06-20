@@ -136,17 +136,18 @@ class ParserPassthroughTests(unittest.TestCase):
         self.assertEqual(decode_choices('[{"key":"A","label":"unterminated'), [])
 
     def test_choice_schema_matches_coach_choice_dataclass(self):
-        # The 5 schema field names in the prompt MUST match the 5 fields
-        # exposed by core.coach_choices.CoachChoice exactly. Imported here
-        # so any future rename of the dataclass breaks the test loudly
-        # rather than silently shipping a contract drift.
+        # The prompt documents the model-EMITTED choice keys. CoachChoice may
+        # ALSO carry server-derived fields (RC2 5.3 trigger) the model is not
+        # asked to emit; those are excluded from the prompt-schema mirror.
+        # Imported here so a rename of the dataclass breaks the test loudly.
         from core.coach_choices import CoachChoice  # noqa: WPS433
         from dataclasses import fields
-        expected = {f.name for f in fields(CoachChoice)}
+        SERVER_DERIVED = {"trigger"}
+        emitted = {f.name for f in fields(CoachChoice)} - SERVER_DERIVED
         self.assertEqual(
-            expected,
+            emitted,
             {"key", "label", "expected_outcome", "confidence", "source_tag"},
-            "Prompt schema MUST mirror CoachChoice dataclass field set",
+            "Prompt schema MUST mirror CoachChoice model-emitted field set",
         )
 
 

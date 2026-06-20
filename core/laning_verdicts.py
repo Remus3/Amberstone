@@ -22,11 +22,13 @@ from __future__ import annotations
 
 import json
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
 from core.coach_choices import CoachChoice
 from core.daemon_slayer_client import matchup
+from core.precomputed_laning_coach import laning_trigger
 
 logger = logging.getLogger("rc.core.laning_verdicts")
 
@@ -56,12 +58,17 @@ def verdict_to_choices(
     matchup_result: dict,
     *,
     build_next_item: Optional[str] = None,
+    trigger: str = "",
 ) -> list[CoachChoice]:
     """Map a matchup verdict dict to 2 deterministic A/B CoachChoice objects.
 
     source_tag is ``ds-matchup`` for the A/B pair. When ``build_next_item`` is a
     non-empty name, a 3rd ``Buy <item>`` choice (source_tag ``ds-build``) is
     appended. Returns [] on a non-dict / verdict-less input (fail-soft).
+
+    RC2 5.3: when ``trigger`` is non-empty (the live condition the lane state
+    was read under, e.g. "Ezreal, lvl 6"), it is stamped onto every returned
+    choice so the chip UI can show the assumed condition as a sub-line.
     """
     if not isinstance(matchup_result, dict):
         return []
@@ -134,6 +141,8 @@ def verdict_to_choices(
                 source_tag=_SOURCE_BUILD,
             )
         )
+    if trigger:
+        choices = [replace(c, trigger=trigger) for c in choices]
     return choices
 
 
@@ -296,7 +305,12 @@ def laning_choices(
         return []
 
     build_item = _next_build_item(my_champ, owned, mode=mode)
-    choices = verdict_to_choices(result, build_next_item=build_item)
+    # RC2 5.3: name the live condition on each served chip (lean - this seam
+    # knows the enemy laner + my level, not the mana/cd discrete state).
+    trigger = laning_trigger(enemy, my_level)
+    choices = verdict_to_choices(
+        result, build_next_item=build_item, trigger=trigger,
+    )
     if apply_cv:
         # Lazy import avoids a core import cycle (laning_cv_overrides imports
         # coach_choices, which laning_verdicts already binds at module load).
