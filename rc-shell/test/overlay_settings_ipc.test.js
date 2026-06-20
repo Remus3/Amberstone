@@ -122,3 +122,33 @@ test("main.js shares the panel-set apply between the cycle hotkey and the IPC", 
   assert.ok(mainjs.includes("applyPanelSet"), "uses the shared applyPanelSet");
   assert.ok(mainjs.includes("setOverlayActive"), "uses the shared setOverlayActive");
 });
+
+// --- RC2 Stage 4.5: overlay + dashboard coexistence actions ------------------
+
+test("main.js dispatches the coexistence actions on the same action channel", () => {
+  // rearrange re-separates on demand; raise-companion brings the dashboard
+  // forward. Both flow through the existing normOverlayAction-validated handler.
+  assert.ok(mainjs.includes('"rearrange"') || mainjs.includes("'rearrange'"), "handles rearrange");
+  assert.ok(
+    mainjs.includes('"raise-companion"') || mainjs.includes("'raise-companion'"),
+    "handles raise-companion"
+  );
+  assert.ok(mainjs.includes("raiseCompanion"), "uses the raiseCompanion primitive");
+});
+
+test("main.js re-arrange forces the single-monitor layout past the auto kill switch", () => {
+  // an explicit on-demand re-arrange bypasses the separateWindows setting gate
+  // (that gate is for the AUTO arrangement, not an operator button press).
+  assert.ok(
+    /applySingleMonitorLayout\(\s*\{\s*force/.test(mainjs),
+    "rearrange calls applySingleMonitorLayout with force"
+  );
+});
+
+test("main.js raiseCompanion brings the companion forward without resizing it", () => {
+  // show + moveTop raises the kept dashboard; it must not setSize/setBounds the
+  // companion (reposition-only is the 4.3 layout's job, via the forced layout).
+  const m = mainjs.match(/function raiseCompanion[\s\S]*?\n}/);
+  assert.ok(m, "raiseCompanion is defined");
+  assert.ok(/moveTop\(/.test(m[0]), "raiseCompanion calls moveTop");
+});

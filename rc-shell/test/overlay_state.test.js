@@ -1061,7 +1061,12 @@ test("mergeOverlaySettingsPatch: separateWindows false persists; non-boolean dro
 // trusts so an arbitrary renderer message can never invoke an unlisted action.
 
 test("OVERLAY_ACTIONS is the frozen no-hotkey action allow-list", () => {
-  assert.deepStrictEqual([...ov.OVERLAY_ACTIONS].sort(), ["set-active", "set-panel"]);
+  // RC2 4.5 adds the two coexistence actions (rearrange + raise-companion) to
+  // the 4.4 set (set-panel + set-active).
+  assert.deepStrictEqual(
+    [...ov.OVERLAY_ACTIONS].sort(),
+    ["raise-companion", "rearrange", "set-active", "set-panel"]
+  );
   assert.ok(Object.isFrozen(ov.OVERLAY_ACTIONS));
 });
 
@@ -1102,4 +1107,36 @@ test("normOverlayAction: unknown / malformed messages -> null", () => {
   for (const raw of [null, undefined, 42, "set-panel", [], { action: "toggle-hidden" }, { action: "" }, {}]) {
     assert.strictEqual(ov.normOverlayAction(raw), null, JSON.stringify(raw));
   }
+});
+
+// --- RC2 Stage 4.5: overlay + dashboard coexistence actions ------------------
+// Two payload-free coexistence commands ride the SAME validated action channel:
+// "rearrange" (re-separate the overlay + kept dashboard on demand) and
+// "raise-companion" (bring the kept dashboard forward beside the HUD). Neither
+// hides the overlay, so unlike the toggle-hidden hotkey there is no stranding.
+
+test("normOverlayAction: rearrange + raise-companion pass with no payload", () => {
+  assert.deepStrictEqual(ov.normOverlayAction({ action: "rearrange" }), { action: "rearrange" });
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: "raise-companion" }),
+    { action: "raise-companion" }
+  );
+  // case + whitespace insensitive (mirrors set-active).
+  assert.deepStrictEqual(ov.normOverlayAction({ action: " REARRANGE " }), { action: "rearrange" });
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: "Raise-Companion" }),
+    { action: "raise-companion" }
+  );
+});
+
+test("normOverlayAction: a stray panelSet on a coexistence action is dropped", () => {
+  // only set-panel echoes a panelSet; the coexistence actions never do.
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: "rearrange", panelSet: "build" }),
+    { action: "rearrange" }
+  );
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: "raise-companion", panelSet: "threat" }),
+    { action: "raise-companion" }
+  );
 });

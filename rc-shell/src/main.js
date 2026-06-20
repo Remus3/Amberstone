@@ -740,6 +740,12 @@ function registerIpc() {
       applyPanelSet(m.panelSet);
     } else if (m.action === "set-active") {
       setOverlayActive();
+    } else if (m.action === "rearrange") {
+      // RC2 4.5: re-separate the overlay + kept dashboard NOW (force past the
+      // separateWindows auto kill switch - an explicit operator request).
+      applySingleMonitorLayout({ force: true });
+    } else if (m.action === "raise-companion") {
+      raiseCompanion();
     }
   });
 }
@@ -753,8 +759,14 @@ function registerIpc() {
 // untouched (the operator can punt the dashboard to a 2nd screen). Reposition
 // only - never resize - so the size preset survives. ov.resolveSeparatedCompanion
 // Bounds is the pure decision (respects a companion already clear of the overlay).
-function applySingleMonitorLayout() {
-  if (!overlaySettings.separateWindows) {
+// RC2 4.5: opts.force bypasses the separateWindows kill switch - that switch
+// gates the AUTOMATIC arrangement (on the in-game transition), but an explicit
+// on-demand "Re-arrange" button press is the operator asking directly, so it
+// should run even with auto-arrange turned off. The single-display + overlap
+// logic is unchanged either way (reposition only; the size preset survives).
+function applySingleMonitorLayout(opts) {
+  const force = opts && typeof opts === "object" && opts.force === true;
+  if (!force && !overlaySettings.separateWindows) {
     return; // operator kill switch (no-hotkey #ovset toggle).
   }
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -789,6 +801,25 @@ function applySingleMonitorLayout() {
     });
     persistWindowState(); // remember where the auto-arrange parked it.
   }
+}
+
+// RC2 4.5: bring the kept dashboard forward beside the HUD. The overlay sits at
+// the screen-saver z-level so it stays above the game; in-game the companion is
+// shown via showInactive (no focus steal) and can fall behind. "Show dashboard"
+// (the no-hotkey #ovset button + raise-companion IPC) surfaces it on demand:
+// show + moveTop raises it WITHOUT resizing (reposition is the forced layout's
+// job), then a forced single-monitor re-arrange tiles it beside the overlay.
+// This is the coexistence answer to "where did my dashboard go" - it never
+// hides the overlay, so it cannot strand the operator.
+function raiseCompanion() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+  if (!mainWindow.isVisible()) {
+    mainWindow.showInactive(); // make it visible without stealing game focus.
+  }
+  mainWindow.moveTop();
+  applySingleMonitorLayout({ force: true });
 }
 
 // Show/hide the two surfaces to match a resolved surface, skipping no-op churn.
