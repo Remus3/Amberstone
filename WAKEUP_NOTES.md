@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-20 (/RC2-Continue - Phase 8.3 operator Q/A consolidation)
+
+Shipped the 8.3 deliverable: `docs/RC2_QA_CONSOLIDATED.md` (commit `f05b853d`,
+pushed). Reconciled all 97 raw Q/A items (docs/RC2_TODO_QA.md, the 8.1 list)
+against HEAD via 6 read-only agents; every SHIPPED/CLOSED verdict evidence-cited,
+a sample (6 shas / 9 files / 6 greps) independently re-verified. Result:
+33 SHIPPED / 13 GATED-LIVE / 18 GATED / 31 OPEN (headless-buildable) / 2 CLOSED.
+The old TOP-10 are fully spent (-> E1-E12). RC2_TODO_QA.md now points to the
+consolidated doc for current status.
+
+CONCURRENCY: ran alongside the loop-monitor session below; their /done recorded
+their commits but NOT f05b853d, so this entry records it. f05b853d is in git +
+pushed regardless.
+
+HELD: the RC2_PLAN.md 8.3 -> DONE stage flip + banner 53->54/62 (~87%) is staged
+in the working tree but UNCOMMITTED - the operator rejected that exact edit
+earlier in-session. Left for operator confirm; the deliverable itself is shipped.
+
+NEXT: operator confirms the 8.3 DONE flip, then /RC2-Continue picks the next
+non-DONE (E-batch E2/E7/E10/E11/E12 - mostly live/release-gated - + Phase 9).
+[[project_rc2_build]]
+
+---
+
 # 2026-06-20 (interactive - loop-monitor observability + CC session perf fixes)
 
 Standalone interactive session (NOT /RC2-Continue). Built the loop-monitor the
@@ -51,26 +75,3 @@ Banner 52 -> 53 / 62 = ~85%. Phase 7 HYGIENE COMPLETE (7.1-7.5). Pushed, CI gree
 
 NEXT /RC2-Continue: Phase 8 stage 8.3 operator Q/A consolidation; then E10/E11/E12/E7/E2.
 [[project_rc2_build]] [[feedback_execution_efficiency_rules]].
-
----
-
-# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 7.1 ASCII-sweep close + Subagent-First protocol)
-
-P7.1 ASCII-violation sweep CLOSED (Phase 7 HYGIENE begins). Commits `dbbd7a8d` (feat) +
-`52c63336` (flip). Banner 48 -> 49 / 62 = ~79%. Then operator Subagent-First directive ->
-`d9580d21`. All pushed, CI green.
-
-- P7.1: tree ALREADY banned-glyph clean (prior P2/P3 cycles); only immutable `_archive/` keeps
-  em-dashes -> VERIFICATION + ENFORCEMENT, not mass-rewrite. Census: banned set 0 tree-wide +
-  per-frozen 0; `p3_ascii_sweep --dry-run`/`--doc-dry` 0 subs / 546 .py. Tightened
-  `tests/test_smart_quote_hygiene.py`: dropped the frozen skip (operator "frozen INCLUDED") + new
-  `test_frozen_files_clean_of_banned_glyphs` lock. Doc `RC2_ASCII_SWEEP_VERIFICATION.md`. 15 green.
-- Subagent-First (operator 2026-06-20): always subagents for substantive work; design spec THEN
-  act; new session interviews Gemini/operator + verifies before build; refines R9. CLAUDE.md
-  "## Subagent-First Protocol" + memory `feedback_subagent_first_protocol` + block into 14
-  `.claude/commands/*.md` (gitignored; applied BY 3 subagents). Excluded sleep/wake/game-monitor.
-- NOTE: command files GITIGNORED (local) - durable levers = CLAUDE.md + memory. done.md has 19
-  em-dashes but is untracked = not a tracked violation.
-
-NEXT /RC2-Continue: P7.2 stale-file census (.md/scripts unused >1 week); then 7.3/7.4/7.5, Phase 8
-(8.3), E10/E11/E12/E7/E2. [[project_rc2_build]] [[feedback_subagent_first_protocol]].
