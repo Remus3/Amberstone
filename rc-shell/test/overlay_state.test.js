@@ -1052,3 +1052,54 @@ test("mergeOverlaySettingsPatch: separateWindows false persists; non-boolean dro
   const dropped = ov.mergeOverlaySettingsPatch({}, { separateWindows: 1 });
   assert.ok(!("separateWindows" in dropped.overlay.settings));
 });
+
+// --- RC2 Stage 4.4: no-hotkey overlay actions (normOverlayAction) -------------
+// The renderer (#ovset selector) can no longer be driven only by keyboard: a
+// one-way action channel lets it pick the panel set (was the Alt+Shift+C cycle)
+// and request interact-now (was the Alt+Shift+A passive<->active toggle).
+// normOverlayAction is the pure allow-list + payload validator the main process
+// trusts so an arbitrary renderer message can never invoke an unlisted action.
+
+test("OVERLAY_ACTIONS is the frozen no-hotkey action allow-list", () => {
+  assert.deepStrictEqual([...ov.OVERLAY_ACTIONS].sort(), ["set-active", "set-panel"]);
+  assert.ok(Object.isFrozen(ov.OVERLAY_ACTIONS));
+});
+
+test("normOverlayAction: set-panel with a valid set normalizes through", () => {
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: "set-panel", panelSet: "build" }),
+    { action: "set-panel", panelSet: "build" }
+  );
+  // case + whitespace insensitive on both fields (mirrors normMode/normPanelSet).
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: " SET-PANEL ", panelSet: " Threat " }),
+    { action: "set-panel", panelSet: "threat" }
+  );
+});
+
+test("normOverlayAction: set-panel with a bad/absent set -> null (no-op, not error)", () => {
+  for (const ps of ["garbage", "", null, undefined, 5, "full"]) {
+    assert.strictEqual(
+      ov.normOverlayAction({ action: "set-panel", panelSet: ps }),
+      null,
+      JSON.stringify(ps)
+    );
+  }
+});
+
+test("normOverlayAction: set-active needs no payload", () => {
+  assert.deepStrictEqual(ov.normOverlayAction({ action: "set-active" }), { action: "set-active" });
+  // a stray panelSet on set-active is simply ignored (not echoed back).
+  assert.deepStrictEqual(
+    ov.normOverlayAction({ action: "set-active", panelSet: "build" }),
+    { action: "set-active" }
+  );
+});
+
+test("normOverlayAction: unknown / malformed messages -> null", () => {
+  // toggle-hidden is deliberately NOT in the allow-list (hide stays a hotkey:
+  // it clears BOTH surfaces, so a self-hiding on-screen control has no way back).
+  for (const raw of [null, undefined, 42, "set-panel", [], { action: "toggle-hidden" }, { action: "" }, {}]) {
+    assert.strictEqual(ov.normOverlayAction(raw), null, JSON.stringify(raw));
+  }
+});

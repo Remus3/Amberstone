@@ -181,6 +181,75 @@ def test_overlay_settings_strip_has_dashboard_persist_toggles(mock_server, pw_br
     assert not errors, f"JS errors [overlay settings]: {errors[:3]}"
 
 
+def test_overlay_settings_strip_has_no_hotkey_action_controls(mock_server, pw_browser):
+    """RC2 4.4: the #ovset strip exposes the last keyboard-only overlay actions
+    as on-screen controls - a panel-set segmented selector (Coach/Build/Threat,
+    twin of Alt+Shift+C) and an Interact-now button (twin of Alt+Shift+A). ASCII
+    labels; each control clears the >=42px hit floor."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.wait_for_selector("#ovset #ovset-panelset", timeout=10_000)
+        # The 3 panel-set segments + the interact button are present.
+        for ps in ("coach", "build", "threat"):
+            assert page.locator(f'#ovset-panelset [data-panelset="{ps}"]').count() == 1, (
+                f"panel-set segment {ps} missing"
+            )
+        assert page.locator("#ovset-interact").count() == 1, "#ovset-interact missing"
+
+        # ASCII labels.
+        for sel, want in (
+            ('#ovset-panelset [data-panelset="coach"]', "Coach"),
+            ("#ovset-interact", "Interact now"),
+        ):
+            txt = page.eval_on_selector(sel, "el => el.textContent")
+            assert txt == want, f"unexpected label {txt!r} for {sel}"
+            assert txt.isascii(), f"non-ASCII label {txt!r}"
+
+        # HIT-TARGETS: a segment + the interact button clear the 42px floor.
+        hseg = page.eval_on_selector(
+            '#ovset-panelset [data-panelset="coach"]',
+            "el => el.getBoundingClientRect().height",
+        )
+        assert hseg >= 42, f"panel-set segment height {hseg} below 42px floor"
+        hact = page.eval_on_selector(
+            "#ovset-interact", "el => el.getBoundingClientRect().height"
+        )
+        assert hact >= 42, f"Interact-now height {hact} below 42px floor"
+
+        # Default full subset (no panelset param) -> no segment lit.
+        lit = page.locator('#ovset-panelset [aria-pressed="true"]').count()
+        assert lit == 0, f"no segment should be active on the full subset (got {lit})"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [4.4 controls]: {errors[:3]}"
+
+
+def test_overlay_panelset_selector_reflects_active_set(mock_server, pw_browser):
+    """RC2 4.4: loaded at ?panelset=build the selector lights the Build segment
+    (aria-pressed=true + is-active) and only that one - it reflects the live
+    overlay panel set without a shell round-trip."""
+    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "build")
+    try:
+        page.wait_for_selector("#ovset #ovset-panelset", timeout=10_000)
+        assert page.eval_on_selector(
+            '#ovset-panelset [data-panelset="build"]', "el => el.getAttribute('aria-pressed')"
+        ) == "true", "Build segment must be aria-pressed when panelset=build"
+        assert page.eval_on_selector(
+            '#ovset-panelset [data-panelset="build"]',
+            "el => el.classList.contains('is-active')",
+        ) is True, "Build segment must carry .is-active"
+        # exactly one lit segment.
+        assert page.locator('#ovset-panelset [aria-pressed="true"]').count() == 1
+        assert page.eval_on_selector(
+            '#ovset-panelset [data-panelset="coach"]', "el => el.getAttribute('aria-pressed')"
+        ) == "false", "Coach segment must not be active when panelset=build"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [4.4 reflect]: {errors[:3]}"
+
+
 def test_overlay_right_dock_geometry(mock_server, pw_browser):
     """The visible column is ~460px wide and docked to the right edge of
     the 1920 viewport (the rest of the window stays transparent for the

@@ -29,7 +29,7 @@
 
 import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
 import { CHAMPS, _resolveItemId } from '../lib/items_index.js';
-import { readOverlaySettings, writeOverlaySettings, hydrateOverlaySettings } from '../lib/overlay_settings.js';
+import { readOverlaySettings, writeOverlaySettings, hydrateOverlaySettings, sendOverlayAction } from '../lib/overlay_settings.js';
 
 const _OVDS_DEBOUNCE_MS = 350;
 const _OVDS_ROW_CAP = 5;
@@ -259,8 +259,42 @@ function _settingsHtml() {
     + `<input type="range" id="ovset-opacity" min="30" max="100" step="5"></label>`
     + `<label class="ovset-row ovset-num"><span>Auto-passive (s)</span>`
     + `<input type="number" id="ovset-revert" min="3" max="120" step="1" inputmode="numeric"></label>`
+    // RC2 4.4: no-hotkey control of the overlay's last keyboard-only actions -
+    // pick the panel set (was Alt+Shift+C cycle) + interact now (was Alt+Shift+A
+    // passive<->active). Both fire one-way overlay ACTIONS at the rc-shell.
+    + `<div class="ovset-row ovset-seg" id="ovset-panelset" role="group" aria-label="Panel set">`
+    + `<button type="button" class="ovset-seg-btn" data-panelset="coach" aria-pressed="false">Coach</button>`
+    + `<button type="button" class="ovset-seg-btn" data-panelset="build" aria-pressed="false">Build</button>`
+    + `<button type="button" class="ovset-seg-btn" data-panelset="threat" aria-pressed="false">Threat</button>`
+    + `</div>`
+    + `<button type="button" class="ovset-row ovset-act" id="ovset-interact">Interact now</button>`
     + `</div>`
   );
+}
+
+// RC2 4.4: read the overlay's current panel set (the page was loaded at
+// ?overlay=1&panelset=NAME; web/js/main.js stamps it on the body). Empty when on
+// the default full subset (none of the 3 single sets) - then no segment is lit.
+function _currentPanelset() {
+  try {
+    const ds = document.body && document.body.dataset ? document.body.dataset.panelset : "";
+    if (ds) return ds;
+    return new URLSearchParams(location.search).get("panelset") || "";
+  } catch (_e) {
+    return "";
+  }
+}
+
+// Light the active panel-set segment (visual + aria-pressed) so the selector
+// reflects the live overlay state without a shell round-trip.
+function _markActivePanelset(body, active) {
+  const seg = body.querySelector("#ovset-panelset");
+  if (!seg) return;
+  seg.querySelectorAll("[data-panelset]").forEach((b) => {
+    const on = b.getAttribute("data-panelset") === active;
+    b.classList.toggle("is-active", on);
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+  });
 }
 
 function _applySettingsToDom(body, s) {
@@ -335,6 +369,25 @@ function _wireSettings(body) {
       rev.value = String(next.activeRevertSec); // reflect the [3,120] clamp
     });
   }
+  // RC2 4.4: panel-set selector (delegated click) + interact-now button. Both
+  // fire one-way overlay ACTIONS; the shell validates + reloads the overlay /
+  // flips click-through. A plain browser (no rcShell bridge) is a silent no-op.
+  const seg = body.querySelector("#ovset-panelset");
+  if (seg) {
+    seg.addEventListener("click", (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest("[data-panelset]") : null;
+      if (!btn) return;
+      const ps = btn.getAttribute("data-panelset");
+      sendOverlayAction({ action: "set-panel", panelSet: ps });
+      _markActivePanelset(body, ps); // optimistic; the reload re-stamps it.
+    });
+  }
+  const interact = body.querySelector("#ovset-interact");
+  if (interact) {
+    interact.addEventListener("click", () => {
+      sendOverlayAction({ action: "set-active" });
+    });
+  }
 }
 
 // Build the pane scaffold once: the settings strip + an empty knob-strip wrap.
@@ -347,6 +400,7 @@ function _ensureScaffold(body) {
   body.removeAttribute("data-ovds-champ"); // knob strip is (re)built below
   _wireSettings(body);
   _applySettingsToDom(body, readOverlaySettings());
+  _markActivePanelset(body, _currentPanelset()); // RC2 4.4: reflect the live set
   // Hydrate from the rc-shell config (authoritative across launches), then
   // reflect into the controls. No-op / local-mirror in a plain browser.
   hydrateOverlaySettings().then((s) => _applySettingsToDom(body, s)).catch(() => {});

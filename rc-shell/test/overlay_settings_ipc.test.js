@@ -98,3 +98,27 @@ test("main.js injects the click-through-zones hover script into the overlay", ()
   assert.ok(mainjs.includes("clickthrough_zones") || mainjs.includes("clickThroughZonesMountJS"),
     "injects the zone-hover script");
 });
+
+// --- RC2 Stage 4.4: no-hotkey overlay actions wiring -------------------------
+
+const ACTION = "rc-shell:overlay-action";
+
+test("preload exposes overlayAction over the action channel as a one-way send", () => {
+  assert.ok(preload.includes("overlayAction"), "overlayAction method");
+  assert.ok(preload.includes(ACTION), "action channel name");
+  assert.ok(/ipcRenderer\.send\(/.test(preload), "uses ipcRenderer.send (one-way)");
+});
+
+test("main.js handles the action channel through the pure validator", () => {
+  assert.ok(
+    mainjs.includes(`ipcMain.on("${ACTION}"`) || mainjs.includes(`ipcMain.on('${ACTION}'`),
+    "listens on the action channel"
+  );
+  assert.ok(mainjs.includes("normOverlayAction"), "validates via the pure allow-list");
+});
+
+test("main.js shares the panel-set apply between the cycle hotkey and the IPC", () => {
+  // applyPanelSet is the single panel-set primitive both paths call (no drift).
+  assert.ok(mainjs.includes("applyPanelSet"), "uses the shared applyPanelSet");
+  assert.ok(mainjs.includes("setOverlayActive"), "uses the shared setOverlayActive");
+});

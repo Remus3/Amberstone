@@ -642,6 +642,32 @@ function scheduleActiveRevert() {
   }, overlaySettings.activeRevertSec * 1000);
 }
 
+// --- RC2 Stage 4.4: no-hotkey overlay actions --------------------------------
+// Apply a panel-set choice: persist it (a deliberate one-shot action, no
+// debounce, so the next launch lands on the same set) and reload the overlay
+// window onto the chosen set. Shared by the Alt+Shift+C cycle hotkey AND the
+// no-hotkey #ovset selector (over the overlay-action IPC) so the keyboard and
+// on-screen paths can never drift.
+function applyPanelSet(next) {
+  panelSet = next;
+  store.save(
+    statePath(),
+    ov.mergeOverlayPatch(store.load(statePath(), {}), { panelSet: panelSet })
+  );
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet, overlayScale));
+  }
+}
+
+// Force the overlay interactive (ACTIVE = not click-through) on demand - the
+// no-hotkey "Interact now" button, the on-screen twin of the Alt+Shift+A flip.
+// ACTIVE arms the same 20s auto-revert back to the passive HUD.
+function setOverlayActive() {
+  overlayClickThrough = false;
+  applyClickThrough();
+  scheduleActiveRevert();
+}
+
 // --- RC2 E1: companion pin (always-on-top) -----------------------------------
 // Apply the persisted companionAlwaysOnTop setting to the companion/dashboard
 // window. This is the on-screen pin toggle (no hotkey): the ?overlay=1 renderer
@@ -700,6 +726,21 @@ function registerIpc() {
   ipcMain.on("rc-shell:overlay-zone-hover", (_event, on) => {
     overlayZoneHover = on === true;
     applyClickThrough();
+  });
+  // RC2 4.4: no-hotkey overlay actions from the #ovset selector. One-way send;
+  // ov.normOverlayAction is the allow-list + payload validator (an unlisted /
+  // malformed message -> null -> no-op), then we run the SAME primitives the
+  // Alt+Shift+C / Alt+Shift+A hotkeys use.
+  ipcMain.on("rc-shell:overlay-action", (_event, raw) => {
+    const m = ov.normOverlayAction(raw);
+    if (!m) {
+      return;
+    }
+    if (m.action === "set-panel") {
+      applyPanelSet(m.panelSet);
+    } else if (m.action === "set-active") {
+      setOverlayActive();
+    }
   });
 }
 
@@ -896,16 +937,7 @@ function registerHotkeys() {
       scheduleActiveRevert(); // ACTIVE arms the revert; PASSIVE cancels it.
     });
     globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyCycle, () => {
-      panelSet = ov.cyclePanelSet(panelSet);
-      // Persist the choice immediately - a cycle is a deliberate one-shot
-      // action, so no debounce; the next launch lands on the same set.
-      store.save(
-        statePath(),
-        ov.mergeOverlayPatch(store.load(statePath(), {}), { panelSet: panelSet })
-      );
-      if (overlayWindow && !overlayWindow.isDestroyed()) {
-        overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet, overlayScale));
-      }
+      applyPanelSet(ov.cyclePanelSet(panelSet));
       scheduleActiveRevert();
     });
   } catch (_e) {
