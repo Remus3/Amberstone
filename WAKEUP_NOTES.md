@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 3.1 + 3.2 overlay condensation)
+
+Resumed the RC 2.0 program (P3/P4 unblocked by the Hextech greenlight). Accidental computer
+restart mid-session between 3.1 and 3.2 - git was clean, P3.1 already pushed, recovered cleanly.
+
+- P3.1 (75a2c10b): docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md - the in-match glance-test spec.
+  3-tier model (Ambient/Urgent/Emergency) on classifyAction bands, S0 single-winner arbitration
+  ladder (lethal 100 -> none 0), motion rationing, Hextech color bins, 3.2/3.3 handoff. Tier-0 doc.
+- P3.2 (39303acb + db6f77d4): web/js/lib/overlay_priority.js (selectPrimary + shouldPulse, dual
+  ESM/CJS, 21/21 node TDD - the test was pre-authored+untracked from a prior cycle) + overlay
+  callout 2-row density clamp (CSS #rn-callouts nth-child(n+3) + snapshot). Tier-1, no ENGINE/DS/frozen.
+- NOT wired (DELIBERATE, do NOT flip headlessly): the pulse-rationing consumer re-point
+  (right_now.js .action pulse :490-500 + overlay_pulse.js -> shouldPulse) is a SHARED dashboard+overlay
+  BEHAVIOR change -> carried to 3.3; needs shadow + 5-phase UI audit + operator eyeball on the live headline.
+- Banner 27/62 = ~44%. Task pane: 9 phase chips (P1/P2 completed, P3 in_progress).
+
+NEXT via /RC2-Continue: P3.3 (typography/hit-targets/hierarchy + Hextech bins + the pulse wiring above),
+then 3.4 dashboard-stays-when-overlay-active, 3.5 settings-without-hotkeys, 3.6 dashboard condensation.
+Then Phase 4 (Electron sizing/DPI), Phase 5 coaching, E10/E11/E12/E7/E2. Memory: project_rc2_build.
+
+---
+
 # 2026-06-20 (RC 2.0 program kickoff - operator overnight directive)
 
 RC 2.0 = overlay/UX + coaching + responsiveness + hygiene program. Plan + live % in docs/RC2_PLAN.md
