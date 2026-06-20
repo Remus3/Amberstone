@@ -752,7 +752,7 @@ def shadow_log_precomputed_build(coach: dict, lc: dict | None, mode_key: str,
             cc = pbc.build_choices(
                 str(champ), enemy_comp, lower,
                 payload=payload, item_costs=_load_item_costs(),
-                owned_count=item_count,
+                owned_count=item_count, owned_ids=gs.get("my_item_ids"),
             )
             choices = to_jsonable(cc)
             covered = bool(cc)

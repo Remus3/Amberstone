@@ -93,6 +93,46 @@ def test_owned_count_advances_next_item(monkeypatch):
     assert "Mercury's Treads (1100g)" in out[0].expected_outcome
 
 
+# --------------------------------------------------------------------------- #
+# owned-identity skip (deviation fix) - the live build-chip never recommends an
+# item the player already owns even when they built off the canonical order.
+# --------------------------------------------------------------------------- #
+def test_next_item_str_skips_owned_on_deviation():
+    order = ["1001", "2002", "3003", "4004"]
+    # Owns order[0] + order[2] (deviation). Legacy order[owned_count=2]=3003 is
+    # OWNED; skip-owned must return the first un-owned entry, order[1]=2002.
+    nxt = pbc._next_item_str(order, owned_count=2, item_costs=None,
+                             owned_ids={"1001", "3003"})
+    assert nxt == "item 2002"
+    assert "3003" not in (nxt or "")
+
+
+def test_next_item_str_owned_ids_none_is_legacy_index():
+    order = ["1001", "2002", "3003"]
+    assert pbc._next_item_str(order, 1, None) == "item 2002"
+    assert pbc._next_item_str(order, 1, None, owned_ids=None) == "item 2002"
+    assert pbc._next_item_str(order, 1, None, owned_ids=set()) == "item 2002"
+
+
+def test_next_item_str_all_owned_returns_none():
+    order = ["1001", "2002"]
+    assert pbc._next_item_str(order, 0, None, owned_ids={"1001", "2002"}) is None
+
+
+def test_build_choices_owned_ids_skips_owned_item(monkeypatch):
+    monkeypatch.setattr(pbc, "compute_factors", lambda comp: _factors(5, 3))
+    # anti_tank order = ["3135", "3111", "3089"]; own 3135 + 3089 (deviation).
+    # owned_count=2 -> legacy index order[2]=3089 (OWNED). Must skip to 3111.
+    out = pbc.build_choices(
+        "Ahri", ["Malphite", "Ornn"], payload=_payload(),
+        item_costs={"3111": ("Mercury's Treads", 1100),
+                    "3089": ("Rabadon's Deathcap", 3600)},
+        owned_count=2, owned_ids={"3135", "3089"},
+    )
+    assert "Mercury's Treads (1100g)" in out[0].expected_outcome
+    assert "Rabadon" not in out[0].expected_outcome
+
+
 @pytest.mark.parametrize("champ,comp,n,front", [
     ("Yasuo", ["Malphite", "Ornn"], 5, 3),   # champ not in table
     ("", ["Malphite"], 5, 3),                 # empty champ
