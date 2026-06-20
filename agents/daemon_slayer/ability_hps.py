@@ -104,6 +104,18 @@ only addition is the ``% maximum mana`` -> ``caster_max_mp`` unit in
 unit so the default path is byte-identical). Injected by
 ``abilities.AbilitiesSnapshot.load(apply_passive_shield=True)``; default OFF.
 
+v6 (2026-06-19 item 515 - missing-HP heal-AMPLIFICATION seam, ENGINE 1.146.0,
+byte-identical at the default) adds the heal-amp MULTIPLIER class the item-253
+``_passive_heal_overrides`` header explicitly EXCLUDED from the heal-MAGNITUDE
+registry (a comeback multiplier on the heal already computed, not a heal amount
+scaling on a stat). The opt-in ``assume_missing_hp_heal_amp`` flag multiplies a
+registered ``(champion, spell)`` heal by ``1 + max_bonus * caster_missing_hp_pct``
+from ``_MISSING_HP_HEAL_AMP`` (Master Yi W Meditate / Lissandra R Frozen Tomb /
+Sylas W Kingslayer all 0%:100%; Briar P Crimson Curse 0%:40%). Default OFF
+(factor 1.0) and full-HP (0 missing) are both byte-identical. HEAL-only - every
+seeded ability amplifies healing, not shielding. The live default-ON flip is
+operator-gated (``docs/LIVE_GAME_GATED_SYNC.md``).
+
 Deliberate omissions (mirror ``ability_dps``):
 * Multi-block heal/shield forms default to ``block_strategy="first"`` (the
   first heal block + first shield block), matching ``ability_dps``'s
@@ -407,6 +419,74 @@ def _aoe_heal_targets_for(champion_id: str, spell_key: str) -> float | None:
     return spells.get(spell_key)
 
 
+# --- missing-HP heal-amplification registry (item 515, ENGINE 1.146.0) -----
+#
+# A heal-AMP MULTIPLIER class distinct from the heal-MAGNITUDE units above:
+# several abilities scale their OWN heal output UP as the caster's health drops
+# - "healing increased by 0% : X% (based on missing health)". This is the class
+# the item-253 ``_passive_heal_overrides`` header deliberately EXCLUDED from the
+# heal-magnitude registry: it is not a heal AMOUNT scaling on a stat, it is a
+# comeback MULTIPLIER on the heal already computed. Ground truth
+# (``data/daemon_slayer/16.12.1/champion_abilities.json`` effects_descriptions,
+# probed 2026-06-19):
+#   Master Yi W Meditate    "healing himself ... increased by 0% : 100%
+#                            (based on missing health)"                   -> 1.0
+#   Lissandra R Frozen Tomb  "The healing is increased by 0% : 100% (based
+#                            on missing health at the time of cast)"      -> 1.0
+#   Sylas    W Kingslayer    "Sylas is also healed, increased by 0% : 100%
+#                            (based on his missing health)"               -> 1.0
+#   Briar    P Crimson Curse "increases healing from all sources by
+#                            0% : 40% (based on missing health)"          -> 0.40
+# The Briar entry omits its "+ 0% : 2.5% per 100 bonus health" sub-term -> a
+# conservative lower bound. Nidalee E (Primal Surge) was probed and carries NO
+# missing-HP amp text, so it is NOT seeded (the directive example was loose; we
+# never fabricate a heal the snapshot does not carry). The VALUE is the max
+# bonus FRACTION at 0 HP; the amp factor at a missing-HP fraction f in [0, 1]
+# is ``1 + max_bonus * f`` (so full HP is 1.0 for every champion).
+#
+# Schema: _MISSING_HP_HEAL_AMP[champion_id][spell_key] = max_bonus (float)
+def _build_missing_hp_heal_amp() -> dict[str, dict[str, float]]:
+    """Build the missing-HP heal-amp registry via setdefault.
+
+    Mirrors ``_build_aoe_heal_targets`` so future waves can add spells to an
+    existing champion without clobbering prior entries.
+    """
+    registry: dict[str, dict[str, float]] = {}
+    registry.setdefault("MasterYi", {})["W"] = 1.0    # Meditate self-heal
+    registry.setdefault("Lissandra", {})["R"] = 1.0   # Frozen Tomb self-cast heal
+    registry.setdefault("Sylas", {})["W"] = 1.0       # Kingslayer self-heal
+    registry.setdefault("Briar", {})["P"] = 0.40      # Crimson Curse all-source amp
+    return registry
+
+
+_MISSING_HP_HEAL_AMP: dict[str, dict[str, float]] = _build_missing_hp_heal_amp()
+
+
+def _missing_hp_heal_amp_factor(
+    champion_id: str, spell_key: str, missing_hp_pct: float,
+) -> float:
+    """Return the heal multiplier for a missing-HP-amplified heal, or 1.0.
+
+    ``missing_hp_pct`` is the caster's missing-HP fraction (clamped to
+    ``[0, 1]``); the factor is ``1 + max_bonus * missing_hp_pct`` for a
+    registered ``(champion_id, spell_key)`` and ``1.0`` (no amp) for everything
+    else. At full HP (0 missing) the factor is 1.0 for every champion, so the
+    seam is byte-identical when the caller passes no missing-HP assumption.
+    """
+    spells = _MISSING_HP_HEAL_AMP.get(champion_id)
+    if not spells:
+        return 1.0
+    max_bonus = spells.get(spell_key)
+    if not max_bonus:
+        return 1.0
+    frac = missing_hp_pct
+    if frac < 0.0:
+        frac = 0.0
+    elif frac > 1.0:
+        frac = 1.0
+    return 1.0 + max_bonus * frac
+
+
 # --- Result types ---------------------------------------------------------
 
 
@@ -607,6 +687,7 @@ def compute_ability_hps(
     target_max_hp: float = 0.0,
     target_missing_hp_pct: float = 0.0,
     caster_missing_hp_pct: float = 0.0,
+    assume_missing_hp_heal_amp: bool = False,
 ) -> AbilityHpsResult:
     """Compute champion-ability healing + shielding throughput per second.
 
@@ -630,6 +711,13 @@ def compute_ability_hps(
       still resolve to 0 - pass a representative enemy HP for a real lower
       bound. The caster-missing-HP units use ``caster_max_hp`` from the
       resolved build times ``caster_missing_hp_pct``.
+    * ``assume_missing_hp_heal_amp`` (item 515, default False) multiplies a
+      registered ``(champion, spell)`` heal by ``1 + max_bonus *
+      caster_missing_hp_pct`` from ``_MISSING_HP_HEAL_AMP`` (the comeback
+      heal-amp registry - Master Yi W / Lissandra R / Sylas W / Briar P).
+      Default OFF -> factor 1.0, byte-identical; with it ON and
+      ``caster_missing_hp_pct == 0`` (full HP) it is still 1.0. HEAL-only,
+      independent of ``resolve_target_relative``.
     """
     if block_strategy not in _BLOCK_STRATEGIES:
         raise ValueError(
@@ -771,14 +859,32 @@ def compute_ability_hps(
             form, "shield", rank, ctx, block_strategy, extra_units, bilinear_ctx,
             level,
         )
+        # item 515 (1.146.0): missing-HP heal-amplification seam. Default OFF ->
+        # factor 1.0, byte-identical. When ON, a registered (champ, spell) heal
+        # is multiplied by 1 + max_bonus * caster_missing_hp_pct (a comeback amp
+        # the heal-MAGNITUDE registry deliberately excluded). HEAL-only - every
+        # seeded entry amps healing, not shielding.
+        heal_amp_factor = 1.0
+        if assume_missing_hp_heal_amp and heal_per_cast > 0.0:
+            heal_amp_factor = _missing_hp_heal_amp_factor(
+                champ_id, key, caster_missing_hp_pct,
+            )
+            if heal_amp_factor != 1.0:
+                heal_per_cast *= heal_amp_factor
         if heal_per_cast <= 0.0 and shield_per_cast <= 0.0:
             continue
-        spell_notes: tuple[str, ...] = ()
+        spell_notes_list: list[str] = []
         if heal_unres or shield_unres:
-            spell_notes = (
+            spell_notes_list.append(
                 "lower bound: a state-dependent unit (missing-HP / target / "
-                "per-stack) was not resolved at rest",
+                "per-stack) was not resolved at rest"
             )
+        if heal_amp_factor != 1.0:
+            spell_notes_list.append(
+                f"missing-HP heal amp applied (x{heal_amp_factor:.3f} at "
+                f"{caster_missing_hp_pct:.2f} missing HP)"
+            )
+        spell_notes = tuple(spell_notes_list)
 
         fallback = forms[0] if form_idx != 0 else None
         base_cd = _form_cooldown_at_rank(form, rank, fallback_form=fallback)
