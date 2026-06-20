@@ -26,11 +26,17 @@ const LS_KEY = "rc_overlay_settings";
 // authority (overlay_state.overlaySettingsFrom mirrors these same defaults); the
 // helper carries them so a dashboard toggle reaches the shell over IPC instead
 // of being silently dropped here.
+// RC2 4.2: overlayOpacity (the HUD recedes into the game; 1.0 = fully opaque)
+// + clickThroughZones (PASSIVE captures the cursor over an interactive control
+// without the global ACTIVE hotkey). Defaults match the rc-shell authority
+// (overlay_state.OVERLAY_SETTINGS_DEFAULTS): opacity 1, zones on.
 export const OVERLAY_SETTINGS_DEFAULTS = {
   pulseNotify: true,
   activeRevertSec: 20,
   keepCompanion: true,
   companionAlwaysOnTop: true,
+  overlayOpacity: 1,
+  clickThroughZones: true,
 };
 
 // Clamp the ACTIVE auto-revert seconds to [3,120] (mirrors the rc-shell
@@ -39,6 +45,14 @@ function _clampSec(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return OVERLAY_SETTINGS_DEFAULTS.activeRevertSec;
   return Math.min(120, Math.max(3, Math.round(n)));
+}
+
+// Clamp overlay opacity to [0.3,1.0] 2-dp (mirrors rc-shell clampOpacity).
+// Non-finite -> the default.
+function _clampOpacity(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return OVERLAY_SETTINGS_DEFAULTS.overlayOpacity;
+  return Math.round(Math.min(1, Math.max(0.3, n)) * 100) / 100;
 }
 
 function _coerce(raw) {
@@ -51,6 +65,11 @@ function _coerce(raw) {
       typeof o.companionAlwaysOnTop === "boolean"
         ? o.companionAlwaysOnTop
         : OVERLAY_SETTINGS_DEFAULTS.companionAlwaysOnTop,
+    overlayOpacity: _clampOpacity(o.overlayOpacity),
+    clickThroughZones:
+      typeof o.clickThroughZones === "boolean"
+        ? o.clickThroughZones
+        : OVERLAY_SETTINGS_DEFAULTS.clickThroughZones,
   };
 }
 
@@ -75,6 +94,8 @@ export function writeOverlaySettings(patch) {
   if (patch && patch.activeRevertSec !== undefined) next.activeRevertSec = _clampSec(patch.activeRevertSec);
   if (patch && typeof patch.keepCompanion === "boolean") next.keepCompanion = patch.keepCompanion;
   if (patch && typeof patch.companionAlwaysOnTop === "boolean") next.companionAlwaysOnTop = patch.companionAlwaysOnTop;
+  if (patch && patch.overlayOpacity !== undefined) next.overlayOpacity = _clampOpacity(patch.overlayOpacity);
+  if (patch && typeof patch.clickThroughZones === "boolean") next.clickThroughZones = patch.clickThroughZones;
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(next));
   } catch (_e) {

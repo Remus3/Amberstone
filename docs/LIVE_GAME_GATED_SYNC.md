@@ -517,3 +517,19 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   the right-edge dock lands where expected over the HUD (stage 4.6, live-game visual validation). The
   rc-shell Electron MAIN process needs a relaunch first to pick up the new window-size logic (the web
   renderer half auto-reloads via ADR-008 asset-hash). Does NOT block any further stage.
+- 2026-06-20 RC2 P4.2 non-intrusive overlay live eyeball (UI behavior + geometry, NOT a DS seam; this
+  cycle shipped the code DEFAULT-ON safe). Three additive overlay behaviors: (1) operator opacity slider
+  -> rc-shell `overlayWindow.setOpacity` (the HUD recedes into the game), (2) click-through ZONES
+  (`overlay_state.effectiveIgnoreMouse` + `clickthrough_zones.js` hover detector over the preload bridge)
+  so PASSIVE captures clicks ONLY over an interactive control (#ovset / #rn-choices / #am-pane-ovds /
+  drag strip) without the global ACTIVE hotkey, (3) auto-hide idle recede (`web/js/lib/overlay_idle.js`
+  stamps `data-rc-idle` after ~8s of no coach change + no pointer activity; `overlay.css` dims the dock
+  to 0.35 opacity; snaps back on the next change / hover). Headless-verified: rc-shell node suite 220/220
+  + `test_overlay_idle_rc2` 16 + `test_overlay_settings_panel_dom` (extended) + real-Chromium
+  `test_overlay_view` 36, live `:8888` serves the assets. OWED (operator-gated, NOT headless): eyeball
+  COMPOSITED OVER A REAL LEAGUE GAME at 2560x1440 borderless - confirm (a) the opacity recede reads
+  cleanly and the idle dim is not distracting / wakes correctly on a real coach update, (b) hover-to-
+  interact flips the cursor capture crisply over #ovset / choices without eating game clicks elsewhere,
+  (c) the drag strip is grabbable on hover. The rc-shell Electron MAIN process needs a relaunch first to
+  pick up the new shell logic (preload setZoneHover + main.js opacity/zones); the web renderer half (idle
+  recede + the #ovset controls) auto-reloads via ADR-008 asset-hash. Does NOT block any further stage.

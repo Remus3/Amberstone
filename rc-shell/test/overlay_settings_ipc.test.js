@@ -69,3 +69,32 @@ test("main.js drives the ACTIVE auto-revert off the configurable seconds", () =>
     "revert delay derives from the persisted activeRevertSec"
   );
 });
+
+// --- RC2 Stage 4.2: non-intrusive overlay (zones + opacity) wiring ------------
+
+const ZONE = "rc-shell:overlay-zone-hover";
+
+test("preload exposes setZoneHover over the zone-hover channel", () => {
+  assert.ok(preload.includes("setZoneHover"), "setZoneHover method");
+  assert.ok(preload.includes(ZONE), "zone-hover channel name");
+  // a one-way send (not invoke) - a hover ping needs no reply.
+  assert.ok(/ipcRenderer\.send\(/.test(preload), "uses ipcRenderer.send");
+});
+
+test("main.js handles the zone-hover channel and re-applies click-through", () => {
+  assert.ok(
+    mainjs.includes(`ipcMain.on("${ZONE}"`) || mainjs.includes(`ipcMain.on('${ZONE}'`),
+    "listens on the zone-hover channel"
+  );
+  assert.ok(mainjs.includes("effectiveIgnoreMouse"), "uses the pure zone decision");
+});
+
+test("main.js applies the operator overlay opacity to the overlay window", () => {
+  assert.ok(/setOpacity\(/.test(mainjs), "calls overlayWindow.setOpacity");
+  assert.ok(mainjs.includes("overlayOpacity"), "reads the persisted overlayOpacity");
+});
+
+test("main.js injects the click-through-zones hover script into the overlay", () => {
+  assert.ok(mainjs.includes("clickthrough_zones") || mainjs.includes("clickThroughZonesMountJS"),
+    "injects the zone-hover script");
+});

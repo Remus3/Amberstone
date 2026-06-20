@@ -244,6 +244,14 @@ function _settingsHtml() {
     + `<label class="ovset-row ovset-toggle">`
     + `<input type="checkbox" id="ovset-pulse">`
     + `<span>Change pulse</span></label>`
+    // RC2 4.2: click-through ZONES (hover an overlay control to interact without
+    // the ACTIVE hotkey) + opacity (the HUD recedes into the game). Both
+    // hotkey-free, mirror to the rc-shell over IPC.
+    + `<label class="ovset-row ovset-toggle">`
+    + `<input type="checkbox" id="ovset-zones">`
+    + `<span>Hover to interact</span></label>`
+    + `<label class="ovset-row ovset-range"><span>Opacity</span>`
+    + `<input type="range" id="ovset-opacity" min="30" max="100" step="5"></label>`
     + `<label class="ovset-row ovset-num"><span>Auto-passive (s)</span>`
     + `<input type="number" id="ovset-revert" min="3" max="120" step="1" inputmode="numeric"></label>`
     + `</div>`
@@ -254,12 +262,21 @@ function _applySettingsToDom(body, s) {
   const keep = body.querySelector("#ovset-keep");
   const pin = body.querySelector("#ovset-pin");
   const pulse = body.querySelector("#ovset-pulse");
+  const zones = body.querySelector("#ovset-zones");
+  const opacity = body.querySelector("#ovset-opacity");
   const rev = body.querySelector("#ovset-revert");
   // keepCompanion / companionAlwaysOnTop default ON, so an absent field reads as
   // checked (the dashboard-persist fix is the default state).
   if (keep) keep.checked = s.keepCompanion !== false;
   if (pin) pin.checked = s.companionAlwaysOnTop !== false;
   if (pulse) pulse.checked = !!s.pulseNotify;
+  // RC2 4.2: zones default ON (absent -> checked); opacity is a 30-100 percent
+  // slider over the 0.3-1.0 setting. Do not clobber the slider while dragging.
+  if (zones) zones.checked = s.clickThroughZones !== false;
+  if (opacity && document.activeElement !== opacity) {
+    const pct = Math.round((s.overlayOpacity == null ? 1 : s.overlayOpacity) * 100);
+    opacity.value = String(pct);
+  }
   // Do not clobber the seconds field while the operator is typing in it.
   if (rev && document.activeElement !== rev) rev.value = String(s.activeRevertSec);
 }
@@ -282,6 +299,20 @@ function _wireSettings(body) {
   if (pulse) {
     pulse.addEventListener("change", () => {
       writeOverlaySettings({ pulseNotify: !!pulse.checked });
+    });
+  }
+  const zones = body.querySelector("#ovset-zones");
+  if (zones) {
+    zones.addEventListener("change", () => {
+      writeOverlaySettings({ clickThroughZones: !!zones.checked });
+    });
+  }
+  const opacity = body.querySelector("#ovset-opacity");
+  if (opacity) {
+    // input (live drag) writes the 0.3-1.0 setting from the 30-100 slider.
+    opacity.addEventListener("input", () => {
+      const pct = Number(opacity.value);
+      if (Number.isFinite(pct)) writeOverlaySettings({ overlayOpacity: pct / 100 });
     });
   }
   if (rev) {
