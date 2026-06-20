@@ -570,3 +570,20 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   the HUD interactive then auto-reverts after ~20s. The rc-shell Electron MAIN process needs a relaunch
   first to pick up the new IPC handler + applyPanelSet/setOverlayActive; the web renderer half (the #ovset
   selector + button) auto-reloads via ADR-008 asset-hash. Does NOT block any further stage.
+- 2026-06-20 RC2 P4.5 overlay + dashboard coexistence (UI control surface, NOT a DS seam; shipped
+  code-safe - two additive #ovset action buttons over the existing 4.4 IPC, no render-path flip). Two
+  payload-free coexistence commands on the `rc-shell:overlay-action` channel: `rearrange` (re-separate
+  the overlay + kept dashboard NOW, forcing past the separateWindows auto kill switch) + `raise-companion`
+  (showInactive-if-hidden + moveTop the kept dashboard, then a forced re-arrange). overlay_state
+  OVERLAY_ACTIONS grew to 4 members (still frozen); main.js applySingleMonitorLayout({force}) bypasses the
+  auto gate; raiseCompanion() reposition-only (no resize). #ovset .ovset-actpair = Re-arrange + Show
+  dashboard. Headless-verified: rc-shell node 245/245, test_overlay_settings_panel_dom 37 (+4),
+  real-Chromium test_overlay_view 20 (+1: both buttons at the 42px floor, ASCII labels, one row); 0 banned
+  glyphs; live `:8888` serves the controls + CSS HTTP 200. OWED (operator-gated, NOT headless): eyeball it
+  OVER A REAL LEAGUE GAME at 2560x1440 borderless - with the dashboard kept beside the HUD, confirm (a)
+  dragging the dashboard under the overlay then clicking Re-arrange re-separates them side-by-side, (b)
+  Show dashboard brings a buried/behind dashboard forward beside the HUD without resizing it, (c) neither
+  button ever hides the overlay (no stranding). The rc-shell Electron MAIN process needs a relaunch first
+  to pick up the new IPC dispatch + raiseCompanion/force-layout; the web renderer half (the #ovset buttons)
+  auto-reloads via ADR-008 asset-hash. P4.6 (live-game visual validation, flipped LIVE) IS this whole-of-
+  Phase-4 eyeball - this entry plus the P4.1-4.4 entries above are its checklist. Does NOT block any stage.
