@@ -42,6 +42,34 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-19 (gemini-loop R6 cycle) - dashboard-panel UI audit + dead-CSS removal (LEDGER 516)
+
+Gemini DIRECTOR refill R6 (ops/loop/control/directive.md, REFILL PROTOCOL): Section-3b 5-phase UI
+audit of the un-audited cooldown_watch + cc_conditional_pressure dashboard panels (JS+CSS) vs
+UI_SCALE_SPEC_V2 v2.1. Commit `139ef216`; Tier-1 CSS+test only, NO ENGINE bump / 0 frozen / no DS
+restart / no Share mirror / ADR-008 asset-hash auto-reload (no RC restart).
+
+- SCOPE (verify-before-build): the directive's "tokenize sub-floor hardcoded font-sizes" = a verified
+  NO-OP. The 2 JS files are pure ESM (no style decls); both CSS files were ALREADY fully tokenized
+  (every font-size = var(--fs-*), all >= --fs-xs 16px; grep font-size:\d+px = 0 hits). Did NOT
+  fabricate edits to manufacture a diff.
+- MUST-FIX (genuine dead CSS): cc_conditional_pressure.css carried .cc-conditional-pressure-ratio +
+  -ratio-value (3 rules / ~24 lines) ORPHANED since item 213 (2026-05-28) swapped the ratio render
+  for the verdict line. Grep across web/ + tests/ = ZERO consumers -> removed. Zero pixel delta.
+  cooldown_watch CSS classes all match JS-emitted (no dead CSS) -> guard test only.
+- 5-phase: STRUCTURE/TYPOGRAPHY/ASCII/HIERARCHY PASS; HIT-TARGETS N/A (display-only chips).
+- TDD red->green: test_no_orphan_ratio_selectors RED (1 fail) -> removed -> GREEN (44 passed); +2
+  test_font_sizes_are_tokenized characterization guards (both panel test files) lock token compliance.
+- VERIFY: verifier subagent CONFIRM all 4 claims (selector gone, 0 bare-px, 44 passed fresh, 0
+  non-ASCII); full RC suite tests/ --ignore=tests/daemon_slayer = 8645 passed / 2 skip / exit 0
+  (8642 + 3 new); ruff clean. Inline sole orchestrator (R9). [[feedback_phase3_fixture_ritual]] /
+  [[feedback_verify_before_declare_broken]] / [[feedback_audit_proposals_are_intent]].
+- NEW residuals (FUTURE): overlay.css 12/13px sub-floor (Electron, Lane D); next.css:10 21px
+  hardcoded (above floor); cc-conditional-pressure-verdict actionable sentence at --fs-xs 16px
+  (clears floor; tier-bump is a subjective readability call - not shipped blind).
+
+---
+
 # 2026-06-19 (gemini-loop R5 cycle) - DS missing-HP heal-amplification seam (LEDGER 515)
 
 Gemini DIRECTOR refill R5 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
