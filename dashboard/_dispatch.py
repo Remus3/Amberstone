@@ -83,6 +83,7 @@ def _gather_get() -> list:
                                routes_summspell_wpa,
                                routes_lessons,
                                routes_loadout, routes_loop_status,
+                               routes_loop_monitor,
                                routes_lobby_aux, routes_metrics,
                                routes_pickban, routes_adaptive_summoners,
                                routes_ban_suggestions, routes_dictionary,
@@ -134,6 +135,7 @@ def _gather_get() -> list:
                       + list(routes_lessons.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
                       + list(routes_loop_status.GET_ROUTES)
+                      + list(routes_loop_monitor.GET_ROUTES)
                       + list(routes_lobby_aux.GET_ROUTES)
                       + list(routes_metrics.GET_ROUTES)
                       + list(routes_pickban.GET_ROUTES)
