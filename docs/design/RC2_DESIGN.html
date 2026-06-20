@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="hextech">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RC 2.0 - Design Proposal</title>
+<style>
+/* ============================================================
+   RC 2.0 DESIGN PROPOSAL - standalone, no external deps.
+   3 themes (Hextech / Eclipse / Broadcast) x every surface.
+   Greenlight artifact: if approved this replaces the current design.
+   ASCII only.
+   ============================================================ */
+
+/* ---- THEME PALETTES (switch via [data-theme] on <html>) ---- */
+:root,
+[data-theme="hextech"] {
+  --canvas:#0A0E14; --surface:#111722; --surface-2:#16202E; --surface-3:#1C2A3D;
+  --text:#ECF2FF; --dim:#8FA3BF; --faint:#5C6E88;
+  --accent:#C8AA6E; --accent-2:#0AC8B9;
+  --good:#37D08A; --warn:#E8A33D; --bad:#E84057; --info:#7CA8FF;
+  --border:rgba(200,170,110,.16); --glow:rgba(10,200,185,.30);
+  --theme-name:"Hextech Tactical";
+}
+[data-theme="eclipse"] {
+  --canvas:#0C0D10; --surface:#131419; --surface-2:#181A20; --surface-3:#20232C;
+  --text:#EDEEF2; --dim:#797D8A; --faint:#4D505C;
+  --accent:#5B8DEF; --accent-2:#5B8DEF;
+  --good:#57C98A; --warn:#D9A441; --bad:#E5677A; --info:#5B8DEF;
+  --border:rgba(255,255,255,.06); --glow:rgba(91,141,239,.26);
+  --theme-name:"Eclipse Minimal";
+}
+[data-theme="broadcast"] {
+  --canvas:#07090F; --surface:#0F1320; --surface-2:#141A2B; --surface-3:#1B2640;
+  --text:#FFFFFF; --dim:#93A0C0; --faint:#5A6B8C;
+  --accent:#2BD9FE; --accent-2:#FF3D7F;
+  --good:#2BE08A; --warn:#FFC53D; --bad:#FF3B5C; --info:#2BD9FE;
+  --border:rgba(43,217,254,.20); --glow:rgba(43,217,254,.34);
+  --theme-name:"Broadcast Esports";
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+body {
+  background:var(--canvas); color:var(--text);
+  font-family:"Segoe UI",system-ui,sans-serif; font-size:16px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.tnum { font-variant-numeric:tabular-nums; }
+h1,h2,h3 { font-weight:700; letter-spacing:.2px; }
+a { color:var(--accent-2); }
+
+/* ---- top control bar ---- */
+.bar {
+  position:sticky; top:0; z-index:50; display:flex; gap:18px; align-items:center;
+  flex-wrap:wrap; padding:12px 22px; background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(8px); border-bottom:1px solid var(--border);
+}
+.bar .brand { font-weight:800; font-size:20px; letter-spacing:.5px; }
+.bar .brand b { color:var(--accent); }
+.themepick, .nav { display:flex; gap:8px; flex-wrap:wrap; }
+.btn {
+  cursor:pointer; border:1px solid var(--border); background:var(--surface-2);
+  color:var(--dim); padding:7px 13px; border-radius:9px; font-size:14px; font-weight:600;
+  transition:all .15s ease;
+}
+.btn:hover { color:var(--text); border-color:var(--accent-2); }
+.btn.on { color:var(--canvas); background:var(--accent); border-color:var(--accent); }
+.nav .btn.on { background:var(--accent-2); }
+.spacer { flex:1; }
+.note-greenlight { font-size:13px; color:var(--warn); border:1px dashed var(--warn);
+  padding:5px 10px; border-radius:8px; }
+
+/* ---- layout ---- */
+.wrap { max-width:1280px; margin:0 auto; padding:28px 22px 80px; }
+.section { margin:40px 0; scroll-margin-top:80px; }
+.section > h2 { font-size:30px; margin-bottom:4px; }
+.section > h2 .tag { font-size:13px; font-weight:700; color:var(--accent-2);
+  border:1px solid var(--accent-2); border-radius:20px; padding:2px 10px; margin-left:10px;
+  vertical-align:middle; }
+.section > .lead { color:var(--dim); margin-bottom:18px; max-width:80ch; }
+.split { display:grid; grid-template-columns:1.55fr 1fr; gap:22px; align-items:start; }
+@media(max-width:960px){ .split{ grid-template-columns:1fr; } }
+
+/* ---- generic card / mock chrome ---- */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:16px;
+  box-shadow:0 6px 24px -10px rgba(0,0,0,.6); overflow:hidden; }
+.card .head { background:var(--surface-2); padding:12px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px; font-weight:700; }
+.card .head .sub { color:var(--faint); font-weight:600; font-size:13px; margin-left:auto; }
+.card .body { padding:16px; }
+.muted { color:var(--dim); } .small { font-size:13px; } .faint{ color:var(--faint); }
+.row { display:flex; gap:10px; align-items:center; }
+.col { display:flex; flex-direction:column; gap:10px; }
+.pill { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700;
+  padding:4px 10px; border-radius:20px; border:1px solid var(--border); background:var(--surface-2); }
+.kv { display:flex; justify-content:space-between; gap:12px; padding:7px 0;
+  border-bottom:1px dashed var(--border); }
+.kv:last-child{ border-bottom:0; }
+.kv .k { color:var(--dim); } .kv .v { font-weight:700; }
+
+/* status with GLYPH not color-only (WCAG 1.4.1) */
+.s-good{ color:var(--good); } .s-warn{ color:var(--warn); } .s-bad{ color:var(--bad); }
+.s-good::before{ content:"\25B2 "; } .s-bad::before{ content:"\25BC "; }
+.s-warn::before{ content:"\26A0 "; }
+.win{ color:var(--good); font-weight:800; } .loss{ color:var(--bad); font-weight:800; }
+
+/* annotation column */
+.anno { background:var(--surface-2); border:1px solid var(--border); border-radius:14px;
+  padding:16px 18px; font-size:14px; }
+.anno h4 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--accent);
+  margin-bottom:8px; }
+.anno ul { margin:0 0 12px 18px; } .anno li { margin:5px 0; color:var(--dim); }
+.anno li b { color:var(--text); font-weight:700; }
+.anno .cite { color:var(--faint); font-size:12px; }
+
+/* ---- HOME mock ---- */
+.id-head { display:flex; align-items:center; gap:16px; }
+.id-rank { width:62px; height:62px; border-radius:14px; display:grid; place-items:center;
+  background:radial-gradient(circle at 50% 30%,var(--surface-3),var(--surface));
+  border:1px solid var(--accent); font-weight:800; font-size:24px; color:var(--accent); }
+.id-meta .name { font-size:22px; font-weight:800; }
+.formstrip { display:flex; gap:5px; margin-top:6px; }
+.formstrip i { width:22px; height:10px; border-radius:3px; display:inline-block; }
+.formstrip i.w{ background:var(--good); } .formstrip i.l{ background:var(--bad); }
+.poolrow { display:grid; grid-template-columns:1.4fr .7fr .7fr .7fr; gap:8px;
+  padding:8px 0; border-bottom:1px dashed var(--border); align-items:center; font-size:14px; }
+.spark { height:22px; }
+
+/* ---- OVERLAY mock (centerpiece) ---- */
+.game {
+  position:relative; border-radius:16px; overflow:hidden; min-height:430px;
+  background:
+    radial-gradient(60% 80% at 70% 20%, #14361f 0%, transparent 60%),
+    radial-gradient(70% 90% at 20% 80%, #2a1530 0%, transparent 55%),
+    linear-gradient(135deg,#0c1a12 0%,#0a0f1c 55%,#140d1e 100%);
+  border:1px solid var(--border);
+}
+.game .label { position:absolute; top:10px; left:14px; font-size:12px; color:var(--faint);
+  letter-spacing:1px; text-transform:uppercase; }
+/* objective ticker - top center, near where the eye checks the clock */
+.ov-obj { position:absolute; top:12px; left:50%; transform:translateX(-50%);
+  display:flex; gap:10px; align-items:center; background:color-mix(in srgb,var(--surface) 82%,transparent);
+  border:1px solid var(--border); border-radius:24px; padding:6px 14px; backdrop-filter:blur(6px); }
+.ov-obj .t { font-weight:800; font-size:15px; } .ov-obj .lbl{ color:var(--dim); font-size:12px; }
+.ov-obj .dot{ width:9px;height:9px;border-radius:50%; }
+/* the ONE tiered 'do now' cue - self-expiring, top priority */
+.ov-now { position:absolute; top:62px; left:50%; transform:translateX(-50%);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--bad) 22%,var(--surface)),var(--surface));
+  border:1px solid var(--bad); border-radius:12px; padding:9px 16px; font-weight:800; font-size:16px;
+  box-shadow:0 0 18px -2px var(--glow); display:flex; gap:10px; align-items:center; }
+.ov-now .urg{ font-size:11px; letter-spacing:1px; color:var(--bad); border:1px solid var(--bad);
+  border-radius:6px; padding:1px 6px; }
+/* right dock - lean glance HUD */
+.ov-dock { position:absolute; right:14px; top:58px; width:230px; display:flex; flex-direction:column; gap:9px; }
+.ov-panel { background:color-mix(in srgb,var(--surface) 88%,transparent); border:1px solid var(--border);
+  border-radius:12px; padding:10px 12px; backdrop-filter:blur(6px); }
+.ov-panel .ttl{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:5px; }
+.ov-item{ display:flex; gap:8px; align-items:center; font-size:13px; }
+.ov-item .ic{ width:26px;height:26px;border-radius:7px;background:var(--surface-3);
+  border:1px solid var(--border); display:grid; place-items:center; font-size:12px; color:var(--accent); }
+/* A/B/C choice chips */
+.ov-abc{ display:flex; flex-direction:column; gap:6px; }
+.abc{ display:flex; gap:8px; align-items:flex-start; font-size:13px; padding:6px 8px; border-radius:9px;
+  border:1px solid var(--border); background:var(--surface-2); }
+.abc .key{ font-weight:800; color:var(--canvas); background:var(--accent-2); border-radius:6px;
+  width:20px; height:20px; display:grid; place-items:center; flex:none; font-size:12px; }
+.abc.best{ border-color:var(--good); } .abc.best .key{ background:var(--good); }
+/* minimap corner with anchored timers */
+.ov-map{ position:absolute; right:14px; bottom:14px; width:128px; height:128px; border-radius:10px;
+  background:linear-gradient(135deg,#0e2417,#0a1424); border:1px solid var(--border); }
+.ov-map .mk{ position:absolute; font-size:10px; font-weight:800; padding:1px 4px; border-radius:5px;
+  background:color-mix(in srgb,var(--surface) 80%,transparent); border:1px solid var(--border); }
+.ov-ward{ position:absolute; left:16px; bottom:18px; display:flex; gap:8px; align-items:center;
+  background:color-mix(in srgb,var(--surface) 84%,transparent); border:1px solid var(--good);
+  border-radius:20px; padding:6px 12px; font-size:12px; font-weight:700; }
+.ov-ward .glow{ width:10px;height:10px;border-radius:50%; background:var(--good);
+  box-shadow:0 0 10px 2px var(--good); animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{ opacity:.45; } 50%{ opacity:1; } }
+/* dock-stays toggle row */
+.ov-tabs{ position:absolute; left:14px; top:44px; display:flex; gap:6px; }
+.ov-tab{ font-size:11px; font-weight:700; padding:4px 9px; border-radius:7px;
+  border:1px solid var(--border); background:var(--surface-2); color:var(--dim); }
+.ov-tab.on{ color:var(--canvas); background:var(--accent); border-color:var(--accent); }
+
+/* ---- PGR ---- */
+.score-hero{ display:flex; gap:18px; align-items:center; }
+.score-num{ font-size:54px; font-weight:800; line-height:1; color:var(--accent); }
+.score-grade{ font-size:30px; font-weight:800; padding:6px 14px; border-radius:12px;
+  border:1px solid var(--good); color:var(--good); }
+.decomp{ display:flex; flex-direction:column; gap:7px; margin-top:6px; }
+.dbar{ display:grid; grid-template-columns:110px 1fr 44px; gap:8px; align-items:center; font-size:13px; }
+.dbar .track{ height:9px; border-radius:6px; background:var(--surface-3); overflow:hidden; }
+.dbar .fill{ height:100%; background:linear-gradient(90deg,var(--accent-2),var(--accent)); }
+.carry{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:6px; }
+.carry .c{ background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:10px; text-align:center; }
+.carry .c .n{ font-size:22px; font-weight:800; } .carry .c .l{ font-size:11px; color:var(--dim); }
+
+/* ---- HISTORY ---- */
+.hrow{ display:grid; grid-template-columns:6px 1.4fr .9fr 1fr .7fr; gap:10px; align-items:center;
+  padding:9px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface-2);
+  margin-bottom:7px; }
+.hrow .res{ width:6px; height:38px; border-radius:4px; }
+.hrow.w .res{ background:var(--good); } .hrow.l .res{ background:var(--bad); }
+.filters{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+
+/* ---- TIMELINE ---- */
+.tl{ position:relative; height:150px; border:1px solid var(--border); border-radius:12px;
+  background:var(--surface-2); overflow:hidden; }
+.tl .mid{ position:absolute; left:0; right:0; top:50%; border-top:1px dashed var(--border); }
+.tl .evt{ position:absolute; top:0; bottom:0; width:2px; background:var(--border); }
+.tl .evt b{ position:absolute; top:6px; left:-7px; font-size:11px; }
+.tl-leg{ display:flex; gap:14px; font-size:12px; color:var(--dim); margin-top:8px; flex-wrap:wrap; }
+
+/* ---- SETTINGS ---- */
+.set-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media(max-width:760px){ .set-grid{ grid-template-columns:1fr; } }
+.set{ display:flex; justify-content:space-between; align-items:center; gap:12px;
+  background:var(--surface-2); border:1px solid var(--border); border-radius:11px; padding:11px 14px;
+  min-height:54px; }
+.set .l{ font-size:14px; } .set .l small{ display:block; color:var(--faint); font-size:12px; }
+.tog{ width:46px; height:26px; border-radius:14px; background:var(--surface-3); position:relative;
+  border:1px solid var(--border); flex:none; }
+.tog.on{ background:var(--accent); } .tog i{ position:absolute; top:2px; left:2px; width:20px;height:20px;
+  border-radius:50%; background:var(--text); transition:.15s; } .tog.on i{ left:22px; background:var(--canvas); }
+.seg{ display:flex; border:1px solid var(--border); border-radius:9px; overflow:hidden; }
+.seg span{ padding:5px 11px; font-size:13px; font-weight:700; color:var(--dim); cursor:pointer; }
+.seg span.on{ background:var(--accent-2); color:var(--canvas); }
+
+/* ---- palette swatches ---- */
+.palettes{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+@media(max-width:860px){ .palettes{ grid-template-columns:1fr; } }
+.pal{ border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+.pal .pname{ padding:10px 14px; font-weight:800; background:var(--surface-2); }
+.pal .chips{ display:flex; height:46px; } .pal .chips i{ flex:1; }
+.pal .desc{ padding:10px 14px; font-size:13px; color:var(--dim); }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation:none !important; scroll-behavior:auto; }
+  .ov-ward .glow{ opacity:1; box-shadow:0 0 6px 1px var(--good); }
+}
+footer{ border-top:1px solid var(--border); margin-top:50px; padding-top:22px; color:var(--dim); font-size:14px; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="brand">RC <b>2.0</b> Design</div>
+  <div class="themepick" id="themepick">
+    <button class="btn on" data-t="hextech">Hextech</button>
+    <button class="btn" data-t="eclipse">Eclipse</button>
+    <button class="btn" data-t="broadcast">Broadcast</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="note-greenlight">PROPOSAL - greenlight replaces current design</div>
+</div>
+
+<div class="bar" style="top:53px; padding-top:8px; padding-bottom:8px;">
+  <div class="nav" id="nav">
+    <button class="btn on" data-go="model">Model</button>
+    <button class="btn" data-go="overlay">In-Game Overlay</button>
+    <button class="btn" data-go="home">Home</button>
+    <button class="btn" data-go="lobby">Lobby</button>
+    <button class="btn" data-go="cs">Champ Select</button>
+    <button class="btn" data-go="pgr">Post-Game</button>
+    <button class="btn" data-go="history">History</button>
+    <button class="btn" data-go="timeline">Timeline</button>
+    <button class="btn" data-go="settings">Settings</button>
+    <button class="btn" data-go="system">Design System</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== MODEL ===== -->
+  <div class="section" id="model">
+    <h2>RC 2.0 - the model <span class="tag">single-monitor, overlay-centric</span></h2>
+    <p class="lead">One monitor. In-game, a lean glanceable HUD sits on top of League (1920 fullscreen or borderless). The full dashboard never disappears - it is one click / second window away and STAYS available while the overlay is active. Every setting is changeable without a hotkey. Three themes ship; you pick one below and it re-skins every surface live.</p>
+    <div class="split">
+      <div class="card">
+        <div class="head">The one-monitor flow <span class="sub">overlay-centric</span></div>
+        <div class="body col">
+          <div class="row" style="gap:14px; flex-wrap:wrap;">
+            <div class="pill">CLIENT - full dashboard</div><span class="faint">-&gt;</span>
+            <div class="pill" style="border-color:var(--accent-2)">CHAMP SELECT - draft HUD</div><span class="faint">-&gt;</span>
+            <div class="pill" style="border-color:var(--bad)">IN GAME - glance HUD + dashboard on toggle</div><span class="faint">-&gt;</span>
+            <div class="pill" style="border-color:var(--good)">POST GAME - review</div>
+          </div>
+          <p class="small muted">The overlay shows ONE primary cue + 2-3 support slots (glance budget &lt;2s). The dashboard holds everything else and opens beside the game without stealing focus. No hotkey is required for any action - the overlay carries on-screen controls.</p>
+        </div>
+      </div>
+      <div class="anno">
+        <h4>What changes vs today</h4>
+        <ul>
+          <li><b>Overlay no longer hides the dashboard</b> - they coexist (your reported bug).</li>
+          <li><b>DPI/scale-aware overlay sizing</b> - fixes the fixed-460px box; adapts to resolution.<span class="cite"> RC2_RESEARCH_overlay_sizing LIFT-C</span></li>
+          <li><b>Borderless detect-and-nudge</b> instead of a silently dead HUD.<span class="cite"> LIFT-A</span></li>
+          <li><b>Settings without hotkeys</b> - on-screen toggles everywhere.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OVERLAY (centerpiece) ===== -->
+  <div class="section" id="overlay">
+    <h2>In-Game Overlay <span class="tag">the centerpiece</span></h2>
+    <p class="lead">Presentation + priority, not a feature dump. Cues render where the eye already looks: objective ETAs near the clock and on the minimap, a single self-expiring "do now" line, a ward-ready pulse, the next item, and the A/B/C call. Click-through stays on; the dock can stay pinned or auto-hide.</p>
+    <div class="split">
+      <div class="game">
+        <div class="label">League 1920 - overlay composited (Vanguard-safe, no capture)</div>
+        <div class="ov-tabs">
+          <span class="ov-tab on">HUD</span><span class="ov-tab">Dashboard</span><span class="ov-tab">Hidden</span>
+        </div>
+        <div class="ov-obj">
+          <span class="dot" style="background:var(--bad)"></span><span class="lbl">DRAKE</span><span class="t tnum">0:42</span>
+          <span class="dot" style="background:var(--accent)"></span><span class="lbl">BARON</span><span class="t tnum">6:10</span>
+        </div>
+        <div class="ov-now"><span class="urg">DO NOW</span> Reset - you have item + 2 waves before drake</div>
+        <div class="ov-dock">
+          <div class="ov-panel">
+            <div class="ttl">A / B / C call</div>
+            <div class="ov-abc">
+              <div class="abc best"><span class="key">A</span><span><b>Shove + reset</b> - back before 1:30, buy Sheen spike</span></div>
+              <div class="abc"><span class="key">B</span><span>Hold for drake if jg pings - you win 2v2</span></div>
+              <div class="abc"><span class="key">C</span><span>Roam mid - it is pushed + mid is low</span></div>
+            </div>
+          </div>
+          <div class="ov-panel">
+            <div class="ttl">Next item</div>
+            <div class="ov-item"><span class="ic">SHN</span><span><b>Sheen</b> 700g - power spike, buy first</span></div>
+          </div>
+        </div>
+        <div class="ov-ward"><span class="glow"></span> Ward up - sweeper ready</div>
+        <div class="ov-map">
+          <span class="mk" style="left:8px; top:10px; color:var(--bad)">DRK 0:42</span>
+          <span class="mk" style="right:8px; top:46px; color:var(--accent)">BAR 6:10</span>
+          <span class="mk" style="left:30px; bottom:14px; color:var(--warn)">RAP 1:05</span>
+        </div>
+      </div>
+      <div class="anno">
+        <h4>Priority rules applied</h4>
+        <ul>
+          <li><b>One urgent cue</b> at a time (pop-out), self-expiring.<span class="cite"> in_match_overlay L3</span></li>
+          <li><b>Minimap-anchored timers</b> - move cues to the eye.<span class="cite"> L1</span></li>
+          <li><b>Trinket-ready single pulse</b> for vision.<span class="cite"> L2</span></li>
+          <li><b>ABC is specific + conditional</b> - each option names the trigger ("if jg pings", "before 1:30").<span class="cite"> Phase 5.3/5.4</span></li>
+          <li><b>HUD / Dashboard / Hidden</b> tabs - dashboard stays reachable in game.</li>
+          <li>Glance budget &lt;2s; reduced-motion swaps pulse for a static ring.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HOME ===== -->
+  <div class="section" id="home">
+    <h2>Home <span class="tag">identity + form at a glance</span></h2>
+    <div class="split">
+      <div class="card">
+        <div class="head">Today <span class="sub">SamplePlayer#Trist</span></div>
+        <div class="body col">
+          <div class="id-head">
+            <div class="id-rank">A-</div>
+            <div class="id-meta">
+              <div class="name">SamplePlayer</div>
+              <div class="muted small">ARAM main - 12 games today - avg grade A-</div>
+              <div class="formstrip"><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i><i class="w"></i></div>
+            </div>
+          </div>
+          <div class="card" style="background:var(--surface-2)"><div class="body">
+            <div class="row" style="justify-content:space-between"><b>Tonight's pick</b><span class="pill s-good">Brand 61% WR</span></div>
+            <div class="small muted" style="margin-top:6px">Good: best KDA last 14d. Bad: deaths/game 6.2. Ugly: low CS sample.</div>
+          </div></div>
+          <div>
+            <div class="poolrow faint small"><span>CHAMP</span><span>WR</span><span>KDA</span><span>14d</span></div>
+            <div class="poolrow"><span>Brand</span><span class="win">61%</span><span>3.1</span><svg class="spark" viewBox="0 0 80 22"><polyline fill="none" stroke="var(--good)" stroke-width="2" points="0,16 16,12 32,14 48,7 64,9 80,4"/></svg></div>
+            <div class="poolrow"><span>Ziggs</span><span>52%</span><span>2.4</span><svg class="spark" viewBox="0 0 80 22"><polyline fill="none" stroke="var(--dim)" stroke-width="2" points="0,10 16,12 32,9 48,13 64,11 80,12"/></svg></div>
+            <div class="poolrow"><span>Lux</span><span class="loss">44%</span><span>1.9</span><svg class="spark" viewBox="0 0 80 22"><polyline fill="none" stroke="var(--bad)" stroke-width="2" points="0,6 16,9 32,11 48,10 64,14 80,17"/></svg></div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">
+        <h4>Lifts wired in</h4>
+        <ul>
+          <li><b>Rank/tier/LP header</b> with graceful unranked state.<span class="cite"> home P-A</span></li>
+          <li><b>Recent-form W/L strip</b> - the keystone.<span class="cite"> P-B</span></li>
+          <li><b>Win on the row</b> - <b>tracked_win exists in rewind_history.db for 2846 matches</b> but was never loaded; one SQL unblocks WR + form + history color.<span class="cite"> history P1/P2</span></li>
+          <li>Kept: Tonight's Pick + sparkline hero chips (already strong).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LOBBY ===== -->
+  <div class="section" id="lobby">
+    <h2>Lobby <span class="tag">prep before champ select</span></h2>
+    <div class="split">
+      <div class="card">
+        <div class="head">Ranked Flex - 2 in party <span class="sub">ready check armed</span></div>
+        <div class="body col">
+          <div class="kv"><span class="k">Auto-accept</span><span class="v s-good">ON</span></div>
+          <div class="kv"><span class="k">Duo synergy (you + Ash)</span><span class="v s-good">+4.1% WR bot/sup</span></div>
+          <div class="kv"><span class="k">Last session</span><span class="v">5-2, +tilt watch clear</span></div>
+          <div class="kv"><span class="k">Queue est.</span><span class="v tnum">1:20</span></div>
+          <div class="row"><div class="pill">Invite top-8</div><div class="pill">Change mode</div><div class="pill">Mains</div></div>
+        </div>
+      </div>
+      <div class="anno">
+        <h4>Lifts wired in</h4>
+        <ul>
+          <li><b>Last-session recap</b> on the lobby.<span class="cite"> lobby B</span></li>
+          <li><b>Duo synergy fired when party &gt;= 2</b> (already shipped, re-staged here).<span class="cite"> lobby C</span></li>
+          <li><b>Finish ready-check auto-accept</b> - endpoints already wrapped.<span class="cite"> lobby E</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CHAMP SELECT ===== -->
+  <div class="section" id="cs">
+    <h2>Champ Select <span class="tag">one decision in 30-45s</span></h2>
+    <div class="split">
+      <div class="card">
+        <div class="head">Your open slot - vs locked enemy comp <span class="sub">reacts in ~1-3s</span></div>
+        <div class="body col">
+          <div class="row" style="justify-content:space-between"><b>Pick into this comp</b><span class="pill s-good">3 strong</span></div>
+          <div class="poolrow faint small"><span>PICK</span><span>WR vs</span><span>lane</span><span>note</span></div>
+          <div class="poolrow"><span>Maokai</span><span class="win">57%</span><span>top</span><span class="small muted">tanky vs their AD</span></div>
+          <div class="poolrow"><span>Ornn</span><span class="win">55%</span><span>top</span><span class="small muted">scales, frontline</span></div>
+          <div class="poolrow"><span>Jax</span><span>51%</span><span>top</span><span class="small muted">splitpush angle</span></div>
+          <div class="row" style="margin-top:6px"><div class="pill s-good">Runes auto</div><div class="pill s-good">Spells auto (F+TP)</div><div class="pill">Build preview</div><div class="pill">AD/AP meter: 70% AD</div></div>
+        </div>
+      </div>
+      <div class="anno">
+        <h4>Lifts wired in</h4>
+        <ul>
+          <li><b>Live counter-picks vs locked comp</b> - ~80% plumbing exists.<span class="cite"> cs P2 HIGH</span></li>
+          <li><b>Enemy AD/AP damage meter</b> - cheap differentiator.<span class="cite"> cs P8</span></li>
+          <li>Arena: <b>augment tier ratings</b> on the offered slots.<span class="cite"> cs P6</span></li>
+          <li>Faster poll: RuneWriter 2.0s -&gt; 1.0s, port-safe.<span class="cite"> io_timing_map / P6.2</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PGR ===== -->
+  <div class="section" id="pgr">
+    <h2>Post-Game Review <span class="tag">explainable score</span></h2>
+    <div class="split">
+      <div class="card">
+        <div class="head">Last match - Brand - WIN <span class="sub">28:14</span></div>
+        <div class="body col">
+          <div class="score-hero">
+            <div class="score-num tnum">78</div>
+            <div class="col" style="gap:4px"><div class="score-grade">A-</div><span class="small muted">MVP of your team</span></div>
+            <div class="decomp" style="flex:1">
+              <div class="dbar"><span>Damage</span><span class="track"><span class="fill" style="width:84%"></span></span><span class="tnum">84</span></div>
+              <div class="dbar"><span>Vision</span><span class="track"><span class="fill" style="width:61%"></span></span><span class="tnum">61</span></div>
+              <div class="dbar"><span>Survival</span><span class="track"><span class="fill" style="width:55%"></span></span><span class="tnum">55</span></div>
+              <div class="dbar"><span>Objectives</span><span class="track"><span class="fill" style="width:72%"></span></span><span class="tnum">72</span></div>
+            </div>
+          </div>
+          <div class="carry">
+            <div class="c"><div class="n tnum">2.4k</div><div class="l">dmg / 1k gold</div></div>
+            <div class="c"><div class="n tnum">9.8k</div><div class="l">dmg / death</div></div>
+            <div class="c"><div class="n tnum">1.1</div><div class="l">vision / min</div></div>
+            <div class="c"><div class="n tnum">+1.3k</div><div class="l">gold @15</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="anno">
+        <h4>Lifts wired in</h4>
+        <ul>
+          <li><b>Score decomposition</b> under the grade - data already returned, just not rendered.<span class="cite"> pgr HIGH-2</span></li>
+          <li><b>Carry-metrics bundle</b> (dmg/gold is the most honest).<span class="cite"> pgr HIGH-1</span></li>
+          <li><b>@15 snapshot</b> - keys csd_at_15/gd_at_15 already defined.<span class="cite"> pgr HIGH-3</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HISTORY ===== -->
+  <div class="section" id="history">
+    <h2>History <span class="tag">scannable, result-first</span></h2>
+    <div class="split">
+      <div class="card"><div class="body">
+        <div class="filters"><span class="pill">All</span><span class="pill">Champion</span><span class="pill">Queue</span><span class="pill s-good">Wins</span><span class="pill">Losses</span></div>
+        <div class="row" style="justify-content:space-between; margin-bottom:8px"><b>Last 20</b>
+          <span class="formstrip"><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="l"></i><i class="w"></i><i class="l"></i><i class="w"></i></span>
+          <span class="pill s-good">65% WR</span></div>
+        <div class="hrow w"><span class="res"></span><span><b>Brand</b><br><span class="small muted">ARAM</span></span><span class="tnum">14/6/22</span><span class="small muted">28:14</span><span class="win">WIN</span></div>
+        <div class="hrow l"><span class="res"></span><span><b>Lux</b><br><span class="small muted">Ranked</span></span><span class="tnum">3/9/7</span><span class="small muted">31:02</span><span class="loss">LOSS</span></div>
+        <div class="hrow w"><span class="res"></span><span><b>Ziggs</b><br><span class="small muted">ARAM</span></span><span class="tnum">9/4/18</span><span class="small muted">19:40</span><span class="win">WIN</span></div>
+      </div></div>
+      <div class="anno">
+        <h4>Lifts wired in</h4>
+        <ul>
+          <li><b>Result-first row</b> (win color + KDA).<span class="cite"> history P1</span></li>
+          <li><b>Last-20 strip + real season WR</b> from tracked_win on disk.<span class="cite"> P2</span></li>
+          <li><b>Filters</b> (champ/queue/result) client-side.<span class="cite"> P4</span></li>
+          <li>Row click -&gt; detached historical PGR (already shipped).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TIMELINE ===== -->
+  <div class="section" id="timeline">
+    <h2>Timeline <span class="tag">where the game turned</span></h2>
+    <div class="split">
+      <div class="card"><div class="body">
+        <div class="small muted" style="margin-bottom:6px">Gold diff over time (you ahead = above midline)</div>
+        <div class="tl">
+          <div class="mid"></div>
+          <svg viewBox="0 0 600 150" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+            <polygon points="0,75 80,70 160,55 240,60 320,40 400,52 480,30 560,18 600,12 600,75" fill="var(--good)" opacity="0.18"/>
+            <polyline points="0,75 80,70 160,55 240,60 320,40 400,52 480,30 560,18 600,12" fill="none" stroke="var(--good)" stroke-width="2"/>
+          </svg>
+          <div class="evt" style="left:24%"><b class="s-bad">x</b></div>
+          <div class="evt" style="left:53%"><b style="color:var(--accent)">D</b></div>
+          <div class="evt" style="left:80%"><b style="color:var(--warn)">B</b></div>
+        </div>
+        <div class="tl-leg"><span>x team-fight</span><span>D dragon</span><span>B baron</span><span class="s-good">click an event to jump the lane view</span></div>
+      </div></div>
+      <div class="anno">
+        <h4>Lifts wired in</h4>
+        <ul>
+          <li><b>Gold/XP-diff line</b> - data + split-area render idiom already exist.<span class="cite"> timeline A</span></li>
+          <li><b>Event ribbon</b> (kills/objectives) - API already serves it.<span class="cite"> timeline B</span></li>
+          <li><b>"Where it was lost" story</b> - WPA engine already computes swings.<span class="cite"> timeline E</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS ===== -->
+  <div class="section" id="settings">
+    <h2>Settings <span class="tag">no hotkey required</span></h2>
+    <p class="lead">Every behavior is a visible on-screen control - the overlay carries its own settings button so nothing depends on remembering a hotkey.</p>
+    <div class="set-grid">
+      <div class="set"><span class="l">Overlay mode<small>passive / active / hidden</small></span><div class="seg"><span>Passive</span><span class="on">Active</span><span>Hidden</span></div></div>
+      <div class="set"><span class="l">Dashboard stays in game<small>coexist with overlay</small></span><div class="tog on"><i></i></div></div>
+      <div class="set"><span class="l">Overlay scale<small>auto by DPI, or override</small></span><div class="seg"><span>Auto</span><span class="on">100%</span><span>125%</span></div></div>
+      <div class="set"><span class="l">Change-pulse glow<small>fresh-update affordance</small></span><div class="tog on"><i></i></div></div>
+      <div class="set"><span class="l">Reduced motion<small>static ring instead of pulse</small></span><div class="tog"><i></i></div></div>
+      <div class="set"><span class="l">Theme<small>applies everywhere</small></span><div class="seg"><span class="on">Hextech</span><span>Eclipse</span><span>Broadcast</span></div></div>
+      <div class="set"><span class="l">Champ-select poll<small>faster = snappier, port-safe</small></span><div class="seg"><span>2.0s</span><span class="on">1.0s</span></div></div>
+      <div class="set"><span class="l">Coach verbosity<small>terse / normal / detailed</small></span><div class="seg"><span>Terse</span><span class="on">Normal</span><span>Detailed</span></div></div>
+    </div>
+  </div>
+
+  <!-- ===== DESIGN SYSTEM ===== -->
+  <div class="section" id="system">
+    <h2>Design System <span class="tag">3 themes, one token set</span></h2>
+    <p class="lead">All three reskin from the same semantic tokens (surface tones, status triad, 8px grid, fs 16-46). Status is never color-only - every good/warn/bad value carries a glyph (up / down / warn) for color-blind + WCAG 1.4.1. Switch live with the buttons up top.</p>
+    <div class="palettes">
+      <div class="pal"><div class="pname">Hextech Tactical</div><div class="chips"><i style="background:#0A0E14"></i><i style="background:#16202E"></i><i style="background:#C8AA6E"></i><i style="background:#0AC8B9"></i><i style="background:#37D08A"></i><i style="background:#E84057"></i></div><div class="desc">League-native: slate base, hextech gold + cyan. On-brand, high-contrast for glance.</div></div>
+      <div class="pal"><div class="pname">Eclipse Minimal</div><div class="chips"><i style="background:#0C0D10"></i><i style="background:#181A20"></i><i style="background:#5B8DEF"></i><i style="background:#57C98A"></i><i style="background:#D9A441"></i><i style="background:#E5677A"></i></div><div class="desc">Near-black, single cool accent, typography-led. Calmest overlay, least distraction.</div></div>
+      <div class="pal"><div class="pname">Broadcast Esports</div><div class="chips"><i style="background:#07090F"></i><i style="background:#141A2B"></i><i style="background:#2BD9FE"></i><i style="background:#FF3D7F"></i><i style="background:#2BE08A"></i><i style="background:#FF3B5C"></i></div><div class="desc">Vivid status-driven, electric cyan + magenta. Most legible at a fast glance, busiest.</div></div>
+    </div>
+    <div class="card" style="margin-top:16px"><div class="body row" style="gap:22px; flex-wrap:wrap">
+      <span class="s-good">Good +3.1</span><span class="s-warn">Watch drake</span><span class="s-bad">Behind -1.2k</span>
+      <span class="muted small">Glyph + color, never color alone.</span>
+    </div></div>
+  </div>
+
+  <footer>
+    <b>Greenlight gate.</b> This proposal covers every surface in 3 themes. On your approval, Phase 3-4 build the chosen theme as the live design (the current dashboard stays until then). Reply with the theme you want and any change; redesign code is paused until you do. Backend phases (coaching, responsiveness, hygiene, TODO/DS-gap) continue meanwhile.
+  </footer>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  document.getElementById('themepick').addEventListener('click',function(e){
+    var b=e.target.closest('button[data-t]'); if(!b)return;
+    root.setAttribute('data-theme',b.dataset.t);
+    this.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+  });
+  var nav=document.getElementById('nav');
+  nav.addEventListener('click',function(e){
+    var b=e.target.closest('button[data-go]'); if(!b)return;
+    nav.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+    var t=document.getElementById(b.dataset.go); if(t)t.scrollIntoView({block:'start'});
+  });
+})();
+</script>
+</body>
+</html>
