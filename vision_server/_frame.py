@@ -136,7 +136,7 @@ _MAX_FRAME_B64 = 7_000_000
 
 
 def handle_upload_frame(body: bytes) -> dict:
-    """Game-PC agent POSTs the latest screenshot here.
+    """Legion-local screen agent POSTs the latest screenshot here.
 
     Body: {image_b64, source?, width?, height?, format?, primary?}
 

@@ -1,7 +1,7 @@
-"""Tests for tools/gamepc_phase_watcher.py - LCU WAMP event-driven capture.
+"""Tests for tools/phase_watcher.py - LCU WAMP event-driven capture.
 
 Item 207: implementation of docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md. The
-watcher runs on Game-PC and fires DXGI capture on phase transitions
+watcher runs Legion-local and fires DXGI capture on phase transitions
 (champ-select / Cherry augment / lobby / InProgress). WaitingForStats is
 intentionally EXCLUDED (2026-05-27 item 209): the WaitingForStats edge
 fires at the game-end resolution swap (1920x1080 <-> 1440p), so a DXGI
@@ -14,7 +14,7 @@ on any platform (no LCU + no DXGI + no network).
 Operator scope-fork answers locked at session start:
 - Q1 capture target: BOTH monitors per event
 - Q2 debounce: per (topic, sub_phase, queue_id) per gameflow cycle
-- Q3 frame format: JPEG q75 (inherit gamepc_screen_agent.py)
+- Q3 frame format: JPEG q75 (inherit screen_agent.py)
 - Q4 Cherry urgency: standard debounce
 - Q5 bridge envelope: YES emit kind=ui_capture on Legion bridge
 """
@@ -29,13 +29,13 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 _REPO = Path(__file__).resolve().parents[1]
-_WATCHER_PATH = _REPO / "tools" / "gamepc_phase_watcher.py"
+_WATCHER_PATH = _REPO / "tools" / "phase_watcher.py"
 
 
 def _load_watcher_module():
-    """Load tools/gamepc_phase_watcher.py without booting the WAMP loop."""
+    """Load tools/phase_watcher.py without booting the WAMP loop."""
     spec = importlib.util.spec_from_file_location(
-        "_gamepc_phase_watcher_under_test", _WATCHER_PATH,
+        "_phase_watcher_under_test", _WATCHER_PATH,
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -404,7 +404,7 @@ class BridgeEnvelopeTests(unittest.TestCase):
             ],
         )
         self.assertEqual(env["kind"], "ui_capture")
-        self.assertEqual(env["source"], "gamepc")
+        self.assertEqual(env["source"], "legion")
         self.assertEqual(env["target"], "legion")
         self.assertIn("summary", env)
         self.assertIn("body", env)
@@ -442,7 +442,7 @@ class BridgeEnvelopeTests(unittest.TestCase):
 
 class UploadFramePayloadShapeTests(unittest.TestCase):
     """The upload helper packages JPEG b64 + source + dimensions in the
-    same shape as gamepc_screen_agent.py.upload(), plus an event_meta
+    same shape as screen_agent.py.upload(), plus an event_meta
     dict that the extended /upload-frame route reads.
     """
 
@@ -453,7 +453,7 @@ class UploadFramePayloadShapeTests(unittest.TestCase):
     def test_payload_includes_image_b64_source_event_meta(self):
         payload = self.mod.build_upload_payload(
             b64="abc=", fmt="jpeg", w=1920, h=1080,
-            source="game-pc-event-game", primary=False,
+            source="legion-event-game", primary=False,
             event_meta={
                 "topic": "/lol-gameflow/v1/gameflow-phase",
                 "sub_phase": "ChampSelect",
@@ -463,7 +463,7 @@ class UploadFramePayloadShapeTests(unittest.TestCase):
             },
         )
         self.assertEqual(payload["image_b64"], "abc=")
-        self.assertEqual(payload["source"], "game-pc-event-game")
+        self.assertEqual(payload["source"], "legion-event-game")
         self.assertEqual(payload["format"], "jpeg")
         self.assertEqual(payload["width"], 1920)
         self.assertEqual(payload["height"], 1080)
@@ -511,7 +511,7 @@ class BothMonitorsCaptureTests(unittest.TestCase):
 
 
 class JpegQualityDefaultTests(unittest.TestCase):
-    """Q3 (locked): JPEG q75 default to inherit gamepc_screen_agent.py
+    """Q3 (locked): JPEG q75 default to inherit screen_agent.py
     contract. Drift guard catches a future re-tune that drops the
     quality without an explicit operator decision.
     """
@@ -605,9 +605,9 @@ class WiredSitesGrepTests(unittest.TestCase):
     def test_sidecar_filename_defined(self):
         self.assertIn("def sidecar_filename", self.text)
 
-    def test_jpeg_quality_constant_inherits_gamepc_screen_agent(self):
+    def test_jpeg_quality_constant_inherits_screen_agent(self):
         # Inherits the 75 baseline; if operator decides to bump later, the
-        # constant moves in lockstep with gamepc_screen_agent.py.
+        # constant moves in lockstep with screen_agent.py.
         self.assertIn("JPEG_QUALITY = 75", self.text)
 
 

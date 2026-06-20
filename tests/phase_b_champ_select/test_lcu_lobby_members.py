@@ -1,6 +1,6 @@
 """s170 (2026-05-11) - LCU lobby members forwarder + lobby field expansion.
 
-Validates the new gamepc_lcu_agent path that forwards:
+Validates the new lcu_agent path that forwards:
   /lol-lobby/v2/lobby -> state["lobby"].members[], local_member, is_leader,
                        party_type, queue_name
   /lol-matchmaking/v1/search -> state["lobby"].search_state
@@ -18,7 +18,7 @@ from unittest import mock
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT / "tools"))
 
-import gamepc_lcu_agent as agent  # noqa: E402
+import lcu_agent as agent  # noqa: E402
 
 
 def _patch_lcu(responses):

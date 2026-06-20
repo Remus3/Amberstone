@@ -35,7 +35,7 @@ py <ATX_HELPERS_DIR>\bridge_pull_tasks.py --target peer
      ```
      py <ATX_HELPERS_DIR>\bridge_post_result.py <task_id> \
          --source peer \
-         --reply-to <the task's source field, e.g. legion or gamepc> \
+         --reply-to <the task's source field, e.g. legion> \
          --summary "<one-line description of what you did>" \
          --body '<valid JSON the peer can parse with json.loads>' \
          --exit-code <0 if success, non-zero if failed>

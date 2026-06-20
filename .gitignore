@@ -173,7 +173,7 @@ package-lock.json
 
 # Ad-hoc diagnostic artefacts under data/. Leading dot keeps them sorted
 # to the top of the dir + signals "transient debug output, not persistent
-# state". e.g. .gamepc-shot.png, .capture-from-gamepc.png from screenshot
+# state". e.g. .legion-shot.png, .capture-from-legion.png from screenshot
 # pulls during audits.
 data/.*.png
 data/.*.json

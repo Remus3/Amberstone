@@ -2,7 +2,7 @@
 """Live Client snapshot -> summoner_cooldowns adapter.
 
 Bridges the raw `/allgamedata` shape that the liveclient relay
-(gamepc_liveclient_relay.py, a 2-PC-era name now running Legion-local)
+(liveclient_relay.py, relocated 2026-05-29, ADR-011; Legion-local)
 publishes into the participant + event dict shape that
 ``core.summoner_cooldowns.compute_cooldowns`` expects.
 
