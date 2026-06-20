@@ -204,9 +204,11 @@ body[data-shell="overlay"] #rn-choices .rc-chip {
   min-height: 44px;
 }
 
-/* RC2 5.3: the trigger condition sub-line is dashboard-only supporting detail;
- * the lean glance HUD keeps just the A/B verb (condensation spec S0). */
-body[data-shell="overlay"] #rn-choices .rc-trigger {
+/* RC2 5.3/5.4: the trigger condition + rebranch branch sub-lines are
+ * dashboard-only supporting detail; the lean glance HUD keeps just the A/B verb
+ * (condensation spec S0). */
+body[data-shell="overlay"] #rn-choices .rc-trigger,
+body[data-shell="overlay"] #rn-choices .rc-rebranch {
   display: none;
 }
 
