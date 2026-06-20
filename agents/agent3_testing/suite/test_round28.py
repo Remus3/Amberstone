@@ -52,8 +52,8 @@ def test_cli_card_format(tmp_path: Path, monkeypatch, capsys) -> None:
     assert rc == 0
     out = capsys.readouterr().out
     assert "KDA 4.8" in out
-    # Compact card uses ' * ' separators.
-    assert " · " in out
+    # Compact card uses ' | ' separators.
+    assert " | " in out
 
 
 def test_cli_json_format(tmp_path: Path, monkeypatch, capsys) -> None:
