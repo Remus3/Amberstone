@@ -148,3 +148,41 @@ def test_never_raises_on_bad_path(tmp_path):
     (tmp_path / "f.txt").write_text("x", encoding="utf-8")
     assert hzs.log_precomputed_choices("sr", "Annie", "Caitlyn",
                                        choices=[], path=bad) is None
+
+
+def test_cv_override_recorded(tmp_path):
+    # RC2 P5.1: a CV override dict rides the record verbatim (shadow column).
+    p = tmp_path / "shadow.jsonl"
+    cv = {"verdict": "shove", "confidence": "high",
+          "reason": "Enemy dead 12s - shove + take plates/prio",
+          "kind": "enemy_dead"}
+    rec = hzs.log_precomputed_choices(
+        "sr", "Annie", "Caitlyn", choices=[], band="L6", covered=True,
+        level=6, game_time_s=300.0, cv_override=cv, path=p)
+    assert rec is not None
+    r = _read(p)[0]
+    assert r["cv_override"] == cv
+
+
+def test_cv_override_defaults_none(tmp_path):
+    # Absent cv_override -> the column is present and None (back-compatible).
+    p = tmp_path / "shadow.jsonl"
+    hzs.log_precomputed_choices(
+        "sr", "Annie", "Caitlyn", choices=[], band="L6", covered=True,
+        level=6, game_time_s=300.0, path=p)
+    assert _read(p)[0]["cv_override"] is None
+
+
+def test_cv_kind_breaks_dedup(tmp_path):
+    # A CV transition (enemy laner dies) within the same coarse bucket must log
+    # a fresh row, not be deduped away (the kind is part of the sig).
+    p = tmp_path / "shadow.jsonl"
+    kw = dict(choices=[], band="L6", mana_state="full", cd_state="all_up",
+              covered=True, level=6, item_count=1, path=p)
+    a = hzs.log_precomputed_choices(
+        "sr", "Annie", "Caitlyn", game_time_s=300.0, **kw)
+    b = hzs.log_precomputed_choices(
+        "sr", "Annie", "Caitlyn", game_time_s=302.0,
+        cv_override={"kind": "enemy_dead", "verdict": "shove"}, **kw)
+    assert a is not None and b is not None
+    assert len(_read(p)) == 2
