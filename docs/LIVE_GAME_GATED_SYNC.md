@@ -621,3 +621,14 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   (b) re-run `tools/hz_shadow_report.py` and read det-vs-Haiku agreement WITH the CV layer applied; (c) when
   agreement climbs toward the >=70% target (`HZ_HAIKU_CALL_INVENTORY.md:75`), authorize the 5.2 served flip.
   Does NOT block any further stage.
+- 2026-06-20 RC2 P6.4 port-safety pooled LCU connection (`RC_LCU_POOL` default-ON flip). The L6 keep-alive
+  connection pool (`core/lcu_pool.py`) ships DEFAULT-OFF; the live path is byte-identical until `RC_LCU_POOL=1`.
+  OWED (operator-gated, NOT headless): over a REAL champ-select + match, set `RC_LCU_POOL=1` and confirm
+  (a) champ-select reads (`game_reader/poller._lcu_get`) still return correct sessions with the pool active,
+  (b) no `UNEXPECTED_EOF_WHILE_READING` / SSL EOF on the reused socket (if it appears, check
+  `netsh interface portproxy show all` FIRST per `reference_iphlpsvc_portproxy_2999` - that is a self-loop
+  rule, not a pool bug), (c) the reconnect-on-drop path self-heals across a client restart mid-session, and
+  (d) loopback socket count stays bounded (one long-lived socket per LCU port instead of one-per-call) under
+  a tightened poll cadence. Only after (a)-(d) check out over a live game, authorize the default-ON flip
+  (and, separately, E7 wiring the frozen `lcu/lcu_client.py._request` onto the same pool). Does NOT block any
+  further stage.
