@@ -150,7 +150,7 @@ def test_cli_session_text(tmp_path: Path, monkeypatch, capsys) -> None:
     out = capsys.readouterr().out
     assert "Session summary" in out
     assert "Ahri" in out
-    assert "1 games" in out or "1 games · 1W-0L" in out
+    assert "1 games" in out or "1 games | 1W-0L" in out
 
 
 def test_cli_session_json(tmp_path: Path, monkeypatch, capsys) -> None:
