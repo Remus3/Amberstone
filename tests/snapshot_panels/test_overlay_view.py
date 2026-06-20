@@ -202,6 +202,35 @@ def test_overlay_callouts_clamp_to_two_rows(mock_server, pw_browser):
     assert not errors, f"JS errors [callouts clamp]: {errors[:3]}"
 
 
+def test_overlay_choices_hit_target_44px(mock_server, pw_browser):
+    """RC2 P3.3 glance-test acceptance (RC2_OVERLAY_CONDENSATION_SPEC
+    section 7): the S0 A+B choice chips clear a 44px hit target at game
+    distance. coach_choices.js stacks them full-width column; overlay.css
+    lifts the per-chip min-height from the 42px 1920-grid floor to 44px."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.evaluate(
+            "() => {"
+            "  const ch = document.getElementById('rn-choices');"
+            "  ch.hidden = false;"
+            "  ch.innerHTML ="
+            " '<button class=\"rc-chip\" data-key=\"A\">A trade</button>'"
+            "+'<button class=\"rc-chip\" data-key=\"B\">B back off</button>';"
+            "}"
+        )
+        chips = page.locator("#rn-choices .rc-chip")
+        assert chips.count() == 2, "fixture should mount 2 choice chips"
+        for n in range(2):
+            box = chips.nth(n).bounding_box()
+            assert box is not None and box["height"] >= 44, (
+                f"choice chip {n} height {box and box['height']} below 44px floor"
+            )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [choices hit-target]: {errors[:3]}"
+
+
 def test_overlay_change_pulse_hook(mock_server, pw_browser):
     """overlay_pulse.js: a content change inside an overlay panel adds the
     .ov-pulse edge-glow class to its container for ~1.2s, then drops it."""
