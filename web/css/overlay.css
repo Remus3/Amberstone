@@ -304,3 +304,20 @@ body[data-shell="overlay"][data-panelset="threat"] #am-pane-ovds {
 body[data-shell="overlay"] .ov-pulse {
   animation: ov-pulse-edge 1.2s ease-out 1;
 }
+
+/* 6. RC2 4.2 auto-hide (idle recede). overlay_idle.js stamps data-rc-idle="1"
+ * on the body after ~8s of no coach-content change AND no pointer activity; the
+ * dock recedes to a low opacity so a quiet HUD stops competing with the game.
+ * The next coach change or a mouse move over the overlay clears it and the dock
+ * snaps back to full. Opacity transition only (compositor-cheap, no layout, no
+ * loop - same GPU-light discipline as the .ov-pulse glow + the active frame).
+ * Window-opacity (rc-shell setOpacity) and this CSS dim multiply, which is the
+ * intended behavior: a low base opacity recedes even further when idle. */
+body[data-shell="overlay"] #view-active-match,
+body[data-shell="overlay"] main {
+  transition: opacity 400ms ease;
+}
+body[data-shell="overlay"][data-rc-idle="1"] #view-active-match,
+body[data-shell="overlay"][data-rc-idle="1"] main {
+  opacity: 0.35;
+}

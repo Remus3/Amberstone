@@ -363,6 +363,13 @@ const OVERLAY_SETTINGS_DEFAULTS = Object.freeze({
   // on-screen pin toggle for the companion/dashboard window.
   keepCompanion: true,
   companionAlwaysOnTop: true,
+  // RC2 4.2 (non-intrusive overlay): operator-tunable window opacity (the HUD
+  // recedes into the game without going away) + click-through ZONES (PASSIVE
+  // stays click-through everywhere EXCEPT over an interactive control). Both
+  // default to the current behavior - opacity 1.0 = fully opaque, zones ON adds
+  // hover-to-interact without changing the legacy global ACTIVE hotkey.
+  overlayOpacity: 1,
+  clickThroughZones: true,
 });
 
 // ACTIVE auto-revert bounds: a 3s floor (an instantly-reverting overlay is
@@ -378,6 +385,42 @@ function clampRevertSec(v) {
   return Math.min(ACTIVE_REVERT_MAX_SEC, Math.max(ACTIVE_REVERT_MIN_SEC, Math.round(v)));
 }
 
+// --- RC2 Stage 4.2: non-intrusive overlay (opacity + click-through zones) -----
+// Overlay opacity bounds: 0.3 floor (a near-invisible HUD is useless) to 1.0
+// (fully opaque, the current behavior). Applied via overlayWindow.setOpacity in
+// main.js. Non-finite -> null so the caller falls back to the default rather
+// than persist garbage (mirrors clampRevertSec).
+const OVERLAY_OPACITY_MIN = 0.3;
+const OVERLAY_OPACITY_MAX = 1;
+
+function clampOpacity(v) {
+  if (!(typeof v === "number" && Number.isFinite(v))) {
+    return null;
+  }
+  const c = Math.min(OVERLAY_OPACITY_MAX, Math.max(OVERLAY_OPACITY_MIN, v));
+  return Math.round(c * 100) / 100;
+}
+
+// The click-through ZONES decision: what to pass to setIgnoreMouseEvents given
+// the current intent (clickThrough = the operator/hotkey PASSIVE<->ACTIVE
+// state), a transient zoneHover (cursor is over an interactive control - the
+// renderer reports it over IPC), and whether zones are enabled. Pure so main.js
+// stays a thin applier.
+//   - zones OFF        -> legacy whole-window behavior (ignore == clickThrough)
+//   - ACTIVE           -> fully interactive (ignore false) regardless of hover
+//   - PASSIVE + zones  -> click-through (ignore true) UNLESS hovering a zone
+// Only a strict boolean true counts, so undefined/NaN args coerce to the safe
+// interactive side rather than leaking a non-boolean into setIgnoreMouseEvents.
+function effectiveIgnoreMouse(clickThrough, zoneHover, zonesEnabled) {
+  if (zonesEnabled !== true) {
+    return clickThrough === true; // legacy: whole window follows clickThrough
+  }
+  if (clickThrough !== true) {
+    return false; // ACTIVE: the whole overlay is interactive
+  }
+  return zoneHover !== true; // PASSIVE: click-through except over a zone
+}
+
 // Resolve the operator overlay settings out of a saved state blob. Every field
 // is validated against the hand-editable file: pulseNotify must be a real
 // boolean (else default true), activeRevertSec a finite number clamped to
@@ -387,6 +430,7 @@ function overlaySettingsFrom(saved) {
   const o = s.overlay && typeof s.overlay === "object" && !Array.isArray(s.overlay) ? s.overlay : {};
   const set = o.settings && typeof o.settings === "object" && !Array.isArray(o.settings) ? o.settings : {};
   const sec = clampRevertSec(set.activeRevertSec);
+  const op = clampOpacity(set.overlayOpacity);
   return {
     pulseNotify: typeof set.pulseNotify === "boolean" ? set.pulseNotify : OVERLAY_SETTINGS_DEFAULTS.pulseNotify,
     activeRevertSec: sec === null ? OVERLAY_SETTINGS_DEFAULTS.activeRevertSec : sec,
@@ -395,6 +439,11 @@ function overlaySettingsFrom(saved) {
       typeof set.companionAlwaysOnTop === "boolean"
         ? set.companionAlwaysOnTop
         : OVERLAY_SETTINGS_DEFAULTS.companionAlwaysOnTop,
+    overlayOpacity: op === null ? OVERLAY_SETTINGS_DEFAULTS.overlayOpacity : op,
+    clickThroughZones:
+      typeof set.clickThroughZones === "boolean"
+        ? set.clickThroughZones
+        : OVERLAY_SETTINGS_DEFAULTS.clickThroughZones,
   };
 }
 
@@ -416,6 +465,13 @@ function sanitizeSettingsPatch(patch) {
   }
   if (typeof p.companionAlwaysOnTop === "boolean") {
     out.companionAlwaysOnTop = p.companionAlwaysOnTop;
+  }
+  const op = clampOpacity(p.overlayOpacity);
+  if (op !== null) {
+    out.overlayOpacity = op;
+  }
+  if (typeof p.clickThroughZones === "boolean") {
+    out.clickThroughZones = p.clickThroughZones;
   }
   return out;
 }
@@ -466,4 +522,8 @@ module.exports = {
   mergeOverlayPatch,
   overlaySettingsFrom,
   mergeOverlaySettingsPatch,
+  OVERLAY_OPACITY_MIN,
+  OVERLAY_OPACITY_MAX,
+  clampOpacity,
+  effectiveIgnoreMouse,
 };

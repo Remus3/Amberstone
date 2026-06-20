@@ -22,4 +22,10 @@ contextBridge.exposeInMainWorld("rcShell", {
   // -> Promise<resolved settings>
   setOverlaySettings: (patch) =>
     ipcRenderer.invoke("rc-shell:overlay-settings:set", patch),
+  // RC2 4.2: one-way hover ping for click-through ZONES. The overlay page's
+  // hover detector (clickthrough_zones.js) calls this when the cursor enters /
+  // leaves an interactive control; main.js flips the window interactive so the
+  // operator can click it without the global ACTIVE hotkey. send (not invoke) -
+  // a hover needs no reply.
+  setZoneHover: (on) => ipcRenderer.send("rc-shell:overlay-zone-hover", !!on),
 });

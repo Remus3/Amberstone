@@ -48,6 +48,8 @@ import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRend
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
 import { initOverlayPulse } from './overlay_pulse.js';
+// RC2 4.2: overlay auto-hide (idle recede). Inert unless ?overlay=1.
+import { initOverlayIdle } from './lib/overlay_idle.js';
 // RC2 E1: per-panel visibility gate (separate in-game / out-of-game toggles).
 import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibility.js';
 
@@ -6289,6 +6291,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // shell flag stamped at module top is set (?overlay=1); the mounts
   // are static HTML so wiring once at boot is sufficient.
   if (document.body.dataset.shell === "overlay") initOverlayPulse();
+  // RC2 4.2: overlay auto-hide. Self-gates on the overlay shell; recedes the
+  // dock opacity after ~8s of no coach change + no pointer activity, snaps back
+  // on the next change / hover. Pure CSS dim - the change-pulse path is untouched.
+  if (document.body.dataset.shell === "overlay") initOverlayIdle();
   // RC2 E1: build the Panel Visibility settings card + apply the persisted
   // per-context (in-game / out-of-game) panel toggles. Self-guards on the
   // overlay shell (overlay.css owns that surface). Wires its own re-apply.

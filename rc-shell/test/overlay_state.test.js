@@ -400,6 +400,8 @@ test("overlaySettingsFrom: defaults when nothing saved", () => {
     activeRevertSec: 20,
     keepCompanion: true,
     companionAlwaysOnTop: true,
+    overlayOpacity: 1,
+    clickThroughZones: true,
   });
 });
 
@@ -412,6 +414,8 @@ test("overlaySettingsFrom: reads saved overlay.settings", () => {
     activeRevertSec: 45,
     keepCompanion: true,
     companionAlwaysOnTop: true,
+    overlayOpacity: 1,
+    clickThroughZones: true,
   });
 });
 
@@ -434,6 +438,8 @@ test("overlaySettingsFrom: non-boolean pulse / non-finite revert -> defaults", (
     activeRevertSec: 20,
     keepCompanion: true,
     companionAlwaysOnTop: true,
+    overlayOpacity: 1,
+    clickThroughZones: true,
   });
 });
 
@@ -465,6 +471,8 @@ test("overlaySettingsFrom: garbage-safe (null / arrays / strings / junk overlay)
         activeRevertSec: 20,
         keepCompanion: true,
         companionAlwaysOnTop: true,
+        overlayOpacity: 1,
+        clickThroughZones: true,
       },
       JSON.stringify(g)
     );
@@ -532,6 +540,8 @@ test("overlaySettingsFrom round-trips a mergeOverlaySettingsPatch write (positio
     activeRevertSec: 33,
     keepCompanion: true,
     companionAlwaysOnTop: true,
+    overlayOpacity: 1,
+    clickThroughZones: true,
   });
   assert.strictEqual(saved.overlay.x, 5);
   assert.strictEqual(saved.overlay.panelSet, "coach");
@@ -800,4 +810,119 @@ test("overlayUrl: scale composes with panelSet", () => {
   assert.ok(out.includes("overlay=1"));
   assert.ok(out.includes("panelset=build"));
   assert.ok(out.includes("ovscale=1.3"));
+});
+
+// --- RC2 Stage 4.2: non-intrusive overlay (click-through zones + opacity) -----
+// Two pure cores: clampOpacity (the operator opacity setting bound) and
+// effectiveIgnoreMouse (the click-through-ZONES decision - PASSIVE stays
+// click-through EXCEPT while the cursor is over an interactive zone). main.js
+// wires both off the persisted overlay settings; the renderer reports zone
+// hover over IPC.
+
+test("clampOpacity: clamps to [0.3, 1.0] and rounds to 2dp", () => {
+  assert.strictEqual(ov.clampOpacity(1), 1);
+  assert.strictEqual(ov.clampOpacity(0.5), 0.5);
+  assert.strictEqual(ov.clampOpacity(0.555), 0.56); // 2-dp round
+  assert.strictEqual(ov.clampOpacity(2), 1); // ceil at 1.0
+  assert.strictEqual(ov.clampOpacity(0), 0.3); // floor at 0.3
+  assert.strictEqual(ov.clampOpacity(-1), 0.3);
+});
+
+test("clampOpacity: non-finite -> null (caller falls back to default)", () => {
+  assert.strictEqual(ov.clampOpacity(NaN), null);
+  assert.strictEqual(ov.clampOpacity("0.5"), null);
+  assert.strictEqual(ov.clampOpacity(undefined), null);
+  assert.strictEqual(ov.clampOpacity(null), null);
+});
+
+test("effectiveIgnoreMouse: ACTIVE (clickThrough=false) is always interactive", () => {
+  assert.strictEqual(ov.effectiveIgnoreMouse(false, false, true), false);
+  assert.strictEqual(ov.effectiveIgnoreMouse(false, true, true), false);
+  assert.strictEqual(ov.effectiveIgnoreMouse(false, false, false), false);
+});
+
+test("effectiveIgnoreMouse: PASSIVE + zones on -> click-through unless hovering a zone", () => {
+  // not hovering a zone -> still click-through (true)
+  assert.strictEqual(ov.effectiveIgnoreMouse(true, false, true), true);
+  // hovering a zone -> capture clicks (false)
+  assert.strictEqual(ov.effectiveIgnoreMouse(true, true, true), false);
+});
+
+test("effectiveIgnoreMouse: zones disabled -> legacy whole-window click-through", () => {
+  // zonesEnabled false: zoneHover is ignored, returns clickThrough verbatim
+  assert.strictEqual(ov.effectiveIgnoreMouse(true, true, false), true);
+  assert.strictEqual(ov.effectiveIgnoreMouse(true, false, false), true);
+  assert.strictEqual(ov.effectiveIgnoreMouse(false, true, false), false);
+});
+
+test("effectiveIgnoreMouse: non-true args coerce safely (no NaN/undefined leak)", () => {
+  assert.strictEqual(ov.effectiveIgnoreMouse(undefined, undefined, undefined), false);
+  assert.strictEqual(ov.effectiveIgnoreMouse(1, 1, 1), false); // non-boolean zonesEnabled -> legacy, clickThrough=1 !== true -> false
+});
+
+test("OVERLAY_SETTINGS_DEFAULTS: overlayOpacity 1.0, clickThroughZones on", () => {
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.overlayOpacity, 1);
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.clickThroughZones, true);
+});
+
+test("overlaySettingsFrom: defaults include overlayOpacity + clickThroughZones", () => {
+  const s = ov.overlaySettingsFrom({});
+  assert.strictEqual(s.overlayOpacity, 1);
+  assert.strictEqual(s.clickThroughZones, true);
+});
+
+test("overlaySettingsFrom: reads saved overlayOpacity (clamped) + clickThroughZones", () => {
+  const s = ov.overlaySettingsFrom({
+    overlay: { settings: { overlayOpacity: 0.5, clickThroughZones: false } },
+  });
+  assert.strictEqual(s.overlayOpacity, 0.5);
+  assert.strictEqual(s.clickThroughZones, false);
+});
+
+test("overlaySettingsFrom: garbage overlayOpacity -> default 1.0; out-of-band clamps", () => {
+  assert.strictEqual(
+    ov.overlaySettingsFrom({ overlay: { settings: { overlayOpacity: "x" } } }).overlayOpacity,
+    1
+  );
+  assert.strictEqual(
+    ov.overlaySettingsFrom({ overlay: { settings: { overlayOpacity: 5 } } }).overlayOpacity,
+    1
+  );
+  assert.strictEqual(
+    ov.overlaySettingsFrom({ overlay: { settings: { overlayOpacity: 0.1 } } }).overlayOpacity,
+    0.3
+  );
+});
+
+test("overlaySettingsFrom: non-boolean clickThroughZones -> default true", () => {
+  assert.strictEqual(
+    ov.overlaySettingsFrom({ overlay: { settings: { clickThroughZones: "no" } } }).clickThroughZones,
+    true
+  );
+});
+
+test("mergeOverlaySettingsPatch: overlayOpacity persists (clamped); siblings preserved", () => {
+  const prev = { overlay: { x: 7, settings: { pulseNotify: true } } };
+  const next = ov.mergeOverlaySettingsPatch(prev, { overlayOpacity: 0.6 });
+  assert.strictEqual(next.overlay.settings.overlayOpacity, 0.6);
+  assert.strictEqual(next.overlay.settings.pulseNotify, true);
+  assert.strictEqual(next.overlay.x, 7);
+});
+
+test("mergeOverlaySettingsPatch: out-of-band overlayOpacity clamps; garbage dropped", () => {
+  assert.strictEqual(
+    ov.mergeOverlaySettingsPatch({}, { overlayOpacity: 9 }).overlay.settings.overlayOpacity,
+    1
+  );
+  const dropped = ov.mergeOverlaySettingsPatch({}, { overlayOpacity: "x" });
+  assert.ok(!("overlayOpacity" in dropped.overlay.settings));
+});
+
+test("mergeOverlaySettingsPatch: clickThroughZones false persists; non-boolean dropped", () => {
+  assert.strictEqual(
+    ov.mergeOverlaySettingsPatch({}, { clickThroughZones: false }).overlay.settings.clickThroughZones,
+    false
+  );
+  const dropped = ov.mergeOverlaySettingsPatch({}, { clickThroughZones: 1 });
+  assert.ok(!("clickThroughZones" in dropped.overlay.settings));
 });
