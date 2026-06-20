@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-20 (RC 2.0 program kickoff - operator overnight directive)
+
+RC 2.0 = overlay/UX + coaching + responsiveness + hygiene program. Plan + live % in docs/RC2_PLAN.md
+(9 phases / 62 stages). Resume with the /RC2-Continue command. 11 commits, pushed, CI green. NO DS/ENGINE.
+
+- Phase 1 research (9 surfaces + LCU IO timing-map) + design HTML (3 themes) -> operator GREENLIT Hextech.
+  Deliverables: docs/research/RC2_RESEARCH_*.md, docs/design/RC2_DESIGN.html, docs/DS_COMPLETENESS_GAP.md
+  (DS ~90-93%), docs/RC2_TODO_QA.md (97 items + TOP-10), docs/research/RC2_COACHING_SPEC.md.
+- Shipped E-batch: E6 SPELL FLIP-BACK FIX (ab54c64a - _sync_spells re-pushed the default every 1s poll; now
+  push-once + respect/remember manual per champ+mode + /api/champ-select/spell-winrates); E3 win-capture
+  (ad4c9906 - history/home W/L + 51.6% season WR from tracked_win, was on disk unused); E5 laning hold-band
+  (4da01fbe, shadow); E8 design-system reduced-motion/glyphs/statusFor (19f8116f); E9 rank header+scouting
+  (978490e3, Riot key=API-Key-Riot.txt); E4 counter-picks+ban-collapse (fd95801c); E1 dashboard-persist+pinned
+  +panel-toggles (a61703ef); P6.2 poll 2->1s (1011f47d).
+- RC RESTARTED pid 19356 -> E3/E5/E6/E9 + P6.2 LIVE. rc-shell disappear-fix + pinned need an Electron RELAUNCH (owed).
+- Operator: League borderless @ 2560x1440; per-panel in/out-game toggles; ASCII retro approved ALL files +
+  frozen + git HISTORY rewrite (E10 NOT done yet).
+
+NEXT via /RC2-Continue: E10 ASCII+history-rewrite (alone, force-push), E11 Hextech reskin, E12 responsiveness
+levers (SSE/build TTL), E7 bench+LCU-pooling (frozen lcu_client), E2 DS 3-game live-flip. Verify spell-fix LIVE
+next champ-select. Stage 25/62 = 40%. Memory: project_rc2_build.
+
+---
+
 # 2026-06-19 (live ARAM session) - 2 live bug fixes + supervisor 72h-ETL fleet fix (LEDGER 519-521)
 
 Live ARAM Mayhem play, operator-directed mid-game fixes + continuous overlay/dashboard monitoring.
@@ -57,34 +81,3 @@ directly to `stats_for_rotation["as"]` = FINAL attacks/sec (engine.py:195 `base_
   data/vision_state.json mid-run, environmental); ruff+py_compile clean; Share staged same commit.
 - [[feedback_verify_before_declare_broken]] / [[reference_share_mirror_tools_drift]] /
   [[reference_ds_bump_run_tests_dir]] / [[feedback_ds_commit_share_test_mirror]].
-
----
-
-# 2026-06-19 (gemini-loop R7 cycle) - DS per-stack self-Attack-Speed passive seam (LEDGER 517)
-
-Gemini DIRECTOR refill R7 (ops/loop/control/directive.md, REFILL PROTOCOL): DS schema lift -
-per-stack self-Attack-Speed passives. Commit `7c22e3bb`; Tier-2, ENGINE 1.146.0 -> 1.147.0,
-DS :8893 restarted -> 1.147.0 live, Share re-synced SAME commit (--check green, 366 files), 0 frozen.
-
-- GAP (verify-before-build): the stat pipeline has no signal for champion INNATE per-stack bonus
-  ATTACK SPEED, so compute_dps under-credited a champ at full passive stacks. The only existing
-  AS-fold lane is the item-effect total_conditional_as (Yun Tal) -> R7 is the champion-innate
-  ATTACK-SPEED sibling registry, mirroring the cond_as fold exactly (same 2.5 hard-cap re-clamp).
-- NEW agents/daemon_slayer/_passive_as_overrides.py (PassiveAsEntry: per-stack bonus-AS FRACTION
-  low/high by level + max_stacks + ap_per_stack_per_100; _lerp_by_level 1->18). compute_dps gains
-  default-OFF assume_passive_as_stacks; ON folds passive_as_bonus(cid, level, ap, fraction=1.0) into
-  stats_for_rotation["as"]. AP-scaled passives read the resolved post-amp ap; raw_attack_dps left at
-  the no-conditional baseline (matches cond_as).
-- SEEDED 4 (champion_abilities.json 16.12.1, Meraki 25.15 effects_descriptions): Irelia Ionian Fervor
-  10%:25% by lvl/stack max 4; Jax Relentless Assault 5%:12.5% by lvl/stack max 8; Ezreal Rising Spell
-  Force 10% flat/stack max 5; Volibear The Relentless Storm (5% + 4% per 100 AP)/stack max 5 (AP-scaled).
-  per_stack*max_stacks == documented max (self-clamping). on-hit/Lightning-Claws/Unsteady NOT the AS buff.
-- TDD: test_passive_as_overrides_r7.py RED-first (seam absent) -> GREEN (19/19). ENGINE bump =
-  quoted-literal pins only (80 test .py + __init__.py, 89 subs; CHANGELOG prose untouched).
-- VERIFY: DS-dir 7413 passed / 1 skip / 1942 subtests; RC 8645 passed / 2 skip / 110 subtests; exit 0,
-  ZERO mid-suite transients (sequenced ds_share_sync + DS restart BEFORE the RC suite, vs R3/R5). DS
-  /health 1.147.0; ruff clean; Share --check green. Inline sole orchestrator (R9, one coupled engine
-  change). Live flip operator-gated -> docs/LIVE_GAME_GATED_SYNC.md (R7 row; EXCLUDED L156 already
-  names "per-stack assumed_stacks"). [[feedback_verify_before_declare_broken]] /
-  [[feedback_engine_bump_quoted_literal_only]] / [[reference_ds_bump_run_tests_dir]] /
-  [[reference_ds_server_not_supervisor_watched]].
