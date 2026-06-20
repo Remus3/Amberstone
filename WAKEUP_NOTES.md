@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 3.3 overlay shadow-wire + hit-target)
+
+P3.3 (typography/hit-targets/hierarchy + pulse-rationing wire), headless-safe slice. Commit
+`87f41baf`. Tier-1 JS-logic + overlay CSS. NO ENGINE / 0 frozen / no DS / no Share. Stage = LIVE
+(code done; pulse flip operator-eyeball-owed). Banner 27 -> 28 / 62 = ~45%.
+
+- overlay_priority.js: NEW `signalFromState(p, band)` - the one pure coach-envelope -> selectPrimary
+  signal map (band passthrough, choices detect, Phase-4 crossing-edge predicates
+  spike_crossed/objective_steal_now/lethal_incoming default-false + honored-if-set). Dual ESM/CJS.
+- right_now.js: SHADOW consumer - each render stamps data-s0-cue/-tier/-pulse on #right-now via
+  signalFromState->selectPrimary->shouldPulse, try-guarded, ZERO live pulse change. Eyeball-able at ?overlay=1.
+- overlay.css: section-7 floor - #rn-choices .rc-chip min-height 44px (overlay-scoped; dashboard keeps 42).
+- TDD: +8 signalFromState node tests (RED 8f/21p -> GREEN 29/29) + 1 overlay snapshot hit-target (test_overlay_view 13/13).
+- OWED LIVE FLIP (NOT headless): re-point .action per-band pulse (right_now.js:490-500) + overlay_pulse.js
+  MutationObserver to consume data-s0-pulse (fire only Emergency + one-shot-Urgent cross). SHARED
+  dashboard+overlay behavior -> docs/LIVE_GAME_GATED_SYNC.md; eyeball a real game first. Hextech literal
+  swap = E11 (overlay uses --signal-* tokens, inherits the global cutover).
+
+NEXT via /RC2-Continue: P3.4 dashboard-stays-when-overlay-active (E1 keepCompanion shipped; verify +
+any residual), 3.5 settings-without-hotkeys, 3.6 dashboard condensation. Then Phase 4 (Electron
+sizing/DPI), Phase 5 coaching, E10/E11/E12/E7/E2. Memory: project_rc2_build.
+
+---
+
 # 2026-06-20 (RC 2.0 /RC2-Continue - Phase 3.1 + 3.2 overlay condensation)
 
 Resumed the RC 2.0 program (P3/P4 unblocked by the Hextech greenlight). Accidental computer
