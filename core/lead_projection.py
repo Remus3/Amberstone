@@ -167,6 +167,21 @@ def _phase(game_time_s: float) -> str:
     return "late"
 
 
+def phase_for(game_time_s: object) -> str:
+    """Public early/mid/late phase classifier for ``game_time_s``.
+
+    Thin public wrapper over the internal ``_phase`` so other modules (the RC2
+    P5.5 objective playbook) share the SAME phase boundaries instead of
+    re-deriving them. Fail-soft: a non-numeric / negative input -> 'early'."""
+    try:
+        gt = float(game_time_s)
+    except (TypeError, ValueError):
+        return "early"
+    if gt < 0:
+        gt = 0.0
+    return _phase(gt)
+
+
 def _kda_ratio(kda: object) -> float:
     """Parse a "K/D/A" string into a signed personal kill-participation proxy
     in roughly [-1, +1]. WHY: RC has no reliable team-kill diff at request
