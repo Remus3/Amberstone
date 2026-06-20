@@ -130,6 +130,31 @@ class Rc2Stage42ControlsTests(unittest.TestCase):
         self.assertIn(".ovset-range", self.css)
 
 
+class Rc2Stage43ControlsTests(unittest.TestCase):
+    """RC2 4.3 single-monitor window management: the #ovset strip gains a
+    "Separate windows" toggle (hotkey-free, mirrored to the rc-shell over IPC)
+    that governs the single-monitor side-by-side arrangement of the overlay +
+    kept dashboard. The shared helper carries the separateWindows field so the
+    control and the shell authority never drift."""
+
+    def setUp(self):
+        self.panel = PANEL_JS.read_text(encoding="utf-8")
+        self.helper = HELPER_JS.read_text(encoding="utf-8")
+
+    def test_separate_control_present(self):
+        self.assertIn('id="ovset-separate"', self.panel)
+
+    def test_separate_is_a_checkbox_in_a_toggle_row(self):
+        # reuses the audited .ovset-toggle row (42px hit floor, --fs-xs label).
+        self.assertIn('class="ovset-row ovset-toggle"', self.panel)
+
+    def test_control_writes_separate_windows(self):
+        self.assertIn("separateWindows", self.panel)
+
+    def test_helper_carries_separate_windows(self):
+        self.assertIn("separateWindows", self.helper)
+
+
 class PulseGateTests(unittest.TestCase):
     """The pulse toggle must actually gate the change-pulse hook."""
 

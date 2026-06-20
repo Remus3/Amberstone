@@ -533,3 +533,22 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   (c) the drag strip is grabbable on hover. The rc-shell Electron MAIN process needs a relaunch first to
   pick up the new shell logic (preload setZoneHover + main.js opacity/zones); the web renderer half (idle
   recede + the #ovset controls) auto-reloads via ADR-008 asset-hash. Does NOT block any further stage.
+- 2026-06-20 RC2 P4.3 single-monitor separated-window arrangement (window-management geometry, NOT a DS
+  seam; this cycle shipped the code DEFAULT-ON safe). When the in-game overlay shows alongside the kept
+  dashboard (E1/3.4 keepCompanion) on a SINGLE monitor, the shell now arranges them as SEPARATED side-by-
+  side windows: an overlapping companion is repositioned (never resized - the size preset survives) to the
+  work-area edge on whichever side of the overlay has more free room, top-aligned, so the dashboard sits
+  BESIDE the HUD instead of under it. `overlay_state.resolveSeparatedCompanionBounds` is the pure decision
+  (respects a companion already clear of the overlay -> moved:false); `main.js applySingleMonitorLayout`
+  gates on `screen.getAllDisplays().length === 1` (multi-monitor untouched) + the new `separateWindows`
+  setting (no-hotkey #ovset kill switch, default ON). Headless-verified: rc-shell node suite 232/232 (+15
+  overlay_state geometry/setting), `test_overlay_settings_rc2` + `test_overlay_settings_panel_dom`
+  (extended), real-Chromium `test_overlay_view` 44 (the #ovset Separate-windows toggle renders, defaults
+  checked, ASCII label, clears the 42px hit floor), live `:8888` serves the assets. OWED (operator-gated,
+  NOT headless): eyeball it OVER A REAL LEAGUE GAME at 2560x1440 borderless - start a game with the
+  dashboard parked centered/over-the-right-dock and confirm (a) the dashboard auto-jumps to the free left
+  side fully clear of the overlay, (b) it keeps its size (no preset corruption), (c) toggling "Separate
+  windows" off in #ovset leaves an overlapping dashboard where the operator put it. The rc-shell Electron
+  MAIN process needs a relaunch first to pick up the new main.js logic + the separateWindows authority;
+  the web renderer half (the #ovset toggle) auto-reloads via ADR-008 asset-hash. Does NOT block any
+  further stage.

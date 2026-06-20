@@ -241,6 +241,11 @@ function _settingsHtml() {
     + `<label class="ovset-row ovset-toggle">`
     + `<input type="checkbox" id="ovset-pin">`
     + `<span>Pin on top</span></label>`
+    // RC2 4.3: on a single monitor, arrange the overlay + kept dashboard as
+    // SEPARATED side-by-side windows so the dashboard is not under the HUD.
+    + `<label class="ovset-row ovset-toggle">`
+    + `<input type="checkbox" id="ovset-separate">`
+    + `<span>Separate windows</span></label>`
     + `<label class="ovset-row ovset-toggle">`
     + `<input type="checkbox" id="ovset-pulse">`
     + `<span>Change pulse</span></label>`
@@ -261,6 +266,7 @@ function _settingsHtml() {
 function _applySettingsToDom(body, s) {
   const keep = body.querySelector("#ovset-keep");
   const pin = body.querySelector("#ovset-pin");
+  const separate = body.querySelector("#ovset-separate");
   const pulse = body.querySelector("#ovset-pulse");
   const zones = body.querySelector("#ovset-zones");
   const opacity = body.querySelector("#ovset-opacity");
@@ -269,6 +275,8 @@ function _applySettingsToDom(body, s) {
   // checked (the dashboard-persist fix is the default state).
   if (keep) keep.checked = s.keepCompanion !== false;
   if (pin) pin.checked = s.companionAlwaysOnTop !== false;
+  // RC2 4.3: separateWindows default ON (absent -> checked).
+  if (separate) separate.checked = s.separateWindows !== false;
   if (pulse) pulse.checked = !!s.pulseNotify;
   // RC2 4.2: zones default ON (absent -> checked); opacity is a 30-100 percent
   // slider over the 0.3-1.0 setting. Do not clobber the slider while dragging.
@@ -294,6 +302,12 @@ function _wireSettings(body) {
   if (pin) {
     pin.addEventListener("change", () => {
       writeOverlaySettings({ companionAlwaysOnTop: !!pin.checked });
+    });
+  }
+  const separate = body.querySelector("#ovset-separate");
+  if (separate) {
+    separate.addEventListener("change", () => {
+      writeOverlaySettings({ separateWindows: !!separate.checked });
     });
   }
   if (pulse) {
