@@ -47,6 +47,7 @@ from __future__ import annotations
 import json
 from dashboard._errors import send_error
 import logging
+import os
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -102,12 +103,20 @@ def _now_iso() -> str:
 
 
 # --------------------------------------------------------------------------- git seam (monkeypatched in tests)
+# Spawning git (a console app) from pythonw.exe pops a console window unless we
+# suppress it. /api/loop-status is polled every 4s by the loop-monitor page, so
+# an unsuppressed window steals desktop focus on every poll. CREATE_NO_WINDOW
+# (Windows only; 0 elsewhere) mirrors the dashboard/server.py vision-spawn idiom.
+_NO_WINDOW = 0x08000000 if os.name == "nt" else 0  # CREATE_NO_WINDOW
+
+
 def _last_commit() -> dict | None:
     """The repo HEAD as {sha(8), subject, iso}. Fail-soft to None."""
     try:
         out = subprocess.run(
             ["git", "-C", str(ROOT), "log", "-1", "--format=%h%x1f%s%x1f%cI"],
             capture_output=True, text=True, timeout=10,
+            creationflags=_NO_WINDOW,
         )
         line = (out.stdout or "").strip()
         if not line:
