@@ -1,6 +1,11 @@
 // Right Now panel - immediate coaching actions, game-sense, stats, digest.
 import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
+import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
+
+// RC2 P3.3 SHADOW: the previous S0 cue across renders, for shouldPulse's
+// cross-detection. Module scope so it survives between renderRightNow calls.
+let _s0PrevCue = "none";
 
 const RN = {
   root: el("right-now"),
@@ -470,6 +475,25 @@ function renderRightNow(p) {
   }
   const hasAction = !!rawAction;
   const klass = hasAction ? classifyAction(rawAction) : "empty";
+  // RC2 P3.3 SHADOW (spec sections 4+5 / acceptance A2+A5): compute the S0
+  // single-winner arbitration + the pulse-rationing decision and STAMP them
+  // on the panel root WITHOUT changing the live pulse, so the new contract is
+  // eyeball-able at ?overlay=1 (data-s0-cue / data-s0-tier / data-s0-pulse)
+  // before the live flip. The flip (re-point the .action per-band pulse below
+  // + overlay_pulse.js at this decision) is a SHARED dashboard+overlay
+  // behavior change -> operator-gated, owed in docs/LIVE_GAME_GATED_SYNC.md.
+  // Best-effort: a shadow throw must never break the live render.
+  try {
+    const _sig = signalFromState(p, klass);
+    const _sel = selectPrimary(_sig);
+    const _shadowPulse = shouldPulse(_s0PrevCue, _sel);
+    if (RN.root) {
+      RN.root.dataset.s0Cue = _sel.cue;
+      RN.root.dataset.s0Tier = _sel.tier;
+      RN.root.dataset.s0Pulse = _shadowPulse ? "1" : "0";
+    }
+    _s0PrevCue = _sel.cue;
+  } catch (_e) { /* shadow only - never disturb the live render */ }
   // Detect content change for fresh-state flash - only pulse when the
   // headline actually changes, not on every re-emit of the same text.
   const prevAction = RN.action.dataset.raw || "";

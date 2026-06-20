@@ -185,6 +185,16 @@ body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-behind:not(
 body[data-shell="overlay"] .rc-src {
   font-size: 13px;
 }
+/* 4c. Per-element glance-test acceptance floors (RC2 P3.3,
+ * RC2_OVERLAY_CONDENSATION_SPEC section 7). The HUD is read at game
+ * distance, so the S0 A+B choice chips clear a 44px hit target (the spec
+ * S0-choices bar; the 1920-grid floor is --hit-min 42px, the overlay
+ * floors at 44). Chips already stack full-width column (coach_choices.css
+ * #rn-choices); this only lifts the per-chip target. Dashboard chips keep
+ * their 42px sizing. */
+body[data-shell="overlay"] #rn-choices .rc-chip {
+  min-height: 44px;
+}
 
 /* 4b. Panel-set subsets (item-378 tail; rc-shell overlay_state.js
  * PANEL_SETS contract). main.js stamps body[data-panelset] only for a
