@@ -16,7 +16,7 @@
 import { _to12, el, fmtList, safe, fitText, logLine, isArenaPayload, classifyAction, _opGlyph, _formatRelativeAge } from './lib/helpers.js';
 import { state, CADENCE, VIEW_IDS, VIEW_LABELS, _VIEW } from './lib/state.js';
 import { ITEMS, ITEM_COSTS, CHAMPS, SPELLS, DDRAGON_FALLBACK_VERSION, _itemResolveCache, _normItemName, _resolveItemId, _splitItemList, _resolveChampId, _resolveSpell } from './lib/items_index.js';
-import { idempotentRender, makeSig } from './lib/idempotent_render.js';
+import { idempotentRender, makeSig, makeStreamGate } from './lib/idempotent_render.js';
 
 // ── Panel modules ─────────────────────────────────────────────────────────
 import { RN, renderRightNow, renderWhatWent, renderDigest, renderGameSense, renderStats } from './panels/right_now.js';
@@ -6540,6 +6540,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   (function setupStateStream() {
     if (typeof EventSource === "undefined") return;
     let es = null;
+    // RC2 6.3: stream-level render dedup. The server emits on hash-change PLUS
+    // a 15s forced heartbeat (byte-identical payload); at the L4 0.5s tick a
+    // near-duplicate can arrive too. Skip the full render pipeline when the
+    // payload is identical to the last rendered one, while still refreshing
+    // liveness (state.lastSseTs) so the HTTP-fallback + LCU pollers stay
+    // suppressed. Idempotent renders already no-op on the DOM; this skips the
+    // wasted work entirely (matters more at the halved cadence).
+    const sseGate = makeStreamGate();
     function connectSse() {
       try {
         es = new EventSource("/api/state-stream");
@@ -6549,6 +6557,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           const st = JSON.parse(ev.data);
           if (!st) return;
           state.lastSseTs = Date.now();
+          if (!sseGate.changed(ev.data)) return;  // identical heartbeat/dupe
           // Pipe through the same handlers the WS / HTTP-fallback paths use.
           const fileMode = st.mode_key || "client";
           const coachPayload = st.coach || st;
