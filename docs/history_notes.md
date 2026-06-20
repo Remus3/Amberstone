@@ -42,6 +42,29 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 7.1 ASCII-sweep close + Subagent-First protocol)
+
+P7.1 ASCII-violation sweep CLOSED (Phase 7 HYGIENE begins). Commits `dbbd7a8d` (feat) +
+`52c63336` (flip). Banner 48 -> 49 / 62 = ~79%. Then operator Subagent-First directive ->
+`d9580d21`. All pushed, CI green.
+
+- P7.1: tree ALREADY banned-glyph clean (prior P2/P3 cycles); only immutable `_archive/` keeps
+  em-dashes -> VERIFICATION + ENFORCEMENT, not mass-rewrite. Census: banned set 0 tree-wide +
+  per-frozen 0; `p3_ascii_sweep --dry-run`/`--doc-dry` 0 subs / 546 .py. Tightened
+  `tests/test_smart_quote_hygiene.py`: dropped the frozen skip (operator "frozen INCLUDED") + new
+  `test_frozen_files_clean_of_banned_glyphs` lock. Doc `RC2_ASCII_SWEEP_VERIFICATION.md`. 15 green.
+- Subagent-First (operator 2026-06-20): always subagents for substantive work; design spec THEN
+  act; new session interviews Gemini/operator + verifies before build; refines R9. CLAUDE.md
+  "## Subagent-First Protocol" + memory `feedback_subagent_first_protocol` + block into 14
+  `.claude/commands/*.md` (gitignored; applied BY 3 subagents). Excluded sleep/wake/game-monitor.
+- NOTE: command files GITIGNORED (local) - durable levers = CLAUDE.md + memory. done.md has 19
+  em-dashes but is untracked = not a tracked violation.
+
+NEXT /RC2-Continue: P7.2 stale-file census (.md/scripts unused >1 week); then 7.3/7.4/7.5, Phase 8
+(8.3), E10/E11/E12/E7/E2. [[project_rc2_build]] [[feedback_subagent_first_protocol]].
+
+---
+
 # 2026-06-20 (RC 2.0 /RC2-Continue - Phase 3.3 overlay shadow-wire + hit-target)
 
 P3.3 (typography/hit-targets/hierarchy + pulse-rationing wire), headless-safe slice. Commit
