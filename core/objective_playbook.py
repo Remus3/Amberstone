@@ -79,6 +79,23 @@ OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {
     ("elder", "*"):       "Elder: group as five, full vision - no greed",
 }
 
+# RC2 P5.6 (WS3 late-game): in the LATE phase the objective calculus shifts to
+# CLOSING - baron is a game-ending tool (not just a buff) and a late drake is
+# soul-stakes (group-five territory). These escalations are consulted FIRST when
+# phase == "late" and fall back to OBJECTIVE_PLAYBOOK when absent. Only baron +
+# dragon escalate: elder is ALREADY a closing call (its base "*" line stands) and
+# herald is gone by late (one-shot 14:00), so neither earns a late entry - a late
+# herald lookup correctly falls back to its base line. Same conventions: <= 12
+# words, ASCII, " - " clause break.
+LATE_OBJECTIVE_PLAYBOOK: dict[tuple[str, str], str] = {
+    ("baron", "ahead"):   "Baron: take it and close - end on the buff",
+    ("baron", "even"):    "Baron: land a pick first - then take to end",
+    ("baron", "behind"):  "Baron: do not contest - defend and clear waves",
+    ("dragon", "ahead"):  "Late drake: group five, take it - then push",
+    ("dragon", "even"):   "Late drake: full vision - fight only even or ahead",
+    ("dragon", "behind"): "Late drake: do not throw - defend, deny the catch",
+}
+
 
 def _lead_state(lead: object) -> str:
     """Extract the macro state from a project_lead dict, defaulting to 'even'.
@@ -174,7 +191,14 @@ def playbook_callout(
         eta_s = obj.get("eta_s")
         state = _lead_state(lead)
 
-        base = OBJECTIVE_PLAYBOOK.get((tag, state)) or OBJECTIVE_PLAYBOOK.get((tag, "*"))
+        # Late-game escalation (P5.6): closing-focused baron/dragon directives win
+        # in the late phase; everything else (and a missing late entry) falls back
+        # to the base table + the elder "*" wildcard.
+        base = None
+        if phase == "late":
+            base = LATE_OBJECTIVE_PLAYBOOK.get((tag, state))
+        if not base:
+            base = OBJECTIVE_PLAYBOOK.get((tag, state)) or OBJECTIVE_PLAYBOOK.get((tag, "*"))
         if not base:
             return None
 
@@ -200,4 +224,4 @@ def playbook_callout(
         return None
 
 
-__all__ = ["OBJECTIVE_PLAYBOOK", "playbook_callout"]
+__all__ = ["OBJECTIVE_PLAYBOOK", "LATE_OBJECTIVE_PLAYBOOK", "playbook_callout"]

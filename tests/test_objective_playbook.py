@@ -146,14 +146,63 @@ class FailSoftTests(unittest.TestCase):
             self.fail(f"playbook_callout raised: {exc!r}")
 
 
+class LatePhaseEscalationTests(unittest.TestCase):
+    """RC2 P5.6 (WS3 late-game): the late phase escalates baron + dragon to
+    closing-focused directives; elder keeps its already-closing wildcard line and
+    herald (gone by late) falls back to its base line. Mid/early are unchanged."""
+
+    def test_late_table_exists_and_non_empty(self) -> None:
+        self.assertTrue(hasattr(op, "LATE_OBJECTIVE_PLAYBOOK"))
+        self.assertTrue(op.LATE_OBJECTIVE_PLAYBOOK)
+
+    def test_late_baron_escalates_to_closing(self) -> None:
+        late = op.playbook_callout([_co("baron", 40.0)], {"state": "ahead"}, None, "late")
+        mid = op.playbook_callout([_co("baron", 40.0)], {"state": "ahead"}, None, "mid")
+        self.assertEqual(late["tag"], "playbook_baron")
+        self.assertNotEqual(late["line"], mid["line"])
+        self.assertTrue(any(w in late["line"].lower() for w in ("end", "close")))
+
+    def test_late_baron_all_states_differ_from_base(self) -> None:
+        for st in ("ahead", "even", "behind"):
+            late = op.playbook_callout([_co("baron", 40.0)], {"state": st}, None, "late")
+            mid = op.playbook_callout([_co("baron", 40.0)], {"state": st}, None, "mid")
+            self.assertNotEqual(late["line"], mid["line"], st)
+
+    def test_late_dragon_escalates(self) -> None:
+        late = op.playbook_callout([_co("dragon", 50.0)], {"state": "even"}, None, "late")
+        mid = op.playbook_callout([_co("dragon", 50.0)], {"state": "even"}, None, "mid")
+        self.assertNotEqual(late["line"], mid["line"])
+
+    def test_late_elder_keeps_base_wildcard(self) -> None:
+        out = op.playbook_callout([_co("elder", 50.0)], {"state": "behind"}, None, "late")
+        self.assertTrue(out["line"].startswith("Elder"))
+        self.assertEqual(out["line"], op.OBJECTIVE_PLAYBOOK[("elder", "*")])
+
+    def test_late_herald_falls_back_to_base(self) -> None:
+        out = op.playbook_callout([_co("herald", 20.0)], {"state": "ahead"}, None, "late")
+        self.assertIsNotNone(out)
+        self.assertTrue(out["line"].startswith("Herald"))
+
+    def test_late_cv_upgrade_still_applies(self) -> None:
+        vs = {"dead_count": 1, "missing_count": 0}
+        out = op.playbook_callout([_co("baron", 25.0)], {"state": "ahead"}, vs, "late")
+        self.assertIn("free", out["line"].lower())
+
+    def test_mid_phase_unchanged_by_late_table(self) -> None:
+        out = op.playbook_callout([_co("baron", 40.0)], {"state": "ahead"}, None, "mid")
+        self.assertEqual(out["line"], op.OBJECTIVE_PLAYBOOK[("baron", "ahead")])
+
+
 class LineBudgetAndAsciiTests(unittest.TestCase):
     def test_all_table_lines_within_word_budget(self) -> None:
-        for key, line in op.OBJECTIVE_PLAYBOOK.items():
-            self.assertLessEqual(len(line.split()), 12, f"{key}: {line!r}")
+        for table in (op.OBJECTIVE_PLAYBOOK, op.LATE_OBJECTIVE_PLAYBOOK):
+            for key, line in table.items():
+                self.assertLessEqual(len(line.split()), 12, f"{key}: {line!r}")
 
     def test_all_lines_ascii(self) -> None:
-        for key, line in op.OBJECTIVE_PLAYBOOK.items():
-            self.assertTrue(line.isascii(), f"{key}: {line!r}")
+        for table in (op.OBJECTIVE_PLAYBOOK, op.LATE_OBJECTIVE_PLAYBOOK):
+            for key, line in table.items():
+                self.assertTrue(line.isascii(), f"{key}: {line!r}")
 
     def test_source_file_ascii_no_banned_glyphs(self) -> None:
         src = (_ROOT / "core" / "objective_playbook.py").read_text(encoding="utf-8")
