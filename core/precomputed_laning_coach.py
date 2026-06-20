@@ -55,12 +55,30 @@ SOURCE_TAG: str = "ds-precompute"
 # Verdict -> (recommended action label, prudent-alternative label). The verdict
 # IS the recommendation (A); B is the safer alternative. Economy may override B
 # with a recall directive (see _build_choices).
+#
+# RC2 WS1 step 1 (2026-06-20, ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108):
+# added the "hold" band + relabeled the dominant "even" A-chip so it buckets as
+# "hold" in tools/hz_shadow_report.classify_verdict (the +57-tick agreement win,
+# 39% -> ~53%). That classifier matches A-label TEXT by ordered phrase (first
+# hit wins; "poke"/"trade"/"even" all bucket BEFORE "hold"), so the hold/even
+# A-labels here deliberately avoid those substrings and read as "hold and farm"
+# -> coarse "hold". B keeps the cd-window trade alternative. Shadow-only: this
+# changes the precompute vocabulary + shadow log, NOT any live served chip
+# (do-not-flip-blind; the flip is gated on the re-measured agreement delta).
 _VERDICT_LABELS: dict[str, Tuple[str, str]] = {
     "all_in": ("All-in {enemy}", "Hold - poke only"),
     "trade": ("Trade {enemy}", "Hold - poke only"),
     "back_off": ("Back off {enemy}", "Force a short trade"),
-    "even": ("Even trade on your cd window", "Hold position"),
+    "hold": ("Hold and farm this window", "Force a short trade on your cd"),
+    "even": ("Hold and farm; reassess", "Trade on your cd window"),
 }
+
+# laning_band thresholds (spec 1.3). swing is net_swing in [-1, 1], my-champ
+# favored positive. The hold band is the mild-negative zone that used to
+# collapse into back_off (the back_off-bias the audit measured). Tunable.
+_HOLD_LOW: float = 0.05   # |swing| above the even dead-zone, below a hard back
+_BACK_OFF: float = 0.18   # swing at/under -_BACK_OFF is a firm back_off
+_TRADE: float = 0.10      # swing at/over +_TRADE is a favored trade
 
 _RECALL_LABELS: dict[str, str] = {
     "recall_now": "Recall now",
@@ -124,6 +142,47 @@ def _confidence_for(net_swing: object) -> str:
     return "low"
 
 
+def laning_band(cell: dict) -> str:
+    """Recompute the 5-band laning verdict from a cell's trade scalars.
+
+    RC2 WS1 step 1 (spec 1.3): a pure reinterpretation of the EXISTING cell
+    scalars (``net_swing`` / ``pct_my_removed`` / ``pct_enemy_removed``) into
+    one of ``all_in`` / ``trade`` / ``even`` / ``hold`` / ``back_off`` - NO
+    engine call, NO table re-sweep. It adds the ``hold`` band (the mild-negative
+    swing zone that the engine's binary _classify collapsed into ``back_off``,
+    the back_off-bias measured in HZ_HAIKU_CALL_INVENTORY.md:92-95).
+
+    Precedence (first match wins, mirrors agents.daemon_slayer.matchup._classify
+    for the shared bands): enemy fully removed and I survive -> all_in; I am the
+    one who dies -> back_off; mild-negative swing -> hold (NEW); firm-negative ->
+    back_off; firm-positive -> trade; dead-zone -> even. Fail-soft to ``even``
+    on any malformed scalar (the coach hot path must never raise)."""
+    try:
+        swing = float(cell.get("net_swing"))
+    except (TypeError, ValueError, AttributeError):
+        return "even"
+    try:
+        my_removed = float(cell.get("pct_my_removed"))
+    except (TypeError, ValueError, AttributeError):
+        my_removed = 0.0
+    try:
+        enemy_removed = float(cell.get("pct_enemy_removed"))
+    except (TypeError, ValueError, AttributeError):
+        enemy_removed = 0.0
+
+    if enemy_removed >= 1.0 and my_removed < 1.0:
+        return "all_in"
+    if my_removed >= 1.0:
+        return "back_off"
+    if -_BACK_OFF < swing <= -_HOLD_LOW:
+        return "hold"
+    if swing <= -_BACK_OFF:
+        return "back_off"
+    if swing >= _TRADE:
+        return "trade"
+    return "even"
+
+
 def _pct(value: object) -> str:
     """Format a 0..1 fraction as a whole-percent string (fail-soft ``0%``)."""
     try:
@@ -170,8 +229,14 @@ def _build_choices(
     A = the combat verdict (the recommendation), confidence from the swing
     magnitude. B = the economy alternative when the cell's recall verdict is
     ``recall_now`` / ``back_soon`` (grounded in the spike + next build item),
-    else the prudent combat alternative from ``_VERDICT_LABELS``."""
-    verdict = str(cell.get("verdict") or "even")
+    else the prudent combat alternative from ``_VERDICT_LABELS``.
+
+    RC2 WS1 step 1: the served verdict is the RECALIBRATED ``laning_band``
+    (which adds the hold band + softens the back_off-bias), not the raw cell
+    ``verdict`` from the binary engine _classify. The recalibrated label flows
+    into the shadow log so tools/hz_shadow_report can re-measure agreement WITH
+    the hold band applied, on the same live games, before any served flip."""
+    verdict = laning_band(cell)
     a_label_tpl, b_label_alt = _VERDICT_LABELS.get(
         verdict, _VERDICT_LABELS["even"]
     )
@@ -281,6 +346,7 @@ __all__ = [
     "band_for_level",
     "mana_state_for",
     "cd_state_for",
+    "laning_band",
     "resolve_enemy",
     "precomputed_choices",
 ]

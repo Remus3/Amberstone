@@ -37,7 +37,12 @@ def _payload():
             "Annie": {
                 "Caitlyn": {
                     "L6": {
-                        "full": {"all_up": _cell("all_in", 0.25, "recall_now")},
+                        # all_in cell: kill-level scalars (enemy fully removed,
+                        # I survive) so the recalibrated laning_band agrees with
+                        # the labeled "all_in" verdict (RC2 WS1: the served chip
+                        # is the band reclass of the scalars, not the raw label).
+                        "full": {"all_up": _cell(
+                            "all_in", 0.25, "recall_now", my_rm=0.30, en_rm=1.0)},
                         "low": {"all_up": _cell("back_off", -0.3, "hold")},
                     },
                     "L11": {
@@ -106,7 +111,7 @@ def test_all_in_verdict_labels_combat_a():
     assert out[0].confidence == "high"
     # combat outcome carries the DS-backed swing + removal percents
     assert "net swing" in out[0].expected_outcome
-    assert "60%" in out[0].expected_outcome  # pct_enemy_removed 0.6
+    assert "100%" in out[0].expected_outcome  # pct_enemy_removed 1.0 (kill)
 
 
 def test_recall_now_economy_drives_choice_b():
@@ -235,3 +240,110 @@ def test_resolve_enemy_none_when_uncovered():
 def test_resolve_enemy_empty_inputs():
     assert plc.resolve_enemy("Annie", [], payload=_payload()) is None
     assert plc.resolve_enemy("", ["Caitlyn"], payload=_payload()) is None
+
+
+# --------------------------------------------------------------------------- #
+# RC2 WS1 step 1 - hold/farm verdict band + even relabel (calibration)
+#
+# Grounded in ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108 and
+# docs/research/RC2_COACHING_SPEC.md WS1 1.3 / 1.3a. The precompute verdict
+# vocabulary had NO hold/farm band and was back_off-biased; Haiku said "hold"
+# on 28% of ticks. These tests pin the new 5-band classifier and the even->hold
+# A-chip relabel BEFORE the implementation (TDD failing-first).
+#
+# The shadow report (tools/hz_shadow_report.classify_verdict) buckets the
+# A-label TEXT into a coarse verdict by ordered phrase match (first hit wins),
+# so the labels here are asserted to classify as "hold" rather than "trade" /
+# "even" / "back_off". We import that exact classifier to lock the contract.
+# --------------------------------------------------------------------------- #
+from tools.hz_shadow_report import classify_verdict  # noqa: E402
+
+
+# laning_band: pure 5-band reclassifier over the cell scalars (no engine call).
+# Bands (spec 1.3): all_in / trade / even / hold / back_off.
+@pytest.mark.parametrize("swing,my_rm,en_rm,expected", [
+    # enemy fully removed, I survive -> all_in (highest precedence)
+    (0.40, 0.30, 1.0, "all_in"),
+    # I am the one who dies -> back_off (regardless of swing sign)
+    (0.05, 1.0, 0.50, "back_off"),
+    # firmly favored swing -> trade
+    (0.20, 0.20, 0.60, "trade"),
+    (0.10, 0.25, 0.55, "trade"),
+    # NEW hold band: mildly negative swing, not a hard back-off
+    (-0.05, 0.45, 0.30, "hold"),
+    (-0.12, 0.50, 0.25, "hold"),
+    (-0.17, 0.55, 0.20, "hold"),
+    # firmly negative -> back_off
+    (-0.18, 0.60, 0.15, "back_off"),
+    (-0.40, 0.80, 0.05, "back_off"),
+    # dead-zone small swing -> even
+    (0.00, 0.30, 0.30, "even"),
+    (0.04, 0.30, 0.28, "even"),
+    (-0.04, 0.30, 0.32, "even"),
+])
+def test_laning_band_five_band_classifier(swing, my_rm, en_rm, expected):
+    cell = _cell("ignored", swing, "hold", my_rm=my_rm, en_rm=en_rm)
+    assert plc.laning_band(cell) == expected
+
+
+def test_laning_band_hold_is_distinct_from_back_off():
+    # The whole point of the calibration: the mild-negative band that used to
+    # collapse into back_off now resolves to a separate "hold" verdict.
+    mild = _cell("x", -0.10, "hold", my_rm=0.45, en_rm=0.30)
+    hard = _cell("x", -0.30, "hold", my_rm=0.70, en_rm=0.10)
+    assert plc.laning_band(mild) == "hold"
+    assert plc.laning_band(hard) == "back_off"
+    assert plc.laning_band(mild) != plc.laning_band(hard)
+
+
+def test_laning_band_fail_soft_on_garbage_cell():
+    # Hot-path contract: never raises; a malformed cell falls back to "even".
+    assert plc.laning_band({}) == "even"
+    assert plc.laning_band({"net_swing": "nope"}) == "even"
+
+
+# _VERDICT_LABELS now carries a distinct hold entry, and the even A-chip is
+# relabeled so the shadow report buckets it as "hold" (the +57-tick audit win).
+def test_verdict_labels_has_hold_entry():
+    assert "hold" in plc._VERDICT_LABELS
+    a_label, _b_label = plc._VERDICT_LABELS["hold"]
+    # The A-label must classify as the coarse "hold" verdict, not trade/even.
+    assert classify_verdict(a_label) == "hold"
+
+
+def test_even_a_chip_relabeled_to_hold_bucket():
+    # Before: even A-chip "Even trade on your cd window" classified as "even".
+    # After the relabel it must classify as "hold" so it agrees with Haiku's
+    # dominant "hold" call (HZ_HAIKU_CALL_INVENTORY.md:97-99).
+    a_label, _b = plc._VERDICT_LABELS["even"]
+    assert classify_verdict(a_label) == "hold"
+
+
+def test_even_label_distinct_from_back_off_label():
+    # even and back_off must remain semantically separate A-labels (the audit
+    # warns the precompute was back_off-biased; even must not read as back_off).
+    even_a = plc._VERDICT_LABELS["even"][0]
+    back_a = plc._VERDICT_LABELS["back_off"][0]
+    assert even_a != back_a
+    assert classify_verdict(even_a) != classify_verdict(back_a)
+    assert classify_verdict(back_a) == "back_off"
+
+
+def test_hold_verdict_emits_hold_classifying_choice_a():
+    # An end-to-end read of a cell whose verdict is "hold" yields an A-chip
+    # whose label buckets as "hold" in the shadow report.
+    payload = {
+        "schema": "laning_scenarios/v3",
+        "scenarios": {
+            "Annie": {
+                "Caitlyn": {
+                    "L6": {"full": {"all_up": _cell("hold", -0.10, "hold")}},
+                },
+            },
+        },
+    }
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 6, mana_fraction=1.0, ult_up=True, payload=payload,
+    )
+    assert len(out) == 2
+    assert classify_verdict(out[0].label) == "hold"
