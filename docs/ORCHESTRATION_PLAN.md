@@ -164,6 +164,39 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-19 R7-regress-fix (DIRECTOR REFILL cycle, REGRESS-fix) DONE - the gemini
+  auditor flagged a correctness regression in the R7 per-stack self-AS seam
+  (agents/daemon_slayer/dps.py). UNIT MISMATCH: `passive_as_bonus()` returns a bonus-AS
+  FRACTION (Irelia full stacks L18 = 1.0 = +100%; Jax L11 ~0.75), but the seam added it
+  DIRECTLY to `stats_for_rotation["as"]`, which is FINAL attacks/sec (engine.py:195 resolves
+  it as `base_as * (1 + bonus_pct)`, 2.5-capped). Adding the raw fraction over-credited AS by
+  a factor of 1/base_as (~1.5x for Jax). FIX (dps.py): fold the fraction onto the champion's
+  INNATE base AS - `innate_base_as = (champ["stats"]["attackspeed"]); + innate_base_as *
+  passive_as`; the `min(2.5, ...)` hard-cap clamp preserved; note reworded to "+X% bonus AS
+  ... folded onto base AS". TDD RED-first: NEW test `SeamAddsBaseAsScaledFraction` pins the
+  corrected math by colinearity - `weighted_dps` is exactly affine in rotation AS
+  (`total_attacks = basic + basic_time*as`; duration AS-independent), so off / pure-AS-Dagger
+  calibration / on builds are colinear; the ON gain must equal `c1*(base_as*pa)`, NOT `c1*pa`.
+  Confirmed RED on the buggy code (135.24 vs predicted_correct 118.75), GREEN after the fix.
+  NO ENGINE_VERSION bump: the seam is DEFAULT-OFF (`test_default_off_byte_identical` proves
+  byte-identical) + operator-gated (`assume_passive_as_stacks` not live), so the buggy math
+  never reached a live consumer - no output-provenance delta, and the directive scoped "do not
+  advance to a new item". SIBLING (FUTURE, NOT fixed this cycle - out of directive scope,
+  pre-existing + separately pinned): the Yun Tal `cond_as` path (dps.py batch 54) adds
+  `bonus_as_conditional=0.08` (a 30%-AS-at-27%-uptime FRACTION) to final AS the same way -
+  same unit-mismatch class but tiny + long-shipped; a future cycle should base_as-scale it too.
+  GATE (fresh this run): R7 file 20 passed; DS dir 7414 passed / 1 skip / 1942 subtests / 0
+  failed; RC tests/ 8644 passed / 2 skip / 110 subtests (the lone failure was the expected
+  Share-drift guard, GREEN after `ds_share_sync` re-mirror: `test_ds_share_sync_determinism`
+  5 passed, --check in sync, 366 files, engine 1.147.0); ruff All checks passed; py_compile OK.
+  Share/src + MANIFEST re-synced in the SAME commit (a source edit under agents/daemon_slayer/**
+  drifts the mirror). verifier subagent re-check (directive-mandated): VERDICT CONFIRM on all
+  6 claims (the lone determinism teardown ERROR is the live vision daemon mutating
+  data/vision_state.json mid-run - environmental, not the fix; the 5 determinism tests passed).
+  INLINE sole orchestrator (R9 - one-file math fix + its test, no disjoint slices). Tier-2
+  (engine math). No frozen files. Source: gemini director directive
+  ops/loop/control/directive.md (R7 regression fix). R7 itself stays DONE (`7c22e3bb`).
+
 - 2026-06-19 R7 (DIRECTOR REFILL cycle) DONE (`7c22e3bb`) - DS schema lift: per-stack
   champion self-Attack-Speed passive seam on the AA DPS scorer (ENGINE 1.146.0 ->
   1.147.0). NEW `agents/daemon_slayer/_passive_as_overrides.py` registry - the
