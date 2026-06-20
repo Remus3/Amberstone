@@ -1,14 +1,14 @@
 """verify_bridge_roundtrip.py - one-shot verifier for the Legion /loop pattern.
 
-Issued task target=legion source=gamepc -> expects Legion's /loop /process-
+Issued task target=legion source=legion -> expects Legion's /loop /process-
 bridge-tasks (running in any open Claude Code session on Legion) to pick it
 up, execute the prompt, and post a kind=result via bridge_post_result.py
---reply-to gamepc.
+--reply-to legion.
 Result lands on Legion's local /api/bridge log, observable from this script.
 
-Source=gamepc is chosen deliberately: --reply-to gamepc routes through the
+Source=legion keeps the roundtrip local: --reply-to legion routes through the
 local Legion bridge POST (not Peer), so the verdict is observable from
-Legion alone - no Peer dependency.
+Legion alone - no cross-tailnet dependency.
 
 Verdict is written to ops/runtime/bridge_roundtrip_verdict.json AND posted
 as a kind=note to the Legion bridge so the operator's next prompt surfaces
@@ -90,13 +90,13 @@ def main() -> int:
     envelope = {
         "kind":    "task",
         "id":      task_id,
-        "source":  "gamepc",        # mimic gamepc->legion path; --reply-to gamepc keeps result local
+        "source":  "legion",        # local roundtrip; --reply-to legion keeps result local
         "target":  "legion",
         "summary": "RC /loop verify - echo hostname/pid/ts (auto-issued by RC-VerifyBridgeRoundtrip-Once)",
         "body":    {
             "issued":  issued_at,
             "prompt": ("Reply with hostname, current pid, and current epoch ts. "
-                       "Use bridge_post_result.py --source legion --reply-to gamepc "
+                       "Use bridge_post_result.py --source legion --reply-to legion "
                        "to post the result. This is a low-stakes verifier task - "
                        "no frozen-file writes, no shell command execution required "
                        "beyond reading hostname/pid/ts."),

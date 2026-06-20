@@ -128,16 +128,14 @@ def _serve_icon_items_route(h):
 
 
 _AGENT_ALLOWED = {
-    "gamepc_screen_agent.py", "gamepc_liveclient_relay.py",
-    "gamepc_lcu_agent.py", "gamepc_mcp_server.py",
-    "gamepc_hotkey_listener.py",
-    "GAMEPC_CLAUDE.md",
+    "screen_agent.py", "liveclient_relay.py",
+    "lcu_agent.py",
+    "hotkey_listener.py",
     "bridge_fetch.py", "bridge_post.py",
     "bridge_pull_tasks.py", "bridge_post_result.py",
     "bridge_task.py",
     "bridge_ping.py", "bridge_heartbeat.py",
-    "bridge_setup.ps1", "gamepc_boot.ps1",
-    "start_gamepc_claude.ps1",
+    "bridge_setup.ps1", "legion_agent_boot.ps1",
     "process-bridge-tasks.md",
     "process-bridge-tasks-peer.md",
     "rc_rootCA.pem",
@@ -155,12 +153,10 @@ _AGENT_ALLOWED = {
     "PEER_ROADMAP_SUGGESTIONS.md",
     "diagnose.md",
     "caveman.md",
-    "done-gamepc.md",
     "done-peer.md",
-    "gamepc_bridge_daemon.py",
     "peer_bridge_daemon.py",
-    "gamepc_phase_watcher.py",
-    "gamepc_phase_watcher_install.ps1",
+    "phase_watcher.py",
+    "phase_watcher_install.ps1",
 }
 
 
@@ -187,8 +183,8 @@ _WATCHER_MANIFEST_CACHE: dict = {"body": b"", "mtime": 0.0}
 def _serve_watcher_manifest(h) -> None:
     """Serve sha256+size manifest of the bridge-watcher runtime fileset.
 
-    Consumed by tools/bridge_watcher_update_check.ps1 on Game-PC / Peer
-    peers to detect drift vs the canonical Legion copy. 2 s cache to
+    Consumed by tools/bridge_watcher_update_check.ps1 on the Peer peer
+    to detect drift vs the canonical Legion copy. 2 s cache to
     cap stat overhead under poll bursts.
     """
     now = time.time()
@@ -216,7 +212,7 @@ def _serve_watcher_manifest(h) -> None:
 
 
 def _serve_agent_file(h) -> None:
-    # Serve agent files (e.g. gamepc_screen_agent.py) for Game-PC deploy.
+    # Serve agent files (e.g. screen_agent.py) for Legion agent deploy.
     # Strict allowlist: only files in tools/, no path traversal.
     name = h.path[len("/agent/"):]
     if name not in _AGENT_ALLOWED:

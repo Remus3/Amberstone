@@ -4,8 +4,8 @@ Polls Legion's own /api/bridge for unhandled tasks targeted at 'legion'.
 Invokes `claude --print "/process-bridge-tasks"` ONLY when count > 0.
 Zero API cost when the queue is empty.
 
-Mirrors tools/gamepc_bridge_daemon.py + tools/peer_bridge_daemon.py to close
-the fleet symmetry gap surfaced 2026-05-20 (verify-bridge-roundtrip self-test
+Mirrors tools/peer_bridge_daemon.py to close the fleet symmetry gap
+surfaced 2026-05-20 (verify-bridge-roundtrip self-test
 exited 0xC000013A without verdict update because no Legion daemon was firing
 /process-bridge-tasks on incoming kind=task envelopes; the bridge_watcher
 classifier escalates most kind=task envelopes since the auto_read_patterns /

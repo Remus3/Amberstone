@@ -142,7 +142,7 @@ class LiveClientShapeTests(unittest.TestCase):
         """Item 180 + item 183 carry correction: Arena is 6x2 NOT 6x3.
 
         The c3a1e23 commit message implied 6x3 but `_arena_teams()` at
-        `tools/gamepc_lcu_agent.py:536` distils as 6x2 per live LCU shape.
+        `tools/lcu_agent.py:536` distils as 6x2 per live LCU shape.
         Honor live shape; do NOT pitch a 6x3 schema lift without first
         verifying live LCU returns it.
         """

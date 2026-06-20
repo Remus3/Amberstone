@@ -43,7 +43,7 @@ RELAY_MAX_AGE_S = 12.0  # treat older snapshots as stale -> fall through to dire
                         # 2026-04-26: bumped from 5.0 -> 12.0. Relay polls every 1s
 LCU_RELAY_URL     = "http://127.0.0.1:8889/latest-lcu"
 LCU_RELAY_MAX_AGE = 20.0  # LCU agent posts every 1s; 20s is a generous staleness guard
-                        # but network jitter + Game-PC contention during teamfights
+                        # but network jitter + Legion contention during teamfights
                         # pushes ages over 5s often, causing wasteful direct-API
                         # timeout cycles. 12s gives generous margin while still
                         # catching genuinely-stale data (game ended hours ago).
@@ -71,7 +71,7 @@ class _PollerMixin:
         """Pull the latest Live Client snapshot from vision server's relay
         cache. Returns the parsed JSON dict (data field) or None if missing
         or stale. This is the primary path post-2026-04-19 migration since
-        Riot's API is localhost-only on Game-PC.
+        Riot's API is localhost-only and now read Legion-local in-process.
 
         Side-effect: sets `self._relay_says_no_game = True` when the relay
         returns its authoritative "no_liveclient_yet" 404. `read_game`
@@ -133,7 +133,7 @@ class _PollerMixin:
 
     def read_game(self):
         """Full game state read. Returns dict or None if game not active."""
-        # Relay path (Game-PC pushes localhost API -> vision server cache)
+        # Relay path (Legion-local push of localhost API -> vision server cache)
         relay_raw = self._try_relay()
         if isinstance(relay_raw, dict):
             self.raw = relay_raw
@@ -141,9 +141,10 @@ class _PollerMixin:
             self._read_error_count = 0
             return self._process_game(relay_raw)
         # Relay says authoritatively "no game" - skip the direct API attempt.
-        # (Legacy 2-PC note: Riot's :2999 bound localhost-only on the Game-PC
-        # and timed out from Legion, spamming ~700 warnings/day in client
-        # mode; the relay 404 short-circuit killed that.) Reset the error
+        # (Legacy 2-PC note: Riot's :2999 bound localhost-only and, in the
+        # retired 2-PC topology, timed out from Legion, spamming ~700
+        # warnings/day in client mode; the relay 404 short-circuit killed
+        # that. Now read Legion-local in-process.) Reset the error
         # counter too: the relay's successful 404 isn't a failure to surface.
         if getattr(self, "_relay_says_no_game", False):
             self.is_in_game = False
@@ -189,7 +190,7 @@ class _PollerMixin:
     def _warn_once(self, msg: str):
         """Rate-limited warning. Direct-API timeouts are EXPECTED post-2026-04-19
         migration whenever the relay snapshot momentarily ages past 12s
-        (jitter, Game-PC contention) - the next relay tick recovers within 1-2s.
+        (jitter, Legion contention) - the next relay tick recovers within 1-2s.
         Demote to DEBUG so the log doesn't fill with cosmetic warnings; only
         promote to WARNING after a sustained outage (~5 minutes of failures)."""
         count = getattr(self, "_read_error_count", 0) + 1

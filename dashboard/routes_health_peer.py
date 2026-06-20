@@ -28,7 +28,7 @@ log = logging.getLogger("rc.routes_health_peer")
 
 _APP_DIR = Path(__file__).parent.parent
 _PEER_DIR = _APP_DIR / "ops" / "runtime" / "peer_health"
-_VALID_NODES = {"gamepc", "peer"}
+_VALID_NODES = {"peer"}
 
 
 def _atomic_write(path: Path, payload: dict) -> None:

@@ -8,7 +8,6 @@ exposition body.
 
 Gauges read from already-canonical sources:
 - `ops/runtime/health.json` for RC liveness + worker ages.
-- `dashboard._bridge_log` for cross-Claude bridge silence.
 - `core.decision_detector.DecisionStore` for pending decision count.
 - `core.cost_tracker.daily_spend()` for today's USD ledger.
 """
@@ -40,10 +39,6 @@ _G_GAME_POLL_AGE = Gauge(
     "rc_game_poll_worker_age_seconds",
     "Seconds since the last game-poll worker tick (health.json game_poll_worker_age_s).",
 )
-_G_BRIDGE_AGE = Gauge(
-    "rc_bridge_gamepc_result_age_seconds",
-    "Seconds since the last cross-Claude bridge result from Game-PC.",
-)
 _G_DECISIONS_PENDING = Gauge(
     "rc_decisions_pending",
     "Pending coachable decisions (current count from DecisionStore).",
@@ -65,14 +60,6 @@ def _refresh_gauges() -> None:
         _G_UI_PULSE_AGE.set(float(h.get("ui_pulse_age_s") or 0.0))
     if h.get("game_poll_worker_age_s") is not None:
         _G_GAME_POLL_AGE.set(float(h.get("game_poll_worker_age_s") or 0.0))
-
-    try:
-        from dashboard._bridge_log import gamepc_result_age_s
-        age = gamepc_result_age_s()
-        if age is not None:
-            _G_BRIDGE_AGE.set(age)
-    except Exception as exc:  # noqa: BLE001
-        log.debug("metrics bridge_age refresh: %s", exc)
 
     try:
         from core.decision_detector import DecisionStore

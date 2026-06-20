@@ -35,16 +35,16 @@ from pathlib import Path
 from unittest.mock import patch
 
 _REPO = Path(__file__).resolve().parents[1]
-_AGENT_PATH = _REPO / "tools" / "gamepc_lcu_agent.py"
+_AGENT_PATH = _REPO / "tools" / "lcu_agent.py"
 
 
 def _load_agent_module():
-    """Load ``tools/gamepc_lcu_agent.py`` as a library so unit tests can call
+    """Load ``tools/lcu_agent.py`` as a library so unit tests can call
     ``execute_command`` directly without invoking the polling loop under
     ``if __name__ == '__main__'``.
     """
     spec = importlib.util.spec_from_file_location(
-        "_gamepc_lcu_agent_under_test_wipe", _AGENT_PATH,
+        "_lcu_agent_under_test_wipe", _AGENT_PATH,
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod

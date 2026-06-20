@@ -1,4 +1,4 @@
-"""Drift guard: tools/gamepc_lcu_agent.py::apply_runes DELETE filter MUST
+"""Drift guard: tools/lcu_agent.py::apply_runes DELETE filter MUST
 match all 3 RC page-name prefixes: "RC ", "RC:", "RC-".
 
 Item 210 (2026-05-27): operator-reported "runes not pushing during champ
@@ -19,7 +19,7 @@ import pathlib
 import unittest
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
-_AGENT = _ROOT / "tools" / "gamepc_lcu_agent.py"
+_AGENT = _ROOT / "tools" / "lcu_agent.py"
 
 
 class ApplyRunesPageFilterTests(unittest.TestCase):

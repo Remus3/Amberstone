@@ -1,6 +1,6 @@
 """Phase B - Champ Select LCU agent handlers + state population.
 
-Pins the contracts added to `tools/gamepc_lcu_agent.py` for the
+Pins the contracts added to `tools/lcu_agent.py` for the
 Champ Select view's command flow:
 
   - _active_round  -> derive {type, cell_ids} from session.actions[]
@@ -13,7 +13,7 @@ Champ Select view's command flow:
   - request_position_swap / request_pick_order_swap - cell_id -> swap id
   - set_augment_intent - stub returns explicit "unsupported" error
 
-The agent runs on Game-PC and is stdlib-only; tests import via
+The agent runs standalone (Legion-local) and is stdlib-only; tests import via
 `sys.path.insert(..., "tools")` because tools/ has no __init__.py.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ from unittest import mock
 _PROJECT_ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT / "tools"))
 
-import gamepc_lcu_agent as agent  # noqa: E402
+import lcu_agent as agent  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -420,7 +420,7 @@ class TestAramQueueIdsAntiDrift(unittest.TestCase):
     is_aram was ``queue_id in (450, 920)`` - missing 2400 (ARAM
     Mayhem / KIWI) - so the dashboard's _csvDetectMode fell through to
     "sr" and the bench / quick-swap UI never rendered for Mayhem. The
-    agent runs standalone on Game-PC and can't import core.*, so
+    agent runs standalone (Legion-local) and can't import core.*, so
     ``_ARAM_QUEUE_IDS`` is a hand-kept mirror of the aram keys in
     core.queue_modes - this guards it from silently drifting again."""
 
@@ -434,7 +434,7 @@ class TestAramQueueIdsAntiDrift(unittest.TestCase):
                      if m == "aram"}
         self.assertEqual(
             set(agent._ARAM_QUEUE_IDS), core_aram,
-            "tools/gamepc_lcu_agent._ARAM_QUEUE_IDS drifted from "
+            "tools/lcu_agent._ARAM_QUEUE_IDS drifted from "
             "core.queue_modes aram keys - keep the mirror in sync")
 
 

@@ -17,8 +17,8 @@ Coverage:
    rune_cmd, then forwards rune_cmd to the LCU agent via /lcu-cmd.
  - The LCU agent's apply_runes command is whitelisted in
    _LCU_ALLOWED_CMDS at dashboard/routes_loadout.py.
- - The Game-PC agent has an apply_runes handler in
-   tools/gamepc_lcu_agent.py that PATCHes /lol-perks/v1/currentpage.
+ - The LCU agent has an apply_runes handler in
+   tools/lcu_agent.py that PATCHes /lol-perks/v1/currentpage.
  - The resolver returns rune_cmd that overlays per-path runes when the
    colon-form "<variant>:<path-key>" is passed, so different build paths
    produce different keystones (e.g. Jinx Crit -> Lethal Tempo vs Jinx
@@ -40,7 +40,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 CHAMP_SELECT_JS = REPO_ROOT / "web" / "js" / "panels" / "champ_select.js"
 ROUTES_LOADOUT  = REPO_ROOT / "dashboard" / "routes_loadout.py"
-GAMEPC_AGENT    = REPO_ROOT / "tools" / "gamepc_lcu_agent.py"
+LCU_AGENT    = REPO_ROOT / "tools" / "lcu_agent.py"
 
 
 class JsVariantClickFiresApplyLoadoutTests(unittest.TestCase):
@@ -178,20 +178,20 @@ class DashboardAllowlistRuneCmdTests(unittest.TestCase):
         )
 
 
-class GamepcAgentRuneHandlerTests(unittest.TestCase):
-    """The Game-PC agent has the apply_runes handler that PATCHes the
+class LcuAgentRuneHandlerTests(unittest.TestCase):
+    """The LCU agent has the apply_runes handler that PATCHes the
     rune page. Live network deploy is a separate operator step."""
 
     @classmethod
     def setUpClass(cls):
-        cls.text = GAMEPC_AGENT.read_text(encoding="utf-8")
+        cls.text = LCU_AGENT.read_text(encoding="utf-8")
 
     def test_handler_branch_exists(self):
         # The agent dispatches by cmd name. The apply_runes branch is
         # the rune page POST/PATCH chain.
         self.assertIn(
             'if name == "apply_runes":', self.text,
-            "tools/gamepc_lcu_agent.py must carry the apply_runes "
+            "tools/lcu_agent.py must carry the apply_runes "
             "dispatch branch.",
         )
 
