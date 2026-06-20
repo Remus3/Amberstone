@@ -347,3 +347,64 @@ def test_hold_verdict_emits_hold_classifying_choice_a():
     )
     assert len(out) == 2
     assert classify_verdict(out[0].label) == "hold"
+
+
+# --------------------------------------------------------------------------- #
+# RC2 5.3 - ABC choices specificity uplift: the trigger field
+#
+# Each chip now names the live CONDITION the option assumes (the lookup key),
+# stamped onto CoachChoice.trigger. docs/research/RC2_COACHING_SPEC.md WS2 2.3:
+# "The trigger is already KNOWN at cell-resolution time - it is the lookup key.
+# Stamp it instead of discarding it." Rich (shadow precompute): enemy + mana +
+# cd + lvl. Pure + fail-soft (never raises on the coach hot path).
+# --------------------------------------------------------------------------- #
+def test_laning_trigger_rich_all_keys():
+    # Full key set -> "Caitlyn, full mana, ult up, lvl 6".
+    t = plc.laning_trigger("Caitlyn", 6, mana_state="full", cd_state="all_up")
+    assert t == "Caitlyn, full mana, ult up, lvl 6"
+
+
+def test_laning_trigger_low_mana_no_ult():
+    t = plc.laning_trigger("Zed", 11, mana_state="low", cd_state="no_ult")
+    assert t == "Zed, low mana, ult down, lvl 11"
+
+
+def test_laning_trigger_lean_level_only():
+    # No mana/cd known (served matchup seam) -> "Caitlyn, lvl 6".
+    t = plc.laning_trigger("Caitlyn", 6)
+    assert t == "Caitlyn, lvl 6"
+
+
+def test_laning_trigger_fail_soft_garbage_level():
+    # Non-numeric level drops the lvl clause; never raises.
+    assert plc.laning_trigger("Caitlyn", "nope") == "Caitlyn"
+    assert plc.laning_trigger("", None) == "enemy"
+
+
+def test_precomputed_choices_stamps_trigger_on_ab():
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 6, mana_fraction=1.0, ult_up=True,
+        payload=_payload(),
+    )
+    assert len(out) == 2
+    # Both A and B carry the SAME resolved-condition trigger.
+    assert out[0].trigger == "Caitlyn, full mana, ult up, lvl 6"
+    assert out[1].trigger == out[0].trigger
+
+
+def test_precomputed_choices_trigger_reflects_low_mana():
+    # low mana routes to the L6 low/all_up back_off cell; trigger mirrors keys.
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 6, mana_fraction=0.2, ult_up=True,
+        payload=_payload(),
+    )
+    assert out[0].trigger == "Caitlyn, low mana, ult up, lvl 6"
+
+
+def test_precomputed_choices_trigger_reflects_no_ult():
+    # L11 only has a full/no_ult cell; the trigger reads "ult down".
+    out = plc.precomputed_choices(
+        "Annie", "Caitlyn", 11, mana_fraction=1.0, ult_up=False,
+        payload=_payload(),
+    )
+    assert out[0].trigger == "Caitlyn, full mana, ult down, lvl 11"

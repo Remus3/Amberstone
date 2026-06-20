@@ -79,12 +79,32 @@
   color: var(--signal-info, inherit);
 }
 
-.rc-label {
+/* Label + trigger sub-line stack. Takes the flex slot the label used to own
+ * (min-width:0 so the ellipsis on the children actually clips). */
+.rc-labelcol {
+  display: flex;
+  flex-direction: column;
   flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.rc-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: var(--fs-md, 22px);
+}
+
+/* RC2 5.3: the live condition the option assumes ("Caitlyn, full mana, ult
+ * up, lvl 6"). Muted supporting sub-line; hidden in the overlay HUD
+ * (overlay.css) to keep the glance lean. */
+.rc-trigger {
+  font-size: var(--fs-xs, 16px);
+  color: var(--signal-dim, #8a8e9c);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ALT+N hotkey hint pill. Sits next to the label so the operator can

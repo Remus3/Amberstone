@@ -125,13 +125,44 @@ class SynthesizerTests(unittest.TestCase):
         self.assertEqual(out[1].expected_outcome, "Stall til 6 items")
 
 
+class TriggerFieldTests(unittest.TestCase):
+    """RC2 5.3 - the optional server-derived ``trigger`` condition field."""
+
+    def test_trigger_defaults_empty(self):
+        c = cc.CoachChoice(key="A", label="X")
+        self.assertEqual(c.trigger, "")
+
+    def test_parse_choices_reads_trigger(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "Trade", "trigger": "Zed, lvl 6"},
+        ]})
+        self.assertEqual(out[0].trigger, "Zed, lvl 6")
+
+    def test_parse_choices_trigger_absent_defaults_empty(self):
+        out = cc.parse_choices({"choices": [{"key": "A", "label": "Trade"}]})
+        self.assertEqual(out[0].trigger, "")
+
+    def test_parse_choices_trigger_length_capped(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "x", "trigger": "z" * 500},
+        ]})
+        self.assertTrue(out[0].trigger.endswith("..."))
+        self.assertLessEqual(len(out[0].trigger), cc._MAX_TRIGGER_LEN + 3)
+
+    def test_parse_choices_trigger_coerced_to_str(self):
+        out = cc.parse_choices({"choices": [
+            {"key": "A", "label": "x", "trigger": 123},
+        ]})
+        self.assertEqual(out[0].trigger, "123")
+
+
 class SerializationTests(unittest.TestCase):
     def test_to_jsonable_round_trip(self):
         cs = [cc.CoachChoice(key="A", label="X")]
         out = cc.to_jsonable(cs)
         self.assertEqual(out, [{
             "key": "A", "label": "X", "expected_outcome": "",
-            "confidence": "mid", "source_tag": "",
+            "confidence": "mid", "source_tag": "", "trigger": "",
         }])
 
     def test_frozen_dataclass(self):
