@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 7.5 verify-suite; Phase 7 HYGIENE COMPLETE)
+
+P7.5 "verify dual suite green post-cleanup" DONE. Work `afa07330` + docs flip `a7c59635`.
+Banner 52 -> 53 / 62 = ~85%. Phase 7 HYGIENE COMPLETE (7.1-7.5). Pushed, CI green.
+
+- The verify stage was NOT a rubber stamp - found 5 REAL reds, one root cause: the prior
+  `74cca91d` ASCII glyph sweep + prod hardening made coaches/adaptation_hint_champion.py +
+  _cli.py emit ASCII arrows ^/v and ` | ` separator, but 6 stale agent3 round-test asserts
+  still expected unicode (up/down/mid-dot). Production is correct per the ASCII rule; the
+  tests were the defect. Fixed all 6 in round16/24/25/28/29 (4 failing + 2 tautology/dead).
+- Cluster B: ROADMAP.md 88772 B > 80KB doc-size guard -> relocated 3 shipped mega-bullets
+  (RC2 enumeration, swarm-progress, 2026-06-15 refill) to docs/ROADMAP_HISTORY.md
+  (### Relocated 2026-06-20); ROADMAP now 65096 B (~16.8KB headroom); line 11 kept in-flight
+  head + OPEN tail. Full dual suite 17151 passed / 0 failed. LEDGER #549. Sentinel written.
+- EFFICIENCY (operator flagged live): ran the full 14.5min suite TWICE (~29min). Recorded in
+  feedback_execution_efficiency_rules R6 - for test-string+doc-only fixes the targeted slice
+  + deduction is enough; do NOT re-run the whole 17k suite for a count.
+- LEFT UNTOUCHED (concurrent process, NOT this session): dashboard/_dispatch.py (M) +
+  dashboard/routes_loop_monitor.py + tests/test_loop_monitor_route.py (new loop-monitor
+  route). Do NOT auto-commit these in an RC2 session - they belong to whatever added them.
+
+NEXT /RC2-Continue: Phase 8 stage 8.3 operator Q/A consolidation; then E10/E11/E12/E7/E2.
+[[project_rc2_build]] [[feedback_execution_efficiency_rules]].
+
+---
+
 # 2026-06-20 (RC 2.0 /RC2-Continue - Phase 7.1 ASCII-sweep close + Subagent-First protocol)
 
 P7.1 ASCII-violation sweep CLOSED (Phase 7 HYGIENE begins). Commits `dbbd7a8d` (feat) +
@@ -48,25 +74,3 @@ P3.3 (typography/hit-targets/hierarchy + pulse-rationing wire), headless-safe sl
 NEXT via /RC2-Continue: P3.4 dashboard-stays-when-overlay-active (E1 keepCompanion shipped; verify +
 any residual), 3.5 settings-without-hotkeys, 3.6 dashboard condensation. Then Phase 4 (Electron
 sizing/DPI), Phase 5 coaching, E10/E11/E12/E7/E2. Memory: project_rc2_build.
-
----
-
-# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 3.1 + 3.2 overlay condensation)
-
-Resumed the RC 2.0 program (P3/P4 unblocked by the Hextech greenlight). Accidental computer
-restart mid-session between 3.1 and 3.2 - git was clean, P3.1 already pushed, recovered cleanly.
-
-- P3.1 (75a2c10b): docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md - the in-match glance-test spec.
-  3-tier model (Ambient/Urgent/Emergency) on classifyAction bands, S0 single-winner arbitration
-  ladder (lethal 100 -> none 0), motion rationing, Hextech color bins, 3.2/3.3 handoff. Tier-0 doc.
-- P3.2 (39303acb + db6f77d4): web/js/lib/overlay_priority.js (selectPrimary + shouldPulse, dual
-  ESM/CJS, 21/21 node TDD - the test was pre-authored+untracked from a prior cycle) + overlay
-  callout 2-row density clamp (CSS #rn-callouts nth-child(n+3) + snapshot). Tier-1, no ENGINE/DS/frozen.
-- NOT wired (DELIBERATE, do NOT flip headlessly): the pulse-rationing consumer re-point
-  (right_now.js .action pulse :490-500 + overlay_pulse.js -> shouldPulse) is a SHARED dashboard+overlay
-  BEHAVIOR change -> carried to 3.3; needs shadow + 5-phase UI audit + operator eyeball on the live headline.
-- Banner 27/62 = ~44%. Task pane: 9 phase chips (P1/P2 completed, P3 in_progress).
-
-NEXT via /RC2-Continue: P3.3 (typography/hit-targets/hierarchy + Hextech bins + the pulse wiring above),
-then 3.4 dashboard-stays-when-overlay-active, 3.5 settings-without-hotkeys, 3.6 dashboard condensation.
-Then Phase 4 (Electron sizing/DPI), Phase 5 coaching, E10/E11/E12/E7/E2. Memory: project_rc2_build.
