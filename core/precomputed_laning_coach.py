@@ -85,6 +85,42 @@ _RECALL_LABELS: dict[str, str] = {
     "back_soon": "Back soon",
 }
 
+# RC2 5.3 - mana/cd discrete state -> a human clause for the trigger sub-line.
+_MANA_WORD: dict[str, str] = {"full": "full mana", "low": "low mana"}
+_CD_WORD: dict[str, str] = {"all_up": "ult up", "no_ult": "ult down"}
+
+
+def laning_trigger(
+    enemy: object,
+    level: object,
+    *,
+    mana_state: Optional[str] = None,
+    cd_state: Optional[str] = None,
+) -> str:
+    """The live CONDITION an A/B laning option assumes (RC2 5.3 specificity).
+
+    Stamped onto each chip's ``trigger`` field so the operator sees WHEN the
+    recommendation holds, not just the verb. Built from the same discrete keys
+    the cell was resolved by - enemy laner + level, plus the mana/cd state when
+    the caller knows them. Pure + fail-soft: any malformed input degrades to a
+    shorter clause, never raises (the coach hot path contract).
+
+    Rich (shadow precompute, all keys): "Caitlyn, full mana, ult up, lvl 6".
+    Lean (served matchup, level only):  "Caitlyn, lvl 6"."""
+    name = str(enemy or "").strip() or "enemy"
+    clauses: list[str] = []
+    mana = _MANA_WORD.get(str(mana_state or "").strip().lower())
+    if mana:
+        clauses.append(mana)
+    cd = _CD_WORD.get(str(cd_state or "").strip().lower())
+    if cd:
+        clauses.append(cd)
+    try:
+        clauses.append(f"lvl {int(level)}")
+    except (TypeError, ValueError):
+        pass
+    return name + ", " + ", ".join(clauses) if clauses else name
+
 
 def band_for_level(level: object) -> str:
     """Nearest level-band label for a live level (fail-soft to ``L2``).
@@ -223,6 +259,7 @@ def _build_choices(
     enemy: str,
     *,
     next_item: Optional[Tuple[str, int]] = None,
+    trigger: str = "",
 ) -> list[CoachChoice]:
     """Two grounded A/B choices from one resolved laning cell.
 
@@ -246,6 +283,7 @@ def _build_choices(
         expected_outcome=_combat_outcome(cell, enemy),
         confidence=_confidence_for(cell.get("net_swing")),
         source_tag=SOURCE_TAG,
+        trigger=trigger,
     )
 
     economy = cell.get("economy") if isinstance(cell.get("economy"), dict) else {}
@@ -257,6 +295,7 @@ def _build_choices(
             expected_outcome=_recall_outcome(economy, next_item),
             confidence="mid",
             source_tag=SOURCE_TAG,
+            trigger=trigger,
         )
     else:
         b = CoachChoice(
@@ -265,6 +304,7 @@ def _build_choices(
             expected_outcome="play safe; reassess next tick",
             confidence="low",
             source_tag=SOURCE_TAG,
+            trigger=trigger,
         )
     return [a, b]
 
@@ -358,7 +398,12 @@ def precomputed_choices(
         )
         if not cell:
             return []
-        return _build_choices(cell, enemy, next_item=next_item)
+        trigger = laning_trigger(
+            enemy, level,
+            mana_state=mana_state_for(mana_fraction),
+            cd_state=cd_state_for(ult_up),
+        )
+        return _build_choices(cell, enemy, next_item=next_item, trigger=trigger)
     except Exception:  # noqa: BLE001 - the coach hot path must never raise
         return []
 
@@ -400,6 +445,7 @@ __all__ = [
     "mana_state_for",
     "cd_state_for",
     "laning_band",
+    "laning_trigger",
     "resolve_enemy",
     "resolve_band",
     "precomputed_choices",

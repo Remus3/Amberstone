@@ -258,6 +258,43 @@ class LaningChoicesCvTests(unittest.TestCase):
         self.assertEqual(out[0].source_tag, "cv-laning")
 
 
+class VerdictTriggerTests(unittest.TestCase):
+    """RC2 5.3 - the served matchup chips name the live CONDITION (trigger).
+
+    verdict_to_choices stamps the passed trigger on every choice; laning_choices
+    builds the lean "enemy, lvl N" trigger off the resolved laner + level."""
+
+    def test_verdict_to_choices_default_trigger_empty(self) -> None:
+        out = lv.verdict_to_choices(_matchup_dict("trade", 0.15))
+        self.assertTrue(all(c.trigger == "" for c in out))
+
+    def test_verdict_to_choices_stamps_trigger_on_all(self) -> None:
+        out = lv.verdict_to_choices(
+            _matchup_dict("all_in", 0.4), build_next_item="Kraken Slayer",
+            trigger="Ezreal, lvl 6",
+        )
+        self.assertEqual([c.key for c in out], ["A", "B", "C"])
+        # A/B/C all carry the same condition line.
+        self.assertTrue(all(c.trigger == "Ezreal, lvl 6" for c in out))
+
+    def test_laning_choices_builds_enemy_level_trigger(self) -> None:
+        self._orig = lv.matchup
+        self._orig_dir = lv._DS_DATA_DIR
+        tmp = tempfile.mkdtemp()
+        lv._DS_DATA_DIR = Path(tmp)  # type: ignore[assignment]
+        try:
+            lv.matchup = lambda *a, **k: _matchup_dict("trade", 0.2)  # type: ignore[assignment]
+            gs = {"champion": "Caitlyn", "level": 6, "enemy_comp": ["Ezreal"]}
+            out = lv.laning_choices(gs, mode="SR")
+            self.assertTrue(out)
+            self.assertEqual(out[0].trigger, "Ezreal, lvl 6")
+            self.assertEqual(out[1].trigger, "Ezreal, lvl 6")
+        finally:
+            lv.matchup = self._orig  # type: ignore[assignment]
+            lv._DS_DATA_DIR = self._orig_dir  # type: ignore[assignment]
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class EnemyLanerResolutionTests(unittest.TestCase):
     """_resolve_enemy_laner picks the right opponent per mode."""
 

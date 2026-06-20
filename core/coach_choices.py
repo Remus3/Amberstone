@@ -39,6 +39,7 @@ VALID_CONFIDENCE_BANDS = ("low", "mid", "high")
 _MAX_CHOICES = 3
 _MAX_LABEL_LEN = 80
 _MAX_OUTCOME_LEN = 160
+_MAX_TRIGGER_LEN = 120
 
 
 @pydantic.dataclasses.dataclass(frozen=True)
@@ -58,6 +59,12 @@ class CoachChoice:
     expected_outcome: str = ""
     confidence: str = "mid"
     source_tag: str = ""
+    # RC2 5.3 (2026-06-20): the live CONDITION this option assumes (the lookup
+    # key the choice was resolved by, e.g. "Caitlyn, full mana, ult up, lvl 6").
+    # SERVER-DERIVED + appended at END with a default (CLAUDE.md Python
+    # Conventions); the LLM is not asked to emit it. Empty when no condition is
+    # known, so old consumers + the chip renderer ignore it until the UI opts in.
+    trigger: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -116,6 +123,7 @@ def parse_choices(coach: dict | None) -> list[CoachChoice]:
                 expected_outcome=_coerce_str(entry.get("expected_outcome"), _MAX_OUTCOME_LEN),
                 confidence=_coerce_band(entry.get("confidence")),
                 source_tag=_coerce_str(entry.get("source_tag"), 32),
+                trigger=_coerce_str(entry.get("trigger"), _MAX_TRIGGER_LEN),
             )
         )
     return out
