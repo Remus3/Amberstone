@@ -28,4 +28,9 @@ contextBridge.exposeInMainWorld("rcShell", {
   // operator can click it without the global ACTIVE hotkey. send (not invoke) -
   // a hover needs no reply.
   setZoneHover: (on) => ipcRenderer.send("rc-shell:overlay-zone-hover", !!on),
+  // RC2 4.4: no-hotkey overlay ACTION (the #ovset panel-set selector + an
+  // interact-now button). One-way send (no reply): main.js validates the
+  // message through overlay_state.normOverlayAction and runs the same code the
+  // Alt+Shift+C / Alt+Shift+A hotkeys do, so the two paths never drift.
+  overlayAction: (msg) => ipcRenderer.send("rc-shell:overlay-action", msg),
 });
