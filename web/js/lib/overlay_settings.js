@@ -121,6 +121,23 @@ export function writeOverlaySettings(patch) {
   return next;
 }
 
+// RC2 4.4: fire a no-hotkey overlay ACTION (panel-set pick / interact-now) at
+// the rc-shell over IPC. Unlike the persisted settings, these are runtime
+// COMMANDS (the shell reloads the overlay window / flips click-through), so
+// there is no localStorage mirror - a plain browser (no bridge) is a silent
+// no-op. Fire-and-forget; returns true only if the shell bridge took it.
+export function sendOverlayAction(msg) {
+  try {
+    if (window.rcShell && typeof window.rcShell.overlayAction === "function") {
+      window.rcShell.overlayAction(msg);
+      return true;
+    }
+  } catch (_e) {
+    // no bridge (plain browser) / send failed - nothing to do.
+  }
+  return false;
+}
+
 // Pull the authoritative rc-shell config value into the in-page mirror once on
 // boot, so a fresh page inside the Electron shell shows the persisted settings
 // (the shell config outlives a single page). No-op in a plain browser. Always

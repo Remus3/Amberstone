@@ -55,6 +55,16 @@ const OVERLAY_DEFAULTS = Object.freeze({
 // the cycle order; index 0 is the landing set for unknown/initial state.
 const PANEL_SETS = Object.freeze(["coach", "build", "threat"]);
 
+// --- RC2 Stage 4.4: no-hotkey overlay actions --------------------------------
+// The overlay's three hotkeys (Alt+Shift+O/A/C) were the last overlay behaviors
+// reachable ONLY by keyboard. 4.4 surfaces the two that make sense as on-screen
+// controls over a one-way renderer->main action channel: pick the panel set
+// (was the Alt+Shift+C cycle) and interact-now (was the Alt+Shift+A passive<->
+// active toggle). The hide/show toggle (Alt+Shift+O) stays a hotkey on purpose:
+// it hides BOTH surfaces (panic clear-screen), so a self-hiding on-screen control
+// would leave no on-screen way back. This is the allow-list of action names.
+const OVERLAY_ACTIONS = Object.freeze(["set-panel", "set-active"]);
+
 // Normalize a mode_key to the canonical lower-case token. Non-string -> "".
 function normMode(modeKey) {
   return typeof modeKey === "string" ? modeKey.trim().toLowerCase() : "";
@@ -84,6 +94,28 @@ function normPanelSet(panelSet) {
 function cyclePanelSet(current) {
   const i = PANEL_SETS.indexOf(normPanelSet(current));
   return PANEL_SETS[(i + 1) % PANEL_SETS.length];
+}
+
+// Validate + normalize a no-hotkey overlay action message from the renderer
+// (RC2 4.4). The main process trusts this as the security boundary: only an
+// OVERLAY_ACTIONS member passes, and "set-panel" additionally requires a real
+// PANEL_SETS target (case/whitespace-insensitive on both fields). Anything
+// malformed -> null so the caller no-ops rather than running an unlisted action.
+// A stray panelSet on a non-panel action is dropped (never echoed back).
+function normOverlayAction(raw) {
+  const m = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  const action = typeof m.action === "string" ? m.action.trim().toLowerCase() : "";
+  if (!OVERLAY_ACTIONS.includes(action)) {
+    return null;
+  }
+  if (action === "set-panel") {
+    const p = normPanelSet(m.panelSet);
+    if (!p) {
+      return null;
+    }
+    return { action, panelSet: p };
+  }
+  return { action };
 }
 
 // Append the overlay route flag so the page renders its compact overlay layout
@@ -601,6 +633,8 @@ module.exports = {
   windowActions,
   windowActionsWithPolicy,
   cyclePanelSet,
+  OVERLAY_ACTIONS,
+  normOverlayAction,
   makeActiveRevert,
   nextPollDelay,
   overlayStateFrom,

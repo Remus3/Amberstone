@@ -206,3 +206,64 @@
 .ovset-range > input[type="range"]:focus {
   outline: none;
 }
+
+/* RC2 4.4: no-hotkey overlay actions. Panel-set segmented selector (the on-
+ * screen twin of the Alt+Shift+C cycle) + an "Interact now" button (the twin of
+ * Alt+Shift+A). Reuse the ds_knobs alpha chrome + the token scale - no new hex
+ * literals beyond the existing tokens.css palette fallbacks. Each control clears
+ * the --hit-min game-distance floor. */
+.ovset-seg {
+  gap: 4px;
+}
+
+.ovset-seg-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--hit-min, 42px);
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--panel-radius-sm, 10px);
+  color: rgba(255, 255, 255, 0.70);
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.ovset-seg-btn:hover {
+  border-color: rgba(255, 255, 255, 0.30);
+}
+
+.ovset-seg-btn:focus-visible {
+  outline: none;
+  border-color: var(--signal-info, #8a8cf0);
+}
+
+.ovset-seg-btn.is-active {
+  background: var(--signal-info, #8a8cf0);
+  border-color: var(--signal-info, #8a8cf0);
+  color: rgba(0, 0, 0, 0.92);
+}
+
+.ovset-act {
+  justify-content: center;
+  min-height: var(--hit-min, 42px);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--panel-radius-sm, 10px);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ovset-act:hover {
+  border-color: rgba(255, 255, 255, 0.30);
+}
+
+.ovset-act:focus-visible {
+  outline: none;
+  border-color: var(--signal-info, #8a8cf0);
+}
