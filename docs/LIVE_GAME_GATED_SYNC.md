@@ -587,3 +587,14 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   to pick up the new IPC dispatch + raiseCompanion/force-layout; the web renderer half (the #ovset buttons)
   auto-reloads via ADR-008 asset-hash. P4.6 (live-game visual validation, flipped LIVE) IS this whole-of-
   Phase-4 eyeball - this entry plus the P4.1-4.4 entries above are its checklist. Does NOT block any stage.
+- 2026-06-20 RC2 P5.1 local-CV laning overrides (COACHING, NOT a DS seam; shipped code-safe SHADOW-ONLY -
+  the served `choices` are NOT altered). The CV override (`core/laning_cv_overrides.py`: enemy DEAD ->
+  shove, MISSING >=3s -> back off, my HP <0.35 vs an aggressive verdict -> disengage) currently rides ONLY
+  the `data/hz_choice_shadow.jsonl` `cv_override` column. The SERVED FLIP (let the CV override drive the
+  live A/B chips in `dashboard/_deterministic_coaching._compute_uncached`) is stage 5.2 and is GATED on the
+  agreement re-measurement, NEVER a blind overnight flip. OWED (operator/Gemini-gated, NOT headless):
+  (a) accrue real laning games so the new `cv_override` column fills (the live producer runs in-process on
+  next RC restart - confirm rows appear with kind enemy_dead / enemy_missing / low_hp at the right moments);
+  (b) re-run `tools/hz_shadow_report.py` and read det-vs-Haiku agreement WITH the CV layer applied; (c) when
+  agreement climbs toward the >=70% target (`HZ_HAIKU_CALL_INVENTORY.md:75`), authorize the 5.2 served flip.
+  Does NOT block any further stage.
