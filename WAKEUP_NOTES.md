@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-20 (interactive - loop-monitor observability + CC session perf fixes)
+
+Standalone interactive session (NOT /RC2-Continue). Built the loop-monitor the
+operator asked for (watch long Claude runs: where time goes / if stuck). Commits
+`fb558a10` (v1, swept into git by the concurrent RC2 session) + `d2442898`
+(completion) + `73e221a4` (contrast). CI green all 3; 14 tests; ruff clean.
+
+- `/api/loop-monitor` (dashboard/routes_loop_monitor.py) parses the active session
+  transcript JSONL, pairs tool_use<->tool_result -> summary/recent/inflight/stalls.
+  `/loop-monitor` = human-readable auto-refresh page (+ /api/loop-status header).
+  Durations: prefer embedded exec (WebFetch/Glob/subagent); fast-tool + ~600s-quantum
+  shell gaps -> `stalls`, never headline as tool time. Memory reference_loop_monitor.
+- PERF (operator's 2 annoyances, fixed in LOCAL settings, NOT repo): removed the
+  ~/.claude per-edit full-suite pytest hook (silent multi-min stalls); ENABLE_TOOL_SEARCH=1;
+  console-flash-every-5s = hooks ran console python -> python.exe to pythonw.exe (project)
+  + py to pyw (user). Takes effect on NEXT CC restart, NOT /clear. Memory feedback_cc_session_perf.
+- CONCURRENCY: a 2nd CC session on this same worktree auto-committed my in-flight v1.
+  Use per-session worktrees; don't co-run two heavy Opus sessions on the shared limit.
+
+NEXT: restart CC to kill the flashing; /RC2-Continue resumes 8.3+.
+[[project_rc2_build]] [[reference_loop_monitor]] [[feedback_cc_session_perf]]
+
+---
+
 # 2026-06-20 (RC 2.0 /RC2-Continue - Phase 7.5 verify-suite; Phase 7 HYGIENE COMPLETE)
 
 P7.5 "verify dual suite green post-cleanup" DONE. Work `afa07330` + docs flip `a7c59635`.
@@ -50,27 +74,3 @@ P7.1 ASCII-violation sweep CLOSED (Phase 7 HYGIENE begins). Commits `dbbd7a8d` (
 
 NEXT /RC2-Continue: P7.2 stale-file census (.md/scripts unused >1 week); then 7.3/7.4/7.5, Phase 8
 (8.3), E10/E11/E12/E7/E2. [[project_rc2_build]] [[feedback_subagent_first_protocol]].
-
----
-
-# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 3.3 overlay shadow-wire + hit-target)
-
-P3.3 (typography/hit-targets/hierarchy + pulse-rationing wire), headless-safe slice. Commit
-`87f41baf`. Tier-1 JS-logic + overlay CSS. NO ENGINE / 0 frozen / no DS / no Share. Stage = LIVE
-(code done; pulse flip operator-eyeball-owed). Banner 27 -> 28 / 62 = ~45%.
-
-- overlay_priority.js: NEW `signalFromState(p, band)` - the one pure coach-envelope -> selectPrimary
-  signal map (band passthrough, choices detect, Phase-4 crossing-edge predicates
-  spike_crossed/objective_steal_now/lethal_incoming default-false + honored-if-set). Dual ESM/CJS.
-- right_now.js: SHADOW consumer - each render stamps data-s0-cue/-tier/-pulse on #right-now via
-  signalFromState->selectPrimary->shouldPulse, try-guarded, ZERO live pulse change. Eyeball-able at ?overlay=1.
-- overlay.css: section-7 floor - #rn-choices .rc-chip min-height 44px (overlay-scoped; dashboard keeps 42).
-- TDD: +8 signalFromState node tests (RED 8f/21p -> GREEN 29/29) + 1 overlay snapshot hit-target (test_overlay_view 13/13).
-- OWED LIVE FLIP (NOT headless): re-point .action per-band pulse (right_now.js:490-500) + overlay_pulse.js
-  MutationObserver to consume data-s0-pulse (fire only Emergency + one-shot-Urgent cross). SHARED
-  dashboard+overlay behavior -> docs/LIVE_GAME_GATED_SYNC.md; eyeball a real game first. Hextech literal
-  swap = E11 (overlay uses --signal-* tokens, inherits the global cutover).
-
-NEXT via /RC2-Continue: P3.4 dashboard-stays-when-overlay-active (E1 keepCompanion shipped; verify +
-any residual), 3.5 settings-without-hotkeys, 3.6 dashboard condensation. Then Phase 4 (Electron
-sizing/DPI), Phase 5 coaching, E10/E11/E12/E7/E2. Memory: project_rc2_build.
