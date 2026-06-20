@@ -1,7 +1,7 @@
 // Riot Commander - Phase 3 dashboard. ES module - no outer IIFE.
 // Subscribes to the supervisor's /push WebSocket relay (which in turn
 // receives file-watcher pushes from agents/agent2_backend/file_ingest.py
-// while the Game-PC Forwarder is still deferred).
+// while the live-client forwarder is still deferred).
 //
 // Envelope shapes handled:
 //   {type: "heartbeat", t: <epoch>}
@@ -4040,7 +4040,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const iAmLeader = !!(lobby && lobby.is_leader);
     if (!ul) return;
     if (!members.length) {
-      ul.innerHTML = '<li class="home-empty">no members visible - Game-PC LCU agent needs to forward lcu.lobby.members[]</li>';
+      ul.innerHTML = '<li class="home-empty">no members visible - LCU agent needs to forward lcu.lobby.members[]</li>';
       return;
     }
     const isSolo = members.length === 1;
@@ -5334,7 +5334,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
 
   // ── Auto Accept (agent-CONFIG-backed, lobby ↔ settings synced) ──────
-  // Source of truth is the Game-PC LCU agent CONFIG - it's what actually
+  // Source of truth is the LCU agent CONFIG - it's what actually
   // accepts the ready-check - surfaced live at state.lcu.config.auto_accept
   // and written via the set_config command. The lobby Auto Accept toggle
   // and the Settings "Auto Accept" checkbox are two views of the same
@@ -5396,7 +5396,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // showing "Awaiting party leader". Cancel Search appears when
   // search_state === "Searching".
   //
-  // Expected /api/state shape (Game-PC LCU agent forwards from
+  // Expected /api/state shape (LCU agent forwards from
   // /lol-lobby/v2/lobby):
   //   lcu.lobby = {
   //     queue_id:        int,    // 920 = ARAM Mayhem, 450 = ARAM, etc.
@@ -5446,7 +5446,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     });
   }
   // Render the party member list from lcu.lobby.members[]. Each member
-  // shape (forwarded by Game-PC LCU agent - pending):
+  // shape (forwarded by LCU agent - pending):
   //   { puuid, summoner_name, is_self, is_leader,
   //     played_with_me_count, played_with_me_record }  // local match_history join
   function _renderLobbyMembers(members, meIsLeader) {
@@ -5542,7 +5542,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // Change-queue dropdown: leader-only
     const qsel = document.getElementById("lobby-queue-select");
     if (qsel) qsel.hidden = !lobby.is_leader;
-    // Member list (forwarded by Game-PC LCU agent in lcu.lobby.members[])
+    // Member list (forwarded by LCU agent in lcu.lobby.members[])
     _renderLobbyMembers(lobby.members || [], !!lobby.is_leader);
 
     const find = document.getElementById("lobby-find-match");
@@ -5657,7 +5657,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   setInterval(refreshEnv, 15000);
 
   // ── Minimap image polling ──────────────────────────────────────────
-  // Polls /api/minimap-crop on a fast cadence when the dedicated Game-PC
+  // Polls /api/minimap-crop on a fast cadence when the dedicated Legion
   // minimap stream is live (5-10Hz pre-cropped JPEGs on source=minimap),
   // otherwise the supervisor falls back to crop-from-full-frame which is
   // bounded by the 2s full-frame upload cadence - pointless to poll
@@ -5700,7 +5700,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         return;
       }
       // Adapt the polling cadence to which path served us. JPEG comes
-      // from the fast Game-PC minimap stream; PNG from the slow re-crop.
+      // from the fast Legion minimap stream; PNG from the slow re-crop.
       const desired = (blob.type === "image/jpeg")
         ? MINIMAP_INTERVAL_FAST : MINIMAP_INTERVAL_SLOW;
       if (desired !== minimapInterval) {
@@ -6627,7 +6627,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // ── Voice TTS toggle ─────────────────────────────────────────────
   // (2026-04-25, revised same-day) Speech now uses the browser's
   // window.speechSynthesis (Web Speech API) so audio plays on the
-  // device viewing the dashboard - iPad, Game-PC, Legion, whatever -
+  // device viewing the dashboard - iPad, Legion, whatever -
   // not on the server. The server-side /api/speak endpoint is kept
   // for parity / curl testing but the dashboard no longer uses it.
   // State persisted in localStorage; off by default.
@@ -7134,26 +7134,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               dot.classList.add(j.status || "yellow");
               const cost = j.cost || {};
               const sup = j.supervisor || {};
-              const bridge = j.bridge || {};
               const banner = cost.banner || "ok";
               const rcVer = j.rc_version || "?";
               const runId = (sup.run_id || "").slice(0, 8) || "?";
               const oslock = sup.oslock_present ? "lock" : "no-lock";
-              // Bridge line: "bridge ok · last 12s ago" / "bridge silent
-              // 14m ago" / "bridge dead 2h ago" / "bridge no-data".
-              let bridgeLine;
-              if (bridge.status === "unknown" || bridge.gamepc_result_age_s == null) {
-                bridgeLine = "bridge no-data";
-              } else {
-                const a = bridge.gamepc_result_age_s;
-                const ago = a < 60 ? `${Math.round(a)}s`
-                          : a < 3600 ? `${Math.round(a/60)}m`
-                          : `${(a/3600).toFixed(1)}h`;
-                const label = bridge.status === "green" ? "ok"
-                            : bridge.status === "yellow" ? "silent"
-                            : "dead";
-                bridgeLine = `bridge ${label} · last ${ago} ago`;
-              }
               const ds = j.daemon_slayer || {};
               const dsLine = ds.alive
                 ? `DS engine up · v${ds.engine_version || "?"} · ${ds.items ?? "?"}i/${ds.champions ?? "?"}c`
@@ -7184,7 +7168,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
                   (j.vision?.uptime_s ? ` · uptime ${Math.round(j.vision.uptime_s/60)}m` : ""),
                 dsLine,
                 `cost $${(cost.today_usd || 0).toFixed(2)} · ${banner}`,
-                bridgeLine,
               ];
               if (peerBits.length) lines.push(`publishers: ${peerBits.join(" · ")}`);
               dot.title = lines.join("\n");
@@ -7199,7 +7182,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
     // 3.7 - Hot-reload poller (2026-04-30). Polls /api/asset-stamp
     // every 3s; on mtime increase, hard-reload the page so CSS/JS
-    // edits Legion-side land on Game-PC's secondary display without
+    // edits Legion-side land on a secondary display without
     // an alt-tab. Disabled if `localStorage.rc_hot_reload === '0'`.
     (function _hotReloadInit() {
       try {

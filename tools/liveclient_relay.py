@@ -1,16 +1,17 @@
 """
-gamepc_liveclient_relay.py - Game-PC agent that pushes Riot Live Client API
-data to Legion every N seconds.
+liveclient_relay.py - Legion-local liveclient relay (relocated 2026-05-29,
+ADR-011); self-heals in-process.
 
-Riot's :2999 endpoint binds to 127.0.0.1 only; Legion can't reach it over
-LAN. This relay polls /liveclientdata/allgamedata locally, then POSTs the
-JSON to Legion's vision server which caches it for the dashboard / coaches.
+Polls Riot's local Live Client API (:2999 /liveclientdata/allgamedata) and
+POSTs the JSON to the in-process vision server which caches it for the
+dashboard / coaches. Post 1-PC consolidation everything runs on Legion, so
+the relay reads :2999 in-process and self-heals when the cached snapshot
+goes stale.
 
-Deploy on Game-PC (one time):
-  1. Copy this file to C:\\RC-Agent\\
-  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install requests urllib3
-  3. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_liveclient_relay.py
-  4. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\gamepc_liveclient_relay.py"
+Run (one time):
+  1. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe -m pip install requests urllib3
+  2. C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py
+  3. (optional task) schtasks /Create /TN "RC-LiveClientRelay" /SC ONLOGON /F /TR "C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\RC-Agent\\liveclient_relay.py"
 
 When in champ select / not in game, /liveclientdata returns 404 - relay
 backs off and retries.

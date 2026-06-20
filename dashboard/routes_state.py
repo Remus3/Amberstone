@@ -16,7 +16,6 @@ import threading
 import time
 import urllib.request
 
-from dashboard._bridge_log import gamepc_result_age_s
 from dashboard._context import APP_DIR, read_json
 from dashboard._dispatch import equals, prefix
 from dashboard._state_builder import build_state
@@ -272,26 +271,14 @@ def _serve_health_all(h) -> None:
         except Exception as e:  # noqa: BLE001
             rollup["cost"] = {"error": str(e)[:120]}
         try:
-            age = gamepc_result_age_s()
-            if age is None:
-                bridge_status = "unknown"
-            elif age < _BRIDGE_WARN_S:
-                bridge_status = "green"
-            elif age < _BRIDGE_ALERT_S:
-                bridge_status = "yellow"
-            else:
-                bridge_status = "red"
-            # gamepc_result_age_s only tracks kind=result + source=gamepc
-            # entries, NOT generic bridge activity. Prior schema exposed
-            # this as bridge.age_s which was misleading; renamed to
-            # bridge.gamepc_result_age_s 2026-05-20. legion_daemon block
-            # surfaces the new Legion-side autonomous /process-bridge-tasks
-            # sentinel (tools/legion_bridge_daemon.py) symmetrically.
+            # Post-1PC (ADR-011): the Game-PC bridge peer is severed, so the
+            # old result-age watchdog was removed with it. Bridge health is now
+            # the Legion-side autonomous /process-bridge-tasks sentinel
+            # (tools/legion_bridge_daemon.py) in the legion_daemon block below.
             bridge_block = {
-                "gamepc_result_age_s": round(age, 1) if age is not None else None,
-                "status":              bridge_status,
-                "warn_s":              _BRIDGE_WARN_S,
-                "alert_s":             _BRIDGE_ALERT_S,
+                "status":  "unknown",
+                "warn_s":  _BRIDGE_WARN_S,
+                "alert_s": _BRIDGE_ALERT_S,
             }
             ld_path = APP_DIR / "ops" / "runtime" / "legion_bridge_daemon_health.json"
             if ld_path.exists():
@@ -318,7 +305,7 @@ def _serve_health_all(h) -> None:
         # minutes. No-data = peer hasn't been deployed yet.
         try:
             peers = {}
-            for node in ("gamepc", "peer"):
+            for node in ("peer",):
                 rec_path = APP_DIR / "ops" / "runtime" / "peer_health" / f"{node}.json"
                 if not rec_path.exists():
                     peers[node] = {"status": "no_data"}

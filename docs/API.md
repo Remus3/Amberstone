@@ -15,7 +15,7 @@ Pydantic schemas: `dashboard/api_schema.py` (outer shapes) · `core/coaching_pay
 | `/api/health` | RC process health (`ops/runtime/health.json` + `rc_version`) | `HealthResponse` |
 | `/api/health/all` | Consolidated rollup: RC + vision + DS + supervisor + cost + bridge + peers | `HealthAllResponse` |
 | `/api/health/peer` | Peer health index (all known peers) | - |
-| `/api/health/peer/<node>` | Single peer health record (`gamepc`, `peer`) | `PeerHealth` |
+| `/api/health/peer/<node>` | Single peer health record (`peer`) | `PeerHealth` |
 | `/api/ui-version` | SHA-1 hash of static asset mtimes (dashboard hot-reload trigger) | `{"v": str}` |
 | `/api/asset-stamp` | Max mtime across `index.html`, `dashboard.css`, `main.js` | `{"mtime": float}` |
 | `/api/cost` | Cost tracker state + daily spend | - |
@@ -73,7 +73,7 @@ Pydantic schemas: `dashboard/api_schema.py` (outer shapes) · `core/coaching_pay
 
 ## Authentication
 
-- **Dashboard endpoints**: no auth (local HTTPS, Game-PC secondary only)
+- **Dashboard endpoints**: no auth (local HTTPS, Legion-local only)
 - **`/api/bridge/inbox`**: `Authorization: Bearer <bridge_shared_secret>` from `ops/local_paths.json`
 
 ## Error shapes

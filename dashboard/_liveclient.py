@@ -4,9 +4,9 @@ Tier 2 helper-shake (2026-05-01): extracted from web_dashboard.py.
 
 Both summaries pull from the in-process vision server on Legion
 (`127.0.0.1:8889`), which mirrors the latest LCU + Live Client
-snapshots pushed by the relay agents (`gamepc_lcu_agent.py`,
-`gamepc_liveclient_relay.py`, 2-PC-era names now running Legion-local;
-the relay self-heals by reading `:2999`/LCU in-process). Each summary
+snapshots pushed by the relay agents (`lcu_agent.py`,
+`liveclient_relay.py`, relocated 2026-05-29, ADR-011; the relay
+self-heals by reading `:2999`/LCU in-process). Each summary
 is a best-effort cheap
 shape used by the dashboard:
 
@@ -46,7 +46,7 @@ _VISION_TOKEN = get_vision_token()
 
 
 def lcu_summary() -> dict:
-    """Read latest LCU snapshot pushed by gamepc_lcu_agent.py.
+    """Read latest LCU snapshot pushed by lcu_agent.py.
     Returns {} if relay isn't running or last push is stale (>5s)."""
     try:
         req = urllib.request.Request(
