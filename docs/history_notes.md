@@ -42,6 +42,74 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-21 (interactive) - overlay live-render TRUE root-cause (WS mixed-content) + ds-503 + ASCII coach
+
+CORRECTS the prior entry. The "overlay dead/placeholder in-game" bug was NOT
+backgroundThrottling (red herring; `8c7319f5` kept as harmless hardening). TRUE cause:
+the overlay loads HTTPS at legion-rc:8888 and main.js opened an INSECURE
+ws://legion-rc:8891 -> browsers BLOCK mixed-content ws:// for non-localhost hosts ->
+SecurityError at boot aborted init -> placeholders. It hid for months because the
+"test in a normal browser" step used 127.0.0.1, which is EXEMPT from the block and
+masked it. RULE: test the overlay on the legion-rc origin, NOT 127.0.0.1.
+
+Commits (all pushed): `91cf480a` overlay WS fix + SR-coach PRACTICETOOL re-enable +
+rc-shell occlusion switches ; `44174fb1` ds-preview/ds-knobs graceful build_complete 200
+(was 503 spam on a full 6-item build) ; `d2170d4d` ASCII-clean coach text in build_state
+(Haiku em-dash reached the HUD) ; `0a70a547` route WS to ws://127.0.0.1:8891 (kills
+SSL-handshake spam; :8891 has no TLS, 127.0.0.1 is exempt + co-located). Updated memory
+reference_electron_overlay_throttling. rc-shell bounced to a fresh instance (pid 4996).
+
+NEXT (operator AFK in a practice match for this): UI passes from the live UI/UX audit -
+pop-out/hierarchy SHOULD-FIX (CALL action must out-weight peers), L1 minimap-anchored
+objective timers, L3 live spike cue (HIGH, computed, gated out of overlay.css). Verify the
+in-game overlay now renders live coach. Tail: :8891 no TLS (push via ws://127.0.0.1, fine on 1-PC).
+
+---
+
+# 2026-06-21 weekly-hygiene (scheduled, unattended)
+
+## What was done
+
+**Section 1 (WAKEUP trim):** No relocation. WAKEUP_NOTES had exactly 3 sessions (all 2026-06-21) - within the 2-3 keep window.
+
+**Section 2 (CLAUDE.md overhead):** No changes. 25KB (budget 60KB), no stray ledger entries.
+
+**Section 3 (memory updates applied - HIGH confidence, retired infra):**
+- `reference_gamepc_agents.md`: marked RETIRED (ADR-011 2026-05-29); agents now on Legion.
+- `project_gamepc_mcp_boot_gap.md`: marked RETIRED (ADR-011 2026-05-29).
+- `reference_gamepc_http_server_redeploy.md`: marked RETIRED (ADR-011 2026-05-29).
+- MEMORY.md index: 3 game-pc lines annotated "RETIRED ADR-011"; `project_legion_migration_planned` line corrected from "PENDING" to "DONE ADR-011 item 215 2026-05-29".
+
+## Judgment calls flagged (your call)
+
+**Memory suspects (MEDIUM confidence - verify before editing):**
+1. `reference_topology.md`: still describes Game-PC as the dashboard surface (2 monitors + Chrome). Stale - League + dashboard moved to Legion ADR-011.
+2. `user_operator_profile.md`: "Game-PC (runs League; dashboard shown in Chrome on its secondary monitor)". Same staleness.
+3. `reference_gamepc_monitor_index_volatility.md`: entirely about Game-PC capture_monitor indices. Retired fleet member, no active use.
+4. `feedback_delegate_to_gamepc_claude.md`: guides delegating tasks to Game-PC Claude. Game-PC retired from pipeline.
+5. `feedback_caveman_default_fleet.md`: "all three machines" / "Peer and Game-PC received bridge tasks". Now a 2-machine fleet (Legion + Peer).
+6. `reference_bridge_dispatch_target_paths.md`: describes 3 dispatch paths including target=gamepc. Game-PC retired.
+7. `feedback_gamepc_league_fullscreen_lockup.md`: about Game-PC exclusive-fullscreen + virtual display lockup. Retired.
+8. CLAUDE.md `docs/DAEMON_SLAYER.md` blurb: cites "ENGINE_VERSION 1.101.0" - live version is 1.149.0. Operator-curated prose; update via normal Settled/DS-batch workflow, not hygiene pass.
+
+**Anomaly: RC-BridgeDaemon + RC-BridgeWatcher both state=Ready, last_result=1 (since 6/20 4:30 PM).**
+
+Root cause verified from `bridge_watcher_2026-06-20.log`:
+- Watchdog forced exit at 10:02 AM on 6/20 (designed - stall > 120s threshold after a push-notif 20s timeout).
+- Restarted at 16:30 PM; ran < 1s (3 log lines, all at 16:30:30), then silently exited code 1. No error line logged.
+- No `bridge_watcher_2026-06-21.log` exists - both daemons offline since.
+- Impact: Legion cannot auto-process incoming Peer tasks. Queue is 0, no data loss.
+
+Recommendation: `Start-ScheduledTask -TaskName RC-BridgeDaemon; Start-ScheduledTask -TaskName RC-BridgeWatcher`
+
+Also worth: investigate why the watcher silently exits code 1 after a successful first poll at restart. The 16:30 RC restart (9s before watcher start) may have left a stale lock or triggered a fast watchdog re-fire. The code-1 path that bypasses logging is a gap to fix.
+
+## Second pass (RC-WeeklyHygiene scheduled, ~05:00 CDT)
+
+Bridge daemons recovered automatically on RC reboot at 04:58 CDT - both Running, queue=0. Memory RETIRED annotations from first pass verified applied. No new relocation, no new flags. data/spell_prefs.json has an unstaged modification not authored by hygiene pass - left unstaged per scope rules.
+
+---
+
 # 2026-06-20/21 (interactive) - overlay OPEN batch + live overlay-throttling root-cause
 
 Shipped 4 commits, all CI-green (run 27892032332): `cdd494fa` QA1 ward-ready glyph
