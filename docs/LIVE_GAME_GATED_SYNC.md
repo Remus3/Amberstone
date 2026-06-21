@@ -655,3 +655,14 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   a tightened poll cadence. Only after (a)-(d) check out over a live game, authorize the default-ON flip
   (and, separately, E7 wiring the frozen `lcu/lcu_client.py._request` onto the same pool). Does NOT block any
   further stage.
+- 2026-06-21 R9 DS flat damage-reduction EHP seam (`assume_passive_flat_mitigation`, default-OFF). The NEW
+  per-instance flat-DR registry (`agents/daemon_slayer/_passive_flat_mitigation_overrides.py`: Fizz P / Amumu E /
+  Leona W) ships DEFAULT-OFF on `compute_ehp` + `rank_items_by_ehp` - the EHP math is byte-identical until
+  `assume_passive_flat_mitigation=True`. OWED (operator/Gemini-gated, NOT headless - charter 4b "do not flip
+  blind"): (a) over a real/replayed game, flip the seam on in the live survivability scorer path and confirm the
+  flat-DR champions' (Amumu / Leona / Fizz) EHP-ranking shifts read sane vs eyeball + rewind-WIN data; (b) validate
+  the two operator-tunable midpoints against live per-instance data - `_ASSUMED_FLAT_DR_INSTANCES`=6 (the
+  representative count of mitigated instances over a fight - the live per-instance damage feed we lack) and
+  `_ASSUMED_ABILITY_RANK`=4 (the per-rank Amumu/Leona flat-block read level). A WRONG precompute is worse than no
+  credit, so do NOT default-ON until the midpoints are tuned to a live fight clock. Does NOT block any further
+  stage.
