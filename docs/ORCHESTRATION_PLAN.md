@@ -152,6 +152,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R5 | ds-sweep | DIRECTOR REFILL: DS schema lift - passive_heal missing_hp_heal_amp. Default-OFF `assume_missing_hp_heal_amp` seam on `ability_hps.py compute_ability_hps` + NEW `_MISSING_HP_HEAL_AMP` registry: a registered (champ, spell) heal_per_cast multiplied by `1 + max_bonus * caster_missing_hp_pct` (the heal-AMP multiplier class _passive_heal_overrides.py:27 deliberately excluded from the heal-MAGNITUDE registry). Seeded 4 from champion_abilities.json 16.12.1: Master Yi W / Lissandra R / Sylas W (0%:100% -> 1.0), Briar P (0%:40% -> 0.40); Nidalee E probed, no amp text, NOT seeded. Offline characterization tests vs Meraki ground truth. ENGINE 1.145.0 -> 1.146.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `dc2eb0c3` |
 | R7 | ds-sweep | DIRECTOR REFILL: DS schema lift - per-stack self-Attack-Speed passives. NEW `agents/daemon_slayer/_passive_as_overrides.py` registry (PassiveAsEntry: per-stack bonus-AS FRACTION low/high by level + max_stacks + ap_per_stack_per_100) + default-OFF `assume_passive_as_stacks` seam on `dps.py compute_dps` crediting the champ's innate per-stack bonus AS at `_ASSUMED_PASSIVE_AS_STACK_FRACTION`=1.0 (full stacks) into the AA rotation (same 2.5 hard-cap re-clamp as the Yun Tal cond_as path; raw_attack_dps left at the no-conditional baseline). Seeded 4 from champion_abilities.json 16.12.1 effects_descriptions: Irelia Ionian Fervor (10%:25% by lvl/stack, max 4), Jax Relentless Assault (5%:12.5% by lvl/stack, max 8), Ezreal Rising Spell Force (10% flat/stack, max 5), Volibear The Relentless Storm ((5% + 4% per 100 AP)/stack, max 5 - the AP-scaled one, reads resolved post-amp AP). per_stack*max_stacks == documented max (self-clamping). Offline characterization tests (RED-first, 19/19). ENGINE 1.146.0 -> 1.147.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `7c22e3bb` |
 | R8 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Electron overlay surface (web/css/overlay.css, web/js/panels/overlay_ds_controls.js, web/js/overlay_pulse.js) vs docs/UI_SCALE_SPEC_V2.md. Address the R6 residual: tokenize the 12/13px hardcoded sub-floor sizes in overlay.css (overlay-scoped tokens - global tokens.css keeps its >=16px floor). Fix every MUST-FIX in-slice. | DONE | `4916d8e4` |
+| R9 | ds-sweep | DIRECTOR REFILL: DS schema lift - survivability per-instance FLAT damage reduction (flat DR). NEW `agents/daemon_slayer/_passive_flat_mitigation_overrides.py` modeling the per-instance flat-amount DR class the percent `_passive_mitigation_overrides.py` (docstring lines 64-69) deliberately EXCLUDED: Fizz P (flat 4, ANY, +1% AP omitted), Amumu E (per-rank [5,7,9,11,13], PHYS), Leona W (per-rank [8,12,16,20,24], ANY, active prob 0.3); all cap_frac 0.5. Default-OFF `assume_passive_flat_mitigation` seam on compute_ehp + rank_items_by_ehp folds prevented damage (`_ASSUMED_FLAT_DR_INSTANCES`=6 x flat x prob) into the EHP NUMERATOR (mirrors ext_flat_hp); byte-identical when OFF; `_ASSUMED_ABILITY_RANK`=4 reads the per-rank seeds. Offline characterization tests vs champion_abilities.json 16.12.1. ENGINE 1.147.0 -> 1.148.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `d52c984e` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -165,6 +166,27 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-21 R9 (DIRECTOR REFILL cycle) DONE (`d52c984e`, merge `6767fd18`) - DS
+  schema lift: per-instance FLAT damage-reduction survivability registry. NEW
+  `agents/daemon_slayer/_passive_flat_mitigation_overrides.py` models the
+  flat-amount-per-instance DR class the percent `_passive_mitigation_overrides.py`
+  docstring (lines 64-69) explicitly EXCLUDED. Seeded 3 from champion_abilities.json
+  16.12.1 verbatim: Fizz P (flat 4, ANY, prob 1.0, +1% AP omitted), Amumu E (per-rank
+  [5,7,9,11,13], PHYS, prob 1.0), Leona W (per-rank [8,12,16,20,24], ANY, active prob
+  0.3); all cap_frac 0.5. Default-OFF `assume_passive_flat_mitigation` seam on
+  compute_ehp + rank_items_by_ehp folds prevented damage (`_ASSUMED_FLAT_DR_INSTANCES`
+  =6 x per-instance-flat x prob) into the EHP NUMERATOR (mirrors ext_flat_hp -
+  prevented post-mitigation damage = bonus max-HP equiv); `_ASSUMED_ABILITY_RANK`=4
+  reads the per-rank blocks. Byte-identical OFF (proven: Amumu blended 2401.33==2401.33;
+  flat_mitigation_hp off=(0,0,0) on=(66,0,0) phys; unregistered champ identical on/off).
+  DEVIATION from the directive's per-LEVEL assumption: Amumu/Leona carry per-RANK flat
+  blocks in 16.12.1, modeled rank_scaled (followed the data). EhpResult gained
+  passive_flat_mit_phys/mag/true (default 0.0, appended at end). ENGINE 1.147.0 ->
+  1.148.0; DS :8893 restarted -> 1.148.0 live; Share synced (--check in-sync, 368 files).
+  TDD test_passive_flat_mitigation_overrides_r9.py. Suites GREEN: DS 7436 passed (+1942
+  subtests), RC 9132 passed (1 known live-daemon version-pin failure, resolved by the
+  restart). Verifier-gated CONFIRM before merge. Live flat-DR flip EXCLUDED ->
+  docs/LIVE_GAME_GATED_SYNC.md.
 - 2026-06-21 R8 (DIRECTOR REFILL cycle) DONE (`4916d8e4`) - Section-3b 5-phase UI
   audit of the Electron overlay surface (overlay.css + overlay_ds_controls.js +
   overlay_pulse.js) vs UI_SCALE_SPEC_V2 v2.1; addressed the R6 residual.
