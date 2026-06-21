@@ -363,6 +363,50 @@ def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browse
     assert not errors, f"JS errors [new cue widgets]: {errors[:3]}"
 
 
+def test_overlay_minimap_rect_is_clickthrough_outline_widget(mock_server, pw_browser):
+    """RC Overlay Doctrine w-mmrect (ZOI foundation): the settings-driven minimap
+    outline is a position-fixed .ovx-widget mounted as a direct am-grid child,
+    rendered at the game.cfg-derived rect from /api/state.minimap_rect (the mock
+    fixture ships x=1600,y=760,w=312,h=312). It is OUTLINE-ONLY (transparent
+    backing, gold hairline border, no hex-notch bracket) and CLICK-THROUGH
+    (pointer-events:none) so League minimap clicks pass through; it is
+    settings-pinned (no drag handle)."""
+    sel = "#am-mmrect"
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        assert page.eval_on_selector(
+            sel, "e => e.classList.contains('ovx-widget')"
+        ), f"{sel} is not an .ovx-widget"
+        assert page.eval_on_selector(sel, "e => e.dataset.ovxId") == "w-mmrect"
+        assert page.eval_on_selector(sel, "e => !e.hidden"), f"{sel} should be shown"
+        assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
+        # game.cfg-derived rect (design px), from the mock fixture
+        assert _css(page, sel, "left") == "1600px", f"{sel} not at settings x"
+        assert _css(page, sel, "top") == "760px", f"{sel} not at settings y"
+        assert _css(page, sel, "width") == "312px", f"{sel} wrong width"
+        assert _css(page, sel, "height") == "312px", f"{sel} wrong height"
+        # click-through (no grab zone over the minimap)
+        assert _css(page, sel, "pointer-events") == "none", f"{sel} not click-through"
+        # outline-only: transparent backing + a gold hairline (--ovx-gold)
+        assert _css(page, sel, "background-color") == "rgba(0, 0, 0, 0)", (
+            f"{sel} backing not transparent"
+        )
+        assert "200, 170, 110" in _css(page, sel, "border-top-color"), (
+            f"{sel} border is not the --ovx-gold hairline"
+        )
+        # no drag handle (settings-pinned, click-through-safe)
+        assert page.eval_on_selector(
+            sel, "e => e.querySelector(':scope > .ovx-handle') === null"
+        ), f"{sel} must not have a drag handle"
+        # direct am-grid child (viewport-fixed, not trapped by a transformed pane)
+        parent = page.eval_on_selector(sel, "e => e.parentElement.className")
+        assert "am-grid" in parent, f"{sel} must mount in am-grid (got {parent!r})"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [w-mmrect]: {errors[:3]}"
+
+
 def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
     """Inside #right-now only the lead/callouts/choices mounts may show:
     when a callout lands (un-hidden + populated) it displays, while the

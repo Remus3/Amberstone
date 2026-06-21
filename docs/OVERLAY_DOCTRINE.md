@@ -127,6 +127,17 @@ by the same work-area scale rc-shell sizes the window by (RC2 4.1 ovscale).
 | `w-ovds`         | DS fight-model / rel-score  | Ambient               | 20, 780       | left-edge column, out of the play space  | no (reveal: build) |
 | `w-spike`        | spike-crossed cue           | Urgent (one-shot)     | 360, 840      | bottom-left, near champion stats         | yes (transient)|
 | `w-trinket`      | trinket / control-ward ready| Urgent make-aware     | 920, 540      | small glyph, offset from the avatar      | yes (glyph)   |
+| `w-mmrect`       | minimap ZOI outline (geom)  | Ambient               | game.cfg 1600,760 | over the live minimap, settings-pinned | yes (hairline)|
+
+`w-mmrect` is the lone SETTINGS-pinned widget (rule-9 EXCEPTION): its (x,y,w,h)
+is computed deterministically from League's game.cfg `MinimapScale` + `FlipMiniMap`
+(`core/league_settings` + `core/minimap_geometry` -> `/api/state.minimap_rect`,
+LOCAL + free, no API), NOT placed by a first drag. It is therefore NOT in the
+`overlay_layout.js` field registry and has NO drag handle - a grab zone over the
+click-critical minimap would eat move / ping / minimap-cast clicks, so the body
+is `pointer-events:none` (fully click-through) and `panels/minimap_rect.js`
+positions it. It is the Zone-of-Influence geometry FOUNDATION: this slice paints
+only the aligned gold-hairline outline; a later slice fills it with ZOI shading.
 
 Visibility presets (replaces the panel-set cycle, Alt+Shift+C):
 - `coach` (default): w-call, w-choices, w-callouts, w-lead, w-spike, w-trinket.
@@ -196,6 +207,12 @@ high-stakes moment, with hysteresis), the field sheds load:
 - `web/js/main.js` - overlay boot calls `overlay_layout.init()` after the
   `data-shell="overlay"` stamp (a single wire line; main.js is frozen-adjacent -
   add only the init call, no logic).
+- `w-mmrect` (ZOI foundation) - `core/league_settings.py` (game.cfg `[HUD]`
+  reader, fail-soft) + `core/minimap_geometry.py` (pure, calibration-anchored
+  scale->rect model) -> `dashboard/_state_builder.py` stamps `minimap_rect` on
+  `/api/state` (mode-gated, null off a minimap mode) -> `web/js/panels/minimap_rect.js`
+  paints the click-through outline. main.js wires `renderMinimapRect` beside the
+  other cue renderers. overlay_layout.js is UNTOUCHED (settings-pinned, no drag).
 - rc-shell main process - `overlay_layout.json` read/write under userData + an IPC
   channel `overlay-layout:save` / seed-at-boot (extends the HZ-D2 sidecar-position
   persistence to the widget field).

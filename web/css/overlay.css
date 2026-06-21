@@ -365,6 +365,27 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-spike"]::before {
   display: none;
 }
 
+/* 4g. w-mmrect (ZOI foundation): the settings-driven minimap OUTLINE. The
+ * quietest possible ambient element (doctrine rule 8 data-ink): a single gold
+ * hairline tracing the live minimap square, NO backing / shadow / hex-notch /
+ * padding. Unlike every other widget it is SETTINGS-pinned (no drag handle) and
+ * the body is pointer-events:none so League minimap clicks (move / ping / cast)
+ * pass straight through. width/height are set inline by panels/minimap_rect.js
+ * from the game.cfg-derived rect, so max-width must not clamp them. It carries
+ * no text, so it is exempt from the combat-mode text shed (section 6). */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-mmrect"] {
+  background: transparent;
+  border: 1px solid rgba(var(--ovx-gold), 0.55);
+  box-shadow: none;
+  padding: 0;
+  max-width: none;
+  overflow: visible;
+  pointer-events: none;
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-mmrect"]::before {
+  display: none;
+}
+
 /* 4d. Panel-set presets (Alt+Shift+C). main.js stamps body[data-panelset]; these
  * are DELTAS from the coach base (doctrine section 4), NOT a column swap: the
  * coach core (call / choices / callouts / lead) PERSISTS and a set reveals or
