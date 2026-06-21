@@ -691,6 +691,46 @@ def test_overlay_ovscale_out_of_band_ignored(mock_server, pw_browser):
     assert not errors, f"JS errors [ovscale out-of-band]: {errors[:3]}"
 
 
+def test_overlay_subfloor_tokens_resolve_to_game_distance_px(mock_server, pw_browser):
+    """R8 (the R6 residual): the overlay sub-floor font-sizes were tokenized
+    (overlay.css sec 1b --fs-ov-chip / --fs-ov-sigil). This proves the rename
+    is zero pixel delta in a real browser - the overlay-scoped custom
+    properties resolve to the same game-distance px the bare literals carried
+    (13px chip/source/initial, 12px sigil) AND cascade to a real consumer."""
+    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "threat")
+    try:
+        # The tokens are defined on body[data-shell="overlay"]; getComputedStyle
+        # surfaces custom properties resolved at the scope root.
+        chip = page.evaluate(
+            "getComputedStyle(document.body).getPropertyValue('--fs-ov-chip').trim()"
+        )
+        sigil = page.evaluate(
+            "getComputedStyle(document.body).getPropertyValue('--fs-ov-sigil').trim()"
+        )
+        assert chip == "13px", f"--fs-ov-chip resolved {chip!r}, expected 13px"
+        assert sigil == "12px", f"--fs-ov-sigil resolved {sigil!r}, expected 12px"
+
+        # A real consumer resolves through the token: inject a .rc-src chip
+        # into the overlay DOM and confirm it computes to 13px (the selector
+        # body[data-shell="overlay"] .rc-src matches any descendant).
+        fs = page.evaluate(
+            "() => {"
+            "  const s = document.createElement('span');"
+            "  s.className = 'rc-src';"
+            "  s.textContent = 'src';"
+            "  document.body.appendChild(s);"
+            "  return getComputedStyle(s).fontSize;"
+            "}"
+        )
+        assert fs == "13px", (
+            f".rc-src computed font-size {fs!r}, expected 13px via --fs-ov-chip"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [subfloor tokens]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the
     overlay-route files this slice adds."""
