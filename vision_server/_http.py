@@ -88,7 +88,7 @@ class Handler(BaseHTTPRequestHandler):
             f.pop("b64", None)
             self._j(200, f)
         elif self.path == "/latest-liveclient":
-            # Live Client API snapshot relayed from Game-PC.
+            # Live Client API snapshot from the Legion-local relay.
             if not self._auth():
                 self._j(401, {"error": "unauthorized"})
                 return

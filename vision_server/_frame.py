@@ -16,9 +16,10 @@ relay, so the global ``/latest-frame`` slot is fed on demand. When League runs
 on this host (``core.game_host.GAME_HOST`` local) and the cached frame is
 stale/missing, ``get_latest_frame`` grabs ONE frame in-process (a single
 on-demand GDI BitBlt via PIL.ImageGrab) so the relay agent is an optimization
-rather than a hard dependency. A remote ``RC_GAME_HOST`` (legacy 2-PC) disables
-the self-grab (the agent stays primary; a remote box's screen is not capturable
-here). Self-grabs are lightly throttled to avoid redundant back-to-back grabs
+rather than a hard dependency. A remote ``RC_GAME_HOST`` (legacy remote-host
+config) disables the self-grab (the agent stays primary; a remote box's screen
+is not capturable here). Self-grabs are lightly throttled to avoid redundant
+back-to-back grabs
 and are fail-soft (return the existing cache, never raise).
 """
 from __future__ import annotations

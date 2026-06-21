@@ -288,7 +288,7 @@ def _compute_quick_review(current: dict, history: list[dict]) -> dict:
     else:
         wrong_team.append({
             "text": "Team data unavailable",
-            "why": "LCU match detail not ingested yet. The Game-PC LCU "
+            "why": "LCU match detail not ingested yet. The Legion LCU "
                    "agent auto-POSTs on EndOfGame; this section unlocks "
                    "team objectives + roster signals once that lands.",
         })

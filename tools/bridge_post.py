@@ -3,7 +3,7 @@
 
 Stop-hook entrypoint. Reads the Stop-hook payload JSON from stdin, extracts
 the last assistant message text, and posts a one-line summary to the bridge.
-The single positional arg ('legion' or 'gamepc') tags the source.
+The single positional arg ('legion' or 'peer') tags the source.
 
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe C:\\Riot Commander\\tools\\bridge_post.py legion
 

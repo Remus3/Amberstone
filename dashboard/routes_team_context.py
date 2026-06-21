@@ -2,7 +2,7 @@
 """Team-context routes for the FU02 champ-select 5+5 enrichment panel.
 
 Wire shape:
-  POST /api/team-context/refresh  <- Game-PC LCU agent on ChampSelect
+  POST /api/team-context/refresh  <- Legion LCU agent on ChampSelect
                                     transition. Body is the 10-player
                                     roster + queue_id. Bearer-auth via
                                     cross-Claude bridge token (same
@@ -360,7 +360,7 @@ _FANOUT_DISPATCHER: Callable[[list, list, int], None] = _default_dispatch_fanout
 
 def _serve_refresh_post(h, body) -> None:
     """POST /api/team-context/refresh - receive 10-player roster from
-    Game-PC LCU agent on ChampSelect transition.
+    Legion LCU agent on ChampSelect transition.
 
     Body shape:
         {

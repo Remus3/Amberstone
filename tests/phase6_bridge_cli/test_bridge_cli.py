@@ -56,7 +56,7 @@ class TestArgparseSurface:
 
     def test_task_target_choices_enforced(self):
         with pytest.raises(SystemExit):
-            bridge_cli.main(["task", "--target", "peer", "--summary", "x"])
+            bridge_cli.main(["task", "--target", "gamepc", "--summary", "x"])
 
     def test_post_result_requires_task_id(self):
         with pytest.raises(SystemExit):
@@ -67,14 +67,14 @@ class TestArgparseSurface:
             bridge_cli.main(["post-result", "task-1",
                              "--reply-to", "mars"])
 
-    def test_pull_target_default_is_gamepc(self, monkeypatch, capsys):
+    def test_pull_target_default_is_legion(self, monkeypatch, capsys):
         monkeypatch.setattr(bridge_cli, "_fetch_messages",
                             lambda since: {"now": 1.0, "messages": []})
         monkeypatch.setattr(bridge_cli, "_read_processed", lambda: set())
         rc = bridge_cli.main(["pull"])
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
-        assert out["target"] == "gamepc"
+        assert out["target"] == "legion"
 
 
 # ---------- task subcommand --------------------------------------------
@@ -90,7 +90,7 @@ class TestTaskSubcommand:
 
         monkeypatch.setattr(bridge_cli, "_post_envelope", fake_post)
         rc = bridge_cli.main([
-            "task", "--target", "gamepc",
+            "task", "--target", "peer",
             "--summary", "do thing",
             "--prompt", "the prompt",
             "--id", "task-fixed-1",
@@ -100,7 +100,7 @@ class TestTaskSubcommand:
         assert env["kind"] == "task"
         assert env["id"] == "task-fixed-1"
         assert env["source"] == "legion"   # opposite of target
-        assert env["target"] == "gamepc"
+        assert env["target"] == "peer"
         assert env["summary"] == "do thing"
         assert env["body"]["prompt"] == "the prompt"
         assert "issued" in env["body"]
@@ -123,7 +123,7 @@ class TestTaskSubcommand:
 
     def test_explicit_kind_task_without_prompt_fails(self, capsys):
         rc = bridge_cli.main([
-            "task", "--target", "gamepc",
+            "task", "--target", "peer",
             "--summary", "x", "--kind", "task",
         ])
         assert rc == 2
@@ -131,7 +131,7 @@ class TestTaskSubcommand:
 
     def test_bad_body_json_returns_2(self, capsys):
         rc = bridge_cli.main([
-            "task", "--target", "gamepc", "--summary", "x",
+            "task", "--target", "peer", "--summary", "x",
             "--prompt", "p", "--body", "{not-json}",
         ])
         assert rc == 2
@@ -141,7 +141,7 @@ class TestTaskSubcommand:
             raise RuntimeError("network gone")
         monkeypatch.setattr(bridge_cli, "_post_envelope", boom)
         rc = bridge_cli.main([
-            "task", "--target", "gamepc", "--summary", "x", "--prompt", "p",
+            "task", "--target", "peer", "--summary", "x", "--prompt", "p",
         ])
         assert rc == 1
         assert "bridge post failed" in capsys.readouterr().err
@@ -159,7 +159,7 @@ class TestPostResultSubcommand:
         monkeypatch.setattr(bridge_cli, "_mark_processed",
                             lambda tid: seen.setdefault("marked", tid))
         rc = bridge_cli.main([
-            "post-result", "task-abc", "--source", "gamepc",
+            "post-result", "task-abc", "--source", "peer",
             "--summary", "ok",
         ])
         assert rc == 0
@@ -174,7 +174,7 @@ class TestPostResultSubcommand:
         monkeypatch.setattr(bridge_cli, "_mark_processed",
                             lambda tid: marked.append(tid))
         rc = bridge_cli.main([
-            "post-result", "task-no-mark", "--source", "gamepc",
+            "post-result", "task-no-mark", "--source", "peer",
             "--summary", "ok", "--no-mark",
         ])
         assert rc == 0
@@ -187,7 +187,7 @@ class TestPostResultSubcommand:
                             or {"ts": 1.0})
         monkeypatch.setattr(bridge_cli, "_mark_processed", lambda tid: None)
         rc = bridge_cli.main([
-            "post-result", "task-x", "--source", "gamepc",
+            "post-result", "task-x", "--source", "peer",
             "--summary", "fail",
             "--suggestions", "check API key",
             "--suggestions", "verify peer reachable",
@@ -204,7 +204,7 @@ class TestPostResultSubcommand:
                             or {"ts": 1.0})
         monkeypatch.setattr(bridge_cli, "_mark_processed", lambda tid: None)
         rc = bridge_cli.main([
-            "post-result", "task-x", "--source", "gamepc",
+            "post-result", "task-x", "--source", "peer",
             "--summary", "ok", "--exit-code", "3",
         ])
         assert rc == 0
@@ -219,7 +219,7 @@ class TestPostResultSubcommand:
         monkeypatch.setattr(sys, "stdin",
                             io.StringIO("captured stream output\n"))
         rc = bridge_cli.main([
-            "post-result", "task-x", "--source", "gamepc",
+            "post-result", "task-x", "--source", "peer",
             "--summary", "ok", "--from-stdin",
         ])
         assert rc == 0
@@ -277,8 +277,8 @@ class TestPullSubcommand:
 
     def test_filters_to_target_and_skips_answered(self, monkeypatch, capsys):
         msgs = self._msgs(
-            ("task", "t1", "gamepc", None, 100.0),
-            ("task", "t2", "gamepc", None, 200.0),
+            ("task", "t1", "peer", None, 100.0),
+            ("task", "t2", "peer", None, 200.0),
             ("task", "t3", "legion", None, 50.0),       # wrong target
             ("result", "r1", "legion", "t1", 150.0),    # answers t1
         )
@@ -286,7 +286,7 @@ class TestPullSubcommand:
                             lambda since: {"now": 999.0, "messages": msgs})
         monkeypatch.setattr(bridge_cli, "_read_processed", lambda: set())
 
-        rc = bridge_cli.main(["pull", "--target", "gamepc"])
+        rc = bridge_cli.main(["pull", "--target", "peer"])
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
         assert out["count"] == 1
@@ -294,9 +294,9 @@ class TestPullSubcommand:
 
     def test_legion_target_accepts_rc_alias(self, monkeypatch, capsys):
         msgs = self._msgs(
-            ("task", "peer-1", "rc",     None, 100.0),
+            ("task", "rc-1",  "rc",     None, 100.0),
             ("task", "leg-1", "legion", None, 200.0),
-            ("task", "gpc-1", "gamepc", None, 300.0),
+            ("task", "peer-1", "peer",    None, 300.0),
         )
         monkeypatch.setattr(bridge_cli, "_fetch_messages",
                             lambda since: {"now": 999.0, "messages": msgs})
@@ -306,32 +306,32 @@ class TestPullSubcommand:
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
         ids = sorted(t["id"] for t in out["tasks"])
-        assert ids == ["peer-1", "leg-1"]   # rc alias accepted, gamepc rejected
+        assert ids == ["leg-1", "rc-1"]   # rc alias accepted, peer rejected
 
     def test_processed_ids_skipped(self, monkeypatch, capsys):
         msgs = self._msgs(
-            ("task", "t1", "gamepc", None, 100.0),
-            ("task", "t2", "gamepc", None, 200.0),
+            ("task", "t1", "peer", None, 100.0),
+            ("task", "t2", "peer", None, 200.0),
         )
         monkeypatch.setattr(bridge_cli, "_fetch_messages",
                             lambda since: {"now": 999.0, "messages": msgs})
         monkeypatch.setattr(bridge_cli, "_read_processed", lambda: {"t1"})
 
-        bridge_cli.main(["pull", "--target", "gamepc"])
+        bridge_cli.main(["pull", "--target", "peer"])
         out = json.loads(capsys.readouterr().out)
         assert [t["id"] for t in out["tasks"]] == ["t2"]
 
     def test_tasks_sorted_oldest_first(self, monkeypatch, capsys):
         msgs = self._msgs(
-            ("task", "tNEW", "gamepc", None, 999.0),
-            ("task", "tOLD", "gamepc", None, 100.0),
-            ("task", "tMID", "gamepc", None, 500.0),
+            ("task", "tNEW", "peer", None, 999.0),
+            ("task", "tOLD", "peer", None, 100.0),
+            ("task", "tMID", "peer", None, 500.0),
         )
         monkeypatch.setattr(bridge_cli, "_fetch_messages",
                             lambda since: {"now": 9999.0, "messages": msgs})
         monkeypatch.setattr(bridge_cli, "_read_processed", lambda: set())
 
-        bridge_cli.main(["pull", "--target", "gamepc"])
+        bridge_cli.main(["pull", "--target", "peer"])
         out = json.loads(capsys.readouterr().out)
         assert [t["id"] for t in out["tasks"]] == ["tOLD", "tMID", "tNEW"]
 
@@ -339,7 +339,7 @@ class TestPullSubcommand:
         def boom(since):
             raise OSError("net down")
         monkeypatch.setattr(bridge_cli, "_fetch_messages", boom)
-        rc = bridge_cli.main(["pull", "--target", "gamepc"])
+        rc = bridge_cli.main(["pull", "--target", "peer"])
         assert rc == 0
         out = json.loads(capsys.readouterr().out)
         assert out["tasks"] == []
@@ -491,7 +491,7 @@ class TestBridgeMetrics:
                             self._fake_urlopen_returning({"ts": 1.0}))
 
         rc = bridge_cli.main([
-            "post-result", "task-metric", "--source", "gamepc",
+            "post-result", "task-metric", "--source", "peer",
             "--summary", "ok",
         ])
         assert rc == 0

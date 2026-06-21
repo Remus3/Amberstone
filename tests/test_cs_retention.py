@@ -2,7 +2,7 @@
 
 Pins the contract that the dashboard holds the last non-empty
 champ_select across the fast no-draft (ARAM / ARAM Mayhem / Arena)
-champ-select -> game transition, where the Game-PC agent push goes
+champ-select -> game transition, where the LCU agent push goes
 briefly stale or the LCU champ-select session 404s the instant the
 game starts. Without retention the operator saw the champ-select
 bench / quick-swap view blank for these modes (no ban/pick draft

@@ -61,32 +61,6 @@
       "restart_trigger.txt"
     ]
   },
-  "gamepc": {
-    "auto_read_patterns": [
-      "tail .* log", "what .*agent .*pid", "list .*files",
-      "cat .*", "show .*MCP server"
-    ],
-    "auto_ops_verbs": [
-      "restart agent .*", "kill agent .*", "ping LCU",
-      "ping liveclient relay"
-    ],
-    "bash_restricted": [
-      "py C:\\\\RC-Agent\\\\.*\\.py",
-      "Get-Process *", "taskkill /F /PID *",
-      "schtasks /Run /TN *", "wmic process *",
-      "type *", "dir *"
-    ],
-    "max_turns": 4,
-    "timeout_s": 60,
-    "daily_token_cap_usd": 2.00,
-    "escalate_always": [
-      "C:\\RC-Agent\\gamepc_screen_agent.py",
-      "C:\\RC-Agent\\gamepc_lcu_agent.py",
-      "C:\\RC-Agent\\gamepc_liveclient_relay.py",
-      "C:\\RC-Agent\\gamepc_mcp_server.py",
-      "C:\\RC-Agent\\gamepc_hotkey_listener.py"
-    ]
-  },
   "peer": {
     "auto_read_patterns": [
       "git log", "git status", "git diff",

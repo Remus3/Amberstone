@@ -390,7 +390,7 @@
        LCU's restriction). Expects /api/state to expose:
          lcu.lobby = { queue_id, queue_name, party_size, max_party_size,
                        is_leader, can_search, search_state }
-       Data feed = Game-PC LCU agent polling /lol-lobby/v2/lobby.
+       Data feed = LCU agent polling /lol-lobby/v2/lobby.
        Moved 2026-04-29 from top-of-body to after </header> for
        consistency with all other views (header above content). -->
   <div id="lobby-overlay" class="lobby-overlay hidden" aria-hidden="true">
@@ -424,7 +424,7 @@
            Meta-stats chips show "played 3 with you · 2W1L" from local
            match_history.db when puuid matches; "look up on aggregator B" link
            is the public-stats fallback (no Riot API key). Data feed
-           = Game-PC LCU agent forwarding lcu.lobby.members[]. -->
+           = LCU agent forwarding lcu.lobby.members[]. -->
       <div class="lobby-members" id="lobby-members" hidden>
         <div class="lobby-members-head">PARTY <span class="lobby-members-count" id="lobby-members-count">0</span></div>
         <ul class="lobby-members-list" id="lobby-members-list">
@@ -975,7 +975,7 @@
           <div class="lobby-view-card lobby-view-card-party">
             <div class="lv-panel-title"><span class="lv-panel-title-text">PARTY</span></div>
             <ul class="lobby-members-list" id="lv-members-list">
-              <li class="home-empty">no members visible - Game-PC LCU agent needs to forward lcu.lobby.members[]</li>
+              <li class="home-empty">no members visible - LCU agent needs to forward lcu.lobby.members[]</li>
             </ul>
           </div>
           <div class="lobby-view-card lobby-view-card-mainchamps">
@@ -1547,7 +1547,7 @@
           <div class="settings-card-head">PRE-GAME LOBBY</div>
           <label class="settings-row">
             <input type="checkbox" id="set-lobby-auto-accept"
-                   data-tt="Auto-accept ready-check. Source of truth is the Game-PC LCU agent (it actually accepts the ready-check); synced both ways with the lobby Auto Accept toggle and persistent." />
+                   data-tt="Auto-accept ready-check. Source of truth is the LCU agent (it actually accepts the ready-check); synced both ways with the lobby Auto Accept toggle and persistent." />
             <span>Auto Accept ready-check by default</span>
           </label>
           <label class="settings-row">

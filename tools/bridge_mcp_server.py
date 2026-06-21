@@ -10,8 +10,8 @@ chain so one RC_MCP_TOKEN covers all RC MCP servers).
 Why this server exists
 ----------------------
 The cross-Claude bridge (/api/bridge GET + POST, /api/bridge/pending,
-/api/bridge/status) is RC's primary mechanism for Legion <-> Game-PC <->
-Peer coordination, but reaching it from a local agent today means either
+/api/bridge/status) is RC's primary mechanism for Legion <-> Peer
+coordination, but reaching it from a local agent today means either
 shelling out to tools/bridge_cli.py or wiring urllib by hand with the
 self-signed-cert dance. This wraps the same documented surface as MCP
 tools so the agent can ask "what tasks are queued for me", "post this
@@ -121,7 +121,7 @@ log = logging.getLogger("rc-bridge-mcp")
 _START = time.time()
 
 _VALID_KINDS = ("note", "task", "result", "lesson", "ping")
-_VALID_TARGETS = ("legion", "gamepc", "peer", "rc")
+_VALID_TARGETS = ("legion", "peer", "rc")
 
 
 def _resolve_token() -> str:
@@ -254,7 +254,7 @@ def tool_bridge_post_task(source: str, target: str, summary: str,
         return {"error": "source required"}
     tgt = _norm_target(target)
     if not tgt:
-        return {"error": "target required (legion|gamepc|peer|rc)"}
+        return {"error": "target required (legion|peer|rc)"}
     msg = (summary or "").strip()
     if not msg:
         return {"error": "summary required"}
@@ -285,7 +285,7 @@ def tool_bridge_post_result(source: str, target: str, summary: str,
         return {"error": "source required"}
     tgt = _norm_target(target)
     if not tgt:
-        return {"error": "target required (legion|gamepc|peer|rc)"}
+        return {"error": "target required (legion|peer|rc)"}
     reply = str(in_reply_to or "").strip()
     if not reply:
         return {"error": "in_reply_to required (the originator's task id)"}
@@ -312,7 +312,7 @@ def tool_bridge_post_lesson(source: str, target: str, summary: str,
         return {"error": "source required"}
     tgt = _norm_target(target)
     if not tgt:
-        return {"error": "target required (legion|gamepc|peer|rc)"}
+        return {"error": "target required (legion|peer|rc)"}
     msg = (summary or "").strip()
     if not msg:
         return {"error": "summary required"}
@@ -368,9 +368,9 @@ TOOL_FUNCS = {
 
 
 _SRC = {"type": "string",
-        "description": "Posting node id (legion|gamepc|peer)"}
+        "description": "Posting node id (legion|peer)"}
 _TGT = {"type": "string",
-        "description": "Receiving node id (legion|gamepc|peer|rc); rc "
+        "description": "Receiving node id (legion|peer|rc); rc "
                        "is the legion alias"}
 _SUM = {"type": "string",
         "description": "One-line human summary (<=2000 chars)"}

@@ -11,7 +11,9 @@ Per S10 responsibilities:
     user-context build session).
   * Heartbeat to ``agents/state/lockfile`` every 5 seconds.
   * Verify SMB ``cmdkey`` presence at startup; if absent, log WARNING and
-    disable cross-machine dispatch until re-verified.
+    disable cross-machine dispatch until re-verified. (Legacy 2-PC SMB
+    push to Game-PC; retired post-1PC per ADR-011 - this probe is now a
+    no-op safeguard since there is no remote machine to push to.)
   * Graceful shutdown on SIGTERM / SIGBREAK.
 
 The process also acquires a PID lock against ``agents/state/lockfile`` -
@@ -242,8 +244,10 @@ class Supervisor:
                 )
 
         if not smb_credential_present():
+            # Legacy 2-PC SMB push to Game-PC (retired post-1PC, ADR-011).
+            # No remote machine remains, so this is an expected no-op path.
             log.warning(
-                "SMB credential for %s not found via cmdkey - disabling cross-machine dispatch",
+                "SMB credential for %s not found via cmdkey - disabling cross-machine dispatch (legacy 2-PC path, retired post-1PC)",
                 SMB_TARGET,
             )
             self.cross_machine_enabled = False
@@ -259,7 +263,9 @@ class Supervisor:
         self._warm_agent7 = WarmAgent7Session()
 
         # File-watcher ingest: bridges the existing RC coaching JSONs to
-        # the /push stream until the Game-PC Forwarder is deployed (S12).
+        # the /push stream. (Originally a stopgap until the 2-PC Game-PC
+        # Forwarder shipped per S12; that pre-1PC topology is retired -
+        # this Legion-local watcher is now the steady-state path, ADR-011.)
         # Charter: warm starts when game begins - hook the mode transition.
         self._file_ingest = FileIngest(
             self._ws,
@@ -455,10 +461,10 @@ class Supervisor:
                                     f"sub-process). False-confidence shape."
                                 ),
                                 "suggested_action": (
-                                    f"Restart the {node} health publisher via "
-                                    f"tools/gamepc_boot.ps1 "
-                                    f"(RC-WatcherHealthPublisher-{node}); see "
-                                    f"the s167 boot-hardening deferral."
+                                    f"Restart the {node} health publisher "
+                                    f"(RC-WatcherHealthPublisher-{node}) on the "
+                                    f"{node} node; see the s167 boot-hardening "
+                                    f"deferral."
                                 ),
                                 "source": "bridge_publisher_watchdog",
                             },

@@ -2,7 +2,7 @@
 
 Slice 2C-7d (2026-05-01): final POST sub-slice. Handlers carved out
 of `web_dashboard._Handler.do_POST`. All three reach the in-process
-vision server at 127.0.0.1:8889 (which proxies to Game-PC's LCU agent),
+vision server at 127.0.0.1:8889 (which proxies to the Legion LCU agent),
 so they share the `_VISION_TOKEN` auth header.
 
 `_VISION_TOKEN` is deferred-imported from `web_dashboard` inside each
@@ -61,7 +61,7 @@ _LCU_ALLOWED_CMDS = {
     "change_queue_type",
     # Phase B champ-select commands (s166): hover intents + lane / pick
     # order swaps + Arena augment selection. Wired in
-    # ``tools/gamepc_lcu_agent.py`` (set_*_intent at L908, *_swap at
+    # ``tools/lcu_agent.py`` (set_*_intent at L908, *_swap at
     # L932/L961, set_augment_intent at L988) but historically missing
     # here, so every click on a P&B recommendation card or swap chip in
     # the new champ-select view was rejected with 400 at the dashboard
@@ -328,7 +328,7 @@ def _serve_lcu_cmd_post(h, payload) -> None:
     # Forward command to vision server's LCU queue.
     # Body: {cmd: "accept_ready"} or {cmd:"set_config", auto_accept:true}
     # Validate at the dashboard edge so a malformed body never reaches
-    # the LCU agent on Game-PC.
+    # the Legion LCU agent.
     cmd_name = (payload.get("cmd") or "").strip()
     if cmd_name not in _LCU_ALLOWED_CMDS:
         h._send(400,

@@ -262,8 +262,9 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
         self._send_json(200, out)
 
     def _handle_minimap_crop(self) -> None:
-        """GET /api/minimap-crop?mode=sr - fetches the latest Game-PC frame
-        from the vision server, crops the minimap region, returns PNG.
+        """GET /api/minimap-crop?mode=sr - fetches the latest in-process
+        vision frame from the local vision server (:8889 on Legion), crops
+        the minimap region, returns PNG.
 
         Mode-specific bboxes are empirically calibrated for 1920x1080
         windowed-borderless. Override via query string
@@ -310,9 +311,10 @@ class _QuietHandler(http.server.SimpleHTTPRequestHandler):
 
         tok = get_vision_token()
 
-        # Fast path: a dedicated Game-PC minimap stream uploads pre-cropped
-        # frames to source=minimap at high cadence (5-10Hz). When fresh,
-        # serve it directly - no decode/re-encode on the supervisor.
+        # Fast path: a dedicated minimap stream uploads pre-cropped frames
+        # to source=minimap on the local vision server at high cadence
+        # (5-10Hz). When fresh, serve it directly - no decode/re-encode on
+        # the supervisor.
         # Falls through to the slow path on any failure.
         try:
             req = urllib.request.Request(

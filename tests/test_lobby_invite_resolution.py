@@ -10,7 +10,7 @@ invite returned ``{"ok": False, "err": "could not resolve summoner: ..."}``.
 The Top 8 add-flow never captures a summonerId/puuid (only Name#TAG), so
 the dead by-name path was the *only* resolution route -> 100% failure.
 
-Fix (``tools/gamepc_lcu_agent.py``): resolve via a layered chain, most
+Fix (``tools/lcu_agent.py``): resolve via a layered chain, most
 reliable first - explicit summonerId, then puuid ->
 ``/lol-summoner/v1/summoners-by-puuid-cached/{puuid}``, then a scan of
 ``/lol-chat/v1/friends`` (the invite targets ARE friends, and that
@@ -31,7 +31,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 _REPO = Path(__file__).resolve().parents[1]
-_AGENT_PATH = _REPO / "tools" / "gamepc_lcu_agent.py"
+_AGENT_PATH = _REPO / "tools" / "lcu_agent.py"
 
 _BY_NAME = "/lol-summoner/v1/summoners/by-name/"
 _FRIENDS = "/lol-chat/v1/friends"
@@ -40,11 +40,11 @@ _INVITATIONS = "/lol-lobby/v2/lobby/invitations"
 
 
 def _load_agent_module():
-    """Import ``tools/gamepc_lcu_agent.py`` as a library (skip the boot
+    """Import ``tools/lcu_agent.py`` as a library (skip the boot
     loop under ``__main__``) so we can call ``execute_command`` directly.
     Mirrors tests/test_set_augment_intent_handler.py."""
     spec = importlib.util.spec_from_file_location(
-        "_gamepc_lcu_agent_invite_under_test", _AGENT_PATH
+        "_lcu_agent_invite_under_test", _AGENT_PATH
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -209,7 +209,7 @@ class ResolutionOrderTests(unittest.TestCase):
 
 class AllowlistGuardTests(unittest.TestCase):
     """The command must stay in the dashboard edge allowlist or the
-    POST /api/lcu-cmd -> Game-PC agent dispatch chain rejects it."""
+    POST /api/lcu-cmd -> LCU agent dispatch chain rejects it."""
 
     def test_lobby_invite_player_in_dashboard_allowlist(self):
         from dashboard.routes_loadout import _LCU_ALLOWED_CMDS

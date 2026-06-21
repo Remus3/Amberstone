@@ -7,7 +7,7 @@ All routes assume the dashboard is open in Chrome on Legion at
 For mock-data captures (when operator is between games): append
 `?ui_mock=1` to the URL, then add `&mode=<sr|aram|arena>` where the
 page splits per-mode. Hard-reload (Ctrl+Shift+R) to bypass the service
-worker cache. Capture via Legion Windows-MCP `Screenshot` (the gamepc MCP
+worker cache. Capture via Legion Windows-MCP `Screenshot` (the off-box MCP
 `capture_monitor` path is retired post-1PC; pick the dashboard monitor by
 resolution, max_width 1280, jpeg q75).
 

@@ -11,7 +11,7 @@ POST /api/bridge/cadence     - body {"mode": "active"|"sleep"|"auto"}
                                writes sentinel atomically; watcher picks it
                                up on its next poll cycle
 
-Only ships on Legion (the node with a dashboard). Game-PC/Peer stay in
+Only ships on Legion (the node with a dashboard). Peer stays in
 active mode until cross-node cadence control is added later.
 """
 from __future__ import annotations

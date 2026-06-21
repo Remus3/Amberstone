@@ -9,8 +9,9 @@ score_pct = delta_dps/top_delta*100, row0=100.0) + web/js/panels/ds_relscore.js
 it from champ-select to the Active Match view). It had
 backend (tests/test_routes_ds_relscore.py) + panel-smoke (tests/
 test_ds_relscore_panel_dom.py) coverage but the item-220 row left a "LIVE
-VISUAL CAPTURE owed (render-gated on locked champ)" - Game-PC :8892 MCP is
-down and Claude_Preview cannot attach the self-signed HTTPS :8888. This test
+VISUAL CAPTURE owed (render-gated on locked champ)" - 1-PC (ADR-011) has no
+separate-machine MCP visual path and Claude_Preview cannot attach the
+self-signed HTTPS :8888. This test
 discharges that owed capture in CI-durable form, mirroring the C1/C2/C3
 view-snapshot strategy.
 
