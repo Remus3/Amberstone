@@ -11,7 +11,9 @@ Re-opened the L1 minimap/ZOI work item 566 deferred. 1 commit `94b31bad` (pushed
 PREMISE: 566 deferred ZOI because Live Client :2999 has no coords. This session found a NO-API
 coordinate source: League `game.cfg` `[HUD]` MinimapScale=1.62 + FlipMiniMap=0 geometry. The
 `an external code-intelligence MCP` link in the brief was VERIFIED (WebFetch) to be an unrelated C/C++
-code-intelligence MCP - NOT a coordinate source, not used. Operator picked scope "Foundation only".
+code-intelligence MCP (knowledge-graph indexer) - NOT a coord source so not used for ZOI, BUT per
+operator clarification it IS the intended tool for a SEPARATE whole-RC review (queued next session).
+Operator picked ZOI scope "Foundation only".
 
 SHIPPED: `core/league_settings.py` (game.cfg reader) + `core/minimap_geometry.py` (pure calibrated
 scale->rect) -> `/api/state.minimap_rect` (design px, mode-gated) -> `web/js/panels/minimap_rect.js`
@@ -26,7 +28,9 @@ must be RELAUNCHED to load the new JS module (it does NOT hot-reload new imports
 game ended (minimap_rect null off a minimap mode). Next game: relaunch rc-shell, capture, nudge the
 calibration constant if off. THEN slice 2 (pure-numpy team-color blob detection on the minimap crop
 -> dot centroids) + slice 3 (ZOI bubbles + demarcation weighted by per-team strength, fed to coach;
-all local/no-API). DON'T redo: foundation/calibration/no-handle; an external code-intelligence MCP is a dead end.
+all local/no-API). DON'T redo: foundation/calibration/no-handle. an external code-intelligence MCP is NOT a dead
+end - it is a review-tool candidate for a SEPARATE session (tooling eval: stand it up against RC ->
+orphaned routes / dead code / coupling hotspots, then go/no-go on adopting it). Prompt drafted.
 
 ---
 
