@@ -72,7 +72,7 @@ shop + summoner-spell slots is still owed. Spec below is the as-built contract.
       `lcuCmd` path + `_csvMaybePushBuildsToLCU` plumbing.
     Files: `champ_select.js` (chooser render + new wiring + persistence),
     `champ_select_view.css`, possibly `dashboard/routes_loadout.py` /
-    `tools/gamepc_lcu_agent.py` only if a per-category cmd is missing.
+    `tools/lcu_agent.py` only if a per-category cmd is missing.
 
 ## 4. Assessment - move per-enemy % into the Enemies panel, drop YOUR RECORD
 The per-enemy win% lives in `pr.vs_enemies[] = {champId, wr_pct, games}` (today

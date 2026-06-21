@@ -225,7 +225,7 @@ def _serve_decisions_respond_active_post(h, payload) -> None:
 
     Resolves the FIRST pending decision by mapping `choice_index` ->
     `options[choice_index]` (or "skip" when dismiss=true). Intended for
-    the Game-PC keybind listener - single endpoint that doesn't require
+    the Legion keybind listener - single endpoint that doesn't require
     the caller to know which decision is currently pending or which
     options apply, so Numpad 1 / Numpad 2 / Numpad 0 stay constant
     across detector types."""

@@ -282,7 +282,7 @@ def main() -> int:
     # --- deferred ---
     print("## Deferred (not built in this pass - follow-up sessions)")
     deferred = [
-        "Forwarder Agent on Game-PC (tray app; §12 - user handles setup separately)",
+        "Forwarder Agent on Legion (tray app; §12 - user handles setup separately)",
         "Ephemeral Claude Code session spawning with charters (stubbed in supervisor; "
         "needs per-agent system prompts from deliverable A follow-ups)",
         "Agent 5 real UI (web stub only; Agent 5 builds full panel roster - §5)",

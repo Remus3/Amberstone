@@ -2,9 +2,9 @@
 """bridge_task.py - Phase 6 shim. Real code lives in tools/bridge_cli.py.
 
 Preserves the original CLI surface:
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_task.py --target gamepc --summary "..." --prompt "..."
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_task.py --target peer --summary "..." --prompt "..."
 
-Equivalent to: `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py task --target gamepc ...`.
+Equivalent to: `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py task --target peer ...`.
 """
 import sys
 from pathlib import Path

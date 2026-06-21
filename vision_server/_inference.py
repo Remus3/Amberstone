@@ -58,10 +58,10 @@ def _parse_json(raw: str) -> dict | None:
 
 
 def _crop_to_primary(img_b64: str) -> tuple[str, str]:
-    """AUDIT 2026-04-29 (gap C): the Game-PC screen agent stitches both
-    monitors into one frame (3840x1280 typical). League runs on monitor 0
-    at 1920x1080; the right half of the stitched frame is the dashboard
-    on the iPad-via-Duet display, which Sonnet wastes time analysing.
+    """AUDIT 2026-04-29 (gap C): a multi-monitor screen agent could stitch
+    both monitors into one frame (3840x1280 typical). League runs on monitor 0
+    at 1920x1080; the right half of a stitched frame is the dashboard
+    on a secondary display, which Sonnet wastes time analysing.
 
     Crop to the primary 1920x1080 region before /vision. Cuts Sonnet input
     by ~50% (image area) -> roughly halves latency and cost.

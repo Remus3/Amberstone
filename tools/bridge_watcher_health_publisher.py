@@ -5,8 +5,7 @@ and POSTs to Legion's /api/health/peer/<node>. Lets Legion's
 /api/health/all roll up fleet-wide watcher health (queue depth, auto-action
 counters, $ spent, last poll status).
 
-Runs on Game-PC + Peer. Each peer's install dir varies:
-  - Game-PC : C:\\RC-Agent\\
+Runs on Peer. Install dir:
   - Peer     : <peer-vip>\\tools\\
 
 Auth: same Bearer secret as the cross-Claude bridge (resolved via
@@ -17,8 +16,8 @@ Deploy: register via Task Scheduler at logon, RestartOnFailure 3x/1m,
 StopIfGoingOnBatteries=true (this is observability, not critical path).
 
 CLI:
-  python bridge_watcher_health_publisher.py --node gamepc \\
-      --health-file C:/RC-Agent/bridge_watcher_health.json \\
+  python bridge_watcher_health_publisher.py --node peer \\
+      --health-file <peer-vip>/tools/bridge_watcher_health.json \\
       --legion-url https://legion-rc:8888 \\
       --interval 60 \\
       [--token-file path/to/local_paths.json]   # if can't import core.bridge
@@ -44,7 +43,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("rc.health_publisher")
 
-_VALID_NODES = {"gamepc", "peer"}
+_VALID_NODES = {"peer"}
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
 _SSL_CTX.verify_mode = ssl.CERT_NONE

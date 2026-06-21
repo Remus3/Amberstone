@@ -6,7 +6,7 @@ Renders the full-page active-match view (#view-active-match) for SR, ARAM,
 and Arena against the ui_mock fixtures through the headless mock-server +
 Playwright harness. Reproducible stand-in for the live self-signed-HTTPS
 :8888 visual check: Claude_Preview cannot attach the self-signed cert and
-Game-PC :8892 MCP is down (project_gamepc_mcp_boot_gap), so the C-phase
+1-PC (ADR-011) has no separate-machine MCP visual path, so the C-phase
 visual validation runs here in CI instead of as a one-off screenshot.
 Mirrors test_champ_select_view.py (C1).
 

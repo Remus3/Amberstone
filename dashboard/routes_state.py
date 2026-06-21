@@ -25,10 +25,12 @@ from dashboard._writers import (
     set_pregame,
 )
 
-# Bridge watchdog thresholds (seconds since last gamepc result).
-# Below WARN: green. WARN..ALERT: yellow. >= ALERT: red.
-# 600s/3600s match the existing rc_facts.py threshold (1hr) for the
-# alert level and the 10-min audit recommendation for the warn level.
+# Bridge watchdog thresholds (seconds since last bridge result; the
+# legion_daemon sentinel - the per-gamepc result watchdog was removed
+# when the Game-PC peer was severed). Below WARN: green. WARN..ALERT:
+# yellow. >= ALERT: red. 600s/3600s match the existing rc_facts.py
+# threshold (1hr) for the alert level and the 10-min audit recommendation
+# for the warn level.
 _BRIDGE_WARN_S = 600
 _BRIDGE_ALERT_S = 3600
 

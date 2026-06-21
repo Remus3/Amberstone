@@ -8,7 +8,7 @@
 # split): install does the first-time setup, this script handles ongoing
 # drift detection without modifying the installer.
 #
-# Run on Game-PC or Peer from a fresh shell:
+# Run on Peer from a fresh shell:
 #
 #   iex (iwr -UseBasicParsing `
 #     https://legion-rc:8888/agent/bridge_watcher_update_check.ps1).Content
@@ -82,8 +82,7 @@ Write-Step "InstallDir = $InstallDir"
 # Auto-detect the scheduled task name from $env:COMPUTERNAME if not passed.
 if ($Restart -and -not $TaskName) {
     $hn = $env:COMPUTERNAME.ToLower()
-    if ($hn -like "*gamepc*")         { $TaskName = "RC-BridgeWatcher-GamePC" }
-    elseif ($hn -like "*peer-host*" -or $hn -like "*peer*") { $TaskName = "RC-BridgeWatcher-Peer" }
+    if ($hn -like "*peer-host*" -or $hn -like "*peer*") { $TaskName = "RC-BridgeWatcher-Peer" }
     else {
         Write-Warn "could not auto-detect task name from COMPUTERNAME=$hn; pass -TaskName"
         $Restart = $false

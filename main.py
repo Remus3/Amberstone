@@ -160,7 +160,7 @@ try:
 except Exception as _e:
     _log.warning("log_retention start failed (non-fatal): %s", _e)
 
-# - Web dashboard (iPad extended display via Duet to Game-PC)
+# - Web dashboard (Chrome on Legion at https://legion-rc:8888/)
 try:
     from web_dashboard import start_dashboard as _start_dash
     _start_dash(APP_DIR)

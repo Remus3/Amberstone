@@ -166,7 +166,7 @@ def cmd_task(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001
         print(f"bad --body JSON: {exc}", file=sys.stderr)
         return 2
-    source = args.source or ("legion" if args.target == "gamepc" else "gamepc")
+    source = args.source or ("legion" if args.target == "peer" else "peer")
     task_id = args.id or f"task-{uuid.uuid4().hex[:12]}"
     body = {"issued": time.time(), **extra}
     if kind == "task":
@@ -206,7 +206,7 @@ def cmd_post_result(args: argparse.Namespace) -> int:
     if args.reply_to:
         target = args.reply_to
     else:
-        target = "legion" if args.source == "gamepc" else "gamepc"
+        target = "legion" if args.source == "peer" else "peer"
 
     if target == "peer":
         try:
@@ -270,7 +270,7 @@ def cmd_pull(args: argparse.Namespace) -> int:
     answered = {m["in_reply_to"] for m in msgs
                 if m.get("kind") == "result" and m.get("in_reply_to")}
     processed = _read_processed()
-    target_aliases = {"legion": {"legion", "rc"}, "gamepc": {"gamepc"}}
+    target_aliases = {"legion": {"legion", "rc"}, "peer": {"peer"}}
     accepted = target_aliases.get(args.target, {args.target})
     tasks = [m for m in msgs
              if m.get("kind") == "task"
@@ -509,7 +509,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     pt = sub.add_parser("task",
                         help="dispatch a task to the other Claude")
-    pt.add_argument("--target", required=True, choices=["legion", "gamepc"])
+    pt.add_argument("--target", required=True, choices=["legion", "peer"])
     pt.add_argument("--source", default=None)
     pt.add_argument("--summary", required=True)
     pt.add_argument("--prompt", default=None)
@@ -520,21 +520,21 @@ def build_parser() -> argparse.ArgumentParser:
     pr = sub.add_parser("post-result",
                         help="post a kind=result envelope back through the bridge")
     pr.add_argument("task_id")
-    pr.add_argument("--source", default="gamepc",
-                    choices=["gamepc", "legion"])
+    pr.add_argument("--source", default="peer",
+                    choices=["peer", "legion"])
     pr.add_argument("--summary", default="(no summary)")
     pr.add_argument("--body", default="{}")
     pr.add_argument("--from-stdin", action="store_true")
     pr.add_argument("--exit-code", type=int, default=None)
     pr.add_argument("--no-mark", action="store_true")
     pr.add_argument("--reply-to", default=None,
-                    choices=["legion", "gamepc", "peer"])
+                    choices=["legion", "peer"])
     pr.add_argument("--suggestions", action="append", default=None)
 
     pp = sub.add_parser("pull",
                         help="fetch pending kind=task envelopes targeted at this machine")
-    pp.add_argument("--target", default="gamepc",
-                    choices=["gamepc", "legion"])
+    pp.add_argument("--target", default="legion",
+                    choices=["peer", "legion"])
 
     sub.add_parser("fetch",
                    help="UserPromptSubmit hook - print recent peer activity")

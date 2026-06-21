@@ -6,7 +6,7 @@ Two marker forms, both starting with `# arch:`:
        # arch: <role description> | section=<section> | frozen=<yes|no>
 
    Disambiguator: contains a `|` separator. Sections = orchestration, vision,
-   coaching, dashboard, core, bridge, tools, tft, agents, gamepc, test.
+   coaching, dashboard, core, bridge, tools, tft, agents, test.
    These populate the `archmap:start/end` block (per-section module tables).
 
 2. Inline phase-journal marker (anywhere in a .py file):
@@ -50,7 +50,6 @@ SECTION_ORDER = [
     "tools",
     "tft",
     "agents",
-    "gamepc",
     "test",
 ]
 
@@ -64,7 +63,6 @@ SECTION_TITLES = {
     "tools": "Tools / ops",
     "tft": "TFT engine",
     "agents": "Phase 3 agents",
-    "gamepc": "Game-PC agents",
     "test": "Tests",
 }
 

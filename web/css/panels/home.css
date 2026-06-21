@@ -1001,7 +1001,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .lobby-queue-select:hover { border-color: var(--clock); }
 
 /* Lobby member list - full-width row of party-member cards under the
- * action row. Scaffolded; data feed is a follow-up (Game-PC LCU
+ * action row. Scaffolded; data feed is a follow-up (LCU
  * agent forwarding lcu.lobby.members[]). */
 .lobby-members {
   width: 100%;

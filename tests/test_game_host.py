@@ -1,8 +1,8 @@
 """Regression guard for the 1-PC game-host config (core/game_host.py).
 
-After the 2026-05 Game-PC -> Legion consolidation, every live reader of the
-Live Client API (:2999) and the LCU lockfile API must resolve the host via
-core.game_host.GAME_HOST (default 127.0.0.1), NOT a hardcoded Game-PC LAN IP.
+After the 2026-05 1-PC consolidation, every live reader of the Live Client
+API (:2999) and the LCU lockfile API must resolve the host via
+core.game_host.GAME_HOST (default 127.0.0.1), NOT a hardcoded legacy LAN IP.
 """
 import importlib
 import os
@@ -12,7 +12,7 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 _GAMEPC_IP = "192.168.8.237"
 
-# Live-path modules that must never hardcode the Game-PC IP again.
+# Live-path modules that must never hardcode the legacy LAN IP again.
 _GUARDED = [
     "game_reader/poller.py",
     "game_reader/__init__.py",
@@ -55,7 +55,7 @@ def test_no_hardcoded_gamepc_ip_in_live_readers():
         for i, line in enumerate(text.splitlines(), 1):
             if _GAMEPC_IP in line:
                 offenders.append(f"{rel}:{i}: {line.strip()}")
-    assert not offenders, "hardcoded Game-PC IP in live readers:\n" + "\n".join(offenders)
+    assert not offenders, "hardcoded legacy LAN IP in live readers:\n" + "\n".join(offenders)
 
 
 def test_ascii_only():

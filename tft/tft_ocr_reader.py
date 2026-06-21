@@ -58,7 +58,7 @@ def _init_tesseract():
 
 
 def _capture_full_frame():
-    """Fetch the full Game-PC frame from the loopback vision relay.
+    """Fetch the full screen frame from the loopback vision relay.
     Returns a PIL Image, or None on failure (relay down, no frame yet).
 
     AUDIT (cycle 11, 2026-04-25): post-migration RC runs on Legion which

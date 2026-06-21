@@ -4,7 +4,8 @@ build engine and the match-history database to a local Claude / agent.
 Speaks the MCP JSON-RPC protocol over HTTP on port 8894. Localhost-only by
 default (127.0.0.1): it proxies the local Daemon Slayer engine on :8893 and
 reads the local data/match_history.db - no cross-machine surface, unlike
-tools/gamepc_mcp_server.py which binds 0.0.0.0 for the Legion<->Game-PC LAN.
+the legacy cross-machine MCP server (retired with the 1-PC consolidation,
+ADR-011) which bound 0.0.0.0 for a cross-host LAN.
 Bearer auth is kept anyway (defense in depth + the same token chain so one
 RC_MCP_TOKEN covers both RC MCP servers).
 
@@ -130,7 +131,7 @@ DISPATCH_TIMEOUT_S = float(os.environ.get("RC_MCP_DISPATCH_TIMEOUT_S", "45"))
 # themselves with a tighter internal timeout. The watchdog must sit
 # ABOVE that internal ceiling so it never preempts the tool's own
 # bound (no double-wrapping / no shortening). ds-matchdb tools are all
-# fast, so this is empty here; gamepc_mcp_server uses it for
+# fast, so this is empty here; the legacy cross-machine MCP server used it for
 # run_powershell (subprocess timeout, own 600 s ceiling).
 TOOL_TIMEOUT_OVERRIDES: dict[str, float] = {}
 # Bounded worker pool. max_workers caps concurrent in-flight handlers;
@@ -184,7 +185,7 @@ def _json_dumps_safe(obj, **kwargs) -> str:
         return json.dumps(_finite_only(obj), allow_nan=False, **kwargs)
 
 
-# -- Auth token resolution (mirrors gamepc_mcp_server / the screen agent) ----
+# -- Auth token resolution (mirrors the legacy MCP server / the screen agent) ----
 def _resolve_token() -> str:
     env = os.environ.get("RC_MCP_TOKEN")
     if env:

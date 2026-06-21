@@ -4,16 +4,16 @@
 //
 // First principle (docs/ELECTRON_OVERLAY.md section 1): origin is config, not
 // code. The shell is a thin client that just points a window at RC_ORIGIN. The
-// single value RC_ORIGIN is the ONLY thing that changes between the 2-PC topology
-// (https://legion-rc:8888) and the 1-PC topology (https://127.0.0.1:8888). No JS,
-// no panel, no Electron code change.
+// single value RC_ORIGIN is the ONLY thing that changes if the game host moves -
+// https://legion-rc:8888 (default) or https://127.0.0.1:8888 (local on Legion).
+// No JS, no panel, no Electron code change.
 //
 // Precedence for resolveConfig: env RC_ORIGIN  >  saved state  >  defaults.
 
 "use strict";
 
-// Default origin: the dashboard today (2-PC topology). After 1-PC consolidation
-// (ADR-011) an operator flips RC_ORIGIN to https://127.0.0.1:8888 with zero code
+// Default origin: the Legion dashboard (1-PC, ADR-011). An operator can flip
+// RC_ORIGIN to https://127.0.0.1:8888 (local on Legion) with zero code
 // change. See docs/ELECTRON_OVERLAY.md section 1.
 const DEFAULT_ORIGIN = "https://legion-rc:8888";
 

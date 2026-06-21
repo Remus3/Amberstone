@@ -1,6 +1,8 @@
 """File-watcher ingest - bridges the existing RC coaching JSON files
-into the Phase 3 /push WebSocket stream while the Game-PC Forwarder is
-still deferred (S12 of the spec).
+into the Phase 3 /push WebSocket stream. (Originally the stopgap while
+the 2-PC Game-PC Forwarder was deferred per S12; that pre-1PC topology
+is retired - this Legion-local file watcher is now the steady-state
+path, ADR-011.)
 
 The supervisor owns one ``FileIngest`` instance. It polls a small set of
 known files every ``POLL_SEC`` seconds; when an mtime advances it reads,
@@ -174,15 +176,17 @@ class FileIngest:
         # Game-start trigger (charter): health.json.mode transition
         # client -> game/in_progress fires the mode-transition hook.
         #
-        # s171.8: on Legion, LCU lockfile isn't visible (it lives on
-        # Game-PC), so the main RC writes health.mode="client" through
-        # the entire ChampSelect + GameStart window - the supervisor
-        # only sees the transition once LiveClient finally fires (well
-        # into InProgress). Warm Agent 7 misses the early-game prime
-        # window. Overlay an LCU-phase-derived mode here so the
-        # transition hook fires on ChampSelect / GameStart entries
-        # too, mirroring what core/decision_detector + game_reader
-        # already do via the relay-age fallback.
+        # s171.8 (pre-1PC origin): in the retired 2-PC split the LCU
+        # lockfile wasn't visible on Legion (it lived on Game-PC), so the
+        # main RC wrote health.mode="client" through the entire
+        # ChampSelect + GameStart window - the supervisor only saw the
+        # transition once LiveClient finally fired (well into InProgress),
+        # and Warm Agent 7 missed the early-game prime window. Post-1PC
+        # (ADR-011) LCU is local so the lockfile is visible directly, but
+        # the LCU-phase overlay is kept as a defensive fallback: it makes
+        # the transition hook fire on ChampSelect / GameStart entries too,
+        # mirroring what core/decision_detector + game_reader already do
+        # via the relay-age fallback.
         if envelope_type == "health" and isinstance(data, dict):
             lcu_phase = None
             if isinstance(lcu_snapshot, dict):
@@ -204,8 +208,10 @@ class FileIngest:
         Trust health.mode when it's already in-game (LiveClient is the
         authoritative signal). Otherwise overlay LCU phase so the
         supervisor's mode-transition hook fires for ChampSelect and
-        GameStart even when health.mode is stuck at "client" because
-        Legion can't see Game-PC's LCU lockfile.
+        GameStart even when health.mode is briefly stuck at "client".
+        (Pre-1PC this gap came from Legion not seeing Game-PC's LCU
+        lockfile; post-1PC ADR-011 LCU is local, so this overlay is now a
+        defensive fallback rather than load-bearing.)
         """
         health_mode = str(health.get("mode") or "").lower() or None
         if health_mode in ("game", "in_progress"):

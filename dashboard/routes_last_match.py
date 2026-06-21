@@ -3,7 +3,7 @@
 GET  /api/last-match          - operator's most-recent non-TFT match + Quick
                                 Review (right / wrong-team / chronic patterns).
 POST /api/last-match/ingest   - receives the full LCU match detail JSON +
-                                operator's puuid (pushed by the Game-PC
+                                operator's puuid (pushed by the Legion
                                 LCU agent on EndOfGame phase transition;
                                 also callable on-demand from the frontend
                                 Refresh button). Stashes the payload into

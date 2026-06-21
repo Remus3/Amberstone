@@ -1,14 +1,13 @@
-﻿# bridge_watcher_install.ps1 -- idempotent installer for Game-PC + Peer.
+﻿# bridge_watcher_install.ps1 -- idempotent installer for the Peer peer.
 #
-# Phase 1 per BRIDGE_WATCHER_PLAN.md §10. Run on Game-PC or Peer:
+# Phase 1 per BRIDGE_WATCHER_PLAN.md §10. Run on Peer:
 #
 #   iex (iwr -UseBasicParsing https://legion-rc:8888/agent/bridge_watcher_install.ps1).Content
 #
 # Or with explicit args:
 #
-#   .\bridge_watcher_install.ps1 -Node gamepc
 #   .\bridge_watcher_install.ps1 -Node peer -BridgeUrl https://127.0.0.1:8888/api/bridge -InstallDir C:\path\to\peer-vip\tools
-#   .\bridge_watcher_install.ps1 -Node gamepc -EnableLanes read,ops
+#   .\bridge_watcher_install.ps1 -Node peer -EnableLanes read,ops
 #
 # What it does (idempotent -- safe to re-run):
 #   1. Detects which node from $env:COMPUTERNAME if -Node not passed.
@@ -23,7 +22,7 @@
 #   7. Prints follow-up steps (cancel /loop cron in interactive Claude session).
 
 param(
-    [ValidateSet("gamepc", "peer")]
+    [ValidateSet("peer")]
     [string]$Node = "",
     [string]$InstallDir = "",
     [string]$BridgeUrl = "",
@@ -51,10 +50,9 @@ function Write-Warn([string]$msg) {
 
 if (-not $Node) {
     $hn = $env:COMPUTERNAME.ToLower()
-    if ($hn -like "*gamepc*") { $Node = "gamepc" }
-    elseif ($hn -like "*peer-host*" -or $hn -like "*peer*") { $Node = "peer" }
+    if ($hn -like "*peer-host*" -or $hn -like "*peer*") { $Node = "peer" }
     else {
-        Write-Error "could not auto-detect node from COMPUTERNAME=$hn -- pass -Node gamepc|peer"
+        Write-Error "could not auto-detect node from COMPUTERNAME=$hn -- pass -Node peer"
     }
 }
 Write-Step "Node = $Node"
@@ -62,11 +60,6 @@ Write-Step "Node = $Node"
 # ── 2. Per-node defaults ────────────────────────────────────────────────
 
 $NodeDefaults = @{
-    "gamepc" = @{
-        InstallDir = "C:\RC-Agent"
-        BridgeUrl  = "https://legion-rc:8888/api/bridge"
-        TaskName   = "RC-BridgeWatcher-GamePC"
-    }
     "peer" = @{
         InstallDir = (Join-Path (Get-Location) "tools")
         BridgeUrl  = "https://127.0.0.1:8888/api/bridge"
@@ -97,7 +90,7 @@ if (-not (Test-Path -LiteralPath $InstallDir)) {
     if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null }
 }
 
-# Cert bypass: legion serves a mkcert-signed cert that Peer/Game-PC may not
+# Cert bypass: legion serves a mkcert-signed cert that Peer may not
 # have trusted (rc_rootCA.pem is in /agent/ but not auto-installed). PS5.1
 # and PS6+ require different bypass mechanisms - set both.
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12

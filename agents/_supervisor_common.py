@@ -30,6 +30,10 @@ LOG_ROOT = _PROJECT_ROOT / "logs" / "agents"
 WS_PORT = 8891
 WEB_PORT = 8890
 HEARTBEAT_INTERVAL = 5.0
+# Legacy 2-PC SMB-push target (Game-PC LAN IP). Retired post-1PC (ADR-011):
+# Game-PC is out of the pipeline, so the cross-machine push path is dead and
+# this is only read by the no-op smb_credential_present() safeguard. Kept for
+# the re-exported surface + tests; do not wire new cross-machine writes to it.
 SMB_TARGET = "192.168.8.237"
 
 # AUDIT P-audit3-h03 (2026-04-22): pin the framework version the code
@@ -119,7 +123,7 @@ _DETERMINISTIC_RECORDKEEPING_OPS = frozenset({
 # rendered but nothing escalated (2026-05-18: gamepc silent ~2.7h while
 # peer was fresh at 25s). The watchdog files a deduped Agent-1 triage
 # task on threshold cross.
-_BRIDGE_PUB_PEERS = ("gamepc", "peer")
+_BRIDGE_PUB_PEERS = ("peer",)
 _BRIDGE_PUB_ALERT_S = 1800.0            # 30 min silent -> escalate
 _BRIDGE_PUB_CHECK_INTERVAL_S = 300.0    # poll cadence (publisher posts ~60s)
 _BRIDGE_PUB_REFILE_COOLDOWN_S = 21600.0  # one task per node per 6h outage

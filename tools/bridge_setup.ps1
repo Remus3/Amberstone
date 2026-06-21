@@ -1,8 +1,8 @@
-# bridge_setup.ps1 - one-shot bootstrap for Game-PC bridge tooling.
+# bridge_setup.ps1 - one-shot bootstrap for a peer's bridge tooling (Peer).
 # Downloads bridge_fetch / bridge_ping / bridge_heartbeat from Legion,
 # then runs the ping validator so the user sees PASS/FAIL immediately.
 #
-# Usage (single-line paste on Game-PC, never wraps):
+# Usage (single-line paste on the peer, never wraps):
 #   iex (iwr https://legion-rc:8888/agent/bridge_setup.ps1).Content
 
 $ErrorActionPreference = 'Stop'

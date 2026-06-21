@@ -63,7 +63,7 @@ def _build_item_set(champion: str, key: str, item_ids: list) -> dict:
     """Wrap pre-resolved item ids in the LCU `apply_item_set` shape.
 
     Mirrors `coaches.loadout_resolver.resolve`'s item_cmd shape so the
-    gamepc_lcu_agent receives an identical command structure. `set_uid`
+    Legion LCU agent receives an identical command structure. `set_uid`
     is variant-keyed so each profile gets its own slot in the client.
     """
     norm_champ = "".join(ch for ch in champion.lower() if ch.isalnum())

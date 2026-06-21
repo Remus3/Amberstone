@@ -1,7 +1,14 @@
 """Cross-machine SMB push - the only path from Legion -> Game-PC for file writes.
 
-Every Legion->Game-PC file op goes through ``push()``. Anything else bypasses
-Agent 0's evaluator and is a bug.
+RETIRED (1-PC, ADR-011): this module implemented the 2-PC Legion -> Game-PC
+file-write path. Since the 2026-05-29 single-PC consolidation Game-PC is out
+of the League/RC pipeline, so nothing live calls ``push()`` anymore. Kept as
+dead code pending a separate cleanup pass; the contract below is preserved for
+historical reference. Do not wire new callers to this - there is no remote
+machine to push to.
+
+Every Legion->Game-PC file op went through ``push()``. Anything else bypassed
+Agent 0's evaluator and was a bug.
 
 Contract (S11.4, S7):
   * Share: ``\\\\192.168.8.237\\RCClient\\`` (persistent cmdkey-stored creds).

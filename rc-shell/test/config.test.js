@@ -31,7 +31,7 @@ test("defaultConfig returns the standard preset dims + RC default origin", () =>
   assert.strictEqual(c.y, null);
 });
 
-test("DEFAULT_ORIGIN is the 2-PC dashboard origin", () => {
+test("DEFAULT_ORIGIN is the Legion dashboard origin", () => {
   assert.strictEqual(DEFAULT_ORIGIN, "https://legion-rc:8888");
 });
 

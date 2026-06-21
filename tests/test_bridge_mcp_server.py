@@ -84,10 +84,10 @@ def test_bridge_search_limit_cap_500(monkeypatch):
 
 def test_bridge_search_filters_appended(monkeypatch):
     cap = _Captured(); cap.install(monkeypatch)
-    mod.tool_bridge_search(kind="task", target="LEGION", source="GamePc")
+    mod.tool_bridge_search(kind="task", target="LEGION", source="Atx")
     assert "kind=task" in cap.get_url
     assert "target=legion" in cap.get_url  # normalized lowercase
-    assert "source=gamepc" in cap.get_url
+    assert "source=peer" in cap.get_url
 
 
 def test_bridge_search_dashboard_down_returns_error_dict(monkeypatch):
@@ -120,16 +120,16 @@ def test_bridge_post_note_happy(monkeypatch):
 
 def test_bridge_post_task_required_fields():
     assert "source required" in mod.tool_bridge_post_task(
-        "", "gamepc", "x", {})["error"]
+        "", "peer", "x", {})["error"]
     assert "target required" in mod.tool_bridge_post_task(
         "legion", "", "x", {})["error"]
     assert "summary required" in mod.tool_bridge_post_task(
-        "legion", "gamepc", "", {})["error"]
+        "legion", "peer", "", {})["error"]
 
 
 def test_bridge_post_task_body_must_be_dict(monkeypatch):
     cap = _Captured(); cap.install(monkeypatch)
-    out = mod.tool_bridge_post_task("legion", "gamepc", "x", body=[1, 2])
+    out = mod.tool_bridge_post_task("legion", "peer", "x", body=[1, 2])
     assert "body must be a JSON object" in out["error"]
     assert out["got"] == "list"
     # Did not even reach the HTTP shuttle:
@@ -141,21 +141,21 @@ def test_bridge_post_task_auto_stamps_id(monkeypatch):
     # Real dashboard echoes the posted id back; fake the same so we can
     # assert the round-trip plumbing.
     cap.post_response = {"ok": True, "ts": 1.0, "id": None, "kind": "task"}
-    out = mod.tool_bridge_post_task("legion", "gamepc", "do thing",
+    out = mod.tool_bridge_post_task("legion", "peer", "do thing",
                                      body={"prompt": "x"})
     assert cap.post_payload["id"].startswith("task-")
     assert len(cap.post_payload["id"]) > len("task-")
     # Dashboard returned id=None, so the auto-stamped id should fill in.
     assert out["id"] == cap.post_payload["id"]
     assert cap.post_payload["kind"] == "task"
-    assert cap.post_payload["target"] == "gamepc"
+    assert cap.post_payload["target"] == "peer"
 
 
 def test_bridge_post_task_explicit_id_wins(monkeypatch):
     cap = _Captured(); cap.install(monkeypatch)
     cap.post_response = {"ok": True, "ts": 1.0, "id": "task-pinned-1234",
                           "kind": "task"}
-    mod.tool_bridge_post_task("legion", "gamepc", "x", body={},
+    mod.tool_bridge_post_task("legion", "peer", "x", body={},
                               id="task-pinned-1234")
     assert cap.post_payload["id"] == "task-pinned-1234"
 
@@ -167,13 +167,13 @@ def test_bridge_post_task_dashboard_echoed_id_preserved(monkeypatch):
     cap = _Captured(); cap.install(monkeypatch)
     cap.post_response = {"ok": True, "ts": 1.0, "id": "task-server-stamped",
                           "kind": "task"}
-    out = mod.tool_bridge_post_task("legion", "gamepc", "x", body={})
+    out = mod.tool_bridge_post_task("legion", "peer", "x", body={})
     assert out["id"] == "task-server-stamped"
 
 
 def test_bridge_post_result_requires_in_reply_to():
     assert "in_reply_to required" in mod.tool_bridge_post_result(
-        "legion", "gamepc", "x", in_reply_to="", body={})["error"]
+        "legion", "peer", "x", in_reply_to="", body={})["error"]
 
 
 def test_bridge_post_result_happy(monkeypatch):

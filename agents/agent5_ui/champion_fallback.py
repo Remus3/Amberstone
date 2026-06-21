@@ -1,6 +1,6 @@
 """Round 45 - champion fallback for when live-client (:2999) is dead.
 
-When Game-PC's live-client API is unreachable, the legacy RC pipeline
+When the local live-client API is unreachable, the legacy RC pipeline
 can't populate ``champion`` / ``game_time`` / ``kda`` / ``items_*``
 in ``coaching_data.json``. The dashboard header becomes an empty stub.
 

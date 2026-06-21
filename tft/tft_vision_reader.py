@@ -113,7 +113,7 @@ class TftVisionReader:
         no League window - ``PIL.ImageGrab`` here was always capturing the
         RC dashboard instead of the game. Route through the same
         `/latest-frame` relay that `modes/shared_vision.py` uses: pull
-        Game-PC's full-screen PNG from the loopback vision server, decode,
+        the full-screen PNG from the loopback vision server, decode,
         then apply the TFT-specific crop regions client-side.
         """
         try:
@@ -139,7 +139,7 @@ class TftVisionReader:
 
         crops = []
         for bbox in self._CROP_REGIONS:
-            # bbox from _CROP_REGIONS is Game-PC absolute (1920x1080);
+            # bbox from _CROP_REGIONS is screen-absolute (1920x1080);
             # PIL.Image.crop expects a 4-tuple.
             try:
                 crops.append(full_img.crop(bbox))

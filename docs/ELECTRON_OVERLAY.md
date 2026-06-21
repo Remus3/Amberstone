@@ -58,7 +58,7 @@ Cert: dashboard is mkcert self-signed HTTPS. Electron loads it with a scoped
 ## 3. Component map
 
 ```
-Game-PC
+Legion
   Electron shell (rc-shell)            <- NEW, this project
     +-- main process
     |     - window manager (companion / overlay)
@@ -119,7 +119,7 @@ the API for the client's origin (one header, see sec 6).
 - Fetches `RC_ORIGIN/api/...` and renders with the same tokens.css design system.
 - Cannot draw over the live D3D game (that is Surface B's job) - Pengu only
   reaches the client CEF.
-- Dependency: operator installs Pengu Loader on Game-PC. Plugin ships in-repo
+- Dependency: operator installs Pengu Loader on Legion. Plugin ships in-repo
   under `pengu/`. Prior research: `project_lcu_pengu_pregame_postgame`.
 - Defer until A + B are stable; it is the most fragile (breaks on client patches).
 

@@ -16,6 +16,9 @@ _archive/
 # Scratch / session-debug logs (pytest output, wakeup snapshots, iter loggings)
 _scratch/
 
+# Operator's living work list - Claude-synced, untracked one-stop tracker
+RC_WORK_TRACKER.md
+
 # Match-history + decisions databases (1.8 GB, mostly rewind_history.db)
 # Recursive - earlier `data/*.db` only caught direct children, not data/db/*.db
 **/*.db

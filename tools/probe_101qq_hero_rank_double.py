@@ -5,7 +5,7 @@ Background: Tencent's CN-official double-rank synergy/counter data
 (`https://101.qq.com/#/hero-rank-double?tier=200`) is delivered as static
 JSON on the `game.gtimg.cn/images/lol/...` CDN, but the exact URL path
 resists blind probing. Item 187 Slice G locked the method: operator
-captures the URL + payload via Chrome DevTools on Game-PC (channel-safe
+captures the URL + payload via Chrome DevTools on Legion (channel-safe
 in champ-select; never in-game) and submits findings via the bridge.
 
 THIS SCRIPT IS RUN AFTER THE OPERATOR CAPTURES (NOT BEFORE):
@@ -20,7 +20,7 @@ THIS SCRIPT IS RUN AFTER THE OPERATOR CAPTURES (NOT BEFORE):
 DELIBERATE NON-FETCH: this script does NOT make any HTTP request. The
 Tencent CDN is geo-fenced; blind fetching from Legion would fail and
 the URL is unknown until the operator captures it. The script is
-operator-runnable on Game-PC OR Legion after capture.
+operator-runnable on Legion after capture.
 
 STDLIB-ONLY: argparse / json / pathlib / sqlite3 / re / sys. Zero new
 dependencies. ASCII-clean per CLAUDE.md hard rule.

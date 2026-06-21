@@ -7,7 +7,7 @@ web_dashboard.py - Read-only HTTP dashboard for iPad extended display.
 
 Serves a single-page dark-theme dashboard at :8888 designed for an iPad
 
-mirrored to Game-PC via Duet (1180x820 logical, retina). Polls coaching
+extended display (1180x820 logical, retina). Polls coaching
 
 artifact JSON files at 500ms cadence - same as the tkinter overlays.
 

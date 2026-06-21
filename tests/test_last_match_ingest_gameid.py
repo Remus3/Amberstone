@@ -1,7 +1,7 @@
 """Item 211 - /api/last-match/ingest must row-match by gameId, not "latest row".
 
 Pre-fix race (operator-reported, Home page Recent-5):
-  - Game-PC LCU agent fires /api/last-match/ingest on EndOfGame phase entry
+  - the LCU agent fires /api/last-match/ingest on EndOfGame phase entry
   - Local performance_tracker.save_match writes the new match_history.db row
     a few seconds AFTER the LCU EndOfGame transition
   - The ingest's "ORDER BY timestamp DESC LIMIT 1" picked the PREVIOUS row,

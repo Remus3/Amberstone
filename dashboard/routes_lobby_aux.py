@@ -7,7 +7,7 @@ Origin-independent storage. The previous Top 8 implementation
 (``localStorage.rc-top8-list`` in ``main.js``) only persisted per-origin
 in the browser, so an operator hitting the dashboard from multiple
 URLs (legion-rc, 192.168.8.230, 127.0.0.1) had separate, drifting
-lists - and a Chrome cache-clear or Game-PC restart wiped everything.
+lists - and a Chrome cache-clear or browser restart wiped everything.
 Server-side storage on Legion is the single source of truth.
 
 Schema (``data/top8_list.json``):
@@ -306,7 +306,7 @@ def _read_live_mastery() -> dict:
     """Pull LCU mastery off the most recent state envelope so /api/mains
     can layer mastery_level/_points onto SQLite-derived stats without
     needing the client to pass them in. The /api/state response chain
-    already enriches lcu.mastery via the Game-PC LCU agent (s168)."""
+    already enriches lcu.mastery via the Legion LCU agent (s168)."""
     try:
         import ssl as _ssl
         import urllib.request as _ur

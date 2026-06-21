@@ -15,7 +15,7 @@ on this host (``core.game_host.GAME_HOST`` local) and the relayed liveclient
 snapshot is stale/missing, ``get_latest_liveclient`` reads :2999 in-process so
 the RC-LiveClientRelay agent is an optimization (it pre-warms the cache), NOT a
 hard dependency. If the agent dies, the self-read keeps coaching alive. In the
-legacy 2-PC topology (RC_GAME_HOST set to a remote box) the self-read is
+legacy remote-host config (RC_GAME_HOST set to a remote box) the self-read is
 disabled - Riot's :2999 binds localhost-only on the remote host - and the
 agent push stays the only feed.
 """

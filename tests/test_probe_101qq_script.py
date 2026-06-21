@@ -1,7 +1,7 @@
 """Tests for tools/probe_101qq_hero_rank_double.py + tools/compare_101qq_vs_ddragon.py.
 
 Synthetic fixtures live in tests/fixtures/qq101/. Operator's real capture
-on Game-PC will replace them at runtime (the script does not depend on
+on Legion will replace them at runtime (the script does not depend on
 the fixture shape; the fixtures only validate the analyzer code paths).
 
 Coverage:

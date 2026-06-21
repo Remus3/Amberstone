@@ -367,7 +367,7 @@ function _csvDetectMode(cs) {
 }
 
 // s209: queue_id -> human label for the CS sub-line. Mirrors the agent's
-// `_LOBBY_QUEUE_NAMES` map in tools/gamepc_lcu_agent.py:205 - the agent
+// `_LOBBY_QUEUE_NAMES` map in tools/lcu_agent.py:220 - the agent
 // forwards `queue_name` on the lobby envelope but not the champ-select
 // envelope, so the dashboard needs its own local mapping. Unknown IDs
 // fall through to "queue <N>" for visibility.
@@ -859,7 +859,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   // Operator (2026-05-23) item 164: push ALL build variants to the LCU
   // client so the in-game item-shop "Recommended Items" dropdown carries
   // RC's curated builds during the match (not just at champ-select). The
-  // agent's apply_item_sets_batch (gamepc_lcu_agent.py L948+) accepts a
+  // agent's apply_item_sets_batch (lcu_agent.py L1031+) accepts a
   // list of sets + replaces by-uid (does NOT wipe other RC- sets), so
   // 4 variant sets coexist in the dropdown. Debounced via last-push key
   // so we only re-push when the variant set actually changes.
@@ -998,10 +998,10 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
 // the ban rounds into picks/finalization, so the banned-champions display
 // can collapse out of the operator's pick-window eyeline.
 //
-// LCU ground truth (tools/gamepc_lcu_agent.py): cs.phase = sess.timer.phase
+// LCU ground truth (tools/lcu_agent.py): cs.phase = sess.timer.phase
 // (PLANNING -> BAN_PICK -> FINALIZATION); cs.active_round.type is "ban"
 // while a ban round is on the clock and flips to "pick" once picks begin
-// (gamepc_lcu_agent.py:495 _active_round). So ban phase is DONE when the
+// (lcu_agent.py:491 _active_round). So ban phase is DONE when the
 // active round is a pick round, OR the phase has advanced past BAN_PICK /
 // PLANNING (e.g. FINALIZATION). No-bans draft modes (Blind 430 / Quickplay
 // 490) never enter a ban round, so they read as complete the moment picks
@@ -2257,7 +2257,7 @@ function _csvResolveArchetype(champion) {
 
 // Operator (2026-05-23) item 164: push all 4 build variants to LCU so
 // they live in the in-game item-shop "Recommended Items" dropdown. The
-// agent (apply_item_sets_batch, gamepc_lcu_agent.py L948+) replaces
+// agent (apply_item_sets_batch, lcu_agent.py L1031+) replaces
 // each variant by-uid, leaving other RC- sets intact. Debounced via a
 // last-push key so re-renders during the same champ-select session
 // don't re-PUT the same payload. NOOP in mock mode (LCU agent returns

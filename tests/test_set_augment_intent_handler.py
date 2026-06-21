@@ -1,7 +1,7 @@
 """Drift guards + offline-stub tests for the Cherry set_augment_intent handler.
 
 Item 188 Slice C: replaces item 187 Slice E's no-op stub with a real PATCH
-chain at ``tools/gamepc_lcu_agent.py:1179``. The endpoint chain is research-
+chain at ``tools/lcu_agent.py:1179``. The endpoint chain is research-
 grade (Cherry's REST surface is undocumented) so this suite covers the
 request-shape contract + the slot-range guard + the error-envelope shape +
 the 4-endpoint fallback priority order. Any live-LCU test is gated on
@@ -25,17 +25,17 @@ from pathlib import Path
 from unittest.mock import patch
 
 _REPO = Path(__file__).resolve().parents[1]
-_AGENT_PATH = _REPO / "tools" / "gamepc_lcu_agent.py"
+_AGENT_PATH = _REPO / "tools" / "lcu_agent.py"
 
 
 def _load_agent_module():
-    """Load ``tools/gamepc_lcu_agent.py`` as a module without invoking the
+    """Load ``tools/lcu_agent.py`` as a module without invoking the
     boot sequence under ``if __name__ == '__main__'`` (it ends with a long
     polling loop). We import-as-library so the unit tests can call
     ``execute_command`` directly.
     """
     spec = importlib.util.spec_from_file_location(
-        "_gamepc_lcu_agent_under_test", _AGENT_PATH
+        "_lcu_agent_under_test", _AGENT_PATH
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -216,7 +216,7 @@ class FallbackChainPriorityTests(unittest.TestCase):
 class AllowlistGuardTests(unittest.TestCase):
     """Item 164 baseline: ``set_augment_intent`` MUST stay in the dashboard
     ``_LCU_ALLOWED_CMDS`` allowlist so the POST /api/lcu-cmd -> :8889 vision
-    -> Game-PC agent dispatch chain accepts the command. This test pins the
+    -> LCU agent dispatch chain accepts the command. This test pins the
     surface; if a future refactor drops it, this fails BEFORE any live
     operator click silently routes to nowhere.
     """

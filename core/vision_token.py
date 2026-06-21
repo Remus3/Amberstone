@@ -16,14 +16,14 @@ authenticating every request with a known constant.
   2. On Legion - write it to ``C:\\Riot Commander\\config\\vision_token.txt``
      (first line, no newline required) OR set ``RC_VISION_TOKEN`` env
      var for the supervisor process.
-  3. On Game-PC - either set ``RC_VISION_TOKEN`` in the environment of
-     the tray agents OR drop the same content at
-     ``tools/vision_token.txt`` (the Game-PC tools' built-in resolver
+  3. For the Legion-local relay agents - either set ``RC_VISION_TOKEN``
+     in their environment OR drop the same content at
+     ``tools/vision_token.txt`` (the relay tools' built-in resolver
      looks in the same relative location next to their scripts).
   4. Restart the supervisor on Legion (``echo x > restart_trigger.txt``)
-     + restart the Game-PC relay agents.
-  5. Verify ``get_vision_token_source()`` on both sides returns
-     ``"env"`` or ``"config"``.
+     + restart the Legion-local relay agents.
+  5. Verify ``get_vision_token_source()`` returns ``"env"`` or
+     ``"config"``.
 
 Inspection: ``python -c "from core.vision_token import debug; debug()"``
 prints the active source + first/last chars of the token so you can

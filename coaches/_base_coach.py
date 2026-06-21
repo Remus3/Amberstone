@@ -181,7 +181,7 @@ def make_ssl_ctx() -> ssl.SSLContext:
 
 def _silence_chatty_loggers() -> None:
     """Damp PIL DEBUG (~3500/4700 lines/day) + lcu_client lockfile INFO
-    spam (~1/sec post-migration; LCU lives on Game-PC not Legion).
+    spam (~1/sec from the Legion-local LCU lockfile polling).
     Idempotent - safe to call multiple times. Module-level call below
     runs once at first import."""
     import logging as _lg

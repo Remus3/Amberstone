@@ -49,7 +49,7 @@ import bridge_watcher_actions as _actions  # noqa: E402
 import bridge_watcher_history as _history  # noqa: E402
 
 # Path defaults assume the canonical Legion layout (script at <root>/tools/...).
-# Phase 1 nodes (Game-PC at C:\RC-Agent\, Peer at <peer-repo>/tools/) override
+# The Peer peer (at <peer-repo>/tools/) overrides
 # via --data-dir / --log-dir on the install scheduled task.
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 _DEFAULT_DATA_DIR = _PROJECT_ROOT / "ops" / "runtime"
@@ -77,20 +77,17 @@ _AUTO_IDLE_S   = 900         # seconds without kind=task before auto drops to sl
 _ARTIFACT_RETENTION_S = 7 * 86400  # delete artifacts older than 7 days
 
 # RC health checks (node-load restraint for auto-action lanes).
-# Only relevant on nodes where RC runs (legion). On game-pc/peer the file
+# Only relevant on nodes where RC runs (legion). On peer the file
 # won't exist and _check_rc_health returns (False, "") - no suppression.
 _RC_HEALTH_PATH     = _PROJECT_ROOT / "ops" / "runtime" / "health.json"
 _RC_HEALTH_STALE_S  = 60    # suppress if RC heartbeat is older than this
 _RC_RESTART_GRACE_S = 120   # suppress for this many seconds after RC PID started
 
-# Default bridge URL per node. Phase 1 nodes can override via --bridge-url.
+# Default bridge URL per node. Peer can override via --bridge-url.
 #   legion : own loopback (RC dashboard hosts the bridge log)
-#   gamepc : Legion's bridge (Game-PC has no local dashboard; bridge_pull_tasks.py
-#            uses the same URL with target filter)
 #   peer    : own loopback (Peer dashboard hosts its own bridge log)
 _DEFAULT_BRIDGE_URL = {
     "legion": "https://127.0.0.1:8888/api/bridge",
-    "gamepc": "https://legion-rc:8888/api/bridge",
     # Peer serves /api/bridge/messages (NOT bare /api/bridge - confirmed by
     # Peer 2026-05-03 install probe). Their response is a bare JSON list;
     # _fetch_since handles both shapes.
@@ -112,8 +109,8 @@ def _check_rc_health(health: dict, now: float) -> tuple:
     degraded=True suppresses auto-action lanes for one poll cycle so the
     watcher doesn't compete for resources during RC incidents.
 
-    Returns (False, '') when health is empty (no RC on this node - game-pc/peer)
-    so those nodes are never suppressed by this check.
+    Returns (False, '') when health is empty (no RC on this node - peer)
+    so that node is never suppressed by this check.
     """
     if not health:
         return False, ""
@@ -550,15 +547,13 @@ def _post_result_back(envelope: dict, *, res_status: str, body: dict, node: str,
     if not task_id:
         _log.warning("can't post result for envelope without id")
         return
-    # bridge_post_result.py constrains --reply-to to {legion, gamepc, peer}.
+    # bridge_post_result.py constrains --reply-to to {legion, peer}.
     # Map source field to one of those, with prefix-match fallback.
     raw_src = (envelope.get("source") or "").strip().lower()
     if raw_src.startswith("legion") or raw_src in ("rc", "rc-monitor"):
         src_field = "legion"
     elif raw_src.startswith("peer") or raw_src == "peer-host":
         src_field = "peer"
-    elif raw_src.startswith("gamepc"):
-        src_field = "gamepc"
     else:
         _log.warning("post_result: unknown envelope source %r - defaulting to 'peer'", raw_src)
         src_field = "peer"
@@ -1068,7 +1063,7 @@ def main() -> int:
     if "--selftest" in sys.argv:
         return _selftest()
     p = argparse.ArgumentParser()
-    p.add_argument("--node", required=True, choices=["legion", "gamepc", "peer"],
+    p.add_argument("--node", required=True, choices=["legion", "peer"],
                    help="this machine's bridge label")
     p.add_argument("--bridge-url", default=None,
                    help="GET-able bridge log endpoint (default: per-node)")

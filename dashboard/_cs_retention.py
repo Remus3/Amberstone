@@ -6,7 +6,7 @@ draft - champ-select is a short bench / reroll / augment window that
 flips ChampSelect -> GameStart -> InProgress in well under the dashboard
 snapshot path's latency budget:
 
-    gamepc_lcu_agent.py (Legion-local)  --1s push-->  Legion vision cache
+    LCU agent (Legion-local)  --1s push-->  Legion vision cache
     Legion lcu_summary()  --drops the WHOLE snapshot if >5s stale-->
     dashboard/_state_builder.build_state()
 

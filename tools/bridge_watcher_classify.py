@@ -25,7 +25,6 @@ from typing import Optional, Tuple
 # A node never escalates its own posts back to itself.
 _OWN_NODE_ALIASES = {
     "legion": {"legion", "rc", "rc-monitor"},
-    "gamepc": {"gamepc"},
     "peer":    {"peer", "peer-host"},
 }
 
@@ -49,7 +48,7 @@ def classify(envelope: dict, *, node: str,
              auto_action_enabled: bool = False) -> Tuple[str, str]:
     """Return (classification, reason).
 
-    `node` is this machine's bridge label: 'legion', 'gamepc', or 'peer'.
+    `node` is this machine's bridge label: 'legion' or 'peer'.
     `node_config` is the per-node block from bridge_watcher_config.json
        (auto_read_patterns, auto_ops_verbs, escalate_always, etc.)
     `auto_action_enabled` - when False (default), never returns auto-* lanes
@@ -199,9 +198,9 @@ def _test() -> None:
         # (envelope, node, kwargs, expected_class)
         ({"source": "legion", "kind": "note"}, "legion", {}, "ack-only"),
         ({"source": "peer", "kind": "task", "target": "legion", "id": "task-1"}, "legion", {}, "escalate"),
-        ({"source": "peer", "kind": "task", "target": "gamepc", "id": "task-2"}, "legion", {}, "ack-only"),
-        ({"source": "gamepc", "kind": "result", "body": {"exit_code": 0}}, "legion", {}, "ack-only"),
-        ({"source": "gamepc", "kind": "result", "body": {"exit_code": 1}}, "legion", {}, "escalate"),
+        ({"source": "legion", "kind": "task", "target": "peer", "id": "task-2"}, "legion", {}, "ack-only"),
+        ({"source": "peer", "kind": "result", "body": {"exit_code": 0}}, "legion", {}, "ack-only"),
+        ({"source": "peer", "kind": "result", "body": {"exit_code": 1}}, "legion", {}, "escalate"),
         ({"source": "peer", "kind": "note"}, "legion", {}, "ack-only"),
         ({"source": "peer", "kind": "ack"}, "legion", {}, "ack-only"),
         ({"source": "peer", "kind": "ask", "target": "legion", "id": "ask-1"}, "legion", {}, "escalate"),

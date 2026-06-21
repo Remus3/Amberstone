@@ -1,7 +1,7 @@
 """Drift guard for vision_server/_frame.py event_meta extension.
 
 Item 207: /upload-frame route accepts optional event_meta dict for the
-LCU phase-watcher (tools/gamepc_phase_watcher.py). Backward-compatible:
+LCU phase-watcher (tools/phase_watcher.py). Backward-compatible:
 polling agent uploads omit the field and still succeed.
 """
 from __future__ import annotations
@@ -50,7 +50,7 @@ class UploadFrameAcceptsEventMetaTests(unittest.TestCase):
     def test_polling_upload_no_event_meta_is_ok(self):
         body = json.dumps({
             "image_b64": _b64_jpeg(),
-            "source": "game-pc",
+            "source": "relay",
             "width": 1920,
             "height": 1080,
             "format": "jpeg",
@@ -72,7 +72,7 @@ class UploadFrameAcceptsEventMetaTests(unittest.TestCase):
         }
         body = json.dumps({
             "image_b64": _b64_jpeg(),
-            "source": "game-pc-event-game",
+            "source": "relay-event-game",
             "width": 1920,
             "height": 1080,
             "format": "jpeg",
@@ -82,13 +82,13 @@ class UploadFrameAcceptsEventMetaTests(unittest.TestCase):
         out = frame_mod.handle_upload_frame(body)
         self.assertTrue(out.get("ok"))
         self.assertTrue(out.get("event_tagged"))
-        cached = frame_mod.get_latest_frame(source="game-pc-event-game")
+        cached = frame_mod.get_latest_frame(source="relay-event-game")
         self.assertEqual(cached.get("event_meta"), meta)
 
     def test_event_meta_non_dict_is_coerced_to_none(self):
         body = json.dumps({
             "image_b64": _b64_jpeg(),
-            "source": "game-pc-malformed",
+            "source": "relay-malformed",
             "width": 1920,
             "height": 1080,
             "format": "jpeg",
@@ -98,7 +98,7 @@ class UploadFrameAcceptsEventMetaTests(unittest.TestCase):
         out = frame_mod.handle_upload_frame(body)
         self.assertTrue(out.get("ok"))
         self.assertFalse(out.get("event_tagged"))
-        cached = frame_mod.get_latest_frame(source="game-pc-malformed")
+        cached = frame_mod.get_latest_frame(source="relay-malformed")
         self.assertEqual(cached.get("event_meta"), None)
 
 

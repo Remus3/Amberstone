@@ -4,12 +4,12 @@
 Frozen contract (cron + /loop /process-bridge-tasks invoke this by file path):
     C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_post_result.py <task_id> [--source ...] [--summary ...]
         [--body ...] [--from-stdin] [--exit-code N] [--no-mark]
-        [--reply-to legion|gamepc|peer] [--suggestions ...]
+        [--reply-to legion|peer] [--suggestions ...]
 
 Side effects preserved:
     - Appends task_id to %LOCALAPPDATA%\\rc-bridge-tasks-processed.txt
     - For --reply-to=peer, routes via core.bridge.send() (cross-tailnet bearer-auth)
-    - For legion/gamepc, POSTs to https://legion-rc:8888/api/bridge
+    - For legion, POSTs to https://legion-rc:8888/api/bridge
 
 Equivalent to: `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py post-result <task_id> ...`.
 """

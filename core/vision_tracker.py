@@ -41,7 +41,7 @@ _VISIBILITY_STALL_S = 2.5
 _RELAY_MAX_AGE_S = 8.0
 
 # Default poll interval when running as background daemon. Matches the
-# Game-PC liveclient relay's own ~1s cadence - going faster wastes CPU
+# Legion-local liveclient relay's own ~1s cadence - going faster wastes CPU
 # without surfacing new data.
 _DEFAULT_POLL_S = 0.75
 
