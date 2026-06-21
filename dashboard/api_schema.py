@@ -171,7 +171,7 @@ class SpeakRequest(_AllowExtra):
 
 class TeamContextRosterSlot(_AllowExtra):
     """One row of the 10-player champ-select roster posted by the
-    Game-PC LCU agent on `ChampSelect` transition."""
+    Legion LCU agent on `ChampSelect` transition."""
     puuid: str = ""
     summoner_name: str = ""
     team_id: int = 0               # 100 = ally side, 200 = enemy side

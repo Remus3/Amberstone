@@ -1,14 +1,17 @@
 """Phase 3 WebSocket relay server.
 
-Two paths served on the same port (S11.5):
+Now Legion-only (1-PC, ADR-011). Two paths served on the same port (S11.5):
 
-  /ingest  - Game-PC Forwarder connects and streams live-client / LCU JSON
-             frames here. Each incoming frame is fanned out to all /push
-             subscribers after being stamped with an ``ingested_at`` field.
+  /ingest  - a local frame producer connects and streams live-client / LCU
+             JSON frames here. Each incoming frame is fanned out to all
+             /push subscribers after being stamped with an ``ingested_at``
+             field. (Originally the 2-PC Game-PC Forwarder; that pre-1PC
+             topology is retired - the producer is now Legion-local.)
 
-  /push    - Chrome kiosk(s) on Game-PC subscribe here. They receive every
-             frame the forwarder pushes plus any payloads the supervisor
-             broadcasts internally via ``broadcast_push()``.
+  /push    - the dashboard / any local Chrome client subscribes here. They
+             receive every frame the producer pushes plus any payloads the
+             supervisor broadcasts internally via ``broadcast_push()``.
+             (Originally a Game-PC Chrome kiosk; now Legion-local.)
 
 Heartbeat: a JSON ``{"type":"heartbeat","t":<epoch>}`` is broadcast to all
 /push subscribers every 5 seconds so stale connections drop quickly.
@@ -96,8 +99,8 @@ class WSServer:
         Returns the number of clients the message was queued to.
 
         AUDIT P-audit3-h01 (2026-04-22): fanout is now parallel with a
-        per-client 2s timeout. One laggy iPad/forwarder WS cannot block
-        the other subscribers - the 1-2s latency-tier promise in
+        per-client 2s timeout. One laggy subscriber WS cannot block the
+        other subscribers - the 1-2s latency-tier promise in
         resolved_decisions.json stays honoured.
         """
         msg = json.dumps(payload)

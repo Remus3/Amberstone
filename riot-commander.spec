@@ -7,8 +7,8 @@ into a single-folder distribution under dist/riot-commander/. Yields
 `riot-commander.exe` plus the dependency folder so the recipient
 doesn't need Python installed.
 
-This is **opt-in starter infrastructure**. The current Legion+Game-PC
-deployment uses a Python install directly - the spec exists so a
+This is **opt-in starter infrastructure**. The current Legion 1-PC
+deployment (ADR-011) uses a Python install directly - the spec exists so a
 future "share RC with someone else" path is one command away rather
 than a from-scratch packaging exercise.
 

@@ -3,7 +3,7 @@
 
 Frozen contract (the /process-bridge-tasks skill spec parses this script's
 JSON output by exact shape):
-    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_pull_tasks.py [--target legion|gamepc]
+    C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_pull_tasks.py [--target legion|peer]
 
 Output schema preserved:
     {"now": <ts>, "target": "...", "count": N, "tasks": [<envelope>, ...]}

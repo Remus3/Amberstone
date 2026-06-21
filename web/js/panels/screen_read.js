@@ -26,7 +26,7 @@ let _failsafe = 0;
 function _errText(code) {
   switch (code) {
     case "no_fresh_frame":
-      return "no live frame - is a game running + the Game-PC agent up?";
+      return "no live frame - is a game running + the vision agent up?";
     case "no_api_key":
       return "vision key missing (API-Key-Claude.txt)";
     case "vision_failed":

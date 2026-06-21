@@ -612,7 +612,7 @@ function _amRenderDsCombo(block, p, ctx) {
 
 // Static base image per mode. Falls back to /api/minimap-crop?mode=<x>
 // when the static asset 404s. 1-PC (ADR-011, 2026-06-10): the dedicated
-// Game-PC minimap stream is retired, so the static asset is PRIMARY for
+// off-box minimap stream is retired, so the static asset is PRIMARY for
 // every mode the local DDragon mirror ships (map30 included); the crop
 // endpoint stays as the onerror fallback - it serves the vision
 // server's self-grab /latest-frame crop when a live frame exists.

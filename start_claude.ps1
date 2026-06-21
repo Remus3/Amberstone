@@ -109,7 +109,7 @@ try {
 
 # 11. Check vision frames via the local vision server's latest-frame
 #     (1-PC, ADR-011: the screen agent runs Legion-local; the retired
-#      Game-PC MCP :8892 probe was removed - it always failed post-consolidation)
+#      off-box MCP :8892 probe was removed - it always failed post-consolidation)
 try {
     $r = Invoke-WebRequest -Uri "http://127.0.0.1:8889/latest-frame" -TimeoutSec 3 -UseBasicParsing
     if ($r.StatusCode -eq 200) {

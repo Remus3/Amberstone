@@ -2,7 +2,7 @@
 ``/api/minimap-crop`` fetch to 204 No Content.
 
 A missing minimap frame is a NORMAL condition (vision producer idle/down -
-e.g. 1-PC with no Game-PC screen agent). The supervisor answers non-2xx,
+e.g. the in-process screen-grab relay has no frame yet). The supervisor answers non-2xx,
 which the proxy forwarded verbatim, so the browser logged a 502 console
 error on every ~2s poll - both in an idle lobby AND during a live game with
 no frame source. 204 hides the panel quietly with zero console noise.
