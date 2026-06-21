@@ -526,6 +526,12 @@ class RuneWriter:
         self._spell_pushed_mode: str = ""
         self._spell_pushed_pair: Optional[tuple[int, int]] = None
         self._spell_manual_override = False
+        # RC2 E12-L2 - lobby gameMode is immutable mid-champ-select, so the
+        # first successful read per session is authoritative. Memoize it to
+        # stop one GET /lol-lobby/v2/lobby per poll tick. Cleared on champ-
+        # select exit / champ change via _reset_spell_state. Port-safe: this
+        # strictly REDUCES LCU GETs - it never adds a loop or speeds a poll.
+        self._cached_lobby_mode: Optional[str] = None
 
     def start(self) -> None:
         self._champ_id_map = build_champ_id_map()
@@ -633,6 +639,9 @@ class RuneWriter:
         self._spell_pushed_mode = ""
         self._spell_pushed_pair = None
         self._spell_manual_override = False
+        # RC2 E12-L2 - drop the memoized lobby mode so the next session
+        # re-reads the live lobby (mode can differ across champ-selects).
+        self._cached_lobby_mode = None
 
     def _wr_spell_pair(self, champion: str, mode: str) -> Optional[tuple[int, int]]:
         """Highest-win-rate spell pair for champion+mode from the postgame
@@ -797,12 +806,22 @@ class RuneWriter:
         return resolve_spell_pair(champion, mode)
 
     def _detect_game_mode(self) -> str:
-        """Detect current game mode from lobby config."""
+        """Detect current game mode from lobby config.
+
+        RC2 E12-L2: memoized per champ-select session. The lobby gameMode is
+        immutable while champ-select is open, so the first successful read is
+        cached and every later tick is served from cache (no per-tick GET
+        /lol-lobby/v2/lobby). _reset_spell_state invalidates the cache on
+        champ-select exit / champ change. Port-safe - strictly fewer LCU GETs.
+        """
+        if self._cached_lobby_mode is not None:
+            return self._cached_lobby_mode
         try:
             lobby = self._lcu._request("GET", "/lol-lobby/v2/lobby")
             if lobby and isinstance(lobby, dict):
                 gc = lobby.get("gameConfig", {})
-                return gc.get("gameMode", "CLASSIC").upper()
+                self._cached_lobby_mode = gc.get("gameMode", "CLASSIC").upper()
+                return self._cached_lobby_mode
         except Exception:  # noqa: BLE001
             pass
         return "CLASSIC"
