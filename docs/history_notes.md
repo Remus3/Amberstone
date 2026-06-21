@@ -42,6 +42,32 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-21 (interactive, continue) - overlay CALL focal hierarchy + ASCII arrow MUST-FIX
+
+Continued item 558's overlay-audit NEXT queue. Two commits (pushed): `a4d6e6ba`
+overlay.css sec 3b - the CALL pane now out-weights peers (4px `--signal-info`
+indigo rail + tinted `rgba(28,30,48,0.93)` backing + accent head; overlay-scoped,
+higher-specificity than the sec-3 base) so the eye lands on the time-critical
+RIGHT NOW/ACTION first in the ~1.5s glance. `806c77dd` ascii-clean arrows - the
+audit's ASCII phase caught coach.action "CRASH BOT -> SETUP DRAKE" with a real
+U+2192; item 558's `_ascii_clean` missed arrows. Extended `_ASCII_PUNCT`
+(arrow/symbol family) + a NFKD+ascii-ignore fallback so NO codepoint>127 can
+reach the HUD; +11 TDD cases (chr(0xNNNN) inputs so the test stays 7-bit ASCII).
+
+Tier-1 (overlay CSS + one dashboard module + test), no engine/DS/Share. RC
+restarted (pid 8904, reload_ok, game re-detected mode=sr). LIVE-VERIFIED on the
+legion-rc origin (live SR bot-practice game): CALL hierarchy renders, live
+/api/state coach ASCII-CLEAN (action 'SETUP DRAKE'), WS SecurityError gone (item
+558 fix holds; 1 console error = favicon 404). Read-only 5-phase fixture audit =
+ship-ready, no MUST-FIX. This also CLOSED item 558's owed live-render verify.
+
+NEXT (item-558 queue tail): L1 minimap-anchored objective timers (needs an
+overlay minimap canvas), L3 live spike cue (HIGH, computed). Background chip
+spawned: FIGHT MODEL pane (`#am-pane-ovds`) clips in the default subset - gate it
+to the build panelset (pre-existing, audit-found, NOT this slice).
+
+---
+
 # 2026-06-21 (interactive) - overlay live-render TRUE root-cause (WS mixed-content) + ds-503 + ASCII coach
 
 CORRECTS the prior entry. The "overlay dead/placeholder in-game" bug was NOT
