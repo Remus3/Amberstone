@@ -73,6 +73,42 @@ def prune_task_logs(log_root: Path = LOG_ROOT,
     return removed
 
 
+def _write_agent6_failure_stub(
+    task_id: str,
+    op: str,
+    payload: dict,
+    exit_code: int,
+    sidecar_log: Path,
+    started_ts: str,
+) -> None:
+    """Write a minimal .md stub under agents/agent6_auditor/reports/ so that
+    audit failures leave a visible artifact even when stderr is empty."""
+    reports_dir = _PROJECT_ROOT / "agents" / "agent6_auditor" / "reports"
+    try:
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        ts_file = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+        completed_ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        stub_path = reports_dir / f"{ts_file}-FAILED-{task_id}.md"
+        tmp = stub_path.with_suffix(".tmp")
+        lines = [
+            f"# Agent 6 audit FAILED - {task_id}",
+            "",
+            f"- task_id: `{task_id}`",
+            f"- op: `{op}`",
+            f"- exit_code: {exit_code}",
+            f"- dispatched_at: {payload.get('filed_at', 'unknown')}",
+            f"- started_at: {started_ts}",
+            f"- completed_at: {completed_ts}",
+            f"- sidecar_log: `{sidecar_log}`",
+            "",
+            "No report artifact was written. Check the sidecar log for stdout/stderr.",
+        ]
+        tmp.write_text("\n".join(lines), encoding="utf-8")
+        tmp.replace(stub_path)
+    except OSError as e:
+        log.warning("agent6 failure stub write failed: %s", e)
+
+
 def _format_task_prompt(agent: str, task_id: str, op: str, payload: dict) -> str:
     """Build the user prompt the ephemeral claude session will see."""
     lines = [
@@ -249,6 +285,8 @@ def spawn_ephemeral_llm(agent: str, task_id: str, op: str, payload: dict) -> dic
                 f"{_iso_now()} FAIL agent={agent} task={task_id} exit={proc.returncode} "
                 f"stderr={_redact_secrets(proc.stderr[:200])!r}\n"
             )
+        if agent == "6":
+            _write_agent6_failure_stub(task_id, op, payload, proc.returncode, per_task_log, stamp)
         # The exception text becomes Scheduler.fail(error=str(e)) -> the
         # task's ``last_error`` -> the /api/task/<id> wire body. stderr can
         # carry an ANTHROPIC_API_KEY echo or a secret-shaped traceback
