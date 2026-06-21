@@ -31,13 +31,18 @@ const LS_KEY = "rc-overlay-layout";
 // OVERLAY_DOCTRINE section 4. (x,y) is the widget top-left in 1920x1080 game px;
 // the body zoom (--rc-overlay-scale / ovscale) scales them with the window.
 const WIDGETS = [
-  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 760, y: 140, tier: "primary" },
-  { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent" },
-  { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient" },
-  { id: "w-lead", sel: "#rn-lead", x: 786, y: 44, tier: "ambient" },
-  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent" },
-  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient" },
-  { id: "w-ovds", sel: "#am-pane-ovds", x: 70, y: 760, tier: "ambient" },
+  // Default 1080p positions = a tidy LEFT-EDGE column, out of the play area
+  // (center / champion HUD / minimap), per operator feedback "so intrusive":
+  // non-intrusive beats near-the-eye for the DEFAULT - the operator drags each
+  // where they want and it saves. (x,y) is design-px in 1920x1080; the fullscreen
+  // window's body zoom scales them with the resolution.
+  { id: "w-lead", sel: "#rn-lead", x: 20, y: 92, tier: "ambient" },
+  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 20, y: 132, tier: "primary" },
+  { id: "w-choices", sel: "#rn-choices", x: 20, y: 300, tier: "urgent" },
+  { id: "w-callouts", sel: "#rn-callouts", x: 20, y: 470, tier: "ambient" },
+  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 20, y: 620, tier: "urgent" },
+  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 20, y: 620, tier: "ambient" },
+  { id: "w-ovds", sel: "#am-pane-ovds", x: 20, y: 780, tier: "ambient" },
 ];
 
 let _layout = {};
