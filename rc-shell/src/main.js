@@ -466,6 +466,10 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // Keep the dashboard live even when unfocused in-game (keepCompanion
+      // shows it beside the HUD): same backgroundThrottling reasoning as the
+      // overlay window below - a throttled renderer freezes the SSE re-render.
+      backgroundThrottling: false,
     },
   };
   if (typeof x === "number" && typeof y === "number") {
@@ -557,6 +561,15 @@ function createOverlayWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      // CRITICAL for an in-game overlay: Electron defaults backgroundThrottling
+      // to true, so when the foreground game OCCLUDES this always-on-top window
+      // Chromium suspends its renderer (timers throttled to ~1/s, rAF paused).
+      // The /api/state-stream SSE re-render then never runs and the HUD freezes
+      // on its initial scaffold ("will render mid-game") even though the backend
+      // is feeding live data - the long-standing "overlay dead in-game" symptom.
+      // The page itself is correct (it renders fine in a non-occluded browser);
+      // only the throttled renderer was the fault. Keep the overlay live.
+      backgroundThrottling: false,
     },
   });
   // screen-saver level keeps it above a Borderless game.
