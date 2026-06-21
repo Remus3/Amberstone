@@ -540,19 +540,31 @@ function createOverlayWindow() {
   // RC2 4.1: DPI + resolution-aware sizing. Grow the box by the work area scale
   // (no-op at the 1920/100% baseline) and hand the same scale to the renderer so
   // its content zoom matches the scaled window.
+  // ZOI w-mmrect alignment fix (item 567, 2026-06-21): size the overlay to the
+  // full display BOUNDS, not the taskbar-excluded work area. A Borderless game
+  // renders over the FULL screen (2560x1440), so its minimap is anchored to the
+  // true screen bottom-right. The settings-pinned w-mmrect box is design-px (1080
+  // canvas) scaled by the overlay body-zoom (ovscale = min axis ratio). Sizing the
+  // window to the work area (e.g. 2560x1400, taskbar excluded) makes ovscale 1.296
+  // (height-bound) instead of 1.333, so design-px land ~3% up-left of the game
+  // minimap AND the box bottom falls outside the window entirely. Using bounds
+  // makes ovscale = native_h/1080 (the design->screen ratio), so every design-px
+  // widget - and the minimap outline especially - lands exactly on the game.
   const metrics = ov.resolveOverlayMetrics({
-    workArea: primary.workArea,
+    workArea: primary.bounds,
     scaleFactor: primary.scaleFactor,
   });
   overlayScale = metrics.scale;
   // RC Overlay Doctrine 2026-06-21: the overlay is a FULLSCREEN transparent
-  // click-through window over the work area (the game shows + plays through it),
-  // so the movable widget field (web/js/lib/overlay_layout.js) can place each cue
-  // as a tiny accent anywhere on screen - out of the play area - instead of
-  // cramming into the old 460px right dock. Per-widget positions are saved by the
-  // field manager (rc-overlay-layout), not the window position; metrics.scale
-  // still feeds the renderer content zoom (DPI/resolution-aware).
-  const _wa = primary.workArea;
+  // click-through window (the game shows + plays through it), so the movable
+  // widget field (web/js/lib/overlay_layout.js) can place each cue as a tiny
+  // accent anywhere on screen - out of the play area - instead of cramming into
+  // the old 460px right dock. Per-widget positions are saved by the field manager
+  // (rc-overlay-layout), not the window position; metrics.scale still feeds the
+  // renderer content zoom (DPI/resolution-aware). It is click-through + transparent
+  // so covering the taskbar strip is invisible + harmless (and the game already
+  // covers it). Companion mode keeps the work area (createWindow, unchanged).
+  const _wa = primary.bounds;
   const bounds = { x: _wa.x, y: _wa.y, width: _wa.width, height: _wa.height };
   overlayWindow = new BrowserWindow({
     width: bounds.width,
@@ -587,6 +599,14 @@ function createOverlayWindow() {
   });
   // screen-saver level keeps it above a Borderless game.
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
+  // ZOI item 567: reclaim the taskbar strip. Windows clamps a frameless window
+  // to the work area at CREATE time (e.g. 2560x1400, not the full 2560x1440), so
+  // the bottom-right minimap - which a Borderless game draws over the taskbar -
+  // is unreachable + the w-mmrect box clips short. Re-asserting the FULL display
+  // bounds after the window is topmost reclaims those rows (setBounds is not
+  // work-area-clamped the way the constructor is). Click-through + transparent,
+  // so covering the taskbar is invisible + the strip stays clickable (forwarded).
+  overlayWindow.setBounds(bounds);
   // RC2 4.2: passive click-through via the pure zones decision (zoneHover is
   // false at create), and the operator opacity so the HUD recedes into the game.
   overlayWindow.setIgnoreMouseEvents(
