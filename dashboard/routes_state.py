@@ -54,6 +54,39 @@ def _peer_health_status(age_s: float) -> str:
         return "yellow"
     return "red"
 
+def _agent6_audit_outcomes(max_count: int = 3) -> list:
+    """Return the last ``max_count`` agent6-full-audit-pass final events from
+    agents/state/task_queue.jsonl, oldest-first. Returns [] on any error."""
+    q = APP_DIR / "agents" / "state" / "task_queue.jsonl"
+    if not q.exists():
+        return []
+    outcomes: list = []
+    try:
+        for raw in q.read_text(encoding="utf-8", errors="replace").splitlines():
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                ev = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            task = ev.get("task") or {}
+            if task.get("op") != "agent6-full-audit-pass":
+                continue
+            if ev.get("event") not in ("completed", "failed", "reclassified_completed"):
+                continue
+            outcomes.append({
+                "task_id": task.get("id"),
+                "event": ev.get("event"),
+                "ts": ev.get("ts"),
+                "status": task.get("status"),
+                "last_error": task.get("last_error"),
+            })
+    except Exception:  # noqa: BLE001
+        pass
+    return outcomes[-max_count:]
+
+
 log = logging.getLogger("rc.web_dashboard")
 
 
@@ -316,22 +349,42 @@ def _serve_health_all(h) -> None:
                 recv = rec.get("received_at") or 0
                 age_s = max(0.0, time.time() - recv)
                 hb = rec.get("heartbeat") or {}
-                peer_status = _peer_health_status(age_s)
+                hb_updated = hb.get("updated_at") or 0
+                hb_age_s: float | None = max(0.0, time.time() - hb_updated) if hb_updated else None
+                # Use the larger of publisher age and watcher heartbeat age so a
+                # frozen watcher that keeps relaying a stale snapshot is not
+                # reported green just because the publisher is posting on schedule.
+                effective_age_s = max(age_s, hb_age_s) if hb_age_s is not None else age_s
+                peer_status = _peer_health_status(effective_age_s)
                 peers[node] = {
-                    "age_s":          round(age_s, 1),
-                    "stale":          age_s > _PEER_HEALTH_WARN_S,
-                    "status":         peer_status,
-                    "watcher_alive":  bool(hb.get("alive")),
-                    "watcher_pid":    hb.get("pid"),
-                    "queue_depth":    hb.get("queue_depth"),
-                    "auto_ok":        hb.get("auto_ok_since_boot"),
-                    "auto_err":       hb.get("auto_err_since_boot"),
-                    "escalations":    hb.get("escalations_since_boot"),
+                    "age_s":            round(age_s, 1),
+                    "heartbeat_age_s":  round(hb_age_s, 1) if hb_age_s is not None else None,
+                    "stale":            effective_age_s > _PEER_HEALTH_WARN_S,
+                    "status":           peer_status,
+                    "watcher_alive":    bool(hb.get("alive")),
+                    "watcher_pid":      hb.get("pid"),
+                    "queue_depth":      hb.get("queue_depth"),
+                    "auto_ok":          hb.get("auto_ok_since_boot"),
+                    "auto_err":         hb.get("auto_err_since_boot"),
+                    "escalations":      hb.get("escalations_since_boot"),
                     "tokens_today_usd": hb.get("tokens_used_today_usd"),
                 }
             rollup["peers"] = peers
         except Exception as e:  # noqa: BLE001
             rollup["peers"] = {"error": str(e)[:120]}
+        try:
+            agent6_outcomes = _agent6_audit_outcomes(max_count=3)
+            last_two = agent6_outcomes[-2:]
+            consecutive_fails = (
+                len(last_two) >= 2
+                and all(o.get("event") == "failed" for o in last_two)
+            )
+            rollup["agent6"] = {
+                "last_outcomes": agent6_outcomes,
+                "status": "yellow" if consecutive_fails else "green",
+            }
+        except Exception as e:  # noqa: BLE001
+            rollup["agent6"] = {"error": str(e)[:120], "status": "unknown"}
         rc_ok = bool(rollup.get("rc", {}).get("alive"))
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
         ds_ok = bool(rollup.get("daemon_slayer", {}).get("alive"))
@@ -351,13 +404,15 @@ def _serve_health_all(h) -> None:
             isinstance(v, dict) and v.get("status") in ("yellow", "red")
             for v in peers_block.values()
         )
+        agent6_degraded = (rollup.get("agent6") or {}).get("status") == "yellow"
         if not rc_ok or not vis_ok:
             rollup["status"] = "red"
         elif (not cost_ok
               or not ds_ok
               or rollup.get("cost", {}).get("banner") == "warn"
               or bridge_degraded
-              or peer_degraded):
+              or peer_degraded
+              or agent6_degraded):
             rollup["status"] = "yellow"
         else:
             rollup["status"] = "green"
