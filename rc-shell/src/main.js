@@ -505,17 +505,12 @@ function createWindow() {
 
   mainWindow.loadURL(cfg.origin);
 
-  // RC2 (operator): surface the companion to the front once on launch - a normal
-  // app comes forward when started - WITHOUT pinning it always-on-top. show() +
-  // focus() only reorder the z-index for this one launch; the not-pinned
-  // companionAlwaysOnTop setting is untouched, so it is free to go behind other
-  // windows afterwards.
-  mainWindow.once("ready-to-show", () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
+  // Overlay-only (operator 2026-06-21): the companion dashboard no longer
+  // auto-surfaces on launch. This boot-show caused a ~2s flash of the big
+  // dashboard window over the game before applySurface() switched to the
+  // overlay. applySurface (the poll-driven surface machine) still shows the
+  // companion out-of-game (surface=companion -> mainWindow.showInactive) and
+  // hides it in-game, so visibility stays correct without the launch flash.
 
   // Re-mount the drag strip on every (re)load - Cmd+R wipes injected DOM.
   mainWindow.webContents.on("did-finish-load", () => injectDragRegion(mainWindow));
