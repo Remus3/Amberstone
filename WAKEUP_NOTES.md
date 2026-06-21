@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-06-21 (headless continue 3) - ZOI overlay FOUNDATION (settings-driven minimap outline)
+
+Re-opened the L1 minimap/ZOI work item 566 deferred. 1 commit `94b31bad` (pushed, CI green; LEDGER 567).
+
+PREMISE: 566 deferred ZOI because Live Client :2999 has no coords. This session found a NO-API
+coordinate source: League `game.cfg` `[HUD]` MinimapScale=1.62 + FlipMiniMap=0 geometry. The
+`an external code-intelligence MCP` link in the brief was VERIFIED (WebFetch) to be an unrelated C/C++
+code-intelligence MCP - NOT a coordinate source, not used. Operator picked scope "Foundation only".
+
+SHIPPED: `core/league_settings.py` (game.cfg reader) + `core/minimap_geometry.py` (pure calibrated
+scale->rect) -> `/api/state.minimap_rect` (design px, mode-gated) -> `web/js/panels/minimap_rect.js`
+`w-mmrect` click-through gold-outline box. Calibration LIVE-measured from the operator's minimap
+(side=0.2889*H, bottom-right -> design box 1600,761,312,312); green-box overlay confirmed tight fit.
+SETTINGS-pinned, NO drag handle (grab zone over the click-critical minimap would eat clicks; rule-9
+exception). overlay_layout.js UNTOUCHED. 19 unit + 1 snapshot green; backend verified live. Memory
+`reference_minimap_geometry_calibration`.
+
+OWED / DO NEXT: the composited box-on-real-minimap screenshot is the one deferred verify - rc-shell
+must be RELAUNCHED to load the new JS module (it does NOT hot-reload new imports like Chrome) and the
+game ended (minimap_rect null off a minimap mode). Next game: relaunch rc-shell, capture, nudge the
+calibration constant if off. THEN slice 2 (pure-numpy team-color blob detection on the minimap crop
+-> dot centroids) + slice 3 (ZOI bubbles + demarcation weighted by per-team strength, fed to coach;
+all local/no-API). DON'T redo: foundation/calibration/no-handle; an external code-intelligence MCP is a dead end.
+
+---
+
 # 2026-06-21 (headless continue 2) - overlay live-verify (IPC round-trip) + declutter sweep
 
 Continued the overlay-polish run. 1 commit `ae09ab27` (pushed, CI green; LEDGER 566).
@@ -55,32 +81,3 @@ NEXT (this lane): ROADMAP queue #3 L1 minimap-anchored objective timers; the rc-
 widget-layout IPC live round-trip (drag -> persist -> relaunch) + Alt+Shift+R are
 wired + unit-tested, the live Electron round-trip is OWED. DON'T redo: the panel-set
 DELTA model / the data-call-line CALL tiering / the transform-trap fix are settled.
-
----
-
-# 2026-06-21 (interactive) - overlay doctrine: fullscreen movable Hextech widget field + coach JSON-fence fix
-
-Operator: the in-game overlay was "utterly not it" / "so intrusive". Built a NEW
-overlay doctrine (`docs/OVERLAY_DOCTRINE.md`): the Electron overlay is the ONE user
-surface (Chrome dashboard retired); a FULLSCREEN transparent click-through window
-with independently MOVABLE, position-PERSISTENT Hextech widgets (drag the gold-dot
-handle -> saves to localStorage). Verified LIVE over a real SR game via Windows-MCP.
-
-Commits (all pushed, CI green): `b83006c3` doctrine + `web/js/lib/overlay_layout.js`
-field manager + `overlay.css` rewrite; `df4c8d38` coach `_parse_response` JSON-fence
-fallback (live coach went BLANK on a ```json-fenced Haiku reply -> stuck on the
-"will render mid-game" scaffold; now reads real calls); `3bd5668f` rc-shell
-fullscreen overlay window (`main.js` bounds = work area) + left-edge widget
-defaults; `b234ce8d`+`7b2224e5` smaller/see-through/recede + killed the companion
-boot-flash (true overlay-only); `aa6f670d` migrated panel snapshot tests off the
-retired 460px dock.
-
-NEXT SESSION (continue headlessly): (1) REWRITE the 10 SKIPPED overlay snapshot
-tests (`tests/snapshot_panels/test_overlay_view.py`, `@_DOCK_RETIRED`) to the
-widget-field model - `.ovx-widget` position:fixed, left-edge defaults, reveal-only
-build/threat, panel-set widget visibility, fullscreen window; do NOT re-assert the
-460px dock. (2) Overlay polish: clamp the long objective line, eyeball
-lead/callouts/choices in the column, the hex-notch + combat-declutter from the
-doctrine, rc-shell DISK mirror of the layout + Alt+Shift+R reset. (3) The spawned
-coach-parser chip (task_ad0539d3) is SUPERSEDED - the fix landed in `df4c8d38`;
-close that session, do not redo.
