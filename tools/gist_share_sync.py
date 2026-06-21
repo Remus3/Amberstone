@@ -217,7 +217,7 @@ def _do_push(ev: str, patch: str, n: int, url: str) -> int:
     and return PUSH_FAIL_EXIT (so the caller / hook exits non-zero instead of
     silently swallowing). Returns 0 on success."""
     try:
-        _git("push", "origin", "HEAD")
+        _git("push", "--force", "origin", "main")
     except subprocess.SubprocessError as exc:
         # CalledProcessError (rejected push) AND TimeoutExpired (a push that
         # hangs past GIT_TIMEOUT_S on a dead remote / credential prompt) both
@@ -238,7 +238,33 @@ def _do_push(ev: str, patch: str, n: int, url: str) -> int:
         sys.stderr.write(f"gist_share_sync: {line}\n")
         return PUSH_FAIL_EXIT
     _write_status(True, "pushed", 0)
+    _gc_clone()
     return 0
+
+
+def _gc_clone() -> None:
+    """Prune the now-unreferenced old history so the LOCAL clone stays small
+    after each squash (else every prior Share.zip snapshot lingers as a loose
+    object and the local .git re-grows toward the 582MB that broke the remote)."""
+    try:
+        _git("reflog", "expire", "--expire=now", "--all")
+        _git("gc", "--prune=now", "--quiet")
+    except subprocess.SubprocessError:
+        pass
+
+
+def _squash_to_root(msg: str) -> None:
+    """Collapse the gist branch to ONE parentless commit of the current tree,
+    dropping all prior history.
+
+    The gist is a current-state MIRROR - its history carries no value, and one
+    ~4MB Share.zip appended per sync bloated it past GitHub's gist size quota
+    (incident 2026-06-21: 582MB .git / 179 commits -> 'Repository is above its
+    size quota ... pre-receive hook declined', 37 commits stranded). Rolling a
+    single commit each push keeps the published gist permanently small."""
+    tree = _git("rev-parse", "HEAD^{tree}").stdout.strip()
+    root = _git("commit-tree", tree, "-m", msg).stdout.strip()
+    _git("reset", "--hard", root)
 
 
 def _clear_clone() -> None:
@@ -268,29 +294,24 @@ def sync() -> int:
 
     _git("add", "-A")
     status = _git("status", "--porcelain").stdout.strip()
-    if not status:
-        url = _git("remote", "get-url", "origin").stdout.strip()
-        # Share/ unchanged, but a prior failed push may have left a backlog -
-        # surface it instead of reporting a false all-clear.
-        unpushed = _unpushed_count()
-        _write_status(
-            unpushed == 0,
-            "up to date" if unpushed == 0 else "unpushed backlog",
-            unpushed,
-        )
-        if unpushed:
-            line = f"{unpushed} local commit(s) unpushed (Share unchanged) - {url}"
-            _append_log(line)
-            sys.stderr.write(f"gist_share_sync: {line}\n")
+    url = _git("remote", "get-url", "origin").stdout.strip()
+    # A prior failed push can leave a backlog even when Share/ is unchanged -
+    # treat that as work to do (republish), not a false all-clear.
+    unpushed = _unpushed_count()
+    if not status and unpushed == 0:
+        _write_status(True, "up to date", 0)
         print(f"gist up to date (no change) - {url}")
-        return 0 if unpushed == 0 else PUSH_FAIL_EXIT
+        return 0
 
     msg = (
         f"sync Share -> gist (ENGINE {ev}, patch {patch}, {n} files)\n\n"
         "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
     )
-    _git("commit", "-m", msg)
-    url = _git("remote", "get-url", "origin").stdout.strip()
+    if status:
+        _git("commit", "-m", msg)
+    # Roll the entire gist into a single rolling commit BEFORE pushing so its
+    # history can never re-accumulate past the size quota, then force-push it.
+    _squash_to_root(msg)
     rc = _do_push(ev, patch, n, url)
     if rc == 0:
         print(f"gist synced (ENGINE {ev}, patch {patch}, {n} files) - {url}")
