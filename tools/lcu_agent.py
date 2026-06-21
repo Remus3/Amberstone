@@ -105,7 +105,14 @@ TOKEN  = _resolve_auth_token()
 BRIDGE_SECRET = _resolve_bridge_secret()    # "" -> team-context POST skipped
 INTERVAL      = 1.0   # state-push cadence (slow during in-game; OK)
 AUTO_INTERVAL = 0.5   # ready-check / summoner-override poll cadence
-CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence
+CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence (idle)
+# RC2 E7a: after draining a batch that held a latency-sensitive command
+# (bench_swap / reroll / accept_ready), re-poll FAST instead of waiting
+# the full CMD_INTERVAL, so a freshly-clicked ARAM bench swap is not
+# stuck behind a 0.5s idle wait. Empty/idle drains still sleep the full
+# CMD_INTERVAL (no busy-spin).
+BENCH_CMD_FAST_INTERVAL = 0.1
+LATENCY_SENSITIVE_CMDS = {"bench_swap", "reroll", "accept_ready"}
 # Min seconds between team-context POSTs while still in champ-select.
 # The route is idempotent - re-posting just refreshes the cache, but no
 # point hammering it on every 1s state-push cycle.
@@ -2191,33 +2198,59 @@ def _auto_features_loop():
         time.sleep(AUTO_INTERVAL)
 
 
+def drain_once(get_fn, post_fn, exec_fn):
+    """Drain ONE /lcu-cmd-pending batch. Returns (processed, fast).
+
+    ``processed`` = number of queued commands handled this pass.
+    ``fast`` = True iff the drained batch held a latency-sensitive command
+    (bench_swap / reroll / accept_ready) - the caller then re-polls at
+    BENCH_CMD_FAST_INTERVAL instead of the full CMD_INTERVAL so a fresh
+    ARAM bench swap is not stuck behind a 0.5s idle wait.
+
+    CONTRACT (preserved from _cmd_poll_loop): every command posts a
+    definitive /lcu-cmd-done result back even when execute_command RAISES,
+    so /api/lcu-cmd-result flows never hang. A failing result POST is
+    swallowed (the loop keeps draining). ``fast`` is driven by the command
+    TYPE, not by success, so a failed latency-sensitive cmd still re-polls
+    fast (the next click should not eat the idle wait either)."""
+    pending = get_fn("/lcu-cmd-pending")
+    items = pending.get("commands", []) if isinstance(pending, dict) else []
+    processed = 0
+    fast = False
+    for item in items:
+        cid = item.get("id")
+        cmd = item.get("cmd") or {}
+        if cmd.get("cmd") in LATENCY_SENSITIVE_CMDS:
+            fast = True
+        try:
+            result = exec_fn(cmd)
+        except Exception as exc:  # noqa: BLE001
+            result = {"ok": False, "err": f"{type(exc).__name__}: {exc}"}
+            print(f"  [cmd-exc] {cmd.get('cmd')} -> {result}", flush=True)
+        else:
+            print(f"  [cmd] {cmd.get('cmd')} -> {result}", flush=True)
+        try:
+            post_fn("/lcu-cmd-done", {"id": cid, "result": result})
+        except Exception:  # noqa: BLE001
+            pass
+        processed += 1
+    return processed, fast
+
+
 def _cmd_poll_loop():
     """Drain Legion's command queue. Posts results back even on exception
-    so dashboard flows always see a definitive ok/err."""
+    so dashboard flows always see a definitive ok/err. Re-polls FAST after
+    a latency-sensitive batch (RC2 E7a), full idle sleep otherwise."""
     while True:
+        fast = False
         try:
-            pending = get("/lcu-cmd-pending")
-            items = pending.get("commands", []) if isinstance(pending, dict) else []
-            for item in items:
-                cid = item.get("id")
-                cmd = item.get("cmd") or {}
-                try:
-                    result = execute_command(cmd)
-                except Exception as exc:  # noqa: BLE001
-                    result = {"ok": False, "err": f"{type(exc).__name__}: {exc}"}
-                    print(f"  [cmd-exc] {cmd.get('cmd')} -> {result}", flush=True)
-                else:
-                    print(f"  [cmd] {cmd.get('cmd')} -> {result}", flush=True)
-                try:
-                    post("/lcu-cmd-done", {"id": cid, "result": result})
-                except Exception:  # noqa: BLE001
-                    pass
+            _processed, fast = drain_once(get, post, execute_command)
         except urllib.error.HTTPError as e:
             if e.code != 404:
                 print(f"  [cmd-poll err] {e}", flush=True)
         except Exception as e:  # noqa: BLE001
             print(f"  [cmd-poll err] {e}", flush=True)
-        time.sleep(CMD_INTERVAL)
+        time.sleep(BENCH_CMD_FAST_INTERVAL if fast else CMD_INTERVAL)
 
 
 def loop() -> None:
