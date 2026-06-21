@@ -550,9 +550,15 @@ function createOverlayWindow() {
     scaleFactor: primary.scaleFactor,
   });
   overlayScale = metrics.scale;
-  // Saved overlay position (clamped on-screen) wins; first launch docks to
-  // the right edge of the primary work area (ov.resolveOverlayBounds).
-  const bounds = ov.resolveOverlayBounds(store.load(statePath(), {}), primary.workArea, metrics);
+  // RC Overlay Doctrine 2026-06-21: the overlay is a FULLSCREEN transparent
+  // click-through window over the work area (the game shows + plays through it),
+  // so the movable widget field (web/js/lib/overlay_layout.js) can place each cue
+  // as a tiny accent anywhere on screen - out of the play area - instead of
+  // cramming into the old 460px right dock. Per-widget positions are saved by the
+  // field manager (rc-overlay-layout), not the window position; metrics.scale
+  // still feeds the renderer content zoom (DPI/resolution-aware).
+  const _wa = primary.workArea;
+  const bounds = { x: _wa.x, y: _wa.y, width: _wa.width, height: _wa.height };
   overlayWindow = new BrowserWindow({
     width: bounds.width,
     height: bounds.height,
