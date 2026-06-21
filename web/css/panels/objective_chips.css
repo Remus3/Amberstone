@@ -1,0 +1,67 @@
+/* web/css/panels/objective_chips.css
+ *
+ * QA4 (RC2 overlay): objective respawn-timer chips (web/js/panels/
+ * objective_chips.js). A compact glance strip in the overlay CALL pane.
+ * Overlay-only - the base rule hides it on the 1920 dashboard (which shows
+ * objective timing in the full map pane); only body[data-shell="overlay"]
+ * shows it, and only when objective_chips.js clears [hidden] (a respawn is
+ * pending). GPU-light: text chips, no animation. Colors from tokens.css.
+ */
+
+.obj-chips {
+  display: none; /* dashboard surface: never shown */
+}
+
+body[data-shell="overlay"] .obj-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+body[data-shell="overlay"] .obj-chips[hidden] {
+  display: none;
+}
+
+.obj-chips .obj-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.obj-chips .obj-eta {
+  font-variant-numeric: tabular-nums; /* steady width as the countdown ticks */
+}
+
+/* Per-objective hue so the three read apart at a glance. */
+.obj-chips .obj-chip.baron {
+  color: var(--signal-info);
+  border-color: var(--signal-info);
+  background: rgba(138, 140, 240, 0.15);
+}
+.obj-chips .obj-chip.dragon {
+  color: var(--signal-gold);
+  border-color: var(--signal-gold);
+  background: rgba(245, 184, 124, 0.15);
+}
+.obj-chips .obj-chip.herald {
+  color: var(--signal-dim);
+  border-color: var(--signal-dim);
+  background: rgba(138, 142, 156, 0.15);
+}
+
+/* UP NOW: the objective is available to contest - brighten every up chip to the
+ * "good" green signal so it pulls the eye regardless of which objective it is. */
+.obj-chips .obj-chip.is-up {
+  color: var(--signal-good);
+  border-color: var(--signal-good);
+  background: var(--signal-good-soft);
+}
