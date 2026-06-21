@@ -92,16 +92,21 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
   const WS_HOST = location.hostname || "legion-pc.local";
   const WS_PORT = 8891;
-  // Use wss:// whenever the dashboard itself is served over HTTPS. A plain ws://
-  // from an HTTPS page is blocked as MIXED CONTENT for any non-localhost host
-  // (browsers exempt localhost/127.0.0.1 only). That block threw a SecurityError
-  // synchronously at boot (new WebSocket) and aborted the rest of init, which is
-  // why the in-game overlay - origin https://legion-rc:8888 - was stuck on its
-  // static pre-game placeholders while a 127.0.0.1 browser worked fine. A wss://
-  // URL constructs without throwing, so boot completes and the HTTP /api/state
-  // poll fallback renders even if :8891 is not yet TLS-terminated.
-  const WS_PROTO = location.protocol === "https:" ? "wss:" : "ws:";
-  const WS_URL = `${WS_PROTO}//${WS_HOST}:${WS_PORT}/push`;
+  // WS host selection (mixed-content + TLS aware). The :8891 push server is
+  // PLAIN ws (no TLS) and is co-located with RC on this machine (1-PC, ADR-011).
+  // From an HTTPS page a plain ws:// to a NON-localhost host is blocked as mixed
+  // content - which threw a SecurityError synchronously at boot (new WebSocket)
+  // and aborted the rest of init, leaving the in-game overlay (origin
+  // https://legion-rc:8888) stuck on its placeholders while a 127.0.0.1 browser
+  // worked. ws://127.0.0.1 is EXEMPT from the block (trustworthy origin) AND
+  // reaches the local :8891 - so on an HTTPS non-localhost page route the WS to
+  // 127.0.0.1 instead of wss:// (which would need TLS on :8891 and otherwise
+  // spams ssl_client handshake failures). http dev pages keep their own host.
+  let wsHost = WS_HOST;
+  if (location.protocol === "https:" && WS_HOST !== "127.0.0.1" && WS_HOST !== "localhost") {
+    wsHost = "127.0.0.1";
+  }
+  const WS_URL = `ws://${wsHost}:${WS_PORT}/push`;
 
   // HTML-escape any untrusted string before interpolating into innerHTML
   // (LCU/match player names, user-typed tags, advisory/coach text). Escapes
