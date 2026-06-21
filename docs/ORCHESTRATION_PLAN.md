@@ -154,6 +154,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R8 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Electron overlay surface (web/css/overlay.css, web/js/panels/overlay_ds_controls.js, web/js/overlay_pulse.js) vs docs/UI_SCALE_SPEC_V2.md. Address the R6 residual: tokenize the 12/13px hardcoded sub-floor sizes in overlay.css (overlay-scoped tokens - global tokens.css keeps its >=16px floor). Fix every MUST-FIX in-slice. | DONE | `4916d8e4` |
 | R9 | ds-sweep | DIRECTOR REFILL: DS schema lift - survivability per-instance FLAT damage reduction (flat DR). NEW `agents/daemon_slayer/_passive_flat_mitigation_overrides.py` modeling the per-instance flat-amount DR class the percent `_passive_mitigation_overrides.py` (docstring lines 64-69) deliberately EXCLUDED: Fizz P (flat 4, ANY, +1% AP omitted), Amumu E (per-rank [5,7,9,11,13], PHYS), Leona W (per-rank [8,12,16,20,24], ANY, active prob 0.3); all cap_frac 0.5. Default-OFF `assume_passive_flat_mitigation` seam on compute_ehp + rank_items_by_ehp folds prevented damage (`_ASSUMED_FLAT_DR_INSTANCES`=6 x flat x prob) into the EHP NUMERATOR (mirrors ext_flat_hp); byte-identical when OFF; `_ASSUMED_ABILITY_RANK`=4 reads the per-rank seeds. Offline characterization tests vs champion_abilities.json 16.12.1. ENGINE 1.147.0 -> 1.148.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `d52c984e` |
 | R10 | lift | DIRECTOR REFILL: Section-7b heavyweight deep-dive competitor lift of Aggregator B. Output docs/COMPETITOR_LIFT_2026-06-21.md. Act on HIGH-lift LOW-risk presentation finding IN-RUN. | DONE | `edd76db3` |
+| R12 | ds-sweep | DIRECTOR REFILL: DS schema lift - cross-spell all-source TARGET-VULNERABILITY mark. NEW agents/daemon_slayer/_target_vulnerability_overrides.py (TargetVulnEntry + _CHAMPION_VULN_OVERRIDES champion_id->ability + _ITEM_VULN_OVERRIDES item-id->item + target_vuln_multiplier) modeling a debuff the wielder lays on the TARGET that makes it take +X% damage FROM ALL SOURCES (the all-source half the per-spell self-amp _ability_amp_overrides cannot express). Default-OFF apply_target_vuln seam on dps.compute_dps (weighted_dps + phase_dps scaled by the composed mark multiplier, multiplicative per source, de-duped per item; byte-identical OFF). SEEDED 2 ACTIVE vs 16.12.1 ground truth: Vladimir R Hemoplague 10% (DDragon Vladimir.json effect[2]=[10,10,10]) + Evenshroud 3001/Arena 223001 Coruscation 7% (items.json). NON-FIT (documented in _NONFIT_VULN_CANDIDATES, NOT seeded): Imperial Mandate 4005 - director suggested 6% but 16.12.1 Coordinated Fire is a current-HP mark-detonation, not a +X% all-source amp (no ground-truth value for a flat amp -> honestly excluded, a wrong precompute is worse than none). Offline characterization tests (23, RED-first). Verifier-gated CONFIRM. ENGINE 1.148.0 -> 1.149.0 + DS :8893 restart + Share sync SAME commit. Live flip + ability_dps/burst consumer broadening EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `cad49029` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -166,6 +167,30 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-21 R12 (DIRECTOR REFILL cycle) DONE (`cad49029`) - DS schema lift:
+  cross-spell all-source TARGET-VULNERABILITY mark registry. NEW
+  agents/daemon_slayer/_target_vulnerability_overrides.py: a vulnerability MARK
+  makes the marked TARGET take +X% damage FROM ALL SOURCES - the all-source half
+  the per-spell self-amp _ability_amp_overrides can never express. Two registries
+  by source kind (_CHAMPION_VULN_OVERRIDES champion_id->ability,
+  _ITEM_VULN_OVERRIDES item-id->item) + target_vuln_multiplier composing (1+amp)
+  multiplicatively, de-duped per item. Default-OFF apply_target_vuln seam on
+  dps.compute_dps scales weighted_dps + every phase_dps; byte-identical OFF
+  (verifier CONFIRM). SEEDED 2 ACTIVE vs 16.12.1 ground truth: Vladimir R 10%
+  (DDragon Vladimir.json effect[2]=[10,10,10]) + Evenshroud 3001/Arena 223001 7%
+  (items.json Coruscation). GROUND-TRUTH DEVIATION (logged, not silent): the
+  director named Imperial Mandate 4005 at 6%, but patch 16.12.1 items_meraki
+  Coordinated Fire is a current-HP mark-DETONATION (10% current HP bonus magic
+  damage on ally consume, 9s/target CD), NOT a +X% all-source amp. No all-source
+  value exists to characterize against Meraki ground truth, so 4005 is recorded in
+  _NONFIT_VULN_CANDIDATES (documented, NOT seeded) instead of modeled as a fiction
+  - a WRONG precompute is worse than none; it belongs in an ally-detonation seam.
+  ENGINE 1.148.0 -> 1.149.0 + DS :8893 restarted -> 1.149.0 live + Share --check
+  green SAME commit. 23 R12 tests RED-first then green; DS suite 7459 passed / 1
+  skipped / 1942 subtests. Live flip + ability_dps/burst broadening EXCLUDED ->
+  docs/LIVE_GAME_GATED_SYNC.md. [[feedback_verify_before_declare_broken]] /
+  [[feedback_audit_proposals_are_intent]] / [[reference_item_ah_registry_drift]].
 
 - 2026-06-21 R11 fix-first (director directive) - retracts + supersedes the
   post-R10 REGRESS-recheck that previously sat here. WHAT HAPPENED: the gemini
