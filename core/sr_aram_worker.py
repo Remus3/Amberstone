@@ -162,11 +162,10 @@ class SrAramWorker(BaseCoachWorker):
                             canon_mode = "SR"
 
                     gm_upper = state.get("game_mode", "CLASSIC").upper()
-                    # Production: only fire SR coach for live PvP modes.
-                    # PRACTICETOOL was temporarily added 2026-04-20 for relay
-                    # verification. Re-enable by adding back, or pass via env.
-                    is_sr_mode = gm_upper in ("CLASSIC", "RANKED")
-                    # is_sr_mode = gm_upper in ("CLASSIC", "RANKED", "PRACTICETOOL")
+                    # Fire SR coach for live PvP + Practice Tool. PRACTICETOOL
+                    # re-enabled 2026-06-20 so the in-game overlay is usable and
+                    # testable in practice (panels populate live, incl vs bots).
+                    is_sr_mode = gm_upper in ("CLASSIC", "RANKED", "PRACTICETOOL")
                     if self._coach is not None and is_sr_mode:
                         self._submit_coaching(state)
 

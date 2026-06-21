@@ -59,6 +59,18 @@ const ctz = require("./clickthrough_zones");
 const upd = require("./update_channel");
 const cg = require("./crash_guard");
 
+// In-game overlay liveness (CRITICAL). A fullscreen League window fully OCCLUDES
+// this always-on-top transparent overlay. On Windows, Chromium's native window-
+// occlusion detection then freezes the renderer (timers + paint stop), so the HUD
+// goes stale mid-game and keeps showing the static pre-game placeholders - and a
+// relaunch alone never stuck, because per-window backgroundThrottling:false cannot
+// override native occlusion freezing. These app-level switches (must run before app
+// is ready) keep the overlay polling /api/state and repainting while the game is the
+// foreground window. Ref: electron/electron#25368, Chromium CalculateNativeWinOcclusion.
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-features", "CalculateNativeWinOcclusion");
+
 // electron-updater is an OPTIONAL dependency: a bare checkout (no npm install)
 // must run identically, just with updates disabled - no crash, no dialog.
 // checkPlan() turns a null autoUpdater into the "updater-missing" branch.
