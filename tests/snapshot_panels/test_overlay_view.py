@@ -265,23 +265,29 @@ def test_overlay_widget_field_left_edge_positions(mock_server, pw_browser):
     assert not errors, f"JS errors [field geometry]: {errors[:3]}"
 
 
-def test_overlay_call_objective_line_clamped(mock_server, pw_browser):
-    """Doctrine rule 1 (glance budget): the CALL widget's macro OBJECTIVE value is
-    clamped to 2 lines so a verbose coach objective can never blow the primary
-    card open - the overflow drops on the HUD (the full text stays on the
-    dashboard surface)."""
+def test_overlay_call_value_tiering(mock_server, pw_browser):
+    """The CALL value tiers are keyed on data-call-line (NOT a fragile nth-child)
+    and override _line()'s inline span styles via !important: the OBJECTIVE value
+    clamps to 2 lines (rule 1 glance budget), and the tier COLORS apply - cyan
+    RIGHT NOW (imminent cue), white ACTION (the verb), faint OBJECTIVE (the macro
+    footer). The data-ink eyebrow labels drop."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
-        # Keyed on data-call-line, not nth-child - the OBJECTIVE row is conditional
-        # (it is often the 2nd CALL child live, not the 3rd).
-        sel = '#am-call-body > div[data-call-line="objective"] > span:last-child'
-        assert page.locator(sel).count() == 1, "no OBJECTIVE line rendered to clamp"
-        clamp = _css(page, sel, "-webkit-line-clamp")
-        assert clamp == "2", f"OBJECTIVE value not clamped to 2 lines (got {clamp!r})"
+        obj = '#am-call-body > div[data-call-line="objective"] > span:last-child'
+        assert page.locator(obj).count() == 1, "no OBJECTIVE line rendered"
+        assert _css(page, obj, "-webkit-line-clamp") == "2", "OBJECTIVE not clamped to 2 lines"
+        # Tier colors apply over the inline color:var(--text) (needs !important).
+        rn = _css(page, '#am-call-body > div[data-call-line="right-now"] > span:last-child', "color")
+        assert "10, 200, 185" in rn, f"RIGHT NOW value not cyan (got {rn!r})"
+        assert "0.55" in _css(page, obj, "color"), "OBJECTIVE value not faint"
+        # Eyebrow labels drop for data-ink (rule 8) - beats the inline display:block.
+        assert _display(
+            page, '#am-call-body > div[data-call-line="objective"] > span:first-child'
+        ) == "none", "the OBJECTIVE eyebrow label must drop"
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [objective clamp]: {errors[:3]}"
+    assert not errors, f"JS errors [call tiering]: {errors[:3]}"
 
 
 def test_overlay_combat_mode_declutter(mock_server, pw_browser):
