@@ -4,6 +4,33 @@
 
 ---
 
+# 2026-06-21 (headless continue 2) - overlay live-verify (IPC round-trip) + declutter sweep
+
+Continued the overlay-polish run. 1 commit `ae09ab27` (pushed, CI green; LEDGER 566).
+
+TASK 1 (owed live-verify): proved the rc-shell widget-layout durable mirror round-trip
+over a live SR practice game. Seeded `overlay.widgetLayout` in `<userData>/rc-shell-state.json`
+-> relaunch -> the CALL widget RESTORED to the seeded (x,y); cleared -> section-4 default
+(== reset). Boot disk-dump confirmed the persist helpers preserve widgetLayout+settings
+across the window-bounds save. GOTCHAS (memory `reference_overlay_live_verify_technique`):
+Alt+Shift+A/R synthesized via Windows-MCP LEAK to League (open OPTIONS / recall) - they
+reach the overlay only on PHYSICAL press (rc-shell is sole registrant, no conflict); seed
+the state file with a NO-BOM writer or store.load's JSON.parse rejects the BOM -> silent default.
+
+TASK 2 DEFERRED: L1 minimap-anchored timers/ZOI. The spec marks L1 out-of-scope (l40-42);
+Live Client :2999 has NO coords (`reference_liveclient_no_positions`) so ZOI/anchoring can't
+be grounded; objective ETAs already ship as w-callouts. Don't build the canvas.
+
+TASK 3 (sweep): overlay impl substantially clean post-565. Shipped the only real items:
+palette-token the 2 white literals -> `--ovx-text` (byte-identical, Playwright-checked),
+doctrine `w-ovds` + neutral-text rows, ROADMAP spec-path fix (docs/ -> docs/research/).
+
+NEXT (this lane): overlay is doctrine-faithful + clean. The live drag GESTURE + Alt+Shift+R
+HOTKEY stay node-test-covered only (physical-press paths, not headless). Minor w-* default
+position tuning is the only open polish. DON'T redo: tasks 1/3 above; task-2 minimap is deferred.
+
+---
+
 # 2026-06-21 (headless continue) - overlay doctrine to "pristine": tests + polish + new cues
 
 Continued the overlay doctrine headlessly. 6 commits (pushed, CI green; LEDGER 565):
@@ -57,37 +84,3 @@ lead/callouts/choices in the column, the hex-notch + combat-declutter from the
 doctrine, rc-shell DISK mirror of the layout + Alt+Shift+R reset. (3) The spawned
 coach-parser chip (task_ad0539d3) is SUPERSEDED - the fix landed in `df4c8d38`;
 close that session, do not redo.
-
----
-
-# 2026-06-21 (headless gemini+AHK DIRECTOR REFILL, cycle R12) - DS all-source target-vulnerability mark seam
-
-Item 563 / R12. Engine commit `cad49029` (pushed). DS schema lift: NEW
-`agents/daemon_slayer/_target_vulnerability_overrides.py` models all-source
-vulnerability MARKS - a debuff the wielder lays on the TARGET that makes it take
-+X% damage FROM ALL SOURCES (the all-source half the per-spell self-amp
-`_ability_amp_overrides` cannot express). `TargetVulnEntry` + `_CHAMPION_VULN_OVERRIDES`
-(champion_id->ability) + `_ITEM_VULN_OVERRIDES` (item-id->item) + `target_vuln_multiplier`
-(product of (1+amp), multiplicative, de-duped per item). Default-OFF
-`apply_target_vuln` seam on `dps.compute_dps` scales `weighted_dps` + `phase_dps`;
-byte-identical OFF.
-
-SEEDED 2 ACTIVE vs 16.12.1 ground truth: Vladimir R Hemoplague 10% (DDragon
-effect[2]=[10,10,10]) + Evenshroud 3001/Arena 223001 Coruscation 7%. GROUND-TRUTH
-DEVIATION (logged, not silent): the director named Imperial Mandate 4005 at 6%,
-but 16.12.1 Coordinated Fire is a current-HP mark-DETONATION (10% current HP bonus
-magic damage on ally consume), NOT a +X% all-source amp -> recorded in
-`_NONFIT_VULN_CANDIDATES` (documented, NOT seeded) rather than modeled as a
-fiction (a WRONG precompute is worse than none).
-
-Tier-2: ENGINE 1.148.0 -> 1.149.0 (quoted-literal pins only, 83 DS files), DS
-:8893 restarted -> 1.149.0 live, Share synced 370 / --check green, all SAME
-commit. TDD RED-first (23 R12 tests); read-only verifier subagent CONFIRM 7/7; DS
-suite 7459 passed / 1 skipped / 1942 subtests; ruff clean.
-
-NEXT (owed -> docs/LIVE_GAME_GATED_SYNC.md): live default-ON flip needs a real
-game; broaden the consumer beyond AA-DPS to ability_dps + burst (an all-source
-mark amplifies those too - this seam wires the AA-DPS scorer first). The mark
-UPTIME model (Vlad R cooldown, Evenshroud's 5s post-immobilize window) is a
-live-consumer concern, not baked. Imperial Mandate's detonation could seed a
-future ally-detonation / current-HP-burst seam (distinct registry).
