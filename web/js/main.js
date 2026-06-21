@@ -55,6 +55,7 @@ import { renderBuildInsights } from './panels/build_insights.js';
 import { initOverlayPulse } from './overlay_pulse.js';
 // RC2 4.2: overlay auto-hide (idle recede). Inert unless ?overlay=1.
 import { initOverlayIdle } from './lib/overlay_idle.js';
+import { initOverlayLayout } from './lib/overlay_layout.js';
 // RC2 E1: per-panel visibility gate (separate in-game / out-of-game toggles).
 import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibility.js';
 
@@ -6322,6 +6323,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // dock opacity after ~8s of no coach change + no pointer activity, snaps back
   // on the next change / hover. Pure CSS dim - the change-pulse path is untouched.
   if (document.body.dataset.shell === "overlay") initOverlayIdle();
+  // RC Overlay Doctrine (docs/OVERLAY_DOCTRINE.md): the movable, position-
+  // persistent widget field. Lifts each cue mount to an absolutely-positioned
+  // Hextech widget the operator drags + saves. Self-gates on the overlay shell.
+  if (document.body.dataset.shell === "overlay") initOverlayLayout();
   // RC2 E1: build the Panel Visibility settings card + apply the persisted
   // per-context (in-game / out-of-game) panel toggles. Self-guards on the
   // overlay shell (overlay.css owns that surface). Wires its own re-apply.

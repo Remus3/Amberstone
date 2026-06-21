@@ -1,58 +1,47 @@
-/* Overlay shell layout (HZ-D1) - docs/ELECTRON_OVERLAY.md sections 6+7.
+/* Overlay shell - RC Overlay Doctrine (docs/OVERLAY_DOCTRINE.md).
  *
- * Loaded on every page but inert until main.js stamps
- * body[data-shell="overlay"] (?overlay=1 - the Electron in-game overlay
- * window, Surface B). The window is transparent and full-screen over the
- * Borderless game, so:
+ * RC's ONE user-facing surface: a transparent always-on-top Electron window over
+ * the Borderless game (?overlay=1 -> main.js stamps body[data-shell="overlay"]).
+ * The 1920 Chrome dashboard is RETIRED as a user surface (operator decision
+ * 2026-06-21); every rule here is overlay-scoped and inert on it.
  *
- *   - the page background must stay transparent (the game shows through;
- *     only the docked panels carry a dark alpha backing);
- *   - the visible content is a compact single-column dock ~460px wide,
- *     anchored to the RIGHT edge of the 1920 layout viewport;
- *   - ONLY the compact panel subset renders: the coach CALL pane +
- *     BUILD pane from #view-active-match, plus the deterministic
- *     callouts / lead / A+B-choice mounts from #right-now. The CC-threat
- *     chip is champ-select-scoped wiring today (champ_select.js builds
- *     its mount) - not cheap to relocate, deliberately out of this slice;
- *   - header / nav / footer / every other view is display:none;
- *   - GPU-light: no blur, no looping animation; canvas/sparkline widgets
- *     (spike curve, ward heat, DS analysis cluster) are hidden. The only
- *     motion is the one-shot .ov-pulse edge glow below.
+ * The layout is a FIELD of independently MOVABLE, position-PERSISTENT widgets,
+ * NOT a dock. lib/overlay_layout.js adds .ovx-widget to each cue mount and sets
+ * its left/top (saved-or-default); this file owns position:fixed + the Hextech
+ * shell + the drag-handle affordance + the behavioral hooks (pulse / idle recede
+ * / combat shed / panel-set). The old monolithic 460px right-edge dock is gone.
  *
- * Reuses the tokens.css scale; no new color literals beyond the
- * translucent panel backings (base palette colors with alpha).
+ * Hextech palette is law (doctrine section 5): no color literal outside the
+ * section-0 tokens reaches a widget. GPU-light: no blur, no looping animation;
+ * the only motion is the one-shot .ov-pulse edge glow + the section-6 opacity
+ * recede. ASCII only; functional glyphs (U+26A0 / U+2713 / U+25BA) are code.
  */
 
-/* 1. Page shell - transparent canvas, right-anchored flex column. */
+/* 0. HEXTECH PALETTE - overlay-scoped tokens (never :root). rgb parts so a rule
+ * can dial alpha per use (hairline 0.30 idle / 1.0 active, backing 0.85, ...). */
+body[data-shell="overlay"] {
+  --ovx-bg: 22, 32, 46;          /* #16202E widget backing */
+  --ovx-bg-nested: 10, 14, 20;   /* #0A0E14 inset rows / chips */
+  --ovx-gold: 200, 170, 110;     /* #C8AA6E hairline + heads (the frame hue) */
+  --ovx-cyan: 10, 200, 185;      /* #0AC8B9 info / objective / PRIMARY glow */
+  --ovx-good: 55, 208, 138;      /* #37D08A lead-ahead / good band */
+  --ovx-red: 232, 64, 87;        /* #E84057 the ONE emergency pop-out */
+  /* sub-floor type read at game distance on the dock (item-184 exception): the
+   * global tokens.css >=16px floor is overlay-relaxed here, never on :root. */
+  --fs-ov-chip: 13px;
+  --fs-ov-sigil: 12px;
+}
+
+/* 1. Transparent canvas. The game shows through; only widgets paint. zoom (not
+ * transform) so the design-px widget coords scale with the window at non-1080p
+ * (RC2 4.1 ovscale); 1 is an exact no-op at the 1920/100% baseline. */
 body[data-shell="overlay"] {
   background: transparent !important;
-  align-items: flex-end;
   overflow: hidden;
-  /* RC2 4.1: DPI + resolution-aware content zoom. main.js sets
-   * --rc-overlay-scale from the ovscale query param (the same work-area scale
-   * the Electron shell sized the overlay WINDOW by, rc-shell
-   * resolveOverlayMetrics) so the ~460px dock CONTENT grows to fill the scaled
-   * window at 2560x1440 instead of shrinking to a tiny corner. Default 1 is an
-   * exact no-op at the 1920/100% baseline; zoom (not transform) so layout +
-   * the right-edge dock reflow with the content. */
   zoom: var(--rc-overlay-scale, 1);
 }
 
-/* 1b. Overlay sub-floor type tokens (R8 - the R6 residual). The threat
- * ledger + chip-source readouts below are read at GAME DISTANCE on the
- * ~460px right-dock, so they sit one tier under the global --fs-xs 16px
- * floor: a documented item-184 operator-exception, already lifted up from
- * the 9-11px dashboard cd_ledger densities (16px overflows the dense
- * threat ledger). Naming them here keeps the magic numbers out of the rule
- * bodies + the exception self-documenting at the declaration site, while
- * the GLOBAL tokens.css scale keeps its >=16px floor - these are
- * overlay-scoped and never added to :root. */
-body[data-shell="overlay"] {
-  --fs-ov-chip: 13px;   /* chips / countdowns / row initials / source pill */
-  --fs-ov-sigil: 12px;  /* threat cd-chip sigil glyph (smallest exception) */
-}
-
-/* 2. Chrome + every non-subset surface off. */
+/* 2. Chrome + every non-active-match surface off. */
 body[data-shell="overlay"] header,
 body[data-shell="overlay"] footer,
 body[data-shell="overlay"] #home-overlay,
@@ -66,46 +55,45 @@ body[data-shell="overlay"] #digest-popout,
 body[data-shell="overlay"] #task-modal {
   display: none !important;
 }
-
-/* All other router views. The view router is pinned to active-match in
- * overlay mode (main.js _viewResolveAndApply), but the hard hide keeps a
- * stray applyView from ever painting a full-page surface over the game. */
 body[data-shell="overlay"] .view-section:not(#view-active-match) {
   display: none !important;
 }
 
-/* 3. The dock column, part 1: #view-active-match (CALL + BUILD). */
-body[data-shell="overlay"] #view-active-match {
-  display: block !important;
-  order: 1;
-  /* 0 1 auto + hidden: when the column would exceed the viewport, the
-   * BUILD tail compresses/clips instead of pushing the time-critical
-   * callouts below the fold (audit MUST-FIX 1). */
-  flex: 0 1 auto;
-  width: 460px;
-  margin: 8px 8px 0 0;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  overflow: hidden;
-  min-height: 0;
-}
-body[data-shell="overlay"] #view-active-match .view-section-head {
-  display: none !important;
-}
+/* 3. The wrappers collapse to nothing - they only HOLD the widget mounts, which
+ * section 4 lifts to position:fixed. No backing, no flow, no chrome. */
+body[data-shell="overlay"] #view-active-match,
+body[data-shell="overlay"] main,
+body[data-shell="overlay"] main > #right-now,
+body[data-shell="overlay"] #right-now .panel-body,
 body[data-shell="overlay"] #view-active-match .am-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: block !important;
+  position: static;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
   min-height: 0;
+  overflow: visible;
 }
-/* Subset gate: MAP + CDS panes stay off the HUD. */
-body[data-shell="overlay"] #view-active-match .am-pane-map,
-body[data-shell="overlay"] #view-active-match .am-pane-cd {
+body[data-shell="overlay"] #view-active-match .view-section-head,
+body[data-shell="overlay"] #right-now > .panel-head {
   display: none !important;
 }
-/* GPU-light: canvas/sparkline + DS analysis widgets off in overlay. */
+/* Non-widget children of the right-now body + the dashboard panels stay hidden. */
+body[data-shell="overlay"] main > .panel {
+  display: none !important;
+}
+body[data-shell="overlay"] #right-now .panel-body > *:not(#rn-lead):not(#rn-choices):not(#rn-callouts) {
+  display: none !important;
+}
+/* MAP pane stays off the HUD; the CDS ledger is now its own w-threat widget. */
+body[data-shell="overlay"] #view-active-match .am-pane-map {
+  display: none !important;
+}
+/* GPU-light: canvas / sparkline / DS-analysis widgets off. */
 body[data-shell="overlay"] #am-spike-curve,
 body[data-shell="overlay"] #am-spike-markers,
 body[data-shell="overlay"] #am-ward-heat,
@@ -115,284 +103,288 @@ body[data-shell="overlay"] .am-pane-build .ds-combo,
 body[data-shell="overlay"] .am-pane-build .ds-relscore {
   display: none !important;
 }
-/* Pane chrome at overlay density - translucent dark backing so the text
- * reads over a bright game scene without blacking out the screen. */
-body[data-shell="overlay"] #view-active-match .am-pane {
-  flex: 0 0 auto;
-  background: rgba(23, 24, 33, 0.86);
-  border: 1px solid rgba(46, 48, 64, 0.85);
-  border-radius: var(--panel-radius-sm);
-  overflow: hidden;
-}
-body[data-shell="overlay"] #view-active-match .am-pane-head {
-  padding: 6px 10px;
-  background: rgba(33, 34, 45, 0.92);
-}
-body[data-shell="overlay"] #view-active-match .am-pane-body {
-  padding: 10px 12px;
+
+/* 4. THE WIDGET SHELL (Hextech, doctrine section 5). overlay_layout.js sets
+ * left/top + the .ovx-widget class; this owns position:fixed + the premium
+ * frame. Data-ink first: a widget is its content + a gold hairline, nothing
+ * more. The #16202E backing at 0.85 reads over a bright game without blacking
+ * the screen; a 1px inner top highlight gives the etched-glass Hextech feel. */
+body[data-shell="overlay"] .ovx-widget {
+  position: fixed !important;
+  z-index: 40;
+  width: fit-content;
+  max-width: 360px;
+  margin: 0 !important;
+  padding: 11px 14px;
+  background: rgba(var(--ovx-bg), 0.88);
+  /* Premium Hextech frame: a gold hairline at 0.70 alpha (legible over snow /
+   * sand, not the near-invisible 0.30), an inset gold top-bevel for the etched-
+   * metal read, and a 1px #0A0E14 dark stroke wrapping the gold so it holds
+   * contrast on ANY background (Gemini premium pass). */
+  border: 1px solid rgba(var(--ovx-gold), 0.70);
+  border-radius: 7px;
+  box-shadow: inset 0 1px 0 rgba(var(--ovx-gold), 0.45),
+              0 0 0 1px rgba(var(--ovx-bg-nested), 1),
+              0 4px 14px rgba(0, 0, 0, 0.55);
   font-size: var(--fs-sm);
-  overflow-y: hidden;
+  overflow: hidden;
+  transform: scale(var(--ovx-scale, 1));
+  transform-origin: top left;
 }
-
-/* 3b. CALL pane focal emphasis (UI/UX audit SHOULD-FIX, item 558 queue).
- * The coach CALL pane carries the single most time-critical readout on the
- * HUD (RIGHT NOW / ACTION), but in the base subset every .am-pane and the
- * lead/choices/callouts mounts (sec 4) share the same rgba(23,24,33,0.86)
- * backing, so nothing tells the eye where to land inside the ~1.5s glance
- * budget - the CALL pane does not out-weight its peers. Lift it with the
- * --signal-info accent (the same indigo as the .ov-pulse glow + the
- * coach-accent family): a 4px accent rail, a faintly indigo-tinted + more
- * opaque backing, a static (no-loop, GPU-light) accent ring, and an
- * accent-colored head. Higher specificity than the sec-3 .am-pane base
- * (extra .am-pane-call class) so order-independent. Overlay-scoped only -
- * the 1920 dashboard keeps its MAP-dominant grid hierarchy. The static
- * box-shadow yields to the .ov-pulse keyframe during its 1.2s change flash
- * and returns after; combat mode (sec 7) keeps the CALL pane, so the
- * emphasis persists through a fight. */
-body[data-shell="overlay"] #view-active-match .am-pane-call {
-  background: rgba(28, 30, 48, 0.93);
-  border-color: rgba(138, 140, 240, 0.55);
-  border-left: 4px solid var(--signal-info);
-  box-shadow: 0 0 0 1px rgba(138, 140, 240, 0.20),
-              0 2px 12px rgba(0, 0, 0, 0.35);
+/* Pane heads -> gold, uppercase, etched, with a hairline rule under (Gemini
+ * premium pass). !important on color beats the dashboard's id-specificity
+ * indigo (--signal-info) base rule from active_match.css. */
+body[data-shell="overlay"] .ovx-widget .am-pane-head {
+  padding: 0 0 5px;
+  margin-bottom: 7px;
+  background: transparent !important;
+  color: rgba(var(--ovx-gold), 0.90) !important;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
 }
-body[data-shell="overlay"] #view-active-match .am-pane-call .am-pane-head {
-  background: rgba(48, 44, 78, 0.92);
-  color: var(--signal-info);
-}
-
-/* 4. The dock column, part 2: callouts / lead / choices mounts from the
- * RIGHT NOW panel. Their renderers (callouts.js, coach_choices.js) run
- * on every state envelope regardless of the active view, so the mounts
- * stay live without new JS wiring. Everything else inside #right-now
- * (headline, prose, kv rows, screen-read, personal context) belongs to
- * the 1920 grid and stays hidden here. */
-body[data-shell="overlay"] main {
-  display: block !important;
-  order: 2;
-  flex: 0 0 auto;
-  width: 460px;
-  margin: 8px 8px 0 0;
-  padding: 0;
-  min-height: 0;
-  overflow: visible;
-}
-body[data-shell="overlay"] main > .panel {
-  display: none !important;
-}
-body[data-shell="overlay"] main > #right-now {
-  display: block !important;
+body[data-shell="overlay"] .ovx-widget .am-pane,
+body[data-shell="overlay"] .ovx-widget.am-pane {
   background: transparent;
   border: none;
+  border-radius: 0;
   box-shadow: none;
-  margin: 0;
+  overflow: visible;
+}
+body[data-shell="overlay"] .ovx-widget .am-pane-body {
   padding: 0;
-  min-height: 0;
-}
-body[data-shell="overlay"] #right-now > .panel-head {
-  display: none !important;
-}
-body[data-shell="overlay"] #right-now .panel-body {
-  padding: 0;
-  background: transparent;
-}
-body[data-shell="overlay"] #right-now .panel-body > * {
-  display: none !important;
-}
-body[data-shell="overlay"] #right-now .panel-body > #rn-lead:not([hidden]),
-body[data-shell="overlay"] #right-now .panel-body > #rn-choices:not([hidden]),
-body[data-shell="overlay"] #right-now .panel-body > #rn-callouts:not([hidden]) {
-  /* flex (not block): the mounts' own base rules restore column/gap
-   * (chips 6px, callout rows 4px) and #rn-lead its row layout
-   * (audit MUST-FIX 2). */
-  display: flex !important;
-  margin: 0 0 8px;
-  padding: 8px 10px;
-  background: rgba(23, 24, 33, 0.86);
-  border: 1px solid rgba(46, 48, 64, 0.85);
-  border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);
+  overflow: visible;
 }
-/* Density clamp (RC2 P3.2, RC2_OVERLAY_CONDENSATION_SPEC section 2): the
- * overlay S1 slot shows the 2 nearest-ETA callout rows only. callouts.js
- * emits up to 3 (slice(0,3)); the dashboard keeps all 3, but a third
- * competing ETA chip breaks the 1.5s glance budget on the HUD. Pure
- * presentation - the row data + dashboard render are unchanged. */
+/* Inset rows / chips inside a widget take the darker nested backing. */
+body[data-shell="overlay"] .ovx-widget .cd-chip,
+body[data-shell="overlay"] .ovx-widget .rc-chip,
+body[data-shell="overlay"] .ovx-widget .rc-co-row {
+  background: rgba(var(--ovx-bg-nested), 0.9);
+}
+
+/* 4a. lead / choices / callouts are widgets too - keep their flex inner layout
+ * (column/gap from their own base rules) while the .ovx-widget frame wraps them. */
+body[data-shell="overlay"] #rn-lead:not([hidden]),
+body[data-shell="overlay"] #rn-choices:not([hidden]),
+body[data-shell="overlay"] #rn-callouts:not([hidden]) {
+  display: flex !important;
+}
+/* Lead pill direction accent (good/bad left border) survives the Hextech frame. */
+body[data-shell="overlay"] #rn-lead.rc-lead-ahead:not([hidden]) {
+  border-left: 3px solid rgb(var(--ovx-good));
+}
+body[data-shell="overlay"] #rn-lead.rc-lead-behind:not([hidden]) {
+  border-left: 3px solid rgb(var(--ovx-red));
+}
+/* Density clamp: S1 callouts show the 2 nearest-ETA rows (doctrine rule 1). */
 body[data-shell="overlay"] #rn-callouts .rc-co-row:nth-child(n+3) {
   display: none !important;
 }
-/* Lead pill state accents survive the overlay chrome override
- * (audit MUST-FIX 3). */
-body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-ahead:not([hidden]) {
-  border-left: 4px solid var(--signal-good);
-}
-body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-behind:not([hidden]) {
-  border-left: 4px solid var(--signal-bad);
-}
-/* Chip source pill: sub-floor at game distance, via --fs-ov-chip (sec 1b;
- * audit MUST-FIX 4, lifted from the 10px base). */
+/* Chip source pill + A/B chip hit target at game distance. */
 body[data-shell="overlay"] .rc-src {
   font-size: var(--fs-ov-chip);
 }
-/* 4c. Per-element glance-test acceptance floors (RC2 P3.3,
- * RC2_OVERLAY_CONDENSATION_SPEC section 7). The HUD is read at game
- * distance, so the S0 A+B choice chips clear a 44px hit target (the spec
- * S0-choices bar; the 1920-grid floor is --hit-min 42px, the overlay
- * floors at 44). Chips already stack full-width column (coach_choices.css
- * #rn-choices); this only lifts the per-chip target. Dashboard chips keep
- * their 42px sizing. */
 body[data-shell="overlay"] #rn-choices .rc-chip {
   min-height: 44px;
 }
-
-/* RC2 5.3/5.4: the trigger condition + rebranch branch sub-lines are
- * dashboard-only supporting detail; the lean glance HUD keeps just the A/B verb
- * (condensation spec S0). */
 body[data-shell="overlay"] #rn-choices .rc-trigger,
 body[data-shell="overlay"] #rn-choices .rc-rebranch {
   display: none;
 }
 
-/* 4b. Panel-set subsets (item-378 tail; rc-shell overlay_state.js
- * PANEL_SETS contract). main.js stamps body[data-panelset] only for a
- * canonical name from ?panelset=; no attribute = the S1 full compact
- * subset above, so these rules are pure narrowing overrides. The extra
- * [data-panelset] attribute outranks every base overlay rule of the
- * same shape.
- *
- *   coach  = CALL pane + lead/choices/callouts mounts (BUILD off)
- *   build  = BUILD pane only (CALL + the mount column off)
- *   threat = CDS cooldown ledger + lead/callouts timing surfaces
- *            (CALL/BUILD/choice-chips off)
- */
-body[data-shell="overlay"][data-panelset="coach"] #view-active-match .am-pane-build {
-  display: none !important;
+/* 4b. THE PRIMARY widget (w-call): the ONE action right now. Full gold frame +
+ * a tight cyan glow so the eye lands here first inside the 1.5s budget (doctrine
+ * rule 4 single pop-out; cyan = primary, NOT the emergency red). */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] {
+  border-color: rgba(var(--ovx-gold), 0.85);
+  /* targeted TOP-EDGE cyan inset glow (Gemini) - cyan = primary, not the
+   * emergency red; the eye lands here first without a full ring of motion. */
+  box-shadow: inset 0 4px 16px -4px rgba(var(--ovx-cyan), 0.45),
+              inset 0 1px 0 rgba(var(--ovx-gold), 0.50),
+              0 0 0 1px rgba(var(--ovx-bg-nested), 1),
+              0 4px 16px rgba(0, 0, 0, 0.6);
 }
-body[data-shell="overlay"][data-panelset="build"] #view-active-match .am-pane-call {
-  display: none !important;
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] .am-pane-head {
+  color: rgba(var(--ovx-cyan), 0.95) !important;
+  border-bottom-color: rgba(var(--ovx-cyan), 0.30);
 }
-body[data-shell="overlay"][data-panelset="build"] main {
-  display: none !important;
+/* CALL tiering (doctrine: the ONE action; Gemini tier map). #am-call-body is 4
+ * unclassed divs: 1=RIGHT NOW (immediate), 2=ACTION (the play - dominant),
+ * 3=OBJECTIVE (macro footer), 4=NEXT (dashboard-only here). Labels drop for
+ * data-ink (rule 8); the value span carries the tier. Drops the card from ~450px
+ * to well under 160px so it clears the 1.5s glance budget. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0 0 5px;
 }
-body[data-shell="overlay"][data-panelset="threat"] #view-active-match .am-pane-call,
-body[data-shell="overlay"][data-panelset="threat"] #view-active-match .am-pane-build {
-  display: none !important;
-}
-/* The CDS ledger pane is hidden by the base subset gate (sec 3); the
- * threat set re-enables it as its primary surface. */
-body[data-shell="overlay"][data-panelset="threat"] #view-active-match .am-pane-cd {
-  display: block !important;
-}
-body[data-shell="overlay"][data-panelset="threat"] #right-now .panel-body > #rn-choices:not([hidden]) {
-  display: none !important;
-}
-/* Threat-set CDS typography lift (audit MUST-FIX). cd_ledger.css carries
- * item-184 operator-exception 9-11px densities sized for the 280px
- * dashboard rail; the overlay rail is 460px and read at game distance,
- * so the floors bind here: chips/countdowns/initials up to 13px, icon +
- * sigil boxes 14 -> 18px (sigil glyph 12px). Font-sizes via the sec-1b
- * --fs-ov-* tokens; dashboard values untouched. */
-body[data-shell="overlay"][data-panelset="threat"] .cd-chip {
-  font-size: var(--fs-ov-chip);
-  min-width: 48px;
-}
-body[data-shell="overlay"][data-panelset="threat"] .cd-chip-icon,
-body[data-shell="overlay"][data-panelset="threat"] .cd-chip-sigil {
-  width: 18px;
-  height: 18px;
-}
-body[data-shell="overlay"][data-panelset="threat"] .cd-chip-sigil {
-  font-size: var(--fs-ov-sigil);
-}
-body[data-shell="overlay"][data-panelset="threat"] .cd-row-initial {
-  font-size: var(--fs-ov-chip);
-}
-/* The cd head collapse toggle persists via localStorage across the
- * Alt+Shift+C panel-set reloads - one stray ACTIVE-mode click would
- * blank the threat set's only active-match surface. Suppress the
- * affordance in the overlay (audit NICE 2). */
-body[data-shell="overlay"][data-panelset="threat"] #cd-ledger-head {
-  pointer-events: none;
-}
-body[data-shell="overlay"][data-panelset="threat"] #cd-ledger-head .cd-chev {
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div > span:first-child {
   display: none;
 }
-/* The overlay window shares the dashboard's origin (and so its
- * localStorage): a cdLedgerCollapsed=1 persisted from normal companion
- * use must not blank the threat HUD - force the body open here. */
-body[data-shell="overlay"][data-panelset="threat"] .am-pane-cd.cd-collapsed .am-pane-body {
-  display: block !important;
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(1) > span:last-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--ovx-cyan));
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
-/* HZ-D1 Phase 4: in-overlay DS fight-model controls (#am-pane-ovds,
- * renderer overlay_ds_controls.js over /api/ds-knobs). The pane is
- * display:none on every surface by default (overlay_ds_controls.css);
- * the overlay shell shows it whenever the renderer has un-hidden it,
- * so the base compact subset AND the build panelset include it with no
- * per-set re-enable. GPU-light: plain number inputs + text rows, no
- * canvas, no animation. */
-body[data-shell="overlay"] #am-pane-ovds:not([hidden]) {
-  display: block !important;
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(2) > span:last-child {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.16;
+  color: #fff;
 }
-/* Narrowing gates: the coach + threat sets exclude the fight-model
- * pane. Same specificity as the unhide rule above (1 id + 2 attrs
- * each), so source order is what makes the narrowing win - these MUST
- * stay after it. */
-body[data-shell="overlay"][data-panelset="coach"] #am-pane-ovds,
-body[data-shell="overlay"][data-panelset="threat"] #am-pane-ovds {
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(3) > span:last-child {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(4) {
   display: none !important;
 }
 
-/* 5. Change-pulse hook. overlay_pulse.js adds .ov-pulse to a panel
- * container for ~1.2s when its rendered content changes. One-shot
- * box-shadow keyframe (mirrors the tokens.css coach-pulse family) -
- * cheap on the compositor, no loop, no blur. */
+/* 4c. DRAG HANDLE - a small gold-dot grab bar (top-right). data-rc-zone makes
+ * JUST the handle interactive to the rc-shell click-through machine, so the body
+ * stays click-through during play (no accidental mid-fight drags). Hidden until
+ * the widget is hovered; the position it lands persists (overlay_layout.js). */
+body[data-shell="overlay"] .ovx-handle {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  padding: 4px 5px;
+  cursor: move;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  z-index: 2;
+  touch-action: none;
+}
+body[data-shell="overlay"] .ovx-widget:hover .ovx-handle {
+  opacity: 0.6;
+}
+body[data-shell="overlay"] .ovx-handle:hover {
+  opacity: 1;
+}
+body[data-shell="overlay"] .ovx-handle span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(var(--ovx-gold), 0.95);
+}
+body[data-shell="overlay"] .ovx-widget.ovx-dragging {
+  border-color: rgba(var(--ovx-gold), 1);
+  box-shadow: 0 0 0 1px rgba(var(--ovx-gold), 0.6),
+              0 8px 24px rgba(0, 0, 0, 0.6);
+}
+body[data-shell="overlay"] .ovx-widget.ovx-dragging .ovx-handle {
+  cursor: grabbing;
+  opacity: 1;
+}
+body[data-shell="overlay"] .ovx-hidden {
+  display: none !important;
+}
+
+/* 4d. Panel-set presets (Alt+Shift+C). main.js stamps body[data-panelset]; these
+ * narrow which widgets paint (the per-widget hidden flag layers on top). The
+ * DEFAULT state (no explicit panelset) is the coach set per doctrine section 4:
+ * the reveal-only build / threat / fight-model widgets stay hidden so the HUD is
+ * 1 primary + 2-3 support (rule 7), not a wall of panes. */
+body[data-shell="overlay"]:not([data-panelset]) .ovx-widget[data-ovx-id="w-build"],
+body[data-shell="overlay"]:not([data-panelset]) .ovx-widget[data-ovx-id="w-threat"],
+body[data-shell="overlay"]:not([data-panelset]) .ovx-widget[data-ovx-id="w-ovds"] {
+  display: none !important;
+}
+body[data-shell="overlay"][data-panelset="coach"] .ovx-widget[data-ovx-id="w-build"],
+body[data-shell="overlay"][data-panelset="coach"] .ovx-widget[data-ovx-id="w-threat"],
+body[data-shell="overlay"][data-panelset="coach"] .ovx-widget[data-ovx-id="w-ovds"] {
+  display: none !important;
+}
+body[data-shell="overlay"][data-panelset="build"] .ovx-widget[data-ovx-id="w-call"],
+body[data-shell="overlay"][data-panelset="build"] .ovx-widget[data-ovx-id="w-choices"],
+body[data-shell="overlay"][data-panelset="build"] .ovx-widget[data-ovx-id="w-threat"] {
+  display: none !important;
+}
+body[data-shell="overlay"][data-panelset="threat"] .ovx-widget[data-ovx-id="w-call"],
+body[data-shell="overlay"][data-panelset="threat"] .ovx-widget[data-ovx-id="w-build"],
+body[data-shell="overlay"][data-panelset="threat"] .ovx-widget[data-ovx-id="w-choices"],
+body[data-shell="overlay"][data-panelset="threat"] .ovx-widget[data-ovx-id="w-ovds"] {
+  display: none !important;
+}
+/* The CDS ledger (w-threat) shows ONLY in the threat set; the fight-model knobs
+ * (w-ovds) ONLY in the build set. Both panes are display:none at rest (their own
+ * renderer CSS + the reveal-default above); these re-show them in-set with the
+ * id specificity needed to beat that base. Unconditional shows would override the
+ * reveal-default and clutter the coach HUD (slice-1 audit finding). */
+body[data-shell="overlay"][data-panelset="threat"] #view-active-match .am-pane-cd.ovx-widget:not(.ovx-hidden) {
+  display: block !important;
+}
+body[data-shell="overlay"][data-panelset="build"] #am-pane-ovds.ovx-widget:not([hidden]):not(.ovx-hidden) {
+  display: block !important;
+}
+/* Threat-set CDS typography lift (read at game distance). */
+body[data-shell="overlay"] .ovx-widget .cd-chip {
+  font-size: var(--fs-ov-chip);
+  min-width: 48px;
+}
+body[data-shell="overlay"] .ovx-widget .cd-chip-icon,
+body[data-shell="overlay"] .ovx-widget .cd-chip-sigil {
+  width: 18px;
+  height: 18px;
+}
+body[data-shell="overlay"] .ovx-widget .cd-chip-sigil {
+  font-size: var(--fs-ov-sigil);
+}
+body[data-shell="overlay"] .ovx-widget .cd-row-initial {
+  font-size: var(--fs-ov-chip);
+}
+body[data-shell="overlay"] .ovx-widget #cd-ledger-head {
+  pointer-events: none;
+}
+body[data-shell="overlay"] .ovx-widget #cd-ledger-head .cd-chev {
+  display: none;
+}
+body[data-shell="overlay"] .ovx-widget.am-pane-cd.cd-collapsed .am-pane-body {
+  display: block !important;
+}
+
+/* 5. Change-pulse hook (overlay_pulse.js adds .ov-pulse for ~1.2s). One-shot
+ * cyan edge glow - cheap, no loop, no blur (doctrine rule 5: motion rationed). */
 @keyframes ov-pulse-edge {
-  0%   { box-shadow: 0 0 0 0 rgba(138, 140, 240, 0); }
-  25%  { box-shadow: 0 0 14px 2px rgba(138, 140, 240, 0.55); }
-  100% { box-shadow: 0 0 0 0 rgba(138, 140, 240, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(var(--ovx-cyan), 0); }
+  25% { box-shadow: 0 0 14px 2px rgba(var(--ovx-cyan), 0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--ovx-cyan), 0); }
 }
 body[data-shell="overlay"] .ov-pulse {
   animation: ov-pulse-edge 1.2s ease-out 1;
 }
 
-/* 6. RC2 4.2 auto-hide (idle recede). overlay_idle.js stamps data-rc-idle="1"
- * on the body after ~8s of no coach-content change AND no pointer activity; the
- * dock recedes to a low opacity so a quiet HUD stops competing with the game.
- * The next coach change or a mouse move over the overlay clears it and the dock
- * snaps back to full. Opacity transition only (compositor-cheap, no layout, no
- * loop - same GPU-light discipline as the .ov-pulse glow + the active frame).
- * Window-opacity (rc-shell setOpacity) and this CSS dim multiply, which is the
- * intended behavior: a low base opacity recedes even further when idle. */
-body[data-shell="overlay"] #view-active-match,
-body[data-shell="overlay"] main {
+/* 6. Idle recede (overlay_idle.js stamps data-rc-idle="1" after ~8s quiet). The
+ * field recedes so a quiet HUD stops competing with the game; opacity only. */
+body[data-shell="overlay"] .ovx-widget {
   transition: opacity 400ms ease;
 }
-body[data-shell="overlay"][data-rc-idle="1"] #view-active-match,
-body[data-shell="overlay"][data-rc-idle="1"] main {
-  opacity: 0.35;
+body[data-shell="overlay"][data-rc-idle="1"] .ovx-widget {
+  opacity: 0.4;
 }
 
-/* 7. RC2 QA9 combat declutter. When the S0 arbitration (lib/overlay_priority)
- * flags a high-stakes combat moment, right_now.js stamps body[data-fight="1"]
- * (with a short hysteresis hold via lib/combat_mode so a brief mid-fight
- * headline change does not strobe the panes). The overlay then sheds the
- * non-urgent panes so the critical call + the A+B decision own the screen, and
- * a live fight is never allowed to dim (the section-6 idle recede is overridden
- * on a one-more-attribute specificity bump). Overlay-only + attribute-gated, so
- * it is inert on the 1920 dashboard and whenever no fight is live. The pane
- * shed is scoped to the default + coach views: on an explicit build/threat
- * panel set the operator chose that pane on purpose, so it is left intact
- * (hiding it would strand the HUD). display-toggle only - no layout loop. */
-body[data-shell="overlay"][data-fight="1"]:not([data-panelset="build"]):not([data-panelset="threat"]) #view-active-match .am-pane-build,
-body[data-shell="overlay"][data-fight="1"]:not([data-panelset="build"]):not([data-panelset="threat"]) #view-active-match .am-pane-ovds {
+/* 7. Combat declutter (doctrine section 6). right_now.js stamps body[data-fight]
+ * via lib/combat_mode when S0 arbitration flags a high-stakes moment. The field
+ * sheds ambient widgets so the call + the A/B decision own the screen; nothing
+ * dims while a fight is live. Display/opacity toggles only - no layout loop. */
+body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-build"],
+body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-ovds"],
+body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-lead"] {
   display: none !important;
 }
-/* secondary callouts collapse to the single nearest-ETA row during a fight */
 body[data-shell="overlay"][data-fight="1"] #rn-callouts .rc-co-row:nth-child(n+2) {
   display: none;
 }
-/* a live fight never recedes: override the section-6 idle-recede opacity */
-body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] #view-active-match,
-body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] main {
+body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] .ovx-widget {
   opacity: 1 !important;
 }
