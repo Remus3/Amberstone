@@ -627,6 +627,7 @@ def compute_dps(
     assume_takedown: bool = False,
     apply_melee_aa_gate: bool = False,
     assume_passive_as_stacks: bool = False,
+    apply_target_vuln: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -1071,6 +1072,29 @@ def compute_dps(
                     f"+{passive_aa_per_hit:.1f}/hit ({_pentry.damage_type}), "
                     f"+{_passive_dps:.1f} DPS (apply_passive_damage)"
                 )
+
+    # R12 (1.149.0): all-source target-vulnerability mark seam. A vulnerability
+    # mark (Vladimir R Hemoplague, Evenshroud Coruscation) makes the marked
+    # target take +X% damage FROM ALL SOURCES, so it scales the wielder's whole
+    # DPS output - AAs, item procs, AND the routed on-hit passive above. OPT-IN:
+    # default apply_target_vuln=False never resolves the multiplier, so the
+    # AA-DPS path is byte-identical. When True the marked-target scenario is
+    # assumed live (the assume_takedown / assume_ability_amp developed-fight
+    # doctrine); the multiplier is the product of every mark the wielder owns
+    # (her champion ability + each registered build item), multiplicative per
+    # independent amp source. Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+    if apply_target_vuln:
+        from ._target_vulnerability_overrides import target_vuln_multiplier
+
+        _vuln_mult = target_vuln_multiplier(resolved.champion_id, resolved.item_ids)
+        if _vuln_mult != 1.0:
+            weighted_dps *= _vuln_mult
+            phase_dps = {p: v * _vuln_mult for p, v in phase_dps.items()}
+            notes.append(
+                f"all-source target-vulnerability mark x{_vuln_mult:.4f} "
+                f"(+{(_vuln_mult - 1.0) * 100:.2f}% to all damage on the marked "
+                "target; apply_target_vuln seam)"
+            )
 
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(f"ARAM aramDamageDealt={mode_mult:.2f} on per-hit damage")
