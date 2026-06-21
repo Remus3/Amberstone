@@ -42,6 +42,39 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-20 (interactive) - Game-PC purge COMPLETE + open-items review + flash fix
+
+Commits (all CI-green): `f508046e` loop-status git CREATE_NO_WINDOW (the "terminal
+flashing every ~4s" = the /loop-monitor page polling /api/loop-status, whose
+`_last_commit()` git call lacked the no-window flag) + `aa5f9756` Game-PC purge CORE
+(66 files: rename the 6 relocated gamepc_*.py agents -> Legion names + re-register
+the 3 LIVE tasks via Set-ScheduledTask; sever the Game-PC bridge peer + gamepc MCP;
+purge living docs) + `a459b737` purge TAIL (87 files: bridge node-enum de-scope incl
+3 frozen configs + supervisor `_BRIDGE_PUB_PEERS` + scattered comments + web + tests)
++ `9a2e9a5f` operator-review decisions. RC is now Legion-only: /api/health/all peers
+= peer-only, overall GREEN, pid 17176. Dated history + memory cross-refs preserved.
+
+OPEN-ITEMS REVIEW: operator went top-to-bottom; the queue now lives in the UNTRACKED
+repo-root `RC_WORK_TRACKER.md` (Claude-synced; `[^Reviewed]` = operator input, rows
+removed as shipped). Decisions: Stage 8.3 flipped DONE (the held flip from item 551,
+now committed; banner 54/62 ~87%); L103/L104 CLOSED (Electron overlays self-audit);
+mobile-native + tft-vision-relay REMOVED; ~13 backlog items moved to OPEN; Overlay App E
+enemy-CD DEFERRED; DS target-current-HP% -> (B) per-archetype (burst ~100%,
+juggernaut/sustained ~50%). DATA: 507 ranked-solo games (L109 unblocked); 0
+auto-action samples.
+
+STANDING DIRECTIVE: decisions are NO LONGER operator-gated - act autonomously
+([[feedback_decisions_not_operator_gated]]). Also [[feedback_avoid_console_flash_legion]].
+
+NEXT / DO-NOT-REDO: (1) auto-action lanes (L116) NOT armed - arming costs API ($5/day
+sub-Claude `claude --print`); operator wants FREE -> pick (A) accept the capped cost
+or (B) build a $0 deterministic verb->command lane. (2) NEXT SESSION: validate
+lolmath's ~50% EHP baseline from their site BEFORE building the DS per-archetype flip
+(pinned in the tracker). (3) Resume /rc2-continue (E7 priority-HIGH). The flash is
+FIXED (`f508046e`) - do not re-investigate. [[project_rc2_build]]
+
+---
+
 # 2026-06-20 (/RC2-Continue - Phase 8.3 operator Q/A consolidation)
 
 Shipped the 8.3 deliverable: `docs/RC2_QA_CONSOLIDATED.md` (commit `f05b853d`,
