@@ -457,6 +457,12 @@ _CE_LAST_TS: float = 0.0
 _CE_DROPPED: int   = 0
 
 
+# Max filled item slots = a complete build (mirrors agents.daemon_slayer.rank
+# DEFAULT_SLOT_COUNT=6). Hardcoded, NOT imported: routes_state.py must not pull
+# the in-process DS engine (split-brain guard vs the live :8893 server).
+_MAX_BUILD_SLOTS = 6
+
+
 def _serve_ds_preview_post(h, payload) -> None:
     """POST {champion, mode, level?, items?, archetype?} -> DS top picks.
     Used by the champ-select overlay + in-game active-match panel.
@@ -500,6 +506,21 @@ def _serve_ds_preview_post(h, payload) -> None:
         archetype = str(payload.get("archetype") or "").strip().lower()
         if not archetype:
             archetype = (get_archetype_for(champion).get("primary") or "carry").lower()
+
+        # A full build has no open slot; the DS ranker returns None / raises for
+        # it. That is a normal late-game state, not "engine unavailable" - return
+        # a graceful empty 200 instead of a 503 (the in-game BUILD panel polls
+        # this every ~4s and spammed the overlay console once the build was
+        # complete). The base BUILD picks still render from /api/state.
+        # _MAX_BUILD_SLOTS is hardcoded (mirrors rank.DEFAULT_SLOT_COUNT) rather
+        # than imported: routes_state.py must NOT pull the in-process engine
+        # (split-brain guard test_routes_state_has_no_in_process_engine_import).
+        if len(items) >= _MAX_BUILD_SLOTS:
+            h._send(200, json.dumps({
+                "ok": True, "ranked": [], "reason": "build_complete",
+                "scorer": "dps", "archetype": archetype,
+            }).encode(), "application/json")
+            return
 
         # s171.4: derive target stats from live enemy items when possible.
         # Fallback to mode/level curve. Override path: caller passed
