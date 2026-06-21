@@ -153,6 +153,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R7 | ds-sweep | DIRECTOR REFILL: DS schema lift - per-stack self-Attack-Speed passives. NEW `agents/daemon_slayer/_passive_as_overrides.py` registry (PassiveAsEntry: per-stack bonus-AS FRACTION low/high by level + max_stacks + ap_per_stack_per_100) + default-OFF `assume_passive_as_stacks` seam on `dps.py compute_dps` crediting the champ's innate per-stack bonus AS at `_ASSUMED_PASSIVE_AS_STACK_FRACTION`=1.0 (full stacks) into the AA rotation (same 2.5 hard-cap re-clamp as the Yun Tal cond_as path; raw_attack_dps left at the no-conditional baseline). Seeded 4 from champion_abilities.json 16.12.1 effects_descriptions: Irelia Ionian Fervor (10%:25% by lvl/stack, max 4), Jax Relentless Assault (5%:12.5% by lvl/stack, max 8), Ezreal Rising Spell Force (10% flat/stack, max 5), Volibear The Relentless Storm ((5% + 4% per 100 AP)/stack, max 5 - the AP-scaled one, reads resolved post-amp AP). per_stack*max_stacks == documented max (self-clamping). Offline characterization tests (RED-first, 19/19). ENGINE 1.146.0 -> 1.147.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `7c22e3bb` |
 | R8 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the Electron overlay surface (web/css/overlay.css, web/js/panels/overlay_ds_controls.js, web/js/overlay_pulse.js) vs docs/UI_SCALE_SPEC_V2.md. Address the R6 residual: tokenize the 12/13px hardcoded sub-floor sizes in overlay.css (overlay-scoped tokens - global tokens.css keeps its >=16px floor). Fix every MUST-FIX in-slice. | DONE | `4916d8e4` |
 | R9 | ds-sweep | DIRECTOR REFILL: DS schema lift - survivability per-instance FLAT damage reduction (flat DR). NEW `agents/daemon_slayer/_passive_flat_mitigation_overrides.py` modeling the per-instance flat-amount DR class the percent `_passive_mitigation_overrides.py` (docstring lines 64-69) deliberately EXCLUDED: Fizz P (flat 4, ANY, +1% AP omitted), Amumu E (per-rank [5,7,9,11,13], PHYS), Leona W (per-rank [8,12,16,20,24], ANY, active prob 0.3); all cap_frac 0.5. Default-OFF `assume_passive_flat_mitigation` seam on compute_ehp + rank_items_by_ehp folds prevented damage (`_ASSUMED_FLAT_DR_INSTANCES`=6 x flat x prob) into the EHP NUMERATOR (mirrors ext_flat_hp); byte-identical when OFF; `_ASSUMED_ABILITY_RANK`=4 reads the per-rank seeds. Offline characterization tests vs champion_abilities.json 16.12.1. ENGINE 1.147.0 -> 1.148.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `d52c984e` |
+| R10 | lift | DIRECTOR REFILL: Section-7b heavyweight deep-dive competitor lift of Aggregator B. Output docs/COMPETITOR_LIFT_2026-06-21.md. Act on HIGH-lift LOW-risk presentation finding IN-RUN. | DONE | `edd76db3` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -165,6 +166,39 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-21 R10 (DIRECTOR REFILL cycle) DONE (`edd76db3`, slice `7c820bfd` +
+  default-mode fix `2376b4e8`) - Section-7b heavyweight competitor lift of Aggregator B.
+  Two parallel research agents (external Aggregator B teardown WHAT/HOW + RC HAVE/WHERE
+  map); every HAVE claim re-verified live. Output docs/COMPETITOR_LIFT_2026-06-21
+  .md (9 findings, full 6-point checklist each). **IN-RUN SHIP (F8):** NEW Build
+  Insights "Benchmarks" tab surfacing core/benchmarks (champion_benchmarks.json:
+  186 champ|mode keys x 11 metrics x p25/p50/p75/avg/n) - computed for coach
+  prose today, NEVER rendered in the UI (the clean computed-but-not-surfaced
+  PARTIAL). NEW dashboard/routes_champ_benchmarks.py (GET /api/champ-benchmarks,
+  mirrors routes_duration_winrate 5min cache + 400/500-safe) + web/js/panels/
+  champ_benchmarks.{js,css} + web/data/ui_mock fixture + additive
+  core/benchmarks.rows_for_mode accessor + tab wire (index.html bench tab/pane +
+  build_insights.js dispatch + _dispatch.py registrar + dashboard.css @import).
+  Per-champion own-corpus stat distribution (CS@10 / Gold@10 / Gold@15 / KP% /
+  Lvl@10; median headline + p25-p75 spread + a Games trust column - Aggregator B's
+  always-pair-a-stat-with-its-sample discipline); DESCRIPTIVE personal-corpus,
+  NOT a meta winrate; sample-gated (>=3 games). Default mode sr (the only suffix
+  the benchmark builder emits; aram/arena render an honest "No X benchmark data
+  yet" empty state - not a games-played claim). Presentation over EXISTING local
+  data: no schema lift, no new dependency, not validation-gated (distinct from
+  the shadow-only EXCLUDED core/live_benchmark_band.py live per-tick band), not
+  re-litigation; asset-hash auto-reload (ADR-008), no RC restart. TDD; 51 new
+  tests (23 route + 28 panel-DOM) GREEN; verifier subagent CONFIRM + 5-phase
+  UI-audit SHIP (0 MUST-FIX) before merge. Triage: F1 (GD@15 lane-counter vs
+  win-rate-counter split, needs new rewind_history.db aggregation) + F6 (ARAM
+  Modifications balance block) + F7 (duo synergy-delta, non-champ-select home -
+  item-213 removed the champ-select grid deliberately) -> BACKLOG; F3 sample
+  discipline + global-meta tier / F4 popular-vs-WR / F9 live overlay -> CLOSED.
+  NICE-TO-HAVE deferred (visual owed): promote .cb-p50 to --fs-stat 26px. Live
+  frame capture OWED (no live game; Claude_Preview cannot attach RC-owned :8888
+  per R1/R2). [[feedback_audit_proposals_are_intent]] /
+  [[feedback_verify_before_declare_broken]] / [[feedback_phase3_fixture_ritual]].
 
 - 2026-06-21 R9 (DIRECTOR REFILL cycle) DONE (`d52c984e`, merge `6767fd18`) - DS
   schema lift: per-instance FLAT damage-reduction survivability registry. NEW
