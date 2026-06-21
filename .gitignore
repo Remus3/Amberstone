@@ -244,3 +244,9 @@ ops/loop/*.log
 agents/agent6_auditor/reports/*-test-round22-detail.md
 ops/audit/p0_inventory_full.csv
 ops/audit/p0_pytest_full.txt
+
+# Overlay / state UI-audit scratch dropped at repo root by live diagnosis
+# sessions (item 558 overlay audit): probe JSON snapshots + capture PNGs.
+/.rc_dsprev.json
+/.rc_state_audit.json
+/overlay_*.png

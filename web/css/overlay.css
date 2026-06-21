@@ -120,6 +120,33 @@ body[data-shell="overlay"] #view-active-match .am-pane-body {
   overflow-y: hidden;
 }
 
+/* 3b. CALL pane focal emphasis (UI/UX audit SHOULD-FIX, item 558 queue).
+ * The coach CALL pane carries the single most time-critical readout on the
+ * HUD (RIGHT NOW / ACTION), but in the base subset every .am-pane and the
+ * lead/choices/callouts mounts (sec 4) share the same rgba(23,24,33,0.86)
+ * backing, so nothing tells the eye where to land inside the ~1.5s glance
+ * budget - the CALL pane does not out-weight its peers. Lift it with the
+ * --signal-info accent (the same indigo as the .ov-pulse glow + the
+ * coach-accent family): a 4px accent rail, a faintly indigo-tinted + more
+ * opaque backing, a static (no-loop, GPU-light) accent ring, and an
+ * accent-colored head. Higher specificity than the sec-3 .am-pane base
+ * (extra .am-pane-call class) so order-independent. Overlay-scoped only -
+ * the 1920 dashboard keeps its MAP-dominant grid hierarchy. The static
+ * box-shadow yields to the .ov-pulse keyframe during its 1.2s change flash
+ * and returns after; combat mode (sec 7) keeps the CALL pane, so the
+ * emphasis persists through a fight. */
+body[data-shell="overlay"] #view-active-match .am-pane-call {
+  background: rgba(28, 30, 48, 0.93);
+  border-color: rgba(138, 140, 240, 0.55);
+  border-left: 4px solid var(--signal-info);
+  box-shadow: 0 0 0 1px rgba(138, 140, 240, 0.20),
+              0 2px 12px rgba(0, 0, 0, 0.35);
+}
+body[data-shell="overlay"] #view-active-match .am-pane-call .am-pane-head {
+  background: rgba(48, 44, 78, 0.92);
+  color: var(--signal-info);
+}
+
 /* 4. The dock column, part 2: callouts / lead / choices mounts from the
  * RIGHT NOW panel. Their renderers (callouts.js, coach_choices.js) run
  * on every state envelope regardless of the active view, so the mounts
