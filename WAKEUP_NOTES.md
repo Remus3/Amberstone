@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-21 (interactive) - overlay live-render TRUE root-cause (WS mixed-content) + ds-503 + ASCII coach
+
+CORRECTS the prior entry. The "overlay dead/placeholder in-game" bug was NOT
+backgroundThrottling (red herring; `8c7319f5` kept as harmless hardening). TRUE cause:
+the overlay loads HTTPS at legion-rc:8888 and main.js opened an INSECURE
+ws://legion-rc:8891 -> browsers BLOCK mixed-content ws:// for non-localhost hosts ->
+SecurityError at boot aborted init -> placeholders. It hid for months because the
+"test in a normal browser" step used 127.0.0.1, which is EXEMPT from the block and
+masked it. RULE: test the overlay on the legion-rc origin, NOT 127.0.0.1.
+
+Commits (all pushed): `91cf480a` overlay WS fix + SR-coach PRACTICETOOL re-enable +
+rc-shell occlusion switches ; `44174fb1` ds-preview/ds-knobs graceful build_complete 200
+(was 503 spam on a full 6-item build) ; `d2170d4d` ASCII-clean coach text in build_state
+(Haiku em-dash reached the HUD) ; `0a70a547` route WS to ws://127.0.0.1:8891 (kills
+SSL-handshake spam; :8891 has no TLS, 127.0.0.1 is exempt + co-located). Updated memory
+reference_electron_overlay_throttling. rc-shell bounced to a fresh instance (pid 4996).
+
+NEXT (operator AFK in a practice match for this): UI passes from the live UI/UX audit -
+pop-out/hierarchy SHOULD-FIX (CALL action must out-weight peers), L1 minimap-anchored
+objective timers, L3 live spike cue (HIGH, computed, gated out of overlay.css). Verify the
+in-game overlay now renders live coach. Tail: :8891 no TLS (push via ws://127.0.0.1, fine on 1-PC).
+
+---
+
 # 2026-06-20/21 (interactive) - overlay OPEN batch + live overlay-throttling root-cause
 
 Shipped 4 commits, all CI-green (run 27892032332): `cdd494fa` QA1 ward-ready glyph
@@ -55,36 +79,3 @@ NEXT (don't redo E7/E12/always-on-top - shipped+verified):
   lcu.lobby -> top-level state.lobby in dashboard build_state (or repoint the UI). Small.
 - agent restart-resilience (task chip 8277de5d) - systemic root cause of the cascade.
 - RC2 open: E11 Hextech reskin, E10 history rewrite, E2 DS 3-game flip.
-
----
-
-# 2026-06-20 (interactive) - Game-PC purge COMPLETE + open-items review + flash fix
-
-Commits (all CI-green): `f508046e` loop-status git CREATE_NO_WINDOW (the "terminal
-flashing every ~4s" = the /loop-monitor page polling /api/loop-status, whose
-`_last_commit()` git call lacked the no-window flag) + `aa5f9756` Game-PC purge CORE
-(66 files: rename the 6 relocated gamepc_*.py agents -> Legion names + re-register
-the 3 LIVE tasks via Set-ScheduledTask; sever the Game-PC bridge peer + gamepc MCP;
-purge living docs) + `a459b737` purge TAIL (87 files: bridge node-enum de-scope incl
-3 frozen configs + supervisor `_BRIDGE_PUB_PEERS` + scattered comments + web + tests)
-+ `9a2e9a5f` operator-review decisions. RC is now Legion-only: /api/health/all peers
-= peer-only, overall GREEN, pid 17176. Dated history + memory cross-refs preserved.
-
-OPEN-ITEMS REVIEW: operator went top-to-bottom; the queue now lives in the UNTRACKED
-repo-root `RC_WORK_TRACKER.md` (Claude-synced; `[^Reviewed]` = operator input, rows
-removed as shipped). Decisions: Stage 8.3 flipped DONE (the held flip from item 551,
-now committed; banner 54/62 ~87%); L103/L104 CLOSED (Electron overlays self-audit);
-mobile-native + tft-vision-relay REMOVED; ~13 backlog items moved to OPEN; Overlay App E
-enemy-CD DEFERRED; DS target-current-HP% -> (B) per-archetype (burst ~100%,
-juggernaut/sustained ~50%). DATA: 507 ranked-solo games (L109 unblocked); 0
-auto-action samples.
-
-STANDING DIRECTIVE: decisions are NO LONGER operator-gated - act autonomously
-([[feedback_decisions_not_operator_gated]]). Also [[feedback_avoid_console_flash_legion]].
-
-NEXT / DO-NOT-REDO: (1) auto-action lanes (L116) NOT armed - arming costs API ($5/day
-sub-Claude `claude --print`); operator wants FREE -> pick (A) accept the capped cost
-or (B) build a $0 deterministic verb->command lane. (2) NEXT SESSION: validate
-lolmath's ~50% EHP baseline from their site BEFORE building the DS per-archetype flip
-(pinned in the tracker). (3) Resume /rc2-continue (E7 priority-HIGH). The flash is
-FIXED (`f508046e`) - do not re-investigate. [[project_rc2_build]]
