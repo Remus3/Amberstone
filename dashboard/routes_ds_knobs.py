@@ -322,6 +322,24 @@ def _serve_ds_knobs(h) -> None:
             fight_length = None
         level = _parse_level((qs.get("level") or [""])[0].strip())
 
+        # A full build has no open slot to rank a next item into - rank_items
+        # raises ValueError for it. That is a normal late-game state, not a
+        # server error, so return a graceful 200 instead of a 503 (the overlay
+        # re-requests every ~4s and spammed the console once the build was
+        # complete). Mirrors the no_rows ok=false shape.
+        from agents.daemon_slayer.rank import DEFAULT_SLOT_COUNT
+        if len(items) >= DEFAULT_SLOT_COUNT:
+            h._send(200, json.dumps({
+                "ok":         False,
+                "reason":     "build_complete",
+                "champion":   champion,
+                "rows":       [],
+                "count":      0,
+                "cached":     False,
+                "elapsed_ms": int((time.time() - t0) * 1000),
+            }).encode("utf-8"), "application/json")
+            return
+
         key = _cache_key(
             champion, mode, items, armor_override, mr_override,
             budget, level, fight_length,
