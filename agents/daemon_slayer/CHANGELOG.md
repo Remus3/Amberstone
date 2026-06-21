@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.149.0 (R12 - all-source TARGET-VULNERABILITY mark registry, default-OFF, byte-identical. The cross-source
+sibling of the per-spell self-amp _ability_amp_overrides registry: a vulnerability MARK makes the marked TARGET
+take +X% damage FROM ALL SOURCES (the wielder's autos, abilities, item procs, and allies), the all-source half a
+per-spell self-amp can never express. NEW _target_vulnerability_overrides.py with two registries by source kind -
+_CHAMPION_VULN_OVERRIDES keyed by champion_id (an ABILITY that marks) and _ITEM_VULN_OVERRIDES keyed by item-id
+string (an ITEM passive that marks) - plus TargetVulnEntry (amp, source_key, kind, note) and
+target_vuln_multiplier(champion_id, item_ids) composing the product of (1+amp) over every mark the wielder owns
+(multiplicative per independent amp source, de-duped per unique item id). SEEDED 2 ACTIVE (ground truth 16.12.1):
+Vladimir R Hemoplague (DDragon Vladimir.json tooltip 'take {{e2}}% increased damage from all sources',
+effect[2]=[10,10,10] -> 0.10 rank-flat); Evenshroud 3001 + Arena 22-mirror 223001 (items.json 'Coruscation: ...
+take 7% increased damage for 5 seconds' -> 0.07). NON-FIT (recorded in _NONFIT_VULN_CANDIDATES, NOT seeded):
+Imperial Mandate 4005 - patch 16.12.1 'Coordinated Fire' is a current-HP mark-DETONATION (allies consume for 10%
+current-HP bonus magic damage, 9s/target CD), NOT a +X% all-source multiplier, so it is honestly excluded rather
+than modeled as a fictional 6% amp (a WRONG precompute is worse than none; it belongs in an ally-detonation seam).
+compute_dps gains apply_target_vuln: bool=False (appended at END); when ON, weighted_dps + every phase_dps is
+multiplied by target_vuln_multiplier(resolved.champion_id, resolved.item_ids), scaling the wielder's whole DPS
+output (AAs + procs + the routed on_hit passive). The seam models the fully-marked target at full magnitude (the
+assume_takedown / assume_ability_amp developed-fight doctrine); uptime gating is a live-consumer concern. Default
+OFF byte-identical; the live default-ON flip + ability_dps/burst consumer broadening are operator-gated
+(docs/LIVE_GAME_GATED_SYNC.md). Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.149.0.)
+
 1.148.0 (R9 - per-instance FLAT-AMOUNT damage-reduction EHP registry, default-OFF, byte-identical.
 The MISSING SIBLING of the percent _passive_mitigation_overrides registry, which deliberately EXCLUDED
 (its docstring) the survivability class that reduces a FLAT NUMBER per damage instance, naming Fizz P,

@@ -666,3 +666,19 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   `_ASSUMED_ABILITY_RANK`=4 (the per-rank Amumu/Leona flat-block read level). A WRONG precompute is worse than no
   credit, so do NOT default-ON until the midpoints are tuned to a live fight clock. Does NOT block any further
   stage.
+- 2026-06-21 R12 all-source target-vulnerability mark seam (`apply_target_vuln`, ENGINE 1.149.0, default-OFF).
+  The NEW cross-source vulnerability registry (`agents/daemon_slayer/_target_vulnerability_overrides.py`:
+  Vladimir R Hemoplague 10% all-source + Evenshroud 3001 / Arena 223001 Coruscation 7%) ships DEFAULT-OFF on
+  `agents/daemon_slayer/dps.py compute_dps` - the AA-DPS math is byte-identical until `apply_target_vuln=True`,
+  when the wielder's whole DPS is multiplied by the product of every mark she owns (champion ability x each
+  registered item, multiplicative). OWED (operator/Gemini-gated, NOT headless - charter 4b "do not flip blind"):
+  (a) wire the scorer-dispatch (`agents/daemon_slayer/server.py` compute_dps call sites + `rank.py` / coach
+  surfaces) to pass `apply_target_vuln=True` for a marked wielder (Vladimir, or any build holding Evenshroud),
+  AND broaden the consumer beyond AA DPS to ability_dps + burst (the all-source mark amplifies those too - this
+  seam wires the AA-DPS scorer first); (b) validate in a real game that a marked-target scenario shows a sanely
+  higher effective DPS / item ranking, and an unmarked wielder stays byte-identical. The seam models the
+  fully-marked target at full magnitude (the assume_takedown / assume_ability_amp developed-fight doctrine);
+  uptime gating (Vlad R cooldown, Evenshroud's 5s post-immobilize window) is a live-consumer concern not baked
+  here. Imperial Mandate (4005) is EXCLUDED as a non-fit (current-HP detonation, not an all-source %amp). A
+  WRONG precompute is worse than no credit, so do NOT default-ON until validated. DS `:8893` restart on flip.
+  Does NOT block any further stage.
