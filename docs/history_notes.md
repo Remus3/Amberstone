@@ -42,6 +42,40 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-21 (headless gemini+AHK DIRECTOR REFILL, cycle R12) - DS all-source target-vulnerability mark seam
+
+Item 563 / R12. Engine commit `cad49029` (pushed). DS schema lift: NEW
+`agents/daemon_slayer/_target_vulnerability_overrides.py` models all-source
+vulnerability MARKS - a debuff the wielder lays on the TARGET that makes it take
++X% damage FROM ALL SOURCES (the all-source half the per-spell self-amp
+`_ability_amp_overrides` cannot express). `TargetVulnEntry` + `_CHAMPION_VULN_OVERRIDES`
+(champion_id->ability) + `_ITEM_VULN_OVERRIDES` (item-id->item) + `target_vuln_multiplier`
+(product of (1+amp), multiplicative, de-duped per item). Default-OFF
+`apply_target_vuln` seam on `dps.compute_dps` scales `weighted_dps` + `phase_dps`;
+byte-identical OFF.
+
+SEEDED 2 ACTIVE vs 16.12.1 ground truth: Vladimir R Hemoplague 10% (DDragon
+effect[2]=[10,10,10]) + Evenshroud 3001/Arena 223001 Coruscation 7%. GROUND-TRUTH
+DEVIATION (logged, not silent): the director named Imperial Mandate 4005 at 6%,
+but 16.12.1 Coordinated Fire is a current-HP mark-DETONATION (10% current HP bonus
+magic damage on ally consume), NOT a +X% all-source amp -> recorded in
+`_NONFIT_VULN_CANDIDATES` (documented, NOT seeded) rather than modeled as a
+fiction (a WRONG precompute is worse than none).
+
+Tier-2: ENGINE 1.148.0 -> 1.149.0 (quoted-literal pins only, 83 DS files), DS
+:8893 restarted -> 1.149.0 live, Share synced 370 / --check green, all SAME
+commit. TDD RED-first (23 R12 tests); read-only verifier subagent CONFIRM 7/7; DS
+suite 7459 passed / 1 skipped / 1942 subtests; ruff clean.
+
+NEXT (owed -> docs/LIVE_GAME_GATED_SYNC.md): live default-ON flip needs a real
+game; broaden the consumer beyond AA-DPS to ability_dps + burst (an all-source
+mark amplifies those too - this seam wires the AA-DPS scorer first). The mark
+UPTIME model (Vlad R cooldown, Evenshroud's 5s post-immobilize window) is a
+live-consumer concern, not baked. Imperial Mandate's detonation could seed a
+future ally-detonation / current-HP-burst seam (distinct registry).
+
+---
+
 # 2026-06-21 (interactive, continue) - overlay CALL focal hierarchy + ASCII arrow MUST-FIX
 
 Continued item 558's overlay-audit NEXT queue. Two commits (pushed): `a4d6e6ba`
