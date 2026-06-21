@@ -42,6 +42,60 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-20/21 (interactive) - overlay OPEN batch + live overlay-throttling root-cause
+
+Shipped 4 commits, all CI-green (run 27892032332): `cdd494fa` QA1 ward-ready glyph
+cue (LIVE-verified in a real game - Caitlyn `trinket_ready` on the wire + glyph
+rendered in a browser) + `2e5326b5` QA9 combat-mode declutter (`body[data-fight]`
+sheds non-urgent panes, hysteresis latch, respects explicit panelsets) +
+`8c7319f5` rc-shell `backgroundThrottling=false` + `f570f527` QA4 objective
+respawn chips (dragon/baron/herald). Local gate green: hygiene 13 / ruff / ward_cue
+11 / web/js node 46 / rc-shell node 253. RC pid 11268 healthy.
+
+BIGGEST FIND - the recurring "overlay dead/empty in-game" bug is ROOT-CAUSED + FIXED
+(`8c7319f5`). Electron throttles an OCCLUDED renderer; the always-on-top overlay is
+always covered by the game, so its `/api/state-stream` SSE re-render was suspended
+and it froze on the scaffold. PROVEN: the identical `?overlay=1` page renders
+perfectly in a normal browser against the live backend mid-game (SSE + panes + the
+QA1 glyph). Relaunch never helped (re-throttles the new window). Fix =
+`backgroundThrottling: false`. AWAITING operator relaunch (`npm start`, no rebuild)
+to confirm live - root cause is proven, so this is verification not an open question.
+
+OPEN THREADS (do NOT redo the shipped work):
+- Screen capture: `self_grab` = `PIL.ImageGrab` (GDI BitBlt, `vision_server/_frame.py:67`)
+  returns BLACK for the game's accelerated DirectX surface; only the overlay grabs.
+  Operator to foreground the game / confirm Borderless. Ties into QA6.
+- Remaining overlay queue: QA6 (Win32 fullscreen hint), QA12 [L] restructure, QA13
+  UIPI, QA14 display-pick, QA4-ZoI tail. QA4 camp chips INFEASIBLE (no Live Client
+  camp events). [[project_rc2_build]] [[reference_gamepc_League_fullscreen_lockup]]
+
+---
+
+# 2026-06-20 (interactive/RC2) - E12+E7 swarm + rc-shell standalone-app live fixes
+
+Commits (all CI-green): `48fcee51` E12-L2 RuneWriter lobby-mode memoization + `64591d5f`
+E7a ARAM bench-swap fast re-poll (orchestrated: 7-agent recon swarm -> 2 worktree build
+agents -> cherry-pick merge -> fresh re-verify) + `96178904`/`cdb4af12` docs + `cac1df3a`
+rc-shell overlay surface gate + `81f74d88` rc-shell focus-on-launch. RC2 banner 54->56/62
+~90% (E12 + E7 DONE). RC bounced 17176->1896 (mode=client).
+
+Live firefight (operator ARAM Mayhem Riven): overlay was DOWN (relaunched electron);
+LCUAgent/Hotkey/Relay dead since 01:33 boot + LCUAgent posting stale None after the RC
+bounce (restarted all 4); RC stuck mode=game post-match (bounced -> client). "coaches not
+firing" = NON-ISSUE (backend fired every ~10s; empty immediate/objective is BY DESIGN
+item 189 - choices chips are the surface; the dead overlay shell was the cause). always-
+on-top OFF (state file; verified WS_EX_TOPMOST=False - works, DON'T re-investigate).
+
+NEXT (don't redo E7/E12/always-on-top - shipped+verified):
+- members[] ROOT CAUSE PINPOINTED (don't re-investigate): agent forwards members
+  (lcu.lobby.members=1 live) but it lands at /api/state.lcu.lobby while the UI
+  (_lobbyViewRefresh/_renderTop8) reads TOP-LEVEL /api/state.lobby = ABSENT. Fix = lift
+  lcu.lobby -> top-level state.lobby in dashboard build_state (or repoint the UI). Small.
+- agent restart-resilience (task chip 8277de5d) - systemic root cause of the cascade.
+- RC2 open: E11 Hextech reskin, E10 history rewrite, E2 DS 3-game flip.
+
+---
+
 # 2026-06-20 (interactive) - Game-PC purge COMPLETE + open-items review + flash fix
 
 Commits (all CI-green): `f508046e` loop-status git CREATE_NO_WINDOW (the "terminal
