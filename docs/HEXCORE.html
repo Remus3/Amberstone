@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HEXCORE // RC-DS architecture nexus</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#C8AA6E; --gold-dim:rgba(200,170,110,.55); --cyan:#0AC8B9; --good:#37D08A;
+    --red:#E84057; --bg:#070B12; --bg2:#0A0E14; --panel:rgba(16,24,36,.78); --ink:#E8F0F4;
+    --mono:'Share Tech Mono',Consolas,monospace; --disp:'Rajdhani','Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--disp)}
+  #graph{position:fixed;inset:0;z-index:1}
+  #graph canvas{display:block}
+  .hud{position:fixed;z-index:5;pointer-events:none}
+  /* scanlines + vignette */
+  #fx{position:fixed;inset:0;z-index:4;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(10,200,185,.03) 0 1px,transparent 1px 3px);
+    box-shadow:inset 0 0 240px 40px rgba(0,0,0,.85),inset 0 0 90px rgba(7,11,18,.6)}
+  /* corner brackets */
+  .br{position:fixed;width:46px;height:46px;z-index:5;pointer-events:none;border:2px solid var(--gold-dim)}
+  .br.tl{top:14px;left:14px;border-right:0;border-bottom:0}
+  .br.tr{top:14px;right:14px;border-left:0;border-bottom:0}
+  .br.bl{bottom:14px;left:14px;border-right:0;border-top:0}
+  .br.brr{bottom:14px;right:14px;border-left:0;border-top:0}
+  /* reticle */
+  #reticle{top:50%;left:50%;width:240px;height:240px;margin:-120px 0 0 -120px;opacity:.16;
+    animation:spin 36s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes breathe{0%,100%{opacity:.5}50%{opacity:1}}
+  /* top bar */
+  #top{top:0;left:0;right:0;padding:16px 74px;display:flex;justify-content:space-between;align-items:flex-start}
+  #title{font-weight:700;font-size:26px;letter-spacing:.42em;color:var(--gold);text-shadow:0 0 18px rgba(200,170,110,.45)}
+  #title small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.26em;color:var(--cyan);margin-top:3px;opacity:.85}
+  #stats{display:flex;gap:10px;font-family:var(--mono)}
+  .stat{background:var(--panel);border:1px solid var(--gold-dim);border-radius:4px;padding:6px 11px;text-align:right;
+    box-shadow:inset 0 1px 0 rgba(200,170,110,.25)}
+  .stat b{display:block;font-size:18px;color:var(--cyan);font-weight:400}
+  .stat span{font-size:9.5px;letter-spacing:.16em;color:var(--gold);text-transform:uppercase}
+  /* side panels */
+  .panel{background:var(--panel);border:1px solid var(--gold-dim);border-radius:5px;
+    box-shadow:inset 0 1px 0 rgba(200,170,110,.22),0 6px 24px rgba(0,0,0,.5);backdrop-filter:blur(2px)}
+  .ph{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);
+    padding:7px 11px;border-bottom:1px solid rgba(200,170,110,.22)}
+  #left{top:96px;left:14px;width:236px}
+  #legend{padding:8px 11px;display:flex;flex-direction:column;gap:5px}
+  .lg{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink);
+    cursor:pointer;pointer-events:auto;opacity:.92}
+  .lg:hover{color:var(--cyan)} .lg.off{opacity:.32}
+  .lg i{width:10px;height:10px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+  #log{padding:8px 11px;height:188px;overflow:hidden;font-family:var(--mono);font-size:10.5px;line-height:1.55;
+    color:rgba(10,200,185,.78);display:flex;flex-direction:column;justify-content:flex-end}
+  #log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #log .g{color:var(--gold)} #log .w{color:var(--ink)}
+  #right{top:96px;right:14px;width:262px;opacity:0;transition:opacity .25s}
+  #right.on{opacity:1}
+  #dbody{padding:10px 12px;font-family:var(--mono);font-size:11.5px;line-height:1.55}
+  #dq{color:var(--cyan);font-size:11px;word-break:break-all;margin-bottom:7px}
+  #dbody .k{color:var(--gold);text-transform:uppercase;font-size:9.5px;letter-spacing:.14em}
+  .pill{display:inline-block;font-size:10px;padding:1px 8px;border-radius:9px;margin:3px 4px 0 0;
+    border:1px solid var(--gold-dim);color:var(--gold)}
+  #drole{margin-top:8px;color:var(--ink);opacity:.9;font-family:var(--disp);font-size:13px;line-height:1.5}
+  /* bottom bar */
+  #bottom{bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:14px;align-items:center}
+  #search{pointer-events:auto;background:var(--bg2);border:1px solid var(--gold-dim);border-radius:4px;
+    color:var(--cyan);font-family:var(--mono);font-size:13px;padding:9px 14px;width:300px;outline:none;
+    letter-spacing:.08em;box-shadow:inset 0 0 14px rgba(10,200,185,.12)}
+  #search::placeholder{color:rgba(200,170,110,.5)} #search:focus{border-color:var(--cyan)}
+  #elegend{display:flex;gap:12px;font-family:var(--mono);font-size:10px;color:var(--ink);
+    background:var(--panel);border:1px solid var(--gold-dim);border-radius:4px;padding:8px 12px}
+  #elegend span{display:flex;align-items:center;gap:5px;opacity:.9}
+  #elegend i{width:16px;height:0;border-top:2px solid currentColor}
+  #hint{position:fixed;bottom:16px;left:18px;z-index:5;font-family:var(--mono);font-size:10px;color:var(--gold-dim);pointer-events:none}
+  /* boot overlay */
+  #boot{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;
+    justify-content:center;align-items:center;font-family:var(--mono);transition:opacity .8s}
+  #boot.gone{opacity:0;pointer-events:none}
+  #boot h1{font-family:var(--disp);font-weight:700;font-size:54px;letter-spacing:.5em;color:var(--gold);
+    margin:0 0 14px;text-shadow:0 0 30px rgba(200,170,110,.5);animation:breathe 2s ease-in-out infinite}
+  #bootlog{font-size:12px;color:var(--cyan);line-height:1.7;height:120px;text-align:left;width:420px}
+  .sr-only{position:absolute;left:-9999px}
+</style>
+</head>
+<body>
+<h2 class="sr-only">HEXCORE: an interactive 3D map of the Riot Commander and Daemon Slayer code architecture - the DS damage engine as a reactor core, the per-mode coaches, the dashboard route dispatch, the web panels, vision, LCU, and the supervisors, with calls, imports, HTTP fetch-to-endpoint data flow, and git co-change coupling rendered as a navigable hextech hologram.</h2>
+
+<div id="graph"></div>
+<div id="fx" class="hud"></div>
+<div class="br tl"></div><div class="br tr"></div><div class="br bl"></div><div class="br brr"></div>
+
+<svg id="reticle" class="hud" viewBox="0 0 240 240" fill="none">
+  <circle cx="120" cy="120" r="112" stroke="#C8AA6E" stroke-width="1"/>
+  <circle cx="120" cy="120" r="84" stroke="#0AC8B9" stroke-width=".6" stroke-dasharray="2 8"/>
+  <circle cx="120" cy="120" r="58" stroke="#C8AA6E" stroke-width=".5"/>
+  <path d="M120 8V40M120 200v32M8 120h32M200 120h32" stroke="#0AC8B9" stroke-width="1"/>
+  <path d="M120 96l10 18h-20zM120 144l10-18h-20z" fill="#C8AA6E"/>
+</svg>
+
+<div id="top" class="hud">
+  <div id="title">HEXCORE<small>RC // DAEMON SLAYER ARCHITECTURE NEXUS</small></div>
+  <div id="stats">
+    <div class="stat"><b id="s-nodes">0</b><span>nodes</span></div>
+    <div class="stat"><b id="s-links">0</b><span>links</span></div>
+    <div class="stat"><b id="s-cluster">9</b><span>systems</span></div>
+    <div class="stat"><b>16.12.1</b><span>ds patch</span></div>
+  </div>
+</div>
+
+<div id="left" class="hud panel">
+  <div class="ph">systems map</div>
+  <div id="legend"></div>
+  <div class="ph">telemetry</div>
+  <div id="log"></div>
+</div>
+
+<div id="right" class="hud panel">
+  <div class="ph">node readout</div>
+  <div id="dbody">
+    <div id="dq"></div>
+    <div id="dmeta"></div>
+    <div id="drole"></div>
+  </div>
+</div>
+
+<div id="bottom" class="hud">
+  <input id="search" placeholder="> locate node ..." autocomplete="off" spellcheck="false">
+  <div id="elegend">
+    <span style="color:#0AC8B9"><i></i>http data</span>
+    <span style="color:#C8AA6E"><i></i>route bind</span>
+    <span style="color:#E84057"><i></i>git coupling</span>
+    <span style="color:#9C8048"><i></i>calls</span>
+  </div>
+</div>
+<div id="hint" class="hud">drag orbit // scroll zoom // hover scan // click lock + fly</div>
+
+<div id="boot"><h1>HEXCORE</h1><div id="bootlog"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.0"></script>
+<script>
+const C = {
+  ds:{label:'daemon slayer engine',color:'#0AC8B9'},
+  coach:{label:'per-mode coaches',color:'#46C4D6'},
+  dash:{label:'dashboard / routes',color:'#C8AA6E'},
+  route:{label:'api endpoints',color:'#E6C684'},
+  web:{label:'web / js panels',color:'#5BD0C0'},
+  lcu:{label:'lcu + live client',color:'#B8965A'},
+  vision:{label:'vision pipeline',color:'#37D08A'},
+  core:{label:'core runtime',color:'#9FD8A0'},
+  ops:{label:'ops / supervisors',color:'#E8717E'}
+};
+const EC = {CALLS:'rgba(156,128,72,.40)',IMPORTS:'rgba(10,200,185,.45)',HTTP_CALLS:'#0AC8B9',ROUTE_BIND:'#C8AA6E',COUPLING:'#E84057'};
+
+const ND = [
+  ['ds_init','daemon_slayer.__init__','ds',9,'agents/daemon_slayer/__init__.py','The engine core. ENGINE_VERSION + the scorer dispatch. The whole DS reactor radiates from here - 172 champs, 706 items, patch 16.12.1.',1],
+  ['ds_engine','engine.ResolvedStats.get','ds',6,'agents/daemon_slayer/engine.py','Resolved champion stat lookup - the single hottest accessor in the engine.'],
+  ['ds_dps','dps.compute_dps','ds',7,'agents/daemon_slayer/dps.py','Per-champion DPS math - sustained damage with on-hit, crit, and ability cadence.'],
+  ['ds_ehp','ehp.compute_ehp','ds',6,'agents/daemon_slayer/ehp.py','Effective-HP scorer - resists, shields, heals, DR, revive multipliers.'],
+  ['ds_burst','burst.compute_burst_damage','ds',5,'agents/daemon_slayer/burst.py','Burst / all-in damage window across a combo sequence.'],
+  ['ds_loader','data_loader.DataSnapshot.load','ds',6,'agents/daemon_slayer/data_loader.py','Loads the champion + item registries into an immutable snapshot.'],
+  ['ds_effects','effects (facade)','ds',5,'agents/daemon_slayer/effects.py','Item + ability effect resolution facade (s246 split).'],
+  ['ds_rank','rank.rank_items','ds',5,'agents/daemon_slayer/rank.py','Ranks candidate items per archetype scorer.'],
+  ['ds_build','build_order','ds',5,'core/build_order.py','Build-order assembly with the engine-authoritative no-double-unique rule.'],
+  ['ds_client','core.daemon_slayer_client','core',6,'core/daemon_slayer_client.py','RC-side client to the DS server :8893 (ehp_for / burst_for / dps_for).'],
+  ['ds_server','start_daemon_slayer :8893','ds',7,'start_daemon_slayer.py','The DS HTTP service - real DPS/EHP math per champion, restarted on ENGINE bump.',1],
+
+  ['coach_base','BaseCoachWorker','coach',7,'core/base_worker.py','Shared coach worker - the per-mode coaches inherit its loop.',1],
+  ['coach_aram','aram_coach','coach',5,'coaches/aram_coach.py','ARAM / Mayhem coach (queue 2400, KIWI mode).'],
+  ['coach_arena','arena_coach','coach',5,'coaches/arena_coach.py','Arena / Cherry coach - augments + 2v2v2v2.'],
+  ['coach_brawl','brawl_coach','coach',5,'coaches/brawl_coach.py','Brawl coach (legacy backend, retired from champ-select).'],
+  ['coach_sr','sr_coach','coach',5,'coaches/','Summoners Rift coach - lane + macro.'],
+  ['coach_trace','coach_trace.append','coach',5,'core/coach_trace.py','Appends a coaching decision to the trace ring (4 real callers).'],
+  ['coach_read','coach_trace.read_recent','coach',4,'core/coach_trace.py','Reads the recent trace - consumed by routes_coach via an aliased import.'],
+  ['coach_integ','coach_integration._coach','coach',4,'coach_integration/_coach.py','Integration adapter feeding the coach trace.'],
+  ['shared_vision','modes.shared_vision','vision',5,'modes/shared_vision.py','_capture_screen bridge: coaches read the latest vision frame here.'],
+
+  ['web_dash','web_dashboard :8888','dash',8,'web_dashboard.py','The HTTPS dashboard + overlay host. Hand-rolled router, not a framework.',1],
+  ['handler','_handler.do_GET','dash',6,'dashboard/_handler.py','BaseHTTPRequestHandler - every GET enters here then hits the dispatch table.'],
+  ['dispatch','_dispatch.dispatch_get','dash',6,'dashboard/_dispatch.py','Iterates the GET_ROUTES tables - RC binds paths to handlers as data, not decorators.',1],
+  ['state_builder','_state_builder','dash',5,'dashboard/_state_builder.py','Assembles the /api/state payload (incl the ZOI minimap_rect).'],
+  ['r_state','routes_state','dash',5,'dashboard/routes_state.py','GET_ROUTES for /api/state + the SSE stream + the peer/agent6 health rollup.'],
+  ['r_coach','routes_coach','dash',5,'dashboard/routes_coach.py','GET_ROUTES for /api/coach/* - imports read_recent (aliased).'],
+  ['r_bridge','routes_bridge','dash',4,'dashboard/routes_bridge.py','GET_ROUTES for the RC<->Peer bridge surface.'],
+  ['r_health','routes_health_peer','dash',4,'dashboard/routes_health_peer.py','Peer health (max of publisher + watcher age) - audit-10 H-04 fix.'],
+
+  ['ep_state','/api/state','route',4,'GET /api/state','Polled by the dashboard + overlay panels at ~500ms. Bound via routes_state GET_ROUTES.'],
+  ['ep_health','/api/health/all','route',4,'GET /api/health/all','Rollup: RC + peers + agent6 audit outcomes.'],
+  ['ep_toggle','/api/coach/toggle','route',3,'POST /api/coach/toggle','Hot coach enable/disable (no restart).'],
+  ['ep_trace','/api/coach/trace','route',3,'GET /api/coach/trace','Recent coaching decisions.'],
+  ['ep_ds','/api/ds-preview','route',3,'GET /api/ds-preview','Champ-select DS build preview.'],
+  ['ep_bridge','/api/bridge/pending','route',3,'GET /api/bridge/pending','Pending cross-Claude bridge tasks.'],
+
+  ['js_main','web/js/main','web',6,'web/js/main.js','The dashboard bootstrap - the only script the page loads.'],
+  ['js_dev','panels/dev','web',4,'web/js/panels/dev.js','Diagnostics panel - fetches coach state / cost / trace.'],
+  ['js_cs','panels/champ_select','web',5,'web/js/panels/champ_select.js','Champ-select view - DS builds, loadout, archetype picker.'],
+  ['js_minimap','panels/minimap_rect','web',4,'web/js/panels/minimap_rect.js','The w-mmrect ZOI overlay - paints the settings-driven minimap outline.'],
+  ['js_callouts','panels/callouts','web',4,'web/js/panels/callouts.js','Objective + threat callouts on the overlay.'],
+
+  ['lcu_client','lcu_client','lcu',6,'lcu/lcu_client.py','LCU lockfile client - champ select, runes, lobby.',1],
+  ['lcu_rune','lcu_rune_writer','lcu',4,'lcu/lcu_rune_writer.py','Auto-pushes runes on first champ-select per session.'],
+  ['lcu_pg','lcu_postgame_collector','lcu',4,'lcu/lcu_postgame_collector.py','Post-game Match-V5 capture into the rewind DB.'],
+  ['liveclient','live client :2999','lcu',5,'core/game_host.py','The in-game Live Client API - positions are roles, items are slots.'],
+
+  ['vision_srv','vision_server :8889','vision',6,'vision_server/','In-process frame relay - self-heals, serves /latest-frame + /latest-liveclient.',1],
+  ['screen_agent','screen_agent','vision',4,'screen_agent.py','Legion-local frame grabber - POSTs every 2s.'],
+  ['vision_track','vision_tracker','vision',4,'vision_tracker','Derives fog from Live Client position freshness.'],
+
+  ['game_reader','game_reader._process_game','core',7,'game_reader.py','The live loop heart - reads the game, builds the snapshot, drives the coaches.',1],
+  ['game_snap','game_snapshot','core',5,'core/game_snapshot.py','Frozen per-tick game state -> mode strings.'],
+  ['bridge','bridge.send','core',4,'core/bridge.py','Outbound cross-Claude bridge (routes to Peer).'],
+  ['league_set','league_settings','core',4,'core/league_settings.py','Reads game.cfg [HUD] MinimapScale/FlipMiniMap (no API) - the ZOI coord source.'],
+  ['minimap_geo','minimap_geometry','core',4,'core/minimap_geometry.py','Pure calibrated scale->rect model for the ZOI overlay.'],
+
+  ['supervisor','rc_supervisor','ops',7,'ops/rc_supervisor.py','The frozen runtime supervisor - restart_trigger, health.json, the AppLoop.',1],
+  ['p3_super','agents.supervisor :8890','ops',5,'agents/supervisor.py','Phase-3 supervisor - proxied by /api/analyze.'],
+  ['eph','_supervisor_ephemeral','ops',4,'agents/_supervisor_ephemeral.py','Ephemeral claude spawn - now writes a FAILED stub on agent-6 non-zero exit (C-01).'],
+  ['agent6','agent6_auditor','ops',5,'agents/agent6_auditor/','The autonomous self-audit cron - tenth audit found the silent-fail + watcher-freshness gaps.']
+];
+
+const LK = [
+  ['supervisor','game_reader','CALLS'],['supervisor','web_dash','CALLS'],['supervisor','ds_server','CALLS'],
+  ['game_reader','game_snap','CALLS'],['game_reader','coach_base','CALLS'],['game_reader','liveclient','CALLS'],['game_reader','game_snap','CALLS'],
+  ['coach_base','coach_aram','CALLS'],['coach_base','coach_arena','CALLS'],['coach_base','coach_brawl','CALLS'],['coach_base','coach_sr','CALLS'],
+  ['coach_aram','ds_client','CALLS'],['coach_arena','ds_client','CALLS'],['coach_brawl','ds_client','CALLS'],['coach_sr','ds_client','CALLS'],
+  ['coach_aram','shared_vision','CALLS'],['coach_sr','shared_vision','CALLS'],['shared_vision','vision_srv','CALLS'],
+  ['ds_client','ds_server','CALLS'],['ds_server','ds_init','CALLS'],
+  ['ds_init','ds_engine','CALLS'],['ds_init','ds_dps','CALLS'],['ds_init','ds_ehp','CALLS'],['ds_init','ds_burst','CALLS'],
+  ['ds_init','ds_loader','CALLS'],['ds_init','ds_effects','CALLS'],['ds_init','ds_rank','CALLS'],['ds_init','ds_build','CALLS'],
+  ['ds_dps','ds_engine','CALLS'],['ds_dps','ds_loader','CALLS'],['ds_ehp','ds_engine','CALLS'],['ds_burst','ds_dps','CALLS'],['ds_rank','ds_ehp','CALLS'],
+  ['coach_base','coach_trace','CALLS'],['coach_integ','coach_trace','CALLS'],['r_coach','coach_trace','CALLS'],
+  ['r_coach','coach_read','IMPORTS'],
+  ['web_dash','handler','CALLS'],['handler','dispatch','CALLS'],
+  ['dispatch','r_state','CALLS'],['dispatch','r_coach','CALLS'],['dispatch','r_bridge','CALLS'],['dispatch','r_health','CALLS'],
+  ['r_state','state_builder','CALLS'],['state_builder','game_snap','CALLS'],['state_builder','minimap_geo','CALLS'],['minimap_geo','league_set','CALLS'],
+  ['screen_agent','vision_srv','CALLS'],['vision_srv','vision_track','CALLS'],
+  ['lcu_rune','lcu_client','CALLS'],['lcu_pg','lcu_client','CALLS'],['lcu_client','liveclient','CALLS'],
+  ['p3_super','eph','CALLS'],['eph','agent6','CALLS'],['agent6','r_health','CALLS'],
+  ['bridge','r_bridge','CALLS'],
+  ['r_state','ep_state','ROUTE_BIND'],['r_health','ep_health','ROUTE_BIND'],['r_coach','ep_toggle','ROUTE_BIND'],
+  ['r_coach','ep_trace','ROUTE_BIND'],['r_bridge','ep_bridge','ROUTE_BIND'],['r_state','ep_ds','ROUTE_BIND'],
+  ['js_main','ep_state','HTTP_CALLS'],['js_main','ep_health','HTTP_CALLS'],['js_dev','ep_toggle','HTTP_CALLS'],
+  ['js_dev','ep_trace','HTTP_CALLS'],['js_cs','ep_ds','HTTP_CALLS'],['js_minimap','ep_state','HTTP_CALLS'],['js_callouts','ep_state','HTTP_CALLS'],
+  ['coach_aram','coach_arena','COUPLING'],['coach_arena','coach_brawl','COUPLING'],['coach_aram','coach_brawl','COUPLING'],
+  ['ds_init','ds_effects','COUPLING'],['ds_init','ds_dps','COUPLING']
+];
+
+const nodes = ND.map(a=>({id:a[0],name:a[1],cluster:a[2],size:a[3],full:a[4],role:a[5],core:!!a[6]}));
+const byId = {}; nodes.forEach(n=>byId[n.id]=n);
+const links = LK.map(l=>({source:l[0],target:l[1],type:l[2]}));
+const adj = {}; nodes.forEach(n=>adj[n.id]=new Set());
+links.forEach(l=>{adj[l.source].add(l.target);adj[l.target].add(l.source);});
+const off = new Set();
+let hov=null, hl=new Set(), hlL=new Set();
+
+const Graph = ForceGraph3D()(document.getElementById('graph'))
+  .backgroundColor('#070B12')
+  .showNavInfo(false)
+  .nodeRelSize(4)
+  .nodeVal(n=>n.size)
+  .nodeResolution(14)
+  .nodeColor(n=>{
+    if(off.has(n.cluster)) return 'rgba(120,120,120,0.06)';
+    if(hov&&!hl.has(n.id)) return 'rgba(120,140,150,0.10)';
+    return C[n.cluster].color;
+  })
+  .nodeOpacity(0.92)
+  .nodeLabel(n=>'<span style="font-family:Share Tech Mono,monospace;font-size:11px;color:#0AC8B9;background:#070B12;border:1px solid #C8AA6E;padding:2px 6px;border-radius:3px">'+n.full+'</span>')
+  .linkColor(l=>{ if(off.has(byId[l.source.id||l.source].cluster)||off.has(byId[l.target.id||l.target].cluster)) return 'rgba(80,80,80,0.04)';
+    if(hov) return hlL.has(l)?EC[l.type]:'rgba(120,130,140,0.05)'; return EC[l.type]; })
+  .linkWidth(l=>hlL.has(l)?2.2:(l.type==='COUPLING'?1.4:0.6))
+  .linkOpacity(0.55)
+  .linkDirectionalParticles(l=>(l.type==='HTTP_CALLS')?4:(l.type==='ROUTE_BIND'?2:0))
+  .linkDirectionalParticleColor(l=>l.type==='HTTP_CALLS'?'#0AC8B9':'#C8AA6E')
+  .linkDirectionalParticleWidth(1.8)
+  .linkDirectionalParticleSpeed(0.012)
+  .onNodeHover(node=>{
+    document.body.style.cursor = node?'crosshair':'default';
+    hov=node; hl.clear(); hlL.clear();
+    if(node){ hl.add(node.id); adj[node.id].forEach(i=>hl.add(i));
+      links.forEach(l=>{ if((l.source.id||l.source)===node.id||(l.target.id||l.target)===node.id) hlL.add(l); });
+      logLine(node); }
+    refresh();
+  })
+  .onNodeClick(node=>{ select(node);
+    const d=110, r=1+d/Math.hypot(node.x,node.y,node.z||1);
+    Graph.cameraPosition({x:node.x*r,y:node.y*r,z:node.z*r}, node, 1100);
+  })
+  .onBackgroundClick(()=>{ document.getElementById('right').classList.remove('on'); });
+
+Graph.graphData({nodes,links});
+Graph.d3Force('charge').strength(-150);
+// pin the DS engine core near the origin so the reactor sits at the heart
+const core = byId['ds_init']; core.fx=0; core.fy=0; core.fz=0;
+function refresh(){ Graph.nodeColor(Graph.nodeColor()).linkColor(Graph.linkColor()).linkWidth(Graph.linkWidth()); }
+
+document.getElementById('s-nodes').textContent=nodes.length;
+document.getElementById('s-links').textContent=links.length;
+
+// legend
+const lg=document.getElementById('legend');
+Object.entries(C).forEach(([k,v])=>{const d=document.createElement('div');d.className='lg';
+  d.innerHTML='<i style="color:'+v.color+';background:'+v.color+'"></i>'+v.label;
+  d.onclick=()=>{ if(off.has(k)){off.delete(k);d.classList.remove('off');}else{off.add(k);d.classList.add('off');} refresh(); };
+  lg.appendChild(d);});
+
+// detail panel
+function select(n){ const R=document.getElementById('right'); R.classList.add('on');
+  document.getElementById('dq').textContent=n.full;
+  document.getElementById('dmeta').innerHTML='<span class="pill">'+C[n.cluster].label+'</span>'+
+    (n.core?'<span class="pill" style="border-color:#0AC8B9;color:#0AC8B9">core hub</span>':'')+
+    '<span class="pill">deg '+adj[n.id].size+'</span>';
+  document.getElementById('drole').textContent=n.role;
+}
+
+// telemetry log
+const logEl=document.getElementById('log'); let lastLog='';
+function logLine(n){ if(n.id===lastLog) return; lastLog=n.id;
+  const d=document.createElement('div'); d.innerHTML='<span class="g">&gt;</span> scan <span class="w">'+n.name+'</span> ['+n.cluster+']';
+  logEl.appendChild(d); while(logEl.children.length>11) logEl.removeChild(logEl.firstChild); }
+
+// search
+const search=document.getElementById('search');
+search.addEventListener('keydown',e=>{ if(e.key!=='Enter') return;
+  const q=search.value.trim().toLowerCase(); if(!q) return;
+  const m=nodes.find(n=>n.name.toLowerCase().includes(q)||n.full.toLowerCase().includes(q)||n.id.includes(q));
+  if(m){ select(m); const d=110,r=1+d/Math.hypot(m.x||1,m.y||1,m.z||1);
+    Graph.cameraPosition({x:(m.x||1)*r,y:(m.y||1)*r,z:(m.z||1)*r}, m, 1100); }
+});
+
+// boot sequence
+const bl=['> hexcore kernel ... ONLINE','> linking daemon slayer engine [172 champs / 706 items]','> mounting per-mode coaches','> binding dashboard route tables','> tracing http data flow','> mapping git coupling lattice','> calibrating hextech lens','> NEXUS READY'];
+const ble=document.getElementById('bootlog'); let bi=0;
+const bt=setInterval(()=>{ if(bi>=bl.length){ clearInterval(bt);
+    setTimeout(()=>{ document.getElementById('boot').classList.add('gone');
+      Graph.cameraPosition({x:0,y:40,z:320},{x:0,y:0,z:0},1600); },520); return; }
+  const d=document.createElement('div'); d.textContent=bl[bi++]; ble.appendChild(d);
+}, 240);
+addEventListener('resize',()=>Graph.width(innerWidth).height(innerHeight));
+</script>
+</body>
+</html>
