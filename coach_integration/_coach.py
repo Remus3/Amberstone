@@ -512,6 +512,51 @@ class CoachIntegration:
             v = _re.sub(r"\*(.+?)\*", r"\1", v)
             return v.strip().strip("*").strip()
 
+        # JSON-object fallback (2026-06-21). The Haiku coach occasionally returns
+        # its reply as a (markdown ```json-fenced or bare) JSON OBJECT instead of
+        # the line format. The line loop below reads ZERO fields from such a reply
+        # (every line is `"action": ...`), so _write_fields wrote nothing and the
+        # live coach text went BLANK until the next state-change re-tick (observed
+        # live: a fenced {"action": "SETUP DRAKE CONTEST", ...} parsed to nothing,
+        # the overlay stuck on its scaffold). Map the object's keys through the
+        # SAME field_map. Gated on the reply starting with ``` or { so the
+        # line-format path stays byte-identical; choices stays a JSON-string
+        # passthrough for the downstream decode_choices seam.
+        import json as _json
+
+        _stripped = (text or "").strip()
+        if _stripped.startswith("```") or _stripped.startswith("{"):
+            _s = _stripped
+            if _s.startswith("```"):
+                _nl = _s.find("\n")
+                if _nl != -1:
+                    _s = _s[_nl + 1:]
+                if _s.rstrip().endswith("```"):
+                    _s = _s.rstrip()[:-3]
+                _s = _s.strip()
+            _a, _b = _s.find("{"), _s.rfind("}")
+            if _a != -1 and _b > _a:
+                try:
+                    _obj = _json.loads(_s[_a:_b + 1])
+                except (ValueError, TypeError):
+                    _obj = None
+                if isinstance(_obj, dict):
+                    _l2i = {}
+                    for _lab, _intn in field_map.items():
+                        _l2i[_lab.lower()] = _intn
+                        _l2i[_intn.lower()] = _intn
+                    _jf = {}
+                    for _k, _v in _obj.items():
+                        _ik = _l2i.get(str(_k).strip().lower())
+                        if not _ik:
+                            continue
+                        if _ik == "choices":
+                            _jf[_ik] = _v if isinstance(_v, str) else _json.dumps(_v)
+                        else:
+                            _jf[_ik] = _clean(_ik, "" if _v is None else str(_v))
+                    if _jf:
+                        return _jf
+
         fields = {}
         current_key = None
         current_val = []
