@@ -1194,3 +1194,66 @@ test("normOverlayAction: a stray panelSet on a coexistence action is dropped", (
     { action: "raise-companion" }
   );
 });
+
+// --- RC Overlay Doctrine section 3: durable widget-field layout mirror --------
+
+test("OVERLAY_DEFAULTS: hotkeyReset is Alt+Shift+R", () => {
+  assert.strictEqual(ov.OVERLAY_DEFAULTS.hotkeyReset, "Alt+Shift+R");
+});
+
+test("sanitizeWidgetLayout: keeps typed fields, drops junk entries + fields", () => {
+  const out = ov.sanitizeWidgetLayout({
+    "w-call": { x: 12.6, y: 40, hidden: true, scale: 1.2 },
+    "w-lead": { x: "nope", y: NaN, hidden: "yes", scale: null },
+    "w-bad": "junk",
+    "w-arr": [1, 2],
+  });
+  assert.deepStrictEqual(out["w-call"], { x: 13, y: 40, hidden: true, scale: 1.2 });
+  assert.deepStrictEqual(out["w-lead"], {}); // every field was the wrong type
+  assert.ok(!("w-bad" in out), "non-object entry dropped");
+  assert.ok(!("w-arr" in out), "array entry dropped");
+});
+
+test("sanitizeWidgetLayout: garbage input -> {}", () => {
+  assert.deepStrictEqual(ov.sanitizeWidgetLayout(null), {});
+  assert.deepStrictEqual(ov.sanitizeWidgetLayout([1, 2]), {});
+  assert.deepStrictEqual(ov.sanitizeWidgetLayout("x"), {});
+});
+
+test("widgetLayoutFrom: reads overlay.widgetLayout, {} when absent/garbage", () => {
+  assert.deepStrictEqual(
+    ov.widgetLayoutFrom({ overlay: { widgetLayout: { "w-call": { x: 5, y: 6 } } } }),
+    { "w-call": { x: 5, y: 6 } }
+  );
+  assert.deepStrictEqual(ov.widgetLayoutFrom({}), {});
+  assert.deepStrictEqual(ov.widgetLayoutFrom({ overlay: "junk" }), {});
+  assert.deepStrictEqual(ov.widgetLayoutFrom(null), {});
+});
+
+test("mergeWidgetLayoutPatch: replaces widgetLayout, preserves sibling keys", () => {
+  const prev = {
+    x: 1, // companion top-level key
+    overlay: { x: 9, y: 9, panelSet: "build", settings: { pulseNotify: true } },
+  };
+  const next = ov.mergeWidgetLayoutPatch(prev, { "w-call": { x: 30, y: 40 } });
+  // companion + sibling overlay keys untouched
+  assert.strictEqual(next.x, 1);
+  assert.strictEqual(next.overlay.x, 9);
+  assert.strictEqual(next.overlay.panelSet, "build");
+  assert.deepStrictEqual(next.overlay.settings, { pulseNotify: true });
+  // widgetLayout replaced (not deep-merged)
+  assert.deepStrictEqual(next.overlay.widgetLayout, { "w-call": { x: 30, y: 40 } });
+});
+
+test("mergeWidgetLayoutPatch: a reset ({}) clears the stored layout", () => {
+  const prev = { overlay: { widgetLayout: { "w-call": { x: 30, y: 40 } } } };
+  const next = ov.mergeWidgetLayoutPatch(prev, {});
+  assert.deepStrictEqual(next.overlay.widgetLayout, {});
+});
+
+test("mergeWidgetLayoutPatch: never mutates inputs", () => {
+  const prev = { overlay: { widgetLayout: { "w-call": { x: 1, y: 2 } } } };
+  const snapshot = JSON.stringify(prev);
+  ov.mergeWidgetLayoutPatch(prev, { "w-lead": { x: 7, y: 8 } });
+  assert.strictEqual(JSON.stringify(prev), snapshot, "prev must not mutate");
+});

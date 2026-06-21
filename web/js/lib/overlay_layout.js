@@ -184,6 +184,16 @@ export function initOverlayLayout() {
   if (document.body.dataset.shell !== "overlay") return;
   _layout = _readLayout();
 
+  // Expose the field reset so the rc-shell Alt+Shift+R global hotkey can call it
+  // over executeJavaScript (the overlay is click-through during play, so a
+  // page-level keydown never fires - the OS-level hotkey is the only path). The
+  // doctrine section 3 reset clears both stores + re-places at the defaults.
+  try {
+    window.__rcOverlayReset = resetOverlayLayout;
+  } catch (_e) {
+    // window may be locked down in a headless context; the export still works.
+  }
+
   // Seed from the rc-shell on-disk mirror when localStorage is empty + the
   // bridge is present (durable across a localStorage wipe), then place.
   if (

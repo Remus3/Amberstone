@@ -43,6 +43,7 @@ const OVERLAY_DEFAULTS = Object.freeze({
   hotkeyToggle: "Alt+Shift+O", // show/hide the active surface
   hotkeyActive: "Alt+Shift+A", // toggle overlay click-through (passive <-> active)
   hotkeyCycle: "Alt+Shift+C", // cycle overlay panel set (spec sec 5)
+  hotkeyReset: "Alt+Shift+R", // reset the movable widget field to defaults (doctrine sec 3)
   pollMs: 2000, // /api/state poll cadence (no sub-500ms per the cost rule)
   pollMaxMs: 15000, // backoff ceiling while the backend is offline
   clickThrough: true, // passive HUD by default
@@ -649,6 +650,73 @@ function mergeOverlaySettingsPatch(prevState, patch) {
   return Object.assign({}, prev, { overlay: nextOverlay });
 }
 
+// --- RC Overlay Doctrine section 3: durable widget-field layout mirror --------
+// The movable widget field (web/js/lib/overlay_layout.js) persists each cue's
+// {x,y,hidden,scale} keyed by widget id. localStorage is the authoritative store
+// (the overlay shares the dashboard origin), but the doctrine wants a DURABLE
+// disk mirror so the layout survives a localStorage wipe + is hand-editable. We
+// keep it in the SAME rc-shell-state.json (operator choice) under overlay.
+// widgetLayout, alongside position / panelSet / settings (never clobbering them).
+
+// Coerce an arbitrary layout blob to { <id>: {x?,y?,hidden?,scale?} } with typed
+// fields only - a corrupt / hand-edited mirror can never feed the renderer junk.
+function sanitizeWidgetLayout(layout) {
+  const src =
+    layout && typeof layout === "object" && !Array.isArray(layout) ? layout : {};
+  const out = {};
+  for (const id of Object.keys(src)) {
+    const e = src[id];
+    if (!e || typeof e !== "object" || Array.isArray(e)) {
+      continue;
+    }
+    const clean = {};
+    if (Number.isFinite(e.x)) {
+      clean.x = Math.round(e.x);
+    }
+    if (Number.isFinite(e.y)) {
+      clean.y = Math.round(e.y);
+    }
+    if (typeof e.hidden === "boolean") {
+      clean.hidden = e.hidden;
+    }
+    if (Number.isFinite(e.scale)) {
+      clean.scale = e.scale;
+    }
+    out[id] = clean;
+  }
+  return out;
+}
+
+// Read the persisted widget layout out of a full saved-state blob. Never throws;
+// garbage / absent -> {} (the renderer then falls back to the section-4 defaults).
+function widgetLayoutFrom(state) {
+  const s = state && typeof state === "object" && !Array.isArray(state) ? state : {};
+  const overlay =
+    s.overlay && typeof s.overlay === "object" && !Array.isArray(s.overlay)
+      ? s.overlay
+      : {};
+  return sanitizeWidgetLayout(overlay.widgetLayout);
+}
+
+// Merge a full widget-layout blob into a saved-state blob WITHOUT touching the
+// companion's top-level keys OR the sibling overlay keys (position / panelSet /
+// settings). The renderer sends the WHOLE layout each save, so widgetLayout is
+// REPLACED (not deep-merged). Returns a new object; never mutates either input.
+function mergeWidgetLayoutPatch(prevState, layout) {
+  const prev =
+    prevState && typeof prevState === "object" && !Array.isArray(prevState)
+      ? prevState
+      : {};
+  const prevOverlay =
+    prev.overlay && typeof prev.overlay === "object" && !Array.isArray(prev.overlay)
+      ? prev.overlay
+      : {};
+  const nextOverlay = Object.assign({}, prevOverlay, {
+    widgetLayout: sanitizeWidgetLayout(layout),
+  });
+  return Object.assign({}, prev, { overlay: nextOverlay });
+}
+
 module.exports = {
   SURFACES,
   GAME_MODES,
@@ -676,6 +744,9 @@ module.exports = {
   mergeOverlayPatch,
   overlaySettingsFrom,
   mergeOverlaySettingsPatch,
+  sanitizeWidgetLayout,
+  widgetLayoutFrom,
+  mergeWidgetLayoutPatch,
   OVERLAY_OPACITY_MIN,
   OVERLAY_OPACITY_MAX,
   clampOpacity,

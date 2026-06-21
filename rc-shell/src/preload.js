@@ -33,4 +33,13 @@ contextBridge.exposeInMainWorld("rcShell", {
   // message through overlay_state.normOverlayAction and runs the same code the
   // Alt+Shift+C / Alt+Shift+A hotkeys do, so the two paths never drift.
   overlayAction: (msg) => ipcRenderer.send("rc-shell:overlay-action", msg),
+  // RC Overlay Doctrine section 3: the movable widget field mirrors its
+  // {x,y,hidden,scale}-per-id layout to the DURABLE rc-shell state file so it
+  // survives a localStorage wipe + is hand-editable. get seeds the field at boot
+  // when localStorage is empty; set persists a drag/scale/reset.
+  // -> Promise<{ <id>: {x?,y?,hidden?,scale?} }>
+  getWidgetLayout: () => ipcRenderer.invoke("rc-shell:overlay-layout:get"),
+  // layout: the full { <id>: {x,y,hidden,scale} } blob -> Promise<sanitized layout>
+  setWidgetLayout: (layout) =>
+    ipcRenderer.invoke("rc-shell:overlay-layout:set", layout),
 });
