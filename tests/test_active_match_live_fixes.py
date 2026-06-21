@@ -275,9 +275,11 @@ class CdsVisualHideTests(unittest.TestCase):
         self.assertIn("attachCooldownLedgerHandlers(", self.js)
 
     def test_overlay_threat_panelset_reshow_untouched(self) -> None:
+        # Widget-field doctrine: the threat-set CDS reveal carries the
+        # .ovx-widget:not(.ovx-hidden) widget-field qualifier before the brace.
         m = re.search(
             r'\[data-panelset="threat"\] #view-active-match \.am-pane-cd'
-            r"\s*\{[^}]*display:\s*block\s*!important", self.overlay)
+            r"[^{]*\{[^}]*display:\s*block\s*!important", self.overlay)
         self.assertIsNotNone(m, "overlay threat panelset must keep its CDS "
                                 "surface (display: block !important)")
 
