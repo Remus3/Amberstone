@@ -2045,6 +2045,10 @@
       <div class="view-section-body am-grid">
         <div class="am-pane am-pane-call">
           <div class="am-pane-head">CALL</div>
+          <!-- QA1 (RC2 overlay): trinket / control-ward READY glyph cue.
+               Overlay-only (ward_cue.js gates on body[data-shell="overlay"]);
+               hidden until a ward signal is actionable. -->
+          <div class="ward-cue" id="am-ward-cue" hidden></div>
           <div class="am-pane-body" id="am-call-body">
             <div class="am-empty">Awaiting coach. Folded RIGHT NOW + NEXT will render here mid-game.</div>
           </div>

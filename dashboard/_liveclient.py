@@ -35,6 +35,7 @@ import time
 import urllib.request
 
 from core.vision_token import get_vision_token
+from core.ward_cue import compute_ward_cue
 from item_advisor import (
     boots_phase,
     endgame_boots_swap_target,
@@ -176,6 +177,11 @@ def liveclient_summary() -> dict:
         out["game_mode"] = gd.get("gameMode")
         out["owned_items"] = owned_items
         out["owned_item_ids"] = owned_item_ids
+        # QA1 overlay ward-ready cue: trinket off-cooldown (items[].canUse) +
+        # control ward held (item 2055 count). Pure extract over the operator's
+        # own inventory; always present (all-off when no live player) so the
+        # overlay glyph can edge-detect the not-ready -> ready transition.
+        out["ward_cue"] = compute_ward_cue(me_pl.get("items") if me_pl else None)
         out["enemy_team"]  = enemy_team
         out["ally_team"]   = ally_team
         out["enemy_item_ids"] = enemy_item_ids
