@@ -6571,6 +6571,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           state.latest.coach = st.coach || null;
           state.latest.lead_projection = st.lead_projection || null;
           state.latest.callouts = st.callouts || null;
+          // ZOI w-mmrect (item 567): thread the game.cfg-derived minimap rect
+          // (a top-level /api/state sibling) so renderMinimapRect can paint it.
+          state.latest.minimap_rect = st.minimap_rect || null;
           onState({ type: "state", source: "state-http",
                     mode: fileMode, payload: coachPayload });
           // 2026-04-25: cold-start champ-select prep - surface adaptation
@@ -6624,6 +6627,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           state.latest.coach = st.coach || null;
           state.latest.lead_projection = st.lead_projection || null;
           state.latest.callouts = st.callouts || null;
+          state.latest.minimap_rect = st.minimap_rect || null;  // ZOI w-mmrect (item 567)
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleLcuEnvelope(st.lcu);
@@ -6669,6 +6673,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             // Item-378 tail: see HTTP-fallback site above.
             state.latest.coach = st.coach || null;
             state.latest.lead_projection = st.lead_projection || null;
+            state.latest.minimap_rect = st.minimap_rect || null;  // ZOI w-mmrect (item 567)
             state.latest.callouts = st.callouts || null;
           }
           if (st) { renderTeamContext(st); renderArchetypeNudge(st); renderScreenRead(st); }

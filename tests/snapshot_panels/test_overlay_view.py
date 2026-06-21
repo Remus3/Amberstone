@@ -407,6 +407,52 @@ def test_overlay_minimap_rect_is_clickthrough_outline_widget(mock_server, pw_bro
     assert not errors, f"JS errors [w-mmrect]: {errors[:3]}"
 
 
+def test_overlay_minimap_rect_threads_through_live_state(mock_server, pw_browser):
+    """Regression (item 567): minimap_rect is a TOP-LEVEL /api/state sibling, so it
+    must be threaded into state.latest at every live poll site (SSE / HTTP-fallback /
+    LCU poller) - exactly like liveclient. The ui_mock drive path reads
+    _amMockData.minimap_rect DIRECTLY (main.js mock branch), which MASKED a live-path
+    wiring gap: the foundation added the render call + the backend field but never
+    threaded minimap_rect into state.latest, so over a real game renderMinimapRect
+    always got null and the box stayed invisible. This drives the LIVE (non-mock) SSE
+    envelope and asserts the box paints from state.latest.minimap_rect."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    # A live state envelope (NOT ui_mock) - the SSE handler must thread minimap_rect.
+    mock_server._store["data"] = {
+        "mode_key": "sr",
+        "coach": {"action": "Push mid", "immediate": "Group up", "kda": "1/0/0"},
+        "liveclient": {"level": 6, "game_time_s": 120},
+        "minimap_rect": {"x": 1600, "y": 761, "w": 312, "h": 312, "flip": False,
+                         "source": "settings", "native_w": 2560, "native_h": 1440},
+    }
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        page.goto(mock_server.url + "/?overlay=1&mode=sr",
+                  wait_until="domcontentloaded", timeout=15_000)
+        # The box paints only once the live SSE envelope threads minimap_rect into
+        # state.latest and renderMinimapRect runs off it. Pre-fix this never
+        # happened (state.latest.minimap_rect stayed undefined -> null -> hidden).
+        page.wait_for_function(
+            "() => { const m = document.getElementById('am-mmrect');"
+            " return m && !m.hidden && m.classList.contains('ovx-widget'); }",
+            timeout=10_000,
+        )
+        assert page.eval_on_selector("#am-mmrect", "e => e.dataset.ovxId") == "w-mmrect"
+        assert _css(page, "#am-mmrect", "left") == "1600px", "box not at the threaded x"
+        assert _css(page, "#am-mmrect", "position") == "fixed"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [live minimap threading]: {errors[:3]}"
+
+
 def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
     """Inside #right-now only the lead/callouts/choices mounts may show:
     when a callout lands (un-hidden + populated) it displays, while the
