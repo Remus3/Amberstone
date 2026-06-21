@@ -238,7 +238,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="right-now"] > span:last-child {
   font-size: 13px !important;
   font-weight: 600;
-  color: rgb(var(--ovx-cyan));
+  color: rgb(var(--ovx-cyan)) !important;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -247,7 +247,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   font-size: 14px !important;
   font-weight: 700;
   line-height: 1.2;
-  color: #fff;
+  color: #fff !important;
 }
 /* OBJECTIVE: the macro footer, clamped to 2 lines so a verbose objective can
  * never blow the card past the 1.5s glance budget (rule 1) - the full text stays
@@ -255,7 +255,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] > span:last-child {
   font-size: 12px !important;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.55) !important;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
