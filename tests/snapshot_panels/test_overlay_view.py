@@ -265,6 +265,53 @@ def test_overlay_widget_field_left_edge_positions(mock_server, pw_browser):
     assert not errors, f"JS errors [field geometry]: {errors[:3]}"
 
 
+def test_overlay_call_objective_line_clamped(mock_server, pw_browser):
+    """Doctrine rule 1 (glance budget): the CALL widget's macro OBJECTIVE value is
+    clamped to 2 lines so a verbose coach objective can never blow the primary
+    card open - the overflow drops on the HUD (the full text stays on the
+    dashboard surface)."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        sel = "#am-call-body > div:nth-child(3) > span:last-child"
+        clamp = _css(page, sel, "-webkit-line-clamp")
+        assert clamp == "2", f"OBJECTIVE value not clamped to 2 lines (got {clamp!r})"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [objective clamp]: {errors[:3]}"
+
+
+def test_overlay_combat_mode_declutter(mock_server, pw_browser):
+    """Doctrine section 6: body[data-fight="1"] (combat_mode flags a high-stakes
+    moment) sheds load - the ambient lead pill hides and the CALL drops its macro
+    OBJECTIVE footer, but the RIGHT NOW cue + the ACTION verb + the primary widget
+    persist (text -> preattentive). The lead-pill hide is the #rn-lead id-mount, so
+    it must out-rank the section-4a flex rule (the same specificity lesson as the
+    panel-set choices hide)."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.evaluate(
+            "() => {"
+            "  const ld = document.getElementById('rn-lead');"
+            "  ld.hidden = false; ld.innerHTML = '<span>+1.2k gold</span>';"
+            "  document.body.dataset.fight = '1';"
+            "}"
+        )
+        assert _display(page, "#rn-lead") == "none", "the lead pill must shed in combat"
+        assert _display(page, "#view-active-match .am-pane-call") != "none", (
+            "the primary call must persist in combat"
+        )
+        assert _display(page, "#am-call-body > div:nth-child(1)") != "none", "RIGHT NOW must stay"
+        assert _display(page, "#am-call-body > div:nth-child(2)") != "none", "ACTION must stay"
+        assert _display(page, "#am-call-body > div:nth-child(3)") == "none", (
+            "the macro OBJECTIVE footer must shed in combat"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [combat declutter]: {errors[:3]}"
+
+
 def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
     """Inside #right-now only the lead/callouts/choices mounts may show:
     when a callout lands (un-hidden + populated) it displays, while the
