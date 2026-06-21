@@ -125,3 +125,7 @@ Root cause verified from `bridge_watcher_2026-06-20.log`:
 Recommendation: `Start-ScheduledTask -TaskName RC-BridgeDaemon; Start-ScheduledTask -TaskName RC-BridgeWatcher`
 
 Also worth: investigate why the watcher silently exits code 1 after a successful first poll at restart. The 16:30 RC restart (9s before watcher start) may have left a stale lock or triggered a fast watchdog re-fire. The code-1 path that bypasses logging is a gap to fix.
+
+## Second pass (RC-WeeklyHygiene scheduled, ~05:00 CDT)
+
+Bridge daemons recovered automatically on RC reboot at 04:58 CDT - both Running, queue=0. Memory RETIRED annotations from first pass verified applied. No new relocation, no new flags. data/spell_prefs.json has an unstaged modification not authored by hygiene pass - left unstaged per scope rules.
