@@ -442,6 +442,18 @@ def build_state() -> dict:
             minimap_rect = None
     _mark("minimap_rect")
 
+    # ZOI item 567 slice 2: per-team colored blob centroids on the live minimap
+    # (pure-numpy, LOCAL, no API). Only when in-game (lc) and we have a rect to
+    # crop by. TTL-cached + fail-soft -> [] so a vision hiccup never stalls state.
+    minimap_dots: list = []
+    if minimap_rect and lc:
+        try:
+            from core.minimap_blob_detect import current_minimap_dots
+            minimap_dots = current_minimap_dots(minimap_rect)
+        except Exception:  # noqa: BLE001
+            minimap_dots = []
+    _mark("minimap_dots")
+
     # Haiku-elimination wave 3 (item 265 W3A): deterministic-FIRST coaching.
     # The DS matchup engine (laning A/B) + the pure callout/lead generators
     # produce the A/B choices, the objective/spike callouts, and the macro
@@ -516,6 +528,7 @@ def build_state() -> dict:
         "callouts": det.get("callouts") or [],
         "lead_projection": det.get("lead_projection") or {},
         "minimap_rect": minimap_rect,
+        "minimap_dots": minimap_dots,
     }
 
 
