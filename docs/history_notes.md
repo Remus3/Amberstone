@@ -42,6 +42,35 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-21 (interactive) - overlay doctrine: fullscreen movable Hextech widget field + coach JSON-fence fix
+
+Operator: the in-game overlay was "utterly not it" / "so intrusive". Built a NEW
+overlay doctrine (`docs/OVERLAY_DOCTRINE.md`): the Electron overlay is the ONE user
+surface (Chrome dashboard retired); a FULLSCREEN transparent click-through window
+with independently MOVABLE, position-PERSISTENT Hextech widgets (drag the gold-dot
+handle -> saves to localStorage). Verified LIVE over a real SR game via Windows-MCP.
+
+Commits (all pushed, CI green): `b83006c3` doctrine + `web/js/lib/overlay_layout.js`
+field manager + `overlay.css` rewrite; `df4c8d38` coach `_parse_response` JSON-fence
+fallback (live coach went BLANK on a ```json-fenced Haiku reply -> stuck on the
+"will render mid-game" scaffold; now reads real calls); `3bd5668f` rc-shell
+fullscreen overlay window (`main.js` bounds = work area) + left-edge widget
+defaults; `b234ce8d`+`7b2224e5` smaller/see-through/recede + killed the companion
+boot-flash (true overlay-only); `aa6f670d` migrated panel snapshot tests off the
+retired 460px dock.
+
+NEXT SESSION (continue headlessly): (1) REWRITE the 10 SKIPPED overlay snapshot
+tests (`tests/snapshot_panels/test_overlay_view.py`, `@_DOCK_RETIRED`) to the
+widget-field model - `.ovx-widget` position:fixed, left-edge defaults, reveal-only
+build/threat, panel-set widget visibility, fullscreen window; do NOT re-assert the
+460px dock. (2) Overlay polish: clamp the long objective line, eyeball
+lead/callouts/choices in the column, the hex-notch + combat-declutter from the
+doctrine, rc-shell DISK mirror of the layout + Alt+Shift+R reset. (3) The spawned
+coach-parser chip (task_ad0539d3) is SUPERSEDED - the fix landed in `df4c8d38`;
+close that session, do not redo.
+
+---
+
 # 2026-06-21 (headless gemini+AHK DIRECTOR REFILL, cycle R12) - DS all-source target-vulnerability mark seam
 
 Item 563 / R12. Engine commit `cad49029` (pushed). DS schema lift: NEW
