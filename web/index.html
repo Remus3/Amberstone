@@ -2055,6 +2055,13 @@
              dashboard so they never take a grid cell there. -->
         <div class="ward-cue" id="am-ward-cue" hidden></div>
         <div class="spike-cue" id="am-spike-cue" hidden></div>
+        <!-- w-mmrect (ZOI foundation): the settings-driven minimap OUTLINE box.
+             Position + size derive from League's game.cfg via
+             /api/state.minimap_rect (panels/minimap_rect.js). Click-through,
+             NO drag handle - it is pinned to the live minimap (settings), not
+             operator-dragged, so a grab zone never eats a minimap move/ping
+             click. A later slice draws the Zone-of-Influence into this box. -->
+        <div class="mm-rect-cue" id="am-mmrect" hidden></div>
         <div class="am-pane am-pane-call">
           <div class="am-pane-head">CALL</div>
           <!-- QA4 (RC2 overlay): objective respawn-timer chips (dragon/baron/

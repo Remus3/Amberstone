@@ -40,6 +40,7 @@ import { renderOverlayDsControls } from './panels/overlay_ds_controls.js';
 // body[data-shell="overlay"]; a cheap no-op on the 1920 dashboard.
 import { renderWardCue } from './panels/ward_cue.js';
 import { renderSpikeCue } from './panels/spike_cue.js';
+import { renderMinimapRect } from './panels/minimap_rect.js';
 // QA4: overlay-only objective respawn-timer chips (dragon/baron/herald).
 import { renderObjectiveChips } from './panels/objective_chips.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
@@ -1385,6 +1386,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
         renderWardCue(_amMockData.liveclient || null);
         renderSpikeCue(_amMockData.liveclient || null);
+        renderMinimapRect(_amMockData.minimap_rect || null);
         renderObjectiveChips(_amMockData.liveclient || null);
       } else {
         _amMockLoad();  // .then re-fires render on landing
@@ -1417,6 +1419,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // the same overlay-gated dispatch off the live level (lc.level). One-shot
       // + transient; null-safe; no-op out of game / off the overlay shell.
       renderSpikeCue((state.latest && state.latest.liveclient) || null);
+      // RC Overlay Doctrine w-mmrect (ZOI foundation): the settings-driven
+      // minimap outline box rides the same overlay-gated dispatch off the
+      // top-level minimap_rect (game.cfg-derived). Null-safe; hides off the
+      // overlay shell / out of a minimap mode.
+      renderMinimapRect((state.latest && state.latest.minimap_rect) || null);
       // QA4: objective respawn chips off the same liveclient block
       // (lc.objective_events + lc.game_time_s). Null-safe; hides when no respawn.
       renderObjectiveChips((state.latest && state.latest.liveclient) || null);
@@ -3635,6 +3642,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             // HZ-D1 Phase 4: keep the overlay DS pane in step with the
             // mock landing re-fire (no-op outside the overlay shell).
             renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
+            // w-mmrect (ZOI foundation): paint the settings-driven minimap
+            // outline as soon as the fixture lands (no-op off the overlay
+            // shell / when minimap_rect is absent).
+            renderMinimapRect(_amMockData.minimap_rect || null);
           } catch (_) {}
         }
         return _amMockData;
