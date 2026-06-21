@@ -92,7 +92,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
   const WS_HOST = location.hostname || "legion-pc.local";
   const WS_PORT = 8891;
-  const WS_URL = `ws://${WS_HOST}:${WS_PORT}/push`;
+  // Use wss:// whenever the dashboard itself is served over HTTPS. A plain ws://
+  // from an HTTPS page is blocked as MIXED CONTENT for any non-localhost host
+  // (browsers exempt localhost/127.0.0.1 only). That block threw a SecurityError
+  // synchronously at boot (new WebSocket) and aborted the rest of init, which is
+  // why the in-game overlay - origin https://legion-rc:8888 - was stuck on its
+  // static pre-game placeholders while a 127.0.0.1 browser worked fine. A wss://
+  // URL constructs without throwing, so boot completes and the HTTP /api/state
+  // poll fallback renders even if :8891 is not yet TLS-terminated.
+  const WS_PROTO = location.protocol === "https:" ? "wss:" : "ws:";
+  const WS_URL = `${WS_PROTO}//${WS_HOST}:${WS_PORT}/push`;
 
   // HTML-escape any untrusted string before interpolating into innerHTML
   // (LCU/match player names, user-typed tags, advisory/coach text). Escapes
@@ -6465,7 +6474,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     sync();
   })();
 
-  connect();
+  try {
+    connect();
+  } catch (e) {
+    // A WebSocket construction failure (e.g. a mixed-content ws:// blocked on a
+    // non-localhost HTTPS origin) must NEVER abort boot - the HTTP /api/state
+    // poll fallback below keeps the overlay + dashboard panels live regardless.
+    console.warn("ws connect failed at boot; using HTTP poll fallback:", e);
+  }
 
   // ── HTTP fallback polling ─────────────────────────────────────────
   // If the WebSocket stays disconnected for more than a few seconds,
