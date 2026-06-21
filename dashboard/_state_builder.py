@@ -233,6 +233,32 @@ def _warn_slow_stages(stages: list[tuple[str, float]]) -> None:
                 " ".join(f"{n}={int(s * 1000)}ms" for n, s in top))
 
 
+# Coaches (Haiku/Sonnet) emit non-ASCII punctuation - em/en dashes, smart
+# quotes, ellipsis - into prose fields (objective, action, next, ...). Those
+# flow untouched to the user-facing HUD + dashboard, violating the repo
+# ASCII-only hard rule. This translation table maps them to ASCII. build_state
+# is the single downstream seam ALL four coaches' output passes through to
+# /api/state, so cleaning here covers every mode in one place.
+_ASCII_PUNCT = {
+    0x2013: "-", 0x2014: "-",     # en dash, em dash -> hyphen
+    0x2018: "'", 0x2019: "'",     # left/right single quote -> apostrophe
+    0x201C: '"', 0x201D: '"',     # left/right double quote -> straight
+    0x2026: "...",                # horizontal ellipsis
+}
+
+
+def _ascii_clean(obj):
+    """Recursively map non-ASCII punctuation in coach text to ASCII (repo rule).
+    Walks the read coaching dict/list; leaves numbers/bools/None untouched."""
+    if isinstance(obj, str):
+        return obj.translate(_ASCII_PUNCT)
+    if isinstance(obj, dict):
+        return {k: _ascii_clean(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_ascii_clean(v) for v in obj]
+    return obj
+
+
 def build_state() -> dict:
     _stages: list[tuple[str, float]] = []
     _t = time.monotonic()
@@ -268,7 +294,7 @@ def build_state() -> dict:
     health = apply_preflip_mirror(health, mode_key, preflip_active)
 
     coach_file = MODE_TO_FILE.get(mode_key, "coaching_data.json")
-    coach = read_json(coach_file)
+    coach = _ascii_clean(read_json(coach_file))
     validate_coaching_payload(coach)
     _mark("coach_file")
 
