@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-06-21 (review tooling) - an external code-intelligence MCP eval (angle a): NO-GO
+
+Tooling eval queued by the ZOI session (item 567). Stood `an external code-intelligence MCP` v0.8.1
+(MIT, 10k-star, prebuilt Windows amd64 binary - no C toolchain on Legion, so the build question is
+moot) up against RC. No RC runtime/code/config change; ran from `C:\rc-eval-cmm` (out of repo) via
+the binary `cli <tool>` mode (no MCP registration, no session restart). LEDGER 568; full doc
+`docs/tooling-eval-doc.md`.
+
+VERDICT: NO-GO for standing adoption. Index is fast/clean/isolated (114732 nodes, 16.1s, no repo
+pollution), but the headline review features fail ON RC specifically: (1) call-graph over-attributes
+unqualified method names - hotspot `coach_trace.append` fan_in 1104 vs 4 real refs (verified
+`core/coach_trace.py:46` + 4 grep hits); (2) orphaned-route detection inert - RC dispatches via
+`GET_ROUTES`/`POST_ROUTES` tables + `_dispatch.dispatch_get` (`dashboard/_handler.py:228`), not
+decorators, so 179/180 Route nodes are unbound (in_degree 0); (3) no turnkey dead-code detector (the
+query language cannot express the anti-join) and the CALLS-subtraction proxy is FP-dominated on the
+known-clean tree - `read_recent` flagged dead but called aliased at `routes_coach.py:58`;
+(4) `trace_path` returned empty in 3 attempts; (5) `FILE_CHANGES_WITH` coupling is dominated by the
+/done docs-sync ritual. Only HTTP_CALLS (JS fetch->endpoint map) works well and is the one capability
+RC lacks - reproducible with a ~30-line RC script, not worth adopting the tool over KARP+ruff+grep.
+
+DON'T re-litigate angle (a): NO-GO is decided. Eval workspace `C:\rc-eval-cmm` (~270MB binary +
+harness + raw outputs) retained out-of-repo for the angle-(b) design/impl review (separate later
+session; the indexed graph is cached); delete with `Remove-Item -Recurse -Force C:\rc-eval-cmm`.
+
+---
+
 # 2026-06-21 (headless continue 3) - ZOI overlay FOUNDATION (settings-driven minimap outline)
 
 Re-opened the L1 minimap/ZOI work item 566 deferred. 1 commit `94b31bad` (pushed, CI green; LEDGER 567).
