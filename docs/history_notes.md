@@ -42,6 +42,30 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-20 (interactive - loop-monitor observability + CC session perf fixes)
+
+Standalone interactive session (NOT /RC2-Continue). Built the loop-monitor the
+operator asked for (watch long Claude runs: where time goes / if stuck). Commits
+`fb558a10` (v1, swept into git by the concurrent RC2 session) + `d2442898`
+(completion) + `73e221a4` (contrast). CI green all 3; 14 tests; ruff clean.
+
+- `/api/loop-monitor` (dashboard/routes_loop_monitor.py) parses the active session
+  transcript JSONL, pairs tool_use<->tool_result -> summary/recent/inflight/stalls.
+  `/loop-monitor` = human-readable auto-refresh page (+ /api/loop-status header).
+  Durations: prefer embedded exec (WebFetch/Glob/subagent); fast-tool + ~600s-quantum
+  shell gaps -> `stalls`, never headline as tool time. Memory reference_loop_monitor.
+- PERF (operator's 2 annoyances, fixed in LOCAL settings, NOT repo): removed the
+  ~/.claude per-edit full-suite pytest hook (silent multi-min stalls); ENABLE_TOOL_SEARCH=1;
+  console-flash-every-5s = hooks ran console python -> python.exe to pythonw.exe (project)
+  + py to pyw (user). Takes effect on NEXT CC restart, NOT /clear. Memory feedback_cc_session_perf.
+- CONCURRENCY: a 2nd CC session on this same worktree auto-committed my in-flight v1.
+  Use per-session worktrees; don't co-run two heavy Opus sessions on the shared limit.
+
+NEXT: restart CC to kill the flashing; /RC2-Continue resumes 8.3+.
+[[project_rc2_build]] [[reference_loop_monitor]] [[feedback_cc_session_perf]]
+
+---
+
 # 2026-06-20 (RC 2.0 /RC2-Continue - Phase 7.5 verify-suite; Phase 7 HYGIENE COMPLETE)
 
 P7.5 "verify dual suite green post-cleanup" DONE. Work `afa07330` + docs flip `a7c59635`.

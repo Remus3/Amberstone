@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-06-20 (interactive/RC2) - E12+E7 swarm + rc-shell standalone-app live fixes
+
+Commits (all CI-green): `48fcee51` E12-L2 RuneWriter lobby-mode memoization + `64591d5f`
+E7a ARAM bench-swap fast re-poll (orchestrated: 7-agent recon swarm -> 2 worktree build
+agents -> cherry-pick merge -> fresh re-verify) + `96178904`/`cdb4af12` docs + `cac1df3a`
+rc-shell overlay surface gate + `81f74d88` rc-shell focus-on-launch. RC2 banner 54->56/62
+~90% (E12 + E7 DONE). RC bounced 17176->1896 (mode=client).
+
+Live firefight (operator ARAM Mayhem Riven): overlay was DOWN (relaunched electron);
+LCUAgent/Hotkey/Relay dead since 01:33 boot + LCUAgent posting stale None after the RC
+bounce (restarted all 4); RC stuck mode=game post-match (bounced -> client). "coaches not
+firing" = NON-ISSUE (backend fired every ~10s; empty immediate/objective is BY DESIGN
+item 189 - choices chips are the surface; the dead overlay shell was the cause). always-
+on-top OFF (state file; verified WS_EX_TOPMOST=False - works, DON'T re-investigate).
+
+NEXT (don't redo E7/E12/always-on-top - shipped+verified):
+- members[] ROOT CAUSE PINPOINTED (don't re-investigate): agent forwards members
+  (lcu.lobby.members=1 live) but it lands at /api/state.lcu.lobby while the UI
+  (_lobbyViewRefresh/_renderTop8) reads TOP-LEVEL /api/state.lobby = ABSENT. Fix = lift
+  lcu.lobby -> top-level state.lobby in dashboard build_state (or repoint the UI). Small.
+- agent restart-resilience (task chip 8277de5d) - systemic root cause of the cascade.
+- RC2 open: E11 Hextech reskin, E10 history rewrite, E2 DS 3-game flip.
+
+---
+
 # 2026-06-20 (interactive) - Game-PC purge COMPLETE + open-items review + flash fix
 
 Commits (all CI-green): `f508046e` loop-status git CREATE_NO_WINDOW (the "terminal
@@ -58,27 +83,3 @@ earlier in-session. Left for operator confirm; the deliverable itself is shipped
 NEXT: operator confirms the 8.3 DONE flip, then /RC2-Continue picks the next
 non-DONE (E-batch E2/E7/E10/E11/E12 - mostly live/release-gated - + Phase 9).
 [[project_rc2_build]]
-
----
-
-# 2026-06-20 (interactive - loop-monitor observability + CC session perf fixes)
-
-Standalone interactive session (NOT /RC2-Continue). Built the loop-monitor the
-operator asked for (watch long Claude runs: where time goes / if stuck). Commits
-`fb558a10` (v1, swept into git by the concurrent RC2 session) + `d2442898`
-(completion) + `73e221a4` (contrast). CI green all 3; 14 tests; ruff clean.
-
-- `/api/loop-monitor` (dashboard/routes_loop_monitor.py) parses the active session
-  transcript JSONL, pairs tool_use<->tool_result -> summary/recent/inflight/stalls.
-  `/loop-monitor` = human-readable auto-refresh page (+ /api/loop-status header).
-  Durations: prefer embedded exec (WebFetch/Glob/subagent); fast-tool + ~600s-quantum
-  shell gaps -> `stalls`, never headline as tool time. Memory reference_loop_monitor.
-- PERF (operator's 2 annoyances, fixed in LOCAL settings, NOT repo): removed the
-  ~/.claude per-edit full-suite pytest hook (silent multi-min stalls); ENABLE_TOOL_SEARCH=1;
-  console-flash-every-5s = hooks ran console python -> python.exe to pythonw.exe (project)
-  + py to pyw (user). Takes effect on NEXT CC restart, NOT /clear. Memory feedback_cc_session_perf.
-- CONCURRENCY: a 2nd CC session on this same worktree auto-committed my in-flight v1.
-  Use per-session worktrees; don't co-run two heavy Opus sessions on the shared limit.
-
-NEXT: restart CC to kill the flashing; /RC2-Continue resumes 8.3+.
-[[project_rc2_build]] [[reference_loop_monitor]] [[feedback_cc_session_perf]]
