@@ -116,10 +116,10 @@ body[data-shell="overlay"] .ovx-widget {
   /* Non-intrusive: a glance accent, not a blocking card. Narrow + see-through so
    * the game reads through it (operator feedback 2026-06-21: "so intrusive").
    * max-width 240 (was 360), backing 0.72 (was 0.88) - the game shows through. */
-  max-width: 240px;
+  max-width: 210px;
   margin: 0 !important;
-  padding: 7px 10px;
-  background: rgba(var(--ovx-bg), 0.72);
+  padding: 6px 8px;
+  background: rgba(var(--ovx-bg), 0.58);
   /* Premium Hextech frame: a gold hairline at 0.70 alpha (legible over snow /
    * sand, not the near-invisible 0.30), an inset gold top-bevel for the etched-
    * metal read, and a 1px #0A0E14 dark stroke wrapping the gold so it holds
@@ -236,7 +236,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   letter-spacing: 0.03em;
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(2) > span:last-child {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
   color: #fff;
