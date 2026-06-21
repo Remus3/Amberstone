@@ -113,6 +113,7 @@ from .effects import ITEM_EFFECTS
 from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
 from ._passive_mitigation_overrides import mitigation_multipliers
+from ._passive_flat_mitigation_overrides import flat_mitigation_hp
 from ._passive_resist_overrides import resist_grants
 from ._passive_revive_overrides import revive_multiplier, revive_egg_resist
 from ._champion_cc_mitigation_overrides import champion_cc_tenacity_fraction
@@ -742,6 +743,17 @@ class EhpResult:
     sustain_ehp_delta: float = 0.0
     heal_spellvamp: float = 0.0
     heal_omnivamp: float = 0.0
+    # ENGINE 1.148.0 (R9, 2026-06-21): per-instance FLAT-AMOUNT damage reduction
+    # the percent mitigation registry EXCLUDED (Fizz P, Amumu E, Leona W) - the
+    # prevented-damage HP (bonus-max-HP equivalent) folded into the EHP NUMERATOR
+    # per damage type when ``assume_passive_flat_mitigation=True``. Default 0.0
+    # leaves every EHP field above byte-identical; positive values surface the
+    # prevented HP. Sourced from ``_passive_flat_mitigation_overrides``; distinct
+    # from the passive_mitigation_* PERCENT multipliers (a denominator divide) and
+    # ext_flat_hp (an ally grant). Same sibling convention as ally_grant_flat_hp.
+    passive_flat_mit_phys: float = 0.0
+    passive_flat_mit_mag: float = 0.0
+    passive_flat_mit_true: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -785,6 +797,9 @@ class EhpResult:
             "passive_mitigation_phys": self.passive_mitigation_phys,
             "passive_mitigation_mag": self.passive_mitigation_mag,
             "passive_mitigation_true": self.passive_mitigation_true,
+            "passive_flat_mit_phys": self.passive_flat_mit_phys,
+            "passive_flat_mit_mag": self.passive_flat_mit_mag,
+            "passive_flat_mit_true": self.passive_flat_mit_true,
             "passive_resist_armor": self.passive_resist_armor,
             "passive_resist_mr": self.passive_resist_mr,
             "passive_revive_mult": self.passive_revive_mult,
@@ -899,6 +914,7 @@ def compute_ehp(
     apply_mode_modifiers: bool = False,
     apply_build_tenacity: bool = False,
     apply_passive_mitigation: bool = False,
+    assume_passive_flat_mitigation: bool = False,
     apply_passive_resist: bool = False,
     apply_passive_revive: bool = False,
     apply_champion_tenacity: bool = False,
@@ -1097,6 +1113,21 @@ def compute_ehp(
         resolved.champion_id, level, apply_passive_mitigation
     )
 
+    # ENGINE 1.148.0 (R9, 2026-06-21): GAP - per-instance FLAT-AMOUNT damage
+    # reduction, the sibling the percent mitigation registry deliberately
+    # EXCLUDED (Fizz P, Amumu E, Leona W). A flat reduction per damage instance
+    # prevents ``instances * flat * prob`` of damage over a fight, behaving like
+    # bonus effective-HP, so it folds into the EHP NUMERATOR exactly like
+    # ``ext_flat_hp`` (the enchanter ally flat-HP grant) below - NOT the
+    # denominator (unlike the percent registry). ``assume_passive_flat_mitigation``
+    # defaults False -> (0.0, 0.0, 0.0) -> BYTE-IDENTICAL to 1.147.0. The
+    # per-instance count is an operator-tunable conservative midpoint inside
+    # ``flat_mitigation_hp`` (the live per-instance feed we lack); a cooldown-gated
+    # active (Leona W) is amortized there by its conditional_probability.
+    flat_mit_phys, flat_mit_mag, flat_mit_true = flat_mitigation_hp(
+        resolved.champion_id, level, assume_passive_flat_mitigation
+    )
+
     # ENGINE 1.93.0 (2026-06-02): GAP-2 effects-text passive RESIST-STAT grants.
     # The FOURTH survivability axis - champion-passive bonus armor / MR (Garen W
     # Courage, Wukong P, Shyvana P, Sejuani P, Gwen W, Pantheon E) that is NOT in
@@ -1178,9 +1209,14 @@ def compute_ehp(
     # share the same factor as HP. The mit_* DR multiplier divides the
     # whole denominator (it composes multiplicatively with armor/MR, the way
     # League stacks a flat-% reduction on top of the resistance curve).
-    physical_ehp = (hp + ext_flat_hp + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
-    magical_ehp = (hp + ext_flat_hp + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
-    true_ehp = (hp + ext_flat_hp + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
+    # ``flat_mit_<type>`` is prevented post-mitigation damage (per-instance flat
+    # DR), a bonus-max-HP equivalent that sits at the TOP of the damage stack
+    # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
+    # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
+    # byte-identical.
+    physical_ehp = (hp + ext_flat_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
+    magical_ehp = (hp + ext_flat_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
+    true_ehp = (hp + ext_flat_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
@@ -1268,13 +1304,16 @@ def compute_ehp(
     # so effective_ehp_with_sustain == blended_ehp today and diverges only when
     # such an item lands.
     def _blend_with_heal(heal_scalar: float) -> float:
-        p = (hp + ext_flat_hp + shield_any_amped + shield_phys_amped + heal_scalar) / (
+        # Mirror the main numerators (incl flat_mit_<type>) so
+        # _blend_with_heal(heal_total) stays exactly blended_ehp (guard-tested);
+        # flat_mit_* is 0.0 when the flag is off -> byte-identical.
+        p = (hp + ext_flat_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
             _armor_factor(eff_armor) * safe_mult * mit_phys
         )
-        m = (hp + ext_flat_hp + shield_any_amped + shield_mag_amped + heal_scalar) / (
+        m = (hp + ext_flat_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
             _armor_factor(eff_mr) * safe_mult * mit_mag
         )
-        t = (hp + ext_flat_hp + shield_any_amped + shield_true_amped + heal_scalar) / (
+        t = (hp + ext_flat_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
             safe_mult * mit_true
         )
         p *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
@@ -1440,6 +1479,16 @@ def compute_ehp(
             f"mit_true=x{mit_true:.3f}; active DRs amortized at their "
             f"conditional_probability midpoint)"
         )
+    if assume_passive_flat_mitigation and (
+        flat_mit_phys != 0.0 or flat_mit_mag != 0.0 or flat_mit_true != 0.0
+    ):
+        notes.append(
+            f"passive_flat_mitigation: per-instance flat damage reduction folded "
+            f"into the EHP numerator as prevented HP (phys=+{flat_mit_phys:.0f} "
+            f"mag=+{flat_mit_mag:.0f} true=+{flat_mit_true:.0f}; "
+            f"instances * flat * prob over the fight window; the percent-DR "
+            f"registry's excluded flat-amount sibling - Fizz P / Amumu E / Leona W)"
+        )
     if apply_passive_resist and (bonus_armor != 0.0 or bonus_mr != 0.0):
         notes.append(
             f"passive_resist: effects-text bonus resists added to the armor/MR "
@@ -1534,6 +1583,9 @@ def compute_ehp(
         sustain_ehp_delta=sustain_ehp_delta,
         heal_spellvamp=heal_spellvamp,
         heal_omnivamp=heal_omnivamp,
+        passive_flat_mit_phys=flat_mit_phys,
+        passive_flat_mit_mag=flat_mit_mag,
+        passive_flat_mit_true=flat_mit_true,
         stats=dict(stats),
         notes=tuple(notes),
     )
@@ -1863,6 +1915,7 @@ def rank_items_by_ehp(
     score_by: str = "blended",
     apply_build_tenacity: Optional[bool] = None,
     apply_passive_mitigation: bool = False,
+    assume_passive_flat_mitigation: bool = False,
     apply_passive_resist: bool = False,
     apply_passive_revive: bool = False,
     apply_champion_tenacity: bool = False,
@@ -1990,6 +2043,7 @@ def rank_items_by_ehp(
         include_conditional=include_conditional,
         apply_build_tenacity=apply_tenacity,
         apply_passive_mitigation=apply_passive_mitigation,
+        assume_passive_flat_mitigation=assume_passive_flat_mitigation,
         apply_passive_resist=apply_passive_resist,
         apply_passive_revive=apply_passive_revive,
         apply_champion_tenacity=apply_champion_tenacity,
@@ -2038,6 +2092,7 @@ def rank_items_by_ehp(
                 include_conditional=include_conditional,
                 apply_build_tenacity=apply_tenacity,
                 apply_passive_mitigation=apply_passive_mitigation,
+                assume_passive_flat_mitigation=assume_passive_flat_mitigation,
                 apply_passive_resist=apply_passive_resist,
                 apply_passive_revive=apply_passive_revive,
                 apply_champion_tenacity=apply_champion_tenacity,
