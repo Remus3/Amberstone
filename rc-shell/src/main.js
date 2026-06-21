@@ -707,6 +707,24 @@ function setOverlayActive() {
   scheduleActiveRevert();
 }
 
+// --- RC Overlay Doctrine section 3: reset the movable widget field ------------
+// Alt+Shift+R restores every widget to its section-4 default (x,y)+shown state.
+// Clears the durable disk mirror immediately (so a close before the renderer's
+// debounced re-persist still lands empty) AND tells the overlay page to drop its
+// localStorage + re-place at defaults. The renderer exposes window.__rcOverlayReset
+// (web/js/lib/overlay_layout.js). No-op-safe if the overlay window is not up.
+function resetOverlayLayout() {
+  store.save(
+    statePath(),
+    ov.mergeWidgetLayoutPatch(store.load(statePath(), {}), {})
+  );
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.webContents
+      .executeJavaScript("window.__rcOverlayReset && window.__rcOverlayReset()", true)
+      .catch(() => {});
+  }
+}
+
 // --- RC2 E1: companion pin (always-on-top) -----------------------------------
 // Apply the persisted companionAlwaysOnTop setting to the companion/dashboard
 // window. This is the on-screen pin toggle (no hotkey): the ?overlay=1 renderer
@@ -751,6 +769,18 @@ function registerIpc() {
   ipcMain.handle("rc-shell:overlay-settings:get", () => {
     overlaySettings = ov.overlaySettingsFrom(store.load(statePath(), {}));
     return overlaySettings;
+  });
+  // RC Overlay Doctrine section 3: the durable widget-field layout mirror. get
+  // seeds the field when localStorage is empty (across a wipe / fresh profile);
+  // set persists a drag / scale / reset through the pure merger so the sibling
+  // overlay keys (position / panelSet / settings) + the companion keys survive.
+  ipcMain.handle("rc-shell:overlay-layout:get", () => {
+    return ov.widgetLayoutFrom(store.load(statePath(), {}));
+  });
+  ipcMain.handle("rc-shell:overlay-layout:set", (_event, layout) => {
+    const merged = ov.mergeWidgetLayoutPatch(store.load(statePath(), {}), layout);
+    store.save(statePath(), merged);
+    return ov.widgetLayoutFrom(merged);
   });
   ipcMain.handle("rc-shell:overlay-settings:set", (_event, patch) => {
     const merged = ov.mergeOverlaySettingsPatch(store.load(statePath(), {}), patch);
@@ -1012,6 +1042,10 @@ function registerHotkeys() {
     });
     globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyCycle, () => {
       applyPanelSet(ov.cyclePanelSet(panelSet));
+      scheduleActiveRevert();
+    });
+    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyReset, () => {
+      resetOverlayLayout();
       scheduleActiveRevert();
     });
   } catch (_e) {
