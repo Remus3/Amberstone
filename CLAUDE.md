@@ -209,7 +209,7 @@ When continuing Daemon Slayer work: pick the next batch from ROADMAP, implement 
 
 ## Session Wrap-up
 
-When invoked with `/done` or asked to wrap a session: (1) audit pending changes, (2) commit and push, (3) update ROADMAP/README + append the per-item completion entry to `docs/LEDGER.md` (NEVER to CLAUDE.md; it is CI size-budgeted < 60KB - touch CLAUDE.md only for rule/frozen-list/Settled changes), (4) process lessons/WAKEUP_NOTES, (5) run bridge probe, (6) print final banner. Run independent steps in parallel.
+When invoked with `/done` or asked to wrap a session: (1) audit pending changes, (2) commit and push, (3) update ROADMAP/README + append the per-item completion entry to `docs/LEDGER.md` (NEVER to CLAUDE.md; it is CI size-budgeted < 60KB - touch CLAUDE.md only for rule/frozen-list/Settled changes), (4) process lessons/WAKEUP_NOTES, (5) print final banner. Run independent steps in parallel. (Deprecated 2026-06-21 per operator: the Peer cross-Claude bridge probe / `/loop /process-bridge-tasks` re-run is NO LONGER part of the /done ritual - do not probe the bridge or flag a dead Peer loop at wrap.)
 
 ## Active priorities
 
