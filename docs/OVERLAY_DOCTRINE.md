@@ -124,12 +124,13 @@ by the same work-area scale rc-shell sizes the window by (RC2 4.1 ovscale).
 | `w-lead`         | macro lead ahead/behind     | Ambient               | 786, 44       | top-center, under the score bar          | yes           |
 | `w-threat`       | enemy threat / CD ledger    | Urgent                | 1604, 560     | directly above the minimap               | no (reveal)   |
 | `w-build`        | next-item rerank            | Ambient               | 70, 470       | left edge, out of the play space         | no (reveal)   |
+| `w-ovds`         | DS fight-model / rel-score  | Ambient               | 20, 780       | left-edge column, out of the play space  | no (reveal: build) |
 | `w-spike`        | spike-crossed cue           | Urgent (one-shot)     | 360, 840      | bottom-left, near champion stats         | yes (transient)|
 | `w-trinket`      | trinket / control-ward ready| Urgent make-aware     | 920, 540      | small glyph, offset from the avatar      | yes (glyph)   |
 
 Visibility presets (replaces the panel-set cycle, Alt+Shift+C):
 - `coach` (default): w-call, w-choices, w-callouts, w-lead, w-spike, w-trinket.
-- `build`: + w-build, - w-threat.
+- `build`: + w-build, + w-ovds, - w-threat.
 - `threat`: + w-threat, - w-build, - w-choices.
 The operator's per-widget hidden flags layer ON TOP of the active preset.
 
@@ -149,6 +150,7 @@ The palette is law. No color literal outside this table reaches a widget.
 | good / ahead        | #37D08A  | lead-ahead bar, `good` band glyph                          |
 | caution / urgent    | #C8AA6E  | the single Urgent caution hue (reuse gold)                 |
 | lethal / emergency  | #E84057  | the ONE pop-out: Emergency glow + `urgent` band; max once  |
+| neutral text        | #FFFFFF  | widget body ink (`--ovx-text`): ACTION verb full, OBJECTIVE footer @0.55 |
 
 PREMIUM CUES (the difference between "dev tool" and "Hextech HUD"):
 - Border: 1px gold hairline at 0.30 alpha idle; lifts to 1.0 on the active/dragged
