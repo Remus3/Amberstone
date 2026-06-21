@@ -177,11 +177,14 @@ def test_active_match_grid_hides_cd_rail_visual_only():
     assert re.search(
         r"#view-active-match \.am-grid \.am-pane-cd\s*\{[^}]*display:\s*none",
         css)
-    # Overlay threat panelset keeps its CDS surface.
+    # Overlay threat panelset keeps its CDS surface. The widget-field doctrine
+    # (2026-06-21) made the cd pane a w-threat .ovx-widget, so the selector
+    # carries a `.ovx-widget:not(.ovx-hidden)` suffix before the brace - allow
+    # any selector continuation between .am-pane-cd and the rule body.
     overlay = _read(ROOT / "web" / "css" / "overlay.css")
     assert re.search(
         r'\[data-panelset="threat"\] #view-active-match \.am-pane-cd'
-        r"\s*\{[^}]*display:\s*block\s*!important", overlay)
+        r"[^{]*\{[^}]*display:\s*block\s*!important", overlay)
 
 
 def test_active_match_js_dispatches_to_cd_ledger():
