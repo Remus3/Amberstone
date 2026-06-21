@@ -31,6 +31,7 @@
  */
 import { ITEMS, CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 import { renderDurationWinrate } from './duration_winrate.js';
+import { renderChampBenchmarks } from './champ_benchmarks.js';
 import { renderPerfCurve } from './perf_curve.js';
 import { renderOpScore } from './op_score.js';
 
@@ -410,6 +411,7 @@ function _ensureFetched(tab) {
 // flows through the shared table engine.
 function _renderActive() {
   if (_ST.active === 'duration') { renderDurationWinrate(); return; }
+  if (_ST.active === 'bench') { renderChampBenchmarks(); return; }
   if (_ST.active === 'flow') { renderPerfCurve(); return; }
   if (_ST.active === 'opscore') { renderOpScore(); return; }
   _ensureFetched(_tabByKey(_ST.active));
