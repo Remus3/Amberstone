@@ -375,7 +375,11 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-spike"]::before {
  * no text, so it is exempt from the combat-mode text shed (section 6). */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-mmrect"] {
   background: transparent;
-  border: 1px solid rgba(var(--ovx-gold), 0.55);
+  /* A perceptible gold hairline: at 1px/0.55 the outline was effectively
+   * invisible over the busy minimap (item 567 live-verify). 2px/0.85 reads as a
+   * quiet gold frame without backing/shadow - still the quietest ambient element
+   * (doctrine rule 8), just actually visible. */
+  border: 2px solid rgba(var(--ovx-gold), 0.85);
   box-shadow: none;
   padding: 0;
   max-width: none;
