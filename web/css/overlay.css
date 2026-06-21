@@ -38,6 +38,20 @@ body[data-shell="overlay"] {
   zoom: var(--rc-overlay-scale, 1);
 }
 
+/* 1b. Overlay sub-floor type tokens (R8 - the R6 residual). The threat
+ * ledger + chip-source readouts below are read at GAME DISTANCE on the
+ * ~460px right-dock, so they sit one tier under the global --fs-xs 16px
+ * floor: a documented item-184 operator-exception, already lifted up from
+ * the 9-11px dashboard cd_ledger densities (16px overflows the dense
+ * threat ledger). Naming them here keeps the magic numbers out of the rule
+ * bodies + the exception self-documenting at the declaration site, while
+ * the GLOBAL tokens.css scale keeps its >=16px floor - these are
+ * overlay-scoped and never added to :root. */
+body[data-shell="overlay"] {
+  --fs-ov-chip: 13px;   /* chips / countdowns / row initials / source pill */
+  --fs-ov-sigil: 12px;  /* threat cd-chip sigil glyph (smallest exception) */
+}
+
 /* 2. Chrome + every non-subset surface off. */
 body[data-shell="overlay"] header,
 body[data-shell="overlay"] footer,
@@ -215,10 +229,10 @@ body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-ahead:not([
 body[data-shell="overlay"] #right-now .panel-body > #rn-lead.rc-lead-behind:not([hidden]) {
   border-left: 4px solid var(--signal-bad);
 }
-/* Chip source pill: 10px base is sub-floor at game distance
- * (audit MUST-FIX 4). */
+/* Chip source pill: sub-floor at game distance, via --fs-ov-chip (sec 1b;
+ * audit MUST-FIX 4, lifted from the 10px base). */
 body[data-shell="overlay"] .rc-src {
-  font-size: 13px;
+  font-size: var(--fs-ov-chip);
 }
 /* 4c. Per-element glance-test acceptance floors (RC2 P3.3,
  * RC2_OVERLAY_CONDENSATION_SPEC section 7). The HUD is read at game
@@ -276,9 +290,10 @@ body[data-shell="overlay"][data-panelset="threat"] #right-now .panel-body > #rn-
  * item-184 operator-exception 9-11px densities sized for the 280px
  * dashboard rail; the overlay rail is 460px and read at game distance,
  * so the floors bind here: chips/countdowns/initials up to 13px, icon +
- * sigil boxes 14 -> 18px (sigil glyph 12px). Dashboard values untouched. */
+ * sigil boxes 14 -> 18px (sigil glyph 12px). Font-sizes via the sec-1b
+ * --fs-ov-* tokens; dashboard values untouched. */
 body[data-shell="overlay"][data-panelset="threat"] .cd-chip {
-  font-size: 13px;
+  font-size: var(--fs-ov-chip);
   min-width: 48px;
 }
 body[data-shell="overlay"][data-panelset="threat"] .cd-chip-icon,
@@ -287,10 +302,10 @@ body[data-shell="overlay"][data-panelset="threat"] .cd-chip-sigil {
   height: 18px;
 }
 body[data-shell="overlay"][data-panelset="threat"] .cd-chip-sigil {
-  font-size: 12px;
+  font-size: var(--fs-ov-sigil);
 }
 body[data-shell="overlay"][data-panelset="threat"] .cd-row-initial {
-  font-size: 13px;
+  font-size: var(--fs-ov-chip);
 }
 /* The cd head collapse toggle persists via localStorage across the
  * Alt+Shift+C panel-set reloads - one stray ACTIVE-mode click would
