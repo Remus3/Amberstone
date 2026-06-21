@@ -152,3 +152,61 @@ test("main.js raiseCompanion brings the companion forward without resizing it", 
   assert.ok(m, "raiseCompanion is defined");
   assert.ok(/moveTop\(/.test(m[0]), "raiseCompanion calls moveTop");
 });
+
+// --- RC Overlay Doctrine section 3: widget-field layout mirror + reset --------
+
+const LGET = "rc-shell:overlay-layout:get";
+const LSET = "rc-shell:overlay-layout:set";
+const overlayLayoutJs = fs.readFileSync(
+  path.join(__dirname, "..", "..", "web", "js", "lib", "overlay_layout.js"),
+  "utf8"
+);
+
+test("preload exposes the widget-layout get/set bridge methods", () => {
+  assert.ok(preload.includes("getWidgetLayout"), "getWidgetLayout method");
+  assert.ok(preload.includes("setWidgetLayout"), "setWidgetLayout method");
+  assert.ok(preload.includes(LGET), "layout get channel name");
+  assert.ok(preload.includes(LSET), "layout set channel name");
+});
+
+test("main.js registers both widget-layout IPC channels", () => {
+  assert.ok(
+    mainjs.includes(`ipcMain.handle("${LGET}"`) || mainjs.includes(`ipcMain.handle('${LGET}'`),
+    "handles the layout get channel"
+  );
+  assert.ok(
+    mainjs.includes(`ipcMain.handle("${LSET}"`) || mainjs.includes(`ipcMain.handle('${LSET}'`),
+    "handles the layout set channel"
+  );
+});
+
+test("main.js persists the layout via the pure merger + reads via the pure reader", () => {
+  assert.ok(mainjs.includes("mergeWidgetLayoutPatch"), "uses the pure layout merger");
+  assert.ok(mainjs.includes("widgetLayoutFrom"), "uses the pure layout reader");
+});
+
+test("main.js registers the Alt+Shift+R field-reset hotkey", () => {
+  assert.ok(mainjs.includes("hotkeyReset"), "registers OVERLAY_DEFAULTS.hotkeyReset");
+  assert.ok(mainjs.includes("resetOverlayLayout"), "uses the resetOverlayLayout primitive");
+});
+
+test("main.js reset clears the disk mirror AND signals the overlay renderer", () => {
+  const m = mainjs.match(/function resetOverlayLayout[\s\S]*?\n}/);
+  assert.ok(m, "resetOverlayLayout is defined");
+  assert.ok(m[0].includes("store.save"), "clears the disk mirror via store.save");
+  assert.ok(
+    /mergeWidgetLayoutPatch\([\s\S]*,\s*\{\}\s*\)/.test(m[0]),
+    "clears the mirror to {}"
+  );
+  assert.ok(/__rcOverlayReset/.test(m[0]), "tells the renderer to reset");
+});
+
+test("overlay_layout.js exposes window.__rcOverlayReset for the hotkey", () => {
+  assert.ok(
+    /window\.__rcOverlayReset\s*=\s*resetOverlayLayout/.test(overlayLayoutJs),
+    "the field manager exposes __rcOverlayReset"
+  );
+  // and it still mirrors to the shell over the bridge methods preload exposes.
+  assert.ok(overlayLayoutJs.includes("setWidgetLayout"), "renderer calls setWidgetLayout");
+  assert.ok(overlayLayoutJs.includes("getWidgetLayout"), "renderer calls getWidgetLayout");
+});
