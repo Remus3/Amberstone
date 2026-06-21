@@ -26,6 +26,7 @@ body[data-shell="overlay"] {
   --ovx-cyan: 10, 200, 185;      /* #0AC8B9 info / objective / PRIMARY glow */
   --ovx-good: 55, 208, 138;      /* #37D08A lead-ahead / good band */
   --ovx-red: 232, 64, 87;        /* #E84057 the ONE emergency pop-out */
+  --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.55) - palette section 5 */
   /* sub-floor type read at game distance on the dock (item-184 exception): the
    * global tokens.css >=16px floor is overlay-relaxed here, never on :root. */
   --fs-ov-chip: 13px;
@@ -247,7 +248,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   font-size: 14px !important;
   font-weight: 700;
   line-height: 1.2;
-  color: #fff !important;
+  color: rgb(var(--ovx-text)) !important;
 }
 /* OBJECTIVE: the macro footer, clamped to 2 lines so a verbose objective can
  * never blow the card past the 1.5s glance budget (rule 1) - the full text stays
@@ -255,7 +256,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] > span:last-child {
   font-size: 12px !important;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.55) !important;
+  color: rgba(var(--ovx-text), 0.55) !important;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
