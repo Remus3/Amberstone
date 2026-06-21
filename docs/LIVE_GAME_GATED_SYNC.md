@@ -281,6 +281,18 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-20 RC2 rc-shell standalone-app live session (code fixes shipped `cac1df3a` + `81f74d88`;
+  runtime recovery). LIVE-VERIFY OWED (needs a live ARAM/any lobby): `lcu.lobby.members[]` must render
+  in the rc-shell PRE-GAME LOBBY panel (YOUR MAINS / PARTY / MY TOP-8). The agent DOES forward members[]
+  (`tools/lcu_agent.py:706-717`) but the operator saw empty members during a live lobby; could NOT
+  reproduce after they left it (LCU phase=None). Next lobby: confirm the panels populate; if empty,
+  capture the agent's live `/lol-lobby/v2/lobby` read + `_slim_lobby_member` output to find why members
+  drop (suspect event-mode 2400 member shape OR the post-RC-restart stale-agent window). ALSO eyeball
+  the overlay surface gate (`cac1df3a`): companion dashboard shows in the lobby/champ-select and flips to
+  the lean HUD only once `liveclient` populates (a real game starts). Separately tracked (NOT live-gated,
+  headless next session): agent restart-resilience - RC-LCUAgent/Hotkey/Relay must survive boot + auto-
+  resync after an RC restart (the systemic root cause of the whole session's cascade). NOT a DS seam.
+
 - 2026-06-20 RC2 E-batch E12-L2 + E7a (RC-side, NOT DS seams; shipped code-safe, no flip flag).
   E7a (`64591d5f`) tightens the RC-LCUAgent bench-swap queue-drain (fast 0.1s re-poll on a
   latency-sensitive cmd vs the 0.5s idle wait). LIVE EYEBALL OWED: in a real ARAM champ-select,
