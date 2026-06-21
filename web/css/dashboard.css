@@ -29,6 +29,7 @@
 @import './panels/home.css';
 @import './panels/primitives.css';
 @import './panels/active_match.css';
+@import './panels/ward_cue.css';
 @import './panels/cd_ledger.css';
 @import './panels/spike_curve.css';
 @import './panels/ward_heat.css';
