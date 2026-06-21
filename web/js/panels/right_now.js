@@ -2,11 +2,17 @@
 import { el, safe, fmtList, classifyAction, isArenaPayload, logLine, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { selectPrimary, shouldPulse, signalFromState } from '../lib/overlay_priority.js';
+import { isFightCue, makeCombatLatch } from '../lib/combat_mode.js';
 import { condenseKvRows } from '../lib/condense.js';
 
 // RC2 P3.3 SHADOW: the previous S0 cue across renders, for shouldPulse's
 // cross-detection. Module scope so it survives between renderRightNow calls.
 let _s0PrevCue = "none";
+
+// QA9: combat-mode declutter latch. Module scope so the hysteresis hold
+// survives between renders (the overlay sheds non-urgent panes while a fight
+// holds; overlay.css gates the shed on body[data-shell="overlay"][data-fight]).
+const _combatLatch = makeCombatLatch({});
 
 const RN = {
   root: el("right-now"),
@@ -492,6 +498,18 @@ function renderRightNow(p) {
       RN.root.dataset.s0Cue = _sel.cue;
       RN.root.dataset.s0Tier = _sel.tier;
       RN.root.dataset.s0Pulse = _shadowPulse ? "1" : "0";
+    }
+    // QA9: stamp the combat-mode flag off the SAME S0 arbitration (so the
+    // declutter and the pop-out can never disagree about "is this a fight"),
+    // through the hysteresis latch so a brief mid-fight headline change does
+    // not strobe the panes. Body-level + inert on the dashboard (overlay.css
+    // gates the actual shed on body[data-shell="overlay"][data-fight="1"]).
+    if (document.body) {
+      if (_combatLatch.update(isFightCue(_sel))) {
+        document.body.dataset.fight = "1";
+      } else {
+        delete document.body.dataset.fight;
+      }
     }
     _s0PrevCue = _sel.cue;
   } catch (_e) { /* shadow only - never disturb the live render */ }
