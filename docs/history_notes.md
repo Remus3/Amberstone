@@ -42,6 +42,33 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-21 (headless continue) - overlay doctrine to "pristine": tests + polish + new cues
+
+Continued the overlay doctrine headlessly. 6 commits (pushed, CI green; LEDGER 565):
+`cfdc9f22` rewrote the 10 `@_DOCK_RETIRED` snapshot tests to the widget-field model +
+aligned overlay.css panel-set presets to the doctrine DELTA model (coach core
+persists; build=+w-build+w-ovds-w-threat, threat=+w-threat-w-build-w-choices) + fixed
+the `#rn-choices` id-mount specificity leak; also fixed 4 sibling DOM tests red since
+slice-1 (b83006c3). `97d781ec` CSS polish (OBJECTIVE 2-line clamp, hex-notch corner
+brackets, combat declutter). `72509d5c` rc-shell DURABLE widget-layout mirror
+(rc-shell-state.json `overlay.widgetLayout`) + Alt+Shift+R reset (+13 node tests).
+`ada17002` NEW cues w-spike (spike_cue.js, ult-level 6/11/16 cross from
+liveclient.level) + w-trinket (ward_cue as a movable widget); both moved to am-grid
+(transform-trap: a fixed child of a transformed .ovx-widget pane is clipped).
+`fc438c24`+`dd9aae68` CALL tiering by data-call-line not nth-child (rows are
+CONDITIONAL - the live OBJECTIVE was the 2nd child) + !important over _line() inline
+styles -> labels drop, cyan/white/faint tiers + the clamp all hold live.
+
+Live-verified over a real SR game via Windows-MCP across 3 rc-shell relaunches: CALL
+clamped + label-free + tiered, WARD UP + ULT cues render as left-edge glyphs.
+
+NEXT (this lane): ROADMAP queue #3 L1 minimap-anchored objective timers; the rc-shell
+widget-layout IPC live round-trip (drag -> persist -> relaunch) + Alt+Shift+R are
+wired + unit-tested, the live Electron round-trip is OWED. DON'T redo: the panel-set
+DELTA model / the data-call-line CALL tiering / the transform-trap fix are settled.
+
+---
+
 # 2026-06-21 (interactive) - overlay doctrine: fullscreen movable Hextech widget field + coach JSON-fence fix
 
 Operator: the in-game overlay was "utterly not it" / "so intrusive". Built a NEW

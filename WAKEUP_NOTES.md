@@ -15,11 +15,19 @@ core; the per-mode coaches; the CORRECTED route binding (RC dispatches paths via
 streams); and the real git co-change coupling (the 3 mode coaches). Hover scans + highlights neighbors,
 click locks + camera-flies, search locates. LEDGER 568.
 
-Also this session: landed the audit-10 C-01 cron silent-fail stub + audit artifacts (`ef5a3937`),
-independently verified + regression-tested (`tests/test_agent6_failure_stub.py`, 5 passed).
+Also this session (infra): (1) landed the audit-10 C-01 cron silent-fail stub + audit artifacts
+(`8ee3aa43`), regression-tested (`tests/test_agent6_failure_stub.py`, 5 passed). (2) Fixed the stale
+Share review-gist: its clone .git had bloated to 582MB / 179 commits (one ~4MB Share.zip appended per
+sync, unbounded) past GitHub's gist size quota -> every push rejected ~3 days. `tools/gist_share_sync.py`
+now rolls a SINGLE parentless commit each sync + force-push + prune so it can never re-bloat; the
+over-quota gist was unrecoverable in place so it was RECREATED with a NEW id
+`gist.github.com/<redacted-gist-id>` (RE-SHARE this link; old 4a485b47 is dead).
+`Share/README.md` refreshed 1.108.0 -> 1.149.0. (3) `git filter-repo` scrubbed an external review-tool's
+name + 2 docs from ALL history + force-pushed main (CI green); backup bundle `.git/backup-pre-scrub.bundle`.
 
-DON'T redo: HEXCORE built + the corrected RC self-map captured (route dispatch, coach coupling, DS
-reactor topology all ground-truth-verified).
+DON'T redo: HEXCORE built + corrected RC self-map captured; the gist fix is durable (NEVER hand-edit the
+gist remote - the sync clobbers it); the external review tool is fully scrubbed from working tree + git
+history - do NOT re-add it.
 
 ---
 
@@ -72,30 +80,3 @@ doctrine `w-ovds` + neutral-text rows, ROADMAP spec-path fix (docs/ -> docs/rese
 NEXT (this lane): overlay is doctrine-faithful + clean. The live drag GESTURE + Alt+Shift+R
 HOTKEY stay node-test-covered only (physical-press paths, not headless). Minor w-* default
 position tuning is the only open polish. DON'T redo: tasks 1/3 above; task-2 minimap is deferred.
-
----
-
-# 2026-06-21 (headless continue) - overlay doctrine to "pristine": tests + polish + new cues
-
-Continued the overlay doctrine headlessly. 6 commits (pushed, CI green; LEDGER 565):
-`cfdc9f22` rewrote the 10 `@_DOCK_RETIRED` snapshot tests to the widget-field model +
-aligned overlay.css panel-set presets to the doctrine DELTA model (coach core
-persists; build=+w-build+w-ovds-w-threat, threat=+w-threat-w-build-w-choices) + fixed
-the `#rn-choices` id-mount specificity leak; also fixed 4 sibling DOM tests red since
-slice-1 (b83006c3). `97d781ec` CSS polish (OBJECTIVE 2-line clamp, hex-notch corner
-brackets, combat declutter). `72509d5c` rc-shell DURABLE widget-layout mirror
-(rc-shell-state.json `overlay.widgetLayout`) + Alt+Shift+R reset (+13 node tests).
-`ada17002` NEW cues w-spike (spike_cue.js, ult-level 6/11/16 cross from
-liveclient.level) + w-trinket (ward_cue as a movable widget); both moved to am-grid
-(transform-trap: a fixed child of a transformed .ovx-widget pane is clipped).
-`fc438c24`+`dd9aae68` CALL tiering by data-call-line not nth-child (rows are
-CONDITIONAL - the live OBJECTIVE was the 2nd child) + !important over _line() inline
-styles -> labels drop, cyan/white/faint tiers + the clamp all hold live.
-
-Live-verified over a real SR game via Windows-MCP across 3 rc-shell relaunches: CALL
-clamped + label-free + tiered, WARD UP + ULT cues render as left-edge glyphs.
-
-NEXT (this lane): ROADMAP queue #3 L1 minimap-anchored objective timers; the rc-shell
-widget-layout IPC live round-trip (drag -> persist -> relaunch) + Alt+Shift+R are
-wired + unit-tested, the live Electron round-trip is OWED. DON'T redo: the panel-set
-DELTA model / the data-call-line CALL tiering / the transform-trap fix are settled.
