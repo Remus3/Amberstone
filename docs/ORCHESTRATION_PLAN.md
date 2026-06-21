@@ -167,6 +167,35 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-21 post-R10 REGRESS-recheck (director directive) -> FALSE POSITIVE,
+  no-op, no fix. The gemini auditor's VERDICT: REGRESS claimed "severe text
+  corruption ... accidental path expansion/substitution" in BACKLOG.md /
+  docs/COMPETITOR_LIFT_2026-06-21.md / docs/LEDGER.md / this file: alleged
+  "GD @15" -> "GD @agents\daemon_slayer\tests\test_sum_of_blocks_expansion_
+  s215.py", "CS @10" / "Level @10" -> a "@tools\probe_101qq_hero_rank_double.py"
+  path, "dashboard.css @import" -> "dashboard.css @tools\chrome-import-rc-rootca
+  .txt". Ground-truth re-verify (CLAUDE.md Verify-before-declaring-broken, same
+  class as the documented 466 / 469 / 2026-06-17 DSP8 auditor false positives):
+  the corruption is ABSENT on 6 independent checks - (1) grep of the `@<repopath>`
+  signature over all *.md = 1 hit, itself the QUOTED artifact-string inside the
+  DSP8 false-positive entry at this file L1161 (a record OF a prior phantom, not
+  live corruption); (2) grep of the 3 named bad fragments (probe_101qq /
+  test_sum_of_blocks_expansion_s215 / chrome-import-rc-rootca) = legit command +
+  file references only, never as a "GD @" / "CS @" / "css @" substitution;
+  (3) grep "GD @|CS @|Level @" = ZERO hits, so the corrupt AND the correct forms
+  are BOTH absent (the auditor invented the "before" too); (4) git diff HEAD~1
+  HEAD added lines carry NO corruption signature; (5) git grep on HEAD for the
+  "(GD|CS|Level|dashboard.css) @<repopath>" pattern = ZERO hits, working tree ==
+  HEAD for all 4 named files; (6) doc-hygiene trio (smart_quote + mojibake +
+  u2500) 13/13 PASS. ROOT CAUSE: the R10 commit edd76db3 legitimately writes the
+  Aggregator B benchmark shorthand "CS@10 / Gold@10 / Gold@15 / Lvl@10", "F1 (GD@15 lane-
+  counter ...", and the real "dashboard.css @import" CSS-wiring token; the auditor
+  read those correct tokens in the R10 diff and hallucinated a path-expansion that
+  never occurred. Fabricating a "fix" would itself corrupt the docs, so no file
+  changed except this record + its LEDGER twin (item 562). done_sentinel
+  --regressions 0. [[feedback_verify_before_declare_broken]] /
+  [[feedback_audit_proposals_are_intent]] / [[feedback_verify_generated_reports]].
+
 - 2026-06-21 R10 (DIRECTOR REFILL cycle) DONE (`edd76db3`, slice `7c820bfd` +
   default-mode fix `2376b4e8`) - Section-7b heavyweight competitor lift of Aggregator B.
   Two parallel research agents (external Aggregator B teardown WHAT/HOW + RC HAVE/WHERE
