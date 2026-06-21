@@ -79,7 +79,7 @@ def proxy_error_status(path: str, upstream_code: int | None) -> int:
     """Status the :8888 proxy returns when a supervisor fetch fails.
 
     item 281: ``/api/minimap-crop`` has no frame to serve whenever the
-    vision producer is idle/down (1-PC with no Game-PC screen agent) - a
+    vision producer is idle/down (1-PC with no separate screen agent) - a
     normal condition, not an error. Forwarding the supervisor's non-2xx made
     the browser log a 502 console error on every ~2s poll. Collapse it to
     204 No Content so the panel hides quietly with zero console noise.

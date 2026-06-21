@@ -309,7 +309,7 @@ def build_state() -> dict:
         cs["sr_draft"] = is_sr_draft_queue(cs.get("queue_id"))
 
     # FU02: splice the latest team_context payload (5+5 enrichment) into
-    # coach. Stays None until the Game-PC LCU agent posts to
+    # coach. Stays None until the Legion LCU agent posts to
     # /api/team-context/refresh. Dashboard panel reads coach.team_context
     # and falls back to skeleton rows when fields are empty.
     _mark("latch_overlay")

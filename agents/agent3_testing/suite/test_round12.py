@@ -166,9 +166,11 @@ def test_effective_mode_trusts_health_when_in_game() -> None:
 
 
 def test_effective_mode_lcu_overlay_when_health_client() -> None:
-    """Legion can't see Game-PC's LCU lockfile -> health.mode='client'
-    through the entire CS+loading window. LCU phase fills the gap so
-    the supervisor's warm-Agent-7 prime hook fires on time."""
+    """health.mode can stay 'client' through the CS+loading window. LCU
+    phase fills the gap so the supervisor's warm-Agent-7 prime hook fires
+    on time. (Pre-1PC this gap came from Legion not seeing Game-PC's LCU
+    lockfile; post-1PC ADR-011 LCU is local and the overlay is a defensive
+    fallback.)"""
     from agents.agent2_backend.file_ingest import FileIngest
     fn = FileIngest._compute_effective_mode
     assert fn({"mode": "client"}, "ChampSelect") == "champ_select"

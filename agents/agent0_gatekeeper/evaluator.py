@@ -1,6 +1,13 @@
 """Agent 0 - Gatekeeper. Evaluates cross-machine tasks against the six
 criteria from S7 and returns an accept/reject Decision.
 
+LEGACY (1-PC, ADR-011): the six criteria below gate the 2-PC Legion ->
+Game-PC SMB-push path (``agents/agent2_backend/smb_push.py``). Since the
+2026-05-29 single-PC consolidation Game-PC is out of the pipeline and that
+push path is dead, so this evaluator no longer gates any live cross-machine
+write. Kept as dead code pending a separate cleanup pass; logic + the S7
+contract are preserved for historical reference.
+
 Agent 0 is **not** a security boundary against the user. Direct user orders
 bypass this evaluator (Agent 1 applies that override before invoking us).
 

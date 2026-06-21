@@ -96,7 +96,7 @@
 
   /* Fresh-update affordance (coach prompt glow) - tints calibrated
    * against the panel canvas background so the pulse reads at 1920x1080
-   * across Game-PC's secondary display. */
+   * on the Legion dashboard display. */
   --pulse-good: 0 0 12px rgba(110, 201, 119, 0.35);
   --pulse-warn: 0 0 12px rgba(241, 176, 74, 0.35);
   --pulse-bad:  0 0 12px rgba(255, 80, 80, 0.35);

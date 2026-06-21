@@ -6,14 +6,14 @@ canonical "RC: " prefix. The convergence itself shipped earlier:
   - dashboard/routes_loadout.py  (item 213 removed the "RC Experimental - " path)
   - dashboard/routes_sr_draft.py (born "RC: ")
   - lcu/lcu_rune_writer.RuneWriter.PAGE_PREFIX
-  - tools/gamepc_lcu_agent.py    (apply_runes default "RC: Auto")
+  - tools/lcu_agent.py           (apply_runes default "RC: Auto")
 This module pins that contract so a future edit cannot silently re-diverge.
 
 EXCLUDED: lcu/lcu_client.py is FROZEN (CLAUDE.md frozen-file list) and still
 carries the legacy _RC_PAGE_PREFIX = "RC - ". It is a self-contained internal
 constant with no non-frozen seam to route around, so OPEN1 skips it per the
 directive. It is functionally harmless: the agent-side delete filter in
-tools/gamepc_lcu_agent.py matches all three historical 3-char prefixes
+tools/lcu_agent.py matches all three historical 3-char prefixes
 ("RC ", "RC:", "RC-"), so an "RC - " page is still reclaimed (the item-210
 max-owned-pages incident fix). test_wipe_filter_covers_all_legacy_prefixes
 guards that the filter is never narrowed back to "RC: " only.
@@ -61,7 +61,7 @@ class TestUnifiedRcPagePrefix(unittest.TestCase):
 
     def test_agent_default_page_name_rc_colon(self) -> None:
         # apply_runes default + item-set defaults all flow through "RC: Auto".
-        src = _read("tools/gamepc_lcu_agent.py")
+        src = _read("tools/lcu_agent.py")
         self.assertIn('cmd.get("page_name", "RC: Auto")', src)
 
     def test_wipe_filter_covers_all_legacy_prefixes(self) -> None:
@@ -69,7 +69,7 @@ class TestUnifiedRcPagePrefix(unittest.TestCase):
         # delete filter still reclaims every RC-authored prefix. Item-210 fix:
         # never narrow this back to "RC: " only or the operator's 3-slot account
         # fills up and POST /lol-perks/v1/pages 4xx-fails the whole rune push.
-        src = _read("tools/gamepc_lcu_agent.py")
+        src = _read("tools/lcu_agent.py")
         for literal in ('"RC "', '"RC:"', '"RC-"'):
             self.assertIn(literal, src,
                           f"wipe filter dropped prefix {literal}")

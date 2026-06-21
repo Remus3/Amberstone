@@ -1,6 +1,9 @@
 """Integration test for smb_push - actually writes to the SMB share.
 
-Skips gracefully when the share is unreachable (Game-PC off).
+Legacy: smb_push was the 2-PC Legion -> Game-PC cross-machine file path,
+retired post-1PC (ADR-011). The module + this test are kept as dead code
+pending cleanup; the test skips gracefully when the share is unreachable
+(the expected steady state now that Game-PC is out of the pipeline).
 """
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ from agents.agent2_backend import smb_push
 @pytest.fixture(autouse=True)
 def _require_share():
     if not smb_push.share_reachable():
-        pytest.skip(f"{smb_push.SHARE_UNC} unreachable - Game-PC likely off")
+        pytest.skip(f"{smb_push.SHARE_UNC} unreachable - legacy 2-PC share, Game-PC out of pipeline post-1PC")
 
 
 def test_push_web_roundtrip(tmp_path: Path) -> None:

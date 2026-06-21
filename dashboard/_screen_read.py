@@ -2,7 +2,7 @@
 
 Operator clicks "SCREEN READ" once -> RC does ONE Sonnet vision pass
 over the latest frame it ALREADY holds in the :8889 relay (pushed by
-the s221-safe bettercam DXGI Game-PC agent during a live game) -> a
+the s221-safe bettercam DXGI Legion agent during a live game) -> a
 single tactical coaching one-liner surfaced on a dedicated dashboard
 pill.
 

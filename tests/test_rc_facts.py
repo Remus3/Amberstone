@@ -1,7 +1,7 @@
 """Unit tests for tools/rc_facts.py anomaly gating.
 
 main() does live HTTP/subprocess probes, so the unit surface here is the pure
-anomaly-decision helper _bridge_peer_anomalies. Post-1PC (ADR-011) the Game-PC
+anomaly-decision helper _bridge_peer_anomalies. Post-1PC (ADR-011) the legacy
 peer + its MCP :8892 were severed; Peer is the sole remaining bridge peer, and a
 dead watcher, a stale publisher, or a real queue backlog on Peer must still flag.
 """

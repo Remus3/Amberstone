@@ -1,7 +1,7 @@
 ﻿# bridge_watcher_hook.ps1 - UserPromptSubmit hook for no-dashboard nodes.
 #
-# Phase 1 per BRIDGE_WATCHER_PLAN.md §8 "Operator surface" - Game-PC + Peer
-# don't run the RC dashboard, so the bridge_inbox_pending.json queue needs a
+# Phase 1 per BRIDGE_WATCHER_PLAN.md §8 "Operator surface" - the Peer peer
+# does not run the RC dashboard, so the bridge_inbox_pending.json queue needs a
 # non-browser surface. This hook fires on every prompt the operator submits
 # in their Claude Code session. If the queue has unclaimed entries, it emits
 # ONE system-reminder line; otherwise it stays silent.
@@ -17,8 +17,7 @@
 #   }
 #
 # Override the pending-file path with $env:BRIDGE_PENDING_PATH if needed
-# (defaults: C:\RC-Agent\bridge_inbox_pending.json on Game-PC, the script's
-#  parent dir on Peer).
+# (defaults to the script's parent dir on the Peer peer).
 
 param(
     [string]$PendingPath = ""

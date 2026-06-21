@@ -11,7 +11,7 @@ through to ``rank_for()``, so every tick saw the SAME generic enemy
 profile regardless of what the enemy team actually owned.
 
 Pipeline:
-    liveclient relay (Game-PC :2999 -> Legion :8889/latest-liveclient)
+    liveclient relay (Legion-local :2999 -> Legion :8889/latest-liveclient)
       -> allPlayers[i].items[].itemID  (per-player live inventory)
       -> this module's stat sum
       -> target_armor / target_mr / target_max_hp / target_bonus_hp
