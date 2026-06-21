@@ -42,6 +42,30 @@ Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b
 
 ---
 
+# 2026-06-20 (/RC2-Continue - Phase 8.3 operator Q/A consolidation)
+
+Shipped the 8.3 deliverable: `docs/RC2_QA_CONSOLIDATED.md` (commit `f05b853d`,
+pushed). Reconciled all 97 raw Q/A items (docs/RC2_TODO_QA.md, the 8.1 list)
+against HEAD via 6 read-only agents; every SHIPPED/CLOSED verdict evidence-cited,
+a sample (6 shas / 9 files / 6 greps) independently re-verified. Result:
+33 SHIPPED / 13 GATED-LIVE / 18 GATED / 31 OPEN (headless-buildable) / 2 CLOSED.
+The old TOP-10 are fully spent (-> E1-E12). RC2_TODO_QA.md now points to the
+consolidated doc for current status.
+
+CONCURRENCY: ran alongside the loop-monitor session below; their /done recorded
+their commits but NOT f05b853d, so this entry records it. f05b853d is in git +
+pushed regardless.
+
+HELD: the RC2_PLAN.md 8.3 -> DONE stage flip + banner 53->54/62 (~87%) is staged
+in the working tree but UNCOMMITTED - the operator rejected that exact edit
+earlier in-session. Left for operator confirm; the deliverable itself is shipped.
+
+NEXT: operator confirms the 8.3 DONE flip, then /RC2-Continue picks the next
+non-DONE (E-batch E2/E7/E10/E11/E12 - mostly live/release-gated - + Phase 9).
+[[project_rc2_build]]
+
+---
+
 # 2026-06-20 (interactive - loop-monitor observability + CC session perf fixes)
 
 Standalone interactive session (NOT /RC2-Continue). Built the loop-monitor the
