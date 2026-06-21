@@ -47,6 +47,7 @@
       {"summonerName": "GrabBag", "championName": "Blitzcrank", "rawChampionName": "Blitzcrank", "team": "CHAOS", "items": [{"itemID": 3190, "slot": 0}, {"itemID": 3047, "slot": 1}]}
     ]
   },
+  "minimap_rect": {"x": 1600, "y": 760, "w": 312, "h": 312, "flip": false, "source": "settings", "native_w": 2560, "native_h": 1440},
   "summoner_cooldowns": [
     {"slot": "D", "name": "Flash", "remaining_s": 142, "rdy_at": "21:04", "tag": "ally-jinx"},
     {"slot": "F", "name": "Heal", "remaining_s": 38, "rdy_at": "19:20", "tag": "ally-jinx"},

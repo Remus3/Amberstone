@@ -426,6 +426,22 @@ def build_state() -> dict:
         summoner_cooldowns = None
     _mark("cooldowns")
 
+    # ZOI foundation (2026-06-21) - the settings-driven on-screen minimap rect,
+    # in 1920x1080 design px, for the overlay's click-through minimap outline
+    # widget (w-mmrect). Read from League's game.cfg [HUD] MinimapScale +
+    # FlipMiniMap: LOCAL + free, no API. Mode-gated to surfaces that have a
+    # minimap (sr/aram/brawl); null otherwise so the widget stays hidden.
+    # Fail-soft: a missing game.cfg (clean checkout / CI / non-Legion) yields
+    # null, never an exception.
+    minimap_rect: dict | None = None
+    if mode_key in ("sr", "aram", "brawl"):
+        try:
+            from core.league_settings import minimap_rect_payload
+            minimap_rect = minimap_rect_payload()
+        except Exception:  # noqa: BLE001
+            minimap_rect = None
+    _mark("minimap_rect")
+
     # Haiku-elimination wave 3 (item 265 W3A): deterministic-FIRST coaching.
     # The DS matchup engine (laning A/B) + the pure callout/lead generators
     # produce the A/B choices, the objective/spike callouts, and the macro
@@ -499,6 +515,7 @@ def build_state() -> dict:
         "summoner_cooldowns": summoner_cooldowns,
         "callouts": det.get("callouts") or [],
         "lead_projection": det.get("lead_projection") or {},
+        "minimap_rect": minimap_rect,
     }
 
 
