@@ -329,3 +329,28 @@ body[data-shell="overlay"][data-rc-idle="1"] #view-active-match,
 body[data-shell="overlay"][data-rc-idle="1"] main {
   opacity: 0.35;
 }
+
+/* 7. RC2 QA9 combat declutter. When the S0 arbitration (lib/overlay_priority)
+ * flags a high-stakes combat moment, right_now.js stamps body[data-fight="1"]
+ * (with a short hysteresis hold via lib/combat_mode so a brief mid-fight
+ * headline change does not strobe the panes). The overlay then sheds the
+ * non-urgent panes so the critical call + the A+B decision own the screen, and
+ * a live fight is never allowed to dim (the section-6 idle recede is overridden
+ * on a one-more-attribute specificity bump). Overlay-only + attribute-gated, so
+ * it is inert on the 1920 dashboard and whenever no fight is live. The pane
+ * shed is scoped to the default + coach views: on an explicit build/threat
+ * panel set the operator chose that pane on purpose, so it is left intact
+ * (hiding it would strand the HUD). display-toggle only - no layout loop. */
+body[data-shell="overlay"][data-fight="1"]:not([data-panelset="build"]):not([data-panelset="threat"]) #view-active-match .am-pane-build,
+body[data-shell="overlay"][data-fight="1"]:not([data-panelset="build"]):not([data-panelset="threat"]) #view-active-match .am-pane-ovds {
+  display: none !important;
+}
+/* secondary callouts collapse to the single nearest-ETA row during a fight */
+body[data-shell="overlay"][data-fight="1"] #rn-callouts .rc-co-row:nth-child(n+2) {
+  display: none;
+}
+/* a live fight never recedes: override the section-6 idle-recede opacity */
+body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] #view-active-match,
+body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] main {
+  opacity: 1 !important;
+}
