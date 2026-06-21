@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-06-21 (headless continue 4) - ZOI slices 1+2: box renders+frames minimap, blob dots ship
+
+ZOI item 567 advanced 2 slices. 2 commits `f93f5f01` (slice 1) + `d6a853f2` (slice 2), pushed; CI n/a (no pytest in CI).
+
+SLICE 1 (the OWED live-verify - became a 3-bug fix). The foundation box never rendered live + was mis-scaled.
+Diagnosed via the Electron overlay's CDP DOM (the 1px/0.55 gold hairline is invisible in screenshots - DOM
+inspection is the ground truth, not the eye). (a) `minimap_rect` was never threaded into client `state.latest`
+at the 3 poll sites in `web/js/main.js` so renderMinimapRect always got null; the ui_mock test masked it.
+(b) the rc-shell overlay window used the taskbar-excluded WORK AREA -> ovscale 1.3 not 1.333 -> box ~3%
+up-left; fixed to full display BOUNDS. (c) Windows clamped the frameless window to 1400 -> re-assert bounds
+AFTER topmost -> 1440 (bottom reachable). Outline -> 2px/0.85 gold (was invisible). GOTCHA: plain GDI
+BitBlt does NOT capture the layered click-through overlay - use CAPTUREBLT flag or Windows-MCP.
+
+SLICE 2. `core/minimap_blob_detect.py` pure-numpy (numpy 2.5.0 installed for py3.14) team-color blob
+detection -> `/api/state.minimap_dots`. Saturation discriminates icon vs terrain tint; `crop_minimap` maps
+the design-px rect onto the ~1280 frame by fraction (legacy /api/minimap-crop is mis-cropped at scale 1.62,
+bypassed). 11 tests; live 32 dots in 1.6ms. It is a team-PRESENCE detector (incl wards/structures), not
+champion-only (template matching = future).
+
+NEXT (slice 3): low-opacity team-colored ZOI bubbles + demarcation inside the box, weighted by per-team
+strength (alive/dead, gold, spikes), fed to coach; UI-audit ritual. DON'T redo slices 1+2. Also: the Peer
+bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /done ritual (operator).
+
+---
+
 # 2026-06-21 (architecture viz) - HEXCORE: 3D RC/DS knowledge-graph nexus
 
 Built HEXCORE (`docs/HEXCORE.html`) - a standalone interactive 3D hextech "JARVIS" viewer of RC/DS's
