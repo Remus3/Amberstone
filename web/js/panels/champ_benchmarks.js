@@ -8,7 +8,7 @@
 // stat is only as good as its sample).
 //
 // Backend wire:
-//   GET /api/champ-benchmarks?mode=<aram|sr|arena>
+//   GET /api/champ-benchmarks?mode=<sr|aram|arena>
 //   Response: { ok, mode, n, min_games, metrics:[...5 keys...],
 //     rows:[{champion, games, stats:{<metric>:{p50,p25,p75,avg,n}}}, ...] }
 //   A mode with no rows returns n:0 -> the same empty state as duration_winrate.
@@ -23,13 +23,13 @@
 import { CHAMPS, DDRAGON_FALLBACK_VERSION } from '../lib/items_index.js';
 
 const _MOUNT = 'bi-bench-mount';
-const _MODES = ['aram', 'sr', 'arena'];
+const _MODES = ['sr', 'aram', 'arena'];
 const _CACHE = Object.create(null);     // mode -> response JSON
 const _INFLIGHT = Object.create(null);
 const _TS = Object.create(null);
 const _TTL_MS = 5 * 60 * 1000;
 let _sig = '';
-let _mode = 'aram';
+let _mode = 'sr';
 
 // Column metric key -> short header label. Order is the column order; it mirrors
 // the route's COLUMN_METRICS so the header set always matches the data.
@@ -129,8 +129,8 @@ function _html(data) {
   const n = (data && data.n) ? data.n : 0;
   if (!n) {
     return _modeBar() +
-      `<div class="cb-empty">Not enough ${_esc(_mode.toUpperCase())} ` +
-      `games tracked yet.</div>`;
+      `<div class="cb-empty">No ${_esc(_mode.toUpperCase())} ` +
+      `benchmark data yet.</div>`;
   }
   const head = _COLS.map(([, label]) =>
     `<th class="cb-h-stat">${_esc(label)}</th>`).join('');
