@@ -312,6 +312,43 @@ def test_overlay_combat_mode_declutter(mock_server, pw_browser):
     assert not errors, f"JS errors [combat declutter]: {errors[:3]}"
 
 
+def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browser):
+    """RC Overlay Doctrine w-trinket + w-spike: the trinket-ready + spike-crossed
+    cues are registered as movable, position-fixed .ovx-widget field mounts at the
+    left-edge default. They sit as direct am-grid children (NOT inside a
+    transformed .ovx-widget pane) so position:fixed is viewport-relative, not
+    trapped + clipped by a pane's transform containing block."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        for sel, wid in (("#am-ward-cue", "w-trinket"), ("#am-spike-cue", "w-spike")):
+            assert page.eval_on_selector(
+                sel, "e => e.classList.contains('ovx-widget')"
+            ), f"{sel} is not an .ovx-widget"
+            assert page.eval_on_selector(sel, "e => e.dataset.ovxId") == wid
+            assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
+            assert _css(page, sel, "left") == "20px", f"{sel} not at the left-edge default"
+            parent = page.eval_on_selector(sel, "e => e.parentElement.className")
+            assert "am-grid" in parent, (
+                f"{sel} must mount in am-grid, not a transformed pane (got {parent!r})"
+            )
+        # data-gated (hidden until actionable in the empty-SSE mock): force-show
+        # the spike cue and confirm it lands at its viewport-fixed default x ~= 20
+        # (a transform-trapped fixed child would be offset by the pane's position).
+        page.evaluate(
+            "() => { const s = document.getElementById('am-spike-cue');"
+            "  s.hidden = false;"
+            "  s.innerHTML = '<span class=\"spike-chip\">ULT ONLINE</span>'; }"
+        )
+        box = page.locator("#am-spike-cue").bounding_box()
+        assert box is not None and abs(box["x"] - 20) < 6, (
+            f"spike cue not viewport-fixed at x~20 (trapped?): {box and box['x']}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [new cue widgets]: {errors[:3]}"
+
+
 def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
     """Inside #right-now only the lead/callouts/choices mounts may show:
     when a callout lands (un-hidden + populated) it displays, while the
