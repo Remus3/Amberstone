@@ -77,16 +77,39 @@ function normMode(modeKey) {
 }
 
 // Which surface a given mode_key wants, ignoring the hidden override.
-function surfaceForMode(modeKey) {
-  return GAME_MODES.has(normMode(modeKey)) ? SURFACES.OVERLAY : SURFACES.COMPANION;
+// inGame gates the overlay HUD: a game mode_key only shows the HUD when a live
+// game is actually present. RC pre-flips mode_key to the game mode during the
+// lobby / champ-select (so the web dashboard shows that mode early), but there
+// is no game to overlay yet, so those states stay on the companion. Defaults
+// true so the mode-only callers + tests keep their original behavior.
+function surfaceForMode(modeKey, inGame = true) {
+  const wantsOverlay = GAME_MODES.has(normMode(modeKey)) && inGame !== false;
+  return wantsOverlay ? SURFACES.OVERLAY : SURFACES.COMPANION;
 }
 
-// Resolve the surface to show: the hidden override wins, else mode decides.
-function resolveSurface(modeKey, hidden) {
+// Resolve the surface to show: the hidden override wins, else mode + inGame.
+function resolveSurface(modeKey, hidden, inGame = true) {
   if (hidden === true) {
     return SURFACES.HIDDEN;
   }
-  return surfaceForMode(modeKey);
+  return surfaceForMode(modeKey, inGame);
+}
+
+// True when /api/state shows a live game in progress: a non-empty liveclient
+// object (the in-game :2999 read). mode_key alone is insufficient - RC pre-
+// flips it to the game mode during the lobby / champ-select, where there is no
+// game to overlay yet, so the surface gate keys off this, not the bare mode.
+function liveGameFromState(state) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) {
+    return false;
+  }
+  const lc = state.liveclient;
+  return (
+    !!lc &&
+    typeof lc === "object" &&
+    !Array.isArray(lc) &&
+    Object.keys(lc).length > 0
+  );
 }
 
 // Normalize a panel-set name to a canonical PANEL_SETS member, else "".
@@ -635,6 +658,7 @@ module.exports = {
   normMode,
   surfaceForMode,
   resolveSurface,
+  liveGameFromState,
   overlayUrl,
   windowActions,
   windowActionsWithPolicy,

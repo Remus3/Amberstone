@@ -44,6 +44,60 @@ test("resolveSurface: not hidden -> mode-driven", () => {
   assert.strictEqual(ov.resolveSurface("sr", undefined), ov.SURFACES.OVERLAY);
 });
 
+// --- live-game gate: overlay HUD only when a game is actually live -----------
+// RC pre-flips mode_key to the game mode during the lobby / champ-select (so the
+// web dashboard shows that mode early), but there is no game to overlay yet - the
+// shell must stay on the companion until a live game is present. surfaceForMode /
+// resolveSurface take an inGame flag (default true keeps the mode-only callers +
+// tests unchanged); main.js derives it from liveGameFromState(/api/state).
+
+test("surfaceForMode: game mode + inGame=false (lobby/champ-select) -> companion", () => {
+  for (const m of ["sr", "aram", "arena", "tft", "brawl"]) {
+    assert.strictEqual(ov.surfaceForMode(m, false), ov.SURFACES.COMPANION, m);
+  }
+});
+
+test("surfaceForMode: game mode + inGame=true -> overlay", () => {
+  assert.strictEqual(ov.surfaceForMode("aram", true), ov.SURFACES.OVERLAY);
+  assert.strictEqual(ov.surfaceForMode("sr", true), ov.SURFACES.OVERLAY);
+});
+
+test("surfaceForMode: inGame omitted defaults true (back-compat, mode-only)", () => {
+  assert.strictEqual(ov.surfaceForMode("aram"), ov.SURFACES.OVERLAY);
+  assert.strictEqual(ov.surfaceForMode("client"), ov.SURFACES.COMPANION);
+});
+
+test("surfaceForMode: client never overlays regardless of inGame", () => {
+  assert.strictEqual(ov.surfaceForMode("client", true), ov.SURFACES.COMPANION);
+  assert.strictEqual(ov.surfaceForMode("client", false), ov.SURFACES.COMPANION);
+});
+
+test("resolveSurface: inGame gates the overlay; hidden still wins", () => {
+  assert.strictEqual(ov.resolveSurface("aram", false, true), ov.SURFACES.OVERLAY);
+  assert.strictEqual(ov.resolveSurface("aram", false, false), ov.SURFACES.COMPANION);
+  // hidden override beats inGame either way.
+  assert.strictEqual(ov.resolveSurface("aram", true, true), ov.SURFACES.HIDDEN);
+  assert.strictEqual(ov.resolveSurface("aram", true, false), ov.SURFACES.HIDDEN);
+  // inGame omitted -> default true (back-compat).
+  assert.strictEqual(ov.resolveSurface("aram", false), ov.SURFACES.OVERLAY);
+});
+
+test("liveGameFromState: non-empty liveclient -> true", () => {
+  assert.strictEqual(ov.liveGameFromState({ liveclient: { game_time: "4:31" } }), true);
+});
+
+test("liveGameFromState: empty / null / missing liveclient -> false (lobby/champ-select)", () => {
+  assert.strictEqual(ov.liveGameFromState({ liveclient: {} }), false);
+  assert.strictEqual(ov.liveGameFromState({ liveclient: null }), false);
+  assert.strictEqual(ov.liveGameFromState({ mode_key: "aram" }), false);
+});
+
+test("liveGameFromState: garbage-safe (null / arrays / strings / non-object liveclient)", () => {
+  for (const g of [null, undefined, [], "junk", 42, { liveclient: [] }, { liveclient: "x" }]) {
+    assert.strictEqual(ov.liveGameFromState(g), false, JSON.stringify(g));
+  }
+});
+
 test("overlayUrl: appends overlay=1", () => {
   assert.strictEqual(
     ov.overlayUrl("https://legion-rc:8888/"),

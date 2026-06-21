@@ -86,6 +86,7 @@ let pollTimer = null; // chained setTimeout handle (variable cadence, Phase 4b).
 let pollFailures = 0; // consecutive /api/state failures (drives the backoff).
 let lastSurface = null; // de-dupe redundant show/hide churn.
 let lastMode = ""; // last mode_key seen by the poll (for hotkey re-apply).
+let lastInGame = false; // last live-game presence (liveclient non-empty) from the poll; gates overlay HUD vs companion.
 let panelSet = null; // current overlay panel set; null = plain overlay=1.
 let overlayScale = 1; // RC2 4.1: resolution scale for the overlay box + renderer zoom.
 let activeRevertTimer = null; // setTimeout wakeup for the ACTIVE auto-revert.
@@ -857,8 +858,10 @@ function applySurface(surface) {
 }
 
 // Re-resolve + apply the surface for the current mode + hidden override.
-function refreshSurface(modeKey) {
-  applySurface(ov.resolveSurface(modeKey, surfaceHidden));
+// inGame defaults to the last poll's live-game presence so the hotkey + pin
+// re-apply callers (which pass only the mode) keep the current surface gate.
+function refreshSurface(modeKey, inGame = lastInGame) {
+  applySurface(ov.resolveSurface(modeKey, surfaceHidden, inGame));
 }
 
 // Best-effort /api/state poll. The shell's own dashboard is a self-signed
@@ -901,8 +904,10 @@ function pollState(done) {
         });
         res.on("end", () => {
           try {
-            lastMode = ov.normMode(JSON.parse(data).mode_key);
-            refreshSurface(lastMode);
+            const parsed = JSON.parse(data);
+            lastMode = ov.normMode(parsed.mode_key);
+            lastInGame = ov.liveGameFromState(parsed);
+            refreshSurface(lastMode, lastInGame);
             finish(true);
           } catch (_e) {
             // leave surface as-is on a parse miss; counts as a failure.
