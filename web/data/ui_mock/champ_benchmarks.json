@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "mode": "aram",
+  "mode": "sr",
   "n": 5,
   "min_games": 3,
   "metrics": ["cs_at_10", "gold_at_10", "gold_at_15", "kill_participation_pct", "level_at_10"],

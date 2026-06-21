@@ -67,12 +67,12 @@ class _PatchedCase(unittest.TestCase):
 
 
 class ParsingTests(_PatchedCase):
-    def test_default_mode_is_aram(self):
+    def test_default_mode_is_sr(self):
         h = _RouteHarness("")
         rcb._serve_champ_benchmarks(h)
         self.assertEqual(h.sent_status, 200)
         self.assertEqual(h.sent_ct, "application/json")
-        self.assertEqual(json.loads(h.sent_body)["mode"], "aram")
+        self.assertEqual(json.loads(h.sent_body)["mode"], "sr")
 
     def test_valid_mode_passthrough(self):
         h = _RouteHarness("mode=sr")

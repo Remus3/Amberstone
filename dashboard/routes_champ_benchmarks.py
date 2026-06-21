@@ -11,8 +11,9 @@ UI exposure (the Build Insights "Benchmarks" tab polls it).
 Request shape:
   GET /api/champ-benchmarks[?mode=sr|aram|arena]
 
-  mode : sr | aram | arena. Default aram (mirrors routes_duration_winrate's
-         corpus-driven default). Anything else -> 400.
+  mode : sr | aram | arena. Default sr (the only suffix the benchmark builder
+         emits today; aram / arena are valid but resolve to zero rows).
+         Anything else -> 400.
 
 The UI mode maps to a stored key suffix (champion_benchmarks.json keys are
 "<Champ>|<suffix>"). A mode whose suffix has no rows returns ok:true with n:0
@@ -59,7 +60,7 @@ _CACHE_EVICT = 64
 # "<Champ>|sr" today; aram / arena suffixes are valid targets that currently
 # resolve to zero rows (empty state) - the map keeps the contract stable if the
 # benchmark builder later starts emitting those suffixes.
-DEFAULT_MODE = "aram"
+DEFAULT_MODE = "sr"
 VALID_MODES = ("sr", "aram", "arena")
 _MODE_SUFFIX = {"sr": "sr", "aram": "aram", "arena": "arena"}
 
