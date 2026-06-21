@@ -129,9 +129,11 @@ class JsContractTests(unittest.TestCase):
         self.assertIn("personal-corpus", low)
         self.assertIn("not a meta", low)
 
-    def test_empty_state_matches_duration(self) -> None:
-        self.assertIn("Not enough", self.text)
-        self.assertIn("games tracked yet", self.text)
+    def test_empty_state_present(self) -> None:
+        # Benchmark data is SR-only today; aram / arena render an honest empty
+        # state ("No X benchmark data yet"), NOT a "games tracked" claim (the
+        # operator does play those modes - there is simply no benchmark there).
+        self.assertIn("benchmark data yet", self.text)
 
     def test_mock_short_circuit_present(self) -> None:
         self.assertIn("ui_mock", self.text)
@@ -149,7 +151,7 @@ class MockFixtureTests(unittest.TestCase):
     def test_fixture_matches_contract(self) -> None:
         d = self.data
         self.assertTrue(d.get("ok"))
-        self.assertEqual(d.get("mode"), "aram")
+        self.assertEqual(d.get("mode"), "sr")
         self.assertEqual(d.get("min_games"), 3)
         self.assertIsInstance(d.get("metrics"), list)
         self.assertEqual(len(d["metrics"]), 5)
