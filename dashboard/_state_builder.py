@@ -23,6 +23,7 @@ import concurrent.futures
 import json
 import logging
 import time
+import unicodedata
 from pathlib import Path
 
 from coaches.sr_draft_profile import is_sr_draft_queue
@@ -244,6 +245,16 @@ _ASCII_PUNCT = {
     0x2018: "'", 0x2019: "'",     # left/right single quote -> apostrophe
     0x201C: '"', 0x201D: '"',     # left/right double quote -> straight
     0x2026: "...",                # horizontal ellipsis
+    # Arrows + symbols the coaches emit in build/objective prose (item 559;
+    # live SR play showed a U+2192 in coach.action - "CRASH BOT -> SETUP
+    # DRAKE" - reaching the HUD). Mapped to readable ASCII so the fallback
+    # below keeps them as e.g. "->" rather than dropping them.
+    0x2192: "->", 0x2190: "<-", 0x2194: "<->",   # right/left/both arrows
+    0x21D2: "=>", 0x21D0: "<=",                   # double arrows
+    0x2191: "^", 0x2193: "v",                     # up/down arrows
+    0x2022: "-", 0x00B7: "-",                     # bullet, middle dot
+    0x00D7: "x", 0x00F7: "/",                     # multiplication, division
+    0x00A0: " ",                                  # non-breaking space
 }
 
 
@@ -251,7 +262,19 @@ def _ascii_clean(obj):
     """Recursively map non-ASCII punctuation in coach text to ASCII (repo rule).
     Walks the read coaching dict/list; leaves numbers/bools/None untouched."""
     if isinstance(obj, str):
-        return obj.translate(_ASCII_PUNCT)
+        cleaned = obj.translate(_ASCII_PUNCT)
+        if cleaned.isascii():
+            return cleaned
+        # Defense in depth: any glyph the explicit table did not enumerate (the
+        # coaches are LLMs and can emit arbitrary symbols/emoji) is NFKD-folded
+        # then ASCII-encoded with errors ignored, so a codepoint > 127 can never
+        # reach the HUD. The explicit map ran first, so meaningful glyphs keep a
+        # readable ASCII form instead of being silently dropped here.
+        return (
+            unicodedata.normalize("NFKD", cleaned)
+            .encode("ascii", "ignore")
+            .decode("ascii")
+        )
     if isinstance(obj, dict):
         return {k: _ascii_clean(v) for k, v in obj.items()}
     if isinstance(obj, list):
