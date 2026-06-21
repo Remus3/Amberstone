@@ -223,38 +223,47 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin: 0 0 5px;
+  margin: 0 0 5px !important;
 }
+/* The CALL rows are conditional (_line appends only present coach fields), so the
+ * tier is keyed on data-call-line (set by _line()), NOT a fragile nth-child
+ * position - the live OBJECTIVE is often the 2nd child, not the 3rd. !important
+ * beats the inline span styles _line() sets (the eyebrow display:block, the value
+ * --fs-md), which a plain stylesheet rule would lose to. */
+/* Labels drop for data-ink (rule 8) - the value color/size carries the tier. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div > span:first-child {
-  display: none;
+  display: none !important;
 }
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(1) > span:last-child {
-  font-size: 13px;
+/* RIGHT NOW (immediate): the cyan imminent cue. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="right-now"] > span:last-child {
+  font-size: 13px !important;
   font-weight: 600;
   color: rgb(var(--ovx-cyan));
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(2) > span:last-child {
-  font-size: 14px;
+/* ACTION: the dominant play verb. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"] > span:last-child {
+  font-size: 14px !important;
   font-weight: 700;
   line-height: 1.2;
   color: #fff;
 }
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(3) > span:last-child {
-  font-size: 12px;
+/* OBJECTIVE: the macro footer, clamped to 2 lines so a verbose objective can
+ * never blow the card past the 1.5s glance budget (rule 1) - the full text stays
+ * on the dashboard surface. -webkit-box line-clamp is the cross-Chromium idiom. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] > span:last-child {
+  font-size: 12px !important;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
-  /* Clamp a verbose macro OBJECTIVE to 2 lines so it can never blow the card
-   * past the 1.5s glance budget (doctrine rule 1) - the rest is on the dashboard
-   * surface, not the HUD. -webkit-box line-clamp is the cross-Chromium idiom. */
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   line-height: 1.25;
 }
-body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(4) {
+/* NEXT is dashboard-only on the HUD (data-ink). */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="next"] {
   display: none !important;
 }
 
@@ -467,7 +476,7 @@ body[data-shell="overlay"][data-fight="1"] #rn-callouts .rc-co-row:nth-child(n+2
 /* The CALL sheds its macro OBJECTIVE footer in a fight: the RIGHT NOW cue + the
  * ACTION verb stay (one line each), the macro prose drops - text -> preattentive
  * (doctrine section 6). The cyan primary glow + the band color carry the read. */
-body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(3) {
+body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] {
   display: none !important;
 }
 body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] .ovx-widget {

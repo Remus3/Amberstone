@@ -272,7 +272,10 @@ def test_overlay_call_objective_line_clamped(mock_server, pw_browser):
     dashboard surface)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
-        sel = "#am-call-body > div:nth-child(3) > span:last-child"
+        # Keyed on data-call-line, not nth-child - the OBJECTIVE row is conditional
+        # (it is often the 2nd CALL child live, not the 3rd).
+        sel = '#am-call-body > div[data-call-line="objective"] > span:last-child'
+        assert page.locator(sel).count() == 1, "no OBJECTIVE line rendered to clamp"
         clamp = _css(page, sel, "-webkit-line-clamp")
         assert clamp == "2", f"OBJECTIVE value not clamped to 2 lines (got {clamp!r})"
     finally:
@@ -301,9 +304,14 @@ def test_overlay_combat_mode_declutter(mock_server, pw_browser):
         assert _display(page, "#view-active-match .am-pane-call") != "none", (
             "the primary call must persist in combat"
         )
-        assert _display(page, "#am-call-body > div:nth-child(1)") != "none", "RIGHT NOW must stay"
-        assert _display(page, "#am-call-body > div:nth-child(2)") != "none", "ACTION must stay"
-        assert _display(page, "#am-call-body > div:nth-child(3)") == "none", (
+        # Keyed on data-call-line (rows are conditional, not fixed nth-child).
+        assert _display(page, '#am-call-body > div[data-call-line="right-now"]') != "none", (
+            "RIGHT NOW must stay in combat"
+        )
+        assert _display(page, '#am-call-body > div[data-call-line="action"]') != "none", (
+            "ACTION must stay in combat"
+        )
+        assert _display(page, '#am-call-body > div[data-call-line="objective"]') == "none", (
             "the macro OBJECTIVE footer must shed in combat"
         )
     finally:
