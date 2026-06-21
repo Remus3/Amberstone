@@ -1331,6 +1331,40 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.148.0 (R9 - per-instance FLAT-AMOUNT damage-reduction EHP registry, default-OFF, byte-identical.
+The MISSING SIBLING of the percent _passive_mitigation_overrides registry, which deliberately EXCLUDED
+(its docstring) the survivability class that reduces a FLAT NUMBER per damage instance, naming Fizz P,
+Amumu E, Leona W. R9 adds exactly that excluded class as a NEW sibling registry
+_passive_flat_mitigation_overrides.py (it does NOT modify the percent registry). WHY A SEPARATE
+REGISTRY + a DIFFERENT EHP seam: a flat per-instance reduction is hit-count / instance-size dependent,
+not a clean steady-state multiplier on the damage axis - it prevents instances * flat * prob of damage
+over a fight window, behaving like bonus effective-HP, so it folds into the EHP NUMERATOR exactly like
+ext_flat_hp (the enchanter ally flat-HP grant), NOT the denominator (the percent registry divides
+mit_phys/mag/true). NEW PassiveFlatMitigationEntry (terms tuple of (flat_or_per_rank_tuple, type),
+cap_frac=0.5, conditional_probability, rank_scaled) keyed (champion_id, key, form_index).
+flat_mitigation_hp(cid, level, assume_passive_flat_mitigation) -> (phys, mag, true) prevented HP; OFF
+(default) -> (0.0, 0.0, 0.0) -> byte-identical. _ASSUMED_FLAT_DR_INSTANCES=6.0 is the operator-tunable
+conservative per-instance count (the live per-instance feed we lack, the analog of the percent
+registry's _ACTIVE_DR_PROB). SEEDED 3 (ground truth champion_abilities.json 16.12.1, effects_descriptions
++ the parsed damage_blocks flat modifier): Fizz P 'reduces every instance of incoming damage by 4 (+ 1%
+AP), up to a maximum of 50% reduction' -> flat 4 ANY innate prob 1.0 (+AP omitted); Amumu E 'reduces
+every instance of pre-mitigation physical damage taken, capped at 50% of the damage instance' -> flat
+per-rank [5,7,9,11,13] PHYS passive prob 1.0 from the 'Physical Damage Reduction' modifier (+3%
+bonus-armor/MR omitted, rank_scaled); Leona W 'gaining flat damage reduction of up to 50% of the damage
+instance' -> flat per-rank [8,12,16,20,24] ANY active amortized at 0.3 from the 'Flat Damage Reduction'
+modifier (bonus-armor/MR is a resist-grant axis, not a flat-DR term; rank_scaled). DATA-DRIVEN
+PER-RANK note: the source assumption was a per-LEVEL amount, but the 16.12.1 data shows Amumu E + Leona
+W carry a per-RANK flat block (5 ability ranks) read at _ASSUMED_ABILITY_RANK=4, not an 18-level curve.
+The cap_frac (0.5) is recorded for provenance but NON-BINDING at representative instance sizes (a flat
+4-50 is far below 50% of a 100-300 final-damage instance) so it is not applied in the prevented-HP
+arithmetic. compute_ehp + rank_items_by_ehp gain assume_passive_flat_mitigation: bool=False; the
+prevented HP adds RAW to each per-type EHP numerator (main math + the _blend_with_heal sustain
+recompute) and rides the SAME armor/MR curve, so blended_ehp + cc_blended_ehp inherit it; the pre-vs-
+post-mitigation simplification (Amumu reduces pre-mitigation) is a documented bounded over-credit.
+EhpResult gains passive_flat_mit_phys/mag/true (default 0.0, appended at END). Default OFF
+byte-identical; the live default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md). Credits Riot
+Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.148.0.)
+
 1.147.0 (R7 - per-stack champion self-Attack-Speed passive seam on the AA DPS scorer, default-OFF,
 byte-identical. A class of champion INNATE passives grant the champion a per-stack bonus ATTACK SPEED
 that ramps to a documented ceiling at max stacks; the stat pipeline (engine.build_champion) has no
