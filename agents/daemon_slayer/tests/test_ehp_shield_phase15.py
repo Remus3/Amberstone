@@ -469,7 +469,7 @@ class EngineVersionCurrentTests(unittest.TestCase):
         import agents.daemon_slayer as ds
         # 1.27.0 closes the Phase 1.5 shield-throughput omission;
         # confirmed by the live tests above.
-        self.assertEqual(ds.ENGINE_VERSION, "1.148.0")
+        self.assertEqual(ds.ENGINE_VERSION, "1.149.0")
 
 
 if __name__ == "__main__":
