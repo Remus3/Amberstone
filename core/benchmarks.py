@@ -98,6 +98,37 @@ def games_for(champion: str, mode: str) -> int:
     return ((data.get("champions", {}) or {}).get(key, {}) or {}).get("games", 0)
 
 
+def rows_for_mode(mode: str) -> list[dict]:
+    """Return every champion's benchmark row for a stored mode suffix.
+
+    Surface read for the dashboard Benchmarks tab (descriptive personal-corpus
+    per-champion stat breakdown). Keys are "<Champ>|<mode>"; this filters to the
+    given suffix and returns one entry per champion:
+
+        [{"champion": "Vayne", "games": 161, "metrics": {...}}, ...]
+
+    Sorted by games desc (the trust ordering - Aggregator-B-style, the most-played
+    champion's distribution is the most reliable). An unknown / empty mode
+    returns []. Additive over the existing _cache - no schema change.
+    """
+    data = _cache.all()
+    suffix = f"|{mode}"
+    rows: list[dict] = []
+    for key, entry in (data.get("champions", {}) or {}).items():
+        if not key.endswith(suffix):
+            continue
+        # WHY rsplit on the LAST "|": champ ids are "|"-free DDragon ids and the
+        # mode suffix is the only "|" in the key, so the head is the champion.
+        champ = key.rsplit("|", 1)[0]
+        rows.append({
+            "champion": champ,
+            "games": (entry or {}).get("games", 0),
+            "metrics": (entry or {}).get("metrics", {}) or {},
+        })
+    rows.sort(key=lambda r: r.get("games", 0), reverse=True)
+    return rows
+
+
 def text_freq(champion: str, mode: str, metric_key: str) -> dict:
     """Frequency distribution of a text-valued metric (e.g. game_sense_early).
     Returns {value: count}. Used for aggregate statements like "your most
