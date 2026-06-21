@@ -43,6 +43,12 @@ const WIDGETS = [
   { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 20, y: 620, tier: "urgent" },
   { id: "w-build", sel: "#view-active-match .am-pane-build", x: 20, y: 620, tier: "ambient" },
   { id: "w-ovds", sel: "#am-pane-ovds", x: 20, y: 780, tier: "ambient" },
+  // New doctrine cues (OVERLAY_DOCTRINE section 4). Both are data-gated (their
+  // renderer un-hides the mount only when actionable) + coach-core (shown in
+  // every panel set). Mounted as direct am-grid children (NOT inside a pane) so
+  // position:fixed is viewport-relative, not trapped by a transformed pane.
+  { id: "w-trinket", sel: "#am-ward-cue", x: 20, y: 520, tier: "urgent" },
+  { id: "w-spike", sel: "#am-spike-cue", x: 20, y: 580, tier: "urgent" },
 ];
 
 let _layout = {};
