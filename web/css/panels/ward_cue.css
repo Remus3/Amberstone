@@ -1,0 +1,94 @@
+/* web/css/panels/ward_cue.css
+ *
+ * QA1 (RC2 overlay): trinket / control-ward READY glyph cue. A compact chip
+ * strip at the top of the overlay CALL pane (web/js/panels/ward_cue.js).
+ * Overlay-only - the base rule hides it on the 1920 dashboard so it never
+ * intrudes there; only body[data-shell="overlay"] shows it, and only when
+ * ward_cue.js clears [hidden] (a ward signal is actionable).
+ *
+ * GPU-light: one short box-shadow pulse on the not-ready -> ready edge, the
+ * class toggled by JS (gated on the operator pulseNotify toggle) and disabled
+ * under prefers-reduced-motion. Colors come from tokens.css (no new palette).
+ */
+
+.ward-cue {
+  display: none; /* dashboard surface: never shown */
+}
+
+body[data-shell="overlay"] .ward-cue {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+/* JS toggles [hidden] when nothing is actionable; keep it authoritative on the
+ * overlay surface (else the display:flex above would override the attribute). */
+body[data-shell="overlay"] .ward-cue[hidden] {
+  display: none;
+}
+
+.ward-cue .ward-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.ward-cue .ward-glyph::before {
+  font-size: 0.95em;
+}
+
+/* Trinket ready = vision is available right now -> the "good" green signal. */
+.ward-cue .ward-chip.trinket {
+  color: var(--signal-good);
+  background: var(--signal-good-soft);
+  border-color: var(--signal-good);
+}
+.ward-cue .ward-chip.trinket .ward-glyph::before {
+  content: "\25C6"; /* black diamond - the warding-totem shape */
+}
+
+/* Control ward held = the pink ward you place -> the info indigo signal so it
+ * reads as a distinct second cue, not a duplicate of the trinket chip. */
+.ward-cue .ward-chip.control {
+  color: var(--signal-info);
+  background: rgba(138, 140, 240, 0.18);
+  border-color: var(--signal-info);
+}
+.ward-cue .ward-chip.control .ward-glyph::before {
+  content: "\25CF"; /* filled circle - the control-ward dot */
+}
+
+/* One-shot attention pulse on the rising edge (is-pulsing toggled by JS). The
+ * single iteration count makes it fire once; ward_cue.js strips the class after
+ * the window so a later edge re-triggers it. */
+@keyframes ward-ready-pulse-good {
+  0%   { box-shadow: 0 0 0 0 rgba(110, 201, 119, 0); transform: scale(1); }
+  35%  { box-shadow: 0 0 12px 2px rgba(110, 201, 119, 0.55); transform: scale(1.06); }
+  100% { box-shadow: 0 0 0 0 rgba(110, 201, 119, 0); transform: scale(1); }
+}
+@keyframes ward-ready-pulse-info {
+  0%   { box-shadow: 0 0 0 0 rgba(138, 140, 240, 0); transform: scale(1); }
+  35%  { box-shadow: 0 0 12px 2px rgba(138, 140, 240, 0.55); transform: scale(1.06); }
+  100% { box-shadow: 0 0 0 0 rgba(138, 140, 240, 0); transform: scale(1); }
+}
+.ward-cue .ward-chip.trinket.is-pulsing {
+  animation: ward-ready-pulse-good 1.2s ease-out 1;
+}
+.ward-cue .ward-chip.control.is-pulsing {
+  animation: ward-ready-pulse-info 1.2s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ward-cue .ward-chip.is-pulsing {
+    animation: none;
+  }
+}
