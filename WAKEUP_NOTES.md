@@ -4,6 +4,39 @@
 
 ---
 
+# 2026-06-20 (interactive) - Game-PC purge COMPLETE + open-items review + flash fix
+
+Commits (all CI-green): `f508046e` loop-status git CREATE_NO_WINDOW (the "terminal
+flashing every ~4s" = the /loop-monitor page polling /api/loop-status, whose
+`_last_commit()` git call lacked the no-window flag) + `aa5f9756` Game-PC purge CORE
+(66 files: rename the 6 relocated gamepc_*.py agents -> Legion names + re-register
+the 3 LIVE tasks via Set-ScheduledTask; sever the Game-PC bridge peer + gamepc MCP;
+purge living docs) + `a459b737` purge TAIL (87 files: bridge node-enum de-scope incl
+3 frozen configs + supervisor `_BRIDGE_PUB_PEERS` + scattered comments + web + tests)
++ `9a2e9a5f` operator-review decisions. RC is now Legion-only: /api/health/all peers
+= peer-only, overall GREEN, pid 17176. Dated history + memory cross-refs preserved.
+
+OPEN-ITEMS REVIEW: operator went top-to-bottom; the queue now lives in the UNTRACKED
+repo-root `RC_WORK_TRACKER.md` (Claude-synced; `[^Reviewed]` = operator input, rows
+removed as shipped). Decisions: Stage 8.3 flipped DONE (the held flip from item 551,
+now committed; banner 54/62 ~87%); L103/L104 CLOSED (Electron overlays self-audit);
+mobile-native + tft-vision-relay REMOVED; ~13 backlog items moved to OPEN; Overlay App E
+enemy-CD DEFERRED; DS target-current-HP% -> (B) per-archetype (burst ~100%,
+juggernaut/sustained ~50%). DATA: 507 ranked-solo games (L109 unblocked); 0
+auto-action samples.
+
+STANDING DIRECTIVE: decisions are NO LONGER operator-gated - act autonomously
+([[feedback_decisions_not_operator_gated]]). Also [[feedback_avoid_console_flash_legion]].
+
+NEXT / DO-NOT-REDO: (1) auto-action lanes (L116) NOT armed - arming costs API ($5/day
+sub-Claude `claude --print`); operator wants FREE -> pick (A) accept the capped cost
+or (B) build a $0 deterministic verb->command lane. (2) NEXT SESSION: validate
+lolmath's ~50% EHP baseline from their site BEFORE building the DS per-archetype flip
+(pinned in the tracker). (3) Resume /rc2-continue (E7 priority-HIGH). The flash is
+FIXED (`f508046e`) - do not re-investigate. [[project_rc2_build]]
+
+---
+
 # 2026-06-20 (/RC2-Continue - Phase 8.3 operator Q/A consolidation)
 
 Shipped the 8.3 deliverable: `docs/RC2_QA_CONSOLIDATED.md` (commit `f05b853d`,
@@ -49,29 +82,3 @@ operator asked for (watch long Claude runs: where time goes / if stuck). Commits
 
 NEXT: restart CC to kill the flashing; /RC2-Continue resumes 8.3+.
 [[project_rc2_build]] [[reference_loop_monitor]] [[feedback_cc_session_perf]]
-
----
-
-# 2026-06-20 (RC 2.0 /RC2-Continue - Phase 7.5 verify-suite; Phase 7 HYGIENE COMPLETE)
-
-P7.5 "verify dual suite green post-cleanup" DONE. Work `afa07330` + docs flip `a7c59635`.
-Banner 52 -> 53 / 62 = ~85%. Phase 7 HYGIENE COMPLETE (7.1-7.5). Pushed, CI green.
-
-- The verify stage was NOT a rubber stamp - found 5 REAL reds, one root cause: the prior
-  `74cca91d` ASCII glyph sweep + prod hardening made coaches/adaptation_hint_champion.py +
-  _cli.py emit ASCII arrows ^/v and ` | ` separator, but 6 stale agent3 round-test asserts
-  still expected unicode (up/down/mid-dot). Production is correct per the ASCII rule; the
-  tests were the defect. Fixed all 6 in round16/24/25/28/29 (4 failing + 2 tautology/dead).
-- Cluster B: ROADMAP.md 88772 B > 80KB doc-size guard -> relocated 3 shipped mega-bullets
-  (RC2 enumeration, swarm-progress, 2026-06-15 refill) to docs/ROADMAP_HISTORY.md
-  (### Relocated 2026-06-20); ROADMAP now 65096 B (~16.8KB headroom); line 11 kept in-flight
-  head + OPEN tail. Full dual suite 17151 passed / 0 failed. LEDGER #549. Sentinel written.
-- EFFICIENCY (operator flagged live): ran the full 14.5min suite TWICE (~29min). Recorded in
-  feedback_execution_efficiency_rules R6 - for test-string+doc-only fixes the targeted slice
-  + deduction is enough; do NOT re-run the whole 17k suite for a count.
-- LEFT UNTOUCHED (concurrent process, NOT this session): dashboard/_dispatch.py (M) +
-  dashboard/routes_loop_monitor.py + tests/test_loop_monitor_route.py (new loop-monitor
-  route). Do NOT auto-commit these in an RC2 session - they belong to whatever added them.
-
-NEXT /RC2-Continue: Phase 8 stage 8.3 operator Q/A consolidation; then E10/E11/E12/E7/E2.
-[[project_rc2_build]] [[feedback_execution_efficiency_rules]].
