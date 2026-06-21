@@ -44,6 +44,7 @@
 @import './panels/ds_profile.css';
 @import './panels/player_gpi.css';
 @import './panels/duration_winrate.css';
+@import './panels/champ_benchmarks.css';
 @import './panels/perf_curve.css';
 @import './panels/op_score.css';
 @import './panels/ds_matchup.css';
