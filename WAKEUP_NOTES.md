@@ -4,29 +4,22 @@
 
 ---
 
-# 2026-06-21 (review tooling) - an external code-intelligence MCP eval (angle a): NO-GO
+# 2026-06-21 (architecture viz) - HEXCORE: 3D RC/DS knowledge-graph nexus
 
-Tooling eval queued by the ZOI session (item 567). Stood `an external code-intelligence MCP` v0.8.1
-(MIT, 10k-star, prebuilt Windows amd64 binary - no C toolchain on Legion, so the build question is
-moot) up against RC. No RC runtime/code/config change; ran from `C:\rc-eval-cmm` (out of repo) via
-the binary `cli <tool>` mode (no MCP registration, no session restart). LEDGER 568; full doc
-`docs/tooling-eval-doc.md`.
+Built HEXCORE (`docs/HEXCORE.html`) - a standalone interactive 3D hextech "JARVIS" viewer of RC/DS's
+own code architecture. 3d-force-graph WebGL; Hextech palette (gold #C8AA6E + cyan #0AC8B9 on navy
+#0A0E14 / #16202E) + the overlay typography; design ideas sourced from Gemini (`tools/gemini_ask.ps1`).
+Maps RC's ground-truth-verified architecture as a navigable hologram: the DS engine pinned as a reactor
+core; the per-mode coaches; the CORRECTED route binding (RC dispatches paths via `GET_ROUTES` tables +
+`_dispatch.dispatch_get`, NOT decorators); the web-panel HTTP fetch->endpoint data flow (cyan particle
+streams); and the real git co-change coupling (the 3 mode coaches). Hover scans + highlights neighbors,
+click locks + camera-flies, search locates. LEDGER 568.
 
-VERDICT: NO-GO for standing adoption. Index is fast/clean/isolated (114732 nodes, 16.1s, no repo
-pollution), but the headline review features fail ON RC specifically: (1) call-graph over-attributes
-unqualified method names - hotspot `coach_trace.append` fan_in 1104 vs 4 real refs (verified
-`core/coach_trace.py:46` + 4 grep hits); (2) orphaned-route detection inert - RC dispatches via
-`GET_ROUTES`/`POST_ROUTES` tables + `_dispatch.dispatch_get` (`dashboard/_handler.py:228`), not
-decorators, so 179/180 Route nodes are unbound (in_degree 0); (3) no turnkey dead-code detector (the
-query language cannot express the anti-join) and the CALLS-subtraction proxy is FP-dominated on the
-known-clean tree - `read_recent` flagged dead but called aliased at `routes_coach.py:58`;
-(4) `trace_path` returned empty in 3 attempts; (5) `FILE_CHANGES_WITH` coupling is dominated by the
-/done docs-sync ritual. Only HTTP_CALLS (JS fetch->endpoint map) works well and is the one capability
-RC lacks - reproducible with a ~30-line RC script, not worth adopting the tool over KARP+ruff+grep.
+Also this session: landed the audit-10 C-01 cron silent-fail stub + audit artifacts (`ef5a3937`),
+independently verified + regression-tested (`tests/test_agent6_failure_stub.py`, 5 passed).
 
-DON'T re-litigate angle (a): NO-GO is decided. Eval workspace `C:\rc-eval-cmm` (~270MB binary +
-harness + raw outputs) retained out-of-repo for the angle-(b) design/impl review (separate later
-session; the indexed graph is cached); delete with `Remove-Item -Recurse -Force C:\rc-eval-cmm`.
+DON'T redo: HEXCORE built + the corrected RC self-map captured (route dispatch, coach coupling, DS
+reactor topology all ground-truth-verified).
 
 ---
 
@@ -35,10 +28,7 @@ session; the indexed graph is cached); delete with `Remove-Item -Recurse -Force 
 Re-opened the L1 minimap/ZOI work item 566 deferred. 1 commit `94b31bad` (pushed, CI green; LEDGER 567).
 
 PREMISE: 566 deferred ZOI because Live Client :2999 has no coords. This session found a NO-API
-coordinate source: League `game.cfg` `[HUD]` MinimapScale=1.62 + FlipMiniMap=0 geometry. The
-`an external code-intelligence MCP` link in the brief was VERIFIED (WebFetch) to be an unrelated C/C++
-code-intelligence MCP (knowledge-graph indexer) - NOT a coord source so not used for ZOI, BUT per
-operator clarification it IS the intended tool for a SEPARATE whole-RC review (queued next session).
+coordinate source: League `game.cfg` `[HUD]` MinimapScale=1.62 + FlipMiniMap=0 geometry.
 Operator picked ZOI scope "Foundation only".
 
 SHIPPED: `core/league_settings.py` (game.cfg reader) + `core/minimap_geometry.py` (pure calibrated
@@ -54,9 +44,7 @@ must be RELAUNCHED to load the new JS module (it does NOT hot-reload new imports
 game ended (minimap_rect null off a minimap mode). Next game: relaunch rc-shell, capture, nudge the
 calibration constant if off. THEN slice 2 (pure-numpy team-color blob detection on the minimap crop
 -> dot centroids) + slice 3 (ZOI bubbles + demarcation weighted by per-team strength, fed to coach;
-all local/no-API). DON'T redo: foundation/calibration/no-handle. an external code-intelligence MCP is NOT a dead
-end - it is a review-tool candidate for a SEPARATE session (tooling eval: stand it up against RC ->
-orphaned routes / dead code / coupling hotspots, then go/no-go on adopting it). Prompt drafted.
+all local/no-API). DON'T redo: foundation/calibration/no-handle.
 
 ---
 
