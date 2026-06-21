@@ -1235,6 +1235,10 @@ function _line(label, value) {
   // 13px / 10px - the "RIGHT NOW leads" hierarchy needs the prompt to
   // read at viewing distance.
   const row = document.createElement("div");
+  // Identify the line KIND so the overlay CSS can tier / clamp / combat-shed it
+  // by type, not a fragile nth-child position - the rows are conditional (only
+  // present coach fields render), so OBJECTIVE is not always the 3rd child.
+  row.dataset.callLine = String(label).toLowerCase().replace(/\s+/g, "-");
   row.style.cssText = "margin-bottom:10px;font-size:var(--fs-md);line-height:1.45;";
   const lbl = document.createElement("span");
   lbl.style.cssText = "color:var(--text-faint);letter-spacing:0.12em;font-size:var(--fs-xs);font-weight:700;display:block;margin-bottom:2px;";
