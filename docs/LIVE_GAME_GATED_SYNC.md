@@ -281,6 +281,17 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-20 RC2 E-batch E12-L2 + E7a (RC-side, NOT DS seams; shipped code-safe, no flip flag).
+  E7a (`64591d5f`) tightens the RC-LCUAgent bench-swap queue-drain (fast 0.1s re-poll on a
+  latency-sensitive cmd vs the 0.5s idle wait). LIVE EYEBALL OWED: in a real ARAM champ-select,
+  click a bench champ and confirm the swap registers visibly faster - cannot be exercised offline
+  (needs a live LCU champ-select with a populated bench). The RC-LCUAgent runs as an ONLOGON task
+  with no restart_trigger, so a code refresh needs `taskkill /F` the agent pid + `Start-ScheduledTask
+  RC-LCUAgent`. E12-L2 (`48fcee51`) memoizes RuneWriter's lobby gameMode per champ-select session.
+  LIVE EYEBALL OWED: confirm RuneWriter still pushes the correct mode-appropriate runes/spells on
+  champ-select enter (cache is per-session, cleared on `_reset_spell_state`) and a mode change across
+  back-to-back champ-selects re-detects. Neither blocks any further stage.
+
 - 2026-06-20 RC2 P5.2 CV served integration (COACHING, NOT a DS seam; shipped code-safe
   DEFAULT-OFF). 5.1 built the CV override + shadow column; 5.2 builds the SERVED-FLIP
   MECHANISM: `core.laning_cv_overrides.apply_cv_to_choices` maps a fired override onto the
