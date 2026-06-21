@@ -245,6 +245,14 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   font-size: 12px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.55);
+  /* Clamp a verbose macro OBJECTIVE to 2 lines so it can never blow the card
+   * past the 1.5s glance budget (doctrine rule 1) - the rest is on the dashboard
+   * surface, not the HUD. -webkit-box line-clamp is the cross-Chromium idiom. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.25;
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(4) {
   display: none !important;
@@ -291,6 +299,41 @@ body[data-shell="overlay"] .ovx-widget.ovx-dragging .ovx-handle {
 }
 body[data-shell="overlay"] .ovx-hidden {
   display: none !important;
+}
+
+/* 4e. HEX-NOTCH FLOURISH (doctrine section 5 premium). A thin chamfer bracket in
+ * the top-left corner gives every widget the etched-Hextech read without a fat
+ * frame or a clip-path (clip-path would crop the glow + the drag handle). Drawn
+ * as a pseudo-element so it costs no DOM and no layout. The PRIMARY (w-call) gets
+ * a brighter cyan bracket AND a matching bottom-right one to redundant-encode the
+ * single top cue (rule 8: redundant-encode ONLY the top cue). */
+body[data-shell="overlay"] .ovx-widget::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 7px;
+  height: 7px;
+  pointer-events: none;
+  border-top: 1px solid rgba(var(--ovx-gold), 0.85);
+  border-left: 1px solid rgba(var(--ovx-gold), 0.85);
+  z-index: 1;
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"]::before {
+  border-top-color: rgba(var(--ovx-cyan), 0.95);
+  border-left-color: rgba(var(--ovx-cyan), 0.95);
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"]::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  pointer-events: none;
+  border-bottom: 1px solid rgba(var(--ovx-cyan), 0.95);
+  border-right: 1px solid rgba(var(--ovx-cyan), 0.95);
+  z-index: 1;
 }
 
 /* 4d. Panel-set presets (Alt+Shift+C). main.js stamps body[data-panelset]; these
@@ -389,12 +432,24 @@ body[data-shell="overlay"][data-rc-idle="1"] .ovx-widget {
  * sheds ambient widgets so the call + the A/B decision own the screen; nothing
  * dims while a fight is live. Display/opacity toggles only - no layout loop. */
 body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-build"],
-body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-ovds"],
-body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-lead"] {
+body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-ovds"] {
+  display: none !important;
+}
+/* w-lead is the #rn-lead id-mount, so its combat hide needs the id + the
+ * [data-fight] attr to out-rank the section-4a #rn-lead:not([hidden]) flex rule
+ * (a bare [data-ovx-id] selector loses to the id and the pill leaks into the
+ * fight). Same specificity lesson as the panel-set choices hide. */
+body[data-shell="overlay"][data-fight="1"] #rn-lead:not([hidden]) {
   display: none !important;
 }
 body[data-shell="overlay"][data-fight="1"] #rn-callouts .rc-co-row:nth-child(n+2) {
   display: none;
+}
+/* The CALL sheds its macro OBJECTIVE footer in a fight: the RIGHT NOW cue + the
+ * ACTION verb stay (one line each), the macro prose drops - text -> preattentive
+ * (doctrine section 6). The cyan primary glow + the band color carry the read. */
+body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div:nth-child(3) {
+  display: none !important;
 }
 body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] .ovx-widget {
   opacity: 1 !important;
