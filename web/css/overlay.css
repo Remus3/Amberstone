@@ -336,6 +336,25 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"]::after {
   z-index: 1;
 }
 
+/* 4f. GLYPH widgets (w-trinket / w-spike): the doctrine cues that are a small
+ * floating accent, not a boxed card. Strip the .ovx-widget frame (backing /
+ * border / shadow / padding / hex-notch) so the chip itself is the visual; the
+ * drag handle + the saved-position persistence still apply. They are data-gated
+ * (their renderer un-hides the mount only when actionable) + coach-core (shown in
+ * every panel set), so no panel-set rule is needed. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-trinket"],
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-spike"] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  max-width: none;
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-trinket"]::before,
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-spike"]::before {
+  display: none;
+}
+
 /* 4d. Panel-set presets (Alt+Shift+C). main.js stamps body[data-panelset]; these
  * are DELTAS from the coach base (doctrine section 4), NOT a column swap: the
  * coach core (call / choices / callouts / lead) PERSISTS and a set reveals or

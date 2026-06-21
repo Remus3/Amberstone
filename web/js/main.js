@@ -39,6 +39,7 @@ import { renderOverlayDsControls } from './panels/overlay_ds_controls.js';
 // QA1: overlay-only trinket/control-ward READY glyph cue. Self-gates on
 // body[data-shell="overlay"]; a cheap no-op on the 1920 dashboard.
 import { renderWardCue } from './panels/ward_cue.js';
+import { renderSpikeCue } from './panels/spike_cue.js';
 // QA4: overlay-only objective respawn-timer chips (dragon/baron/herald).
 import { renderObjectiveChips } from './panels/objective_chips.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
@@ -1383,6 +1384,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // same dispatch (self-gated on body[data-shell="overlay"]).
         renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
         renderWardCue(_amMockData.liveclient || null);
+        renderSpikeCue(_amMockData.liveclient || null);
         renderObjectiveChips(_amMockData.liveclient || null);
       } else {
         _amMockLoad();  // .then re-fires render on landing
@@ -1411,6 +1413,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // QA1: ward-ready glyph cue rides the same overlay-gated dispatch off the
       // raw liveclient block (lc.ward_cue). Null-safe; hides when not in-game.
       renderWardCue((state.latest && state.latest.liveclient) || null);
+      // RC Overlay Doctrine w-spike: the ultimate power-spike crossed cue rides
+      // the same overlay-gated dispatch off the live level (lc.level). One-shot
+      // + transient; null-safe; no-op out of game / off the overlay shell.
+      renderSpikeCue((state.latest && state.latest.liveclient) || null);
       // QA4: objective respawn chips off the same liveclient block
       // (lc.objective_events + lc.game_time_s). Null-safe; hides when no respawn.
       renderObjectiveChips((state.latest && state.latest.liveclient) || null);

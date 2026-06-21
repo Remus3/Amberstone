@@ -2047,12 +2047,16 @@
         <span class="view-section-sub" id="am-sub">scaffold · waiting for in-game data</span>
       </div>
       <div class="view-section-body am-grid">
+        <!-- RC Overlay Doctrine w-trinket + w-spike: movable position-fixed cue
+             widgets. Mounted as direct am-grid children (NOT inside a pane) so
+             overlay_layout.js can lift them to position:fixed - a fixed child of
+             a transformed .ovx-widget pane would be trapped + clipped. Overlay-
+             only + data-gated (hidden until actionable); display:none on the 1920
+             dashboard so they never take a grid cell there. -->
+        <div class="ward-cue" id="am-ward-cue" hidden></div>
+        <div class="spike-cue" id="am-spike-cue" hidden></div>
         <div class="am-pane am-pane-call">
           <div class="am-pane-head">CALL</div>
-          <!-- QA1 (RC2 overlay): trinket / control-ward READY glyph cue.
-               Overlay-only (ward_cue.js gates on body[data-shell="overlay"]);
-               hidden until a ward signal is actionable. -->
-          <div class="ward-cue" id="am-ward-cue" hidden></div>
           <!-- QA4 (RC2 overlay): objective respawn-timer chips (dragon/baron/
                herald). Overlay-only (objective_chips.js); hidden until an
                objective has been taken and a respawn is pending. -->
