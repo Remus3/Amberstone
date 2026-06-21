@@ -1,47 +1,36 @@
 """
 tests/snapshot_panels/test_overlay_view.py
-Electron overlay route (HZ-D1, docs/ELECTRON_OVERLAY.md sections 6+7).
+Electron overlay route (RC Overlay Doctrine, docs/OVERLAY_DOCTRINE.md).
 
 The in-game overlay window loads RC_ORIGIN/?overlay=1. main.js stamps
 body[data-shell="overlay"] at module top (before the first render) and the
 view router pins the active-match view unconditionally - hash / manual /
-auto derivation are bypassed. web/css/overlay.css then composes a compact
-single-column right-dock (~460px) over a transparent page background:
-ONLY the coach CALL pane + BUILD pane (#view-active-match) plus the
-callouts/lead mounts (#rn-lead / #rn-callouts inside #right-now) are
-shown; header / nav / footer / every other view is display:none.
+auto derivation are bypassed. web/css/overlay.css + web/js/lib/overlay_layout.js
+then compose a FULLSCREEN transparent click-through page as a FIELD of
+independently absolutely-positioned widgets (the .ovx-widget accents), NOT the
+retired 460px right-dock. Each cue mount (the coach CALL pane, the A/B choice
+chips, the lead pill, the objective/spike callouts, the enemy CD ledger, the
+build re-rank, the fight-model knobs) is lifted to position:fixed at a saved-or-
+default (x,y); the default is a non-intrusive left-edge column (x=20). Reveal-
+only widgets (build / threat / fight-model) hide in the default coach set and
+appear in their panel set. Header / nav / footer / every other view is
+display:none over a transparent background.
 
 Drive path mirrors test_active_match_view.py (C2):
 /?ui_mock=1&mode=sr&overlay=1. The forced applyView("active-match") fires
 _amMockLoad, which fetches /data/ui_mock/active_match_sr.json and renders
 the CALL pane with phase=InProgress - we wait on that #am-sub stamp.
 
-Also covered: the .ov-pulse change-glow hook (web/js/overlay_pulse.js -
-MutationObserver, throttled, overlay-only), the right-dock geometry, and
-the no-overlay-param control (normal shell untouched).
+Also covered: the panel-set deltas (coach core persists; build adds w-build,
+threat adds w-threat + drops choices), the ovscale body-zoom of the field, the
+.ov-pulse change-glow hook (web/js/overlay_pulse.js), and the no-overlay-param
+control (normal shell untouched). 2026-06-21: rewritten off the retired 460px
+dock model to the widget field (the @_DOCK_RETIRED skip marker is gone).
 """
-import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 SCREENSHOTS = Path(__file__).parent / "screenshots"
-
-# 2026-06-21: the overlay was migrated from the 460px right-DOCK to the FULLSCREEN
-# movable widget-FIELD doctrine (docs/OVERLAY_DOCTRINE.md): widgets are now
-# absolutely-positioned, draggable, position-persistent .ovx-widget accents at the
-# screen edges over a fullscreen transparent click-through window - there is no
-# 460px dock, no right-anchored column, and build/threat/fight-model are
-# reveal-only. The tests below assert the RETIRED dock model (dock geometry,
-# ovscale dock-width, panel-set dock visibility, the companion-coexistence #ovset
-# settings strip) and can only pass against the old doctrine. They are SKIPPED
-# pending a rewrite to the widget-field model (the top next-session item in
-# WAKEUP_NOTES). The overlay is verified working LIVE; this is test-lag, not a
-# live regression.
-_DOCK_RETIRED = pytest.mark.skip(
-    reason="overlay migrated to the fullscreen widget-field doctrine "
-    "(docs/OVERLAY_DOCTRINE.md); asserts the retired 460px-dock model - "
-    "rewrite pending, see WAKEUP_NOTES"
-)
 
 # Views that must be display:none in overlay mode (the "all other views"
 # half of the contract) - a representative slice of every surface class:
@@ -63,6 +52,13 @@ _HIDDEN_SELECTORS = [
 def _display(page, selector):
     return page.eval_on_selector(
         selector, "el => getComputedStyle(el).display"
+    )
+
+
+def _css(page, selector, prop):
+    """Resolved computed value of a (dash-cased) CSS property on the first match."""
+    return page.eval_on_selector(
+        selector, "(el, p) => getComputedStyle(el).getPropertyValue(p)", prop
     )
 
 
@@ -94,32 +90,52 @@ def _open_overlay(pw_browser, mock_server, query="?ui_mock=1&mode=sr&overlay=1")
     return ctx, page, errors
 
 
-@_DOCK_RETIRED
-def test_overlay_shell_renders_compact_subset(mock_server, pw_browser):
-    """?overlay=1: shell flag set, view forced to active-match, compact
-    panel subset visible, header/footer/other views display:none."""
+def test_overlay_shell_is_widget_field(mock_server, pw_browser):
+    """?overlay=1: shell flag + forced active-match view, then the cue mounts are
+    lifted to absolutely-positioned .ovx-widget accents (the widget FIELD, not a
+    dock). The coach-set widgets paint at their left-edge default; the reveal-only
+    build / threat / fight-model widgets are hidden; header / footer / every other
+    view is display:none over a transparent page (docs/OVERLAY_DOCTRINE.md 2+4)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         # Shell flag + forced view.
         assert page.evaluate("document.body.dataset.shell") == "overlay"
         assert page.evaluate("document.body.dataset.view") == "active-match"
 
-        # Compact subset present: coach CALL pane + BUILD pane.
-        call = page.locator("#view-active-match .am-pane-call")
-        build = page.locator("#view-active-match .am-pane-build")
-        assert call.is_visible(), ".am-pane-call not visible in overlay"
-        assert build.is_visible(), ".am-pane-build not visible in overlay"
+        # The coach-set cue mounts are .ovx-widget + position:fixed (the field).
+        for sel, wid in (
+            ("#rn-lead", "w-lead"),
+            ("#view-active-match .am-pane-call", "w-call"),
+            ("#rn-callouts", "w-callouts"),
+        ):
+            assert page.eval_on_selector(
+                sel, "e => e.classList.contains('ovx-widget')"
+            ), f"{sel} is not an .ovx-widget"
+            assert page.eval_on_selector(sel, "e => e.dataset.ovxId") == wid, (
+                f"{sel} missing data-ovx-id={wid}"
+            )
+            assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
+
+        # Left-edge non-intrusive default (doctrine section 4), and the PRIMARY
+        # widget carries its tier marker.
+        assert _css(page, "#view-active-match .am-pane-call", "left") == "20px"
+        assert page.eval_on_selector(
+            "#view-active-match .am-pane-call", "e => e.dataset.ovxTier"
+        ) == "primary"
         # The fixture's coach payload actually rendered into the CALL pane.
         assert page.locator("#am-call-body div").count() > 0, "CALL pane empty"
 
-        # Callouts/lead mounts ride along inside the subset (they paint
-        # whenever the deterministic generators ship data).
-        assert page.locator("#rn-lead").count() == 1, "#rn-lead mount missing"
-        assert page.locator("#rn-callouts").count() == 1, "#rn-callouts mount missing"
-
-        # Non-subset active-match panes are hidden (GPU-light overlay).
+        # Reveal-only widgets are hidden in the default coach set.
+        for sel in (
+            "#view-active-match .am-pane-build",
+            "#view-active-match .am-pane-cd",
+            "#am-pane-ovds",
+        ):
+            assert _display(page, sel) == "none", (
+                f"{sel} must be reveal-only (hidden in the default coach set)"
+            )
+        # The map pane never paints on the HUD.
         assert _display(page, ".am-pane-map") == "none", "map pane should hide"
-        assert _display(page, ".am-pane-cd") == "none", "cd pane should hide"
 
         # Header / footer / every other view is display:none.
         for sel in _HIDDEN_SELECTORS:
@@ -136,87 +152,41 @@ def test_overlay_shell_renders_compact_subset(mock_server, pw_browser):
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [overlay]: {errors[:3]}"
+    assert not errors, f"JS errors [overlay field]: {errors[:3]}"
 
 
-@_DOCK_RETIRED
-def test_overlay_settings_strip_has_dashboard_persist_toggles(mock_server, pw_browser):
-    """RC2 3.4: the overlay settings strip exposes Keep-dashboard +
-    Pin-on-top toggles (no hotkey needed) so the operator controls the
-    dashboard-persist + pin behavior from the dashboard UI. Both default
-    CHECKED - the disappear-bug fix is the default state. ASCII labels;
-    each row meets the >=42px hit-target floor."""
-    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+def test_overlay_settings_strip_reveals_in_build_set(mock_server, pw_browser):
+    """Overlay-only doctrine: the #ovset settings strip rides the w-ovds
+    fight-model widget, which is REVEAL-ONLY - it shows in the build set, not the
+    default coach HUD. When revealed it carries the overlay-native controls: the
+    panel-set selector (Coach/Build/Threat, twin of Alt+Shift+C), Interact-now
+    (twin of Alt+Shift+A), the change-pulse toggle, and the auto-passive seconds
+    field. Each clears the >=42px hit-target floor with ASCII labels.
+
+    keep-vs-RETIRE decision (2026-06-21): the companion-coexistence controls
+    (Keep-dashboard / Pin-on-top / Separate-windows / Re-arrange / Show-dashboard)
+    are NO LONGER asserted. The Chrome dashboard is retired as a user surface
+    (docs/OVERLAY_DOCTRINE.md), so those manage a deprecated surface; they still
+    render (wired in rc-shell) but are not pinned as test contract. The three
+    dock-era #ovset tests are consolidated here."""
+    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "build")
     try:
-        # The strip mounts via renderOverlayDsControls -> _ensureScaffold on
-        # the overlay shell (independent of a resolved champion).
-        page.wait_for_selector("#ovset #ovset-keep", timeout=10_000)
-
-        # STRUCTURE: all four controls present in the one OVERLAY strip.
-        for sel in ("#ovset-keep", "#ovset-pin", "#ovset-pulse", "#ovset-revert"):
-            assert page.locator(sel).count() == 1, f"{sel} missing from #ovset"
-
-        # The two new toggles default CHECKED (keepCompanion +
-        # companionAlwaysOnTop default ON = dashboard persists + pinned).
-        assert page.eval_on_selector("#ovset-keep", "el => el.checked") is True, (
-            "Keep dashboard must default checked"
-        )
-        assert page.eval_on_selector("#ovset-pin", "el => el.checked") is True, (
-            "Pin on top must default checked"
-        )
-
-        # ASCII labels (no smart quotes / dashes).
-        keep_txt = page.eval_on_selector(
-            "#ovset-keep ~ span, #ovset-keep + span", "el => el.textContent"
-        )
-        assert keep_txt == "Keep dashboard", f"unexpected keep label {keep_txt!r}"
-        assert keep_txt.isascii(), f"non-ASCII keep label {keep_txt!r}"
-
-        # HIT-TARGETS: the toggle row clears the >=42px floor.
-        h = page.eval_on_selector(
-            "#ovset-keep", "el => el.closest('.ovset-row').getBoundingClientRect().height"
-        )
-        assert h >= 42, f"Keep-dashboard row height {h} below 42px hit floor"
-
-        # RC2 4.3: the Separate-windows toggle (single-monitor side-by-side
-        # arrangement kill switch) is present, defaults CHECKED, ASCII label,
-        # and its row clears the same 42px hit floor.
-        assert page.locator("#ovset-separate").count() == 1, "#ovset-separate missing"
-        assert page.eval_on_selector("#ovset-separate", "el => el.checked") is True, (
-            "Separate windows must default checked"
-        )
-        sep_txt = page.eval_on_selector(
-            "#ovset-separate ~ span, #ovset-separate + span", "el => el.textContent"
-        )
-        assert sep_txt == "Separate windows", f"unexpected separate label {sep_txt!r}"
-        assert sep_txt.isascii(), f"non-ASCII separate label {sep_txt!r}"
-        hs = page.eval_on_selector(
-            "#ovset-separate", "el => el.closest('.ovset-row').getBoundingClientRect().height"
-        )
-        assert hs >= 42, f"Separate-windows row height {hs} below 42px hit floor"
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors [overlay settings]: {errors[:3]}"
-
-
-@_DOCK_RETIRED
-def test_overlay_settings_strip_has_no_hotkey_action_controls(mock_server, pw_browser):
-    """RC2 4.4: the #ovset strip exposes the last keyboard-only overlay actions
-    as on-screen controls - a panel-set segmented selector (Coach/Build/Threat,
-    twin of Alt+Shift+C) and an Interact-now button (twin of Alt+Shift+A). ASCII
-    labels; each control clears the >=42px hit floor."""
-    ctx, page, errors = _open_overlay(pw_browser, mock_server)
-    try:
+        # The strip mounts via renderOverlayDsControls -> _ensureScaffold and is
+        # revealed because its host w-ovds widget shows in the build set.
         page.wait_for_selector("#ovset #ovset-panelset", timeout=10_000)
-        # The 3 panel-set segments + the interact button are present.
+        assert _display(page, "#am-pane-ovds") != "none", (
+            "the settings-strip host (w-ovds) must reveal in the build set"
+        )
+
+        # STRUCTURE: the overlay-native controls are present.
+        for sel in ("#ovset-panelset", "#ovset-interact", "#ovset-pulse", "#ovset-revert"):
+            assert page.locator(sel).count() == 1, f"{sel} missing from #ovset"
         for ps in ("coach", "build", "threat"):
             assert page.locator(f'#ovset-panelset [data-panelset="{ps}"]').count() == 1, (
                 f"panel-set segment {ps} missing"
             )
-        assert page.locator("#ovset-interact").count() == 1, "#ovset-interact missing"
 
-        # ASCII labels.
+        # ASCII labels (no smart quotes / dashes).
         for sel, want in (
             ('#ovset-panelset [data-panelset="coach"]', "Coach"),
             ("#ovset-interact", "Interact now"),
@@ -235,14 +205,10 @@ def test_overlay_settings_strip_has_no_hotkey_action_controls(mock_server, pw_br
             "#ovset-interact", "el => el.getBoundingClientRect().height"
         )
         assert hact >= 42, f"Interact-now height {hact} below 42px floor"
-
-        # Default full subset (no panelset param) -> no segment lit.
-        lit = page.locator('#ovset-panelset [aria-pressed="true"]').count()
-        assert lit == 0, f"no segment should be active on the full subset (got {lit})"
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [4.4 controls]: {errors[:3]}"
+    assert not errors, f"JS errors [ovset reveal]: {errors[:3]}"
 
 
 def test_overlay_panelset_selector_reflects_active_set(mock_server, pw_browser):
@@ -270,62 +236,33 @@ def test_overlay_panelset_selector_reflects_active_set(mock_server, pw_browser):
     assert not errors, f"JS errors [4.4 reflect]: {errors[:3]}"
 
 
-@_DOCK_RETIRED
-def test_overlay_settings_strip_has_coexistence_actions(mock_server, pw_browser):
-    """RC2 4.5: the #ovset strip exposes the two overlay+dashboard coexistence
-    actions as on-screen buttons - Re-arrange (re-separate the windows now) and
-    Show dashboard (raise the kept dashboard beside the HUD). ASCII labels; both
-    clear the >=42px hit floor and sit side-by-side on the dock."""
+def test_overlay_widget_field_left_edge_positions(mock_server, pw_browser):
+    """The widgets are an absolutely-positioned FIELD (position:fixed) hugging the
+    left edge, NOT a ~460px right-anchored dock. Each coach-set widget sits near
+    x=0 (its non-intrusive left-edge default) and renders as a narrow accent, so
+    the centre / champion HUD / minimap stay clear (doctrine section 4)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
-        page.wait_for_selector("#ovset #ovset-rearrange", timeout=10_000)
-        assert page.locator("#ovset-rearrange").count() == 1, "#ovset-rearrange missing"
-        assert page.locator("#ovset-raise").count() == 1, "#ovset-raise missing"
-
-        # ASCII labels.
-        for sel, want in (
-            ("#ovset-rearrange", "Re-arrange"),
-            ("#ovset-raise", "Show dashboard"),
-        ):
-            txt = page.eval_on_selector(sel, "el => el.textContent")
-            assert txt == want, f"unexpected label {txt!r} for {sel}"
-            assert txt.isascii(), f"non-ASCII label {txt!r}"
-
-        # HIT-TARGETS: both coexistence buttons clear the 42px floor.
-        for sel in ("#ovset-rearrange", "#ovset-raise"):
-            h = page.eval_on_selector(sel, "el => el.getBoundingClientRect().height")
-            assert h >= 42, f"{sel} height {h} below 42px floor"
-
-        # STRUCTURE: the two buttons share one row (side-by-side, no reflow).
-        same_row = page.evaluate(
-            "() => document.querySelector('#ovset-rearrange').closest('.ovset-actpair')"
-            " === document.querySelector('#ovset-raise').closest('.ovset-actpair')"
-            " && document.querySelector('#ovset-rearrange').closest('.ovset-actpair') !== null"
+        # Field facts hold for every mount; computed style resolves even when a
+        # data-driven mount is still [hidden] in the empty-SSE fixture.
+        for sel in ("#rn-lead", "#view-active-match .am-pane-call", "#rn-callouts"):
+            assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
+            assert _css(page, sel, "left") == "20px", f"{sel} not at the left-edge default"
+        # No ~460px right-anchored column any more: the visible primary is a
+        # narrow accent hugging the left, nowhere near the right of the 1920 view.
+        call = page.locator("#view-active-match .am-pane-call").bounding_box()
+        assert call is not None, "call widget has no box"
+        assert call["x"] < 60, f"call not left-edge anchored (x={call['x']})"
+        assert call["width"] <= 280, (
+            f"widget width {call['width']} should be a narrow accent, not a ~460 dock"
         )
-        assert same_row, "coexistence buttons must share one .ovset-actpair row"
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors [4.5 coexistence]: {errors[:3]}"
-
-
-@_DOCK_RETIRED
-def test_overlay_right_dock_geometry(mock_server, pw_browser):
-    """The visible column is ~460px wide and docked to the right edge of
-    the 1920 viewport (the rest of the window stays transparent for the
-    click-through game area)."""
-    ctx, page, errors = _open_overlay(pw_browser, mock_server)
-    try:
-        box = page.locator("#view-active-match").bounding_box()
-        assert box is not None, "#view-active-match has no box"
-        assert 420 <= box["width"] <= 480, f"dock width {box['width']} not ~460"
-        assert box["x"] + box["width"] >= 1430, (
-            f"dock not right-anchored (right edge {box['x'] + box['width']})"
+        assert call["x"] + call["width"] < 400, (
+            f"widget right edge {call['x'] + call['width']} should hug the left, not dock right"
         )
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [geometry]: {errors[:3]}"
+    assert not errors, f"JS errors [field geometry]: {errors[:3]}"
 
 
 def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
@@ -551,16 +488,29 @@ def test_panelset_coach_hides_build(mock_server, pw_browser):
     assert not errors, f"JS errors [panelset coach]: {errors[:3]}"
 
 
-@_DOCK_RETIRED
-def test_panelset_build_shows_build_only(mock_server, pw_browser):
-    """panelset=build: BUILD pane only - CALL pane + the right-now mount
-    column are off."""
+def test_panelset_build_reveals_build_widget(mock_server, pw_browser):
+    """panelset=build (doctrine section 4 delta = coach core + w-build + w-ovds,
+    MINUS w-threat): the build re-rank widget + the fight-model knob strip reveal;
+    the threat ledger stays hidden; the PRIMARY call widget PERSISTS - the build
+    set is a reveal layered on the coach base, not a column swap."""
     ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "build")
     try:
         assert page.evaluate("document.body.dataset.panelset") == "build"
-        assert page.locator("#view-active-match .am-pane-build").is_visible()
-        assert _display(page, ".am-pane-call") == "none", "call pane should hide"
-        assert _display(page, "main") == "none", "mount column should hide"
+        # Reveal: build re-rank + the fight-model knobs (w-ovds) now paint.
+        assert _display(page, "#view-active-match .am-pane-build") != "none", (
+            "build widget must reveal in the build set"
+        )
+        assert _display(page, "#am-pane-ovds") != "none", (
+            "fight-model knobs (w-ovds) must reveal in the build set"
+        )
+        # The coach core persists (doctrine: build keeps the call + choices).
+        assert _display(page, "#view-active-match .am-pane-call") != "none", (
+            "the primary call widget must persist in the build set"
+        )
+        # The threat ledger is NOT part of the build set.
+        assert _display(page, "#view-active-match .am-pane-cd") == "none", (
+            "the threat ledger must stay hidden in the build set"
+        )
         SCREENSHOTS.mkdir(exist_ok=True)
         page.screenshot(path=str(SCREENSHOTS / "overlay_sr_build.png"))
     finally:
@@ -569,17 +519,23 @@ def test_panelset_build_shows_build_only(mock_server, pw_browser):
     assert not errors, f"JS errors [panelset build]: {errors[:3]}"
 
 
-@_DOCK_RETIRED
-def test_panelset_threat_shows_cds_lead_callouts(mock_server, pw_browser):
-    """panelset=threat: the CDS cooldown ledger + lead/callouts timing
-    surfaces - CALL/BUILD panes and the A+B choice chips are off."""
+def test_panelset_threat_reveals_cd_ledger(mock_server, pw_browser):
+    """panelset=threat (doctrine section 4 delta = coach core + w-threat, MINUS
+    w-build, w-choices, w-ovds): the enemy cooldown ledger reveals; build + the
+    A/B choice chips drop (threat-watching is not a fight-decision moment); the
+    primary call + lead + callouts timing widgets persist. The #rn-choices hide
+    must beat the section-4a id-flex rule even when the chips are populated."""
     ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "threat")
     try:
         assert page.evaluate("document.body.dataset.panelset") == "threat"
-        assert _display(page, ".am-pane-cd") != "none", "cd pane must show"
-        assert _display(page, ".am-pane-call") == "none", "call pane should hide"
-        assert _display(page, ".am-pane-build") == "none", "build pane should hide"
-        # Choices are a coach-set surface: even populated they stay off here.
+        assert _display(page, "#view-active-match .am-pane-cd") != "none", (
+            "the cooldown ledger must reveal in the threat set"
+        )
+        assert _display(page, "#view-active-match .am-pane-build") == "none", (
+            "build must drop in the threat set"
+        )
+        # Choices drop in threat even when populated (the id-mount hide must
+        # out-rank the section-4a `#rn-choices:not([hidden])` flex rule).
         page.evaluate(
             "() => {"
             "  const ch = document.getElementById('rn-choices');"
@@ -587,8 +543,22 @@ def test_panelset_threat_shows_cds_lead_callouts(mock_server, pw_browser):
             "  ch.innerHTML = '<button class=\"rc-chip\">A</button>';"
             "}"
         )
-        assert _display(page, "#rn-choices") == "none", "choices should hide"
-        # Lead/callouts still displayable (timing surfaces).
+        assert _display(page, "#rn-choices") == "none", "choices must drop in threat"
+        # Coach core persists: the primary call stays, and the lead pill (an
+        # ambient coach-core widget) is not dropped by the threat set - populate
+        # it and confirm the panel set still leaves it shown.
+        assert _display(page, "#view-active-match .am-pane-call") != "none", (
+            "the primary call widget must persist in the threat set"
+        )
+        page.evaluate(
+            "() => {"
+            "  const ld = document.getElementById('rn-lead');"
+            "  ld.hidden = false;"
+            "  ld.innerHTML = '<span>+1.2k gold lead</span>';"
+            "}"
+        )
+        assert _display(page, "#rn-lead") != "none", "the lead pill must persist in threat"
+        # Callouts persist (timing surface).
         page.evaluate(
             "() => {"
             "  const co = document.getElementById('rn-callouts');"
@@ -597,7 +567,7 @@ def test_panelset_threat_shows_cds_lead_callouts(mock_server, pw_browser):
             "<span class=\"rc-co-line\">Drake 0:45</span></div>';"
             "}"
         )
-        assert _display(page, "#rn-callouts") != "none", "callouts must show"
+        assert _display(page, "#rn-callouts") != "none", "callouts must persist in threat"
         SCREENSHOTS.mkdir(exist_ok=True)
         page.screenshot(path=str(SCREENSHOTS / "overlay_sr_threat.png"))
     finally:
@@ -606,17 +576,20 @@ def test_panelset_threat_shows_cds_lead_callouts(mock_server, pw_browser):
     assert not errors, f"JS errors [panelset threat]: {errors[:3]}"
 
 
-@_DOCK_RETIRED
-def test_panelset_unknown_or_absent_keeps_full_subset(mock_server, pw_browser):
-    """Defensive: an unknown panelset never stamps the attribute, so the
-    S1 full compact subset (CALL + BUILD + mounts) renders unchanged; the
-    plain ?overlay=1 URL stays backward compatible."""
+def test_panelset_unknown_keeps_coach_set(mock_server, pw_browser):
+    """Defensive: an unknown panelset never stamps body[data-panelset], so the
+    DEFAULT coach set renders - the coach-core widgets paint and the reveal-only
+    build / threat / fight-model widgets stay hidden. The plain ?overlay=1 URL is
+    the coach set (doctrine section 4)."""
     ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "garbage")
     try:
         assert page.evaluate("document.body.dataset.panelset || ''") == ""
-        assert page.locator("#view-active-match .am-pane-call").is_visible()
-        assert page.locator("#view-active-match .am-pane-build").is_visible()
-        assert _display(page, "main") != "none"
+        # Coach core renders (the always-on primary call widget is shown).
+        assert _display(page, "#view-active-match .am-pane-call") != "none"
+        # Reveal-only widgets hidden in the default coach set.
+        assert _display(page, "#view-active-match .am-pane-build") == "none"
+        assert _display(page, "#view-active-match .am-pane-cd") == "none"
+        assert _display(page, "#am-pane-ovds") == "none"
     finally:
         page.close()
         ctx.close()
@@ -645,33 +618,32 @@ def _open_overlay_scaled(pw_browser, mock_server, query, vw, vh):
     return ctx, page, errors
 
 
-@_DOCK_RETIRED
-def test_overlay_ovscale_zooms_dock_at_1440(mock_server, pw_browser):
+def test_overlay_ovscale_zooms_widget_field_at_1440(mock_server, pw_browser):
     """RC2 4.1: at 2560x1440 the Electron shell sizes the overlay WINDOW by the
-    work-area scale and passes it as ovscale; the renderer sets
-    --rc-overlay-scale and overlay.css zooms the ~460px dock CONTENT to fill the
-    scaled window instead of shrinking to a tiny corner (Overlay App F clip)."""
+    work-area scale and passes it as ovscale; the renderer sets --rc-overlay-scale
+    and overlay.css applies it as a body `zoom`, so the design-px widget FIELD
+    scales UP with the window (a widget's on-screen (x,y) = design-px * scale)
+    instead of shrinking to a tiny corner."""
     ctx, page, errors = _open_overlay_scaled(
         pw_browser, mock_server,
         "?ui_mock=1&mode=sr&overlay=1&ovscale=1.3", 2560, 1440,
     )
     try:
-        # Renderer parsed ovscale -> the CSS var is set on body.
+        # Renderer parsed ovscale -> the CSS var + the body zoom are set.
         var = page.evaluate(
             "getComputedStyle(document.body).getPropertyValue('--rc-overlay-scale').trim()"
         )
         assert var == "1.3", f"--rc-overlay-scale not applied: {var!r}"
+        assert page.evaluate("getComputedStyle(document.body).zoom") == "1.3", (
+            "body zoom did not pick up the overlay scale"
+        )
 
-        # The zoomed dock renders ~460*1.3 = 598 CSS px wide (vs the ~460
-        # baseline) and stays right-anchored on the 2560 viewport.
-        box = page.locator("#view-active-match").bounding_box()
-        assert box is not None, "#view-active-match has no box"
-        assert 560 <= box["width"] <= 640, (
-            f"zoomed dock width {box['width']} not ~598 (460*1.3)"
-        )
-        assert box["x"] + box["width"] >= 1900, (
-            f"dock not right-anchored at 1440 (right edge {box['x'] + box['width']})"
-        )
+        # The call widget keeps its 20px design-px `left`, but the body zoom puts
+        # its on-screen x at 20*1.3 ~= 26 - the FIELD zoomed up, no right dock.
+        assert _css(page, "#view-active-match .am-pane-call", "left") == "20px"
+        box = page.locator("#view-active-match .am-pane-call").bounding_box()
+        assert box is not None, "call widget has no box"
+        assert 22 <= box["x"] <= 32, f"scaled widget x {box['x']} not ~26 (20*1.3)"
         SCREENSHOTS.mkdir(exist_ok=True)
         page.screenshot(path=str(SCREENSHOTS / "overlay_sr_1440_scaled.png"))
     finally:
@@ -680,10 +652,10 @@ def test_overlay_ovscale_zooms_dock_at_1440(mock_server, pw_browser):
     assert not errors, f"JS errors [ovscale 1440]: {errors[:3]}"
 
 
-@_DOCK_RETIRED
 def test_overlay_ovscale_absent_is_baseline_noop(mock_server, pw_browser):
-    """Baseline guard: no ovscale param -> the CSS var stays unset and the dock
-    renders at the unscaled ~460px (zero behavior change at 1920/100%)."""
+    """Baseline guard: no ovscale param -> --rc-overlay-scale stays unset and the
+    body zoom falls back to 1, so the widget field renders at its unscaled design
+    px (a widget's left-edge default x ~= 20; zero change at 1920/100%)."""
     ctx, page, errors = _open_overlay_scaled(
         pw_browser, mock_server, "?ui_mock=1&mode=sr&overlay=1", 1920, 1080,
     )
@@ -692,8 +664,13 @@ def test_overlay_ovscale_absent_is_baseline_noop(mock_server, pw_browser):
             "getComputedStyle(document.body).getPropertyValue('--rc-overlay-scale').trim()"
         )
         assert var == "", f"--rc-overlay-scale must be unset at baseline: {var!r}"
-        box = page.locator("#view-active-match").bounding_box()
-        assert 420 <= box["width"] <= 480, f"baseline dock width {box['width']} not ~460"
+        assert page.evaluate("getComputedStyle(document.body).zoom") in ("1", "normal"), (
+            "body zoom must be the baseline no-op"
+        )
+        box = page.locator("#view-active-match .am-pane-call").bounding_box()
+        assert box is not None and box["x"] < 40, (
+            f"baseline widget x {box and box['x']} not ~20"
+        )
     finally:
         page.close()
         ctx.close()
