@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-06-20/21 (interactive) - overlay OPEN batch + live overlay-throttling root-cause
+
+Shipped 4 commits, all CI-green (run 27892032332): `cdd494fa` QA1 ward-ready glyph
+cue (LIVE-verified in a real game - Caitlyn `trinket_ready` on the wire + glyph
+rendered in a browser) + `2e5326b5` QA9 combat-mode declutter (`body[data-fight]`
+sheds non-urgent panes, hysteresis latch, respects explicit panelsets) +
+`8c7319f5` rc-shell `backgroundThrottling=false` + `f570f527` QA4 objective
+respawn chips (dragon/baron/herald). Local gate green: hygiene 13 / ruff / ward_cue
+11 / web/js node 46 / rc-shell node 253. RC pid 11268 healthy.
+
+BIGGEST FIND - the recurring "overlay dead/empty in-game" bug is ROOT-CAUSED + FIXED
+(`8c7319f5`). Electron throttles an OCCLUDED renderer; the always-on-top overlay is
+always covered by the game, so its `/api/state-stream` SSE re-render was suspended
+and it froze on the scaffold. PROVEN: the identical `?overlay=1` page renders
+perfectly in a normal browser against the live backend mid-game (SSE + panes + the
+QA1 glyph). Relaunch never helped (re-throttles the new window). Fix =
+`backgroundThrottling: false`. AWAITING operator relaunch (`npm start`, no rebuild)
+to confirm live - root cause is proven, so this is verification not an open question.
+
+OPEN THREADS (do NOT redo the shipped work):
+- Screen capture: `self_grab` = `PIL.ImageGrab` (GDI BitBlt, `vision_server/_frame.py:67`)
+  returns BLACK for the game's accelerated DirectX surface; only the overlay grabs.
+  Operator to foreground the game / confirm Borderless. Ties into QA6.
+- Remaining overlay queue: QA6 (Win32 fullscreen hint), QA12 [L] restructure, QA13
+  UIPI, QA14 display-pick, QA4-ZoI tail. QA4 camp chips INFEASIBLE (no Live Client
+  camp events). [[project_rc2_build]] [[reference_gamepc_League_fullscreen_lockup]]
+
+---
+
 # 2026-06-20 (interactive/RC2) - E12+E7 swarm + rc-shell standalone-app live fixes
 
 Commits (all CI-green): `48fcee51` E12-L2 RuneWriter lobby-mode memoization + `64591d5f`
@@ -59,27 +88,3 @@ or (B) build a $0 deterministic verb->command lane. (2) NEXT SESSION: validate
 lolmath's ~50% EHP baseline from their site BEFORE building the DS per-archetype flip
 (pinned in the tracker). (3) Resume /rc2-continue (E7 priority-HIGH). The flash is
 FIXED (`f508046e`) - do not re-investigate. [[project_rc2_build]]
-
----
-
-# 2026-06-20 (/RC2-Continue - Phase 8.3 operator Q/A consolidation)
-
-Shipped the 8.3 deliverable: `docs/RC2_QA_CONSOLIDATED.md` (commit `f05b853d`,
-pushed). Reconciled all 97 raw Q/A items (docs/RC2_TODO_QA.md, the 8.1 list)
-against HEAD via 6 read-only agents; every SHIPPED/CLOSED verdict evidence-cited,
-a sample (6 shas / 9 files / 6 greps) independently re-verified. Result:
-33 SHIPPED / 13 GATED-LIVE / 18 GATED / 31 OPEN (headless-buildable) / 2 CLOSED.
-The old TOP-10 are fully spent (-> E1-E12). RC2_TODO_QA.md now points to the
-consolidated doc for current status.
-
-CONCURRENCY: ran alongside the loop-monitor session below; their /done recorded
-their commits but NOT f05b853d, so this entry records it. f05b853d is in git +
-pushed regardless.
-
-HELD: the RC2_PLAN.md 8.3 -> DONE stage flip + banner 53->54/62 (~87%) is staged
-in the working tree but UNCOMMITTED - the operator rejected that exact edit
-earlier in-session. Left for operator confirm; the deliverable itself is shipped.
-
-NEXT: operator confirms the 8.3 DONE flip, then /RC2-Continue picks the next
-non-DONE (E-batch E2/E7/E10/E11/E12 - mostly live/release-gated - + Phase 9).
-[[project_rc2_build]]
