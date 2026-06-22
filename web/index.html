@@ -155,6 +155,12 @@
           <span class="home-hero-rank-tier" id="home-hero-rank-tier">Unranked</span>
           <span class="home-hero-rank-wr"   id="home-hero-rank-wr"></span>
         </div>
+        <!-- LIFT 3: last-20 W/L pip strip + recent-form WR. Painted by
+             _homeRenderWlStrip from the home payload's last20 dict
+             (rewind tracked_win). Hidden when there is no decided
+             history. W pips are filled good-token, L pips hollow
+             bad-token (shape differs, not hue alone - WCAG 1.4.1). -->
+        <div class="home-rank-wl" id="home-hero-rank-wl" hidden></div>
       </div>
       <div class="home-hero-headline" id="home-hero-headline">Ready when you are</div>
       <!-- 3 stat chips with inline 14-day sparklines (V3 redesign
