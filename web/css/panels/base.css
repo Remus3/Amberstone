@@ -1,29 +1,54 @@
 :root {
-  /* ───── Neo-fintech palette ──────────────────────────────────── */
-  --canvas:        #171821;   /* deep blue-black - page bg */
-  --surface:       #21222D;   /* panel bg - one step lighter */
-  --surface-head:  #272836;   /* panel header bg */
-  --surface-alt:   #1C1D27;   /* subtle alt / input bg */
-  --text:          #F5F5F7;   /* primary text */
-  --text-dim:      #9DA0B3;   /* secondary text / labels */
-  --text-faint:    #6B6D7C;   /* ternary / captions */
-  --border:        #2E3040;   /* de-emphasized - panels rely on tone */
-  --border-soft:   #262734;   /* dashed dividers */
+  /* ===== Hextech Tactical palette (RC2 redesign keystone) ==========
+   * Re-pointed from the old neo-fintech palette to the greenlit Hextech
+   * theme (docs/design/RC2_DESIGN.html :root, lines 16-24). Every var
+   * NAME panels already consume is preserved; only the VALUES change,
+   * plus a handful of net-new names (--surface-2/-3, --accent/-2, --glow,
+   * --clock, --label). This is the primitive palette the whole dashboard
+   * cascades from - no DOM/structure changes, palette only.
+   * ASCII only (repo hard rule). */
+  --canvas:        #0A0E14;   /* deep hextech black - page bg */
+  --surface:       #111722;   /* panel bg - one step lighter */
+  --surface-2:     #16202E;   /* card head / raised surface (NEW) */
+  --surface-3:     #1C2A3D;   /* input / chip / icon well (NEW) */
+  --surface-head:  #16202E;   /* panel header bg (-> surface-2 value) */
+  --surface-alt:   #1C2A3D;   /* subtle alt / input bg (-> surface-3 value) */
+  --text:          #ECF2FF;   /* primary text */
+  --dim:           #8FA3BF;   /* secondary text / labels (NEW name) */
+  --text-dim:      #8FA3BF;   /* secondary text / labels */
+  --faint:         #5C6E88;   /* ternary / captions (NEW name) */
+  --text-faint:    #5C6E88;   /* ternary / captions */
+  --border:        rgba(200,170,110,.16);   /* gold-tinted hairline */
+  --border-soft:   rgba(200,170,110,.10);   /* dashed dividers, lighter */
 
-  /* Accent pairs. Primary live-data accent is coral pink; secondary
-   * comparative accent is lavender. Greens / warm alerts kept for
-   * positive / destructive semantics but retuned to the palette. */
-  --good:          #7FD19A;   /* cool mint - up / success / positive */
-  --good-soft:     #2E4A3A;
-  --bad:           #F07E8B;   /* coral pink - down / error / hot live data */
-  --bad-soft:      #4A2A31;
-  --gold:          #F5B87C;   /* soft coral-amber - action / KDA / emphasis */
-  --gold-soft:     #4A3723;
+  /* Accent pairs. Primary accent is hextech gold; secondary comparative
+   * accent is hextech teal. Semantic good/warn/bad/info re-tuned to the
+   * Hextech palette. */
+  --accent:        #C8AA6E;   /* hextech gold - primary accent (NEW) */
+  --accent-2:      #0AC8B9;   /* hextech teal - secondary accent (NEW) */
+  --gold:          #C8AA6E;   /* hextech gold - action / KDA / emphasis */
+  --gold-soft:     rgba(200,170,110,.18);
+  --good:          #37D08A;   /* hextech green - up / success / positive */
+  --good-soft:     rgba(55,208,138,.18);
+  --bad:           #E84057;   /* hextech red - down / error / hot live data */
+  --bad-soft:      rgba(232,64,87,.18);
+  --warn:          #E8A33D;   /* hextech amber - warning (NEW name) */
+  --warn-soft:     rgba(232,163,61,.18);
 
-  --info:          #8A8CF0;   /* lavender - info / intents / passive series */
-  --info-soft:     #2E2E4A;
-  --advisory:      #F07E8B;   /* coral pink - cold-streak advisories */
-  --advisory-soft: #4A2A31;
+  --info:          #7CA8FF;   /* hextech blue - info / intents / passive */
+  --info-soft:     rgba(124,168,255,.18);
+  --advisory:      #E84057;   /* hextech red - cold-streak advisories */
+  --advisory-soft: rgba(232,64,87,.18);
+
+  /* Two vars the dashboard references at 62 sites but the old palette
+   * never DEFINED (item / header / home / panel_visibility panels):
+   *   --clock -> the gold/accent (live clock + emphasised numerics)
+   *   --label -> the dim secondary text (field labels) */
+  --clock:         #C8AA6E;   /* maps to gold/accent */
+  --label:         #8FA3BF;   /* maps to --dim */
+
+  /* Hextech glow (teal bloom for active / fresh affordances). */
+  --glow:          rgba(10,200,185,.30);
 
   /* Shape language */
   --radius:        16px;      /* card corner radius */

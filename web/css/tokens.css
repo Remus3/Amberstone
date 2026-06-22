@@ -28,15 +28,28 @@
   /* Semantic colors (additive to existing palette; do NOT replace
    * --bg / --fg / --good / --bad / --gold which the primitives layer
    * already owns). */
-  --signal-good: #6ec977;
-  --signal-warn: #f1b04a;
-  --signal-bad:  #ff5050;
-  --signal-dim:  #8a8e9c;
-  --signal-info: #8a8cf0;
-  --signal-gold: #f5b87c;
-  --signal-good-soft: rgba(110, 201, 119, 0.18);
-  --signal-warn-soft: rgba(241, 176, 74, 0.18);
-  --signal-bad-soft:  rgba(255, 80, 80, 0.18);
+  /* RC2 Hextech re-point (was neo-fintech #6ec977/#f1b04a/#ff5050/...).
+   * Hues now match docs/design/RC2_DESIGN.html (good #37D08A, warn
+   * #E8A33D, bad #E84057, info #7CA8FF, gold #C8AA6E, dim #8FA3BF). The
+   * -soft rgba()s share each new hue at .18 alpha; pulse-* below share
+   * each hue at .35 alpha. */
+  --signal-good: #37D08A;
+  --signal-warn: #E8A33D;
+  --signal-bad:  #E84057;
+  --signal-dim:  #8FA3BF;
+  --signal-info: #7CA8FF;
+  --signal-gold: #C8AA6E;
+  --signal-good-soft: rgba(55, 208, 138, 0.18);
+  --signal-warn-soft: rgba(232, 163, 61, 0.18);
+  --signal-bad-soft:  rgba(232, 64, 87, 0.18);
+
+  /* Additive Hextech component tokens (consumed by web/css/hextech.css
+   * primitives). The fill is the teal->gold sweep used on progress bars
+   * and decomposition tracks; the glow is the teal bloom for active /
+   * fresh affordances; the border is the gold-tinted hairline. */
+  --hextech-fill: linear-gradient(90deg, #0AC8B9, #C8AA6E);
+  --hextech-glow: rgba(10, 200, 185, 0.30);
+  --hextech-border: rgba(200, 170, 110, 0.16);
 
   /* Font-size scale (v2.1, 2026-05-23). Five existing tiers bumped
    * ~44% from v1 baseline (operator-directed: 25% first-pass + 15%
@@ -97,9 +110,9 @@
   /* Fresh-update affordance (coach prompt glow) - tints calibrated
    * against the panel canvas background so the pulse reads at 1920x1080
    * on the Legion dashboard display. */
-  --pulse-good: 0 0 12px rgba(110, 201, 119, 0.35);
-  --pulse-warn: 0 0 12px rgba(241, 176, 74, 0.35);
-  --pulse-bad:  0 0 12px rgba(255, 80, 80, 0.35);
+  --pulse-good: 0 0 12px rgba(55, 208, 138, 0.35);
+  --pulse-warn: 0 0 12px rgba(232, 163, 61, 0.35);
+  --pulse-bad:  0 0 12px rgba(232, 64, 87, 0.35);
 }
 
 /* Tabular-nums utility (additive; opt-in via class on numeric cells).

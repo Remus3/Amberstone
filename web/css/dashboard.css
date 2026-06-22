@@ -28,6 +28,9 @@
 @import './panels/team_context.css';
 @import './panels/home.css';
 @import './panels/primitives.css';
+/* Hextech component primitives (RC2 redesign). Imported AFTER tokens.css
+ * + base/primitives so the --hextech-* / palette vars resolve first. */
+@import './hextech.css';
 @import './panels/active_match.css';
 @import './panels/aram_balance.css';
 @import './panels/ward_cue.css';
