@@ -2,9 +2,12 @@
  * docs/ELECTRON_OVERLAY.md). Pane #am-pane-ovds mounts inside the
  * active-match grid (web/index.html) but is an overlay-only surface:
  * the hard default below keeps it off EVERY non-overlay page, and only
- * the body[data-shell="overlay"] chain in overlay.css section 4b
- * re-enables it (base subset + the build panelset; coach/threat
- * panelsets narrow it back off).
+ * the body[data-shell="overlay"] chain in overlay.css section 4d
+ * re-enables it in the BUILD panelset ONLY - the default/coach/threat
+ * panelsets keep it hidden. Deliberate behavior change (doctrine
+ * widget-field, commit 7bd7d6a3): the pane was clipping in the default
+ * HUD, so the fight-model knobs now live only in the build set the
+ * operator opens to use them.
  *
  * Renderer: web/js/panels/overlay_ds_controls.js over GET /api/ds-knobs
  * (dashboard/routes_ds_knobs.py). Sized for game-distance reading on
@@ -18,8 +21,9 @@
  * otherwise wins the cascade over both a bare id selector AND the
  * [hidden] attribute (author display beats the UA rule) - a blank
  * FIGHT MODEL pane leaked onto the normal 1920 dashboard (2026-06-10
- * UI-audit MUST-FIX 1). The overlay unhide in overlay.css section 4b
- * carries !important and still outranks this. */
+ * UI-audit MUST-FIX 1). The overlay unhide in overlay.css section 4d
+ * (the build-panelset show rule) carries !important and still outranks
+ * this. */
 #view-active-match #am-pane-ovds {
   display: none;
 }
