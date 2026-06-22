@@ -158,6 +158,21 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R13 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Active Match threat + CD panels (web/js/panels/cd_ledger.js, cc_blended_ehp_threat.js, threat_donut.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness. | DONE | `0fb91841` |
 | R14 | ds-sweep | DIRECTOR REFILL: DS schema lift - cc_conditional durations_floor_s (guaranteed-minimum CC floor band for distance/channel-scaled CC). NEW optional ConditionalCcEntry.durations_floor_s field (None default; loader .get backward-compat) + default-OFF apply_cc_floor seam on cc_pressure.compute_cc_pressure crediting floor + prob*(max-floor) instead of max*prob when ON (byte-identical OFF; standalone + coexistence MAX-rule paths both floor-aware). Seeded 5 vs 16.12.1 Meraki minimums: Maokai R 0.75 / KSante W 0.5 / Sion R 0.25 / Hecarim R 0.75 (4 existing entries) + NEW Ashe R 1.0 entry (coexists_with_unconditional=True, range_gated, durations_s 3.5, mirrors Maokai/Hecarim R; Ashe R also in unconditional _PER_SPELL_CC_DURATIONS 1.5). Offline characterization tests (RED-first). Verifier-gated. ENGINE 1.149.0 -> 1.150.0 + DS :8893 restart + Share sync SAME commit. Live default-ON flip + ehp/hybrid propagation EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `66abc012` |
 
+## Sessions - DIRECTOR REFILL 2026-06-22
+
+Authored by the gemini director on REFILL after R14 drained. Self-directed work
+unit: a Section-7b heavyweight competitor deep-dive lift of Aggregator A (first review of
+that tool; prior lifts covered Aggregator P / draft tool L / target-vs-opponent /
+simulator tool R / Aggregator H / Aggregator B). Output docs/COMPETITOR_LIFT_2026-06-22.md
+(third-party names out of core repo code). A HIGH-lift LOW-risk presentation-only
+finding over EXISTING DS math / existing local data (no new dependency or schema
+lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend);
+a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
+
+| ID | Theme | Scope | Status | Commit |
+|----|-------|-------|--------|--------|
+| R15 | lift | Section-7b heavyweight deep-dive competitor lift of Aggregator A, 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-22.md. ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); HIGH-lift with new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. | DONE | `b49ef1a7` |
+
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
 - DS Phase-D default-ON flag flips (apply_passive_damage, non-every-AA on_hit, per-stack assumed_stacks) - need real-game re-ranking validation.
@@ -169,6 +184,23 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-22 R15 (DIRECTOR REFILL cycle) DONE (`b49ef1a7`) - Section-7b heavyweight competitor
+  deep-dive lift of Aggregator A (first review; prior lifts covered Aggregator P / draft tool L /
+  target-vs-opponent / simulator tool R / Aggregator H / Aggregator B). 3 disjoint parallel research agents
+  (builds / OP-Score+profile / live+overlay), 6-point checklist -> docs/COMPETITOR_LIFT_2026-06-22.md.
+  RC matches-or-exceeds most Aggregator A surfaces; the one HIGH-lift LOW-risk presentation gap (Aggregator A's
+  per-line curve "shape keyword") SHIPPED as an OP-Score arc-shape readout: NEW core/op_score_shape.py
+  pure classifier (Snowball / Ramping / Front-loaded / Commanding / Behind / Steady / Volatile from
+  start/end/trend/volatility, RC's own vocabulary) + compute_op_score_curve out["arc"]={win,loss} +
+  2 chips in the OP Score panel. No new dependency / Riot / Claude / DB schema / DS / ENGINE change.
+  49 slice tests + 5-phase UI audit CLEAN + live ui_mock pixel capture + verifier CONFIRM. Full RC
+  suite = 9369 passed / 12 PRE-EXISTING failures (item-578 aram_balance template cluster incl. 7
+  test_ds_pick_consumption ARAM subfails + overlay.css px + spell_prefs.json drift) - all independent
+  of this slice, 0 regressions. NEWLY DISCOVERED / triaged (FUTURE, not built): single-match
+  per-minute OP-Score line + duo "recently played with" panel + a 0-10 post-game rollup (presentation,
+  deferrable); live matchup board / enemy-WR-form / live benchmark delta / jungle-camp timers
+  (live-game-gated); per-slot frequency sequence + ranked LP trend (new dependency / schema lift).
 
 - 2026-06-22 REGRESS-FIX (continue 16, post-R14 doc reconciliation) DONE - the Gemini auditor
   returned VERDICT REGRESS naming 2 defects in the continue-15 docs sync (`c2161654`); both were
