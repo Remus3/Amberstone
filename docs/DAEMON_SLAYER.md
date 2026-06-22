@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.144.0 - 7361 tests - patch 16.12.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.149.0 - 7362 tests - patch 16.12.1.
 
 ## Engine substrate & registries
 
@@ -16,6 +16,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 
 ## Changelog
 
+- _Changelog 1.145.0-1.149.0 (the R7/R9/R12 + item 513/515 default-OFF scorer seams): per-version detail lives in `agents/daemon_slayer/CHANGELOG.md` + `Share/CHANGELOG.md` + `docs/LEDGER.md`; the status line above tracks live (1.149.0) while this summary changelog resumes in full at 1.144.0 below._
 - **ENGINE 1.144.0: Arena boots map30 mirror (build-table data correctness).** The precomputed Arena (map 30) build-order tables carried the bare 3xxx tier-2 boots ids (Berserker's `3006`, Mercury's `3111`, etc.), every one of which is `maps.30=False` - illegal on the Arena map. `core/build_order._select_boots` now remaps the resolved tier-2 boot to its `22`-prefixed map30-legal Arena mirror (`_BOOTS_ARENA_MIRROR`: 3006->223006, 3009->223009, 3020->223020, 3047->223047, 3111->223111, 3158->223158, each verified `maps.30=True`) on Arena/CHERRY, mirroring the existing SR tier-3 upgrade branch; ARAM (map 12) keeps the 3xxx boot (map12-legal). All three Arena build tables (flat + comp-archetype + anti-tank/anti-squishy variants) regenerated boots-only; SR/ARAM byte-identical. No ranker math change (the item scorers never import `core/build_order`); the engine bump is build-table provenance. Source data: Riot Data Dragon.
 - **ENGINE 1.143.0: Arena ability-haste drift correction (16.12.1 normalization).** The hand-maintained item ability-haste registry (`_item_ability_haste.py`, the canonical engine-side AH source since Data Dragon `item.json` stats do not expose `AbilityHaste`) was pinned at an earlier patch. Three `22`-prefixed Arena mirror items that Riot normalized DOWN in 16.12.1 were corrected against live Data Dragon: Imperial Mandate `224005` 35->15, Iceborn Gauntlet `226662` 10->15, Serylda's Grudge `226694` 10->15 (the SR/ARAM canonicals were already 15). NEW `ops/audit/item_ah_drift_check.py` re-derives the registry from Data Dragon and diffs it (reusable per-patch drift guard). Feeds `compute_ability_dps` Arena cooldowns. Source data: Riot Data Dragon.
 - **ENGINE 1.142.0: F2 cost-aware-top gate (DEFAULT-OFF / byte-identical).** The item rankers sort by `sort_by="delta"` (absolute DPS/EHP gained, which scales with item cost), so the 6000g ARAM/Arena mega-item Void Immolation (`223069`, maps 12+30) floated to RANK 1 in every comp cell on the hybrid/bruiser + ehp/tank scorers - a ranking-surface artifact, not a build-correctness claim. NEW optional `cost_ceiling` param on the shared `rank._filter_candidates` drops any candidate whose `gold.total` strictly exceeds the ceiling, threaded through `rank_items` (dps) / `rank_items_by_ehp` (tank) / `rank_items_by_hybrid` (bruiser); the other 4 callers (mage/assassin/enchanter/beam) leave it unset. None (the default) is byte-identical. The live `rank.py` / `server.py` flip stays validation-gated (`docs/LIVE_GAME_GATED_SYNC.md`). +12 tests. Source data: Riot Data Dragon / CommunityDragon / Meraki Analytics.
@@ -116,7 +117,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 | File | Purpose |
 |---|---|
 | `__init__.py` | `ENGINE_VERSION` constant; `start_server()` entry point |
-| `server.py` | Stdlib `ThreadingHTTPServer`; `/rank`, `/dps`, `/health`, `/snapshot`, `/beam`, `/ehp`, `/rank-tank`, `/hybrid`, `/rank-bruiser`, `/ability-dps`, `/rank-mage`, `/burst`, `/rank-assassin`, `/hps`, `/rank-enchanter` endpoints |
+| `server.py` | Stdlib `ThreadingHTTPServer`; 28 routes - core `/health`, `/snapshot`, `/stats`; the DPS + build rankers `/rank`, `/dps`, `/beam`, `/ehp`; the 6 archetype rankers `/rank-tank`, `/hybrid`, `/rank-bruiser`, `/ability-dps`, `/rank-mage`, `/burst`, `/rank-assassin`, `/hps`, `/rank-enchanter`; the additive scored-axis routes `/anti-tank`, `/extended-duel`, `/sustain`, `/mobility`, `/scaling`, `/waveclear`, `/threat-range`, `/zone-control`, `/objective-damage`, `/cc-output`, `/ally-amp`, `/modifier-summary` |
 | `effects.py` | Re-export facade (s246 split) - the 14 effect-aggregation logic fns (`collect_effects`, `total_*`, `effective_target_armor/mr`) + full public-surface re-export. Logic only |
 | `_effects_types.py` | **s246** - schema types + damage-type constants (`CallContext`, `DamageFn`, `PeriodicProc`, `ItemEffect`, `PHYSICAL/MAGICAL/TRUE`). Zero deps |
 | `_effects_data.py` | **s246** - the `ItemEffect` registry: 547 entries, DDragon purchasable coverage COMPLETE. Patch-pinned per `current.txt`; refresh on patch bump |
@@ -136,7 +137,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 | `beam.py` | `beam_search_build()` - full-build beam search returning top-N complete builds |
 | `data_loader.py` | Versioned `DataSnapshot` loader; reads `data/daemon_slayer/<patch>/` |
 | `ult_rates.py` | Per-champion cast-rate lookup. Legacy `get_ult_casts_per_sec` (R-only, reads `ult_cast_rates.json`) preserved for Malignance Hatefog backward compat; `get_spell_casts_per_sec(champion, key, mode)` (Phase 4b, s178) reads `spell_cast_rates.json` for all 4 active spells; both derived from rewind_history.db via `scripts/build_spell_cast_rates.py`; 172 champions × 4 spells × 3 mode buckets |
-| `tests/` | 5931 tests passing |
+| `tests/` | 7362 tests passing |
 
 ## Key data types
 
