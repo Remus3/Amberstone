@@ -9,6 +9,7 @@ test_pgr_winprob_panel_dom.py + the duration_winrate wiring.
 from __future__ import annotations
 
 import json
+import re
 import unittest
 from pathlib import Path
 
@@ -122,6 +123,41 @@ class MockFixtureTests(unittest.TestCase):
         row = data["minutes"][0]
         for k in ("minute", "win_avg", "win_n", "loss_avg", "loss_n"):
             self.assertIn(k, row)
+
+
+class CssSubFloorFontExceptionTests(unittest.TestCase):
+    """Audit guard (R16 fixture audit): any hardcoded font-size below --fs-xs
+    (16px) in the perf_curve panel CSS must carry an INLINE operator-exception
+    rationale at the declaration - parity with the audit-sibling
+    spike_curve.css, whose 10px / 9px sub-floor sizes each sit under an inline
+    `operator-exception` comment. The .pf-ylab/.pf-xlab 13px is a legitimate
+    SVG chart-glyph user-unit (scaled viewBox, not DOM type), but the audit
+    standard requires that legitimacy be self-documenting AT the declaration so
+    a future editor cannot silently introduce a true sub-floor DOM type size.
+    """
+
+    FLOOR_PX = 16  # --fs-xs per docs/UI_SCALE_SPEC_V2.md
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.lines = _read(PANEL_CSS).splitlines()
+
+    def test_subfloor_font_sizes_have_inline_exception(self) -> None:
+        pat = re.compile(r"font-size:\s*(\d+)px")
+        for i, line in enumerate(self.lines):
+            m = pat.search(line)
+            if not m:
+                continue
+            px = int(m.group(1))
+            if px >= self.FLOOR_PX:
+                continue
+            window = "\n".join(self.lines[max(0, i - 6):i + 1])
+            self.assertIn(
+                "operator-exception",
+                window,
+                f"perf_curve.css:{i + 1} font-size:{px}px is below --fs-xs "
+                f"({self.FLOOR_PX}px) with no inline operator-exception rationale",
+            )
 
 
 if __name__ == "__main__":
