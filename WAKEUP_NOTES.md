@@ -4,6 +4,29 @@
 
 ---
 
+# 2026-06-22 (headless continue 14 / R13) - Active-Match fixture audit (threat_donut sigil exception)
+
+Item 580, commit `0fb91841` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
+no RC restart); no engine / DS / Share / ENGINE bump / overlay render / flip change.
+
+CONTEXT: gemini+ahk loop relaunched 02:46 (head a1b063a0), cycle 1 directive = ORCHESTRATION_PLAN
+R13 ui-audit. 5-phase fixture audit of the 3 un-audited Active Match panels cd_ledger.js /
+cc_blended_ehp_threat.js / threat_donut.js + CSS vs docs/UI_SCALE_SPEC_V2.md.
+
+VERDICT (verifier-gated CONFIRM, 47/0/0): 1 MUST-FIX + 2 panels already clean. threat_donut.js -
+the SVG "?" / "." placeholder hardcoded font-size 12 inside the fixed 28x28 donut (the --fs-xs 16px
+floor would overflow the tile); documented as an inline operator-exception (no token < 16px by
+design; mirrors cd_ledger.css). cd_ledger.css CLEAN (item 184 v2.1 already documented its 11/10/9px
+exceptions); cc_blended_ehp_threat.css CLEAN (fully tokenized). FUTURE: .am-pane-head toggle ~41px,
+1px under --hit-min 42px - shared selector, out of slice scope.
+
+ORCHESTRATOR NOTE: directive mandated worktree fan-out, but the audit found a single 4-line comment
+fix in one file (2 panels already compliant) -> collapsed to inline per R9; verifier-gate still run.
+Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pixel frame OWED
+(RC mode=client).
+
+---
+
 # 2026-06-22 (headless continue 13) - DS doc-drift reconciled + standing doc-pin GUARD added
 
 Item 579, commit `99f2e72b` (pushed). Tier-0 doc + Tier-1 test; no engine / DS schema / Share /
@@ -67,46 +90,4 @@ intact). In-game ARAM pixel frame OWED (live game was SR; an ARAM coach line is 
 NEXT (operator-gated): all 3 player-facing ARAM modifier axes now surfaced (tenacity prior + damage dealt/taken
 item 578); residual aram_modifiers fields (healing/shielding/AH/AS) are minor + situational, a future call.
 Levers unchanged: overlay S0 shadow->authoritative flip; magnitude-as-bar (Phase-4); HZ Tier-2 partial-combo.
-Candidate set drained - next cycle needs a fresh Gemini/operator refill.
-
----
-
-# 2026-06-21 (headless continue 11) - overlay spec Q2 lethal-incoming S0 predicate WIRED
-
-Item 577, commit `17128058` (pushed). Tier-1 pure-JS; no backend / engine / DS / Share / ENGINE bump /
-schema / threshold / flip change. ZERO live render delta (shadow-only) -> no electron relaunch needed.
-
-TRIAGE: live re-probe RC pid=3656 mode flipped client->game mid-cycle (a live SR game came UP), DS :8893
-ENGINE 1.149.0 / 16.12.1. Candidate set 1/2/A/B confirmed DRAINED (per the prompt + items 573-576). The
-Gemini director was DOWN (gemini-3-pro-preview empty after 150s - quota/RPM), so fell back to spec-first
-discipline against the ROADMAP TOP PRIORITY (the overlay-polish run). An Explore agent mapped the live
-overlay vs the RC2 condensation spec and surfaced the ONE genuinely-unshipped slice: spec section-9 Q2
-lethal-incoming (the priority-100 S0 EMERGENCY cue) had a COMPLETE consumer but NO producer -> the
-emergency tier was structurally suppressed.
-
-VERIFY-BEFORE-BUILD (grep-confirmed myself, not trusting the Explore pass): no core/dashboard producer sets
-`coach.lethal_incoming` (the "lethal" grep hits are the DS lethality stat / burst target presets,
-unrelated); the live coach envelope already carries hp_pct (0-100 scale, =100 at full); signalFromState is
-SHADOW-only (`right_now.js:494-516`, the live flip is operator-gated in LIVE_GAME_GATED_SYNC.md) so wiring
-it cannot regress the live render; the one shadow output that drives CSS (`body[data-fight]` via isFightCue)
-was ALREADY true in both combat bands, so the lethal promotion provably cannot flip it = zero render delta.
-
-BUILT (TDD red-then-green): signalFromState derives `lethal = explicit lethal_incoming flag OR
-_isLethalAtFight(band, hp_pct)`, the helper firing iff band in {fight,urgent} AND `0 < hp_pct <= 25`
-(LETHAL_HP_PCT named const, conservative emergency floor). Dead/missing HP (0 or absent; dataclass default
-0.0) guarded out so a data dropout can never false-fire the reserved lethal-red pop-out (A2). Explicit-flag
-passthrough preserved (back-compat). +8 TDD tests (fight/urgent derivation, boundary 25 incl/26 excl,
-non-combat no-fire, healthy no-fire, zero/missing/None guard, explicit back-compat, selectPrimary->100);
-37/37 pass; node -c clean; ruff clean. Read-only verifier subagent gate: SHIP (scope/frozen/engine clean, 4
-sanity booleans correct). Overlay render-contract re-run: 25/25 pass (lone error = the documented live-game
-RF5 artifact guard, not a failure).
-
-OVERLAY CADENCE: render-contract GREEN (25/25 + 37/37). Live in-game pixel capture NOT warranted this cycle
-- the change is shadow-only (zero rendered-pixel delta; the lethal cue is not yet drawn, that is the
-operator-gated flip), and the :8889 frame is token-gated (401). In-game pixel frame OWED only when a
-render-affecting overlay slice ships.
-
-NEXT (operator-gated): the lethal cue is now READY for the operator-gated shadow->authoritative S0 flip
-(LIVE_GAME_GATED_SYNC.md). Remaining overlay slices vs spec are Phase-4-deferred (magnitude-as-bar) or
-already shipped. HZ levers unchanged (C partial-combo Tier-2 operator-gated; flip do-not-flip-blind).
 Candidate set drained - next cycle needs a fresh Gemini/operator refill.
