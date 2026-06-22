@@ -1157,6 +1157,15 @@
               <div class="csv-sugg-section csv-sugg-counter-picks"
                    id="csv-sugg-counter-picks"
                    hidden></div>
+              <!-- LIFT 1b (2026-06-22): ally team AD/AP damage-lean meter.
+                   A glanceable physical-vs-magic bar for the operator's own
+                   team, summed from DDragon info.attack / info.magic via
+                   /api/champ-select/team-damage-mix. Hidden until at least
+                   one ally has a championId committed.
+                   Renderer: _csvRenderTeamDamage in champ_select.js. -->
+              <div class="csv-sugg-section csv-sugg-team-damage"
+                   id="csv-sugg-team-damage"
+                   hidden></div>
               <!-- Operator 2026-05-31 (#8): the CC CHAIN (cc_blended_ehp)
                    + CONDITIONAL CC (cc_conditional) mounts moved to the
                    center My Pick card, below the DS-vs-Enemy-Comp build.

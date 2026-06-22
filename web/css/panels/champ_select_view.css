@@ -2301,6 +2301,49 @@
 .csv-counter-secondary .csv-counter-note {
   font-variant-numeric: tabular-nums;
 }
+
+/* LIFT 1b (2026-06-22): ally team AD/AP damage-lean meter. A dual-color
+ * horizontal bar (warm AD segment + cyan AP segment) with a text label
+ * carrying the meaning (glyphs, NOT color alone - status-never-hue-alone
+ * rule). Tokens only, zero raw hex: AD=var(--accent) (gold/warm),
+ * AP=var(--accent-2) (cyan), track well=var(--surface-3), text=var(--text)/
+ * var(--dim). The section block is >= --hit-min tall. */
+.csv-sugg-team-damage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: var(--hit-min);
+}
+.csv-tdmg-head {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.csv-tdmg-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: var(--panel-radius-sm);
+  overflow: hidden;
+  background: var(--surface-3);
+  border: 1px solid var(--hextech-border);
+}
+.csv-tdmg-seg-ad { height: 100%; background: var(--accent); }
+.csv-tdmg-seg-ap { height: 100%; background: var(--accent-2); }
+.csv-tdmg-label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.csv-tdmg-ad b { color: var(--accent); }
+.csv-tdmg-ap b { color: var(--accent-2); }
+.csv-tdmg-sep { color: var(--dim); }
+
 /* Row 3: pick-order list. s212 v2: stack cells vertically (each tip on
  * its own row, full-width) so they fill the column rather than wrap
  * narrowly. Combined with the font bump this also closes the ~40%

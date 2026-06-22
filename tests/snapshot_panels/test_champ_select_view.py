@@ -256,6 +256,132 @@ def test_champ_select_counter_pick_hero(mock_server, pw_browser):
     assert not errors, f"JS errors [counter-hero]: {errors[:3]}"
 
 
+def _open_team_damage_box(pw_browser, mock_server):
+    """Sibling of _open_counter_box for the LIFT 1b team-damage meter. The
+    #csv-sugg-team-damage container is STATIC in index.html, so we only wait
+    for the page DOM + the module-global renderer/fetch hooks to load."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+
+    url = mock_server.url + "/?ui_mock=1&mode=sr#champ-select"
+    page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+    page.wait_for_function(
+        "typeof window._csvRenderTeamDamage === 'function'"
+        " && typeof window._csvFetchTeamDamage === 'function'",
+        timeout=10_000,
+    )
+    return ctx, page, errors
+
+
+def test_champ_select_team_damage_meter(mock_server, pw_browser):
+    """LIFT 1b: the ally AD/AP damage-lean meter renders a dual-color bar
+    whose segment widths reflect physical_pct / magical_pct, a text label
+    carrying "AD <n>%" + "AP <n>%", a >=44px section, and an idempotent DOM.
+    Deterministic via a stubbed fetch helper + a synthetic ally comp (the
+    mock server returns {} for the route, so we inject the payload client-
+    side)."""
+    ctx, page, errors = _open_team_damage_box(pw_browser, mock_server)
+    try:
+        # Stub the fetch, invoke the renderer, and read back the structure -
+        # all in ONE synchronous evaluate so the live champ-select render
+        # loop (which re-invokes the renderer with the empty real payload)
+        # cannot race the readback.
+        _SYNTH = """() => {
+              window._csvFetchTeamDamage = function () {
+                return {
+                  ok: true, n_champs: 3,
+                  physical_pct: 70, magical_pct: 30,
+                  per_champ: [
+                    {champId: 266, attack: 8, magic: 3, lean: 'AD'},
+                    {champId: 64,  attack: 8, magic: 3, lean: 'AD'},
+                    {champId: 103, attack: 3, magic: 8, lean: 'AP'}
+                  ]
+                };
+              };
+              window._csvRenderTeamDamage({
+                my_team: [
+                  {championId: 266}, {championId: 103}, {championId: 64}
+                ],
+                their_team: [],
+                bans: {my_team: [], their_team: []}
+              });
+            }"""
+        res = page.evaluate(
+            _SYNTH[:-1]  # drop the closing brace to splice in the readback
+            + """
+              const box = document.getElementById('csv-sugg-team-damage');
+              const ad = box.querySelector('.csv-tdmg-seg-ad');
+              const ap = box.querySelector('.csv-tdmg-seg-ap');
+              const label = box.querySelector('.csv-tdmg-label');
+              return {
+                heads: box.querySelectorAll('.csv-tdmg-head').length,
+                adWidth: ad ? ad.style.width : '',
+                apWidth: ap ? ap.style.width : '',
+                labelText: label ? label.innerText : '',
+                sectionHeight: box.getBoundingClientRect().height,
+                hidden: box.hidden,
+              };
+            }"""
+        )
+
+        assert res["heads"] == 1, "TEAM DAMAGE LEAN header must be present"
+        assert res["adWidth"] == "70%", (
+            f"AD segment width must reflect 70%, got {res['adWidth']!r}"
+        )
+        assert res["apWidth"] == "30%", (
+            f"AP segment width must reflect 30%, got {res['apWidth']!r}"
+        )
+        assert "AD 70%" in res["labelText"], (
+            f"label must contain 'AD 70%', got {res['labelText']!r}"
+        )
+        assert "AP 30%" in res["labelText"], (
+            f"label must contain 'AP 30%', got {res['labelText']!r}"
+        )
+        assert res["hidden"] is False, "meter must be visible when populated"
+        assert res["sectionHeight"] >= 44, (
+            f"section must be >= 44px tall, got {res['sectionHeight']}"
+        )
+
+        # Idempotency: re-invoking with the same inputs yields byte-identical
+        # DOM (full innerHTML rebuild each call).
+        html_pair = page.evaluate(
+            _SYNTH[:-1]
+            + """
+              const box = document.getElementById('csv-sugg-team-damage');
+              const a = box.innerHTML;
+              window._csvRenderTeamDamage({
+                my_team: [
+                  {championId: 266}, {championId: 103}, {championId: 64}],
+                their_team: [], bans: {my_team: [], their_team: []}});
+              return [a, box.innerHTML];
+            }"""
+        )
+        assert html_pair[0] == html_pair[1], (
+            "renderer must be idempotent (identical DOM on re-render)"
+        )
+
+        # Final synchronous re-render, then screenshot in the same tick for
+        # the audit trail (before the live loop can overwrite).
+        page.evaluate(_SYNTH)
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.locator("#csv-sugg-team-damage").screenshot(
+            path=str(SCREENSHOTS / "champ-select_team-damage.png")
+        )
+    finally:
+        page.close()
+        ctx.close()
+
+    assert not errors, f"JS errors [team-damage]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     targets = [
