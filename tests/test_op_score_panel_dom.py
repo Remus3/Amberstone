@@ -113,6 +113,25 @@ class JsContractTests(unittest.TestCase):
         self.assertIn("ui_mock", self.text)
         self.assertIn("/data/ui_mock/op_score.json", self.text)
 
+    def test_renders_arc_shape_chips(self) -> None:
+        # the per-line shape readout (core.op_score_shape) renders as chips.
+        self.assertIn("op-arc", self.text)
+        self.assertIn("_arcHtml", self.text)
+        self.assertIn("data.arc", self.text)
+
+
+class CssContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.text = _read(PANEL_CSS)
+
+    def test_arc_chip_styled(self) -> None:
+        self.assertIn(".op-arc-chip", self.text)
+
+    def test_arc_chip_uses_token_font(self) -> None:
+        # the chip type uses the >= 16px --fs-xs token, no sub-floor px literal.
+        self.assertIn("var(--fs-xs", self.text)
+
 
 class MockFixtureTests(unittest.TestCase):
     def test_fixture_is_valid_curve(self) -> None:
@@ -132,6 +151,17 @@ class MockFixtureTests(unittest.TestCase):
                 if v is not None:
                     self.assertGreaterEqual(v, 0.0)
                     self.assertLessEqual(v, 100.0)
+
+    def test_fixture_has_arc_shape(self) -> None:
+        data = json.loads(_read(MOCK))
+        arc = data.get("arc")
+        self.assertIsInstance(arc, dict)
+        self.assertIn("win", arc)
+        self.assertIn("loss", arc)
+        for side in ("win", "loss"):
+            if arc[side] is not None:
+                self.assertIn("label", arc[side])
+                self.assertIn("read", arc[side])
 
 
 if __name__ == "__main__":

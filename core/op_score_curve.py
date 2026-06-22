@@ -51,6 +51,8 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
+from core import op_score_shape
+
 log = logging.getLogger("rc.op_score_curve")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -247,4 +249,7 @@ def compute_op_score_curve(mode: str = DEFAULT_MODE,
     out = _empty(mode, champion)
     out["n_games"] = n_games
     out["minutes"] = minutes
+    # Descriptive arc-shape read of each result bucket's curve (pure, derived
+    # from the minutes just computed - no extra DB read). See core.op_score_shape.
+    out["arc"] = op_score_shape.summarize_curve(out)
     return out
