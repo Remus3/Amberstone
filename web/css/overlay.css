@@ -25,12 +25,36 @@ body[data-shell="overlay"] {
   --ovx-gold: 200, 170, 110;     /* #C8AA6E hairline + heads (the frame hue) */
   --ovx-cyan: 10, 200, 185;      /* #0AC8B9 info / objective / PRIMARY glow */
   --ovx-good: 55, 208, 138;      /* #37D08A lead-ahead / good band */
+  --ovx-warn: 232, 163, 61;      /* #E8A33D Hextech warn */
   --ovx-red: 232, 64, 87;        /* #E84057 the ONE emergency pop-out */
   --ovx-text: 255, 255, 255;     /* neutral widget ink (ACTION verb full, OBJECTIVE footer @0.55) - palette section 5 */
   /* sub-floor type read at game distance on the dock (item-184 exception): the
    * global tokens.css >=16px floor is overlay-relaxed here, never on :root. */
   --fs-ov-chip: 13px;
   --fs-ov-sigil: 12px;
+  --fs-ov-head: 11px;   /* uppercase widget pane-head label */
+  --fs-ov-call: 14px;   /* w-call ACTION - the dominant play verb */
+}
+
+/* 0a. SEMANTIC PALETTE RE-POINT (doctrine section 5 - palette is law). The
+ * shared panels (callouts.css / coach_choices.css) consume the tokens.css
+ * --signal-* semantic tokens, whose :root values are the OLD fintech hues
+ * (#6ec977 / #f1b04a / #ff5050 / #8a8cf0). Re-point those tokens to the
+ * section-0 Hextech parts INSIDE the overlay scope so every overlay-rendered
+ * chip / pill / band inherits Hextech without touching a single widget rule.
+ * The hex still lives only in a token (the --ovx-* block above), never on a
+ * widget - the palette law holds. Info -> cyan per doctrine (objectives /
+ * info read cyan, not the dashboard indigo). */
+body[data-shell="overlay"] {
+  --signal-good: rgb(var(--ovx-good));
+  --signal-bad: rgb(var(--ovx-red));
+  --signal-warn: rgb(var(--ovx-warn));
+  --signal-gold: rgb(var(--ovx-gold));
+  --signal-info: rgb(var(--ovx-cyan));
+  --signal-dim: rgba(var(--ovx-text), 0.55);
+  --signal-good-soft: rgba(var(--ovx-good), 0.18);
+  --signal-bad-soft: rgba(var(--ovx-red), 0.18);
+  --signal-warn-soft: rgba(var(--ovx-warn), 0.18);
 }
 
 /* 1. Transparent canvas. The game shows through; only widgets paint. zoom (not
@@ -143,7 +167,7 @@ body[data-shell="overlay"] .ovx-widget .am-pane-head {
   margin-bottom: 7px;
   background: transparent !important;
   color: rgba(var(--ovx-gold), 0.90) !important;
-  font-size: 11px;
+  font-size: var(--fs-ov-head);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.15em;
@@ -183,9 +207,36 @@ body[data-shell="overlay"] #rn-lead.rc-lead-ahead:not([hidden]) {
 body[data-shell="overlay"] #rn-lead.rc-lead-behind:not([hidden]) {
   border-left: 3px solid rgb(var(--ovx-red));
 }
+/* Lead pill backing + glance floor. callouts.css backs the pill with a faint
+ * white wash + sizes the line at --fs-md (22) and the tag at --signal-dim; the
+ * overlay wants the Hextech nested backing, the leaner --fs-sm line floor (no
+ * sub-floor below --fs-sm; the only relaxed floor is --fs-ov-chip 13px which
+ * already exists), and a neutral-ink tag. */
+body[data-shell="overlay"] #rn-lead {
+  background: rgba(var(--ovx-bg-nested), 0.9);
+}
+body[data-shell="overlay"] #rn-lead .rc-lead-line {
+  font-size: var(--fs-sm);
+}
+body[data-shell="overlay"] #rn-lead .rc-lead-tag {
+  color: rgba(var(--ovx-text), 0.55);
+}
 /* Density clamp: S1 callouts show the 2 nearest-ETA rows (doctrine rule 1). */
 body[data-shell="overlay"] #rn-callouts .rc-co-row:nth-child(n+3) {
   display: none !important;
+}
+/* Objective ETA chips read CYAN info, not green (doctrine: objectives are
+ * cyan). The NOW chip lights cyan; the upcoming chip is a faint gold info read
+ * instead of the fintech grey --signal-dim. callouts.css owns the base rules
+ * (.rc-co-eta + .rc-co-eta.rc-co-now); these overlay-scoped overrides win on
+ * specificity. */
+body[data-shell="overlay"] .rc-co-eta {
+  color: rgba(var(--ovx-gold), 0.85);
+}
+body[data-shell="overlay"] .rc-co-eta.rc-co-now {
+  background: rgba(var(--ovx-cyan), 0.18);
+  border-color: rgb(var(--ovx-cyan));
+  color: rgb(var(--ovx-cyan));
 }
 /* Chip source pill + A/B chip hit target at game distance. */
 body[data-shell="overlay"] .rc-src {
@@ -237,7 +288,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
 }
 /* RIGHT NOW (immediate): the cyan imminent cue. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="right-now"] > span:last-child {
-  font-size: 13px !important;
+  font-size: var(--fs-ov-chip) !important;
   font-weight: 600;
   color: rgb(var(--ovx-cyan)) !important;
   text-transform: uppercase;
@@ -245,7 +296,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
 }
 /* ACTION: the dominant play verb. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"] > span:last-child {
-  font-size: 14px !important;
+  font-size: var(--fs-ov-call) !important;
   font-weight: 700;
   line-height: 1.2;
   color: rgb(var(--ovx-text)) !important;
@@ -254,7 +305,7 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
  * never blow the card past the 1.5s glance budget (rule 1) - the full text stays
  * on the dashboard surface. -webkit-box line-clamp is the cross-Chromium idiom. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] > span:last-child {
-  font-size: 12px !important;
+  font-size: var(--fs-ov-sigil) !important;
   font-weight: 400;
   color: rgba(var(--ovx-text), 0.55) !important;
   display: -webkit-box;
