@@ -1099,6 +1099,10 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // "pick into this comp" list for the operator's open slot, driven by
   // the existing counters index via /api/champ-select/counter-picks.
   _csvRenderCounterPicks(cs);
+  // LIFT 1b (2026-06-22): ally team AD/AP damage-lean meter. Glanceable
+  // physical-vs-magic bar for the operator's own team, summed from DDragon
+  // info.attack/info.magic via /api/champ-select/team-damage-mix.
+  _csvRenderTeamDamage(cs);
   // 2026-05-22 (item 139 carry (a)): FIRST dashboard UI consumer of
   // cc_blended_ehp. Renders the ally-vs-enemy CC-blended EHP balance
   // chip beside the legacy bans grid so the operator can see at a
@@ -1255,6 +1259,79 @@ function _csvFetchCounterPicks(role, enemyIds, excludeIds, onLoad) {
 // snapshot harness (see the ui_mock test hook at the bottom of the file).
 // In production this is always the real _csvFetchCounterPicks.
 let _csvCounterFetch = _csvFetchCounterPicks;
+
+// LIFT 1b (2026-06-22): ally team AD/AP damage-lean fetch. Mirrors the
+// counter-picks fetch (30s TTL cache keyed on the SORTED ally ids, in-flight
+// guard, synchronous cached-return). Drives /api/champ-select/team-damage-mix.
+const _CSV_TDMG_CACHE = {};   // {key: {data, fetchedAt}}
+const _CSV_TDMG_INFLIGHT = {};
+const _CSV_TDMG_TTL_MS = 30_000;
+
+function _csvFetchTeamDamage(teamIds, onLoad) {
+  const t = (teamIds || []).filter((x) => (x | 0) > 0).slice().sort((a, b) => a - b);
+  if (!t.length) return null;
+  const key = `t:${t.join(",")}`;
+  const now = Date.now();
+  const cached = _CSV_TDMG_CACHE[key];
+  if (cached && (now - cached.fetchedAt) < _CSV_TDMG_TTL_MS) return cached.data;
+  if (_CSV_TDMG_INFLIGHT[key]) return cached ? cached.data : null;
+  _CSV_TDMG_INFLIGHT[key] = true;
+  const url = "/api/champ-select/team-damage-mix?team_ids="
+            + encodeURIComponent(t.join(","));
+  fetch(url)
+    .then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _CSV_TDMG_INFLIGHT[key] = false;
+      if (j && j.ok) {
+        _CSV_TDMG_CACHE[key] = { data: j, fetchedAt: Date.now() };
+        if (typeof onLoad === "function") onLoad();
+      }
+    })
+    .catch(() => { _CSV_TDMG_INFLIGHT[key] = false; });
+  return cached ? cached.data : null;
+}
+
+// Same indirection pattern as _csvCounterFetch so the snapshot harness can
+// swap in a stubbed fetch (see the ui_mock test hook at the bottom).
+let _csvTeamDamageFetch = _csvFetchTeamDamage;
+
+function _csvRenderTeamDamage(cs) {
+  const box = document.getElementById("csv-sugg-team-damage");
+  if (!box) return;
+  // The operator's OWN team (ally locked picks + the operator's hover).
+  const allyIds = (cs && cs.my_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (!allyIds.length) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  box.hidden = false;
+  const data = _csvTeamDamageFetch(allyIds, _csvScheduleRender);
+  if (!data || !data.ok || (data.n_champs | 0) <= 0) {
+    // Quiet placeholder while the first fetch lands (or zero known champs).
+    box.innerHTML = `<div class="csv-tdmg-head">TEAM DAMAGE LEAN</div>`
+                  + `<div class="csv-sugg-empty">reading team damage profile...</div>`;
+    return;
+  }
+  const adPct = data.physical_pct | 0;
+  const apPct = data.magical_pct | 0;
+  // Dual-color bar: AD (warm) segment on the left, AP (cyan) on the right.
+  // The text label below carries the meaning (glyphs, not color alone).
+  box.innerHTML =
+      `<div class="csv-tdmg-head">TEAM DAMAGE LEAN</div>`
+    + `<div class="csv-tdmg-bar" role="img"`
+    + ` aria-label="AD ${adPct} percent, AP ${apPct} percent">`
+    + `<div class="csv-tdmg-seg-ad" style="width:${adPct}%"></div>`
+    + `<div class="csv-tdmg-seg-ap" style="width:${apPct}%"></div>`
+    + `</div>`
+    + `<div class="csv-tdmg-label">`
+    + `<span class="csv-tdmg-ad">AD <b>${adPct}%</b></span>`
+    + `<span class="csv-tdmg-sep"> . </span>`
+    + `<span class="csv-tdmg-ap">AP <b>${apPct}%</b></span>`
+    + `</div>`;
+}
 
 function _csvRenderCounterPicks(cs) {
   const box = document.getElementById("csv-sugg-counter-picks");
@@ -4404,6 +4481,16 @@ try {
       if (typeof ov === "function" && ov !== prev) _csvCounterFetch = ov;
       try { return _csvRenderCounterPicks(cs); }
       finally { _csvCounterFetch = prev; }
+    };
+    // LIFT 1b: same swap-during-render pattern for the team-damage meter,
+    // reading the _csvTeamDamageFetch indirection at the renderer call site.
+    window._csvFetchTeamDamage = _csvTeamDamageFetch;
+    window._csvRenderTeamDamage = function (cs) {
+      const ov = window._csvFetchTeamDamage;
+      const prev = _csvTeamDamageFetch;
+      if (typeof ov === "function" && ov !== prev) _csvTeamDamageFetch = ov;
+      try { return _csvRenderTeamDamage(cs); }
+      finally { _csvTeamDamageFetch = prev; }
     };
   }
 } catch (_) { /* non-browser / no window - skip the test hook */ }
