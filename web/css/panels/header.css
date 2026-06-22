@@ -2167,9 +2167,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: var(--space-2) var(--space-3); /* was 6 10  -> 8 12             */
   font-size: var(--fs-md);                /* was 14px -> 22px              */
   min-height: var(--hit-min);             /* 42px fingertip floor          */
+  /* RC2 Hextech reskin: input wells sit on the dark --surface-3 icon-well
+   * tier (consumed via --surface-alt) with the gold-tinted --border. */
   background: var(--surface-alt); border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm);  /* was 4px  -> 10px              */
   color: var(--text);
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+/* Gold focus ring (Hextech): the accent hairline brightens + a soft gold
+ * glow blooms so the focused field reads as "live" against the dark
+ * surface, mirroring the .hx-card bracket accent. */
+.ub-toolbar input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 8px var(--gold-soft);
 }
 .ub-hint {
   font-size: var(--fs-sm);                /* was 12px -> 18px              */
@@ -2184,19 +2195,25 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   cursor: pointer;
   border: 1px solid var(--border); transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
+/* Primary "+ Add build": Hextech accent fill (gold) so the one create
+ * action dominates the toolbar. Dark canvas text on the gold so it reads
+ * as the page's affirmative control, not an info-blue chip. */
 .ub-btn-primary {
-  background: var(--info-soft); color: var(--info); border-color: var(--info);
+  background: var(--accent); color: var(--canvas); border-color: var(--accent);
 }
-.ub-btn-primary:hover { background: var(--info); color: var(--bg); }
+.ub-btn-primary:hover {
+  background: color-mix(in srgb, var(--accent) 85%, var(--text));
+  color: var(--canvas); border-color: var(--accent);
+}
 .ub-btn-ghost {
   background: var(--surface-alt); color: var(--text-dim);
 }
-.ub-btn-ghost:hover { background: #1c1c2a; color: var(--text); border-color: var(--clock); }
+.ub-btn-ghost:hover { background: var(--surface-2); color: var(--text); border-color: var(--clock); }
 .ub-btn-danger {
-  background: transparent; color: var(--danger, #d96868);
-  border-color: var(--danger, #d96868);
+  background: transparent; color: var(--bad);
+  border-color: var(--bad);
 }
-.ub-btn-danger:hover { background: var(--danger, #d96868); color: var(--bg); }
+.ub-btn-danger:hover { background: var(--bad); color: var(--canvas); }
 .ub-btn-tiny {
   padding: var(--space-1) var(--space-3); /* was 3 9   -> 4 12             */
   font-size: var(--fs-xs);                /* was 12px -> 16px              */
@@ -2208,10 +2225,38 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   gap: var(--space-5);                    /* was 14px -> 24px              */
   align-items: start;
 }
+/* RC2 Hextech reskin: the two panes take the .hx-card "tactical frame" -
+ * the panel-head surface (--surface-2 via --surface-head) plus the gold
+ * corner brackets painted by the ::before/::after pseudos below. The
+ * hx-card primitive is consumed conceptually here (not by adding the class
+ * to the markup) so the existing pane DOM + every editor binding stays
+ * untouched (zero-JS reskin). position:relative anchors the brackets. */
 .ub-list-pane, .ub-form-pane {
+  position: relative;
   background: var(--surface-head); border: 1px solid var(--border);
   border-radius: var(--panel-radius);     /* was --radius-sm 8 -> 18       */
   padding: var(--panel-padding);          /* was 12 14 -> 20               */
+}
+/* Gold corner brackets (the Hextech bracket motif from .hx-card). Two
+ * 14px L-strokes at top-left + bottom-right; decorative + pointer-inert. */
+.ub-list-pane::before, .ub-list-pane::after,
+.ub-form-pane::before, .ub-form-pane::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.ub-list-pane::before, .ub-form-pane::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius);
+}
+.ub-list-pane::after, .ub-form-pane::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius);
 }
 .ub-list-head {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -2225,6 +2270,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .ub-count {
   font-size: var(--fs-xs);                /* was 11px -> 16px              */
   color: var(--clock); font-weight: 700;
+  font-variant-numeric: tabular-nums;     /* count digits do not jitter    */
 }
 .ub-build-list {
   list-style: none; margin: 0; padding: 0;
@@ -2234,6 +2280,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   overflow-y: auto;
 }
 .ub-build-row {
+  position: relative;                     /* anchors the .editing brackets */
   display: grid; grid-template-columns: 1fr auto auto;
   gap: var(--space-3);                    /* was 8px  -> 12px              */
   align-items: center;
@@ -2243,7 +2290,32 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   min-height: var(--hit-min);             /* 42px fingertip floor for row  */
   border: 1px solid transparent;
 }
-.ub-build-row.editing { border-color: var(--info); background: var(--info-soft); }
+/* RC2 Hextech reskin (gemini direction): the ACTIVE / selected (editing)
+ * build card is the focus of the page - it takes the gold accent border +
+ * a faint gold wash, and the signature gold corner brackets so the eye
+ * locks onto the build currently under edit. */
+.ub-build-row.editing {
+  border-color: var(--accent); background: var(--gold-soft);
+}
+.ub-build-row.editing::before,
+.ub-build-row.editing::after {
+  content: "";
+  position: absolute;
+  width: 12px; height: 12px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.ub-build-row.editing::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius-sm);
+}
+.ub-build-row.editing::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius-sm);
+}
 .ub-build-meta {
   display: flex; flex-direction: column;
   gap: var(--space-1);                    /* was 2px  -> 4px               */
@@ -2294,6 +2366,16 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .ub-field input, .ub-field select {
   min-height: var(--hit-min);             /* 42px fingertip floor          */
 }
+/* Gold focus ring (Hextech) on every editor field - matches the toolbar
+ * champion input so the whole form shares one focus vocabulary. readonly
+ * (builder-driven) fields are excluded - they are not directly editable. */
+.ub-field input:not([readonly]):focus,
+.ub-field select:focus,
+.ub-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 8px var(--gold-soft);
+}
 .ub-field textarea {
   font-family: var(--font-mono, ui-monospace, monospace);
   resize: vertical; min-height: 200px;    /* was 110px -> 200px            */
@@ -2306,8 +2388,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--surface-alt); color: var(--text);
   border-left: 3px solid var(--clock);
 }
-.ub-form-status.ok    { border-left-color: var(--ok, #6cd97a); color: var(--ok, #6cd97a); }
-.ub-form-status.error { border-left-color: var(--danger, #d96868); color: var(--danger, #d96868); }
+.ub-form-status.ok    { border-left-color: var(--good); color: var(--good); }
+.ub-form-status.error { border-left-color: var(--bad); color: var(--bad); }
 .ub-form-actions {
   display: flex; gap: var(--space-3);     /* was 10px -> 12px              */
   justify-content: flex-end;
@@ -2392,7 +2474,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-family: inherit;
   transition: border-color 0.1s, background 0.1s;
 }
-.ub-sp-cell:hover { border-color: var(--clock); background: #1c1c2a; }
+.ub-sp-cell:hover { border-color: var(--clock); background: var(--surface-2); }
 .ub-sp-cell img {
   width: 36px; height: 36px; border-radius: var(--panel-radius-sm);
   background: var(--surface); object-fit: cover;
