@@ -23,11 +23,12 @@ read page research + current DOM + RC2_DESIGN section -> mock (show_widget) -> g
 -> build agent implements -> 5-phase audit + Playwright snapshot -> capture -> commit + push.
 
 ## Priority order + status
-- 0. FOUNDATION (Hextech tokens + base palette cutover + component primitives) - WIP
-- 1. in-game overlay - palette + eye-line layout + per-widget hide + S0 pulse DONE (2026-06-22 session); polish pass pending
-- 2. champ-select - TODO (highest stress / time pressure; counter + augment hierarchy)
-- 3. post-game-review (PGR) - TODO (immediate feedback loop; 0-100 hero score)
-- 4. home - TODO (hub / first impression)
+- 0. FOUNDATION (Hextech tokens + base palette cutover + component primitives) - DONE ce3149fc (196 tests)
+- 1. in-game overlay - DONE (palette + eye-line layout #2 + per-widget hide + S0 pulse, 2026-06-22)
+- 2. champ-select - DONE d33f40a0 (Hextech reskin; P2 counter-hero + P8 AD/AP meter deferred)
+- 3. post-game-review (PGR) - DONE a5db9691 (score-hero gold reskin; decomposition/carry/@15 deferred)
+- (global) page titles -> Hextech gold - DONE f3ce6e40
+- 4. home - WIP (identity + Tonight's-pick hero + form strip)
 - 5. lobby - TODO (pre-game context)
 - 6. history - TODO (dense tabular)
 - 7. historical-pgr - TODO (inherits PGR)
