@@ -109,6 +109,34 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-22 (headless continue 15 / R14) - cc_conditional durations_floor_s CC floor band (ENGINE 1.150.0)
+
+Item 581, commit `66abc012` (pushed, CI green). Tier-2 DS schema lift: ENGINE 1.149.0 -> 1.150.0,
+DS :8893 bounced, Share re-synced in the feature commit; full dual suite (DS-dir 7472 passed).
+
+CONTEXT: gemini+ahk loop, MANUAL single-cycle executor (operator ran /gemini-headless-upgrade with
+args = read+execute ops/loop/control/directive.md now). Directive = ORCHESTRATION_PLAN R14 ds-sweep.
+
+BUILT (TDD red-first): optional ConditionalCcEntry.durations_floor_s (None default; loader .get);
+default-OFF apply_cc_floor seam on cc_pressure.compute_cc_pressure crediting floor + prob*(max-floor)
+instead of max*prob when ON, in both the standalone and coexistence MAX-rule paths
+(_conditional_credit_seconds). Byte-identical OFF (parity proven Maokai/Ashe/Hecarim/KSante/Sion/Brand).
+Seeded 5 vs Meraki 16.12.1 minimums: Maokai R 0.75 / KSante W 0.5 / Sion R 0.25 / Hecarim R 0.75 (4
+existing) + a NEW Ashe R 1.0 coexisting entry (range_gated, durations_s 3.5; Ashe R also unconditional
+1.5). Registry regenerated via the canonical generator (durations_floor_s on every record);
+externalization guard count 64->65. ENGINE pins bumped across 80 DS test files + 3 consumer pins.
+
+VERIFY: DS-dir 7472 passed; new floor test 13; cc_conditional 1352; externalization 11; Share --check
+in sync; ruff clean; DS :8893 live 1.150.0. The verifier subagent hit a transient 529 (0 tool uses) so
+the gate was a fresh first-hand re-verification (R7 exempts single-thread edits). ZERO regressions: the
+tests/ suite's other failures (3 aram_balance KeyError + overlay.css bare-px + spell_autopush) all
+reproduce on clean HEAD 38326ed3 / from the dirty spell_prefs.json - pre-existing, not R14 (logged to
+the ORCHESTRATION_PLAN Findings log + LEDGER 581).
+
+NEXT: live default-ON flip + ehp/hybrid propagation are operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.
+
+---
+
 # 2026-06-22 (headless continue 13) - DS doc-drift reconciled + standing doc-pin GUARD added
 
 Item 579, commit `99f2e72b` (pushed). Tier-0 doc + Tier-1 test; no engine / DS schema / Share /
