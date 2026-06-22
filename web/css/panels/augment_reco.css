@@ -34,7 +34,7 @@
 }
 
 .ib-aug-reco-block .ar-top-cue {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -60,7 +60,7 @@
 }
 
 .ib-aug-reco-block .ar-top-conf {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
   flex: 0 0 auto;
   cursor: help;
@@ -81,7 +81,7 @@
   gap: 8px;
   padding: 4px 6px;
   border-radius: var(--radius-sm);
-  font-size: 15px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
 }
 
@@ -91,7 +91,7 @@
 }
 
 .ib-aug-reco-block .ar-rank {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-faint);
   text-align: center;
@@ -123,14 +123,14 @@
 
 .ib-aug-reco-block .ar-score {
   font-variant-numeric: tabular-nums;
-  font-size: 14px;
+  font-size: var(--fs-xs);
   text-align: right;
   color: var(--text);
 }
 
 .ib-aug-reco-block .ar-wr {
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   text-align: right;
   color: var(--text-dim);
 }
@@ -141,7 +141,7 @@
 
 .ib-aug-reco-block .ar-syn {
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-align: right;
 }
@@ -151,7 +151,7 @@
 /* ── Meta caption ───────────────────────────────────────────────── */
 .ib-aug-reco-block .ar-meta {
   margin-top: 7px;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-faint);
   letter-spacing: 0.02em;
   /* Meta carries sample-density digits (n=N games) + minor stats;

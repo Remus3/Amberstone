@@ -326,6 +326,10 @@ function renderMinimapCanvases(p) {
       { x: 0.32, y: 0.30, label: "H", color: "rgba(245,184,124,0.45)", offset: true },  // Herald - same pit pre-20
     ];
     ctx.save();
+    // operator-exception: sub-floor 11px canvas label (NOT DOM text, cannot
+    // consume a CSS --fs-* token). These D/B/H objective glyphs sit inside
+    // 9px-radius dots on a ~312px-rendered minimap; the 16px floor would
+    // overflow the marker - sized to fit the spatial annotation by design.
     ctx.font = "bold 11px Lato, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -366,6 +370,9 @@ function renderMinimapCanvases(p) {
       ctx.lineWidth = 2.5;
       ctx.stroke();
       // "YOU" label above the dot (or below if too close to top).
+      // operator-exception: sub-floor 13px canvas label (NOT DOM text; no CSS
+      // --fs-* token possible). Fits the 40px YOU badge on the minimap canvas;
+      // the 16px floor would overflow the rounded backing - by-design spatial.
       ctx.font = "bold 13px Lato, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
