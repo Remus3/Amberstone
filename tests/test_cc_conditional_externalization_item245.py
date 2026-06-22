@@ -35,7 +35,7 @@ class DataFileShapeTests(unittest.TestCase):
 
     def test_registry_json_counts(self) -> None:
         data = json.loads(_JSON.read_text(encoding="utf-8"))
-        self.assertEqual(len(data["primary"]), 64)
+        self.assertEqual(len(data["primary"]), 65)
         self.assertEqual(len(data["forms"]), 8)
         # Every primary entry is a default-form (form_index null); every forms
         # entry carries an explicit integer form_index.
@@ -47,6 +47,7 @@ class DataFileShapeTests(unittest.TestCase):
         need = {
             "champion", "spell", "cc_kind", "durations_s", "condition",
             "probability", "notes", "form_index", "coexists_with_unconditional",
+            "durations_floor_s",
         }
         for e in data["primary"] + data["forms"]:
             self.assertEqual(set(e.keys()), need, e.get("champion"))

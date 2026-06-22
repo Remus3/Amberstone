@@ -572,7 +572,7 @@ class WaveThirteenConditionalTagConsumerCountsTests(unittest.TestCase):
         # present at this point in the registry's evolution.
         consumers = self._collect_tag_consumers()
         self.assertLessEqual(
-            len(consumers.get(cc.COND_RANGE_GATED, [])), 2
+            len(consumers.get(cc.COND_RANGE_GATED, [])), 3
         )
 
 

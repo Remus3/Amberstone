@@ -403,7 +403,7 @@ class WaveFifteenConditionalTagConsumerCountsTests(unittest.TestCase):
             for e in self._all_entries()
             if e.condition == cc.COND_RANGE_GATED
         ]
-        self.assertLessEqual(len(range_gated_consumers), 2)  # wave 23 lift Maokai R + Hecarim R
+        self.assertLessEqual(len(range_gated_consumers), 3)  # wave 23 Maokai R + Hecarim R + R14 Ashe R
 
 
 class WaveFifteenDefaultCallerByteIdenticalTests(unittest.TestCase):
