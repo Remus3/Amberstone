@@ -8,9 +8,11 @@ All synthetic, tmp_path, ASCII-only. Mirrors tests/test_hz_shadow_report.py.
 from __future__ import annotations
 
 import json
+import sqlite3
 
 from tools import hz_mismatch_diagnose as diag
 from tools import hz_shadow_report as rep
+from tools import replay_matchup_validate as rv
 
 
 def _write(path, records):
@@ -356,3 +358,458 @@ def _find_class(report, pre, native):
             return c
     raise AssertionError(f"class ({pre},{native}) not in report: "
                          f"{[(c['precompute'], c['native']) for c in report['classes']]}")
+
+
+# ============================================================================
+# Rewind ground-truth cross-ref (SR-only, independent signal) tests.
+#
+# All synthetic, in-memory sqlite, ASCII-only. NEVER reads the real
+# data/rewind_history.db (gitignored - a test reading it passes on dev but
+# fails on clean checkout / CI). The rewind DB schema below mirrors
+# tests/test_replay_matchup_validate.py::_make_db EXACTLY.
+# ============================================================================
+
+
+# ---- SR-mode genuine-mismatch fixtures (existing fixtures use mode="aram") ----
+
+
+def _sr_bo_to_hold_rec(swing, my="Garen", enemy="Lux"):
+    """A covered back_off precompute vs a Haiku 'hold' native on SR -> class
+    (back_off, hold), with my_champion/enemy set for the matchup cross-ref."""
+    eo = (f"net swing {swing:+.2f}; you remove 30% of {enemy}, "
+          f"they remove 42% of you")
+    return {"mode": "sr", "my_champion": my, "enemy": enemy, "covered": True,
+            "choices": [{"key": "A", "label": f"Back off {enemy}",
+                         "expected_outcome": eo}],
+            "native_action": "hold and farm", "native_choices": []}
+
+
+def _sr_trade_to_allin_rec(swing, my="Garen", enemy="Lux"):
+    """A covered 'trade' precompute (A-label "Trade...") vs a Haiku 'all_in'
+    native on SR -> class (trade, all_in). predicted_my_ahead True (trade)."""
+    eo = (f"net swing {swing:+.2f}; you remove 55% of {enemy}, "
+          f"they remove 30% of you")
+    return {"mode": "sr", "my_champion": my, "enemy": enemy, "covered": True,
+            "choices": [{"key": "A", "label": f"Trade with {enemy} now",
+                         "expected_outcome": eo}],
+            "native_action": "all in now", "native_choices": []}
+
+
+# ---- hermetic rewind DB builder (mirrors rv test _make_db EXACTLY) ----
+
+
+def _make_rewind_db(conn, matches, participants, frames, events=None):
+    """Build a temp rewind DB in `conn` with the columns the rv harness reads.
+
+    matches: (match_id, game_mode, has_timeline, game_creation_ts)
+    participants: (match_id, participant_id, team_id, champion_name, team_position)
+    frames: (match_id, timestamp_ms, participant_id, total_gold)
+    events: optional (match_id, event_type, killer_id, victim_id, assisting_ids_json)
+    """
+    conn.execute(
+        "CREATE TABLE matches (match_id TEXT, game_mode TEXT, has_timeline INTEGER, "
+        "game_creation_ts INTEGER)"
+    )
+    conn.execute(
+        "CREATE TABLE participants (match_id TEXT, participant_id INTEGER, team_id INTEGER, "
+        "champion_name TEXT, team_position TEXT)"
+    )
+    conn.execute(
+        "CREATE TABLE timeline_frames (match_id TEXT, timestamp_ms INTEGER, "
+        "participant_id INTEGER, total_gold REAL)"
+    )
+    conn.execute(
+        "CREATE TABLE timeline_events (match_id TEXT, event_type TEXT, killer_id INTEGER, "
+        "victim_id INTEGER, assisting_ids_json TEXT)"
+    )
+    conn.executemany("INSERT INTO matches VALUES (?,?,?,?)", matches)
+    conn.executemany("INSERT INTO participants VALUES (?,?,?,?,?)", participants)
+    conn.executemany("INSERT INTO timeline_frames VALUES (?,?,?,?)", frames)
+    if events:
+        conn.executemany("INSERT INTO timeline_events VALUES (?,?,?,?,?)", events)
+    conn.commit()
+
+
+_TS10 = 10 * 60 * 1000  # exact 10-min frame (matches _REWIND_GOLD_FRAME_MIN)
+
+
+def _sr_lane(match_id, lane, champ_a, gold_a, champ_b, gold_b, *, pid_a, pid_b):
+    """Rows for ONE lane: a team100 pid + a team200 pid, with a 0-min and a
+    10-min frame at 10*60*1000 ms. Returns (participants, frames)."""
+    parts = [
+        (match_id, pid_a, 100, champ_a, lane),
+        (match_id, pid_b, 200, champ_b, lane),
+    ]
+    frames = [
+        (match_id, 0, pid_a, 500.0),
+        (match_id, 0, pid_b, 500.0),
+        (match_id, _TS10, pid_a, float(gold_a)),
+        (match_id, _TS10, pid_b, float(gold_b)),
+    ]
+    return parts, frames
+
+
+def _open_rewind(matches, participants, frames, events=None):
+    conn = sqlite3.connect(":memory:")
+    _make_rewind_db(conn, matches, participants, frames, events)
+    return conn
+
+
+# ---- _canon_champ table ----
+
+
+def test_canon_champ_table():
+    assert diag._canon_champ("Kai'Sa") == "kaisa"
+    assert diag._canon_champ("Dr. Mundo") == "drmundo"
+    assert diag._canon_champ("Aurelion Sol") == "aurelionsol"
+    assert diag._canon_champ("Bel'Veth") == "belveth"
+    assert diag._canon_champ("  Garen  ") == "garen"
+    assert diag._canon_champ("Cho'Gath") == "chogath"
+    assert diag._canon_champ(None) == ""
+
+
+# ---- _sr_mismatch_matchups: SR collect + ARAM/client exclusion ----
+
+
+def test_sr_mismatch_matchups_collects_sr_and_excludes_aram_client():
+    records = [
+        _sr_bo_to_hold_rec(-0.10, my="Garen", enemy="Lux"),
+        _bo_to_hold_rec(-0.10),   # mode="aram" -> excluded+counted
+        # a client-mode mismatch -> excluded+counted
+        {"mode": "client", "my_champion": "Annie", "enemy": "Ashe",
+         "covered": True,
+         "choices": [{"key": "A", "label": "Back off Ashe",
+                      "expected_outcome": "net swing -0.10; you remove 30% of "
+                      "Ashe, they remove 42% of you"}],
+         "native_action": "hold and farm", "native_choices": []},
+    ]
+    pairs = diag._genuine_mismatch_pairs(records)
+    per_class = diag._sr_mismatch_matchups(pairs)
+    bh = per_class[("back_off", "hold")]
+    assert ("Garen", "Lux") in bh["matchups"]
+    assert bh["excluded"]["aram"] >= 1
+    assert bh["excluded"]["client"] >= 1
+    # the aram/client rows did NOT enter the matchup set
+    assert ("Annie", "Caitlyn") not in bh["matchups"]
+    assert ("Annie", "Ashe") not in bh["matchups"]
+
+
+def test_sr_mismatch_matchups_no_identity_excluded():
+    records = [
+        # SR but missing enemy -> excluded["no_matchup_identity"]
+        {"mode": "sr", "my_champion": "Garen", "enemy": "", "covered": True,
+         "choices": [{"key": "A", "label": "Back off",
+                      "expected_outcome": "net swing -0.10; you remove 30% of "
+                      "Foo, they remove 42% of you"}],
+         "native_action": "hold and farm", "native_choices": []},
+    ]
+    pairs = diag._genuine_mismatch_pairs(records)
+    per_class = diag._sr_mismatch_matchups(pairs)
+    bh = per_class[("back_off", "hold")]
+    assert bh["matchups"] == set()
+    assert bh["excluded"]["no_matchup_identity"] >= 1
+
+
+# ---- _orient_lane_pair ----
+
+
+def test_orient_lane_pair_my_is_a():
+    lp = rv.LanePair("M1", "MIDDLE", "Garen", "Lux", 4000, 3000, pid_a=1, pid_b=6)
+    o = diag._orient_lane_pair(lp, "Garen", "Lux")
+    assert o["my_is_a"] is True
+    assert o["gold_diff"] == 1000.0
+
+
+def test_orient_lane_pair_my_is_b_flips():
+    # rewind stored champ_a=Lux (enemy), champ_b=Garen (me) -> my-gold is gold_b
+    lp = rv.LanePair("M1", "MIDDLE", "Lux", "Garen", 3000, 4000, pid_a=1, pid_b=6)
+    o = diag._orient_lane_pair(lp, "Garen", "Lux")
+    assert o["my_is_a"] is False
+    assert o["gold_diff"] == 1000.0  # my(4000) - enemy(3000), positive
+
+
+def test_orient_lane_pair_non_matching_returns_none():
+    lp = rv.LanePair("M1", "TOP", "Darius", "Sett", 4000, 3000, pid_a=1, pid_b=6)
+    assert diag._orient_lane_pair(lp, "Garen", "Lux") is None
+
+
+# ---- _rewind_xref_class / rewind_cross_ref: the 12 scenario cases ----
+
+
+def test_case1_oriented_my_is_a_agree():
+    # class (trade, all_in): predicted_my_ahead True. Rewind: my champ ahead in
+    # gold (4000>3000) across 3 lane-games -> real_my_ahead True -> agree.
+    records = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    matches, parts, frames = [], [], []
+    for i in range(3):
+        mid = f"SR{i}"
+        matches.append((mid, "CLASSIC", 1, 1000 + i))
+        p, f = _sr_lane(mid, "MIDDLE", "Garen", 4000, "Lux", 3000, pid_a=3, pid_b=8)
+        parts += p
+        frames += f
+    conn = _open_rewind(matches, parts, frames)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["trade->all_in"]
+    assert cls["lane_games"] == 3
+    assert cls["matchups_covered"] == 1
+    assert cls["mean_gold_diff"] > 0
+    assert cls["low_confidence"] is False
+    assert cls["agreement"] == "agree"
+
+
+def test_case2_oriented_my_is_b_agree():
+    # Rewind stored the pair reversed (enemy on team100). my-perspective gold_diff
+    # must still come out positive -> agree.
+    records = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    matches, parts, frames = [], [], []
+    for i in range(3):
+        mid = f"SR{i}"
+        matches.append((mid, "CLASSIC", 1, 1000 + i))
+        p, f = _sr_lane(mid, "MIDDLE", "Lux", 3000, "Garen", 4000, pid_a=3, pid_b=8)
+        parts += p
+        frames += f
+    conn = _open_rewind(matches, parts, frames)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["trade->all_in"]
+    assert cls["lane_games"] == 3
+    assert cls["mean_gold_diff"] > 0
+    assert cls["agreement"] == "agree"
+
+
+def test_case3_order_independent_set_match():
+    # one stored normal + one stored reversed -> both covered (set match).
+    records = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    matches, parts, frames = [], [], []
+    specs = [("Garen", 4200, "Lux", 3000, 3, 8), ("Lux", 3100, "Garen", 4100, 4, 9)]
+    for i, (ca, ga, cb, gb, pa, pb) in enumerate(specs):
+        mid = f"SR{i}"
+        matches.append((mid, "CLASSIC", 1, 1000 + i))
+        p, f = _sr_lane(mid, "MIDDLE", ca, ga, cb, gb, pid_a=pa, pid_b=pb)
+        parts += p
+        frames += f
+    # pad to >= min_samples so it is not low_confidence
+    mid = "SR2"
+    matches.append((mid, "CLASSIC", 1, 1002))
+    p, f = _sr_lane(mid, "MIDDLE", "Garen", 4000, "Lux", 3000, pid_a=3, pid_b=8)
+    parts += p
+    frames += f
+    conn = _open_rewind(matches, parts, frames)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["trade->all_in"]
+    assert cls["lane_games"] == 3
+    assert cls["mean_gold_diff"] > 0
+
+
+def test_case4_disagree_direction():
+    # class (back_off, hold): predicted_my_ahead False (back_off). Rewind: my
+    # champ AHEAD in gold across 3 games -> real_my_ahead True -> disagree.
+    records = [_sr_bo_to_hold_rec(-0.10, my="Garen", enemy="Lux")]
+    matches, parts, frames = [], [], []
+    for i in range(3):
+        mid = f"SR{i}"
+        matches.append((mid, "CLASSIC", 1, 1000 + i))
+        p, f = _sr_lane(mid, "MIDDLE", "Garen", 4500, "Lux", 3000, pid_a=3, pid_b=8)
+        parts += p
+        frames += f
+    conn = _open_rewind(matches, parts, frames)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["back_off->hold"]
+    assert cls["lane_games"] == 3
+    assert cls["agreement"] == "disagree"
+
+
+def test_case5_low_sample_insufficient():
+    # only 1 lane-game (< _REWIND_MIN_SAMPLES) -> insufficient_data + low_conf.
+    records = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    p, f = _sr_lane("SR0", "MIDDLE", "Garen", 4000, "Lux", 3000, pid_a=3, pid_b=8)
+    conn = _open_rewind([("SR0", "CLASSIC", 1, 1000)], p, f)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["trade->all_in"]
+    assert cls["lane_games"] == 1
+    assert cls["low_confidence"] is True
+    assert cls["agreement"] == "insufficient_data"
+
+
+def test_case6_zero_coverage_class():
+    # the rewind DB has an unrelated matchup only -> covered 0, insufficient.
+    records = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    p, f = _sr_lane("SR0", "TOP", "Darius", 4000, "Sett", 3000, pid_a=1, pid_b=6)
+    conn = _open_rewind([("SR0", "CLASSIC", 1, 1000)], p, f)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["trade->all_in"]
+    assert cls["matchups_covered"] == 0
+    assert cls["lane_games"] == 0
+    assert cls["agreement"] == "insufficient_data"
+
+
+def test_case7_aram_excluded_and_counted():
+    records = [
+        _sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux"),
+        _bo_to_hold_rec(-0.10),  # mode aram
+    ]
+    p, f = _sr_lane("SR0", "MIDDLE", "Garen", 4000, "Lux", 3000, pid_a=3, pid_b=8)
+    conn = _open_rewind([("SR0", "CLASSIC", 1, 1000)], p, f)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    assert out["excluded_total"]["aram"] >= 1
+    # aram champs (Annie/Caitlyn) appear in NO class matchup set
+    bh = out["classes"]["back_off->hold"]
+    assert ("Annie", "Caitlyn") not in set(
+        tuple(m) for m in []  # matchup sets are not serialized; assert via covered
+    )
+    assert bh["matchups_in_class"] == 0  # the only back_off->hold was aram
+
+
+def test_case8_client_excluded_and_counted():
+    records = [
+        _sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux"),
+        {"mode": "client", "my_champion": "Annie", "enemy": "Ashe",
+         "covered": True,
+         "choices": [{"key": "A", "label": "Back off Ashe",
+                      "expected_outcome": "net swing -0.10; you remove 30% of "
+                      "Ashe, they remove 42% of you"}],
+         "native_action": "hold and farm", "native_choices": []},
+    ]
+    p, f = _sr_lane("SR0", "MIDDLE", "Garen", 4000, "Lux", 3000, pid_a=3, pid_b=8)
+    conn = _open_rewind([("SR0", "CLASSIC", 1, 1000)], p, f)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    assert out["excluded_total"]["client"] >= 1
+
+
+def test_case9_failsoft_missing_db_and_wiring(tmp_path):
+    records = [_sr_bo_to_hold_rec(-0.10, my="Garen", enemy="Lux"),
+               _bo_to_hold_rec(-0.10)]  # one aram for the excluded tally
+    missing = tmp_path / "nope.db"
+    out = diag.rewind_cross_ref(records, db_path=missing)
+    assert out["available"] is False
+    assert out["reason"] == "unavailable (no rewind db)"
+    # the excluded tally is still populated even with no DB
+    assert out["excluded_total"]["aram"] >= 1
+    # wiring through diagnose + render must not raise, must show unavailable
+    report = diag.diagnose(records, with_rewind=True, rewind_db=missing,
+                           now="2026-06-21T00:00:00Z")
+    md = diag.render_markdown(report)
+    assert md.isascii()
+    assert "Rewind ground-truth cross-ref" in md
+    assert "unavailable" in md
+    # the v1 buckets are unaffected (anti-circularity footer still present)
+    assert "core/precomputed_laning_coach.py" in md
+
+
+def test_case10_solo_kill_orientation_and_conflict():
+    # my champ solo-kills enemy 2-0 -> solo_kills_my == 2.
+    records = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    matches, parts, frames, events = [], [], [], []
+    for i in range(3):
+        mid = f"SR{i}"
+        matches.append((mid, "CLASSIC", 1, 1000 + i))
+        p, f = _sr_lane(mid, "MIDDLE", "Garen", 4000, "Lux", 3000, pid_a=3, pid_b=8)
+        parts += p
+        frames += f
+    # 2 solo kills my(pid3)->enemy(pid8) on the first match
+    events += [("SR0", "CHAMPION_KILL", 3, 8, "[]"),
+               ("SR0", "CHAMPION_KILL", 3, 8, "[]")]
+    conn = _open_rewind(matches, parts, frames, events)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["trade->all_in"]
+    assert cls["solo_kills_my"] == 2
+    assert cls["solo_kills_enemy"] == 0
+
+    # conflict variant: gold AHEAD but kills BEHIND -> insufficient_data
+    records2 = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    m2, p2, f2, e2 = [], [], [], []
+    for i in range(3):
+        mid = f"SR{i}"
+        m2.append((mid, "CLASSIC", 1, 1000 + i))
+        p, f = _sr_lane(mid, "MIDDLE", "Garen", 4500, "Lux", 3000, pid_a=3, pid_b=8)
+        p2 += p
+        f2 += f
+    # enemy out-solo-kills me 2-0 while my gold is ahead -> gold/kills conflict
+    e2 += [("SR0", "CHAMPION_KILL", 8, 3, "[]"),
+           ("SR0", "CHAMPION_KILL", 8, 3, "[]")]
+    conn2 = _open_rewind(m2, p2, f2, e2)
+    out2 = diag.rewind_cross_ref(records2, conn=conn2)
+    conn2.close()
+    cls2 = out2["classes"]["trade->all_in"]
+    assert cls2["solo_kills_enemy"] == 2
+    assert cls2["agreement"] == "insufficient_data"
+
+
+def test_case11_canon_spaced_apostrophe_matchup_covers():
+    # matchup with a spaced + apostrophe name; rewind stores the canonical
+    # DDragon-ish forms -> canon makes them match.
+    rec = {"mode": "sr", "my_champion": "Kai'Sa", "enemy": "Aurelion Sol",
+           "covered": True,
+           "choices": [{"key": "A", "label": "Trade with Aurelion Sol now",
+                        "expected_outcome": "net swing +0.20; you remove 55% of "
+                        "Aurelion Sol, they remove 30% of you"}],
+           "native_action": "all in now", "native_choices": []}
+    records = [rec]
+    matches, parts, frames = [], [], []
+    for i in range(3):
+        mid = f"SR{i}"
+        matches.append((mid, "CLASSIC", 1, 1000 + i))
+        # rewind champion_name forms (no apostrophe / no space)
+        p, f = _sr_lane(mid, "MIDDLE", "Kaisa", 4000, "AurelionSol", 3000,
+                        pid_a=3, pid_b=8)
+        parts += p
+        frames += f
+    conn = _open_rewind(matches, parts, frames)
+    out = diag.rewind_cross_ref(records, conn=conn)
+    conn.close()
+    cls = out["classes"]["trade->all_in"]
+    assert cls["matchups_covered"] == 1
+    assert cls["lane_games"] == 3
+
+
+def test_case12_schema_v2_and_additive():
+    records = [_sr_trade_to_allin_rec(0.20, my="Garen", enemy="Lux")]
+    p, f = _sr_lane("SR0", "MIDDLE", "Garen", 4000, "Lux", 3000, pid_a=3, pid_b=8)
+    mem = _open_rewind([("SR0", "CLASSIC", 1, 1000)], p, f)
+    report = diag.diagnose(records, all_classes=True, with_rewind=True,
+                           rewind_conn=mem, now="2026-06-21T00:00:00Z")
+    mem.close()
+    assert report["schema"] == "hz_mismatch_diagnose/v2"
+    # all v1 top-level keys present
+    for k in ("generated_at", "total_records", "genuine_mismatches",
+              "bucket_labels", "classes", "drift"):
+        assert k in report
+    # per-class v1 fields unchanged
+    cls = _find_class(report, "trade", "all_in")
+    for k in ("precompute", "native", "count", "buckets", "median_swing",
+              "verdict"):
+        assert k in cls
+    assert "rewind_xref" in cls  # per-class block attached
+    assert "rewind_xref" in report  # top-level block present
+
+    # diagnose WITHOUT with_rewind has NO rewind_xref key (byte-compat)
+    plain = diag.diagnose(records, now="2026-06-21T00:00:00Z")
+    assert "rewind_xref" not in plain
+    for c in plain["classes"]:
+        assert "rewind_xref" not in c
+
+    md = diag.render_markdown(report)
+    assert md.isascii()
+    assert "Rewind ground-truth cross-ref" in md
+    # the original anti-circularity footer survives
+    assert "metric is the thing under" in md
+
+
+def test_rewind_cross_ref_schema_v2_constant():
+    assert diag.SCHEMA == "hz_mismatch_diagnose/v2"
+
+
+def test_tool_file_is_ascii_only():
+    import pathlib
+    tool = pathlib.Path(diag.__file__)
+    data = tool.read_bytes()
+    non_ascii = [(i, b) for i, b in enumerate(data) if b > 0x7F]
+    assert not non_ascii, f"non-ASCII bytes at offsets {non_ascii[:5]}"
