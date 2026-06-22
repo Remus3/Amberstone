@@ -172,6 +172,7 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | R15 | lift | Section-7b heavyweight deep-dive competitor lift of Aggregator A, 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-22.md. ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); HIGH-lift with new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. | DONE | `b49ef1a7` |
+| R16 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Game Flow + Spike Curve panels (web/js/panels/perf_curve.js, spike_curve.js, spike_markers.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview visual vs /api/state. | DONE | `7ecb5b18` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -185,6 +186,20 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-22 R16 (DIRECTOR REFILL cycle) DONE (`7ecb5b18`) - Section-3b 5-phase fixture audit
+  of the 3 un-audited Game Flow + Spike Curve panels (perf_curve.js / spike_curve.js /
+  spike_markers.js + their CSS) vs docs/UI_SCALE_SPEC_V2.md. Result = 1 MUST-FIX, all 3 panels
+  otherwise v2.1-compliant (buttons hit --hit-min 42px, type on --fs-sm/--fs-xs tokens, ASCII-
+  clean, spike cells display-only so not hit-targets). MUST-FIX (in-slice): perf_curve.css
+  .pf-ylab/.pf-xlab font-size:13px is a legitimate scaled-viewBox SVG chart-glyph user-unit but
+  carried its rationale only in the file header, not INLINE at the declaration like its audit-
+  sibling spike_curve.css - added the inline operator-exception comment (zero pixel delta) + a
+  NEW TDD guard CssSubFloorFontExceptionTests (RED->GREEN) that fails any sub-16px hardcoded
+  font-size lacking an inline operator-exception within 6 lines. Deferred FUTURE: spike_markers
+  raw off-grid spacing (1/2/3/6px, radius 4px) = pre-existing, not a NEW value. 136 slice + 13
+  hygiene tests green; ruff clean; CSS served live on :8888 (asset-hash reload); verifier CONFIRM
+  (6/6). Live Claude_Preview shot OWED (RC-owned :8888 preview blocker + active_match panels
+  live-game-gated, mode_key=client) - same carry-forward as R4/R8/R13.
 - 2026-06-22 R15 (DIRECTOR REFILL cycle) DONE (`b49ef1a7`) - Section-7b heavyweight competitor
   deep-dive lift of Aggregator A (first review; prior lifts covered Aggregator P / draft tool L /
   target-vs-opponent / simulator tool R / Aggregator H / Aggregator B). 3 disjoint parallel research agents
