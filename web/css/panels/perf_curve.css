@@ -56,6 +56,11 @@
 #bi-flow-mount .pf-line-loss { stroke: var(--signal-bad, #ff5050); }
 #bi-flow-mount .pf-ylab,
 #bi-flow-mount .pf-xlab {
+  /* operator-exception: SVG chart-glyph font-size is a user-unit inside the
+   * scaled viewBox (preserveAspectRatio="none", width:100%), NOT DOM type, so
+   * it renders >= 13px at the >=600px Game Flow container width - same
+   * convention as pgr_winprob.css and the audit-sibling spike_curve.css. Below
+   * --fs-xs (16px) is intentional here, never a real sub-floor DOM type size. */
   font-size: 13px;
   fill: var(--text-faint, #9ca3af);
   font-variant-numeric: tabular-nums;
