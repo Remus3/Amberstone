@@ -4,6 +4,46 @@
 
 ---
 
+# 2026-06-21 (headless continue 8) - HZ shadow agreement metric DE-BIASED (recall category error)
+
+Item 574, commit `79a7906a` (pushed; restored upstream tracking the item-569 rewrite had dropped). Tier-1
+tooling; no engine / DS / Share / ENGINE bump.
+
+TRIAGE (the prompt's candidates 1+2 verified DRAINED before building - the curated backlog had 3 already-
+shipped picks in a row, so grep-verify was mandatory): (1) DS cross-eval Aphelios dps zero-output BUG = ALREADY
+FIXED (ENGINE 1.128.0; `ds_cross_eval/SYSTEMIC_FINDINGS.md:74-84,112`) and LIVE-CONFIRMED this session (re-probed
+at live 1.149.0 -> dps ranks Yun Tal 103 / IE 96 / Stormrazor 82, not Doran's). B1 melee-gate + F2 gold-top
+shipped default-OFF (items 496/497); Cluster A ARAM-override = operator off-meta call, not a bounded build. So
+(1) has no bounded slice left. (2) HZ flip = NOT ready (laning 29.3% / build 48.9%, operator-gated). The 5-day
+memory `project_ds_comprehensive_cross_eval` (Aphelios "clearest defect") predated the 1.128.0 fix - same stale-
+backlog trap as items 1/b/c.
+
+GEMINI DIRECTOR consult -> priority = de-bias the HZ shadow agreement metric. SUBAGENT-FIRST: Plan subagent
+emitted the file:line-grounded spec -> impl TDD-inline (2 coupled files, worktree fan-out inappropriate per R9)
+-> read-only verifier gate (117/117, fix confirmed in-impl, no production importer) BEFORE commit.
+
+ROOT CAUSE + FIX: `tools/hz_shadow_report.py` scored the precompute choice-A laning-COMBAT verdict against the
+native Haiku action even when that action was "recall" - an ECONOMY decision the combat-A can STRUCTURALLY never
+be (the precompute's recall signal is choice B: "Recall now"/"Back soon"). ~1794 guaranteed mismatches were in
+the laning denominator. Fix: native=recall excluded from the laning-combat comparable; routed to a NEW `economy`
+sub-block {native_recall, precompute_also_recall} (`_is_recall_directive_label` catches BOTH "Recall now" AND
+"Back soon" - classify_verdict MISSES the latter; labels HARDCODED not core-imported because a top-level core
+import breaks the standalone `python tools/hz_shadow_report.py` CLI, verified live). Build (lean) + even<->hold
+untouched.
+
+RESULT: laning agreement 29.3% -> 54.6% (1133/2076); 1794 native-recall now in the economy block (all 1794 with
+precompute also recalling); flip hint 31% -> 54%; remaining laning mismatches are now GENUINE combat disagreements
+(back_off->hold x351, hold->all_in x151 = the actionable gate). TDD +6 / 3-updated, 41/41 pass; ruff clean.
+DON'T redo: this de-bias; do NOT re-add native-recall to the combat denominator (it is cross-axis by design).
+
+NEXT: the HZ flip stays operator-gated (do-not-flip-blind) - the honest gate now reads ~54% combat agreement;
+the genuine combat mismatches (back_off->hold, hold->all_in) are the next signal to investigate IF a flip is
+pursued. MEMORY.md still ~1KB over the 24.4KB load budget (a higher-priority build item was picked this cycle,
+so `/consolidate-memory` is still owed - run it next idle cycle). Candidate set 1+2 now both drained/gated; a
+fresh operator refill or a new Gemini-bounded slice is needed next cycle.
+
+---
+
 # 2026-06-21 (headless continue 7) - candidate triage: a/b/c all drained -> weekly-hygiene (no build)
 
 Overlay-polish red queue + ZOI slices 1-3 came in DONE. Interviewed the Gemini director for the next
@@ -68,32 +108,3 @@ position tuning remains, so the "route EVERY cycle here" run is winding down. Re
 next priority: candidates = ZOI slice 4 (champion-only isolation via template matching), the ~88 unwired
 ADAPTATION st-* rows (item 281), or the aggregator-G-style PGR reframe. WAKEUP is at 6 entries - due for a
 weekly-hygiene trim to the last 2-3.
-
----
-
-# 2026-06-21 (headless continue 5) - ZOI SLICE 3: influence bubbles + demarcation + coach feed
-
-ZOI item 567 SLICE 3 shipped + live-verified. Commit `163b76ee` (code) + docs sync, pushed; CI has no pytest gate.
-
-Subagent-first: Gemini consult -> Plan subagent spec (frozen `/api/state.zoi` contract) -> 2 disjoint build
-agents (backend / frontend) -> verifier gate (caught + I fixed a 245x U+2500 box-drawing ASCII violation in
-the JS comment banners) -> UI-audit SHIP-CLEAN.
-
-SHIPPED: `core/zoi_influence.py` (pure, 18 tests) `compute_zoi -> {bubbles, demarcation, map_control}` in
-box-fraction; stamps `/api/state.zoi` + feeds a deterministic map-control callout into `det.callouts` (no
-Haiku). `web/js/panels/minimap_zoi.js` canvas inside `#am-mmrect`: low-alpha team bubbles + weighted-bisector
-demarcation, EMA-smoothed, click-through. Strength is PRESENCE-grounded (dot px*conf + MY ult spikes 6/11/16 +
-game_time) - the Live Client has no enemy level/alive/gold (honest scope). Threaded `zoi` at all 3 main.js poll
-sites; ui_mock fixture + overlay threading test added.
-
-KEY FIX (live CDP pixel sample): raw overlapping bubbles composited to alpha 0.467 (> the 0.25 readability
-cap). Fixed with PER-TEAM OFFSCREEN COMPOSITING (flatten each team, blit at 0.25) -> 99.7% of pixels <= 0.25,
-peak 0.349 only in the thin contested seam.
-
-LIVE-VERIFIED: RC restart -> `/api/state.zoi` 29 bubbles + map_control 60-91% ally + callout in
-`/api/state.callouts`; rc-shell relaunched (no hot-reload) + CDP inspect of `#am-zoi-canvas` (painting over the
-real minimap, pointer-events:none both = click-through). DON'T redo: slices 1+2+3; the offscreen-compositing
-alpha cap; the presence-vs-champion-only scope.
-
-NEXT: ZOI program FOUNDATION+1+2+3 done. Future (no owner): champion-only isolation (template matching);
-richer strength if an enemy-data source appears.
