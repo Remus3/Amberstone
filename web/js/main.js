@@ -41,6 +41,8 @@ import { renderOverlayDsControls } from './panels/overlay_ds_controls.js';
 import { renderWardCue } from './panels/ward_cue.js';
 import { renderSpikeCue } from './panels/spike_cue.js';
 import { renderMinimapRect } from './panels/minimap_rect.js';
+// ZOI w-mmrect fill (item 567 slice 3): the influence shading INSIDE the box.
+import { renderMinimapZoi } from './panels/minimap_zoi.js';
 // QA4: overlay-only objective respawn-timer chips (dragon/baron/herald).
 import { renderObjectiveChips } from './panels/objective_chips.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
@@ -1387,6 +1389,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         renderWardCue(_amMockData.liveclient || null);
         renderSpikeCue(_amMockData.liveclient || null);
         renderMinimapRect(_amMockData.minimap_rect || null);
+        renderMinimapZoi(_amMockData.zoi || null);
         renderObjectiveChips(_amMockData.liveclient || null);
       } else {
         _amMockLoad();  // .then re-fires render on landing
@@ -1424,6 +1427,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // top-level minimap_rect (game.cfg-derived). Null-safe; hides off the
       // overlay shell / out of a minimap mode.
       renderMinimapRect((state.latest && state.latest.minimap_rect) || null);
+      // ZOI w-mmrect fill (item 567 slice 3): the influence shading rides the
+      // same overlay-gated dispatch off the top-level zoi block. Null-safe;
+      // clears off the overlay shell / out of a ZOI mode.
+      renderMinimapZoi((state.latest && state.latest.zoi) || null);
       // QA4: objective respawn chips off the same liveclient block
       // (lc.objective_events + lc.game_time_s). Null-safe; hides when no respawn.
       renderObjectiveChips((state.latest && state.latest.liveclient) || null);
@@ -3646,6 +3653,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             // outline as soon as the fixture lands (no-op off the overlay
             // shell / when minimap_rect is absent).
             renderMinimapRect(_amMockData.minimap_rect || null);
+            // ZOI w-mmrect fill (item 567 slice 3): paint the influence shading
+            // as soon as the fixture lands (no-op off the overlay shell / when
+            // zoi is absent).
+            renderMinimapZoi(_amMockData.zoi || null);
           } catch (_) {}
         }
         return _amMockData;
@@ -6574,6 +6585,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           // ZOI w-mmrect (item 567): thread the game.cfg-derived minimap rect
           // (a top-level /api/state sibling) so renderMinimapRect can paint it.
           state.latest.minimap_rect = st.minimap_rect || null;
+          state.latest.zoi = st.zoi || null;  // ZOI w-mmrect fill (item 567 slice 3)
           onState({ type: "state", source: "state-http",
                     mode: fileMode, payload: coachPayload });
           // 2026-04-25: cold-start champ-select prep - surface adaptation
@@ -6628,6 +6640,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           state.latest.lead_projection = st.lead_projection || null;
           state.latest.callouts = st.callouts || null;
           state.latest.minimap_rect = st.minimap_rect || null;  // ZOI w-mmrect (item 567)
+          state.latest.zoi = st.zoi || null;  // ZOI w-mmrect fill (item 567 slice 3)
           onState({ type: "state", source: "state-sse",
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleLcuEnvelope(st.lcu);
@@ -6674,6 +6687,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             state.latest.coach = st.coach || null;
             state.latest.lead_projection = st.lead_projection || null;
             state.latest.minimap_rect = st.minimap_rect || null;  // ZOI w-mmrect (item 567)
+            state.latest.zoi = st.zoi || null;  // ZOI w-mmrect fill (item 567 slice 3)
             state.latest.callouts = st.callouts || null;
           }
           if (st) { renderTeamContext(st); renderArchetypeNudge(st); renderScreenRead(st); }

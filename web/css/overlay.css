@@ -390,6 +390,22 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-mmrect"]::before {
   display: none;
 }
 
+/* 4g-i. w-mmrect ZOI FILL (item 567 slice 3): the Zone-of-Influence canvas that
+ * fills the outline box. Absolutely positioned to span the box (inset:0 / 100%),
+ * and pointer-events:none belt-and-suspenders so it NEVER eats a minimap
+ * move/ping/cast click (the parent box is already click-through). panels/
+ * minimap_zoi.js sizes the backing store from the box px + paints low-alpha
+ * (<=0.25) team bubbles + the demarcation line; it carries no text, so it is
+ * exempt from the combat-mode text shed. */
+body[data-shell="overlay"] #am-zoi-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: block;
+}
+
 /* 4d. Panel-set presets (Alt+Shift+C). main.js stamps body[data-panelset]; these
  * are DELTAS from the coach base (doctrine section 4), NOT a column swap: the
  * coach core (call / choices / callouts / lead) PERSISTS and a set reveals or
