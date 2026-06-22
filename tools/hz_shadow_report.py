@@ -197,6 +197,32 @@ def classify_verdict(text) -> Optional[str]:
     return None
 
 
+# The precompute's ECONOMY/recall signal lives in choice B, never choice A
+# (core/precomputed_laning_coach._build_choices: A is the laning-combat verdict,
+# B is the economy recall directive when the cell's economy.recall is set).
+# These are the two economy recall labels from
+# core/precomputed_laning_coach._RECALL_LABELS (recall_now -> "Recall now",
+# back_soon -> "Back soon"), normalized. Hardcoded (not imported) so this report
+# stays a stdlib-only standalone tool - a top-level "from core ..." import
+# breaks "python tools/hz_shadow_report.py" because tools/ is on sys.path, not
+# the repo root. If a third recall label is ever added to _RECALL_LABELS, mirror
+# it here. classify_verdict maps "Recall now" -> recall but MISSES "Back soon"
+# (it hits no _VERDICT_PHRASES keyword), so detection checks BOTH.
+_RECALL_DIRECTIVE_LABELS: frozenset = frozenset({"recall now", "back soon"})
+
+
+def _is_recall_directive_label(label) -> bool:
+    """True when a choice label is an economy-recall directive - either it
+    classifies to the ``recall`` verdict (e.g. "Recall now") OR its normalized
+    form is in the precompute economy recall set ("back soon", which
+    classify_verdict alone does NOT catch)."""
+    if not label or not isinstance(label, str):
+        return False
+    if classify_verdict(label) == "recall":
+        return True
+    return _normalize_verdict_text(label) in _RECALL_DIRECTIVE_LABELS
+
+
 # Build-lean keyword tables - the BUILD shadow agreement runs on a DIFFERENT
 # axis than laning: the precompute side is the stored ``lean`` field
 # (anti_tank / anti_squishy), and the native (Haiku) side is the live
@@ -279,6 +305,27 @@ def _native_verdict(rec: dict) -> Optional[str]:
     return verdict
 
 
+def _precompute_offers_recall(rec: dict) -> bool:
+    """True when the precompute's economy block recommended a back for this tick
+    - i.e. ANY choice label in the record is a recall directive. Choice B
+    carries the economy recall in _build_choices, but every choice is scanned to
+    be robust. Used only to score native-recall ticks against the precompute
+    economy block in the laning economy sub-block."""
+    choices = rec.get("choices")
+    if not isinstance(choices, list):
+        return False
+    return any(
+        isinstance(ch, dict) and _is_recall_directive_label(ch.get("label"))
+        for ch in choices
+    )
+
+
+def _is_native_recall(rec: dict) -> bool:
+    """True when the native (Haiku) side classifies to the ``recall`` verdict -
+    a cross-axis economy decision, not a laning-combat verdict."""
+    return _native_verdict(rec) == "recall"
+
+
 def record_agreement(rec: dict) -> Optional[dict]:
     """Classify both sides of one shadow record.
 
@@ -290,12 +337,19 @@ def record_agreement(rec: dict) -> Optional[dict]:
     even<->hold mapping (item 508): the precompute "even" verdict's A-chip
     B-option is literally "Hold position", so a precompute "even" counts as
     agreement against a Haiku "hold" as well as a Haiku "even"; every other
-    pair agrees only on exact match (unchanged)."""
+    pair agrees only on exact match (unchanged).
+
+    native recall (cross-axis): a native "recall" is an ECONOMY decision, not a
+    laning-combat verdict, and the precompute combat-A can never be "recall", so
+    such a pair is excluded here (returns None) and scored separately in
+    summarize_agreement's economy sub-block."""
     precompute = None
     if rec.get("covered"):
         precompute = classify_verdict(_first_choice_label(rec))
     native = _native_verdict(rec)
     if precompute is None or native is None:
+        return None
+    if native == "recall":
         return None
     agree = (precompute == native) or (precompute == "even" and native == "hold")
     return {"precompute": precompute, "native": native, "agree": agree}
@@ -316,6 +370,8 @@ def summarize_agreement(records: list[dict]) -> dict:
     even_by_native: dict[str, int] = {}
     unclassified_native = 0
     uncovered_with_native = 0
+    native_recall = 0
+    economy_precompute_also_recall = 0
     for rec in records:
         if _is_non_laning_native_state(rec):
             continue  # dead-state / policy-disabled overlay - not a laning tick
@@ -324,7 +380,13 @@ def summarize_agreement(records: list[dict]) -> dict:
             uncovered_with_native += 1
         pair = record_agreement(rec)
         if pair is None:
-            if (has_native and rec.get("covered")
+            if has_native and rec.get("covered") and _is_native_recall(rec):
+                # cross-axis economy decision - tallied in the economy sub-block,
+                # not the laning-combat comparable (record_agreement dropped it)
+                native_recall += 1
+                if _precompute_offers_recall(rec):
+                    economy_precompute_also_recall += 1
+            elif (has_native and rec.get("covered")
                     and _native_verdict(rec) is None):
                 unclassified_native += 1
             continue
@@ -365,6 +427,10 @@ def summarize_agreement(records: list[dict]) -> dict:
         "unclassified_native": unclassified_native,
         "uncovered_with_native": uncovered_with_native,
         "even_precompute_by_native": dict(sorted(even_by_native.items())),
+        "economy": {
+            "native_recall": native_recall,
+            "precompute_also_recall": economy_precompute_also_recall,
+        },
     }
 
 
@@ -546,6 +612,11 @@ def _print_human(report: dict) -> None:
               f"{agr.get('uncovered_with_native', 0)} uncovered-with-native")
         print(f"    native unclassified (covered): "
               f"{agr.get('unclassified_native', 0)}")
+        econ = agr.get("economy")
+        if econ:
+            print(f"    economy (native recall, off combat axis): "
+                  f"{econ.get('native_recall', 0)} native-recall, "
+                  f"{econ.get('precompute_also_recall', 0)} precompute also recall")
         if agr.get("by_precompute"):
             pv = ", ".join(f"{k} x{v}" for k, v in agr["by_precompute"].items())
             print(f"    precompute verdicts: {pv}")
