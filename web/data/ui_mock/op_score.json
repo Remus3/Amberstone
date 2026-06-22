@@ -237,6 +237,24 @@
       "loss_n": 4
     }
   ],
+  "arc": {
+    "win": {
+      "label": "Snowball",
+      "read": "Started ahead and pulled further in front.",
+      "start": 60.1,
+      "end": 68.4,
+      "trend": 8.3,
+      "volatility": 0.4
+    },
+    "loss": {
+      "label": "Ramping",
+      "read": "Grew into the game; strongest in the later frames.",
+      "start": 57.2,
+      "end": 64.6,
+      "trend": 7.4,
+      "volatility": 0.4
+    }
+  },
   "cached": false,
   "elapsed_ms": 3
 }

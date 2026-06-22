@@ -11,7 +11,11 @@
 // Backend wire:
 //   GET /api/op-score-curve?mode=<aram|sr|arena>
 //   Response: { ok, mode, metric, champion, n_games, min_games_n, weights,
-//     minutes: [{minute, win_avg|null, win_n, loss_avg|null, loss_n}, ...] }
+//     minutes: [{minute, win_avg|null, win_n, loss_avg|null, loss_n}, ...],
+//     arc: { win: {label, read, start, end, trend, volatility}|null,
+//            loss: {...}|null } }
+//   arc is a descriptive shape read of each line (core.op_score_shape); a
+//   too-thin bucket is null and renders no chip.
 //   win_avg/loss_avg are 0-100 composite scores. A minute with a series below
 //   min_games_n returns that series null (too thin to trust) and is dropped.
 //   ?ui_mock=1 -> /data/ui_mock/op_score.json fixture (renders without a
@@ -120,6 +124,29 @@ function _svg(minutes) {
   );
 }
 
+// One arc chip for a result bucket ("win" / "loss"); empty string when that
+// bucket's arc is null (too-thin series). title carries the plain-language read.
+function _arcChip(side, arc) {
+  if (!arc || !arc.label) return '';
+  const cls = side === 'win' ? 'op-win' : 'op-loss';
+  const sideLabel = side === 'win' ? 'Wins' : 'Losses';
+  return (
+    `<span class="op-arc-chip ${cls}" title="${_esc(arc.read || '')}">` +
+    `<span class="op-arc-side">${sideLabel}</span> ` +
+    `<span class="op-arc-label">${_esc(arc.label)}</span></span>`
+  );
+}
+
+// The arc readout row: a short shape tag per line. Returns '' when neither
+// bucket has a readable arc (so the row is omitted entirely).
+function _arcHtml(arc) {
+  if (!arc) return '';
+  const win = _arcChip('win', arc.win);
+  const loss = _arcChip('loss', arc.loss);
+  if (!win && !loss) return '';
+  return `<div class="op-arc" aria-label="line shape tags">${win}${loss}</div>`;
+}
+
 function _html(data) {
   const minutes = (data && data.minutes) || [];
   const n = (data && data.n_games) ? data.n_games : 0;
@@ -139,11 +166,13 @@ function _html(data) {
     `<span class="op-legend-item op-win">Wins</span>` +
     `<span class="op-legend-item op-loss">Losses</span>` +
     `</div>` +
+    _arcHtml(data && data.arc) +
     `<div class="op-caption">Per-minute composite performance score (0-100) over your own ` +
     `${_esc(_mode.toUpperCase())} games (n=${n}), split by result. A transparent blend of ` +
     `normalized gold, xp, CS and damage pace - each scaled against your own best pace at ` +
     `that minute. A win line above the loss line early reads as playing better in games you ` +
-    `win; converging late reads as a similar late game either way. ` +
+    `win; converging late reads as a similar late game either way. The tags above name each ` +
+    `line's overall shape (rise, fall, or flat). ` +
     `Thin minutes (under ${(data && data.min_games_n) || 5} games) are dropped.</div>`
   );
 }
@@ -203,4 +232,4 @@ export function renderOpScore() {
 }
 
 // --- test hooks -----------------------------------------------------
-export const __test = { _svg, _html, _poly, _fmtMmSs, VB_W, VB_H, Y_MAX };
+export const __test = { _svg, _html, _poly, _fmtMmSs, _arcHtml, _arcChip, VB_W, VB_H, Y_MAX };
