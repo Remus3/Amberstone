@@ -229,7 +229,11 @@ def test_summarize_agreement_aggregates():
         # comparable + disagree (aram)
         {"mode": "aram", "covered": True, "choices": [{"label": "All in"}],
          "native_action": "Back off", "native_choices": []},
-        # comparable + agree (sr)
+        # native recall is a cross-axis economy decision -> the economy block,
+        # NOT the laning-combat comparable (a native recall vs the precompute
+        # combat-A is a guaranteed mismatch on the wrong axis). The precompute
+        # A here ("Recall now") is itself a recall directive so precompute also
+        # recalled.
         {"mode": "sr", "covered": True, "choices": [{"label": "Recall now"}],
          "native_action": "go shop", "native_choices": []},
         # covered + native signal but unclassifiable native
@@ -242,16 +246,17 @@ def test_summarize_agreement_aggregates():
         {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}]},
     ]
     out = rep.summarize_agreement(records)
-    assert out["comparable_covered"] == 3
-    assert out["agree"] == 2
-    assert out["agreement_rate"] == round(2 / 3, 4)
+    assert out["comparable_covered"] == 2  # recall tick now in economy block
+    assert out["agree"] == 1
+    assert out["agreement_rate"] == round(1 / 2, 4)
     assert out["by_mode"]["aram"] == {"comparable": 2, "agree": 1, "rate": 0.5}
-    assert out["by_mode"]["sr"] == {"comparable": 1, "agree": 1, "rate": 1.0}
+    assert "sr" not in out["by_mode"]  # the only sr comparable was the recall tick
     assert out["by_native"]["trade"] == {"n": 1, "agree": 1}
     assert out["by_native"]["back_off"] == {"n": 1, "agree": 0}
-    assert out["by_native"]["recall"] == {"n": 1, "agree": 1}
+    assert "recall" not in out["by_native"]  # excluded from the combat axis
     assert out["unclassified_native"] == 1
     assert out["uncovered_with_native"] == 1
+    assert out["economy"] == {"native_recall": 1, "precompute_also_recall": 1}
 
 
 def test_summarize_agreement_confusion_matrix():
@@ -296,6 +301,7 @@ def test_summarize_agreement_empty():
     assert out["confusion"] == []
     assert out["unclassified_native"] == 0
     assert out["uncovered_with_native"] == 0
+    assert out["economy"] == {"native_recall": 0, "precompute_also_recall": 0}
 
 
 def test_build_report_schema_v2_and_agreement(tmp_path):
@@ -321,6 +327,8 @@ def test_build_report_schema_v2_and_agreement(tmp_path):
 def test_build_report_empty_agreement_zeroed(tmp_path):
     r = rep.build_report(tmp_path / "n1.jsonl", tmp_path / "n2.jsonl")
     assert r["agreement"]["laning"]["comparable_covered"] == 0
+    assert r["agreement"]["laning"]["economy"] == {
+        "native_recall": 0, "precompute_also_recall": 0}
     assert r["agreement"]["build"]["agreement_rate"] == 0.0
     assert "no shadow data" in r["flip_ready_hint"]
 
@@ -492,3 +500,84 @@ def test_even_precompute_by_native_empty_when_no_even():
     ]
     out = rep.summarize_agreement(records)
     assert out["even_precompute_by_native"] == {}
+
+
+# ---- native-recall is a cross-axis economy decision, not laning-combat ----
+# The precompute combat-A (choices[0]) is NEVER "recall" (its economy/recall
+# signal lives in choice B). Comparing a native recall against combat-A is a
+# guaranteed mismatch on the wrong axis that deflated the laning agreement gate;
+# these ticks now route to a separate economy sub-block.
+
+
+def test_is_recall_directive_label():
+    assert rep._is_recall_directive_label("Recall now") is True
+    assert rep._is_recall_directive_label("Back soon") is True  # classify misses
+    assert rep._is_recall_directive_label("Force a short trade") is False
+    assert rep._is_recall_directive_label("Hold and farm this window") is False
+    assert rep._is_recall_directive_label("") is False
+    assert rep._is_recall_directive_label(None) is False
+
+
+def test_record_agreement_native_recall_excluded():
+    # native recall is a cross-axis economy decision; the precompute combat-A
+    # can never be recall, so the pair is dropped from the laning-combat sample.
+    rec = {"covered": True,
+           "choices": [{"label": "Hold and farm this window"},
+                       {"label": "Back soon"}],
+           "native_action": "Recall now", "native_choices": []}
+    assert rep.record_agreement(rec) is None
+
+
+def test_summarize_agreement_economy_counts_back_soon_b():
+    records = [
+        # native recall; precompute B is "Back soon" (classify_verdict -> None,
+        # but it IS a recall directive via _RECALL_LABELS) -> precompute_also_recall
+        {"mode": "sr", "covered": True,
+         "choices": [{"label": "Hold and farm this window"},
+                     {"label": "Back soon"}],
+         "native_action": "go shop", "native_choices": []},
+        # native recall; precompute B is "Recall now" -> precompute_also_recall
+        {"mode": "sr", "covered": True,
+         "choices": [{"label": "Back off Caitlyn"}, {"label": "Recall now"}],
+         "native_action": "Recall now", "native_choices": []},
+        # a normal combat tick survives in comparable, NOT economy
+        {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "TRADE", "native_choices": []},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["comparable_covered"] == 1  # only the trade tick
+    assert out["agree"] == 1
+    assert "recall" not in out["by_native"]
+    assert out["economy"] == {"native_recall": 2, "precompute_also_recall": 2}
+
+
+def test_summarize_agreement_economy_native_recall_no_precompute_recall():
+    # native recall, but precompute B is a combat alt ("Force a short trade"),
+    # NOT a recall directive -> native_recall counted, also_recall NOT.
+    records = [
+        {"mode": "aram", "covered": True,
+         "choices": [{"label": "Back off Akali"},
+                     {"label": "Force a short trade"}],
+         "native_action": "go shop", "native_choices": []},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["comparable_covered"] == 0
+    assert out["economy"] == {"native_recall": 1, "precompute_also_recall": 0}
+
+
+def test_summarize_agreement_combat_only_unchanged_by_economy():
+    records = [
+        {"mode": "aram", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "TRADE", "native_choices": []},
+        {"mode": "aram", "covered": True, "choices": [{"label": "All in"}],
+         "native_action": "Back off", "native_choices": []},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["comparable_covered"] == 2
+    assert out["agree"] == 1
+    assert out["economy"] == {"native_recall": 0, "precompute_also_recall": 0}
+
+
+def test_summarize_agreement_economy_zeroed_when_empty():
+    assert rep.summarize_agreement([])["economy"] == {
+        "native_recall": 0, "precompute_also_recall": 0}
