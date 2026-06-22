@@ -8,6 +8,7 @@
       "champion": "Aphelios",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -21,6 +22,7 @@
       "champion": "Gnar",
       "coexists_with_unconditional": false,
       "condition": "frenzy_state",
+      "durations_floor_s": null,
       "durations_s": [
         1.25
       ],
@@ -34,6 +36,7 @@
       "champion": "Hwei",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.2,
         1.4,
@@ -51,6 +54,7 @@
       "champion": "Jayce",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         0.25
       ],
@@ -64,6 +68,7 @@
       "champion": "Karma",
       "coexists_with_unconditional": false,
       "condition": "frenzy_state",
+      "durations_floor_s": null,
       "durations_s": [
         2.35,
         2.45,
@@ -81,6 +86,7 @@
       "champion": "Rell",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         0.8
       ],
@@ -94,6 +100,7 @@
       "champion": "Rell",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         0.6
       ],
@@ -107,6 +114,7 @@
       "champion": "Sylas",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         0.5
       ],
@@ -122,6 +130,7 @@
       "champion": "Aatrox",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.5
       ],
@@ -135,6 +144,7 @@
       "champion": "Aatrox",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.75
       ],
@@ -148,6 +158,7 @@
       "champion": "Alistar",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -158,9 +169,24 @@
     },
     {
       "cc_kind": "stun",
+      "champion": "Ashe",
+      "coexists_with_unconditional": true,
+      "condition": "range_gated",
+      "durations_floor_s": 1.0,
+      "durations_s": [
+        3.5
+      ],
+      "form_index": null,
+      "notes": "R Enchanted Crystal Arrow distance-gated stun: Ashe fires a global cross-map arrow that stuns the first champion hit for 1.0 : 3.5 seconds based on distance traveled (Meraki 16.12.1 effects_descriptions 'stunning them for 1 : 3.5 (based on distance traveled) seconds'; _PER_SPELL_CC_RANGE Ashe R = (1.0, 3.5)). Encoded at MAX-distance 3.5s with COND_RANGE_GATED tag; durations_floor_s=1.0 is the guaranteed close-range minimum (R14 ENGINE 1.150.0 durations_floor_s schema lift). coexists_with_unconditional=True declares same-slot coexistence with the unconditional Ashe R 1.5s flat baseline in `_PER_SPELL_CC_DURATIONS` (_per_spell_cc.py). Consumer math: at include_conditional=True the MAX rule credits the larger of unconditional 1.5s or the conditional contribution; default-OFF apply_cc_floor gives conditional 3.5 * 0.4 = 1.4s (< 1.5, unconditional wins, byte-identical to pre-R14). With apply_cc_floor ON the floor-aware credit is 1.0 + 0.4 * (3.5 - 1.0) = 2.0s (> 1.5, conditional wins). Probability midpoint 0.4 matches Maokai R / Hecarim R range_gated precedent - operator must commit to a long arrow to reach the far band. FIRST Ashe cc_conditional entry anywhere (R baseline stun already in `_PER_SPELL_CC_DURATIONS`). Mirrors the Maokai R + Hecarim R distance-gated coexistence pattern.",
+      "probability": 0.4,
+      "spell": "R"
+    },
+    {
+      "cc_kind": "stun",
       "champion": "Bard",
       "coexists_with_unconditional": false,
       "condition": "terrain",
+      "durations_floor_s": null,
       "durations_s": [
         1.5,
         1.75,
@@ -178,6 +204,7 @@
       "champion": "Brand",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.25
       ],
@@ -191,6 +218,7 @@
       "champion": "Brand",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         2.0
       ],
@@ -204,6 +232,7 @@
       "champion": "Briar",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -217,6 +246,7 @@
       "champion": "Briar",
       "coexists_with_unconditional": false,
       "condition": "terrain",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -230,6 +260,7 @@
       "champion": "Briar",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -243,6 +274,7 @@
       "champion": "Evelynn",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.25,
         1.5,
@@ -260,6 +292,7 @@
       "champion": "Fiora",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -273,6 +306,7 @@
       "champion": "Fizz",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -286,6 +320,7 @@
       "champion": "Garen",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -299,6 +334,7 @@
       "champion": "Hecarim",
       "coexists_with_unconditional": true,
       "condition": "range_gated",
+      "durations_floor_s": 0.75,
       "durations_s": [
         1.5,
         1.5,
@@ -314,6 +350,7 @@
       "champion": "Hwei",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.0,
         1.125,
@@ -331,6 +368,7 @@
       "champion": "JarvanIV",
       "coexists_with_unconditional": false,
       "condition": "terrain",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -344,6 +382,7 @@
       "champion": "KSante",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -357,6 +396,7 @@
       "champion": "KSante",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": 0.5,
       "durations_s": [
         1.0
       ],
@@ -370,6 +410,7 @@
       "champion": "Karma",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.5,
         1.625,
@@ -387,6 +428,7 @@
       "champion": "Kennen",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.25
       ],
@@ -400,6 +442,7 @@
       "champion": "Leblanc",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -413,6 +456,7 @@
       "champion": "Maokai",
       "coexists_with_unconditional": false,
       "condition": "terrain",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -426,6 +470,7 @@
       "champion": "Maokai",
       "coexists_with_unconditional": true,
       "condition": "range_gated",
+      "durations_floor_s": 0.75,
       "durations_s": [
         2.25
       ],
@@ -439,6 +484,7 @@
       "champion": "Mordekaiser",
       "coexists_with_unconditional": false,
       "condition": "mode_gated",
+      "durations_floor_s": null,
       "durations_s": [
         7.0
       ],
@@ -452,6 +498,7 @@
       "champion": "Morgana",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.5,
         1.75,
@@ -467,6 +514,7 @@
       "champion": "Neeko",
       "coexists_with_unconditional": false,
       "condition": "dual_enemy",
+      "durations_floor_s": null,
       "durations_s": [
         1.8,
         2.1,
@@ -484,6 +532,7 @@
       "champion": "Nunu",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         0.5
       ],
@@ -497,6 +546,7 @@
       "champion": "Ornn",
       "coexists_with_unconditional": false,
       "condition": "terrain",
+      "durations_floor_s": null,
       "durations_s": [
         1.25
       ],
@@ -510,6 +560,7 @@
       "champion": "Ornn",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -523,6 +574,7 @@
       "champion": "Pantheon",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -536,6 +588,7 @@
       "champion": "Pyke",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.25
       ],
@@ -549,6 +602,7 @@
       "champion": "Renata",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         0.5
       ],
@@ -562,6 +616,7 @@
       "champion": "Renekton",
       "coexists_with_unconditional": false,
       "condition": "frenzy_state",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -575,6 +630,7 @@
       "champion": "Riven",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -588,6 +644,7 @@
       "champion": "Sejuani",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -601,6 +658,7 @@
       "champion": "Seraphine",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.1,
         1.2,
@@ -618,6 +676,7 @@
       "champion": "Sett",
       "coexists_with_unconditional": false,
       "condition": "dual_enemy",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -631,6 +690,7 @@
       "champion": "Shaco",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -644,6 +704,7 @@
       "champion": "Singed",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.0,
         1.25,
@@ -661,6 +722,7 @@
       "champion": "Sion",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": 0.25,
       "durations_s": [
         1.0
       ],
@@ -674,6 +736,7 @@
       "champion": "Skarner",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -687,6 +750,7 @@
       "champion": "Swain",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.5,
         1.625,
@@ -704,6 +768,7 @@
       "champion": "Syndra",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.25
       ],
@@ -717,6 +782,7 @@
       "champion": "TahmKench",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -730,6 +796,7 @@
       "champion": "TahmKench",
       "coexists_with_unconditional": false,
       "condition": "devour",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -743,6 +810,7 @@
       "champion": "TahmKench",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -756,6 +824,7 @@
       "champion": "Taliyah",
       "coexists_with_unconditional": false,
       "condition": "traverse",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -769,6 +838,7 @@
       "champion": "Taliyah",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -782,6 +852,7 @@
       "champion": "TwistedFate",
       "coexists_with_unconditional": false,
       "condition": "gold_card",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -795,6 +866,7 @@
       "champion": "Udyr",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -808,6 +880,7 @@
       "champion": "Vayne",
       "coexists_with_unconditional": true,
       "condition": "terrain",
+      "durations_floor_s": null,
       "durations_s": [
         1.5,
         1.5,
@@ -825,6 +898,7 @@
       "champion": "Vex",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         1.0,
         1.125,
@@ -842,6 +916,7 @@
       "champion": "Viktor",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.5
       ],
@@ -855,6 +930,7 @@
       "champion": "Volibear",
       "coexists_with_unconditional": false,
       "condition": "terrain",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -868,6 +944,7 @@
       "champion": "Warwick",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -881,6 +958,7 @@
       "champion": "Warwick",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.5,
         1.75,
@@ -896,6 +974,7 @@
       "champion": "Xayah",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.25
       ],
@@ -909,6 +988,7 @@
       "champion": "XinZhao",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.75,
         0.75,
@@ -926,6 +1006,7 @@
       "champion": "XinZhao",
       "coexists_with_unconditional": false,
       "condition": "debuffed_target",
+      "durations_floor_s": null,
       "durations_s": [
         0.75,
         0.75,
@@ -941,6 +1022,7 @@
       "champion": "Yasuo",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         1.0
       ],
@@ -954,6 +1036,7 @@
       "champion": "Yone",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.75
       ],
@@ -967,6 +1050,7 @@
       "champion": "Yuumi",
       "coexists_with_unconditional": false,
       "condition": "channel",
+      "durations_floor_s": null,
       "durations_s": [
         1.75
       ],
@@ -980,6 +1064,7 @@
       "champion": "Zac",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         0.5
       ],
@@ -993,6 +1078,7 @@
       "champion": "Zilean",
       "coexists_with_unconditional": false,
       "condition": "nth_hit",
+      "durations_floor_s": null,
       "durations_s": [
         2.0
       ],

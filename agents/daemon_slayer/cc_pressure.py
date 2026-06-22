@@ -208,11 +208,33 @@ def _is_aram_mode(mode: str | None) -> bool:
     return mode in _ARAM_MODES or mode.upper() in _ARAM_MODES
 
 
+def _conditional_credit_seconds(
+    entry: ConditionalCcEntry, apply_cc_floor: bool
+) -> float:
+    """Pre-tenacity conditional CC seconds credited for one entry.
+
+    Default (``apply_cc_floor=False``) is the legacy probability-weighted
+    max-rank payoff ``durations_s[-1] * probability`` - byte-identical to
+    the pre-ENGINE-1.150.0 consumer. When ``apply_cc_floor=True`` AND the
+    entry carries a ``durations_floor_s`` guaranteed-minimum band, the
+    credit becomes ``floor + probability * (max - floor)``: the guaranteed
+    floor always lands, plus a probability-weighted top-up for the
+    distance / channel-scaled bonus. Floor-free entries (the common case)
+    are unchanged even when the seam is ON.
+    """
+    max_dur = entry.durations_s[-1]
+    floor = entry.durations_floor_s
+    if apply_cc_floor and floor is not None:
+        return floor + entry.probability * (max_dur - floor)
+    return max_dur * entry.probability
+
+
 def compute_cc_pressure(
     champion: str,
     mode: str = "SR",
     *,
     include_conditional: bool = False,
+    apply_cc_floor: bool = False,
 ) -> CcPressureResult:
     """Aggregate first-order CC durations for a champion across registered spells.
 
@@ -244,6 +266,15 @@ def compute_cc_pressure(
     ``conditional_entries`` tuple. The default
     ``include_conditional=False`` preserves byte-identical 1.37.0
     behavior for all existing consumers.
+
+    When ``apply_cc_floor=True`` (ENGINE 1.150.0, default OFF), any
+    conditional entry carrying a ``durations_floor_s`` guaranteed-minimum
+    band is credited ``floor + probability * (max - floor)`` instead of
+    ``max * probability``, in BOTH the standalone and the coexistence
+    MAX-rule paths (via ``_conditional_credit_seconds``). The default OFF
+    is byte-identical to the pre-1.150.0 consumer; the seam only matters
+    alongside ``include_conditional=True`` for the floor-tagged champions
+    (Maokai R / Hecarim R / Ashe R / KSante W / Sion R).
     """
     safe_mode = mode if mode else "SR"
     if not champion:
@@ -303,8 +334,8 @@ def compute_cc_pressure(
             # below.
             for entry in conditional_entries:
                 if not entry.coexists_with_unconditional:
-                    duration = (
-                        entry.durations_s[-1] * entry.probability
+                    duration = _conditional_credit_seconds(
+                        entry, apply_cc_floor
                     )
                     conditional_post_tenacity += effective_cc_duration(
                         duration, tenacity_mult
@@ -314,7 +345,7 @@ def compute_cc_pressure(
                 # compare against the same-slot unconditional value.
                 # Pick MAX. If MAX is the conditional, mark the slot
                 # so the unconditional aggregation loop SKIPS it.
-                cond_dur = entry.durations_s[-1] * entry.probability
+                cond_dur = _conditional_credit_seconds(entry, apply_cc_floor)
                 cond_post = effective_cc_duration(cond_dur, tenacity_mult)
                 unc_durs = spells_dict.get(entry.spell)
                 unc_post = 0.0
