@@ -261,6 +261,15 @@ def _build_home_summary() -> dict:
     # operator plays mostly ARAM/Arena/event modes so this is frequently
     # "Unranked" - a graceful placeholder, never a fabricated rank.
     out["rank"]         = _home_rank_identity(_get_lcu_for_rank())
+    # LIFT 3: last-20 W/L pip strip + recent-form WR for the hero, read
+    # from rewind_history.db.matches.tracked_win (the clean single-account
+    # historical win column). Reuses the History builder's helper so the
+    # two surfaces share one computation. Fail-soft: a missing DB / sqlite
+    # error yields {} and the frontend hides the strip (never crashes the
+    # home payload).
+    from dashboard.builders import _compute_last20
+    rdb = _APP_DIR / "data" / "rewind_history.db"
+    out["last20"]       = _compute_last20(_ro_conn(rdb))
     return out
 
 

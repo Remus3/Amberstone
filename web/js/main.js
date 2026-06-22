@@ -3052,6 +3052,36 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         (rank.win_rate_pct != null) ? `${rank.win_rate_pct}% WR` : "";
     }
   }
+  // LIFT 3: paint the last-20 W/L pip strip + recent-form WR below the
+  // rank badge in the home hero. `last20` is the home payload's last20
+  // dict ({results:["W"/"L",...], wins, losses, win_rate}). Hidden when
+  // there is no decided history. Idempotent full innerHTML rebuild.
+  function _homeRenderWlStrip(last20) {
+    const box = document.getElementById("home-hero-rank-wl");
+    if (!box) return;
+    const results = (last20 && Array.isArray(last20.results))
+      ? last20.results : [];
+    if (!results.length) {
+      box.hidden = true;
+      box.innerHTML = "";
+      return;
+    }
+    const pips = results.slice(0, 20).map((r) => {
+      const win = r === "W";
+      const cls = win ? "home-wl-pip is-win" : "home-wl-pip is-loss";
+      const label = win ? "W" : "L";
+      return `<span class="${cls}" data-result="${label}" `
+        + `title="${label}"></span>`;
+    }).join("");
+    const wins = (last20.wins != null) ? last20.wins : 0;
+    const losses = (last20.losses != null) ? last20.losses : 0;
+    const wr = (last20.win_rate != null) ? last20.win_rate : 0;
+    const form = `${wins}-${losses} (${wr}% L20)`;
+    box.innerHTML =
+      `<span class="home-wl-pips">${pips}</span>`
+      + `<span class="home-wl-form tabular-nums">${form}</span>`;
+    box.hidden = false;
+  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
@@ -3068,6 +3098,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // when populating Section 3 of Tonight's Pick.
         _HOME.streaks = data.streaks || {};
         _homeRenderRank(data.rank || null);
+        _homeRenderWlStrip(data.last20 || null);
         _homeRenderToday(data.today || {}, data.streaks || {});
         _homeRenderRecent(data.recent || []);
         _homeRenderWeek(data.this_week || []);
