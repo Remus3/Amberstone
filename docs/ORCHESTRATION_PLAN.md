@@ -173,6 +173,7 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 |----|-------|-------|--------|--------|
 | R15 | lift | Section-7b heavyweight deep-dive competitor lift of Aggregator A, 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-22.md. ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); HIGH-lift with new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. | DONE | `b49ef1a7` |
 | R16 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Game Flow + Spike Curve panels (web/js/panels/perf_curve.js, spike_curve.js, spike_markers.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview visual vs /api/state. | DONE | `7ecb5b18` |
+| R17 | ds-sweep | DIRECTOR REFILL: DS schema lift - antitank ramp_lo/ramp_hi level-ramp %HP. Extend the antitank registry to support ramp_lo and ramp_hi endpoints for champion abilities dealing percentage max HP damage scaling with level (e.g., Aatrox 4%:8%, Brand 8%:12%, Skarner 5%:9%). Generalizes to ~16 rows. Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. Live flip EXCLUDED. | DONE | `5f308036` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -185,6 +186,29 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-22 R17 (DIRECTOR REFILL cycle) DONE (`5f308036`) - DS schema lift: antitank
+  level-ramp %max-HP endpoints. AntiTankEntry gains optional ramp_lo/ramp_hi (END-appended,
+  default 0.0); compute_antitank gains optional level. The hand-tuned magnitude encodes
+  late-game (max-ramp) reliability; a ramp-seeded row scales by
+  lerp(ramp_lo,ramp_hi,(level-1)/17)/ramp_hi when a level is injected. DEFAULT-OFF / byte
+  -identical: level=None (the /anti-tank route default) AND level=18 are exactly item-308/315;
+  every un-ramped row is byte-identical at any level (mirrors the P3.2 ap/ad seam). Seeded 10
+  verified MAX_HP champion-level ramps from the patch-16.12.1 registry source_quotes (Aatrox 4:8,
+  Brand 8:12, KSante 1:2, Mordekaiser 1:5, Ornn 10:18, Renata 1:2, Skarner 5:9, Urgot 2:6,
+  Zed 6:10, Zeri 1:11). DEVIATION FROM DIRECTIVE: the director estimated "~16 rows" but ground
+  truth is 10 - the rest of the %HP roster is rank-scaled (per-ability-rank) or flat, NOT
+  champion-level ramps; Senna P (CURRENT_HP 1:10) is a real level ramp but the directive scope
+  was %max-HP, logged as a deferred sibling. A wrong seed is worse than a missing one (charter
+  do-not-flip-blind), so 10 verified rows shipped, not 16 padded. ENGINE 1.150.0 -> 1.151.0
+  (pin sweep 85 files / 96 pins, 0 residual), CHANGELOG prepend, DS :8893 restarted, Share
+  re-synced (--check green) SAME commit. Offline characterization tests RED-first
+  (test_antitank_ramp_r17.py, 25 cases). DS suite 7497 passed / 1 skip / 1943 subtests; full RC
+  suite 9367 passed (the 6 remaining RC failures are PRE-EXISTING - reproduced on base sha
+  b00c4dc7: 3x CoachWire ARAM-template, doc_size_budget ROADMAP-over-budget, overlay.css
+  sub-floor px, spell_autopush on the dirty data/spell_prefs.json runtime drift - NONE are R17).
+  Verifier-gated CONFIRM (byte-identical contract independently reproduced). Live default-ON flip
+  EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
 
 - 2026-06-22 R16 (DIRECTOR REFILL cycle) DONE (`7ecb5b18`) - Section-3b 5-phase fixture audit
   of the 3 un-audited Game Flow + Spike Curve panels (perf_curve.js / spike_curve.js /

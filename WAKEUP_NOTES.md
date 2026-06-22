@@ -4,6 +4,47 @@
 
 ---
 
+# 2026-06-22 (headless continue 19 / R17) - DS anti-tank level-ramp %max-HP
+
+Item 585, commit `5f308036` (feature, pushed) + this docs-sync. Tier-2 (DS schema / ENGINE_VERSION /
+Share mirror): ENGINE 1.150.0 -> 1.151.0, DS :8893 bounced (pid 9340 -> new), Share re-synced.
+
+CONTEXT: gemini+ahk loop executor cycle 6. Directive = ORCHESTRATION_PLAN R17 ds-sweep (antitank
+ramp_lo/ramp_hi level-ramp %HP schema lift). Tightly-coupled single-file engine seam -> built inline
+(full file context), verifier-gated before commit (no parallel-slice merge to gate).
+
+WHAT: `AntiTankEntry` gains optional `ramp_lo`/`ramp_hi` endpoints (END-appended, default 0.0) +
+`compute_antitank` gains optional `level`. Mirrors the P3.2 ap_ratio/ad_ratio default-OFF caster-stat
+seam, for champion-LEVEL ramp. The hand-tuned magnitude encodes late-game (max-ramp) reliability; a
+ramp-seeded row scales by `_level_ramp_factor` = lerp(ramp_lo,ramp_hi,(level-1)/17)/ramp_hi. DEFAULT-OFF:
+level=None (the /anti-tank route default) AND level=18 are byte-identical to item 308/315; every
+un-ramped row byte-identical at any level. Seeded 10 verified MAX_HP champion-level ramps (Aatrox 4:8,
+Brand 8:12, KSante 1:2, Mordekaiser 1:5, Ornn 10:18, Renata 1:2, Skarner 5:9, Urgot 2:6, Zed 6:10,
+Zeri 1:11).
+
+DEVIATION (logged, intent over literal): director said "~16 rows", ground truth is 10 - the rest of the
+%HP roster is rank-scaled (per-ability-rank) or flat, not champion-level ramps; Senna P (CURRENT_HP 1:10)
+is a real level ramp but out of the %max-HP scope -> deferred sibling. A wrong seed is worse than a
+missing one.
+
+VERIFY: RED-first `test_antitank_ramp_r17.py` (25 cases). py_compile + ruff clean. DS suite 7497 passed /
+1 skip / 1943 subtests; antitank cluster 94 passed. ENGINE pin sweep 85 files / 96 pins, 0 residual.
+ds_share_sync --check green (372 files). Full RC suite 9367 passed - the 6 remaining RC failures are
+PRE-EXISTING (reproduced on base `b00c4dc7` via stash: 3x CoachWire ARAM-template, doc_size_budget
+ROADMAP-over-budget [FIXED this cycle - relocated 4 shipped bullets to ROADMAP_HISTORY, now under 80KB],
+overlay.css sub-floor px, spell_autopush on dirty data/spell_prefs.json) - NONE are R17. Verifier
+subagent CONFIRM (byte-identical contract independently reproduced).
+
+CARRY-FORWARD: the 5 still-red pre-existing RC failures (3x CoachWire ARAM-template
+`test_aram_user_template_format_with_field`, overlay.css sub-floor px, spell_autopush dirty-data) need a
+separate cycle - NOT R17's scope. data/spell_prefs.json is a dirty runtime artifact left uncommitted.
+
+LIVE-GATED: the default-ON flip (a survivability/draft consumer calling compute_antitank with the live
+champion level) is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md (validate early-vs-late level-discounted
+scores vs a real game before flipping).
+
+---
+
 # 2026-06-22 (headless continue 18 / R16) - Game Flow + Spike Curve fixture audit
 
 Item 584, commit `7ecb5b18` (pushed) + this docs-sync. Tier-0/1 frontend (CSS comment = asset-hash
@@ -63,31 +104,3 @@ subfails + overlay.css px + spell_prefs.json drift) - all independent of this sl
 NEXT (FUTURE, triaged): single-match per-minute OP-Score line + duo "recently played with" + a 0-10
 post-game rollup (presentation, deferrable); live matchup board / enemy-WR / live benchmark delta /
 jungle timers (live-game-gated); per-slot frequency + ranked LP trend (new dependency / schema).
-
----
-
-# 2026-06-22 (headless continue 15 / R14) - cc_conditional durations_floor_s CC floor band (ENGINE 1.150.0)
-
-Item 581, commit `66abc012` (pushed, CI green). Tier-2 DS schema lift: ENGINE 1.149.0 -> 1.150.0,
-DS :8893 bounced, Share re-synced in the feature commit; full dual suite (DS-dir 7472 passed).
-
-CONTEXT: gemini+ahk loop, MANUAL single-cycle executor (operator ran /gemini-headless-upgrade with
-args = read+execute ops/loop/control/directive.md now). Directive = ORCHESTRATION_PLAN R14 ds-sweep.
-
-BUILT (TDD red-first): optional ConditionalCcEntry.durations_floor_s (None default; loader .get);
-default-OFF apply_cc_floor seam on cc_pressure.compute_cc_pressure crediting floor + prob*(max-floor)
-instead of max*prob when ON, in both the standalone and coexistence MAX-rule paths
-(_conditional_credit_seconds). Byte-identical OFF (parity proven Maokai/Ashe/Hecarim/KSante/Sion/Brand).
-Seeded 5 vs Meraki 16.12.1 minimums: Maokai R 0.75 / KSante W 0.5 / Sion R 0.25 / Hecarim R 0.75 (4
-existing) + a NEW Ashe R 1.0 coexisting entry (range_gated, durations_s 3.5; Ashe R also unconditional
-1.5). Registry regenerated via the canonical generator (durations_floor_s on every record);
-externalization guard count 64->65. ENGINE pins bumped across 80 DS test files + 3 consumer pins.
-
-VERIFY: DS-dir 7472 passed; new floor test 13; cc_conditional 1352; externalization 11; Share --check
-in sync; ruff clean; DS :8893 live 1.150.0. The verifier subagent hit a transient 529 (0 tool uses) so
-the gate was a fresh first-hand re-verification (R7 exempts single-thread edits). ZERO regressions: the
-tests/ suite's other failures (3 aram_balance KeyError + overlay.css bare-px + spell_autopush) all
-reproduce on clean HEAD 38326ed3 / from the dirty spell_prefs.json - pre-existing, not R14 (logged to
-the ORCHESTRATION_PLAN Findings log + LEDGER 581).
-
-NEXT: live default-ON flip + ehp/hybrid propagation are operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.
