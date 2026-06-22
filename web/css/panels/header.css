@@ -2587,23 +2587,61 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: grid; grid-template-columns: 1fr 1fr;
   gap: var(--space-6);             /* was 14px -> 32px                  */
 }
+/* RC2 Hextech reskin (redesign #12, the last page). Each settings card
+ * adopts the hx-card frame: a plain bordered --surface body with the two
+ * gold corner brackets (::before top-left L + ::after bottom-right L)
+ * that are this design's signature "tactical panel" cue. The brackets
+ * are decorative + pointer-inert, mirroring web/css/hextech.css .hx-card
+ * and the sibling .ub-list-pane treatment already in this file. */
 .settings-card {
-  background: var(--surface-head); border: 1px solid var(--border);
+  position: relative;                   /* anchors the corner brackets  */
+  background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--panel-radius);   /* was --radius-sm 8px -> 18px */
   padding: var(--panel-padding);        /* was 12px 14px -> 20px       */
 }
+.settings-card::before,
+.settings-card::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.settings-card::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius);
+}
+.settings-card::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius);
+}
+/* Section head: raised onto --surface-2, uppercase GOLD (was dim --label)
+ * so each card announces its group in the Hextech accent. Negative side
+ * margins + padding let the head bar bleed to the card edge above the
+ * body rows. */
 .settings-card-head {
   font-size: var(--fs-xs);         /* was 11px -> 16px                  */
   font-weight: 800; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--label);
+  text-transform: uppercase; color: var(--accent);
+  background: var(--surface-2);
+  margin: calc(-1 * var(--panel-padding)) calc(-1 * var(--panel-padding));
   margin-bottom: var(--space-4);   /* was 10px -> 16px                  */
+  padding: var(--space-3) var(--panel-padding);  /* was 5px -> grid     */
   border-bottom: 1px solid var(--border-soft);
-  padding-bottom: var(--space-2);  /* was 5px -> 8px (grid)             */
+  border-top-left-radius: var(--panel-radius);
+  border-top-right-radius: var(--panel-radius);
 }
+/* 8px form grid: label/control rows sit on the --space-3 (12px) vertical
+ * rhythm with the --hit-min fingertip floor; the visible control (e.g. a
+ * 24px checkbox) is smaller, but the whole <label> row pads to --hit-min
+ * so the actual click target clears the tokens.css interaction floor. */
 .settings-row {
   display: flex; align-items: center; gap: var(--space-3);  /* was 10  */
   padding: var(--space-3) 0;       /* was 6px 0 -> 12px 0 (grid)        */
-  min-height: var(--hit-min);      /* 42px fingertip target floor       */
+  min-height: var(--hit-min);      /* fingertip target floor            */
   font-size: var(--fs-md);         /* was 13px -> 22px                  */
   color: var(--text-dim);
   cursor: pointer;
@@ -2615,11 +2653,17 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .set-action-btn {
   min-height: var(--hit-min); padding: 0 var(--space-4);
   font-size: var(--fs-sm); font-weight: 700;
-  color: var(--text); background: var(--surface-alt);
-  border: 1px solid var(--text-faint); border-radius: 4px;
+  color: var(--text); background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm);  /* was off-grid 4px -> 10px  */
   cursor: pointer;
+  transition: border-color 0.1s, box-shadow 0.1s;
 }
-.set-action-btn:hover { border-color: var(--text-dim); }
+.set-action-btn:hover { border-color: var(--accent); }
+.set-action-btn:focus-visible {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 8px var(--gold-soft);
+}
 .set-action-btn:disabled { opacity: 0.5; cursor: default; }
 .set-action-row { gap: var(--space-3); }
 .set-action-note { min-height: 0; padding-top: 0; }
@@ -2635,24 +2679,45 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-variant-numeric: tabular-nums; color: var(--text);
 }
 .spend-gate-cost .dim { font-size: var(--fs-sm); }
+/* Toggle ON state -> --good (Hextech green). The native accent-color
+ * paints the CHECKED fill, so an enabled gate / switch reads green while
+ * its visible-but-unchecked state stays the neutral well. The colored
+ * meaning never stands on hue alone here - the adjacent <span> label
+ * carries the setting name (WCAG 1.4.1). */
 .settings-row input[type="checkbox"] {
   width: 24px; height: 24px;       /* was 14x14 -> 24x24                */
-  accent-color: var(--clock);
+  accent-color: var(--good);
+  cursor: pointer;
+}
+.settings-row input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent), 0 0 8px var(--glow);
 }
 .settings-row select, .settings-row input[type="range"] {
   flex: 1; max-width: 360px;       /* was 240px -> 360px                */
   font-size: var(--fs-md);         /* explicit; inputs do not inherit   */
 }
 .settings-row select {
+  min-height: var(--hit-min);      /* fingertip floor on the control    */
   padding: var(--space-2) var(--space-3);
-  background: var(--surface);
+  background: var(--surface-3);    /* dark input well (was --surface)   */
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm);
+  cursor: pointer;
+}
+/* Gold focus ring (Hextech) on every control - shares the focus
+ * vocabulary with the user-builds editor fields + toolbar champ input. */
+.settings-row select:focus,
+.settings-row input[type="range"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 8px var(--gold-soft);
 }
 .settings-row input[type="range"] {
   height: var(--hit-min);          /* slider hit area floor             */
-  accent-color: var(--clock);
+  accent-color: var(--accent);     /* gold filled track / thumb         */
+  cursor: pointer;
 }
 .settings-row .dim {
   font-size: var(--fs-sm);         /* sub-label inside a row stays one  */
