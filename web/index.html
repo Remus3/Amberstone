@@ -2097,6 +2097,12 @@
           <div class="am-pane-body" id="am-build-body">
             <div class="am-empty">DS engine ranks + owned items list will render here mid-game.</div>
           </div>
+          <!-- ARAM balance-adjustment grid (aram_balance.js): Riot's
+               per-champion ARAM modifiers (dmg dealt/taken, healing,
+               shielding, tenacity, attack speed, ability haste) for the
+               operator + ally + enemy rows. ARAM-only; hidden in every
+               other mode. Renders from /api/aram-balance. -->
+          <div id="aram-balance-panel" data-ab-state="init" style="display:none"></div>
         </div>
         <!-- HZ-D1 Phase 4 (2026-06-10): in-overlay DS fight-model
              controls. Overlay-only surface - the pane ships hidden +

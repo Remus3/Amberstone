@@ -32,6 +32,7 @@ import { renderTeamContext } from './panels/team_context.js';
 import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderScreenRead } from './panels/screen_read.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
+import { renderAramBalance } from './panels/aram_balance.js';
 // HZ-D1 Phase 4: overlay-only DS fight-model pane. Piggybacks every
 // active-match dispatch below; self-gates on body[data-shell="overlay"]
 // so it is a cheap no-op on the 1920 dashboard.
@@ -1409,6 +1410,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // Computed backend-side in dashboard/_state_cooldowns.py + sorted
         // by next-up ascending in core/summoner_cooldowns.compute_cooldowns.
         cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
+      });
+      // ARAM balance-adjustment grid (aram_balance.js): renders Riot's
+      // per-champion ARAM modifiers for self + ally + enemy. Self-gated
+      // on ARAM mode; hides itself in every other mode. p carries the
+      // operator's champion slug; liveclient carries the roster.
+      renderAramBalance(p, {
+        mode: state.mode,
+        liveclient: (state.latest && state.latest.liveclient) || null,
       });
       // HZ-D1 Phase 4: overlay-only DS fight-model pane. Live envelope
       // p carries champion/level/items; mode is the rc mode string.

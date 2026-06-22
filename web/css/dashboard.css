@@ -29,6 +29,7 @@
 @import './panels/home.css';
 @import './panels/primitives.css';
 @import './panels/active_match.css';
+@import './panels/aram_balance.css';
 @import './panels/ward_cue.css';
 @import './panels/spike_cue.css';
 @import './panels/objective_chips.css';
