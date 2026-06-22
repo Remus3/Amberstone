@@ -4,6 +4,48 @@
 
 ---
 
+# 2026-06-21 (headless continue 9) - HZ laning-combat mismatch DIAGNOSED + overlay live-verified clean
+
+Item 575, commit `367297b6` (pushed). Standalone Tier-1 diagnosis tool; no engine / DS / Share / ENGINE
+bump / flip.
+
+TRIAGE (candidates 1+2 verified DRAINED/GATED again - 5th cycle, grep-verify mandatory): live re-probe
+RC pid=3656 mode=game (live SR game UP), DS :8893 ENGINE 1.149.0 / 16.12.1. (1) DS cross-eval + (2) HZ
+blind flip confirmed drained/operator-gated per items 573/574. Gemini director (gemini-3-pro-preview)
+picked candidate (A) - root-cause the now-GENUINE laning combat mismatches - and KEPT IT LANING-ONLY (NOT
+the build-axis anti_squishy->anti_tank skew; mixing axes breaks scope).
+
+PROCESS (subagent-first, parallel): an Explore agent mapped the combat-verdict pipeline -> a Plan subagent
+emitted the file:line spec (KEY FINDING: the shadow log does not store net_swing, but
+choices[0].expected_outcome embeds it - parse the LOG-TIME scalar, zero engine drift) -> a background
+build agent implemented TDD-first -> an independent verifier gate PASS (22/22, ruff, partition invariant)
+before commit.
+
+THE DIAGNOSIS (real log, 17409 records, 945 genuine laning mismatches; `ops/audit/HZ_MISMATCH_DIAGNOSE.md`):
+the over-caution is MOSTLY CALIBRATION, NOT Haiku noise. hold->all_in (151, med -0.02), even->trade (126,
+med -0.06), hold->trade (91, med +0.06) all cluster at the hold/trade boundary (368 ticks, defensible).
+ONE structural MODEL-ERROR pocket: back_off->trade (138, med -0.30) = the enemy sequence_b=_FULL_COMBO
+over-kill (`core/laning_scenario_precompute.py:355`) - a threshold tune cannot fix a structural-input
+error. The largest class back_off->hold (351, med -0.24) is per-pair ambiguous. Partition invariant
+945==945==(2103-1158). +22 TDD, ruff clean, verifier-confirmed.
+
+PARALLEL OVERLAY (operator directive, live SR Caitlyn game UP): 25/25 overlay snapshot tests pass (lone
+teardown ERROR = the live game writing data/*.jsonl, documented env guard). w-spike(20,580) /
+w-trinket(20,520) default positions (`web/js/lib/overlay_layout.js:50-51`) = clean left-edge column, NO
+collision (Gemini's tune is a non-issue). Live composite screenshot: CALL + WARD-UP render in clean
+doctrine positions, click-through, no HUD/play collision. Process-vs-mtime check: the RUNNING overlay
+(electron 9736 @ 19:32:51) post-dates the ZOI render files (minimap_zoi.js @ 19:30:33) -> operator on
+FRESH ZOI code, not stale. No overlay code change needed.
+
+NEXT: the diagnosis converts the "54.6%" gate into 3 operator-gated levers - (i) a realistic partial-
+enemy-combo model is the principled MODEL-ERROR fix for back_off->trade (NOT a threshold tune); (ii)
+CALIBRATION classes need ground-truth (rewind-db / live side-by-side) before any _BACK_OFF/_HOLD_LOW nudge
+(anti-circularity); (iii) back_off->hold needs per-pair inspection. Flip stays do-not-flip-blind. HYGIENE
+STILL OWED (3 cycles): MEMORY.md ~1KB over the 24.4KB load budget - run /consolidate-memory next idle
+cycle (a bounded build was picked this cycle, so deferred again per the operator rule).
+
+---
+
 # 2026-06-21 (headless continue 8) - HZ shadow agreement metric DE-BIASED (recall category error)
 
 Item 574, commit `79a7906a` (pushed; restored upstream tracking the item-569 rewrite had dropped). Tier-1
@@ -80,31 +122,3 @@ publisher stale = the Peer peer not publishing; the Peer bridge probe was deprec
 NEXT: the operator-listed candidate set (a/b/c) is EXHAUSTED. The next cycle needs a NEW operator refill
 or direction, not another pick from a/b/c. The repeated "already-shipped" hits (item 1, then b + c this
 cycle) mean the curated backlog is stale - grep-verify any future pick against the live tree first.
-
----
-
-# 2026-06-21 (headless continue 6) - overlay-polish queue item (1): already shipped, only a stale comment
-
-Gemini director picked overlay-polish ROADMAP queue item (1) = "FIGHT MODEL pane `#am-pane-ovds` clips
-in DEFAULT, gate to build-only." GROUND-TRUTH PROBE FOUND IT ALREADY SHIPPED: the doctrine widget-field
-model (commit `7bd7d6a3`, the cfdc9f22 batch) gates `w-ovds` to the build panelset ONLY - overlay.css
-section 4d hides it in default/coach/threat (L418/421/437) + shows it only in build (L451); the pane is
-a `fit-content` `.ovx-widget` (no height cap, inner `overflow:visible`) so it auto-sizes and no longer
-clips. The 25 Playwright overlay snapshot tests already render-assert `#am-pane-ovds`=none in default +
-shown in build (all 25 PASS this run; the lone teardown ERROR was the session prod-artifact guard
-tripping on the LIVE practice game writing `data/*.jsonl`, NOT an overlay-test failure).
-
-SHIPPED (Tier-0): corrected the one genuinely-stale artifact - the `overlay_ds_controls.css` header
-comment said "base subset + the build panelset" / "section 4b" (both wrong); now reads build-ONLY /
-"section 4d" + documents the deliberate behavior change. ROADMAP queue item (1) marked RESOLVED with the
-evidence + a do-NOT-re-chase-the-662/1305-clip note.
-
-No live rc-shell relaunch: the change is a code comment (zero render delta); the prompt's relaunch
-mandate is for NEW overlay JS/CSS that renders differently, and the gating is CSS-structural (proven by
-the real-browser snapshot suite + live-CDP-verified last cycle for the ZOI canvas itself).
-
-NEXT: the overlay-polish red queue (items 1-5) is now fully DONE/RESOLVED - only minor w-* default-
-position tuning remains, so the "route EVERY cycle here" run is winding down. Re-interview Gemini for the
-next priority: candidates = ZOI slice 4 (champion-only isolation via template matching), the ~88 unwired
-ADAPTATION st-* rows (item 281), or the aggregator-G-style PGR reframe. WAKEUP is at 6 entries - due for a
-weekly-hygiene trim to the last 2-3.
