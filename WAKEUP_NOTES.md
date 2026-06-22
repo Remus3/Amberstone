@@ -4,6 +4,46 @@
 
 ---
 
+# 2026-06-22 (headless continue 21 / R19) - DS spell_damage_reduction_pct forward-marker
+
+Item 587, commit `ee673c1d` (feature, pushed) + docs-sync `f5b94541`. DS schema surface (forward-marker
+accessor); ENGINE HELD at 1.151.0 (NOT bumped), DS :8893 restarted, Share re-synced.
+
+CONTEXT: gemini+ahk loop executor cycle 8. Directive = ORCHESTRATION_PLAN R19 DIRECTOR REFILL - NEW
+forward-marker accessor `DataSnapshot.spell_damage_reduction_pct(champ_id, slot)` surfacing the per-rank
+PERCENT damage reduction from `champion_abilities.json` defensive modifier blocks as a first-class
+magnitude (the `modifier_blocks` taxonomy already classified them `defensive_self` but no accessor
+exposed the numeric %).
+
+WHAT: module-level `_extract_damage_reduction_pct` walks `AbilitiesSnapshot.iter_forms()`, keeps
+`attribute_kind=="modifier"` + `classify_modifier_kind=="defensive_self"` + "damage reduction" in the
+name, reads the FIRST `raw_modifiers` entry whose `units` are ALL the bare `"%"`. Lazy + frozen-safe
+accessor (`object.__setattr__` cache; `DataSnapshot` is frozen), file-existence gate (byte-identical for
+older snapshots, no broad except), returns `{label: per_rank_pct_tuple} | None`. 8 champs at 16.12.1
+(Alistar R 55/65/75, Galio W magic 25..45 + physical 12.5..22.5, Garen/Gragas/MasterYi W,
+Belveth/Braum/Warwick E 35..55). Pure-% filter excludes flat reductions (Amumu E, Leona W) + per-stat
+scaling sub-modifiers ("% per 100 AP").
+
+KEY DECISION (gemini director ruling B, synchronous gemini_ask). The directive said "ENGINE_VERSION
+bump" but ALSO "Default-OFF, byte-identical when unconsumed. Live flip EXCLUDED" - internally
+inconsistent. No consumer = byte-identical output, and the item-339/343 forward-marker convention
+(`spell_sub_missile_speed`/`spell_cc_tags`) EXPLICITLY does NOT bump (~70 version-contract tests pin
+1.151.0). Director chose B: HOLD 1.151.0, no pin churn. Share STILL re-synced (a `data_loader.py` edit
+drifts `Share/src`; `--check` is the CI-only guard) + DS :8893 restarted (loads the code, /health stays
+1.151.0).
+
+VERIFY: TDD RED-first `test_spell_damage_reduction_pct.py` 14 cases (13 red first); 1 worktree build
+agent on the disjoint data_loader + test slice + orchestrator independent re-run in main before commit.
+DS suite 7511 passed / 1 skip / 1943 subtests; ruff clean; RC suite 9378 passed (the 12 fails ALL
+pre-existing - 3 CoachWire ARAM-template + 7 ds_pick_consumption_p1l11 ARAM subfails + overlay.css
+sub-floor + spell_autopush on dirty data/spell_prefs.json - 0 R19 regressions). ds_share_sync --check
+green (373). ROADMAP 80KB trim: R15 + R16 bullets relocated to docs/ROADMAP_HISTORY.md.
+
+FUTURE: a survivability/EHP consumer reading the % (fold prevented damage into the EHP numerator like
+the flat-DR item-261/R9 path) - not wired blind. Live default-ON wiring EXCLUDED.
+
+---
+
 # 2026-06-22 (headless continue 20 / R18) - panel typography v2.1 sub-floor audit
 
 Item 586, commit `0999d3eb` (pushed) + this docs-sync. Tier-1 frontend (CSS/JS = asset-hash
@@ -73,32 +113,3 @@ separate cycle - NOT R17's scope. data/spell_prefs.json is a dirty runtime artif
 LIVE-GATED: the default-ON flip (a survivability/draft consumer calling compute_antitank with the live
 champion level) is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md (validate early-vs-late level-discounted
 scores vs a real game before flipping).
-
----
-
-# 2026-06-22 (headless continue 18 / R16) - Game Flow + Spike Curve fixture audit
-
-Item 584, commit `7ecb5b18` (pushed) + this docs-sync. Tier-0/1 frontend (CSS comment = asset-hash
-auto-reload ADR-008, no RC restart). NO engine / DS / Share / ENGINE_VERSION / overlay-render / flip.
-
-CONTEXT: gemini+ahk loop executor cycle. Directive = ORCHESTRATION_PLAN R16 ui-audit (5-phase
-fixture audit of the un-audited Game Flow + Spike Curve panels). Overlay-polish lane stays DRAINED.
-
-AUDIT (perf_curve.js / spike_curve.js / spike_markers.js + CSS vs UI_SCALE_SPEC_V2.md): all 3 panels
-v2.1-compliant - mode/metric buttons hit `--hit-min` 42px, type on `--fs-sm`/`--fs-xs`, spike_curve
-carries its 2 item-184 inline exceptions, spike_markers cells are display-only (no click handler ->
-not hit-targets), all 6 files ASCII-clean.
-
-MUST-FIX (in-slice): perf_curve.css `.pf-ylab/.pf-xlab font-size:13px` is a legit scaled-viewBox SVG
-chart-glyph user-unit but its rationale lived only in the file header, not INLINE like its sibling
-spike_curve.css. Added the inline operator-exception comment (zero pixel delta) + NEW TDD guard
-`CssSubFloorFontExceptionTests` (RED->GREEN) failing any sub-16px hardcoded font-size lacking an
-inline exception within 6 lines. spike_markers off-grid spacing (1/2/3/6px, radius 4px) deferred
-FUTURE (pre-existing, not a NEW value per the spec's "no NEW off-grid" rule).
-
-VERIFY: 136 slice + 13 hygiene tests green; ruff clean; CSS served live on :8888 (asset-hash reload,
-index+css 200); verifier subagent CONFIRM 6/6. Live Claude_Preview shot OWED (RC-owned :8888 preview-
-attach blocker - same as R4/R8/R13 - + active_match spike panels live-game-gated; mode_key=client).
-
-NEXT: overlay-polish lane still DRAINED; expect the director to pick another off-lane ui-audit /
-ds-sweep / lift, or NO_WORK.
