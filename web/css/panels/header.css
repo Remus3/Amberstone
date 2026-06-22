@@ -567,7 +567,9 @@ footer .prefs-chip:hover { color: var(--text); }
    * Settings is the worked-example page. Other view-sections inherit
    * the size lift as their audit pass lands. */
   margin: 0; font-size: var(--fs-lg); letter-spacing: 0.18em;
-  color: var(--info); font-weight: 900;
+  /* Hextech: page titles take the gold accent (mirrors the overlay gold
+   * pane-heads), not the info-blue the neo-fintech palette used. */
+  color: var(--accent); font-weight: 900;
 }
 .view-section-sub {
   font-size: 12px; color: var(--text-faint); letter-spacing: 0.04em;
