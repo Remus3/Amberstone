@@ -9,6 +9,14 @@
  * Cleanroom boundary: see docs/adr/ADR-009-replay-events-cleanroom.md.
  * league_record (GPLv3) is the methodology reference - sidecar shape
  * + future video-overlay direction - do NOT vendor its source.
+ *
+ * RC2 Hextech reskin (#11): tokenized onto the foundation (base.css
+ * palette + tokens.css scale + web/css/hextech.css primitives). Raw
+ * hex fallbacks removed - every color routes through a --token. The
+ * event rows take a control-chip feel (mirrors hextech.css .hx-chip
+ * tabular-nums), the kind badges carry an ASCII status glyph so the
+ * event type never reads by hue alone, and the empty state uses the
+ * shared sigil treatment (mirrors hextech.css .hx-empty). ASCII only.
  */
 
 /* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #3 Replay, 2026-05-23):
@@ -33,7 +41,7 @@
 .replay-events-title {
   font-size: var(--fs-md); font-weight: 700;
   letter-spacing: 0.08em; text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--accent);
 }
 
 .replay-events-filters {
@@ -50,16 +58,20 @@
 }
 .replay-events-filter input[type="checkbox"] {
   cursor: pointer;
-  accent-color: var(--accent, #8a8cf0);
+  accent-color: var(--accent);
   width: 20px; height: 20px;
 }
+/* Count badge mirrors the .hx-chip control treatment (outline pill,
+ * sharp radius, tabular-nums so the digit does not jitter). */
 .replay-events-count {
   font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--text-faint, var(--text-dim));
+  font-weight: 700;
+  color: var(--text-dim);
   padding: 2px var(--space-2);
-  background: var(--surface-2, #1a1a22);
-  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   min-width: 32px; text-align: center;
 }
 
@@ -77,14 +89,14 @@
   align-items: center;
   gap: var(--panel-gap-tight);
   padding: 6px var(--panel-gap-tight);
-  background: var(--surface-2, #1a1a22);
+  background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-left: 3px solid var(--text-dim);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
 }
-.replay-events-row[data-team="100"] { border-left-color: var(--ok,  #8ce5a8); }
-.replay-events-row[data-team="200"] { border-left-color: var(--bad, #e07a7a); }
+.replay-events-row[data-team="100"] { border-left-color: var(--good); }
+.replay-events-row[data-team="200"] { border-left-color: var(--bad); }
 
 .replay-events-clock {
   font-family: var(--font-mono, monospace);
@@ -100,7 +112,7 @@
 .replay-events-actor,
 .replay-events-victim {
   font-size: var(--fs-xs);
-  color: var(--text-faint, var(--text-dim));
+  color: var(--text-faint);
   font-variant-numeric: tabular-nums;
   display: flex; align-items: center; gap: 6px;
   overflow: hidden;
@@ -124,19 +136,56 @@
 }
 
 /* kind-based label tints. team-tint owns the left border (above);
- * kind-tint owns the label text + a subtle right-side accent. */
-.replay-events-row[data-kind="kill"]      .replay-events-label { color: var(--bad,    #e07a7a); }
-.replay-events-row[data-kind="structure"] .replay-events-label { color: var(--warn,   #e8a86d); }
-.replay-events-row[data-kind="objective"] .replay-events-label { color: var(--grade-s,#f5b87c); }
-.replay-events-row[data-kind="ward"]      .replay-events-label { color: var(--ok,     #8ce5a8); }
-.replay-events-row[data-kind="item"]      .replay-events-label { color: var(--accent, #8a8cf0); }
+ * kind-tint owns the label text + a subtle right-side accent.
+ * RC2: tokenized to the foundation palette (--good / --warn / --accent /
+ * --bad / --info) - no raw hex. */
+.replay-events-row[data-kind="kill"]      .replay-events-label { color: var(--bad); }
+.replay-events-row[data-kind="structure"] .replay-events-label { color: var(--warn); }
+.replay-events-row[data-kind="objective"] .replay-events-label { color: var(--accent); }
+.replay-events-row[data-kind="ward"]      .replay-events-label { color: var(--good); }
+.replay-events-row[data-kind="item"]      .replay-events-label { color: var(--info); }
 .replay-events-row[data-kind="skill"]     .replay-events-label { color: var(--text-dim); }
-.replay-events-row[data-kind="other"]     .replay-events-label { color: var(--text-faint, var(--text-dim)); }
+.replay-events-row[data-kind="other"]     .replay-events-label { color: var(--text-faint); }
 
+/* RC2 accessibility: never encode the event kind by hue alone. A small
+ * ASCII status glyph leads the label so the type is legible without
+ * color (color-blind safe + grayscale-print safe). The glyph inherits
+ * the kind tint set above. Authored as 7-bit ASCII (repo hard rule). */
+.replay-events-label::before {
+  content: "";
+  margin-right: 5px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+.replay-events-row[data-kind="kill"]      .replay-events-label::before { content: "x "; }
+.replay-events-row[data-kind="structure"] .replay-events-label::before { content: "# "; }
+.replay-events-row[data-kind="objective"] .replay-events-label::before { content: "* "; }
+.replay-events-row[data-kind="ward"]      .replay-events-label::before { content: "o "; }
+.replay-events-row[data-kind="item"]      .replay-events-label::before { content: "+ "; }
+.replay-events-row[data-kind="skill"]     .replay-events-label::before { content: "> "; }
+.replay-events-row[data-kind="other"]     .replay-events-label::before { content: "- "; }
+
+/* Empty state mirrors hextech.css .hx-empty: centered, dim, with the
+ * four-pointed Hextech sigil (U+2756) above the message authored as a
+ * CSS escape for ASCII source-hygiene. */
 .replay-events-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-1);
   font-size: var(--fs-sm);
   font-style: italic;
-  color: var(--text-faint, var(--text-dim));
-  padding: var(--space-3) var(--space-1);
+  color: var(--text-faint);
+  text-align: center;
+}
+.replay-events-empty::before {
+  content: "\2756";
+  font-style: normal;
+  font-size: var(--fs-xl);
+  line-height: 1;
+  color: var(--accent);
+  opacity: .35;
 }
 .replay-events-empty[hidden] { display: none; }
