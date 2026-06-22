@@ -37,8 +37,16 @@ USAGE
     python tools/hz_mismatch_diagnose.py --json          # machine-readable JSON
     python tools/hz_mismatch_diagnose.py --all-classes    # every disagreeing pair
     python tools/hz_mismatch_diagnose.py --no-write       # skip the md write
+    python tools/hz_mismatch_diagnose.py --rewind         # + rewind-db cross-ref
 
-# follow-up: optional rewind-db ground-truth cross-ref (out of scope this slice)
+The optional ``--rewind`` flag attaches a SECOND, independent signal: per
+mismatch CLASS it checks whether the precompute's caution agrees with REAL
+historical Summoner's Rift lane outcomes (gold@10min + solo-kill differential)
+pulled from rewind_history.db, reusing the tools.replay_matchup_validate lane
+primitives. It is a SR-only, matchup-level AGGREGATE (mismatch records carry no
+match_id linkage) - ARAM / client mismatches have no laning phase so they are
+excluded but counted. Coverage is SPARSE (the operator DB is mostly self-games)
+and the agreement is REPORTED ONLY, never fed back into any threshold.
 """
 from __future__ import annotations
 
@@ -46,6 +54,7 @@ import argparse
 import bisect
 import json
 import re
+import sqlite3
 import statistics
 import time
 from collections import Counter
@@ -62,11 +71,31 @@ try:
 except ImportError:  # pragma: no cover - exercised only via the bare CLI path
     import hz_shadow_report as rep
 
+# replay_matchup_validate (rv) supplies the SR lane-pair / kill-count / match-id
+# primitives for the optional rewind ground-truth cross-ref. Its
+# agents.daemon_slayer imports are LAZY (inside _load_snapshot / _load_matchup_fn,
+# never called here), so importing rv on the bare tools/-on-sys.path CLI does NOT
+# trigger a core/agents import. Same dual-import shape as rep above.
+try:
+    from tools import replay_matchup_validate as rv
+except ImportError:  # pragma: no cover - exercised only via the bare CLI path
+    import replay_matchup_validate as rv
+
 _ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MD_PATH = _ROOT / "ops" / "audit" / "HZ_MISMATCH_DIAGNOSE.md"
 DEFAULT_CURRENT_ENGINE = "1.149.0"
 
-SCHEMA = "hz_mismatch_diagnose/v1"
+SCHEMA = "hz_mismatch_diagnose/v2"
+
+# --- rewind ground-truth cross-ref (SR-only, independent reported-only signal) ---
+# These are TOOL-LOCAL constants, NOT ENGINE_VERSION. The cross-ref reports
+# whether the precompute's caution agrees with real historical SR lane outcomes
+# from rewind_history.db, per mismatch CLASS. It is REPORTED ONLY - never fed
+# back into any precompute threshold (anti-circularity).
+_REWIND_SR_MODE = "sr"
+_REWIND_EXCLUDED_MODES = frozenset({"aram", "client"})
+_REWIND_GOLD_FRAME_MIN = 10
+_REWIND_MIN_SAMPLES = 3
 
 # net_swing is embedded as text in the recommended (A) choice's expected_outcome,
 # e.g. "net swing -0.12; you remove 30% of Caitlyn, they remove 42% of you".
@@ -216,6 +245,269 @@ def _genuine_mismatch_pairs(records: list[dict]) -> list[tuple[tuple[str, str], 
     return out
 
 
+# ------------------------------------------------------ rewind cross-ref (SR-only)
+_CANON_STRIP = ("'", "`", ".", "-", "&", " ")
+
+
+def _canon_champ(name) -> str:
+    """Canonicalize a champion display name to a comparison key: lowercase, strip
+    surrounding whitespace, and remove spaces, apostrophes (' and backtick),
+    periods, hyphens, and ampersands. ASCII-only.
+
+    Examples: "Kai'Sa" -> "kaisa", "Aurelion Sol" -> "aurelionsol",
+    "Dr. Mundo" -> "drmundo". Applied SYMMETRICALLY to both the shadow-record
+    identity and the rewind champion_name, so an imperfect rule yields false
+    NEGATIVES (lower coverage), never false agreement."""
+    if not name:
+        return ""
+    s = str(name).strip().lower()
+    for ch in _CANON_STRIP:
+        s = s.replace(ch, "")
+    return s
+
+
+def _sr_mismatch_matchups(pairs) -> dict:
+    """Per mismatch CLASS, the distinct SR (my_champion, enemy) matchups, plus an
+    excluded tally by reason.
+
+    ``pairs`` is _genuine_mismatch_pairs(records) output: a list of
+    ((precompute, native), rec). For each (class_pair, rec): a record whose mode
+    is not "sr" (ARAM / client / unknown) is COUNTED in that class's
+    excluded[mode] and skipped (no laning phase). An SR record missing
+    my_champion or enemy is counted in excluded["no_matchup_identity"]. Otherwise
+    (str(my), str(enemy)) joins the class matchup set.
+
+    Returns {class_pair: {"matchups": set, "sr_records": int,
+    "excluded": Counter}}."""
+    out: dict = {}
+    for class_pair, rec in pairs:
+        slot = out.setdefault(
+            class_pair,
+            {"matchups": set(), "sr_records": 0, "excluded": Counter()},
+        )
+        mode = str(rec.get("mode") or "").lower()
+        if mode != _REWIND_SR_MODE:
+            slot["excluded"][mode] += 1
+            continue
+        my = rec.get("my_champion")
+        enemy = rec.get("enemy")
+        if not my or not enemy:
+            slot["excluded"]["no_matchup_identity"] += 1
+            continue
+        slot["matchups"].add((str(my), str(enemy)))
+        slot["sr_records"] += 1
+    return out
+
+
+def _orient_lane_pair(lp, my_champion, enemy) -> Optional[dict]:
+    """Orient one rewind LanePair to the my-vs-enemy perspective, or None when the
+    pair is not this matchup.
+
+    Require the canon name set {champ_a, champ_b} == {my, enemy} and the two
+    sides distinct. Returns {"gold_diff": float (my - enemy), "my_is_a": bool,
+    "lp": lp}: gold_diff > 0 means MY champion was ahead in gold."""
+    ca = _canon_champ(lp.champ_a)
+    cb = _canon_champ(lp.champ_b)
+    cm = _canon_champ(my_champion)
+    ce = _canon_champ(enemy)
+    if ca == cb or {ca, cb} != {cm, ce}:
+        return None
+    if ca == cm:
+        gold_my, gold_enemy, my_is_a = lp.gold_a, lp.gold_b, True
+    else:
+        gold_my, gold_enemy, my_is_a = lp.gold_b, lp.gold_a, False
+    return {"gold_diff": float(gold_my - gold_enemy), "my_is_a": my_is_a, "lp": lp}
+
+
+def _class_agreement(precompute: str, mean_gold_diff: float,
+                     solo_kills_my: int, solo_kills_enemy: int,
+                     lane_games: int, matchups_covered: int,
+                     min_samples: int) -> str:
+    """Conservative reported-only agreement verdict for one class.
+
+    predicted_my_ahead = True only when the precompute label is a forward verdict
+    (trade / all_in); back_off / hold / even / recall => False. real_my_ahead =
+    mean_gold_diff > 0. When a solo-kill signal exists it must NOT conflict with
+    the gold direction, else "insufficient_data". Sparse / zero-coverage /
+    flat-no-kill cases are "insufficient_data". Never feeds back into a
+    threshold - directional corroboration only."""
+    if lane_games < min_samples or matchups_covered == 0:
+        return "insufficient_data"
+    predicted_my_ahead = precompute in ("trade", "all_in")
+    real_my_ahead = mean_gold_diff > 0.0
+    total_kills = solo_kills_my + solo_kills_enemy
+    if total_kills >= 1:
+        real_my_ahead_kills = solo_kills_my > solo_kills_enemy
+        if real_my_ahead != real_my_ahead_kills:
+            return "insufficient_data"
+    elif mean_gold_diff == 0.0:
+        # flat gold and no kill signal -> no direction to corroborate
+        return "insufficient_data"
+    return "agree" if predicted_my_ahead == real_my_ahead else "disagree"
+
+
+def _rewind_xref_class(conn, match_ids, matchups, *, precompute="",
+                       gold_frame_min=_REWIND_GOLD_FRAME_MIN,
+                       min_samples=_REWIND_MIN_SAMPLES) -> dict:
+    """Cross-ref ONE class's SR matchups against the rewind lane outcomes.
+
+    Builds a canon-key lookup from ``matchups`` (skipping degenerate pairs whose
+    two canon names collide), scans every match's lane pairs, and for each pair
+    matching a class matchup accrues the my-perspective gold_diff and solo-kill
+    differential. ``precompute`` is the class's precompute label, used only to
+    compute the reported-only agreement verdict. Returns the aggregate block
+    (see B4 in the spec)."""
+    lookup: dict = {}
+    for (my, enemy) in matchups:
+        key = frozenset({_canon_champ(my), _canon_champ(enemy)})
+        if len(key) != 2:
+            continue  # degenerate self-pair after canon - cannot orient
+        lookup[key] = (my, enemy)
+
+    gold_diffs: list[float] = []
+    solo_my = 0
+    solo_enemy = 0
+    covered: set = set()
+    for mid in match_ids:
+        pairs = rv.extract_lane_pairs(conn, mid, gold_frame_min)
+        for lp in pairs:
+            key = frozenset({_canon_champ(lp.champ_a), _canon_champ(lp.champ_b)})
+            if len(key) != 2 or key not in lookup:
+                continue
+            my, enemy = lookup[key]
+            o = _orient_lane_pair(lp, my, enemy)
+            if o is None:
+                continue
+            gold_diffs.append(o["gold_diff"])
+            kc = rv.extract_kill_counts(conn, mid, lp.pid_a, lp.pid_b)
+            a_kills_b, b_kills_a = kc["solo"]
+            if o["my_is_a"]:
+                my_solo, enemy_solo = a_kills_b, b_kills_a
+            else:
+                my_solo, enemy_solo = b_kills_a, a_kills_b
+            solo_my += my_solo
+            solo_enemy += enemy_solo
+            covered.add(key)
+
+    lane_games = len(gold_diffs)
+    mean_gold = round(statistics.fmean(gold_diffs), 1) if gold_diffs else 0.0
+    median_gold = round(statistics.median(gold_diffs), 1) if gold_diffs else 0.0
+    matchups_covered = len(covered)
+    agreement = _class_agreement(
+        precompute, mean_gold, solo_my, solo_enemy, lane_games,
+        matchups_covered, min_samples,
+    )
+    return {
+        "matchups_in_class": len(matchups),
+        "matchups_covered": matchups_covered,
+        "lane_games": lane_games,
+        "mean_gold_diff": mean_gold,
+        "median_gold_diff": median_gold,
+        "solo_kills_my": int(solo_my),
+        "solo_kills_enemy": int(solo_enemy),
+        "low_confidence": lane_games < min_samples,
+        "agreement": agreement,
+    }
+
+
+def _empty_xref_class(matchups, min_samples=_REWIND_MIN_SAMPLES) -> dict:
+    """A zeroed per-class cross-ref block (no rewind data available)."""
+    return {
+        "matchups_in_class": len(matchups),
+        "matchups_covered": 0,
+        "lane_games": 0,
+        "mean_gold_diff": 0.0,
+        "median_gold_diff": 0.0,
+        "solo_kills_my": 0,
+        "solo_kills_enemy": 0,
+        "low_confidence": True,
+        "agreement": "insufficient_data",
+    }
+
+
+def _excluded_total(per_class: dict) -> dict:
+    """Roll the per-class excluded Counters up to a flat aram/client/no-identity
+    tally for the report header."""
+    agg: Counter = Counter()
+    for slot in per_class.values():
+        agg.update(slot["excluded"])
+    return {
+        "aram": int(agg.get("aram", 0)),
+        "client": int(agg.get("client", 0)),
+        "no_matchup_identity": int(agg.get("no_matchup_identity", 0)),
+    }
+
+
+def rewind_cross_ref(records: list[dict], *, db_path=None,
+                     gold_frame_min=_REWIND_GOLD_FRAME_MIN,
+                     min_samples=_REWIND_MIN_SAMPLES, conn=None) -> dict:
+    """SR-only rewind ground-truth cross-ref across the genuine-mismatch classes.
+
+    For each mismatch class, checks whether the precompute's caution agrees with
+    real historical SR lane outcomes (gold@10min + solo-kill differential) from
+    rewind_history.db. ARAM / client mismatches have no laning phase: they are
+    EXCLUDED but COUNTED. Agreement is REPORTED ONLY - never fed back into any
+    precompute threshold (anti-circularity).
+
+    Fail-soft: a missing DB (and no injected conn) returns available=False with
+    the excluded tally still populated; any DB error returns available=False too,
+    so the v1 buckets are never disturbed. ``conn`` is a test seam: when provided
+    it is used and NOT closed; otherwise a connection to ``db_path`` is opened in
+    a try/finally."""
+    if db_path is None:
+        db_path = rv._DEFAULT_DB
+    db_path = Path(db_path)
+
+    pairs = _genuine_mismatch_pairs(records)
+    per_class = _sr_mismatch_matchups(pairs)
+    excluded_total = _excluded_total(per_class)
+
+    if conn is None and not db_path.exists():
+        return {
+            "available": False,
+            "reason": "unavailable (no rewind db)",
+            "db": str(db_path),
+            "classes": {},
+            "excluded_total": excluded_total,
+        }
+
+    own_conn = conn is None
+    try:
+        if own_conn:
+            conn = sqlite3.connect(str(db_path))
+        try:
+            match_ids = rv.select_sr_match_ids(conn, 0)
+            classes_out: dict = {}
+            for class_pair, slot in per_class.items():
+                pre, native = class_pair
+                block = _rewind_xref_class(
+                    conn, match_ids, slot["matchups"], precompute=pre,
+                    gold_frame_min=gold_frame_min, min_samples=min_samples,
+                )
+                block["excluded"] = dict(slot["excluded"])
+                classes_out[f"{pre}->{native}"] = block
+            return {
+                "available": True,
+                "db": str(db_path),
+                "gold_frame_min": int(gold_frame_min),
+                "min_samples": int(min_samples),
+                "sr_match_ids_scanned": len(match_ids),
+                "excluded_total": excluded_total,
+                "classes": classes_out,
+            }
+        finally:
+            if own_conn and conn is not None:
+                conn.close()
+    except Exception:  # noqa: BLE001 - a malformed DB must never crash v1
+        return {
+            "available": False,
+            "reason": "error",
+            "db": str(db_path),
+            "classes": {},
+            "excluded_total": excluded_total,
+        }
+
+
 def _class_block(class_pair, recs: list[dict]) -> dict:
     """Build one class's distribution block from its member records."""
     pre, native = class_pair
@@ -274,14 +566,22 @@ def _drift_block(records: list[dict], current_engine: str) -> dict:
 
 def diagnose(records: list[dict], *, all_classes: bool = False,
              current_engine: str = DEFAULT_CURRENT_ENGINE,
-             now: Optional[str] = None) -> dict:
+             now: Optional[str] = None, with_rewind: bool = False,
+             rewind_db: Optional[Path] = None, rewind_conn=None) -> dict:
     """Assemble the full diagnosis dict from a list of laning shadow records.
 
     ``now`` is an injectable generated-at string (default the real UTC clock via
     time.gmtime/strftime) so the numeric body stays clock-independent for
     deterministic tests. ``all_classes`` additionally emits every other
     disagreeing class beyond the fixed default set, sorted by (-count, pre,
-    native)."""
+    native).
+
+    ``with_rewind`` (default False) attaches the SR-only rewind ground-truth
+    cross-ref: a top-level ``rewind_xref`` block plus a per-class ``rewind_xref``
+    on every class block. When False the rewind keys are OMITTED entirely so the
+    report stays byte-identical to v1 (every existing diagnose test unchanged).
+    ``rewind_db`` overrides the rewind DB path; ``rewind_conn`` is a test seam
+    threaded straight to rewind_cross_ref (used, not closed)."""
     if now is None:
         now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     pairs = _genuine_mismatch_pairs(records)
@@ -302,7 +602,7 @@ def diagnose(records: list[dict], *, all_classes: bool = False,
         # classes only exist because by_class has them, so they are non-empty.
         classes.append(_class_block(class_pair, recs))
 
-    return {
+    report = {
         "schema": SCHEMA,
         "generated_at": now,
         "total_records": len(records),
@@ -312,10 +612,71 @@ def diagnose(records: list[dict], *, all_classes: bool = False,
         "drift": _drift_block(records, current_engine),
     }
 
+    if with_rewind:
+        xref = rewind_cross_ref(records, db_path=rewind_db, conn=rewind_conn)
+        report["rewind_xref"] = xref
+        for c in classes:
+            key = f"{c['precompute']}->{c['native']}"
+            c["rewind_xref"] = xref.get("classes", {}).get(
+                key, _empty_xref_class(set())
+            )
+
+    return report
+
 
 def _hist(buckets) -> str:
     """a|b|c|d|e|f bucket histogram cell."""
     return "|".join(str(b) for b in buckets)
+
+
+def _render_rewind_section(report: dict, lines: list[str]) -> None:
+    """Append the SR-only rewind cross-ref section to ``lines``, rendered ONLY
+    when report['rewind_xref'] exists. Reported-only, never a threshold trigger."""
+    xref = report.get("rewind_xref")
+    if xref is None:
+        return
+    lines.append("## Rewind ground-truth cross-ref (SR-only, independent signal)")
+    lines.append("")
+    if not xref.get("available"):
+        lines.append("rewind cross-ref unavailable (no rewind db); v1 buckets "
+                     "above are unaffected.")
+        lines.append("")
+        return
+    exc = xref.get("excluded_total", {})
+    lines.append(
+        f"SR matches scanned: {xref.get('sr_match_ids_scanned', 0)}  "
+        f"excluded (no laning phase): aram={exc.get('aram', 0)} "
+        f"client={exc.get('client', 0)} "
+        f"no-matchup-identity={exc.get('no_matchup_identity', 0)}"
+    )
+    lines.append("")
+    lines.append("| class (pre -> native) | matchups covered/total | lane-games "
+                 "| mean my-gold-diff@10m | solo my:enemy | agreement |")
+    lines.append("|---|---|---|---|---|---|")
+    for c in report.get("classes", []):
+        rx = c.get("rewind_xref")
+        if rx is None:
+            continue
+        agree = rx.get("agreement", "insufficient_data")
+        if rx.get("low_confidence"):
+            agree = f"{agree} (LOW-N)"
+        lines.append(
+            f"| {c['precompute']} -> {c['native']} | "
+            f"{rx.get('matchups_covered', 0)}/{rx.get('matchups_in_class', 0)} | "
+            f"{rx.get('lane_games', 0)} | "
+            f"{rx.get('mean_gold_diff', 0.0):+.1f} | "
+            f"{rx.get('solo_kills_my', 0)}:{rx.get('solo_kills_enemy', 0)} | "
+            f"{agree} |"
+        )
+    lines.append("")
+    lines.append(
+        "Caveat: lane gold@10min is a NOISY proxy (ganks / jungle / roams), this "
+        "is a matchup-level aggregate (mismatch records carry no match_id "
+        "linkage), and the operator DB is mostly self-games so per-class coverage "
+        "is SPARSE. Agreement is directional corroboration only - it is REPORTED "
+        "and NEVER a threshold trigger (anti-circularity)."
+    )
+    lines.append("")
 
 
 def render_markdown(report: dict) -> str:
@@ -358,6 +719,7 @@ def render_markdown(report: dict) -> str:
             f"{c['median_swing']:+.2f} | {_hist(c['buckets'])} | {c['verdict']} |"
         )
     lines.append("")
+    _render_rewind_section(report, lines)
     lines.append("## Anti-circularity footer")
     lines.append("")
     lines.append(
@@ -420,11 +782,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     ap.add_argument("--md-path", default=str(DEFAULT_MD_PATH))
     ap.add_argument("--no-write", action="store_true",
                     help="skip the markdown write (no side effect)")
+    ap.add_argument("--rewind", action="store_true",
+                    help="attach the SR-only rewind-db ground-truth cross-ref")
+    ap.add_argument("--rewind-db", default=str(rv._DEFAULT_DB),
+                    help="path to rewind_history.db for --rewind (default %(default)s)")
     args = ap.parse_args(argv)
 
     records = rep.load_jsonl(Path(args.choice_path))
     report = diagnose(records, all_classes=args.all_classes,
-                      current_engine=args.current_engine)
+                      current_engine=args.current_engine,
+                      with_rewind=args.rewind, rewind_db=Path(args.rewind_db))
 
     md_path: Optional[Path] = None
     if not args.no_write:
