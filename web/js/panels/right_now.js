@@ -482,22 +482,28 @@ function renderRightNow(p) {
   }
   const hasAction = !!rawAction;
   const klass = hasAction ? classifyAction(rawAction) : "empty";
-  // RC2 P3.3 SHADOW (spec sections 4+5 / acceptance A2+A5): compute the S0
-  // single-winner arbitration + the pulse-rationing decision and STAMP them
-  // on the panel root WITHOUT changing the live pulse, so the new contract is
-  // eyeball-able at ?overlay=1 (data-s0-cue / data-s0-tier / data-s0-pulse)
-  // before the live flip. The flip (re-point the .action per-band pulse below
-  // + overlay_pulse.js at this decision) is a SHARED dashboard+overlay
-  // behavior change -> operator-gated, owed in docs/LIVE_GAME_GATED_SYNC.md.
-  // Best-effort: a shadow throw must never break the live render.
+  // RC2 P3.3 (spec sections 4+5 / acceptance A2+A5): compute the S0
+  // single-winner arbitration + the pulse-rationing decision, STAMP them on
+  // the panel root (data-s0-cue / data-s0-tier / data-s0-pulse), and now
+  // AUTHORITATIVELY gate the live change-pulse on the decision. Operator-
+  // approved 2026-06-22 (LIVE flip; was shadow-only). The decision rations
+  // motion to the EMERGENCY tier + a one-shot URGENT cross (spike/choices),
+  // so benign 'good' / re-emit headline changes no longer pulse. Conservative
+  // by construction: _s0Pulse is a strict subset of the old isFreshAction
+  // pulse set, so this only ever SUPPRESSES a pulse that fires today, never
+  // adds one. overlay_pulse.js consumes the same data-s0-pulse stamp.
+  // Best-effort: a decision throw must never break the live render (and on a
+  // throw _s0Pulse stays false -> the .action pulse simply stays silent, the
+  // safe direction).
+  let _s0Pulse = false;
   try {
     const _sig = signalFromState(p, klass);
     const _sel = selectPrimary(_sig);
-    const _shadowPulse = shouldPulse(_s0PrevCue, _sel);
+    _s0Pulse = shouldPulse(_s0PrevCue, _sel);
     if (RN.root) {
       RN.root.dataset.s0Cue = _sel.cue;
       RN.root.dataset.s0Tier = _sel.tier;
-      RN.root.dataset.s0Pulse = _shadowPulse ? "1" : "0";
+      RN.root.dataset.s0Pulse = _s0Pulse ? "1" : "0";
     }
     // QA9: stamp the combat-mode flag off the SAME S0 arbitration (so the
     // declutter and the pop-out can never disagree about "is this a fight"),
@@ -530,7 +536,16 @@ function renderRightNow(p) {
   // tokens.css coach-pulse-{good,warn,bad} keyframes. "empty" stays
   // silent (no headline -> nothing to pulse). The pulse class is
   // dropped 800ms later so a stable headline does not retain it.
-  if (isFreshAction) {
+  //
+  // RC2 P3.3 LIVE flip (operator-approved 2026-06-22, A5 motion rationing):
+  // gate the pulse on the S0 decision (_s0Pulse) IN ADDITION to a fresh
+  // headline. The decision only allows motion for the EMERGENCY tier
+  // (incl. the lethal cue, which carries the lethal_incoming passthrough)
+  // and a one-shot URGENT cross (spike/choices). A benign 'good' band and a
+  // sustained-same-cue re-emit no longer add rn-pulse-good/warn/bad. This is
+  // STRICTLY a subset of the old isFreshAction condition (suppress-only,
+  // never a new pulse).
+  if (isFreshAction && _s0Pulse) {
     const pulseMap = { urgent: "rn-pulse-bad",
                        fight:  "rn-pulse-warn",
                        good:   "rn-pulse-good" };

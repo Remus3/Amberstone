@@ -546,13 +546,20 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 - 2026-06-20 RC2 P3.3 overlay pulse-rationing flip (UI behavior, NOT a DS seam; `87f41baf` shipped
   the SHADOW). Shadow: `right_now.js` stamps `data-s0-cue` / `data-s0-tier` / `data-s0-pulse` on
   `#right-now` each render via `overlay_priority.signalFromState` -> `selectPrimary` -> `shouldPulse`,
-  with ZERO live pulse change. LIVE FLIP (operator-gated, eyeball-owed): re-point the `.action`
-  per-band pulse (`right_now.js:490-500`, currently fires on every headline text change across BOTH
-  dashboard + overlay) AND `overlay_pulse.js` (MutationObserver, currently fires on any mount content
-  change) to CONSUME the stamped `data-s0-pulse` instead - so motion fires ONLY for the Emergency tier
-  + a one-shot Urgent cross (spec section 5 / acceptance A5). It is a SHARED dashboard+overlay change,
-  so eyeball the live headline on a real game (confirm the suppressed pulses were all benign re-emits)
-  before flipping. The arbitration single-winner (A2) + 44px choice hit-target already ship live.
+  with ZERO live pulse change. SHIPPED LIVE (operator-approved 2026-06-22, verify-next-game): the
+  `.action` per-band pulse (`right_now.js`, the `if (isFreshAction && _s0Pulse)` site near line 540,
+  was line 533; the shadow block hoists `_s0Pulse = shouldPulse(...)` near line 496) AND
+  `overlay_pulse.js` (MutationObserver, now early-returns via `_s0PulseArmed()` reading
+  `#right-now[data-s0-pulse="1"]`) now CONSUME the stamped decision - so motion fires ONLY for the
+  Emergency tier (incl. the lethal cue carrying the `lethal_incoming` passthrough) + a one-shot Urgent
+  cross (spike/choices) (spec section 5 / acceptance A5). The flip is conservative-only by construction
+  (`isFreshAction && _s0Pulse` is a strict subset of the old `isFreshAction` per-band path; the overlay
+  gate only adds an early-return) - it can never add a pulse that did not fire pre-flip, only suppress
+  benign 'good' / sustained-same-cue re-emits. Regression coverage: `tests/test_overlay_pulse_flip_rc2.py`
+  (decision chain a-d + conservative-subset proof + consumer wiring). REMAINING EYEBALL (verify-next-game,
+  NOT headless): on a real game confirm the suppressed pulses were all benign re-emits and the Emergency /
+  one-shot Urgent cross still glows. The arbitration single-winner (A2) + 44px choice hit-target already
+  ship live.
 - 2026-06-20 RC2 P4.1 DPI/resolution overlay sizing live eyeball (UI geometry, NOT a DS seam; `4d5d54f0`
   shipped the code). The shell now sizes the overlay window by the work-area scale (resolveOverlayMetrics)
   and zooms the dock content to match (overlay.css `--rc-overlay-scale`). Headless-verified via the
