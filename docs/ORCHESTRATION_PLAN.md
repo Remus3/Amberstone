@@ -155,7 +155,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R9 | ds-sweep | DIRECTOR REFILL: DS schema lift - survivability per-instance FLAT damage reduction (flat DR). NEW `agents/daemon_slayer/_passive_flat_mitigation_overrides.py` modeling the per-instance flat-amount DR class the percent `_passive_mitigation_overrides.py` (docstring lines 64-69) deliberately EXCLUDED: Fizz P (flat 4, ANY, +1% AP omitted), Amumu E (per-rank [5,7,9,11,13], PHYS), Leona W (per-rank [8,12,16,20,24], ANY, active prob 0.3); all cap_frac 0.5. Default-OFF `assume_passive_flat_mitigation` seam on compute_ehp + rank_items_by_ehp folds prevented damage (`_ASSUMED_FLAT_DR_INSTANCES`=6 x flat x prob) into the EHP NUMERATOR (mirrors ext_flat_hp); byte-identical when OFF; `_ASSUMED_ABILITY_RANK`=4 reads the per-rank seeds. Offline characterization tests vs champion_abilities.json 16.12.1. ENGINE 1.147.0 -> 1.148.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `d52c984e` |
 | R10 | lift | DIRECTOR REFILL: Section-7b heavyweight deep-dive competitor lift of Aggregator B. Output docs/COMPETITOR_LIFT_2026-06-21.md. Act on HIGH-lift LOW-risk presentation finding IN-RUN. | DONE | `edd76db3` |
 | R12 | ds-sweep | DIRECTOR REFILL: DS schema lift - cross-spell all-source TARGET-VULNERABILITY mark. NEW agents/daemon_slayer/_target_vulnerability_overrides.py (TargetVulnEntry + _CHAMPION_VULN_OVERRIDES champion_id->ability + _ITEM_VULN_OVERRIDES item-id->item + target_vuln_multiplier) modeling a debuff the wielder lays on the TARGET that makes it take +X% damage FROM ALL SOURCES (the all-source half the per-spell self-amp _ability_amp_overrides cannot express). Default-OFF apply_target_vuln seam on dps.compute_dps (weighted_dps + phase_dps scaled by the composed mark multiplier, multiplicative per source, de-duped per item; byte-identical OFF). SEEDED 2 ACTIVE vs 16.12.1 ground truth: Vladimir R Hemoplague 10% (DDragon Vladimir.json effect[2]=[10,10,10]) + Evenshroud 3001/Arena 223001 Coruscation 7% (items.json). NON-FIT (documented in _NONFIT_VULN_CANDIDATES, NOT seeded): Imperial Mandate 4005 - director suggested 6% but 16.12.1 Coordinated Fire is a current-HP mark-detonation, not a +X% all-source amp (no ground-truth value for a flat amp -> honestly excluded, a wrong precompute is worse than none). Offline characterization tests (23, RED-first). Verifier-gated CONFIRM. ENGINE 1.148.0 -> 1.149.0 + DS :8893 restart + Share sync SAME commit. Live flip + ability_dps/burst consumer broadening EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `cad49029` |
-| R13 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Active Match threat + CD panels (web/js/panels/cd_ledger.js, cc_blended_ehp_threat.js, threat_donut.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness. | WIP | |
+| R13 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Active Match threat + CD panels (web/js/panels/cd_ledger.js, cc_blended_ehp_threat.js, threat_donut.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness. | DONE | `0fb91841` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -168,6 +168,23 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-22 R13 (DIRECTOR REFILL cycle) DONE (`0fb91841`) - Section-3b 5-phase
+  fixture audit of the 3 Active Match panels cd_ledger.js / cc_blended_ehp_threat.js
+  / threat_donut.js + CSS vs docs/UI_SCALE_SPEC_V2.md. Result = 1 MUST-FIX, 2 panels
+  already clean. threat_donut.js: the SVG "?" / "." placeholder hardcoded font-size
+  12 inside the fixed 28x28 donut (the 16px --fs-xs floor would overflow the tile) -
+  documented as an inline operator-exception (cannot tokenize: no token < 16px by
+  design; mirrors the cd_ledger.css density exceptions). cd_ledger.css CLEAN (item 184
+  v2.1 already documented its 11/10/9px exceptions); cc_blended_ehp_threat.css CLEAN
+  (fully tokenized, no interactive elements). FUTURE (logged, not in-slice): the
+  .am-pane-head collapse toggle is ~41px tall, 1px under --hit-min 42px - shared
+  selector across all am-panes, out of the 3-panel scope. Orchestrator note: the
+  mandated worktree fan-out collapsed to an inline 4-line comment edit (R9: no
+  worktrees under ~3 files; the audit found a single 1-file fix); verifier-gated
+  CONFIRM (47/0/0) before commit. Visual proof: test_active_match_view.py Playwright
+  snapshot renders the AM view hosting all 3 panels (47 passed). No engine / DS /
+  Share / ENGINE_VERSION / overlay-render / flip change.
 
 - 2026-06-21 R12 (DIRECTOR REFILL cycle) DONE (`cad49029`) - DS schema lift:
   cross-spell all-source TARGET-VULNERABILITY mark registry. NEW
