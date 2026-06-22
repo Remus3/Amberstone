@@ -70,6 +70,21 @@ byte-identical to item 308. The seeded set is VERIFIED against
 Varus W / Malzahar R, bonus-AD rows Vi W / Camille W / Udyr Q (the first real
 AD-path seeds). The per-row slope is a deliberately conservative 0.0004
 reliability term, not a literal in-game damage ratio.
+
+R17 (ENGINE 1.151.0) schema lift: each ``AntiTankEntry`` may carry optional
+``ramp_lo`` / ``ramp_hi`` endpoints (the verbatim "lo% : hi% (based on level)"
+%max-HP figures), and ``compute_antitank`` accepts an optional ``level``. The
+hand-tuned magnitude encodes the LATE-game (max-ramp) reliability; when a level is
+injected, a ramp-seeded row's effective magnitude scales by
+``_level_ramp_factor`` = ``lerp(ramp_lo, ramp_hi, (level-1)/17) / ramp_hi``, so
+``level=18`` and ``level=None`` (the /anti-tank route default) are byte-identical
+to item 308/315 and early levels discount toward ``ramp_lo``. The seeded set is
+the 10 MAX_HP champion-level ramps in champion_abilities.json / the registry
+source_quotes: Aatrox P 4:8, Brand P 8:12, KSante P 1:2, Mordekaiser P 1:5,
+Ornn P 10:18, Renata P 1:2, Skarner P 5:9, Urgot P 2:6, Zed P 6:10, Zeri P 1:11.
+Every un-ramped row is byte-identical at any level (the additive contract). The
+live default-ON flip (a consumer calling with the live champion level) is
+operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
 """
 
 from __future__ import annotations
@@ -168,45 +183,96 @@ class AntiTankEntry:
     conditional: bool = False
     ap_ratio: float = 0.0
     ad_ratio: float = 0.0
+    ramp_lo: float = 0.0
+    ramp_hi: float = 0.0
+
+
+# Champion level endpoints the ramp interpolates between (levels 1..18).
+_RAMP_MIN_LEVEL = 1
+_RAMP_MAX_LEVEL = 18
+
+
+def _level_ramp_factor(entry: AntiTankEntry, level: int | None = None) -> float:
+    """Level-interpolation multiplier on the magnitude (R17, ENGINE 1.151.0).
+
+    A real subset of %max-HP rows deal a percentage that scales with the CASTER's
+    champion level (Aatrox P 4%:8%, Brand P 8%:12%, Skarner P 5%:9%, ...). The
+    hand-tuned ``magnitude`` encodes the LATE-game (max-ramp) reliability, so this
+    returns the fraction of that power online at ``level``:
+    ``lerp(ramp_lo, ramp_hi, (level-1)/17) / ramp_hi``.
+
+    Returns ``1.0`` (the default-OFF / byte-identical path) when ``level`` is None
+    (what ``compute_antitank`` / the /anti-tank route passes), when the row carries
+    no ramp data (``ramp_hi == 0.0``), or when the endpoints are flat
+    (``ramp_lo == ramp_hi``). At ``level == 18`` the factor is exactly 1.0, so the
+    score equals the item-308 value; below 18 it discounts toward ``ramp_lo``. The
+    level is clamped to [1, 18]. Fail-soft: a degenerate factor falls back to 1.0.
+    """
+    if level is None:
+        return 1.0
+    lo = entry.ramp_lo
+    hi = entry.ramp_hi
+    if hi <= 0.0 or lo == hi:
+        return 1.0
+    lvl = level
+    if lvl < _RAMP_MIN_LEVEL:
+        lvl = _RAMP_MIN_LEVEL
+    elif lvl > _RAMP_MAX_LEVEL:
+        lvl = _RAMP_MAX_LEVEL
+    t = (lvl - _RAMP_MIN_LEVEL) / (_RAMP_MAX_LEVEL - _RAMP_MIN_LEVEL)
+    pct = lo + (hi - lo) * t
+    factor = pct / hi
+    return factor if math.isfinite(factor) and factor > 0.0 else 1.0
 
 
 def _effective_magnitude(
-    entry: AntiTankEntry, stats: ResolvedStats | None = None
+    entry: AntiTankEntry,
+    stats: ResolvedStats | None = None,
+    level: int | None = None,
 ) -> float:
-    """Magnitude after optional caster-stat (AP/AD) scaling (P3.2 item 315).
+    """Magnitude after optional caster-stat (P3.2) + level-ramp (R17) scaling.
 
     Returns ``entry.magnitude`` unchanged when no ``stats`` are injected or the
-    row carries no ratio (the item-308 static path). Otherwise returns the
-    operator's formula ``base + ap * ap_ratio + ad * ad_ratio`` where ``ap`` /
-    ``ad`` are read from ``stats`` (a ``ResolvedStats`` or any ``.get`` mapping).
-    Only the seeded rows carry a non-zero ratio (Gwen P / Kog'Maw W / Varus W /
-    Malzahar R on AP, Vi W / Camille W / Udyr Q on bonus AD), so every other row
-    is byte-identical even when stats are passed.
+    row carries no ratio (the item-308 static path), then multiplies by the
+    optional level-ramp factor (R17). The caster-stat half is the P3.2 formula
+    ``base + ap * ap_ratio + ad * ad_ratio`` (``ap`` / ``ad`` read from ``stats``,
+    a ``ResolvedStats`` or any ``.get`` mapping). Only seeded rows carry a non-zero
+    ratio (Gwen P / Kog'Maw W / Varus W / Malzahar R on AP, Vi W / Camille W /
+    Udyr Q on bonus AD), so every other row is byte-identical even when stats are
+    passed. The level-ramp factor is 1.0 unless ``level`` is supplied AND the row
+    carries ramp endpoints, so ``level=None`` (the route default) is byte-identical
+    to item 308/315.
     """
     base = entry.magnitude
     if stats is None or (entry.ap_ratio == 0.0 and entry.ad_ratio == 0.0):
-        return base
-    ap = _finite_float(stats.get("ap", 0.0))
-    ad = _finite_float(stats.get("ad", 0.0))
-    scaled = base + ap * entry.ap_ratio + ad * entry.ad_ratio
-    return scaled if math.isfinite(scaled) else base
+        scaled = base
+    else:
+        ap = _finite_float(stats.get("ap", 0.0))
+        ad = _finite_float(stats.get("ad", 0.0))
+        s = base + ap * entry.ap_ratio + ad * entry.ad_ratio
+        scaled = s if math.isfinite(s) else base
+    out = scaled * _level_ramp_factor(entry, level)
+    return out if math.isfinite(out) else scaled
 
 
 def _mechanism_value(
-    entry: AntiTankEntry, stats: ResolvedStats | None = None
+    entry: AntiTankEntry,
+    stats: ResolvedStats | None = None,
+    level: int | None = None,
 ) -> float:
     """Kind-weighted, cadence-scaled value for one mechanism (0 if unknown).
 
     Returns ``kind_weight * cadence_mult * effective_magnitude`` (times the
     conditional midpoint when gated), or ``0.0`` when the kind or cadence is
-    unknown. ``effective_magnitude`` applies the optional P3.2 AP/AD scaling
-    (``_effective_magnitude``); with no ``stats`` it is the static magnitude.
+    unknown. ``effective_magnitude`` applies the optional P3.2 AP/AD scaling and
+    the optional R17 level-ramp factor (``_effective_magnitude``); with no
+    ``stats`` and no ``level`` it is the static magnitude.
     """
     weight = _ANTITANK_KIND_WEIGHT.get(entry.kind, 0.0)
     cadence_mult = _ANTITANK_CADENCE_MULT.get(entry.cadence, 0.0)
     if weight <= 0.0 or cadence_mult <= 0.0:
         return 0.0
-    value = weight * cadence_mult * _effective_magnitude(entry, stats)
+    value = weight * cadence_mult * _effective_magnitude(entry, stats, level)
     if entry.conditional:
         value *= _ANTITANK_CONDITIONAL_PROB
     return value
@@ -233,6 +299,8 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
         cond: bool = False,
         ap_ratio: float = 0.0,
         ad_ratio: float = 0.0,
+        ramp_lo: float = 0.0,
+        ramp_hi: float = 0.0,
     ) -> None:
         raw.setdefault(champ, []).append(
             AntiTankEntry(
@@ -243,11 +311,13 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
                 conditional=bool(cond),
                 ap_ratio=float(ap_ratio),
                 ad_ratio=float(ad_ratio),
+                ramp_lo=float(ramp_lo),
+                ramp_hi=float(ramp_hi),
             )
         )
 
-    # Aatrox
-    add("Aatrox", "P", "MAX_HP", "SUSTAINED", magnitude=0.85)
+    # Aatrox - P %max-HP ramps 4%:8% (based on level) per the kit source_quote.
+    add("Aatrox", "P", "MAX_HP", "SUSTAINED", magnitude=0.85, ramp_lo=4.0, ramp_hi=8.0)
     # Amumu
     add("Amumu", "P", "SHRED", "SUSTAINED", magnitude=0.6)
     # AurelionSol
@@ -255,7 +325,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Aurora
     add("Aurora", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True)
     # Brand
-    add("Brand", "P", "MAX_HP", "SUSTAINED", magnitude=0.7)
+    add("Brand", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, ramp_lo=8.0, ramp_hi=12.0)
     add("Brand", "W", "SHRED", "PERIODIC", magnitude=0.65, cond=True)
     # Briar
     add("Briar", "Q", "SHRED", "PERIODIC", magnitude=0.7)
@@ -303,7 +373,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Jayce", "E", "MAX_HP", "PERIODIC", magnitude=0.8)
     add("Jayce", "R", "SHRED", "SUSTAINED", magnitude=0.65, cond=True)
     # KSante
-    add("KSante", "P", "MAX_HP", "SUSTAINED", magnitude=0.6)
+    add("KSante", "P", "MAX_HP", "SUSTAINED", magnitude=0.6, ramp_lo=1.0, ramp_hi=2.0)
     add("KSante", "W", "MAX_HP", "PERIODIC", magnitude=0.65)
     add("KSante", "R", "PERCENT_PEN", "BURST", magnitude=0.55, cond=True)
     # Kalista
@@ -332,7 +402,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("MonkeyKing", "Q", "SHRED", "PERIODIC", magnitude=0.65)
     add("MonkeyKing", "R", "MAX_HP", "BURST", magnitude=0.7, cond=True)
     # Mordekaiser
-    add("Mordekaiser", "P", "MAX_HP", "SUSTAINED", magnitude=0.85, cond=True)
+    add("Mordekaiser", "P", "MAX_HP", "SUSTAINED", magnitude=0.85, cond=True, ramp_lo=1.0, ramp_hi=5.0)
     add("Mordekaiser", "E", "PERCENT_PEN", "SUSTAINED", magnitude=0.7)
     add("Mordekaiser", "R", "SHRED", "BURST", magnitude=0.5, cond=True)
     # Nasus
@@ -343,7 +413,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Olaf
     add("Olaf", "Q", "SHRED", "PERIODIC", magnitude=0.55)
     # Ornn
-    add("Ornn", "P", "MAX_HP", "PERIODIC", magnitude=0.7, cond=True)
+    add("Ornn", "P", "MAX_HP", "PERIODIC", magnitude=0.7, cond=True, ramp_lo=10.0, ramp_hi=18.0)
     add("Ornn", "W", "MAX_HP", "PERIODIC", magnitude=0.75)
     # Pantheon
     add("Pantheon", "W", "MAX_HP", "PERIODIC", magnitude=0.55)
@@ -357,7 +427,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Rell", "P", "SHRED", "SUSTAINED", magnitude=0.75)
     add("Rell", "E", "MAX_HP", "SUSTAINED", magnitude=0.5)
     # Renata
-    add("Renata", "P", "MAX_HP", "SUSTAINED", magnitude=0.55)
+    add("Renata", "P", "MAX_HP", "SUSTAINED", magnitude=0.55, ramp_lo=1.0, ramp_hi=2.0)
     # Renekton
     add("Renekton", "E", "SHRED", "PERIODIC", magnitude=0.45, cond=True)
     # Rengar
@@ -384,7 +454,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Sion", "W", "MAX_HP", "PERIODIC", magnitude=0.7)
     add("Sion", "E", "SHRED", "PERIODIC", magnitude=0.55)
     # Skarner
-    add("Skarner", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True)
+    add("Skarner", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True, ramp_lo=5.0, ramp_hi=9.0)
     add("Skarner", "Q", "MAX_HP", "PERIODIC", magnitude=0.6)
     # Smolder
     add("Smolder", "Q", "MAX_HP", "PERIODIC", magnitude=0.4, cond=True)
@@ -397,7 +467,7 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # champion_abilities.json Q block "% per 100 bonus AD").
     add("Udyr", "Q", "MAX_HP", "PERIODIC", magnitude=0.8, ad_ratio=0.0004)
     # Urgot
-    add("Urgot", "P", "MAX_HP", "PERIODIC", magnitude=0.45)
+    add("Urgot", "P", "MAX_HP", "PERIODIC", magnitude=0.45, ramp_lo=2.0, ramp_hi=6.0)
     # Varus - W Blighted Quiver on-hit %max-HP carries an AP term (P3.2
     # expansion: champion_abilities.json W block "% per 100 AP"; on-hit AP Varus).
     add("Varus", "W", "MAX_HP", "SUSTAINED", magnitude=0.85, ap_ratio=0.0004)
@@ -427,9 +497,9 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     # Zac
     add("Zac", "W", "MAX_HP", "PERIODIC", magnitude=0.7)
     # Zed
-    add("Zed", "P", "MAX_HP", "SUSTAINED", magnitude=0.5, cond=True)
+    add("Zed", "P", "MAX_HP", "SUSTAINED", magnitude=0.5, cond=True, ramp_lo=6.0, ramp_hi=10.0)
     # Zeri
-    add("Zeri", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True)
+    add("Zeri", "P", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True, ramp_lo=1.0, ramp_hi=11.0)
     # Zoe
     add("Zoe", "E", "SHRED", "PERIODIC", magnitude=0.5, cond=True)
 
@@ -517,7 +587,10 @@ def _source_sort_key(entry: AntiTankEntry) -> tuple[int, str]:
 
 
 def compute_antitank(
-    champion: str, mode: str = "SR", stats: ResolvedStats | None = None
+    champion: str,
+    mode: str = "SR",
+    stats: ResolvedStats | None = None,
+    level: int | None = None,
 ) -> AntiTankResult:
     """Aggregate a champion's anti-tank mechanisms into a tank-melt score.
 
@@ -536,6 +609,14 @@ def compute_antitank(
     figure). ``stats=None`` (the default, and what the /anti-tank route passes) is
     byte-identical to item 308, as is any row carrying no ratio.
 
+    ``level`` (R17, ENGINE 1.151.0) is an optional caster champion level. When
+    supplied, a ramp-seeded row (one carrying ``ramp_hi`` endpoints - the %max-HP
+    rows whose percentage scales with level: Aatrox P 4%:8%, Brand P 8%:12%,
+    Skarner P 5%:9%, ...) has its effective magnitude scaled toward the early-game
+    ``ramp_lo`` endpoint. ``level=18`` and ``level=None`` (the route default) are
+    byte-identical to item 308/315, and any row with no ramp endpoint is
+    byte-identical at every level.
+
     Returns an all-zero ``AntiTankResult`` (empty ``sources``) when the champion
     is blank / None or absent from the (selective) registry; never raises.
     """
@@ -552,7 +633,7 @@ def compute_antitank(
     best_value = -1.0
     has_shred = False
     for entry in sorted(entries, key=_source_sort_key):
-        value = _mechanism_value(entry, stats)
+        value = _mechanism_value(entry, stats, level)
         total += value
         if value > best_value:
             best_value = value
@@ -566,7 +647,7 @@ def compute_antitank(
                 cadence=entry.cadence,
                 kind_weight=_ANTITANK_KIND_WEIGHT.get(entry.kind, 0.0),
                 cadence_mult=_ANTITANK_CADENCE_MULT.get(entry.cadence, 0.0),
-                magnitude=_effective_magnitude(entry, stats),
+                magnitude=_effective_magnitude(entry, stats, level),
                 conditional=entry.conditional,
                 value=value,
             )
@@ -592,6 +673,7 @@ __all__ = [
     "_ANTITANK_CADENCE_MULT",
     "_ANTITANK_CONDITIONAL_PROB",
     "_ANTITANK_REGISTRY",
+    "_level_ramp_factor",
 ]
 
 
