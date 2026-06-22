@@ -110,6 +110,48 @@ function _bodyZoom() {
   return Number.isFinite(z) && z > 0 ? z : 1;
 }
 
+// ACTIVE-mode signal (doctrine section 2/3): the rc-shell main process lights
+// the overlay ACTIVE (Alt+Shift+A) by adding the "rc-shell-active" class to
+// <html> (rc-shell/src/active_indicator.js activeIndicatorSetJS). That class is
+// present in the page DOM EXACTLY while the overlay is interactive, so it is the
+// authoritative page-side ACTIVE check - the same gate the drag affordance lives
+// behind (the drag handle is only grabbable when click-through is off / ACTIVE).
+// PASSIVE (click-through) => the class is absent => this returns false and the
+// hide menu stays a pure no-op so right-clicks pass through to the game.
+function _isActiveMode() {
+  try {
+    return document.documentElement.classList.contains("rc-shell-active");
+  } catch (_e) {
+    return false; // headless / locked-down document: treat as PASSIVE (safe).
+  }
+}
+
+// Per-widget HIDE affordance (doctrine section 2: "A widget the operator never
+// wants is hidden via a per-widget toggle"; section 3: "A per-widget reset is
+// the right-click affordance in ACTIVE mode"). Sets hidden:true on this widget's
+// layout entry, persists via the EXISTING mirror, and applies the hide through
+// the SAME read-side path (_applyPos toggles .ovx-hidden). hidden != deleted -
+// the mount + its wiring stay; the field just stops painting it. Restored by the
+// existing Alt+Shift+R resetOverlayLayout (clears _layout -> hidden:false again).
+function _hideWidget(el, w) {
+  _layout[w.id] = { ...(_layout[w.id] || {}), hidden: true };
+  _applyPos(el, _posFor(w));
+  _persist();
+}
+
+// Right-click hide, mirroring _installDrag's structure. STRICTLY gated on ACTIVE:
+// in PASSIVE mode the handler does NOTHING - no preventDefault, no capture - so
+// the contextmenu event is never consumed and never blocks/leaks to the game
+// underneath the click-through overlay (doctrine: never require a mid-fight
+// dismissal, never obstruct). Only in ACTIVE does it preventDefault + hide.
+function _installHideMenu(el, w) {
+  el.addEventListener("contextmenu", (e) => {
+    if (!_isActiveMode()) return; // PASSIVE: pure no-op, let it fall through.
+    e.preventDefault();
+    _hideWidget(el, w);
+  });
+}
+
 function _installDrag(handle, el, w) {
   let dragging = false;
   let startX = 0;
@@ -168,10 +210,20 @@ function _makeHandle(el, w) {
   // PASSIVE mode without the global ACTIVE toggle - a deliberate small target so
   // the body stays click-through during play (no accidental drags mid-fight).
   h.setAttribute("data-rc-zone", "");
-  h.title = "drag to move (saves automatically)";
+  h.title = "drag to move (saves automatically); right-click to hide (ACTIVE)";
   h.innerHTML = "<span></span><span></span><span></span>";
   el.appendChild(h);
   _installDrag(h, el, w);
+}
+
+// Attach the right-click hide listener once per mount. Idempotent: a dataset
+// flag survives re-renders that keep the same node, and _placeAll re-runs the
+// whole pass after a renderer rebuilds a mount (a fresh node has no flag, so the
+// listener re-attaches). Mirrors _makeHandle's double-attach guard.
+function _makeHideMenu(el, w) {
+  if (el.dataset.ovxHideMenu === "1") return;
+  el.dataset.ovxHideMenu = "1";
+  _installHideMenu(el, w);
 }
 
 function _placeAll() {
@@ -183,6 +235,7 @@ function _placeAll() {
     el.dataset.ovxTier = w.tier;
     _applyPos(el, _posFor(w));
     _makeHandle(el, w);
+    _makeHideMenu(el, w);
   }
 }
 
@@ -265,5 +318,21 @@ export function resetOverlayLayout() {
   _persist();
 }
 
-// Exported for unit tests (pure helpers + the registry).
-export const _internals = { WIDGETS, LS_KEY, _posFor, _readLayout };
+// Exported for unit tests (pure helpers + the registry + the hide-affordance
+// seams). _setLayout lets a test drive the module's internal layout state so the
+// contextmenu + reset behavior can be exercised without a real rc-shell bridge.
+export const _internals = {
+  WIDGETS,
+  LS_KEY,
+  _posFor,
+  _readLayout,
+  _isActiveMode,
+  _hideWidget,
+  _installHideMenu,
+  _persist,
+  _applyPos,
+  _getLayout: () => _layout,
+  _setLayout: (o) => {
+    _layout = o && typeof o === "object" ? o : {};
+  },
+};
