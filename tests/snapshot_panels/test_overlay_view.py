@@ -11,7 +11,9 @@ independently absolutely-positioned widgets (the .ovx-widget accents), NOT the
 retired 460px right-dock. Each cue mount (the coach CALL pane, the A/B choice
 chips, the lead pill, the objective/spike callouts, the enemy CD ledger, the
 build re-rank, the fight-model knobs) is lifted to position:fixed at a saved-or-
-default (x,y); the default is a non-intrusive left-edge column (x=20). Reveal-
+default (x,y); the default is the eye-line anchor map (OVERLAY_DOCTRINE section 4:
+call upper-center 760,140; lead under the score bar 786,44; callouts at the
+minimap; spike bottom-left). Reveal-
 only widgets (build / threat / fight-model) hide in the default coach set and
 appear in their panel set. Header / nav / footer / every other view is
 display:none over a transparent background.
@@ -93,9 +95,9 @@ def _open_overlay(pw_browser, mock_server, query="?ui_mock=1&mode=sr&overlay=1")
 def test_overlay_shell_is_widget_field(mock_server, pw_browser):
     """?overlay=1: shell flag + forced active-match view, then the cue mounts are
     lifted to absolutely-positioned .ovx-widget accents (the widget FIELD, not a
-    dock). The coach-set widgets paint at their left-edge default; the reveal-only
-    build / threat / fight-model widgets are hidden; header / footer / every other
-    view is display:none over a transparent page (docs/OVERLAY_DOCTRINE.md 2+4)."""
+    dock). The coach-set widgets paint at their eye-line anchor default; the
+    reveal-only build / threat / fight-model widgets are hidden; header / footer /
+    every other view is display:none over a transparent page (doctrine 2+4)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         # Shell flag + forced view.
@@ -116,9 +118,9 @@ def test_overlay_shell_is_widget_field(mock_server, pw_browser):
             )
             assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
 
-        # Left-edge non-intrusive default (doctrine section 4), and the PRIMARY
-        # widget carries its tier marker.
-        assert _css(page, "#view-active-match .am-pane-call", "left") == "20px"
+        # Eye-line anchor default (doctrine section 4: w-call upper-center 760,140),
+        # and the PRIMARY widget carries its tier marker.
+        assert _css(page, "#view-active-match .am-pane-call", "left") == "760px"
         assert page.eval_on_selector(
             "#view-active-match .am-pane-call", "e => e.dataset.ovxTier"
         ) == "primary"
@@ -236,28 +238,33 @@ def test_overlay_panelset_selector_reflects_active_set(mock_server, pw_browser):
     assert not errors, f"JS errors [4.4 reflect]: {errors[:3]}"
 
 
-def test_overlay_widget_field_left_edge_positions(mock_server, pw_browser):
-    """The widgets are an absolutely-positioned FIELD (position:fixed) hugging the
-    left edge, NOT a ~460px right-anchored dock. Each coach-set widget sits near
-    x=0 (its non-intrusive left-edge default) and renders as a narrow accent, so
-    the centre / champion HUD / minimap stay clear (doctrine section 4)."""
+def test_overlay_widget_field_eye_line_positions(mock_server, pw_browser):
+    """The widgets are an absolutely-positioned FIELD (position:fixed) placed at
+    the EYE-LINE ANCHORS, NOT a ~460px right-anchored dock. Each coach-set widget
+    sits at its doctrine section-4 default (lead under the score bar 786,44; call
+    upper-center 760,140; callouts at the minimap 1486,780) and renders as a narrow
+    accent, so the field hugs the eye, not a fat corner dock (doctrine section 4)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         # Field facts hold for every mount; computed style resolves even when a
-        # data-driven mount is still [hidden] in the empty-SSE fixture.
-        for sel in ("#rn-lead", "#view-active-match .am-pane-call", "#rn-callouts"):
+        # data-driven mount is still [hidden] in the empty-SSE fixture. Each mount
+        # sits at its eye-line default `left` (doctrine section-4 (x,y) table).
+        for sel, left in (
+            ("#rn-lead", "786px"),
+            ("#view-active-match .am-pane-call", "760px"),
+            ("#rn-callouts", "1486px"),
+        ):
             assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
-            assert _css(page, sel, "left") == "20px", f"{sel} not at the left-edge default"
-        # No ~460px right-anchored column any more: the visible primary is a
-        # narrow accent hugging the left, nowhere near the right of the 1920 view.
+            assert _css(page, sel, "left") == left, (
+                f"{sel} not at its eye-line default ({left})"
+            )
+        # No ~460px dock any more: the visible primary is a narrow accent at its
+        # upper-center anchor, not a fat right-edge column.
         call = page.locator("#view-active-match .am-pane-call").bounding_box()
         assert call is not None, "call widget has no box"
-        assert call["x"] < 60, f"call not left-edge anchored (x={call['x']})"
+        assert 750 <= call["x"] <= 770, f"call not at its upper-center anchor (x={call['x']})"
         assert call["width"] <= 280, (
             f"widget width {call['width']} should be a narrow accent, not a ~460 dock"
-        )
-        assert call["x"] + call["width"] < 400, (
-            f"widget right edge {call['x'] + call['width']} should hug the left, not dock right"
         )
     finally:
         page.close()
@@ -328,25 +335,31 @@ def test_overlay_combat_mode_declutter(mock_server, pw_browser):
 
 def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browser):
     """RC Overlay Doctrine w-trinket + w-spike: the trinket-ready + spike-crossed
-    cues are registered as movable, position-fixed .ovx-widget field mounts at the
-    left-edge default. They sit as direct am-grid children (NOT inside a
+    cues are registered as movable, position-fixed .ovx-widget field mounts at
+    their eye-line default (w-trinket by the avatar 920,540; w-spike bottom-left by
+    the champion stats 360,840). They sit as direct am-grid children (NOT inside a
     transformed .ovx-widget pane) so position:fixed is viewport-relative, not
     trapped + clipped by a pane's transform containing block."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
-        for sel, wid in (("#am-ward-cue", "w-trinket"), ("#am-spike-cue", "w-spike")):
+        for sel, wid, left in (
+            ("#am-ward-cue", "w-trinket", "920px"),
+            ("#am-spike-cue", "w-spike", "360px"),
+        ):
             assert page.eval_on_selector(
                 sel, "e => e.classList.contains('ovx-widget')"
             ), f"{sel} is not an .ovx-widget"
             assert page.eval_on_selector(sel, "e => e.dataset.ovxId") == wid
             assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
-            assert _css(page, sel, "left") == "20px", f"{sel} not at the left-edge default"
+            assert _css(page, sel, "left") == left, (
+                f"{sel} not at its eye-line default ({left})"
+            )
             parent = page.eval_on_selector(sel, "e => e.parentElement.className")
             assert "am-grid" in parent, (
                 f"{sel} must mount in am-grid, not a transformed pane (got {parent!r})"
             )
         # data-gated (hidden until actionable in the empty-SSE mock): force-show
-        # the spike cue and confirm it lands at its viewport-fixed default x ~= 20
+        # the spike cue and confirm it lands at its viewport-fixed default x ~= 360
         # (a transform-trapped fixed child would be offset by the pane's position).
         page.evaluate(
             "() => { const s = document.getElementById('am-spike-cue');"
@@ -354,8 +367,8 @@ def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browse
             "  s.innerHTML = '<span class=\"spike-chip\">ULT ONLINE</span>'; }"
         )
         box = page.locator("#am-spike-cue").bounding_box()
-        assert box is not None and abs(box["x"] - 20) < 6, (
-            f"spike cue not viewport-fixed at x~20 (trapped?): {box and box['x']}"
+        assert box is not None and abs(box["x"] - 360) < 6, (
+            f"spike cue not viewport-fixed at x~360 (trapped?): {box and box['x']}"
         )
     finally:
         page.close()
@@ -608,14 +621,19 @@ def test_overlay_choices_hit_target_44px(mock_server, pw_browser):
 
 
 def test_overlay_change_pulse_hook(mock_server, pw_browser):
-    """overlay_pulse.js: a content change inside an overlay panel adds the
-    .ov-pulse edge-glow class to its container for ~1.2s, then drops it."""
+    """overlay_pulse.js: when the S0 decision ARMS the pulse
+    (#right-now[data-s0-pulse="1"]), a content change inside an overlay panel
+    adds the .ov-pulse edge-glow to its container for ~1.2s, then drops it.
+    The 2026-06-22 motion-rationing flip gates the glow on the s0-pulse arm;
+    benign unarmed changes no longer pulse (see the no-pulse-when-unarmed test)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         # Let the initial mock-render pulse window + throttle expire.
         page.wait_for_timeout(1700)
         page.evaluate(
             "() => {"
+            "  const rn = document.getElementById('right-now');"
+            "  if (rn) rn.dataset.s0Pulse = '1';"
             "  const d = document.createElement('div');"
             "  d.textContent = 'ROTATE MID - spike online';"
             "  document.getElementById('am-call-body').appendChild(d);"
@@ -634,6 +652,32 @@ def test_overlay_change_pulse_hook(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, f"JS errors [pulse]: {errors[:3]}"
+
+
+def test_overlay_change_no_pulse_when_unarmed(mock_server, pw_browser):
+    """Motion-rationing (2026-06-22 flip): a benign content change with the S0
+    pulse UNARMED (no #right-now[data-s0-pulse="1"]) must NOT add .ov-pulse -
+    only the emergency / urgent-cross decision pulses."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        page.wait_for_timeout(1700)
+        page.evaluate(
+            "() => {"
+            "  const rn = document.getElementById('right-now');"
+            "  if (rn) rn.dataset.s0Pulse = '0';"
+            "  const d = document.createElement('div');"
+            "  d.textContent = 'minor update';"
+            "  document.getElementById('am-call-body').appendChild(d);"
+            "}"
+        )
+        page.wait_for_timeout(800)
+        assert not page.evaluate(
+            "document.querySelector('.am-pane-call').classList.contains('ov-pulse')"
+        ), "benign change pulsed while S0 unarmed (motion-rationing breached)"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [no-pulse]: {errors[:3]}"
 
 
 def test_overlay_pulse_suppressed_when_toggle_off(mock_server, pw_browser):
@@ -888,12 +932,12 @@ def test_overlay_ovscale_zooms_widget_field_at_1440(mock_server, pw_browser):
             "body zoom did not pick up the overlay scale"
         )
 
-        # The call widget keeps its 20px design-px `left`, but the body zoom puts
-        # its on-screen x at 20*1.3 ~= 26 - the FIELD zoomed up, no right dock.
-        assert _css(page, "#view-active-match .am-pane-call", "left") == "20px"
+        # The call widget keeps its 760px design-px `left`, but the body zoom puts
+        # its on-screen x at 760*1.3 ~= 988 - the FIELD zoomed up with the window.
+        assert _css(page, "#view-active-match .am-pane-call", "left") == "760px"
         box = page.locator("#view-active-match .am-pane-call").bounding_box()
         assert box is not None, "call widget has no box"
-        assert 22 <= box["x"] <= 32, f"scaled widget x {box['x']} not ~26 (20*1.3)"
+        assert 978 <= box["x"] <= 998, f"scaled widget x {box['x']} not ~988 (760*1.3)"
         SCREENSHOTS.mkdir(exist_ok=True)
         page.screenshot(path=str(SCREENSHOTS / "overlay_sr_1440_scaled.png"))
     finally:
@@ -905,7 +949,7 @@ def test_overlay_ovscale_zooms_widget_field_at_1440(mock_server, pw_browser):
 def test_overlay_ovscale_absent_is_baseline_noop(mock_server, pw_browser):
     """Baseline guard: no ovscale param -> --rc-overlay-scale stays unset and the
     body zoom falls back to 1, so the widget field renders at its unscaled design
-    px (a widget's left-edge default x ~= 20; zero change at 1920/100%)."""
+    px (the call widget's eye-line default x ~= 760; zero change at 1920/100%)."""
     ctx, page, errors = _open_overlay_scaled(
         pw_browser, mock_server, "?ui_mock=1&mode=sr&overlay=1", 1920, 1080,
     )
@@ -918,8 +962,8 @@ def test_overlay_ovscale_absent_is_baseline_noop(mock_server, pw_browser):
             "body zoom must be the baseline no-op"
         )
         box = page.locator("#view-active-match .am-pane-call").bounding_box()
-        assert box is not None and box["x"] < 40, (
-            f"baseline widget x {box and box['x']} not ~20"
+        assert box is not None and 750 <= box["x"] <= 770, (
+            f"baseline widget x {box and box['x']} not ~760"
         )
     finally:
         page.close()

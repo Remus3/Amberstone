@@ -31,24 +31,31 @@ const LS_KEY = "rc-overlay-layout";
 // OVERLAY_DOCTRINE section 4. (x,y) is the widget top-left in 1920x1080 game px;
 // the body zoom (--rc-overlay-scale / ovscale) scales them with the window.
 const WIDGETS = [
-  // Default 1080p positions = a tidy LEFT-EDGE column, out of the play area
-  // (center / champion HUD / minimap), per operator feedback "so intrusive":
-  // non-intrusive beats near-the-eye for the DEFAULT - the operator drags each
-  // where they want and it saves. (x,y) is design-px in 1920x1080; the fullscreen
-  // window's body zoom scales them with the resolution.
-  { id: "w-lead", sel: "#rn-lead", x: 20, y: 92, tier: "ambient" },
-  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 20, y: 132, tier: "primary" },
-  { id: "w-choices", sel: "#rn-choices", x: 20, y: 300, tier: "urgent" },
-  { id: "w-callouts", sel: "#rn-callouts", x: 20, y: 470, tier: "ambient" },
-  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 20, y: 620, tier: "urgent" },
-  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 20, y: 620, tier: "ambient" },
+  // Default 1080p positions = the EYE-LINE ANCHORS (OVERLAY_DOCTRINE section 4).
+  // Operator chose near-the-eye over the old left-edge column (2026-06-22): each
+  // cue defaults to where the eye already rests rather than a tidy out-of-play
+  // gutter, so the most time-critical call is not in the corner furthest from the
+  // combat center-of-mass (rule 9). Placement map: the CALL sits upper-center
+  // above combat; the A/B choices sit lower-center above the ability bar; the
+  // objective/spike callouts sit at the minimap; the macro-lead pill sits under
+  // the top score bar; the spike cue sits bottom-left by the champion stats; the
+  // trinket glyph sits by the avatar. Drag still OVERRIDES + PERSISTS per widget
+  // (rule 9), and Alt+Shift+R resets the field to THESE defaults (section 3).
+  // (x,y) is design-px in 1920x1080; the fullscreen window's body zoom scales them
+  // with the resolution.
+  { id: "w-lead", sel: "#rn-lead", x: 786, y: 44, tier: "ambient" },
+  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 760, y: 140, tier: "primary" },
+  { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent" },
+  { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient" },
+  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent" },
+  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient" },
   { id: "w-ovds", sel: "#am-pane-ovds", x: 20, y: 780, tier: "ambient" },
   // New doctrine cues (OVERLAY_DOCTRINE section 4). Both are data-gated (their
   // renderer un-hides the mount only when actionable) + coach-core (shown in
   // every panel set). Mounted as direct am-grid children (NOT inside a pane) so
   // position:fixed is viewport-relative, not trapped by a transformed pane.
-  { id: "w-trinket", sel: "#am-ward-cue", x: 20, y: 520, tier: "urgent" },
-  { id: "w-spike", sel: "#am-spike-cue", x: 20, y: 580, tier: "urgent" },
+  { id: "w-trinket", sel: "#am-ward-cue", x: 920, y: 540, tier: "urgent" },
+  { id: "w-spike", sel: "#am-spike-cue", x: 360, y: 840, tier: "urgent" },
 ];
 
 let _layout = {};
