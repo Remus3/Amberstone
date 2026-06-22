@@ -1918,14 +1918,50 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 /* History view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #4,
  * 2026-05-23). 3-card grid (SESSIONS / SELECTED SESSION / SEASON STATS)
  * + 4-button scope tabs. Row min-height floors to var(--hit-min) for
- * fingertip target on dense list rows. */
+ * fingertip target on dense list rows.
+ *
+ * RC2 Hextech reskin (#view-history, priority #6): the cards take the
+ * .hx-card "tactical frame" (--surface body + gold corner brackets) and
+ * the dense list rows drop to the darker --surface so the result-first
+ * row reads as the content layer. Win/loss rows tint on the existing
+ * item-77 .result-win / .result-loss classes (data-result attr stamped
+ * in main.js:2000) via a left result bar + a redundant up/down glyph so
+ * W/L survives grayscale (never hue-alone). KDA + duration columns get
+ * tabular-nums; the no-data state takes the shared hextech sigil. The
+ * hx-* primitives are consumed conceptually (no class added to markup)
+ * so the existing History DOM + click->historical-PGR wiring stays
+ * untouched (zero-JS reskin). Mirrors the lobby-view-card idiom above. */
 .history-grid {
   display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: var(--panel-gap);
 }
 .history-card {
-  background: var(--surface-head); border: 1px solid var(--border);
+  /* hx-card tactical frame: card body surface + gold corner brackets. */
+  position: relative;
+  background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm); padding: var(--panel-padding-comp);
+  box-shadow: var(--shadow-card);
   max-height: 540px; overflow-y: auto;
+}
+/* Gold corner brackets (the Hextech bracket motif from .hx-card). Two
+ * 14px L-strokes at top-left + bottom-right; decorative + pointer-inert. */
+.history-card::before,
+.history-card::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.history-card::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius-sm);
+}
+.history-card::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius-sm);
 }
 .history-card-head {
   font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
@@ -1935,26 +1971,86 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; align-items: baseline; gap: var(--space-2);
 }
 .history-count, .diag-sub {
-  font-size: var(--fs-xs); color: var(--clock); margin-left: auto;
+  font-size: var(--fs-xs); color: var(--accent); margin-left: auto;
   letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
 }
 .history-session-list, .history-match-list {
   list-style: none; margin: 0; padding: 0;
   display: flex; flex-direction: column; gap: var(--space-1);
 }
 .history-session-row, .history-match-row {
-  background: var(--surface-alt); border-radius: var(--panel-radius-sm);
+  /* Dense content rows sit on the darker --surface; a left accent rail
+   * (transparent by default) becomes the result bar on win/loss rows. */
+  background: var(--surface); border-radius: var(--panel-radius-sm);
   padding: var(--space-2) var(--panel-gap-tight); font-size: var(--fs-sm); cursor: pointer;
   min-height: var(--hit-min);
   transition: background 0.08s, border-color 0.08s;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid transparent;
   display: flex; align-items: center; gap: var(--space-2);
 }
 .history-session-row:hover, .history-match-row:hover {
-  background: #1c1c2a; border-color: var(--clock);
+  background: var(--surface-2); border-color: var(--accent);
 }
 .history-session-row.active, .history-match-row.active {
   border-color: var(--info); background: var(--info-soft);
+}
+/* KDA + duration cells in a match row are the .dim spans; keep their
+ * digits aligned down the column. */
+.history-match-row .dim { font-variant-numeric: tabular-nums; }
+
+/* Result-first tint (item-77 WIN-CAPTURE: main.js stamps .result-win /
+ * .result-loss when win is known; null-win rows stay neutral). The left
+ * border becomes a green / red result bar and the row gets a faint
+ * surface tint. */
+.history-match-row.result-win {
+  border-left-color: var(--good); background: var(--good-soft);
+}
+.history-match-row.result-loss {
+  border-left-color: var(--bad); background: var(--bad-soft);
+}
+/* Redundant status glyph so W/L survives grayscale + color-blind vision
+ * (WCAG 1.4.1, never hue-alone). Unicode authored as CSS escapes (ASCII
+ * source, repo hard rule): \25B2 up-triangle (win), \25BC down-triangle
+ * (loss). Painted as a leading pseudo on the row so it sits before the
+ * grade pip without touching the JS-built innerHTML. */
+.history-match-row.result-win::before,
+.history-match-row.result-loss::before {
+  font-size: var(--fs-xs); font-weight: 800; line-height: 1;
+  margin-right: var(--space-1); flex: 0 0 auto;
+}
+.history-match-row.result-win::before  { content: "\25B2"; color: var(--good); }
+.history-match-row.result-loss::before { content: "\25BC"; color: var(--bad); }
+
+/* Last-20 formstrip (deferred lift P2 - rendered once the W/L backfill
+ * lands; styled now so the markup drops in clean). Each pip carries a
+ * letter so the strip is not hue-alone. */
+.history-formstrip {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+.history-formstrip .pip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: var(--radius-sm);
+  font-size: var(--fs-xs); font-weight: 800; line-height: 1;
+}
+.history-formstrip .pip.w { background: var(--good-soft); color: var(--good); }
+.history-formstrip .pip.l { background: var(--bad-soft); color: var(--bad); }
+
+/* No-data state inside the History lists takes the shared hextech sigil
+ * (scoped to History; the global .home-empty is untouched). */
+.history-session-list .home-empty,
+.history-match-list .home-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  color: var(--dim); font-size: var(--fs-sm); text-align: center;
+}
+.history-session-list .home-empty::before,
+.history-match-list .home-empty::before {
+  content: "\2756"; font-size: var(--fs-xl); line-height: 1;
+  color: var(--accent); opacity: 0.35;
 }
 
 /* Loadouts view layout */
