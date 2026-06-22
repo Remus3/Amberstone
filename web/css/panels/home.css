@@ -164,6 +164,41 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-rank[data-tier="master"],
 .home-hero-rank[data-tier="grandmaster"],
 .home-hero-rank[data-tier="challenger"] { border-color: #c879ff; }
+
+/* LIFT 3: last-20 W/L pip strip + recent-form WR, a thin inline row
+ * directly below the rank badge. WCAG 1.4.1 (color must not stand
+ * alone): a WIN pip is a FILLED good-token dot, a LOSS pip is a HOLLOW
+ * bad-token ring (border only, no fill) - the shape differs, not just
+ * the hue - and each pip carries a title="W"/"L" attribute. The
+ * recent-form readout uses tabular-nums so the percent stays aligned. */
+.home-rank-wl {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.home-wl-pips {
+  display: inline-flex; align-items: center; flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.home-wl-pip {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 999px;
+  box-sizing: border-box;
+}
+.home-wl-pip.is-win {
+  background: var(--good);
+  border: 1px solid var(--good);
+}
+.home-wl-pip.is-loss {
+  background: transparent;
+  border: 1px solid var(--bad);
+}
+.home-wl-form {
+  font-size: var(--fs-xs); font-weight: 600; color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
 .home-hero-headline {
   font-size: var(--fs-xl); font-weight: 800; color: var(--text);
   letter-spacing: 0.01em;
