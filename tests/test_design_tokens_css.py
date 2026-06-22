@@ -28,6 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TOKENS_CSS    = ROOT / "web" / "css" / "tokens.css"
 DASHBOARD_CSS = ROOT / "web" / "css" / "dashboard.css"
+HEXTECH_CSS   = ROOT / "web" / "css" / "hextech.css"
+BASE_CSS      = ROOT / "web" / "css" / "panels" / "base.css"
 DRAFT_ELO_CSS = ROOT / "web" / "css" / "panels" / "draft_elo.css"
 BAN_SUG_CSS   = ROOT / "web" / "css" / "panels" / "ban_suggest_toggle.css"
 RIGHT_NOW_CSS = ROOT / "web" / "css" / "panels" / "right_now.css"
@@ -65,12 +67,15 @@ class TokensFilePresenceTests(unittest.TestCase):
             self.assertIn(token, css, f"tokens.css missing {token} declaration")
 
     def test_semantic_color_hex_values(self):
-        """The 3 audit-flagged hex literals must live HERE (and only
-        here) so panels can repoint via var()."""
+        """The semantic hex literals must live HERE (and only here) so
+        panels can repoint via var(). RC2 re-point: the signal hues now
+        match the greenlit Hextech palette (docs/design/RC2_DESIGN.html)
+        - good #37D08A, warn #E8A33D, bad #E84057 (was the neo-fintech
+        #6ec977 / #f1b04a / #ff5050)."""
         css = _read(TOKENS_CSS)
-        self.assertIn("#6ec977", css, "tokens.css must declare --signal-good hex #6ec977")
-        self.assertIn("#f1b04a", css, "tokens.css must declare --signal-warn hex #f1b04a")
-        self.assertIn("#ff5050", css, "tokens.css must declare --signal-bad hex #ff5050")
+        self.assertIn("#37D08A", css, "tokens.css must declare --signal-good hex #37D08A")
+        self.assertIn("#E8A33D", css, "tokens.css must declare --signal-warn hex #E8A33D")
+        self.assertIn("#E84057", css, "tokens.css must declare --signal-bad hex #E84057")
 
     def test_declares_4tier_font_scale(self):
         css = _read(TOKENS_CSS)
@@ -138,6 +143,52 @@ class DashboardImportsTokens(unittest.TestCase):
         self.assertGreater(panel_idx, -1, "panel imports not found")
         self.assertLess(tokens_idx, panel_idx,
                         "tokens.css must be imported before ./panels/* imports")
+
+
+class BaseCssUndefinedVarsTests(unittest.TestCase):
+    """RC2 keystone: the dashboard references var(--clock) + var(--label)
+    at ~62 sites (item/header/home/panel_visibility panels) but the old
+    neo-fintech palette never DEFINED them. base.css :root must now
+    define both."""
+
+    def test_clock_and_label_defined_in_base_root(self):
+        css = _read(BASE_CSS)
+        root_block = css.split(":root {", 1)[1].split("}", 1)[0]
+        self.assertIn("--clock:", root_block,
+                      "base.css :root must define --clock (referenced by panels)")
+        self.assertIn("--label:", root_block,
+                      "base.css :root must define --label (referenced by panels)")
+
+
+class HextechCssTests(unittest.TestCase):
+    """RC2 keystone: web/css/hextech.css exists, declares the reusable
+    component primitives, and is imported by dashboard.css."""
+
+    def test_file_exists(self):
+        self.assertTrue(HEXTECH_CSS.exists(),
+                        f"web/css/hextech.css must exist at {HEXTECH_CSS}")
+
+    def test_declares_component_primitives(self):
+        css = _read(HEXTECH_CSS)
+        for sel in (".hx-card", ".hx-chip", ".hx-bar", ".hx-empty"):
+            self.assertIn(sel, css,
+                          f"hextech.css must declare the {sel} primitive")
+
+    def test_imported_by_dashboard(self):
+        css = _read(DASHBOARD_CSS)
+        self.assertIn("@import './hextech.css';", css,
+                      "dashboard.css must import ./hextech.css")
+
+    def test_imported_after_tokens(self):
+        """hextech.css consumes tokens; its import must come after
+        tokens.css so the vars resolve first."""
+        css = _read(DASHBOARD_CSS)
+        tokens_idx  = css.find("@import './tokens.css';")
+        hextech_idx = css.find("@import './hextech.css';")
+        self.assertGreater(tokens_idx, -1, "tokens.css import not found")
+        self.assertGreater(hextech_idx, -1, "hextech.css import not found")
+        self.assertLess(tokens_idx, hextech_idx,
+                        "hextech.css must be imported after tokens.css")
 
 
 class DraftEloConsumesTokensTests(unittest.TestCase):
