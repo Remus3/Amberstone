@@ -1,5 +1,33 @@
 # RC session history archive
 
+## Relocated 2026-06-21 (continue 9 /done - keep last 3 sessions: continue 9 + 8 + 7)
+
+# 2026-06-21 (headless continue 6) - overlay-polish queue item (1): already shipped, only a stale comment
+
+Gemini director picked overlay-polish ROADMAP queue item (1) = "FIGHT MODEL pane `#am-pane-ovds` clips
+in DEFAULT, gate to build-only." GROUND-TRUTH PROBE FOUND IT ALREADY SHIPPED: the doctrine widget-field
+model (commit `7bd7d6a3`, the cfdc9f22 batch) gates `w-ovds` to the build panelset ONLY - overlay.css
+section 4d hides it in default/coach/threat (L418/421/437) + shows it only in build (L451); the pane is
+a `fit-content` `.ovx-widget` (no height cap, inner `overflow:visible`) so it auto-sizes and no longer
+clips. The 25 Playwright overlay snapshot tests already render-assert `#am-pane-ovds`=none in default +
+shown in build (all 25 PASS this run; the lone teardown ERROR was the session prod-artifact guard
+tripping on the LIVE practice game writing `data/*.jsonl`, NOT an overlay-test failure).
+
+SHIPPED (Tier-0): corrected the one genuinely-stale artifact - the `overlay_ds_controls.css` header
+comment said "base subset + the build panelset" / "section 4b" (both wrong); now reads build-ONLY /
+"section 4d" + documents the deliberate behavior change. ROADMAP queue item (1) marked RESOLVED with the
+evidence + a do-NOT-re-chase-the-662/1305-clip note.
+
+No live rc-shell relaunch: the change is a code comment (zero render delta); the prompt's relaunch
+mandate is for NEW overlay JS/CSS that renders differently, and the gating is CSS-structural (proven by
+the real-browser snapshot suite + live-CDP-verified last cycle for the ZOI canvas itself).
+
+NEXT: the overlay-polish red queue (items 1-5) is now fully DONE/RESOLVED - only minor w-* default-
+position tuning remains, so the "route EVERY cycle here" run is winding down. Re-interview Gemini for the
+next priority: candidates = ZOI slice 4 (champion-only isolation via template matching), the ~88 unwired
+ADAPTATION st-* rows (item 281), or the aggregator-G-style PGR reframe. WAKEUP is at 6 entries - due for a
+weekly-hygiene trim to the last 2-3.
+
 ## Relocated 2026-06-21 (continue 8 /done - keep last 3 sessions: continue 8 + 7 + 6)
 
 # 2026-06-21 (headless continue 5) - ZOI SLICE 3: influence bubbles + demarcation + coach feed
