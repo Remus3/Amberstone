@@ -23,6 +23,22 @@ const PULSE_CLASS = "ov-pulse";
 const PULSE_MS = 1200;     // matches the 1.2s ov-pulse-edge keyframe
 const THROTTLE_MS = 1500;  // min gap between pulses per container
 
+// RC2 P3.3 LIVE flip (operator-approved 2026-06-22, spec section 5 /
+// acceptance A5 motion rationing). right_now.js stamps the S0 pulse-rationing
+// decision on #right-now (data-s0-pulse="1" only for the EMERGENCY tier - incl.
+// the lethal cue carrying the lethal_incoming passthrough - plus a one-shot
+// URGENT cross). The overlay change-pulse now CONSUMES that decision instead of
+// firing on ANY mount content change, so a benign content re-render no longer
+// glows. Conservative by construction: this can only ever SUPPRESS a pulse that
+// fires today (a strict gate added on top of the existing mutation+throttle),
+// never add a new one. Fail-soft: a missing #right-now / missing stamp reads as
+// "do not pulse" (the safe direction), so a render-order or markup gap silences
+// rather than over-fires.
+function _s0PulseArmed() {
+  const rn = document.getElementById("right-now");
+  return !!rn && rn.dataset.s0Pulse === "1";
+}
+
 // Observed mount -> the container the glow lands on. container=null
 // means the mount element glows itself (the rn-* strip mounts carry
 // their own card chrome in overlay mode).
@@ -40,6 +56,10 @@ function _wire(mountEl, containerEl) {
     // OVL1: the operator can mute the change-pulse. Checked at fire time so the
     // toggle takes effect live without re-wiring the observers.
     if (!readOverlaySettings().pulseNotify) return;
+    // RC2 P3.3 LIVE: ration motion to the S0 decision. A benign mount
+    // re-render (the common case) leaves data-s0-pulse="0" and is suppressed;
+    // only an EMERGENCY tier / one-shot URGENT cross arms the glow.
+    if (!_s0PulseArmed()) return;
     const now = Date.now();
     if (now - slot.last < THROTTLE_MS) return;
     slot.last = now;
