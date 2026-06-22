@@ -4,6 +4,53 @@
 
 ---
 
+# 2026-06-22 (headless continue 22 / R20) - Aggregator N lift: ARAM balance grid panel
+
+Item 588, commit `e0f0ffac` (feature, pushed) + docs-sync. Tier-1 frontend (read-side route + panel +
+pure accessor); NO engine / DS schema / ENGINE_VERSION / Share change (held 1.151.0); RC restarted
+(pid 9480 -> 25356) to load the new route. gemini+ahk loop executor cycle 9. Directive = ORCHESTRATION_PLAN
+R20 DIRECTOR REFILL - Section-7b competitor deep-dive lift of Aggregator N + ship any HIGH/LOW-risk presentation
+finding in-run.
+
+WHAT (lift). Aggregator N (aggregator N) heavyweight one-agent teardown, 6-point checklist, output
+`docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md` (F1-F7). VERIFIED PREMISE (ground truth, not the agent's
+word): `data/daemon_slayer/16.12.1/champions.json` `lolmath.aram_modifiers` carries all 7 ARAM fields
+(Dealt/Taken/Healing/Shielding/Tenacity/AbilityHaste/AttackSpeed) for all 172 champs, but
+`core/aram_balance_context.py` consumed only dealt+taken as a coach-PROMPT line and ZERO web panel
+rendered any of it (grep-confirmed). So F1 = HIGH-value / LOW-risk / presentation-only over local data.
+
+WHAT (ship). F1 SHIPPED IN-RUN: new `balance_grid_for`/`balance_grid_map` accessors (existing prompt
+symbols byte-identical) + `GET /api/aram-balance` (`dashboard/routes_aram_balance.py`, 134 non-neutral
+champs, live-proven 200/16.12.1/Aatrox +5%) + mode-gated `web/js/panels/aram_balance.js` grid (self from
+`coach.champion`; ally/enemy from `liveclient.allPlayers`; signed green/red deltas, AH additive) + css/
+index/main.js wiring. asset-hash auto-reload for JS/CSS; the new route needed the RC restart.
+
+DEVIATION (intent over literal). Build spec assumed top-level `st.champion`/`st.my_team`; ground truth is
+`coach.champion` + `liveclient.allPlayers` (the build agent self-corrected from the active_match.js
+precedent). Single worktree build agent NOT parallel slices: the feature's wiring files (index.html /
+main.js / dashboard.css / _dispatch.py) are shared, so parallel disjoint worktrees would only collide -
+verifier-gated single agent is the correct shape for a cohesive vertical slice.
+
+VERIFY. RED-first `tests/test_aram_balance_grid.py` (13). 1 worktree build agent -> read-only verifier
+CONFIRM (re-ran 13 green, ruff clean, route 200, byte-identical existing defs, ASCII, node --check, no
+frozen files) -> ff-only merge. Full RC suite `9391 passed / 2 skip / 103 subtests` (= R19's 9378 + 13
+new), the SAME 12 pre-existing fails (3x CoachWire ARAM-template, 7 ds_pick_consumption ARAM subfails,
+overlay.css sub-floor, spell_autopush on dirty `data/spell_prefs.json`) - 0 regressions. git: only the 9
+intended files changed, none under `agents/daemon_slayer/` so DS suite not re-run + no DS Share sync owed.
+
+CARRY-FORWARD (VISUAL OWED). The populated ARAM-mode panel capture: the panel is mode-gated and live state
+is idle (mode=client); this headless cycle cannot drive `?ui_mock=1&mode=aram` - `preview_start` refuses to
+attach to the supervisor-owned `:8888` (freeing the port kills the live runtime) and computer-use/Chrome
+navigation needs an interactive `request_access` the away operator can't grant (would block the run). Per
+Section-3b option 3 the code-side 5-phase audit + verifier + live backend proof stand in-slice; the
+populated capture is OWED - drive it on the next cycle that has a live ARAM game or a connected
+claude-in-chrome. Also still dirty + uncommitted: `data/spell_prefs.json` (runtime drift, not authored).
+
+TRIAGE. F2 per-slot item win-rate ladder over rewind_history.db -> BACKLOG (MED-HIGH, thin solo sample);
+F3/F5 already-have; F4 forbidden external winrate; F7 new TFT domain - all defer.
+
+---
+
 # 2026-06-22 (headless continue 21 / R19) - DS spell_damage_reduction_pct forward-marker
 
 Item 587, commit `ee673c1d` (feature, pushed) + docs-sync `f5b94541`. DS schema surface (forward-marker
