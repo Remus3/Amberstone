@@ -109,6 +109,37 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-22 (headless continue 20 / R18) - panel typography v2.1 sub-floor audit
+
+Item 586, commit `0999d3eb` (pushed) + this docs-sync. Tier-1 frontend (CSS/JS = asset-hash
+auto-reload ADR-008, no RC restart). No engine / DS schema / ENGINE_VERSION / Share / flip change.
+
+CONTEXT: gemini+ahk loop executor cycle 7. Directive = ORCHESTRATION_PLAN R18 ui-audit (5-phase
+fixture audit + sub-floor font tokenization of build_order / augment_reco / archetype_nudge_chip /
+map_state panels). The directive's "4 disjoint CSS files" premise is FALSE (archetype chip has no
+own CSS - lives in the shared grab-bag map_state.css), so parallel worktrees would collide ->
+executed INLINE as orchestrator (directive "trivial item may use a single agent"); swept only the
+cleanly panel-owned files per the spec's "each page sweeps its own panels only".
+
+WHAT: build_order.css 8 `.bo-*` (12-14px) -> `var(--fs-xs)`, `.bo-name`/`.bo-delta` kept 15px as
+documented operator-exceptions (operator-tuned "15px readable floor"). augment_reco.css 8 `.ar-*`
+(12-15px) -> `var(--fs-xs)`. archetype_nudge_chip audited CLEAN (already 17/19px; X-button hit-target
+a documented header-density exception). map_state.js 2 canvas labels (11/13px) got inline
+operator-exception rationale (2D-canvas spatial annotations, no CSS token possible).
+
+VERIFY: RED-first `tests/test_r18_panels_typography_v21_floor.py` (9 cases, mirrors R4 guard); 91
+panel DOM + token/bundle-parity guards green; ruff clean. Full RC suite 9378 passed / 2 skip / 103
+subtests - the 12 fails ALL PRE-EXISTING + unrelated (3x CoachWire + 7 ds_pick_consumption ARAM-
+template, overlay.css [scans overlay.css only], spell_autopush on dirty data/spell_prefs.json drift);
+git confirmed only the 5 R18 paths changed.
+
+OWED (carry-forward): live populated-state visual capture. Claude_Preview refuses to attach to the
+RC-owned self-signed :8888 (port held by live pythonw 9480; freeing it kills the runtime) + the
+panels are in-game/champ-select-only (no live game now, mode=client). Code-side audit + test harness
+are the in-slice proof. Same blocker as R4/R8/R13/R16.
+
+---
+
 # 2026-06-22 (headless continue 19 / R17) - DS anti-tank level-ramp %max-HP
 
 Item 585, commit `5f308036` (feature, pushed) + this docs-sync. Tier-2 (DS schema / ENGINE_VERSION /

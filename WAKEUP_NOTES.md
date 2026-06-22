@@ -4,6 +4,39 @@
 
 ---
 
+# 2026-06-22 (UI redesign session) - full Hextech redesign of all 12 pages + overlay
+
+Operator: "redesign of all pages ... in + out of game ... use gemini + the ui/ux research +
+screen captures + mocks -> loop exhaustively." Gemini-directed (gemini-3-pro-preview via
+ops/loop/loop_controller.py). Living plan + per-page status + deferred lifts:
+docs/RC2_REDESIGN_PLAN.md. Ledger item 589. The 2026-06-21 "dashboard RETIRED" decision was
+REVERSED - dashboard is back in scope (overlay.css + docs/OVERLAY_DOCTRINE.md comments updated;
+do NOT re-apply the retirement).
+
+SHIPPED (17 commits, all pushed, CI green, final gate 228 snapshot+token tests):
+- Foundation ce3149fc: base.css/tokens.css palette -> Hextech; NEW web/css/hextech.css
+  (hx-card gold brackets / hx-chip / hx-bar / hx-empty sigil); fixed undefined --clock/--label.
+- Overlay: palette overlay-scope, eye-line default layout (operator chose #2 over left-column),
+  per-widget hide, S0 pulse flipped live, font tokens. Global page titles -> gold (f3ce6e40).
+- 12 pages reskinned onto the foundation + captured (tests/snapshot_panels/screenshots/<page>.png;
+  non-tested pages gained snapshot tests): champ-select d33f40a0, PGR a5db9691, home 2b250b60
+  (+ main.js #home repaint fix), lobby 8069d0b9 (+ 3 hit-target fixes), history 711fa3d7,
+  session 4e29ac49, user-builds 591ff515, build-insights 247e8dff, replay 8ac8e8ff (+ E12-1
+  100vh->flex), settings 5719f823; historical-pgr inherited. Each CSS-only/near-zero-JS,
+  scope-guarded, all data/LCU wiring preserved.
+
+NO sub-panel sweep needed (measured by grep, not assumed): content panels are token-consuming so
+the foundation cutover converted them; 0 undefined-var fallbacks remain; the only 7 raw hex left
+are intentional brand tints (bridge salmon, enemy-red, augment/rank tier colors).
+
+NEXT (new session - deferred FEATURE lifts, need backend data/render NOT CSS; per page in
+RC2_REDESIGN_PLAN.md): champ-select P2 counter-pick hero + P8 ally AD/AP meter; PGR
+score-decomposition bars + carry-metrics + @15; home rank/LP + tracked_win W/L color; history
+season WR + filters; lobby last-session recap + ready-check auto-accept. OWED: live in-game
+overlay capture (eye-line layout + S0 pulse) - no live game this run.
+
+---
+
 # 2026-06-22 (headless continue 22 / R20) - Aggregator N lift: ARAM balance grid panel
 
 Item 588, commit `e0f0ffac` (feature, pushed) + docs-sync. Tier-1 frontend (read-side route + panel +
@@ -88,34 +121,3 @@ green (373). ROADMAP 80KB trim: R15 + R16 bullets relocated to docs/ROADMAP_HIST
 
 FUTURE: a survivability/EHP consumer reading the % (fold prevented damage into the EHP numerator like
 the flat-DR item-261/R9 path) - not wired blind. Live default-ON wiring EXCLUDED.
-
----
-
-# 2026-06-22 (headless continue 20 / R18) - panel typography v2.1 sub-floor audit
-
-Item 586, commit `0999d3eb` (pushed) + this docs-sync. Tier-1 frontend (CSS/JS = asset-hash
-auto-reload ADR-008, no RC restart). No engine / DS schema / ENGINE_VERSION / Share / flip change.
-
-CONTEXT: gemini+ahk loop executor cycle 7. Directive = ORCHESTRATION_PLAN R18 ui-audit (5-phase
-fixture audit + sub-floor font tokenization of build_order / augment_reco / archetype_nudge_chip /
-map_state panels). The directive's "4 disjoint CSS files" premise is FALSE (archetype chip has no
-own CSS - lives in the shared grab-bag map_state.css), so parallel worktrees would collide ->
-executed INLINE as orchestrator (directive "trivial item may use a single agent"); swept only the
-cleanly panel-owned files per the spec's "each page sweeps its own panels only".
-
-WHAT: build_order.css 8 `.bo-*` (12-14px) -> `var(--fs-xs)`, `.bo-name`/`.bo-delta` kept 15px as
-documented operator-exceptions (operator-tuned "15px readable floor"). augment_reco.css 8 `.ar-*`
-(12-15px) -> `var(--fs-xs)`. archetype_nudge_chip audited CLEAN (already 17/19px; X-button hit-target
-a documented header-density exception). map_state.js 2 canvas labels (11/13px) got inline
-operator-exception rationale (2D-canvas spatial annotations, no CSS token possible).
-
-VERIFY: RED-first `tests/test_r18_panels_typography_v21_floor.py` (9 cases, mirrors R4 guard); 91
-panel DOM + token/bundle-parity guards green; ruff clean. Full RC suite 9378 passed / 2 skip / 103
-subtests - the 12 fails ALL PRE-EXISTING + unrelated (3x CoachWire + 7 ds_pick_consumption ARAM-
-template, overlay.css [scans overlay.css only], spell_autopush on dirty data/spell_prefs.json drift);
-git confirmed only the 5 R18 paths changed.
-
-OWED (carry-forward): live populated-state visual capture. Claude_Preview refuses to attach to the
-RC-owned self-signed :8888 (port held by live pythonw 9480; freeing it kills the runtime) + the
-panels are in-game/champ-select-only (no live game now, mode=client). Code-side audit + test harness
-are the in-slice proof. Same blocker as R4/R8/R13/R16.
