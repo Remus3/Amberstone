@@ -500,6 +500,22 @@ class ConditionalCcEntry:
         coexists with the cc_conditional COND_RANGE_GATED max-distance
         2.25s entry). Backward-compat: all wave 0-17 entries omit the
         field and default to ``False``.
+      * ``durations_floor_s``: ENGINE 1.150.0 (R14 schema lift,
+        2026-06-22) optional guaranteed-minimum CC floor (seconds) for
+        distance / channel-scaled CC. ``None`` (the default) for every
+        entry whose CC has no scaled floor band. A float declares the
+        GUARANTEED minimum duration the CC lands at the close-range /
+        min-channel end, while ``durations_s`` continues to hold the
+        MAX-payoff (far-distance / full-channel) value. Only the
+        default-OFF ``apply_cc_floor`` seam in ``cc_pressure`` reads it;
+        when that seam is ON the credited conditional duration becomes
+        ``floor + probability * (max - floor)`` (a guaranteed floor plus
+        a probability-weighted top-up) instead of ``max * probability``.
+        Default OFF is byte-identical to the pre-1.150.0 consumer. Seeded
+        vs Meraki 16.12.1 minimums: Maokai R 0.75 : 2.25, Hecarim R
+        0.75 : 1.5, Ashe R 1.0 : 3.5 (distance traveled); KSante W
+        0.5 : 1.75, Sion R 0.25 : 1.75 (channel time). Must be in
+        ``[0.0, max(durations_s)]`` or ``__post_init__`` raises.
     """
 
     champion: str
@@ -511,6 +527,7 @@ class ConditionalCcEntry:
     notes: str = ""
     form_index: Optional[int] = None
     coexists_with_unconditional: bool = False
+    durations_floor_s: Optional[float] = None
 
     def __post_init__(self) -> None:
         if self.spell not in ("Q", "W", "E", "R"):
@@ -536,6 +553,13 @@ class ConditionalCcEntry:
         if self.condition not in _DEFAULT_CONDITION_PROBABILITY:
             raise ValueError(
                 f"condition {self.condition!r} not in _DEFAULT_CONDITION_PROBABILITY"
+            )
+        if self.durations_floor_s is not None and not (
+            0.0 <= self.durations_floor_s <= max(self.durations_s)
+        ):
+            raise ValueError(
+                "durations_floor_s must be in [0.0, max(durations_s)], got "
+                f"{self.durations_floor_s} (max {max(self.durations_s)})"
             )
 
 
@@ -601,6 +625,7 @@ def _build_per_spell_cc_conditional() -> Dict[str, Dict[str, ConditionalCcEntry]
             notes=rec["notes"],
             form_index=rec["form_index"],
             coexists_with_unconditional=rec["coexists_with_unconditional"],
+            durations_floor_s=rec.get("durations_floor_s"),
         )
     return registry
 
@@ -698,6 +723,7 @@ def _build_per_spell_cc_conditional_forms() -> (
             notes=rec["notes"],
             form_index=fi,
             coexists_with_unconditional=rec["coexists_with_unconditional"],
+            durations_floor_s=rec.get("durations_floor_s"),
         )
     return registry
 

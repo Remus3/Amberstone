@@ -682,3 +682,18 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   here. Imperial Mandate (4005) is EXCLUDED as a non-fit (current-HP detonation, not an all-source %amp). A
   WRONG precompute is worse than no credit, so do NOT default-ON until validated. DS `:8893` restart on flip.
   Does NOT block any further stage.
+- 2026-06-22 R14 cc_conditional durations_floor_s CC-floor seam (`apply_cc_floor`, ENGINE 1.150.0, default-OFF).
+  The NEW guaranteed-minimum floor band on distance / channel-scaled conditional CC
+  (`agents/daemon_slayer/cc_conditional.py` ConditionalCcEntry.durations_floor_s: Maokai R 0.75 / Hecarim R 0.75 /
+  Ashe R 1.0 / KSante W 0.5 / Sion R 0.25) ships DEFAULT-OFF on `agents/daemon_slayer/cc_pressure.py`
+  compute_cc_pressure - the CC-pressure math is byte-identical until `apply_cc_floor=True`, when a floor-tagged
+  entry is credited floor + probability * (max - floor) instead of max * probability (in BOTH the standalone and
+  the coexistence MAX-rule paths). OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind):
+  (a) wire the seam ON through the live consumer chain - compute_cc_pressure is consulted by compute_ehp /
+  compute_hybrid (via include_conditional) and the cc-blended-EHP threat surface, none of which thread
+  apply_cc_floor yet; thread it (default-OFF preserved) and confirm the floor-tagged champions' CC-pressure /
+  blended-EHP-threat read sane vs eyeball; (b) validate the floor model (floor + prob*(max-floor)) reads better
+  than the prior max*prob for a close-range Maokai/Ashe/Hecarim R or a short-channel KSante/Sion vs a real game -
+  e.g. Ashe R OFF credits 3.5*0.4=1.4s (< unconditional 1.5s, the flat baseline wins) but ON credits
+  1.0+0.4*(3.5-1.0)=2.0s (the floor-aware credit wins the coexistence MAX). A WRONG precompute is worse than no
+  credit, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.

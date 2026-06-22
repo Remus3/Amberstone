@@ -56,6 +56,7 @@ _REPO_ROOT = _DS_PACKAGE.parent.parent   # repo root
 # consumer wire and the operator gate has been crossed.
 _ALLOWED_TEST_FILES = {
     "test_cc_conditional.py",
+    "test_cc_conditional_durations_floor.py",
     "test_cc_conditional_forward_marker.py",
     "test_cc_conditional_wave1.py",
     "test_cc_conditional_wave2.py",
