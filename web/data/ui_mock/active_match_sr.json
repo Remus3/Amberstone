@@ -48,6 +48,34 @@
     ]
   },
   "minimap_rect": {"x": 1600, "y": 760, "w": 312, "h": 312, "flip": false, "source": "settings", "native_w": 2560, "native_h": 1440},
+  "minimap_dots": [
+    {"team": "blue", "x_frac": 0.22, "y_frac": 0.8, "px": 62, "confidence": 0.92},
+    {"team": "blue", "x_frac": 0.34, "y_frac": 0.66, "px": 48, "confidence": 0.8},
+    {"team": "blue", "x_frac": 0.5, "y_frac": 0.52, "px": 40, "confidence": 0.7},
+    {"team": "blue", "x_frac": 0.18, "y_frac": 0.74, "px": 30, "confidence": 0.55},
+    {"team": "red", "x_frac": 0.8, "y_frac": 0.22, "px": 58, "confidence": 0.9},
+    {"team": "red", "x_frac": 0.66, "y_frac": 0.34, "px": 44, "confidence": 0.78},
+    {"team": "red", "x_frac": 0.55, "y_frac": 0.48, "px": 36, "confidence": 0.62},
+    {"team": "red", "x_frac": 0.82, "y_frac": 0.3, "px": 28, "confidence": 0.5}
+  ],
+  "zoi": {
+    "bubbles": [
+      {"team": "blue", "cx": 0.22, "cy": 0.8, "r_frac": 0.09407, "weight": 57.04},
+      {"team": "blue", "cx": 0.34, "cy": 0.66, "r_frac": 0.07904, "weight": 38.4},
+      {"team": "blue", "cx": 0.5, "cy": 0.52, "r_frac": 0.07065, "weight": 28.0},
+      {"team": "blue", "cx": 0.18, "cy": 0.74, "r_frac": 0.06138, "weight": 16.5},
+      {"team": "red", "cx": 0.8, "cy": 0.22, "r_frac": 0.0865, "weight": 52.2},
+      {"team": "red", "cx": 0.66, "cy": 0.34, "r_frac": 0.07334, "weight": 34.32},
+      {"team": "red", "cx": 0.55, "cy": 0.48, "r_frac": 0.06451, "weight": 22.32},
+      {"team": "red", "cx": 0.82, "cy": 0.3, "r_frac": 0.05838, "weight": 14.0}
+    ],
+    "demarcation": {"x1": 0.0625, "y1": 0.0, "x2": 1.0, "y2": 0.9976, "ally_side": "left"},
+    "map_control": {
+      "ally_control_pct": 53,
+      "action_quadrant": "bot_river",
+      "line": "Map control 53%. Action bot river / dragon. ult rank 2 - force a fight"
+    }
+  },
   "summoner_cooldowns": [
     {"slot": "D", "name": "Flash", "remaining_s": 142, "rdy_at": "21:04", "tag": "ally-jinx"},
     {"slot": "F", "name": "Heal", "remaining_s": 38, "rdy_at": "19:20", "tag": "ally-jinx"},
