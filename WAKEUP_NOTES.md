@@ -4,6 +4,37 @@
 
 ---
 
+# 2026-06-22 (headless continue 20 / R18) - panel typography v2.1 sub-floor audit
+
+Item 586, commit `0999d3eb` (pushed) + this docs-sync. Tier-1 frontend (CSS/JS = asset-hash
+auto-reload ADR-008, no RC restart). No engine / DS schema / ENGINE_VERSION / Share / flip change.
+
+CONTEXT: gemini+ahk loop executor cycle 7. Directive = ORCHESTRATION_PLAN R18 ui-audit (5-phase
+fixture audit + sub-floor font tokenization of build_order / augment_reco / archetype_nudge_chip /
+map_state panels). The directive's "4 disjoint CSS files" premise is FALSE (archetype chip has no
+own CSS - lives in the shared grab-bag map_state.css), so parallel worktrees would collide ->
+executed INLINE as orchestrator (directive "trivial item may use a single agent"); swept only the
+cleanly panel-owned files per the spec's "each page sweeps its own panels only".
+
+WHAT: build_order.css 8 `.bo-*` (12-14px) -> `var(--fs-xs)`, `.bo-name`/`.bo-delta` kept 15px as
+documented operator-exceptions (operator-tuned "15px readable floor"). augment_reco.css 8 `.ar-*`
+(12-15px) -> `var(--fs-xs)`. archetype_nudge_chip audited CLEAN (already 17/19px; X-button hit-target
+a documented header-density exception). map_state.js 2 canvas labels (11/13px) got inline
+operator-exception rationale (2D-canvas spatial annotations, no CSS token possible).
+
+VERIFY: RED-first `tests/test_r18_panels_typography_v21_floor.py` (9 cases, mirrors R4 guard); 91
+panel DOM + token/bundle-parity guards green; ruff clean. Full RC suite 9378 passed / 2 skip / 103
+subtests - the 12 fails ALL PRE-EXISTING + unrelated (3x CoachWire + 7 ds_pick_consumption ARAM-
+template, overlay.css [scans overlay.css only], spell_autopush on dirty data/spell_prefs.json drift);
+git confirmed only the 5 R18 paths changed.
+
+OWED (carry-forward): live populated-state visual capture. Claude_Preview refuses to attach to the
+RC-owned self-signed :8888 (port held by live pythonw 9480; freeing it kills the runtime) + the
+panels are in-game/champ-select-only (no live game now, mode=client). Code-side audit + test harness
+are the in-slice proof. Same blocker as R4/R8/R13/R16.
+
+---
+
 # 2026-06-22 (headless continue 19 / R17) - DS anti-tank level-ramp %max-HP
 
 Item 585, commit `5f308036` (feature, pushed) + this docs-sync. Tier-2 (DS schema / ENGINE_VERSION /
@@ -71,36 +102,3 @@ attach blocker - same as R4/R8/R13 - + active_match spike panels live-game-gated
 
 NEXT: overlay-polish lane still DRAINED; expect the director to pick another off-lane ui-audit /
 ds-sweep / lift, or NO_WORK.
-
----
-
-# 2026-06-22 (headless continue 17 / R15) - OP-Score arc-shape readout (Aggregator A lift)
-
-Item 583, feature commit `b49ef1a7` (pushed) + docs-sync. Tier-1 frontend + core analytics; RC
-restarted (pid 3656 -> 9480, last_reload_ok) for the core/op_score_curve.py route change. NO DS /
-ENGINE / Share / schema / flip change.
-
-CONTEXT: gemini+ahk loop executor cycle. Directive = ORCHESTRATION_PLAN R15 lift (Section-7b Aggregator A
-deep-dive; ship a HIGH-lift LOW-risk presentation finding in-run).
-
-RESEARCH (3 disjoint parallel agents, 6-point checklist -> docs/COMPETITOR_LIFT_2026-06-22.md):
-Aggregator A builds / OP-Score+profile / live+overlay. RC already matches-or-exceeds most surfaces
-(contextual build planner + antitank > Aggregator A fixed frequency order; rune/spell auto-push, Electron
-overlay, role-grade + MVP/SVP, benchmarks, objective callouts all shipped). The one NOW-eligible gap:
-Aggregator A's per-line curve "shape keyword".
-
-SHIPPED (TDD red-first): NEW core/op_score_shape.py - pure deterministic classifier labeling each
-per-minute wins/losses curve (the OP Score tab already plots them over the local rewind corpus) as
-Snowball / Ramping / Front-loaded / Commanding / Behind / Steady / Volatile from start/end/trend/
-volatility (RC's own vocabulary). compute_op_score_curve attaches out["arc"]={win,loss}; the route +
-cache serve it; op_score.js/css render 2 chips (win-green/loss-red, --fs-xs) + a tooltip read;
-op_score.json gains an arc field. No new dep / Riot / Claude / DB schema.
-
-VERIFY: 49 slice tests green; ruff clean; 5-phase UI audit CLEAN; live ui_mock pixel capture (Wins
-Snowball / Losses Ramping, 16px); verifier CONFIRM (DS/Share untouched). Full RC suite = 9369 passed
-/ 12 PRE-EXISTING failures (item-578 aram_balance template cluster incl. 7 ds_pick_consumption ARAM
-subfails + overlay.css px + spell_prefs.json drift) - all independent of this slice, 0 regressions.
-
-NEXT (FUTURE, triaged): single-match per-minute OP-Score line + duo "recently played with" + a 0-10
-post-game rollup (presentation, deferrable); live matchup board / enemy-WR / live benchmark delta /
-jungle timers (live-game-gated); per-slot frequency + ranked LP trend (new dependency / schema).
