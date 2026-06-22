@@ -4,6 +4,49 @@
 
 ---
 
+# 2026-06-21 (headless continue 10) - HZ rewind-db ground-truth cross-ref + memory hygiene cleared
+
+Item 576, commit `fc520407` (pushed). Tier-1 tooling; no engine / DS / Share / ENGINE bump / threshold /
+precompute-table / flip change. PLUS the 3-cycle-owed memory hygiene pass.
+
+HYGIENE FIRST (operator-mandated, owed 3 cycles - done BEFORE the build pick): ran /consolidate-memory.
+MEMORY.md 25457 -> 24700 bytes (now ~24.1KB, 286B under the 24.4KB load budget it had been failing to
+fully load). Folded the 3 retired Game-PC ADR-011 tombstones into one `reference_gamepc_retired_adr011.md`
+(132 -> 130 files), repointed 2 dangling [[links]], ASCII-fixed the whole index (arrows/x/~/!=/<=/ellipsis
++ smart-quotes), trimmed ~24 long hooks. Memory dir is outside the repo = local/uncommitted (on disk).
+
+TRIAGE: live re-probe RC pid=3656 (mode client->game mid-cycle, operator started a practice match), DS
+:8893 ENGINE 1.149.0 / 16.12.1. Candidates 1 (DS cross-eval) + 2 (HZ blind flip) + A (item-575 diagnosis)
+all drained/done. Gemini director (gemini-3-pro-preview) picked candidate B (the rewind-db cross-ref, the
+item-575 stubbed follow-up) over C (Tier-2 partial-combo) - grounding the calibration in REAL outcomes
+breaks the circular Haiku-vs-precompute dependency before any heavy engine change.
+
+PROCESS (subagent-first, parallel): Explore agent mapped ground truth + surfaced the KEY CONSTRAINT (the
+945 genuine mismatches are 483 ARAM / 460 SR / 2 client; ARAM has no laning phase -> lane-outcome ground
+truth is SR-ONLY). Parallel overlay-verify agent: 25/25 overlay snapshot tests pass, all widget defaults
+CLEAN, no overlay code change needed this cycle. Plan subagent emitted the file:line-verified spec
+(corrected several Explore line numbers; confirmed the standalone import is safe - rv's agents imports are
+LAZY). Build agent TDD-first; independent verifier gate SHIP before commit.
+
+BUILT: `tools/hz_mismatch_diagnose.py --rewind` = an SR-only MATCHUP-AGGREGATE cross-ref over
+rewind_history.db (no match_id linkage in the records, so it aggregates per (my_champ, enemy) matchup
+across rewind SR games), reusing select_sr_match_ids / extract_lane_pairs / extract_kill_counts.
+Order-independent match + my-perspective gold@10min + solo-kill orientation; conservative
+agree/disagree/insufficient_data rule with a <3-lane-game low-sample guard; ARAM+client excluded+COUNTED;
+honest sparsity. Additive (schema v1->v2 tool-local, default-OFF flag, v1 output byte-identical,
+fail-soft on missing DB); agreement REPORTED-ONLY (anti-circularity, never a threshold trigger). +19
+hermetic in-memory-sqlite TDD tests (no real-DB dep), 42/42 pass, ruff clean, ASCII/LF. CLI smoke on the
+real DB: available=True, 654 SR matches, excluded {aram:483, client:2} (exactly matching the Explore mode
+breakdown), 12 classes, coverage SPARSE (mostly-self-games DB -> most classes insufficient_data = honest).
+
+NEXT (operator-gated): richer rewind SR coverage per matchup turns insufficient_data into a real
+agree/disagree per CALIBRATION class -> THEN a justified threshold look. Remaining item-575 levers: (C)
+Tier-2 partial-enemy-combo model for back_off->trade MODEL-ERROR (ENGINE bump + table regen, confirm
+scope first; do NOT chase the metric); back_off->hold per-pair inspection. Flip stays do-not-flip-blind.
+Hygiene debt CLEARED. Candidate set is again drained - next cycle needs a fresh Gemini/operator refill.
+
+---
+
 # 2026-06-21 (headless continue 9) - HZ laning-combat mismatch DIAGNOSED + overlay live-verified clean
 
 Item 575, commit `367297b6` (pushed). Standalone Tier-1 diagnosis tool; no engine / DS / Share / ENGINE
@@ -83,42 +126,3 @@ the genuine combat mismatches (back_off->hold, hold->all_in) are the next signal
 pursued. MEMORY.md still ~1KB over the 24.4KB load budget (a higher-priority build item was picked this cycle,
 so `/consolidate-memory` is still owed - run it next idle cycle). Candidate set 1+2 now both drained/gated; a
 fresh operator refill or a new Gemini-bounded slice is needed next cycle.
-
----
-
-# 2026-06-21 (headless continue 7) - candidate triage: a/b/c all drained -> weekly-hygiene (no build)
-
-Overlay-polish red queue + ZOI slices 1-3 came in DONE. Interviewed the Gemini director for the next
-priority from the 3 prompt candidates; a GROUND-TRUTH PROBE drained all three, so per the operator's
-pre-authorized fallback this became a weekly-hygiene pass. No code/engine/DS/Share change.
-
-CANDIDATES - do NOT re-chase (each verified vs live codebase, like this run's predecessor item 1):
-- (b) adaptation st-* "wall of dashes": HEADLINE ALREADY SHIPPED - commit `94f1e07b` wired
-  `_hideEmptyStatRows()` (right_now.js:456 <- main.js:1443): hides no-live-producer rows + collapses
-  empty group headers, idempotent. `gd_at_15` has a producer ONLY in core/match_metrics.py (post-game)
-  so it is NOT live-derivable (Gemini's example was wrong). Residual = wiring a live stat (e.g. KP) into
-  the RETIRED Chrome dashboard adaptation panel = low value (the overlay, not that panel, is the surface).
-- (c) aggregator G PGR reframe: FULLY SHIPPED S2-S5 (`77c3cc3`/`92c6a0f`/`e6cd350b`/`48bc58c8`/`c162e5bd`;
-  ROADMAP_HISTORY flipped to SHIPPED). Explore-agent mapped the surface: no unshipped bounded slice.
-- (a) ZOI slice 4 champion-only template matching: the ONLY genuinely-unshipped candidate, but LOW
-  value + HIGH risk. core/minimap_blob_detect.py:16-19 author note: "for a ZOI map-control signal, total
-  team presence is the right input anyway"; pure-numpy template match on a noisy 312px minimap crop is
-  brittle and would REPLACE the just-shipped live-verified presence detector. BOTH Gemini passes said:
-  do NOT build it blind. Parked (future, no owner) - needs operator/Gemini sign-off before any attempt.
-
-HYGIENE (relocate-only doc trim committed; memory edits local/uncommitted):
-- WAKEUP 6->2 entries: continue 4 / HEXCORE / continue 3 / continue 2 relocated VERBATIM to
-  docs/history_notes.md (this entry + continue 6 + continue 5 kept).
-- MEMORY.md: 14 longest index lines trimmed (26.2KB -> 25.4KB). STILL ~1KB over the 24.4KB load
-  budget (slug-length floor across ~28 medium lines). FLAG: run `/consolidate-memory` to dedupe /
-  consolidate the index (incl the 3 retired Game-PC ADR-011 tombstones) - beyond a light pass.
-- CLAUDE.md clean (0 leaked ledger items).
-
-ANOMALIES (both EXPECTED, no action): RC-CostHealthWatchdog last_result=1 = a genuine cost breach
-(today $2.65 vs $0.655 7-day baseline, flap:false), the expected signature of all-day live SR coaching;
-hot lane = `sr_coach` Haiku - the known Haiku-to-ZERO program, NOT a new defect. peer bridge health
-publisher stale = the Peer peer not publishing; the Peer bridge probe was deprecated from /done 2026-06-21.
-
-NEXT: the operator-listed candidate set (a/b/c) is EXHAUSTED. The next cycle needs a NEW operator refill
-or direction, not another pick from a/b/c. The repeated "already-shipped" hits (item 1, then b + c this
-cycle) mean the curated backlog is stale - grep-verify any future pick against the live tree first.

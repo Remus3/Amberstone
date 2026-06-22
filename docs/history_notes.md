@@ -14149,3 +14149,42 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - Gate: tests/ 7885p/0f/0e/2s + 109 subtests, 252.95s exit 0 (+43); independently re-run fresh to ops/audit/p2w4_hw2_pytest.txt. DS-dir NOT re-run (no DS/scorer/Share file - tiered-verify R5/R6, blast radius all in tests/). Phase3-Supervisor bounced (taskkill 24280 -> schtasks /Run -> pid 27044 re-listening :8890) for the test_supervisor_starts_and_binds_ports env-flake. DEFER -> ops/audit/P2_FINDINGS.md (W4-hw2: 3 MED retrofill-provenance / merge_refresh non-atomic / spec hiddenimports + LOW + INFO).
 - Follow-up (post-cycle commit 5669d682, closes the slice-H MED DEFER): riot-commander.spec hiddenimports was a stale hand-list of 7 of 54 dashboard.routes_* -> now a build-time glob of dashboard/routes_*.py (a PyInstaller build would have ModuleNotFoundError'd on the ~47 unlisted: routes_metrics/ds_combo/archetype/ward_heat/...). Glob-of-files is self-maintaining + only declares modules that exist. ast.parse OK, CI green; .spec never imported at runtime, no restart.
 - DONT-REDO: non-finite floors + loop timeouts + tft degrade/OCR-timeout + wakeup re-split + spec icon stay + spec-hiddenimports-glob stay (do NOT revert to a hand-list); rc-shell Electron is clean (do NOT re-audit for a quota edit); bare-py guard has a 2nd gap (bare `python <script>` word-form, widening false-positives doc lines - leave). gamepc/2-PC note-only feed: scripts/{discover_champion_codes,probe_missing_codes,team_planner_sync} hardcode 192.168.8.237 LCU base (-> 127.0.0.1/RC_GAME_HOST), phase3 SMB refs, tft Game-PC frame comments (accurate post-1PC). NEXT cycle 16: W5 test corpus = tests/ 359/81155 + agents/daemon_slayer/tests ~200/~81k (~6 slices each, W5-light lens: data-fragile assertions, stale pins, skipped/xfail rot).
+
+---
+
+# 2026-06-21 (headless continue 7) - candidate triage: a/b/c all drained -> weekly-hygiene (no build)
+
+Overlay-polish red queue + ZOI slices 1-3 came in DONE. Interviewed the Gemini director for the next
+priority from the 3 prompt candidates; a GROUND-TRUTH PROBE drained all three, so per the operator's
+pre-authorized fallback this became a weekly-hygiene pass. No code/engine/DS/Share change.
+
+CANDIDATES - do NOT re-chase (each verified vs live codebase, like this run's predecessor item 1):
+- (b) adaptation st-* "wall of dashes": HEADLINE ALREADY SHIPPED - commit `94f1e07b` wired
+  `_hideEmptyStatRows()` (right_now.js:456 <- main.js:1443): hides no-live-producer rows + collapses
+  empty group headers, idempotent. `gd_at_15` has a producer ONLY in core/match_metrics.py (post-game)
+  so it is NOT live-derivable (Gemini's example was wrong). Residual = wiring a live stat (e.g. KP) into
+  the RETIRED Chrome dashboard adaptation panel = low value (the overlay, not that panel, is the surface).
+- (c) aggregator G PGR reframe: FULLY SHIPPED S2-S5 (`77c3cc3`/`92c6a0f`/`e6cd350b`/`48bc58c8`/`c162e5bd`;
+  ROADMAP_HISTORY flipped to SHIPPED). Explore-agent mapped the surface: no unshipped bounded slice.
+- (a) ZOI slice 4 champion-only template matching: the ONLY genuinely-unshipped candidate, but LOW
+  value + HIGH risk. core/minimap_blob_detect.py:16-19 author note: "for a ZOI map-control signal, total
+  team presence is the right input anyway"; pure-numpy template match on a noisy 312px minimap crop is
+  brittle and would REPLACE the just-shipped live-verified presence detector. BOTH Gemini passes said:
+  do NOT build it blind. Parked (future, no owner) - needs operator/Gemini sign-off before any attempt.
+
+HYGIENE (relocate-only doc trim committed; memory edits local/uncommitted):
+- WAKEUP 6->2 entries: continue 4 / HEXCORE / continue 3 / continue 2 relocated VERBATIM to
+  docs/history_notes.md (this entry + continue 6 + continue 5 kept).
+- MEMORY.md: 14 longest index lines trimmed (26.2KB -> 25.4KB). STILL ~1KB over the 24.4KB load
+  budget (slug-length floor across ~28 medium lines). FLAG: run `/consolidate-memory` to dedupe /
+  consolidate the index (incl the 3 retired Game-PC ADR-011 tombstones) - beyond a light pass.
+- CLAUDE.md clean (0 leaked ledger items).
+
+ANOMALIES (both EXPECTED, no action): RC-CostHealthWatchdog last_result=1 = a genuine cost breach
+(today $2.65 vs $0.655 7-day baseline, flap:false), the expected signature of all-day live SR coaching;
+hot lane = `sr_coach` Haiku - the known Haiku-to-ZERO program, NOT a new defect. peer bridge health
+publisher stale = the Peer peer not publishing; the Peer bridge probe was deprecated from /done 2026-06-21.
+
+NEXT: the operator-listed candidate set (a/b/c) is EXHAUSTED. The next cycle needs a NEW operator refill
+or direction, not another pick from a/b/c. The repeated "already-shipped" hits (item 1, then b + c this
+cycle) mean the curated backlog is stale - grep-verify any future pick against the live tree first.
