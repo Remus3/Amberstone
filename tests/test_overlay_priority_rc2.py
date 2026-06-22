@@ -239,6 +239,50 @@ class OverlayPriorityTest(unittest.TestCase):
         self.assertEqual(sig["band"], "empty")
         self.assertFalse(sig["hasChoices"])
 
+    # ----- Q2 lethal-incoming derivation: low HP at an active-combat band -----
+    # signalFromState derives the priority-100 lethal cue from the coach's own
+    # band + hp_pct (no backend producer / schema change - spec section 9 Q2),
+    # conservatively gated so a dropout or a safe low-HP recall can never
+    # false-fire the reserved lethal-red pop-out (A2 POP-OUT DISCIPLINE).
+    def test_signal_lethal_derived_low_hp_fight_band(self):
+        self.assertTrue(self._signal({"hp_pct": 20}, "fight")["lethal"])
+
+    def test_signal_lethal_derived_low_hp_urgent_band(self):
+        self.assertTrue(self._signal({"hp_pct": 15}, "urgent")["lethal"])
+
+    def test_signal_lethal_threshold_inclusive_boundary(self):
+        self.assertTrue(self._signal({"hp_pct": 25}, "fight")["lethal"])
+        self.assertFalse(self._signal({"hp_pct": 26}, "fight")["lethal"])
+
+    def test_signal_no_lethal_low_hp_non_combat_band(self):
+        # Low HP but safe (good / empty band = recall / base): never fires.
+        self.assertFalse(self._signal({"hp_pct": 10}, "good")["lethal"])
+        self.assertFalse(self._signal({"hp_pct": 10}, "empty")["lethal"])
+
+    def test_signal_no_lethal_when_healthy_in_fight(self):
+        self.assertFalse(self._signal({"hp_pct": 80}, "fight")["lethal"])
+
+    def test_signal_no_lethal_on_zero_or_missing_hp(self):
+        # hp_pct 0 (dead) or absent (data gap; the dataclass default is 0.0) is a
+        # guard, not an emergency - require 0 < hp_pct <= floor.
+        self.assertFalse(self._signal({"hp_pct": 0}, "fight")["lethal"])
+        self.assertFalse(self._signal({}, "fight")["lethal"])
+        self.assertFalse(self._signal({"hp_pct": None}, "fight")["lethal"])
+
+    def test_signal_explicit_flag_still_honored_with_derivation(self):
+        # An explicit producer flag wins even at healthy HP (back-compat).
+        self.assertTrue(
+            self._signal({"lethal_incoming": True, "hp_pct": 90}, "fight")["lethal"])
+
+    def test_derived_lethal_feeds_select_primary_to_100(self):
+        out = _run_js(
+            "const sig = signalFromState({hp_pct: 12}, 'fight');\n"
+            "console.log(JSON.stringify(selectPrimary(sig)));"
+        )
+        sel = json.loads(out)
+        self.assertEqual(sel["cue"], "lethal")
+        self.assertEqual(sel["priority"], 100)
+
 
 if __name__ == "__main__":
     unittest.main()

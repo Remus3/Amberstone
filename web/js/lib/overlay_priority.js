@@ -18,9 +18,10 @@
 //     hasChoices: boolean,        // coach.choices non-empty (A+B chips)
 //     spikeCrossed: boolean,      // a power-spike crossed THIS tick (one-shot)
 //     objectiveStealNow: boolean, // drake/baron steal-contest window == NOW
-//     lethal: boolean,            // lethal-incoming predicate (spec Q2; the
-//                                 //   caller derives it - grep coach.fight_rule
-//                                 //   / liveclient hp before wiring it live)
+//     lethal: boolean,            // lethal-incoming (spec Q2). signalFromState
+//                                 //   derives it from band + coach.hp_pct (low
+//                                 //   HP at a fight), or honors an explicit
+//                                 //   lethal_incoming flag if a producer sets one
 //   }
 //
 // LADDER (descending; the first match wins S0). The band=="urgent" headline
@@ -28,8 +29,9 @@
 // objective steal (90) and the A+B decision (80); the explicit lethal/
 // objective predicates outrank it because they carry combat context the
 // text classifier lacks. This refines the spec's section-4 ladder, which
-// left the classifyAction "urgent" band implicit; until the Q2 lethal
-// predicate is wired, band=="urgent" IS the live Emergency signal.
+// left the classifyAction "urgent" band implicit. The Q2 lethal predicate is
+// now wired (signalFromState derives low-HP-at-fight), so a low-HP combat tick
+// promotes from the urgent headline (85) to the lethal rung (100).
 
 // classifyAction band -> tier (spec section 1). right_now.js:472 produces
 // the band; this is the single source for the band->tier mapping the
@@ -119,6 +121,29 @@ function shouldPulse(prevCue, sel) {
   return eligible && prevCue !== sel.cue;
 }
 
+// Q2 lethal-incoming predicate (spec section 9 Q2 + the S0 ladder rung
+// PRIORITY.lethal=100). "Low HP at fight": the player must disengage in ~1s or
+// die. Derived from signals the coach already emits - the classifyAction band
+// (the active-combat flag) plus coach.hp_pct - so no backend producer or
+// /api/state schema change is needed (grep-before-wire confirmed coach.hp_pct
+// is live + 0-100 scaled, no `lethal_incoming` producer exists). Conservative
+// by construction so it cannot abuse the reserved lethal-red pop-out (A2):
+//   - ONLY an active-combat band counts (fight | urgent). Standing low-HP in
+//     base or on a recall classifies good / empty and never fires.
+//   - hp_pct is the 0-100 percentage (live envelope: 100 at full HP). A missing
+//     or 0 value (dead, or a data gap; the dataclass default is 0.0) is a
+//     guard, not an emergency - require 0 < hp_pct <= LETHAL_HP_PCT so a
+//     dropout can never false-fire.
+// shouldPulse() still edge-gates the motion, so a sustained low-HP fight pulses
+// once on entry, not every tick (A5 - no alarm fatigue).
+const LETHAL_HP_PCT = 25; // conservative emergency floor (percent), tunable.
+const _COMBAT_BANDS = { fight: true, urgent: true };
+
+function _isLethalAtFight(band, hpPct) {
+  if (!_COMBAT_BANDS[band]) return false;
+  return Number.isFinite(hpPct) && hpPct > 0 && hpPct <= LETHAL_HP_PCT;
+}
+
 /**
  * Normalize a live coach state envelope into the selectPrimary() signal
  * object. This is the single mapping point the shadow consumer
@@ -136,18 +161,18 @@ function shouldPulse(prevCue, sel) {
 function signalFromState(p, band) {
   const s = p || {};
   const choices = s.choices;
+  const nband = typeof band === 'string' ? band : 'empty';
   return {
-    band: typeof band === 'string' ? band : 'empty',
+    band: nband,
     hasChoices: Array.isArray(choices) && choices.length > 0,
-    // Phase-4 crossing-edge predicates (spec section 9 Q1/Q2): NOT present in
-    // today's coach payload, so they read as the named optional booleans if a
-    // future producer (spike_markers crossing edge, objective-ETA==NOW,
-    // lethal-hp-at-fight) sets them, else false. Keeping them false makes the
-    // shadow a faithful image of the headline+choices channel until those
-    // feeds wire in - no assumed surface (grep-before-wire, spec Q2).
+    // Crossing-edge predicates (spec section 9 Q1/Q2). spike_crossed /
+    // objective_steal_now stay Phase-4 optional booleans (no producer yet, so
+    // false unless a future feed sets them - no assumed surface). lethal is now
+    // WIRED (spec Q2): an explicit lethal_incoming flag OR the derived
+    // low-HP-at-fight predicate (_isLethalAtFight, from band + coach.hp_pct).
     spikeCrossed: s.spike_crossed === true,
     objectiveStealNow: s.objective_steal_now === true,
-    lethal: s.lethal_incoming === true,
+    lethal: s.lethal_incoming === true || _isLethalAtFight(nband, s.hp_pct),
   };
 }
 
