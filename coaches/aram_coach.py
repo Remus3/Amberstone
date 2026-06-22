@@ -30,6 +30,7 @@ from core.aram_tenacity_context import (
     aram_tenacity_line,
     enemy_aram_tenacity_line,
 )
+from core.aram_balance_context import aram_balance_line
 from core.cc_blended_ehp_context import cc_blended_ehp_impact_line
 from core.cc_conditional_impact_context import (
     cc_conditional_impact_line,
@@ -351,6 +352,7 @@ My runes: {my_runes}
 Enemy keystones: {enemy_runes}
 {aram_tenacity}
 {enemy_aram_tenacity}
+{aram_balance}
 {enemy_cc_threats}
 {cc_blended_ehp_impact}
 {cc_conditional_impact}
@@ -814,6 +816,9 @@ class Coach(BaseCoach):
                 enemy_aram_tenacity = enemy_aram_tenacity_line(
                     state.get("enemy_comp", []),
                     state.get("game_mode", "ARAM"),
+                ),
+                aram_balance = aram_balance_line(
+                    state.get("champion"), state.get("game_mode", "ARAM")
                 ),
                 enemy_cc_threats = enemy_cc_threat_line(
                     state.get("enemy_comp", []),

@@ -353,6 +353,7 @@ class AramCoachWireTests(unittest.TestCase):
             wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
             aram_tenacity="",
             enemy_aram_tenacity="",
+            aram_balance="",
             enemy_cc_threats="",
             cc_blended_ehp_impact="",
             cc_conditional_impact="",
@@ -371,6 +372,7 @@ class AramCoachWireTests(unittest.TestCase):
             wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
             aram_tenacity=aram_tenacity_line("Zed", "ARAM"),
             enemy_aram_tenacity="",
+            aram_balance="",
             enemy_cc_threats="",
             cc_blended_ehp_impact="",
             cc_conditional_impact="",
@@ -391,6 +393,7 @@ class AramCoachWireTests(unittest.TestCase):
             enemy_aram_tenacity=enemy_aram_tenacity_line(
                 ["Zed", "Talon"], "ARAM"
             ),
+            aram_balance="",
             enemy_cc_threats="",
             cc_blended_ehp_impact="",
             cc_conditional_impact="",
