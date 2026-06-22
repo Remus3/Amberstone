@@ -156,6 +156,7 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 | R10 | lift | DIRECTOR REFILL: Section-7b heavyweight deep-dive competitor lift of Aggregator B. Output docs/COMPETITOR_LIFT_2026-06-21.md. Act on HIGH-lift LOW-risk presentation finding IN-RUN. | DONE | `edd76db3` |
 | R12 | ds-sweep | DIRECTOR REFILL: DS schema lift - cross-spell all-source TARGET-VULNERABILITY mark. NEW agents/daemon_slayer/_target_vulnerability_overrides.py (TargetVulnEntry + _CHAMPION_VULN_OVERRIDES champion_id->ability + _ITEM_VULN_OVERRIDES item-id->item + target_vuln_multiplier) modeling a debuff the wielder lays on the TARGET that makes it take +X% damage FROM ALL SOURCES (the all-source half the per-spell self-amp _ability_amp_overrides cannot express). Default-OFF apply_target_vuln seam on dps.compute_dps (weighted_dps + phase_dps scaled by the composed mark multiplier, multiplicative per source, de-duped per item; byte-identical OFF). SEEDED 2 ACTIVE vs 16.12.1 ground truth: Vladimir R Hemoplague 10% (DDragon Vladimir.json effect[2]=[10,10,10]) + Evenshroud 3001/Arena 223001 Coruscation 7% (items.json). NON-FIT (documented in _NONFIT_VULN_CANDIDATES, NOT seeded): Imperial Mandate 4005 - director suggested 6% but 16.12.1 Coordinated Fire is a current-HP mark-detonation, not a +X% all-source amp (no ground-truth value for a flat amp -> honestly excluded, a wrong precompute is worse than none). Offline characterization tests (23, RED-first). Verifier-gated CONFIRM. ENGINE 1.148.0 -> 1.149.0 + DS :8893 restart + Share sync SAME commit. Live flip + ability_dps/burst consumer broadening EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `cad49029` |
 | R13 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Active Match threat + CD panels (web/js/panels/cd_ledger.js, cc_blended_ehp_threat.js, threat_donut.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. Visual proof via the Playwright snapshot harness. | DONE | `0fb91841` |
+| R14 | ds-sweep | DIRECTOR REFILL: DS schema lift - cc_conditional durations_floor_s (guaranteed-minimum CC floor band for distance/channel-scaled CC). NEW optional ConditionalCcEntry.durations_floor_s field (None default; loader .get backward-compat) + default-OFF apply_cc_floor seam on cc_pressure.compute_cc_pressure crediting floor + prob*(max-floor) instead of max*prob when ON (byte-identical OFF; standalone + coexistence MAX-rule paths both floor-aware). Seeded 5 vs 16.12.1 Meraki minimums: Maokai R 0.75 / KSante W 0.5 / Sion R 0.25 / Hecarim R 0.75 (4 existing entries) + NEW Ashe R 1.0 entry (coexists_with_unconditional=True, range_gated, durations_s 3.5, mirrors Maokai/Hecarim R; Ashe R also in unconditional _PER_SPELL_CC_DURATIONS 1.5). Offline characterization tests (RED-first). Verifier-gated. ENGINE 1.149.0 -> 1.150.0 + DS :8893 restart + Share sync SAME commit. Live default-ON flip + ehp/hybrid propagation EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `66abc012` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -168,6 +169,25 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-22 R14 (DIRECTOR REFILL cycle) DONE (`66abc012`) - DS schema lift: optional
+  ConditionalCcEntry.durations_floor_s guaranteed-minimum CC floor band + a default-OFF
+  apply_cc_floor seam on cc_pressure.compute_cc_pressure (credits floor + prob*(max-floor)
+  when ON; byte-identical OFF; both the standalone and coexistence MAX-rule paths). Seeded 5
+  vs Meraki 16.12.1 minimums (Maokai R 0.75 / KSante W 0.5 / Sion R 0.25 / Hecarim R 0.75 + a
+  NEW Ashe R 1.0 coexisting entry mirroring Maokai/Hecarim R). Registry regenerated via the
+  canonical generator (durations_floor_s now on every record); externalization guard count
+  64->65 + need-set += durations_floor_s. ENGINE 1.149.0 -> 1.150.0, DS :8893 bounced, Share
+  re-synced in the same commit. DS-dir suite 7472 passed; new floor test 13 passed. Coherent
+  single-thread unit (linearly-coupled schema->seed->seam->test; R9 no-worktree-under-3-files);
+  fresh first-hand re-verification gate (the verifier subagent hit a transient 529; R7 exempts
+  single-thread edits from the subagent gate). NEWLY DISCOVERED (pre-existing on clean HEAD
+  38326ed3, NOT caused by R14, FUTURE / out of scope): 3 ARAM CoachWire tests fail with
+  KeyError 'aram_balance' (test_cc_blended_ehp_context / test_cc_conditional_impact_context /
+  test_enemy_cc_threat_context :: test_aram_user_template_format_with_field) - item 578's
+  aram_balance field is not threaded into those template fixtures; + test_overlay_css_typography_tokens
+  fails on overlay.css bare px literals (overlay-polish lane open work). CI runs no pytest so
+  these slipped onto main.
 
 - 2026-06-22 R13 (DIRECTOR REFILL cycle) DONE (`0fb91841`) - Section-3b 5-phase
   fixture audit of the 3 Active Match panels cd_ledger.js / cc_blended_ehp_threat.js
