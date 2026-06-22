@@ -84,6 +84,31 @@ bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /don
 
 ---
 
+---
+
+# 2026-06-22 (headless continue 14 / R13) - Active-Match fixture audit (threat_donut sigil exception)
+
+Item 580, commit `0fb91841` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
+no RC restart); no engine / DS / Share / ENGINE bump / overlay render / flip change.
+
+CONTEXT: gemini+ahk loop relaunched 02:46 (head a1b063a0), cycle 1 directive = ORCHESTRATION_PLAN
+R13 ui-audit. 5-phase fixture audit of the 3 un-audited Active Match panels cd_ledger.js /
+cc_blended_ehp_threat.js / threat_donut.js + CSS vs docs/UI_SCALE_SPEC_V2.md.
+
+VERDICT (verifier-gated CONFIRM, 47/0/0): 1 MUST-FIX + 2 panels already clean. threat_donut.js -
+the SVG "?" / "." placeholder hardcoded font-size 12 inside the fixed 28x28 donut (the --fs-xs 16px
+floor would overflow the tile); documented as an inline operator-exception (no token < 16px by
+design; mirrors cd_ledger.css). cd_ledger.css CLEAN (item 184 v2.1 already documented its 11/10/9px
+exceptions); cc_blended_ehp_threat.css CLEAN (fully tokenized). FUTURE: .am-pane-head toggle ~41px,
+1px under --hit-min 42px - shared selector, out of slice scope.
+
+ORCHESTRATOR NOTE: directive mandated worktree fan-out, but the audit found a single 4-line comment
+fix in one file (2 panels already compliant) -> collapsed to inline per R9; verifier-gate still run.
+Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pixel frame OWED
+(RC mode=client).
+
+---
+
 # 2026-06-21 (headless continue 12) - ARAM "ARAM Modifications" balance line WIRED (BACKLOG F6)
 
 Item 578, commit `b541c923` (pushed). Tier-1; no backend engine / DS schema / Share / ENGINE bump /
