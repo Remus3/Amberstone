@@ -170,6 +170,17 @@ Insights surface + its recent tabs + the GPI drilldown selector. Director picks 
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-22 REGRESS-FIX (continue 16, post-R14 doc reconciliation) DONE - the Gemini auditor
+  returned VERDICT REGRESS naming 2 defects in the continue-15 docs sync (`c2161654`); both were
+  re-verified vs ground truth before acting (audit-proposals-are-intent / verify-before-broken).
+  (1) ROADMAP.md REAL: the continue-15 prepend concatenated the continue-14 sub-bullet onto the
+  END of the continue-15 line - FIXED byte-precise, CRLF restored before "  - **SHIPPED ...
+  continue 14" (+2 bytes; the 3 touched docs are CRLF). (2) docs/DAEMON_SLAYER.md 1.150.0 = STALE
+  PREMISE: the status banner already read 1.150.0 / patch 16.12.1 on HEAD and the drift guard
+  tests/test_docs_daemon_slayer_drift.py passed 3/3 BEFORE any edit - NO-OP, no fabricated change
+  made on a correct file. Tier-0 doc fix; tiered verification (R5) = drift guard 3/3 + ASCII-
+  hygiene, not the 14k full suite. No engine / DS / Share / ENGINE_VERSION / overlay / flip change.
+
 - 2026-06-22 R14 (DIRECTOR REFILL cycle) DONE (`66abc012`) - DS schema lift: optional
   ConditionalCcEntry.durations_floor_s guaranteed-minimum CC floor band + a default-OFF
   apply_cc_floor seam on cc_pressure.compute_cc_pressure (credits floor + prob*(max-floor)
