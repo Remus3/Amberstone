@@ -1251,6 +1251,11 @@ function _csvFetchCounterPicks(role, enemyIds, excludeIds, onLoad) {
   return cached ? cached.data : null;
 }
 
+// Indirection so the render path can be driven by a stubbed fetch in the
+// snapshot harness (see the ui_mock test hook at the bottom of the file).
+// In production this is always the real _csvFetchCounterPicks.
+let _csvCounterFetch = _csvFetchCounterPicks;
+
 function _csvRenderCounterPicks(cs) {
   const box = document.getElementById("csv-sugg-counter-picks");
   if (!box) return;
@@ -1273,7 +1278,7 @@ function _csvRenderCounterPicks(cs) {
   ((cs.bans && cs.bans.their_team) || []).forEach((id) => excl.add(id | 0));
   const excludeIds = Array.from(excl).filter((x) => x > 0);
   const role = _csvResolveRole(cs);
-  const data = _csvFetchCounterPicks(role, enemyIds, excludeIds, _csvScheduleRender);
+  const data = _csvCounterFetch(role, enemyIds, excludeIds, _csvScheduleRender);
   const counters = (data && Array.isArray(data.counters)) ? data.counters : [];
   if (!counters.length) {
     // Keep the panel visible with a quiet placeholder while the first
@@ -1284,7 +1289,36 @@ function _csvRenderCounterPicks(cs) {
     return;
   }
   box.hidden = false;
-  const rows = counters.slice(0, 5).map((c) => {
+  // LIFT 1a (2026-06-22): elevate counters[0] into a single large HERO
+  // card (the dominant decision element) and demote counters[1..4] to a
+  // compact secondary list. Every clickable entry - hero + each secondary
+  // row - still hovers on the operator's pick action via set_pick_intent.
+  const top = counters[0] || null;
+  const rest = counters.slice(1, 5);
+
+  let heroHtml = "";
+  if (top) {
+    const hid = top.champId | 0;
+    const himg = _csChampImg(hid);
+    const hname = String(top.name || (hid ? "cid:" + hid : "?"));
+    const hnote = String(top.note || "");
+    const hClick = hid > 0;
+    heroHtml = `
+      <div class="csv-counter-hero${hClick ? " is-clickable" : ""}"
+           data-champ-id="${hid}"
+           title="Hover ${hname} - ${hnote}">
+        <div class="csv-counter-hero-icon">
+          ${himg ? `<img src="${himg}" alt="${hname}" onerror="this.style.display='none'">` : ""}
+        </div>
+        <div class="csv-counter-hero-text">
+          <span class="csv-counter-hero-tag">BEST PICK</span>
+          <span class="csv-counter-hero-name">${hname}</span>
+          <span class="csv-counter-hero-note">${hnote}</span>
+        </div>
+      </div>`;
+  }
+
+  const rows = rest.map((c) => {
     const cid = c.champId | 0;
     const img = _csChampImg(cid);
     const name = String(c.name || (cid ? "cid:" + cid : "?"));
@@ -1303,11 +1337,16 @@ function _csvRenderCounterPicks(cs) {
         </div>
       </div>`;
   }).join("");
+  const secondaryHtml = rows
+    ? `<div class="csv-counter-secondary">${rows}</div>`
+    : "";
   box.innerHTML = `<div class="csv-counter-head">PICK INTO THIS COMP</div>`
-                + `<div class="csv-counter-list">${rows}</div>`;
-  // Click a counter -> hover it on the operator's pick action (same
-  // set_pick_intent path the Pick & Ban cells use). Skips empty ids.
-  box.querySelectorAll(".csv-counter-pick.is-clickable").forEach((el) => {
+                + heroHtml
+                + secondaryHtml;
+  // Click any counter (hero OR secondary row) -> hover it on the
+  // operator's pick action (same set_pick_intent path the Pick & Ban
+  // cells use). Skips empty ids.
+  box.querySelectorAll(".csv-counter-hero.is-clickable, .csv-counter-pick.is-clickable").forEach((el) => {
     el.addEventListener("click", () => {
       const cid = parseInt(el.dataset.champId, 10) | 0;
       if (cid > 0) { try { lcuCmd({ cmd: "set_pick_intent", championId: cid }); } catch (_) {} }
@@ -4344,5 +4383,29 @@ function _csvRenderPickBan(cs, myCid) {
     });
   });
 }
+
+// LIFT 1a (2026-06-22): test-only hooks. This module is an ES module, so
+// its functions are not reachable from the global scope; the snapshot
+// harness (tests/snapshot_panels/test_champ_select_view.py) needs to stub
+// the counter-picks fetch and invoke the renderer deterministically. Gated
+// on the ?ui_mock=1 query flag read straight from location.search - NOT on
+// body.dataset.uiMock, which main.js sets only AFTER this module (imported
+// at the top of main.js) has already evaluated. So these globals never
+// exist in the live dashboard (no ?ui_mock=1), only under the mock harness.
+// The renderer reads the live _csvCounterFetch indirection (see its call
+// site), so a test can override window._csvFetchCounterPicks before render.
+try {
+  if (typeof window !== "undefined" && typeof location !== "undefined"
+      && /[?&]ui_mock=1(?:&|$)/.test(location.search || "")) {
+    window._csvFetchCounterPicks = _csvCounterFetch;
+    window._csvRenderCounterPicks = function (cs) {
+      const ov = window._csvFetchCounterPicks;
+      const prev = _csvCounterFetch;
+      if (typeof ov === "function" && ov !== prev) _csvCounterFetch = ov;
+      try { return _csvRenderCounterPicks(cs); }
+      finally { _csvCounterFetch = prev; }
+    };
+  }
+} catch (_) { /* non-browser / no window - skip the test hook */ }
 
 export { handleChampSelect, renderChampSelectCoach };
