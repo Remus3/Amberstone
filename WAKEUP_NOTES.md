@@ -4,6 +4,39 @@
 
 ---
 
+# 2026-06-22 (headless continue 17 / R15) - OP-Score arc-shape readout (Aggregator A lift)
+
+Item 583, feature commit `b49ef1a7` (pushed) + docs-sync. Tier-1 frontend + core analytics; RC
+restarted (pid 3656 -> 9480, last_reload_ok) for the core/op_score_curve.py route change. NO DS /
+ENGINE / Share / schema / flip change.
+
+CONTEXT: gemini+ahk loop executor cycle. Directive = ORCHESTRATION_PLAN R15 lift (Section-7b Aggregator A
+deep-dive; ship a HIGH-lift LOW-risk presentation finding in-run).
+
+RESEARCH (3 disjoint parallel agents, 6-point checklist -> docs/COMPETITOR_LIFT_2026-06-22.md):
+Aggregator A builds / OP-Score+profile / live+overlay. RC already matches-or-exceeds most surfaces
+(contextual build planner + antitank > Aggregator A fixed frequency order; rune/spell auto-push, Electron
+overlay, role-grade + MVP/SVP, benchmarks, objective callouts all shipped). The one NOW-eligible gap:
+Aggregator A's per-line curve "shape keyword".
+
+SHIPPED (TDD red-first): NEW core/op_score_shape.py - pure deterministic classifier labeling each
+per-minute wins/losses curve (the OP Score tab already plots them over the local rewind corpus) as
+Snowball / Ramping / Front-loaded / Commanding / Behind / Steady / Volatile from start/end/trend/
+volatility (RC's own vocabulary). compute_op_score_curve attaches out["arc"]={win,loss}; the route +
+cache serve it; op_score.js/css render 2 chips (win-green/loss-red, --fs-xs) + a tooltip read;
+op_score.json gains an arc field. No new dep / Riot / Claude / DB schema.
+
+VERIFY: 49 slice tests green; ruff clean; 5-phase UI audit CLEAN; live ui_mock pixel capture (Wins
+Snowball / Losses Ramping, 16px); verifier CONFIRM (DS/Share untouched). Full RC suite = 9369 passed
+/ 12 PRE-EXISTING failures (item-578 aram_balance template cluster incl. 7 ds_pick_consumption ARAM
+subfails + overlay.css px + spell_prefs.json drift) - all independent of this slice, 0 regressions.
+
+NEXT (FUTURE, triaged): single-match per-minute OP-Score line + duo "recently played with" + a 0-10
+post-game rollup (presentation, deferrable); live matchup board / enemy-WR / live benchmark delta /
+jungle timers (live-game-gated); per-slot frequency + ranked LP trend (new dependency / schema).
+
+---
+
 # 2026-06-22 (headless continue 15 / R14) - cc_conditional durations_floor_s CC floor band (ENGINE 1.150.0)
 
 Item 581, commit `66abc012` (pushed, CI green). Tier-2 DS schema lift: ENGINE 1.149.0 -> 1.150.0,
@@ -29,31 +62,6 @@ reproduce on clean HEAD 38326ed3 / from the dirty spell_prefs.json - pre-existin
 the ORCHESTRATION_PLAN Findings log + LEDGER 581).
 
 NEXT: live default-ON flip + ehp/hybrid propagation are operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.
-
----
-
----
-
-# 2026-06-22 (headless continue 14 / R13) - Active-Match fixture audit (threat_donut sigil exception)
-
-Item 580, commit `0fb91841` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
-no RC restart); no engine / DS / Share / ENGINE bump / overlay render / flip change.
-
-CONTEXT: gemini+ahk loop relaunched 02:46 (head a1b063a0), cycle 1 directive = ORCHESTRATION_PLAN
-R13 ui-audit. 5-phase fixture audit of the 3 un-audited Active Match panels cd_ledger.js /
-cc_blended_ehp_threat.js / threat_donut.js + CSS vs docs/UI_SCALE_SPEC_V2.md.
-
-VERDICT (verifier-gated CONFIRM, 47/0/0): 1 MUST-FIX + 2 panels already clean. threat_donut.js -
-the SVG "?" / "." placeholder hardcoded font-size 12 inside the fixed 28x28 donut (the --fs-xs 16px
-floor would overflow the tile); documented as an inline operator-exception (no token < 16px by
-design; mirrors cd_ledger.css). cd_ledger.css CLEAN (item 184 v2.1 already documented its 11/10/9px
-exceptions); cc_blended_ehp_threat.css CLEAN (fully tokenized). FUTURE: .am-pane-head toggle ~41px,
-1px under --hit-min 42px - shared selector, out of slice scope.
-
-ORCHESTRATOR NOTE: directive mandated worktree fan-out, but the audit found a single 4-line comment
-fix in one file (2 panels already compliant) -> collapsed to inline per R9; verifier-gate still run.
-Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pixel frame OWED
-(RC mode=client).
 
 ---
 
