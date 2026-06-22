@@ -84,6 +84,49 @@ bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /don
 
 ---
 
+# 2026-06-21 (headless continue 10) - HZ rewind-db ground-truth cross-ref + memory hygiene cleared
+
+Item 576, commit `fc520407` (pushed). Tier-1 tooling; no engine / DS / Share / ENGINE bump / threshold /
+precompute-table / flip change. PLUS the 3-cycle-owed memory hygiene pass.
+
+HYGIENE FIRST (operator-mandated, owed 3 cycles - done BEFORE the build pick): ran /consolidate-memory.
+MEMORY.md 25457 -> 24700 bytes (now ~24.1KB, 286B under the 24.4KB load budget it had been failing to
+fully load). Folded the 3 retired Game-PC ADR-011 tombstones into one `reference_gamepc_retired_adr011.md`
+(132 -> 130 files), repointed 2 dangling [[links]], ASCII-fixed the whole index (arrows/x/~/!=/<=/ellipsis
++ smart-quotes), trimmed ~24 long hooks. Memory dir is outside the repo = local/uncommitted (on disk).
+
+TRIAGE: live re-probe RC pid=3656 (mode client->game mid-cycle, operator started a practice match), DS
+:8893 ENGINE 1.149.0 / 16.12.1. Candidates 1 (DS cross-eval) + 2 (HZ blind flip) + A (item-575 diagnosis)
+all drained/done. Gemini director (gemini-3-pro-preview) picked candidate B (the rewind-db cross-ref, the
+item-575 stubbed follow-up) over C (Tier-2 partial-combo) - grounding the calibration in REAL outcomes
+breaks the circular Haiku-vs-precompute dependency before any heavy engine change.
+
+PROCESS (subagent-first, parallel): Explore agent mapped ground truth + surfaced the KEY CONSTRAINT (the
+945 genuine mismatches are 483 ARAM / 460 SR / 2 client; ARAM has no laning phase -> lane-outcome ground
+truth is SR-ONLY). Parallel overlay-verify agent: 25/25 overlay snapshot tests pass, all widget defaults
+CLEAN, no overlay code change needed this cycle. Plan subagent emitted the file:line-verified spec
+(corrected several Explore line numbers; confirmed the standalone import is safe - rv's agents imports are
+LAZY). Build agent TDD-first; independent verifier gate SHIP before commit.
+
+BUILT: `tools/hz_mismatch_diagnose.py --rewind` = an SR-only MATCHUP-AGGREGATE cross-ref over
+rewind_history.db (no match_id linkage in the records, so it aggregates per (my_champ, enemy) matchup
+across rewind SR games), reusing select_sr_match_ids / extract_lane_pairs / extract_kill_counts.
+Order-independent match + my-perspective gold@10min + solo-kill orientation; conservative
+agree/disagree/insufficient_data rule with a <3-lane-game low-sample guard; ARAM+client excluded+COUNTED;
+honest sparsity. Additive (schema v1->v2 tool-local, default-OFF flag, v1 output byte-identical,
+fail-soft on missing DB); agreement REPORTED-ONLY (anti-circularity, never a threshold trigger). +19
+hermetic in-memory-sqlite TDD tests (no real-DB dep), 42/42 pass, ruff clean, ASCII/LF. CLI smoke on the
+real DB: available=True, 654 SR matches, excluded {aram:483, client:2} (exactly matching the Explore mode
+breakdown), 12 classes, coverage SPARSE (mostly-self-games DB -> most classes insufficient_data = honest).
+
+NEXT (operator-gated): richer rewind SR coverage per matchup turns insufficient_data into a real
+agree/disagree per CALIBRATION class -> THEN a justified threshold look. Remaining item-575 levers: (C)
+Tier-2 partial-enemy-combo model for back_off->trade MODEL-ERROR (ENGINE bump + table regen, confirm
+scope first; do NOT chase the metric); back_off->hold per-pair inspection. Flip stays do-not-flip-blind.
+Hygiene debt CLEARED. Candidate set is again drained - next cycle needs a fresh Gemini/operator refill.
+
+---
+
 # 2026-06-21 (architecture viz) - HEXCORE: 3D RC/DS knowledge-graph nexus
 
 Built HEXCORE (`docs/HEXCORE.html`) - a standalone interactive 3D hextech "JARVIS" viewer of RC/DS's
@@ -160,48 +203,6 @@ doctrine `w-ovds` + neutral-text rows, ROADMAP spec-path fix (docs/ -> docs/rese
 NEXT (this lane): overlay is doctrine-faithful + clean. The live drag GESTURE + Alt+Shift+R
 HOTKEY stay node-test-covered only (physical-press paths, not headless). Minor w-* default
 position tuning is the only open polish. DON'T redo: tasks 1/3 above; task-2 minimap is deferred.
-
----
-
-## Relocated 2026-06-18 (PM5 wakeup prune - keep last 3 sessions)
-
-# 2026-06-18 (PM2) - headless deep-research+lift: R2 competitor fan-out + Game Flow tab
-
-Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b17531e1`.
-
-- **R2 competitor fan-out** (aggregator B / aggregator A / Aggregator Z1 / aggregator G, 4 parallel deep-dive agents).
-  RC supersedes/has nearly the whole surface. **Verify-gate caught a wrong agent HAVE:** the
-  aggregator G "win-prob match-flow curve" NOW pick is ALREADY shipped (`web/js/panels/pgr_winprob.js`,
-  PGR S3) - the agent read only post_game_phases.js and missed the graph. Reclassified CLOSED.
-- **SHIPPED F-DPM per-minute performance curve** (the one genuine own-data gap = Aggregator Z1's
-  signature graph): `core/perf_curve.py` -> `/api/perf-curve?mode=&metric=&champion=` -> Build
-  Insights "Game Flow" tab (inline-SVG dual win/loss line, gold/cs toggle). Avg cumulative
-  gold/CS per game minute over the own rewind corpus, win-vs-loss split. Pure aggregation over
-  timeline_frames, no global/Riot/Claude dep, no DS schema. TDD +42 (11 module + 18 route + 13
-  DOM). Live aram/gold n=2004 (wins pull ahead by min5), sr/cs n=618. RC pid 22672. Tier-1.
-- **Section-3b UI audit 5/5 CLEAN, 0 MUST-FIX.** **VISUAL CAPTURE OWED** (Game-PC :8892 down +
-  Claude_Preview MCP not connected this session). Carry-forward.
-- **FUTURE -> BACKLOG** (`docs/COMPETITOR_LIFT_2026-06-18_R2.md`): aggregator B carry-efficiency grade
-  axes (gold_share verified 0 hits, Tier-2 grade re-baseline = product call); aggregator A OP-Score
-  per-interval performance curve (new scoring model); DPM damage-per-min (cumulative-all-units
-  trap, needs a to-champs frame field); aggregator G lane-vs-full WPA totals (marginal).
-- **NEXT:** F-UGG1 carry-efficiency as a DISPLAY-only stat (LOW-risk, no grade change).
-- **Still open from earlier today:** ops/loop/config.json + director_prompt.md modified
-  (operator pre-run loop tuning) - NOT committed; review/commit/discard next session.
-
----
-
-
-## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
-
-# 2026-06-16 - cycle 47: LBAND1 canonical-id fix + cost lever + HZ flip-gate accuracy [items 447-449] (relocated 2026-06-16, cycle-50 wrap)
-
-- 3 slices (`e0b119fd` S1 / `4d20ef17` S2 / `fd156f04` S3), all Tier-1, CI green; cost 7-lever re-sweep = 6 CLEAN + 1 SHIP. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share. No frozen files. RC restarted pid 1228 -> 23280 (S1).
-- ORIENT: bounded headless-safe queue drained (cycles 43-46) + Gemini director/consult down (429). 3-agent scout fanout: cost-7-lever / robustness-on-net-new-modules(440-446) / build-shadow-skew-RCA. Real work surfaced from the scouts, not the (drained) NEXT queue.
-- S1 (447): robustness scout found a real NOW bug - core/live_benchmark_band.py keyed canonical-keyed benchmarks on the RAW Live Client DISPLAY name, so ~25 multiword champs (Miss Fortune/Lee Sin/Tahm Kench...) silently never banded (games_for("Miss Fortune")=0 vs MissFortune=51). Same item-439/388 canonical class LBAND1 missed; its tests all used "Tristana" (display==canonical) so CI was blind. FIX: canonicalize the lookup at band_metrics entry, keep display name in the line. +2 char tests (red->26 green). RC restarted (shadow logger picks it up next SR game).
-- S2 (448): cost re-sweep 6 CLEAN + 1 SHIP. SHIP = web/js/main.js MINIMAP_INTERVAL_FAST 250->500 - the only sub-500ms NETWORK poll; engages only on the retired Game-PC minimap fast-stream (dormant 1-PC/ADR-011, falls back to 2000). Numeric constant, no render change (no 3b ritual), ADR-008 auto-reload.
-- S3 (449): build-skew RCA = BY-DESIGN-but-misleading (one long game inflates rows via the item_count+5s-bucket dedup sig; live anti_tank x793/x81 ~91% is really 5/5 distinct GAMES). hz_shadow_report is the do-not-flip-blind gate, so added by_lean_per_game + distinct_games + a per-game print line (additive, schema v2). +1 test. Live: "lean per-game (10 distinct): anti_squishy x5, anti_tank x5".
-- NEXT: bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip (do-not-flip-blind, accrues on real SR games - now roster-unbiased post-S1) + DS Phase-D + visual captures (Game-PC :8892 down) + P6 G3/G6/G7, all live/operator/Gemini-gated. Gemini still down (429).
 
 ---
 
@@ -11032,6 +11033,169 @@ REFUTED by ground truth: c7922951 (merged via d446ea80, INSIDE the audited range
 
 ---
 
+# 2026-06-21 (headless continue 7) - candidate triage: a/b/c all drained -> weekly-hygiene (no build)
+
+Overlay-polish red queue + ZOI slices 1-3 came in DONE. Interviewed the Gemini director for the next
+priority from the 3 prompt candidates; a GROUND-TRUTH PROBE drained all three, so per the operator's
+pre-authorized fallback this became a weekly-hygiene pass. No code/engine/DS/Share change.
+
+CANDIDATES - do NOT re-chase (each verified vs live codebase, like this run's predecessor item 1):
+- (b) adaptation st-* "wall of dashes": HEADLINE ALREADY SHIPPED - commit `94f1e07b` wired
+  `_hideEmptyStatRows()` (right_now.js:456 <- main.js:1443): hides no-live-producer rows + collapses
+  empty group headers, idempotent. `gd_at_15` has a producer ONLY in core/match_metrics.py (post-game)
+  so it is NOT live-derivable (Gemini's example was wrong). Residual = wiring a live stat (e.g. KP) into
+  the RETIRED Chrome dashboard adaptation panel = low value (the overlay, not that panel, is the surface).
+- (c) aggregator G PGR reframe: FULLY SHIPPED S2-S5 (`77c3cc3`/`92c6a0f`/`e6cd350b`/`48bc58c8`/`c162e5bd`;
+  ROADMAP_HISTORY flipped to SHIPPED). Explore-agent mapped the surface: no unshipped bounded slice.
+- (a) ZOI slice 4 champion-only template matching: the ONLY genuinely-unshipped candidate, but LOW
+  value + HIGH risk. core/minimap_blob_detect.py:16-19 author note: "for a ZOI map-control signal, total
+  team presence is the right input anyway"; pure-numpy template match on a noisy 312px minimap crop is
+  brittle and would REPLACE the just-shipped live-verified presence detector. BOTH Gemini passes said:
+  do NOT build it blind. Parked (future, no owner) - needs operator/Gemini sign-off before any attempt.
+
+HYGIENE (relocate-only doc trim committed; memory edits local/uncommitted):
+- WAKEUP 6->2 entries: continue 4 / HEXCORE / continue 3 / continue 2 relocated VERBATIM to
+  docs/history_notes.md (this entry + continue 6 + continue 5 kept).
+- MEMORY.md: 14 longest index lines trimmed (26.2KB -> 25.4KB). STILL ~1KB over the 24.4KB load
+  budget (slug-length floor across ~28 medium lines). FLAG: run `/consolidate-memory` to dedupe /
+  consolidate the index (incl the 3 retired Game-PC ADR-011 tombstones) - beyond a light pass.
+- CLAUDE.md clean (0 leaked ledger items).
+
+ANOMALIES (both EXPECTED, no action): RC-CostHealthWatchdog last_result=1 = a genuine cost breach
+(today $2.65 vs $0.655 7-day baseline, flap:false), the expected signature of all-day live SR coaching;
+hot lane = `sr_coach` Haiku - the known Haiku-to-ZERO program, NOT a new defect. peer bridge health
+publisher stale = the Peer peer not publishing; the Peer bridge probe was deprecated from /done 2026-06-21.
+
+NEXT: the operator-listed candidate set (a/b/c) is EXHAUSTED. The next cycle needs a NEW operator refill
+or direction, not another pick from a/b/c. The repeated "already-shipped" hits (item 1, then b + c this
+cycle) mean the curated backlog is stale - grep-verify any future pick against the live tree first.
+
+---
+
+# 2026-06-21 (headless continue 9) - HZ laning-combat mismatch DIAGNOSED + overlay live-verified clean
+
+Item 575, commit `367297b6` (pushed). Standalone Tier-1 diagnosis tool; no engine / DS / Share / ENGINE
+bump / flip.
+
+TRIAGE (candidates 1+2 verified DRAINED/GATED again - 5th cycle, grep-verify mandatory): live re-probe
+RC pid=3656 mode=game (live SR game UP), DS :8893 ENGINE 1.149.0 / 16.12.1. (1) DS cross-eval + (2) HZ
+blind flip confirmed drained/operator-gated per items 573/574. Gemini director (gemini-3-pro-preview)
+picked candidate (A) - root-cause the now-GENUINE laning combat mismatches - and KEPT IT LANING-ONLY (NOT
+the build-axis anti_squishy->anti_tank skew; mixing axes breaks scope).
+
+PROCESS (subagent-first, parallel): an Explore agent mapped the combat-verdict pipeline -> a Plan subagent
+emitted the file:line spec (KEY FINDING: the shadow log does not store net_swing, but
+choices[0].expected_outcome embeds it - parse the LOG-TIME scalar, zero engine drift) -> a background
+build agent implemented TDD-first -> an independent verifier gate PASS (22/22, ruff, partition invariant)
+before commit.
+
+THE DIAGNOSIS (real log, 17409 records, 945 genuine laning mismatches; `ops/audit/HZ_MISMATCH_DIAGNOSE.md`):
+the over-caution is MOSTLY CALIBRATION, NOT Haiku noise. hold->all_in (151, med -0.02), even->trade (126,
+med -0.06), hold->trade (91, med +0.06) all cluster at the hold/trade boundary (368 ticks, defensible).
+ONE structural MODEL-ERROR pocket: back_off->trade (138, med -0.30) = the enemy sequence_b=_FULL_COMBO
+over-kill (`core/laning_scenario_precompute.py:355`) - a threshold tune cannot fix a structural-input
+error. The largest class back_off->hold (351, med -0.24) is per-pair ambiguous. Partition invariant
+945==945==(2103-1158). +22 TDD, ruff clean, verifier-confirmed.
+
+PARALLEL OVERLAY (operator directive, live SR Caitlyn game UP): 25/25 overlay snapshot tests pass (lone
+teardown ERROR = the live game writing data/*.jsonl, documented env guard). w-spike(20,580) /
+w-trinket(20,520) default positions (`web/js/lib/overlay_layout.js:50-51`) = clean left-edge column, NO
+collision (Gemini's tune is a non-issue). Live composite screenshot: CALL + WARD-UP render in clean
+doctrine positions, click-through, no HUD/play collision. Process-vs-mtime check: the RUNNING overlay
+(electron 9736 @ 19:32:51) post-dates the ZOI render files (minimap_zoi.js @ 19:30:33) -> operator on
+FRESH ZOI code, not stale. No overlay code change needed.
+
+NEXT: the diagnosis converts the "54.6%" gate into 3 operator-gated levers - (i) a realistic partial-
+enemy-combo model is the principled MODEL-ERROR fix for back_off->trade (NOT a threshold tune); (ii)
+CALIBRATION classes need ground-truth (rewind-db / live side-by-side) before any _BACK_OFF/_HOLD_LOW nudge
+(anti-circularity); (iii) back_off->hold needs per-pair inspection. Flip stays do-not-flip-blind. HYGIENE
+STILL OWED (3 cycles): MEMORY.md ~1KB over the 24.4KB load budget - run /consolidate-memory next idle
+cycle (a bounded build was picked this cycle, so deferred again per the operator rule).
+
+---
+
+# 2026-06-21 (headless continue 8) - HZ shadow agreement metric DE-BIASED (recall category error)
+
+Item 574, commit `79a7906a` (pushed; restored upstream tracking the item-569 rewrite had dropped). Tier-1
+tooling; no engine / DS / Share / ENGINE bump.
+
+TRIAGE (the prompt's candidates 1+2 verified DRAINED before building - the curated backlog had 3 already-
+shipped picks in a row, so grep-verify was mandatory): (1) DS cross-eval Aphelios dps zero-output BUG = ALREADY
+FIXED (ENGINE 1.128.0; `ds_cross_eval/SYSTEMIC_FINDINGS.md:74-84,112`) and LIVE-CONFIRMED this session (re-probed
+at live 1.149.0 -> dps ranks Yun Tal 103 / IE 96 / Stormrazor 82, not Doran's). B1 melee-gate + F2 gold-top
+shipped default-OFF (items 496/497); Cluster A ARAM-override = operator off-meta call, not a bounded build. So
+(1) has no bounded slice left. (2) HZ flip = NOT ready (laning 29.3% / build 48.9%, operator-gated). The 5-day
+memory `project_ds_comprehensive_cross_eval` (Aphelios "clearest defect") predated the 1.128.0 fix - same stale-
+backlog trap as items 1/b/c.
+
+GEMINI DIRECTOR consult -> priority = de-bias the HZ shadow agreement metric. SUBAGENT-FIRST: Plan subagent
+emitted the file:line-grounded spec -> impl TDD-inline (2 coupled files, worktree fan-out inappropriate per R9)
+-> read-only verifier gate (117/117, fix confirmed in-impl, no production importer) BEFORE commit.
+
+ROOT CAUSE + FIX: `tools/hz_shadow_report.py` scored the precompute choice-A laning-COMBAT verdict against the
+native Haiku action even when that action was "recall" - an ECONOMY decision the combat-A can STRUCTURALLY never
+be (the precompute's recall signal is choice B: "Recall now"/"Back soon"). ~1794 guaranteed mismatches were in
+the laning denominator. Fix: native=recall excluded from the laning-combat comparable; routed to a NEW `economy`
+sub-block {native_recall, precompute_also_recall} (`_is_recall_directive_label` catches BOTH "Recall now" AND
+"Back soon" - classify_verdict MISSES the latter; labels HARDCODED not core-imported because a top-level core
+import breaks the standalone `python tools/hz_shadow_report.py` CLI, verified live). Build (lean) + even<->hold
+untouched.
+
+RESULT: laning agreement 29.3% -> 54.6% (1133/2076); 1794 native-recall now in the economy block (all 1794 with
+precompute also recalling); flip hint 31% -> 54%; remaining laning mismatches are now GENUINE combat disagreements
+(back_off->hold x351, hold->all_in x151 = the actionable gate). TDD +6 / 3-updated, 41/41 pass; ruff clean.
+DON'T redo: this de-bias; do NOT re-add native-recall to the combat denominator (it is cross-axis by design).
+
+NEXT: the HZ flip stays operator-gated (do-not-flip-blind) - the honest gate now reads ~54% combat agreement;
+the genuine combat mismatches (back_off->hold, hold->all_in) are the next signal to investigate IF a flip is
+pursued. MEMORY.md still ~1KB over the 24.4KB load budget (a higher-priority build item was picked this cycle,
+so `/consolidate-memory` is still owed - run it next idle cycle). Candidate set 1+2 now both drained/gated; a
+fresh operator refill or a new Gemini-bounded slice is needed next cycle.
+
+---
+
+## Relocated 2026-06-18 (PM5 wakeup prune - keep last 3 sessions)
+
+# 2026-06-18 (PM2) - headless deep-research+lift: R2 competitor fan-out + Game Flow tab
+
+Operator-direct /headless-upgrade run (deep-research+lift focus). Code commit `b17531e1`.
+
+- **R2 competitor fan-out** (aggregator B / aggregator A / Aggregator Z1 / aggregator G, 4 parallel deep-dive agents).
+  RC supersedes/has nearly the whole surface. **Verify-gate caught a wrong agent HAVE:** the
+  aggregator G "win-prob match-flow curve" NOW pick is ALREADY shipped (`web/js/panels/pgr_winprob.js`,
+  PGR S3) - the agent read only post_game_phases.js and missed the graph. Reclassified CLOSED.
+- **SHIPPED F-DPM per-minute performance curve** (the one genuine own-data gap = Aggregator Z1's
+  signature graph): `core/perf_curve.py` -> `/api/perf-curve?mode=&metric=&champion=` -> Build
+  Insights "Game Flow" tab (inline-SVG dual win/loss line, gold/cs toggle). Avg cumulative
+  gold/CS per game minute over the own rewind corpus, win-vs-loss split. Pure aggregation over
+  timeline_frames, no global/Riot/Claude dep, no DS schema. TDD +42 (11 module + 18 route + 13
+  DOM). Live aram/gold n=2004 (wins pull ahead by min5), sr/cs n=618. RC pid 22672. Tier-1.
+- **Section-3b UI audit 5/5 CLEAN, 0 MUST-FIX.** **VISUAL CAPTURE OWED** (Game-PC :8892 down +
+  Claude_Preview MCP not connected this session). Carry-forward.
+- **FUTURE -> BACKLOG** (`docs/COMPETITOR_LIFT_2026-06-18_R2.md`): aggregator B carry-efficiency grade
+  axes (gold_share verified 0 hits, Tier-2 grade re-baseline = product call); aggregator A OP-Score
+  per-interval performance curve (new scoring model); DPM damage-per-min (cumulative-all-units
+  trap, needs a to-champs frame field); aggregator G lane-vs-full WPA totals (marginal).
+- **NEXT:** F-UGG1 carry-efficiency as a DISPLAY-only stat (LOW-risk, no grade change).
+- **Still open from earlier today:** ops/loop/config.json + director_prompt.md modified
+  (operator pre-run loop tuning) - NOT committed; review/commit/discard next session.
+
+---
+
+
+## Pruned WAKEUP session (relocated 2026-06-04, item 299 wrap)
+
+# 2026-06-16 - cycle 47: LBAND1 canonical-id fix + cost lever + HZ flip-gate accuracy [items 447-449] (relocated 2026-06-16, cycle-50 wrap)
+
+- 3 slices (`e0b119fd` S1 / `4d20ef17` S2 / `fd156f04` S3), all Tier-1, CI green; cost 7-lever re-sweep = 6 CLEAN + 1 SHIP. Source: operator "continue open items headlessly - multi-agent fanout orchestrated". No DS/ENGINE/Share. No frozen files. RC restarted pid 1228 -> 23280 (S1).
+- ORIENT: bounded headless-safe queue drained (cycles 43-46) + Gemini director/consult down (429). 3-agent scout fanout: cost-7-lever / robustness-on-net-new-modules(440-446) / build-shadow-skew-RCA. Real work surfaced from the scouts, not the (drained) NEXT queue.
+- S1 (447): robustness scout found a real NOW bug - core/live_benchmark_band.py keyed canonical-keyed benchmarks on the RAW Live Client DISPLAY name, so ~25 multiword champs (Miss Fortune/Lee Sin/Tahm Kench...) silently never banded (games_for("Miss Fortune")=0 vs MissFortune=51). Same item-439/388 canonical class LBAND1 missed; its tests all used "Tristana" (display==canonical) so CI was blind. FIX: canonicalize the lookup at band_metrics entry, keep display name in the line. +2 char tests (red->26 green). RC restarted (shadow logger picks it up next SR game).
+- S2 (448): cost re-sweep 6 CLEAN + 1 SHIP. SHIP = web/js/main.js MINIMAP_INTERVAL_FAST 250->500 - the only sub-500ms NETWORK poll; engages only on the retired Game-PC minimap fast-stream (dormant 1-PC/ADR-011, falls back to 2000). Numeric constant, no render change (no 3b ritual), ADR-008 auto-reload.
+- S3 (449): build-skew RCA = BY-DESIGN-but-misleading (one long game inflates rows via the item_count+5s-bucket dedup sig; live anti_tank x793/x81 ~91% is really 5/5 distinct GAMES). hz_shadow_report is the do-not-flip-blind gate, so added by_lean_per_game + distinct_games + a per-game print line (additive, schema v2). +1 test. Live: "lean per-game (10 distinct): anti_squishy x5, anti_tank x5".
+- NEXT: bounded headless-safe queue drained again; remaining = HZ/LBAND live-flip (do-not-flip-blind, accrues on real SR games - now roster-unbiased post-S1) + DS Phase-D + visual captures (Game-PC :8892 down) + P6 G3/G6/G7, all live/operator/Gemini-gated. Gemini still down (429).
+
+---
+
 (item 417 - DEEP-AUDIT cycle 21 P3 slice A3a docstring sweep, + item 416 - cycle 20 P3 slice A2 comment-token sweep, + item 415 - cycle 19 P3 slice A1 comment-token sweep, + item 414 DS EHP SUSTAIN ENGINE 1.121.0 - all relocated to docs/history_notes.md cycle-22/23/24 wraps)
 
 ---
@@ -14149,124 +14313,3 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - Gate: tests/ 7885p/0f/0e/2s + 109 subtests, 252.95s exit 0 (+43); independently re-run fresh to ops/audit/p2w4_hw2_pytest.txt. DS-dir NOT re-run (no DS/scorer/Share file - tiered-verify R5/R6, blast radius all in tests/). Phase3-Supervisor bounced (taskkill 24280 -> schtasks /Run -> pid 27044 re-listening :8890) for the test_supervisor_starts_and_binds_ports env-flake. DEFER -> ops/audit/P2_FINDINGS.md (W4-hw2: 3 MED retrofill-provenance / merge_refresh non-atomic / spec hiddenimports + LOW + INFO).
 - Follow-up (post-cycle commit 5669d682, closes the slice-H MED DEFER): riot-commander.spec hiddenimports was a stale hand-list of 7 of 54 dashboard.routes_* -> now a build-time glob of dashboard/routes_*.py (a PyInstaller build would have ModuleNotFoundError'd on the ~47 unlisted: routes_metrics/ds_combo/archetype/ward_heat/...). Glob-of-files is self-maintaining + only declares modules that exist. ast.parse OK, CI green; .spec never imported at runtime, no restart.
 - DONT-REDO: non-finite floors + loop timeouts + tft degrade/OCR-timeout + wakeup re-split + spec icon stay + spec-hiddenimports-glob stay (do NOT revert to a hand-list); rc-shell Electron is clean (do NOT re-audit for a quota edit); bare-py guard has a 2nd gap (bare `python <script>` word-form, widening false-positives doc lines - leave). gamepc/2-PC note-only feed: scripts/{discover_champion_codes,probe_missing_codes,team_planner_sync} hardcode 192.168.8.237 LCU base (-> 127.0.0.1/RC_GAME_HOST), phase3 SMB refs, tft Game-PC frame comments (accurate post-1PC). NEXT cycle 16: W5 test corpus = tests/ 359/81155 + agents/daemon_slayer/tests ~200/~81k (~6 slices each, W5-light lens: data-fragile assertions, stale pins, skipped/xfail rot).
-
----
-
-# 2026-06-21 (headless continue 7) - candidate triage: a/b/c all drained -> weekly-hygiene (no build)
-
-Overlay-polish red queue + ZOI slices 1-3 came in DONE. Interviewed the Gemini director for the next
-priority from the 3 prompt candidates; a GROUND-TRUTH PROBE drained all three, so per the operator's
-pre-authorized fallback this became a weekly-hygiene pass. No code/engine/DS/Share change.
-
-CANDIDATES - do NOT re-chase (each verified vs live codebase, like this run's predecessor item 1):
-- (b) adaptation st-* "wall of dashes": HEADLINE ALREADY SHIPPED - commit `94f1e07b` wired
-  `_hideEmptyStatRows()` (right_now.js:456 <- main.js:1443): hides no-live-producer rows + collapses
-  empty group headers, idempotent. `gd_at_15` has a producer ONLY in core/match_metrics.py (post-game)
-  so it is NOT live-derivable (Gemini's example was wrong). Residual = wiring a live stat (e.g. KP) into
-  the RETIRED Chrome dashboard adaptation panel = low value (the overlay, not that panel, is the surface).
-- (c) aggregator G PGR reframe: FULLY SHIPPED S2-S5 (`77c3cc3`/`92c6a0f`/`e6cd350b`/`48bc58c8`/`c162e5bd`;
-  ROADMAP_HISTORY flipped to SHIPPED). Explore-agent mapped the surface: no unshipped bounded slice.
-- (a) ZOI slice 4 champion-only template matching: the ONLY genuinely-unshipped candidate, but LOW
-  value + HIGH risk. core/minimap_blob_detect.py:16-19 author note: "for a ZOI map-control signal, total
-  team presence is the right input anyway"; pure-numpy template match on a noisy 312px minimap crop is
-  brittle and would REPLACE the just-shipped live-verified presence detector. BOTH Gemini passes said:
-  do NOT build it blind. Parked (future, no owner) - needs operator/Gemini sign-off before any attempt.
-
-HYGIENE (relocate-only doc trim committed; memory edits local/uncommitted):
-- WAKEUP 6->2 entries: continue 4 / HEXCORE / continue 3 / continue 2 relocated VERBATIM to
-  docs/history_notes.md (this entry + continue 6 + continue 5 kept).
-- MEMORY.md: 14 longest index lines trimmed (26.2KB -> 25.4KB). STILL ~1KB over the 24.4KB load
-  budget (slug-length floor across ~28 medium lines). FLAG: run `/consolidate-memory` to dedupe /
-  consolidate the index (incl the 3 retired Game-PC ADR-011 tombstones) - beyond a light pass.
-- CLAUDE.md clean (0 leaked ledger items).
-
-ANOMALIES (both EXPECTED, no action): RC-CostHealthWatchdog last_result=1 = a genuine cost breach
-(today $2.65 vs $0.655 7-day baseline, flap:false), the expected signature of all-day live SR coaching;
-hot lane = `sr_coach` Haiku - the known Haiku-to-ZERO program, NOT a new defect. peer bridge health
-publisher stale = the Peer peer not publishing; the Peer bridge probe was deprecated from /done 2026-06-21.
-
-NEXT: the operator-listed candidate set (a/b/c) is EXHAUSTED. The next cycle needs a NEW operator refill
-or direction, not another pick from a/b/c. The repeated "already-shipped" hits (item 1, then b + c this
-cycle) mean the curated backlog is stale - grep-verify any future pick against the live tree first.
-
----
-
-# 2026-06-21 (headless continue 9) - HZ laning-combat mismatch DIAGNOSED + overlay live-verified clean
-
-Item 575, commit `367297b6` (pushed). Standalone Tier-1 diagnosis tool; no engine / DS / Share / ENGINE
-bump / flip.
-
-TRIAGE (candidates 1+2 verified DRAINED/GATED again - 5th cycle, grep-verify mandatory): live re-probe
-RC pid=3656 mode=game (live SR game UP), DS :8893 ENGINE 1.149.0 / 16.12.1. (1) DS cross-eval + (2) HZ
-blind flip confirmed drained/operator-gated per items 573/574. Gemini director (gemini-3-pro-preview)
-picked candidate (A) - root-cause the now-GENUINE laning combat mismatches - and KEPT IT LANING-ONLY (NOT
-the build-axis anti_squishy->anti_tank skew; mixing axes breaks scope).
-
-PROCESS (subagent-first, parallel): an Explore agent mapped the combat-verdict pipeline -> a Plan subagent
-emitted the file:line spec (KEY FINDING: the shadow log does not store net_swing, but
-choices[0].expected_outcome embeds it - parse the LOG-TIME scalar, zero engine drift) -> a background
-build agent implemented TDD-first -> an independent verifier gate PASS (22/22, ruff, partition invariant)
-before commit.
-
-THE DIAGNOSIS (real log, 17409 records, 945 genuine laning mismatches; `ops/audit/HZ_MISMATCH_DIAGNOSE.md`):
-the over-caution is MOSTLY CALIBRATION, NOT Haiku noise. hold->all_in (151, med -0.02), even->trade (126,
-med -0.06), hold->trade (91, med +0.06) all cluster at the hold/trade boundary (368 ticks, defensible).
-ONE structural MODEL-ERROR pocket: back_off->trade (138, med -0.30) = the enemy sequence_b=_FULL_COMBO
-over-kill (`core/laning_scenario_precompute.py:355`) - a threshold tune cannot fix a structural-input
-error. The largest class back_off->hold (351, med -0.24) is per-pair ambiguous. Partition invariant
-945==945==(2103-1158). +22 TDD, ruff clean, verifier-confirmed.
-
-PARALLEL OVERLAY (operator directive, live SR Caitlyn game UP): 25/25 overlay snapshot tests pass (lone
-teardown ERROR = the live game writing data/*.jsonl, documented env guard). w-spike(20,580) /
-w-trinket(20,520) default positions (`web/js/lib/overlay_layout.js:50-51`) = clean left-edge column, NO
-collision (Gemini's tune is a non-issue). Live composite screenshot: CALL + WARD-UP render in clean
-doctrine positions, click-through, no HUD/play collision. Process-vs-mtime check: the RUNNING overlay
-(electron 9736 @ 19:32:51) post-dates the ZOI render files (minimap_zoi.js @ 19:30:33) -> operator on
-FRESH ZOI code, not stale. No overlay code change needed.
-
-NEXT: the diagnosis converts the "54.6%" gate into 3 operator-gated levers - (i) a realistic partial-
-enemy-combo model is the principled MODEL-ERROR fix for back_off->trade (NOT a threshold tune); (ii)
-CALIBRATION classes need ground-truth (rewind-db / live side-by-side) before any _BACK_OFF/_HOLD_LOW nudge
-(anti-circularity); (iii) back_off->hold needs per-pair inspection. Flip stays do-not-flip-blind. HYGIENE
-STILL OWED (3 cycles): MEMORY.md ~1KB over the 24.4KB load budget - run /consolidate-memory next idle
-cycle (a bounded build was picked this cycle, so deferred again per the operator rule).
-
----
-
-# 2026-06-21 (headless continue 8) - HZ shadow agreement metric DE-BIASED (recall category error)
-
-Item 574, commit `79a7906a` (pushed; restored upstream tracking the item-569 rewrite had dropped). Tier-1
-tooling; no engine / DS / Share / ENGINE bump.
-
-TRIAGE (the prompt's candidates 1+2 verified DRAINED before building - the curated backlog had 3 already-
-shipped picks in a row, so grep-verify was mandatory): (1) DS cross-eval Aphelios dps zero-output BUG = ALREADY
-FIXED (ENGINE 1.128.0; `ds_cross_eval/SYSTEMIC_FINDINGS.md:74-84,112`) and LIVE-CONFIRMED this session (re-probed
-at live 1.149.0 -> dps ranks Yun Tal 103 / IE 96 / Stormrazor 82, not Doran's). B1 melee-gate + F2 gold-top
-shipped default-OFF (items 496/497); Cluster A ARAM-override = operator off-meta call, not a bounded build. So
-(1) has no bounded slice left. (2) HZ flip = NOT ready (laning 29.3% / build 48.9%, operator-gated). The 5-day
-memory `project_ds_comprehensive_cross_eval` (Aphelios "clearest defect") predated the 1.128.0 fix - same stale-
-backlog trap as items 1/b/c.
-
-GEMINI DIRECTOR consult -> priority = de-bias the HZ shadow agreement metric. SUBAGENT-FIRST: Plan subagent
-emitted the file:line-grounded spec -> impl TDD-inline (2 coupled files, worktree fan-out inappropriate per R9)
--> read-only verifier gate (117/117, fix confirmed in-impl, no production importer) BEFORE commit.
-
-ROOT CAUSE + FIX: `tools/hz_shadow_report.py` scored the precompute choice-A laning-COMBAT verdict against the
-native Haiku action even when that action was "recall" - an ECONOMY decision the combat-A can STRUCTURALLY never
-be (the precompute's recall signal is choice B: "Recall now"/"Back soon"). ~1794 guaranteed mismatches were in
-the laning denominator. Fix: native=recall excluded from the laning-combat comparable; routed to a NEW `economy`
-sub-block {native_recall, precompute_also_recall} (`_is_recall_directive_label` catches BOTH "Recall now" AND
-"Back soon" - classify_verdict MISSES the latter; labels HARDCODED not core-imported because a top-level core
-import breaks the standalone `python tools/hz_shadow_report.py` CLI, verified live). Build (lean) + even<->hold
-untouched.
-
-RESULT: laning agreement 29.3% -> 54.6% (1133/2076); 1794 native-recall now in the economy block (all 1794 with
-precompute also recalling); flip hint 31% -> 54%; remaining laning mismatches are now GENUINE combat disagreements
-(back_off->hold x351, hold->all_in x151 = the actionable gate). TDD +6 / 3-updated, 41/41 pass; ruff clean.
-DON'T redo: this de-bias; do NOT re-add native-recall to the combat denominator (it is cross-axis by design).
-
-NEXT: the HZ flip stays operator-gated (do-not-flip-blind) - the honest gate now reads ~54% combat agreement;
-the genuine combat mismatches (back_off->hold, hold->all_in) are the next signal to investigate IF a flip is
-pursued. MEMORY.md still ~1KB over the 24.4KB load budget (a higher-priority build item was picked this cycle,
-so `/consolidate-memory` is still owed - run it next idle cycle). Candidate set 1+2 now both drained/gated; a
-fresh operator refill or a new Gemini-bounded slice is needed next cycle.
