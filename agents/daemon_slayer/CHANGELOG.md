@@ -1331,6 +1331,21 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.151.0 (R17 - anti-tank level-ramp %max-HP endpoints, default-OFF, byte-identical.
+A real subset of the antitank %max-HP rows deal a percentage that scales with the CASTER's champion level
+(Aatrox P "4% : 8% (based on level)", Brand P "8% : 12%", Skarner P "5% : 9%", ...). AntiTankEntry gains optional
+ramp_lo / ramp_hi endpoints (default 0.0, END-appended so every positional/P3.2 construction survives), and
+compute_antitank / _mechanism_value / _effective_magnitude take an optional level. The hand-tuned magnitude encodes
+the LATE-game (max-ramp) reliability; when a level is injected a ramp-seeded row's effective magnitude scales by the
+new _level_ramp_factor = lerp(ramp_lo, ramp_hi, (level-1)/17) / ramp_hi, so level=18 AND level=None (the /anti-tank
+route default) are byte-identical to item 308/315 and early levels discount toward ramp_lo. Seeded 10 verified MAX_HP
+champion-level ramps from the patch-16.12.1 registry source_quotes: Aatrox P 4:8, Brand P 8:12, KSante P 1:2,
+Mordekaiser P 1:5, Ornn P 10:18, Renata P 1:2, Skarner P 5:9, Urgot P 2:6, Zed P 6:10, Zeri P 1:11. Every un-ramped
+row is byte-identical at any level (the additive contract, mirrors P3.2). Offline characterization tests RED-first
+(test_antitank_ramp_r17.py). The live default-ON flip (a consumer calling with the live champion level) is
+operator-gated (docs/LIVE_GAME_GATED_SYNC.md). Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893
+bounced -> 1.151.0.)
+
 1.150.0 (R14 - cc_conditional durations_floor_s guaranteed-minimum CC floor band, default-OFF, byte-identical.
 A distance / channel-scaled conditional CC entry encodes its MAX payoff in durations_s (Maokai R 2.25, Hecarim R
 1.5, Ashe R 3.5, KSante W 1.0, Sion R 1.0); the new optional ConditionalCcEntry.durations_floor_s field records

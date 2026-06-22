@@ -697,3 +697,15 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   e.g. Ashe R OFF credits 3.5*0.4=1.4s (< unconditional 1.5s, the flat baseline wins) but ON credits
   1.0+0.4*(3.5-1.0)=2.0s (the floor-aware credit wins the coexistence MAX). A WRONG precompute is worse than no
   credit, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-06-22 R17 anti-tank level-ramp %max-HP seam (`compute_antitank(level=)`, ENGINE 1.151.0, default-OFF).
+  A real subset of antitank %max-HP rows scale their percentage with the CASTER's champion level
+  (`agents/daemon_slayer/antitank.py` AntiTankEntry.ramp_lo/ramp_hi: Aatrox P 4:8, Brand P 8:12, KSante P 1:2,
+  Mordekaiser P 1:5, Ornn P 10:18, Renata P 1:2, Skarner P 5:9, Urgot P 2:6, Zed P 6:10, Zeri P 1:11). The
+  hand-tuned magnitude encodes the max-ramp (late-game) reliability; compute_antitank stays byte-identical until a
+  `level` is injected, when a ramp-seeded row's effective magnitude scales by lerp(ramp_lo, ramp_hi,(level-1)/17)/
+  ramp_hi (level=18 and level=None both byte-identical; un-ramped rows byte-identical at any level). OWED
+  (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): wire a survivability / draft consumer to
+  call compute_antitank with the live champion level (the /anti-tank route still passes no level, byte-identical),
+  and confirm the early-vs-late level-discounted anti-tank scores read sane vs a real game (e.g. a level-3 Aatrox
+  ranks below a level-16 Aatrox on the same tank). A WRONG ramp is worse than the flat magnitude, so do NOT
+  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
