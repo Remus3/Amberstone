@@ -729,6 +729,19 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     _viewUpdateMenuActive(viewId);
     // Lazy-fetch view content (wire-once + fetch on first activate)
     if (viewId === "lobby")       { _lobbyViewWireOnce(); _lobbyViewRefresh(); }
+    // Home: re-fetch on activation so a #home nav repaints the panel. The
+    // startup tick (_homeWireStartup -> _homeFetchAndRender) can run BEFORE
+    // the ?ui_mock=1 flag IIFE sets body.dataset.uiMock, so that first
+    // fetch hits the live /api/home/summary and caches lastFetchAt, which
+    // would otherwise suppress the mock fixture render. Clearing the cache
+    // guard + re-fetching here makes navigating to home land the mock
+    // fixture (mirrors the item-188 active-match on-activate dispatcher).
+    if (viewId === "home") {
+      try {
+        if (_homeIsMock()) { _HOME.fetching = false; _HOME.lastFetchAt = 0; }
+        _homeFetchAndRender();
+      } catch (_) {}
+    }
     if (viewId === "champ-select") { renderChampSelectView(_csResolveLcu()); }
     // Item 188: kick the Active Match mock dispatcher on view-change so
     // navigating to #active-match with ?ui_mock=1&mode=<X> renders even

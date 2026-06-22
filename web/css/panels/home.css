@@ -40,7 +40,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   gap: var(--panel-gap);
 }
 
-/* ── V1 hero banner ───────────────────────────────────────────────── */
+/* -- V1 hero banner (Today identity card) ----------------------------
+ * RC2 Hextech reskin (priority #4): the Today identity card. The home
+ * markup (index.html, foundation-frozen for this slice) does not carry
+ * the .hx-card class, so this card replicates the hextech.css bracket
+ * motif locally (consuming --accent, same 14px L-stroke geometry) -
+ * surface + gold hairline + gold corner brackets - plus a subtle
+ * teal->gold accent wash so it reads as the identity band (design home
+ * id-head, RC2_DESIGN.html ~:359-368). No overflow:hidden: that would
+ * shear the -1px corner brackets, so the motif bg clips via its own
+ * mask + rounded corners (below) instead. */
 .home-hero {
   position: relative;
   display: grid;
@@ -49,12 +58,36 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   align-items: center;
   padding: var(--panel-padding-comp) var(--panel-padding);
   background: linear-gradient(135deg,
-              rgba(138, 140, 240, 0.06),
-              rgba(245, 184, 124, 0.04));
-  border: 1px solid var(--border-soft);
-  border-radius: var(--panel-radius-sm);
+              color-mix(in srgb, var(--accent-2) 7%, transparent),
+              color-mix(in srgb, var(--accent) 5%, transparent));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card-soft);
   min-height: 120px;
-  overflow: hidden;
+}
+/* Gold corner brackets (top-left + bottom-right L-strokes) - the
+ * signature Hextech frame, mirrored from hextech.css .hx-card so the
+ * markup needs no class change. Decorative + pointer-inert. */
+.home-hero::before,
+.home-hero::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  z-index: 2;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.home-hero::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--radius);
+}
+.home-hero::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--radius);
 }
 /* Champion motif background. JS sets background-image inline based on
  * this-week's top champion (or a fallback). Positioned to bleed out
@@ -62,17 +95,23 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * + monochromed so it's visual texture, not foreground content. */
 .home-hero-bg {
   position: absolute;
-  top: 50%; right: -40px;
-  transform: translateY(-50%);
-  width: 360px; height: 360px;
-  background-position: center;
+  /* RC2 reskin: pinned inside the card's right edge (was right:-40px,
+   * which bled past the now-unclipped hx-card frame). The to-left mask
+   * + bottom fade keep it reading as a corner motif within the rounded
+   * bounds, so the parent needs no overflow:hidden (which would shear
+   * the gold corner brackets). */
+  top: 0; right: 0; bottom: 0;
+  width: min(340px, 55%);
+  background-position: right center;
   background-size: contain;
   background-repeat: no-repeat;
-  opacity: 0.18;
+  opacity: 0.16;
   filter: grayscale(0.4) blur(0.5px);
   pointer-events: none;
-  mask-image: linear-gradient(to left, black 30%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to left, black 30%, transparent 100%);
+  border-top-right-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  mask-image: linear-gradient(to left, black 25%, transparent 95%);
+  -webkit-mask-image: linear-gradient(to left, black 25%, transparent 95%);
 }
 /* Make the foreground content sit above the motif. */
 .home-hero-greet,
@@ -100,7 +139,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   padding: 2px 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: var(--surface-2, rgba(255,255,255,0.03));
+  background: var(--surface-2);
 }
 .home-hero-rank-tier {
   font-size: var(--fs-sm); font-weight: 700; color: var(--text);
@@ -111,13 +150,17 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   letter-spacing: 0.04em;
 }
 .home-hero-rank[data-tier=""] .home-hero-rank-tier { color: var(--text-faint); }
+/* League ranked-tier accents. iron/bronze/silver have no foundation
+ * token (genuinely brand-specific tier tints) so they stay literal;
+ * gold/platinum/emerald/diamond/master+ route through the foundation
+ * palette (accent / accent-2 / good / info) which matches their hue. */
 .home-hero-rank[data-tier="iron"],
 .home-hero-rank[data-tier="bronze"]   { border-color: #8a5a3b; }
 .home-hero-rank[data-tier="silver"]   { border-color: #9fb0bd; }
-.home-hero-rank[data-tier="gold"]     { border-color: #d4af37; }
-.home-hero-rank[data-tier="platinum"] { border-color: #3bb6a6; }
-.home-hero-rank[data-tier="emerald"]  { border-color: #2ecc71; }
-.home-hero-rank[data-tier="diamond"]  { border-color: #5aa9ff; }
+.home-hero-rank[data-tier="gold"]     { border-color: var(--accent); }
+.home-hero-rank[data-tier="platinum"] { border-color: var(--accent-2); }
+.home-hero-rank[data-tier="emerald"]  { border-color: var(--good); }
+.home-hero-rank[data-tier="diamond"]  { border-color: var(--info); }
 .home-hero-rank[data-tier="master"],
 .home-hero-rank[data-tier="grandmaster"],
 .home-hero-rank[data-tier="challenger"] { border-color: #c879ff; }
@@ -137,9 +180,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-chip {
   display: inline-flex; flex-direction: column; align-items: flex-start;
   padding: var(--space-2) var(--space-3); min-width: 130px;
-  background: var(--surface-head);
+  background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
+  border-radius: var(--radius-sm);
 }
 .home-hero-chip-lbl {
   font-size: var(--fs-xs); letter-spacing: 0.18em; font-weight: 700;
@@ -161,13 +204,13 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   flex: none;
 }
 .home-hero-spark .spark-line {
-  fill: none; stroke: var(--info);
+  fill: none; stroke: var(--accent-2);
   stroke-width: 1.5; vector-effect: non-scaling-stroke;
 }
 .home-hero-spark .spark-area {
-  fill: var(--info); opacity: 0.18;
+  fill: var(--accent-2); opacity: 0.18;
 }
-.home-hero-spark .spark-dot { fill: var(--gold); }
+.home-hero-spark .spark-dot { fill: var(--accent); }
 
 /* ── V1 body: 2-column row (recent cards | week list) ─────────────── */
 .home-body {
@@ -190,9 +233,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-2) var(--space-3) var(--space-2) 0;
-  background: var(--surface-head);
-  border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
   min-height: var(--hit-min);
   overflow: hidden;
   cursor: pointer;
@@ -232,7 +275,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   background: var(--surface);
 }
 .home-recent-card:hover {
-  border-color: var(--info);
+  border-color: var(--accent-2);
   transform: translateX(2px);
 }
 .home-recent-stripe {
@@ -332,16 +375,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-trend-spark .spark-line {
   fill: none;
-  stroke: var(--info);
+  stroke: var(--accent-2);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
 }
 .home-trend-spark .spark-area {
-  fill: var(--info);
+  fill: var(--accent-2);
   opacity: 0.15;
 }
 .home-trend-spark .spark-dot {
-  fill: var(--gold);
+  fill: var(--accent);
 }
 
 /* ── V3 coach row (suggestions #1 + #4) - Tonight's Pick now lives
@@ -349,17 +392,47 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * below, hidden until postgame_stats data exists. ────────────────── */
 .home-coach-pick,
 .home-coach-build {
-  background: var(--surface-head);
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
+  border-radius: var(--radius);
   padding: var(--panel-padding-comp);
 }
 .home-coach-pick[hidden],
 .home-coach-build[hidden] { display: none; }
-/* Tonight's pick → border accent + slight glow to read as primary */
+/* RC2 reskin: Tonight's Pick is the page HERO (gemini direction). The
+ * home markup carries no .hx-card class for this slice, so the surface +
+ * gold corner brackets are replicated locally (below); here it adds the
+ * Hextech teal glow (--glow) + a teal hairline so the eye lands here
+ * first, above the identity card. This is the single focal element of
+ * the home view. */
 .home-coach-pick {
-  border-color: var(--info-soft);
-  box-shadow: 0 0 8px rgba(138, 140, 240, 0.12);
+  position: relative;
+  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--border));
+  box-shadow: 0 0 18px -2px var(--glow);
+}
+/* Gold corner brackets on the hero (mirrored from hextech.css .hx-card;
+ * the markup carries no .hx-card class for this slice). The teal glow
+ * above + these gold brackets make Tonight's Pick the single focal
+ * element of the home view. Decorative + pointer-inert. */
+.home-coach-pick::before,
+.home-coach-pick::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.home-coach-pick::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--radius);
+}
+.home-coach-pick::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--radius);
 }
 .home-coach-pick-head,
 .home-coach-build-head {
@@ -440,7 +513,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-coach-pick-img {
   width: 72px; height: 72px;
   border-radius: var(--panel-radius-sm);
-  border: 1px solid var(--info-soft);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 40%, transparent);
   background: var(--surface);
   object-fit: cover;
   flex: none;
@@ -449,7 +522,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   display: flex; flex-direction: column; min-width: 0; gap: var(--space-1);
 }
 .home-coach-pick-champ {
-  font-size: var(--fs-lg); font-weight: 800; color: var(--info);
+  font-size: var(--fs-lg); font-weight: 800; color: var(--accent-2);
   letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   /* s218 v7: clickable - routes to History filtered by this champion. */
@@ -588,9 +661,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-find-match-backdrop.hidden { display: none; }
 
-/* ── V2 quick-action tiles row (suggestion #3) - s218: 7 equal tiles ── */
+/* -- V2 quick-action tiles row (suggestion #3) - s218: 7 equal tiles --
+ * RC2 reskin (gemini direction): this 7-tile row duplicates the header
+ * view-menu nav (Find Match / Post Game Review / Session / History /
+ * Replay / Builds / Settings are all reachable from the title dropdown),
+ * so it is CUT from the home glance to keep the identity + Tonight's
+ * Pick focal. This is VISUAL-ONLY: the buttons + their click wiring
+ * (main.js _homeWireStartup) stay in the DOM, just hidden, so nothing
+ * downstream breaks and the row can be restored by dropping this rule. */
 .home-actions {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(7, 1fr);
   gap: var(--panel-gap-tight);
 }
@@ -824,10 +904,14 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-services-pill.ok  .home-services-dot  { background: var(--good); }
 .home-services-pill.err .home-services-dot  { background: var(--bad); }
 .home-services-pill.err { color: var(--bad); border-color: var(--bad-soft); }
+/* RC2 reskin: RECENT 5 / THIS WEEK are SECONDARY panels (glance
+ * hierarchy - they recede beneath the identity + Tonight's Pick focal
+ * pair). They stay flat bordered surfaces with NO gold corner brackets,
+ * so the bracketed hero pair reads as primary. */
 .home-card {
-  background: var(--surface-head);
-  border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
   padding: var(--panel-padding-comp);
   min-height: 140px;
   display: flex; flex-direction: column;
@@ -848,9 +932,28 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-size: var(--fs-xs); color: var(--clock); font-weight: 700;
   letter-spacing: 0.06em; margin-left: auto;
 }
+/* RC2 reskin: home empty / loading states adopt the shared hx-empty
+ * sigil treatment (centered, dim, four-pointed-star glyph above the
+ * message) so a quiet panel reads as intentional, not broken. The sigil
+ * is the same U+2756 CSS escape hx-empty uses (ASCII source-hygiene). */
 .home-empty {
-  padding: var(--space-2) 0; font-size: var(--fs-xs); color: var(--text-faint);
-  font-style: italic; list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--dim);
+  text-align: center;
+  list-style: none;
+}
+.home-empty::before {
+  content: "\2756";
+  font-size: var(--fs-xl);
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.35;
 }
 .home-today-stats { display: flex; flex-direction: column; gap: var(--space-1); }
 .home-today-row {
@@ -880,11 +983,11 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   padding: 1px 0; border-radius: 4px;
   letter-spacing: 0.04em;
 }
-.home-recent-grade.S { color: #ffd166; background: rgba(245,184,124,0.18); }
+.home-recent-grade.S { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .home-recent-grade.A { color: var(--good); background: var(--good-soft); }
-.home-recent-grade.B { color: #b6e8c4; background: rgba(127,209,154,0.12); }
-.home-recent-grade.C { color: var(--text); background: var(--surface-head); }
-.home-recent-grade.D { color: #f5c1c8; background: rgba(240,126,139,0.12); }
+.home-recent-grade.B { color: var(--good); background: var(--good-soft); }
+.home-recent-grade.C { color: var(--text); background: var(--surface-2); }
+.home-recent-grade.D { color: var(--bad); background: var(--bad-soft); }
 .home-recent-grade.F { color: var(--bad); background: var(--bad-soft); }
 .home-recent-champ { color: var(--text); font-weight: 700; }
 .home-recent-meta  { color: var(--text-faint); font-size: var(--fs-xs); }
@@ -918,7 +1021,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--text-faint); flex-shrink: 0;
 }
-.home-services-dot.ok { background: var(--good); box-shadow: 0 0 4px rgba(127,209,154,0.5); }
+.home-services-dot.ok { background: var(--good); box-shadow: 0 0 4px color-mix(in srgb, var(--good) 50%, transparent); }
 .home-services-dot.err { background: var(--bad); }
 .home-services-name { color: var(--text); font-weight: 700; }
 .home-services-detail { color: var(--text-faint); font-size: var(--fs-xs); margin-left: auto; }
