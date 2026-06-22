@@ -4,6 +4,36 @@
 
 ---
 
+# 2026-06-22 (headless continue 15 / R14) - cc_conditional durations_floor_s CC floor band (ENGINE 1.150.0)
+
+Item 581, commit `66abc012` (pushed, CI green). Tier-2 DS schema lift: ENGINE 1.149.0 -> 1.150.0,
+DS :8893 bounced, Share re-synced in the feature commit; full dual suite (DS-dir 7472 passed).
+
+CONTEXT: gemini+ahk loop, MANUAL single-cycle executor (operator ran /gemini-headless-upgrade with
+args = read+execute ops/loop/control/directive.md now). Directive = ORCHESTRATION_PLAN R14 ds-sweep.
+
+BUILT (TDD red-first): optional ConditionalCcEntry.durations_floor_s (None default; loader .get);
+default-OFF apply_cc_floor seam on cc_pressure.compute_cc_pressure crediting floor + prob*(max-floor)
+instead of max*prob when ON, in both the standalone and coexistence MAX-rule paths
+(_conditional_credit_seconds). Byte-identical OFF (parity proven Maokai/Ashe/Hecarim/KSante/Sion/Brand).
+Seeded 5 vs Meraki 16.12.1 minimums: Maokai R 0.75 / KSante W 0.5 / Sion R 0.25 / Hecarim R 0.75 (4
+existing) + a NEW Ashe R 1.0 coexisting entry (range_gated, durations_s 3.5; Ashe R also unconditional
+1.5). Registry regenerated via the canonical generator (durations_floor_s on every record);
+externalization guard count 64->65. ENGINE pins bumped across 80 DS test files + 3 consumer pins.
+
+VERIFY: DS-dir 7472 passed; new floor test 13; cc_conditional 1352; externalization 11; Share --check
+in sync; ruff clean; DS :8893 live 1.150.0. The verifier subagent hit a transient 529 (0 tool uses) so
+the gate was a fresh first-hand re-verification (R7 exempts single-thread edits). ZERO regressions: the
+tests/ suite's other failures (3 aram_balance KeyError + overlay.css bare-px + spell_autopush) all
+reproduce on clean HEAD 38326ed3 / from the dirty spell_prefs.json - pre-existing, not R14 (logged to
+the ORCHESTRATION_PLAN Findings log + LEDGER 581).
+
+NEXT: live default-ON flip + ehp/hybrid propagation are operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.
+
+---
+
+---
+
 # 2026-06-22 (headless continue 14 / R13) - Active-Match fixture audit (threat_donut sigil exception)
 
 Item 580, commit `0fb91841` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
@@ -53,41 +83,3 @@ NEXT (operator-gated): guard now fails locally on the next bump/route-add that f
 follow-up (NOT done, scope): CLAUDE.md deep-ref line still cites stale ENGINE 1.101.0. Levers unchanged:
 overlay S0 flip; magnitude-as-bar (Phase-4); HZ Tier-2 partial-combo. Candidate set drained - next cycle
 needs a fresh Gemini/operator refill.
-
----
-
-# 2026-06-21 (headless continue 12) - ARAM "ARAM Modifications" balance line WIRED (BACKLOG F6)
-
-Item 578, commit `b541c923` (pushed). Tier-1; no backend engine / DS schema / Share / ENGINE bump /
-overlay render / flip change. Coach-prompt context line only -> ZERO overlay render delta, no electron relaunch.
-
-TRIAGE: live re-probe RC pid=3656, live SR game up (mode_key=sr ~22min full-build carry), DS :8893 ENGINE
-1.149.0 / 16.12.1, HEAD 2bfe7113. Candidate set 1/2/A/B/E DRAINED (items 573-577); all remaining named levers
-operator-gated. The Gemini director (gemini-3-pro-preview) was UP this cycle (down the prior 2) and surfaced a
-FRESH non-gated BACKLOG pick a recency-biased Explore sweep missed: F6 (BACKLOG.md:39). A parallel Explore agent
-independently called the hot candidate set drained, confirming F6 was the only fresh lever.
-
-VERIFY-BEFORE-BUILD (grep-confirmed): aram_modifiers IS consumed internally by the DS engine (dps.py:697 dealt,
-ehp.py:545 taken, +burst/ability_dps/hps/cc_pressure/engine + aram_tenacity_context.py:73 tenacity) but NO web/
-surface renders the dealt/taken deltas (COMPETITOR_LIFT_2026-06-21.md:116 says so literally). core/aram_tenacity_
-context.py is the shipped render-side precedent but covers ONLY tenacity (1 of 3 player-facing axes). The Plan
-subagent corrected 2 briefing data errors vs live 16.12.1 (Maokai is both-axes not dealt-only; Aatrox/Garen NOT
-damage-neutral, so Ahri 1.0/1.0 is the correct test neutral-anchor); re-verified live.
-
-BUILT (subagent-first, TDD red-then-green): NEW sibling core/aram_balance_context.py (load-once map, fail-soft,
-per-field fallback, _ARAM_MODES gate) -> aram_balance_line(champion, mode) = signed whole-% clauses
-"(mult-1.0)*100", e.g. Akshan "ARAM balance: you deal +5%, take -5% damage"; EMPTY non-ARAM/unknown/neutral
-(byte-identical prompt in the 46/172 neutral case). Enemy line a deliberate non-goal (126/172 non-neutral would
-render every game; damage delta is a self-tuning signal, unlike tenacity's exploitable CC window). Wired into
-coaches/aram_coach.py beside the tenacity line; forced edit added aram_balance="" to the 3 tenacity-test
-.format() calls. +new tests/test_aram_balance_context.py; 82/82 pass, ruff clean, ASCII/LF; no frozen file.
-
-VERIFIER GATE + OVERLAY TRACK: read-only verifier independently SHIP (82 passed, lone benign RF5 live-game guard;
-4 behaviour outputs exact; scope = 4 files + pre-existing spell_prefs.json dirt). Per-cycle overlay track PASSED
-in parallel: render-contract 25/25 + geometry audit overlay_layout.js/overlay.css CLEAN (zero MUST-FIX, baseline
-intact). In-game ARAM pixel frame OWED (live game was SR; an ARAM coach line is not SR-verifiable).
-
-NEXT (operator-gated): all 3 player-facing ARAM modifier axes now surfaced (tenacity prior + damage dealt/taken
-item 578); residual aram_modifiers fields (healing/shielding/AH/AS) are minor + situational, a future call.
-Levers unchanged: overlay S0 shadow->authoritative flip; magnitude-as-bar (Phase-4); HZ Tier-2 partial-combo.
-Candidate set drained - next cycle needs a fresh Gemini/operator refill.
