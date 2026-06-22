@@ -35,7 +35,7 @@
 
 .bo-tag {
   flex: 0 0 auto;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -50,7 +50,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
+  font-size: var(--fs-xs);
   color: var(--text, #f5f5f7);
   cursor: help;
 }
@@ -62,20 +62,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-faint, #6b6d7c);
 }
 
 .bo-msg {
   flex: 1 1 auto;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-faint, #6b6d7c);
 }
 
 .bo-safe,
 .bo-unsafe {
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 999px;
@@ -101,7 +101,7 @@
   background: none;
   border: none;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--fs-xs);
   line-height: 1;
   color: var(--info, #8a8cf0);
   cursor: pointer;
@@ -137,7 +137,7 @@
 }
 
 .bo-num {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-faint, #6b6d7c);
   text-align: center;
@@ -151,8 +151,12 @@
 }
 
 /* Names + deltas stay at the 15px readable floor - density is bought by
- * the collapse, never by shrinking the primary content. */
+ * the collapse, never by shrinking the primary content. operator-exception
+ * to the v2.1 16px --fs-xs floor (R18 audit). */
 .bo-name {
+  /* operator-exception: 15px readable floor (feedback_font_size_viewing_
+     distance) - dense bo-slot chip primary content (max-width 120px / 2-line
+     clamp); below the --fs-xs 16px floor by design. */
   font-size: 15px;
   color: var(--text, #f5f5f7);
   max-width: 120px;
@@ -166,6 +170,8 @@
 }
 
 .bo-delta {
+  /* operator-exception: paired with .bo-name at the 15px readable floor;
+     sub-floor by design for the dense buy-order chip row (see .bo-name). */
   font-size: 15px;
   font-weight: 600;
   color: var(--good, #7fd19a);
