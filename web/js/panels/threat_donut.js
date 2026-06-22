@@ -102,6 +102,11 @@ function _placeholder(parentEl, label, tooltip) {
   txt.setAttribute("x", "14");
   txt.setAttribute("y", "18");
   txt.setAttribute("text-anchor", "middle");
+  // operator-exception: geometry-constrained sigil glyph. This "?" / "."
+  // placeholder is centered inside the fixed 28x28 donut viewBox (r=12
+  // ring); the --fs-xs 16px floor would overflow the tile. It is a status
+  // sigil, not body text. Documented per the R13 v2.1 fixture audit
+  // (2026-06-22) - mirrors the cd_ledger.css density operator-exceptions.
   txt.setAttribute("font-size", "12");
   txt.setAttribute("fill", "#888");
   txt.setAttribute("font-weight", "700");
