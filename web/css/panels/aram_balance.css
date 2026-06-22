@@ -1,0 +1,120 @@
+/* ---- ARAM balance-adjustment grid panel -------------------------
+ * Surfaces Riot's per-champion ARAM modifiers (damage dealt/taken,
+ * healing, shielding, tenacity, attack speed multipliers + flat
+ * ability haste). SELF + ally + enemy rows; signed +/- deltas colored
+ * buff (--good) / nerf (--bad). v2.1 tokens only; every font-size sits
+ * on an --fs-* token at or above the 16px --fs-xs floor. Status is
+ * never color-alone: the signed +/- text carries the meaning (WCAG
+ * 1.4.1) and the kind tag (YOU/ALLY/ENEMY) is plain text. */
+
+#aram-balance-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap-tight);
+  padding: var(--space-2) 0 var(--space-3) 0;
+  border-top: 1px solid var(--border-soft);
+}
+
+#aram-balance-panel .ab-head {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 700;
+}
+
+#aram-balance-panel .ab-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  line-height: 1.3;
+}
+
+#aram-balance-panel .ab-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+#aram-balance-panel .ab-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--panel-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* SELF row gets a subtle gold edge so the operator's own line reads
+ * first at a glance. */
+#aram-balance-panel .ab-row-self {
+  background: var(--signal-good-soft);
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+#aram-balance-panel .ab-row-enemy {
+  background: var(--signal-bad-soft);
+}
+
+#aram-balance-panel .ab-kind {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  min-width: 5ch;
+  color: var(--text-dim);
+}
+#aram-balance-panel .ab-kind-self  { color: var(--gold); }
+#aram-balance-panel .ab-kind-enemy { color: var(--signal-bad); }
+#aram-balance-panel .ab-kind-ally  { color: var(--signal-info); }
+
+#aram-balance-panel .ab-name {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+  min-width: 9ch;
+}
+
+#aram-balance-panel .ab-deltas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+#aram-balance-panel .ab-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--panel-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+#aram-balance-panel .ab-chip-label {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+
+#aram-balance-panel .ab-chip-val {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Buff = good, nerf = bad. The +/- sign in the value text already
+ * encodes direction, so color is a redundant cue (not the sole one). */
+#aram-balance-panel .ab-chip.ab-good .ab-chip-val { color: var(--good); }
+#aram-balance-panel .ab-chip.ab-bad  .ab-chip-val { color: var(--bad); }
+#aram-balance-panel .ab-chip.ab-good { border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+#aram-balance-panel .ab-chip.ab-bad  { border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+
+#aram-balance-panel .ab-neutral {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-style: italic;
+  letter-spacing: 0.04em;
+}

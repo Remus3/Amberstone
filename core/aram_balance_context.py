@@ -134,4 +134,114 @@ def aram_balance_line(champion: str | None, mode: str | None) -> str:
     return "ARAM balance: you " + ", ".join(clauses) + " damage"
 
 
-__all__ = ["aram_balance_line", "get_balance_mults", "_BALANCE_MAP"]
+# ---------------------------------------------------------------------
+# Full-grid accessor (item: ARAM balance-adjustment grid panel).
+#
+# The SHIPPED loader above carries ONLY dealt+taken for the coach prompt.
+# The dashboard grid panel surfaces all seven Riot ARAM modifiers RC
+# already loads. This is a SEPARATE map + accessor so the prompt path
+# stays byte-identical; it is never read by the coach.
+#
+# FIELD SEMANTICS:
+#   aramDamageDealt / aramDamageTaken / aramHealing / aramShielding /
+#   aramTenacity / aramAttackSpeed  are MULTIPLIERS (neutral = 1.0).
+#   aramAbilityHaste  is ADDITIVE FLAT (neutral = 0).
+# A field is "neutral" (omitted) when a multiplier == 1.0 or AH == 0.
+# A champion with no non-neutral field is omitted from the map entirely.
+# ---------------------------------------------------------------------
+
+_GRID_MULT_FIELDS = (
+    "aramDamageDealt",
+    "aramDamageTaken",
+    "aramHealing",
+    "aramShielding",
+    "aramTenacity",
+    "aramAttackSpeed",
+)
+_GRID_FLAT_FIELDS = ("aramAbilityHaste",)
+
+
+def _load_balance_grid_map() -> Dict[str, Dict[str, float]]:
+    """Read patch + champions.json once; return {champion: {field: value}}.
+
+    Only NON-NEUTRAL fields are kept per champion (a multiplier != 1.0,
+    or aramAbilityHaste != 0). A champion with zero non-neutral fields is
+    OMITTED from the map (no empty-dict entries).
+
+    Fail-soft on missing files / malformed JSON / unexpected data shape:
+    returns ``{}`` (the route then renders an empty grid).
+    """
+    try:
+        patch_file = _DATA_DIR / "current.txt"
+        patch = patch_file.read_text(encoding="utf-8").strip()
+    except (OSError, UnicodeDecodeError):
+        return {}
+    if not patch:
+        return {}
+    champs_file = _DATA_DIR / patch / "champions.json"
+    try:
+        raw = json.loads(champs_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    data = raw.get("data") or {}
+    if not isinstance(data, dict):
+        return {}
+    result: Dict[str, Dict[str, float]] = {}
+    for cid, champ in data.items():
+        if not isinstance(champ, dict):
+            continue
+        lolmath = champ.get("lolmath") or {}
+        aram = lolmath.get("aram_modifiers") or {}
+        if not isinstance(aram, dict):
+            continue
+        fields: Dict[str, float] = {}
+        for key in _GRID_MULT_FIELDS:
+            try:
+                val = float(aram.get(key, 1.0))
+            except (TypeError, ValueError):
+                continue
+            if val != 1.0:
+                fields[key] = val
+        for key in _GRID_FLAT_FIELDS:
+            try:
+                val = float(aram.get(key, 0.0))
+            except (TypeError, ValueError):
+                continue
+            if val != 0.0:
+                fields[key] = val
+        if fields:
+            result[cid] = fields
+    return result
+
+
+_BALANCE_GRID_MAP: Dict[str, Dict[str, float]] = _load_balance_grid_map()
+
+
+def balance_grid_for(champion: str | None) -> Dict[str, float]:
+    """Return the non-neutral ARAM-modifier dict for one ``champion``.
+
+    Falls back to ``{}`` for a missing / unknown / falsy champion or a
+    fully-neutral champion. Keys are the raw Riot field names
+    (``aramDamageDealt`` etc.); values are the multipliers / flat AH.
+    """
+    if not champion:
+        return {}
+    return dict(_BALANCE_GRID_MAP.get(champion, {}))
+
+
+def balance_grid_map() -> Dict[str, Dict[str, float]]:
+    """Return the full ``{champion: {non-neutral field: value}}`` map.
+
+    Fully-neutral champions are omitted. A shallow copy is returned so a
+    caller cannot mutate the module-level cache.
+    """
+    return {cid: dict(fields) for cid, fields in _BALANCE_GRID_MAP.items()}
+
+
+__all__ = [
+    "aram_balance_line",
+    "get_balance_mults",
+    "_BALANCE_MAP",
+    "balance_grid_for",
+    "balance_grid_map",
+]
