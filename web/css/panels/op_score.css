@@ -79,6 +79,26 @@
 }
 #bi-opscore-mount .op-legend-item.op-win::before  { background: var(--signal-good, #6ec977); }
 #bi-opscore-mount .op-legend-item.op-loss::before { background: var(--signal-bad, #ff5050); }
+#bi-opscore-mount .op-arc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 12px);
+  margin-top: var(--space-3, 12px);
+}
+#bi-opscore-mount .op-arc-chip {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-strong, #f0f0f5);
+  background: var(--bg-elevated, #1c1c24);
+  border: 1px solid var(--border-soft, #2a2a35);
+  border-radius: var(--panel-radius-sm, 10px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+#bi-opscore-mount .op-arc-chip .op-arc-side { color: var(--text-faint, #9ca3af); }
+#bi-opscore-mount .op-arc-chip.op-win  { border-color: var(--signal-good, #6ec977); }
+#bi-opscore-mount .op-arc-chip.op-loss { border-color: var(--signal-bad, #ff5050); }
 #bi-opscore-mount .op-caption {
   margin-top: var(--space-4, 16px);
   font-size: var(--fs-xs, 16px);

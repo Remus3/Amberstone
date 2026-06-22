@@ -8,6 +8,7 @@ not fragile cross-row magic numbers.
 from __future__ import annotations
 
 from core import op_score_curve
+from core import op_score_shape
 
 
 def _db():
@@ -207,3 +208,32 @@ def test_weights_sum_to_one():
     total = (op_score_curve.W_GOLD + op_score_curve.W_XP
              + op_score_curve.W_CS + op_score_curve.W_COMBAT)
     assert round(total, 6) == 1.0
+
+
+def test_arc_summary_present_and_shaped():
+    conn = _db()
+    # 5 win + 5 loss games, each with frames at minutes 0..4 (>= MIN_POINTS for
+    # the arc classifier). Win pace outscales loss pace -> distinct curves.
+    for i in range(5):
+        _add_game(conn, f"W{i}", win=True,
+                  frames=[(mm, 1000 + mm * 120, 1000 + mm * 120,
+                           30 + mm, 0, 1000 + mm * 120) for mm in range(5)])
+    for i in range(5):
+        _add_game(conn, f"L{i}", win=False,
+                  frames=[(mm, 500 + mm * 30, 500 + mm * 30,
+                           15 + mm, 0, 500 + mm * 30) for mm in range(5)])
+    out = op_score_curve.compute_op_score_curve(mode="aram", conn=conn)
+    arc = out["arc"]
+    assert set(arc.keys()) == {"win", "loss"}
+    for side in ("win", "loss"):
+        assert arc[side] is not None
+        assert arc[side]["label"] in op_score_shape.KNOWN_LABELS
+        assert 0.0 <= arc[side]["start"] <= 100.0
+        assert 0.0 <= arc[side]["end"] <= 100.0
+
+
+def test_arc_summary_empty_when_no_games():
+    conn = _db()
+    out = op_score_curve.compute_op_score_curve(mode="aram", conn=conn)
+    assert out["minutes"] == []
+    assert out["arc"] == {"win": None, "loss": None}
