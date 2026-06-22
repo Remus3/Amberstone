@@ -1,70 +1,130 @@
 /* Build Insights view (item 273 item-WPA + item 275 skill-WPA + item 374
  * rune-WPA + item 389 summoner-spell-WPA tabs, competitor-WPA lift).
  *
- * Four-tab sortable WPA table on the v2.1 token scale. Dark theme matching
- * the dashboard. The signed WPA column is the hero - green when positive,
- * red when negative, with a 5-segment sample-confidence bar.
+ * RC2 Hextech reskin: the page chrome (tab strip, controls, the four WPA
+ * table panes) consumes the foundation tokens (base.css palette +
+ * tokens.css scale + hextech.css primitives). No raw hex - every color
+ * routes through a --token. The signed WPA column stays the hero - green
+ * (--good) when positive, red (--bad) when negative, with a redundant
+ * status glyph so the meaning survives grayscale / color-blind vision
+ * (WCAG 1.4.1, never hue alone) and a 5-segment sample-confidence bar.
+ *
+ * The four self-contained chart tabs (Game Length / Game Flow / OP Score
+ * / Benchmarks) render via the shared analytics sub-panel files
+ * (duration_winrate / perf_curve / op_score / champ_benchmarks); those
+ * are tokenized in the separate sub-panel sweep, not here.
  */
 
-/* [ Items | Skills | Runes | Spells ] tab toggle. Buttons meet the
- * --hit-min fingertip floor; the active tab gets the accent underline. */
+/* [ Items | Skills | Runes | Spells | ... ] tab strip. The buttons read
+ * as Hextech chips (hx-chip-like: outline pill on --surface-2); the
+ * active tab fills with --accent gold. Each button meets the --hit-min
+ * fingertip floor. */
 .bi-tabs {
   display: flex;
-  gap: var(--space-2, 8px);
-  margin-bottom: var(--space-3, 12px);
-  border-bottom: 1px solid #2a2e3c;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-2);
 }
 .bi-tab {
   min-height: var(--hit-min);
-  padding: 0 var(--space-4, 20px);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-4);
   font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--signal-dim);
-  background: transparent;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+  font-weight: 700;
+  color: var(--dim);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: color .15s ease, background .15s ease, border-color .15s ease;
 }
 .bi-tab:hover {
-  color: #e6e8ef;
+  color: var(--text);
+  border-color: var(--accent);
 }
 .bi-tab:focus-visible {
   outline: var(--focus-ring);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 .bi-tab.is-active {
-  color: #e6e8ef;
-  border-bottom-color: var(--accent, #7aa2ff);
+  color: var(--surface);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .bi-controls {
   display: flex;
   align-items: center;
-  gap: var(--space-3, 12px);
-  margin-bottom: var(--space-3, 12px);
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
   flex-wrap: wrap;
 }
 .bi-controls label {
   font-size: var(--fs-sm);
-  color: var(--signal-dim);
+  color: var(--dim);
 }
 .bi-controls input#bi-min-n {
   width: 72px;
   min-height: var(--hit-min);
   font-size: var(--fs-sm);
-  padding: 0 var(--space-2, 8px);
-  background: #1a1d28;
-  color: #e6e8ef;
-  border: 1px solid #2a2e3c;
-  border-radius: var(--panel-radius-sm, 10px);
+  padding: 0 var(--space-2);
+  background: var(--surface-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
-.bi-caption {
+.bi-controls input#bi-min-n:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--accent);
+}
+
+/* The visible tab pane is the Hextech content card: surface + gold
+ * hairline + gold corner brackets (the .hx-card motif painted locally so
+ * the DOM stays unchanged). [hidden] panes paint nothing. */
+.bi-tab-pane {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: var(--panel-padding);
+}
+.bi-tab-pane::before,
+.bi-tab-pane::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.bi-tab-pane::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--radius);
+}
+.bi-tab-pane::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--radius);
+}
+
+.bi-caption,
+.bi-skill-caption,
+.bi-rune-caption,
+.bi-spell-caption {
   font-size: var(--fs-xs);
-  color: var(--signal-dim);
+  color: var(--dim);
   line-height: 1.4;
   max-width: 1100px;
-  margin-bottom: var(--space-4, 20px);
+  margin-bottom: var(--space-4);
 }
 
 .bi-table {
@@ -72,64 +132,52 @@
   max-width: 1200px;
   border-collapse: collapse;
   font-size: var(--fs-sm);
-  color: #e6e8ef;
+  color: var(--text);
 }
 .bi-table thead th {
   text-align: left;
   font-size: var(--fs-xs);
-  color: var(--signal-dim);
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: var(--space-2, 8px) var(--space-3, 12px);
-  border-bottom: 2px solid #2a2e3c;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 2px solid var(--border);
   white-space: nowrap;
 }
 .bi-table th.bi-sortable {
   cursor: pointer;
-  /* height (not min-height) so the 42px --hit-min sort target is honored:
+  /* height (not min-height) so the --hit-min sort target is honored:
    * min-height does not apply to a display:table-cell box, height does. */
   height: var(--hit-min);
   user-select: none;
 }
 .bi-table th.bi-sortable:hover {
-  color: #e6e8ef;
+  color: var(--accent);
 }
 .bi-table th.bi-sortable:focus-visible {
   outline: var(--focus-ring);
   outline-offset: -2px;
 }
 .bi-table tbody td {
-  padding: var(--space-2, 8px) var(--space-3, 12px);
-  border-bottom: 1px solid #21242f;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-soft);
   white-space: nowrap;
 }
 .bi-table tbody tr:hover {
-  background: #181b24;
+  background: var(--surface-2);
 }
 
 .bi-c-n,
 .bi-c-exp,
 .bi-c-wr {
   text-align: right;
-}
-.bi-c-n,
-.bi-c-exp,
-.bi-c-wr {
   font-variant-numeric: tabular-nums;
-}
-
-.bi-skill-caption {
-  font-size: var(--fs-xs);
-  color: var(--signal-dim);
-  line-height: 1.4;
-  max-width: 1100px;
-  margin-bottom: var(--space-4, 20px);
 }
 
 .bi-item {
   display: flex;
   align-items: center;
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
 }
 .bi-item-icon {
   width: 32px;
@@ -145,7 +193,7 @@
 .bi-champ {
   display: flex;
   align-items: center;
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
 }
 .bi-champ-icon {
   width: 32px;
@@ -159,27 +207,21 @@
 .bi-skill-badge {
   display: inline-block;
   min-width: 26px;
-  padding: 2px var(--space-2, 8px);
+  padding: 2px var(--space-2);
   text-align: center;
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #e6e8ef;
-  background: #2a2e3c;
-  border-radius: var(--panel-radius-sm, 10px);
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 
 /* Rune tab: rune icon + name, and the keystone/minor slot badge. */
-.bi-rune-caption {
-  font-size: var(--fs-xs);
-  color: var(--signal-dim);
-  line-height: 1.4;
-  max-width: 1100px;
-  margin-bottom: var(--space-4, 20px);
-}
 .bi-rune {
   display: flex;
   align-items: center;
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
 }
 .bi-rune-icon {
   width: 32px;
@@ -193,31 +235,26 @@
 .bi-slot-badge {
   display: inline-block;
   min-width: 38px;
-  padding: 2px var(--space-2, 8px);
+  padding: 2px var(--space-2);
   text-align: center;
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #e6e8ef;
-  background: #2a2e3c;
-  border-radius: var(--panel-radius-sm, 10px);
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 .bi-slot-keystone {
-  background: var(--accent, #7aa2ff);
-  color: #0f1219;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface);
 }
 
 /* Spell tab: summoner-spell icon + name. */
-.bi-spell-caption {
-  font-size: var(--fs-xs);
-  color: var(--signal-dim);
-  line-height: 1.4;
-  max-width: 1100px;
-  margin-bottom: var(--space-4, 20px);
-}
 .bi-spell {
   display: flex;
   align-items: center;
-  gap: var(--space-2, 8px);
+  gap: var(--space-2);
 }
 .bi-spell-icon {
   width: 32px;
@@ -229,7 +266,10 @@
   font-size: var(--fs-sm);
 }
 
-/* WPA cell - the hero. Signed pp value + 5-segment confidence bar. */
+/* WPA cell - the hero. Signed pp value + redundant status glyph (never
+ * hue alone, WCAG 1.4.1) + 5-segment confidence bar. The glyph is a CSS
+ * escape (ASCII source): \25B2 up-triangle for a positive residual,
+ * \25BC down-triangle for negative. */
 .bi-c-wpa {
   white-space: nowrap;
 }
@@ -238,39 +278,62 @@
   min-width: 64px;
   font-size: var(--fs-stat);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
 }
 .bi-wpa-val.bi-pos {
-  color: var(--signal-good);
+  color: var(--good);
 }
 .bi-wpa-val.bi-neg {
-  color: var(--signal-bad);
+  color: var(--bad);
+}
+.bi-wpa-val.bi-pos::before {
+  content: "\25B2 ";
+  font-size: var(--fs-xs);
+}
+.bi-wpa-val.bi-neg::before {
+  content: "\25BC ";
+  font-size: var(--fs-xs);
 }
 
 .bi-conf {
   display: inline-flex;
   gap: 3px;
-  margin-left: var(--space-2, 8px);
+  margin-left: var(--space-2);
   vertical-align: middle;
 }
 .bi-seg {
   width: 7px;
   height: 16px;
   border-radius: 2px;
-  background: #2a2e3c;
+  background: var(--surface-3);
 }
 .bi-seg.is-on.bi-pos {
-  background: var(--signal-good);
+  background: var(--good);
 }
 .bi-seg.is-on.bi-neg {
-  background: var(--signal-bad);
+  background: var(--bad);
 }
 
+/* Empty + transient states reuse the shared hx-empty sigil treatment:
+ * a dim, centered block with the four-pointed-star sigil (\2756) above
+ * the message so an empty tab reads as intentional, not broken. */
 .bi-empty {
-  font-size: var(--fs-md);
-  color: var(--signal-dim);
-  padding: var(--space-5, 28px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  color: var(--dim);
+  font-size: var(--fs-sm);
   text-align: center;
+}
+.bi-empty::before {
+  content: "\2756";
+  font-size: var(--fs-xl);
+  line-height: 1;
+  color: var(--accent);
+  opacity: .35;
 }
 
 #view-build-insights [hidden] {
