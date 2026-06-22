@@ -87,6 +87,8 @@ def _reset_caches() -> None:
 _COUNTERS_INDEX: dict | None = None
 _CHAMP_NAME_TO_ID: dict[str, int] | None = None
 _CHAMP_ID_TO_NAME: dict[int, str] | None = None
+# LIFT 1b: numeric championId -> (attack, magic) from info.attack/info.magic.
+_CHAMP_ID_TO_INFO: dict[int, tuple[int, int]] | None = None
 
 
 def _norm_name(name: str) -> str:
@@ -165,6 +167,89 @@ def _load_champ_id_to_name() -> dict[int, str]:
         log.debug("pickban: champ id->name load failed: %s", exc)
     _CHAMP_ID_TO_NAME = out
     return out
+
+
+def _load_champ_id_to_info() -> dict[int, tuple[int, int]]:
+    """LIFT 1b: numeric championId -> (attack, magic). Mirrors
+    ``_load_champ_id_to_name``'s structure + module-level lazy cache; reads
+    info.attack / info.magic (DDragon "damage profile" ints 1-10) from
+    _DDRAGON_CHAMPS_PATH. A champ with missing/malformed info is skipped."""
+    global _CHAMP_ID_TO_INFO
+    if _CHAMP_ID_TO_INFO is not None:
+        return _CHAMP_ID_TO_INFO
+    out: dict[int, tuple[int, int]] = {}
+    try:
+        raw = json.loads(_DDRAGON_CHAMPS_PATH.read_text(encoding="utf-8"))
+        data = raw.get("data", raw)
+        for entry in data.values():
+            if not (isinstance(entry, dict) and entry.get("key")):
+                continue
+            info = entry.get("info")
+            if not isinstance(info, dict):
+                continue
+            try:
+                cid = int(entry["key"])
+                attack = int(info["attack"])
+                magic = int(info["magic"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            out[cid] = (attack, magic)
+    except Exception as exc:  # noqa: BLE001
+        log.debug("pickban: champ id->info load failed: %s", exc)
+    _CHAMP_ID_TO_INFO = out
+    return out
+
+
+def _compute_team_damage_mix(team_ids: tuple[int, ...]) -> dict:
+    """LIFT 1b PURE function: sum info.attack + info.magic over the team and
+    return the physical-vs-magic damage lean. Ids absent from the info map
+    are skipped (so an unknown id never skews the mix). When no valid champ
+    remains, n_champs is 0 and both percentages are 0.
+
+    physical_pct = round(100 * sum_attack / (sum_attack + sum_magic)) when
+    the denominator > 0 else 0; magical_pct = 100 - physical_pct (when the
+    denominator > 0; else 0). Per-champ lean = "AD" if attack > magic,
+    "AP" if magic > attack, else "EVEN"."""
+    info_map = _load_champ_id_to_info()
+    per_champ: list[dict] = []
+    sum_attack = 0
+    sum_magic = 0
+    for cid in team_ids:
+        pair = info_map.get(int(cid))
+        if pair is None:
+            continue
+        attack, magic = pair
+        sum_attack += attack
+        sum_magic += magic
+        if attack > magic:
+            lean = "AD"
+        elif magic > attack:
+            lean = "AP"
+        else:
+            lean = "EVEN"
+        per_champ.append({
+            "champId": int(cid),
+            "attack":  int(attack),
+            "magic":   int(magic),
+            "lean":    lean,
+        })
+    denom = sum_attack + sum_magic
+    if denom > 0:
+        physical_pct = int(round(100 * sum_attack / denom))
+        magical_pct = 100 - physical_pct
+    else:
+        physical_pct = 0
+        magical_pct = 0
+    return {
+        "ok": True,
+        "team_ids": [int(c) for c in team_ids],
+        "n_champs": len(per_champ),
+        "sum_attack": sum_attack,
+        "sum_magic": sum_magic,
+        "physical_pct": physical_pct,
+        "magical_pct": magical_pct,
+        "per_champ": per_champ,
+    }
 
 
 def _counters_for_champion(name: str) -> list[dict]:
@@ -1301,6 +1386,22 @@ def _serve_counter_picks(h) -> None:
         _send_json_err(h, 500, "internal error - see logs")
 
 
+def _serve_team_damage_mix(h) -> None:
+    """LIFT 1b - GET /api/champ-select/team-damage-mix?team_ids=103,64,...
+    Returns the operator ally team's physical-vs-magic damage lean (summed
+    info.attack / info.magic). Pure read off the DDragon info map - no
+    rewind_history.db query, so it stays cheap + always available."""
+    try:
+        qs = parse_qs(urlparse(h.path).query)
+        team_ids = _parse_csv_ints((qs.get("team_ids") or [""])[0])
+        payload = _compute_team_damage_mix(team_ids)
+        _send_json(h, 200, payload)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/champ-select/team-damage-mix: %s", exc)
+        # Raw exception text stays in the log only (CLAUDE.md error rule).
+        _send_json_err(h, 500, "internal error - see logs")
+
+
 # Route table - imported by dashboard/_dispatch.py at module load.
 
 def _equals(p: str):
@@ -1313,4 +1414,5 @@ GET_ROUTES = [
     (_equals("/api/champ-select/pickban-recs"), _serve_pickban_recs),
     (_equals("/api/champ-select/personal-record"), _serve_personal_record),
     (_equals("/api/champ-select/counter-picks"), _serve_counter_picks),
+    (_equals("/api/champ-select/team-damage-mix"), _serve_team_damage_mix),
 ]
