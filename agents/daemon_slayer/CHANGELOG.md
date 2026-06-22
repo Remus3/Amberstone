@@ -1331,6 +1331,19 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.150.0 (R14 - cc_conditional durations_floor_s guaranteed-minimum CC floor band, default-OFF, byte-identical.
+A distance / channel-scaled conditional CC entry encodes its MAX payoff in durations_s (Maokai R 2.25, Hecarim R
+1.5, Ashe R 3.5, KSante W 1.0, Sion R 1.0); the new optional ConditionalCcEntry.durations_floor_s field records
+the GUARANTEED close-range / min-channel minimum the CC always lands (Maokai 0.75, Hecarim 0.75, Ashe 1.0,
+KSante 0.5, Sion 0.25 per Meraki 16.12.1 effects_descriptions). NEW default-OFF apply_cc_floor seam on
+cc_pressure.compute_cc_pressure: when ON a floor-tagged entry is credited floor + probability * (max - floor)
+instead of max * probability, in BOTH the standalone and the coexistence MAX-rule paths (_conditional_credit_seconds).
+Seeded 5 - 4 existing entries gain a floor + a NEW Ashe R entry (coexists_with_unconditional=True, range_gated,
+mirrors Maokai/Hecarim R; Ashe R also in the unconditional _PER_SPELL_CC_DURATIONS at 1.5). Loader reads the field
+via .get (backward-compat; the ~60 untouched records stay floor=None). Default OFF byte-identical; the live
+default-ON flip + ehp/hybrid propagation are operator-gated (docs/LIVE_GAME_GATED_SYNC.md). Offline
+characterization tests RED-first. Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.150.0.)
+
 1.149.0 (R12 - all-source TARGET-VULNERABILITY mark registry, default-OFF, byte-identical. The cross-source
 sibling of the per-spell self-amp _ability_amp_overrides registry: a vulnerability MARK makes the marked TARGET
 take +X% damage FROM ALL SOURCES (the wielder's autos, abilities, item procs, and allies), the all-source half a
