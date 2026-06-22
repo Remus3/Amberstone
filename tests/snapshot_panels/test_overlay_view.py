@@ -453,6 +453,68 @@ def test_overlay_minimap_rect_threads_through_live_state(mock_server, pw_browser
     assert not errors, f"JS errors [live minimap threading]: {errors[:3]}"
 
 
+def test_overlay_zoi_threads_through_live_state(mock_server, pw_browser):
+    """Regression (item 567 slice 3): zoi is a TOP-LEVEL /api/state sibling (the
+    influence FILL that rides inside the slice-1 minimap box), so - exactly like
+    minimap_rect - it must be threaded into state.latest at every live poll site
+    (SSE / HTTP-fallback / LCU poller). The ui_mock drive path reads _amMockData.zoi
+    DIRECTLY, which would MASK a live-path wiring gap. This drives the LIVE (non-mock)
+    SSE envelope and asserts the ZOI canvas mounts, sizes its backing store from the
+    threaded box, and renderMinimapZoi runs without error off state.latest.zoi.
+
+    The minimap_rect block ships alongside zoi so the parent #am-mmrect box is laid
+    out at a real px size (the canvas reads its width/height from the parent)."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    # A live state envelope (NOT ui_mock) - the SSE handler must thread BOTH the
+    # minimap_rect (to size the box) and the zoi fill block.
+    mock_server._store["data"] = {
+        "mode_key": "sr",
+        "coach": {"action": "Push mid", "immediate": "Group up", "kda": "1/0/0"},
+        "liveclient": {"level": 6, "game_time_s": 120},
+        "minimap_rect": {"x": 1600, "y": 761, "w": 312, "h": 312, "flip": False,
+                         "source": "settings", "native_w": 2560, "native_h": 1440},
+        "zoi": {
+            "bubbles": [
+                {"team": "blue", "cx": 0.2, "cy": 0.8, "r_frac": 0.12, "weight": 60},
+                {"team": "red", "cx": 0.75, "cy": 0.25, "r_frac": 0.11, "weight": 50},
+            ],
+            "demarcation": {"x1": 0.0, "y1": 0.35, "x2": 1.0, "y2": 0.65,
+                            "ally_side": "bottom"},
+            "map_control": {"ally_control_pct": 56, "action_quadrant": "mid",
+                            "line": "Map control 56%. Action mid."},
+        },
+    }
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        page.goto(mock_server.url + "/?overlay=1&mode=sr",
+                  wait_until="domcontentloaded", timeout=15_000)
+        # The canvas paints only once the live SSE envelope threads zoi into
+        # state.latest and renderMinimapZoi runs off it. The box must be visible
+        # (slice-1 sized it) and the canvas backing store must be sized to the box.
+        page.wait_for_function(
+            "() => { const m = document.getElementById('am-mmrect');"
+            " const c = document.getElementById('am-zoi-canvas');"
+            " return m && !m.hidden && c && c.width > 0 && c.height > 0; }",
+            timeout=10_000,
+        )
+        # The canvas backing store tracks the threaded box width (312px).
+        cw = page.eval_on_selector("#am-zoi-canvas", "e => e.width")
+        assert cw == 312, f"canvas not sized to the threaded box width: {cw}"
+        # Belt-and-suspenders: the canvas is click-through (never eats a minimap click).
+        assert _css(page, "#am-zoi-canvas", "pointer-events") == "none"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [live zoi threading]: {errors[:3]}"
+
+
 def test_overlay_callouts_lead_whitelist(mock_server, pw_browser):
     """Inside #right-now only the lead/callouts/choices mounts may show:
     when a callout lands (un-hidden + populated) it displays, while the
