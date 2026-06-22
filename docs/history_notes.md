@@ -84,6 +84,44 @@ bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /don
 
 ---
 
+# 2026-06-21 (headless continue 12) - ARAM "ARAM Modifications" balance line WIRED (BACKLOG F6)
+
+Item 578, commit `b541c923` (pushed). Tier-1; no backend engine / DS schema / Share / ENGINE bump /
+overlay render / flip change. Coach-prompt context line only -> ZERO overlay render delta, no electron relaunch.
+
+TRIAGE: live re-probe RC pid=3656, live SR game up (mode_key=sr ~22min full-build carry), DS :8893 ENGINE
+1.149.0 / 16.12.1, HEAD 2bfe7113. Candidate set 1/2/A/B/E DRAINED (items 573-577); all remaining named levers
+operator-gated. The Gemini director (gemini-3-pro-preview) was UP this cycle (down the prior 2) and surfaced a
+FRESH non-gated BACKLOG pick a recency-biased Explore sweep missed: F6 (BACKLOG.md:39). A parallel Explore agent
+independently called the hot candidate set drained, confirming F6 was the only fresh lever.
+
+VERIFY-BEFORE-BUILD (grep-confirmed): aram_modifiers IS consumed internally by the DS engine (dps.py:697 dealt,
+ehp.py:545 taken, +burst/ability_dps/hps/cc_pressure/engine + aram_tenacity_context.py:73 tenacity) but NO web/
+surface renders the dealt/taken deltas (COMPETITOR_LIFT_2026-06-21.md:116 says so literally). core/aram_tenacity_
+context.py is the shipped render-side precedent but covers ONLY tenacity (1 of 3 player-facing axes). The Plan
+subagent corrected 2 briefing data errors vs live 16.12.1 (Maokai is both-axes not dealt-only; Aatrox/Garen NOT
+damage-neutral, so Ahri 1.0/1.0 is the correct test neutral-anchor); re-verified live.
+
+BUILT (subagent-first, TDD red-then-green): NEW sibling core/aram_balance_context.py (load-once map, fail-soft,
+per-field fallback, _ARAM_MODES gate) -> aram_balance_line(champion, mode) = signed whole-% clauses
+"(mult-1.0)*100", e.g. Akshan "ARAM balance: you deal +5%, take -5% damage"; EMPTY non-ARAM/unknown/neutral
+(byte-identical prompt in the 46/172 neutral case). Enemy line a deliberate non-goal (126/172 non-neutral would
+render every game; damage delta is a self-tuning signal, unlike tenacity's exploitable CC window). Wired into
+coaches/aram_coach.py beside the tenacity line; forced edit added aram_balance="" to the 3 tenacity-test
+.format() calls. +new tests/test_aram_balance_context.py; 82/82 pass, ruff clean, ASCII/LF; no frozen file.
+
+VERIFIER GATE + OVERLAY TRACK: read-only verifier independently SHIP (82 passed, lone benign RF5 live-game guard;
+4 behaviour outputs exact; scope = 4 files + pre-existing spell_prefs.json dirt). Per-cycle overlay track PASSED
+in parallel: render-contract 25/25 + geometry audit overlay_layout.js/overlay.css CLEAN (zero MUST-FIX, baseline
+intact). In-game ARAM pixel frame OWED (live game was SR; an ARAM coach line is not SR-verifiable).
+
+NEXT (operator-gated): all 3 player-facing ARAM modifier axes now surfaced (tenacity prior + damage dealt/taken
+item 578); residual aram_modifiers fields (healing/shielding/AH/AS) are minor + situational, a future call.
+Levers unchanged: overlay S0 shadow->authoritative flip; magnitude-as-bar (Phase-4); HZ Tier-2 partial-combo.
+Candidate set drained - next cycle needs a fresh Gemini/operator refill.
+
+---
+
 # 2026-06-21 (headless continue 11) - overlay spec Q2 lethal-incoming S0 predicate WIRED
 
 Item 577, commit `17128058` (pushed). Tier-1 pure-JS; no backend / engine / DS / Share / ENGINE bump /
