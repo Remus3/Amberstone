@@ -51,6 +51,23 @@ live counter-pick hero + P8 ally AD/AP meter; PGR score-decomposition bars + car
 last-session recap + ready-check auto-accept; session sparklines. OWED: live in-game overlay
 capture of the eye-line layout + S0 pulse (no live game this run).
 
+## Feature-lift tail (gemini 2026-06-22, verified ground truth)
+Render backend data the greenlit mocks show but the DOM does not yet. Per-item backing data
+verified (file:line + live curl) before building. Director rulings:
+- Q1 1a counter-picks (already wired/rendering via _csvRenderCounterPicks champ_select.js:1101):
+  ELEVATE to a prominent single-decision hero card (top counter dominates, remaining 4 compact).
+- Q2 2c PGR @15: DROPPED - no backing data server-side (no 15-min timeline snapshot); defer to a
+  dedicated data epic, not a render lift.
+- Q3 5 ready-check auto-accept (autonomous default-ON, no control surface): ADD control+status
+  route + UI toggle (invisible autonomous state is a UX anti-pattern).
+Build order: (1) 1a counter-hero, (2) 1b ally AD/AP meter, (3) 3 home last-20 W/L strip + WR,
+(4) 2a+2b PGR decomposition 5-bar + carry kp/gold-share, (5) 4 history season WR + filters,
+(6) 5 ready-check toggle (GET/POST /api/lcu/auto-accept). Standing acceptance per item: tokens-only
+(no raw hex), interactive >=44px, status never hue-alone (glyph), Segoe UI min 13px tabular-nums,
+RED-first tests, Playwright snapshot, idempotent renders + asset-hash hot reload. Each its own
+commit + push. Verified-NOT-built: 1b (no team aggregator), 5 route. Verified RENDER-ONLY: 2a/2b,
+3 strip, 4 WR+filters. Verified ALREADY-DONE base: 1a fetch/render, 3 rank/LP header.
+
 ## Per-page moves (gemini 2026-06-22, condensed)
 - champ-select: strict vertical columns (bans / picks / counters); good-warn-bad + glyph on matchup ratings; accent-2 cyan outline on augment recos.
 - pgr: 0-100 score in gold, 54px tabular hero; lane-compare side-by-side horizontal bars; timeline as horizontal card track.

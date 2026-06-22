@@ -120,6 +120,142 @@ def test_champ_select_arena_augments(mock_server, pw_browser):
     assert not errors, f"JS errors [arena augments]: {errors[:3]}"
 
 
+def _open_counter_box(pw_browser, mock_server):
+    """Lighter open for the SR counter-picks box.
+
+    The #csv-sugg-counter-picks container is STATIC in index.html, so unlike
+    _open_champ_select we do NOT wait for any async mode-specific render to
+    land - we only need the page DOM + the global champ_select.js helpers
+    loaded. Drive SR mode so the SR suggestions stack (with the counters
+    box) is the active surface. domcontentloaded is sufficient.
+    """
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+
+    url = mock_server.url + "/?ui_mock=1&mode=sr#champ-select"
+    page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+    # The renderer + fetch helper are module-global; wait for them to exist.
+    page.wait_for_function(
+        "typeof window._csvRenderCounterPicks === 'function'"
+        " && typeof window._csvFetchCounterPicks === 'function'",
+        timeout=10_000,
+    )
+    return ctx, page, errors
+
+
+def test_champ_select_counter_pick_hero(mock_server, pw_browser):
+    """LIFT 1a: counters[0] renders as a single HERO card; counters[1..4]
+    render as a compact secondary list. Deterministic via a stubbed fetch
+    helper + a synthetic enemy comp (the mock server returns {} for the
+    counter-picks endpoint, so we inject the payload client-side)."""
+    ctx, page, errors = _open_counter_box(pw_browser, mock_server)
+    try:
+        # Stub the fetch helper, invoke the renderer, and read back the
+        # resulting structure - all inside ONE synchronous evaluate. The
+        # live champ-select render loop re-invokes _csvRenderCounterPicks on
+        # its own schedule with the (empty) real payload, so reading the DOM
+        # through separate async Playwright locators races that re-render.
+        # Capturing the counts atomically in-page removes the race.
+        _SYNTH = """() => {
+              window._csvFetchCounterPicks = function () {
+                return {
+                  ok: true,
+                  counters: [
+                    {champId: 103, name: 'Ahri',   note: 'counters 3 of their comp', counters_count: 3},
+                    {champId: 1,   name: 'Annie',  note: 'counters Zed'},
+                    {champId: 64,  name: 'LeeSin', note: 'counters Yasuo'},
+                    {champId: 84,  name: 'Akali',  note: 'counters Lux'},
+                    {champId: 99,  name: 'Lux',    note: 'counters Vi'}
+                  ]
+                };
+              };
+              window._csvRenderCounterPicks({
+                their_team: [{championId: 238}],
+                my_team: [],
+                bans: {my_team: [], their_team: []}
+              });
+            }"""
+        res = page.evaluate(
+            _SYNTH[:-1]  # drop the closing brace to splice in the readback
+            + """
+              const box = document.getElementById('csv-sugg-counter-picks');
+              const hero = box.querySelectorAll('.csv-counter-hero');
+              const rows = box.querySelectorAll(
+                '.csv-counter-secondary .csv-counter-pick');
+              const h = (el) => el.getBoundingClientRect().height;
+              return {
+                heads: box.querySelectorAll('.csv-counter-head').length,
+                heroCount: hero.length,
+                heroText: hero.length ? hero[0].innerText : '',
+                heroHeight: hero.length ? h(hero[0]) : 0,
+                secondaryRows: rows.length,
+                minRowHeight: rows.length
+                  ? Math.min.apply(null, Array.from(rows, h)) : 0,
+                hidden: box.hidden,
+              };
+            }"""
+        )
+
+        assert res["heads"] == 1, (
+            "PICK INTO THIS COMP header must be preserved"
+        )
+        assert res["heroCount"] == 1, (
+            f"expected exactly 1 hero card, got {res['heroCount']}"
+        )
+        assert "Ahri" in res["heroText"], (
+            f"hero must surface the top counter (Ahri); got {res['heroText']!r}"
+        )
+        assert res["secondaryRows"] == 4, (
+            f"expected exactly 4 secondary rows, got {res['secondaryRows']}"
+        )
+        assert res["hidden"] is False, "counter box must be visible when populated"
+        # Hit-target rule: hero + every secondary row >= 44px tall.
+        assert res["heroHeight"] >= 44, (
+            f"hero card must be >= 44px tall, got {res['heroHeight']}"
+        )
+        assert res["minRowHeight"] >= 44, (
+            f"every secondary row must be >= 44px tall, got {res['minRowHeight']}"
+        )
+
+        # Idempotency: re-invoking the renderer with the same inputs yields
+        # byte-identical DOM (full innerHTML rebuild each call).
+        html_pair = page.evaluate(
+            _SYNTH[:-1]
+            + """
+              const box = document.getElementById('csv-sugg-counter-picks');
+              const a = box.innerHTML;
+              window._csvRenderCounterPicks({
+                their_team: [{championId: 238}],
+                my_team: [], bans: {my_team: [], their_team: []}});
+              return [a, box.innerHTML];
+            }"""
+        )
+        assert html_pair[0] == html_pair[1], (
+            "renderer must be idempotent (identical DOM on re-render)"
+        )
+
+        # Final synchronous re-render, then screenshot in the same tick for
+        # the audit trail (before the live loop can overwrite).
+        page.evaluate(_SYNTH)
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.locator("#csv-sugg-counter-picks").screenshot(
+            path=str(SCREENSHOTS / "champ-select_counter-hero.png")
+        )
+    finally:
+        page.close()
+        ctx.close()
+
+    assert not errors, f"JS errors [counter-hero]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     targets = [
