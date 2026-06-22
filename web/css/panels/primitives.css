@@ -144,29 +144,45 @@ header { transition: height 180ms ease; }
 /* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #3 Replay, 2026-05-23):
  * font/padding/radius/icon sizes migrated to tokens. */
 #view-replay { display: none; padding: var(--space-4) var(--space-6) var(--space-6); }
+/* RC2 #11 (audit E12-1): the replay body previously pinned to
+ * height: calc(100vh - 200px) - a hard assumption about Chrome chrome
+ * height that violates the no-vh design baseline (the page is authored
+ * at 1920x1080 windowed, usable ~920px). Its parent .view-section
+ * (#view-replay) is already a growing flex child of <main>
+ * (flex: 1 1 auto; min-height: 0; overflow-y: auto in header.css), so
+ * it carries a resolved content height. height: 100% makes the body
+ * track that real height naturally - no vh, no magic 200px constant.
+ * align-items: stretch lets the two grid panes fill the row height. */
 .replay-body {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: var(--space-5);
-  align-items: start;
-  height: calc(100vh - 200px);
+  align-items: stretch;
+  height: 100%;
+  min-height: 0;
 }
+/* hx-card tactical frame: card body surface + gold corner brackets.
+ * Mirrors web/css/hextech.css .hx-card (the markup carries no .hx-card
+ * class, so the bracket motif is painted locally on the pane). */
 .replay-list-pane {
+  position: relative;
   background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius);
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  min-height: 0;
 }
 .replay-list-head {
   padding: var(--panel-padding-comp) var(--space-4);
-  background: var(--surface-head);
+  background: var(--surface-2);
   font-size: var(--fs-xs);
   font-weight: 900;
   letter-spacing: 0.12em;
-  color: var(--text-dim);
+  color: var(--accent);
   text-transform: uppercase;
 }
 .replay-match-list {
@@ -174,10 +190,14 @@ header { transition: height 180ms ease; }
   margin: 0; padding: 0;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 .replay-match-row {
   padding: var(--panel-gap-tight) var(--panel-padding-comp);
-  min-height: var(--hit-min);
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   border-bottom: 1px solid var(--border-soft);
   cursor: pointer;
   transition: background 120ms ease;
@@ -210,8 +230,11 @@ header { transition: height 180ms ease; }
   font-variant-numeric: tabular-nums;
 }
 
+/* hx-card tactical frame (see .replay-list-pane note above). */
 .replay-main-pane {
+  position: relative;
   background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius);
   box-shadow: var(--shadow-card);
   padding: var(--panel-padding) var(--space-5);
@@ -219,7 +242,38 @@ header { transition: height 180ms ease; }
   flex-direction: column;
   gap: var(--panel-gap);
   height: 100%;
+  min-height: 0;
   overflow: hidden;
+}
+/* Gold corner brackets shared by both replay panes (the Hextech bracket
+ * motif from web/css/hextech.css .hx-card). Two 14px L-strokes at
+ * top-left + bottom-right; decorative + pointer-inert. Both panes carry
+ * overflow: hidden (rounded scroll clip), so unlike the canonical
+ * .hx-card the strokes are inset to 0 (not -1px) to sit just inside the
+ * clip region and stay visible. */
+.replay-list-pane::before,
+.replay-list-pane::after,
+.replay-main-pane::before,
+.replay-main-pane::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+  z-index: 1;
+}
+.replay-list-pane::before,
+.replay-main-pane::before {
+  top: 0; left: 0;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius);
+}
+.replay-list-pane::after,
+.replay-main-pane::after {
+  bottom: 0; right: 0;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius);
 }
 .replay-meta-row {
   display: flex; align-items: baseline;
@@ -233,15 +287,22 @@ header { transition: height 180ms ease; }
 }
 .replay-clock {
   font-size: var(--fs-stat); font-weight: 900;
-  color: var(--text);
+  color: var(--accent);
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
 }
+/* RC2 #11: the per-minute scrub bar reads as an hx-bar style control -
+ * gold accent fill, sized so the whole track is a comfortable 44px
+ * hit-target for the scrub thumb (the slider is the page's only
+ * pointer-dragged control). */
 .replay-slider {
-  width: 100%; margin: 4px 0;
-  accent-color: var(--good);
+  width: 100%;
+  margin: var(--space-1) 0;
+  min-height: 44px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
-.replay-slider:disabled { opacity: 0.3; }
+.replay-slider:disabled { opacity: 0.3; cursor: default; }
 
 .replay-grid-wrap {
   flex: 1; overflow: auto;
@@ -269,8 +330,10 @@ header { transition: height 180ms ease; }
 }
 .replay-grid tr.won  td.replay-col-team { color: var(--good); font-weight: 800; }
 .replay-grid tr.lost td.replay-col-team { color: var(--bad);  font-weight: 800; }
-.replay-grid tr.won  { background: rgba(127,209,154,0.04); }
-.replay-grid tr.lost { background: rgba(240,126,139,0.04); }
+/* RC2 #11: tokenized row tints (was raw rgba literals) - the *-soft
+ * tokens are the foundation's translucent good/bad fills. */
+.replay-grid tr.won  { background: var(--good-soft); }
+.replay-grid tr.lost { background: var(--bad-soft); }
 .replay-col-team   { width: 32px; }
 .replay-col-champ  { display: flex; align-items: center; gap: var(--space-2); }
 .replay-col-num    { text-align: right; width: 90px; }
@@ -289,6 +352,26 @@ header { transition: height 180ms ease; }
   background: var(--surface-alt);
   vertical-align: middle;
   border: 1px solid var(--border);
+}
+
+/* RC2 #11: empty / loading + no-match-selected states take the shared
+ * hextech sigil treatment (mirrors web/css/hextech.css .hx-empty +
+ * the Session/History list empty states in header.css). Scoped to the
+ * replay list + grid so the global .home-empty stays untouched. The
+ * four-pointed sigil (U+2756) is a CSS escape for ASCII source-hygiene.
+ * The grid placeholder is a <td colspan>, so the sigil renders as a
+ * centered block inside the cell. */
+.replay-match-list .home-empty,
+.replay-grid .home-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  color: var(--dim); font-size: var(--fs-sm); text-align: center;
+}
+.replay-match-list .home-empty::before,
+.replay-grid .home-empty::before {
+  content: "\2756"; font-size: var(--fs-xl); line-height: 1;
+  color: var(--accent); opacity: 0.35;
 }
 
 
