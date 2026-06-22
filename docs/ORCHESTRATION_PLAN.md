@@ -174,6 +174,7 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 | R15 | lift | Section-7b heavyweight deep-dive competitor lift of Aggregator A, 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-22.md. ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); HIGH-lift with new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. | DONE | `b49ef1a7` |
 | R16 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Game Flow + Spike Curve panels (web/js/panels/perf_curve.js, spike_curve.js, spike_markers.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview visual vs /api/state. | DONE | `7ecb5b18` |
 | R17 | ds-sweep | DIRECTOR REFILL: DS schema lift - antitank ramp_lo/ramp_hi level-ramp %HP. Extend the antitank registry to support ramp_lo and ramp_hi endpoints for champion abilities dealing percentage max HP damage scaling with level (e.g., Aatrox 4%:8%, Brand 8%:12%, Skarner 5%:9%). Generalizes to ~16 rows. Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. Live flip EXCLUDED. | DONE | `5f308036` |
+| R18 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited panels build_order.js, augment_reco.js, archetype_nudge_chip.js, and map_state.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. | DONE | `0999d3eb` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -186,6 +187,41 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-22 R18 (DIRECTOR REFILL cycle) DONE (`0999d3eb`) - Section-3b 5-phase fixture
+  audit of the 4 un-audited panels build_order / augment_reco / archetype_nudge_chip /
+  map_state vs docs/UI_SCALE_SPEC_V2.md (v2.1 16px --fs-xs floor). GROUND-TRUTH DEVIATION
+  from the directive's "4 disjoint CSS files" premise: archetype_nudge_chip.js has NO
+  dedicated CSS - its styles live in map_state.css (251-284, shared with the map_state
+  slice) + a view-scoped hide rule in header.css; and map_state.css is a shared grab-bag
+  (header pills / panel chrome / STATS / GAME SENSE / WHAT-WENT). So the slices are NOT
+  file-disjoint and parallel worktrees would collide - executed inline as orchestrator
+  (directive "a trivial item may use a single agent"); per UI_SCALE_SPEC_V2 "each page
+  audit sweeps its own panels only", swept the cleanly panel-owned files, NOT the grab-bag.
+  Result = 16 sub-floor MUST-FIX tokenizations, 2 panels otherwise compliant:
+  * build_order.css: 8 .bo-* literals (12-14px) -> var(--fs-xs); .bo-name/.bo-delta kept
+    15px as DOCUMENTED operator-exceptions (dense bo-slot chip primary content; the operator
+    explicitly tuned "15px readable floor", below the 16px token floor by design - inline
+    rationale added so a maintainer cannot bump blind). .bo-pushbtn already var(--hit-min).
+  * augment_reco.css: 8 .ar-* literals (12-15px) -> var(--fs-xs); .ar-top-name 23px headline
+    above-floor, left as-is.
+  * archetype_nudge_chip (in map_state.css): audited CLEAN - already floor-clear (17px chip /
+    19px X). The X dismiss button is a density-constrained header-inline control (42px hit
+    target would break the header row) - documented exception, NOT forced (logged FUTURE: a
+    ::before hover-pad inflation that holds header height).
+  * map_state.js: 2 minimap canvas labels (11px D/B/H, 13px YOU) are 2D-canvas spatial
+    annotations that cannot consume a CSS --fs-* token - inline operator-exception rationale
+    added (sized to fit dot glyphs; the 16px floor overflows the marker).
+  TDD: tests/test_r18_panels_typography_v21_floor.py (RED-first, mirrors the R4 guard), 9
+  cases green; 91 panel DOM + token-parity guards green; ruff clean. Asset-hash auto-reload
+  (ADR-008), no RC restart. Full RC suite 9378 passed / 2 skip / 103 subtests; the 12 fails
+  are ALL PRE-EXISTING + unrelated (3x CoachWire ARAM-template + 7 ds_pick_consumption ARAM-
+  template subtests, overlay.css sub-floor [scans overlay.css only], spell_autopush on the
+  dirty data/spell_prefs.json runtime drift) - NONE reference the R18 files. VISUAL CAPTURE
+  OWED: Claude_Preview cannot attach to the RC-owned self-signed :8888 (port held by live
+  pythonw; freeing it kills the runtime) + the panels are in-game/champ-select-only and do
+  not render populated without a live game -> code-side audit + test harness are the in-slice
+  proof; live populated-state capture carried to WAKEUP_NOTES.
 
 - 2026-06-22 R17 (DIRECTOR REFILL cycle) DONE (`5f308036`) - DS schema lift: antitank
   level-ramp %max-HP endpoints. AntiTankEntry gains optional ramp_lo/ramp_hi (END-appended,
