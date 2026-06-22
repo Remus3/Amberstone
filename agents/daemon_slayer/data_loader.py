@@ -12,6 +12,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .abilities import AbilitiesSnapshot
+from .modifier_blocks import classify_modifier_kind
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_DATA_ROOT = _REPO_ROOT / "data" / "daemon_slayer"
 
@@ -35,6 +38,50 @@ _WIKI_MODE_ALIASES = {
 
 class SnapshotNotFound(FileNotFoundError):
     """Raised when the requested patch directory is missing."""
+
+
+def _extract_damage_reduction_pct(
+    abilities,
+) -> dict[str, dict[str, dict[str, tuple[float, ...]]]]:
+    """Pure walk of an AbilitiesSnapshot for per-rank PERCENT damage reduction.
+
+    Returns ``{champ_id: {slot_key: {attribute_label: per_rank_pct_tuple}}}``
+    for every defensive ``modifier`` block whose magnitude is a TRUE percent.
+    A block qualifies when ``attribute_kind == "modifier"``, the
+    ``modifier_blocks`` classifier files it ``defensive_self`` (so PvE /
+    target-shred / self-amp blocks are skipped), and its attribute name
+    contains "damage reduction" (case-insensitive, to admit Braum's lowercased
+    "Damage reduction").
+
+    A single defensive_self block can carry several ``raw_modifiers`` entries -
+    a flat sub-component (Amumu E, empty ``units``) or a resist-scaling one
+    ("% per 100 AP", "% per 100 bonus health"). Only the FIRST raw_modifier
+    whose ``values`` is non-empty AND whose every ``units`` entry equals the
+    bare string ``"%"`` is the percent magnitude; the per-100 sub-modifiers
+    share a ``"%"`` prefix but are NOT the bare token, so they are excluded.
+    The first qualifying raw_modifier wins (one percent magnitude per label).
+    """
+    out: dict[str, dict[str, dict[str, tuple[float, ...]]]] = {}
+    for champ_id, slot_key, form in abilities.iter_forms():
+        for b in form.damage_blocks:
+            if b.attribute_kind != "modifier":
+                continue
+            if classify_modifier_kind(b.attribute) != "defensive_self":
+                continue
+            if "damage reduction" not in b.attribute.lower():
+                continue
+            for rm in b.raw_modifiers:
+                values = rm.get("values")
+                units = rm.get("units")
+                if not values or not isinstance(units, (list, tuple)):
+                    continue
+                if not units or any(u != "%" for u in units):
+                    continue
+                out.setdefault(champ_id, {}).setdefault(slot_key, {})[
+                    b.attribute
+                ] = tuple(float(v) for v in values)
+                break
+    return out
 
 
 @dataclass(frozen=True)
@@ -376,6 +423,59 @@ class DataSnapshot:
         if not isinstance(tags, (list, tuple)):
             return frozenset()
         return frozenset(t for t in tags if isinstance(t, str))
+
+    def spell_damage_reduction_pct(
+        self, champ_id: str, slot: str
+    ) -> dict[str, tuple[float, ...]] | None:
+        """Per-rank PERCENT damage-reduction magnitude from the ability modifier blocks (forward marker).
+
+        Returns ``{attribute_label: per_rank_pct_tuple}`` for the champ + slot
+        (``"Q"`` / ``"W"`` / ``"E"`` / ``"R"``) - the percent damage taken-
+        reduction a defensive self-buff grants, surfaced as a first-class axis
+        from the ``champion_abilities.json`` ``modifier`` blocks the
+        ``modifier_blocks`` taxonomy already classifies ``defensive_self`` but
+        that no accessor ever exposed numerically. A multi-label form returns
+        every label: Galio W carries both ``"Magic Damage Reduction"`` and
+        ``"Physical Damage Reduction"``.
+
+        The pure-% filter is deliberate. A defensive_self "damage reduction"
+        block frequently bundles a flat sub-component (Amumu E, empty ``units``)
+        or a resist-scaling one ("% per 100 AP", "% per 100 bonus health")
+        alongside (or instead of) the flat-percent value. Only a raw_modifier
+        whose every ``units`` token is the bare ``"%"`` is a true percent
+        reduction, so flat-only blocks (Amumu E, Leona W) and per-stat scaling
+        sub-modifiers are excluded - the latter share a ``"%"`` prefix but never
+        the bare token. The first qualifying raw_modifier per block supplies the
+        magnitude.
+
+        Returns None when the champ / slot has no pure-% damage-reduction block,
+        the champ id is unknown, or the abilities snapshot is absent for this
+        patch (older snapshots predate ``champion_abilities.json`` - returning {}
+        from the builder then None keeps live output byte-identical).
+
+        FORWARD-MARKER: nothing reads it at ship, so live DS output is
+        byte-identical and ENGINE_VERSION does NOT bump (mirrors the item-339 /
+        343 sibling forward-marker accessors). The map is built once on first
+        call (lazy, the snapshot is ``frozen=True`` so it is stashed via
+        ``object.__setattr__``) and reused.
+        """
+        if not hasattr(self, "_dr_pct_map"):
+            object.__setattr__(
+                self, "_dr_pct_map", self._build_damage_reduction_pct_map()
+            )
+        return self._dr_pct_map.get(str(champ_id), {}).get(str(slot))
+
+    def _build_damage_reduction_pct_map(
+        self,
+    ) -> dict[str, dict[str, dict[str, tuple[float, ...]]]]:
+        # Gate purely on file existence so an older snapshot without
+        # champion_abilities.json yields {} (byte-identical) rather than raising
+        # from AbilitiesSnapshot.load - no broad except masking a real parse bug.
+        abil_path = Path(self.data_root) / self.patch / "champion_abilities.json"
+        if not abil_path.exists():
+            return {}
+        abilities = AbilitiesSnapshot.load(patch=self.patch, data_root=self.data_root)
+        return _extract_damage_reduction_pct(abilities)
 
     def ability_static_cd(self, champ_id: str, ability_name: str) -> str | None:
         """Per-ability static (haste-immune) cooldown from the optional wiki sidecar (item 233).
