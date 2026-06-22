@@ -1,5 +1,34 @@
 # RC session history archive
 
+## Relocated 2026-06-21 (continue 8 /done - keep last 3 sessions: continue 8 + 7 + 6)
+
+# 2026-06-21 (headless continue 5) - ZOI SLICE 3: influence bubbles + demarcation + coach feed
+
+ZOI item 567 SLICE 3 shipped + live-verified. Commit `163b76ee` (code) + docs sync, pushed; CI has no pytest gate.
+
+Subagent-first: Gemini consult -> Plan subagent spec (frozen `/api/state.zoi` contract) -> 2 disjoint build
+agents (backend / frontend) -> verifier gate (caught + I fixed a 245x U+2500 box-drawing ASCII violation in
+the JS comment banners) -> UI-audit SHIP-CLEAN.
+
+SHIPPED: `core/zoi_influence.py` (pure, 18 tests) `compute_zoi -> {bubbles, demarcation, map_control}` in
+box-fraction; stamps `/api/state.zoi` + feeds a deterministic map-control callout into `det.callouts` (no
+Haiku). `web/js/panels/minimap_zoi.js` canvas inside `#am-mmrect`: low-alpha team bubbles + weighted-bisector
+demarcation, EMA-smoothed, click-through. Strength is PRESENCE-grounded (dot px*conf + MY ult spikes 6/11/16 +
+game_time) - the Live Client has no enemy level/alive/gold (honest scope). Threaded `zoi` at all 3 main.js poll
+sites; ui_mock fixture + overlay threading test added.
+
+KEY FIX (live CDP pixel sample): raw overlapping bubbles composited to alpha 0.467 (> the 0.25 readability
+cap). Fixed with PER-TEAM OFFSCREEN COMPOSITING (flatten each team, blit at 0.25) -> 99.7% of pixels <= 0.25,
+peak 0.349 only in the thin contested seam.
+
+LIVE-VERIFIED: RC restart -> `/api/state.zoi` 29 bubbles + map_control 60-91% ally + callout in
+`/api/state.callouts`; rc-shell relaunched (no hot-reload) + CDP inspect of `#am-zoi-canvas` (painting over the
+real minimap, pointer-events:none both = click-through). DON'T redo: slices 1+2+3; the offscreen-compositing
+alpha cap; the presence-vs-champion-only scope.
+
+NEXT: ZOI program FOUNDATION+1+2+3 done. Future (no owner): champion-only isolation (template matching);
+richer strength if an enemy-data source appears.
+
 ## Relocated 2026-06-21 (weekly-hygiene prune - keep last 2 sessions: continue 6 + continue 5)
 
 # 2026-06-21 (headless continue 4) - ZOI slices 1+2: box renders+frames minimap, blob dots ship
