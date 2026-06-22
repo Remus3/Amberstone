@@ -28,15 +28,28 @@ read page research + current DOM + RC2_DESIGN section -> mock (show_widget) -> g
 - 2. champ-select - DONE d33f40a0 (Hextech reskin; P2 counter-hero + P8 AD/AP meter deferred)
 - 3. post-game-review (PGR) - DONE a5db9691 (score-hero gold reskin; decomposition/carry/@15 deferred)
 - (global) page titles -> Hextech gold - DONE f3ce6e40
-- 4. home - WIP (identity + Tonight's-pick hero + form strip)
-- 5. lobby - TODO (pre-game context)
-- 6. history - TODO (dense tabular)
-- 7. historical-pgr - TODO (inherits PGR)
-- 8. session - TODO (aggregate stat cards + sparklines)
-- 9. user-builds - TODO (item grid, 44px targets)
-- 10. build-insights - TODO (side-by-side analytics cards)
-- 11. replay - TODO (scrub bar + event chips)
-- 12. settings - TODO (8px form grid, 44px targets)
+- 4. home - DONE 2b250b60 (Tonight's-pick teal-glow hero + form strip + main.js #home repaint fix)
+- 5. lobby - DONE 8069d0b9 (hx-card brackets + offline dim + 3 hit-target fixes)
+- 6. history - DONE 711fa3d7 (3-card view + W/L glyph + result tint hooks)
+- 7. historical-pgr - DONE (inherited via the last_match.css PGR reskin; verified by capture)
+- 8. session - DONE 4e29ac49 (aggregate stat-cards, --fs-stat datums)
+- 9. user-builds - DONE 591ff515 (active build card gold brackets)
+- 10. build-insights - DONE 247e8dff (tab strip + WPA tables; chart sub-panels token-consuming)
+- 11. replay - DONE 8ac8e8ff (scrub bar + event chips + E12-1 100vh->flex fix)
+- 12. settings - DONE 5719f823 (8px form grid + 44px targets + gold focus rings)
+
+## REDESIGN COMPLETE 2026-06-22
+All 12 pages + overlay reskinned onto the Hextech foundation; 15 commits, all pushed.
+Final gate: 228 snapshot-panels + design-token tests green. Per-page screenshots in
+tests/snapshot_panels/screenshots/. NO sub-panel sweep needed: the conditional content
+panels (cc_*/ds_*/op_score/perf_curve/pgr_* etc.) are token-consuming, so the foundation
+palette cutover converted them to Hextech automatically; 0 undefined-var fallbacks remain;
+the only raw hex left (7) are intentional brand tints (bridge salmon, enemy-red, augment/rank
+tier colors). DEFERRED feature lifts (need backend data, noted per page): champ-select P2
+live counter-pick hero + P8 ally AD/AP meter; PGR score-decomposition bars + carry-metrics +
+@15; home rank/LP header + tracked_win W/L color; history season WR + filters; lobby
+last-session recap + ready-check auto-accept; session sparklines. OWED: live in-game overlay
+capture of the eye-line layout + S0 pulse (no live game this run).
 
 ## Per-page moves (gemini 2026-06-22, condensed)
 - champ-select: strict vertical columns (bans / picks / counters); good-warn-bad + glyph on matchup ratings; accent-2 cyan outline on augment recos.

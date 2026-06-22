@@ -2,10 +2,10 @@
 
 THE canonical design law for RC's in-game UI. Operator decision 2026-06-21:
 the transparent always-on-top Electron overlay over the Borderless game is the
-ONE AND ONLY user-facing surface. The Chrome dashboard at `:8888` is RETIRED as
-a user surface - it stays alive only as the local web server / data plane the
-overlay renders against (`?overlay=1`) and as a headless render target for audits.
-No design effort is spent on the full 1920 dashboard layout anymore.
+PRIMARY in-game user-facing surface. (UPDATE 2026-06-22: the operator REVERSED the
+dashboard retirement - the 1920 Chrome dashboard at `:8888` is back in scope and was
+fully redesigned onto the Hextech foundation; see `docs/RC2_REDESIGN_PLAN.md`. This
+doctrine remains authoritative for the IN-GAME overlay specifically.)
 
 Grounded in `docs/research/RC2_RESEARCH_in_match_overlay.md` (the 10 rules) +
 `docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md` (tiers / slot budget / arbitration)
