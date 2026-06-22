@@ -454,6 +454,26 @@ def build_state() -> dict:
             minimap_dots = []
     _mark("minimap_dots")
 
+    # ZOI item 567 slice 3: Zone-of-Influence shading derived from the slice-2
+    # minimap dots (pure, stateless - one shaded bubble per dot + a team
+    # demarcation line + a map-control summary). Only on minimap surfaces with
+    # dots present; gated to sr/aram. Fail-soft -> None so a hiccup never stalls
+    # state. my_level / game_time_s scale ally / enemy bubbles (Live Client
+    # exposes only my own data - see core/zoi_influence honest-scope note).
+    zoi = None
+    if minimap_dots and mode_key in ("sr", "aram"):
+        try:
+            from core.zoi_influence import compute_zoi
+            _lc = lc or {}
+            zoi = compute_zoi(
+                minimap_dots,
+                my_level=_lc.get("level"),
+                game_time_s=_lc.get("game_time_s"),
+            )
+        except Exception:  # noqa: BLE001
+            zoi = None
+    _mark("zoi")
+
     # Haiku-elimination wave 3 (item 265 W3A): deterministic-FIRST coaching.
     # The DS matchup engine (laning A/B) + the pure callout/lead generators
     # produce the A/B choices, the objective/spike callouts, and the macro
@@ -496,6 +516,18 @@ def build_state() -> dict:
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
     _mark("deterministic")
+
+    # ZOI item 567 slice 3: surface the map-control read as a standing callout
+    # (eta_s None -> no ETA chip) alongside the deterministic objective callouts.
+    # Fail-soft + additive: a failure here must NOT disturb the existing det.
+    try:
+        if zoi is not None:
+            from core.zoi_influence import zoi_callout
+            co = zoi_callout(zoi)
+            if co is not None:
+                det["callouts"] = (det.get("callouts") or []) + [co]
+    except Exception:  # noqa: BLE001
+        pass
     _warn_slow_stages(_stages)
 
     return {
@@ -529,6 +561,7 @@ def build_state() -> dict:
         "lead_projection": det.get("lead_projection") or {},
         "minimap_rect": minimap_rect,
         "minimap_dots": minimap_dots,
+        "zoi": zoi,
     }
 
 
