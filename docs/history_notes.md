@@ -109,6 +109,35 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-22 (headless continue 18 / R16) - Game Flow + Spike Curve fixture audit
+
+Item 584, commit `7ecb5b18` (pushed) + this docs-sync. Tier-0/1 frontend (CSS comment = asset-hash
+auto-reload ADR-008, no RC restart). NO engine / DS / Share / ENGINE_VERSION / overlay-render / flip.
+
+CONTEXT: gemini+ahk loop executor cycle. Directive = ORCHESTRATION_PLAN R16 ui-audit (5-phase
+fixture audit of the un-audited Game Flow + Spike Curve panels). Overlay-polish lane stays DRAINED.
+
+AUDIT (perf_curve.js / spike_curve.js / spike_markers.js + CSS vs UI_SCALE_SPEC_V2.md): all 3 panels
+v2.1-compliant - mode/metric buttons hit `--hit-min` 42px, type on `--fs-sm`/`--fs-xs`, spike_curve
+carries its 2 item-184 inline exceptions, spike_markers cells are display-only (no click handler ->
+not hit-targets), all 6 files ASCII-clean.
+
+MUST-FIX (in-slice): perf_curve.css `.pf-ylab/.pf-xlab font-size:13px` is a legit scaled-viewBox SVG
+chart-glyph user-unit but its rationale lived only in the file header, not INLINE like its sibling
+spike_curve.css. Added the inline operator-exception comment (zero pixel delta) + NEW TDD guard
+`CssSubFloorFontExceptionTests` (RED->GREEN) failing any sub-16px hardcoded font-size lacking an
+inline exception within 6 lines. spike_markers off-grid spacing (1/2/3/6px, radius 4px) deferred
+FUTURE (pre-existing, not a NEW value per the spec's "no NEW off-grid" rule).
+
+VERIFY: 136 slice + 13 hygiene tests green; ruff clean; CSS served live on :8888 (asset-hash reload,
+index+css 200); verifier subagent CONFIRM 6/6. Live Claude_Preview shot OWED (RC-owned :8888 preview-
+attach blocker - same as R4/R8/R13 - + active_match spike panels live-game-gated; mode_key=client).
+
+NEXT: overlay-polish lane still DRAINED; expect the director to pick another off-lane ui-audit /
+ds-sweep / lift, or NO_WORK.
+
+---
+
 # 2026-06-22 (headless continue 17 / R15) - OP-Score arc-shape readout (Aggregator A lift)
 
 Item 583, feature commit `b49ef1a7` (pushed) + docs-sync. Tier-1 frontend + core analytics; RC
