@@ -141,6 +141,74 @@ def test_home_tonight_pick_is_hero(mock_server, pw_browser):
     assert not errors, f"JS errors [home hero]: {errors[:3]}"
 
 
+def test_home_wl_strip(mock_server, pw_browser):
+    """LIFT 3: the last-20 W/L pip strip renders below the rank header.
+
+    Asserts the strip is visible, carries exactly 20 pips, the count of
+    WIN pips (data-result="W") matches the fixture wins, and the
+    recent-form label shows the fixture win_rate."""
+    import json
+
+    fixture = json.loads(
+        (ROOT / "web" / "data" / "ui_mock" / "home.json").read_text()
+    )
+    last20 = fixture["last20"]
+
+    ctx, page, errors = _open_home(pw_browser, mock_server)
+    try:
+        # _homeRenderWlStrip runs in the same _homeFetchAndRender pass as
+        # the coach pick we already waited on, but wait on the pips to be
+        # safe against render ordering.
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#home-hero-rank-wl .home-wl-pip').length > 0",
+            timeout=10_000,
+        )
+        strip = page.locator("#home-hero-rank-wl")
+        assert strip.is_visible(), "#home-hero-rank-wl not visible"
+
+        pips = page.locator("#home-hero-rank-wl .home-wl-pip")
+        assert pips.count() == 20, (
+            f"expected 20 W/L pips, got {pips.count()}"
+        )
+
+        win_pips = page.locator(
+            "#home-hero-rank-wl .home-wl-pip[data-result='W']"
+        )
+        assert win_pips.count() == last20["wins"], (
+            f"win pips {win_pips.count()} != fixture wins {last20['wins']}"
+        )
+
+        form = (
+            page.locator("#home-hero-rank-wl .home-wl-form").text_content()
+            or ""
+        )
+        # JS renders the JSON number 65.0 as "65" (trailing .0 dropped),
+        # so compare against the win_rate stringified the JS way - both
+        # the float and its integer form (when whole) are accepted.
+        wr = last20["win_rate"]
+        wr_strs = {str(wr)}
+        if float(wr).is_integer():
+            wr_strs.add(str(int(wr)))
+        assert any(s in form for s in wr_strs), (
+            f"recent-form label {form!r} missing win_rate {wr}"
+        )
+        # The wins-losses record + the L20 tag both render in the label.
+        assert f"{last20['wins']}-{last20['losses']}" in form, (
+            f"recent-form label {form!r} missing record"
+        )
+        assert "L20" in form, f"recent-form label {form!r} missing 'L20'"
+
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.locator("#home-hero-rank-wl").screenshot(
+            path=str(SCREENSHOTS / "home_wl-strip.png")
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [home wl-strip]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the new
     test + the home fixture it drives. (home.css carries pre-existing
