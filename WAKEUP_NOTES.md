@@ -4,6 +4,45 @@
 
 ---
 
+# 2026-06-21 (headless continue 7) - candidate triage: a/b/c all drained -> weekly-hygiene (no build)
+
+Overlay-polish red queue + ZOI slices 1-3 came in DONE. Interviewed the Gemini director for the next
+priority from the 3 prompt candidates; a GROUND-TRUTH PROBE drained all three, so per the operator's
+pre-authorized fallback this became a weekly-hygiene pass. No code/engine/DS/Share change.
+
+CANDIDATES - do NOT re-chase (each verified vs live codebase, like this run's predecessor item 1):
+- (b) adaptation st-* "wall of dashes": HEADLINE ALREADY SHIPPED - commit `94f1e07b` wired
+  `_hideEmptyStatRows()` (right_now.js:456 <- main.js:1443): hides no-live-producer rows + collapses
+  empty group headers, idempotent. `gd_at_15` has a producer ONLY in core/match_metrics.py (post-game)
+  so it is NOT live-derivable (Gemini's example was wrong). Residual = wiring a live stat (e.g. KP) into
+  the RETIRED Chrome dashboard adaptation panel = low value (the overlay, not that panel, is the surface).
+- (c) aggregator G PGR reframe: FULLY SHIPPED S2-S5 (`77c3cc3`/`92c6a0f`/`e6cd350b`/`48bc58c8`/`c162e5bd`;
+  ROADMAP_HISTORY flipped to SHIPPED). Explore-agent mapped the surface: no unshipped bounded slice.
+- (a) ZOI slice 4 champion-only template matching: the ONLY genuinely-unshipped candidate, but LOW
+  value + HIGH risk. core/minimap_blob_detect.py:16-19 author note: "for a ZOI map-control signal, total
+  team presence is the right input anyway"; pure-numpy template match on a noisy 312px minimap crop is
+  brittle and would REPLACE the just-shipped live-verified presence detector. BOTH Gemini passes said:
+  do NOT build it blind. Parked (future, no owner) - needs operator/Gemini sign-off before any attempt.
+
+HYGIENE (relocate-only doc trim committed; memory edits local/uncommitted):
+- WAKEUP 6->2 entries: continue 4 / HEXCORE / continue 3 / continue 2 relocated VERBATIM to
+  docs/history_notes.md (this entry + continue 6 + continue 5 kept).
+- MEMORY.md: 14 longest index lines trimmed (26.2KB -> 25.4KB). STILL ~1KB over the 24.4KB load
+  budget (slug-length floor across ~28 medium lines). FLAG: run `/consolidate-memory` to dedupe /
+  consolidate the index (incl the 3 retired Game-PC ADR-011 tombstones) - beyond a light pass.
+- CLAUDE.md clean (0 leaked ledger items).
+
+ANOMALIES (both EXPECTED, no action): RC-CostHealthWatchdog last_result=1 = a genuine cost breach
+(today $2.65 vs $0.655 7-day baseline, flap:false), the expected signature of all-day live SR coaching;
+hot lane = `sr_coach` Haiku - the known Haiku-to-ZERO program, NOT a new defect. peer bridge health
+publisher stale = the Peer peer not publishing; the Peer bridge probe was deprecated from /done 2026-06-21.
+
+NEXT: the operator-listed candidate set (a/b/c) is EXHAUSTED. The next cycle needs a NEW operator refill
+or direction, not another pick from a/b/c. The repeated "already-shipped" hits (item 1, then b + c this
+cycle) mean the curated backlog is stale - grep-verify any future pick against the live tree first.
+
+---
+
 # 2026-06-21 (headless continue 6) - overlay-polish queue item (1): already shipped, only a stale comment
 
 Gemini director picked overlay-polish ROADMAP queue item (1) = "FIGHT MODEL pane `#am-pane-ovds` clips
@@ -58,107 +97,3 @@ alpha cap; the presence-vs-champion-only scope.
 
 NEXT: ZOI program FOUNDATION+1+2+3 done. Future (no owner): champion-only isolation (template matching);
 richer strength if an enemy-data source appears.
-
----
-
-# 2026-06-21 (headless continue 4) - ZOI slices 1+2: box renders+frames minimap, blob dots ship
-
-ZOI item 567 advanced 2 slices. 2 commits `f93f5f01` (slice 1) + `d6a853f2` (slice 2), pushed; CI n/a (no pytest in CI).
-
-SLICE 1 (the OWED live-verify - became a 3-bug fix). The foundation box never rendered live + was mis-scaled.
-Diagnosed via the Electron overlay's CDP DOM (the 1px/0.55 gold hairline is invisible in screenshots - DOM
-inspection is the ground truth, not the eye). (a) `minimap_rect` was never threaded into client `state.latest`
-at the 3 poll sites in `web/js/main.js` so renderMinimapRect always got null; the ui_mock test masked it.
-(b) the rc-shell overlay window used the taskbar-excluded WORK AREA -> ovscale 1.3 not 1.333 -> box ~3%
-up-left; fixed to full display BOUNDS. (c) Windows clamped the frameless window to 1400 -> re-assert bounds
-AFTER topmost -> 1440 (bottom reachable). Outline -> 2px/0.85 gold (was invisible). GOTCHA: plain GDI
-BitBlt does NOT capture the layered click-through overlay - use CAPTUREBLT flag or Windows-MCP.
-
-SLICE 2. `core/minimap_blob_detect.py` pure-numpy (numpy 2.5.0 installed for py3.14) team-color blob
-detection -> `/api/state.minimap_dots`. Saturation discriminates icon vs terrain tint; `crop_minimap` maps
-the design-px rect onto the ~1280 frame by fraction (legacy /api/minimap-crop is mis-cropped at scale 1.62,
-bypassed). 11 tests; live 32 dots in 1.6ms. It is a team-PRESENCE detector (incl wards/structures), not
-champion-only (template matching = future).
-
-NEXT (slice 3): low-opacity team-colored ZOI bubbles + demarcation inside the box, weighted by per-team
-strength (alive/dead, gold, spikes), fed to coach; UI-audit ritual. DON'T redo slices 1+2. Also: the Peer
-bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /done ritual (operator).
-
----
-
-# 2026-06-21 (architecture viz) - HEXCORE: 3D RC/DS knowledge-graph nexus
-
-Built HEXCORE (`docs/HEXCORE.html`) - a standalone interactive 3D hextech "JARVIS" viewer of RC/DS's
-own code architecture. 3d-force-graph WebGL; Hextech palette (gold #C8AA6E + cyan #0AC8B9 on navy
-#0A0E14 / #16202E) + the overlay typography; design ideas sourced from Gemini (`tools/gemini_ask.ps1`).
-Maps RC's ground-truth-verified architecture as a navigable hologram: the DS engine pinned as a reactor
-core; the per-mode coaches; the CORRECTED route binding (RC dispatches paths via `GET_ROUTES` tables +
-`_dispatch.dispatch_get`, NOT decorators); the web-panel HTTP fetch->endpoint data flow (cyan particle
-streams); and the real git co-change coupling (the 3 mode coaches). Hover scans + highlights neighbors,
-click locks + camera-flies, search locates. LEDGER 568.
-
-Also this session (infra): (1) landed the audit-10 C-01 cron silent-fail stub + audit artifacts
-(`8ee3aa43`), regression-tested (`tests/test_agent6_failure_stub.py`, 5 passed). (2) Fixed the stale
-Share review-gist: its clone .git had bloated to 582MB / 179 commits (one ~4MB Share.zip appended per
-sync, unbounded) past GitHub's gist size quota -> every push rejected ~3 days. `tools/gist_share_sync.py`
-now rolls a SINGLE parentless commit each sync + force-push + prune so it can never re-bloat; the
-over-quota gist was unrecoverable in place so it was RECREATED with a NEW id
-`gist.github.com/<redacted-gist-id>` (RE-SHARE this link; old 4a485b47 is dead).
-`Share/README.md` refreshed 1.108.0 -> 1.149.0. (3) `git filter-repo` scrubbed an external review-tool's
-name + 2 docs from ALL history + force-pushed main (CI green); backup bundle `.git/backup-pre-scrub.bundle`.
-
-DON'T redo: HEXCORE built + corrected RC self-map captured; the gist fix is durable (NEVER hand-edit the
-gist remote - the sync clobbers it); the external review tool is fully scrubbed from working tree + git
-history - do NOT re-add it.
-
----
-
-# 2026-06-21 (headless continue 3) - ZOI overlay FOUNDATION (settings-driven minimap outline)
-
-Re-opened the L1 minimap/ZOI work item 566 deferred. 1 commit `94b31bad` (pushed, CI green; LEDGER 567).
-
-PREMISE: 566 deferred ZOI because Live Client :2999 has no coords. This session found a NO-API
-coordinate source: League `game.cfg` `[HUD]` MinimapScale=1.62 + FlipMiniMap=0 geometry.
-Operator picked ZOI scope "Foundation only".
-
-SHIPPED: `core/league_settings.py` (game.cfg reader) + `core/minimap_geometry.py` (pure calibrated
-scale->rect) -> `/api/state.minimap_rect` (design px, mode-gated) -> `web/js/panels/minimap_rect.js`
-`w-mmrect` click-through gold-outline box. Calibration LIVE-measured from the operator's minimap
-(side=0.2889*H, bottom-right -> design box 1600,761,312,312); green-box overlay confirmed tight fit.
-SETTINGS-pinned, NO drag handle (grab zone over the click-critical minimap would eat clicks; rule-9
-exception). overlay_layout.js UNTOUCHED. 19 unit + 1 snapshot green; backend verified live. Memory
-`reference_minimap_geometry_calibration`.
-
-OWED / DO NEXT: the composited box-on-real-minimap screenshot is the one deferred verify - rc-shell
-must be RELAUNCHED to load the new JS module (it does NOT hot-reload new imports like Chrome) and the
-game ended (minimap_rect null off a minimap mode). Next game: relaunch rc-shell, capture, nudge the
-calibration constant if off. THEN slice 2 (pure-numpy team-color blob detection on the minimap crop
--> dot centroids) + slice 3 (ZOI bubbles + demarcation weighted by per-team strength, fed to coach;
-all local/no-API). DON'T redo: foundation/calibration/no-handle.
-
----
-
-# 2026-06-21 (headless continue 2) - overlay live-verify (IPC round-trip) + declutter sweep
-
-Continued the overlay-polish run. 1 commit `ae09ab27` (pushed, CI green; LEDGER 566).
-
-TASK 1 (owed live-verify): proved the rc-shell widget-layout durable mirror round-trip
-over a live SR practice game. Seeded `overlay.widgetLayout` in `<userData>/rc-shell-state.json`
--> relaunch -> the CALL widget RESTORED to the seeded (x,y); cleared -> section-4 default
-(== reset). Boot disk-dump confirmed the persist helpers preserve widgetLayout+settings
-across the window-bounds save. GOTCHAS (memory `reference_overlay_live_verify_technique`):
-Alt+Shift+A/R synthesized via Windows-MCP LEAK to League (open OPTIONS / recall) - they
-reach the overlay only on PHYSICAL press (rc-shell is sole registrant, no conflict); seed
-the state file with a NO-BOM writer or store.load's JSON.parse rejects the BOM -> silent default.
-
-TASK 2 DEFERRED: L1 minimap-anchored timers/ZOI. The spec marks L1 out-of-scope (l40-42);
-Live Client :2999 has NO coords (`reference_liveclient_no_positions`) so ZOI/anchoring can't
-be grounded; objective ETAs already ship as w-callouts. Don't build the canvas.
-
-TASK 3 (sweep): overlay impl substantially clean post-565. Shipped the only real items:
-palette-token the 2 white literals -> `--ovx-text` (byte-identical, Playwright-checked),
-doctrine `w-ovds` + neutral-text rows, ROADMAP spec-path fix (docs/ -> docs/research/).
-
-NEXT (this lane): overlay is doctrine-faithful + clean. The live drag GESTURE + Alt+Shift+R
-HOTKEY stay node-test-covered only (physical-press paths, not headless). Minor w-* default
-position tuning is the only open polish. DON'T redo: tasks 1/3 above; task-2 minimap is deferred.
