@@ -14188,3 +14188,85 @@ publisher stale = the Peer peer not publishing; the Peer bridge probe was deprec
 NEXT: the operator-listed candidate set (a/b/c) is EXHAUSTED. The next cycle needs a NEW operator refill
 or direction, not another pick from a/b/c. The repeated "already-shipped" hits (item 1, then b + c this
 cycle) mean the curated backlog is stale - grep-verify any future pick against the live tree first.
+
+---
+
+# 2026-06-21 (headless continue 9) - HZ laning-combat mismatch DIAGNOSED + overlay live-verified clean
+
+Item 575, commit `367297b6` (pushed). Standalone Tier-1 diagnosis tool; no engine / DS / Share / ENGINE
+bump / flip.
+
+TRIAGE (candidates 1+2 verified DRAINED/GATED again - 5th cycle, grep-verify mandatory): live re-probe
+RC pid=3656 mode=game (live SR game UP), DS :8893 ENGINE 1.149.0 / 16.12.1. (1) DS cross-eval + (2) HZ
+blind flip confirmed drained/operator-gated per items 573/574. Gemini director (gemini-3-pro-preview)
+picked candidate (A) - root-cause the now-GENUINE laning combat mismatches - and KEPT IT LANING-ONLY (NOT
+the build-axis anti_squishy->anti_tank skew; mixing axes breaks scope).
+
+PROCESS (subagent-first, parallel): an Explore agent mapped the combat-verdict pipeline -> a Plan subagent
+emitted the file:line spec (KEY FINDING: the shadow log does not store net_swing, but
+choices[0].expected_outcome embeds it - parse the LOG-TIME scalar, zero engine drift) -> a background
+build agent implemented TDD-first -> an independent verifier gate PASS (22/22, ruff, partition invariant)
+before commit.
+
+THE DIAGNOSIS (real log, 17409 records, 945 genuine laning mismatches; `ops/audit/HZ_MISMATCH_DIAGNOSE.md`):
+the over-caution is MOSTLY CALIBRATION, NOT Haiku noise. hold->all_in (151, med -0.02), even->trade (126,
+med -0.06), hold->trade (91, med +0.06) all cluster at the hold/trade boundary (368 ticks, defensible).
+ONE structural MODEL-ERROR pocket: back_off->trade (138, med -0.30) = the enemy sequence_b=_FULL_COMBO
+over-kill (`core/laning_scenario_precompute.py:355`) - a threshold tune cannot fix a structural-input
+error. The largest class back_off->hold (351, med -0.24) is per-pair ambiguous. Partition invariant
+945==945==(2103-1158). +22 TDD, ruff clean, verifier-confirmed.
+
+PARALLEL OVERLAY (operator directive, live SR Caitlyn game UP): 25/25 overlay snapshot tests pass (lone
+teardown ERROR = the live game writing data/*.jsonl, documented env guard). w-spike(20,580) /
+w-trinket(20,520) default positions (`web/js/lib/overlay_layout.js:50-51`) = clean left-edge column, NO
+collision (Gemini's tune is a non-issue). Live composite screenshot: CALL + WARD-UP render in clean
+doctrine positions, click-through, no HUD/play collision. Process-vs-mtime check: the RUNNING overlay
+(electron 9736 @ 19:32:51) post-dates the ZOI render files (minimap_zoi.js @ 19:30:33) -> operator on
+FRESH ZOI code, not stale. No overlay code change needed.
+
+NEXT: the diagnosis converts the "54.6%" gate into 3 operator-gated levers - (i) a realistic partial-
+enemy-combo model is the principled MODEL-ERROR fix for back_off->trade (NOT a threshold tune); (ii)
+CALIBRATION classes need ground-truth (rewind-db / live side-by-side) before any _BACK_OFF/_HOLD_LOW nudge
+(anti-circularity); (iii) back_off->hold needs per-pair inspection. Flip stays do-not-flip-blind. HYGIENE
+STILL OWED (3 cycles): MEMORY.md ~1KB over the 24.4KB load budget - run /consolidate-memory next idle
+cycle (a bounded build was picked this cycle, so deferred again per the operator rule).
+
+---
+
+# 2026-06-21 (headless continue 8) - HZ shadow agreement metric DE-BIASED (recall category error)
+
+Item 574, commit `79a7906a` (pushed; restored upstream tracking the item-569 rewrite had dropped). Tier-1
+tooling; no engine / DS / Share / ENGINE bump.
+
+TRIAGE (the prompt's candidates 1+2 verified DRAINED before building - the curated backlog had 3 already-
+shipped picks in a row, so grep-verify was mandatory): (1) DS cross-eval Aphelios dps zero-output BUG = ALREADY
+FIXED (ENGINE 1.128.0; `ds_cross_eval/SYSTEMIC_FINDINGS.md:74-84,112`) and LIVE-CONFIRMED this session (re-probed
+at live 1.149.0 -> dps ranks Yun Tal 103 / IE 96 / Stormrazor 82, not Doran's). B1 melee-gate + F2 gold-top
+shipped default-OFF (items 496/497); Cluster A ARAM-override = operator off-meta call, not a bounded build. So
+(1) has no bounded slice left. (2) HZ flip = NOT ready (laning 29.3% / build 48.9%, operator-gated). The 5-day
+memory `project_ds_comprehensive_cross_eval` (Aphelios "clearest defect") predated the 1.128.0 fix - same stale-
+backlog trap as items 1/b/c.
+
+GEMINI DIRECTOR consult -> priority = de-bias the HZ shadow agreement metric. SUBAGENT-FIRST: Plan subagent
+emitted the file:line-grounded spec -> impl TDD-inline (2 coupled files, worktree fan-out inappropriate per R9)
+-> read-only verifier gate (117/117, fix confirmed in-impl, no production importer) BEFORE commit.
+
+ROOT CAUSE + FIX: `tools/hz_shadow_report.py` scored the precompute choice-A laning-COMBAT verdict against the
+native Haiku action even when that action was "recall" - an ECONOMY decision the combat-A can STRUCTURALLY never
+be (the precompute's recall signal is choice B: "Recall now"/"Back soon"). ~1794 guaranteed mismatches were in
+the laning denominator. Fix: native=recall excluded from the laning-combat comparable; routed to a NEW `economy`
+sub-block {native_recall, precompute_also_recall} (`_is_recall_directive_label` catches BOTH "Recall now" AND
+"Back soon" - classify_verdict MISSES the latter; labels HARDCODED not core-imported because a top-level core
+import breaks the standalone `python tools/hz_shadow_report.py` CLI, verified live). Build (lean) + even<->hold
+untouched.
+
+RESULT: laning agreement 29.3% -> 54.6% (1133/2076); 1794 native-recall now in the economy block (all 1794 with
+precompute also recalling); flip hint 31% -> 54%; remaining laning mismatches are now GENUINE combat disagreements
+(back_off->hold x351, hold->all_in x151 = the actionable gate). TDD +6 / 3-updated, 41/41 pass; ruff clean.
+DON'T redo: this de-bias; do NOT re-add native-recall to the combat denominator (it is cross-axis by design).
+
+NEXT: the HZ flip stays operator-gated (do-not-flip-blind) - the honest gate now reads ~54% combat agreement;
+the genuine combat mismatches (back_off->hold, hold->all_in) are the next signal to investigate IF a flip is
+pursued. MEMORY.md still ~1KB over the 24.4KB load budget (a higher-priority build item was picked this cycle,
+so `/consolidate-memory` is still owed - run it next idle cycle). Candidate set 1+2 now both drained/gated; a
+fresh operator refill or a new Gemini-bounded slice is needed next cycle.
