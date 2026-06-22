@@ -1886,33 +1886,96 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 /* Session view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #5,
  * 2026-05-23). 2x2 card grid (OVERVIEW + PERFORMANCE narrow / CHAMPIONS +
  * MATCHES wide). Row label/value pair via flex space-between; values
- * use tabular-nums for column alignment across rows. */
+ * use tabular-nums for column alignment across rows.
+ *
+ * RC2 Hextech reskin (#view-session, priority #8): the cards take the
+ * .hx-card "tactical frame" (--surface body + gold corner brackets) and
+ * read as aggregate stat cards - the key datum value (Games, Time played,
+ * Total KDA, Avg ratio) jumps to the --fs-stat tier with tabular-nums so
+ * each card reads at a glance. The card head sits on the --surface-2
+ * raised surface with the gold accent. The no-data state takes the shared
+ * hextech sigil (scoped to the session lists, the global .home-empty is
+ * untouched). The hx-* primitives are consumed conceptually (no class
+ * added to markup) so the existing Session DOM + click->historical-PGR
+ * wiring (main.js _sessionFetchAndRender) stays untouched (zero-JS
+ * reskin). Mirrors the history-card idiom below. Foundation untouched -
+ * every color routes through a palette token (--surface/-2, --accent,
+ * --border, --label, --text, --dim). DEFER: session.json carries only
+ * static aggregates (no trend/series data), so the accent-2 sparkline is
+ * deferred until the summary feed exposes per-game series. */
 .session-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--panel-gap);
 }
 .session-card {
-  background: var(--surface-head); border: 1px solid var(--border);
+  /* hx-card tactical frame: card body surface + gold corner brackets. */
+  position: relative;
+  background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm); padding: var(--panel-padding-comp);
+  box-shadow: var(--shadow-card);
+}
+/* Gold corner brackets (the Hextech bracket motif from .hx-card). Two
+ * 14px L-strokes at top-left + bottom-right; decorative + pointer-inert. */
+.session-card::before,
+.session-card::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.session-card::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius-sm);
+}
+.session-card::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius-sm);
 }
 .session-card-wide { grid-column: 1 / -1; }
 .session-card-head {
   font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--label);
-  margin-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft);
-  padding-bottom: var(--space-1);
+  text-transform: uppercase; color: var(--accent);
+  margin: calc(-1 * var(--panel-padding-comp));
+  margin-bottom: var(--space-2);
+  padding: var(--space-2) var(--panel-padding-comp);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm) var(--panel-radius-sm) 0 0;
 }
 .session-row {
   display: flex; justify-content: space-between; align-items: baseline;
   font-size: var(--fs-sm); padding: var(--space-1) 0;
   min-height: var(--hit-min);
 }
-.session-row > span:first-child { color: var(--text-dim); }
+.session-row > span:first-child { color: var(--dim); }
+/* Aggregate stat-card datum: the value reads prominent (stat tier,
+ * tabular-nums) so each card reads at a glance, not as a flat kv list. */
 .session-row > span:last-child {
   color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700;
+  font-size: var(--fs-stat); line-height: 1.1;
 }
 .session-champ-list, .session-match-list {
   list-style: none; margin: 0; padding: 0;
   display: flex; flex-direction: column; gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+}
+/* No-data state inside the Session lists takes the shared hextech sigil
+ * (scoped to Session; the global .home-empty is untouched). Mirrors the
+ * History list empty-state below. */
+.session-champ-list .home-empty,
+.session-match-list .home-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  color: var(--dim); font-size: var(--fs-sm); text-align: center;
+}
+.session-champ-list .home-empty::before,
+.session-match-list .home-empty::before {
+  content: "\2756"; font-size: var(--fs-xl); line-height: 1;
+  color: var(--accent); opacity: 0.35;
 }
 
 /* History view layout - v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #4,
