@@ -176,6 +176,7 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 | R17 | ds-sweep | DIRECTOR REFILL: DS schema lift - antitank ramp_lo/ramp_hi level-ramp %HP. Extend the antitank registry to support ramp_lo and ramp_hi endpoints for champion abilities dealing percentage max HP damage scaling with level (e.g., Aatrox 4%:8%, Brand 8%:12%, Skarner 5%:9%). Generalizes to ~16 rows. Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. Live flip EXCLUDED. | DONE | `5f308036` |
 | R18 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited panels build_order.js, augment_reco.js, archetype_nudge_chip.js, and map_state.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. | DONE | `0999d3eb` |
 | R19 | ds-sweep | DIRECTOR REFILL: DS schema lift - survivability spell_damage_reduction_pct. NEW forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ_id, slot) in agents/daemon_slayer/data_loader.py - per-rank PERCENT damage reduction from champion_abilities.json defensive modifier blocks (pure-% units filter) as a first-class magnitude; lazy + frozen-safe; 8 champs at 16.12.1. Default-OFF, byte-identical (no consumer). Offline characterization tests vs Meraki. ENGINE_VERSION HELD at 1.151.0 (NOT bumped - gemini director ruling B: byte-identical forward-marker per the item 339/343 no-bump convention) + DS :8893 restart + Share sync. Live flip EXCLUDED. | DONE | `ee673c1d` |
+| R20 | lift | DIRECTOR REFILL: Section-7b heavyweight deep-dive competitor lift of Aggregator N, 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md (third-party names out of core repo code). ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); HIGH-lift with new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. Closed-negative respected: Aggregator N Arena augment WINRATE is Riot-policy-forbidden (BACKLOG line 122; pick-rate only). SHIPPED F1: ARAM per-champion balance-adjustment grid panel (the 7-field aramDamageDealt/Taken/Healing/Shielding/Tenacity/AbilityHaste/AttackSpeed grid RC loads but never displayed) - new /api/aram-balance route + web/js/panels/aram_balance.js, presentation-only over existing local champions.json, no engine bump. Lift doc docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md (F1-F7). | DONE | `e0f0ffac` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -189,6 +190,21 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-22 R20 (DIRECTOR REFILL cycle) DONE (`e0f0ffac`) - Section-7b competitor
+  deep-dive lift of Aggregator N (docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md, F1-F7). F1
+  SHIPPED IN-RUN: ARAM per-champion balance-adjustment grid panel. RC loads Riot's
+  full 7-field ARAM modifier grid into champions.json but consumed only dealt+taken
+  as a coach-prompt line - no web panel rendered it. New balance_grid_for /
+  balance_grid_map accessors (core/aram_balance_context.py, existing prompt symbols
+  byte-identical) + GET /api/aram-balance (dashboard/routes_aram_balance.py, 134
+  non-neutral champs) + mode-gated web/js/panels/aram_balance.js grid (self from
+  coach.champion; ally/enemy from liveclient.allPlayers; signed green/red deltas; AH
+  additive). Presentation-only over existing local data, no dependency / schema lift
+  / ENGINE bump. RED-first tests/test_aram_balance_grid.py (13). 1 worktree build
+  agent + verifier CONFIRM. VISUAL OWED (mode-gated panel; headless cycle cannot
+  drive ui_mock). F2 per-slot item win-rate ladder over rewind_history.db = the only
+  non-trivial FUTURE candidate (MED-HIGH, weak solo sample) -> BACKLOG. F3/F5
+  already-have, F4 forbidden external winrate source, F7 new TFT domain - all defer.
 - 2026-06-22 R19 (DIRECTOR REFILL cycle) DONE (`ee673c1d`) - DS schema lift: NEW
   forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ_id, slot)
   surfacing the per-rank PERCENT damage-reduction magnitude from
