@@ -72,7 +72,7 @@
 .csv-card-mypick .csv-card-body { overflow-y: auto; }
 .csv-card-mypick .csv-card-body::-webkit-scrollbar { width: 8px; }
 .csv-card-mypick .csv-card-body::-webkit-scrollbar-thumb {
-  background: #2a2f37; border-radius: 4px;
+  background: var(--border); border-radius: 4px;
 }
 .csv-card-enemies     { grid-area: enemies; }
 .csv-card-suggestions { grid-area: suggestions; min-height: 0; overflow: hidden; }
@@ -118,15 +118,69 @@
   min-height: 0;
 }
 
+/* RC2 reskin (champ-select page #2): cards consume the Hextech foundation
+ * surface (--surface) + gold-tinted hairline (--border). The signature
+ * gold corner-bracket motif from web/css/hextech.css .hx-card is mirrored
+ * here via ::before/::after so the panel cards carry the tactical frame
+ * without changing the .csv-card DOM/class wiring. Brackets are decorative
+ * + pointer-inert. */
 .csv-card {
-  background: var(--card-bg, #14171c);
-  border: 1px solid var(--card-border, #2a2f37);
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
   /* UI scale v2.1 (2026-05-23): border-radius 6 -> --panel-radius-sm (10). */
   border-radius: var(--panel-radius-sm);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+.csv-card::before,
+.csv-card::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.csv-card::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius-sm);
+}
+.csv-card::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius-sm);
+}
+
+/* RC2 glance hierarchy (design ref docs/design/RC2_DESIGN.html cs section,
+ * "one decision in 30-45s"): the DECISION surfaces - My Pick (center) and
+ * the Pick & Ban / Suggestions stack (the counters + counter-picks) - read
+ * as the focal point; the secondary team stat tables (Allies / Enemies)
+ * recede. Recede = dimmed corner brackets + a flatter surface so the eye
+ * lands on the decision first. The focal cards keep the full-strength gold
+ * accent brackets defined above. */
+.csv-card-allies::before,
+.csv-card-allies::after,
+.csv-card-enemies::before,
+.csv-card-enemies::after {
+  border-color: var(--hextech-border);
+}
+.csv-card-allies,
+.csv-card-enemies {
+  background: var(--surface-2);
+}
+/* Focal decision cards: a faint gold-hairline inner ring + card shadow
+ * lifts them off the receded panels without shouting. */
+.csv-card-mypick,
+.csv-card-pickban,
+.csv-card-suggestions {
+  box-shadow: inset 0 0 0 1px var(--hextech-border), var(--shadow-card-soft);
 }
 
 .csv-card-head {
@@ -135,10 +189,10 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #e8eaf0;
+  color: var(--text);
   text-align: center;
   padding-bottom: 6px;
-  border-bottom: 1px solid #232830;
+  border-bottom: 1px solid var(--border);
   margin-bottom: 8px;
 }
 
@@ -198,8 +252,8 @@
   width: 88px;
   height: 88px;
   border-radius: 8px;
-  background: #1c2026;
-  border: 2px solid #2a2f37;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -208,9 +262,9 @@
   overflow: hidden;
 }
 .csv-mypick-icon img { width: 100%; height: 100%; object-fit: cover; }
-.csv-mypick-icon.empty { color: #6a7280; font-size: 49px; }
-.csv-mypick-icon.locked { border-color: #4ade80; }
-.csv-mypick-icon.hovering { border-color: #fbbf24; }
+.csv-mypick-icon.empty { color: var(--text-faint); font-size: 49px; }
+.csv-mypick-icon.locked { border-color: var(--good); }
+.csv-mypick-icon.hovering { border-color: var(--warn); }
 
 /* s214 v2: state line sits to the LEFT of the champion icon inside
  * the portrait row (per operator follow-up). Fixed-width column with
@@ -227,7 +281,7 @@
 .csv-mypick-state {
   /* UI scale v2.1: 15 -> --fs-sm (18). */
   font-size: var(--fs-sm);
-  color: #9ca3af;
+  color: var(--dim);
   margin: 0;
   line-height: 1.15;
   letter-spacing: 0.04em;
@@ -246,8 +300,8 @@
   text-align: right;
   white-space: nowrap;
 }
-.csv-mypick-state.locked { color: #4ade80; }
-.csv-mypick-state.hovering { color: #fbbf24; }
+.csv-mypick-state.locked { color: var(--good); }
+.csv-mypick-state.hovering { color: var(--warn); }
 
 /* s171: LOCK IN button - only rendered while a champion is hovered.
  * Sits between the state line and the build chooser. Green-on-click
@@ -301,8 +355,8 @@
    * eye in the center column. */
   margin: 20px 0 12px;
   padding: 8px;
-  background: #14181d;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: 6px;
 }
 .csv-archetype-title {
@@ -314,7 +368,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.8px;
-  color: #9ca3af;
+  color: var(--dim);
 }
 /* s211: source-row container groups the AUTO button + source pill.
  * AUTO sits to the left in matching typography; the source pill keeps
@@ -329,13 +383,13 @@
   /* UI scale v2.1: 11 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-faint);
   text-transform: none;
   letter-spacing: 0.3px;
   padding: 1px 6px;
-  background: #1c2026;
+  background: var(--surface-2);
   border-radius: 3px;
-  border: 1px solid #2a2f37;
+  border: 1px solid var(--border);
   min-width: 72px;       /* fixed width so "auto" / "overridden" don't shift layout */
   text-align: center;
   display: inline-block;
@@ -349,9 +403,9 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.3px;
-  color: #9ca3af;
-  background: #1c2026;
-  border: 1px solid #2a2f37;
+  color: var(--dim);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 3px;
   padding: 1px 8px;
   cursor: pointer;
@@ -359,9 +413,9 @@
   font-family: inherit;
   transition: border-color 0.12s, background 0.12s, color 0.12s;
 }
-.csv-arch-auto:hover { border-color: #4ade80; color: #e8eaf0; }
+.csv-arch-auto:hover { border-color: var(--good); color: var(--text); }
 .csv-arch-auto.is-active {
-  color: #4ade80;
+  color: var(--good);
   background: #0f2820;
   border-color: #047857;
   cursor: default;
@@ -384,14 +438,14 @@
   gap: 4px;
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid #232830;
+  border-top: 1px solid var(--border);
 }
 .csv-arch-preview-head {
   font-size: var(--fs-xs);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.10em;
-  color: #6a7280;
+  color: var(--text-faint);
   text-align: center;
 }
 .csv-arch-preview-row {
@@ -405,8 +459,8 @@
   align-items: center;
   gap: 3px;
   padding: 4px 2px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 .csv-arch-preview-cell.is-empty { opacity: 0.5; }
@@ -414,13 +468,13 @@
   width: 36px;
   height: 36px;
   border-radius: 4px;
-  background: #14171c;
+  background: var(--surface-3);
   overflow: hidden;
-  border: 1px solid #2a2f37;
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6a7280;
+  color: var(--text-faint);
   font-weight: 700;
 }
 .csv-arch-preview-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -441,13 +495,13 @@
   justify-content: center;
   gap: 2px;
   padding: 8px 4px;
-  background: #1a1e25;
+  background: var(--surface-2);
   /* s212 v4 (audit consider #3 option 1): dropped 2->1px so the inactive
    * grid reads as a quieter background pattern. Active state below
    * carries the visual weight via a 4px left-edge accent (option 2)
    * rather than a heavy 2px border, eliminating the "two heavy
    * outlines stacked" competition with LOCKED above. */
-  border: 1px solid #2a2f37;
+  border: 1px solid var(--border);
   border-radius: 5px;
   color: #d1d5db;
   cursor: pointer;
@@ -455,8 +509,8 @@
   font-family: inherit;
 }
 .csv-arch-btn:hover {
-  border-color: #4b5563;
-  background: #21262e;
+  border-color: var(--accent);
+  background: var(--surface-2);
 }
 .csv-arch-btn .csv-arch-label {
   /* UI scale v2.1: 14 -> --fs-sm (18). */
@@ -468,7 +522,7 @@
   /* UI scale v2.1 (item 202 audit MUST FIX): 11 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 500;
-  color: #6b7280;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
@@ -491,14 +545,14 @@
   border-color: #4c3a82;
   border-left: 4px solid #a78bfa;
   margin-left: -3px;
-  background: linear-gradient(90deg, #1a1230 0%, #14181d 60%);
+  background: linear-gradient(90deg, #1a1230 0%, var(--surface-3) 60%);
   color: #ddd6fe;
 }
 .csv-arch-btn.active .csv-arch-scorer { color: #a78bfa; }
 .csv-arch-btn.placeholder {
   opacity: 0.55;
 }
-.csv-arch-btn.placeholder .csv-arch-label { color: #9ca3af; }
+.csv-arch-btn.placeholder .csv-arch-label { color: var(--dim); }
 .csv-arch-btn.placeholder.active {
   /* operator chose an unimplemented archetype - still highlights but
    * dimmer than the implemented ones so the placeholder semantics
@@ -528,22 +582,22 @@
   gap: 8px;
   align-items: center;
   padding: 3px 6px;
-  background: #1a1d23;
-  border: 1px solid #232830;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   min-height: 38px;
 }
 .csv-team-cell.me { border-color: #6366f1; background: #1d1e2d; }
-.csv-team-cell.locked .csv-team-cell-icon { border-color: #4ade80; }
-.csv-team-cell.hovering .csv-team-cell-icon { border-color: #fbbf24; }
-.csv-team-cell.empty .csv-team-cell-icon { background: #14171c; }
+.csv-team-cell.locked .csv-team-cell-icon { border-color: var(--good); }
+.csv-team-cell.hovering .csv-team-cell-icon { border-color: var(--warn); }
+.csv-team-cell.empty .csv-team-cell-icon { background: var(--surface-3); }
 
 .csv-team-cell-icon {
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 .csv-team-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -567,12 +621,21 @@
   font-weight: 800;
   text-align: center;
   white-space: nowrap;
-  color: #6b7280;
+  color: var(--text-faint);
 }
-.csv-enemy-wr-slot.is-good { color: #4ade80; }
-.csv-enemy-wr-slot.is-mid  { color: #fbbf24; }
-.csv-enemy-wr-slot.is-bad  { color: #f87171; }
-.csv-enemy-wr-slot.is-new  { color: #6b7280; }
+.csv-enemy-wr-slot.is-good { color: var(--good); }
+.csv-enemy-wr-slot.is-mid  { color: var(--warn); }
+.csv-enemy-wr-slot.is-bad  { color: var(--bad); }
+.csv-enemy-wr-slot.is-new  { color: var(--text-faint); }
+/* RC2 B3/C5 (WCAG 1.4.1 - status never by HUE alone): the leading
+ * win-rate-vs-this-enemy slot is colour-banded; prepend a shape glyph so
+ * good/even/bad survives grayscale + colour-blind vision. Glyphs authored
+ * as CSS escapes (ASCII source hard rule): \25B2 up-tri (favoured matchup),
+ * \25BC down-tri (losing matchup); the even band stays glyph-less since its
+ * amber + the raw % already read as neutral. Pure-CSS ::before so no JS
+ * class churn and the render stays idempotent (_csvComputeSig untouched). */
+.csv-enemy-wr-slot.is-good::before { content: "\25B2 "; font-size: 0.85em; }
+.csv-enemy-wr-slot.is-bad::before  { content: "\25BC "; font-size: 0.85em; }
 
 .csv-team-cell-nm {
   /* UI scale v2.1: 14 -> --fs-sm (18). Champion name reads more
@@ -580,7 +643,7 @@
    * doesn't grow. */
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -662,11 +725,11 @@
   color: #cbd5e1;
   letter-spacing: 0.04em;
   padding: 1px 5px;
-  background: #1c2026;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 3px;
 }
-.csv-team-cell-tag--cc       { color: #fbbf24; border-color: #b88410; }
+.csv-team-cell-tag--cc       { color: var(--warn); border-color: #b88410; }
 .csv-team-cell-tag--burst    { color: #fb923c; border-color: #b8610c; }
 .csv-team-cell-tag--ad       { color: #fca5a5; border-color: #b8410c; }
 .csv-team-cell-tag--ap       { color: #c4b5fd; border-color: #6d4ed1; }
@@ -676,14 +739,14 @@
 .csv-team-cell-tag--support  { color: #fde68a; border-color: #b8800c; }
 .csv-team-cell-tag--adc      { color: #fca5a5; border-color: #b8410c; }
 .csv-team-cell-tag--mage     { color: #c4b5fd; border-color: #6d4ed1; }
-.csv-team-cell-tag--flex     { color: #cbd5e1; border-color: #2a2f37; }
+.csv-team-cell-tag--flex     { color: #cbd5e1; border-color: var(--border); }
 /* s213 v3: confidence pill - grid col 7 (rightmost). No abs positioning. */
 .csv-card-enemies .csv-team-cell-confidence {
   /* UI scale v2.1: 11 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 700;
   padding: 1px 5px;
-  background: #1c2026;
+  background: var(--surface-2);
   border-radius: 3px;
   pointer-events: none;
   letter-spacing: 0.02em;
@@ -696,8 +759,8 @@
  * are the ones where the role guess could be wrong. Audit subagent
  * surfaced this as the "every-row-equal-attention-budget" anti-pattern. */
 .csv-team-cell-confidence.is-high { color: #2d7d52; border: 1px solid #053e2a; opacity: 0.55; }
-.csv-team-cell-confidence.is-med  { color: #fbbf24; border: 1px solid #b88410; }
-.csv-team-cell-confidence.is-low  { color: #6a7280; border: 1px solid #2a2f37; }
+.csv-team-cell-confidence.is-med  { color: var(--warn); border: 1px solid #b88410; }
+.csv-team-cell-confidence.is-low  { color: var(--text-faint); border: 1px solid var(--border); }
 /* Personal-vs threat tag pill - color-coded by operator's lifetime
  * win-rate vs the enemy champion. Bands defined in
  * dashboard/routes_personal_vs._classify_band; thresholds and
@@ -713,7 +776,7 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   padding: 1px 6px;
-  background: #1c2026;
+  background: var(--surface-2);
   border-radius: 3px;
   pointer-events: none;
   letter-spacing: 0.02em;
@@ -722,7 +785,7 @@
 .csv-team-cell-threat--red     { color: #ff5555; border: 1px solid #b84141; }
 .csv-team-cell-threat--amber   { color: #ffaa00; border: 1px solid #b88410; }
 .csv-team-cell-threat--green   { color: #55cc55; border: 1px solid #277540; }
-.csv-team-cell-threat--unknown { color: #6a7280; border: 1px solid #2a2f37; }
+.csv-team-cell-threat--unknown { color: var(--text-faint); border: 1px solid var(--border); }
 .csv-team-cell-summ-text {
   flex: 0 1 auto;
   white-space: nowrap;
@@ -731,7 +794,7 @@
   min-width: 0;
   /* UI scale v2.1: 14 -> --fs-sm (18). */
   font-size: var(--fs-sm);
-  color: #9ca3af;
+  color: var(--dim);
   text-align: left;
 }
 /* s214: lock + countdown timer styles retired - the inline [lock] was
@@ -753,16 +816,16 @@
   transition: filter 0.12s, box-shadow 0.12s, border-color 0.12s;
 }
 .csv-team-cell-icon.is-clickable:hover {
-  box-shadow: 0 0 0 2px #60a5fa;
+  box-shadow: 0 0 0 2px var(--info);
 }
 .csv-team-cell-pos.is-clickable:hover {
-  border-color: #60a5fa;
-  color: #e8eaf0;
+  border-color: var(--info);
+  color: var(--text);
 }
 .csv-team-cell-summ-text.is-clickable:hover {
-  color: #e8eaf0;
+  color: var(--text);
   text-decoration: underline;
-  text-decoration-color: #60a5fa;
+  text-decoration-color: var(--info);
   text-underline-offset: 2px;
 }
 
@@ -779,11 +842,11 @@
  * is-disabled class is added to the OTHER cells to lock the choice. */
 .csv-pb-pick-icon.is-clickable:hover:not(.is-disabled),
 .csv-pb-pick-icon.is-selected {
-  box-shadow: 0 0 0 2px #4ade80;
+  box-shadow: 0 0 0 2px var(--good);
 }
 .csv-pb-ban.is-clickable:hover:not(.is-disabled) .csv-pb-ban-icon,
 .csv-pb-ban.is-selected .csv-pb-ban-icon {
-  box-shadow: 0 0 0 2px #ef4444;
+  box-shadow: 0 0 0 2px var(--bad);
 }
 .csv-pb-ban.is-disabled,
 .csv-pb-pick-icon.is-disabled {
@@ -820,10 +883,10 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   padding: 6px 12px;
-  background: #14171c;
-  border: 1px solid #ef4444;
+  background: var(--surface-3);
+  border: 1px solid var(--bad);
   border-radius: 3px;
-  color: #e8eaf0;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   text-align: center;
@@ -838,10 +901,10 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   padding: 6px 12px;
-  background: #14171c;
-  border: 1px solid #ef4444;
+  background: var(--surface-3);
+  border: 1px solid var(--bad);
   border-radius: 3px;
-  color: #e8eaf0;
+  color: var(--text);
   cursor: pointer;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -851,13 +914,13 @@
   min-width: 88px;
 }
 .csv-trade-choice:hover {
-  background: #1a1d23;
-  color: #ef4444;
+  background: var(--surface-2);
+  color: var(--bad);
 }
 .csv-team-cell-summ {
   /* UI scale v2.1: 14 -> --fs-sm (18). */
   font-size: var(--fs-sm);
-  color: #9ca3af;
+  color: var(--dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -869,12 +932,12 @@
   /* UI scale v2.1: 12 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 2px 6px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: 3px;
 }
 /* s212 v7 (audit must-fix #4): the user's own-row position pip now
@@ -891,7 +954,7 @@
   color: #818cf8;
   letter-spacing: 0.08em;
   padding: 1px 8px;
-  background: #14171c;
+  background: var(--surface-3);
   border: 1px solid #6366f1;
   border-radius: 3px;
 }
@@ -905,23 +968,23 @@
   position: relative;
 }
 .csv-team-cell.is-banning {
-  box-shadow: inset 0 0 0 2px #ef4444;
+  box-shadow: inset 0 0 0 2px var(--bad);
 }
 .csv-team-cell.is-picking {
-  box-shadow: inset 0 0 0 2px #fbbf24;
+  box-shadow: inset 0 0 0 2px var(--warn);
 }
 
 /* Build chooser sub-block under MY PICK. */
 .csv-builds {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid #232830;
+  border-top: 1px solid var(--border);
 }
 .csv-builds-title {
   /* UI scale v2.1: 14 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 6px;
@@ -952,8 +1015,8 @@
   gap: 4px;
   margin: 8px 0;
   padding: 6px;
-  background: #14181d;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: var(--panel-radius-sm);
 }
 .csv-summspell-cell {
@@ -961,17 +1024,17 @@
   display: flex; flex-direction: column;
   align-items: center; gap: 2px;
   padding: 4px 2px;
-  background: #1a1e25;
-  border: 2px solid #2a2f37;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
   transition: border-color 0.12s, background 0.12s;
   min-height: var(--hit-min);
 }
-.csv-summspell-cell:hover { border-color: #3a3f4a; background: #21262e; }
+.csv-summspell-cell:hover { border-color: var(--accent); background: var(--surface-2); }
 .csv-summspell-cell.is-selected {
-  border-color: #4ade80;
+  border-color: var(--good);
   background: rgba(74, 222, 128, 0.08);
 }
 .csv-summspell-icon {
@@ -990,8 +1053,8 @@
   min-width: 18px;
   padding: 1px 6px;
   margin-top: 2px;
-  background: #4ade80;
-  color: #0b1018;
+  background: var(--good);
+  color: var(--canvas);
   font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -1001,7 +1064,7 @@
 .csv-summspell-pct {
   /* Operator (2026-05-23 round 3): pct 16 -> --fs-sm (18). */
   font-size: var(--fs-sm);
-  color: #6a7280;
+  color: var(--text-faint);
   line-height: 1.1;
 }
 
@@ -1011,27 +1074,48 @@
   align-items: center;
   gap: 6px;
   padding: 2px 8px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 999px;
   /* UI scale v2.1: 14 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  /* hx-chip parity: tabular-nums so the embedded phase countdown timer
+   * digits do not jitter as they tick (matches web/css/hextech.css .hx-chip). */
+  font-variant-numeric: tabular-nums;
 }
-.csv-phase-pill.ban_pick { color: #fbbf24; border-color: #b88410; }
-.csv-phase-pill.finalization { color: #4ade80; border-color: #15803d; }
-.csv-phase-pill.planning { color: #60a5fa; border-color: #2563eb; }
+.csv-phase-pill.ban_pick { color: var(--warn); border-color: #b88410; }
+.csv-phase-pill.finalization { color: var(--good); border-color: #15803d; }
+.csv-phase-pill.planning { color: var(--info); border-color: #2563eb; }
 
+/* RC2 reskin: the panel-level empty state mirrors web/css/hextech.css
+ * .hx-empty - a centered dim block with the four-pointed hextech sigil
+ * (\2756, ASCII CSS escape) above so an empty panel reads as intentional,
+ * not broken. The inline density empty-states (suggestion / bench / ally-
+ * role copy) stay glyph-less to avoid disrupting dense sub-panels. */
 .csv-empty {
-  color: #6a7280;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--dim);
   /* UI scale v2.1: 14 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   text-align: center;
   padding: 16px 8px;
   font-style: italic;
+}
+.csv-empty::before {
+  content: "\2756";
+  font-size: var(--fs-xl);
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.35;
+  font-style: normal;
 }
 
 /* -- Pick & Ban Recommendations panel ----------------------------- */
@@ -1072,7 +1156,7 @@
  * _csvBanPhaseComplete(cs). */
 .csv-pb168-bans.is-collapsed { flex: 0 0 auto; opacity: 0.6; }
 .csv-pb168-bans.is-collapsed .csv-pb168-row { display: none; }
-.csv-pb168-bans.is-collapsed .csv-pb168-head { border-bottom: none; color: #6a7280; }
+.csv-pb168-bans.is-collapsed .csv-pb168-head { border-bottom: none; color: var(--text-faint); }
 .csv-pb168-expl  { flex: 1 1 auto; min-height: 0; overflow: hidden; }
 /* item 213 (2026-05-28): PICK / BAN heads reformatted for a clearer
  * visual hierarchy - the head is now a left-aligned labeled bar with a
@@ -1086,21 +1170,21 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.10em;
-  color: #9ca3af;
+  color: var(--dim);
   text-align: left;
   padding: 3px 4px;
-  border-bottom: 1px solid #232830;
+  border-bottom: 1px solid var(--border);
 }
 .csv-pb168-head::before {
   content: "";
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #6a7280;
+  background: var(--text-faint);
   flex: 0 0 auto;
 }
-.csv-pb168-picks .csv-pb168-head::before { background: #4ade80; }
-.csv-pb168-bans  .csv-pb168-head::before { background: #ef4444; }
+.csv-pb168-picks .csv-pb168-head::before { background: var(--good); }
+.csv-pb168-bans  .csv-pb168-head::before { background: var(--bad); }
 .csv-pb168-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1119,8 +1203,8 @@
   justify-content: flex-start;
   gap: 4px;
   padding: 6px 4px 5px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 6px;
   position: relative;
   min-height: var(--hit-min);
@@ -1128,10 +1212,10 @@
 }
 .csv-pb168-cell.is-clickable { cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
 .csv-pb168-cell.is-clickable:hover { transform: translateY(-1px); }
-.csv-pb168-cell.csv-pb168-pick.is-clickable:hover { border-color: #4ade80; }
-.csv-pb168-cell.csv-pb168-ban.is-clickable:hover  { border-color: #ef4444; }
-.csv-pb168-cell.csv-pb168-pick.is-selected { border-color: #4ade80; box-shadow: 0 0 0 2px #4ade80; }
-.csv-pb168-cell.csv-pb168-ban.is-selected  { border-color: #ef4444; box-shadow: 0 0 0 2px #ef4444; }
+.csv-pb168-cell.csv-pb168-pick.is-clickable:hover { border-color: var(--good); }
+.csv-pb168-cell.csv-pb168-ban.is-clickable:hover  { border-color: var(--bad); }
+.csv-pb168-cell.csv-pb168-pick.is-selected { border-color: var(--good); box-shadow: 0 0 0 2px var(--good); }
+.csv-pb168-cell.csv-pb168-ban.is-selected  { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad); }
 /* Source-tag pill (TOP / #2 / #3 / LAST for picks; CTR / STRUGGLE for bans). */
 .csv-pb168-tag {
   position: absolute;
@@ -1140,25 +1224,25 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.05em;
-  color: #6a7280;
-  background: #14171c;
+  color: var(--text-faint);
+  background: var(--surface-3);
   padding: 1px 4px;
   border-radius: 2px;
   text-transform: uppercase;
 }
-.csv-pb168-cell.is-performance .csv-pb168-tag { color: #4ade80; }
+.csv-pb168-cell.is-performance .csv-pb168-tag { color: var(--good); }
 .csv-pb168-cell.is-mastery     .csv-pb168-tag { color: #a78bfa; }
-.csv-pb168-cell.is-meta        .csv-pb168-tag { color: #60a5fa; }
-.csv-pb168-cell.is-last        .csv-pb168-tag { color: #fbbf24; }
-.csv-pb168-cell.is-counter     .csv-pb168-tag { color: #ef4444; }
+.csv-pb168-cell.is-meta        .csv-pb168-tag { color: var(--info); }
+.csv-pb168-cell.is-last        .csv-pb168-tag { color: var(--warn); }
+.csv-pb168-cell.is-counter     .csv-pb168-tag { color: var(--bad); }
 .csv-pb168-cell.is-struggle    .csv-pb168-tag { color: #f97316; }
 .csv-pb168-icon {
   width: 46px;
   height: 46px;
   border-radius: 5px;
-  background: #14171c;
+  background: var(--surface-3);
   overflow: hidden;
-  border: 1px solid #2a2f37;
+  border: 1px solid var(--border);
   margin-top: 10px;
   display: flex;
   align-items: center;
@@ -1168,7 +1252,7 @@
 .csv-pb168-name {
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1179,7 +1263,7 @@
 .csv-pb168-pct {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #ef4444;
+  color: var(--bad);
   margin-top: auto;
 }
 .csv-pb168-cell.is-struggle .csv-pb168-pct { color: #f97316; }
@@ -1212,7 +1296,7 @@
 .csv-pb168-expl-empty {
   font-size: var(--fs-xs);
   font-style: italic;
-  color: #6a7280;
+  color: var(--text-faint);
   text-align: center;
   padding: 6px 0;
 }
@@ -1221,22 +1305,22 @@
   font-weight: 600;
   color: #fca5a5;
   background: rgba(239, 68, 68, 0.08);
-  border-left: 3px solid #ef4444;
+  border-left: 3px solid var(--bad);
   padding: 4px 8px;
   border-radius: 3px;
 }
 .csv-pb168-expl-pick {
   font-size: var(--fs-xs);
-  color: #9ca3af;
+  color: var(--dim);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.csv-pb168-expl-pick.is-performance { border-left: 2px solid #4ade80; padding-left: 6px; }
+.csv-pb168-expl-pick.is-performance { border-left: 2px solid var(--good); padding-left: 6px; }
 .csv-pb168-expl-pick.is-mastery     { border-left: 2px solid #a78bfa; padding-left: 6px; }
-.csv-pb168-expl-pick.is-meta        { border-left: 2px solid #60a5fa; padding-left: 6px; }
-.csv-pb168-expl-pick.is-last        { border-left: 2px solid #fbbf24; padding-left: 6px; }
+.csv-pb168-expl-pick.is-meta        { border-left: 2px solid var(--info); padding-left: 6px; }
+.csv-pb168-expl-pick.is-last        { border-left: 2px solid var(--warn); padding-left: 6px; }
 
 /* s239: foregrounded per-user "YOUR RECORD" headline. Sits at the top
  * of #csv-pickban-body, above the mood recs. Lavender left-accent +
@@ -1278,9 +1362,9 @@
 }
 .csv-pr-champ-wr   { font-size: var(--fs-sm); font-weight: 800; }  /* UIX1: 18 -> --fs-sm */
 /* UI scale v2.1 (audit MUST FIX 2026-05-23): 13 -> --fs-xs (16) floor. */
-.csv-pr-champ-sub  { font-size: var(--fs-xs); color: #8b909a; }
+.csv-pr-champ-sub  { font-size: var(--fs-xs); color: var(--text-faint); }
 .csv-pr-champ-role { font-size: var(--fs-xs); color: #b8bdc7; }
-.csv-pr-champ.is-new   { color: #8b909a; }
+.csv-pr-champ.is-new   { color: var(--text-faint); }
 .csv-pr-champ.is-new em { font-style: italic; font-size: var(--fs-xs); }
 .csv-pr-row {
   display: flex;
@@ -1292,7 +1376,7 @@
   /* UI scale v2.1 (item 202 audit MUST FIX): 13 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #6b7280;
+  color: var(--text-faint);
   letter-spacing: 0.06em;
   min-width: 34px;
 }
@@ -1305,24 +1389,29 @@
   line-height: 1.15;
   padding: 1px 5px;
   border-radius: 4px;
-  background: #21252e;
+  background: var(--surface-2);
   color: #d4d7dd;
   white-space: nowrap;
 }
 .csv-pr-chip b  { margin-left: 5px; font-weight: 800; }
-.csv-pr-chip em { margin-left: 5px; font-style: normal; color: #8b909a; font-size: var(--fs-xs); }
-.csv-pr-chip.is-good { background: #16331f; color: #d6f5de; }
-.csv-pr-chip.is-good b { color: #4ade80; }
-.csv-pr-chip.is-mid  { background: #33290f; color: #f6eccf; }
-.csv-pr-chip.is-mid b  { color: #fbbf24; }
-.csv-pr-chip.is-bad  { background: #331717; color: #f6d6d6; }
-.csv-pr-chip.is-bad b  { color: #f87171; }
+.csv-pr-chip em { margin-left: 5px; font-style: normal; color: var(--text-faint); font-size: var(--fs-xs); }
+.csv-pr-chip.is-good { background: var(--good-soft); color: #d6f5de; }
+.csv-pr-chip.is-good b { color: var(--good); }
+.csv-pr-chip.is-mid  { background: var(--warn-soft); color: #f6eccf; }
+.csv-pr-chip.is-mid b  { color: var(--warn); }
+.csv-pr-chip.is-bad  { background: var(--bad-soft); color: #f6d6d6; }
+.csv-pr-chip.is-bad b  { color: var(--bad); }
+/* RC2 B3/C5 glyphs: WITH/VS personal-WR chips are colour-banded; prepend a
+ * shape so good/bad reads in grayscale (\25B2 up / \25BC down). ASCII CSS
+ * escapes; ::before keeps the JS render idempotent. */
+.csv-pr-chip.is-good::before { content: "\25B2 "; font-size: 0.8em; opacity: 0.9; }
+.csv-pr-chip.is-bad::before  { content: "\25BC "; font-size: 0.8em; opacity: 0.9; }
 .csv-pr-chip.is-new {
   background: transparent;
-  border: 1px dashed #3a3f48;
-  color: #6b7280;
+  border: 1px dashed var(--accent);
+  color: var(--text-faint);
 }
-.csv-pr-chip.is-new em { margin-left: 5px; color: #6b7280; }
+.csv-pr-chip.is-new em { margin-left: 5px; color: var(--text-faint); }
 
 /* Operator (2026-05-23 round 3): icon variant of the personal-vs chip.
  * Used in the Assessment panel's VS row - champion portrait stacked
@@ -1334,8 +1423,8 @@
   gap: 2px;
   padding: 2px 4px;
   border-radius: 4px;
-  background: #21252e;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   line-height: 1;
 }
 .csv-pr-chip-icon-img {
@@ -1350,23 +1439,27 @@
   color: #d4d7dd;
   letter-spacing: 0.02em;
 }
-.csv-pr-chip-icon.is-good { background: #16331f; border-color: #277540; }
-.csv-pr-chip-icon.is-good .csv-pr-chip-icon-pct { color: #4ade80; }
-.csv-pr-chip-icon.is-mid  { background: #33290f; border-color: #b88410; }
-.csv-pr-chip-icon.is-mid  .csv-pr-chip-icon-pct { color: #fbbf24; }
-.csv-pr-chip-icon.is-bad  { background: #331717; border-color: #b84141; }
-.csv-pr-chip-icon.is-bad  .csv-pr-chip-icon-pct { color: #f87171; }
+.csv-pr-chip-icon.is-good { background: var(--good-soft); border-color: #277540; }
+.csv-pr-chip-icon.is-good .csv-pr-chip-icon-pct { color: var(--good); }
+.csv-pr-chip-icon.is-mid  { background: var(--warn-soft); border-color: #b88410; }
+.csv-pr-chip-icon.is-mid  .csv-pr-chip-icon-pct { color: var(--warn); }
+.csv-pr-chip-icon.is-bad  { background: var(--bad-soft); border-color: #b84141; }
+.csv-pr-chip-icon.is-bad  .csv-pr-chip-icon-pct { color: var(--bad); }
+/* RC2 B3/C5 glyph on the portrait-stacked WR chip (VS row). The glyph sits
+ * on the % line so the face + glyph + colour triangulate the matchup. */
+.csv-pr-chip-icon.is-good .csv-pr-chip-icon-pct::before { content: "\25B2"; font-size: 0.8em; margin-right: 2px; }
+.csv-pr-chip-icon.is-bad  .csv-pr-chip-icon-pct::before { content: "\25BC"; font-size: 0.8em; margin-right: 2px; }
 .csv-pr-chip-icon.is-new {
   background: transparent;
-  border: 1px dashed #3a3f48;
+  border: 1px dashed var(--accent);
 }
-.csv-pr-chip-icon.is-new .csv-pr-chip-icon-pct { color: #6b7280; }
+.csv-pr-chip-icon.is-new .csv-pr-chip-icon-pct { color: var(--text-faint); }
 
 .csv-pr-hint {
   /* UI scale v2.1 (audit MUST FIX): 13 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-style: italic;
-  color: #6b7280;
+  color: var(--text-faint);
 }
 
 .csv-pb-role-row {
@@ -1385,7 +1478,7 @@
    * BAN as the red caption for the ban-icon strip. */
   background: transparent;
   border: 0;
-  border-bottom: 1px solid #2a2f37;
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
   padding-bottom: 6px;
   margin-bottom: 2px;
@@ -1439,7 +1532,7 @@
   /* UI scale v2.1 (item 202 audit MUST FIX): 11 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #6a7280;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -1447,10 +1540,10 @@
   /* UI scale v2.1 (item 202 audit MUST FIX): 15 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 900;
-  color: #fbbf24;
+  color: var(--warn);
   letter-spacing: 0.08em;
   padding: 1px 8px;
-  background: #14171c;
+  background: var(--surface-3);
   border: 1px solid #b88410;
   border-radius: 3px;
 }
@@ -1460,8 +1553,8 @@
   grid-template-columns: 70px 1fr 138px;
   gap: 6px;
   padding: 3px 6px;
-  background: #1a1d23;
-  border: 1px solid #232830;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   /* s214 v4 (operator: P&B rows must be the same fixed height).
    * `flex: 1 1 0` distributes the panel's available row space evenly
@@ -1473,9 +1566,9 @@
   min-height: 50px;
   align-items: center;
 }
-.csv-pb-pick-row[data-source="performance"] { border-left: 3px solid #4ade80; }
+.csv-pb-pick-row[data-source="performance"] { border-left: 3px solid var(--good); }
 .csv-pb-pick-row[data-source="mastery"]     { border-left: 3px solid #a78bfa; }
-.csv-pb-pick-row[data-source="meta"]        { border-left: 3px solid #60a5fa; }
+.csv-pb-pick-row[data-source="meta"]        { border-left: 3px solid var(--info); }
 
 .csv-pb-pick-col {
   display: flex;
@@ -1490,26 +1583,26 @@
   /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 800;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   text-align: center;
 }
-.csv-pb-pick-row[data-source="performance"] .csv-pb-source-label { color: #4ade80; }
+.csv-pb-pick-row[data-source="performance"] .csv-pb-source-label { color: var(--good); }
 .csv-pb-pick-row[data-source="mastery"]     .csv-pb-source-label { color: #a78bfa; }
-.csv-pb-pick-row[data-source="meta"]        .csv-pb-source-label { color: #60a5fa; }
+.csv-pb-pick-row[data-source="meta"]        .csv-pb-source-label { color: var(--info); }
 
 .csv-pb-pick-icon {
   width: 38px;
   height: 38px;
   border-radius: 4px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6a7280;
+  color: var(--text-faint);
   font-size: 19px;
 }
 .csv-pb-pick-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -1517,7 +1610,7 @@
   /* UI scale v2.1 (audit MUST FIX): 13 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -1560,7 +1653,7 @@
    * UI scale v2.1 (item 202 audit MUST FIX): 14 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 800;
-  color: #ef4444;
+  color: var(--bad);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 2px;
@@ -1573,7 +1666,7 @@
    * UI scale v2.1 (item 202 audit MUST FIX): 14 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 800;
-  color: #4ade80;
+  color: var(--good);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   text-align: center;
@@ -1584,27 +1677,31 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  /* RC2 audit hit-target: SR ban-grid icon is click-to-ban-intent; pin the
+   * stacked pct+icon+name column to the --hit-min tappable floor. */
+  min-height: var(--hit-min);
+  justify-content: center;
 }
 .csv-pb-ban-pct {
   /* UI scale v2.1 (audit MUST FIX): 11 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #fbbf24;
+  color: var(--warn);
   line-height: 1;
 }
 .csv-pb-ban-icon {
   width: 32px;
   height: 32px;
   border-radius: 3px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 .csv-pb-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-pb-ban-name {
   /* UI scale v2.1 (audit MUST FIX): 11 -> --fs-xs (16). */
   font-size: var(--fs-xs);
-  color: #9ca3af;
+  color: var(--dim);
   line-height: 1.1;
   text-align: center;
   white-space: nowrap;
@@ -1613,7 +1710,7 @@
   max-width: 42px;
 }
 .csv-pb-ban.is-placeholder .csv-pb-ban-icon {
-  background: #1c2026;
+  background: var(--surface-2);
   border-style: dashed;
 }
 
@@ -1638,7 +1735,7 @@
    * font floor (across-room legibility). */
   font-size: 14px;
   font-weight: 700;
-  color: #6a7280;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -1652,10 +1749,10 @@
   font-size: 16px;
   font-weight: 700;
   padding: 4px 4px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: 3px;
-  color: #9ca3af;
+  color: var(--dim);
   cursor: pointer;
   font-family: inherit;
   line-height: 1.1;
@@ -1663,13 +1760,13 @@
 }
 .csv-pb-mood-btn > span { display: block; }
 .csv-pb-mood-btn.is-active {
-  color: #4ade80;
+  color: var(--good);
   border-color: #15803d;
   background: #1a2a20;
 }
 .csv-pb-mood-btn:hover:not(.is-active) {
-  color: #e8eaf0;
-  border-color: #3a3f4a;
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 /* --- Mode-conditional layouts (s165) ---------------------------------
@@ -1739,14 +1836,14 @@
 .csv-bench {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #232830;
+  border-top: 1px solid var(--border);
   width: 100%;
 }
 .csv-bench-title {
   /* UI scale v2.1 page #9 ARAM (item 181): 14 -> --fs-xs (16). */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 6px;
@@ -1758,8 +1855,8 @@
   gap: 6px;
 }
 .csv-bench-cell {
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 4px;
   display: flex;
@@ -1767,16 +1864,20 @@
   align-items: center;
   gap: 4px;
   cursor: pointer;
+  /* RC2 audit hit-target: explicit --hit-min floor on the click-to-swap
+   * bench cell (icon + padding already exceed it, but pin it so future
+   * density tweaks can't drop the tappable area below floor). */
+  min-height: var(--hit-min);
   transition: border-color 0.12s, transform 0.12s, box-shadow 0.12s;
 }
 .csv-bench-cell:hover {
-  border-color: #60a5fa;
+  border-color: var(--info);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(96, 165, 250, 0.25);
 }
 .csv-bench-cell.is-pending {
-  border-color: #4ade80;
-  box-shadow: 0 0 0 2px #4ade80;
+  border-color: var(--good);
+  box-shadow: 0 0 0 2px var(--good);
 }
 /* Deterministic ARAM comp-verdict banner - compact single-row strip above
  * the bench cells. Subtle bg + small radius so it reads as guidance, not a
@@ -1786,27 +1887,27 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  background: #16191f;
-  border: 1px solid #2a2f37;
-  border-left: 3px solid #60a5fa;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--info);
   border-radius: 4px;
   padding: 6px 10px;
   margin-bottom: 8px;
 }
 .csv-bench-verdict--stay {
-  border-left-color: #6a7280;
+  border-left-color: var(--text-faint);
 }
 .csv-bench-verdict-label {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 .csv-bench-verdict-rec {
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: #60a5fa;
+  color: var(--info);
 }
 .csv-bench-verdict-conf {
   font-size: var(--fs-xs);
@@ -1815,38 +1916,38 @@
   letter-spacing: 0.04em;
   padding: 1px 6px;
   border-radius: 3px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
 }
 .csv-bench-verdict-conf--high {
-  color: #4ade80;
+  color: var(--good);
   border-color: #346b46;
 }
 .csv-bench-verdict-conf--medium {
-  color: #fbbf24;
+  color: var(--warn);
   border-color: #6b5a1f;
 }
 .csv-bench-verdict-conf--low {
-  color: #9ca3af;
+  color: var(--dim);
 }
 .csv-bench-verdict-reason {
   font-size: var(--fs-xs);
-  color: #9ca3af;
+  color: var(--dim);
   flex: 1 1 100%;
 }
 /* The bench cell the verdict recommends swapping to - a clear ring so the
  * operator's eye lands on it before reading the banner text. */
 .csv-bench-cell.is-verdict-swap {
-  border-color: #4ade80;
-  box-shadow: 0 0 0 2px #4ade80, 0 2px 10px rgba(74, 222, 128, 0.35);
+  border-color: var(--good);
+  box-shadow: 0 0 0 2px var(--good), 0 2px 10px rgba(74, 222, 128, 0.35);
 }
 .csv-bench-cell-icon {
   width: 48px;
   height: 48px;
   border-radius: 4px;
-  background: #14171c;
+  background: var(--surface-3);
   overflow: hidden;
-  border: 1px solid #2a2f37;
+  border: 1px solid var(--border);
 }
 .csv-bench-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
 .csv-bench-empty {
@@ -1855,7 +1956,7 @@
    * intentional). Do NOT bump to --fs-xs without operator approval. */
   font-size: 13px;
   font-style: italic;
-  color: #6a7280;
+  color: var(--text-faint);
   text-align: center;
   padding: 12px 0;
 }
@@ -1878,13 +1979,13 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6a7280;
+  color: var(--text-faint);
   padding: 0 2px;
 }
 .csv-sugg-empty {
   /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
   font-size: var(--fs-xs);
-  color: #6a7280;
+  color: var(--text-faint);
   font-style: italic;
   padding: 4px 6px;
 }
@@ -1915,11 +2016,11 @@
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #6a7280;
+  color: var(--text-faint);
   text-align: right;
 }
-.csv-sugg-banned-row[data-side="ally"]  .csv-sugg-banned-side { color: #4ade80; }
-.csv-sugg-banned-row[data-side="enemy"] .csv-sugg-banned-side { color: #ef4444; }
+.csv-sugg-banned-row[data-side="ally"]  .csv-sugg-banned-side { color: var(--good); }
+.csv-sugg-banned-row[data-side="enemy"] .csv-sugg-banned-side { color: var(--bad); }
 .csv-sugg-banned-cells {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -1936,13 +2037,15 @@
   align-items: center;
   gap: 4px;
   padding: 6px 4px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
+  /* RC2 audit hit-target: click-to-ban suggestion card pinned to floor. */
+  min-height: var(--hit-min);
   transition: border-color 0.12s, background 0.12s;
 }
-.csv-sugg-ban-card:hover { border-color: #ef4444; }
+.csv-sugg-ban-card:hover { border-color: var(--bad); }
 .csv-sugg-ban-card.is-banned {
   opacity: 0.4;
   border-style: dashed;
@@ -1951,8 +2054,8 @@
 .csv-sugg-ban-icon {
   width: 44px; height: 44px;
   border-radius: 4px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 .csv-sugg-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -1960,7 +2063,7 @@
   /* UI scale v2.1 (item 202 audit MUST FIX): 12 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -1981,8 +2084,8 @@
   align-items: center;
   gap: 8px;
   padding: 5px 6px;
-  background: #16191f;
-  border: 1px solid #232830;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   /* Mouse-driven 1920x1080 desktop surface; the full-width strip is the
@@ -1991,25 +2094,25 @@
   min-height: 30px;
   transition: border-color 0.12s, background 0.12s;
 }
-.csv-sugg-banned-toggle:hover { border-color: #3a4150; background: #1a1e25; }
+.csv-sugg-banned-toggle:hover { border-color: var(--accent); background: var(--surface-2); }
 .csv-sugg-bans-grid.is-banned-grid .csv-sugg-banned-toggle { display: flex; }
 .csv-sugg-banned-toggle-label {
   font-size: var(--fs-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
 }
 .csv-sugg-banned-toggle-count {
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: #6b7280;
+  color: var(--text-faint);
   flex: 1 1 auto;
 }
 .csv-sugg-banned-caret {
   font-size: var(--fs-xs);
   font-weight: 800;
-  color: #6b7280;
+  color: var(--text-faint);
   letter-spacing: 0.04em;
 }
 /* When collapsed, hide the committed-ban rows (the icon grid) but keep the
@@ -2027,7 +2130,7 @@
   font-weight: 700;
   letter-spacing: 0.10em;
   text-transform: uppercase;
-  color: #4ade80;
+  color: var(--good);
   padding: 0 2px 2px;
 }
 .csv-counter-list {
@@ -2041,8 +2144,8 @@
   align-items: center;
   gap: 8px;
   padding: 4px 6px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-left: 3px solid #2c6a3c;
   border-radius: 4px;
   min-height: var(--hit-min);
@@ -2052,8 +2155,8 @@
   transition: border-color 0.12s, background 0.12s, transform 0.12s;
 }
 .csv-counter-pick.is-clickable:hover {
-  border-color: #4ade80;
-  border-left-color: #4ade80;
+  border-color: var(--good);
+  border-left-color: var(--good);
   background: #1d2630;
   transform: translateY(-1px);
 }
@@ -2061,8 +2164,8 @@
   width: 36px;
   height: 36px;
   border-radius: 4px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 .csv-counter-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -2075,14 +2178,14 @@
 .csv-counter-name {
   font-size: var(--fs-sm);
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .csv-counter-note {
   font-size: var(--fs-xs);
-  color: #8b909a;
+  color: var(--text-faint);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2101,8 +2204,8 @@
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   /* s213 v3: bumped 14->15px (rows 1+2+3 of pick order) per operator
    * audit follow-up. Clears the 13px tertiary floor with even more
@@ -2112,12 +2215,12 @@
    * the same height. Audit subagent flagged uneven heights as a
    * visual-hierarchy distraction. */
   font-size: 16px;
-  color: #e8eaf0;
+  color: var(--text);
   line-height: 1.35;
   min-height: 44px;
 }
 .csv-sugg-pickorder-cell .csv-sugg-pickorder-idx {
-  color: #6a7280;
+  color: var(--text-faint);
   font-weight: 700;
   /* s213 v3: bumped 13->14px to scale with the surrounding text.
    * UI scale v2.1 (item 202 audit MUST FIX): 15 -> --fs-xs (16) floor. */
@@ -2149,26 +2252,26 @@
    * legacy single-variant row to hit-min parity. */
   min-height: var(--hit-min);
   padding: 6px 8px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
 }
-.csv-build-row:hover { border-color: #60a5fa; }
+.csv-build-row:hover { border-color: var(--info); }
 .csv-build-row.selected {
-  border-color: #4ade80;
+  border-color: var(--good);
   background: #1a2a20;
 }
 .csv-build-checkbox {
   width: 12px; height: 12px;
   border-radius: 50%;
-  border: 2px solid #6a7280;
+  border: 2px solid var(--text-faint);
   background: transparent;
 }
 .csv-build-row.selected .csv-build-checkbox {
-  border-color: #4ade80;
-  background: #4ade80;
+  border-color: var(--good);
+  background: var(--good);
 }
 /* s214: meta column switched from center- to start-aligned children so
  * the keystone strip's anchor X is the SAME across all 4 build-chooser
@@ -2192,7 +2295,7 @@
   /* UI scale v2.1 (item 202 audit MUST FIX): 14 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
   font-weight: 800;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2237,7 +2340,7 @@
 .csv-build-badge-lethality   { color: #f0abfc; background: #2a1030; border-color: #a21caf; }
 .csv-build-badge-support     { color: #fde68a; background: #2a2010; border-color: #b8800c; }
 .csv-build-badge-experimental{ color: #fb923c; background: #2a1810; border-color: #b8610c; }
-.csv-build-badge-default     { color: #cbd5e1; background: #1a1d23; border-color: #2a2f37; }
+.csv-build-badge-default     { color: #cbd5e1; background: var(--surface-2); border-color: var(--border); }
 /* 2026-05-28: operator user-curated builds (key "userbuild_<id>") get a
    distinct sky-blue hue so a saved build reads apart from the engine-
    curated + experimental rows in the same chooser. */
@@ -2273,7 +2376,7 @@
 .csv-build-rune-keystone {
   width: 30px; height: 30px;
   border-radius: 50%;
-  background: radial-gradient(circle at 50% 40%, #2a1f10 0%, #14171c 70%);
+  background: radial-gradient(circle at 50% 40%, #2a1f10 0%, var(--surface-3) 70%);
   border: 1px solid #b88410;
 }
 .csv-build-rune-tree {
@@ -2330,8 +2433,8 @@
 .csv-build-spell {
   width: 20px; height: 20px;
   border-radius: 3px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   display: block;
 }
 /* s209 v2: adaptive-summoner swap badge. When the build chooser
@@ -2340,7 +2443,7 @@
  * dot in the corner so the operator notices at a glance. Title attr
  * carries the swap reason. */
 .csv-build-spell.is-swapped {
-  border-color: #fbbf24;
+  border-color: var(--warn);
   box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4);
   position: relative;
 }
@@ -2349,9 +2452,12 @@
   position: absolute;
   top: -4px;
   right: -4px;
+  /* Sub-floor exception (RC2 audit): 10px corner micro-badge on a 20px
+   * spell icon - a decorative swap-indicator dot, not readable content, so
+   * the --fs-xs floor does not apply (same class as a notification dot). */
   font-size: 10px;
   line-height: 1;
-  color: #fbbf24;
+  color: var(--warn);
   text-shadow: 0 0 2px #000;
   pointer-events: none;
 }
@@ -2359,13 +2465,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Sub-floor exception (RC2 audit): placeholder glyph inside a 20px empty
+   * spell slot - a micro-affordance, not readable copy; --fs-xs floor N/A. */
   font-size: 11px;
-  color: #6a7280;
+  color: var(--text-faint);
 }
 .csv-build-runes {
   /* UI scale v2.1 (item 202 audit MUST FIX): 12 -> --fs-xs (16) floor. */
   font-size: var(--fs-xs);
-  color: #9ca3af;
+  color: var(--dim);
   letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
@@ -2388,13 +2496,13 @@
   width: 42px; height: 42px;
   border-radius: 3px;
   overflow: hidden;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   cursor: help;
   transition: box-shadow 0.12s, border-color 0.12s;
 }
 .csv-build-item:hover {
-  border-color: #60a5fa;
+  border-color: var(--info);
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.4);
 }
 .csv-build-item img { width: 100%; height: 100%; object-fit: cover; }
@@ -2409,18 +2517,18 @@
   flex-direction: column;
   gap: 4px;
   padding: 8px 10px;
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 6px;
   cursor: default;
 }
-.csv-build-row-collapsed:hover { border-color: #2a2f37; /* no hover ring on outer - paths are the click target */ }
+.csv-build-row-collapsed:hover { border-color: var(--border); /* no hover ring on outer - paths are the click target */ }
 .csv-build-collapsed-head {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 2px 2px;
-  border-bottom: 1px solid #2a2f37;
+  border-bottom: 1px solid var(--border);
 }
 .csv-build-collapsed-title {
   font-size: var(--fs-sm, 18px);
@@ -2440,30 +2548,30 @@
   gap: 8px;
   min-height: var(--hit-min, 42px);
   padding: 4px 6px;
-  background: #14171c;
+  background: var(--surface-3);
   border: 1px solid transparent;
   border-radius: 4px;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
 }
 .csv-build-path-row:hover {
-  border-color: #60a5fa;
+  border-color: var(--info);
   background: #1a2030;
 }
 .csv-build-path-row.is-active {
-  border-color: #4ade80;
+  border-color: var(--good);
   background: #1a2a20;
 }
 .csv-build-path-label {
   font-size: var(--fs-sm, 18px);
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   padding: 2px 4px;
   border-radius: 3px;
-  background: #2a2f37;
+  background: var(--border);
 }
 .csv-build-path-row.is-active .csv-build-path-label {
   background: #2a4a35;
@@ -2478,13 +2586,13 @@
   width: 32px; height: 32px;
   border-radius: 3px;
   overflow: hidden;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   cursor: help;
   transition: box-shadow 0.12s, border-color 0.12s;
 }
 .csv-build-path-item:hover {
-  border-color: #60a5fa;
+  border-color: var(--info);
   box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.4);
 }
 .csv-build-path-item img { width: 100%; height: 100%; object-fit: cover; }
@@ -2514,18 +2622,18 @@
   flex-direction: column;
   gap: 4px;
   padding: 4px 6px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 .csv-rune-panel-title {
   font-size: var(--fs-xs, 16px);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 0 2px 2px;
-  border-bottom: 1px solid #2a2f37;
+  border-bottom: 1px solid var(--border);
 }
 .csv-rune-opt-list {
   display: flex;
@@ -2539,7 +2647,7 @@
   gap: 6px;
   min-height: var(--hit-min, 42px);
   padding: 3px 5px;
-  background: #1a1d23;
+  background: var(--surface-2);
   border: 2px solid transparent;
   border-radius: 4px;
   cursor: pointer;
@@ -2548,25 +2656,25 @@
 .csv-rune-opt:hover { background: #1a2030; }
 /* GREEN sticky selection (3b). */
 .csv-rune-opt.is-selected {
-  border-color: #4ade80;
+  border-color: var(--good);
   background: #1a2a20;
 }
 /* AMBER recommended-for-active-card (3b). Withheld when the operator is
  * already on the recommended rune (then it is just green). */
 .csv-rune-opt.is-recommended {
-  border-color: #fbbf24;
+  border-color: var(--warn);
   background: #2a2415;
 }
 .csv-rune-opt-icon {
   width: 26px; height: 26px;
   border-radius: 50%;
   object-fit: cover;
-  background: #0f1216;
+  background: var(--canvas);
 }
 .csv-rune-opt-name {
   font-size: var(--fs-sm, 18px);
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2595,7 +2703,7 @@
   letter-spacing: 0.05em;
   color: #c8f2d4;
   background: #1a2a20;
-  border: 1px solid #4ade80;
+  border: 1px solid var(--good);
   border-radius: 4px;
   padding: 4px 10px;
   min-height: var(--hit-min, 42px);
@@ -2612,13 +2720,13 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #9ca3af;
+  color: var(--dim);
   cursor: pointer;
   user-select: none;
 }
 .csv-builds-push-cb {
   width: 16px; height: 16px;
-  accent-color: #4ade80;
+  accent-color: var(--good);
   cursor: pointer;
 }
 
@@ -2630,8 +2738,8 @@
   margin: 6px 0 12px;
 }
 .csv-duo-cell {
-  background: #1a1d23;
-  border: 2px solid #2a2f37;
+  background: var(--surface-2);
+  border: 2px solid var(--border);
   border-radius: 6px;
   padding: 10px 8px;
   display: flex;
@@ -2640,18 +2748,18 @@
   gap: 4px;
 }
 .csv-duo-cell.is-me { border-color: #6366f1; background: #1d1e2d; }
-.csv-duo-cell.locked { border-color: #4ade80; }
+.csv-duo-cell.locked { border-color: var(--good); }
 .csv-duo-cell.locked.is-me { border-color: #818cf8; }
-.csv-duo-cell.hovering { border-color: #fbbf24; }
+.csv-duo-cell.hovering { border-color: var(--warn); }
 .csv-duo-cell.is-empty { border-style: dashed; opacity: 0.55; }
 .csv-duo-cell-icon {
   width: 64px; height: 64px;
   border-radius: 6px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   overflow: hidden;
   display: flex; align-items: center; justify-content: center;
-  color: #6a7280;
+  color: var(--text-faint);
   font-size: 29px;
 }
 .csv-duo-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -2662,7 +2770,7 @@
    * compact me + 2 partners row. */
   font-size: 11px;
   font-weight: 700;
-  color: #6a7280;
+  color: var(--text-faint);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-top: 2px;
@@ -2675,7 +2783,7 @@
 }
 .csv-duo-cell-summ {
   font-size: var(--fs-xs);
-  color: #9ca3af;
+  color: var(--dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2687,13 +2795,26 @@
 .csv-augment-options {
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid #232830;
+  border-top: 1px solid var(--border);
   width: 100%;
 }
+/* RC2 reskin (brief item 5): the current-round augment RECOMMENDATION list
+ * is framed in hextech teal (--accent-2) so the operator's eye lands on the
+ * "pick one" decision surface. Teal is the secondary accent reserved for
+ * recommendations/intents - it sits apart from the gold card brackets, the
+ * silver/gold/prismatic rarity borders (brand-preserved), and the green
+ * is-selected / blue hover states. */
+.csv-augment-options {
+  border: 1px solid var(--accent-2);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  box-shadow: 0 0 0 1px var(--glow);
+}
+.csv-augment-options .csv-augments-title { color: var(--accent-2); }
 .csv-augments-title {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 6px;
@@ -2705,18 +2826,18 @@
   gap: 6px;
 }
 .csv-augment-slot {
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 6px 4px;
   text-align: center;
   position: relative;
 }
-.csv-augment-slot.silver    { border-color: #6b7280; }
+.csv-augment-slot.silver    { border-color: var(--text-faint); }
 .csv-augment-slot.gold      { border-color: #b88410; }
 .csv-augment-slot.prismatic { border-color: #a855f7; }
 .csv-augment-slot.is-active {
-  box-shadow: 0 0 0 2px #fbbf24;
+  box-shadow: 0 0 0 2px var(--warn);
   background: #1a1f2a;
 }
 .csv-augment-slot.filled { background: #1a2a20; }
@@ -2724,48 +2845,48 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #9ca3af;
+  color: var(--dim);
   margin-bottom: 2px;
 }
 .csv-augment-slot.silver    .csv-augment-slot-grade { color: #c1c5cc; }
-.csv-augment-slot.gold      .csv-augment-slot-grade { color: #fbbf24; }
+.csv-augment-slot.gold      .csv-augment-slot-grade { color: var(--warn); }
 .csv-augment-slot.prismatic .csv-augment-slot-grade { color: #c084fc; }
 .csv-augment-slot-name {
   font-size: var(--fs-xs);
   font-weight: 800;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .csv-augment-option {
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--accent-2);
   border-radius: 4px;
   padding: 6px 8px;
   margin-bottom: 4px;
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
   min-height: var(--hit-min);
 }
 .csv-augment-option:last-child { margin-bottom: 0; }
-.csv-augment-option:hover { border-color: #60a5fa; }
+.csv-augment-option:hover { border-color: var(--info); box-shadow: 0 0 0 1px var(--info); }
 .csv-augment-option.is-selected {
-  border-color: #4ade80;
+  border-color: var(--good);
   background: #1a2a20;
 }
-.csv-augment-option.silver    { border-left: 3px solid #6b7280; }
+.csv-augment-option.silver    { border-left: 3px solid var(--text-faint); }
 .csv-augment-option.gold      { border-left: 3px solid #b88410; }
 .csv-augment-option.prismatic { border-left: 3px solid #a855f7; }
 .csv-augment-option-name {
   font-size: var(--fs-sm);
   font-weight: 800;
-  color: #e8eaf0;
+  color: var(--text);
 }
 .csv-augment-option-blurb {
   font-size: var(--fs-xs);
-  color: #9ca3af;
+  color: var(--dim);
   margin-top: 2px;
   line-height: 1.3;
 }
@@ -2775,8 +2896,8 @@
   gap: 8px;
 }
 .csv-arena-team {
-  background: #1a1d23;
-  border: 1px solid #2a2f37;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 6px 8px;
   list-style: none;
@@ -2784,7 +2905,7 @@
 .csv-arena-team-head {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: 4px;
@@ -2800,22 +2921,22 @@
   grid-template-columns: 36px 1fr auto;
   gap: 6px;
   align-items: center;
-  background: #14171c;
-  border: 1px solid #232830;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 4px 6px;
   min-height: 38px;
 }
 .csv-arena-cell.locked { border-color: #2a3f30; }
-.csv-arena-cell.locked .csv-arena-cell-icon { border-color: #4ade80; }
-.csv-arena-cell.hovering .csv-arena-cell-icon { border-color: #fbbf24; }
+.csv-arena-cell.locked .csv-arena-cell-icon { border-color: var(--good); }
+.csv-arena-cell.hovering .csv-arena-cell-icon { border-color: var(--warn); }
 .csv-arena-cell.is-empty { border-style: dashed; opacity: 0.55; }
 .csv-arena-cell-icon {
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  background: #14171c;
-  border: 1px solid #2a2f37;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 .csv-arena-cell-icon img { width: 100%; height: 100%; object-fit: cover; }
@@ -2828,7 +2949,7 @@
    * 1080px. Champion image carries primary identity. */
   font-size: 13px;
   font-weight: 700;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2839,7 +2960,7 @@
   justify-content: flex-end;
   min-width: 18px;
 }
-.csv-arena-cell-lock { color: #4ade80; font-size: var(--fs-xs); font-weight: 800; }
+.csv-arena-cell-lock { color: var(--good); font-size: var(--fs-xs); font-weight: 800; }
 .csv-arena-cell-timer {
   /* s214: per-cell timer removed; .csv-arena-cell-timer rule retained
    * for ABI continuity with the SR caller signature (timerEndMs arg).
@@ -2885,61 +3006,61 @@
   gap: 8px;
   padding: 3px 6px;
   min-height: 38px;
-  background: #1a1d23;
-  border: 1px solid #232830;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
-.csv-allyroles-row.is-locked .csv-allyroles-icon { border-color: #4ade80; }
+.csv-allyroles-row.is-locked .csv-allyroles-icon { border-color: var(--good); }
 .csv-allyroles-row.is-hover  { opacity: 0.82; }
-.csv-allyroles-row.is-hover  .csv-allyroles-icon { border-color: #fbbf24; }
+.csv-allyroles-row.is-hover  .csv-allyroles-icon { border-color: var(--warn); }
 .csv-allyroles-row.is-empty  { opacity: 0.5; }
 .csv-allyroles-row.is-me {
-  background: #21262e;
-  border-color: #60a5fa;
+  background: var(--surface-2);
+  border-color: var(--info);
 }
 .csv-allyroles-role {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--dim);
   letter-spacing: 0.5px;
   text-align: center;
 }
-.csv-allyroles-row.is-me .csv-allyroles-role { color: #60a5fa; }
+.csv-allyroles-row.is-me .csv-allyroles-role { color: var(--info); }
 .csv-allyroles-icon {
   width: 32px;
   height: 32px;
   border-radius: 4px;
-  background: #14171c;
+  background: var(--surface-3);
   overflow: hidden;
-  border: 1px solid #2a2f37;
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .csv-allyroles-icon img { width: 100%; height: 100%; object-fit: cover; }
-.csv-allyroles-icon-empty { color: #4b5159; font-size: var(--fs-sm); }
+.csv-allyroles-icon-empty { color: var(--text-faint); font-size: var(--fs-sm); }
 .csv-allyroles-name {
   font-size: var(--fs-sm);
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.csv-allyroles-row.is-empty .csv-allyroles-name { color: #6a7280; }
+.csv-allyroles-row.is-empty .csv-allyroles-name { color: var(--text-faint); }
 .csv-allyroles-state {
   font-size: var(--fs-xs);
   font-weight: 700;
-  color: #6a7280;
+  color: var(--text-faint);
   letter-spacing: 0.5px;
 }
-.csv-allyroles-row.is-locked .csv-allyroles-state { color: #4ade80; }
-.csv-allyroles-row.is-hover  .csv-allyroles-state { color: #fbbf24; }
-.csv-allyroles-row.is-me     .csv-allyroles-state { color: #60a5fa; }
+.csv-allyroles-row.is-locked .csv-allyroles-state { color: var(--good); }
+.csv-allyroles-row.is-hover  .csv-allyroles-state { color: var(--warn); }
+.csv-allyroles-row.is-me     .csv-allyroles-state { color: var(--info); }
 .csv-allyroles-empty {
   font-size: var(--fs-xs);
   font-style: italic;
-  color: #6a7280;
+  color: var(--text-faint);
   text-align: center;
   padding: 6px 0;
 }

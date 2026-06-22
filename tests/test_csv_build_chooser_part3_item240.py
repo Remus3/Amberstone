@@ -151,18 +151,26 @@ class RuneBorders3bTests(unittest.TestCase):
             "click can re-point the amber marker to its keystone (3b).")
 
     def test_css_green_and_amber_borders(self):
+        # RC2 reskin (2026-06-22): the rune-option selection borders were
+        # tokenized onto the Hextech foundation - GREEN -> var(--good)
+        # (#37D08A) and AMBER -> var(--warn) (#E8A33D). The test INTENT is
+        # unchanged ("selected = green, recommended = amber"); accept either
+        # the legacy hex or the foundation token so the signal-color semantics
+        # stay pinned without re-fragilizing on the exact hex.
         m_sel = re.search(
-            r"\.csv-rune-opt\.is-selected\s*\{[^}]*border-color:\s*#4ade80",
+            r"\.csv-rune-opt\.is-selected\s*\{[^}]*"
+            r"border-color:\s*(?:#4ade80|var\(--good\))",
             self.css, re.DOTALL)
         self.assertIsNotNone(m_sel,
             ".csv-rune-opt.is-selected must use the GREEN border-color "
-            "(#4ade80) for the sticky rune choice (3b).")
+            "(#4ade80 or var(--good)) for the sticky rune choice (3b).")
         m_rec = re.search(
-            r"\.csv-rune-opt\.is-recommended\s*\{[^}]*border-color:\s*#fbbf24",
+            r"\.csv-rune-opt\.is-recommended\s*\{[^}]*"
+            r"border-color:\s*(?:#fbbf24|var\(--warn\))",
             self.css, re.DOTALL)
         self.assertIsNotNone(m_rec,
             ".csv-rune-opt.is-recommended must use the AMBER border-color "
-            "(#fbbf24) for the recommended rune (3b).")
+            "(#fbbf24 or var(--warn)) for the recommended rune (3b).")
 
 
 class HeaderControl3dTests(unittest.TestCase):
