@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-06-22 (headless continue 18 / R16) - Game Flow + Spike Curve fixture audit
+
+Item 584, commit `7ecb5b18` (pushed) + this docs-sync. Tier-0/1 frontend (CSS comment = asset-hash
+auto-reload ADR-008, no RC restart). NO engine / DS / Share / ENGINE_VERSION / overlay-render / flip.
+
+CONTEXT: gemini+ahk loop executor cycle. Directive = ORCHESTRATION_PLAN R16 ui-audit (5-phase
+fixture audit of the un-audited Game Flow + Spike Curve panels). Overlay-polish lane stays DRAINED.
+
+AUDIT (perf_curve.js / spike_curve.js / spike_markers.js + CSS vs UI_SCALE_SPEC_V2.md): all 3 panels
+v2.1-compliant - mode/metric buttons hit `--hit-min` 42px, type on `--fs-sm`/`--fs-xs`, spike_curve
+carries its 2 item-184 inline exceptions, spike_markers cells are display-only (no click handler ->
+not hit-targets), all 6 files ASCII-clean.
+
+MUST-FIX (in-slice): perf_curve.css `.pf-ylab/.pf-xlab font-size:13px` is a legit scaled-viewBox SVG
+chart-glyph user-unit but its rationale lived only in the file header, not INLINE like its sibling
+spike_curve.css. Added the inline operator-exception comment (zero pixel delta) + NEW TDD guard
+`CssSubFloorFontExceptionTests` (RED->GREEN) failing any sub-16px hardcoded font-size lacking an
+inline exception within 6 lines. spike_markers off-grid spacing (1/2/3/6px, radius 4px) deferred
+FUTURE (pre-existing, not a NEW value per the spec's "no NEW off-grid" rule).
+
+VERIFY: 136 slice + 13 hygiene tests green; ruff clean; CSS served live on :8888 (asset-hash reload,
+index+css 200); verifier subagent CONFIRM 6/6. Live Claude_Preview shot OWED (RC-owned :8888 preview-
+attach blocker - same as R4/R8/R13 - + active_match spike panels live-game-gated; mode_key=client).
+
+NEXT: overlay-polish lane still DRAINED; expect the director to pick another off-lane ui-audit /
+ds-sweep / lift, or NO_WORK.
+
+---
+
 # 2026-06-22 (headless continue 17 / R15) - OP-Score arc-shape readout (Aggregator A lift)
 
 Item 583, feature commit `b49ef1a7` (pushed) + docs-sync. Tier-1 frontend + core analytics; RC
@@ -62,32 +91,3 @@ reproduce on clean HEAD 38326ed3 / from the dirty spell_prefs.json - pre-existin
 the ORCHESTRATION_PLAN Findings log + LEDGER 581).
 
 NEXT: live default-ON flip + ehp/hybrid propagation are operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.
-
----
-
-# 2026-06-22 (headless continue 13) - DS doc-drift reconciled + standing doc-pin GUARD added
-
-Item 579, commit `99f2e72b` (pushed). Tier-0 doc + Tier-1 test; no engine / DS schema / Share /
-ENGINE bump / overlay render / flip change. ZERO overlay render delta -> no electron relaunch.
-
-TRIAGE: live re-probe RC pid=3656 mode=client (no game up), DS :8893 ENGINE 1.149.0 / 16.12.1, HEAD
-6e7a7afc. Candidate set 1/2/A/B/E/F6 DRAINED (573-578); all named levers operator-gated. A parallel
-Explore agent gave up at the docs level (recency-biased-sweep). The Gemini director (gemini-3-pro-preview,
-UP) surfaced the fresh non-gated pick: docs/DS_COMPLETENESS_GAP.md f1+f3 (doc drift + no reconciler guard).
-
-VERIFY-BEFORE-BUILD (grep-confirmed): __init__.py:18 ENGINE 1.149.0 vs doc banner stale 1.144.0;
-server.py registers 28 routes, doc line 119 listed 15 (missing 13 scored-axis routes); module-map test
-row 5931 vs live DS-dir 7362; no existing guard test. DS CHANGELOG.md DOES carry 1.145-1.149 (gap-note,
-not backfill).
-
-BUILT (TDD red-then-green): NEW tests/test_docs_daemon_slayer_drift.py (3 tests, sibling-style) pins the
-doc banner ENGINE_VERSION->__init__.py + patch->current.txt + endpoint list->server.py routes; does NOT
-pin the volatile test counts. RED first (1.144.0!=1.149.0 + 13 missing), then fixed docs/DAEMON_SLAYER.md
-(banner 1.149.0/7362; full 28-route list; tests 5931->7362; 1.145-1.149 changelog gap-note) -> GREEN 3/3,
-ruff clean, ASCII. Verifier subagent: SHIP (MISSING=[] PHANTOM=[], anti-tautology proven). Overlay track
-PARALLEL + PASSED: render-contract 25/25 + geometry CLEAN; in-game ARAM frame OWED (mode=client).
-
-NEXT (operator-gated): guard now fails locally on the next bump/route-add that forgets the doc. Minor
-follow-up (NOT done, scope): CLAUDE.md deep-ref line still cites stale ENGINE 1.101.0. Levers unchanged:
-overlay S0 flip; magnitude-as-bar (Phase-4); HZ Tier-2 partial-combo. Candidate set drained - next cycle
-needs a fresh Gemini/operator refill.
