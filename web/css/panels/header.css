@@ -545,7 +545,7 @@ footer .prefs-chip:hover { color: var(--text); }
 [data-color-idx="2"] .lobby-member-name,
 [data-color-idx="2"] .lv-mc-summoner-name { color: var(--gold); }
 [data-color-idx="3"] .lobby-member-name,
-[data-color-idx="3"] .lv-mc-summoner-name { color: #6cd4d0; }
+[data-color-idx="3"] .lv-mc-summoner-name { color: var(--accent-2); }
 [data-color-idx="4"] .lobby-member-name,
 [data-color-idx="4"] .lv-mc-summoner-name { color: var(--bad); }
 
@@ -692,7 +692,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px;
 }
 .lobby-view-card {
-  background: var(--surface-head); border: 1px solid var(--border);
+  /* RC2 Hextech reskin: lobby panels take the .hx-card "tactical frame"
+   * treatment - the proper card-body surface (--surface, one step darker
+   * than the panel-head --surface-2) plus the gold corner brackets painted
+   * by the ::before/::after pseudos below. position:relative anchors those
+   * brackets. The hx-card primitive is consumed conceptually here rather
+   * than by adding the class to the markup, so the existing lobby DOM +
+   * wiring stays untouched (zero-JS reskin). */
+  position: relative;
+  background: var(--surface); border: 1px solid var(--border);
   /* UI scale v2.1 (2026-05-23): card radius bumped to --panel-radius-sm
    * (10). Padding preserved at s162-v4 8/16 tuning - the lobby fits
    * without scroll only because each card runs compact. */
@@ -700,6 +708,27 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 8px 16px;
   min-height: 160px;
   display: flex; flex-direction: column;
+}
+/* Gold corner brackets (the Hextech bracket motif from .hx-card). Two
+ * 14px L-strokes at top-left + bottom-right; decorative + pointer-inert. */
+.lobby-view-card::before,
+.lobby-view-card::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+.lobby-view-card::before {
+  top: -1px; left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--panel-radius-sm);
+}
+.lobby-view-card::after {
+  bottom: -1px; right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--panel-radius-sm);
 }
 /* s162 v8: row 1 panels shrink to natural content (was stretching to
  * row 2 height and leaving dead space below the 5th party row).
@@ -1101,11 +1130,16 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-top8-row:hover { border: 1px solid var(--info-soft); }
 /* s162 v7: offline rows - light red tint at reduced opacity so the
  * "this person isn't around right now" signal reads at a glance
- * without overpowering. is-in-party (green) wins if both apply. */
+ * without overpowering. is-in-party (green) wins if both apply.
+ * RC2 Hextech reskin: lower-priority (offline) member context is also
+ * pushed to --dim so it recedes from the glance hierarchy - the online
+ * roster reads at full --text weight, offline names sit back at --dim. */
 .lv-top8-row.is-offline {
   background: color-mix(in srgb, var(--bad) 12%, var(--surface-alt));
   opacity: 0.72;
 }
+.lv-top8-row.is-offline .lv-top8-name,
+.lv-top8-row.is-offline .lv-top8-cell { color: var(--dim); }
 .lv-top8-row.is-offline:hover {
   opacity: 0.92;
   border-color: var(--bad);
@@ -1182,13 +1216,23 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: inline-block;
   justify-self: center;
 }
+/* RC2 reskin: online status is not hue-alone - the ON dot is a solid
+ * filled disc (green + glow), the OFF dot is a hollow ring (transparent
+ * center, dim border) so the two read apart in shape, not just color. */
 .lv-top8-dot-on  { background: var(--good); box-shadow: 0 0 4px var(--good); }
-.lv-top8-dot-off { background: var(--bad);  opacity: 0.7; }
+.lv-top8-dot-off { background: transparent; border: 2px solid var(--dim); opacity: 0.8; }
 .lv-top8-reorder {
   display: flex; flex-direction: column; gap: 1px;
   width: 26px;
 }
 .lv-top8-reorder-btn {
+  /* RC2 hit-target fix (audit): the visible chevron stays compact
+   * (26x12, two stacked in a ~30px row) but a 44x44 transparent
+   * ::before overlay extends the actual click target to the fingertip
+   * floor (var(--hit-min) is 42; 44 clears it). position:relative
+   * anchors the overlay; the button itself keeps its tight footprint
+   * so the row height is unchanged. */
+  position: relative;
   width: 26px; height: 12px;
   font-size: 11px;
   display: flex; align-items: center; justify-content: center;
@@ -1198,6 +1242,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: 3px;
   cursor: pointer;
   padding: 0;
+}
+.lv-top8-reorder-btn::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .lv-top8-reorder-btn:hover { color: var(--info); border-color: var(--info); }
 .lv-top8-reorder-btn:disabled { opacity: 0.3; cursor: default; }
@@ -1481,6 +1532,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-member-action {
   appearance: none; -webkit-appearance: none;
+  /* RC2 hit-target fix (audit): visible 26x26 button, but a 44px-tall
+   * ::before overlay extends the vertical click target to the fingertip
+   * floor. Width is held at 30px (the 26px button + 4px inter-button
+   * gap pitch) so the overlay does NOT steal clicks from the adjacent
+   * action buttons in the 120px actions column - vertical room exists
+   * (the row min-height is var(--hit-min)) but horizontal does not. */
+  position: relative;
   width: 26px; height: 26px;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-head);
@@ -1490,6 +1548,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   cursor: pointer;
   font-size: 14px; padding: 0;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.lv-member-action::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 30px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .lv-member-action:hover     { color: var(--info); border-color: var(--info); }
 .lv-member-action.is-copied { color: var(--good); border-color: var(--good); background: var(--good-soft); }
@@ -1610,6 +1675,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-mc-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .lv-mc-copy {
   appearance: none; -webkit-appearance: none;
+  /* RC2 hit-target fix (audit): visible 22x22 button keeps the MAINS
+   * row compact, but a 44x44 ::before overlay extends the click target
+   * to the fingertip floor. */
+  position: relative;
   width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-head);
@@ -1620,6 +1689,13 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-size: 13px;
   padding: 0;
   transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.lv-mc-copy::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .lv-mc-copy:hover { color: var(--info); border-color: var(--info); }
 .lv-mc-copy.is-copied {
