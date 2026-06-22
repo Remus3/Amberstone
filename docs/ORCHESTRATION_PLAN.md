@@ -175,6 +175,7 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 | R16 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Game Flow + Spike Curve panels (web/js/panels/perf_curve.js, spike_curve.js, spike_markers.js) + their CSS vs docs/UI_SCALE_SPEC_V2.md. Fix MUST-FIX in-slice. Visual proof via the Playwright snapshot harness + Claude_Preview visual vs /api/state. | DONE | `7ecb5b18` |
 | R17 | ds-sweep | DIRECTOR REFILL: DS schema lift - antitank ramp_lo/ramp_hi level-ramp %HP. Extend the antitank registry to support ramp_lo and ramp_hi endpoints for champion abilities dealing percentage max HP damage scaling with level (e.g., Aatrox 4%:8%, Brand 8%:12%, Skarner 5%:9%). Generalizes to ~16 rows. Default-OFF seam, byte-identical when off. Offline characterization tests vs Meraki. ENGINE_VERSION bump + DS :8893 restart + Share sync in the SAME commit. Live flip EXCLUDED. | DONE | `5f308036` |
 | R18 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited panels build_order.js, augment_reco.js, archetype_nudge_chip.js, and map_state.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. | DONE | `0999d3eb` |
+| R19 | ds-sweep | DIRECTOR REFILL: DS schema lift - survivability spell_damage_reduction_pct. NEW forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ_id, slot) in agents/daemon_slayer/data_loader.py - per-rank PERCENT damage reduction from champion_abilities.json defensive modifier blocks (pure-% units filter) as a first-class magnitude; lazy + frozen-safe; 8 champs at 16.12.1. Default-OFF, byte-identical (no consumer). Offline characterization tests vs Meraki. ENGINE_VERSION HELD at 1.151.0 (NOT bumped - gemini director ruling B: byte-identical forward-marker per the item 339/343 no-bump convention) + DS :8893 restart + Share sync. Live flip EXCLUDED. | DONE | `ee673c1d` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -187,6 +188,36 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-22 R19 (DIRECTOR REFILL cycle) DONE (`ee673c1d`) - DS schema lift: NEW
+  forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ_id, slot)
+  surfacing the per-rank PERCENT damage-reduction magnitude from
+  champion_abilities.json defensive modifier blocks (the modifier_blocks taxonomy
+  already classified them defensive_self but no accessor exposed the numeric %).
+  Lazy + frozen-safe (object.__setattr__ cache), parses the same snapshot via
+  AbilitiesSnapshot. Pure-% filter (units all == "%") excludes flat reductions
+  (Amumu E empty-units, Leona W "Flat Damage Reduction") + per-stat scaling
+  sub-modifiers ("% per 100 AP"). 8 champs at 16.12.1: Alistar R 55/65/75, Galio
+  W magic 25..45 + physical 12.5..22.5, Garen W 25..41, Gragas W 10..18, MasterYi
+  W 45..55, Belveth/Braum/Warwick E 35..55.
+  KEY DECISION (gemini director ruling B, synchronous gemini_ask). The directive
+  said "ENGINE_VERSION bump" but ALSO "Default-OFF, byte-identical when
+  unconsumed. Live flip EXCLUDED" - internally inconsistent. With no consumer the
+  engine output is byte-identical, and the established item-339/343 forward-marker
+  convention (spell_sub_missile_speed / spell_cc_tags) EXPLICITLY does NOT bump;
+  ~70 version-contract tests pin 1.151.0. Director picked B: HOLD 1.151.0, no pin
+  churn. Share mirror still re-synced (data_loader.py edit drifts Share/src) + DS
+  :8893 restarted (loads the new code, /health stays 1.151.0).
+  TDD RED-first test_spell_damage_reduction_pct.py (14 cases: 8 champ maps + Galio
+  dual-label + Amumu/Leona/Ashe/unknown None negatives + 0<pct<=100 float-tuple
+  invariant + ASCII). 1 worktree build agent on the disjoint data_loader + test
+  slice; orchestrator independently re-ran the new test + the full DS suite in main
+  before commit; ruff clean. DS suite 7511 passed / 1 skip / 1943 subtests; RC
+  suite 9378 passed (the 12 fails ALL pre-existing - 3 CoachWire ARAM-template + 7
+  ds_pick_consumption_p1l11 ARAM subfails + overlay.css sub-floor + spell_autopush
+  on the dirty data/spell_prefs.json - 0 R19 regressions). ds_share_sync --check
+  green (373 files). A survivability/EHP consumer reading the % (folding it into
+  the EHP numerator like the flat-DR R9 path) is the FUTURE lift, not wired blind.
 
 - 2026-06-22 R18 (DIRECTOR REFILL cycle) DONE (`0999d3eb`) - Section-3b 5-phase fixture
   audit of the 4 un-audited panels build_order / augment_reco / archetype_nudge_chip /
