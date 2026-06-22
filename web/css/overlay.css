@@ -1,9 +1,9 @@
 /* Overlay shell - RC Overlay Doctrine (docs/OVERLAY_DOCTRINE.md).
  *
- * RC's ONE user-facing surface: a transparent always-on-top Electron window over
- * the Borderless game (?overlay=1 -> main.js stamps body[data-shell="overlay"]).
- * The 1920 Chrome dashboard is RETIRED as a user surface (operator decision
- * 2026-06-21); every rule here is overlay-scoped and inert on it.
+ * RC's PRIMARY in-game user-facing surface: a transparent always-on-top Electron
+ * window over the Borderless game (?overlay=1 -> main.js stamps body[data-shell="overlay"]).
+ * (The 1920 Chrome dashboard was retired 2026-06-21 but UN-RETIRED + fully redesigned
+ * 2026-06-22 onto Hextech, docs/RC2_REDESIGN_PLAN.md.) Every rule here is overlay-scoped + inert on it.
  *
  * The layout is a FIELD of independently MOVABLE, position-PERSISTENT widgets,
  * NOT a dock. lib/overlay_layout.js adds .ovx-widget to each cue mount and sets
