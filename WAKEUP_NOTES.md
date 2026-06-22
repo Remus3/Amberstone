@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-06-22 (headless continue 13) - DS doc-drift reconciled + standing doc-pin GUARD added
+
+Item 579, commit `99f2e72b` (pushed). Tier-0 doc + Tier-1 test; no engine / DS schema / Share /
+ENGINE bump / overlay render / flip change. ZERO overlay render delta -> no electron relaunch.
+
+TRIAGE: live re-probe RC pid=3656 mode=client (no game up), DS :8893 ENGINE 1.149.0 / 16.12.1, HEAD
+6e7a7afc. Candidate set 1/2/A/B/E/F6 DRAINED (573-578); all named levers operator-gated. A parallel
+Explore agent gave up at the docs level (recency-biased-sweep). The Gemini director (gemini-3-pro-preview,
+UP) surfaced the fresh non-gated pick: docs/DS_COMPLETENESS_GAP.md f1+f3 (doc drift + no reconciler guard).
+
+VERIFY-BEFORE-BUILD (grep-confirmed): __init__.py:18 ENGINE 1.149.0 vs doc banner stale 1.144.0;
+server.py registers 28 routes, doc line 119 listed 15 (missing 13 scored-axis routes); module-map test
+row 5931 vs live DS-dir 7362; no existing guard test. DS CHANGELOG.md DOES carry 1.145-1.149 (gap-note,
+not backfill).
+
+BUILT (TDD red-then-green): NEW tests/test_docs_daemon_slayer_drift.py (3 tests, sibling-style) pins the
+doc banner ENGINE_VERSION->__init__.py + patch->current.txt + endpoint list->server.py routes; does NOT
+pin the volatile test counts. RED first (1.144.0!=1.149.0 + 13 missing), then fixed docs/DAEMON_SLAYER.md
+(banner 1.149.0/7362; full 28-route list; tests 5931->7362; 1.145-1.149 changelog gap-note) -> GREEN 3/3,
+ruff clean, ASCII. Verifier subagent: SHIP (MISSING=[] PHANTOM=[], anti-tautology proven). Overlay track
+PARALLEL + PASSED: render-contract 25/25 + geometry CLEAN; in-game ARAM frame OWED (mode=client).
+
+NEXT (operator-gated): guard now fails locally on the next bump/route-add that forgets the doc. Minor
+follow-up (NOT done, scope): CLAUDE.md deep-ref line still cites stale ENGINE 1.101.0. Levers unchanged:
+overlay S0 flip; magnitude-as-bar (Phase-4); HZ Tier-2 partial-combo. Candidate set drained - next cycle
+needs a fresh Gemini/operator refill.
+
+---
+
 # 2026-06-21 (headless continue 12) - ARAM "ARAM Modifications" balance line WIRED (BACKLOG F6)
 
 Item 578, commit `b541c923` (pushed). Tier-1; no backend engine / DS schema / Share / ENGINE bump /
@@ -81,46 +110,3 @@ NEXT (operator-gated): the lethal cue is now READY for the operator-gated shadow
 (LIVE_GAME_GATED_SYNC.md). Remaining overlay slices vs spec are Phase-4-deferred (magnitude-as-bar) or
 already shipped. HZ levers unchanged (C partial-combo Tier-2 operator-gated; flip do-not-flip-blind).
 Candidate set drained - next cycle needs a fresh Gemini/operator refill.
-
----
-
-# 2026-06-21 (headless continue 10) - HZ rewind-db ground-truth cross-ref + memory hygiene cleared
-
-Item 576, commit `fc520407` (pushed). Tier-1 tooling; no engine / DS / Share / ENGINE bump / threshold /
-precompute-table / flip change. PLUS the 3-cycle-owed memory hygiene pass.
-
-HYGIENE FIRST (operator-mandated, owed 3 cycles - done BEFORE the build pick): ran /consolidate-memory.
-MEMORY.md 25457 -> 24700 bytes (now ~24.1KB, 286B under the 24.4KB load budget it had been failing to
-fully load). Folded the 3 retired Game-PC ADR-011 tombstones into one `reference_gamepc_retired_adr011.md`
-(132 -> 130 files), repointed 2 dangling [[links]], ASCII-fixed the whole index (arrows/x/~/!=/<=/ellipsis
-+ smart-quotes), trimmed ~24 long hooks. Memory dir is outside the repo = local/uncommitted (on disk).
-
-TRIAGE: live re-probe RC pid=3656 (mode client->game mid-cycle, operator started a practice match), DS
-:8893 ENGINE 1.149.0 / 16.12.1. Candidates 1 (DS cross-eval) + 2 (HZ blind flip) + A (item-575 diagnosis)
-all drained/done. Gemini director (gemini-3-pro-preview) picked candidate B (the rewind-db cross-ref, the
-item-575 stubbed follow-up) over C (Tier-2 partial-combo) - grounding the calibration in REAL outcomes
-breaks the circular Haiku-vs-precompute dependency before any heavy engine change.
-
-PROCESS (subagent-first, parallel): Explore agent mapped ground truth + surfaced the KEY CONSTRAINT (the
-945 genuine mismatches are 483 ARAM / 460 SR / 2 client; ARAM has no laning phase -> lane-outcome ground
-truth is SR-ONLY). Parallel overlay-verify agent: 25/25 overlay snapshot tests pass, all widget defaults
-CLEAN, no overlay code change needed this cycle. Plan subagent emitted the file:line-verified spec
-(corrected several Explore line numbers; confirmed the standalone import is safe - rv's agents imports are
-LAZY). Build agent TDD-first; independent verifier gate SHIP before commit.
-
-BUILT: `tools/hz_mismatch_diagnose.py --rewind` = an SR-only MATCHUP-AGGREGATE cross-ref over
-rewind_history.db (no match_id linkage in the records, so it aggregates per (my_champ, enemy) matchup
-across rewind SR games), reusing select_sr_match_ids / extract_lane_pairs / extract_kill_counts.
-Order-independent match + my-perspective gold@10min + solo-kill orientation; conservative
-agree/disagree/insufficient_data rule with a <3-lane-game low-sample guard; ARAM+client excluded+COUNTED;
-honest sparsity. Additive (schema v1->v2 tool-local, default-OFF flag, v1 output byte-identical,
-fail-soft on missing DB); agreement REPORTED-ONLY (anti-circularity, never a threshold trigger). +19
-hermetic in-memory-sqlite TDD tests (no real-DB dep), 42/42 pass, ruff clean, ASCII/LF. CLI smoke on the
-real DB: available=True, 654 SR matches, excluded {aram:483, client:2} (exactly matching the Explore mode
-breakdown), 12 classes, coverage SPARSE (mostly-self-games DB -> most classes insufficient_data = honest).
-
-NEXT (operator-gated): richer rewind SR coverage per matchup turns insufficient_data into a real
-agree/disagree per CALIBRATION class -> THEN a justified threshold look. Remaining item-575 levers: (C)
-Tier-2 partial-enemy-combo model for back_off->trade MODEL-ERROR (ENGINE bump + table regen, confirm
-scope first; do NOT chase the metric); back_off->hold per-pair inspection. Flip stays do-not-flip-blind.
-Hygiene debt CLEARED. Candidate set is again drained - next cycle needs a fresh Gemini/operator refill.
