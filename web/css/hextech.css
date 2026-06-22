@@ -1,0 +1,126 @@
+/* Hextech component primitives (RC2 redesign foundation).
+ *
+ * Reusable, opt-in building blocks adapted from the greenlit design
+ * reference (docs/design/RC2_DESIGN.html component CSS: .card / .pill /
+ * .dbar track+fill / empty-state treatment). Every page reskins onto
+ * these so the look is set once, here, not duplicated per panel.
+ *
+ * RULES this file obeys:
+ *   - Consumes tokens/vars ONLY. NO raw hex inside any rule - every
+ *     color routes through a --token (palette vars from base.css :root
+ *     and the --hextech-* / --signal-* tokens from tokens.css). This is
+ *     why dashboard.css imports this AFTER tokens.css + base.css: the
+ *     cascade resolves the vars first.
+ *   - Additive + idempotent. It defines NEW .hx-* classes; it does not
+ *     touch existing panel selectors or the DOM. Panels opt in by adding
+ *     an .hx-* class.
+ *   - ASCII only (repo hard rule): the empty-state sigil is authored as
+ *     a CSS escape, not a literal glyph.
+ *
+ * Naming: hx- prefix to keep these clearly separable from panel-local
+ * classes and from the design-proposal's bare .card / .pill names.
+ */
+
+/* ---- hx-card: surface + gold hairline + gold corner brackets --------
+ * The signature Hextech "tactical" frame. The card body is a plain
+ * bordered surface; the two ::before/::after pseudos paint 2px gold
+ * L-strokes at the top-left and bottom-right corners (the bracket motif
+ * from the reference). The brackets are decorative and pointer-inert. */
+.hx-card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.hx-card::before,
+.hx-card::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  border-color: var(--accent);
+  border-style: solid;
+}
+/* top-left L: top + left strokes */
+.hx-card::before {
+  top: -1px;
+  left: -1px;
+  border-width: 2px 0 0 2px;
+  border-top-left-radius: var(--radius);
+}
+/* bottom-right L: bottom + right strokes */
+.hx-card::after {
+  bottom: -1px;
+  right: -1px;
+  border-width: 0 2px 2px 0;
+  border-bottom-right-radius: var(--radius);
+}
+
+/* ---- hx-chip: outline pill, sharp radius, tabular-friendly ----------
+ * A compact status / metadata pill. Sharper radius than a card so it
+ * reads as a control, not a surface. tabular-nums keeps numeric chips
+ * (timers, counts) from jittering as digits change. */
+.hx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- hx-bar / hx-bar-fill: linear progress -------------------------
+ * Track + fill. The default fill is the Hextech teal->gold sweep; add a
+ * semantic modifier (.is-good / .is-warn / .is-bad) to flatten the fill
+ * to a single signal hue when the bar encodes status rather than
+ * magnitude. The consumer sets fill width inline (style="width:NN%")
+ * or via its own rule - this primitive only owns the chrome + paint. */
+.hx-bar {
+  height: 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.hx-bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--hextech-fill);
+  border-radius: inherit;
+  transition: width .25s ease;
+}
+.hx-bar-fill.is-good { background: var(--signal-good); }
+.hx-bar-fill.is-warn { background: var(--signal-warn); }
+.hx-bar-fill.is-bad  { background: var(--signal-bad); }
+
+/* ---- hx-empty: centered dim empty state + sigil --------------------
+ * The shared "nothing here yet" treatment. A dim, centered block with a
+ * hextech sigil glyph above the message so empty panels read as
+ * intentional, not broken. The sigil is the four-pointed star (U+2756,
+ * BLACK DIAMOND MINUS WHITE X) authored as a CSS escape for ASCII
+ * source-hygiene; it inherits the accent color at low opacity. */
+.hx-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4);
+  color: var(--dim);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.hx-empty::before {
+  content: "\2756";
+  font-size: var(--fs-xl);
+  line-height: 1;
+  color: var(--accent);
+  opacity: .35;
+}
