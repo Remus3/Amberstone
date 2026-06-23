@@ -9,10 +9,42 @@
           "games": 4,
           "duration_label": "2h 18m",
           "matches": [
-            {"champion": "Jinx",        "mode": "SR",    "grade": "S", "kda": "8/3/12", "timestamp": "2026-05-22 22:14:00", "duration_s": 1934},
-            {"champion": "Kai'Sa",      "mode": "SR",    "grade": "C", "kda": "5/7/4",  "timestamp": "2026-05-22 21:14:00", "duration_s": 1722},
-            {"champion": "Tristana",    "mode": "SR",    "grade": "A", "kda": "11/2/9", "timestamp": "2026-05-22 20:14:00", "duration_s": 1615},
-            {"champion": "Caitlyn",     "mode": "SR",    "grade": "B", "kda": "6/8/3",  "timestamp": "2026-05-22 19:14:00", "duration_s": 2111}
+            {
+              "champion": "Jinx",
+              "mode": "SR",
+              "grade": "S",
+              "kda": "8/3/12",
+              "timestamp": "2026-05-22 22:14:00",
+              "duration_s": 1934,
+              "win": true
+            },
+            {
+              "champion": "Kai'Sa",
+              "mode": "SR",
+              "grade": "C",
+              "kda": "5/7/4",
+              "timestamp": "2026-05-22 21:14:00",
+              "duration_s": 1722,
+              "win": false
+            },
+            {
+              "champion": "Tristana",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "11/2/9",
+              "timestamp": "2026-05-22 20:14:00",
+              "duration_s": 1615,
+              "win": true
+            },
+            {
+              "champion": "Caitlyn",
+              "mode": "SR",
+              "grade": "B",
+              "kda": "6/8/3",
+              "timestamp": "2026-05-22 19:14:00",
+              "duration_s": 2111,
+              "win": false
+            }
           ]
         },
         {
@@ -20,9 +52,33 @@
           "games": 3,
           "duration_label": "1h 45m",
           "matches": [
-            {"champion": "Jinx",        "mode": "SR",    "grade": "A", "kda": "9/4/7",  "timestamp": "2026-05-20 21:30:00", "duration_s": 1822},
-            {"champion": "Yuumi",       "mode": "SR",    "grade": "A", "kda": "0/2/22", "timestamp": "2026-05-20 20:30:00", "duration_s": 1698},
-            {"champion": "RenataGlasc", "mode": "ARENA", "grade": "C", "kda": "3/5/8",  "timestamp": "2026-05-20 19:30:00", "duration_s": 612}
+            {
+              "champion": "Jinx",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "9/4/7",
+              "timestamp": "2026-05-20 21:30:00",
+              "duration_s": 1822,
+              "win": true
+            },
+            {
+              "champion": "Yuumi",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "0/2/22",
+              "timestamp": "2026-05-20 20:30:00",
+              "duration_s": 1698,
+              "win": true
+            },
+            {
+              "champion": "RenataGlasc",
+              "mode": "ARENA",
+              "grade": "C",
+              "kda": "3/5/8",
+              "timestamp": "2026-05-20 19:30:00",
+              "duration_s": 612,
+              "win": false
+            }
           ]
         },
         {
@@ -30,11 +86,51 @@
           "games": 5,
           "duration_label": "3h 02m",
           "matches": [
-            {"champion": "Kai'Sa",      "mode": "SR",    "grade": "S", "kda": "12/1/8", "timestamp": "2026-05-18 23:48:00", "duration_s": 1908},
-            {"champion": "Kai'Sa",      "mode": "SR",    "grade": "A", "kda": "9/4/11", "timestamp": "2026-05-18 22:48:00", "duration_s": 1770},
-            {"champion": "Jinx",        "mode": "ARAM",  "grade": "B", "kda": "14/6/8", "timestamp": "2026-05-18 21:48:00", "duration_s": 1335},
-            {"champion": "Cho'Gath",    "mode": "SR",    "grade": "A", "kda": "7/3/14", "timestamp": "2026-05-18 20:48:00", "duration_s": 2090},
-            {"champion": "MissFortune", "mode": "ARAM",  "grade": "C", "kda": "11/9/6", "timestamp": "2026-05-18 19:48:00", "duration_s": 1125}
+            {
+              "champion": "Kai'Sa",
+              "mode": "SR",
+              "grade": "S",
+              "kda": "12/1/8",
+              "timestamp": "2026-05-18 23:48:00",
+              "duration_s": 1908,
+              "win": true
+            },
+            {
+              "champion": "Kai'Sa",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "9/4/11",
+              "timestamp": "2026-05-18 22:48:00",
+              "duration_s": 1770,
+              "win": true
+            },
+            {
+              "champion": "Jinx",
+              "mode": "ARAM",
+              "grade": "B",
+              "kda": "14/6/8",
+              "timestamp": "2026-05-18 21:48:00",
+              "duration_s": 1335,
+              "win": false
+            },
+            {
+              "champion": "Cho'Gath",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "7/3/14",
+              "timestamp": "2026-05-18 20:48:00",
+              "duration_s": 2090,
+              "win": true
+            },
+            {
+              "champion": "MissFortune",
+              "mode": "ARAM",
+              "grade": "C",
+              "kda": "11/9/6",
+              "timestamp": "2026-05-18 19:48:00",
+              "duration_s": 1125,
+              "win": false
+            }
           ]
         },
         {
@@ -42,7 +138,15 @@
           "games": 1,
           "duration_label": "0h 28m",
           "matches": [
-            {"champion": "Tristana",    "mode": "SR",    "grade": "A", "kda": "10/2/8", "timestamp": "2026-05-15 22:11:00", "duration_s": 1691}
+            {
+              "champion": "Tristana",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "10/2/8",
+              "timestamp": "2026-05-15 22:11:00",
+              "duration_s": 1691,
+              "win": true
+            }
           ]
         },
         {
@@ -50,7 +154,15 @@
           "games": 1,
           "duration_label": "0h 12m",
           "matches": [
-            {"champion": "Yuumi",       "mode": "ARENA", "grade": "D", "kda": "0/4/3",  "timestamp": "2026-05-12 18:08:00", "duration_s": 728}
+            {
+              "champion": "Yuumi",
+              "mode": "ARENA",
+              "grade": "D",
+              "kda": "0/4/3",
+              "timestamp": "2026-05-12 18:08:00",
+              "duration_s": 728,
+              "win": false
+            }
           ]
         }
       ],
@@ -58,7 +170,7 @@
         "total": 14,
         "avg_kda": 3.42,
         "favorite": "Kai'Sa",
-        "win_rate": 0.643
+        "win_rate": 64.3
       }
     },
     "season": {
@@ -68,10 +180,38 @@
           "games": 4,
           "duration_label": "2h 18m",
           "matches": [
-            {"champion": "Jinx",        "mode": "SR",    "grade": "S", "kda": "8/3/12", "timestamp": "2026-05-22 22:14:00", "duration_s": 1934},
-            {"champion": "Kai'Sa",      "mode": "SR",    "grade": "C", "kda": "5/7/4",  "timestamp": "2026-05-22 21:14:00", "duration_s": 1722},
-            {"champion": "Tristana",    "mode": "SR",    "grade": "A", "kda": "11/2/9", "timestamp": "2026-05-22 20:14:00", "duration_s": 1615},
-            {"champion": "Caitlyn",     "mode": "SR",    "grade": "B", "kda": "6/8/3",  "timestamp": "2026-05-22 19:14:00", "duration_s": 2111}
+            {
+              "champion": "Jinx",
+              "mode": "SR",
+              "grade": "S",
+              "kda": "8/3/12",
+              "timestamp": "2026-05-22 22:14:00",
+              "duration_s": 1934
+            },
+            {
+              "champion": "Kai'Sa",
+              "mode": "SR",
+              "grade": "C",
+              "kda": "5/7/4",
+              "timestamp": "2026-05-22 21:14:00",
+              "duration_s": 1722
+            },
+            {
+              "champion": "Tristana",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "11/2/9",
+              "timestamp": "2026-05-22 20:14:00",
+              "duration_s": 1615
+            },
+            {
+              "champion": "Caitlyn",
+              "mode": "SR",
+              "grade": "B",
+              "kda": "6/8/3",
+              "timestamp": "2026-05-22 19:14:00",
+              "duration_s": 2111
+            }
           ]
         },
         {
@@ -79,12 +219,54 @@
           "games": 6,
           "duration_label": "3h 42m",
           "matches": [
-            {"champion": "Jinx",        "mode": "SR",    "grade": "A", "kda": "9/3/8",  "timestamp": "2026-05-08 23:20:00", "duration_s": 1880},
-            {"champion": "Jinx",        "mode": "SR",    "grade": "S", "kda": "13/4/6", "timestamp": "2026-05-08 22:20:00", "duration_s": 1638},
-            {"champion": "Kai'Sa",      "mode": "SR",    "grade": "C", "kda": "4/9/3",  "timestamp": "2026-05-08 21:20:00", "duration_s": 2335},
-            {"champion": "Tristana",    "mode": "SR",    "grade": "A", "kda": "10/3/10","timestamp": "2026-05-08 20:20:00", "duration_s": 1770},
-            {"champion": "MissFortune", "mode": "ARAM",  "grade": "B", "kda": "8/8/4",  "timestamp": "2026-05-08 19:20:00", "duration_s": 1274},
-            {"champion": "Cho'Gath",    "mode": "SR",    "grade": "A", "kda": "6/2/15", "timestamp": "2026-05-08 18:20:00", "duration_s": 2025}
+            {
+              "champion": "Jinx",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "9/3/8",
+              "timestamp": "2026-05-08 23:20:00",
+              "duration_s": 1880
+            },
+            {
+              "champion": "Jinx",
+              "mode": "SR",
+              "grade": "S",
+              "kda": "13/4/6",
+              "timestamp": "2026-05-08 22:20:00",
+              "duration_s": 1638
+            },
+            {
+              "champion": "Kai'Sa",
+              "mode": "SR",
+              "grade": "C",
+              "kda": "4/9/3",
+              "timestamp": "2026-05-08 21:20:00",
+              "duration_s": 2335
+            },
+            {
+              "champion": "Tristana",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "10/3/10",
+              "timestamp": "2026-05-08 20:20:00",
+              "duration_s": 1770
+            },
+            {
+              "champion": "MissFortune",
+              "mode": "ARAM",
+              "grade": "B",
+              "kda": "8/8/4",
+              "timestamp": "2026-05-08 19:20:00",
+              "duration_s": 1274
+            },
+            {
+              "champion": "Cho'Gath",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "6/2/15",
+              "timestamp": "2026-05-08 18:20:00",
+              "duration_s": 2025
+            }
           ]
         },
         {
@@ -92,8 +274,22 @@
           "games": 2,
           "duration_label": "1h 04m",
           "matches": [
-            {"champion": "Kai'Sa",      "mode": "SR",    "grade": "A", "kda": "8/2/9",  "timestamp": "2026-04-28 20:18:00", "duration_s": 1818},
-            {"champion": "Jinx",        "mode": "SR",    "grade": "C", "kda": "6/5/4",  "timestamp": "2026-04-28 19:18:00", "duration_s": 2022}
+            {
+              "champion": "Kai'Sa",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "8/2/9",
+              "timestamp": "2026-04-28 20:18:00",
+              "duration_s": 1818
+            },
+            {
+              "champion": "Jinx",
+              "mode": "SR",
+              "grade": "C",
+              "kda": "6/5/4",
+              "timestamp": "2026-04-28 19:18:00",
+              "duration_s": 2022
+            }
           ]
         }
       ],
@@ -101,7 +297,7 @@
         "total": 35,
         "avg_kda": 3.18,
         "favorite": "Jinx",
-        "win_rate": 0.571
+        "win_rate": 57.1
       }
     },
     "prior_season": {
@@ -111,9 +307,30 @@
           "games": 3,
           "duration_label": "1h 38m",
           "matches": [
-            {"champion": "MissFortune", "mode": "SR",    "grade": "A", "kda": "7/4/8",  "timestamp": "2026-03-15 21:14:00", "duration_s": 1754},
-            {"champion": "Caitlyn",     "mode": "SR",    "grade": "S", "kda": "9/2/5",  "timestamp": "2026-03-15 20:14:00", "duration_s": 1908},
-            {"champion": "Jinx",        "mode": "SR",    "grade": "C", "kda": "5/8/6",  "timestamp": "2026-03-15 19:14:00", "duration_s": 2242}
+            {
+              "champion": "MissFortune",
+              "mode": "SR",
+              "grade": "A",
+              "kda": "7/4/8",
+              "timestamp": "2026-03-15 21:14:00",
+              "duration_s": 1754
+            },
+            {
+              "champion": "Caitlyn",
+              "mode": "SR",
+              "grade": "S",
+              "kda": "9/2/5",
+              "timestamp": "2026-03-15 20:14:00",
+              "duration_s": 1908
+            },
+            {
+              "champion": "Jinx",
+              "mode": "SR",
+              "grade": "C",
+              "kda": "5/8/6",
+              "timestamp": "2026-03-15 19:14:00",
+              "duration_s": 2242
+            }
           ]
         }
       ],
@@ -121,7 +338,7 @@
         "total": 22,
         "avg_kda": 2.94,
         "favorite": "MissFortune",
-        "win_rate": 0.545
+        "win_rate": 54.5
       }
     },
     "all": {
@@ -130,7 +347,7 @@
         "total": 100,
         "avg_kda": 3.12,
         "favorite": "Jinx",
-        "win_rate": 0.578
+        "win_rate": 57.8
       }
     }
   }

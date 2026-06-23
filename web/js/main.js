@@ -1851,7 +1851,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // circuits to /data/ui_mock/history.json instead of /api/history.
   // Scope tabs still drive the fetch but the mock fixture filters
   // sessions[] by scope on the client side so the UX is identical.
-  const _HISTORY = { scope: "14d", selectedSession: null };
+  const _HISTORY = {
+    scope: "14d", selectedSession: null,
+    // LIFT 4: flat newest-first list of every match in the loaded scope
+    // (each carries a _sessionDate tag) + the active client-side filters
+    // searched GLOBALLY across that list (not just one selected session).
+    allMatches: [],
+    filterResult: "",        // "" | "win" | "loss"
+    filterGrades: new Set(),  // empty == all grades
+  };
   let _historyMockPromise = null;
   function _historyMockLoad() {
     if (_historyMockPromise) return _historyMockPromise;
@@ -1905,6 +1913,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         set("history-season-total", ss.total != null ? ss.total : "-");
         set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "-");
         set("history-season-fav",   ss.favorite || "-");
+        // LIFT 4: real season win-rate now comes from rewind tracked_win
+        // (no Riot key dependency). win_rate is already a percent (0-100),
+        // straight from builders.py season_stats (wins*100/decided).
+        set("history-season-wr", ss.win_rate != null ? ss.win_rate.toFixed(1) + "%" : "-");
+
+        // LIFT 4: stash a flat, newest-first list of every match in the
+        // loaded scope so the client-side filters search GLOBALLY across
+        // all sessions, then (re)populate the champion / mode <select>s
+        // from the distinct values across that list.
+        _HISTORY._sessions = d.sessions || [];
+        _HISTORY.allMatches = (d.sessions || []).flatMap((s) =>
+          (s.matches || []).map((m) => ({ ...m, _sessionDate: s.date })));
+        _historyPopulateFilterOptions();
+        _historyApplyFilters();
 
         // s218 v7: deep-link focus by champion (clicked from Tonight's
         // Pick on Home). Find the most recent session containing the
@@ -1982,33 +2004,43 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       })
       .catch(() => {});
   }
+  // LIFT 4: single source of truth for a History match <li>. Both the
+  // session-click path (_historyRenderMatches) and the global filtered
+  // path (_historyApplyFilters) build rows through here so they are
+  // byte-identical. Stamps data-result (win/loss) PLUS data-champion /
+  // .mode / .grade so the client-side filter can match on the dataset.
+  function _historyMatchRowEl(m) {
+    const li = document.createElement("li");
+    li.className = "history-match-row";
+    // s218 v6: stamp timestamp on the row so the Recent-5 deep-link
+    // (sessionStorage "rc-history-focus-ts") can scroll + highlight
+    // the matching row after the session is selected.
+    if (m.timestamp) li.dataset.matchTs = m.timestamp;
+    // WIN-CAPTURE keystone (item 77): expose the loaded win/loss as a
+    // data-result attr + result-win/result-loss class so the
+    // result-first row + the later Hextech tint can key off it. win is
+    // true/false when known, null for pre-LCU-ingest rows (no tint).
+    if (m.win === true) { li.dataset.result = "win"; li.classList.add("result-win"); }
+    else if (m.win === false) { li.dataset.result = "loss"; li.classList.add("result-loss"); }
+    const grade = String(m.grade || "-")[0];
+    // LIFT 4 filter keys (champion / mode / grade) live on the dataset.
+    li.dataset.champion = m.champion || "";
+    li.dataset.mode = m.mode || "";
+    li.dataset.grade = grade;
+    li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
+      `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
+      `<span class="dim">${escapeHtml(m.kda)}</span>` +
+      `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
+    // HIST1: clicking a History match row opens its detached historical
+    // PGR (keyed on the row timestamp).
+    _wireMatchRowToHistoricalPgr(li, m.timestamp);
+    return li;
+  }
   function _historyRenderMatches(session) {
     const ul = document.getElementById("history-match-list");
     if (!ul) return;
     ul.innerHTML = "";
-    (session.matches || []).forEach((m) => {
-      const li = document.createElement("li");
-      li.className = "history-match-row";
-      // s218 v6: stamp timestamp on the row so the Recent-5 deep-link
-      // (sessionStorage "rc-history-focus-ts") can scroll + highlight
-      // the matching row after the session is selected.
-      if (m.timestamp) li.dataset.matchTs = m.timestamp;
-      // WIN-CAPTURE keystone (item 77): expose the loaded win/loss as a
-      // data-result attr + result-win/result-loss class so the
-      // result-first row + the later Hextech tint can key off it. win is
-      // true/false when known, null for pre-LCU-ingest rows (no tint).
-      if (m.win === true) { li.dataset.result = "win"; li.classList.add("result-win"); }
-      else if (m.win === false) { li.dataset.result = "loss"; li.classList.add("result-loss"); }
-      const grade = String(m.grade || "-")[0];
-      li.innerHTML = `<span class="home-recent-grade ${grade}">${grade}</span>` +
-        `<span style="flex:1; margin-left:8px">${escapeHtml(m.champion)} · ${escapeHtml(m.mode)}</span>` +
-        `<span class="dim">${escapeHtml(m.kda)}</span>` +
-        `<span class="dim" style="margin-left:8px">${escapeHtml(m.timestamp)}</span>`;
-      // HIST1: clicking a History match row opens its detached historical
-      // PGR (keyed on the row timestamp).
-      _wireMatchRowToHistoricalPgr(li, m.timestamp);
-      ul.appendChild(li);
-    });
+    (session.matches || []).forEach((m) => { ul.appendChild(_historyMatchRowEl(m)); });
     if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no matches in session</li>';
   }
 
@@ -2037,6 +2069,87 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
     });
   }
+  // LIFT 4: refill the champion / mode <select>s from the DISTINCT
+  // champion / mode values across the loaded scope (sorted), each kept
+  // under an "All" default. Preserves the current selection if it still
+  // exists after a fresh payload lands.
+  function _historyPopulateFilterOptions() {
+    const fill = (id, values, allLabel) => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const prev = sel.value;
+      const sorted = Array.from(new Set(values.filter((v) => v != null && v !== "")))
+        .sort((a, b) => String(a).localeCompare(String(b)));
+      sel.innerHTML = "";
+      const optAll = document.createElement("option");
+      optAll.value = ""; optAll.textContent = allLabel;
+      sel.appendChild(optAll);
+      sorted.forEach((v) => {
+        const o = document.createElement("option");
+        o.value = v; o.textContent = v;
+        sel.appendChild(o);
+      });
+      if (prev && sorted.indexOf(prev) >= 0) sel.value = prev;
+      else sel.value = "";
+    };
+    fill("history-filter-champion", _HISTORY.allMatches.map((m) => m.champion), "All champions");
+    fill("history-filter-mode",     _HISTORY.allMatches.map((m) => m.mode),     "All modes");
+  }
+
+  // LIFT 4: compute the filtered subset of _HISTORY.allMatches from the
+  // active champion / mode / result / grade controls. If ANY filter is
+  // active, render that flat subset (newest-first) into
+  // #history-match-list via the shared row helper and flip the detail
+  // head to FILTERED. If NO filter is active, restore the selected
+  // session's matches (or the click-a-session placeholder).
+  function _historyApplyFilters() {
+    const ul = document.getElementById("history-match-list");
+    if (!ul) return;
+    const champ = (document.getElementById("history-filter-champion") || {}).value || "";
+    const mode  = (document.getElementById("history-filter-mode") || {}).value || "";
+    const result = _HISTORY.filterResult || "";
+    const grades = _HISTORY.filterGrades;
+    const anyActive = !!(champ || mode || result || (grades && grades.size));
+
+    const head = document.getElementById("history-detail-head");
+    const cnt = document.getElementById("history-filter-count");
+
+    if (!anyActive) {
+      if (cnt) cnt.textContent = "";
+      const sIdx = _HISTORY.selectedSession;
+      const sessions = _HISTORY._sessions || [];
+      if (sIdx != null && sessions[sIdx]) {
+        _historyRenderMatches(sessions[sIdx]);
+        if (head) head.textContent = `MATCHES · ${sessions[sIdx].date} · ${sessions[sIdx].games}g`;
+      } else {
+        ul.innerHTML = '<li class="home-empty">click a session to see its matches</li>';
+        if (head) head.textContent = "SELECT A SESSION";
+      }
+      return;
+    }
+
+    // Newest-first: allMatches is already newest-first if sessions are,
+    // but sort defensively by timestamp desc so the filtered view is
+    // deterministic regardless of source order.
+    const subset = _HISTORY.allMatches
+      .filter((m) => {
+        if (champ && String(m.champion || "") !== champ) return false;
+        if (mode && String(m.mode || "") !== mode) return false;
+        if (result === "win" && m.win !== true) return false;
+        if (result === "loss" && m.win !== false) return false;
+        if (grades && grades.size && !grades.has(String(m.grade || "-")[0])) return false;
+        return true;
+      })
+      .slice()
+      .sort((a, b) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+
+    ul.innerHTML = "";
+    subset.forEach((m) => { ul.appendChild(_historyMatchRowEl(m)); });
+    if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no matches match these filters</li>';
+    if (head) head.textContent = `FILTERED · ${subset.length} matches`;
+    if (cnt) cnt.textContent = `${subset.length} match${subset.length === 1 ? "" : "es"}`;
+  }
+
   function _historyWireOnce() {
     if (_HISTORY._wired) return;
     _HISTORY._wired = true;
@@ -2047,6 +2160,30 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         b.classList.add("active");
         _HISTORY.scope = b.dataset.scope;
         _historyFetchAndRender();
+      });
+    });
+    // LIFT 4: wire the filter toolbar. champion / mode selects re-filter
+    // on change; the W/L result toggle is single-select; grade chips
+    // toggle independently (none-active == all grades).
+    const champSel = document.getElementById("history-filter-champion");
+    if (champSel) champSel.addEventListener("change", _historyApplyFilters);
+    const modeSel = document.getElementById("history-filter-mode");
+    if (modeSel) modeSel.addEventListener("change", _historyApplyFilters);
+    document.querySelectorAll("#history-filter-result .history-filter-rbtn").forEach((b) => {
+      b.addEventListener("click", () => {
+        _HISTORY.filterResult = b.dataset.result || "";
+        document.querySelectorAll("#history-filter-result .history-filter-rbtn")
+          .forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        _historyApplyFilters();
+      });
+    });
+    document.querySelectorAll(".history-filter-grade").forEach((b) => {
+      b.addEventListener("click", () => {
+        const g = b.dataset.grade;
+        if (_HISTORY.filterGrades.has(g)) { _HISTORY.filterGrades.delete(g); b.classList.remove("active"); }
+        else { _HISTORY.filterGrades.add(g); b.classList.add("active"); }
+        _historyApplyFilters();
       });
     });
   }
