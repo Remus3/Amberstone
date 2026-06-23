@@ -821,6 +821,7 @@ function _setHeroRoleGrade(m) {
   if (!matchId) {
     wrap.hidden = true; wrap.dataset.tier = "";
     roleEl.textContent = "-"; valueEl.textContent = "-"; tierEl.textContent = "-";
+    _setRubricComponents(null);
     return;
   }
   const url = `/api/post-game-rubric?match_id=${encodeURIComponent(matchId)}`;
@@ -829,6 +830,7 @@ function _setHeroRoleGrade(m) {
     .then((data) => {
       if (!data || !data.ok) {
         wrap.hidden = true; wrap.dataset.tier = "";
+        _setRubricComponents(null);
         return;
       }
       const score = Math.round(Number(data.total_score) || 0);
@@ -839,11 +841,69 @@ function _setHeroRoleGrade(m) {
       tierEl.textContent  = grade;
       wrap.dataset.tier   = grade;
       wrap.hidden = false;
+      _setRubricComponents(data);
     })
     .catch((err) => {
       try { console.warn("[post-game-rubric] fetch failed:", err); } catch (_) {}
       wrap.hidden = true; wrap.dataset.tier = "";
+      _setRubricComponents(null);
     });
+}
+
+// LIFT 2a (2026-06-22): per-role score decomposition. The
+// /api/post-game-rubric payload carries components{} + weights_used{}
+// alongside the total. Each component value lives in [0, 2*weight]
+// (core/post_game_rubric.py:_component_score): the median game lands at
+// exactly `weight`, a 2x-saturated axis at `2*weight`. So per-axis
+// saturation = comp / (2*weight), clamped [0,1] (0.5 == median, 1.0 ==
+// maxed). Painted as 5 horizontal bars in a FIXED display order. The
+// component key differs from the weight key for vision (vision ->
+// vision_score) and dpm (dpm -> damage_per_min); _AXES holds that map.
+// Idempotent full innerHTML rebuild; shown only for a non-empty
+// components object, hidden + cleared otherwise (never throws).
+const _AXES = [
+  { comp: "kda",                weight: "kda",             label: "KDA" },
+  { comp: "cs_per_min",         weight: "cs_per_min",      label: "CS/min" },
+  { comp: "obj_participation",  weight: "obj_participation", label: "OBJ" },
+  { comp: "vision",             weight: "vision_score",    label: "Vision" },
+  { comp: "dpm",                weight: "damage_per_min",  label: "DPM" },
+];
+
+function _setRubricComponents(data) {
+  const host = document.getElementById("lm-rubric-components");
+  if (!host) return;
+  const comps = (data && data.components) || null;
+  const weights = (data && data.weights_used) || {};
+  const hasComps = comps && typeof comps === "object"
+    && Object.keys(comps).length > 0;
+  if (!hasComps) {
+    host.hidden = true;
+    host.innerHTML = "";
+    return;
+  }
+  const rows = _AXES.map((ax) => {
+    const comp = Number(comps[ax.comp]);
+    const w = Number(weights[ax.weight]);
+    let sat = 0;
+    if (Number.isFinite(comp) && Number.isFinite(w) && w > 0) {
+      sat = comp / (2 * w);
+      if (sat < 0) sat = 0;
+      if (sat > 1) sat = 1;
+    }
+    const pct = Math.round(sat * 100);
+    const widthPct = (sat * 100).toFixed(1);
+    return (
+      '<div class="lm-rubric-bar">' +
+        '<span class="lm-rubric-bar-label">' + _escHtml(ax.label) + "</span>" +
+        '<span class="lm-rubric-bar-track">' +
+          '<span class="lm-rubric-bar-fill" style="width:' + widthPct + '%"></span>' +
+        "</span>" +
+        '<span class="lm-rubric-bar-readout">' + pct + "%</span>" +
+      "</div>"
+    );
+  });
+  host.innerHTML = rows.join("");
+  host.hidden = false;
 }
 
 // s220 PGR S3: render a aggregator-G-style MVP / SVP card above one team's
