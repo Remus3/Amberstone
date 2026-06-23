@@ -35,10 +35,26 @@ origin (band=good, green check-glyph + green bar, white verb) - vs the LIVE back
 fixture. Tier-1 frontend (overlay.css NOT frozen + the overlay renderer); asset-hash hot-reload,
 NO engine / DS / Share / ENGINE_VERSION change.
 
-NEXT: the overlay-polish lane is now genuinely DRAINED (this was the one (d) slice; the rest is
-shipped / operator-gated / Phase-4-deferred). OWED: live in-game capture of the band channel + S0
-over a real game. With no overlay slice left, the next unit is non-overlay (interview the gemini
-director per the gate fallback) OR clear the OWED capture when a practice game is up.
+OWED CLEARED later this session: the operator started a Caitlyn SR practice game, so I drove the
+live in-game capture. On the legion-rc:8888 origin the band channel rendered the FIGHT/gold path
+live (gold play-glyph + gold bar + white verb on "SETUP DRAKE WARD" then "HOLD LANE SCALING"), the
+eye-line layout #2 defaults held (w-call 760,140 / w-lead 786 / w-callouts 1486, position:fixed),
+the S0 pulse stayed correctly UNARMED for the non-emergency cue, and the :8889 self_grab frame
+(1280x720 jpeg, primary=true, X-RC-Token auth) confirmed the vision pipeline AND showed the overlay
+composited over the real game. good/green (ui_mock) + fight/gold (live) are both proven; urgent/red
+is the same code path (unit-tested).
+
+NEXT: the overlay-polish lane is genuinely DRAINED. Interviewed the gemini director
+(gemini-3-pro-preview, via the loop_controller gemini() pattern) for the next NON-OVERLAY unit ->
+it recommended the DS scorer-valuation residual (AP DoT-burn vs burst EHP-gating + kill-state
+passive weighting for low-kill-share/utility archetypes). VERIFICATION CORRECTIONS (audit-proposals-
+are-intent): the cited files all EXIST (core/damage_mix.py, carry_share.py, ds_calibration.py,
+coach_trace.py) BUT the BASE scorers are ALREADY SHIPPED (test_dsv1_ability_burn_valuation.py +
+test_dsv2_killstate_passives.py, DSV1/DSV2 items 429-437), so the genuine remaining work is the
+CALIBRATION RESIDUAL only (the ROADMAP G5/G6 design-level lane, Gemini-consult-first), and it is
+TIER-2 (scorer/item-effect -> ENGINE_VERSION bump + dual suite + DS restart + Share mirror), NOT
+gemini's stated Tier-1. The next-session prompt is built on this (verify the residual is a REAL
+measurable false-positive, rewind-WIN-anchored, BEFORE building).
 
 ---
 
@@ -113,50 +129,3 @@ RC2_REDESIGN_PLAN.md): champ-select P2 counter-pick hero + P8 ally AD/AP meter; 
 score-decomposition bars + carry-metrics + @15; home rank/LP + tracked_win W/L color; history
 season WR + filters; lobby last-session recap + ready-check auto-accept. OWED: live in-game
 overlay capture (eye-line layout + S0 pulse) - no live game this run.
-
----
-
-# 2026-06-22 (headless continue 22 / R20) - Aggregator N lift: ARAM balance grid panel
-
-Item 588, commit `e0f0ffac` (feature, pushed) + docs-sync. Tier-1 frontend (read-side route + panel +
-pure accessor); NO engine / DS schema / ENGINE_VERSION / Share change (held 1.151.0); RC restarted
-(pid 9480 -> 25356) to load the new route. gemini+ahk loop executor cycle 9. Directive = ORCHESTRATION_PLAN
-R20 DIRECTOR REFILL - Section-7b competitor deep-dive lift of Aggregator N + ship any HIGH/LOW-risk presentation
-finding in-run.
-
-WHAT (lift). Aggregator N (aggregator N) heavyweight one-agent teardown, 6-point checklist, output
-`docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md` (F1-F7). VERIFIED PREMISE (ground truth, not the agent's
-word): `data/daemon_slayer/16.12.1/champions.json` `lolmath.aram_modifiers` carries all 7 ARAM fields
-(Dealt/Taken/Healing/Shielding/Tenacity/AbilityHaste/AttackSpeed) for all 172 champs, but
-`core/aram_balance_context.py` consumed only dealt+taken as a coach-PROMPT line and ZERO web panel
-rendered any of it (grep-confirmed). So F1 = HIGH-value / LOW-risk / presentation-only over local data.
-
-WHAT (ship). F1 SHIPPED IN-RUN: new `balance_grid_for`/`balance_grid_map` accessors (existing prompt
-symbols byte-identical) + `GET /api/aram-balance` (`dashboard/routes_aram_balance.py`, 134 non-neutral
-champs, live-proven 200/16.12.1/Aatrox +5%) + mode-gated `web/js/panels/aram_balance.js` grid (self from
-`coach.champion`; ally/enemy from `liveclient.allPlayers`; signed green/red deltas, AH additive) + css/
-index/main.js wiring. asset-hash auto-reload for JS/CSS; the new route needed the RC restart.
-
-DEVIATION (intent over literal). Build spec assumed top-level `st.champion`/`st.my_team`; ground truth is
-`coach.champion` + `liveclient.allPlayers` (the build agent self-corrected from the active_match.js
-precedent). Single worktree build agent NOT parallel slices: the feature's wiring files (index.html /
-main.js / dashboard.css / _dispatch.py) are shared, so parallel disjoint worktrees would only collide -
-verifier-gated single agent is the correct shape for a cohesive vertical slice.
-
-VERIFY. RED-first `tests/test_aram_balance_grid.py` (13). 1 worktree build agent -> read-only verifier
-CONFIRM (re-ran 13 green, ruff clean, route 200, byte-identical existing defs, ASCII, node --check, no
-frozen files) -> ff-only merge. Full RC suite `9391 passed / 2 skip / 103 subtests` (= R19's 9378 + 13
-new), the SAME 12 pre-existing fails (3x CoachWire ARAM-template, 7 ds_pick_consumption ARAM subfails,
-overlay.css sub-floor, spell_autopush on dirty `data/spell_prefs.json`) - 0 regressions. git: only the 9
-intended files changed, none under `agents/daemon_slayer/` so DS suite not re-run + no DS Share sync owed.
-
-CARRY-FORWARD (VISUAL OWED). The populated ARAM-mode panel capture: the panel is mode-gated and live state
-is idle (mode=client); this headless cycle cannot drive `?ui_mock=1&mode=aram` - `preview_start` refuses to
-attach to the supervisor-owned `:8888` (freeing the port kills the live runtime) and computer-use/Chrome
-navigation needs an interactive `request_access` the away operator can't grant (would block the run). Per
-Section-3b option 3 the code-side 5-phase audit + verifier + live backend proof stand in-slice; the
-populated capture is OWED - drive it on the next cycle that has a live ARAM game or a connected
-claude-in-chrome. Also still dirty + uncommitted: `data/spell_prefs.json` (runtime drift, not authored).
-
-TRIAGE. F2 per-slot item win-rate ladder over rewind_history.db -> BACKLOG (MED-HIGH, thin solo sample);
-F3/F5 already-have; F4 forbidden external winrate; F7 new TFT domain - all defer.
