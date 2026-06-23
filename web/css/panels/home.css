@@ -1065,6 +1065,49 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   .home-grid { grid-template-columns: 1fr 1fr; }
 }
 
+/* Companion-window reflow (rc-shell mainWindow / out-of-game companion -
+ * docs/ELECTRON_OVERLAY.md section 3.7 size presets 380-640px, operator runs
+ * it ~920px wide). The home view's wide multi-column grids are authored for
+ * the 1920 desktop dashboard and overflow the narrow companion: the THIS WEEK
+ * column (2-col .home-body) and the hero stat chips clip off the right edge
+ * because the inner Recent / This-Week rows carry ~550-615px of fixed columns,
+ * so two of them side by side need ~1200px. Below this width every wide grid
+ * collapses to ONE column so each panel fits the companion; the 1920 desktop
+ * (never under ~1900) never triggers it. The tall companion (~1316px) has the
+ * vertical room for the stacked read. */
+@media (max-width: 1200px) {
+  /* Identity band: greeting / headline / stat chips stack vertically. The
+   * desktop min-height (120px, for 1-row card presence) is below the stacked
+   * height here; as a flex child of .home-overlay that explicit floor lets
+   * flex-shrink collapse the hero to 120px so the headline + chips spill onto
+   * the Tonight's Pick card below. min-height:auto restores the flex
+   * content-based minimum so the hero sizes to its stacked content. */
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    min-height: auto;
+  }
+  .home-hero-headline { text-align: left; }
+  .home-hero-chips { justify-content: flex-start; }
+
+  /* Tonight's Pick: the intro / good-bad-ugly / streak sections stack so each
+   * gets the full companion width instead of three cramped columns. */
+  .home-coach-pick-body {
+    grid-template-columns: 1fr;
+    gap: var(--panel-gap);
+  }
+
+  /* Recent 5 + This Week stack; each row's fixed inner columns (~550-615px)
+   * then fit the companion width without horizontal clipping. */
+  .home-body {
+    grid-template-columns: 1fr;
+  }
+
+  /* 14-day trend sparklines + alerts go single-column for the narrow read. */
+  .home-trends { grid-template-columns: 1fr; }
+  .home-alerts { grid-template-columns: 1fr; }
+}
+
 /* Pre-queue lobby card (2026-04-26). Sits inline above the main grid
  * (NOT a fullscreen overlay like cs-overlay) so the dashboard panels
  * remain visible. Hides when not in lobby phase. Find Match button
