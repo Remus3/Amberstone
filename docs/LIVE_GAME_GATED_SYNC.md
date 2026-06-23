@@ -272,10 +272,17 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
       Playwright on the LIVE `https://legion-rc:8888/?overlay=1` read the real coach state + a Legion
       desktop screenshot showed the overlay compositing transparently over the game (see the live-flip
       ledger entry below for the exact DOM reads). The capture validated render + compositing.
-- [ ] STILL OWED: the ACTIVE knob interaction (Alt+Shift+A; re-rank live) round-trip - needs a
-      physical hotkey over League (synthesized presses leak to the game; memory
-      [[reference_overlay_live_verify_technique]]). Shell relaunch picks up slices 1-4
-      (ROADMAP item 214; phases 1-5 code DONE).
+- [ ] STILL OWED (operator-PHYSICAL only - NOT a headless build): the ACTIVE knob-interaction
+      round-trip. R26 (2026-06-23) ground-truth correction: Alt+Shift+A (`rc-shell/src/main.js:1058`)
+      is the click-through ACTIVE *toggle* (`overlayClickThrough` flip + 20s auto-revert), NOT a data
+      "re-rank" - the old "re-rank live" name is a misnomer. A non-hotkey twin already EXISTS and is
+      unit-tested (IPC `rc-shell:overlay-action {action:"set-active"}` -> `setOverlayActive()`,
+      `rc-shell/test/overlay_settings_ipc.test.js`) but is UNREACHABLE headless: rc-shell launches via
+      plain `electron .` (no `--remote-debugging-port`) and the `window.rcShell` bridge is
+      preload-injected, so it is absent in any :8888 browser/Playwright session. The round-trip
+      therefore needs a PHYSICAL Alt+Shift+A press over League (synthesized presses leak into the game;
+      [[reference_overlay_live_verify_technique]]). Do NOT re-attempt headless. Shell relaunch picks up
+      slices 1-4 (ROADMAP item 214; phases 1-5 code DONE).
 - [ ] Operator packaging: `npx electron-builder` + first GitHub Release + packaged update check (private repo GH_TOKEN).
 
 ## F. Post-game (any completed match)
