@@ -172,6 +172,9 @@
 .bi-c-wr {
   text-align: right;
   font-variant-numeric: tabular-nums;
+  /* legibility: lift the numeric columns one tier (--fs-sm -> --fs-md) so the
+     BUYS / EXPECTED WP / WIN RATE stats outrank the item-name body text. */
+  font-size: var(--fs-md);
 }
 
 .bi-item {
