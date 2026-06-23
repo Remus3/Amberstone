@@ -17,11 +17,18 @@
 // change. See docs/ELECTRON_OVERLAY.md section 1.
 const DEFAULT_ORIGIN = "https://legion-rc:8888";
 
-// Size presets (docs/ELECTRON_OVERLAY.md section 3.7).
+// Size presets (docs/ELECTRON_OVERLAY.md section 3.7). standard is the
+// DEFAULT_PRESET - the size a fresh companion opens at, since resolveConfig
+// falls back to it when no width/height is saved. It is set to the operator's
+// settled companion size (923x1316, the comfortable read on the portrait
+// companion display); the dashboard home + out-of-game views are responsively
+// reflowed to fit this width (web/css/panels/*.css @media max-width:1200px).
+// compact stays the minimize-to-strip option; tall sits above standard so the
+// Compact / Standard / Tall menu ladder stays monotonic.
 const SIZE_PRESETS = Object.freeze({
   compact: Object.freeze({ width: 380, height: 720 }),
-  standard: Object.freeze({ width: 520, height: 900 }),
-  tall: Object.freeze({ width: 640, height: 1040 }),
+  standard: Object.freeze({ width: 923, height: 1316 }),
+  tall: Object.freeze({ width: 1100, height: 1560 }),
 });
 
 const DEFAULT_PRESET = "standard";
