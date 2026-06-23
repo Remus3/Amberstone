@@ -98,6 +98,40 @@ def append(
         _log.debug("coach_trace append failed: %s", exc)
 
 
+def record_enemy_target(
+    *,
+    mode: str,
+    champion: str,
+    base_max_hp: float,
+    applied_max_hp: float,
+    hp_scale: float,
+    tanky_count: int,
+    bonus_hp: float = 0.0,
+) -> None:
+    """Plumb the DSV5 applied comp-conditioned enemy max-HP modifier delta.
+
+    Deterministic-verification seam: the comp-HP-lean target uplift that DSV1's
+    burn valuation consumes is otherwise invisible in the trace (only the final
+    item ranking shows). Recording ``base_max_hp`` (flat curve) alongside
+    ``applied_max_hp`` (post comp-scale) + ``hp_scale`` + ``tanky_count`` lets a
+    test - or the ops trace tab - confirm exactly which modifier was applied for
+    a given comp. Best-effort; reuses the ``append`` ring buffer + ``extra``.
+    """
+    append(
+        mode=mode,
+        model="_enemy_target",
+        extra={
+            "kind":           "enemy_target",
+            "champion":       str(champion),
+            "base_max_hp":    round(float(base_max_hp), 1),
+            "applied_max_hp": round(float(applied_max_hp), 1),
+            "hp_scale":       round(float(hp_scale), 4),
+            "tanky_count":    int(tanky_count),
+            "bonus_hp":       round(float(bonus_hp), 1),
+        },
+    )
+
+
 def _trim() -> None:
     try:
         lines = _TRACE_FILE.read_text(encoding="utf-8", errors="replace").splitlines()

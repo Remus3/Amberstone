@@ -281,6 +281,22 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-22 DSV5 comp-conditioned enemy max-HP seam (ledger 592, `coach_integration/enemy_stats.py`).
+  DEFAULT-OFF env gate **`RC_COMP_HP_LEAN`** (set `=1` in the RC runtime env; the read is per-call so no
+  restart is needed - it is a coach-integration heuristic, NOT a DS `:8893` engine flip, so do NOT restart
+  DS for it). When ON, a tank-heavy enemy comp scales `target_max_hp` up (1 + 0.10*(tanky_count - 1),
+  clamped [0.85, 1.30]) so DSV1's ability-burn / %max-HP valuation tilts the live item ranking toward DoT
+  (Liandry's/Blackfire/Demonic) vs tanks, matching the rewind WIN-anchored signal (winning AP carries vs
+  2+ tanks build DoT over burst +12.0pt; burst usage halves). OFF == byte-identical flat curve.
+  LIVE EYEBALL OWED (do NOT flip blind, charter 4b): in a real SR/ARAM game on an AP mage facing a 2+
+  tank/bruiser comp, set `RC_COMP_HP_LEAN=1` and confirm the build-chooser top-6 re-rank elevates the
+  %max-HP DoT items (Liandry's especially) vs the OFF ranking, and that it stays "saner not different"
+  for a squishy comp (scale 0.90 should NOT swing picks materially). Inspect the applied modifier via the
+  `core.coach_trace.record_enemy_target` plumb (`kind:enemy_target` records: base vs applied max_hp +
+  hp_scale + tanky_count). Only after the eyeball checks out, authorize the default-ON flip (drop the gate
+  or default `RC_COMP_HP_LEAN=1` in the supervisor env). NO ENGINE_VERSION bump / Share sync (engine
+  untouched - the seam only changes the TARGET fed to the already-shipped DSV1 scorer).
+
 - 2026-06-20 RC2 rc-shell standalone-app live session (code fixes shipped `cac1df3a` + `81f74d88`;
   runtime recovery). LIVE-VERIFY OWED (needs a live ARAM/any lobby): `lcu.lobby.members[]` must render
   in the rc-shell PRE-GAME LOBBY panel (YOUR MAINS / PARTY / MY TOP-8). The agent DOES forward members[]
