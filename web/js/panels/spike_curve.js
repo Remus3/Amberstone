@@ -162,7 +162,11 @@ export function renderSpikeCurve(parentEl, ally_curve, enemy_curve, peaks, now_m
   // Sig-dedup gate. Same input + same mount node -> skip the rebuild.
   const sigKey = parentEl.id || "_spk_default";
   const sig = _signature(ally_curve, enemy_curve, peaks, now_minute, itemMinutes);
-  if (_CURVE_SIG[sigKey] === sig) return;
+  // Dedup, but only if the DOM still reflects the stamped sig. The outer
+  // active_match.js hide path clears parentEl.innerHTML behind our back, so a
+  // re-show with identical data must repaint an externally-emptied mount
+  // instead of early-returning into a blank (but visible) sparkline.
+  if (_CURVE_SIG[sigKey] === sig && parentEl.innerHTML !== "") return;
   _CURVE_SIG[sigKey] = sig;
 
   // Width measurement - we use clientWidth at render time; falls back to

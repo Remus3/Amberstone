@@ -171,7 +171,11 @@ export function renderDraftElo(parentEl, payload, opts) {
   if (!parentEl) return;
   const sigKey = parentEl.id || "_de_default";
   const sig = _signature(payload);
-  if (_DE_SIG[sigKey] === sig) return;
+  // Dedup, but only if the DOM still reflects the stamped sig. The outer
+  // active_match.js hide path clears parentEl.innerHTML behind our back, so a
+  // re-show with identical data must repaint an externally-emptied mount
+  // instead of early-returning into a blank (but visible) chip.
+  if (_DE_SIG[sigKey] === sig && parentEl.innerHTML !== "") return;
   _DE_SIG[sigKey] = sig;
 
   if (!payload || !payload.ok) {
