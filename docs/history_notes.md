@@ -142,6 +142,36 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-23 (R24 DIRECTOR REFILL same-lane) - macro_response_shadow register aggregator + RC_COMP_HP_LEAN eyeball
+
+Continued R23's lane (the last un-aggregated shadow log). Two slices shipped; a live SR game
+was up (AP Seraphine vs a 3-tank comp), so the directive-unlocked live-gated eyeball ran too.
+
+SLICE 1 (primary): tools/macro_response_shadow_report.py + 23 hermetic tests (commit 0949fde5).
+NOT an objective-category copy. VERIFY-THE-PREMISE (live census): the det side is a single
+macro_stagnation tag with 3 lead-keyed generic stall nudges, so an objective-category match
+false-scores ~0.5%. Re-derived an ACTION-REGISTER metric: each side ACTIVE-PUSH (rotate/group/
+setup/take/push/force...) vs PASSIVE-SCALE (farm/scale/safe/hold/defend...) by earliest WHOLE-
+TOKEN (load-bearing: defend contains end, 536 rows); NO skip de-leak (measured 0.556%, below the
+floor). NEW by_lead_state_register block is the real signal since det is constant per lead: live
+ahead 0.935 / even 0.907 / BEHIND 0.000 (det PASSIVE "keep scaling/safe" vs Haiku ACTIVE "rotate
+baron/force end" x407) = the do-not-flip finding. Headline 89% clears the 0.70 floor but the hint
+redirects to the per-lead block. HOLD. Tier-1 (Share sync skipped); verifier-CONFIRM; 0 non-ASCII.
+
+SLICE 2 (live-gated OWED, directive-unlocked): the RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball
+(OWED since ledger 592) cleared - me=Seraphine vs Braum/ChoGath/Gragas (3 tanks). hp_scale 1.20x,
+max_hp 2980->3576. Ranker OFF-vs-ON (headless, no live-process touch): Seraphine routes to HPS/
+enchanter (seam NO-OP); pure mages boost ONLY Liandry's (+6.5 dps/+17%, proportional), flat items
+byte-identical = SANER NOT DIFFERENT, do-not-flip-blind SATISFIED. Visible top-6 impact narrow
+(Liandry's already rank-1). Recorded in docs/LIVE_GAME_GATED_SYNC.md. FLIP stays operator-gated
+(supervisor env frozen; global default change is deliberate).
+
+NEXT: shadow-aggregator lane now DRAINED (det_coach 595 / objective_playbook 596 / macro_response
+597). Carry-forward OWED: live overlay eye-line + S0-pulse capture (needs the rc-shell Electron
+overlay running over League - not confirmable this headless session). DS scorer-valuation CLOSED.
+
+---
+
 # 2026-06-22 (R21 DIRECTOR REFILL) - ARAM balance-grid UI audit + visual OWED cleared
 
 Bootstrapped, re-probed live state (a live SR practice game was up: mode_key=sr, coach.champion=

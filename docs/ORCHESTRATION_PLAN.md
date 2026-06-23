@@ -191,6 +191,23 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-23 R27 (DIRECTOR REFILL cycle, operator-driven) DONE (`29c48b21` ->
+  rebased `bf2ff10d`; ledger 600) - the R26 follow-on broader SHIPPED-PANEL
+  render-gate audit. 3 parallel read-only agents swept all ~56 dashboard+overlay
+  panel renderers for 4 failure modes ([hidden]-attr-vs-style.display /
+  positional-vs-id index / stale gate accessor / unwired renderer). NEGATIVE
+  result: the ds_statcheck dead-panel bug is ISOLATED - no other panel is dead
+  (the lone [hidden]+style.display overlap #am-spike-markers renders fine,
+  spike_markers.js:147 sets .hidden=false). DO NOT re-run this sweep. The trace
+  DID surface a real systemic idempotency edge: the 3 ctx-driven active-match
+  panels (spike_markers/spike_curve/draft_elo) dedup by content sig while the
+  outer active_match.js hide paths clobber mount.innerHTML="" behind them, so a
+  re-show with identical data after a transient liveclient dropout left a
+  visible-but-empty panel; fix = dedup guard also requires innerHTML!=="".
+  RED-first tests/snapshot_panels/test_render_dedup_reshow.py 4/4. Tier-1
+  frontend (no engine/Share/ENGINE_VERSION). Carry-forward OWED (both need a
+  live game / operator action): E.1 ACTIVE knob (operator-physical), RC_COMP_HP_LEAN
+  flip (operator-gated).
 - 2026-06-22 R21 (DIRECTOR REFILL cycle) DONE (`bd961b39`) - Section-3b 5-phase
   fixture audit + populated capture of the R20 ARAM balance-grid panel, clearing the
   VISUAL OWED. VERIFY-THE-PREMISE payoff: renderAramBalance was dispatched in the
