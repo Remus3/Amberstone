@@ -301,6 +301,42 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   line-height: 1.2;
   color: rgb(var(--ovx-text)) !important;
 }
+/* ACTION BAND CHANNEL (doctrine section 5/6): active_match.js stamps
+ * [data-call-band] (from classifyAction) on the ACTION row + prepends a
+ * .am-call-glyph; the band drives a glyph color + a 3px color-bar left border.
+ * urgent=red (the ONE reserved emergency pop-out, rule 4 - painted only on this
+ * single primary action, never a flood) / fight=gold (the single caution hue) /
+ * good=green. The verb text stays white (the rule above, doctrine line 164) - the
+ * band is carried by the glyph + bar, never by recoloring the verb. This is the
+ * preattentive channel the section-6 combat shed leans on (see :570). The band-
+ * specific rules trail the generic [data-call-band] rule so equal-specificity
+ * source-order resolves to the band hue. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band] {
+  border-left: 3px solid rgba(var(--ovx-text), 0.18);
+  padding-left: 7px;
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"] .am-call-glyph {
+  font-weight: 700;
+  color: rgba(var(--ovx-text), 0.55);
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="urgent"] {
+  border-left-color: rgb(var(--ovx-red));
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="urgent"] .am-call-glyph {
+  color: rgb(var(--ovx-red));
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="fight"] {
+  border-left-color: rgb(var(--ovx-gold));
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="fight"] .am-call-glyph {
+  color: rgb(var(--ovx-gold));
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="good"] {
+  border-left-color: rgb(var(--ovx-good));
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="good"] .am-call-glyph {
+  color: rgb(var(--ovx-good));
+}
 /* OBJECTIVE: the macro footer, clamped to 2 lines so a verbose objective can
  * never blow the card past the 1.5s glance budget (rule 1) - the full text stays
  * on the dashboard surface. -webkit-box line-clamp is the cross-Chromium idiom. */

@@ -297,6 +297,66 @@ def test_overlay_call_value_tiering(mock_server, pw_browser):
     assert not errors, f"JS errors [call tiering]: {errors[:3]}"
 
 
+def test_overlay_call_action_band_channel(mock_server, pw_browser):
+    """RC Overlay Doctrine section 5/6: the PRIMARY w-call ACTION line carries the
+    band channel the spec->doctrine S0 dock-retirement dropped - a data-call-band
+    keyed off classifyAction(verb), a band-colored glyph prefix, and a color-bar
+    left border (urgent=red / fight=gold / good=green). The verb TEXT stays white
+    (doctrine line 164 - the verb is not recolored; the glyph + bar carry the
+    category so urgent vs good no longer read identically white). This is the
+    preattentive signal the combat-shed (section 6, overlay.css:570) leans on."""
+    BAND_RGB = {
+        "urgent": "232, 64, 87",   # --ovx-red, the reserved emergency pop-out
+        "fight": "200, 170, 110",  # --ovx-gold, the single caution hue
+        "good": "55, 208, 138",    # --ovx-good
+    }
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        row = '#am-call-body > div[data-call-line="action"]'
+        assert page.locator(row).count() == 1, "no ACTION line rendered"
+
+        # JS wiring: the row is stamped with a band, and it equals the SHIPPED
+        # classifyAction over the rendered verb (proves the render actually called
+        # classifyAction, not a hardcoded band - guards the fixture-shaped-to-bug
+        # failure mode: the assertion tracks whatever band the real logic derives).
+        band = page.eval_on_selector(row, "e => e.dataset.callBand")
+        assert band in BAND_RGB, f"ACTION row missing a valid data-call-band: {band!r}"
+        verb = page.eval_on_selector(
+            row, "e => e.lastElementChild.lastChild.textContent.trim()"
+        )
+        expected = page.evaluate(
+            "async (t) => (await import('/js/lib/helpers.js')).classifyAction(t)", verb
+        )
+        assert band == expected, (
+            f"data-call-band {band!r} != classifyAction({verb!r})={expected!r}"
+        )
+
+        # The band-colored glyph prefix exists (a functional U+26A0/2713/25BA action
+        # glyph emitted from JS so overlay.css stays 7-bit ASCII) and is band-colored.
+        assert page.locator(f"{row} .am-call-glyph").count() == 1, "no band glyph"
+        glyph_color = _css(page, f"{row} .am-call-glyph", "color")
+        assert BAND_RGB[band] in glyph_color, (
+            f"glyph color {glyph_color!r} is not the {band} token {BAND_RGB[band]}"
+        )
+
+        # The color BAR (left border) tracks the band token.
+        bar = _css(page, row, "border-left-color")
+        assert BAND_RGB[band] in bar, (
+            f"action color-bar {bar!r} is not the {band} token {BAND_RGB[band]}"
+        )
+
+        # Doctrine line 164: the verb itself stays white (--ovx-text) - the band
+        # is carried by the glyph + bar, never by recoloring the play verb.
+        verb_color = _css(page, f"{row} > span:last-child", "color")
+        assert "255, 255, 255" in verb_color, (
+            f"ACTION verb must stay white (--ovx-text), got {verb_color!r}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [action band channel]: {errors[:3]}"
+
+
 def test_overlay_combat_mode_declutter(mock_server, pw_browser):
     """Doctrine section 6: body[data-fight="1"] (combat_mode flags a high-stakes
     moment) sheds load - the ambient lead pill hides and the CALL drops its macro
