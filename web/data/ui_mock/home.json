@@ -92,12 +92,14 @@
   },
   "tonight_pick": {
     "champion": "Jinx",
-    "reason": "best ratio this week + matchup-favored vs current meta bot lane",
+    "reason": "9.2 KDA over 6 games this week",
     "modes": ["Ranked Solo", "ARAM"],
     "grade": "S",
-    "good": "9.2 avg KDA over 6 games",
-    "bad": "ban-rate 14% in your bracket",
-    "ugly": "no Yuumi available in mock"
+    "tips": {
+      "good": "9.2 avg KDA over 6 games",
+      "bad": "2.0 deaths per game",
+      "ugly": "7.4 CS/min to sharpen"
+    }
   },
   "last_build": {
     "champion": "Jinx",

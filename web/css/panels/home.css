@@ -115,6 +115,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 /* Make the foreground content sit above the motif. */
 .home-hero-greet,
+.home-hero-center,
 .home-hero-headline,
 .home-hero-chips { position: relative; z-index: 1; }
 .home-hero-greet { min-width: 0; }
@@ -208,6 +209,30 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-headline.up    { color: var(--good); }
 .home-hero-headline.down  { color: var(--bad); }
 .home-hero-headline.flat  { color: var(--text-dim); }
+/* R30: center column wrapper - stacks the momentum headline above the
+ * primary Find Match CTA, centered on the desktop hero. */
+.home-hero-center {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--space-3);
+}
+/* R30: primary call-to-action. League "play" green (--good) so it reads as
+ * the start-a-game action - distinct from Tonight's Pick's teal focal glow,
+ * which stays the "what to play" hero below. Opens the Home queue picker
+ * (_homeFindMatchPickerShow), fulfilling home's "immediate next action" job. */
+.home-hero-cta {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  font-family: inherit; font-size: var(--fs-md); font-weight: 800;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--canvas); background: var(--good);
+  border: none; border-radius: var(--panel-radius-sm);
+  min-height: var(--hit-min); cursor: pointer;
+  transition: background 0.12s, transform 0.06s;
+}
+.home-hero-cta:hover  { background: #94e0ad; transform: scale(1.02); }
+.home-hero-cta:active { transform: scale(0.98); }
+.home-hero-cta:focus-visible { outline: 2px solid var(--good); outline-offset: 2px; }
+.home-hero-cta-icon { width: 20px; height: 20px; flex: none; }
 .home-hero-chips {
   display: flex; gap: var(--panel-gap-tight); flex-wrap: wrap;
   justify-content: flex-end;
@@ -520,16 +545,22 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* R30: a tip row whose value the backend suppressed (small-sample Good/Bad)
+ * is hidden, not shown as a "-" placeholder. Overrides the grid display. */
+.home-pick-tip-row[hidden] { display: none; }
 .home-pick-section-3 {
   display: grid;
-  /* s218 v3: matched Section 2's 88px label column + 16px gap so
-   * Streak/Advisories sit symmetric with The Good/Bad/Ugly. Pre-rename
-   * "Open Advisories" overflowed 130px column and crowded the value. */
+  /* s218 v3: matched Section 2's 88px label column + 16px gap so the
+   * Advisories row sits symmetric with The Good/Bad/Ugly. (R30: Streak row
+   * removed - it duplicated the hero sub-line.) */
   grid-template-columns: 88px 1fr;
   column-gap: var(--space-4);
   row-gap: var(--panel-gap);
   align-items: baseline;
 }
+/* R30: Section 3 hides entirely when there is no open advisory - the empty
+ * "Advisories: None" row was pure noise on the idle home. */
+.home-pick-section-3[hidden] { display: none; }
 .home-pick-meta-label {
   font-size: var(--fs-xs);
   font-weight: 800;
@@ -1088,6 +1119,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
     min-height: auto;
   }
   .home-hero-headline { text-align: left; }
+  /* R30: the center column (headline + Find Match CTA) left-aligns with the
+   * rest of the stacked companion hero instead of staying centered. */
+  .home-hero-center { align-items: flex-start; }
   .home-hero-chips { justify-content: flex-start; }
 
   /* Tonight's Pick: the intro / good-bad-ugly / streak sections stack so each
