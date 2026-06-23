@@ -316,7 +316,8 @@ def _home_pick_tips(pick_row: dict) -> dict:
     Three short 7-bit-ASCII strings: the headline strength (avg KDA over
     sample), the cost dimension (deaths per game), and a risk/variance
     flag that prefers a small-sample warning, then a CS sharpening cue,
-    then the grade ceiling.
+    then the grade ceiling. At a 1-2 game sample Good + Bad are returned
+    empty (the per-game rollups are noise); only the caveat is kept.
     """
     games = int(pick_row.get("games") or 0)
     avg_kda = float(pick_row.get("avg_kda") or 0.0)
@@ -325,12 +326,23 @@ def _home_pick_tips(pick_row: dict) -> dict:
     best_grade = pick_row.get("best_grade") or "-"
 
     game_word = "game" if games == 1 else "games"
+    # R30 design review: a 1-2 game sample is too small to present per-game
+    # rollups - a single strong game reads as great avg KDA AND terrible
+    # deaths-per-game at the same time (the contradiction flagged live:
+    # "3.7 avg KDA" next to "10 deaths per game" over 1 game). Suppress Good +
+    # Bad (the pick `reason` line already carries the KDA justification) and
+    # keep one honest caveat so Tonight's Pick never dresses up noise as a
+    # finding. The frontend hides an empty tip row.
+    if games <= 2:
+        return {
+            "good": "",
+            "bad": "",
+            "ugly": f"Small sample - {games} {game_word}, play more for tips",
+        }
     good = f"{avg_kda:.1f} avg KDA over {games} {game_word}"
     deaths_pg = deaths / max(games, 1)
     bad = f"{deaths_pg:.1f} deaths per game"
-    if games <= 2:
-        ugly = f"Small sample - {games} {game_word}"
-    elif cs_per_min > 0:
+    if cs_per_min > 0:
         ugly = f"{cs_per_min:.1f} CS/min to sharpen"
     else:
         ugly = f"Grade ceiling {best_grade}"
@@ -442,8 +454,13 @@ def _home_trends_14d(db_path) -> dict:
             {"date": d, "value": round(sum(by_day_gp[d]) / len(by_day_gp[d]), 1)
              if by_day_gp[d] else None})
         out["kda"].append(
-            {"date": d, "value": round(sum(by_day_kda[d]) / len(by_day_kda[d]), 2)
-             if by_day_kda[d] else None})
+            {"date": d,
+             # R30: a day whose games all logged 0 K+A (a K/A recording gap,
+             # not genuine 0-KDA play) sums to 0 and would render a misleading
+             # "0.0" on the hero KDA chip + sparkline. Treat it as no-data
+             # (None), mirroring the cs/gold "> 0" insert guards above.
+             "value": round(sum(by_day_kda[d]) / len(by_day_kda[d]), 2)
+             if by_day_kda[d] and sum(by_day_kda[d]) > 0 else None})
     return out
 
 
