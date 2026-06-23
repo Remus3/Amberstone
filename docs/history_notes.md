@@ -109,6 +109,42 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-22 (DS scorer-valuation residual) - DSV5 comp-conditioned enemy max-HP seam
+
+Gemini-directed unit: the P6-G5 "AP-DoT-vs-burst EHP-gating + kill-state/carry_share" residual.
+VERIFY-THE-PREMISE-FIRST paid off - the directive's Tier-2 scorer framing was REFUTED. Ledger 592,
+commit pushed. Tier-1 (NO ENGINE bump / Share sync - engine untouched).
+
+GROUND TRUTH (do NOT re-litigate):
+- The 3 cited "homes" (damage_mix/carry_share/ds_calibration) are display/log surfaces, NOT engine
+  calibration. The base scorers are already shipped: DSV1 folds ability-burn DoTs into
+  compute_ability_dps (proportional to target_max_hp); DSV2 added the kill-state assume_takedown seam.
+- KILL-STATE half = CLOSE-as-covered. The seam is DORMANT in every live path (rank.py::rank_items has
+  no assume_takedown param; no production caller passes True). Rewind WIN-anchored: winning supports
+  build Hubris/Collector 0.1%. Nothing to suppress -> built nothing. Do NOT re-pitch a carry_share scorer.
+- AP-DoT half = genuine, REFRAMED. Rewind WIN-anchored measure (30,164 participants, winning AP carries
+  by explicit enemy tank count): 0 tanks -> burst over DoT -6.2pt; 2+ tanks -> DoT over burst +12.0pt,
+  burst usage HALVES. (A game-length-confounded tankiness proxy had masked this - the tank-COUNT split
+  isolated it.) Root cause: enemy_stats.max_hp was a comp-BLIND mode/level curve, so DSV1's burn fired
+  at a flat value. archetype_dispatch already feeds that max_hp into the real ranking; ds_antitank_hint
+  already flagged tanky comps but only as a TEXT hint with no ranking effect.
+
+SHIPPED (DSV5): coach_integration/enemy_stats.py default-OFF seam - hp_scale = clamp(1 + 0.10*(tanky-1),
+0.85, 1.30) on max_hp, tanky_count via the SHARED get_archetype_for classifier (tank/bruiser). New
+EnemyStats.hp_scale/tanky_count fields (END, defaulted). core/coach_trace.record_enemy_target plumbs the
+applied modifier delta for deterministic verification. 13/13 new tests green (incl. the win-data payoff:
+tank-scaled max_hp raises Veigar+Liandry burn DPS, Rabadon's unchanged). Env gate RC_COMP_HP_LEAN.
+
+NEXT / OWED: RC_COMP_HP_LEAN live default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md) -
+eyeball the OFF-vs-ON top-6 re-rank for an AP mage vs a 2+-tank comp in a real game before flipping.
+The DS scorer-valuation residual track is now CLOSED (ROADMAP "Don't-redo" note).
+
+NOTE: the live RC (pid 12264, mode=game) mutates data/vision_state.json every ~2s, so the session-scoped
+hermeticity fixture flags a vision_state.json delta at suite teardown - environmental, NOT a regression
+(my change never touches that path; per-test runs are clean).
+
+---
+
 # 2026-06-22 (UI redesign session) - full Hextech redesign of all 12 pages + overlay
 
 Operator: "redesign of all pages ... in + out of game ... use gemini + the ui/ux research +
@@ -11570,6 +11606,47 @@ fresh operator refill or a new Gemini-bounded slice is needed next cycle.
 
 ---
 
+# 2026-06-22 (UI feature-lift tail) - render the backend data the mocks show
+
+Follow-on to the item-589 Hextech reskin: render data the greenlit mocks show but the DOM did
+not yet (BACKEND-GATED, not pure CSS). Ledger item 590. gemini-directed; plan + rulings in
+docs/RC2_REDESIGN_PLAN.md (Feature-lift tail). 6 commits pushed; cross-lift regression 236/236
+snapshot+backend tests green. Tier-1 frontend + 2 thin read routes + 1 minimal frozen edit; NO
+engine / DS / Share / ENGINE_VERSION change.
+
+SHIPPED (each: gemini spec -> build agent -> orchestrator FRESH re-verify (diff + tests + hex/ASCII
++ test-body read) -> commit + push + restart/live-curl for routes):
+- 1a counter-pick HERO card `4d0172b6` (counters[0] dominant + compact [1..4]; backend was already
+  wired RC2 E4 - prominence elevation only).
+- 1b ally AD/AP meter `66375d63` - NEW GET /api/champ-select/team-damage-mix (info.attack vs
+  info.magic tally) -> dual-color bar; live 58/42.
+- 3 home last-20 W/L strip + WR `c3bf040d` - shared _compute_last20() extracted from _build_history
+  (byte-identical, 7/7 regression), last20 injected into /api/home/summary; live 7-13 35.0%.
+- 2a PGR decomposition 5-bar `a461980b` - last_match.js consumes the rubric components+weights_used
+  (saturation = comp/(2*weight)); route already returned them. 2b carry metrics ALREADY shipped
+  (s219 _setStatsGrid) - not rebuilt. 2c @15 DROPPED (no backing data, gemini ruling).
+- 4 history season WR + filters `c0ce9faf` - retired the "needs Riot key" stub; global client-side
+  champion/mode/result/grade filters. CAUGHT+FIXED an agent unit-bug: win_rate is a PERCENT live
+  (51.6) but the agent rendered it *100 -> "5160%" and shaped the ui_mock fixture to the bug;
+  corrected JS + fixture (lesson: live-curl the unit before trusting a fixture-passing test).
+- 5 ready-check toggle `8e972a14` - NEW non-frozen core/auto_accept_pref.py + GET/POST
+  /api/lcu/auto-accept; operator-AUTHORIZED minimal frozen lcu_client.py gate (_auto_accept_tick
+  wraps accept_queue in `if is_enabled()`, default ON = byte-identical). The in-process force-accept
+  loop is a SEPARATE mechanism from the existing #lv-auto-accept (which set_configs the RC-LCUAgent
+  via :8889); UNIFIED into the existing toggle (one control gates both) instead of a 2nd switch.
+  Live GET/POST round-trip + 400 proven; pref left ON.
+
+CONFIRM-PER-ITEM caught 2 "already done" (2b carry, 1a/3 base) + the lift-4 unit bug - the
+"verify the data per item, never scaffold on the research claim" directive paid off repeatedly.
+
+OWED (carry-forward, unchanged from item 589): live in-game overlay capture (eye-line layout +
+S0 pulse) - mode=client all session, no live game to capture.
+
+NEXT: feature-lift tail is EXHAUSTED. Remaining RC2 work = the OWED overlay capture (needs a live
+game) + any new research/DS sweeps per ROADMAP/BACKLOG.
+
+---
+
 ## Relocated 2026-06-18 (PM5 wakeup prune - keep last 3 sessions)
 
 # 2026-06-18 (PM2) - headless deep-research+lift: R2 competitor fan-out + Game Flow tab
@@ -14783,44 +14860,3 @@ CALIBRATION RESIDUAL only (the ROADMAP G5/G6 design-level lane, Gemini-consult-f
 TIER-2 (scorer/item-effect -> ENGINE_VERSION bump + dual suite + DS restart + Share mirror), NOT
 gemini's stated Tier-1. The next-session prompt is built on this (verify the residual is a REAL
 measurable false-positive, rewind-WIN-anchored, BEFORE building).
-
----
-
-# 2026-06-22 (UI feature-lift tail) - render the backend data the mocks show
-
-Follow-on to the item-589 Hextech reskin: render data the greenlit mocks show but the DOM did
-not yet (BACKEND-GATED, not pure CSS). Ledger item 590. gemini-directed; plan + rulings in
-docs/RC2_REDESIGN_PLAN.md (Feature-lift tail). 6 commits pushed; cross-lift regression 236/236
-snapshot+backend tests green. Tier-1 frontend + 2 thin read routes + 1 minimal frozen edit; NO
-engine / DS / Share / ENGINE_VERSION change.
-
-SHIPPED (each: gemini spec -> build agent -> orchestrator FRESH re-verify (diff + tests + hex/ASCII
-+ test-body read) -> commit + push + restart/live-curl for routes):
-- 1a counter-pick HERO card `4d0172b6` (counters[0] dominant + compact [1..4]; backend was already
-  wired RC2 E4 - prominence elevation only).
-- 1b ally AD/AP meter `66375d63` - NEW GET /api/champ-select/team-damage-mix (info.attack vs
-  info.magic tally) -> dual-color bar; live 58/42.
-- 3 home last-20 W/L strip + WR `c3bf040d` - shared _compute_last20() extracted from _build_history
-  (byte-identical, 7/7 regression), last20 injected into /api/home/summary; live 7-13 35.0%.
-- 2a PGR decomposition 5-bar `a461980b` - last_match.js consumes the rubric components+weights_used
-  (saturation = comp/(2*weight)); route already returned them. 2b carry metrics ALREADY shipped
-  (s219 _setStatsGrid) - not rebuilt. 2c @15 DROPPED (no backing data, gemini ruling).
-- 4 history season WR + filters `c0ce9faf` - retired the "needs Riot key" stub; global client-side
-  champion/mode/result/grade filters. CAUGHT+FIXED an agent unit-bug: win_rate is a PERCENT live
-  (51.6) but the agent rendered it *100 -> "5160%" and shaped the ui_mock fixture to the bug;
-  corrected JS + fixture (lesson: live-curl the unit before trusting a fixture-passing test).
-- 5 ready-check toggle `8e972a14` - NEW non-frozen core/auto_accept_pref.py + GET/POST
-  /api/lcu/auto-accept; operator-AUTHORIZED minimal frozen lcu_client.py gate (_auto_accept_tick
-  wraps accept_queue in `if is_enabled()`, default ON = byte-identical). The in-process force-accept
-  loop is a SEPARATE mechanism from the existing #lv-auto-accept (which set_configs the RC-LCUAgent
-  via :8889); UNIFIED into the existing toggle (one control gates both) instead of a 2nd switch.
-  Live GET/POST round-trip + 400 proven; pref left ON.
-
-CONFIRM-PER-ITEM caught 2 "already done" (2b carry, 1a/3 base) + the lift-4 unit bug - the
-"verify the data per item, never scaffold on the research claim" directive paid off repeatedly.
-
-OWED (carry-forward, unchanged from item 589): live in-game overlay capture (eye-line layout +
-S0 pulse) - mode=client all session, no live game to capture.
-
-NEXT: feature-lift tail is EXHAUSTED. Remaining RC2 work = the OWED overlay capture (needs a live
-game) + any new research/DS sweeps per ROADMAP/BACKLOG.
