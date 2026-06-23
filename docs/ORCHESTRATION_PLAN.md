@@ -177,6 +177,7 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 | R18 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of un-audited panels build_order.js, augment_reco.js, archetype_nudge_chip.js, and map_state.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. Tokenize sub-floor hardcoded font-sizes. Fix every MUST-FIX in-slice. | DONE | `0999d3eb` |
 | R19 | ds-sweep | DIRECTOR REFILL: DS schema lift - survivability spell_damage_reduction_pct. NEW forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ_id, slot) in agents/daemon_slayer/data_loader.py - per-rank PERCENT damage reduction from champion_abilities.json defensive modifier blocks (pure-% units filter) as a first-class magnitude; lazy + frozen-safe; 8 champs at 16.12.1. Default-OFF, byte-identical (no consumer). Offline characterization tests vs Meraki. ENGINE_VERSION HELD at 1.151.0 (NOT bumped - gemini director ruling B: byte-identical forward-marker per the item 339/343 no-bump convention) + DS :8893 restart + Share sync. Live flip EXCLUDED. | DONE | `ee673c1d` |
 | R20 | lift | DIRECTOR REFILL: Section-7b heavyweight deep-dive competitor lift of Aggregator N, 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md (third-party names out of core repo code). ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); HIGH-lift with new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. Closed-negative respected: Aggregator N Arena augment WINRATE is Riot-policy-forbidden (BACKLOG line 122; pick-rate only). SHIPPED F1: ARAM per-champion balance-adjustment grid panel (the 7-field aramDamageDealt/Taken/Healing/Shielding/Tenacity/AbilityHaste/AttackSpeed grid RC loads but never displayed) - new /api/aram-balance route + web/js/panels/aram_balance.js, presentation-only over existing local champions.json, no engine bump. Lift doc docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md (F1-F7). | DONE | `e0f0ffac` |
+| R21 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) + populated capture of the R20-shipped ARAM balance grid panel (web/js/panels/aram_balance.js), clearing its VISUAL OWED. VERIFY-THE-PREMISE found the root cause: renderAramBalance was wired into the live-state render branch ONLY, never the ui_mock active-match branch, so the documented ?ui_mock=1&mode=aram#active-match audit path could not drive it. Fix wires it into the ui_mock branch (mirrors the sibling panels). Audit CLEAN; applied its one SHOULD-FIX (.ab-chip off-grid 2px -> --space-1 4px). RED-first test_aram_balance_view.py (wiring guard + Playwright populated capture). Tier-1 frontend, no engine/Share/ENGINE_VERSION. | DONE | `bd961b39` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -190,6 +191,22 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-22 R21 (DIRECTOR REFILL cycle) DONE (`bd961b39`) - Section-3b 5-phase
+  fixture audit + populated capture of the R20 ARAM balance-grid panel, clearing the
+  VISUAL OWED. VERIFY-THE-PREMISE payoff: renderAramBalance was dispatched in the
+  live-state render branch ONLY (web/js/main.js ~L1431); the ui_mock active-match
+  branch (L1392-1411) wired every sibling panel (ward/spike/minimap/objective chips)
+  but NOT this one, so the documented ?ui_mock=1&mode=aram#active-match audit path
+  could not render it - the structural reason the populated capture was OWED.
+  Root-cause fix: dispatch it in the ui_mock branch too (mode + roster from the mock
+  fixture; the panel self-gates on ARAM). 5-phase audit CLEAN; applied its one
+  SHOULD-FIX (.ab-chip off-grid 2px vertical pad -> --space-1 4px, UI_SCALE_SPEC_V2
+  8px-grid). RED-first tests/snapshot_panels/test_aram_balance_view.py: static wiring
+  guard (renderAramBalance in both branches) + Playwright populated capture over the
+  active_match_aram.json roster (Senna self + 4 ally + 5 enemy; stubs /api/aram-balance)
+  asserting the self gold row + ally/enemy rows + buff/nerf chips, writing
+  screenshots/aram-balance_aram.png. Tier-1 frontend (asset-hash hot-reload; no
+  engine/DS/Share/ENGINE_VERSION). 204 snapshot+contract tests green; active-match 8/8.
 - 2026-06-22 R20 (DIRECTOR REFILL cycle) DONE (`e0f0ffac`) - Section-7b competitor
   deep-dive lift of Aggregator N (docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md, F1-F7). F1
   SHIPPED IN-RUN: ARAM per-champion balance-adjustment grid panel. RC loads Riot's
