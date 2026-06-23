@@ -2101,6 +2101,82 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .history-formstrip .pip.w { background: var(--good-soft); color: var(--good); }
 .history-formstrip .pip.l { background: var(--bad-soft); color: var(--bad); }
 
+/* LIFT 4: client-side match filter toolbar (champion / mode selects +
+ * a single-select W/L result toggle + independent grade chips + a
+ * tabular count). Searches GLOBALLY across every match in the loaded
+ * scope and renders the subset into the match list. Tokens only - no
+ * raw hex. Interactive controls clear the 44px fingertip floor. */
+.history-filter-bar {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+.history-filter-select {
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border-soft); border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-sm); font-weight: 600;
+  letter-spacing: 0.02em; cursor: pointer;
+}
+.history-filter-select:hover { border-color: var(--accent); }
+.history-filter-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Result toggle group: one active at a time. Active state carries an
+ * outline + fill so W/L never reads by hue alone (the letter text is
+ * always present too). */
+.history-filter-result { display: inline-flex; gap: var(--space-1); }
+.history-filter-rbtn {
+  min-width: 44px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 var(--space-2);
+  background: var(--surface-2); color: var(--text-dim);
+  border: 1px solid var(--border-soft); border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-sm); font-weight: 800; letter-spacing: 0.04em;
+  cursor: pointer; transition: background 0.08s, border-color 0.08s, color 0.08s;
+}
+.history-filter-rbtn:hover { border-color: var(--accent); color: var(--text); }
+.history-filter-rbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.history-filter-rbtn.active {
+  color: var(--text); border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  outline: 1px solid var(--accent);
+}
+.history-filter-rbtn[data-result="win"].active {
+  color: var(--good); border-color: var(--good);
+  background: var(--good-soft); outline-color: var(--good);
+}
+.history-filter-rbtn[data-result="loss"].active {
+  color: var(--bad); border-color: var(--bad);
+  background: var(--bad-soft); outline-color: var(--bad);
+}
+
+/* Grade chips: multi-toggle, each independent. Active chip carries an
+ * accent fill + outline on top of the always-present letter. */
+.history-filter-grades { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.history-filter-grade {
+  min-width: 44px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--text-dim);
+  border: 1px solid var(--border-soft); border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-sm); font-weight: 900; letter-spacing: 0.04em;
+  cursor: pointer; transition: background 0.08s, border-color 0.08s, color 0.08s;
+}
+.history-filter-grade:hover { border-color: var(--accent); color: var(--text); }
+.history-filter-grade:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.history-filter-grade.active {
+  color: var(--accent); border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  outline: 1px solid var(--accent);
+}
+.history-filter-count {
+  margin-left: auto;
+  font-size: var(--fs-xs); font-weight: 700; color: var(--accent);
+  letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
+}
+
 /* No-data state inside the History lists takes the shared hextech sigil
  * (scoped to History; the global .home-empty is untouched). */
 .history-session-list .home-empty,
