@@ -3056,6 +3056,45 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       host.appendChild(row);
     }
   }
+  // R30: recent-form momentum verdict for the idle home headline - the
+  // DIRECTION read home was missing (the old fallback was a decorative
+  // "Ready when you are"). PRIMARY signal = the always-recorded last-20 W/L
+  // (newest-first results), graded vs the operator's own L20 baseline so it
+  // reads as momentum, not the aggregate the pip strip already shows. KDA
+  // trend is the fallback (recent rows sometimes lack K/A -> a degenerate
+  // 0.0); the greeting is the last resort when there is nothing to judge.
+  function _homeMomentumVerdict() {
+    const r = (((_HOME && _HOME.last20) || {}).results) || [];
+    if (r.length >= 5) {
+      const w = r.slice(0, 5).filter((x) => x === "W").length;
+      const wr = (_HOME.last20 || {}).win_rate;
+      const base = (wr != null) ? wr : 50;
+      const recentPct = w * 20;  // w of 5 -> percent
+      if (w >= 4 || recentPct >= base + 20)
+        return { text: `On a heater - ${w}W in your last 5`, dir: "up" };
+      if (w <= 1 || recentPct <= base - 20)
+        return { text: `Rough patch - ${w}W in your last 5`, dir: "down" };
+      return { text: `Holding steady - ${w}W in your last 5`, dir: "flat" };
+    }
+    const pts = (((_HOME && _HOME.trends) || {}).kda || [])
+      .map((p) => (p && p.value != null) ? p.value : null)
+      .filter((v) => v != null && v > 0);
+    if (pts.length >= 3) {
+      const latest = pts[pts.length - 1];
+      const baseK = pts.slice(0, -1).reduce((s, v) => s + v, 0)
+                    / (pts.length - 1);
+      const delta = latest - baseK;
+      if (delta >= 0.3)
+        return { text: `Form climbing - KDA up ${delta.toFixed(1)} over 14d`,
+                 dir: "up" };
+      if (delta <= -0.3)
+        return { text: `Form cooling - KDA down ${Math.abs(delta).toFixed(1)} `
+                       + "over 14d", dir: "down" };
+      return { text: `Form steady - KDA near ${latest.toFixed(1)}`,
+               dir: "flat" };
+    }
+    return { text: "Ready when you are", dir: "flat" };
+  }
   function _homeRenderToday(t, streaks) {
     // V1 redesign 2026-04-29: populate the hero banner instead of the
     // previous TODAY card grid. Greeting derives from local hour;
@@ -3100,8 +3139,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (headline) {
       headline.classList.remove("up", "down", "flat");
       if (games === 0) {
-        headline.textContent = "Ready when you are";
-        headline.classList.add("flat");
+        // R30: idle landing -> a recent-form momentum verdict (the DIRECTION
+        // read) instead of the decorative "Ready when you are" greeting.
+        const verdict = _homeMomentumVerdict();
+        headline.textContent = verdict.text;
+        headline.classList.add(verdict.dir);
       } else {
         const avgStr = avg != null ? avg.toFixed(2) : "-";
         headline.textContent = `${games} game${games===1?"":"s"} · ${avgStr} avg KDA`;
@@ -3114,8 +3156,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       }
     }
 
-    // Chips
-    set("home-hero-kda", t && t.total_kda ? t.total_kda : "-");
+    // Chips. R30: home-hero-kda is NO LONGER set from today's KDA here - it
+    // is painted from the 14-day KDA trend latest by _homeRenderTrends (which
+    // runs after this), so all three chips share ONE timeframe instead of the
+    // old mixed read (today "0/0/0" next to a 14d CS/GOLD). avg/grades/modes
+    // ids below are legacy no-ops kept for any external reader.
     set("home-hero-avg", avg != null ? avg.toFixed(2) : "-");
     const gradeStr = t && t.grades
       ? Object.entries(t.grades).map(([g,n]) => `${g}×${n}`).join(" ")
@@ -3242,6 +3287,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // s218 v7: cache streaks so _homeMirrorAlerts can read them
         // when populating Section 3 of Tonight's Pick.
         _HOME.streaks = data.streaks || {};
+        // R30: cache trends + last20 so the idle momentum headline
+        // (_homeRenderToday -> _homeMomentumVerdict) can read the recorded W/L
+        // recent-form (primary) and the 14-day KDA series (fallback). Set
+        // BEFORE _homeRenderToday runs below.
+        _HOME.trends = data.trends || {};
+        _HOME.last20 = data.last20 || {};
         _homeRenderRank(data.rank || null);
         _homeRenderWlStrip(data.last20 || null);
         _homeRenderToday(data.today || {}, data.streaks || {});
@@ -3269,13 +3320,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const points = trends[metric] || [];
       const svg = chip.querySelector(".home-hero-spark");
       if (!svg) continue;
-      // Set the chip's headline value to the latest non-null trend point
-      // (CS / GOLD only - KDA chip val stays driven by _homeRenderToday
-      // which uses today's KDA, more relevant than 14d-latest).
+      // R30: paint ALL three chip values from their latest non-null trend
+      // point so the chip row is one consistent timeframe (14-day latest day
+      // with data). Previously the KDA chip alone was driven by today's KDA
+      // (_homeRenderToday); on an idle day that read "0/0/0" next to a
+      // populated CS/GOLD - a mixed-timeframe row that looked broken.
       const latest = [...points].reverse().find(p => p && p.value != null);
-      if (latest != null && metric !== "kda") {
+      if (latest != null) {
         const valId = metric === "cs_per_min" ? "home-hero-cs"
-                    : metric === "gold_per_min" ? "home-hero-gold" : null;
+                    : metric === "gold_per_min" ? "home-hero-gold"
+                    : metric === "kda" ? "home-hero-kda" : null;
         if (valId) {
           const valEl = document.getElementById(valId);
           if (valEl) valEl.textContent = latest.value.toFixed(1);
@@ -3379,12 +3433,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       }
       // item 281: Good/Bad/Ugly tips wired from the this_week aggregate
       // (_home_pick_tips). Fall back to the "-" sentinel when absent.
-      const good = document.getElementById("home-pick-good");
-      const bad = document.getElementById("home-pick-bad");
-      const ugly = document.getElementById("home-pick-ugly");
-      if (good) good.textContent = (pick.tips && pick.tips.good) ? pick.tips.good : "-";
-      if (bad) bad.textContent = (pick.tips && pick.tips.bad) ? pick.tips.bad : "-";
-      if (ugly) ugly.textContent = (pick.tips && pick.tips.ugly) ? pick.tips.ugly : "-";
+      // R30: the backend returns "" for a tip it suppressed (small-sample
+      // Good/Bad over 1-2 games); hide that row entirely instead of showing a
+      // "-" placeholder, so Tonight's Pick never presents noise as a finding.
+      const setTip = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const has = !!(val && String(val).trim() && val !== "-");
+        const row = el.closest(".home-pick-tip-row");
+        if (row) row.hidden = !has;
+        el.textContent = has ? val : "-";
+      };
+      setTip("home-pick-good", pick.tips && pick.tips.good);
+      setTip("home-pick-bad", pick.tips && pick.tips.bad);
+      setTip("home-pick-ugly", pick.tips && pick.tips.ugly);
     } else {
       pickCard.hidden = true;
     }
@@ -3448,33 +3510,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // .has-data so CSS recolors the button when the count/label is
   // non-default. Badge tooltip carries the verbose text.
   function _homeMirrorAlerts() {
-    // s218 v7: populates Section 3 of Tonight's Pick - the Streak +
-    // Advisories sub-header rows. Was previously mirroring badge text
-    // into the (now-removed) advisory + digest pip-buttons. Streak
-    // reads from cached _HOME.streaks (from /api/home/summary);
-    // advisories read live from the footer #advisory-count span which
-    // is the canonical store the existing advisory system updates.
+    // R30: Section 3 of Tonight's Pick now carries ONLY the open-advisories
+    // count, and only when there is one. The play-streak row was removed (it
+    // duplicated the hero identity sub-line verbatim), and an empty
+    // "Advisories: None" row was pure noise - so the whole section hides at 0.
+    // Advisories read live from the footer #advisory-count span (the canonical
+    // store the advisory system updates).
     const advCount = document.getElementById("advisory-count");
+    const n = advCount ? (parseInt(advCount.textContent || "0", 10) || 0) : 0;
+    const sec3 = document.getElementById("home-pick-section-3");
+    if (sec3) sec3.hidden = (n === 0);
     const advValEl = document.getElementById("home-pick-advisories-val");
-    if (advValEl) {
-      const n = advCount ? (parseInt(advCount.textContent || "0", 10) || 0) : 0;
-      advValEl.textContent = n === 0 ? "None"
-                                     : `${n} open`;
-      advValEl.title = n === 0 ? "No open advisories"
-                               : `${n} open advisor${n === 1 ? "y" : "ies"}`;
-    }
-    const streakValEl = document.getElementById("home-pick-streak-val");
-    if (streakValEl) {
-      const s = _HOME.streaks || {};
-      const gg = s.good_grades || 0;
-      const pd = s.play_days || 0;
-      if (gg >= 2) {
-        streakValEl.textContent = `${gg}× S/A in a row`;
-      } else if (pd >= 2) {
-        streakValEl.textContent = `${pd}-day play streak`;
-      } else {
-        streakValEl.textContent = "-";
-      }
+    if (advValEl && n > 0) {
+      advValEl.textContent = `${n} open`;
+      advValEl.title = `${n} open advisor${n === 1 ? "y" : "ies"}`;
     }
   }
   function renderHomePanel(lcu) {
@@ -3566,6 +3615,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         else if (typeof applyView === "function") applyView(t);
       });
     });
+    // R30: the hero Find Match CTA opens the same Home queue picker the
+    // (hidden) action-row Find Match tile used - home's "immediate next
+    // action". Wired once via the _wiredV3 guard above.
+    const heroCta = document.getElementById("home-hero-cta");
+    if (heroCta) {
+      heroCta.addEventListener("click", (e) => {
+        e.stopPropagation();
+        _homeFindMatchPickerShow();
+      });
+    }
     // s218 v5: wire the Home-unique Find Match picker (item clicks +
     // backdrop close + Escape close). Backdrop is created lazily on
     // first show so the DOM stays clean when the picker isn't used.
