@@ -124,7 +124,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   line-height: 1.1;
 }
 .home-hero-sub {
-  font-size: var(--fs-sm); color: var(--text-faint);
+  font-size: var(--fs-sm); color: var(--text-dim);  /* legibility: faint -> dim */
   letter-spacing: 0.06em; text-transform: uppercase;
   margin-top: var(--space-1);
 }
@@ -514,7 +514,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-pick-tip-value {
   font-size: var(--fs-sm);
-  color: var(--text-faint);
+  color: var(--text-dim);  /* legibility: faint -> dim; coaching tip values */
   font-style: italic;
   overflow: hidden;
   text-overflow: ellipsis;
