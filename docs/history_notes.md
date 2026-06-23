@@ -109,6 +109,39 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-22 (UI redesign session) - full Hextech redesign of all 12 pages + overlay
+
+Operator: "redesign of all pages ... in + out of game ... use gemini + the ui/ux research +
+screen captures + mocks -> loop exhaustively." Gemini-directed (gemini-3-pro-preview via
+ops/loop/loop_controller.py). Living plan + per-page status + deferred lifts:
+docs/RC2_REDESIGN_PLAN.md. Ledger item 589. The 2026-06-21 "dashboard RETIRED" decision was
+REVERSED - dashboard is back in scope (overlay.css + docs/OVERLAY_DOCTRINE.md comments updated;
+do NOT re-apply the retirement).
+
+SHIPPED (17 commits, all pushed, CI green, final gate 228 snapshot+token tests):
+- Foundation ce3149fc: base.css/tokens.css palette -> Hextech; NEW web/css/hextech.css
+  (hx-card gold brackets / hx-chip / hx-bar / hx-empty sigil); fixed undefined --clock/--label.
+- Overlay: palette overlay-scope, eye-line default layout (operator chose #2 over left-column),
+  per-widget hide, S0 pulse flipped live, font tokens. Global page titles -> gold (f3ce6e40).
+- 12 pages reskinned onto the foundation + captured (tests/snapshot_panels/screenshots/<page>.png;
+  non-tested pages gained snapshot tests): champ-select d33f40a0, PGR a5db9691, home 2b250b60
+  (+ main.js #home repaint fix), lobby 8069d0b9 (+ 3 hit-target fixes), history 711fa3d7,
+  session 4e29ac49, user-builds 591ff515, build-insights 247e8dff, replay 8ac8e8ff (+ E12-1
+  100vh->flex), settings 5719f823; historical-pgr inherited. Each CSS-only/near-zero-JS,
+  scope-guarded, all data/LCU wiring preserved.
+
+NO sub-panel sweep needed (measured by grep, not assumed): content panels are token-consuming so
+the foundation cutover converted them; 0 undefined-var fallbacks remain; the only 7 raw hex left
+are intentional brand tints (bridge salmon, enemy-red, augment/rank tier colors).
+
+NEXT (new session - deferred FEATURE lifts, need backend data/render NOT CSS; per page in
+RC2_REDESIGN_PLAN.md): champ-select P2 counter-pick hero + P8 ally AD/AP meter; PGR
+score-decomposition bars + carry-metrics + @15; home rank/LP + tracked_win W/L color; history
+season WR + filters; lobby last-session recap + ready-check auto-accept. OWED: live in-game
+overlay capture (eye-line layout + S0 pulse) - no live game this run.
+
+---
+
 # 2026-06-22 (headless continue 22 / R20) - Aggregator N lift: ARAM balance grid panel
 
 Item 588, commit `e0f0ffac` (feature, pushed) + docs-sync. Tier-1 frontend (read-side route + panel +
