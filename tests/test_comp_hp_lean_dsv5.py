@@ -107,10 +107,41 @@ class SeamOnScalesByTankCount(unittest.TestCase):
         self.assertGreater(tanky.max_hp, squishy.max_hp)
 
     def test_no_comp_info_on_is_neutral(self) -> None:
-        # Seam ON but no enemy_champions -> no tank signal -> scale 1.0.
+        # Seam ON but NO enemy_champions -> "no data" is NOT "all squishy".
+        # Must stay the flat curve (1.0) so the champ-select / preview routes
+        # (routes_state ds-preview Path 3, ds-knobs, ds-relscore, ds-statcheck)
+        # that call compute_enemy_stats(mode, level) with no comp are
+        # byte-identical when the seam is flipped ON. Pre-fix this returned 0.90
+        # (tanky_count=0 -> 1 + 0.10*(0-1)), silently de-rating every no-comp
+        # preview by 10% and contradicting the _comp_hp_scale docstring.
         s = compute_enemy_stats("sr", level=11, comp_hp_lean=True)
         self.assertEqual(s.tanky_count, 0)
-        self.assertEqual(s.hp_scale, 0.9)  # 0 tanks still scales to the floor
+        self.assertEqual(s.hp_scale, 1.0)
+        self.assertEqual(s.max_hp, 2210.0)
+
+    def test_blank_only_comp_is_no_info(self) -> None:
+        # A comp of only blank/empty ids carries no signal -> treated as
+        # no-comp-info (1.0), never the all-squishy floor.
+        s = compute_enemy_stats("sr", level=11, enemy_champions=["", "  "],
+                                comp_hp_lean=True)
+        self.assertEqual(s.tanky_count, 0)
+        self.assertEqual(s.hp_scale, 1.0)
+        self.assertEqual(s.max_hp, 2210.0)
+
+    def test_known_squishy_still_discounts_vs_no_info_neutral(self) -> None:
+        # The distinction the no-info guard preserves: a REAL all-squishy comp
+        # (>=1 classifiable champ, 0 tanky) keeps the intended 0.90 discount,
+        # while no-comp-info stays neutral 1.0. Same tanky_count=0, different
+        # scale - "all squishy" is a judgement from real data, "no data" is not.
+        known = compute_enemy_stats("sr", level=11,
+                                    enemy_champions=_SQUISHY_COMP,
+                                    comp_hp_lean=True)
+        noinfo = compute_enemy_stats("sr", level=11, comp_hp_lean=True)
+        self.assertEqual(known.tanky_count, 0)
+        self.assertEqual(noinfo.tanky_count, 0)
+        self.assertEqual(known.hp_scale, 0.9)
+        self.assertEqual(noinfo.hp_scale, 1.0)
+        self.assertLess(known.max_hp, noinfo.max_hp)
 
     def test_scale_clamped_to_ceiling(self) -> None:
         # A 5-tank comp: 1 + 0.10*4 = 1.40 -> clamped to HI (1.30).
@@ -140,6 +171,19 @@ class EnvGateTurnsSeamOn(unittest.TestCase):
         os.environ["RC_COMP_HP_LEAN"] = "0"
         s = compute_enemy_stats("sr", level=11, enemy_champions=_TANK_COMP)
         self.assertEqual(s.hp_scale, 1.0)
+
+    def test_env_on_no_comp_is_byte_identical(self) -> None:
+        # The live flip mechanism is the env var. With it ON but no comp (the
+        # champ-select / preview route shape), max_hp must be byte-identical to
+        # the OFF flat curve - the no-info guard's whole purpose. This is the
+        # safety contract that lets the operator flip RC_COMP_HP_LEAN=1 without
+        # silently shifting every preview ranking.
+        os.environ["RC_COMP_HP_LEAN"] = "1"
+        on = compute_enemy_stats("sr", level=11)
+        os.environ["RC_COMP_HP_LEAN"] = "0"
+        off = compute_enemy_stats("sr", level=11)
+        self.assertEqual(on.max_hp, off.max_hp)
+        self.assertEqual(on.hp_scale, 1.0)
 
 
 class DoTValuationTiltsWithCompHp(unittest.TestCase):

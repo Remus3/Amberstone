@@ -156,13 +156,27 @@ def _comp_hp_scale(
     """Return ``(hp_scale, tanky_count)`` for the comp-conditioned seam.
 
     ``comp_hp_lean`` overrides the env gate when not None (tests pass it
-    explicitly). OFF or no comp info -> ``(1.0, tanky_count)`` so max_hp is
-    byte-identical to the flat curve.
+    explicitly). OFF -> ``(1.0, tanky_count)`` so max_hp is byte-identical to
+    the flat curve.
+
+    NO-COMP-INFO GUARD: an absent / empty / all-blank ``enemy_champions`` is
+    "no data", which is NOT the same as "an all-squishy comp". A known
+    all-squishy comp (>=1 classifiable champ, 0 tanks) earns the intended 0.90
+    discount, but a no-info call must stay neutral (1.0). Without this guard the
+    seam computed ``1 + STEP*(0 - 1) = 0.90`` whenever it ran with no comp, so
+    flipping ``RC_COMP_HP_LEAN`` ON would silently de-rate every champ-select /
+    preview route (routes_state ds-preview Path 3, ds-knobs, ds-relscore,
+    ds-statcheck all call ``compute_enemy_stats(mode, level)`` with no comp) by
+    10%. Keeping no-info at the flat curve is the safety contract that lets the
+    operator flip the seam ON without shifting any comp-blind ranking.
     """
     on = comp_hp_lean if comp_hp_lean is not None else _env_comp_hp_lean()
     tanky_count = _count_tanky(enemy_champions)
     if not on:
         return 1.0, tanky_count
+    if not any((c or "").strip() for c in (enemy_champions or [])):
+        # No classifiable comp -> neutral flat curve, never a blind discount.
+        return 1.0, 0
     scale = 1.0 + _COMP_HP_STEP * (tanky_count - 1)
     scale = max(_COMP_HP_SCALE_LO, min(_COMP_HP_SCALE_HI, scale))
     return round(scale, 4), tanky_count

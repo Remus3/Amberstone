@@ -281,6 +281,25 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-22 DSV5 no-comp-info guard (ledger 593, `coach_integration/enemy_stats.py`) - a
+  PREREQUISITE-to-flip SAFETY FIX, not a new seam. Verify-the-premise against the live SR comp
+  (Jinx vs Lucian/Sion/Wukong/Pantheon/Soraka, tanky_count 3) exposed that `_comp_hp_scale`
+  applied a blind **0.90** max_hp discount whenever `RC_COMP_HP_LEAN` was ON with NO
+  `enemy_champions` (`1 + 0.10*(0 - 1)`), conflating "no comp data" with "all-squishy comp" and
+  contradicting its own docstring. The champ-select / preview routes (`routes_state` ds-preview
+  Path 3, `routes_ds_knobs`, `routes_ds_relscore`, `routes_ds_statcheck`) ALL call
+  `compute_enemy_stats(mode, level)` with no comp, so a global default-ON flip would have silently
+  de-rated every preview ranking by 10%. FIX: `_comp_hp_scale` now short-circuits to `(1.0, 0)`
+  when there is no classifiable comp (None / `[]` / all-blank), so no-info is byte-identical to the
+  flat curve when ON; a REAL all-squishy comp (>=1 classifiable champ, 0 tanky) still earns the
+  intended 0.90 discount, and a tank comp still earns the uplift. This RESOLVES the preview-route
+  safety blocker on the RC_COMP_HP_LEAN default-ON flip below. Tier-1 (NO ENGINE bump / Share sync /
+  DS :8893 restart - coach-integration heuristic). RED-first +4 tests (the bug-shaped
+  `test_no_comp_info_on_is_neutral` assertion corrected to 1.0 to match its own name + the docstring,
+  plus blank-comp, no-info-vs-known-squishy contrast, and an env-ON-no-comp byte-identical guard);
+  43/43 enemy-stats tests green. The default-ON FLIP itself stays operator-gated (gemini ruling:
+  hold for a separate operator-run) - see the DSV5 entry below.
+
 - 2026-06-22 DSV5 comp-conditioned enemy max-HP seam (ledger 592, `coach_integration/enemy_stats.py`).
   DEFAULT-OFF env gate **`RC_COMP_HP_LEAN`** (set `=1` in the RC runtime env; the read is per-call so no
   restart is needed - it is a coach-integration heuristic, NOT a DS `:8893` engine flip, so do NOT restart
