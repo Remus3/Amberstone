@@ -75,6 +75,7 @@ def _gather_get() -> list:
                                routes_ds_sweep,
                                routes_ds_relscore, routes_ds_statcheck,
                                routes_aram_balance,
+                               routes_auto_accept,
                                routes_damage_mix, routes_draft_elo,
                                routes_duo_synergy,
                                routes_health_peer,
@@ -127,6 +128,7 @@ def _gather_get() -> list:
                       + list(routes_ds_relscore.GET_ROUTES)
                       + list(routes_ds_statcheck.GET_ROUTES)
                       + list(routes_aram_balance.GET_ROUTES)
+                      + list(routes_auto_accept.GET_ROUTES)
                       + list(routes_damage_mix.GET_ROUTES)
                       + list(routes_draft_elo.GET_ROUTES)
                       + list(routes_duo_synergy.GET_ROUTES)
@@ -174,6 +176,7 @@ def _gather_post() -> list:
                                routes_diag, routes_coach, routes_bridge,
                                routes_bridge_pending, routes_bridge_cadence,
                                routes_bridge_pending_actions,
+                               routes_auto_accept,
                                routes_coach_choice,
                                routes_health_peer,
                                routes_loadout, routes_loop_control,
@@ -191,6 +194,7 @@ def _gather_post() -> list:
                        + list(routes_bridge_pending.POST_ROUTES)
                        + list(routes_bridge_cadence.POST_ROUTES)
                        + list(routes_bridge_pending_actions.POST_ROUTES)
+                       + list(routes_auto_accept.POST_ROUTES)
                        + list(routes_coach_choice.POST_ROUTES)
                        + list(routes_health_peer.POST_ROUTES)
                        + list(routes_loadout.POST_ROUTES)

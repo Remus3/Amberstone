@@ -5623,6 +5623,18 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         }
       }, () => { _LV.autoAcceptInflight = false; });
     } catch (_) { _LV.autoAcceptInflight = false; }
+    // Also gate the frozen in-process auto-accept loop (core.auto_accept_pref,
+    // read by lcu_client _auto_accept_tick) so this single "Auto Accept"
+    // toggle controls BOTH mechanisms - the LCU-agent set_config above AND
+    // the in-process force-accept. Fail-soft, fire-and-forget; a failure here
+    // never disturbs the set_config path or the inflight guard.
+    try {
+      fetch("/api/lcu/auto-accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: nextOn }),
+      }).catch(() => {});
+    } catch (_) {}
   }
   // Settings-page Auto Accept checkbox listener. Wired from the
   // settings-view show hook (guaranteed to run when the operator opens
