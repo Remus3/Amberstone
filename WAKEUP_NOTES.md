@@ -4,6 +4,47 @@
 
 ---
 
+# 2026-06-22 (UI feature-lift tail) - render the backend data the mocks show
+
+Follow-on to the item-589 Hextech reskin: render data the greenlit mocks show but the DOM did
+not yet (BACKEND-GATED, not pure CSS). Ledger item 590. gemini-directed; plan + rulings in
+docs/RC2_REDESIGN_PLAN.md (Feature-lift tail). 6 commits pushed; cross-lift regression 236/236
+snapshot+backend tests green. Tier-1 frontend + 2 thin read routes + 1 minimal frozen edit; NO
+engine / DS / Share / ENGINE_VERSION change.
+
+SHIPPED (each: gemini spec -> build agent -> orchestrator FRESH re-verify (diff + tests + hex/ASCII
++ test-body read) -> commit + push + restart/live-curl for routes):
+- 1a counter-pick HERO card `4d0172b6` (counters[0] dominant + compact [1..4]; backend was already
+  wired RC2 E4 - prominence elevation only).
+- 1b ally AD/AP meter `66375d63` - NEW GET /api/champ-select/team-damage-mix (info.attack vs
+  info.magic tally) -> dual-color bar; live 58/42.
+- 3 home last-20 W/L strip + WR `c3bf040d` - shared _compute_last20() extracted from _build_history
+  (byte-identical, 7/7 regression), last20 injected into /api/home/summary; live 7-13 35.0%.
+- 2a PGR decomposition 5-bar `a461980b` - last_match.js consumes the rubric components+weights_used
+  (saturation = comp/(2*weight)); route already returned them. 2b carry metrics ALREADY shipped
+  (s219 _setStatsGrid) - not rebuilt. 2c @15 DROPPED (no backing data, gemini ruling).
+- 4 history season WR + filters `c0ce9faf` - retired the "needs Riot key" stub; global client-side
+  champion/mode/result/grade filters. CAUGHT+FIXED an agent unit-bug: win_rate is a PERCENT live
+  (51.6) but the agent rendered it *100 -> "5160%" and shaped the ui_mock fixture to the bug;
+  corrected JS + fixture (lesson: live-curl the unit before trusting a fixture-passing test).
+- 5 ready-check toggle `8e972a14` - NEW non-frozen core/auto_accept_pref.py + GET/POST
+  /api/lcu/auto-accept; operator-AUTHORIZED minimal frozen lcu_client.py gate (_auto_accept_tick
+  wraps accept_queue in `if is_enabled()`, default ON = byte-identical). The in-process force-accept
+  loop is a SEPARATE mechanism from the existing #lv-auto-accept (which set_configs the RC-LCUAgent
+  via :8889); UNIFIED into the existing toggle (one control gates both) instead of a 2nd switch.
+  Live GET/POST round-trip + 400 proven; pref left ON.
+
+CONFIRM-PER-ITEM caught 2 "already done" (2b carry, 1a/3 base) + the lift-4 unit bug - the
+"verify the data per item, never scaffold on the research claim" directive paid off repeatedly.
+
+OWED (carry-forward, unchanged from item 589): live in-game overlay capture (eye-line layout +
+S0 pulse) - mode=client all session, no live game to capture.
+
+NEXT: feature-lift tail is EXHAUSTED. Remaining RC2 work = the OWED overlay capture (needs a live
+game) + any new research/DS sweeps per ROADMAP/BACKLOG.
+
+---
+
 # 2026-06-22 (UI redesign session) - full Hextech redesign of all 12 pages + overlay
 
 Operator: "redesign of all pages ... in + out of game ... use gemini + the ui/ux research +
