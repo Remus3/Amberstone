@@ -4,6 +4,42 @@
 
 ---
 
+# 2026-06-23 (R27 DIRECTOR REFILL) - render-gate sweep CLEAN (bug isolated) + ctx-panel dedup desync fix
+
+The R26 follow-on. Re-probed: mode=client, NO live game (League client in lobby; rc-shell overlay
+CLIENT state PID 9736) - so live-gated work was UN-validatable this cycle. Interviewed the gemini
+director (gemini-3-pro-preview, loop_controller.gemini()); fed live state + the candidate menu, it
+picked the headless-buildable LEAD (broader SHIPPED-PANEL render-gate audit). Scratch interview
+script deleted. Ground-truth fix to its scope: dashboard.js is dead code (Settled), live controller
+is main.js; no overlay.js exists.
+
+THE AUDIT (3 parallel read-only agents, ~56 panels, disjoint slices; 4 failure modes: [hidden]-attr-
+vs-style.display / positional-vs-id index / stale gate accessor / unwired renderer). VERDICT = NEGATIVE:
+the ds_statcheck dead-panel bug is ISOLATED - no other panel is dead. Independently re-verified the
+lone genuine [hidden]+style.display overlap MYSELF (#am-spike-markers, index.html:2126 + active_match.js
+:1062/1067): NOT dead - spike_markers.js:147 sets .hidden=false on the content path -> removes the attr.
+
+THE REAL FIND + FIX (came out of tracing #am-spike-markers): a SYSTEMIC latent idempotency edge in the
+3 ctx-driven active-match panels (spike_markers/spike_curve/draft_elo). Each dedups render by content
+SIGNATURE; the outer active_match.js _render*FromCtx HIDE paths clobber mount.innerHTML="" behind the
+renderer (e.g. active_match.js:1062-1063), desyncing the stamped sig from the now-empty DOM. After a
+transient liveclient dropout (champ briefly absent) + a re-show with IDENTICAL data, the sig-dedup
+early-returns and the cleared innerHTML never repaints -> a VISIBLE-BUT-EMPTY panel on the in-game
+overlay until the next level/item change. Fix (1 line each): the dedup guard also requires innerHTML
+!=="" before short-circuiting -> an externally-emptied mount always repaints; zero rendered-output
+delta in normal operation. RED-first tests/snapshot_panels/test_render_dedup_reshow.py 4/4 (RED first:
+reshowLen==0 x3). 128 panel/surface tests green; ruff clean; hygiene 13/13; 0 non-ASCII. Tier-1 frontend
+(no engine/DS/Share/ENGINE_VERSION; no DS restart; no 5-phase audit - zero visual delta). Commit
+29c48b21 -> rebased bf2ff10d (concurrent weekly-health push), pushed.
+
+NEXT: render-gate sweep DONE - do NOT re-run (bug isolated to the already-fixed ds_statcheck). Carry-
+forward OWED, both need a live game / operator action (neither headless-buildable): E.1 ACTIVE knob
+round-trip (operator-PHYSICAL only); RC_COMP_HP_LEAN default-ON flip (operator-gated). Don't-redo:
+shadow-aggregator lane DRAINED (595/596/597); overlay-polish DRAINED (591); DS scorer-valuation CLOSED
+(592); candidate (c) operator-physical-blocked.
+
+---
+
 # 2026-06-23 (R26 DIRECTOR REFILL) - VERIFY-THE-PREMISE refuted (c); UI-audit pivot found a DEAD panel
 
 Re-probed: live SR game UP (Syndra AP mage vs Braum/Gragas/Master Yi) + the rc-shell overlay running
@@ -73,33 +109,3 @@ physical hotkey over League - synthesized presses leak to the game). Carry-forwa
 RC_COMP_HP_LEAN default-ON flip (eyeball-validated R24/R25; needs the in-code gate-drop in
 coach_integration/enemy_stats.py OR approval for the FROZEN supervisor env). Next unit = another
 gemini-directed NON-DS-scorer refill.
-
----
-
-# 2026-06-23 (R24 DIRECTOR REFILL same-lane) - macro_response_shadow register aggregator + RC_COMP_HP_LEAN eyeball
-
-Continued R23's lane (the last un-aggregated shadow log). Two slices shipped; a live SR game
-was up (AP Seraphine vs a 3-tank comp), so the directive-unlocked live-gated eyeball ran too.
-
-SLICE 1 (primary): tools/macro_response_shadow_report.py + 23 hermetic tests (commit 0949fde5).
-NOT an objective-category copy. VERIFY-THE-PREMISE (live census): the det side is a single
-macro_stagnation tag with 3 lead-keyed generic stall nudges, so an objective-category match
-false-scores ~0.5%. Re-derived an ACTION-REGISTER metric: each side ACTIVE-PUSH (rotate/group/
-setup/take/push/force...) vs PASSIVE-SCALE (farm/scale/safe/hold/defend...) by earliest WHOLE-
-TOKEN (load-bearing: defend contains end, 536 rows); NO skip de-leak (measured 0.556%, below the
-floor). NEW by_lead_state_register block is the real signal since det is constant per lead: live
-ahead 0.935 / even 0.907 / BEHIND 0.000 (det PASSIVE "keep scaling/safe" vs Haiku ACTIVE "rotate
-baron/force end" x407) = the do-not-flip finding. Headline 89% clears the 0.70 floor but the hint
-redirects to the per-lead block. HOLD. Tier-1 (Share sync skipped); verifier-CONFIRM; 0 non-ASCII.
-
-SLICE 2 (live-gated OWED, directive-unlocked): the RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball
-(OWED since ledger 592) cleared - me=Seraphine vs Braum/ChoGath/Gragas (3 tanks). hp_scale 1.20x,
-max_hp 2980->3576. Ranker OFF-vs-ON (headless, no live-process touch): Seraphine routes to HPS/
-enchanter (seam NO-OP); pure mages boost ONLY Liandry's (+6.5 dps/+17%, proportional), flat items
-byte-identical = SANER NOT DIFFERENT, do-not-flip-blind SATISFIED. Visible top-6 impact narrow
-(Liandry's already rank-1). Recorded in docs/LIVE_GAME_GATED_SYNC.md. FLIP stays operator-gated
-(supervisor env frozen; global default change is deliberate).
-
-NEXT: shadow-aggregator lane now DRAINED (det_coach 595 / objective_playbook 596 / macro_response
-597). Carry-forward OWED: live overlay eye-line + S0-pulse capture (needs the rc-shell Electron
-overlay running over League - not confirmable this headless session). DS scorer-valuation CLOSED.
