@@ -130,7 +130,11 @@ export function renderSpikeMarkers(blockEl, payload) {
   if (!blockEl) return;
   const sigKey = blockEl.id || "_spm_default";
   const sig = _signature(payload);
-  if (_SPM_SIG[sigKey] === sig) return;
+  // Dedup, but only if the DOM still reflects the stamped sig. The outer
+  // active_match.js hide path clears mount.innerHTML behind our back (the
+  // sig stays stamped), so a re-show with identical data must still repaint
+  // an externally-emptied mount instead of early-returning into a blank strip.
+  if (_SPM_SIG[sigKey] === sig && blockEl.innerHTML !== "") return;
   _SPM_SIG[sigKey] = sig;
 
   if (!payload || !payload.ok) {
