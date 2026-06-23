@@ -788,6 +788,74 @@ def test_overlay_pulse_suppressed_when_toggle_off(mock_server, pw_browser):
     assert not errors, f"JS errors [pulse off]: {errors[:3]}"
 
 
+def test_overlay_s0_pulse_rations_sustained_choices_via_producer(mock_server, pw_browser):
+    """RC2 P3.3 producer-side rationing, validated live 2026-06-23 (item 598).
+
+    The node chain tests (test_overlay_priority_rc2 / test_overlay_pulse_flip_rc2)
+    drive signalFromState -> selectPrimary -> shouldPulse in isolation, and the
+    DOM consumer tests above MANUALLY set #right-now[data-s0-pulse]. NEITHER
+    exercises the right_now.js PRODUCER render that stamps the attribute in a live
+    browser DOM. This pins that path: call the shipped renderRightNow producer
+    directly (same ES-module singleton main.js uses) and read the stamp back.
+
+    Reproduces the live read off a real SR game (Syndra vs Braum/Gragas):
+    a SUSTAINED one-shot-urgent CHOICES cue stamps s0Cue="choices" s0Tier="urgent"
+    s0Pulse="0" (no re-fire) - while its FRESH cross arms once (pulse="1"). That
+    arm-then-ration cross is the section-5 motion-rationing the overlay relies on
+    to avoid alarm fatigue."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        page.goto(mock_server.url + "/?ui_mock=1&mode=sr&overlay=1",
+                  wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_function(
+            "document.querySelector('#am-sub') && "
+            "document.querySelector('#am-sub').textContent.indexOf('InProgress') >= 0",
+            timeout=10_000,
+        )
+        # Drive the REAL producer three times: (1) a non-choices action forces
+        # _s0PrevCue off "choices"; (2) choices appear -> fresh one-shot-urgent
+        # cross ARMS the pulse; (3) the same choices SUSTAIN -> rationed, no
+        # re-fire. We read #right-now[data-s0-pulse] each time - the stamp the
+        # production render writes (right_now.js:503-506), not a manual set.
+        result = page.evaluate(
+            "async () => {"
+            "  const m = await import('/js/panels/right_now.js');"
+            "  const rn = document.getElementById('right-now');"
+            "  const read = () => ({cue: rn.dataset.s0Cue, tier: rn.dataset.s0Tier,"
+            "                       pulse: rn.dataset.s0Pulse});"
+            "  m.renderRightNow({action: 'Farm safe under tower'});"
+            "  const a = read();"
+            "  m.renderRightNow({action: 'Hold and poke at range', choices: [1]});"
+            "  const b = read();"
+            "  m.renderRightNow({action: 'Hold and poke at range', choices: [1]});"
+            "  const c = read();"
+            "  return {a, b, c};"
+            "}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    # (2) the FRESH choices cross arms the one-shot urgent pulse exactly once.
+    assert result["b"] == {"cue": "choices", "tier": "urgent", "pulse": "1"}, (
+        f"fresh choices cross must arm the pulse: {result}"
+    )
+    # (3) the live-validated read: a SUSTAINED choices cue stamps pulse=0 (the
+    # producer rations a held cue, killing alarm fatigue).
+    assert result["c"] == {"cue": "choices", "tier": "urgent", "pulse": "0"}, (
+        f"sustained choices cue must NOT re-pulse: {result}"
+    )
+    assert not errors, f"JS errors [s0 producer]: {errors[:3]}"
+
+
 def test_no_overlay_param_keeps_normal_shell(mock_server, pw_browser):
     """Control: the C2 drive path without overlay=1 must not pick up the
     overlay shell - header stays visible, no data-shell attribute."""

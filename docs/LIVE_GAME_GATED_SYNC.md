@@ -267,8 +267,15 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## E. Electron overlay (rc-shell, in a real match)
 
-- [ ] In-game transparent overlay capture WITH ACTIVE knob interaction (Alt+Shift+A; re-rank live).
-      Shell relaunch picks up slices 1-4 (ROADMAP item 214; phases 1-5 code DONE).
+- [x] In-game transparent overlay CAPTURE - DONE 2026-06-23 (item 598). Live SR game (Syndra AP
+      mage vs a Braum/Gragas tank+CC comp); the rc-shell Electron overlay (PID 9736) ran over League.
+      Playwright on the LIVE `https://legion-rc:8888/?overlay=1` read the real coach state + a Legion
+      desktop screenshot showed the overlay compositing transparently over the game (see the live-flip
+      ledger entry below for the exact DOM reads). The capture validated render + compositing.
+- [ ] STILL OWED: the ACTIVE knob interaction (Alt+Shift+A; re-rank live) round-trip - needs a
+      physical hotkey over League (synthesized presses leak to the game; memory
+      [[reference_overlay_live_verify_technique]]). Shell relaunch picks up slices 1-4
+      (ROADMAP item 214; phases 1-5 code DONE).
 - [ ] Operator packaging: `npx electron-builder` + first GitHub Release + packaged update check (private repo GH_TOKEN).
 
 ## F. Post-game (any completed match)
@@ -280,6 +287,27 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 ---
 
 ## Live-flip ledger (loop appends; newest first)
+
+- 2026-06-23 (item 598, R25) IN-GAME OVERLAY CAPTURE - E.1 cleared (validation + 1 durable test,
+  NO live flip). Live SR game (champ Syndra AP mage vs a Braum/Gragas tank+CC comp); the rc-shell
+  Electron overlay (PID 9736, title "RC . Syndra") ran over League. Playwright on the LIVE
+  `https://legion-rc:8888/?overlay=1` (not a fixture, not 127.0.0.1 - the legion-rc origin so wss://
+  is real), read off the REAL coach state: `body[data-shell]="overlay"`; `#right-now` `s0Cue="choices"`
+  `s0Tier="urgent"` `s0Pulse="0"` (a SUSTAINED one-shot-urgent CHOICES cue did NOT arm a pulse ->
+  producer-side motion rationing verified live, no over-fire); the CALL action row
+  `data-call-band="fight"`, border-left-color rgb(200,170,110) gold 3px, verb color rgb(236,242,255)
+  white, glyph U+25BA (item 591 band channel, live-faithful); eye-line widgets rn-lead / rn-choices
+  (showed "A / Trade now / Braum lvl 18 / Alt+1") / rn-callouts (WARD UP green pill) / am-ward-cue /
+  am-mmrect present+positioned, am-spike-cue + am-pane-ovds fight-model correctly hidden in the coach
+  panelset, primary CALL font-size 22px. Only console error: favicon.ico 404 (benign). A Legion desktop
+  screenshot caught the REAL Electron overlay compositing transparently over the live Rift (CALL
+  "SETUP DRAKE FIGHT" gold bar + WARD UP + minimap-rect box float over the game with no opaque backing).
+  DURABLE: new `tests/snapshot_panels/test_overlay_view.py::test_overlay_s0_pulse_rations_sustained_choices_via_producer`
+  pins the DOM-PRODUCER s0-pulse path (the node PulseDecisionChainTests never import right_now.js; the
+  manual-stamp consumer tests set the attribute by hand - neither exercised the live producer render).
+  Screenshot is local-only (`tests/snapshot_panels/screenshots/` gitignored), NOT committed. STILL OWED:
+  the ACTIVE knob-interaction (Alt+Shift+A re-rank) round-trip - the capture validated render+compositing,
+  not a live knob press.
 
 - 2026-06-23 RC_COMP_HP_LEAN (DSV5) LIVE EYEBALL DONE (R24; validation only, NO code change).
   The OWED AP-mage-vs-2+-tank eyeball (ledger 592) cleared on a real live SR game: me=Seraphine
