@@ -142,6 +142,42 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-23 (R26 DIRECTOR REFILL) - VERIFY-THE-PREMISE refuted (c); UI-audit pivot found a DEAD panel
+
+Re-probed: live SR game UP (Syndra AP mage vs Braum/Gragas/Master Yi) + the rc-shell overlay running
+(PID 9736). Interviewed the gemini director (gemini-3-pro-preview, loop_controller.gemini()); fed the
+live state, it decisively picked candidate (c) - the OWED E.1 "Alt+Shift+A live re-rank" knob round-trip
+- to spend the perishable window. A Plan subagent + ground-truth file:line check REFUTED it for a
+headless session: Alt+Shift+A (rc-shell/src/main.js:1058) is a click-through ACTIVE TOGGLE, not a
+re-rank; the non-hotkey IPC twin (set-active -> setOverlayActive) already exists + is unit-tested but is
+unreachable headless (rc-shell = plain `electron .`, no debug port; window.rcShell is preload-only,
+absent in a :8888 browser). So (c) needs the operator's PHYSICAL press - NOT a headless build (recorded
+in LIVE_GAME_GATED_SYNC.md E.1).
+
+Faithful to the director's INTENT (spend the live window) but respecting ground truth, pivoted to (b): a
+live-populated un-audited UI surface audit. Target = ds_statcheck (champ-select Stat Sandbox). THE FIND:
+the panel had NEVER rendered since it shipped - renderDsStatcheck indexed resolveChampNames (a POSITIONAL
+slug array) by numeric champId (names[222] = always undefined -> early return), and showed via
+style.display while the mount (index.html:1219) carries the [hidden] attribute. That is exactly why it
+carried a permanently-OWED visual capture: nobody ever saw it render. Root-cause fix mirrors the 5
+siblings (names[0] + blockEl.hidden = true/false); a 6-caller sweep proved the bug ISOLATED.
+
+5-phase fixture audit shipped WITH the fix (panel never seen before): HIT-TARGETS - the 4 editable inputs
+were ~21px tall, added min-height var(--hit-min) 42px + spec padding/radius; TYPOGRAPHY - 7 label/metadata
+--fs-2xs(13px) -> --fs-xs(16px), title -> --fs-sm(18px), bringing it to the sibling DS-panel cluster
+baseline (ds_knobs/ds_profile/ds_relscore/cc_pairing carry zero --fs-2xs). New RED-first Playwright guard
+(test_ds_statcheck_view.py, mirrors test_ds_relscore_view) 2/2 + existing ds_statcheck coverage 35/35
+green; verifier-gated SHIP; 0 non-ASCII. Commit e37838b4, pushed. Tier-1 (hook SKIPPED Share sync).
+Screenshot local-only (gitignored).
+
+NEXT: open follow-on = a broader SHIPPED-PANEL render-gate audit (ds_statcheck was dead for months
+undetected; this sweep only covered resolveChampNames callers). Carry-forward OWED: E.1 ACTIVE knob
+(operator-physical only); RC_COMP_HP_LEAN default-ON flip (operator-gated). Don't-redo: shadow-aggregator
+lane DRAINED (595/596/597); overlay-polish DRAINED (591); DS scorer-valuation CLOSED (592); candidate (c)
+operator-physical-blocked.
+
+---
+
 # 2026-06-23 (R25 DIRECTOR REFILL) - live in-game overlay capture (E.1 cleared) + DOM-producer S0-pulse test
 
 Re-probed live state and found the perishable resource the prior cycles lacked: a live SR game UP
