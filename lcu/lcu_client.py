@@ -133,8 +133,15 @@ class LcuClient(_PGMixin):
                 ps = state.get("playerResponse", "")
                 not_responded = ps in ("None", None, "")
                 if state.get("state") == "InProgress" and not_responded:
-                    self.accept_queue()
-                    _log.info("Queue auto-accepted!")
+                    # LIFT 5: honor the dashboard auto-accept toggle. NON-frozen
+                    # pref module, default ON, so this is byte-identical to the
+                    # historical always-accept behavior until the operator turns
+                    # it off via POST /api/lcu/auto-accept. Lazy import keeps the
+                    # frozen top-level import block untouched.
+                    from core.auto_accept_pref import is_enabled as _aa_enabled
+                    if _aa_enabled():
+                        self.accept_queue()
+                        _log.info("Queue auto-accepted!")
             self._maybe_apply_runes()
 
     def _auto_accept_loop(self, interval):
