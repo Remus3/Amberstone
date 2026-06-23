@@ -4,6 +4,38 @@
 
 ---
 
+# 2026-06-23 (R28 DIRECTOR REFILL) - un-audited UI surface 5-phase audit: spike_markers grid sweep
+
+Re-probed: mode=client, NO live game (LCU EndOfGame, /api/state liveclient EMPTY, League in lobby) - so
+the 2 OWED live-gated items (E.1 physical knob; RC_COMP_HP_LEAN flip) were UN-buildable this cycle.
+Interviewed the gemini director (gemini-3-pro-preview, loop_controller.gemini(); scratch script deleted);
+fed live state + the candidate menu, it picked (b) un-audited UI 5-phase audit over the heavily-mined (a)
+competitor-lift lane (7 prior COMPETITOR_LIFT docs). It NAMED carry_share/ds_antitank panels - both
+HALLUCINATED (do not exist); intent valid, specifics not (audit-proposals-are-intent).
+
+GROUND TRUTH: --fs-2xs is fully swept from web/ (ds_statcheck was the last, R26); remaining UI debt =
+hardcoded off-grid px. A Plan subagent surveyed un-audited + headless-RENDERABLE panels and picked
+spike_markers (the Power Spikes strip, #am-spike-markers in the active-match BUILD pane): shipped
+2026-05-30 alongside tokens.css yet hardcoded off-grid spacing (6px gaps, 3px 2px paddings) + raw 4px
+card+cell radii - the ds_statcheck class, ZERO item-184 exception annotations. Its 4 BUILD-pane siblings
+(cd_ledger/draft_elo/spike_curve/ward_heat) were correctly REJECTED: all carry item-184 operator-exception
+annotations (settled audit, do NOT re-litigate). Overlay-gated cues rejected on the reachability gate.
+
+THE FIX (web/css/panels/spike_markers.css, CSS token swap, presentation-only): off-grid 6px/3px/2px
+spacing -> --space-1/--space-2 8px grid; 4px radii -> --panel-radius-sm (10px). Typography already on
+--fs-* (untouched); 1px intra-cell hairline kept (commented). NEW tests/snapshot_panels/
+test_spike_markers_view.py: RED-first (computed radius==10px / head gap==8px; RED at 4px/6px) + structure
++ ASCII + screenshot. Commit 1ae7dc52, pushed. Tier-1 frontend (no engine/DS/Share/ENGINE_VERSION).
+verifier CONFIRM; 219 snapshot+DOM tests green; ruff clean; 0 non-ASCII.
+
+NEXT: the un-audited UI-surface audit lane has more candidates (DS sandbox ds_combo/ds_matchup/ds_sweep,
+cc_blended_ehp_threat, cc_conditional_pressure - VERIFY the reachable render path first). Carry-forward
+OWED (live-gated, not headless): E.1 ACTIVE knob (operator-PHYSICAL); RC_COMP_HP_LEAN flip (operator-gated).
+Don't-redo: render-gate sweep COMPLETE; competitor-lift lane heavily mined (7 docs); shadow-aggregator
+DRAINED (595/596/597); overlay-polish DRAINED (591); DS scorer-valuation CLOSED (592).
+
+---
+
 # 2026-06-23 (R27 DIRECTOR REFILL) - render-gate sweep CLEAN (bug isolated) + ctx-panel dedup desync fix
 
 The R26 follow-on. Re-probed: mode=client, NO live game (League client in lobby; rc-shell overlay
@@ -73,39 +105,3 @@ undetected; this sweep only covered resolveChampNames callers). Carry-forward OW
 (operator-physical only); RC_COMP_HP_LEAN default-ON flip (operator-gated). Don't-redo: shadow-aggregator
 lane DRAINED (595/596/597); overlay-polish DRAINED (591); DS scorer-valuation CLOSED (592); candidate (c)
 operator-physical-blocked.
-
----
-
-# 2026-06-23 (R25 DIRECTOR REFILL) - live in-game overlay capture (E.1 cleared) + DOM-producer S0-pulse test
-
-Re-probed live state and found the perishable resource the prior cycles lacked: a live SR game UP
-(Syndra AP mage vs a Braum/Gragas tank+CC comp) AND the rc-shell Electron overlay RUNNING over League
-(electron PID 9736, title "RC . Syndra") - the precondition that was UN-confirmable headless at R24.
-Interviewed the gemini director (gemini-3-pro-preview, loop_controller.gemini()); fed the live context,
-it decisively picked candidate (a): the OWED in-game overlay eye-line + S0-pulse capture (E.1), over the
-operator-gated RC_COMP_HP_LEAN flip ("can be done anytime"). Commit 12a97f9c, pushed. Tier-1 frontend.
-
-CAPTURED (live, real coach state): Playwright on the LIVE https://legion-rc:8888/?overlay=1 (not a
-fixture, not 127.0.0.1) read body[data-shell]=overlay; #right-now s0Cue=choices / s0Tier=urgent /
-s0Pulse=0 (a SUSTAINED one-shot-urgent CHOICES cue did NOT arm a pulse -> producer-side motion rationing
-verified live, no over-fire); CALL action data-call-band=fight, gold 3px bar rgb(200,170,110), white verb,
-glyph U+25BA (item 591 band channel live-faithful); eye-line widgets positioned, spike + fight-model
-hidden in the coach panelset, CALL 22px. A Legion desktop screenshot caught the REAL Electron overlay
-compositing TRANSPARENTLY over the live Rift (CALL "SETUP DRAKE FIGHT" gold bar + WARD UP + minimap-rect
-float over the game). :8889/latest-frame was dead (screen_agent not posting, http 000) - desktop +
-Playwright routes used instead.
-
-VERIFY-THE-PREMISE (test gap): the node chain tests never import right_now.js + the DOM consumer tests
-manually SET #right-now[data-s0-pulse], so NO test exercised the right_now.js PRODUCER render that stamps
-it. New tests/snapshot_panels/test_overlay_view.py::test_overlay_s0_pulse_rations_sustained_choices_via_producer
-drives the real renderRightNow producer (arm then ration) + reads the stamp back. 82 passed + 14 subtests
-in the overlay Tier-1 selection (the lone teardown ERROR is the live RC writing data/ during the game -
-mtimes this-second-fresh, my test touches them 0 times; CI-clean). 0 non-ASCII; verifier-equivalent via
-the Plan-spec file:line premise check.
-
-NEXT: shadow-aggregator lane DRAINED + overlay-polish CSS/JS lane DRAINED + DS scorer-valuation CLOSED.
-E.1 CAPTURE cleared; the ACTIVE knob-interaction half (Alt+Shift+A live re-rank) stays OWED (needs a
-physical hotkey over League - synthesized presses leak to the game). Carry-forward operator-gated: the
-RC_COMP_HP_LEAN default-ON flip (eyeball-validated R24/R25; needs the in-code gate-drop in
-coach_integration/enemy_stats.py OR approval for the FROZEN supervisor env). Next unit = another
-gemini-directed NON-DS-scorer refill.

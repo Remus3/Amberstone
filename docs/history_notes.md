@@ -142,6 +142,42 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-23 (R25 DIRECTOR REFILL) - live in-game overlay capture (E.1 cleared) + DOM-producer S0-pulse test
+
+Re-probed live state and found the perishable resource the prior cycles lacked: a live SR game UP
+(Syndra AP mage vs a Braum/Gragas tank+CC comp) AND the rc-shell Electron overlay RUNNING over League
+(electron PID 9736, title "RC . Syndra") - the precondition that was UN-confirmable headless at R24.
+Interviewed the gemini director (gemini-3-pro-preview, loop_controller.gemini()); fed the live context,
+it decisively picked candidate (a): the OWED in-game overlay eye-line + S0-pulse capture (E.1), over the
+operator-gated RC_COMP_HP_LEAN flip ("can be done anytime"). Commit 12a97f9c, pushed. Tier-1 frontend.
+
+CAPTURED (live, real coach state): Playwright on the LIVE https://legion-rc:8888/?overlay=1 (not a
+fixture, not 127.0.0.1) read body[data-shell]=overlay; #right-now s0Cue=choices / s0Tier=urgent /
+s0Pulse=0 (a SUSTAINED one-shot-urgent CHOICES cue did NOT arm a pulse -> producer-side motion rationing
+verified live, no over-fire); CALL action data-call-band=fight, gold 3px bar rgb(200,170,110), white verb,
+glyph U+25BA (item 591 band channel live-faithful); eye-line widgets positioned, spike + fight-model
+hidden in the coach panelset, CALL 22px. A Legion desktop screenshot caught the REAL Electron overlay
+compositing TRANSPARENTLY over the live Rift (CALL "SETUP DRAKE FIGHT" gold bar + WARD UP + minimap-rect
+float over the game). :8889/latest-frame was dead (screen_agent not posting, http 000) - desktop +
+Playwright routes used instead.
+
+VERIFY-THE-PREMISE (test gap): the node chain tests never import right_now.js + the DOM consumer tests
+manually SET #right-now[data-s0-pulse], so NO test exercised the right_now.js PRODUCER render that stamps
+it. New tests/snapshot_panels/test_overlay_view.py::test_overlay_s0_pulse_rations_sustained_choices_via_producer
+drives the real renderRightNow producer (arm then ration) + reads the stamp back. 82 passed + 14 subtests
+in the overlay Tier-1 selection (the lone teardown ERROR is the live RC writing data/ during the game -
+mtimes this-second-fresh, my test touches them 0 times; CI-clean). 0 non-ASCII; verifier-equivalent via
+the Plan-spec file:line premise check.
+
+NEXT: shadow-aggregator lane DRAINED + overlay-polish CSS/JS lane DRAINED + DS scorer-valuation CLOSED.
+E.1 CAPTURE cleared; the ACTIVE knob-interaction half (Alt+Shift+A live re-rank) stays OWED (needs a
+physical hotkey over League - synthesized presses leak to the game). Carry-forward operator-gated: the
+RC_COMP_HP_LEAN default-ON flip (eyeball-validated R24/R25; needs the in-code gate-drop in
+coach_integration/enemy_stats.py OR approval for the FROZEN supervisor env). Next unit = another
+gemini-directed NON-DS-scorer refill.
+
+---
+
 # 2026-06-23 (R24 DIRECTOR REFILL same-lane) - macro_response_shadow register aggregator + RC_COMP_HP_LEAN eyeball
 
 Continued R23's lane (the last un-aggregated shadow log). Two slices shipped; a live SR game
