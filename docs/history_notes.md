@@ -109,6 +109,44 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-22 (DSV5 follow-on) - no-comp-info guard (RC_COMP_HP_LEAN flip prerequisite)
+
+Continued the program with a LIVE SR practice game up (mode_key=sr; Jinx vs Lucian/Sion/Wukong/
+Pantheon/Soraka = tanky_count 3, the qualifying 2+-tank comp). Interviewed the gemini director
+(gemini-3-pro-preview via the `ops/loop/loop_controller.gemini()` pattern) for the next NON-DS-scorer
+unit; it BLESSED the unit below (PART A/B/C) AFTER I verified the premise. Ledger 593, commit
+e2de5043 (pushed). Tier-1 (`coach_integration/enemy_stats.py`, NOT frozen; NO engine / DS / Share /
+ENGINE_VERSION change - the pre-commit hook SKIPPED Share sync, confirming Tier-1).
+
+VERIFY-THE-PREMISE PAYOFF (again): a ground-truth probe (`ops/audit/ds_perm_swarm/dsv5_lean_probe.py`)
+against the live comp exposed a real defect in the JUST-shipped DSV5 seam (item 592). `_comp_hp_scale`
+computes `scale = 1 + 0.10*(tanky_count - 1)`, so with `RC_COMP_HP_LEAN` ON and NO enemy_champions
+(tanky_count=0) it returned 0.90, NOT 1.0 - conflating "no comp data" with "all-squishy comp" and
+contradicting its own docstring. The smoking gun: `test_no_comp_info_on_is_neutral` was NAMED for
+neutral (1.0) + commented "-> scale 1.0" but its assertion had been bent to 0.9 to match the bug
+(`feedback_subagent_fixture_shaped_to_bug`). The champ-select / preview routes (`routes_state`
+ds-preview Path 3, ds-knobs, ds-relscore, ds-statcheck) ALL call `compute_enemy_stats(mode, level)`
+with no comp, so a global default-ON flip would have silently de-rated every preview ranking by 10%.
+The live in-game SR coach (`_coach.py:308-313`) DOES pass enemy_champions, so the intended tilt (live
+comp OFF->ON max_hp 2210 -> 2652, x1.20) is correct + unchanged.
+
+SHIPPED: `_comp_hp_scale` short-circuits to (1.0, 0) when there is no classifiable comp (None / [] /
+all-blank); a REAL all-squishy comp (>=1 classifiable champ, 0 tanky) still earns the intended 0.90
+discount, a tank comp still earns the uplift. RED-first: corrected the bug-shaped assertion to 1.0 +
+3 new tests (blank-comp -> 1.0; no-info-vs-known-squishy contrast; env-ON-no-comp byte-identical); 4
+RED confirmed (1989.0 != 2210.0), then 43/43 enemy-stats green; 68/68 ds-preview/knobs/relscore/
+statcheck route-logic green (the lone teardown hermeticity error = the live RC pid 12264 appending
+its own gitignored shadow logs mid-suite - all 5 paths git check-ignore'd, conftest redirects in-test
+writes to tmp, so the external live process is the only possible writer). Ruff clean.
+
+NEXT / OWED: gemini PART C ruled HOLD the `RC_COMP_HP_LEAN` default-ON flip for a separate operator-run
+- this unit RESOLVES the preview-route safety blocker (documented in `docs/LIVE_GAME_GATED_SYNC.md`,
+newest live-flip ledger entry). The DS scorer-valuation track stays CLOSED (do NOT re-pitch a
+kill-state/carry_share or a new AP-DoT scorer). WAKEUP tail (UI feature-lift entry) is ripe for the
+next weekly-hygiene relocate-trim (4 same-day entries now).
+
+---
+
 # 2026-06-22 (DS scorer-valuation residual) - DSV5 comp-conditioned enemy max-HP seam
 
 Gemini-directed unit: the P6-G5 "AP-DoT-vs-burst EHP-gating + kill-state/carry_share" residual.
