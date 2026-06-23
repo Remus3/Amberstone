@@ -162,7 +162,19 @@
              bad-token (shape differs, not hue alone - WCAG 1.4.1). -->
         <div class="home-rank-wl" id="home-hero-rank-wl" hidden></div>
       </div>
-      <div class="home-hero-headline" id="home-hero-headline">Ready when you are</div>
+      <!-- Center column: the momentum headline (idle = recent-form verdict,
+           main.js _homeMomentumVerdict) + the primary Find Match CTA. Home's
+           job is "current momentum + immediate next action"; the CTA is the
+           action half - it opens the same queue picker the (hidden) action-
+           row Find Match tile used. -->
+      <div class="home-hero-center">
+        <div class="home-hero-headline" id="home-hero-headline">Ready when you are</div>
+        <button type="button" class="home-hero-cta" id="home-hero-cta"
+                data-flow="find-match-launch">
+          <svg class="home-hero-cta-icon" aria-hidden="true"><use href="#hi-hex-play"/></svg>
+          <span>Find Match</span>
+        </button>
+      </div>
       <!-- 3 stat chips with inline 14-day sparklines (V3 redesign
            2026-04-30): replaces the standalone trends row. Each chip
            shows a label + latest-day value + tiny inline sparkline.
@@ -325,8 +337,10 @@
            the this_week match-history aggregate via _home_pick_tips
            (deterministic stats - no Claude/Riot). Empty-state falls back
            to the "-" sentinel when tips are absent (item 281).
-         Section 3: Streak + Open Advisories as sub-header rows
-           (replacing the prior pip-style icon buttons). -->
+         Section 3: Open Advisories only (R30: the play-streak moved out -
+           it already shows in the hero identity sub-line, so repeating it
+           here was a verbatim duplicate). Hidden entirely when there is no
+           open advisory (an empty "Advisories: None" row was pure noise). -->
     <div class="home-combo" id="home-combo" hidden>
       <div class="home-coach-pick" id="home-coach-pick" hidden>
         <div class="home-coach-pick-head">TONIGHT'S PICK</div>
@@ -352,9 +366,8 @@
               <span class="home-pick-tip-value" id="home-pick-ugly">-</span>
             </div>
           </div>
-          <div class="home-pick-section home-pick-section-3">
-            <span class="home-pick-meta-label">Streak</span>
-            <span class="home-pick-meta-value" id="home-pick-streak-val">-</span>
+          <div class="home-pick-section home-pick-section-3"
+               id="home-pick-section-3" hidden>
             <span class="home-pick-meta-label">Advisories</span>
             <span class="home-pick-meta-value" id="home-pick-advisories-val">-</span>
           </div>
