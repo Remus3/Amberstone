@@ -4,6 +4,36 @@
 
 ---
 
+# 2026-06-23 (R24 DIRECTOR REFILL same-lane) - macro_response_shadow register aggregator + RC_COMP_HP_LEAN eyeball
+
+Continued R23's lane (the last un-aggregated shadow log). Two slices shipped; a live SR game
+was up (AP Seraphine vs a 3-tank comp), so the directive-unlocked live-gated eyeball ran too.
+
+SLICE 1 (primary): tools/macro_response_shadow_report.py + 23 hermetic tests (commit 0949fde5).
+NOT an objective-category copy. VERIFY-THE-PREMISE (live census): the det side is a single
+macro_stagnation tag with 3 lead-keyed generic stall nudges, so an objective-category match
+false-scores ~0.5%. Re-derived an ACTION-REGISTER metric: each side ACTIVE-PUSH (rotate/group/
+setup/take/push/force...) vs PASSIVE-SCALE (farm/scale/safe/hold/defend...) by earliest WHOLE-
+TOKEN (load-bearing: defend contains end, 536 rows); NO skip de-leak (measured 0.556%, below the
+floor). NEW by_lead_state_register block is the real signal since det is constant per lead: live
+ahead 0.935 / even 0.907 / BEHIND 0.000 (det PASSIVE "keep scaling/safe" vs Haiku ACTIVE "rotate
+baron/force end" x407) = the do-not-flip finding. Headline 89% clears the 0.70 floor but the hint
+redirects to the per-lead block. HOLD. Tier-1 (Share sync skipped); verifier-CONFIRM; 0 non-ASCII.
+
+SLICE 2 (live-gated OWED, directive-unlocked): the RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball
+(OWED since ledger 592) cleared - me=Seraphine vs Braum/ChoGath/Gragas (3 tanks). hp_scale 1.20x,
+max_hp 2980->3576. Ranker OFF-vs-ON (headless, no live-process touch): Seraphine routes to HPS/
+enchanter (seam NO-OP); pure mages boost ONLY Liandry's (+6.5 dps/+17%, proportional), flat items
+byte-identical = SANER NOT DIFFERENT, do-not-flip-blind SATISFIED. Visible top-6 impact narrow
+(Liandry's already rank-1). Recorded in docs/LIVE_GAME_GATED_SYNC.md. FLIP stays operator-gated
+(supervisor env frozen; global default change is deliberate).
+
+NEXT: shadow-aggregator lane now DRAINED (det_coach 595 / objective_playbook 596 / macro_response
+597). Carry-forward OWED: live overlay eye-line + S0-pulse capture (needs the rc-shell Electron
+overlay running over League - not confirmable this headless session). DS scorer-valuation CLOSED.
+
+---
+
 # 2026-06-23 (R23 DIRECTOR REFILL same-lane) - objective_playbook_shadow agreement aggregator
 
 Continued R22's lane (it teed up two un-aggregated shadow logs). A live SR practice game
@@ -63,44 +93,3 @@ objective_playbook_shadow.jsonl (18,858) are the next un-aggregated shadow logs 
 pattern). Carry-forward live-gated lanes still OWED (need the RIGHT live game): RC_COMP_HP_LEAN
 default-ON eyeball (AP mage vs 2+ tanks) + live overlay eye-line + S0-pulse capture. The DS
 scorer-valuation track stays CLOSED (do NOT re-pitch kill-state/carry_share or AP-DoT).
-
----
-
-# 2026-06-22 (R21 DIRECTOR REFILL) - ARAM balance-grid UI audit + visual OWED cleared
-
-Bootstrapped, re-probed live state (a live SR practice game was up: mode_key=sr, coach.champion=
-Jinx - an ADC). Interviewed the gemini director (gemini-3-pro-preview, ops/loop/loop_controller.
-gemini() pattern) for the next NON-DS-scorer unit -> it picked Rotation-3 UI audit + populated
-capture of the R20-shipped ARAM balance-adjustment grid panel (the VISUAL OWED). Live game was an
-ADC so both carry-forward live-gated lanes were no-ops this cycle (the RC_COMP_HP_LEAN eyeball needs
-an AP mage vs 2+ tanks; the overlay band-channel was already captured in the prior Caitlyn game) -
-the headless UI unit was the right pick. Ledger 594, commit bd961b39 (pushed). Tier-1 frontend (no
-engine / DS / Share / ENGINE_VERSION change; asset-hash hot-reload per ADR-008).
-
-VERIFY-THE-PREMISE payoff (audit-proposals-are-intent): the directive tagged it Tier-2; corrected to
-Tier-1 (JS/CSS presentation). The probe found the STRUCTURAL reason the capture had been OWED:
-renderAramBalance was dispatched in the LIVE-state render branch ONLY (web/js/main.js ~L1431); the
-ui_mock active-match branch (L1392-1411) wired every sibling panel (ward/spike/minimap/objective
-chips) but NOT renderAramBalance, so the documented ?ui_mock=1&mode=aram#active-match audit/capture
-path (the sanctioned headless path per test_active_match_view.py) could never render it. ROOT-CAUSE
-FIX: wired it into the ui_mock branch too (mode + roster from the active_match_aram.json fixture,
-which already carries a 10-champ roster). The documented audit path now renders it; on the live :8888
-dashboard the real /api/aram-balance 134-champ map populates it.
-
-5-phase fixture audit (read-only subagent, UI Fixture Ritual) = CLEAN (typography all >= floor on
---fs-xs 16 / --fs-sm 18; read-only panel so HIT-TARGETS N/A; ASCII clean; self gold-edge reads
-first; ally-blue vs enemy-red-bg distinct; buff/nerf by BOTH color AND the +/- sign, WCAG 1.4.1).
-Applied its one SHOULD-FIX in-slice: .ab-chip off-grid 2px vertical pad -> --space-1 4px (8px-grid).
-
-VERIFY: RED-first tests/snapshot_panels/test_aram_balance_view.py - static wiring guard (both
-branches; RED at 1 call site) + Playwright populated capture (stubs /api/aram-balance, asserts the
-self gold row + >=4 enemy + >=9 total + both buff/nerf chips) -> screenshots/aram-balance_aram.png
-(649x429, all 10 rows). GREEN 3/3 after the fix. Full tests/snapshot_panels/ + test_aram_balance_grid
-= 204 passed (the main.js render-path edit is regression-clean); active-match view 8/8. Diff adds 0
-non-ASCII bytes (main.js's pre-existing 4374 = un-swept smart quotes, a separate operator-gated pass).
-
-NEXT: the overlay-polish lane stays DRAINED + the RC2 feature-lift tail is exhausted; the next unit
-is another gemini-directed NON-DS-scorer refill (UI-audit / competitor-lift / haiku-zero / cost
-rotation). Carry-forward live-gated lanes still OWED (need the RIGHT live game): the RC_COMP_HP_LEAN
-default-ON eyeball (an AP mage vs 2+ tanks) + the live in-game overlay eye-line + S0-pulse capture.
-The DS scorer-valuation track stays CLOSED (do NOT re-pitch kill-state/carry_share or a new AP-DoT).
