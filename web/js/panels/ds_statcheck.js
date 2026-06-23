@@ -214,17 +214,20 @@ export function renderDsStatcheck(blockEl, cs) {
   if (!blockEl) return;
   const champId = cs && _num(cs.my_champion);
   if (!champId || champId <= 0) {
-    blockEl.style.display = "none";
+    blockEl.hidden = true;
     blockEl.innerHTML = "";
     return;
   }
   const names = resolveChampNames([champId]);
-  const champName = (names && names[champId]) || "";
+  // resolveChampNames returns a POSITIONAL array of slugs (not an id-keyed
+  // map), so the single locked-champ name is names[0].  Indexing by the
+  // numeric champId left champName always "" -> the panel never rendered.
+  const champName = names.length ? names[0] : "";
   if (!champName) {
-    blockEl.style.display = "none";
+    blockEl.hidden = true;
     return;
   }
-  blockEl.style.display = "";
+  blockEl.hidden = false;
   const mode = _modeFromQueue(cs.queue_id);
   const knobs = _KNOBS.get(champId) || {};
 
