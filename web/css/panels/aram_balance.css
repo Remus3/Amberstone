@@ -85,7 +85,9 @@
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-1);
-  padding: 2px var(--space-2);
+  /* 8px grid (spec UI_SCALE_SPEC_V2 L41-42): vertical pad on --space-1
+   * (4px), not a raw off-grid 2px. */
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--panel-radius-sm);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-soft);

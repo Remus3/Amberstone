@@ -1405,6 +1405,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         renderMinimapRect(_amMockData.minimap_rect || null);
         renderMinimapZoi(_amMockData.zoi || null);
         renderObjectiveChips(_amMockData.liveclient || null);
+        // ARAM balance grid rides the ui_mock dispatch too, so the
+        // documented ?ui_mock=1&mode=aram#active-match audit/preview path
+        // renders it (the live branch below wires it for real games). Mode
+        // + roster come from the mock fixture; the panel self-gates on ARAM.
+        renderAramBalance(_amMockData.coach || {}, {
+          mode: _amMockData.mode || "sr",
+          liveclient: _amMockData.liveclient || null,
+        });
       } else {
         _amMockLoad();  // .then re-fires render on landing
         renderActiveMatch({}, { mode: "", lcuPhase: "", liveclient: null, cooldowns: null });
