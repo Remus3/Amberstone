@@ -1167,7 +1167,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-top8-search-input::placeholder { color: var(--text-faint); }
 .lv-top8-cell {
-  font-size: 12px; color: var(--text); text-align: center;
+  font-size: var(--fs-xs); color: var(--text); text-align: center;  /* legibility: 12 -> 16 floor */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lv-top8-games  { font-weight: 700; font-size: 14px; }
@@ -1788,14 +1788,16 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   align-items: center;
 }
 .lv-mc-avg-val {
-  font-size: 14px; font-weight: 700; color: var(--text);
+  font-size: var(--fs-sm); font-weight: 700; color: var(--text);  /* legibility: 14 -> 18 (secondary floor) */
 }
 .lv-mc-avg-lbl {
   /* s162 v14: 9px → 11px (zoom:1.33 → ~14.6px effective). Sub-labels
    * inside an info-dense data cell don't need to clear the 13px
    * tertiary floor exactly - the value above them carries the
    * primary signal - but 9px was hard to read at distance. */
-  font-size: 12px; color: var(--text-faint);
+  /* 2026-06-23 legibility: 12px + --text-faint (~3:1) -> --fs-xs (16) floor
+     + --text-dim (~5.5:1); the squint cluster, 6 micro-labels per mains row. */
+  font-size: var(--fs-xs); color: var(--text-dim);
   letter-spacing: 0.1em; text-transform: uppercase;
 }
 /* s162 v10: KP% color bands - established 5-tier convention from
@@ -2663,6 +2665,21 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: grid; grid-template-columns: 1fr 1fr;
   gap: var(--space-6);             /* was 14px -> 32px                  */
 }
+/* Companion-window reflow (rc-shell out-of-game companion ~380-960px wide;
+ * docs/ELECTRON_OVERLAY.md 3.7). These two views' top-level 2-up grids are
+ * authored for the 1920 desktop and clip their right column / sidebar at the
+ * narrow companion: Settings clips its right card column (CHAMP SELECT /
+ * COACHING ACTIONS / DATA-METRICS), and the Pre-Game Lobby clips the PARTY +
+ * MY-TOP-8 sidebar off the right edge. Collapse both to a single column so
+ * every card and the party sidebar get the full companion width. The 1920
+ * desktop (never under ~1900) never trips the breakpoint. */
+@media (max-width: 1200px) {
+  .settings-body { grid-template-columns: 1fr; }
+  .lobby-view-grid { grid-template-columns: 1fr; }
+  /* User Builds: the list|form 2-up starves the list pane so build names
+   * truncate ("lethality 3..."); stack so each pane gets the full width. */
+  .ub-layout { grid-template-columns: 1fr; }
+}
 /* RC2 Hextech reskin (redesign #12, the last page). Each settings card
  * adopts the hx-card frame: a plain bordered --surface body with the two
  * gold corner brackets (::before top-left L + ::after bottom-right L)
@@ -2749,7 +2766,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 #spend-gates-list { display: flex; flex-direction: column; gap: var(--space-2); }
 .spend-gate-row { align-items: flex-start; }
 .spend-gate-txt { flex: 1; line-height: 1.3; }
-.spend-gate-txt .dim { font-size: var(--fs-sm); }
+.spend-gate-txt .dim { font-size: var(--fs-sm); color: var(--text-dim); }  /* legibility: faint -> dim for the multi-line coach descriptions */
 .spend-gate-cost {
   text-align: right; min-width: 130px; white-space: nowrap;
   font-variant-numeric: tabular-nums; color: var(--text);
