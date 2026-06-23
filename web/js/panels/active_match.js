@@ -20,6 +20,7 @@ import {
 } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
+import { classifyAction } from '../lib/helpers.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
 import { renderSpikeMarkers, fetchSpikeMarkers, getCachedSpikeMarkers } from './spike_markers.js';
@@ -245,7 +246,14 @@ export function renderActiveMatch(payload, ctx) {
     if (action || immediate || next || objective) {
       call.innerHTML = "";
       if (immediate) call.appendChild(_line("RIGHT NOW", immediate));
-      if (action)    call.appendChild(_line("ACTION",    action));
+      if (action) {
+        // Overlay only (RC Overlay Doctrine section 5/6): stamp the classifyAction
+        // band so overlay.css can paint the band glyph + color bar on the PRIMARY
+        // action. The dashboard render is left byte-identical (band omitted ->
+        // _line's unchanged text branch).
+        const inOverlay = !!(document.body && document.body.dataset.shell === "overlay");
+        call.appendChild(_line("ACTION", action, inOverlay ? classifyAction(action) : null));
+      }
       if (objective) call.appendChild(_line("OBJECTIVE", objective));
       if (next)      call.appendChild(_line("NEXT",      next));
     } else {
@@ -1227,7 +1235,7 @@ function _threatRow(pl, mode, level) {
   return row;
 }
 
-function _line(label, value) {
+function _line(label, value, band) {
   // C2 UI-audit (docs/UI_SCALE_SPEC_V2.md): the CALL pane RIGHT NOW /
   // ACTION / OBJECTIVE / NEXT coach prompts are the dominant readable
   // content of the in-game view, so the value lands on the --fs-md body
@@ -1245,7 +1253,26 @@ function _line(label, value) {
   lbl.textContent = label;
   const val = document.createElement("span");
   val.style.cssText = "color:var(--text);";
-  val.textContent = value;
+  // RC Overlay Doctrine section 5/6: the PRIMARY CALL action carries a band
+  // GLYPH + color bar (the verb text itself stays white, doctrine line 164).
+  // overlay.css keys the bar + glyph color off [data-call-band]; the glyph code
+  // points are built with String.fromCharCode so this file stays 7-bit ASCII (no
+  // literal glyph bytes) while the band still reads preattentively without
+  // recoloring the verb. Only the ACTION line passes a band (overlay-gated at the
+  // call site) - every other line + the whole dashboard render stays byte-identical.
+  if (band) {
+    row.dataset.callBand = band;
+    const g = document.createElement("span");
+    g.className = "am-call-glyph";
+    g.setAttribute("aria-hidden", "true");
+    // U+26A0 warn / U+2713 check / U+25BA play (condensation spec section 1).
+    g.textContent = String.fromCharCode(
+      band === "urgent" ? 0x26A0 : band === "good" ? 0x2713 : 0x25BA) + " ";
+    val.appendChild(g);
+    val.appendChild(document.createTextNode(value));
+  } else {
+    val.textContent = value;
+  }
   row.appendChild(lbl);
   row.appendChild(val);
   return row;
