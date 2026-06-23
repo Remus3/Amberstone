@@ -281,6 +281,28 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-06-23 RC_COMP_HP_LEAN (DSV5) LIVE EYEBALL DONE (R24; validation only, NO code change).
+  The OWED AP-mage-vs-2+-tank eyeball (ledger 592) cleared on a real live SR game: me=Seraphine
+  vs enemy Braum / Master Yi / Cho'Gath / Ziggs / Gragas. `compute_enemy_stats` classified
+  `tanky_count=3` (Braum + Cho'Gath = tank, Master Yi = bruiser) -> `hp_scale` **1.20x**, applied
+  `target_max_hp` 2980 -> 3576 (+596) at L18. RANKER OFF-vs-ON (`dispatch_for_coach`, top-6):
+  (a) Seraphine routes to the **HPS / enchanter** scorer, so the seam is a NO-OP for her
+  (enchanters do not build %max-HP DoT) - the LIVE coach champ was unaffected; (b) pure mages
+  (Veigar / Heimerdinger, the ability-DPS scorer) - the seam boosts ONLY the genuine %max-HP DoT
+  item **Liandry's Torment** (+6.5 dps L18 / +5.4 dps L11, ~+17%, proportional to the 1.20x
+  max-HP) and leaves flat-magic items (Void Staff / Rabadon's / Shadowflame / Mejai's / Blackfire)
+  byte-identical. VERDICT: **SANER NOT DIFFERENT confirmed** - the seam can only nudge Liandry's
+  UP, never reorder toward a worse pick, so do-not-flip-blind (charter 4b) is SATISFIED. CAVEAT:
+  the visible top-6 IMPACT is narrow - Liandry's is already rank-1 in the mage build at these
+  levels, so the 1.20x widens an existing lead WITHOUT reordering the top-6; the seam only changes
+  a served ranking in the borderline case where Liandry's is NOT already top, AND only for
+  mage-scorer champs (enchanters / non-AP unaffected). RECOMMENDATION: flip is validated-SAFE, ON
+  recommended - but NOT auto-flipped this session because the supervisor-env route is a FROZEN-file
+  edit (`ops/rc_supervisor.py`) and defaulting a global coaching heuristic ON is a deliberate
+  operator call. Method: probed the live `/api/state` comp + ran `compute_enemy_stats` /
+  `dispatch_for_coach` OFF (`comp_hp_lean=False`) vs ON (`=True`) headlessly - no live-process
+  disruption, no env change.
+
 - 2026-06-22 DSV5 no-comp-info guard (ledger 593, `coach_integration/enemy_stats.py`) - a
   PREREQUISITE-to-flip SAFETY FIX, not a new seam. Verify-the-premise against the live SR comp
   (Jinx vs Lucian/Sion/Wukong/Pantheon/Soraka, tanky_count 3) exposed that `_comp_hp_scale`
@@ -307,7 +329,7 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   clamped [0.85, 1.30]) so DSV1's ability-burn / %max-HP valuation tilts the live item ranking toward DoT
   (Liandry's/Blackfire/Demonic) vs tanks, matching the rewind WIN-anchored signal (winning AP carries vs
   2+ tanks build DoT over burst +12.0pt; burst usage halves). OFF == byte-identical flat curve.
-  LIVE EYEBALL OWED (do NOT flip blind, charter 4b): in a real SR/ARAM game on an AP mage facing a 2+
+  LIVE EYEBALL DONE 2026-06-23 (R24 - see ledger top; do NOT flip blind, charter 4b): in a real SR/ARAM game on an AP mage facing a 2+
   tank/bruiser comp, set `RC_COMP_HP_LEAN=1` and confirm the build-chooser top-6 re-rank elevates the
   %max-HP DoT items (Liandry's especially) vs the OFF ranking, and that it stays "saner not different"
   for a squishy comp (scale 0.90 should NOT swing picks materially). Inspect the applied modifier via the
