@@ -28,11 +28,43 @@ champion name + grade render, the mode tag matches, and no unhandled JS
 errors fire. Arena shows the neutral ARENA result pill (CHERRY subteam
 mode); SR shows VICTORY (win, non-arena). Screenshots each for the trail.
 """
+import json
 import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 SCREENSHOTS = Path(__file__).parent / "screenshots"
+
+# LIFT 2a (2026-06-22): fixed /api/post-game-rubric payload for the
+# score-decomposition bar test. The mock server returns {} for that
+# route, so the test intercepts it (page.route) and fulfills this. The
+# saturation per axis = component / (2 * weight), clamped [0,1]:
+#   kda    3.0 / (2 * 1.5) = 1.00 -> 100%
+#   cs     1.2 / (2 * 1.2) = 0.50 ->  50%
+#   obj    0.8 / (2 * 0.8) = 0.50 ->  50%
+#   vision 0.5 / (2 * 0.5) = 0.50 ->  50%  (component key vision -> weight vision_score)
+#   dpm    2.0 / (2 * 1.0) = 1.00 -> 100%  (component key dpm -> weight damage_per_min)
+_RUBRIC_PAYLOAD = {
+    "ok": True,
+    "match_id": "NA1_TEST",
+    "role": "BOTTOM",
+    "total_score": 72.0,
+    "percentile_grade": "A",
+    "components": {
+        "kda": 3.0,
+        "cs_per_min": 1.2,
+        "obj_participation": 0.8,
+        "vision": 0.5,
+        "dpm": 2.0,
+    },
+    "weights_used": {
+        "kda": 1.5,
+        "cs_per_min": 1.2,
+        "obj_participation": 0.8,
+        "vision_score": 0.5,
+        "damage_per_min": 1.0,
+    },
+}
 
 # The fixture mode string _setHero stamps into #lm-mode-tag (the per-mode
 # differentiator + the async-render landing signal; #lm-mode-tag starts "-").
@@ -125,6 +157,86 @@ def test_last_match_sr_victory_pill(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, f"JS errors [sr pill]: {errors[:3]}"
+
+
+def test_last_match_sr_rubric_decomposition(mock_server, pw_browser):
+    """LIFT 2a: the per-role score decomposition renders 5 saturation bars
+    from /api/post-game-rubric components{} + weights_used{}. The SR fixture
+    carries match.id 9003 so _setHeroRoleGrade fires the fetch; page.route
+    intercepts /api/post-game-rubric (mock server returns {}) and fulfills
+    _RUBRIC_PAYLOAD. Asserts exactly 5 bars and the known saturations:
+    KDA ~100% fill, CS/min ~50% fill (read off the inline width style)."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+
+    # Register the rubric-route interception BEFORE navigation so the
+    # _setHeroRoleGrade fetch (fired during the fixture render) hits it.
+    page.route(
+        "**/api/post-game-rubric**",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(_RUBRIC_PAYLOAD),
+        ),
+    )
+
+    try:
+        url = mock_server.url + "/?ui_mock=1&mode=sr#last-match"
+        page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+        # Landing signal: the fixture render replaces the "-" mode tag.
+        page.wait_for_function(
+            "document.querySelector('#lm-mode-tag') && "
+            "document.querySelector('#lm-mode-tag').textContent.trim() !== '-' && "
+            "document.querySelector('#lm-mode-tag').textContent.trim() !== ''",
+            timeout=10_000,
+        )
+        # Wait for the decomposition bars to paint (the rubric fetch is async).
+        page.wait_for_selector(
+            "#lm-rubric-components .lm-rubric-bar", timeout=10_000
+        )
+
+        bars = page.locator("#lm-rubric-components .lm-rubric-bar")
+        assert bars.count() == 5, f"expected 5 rubric bars, got {bars.count()}"
+
+        # Read the fill width fraction (fill width / track width) per axis.
+        # KDA is the first axis (~100%), CS/min the second (~50%).
+        def _fill_frac(idx):
+            row = bars.nth(idx)
+            track = row.locator(".lm-rubric-bar-track").bounding_box()
+            fill = row.locator(".lm-rubric-bar-fill").bounding_box()
+            assert track and fill and track["width"] > 0
+            return fill["width"] / track["width"]
+
+        kda_frac = _fill_frac(0)
+        cs_frac = _fill_frac(1)
+        assert kda_frac > 0.9, f"KDA fill {kda_frac:.3f} not ~100%"
+        assert 0.4 < cs_frac < 0.6, f"CS/min fill {cs_frac:.3f} not ~50%"
+
+        # Readouts confirm the rounded percentages.
+        kda_read = (bars.nth(0).locator(".lm-rubric-bar-readout").text_content()
+                    or "").strip()
+        cs_read = (bars.nth(1).locator(".lm-rubric-bar-readout").text_content()
+                   or "").strip()
+        assert kda_read == "100%", f"KDA readout {kda_read!r} != '100%'"
+        assert cs_read == "50%", f"CS/min readout {cs_read!r} != '50%'"
+
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.locator("#lm-rubric-components").screenshot(
+            path=str(SCREENSHOTS / "pgr_decomposition.png")
+        )
+    finally:
+        page.close()
+        ctx.close()
+
+    assert not errors, f"JS errors [rubric]: {errors[:3]}"
 
 
 def test_no_em_dashes_or_smart_quotes():

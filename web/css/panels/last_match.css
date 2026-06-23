@@ -194,6 +194,57 @@
 .lm-hero-role-grade[data-tier="D"]  .lm-hero-role-grade-value,
 .lm-hero-role-grade[data-tier="D"]  .lm-hero-role-grade-tier { color: var(--bad); }
 
+/* LIFT 2a (2026-06-22): per-role score decomposition. The 5 saturation
+ * bars (KDA / CS-min / OBJ / Vision / DPM) that break down the role
+ * grade. Single accent fill - the text label on each row carries the
+ * axis meaning, so this is not hue-alone. Non-interactive display, so
+ * the >=44px hit-target rule does not apply; kept legible. */
+.lm-rubric-components {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.lm-rubric-components[hidden] { display: none; }
+.lm-rubric-bar {
+  display: grid;
+  grid-template-columns: 52px 1fr 38px;
+  align-items: center;
+  gap: 8px;
+}
+.lm-rubric-bar-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lm-rubric-bar-track {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.lm-rubric-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.lm-rubric-bar-readout {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* W/L pill - visible only when LCU enrichment carries a real win flag.
  * RC2 status glyph (WCAG 1.4.1 - status never by HUE alone): the W/L
  * verdict gets a leading shape glyph so win/loss survives grayscale +
