@@ -23,6 +23,7 @@ mirroring the existing FlatHPPoolMod cache, then per-coach
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
@@ -48,6 +49,20 @@ class EnemyStats:
     # positional/keyword construction is unaffected.
     ad_share: float = 0.5
     ap_share: float = 0.5
+    # DSV5 (P6-G5 residual: AP-DoT-vs-burst EHP-gating). Comp-conditioned
+    # max-HP scaling: the flat mode/level curve is comp-BLIND, so DSV1's
+    # ability-burn valuation (which scales with target_max_hp) fired at a
+    # constant value regardless of the enemy comp's tankiness. A
+    # rewind-WIN-anchored measurement (winning AP carries, by enemy tank
+    # count) showed a clean preference flip: vs 0 tanks winners build burst
+    # over DoT by -6.2pt, vs 2+ tanks they build DoT over burst by +12.0pt
+    # (burst usage halves). ``hp_scale`` (default 1.0) records the applied
+    # comp uplift/discount; ``tanky_count`` the tank/bruiser enemies seen.
+    # Appended at the END with defaults so existing positional/keyword
+    # construction is unaffected. Both inert until the default-OFF seam is
+    # enabled (``comp_hp_lean`` / ``RC_COMP_HP_LEAN``).
+    hp_scale: float = 1.0
+    tanky_count: int = 0
 
 
 # Per-mode anchors. Each tuple is (armor_base, armor_per_level,
@@ -81,6 +96,76 @@ _BONUS_HP_CAP   = 3500.0
 # ``bonus_hp = max_hp - base_hp`` is the engine-relevant signal because
 # items like Giant Slayer / Bork scale by bonus HP, not max.
 _CHAMP_BASE_HP_AVG = 600.0
+
+# DSV5 comp-conditioned max-HP seam (default-OFF). The flat curve above is an
+# AVERAGE comp; a tank-heavy comp's median EHP is higher (-> DoT/%max-HP items
+# gain) and an all-squishy comp's is lower. ``hp_scale = 1 + STEP*(tanky-1)``,
+# clamped to [LO, HI]. Anchored to the rewind win-data: 1 frontline = neutral
+# (the typical comp), each extra tank/bruiser +10%, all-squishy -10%. Tank set
+# mirrors core.ds_antitank_hint (_TANKY_ARCHETYPES) so the RANKING tilt agrees
+# with the existing anti-tank text hint (HIGH_HP_ENEMY_MIN == 2 -> scale 1.10).
+_COMP_HP_STEP     = 0.10
+_COMP_HP_SCALE_LO = 0.85
+_COMP_HP_SCALE_HI = 1.30
+_TANKY_ARCHETYPES = frozenset({"tank", "bruiser"})
+
+
+def _env_comp_hp_lean() -> bool:
+    """Read the ``RC_COMP_HP_LEAN`` live-flip gate (default OFF).
+
+    The seam stays dormant (byte-identical to the pre-DSV5 flat curve) until
+    the operator flips this env var. Documented in docs/LIVE_GAME_GATED_SYNC.md.
+    """
+    return os.environ.get("RC_COMP_HP_LEAN", "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
+def _count_tanky(enemy_champions: Optional[Iterable[str]]) -> int:
+    """Count enemy tank/bruiser archetypes via the shared archetype registry.
+
+    Reuses ``core.archetype_picks.get_archetype_for`` (the same classifier
+    core.ds_antitank_hint uses). Fail-soft per champion: a blank id or a
+    lookup miss is treated as non-tanky and never raises.
+    """
+    if not enemy_champions:
+        return 0
+    try:
+        from core.archetype_picks import get_archetype_for
+    except Exception:  # noqa: BLE001 - registry import is best-effort
+        return 0
+    count = 0
+    for champ in enemy_champions:
+        safe = (champ or "").strip()
+        if not safe:
+            continue
+        try:
+            info = get_archetype_for(safe)
+            primary = info.get("primary", "") if isinstance(info, dict) else ""
+            if primary in _TANKY_ARCHETYPES:
+                count += 1
+        except Exception:  # noqa: BLE001 - one bad id never breaks the count
+            continue
+    return count
+
+
+def _comp_hp_scale(
+    enemy_champions: Optional[Iterable[str]],
+    comp_hp_lean: Optional[bool],
+) -> tuple[float, int]:
+    """Return ``(hp_scale, tanky_count)`` for the comp-conditioned seam.
+
+    ``comp_hp_lean`` overrides the env gate when not None (tests pass it
+    explicitly). OFF or no comp info -> ``(1.0, tanky_count)`` so max_hp is
+    byte-identical to the flat curve.
+    """
+    on = comp_hp_lean if comp_hp_lean is not None else _env_comp_hp_lean()
+    tanky_count = _count_tanky(enemy_champions)
+    if not on:
+        return 1.0, tanky_count
+    scale = 1.0 + _COMP_HP_STEP * (tanky_count - 1)
+    scale = max(_COMP_HP_SCALE_LO, min(_COMP_HP_SCALE_HI, scale))
+    return round(scale, 4), tanky_count
 
 
 def _estimate_level_from_game_time(game_seconds: float) -> float:
@@ -122,6 +207,7 @@ def compute_enemy_stats(
     bonus_hp_override: Optional[float] = None,
     enemy_levels: Optional[Iterable[float]] = None,
     enemy_champions: Optional[Iterable[str]] = None,
+    comp_hp_lean: Optional[bool] = None,
 ) -> EnemyStats:
     """Compute aggregate enemy stats for a DS `rank_for` call.
 
@@ -171,6 +257,12 @@ def compute_enemy_stats(
     mr      = mr_base + mr_per_lv * avg_level
     max_hp  = hp_base + hp_per_lv * avg_level
 
+    # DSV5 comp-conditioned max-HP (default-OFF seam). hp_scale == 1.0 leaves
+    # max_hp byte-identical to the flat curve; a tank-heavy comp scales it up
+    # so DSV1's ability-burn / %max-HP valuation tilts toward DoT vs tanks.
+    hp_scale, tanky_count = _comp_hp_scale(enemy_champions, comp_hp_lean)
+    max_hp *= hp_scale
+
     # Apply caps.
     if armor > _ARMOR_CAP:
         armor = _ARMOR_CAP
@@ -212,4 +304,6 @@ def compute_enemy_stats(
         bonus_hp=round(bonus_hp, 1),
         ad_share=round(ad_share, 3),
         ap_share=round(ap_share, 3),
+        hp_scale=hp_scale,
+        tanky_count=tanky_count,
     )

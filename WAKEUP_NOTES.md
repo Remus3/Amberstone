@@ -4,6 +4,42 @@
 
 ---
 
+# 2026-06-22 (DS scorer-valuation residual) - DSV5 comp-conditioned enemy max-HP seam
+
+Gemini-directed unit: the P6-G5 "AP-DoT-vs-burst EHP-gating + kill-state/carry_share" residual.
+VERIFY-THE-PREMISE-FIRST paid off - the directive's Tier-2 scorer framing was REFUTED. Ledger 592,
+commit pushed. Tier-1 (NO ENGINE bump / Share sync - engine untouched).
+
+GROUND TRUTH (do NOT re-litigate):
+- The 3 cited "homes" (damage_mix/carry_share/ds_calibration) are display/log surfaces, NOT engine
+  calibration. The base scorers are already shipped: DSV1 folds ability-burn DoTs into
+  compute_ability_dps (proportional to target_max_hp); DSV2 added the kill-state assume_takedown seam.
+- KILL-STATE half = CLOSE-as-covered. The seam is DORMANT in every live path (rank.py::rank_items has
+  no assume_takedown param; no production caller passes True). Rewind WIN-anchored: winning supports
+  build Hubris/Collector 0.1%. Nothing to suppress -> built nothing. Do NOT re-pitch a carry_share scorer.
+- AP-DoT half = genuine, REFRAMED. Rewind WIN-anchored measure (30,164 participants, winning AP carries
+  by explicit enemy tank count): 0 tanks -> burst over DoT -6.2pt; 2+ tanks -> DoT over burst +12.0pt,
+  burst usage HALVES. (A game-length-confounded tankiness proxy had masked this - the tank-COUNT split
+  isolated it.) Root cause: enemy_stats.max_hp was a comp-BLIND mode/level curve, so DSV1's burn fired
+  at a flat value. archetype_dispatch already feeds that max_hp into the real ranking; ds_antitank_hint
+  already flagged tanky comps but only as a TEXT hint with no ranking effect.
+
+SHIPPED (DSV5): coach_integration/enemy_stats.py default-OFF seam - hp_scale = clamp(1 + 0.10*(tanky-1),
+0.85, 1.30) on max_hp, tanky_count via the SHARED get_archetype_for classifier (tank/bruiser). New
+EnemyStats.hp_scale/tanky_count fields (END, defaulted). core/coach_trace.record_enemy_target plumbs the
+applied modifier delta for deterministic verification. 13/13 new tests green (incl. the win-data payoff:
+tank-scaled max_hp raises Veigar+Liandry burn DPS, Rabadon's unchanged). Env gate RC_COMP_HP_LEAN.
+
+NEXT / OWED: RC_COMP_HP_LEAN live default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md) -
+eyeball the OFF-vs-ON top-6 re-rank for an AP mage vs a 2+-tank comp in a real game before flipping.
+The DS scorer-valuation residual track is now CLOSED (ROADMAP "Don't-redo" note).
+
+NOTE: the live RC (pid 12264, mode=game) mutates data/vision_state.json every ~2s, so the session-scoped
+hermeticity fixture flags a vision_state.json delta at suite teardown - environmental, NOT a regression
+(my change never touches that path; per-test runs are clean).
+
+---
+
 # 2026-06-22 (overlay-polish run) - band channel on the PRIMARY action line
 
 Operator directive: route cycles to the in-game Electron overlay until it matches the agreed
