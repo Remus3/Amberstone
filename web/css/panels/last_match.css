@@ -465,7 +465,7 @@
 .lm-rank-cell-value {
   font-size: var(--fs-stat);   /* item 182 v2.1: 27 -> 26 (rank cell numeric) */
   font-weight: 700;
-  color: var(--text-dim);
+  color: var(--text);  /* legibility: dim -> text; the rank-compare numbers are the panel's point */
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -507,6 +507,22 @@
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   align-items: stretch;
+}
+
+/* Companion-window reflow (rc-shell out-of-game companion ~380-960px wide;
+ * docs/ELECTRON_OVERLAY.md 3.7). The Post Game Review is the widest view: the
+ * .lm-row-half 2-up rows (ally|enemy team comparison, build|stats) need
+ * ~1700px and clip the enemy half, and the .lm-hero scoreline's 7-stat
+ * identity row overflows the right edge. Stack the halves + the hero so every
+ * block gets the full companion width. min-height:auto stops the hero (an
+ * explicit min-height card) flex-collapsing under its taller stacked content.
+ * The 1920 desktop (never under ~1900) never trips the breakpoint. */
+@media (max-width: 1200px) {
+  .lm-row-half { grid-template-columns: 1fr; }
+  .lm-hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
 }
 
 /* -- Stats grid ---------------------------------------------------- */
