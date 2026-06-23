@@ -144,6 +144,107 @@ def test_history_card_has_corner_brackets(mock_server, pw_browser):
     assert not errors, f"JS errors [history brackets]: {errors[:3]}"
 
 
+def test_history_season_win_rate(mock_server, pw_browser):
+    """LIFT 4 (Part 1): the season-stats card surfaces the fixture
+    win_rate as a percentage and the stale "(needs Riot key)" stub note
+    is gone. The 14d fixture win_rate is 64.3 (percent) -> "64.3%"."""
+    ctx, page, errors = _open_history(pw_browser, mock_server)
+    try:
+        page.wait_for_function(
+            "document.querySelector('#history-season-wr') && "
+            "document.querySelector('#history-season-wr')"
+            ".textContent.indexOf('%') >= 0",
+            timeout=10_000,
+        )
+        wr = (page.locator("#history-season-wr").text_content() or "").strip()
+        assert wr == "64.3%", f"season WR {wr!r} != '64.3%'"
+        assert "needs Riot key" not in wr, (
+            "stale '(needs Riot key)' note still present in season WR"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [history WR]: {errors[:3]}"
+
+
+def _count_match_rows(page, result=None):
+    sel = "#history-match-list .history-match-row"
+    if result:
+        sel = f"#history-match-list .history-match-row[data-result='{result}']"
+    return page.locator(sel).count()
+
+
+def test_history_client_side_filters(mock_server, pw_browser):
+    """LIFT 4 (Part 2): the result toggle + champion select filter the
+    GLOBAL match list (all sessions in scope). The 14d fixture has 8 wins
+    / 6 losses across 14 matches; clicking W shows only win rows; then
+    narrowing to Jinx leaves only the 2 Jinx wins. Interactive controls
+    clear the 44px fingertip floor."""
+    ctx, page, errors = _open_history(pw_browser, mock_server)
+    try:
+        # Toolbar populated from the fixture (champion select gets the
+        # distinct champions plus the "All" default).
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#history-filter-champion option').length > 1",
+            timeout=10_000,
+        )
+
+        # 44px hit-target floor on every interactive control.
+        for css in (
+            "#history-filter-champion",
+            "#history-filter-mode",
+            "#history-filter-result .history-filter-rbtn",
+            ".history-filter-grade",
+        ):
+            h = page.evaluate(
+                "(s) => document.querySelector(s)"
+                ".getBoundingClientRect().height",
+                css,
+            )
+            assert h >= 44, f"control {css!r} height {h} < 44px"
+
+        # Result -> W: only win rows render, count == fixture win count (8).
+        page.click("#history-filter-result .history-filter-rbtn[data-result='win']")
+        page.wait_for_function(
+            "document.querySelector('#history-detail-head')"
+            ".textContent.indexOf('FILTERED') >= 0",
+            timeout=10_000,
+        )
+        total = _count_match_rows(page)
+        wins = _count_match_rows(page, result="win")
+        assert total == 8, f"expected 8 win rows, got {total}"
+        assert wins == 8, f"expected 8 data-result=win rows, got {wins}"
+        cnt = (page.locator("#history-filter-count").text_content() or "").strip()
+        assert cnt.startswith("8"), f"count readout {cnt!r} != '8 matches'"
+
+        # Narrow to Jinx: only the 2 Jinx wins remain.
+        page.select_option("#history-filter-champion", "Jinx")
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#history-match-list .history-match-row').length === 2",
+            timeout=10_000,
+        )
+        jinx = _count_match_rows(page)
+        assert jinx == 2, f"expected 2 Jinx win rows, got {jinx}"
+        champs = page.evaluate(
+            "Array.from(document.querySelectorAll("
+            "'#history-match-list .history-match-row'))"
+            ".map(r => r.dataset.champion)"
+        )
+        assert all(c == "Jinx" for c in champs), (
+            f"non-Jinx rows leaked into filter: {champs}"
+        )
+
+        SCREENSHOTS.mkdir(exist_ok=True)
+        body = page.locator("#history-body")
+        body.screenshot(path=str(SCREENSHOTS / "history_filters.png"))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [history filters]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the new
     test + the history fixture it drives. (header.css carries pre-existing

@@ -1287,6 +1287,28 @@
           </div>
           <div class="history-card history-card-detail">
             <div class="history-card-head" id="history-detail-head">SELECT A SESSION</div>
+            <div class="history-filter-bar" id="history-filter-bar">
+              <select class="history-filter-select" id="history-filter-champion" aria-label="Filter by champion">
+                <option value="">All champions</option>
+              </select>
+              <select class="history-filter-select" id="history-filter-mode" aria-label="Filter by mode">
+                <option value="">All modes</option>
+              </select>
+              <div class="history-filter-result" id="history-filter-result" role="group" aria-label="Filter by result">
+                <button type="button" class="history-filter-rbtn active" data-result="">All</button>
+                <button type="button" class="history-filter-rbtn" data-result="win">W</button>
+                <button type="button" class="history-filter-rbtn" data-result="loss">L</button>
+              </div>
+              <div class="history-filter-grades" role="group" aria-label="Filter by grade">
+                <button type="button" class="history-filter-grade" id="history-filter-grade-S" data-grade="S">S</button>
+                <button type="button" class="history-filter-grade" id="history-filter-grade-A" data-grade="A">A</button>
+                <button type="button" class="history-filter-grade" id="history-filter-grade-B" data-grade="B">B</button>
+                <button type="button" class="history-filter-grade" id="history-filter-grade-C" data-grade="C">C</button>
+                <button type="button" class="history-filter-grade" id="history-filter-grade-D" data-grade="D">D</button>
+                <button type="button" class="history-filter-grade" id="history-filter-grade-F" data-grade="F">F</button>
+              </div>
+              <span class="history-filter-count" id="history-filter-count"></span>
+            </div>
             <ul class="history-match-list" id="history-match-list"><li class="home-empty">click a session to see its matches</li></ul>
           </div>
           <div class="history-card history-card-season">
@@ -1294,7 +1316,7 @@
             <div class="session-row"><span>Total matches</span><span id="history-season-total">-</span></div>
             <div class="session-row"><span>Avg KDA</span><span id="history-season-kda">-</span></div>
             <div class="session-row"><span>Most-played</span><span id="history-season-fav">-</span></div>
-            <div class="session-row"><span>Win-rate</span><span id="history-season-wr">- <span class="dim">(needs Riot key)</span></span></div>
+            <div class="session-row"><span>Win-rate</span><span id="history-season-wr">-</span></div>
           </div>
         </div>
       </div>
