@@ -1,5 +1,38 @@
 # RC session history archive
 
+## Relocated 2026-06-23 (R25 /done - keep last 3 sessions: R25 + R24 + R23)
+
+# 2026-06-23 (R22 DIRECTOR REFILL) - det_coach_shadow agreement aggregator (Haiku-to-ZERO)
+
+Re-probed live state (mode=client / liveclient null - no game), so both carry-forward live-gated
+lanes (RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball; live overlay eye-line + S0-pulse) were no-ops
+this cycle -> headless lane. Interviewed the gemini director (gemini-3-pro-preview, ops/loop/
+loop_controller.gemini() pattern); it picked a Haiku-to-ZERO agreement instrument. Commit 8470c3cc
+(pushed). Tier-1 tooling (2 new files; no engine/DS/Share/ENGINE_VERSION; pre-commit hook skipped
+Share sync, confirming Tier-1).
+
+VERIFY-THE-PREMISE payoff (audit-proposals-are-intent): the directive's premise ("no aggregator
+exists") was GLOBALLY false - hz_shadow_report.py + hz_mismatch_diagnose.py + live_benchmark_band_
+report.py already aggregate other shadow logs. But it held for the SPECIFIC target: an inventory
+(ls data/*shadow*.jsonl + grep readers) found det_coach_shadow.jsonl (22,344 rows, the LARGEST
+shadow log, the B1 deterministic-coach flip substrate) had a WRITER (core/det_coach_shadow.py) and
+NO reader. Re-derived the real metric: det A-choice is always ds-matchup (laning trade) but native
+(Haiku) A-choice is overwhelmingly macro/objective (wave-tempo/objective-*), so a naive label-match
+would false-0% (the cycle-53/item-574 category error). New tools/det_coach_shadow_report.py
+classifies each side's DOMAIN off source_tag (trade/build/macro) -> domain ALIGNMENT rate (headline
+do-not-flip signal: 2% live - Haiku is mostly macro at these ticks), within-trade verdict agreement
+(cross-domain EXCLUDED as domain_divergence, never diluting the denominator; 0/159, Haiku plays
+safer "Farm safe"), build-item overlap (3.1%), coverage. Default flip-hint HOLD. Mirrors
+hz_shadow_report.py conventions. RED-first hermetic test (mock jsonl in tmp; real file gitignored)
+20/20; verifier-gated CONFIRM (9/9 checks).
+
+NEXT: overlay-polish lane stays DRAINED + RC2 tail exhausted; next unit is another gemini-directed
+NON-DS-scorer refill. SAME-LANE off-lane refills ready: macro_response_shadow.jsonl (18,192) +
+objective_playbook_shadow.jsonl (18,858) are the next un-aggregated shadow logs (same domain-aware
+pattern). Carry-forward live-gated lanes still OWED (need the RIGHT live game): RC_COMP_HP_LEAN
+default-ON eyeball (AP mage vs 2+ tanks) + live overlay eye-line + S0-pulse capture. The DS
+scorer-valuation track stays CLOSED (do NOT re-pitch kill-state/carry_share or AP-DoT).
+
 ## Relocated 2026-06-21 (continue 9 /done - keep last 3 sessions: continue 9 + 8 + 7)
 
 # 2026-06-21 (headless continue 6) - overlay-polish queue item (1): already shipped, only a stale comment

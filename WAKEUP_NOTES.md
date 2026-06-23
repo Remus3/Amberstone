@@ -4,6 +4,42 @@
 
 ---
 
+# 2026-06-23 (R25 DIRECTOR REFILL) - live in-game overlay capture (E.1 cleared) + DOM-producer S0-pulse test
+
+Re-probed live state and found the perishable resource the prior cycles lacked: a live SR game UP
+(Syndra AP mage vs a Braum/Gragas tank+CC comp) AND the rc-shell Electron overlay RUNNING over League
+(electron PID 9736, title "RC . Syndra") - the precondition that was UN-confirmable headless at R24.
+Interviewed the gemini director (gemini-3-pro-preview, loop_controller.gemini()); fed the live context,
+it decisively picked candidate (a): the OWED in-game overlay eye-line + S0-pulse capture (E.1), over the
+operator-gated RC_COMP_HP_LEAN flip ("can be done anytime"). Commit 12a97f9c, pushed. Tier-1 frontend.
+
+CAPTURED (live, real coach state): Playwright on the LIVE https://legion-rc:8888/?overlay=1 (not a
+fixture, not 127.0.0.1) read body[data-shell]=overlay; #right-now s0Cue=choices / s0Tier=urgent /
+s0Pulse=0 (a SUSTAINED one-shot-urgent CHOICES cue did NOT arm a pulse -> producer-side motion rationing
+verified live, no over-fire); CALL action data-call-band=fight, gold 3px bar rgb(200,170,110), white verb,
+glyph U+25BA (item 591 band channel live-faithful); eye-line widgets positioned, spike + fight-model
+hidden in the coach panelset, CALL 22px. A Legion desktop screenshot caught the REAL Electron overlay
+compositing TRANSPARENTLY over the live Rift (CALL "SETUP DRAKE FIGHT" gold bar + WARD UP + minimap-rect
+float over the game). :8889/latest-frame was dead (screen_agent not posting, http 000) - desktop +
+Playwright routes used instead.
+
+VERIFY-THE-PREMISE (test gap): the node chain tests never import right_now.js + the DOM consumer tests
+manually SET #right-now[data-s0-pulse], so NO test exercised the right_now.js PRODUCER render that stamps
+it. New tests/snapshot_panels/test_overlay_view.py::test_overlay_s0_pulse_rations_sustained_choices_via_producer
+drives the real renderRightNow producer (arm then ration) + reads the stamp back. 82 passed + 14 subtests
+in the overlay Tier-1 selection (the lone teardown ERROR is the live RC writing data/ during the game -
+mtimes this-second-fresh, my test touches them 0 times; CI-clean). 0 non-ASCII; verifier-equivalent via
+the Plan-spec file:line premise check.
+
+NEXT: shadow-aggregator lane DRAINED + overlay-polish CSS/JS lane DRAINED + DS scorer-valuation CLOSED.
+E.1 CAPTURE cleared; the ACTIVE knob-interaction half (Alt+Shift+A live re-rank) stays OWED (needs a
+physical hotkey over League - synthesized presses leak to the game). Carry-forward operator-gated: the
+RC_COMP_HP_LEAN default-ON flip (eyeball-validated R24/R25; needs the in-code gate-drop in
+coach_integration/enemy_stats.py OR approval for the FROZEN supervisor env). Next unit = another
+gemini-directed NON-DS-scorer refill.
+
+---
+
 # 2026-06-23 (R24 DIRECTOR REFILL same-lane) - macro_response_shadow register aggregator + RC_COMP_HP_LEAN eyeball
 
 Continued R23's lane (the last un-aggregated shadow log). Two slices shipped; a live SR game
@@ -60,36 +96,3 @@ NEXT same-lane: macro_response_shadow action-register aggregator (active-push vs
 passive-scale by lead_state - re-derive, do NOT copy det_coach/objective domains). Live-gated
 OWED: RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball + overlay eye-line/S0-pulse. DS
 scorer-valuation track stays CLOSED.
-
----
-
-# 2026-06-23 (R22 DIRECTOR REFILL) - det_coach_shadow agreement aggregator (Haiku-to-ZERO)
-
-Re-probed live state (mode=client / liveclient null - no game), so both carry-forward live-gated
-lanes (RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball; live overlay eye-line + S0-pulse) were no-ops
-this cycle -> headless lane. Interviewed the gemini director (gemini-3-pro-preview, ops/loop/
-loop_controller.gemini() pattern); it picked a Haiku-to-ZERO agreement instrument. Commit 8470c3cc
-(pushed). Tier-1 tooling (2 new files; no engine/DS/Share/ENGINE_VERSION; pre-commit hook skipped
-Share sync, confirming Tier-1).
-
-VERIFY-THE-PREMISE payoff (audit-proposals-are-intent): the directive's premise ("no aggregator
-exists") was GLOBALLY false - hz_shadow_report.py + hz_mismatch_diagnose.py + live_benchmark_band_
-report.py already aggregate other shadow logs. But it held for the SPECIFIC target: an inventory
-(ls data/*shadow*.jsonl + grep readers) found det_coach_shadow.jsonl (22,344 rows, the LARGEST
-shadow log, the B1 deterministic-coach flip substrate) had a WRITER (core/det_coach_shadow.py) and
-NO reader. Re-derived the real metric: det A-choice is always ds-matchup (laning trade) but native
-(Haiku) A-choice is overwhelmingly macro/objective (wave-tempo/objective-*), so a naive label-match
-would false-0% (the cycle-53/item-574 category error). New tools/det_coach_shadow_report.py
-classifies each side's DOMAIN off source_tag (trade/build/macro) -> domain ALIGNMENT rate (headline
-do-not-flip signal: 2% live - Haiku is mostly macro at these ticks), within-trade verdict agreement
-(cross-domain EXCLUDED as domain_divergence, never diluting the denominator; 0/159, Haiku plays
-safer "Farm safe"), build-item overlap (3.1%), coverage. Default flip-hint HOLD. Mirrors
-hz_shadow_report.py conventions. RED-first hermetic test (mock jsonl in tmp; real file gitignored)
-20/20; verifier-gated CONFIRM (9/9 checks).
-
-NEXT: overlay-polish lane stays DRAINED + RC2 tail exhausted; next unit is another gemini-directed
-NON-DS-scorer refill. SAME-LANE off-lane refills ready: macro_response_shadow.jsonl (18,192) +
-objective_playbook_shadow.jsonl (18,858) are the next un-aggregated shadow logs (same domain-aware
-pattern). Carry-forward live-gated lanes still OWED (need the RIGHT live game): RC_COMP_HP_LEAN
-default-ON eyeball (AP mage vs 2+ tanks) + live overlay eye-line + S0-pulse capture. The DS
-scorer-valuation track stays CLOSED (do NOT re-pitch kill-state/carry_share or AP-DoT).
