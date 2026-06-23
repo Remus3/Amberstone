@@ -4,6 +4,44 @@
 
 ---
 
+# 2026-06-22 (overlay-polish run) - band channel on the PRIMARY action line
+
+Operator directive: route cycles to the in-game Electron overlay until it matches the agreed
+glance-first design. GATE this cycle: mode=client / liveclient null - no live game, so the live
+in-game capture is OWED (carry-forward) and I worked the overlay-polish lane against the live
+backend per the directive's gate fallback. Ledger item 591, commit `41c6ae50` (pushed).
+
+A read-only Plan gap-analysis vs `docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md` +
+`docs/OVERLAY_DOCTRINE.md` narrowly REFUTED the ROADMAP "lane DRAINED" claim - exactly ONE
+buildable slice remained. When the 460px dock was retired (item 564) and S0 moved from
+`#rn-action` to the `w-call` widget, the band-color binding did NOT migrate (it lived on
+`web/css/panels/right_now.css .action-urgent`/`.action-good`, but `#rn-action` is now
+`display:none` in the overlay), so the overlay ACTION line rendered flat WHITE for every coach
+band (`overlay.css:298-303`) - urgent (retreat/dead/recall) and good (push/secured) read
+identically - and the `overlay.css:570` combat-shed comment ("the band color carry the read")
+described behavior that did not exist. Everything else in the spec was confirmed already-shipped /
+operator-gated-flip / Phase-4-deferred.
+
+SHIPPED: `web/js/panels/active_match.js` stamps `data-call-band` from the shipped
+`classifyAction(action)` + prepends an `aria-hidden` band glyph built with `String.fromCharCode`
+(U+26A0 warn / U+2713 check / U+25BA play, so the file stays 7-bit ASCII), gated on
+`body[data-shell="overlay"]` so the 1920 dashboard render is byte-identical. `web/css/overlay.css`
+keys a glyph color + 3px color-bar left border off the band: urgent=red (the ONE reserved
+emergency pop-out, rule 4) / fight=gold / good=green; the verb TEXT stays white (doctrine 164).
+RED-first `test_overlay_call_action_band_channel` asserts `data-call-band == classifyAction(verb)`
+(the WIRING, guards the fixture-shaped-to-bug mode) + the glyph/bar token colors + the white verb;
+27/27 overlay tests green; 0 non-ASCII bytes; EOL-consistent. Live-verified on the legion-rc:8888
+origin (band=good, green check-glyph + green bar, white verb) - vs the LIVE backend, not just the
+fixture. Tier-1 frontend (overlay.css NOT frozen + the overlay renderer); asset-hash hot-reload,
+NO engine / DS / Share / ENGINE_VERSION change.
+
+NEXT: the overlay-polish lane is now genuinely DRAINED (this was the one (d) slice; the rest is
+shipped / operator-gated / Phase-4-deferred). OWED: live in-game capture of the band channel + S0
+over a real game. With no overlay slice left, the next unit is non-overlay (interview the gemini
+director per the gate fallback) OR clear the OWED capture when a practice game is up.
+
+---
+
 # 2026-06-22 (UI feature-lift tail) - render the backend data the mocks show
 
 Follow-on to the item-589 Hextech reskin: render data the greenlit mocks show but the DOM did
