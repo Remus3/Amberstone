@@ -109,6 +109,46 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-22 (headless continue 21 / R19) - DS spell_damage_reduction_pct forward-marker
+
+Item 587, commit `ee673c1d` (feature, pushed) + docs-sync `f5b94541`. DS schema surface (forward-marker
+accessor); ENGINE HELD at 1.151.0 (NOT bumped), DS :8893 restarted, Share re-synced.
+
+CONTEXT: gemini+ahk loop executor cycle 8. Directive = ORCHESTRATION_PLAN R19 DIRECTOR REFILL - NEW
+forward-marker accessor `DataSnapshot.spell_damage_reduction_pct(champ_id, slot)` surfacing the per-rank
+PERCENT damage reduction from `champion_abilities.json` defensive modifier blocks as a first-class
+magnitude (the `modifier_blocks` taxonomy already classified them `defensive_self` but no accessor
+exposed the numeric %).
+
+WHAT: module-level `_extract_damage_reduction_pct` walks `AbilitiesSnapshot.iter_forms()`, keeps
+`attribute_kind=="modifier"` + `classify_modifier_kind=="defensive_self"` + "damage reduction" in the
+name, reads the FIRST `raw_modifiers` entry whose `units` are ALL the bare `"%"`. Lazy + frozen-safe
+accessor (`object.__setattr__` cache; `DataSnapshot` is frozen), file-existence gate (byte-identical for
+older snapshots, no broad except), returns `{label: per_rank_pct_tuple} | None`. 8 champs at 16.12.1
+(Alistar R 55/65/75, Galio W magic 25..45 + physical 12.5..22.5, Garen/Gragas/MasterYi W,
+Belveth/Braum/Warwick E 35..55). Pure-% filter excludes flat reductions (Amumu E, Leona W) + per-stat
+scaling sub-modifiers ("% per 100 AP").
+
+KEY DECISION (gemini director ruling B, synchronous gemini_ask). The directive said "ENGINE_VERSION
+bump" but ALSO "Default-OFF, byte-identical when unconsumed. Live flip EXCLUDED" - internally
+inconsistent. No consumer = byte-identical output, and the item-339/343 forward-marker convention
+(`spell_sub_missile_speed`/`spell_cc_tags`) EXPLICITLY does NOT bump (~70 version-contract tests pin
+1.151.0). Director chose B: HOLD 1.151.0, no pin churn. Share STILL re-synced (a `data_loader.py` edit
+drifts `Share/src`; `--check` is the CI-only guard) + DS :8893 restarted (loads the code, /health stays
+1.151.0).
+
+VERIFY: TDD RED-first `test_spell_damage_reduction_pct.py` 14 cases (13 red first); 1 worktree build
+agent on the disjoint data_loader + test slice + orchestrator independent re-run in main before commit.
+DS suite 7511 passed / 1 skip / 1943 subtests; ruff clean; RC suite 9378 passed (the 12 fails ALL
+pre-existing - 3 CoachWire ARAM-template + 7 ds_pick_consumption_p1l11 ARAM subfails + overlay.css
+sub-floor + spell_autopush on dirty data/spell_prefs.json - 0 R19 regressions). ds_share_sync --check
+green (373). ROADMAP 80KB trim: R15 + R16 bullets relocated to docs/ROADMAP_HISTORY.md.
+
+FUTURE: a survivability/EHP consumer reading the % (fold prevented damage into the EHP numerator like
+the flat-DR item-261/R9 path) - not wired blind. Live default-ON wiring EXCLUDED.
+
+---
+
 # 2026-06-22 (headless continue 20 / R18) - panel typography v2.1 sub-floor audit
 
 Item 586, commit `0999d3eb` (pushed) + this docs-sync. Tier-1 frontend (CSS/JS = asset-hash
