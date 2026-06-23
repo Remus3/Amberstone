@@ -14729,3 +14729,98 @@ Operator "continue with backlog in parallel" -> 2 disjoint LIFT1 FUTURE gaps shi
 - Gate: tests/ 7885p/0f/0e/2s + 109 subtests, 252.95s exit 0 (+43); independently re-run fresh to ops/audit/p2w4_hw2_pytest.txt. DS-dir NOT re-run (no DS/scorer/Share file - tiered-verify R5/R6, blast radius all in tests/). Phase3-Supervisor bounced (taskkill 24280 -> schtasks /Run -> pid 27044 re-listening :8890) for the test_supervisor_starts_and_binds_ports env-flake. DEFER -> ops/audit/P2_FINDINGS.md (W4-hw2: 3 MED retrofill-provenance / merge_refresh non-atomic / spec hiddenimports + LOW + INFO).
 - Follow-up (post-cycle commit 5669d682, closes the slice-H MED DEFER): riot-commander.spec hiddenimports was a stale hand-list of 7 of 54 dashboard.routes_* -> now a build-time glob of dashboard/routes_*.py (a PyInstaller build would have ModuleNotFoundError'd on the ~47 unlisted: routes_metrics/ds_combo/archetype/ward_heat/...). Glob-of-files is self-maintaining + only declares modules that exist. ast.parse OK, CI green; .spec never imported at runtime, no restart.
 - DONT-REDO: non-finite floors + loop timeouts + tft degrade/OCR-timeout + wakeup re-split + spec icon stay + spec-hiddenimports-glob stay (do NOT revert to a hand-list); rc-shell Electron is clean (do NOT re-audit for a quota edit); bare-py guard has a 2nd gap (bare `python <script>` word-form, widening false-positives doc lines - leave). gamepc/2-PC note-only feed: scripts/{discover_champion_codes,probe_missing_codes,team_planner_sync} hardcode 192.168.8.237 LCU base (-> 127.0.0.1/RC_GAME_HOST), phase3 SMB refs, tft Game-PC frame comments (accurate post-1PC). NEXT cycle 16: W5 test corpus = tests/ 359/81155 + agents/daemon_slayer/tests ~200/~81k (~6 slices each, W5-light lens: data-fragile assertions, stale pins, skipped/xfail rot).
+
+## Relocated from WAKEUP_NOTES 2026-06-22 (weekly-hygiene trim, ledger 594)
+
+# 2026-06-22 (overlay-polish run) - band channel on the PRIMARY action line
+
+Operator directive: route cycles to the in-game Electron overlay until it matches the agreed
+glance-first design. GATE this cycle: mode=client / liveclient null - no live game, so the live
+in-game capture is OWED (carry-forward) and I worked the overlay-polish lane against the live
+backend per the directive's gate fallback. Ledger item 591, commit `41c6ae50` (pushed).
+
+A read-only Plan gap-analysis vs `docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md` +
+`docs/OVERLAY_DOCTRINE.md` narrowly REFUTED the ROADMAP "lane DRAINED" claim - exactly ONE
+buildable slice remained. When the 460px dock was retired (item 564) and S0 moved from
+`#rn-action` to the `w-call` widget, the band-color binding did NOT migrate (it lived on
+`web/css/panels/right_now.css .action-urgent`/`.action-good`, but `#rn-action` is now
+`display:none` in the overlay), so the overlay ACTION line rendered flat WHITE for every coach
+band (`overlay.css:298-303`) - urgent (retreat/dead/recall) and good (push/secured) read
+identically - and the `overlay.css:570` combat-shed comment ("the band color carry the read")
+described behavior that did not exist. Everything else in the spec was confirmed already-shipped /
+operator-gated-flip / Phase-4-deferred.
+
+SHIPPED: `web/js/panels/active_match.js` stamps `data-call-band` from the shipped
+`classifyAction(action)` + prepends an `aria-hidden` band glyph built with `String.fromCharCode`
+(U+26A0 warn / U+2713 check / U+25BA play, so the file stays 7-bit ASCII), gated on
+`body[data-shell="overlay"]` so the 1920 dashboard render is byte-identical. `web/css/overlay.css`
+keys a glyph color + 3px color-bar left border off the band: urgent=red (the ONE reserved
+emergency pop-out, rule 4) / fight=gold / good=green; the verb TEXT stays white (doctrine 164).
+RED-first `test_overlay_call_action_band_channel` asserts `data-call-band == classifyAction(verb)`
+(the WIRING, guards the fixture-shaped-to-bug mode) + the glyph/bar token colors + the white verb;
+27/27 overlay tests green; 0 non-ASCII bytes; EOL-consistent. Live-verified on the legion-rc:8888
+origin (band=good, green check-glyph + green bar, white verb) - vs the LIVE backend, not just the
+fixture. Tier-1 frontend (overlay.css NOT frozen + the overlay renderer); asset-hash hot-reload,
+NO engine / DS / Share / ENGINE_VERSION change.
+
+OWED CLEARED later this session: the operator started a Caitlyn SR practice game, so I drove the
+live in-game capture. On the legion-rc:8888 origin the band channel rendered the FIGHT/gold path
+live (gold play-glyph + gold bar + white verb on "SETUP DRAKE WARD" then "HOLD LANE SCALING"), the
+eye-line layout #2 defaults held (w-call 760,140 / w-lead 786 / w-callouts 1486, position:fixed),
+the S0 pulse stayed correctly UNARMED for the non-emergency cue, and the :8889 self_grab frame
+(1280x720 jpeg, primary=true, X-RC-Token auth) confirmed the vision pipeline AND showed the overlay
+composited over the real game. good/green (ui_mock) + fight/gold (live) are both proven; urgent/red
+is the same code path (unit-tested).
+
+NEXT: the overlay-polish lane is genuinely DRAINED. Interviewed the gemini director
+(gemini-3-pro-preview, via the loop_controller gemini() pattern) for the next NON-OVERLAY unit ->
+it recommended the DS scorer-valuation residual (AP DoT-burn vs burst EHP-gating + kill-state
+passive weighting for low-kill-share/utility archetypes). VERIFICATION CORRECTIONS (audit-proposals-
+are-intent): the cited files all EXIST (core/damage_mix.py, carry_share.py, ds_calibration.py,
+coach_trace.py) BUT the BASE scorers are ALREADY SHIPPED (test_dsv1_ability_burn_valuation.py +
+test_dsv2_killstate_passives.py, DSV1/DSV2 items 429-437), so the genuine remaining work is the
+CALIBRATION RESIDUAL only (the ROADMAP G5/G6 design-level lane, Gemini-consult-first), and it is
+TIER-2 (scorer/item-effect -> ENGINE_VERSION bump + dual suite + DS restart + Share mirror), NOT
+gemini's stated Tier-1. The next-session prompt is built on this (verify the residual is a REAL
+measurable false-positive, rewind-WIN-anchored, BEFORE building).
+
+---
+
+# 2026-06-22 (UI feature-lift tail) - render the backend data the mocks show
+
+Follow-on to the item-589 Hextech reskin: render data the greenlit mocks show but the DOM did
+not yet (BACKEND-GATED, not pure CSS). Ledger item 590. gemini-directed; plan + rulings in
+docs/RC2_REDESIGN_PLAN.md (Feature-lift tail). 6 commits pushed; cross-lift regression 236/236
+snapshot+backend tests green. Tier-1 frontend + 2 thin read routes + 1 minimal frozen edit; NO
+engine / DS / Share / ENGINE_VERSION change.
+
+SHIPPED (each: gemini spec -> build agent -> orchestrator FRESH re-verify (diff + tests + hex/ASCII
++ test-body read) -> commit + push + restart/live-curl for routes):
+- 1a counter-pick HERO card `4d0172b6` (counters[0] dominant + compact [1..4]; backend was already
+  wired RC2 E4 - prominence elevation only).
+- 1b ally AD/AP meter `66375d63` - NEW GET /api/champ-select/team-damage-mix (info.attack vs
+  info.magic tally) -> dual-color bar; live 58/42.
+- 3 home last-20 W/L strip + WR `c3bf040d` - shared _compute_last20() extracted from _build_history
+  (byte-identical, 7/7 regression), last20 injected into /api/home/summary; live 7-13 35.0%.
+- 2a PGR decomposition 5-bar `a461980b` - last_match.js consumes the rubric components+weights_used
+  (saturation = comp/(2*weight)); route already returned them. 2b carry metrics ALREADY shipped
+  (s219 _setStatsGrid) - not rebuilt. 2c @15 DROPPED (no backing data, gemini ruling).
+- 4 history season WR + filters `c0ce9faf` - retired the "needs Riot key" stub; global client-side
+  champion/mode/result/grade filters. CAUGHT+FIXED an agent unit-bug: win_rate is a PERCENT live
+  (51.6) but the agent rendered it *100 -> "5160%" and shaped the ui_mock fixture to the bug;
+  corrected JS + fixture (lesson: live-curl the unit before trusting a fixture-passing test).
+- 5 ready-check toggle `8e972a14` - NEW non-frozen core/auto_accept_pref.py + GET/POST
+  /api/lcu/auto-accept; operator-AUTHORIZED minimal frozen lcu_client.py gate (_auto_accept_tick
+  wraps accept_queue in `if is_enabled()`, default ON = byte-identical). The in-process force-accept
+  loop is a SEPARATE mechanism from the existing #lv-auto-accept (which set_configs the RC-LCUAgent
+  via :8889); UNIFIED into the existing toggle (one control gates both) instead of a 2nd switch.
+  Live GET/POST round-trip + 400 proven; pref left ON.
+
+CONFIRM-PER-ITEM caught 2 "already done" (2b carry, 1a/3 base) + the lift-4 unit bug - the
+"verify the data per item, never scaffold on the research claim" directive paid off repeatedly.
+
+OWED (carry-forward, unchanged from item 589): live in-game overlay capture (eye-line layout +
+S0 pulse) - mode=client all session, no live game to capture.
+
+NEXT: feature-lift tail is EXHAUSTED. Remaining RC2 work = the OWED overlay capture (needs a live
+game) + any new research/DS sweeps per ROADMAP/BACKLOG.
