@@ -16,19 +16,21 @@
  *
  * Uses the semantic tokens from web/css/tokens.css. The strip carries a
  * positive (good) accent for crossed spikes + a warn ring for the next
- * spike (the actionable "you are about to come online" cue).
+ * spike (the actionable "you are about to come online" cue). Spacing +
+ * radii consume the UI_SCALE_SPEC_V2 8-px grid + --panel-radius-sm token
+ * (R28 grid-compliance sweep, 2026-06-23).
  */
 
 .spike-markers {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 8px;
-  padding: 6px 8px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
   background: rgba(20, 22, 30, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-left: 3px solid var(--signal-good, #4ad295);
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
 }
 
 .spike-markers[hidden] {
@@ -38,8 +40,8 @@
 .spm-head {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin-bottom: 2px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
 }
 
 .spm-head-title {
@@ -59,7 +61,7 @@
 .spm-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .spm-row-tag {
@@ -76,7 +78,7 @@
   flex: 1 1 auto;
   display: flex;
   align-items: stretch;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -88,9 +90,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
-  padding: 3px 2px;
-  border-radius: 4px;
+  gap: 1px;  /* intra-cell text hairline (sub-grid, intentional) */
+  padding: var(--space-1);
+  border-radius: var(--panel-radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(255, 255, 255, 0.04);
   font-variant-numeric: tabular-nums;
@@ -145,7 +147,7 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--signal-warn, #f1b04a);
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 
 .spm-next.spm-next-done {
