@@ -4,6 +4,46 @@
 
 ---
 
+# 2026-06-23 (R30 - SLOW per-page UI/UX design review, pages 1-2 of 9: HOME + LOBBY)
+
+Interactive operator session (NOT the headless loop). The R29 NEXT directive: a slow, deliberate
+per-page design review of EACH dashboard view - validate WHY each panel is there, decide
+remove/add/alter (genuine design judgement, not token compliance). 2 pages shipped, 2 commits pushed,
+gate green (228 snapshot + 14 new tests; ruff clean; 5-phase UI audit CLEAN each page). Tier-1 frontend
++ 2 dashboard builder fixes; no engine/DS/Share/ENGINE_VERSION.
+
+CADENCE (proven, reuse pages 3-9): recon each view at 923+1920 via live-:8888 Playwright
+(`ops/runtime/ui_recon/recon.py <view>`) -> READ the screenshots + ground-truth file:line -> PRESENT
+keep/remove/add/alter + one framed scope AskUserQuestion -> build the picked slice (RED-first TDD,
+5-phase UI-audit subagent gate before commit, commit+push). Gemini director interviewed ONCE for per-view
+design intent (`ops/runtime/ui_recon/gemini_out.txt` - PART B one-liners drive the rest).
+
+HOME (`a946f9bb`, full slice 1-7): idle "Ready when you are" greeting -> last-5 W/L momentum verdict
+(`_homeMomentumVerdict`); primary Find Match CTA added (was the missing "next action"); duplicate
+play-streak + "Advisories: None" noise killed; small-sample (1-2 game) Good/Bad suppressed
+(`builders_home._home_pick_tips`); 3 stat chips unified to ONE 14d timeframe (was today 0/0/0 next to 14d
+CS/GOLD; degenerate K/A-recording-gap days skipped so no false 0.0). `test_home_review_r30.py` (8) + tips
+small-sample. HARNESS LESSON: home double-fetches at boot (ui_mock + `/api/home/summary` which the conftest
+mock_server answers `{}`); route BOTH paths in tests or pass 2 clobbers injected state to empty.
+
+LOBBY (`b7500807`, polish+wire): YOUR MAINS "AVG/Match" grid was all dashes via a KEY MISMATCH (builder
+emitted `cs_pm/vision_pm/dmg_pm`; frontend `_mcAveragedHtml` reads `kp/cs/vision/dmg/cs_per_min/avg5`).
+`routes_lobby_aux._query_mains_for_puuid` now emits the consumed keys from rewind participants: cs/vision/dmg
+per-game, KP% via a team-kill self-join (`_kp_by_champ`), AVG5 last-5 KDA grade (`_avg5_grade`). Live-verified
+`/api/mains` (Vayne KP 51% / CS 87 / dmg 35.4K / AVG5 C). + "CHAMPIONMASTERY" header jam fixed (emptied the
+"Champion" label that overflowed its 76px icon track) + MY TOP 8 radii/gaps -> tokens. Hermetic
+`test_lobby_mains_averaged.py` (6, temp DB - not the gitignored rewind DB). Dense `.lv-top8-*` 14px LEFT
+(overflows at 16); the named deferred `.lv-fr-*` is DEAD/preserved code (`_renderFriendsRecent` uncalled).
+
+NEXT (operator: CONTINUE the review next session, pages 3-9, after /done + /clear): Post Game Review
+(last-match, `last_match.css` - PGR card-radius `--radius-sm`->`--panel-radius` deferred), Session, History,
+User Builds, Build Insights, Settings, Replay, + in-game champ-select / active-match / overlay (live-gated).
+Respect: operator-locked `last_match.css` sub-floors (`:160/862/1138/1244`); replay scroll-wrap is correct
+(do NOT "fix"). Reuse the harness + `gemini_out.txt` at `ops/runtime/ui_recon/`. The full resume prompt was
+handed to the operator in chat.
+
+---
+
 # 2026-06-23 (R29 cc-chips + USER-DRIVEN companion-fit / hexcore legibility / default window size)
 
 R29 Gemini-director cycle, then an interactive operator session. 4 commits, all pushed, gate green
