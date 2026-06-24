@@ -1819,9 +1819,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         set("session-modes",
           d.modes ? Object.entries(d.modes).map(([m,n]) => `${m} ${n}`).join(" · ") : "-");
         const champUl = document.getElementById("session-champs");
+        const champCard = document.getElementById("session-champs-card");
         if (champUl) {
           champUl.innerHTML = "";
-          (d.champions || []).forEach((c) => {
+          // R30 page-4 design review: REPLAYED CHAMPIONS - only champs played
+          // 2+ times this session (the aggregate rows that aren't already 1:1
+          // in the Matches list). The card hides when there are no repeats so
+          // a varied session doesn't duplicate its own match log.
+          const replayed = (d.champions || []).filter((c) => (c.games | 0) >= 2);
+          replayed.forEach((c) => {
             const li = document.createElement("li");
             li.className = "history-match-row";
             li.innerHTML = `<span style="flex:1">${escapeHtml(c.champion)}</span>` +
@@ -1829,7 +1835,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               `<span style="margin-left:10px">${escapeHtml(c.kda || "-")}</span>`;
             champUl.appendChild(li);
           });
-          if (!champUl.children.length) champUl.innerHTML = '<li class="home-empty">no champs in session</li>';
+          if (champCard) champCard.hidden = replayed.length === 0;
         }
         const matchUl = document.getElementById("session-matches");
         if (matchUl) {
@@ -1849,8 +1855,85 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           });
           if (!matchUl.children.length) matchUl.innerHTML = '<li class="home-empty">no matches in session</li>';
         }
+        // R30 page-4: tilt/fatigue trend from the same matches (grade order).
+        _renderSessionTrend(d.matches || [], d.time_played_s | 0);
       })
       .catch(() => {});
+  }
+
+  // R30 page-4 design review: session tilt/fatigue trend. gemini's job for
+  // the Session view is tracking daily tilt + fatigue + cumulative limits;
+  // this derives a chronological grade trajectory (oldest->newest) from the
+  // matches already in hand and reads it as cooling off / heating up /
+  // steady - fatigue-flagged when a long session is also declining. No
+  // backend call; pure presentation over /api/session/summary data.
+  const _GRADE_RANK = { S: 5, A: 4, B: 3, C: 2, D: 1, F: 0 };
+  function _gradeLetter(g) {
+    return String(g || "").trim().toUpperCase().charAt(0);
+  }
+  function _gradeRank(g) {
+    const k = _gradeLetter(g);
+    return (k in _GRADE_RANK) ? _GRADE_RANK[k] : null;
+  }
+  function _avg(arr) {
+    return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+  }
+  function _renderSessionTrend(matches, timePlayedS) {
+    const wrap = document.getElementById("session-trend");
+    const labelEl = document.getElementById("session-trend-label");
+    const textEl = document.getElementById("session-trend-text");
+    const strip = document.getElementById("session-trend-strip");
+    if (!wrap || !labelEl || !textEl || !strip) return;
+    // matches arrive newest-first; chronological = oldest-first.
+    const chrono = (Array.isArray(matches) ? matches.slice().reverse() : []);
+    const graded = chrono
+      .map((m) => ({ g: _gradeLetter(m.grade), r: _gradeRank(m.grade) }))
+      .filter((x) => x.r != null);
+    if (graded.length < 2) {            // small-sample: no trend to read
+      wrap.hidden = true;
+      wrap.dataset.kind = "";
+      return;
+    }
+    strip.innerHTML = graded
+      .map((x) => `<li class="session-trend-chip ${escapeHtml(x.g)}">${escapeHtml(x.g)}</li>`)
+      .join("");
+    const ranks = graded.map((x) => x.r);
+    const mid = Math.floor(graded.length / 2);
+    const earlyAvg = _avg(ranks.slice(0, mid));
+    const lateAvg = _avg(ranks.slice(-mid));
+    const lastRank = ranks[ranks.length - 1];
+    const minRank = Math.min(...ranks);
+    const lastGrade = graded[graded.length - 1].g;
+    // Declining: the later half drops a grade, OR the most recent game is the
+    // session's single worst and sits below the early average (a fresh dip).
+    const declining = (lateAvg - earlyAvg <= -0.75) ||
+      (graded.length >= 3 && lastRank === minRank && lastRank < earlyAvg);
+    const improving = !declining && (lateAvg - earlyAvg >= 0.75);
+    const longSession = (timePlayedS | 0) >= 9000;   // 2.5h+
+    let kind, label, text;
+    if (declining) {
+      kind = "warn";
+      if (longSession) {
+        label = "Fatigue check";
+        const hrs = Math.floor((timePlayedS | 0) / 3600);
+        text = `${hrs}h+ in and your grades are sliding (last game ${lastGrade}) - a break may reset the tilt.`;
+      } else {
+        label = "Cooling off";
+        text = `Recent games are grading below your session start (last game ${lastGrade}).`;
+      }
+    } else if (improving) {
+      kind = "good";
+      label = "Heating up";
+      text = `Your recent games are outgrading your start (last game ${lastGrade}) - ride it.`;
+    } else {
+      kind = "neutral";
+      label = "Steady";
+      text = `Holding around ${lastGrade} across ${graded.length} games - no tilt signal.`;
+    }
+    labelEl.textContent = label;
+    textEl.textContent = text;
+    wrap.dataset.kind = kind;
+    wrap.hidden = false;
   }
 
   // ── History view fetchers (2026-04-26) ───────────────────────────
