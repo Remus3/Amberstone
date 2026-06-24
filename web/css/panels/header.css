@@ -2739,6 +2739,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   /* User Builds: the list|form 2-up starves the list pane so build names
    * truncate ("lethality 3..."); stack so each pane gets the full width. */
   .ub-layout { grid-template-columns: 1fr; }
+  /* R30 page-5: the 3-col History grid squeezed the SESSIONS dates into a
+   * mid-date wrap ("2026-05-/22") at companion width; stack so each card
+   * (sessions / filter+detail / season stats) gets the full width. */
+  .history-grid { grid-template-columns: 1fr; }
 }
 /* RC2 Hextech reskin (redesign #12, the last page). Each settings card
  * adopts the hx-card frame: a plain bordered --surface body with the two
