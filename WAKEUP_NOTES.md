@@ -4,6 +4,44 @@
 
 ---
 
+# 2026-06-23 (R30 CONTINUATION-2 - per-page UI/UX design review, pages 8 + 6 of 9; OUT-OF-GAME COMPLETE)
+
+Interactive operator session finishing the R30 out-of-game review (pages 1-5,7,9 shipped prior; ledger
+603-608). 2 pages shipped, 2 commits pushed, gate green (248 snapshot tests; 63 replay tests; a 5-phase
+UI-audit subagent PASS each page; node --check OK). All Tier-1 frontend; no engine / DS / Share /
+ENGINE_VERSION. mode=client, NO live game -> the in-game champ-select / active-match / overlay pages + the
+2 OWED live-gated items (E.1 ACTIVE knob; RC_COMP_HP_LEAN flip) stayed un-buildable.
+
+CADENCE (proven, reuse for the in-game pages): recon each view at 923 + 1920 via live-:8888 Playwright
+(`ops/runtime/ui_recon/recon.py <view>`) -> READ + JUDGE the screenshots, ground-truth every finding at
+file:line -> PRESENT keep/remove/add/alter + ONE framed scope AskUserQuestion -> build the operator-picked
+slice RED-first + a 5-phase UI-audit subagent gate before commit -> commit+push. Gemini PART B per-view
+intent in `ops/runtime/ui_recon/gemini_out.txt`.
+
+- PAGE 8 BUILD INSIGHTS (`dec18ded`, full pass): the 4 WPA tables already avoid gemini's global-pickrate
+  trap (personal residuals), so added a confidence-weighted TAKEAWAY rail beside each table - strongest +
+  weakest mover ranked by `wpa_shrunk` (the shrink-adjusted residual, emitted by all 4 routes) so the
+  TRUSTWORTHY signal wins not the noisiest low-n row (Skills fixture: raw-worst Corki n=25 vs shrunk-worst
+  Kog'Maw n=39 -> the rail surfaces Kog'Maw). Fills the ~650px desktop dead zone; stacks above the table at
+  companion (`order:-1`). + the Min-N control relabels per tab (buys/games/picks) + hides on the 4 chart
+  tabs (inert no-op there). Also fixed a stale pre-existing DOM test (`test_uses_semantic_token` asserted
+  the pre-reskin `var(--signal-*)`; file uses `--good`/`--bad` - failed on base, CI runs no pytest).
+- PAGE 6 REPLAY (`1537f5d7`, "+reorder" full slice): gemini's job is "actionable event timeline, not a
+  video player". (1) CLICK-TO-SEEK: each timeline event row seeks the scrubber to its `clock_s` (nearest
+  snapshot by minute) + re-renders the grid at that frame - cross-module circular-import-free via a
+  `setReplaySeekHandler` bridge (replay_events.js delegated click on `#replay-events-list` -> dev.js
+  `_replaySeekToClock`). (2) REORDER: timeline section hoisted ABOVE the grid (event-index-first). (3)
+  swept primitives.css fully ASCII-clean + tokenized `.replay-col-items` padding + index.html arrow -> "<-".
+  KEPT the 4px icon radii (dashboard convention, 81x / 21 files); grid scroll-wrap untouched (operator-locked).
+  LESSON: the `-F` commit-message-file path avoids the PS 5.1 here-string mangling that exit-128'd the first
+  `git commit -m @'...'@`.
+
+NEXT (operator directive): the OUT-OF-GAME review is COMPLETE (pages 1-9). Only the in-game champ-select /
+active-match / overlay pages remain - LIVE-GATED. Resume them when a game is live, reusing the harness +
+`gemini_out.txt`. Carry-forward OWED (live-gated): E.1 ACTIVE knob physical press; `RC_COMP_HP_LEAN` flip.
+
+---
+
 # 2026-06-23 (R30 CONTINUATION - per-page UI/UX design review, pages 3,4,5,7,9 of 9)
 
 Interactive operator session continuing the R30 review (pages 1-2 shipped prior, ledger 603). 5 pages
@@ -85,107 +123,3 @@ User Builds, Build Insights, Settings, Replay, + in-game champ-select / active-m
 Respect: operator-locked `last_match.css` sub-floors (`:160/862/1138/1244`); replay scroll-wrap is correct
 (do NOT "fix"). Reuse the harness + `gemini_out.txt` at `ops/runtime/ui_recon/`. The full resume prompt was
 handed to the operator in chat.
-
----
-
-# 2026-06-23 (R29 cc-chips + USER-DRIVEN companion-fit / hexcore legibility / default window size)
-
-R29 Gemini-director cycle, then an interactive operator session. 4 commits, all pushed, gate green
-(227 tests: hygiene + full snapshot suite; ruff clean).
-1. cc-threat-chips grid sweep (1b159617) - the R29 director-picked unit (cc_blended_ehp_threat +
-   cc_conditional_pressure, adjacent mirrored champ-select chips): off-grid spacing/radii ->
-   --space-* / --panel-radius-sm; RED-first tests/snapshot_panels/test_cc_threat_chips_view.py.
-2. Companion-fit reflow, ALL out-of-game views (a731c8ce home; 31f4a327 settings/lobby/user-builds/PGR).
-   The rc-shell out-of-game companion loads the full 1920-authored :8888 dashboard in a ~923px window;
-   the wide grids overflowed/clipped. @media (max-width:1200px) single-columns .home-body / .home-hero /
-   .home-coach-pick-body, .settings-body, .lobby-view-grid, .ub-layout, .lm-row-half / .lm-hero. KEY
-   LESSON: a flex child with an EXPLICIT min-height flex-collapses under a tall flex-column parent and
-   spills onto the next card -> set min-height:auto at the companion width (home-hero + lm-hero). replay
-   already scroll-wraps its grid (verified contained, not clipped). 1920 desktop UNTOUCHED.
-   test_home_companion_view.py (3) + test_companion_reflow.py (9).
-3. Hexcore legibility pass (31f4a327, guided by a parallel review subagent): lobby .lv-mc-avg-lbl/-val +
-   .lv-top8-cell sub-floor bumps (12/14px -> --fs-xs/--fs-sm), + --text-faint (~3:1) -> --text-dim (~5.5:1)
-   contrast lifts on settings spend-gate, home hero-sub/pick-tip, build-insights numeric columns, PGR
-   rank-cell. operator-locked last_match.css sub-floor exceptions (:160/862/1138/1244) LEFT UNTOUCHED.
-4. Default companion window size -> 923x1316 (7117ff19): rc-shell/src/config.js standard preset
-   (DEFAULT_PRESET that resolveConfig falls back to) 520x900 -> 923x1316; tall -> 1100x1560 (monotonic
-   Compact/Standard/Tall ladder); compact unchanged. 29 config.test.js green; resolveConfig({},{}) = 923x1316.
-
-NEXT (OPERATOR DIRECTIVE, NEXT SESSION after /clear): a SLOW, deliberate per-page UI/UX design review -
-go through EACH dashboard view one at a time, validate WHY each piece/panel is there, decide what to
-REMOVE / ADD / ALTER (not just token compliance - genuine design judgement). Recon technique = render
-each view at 923 + 1920 via live :8888 Playwright (mode=client out of game). Carry the deferred legibility
-P2/P3: lobby .lv-fr-* fonts (11/12px), PGR card radius --radius-sm->--panel-radius, a raw-radii / off-grid-gap
-token sweep across the lobby/replay/PGR blocks that missed the v2.1 pass. The FULL next-session prompt was
-handed to the operator in chat.
-
-Don't-redo: home/settings/lobby/user-builds/PGR companion-fit SHIPPED (a731c8ce/31f4a327); default window
-size SHIPPED (7117ff19); cc-chips grid-swept (1b159617); replay scroll-wrap verified fine (do NOT "fix" it).
-
----
-
-# 2026-06-23 (R28 DIRECTOR REFILL) - un-audited UI surface 5-phase audit: spike_markers grid sweep
-
-Re-probed: mode=client, NO live game (LCU EndOfGame, /api/state liveclient EMPTY, League in lobby) - so
-the 2 OWED live-gated items (E.1 physical knob; RC_COMP_HP_LEAN flip) were UN-buildable this cycle.
-Interviewed the gemini director (gemini-3-pro-preview, loop_controller.gemini(); scratch script deleted);
-fed live state + the candidate menu, it picked (b) un-audited UI 5-phase audit over the heavily-mined (a)
-competitor-lift lane (7 prior COMPETITOR_LIFT docs). It NAMED carry_share/ds_antitank panels - both
-HALLUCINATED (do not exist); intent valid, specifics not (audit-proposals-are-intent).
-
-GROUND TRUTH: --fs-2xs is fully swept from web/ (ds_statcheck was the last, R26); remaining UI debt =
-hardcoded off-grid px. A Plan subagent surveyed un-audited + headless-RENDERABLE panels and picked
-spike_markers (the Power Spikes strip, #am-spike-markers in the active-match BUILD pane): shipped
-2026-05-30 alongside tokens.css yet hardcoded off-grid spacing (6px gaps, 3px 2px paddings) + raw 4px
-card+cell radii - the ds_statcheck class, ZERO item-184 exception annotations. Its 4 BUILD-pane siblings
-(cd_ledger/draft_elo/spike_curve/ward_heat) were correctly REJECTED: all carry item-184 operator-exception
-annotations (settled audit, do NOT re-litigate). Overlay-gated cues rejected on the reachability gate.
-
-THE FIX (web/css/panels/spike_markers.css, CSS token swap, presentation-only): off-grid 6px/3px/2px
-spacing -> --space-1/--space-2 8px grid; 4px radii -> --panel-radius-sm (10px). Typography already on
---fs-* (untouched); 1px intra-cell hairline kept (commented). NEW tests/snapshot_panels/
-test_spike_markers_view.py: RED-first (computed radius==10px / head gap==8px; RED at 4px/6px) + structure
-+ ASCII + screenshot. Commit 1ae7dc52, pushed. Tier-1 frontend (no engine/DS/Share/ENGINE_VERSION).
-verifier CONFIRM; 219 snapshot+DOM tests green; ruff clean; 0 non-ASCII.
-
-NEXT: the un-audited UI-surface audit lane has more candidates (DS sandbox ds_combo/ds_matchup/ds_sweep,
-cc_blended_ehp_threat, cc_conditional_pressure - VERIFY the reachable render path first). Carry-forward
-OWED (live-gated, not headless): E.1 ACTIVE knob (operator-PHYSICAL); RC_COMP_HP_LEAN flip (operator-gated).
-Don't-redo: render-gate sweep COMPLETE; competitor-lift lane heavily mined (7 docs); shadow-aggregator
-DRAINED (595/596/597); overlay-polish DRAINED (591); DS scorer-valuation CLOSED (592).
-
----
-
-# 2026-06-23 (R27 DIRECTOR REFILL) - render-gate sweep CLEAN (bug isolated) + ctx-panel dedup desync fix
-
-The R26 follow-on. Re-probed: mode=client, NO live game (League client in lobby; rc-shell overlay
-CLIENT state PID 9736) - so live-gated work was UN-validatable this cycle. Interviewed the gemini
-director (gemini-3-pro-preview, loop_controller.gemini()); fed live state + the candidate menu, it
-picked the headless-buildable LEAD (broader SHIPPED-PANEL render-gate audit). Scratch interview
-script deleted. Ground-truth fix to its scope: dashboard.js is dead code (Settled), live controller
-is main.js; no overlay.js exists.
-
-THE AUDIT (3 parallel read-only agents, ~56 panels, disjoint slices; 4 failure modes: [hidden]-attr-
-vs-style.display / positional-vs-id index / stale gate accessor / unwired renderer). VERDICT = NEGATIVE:
-the ds_statcheck dead-panel bug is ISOLATED - no other panel is dead. Independently re-verified the
-lone genuine [hidden]+style.display overlap MYSELF (#am-spike-markers, index.html:2126 + active_match.js
-:1062/1067): NOT dead - spike_markers.js:147 sets .hidden=false on the content path -> removes the attr.
-
-THE REAL FIND + FIX (came out of tracing #am-spike-markers): a SYSTEMIC latent idempotency edge in the
-3 ctx-driven active-match panels (spike_markers/spike_curve/draft_elo). Each dedups render by content
-SIGNATURE; the outer active_match.js _render*FromCtx HIDE paths clobber mount.innerHTML="" behind the
-renderer (e.g. active_match.js:1062-1063), desyncing the stamped sig from the now-empty DOM. After a
-transient liveclient dropout (champ briefly absent) + a re-show with IDENTICAL data, the sig-dedup
-early-returns and the cleared innerHTML never repaints -> a VISIBLE-BUT-EMPTY panel on the in-game
-overlay until the next level/item change. Fix (1 line each): the dedup guard also requires innerHTML
-!=="" before short-circuiting -> an externally-emptied mount always repaints; zero rendered-output
-delta in normal operation. RED-first tests/snapshot_panels/test_render_dedup_reshow.py 4/4 (RED first:
-reshowLen==0 x3). 128 panel/surface tests green; ruff clean; hygiene 13/13; 0 non-ASCII. Tier-1 frontend
-(no engine/DS/Share/ENGINE_VERSION; no DS restart; no 5-phase audit - zero visual delta). Commit
-29c48b21 -> rebased bf2ff10d (concurrent weekly-health push), pushed.
-
-NEXT: render-gate sweep DONE - do NOT re-run (bug isolated to the already-fixed ds_statcheck). Carry-
-forward OWED, both need a live game / operator action (neither headless-buildable): E.1 ACTIVE knob
-round-trip (operator-PHYSICAL only); RC_COMP_HP_LEAN default-ON flip (operator-gated). Don't-redo:
-shadow-aggregator lane DRAINED (595/596/597); overlay-polish DRAINED (591); DS scorer-valuation CLOSED
-(592); candidate (c) operator-physical-blocked.
