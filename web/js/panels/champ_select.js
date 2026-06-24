@@ -774,12 +774,7 @@ export function renderChampSelectView(lcu) {
   if (mode === "sr") {
     _csvRenderSuggestions(cs, myCid, myName, mode);
   } else {
-    const sbg = document.getElementById("csv-sugg-bans-grid");
-    if (sbg) sbg.innerHTML = '<div class="csv-sugg-empty">non-SR mode</div>';
-    const sib = document.getElementById("csv-sugg-items-body");
-    if (sib) sib.innerHTML = '<div class="csv-sugg-empty">non-SR mode</div>';
-    const spo = document.getElementById("csv-sugg-pickorder-body");
-    if (spo) spo.innerHTML = '<div class="csv-sugg-empty">non-SR mode</div>';
+    _csvRenderSuggestionsNonSr(cs);
   }
 
   // Pick & Ban panel - SR-only. Other modes hide it via CSS rule
@@ -793,6 +788,28 @@ export function renderChampSelectView(lcu) {
   }
   // _csvAlignAllies() disabled - JS measurement kept returning wrong
   // values; champname col width is hardcoded in CSS instead.
+}
+
+// ARAM/Arena ASSESSMENT card (R30, 2026-06-24 in-game review). The full
+// SR _csvRenderSuggestions does draft-only work (ban suggestions, pick
+// order, DS profile/knobs) that has no meaning without a draft, so non-SR
+// modes get this lean subset instead of an empty card. counter-picks stays
+// SR-DRAFT-only (you can't counter-draft in ARAM/Arena), but the team-
+// damage lean (own roster AD/AP balance) and watch-their-cooldowns (enemy
+// hard-CC timers) read off ANY roster - so they fill the right column with
+// real pre-game intel. Both renderers self-fetch + self-hide off cs, so
+// this is a thin dispatch. The bans / DS-items / pick-order sub-sections
+// are display:none in non-SR (CSS); clear any stale "non-SR mode" stub.
+function _csvRenderSuggestionsNonSr(cs) {
+  const cp = document.getElementById("csv-sugg-counter-picks");
+  if (cp) { cp.hidden = true; cp.innerHTML = ""; }
+  _csvRenderTeamDamage(cs);
+  _csvRenderCooldownWatch(cs);
+  ["csv-sugg-bans-grid", "csv-sugg-items-body", "csv-sugg-pickorder-body"]
+    .forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = "";
+    });
 }
 
 // Renders the center column (My Pick + mode-specific extras). Rebuilds
