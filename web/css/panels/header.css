@@ -2789,6 +2789,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
    * mid-date wrap ("2026-05-/22") at companion width; stack so each card
    * (sessions / filter+detail / season stats) gets the full width. */
   .history-grid { grid-template-columns: 1fr; }
+  /* R30 active-match: the in-game header rows are fixed-width + no-wrap by
+   * desktop design (row 1 = champion / WIN / zone / clock / CS / vision +
+   * the right-pinned heartbeat, ~1224px). At the 923 companion width that
+   * row overflowed and body{overflow:hidden} CLIPPED the heartbeat + vision
+   * pills off-screen (lost data). Let the rows wrap so every pill stays
+   * on-screen, tighten the inter-pill gap, and drop the heartbeat right-push
+   * so it flows inline after vision instead of stranding on its own line. */
+  .header-row { flex-wrap: wrap; gap: var(--space-2); }
+  .hb { margin-left: 0; }
 }
 /* RC2 Hextech reskin (redesign #12, the last page). Each settings card
  * adopts the hx-card frame: a plain bordered --surface body with the two
