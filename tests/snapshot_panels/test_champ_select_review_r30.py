@@ -191,6 +191,50 @@ def test_arena_renders_build_chooser(mock_server, pw_browser):
     assert not errors, f"JS errors [arena build]: {errors[:3]}"
 
 
+def _grid_track_count(page):
+    return page.evaluate(
+        "() => { const e = document.querySelector("
+        "'#view-champ-select .csv-grid');"
+        " if (!e) return null;"
+        " const g = getComputedStyle(e).gridTemplateColumns;"
+        " return (g || '').trim().split(/\\s+/).filter(Boolean).length; }"
+    )
+
+
+@pytest.mark.parametrize("mode", ["sr", "aram", "arena"])
+def test_companion_single_column_reflow(mode, mock_server, pw_browser):
+    """Champ-select collapses to ONE column at the ~923 rc-shell companion
+    width (mirrors the out-of-game item-602 reflow) and keeps the 3-column
+    layout on the 1920 desktop. The pre-R30 grid stayed 3-col at 923 and
+    crushed/clipped."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    for (w, h, want) in [(923, 1316, 1), (1920, 1080, 3)]:
+        ctx = pw_browser.new_context(
+            ignore_https_errors=True, viewport={"width": w, "height": h}
+        )
+        page = ctx.new_page()
+        page.add_init_script(_WS_STUB)
+        errors: list[str] = []
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.goto(
+            mock_server.url + f"/?ui_mock=1&mode={mode}#champ-select",
+            wait_until="domcontentloaded", timeout=15_000,
+        )
+        page.wait_for_function(
+            "document.querySelector('#view-champ-select .csv-grid') !== null",
+            timeout=10_000,
+        )
+        tracks = _grid_track_count(page)
+        page.close()
+        ctx.close()
+        assert tracks == want, (
+            f"{mode} at {w}px: expected {want} grid track(s), got {tracks}"
+        )
+        assert not errors, f"JS errors [{mode} {w}px]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     raw = Path(__file__).read_bytes()
