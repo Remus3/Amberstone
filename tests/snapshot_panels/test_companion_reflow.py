@@ -11,16 +11,25 @@ single-column reflow (settings + lobby + user-builds in header.css; the Post
 Game Review .lm-row-half in last_match.css). This guards both directions: each
 grid is single-column at the companion width and two-column on the 1920
 desktop. The home view has its own guard (test_home_companion_view.py).
+
+R30 page-7 update: .ub-layout is now single-column at BOTH widths AT REST (the
+build list takes the full width; the 2-up list|form only appears while the
+editor pane is open - covered by test_user_builds_review_r30.py). So
+user-builds joins only the companion-single-column guard, not the desktop
+two-column one.
 """
 import pytest
 
-# (view hash, top-level grid selector that reflows)
+# (view hash, top-level grid selector that reflows) - 2-up on the 1920
+# desktop, single-column at the companion width.
 CASES = [
     ("settings", ".settings-body"),
     ("lobby", ".lobby-view-grid"),
-    ("user-builds", ".ub-layout"),
     ("last-match", ".lm-row-half"),
 ]
+# user-builds is single-column at rest at both widths (R30 page-7) - it guards
+# the companion direction only.
+COMPANION_CASES = CASES + [("user-builds", ".ub-layout")]
 
 
 def _open(pw_browser, mock_server, view, w, h):
@@ -56,7 +65,7 @@ def _track_count(page, sel):
     )
 
 
-@pytest.mark.parametrize("view,sel", CASES)
+@pytest.mark.parametrize("view,sel", COMPANION_CASES)
 def test_companion_single_column(view, sel, mock_server, pw_browser):
     ctx, page, errors = _open(pw_browser, mock_server, view, 923, 1316)
     try:
