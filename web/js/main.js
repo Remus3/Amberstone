@@ -2453,6 +2453,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     parts.push(`${(b.items || []).length} item${(b.items || []).length === 1 ? "" : "s"}`);
     return parts.join(" · ");
   }
+  // R30 page-7: resolve a build item (a curated NAME, or already a ddragon
+  // id) to its numeric item id for the row icon. Returns null when a name
+  // does not resolve (icon skipped).
+  function _ubItemIconId(it) {
+    if (it == null) return null;
+    if (typeof it === "number") return it;
+    const s = String(it).trim();
+    if (/^\d+$/.test(s)) return s;            // already a ddragon id
+    return _resolveItemId(s);                 // resolve an item name -> id
+  }
   function _userBuildsFetchAndRender() {
     const champ = _UB.champion;
     const list  = _ubEl("ub-build-list");
@@ -2513,6 +2523,37 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           sub.textContent = _ubFormatSubLine(b);
           meta.appendChild(lab);
           meta.appendChild(sub);
+          // R30 page-7: item icons - read the build's items at a glance, not
+          // just the "N items" count. Names resolve to ids via _resolveItemId
+          // (unresolved skipped); local mirror src + CDN onerror fallback,
+          // mirroring the last_match / home item-icon convention.
+          const items = Array.isArray(b.items) ? b.items : [];
+          if (items.length) {
+            const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version)
+              ? CHAMPS.version : DDRAGON_FALLBACK_VERSION;
+            const icons = document.createElement("div");
+            icons.className = "ub-build-items";
+            for (const it of items.slice(0, 7)) {
+              const iid = _ubItemIconId(it);
+              if (!iid) continue;
+              const im = document.createElement("img");
+              im.className = "ub-build-item-icon";
+              im.alt = "";
+              im.loading = "lazy";
+              im.title = (typeof it === "string") ? it : "";
+              im.src = `/data/ddragon/${ver}/img/item/${iid}.png`;
+              im.onerror = () => {
+                if (!im.dataset.cdnRetry) {
+                  im.dataset.cdnRetry = "1";
+                  im.src = `https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${iid}.png`;
+                } else {
+                  im.style.visibility = "hidden";
+                }
+              };
+              icons.appendChild(im);
+            }
+            if (icons.children.length) meta.appendChild(icons);
+          }
 
           const editBtn = document.createElement("button");
           editBtn.type = "button";
