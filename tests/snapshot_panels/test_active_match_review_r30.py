@@ -184,6 +184,33 @@ def test_header_single_row_at_desktop(mock_server, pw_browser):
     assert not errors, f"JS errors [desktop]: {errors[:3]}"
 
 
+@pytest.mark.parametrize("mode,hidden", [("aram", True), ("sr", False), ("arena", False)])
+def test_ward_heat_lane_strip_hidden_in_aram(mode, hidden, mock_server, pw_browser):
+    """ARAM is the single Howling Abyss bridge, so the ward-heat strip's
+    per-lane TOP/JG/MID/BOT x2-team breakdown is meaningless noise (6 of 8
+    cells permanent dead space). It is hidden in ARAM - the MAP intel MIA
+    roster already carries ARAM vision. SR/Arena keep the lane strip."""
+    ctx, page, errors = _open(pw_browser, mock_server, mode)
+    try:
+        disp = page.eval_on_selector(
+            "#am-ward-heat", "el => getComputedStyle(el).display"
+        )
+        if hidden:
+            assert disp == "none", (
+                f"{mode}: ward-heat lane strip should be hidden (single-lane "
+                f"mode), got display={disp}"
+            )
+        else:
+            assert disp != "none", (
+                f"{mode}: ward-heat lane strip should still render, got "
+                f"display={disp}"
+            )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [{mode}]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     raw = Path(__file__).read_bytes()
