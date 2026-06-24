@@ -4,6 +4,43 @@
 
 ---
 
+# 2026-06-24 (R30 IN-GAME design review - champ-select COMPLETE + active-match map rethink; "live-gated" deferral debunked)
+
+Interactive operator session. The prior 3 R30 sessions deferred ALL in-game pages as LIVE-GATED; that was
+WRONG - champ-select / active-match / overlay render fully headless via the EXISTING ui_mock fixtures.
+Extended the recon harness to `ops/runtime/ui_recon/recon.py <view> [mode] [overlay]` (drives
+`?ui_mock=1&mode=<sr|aram|arena>#<view>` + `&overlay=1`), unblocking the whole in-game backlog. 4 slices
+shipped + pushed, each RED-first + a 5-phase UI-audit subagent PASS + live-:8888 visual recon. Tier-1
+frontend throughout; no engine / DS / Share / ENGINE_VERSION. Final gate 70 snapshot tests green.
+
+CADENCE (same as out-of-game; reuse for the overlay + active-match tail): recon each view at 923 + 1920 via
+`recon.py <view> [mode]`, READ + JUDGE the screenshots + ground-truth file:line, PRESENT keep/remove/add/alter
++ ONE framed scope AskUserQuestion, build the picked slice RED-first, 5-phase UI-audit gate, commit+push.
+
+- CHAMP-SELECT (COMPLETE, SR/ARAM/Arena). (1) `b76bacf7` ARAM/Arena ASSESSMENT: the non-SR grid override
+  dropped the `suggestions` grid-area -> the card orphaned out of grid flow (floating panel + huge void);
+  restored a 2-row template + new `_csvRenderSuggestionsNonSr` fills the right column with TEAM DAMAGE LEAN +
+  WATCH THEIR COOLDOWNS (counter-picks stays SR-draft-only). (2) `2f9daab7` Arena DS build wiring:
+  `_csvRenderCentralPane` early-returned for Arena (no archetype picker, no build chooser despite the fixture
+  data); removed the early-return -> Arena flows through the shared setup (archetype left col + duo/augments +
+  build chooser + DS-vs-enemy-comp). SR/ARAM byte-identical; Arena variant rows are backend-fed (empty until a
+  Jinx Arena loadout is saved - same path as SR/ARAM). (3) `c758254c` companion reflow:
+  `@media (max-width:1200px)` single-column for all 3 modes + the no-scroll height-cap resets; mirrors item-602.
+- ACTIVE-MATCH (1 slice). `174854c5` MAP real-estate rethink: Live Client has no coords (memory
+  `reference_liveclient_no_positions`) so the static map can't plot positions; `_renderAmMap` now builds a
+  column shell - `.am-map-intel` (PRIMARY: status + de-overlaid full-width roster) over `.am-map-figure`
+  (SECONDARY: map img + ZOI canvas + gank band, height-capped 50%); ALL element IDs preserved (polling/overlay
+  render untouched); grid 1.1fr/2fr -> 1.4fr/1.6fr. Sparse vision -> acceptable trailing space (real games fill
+  the roster).
+
+NEXT (remaining R30 in-game): the OVERLAY surface (unreconned - `recon.py active-match sr overlay`) +
+active-match follow-ups (the ARAM ward-heat strip's TOP/JG/MID/BOT lane labels are meaningless single-lane;
+active-match has 923 companion horizontal overflow, worstRight 1226 - needs a reflow like champ-select got).
+Genuinely live-gated OWED (need a physical game): E.1 ACTIVE knob physical press + `RC_COMP_HP_LEAN` default-ON
+flip. Harness + gemini_out.txt at `ops/runtime/ui_recon/`.
+
+---
+
 # 2026-06-23 (R30 CONTINUATION-2 - per-page UI/UX design review, pages 8 + 6 of 9; OUT-OF-GAME COMPLETE)
 
 Interactive operator session finishing the R30 out-of-game review (pages 1-5,7,9 shipped prior; ledger
@@ -83,43 +120,3 @@ NEXT (operator directive: WRAP here, resume next session): pages 8 (Build Insigh
 (need a game up - none this session). Reuse the harness + `gemini_out.txt`. Respect: replay scroll-wrap is
 CORRECT (do NOT "fix" it); operator-locked `last_match.css` sub-floors. The full resume prompt was handed
 to the operator in chat.
-
----
-
-# 2026-06-23 (R30 - SLOW per-page UI/UX design review, pages 1-2 of 9: HOME + LOBBY)
-
-Interactive operator session (NOT the headless loop). The R29 NEXT directive: a slow, deliberate
-per-page design review of EACH dashboard view - validate WHY each panel is there, decide
-remove/add/alter (genuine design judgement, not token compliance). 2 pages shipped, 2 commits pushed,
-gate green (228 snapshot + 14 new tests; ruff clean; 5-phase UI audit CLEAN each page). Tier-1 frontend
-+ 2 dashboard builder fixes; no engine/DS/Share/ENGINE_VERSION.
-
-CADENCE (proven, reuse pages 3-9): recon each view at 923+1920 via live-:8888 Playwright
-(`ops/runtime/ui_recon/recon.py <view>`) -> READ the screenshots + ground-truth file:line -> PRESENT
-keep/remove/add/alter + one framed scope AskUserQuestion -> build the picked slice (RED-first TDD,
-5-phase UI-audit subagent gate before commit, commit+push). Gemini director interviewed ONCE for per-view
-design intent (`ops/runtime/ui_recon/gemini_out.txt` - PART B one-liners drive the rest).
-
-HOME (`a946f9bb`, full slice 1-7): idle "Ready when you are" greeting -> last-5 W/L momentum verdict
-(`_homeMomentumVerdict`); primary Find Match CTA added (was the missing "next action"); duplicate
-play-streak + "Advisories: None" noise killed; small-sample (1-2 game) Good/Bad suppressed
-(`builders_home._home_pick_tips`); 3 stat chips unified to ONE 14d timeframe (was today 0/0/0 next to 14d
-CS/GOLD; degenerate K/A-recording-gap days skipped so no false 0.0). `test_home_review_r30.py` (8) + tips
-small-sample. HARNESS LESSON: home double-fetches at boot (ui_mock + `/api/home/summary` which the conftest
-mock_server answers `{}`); route BOTH paths in tests or pass 2 clobbers injected state to empty.
-
-LOBBY (`b7500807`, polish+wire): YOUR MAINS "AVG/Match" grid was all dashes via a KEY MISMATCH (builder
-emitted `cs_pm/vision_pm/dmg_pm`; frontend `_mcAveragedHtml` reads `kp/cs/vision/dmg/cs_per_min/avg5`).
-`routes_lobby_aux._query_mains_for_puuid` now emits the consumed keys from rewind participants: cs/vision/dmg
-per-game, KP% via a team-kill self-join (`_kp_by_champ`), AVG5 last-5 KDA grade (`_avg5_grade`). Live-verified
-`/api/mains` (Vayne KP 51% / CS 87 / dmg 35.4K / AVG5 C). + "CHAMPIONMASTERY" header jam fixed (emptied the
-"Champion" label that overflowed its 76px icon track) + MY TOP 8 radii/gaps -> tokens. Hermetic
-`test_lobby_mains_averaged.py` (6, temp DB - not the gitignored rewind DB). Dense `.lv-top8-*` 14px LEFT
-(overflows at 16); the named deferred `.lv-fr-*` is DEAD/preserved code (`_renderFriendsRecent` uncalled).
-
-NEXT (operator: CONTINUE the review next session, pages 3-9, after /done + /clear): Post Game Review
-(last-match, `last_match.css` - PGR card-radius `--radius-sm`->`--panel-radius` deferred), Session, History,
-User Builds, Build Insights, Settings, Replay, + in-game champ-select / active-match / overlay (live-gated).
-Respect: operator-locked `last_match.css` sub-floors (`:160/862/1138/1244`); replay scroll-wrap is correct
-(do NOT "fix"). Reuse the harness + `gemini_out.txt` at `ops/runtime/ui_recon/`. The full resume prompt was
-handed to the operator in chat.
