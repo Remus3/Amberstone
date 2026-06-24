@@ -1506,19 +1506,31 @@
         </div>
         <div class="bi-tab-pane" data-bi-pane="items">
           <p class="bi-caption">Selection-bias-corrected item performance over your match history (Win Rate minus Expected WP). Descriptive personal-corpus lens, not a meta winrate - trust rows by the sample bar.</p>
-          <div id="bi-table-mount"></div>
+          <div class="bi-pane-cols">
+            <div id="bi-table-mount"></div>
+            <aside class="bi-summary" id="bi-summary-items" aria-live="polite"></aside>
+          </div>
         </div>
         <div class="bi-tab-pane" data-bi-pane="skills" hidden>
           <p class="bi-skill-caption">Skill-max performance: the win-rate residual for each champion's first-maxed basic (Q/W/E; the ult is excluded - it has no max-order decision). Skills are a WEAKER signal than items, so shrink + min_n are load-bearing - trust rows by the sample bar, not the raw number.</p>
-          <div id="bi-skill-table-mount"></div>
+          <div class="bi-pane-cols">
+            <div id="bi-skill-table-mount"></div>
+            <aside class="bi-summary" id="bi-summary-skills" aria-live="polite"></aside>
+          </div>
         </div>
         <div class="bi-tab-pane" data-bi-pane="runes" hidden>
           <p class="bi-rune-caption">Rune performance: the win-rate residual for each keystone / minor rune you picked (stat shards excluded). A rune is a pre-game choice, so the baseline is the near-coinflip start frame; the residual is how much that rune correlates with winning beyond the lobby it was picked in. Runes are an even WEAKER per-choice signal than items (a keystone is largely champion-fixed), so shrink + min_n are load-bearing - trust rows by the sample bar.</p>
-          <div id="bi-rune-table-mount"></div>
+          <div class="bi-pane-cols">
+            <div id="bi-rune-table-mount"></div>
+            <aside class="bi-summary" id="bi-summary-runes" aria-live="polite"></aside>
+          </div>
         </div>
         <div class="bi-tab-pane" data-bi-pane="spells" hidden>
           <p class="bi-spell-caption">Summoner-spell performance: the win-rate residual for each spell you picked. A spell is a pre-game choice, so the baseline is the near-coinflip start frame; the residual is how much that spell correlates with winning beyond the lobby it was picked in. Spells are an even WEAKER per-choice signal than items (Flash is near-universal; many modes force the second pick), so shrink + min_n are load-bearing - trust rows by the sample bar.</p>
-          <div id="bi-spell-table-mount"></div>
+          <div class="bi-pane-cols">
+            <div id="bi-spell-table-mount"></div>
+            <aside class="bi-summary" id="bi-summary-spells" aria-live="polite"></aside>
+          </div>
         </div>
         <div class="bi-tab-pane" data-bi-pane="duration" hidden>
           <div id="bi-duration-mount"></div>
