@@ -1259,12 +1259,29 @@
         <span class="view-section-sub" id="session-window">-</span>
       </div>
       <div class="view-section-body" id="session-body">
+        <!-- R30 page-4 design review: session tilt/fatigue trend - the
+             view's stated job (gemini: "track daily tilt, fatigue, and
+             cumulative performance limits"). A chronological grade strip
+             (oldest->newest) + a verdict (cooling off / heating up / steady,
+             fatigue-flagged on long declining sessions), derived from
+             d.matches already in hand by _renderSessionTrend. Hidden for
+             <2 graded games (small-sample). -->
+        <div class="session-trend" id="session-trend" data-kind="" hidden>
+          <div class="session-trend-head">
+            <span class="session-trend-label" id="session-trend-label">Session trend</span>
+            <span class="session-trend-text" id="session-trend-text"></span>
+          </div>
+          <ol class="session-trend-strip" id="session-trend-strip"
+              aria-label="Grade by game order, oldest to newest"></ol>
+        </div>
         <div class="session-grid">
           <div class="session-card">
             <div class="session-card-head">OVERVIEW</div>
             <div class="session-row"><span>Games</span><span id="session-games">-</span></div>
             <div class="session-row"><span>Time played</span><span id="session-time">-</span></div>
-            <div class="session-row"><span>Started</span><span id="session-start">-</span></div>
+            <!-- R30 page-4: "Started" row removed - it duplicated the header
+                 sub ("started 11:42 AM"). The renderer's set("session-start")
+                 no-ops harmlessly (the element is gone). -->
             <div class="session-row"><span>Last game</span><span id="session-last">-</span></div>
           </div>
           <div class="session-card">
@@ -1274,8 +1291,13 @@
             <div class="session-row"><span>Grades</span><span id="session-grades">-</span></div>
             <div class="session-row"><span>Modes</span><span id="session-modes">-</span></div>
           </div>
-          <div class="session-card session-card-wide">
-            <div class="session-card-head">CHAMPIONS THIS SESSION</div>
+          <!-- R30 page-4 design review: reframed CHAMPIONS THIS SESSION ->
+               REPLAYED CHAMPIONS. Only champs played 2+ times this session
+               render (the aggregate rows that are NOT already 1:1 in the
+               Matches list below); the card hides when there are no repeats
+               (anti-redundancy). _sessionFetchAndRender filters + toggles. -->
+          <div class="session-card session-card-wide" id="session-champs-card">
+            <div class="session-card-head">REPLAYED CHAMPIONS</div>
             <ul class="session-champ-list" id="session-champs"><li class="home-empty">-</li></ul>
           </div>
           <div class="session-card session-card-wide">
