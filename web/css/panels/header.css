@@ -2748,8 +2748,29 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * values listed in comments for reference. */
 .settings-body {
   display: grid; grid-template-columns: 1fr 1fr;
-  gap: var(--space-6);             /* was 14px -> 32px                  */
+  gap: var(--space-5);             /* R30 page-9 density: 32 -> 24       */
 }
+/* R30 page-9 design review: settings quick-filter bar - a full-width row
+ * above the card grid; the count chip reports how many cards match. */
+.settings-filter {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: var(--space-3);
+}
+.settings-filter-input {
+  flex: 1; min-width: 0;
+  background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--panel-radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-md); font-family: inherit;
+  min-height: var(--hit-min);
+}
+.settings-filter-input:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+.settings-filter-count {
+  font-size: var(--fs-sm); color: var(--text-dim); white-space: nowrap;
+}
+.settings-card[hidden] { display: none; }
 /* Companion-window reflow (rc-shell out-of-game companion ~380-960px wide;
  * docs/ELECTRON_OVERLAY.md 3.7). These two views' top-level 2-up grids are
  * authored for the 1920 desktop and clip their right column / sidebar at the
@@ -2810,7 +2831,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   text-transform: uppercase; color: var(--accent);
   background: var(--surface-2);
   margin: calc(-1 * var(--panel-padding)) calc(-1 * var(--panel-padding));
-  margin-bottom: var(--space-4);   /* was 10px -> 16px                  */
+  margin-bottom: var(--space-3);   /* R30 page-9 density: 16 -> 12       */
   padding: var(--space-3) var(--panel-padding);  /* was 5px -> grid     */
   border-bottom: 1px solid var(--border-soft);
   border-top-left-radius: var(--panel-radius);
