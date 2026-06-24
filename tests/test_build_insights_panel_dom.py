@@ -183,7 +183,13 @@ class CssTests(unittest.TestCase):
         self.assertIn(".bi-seg", self.text)
 
     def test_uses_semantic_token(self) -> None:
-        self.assertIn("var(--signal-", self.text)
+        # The RC2 Hextech reskin moved the signed-WPA hero off the legacy
+        # --signal-good / --signal-warn pair onto the semantic --good / --bad
+        # color tokens (see the file header). Assert the post-reskin tokens so
+        # the "no raw hex, route every color through a semantic token" intent
+        # still holds.
+        self.assertIn("var(--good)", self.text)
+        self.assertIn("var(--bad)", self.text)
 
     def test_uses_fs_tokens(self) -> None:
         self.assertIn("var(--fs-", self.text)
