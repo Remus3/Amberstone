@@ -1684,39 +1684,24 @@
         </aside>
         <main class="replay-main-pane">
           <div class="replay-meta-row">
-            <div class="replay-meta" id="replay-meta">Select a match from the list ←</div>
+            <div class="replay-meta" id="replay-meta">Select a match from the list &lt;-</div>
             <div class="replay-clock" id="replay-clock">-</div>
           </div>
           <input type="range" id="replay-slider"
                  class="replay-slider"
                  min="0" max="0" value="0" step="1"
                  disabled />
-          <div class="replay-grid-wrap">
-            <table class="replay-grid">
-              <thead>
-                <tr>
-                  <th class="replay-col-team">T</th>
-                  <th class="replay-col-champ">Champion</th>
-                  <th class="replay-col-name">Player</th>
-                  <th class="replay-col-num">Lvl</th>
-                  <th class="replay-col-num">Gold</th>
-                  <th class="replay-col-num">CS</th>
-                  <th class="replay-col-items">Items</th>
-                </tr>
-              </thead>
-              <tbody id="replay-grid-body">
-                <tr><td colspan="7" class="home-empty">no match selected</td></tr>
-              </tbody>
-            </table>
-          </div>
           <!-- s220 PGR S5: Match-V5 timeline event ribbon (kills,
-               objectives, turret plates) under the per-frame scrubber.
-               Sidecar architecture per docs/adr/ADR-009-replay-events-
-               cleanroom.md (league_record GPLv3 reference, do NOT
-               vendor). Populated by replay_events.js from
-               /api/replay/events?match_id=<id>. Default include set
-               is strong events only; the [+items] / [+wards] toggles
-               expand the ribbon for finer-grained replay. -->
+               objectives, turret plates). R30 page-6: hoisted ABOVE the
+               scoreboard grid so the actionable event index is the hero,
+               not the scrubber; each row is clickable to seek the grid
+               below to that timestamp (replay_events.js + dev.js
+               _replaySeekToClock). Sidecar architecture per
+               docs/adr/ADR-009-replay-events-cleanroom.md (league_record
+               GPLv3 reference, do NOT vendor). Populated by
+               replay_events.js from /api/replay/events?match_id=<id>.
+               Default include set is strong events only; the [+items] /
+               [+wards] toggles expand the ribbon for finer-grained replay. -->
           <section class="replay-events-section" id="replay-events-section" hidden>
             <header class="replay-events-head">
               <span class="replay-events-title">Timeline</span>
@@ -1738,6 +1723,24 @@
               No timeline events for this match.
             </div>
           </section>
+          <div class="replay-grid-wrap">
+            <table class="replay-grid">
+              <thead>
+                <tr>
+                  <th class="replay-col-team">T</th>
+                  <th class="replay-col-champ">Champion</th>
+                  <th class="replay-col-name">Player</th>
+                  <th class="replay-col-num">Lvl</th>
+                  <th class="replay-col-num">Gold</th>
+                  <th class="replay-col-num">CS</th>
+                  <th class="replay-col-items">Items</th>
+                </tr>
+              </thead>
+              <tbody id="replay-grid-body">
+                <tr><td colspan="7" class="home-empty">no match selected</td></tr>
+              </tbody>
+            </table>
+          </div>
         </main>
       </div>
     </section>

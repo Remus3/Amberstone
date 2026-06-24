@@ -22,7 +22,6 @@
 /* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #3 Replay, 2026-05-23):
  * font/padding/radius/icon sizes migrated to tokens. */
 .replay-events-section {
-  margin-top: var(--panel-gap);
   padding: var(--panel-padding-comp);
   background: var(--surface);
   border: 1px solid var(--border-soft);
@@ -94,9 +93,21 @@
   border-left: 3px solid var(--text-dim);
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
+  /* R30 page-6: each row is a seek control (click -> scrub to its
+   * timestamp), so it carries a pointer + hover/focus affordance. */
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
 }
 .replay-events-row[data-team="100"] { border-left-color: var(--good); }
 .replay-events-row[data-team="200"] { border-left-color: var(--bad); }
+.replay-events-row:hover {
+  background: var(--surface-alt);
+  border-color: var(--accent);
+}
+.replay-events-row:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
 
 .replay-events-clock {
   font-family: var(--font-mono, monospace);
