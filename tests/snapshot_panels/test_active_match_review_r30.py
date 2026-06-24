@@ -28,12 +28,12 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 SCREENSHOTS = Path(__file__).parent / "screenshots"
 
 
-def _open(pw_browser, mock_server, mode):
+def _open(pw_browser, mock_server, mode, w=1920, h=1080):
     from tests.snapshot_panels.conftest import _WS_STUB
 
     mock_server._store["data"] = {}
     ctx = pw_browser.new_context(
-        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+        ignore_https_errors=True, viewport={"width": w, "height": h}
     )
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
@@ -115,6 +115,73 @@ def test_roster_no_longer_absolute_overlay(mode, mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, f"JS errors [{mode}]: {errors[:3]}"
+
+
+# The widest VISIBLE right edge among all <header> descendants. The in-game
+# header row 1 (champion / WIN / zone / clock / CS / vision + the right-pinned
+# heartbeat) is no-wrap by desktop design; at the 923 companion width that row
+# overflows and body{overflow:hidden} CLIPS the rightmost pills off-screen
+# (lost data, not just a scrollbar). The fix is a companion (<=1200px) header
+# reflow that keeps every pill on-screen.
+_HEADER_WORST_RIGHT_JS = """() => {
+  let worst = 0, sel = '';
+  document.querySelectorAll('header *').forEach((el) => {
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    const r = el.getBoundingClientRect();
+    if (r.width >= 8 && r.right > worst) {
+      worst = r.right; sel = el.id ? ('#' + el.id) : (el.className || el.tagName);
+    }
+  });
+  return {worst: Math.round(worst), sel};
+}"""
+
+
+@pytest.mark.parametrize("mode", ["sr", "aram", "arena"])
+def test_header_fits_companion_width(mode, mock_server, pw_browser):
+    """In-game header must not clip at the 923 companion width: every visible
+    header pill's right edge stays within the viewport (no off-screen
+    heartbeat / vision pill). RED pre-fix (heartbeat overflowed to ~1226)."""
+    ctx, page, errors = _open(pw_browser, mock_server, mode, w=923, h=1316)
+    try:
+        r = page.evaluate(_HEADER_WORST_RIGHT_JS)
+        assert r["worst"] <= 924, (
+            f"{mode}: header overflows the 923 companion viewport - "
+            f"{r['sel']} right edge at {r['worst']}px (pills clipped off-screen)"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [{mode} companion]: {errors[:3]}"
+
+
+def test_header_single_row_at_desktop(mock_server, pw_browser):
+    """The companion reflow must NOT leak to the 1920 desktop: row-1 stays a
+    single line (heartbeat vertically aligned with the CS pill) and nothing
+    overflows the desktop viewport."""
+    ctx, page, errors = _open(pw_browser, mock_server, "sr", w=1920, h=1080)
+    try:
+        r = page.evaluate(
+            "() => {"
+            " const hb = document.getElementById('heartbeat');"
+            " const cs = document.getElementById('cs-pill');"
+            " const worst = (" + _HEADER_WORST_RIGHT_JS + ")();"
+            " return {"
+            "   hbTop: hb ? Math.round(hb.getBoundingClientRect().top) : null,"
+            "   csTop: cs ? Math.round(cs.getBoundingClientRect().top) : null,"
+            "   worst: worst.worst,"
+            " }; }"
+        )
+        assert r["hbTop"] is not None and r["csTop"] is not None
+        assert abs(r["hbTop"] - r["csTop"]) <= 4, (
+            f"row-1 wrapped at desktop: heartbeat top {r['hbTop']} vs "
+            f"CS pill top {r['csTop']}"
+        )
+        assert r["worst"] <= 1921, f"header overflows 1920 desktop: {r['worst']}px"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [desktop]: {errors[:3]}"
 
 
 def test_no_em_dashes_or_smart_quotes():
