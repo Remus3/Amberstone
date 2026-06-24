@@ -53,6 +53,20 @@ _DAY_S = 24 * 3600
 # main linear and the branch is auto-deleted.
 _MERGE_METHOD = "--squash"
 
+# Headless-claude fixer system prompt + the tool whitelist. In `claude -p` mode
+# any tool NOT on --allowedTools is denied silently (no prompt, no hang), so this
+# whitelist - not a flag - is the hard execution gate. Write is disallowed (fixes
+# are Edits to existing files) and git push is reserved for the watchdog itself.
+CI_FIX_PROMPT = _PROJECT_ROOT / "tools" / "ci_watchdog_fix.md"
+_CLAUDE_ALLOWED_TOOLS = (
+    "Edit", "Read",
+    "Bash(ruff:*)", "Bash(git:*)",
+    "Bash(python -m py_compile:*)", "Bash(pytest:*)",
+)
+_CLAUDE_DISALLOWED_TOOLS = ("Write", "Bash(git push:*)")
+# Context the executor writes into the worktree for claude to Read.
+_CONTEXT_FILE = ".ci_watchdog_context.md"
+
 # Mirror of the CLAUDE.md "Frozen files" hard list (forward-slashed). A fix that
 # touches any of these is refused + escalated rather than merged.
 FROZEN_FILES = frozenset({
@@ -198,6 +212,62 @@ def touches_frozen(changed_files: list[str]) -> list[str]:
     return sorted(norm & FROZEN_FILES)
 
 
+def branch_name(run_id: int) -> str:
+    """The per-run ci-fix branch the headless fix is committed onto."""
+    return f"ci-fix/{run_id}"
+
+
+def plan_dispatch(run_id: int, head_sha: str, *, worktree: Path = WORKTREE,
+                  repo: str = REPO) -> list[tuple[str, list[str]]]:
+    """The ordered (label, argv) command plan for one fix dispatch.
+
+    Pure + deterministic: the dry run surfaces exactly this list and
+    ``execute_dispatch`` runs it step by step. Every git command is scoped to the
+    throwaway ``worktree`` (-C) and every gh command to ``repo``; ``claude`` runs
+    headless (-p) tool-restricted with NO permission bypass and CANNOT push (the
+    watchdog owns push/PR/merge). ``gh`` is kept literal here for a readable,
+    portable plan - the executor maps it to the absolute binary at run time.
+    """
+    wt = str(worktree)
+    branch = branch_name(run_id)
+    instr = (
+        f"Read {_CONTEXT_FILE} - it holds the failing CI step log tail and the "
+        "offending commit diff. Make the minimal in-bounds fix per your system "
+        "prompt, verify locally, and commit on this branch. Do NOT push or open a "
+        "PR. If the failure is out of bounds, make no edits and reply with a "
+        "single line starting 'ESCALATE:'."
+    )
+    claude = [
+        "claude", "-p", instr,
+        "--append-system-prompt-file", str(CI_FIX_PROMPT),
+        "--allowedTools", *_CLAUDE_ALLOWED_TOOLS,
+        "--disallowedTools", *_CLAUDE_DISALLOWED_TOOLS,
+        "--output-format", "json",
+    ]
+    body = (
+        f"Automated CI fix for failed run {run_id} (head {head_sha[:12]}).\n\n"
+        "Scope: lint / py_compile / import / single-test only; frozen files "
+        "refused. Auto-merges on green via the CI Watchdog (item 204)."
+    )
+    return [
+        ("fetch", ["git", "-C", wt, "fetch", "origin", "--prune"]),
+        ("reset", ["git", "-C", wt, "reset", "--hard", "origin/main"]),
+        ("branch", ["git", "-C", wt, "checkout", "-B", branch, "origin/main"]),
+        ("gather_log", ["gh", "run", "view", str(run_id), "--repo", repo,
+                        "--log-failed"]),
+        ("gather_diff", ["git", "-C", wt, "show", head_sha]),
+        ("claude_fix", claude),
+        ("diff_names", ["git", "-C", wt, "diff", "--name-only", "origin/main"]),
+        ("push", ["git", "-C", wt, "push", "-u", "origin", branch]),
+        ("pr_create", ["gh", "pr", "create", "--repo", repo, "--base", "main",
+                       "--head", branch,
+                       "--title", f"ci(fix): auto-fix red CI run {run_id}",
+                       "--body", body]),
+        ("pr_merge", ["gh", "pr", "merge", branch, "--repo", repo, _MERGE_METHOD,
+                      "--auto", "--delete-branch"]),
+    ]
+
+
 def audit_line(record: dict, path: Path = AUDIT) -> None:
     """Append one JSON line per inspected run; never raises."""
     try:
@@ -270,6 +340,97 @@ def send_escalation(run_id: int, head_sha: str, reason: str, detail: str = "") -
         return (False, f"{type(exc).__name__}: {exc}")
 
 
+def _first_escalate_line(text: str) -> str:
+    """The first ESCALATE: line claude emitted (the out-of-bounds reason)."""
+    for line in (text or "").splitlines():
+        if "ESCALATE:" in line:
+            return line.strip()
+    return "ESCALATE:"
+
+
+def _write_context(worktree: Path, run_id: int, head_sha: str,
+                   log_out: str, diff_out: str) -> None:
+    """Drop the failing-log tail + offending diff into the worktree for claude."""
+    try:
+        log_tail = "\n".join((log_out or "").splitlines()[-200:])[:8000]
+        body = (
+            f"# CI Watchdog context - run {run_id} (head {head_sha})\n\n"
+            f"## Failing step log (tail)\n\n```\n{log_tail}\n```\n\n"
+            f"## Offending commit diff\n\n```diff\n{(diff_out or '')[:12000]}\n```\n"
+        )
+        (Path(worktree) / _CONTEXT_FILE).write_text(body, encoding="utf-8")
+    except OSError:
+        pass
+
+
+def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
+                     worktree: Path = WORKTREE, repo: str = REPO,
+                     runner=None) -> dict:
+    """Run (arm=True) or merely surface (arm=False) one fix dispatch.
+
+    Dry run (default) mutates nothing and runs no command - it returns the plan
+    so the operator can inspect exactly what an armed run would do. Armed, it
+    syncs the throwaway worktree, runs the tool-restricted headless fix, enforces
+    the frozen-file guard BETWEEN the fix and any push, then pushes + opens the
+    ci-fix PR + enables squash auto-merge (merges when the fix's own CI is green).
+    ``runner(label, argv) -> (rc, stdout)`` is injectable for tests.
+    """
+    plan = plan_dispatch(run_id, head_sha, worktree=worktree, repo=repo)
+    if not arm:
+        return {"mode": "dry_run", "run_id": run_id, "head_sha": head_sha,
+                "branch": branch_name(run_id), "steps": plan}
+
+    steps = {label: argv for label, argv in plan}
+    wt = str(worktree)
+    if runner is None:
+        def runner(label, argv):
+            cmd = list(argv)
+            if cmd and cmd[0] == "gh":
+                cmd[0] = _gh()
+            return _run(cmd, cwd=Path(wt))
+
+    # 1. sync the dedicated worktree onto a fresh ci-fix/<id> branch off main
+    for label in ("fetch", "reset", "branch"):
+        rc, out = runner(label, steps[label])
+        if rc != 0:
+            return {"action": "error", "stage": label, "detail": (out or "")[:2000]}
+
+    # 2. gather the failing-log tail + offending diff -> context file claude Reads
+    _, log_out = runner("gather_log", steps["gather_log"])
+    _, diff_out = runner("gather_diff", steps["gather_diff"])
+    _write_context(worktree, run_id, head_sha, log_out, diff_out)
+
+    # 3. tool-restricted headless fix; an ESCALATE: line short-circuits cleanly
+    _, fix_out = runner("claude_fix", steps["claude_fix"])
+    if "ESCALATE:" in (fix_out or ""):
+        return {"action": "escalate", "reason": _first_escalate_line(fix_out),
+                "detail": (fix_out or "")[:2000]}
+
+    # 4. frozen-file guard BETWEEN the fix and any push (defense in depth vs the
+    #    whitelist) - refuse + escalate rather than merge a frozen-file edit
+    _, names_out = runner("diff_names", steps["diff_names"])
+    changed = [ln.strip() for ln in (names_out or "").splitlines() if ln.strip()]
+    if not changed:
+        return {"action": "no_change", "detail": "headless fix produced no edits"}
+    frozen = touches_frozen(changed)
+    if frozen:
+        return {"action": "escalate", "changed": changed,
+                "reason": "fix touches frozen file(s): " + ", ".join(frozen)}
+
+    # 5. push -> open PR -> enable squash auto-merge on green
+    rc, out = runner("push", steps["push"])
+    if rc != 0:
+        return {"action": "error", "stage": "push", "detail": (out or "")[:2000]}
+    rc, pr_out = runner("pr_create", steps["pr_create"])
+    if rc != 0:
+        return {"action": "error", "stage": "pr_create", "detail": (pr_out or "")[:2000]}
+    lines = [ln.strip() for ln in (pr_out or "").splitlines() if ln.strip()]
+    pr = lines[-1] if lines else ""
+    rc, out = runner("pr_merge", steps["pr_merge"])
+    return {"action": "merged", "pr": pr, "changed": changed,
+            "merge_rc": rc, "merge_out": (out or "")[:500]}
+
+
 def _current_main_sha() -> str:
     rc, out = _run([_gh(), "api", f"repos/{REPO}/commits/main", "--jq", ".sha"])
     return out.strip() if rc == 0 else ""
@@ -289,8 +450,15 @@ def _list_runs() -> list[dict]:
         return []
 
 
-def main() -> int:
-    """One poll cycle. Returns 0 always (a scheduled task failure is noise)."""
+def main(arm: bool = False) -> int:
+    """One poll cycle. Returns 0 always (a scheduled-task failure is noise).
+
+    arm=False (default) is a READ-ONLY dry run: it logs each decision + the
+    would-run dispatch plan to audit.jsonl but mutates NO persistent state
+    (sentinel / attempts / pr-log) and runs no gh/git/claude side effects. The
+    scheduled task invokes the module bare -> dry run; arming = adding ``--arm``
+    to the task action once the live red-main dry run looks right.
+    """
     if is_halted():
         return 0
     RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
@@ -306,20 +474,22 @@ def main() -> int:
     for run in failed:
         rid = int(run["databaseId"])
         head = run.get("headSha", "")
-        rec = {"ts": now, "run_id": rid, "head_sha": head[:12]}
+        rec = {"ts": now, "run_id": rid, "head_sha": head[:12], "arm": arm}
 
         if is_stale(head, current_head):
             # Decision 3: main already moved on - this failure is superseded.
             rec["action"] = "skip_stale"
             audit_line(rec)
-            write_sentinel(rid)
+            if arm:
+                write_sentinel(rid)
             continue
         if should_escalate(rid):
             rec["action"] = "escalate"
-            ok, detail = send_escalation(rid, head, "two strikes")
-            rec["bridge_ok"] = ok
+            if arm:
+                ok, _ = send_escalation(rid, head, "two strikes")
+                rec["bridge_ok"] = ok
+                write_sentinel(rid)
             audit_line(rec)
-            write_sentinel(rid)
             continue
         if rate_limited(now):
             rec["action"] = "rate_limited"
@@ -327,16 +497,29 @@ def main() -> int:
             # Do NOT advance the sentinel - retry once the 24h window clears.
             continue
 
+        result = execute_dispatch(rid, head, arm=arm)
         rec["action"] = "dispatch"
-        rec["attempt"] = bump_attempts(rid)
-        audit_line(rec)
-        # The headless-claude dispatch + ci-fix PR + auto-merge-on-green run
-        # here in a follow-on; the decision gates above are the tested core.
-        # (Build path lives behind the live-arm step - see CI_WATCHDOG_PLAN.md.)
-        write_sentinel(rid)
+        rec["dispatch"] = result.get("action") or result.get("mode")
+        if arm:
+            rec["attempt"] = bump_attempts(rid)
+            if result.get("pr"):
+                rec["pr"] = result["pr"]
+                record_pr_creation(now, rid, result["pr"])
+            if result.get("action") == "escalate":
+                ok, _ = send_escalation(
+                    rid, head, result.get("reason", "dispatch escalate"),
+                    result.get("detail", ""))
+                rec["bridge_ok"] = ok
+            audit_line(rec)
+            write_sentinel(rid)
+        else:
+            # Dry run: surface the plan, leave the sentinel where it is so the
+            # inspection is idempotent (re-runnable against the same red run).
+            rec["plan_steps"] = [s[0] for s in result.get("steps", [])]
+            audit_line(rec)
 
     return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(main())
+    sys.exit(main(arm="--arm" in sys.argv[1:]))
