@@ -673,7 +673,39 @@ function _renderAmMap(host, mode, payload) {
     host.innerHTML = "";
     const shell = document.createElement("div");
     shell.className = "am-map-shell";
-    shell.style.cssText = "position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;";
+    // R30 (2026-06-24): map real-estate rethink. Live Client exposes no
+    // champion coordinates (memory reference_liveclient_no_positions), so
+    // the static map IMAGE can never plot live positions. It is demoted to
+    // a SECONDARY capped figure BELOW the PRIMARY live-text intel (vision
+    // status + the per-enemy roster), which carries the real mid-game
+    // signal. Column shell: intel grows on top, figure capped below.
+    shell.style.cssText = "position:relative;width:100%;height:100%;display:flex;flex-direction:column;gap:10px;min-height:0;";
+
+    // PRIMARY: live text intel (status header + per-enemy roster).
+    const intel = document.createElement("div");
+    intel.className = "am-map-intel";
+    const status = document.createElement("div");
+    status.id = "am-map-status";
+    status.className = "am-map-status";
+    status.textContent = "loading vision...";
+    intel.appendChild(status);
+    // Per-enemy vision roster (2026-06-10). ARAM/Mayhem emit no champion
+    // coordinates (Live Client position "NONE"), so this text column IS
+    // the truthful per-enemy signal there: level + zone label for alive
+    // enemies, ticking respawn countdown for dead ones, MIA age where
+    // fog applies. Dots stay coordinate-gated (no fabricated positions).
+    // R30: promoted out of the 46% absolute overlay into the primary intel.
+    const roster = document.createElement("div");
+    roster.id = "am-map-roster";
+    roster.className = "am-map-roster";
+    intel.appendChild(roster);
+    shell.appendChild(intel);
+
+    // SECONDARY: the static mode map (capped) + the ZOI/threat overlay
+    // canvas + the gank band, bounded so it gives spatial context without
+    // dominating. position:relative (CSS) anchors the absolute children.
+    const figure = document.createElement("div");
+    figure.className = "am-map-figure";
     const img = document.createElement("img");
     img.id = "am-map-img";
     img.src = _amMapImg(knownMode);
@@ -686,35 +718,22 @@ function _renderAmMap(host, mode, payload) {
         img.src = "/api/minimap-crop?mode=" + encodeURIComponent(knownMode);
       } else {
         // No base image at all (no local asset + no live frame): keep a
-        // visible box so the status + roster text layers still render.
+        // visible box so the figure still occupies its slot.
         img.style.display = "none";
-        shell.classList.add("am-map-noimg");
+        figure.classList.add("am-map-noimg");
       }
     };
-    img.onload = () => { shell.classList.remove("am-map-noimg"); };
-    shell.appendChild(img);
+    img.onload = () => { figure.classList.remove("am-map-noimg"); };
+    figure.appendChild(img);
     const canvas = document.createElement("canvas");
     canvas.id = "am-map-overlay";
     canvas.style.cssText = "position:absolute;left:0;top:0;pointer-events:none;";
-    shell.appendChild(canvas);
-    const status = document.createElement("div");
-    status.id = "am-map-status";
-    status.style.cssText = "position:absolute;left:8px;top:8px;font-size:var(--fs-xs);color:#9ca3af;background:rgba(0,0,0,0.55);padding:3px 8px;border-radius:4px;letter-spacing:0.4px;text-transform:uppercase;font-weight:700;";
-    status.textContent = "loading vision...";
-    shell.appendChild(status);
-    // Per-enemy vision roster (2026-06-10). ARAM/Mayhem emit no champion
-    // coordinates (Live Client position "NONE"), so this text column IS
-    // the truthful per-enemy signal there: level + zone label for alive
-    // enemies, ticking respawn countdown for dead ones, MIA age where
-    // fog applies. Dots stay coordinate-gated (no fabricated positions).
-    const roster = document.createElement("div");
-    roster.id = "am-map-roster";
-    roster.className = "am-map-roster";
-    shell.appendChild(roster);
+    figure.appendChild(canvas);
     const ganker = document.createElement("div");
     ganker.id = "am-map-gank";
     ganker.style.cssText = "position:absolute;left:0;right:0;bottom:0;padding:6px 10px;font-size:12px;color:#fff;background:rgba(220,38,38,0.85);font-weight:700;letter-spacing:0.4px;text-transform:uppercase;display:none;text-align:center;";
-    shell.appendChild(ganker);
+    figure.appendChild(ganker);
+    shell.appendChild(figure);
     host.appendChild(shell);
     // Kick off the polling loop if not already running.
     _amStartMapPolling();
