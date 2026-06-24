@@ -127,6 +127,90 @@
   margin-bottom: var(--space-4);
 }
 
+/* Desktop: the WPA table sits left (capped at its own max-width so the
+ * columns never stretch), the confidence-weighted TAKEAWAY rail sits right
+ * - filling what was a ~650px dead zone with the most actionable read. At
+ * the companion width the rail stacks ABOVE the table (headline-first). */
+.bi-pane-cols {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+.bi-pane-cols > [id$="table-mount"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.bi-summary {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+/* No rail on a tab with no data (the table reclaims full width). */
+.bi-summary:empty {
+  display: none;
+}
+.bi-sum-head {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.bi-sum-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.bi-sum-kind {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--dim);
+}
+.bi-sum-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text);
+}
+.bi-sum-stat {
+  display: flex;
+  flex-direction: column;
+}
+.bi-sum-pp {
+  font-size: var(--fs-stat);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.bi-sum-stat.bi-pos .bi-sum-pp {
+  color: var(--good);
+}
+.bi-sum-stat.bi-neg .bi-sum-pp {
+  color: var(--bad);
+}
+.bi-sum-n {
+  font-size: var(--fs-xs);
+  color: var(--dim);
+}
+
+@media (max-width: 1200px) {
+  .bi-pane-cols {
+    flex-direction: column;
+  }
+  .bi-summary {
+    flex: 0 0 auto;
+    width: 100%;
+    order: -1;
+  }
+}
+
 .bi-table {
   width: 100%;
   max-width: 1200px;

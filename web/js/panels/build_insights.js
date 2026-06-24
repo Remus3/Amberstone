@@ -182,6 +182,11 @@ const _ITEMS_TAB = {
   emptyUnit: 'buys per item',
   headLabel: 'Item',
   nLabel: 'Buys',
+  iconTag(it) { return _itemImgTag(it && it.item_id); },
+  label(it) {
+    const iid = it && (it.item_id != null ? it.item_id : '');
+    return (it && it.name) || ('Item ' + iid);
+  },
   rowCells(it) {
     const iid = it && (it.item_id != null ? it.item_id : '');
     const name = (it && it.name) || ('Item ' + iid);
@@ -202,6 +207,11 @@ const _SKILLS_TAB = {
   headLabel: 'Champion',
   extraHead: 'Skill',
   nLabel: 'Games',
+  iconTag(it) { return _champImgTag(it && it.champion_id); },
+  label(it) {
+    const cid = it && (it.champion_id != null ? it.champion_id : '');
+    return (it && it.champion) || ('Champ ' + cid);
+  },
   rowCells(it) {
     const cid = it && (it.champion_id != null ? it.champion_id : '');
     const name = (it && it.champion) || ('Champ ' + cid);
@@ -232,6 +242,11 @@ const _RUNES_TAB = {
   headLabel: 'Rune',
   extraHead: 'Slot',
   nLabel: 'Picks',
+  iconTag(it) { return _runeImgTag((it && it.icon) || ''); },
+  label(it) {
+    const rid = it && (it.rune_id != null ? it.rune_id : '');
+    return (it && it.name) || ('Rune ' + rid);
+  },
   rowCells(it) {
     const rid = it && (it.rune_id != null ? it.rune_id : '');
     const name = (it && it.name) || ('Rune ' + rid);
@@ -253,6 +268,11 @@ const _SPELLS_TAB = {
   emptyUnit: 'picks per spell',
   headLabel: 'Spell',
   nLabel: 'Picks',
+  iconTag(it) { return _spellImgTag((it && it.icon) || ''); },
+  label(it) {
+    const sid = it && (it.spell_id != null ? it.spell_id : '');
+    return (it && it.name) || ('Spell ' + sid);
+  },
   rowCells(it) {
     const sid = it && (it.spell_id != null ? it.spell_id : '');
     const name = (it && it.name) || ('Spell ' + sid);
@@ -330,10 +350,79 @@ function _tableHtml(tab, st) {
   return `<table class="bi-table">${head}${body}</table>`;
 }
 
+// --- takeaway rail (confidence-weighted best/worst mover) -----------
+// The rail ranks by wpa_shrunk (the server's shrink-adjusted residual)
+// rather than the raw wpa, so the most TRUSTWORTHY mover wins instead of
+// the noisiest low-n row - exactly the "trust by the sample bar" caveat
+// the table sort ignores. Falls back to wpa * n/(n+5) if the field is
+// absent so the rail still ranks by confidence on any payload shape.
+function _shrunkScore(it) {
+  if (it && typeof it.wpa_shrunk === 'number') return it.wpa_shrunk;
+  const wpa = Number(it && it.wpa) || 0;
+  const n = Number(it && it.n) || 0;
+  return n > 0 ? wpa * (n / (n + 5)) : wpa;
+}
+
+function _bestWorst(items) {
+  let best = null, worst = null;
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const s = _shrunkScore(it);
+    if (best === null || s > _shrunkScore(best)) best = it;
+    if (worst === null || s < _shrunkScore(worst)) worst = it;
+  }
+  return { best, worst };
+}
+
+// Map sample confidence to a word, reusing the 5-segment shrink bins.
+function _confWord(n) {
+  const f = _confSegments(n);
+  return f >= 5 ? 'high' : (f >= 4 ? 'good' : 'low');
+}
+
+function _moverBlock(tab, it, kind) {
+  if (!it) return '';
+  const wpa = Number(it && it.wpa) || 0;
+  const cls = wpa >= 0 ? 'bi-pos' : 'bi-neg';
+  const n = (it && it.n) || 0;
+  const unit = tab.nLabel ? tab.nLabel.toLowerCase() : 'samples';
+  return (
+    '<div class="bi-sum-block">' +
+    `<div class="bi-sum-kind">${kind}</div>` +
+    `<div class="bi-sum-name">${tab.iconTag(it)}` +
+    `<span>${_esc(tab.label(it))}</span></div>` +
+    `<div class="bi-sum-stat ${cls}">` +
+    `<span class="bi-sum-pp">${_signedPP(wpa)}pp</span>` +
+    `<span class="bi-sum-n">${n} ${unit}, ${_confWord(n)} confidence</span>` +
+    '</div></div>'
+  );
+}
+
+function _summaryHtml(tab, st) {
+  if (!st.items || st.items.length === 0) return '';
+  const bw = _bestWorst(st.items);
+  let html = '<div class="bi-sum-head">TAKEAWAY</div>';
+  html += _moverBlock(tab, bw.best, 'STRONGEST');
+  if (bw.worst && bw.worst !== bw.best) {
+    html += _moverBlock(tab, bw.worst, 'WEAKEST');
+  }
+  return html;
+}
+
+function _renderSummary(tab, st) {
+  const sm = document.getElementById('bi-summary-' + tab.key);
+  if (!sm) return;
+  sm.innerHTML = _summaryHtml(tab, st);
+}
+
 function _render(tab) {
   const st = _ST[tab.key];
   const mount = document.getElementById(tab.mountId);
   if (!mount) return;
+  // The takeaway rail tracks the table: cleared on loading/empty (the
+  // ::empty CSS rule hides it so the table reclaims full width), populated
+  // once the data lands.
+  _renderSummary(tab, st);
   if (st.inFlight && !st.loaded) {
     mount.innerHTML = '<div class="bi-empty">loading...</div>';
     return;
@@ -399,6 +488,23 @@ function _tabByKey(key) {
   return _ITEMS_TAB;
 }
 
+const _TABLE_KEYS = ['items', 'skills', 'runes', 'spells'];
+
+// The Min-N control only drives the four WPA tables; the four chart tabs
+// (duration / flow / opscore / bench) never read min_n. Relabel it to the
+// active tab's unit (Min buys / games / picks) and HIDE it on a chart tab
+// so it never reads as an inert no-op control.
+function _syncControls(key) {
+  const controls = document.querySelector('.bi-controls');
+  if (!controls) return;
+  const isTable = _TABLE_KEYS.indexOf(key) !== -1;
+  controls.hidden = !isTable;
+  if (isTable) {
+    const lbl = controls.querySelector('label');
+    if (lbl) lbl.textContent = 'Min ' + _tabByKey(key).nLabel.toLowerCase();
+  }
+}
+
 // Fetch-once-per-tab-switch: only fetch when this tab has not loaded.
 function _ensureFetched(tab) {
   const st = _ST[tab.key];
@@ -429,6 +535,7 @@ function _activateTab(key) {
   document.querySelectorAll('[data-bi-pane]').forEach((p) => {
     p.hidden = p.getAttribute('data-bi-pane') !== key;
   });
+  _syncControls(key);
   _renderActive();
 }
 
@@ -470,6 +577,7 @@ function _wireControlsOnce() {
 export function renderBuildInsights() {
   try {
     _wireControlsOnce();
+    _syncControls(_ST.active);
     _renderActive();
   } catch (_e) {
     const mount = document.getElementById(ITEM_MOUNT_ID);
@@ -484,6 +592,10 @@ export const __test = {
   _pct,
   _ST,
   _sortRows,
+  _shrunkScore,
+  _bestWorst,
+  _summaryHtml,
+  _syncControls,
   _ITEMS_TAB,
   _SKILLS_TAB,
   _RUNES_TAB,
