@@ -447,6 +447,9 @@ function renderLastMatch(data) {
   _setTimeline(enriched);
   _setPhases(m, enriched);
   _setQuickReview(qr);
+  // R30 page-3 design review: lift the single most actionable quick_review
+  // signal into the takeaway headline above the hero (autopsy-first).
+  _setTakeaway(qr);
   _setReviewButton(m);
   _setMeta(m, data.history_count, enriched);
 
@@ -486,16 +489,27 @@ function _renderRankCompare(tier) {
       if (el) el.textContent = vals[id] != null ? vals[id] : "-";
     });
   };
+  // R30 page-3 design review: collapse the empty tier-compare. With no
+  // tier picked the 8 cells were all dashes (the averages are a manual
+  // Settings knob), so the grid wasted ~40% of the hero. Collapse to the
+  // selector + a compact prompt; the cells return once a rank is chosen.
+  const container = document.querySelector(".lm-hero-rank-compare");
+  const emptyEl = document.getElementById("lm-rank-empty");
+  const _setEmpty = (isEmpty) => {
+    if (container) container.classList.toggle("is-empty", isEmpty);
+    if (emptyEl) emptyEl.hidden = !isEmpty;
+  };
 
-  if (!tier) { set({}); return; }
+  if (!tier) { set({}); _setEmpty(true); return; }
   const tierData = _RANK_TIER_AVERAGES[tier];
-  if (!tierData) { set({}); return; }
+  if (!tierData) { set({}); _setEmpty(true); return; }
   const mode = (_lastMatchMode || "").toUpperCase();
   const modeKey = mode in tierData
     ? mode
     : (mode === "ARAM" || mode === "KIWI" ? "ARAM" : "SR");
   const avg = tierData[modeKey] || tierData.SR;
-  if (!avg) { set({}); return; }
+  if (!avg) { set({}); _setEmpty(true); return; }
+  _setEmpty(false);
   set({
     "lm-rank-kda":    avg.kda.toFixed(1),
     "lm-rank-vision": String(avg.vision),
@@ -506,6 +520,56 @@ function _renderRankCompare(tier) {
     "lm-rank-cspm":   avg.cs_per_min.toFixed(1),
     "lm-rank-heal":   _fmtThousands(avg.healing),
   });
+}
+
+// R30 page-3 design review: autopsy takeaway headline. gemini's view-job
+// for the PGR is "what do I change next game?" - so the most actionable
+// quick_review signal is lifted to a single line above the hero instead
+// of being buried in the AI Analysis tab's third column. Priority: a
+// recurring weakness (my_chronic) > a real this-match team issue
+// (wrong_team) > a standout positive (right). The placeholder rows the
+// builder emits when data is thin ("Team data unavailable" / "No standout
+// positives") are skipped so the headline never shows filler.
+function _isTakeawayPlaceholder(text) {
+  const t = (text || "").toLowerCase();
+  return t.startsWith("team data unavailable") ||
+         t.startsWith("no standout positives");
+}
+function _firstRealTakeaway(items) {
+  if (!Array.isArray(items)) return null;
+  for (const it of items) {
+    if (it && it.text && !_isTakeawayPlaceholder(it.text)) return it;
+  }
+  return null;
+}
+function _pickTakeaway(qr) {
+  const chronic = _firstRealTakeaway(qr.my_chronic);
+  if (chronic) return { label: "Fix next game", item: chronic, kind: "warn" };
+  const wrong = _firstRealTakeaway(qr.wrong_team);
+  if (wrong) return { label: "This game", item: wrong, kind: "warn" };
+  const right = _firstRealTakeaway(qr.right);
+  if (right) return { label: "Strength", item: right, kind: "good" };
+  return null;
+}
+function _setTakeaway(qr) {
+  const wrap = document.getElementById("lm-takeaway");
+  const labelEl = document.getElementById("lm-takeaway-label");
+  const textEl = document.getElementById("lm-takeaway-text");
+  if (!wrap || !labelEl || !textEl) return;
+  const pick = _pickTakeaway(qr || {});
+  if (!pick) {
+    wrap.hidden = true;
+    wrap.dataset.kind = "";
+    textEl.textContent = "";
+    textEl.removeAttribute("title");
+    return;
+  }
+  labelEl.textContent = pick.label;
+  textEl.textContent = pick.item.text;
+  if (pick.item.why) textEl.title = pick.item.why;
+  else textEl.removeAttribute("title");
+  wrap.dataset.kind = pick.kind;
+  wrap.hidden = false;
 }
 
 function _setMeta(m, historyCount, _enriched) {
