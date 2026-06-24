@@ -4,7 +4,7 @@ import { state } from '../lib/state.js';
 import { ITEMS, CHAMPS, _resolveChampId } from '../lib/items_index.js';
 // s220 PGR S5: Match-V5 timeline event ribbon for the Replay view.
 // Sidecar architecture per docs/adr/ADR-009-replay-events-cleanroom.md.
-import { loadReplayEvents, wireReplayEventsOnce } from './replay_events.js';
+import { loadReplayEvents, wireReplayEventsOnce, setReplaySeekHandler } from './replay_events.js';
 
 // ── Settings view (2026-04-26) ───────────────────────────────────
 function _settingsRefresh() {
@@ -669,6 +669,25 @@ function _replayRenderSnapshot(idx) {
     tbody.appendChild(tr);
   }
 }
+// R30 page-6: seek the scrubber to a timeline event's timestamp. Maps the
+// event clock (seconds) to the nearest per-frame snapshot by minute, moves
+// the slider, and re-renders the grid at that frame - so a timeline click
+// is real navigation (the "actionable event timeline", not a passive log).
+function _replaySeekToClock(clockS) {
+  const d = _REPLAY.match;
+  if (!d || !Array.isArray(d.snapshots) || !d.snapshots.length) return;
+  const targetMin = (Number(clockS) || 0) / 60;
+  let bestIdx = 0, bestDelta = Infinity;
+  for (let i = 0; i < d.snapshots.length; i++) {
+    const mn = Number(d.snapshots[i].minute) || 0;
+    const delta = Math.abs(mn - targetMin);
+    if (delta < bestDelta) { bestDelta = delta; bestIdx = i; }
+  }
+  _REPLAY.snapshotIdx = bestIdx;
+  const slider = document.getElementById("replay-slider");
+  if (slider && !slider.disabled) slider.value = String(bestIdx);
+  _replayRenderSnapshot(bestIdx);
+}
 function _replayViewWireOnce() {
   if (window.__replayWired) return;
   window.__replayWired = true;
@@ -681,6 +700,8 @@ function _replayViewWireOnce() {
   }
   // s220 PGR S5: wire the event-ribbon filter checkboxes once.
   try { wireReplayEventsOnce(); } catch (_) {}
+  // R30 page-6: let a timeline-row click drive the scrubber above.
+  try { setReplaySeekHandler(_replaySeekToClock); } catch (_) {}
 }
 
 export {

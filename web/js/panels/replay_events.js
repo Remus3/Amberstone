@@ -204,6 +204,7 @@ function _renderEvents() {
   }
   empty.hidden = true;
   const rows = events.map((e) => {
+    const clockS  = Number(e.clock_s) || 0;
     const clock   = _fmtMmSs(e.clock_s);
     const label   = _typeLabel(e.type, e.subtype);
     const kind    = _kindFor(e.type);
@@ -214,7 +215,12 @@ function _renderEvents() {
     const lane    = e.lane ? ` ${_escHtml(e.lane)}` : "";
     const aTitle  = actor.title  ? ` title="${_escHtml(actor.title)}"`  : "";
     const vTitle  = victim.title ? ` title="${_escHtml(victim.title)}"` : "";
-    return `<li class="replay-events-row" data-kind="${kind}" data-team="${team}">
+    // Each row is a seek control: clicking it (or Enter/Space when focused)
+    // drives the scrubber to this event's timestamp via the delegated
+    // listener in wireReplayEventsOnce. data-clock carries the raw seconds.
+    return `<li class="replay-events-row" data-kind="${kind}" data-team="${team}"
+      data-clock="${clockS}" role="button" tabindex="0"
+      title="Jump the scrubber to ${_escHtml(clock)}">
       <span class="replay-events-clock">${_escHtml(clock)}</span>
       <span class="replay-events-label">${_escHtml(label)}${sub}${lane}</span>
       <span class="replay-events-actor"${aTitle}>${actor.html}</span>
@@ -274,14 +280,41 @@ export function loadReplayEvents(matchId) {
 
 let _wired = false;
 
+// Seek bridge: dev.js (which owns the _REPLAY scrubber state) registers a
+// handler here so a timeline-row click can drive the per-frame scrubber
+// without a circular import. Decoupled - the ribbon stays renderable even
+// if no scrubber is mounted (the click is then a no-op).
+let _seekHandler = null;
+export function setReplaySeekHandler(fn) {
+  _seekHandler = (typeof fn === "function") ? fn : null;
+}
+
+function _seekFromRow(target) {
+  const row = target && target.closest ? target.closest(".replay-events-row") : null;
+  if (!row || !_seekHandler) return;
+  const c = Number(row.getAttribute("data-clock"));
+  if (!isNaN(c)) _seekHandler(c);
+}
+
 /**
- * One-time DOM wiring for the filter checkboxes. Idempotent - safe to
- * call from _replayViewWireOnce on every view activation.
+ * One-time DOM wiring for the filter checkboxes + the timeline-row seek
+ * (delegated, so it survives every _renderEvents innerHTML rebuild).
+ * Idempotent - safe to call from _replayViewWireOnce on every activation.
  */
 export function wireReplayEventsOnce() {
   if (_wired) return;
   _wired = true;
   _RE.include = _loadInclude();
+  const list = document.getElementById("replay-events-list");
+  if (list) {
+    list.addEventListener("click", (e) => _seekFromRow(e.target));
+    list.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        _seekFromRow(e.target);
+      }
+    });
+  }
   const map = {
     "replay-evt-items":  "items",
     "replay-evt-skills": "skills",

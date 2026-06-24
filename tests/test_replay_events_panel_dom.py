@@ -126,7 +126,13 @@ class ReplayEventsPanelJsTests(unittest.TestCase):
 
     def test_dev_js_imports_helpers(self):
         js = _read(DEV_JS)
-        self.assertIn("import { loadReplayEvents, wireReplayEventsOnce }", js)
+        # R30 page-6 added setReplaySeekHandler to the same import (the
+        # timeline-row -> scrubber seek bridge); assert each named helper
+        # rather than the brittle exact-tuple string.
+        self.assertIn("import {", js)
+        self.assertIn("loadReplayEvents", js)
+        self.assertIn("wireReplayEventsOnce", js)
+        self.assertIn("setReplaySeekHandler", js)
         self.assertIn("from './replay_events.js'", js)
 
     def test_panel_persists_include_to_localstorage(self):
