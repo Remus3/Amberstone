@@ -800,7 +800,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       } catch (_) {}
     }
     if (viewId === "build-insights") { renderBuildInsights(); }
-    if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); renderLoopStatus(); }
+    if (viewId === "settings")    { _settingsRefresh(); _settingsLobbyWireOnce(); _syncAutoAcceptUI(); renderSpendGates(); renderLoopStatus(); _settingsFilterWireOnce(); }
   }
   function _viewUpdateTitleLabel(viewId) {
     const el = document.getElementById("view-current-label");
@@ -5879,6 +5879,31 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // Settings-page Auto Accept checkbox listener. Wired from the
   // settings-view show hook (guaranteed to run when the operator opens
   // Settings, even if they never visited the lobby view this session).
+  // R30 page-9 design review: settings quick-filter. Shows only the cards
+  // whose head or any row text contains the query (case-insensitive); empty
+  // restores all. Pure client-side DOM toggle over the static cards.
+  let _settingsFilterWired = false;
+  function _settingsFilterWireOnce() {
+    if (_settingsFilterWired) return;
+    const inp = document.getElementById("settings-filter-input");
+    if (!inp) return;
+    _settingsFilterWired = true;
+    inp.addEventListener("input", () => _settingsApplyFilter(inp.value));
+  }
+  function _settingsApplyFilter(q) {
+    const query = (q || "").trim().toLowerCase();
+    const body = document.getElementById("settings-body");
+    if (!body) return;
+    const cards = body.querySelectorAll(".settings-card");
+    let shown = 0;
+    cards.forEach((card) => {
+      const match = !query || (card.textContent || "").toLowerCase().includes(query);
+      card.hidden = !match;
+      if (match) shown += 1;
+    });
+    const cnt = document.getElementById("settings-filter-count");
+    if (cnt) cnt.textContent = query ? `${shown} card${shown === 1 ? "" : "s"}` : "";
+  }
   function _settingsLobbyWireOnce() {
     if (_LV.settingsLobbyWired) return;
     _LV.settingsLobbyWired = true;

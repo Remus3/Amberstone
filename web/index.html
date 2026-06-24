@@ -1540,6 +1540,15 @@
         <h2>SETTINGS</h2>
       </div>
       <div class="view-section-body settings-body" id="settings-body">
+        <!-- R30 page-9 design review: settings quick-filter. Type to show only
+             the cards whose head or any row text matches; empty shows all.
+             Full-width row above the card grid; _settingsApplyFilter drives it. -->
+        <div class="settings-filter" id="settings-filter-bar">
+          <input type="search" id="settings-filter-input" class="settings-filter-input"
+                 placeholder="Filter settings..." autocomplete="off"
+                 aria-label="Filter settings" />
+          <span class="settings-filter-count" id="settings-filter-count"></span>
+        </div>
         <div class="settings-card">
           <div class="settings-card-head">VOICE</div>
           <label class="settings-row">
