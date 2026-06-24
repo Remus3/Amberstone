@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-24 (R30 IN-GAME continuation - active-match follow-ups: companion header reflow + ARAM ward-heat hide)
+
+Interactive operator session continuing ledger 611. Cleared the named active-match follow-up tail. 2 feature
+commits + 1 CI-lint fix, all pushed; 14/14 in `test_active_match_review_r30.py`; each slice RED-first + a
+5-phase UI-audit subagent PASS + live-:8888 recon. Tier-1 frontend; no engine / DS / Share / ENGINE_VERSION.
+
+- SLICE 1 header reflow (`5ef87dd0`): the in-game header's two fixed-width no-wrap rows overflowed the 923
+  companion (row 1 ~1224px) and `body{overflow:hidden}` CLIPPED the heartbeat + vision pills off-screen. A
+  single `@media (max-width:1200px)` block in header.css wraps `.header-row` + drops the heartbeat
+  `margin-left:auto` -> companion wraps to 2 clean lines (worst 778 <= 923); 1920 desktop unchanged (hb 1902).
+- SLICE 2 ARAM ward-heat hide (`c1410a1b`): the MAP-pane ward-heat strip renders 4 lane cells (TOP/JG/MID/BOT)
+  x2 teams; ARAM is single-lane (6/8 cells dead). `_renderWardHeatTick(ctx)` now `display:none`s `#am-ward-heat`
+  in ARAM (restores on mode switch); SR/Arena keep it; ARAM vision still shown via the MAP intel MIA roster.
+- CI-UNBLOCK (`678b4c95`): prior-session `test_champ_select_review_r30.py` had a ruff B023 (pageerror lambda
+  closing over the for-loop `errors`); CI runs `ruff check .` REPO-WIDE so it was red on every push since 611
+  incl. mine, while each slice's file-SCOPED ruff was green. Fixed via default-arg binding. DON'T-REDO: at
+  /done run repo-wide `ruff check .`, not a file-scoped check.
+
+NEXT: the R30 in-game named tail is CLEAR. The OVERLAY was reconned clean (low yield, RC2-mined; the empty
+`#am-mmrect` frame is coordinate-gated = no-op). Only LIVE-GATED items remain (need a physical game): the E.1
+ACTIVE knob physical press + the `RC_COMP_HP_LEAN` default-ON flip. Harness + gemini_out.txt at `ops/runtime/ui_recon/`.
+
+---
+
 # 2026-06-24 (R30 IN-GAME design review - champ-select COMPLETE + active-match map rethink; "live-gated" deferral debunked)
 
 Interactive operator session. The prior 3 R30 sessions deferred ALL in-game pages as LIVE-GATED; that was
@@ -76,47 +100,3 @@ intent in `ops/runtime/ui_recon/gemini_out.txt`.
 NEXT (operator directive): the OUT-OF-GAME review is COMPLETE (pages 1-9). Only the in-game champ-select /
 active-match / overlay pages remain - LIVE-GATED. Resume them when a game is live, reusing the harness +
 `gemini_out.txt`. Carry-forward OWED (live-gated): E.1 ACTIVE knob physical press; `RC_COMP_HP_LEAN` flip.
-
----
-
-# 2026-06-23 (R30 CONTINUATION - per-page UI/UX design review, pages 3,4,5,7,9 of 9)
-
-Interactive operator session continuing the R30 review (pages 1-2 shipped prior, ledger 603). 5 pages
-shipped, 5 commits pushed, gate green (241 snapshot tests; 0 non-ASCII; a per-page 5-phase UI-audit
-subagent PASS each page). All Tier-1 frontend; no engine / DS / Share / ENGINE_VERSION. mode=client,
-NO live game all session -> the 2 OWED live-gated items (E.1 ACTIVE knob; RC_COMP_HP_LEAN flip) stayed
-un-buildable.
-
-CADENCE (proven, reuse pages 8 + 6): recon each view at 923 + 1920 via live-:8888 Playwright
-(`ops/runtime/ui_recon/recon.py <view>`) -> READ + JUDGE the screenshots, ground-truth every finding at
-file:line -> PRESENT keep/remove/add/alter + ONE framed scope AskUserQuestion -> build the operator-picked
-slice RED-first + a 5-phase UI-audit subagent gate before commit -> commit+push. Gemini PART B per-view
-intent in `ops/runtime/ui_recon/gemini_out.txt`.
-
-- PAGE 3 PGR (`372b568b`, full pass): default tab Build->AI Analysis (autopsy-first; Build = gemini's
-  named scoreboard trap) + tab reorder + a takeaway headline above the hero (my_chronic > real wrong_team
-  > right); pure-CSS `::before` frame captions "Overall"(grade) + "Lobby"(score) so the 3 verdicts read as
-  distinct frames; rank-compare collapses to selector+prompt when no tier (static averages, no auto-rank
-  route exists); deferred token fold-in `--radius-sm`->`--panel-radius`(cards) / `--panel-radius-sm`(chips).
-  LESSON: verified the AI-Analysis tab degrades to the quick-review when no Match-V5 timeline (safe default).
-- PAGE 4 SESSION (`0fa3dd36`, full pass): the view's JOB (tilt/fatigue/limits) was entirely MISSING -
-  added a tilt/fatigue verdict + chronological grade strip derived from `d.matches` (no backend); companion
-  `.session-grid` -> 1-col (Modes-label collision); de-redundancy CHAMPIONS->REPLAYED CHAMPIONS (2+-game
-  only, hidden when none) + removed the OVERVIEW "Started" header-dup.
-- PAGE 5 HISTORY (`0c0bdc16`, full pass): VERIFY-BEFORE-DECLARE corrected my first read - the filters are
-  already GLOBAL (`_historyApplyFilters`), trap avoided. Gap = a filter gave a LIST but no AGGREGATE; now
-  SEASON STATS reflects the filtered subset (retitled "JINX STATS"; total/WR/KDA/most-played), restores on
-  clear; empty state advertises global filtering; 3-col grid -> 1-col at companion.
-- PAGE 7 USER BUILDS (`eb5aea8a`, full pass): CRUD already good (datalist autocomplete / inline edit-delete
-  / side-pane editor not a modal / Delete confirm - trap avoided); fixed the dead-space (`.ub-layout`
-  full-width at rest, 2-up only while editing via `:has()`) + item icons per row (`_resolveItemId` name->id).
-  Updated `test_companion_reflow.py` (ub now 1-col at rest -> companion guard only).
-- PAGE 9 SETTINGS (`3d52ee35`, picked 2+3): panel already centralized (scattering trap avoided - PGR knobs
-  canonical here + mirrored); added a full-width quick-filter (`_settingsApplyFilter` shows only matching
-  cards) + a density compaction (card gap + head margin).
-
-NEXT (operator directive: WRAP here, resume next session): pages 8 (Build Insights -> `build_insights.css`)
-+ 6 (Replay -> `primitives.css`) remain out-of-game; champ-select / active-match / overlay are LIVE-GATED
-(need a game up - none this session). Reuse the harness + `gemini_out.txt`. Respect: replay scroll-wrap is
-CORRECT (do NOT "fix" it); operator-locked `last_match.css` sub-floors. The full resume prompt was handed
-to the operator in chat.
