@@ -30,6 +30,39 @@
   padding: 14px 18px;
 }
 
+/* R30 page-3 design review: autopsy takeaway headline. The single most
+ * actionable quick_review signal, lifted above the hero so the PGR answers
+ * "what do I change next game?" at a glance instead of burying it in the
+ * AI Analysis tab. data-kind tints the left accent: warn (a fix to make)
+ * or good (a strength to keep). Hidden until _setTakeaway populates it. */
+.lm-takeaway {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--panel-radius-sm);
+}
+.lm-takeaway[hidden] { display: none; }
+.lm-takeaway[data-kind="good"] { border-left-color: var(--good); }
+.lm-takeaway-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn);
+  white-space: nowrap;
+}
+.lm-takeaway[data-kind="good"] .lm-takeaway-label { color: var(--good); }
+.lm-takeaway-text {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+
 /* -- Hero row -------------------------------------------------------- */
 /* s219 v6: 3-section layout (each section can hold multiple rows).
  *   Section 1 - identity cluster (portrait + name + KDA + W/L + grade)
@@ -50,7 +83,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--text-dim);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius);
   min-height: 88px;
   box-shadow: var(--shadow-card);
 }
@@ -70,13 +103,13 @@
   top: -1px;
   left: -1px;
   border-width: 2px 0 0 2px;
-  border-top-left-radius: var(--radius-sm);
+  border-top-left-radius: var(--panel-radius);
 }
 .lm-hero::after {
   bottom: -1px;
   right: -1px;
   border-width: 0 2px 2px 0;
-  border-bottom-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--panel-radius);
 }
 .lm-hero-identity {
   display: grid;
@@ -102,11 +135,25 @@
   padding: 6px 16px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   min-width: 78px;
   cursor: help;
 }
 .lm-hero-score[hidden] { display: none; }
+/* R30 page-3 design review: frame caption. "Lobby" names this 0-100 score
+ * as lobby-relative (your rank among the 10 players this game), distinct
+ * from the Overall grade letter beside it. Pure-CSS ::before so
+ * _setHeroScore (which sets the value + tier spans by id) is untouched. */
+.lm-hero-score::before {
+  content: "Lobby";
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  line-height: 1;
+  margin-bottom: 3px;
+}
 .lm-hero-score-value {
   /* RC2 score-hero: the single most important number on the page is
    * lifted to the display tier and defaults to hextech gold so the eye
@@ -147,7 +194,7 @@
   padding: 4px 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   min-width: 70px;
   cursor: help;
 }
@@ -207,7 +254,7 @@
   padding: 6px 10px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
 }
 .lm-rubric-components[hidden] { display: none; }
 .lm-rubric-bar {
@@ -226,14 +273,14 @@
 .lm-rubric-bar-track {
   position: relative;
   height: 8px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-3);
   overflow: hidden;
 }
 .lm-rubric-bar-fill {
   display: block;
   height: 100%;
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   background: var(--accent);
   transition: width 0.2s ease;
 }
@@ -255,7 +302,7 @@
   font-size: var(--fs-md); font-weight: 800;   /* item 182 v2.1: 20 -> 22 (W/L pill) */
   letter-spacing: 0.1em;
   padding: 6px 14px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
   text-transform: uppercase;
@@ -413,6 +460,34 @@
   padding-left: 14px;
   border-left: 1px dashed var(--border-soft);
 }
+/* R30 page-3 design review: collapsed (no-tier) state. The 8 dashes cells
+ * hide; the container shrinks to a compact column holding just the rank
+ * selector + a prompt, reclaiming the ~40% of hero width the empty grid
+ * wasted. The middle stats grid (1fr) expands into the freed space. The
+ * selector stays as the affordance; cells return once a rank is picked. */
+.lm-hero-rank-compare.is-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 150px;
+  max-width: 200px;
+}
+.lm-hero-rank-compare.is-empty .lm-rank-cell,
+.lm-hero-rank-compare.is-empty .lm-rank-kdakp {
+  display: none;
+}
+.lm-hero-rank-compare.is-empty .lm-rank-compare-head {
+  justify-self: auto;
+}
+.lm-rank-empty {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.3;
+  text-align: right;
+}
+.lm-rank-empty[hidden] { display: none; }
 /* selector / each cell's grid-area is set inline on the HTML element. */
 /* s220: the selector spans col1 (= the KDA+KP% pair width beneath it).
  * justify-self:stretch overrides the grid's justify-items:end for this
@@ -429,7 +504,7 @@
   background: var(--surface-2);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   padding: 3px 8px;
   font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; rank select) */
   font-weight: 600;
@@ -487,12 +562,32 @@
   font-size: var(--fs-sm); color: var(--text-dim);   /* item 182 v2.1: 19 -> 18 (KDA ratio) */
 }
 .lm-hero-grade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   font-size: var(--fs-display); font-weight: 800; line-height: 1;   /* item 182 v2.1: 48 -> 46 (display tier; grade letter) */
   padding: 4px 18px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-2);
   min-width: 66px; text-align: center;
   color: var(--text);
+}
+/* R30 page-3 design review: frame caption. "Overall" names this as the
+ * match's headline RC grade, distinct from the Lobby score + the role
+ * grade (the three verdicts were reading as redundant bad-game stamps).
+ * Pure-CSS ::before so _setHero's grade.textContent assignment (the
+ * letter) is untouched + the render stays idempotent. The [data-grade]
+ * color tints the letter; the caption is overridden to --text-dim. */
+.lm-hero-grade::before {
+  content: "Overall";
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  line-height: 1;
 }
 .lm-hero-grade[data-grade="S"] { color: var(--accent); }
 .lm-hero-grade[data-grade="A"] { color: var(--good); }
@@ -539,7 +634,7 @@
   padding: 10px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   min-height: 72px;
   justify-content: center;
   gap: 2px;
@@ -591,7 +686,7 @@
   text-align: center;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   color: var(--text-dim);
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
@@ -665,7 +760,7 @@
   height: 22px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--panel-radius-sm);
   overflow: hidden;
 }
 .lm-chart-bar-fill {
@@ -722,7 +817,7 @@
   padding: 8px 12px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   color: var(--text-dim);
 }
 .lm-tl-chart[data-lead="ally"]  { color: var(--good); }
@@ -781,7 +876,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--text-dim);
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (timeline event row) */
 }
 .lm-tl-ev[data-team="ally"]    { border-left-color: var(--good); }
@@ -840,7 +935,7 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-left: 3px solid var(--text-dim);
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; WPA row) */
 }
 .lm-wpa-row[data-side="ally"]    { border-left-color: var(--good); }
@@ -891,7 +986,7 @@
   position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius);
   padding: 12px 16px;
   display: flex; flex-direction: column;
   gap: 10px;
@@ -910,13 +1005,13 @@
   top: -1px;
   left: -1px;
   border-width: 2px 0 0 2px;
-  border-top-left-radius: var(--radius-sm);
+  border-top-left-radius: var(--panel-radius);
 }
 .lm-section::after {
   bottom: -1px;
   right: -1px;
   border-width: 0 2px 2px 0;
-  border-bottom-right-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--panel-radius);
 }
 .lm-section-head {
   font-size: var(--fs-sm); font-weight: 700;   /* item 182 v2.1: 18 -> 18 (token swap; section head) */
@@ -964,7 +1059,7 @@
 }
 .lm-item {
   width: 36px; height: 36px;
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
   overflow: hidden;
@@ -984,7 +1079,7 @@
 }
 .lm-summ {
   width: 30px; height: 30px;
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
   overflow: hidden;
@@ -1001,11 +1096,11 @@
   padding: 6px 10px 6px 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);   /* item 182 v2.1: 17 -> 18 (build item) */
 }
 .lm-build-item img {
-  width: 32px; height: 32px; border-radius: 4px;
+  width: 32px; height: 32px; border-radius: var(--panel-radius-sm);
   background: var(--surface-3);
 }
 .lm-build-item-name { color: var(--text); }
@@ -1043,7 +1138,7 @@
   padding: 8px 10px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
 }
 .lm-tc-group-head {
   display: flex; align-items: center; gap: 12px;
@@ -1062,7 +1157,7 @@
 .lm-tc-group-result {
   font-size: var(--fs-xs);   /* item 182 v2.1: 16 -> 16 (token swap; group result pill) */
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text-dim);
@@ -1100,7 +1195,7 @@
   padding: 7px 10px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);   /* item 182 v2.1: 19 -> 18 (participant row default) */
 }
 .lm-tc-row.lm-tc-row-me {
@@ -1185,7 +1280,7 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--text-dim);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
 }
 .lm-tc-mvp[hidden] { display: none; }
 .lm-tc-mvp[data-kind="mvp"] {
@@ -1293,7 +1388,7 @@
 .lm-tc-summs { display: flex; gap: 3px; }
 .lm-tc-summ {
   width: 26px; height: 26px;
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
   object-fit: cover;
@@ -1307,7 +1402,7 @@
 }
 .lm-tc-item {
   width: 26px; height: 26px;
-  border-radius: 3px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
   object-fit: cover;
@@ -1337,7 +1432,7 @@
 }
 .lm-tc-aug {
   width: 20px; height: 20px;
-  border-radius: 3px;
+  border-radius: var(--panel-radius-sm);
   background: var(--surface-2);
   border: 1px solid var(--border);
   object-fit: cover;
@@ -1369,7 +1464,7 @@
   display: flex; flex-direction: column;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   padding: 10px 12px;
   min-height: 120px;
   border-top: 3px solid var(--text-dim);
@@ -1398,7 +1493,7 @@
   padding: 8px 12px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--panel-radius-sm);
   cursor: help;
   line-height: 1.35;
 }
@@ -1422,7 +1517,7 @@
   padding: 8px 12px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--panel-radius-sm);
   font-size: var(--fs-sm);   /* item 182 v2.1: 18 -> 18 (token swap; deep-review CTA head) */
   font-weight: 700;
   letter-spacing: 0.08em;
