@@ -1905,8 +1905,65 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * --border, --label, --text, --dim). DEFER: session.json carries only
  * static aggregates (no trend/series data), so the accent-2 sparkline is
  * deferred until the summary feed exposes per-game series. */
+/* R30 page-4 design review: session tilt/fatigue trend headline - a verdict
+ * line + a chronological grade strip (oldest left -> newest right), the first
+ * thing read on the page. The left accent + label tint by data-kind: warn
+ * (cooling off / fatigue), good (heating up), neutral (steady). */
+.session-trend {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  margin-bottom: var(--panel-gap);
+  padding: var(--space-3) var(--panel-padding-comp);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--dim);
+  border-radius: var(--panel-radius-sm);
+}
+.session-trend[hidden] { display: none; }
+.session-trend[data-kind="warn"] { border-left-color: var(--warn); }
+.session-trend[data-kind="good"] { border-left-color: var(--good); }
+.session-trend-head {
+  display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap;
+}
+.session-trend-label {
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--dim); white-space: nowrap;
+}
+.session-trend[data-kind="warn"] .session-trend-label { color: var(--warn); }
+.session-trend[data-kind="good"] .session-trend-label { color: var(--good); }
+.session-trend-text {
+  font-size: var(--fs-md); font-weight: 600; color: var(--text);
+  line-height: 1.25; min-width: 0;
+}
+.session-trend-strip {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center;
+}
+.session-trend-chip {
+  min-width: 24px; height: 24px; padding: 0 var(--space-1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-xs); font-weight: 800;
+  border-radius: var(--panel-radius-sm);
+  background: var(--surface-3); color: var(--text);
+  border: 1px solid var(--border-soft);
+  font-variant-numeric: tabular-nums;
+}
+/* grade-tinted trajectory chips (mirrors the PGR/home grade ramp). */
+.session-trend-chip.S { color: var(--accent);   border-color: var(--accent); }
+.session-trend-chip.A { color: var(--good);     border-color: var(--good); }
+.session-trend-chip.B { color: var(--accent-2); border-color: var(--accent-2); }
+.session-trend-chip.C { color: var(--info);     border-color: var(--info); }
+.session-trend-chip.D { color: var(--warn);     border-color: var(--warn); }
+.session-trend-chip.F { color: var(--bad);      border-color: var(--bad); }
+
 .session-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: var(--panel-gap);
+}
+/* R30 page-4 design review: companion reflow. At the rc-shell companion
+ * width the 2-up grid squeezed the long Modes value into its label; single-
+ * column at <=1200px (matching the R29 reflow on the other views) gives each
+ * card the full width. 1920 desktop keeps the 2-up grid. */
+@media (max-width: 1200px) {
+  .session-grid { grid-template-columns: 1fr; }
 }
 .session-card {
   /* hx-card tactical frame: card body surface + gold corner brackets. */
@@ -1958,6 +2015,9 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .session-row > span:last-child {
   color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700;
   font-size: var(--fs-stat); line-height: 1.1;
+  /* R30 page-4: a long text value (the Modes enumeration) wraps + stays
+   * right-aligned instead of colliding with its label at narrow widths. */
+  min-width: 0; text-align: right; overflow-wrap: anywhere;
 }
 .session-champ-list, .session-match-list {
   list-style: none; margin: 0; padding: 0;
