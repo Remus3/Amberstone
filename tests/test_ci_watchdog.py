@@ -161,5 +161,117 @@ def test_write_escalation_renders_markdown(tmp_path):
     assert "boom" in txt
 
 
+# -- dispatch plan (pure) ------------------------------------------------
+
+def test_plan_dispatch_step_order_and_branch():
+    steps = cw.plan_dispatch(555, "headsha9", worktree=cw.Path(r"C:\WT"), repo="o/r")
+    labels = [s[0] for s in steps]
+    assert labels == [
+        "fetch", "reset", "branch", "gather_log", "gather_diff",
+        "claude_fix", "diff_names", "push", "pr_create", "pr_merge",
+    ]
+    by = {label: argv for label, argv in steps}
+    assert cw.branch_name(555) == "ci-fix/555"
+    # worktree-scoped git everywhere it runs git
+    for label in ("fetch", "reset", "branch", "gather_diff", "diff_names", "push"):
+        assert by[label][0].endswith("git") or by[label][0] == "git"
+        assert "-C" in by[label] and r"C:\WT" in by[label]
+    assert by["branch"][-3:] == ["-B", "ci-fix/555", "origin/main"]
+    assert "headsha9" in by["gather_diff"]
+    # gh steps carry the repo
+    assert "--repo" in by["gather_log"] and "o/r" in by["gather_log"]
+    assert "555" in by["gather_log"]
+
+
+def test_plan_dispatch_claude_step_whitelist_and_no_skip_perms():
+    steps = dict((s[0], s[1]) for s in cw.plan_dispatch(1, "h"))
+    claude = steps["claude_fix"]
+    assert claude[0] == "claude" and "-p" in claude
+    assert "--allowedTools" in claude
+    for tool in ("Edit", "Read", "Bash(ruff:*)", "Bash(git:*)",
+                 "Bash(python -m py_compile:*)", "Bash(pytest:*)"):
+        assert tool in claude
+    assert "--append-system-prompt-file" in claude
+    assert any("ci_watchdog_fix.md" in a for a in claude)
+    # safety: never bypass permissions; never let claude push
+    assert "--dangerously-skip-permissions" not in claude
+    assert "--disallowedTools" in claude
+    assert "Bash(git push:*)" in claude
+
+
+def test_plan_dispatch_merge_is_squash_auto():
+    steps = dict((s[0], s[1]) for s in cw.plan_dispatch(2, "h"))
+    merge = steps["pr_merge"]
+    assert merge[:3] == ["gh", "pr", "merge"]
+    assert cw._MERGE_METHOD in merge and "--auto" in merge
+    assert "ci-fix/2" in merge
+
+
+# -- dispatch execution (injected runner; no real I/O) -------------------
+
+class _FakeRunner:
+    def __init__(self, outputs=None, fail=None):
+        self.calls = []
+        self.outputs = outputs or {}
+        self.fail = set(fail or ())
+
+    def __call__(self, label, argv):
+        self.calls.append((label, argv))
+        if label in self.outputs:
+            return self.outputs[label]
+        return (1 if label in self.fail else 0, "")
+
+    @property
+    def labels(self):
+        return [c[0] for c in self.calls]
+
+
+def test_execute_dispatch_dry_run_runs_nothing():
+    def boom(label, argv):  # must never be called in dry-run
+        raise AssertionError(f"runner invoked in dry-run: {label}")
+
+    res = cw.execute_dispatch(9, "h", arm=False, runner=boom)
+    assert res["mode"] == "dry_run"
+    assert res["branch"] == "ci-fix/9"
+    assert [s[0] for s in res["steps"]][0] == "fetch"
+    assert len(res["steps"]) == 10
+
+
+def test_execute_dispatch_arm_happy_path_merges(tmp_path):
+    fake = _FakeRunner(outputs={
+        "diff_names": (0, "core/foo.py\ntests/test_x.py\n"),
+        "pr_create": (0, "https://github.com/o/r/pull/77\n"),
+    })
+    res = cw.execute_dispatch(77, "h", arm=True, worktree=tmp_path, runner=fake)
+    assert res["action"] == "merged"
+    assert res["pr"].endswith("/77")
+    # push happens only AFTER the frozen-guard (diff_names) cleared it
+    assert fake.labels.index("diff_names") < fake.labels.index("push")
+    assert fake.labels.index("push") < fake.labels.index("pr_create") < fake.labels.index("pr_merge")
+
+
+def test_execute_dispatch_arm_escalates_on_frozen(tmp_path):
+    fake = _FakeRunner(outputs={"diff_names": (0, "main.py\ncore/foo.py\n")})
+    res = cw.execute_dispatch(5, "h", arm=True, worktree=tmp_path, runner=fake)
+    assert res["action"] == "escalate"
+    assert "main.py" in res["reason"]
+    assert "push" not in fake.labels and "pr_create" not in fake.labels
+
+
+def test_execute_dispatch_arm_escalates_on_claude_escalate(tmp_path):
+    fake = _FakeRunner(outputs={"claude_fix": (0, "ESCALATE: multiple tests failing")})
+    res = cw.execute_dispatch(6, "h", arm=True, worktree=tmp_path, runner=fake)
+    assert res["action"] == "escalate"
+    assert "ESCALATE" in res["reason"] or "escalate" in res["reason"].lower()
+    assert "push" not in fake.labels
+
+
+def test_execute_dispatch_arm_no_change_when_empty_diff(tmp_path):
+    fake = _FakeRunner(outputs={"diff_names": (0, "   \n")})
+    res = cw.execute_dispatch(8, "h", arm=True, worktree=tmp_path, runner=fake)
+    assert res["action"] == "no_change"
+    assert "push" not in fake.labels
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
