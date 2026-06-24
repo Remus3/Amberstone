@@ -1999,15 +1999,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           });
           if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no sessions in scope</li>';
         }
-        // Season stats panel
+        // Season stats panel. R30 page-5 design review: cache the whole-scope
+        // stats so the filtered-aggregate view (_historyApplyFilters) can
+        // restore them when filters clear. win_rate is already a percent
+        // (0-100) from builders.py season_stats (wins*100/decided; rewind
+        // tracked_win, no Riot key dependency).
         const ss = d.season_stats || {};
-        set("history-season-total", ss.total != null ? ss.total : "-");
-        set("history-season-kda",   ss.avg_kda != null ? ss.avg_kda.toFixed(2) : "-");
-        set("history-season-fav",   ss.favorite || "-");
-        // LIFT 4: real season win-rate now comes from rewind tracked_win
-        // (no Riot key dependency). win_rate is already a percent (0-100),
-        // straight from builders.py season_stats (wins*100/decided).
-        set("history-season-wr", ss.win_rate != null ? ss.win_rate.toFixed(1) + "%" : "-");
+        _HISTORY.seasonStats = ss;
+        _historySetSeasonStats(ss, false);
 
         // LIFT 4: stash a flat, newest-first list of every match in the
         // loaded scope so the client-side filters search GLOBALLY across
@@ -2192,6 +2191,46 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // active, render that flat subset (newest-first) into
   // #history-match-list via the shared row helper and flip the detail
   // head to FILTERED. If NO filter is active, restore the selected
+  // R30 page-5 design review: aggregate a match subset into the same shape
+  // as the scope season_stats (total / win_rate / avg_kda / favorite) so the
+  // SEASON STATS card can show a FILTERED matchup view. win is true/false/
+  // null (pre-LCU); avg_kda parses the "K/D/A" string into (K+A)/max(D,1).
+  function _historyAggStats(matches) {
+    let wins = 0, losses = 0, kdaSum = 0, kdaN = 0;
+    const champCount = {};
+    (matches || []).forEach((m) => {
+      if (m.win === true) wins += 1;
+      else if (m.win === false) losses += 1;
+      const champ = String(m.champion || "");
+      if (champ) champCount[champ] = (champCount[champ] || 0) + 1;
+      const p = String(m.kda || "").split("/").map((x) => parseInt(x, 10));
+      if (p.length === 3 && p.every((n) => !isNaN(n))) {
+        kdaSum += (p[0] + p[2]) / Math.max(p[1], 1);
+        kdaN += 1;
+      }
+    });
+    const decided = wins + losses;
+    const favorite = Object.keys(champCount)
+      .sort((a, b) => champCount[b] - champCount[a])[0] || "-";
+    return {
+      total: matches ? matches.length : 0,
+      win_rate: decided ? (wins / decided) * 100 : null,
+      avg_kda: kdaN ? kdaSum / kdaN : null,
+      favorite,
+    };
+  }
+  // R30 page-5: paint the SEASON STATS card from a stats object. isFiltered
+  // retitles the head to the filtered view (label) instead of "SEASON STATS".
+  function _historySetSeasonStats(stats, isFiltered, label) {
+    const s = stats || {};
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set("history-season-total", s.total != null ? s.total : "-");
+    set("history-season-kda", s.avg_kda != null ? Number(s.avg_kda).toFixed(2) : "-");
+    set("history-season-fav", s.favorite || "-");
+    set("history-season-wr", s.win_rate != null ? Number(s.win_rate).toFixed(1) + "%" : "-");
+    const head = document.getElementById("history-season-head");
+    if (head) head.textContent = isFiltered ? (label || "FILTERED STATS") : "SEASON STATS";
+  }
   // session's matches (or the click-a-session placeholder).
   function _historyApplyFilters() {
     const ul = document.getElementById("history-match-list");
@@ -2207,13 +2246,18 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
     if (!anyActive) {
       if (cnt) cnt.textContent = "";
+      // R30 page-5: restore the whole-scope SEASON STATS when filters clear.
+      _historySetSeasonStats(_HISTORY.seasonStats || {}, false);
       const sIdx = _HISTORY.selectedSession;
       const sessions = _HISTORY._sessions || [];
       if (sIdx != null && sessions[sIdx]) {
         _historyRenderMatches(sessions[sIdx]);
         if (head) head.textContent = `MATCHES · ${sessions[sIdx].date} · ${sessions[sIdx].games}g`;
       } else {
-        ul.innerHTML = '<li class="home-empty">click a session to see its matches</li>';
+        // R30 page-5: advertise that the filters above query GLOBALLY across
+        // every match in the scope, not only within a clicked session.
+        const n = (_HISTORY.allMatches || []).length;
+        ul.innerHTML = `<li class="home-empty">Filter across all ${n} matches above, or click a session for its detail.</li>`;
         if (head) head.textContent = "SELECT A SESSION";
       }
       return;
@@ -2239,6 +2283,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (!ul.children.length) ul.innerHTML = '<li class="home-empty">no matches match these filters</li>';
     if (head) head.textContent = `FILTERED · ${subset.length} matches`;
     if (cnt) cnt.textContent = `${subset.length} match${subset.length === 1 ? "" : "es"}`;
+    // R30 page-5: turn the filter into matchup analysis - SEASON STATS now
+    // reflects the filtered subset (games / win-rate / avg-KDA / most-played),
+    // retitled to the active champion when one is picked.
+    const label = champ ? `${champ.toUpperCase()} STATS` : "FILTERED STATS";
+    _historySetSeasonStats(_historyAggStats(subset), true, label);
   }
 
   function _historyWireOnce() {

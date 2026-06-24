@@ -1351,7 +1351,10 @@
             <ul class="history-match-list" id="history-match-list"><li class="home-empty">click a session to see its matches</li></ul>
           </div>
           <div class="history-card history-card-season">
-            <div class="history-card-head">SEASON STATS</div>
+            <!-- R30 page-5: head retitles to the filtered view (e.g. "JINX
+                 STATS") while a filter is active; restores "SEASON STATS"
+                 when filters clear. _historySetSeasonStats toggles it. -->
+            <div class="history-card-head" id="history-season-head">SEASON STATS</div>
             <div class="session-row"><span>Total matches</span><span id="history-season-total">-</span></div>
             <div class="session-row"><span>Avg KDA</span><span id="history-season-kda">-</span></div>
             <div class="session-row"><span>Most-played</span><span id="history-season-fav">-</span></div>
