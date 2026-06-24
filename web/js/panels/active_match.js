@@ -288,8 +288,9 @@ export function renderActiveMatch(payload, ctx) {
   // rolling window of inferred ward placements per side x lane. Polls
   // /api/ward-heat at 4s, renders into the MAP head row. Empty buffer
   // -> faint placeholder; lanes with zero recent friendly wards get a
-  // red outline ("uncovered").
-  _renderWardHeatTick();
+  // red outline ("uncovered"). Mode-gated: ARAM (single-lane bridge) hides
+  // the strip - the per-lane breakdown is meaningless there.
+  _renderWardHeatTick(ctx);
 
   // Draft Elo chip (UX wave 2, 2026-05-20). One-shot per 5+5 lock:
   // backend's 5-min cache absorbs re-fetches. Sample-density band +
@@ -1099,9 +1100,19 @@ function _renderSpikeMarkersFromCtx(ctx, p, ownedIds) {
 // Ward Coverage Heat Strip tick (UX wave 1, 2026-05-20). Fetches a 90s
 // rolling window from /api/ward-heat (client-side polled at 4s) and
 // renders the cached payload. Cache + sig-dedup live in ward_heat.js.
-function _renderWardHeatTick() {
+function _renderWardHeatTick(ctx) {
   const mount = _AM.wardHeat();
   if (!mount) return;
+  // ARAM is the single Howling Abyss bridge, so the strip's per-lane
+  // TOP/JG/MID/BOT x2-team breakdown is meaningless (6 of 8 cells are
+  // permanent dead space - all action is mid). Hide it in ARAM; the MAP
+  // intel MIA roster already carries ARAM vision. SR/Arena keep the strip.
+  const modeLow = String((ctx && ctx.mode) || "sr").toLowerCase();
+  if (modeLow === "aram") {
+    if (mount.style.display !== "none") mount.style.display = "none";
+    return;
+  }
+  if (mount.style.display === "none") mount.style.display = "";
   // Schedule a background refresh (returns immediately if a fetch is
   // in flight or the cache is fresh).
   fetchWardHeat();
