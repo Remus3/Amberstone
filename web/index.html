@@ -1015,7 +1015,11 @@
                 </button>
               </div>
               <div class="lv-mainchamps-categories">
-                <div class="lv-mc-cat">Champion</div>
+                <!-- R30: the first column is the champion icon (self-evident
+                     under the "YOUR MAINS" title) - its "Champion" header
+                     overflowed the 76px icon track and collided with
+                     "Mastery" at the companion width. Left unlabeled. -->
+                <div class="lv-mc-cat" aria-hidden="true"></div>
                 <div class="lv-mc-cat">Mastery</div>
                 <div class="lv-mc-cat">Recent</div>
                 <div class="lv-mc-cat">Overall</div>

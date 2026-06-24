@@ -39,7 +39,8 @@ Mains schema (``/api/mains?puuid=...`` response):
           "last_match":     { "result": "WIN", "kda": "12/4/8", "ts": 1778560000 },
           "overall":        { "games": 24, "wins": 14, "losses": 10,
                               "total_kda": "8.3/4.1/6.7" },
-          "averaged":       { "cs_pm": 7.8, "vision_pm": 0.9, "dmg_pm": 612 },
+          "averaged":       { "kp": 58.2, "cs": 184, "vision": 22.0,
+                              "dmg": 18500, "cs_per_min": 7.8, "avg5": "A" },
         }, ...
       ]
     }
@@ -198,6 +199,57 @@ def _resolve_operator_puuid(conn: sqlite3.Connection) -> str | None:
     return row[0] if row else None
 
 
+def _avg5_grade(recent_rows) -> str | None:
+    """Letter grade (S/A/B/C/D) from the avg KDA of up to the last 5 games
+    for a champ. rewind_history.db carries no RC grade column, so the
+    'AVG 5' lobby cell uses a KDA proxy. `recent_rows` are the last-match
+    query rows (win, kills, deaths, assists, ts); None when there is no
+    recent play to grade."""
+    if not recent_rows:
+        return None
+    k = sum((r[1] or 0) for r in recent_rows)
+    d = sum((r[2] or 0) for r in recent_rows)
+    a = sum((r[3] or 0) for r in recent_rows)
+    kda = (k + a) / max(d, 1)
+    if kda >= 4.0:
+        return "S"
+    if kda >= 3.0:
+        return "A"
+    if kda >= 2.2:
+        return "B"
+    if kda >= 1.5:
+        return "C"
+    return "D"
+
+
+def _kp_by_champ(conn: sqlite3.Connection, puuid: str) -> dict:
+    """Average kill-participation percent per champ for one puuid:
+    mean over that champ's games of (kills+assists)/team_kills, where
+    team_kills is the per-match per-team kill total (a participants
+    self-join). One pass; fail-soft to {} so a schema/sqlite hiccup never
+    blocks the mains payload."""
+    out: dict = {}
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT p.champion_name,
+                   AVG(CAST(p.kills + p.assists AS REAL) / tk.tk) * 100.0
+            FROM participants p
+            JOIN (SELECT match_id, team_id, SUM(kills) AS tk
+                  FROM participants GROUP BY match_id, team_id) tk
+              ON tk.match_id = p.match_id AND tk.team_id = p.team_id
+            WHERE p.puuid = ? AND tk.tk > 0
+              AND p.champion_name IS NOT NULL AND p.champion_name != ''
+            GROUP BY p.champion_name
+        """, (puuid,))
+        for champ_n, kp_avg in cur.fetchall():
+            if kp_avg is not None:
+                out[champ_n] = round(kp_avg, 1)
+    except sqlite3.Error:
+        return {}
+    return out
+
+
 def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
                            top_n: int) -> list:
     """Per-champion aggregate stats for one puuid, ranked by games
@@ -222,21 +274,26 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
         LIMIT ?
     """, (puuid, top_n))
     agg_rows = cur.fetchall()
+    # R30: kill-participation per champ (one self-join pass) so the lobby
+    # AVG/Match KP% cell fills from real data instead of "-".
+    kp_by_champ = _kp_by_champ(conn, puuid)
     out_rows = []
     for r in agg_rows:
         champ, games, wins, losses, ks, ds, as_, cs, vs, dmg, played_s = r
         wins, losses = wins or 0, losses or 0
+        games = games or 0
         played_min = max(1, (played_s or 0) / 60)
-        # Last match for this champ - join participants->matches.
+        # Last 5 for this champ - row 0 is the last match; all 5 grade AVG 5.
         cur.execute("""
             SELECT p.win, p.kills, p.deaths, p.assists, m.game_creation_ts
             FROM participants p
             LEFT JOIN matches m ON m.match_id = p.match_id
             WHERE p.puuid = ? AND p.champion_name = ?
             ORDER BY m.game_creation_ts DESC
-            LIMIT 1
+            LIMIT 5
         """, (puuid, champ))
-        lm = cur.fetchone()
+        recent = cur.fetchall()
+        lm = recent[0] if recent else None
         last_match = {}
         if lm:
             last_match = {
@@ -259,10 +316,18 @@ def _query_mains_for_puuid(conn: sqlite3.Connection, puuid: str,
                 "losses": losses,
                 "total_kda": f"{ks or 0}/{ds or 0}/{as_ or 0}",
             },
+            # R30: emit the keys the lobby frontend (_mcAveragedHtml) reads -
+            # KP% / Vision / CS / AVG5 / Dmg / CS-per-min - so the AVG/Match
+            # grid fills from real rewind data instead of "-". cs/vision/dmg
+            # are per-game averages; cs_per_min is per-minute. (The old
+            # cs_pm/vision_pm/dmg_pm keys had no consumer and are dropped.)
             "averaged": {
-                "cs_pm":     round((cs or 0) / played_min, 1),
-                "vision_pm": round((vs or 0) / played_min, 2),
-                "dmg_pm":    int((dmg or 0) / played_min),
+                "kp":         kp_by_champ.get(champ),
+                "cs":         round((cs or 0) / games) if games else None,
+                "vision":     round((vs or 0) / games, 1) if games else None,
+                "dmg":        int((dmg or 0) / games) if games else None,
+                "cs_per_min": round((cs or 0) / played_min, 1),
+                "avg5":       _avg5_grade(recent),
             },
         })
     return out_rows

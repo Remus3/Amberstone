@@ -1107,20 +1107,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 /* ---- s162 v5: My Top 8 panel ---- */
 .lv-top8-list {
   list-style: none; margin: 0; padding: 0;
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: column; gap: var(--space-1);  /* R30: 3px -> grid */
 }
 .lv-top8-row,
 .lv-top8-search {
   display: grid;
   /* 9 cells: name | games | role | rank | tag | online-dot | invite | reorder | remove */
   grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 14px 26px 26px 26px;
-  gap: 6px;
+  gap: var(--space-2);  /* R30: 6px -> grid */
   align-items: center;
   /* s162 v5: row padding bumped to match Party row's 4px 8px so the
    * two list panels read at the same visual rhythm. */
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   background: var(--surface-alt);
-  border-radius: 6px;
+  border-radius: var(--panel-radius-sm);  /* R30: raw 6px -> token */
   border: 1px solid transparent;
   font-size: 14px;
   min-height: 30px;
@@ -1145,7 +1145,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-color: var(--bad);
 }
 .lv-top8-search {
-  margin-top: 6px;
+  margin-top: var(--space-2);  /* R30: 6px -> grid */
   border: 1px solid var(--info-soft);
   background: var(--surface-head);
 }
