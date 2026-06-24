@@ -1722,6 +1722,18 @@
       </div>
       <div class="view-section-body lm-body" id="lm-body">
 
+        <!-- R30 page-3 design review: autopsy takeaway headline. The PGR's
+             job is to answer "what do I change next game?" - so the single
+             most actionable quick_review signal (a recurring my_chronic
+             weakness > a real this-match wrong_team issue > a standout
+             right) is lifted ABOVE the hero, the first thing the eye lands
+             on, instead of being buried in the AI Analysis tab. Rendered by
+             last_match.js _setTakeaway; hidden until populated. -->
+        <div class="lm-takeaway" id="lm-takeaway" data-kind="" hidden>
+          <span class="lm-takeaway-label" id="lm-takeaway-label">Takeaway</span>
+          <span class="lm-takeaway-text" id="lm-takeaway-text"></span>
+        </div>
+
         <!-- s219 v6: hero row split into 3 sections.
              section 1 - identity cluster (champ + name + mode + KDA
                          text + KDA ratio + W/L pill + grade letter)
@@ -1833,6 +1845,11 @@
                 <option value="challenger">Challenger</option>
               </select>
             </div>
+            <!-- R30 page-3 design review: shown only in the collapsed
+                 (no-tier) state; the 8 dashes cells hide and the compact
+                 selector + this prompt take their place so the empty
+                 tier-compare stops eating ~40% of the hero width. -->
+            <div class="lm-rank-empty" id="lm-rank-empty" hidden>Pick a rank to compare vs the tier average.</div>
             <div class="lm-rank-cell" style="grid-area: vision-avg;" data-tt="Tier-average Vision score.">
               <span class="lm-rank-cell-label">Vision</span>
               <span class="lm-rank-cell-value" id="lm-rank-vision">-</span>
@@ -1894,9 +1911,15 @@
         <div class="lm-section lm-tabbed-section" id="lm-tabbed-section">
           <nav class="lm-tabs-nav">
             <div class="lm-tabs-strip">
-              <button type="button" class="lm-tab is-active" data-tab="build">Build</button>
+              <!-- R30 page-3 design review: AI Analysis (the autopsy - WPA
+                   phases + win-prob + quick review) leads + is default-active,
+                   so the view opens on its actual job instead of the Build
+                   roster scoreboard (gemini's named trap). Build recedes to
+                   3rd as supporting context. Returning operators keep their
+                   last tab (localStorage rc-pgr-tab). -->
+              <button type="button" class="lm-tab is-active" data-tab="ai-analysis">AI Analysis</button>
               <button type="button" class="lm-tab"          data-tab="graph">Graph</button>
-              <button type="button" class="lm-tab"          data-tab="ai-analysis">AI Analysis</button>
+              <button type="button" class="lm-tab"          data-tab="build">Build</button>
               <button type="button" class="lm-tab lm-tab-nav" id="lm-go-to-review"
                       data-tt="Open the deeper step-by-step Review page for this match">Review →</button>
             </div>
@@ -1904,7 +1927,7 @@
 
           <!-- BUILD tab - ally + enemy rosters side-by-side (full items
                + summoners + augments per row). Was "Comp" in S3. -->
-          <div class="lm-tab-panel is-active" data-tab-panel="build">
+          <div class="lm-tab-panel" data-tab-panel="build" hidden>
             <div class="lm-tc-table lm-row-half" id="lm-tc-table" hidden>
               <div class="lm-tc-group lm-tc-ally" data-side="ally">
                 <div class="lm-tc-group-head">
@@ -1968,7 +1991,7 @@
                decomposition of the rewind_history.db timeline) + the
                3-column Quick Review. Merges the analysis half of the
                s220 Timeline tab + the s219 Insights tab. -->
-          <div class="lm-tab-panel" data-tab-panel="ai-analysis" hidden>
+          <div class="lm-tab-panel is-active" data-tab-panel="ai-analysis">
             <!-- s220 PGR S2: phases-that-mattered. WPA decomposition. -->
             <div class="lm-wpa-wrap" id="lm-wpa-wrap" hidden>
               <div class="lm-wpa-head">Phases that mattered</div>
