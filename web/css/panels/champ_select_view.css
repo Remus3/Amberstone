@@ -1786,11 +1786,22 @@
   display: none;
 }
 /* Reflow grid: with pickban hidden, allies takes the full left column
- * height. mypick + enemies still flank it. */
+ * height. mypick + enemies still flank it.
+ * R30 (2026-06-24, in-game review): the pre-R30 override used a SINGLE
+ * "allies mypick enemies" row, which dropped the "suggestions" grid-area
+ * entirely - the ASSESSMENT card (grid-area:suggestions) then auto-placed
+ * as an ORPHAN block (floating, disconnected) and the lost minmax floor
+ * left a large vertical void (worst in Arena). Restore a 2-row template
+ * matching SR minus pickban: allies + mypick span both rows; enemies sits
+ * top-right (row 1, auto) and suggestions returns under it (row 2, fills),
+ * so the ASSESSMENT card is back in the grid and the column fills the
+ * viewport instead of leaving dead space. */
 #view-champ-select[data-cs-mode="aram"]  .csv-grid,
 #view-champ-select[data-cs-mode="arena"] .csv-grid {
-  grid-template-rows: 1fr;
-  grid-template-areas: "allies mypick enemies";
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "allies mypick enemies"
+    "allies mypick suggestions";
 }
 
 /* In ARAM the allies cell layout drops the role pip - collapse
