@@ -2359,9 +2359,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-weight: 700;
 }
 .ub-layout {
-  display: grid; grid-template-columns: 1fr 1.3fr;
+  /* R30 page-7 design review: list takes the FULL width at rest. The editor
+   * pane is hidden until Add/Edit, so the old fixed 1fr/1.3fr 2-up left the
+   * list in the 1fr track (~43%) with the form track empty. */
+  display: grid; grid-template-columns: 1fr;
   gap: var(--space-5);                    /* was 14px -> 24px              */
   align-items: start;
+}
+/* R30 page-7: only while the editor pane is OPEN (desktop) does the layout
+ * collapse to the 2-up list|form. At companion width it stays single-column
+ * (the form stacks below the list) via the existing max-width:1200px rule. */
+@media (min-width: 1201px) {
+  .ub-layout:has(.ub-form-pane:not([hidden])) {
+    grid-template-columns: 1fr 1.3fr;
+  }
 }
 /* RC2 Hextech reskin: the two panes take the .hx-card "tactical frame" -
  * the panel-head surface (--surface-2 via --surface-head) plus the gold
@@ -2468,6 +2479,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-size: var(--fs-sm);                /* was 12px -> 18px              */
   color: var(--text-dim); letter-spacing: 0.02em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* R30 page-7 design review: item icons per build row - read the build's
+ * actual items at a glance instead of only the "N items" count. Resolved
+ * from the stored item names via _resolveItemId; unresolved names skipped. */
+.ub-build-items {
+  display: flex; flex-wrap: wrap; gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.ub-build-item-icon {
+  width: 26px; height: 26px;
+  border-radius: var(--panel-radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  object-fit: cover;
 }
 .ub-form-head {
   display: flex; align-items: center; justify-content: space-between;
