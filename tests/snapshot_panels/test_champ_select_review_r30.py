@@ -217,7 +217,7 @@ def test_companion_single_column_reflow(mode, mock_server, pw_browser):
         page = ctx.new_page()
         page.add_init_script(_WS_STUB)
         errors: list[str] = []
-        page.on("pageerror", lambda e: errors.append(str(e)))
+        page.on("pageerror", lambda e, errors=errors: errors.append(str(e)))
         page.goto(
             mock_server.url + f"/?ui_mock=1&mode={mode}#champ-select",
             wait_until="domcontentloaded", timeout=15_000,
