@@ -144,6 +144,53 @@ def test_assessment_card_in_right_column(mode, mock_server, pw_browser):
     assert not errors, f"JS errors [{mode}]: {errors[:3]}"
 
 
+def test_arena_renders_archetype_picker(mock_server, pw_browser):
+    """Arena gets the DS archetype picker in the left column. Pre-fix an
+    early-return in _csvRenderCentralPane skipped the archetype render for
+    Arena (left column stuck on 'waiting for champion pick...') even though
+    the fixture carries my_champion=222 + build_variants['Jinx|arena']."""
+    ctx, page, errors = _open(pw_browser, mock_server, "arena")
+    try:
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#csv-archetype-target .csv-arch-btn').length > 0",
+            timeout=8_000,
+        )
+        btns = page.locator("#csv-archetype-target .csv-arch-btn")
+        assert btns.count() >= 6, (
+            f"expected 6 archetype buttons in Arena, got {btns.count()}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [arena archetype]: {errors[:3]}"
+
+
+def test_arena_renders_build_chooser(mock_server, pw_browser):
+    """Arena gets the build chooser (titled 'Arena build chooser') in the
+    My Pick pane ALONGSIDE the existing duo + augments (no regression)."""
+    ctx, page, errors = _open(pw_browser, mock_server, "arena")
+    try:
+        page.wait_for_function(
+            "(() => { const b = document.querySelector("
+            "'#view-champ-select .csv-card-mypick .csv-builds');"
+            " return b && b.textContent.indexOf('Arena build chooser') >= 0;"
+            " })()",
+            timeout=8_000,
+        )
+        # Duo + augments must survive the build-chooser addition.
+        assert page.locator("#view-champ-select .csv-duo-cell").count() > 0, (
+            "Arena duo cells lost"
+        )
+        assert page.locator(
+            "#view-champ-select .csv-augment-slot"
+        ).count() > 0, "Arena augment slots lost"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [arena build]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     raw = Path(__file__).read_bytes()

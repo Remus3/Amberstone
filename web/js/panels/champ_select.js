@@ -823,12 +823,13 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const body = card.querySelector(".csv-card-body");
   if (!head || !body) return;
 
-  if (mode === "arena") {
-    head.textContent = "My Duo + Augments";
-    body.innerHTML = _csvArenaPaneHtml(cs, myCid, myName);
-    _csvWireArenaAugments(body, cs);
-    return;
-  }
+  // R30 (2026-06-24): Arena no longer early-returns here. The DS archetype
+  // picker (left column) + build chooser + ordered build all key off the
+  // locked/hovered champion, so Arena flows through the shared setup below
+  // and renders its duo+augments pane PLUS those builds at the body
+  // assembly. Pre-R30 the early-return left the Arena left column stuck on
+  // "waiting for champion pick..." and offered no build, despite the
+  // fixture carrying my_champion + build_variants.
 
   head.textContent = "My Pick";
   const iconCls = myCid ? (locked ? "locked" : "hovering") : "empty";
@@ -949,6 +950,18 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     scheduleRender: _csvScheduleRender,
     enemies: _boEnemyNames,
   });
+
+  // R30 (2026-06-24): Arena pane = duo + augments, then the shared build
+  // chooser + ordered build (the archetype picker already rendered into the
+  // left column above). Returns before the SR/ARAM single-portrait body.
+  if (mode === "arena") {
+    head.textContent = "My Duo + Augments";
+    body.className = "csv-card-body";
+    body.innerHTML = _csvArenaPaneHtml(cs, myCid, myName) + buildsHtml + boHtml;
+    _csvWireArenaAugments(body, cs);
+    _csvWireBuildVariants(body);
+    return;
+  }
 
   // s214 v2: LOCKED state sits to the LEFT of the champion icon now
   // (per operator follow-up). Pre-s214v2 it was centered below; pre-
