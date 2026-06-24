@@ -1804,6 +1804,40 @@
     "allies mypick suggestions";
 }
 
+/* R30 (2026-06-24): champ-select companion reflow. The 3-col grid is sized
+ * for the 1920 no-scroll baseline (460px row-2 floor + per-card
+ * overflow:hidden clipping), so it crushes + clips at the ~923px rc-shell
+ * companion width. Collapse to a single SCROLLING column at <=1200px
+ * (mirrors the out-of-game item-602 reflow): My Pick (the build decision)
+ * leads, then the DS archetype/allies panel, Enemies, the Assessment, and
+ * the SR-only Pick & Ban last. Covers all 3 modes - the SR base + the
+ * aram/arena overrides above - matched at equal-or-higher specificity and
+ * later source order so it wins. The card height-cap resets let stacked
+ * cards grow to content instead of clipping (the page scrolls). */
+@media (max-width: 1200px) {
+  #view-champ-select .csv-grid,
+  #view-champ-select[data-cs-mode="aram"]  .csv-grid,
+  #view-champ-select[data-cs-mode="arena"] .csv-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "mypick"
+      "allies"
+      "enemies"
+      "suggestions"
+      "pickban";
+  }
+  #view-champ-select .csv-card,
+  #view-champ-select .csv-card-mypick,
+  #view-champ-select .csv-card-pickban,
+  #view-champ-select .csv-card-suggestions {
+    min-height: auto;
+    overflow: visible;
+  }
+  #view-champ-select .csv-card-body { overflow: visible; }
+  #view-champ-select .csv-card-mypick .csv-card-body { overflow-y: visible; }
+}
+
 /* In ARAM the allies cell layout drops the role pip - collapse
  * the 4th column so the summoner name flexes into the freed space.
  * (allowRolePip:false in the JS render path prevents the pip element
