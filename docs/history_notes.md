@@ -142,6 +142,44 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-23 (R30 CONTINUATION-2 - per-page UI/UX design review, pages 8 + 6 of 9; OUT-OF-GAME COMPLETE)
+
+Interactive operator session finishing the R30 out-of-game review (pages 1-5,7,9 shipped prior; ledger
+603-608). 2 pages shipped, 2 commits pushed, gate green (248 snapshot tests; 63 replay tests; a 5-phase
+UI-audit subagent PASS each page; node --check OK). All Tier-1 frontend; no engine / DS / Share /
+ENGINE_VERSION. mode=client, NO live game -> the in-game champ-select / active-match / overlay pages + the
+2 OWED live-gated items (E.1 ACTIVE knob; RC_COMP_HP_LEAN flip) stayed un-buildable.
+
+CADENCE (proven, reuse for the in-game pages): recon each view at 923 + 1920 via live-:8888 Playwright
+(`ops/runtime/ui_recon/recon.py <view>`) -> READ + JUDGE the screenshots, ground-truth every finding at
+file:line -> PRESENT keep/remove/add/alter + ONE framed scope AskUserQuestion -> build the operator-picked
+slice RED-first + a 5-phase UI-audit subagent gate before commit -> commit+push. Gemini PART B per-view
+intent in `ops/runtime/ui_recon/gemini_out.txt`.
+
+- PAGE 8 BUILD INSIGHTS (`dec18ded`, full pass): the 4 WPA tables already avoid gemini's global-pickrate
+  trap (personal residuals), so added a confidence-weighted TAKEAWAY rail beside each table - strongest +
+  weakest mover ranked by `wpa_shrunk` (the shrink-adjusted residual, emitted by all 4 routes) so the
+  TRUSTWORTHY signal wins not the noisiest low-n row (Skills fixture: raw-worst Corki n=25 vs shrunk-worst
+  Kog'Maw n=39 -> the rail surfaces Kog'Maw). Fills the ~650px desktop dead zone; stacks above the table at
+  companion (`order:-1`). + the Min-N control relabels per tab (buys/games/picks) + hides on the 4 chart
+  tabs (inert no-op there). Also fixed a stale pre-existing DOM test (`test_uses_semantic_token` asserted
+  the pre-reskin `var(--signal-*)`; file uses `--good`/`--bad` - failed on base, CI runs no pytest).
+- PAGE 6 REPLAY (`1537f5d7`, "+reorder" full slice): gemini's job is "actionable event timeline, not a
+  video player". (1) CLICK-TO-SEEK: each timeline event row seeks the scrubber to its `clock_s` (nearest
+  snapshot by minute) + re-renders the grid at that frame - cross-module circular-import-free via a
+  `setReplaySeekHandler` bridge (replay_events.js delegated click on `#replay-events-list` -> dev.js
+  `_replaySeekToClock`). (2) REORDER: timeline section hoisted ABOVE the grid (event-index-first). (3)
+  swept primitives.css fully ASCII-clean + tokenized `.replay-col-items` padding + index.html arrow -> "<-".
+  KEPT the 4px icon radii (dashboard convention, 81x / 21 files); grid scroll-wrap untouched (operator-locked).
+  LESSON: the `-F` commit-message-file path avoids the PS 5.1 here-string mangling that exit-128'd the first
+  `git commit -m @'...'@`.
+
+NEXT (operator directive): the OUT-OF-GAME review is COMPLETE (pages 1-9). Only the in-game champ-select /
+active-match / overlay pages remain - LIVE-GATED. Resume them when a game is live, reusing the harness +
+`gemini_out.txt`. Carry-forward OWED (live-gated): E.1 ACTIVE knob physical press; `RC_COMP_HP_LEAN` flip.
+
+---
+
 # 2026-06-23 (R30 CONTINUATION - per-page UI/UX design review, pages 3,4,5,7,9 of 9)
 
 Interactive operator session continuing the R30 review (pages 1-2 shipped prior, ledger 603). 5 pages
