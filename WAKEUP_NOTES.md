@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-06-25 (CI Watchdog ARMED with a self-gate-on-green redesign [622])
+
+Operator picked "full live-arm now" for the gated CI Watchdog (item 204). De-blinded it FIRST (do-not-flip-blind):
+the planned `gh pr merge --auto` needed branch protection RC does NOT have (`allow_auto_merge=false`, main unprotected
+404, private personal account where branch protection is gated), and a required-check gate on main would have BROKEN
+direct-push-to-main. So I REDESIGNED to a self-gate, then armed.
+
+- SELF-GATE (`ceef7b33`, +3 RED-first tests, 30 total, ruff clean): dropped `--auto`; after `pr_create` the dispatch
+  now BLOCKS on the ci-fix PR's OWN CI (`gh pr checks <branch> --watch --fail-fast`) and squash-merges ONLY on green
+  (red/timeout -> escalate, NEVER merge). No branch protection / allow_auto_merge -> direct-push preserved. CI's
+  `pull_request:[main]` trigger gives the PR real checks. NEW `_STEP_TIMEOUTS` (claude_fix 600s / wait_checks 900s);
+  ETL PT10M->PT30M; `MultipleInstancesPolicy=IgnoreNew` already prevents overlapping armed cycles during the wait.
+- ARMED: worktree `C:\RC-CIWatchdog` created (OUT of the live checkout); `RC-CIWatchdog` registered (State=Ready,
+  `--arm`, PT2M, ETL PT30M). XML gotcha (`0396f495`): the `encoding="UTF-8"` decl broke `Register-ScheduledTask -Xml`
+  ("unable to switch the encoding" - PS string is UTF-16); removed the declaration (`<?xml version="1.0"?>`).
+- VERIFIED: armed MANUAL run vs GREEN main = clean no-op (last-5 runs all success -> 0 failed -> NO PR/branch/merge,
+  LastTaskResult 0). CI green (run 28189959300). Kill-switch: `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask`.
+  The FIRST real red main at HEAD is the live proving ground.
+
+NEXT (operator-gated / live-blocked):
+1. HZ precompute-vs-Haiku RE-MEASUREMENT - needs the regenerated 16.13.1 tables + real-game shadow rows.
+2. R30/PGR live-gated tail (physical game).
+(Done this 2026-06-25 run: 619 cdragon CC fix, 620 snapshot flake, 621 doc-drift + cdragon docstring, 622 CI Watchdog ARM.)
+
+---
+
 # 2026-06-25 (cdragon 16.13 CC-detection fix [619] + snapshot_panels flake fix CI-validated [620] + doc-drift sync + cdragon docstring reconcile [621])
 
 Cleared both NON-gated items from 618's NEXT, both CI-green on Linux. 5 commits pushed. Each item
