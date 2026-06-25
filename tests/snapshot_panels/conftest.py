@@ -24,22 +24,6 @@ def _make_handler(store: dict) -> type:
     """Return an HTTP handler class bound to the shared fixture store."""
 
     class _Handler(SimpleHTTPRequestHandler):
-        # HTTP/1.1 keep-alive is the core of the at-scale flake fix. The
-        # default (HTTP/1.0) closes the TCP connection after EVERY request, so
-        # each page boot - index.html + main.js + ~15 ES module / CSS / JSON
-        # fetches - churns ~15 ephemeral ports into TIME_WAIT. Across ~274
-        # pages that is several thousand sockets stuck in TIME_WAIT (~120 s on
-        # Windows), which exhausts the ~16k dynamic-port pool partway through
-        # the suite; new connections then stall and a fresh page's fetches
-        # time out before its render lands (the tail files flaked for exactly
-        # this reason while passing in isolation). With keep-alive every
-        # context reuses ONE persistent connection for all its requests, so
-        # the suite opens ~274 sockets total instead of thousands. Correct
-        # Content-Length on every buffered response (below) keeps the
-        # connection reusable; the streamed SSE response opts out via an
-        # explicit Connection: close.
-        protocol_version = "HTTP/1.1"
-
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(WEB_DIR), **kwargs)
 
@@ -94,44 +78,20 @@ def _make_handler(store: dict) -> type:
             Send one event with the full fixture dict, then hold the connection
             open so EventSource treats it as a live stream rather than a
             buffered one-shot response.
-
-            Isolation (at-scale flake fix): the hold is a short bounded poll
-            that releases the instant the store's generation advances. Each
-            test bumps `store["gen"]` at start (see _reset_mock_store), so a
-            lingering SSE thread from the PRIOR test terminates immediately at
-            the next test boundary instead of sleeping a blind 15 s. That
-            stops zombie 15 s-sleep threads from accumulating and starving the
-            single ThreadingHTTPServer's request threads late in a full-suite
-            run (the failure mode: a fresh page's static-asset GETs queue
-            behind dozens of held connections and time out before boot).
             """
             import time as _time
-            opened_gen = store.get("gen", 0)
             event_data = json.dumps(store["data"])
             body = f"data: {event_data}\n\n".encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
-            # SSE streams until the server closes the socket (no
-            # Content-Length), so it cannot be a reusable keep-alive
-            # connection - tell the client this one closes. Every OTHER
-            # response keeps the connection alive (HTTP/1.1 + Content-Length),
-            # which is what collapses the suite's socket churn.
-            self.send_header("Connection", "close")
-            self.close_connection = True
             self.end_headers()
             try:
                 self.wfile.write(body)
                 self.wfile.flush()
-                # Hold open so the browser's EventSource treats this as a live
-                # stream (not a buffered one-shot), but release as soon as the
-                # owning test ends (generation advanced) or a hard ceiling is
-                # reached. Poll in small slices so the thread frees promptly.
-                deadline = _time.monotonic() + 8.0
-                while _time.monotonic() < deadline:
-                    if store.get("gen", 0) != opened_gen:
-                        break
-                    _time.sleep(0.05)
+                # Hold open so the browser's EventSource processes the event
+                # as a stream rather than a buffered one-shot response.
+                _time.sleep(15)
             except (BrokenPipeError, ConnectionResetError):
                 pass
 
@@ -140,28 +100,13 @@ def _make_handler(store: dict) -> type:
 
 class _MockServer:
     def __init__(self) -> None:
-        # `gen` is a monotonic generation counter. Bumping it signals every
-        # in-flight SSE connection to release (see _Handler._send_sse), which
-        # is how a prior test's held stream is torn down at the next test
-        # boundary instead of lingering for a blind 15 s.
-        self._store: dict = {"data": {}, "gen": 0}
+        self._store: dict = {"data": {}}
         self._server: ThreadingHTTPServer | None = None
         self.url: str = ""
-
-    def _bump_gen(self) -> None:
-        self._store["gen"] = self._store.get("gen", 0) + 1
-
-    def reset(self) -> None:
-        """Per-test isolation hook: clear the fixture and advance the
-        generation so any SSE stream still held open by the previous test
-        stops serving stale data and its server thread exits promptly."""
-        self._store["data"] = {}
-        self._bump_gen()
 
     def set_fixture(self, name: str) -> None:
         path = FIXTURE_DIR / f"{name}.json"
         self._store["data"] = json.loads(path.read_text(encoding="utf-8"))
-        self._bump_gen()
 
     def start(self) -> None:
         handler_cls = _make_handler(self._store)
@@ -182,28 +127,6 @@ def mock_server():
     srv.start()
     yield srv
     srv.stop()
-
-
-@pytest.fixture(autouse=True)
-def _reset_mock_store(request):
-    """Per-test isolation against the session-scoped mock server.
-
-    The mock server holds ONE mutable fixture store shared across all ~274
-    Playwright tests. Tests mutate it via set_fixture()/direct assignment and
-    each opens an SSE stream the server holds open. Without a per-test reset a
-    lingering SSE connection (or a slow HTTP /api/state fallback) from the
-    prior test could read the store AFTER the next test mutated it, and the
-    held streams piled up and starved the single server's request threads at
-    full-suite scale - the source of the non-deterministic 5/10/27-failure
-    flake. Resetting (clear + generation bump) at the START of every test that
-    uses the server guarantees a clean store and forces the previous test's
-    held SSE thread to release immediately. Only activates for tests that
-    actually request the `mock_server` fixture; browser-free unit tests in
-    this dir (node escaping checks, ASCII guards) are untouched.
-    """
-    if "mock_server" in request.fixturenames:
-        request.getfixturevalue("mock_server").reset()
-    yield
 
 
 _WS_STUB = """
