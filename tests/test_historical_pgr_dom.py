@@ -50,10 +50,16 @@ class Hist1RowClickWiringTests(unittest.TestCase):
         self.assertIn("function _wireMatchRowToHistoricalPgr(", js)
 
     def test_history_render_matches_wires_click(self):
-        """_historyRenderMatches must call the wiring helper on each row."""
+        """_historyRenderMatches builds each row via _historyMatchRowEl, which
+        wires the click. The R30 history refactor (`0c0bdc16`) extracted the
+        row builder so the session list AND the filtered-matchup subset share
+        one wired row, so the wiring call moved one level in. Pin both halves:
+        the render uses the row builder, and the row builder wires the click."""
         js = _read(MAIN_JS)
         body = js.split("function _historyRenderMatches(", 1)[1].split("\n  }", 1)[0]
-        self.assertIn("_wireMatchRowToHistoricalPgr(", body)
+        self.assertIn("_historyMatchRowEl(", body)
+        rowel = js.split("function _historyMatchRowEl(", 1)[1].split("\n  }", 1)[0]
+        self.assertIn("_wireMatchRowToHistoricalPgr(", rowel)
 
     def test_session_render_wires_click(self):
         """The session-matches loop must wire the click too (the Session
