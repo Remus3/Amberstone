@@ -51,7 +51,7 @@ import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.
 // Session match row). Separate DOM + state from last_match.js - never
 // clobbers the live PGR.
 import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
-import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
+import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
 // ADR-007 (s169) - heartbeat pill self-starts on import (own setInterval).
 import './panels/trigger_pill.js';
 import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';

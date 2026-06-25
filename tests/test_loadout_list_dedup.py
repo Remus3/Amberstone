@@ -1,7 +1,7 @@
 """Pin the dedup-fetch wire-in across the 4 call sites (item 186).
 
 web/js/lib/dedup_fetch.js coalesces concurrent identical fetches so
-parallel panels (bridge_pending + trigger_pill on /api/decisions;
+parallel panels (coach_decisions + trigger_pill on /api/decisions;
 champ_select + item_build on /api/loadout/list) share one in-flight
 request within a small render-storm grace TTL. ~50-150ms saved per
 consolidated fetch.
@@ -24,7 +24,7 @@ DEDUP_LIB = REPO_ROOT / "web" / "js" / "lib" / "dedup_fetch.js"
 # 4 call sites that MUST consume dedupFetch (NOT raw fetch) for the
 # coalesced endpoints. Each entry: (panel file, endpoint substring).
 _WIRED_SITES = (
-    ("web/js/panels/bridge_pending.js", "/api/decisions"),
+    ("web/js/panels/coach_decisions.js", "/api/decisions"),
     ("web/js/panels/trigger_pill.js",   "/api/decisions"),
     ("web/js/panels/champ_select.js",   "/api/loadout/list"),
     ("web/js/panels/item_build.js",     "/api/loadout/list"),
@@ -80,8 +80,8 @@ class WiredSitesGrepTests(unittest.TestCase):
     def _read(self, rel: str) -> str:
         return (REPO_ROOT / rel).read_text(encoding="utf-8")
 
-    def test_bridge_pending_uses_dedup_fetch_decisions(self):
-        src = self._read("web/js/panels/bridge_pending.js")
+    def test_coach_decisions_uses_dedup_fetch_decisions(self):
+        src = self._read("web/js/panels/coach_decisions.js")
         self.assertIn("import { dedupFetch } from '../lib/dedup_fetch.js'",
                       src)
         # The poll site MUST call dedupFetch (not bare fetch) for
@@ -126,7 +126,7 @@ class NoRawFetchRegressionTests(unittest.TestCase):
     # are DIFFERENT endpoints (sub-paths) and intentionally NOT deduped
     # (lower cadence + per-id semantics) - they may still use bare fetch.
     _CASES = (
-        ("web/js/panels/bridge_pending.js", r'fetch\("/api/decisions"\)', 0),
+        ("web/js/panels/coach_decisions.js", r'fetch\("/api/decisions"\)', 0),
         ("web/js/panels/trigger_pill.js",   r'fetch\("/api/decisions"\)', 0),
         ("web/js/panels/champ_select.js",   r'fetch\("/api/loadout/list"', 0),
         ("web/js/panels/item_build.js",     r'fetch\("/api/loadout/list"', 0),

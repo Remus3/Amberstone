@@ -31,8 +31,8 @@ _log = logging.getLogger("rc.polled_json")
 # when a concurrent reader holds the destination open (share-lock during the
 # read; window is usually <100 ms). These files are polled by design, so the
 # contention is routine. Brief retry-with-backoff clears it - same pattern
-# already applied to ops/rc_supervisor.atomic_write_json (2026-05-02) and
-# core/bridge_monitor._write_atomic; see reference_os_replace_winerror5.
+# already applied to ops/rc_supervisor.atomic_write_json (2026-05-02);
+# see reference_os_replace_winerror5.
 _REPLACE_RETRY_DELAYS_S = (0.025, 0.05, 0.2)
 
 

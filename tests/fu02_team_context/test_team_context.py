@@ -13,9 +13,9 @@ Coverage:
   - dispatch._REQUEST_MODELS includes /api/team-context/refresh.
   - GET /api/team-context returns null on cold cache, populated dict
     after a refresh post.
-  - POST /api/team-context/refresh: 503 when bridge unconfigured,
-    401 on missing/wrong bearer, 400 on non-dict body, 400 on
-    >10-row roster, 200 on happy path that segments into allies/enemies.
+  - POST /api/team-context/refresh (local-only, no auth post-ADR-012):
+    400 on non-dict body, 400 on >10-row roster, 200 on happy path that
+    segments into allies/enemies.
   - state-builder splice: build_state stamps coach.team_context = None
     by default, returns latest cache after a refresh.
 """
@@ -187,21 +187,14 @@ class TestDispatchRegistry(unittest.TestCase):
 class TestRoutes(unittest.TestCase):
     def setUp(self):
         RTC._clear()
-        # Pretend the bridge is configured; tests that override this can
-        # patch is_configured directly. shared_secret() returns a known
-        # token so we can exercise auth.
-        self._is_cfg = mock.patch.object(
-            RTC._bridge, "is_configured", return_value=True)
-        self._secret = mock.patch.object(
-            RTC._bridge, "shared_secret", return_value="test-secret")
+        # The route is local-only + unauthenticated since the cross-Claude
+        # bridge was decommissioned (ADR-012) - no auth mocks needed.
         # Replace the fan-out dispatcher with a recording no-op so the
         # POST handler doesn't kick off a real Riot-API worker thread
         # when the test machine has API-Key-Riot.txt staged.
         self._dispatch_calls: list = []
         self._orig_dispatcher = RTC._FANOUT_DISPATCHER
         RTC._FANOUT_DISPATCHER = self._record_dispatch
-        self._is_cfg.start()
-        self._secret.start()
 
     def _record_dispatch(self, allies, enemies, queue_id):
         self._dispatch_calls.append({
@@ -211,8 +204,6 @@ class TestRoutes(unittest.TestCase):
         })
 
     def tearDown(self):
-        self._is_cfg.stop()
-        self._secret.stop()
         RTC._FANOUT_DISPATCHER = self._orig_dispatcher
         RTC._clear()
 
@@ -224,32 +215,20 @@ class TestRoutes(unittest.TestCase):
         self.assertIsNone(body["team_context"])
         self.assertIsNone(body["age_s"])
 
-    def test_post_refresh_503_when_bridge_unconfigured(self):
-        with mock.patch.object(RTC._bridge, "is_configured",
-                               return_value=False):
-            h = _FakeHandler()
-            RTC._serve_refresh_post(h, {"queue_id": 420, "roster": []})
-        self.assertEqual(h.captured["code"], 503)
-        self.assertIn(b"bridge_not_configured", h.captured["body"])
-
-    def test_post_refresh_401_on_missing_auth(self):
+    def test_post_refresh_no_auth_required(self):
+        # Post-ADR-012 the route accepts an unauthenticated POST.
         h = _FakeHandler(headers={})
         RTC._serve_refresh_post(h, {"queue_id": 420, "roster": []})
-        self.assertEqual(h.captured["code"], 401)
-
-    def test_post_refresh_401_on_wrong_bearer(self):
-        h = _FakeHandler(headers={"Authorization": "Bearer wrong-token"})
-        RTC._serve_refresh_post(h, {"queue_id": 420, "roster": []})
-        self.assertEqual(h.captured["code"], 401)
+        self.assertEqual(h.captured["code"], 200)
 
     def test_post_refresh_400_on_non_dict_body(self):
-        h = _FakeHandler(headers={"Authorization": "Bearer test-secret"})
+        h = _FakeHandler()
         RTC._serve_refresh_post(h, ["not", "a", "dict"])
         self.assertEqual(h.captured["code"], 400)
         self.assertIn(b"body_must_be_object", h.captured["body"])
 
     def test_post_refresh_400_on_roster_too_large(self):
-        h = _FakeHandler(headers={"Authorization": "Bearer test-secret"})
+        h = _FakeHandler()
         # 11 slots - over the 10-player champ-select cap.
         roster = [_full_roster_slot() for _ in range(11)]
         RTC._serve_refresh_post(h, {"queue_id": 420, "roster": roster})
@@ -260,7 +239,7 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(body["got"], 11)
 
     def test_post_refresh_happy_path_segments_teams(self):
-        h = _FakeHandler(headers={"Authorization": "Bearer test-secret"})
+        h = _FakeHandler()
         roster = [
             {**_full_roster_slot(), "team_id": 100},  # ally
             {**_full_roster_slot(), "team_id": 100, "locked_champion": "Jax"},
@@ -291,7 +270,7 @@ class TestRoutes(unittest.TestCase):
         self.assertEqual(ally["mains"], [])
 
     def test_get_after_refresh_includes_age(self):
-        h = _FakeHandler(headers={"Authorization": "Bearer test-secret"})
+        h = _FakeHandler()
         RTC._serve_refresh_post(h, {"queue_id": 400,
                                     "roster": [_full_roster_slot()]})
         h2 = _FakeHandler()

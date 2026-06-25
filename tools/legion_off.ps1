@@ -9,8 +9,6 @@ Write-Host "=== Legion OFF ==="
 # 1. Stop AtLogon + AtStartup RC-* scheduled tasks (dep order: app-level first, infra last)
 $tasks = @(
   'RC-Supervisor',
-  'RC-BridgeDaemon',
-  'RC-BridgeWatcher',
   'RC-Phase3-Supervisor',
   'RC-DS-MatchDB-MCP'
 )
@@ -29,7 +27,7 @@ foreach ($t in $tasks) {
 Start-Sleep -Seconds 2
 
 # 2. taskkill any orphaned RC python processes (catches manual DS launch + any zombie children)
-$pat = 'Riot Commander|legion_bridge_daemon|bridge_watcher\.py|moon_vision_server|rc_supervisor|agents\.supervisor|start_daemon_slayer|start_ds_matchdb|main\.py'
+$pat = 'Riot Commander|moon_vision_server|rc_supervisor|agents\.supervisor|start_daemon_slayer|start_ds_matchdb|main\.py'
 $rcProcs = Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' OR Name='python.exe'" -ErrorAction SilentlyContinue |
   Where-Object { $_.CommandLine -and $_.CommandLine -match $pat }
 if ($null -eq $rcProcs -or $rcProcs.Count -eq 0) {

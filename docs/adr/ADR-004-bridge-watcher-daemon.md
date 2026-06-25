@@ -1,5 +1,7 @@
 # ADR-004: Bridge tasks processed by always-on daemon, not /loop polling
 
+**Status:** Superseded by ADR-012 (bridge decommissioned 2026-06-24)
+
 **Date:** 2026-05-02  
 **Status:** Accepted (supersedes /loop approach)
 

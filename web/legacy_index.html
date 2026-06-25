@@ -2847,21 +2847,6 @@ function flushDo() {
   flushClose();
   toast('Chat log flushed');
 }
-async function flushSubmitFlaggedToBridge(flagged) {
-  const summary = 'Flagged dashboard entries (' + flagged.length + '):\n' +
-    flagged.map(m => `[${hhmmFromTs(m.ts)}] ${m.text}`).join('\n');
-  try {
-    await postJSON('/api/bridge', {source: 'dashboard', summary});
-    // Mark them reviewed so they don't re-prompt
-    flagged.forEach(m => { m.reviewed = true; });
-    chatStorageSave();
-    toast('Flagged items submitted to bridge (' + flagged.length + ')');
-    return true;
-  } catch (e) {
-    toast('Bridge submit failed: ' + e.message, true);
-    return false;
-  }
-}
 function flushOpen() {
   const flagged = _chatMsgs.filter(m => m.flagged && !m.reviewed);
   FLUSH_LIST.innerHTML = '';
@@ -2881,8 +2866,8 @@ function flushOpen() {
     FLUSH_TITLE.textContent =
       flagged.length + ' flagged message' + (flagged.length===1?'':'s') + ' pending review';
     FLUSH_BODY.textContent =
-      'Review these before flushing. Submit to bridge exports them to the ' +
-      'cross-Claude log so they are not lost.';
+      'Review these before flushing. Mark them reviewed so they are not ' +
+      'lost when the visible log is cleared.';
     FLUSH_LIST.style.display = '';
     for (const m of flagged) {
       const fi = document.createElement('div');
@@ -2903,18 +2888,11 @@ function flushOpen() {
       flushClose();
       toast('Marked ' + flagged.length + ' reviewed');
     };
-    const submit = document.createElement('button');
-    submit.textContent = 'Submit to bridge + flush';
-    submit.className = 'primary';
-    submit.onclick = async () => {
-      const ok = await flushSubmitFlaggedToBridge(flagged);
-      if (ok) flushDo();
-    };
     const forceFlush = document.createElement('button');
     forceFlush.textContent = 'Flush anyway';
     forceFlush.className = 'danger';
     forceFlush.onclick = flushDo;
-    FLUSH_ACTIONS.append(cancel, markAll, submit, forceFlush);
+    FLUSH_ACTIONS.append(cancel, markAll, forceFlush);
   }
   FLUSH_OVL.classList.add('open');
 }

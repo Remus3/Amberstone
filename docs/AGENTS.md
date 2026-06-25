@@ -47,13 +47,3 @@ agents/
   agent7_context/         NL input parser → Agent 1
   state/                  task_queue.jsonl, lockfile, resolved_decisions.json
 ```
-
-## Bridge architecture
-
-- Outbound to Peer: `core.bridge.send()` (POSTs to Peer `/api/bridge/inbox` with bearer auth)
-- Inbound from Peer: `/api/bridge/pending` + `tools/bridge_watcher.py`
-- Peer daemon: `tools/peer_bridge_daemon.py` - polls `bridge_pull_tasks.py --target peer` every 30s idle / 10s after batch; spawns `claude --print /process-bridge-tasks` only when count > 0
-
-(The Game-PC bridge daemon was severed 2026-06-20 with the Game-PC retirement, ADR-011.)
-
-Bridge spawn cost note: each `claude --print` spawn cold-loads CLAUDE.md + WAKEUP_NOTES + project context. Keep CLAUDE.md under 120 lines and WAKEUP_NOTES to last 2-3 sessions to limit per-spawn token overhead.

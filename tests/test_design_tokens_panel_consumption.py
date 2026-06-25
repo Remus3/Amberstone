@@ -33,14 +33,15 @@ Per-panel scope summary:
   ``var(--text)`` / ``var(--text-faint)`` / ``var(--surface-head)`` /
   ``var(--border-soft)`` / ``var(--radius)`` consumption.
 
-* bridge_pending.css: ``#F5B87C`` (coach-decision-title) ->
-  ``var(--signal-gold)``; three ``#8A8CF0`` lavender literals
-  (data-choice="give" + rcc-choice-give + bp-btn-defer:hover) ->
-  ``var(--signal-info)`` (exact case-insensitive match to
-  --signal-info #8a8cf0); one ``#6FD080`` (bp-btn-accept:hover) ->
-  ``var(--signal-good)``. PRESERVED outliers: ``#F07E8B`` salmon
-  (coach contest + bp-btn-dismiss) panel-specific brand tint;
-  ``#000`` text-on-gold menu-badge contrast.
+* coach_decisions.css (split out of bridge_pending.css 2026-06-24):
+  ``#F5B87C`` (coach-decision-title) -> ``var(--signal-gold)``; the
+  ``#8A8CF0`` lavender literals (data-choice="give" + rcc-choice-give)
+  -> ``var(--signal-info)`` (exact case-insensitive match to
+  --signal-info #8a8cf0). PRESERVED outliers: ``#F07E8B`` salmon
+  (coach contest + rcc-choice-contest) panel-specific brand tint;
+  ``#000`` text-on-gold menu-badge contrast. The ``#6FD080`` accept-green
+  + ``var(--signal-good)`` consumer lived only in the dropped bridge-
+  pending sub-page and retired with the split.
 
 ASCII hygiene scan on all 5 files; BAD dict via chr() so this test
 file stays ASCII-clean against its own scan (mirrors
@@ -56,7 +57,7 @@ ITEM_BUILD_CSS    = ROOT / "web" / "css" / "panels" / "item_build.css"
 AUGMENT_RECO_CSS  = ROOT / "web" / "css" / "panels" / "augment_reco.css"
 TEAM_CONTEXT_CSS  = ROOT / "web" / "css" / "panels" / "team_context.css"
 CD_LEDGER_CSS     = ROOT / "web" / "css" / "panels" / "cd_ledger.css"
-BRIDGE_PENDING_CSS = ROOT / "web" / "css" / "panels" / "bridge_pending.css"
+COACH_DECISIONS_CSS = ROOT / "web" / "css" / "panels" / "coach_decisions.css"
 
 
 def _read(p: Path) -> str:
@@ -204,67 +205,54 @@ class CdLedgerConsumesTokensTests(unittest.TestCase):
                       "ult-chip dark purple sigil bg preserved")
 
 
-class BridgePendingConsumesTokensTests(unittest.TestCase):
-    """bridge_pending.css: #F5B87C (coach-decision-title) ->
-    var(--signal-gold); three #8A8CF0 (give buttons + defer hover) ->
-    var(--signal-info); #6FD080 (accept hover) ->
-    var(--signal-good)."""
+class CoachDecisionsConsumesTokensTests(unittest.TestCase):
+    """coach_decisions.css (split out of the decommissioned
+    bridge_pending.css 2026-06-24): #F5B87C (coach-decision-title) ->
+    var(--signal-gold); #8A8CF0 (give buttons + rcc-choice-give) ->
+    var(--signal-info). The #6FD080 accept-hover green + var(--signal-good)
+    consumer lived only in the dropped bridge-pending sub-page, so those
+    assertions retired with the split."""
 
     def test_no_hardcoded_gold_hex(self):
-        css = _read(BRIDGE_PENDING_CSS)
+        css = _read(COACH_DECISIONS_CSS)
         self.assertNotIn("color: #F5B87C", css,
-                         "bridge_pending.css still uses bare color: #F5B87C;"
+                         "coach_decisions.css still uses bare color: #F5B87C;"
                          " repoint to var(--signal-gold).")
 
     def test_no_hardcoded_lavender_hex(self):
-        """All three #8A8CF0 give-button / defer-hover literals must be
+        """The #8A8CF0 give-button / rcc-choice-give literals must be
         gone; they map cleanly onto --signal-info (exact case-insensitive
         match to the tokens.css declaration #8a8cf0)."""
-        css = _read(BRIDGE_PENDING_CSS)
+        css = _read(COACH_DECISIONS_CSS)
         self.assertNotIn("color: #8A8CF0", css,
-                         "bridge_pending.css still uses bare color: #8A8CF0;"
+                         "coach_decisions.css still uses bare color: #8A8CF0;"
                          " repoint to var(--signal-info).")
         self.assertNotIn("border-color: #8A8CF0", css,
-                         "bridge_pending.css still uses bare border-color:"
+                         "coach_decisions.css still uses bare border-color:"
                          " #8A8CF0; repoint to var(--signal-info).")
 
-    def test_no_hardcoded_accept_green_hex(self):
-        """The #6FD080 accept-hover green must be gone; close enough
-        to --signal-good (#6ec977) for semantic consolidation."""
-        css = _read(BRIDGE_PENDING_CSS)
-        self.assertNotIn("color: #6FD080", css,
-                         "bridge_pending.css still uses bare color: #6FD080;"
-                         " repoint to var(--signal-good).")
-        self.assertNotIn("border-color: #6FD080", css,
-                         "bridge_pending.css still uses bare border-color:"
-                         " #6FD080; repoint to var(--signal-good).")
-
     def test_consumes_signal_vars(self):
-        css = _read(BRIDGE_PENDING_CSS)
+        css = _read(COACH_DECISIONS_CSS)
         self.assertIn("var(--signal-gold)", css,
-                      "bridge_pending.css must consume var(--signal-gold)"
+                      "coach_decisions.css must consume var(--signal-gold)"
                       " for the coach-decision-title")
         self.assertIn("var(--signal-info)", css,
-                      "bridge_pending.css must consume var(--signal-info)"
-                      " for the give-action + defer-hover")
-        self.assertIn("var(--signal-good)", css,
-                      "bridge_pending.css must consume var(--signal-good)"
-                      " for the accept-hover")
+                      "coach_decisions.css must consume var(--signal-info)"
+                      " for the give-action")
 
     def test_brand_salmon_preserved(self):
-        """#F07E8B coral/salmon (coach contest button + bp-btn-dismiss
-        hover + rcc-choice-contest + bp-btn-err) is a panel-specific
-        brand color tuned to the bridge-pending escalation queue's
+        """#F07E8B coral/salmon (coach contest button + rcc-choice-contest)
+        is a panel-specific brand color tuned to the coach-decisions
         visual language; not on the semantic --signal-bad red.
         PRESERVED. Mirrors the cd_ledger enemy-team #f07e8b tint."""
-        css = _read(BRIDGE_PENDING_CSS)
+        css = _read(COACH_DECISIONS_CSS)
         self.assertIn("#F07E8B", css,
-                      "coach contest + dismiss salmon brand color preserved")
+                      "coach contest salmon brand color preserved")
 
     def test_menu_badge_black_text_preserved(self):
         """#000 is the text-on-gold contrast for the menu-badge pill;
         not a semantic color, do NOT sweep."""
-        css = _read(BRIDGE_PENDING_CSS)
+        css = _read(COACH_DECISIONS_CSS)
         self.assertIn("color: #000", css,
                       "menu-badge text-on-gold black preserved")
 
@@ -304,9 +292,9 @@ class AsciiHygieneTests(unittest.TestCase):
         self.assertEqual([], self._scan(CD_LEDGER_CSS),
                          "cd_ledger.css contains forbidden non-ASCII")
 
-    def test_bridge_pending_css_is_ascii_clean(self):
-        self.assertEqual([], self._scan(BRIDGE_PENDING_CSS),
-                         "bridge_pending.css contains forbidden non-ASCII")
+    def test_coach_decisions_css_is_ascii_clean(self):
+        self.assertEqual([], self._scan(COACH_DECISIONS_CSS),
+                         "coach_decisions.css contains forbidden non-ASCII")
 
 
 if __name__ == "__main__":
