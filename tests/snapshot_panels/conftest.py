@@ -24,6 +24,20 @@ def _make_handler(store: dict) -> type:
     """Return an HTTP handler class bound to the shared fixture store."""
 
     class _Handler(SimpleHTTPRequestHandler):
+        # HTTP/1.1 keep-alive is the core of the at-scale flake fix. The default
+        # (HTTP/1.0) closes the TCP connection after EVERY request, so each page
+        # boot (index.html + main.js + ~15 ES module / CSS / JSON fetches) churns
+        # ~15 ephemeral ports into TIME_WAIT. Across ~274 pages that is several
+        # thousand sockets stuck in TIME_WAIT (~120 s on Windows), which exhausts
+        # the ~16k dynamic-port pool partway through the suite; new connections
+        # then stall and a fresh page's fetches time out before its render lands
+        # (the tail files flaked for exactly this reason while passing isolated).
+        # With keep-alive every context reuses ONE persistent connection, so the
+        # suite opens ~274 sockets total instead of thousands. Every buffered
+        # response sends a correct Content-Length (keeps the connection reusable);
+        # the streamed SSE response opts out via an explicit Connection: close.
+        protocol_version = "HTTP/1.1"
+
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(WEB_DIR), **kwargs)
 
@@ -78,6 +92,21 @@ def _make_handler(store: dict) -> type:
             Send one event with the full fixture dict, then hold the connection
             open so EventSource treats it as a live stream rather than a
             buffered one-shot response.
+
+            HOLD MECHANISM (at-scale flake fix, CI/Linux-safe): the connection
+            is held by a heartbeat loop that writes an SSE comment (":\\n\\n",
+            which EventSource silently ignores) every poll slice and EXITS the
+            instant that write raises - i.e. the moment the owning test's browser
+            context closes and disconnects the socket. That releases the server
+            thread promptly (no zombie 15 s-sleep threads piling up and starving
+            the single ThreadingHTTPServer's request pool late in a full-suite
+            run) WITHOUT ever closing the stream proactively. An earlier attempt
+            closed the stream when a shared generation counter advanced; that
+            raced the page's own store mutations and closed the stream mid-render
+            on the Linux CI runner (spike_markers / ds_relscore / overlay_combat /
+            header_single_row flaked), so the close here is driven ONLY by the
+            client disconnect, never by server-side state. A hard ceiling bounds a
+            truly-abandoned connection.
             """
             import time as _time
             event_data = json.dumps(store["data"])
@@ -85,14 +114,26 @@ def _make_handler(store: dict) -> type:
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
+            # SSE is an unbounded stream (no Content-Length) so it cannot be a
+            # reusable keep-alive connection - mark it close. Every OTHER response
+            # stays keep-alive (HTTP/1.1 + Content-Length), which is what
+            # collapses the suite's socket churn (the TIME_WAIT flake above).
+            self.send_header("Connection", "close")
+            self.close_connection = True
             self.end_headers()
             try:
                 self.wfile.write(body)
                 self.wfile.flush()
-                # Hold open so the browser's EventSource processes the event
-                # as a stream rather than a buffered one-shot response.
-                _time.sleep(15)
-            except (BrokenPipeError, ConnectionResetError):
+                # Hold open until the client disconnects (the test's context
+                # closes at test end -> the next heartbeat write raises) or the
+                # ceiling hits. The ceiling is generous so it never fires during
+                # a normal test; disconnect is the real release trigger.
+                deadline = _time.monotonic() + 30.0
+                while _time.monotonic() < deadline:
+                    _time.sleep(0.25)
+                    self.wfile.write(b":\n\n")  # SSE keep-alive comment (ignored)
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 pass
 
     return _Handler
