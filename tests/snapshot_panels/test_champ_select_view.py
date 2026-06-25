@@ -120,6 +120,48 @@ def test_champ_select_arena_augments(mock_server, pw_browser):
     assert not errors, f"JS errors [arena augments]: {errors[:3]}"
 
 
+def test_personal_build_card_renders(mock_server, pw_browser):
+    """The personal best-build card renders its ranked item rows + CSS.
+
+    The live fetch -> resolveChampNames -> render path is render-gated on a
+    committed champion + the loaded CHAMPS index (the same limitation that
+    leaves the sibling cooldown-watch card's visual capture OWED in this mock
+    harness). The fetch/resolve WIRING is covered by
+    tests/test_personal_build_panel_dom.py; here we drive renderPersonalBuild
+    directly with a representative payload so the card paints in the REAL
+    champ-select DOM + CSS context, validating the render output and
+    screenshotting it for the UI-audit trail.
+    """
+    from tests.snapshot_panels.conftest import _PERSONAL_BUILD_FIXTURE
+
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, "aram")
+    try:
+        n_rows = page.evaluate(
+            """async (payload) => {
+              const m = await import('/js/panels/personal_build.js');
+              const block = document.getElementById('csv-personal-build');
+              m.renderPersonalBuild(block, payload);
+              return block.querySelectorAll('.pbw-row').length;
+            }""",
+            _PERSONAL_BUILD_FIXTURE,
+        )
+        assert n_rows == 5, f"expected 5 item rows, got {n_rows}"
+        block = page.locator("#csv-personal-build")
+        assert block.is_visible(), "personal-build card not visible"
+        # inner_text uppercases the header (CSS text-transform), so match
+        # case-insensitively.
+        text = block.inner_text()
+        assert "your best build" in text.lower(), "card header missing"
+        assert "Infinity Edge" in text, "top item missing"
+        SCREENSHOTS.mkdir(exist_ok=True)
+        block.screenshot(
+            path=str(SCREENSHOTS / "champ-select_personal-build.png"))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [personal-build]: {errors[:3]}"
+
+
 def _open_counter_box(pw_browser, mock_server):
     """Lighter open for the SR counter-picks box.
 

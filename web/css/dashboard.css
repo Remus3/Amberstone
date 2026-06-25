@@ -45,6 +45,7 @@
 @import './panels/cc_conditional_pressure.css';
 @import './panels/cc_pairing.css';
 @import './panels/cooldown_watch.css';
+@import './panels/personal_build.css';
 @import './panels/ds_sweep.css';
 @import './panels/ds_profile.css';
 @import './panels/player_gpi.css';
