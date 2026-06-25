@@ -1013,10 +1013,42 @@ class Coach(BaseCoach):
                                     t0_perf=_t0c,
                                     model="claude-haiku-4-5-20251001",
                                     purpose="arena_anvil")
-            raw     = resp.content[0].text
+            raw      = resp.content[0].text
+            take     = parse_field(raw, "Take")
+            why      = parse_field(raw, "Why")
             current = load_json(self._out)
-            current["anvil_advice"] = f"Take: {parse_field(raw, 'Take')} - {parse_field(raw, 'Why')}"
+            current["anvil_advice"] = f"Take: {take} - {why}"
             safe_write(self._out, current)
+            # Do-not-flip-blind: record the Haiku take vs the deterministic
+            # precomputed_anvil_advisor ranking for offline agreement analysis
+            # (core.anvil_shadow.summarize_agreement). The served anvil_advice
+            # above is unchanged - this appends a shadow row only, fail-soft.
+            # alive_opponents is the per-tick coach loop's local (built from
+            # `teams`), not carried on self, so we pass [] for the base ideal
+            # path here; alive-opponent enrichment is a future refinement.
+            try:
+                from core import precomputed_anvil_advisor as _anvadv
+                from core import anvil_shadow as _anvsh
+                det = _anvadv.compute_anvil_pick(
+                    champion=gs.get("champion"),
+                    current_items=list(gs.get("items", []) or []),
+                    anvil_choices=list(choices or []),
+                    alive_opponents=[],
+                    hp_pct=gs.get("hp_pct", 100),
+                )
+                _anvsh.log_anvil_advice(
+                    {
+                        "mode":     "arena",
+                        "champion": gs.get("champion"),
+                        "round":    gs.get("round", 0),
+                        "offered":  list(choices or []),
+                        "owned":    list(gs.get("items", []) or []),
+                    },
+                    {"take": take, "why": why},
+                    det,
+                )
+            except Exception:  # noqa: BLE001
+                pass
         except Exception as exc:  # noqa: BLE001
             logger.error("Arena anvil: %s", exc)
 
