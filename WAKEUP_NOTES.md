@@ -4,7 +4,7 @@
 
 ---
 
-# 2026-06-25 (cdragon 16.13 CC-detection fix [619] + snapshot_panels flake fix CI-validated [620])
+# 2026-06-25 (cdragon 16.13 CC-detection fix [619] + snapshot_panels flake fix CI-validated [620] + doc-drift sync + cdragon docstring reconcile [621])
 
 Cleared both NON-gated items from 618's NEXT, both CI-green on Linux. 5 commits pushed. Each item
 ROOT-CAUSE-CORRECTED a wrong 618 triage (ground-truth probes over recollection).
@@ -30,12 +30,22 @@ ROOT-CAUSE-CORRECTED a wrong 618 triage (ground-truth probes over recollection).
   keep-alive" instruction (it is NOT Linux-sound) - implemented the intent. Corrected the stale
   `reference_snapshot_panels_session_browser_flake` memory ("CI runs no pytest" was wrong).
 
+- ITEM 621 (cdragon docstring reconcile `15809ab8` + doc-drift sync): post-620 housekeeping, both Tier-0,
+  no ENGINE bump. (a) The abilities.py `prefer_cdragon_ratios` signature(=True)/docstring("False/OFF")
+  mismatch from 619's note: git-traced the True default to item 320's "default-ON cutover" (`1f172fcc`,
+  ENGINE 1.119.0) + `test_cdragon_ratio_matcher.py` ("now defaults ON") -> the DOCSTRING was the stale
+  side, NOT a behavioral bug; fixed `load()` + the `_apply_cdragon_ratio_preference` "OPT-IN" sibling;
+  Share re-synced (--check clean). (b) ARCHITECTURE.md:172 (1.144.0->1.151.0, 7361->7511) +
+  DAEMON_SLAYER.md:5/:140 (7497/7362->7511). Count RE-MEASURED fresh: 7511 passed / 1 skip (7512 collected
+  x3, zero collection errors over 251 files) - the 619-note "7575" was NOT reproducible. Dated
+  changelog/ledger/history left untouched (no-history-rewrite). DS-dir 7511 + 6 tests/ drift-guards (37) green.
+
 NEXT (operator-gated / live-blocked, unchanged from 618):
 1. CI Watchdog ARM (item 204, do-not-flip-blind).
 2. HZ precompute-vs-Haiku RE-MEASUREMENT - needs the regenerated 16.13.1 tables + real-game shadow rows.
 3. R30/PGR live-gated tail (physical game).
-4. Housekeeping: ARCHITECTURE.md:172 ENGINE/test-count drift (1.144.0/7361 vs live 1.151.0/7497) for a
-   /sync-all-md. (cdragon SwapsInto extractor fix from 618's NEXT is now DONE = item 619.)
+4. Housekeeping: ARCHITECTURE.md:172 ENGINE/test-count drift - DONE (item 621, this session; also synced
+   the DAEMON_SLAYER.md:5/:140 sibling pins + the abilities.py cdragon docstring mismatch from 619's note).
 
 ---
 
