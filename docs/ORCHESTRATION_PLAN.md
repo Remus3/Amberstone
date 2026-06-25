@@ -179,6 +179,20 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 | R20 | lift | DIRECTOR REFILL: Section-7b heavyweight deep-dive competitor lift of Aggregator N, 6-point depth checklist (WHAT / HOW / HAVE-grep-RC-cite / WHERE / EFFORT+RISK / LIFT verdict HIGH-MED-LOW). Output docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md (third-party names out of core repo code). ACT: a HIGH-lift LOW-risk presentation finding over EXISTING DS math / existing local data (no new dependency / schema lift, testable) ships IN-RUN as its own slice (+Section-3b UI proof if frontend); HIGH-lift with new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer. Orchestrator multi-agent for any ship-ready item (disjoint slices, sole merger, verifier-gate). TDD, py_compile, full suite. Closed-negative respected: Aggregator N Arena augment WINRATE is Riot-policy-forbidden (BACKLOG line 122; pick-rate only). SHIPPED F1: ARAM per-champion balance-adjustment grid panel (the 7-field aramDamageDealt/Taken/Healing/Shielding/Tenacity/AbilityHaste/AttackSpeed grid RC loads but never displayed) - new /api/aram-balance route + web/js/panels/aram_balance.js, presentation-only over existing local champions.json, no engine bump. Lift doc docs/COMPETITOR_LIFT_2026-06-22_AGGREGATOR_N.md (F1-F7). | DONE | `e0f0ffac` |
 | R21 | ui-audit | DIRECTOR REFILL: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) + populated capture of the R20-shipped ARAM balance grid panel (web/js/panels/aram_balance.js), clearing its VISUAL OWED. VERIFY-THE-PREMISE found the root cause: renderAramBalance was wired into the live-state render branch ONLY, never the ui_mock active-match branch, so the documented ?ui_mock=1&mode=aram#active-match audit path could not drive it. Fix wires it into the ui_mock branch (mirrors the sibling panels). Audit CLEAN; applied its one SHOULD-FIX (.ab-chip off-grid 2px -> --space-1 4px). RED-first test_aram_balance_view.py (wiring guard + Playwright populated capture). Tier-1 frontend, no engine/Share/ENGINE_VERSION. | DONE | `bd961b39` |
 
+## Sessions - DIRECTOR REFILL 2026-06-25
+
+Authored by the gemini director on REFILL (loop restart, head cf2ea80c). The
+director re-proposed the LEDGER-618 housekeeping TAIL, but a verify-the-premise
+pass (CLAUDE.md verify-before-declare-broken) found ALL of it already shipped
+EARLIER THE SAME DAY (items 618/619/620). This is a stale-LEDGER read by the
+director (loop idle 06-22 -> 06-25; items 618-624 landed in that gap), NOT open
+work. Recorded CLEAN no-op + escalated via PART C so the next directive picks
+genuinely-open ROADMAP/BACKLOG work.
+
+| ID | Theme | Scope | Status | Commit |
+|----|-------|-------|--------|--------|
+| R28 | housekeeping | DIRECTOR REFILL: re-proposed ledger-618 tail (SwapsInto extractor fix + snapshot_panels flake + ARCHITECTURE.md:172 drift). VERIFY-THE-PREMISE -> ALL already shipped: SLICE 1 = item 619 (`95972f57`, Riot 16.13 `...ImmobilizingCCAbility` taxonomy fix - extractor canonicalizes the suffix to the legacy stem, 16.13.1 cdragon carries 5 SwapsInto correct, spell_cc_tags 31/31 green; inert-data so NO ENGINE bump per the 339/343 convention - the directive's "MUST bump ENGINE_VERSION" was itself wrong); SLICE 2a snapshot flake = item 620 (`0fe7e3bf`, Windows-scoped keep-alive, CI green - 620 ground-truth-corrected the directive's "keep HTTP/1.1 keep-alive" premise: the keep-alive ITSELF is the Linux culprit); SLICE 2b doc-drift = FALSE premise (line 172 already reads ENGINE 1.151.0 / 7511 tests / patch 16.13.1, NOT the hallucinated 1.144.0/7361). No code change warranted - a redundant ENGINE re-bump or flake re-attempt would REGRESS shipped work. CLEAN no-op, evidence-logged. | CLEAN | (docs) |
+
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
 - DS Phase-D default-ON flag flips (apply_passive_damage, non-every-AA on_hit, per-stack assumed_stacks) - need real-game re-ranking validation.
@@ -191,6 +205,30 @@ a new dependency / schema lift -> BACKLOG (FUTURE); MED/LOW defer.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-25 R28 (DIRECTOR REFILL cycle, loop restart head cf2ea80c) CLEAN no-op
+  (docs-only) - the director re-proposed the ledger-618 housekeeping TAIL, but a
+  verify-the-premise pass (CLAUDE.md verify-before-declare-broken /
+  audit-proposals-are-intent) found ALL THREE pieces already shipped EARLIER THE
+  SAME DAY. SLICE 1 (SwapsInto extractor) = item 619 (`95972f57`): root cause was a
+  Riot 16.13 TAXONOMY change (added `...ImmobilizingCCAbility` twin beside legacy
+  `...ImmobilizingCCSpell`, 7 of 12 swap spells reclassified to direct-immob); the
+  extractor canonicalizes the suffix back to the legacy stem, so 16.13.1
+  cdragon_spell_stats carries 5 SwapsInto (correct - Aphelios Q / Gnar W / Leblanc R
+  / RekSai W / Rengar E) + the 7 direct as the umbrella stem; spell_cc_tags 31/31
+  green; inert-data so NO ENGINE bump (339/343), which makes the directive's "MUST
+  bump ENGINE_VERSION" itself wrong. SLICE 2a (snapshot flake) = item 620
+  (`0fe7e3bf`): 620 GROUND-TRUTH-CORRECTED the directive's "keep HTTP/1.1 keep-alive"
+  instruction - the keep-alive ITSELF is the Linux CI break (404 on the gitignored
+  ddragon mirror -> BrokenPipe wedges the persistent pool), so the fix is
+  Windows-platform-scoped, not "keep keep-alive". SLICE 2b (ARCHITECTURE.md:172
+  doc-drift) = FALSE premise: line 172 already reads ENGINE 1.151.0 / 7511 tests /
+  patch 16.13.1 (real collected DS ~7512, grep-method noise); the claimed "stale
+  1.144.0/7361 vs live 1.151.0/7497" is a director hallucination, not on disk.
+  Redoing any slice would be HARMFUL. Recorded CLEAN; escalated to the director
+  (PART C gemini_ask.txt) to pick genuinely-open work next cycle. ROOT CAUSE of the
+  stale directive: loop idle 06-22 -> 06-25; items 618-624 landed in the gap; the
+  director keyed off LEDGER 618's "housekeeping tail" phrasing without reading items
+  619/620 directly above it.
 - 2026-06-23 R27 (DIRECTOR REFILL cycle, operator-driven) DONE (`29c48b21` ->
   rebased `bf2ff10d`; ledger 600) - the R26 follow-on broader SHIPPED-PANEL
   render-gate audit. 3 parallel read-only agents swept all ~56 dashboard+overlay
