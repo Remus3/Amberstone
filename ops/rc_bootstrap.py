@@ -2,7 +2,7 @@
 ops/rc_bootstrap.py
 
 One-shot bootstrap: when hot-reloaded into the running app, starts any
-ops components (bridge, supervisor, watchdog) that are not currently running.
+ops components (supervisor, watchdog) that are not currently running.
 Safe to reload repeatedly - checks before spawning.
 """
 from __future__ import annotations
@@ -14,7 +14,6 @@ from pathlib import Path
 
 _PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 _CONFIG       = str(_PROJECT_ROOT / "ops" / "rc_config.json")
-_BRIDGE       = str(_PROJECT_ROOT / "ops" / "rc_file_bridge.py")
 _SUPERVISOR   = str(_PROJECT_ROOT / "ops" / "rc_supervisor.py")
 _WATCHDOG     = str(_PROJECT_ROOT / "ops" / "run_self_healing_watchdog.ps1")
 _CREATE_NO_WINDOW = 0x08000000 if os.name == "nt" else 0
@@ -57,15 +56,6 @@ def _start(exe: str, args: list[str], tag: str) -> int | None:
 # -- Run on import/reload --------------------------------------------------
 
 _results = {}
-
-# Bridge
-if not _is_running("rc_file_bridge"):
-    pid = _start("pythonw.exe", [_BRIDGE, "--config", _CONFIG], "file_bridge")
-    _results["bridge"] = f"started pid={pid}"
-    _log.info("rc_bootstrap: bridge was down - started pid=%s", pid)
-else:
-    _results["bridge"] = "already_running"
-    _log.info("rc_bootstrap: bridge already running")
 
 # Supervisor
 if not _is_running("rc_supervisor"):

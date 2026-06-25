@@ -1,6 +1,6 @@
 // In-flight fetch dedup primitive (item 186).
 //
-// Multiple panels (bridge_pending + trigger_pill for /api/decisions;
+// Multiple panels (coach_decisions + trigger_pill for /api/decisions;
 // champ_select + item_build for /api/loadout/list) independently fire
 // the same request on parallel render/poll cadences. Each fetch costs
 // ~50-150ms server-side. When the requests overlap in time, this helper

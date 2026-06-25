@@ -46,17 +46,11 @@ def _h(headers=None):
 
 
 class _BaseFanoutCase(unittest.TestCase):
-    """Shared setup: bridge auth mocked, riot_api configured, fresh cache."""
+    """Shared setup: riot_api configured, fresh cache. The route is
+    local-only + unauthenticated post-ADR-012, so no bridge auth mock."""
 
     def setUp(self):
         RTC._clear()
-        # Bridge auth -> 200 path.
-        self._is_cfg = mock.patch.object(
-            RTC._bridge, "is_configured", return_value=True)
-        self._secret = mock.patch.object(
-            RTC._bridge, "shared_secret", return_value="test-secret")
-        self._is_cfg.start()
-        self._secret.start()
         # Reset rate limiter + cache singleton + key cache so cases are isolated.
         RA._reset_bucket_for_tests()
         self._tmp = tempfile.TemporaryDirectory()
@@ -68,8 +62,6 @@ class _BaseFanoutCase(unittest.TestCase):
         RA._KEY_CACHE = "RGAPI-test-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     def tearDown(self):
-        self._is_cfg.stop()
-        self._secret.stop()
         RA._KEY_CACHE = self._orig_key_cache
         RA._reset_bucket_for_tests()
         RIC._reset_for_tests(db_path=None)
@@ -77,7 +69,7 @@ class _BaseFanoutCase(unittest.TestCase):
         self._tmp.cleanup()
 
     def _post(self, body):
-        h = _h({"Authorization": "Bearer test-secret"})
+        h = _h()
         RTC._serve_refresh_post(h, body)
         return h
 

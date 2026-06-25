@@ -110,85 +110,8 @@ def _last_boot_iso() -> str | None:
     return None
 
 
-def _watcher_summary() -> str | None:
-    """Return a compact watcher health line for the SessionStart block."""
-    state_path = _APP / "ops" / "runtime" / "bridge_watcher_health.json"
-    if not state_path.exists():
-        return None
-    try:
-        s = json.loads(state_path.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        return None
-    pid = s.get("pid") or "?"
-    cadence = s.get("cadence_mode") or "?"
-    queue = s.get("queue_depth", "?")
-    ok_b = s.get("auto_ok_since_boot", 0)
-    err_b = s.get("auto_err_since_boot", 0)
-    sup_b = s.get("auto_suppressed_since_boot", 0)
-    esc_24 = s.get("escalations_24h", 0)
-    alive = bool(s.get("alive") if "alive" in s else True)
-    prefix = "" if alive else "⚠ DEAD "
-    return (
-        f"- {prefix}Watcher: pid={pid} cadence={cadence} queue={queue} "
-        f"auto_ok={ok_b}/err={err_b}/suppressed={sup_b} (since boot) · esc_24h={esc_24}"
-    )
-
-
 def _health_all() -> dict | None:
     return _http_get_json(f"{_LEGION_BASE}/api/health/all")
-
-
-def _lessons_summary() -> str | None:
-    """Return a markdown block summarising lessons synced in the last 24h.
-    Returns None when the ledger is empty or absent (normal at first boot)."""
-    ledger_path = _APP / "ops" / "runtime" / "lessons_received.jsonl"
-    if not ledger_path.exists():
-        return None
-    cutoff = time.time() - 86400
-    counts: dict[str, dict[str, int]] = {}
-    try:
-        for raw in ledger_path.read_text(encoding="utf-8").splitlines():
-            raw = raw.strip()
-            if not raw:
-                continue
-            entry = json.loads(raw)
-            if float(entry.get("ts") or 0) < cutoff:
-                continue
-            peer = entry.get("from") or "?"
-            decision = entry.get("decision") or "?"
-            counts.setdefault(peer, {})
-            counts[peer][decision] = counts[peer].get(decision, 0) + 1
-    except Exception:  # noqa: BLE001
-        return None
-    if not counts:
-        return None
-    lines = ["## Lessons synced (last 24h)\n"]
-    for peer, dc in sorted(counts.items()):
-        total = sum(dc.values())
-        detail = []
-        for label in ("applied", "queued", "discarded", "rejected",
-                      "skipped_neg_match"):
-            n = dc.get(label, 0)
-            if n:
-                detail.append(f"{n} {label}")
-        lines.append(f"- from {peer}: {total} - " + ", ".join(detail))
-    return "\n".join(lines)
-
-
-def _bridge_peer_anomalies(peer_name: str, *, watcher_alive: bool, stale: bool,
-                           age_str: str, queue: int) -> list[str]:
-    """Bridge-peer anomaly strings for the live Peer peer.
-
-    A dead watcher, a stale publisher, or a real queue backlog each flag.
-    """
-    out: list[str] = []
-    if not watcher_alive:
-        out.append(f"Bridge: {peer_name} watcher dead")
-    elif stale:
-        out.append(f"Bridge: {peer_name} health publisher stale ({age_str})")
-    if queue > 10:
-        out.append(f"Bridge: {peer_name} task queue backed up ({queue} tasks)")
-    return out
 
 
 def main() -> int:
@@ -228,7 +151,7 @@ def main() -> int:
     if not p_vis:
         anomalies.append("Legion: vision server :8889 not listening")
 
-    # Fetch /api/health/all once - used for DS health + bridge peer probes
+    # Fetch /api/health/all once - used for DS health
     health_all = _health_all() or {}
 
     # DS alive check used to suppress RC-DaemonSlayer task false-positive
@@ -267,11 +190,6 @@ def main() -> int:
     if lb:
         out.append(f"- Last boot: {lb}")
 
-    # Bridge watcher (Legion's daemon)
-    watcher_line = _watcher_summary()
-    if watcher_line:
-        out.append(watcher_line)
-
     # DS server health line (after tasks so it groups with the port listeners block)
     if ds_health:
         ds_status = ds_health.get("status", "?")
@@ -305,57 +223,6 @@ def main() -> int:
         out.append(f"- Liveclient relay: age={lc_age}s")
     else:
         out.append("- Liveclient relay: empty (no game in progress)")
-
-    # -- Cross-Claude bridge ----------------------------------------------
-    out.append("\n## Cross-Claude bridge\n")
-
-    # Peer daemon health probed via /api/health/all peers block
-    peers = health_all.get("peers") or {}
-    for peer_name in ("peer",):
-        p = peers.get(peer_name) or {}
-        if not p:
-            continue
-        w_alive = bool(p.get("watcher_alive"))
-        queue = p.get("queue_depth", 0)
-        age_s = p.get("age_s")
-        stale = bool(p.get("stale"))
-        age_str = f"{int(age_s)}s" if age_s is not None else "?"
-        stale_str = " ⚠ STALE" if stale else ""
-        out.append(
-            f"- {peer_name} bridge daemon: watcher={'alive' if w_alive else '⚠ DEAD'}"
-            f" queue={queue} age={age_str}{stale_str}"
-        )
-        anomalies.extend(_bridge_peer_anomalies(
-            peer_name, watcher_alive=w_alive, stale=stale, age_str=age_str,
-            queue=queue))
-
-    # 24h activity from bridge_log (informational only)
-    bridge_log = _APP / "ops" / "runtime" / "bridge_log.jsonl"
-    if bridge_log.exists():
-        activity: dict[str, int] = {}
-        now = time.time()
-        cutoff_24h = now - 86400
-        try:
-            lines_raw = bridge_log.read_text(encoding="utf-8").splitlines()
-            for line in lines_raw[-200:]:
-                try:
-                    j = json.loads(line)
-                except Exception:  # noqa: BLE001
-                    continue
-                if float(j.get("ts") or 0) >= cutoff_24h:
-                    k = j.get("kind") or "?"
-                    activity[k] = activity.get(k, 0) + 1
-        except Exception:  # noqa: BLE001
-            pass
-        if activity:
-            parts = ", ".join(f"{v} {k}s" for k, v in sorted(activity.items()))
-            out.append(f"- Activity 24h: {parts}")
-
-    # -- Lessons summary (last 24h) --------------------------------------
-    lessons_block = _lessons_summary()
-    if lessons_block:
-        out.append("")
-        out.append(lessons_block)
 
     # -- Anomaly summary first if any ------------------------------------
     if anomalies:

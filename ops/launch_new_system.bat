@@ -7,9 +7,6 @@ echo.
 :: Create required runtime directories
 mkdir "C:\Riot Commander\ops\runtime\deploy_requests" 2>nul
 mkdir "C:\Riot Commander\ops\runtime\deploy_results" 2>nul
-mkdir "C:\Riot Commander\ops\runtime\bridge_requests" 2>nul
-mkdir "C:\Riot Commander\ops\runtime\bridge_results" 2>nul
-mkdir "C:\Riot Commander\ops\runtime\bridge_results\images" 2>nul
 mkdir "C:\Riot Commander\ops\runtime\logs" 2>nul
 mkdir "C:\Riot Commander\ops\runtime\supervisor_requests" 2>nul
 mkdir "C:\Riot Commander\ops\runtime\control\commands" 2>nul
@@ -19,7 +16,6 @@ mkdir "C:\Riot Commander\ops\runtime\control\results" 2>nul
 echo Stopping old processes...
 taskkill /F /IM pythonw.exe 2>nul
 taskkill /F /IM python.exe /FI "WINDOWTITLE eq rc_supervisor*" 2>nul
-taskkill /F /IM python.exe /FI "WINDOWTITLE eq rc_file_bridge*" 2>nul
 timeout /t 2 /nobreak >nul
 
 :: Clear stale pycache
@@ -34,19 +30,15 @@ del /f /q "C:\Riot Commander\ops\runtime\watchdog.stop" 2>nul
 echo Starting supervisor...
 start "" /B pythonw.exe "C:\Riot Commander\ops\rc_supervisor.py" --config "C:\Riot Commander\ops\rc_config.json"
 
-:: Start file bridge (hidden)
-echo Starting file bridge...
-start "" /B pythonw.exe "C:\Riot Commander\ops\rc_file_bridge.py" --config "C:\Riot Commander\ops\rc_config.json"
-
-:: Start watchdog (auto-restarts supervisor + bridge if they die)
+:: Start watchdog (auto-restarts supervisor if it dies)
 :: Runs as a hidden PowerShell process - no window to close
 echo Starting self-healing watchdog...
 start "" /B powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\Riot Commander\ops\run_self_healing_watchdog.ps1" --ConfigPath "C:\Riot Commander\ops\rc_config.json"
 
 echo.
-echo [OK] Supervisor + File Bridge + Watchdog launched (all hidden, no windows to close)
+echo [OK] Supervisor + Watchdog launched (all hidden, no windows to close)
 echo [OK] Supervisor will auto-start the app (main.py)
-echo [OK] Watchdog will restart supervisor/bridge if they crash
+echo [OK] Watchdog will restart supervisor if it crashes
 echo [OK] Health: C:\Riot Commander\ops\runtime\health.json
 echo [OK] Supervisor log: C:\Riot Commander\ops\runtime\logs\supervisor.log
 echo.

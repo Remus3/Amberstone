@@ -167,17 +167,6 @@ try:
 except Exception as _e:
     _log.warning("Web dashboard start failed (non-fatal): %s", _e)
 
-# - Bridge monitor (RC mirror of Peer's bridge_monitor sidecar, 2026-05-02)
-# Polls dashboard._bridge_log every 2s; auto-pongs `kind=task summary=ping
-# target=rc` so Peer can probe RC's half of the channel. State persisted to
-# ops/runtime/bridge_monitor_state.json. Spec: docs io RC peer/
-# PEER_VIP_BRIDGE_MONITOR_FOR_RC_2026-05-02.md.
-try:
-    from core.bridge_monitor import start as _start_bridge_monitor
-    _start_bridge_monitor()
-except Exception as _e:
-    _log.warning("bridge_monitor start failed (non-fatal): %s", _e)
-
 # - Coach integration
 import coach_integration as _ci
 _ci._APP_DIR = APP_DIR

@@ -1,4 +1,13 @@
-/* ── Coach decisions banner (decision_detector) ──────────────────────────
+/* Coach decisions banner + recent coach calls log.
+ *
+ * Recovered from the former panels/bridge_pending.css (2026-06-24) when
+ * the cross-Claude bridge was decommissioned. Only the non-bridge coach
+ * styles are kept here (coach-decisions banner, recent-coach-calls log).
+ * The bridge-pending sub-page styles were dropped. The .menu-badge rule
+ * is retained - it is generic and may still be referenced by other menu
+ * surfaces. */
+
+/* -- Coach decisions banner (decision_detector) -----------------------
  * Sits between header and main. Hidden when no pending decisions.
  * Each .coach-decision row has a title + subtitle + action buttons.
  * Slide-in animation when a new decision appears. */
@@ -129,140 +138,9 @@
 .rcc-choice-give    .rcc-choice { color: var(--signal-info); }
 .rcc-choice-skip    .rcc-choice { color: var(--text-faint); }
 
-/* Bridge Pending sub-page (2026-05-03) - escalation queue from
- * bridge_watcher. Compact rows so 5-10 escalations fit without scroll;
- * monospace prompt block when present so cross-Claude payloads stay
- * readable. Claimed tasks dim slightly so operator can spot un-claimed
- * work first. */
-.view-section-count {
-  display: inline-block;
-  margin-left: auto;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  color: var(--text-dim);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
-}
-.bridge-pending-list {
-  list-style: none;
-  margin: 0;
-  padding: 0 14px;
-}
-.bridge-pending-item {
-  margin: 8px 0;
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  font-size: 13px;
-}
-.bridge-pending-item.bp-claimed {
-  opacity: 0.55;
-}
-.bp-head {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-  margin-bottom: 4px;
-}
-.bp-from {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 1px 7px;
-  border-radius: 3px;
-  border: 1px solid currentColor;
-  color: var(--gold);
-}
-.bp-kind {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-}
-.bp-age {
-  font-size: 12px;
-  color: var(--text-faint);
-  font-variant-numeric: tabular-nums;
-}
-.bp-id {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-faint);
-  font-family: var(--mono, monospace);
-  user-select: all;
-}
-.bp-summary {
-  color: var(--text);
-  font-weight: 600;
-  margin: 2px 0;
-}
-.bp-reason {
-  font-size: 12px;
-  color: var(--text-dim);
-  font-style: italic;
-}
-.bp-prompt {
-  margin: 6px 0 0;
-  padding: 6px 8px;
-  border-radius: 3px;
-  background: rgba(0,0,0,0.18);
-  border: 1px dashed var(--border-soft);
-  color: var(--text-dim);
-  font-family: var(--mono, monospace);
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 140px;
-  overflow: auto;
-}
-.bp-claim {
-  margin-top: 4px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--gold);
-}
-.bp-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px dashed var(--border-soft);
-}
-.bp-btn {
-  flex: 1;
-  padding: 5px 10px;
-  border-radius: 4px;
-  border: 1px solid var(--border-soft);
-  background: var(--surface);
-  color: var(--text-dim);
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: background 80ms, color 80ms;
-}
-.bp-btn:hover     { background: var(--info-soft); color: var(--info); }
-.bp-btn:disabled  { opacity: 0.4; cursor: wait; }
-.bp-btn-accept:hover  { color: var(--signal-good); border-color: var(--signal-good); }
-.bp-btn-defer:hover   { color: var(--signal-info); border-color: var(--signal-info); }
-.bp-btn-dismiss:hover { color: #F07E8B; border-color: #F07E8B; }
-.bp-btn-busy { opacity: 0.6; }
-.bp-btn-err  { color: #F07E8B; border-color: #F07E8B; }
-
-/* Fleet Health sub-page removed (no #view-fleet markup; dead JS
- * stripped 2026-05-19). Backend /api/health/peer + /api/health/all
- * rollup stay live for other consumers. .menu-badge below is still
- * used by bridge-pending - leave it. */
-
-/* Menu badge - small count next to the menu button label so the
- * operator sees pending depth without opening the sub-page. Hidden
- * when count is 0 (via the `hidden` HTML attribute set in JS). */
+/* Menu badge - small count next to the menu button label. Hidden when
+ * count is 0 (via the `hidden` HTML attribute set in JS). Generic; kept
+ * here after the bridge-pending split since it is not bridge-specific. */
 .menu-badge {
   display: inline-block;
   margin-left: 6px;
@@ -277,4 +155,3 @@
   text-align: center;
 }
 .menu-badge[hidden] { display: none; }
-

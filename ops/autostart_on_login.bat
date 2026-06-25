@@ -15,7 +15,7 @@ REM Kill any leftover processes from previous session
 taskkill /F /IM pythonw.exe 2>nul
 timeout /t 2 /nobreak >nul
 
-REM Launch the full ops system (supervisor + bridge + watchdog + app)
+REM Launch the full ops system (supervisor + watchdog + app)
 start "" /B cmd /C "C:\Riot Commander\ops\launch_new_system.bat" >> "%TEMP%\rc_autostart.log" 2>&1
 
 echo [%DATE% %TIME%] launch_new_system.bat started >> "%TEMP%\rc_autostart.log"

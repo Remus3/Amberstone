@@ -4,7 +4,6 @@
 Runs every 15 minutes (RC-CostHealthWatchdog scheduled task). Probes:
 
   - RC daemon health      (ops/runtime/health.json)
-  - bridge connectivity   (ops/runtime/bridge_watcher_health.json)
   - tracked API spend     (data/spend/YYYY-MM-DD.json) vs a trailing baseline
 
 Detects a cost breach (today > 1.5x trailing-median baseline, with an absolute
@@ -37,7 +36,6 @@ from pathlib import Path
 
 _APP = Path(__file__).parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
-_BRIDGE = _APP / "ops" / "runtime" / "bridge_watcher_health.json"
 _SPEND_DIR = _APP / "data" / "spend"
 _STATE = _APP / "ops" / "runtime" / "cost_health_watchdog_state.json"
 _LOG = _APP / "logs" / "cost_health_watchdog.log"
@@ -128,17 +126,6 @@ def probe_health(path: Path = _HEALTH) -> dict:
         "last_reload_ok": bool(h.get("last_reload_ok", True)),
         "mode": h.get("mode"),
         "age_s": _age_s(h.get("updated_at")),
-    }
-
-
-def probe_bridge(path: Path = _BRIDGE) -> dict:
-    b = _read_json(path, {})
-    return {
-        "ok": bool(b),
-        "alive": bool(b.get("alive")),
-        "last_poll_ok": bool(b.get("last_poll_ok", True)),
-        "queue_depth": b.get("queue_depth"),
-        "age_s": _age_s(b.get("updated_at")),
     }
 
 
@@ -328,7 +315,6 @@ def main(argv: list[str] | None = None) -> int:
     state_path = Path(args.state)
     prev = _read_json(state_path, {})
     health = probe_health()
-    bridge = probe_bridge()
     spend = spend_baseline(Path(args.spend_dir), date.today().isoformat())
     lanes = lane_cost_signals(Path(args.spend_dir), date.today().isoformat())
     flap = detect_flap(prev, health, now)
@@ -397,7 +383,6 @@ def main(argv: list[str] | None = None) -> int:
         "last_pid": flap["last_pid"],
         "pid_change_ts": flap["pid_change_ts"],
         "health": health,
-        "bridge": bridge,
         "spend": {k: v for k, v in spend.items() if k != "by_purpose"},
         "lane_cost": lanes,
         "breached": breached,
@@ -414,7 +399,6 @@ def main(argv: list[str] | None = None) -> int:
         "today_usd": spend["today_usd"],
         "baseline_usd": spend["baseline_usd"],
         "health_alive": health["alive"],
-        "bridge_alive": bridge["alive"],
         "proposal": cls["proposal"],
         "p95_proposal": cls.get("p95_proposal"),
     }))

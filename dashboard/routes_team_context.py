@@ -4,9 +4,10 @@
 Wire shape:
   POST /api/team-context/refresh  <- Legion LCU agent on ChampSelect
                                     transition. Body is the 10-player
-                                    roster + queue_id. Bearer-auth via
-                                    cross-Claude bridge token (same
-                                    posture as routes_health_peer).
+                                    roster + queue_id. Local-only now
+                                    (loopback / Tailnet); the former
+                                    cross-Claude bridge auth posture is
+                                    retired with the bridge decommission.
   GET  /api/team-context           <- Dashboard poll. No auth (loopback /
                                     Tailnet-only, served by HTTPS dashboard).
 
@@ -43,7 +44,6 @@ import threading
 import time
 from typing import Any, Callable, Optional
 
-from core import bridge as _bridge
 from dashboard._dispatch import equals
 
 log = logging.getLogger("rc.routes_team_context")
@@ -372,19 +372,9 @@ def _serve_refresh_post(h, body) -> None:
           ]
         }
 
-    Auth: same Bearer secret as /api/bridge/inbox.
+    Local-only: the Legion LCU agent POSTs to 127.0.0.1. The cross-Claude
+    bearer auth was removed when the bridge was decommissioned (2026-06-24).
     """
-    if not _bridge.is_configured():
-        h._send(503, b'{"error":"bridge_not_configured"}', "application/json")
-        return
-
-    auth = (h.headers.get("Authorization") or "").strip()
-    expected = "Bearer " + _bridge.shared_secret()
-    if auth != expected:
-        log.warning("team-context auth reject from %s", h.client_address[0])
-        h._send(401, b'{"error":"unauthorized"}', "application/json")
-        return
-
     if not isinstance(body, dict):
         h._send(400, b'{"error":"body_must_be_object"}', "application/json")
         return

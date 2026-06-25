@@ -5,11 +5,7 @@ Each route receives the BaseHTTPRequestHandler as its only argument
 and uses `h._send(code, body, ctype)` to write the response. Module-
 level GET_ROUTES is consumed by `dashboard._dispatch`.
 """
-import hashlib
-import json
 import logging
-import time
-from pathlib import Path
 
 from dashboard._context import APP_DIR
 from dashboard._dispatch import equals, prefix
@@ -131,84 +127,15 @@ _AGENT_ALLOWED = {
     "screen_agent.py", "liveclient_relay.py",
     "lcu_agent.py",
     "hotkey_listener.py",
-    "bridge_fetch.py", "bridge_post.py",
-    "bridge_pull_tasks.py", "bridge_post_result.py",
-    "bridge_task.py",
-    "bridge_ping.py", "bridge_heartbeat.py",
-    "bridge_setup.ps1", "legion_agent_boot.ps1",
-    "process-bridge-tasks.md",
-    "process-bridge-tasks-peer.md",
+    "legion_agent_boot.ps1",
     "rc_rootCA.pem",
-    "BRIDGE_WATCHER_PLAN.md",
-    "bridge_watcher.py",
-    "bridge_watcher_classify.py",
-    "bridge_watcher_config.json",
-    "bridge_watcher_hook.ps1",
-    "bridge_watcher_install.ps1",
-    "bridge_watcher_actions.py",
-    "bridge_watcher_action_prompt.md",
-    "bridge_watcher_history.py",
-    "bridge_watcher_health_publisher.py",
-    "bridge_watcher_update_check.ps1",
     "PEER_ROADMAP_SUGGESTIONS.md",
     "diagnose.md",
     "caveman.md",
     "done-peer.md",
-    "peer_bridge_daemon.py",
     "phase_watcher.py",
     "phase_watcher_install.ps1",
 }
-
-
-# The runtime set that a peer watcher daemon needs - imported by
-# bridge_watcher.py at module load (actions, classify, history) plus the
-# config json, action prompt md, and the user-prompt-submit hook ps1.
-# Wider than the install script's 4-file pull set; the install script's
-# narrow set is a separate latent gap. Update-check tool (peer-side
-# tools/bridge_watcher_update_check.ps1) walks this list, so drift in
-# any runtime file is detected even if the installer didn't pull it.
-_WATCHER_RUNTIME_FILES = (
-    "bridge_watcher.py",
-    "bridge_watcher_classify.py",
-    "bridge_watcher_actions.py",
-    "bridge_watcher_history.py",
-    "bridge_watcher_config.json",
-    "bridge_watcher_hook.ps1",
-    "bridge_watcher_action_prompt.md",
-)
-
-_WATCHER_MANIFEST_CACHE: dict = {"body": b"", "mtime": 0.0}
-
-
-def _serve_watcher_manifest(h) -> None:
-    """Serve sha256+size manifest of the bridge-watcher runtime fileset.
-
-    Consumed by tools/bridge_watcher_update_check.ps1 on the Peer peer
-    to detect drift vs the canonical Legion copy. 2 s cache to
-    cap stat overhead under poll bursts.
-    """
-    now = time.time()
-    if _WATCHER_MANIFEST_CACHE["body"] and (now - _WATCHER_MANIFEST_CACHE["mtime"]) < 2.0:
-        h._send(200, _WATCHER_MANIFEST_CACHE["body"], "application/json; charset=utf-8")
-        return
-    files: dict = {}
-    for name in _WATCHER_RUNTIME_FILES:
-        p = APP_DIR / "tools" / name
-        try:
-            body = p.read_bytes()
-            files[name] = {"sha256": hashlib.sha256(body).hexdigest(),
-                           "size":   len(body)}
-        except OSError as exc:
-            files[name] = {"error": str(exc)}
-    payload = {
-        "schema_version": 1,
-        "generated_at":   int(now),
-        "files":          files,
-    }
-    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    _WATCHER_MANIFEST_CACHE["body"]  = body
-    _WATCHER_MANIFEST_CACHE["mtime"] = now
-    h._send(200, body, "application/json; charset=utf-8")
 
 
 def _serve_agent_file(h) -> None:
@@ -258,7 +185,6 @@ GET_ROUTES = [
     (prefix("/icons/items/"),                   _serve_icon_items_route),
     (prefix("/icons/positions/"),               _serve_web_asset),
     (prefix("/icons/lobby/"),                   _serve_web_asset),
-    (equals("/agent/_watcher_manifest.json"),   _serve_watcher_manifest),
     (prefix("/agent/"),                         _serve_agent_file),
 ]
 
