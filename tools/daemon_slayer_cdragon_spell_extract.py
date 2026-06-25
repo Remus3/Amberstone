@@ -21,13 +21,19 @@ buckets of structured spell metadata the Meraki abilities dump does NOT carry:
                          resolves a single ``missile_speed`` (prefers the sibling
                          travel speed when the cast record is 0/tiny <=20).
   F-lite. COARSE CC    - mSpellTags (string array). The CC-relevant tags only
-                         (any tag containing ImmobilizingCCSpell / Stun / Root /
+                         (any tag containing ImmobilizingCC / Stun / Root /
                          Snare / Knockup / Knockback / Displacement / Charm /
                          Fear / Taunt / Suppress / Sleep / Slow). Verbatim: Leona
                          Q/E/R carry "Trait_ImmobilizingCCSpell". This is a COARSE
                          boolean CC-class flag (NOT a duration, NOT a
-                         stun-vs-root discriminator) - the raw CC-relevant tag
-                         list is stored as-is.
+                         stun-vs-root discriminator). Tags are stored as-is EXCEPT
+                         the ImmobilizingCC family: Riot 16.13 added an
+                         "...ImmobilizingCCAbility" suffix twin to the legacy
+                         "...ImmobilizingCCSpell"; we match the stable
+                         "ImmobilizingCC" stem and canonicalize the suffix back to
+                         "...Spell" so the flag survives the rename (the
+                         SwapsInto-vs-direct distinction is preserved). See
+                         _canon_cc_tag.
   H. AOE GEOMETRY      - castConeDistance + castConeAngle (cones, CLEAN - verbatim
                          Nautilus W dist=1400 angle=20.0) + castRadius (CONFLATED:
                          defaults to a boilerplate 210/100 on many point spells;
@@ -131,12 +137,15 @@ _MISSILE_PLACEHOLDER_MAX = 20.0
 _CONFLATED_CAST_RADII = (210.0, 100.0)
 
 # mSpellTags substrings that mark a CC-relevant tag (coarse class flag only). The
-# raw matching tags are stored; this is intentionally broad. Verbatim: Leona
-# carries "Trait_ImmobilizingCCSpell". Riot's tag vocabulary is sparse on
-# CC-type discrimination so the umbrella ImmobilizingCCSpell is the main hit; the
-# rest are defensive in case a bin carries a more specific tag.
+# matching tags are stored (the ImmobilizingCC family suffix-canonicalized, see
+# _canon_cc_tag); this is intentionally broad. Verbatim: Leona carries
+# "Trait_ImmobilizingCCSpell". Riot's tag vocabulary is sparse on CC-type
+# discrimination so the umbrella ImmobilizingCC is the main hit; the rest are
+# defensive in case a bin carries a more specific tag. The stem is "ImmobilizingCC"
+# (NOT "...CCSpell") so it also catches the 16.13 "...ImmobilizingCCAbility" /
+# "...SwapsIntoImmobilizingCCAbility" twins Riot added (see _canon_cc_tag).
 _CC_TAG_SUBSTRINGS = (
-    "ImmobilizingCCSpell",
+    "ImmobilizingCC",
     "Stun",
     "Root",
     "Snare",
@@ -152,6 +161,30 @@ _CC_TAG_SUBSTRINGS = (
     "Slow",
     "Airborne",
 )
+
+# Riot 16.13 introduced a parallel CC trait suffix: the legacy
+# "...ImmobilizingCCSpell" family gained "...ImmobilizingCCAbility" twins, and Riot
+# moved several spells across the swap/direct line at the same time (verbatim live:
+# Aphelios Q "Trait_SwapsIntoImmobilizingCCSpell" -> "...CCAbility" while staying a
+# swap; Yasuo Q reclassified from "Trait_SwapsIntoImmobilizingCCSpell" to a DIRECT
+# "Trait_ImmobilizingCCAbility"). The Spell/Ability suffix is Riot-internal churn
+# with no coaching meaning, so we match the stable "ImmobilizingCC" stem (above)
+# and canonicalize the captured literal back to the legacy "...Spell" form: the
+# coarse CC-class flag stays stable across the rename while the SwapsInto-vs-direct
+# distinction Riot DOES still track is preserved verbatim. This is the one place a
+# cc_tags entry is NOT stored byte-as-is from the bin (documented in _note).
+_CC_ABILITY_SUFFIX = "ImmobilizingCCAbility"
+_CC_CANON_SUFFIX = "ImmobilizingCCSpell"
+
+
+def _canon_cc_tag(tag: str) -> str:
+    """Normalize a 16.13 "...ImmobilizingCCAbility" tag to the legacy
+    "...ImmobilizingCCSpell" literal (suffix-only; a leading SwapsInto prefix, when
+    present, is preserved). Non-ImmobilizingCC tags pass through unchanged."""
+    if tag.endswith(_CC_ABILITY_SUFFIX):
+        return tag[: -len(_CC_ABILITY_SUFFIX)] + _CC_CANON_SUFFIX
+    return tag
+
 
 # Standard 4-slot ordering of CharacterRecords/Root.spellNames.
 _SLOT_KEYS = ("Q", "W", "E", "R")
@@ -281,13 +314,25 @@ def _first_scalar(v: Any) -> Optional[float]:
 
 
 def _cc_tags(tags: Any) -> list[str]:
-    """The CC-relevant subset of an mSpellTags list (raw matching strings)."""
+    """The CC-relevant subset of an mSpellTags list (matching strings, the
+    ImmobilizingCC family suffix-canonicalized + deduped).
+
+    Matches on the stable "ImmobilizingCC" stem so the 16.13 "...Ability" twins are
+    caught, then canonicalizes that family to the legacy "...Spell" literal (see
+    _canon_cc_tag) so the coarse CC-class flag survives Riot's Spell<->Ability
+    rename. Non-Immobilizing CC substrings (Stun/Root/...) are matched + stored
+    verbatim. Dedup preserves first-seen order (a slot carrying both the Spell and
+    Ability twin collapses to one canonical entry)."""
     if not isinstance(tags, list):
         return []
     out: list[str] = []
+    seen: set[str] = set()
     for t in tags:
         if isinstance(t, str) and any(sub in t for sub in _CC_TAG_SUBSTRINGS):
-            out.append(t)
+            canon = _canon_cc_tag(t)
+            if canon not in seen:
+                seen.add(canon)
+                out.append(canon)
     return out
 
 
@@ -575,8 +620,9 @@ def extract(patch: str, sleep_s: float, limit: Optional[int],
             "spell has real charges (else null). missile_speed = resolved travel "
             "speed (prefers the <...>Missile sub-record when the cast record is "
             "0/tiny; cast/sub speeds kept in missile_cast_record/missile_sub_record). "
-            "cc_tags = COARSE CC-class flag from mSpellTags (the ImmobilizingCCSpell "
-            "umbrella; NOT a duration, NOT stun-vs-root). geometry.cast_radius is "
+            "cc_tags = COARSE CC-class flag from mSpellTags (the ImmobilizingCC "
+            "umbrella, 16.13 ...CCAbility suffix canonicalized back to ...CCSpell; "
+            "NOT a duration, NOT stun-vs-root). geometry.cast_radius is "
             "CONFLATED (boilerplate 210/100 on point spells) - trust cone_distance/"
             "cone_angle, check cast_radius_conflated before using cast_radius. "
             "Meraki stays authoritative for damage/ratios/CC durations. A run with "
