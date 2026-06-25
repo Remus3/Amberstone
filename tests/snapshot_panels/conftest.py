@@ -9,6 +9,7 @@ Architecture:
   fallback (which kicks in only after 4 s).
 """
 import json
+import sys
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -24,19 +25,26 @@ def _make_handler(store: dict) -> type:
     """Return an HTTP handler class bound to the shared fixture store."""
 
     class _Handler(SimpleHTTPRequestHandler):
-        # HTTP/1.1 keep-alive is the core of the at-scale flake fix. The default
-        # (HTTP/1.0) closes the TCP connection after EVERY request, so each page
-        # boot (index.html + main.js + ~15 ES module / CSS / JSON fetches) churns
-        # ~15 ephemeral ports into TIME_WAIT. Across ~274 pages that is several
-        # thousand sockets stuck in TIME_WAIT (~120 s on Windows), which exhausts
-        # the ~16k dynamic-port pool partway through the suite; new connections
-        # then stall and a fresh page's fetches time out before its render lands
-        # (the tail files flaked for exactly this reason while passing isolated).
-        # With keep-alive every context reuses ONE persistent connection, so the
-        # suite opens ~274 sockets total instead of thousands. Every buffered
-        # response sends a correct Content-Length (keeps the connection reusable);
-        # the streamed SSE response opts out via an explicit Connection: close.
-        protocol_version = "HTTP/1.1"
+        # HTTP/1.1 keep-alive is the at-scale flake fix - but ONLY on Windows,
+        # and this platform scoping is load-bearing (do not make it
+        # unconditional). The default HTTP/1.0 closes the TCP connection after
+        # EVERY request, so each page boot (index.html + main.js + ~15 ES module
+        # / CSS / JSON fetches plus champion/item PNGs) churns dozens of ephemeral
+        # ports into TIME_WAIT. Across ~274 pages that is thousands of sockets
+        # stuck in TIME_WAIT (~120 s on Windows), exhausting the ~16k Windows
+        # dynamic-port pool partway through the suite; a fresh page's fetches then
+        # stall and time out before its render lands (the non-deterministic
+        # 5/10/27-failure local flake). Keep-alive lets each context reuse one
+        # persistent connection (~274 sockets total). Linux does NOT have this
+        # flake (larger ephemeral range + TIME_WAIT recycling), so it stays on
+        # HTTP/1.0: on the Linux CI runner keep-alive instead STALLS the render
+        # tests - the gitignored ddragon image mirror is absent so champion/item
+        # PNGs 404, and a 404 send_error on a persistent connection raises
+        # BrokenPipe and wedges the small keep-alive connection pool, leaving
+        # panels half-rendered (spike_markers / ds_relscore / overlay_combat /
+        # header_single_row / player_gpi timed out, CI run 28159713805). The flake
+        # is Windows-only, so the fix is too; CI keeps the proven HTTP/1.0 path.
+        protocol_version = "HTTP/1.1" if sys.platform == "win32" else "HTTP/1.0"
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(WEB_DIR), **kwargs)
@@ -93,20 +101,13 @@ def _make_handler(store: dict) -> type:
             open so EventSource treats it as a live stream rather than a
             buffered one-shot response.
 
-            HOLD MECHANISM (at-scale flake fix, CI/Linux-safe): the connection
-            is held by a heartbeat loop that writes an SSE comment (":\\n\\n",
-            which EventSource silently ignores) every poll slice and EXITS the
-            instant that write raises - i.e. the moment the owning test's browser
-            context closes and disconnects the socket. That releases the server
-            thread promptly (no zombie 15 s-sleep threads piling up and starving
-            the single ThreadingHTTPServer's request pool late in a full-suite
-            run) WITHOUT ever closing the stream proactively. An earlier attempt
-            closed the stream when a shared generation counter advanced; that
-            raced the page's own store mutations and closed the stream mid-render
-            on the Linux CI runner (spike_markers / ds_relscore / overlay_combat /
-            header_single_row flaked), so the close here is driven ONLY by the
-            client disconnect, never by server-side state. A hard ceiling bounds a
-            truly-abandoned connection.
+            The hold is a plain bounded sleep (the long-proven behavior). Two
+            earlier iterations tried to release the held thread promptly - a
+            generation-gated close and a heartbeat-disconnect close - and BOTH
+            raced the page render on the Linux CI runner (the stream closed or
+            churned mid-render and 4-5 render tests timed out). The SSE thread is
+            a daemon and the response is Connection: close, so a lingering sleep
+            costs only a short-lived idle thread - not worth a render-timing risk.
             """
             import time as _time
             event_data = json.dumps(store["data"])
@@ -115,25 +116,20 @@ def _make_handler(store: dict) -> type:
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
             # SSE is an unbounded stream (no Content-Length) so it cannot be a
-            # reusable keep-alive connection - mark it close. Every OTHER response
-            # stays keep-alive (HTTP/1.1 + Content-Length), which is what
-            # collapses the suite's socket churn (the TIME_WAIT flake above).
+            # reusable keep-alive connection - mark it close. This matters only on
+            # the Windows HTTP/1.1 keep-alive path (it stops the server trying to
+            # reuse a streaming socket); on the HTTP/1.0 default it is a harmless
+            # no-op (HTTP/1.0 closes after every response anyway).
             self.send_header("Connection", "close")
             self.close_connection = True
             self.end_headers()
             try:
                 self.wfile.write(body)
                 self.wfile.flush()
-                # Hold open until the client disconnects (the test's context
-                # closes at test end -> the next heartbeat write raises) or the
-                # ceiling hits. The ceiling is generous so it never fires during
-                # a normal test; disconnect is the real release trigger.
-                deadline = _time.monotonic() + 30.0
-                while _time.monotonic() < deadline:
-                    _time.sleep(0.25)
-                    self.wfile.write(b":\n\n")  # SSE keep-alive comment (ignored)
-                    self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                # Hold open so the browser's EventSource processes the event as a
+                # stream rather than a buffered one-shot response.
+                _time.sleep(15)
+            except (BrokenPipeError, ConnectionResetError):
                 pass
 
     return _Handler
