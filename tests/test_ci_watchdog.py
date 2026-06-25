@@ -168,7 +168,7 @@ def test_plan_dispatch_step_order_and_branch():
     labels = [s[0] for s in steps]
     assert labels == [
         "fetch", "reset", "branch", "gather_log", "gather_diff",
-        "claude_fix", "diff_names", "push", "pr_create", "pr_merge",
+        "claude_fix", "diff_names", "push", "pr_create", "wait_checks", "pr_merge",
     ]
     by = {label: argv for label, argv in steps}
     assert cw.branch_name(555) == "ci-fix/555"
@@ -199,12 +199,19 @@ def test_plan_dispatch_claude_step_whitelist_and_no_skip_perms():
     assert "Bash(git push:*)" in claude
 
 
-def test_plan_dispatch_merge_is_squash_auto():
+def test_plan_dispatch_merge_is_squash_self_gated():
+    """Merge is squash + SELF-GATED: NO --auto. The watchdog blocks on the PR's
+    own checks itself (wait_checks), so no branch protection / repo auto-merge is
+    needed - which preserves the direct-push-to-main workflow."""
     steps = dict((s[0], s[1]) for s in cw.plan_dispatch(2, "h"))
     merge = steps["pr_merge"]
     assert merge[:3] == ["gh", "pr", "merge"]
-    assert cw._MERGE_METHOD in merge and "--auto" in merge
+    assert cw._MERGE_METHOD in merge and "--auto" not in merge
     assert "ci-fix/2" in merge
+    # the green-gate: a watched check poll on the SAME branch, BEFORE the merge
+    checks = steps["wait_checks"]
+    assert checks[:4] == ["gh", "pr", "checks", "ci-fix/2"]
+    assert "--watch" in checks and "--fail-fast" in checks
 
 
 # -- dispatch execution (injected runner; no real I/O) -------------------
@@ -234,7 +241,7 @@ def test_execute_dispatch_dry_run_runs_nothing():
     assert res["mode"] == "dry_run"
     assert res["branch"] == "ci-fix/9"
     assert [s[0] for s in res["steps"]][0] == "fetch"
-    assert len(res["steps"]) == 10
+    assert len(res["steps"]) == 11
 
 
 def test_execute_dispatch_arm_happy_path_merges(tmp_path):
@@ -248,6 +255,42 @@ def test_execute_dispatch_arm_happy_path_merges(tmp_path):
     # push happens only AFTER the frozen-guard (diff_names) cleared it
     assert fake.labels.index("diff_names") < fake.labels.index("push")
     assert fake.labels.index("push") < fake.labels.index("pr_create") < fake.labels.index("pr_merge")
+    # the self-gate (wait_checks) runs AFTER PR creation and BEFORE the merge
+    assert fake.labels.index("pr_create") < fake.labels.index("wait_checks") < fake.labels.index("pr_merge")
+
+
+def test_execute_dispatch_escalates_on_red_checks(tmp_path):
+    """A fix whose own ci-fix PR goes red is NEVER merged - escalate instead.
+    This is the self-gate's safety contract: merge only on green."""
+    fake = _FakeRunner(outputs={
+        "diff_names": (0, "core/foo.py\n"),
+        "pr_create": (0, "https://github.com/o/r/pull/88\n"),
+        "wait_checks": (1, "X 1 check failed"),
+    })
+    res = cw.execute_dispatch(88, "h", arm=True, worktree=tmp_path, runner=fake)
+    assert res["action"] == "escalate"
+    assert "check" in res["reason"].lower()
+    assert res["pr"].endswith("/88")
+    # the gate held: PR created but NOT merged
+    assert "wait_checks" in fake.labels and "pr_merge" not in fake.labels
+
+
+def test_execute_dispatch_merges_only_after_green_checks(tmp_path):
+    fake = _FakeRunner(outputs={
+        "diff_names": (0, "core/foo.py\n"),
+        "pr_create": (0, "https://github.com/o/r/pull/99\n"),
+        "wait_checks": (0, "all checks pass"),
+    })
+    res = cw.execute_dispatch(99, "h", arm=True, worktree=tmp_path, runner=fake)
+    assert res["action"] == "merged"
+    assert fake.labels.index("wait_checks") < fake.labels.index("pr_merge")
+
+
+def test_step_timeouts_cover_blocking_steps():
+    """The blocking steps (headless fix + the check-watch gate) get budgets well
+    above the 120s default - a real fix + a full CI run each take minutes."""
+    assert cw._STEP_TIMEOUTS["wait_checks"] >= 600
+    assert cw._STEP_TIMEOUTS["claude_fix"] >= 300
 
 
 def test_execute_dispatch_arm_escalates_on_frozen(tmp_path):

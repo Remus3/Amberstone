@@ -53,6 +53,13 @@ _DAY_S = 24 * 3600
 # main linear and the branch is auto-deleted.
 _MERGE_METHOD = "--squash"
 
+# Per-step subprocess timeouts (seconds). The two blocking steps need far more
+# than the 120s default: a headless claude fix runs for minutes, and wait_checks
+# BLOCKS on the ci-fix PR's full CI run (the self-gate). Task Scheduler bounds the
+# whole cycle via ExecutionTimeLimit + MultipleInstancesPolicy=IgnoreNew, so a
+# blocking poll here can never stack overlapping armed instances.
+_STEP_TIMEOUTS = {"claude_fix": 600, "wait_checks": 900}
+
 # Headless-claude fixer system prompt + the tool whitelist. In `claude -p` mode
 # any tool NOT on --allowedTools is denied silently (no prompt, no hang), so this
 # whitelist - not a flag - is the hard execution gate. Write is disallowed (fixes
@@ -251,8 +258,14 @@ def plan_dispatch(run_id: int, head_sha: str, *, worktree: Path = WORKTREE,
                        "--head", branch,
                        "--title", f"ci(fix): auto-fix red CI run {run_id}",
                        "--body", body]),
+        # Self-gate: BLOCK on the ci-fix PR's own checks (--watch) and bail on the
+        # first red (--fail-fast). Exit 0 = every check green -> merge; non-zero ->
+        # escalate. This in-watchdog gate is why no branch protection / repo
+        # auto-merge is needed (so direct-push-to-main keeps working).
+        ("wait_checks", ["gh", "pr", "checks", branch, "--repo", repo,
+                         "--watch", "--fail-fast"]),
         ("pr_merge", ["gh", "pr", "merge", branch, "--repo", repo, _MERGE_METHOD,
-                      "--auto", "--delete-branch"]),
+                      "--delete-branch"]),
     ]
 
 
@@ -359,7 +372,9 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
     so the operator can inspect exactly what an armed run would do. Armed, it
     syncs the throwaway worktree, runs the tool-restricted headless fix, enforces
     the frozen-file guard BETWEEN the fix and any push, then pushes + opens the
-    ci-fix PR + enables squash auto-merge (merges when the fix's own CI is green).
+    ci-fix PR, BLOCKS on that PR's own CI checks, and squash-merges ONLY when they
+    pass (self-gated - a red PR escalates and is never merged; no branch
+    protection / repo auto-merge needed, so direct-push-to-main keeps working).
     ``runner(label, argv) -> (rc, stdout)`` is injectable for tests.
     """
     plan = plan_dispatch(run_id, head_sha, worktree=worktree, repo=repo)
@@ -374,7 +389,7 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
             cmd = list(argv)
             if cmd and cmd[0] == "gh":
                 cmd[0] = _gh()
-            return _run(cmd, cwd=Path(wt))
+            return _run(cmd, cwd=Path(wt), timeout=_STEP_TIMEOUTS.get(label, 120))
 
     # 1. sync the dedicated worktree onto a fresh ci-fix/<id> branch off main
     for label in ("fetch", "reset", "branch"):
@@ -404,7 +419,7 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
         return {"action": "escalate", "changed": changed,
                 "reason": "fix touches frozen file(s): " + ", ".join(frozen)}
 
-    # 5. push -> open PR -> enable squash auto-merge on green
+    # 5. push -> open PR (the self-gate + squash-merge follow in step 6)
     rc, out = runner("push", steps["push"])
     if rc != 0:
         return {"action": "error", "stage": "push", "detail": (out or "")[:2000]}
@@ -413,6 +428,13 @@ def execute_dispatch(run_id: int, head_sha: str, *, arm: bool,
         return {"action": "error", "stage": "pr_create", "detail": (pr_out or "")[:2000]}
     lines = [ln.strip() for ln in (pr_out or "").splitlines() if ln.strip()]
     pr = lines[-1] if lines else ""
+    # 6. self-gate: BLOCK on the ci-fix PR's OWN CI; merge ONLY when green.
+    #    A red (or timed-out) check escalates - we never merge an unverified fix.
+    rc, checks_out = runner("wait_checks", steps["wait_checks"])
+    if rc != 0:
+        return {"action": "escalate", "pr": pr, "changed": changed,
+                "reason": "ci-fix PR checks did not pass - not merged",
+                "detail": (checks_out or "")[:2000]}
     rc, out = runner("pr_merge", steps["pr_merge"])
     return {"action": "merged", "pr": pr, "changed": changed,
             "merge_rc": rc, "merge_out": (out or "")[:500]}
