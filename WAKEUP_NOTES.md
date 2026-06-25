@@ -29,7 +29,7 @@ Full per-item record: docs/LEDGER.md item 618.
   engine-driven NOT data/cdragon - the 6 items are stat-identical + the prior table was an older-engine gen).
 - Secondary (parallel worktree agent): snapshot_panels at-scale Playwright flake fixed at ROOT (HTTP/1.0
   connection-per-request -> TIME_WAIT port exhaustion; fix = HTTP/1.1 keep-alive + SSE gen-gating + per-test
-  reset). 274 passed x2 independent re-verify (never trusted the agent's 3x claim). Full local suite is a clean gate now.
+  reset). 274 passed x2 independent re-verify (never trusted the agent's 3x claim). REVERTED (`f68cf703`): the SSE gen-gating fails 4 CI/Linux render snapshot tests (a Windows-only verify was insufficient).
 
 NEXT (operator-gated / live-blocked, unchanged from 617):
 1. CI Watchdog ARM (item 204, do-not-flip-blind): create C:\RC-CIWatchdog\ worktree + enable repo auto-merge +
@@ -37,7 +37,7 @@ NEXT (operator-gated / live-blocked, unchanged from 617):
 2. HZ precompute-vs-Haiku agreement RE-MEASUREMENT (item 614 NEXT) - now ALSO needs the regenerated 16.13.1 tables
    + real-game shadow rows; do AFTER accruing live games on them. Live coach flip stays operator-gated.
 3. R30/PGR live-gated tail (E.1 ACTIVE knob physical press + RC_COMP_HP_LEAN default-ON) - need a physical game.
-4. Housekeeping: fix the cdragon SwapsInto extractor (above); WAKEUP now 5 sessions (weekly-hygiene to trim to
+4. Housekeeping: fix the cdragon SwapsInto extractor (above); re-attempt the snapshot_panels flake fix WITH CI/Linux validation (keep HTTP/1.1 keep-alive, rework SSE gen-gating); WAKEUP now 5 sessions (weekly-hygiene to trim to
    2-3); ARCHITECTURE.md:172 ENGINE/test-count drift (1.144.0/7361 vs live 1.151.0/7497) for a /sync-all-md.
 
 ---
