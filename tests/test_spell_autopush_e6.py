@@ -238,8 +238,13 @@ def _make_wr_db(rows):
     return conn
 
 
-class HighestWrPairTests(unittest.TestCase):
+class HighestWrPairTests(_TmpPrefsMixin, unittest.TestCase):
     def setUp(self):
+        # _TmpPrefsMixin redirects _SPELL_PREFS_PATH to an isolated tmp file
+        # (no by_champ) so the first-lock fallback test is hermetic against the
+        # live data/spell_prefs.json, which real gameplay mutates with
+        # remembered per-champ pairs (e.g. by_champ.SR.Caitlyn).
+        super().setUp()
         from dashboard import routes_adaptive_summoners as ras
         self.ras = ras
 
@@ -281,7 +286,8 @@ class HighestWrPairTests(unittest.TestCase):
         rw._detect_game_mode = lambda: "CLASSIC"  # type: ignore[method-assign]
         rw._champ_id_map = {51: "Caitlyn"}
         rw._wr_spell_pair = lambda champ, mode: None  # type: ignore[method-assign]
-        # no remembered pref (default repo prefs have no by_champ for Caitlyn)
+        # no remembered pref (the _TmpPrefsMixin tmp prefs have no by_champ for
+        # Caitlyn) -> first lock must fall back to spells_for_role
         rw._poll()
         patches = lcu._patches()
         self.assertEqual(len(patches), 1)

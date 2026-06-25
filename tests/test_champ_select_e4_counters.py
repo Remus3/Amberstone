@@ -61,8 +61,11 @@ class CounterPicksRenderTests(unittest.TestCase):
     def test_render_called_from_suggestions(self) -> None:
         js = _read(_CS_JS)
         # The counter-picks block renders as part of the SR Suggestions
-        # panel pass (same place the other comp-aware cards mount).
-        m = re.search(r"function _csvRenderSuggestions[\s\S]*?\n}", js)
+        # panel pass (same place the other comp-aware cards mount). Anchor the
+        # regex to `_csvRenderSuggestions(` exactly so it does not match the
+        # newer `_csvRenderSuggestionsNonSr` sibling (R30) - that NonSr path
+        # intentionally HIDES counter-picks.
+        m = re.search(r"function _csvRenderSuggestions\([\s\S]*?\n}", js)
         self.assertIsNotNone(m)
         self.assertIn("_csvRenderCounterPicks", m.group(0))
 
@@ -101,7 +104,7 @@ class BanPhaseCollapseTests(unittest.TestCase):
 
     def test_suggestions_uses_detection_helper(self) -> None:
         js = _read(_CS_JS)
-        block = re.search(r"function _csvRenderSuggestions[\s\S]*?\n}", js)
+        block = re.search(r"function _csvRenderSuggestions\([\s\S]*?\n}", js)
         self.assertIsNotNone(block)
         self.assertIn("_csvBanPhaseComplete", block.group(0))
 

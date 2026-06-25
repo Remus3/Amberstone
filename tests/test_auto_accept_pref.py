@@ -32,6 +32,27 @@ def pref_file(tmp_path, monkeypatch):
     return p
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _live_pref_bytes_untouched():
+    """Real redirect-regression guard: assert this module never WRITES the
+    live data/auto_accept_pref.json. Each mutation test monkeypatches
+    _PREF_PATH to tmp; if that redirect ever regressed, set_enabled() would
+    hit the live file. Snapshot its bytes before any test runs and assert
+    byte-identity after - agnostic to the operator's chosen value, since
+    auto-accept is a dashboard-toggleable runtime flag (a False on disk is
+    legitimate operator state, not a bug)."""
+    from pathlib import Path
+
+    live = Path(mod.__file__).resolve().parent.parent / "data" / "auto_accept_pref.json"
+    before = live.read_bytes() if live.exists() else None
+    yield
+    after = live.read_bytes() if live.exists() else None
+    assert after == before, (
+        "live data/auto_accept_pref.json was modified by the test suite "
+        f"(redirect regression): {before!r} -> {after!r}"
+    )
+
+
 def test_default_enabled_when_absent(pref_file):
     assert not pref_file.exists()
     assert mod.is_enabled() is True
@@ -88,16 +109,18 @@ def test_atomic_no_tmp_left(pref_file):
     assert not list(pref_file.parent.glob("*.tmp"))
 
 
-def test_live_pref_left_enabled():
-    """CRITICAL: the live flag the tick reads must be enabled (or absent)
-    after this module's tests run. We never write it (the fixture redirects
-    _PREF_PATH to tmp), so this just confirms the real file is still in the
-    safe always-on state - a guard against a redirect regression."""
+def test_live_pref_well_formed():
+    """Auto-accept is operator-toggleable via the dashboard (POST
+    /api/lcu/auto-accept), so a False on disk is legitimate operator state -
+    we do NOT assert the value. The module-scoped _live_pref_bytes_untouched
+    fixture above is the real redirect-regression guard (no test writes the
+    live file); this only asserts the live file, if present, is well-formed
+    {"enabled": bool} and not corrupted."""
     from pathlib import Path
 
     live = Path(mod.__file__).resolve().parent.parent / "data" / "auto_accept_pref.json"
     if live.exists():
         data = json.loads(live.read_text(encoding="utf-8"))
-        assert data.get("enabled") is True, (
-            f"live auto_accept_pref left disabled: {data!r}"
+        assert isinstance(data, dict) and isinstance(data.get("enabled"), bool), (
+            f"live auto_accept_pref.json malformed: {data!r}"
         )
