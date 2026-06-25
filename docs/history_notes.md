@@ -142,6 +142,43 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-24 (R30 IN-GAME design review - champ-select COMPLETE + active-match map rethink; "live-gated" deferral debunked)
+
+Interactive operator session. The prior 3 R30 sessions deferred ALL in-game pages as LIVE-GATED; that was
+WRONG - champ-select / active-match / overlay render fully headless via the EXISTING ui_mock fixtures.
+Extended the recon harness to `ops/runtime/ui_recon/recon.py <view> [mode] [overlay]` (drives
+`?ui_mock=1&mode=<sr|aram|arena>#<view>` + `&overlay=1`), unblocking the whole in-game backlog. 4 slices
+shipped + pushed, each RED-first + a 5-phase UI-audit subagent PASS + live-:8888 visual recon. Tier-1
+frontend throughout; no engine / DS / Share / ENGINE_VERSION. Final gate 70 snapshot tests green.
+
+CADENCE (same as out-of-game; reuse for the overlay + active-match tail): recon each view at 923 + 1920 via
+`recon.py <view> [mode]`, READ + JUDGE the screenshots + ground-truth file:line, PRESENT keep/remove/add/alter
++ ONE framed scope AskUserQuestion, build the picked slice RED-first, 5-phase UI-audit gate, commit+push.
+
+- CHAMP-SELECT (COMPLETE, SR/ARAM/Arena). (1) `b76bacf7` ARAM/Arena ASSESSMENT: the non-SR grid override
+  dropped the `suggestions` grid-area -> the card orphaned out of grid flow (floating panel + huge void);
+  restored a 2-row template + new `_csvRenderSuggestionsNonSr` fills the right column with TEAM DAMAGE LEAN +
+  WATCH THEIR COOLDOWNS (counter-picks stays SR-draft-only). (2) `2f9daab7` Arena DS build wiring:
+  `_csvRenderCentralPane` early-returned for Arena (no archetype picker, no build chooser despite the fixture
+  data); removed the early-return -> Arena flows through the shared setup (archetype left col + duo/augments +
+  build chooser + DS-vs-enemy-comp). SR/ARAM byte-identical; Arena variant rows are backend-fed (empty until a
+  Jinx Arena loadout is saved - same path as SR/ARAM). (3) `c758254c` companion reflow:
+  `@media (max-width:1200px)` single-column for all 3 modes + the no-scroll height-cap resets; mirrors item-602.
+- ACTIVE-MATCH (1 slice). `174854c5` MAP real-estate rethink: Live Client has no coords (memory
+  `reference_liveclient_no_positions`) so the static map can't plot positions; `_renderAmMap` now builds a
+  column shell - `.am-map-intel` (PRIMARY: status + de-overlaid full-width roster) over `.am-map-figure`
+  (SECONDARY: map img + ZOI canvas + gank band, height-capped 50%); ALL element IDs preserved (polling/overlay
+  render untouched); grid 1.1fr/2fr -> 1.4fr/1.6fr. Sparse vision -> acceptable trailing space (real games fill
+  the roster).
+
+NEXT (remaining R30 in-game): the OVERLAY surface (unreconned - `recon.py active-match sr overlay`) +
+active-match follow-ups (the ARAM ward-heat strip's TOP/JG/MID/BOT lane labels are meaningless single-lane;
+active-match has 923 companion horizontal overflow, worstRight 1226 - needs a reflow like champ-select got).
+Genuinely live-gated OWED (need a physical game): E.1 ACTIVE knob physical press + `RC_COMP_HP_LEAN` default-ON
+flip. Harness + gemini_out.txt at `ops/runtime/ui_recon/`.
+
+---
+
 # 2026-06-23 (R30 CONTINUATION-2 - per-page UI/UX design review, pages 8 + 6 of 9; OUT-OF-GAME COMPLETE)
 
 Interactive operator session finishing the R30 out-of-game review (pages 1-5,7,9 shipped prior; ledger

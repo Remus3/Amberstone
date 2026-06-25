@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-06-25 (bridge decommission COMPLETED - surviving-ref sweep + 2 live residual fixes + stale-test realign)
+
+Follow-on to LEDGER 615 (the prior session removed the bulk but claimed "every importer unwired" - it was NOT).
+Validated end-to-end + finished it so nothing silent-fails. 1 commit (`49b1c9ea`, 176 files), pushed, CI green.
+Tier-1 (scripts/agents/tests; no engine / DS / Share / ENGINE_VERSION).
+
+- Swept surviving refs from 15 live files: ops/startup scripts (rc_bootstrap, run_self_healing_watchdog,
+  rc_league_watcher, launch_new_system/start_ops/setup_dirs/autostart bats) stopped spawning the deleted
+  rc_file_bridge.py; legion_on/off + start_claude + legion_agent_boot dropped removed RC-Bridge* tasks +
+  process-bridge-tasks.md; deleted installer install_RC_LegionBridgeDaemon.ps1; purged stale ops/runtime
+  bridge/lessons/peer_health artifacts; legacy_index.html dead /api/bridge UI + drift --bridge-note help cleaned.
+- 2 LIVE residuals the bulk MISSED (fixed + agents restarted): (A) supervisor bridge-publisher watchdog filed a
+  zombie triage task every 6h for the dead peer peer; (B) lcu_agent gated the FU02 team-context POST on the removed
+  BRIDGE_SECRET -> champ-select team-context was SILENTLY BROKEN (route is no-auth local-only now; posts unconditionally).
+- 4 stale test files mocking removed routes_team_context._bridge realigned (team_context/fanout/lcu_agent_refresh/
+  p2w1_dash_c); team-context decommission suite 133/133; full-suite collect 17585 clean.
+
+NEXT (operator wants BOTH next session):
+1. FINISH CLEANING the pre-existing NOT-decommission full-suite reds (CONFIRMED red-at-HEAD, not regressions):
+   ROADMAP.md over the 80KB budget (relocate shipped entries to docs/ROADMAP_HISTORY.md); stale DOM tests (last_match
+   Build-tab-default, champ_select counter-picks, historical_pgr wire) vs intentional UI redesigns; live-data prefs
+   (auto_accept_pref/route, spell_autopush_e6); coach aram_balance KeyError (cc_*/enemy_cc) + ds_pick_consumption ARAM
+   subfails. Triage stale-test vs real-regression per cluster (CI clean-checkout passes snapshot panels).
+2. RESUME pre-decommission active ROADMAP work: CI Watchdog ARM (item 204, operator-gated, do-not-flip-blind - create
+   C:\RC-CIWatchdog\ worktree + repo auto-merge + --arm in RC-CIWatchdog.xml); HZ laning precompute-vs-Haiku agreement
+   RE-MEASUREMENT on the corrected 16.12.1 tables (item 614 NEXT, gated); R30/PGR live-gated tail.
+
+---
+
 # 2026-06-24 (CI Watchdog dispatch wiring - item 204)
 
 Interactive operator session. R30 UI review complete + no live game -> presented the headless-buildable,
@@ -47,40 +76,3 @@ commits + 1 CI-lint fix, all pushed; 14/14 in `test_active_match_review_r30.py`;
 NEXT: the R30 in-game named tail is CLEAR. The OVERLAY was reconned clean (low yield, RC2-mined; the empty
 `#am-mmrect` frame is coordinate-gated = no-op). Only LIVE-GATED items remain (need a physical game): the E.1
 ACTIVE knob physical press + the `RC_COMP_HP_LEAN` default-ON flip. Harness + gemini_out.txt at `ops/runtime/ui_recon/`.
-
----
-
-# 2026-06-24 (R30 IN-GAME design review - champ-select COMPLETE + active-match map rethink; "live-gated" deferral debunked)
-
-Interactive operator session. The prior 3 R30 sessions deferred ALL in-game pages as LIVE-GATED; that was
-WRONG - champ-select / active-match / overlay render fully headless via the EXISTING ui_mock fixtures.
-Extended the recon harness to `ops/runtime/ui_recon/recon.py <view> [mode] [overlay]` (drives
-`?ui_mock=1&mode=<sr|aram|arena>#<view>` + `&overlay=1`), unblocking the whole in-game backlog. 4 slices
-shipped + pushed, each RED-first + a 5-phase UI-audit subagent PASS + live-:8888 visual recon. Tier-1
-frontend throughout; no engine / DS / Share / ENGINE_VERSION. Final gate 70 snapshot tests green.
-
-CADENCE (same as out-of-game; reuse for the overlay + active-match tail): recon each view at 923 + 1920 via
-`recon.py <view> [mode]`, READ + JUDGE the screenshots + ground-truth file:line, PRESENT keep/remove/add/alter
-+ ONE framed scope AskUserQuestion, build the picked slice RED-first, 5-phase UI-audit gate, commit+push.
-
-- CHAMP-SELECT (COMPLETE, SR/ARAM/Arena). (1) `b76bacf7` ARAM/Arena ASSESSMENT: the non-SR grid override
-  dropped the `suggestions` grid-area -> the card orphaned out of grid flow (floating panel + huge void);
-  restored a 2-row template + new `_csvRenderSuggestionsNonSr` fills the right column with TEAM DAMAGE LEAN +
-  WATCH THEIR COOLDOWNS (counter-picks stays SR-draft-only). (2) `2f9daab7` Arena DS build wiring:
-  `_csvRenderCentralPane` early-returned for Arena (no archetype picker, no build chooser despite the fixture
-  data); removed the early-return -> Arena flows through the shared setup (archetype left col + duo/augments +
-  build chooser + DS-vs-enemy-comp). SR/ARAM byte-identical; Arena variant rows are backend-fed (empty until a
-  Jinx Arena loadout is saved - same path as SR/ARAM). (3) `c758254c` companion reflow:
-  `@media (max-width:1200px)` single-column for all 3 modes + the no-scroll height-cap resets; mirrors item-602.
-- ACTIVE-MATCH (1 slice). `174854c5` MAP real-estate rethink: Live Client has no coords (memory
-  `reference_liveclient_no_positions`) so the static map can't plot positions; `_renderAmMap` now builds a
-  column shell - `.am-map-intel` (PRIMARY: status + de-overlaid full-width roster) over `.am-map-figure`
-  (SECONDARY: map img + ZOI canvas + gank band, height-capped 50%); ALL element IDs preserved (polling/overlay
-  render untouched); grid 1.1fr/2fr -> 1.4fr/1.6fr. Sparse vision -> acceptable trailing space (real games fill
-  the roster).
-
-NEXT (remaining R30 in-game): the OVERLAY surface (unreconned - `recon.py active-match sr overlay`) +
-active-match follow-ups (the ARAM ward-heat strip's TOP/JG/MID/BOT lane labels are meaningless single-lane;
-active-match has 923 companion horizontal overflow, worstRight 1226 - needs a reflow like champ-select got).
-Genuinely live-gated OWED (need a physical game): E.1 ACTIVE knob physical press + `RC_COMP_HP_LEAN` default-ON
-flip. Harness + gemini_out.txt at `ops/runtime/ui_recon/`.
