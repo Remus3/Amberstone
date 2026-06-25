@@ -68,6 +68,7 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
+| `RC-CIWatchdog` | At startup + periodic (PT2M) | Administrator / armed | Unattended headless-claude red-main CI auto-fixer; self-gates the merge on the ci-fix PR's OWN green CI (`tools/ci_watchdog.py`, isolated worktree `C:\RC-CIWatchdog`; item 622). Kill: create `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask RC-CIWatchdog` |
 | `RC-GeminiAudit` | Daily | Administrator | Gemini read-only auditor (`tools/gemini_audit.ps1`) |
 | `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/hotkey_listener.py`) |
 | `RC-LCUAgent` | At logon | Administrator | LCU relay agent (`tools/lcu_agent.py`) |
