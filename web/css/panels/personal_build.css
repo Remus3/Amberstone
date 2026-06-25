@@ -1,0 +1,137 @@
+/* Personal best-build card (Overlay App E personal-WR build override, local-data
+ * half; docs/COMPETITOR_LIFT_2026-06-16.md). Sibling of the cooldown-watch
+ * card - mounts inside the Suggestions card (.csv-card-suggestions) during
+ * champ-select, keyed on the operator's OWN locked champion (cs.my_champion).
+ *
+ * Surfaces the completed items the operator actually WINS with on that
+ * champion, ranked by confidence-weighted win-rate lift vs their own
+ * baseline (a "your best build" read alongside the DS engine recommendation).
+ *
+ * Backend: dashboard/routes_personal_build.py
+ *   GET /api/personal-build?champion=<champ>&mode=sr|aram|arena
+ *
+ * Uses the semantic tokens from web/css/tokens.css. The card carries a
+ * positive (good) accent since it is a "you win more with these" surface.
+ */
+
+.personal-build {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-good, #37D08A);
+  border-radius: 4px;
+}
+
+.personal-build[hidden] {
+  display: none;
+}
+
+.pbw-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.pbw-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.pbw-head-sub {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pbw-thin {
+  font-size: var(--fs-xs);
+  color: var(--signal-warn, #E8A33D);
+  margin-bottom: 2px;
+}
+
+.pbw-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Per-item row: item name | win-rate bar | signed lift | games. */
+.pbw-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-variant-numeric: tabular-nums;
+}
+
+.pbw-row:first-of-type {
+  border-top: none;
+}
+
+.pbw-item {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.pbw-bar {
+  flex: 0 0 72px;
+  height: 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+}
+
+.pbw-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--signal-good, #37D08A);
+}
+
+.pbw-bar-fill[data-sign="neg"] {
+  background: var(--signal-bad, #E84057);
+}
+
+.pbw-bar-fill[data-sign="zero"] {
+  background: rgba(255, 255, 255, 0.30);
+}
+
+.pbw-lift {
+  flex: 0 0 auto;
+  width: 32px;
+  text-align: right;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  color: var(--signal-good, #37D08A);
+}
+
+.pbw-lift[data-sign="neg"] {
+  color: var(--signal-bad, #E84057);
+}
+
+.pbw-lift[data-sign="zero"] {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.pbw-games {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
