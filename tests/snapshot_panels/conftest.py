@@ -20,6 +20,35 @@ from playwright.sync_api import sync_playwright
 WEB_DIR = Path(__file__).parent.parent.parent / "web"
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
+# Deterministic /api/personal-build response for the champ-select fixtures
+# (my_champion = 222 / Jinx). The compute_personal_build dict shape (no `ok`
+# field); positive + negative lifts exercise both bar/lift signs. Lets the
+# champ-select view tests render the personal best-build card headlessly.
+_PERSONAL_BUILD_FIXTURE = {
+    "champion": "Jinx", "champion_id": 222, "mode": "aram",
+    "games": 42, "win_rate": 0.52, "baseline_win_rate": 0.52,
+    "confidence": "ok",
+    "items": [
+        {"item_id": 3031, "name": "Infinity Edge", "games": 30, "wins": 19,
+         "win_rate": 0.633, "adj_win_rate": 0.60, "lift": 0.08,
+         "is_boots": False},
+        {"item_id": 6672, "name": "Kraken Slayer", "games": 24, "wins": 15,
+         "win_rate": 0.625, "adj_win_rate": 0.585, "lift": 0.065,
+         "is_boots": False},
+        {"item_id": 3094, "name": "Rapid Firecannon", "games": 18, "wins": 10,
+         "win_rate": 0.556, "adj_win_rate": 0.54, "lift": 0.02,
+         "is_boots": False},
+        {"item_id": 3006, "name": "Berserker's Greaves", "games": 35,
+         "wins": 18, "win_rate": 0.514, "adj_win_rate": 0.515, "lift": -0.005,
+         "is_boots": True},
+        {"item_id": 3036, "name": "Lord Dominik's Regards", "games": 12,
+         "wins": 5, "win_rate": 0.417, "adj_win_rate": 0.475, "lift": -0.045,
+         "is_boots": False},
+    ],
+    "most_common_build": [3031, 6672, 3094, 3006],
+    "source": "rewind_history.db",
+}
+
 
 def _make_handler(store: dict) -> type:
     """Return an HTTP handler class bound to the shared fixture store."""
@@ -76,6 +105,8 @@ def _make_handler(store: dict) -> type:
                     "tft_mode": mode == "tft",
                     "last_reload_ok": True,
                 })
+            elif p == "/api/personal-build":
+                self._send_json(_PERSONAL_BUILD_FIXTURE)
             elif p.startswith("/api/"):
                 self._send_json({})
             else:

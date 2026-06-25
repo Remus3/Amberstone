@@ -31,6 +31,13 @@ import {
   fetchCooldownWatch, getCachedCooldownWatch,
   getCooldownWatchCacheCount, renderCooldownWatch,
 } from './cooldown_watch.js';
+// 2026-06-25: personal best-build card (Overlay App E personal-WR build override,
+// local-data half). Reads the operator's OWN locked champion + surfaces the
+// items they win with from rewind_history.db. Backend routes_personal_build.
+import {
+  fetchPersonalBuild, getCachedPersonalBuild,
+  getPersonalBuildCacheCount, renderPersonalBuild, pbwModeForQueue,
+} from './personal_build.js';
 // CS1 (2026-06-08): ally CC-pairing card. Delimited new block - CS3 will
 // also touch champ_select.js; keep CS1 imports + wiring grouped here.
 import {
@@ -1151,6 +1158,11 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // max-rank base cooldown ("watch their hook - 16s"). Joins the CC threat
   // registries to per-rank ability cooldowns from champion_abilities.json.
   _csvRenderCooldownWatch(cs);
+  // 2026-06-25: personal best-build card. For the operator's OWN locked
+  // champion (cs.my_champion), the completed items they win with from their
+  // rewind_history.db - a "your best build" read alongside the DS engine
+  // recommendation. Hidden until a champion locks. Read-only.
+  _csvRenderPersonalBuild(cs);
   // CS1 (2026-06-08): ally CC-pairing card. Surfaces, for the operator's
   // OWN roster, which conditional CC entries a TEAMMATE can set up + the
   // plausible enablers. Read-only join over the existing cc_conditional
@@ -1759,6 +1771,9 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // pairing card re-renders when /api/cc-pairing lands.
   const ccPairCount = getCcPairingCacheCount();
   const cdwCount = getCooldownWatchCacheCount();
+  // 2026-06-25: personal best-build cache state - count keys so the card
+  // re-renders when /api/personal-build lands.
+  const pbwCount = getPersonalBuildCacheCount();
   // CS3 (2026-06-08): ds-sweep / ds-combo / ds-relscore cache counts dropped
   // from the champ-select sig - those panels render on active-match now. The
   // profile / knobs / statcheck counts stay (they still render here).
@@ -1784,7 +1799,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|dsk:${dskCount}|dss:${dssCount}|dsp:${dspCount}|cnt:${counterCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|pbw:${pbwCount}|dsk:${dskCount}|dss:${dssCount}|dsp:${dspCount}|cnt:${counterCount}`,
     verdictKey,
   ].join("|");
 }
@@ -2189,6 +2204,34 @@ function _csvRenderCooldownWatch(cs) {
   fetchCooldownWatch(enemyNames, _csvScheduleRender);
   const payload = getCachedCooldownWatch(enemyNames);
   renderCooldownWatch(block, payload);
+}
+
+// 2026-06-25: personal best-build card. Reads the operator's OWN locked
+// champion (cs.my_champion -> resolveChampNames) and renders, per completed
+// item they win with on it, the win-rate lift vs their own baseline inside the
+// #csv-personal-build block. Mode comes from cs.queue_id (the route's
+// lowercase sr|aram|arena vocabulary). Mirrors _csvRenderCooldownWatch but on
+// the operator's own-pick side. Hidden until a champion is locked + the
+// personal sample clears the backend threshold. Read-only.
+function _csvRenderPersonalBuild(cs) {
+  const block = document.getElementById("csv-personal-build");
+  if (!block) return;
+  const myId = (cs.my_champion | 0);
+  if (myId <= 0) {
+    block.hidden = true;
+    return;
+  }
+  const names = resolveChampNames([myId]);
+  const champ = names.length ? names[0] : "";
+  if (!champ) {
+    // CHAMPS index not yet loaded - keep hidden, resolves next tick.
+    block.hidden = true;
+    return;
+  }
+  const mode = pbwModeForQueue(cs.queue_id);
+  fetchPersonalBuild(champ, mode, _csvScheduleRender);
+  const payload = getCachedPersonalBuild(champ, mode);
+  renderPersonalBuild(block, payload);
 }
 
 // CS1 (2026-06-08): ally CC-pairing card. Reads the operator's OWN roster
