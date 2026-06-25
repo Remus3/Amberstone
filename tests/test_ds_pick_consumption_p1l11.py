@@ -141,6 +141,7 @@ def _aram_prompt_inject(picks_str: str, label: str) -> str:
         my_runes="unknown", enemy_runes="unknown",
         aram_tenacity="",
         enemy_aram_tenacity="",
+        aram_balance="",
         enemy_cc_threats="",
         cc_blended_ehp_impact="",
         cc_conditional_impact="",

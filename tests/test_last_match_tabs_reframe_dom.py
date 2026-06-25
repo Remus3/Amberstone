@@ -54,11 +54,16 @@ class TabStripTests(unittest.TestCase):
             self.assertNotIn(f'data-tab-panel="{legacy}"', html,
                              f"legacy data-tab-panel={legacy!r} still in HTML")
 
-    def test_build_tab_starts_active(self):
-        """Build is the new default landing tab (pre-S4 was Comp)."""
+    def test_ai_analysis_tab_starts_active(self):
+        """AI Analysis is the default landing tab as of the R30 autopsy-first
+        reframe (ledger 604, `372b568b`): the view opens on the WPA/win-prob
+        autopsy, not the Build roster scoreboard (gemini's named trap). Build
+        receded to 3rd. (s220 S4 made Build default; R30 moved it.)"""
         html = _read(INDEX_HTML)
         strip = html.split('class="lm-tabs-strip"', 1)[1].split("</div>", 1)[0]
-        self.assertIn('class="lm-tab is-active" data-tab="build"', strip)
+        self.assertIn('class="lm-tab is-active" data-tab="ai-analysis"', strip)
+        # Build is still present but is NOT the default-active tab anymore.
+        self.assertNotIn('class="lm-tab is-active" data-tab="build"', strip)
 
     def test_review_nav_button_stays(self):
         """The Review nav routes to a deep-review page (lm-tab-nav class)

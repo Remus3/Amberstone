@@ -683,7 +683,7 @@ class CoachWireTests(unittest.TestCase):
             enemy_items="-", matchup_ctx="-", dead="-", alive="-",
             dead_resp="-", my_t=100, en_t=100, augs="-", packs="-",
             wave_pct=50, my_abilities="-", my_runes="-", enemy_runes="-",
-            aram_tenacity="", enemy_aram_tenacity="",
+            aram_tenacity="", enemy_aram_tenacity="", aram_balance="",
             enemy_cc_threats="", cc_blended_ehp_impact="",
             cc_conditional_impact=(
                 "Enemy conditional CC pressure: 1.4s "
