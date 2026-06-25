@@ -142,6 +142,39 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-25 (Track-1 red-cleanup - named full-suite reds CLEARED + DS patch-drift found + auto-accept re-enabled)
+
+Continued ledger 616's NEXT (Track 1). All 7 operator-named pre-existing full-suite reds triaged stale-test vs
+real-regression (NONE were product regressions) + fixed; 1 commit (`0cdafe9c`, 12 files), CI green (3m50s).
+Tier-0/1 (docs + test files; no engine/DS/Share/ENGINE_VERSION). Full suite after = 10 failed / 9414 passed,
+and ALL 10 are the pre-existing snapshot_panels Playwright at-scale flake (0 non-snapshot failures); the named
+logic reds are GONE. GROUND-TRUTH LESSON: my first check passed the WRONG files (`*_view.py` instead of the
+note's `*_dom.py`/`*_e4_counters.py`) and nearly mis-declared the cluster green - the full suite caught it.
+
+- ROADMAP 104KB -> 80KB: relocated 20 shipped entries to docs/ROADMAP_HISTORY.md (3 done UI bullets + 13 overlay
+  SHIPPED slices R17-R28 + 4 closed sub-items), breadcrumb under the overlay header. EOL gotcha: pathlib
+  read_text collapsed CRLF->LF mid-relocate; re-normalized both to uniform CRLF (git stores LF via autocrlf, diff
+  clean -20/+1 + 25/0).
+- aram_balance KeyError (COMPLETE 4-file sibling set): ARAM coach _USER_TMPL gained an {aram_balance} slot; added
+  the key to ds_pick_consumption + the 3 cc_*/enemy_cc context test format() calls (grepped aram_tenacity= for
+  ALL siblings first - the initial fix patched only 1 of 4).
+- Fragile live-data guards -> hermetic: auto_accept_pref/route value-assertion replaced with a module-scoped
+  byte-untouched redirect-regression guard (the flag is operator-toggleable, a False on disk is legit);
+  spell_autopush_e6 first-lock isolated to tmp prefs (live spell_prefs.json mutates by_champ.SR.Caitlyn).
+- Stale R30-redesign DOM tests (functionality verified intact in source, NOT regressions): last_match default tab
+  = AI Analysis not Build (ledger 604); historical_pgr wiring moved into _historyMatchRowEl (0c0bdc16);
+  champ_select counter-picks regex anchored to `_csvRenderSuggestions(` excluding the new NonSr sibling.
+- Auto-accept RE-ENABLED (operator request; gitignored, official set_enabled path). New memory
+  reference_snapshot_panels_session_browser_flake.
+
+PATCH DRIFT (headline orchestrated NEXT): live League + RC DDragon mirror = 16.13.1 (mirror auto-refreshed
+2026-06-24, the unstaged data/meta/* + new 16.13.1/ dir); DS engine current.txt = 16.12.1. The DS patch-refresh
++ patch-keyed precompute (laning/build/HZ) regen to 16.13.1 is the top multi-agent NEXT (SWARM per
+reference_patch_refresh_workflow). Track-2 stays operator-gated/live-blocked: CI Watchdog ARM (do-not-flip-blind),
+HZ re-measurement (needs real-game shadow + now patch-affected), R30/PGR tail (physical game).
+
+---
+
 # 2026-06-25 (bridge decommission COMPLETED - surviving-ref sweep + 2 live residual fixes + stale-test realign)
 
 Follow-on to LEDGER 615 (the prior session removed the bulk but claimed "every importer unwired" - it was NOT).
