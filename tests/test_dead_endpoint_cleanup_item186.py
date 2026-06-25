@@ -75,7 +75,6 @@ _DELETED_HANDLERS: tuple[str, ...] = (
 )
 
 _ROUTE_MODULES: tuple[str, ...] = (
-    "dashboard/routes_bridge.py",
     "dashboard/routes_coach.py",
     "dashboard/routes_diag.py",
     "dashboard/routes_sr_draft.py",

@@ -105,10 +105,6 @@ from agents._supervisor_common import (
     WEB_PORT,
     WEB_ROOT,
     WS_PORT,
-    _BRIDGE_PUB_ALERT_S,
-    _BRIDGE_PUB_CHECK_INTERVAL_S,
-    _BRIDGE_PUB_PEERS,
-    _BRIDGE_PUB_REFILE_COOLDOWN_S,
     _RECONCILE_INTERVAL_S,
     _RECONCILE_STALE_S,
     _DETERMINISTIC_HANDLED_OPS,
@@ -116,7 +112,6 @@ from agents._supervisor_common import (
     _PROJECT_ROOT,
     _SECRET_PATTERNS,
     _STARTED_AT,
-    _bridge_pub_should_file,
     _build_logger,
     _iso_now,
     _pid_alive,
@@ -158,10 +153,6 @@ __all__ = [
     "WEB_PORT",
     "WEB_ROOT",
     "WS_PORT",
-    "_BRIDGE_PUB_ALERT_S",
-    "_BRIDGE_PUB_CHECK_INTERVAL_S",
-    "_BRIDGE_PUB_PEERS",
-    "_BRIDGE_PUB_REFILE_COOLDOWN_S",
     "_RECONCILE_INTERVAL_S",
     "_RECONCILE_STALE_S",
     "_DETERMINISTIC_HANDLED_OPS",
@@ -171,7 +162,6 @@ __all__ = [
     "_SECRET_PATTERNS",
     "_STARTED_AT",
     "_WebServer",
-    "_bridge_pub_should_file",
     "_build_logger",
     "_format_task_prompt",
     "_iso_now",
@@ -299,7 +289,6 @@ class Supervisor:
         asyncio.create_task(self._heartbeat_loop())
         asyncio.create_task(self._dispatch_loop())
         asyncio.create_task(self._warm_ui_watchdog())
-        asyncio.create_task(self._bridge_publisher_watchdog())  # Audit7 H-01
         asyncio.create_task(self._task_queue_reconciler_loop())  # Audit8 H-02
 
         # Decision detector loop (T3 #15, 2026-05-01) - relocated from
@@ -401,84 +390,6 @@ class Supervisor:
                     )
                     self._warm_agent7.close()
                     zero_since = None
-        except asyncio.CancelledError:
-            pass
-
-    # ---- bridge health-publisher watchdog (Audit7 H-01) --------------
-    async def _bridge_publisher_watchdog(self) -> None:
-        """Detect a silent peer bridge health-publisher and file a
-        deduped Agent-1 triage task. The bridge task loop can be alive
-        while only the publisher sub-process is dead (2026-05-18: gamepc
-        silent ~2.7h, peer fresh at 25s) - the rc_facts probe rendered it
-        but nothing escalated. Fully guarded: any read/scheduler fault
-        is swallowed so the loop never dies.
-
-        Dedup: one task per node per outage. ``fired_at`` records the
-        monotonic time of the last filing; a node is re-armed the moment
-        its publisher recovers (age back under threshold), and a still-
-        ongoing outage only re-files after ``_BRIDGE_PUB_REFILE_COOLDOWN_S``
-        so a multi-hour outage doesn't spam the queue. Mirrors the
-        proposal's dedup_key intent ("re-files only when aged out").
-        """
-        peer_dir = _PROJECT_ROOT / "ops" / "runtime" / "peer_health"
-        fired_at: dict[str, float] = {}
-        try:
-            while not self._stop.is_set():
-                await asyncio.sleep(_BRIDGE_PUB_CHECK_INTERVAL_S)
-                if self._scheduler is None:
-                    continue
-                now_mono = time.monotonic()
-                for node in _BRIDGE_PUB_PEERS:
-                    try:
-                        rec_path = peer_dir / f"{node}.json"
-                        if not rec_path.exists():
-                            continue  # never deployed - not an alarm
-                        rec = json.loads(rec_path.read_text(encoding="utf-8"))
-                        recv = rec.get("received_at") or 0
-                        age_s = max(0.0, time.time() - recv)
-                    except Exception as e:  # noqa: BLE001
-                        log.debug("bridge-pub watchdog read %s: %s", node, e)
-                        continue
-                    should_file, rearm = _bridge_pub_should_file(
-                        age_s, fired_at.get(node), now_mono)
-                    if rearm:
-                        fired_at.pop(node, None)  # recovered -> re-arm
-                    if not should_file:
-                        continue
-                    try:
-                        self._scheduler.file_task(
-                            op="bridge-publisher-stale",
-                            owner_agent="1",
-                            priority=50,
-                            payload={
-                                "node": node,
-                                "age_s": int(age_s),
-                                "threshold_s": int(_BRIDGE_PUB_ALERT_S),
-                                "detail": (
-                                    f"{node} bridge health-publisher silent "
-                                    f"{int(age_s)}s - bridge task loop may "
-                                    f"still be alive (only the publisher "
-                                    f"sub-process). False-confidence shape."
-                                ),
-                                "suggested_action": (
-                                    f"Restart the {node} health publisher "
-                                    f"(RC-WatcherHealthPublisher-{node}) on the "
-                                    f"{node} node; see the s167 boot-hardening "
-                                    f"deferral."
-                                ),
-                                "source": "bridge_publisher_watchdog",
-                            },
-                        )
-                        fired_at[node] = now_mono
-                        log.warning(
-                            "bridge-pub watchdog: filed Agent-1 task for "
-                            "%s (age=%ds)", node, int(age_s),
-                        )
-                    except Exception as e:  # noqa: BLE001
-                        log.warning(
-                            "bridge-pub watchdog: file_task for %s "
-                            "failed: %s", node, e,
-                        )
         except asyncio.CancelledError:
             pass
 

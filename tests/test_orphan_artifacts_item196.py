@@ -27,7 +27,6 @@ _DELETED_ORPHAN_ARTIFACTS: tuple[str, ...] = (
     "data/match_history.db.bak-2026-05-10-prune-synthetic",
     "data/rewind_history.db.bak-pre-catchup-2026-05-10",
     "ops/runtime/audit_2026_04_27.md",
-    "ops/runtime/peer_bridge_watcher_feedback.json",
 )
 
 

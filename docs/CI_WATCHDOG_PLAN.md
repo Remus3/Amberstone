@@ -8,7 +8,7 @@ Eliminate the "CI red for N consecutive runs" lane (item 167 ruff blocked CI for
 
 ## Trigger surface
 
-Source-of-truth: `gh run list -R Remus3/riot-commander --branch main --json databaseId,status,conclusion,headSha`. No webhook (local-only; Legion has no public ingress). Poll cadence = 120s (matches RC-BridgeWatcher; cheap; sub-2-min detection is overkill for nightly-paced CI).
+Source-of-truth: `gh run list -R Remus3/riot-commander --branch main --json databaseId,status,conclusion,headSha`. No webhook (local-only; Legion has no public ingress). Poll cadence = 120s (cheap; sub-2-min detection is overkill for nightly-paced CI).
 
 ## Failure scope (in-bounds)
 
@@ -52,7 +52,7 @@ Poller logic (pseudo):
    f. `gh pr create --base main --head ci-fix/<run-id> --title "ci(fix): <one-line root cause>" --body <structured>`.
 5. Update last_seen_run_id.txt.
 
-Failure budget: max 2 PR attempts per run-id (sentinel: `ops/runtime/ci_watchdog/attempts/<run-id>.txt`). On 2nd fail, write ESCALATION.md with the diff + claude transcript + ping operator via bridge.
+Failure budget: max 2 PR attempts per run-id (sentinel: `ops/runtime/ci_watchdog/attempts/<run-id>.txt`). On 2nd fail, write `ops/runtime/ci_watchdog/ESCALATION.md` with the diff + claude transcript for the operator (local-only; the cross-Claude bridge was decommissioned 2026-06-24, ADR-012).
 
 ## Headless claude isolation
 
@@ -60,7 +60,7 @@ Run from a dedicated git worktree at `C:\RC-CIWatchdog\` (not the live Legion ch
 
 ## Scheduled task
 
-`RC-CIWatchdog` on Legion, every 2 min, runs as Administrator, action = `pythonw.exe tools\ci_watchdog.py`. Mirrors RC-BridgeWatcher cadence + identity. HIGHEST priority NO (background-class only).
+`RC-CIWatchdog` on Legion, every 2 min, runs as Administrator, action = `pythonw.exe tools\ci_watchdog.py`. HIGHEST priority NO (background-class only).
 
 ## Cost model
 
@@ -69,7 +69,7 @@ Per-invocation: 1 headless claude run with ~5k input tokens (CI log tail + diff 
 ## Kill switches
 
 - `ops/runtime/ci_watchdog/HALT` presence -> loop exits without action.
-- 2-strike escalation -> ESCALATION.md + bridge note.
+- 2-strike escalation -> local ESCALATION.md (no bridge; decommissioned 2026-06-24, ADR-012).
 - Scheduled task `Disable-ScheduledTask -TaskName RC-CIWatchdog` -> hard stop.
 - Hard upper bound: max 3 PR creations per 24h (rate-limit gate).
 
@@ -102,7 +102,7 @@ Per-invocation: 1 headless claude run with ~5k input tokens (CI log tail + diff 
 ## Open questions - RESOLVED 2026-06-18 (operator)
 
 - PR auto-merge on green CI: YES, AUTO-MERGE (self-heal unattended). `tools/ci_watchdog._MERGE_METHOD` = `--squash` (ci-fix PRs are tiny + CI-green at merge; branch auto-deleted).
-- ESCALATION envelope: REUSE the existing `core.bridge.send` schema, `kind="ci_watchdog_escalation"`, `target="peer"` (see `send_escalation`). No bespoke envelope.
+- ESCALATION: LOCAL-ONLY. The RC<->Peer bridge was decommissioned 2026-06-24 (ADR-012), so `core.bridge.send` no longer exists; on the 2nd failed attempt the watchdog writes `ops/runtime/ci_watchdog/ESCALATION.md` (diff + claude transcript) for the operator. No cross-machine envelope.
 - Self-cancel on a newer main commit: YES, CANCEL + restart on newest HEAD - `is_stale(run_head_sha, current_head_sha)` skips any fix whose target run is no longer at `origin/main` HEAD.
 
 ## Build status - item 204 BUILT 2026-06-18; DISPATCH WIRED 2026-06-24 (still NOT live-armed)

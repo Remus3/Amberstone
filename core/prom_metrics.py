@@ -209,16 +209,15 @@ def render_all() -> str:
     return "\n".join(lines)
 
 # Phase 6: cross-cutting bridge metrics. Co-located in this module so any
-# bridge-touching code (`tools/bridge_cli.py`, `core/bridge.py`,
-# `core/bridge_monitor.py`, future watcher refactors) can record without
-# each module re-declaring its own counters.
+# caller could record without each module re-declaring its own counters.
+# (The cross-Claude bridge was decommissioned 2026-06-24; these primitives
+# are retained as the generic metric mechanism.)
 #
-# Per-process counters reset across CLI invocations - these accumulate
-# usefully only inside long-running processes (the dashboard, the watcher
-# daemon, anything that imports `core.bridge.send`). For one-shot
-# `C:/Users/Administrator/AppData/Local/Programs/Python/Python314/python.exe tools/bridge_cli.py task ...` invocations the counts are emitted
-# but die with the process. That's by design - no shared state file to
-# coordinate across processes, no metrics daemon.
+# Per-process counters reset across invocations - they accumulate usefully
+# only inside long-running processes (e.g. the dashboard). For one-shot CLI
+# invocations the counts are emitted but die with the process. That's by
+# design - no shared state file to coordinate across processes, no metrics
+# daemon.
 class BridgeMetrics:
     """Namespace of bridge-related Prometheus metrics."""
 

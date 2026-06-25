@@ -120,8 +120,8 @@ def test_rate_limited_at_cap(tmp_path):
 # -- frozen-file refusal -------------------------------------------------
 
 def test_touches_frozen_flags_frozen_paths():
-    changed = ["tests/test_x.py", "main.py", "dashboard/routes_bridge_pending.py"]
-    assert cw.touches_frozen(changed) == ["dashboard/routes_bridge_pending.py", "main.py"]
+    changed = ["tests/test_x.py", "main.py", "app/__init__.py"]
+    assert cw.touches_frozen(changed) == ["app/__init__.py", "main.py"]
 
 
 def test_touches_frozen_normalizes_backslashes():

@@ -65,11 +65,8 @@ schtasks /Run /TN "RC-Supervisor"
 | Task | Trigger | Context | Description |
 |---|---|---|---|
 | `RC-Supervisor` | At logon | Administrator / HIGHEST | Runs `pythonw.exe ops/rc_supervisor.py` |
-| `RC-BridgeWatcher` | At logon | Administrator | Silent bridge poll daemon |
 | `RC-DaemonSlayer` | Manual / on demand | Administrator | DS engine server |
 | `RC-DS-MatchDB-MCP` | At logon (operator-gated) | Administrator | Local DS + match-DB MCP (:8894) |
-| `RC-Bridge-MCP` | STALE - not installed live (verify vs RC-BridgeDaemon) | Administrator | Local cross-Claude bridge MCP (:8895) |
-| `RC-BridgeDaemon` | At logon | Administrator | Zero-cost bridge task sentinel (`tools/legion_bridge_daemon.py`) |
 | `RC-CostHealthWatchdog` | At startup + periodic | SYSTEM | Self-healing cost + health watchdog (`tools/cost_health_watchdog.py`) |
 | `RC-GeminiAudit` | Daily | Administrator | Gemini read-only auditor (`tools/gemini_audit.ps1`) |
 | `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/hotkey_listener.py`) |
@@ -83,7 +80,6 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-PatchRefresh` | Weekly Wednesday | Administrator | `data_pipeline.py all` |
 | `RC-Phase3-Supervisor` | At logon | Administrator | Phase 3 agent supervisor |
 | `RC-Phase3-PeriodicAudit` | Scheduled | Administrator | Phase 3 periodic audit |
-| `RC-VerifyBridgeRoundtrip-Once` | Manual | Administrator | One-shot bridge smoke test |
 
 Check state: `Get-ScheduledTask -TaskName "RC-*" | Select TaskName, State`
 
@@ -186,42 +182,6 @@ token covers both local RC MCP servers.
 
 ---
 
-## Local cross-Claude bridge MCP (:8895)
-
-Localhost-only MCP server (`tools/bridge_mcp_server.py`) that wraps the
-local `/api/bridge` surface and `ops/runtime/bridge_inbox_pending.json` as
-MCP tools for a local Claude / agent: `bridge_search`, `bridge_post_note`,
-`bridge_post_task`, `bridge_post_result`, `bridge_post_lesson`,
-`bridge_pending`, `bridge_status`. Reads via GET shuttle to
-`https://127.0.0.1:8888/api/bridge`; `bridge_pending` reads the JSON file
-directly so a pure status probe never requires the dashboard process to
-be up. Writes shuttle to POST `/api/bridge` (the deque + JSONL backup
-are kept in sync there); dashboard-down degrades to a structured error
-dict, never crashes.
-
-```powershell
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\bridge_mcp_server.py --show-token             # token for client config
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools\start_bridge_mcp.py                            # launch (boot wrapper)
-curl http://127.0.0.1:8895/health -H "Authorization: Bearer <token>"
-```
-
-Persistence (operator-gated - new always-on listener; only register once
-a local Claude is actually pointed at it):
-
-```
-schtasks /Create /TN "RC-Bridge-MCP" /SC ONLOGON /RL HIGHEST /F ^
-  /TR "pythonw C:\Riot Commander\tools\start_bridge_mcp.py"
-```
-
-Client wiring (operator-gated; same caveat as RC-DS-MatchDB-MCP): add an
-`mcpServers` entry with `"type": "http"`,
-`"url": "http://127.0.0.1:8895/mcp"`, and the bearer token from
-`--show-token`. Full snippet in the server-file docstring. Token chain is
-the same as the two existing RC MCP servers so one `RC_MCP_TOKEN` covers
-all three.
-
----
-
 ## DDragon mirror refresh (`RC-DDragonMirrorRefresh`)
 
 Keeps `web/data/ddragon/<patch>/img/{champion,passive,spell,item,profileicon,map,perk-images}/`
@@ -285,86 +245,6 @@ weekly cadence is enough. ExecutionTimeLimit caps each run at 20 minutes.
 
 ---
 
-## Bridge operations
-
-Check pending escalations:
-```
-curl -k https://127.0.0.1:8888/api/bridge/pending
-```
-
-Watcher health:
-```
-curl -k https://127.0.0.1:8888/api/health/all    # peers block shows watcher_alive, queue_depth
-```
-
-Bridge cadence:
-```
-curl -k https://127.0.0.1:8888/api/bridge/cadence          # GET - current mode
-curl -k -X POST https://127.0.0.1:8888/api/bridge/cadence  # POST - toggle active/sleep
-```
-
-Or use `/sleep` and `/wake` skills from the Claude session.
-
-Peer watcher drift check (Peer side):
-```
-iex (iwr -UseBasicParsing `
-  https://legion-rc:8888/agent/bridge_watcher_update_check.ps1).Content
-```
-
-This pulls `/agent/_watcher_manifest.json` (sha256+size for the 7-file watcher runtime set), diffs against the local install copy, prints any stale or missing files, and exits 0 (up-to-date), 1 (stale), 2 (manifest fetch failed), or 3 (install dir not found). Pass `-Apply` to re-pull stale files, `-Restart` to bounce the watcher's scheduled task, or `-Quiet` for cron-friendly output. Auto-detects the Peer `.\tools` install dir when not passed explicitly.
-
-The manifest covers the full runtime fileset the watcher imports at module load (`bridge_watcher.py` + `classify` + `actions` + `history` + the config json + hook ps1 + action prompt md), which is wider than the original `bridge_watcher_install.ps1` 4-file pull set - drift in any of the 7 is caught.
-
-### Fresh peer install ritual (2-step)
-
-`bridge_watcher_install.ps1` is frozen (CLAUDE.md hard-rule) and only pulls 4 of the 7 files the daemon imports at module load. A fresh peer install on Peer therefore needs a second step to fill the gap (`bridge_watcher_actions.py`, `bridge_watcher_history.py`, `bridge_watcher_action_prompt.md`) before the watcher will boot.
-
-```
-# Step 1: installer (4 files + scheduled task + heartbeat verify)
-iex (iwr -UseBasicParsing `
-  https://legion-rc:8888/agent/bridge_watcher_install.ps1).Content
-
-# Step 2: drift-check -Apply (catches + pulls the missing 3, no-op if covered)
-iex (iwr -UseBasicParsing `
-  https://legion-rc:8888/agent/bridge_watcher_update_check.ps1).Content `
-  -Apply -Restart
-```
-
-Step 2 is idempotent: re-running it on an already-up-to-date peer exits 0 with no writes. The `-Restart` flag bounces the freshly-installed scheduled task so it picks up the 3 just-pulled files in the same shell. Without Step 2 the watcher's `bridge_watcher.py` import of `bridge_watcher_actions` / `bridge_watcher_history` would crash at module load (hard imports, not try/except).
-
-Re-run `bridge_watcher_update_check.ps1` (no flags) periodically or from cron to verify the install stays in sync with the canonical Legion copy.
-
-### Cross-Claude lessons (Phase 4 surface)
-
-Lesson sync status (sender ledger + per-(peer, mem_type) smoothed confidence):
-```
-curl -k https://127.0.0.1:8888/api/lessons/status         # JSON (refreshes acks first)
-curl -k "https://127.0.0.1:8888/api/lessons/status?refresh=0"  # snapshot only, skip bridge
-```
-
-CLI equivalent (also pokes the bridge for any new acks):
-```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/lessons_status.py            # JSON
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/lessons_status.py --plain    # tabular per-bucket view
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" tools/lessons_status.py --no-refresh
-```
-
-Apply-with-revert wrapper (Claude/operator-driven; the receiver still
-auto-handles only schema-reject + neg-match):
-```
-"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" -m core.lessons_revert <lesson_id> --commit-sha <sha> --tests tests/test_x.py
-```
-On post-apply test failure + commit_sha given: runs `git revert <sha>
---no-edit` and sends a follow-up `kind=result` ack with
-`auto_reverted=true`. Without commit_sha the fallback is to queue the
-lesson (no apply ack-took claim).
-
-Auto-revert is intentionally NOT a daemon - it is a safety net invoked
-by Claude when an applied lesson lands in a commit (vision section 5
-Phase 4 framing).
-
----
-
 ## TLS certificate
 
 Dashboard cert: `tools/regen_rc_cert.ps1` (run elevated, restarts dashboard).
@@ -403,10 +283,6 @@ python -m py_compile <file.py>
 | Path | What it is |
 |---|---|
 | `ops/runtime/health.json` | Live PID + mode + alive flag |
-| `ops/runtime/bridge_watcher_health.json` | Watcher daemon health |
-| `ops/runtime/bridge_inbox_pending.json` | Escalation queue |
-| `ops/runtime/bridge_log.jsonl` | Last 1000 bridge messages (persisted) |
 | `data/{aram,arena,brawl,tft}_coaching_data.json` | Current game state per mode |
 | `logs/YYYY-MM-DD.log` | Daily log (30-day retention) |
 | `config/vision_token.txt` | Vision server auth token |
-| `ops/local_paths.json` | Bridge secrets (gitignored) |

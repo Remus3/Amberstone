@@ -16,7 +16,7 @@
 @import './panels/base.css';
 @import './panels/header.css';
 @import './panels/grid.css';
-@import './panels/bridge_pending.css';
+@import './panels/coach_decisions.css';
 @import './panels/map_state.css';
 @import './panels/right_now.css';
 @import './panels/next.css';

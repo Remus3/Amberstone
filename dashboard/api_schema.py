@@ -147,19 +147,6 @@ class ArchetypeNudgePayload(_AllowExtra):
     session_token: str = ""
 
 
-# -- POST /api/bridge/inbox ------------------------------------------------
-
-class BridgeInboxRequest(_AllowExtra):
-    """Cross-Claude bridge envelope received at /api/bridge/inbox."""
-    source: str
-    summary: str
-    kind: str = "note"
-    id: Optional[str] = None
-    target: Optional[str] = None
-    body: Optional[dict[str, Any]] = None
-    in_reply_to: Optional[str] = None
-
-
 # -- POST /api/speak -------------------------------------------------------
 
 class SpeakRequest(_AllowExtra):

@@ -59,19 +59,7 @@ if ($p3) {
     Write-Host "  RC-Phase3-Supervisor: TASK NOT FOUND -- run ops\phase3_install.ps1" -ForegroundColor Red
 }
 
-# 5. RC-BridgeWatcher (bridge escalation monitor - should always be Running)
-$bw = Get-ScheduledTask -TaskName "RC-BridgeWatcher" -ErrorAction SilentlyContinue
-if ($bw) {
-    if ($bw.State -ne "Running") {
-        Write-Host "  RC-BridgeWatcher: NOT running (state=$($bw.State))" -ForegroundColor Yellow
-    } else {
-        Write-Host "  RC-BridgeWatcher: running" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  RC-BridgeWatcher: TASK NOT FOUND" -ForegroundColor Red
-}
-
-# 6. Wait briefly for HTTP endpoints to come up if just started
+# 5. Wait briefly for HTTP endpoints to come up if just started
 Start-Sleep -Seconds 3
 
 # 7. Probe vision server :8889

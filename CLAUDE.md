@@ -2,7 +2,7 @@
 
 Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude Haiku for coaching and Sonnet for vision, writes JSON to `data/`, serves `:8888` HTTPS dashboard locally on Legion (1-PC since 2026-05-29; ADR-011). RC is tkinter-free (scheduler is asyncio AppLoop; 13 residual .after() files); Daemon Slayer (`:8893`) computes real DPS math per champion.
 
-> **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/BRIDGE.md` · `ROADMAP.md` · `docs/API.md`
+> **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `ROADMAP.md` · `docs/API.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine - 705 items / 172 champs - ENGINE_VERSION 1.101.0 - all 6 archetype scorers wired + per-spell CC consumer + cc_blended_ehp ecosystem COMPLETE 4 consumers + per-spell CC wave 9 108/89 + cc_conditional ecosystem COMPLETE 5 consumers wave 6 36/32 + survivability axes heal/shield/DR/resist-grant COMPLETE across both EHP scorers incl flat + rank-scaled-block + percent-of-resist + unlabeled-multi-stat-block + form-occupancy + per-stack-unbounded modes + revive/second-life EHP-numerator multiplier Anivia/Zac) - `docs/AGENTS.md` (Phase 3 framework) - `BACKLOG.md` (aspirational)
 > **Architectural decisions:** `docs/adr/` - before re-litigating a past choice, check here first.
 > **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
@@ -12,7 +12,7 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 | Machine | Tailnet / IP | LAN IP | Role |
 |---|---|---|---|
 | **Legion** | `legion-rc` / `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): runs League + Vanguard + RC + supervisor + vision server + dashboard + OBS. Relocated agents run local as ONLOGON tasks: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Tailscale node stays `legion-rc` though Windows hostname is now `DESKTOP-JKZECV9` |
-| **Peer** | `peer-host` / `<peer-tailnet-ip>` | - | Cross-Claude peer; RC<->Peer bridge |
+| **Peer** | `peer-host` / `<peer-tailnet-ip>` | - | Separate machine (separate private project); RC<->Peer cross-Claude bridge decommissioned 2026-06-24 |
 
 Both in tailnet `tailc150de.ts.net` (Game-PC retired from the pipeline 2026-05-29, ADR-011). Prefer tailnet hostnames. Vision runs in-process at `127.0.0.1:8889`. The game host is config not code: `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`) is where every live reader finds Live Client `:2999` + LCU.
 
@@ -32,19 +32,13 @@ Both in tailnet `tailc150de.ts.net` (Game-PC retired from the pipeline 2026-05-2
 - **Restart via `restart_trigger.txt`** (write any content; supervisor clears + restarts within ~5s).
 - **`SCRIPT_DIR` in `app/__init__.py` MUST be `Path(__file__).parent.parent`** (package layout).
 - **State assumptions explicitly before coding.**
-- **No em-dashes or en-dashes - ever (7-bit ASCII authored content).** Hard rule across Legion / Peer, in *all* authored text: code, comments, docstrings, `.md`, writeups, commit messages, WAKEUP/ROADMAP/CLAUDE, bridge messages, chat output. Use ` - ` (spaced hyphen) for a clause break, `-` otherwise. Also avoid smart quotes (U+201C U+201D U+2018 U+2019) and en/em dashes (U+2013 U+2014); stay ASCII. **Why:** Windows PowerShell 5.1 `ParseFile` ANSI-decodes a no-BOM `.ps1`, turning a UTF-8 em-dash inside a double-quoted string into a U+201D smart-quote that the tokenizer treats as a string terminator -> cascading parse failure (2026-05-18 boot-script incident); also a standing operator style rule. **Retroactive purge done** (2026-05-18, `tools/strip_em_dashes.py` - reusable for drift checks): em+en dashes stripped repo-wide incl. the functional `"-"` no-data sentinel in code/JSON (operator-approved behavior change - empty dashboard cells render `-`). **NOT swept** (immutable history / non-source): `*.log` + rotated `*.log.N`, `docs/_archive/**` + dated artifacts, `.jsonl` ledgers, binaries, `.pyc`/`.git`. Smart quotes are rule-banned going forward but not yet retroactively swept (separate operator-gated pass).
+- **No em-dashes or en-dashes - ever (7-bit ASCII authored content).** Hard rule across Legion / Peer, in *all* authored text: code, comments, docstrings, `.md`, writeups, commit messages, WAKEUP/ROADMAP/CLAUDE, chat output. Use ` - ` (spaced hyphen) for a clause break, `-` otherwise. Also avoid smart quotes (U+201C U+201D U+2018 U+2019) and en/em dashes (U+2013 U+2014); stay ASCII. **Why:** Windows PowerShell 5.1 `ParseFile` ANSI-decodes a no-BOM `.ps1`, turning a UTF-8 em-dash inside a double-quoted string into a U+201D smart-quote that the tokenizer treats as a string terminator -> cascading parse failure (2026-05-18 boot-script incident); also a standing operator style rule. **Retroactive purge done** (2026-05-18, `tools/strip_em_dashes.py` - reusable for drift checks): em+en dashes stripped repo-wide incl. the functional `"-"` no-data sentinel in code/JSON (operator-approved behavior change - empty dashboard cells render `-`). **NOT swept** (immutable history / non-source): `*.log` + rotated `*.log.N`, `docs/_archive/**` + dated artifacts, `.jsonl` ledgers, binaries, `.pyc`/`.git`. Smart quotes are rule-banned going forward but not yet retroactively swept (separate operator-gated pass).
 - **Frozen files** (do not modify without explicit user approval):
   `main.py`, `core/log_setup.py`, `core/moon_proxy.py`, `lcu/lcu_client.py`,
   `core/game_snapshot.py`, `ops/rc_dev_runtime.py`, `ops/rc_supervisor.py`,
   `app/__init__.py`, `app/_loop.py`, `app/_health_monitor.py`, `app/_remediation.py`,
   `app/_state_authority.py`, `app/_overlay_manager.py`, `app/_game_lifecycle.py`,
-  `tools/bridge_watcher_classify.py`,
-  `tools/bridge_watcher_actions.py`, `tools/bridge_watcher_action_prompt.md`,
-  `tools/bridge_watcher_history.py`, `tools/bridge_watcher_install.ps1`,
-  `tools/bridge_watcher_hook.ps1`, `tools/bridge_watcher_config.json`,
-  `tools/bridge_post_result.py`, `tools/bridge_pull_tasks.py`,
-  `tools/process-bridge-tasks.md`, `tools/diagnose.md`, `tools/caveman.md`,
-  `dashboard/routes_bridge_pending.py`, `ops/RC-BridgeWatcher.xml`.
+  `tools/diagnose.md`, `tools/caveman.md`.
 
 ## Restart workflow
 
@@ -102,11 +96,11 @@ Enforcement (hooks in `.claude/settings.json`): PostToolUse `tools/pytest_guard.
 
 ## Web dashboard
 
-`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/bridge/pending`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-peer`).
+`web_dashboard.py` at `:8888` HTTPS. Key endpoints: `/`, `/api/state`, `/api/health/all`, `/api/input`, `/api/command`, `/api/ds-preview`, `/metrics`. Viewed in Chrome on Legion at `https://legion-rc:8888/` - design baseline is **standard 1920×1080 with Chrome chrome present** (titlebar + URL bar + bookmarks bar visible, usable viewport ≈ 1920×~920). F11 fullscreen is optional and recovers the chrome chrome - `main` flex-grows into the extra height (no layout pinned to 1280). Cert via `tools/regen_rc_cert.ps1`. Each machine has its own Anthropic API key (`riot-commander-legion`, `riot-commander-peer`).
 
 ## Scheduled tasks (Legion)
 
-Key: `RC-Supervisor` (logon, Administrator, HIGHEST) · `RC-BridgeWatcher` (logon, daemon). Vision has NO scheduled task (removed 2026-06-11, deep-audit P2): `dashboard/server.py` self-heals `:8889` in-process. Full list: `docs/OPERATIONS.md`.
+Key: `RC-Supervisor` (logon, Administrator, HIGHEST). Vision has NO scheduled task (removed 2026-06-11, deep-audit P2): `dashboard/server.py` self-heals `:8889` in-process. Full list: `docs/OPERATIONS.md`.
 
 ## Vision pipeline
 
@@ -123,7 +117,6 @@ The `screen_agent.py` agent (Legion-local) POSTs frames every 2s to `:8889/uploa
 - Recent activity: `logs/YYYY-MM-DD.log`
 - Architecture / module map: `docs/ARCHITECTURE.md`
 - Ops commands + restart: `docs/OPERATIONS.md`
-- Bridge wire format + watcher: `docs/BRIDGE.md`
 - Open work: `ROADMAP.md` · Aspirational: `BACKLOG.md` · History: `docs/history_notes.md`
 
 ## Useful commands
@@ -135,21 +128,6 @@ echo restart > restart_trigger.txt
 curl -k https://127.0.0.1:8888/api/health/all
 ```
 
-## Memory frontmatter - cross-project sync fields
-
-Standard memory files carry `name`, `description`, `type`. Two optional fields
-are valid for memories that should ride the RC↔Peer bridge (Phase 1 schema,
-`docs io RC peer/RC_PHASE1_LESSON_SCHEMA_2026-05-02.md`):
-
-```yaml
-cross_project: true          # opt-in; default false. Only feedback/reference/project eligible.
-applies_when: "<trigger>"    # required when cross_project=true; free-form grep-able phrase
-does_not_apply_when:         # optional list; receiver skips if any entry matches local context
-  - "<neg-trigger>"
-```
-
-`type: user` memories are never eligible. Default is OFF - author decides at write-time.
-False-negatives are recoverable (edit frontmatter later); false-positives are bridge spam.
 
 ## TDD First
 

@@ -21,7 +21,6 @@ _EXPECTED_KNOWN_PATHS = {
     "/api/command",
     "/api/ds-preview",
     "/api/build-order",
-    "/api/bridge/inbox",
     "/api/speak",
     "/api/team-context/refresh",
 }
@@ -83,13 +82,6 @@ class TestKnownPathValid:
             })
         assert _warnings(caplog) == []
 
-    def test_bridge_inbox_minimal_valid(self, caplog):
-        with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
-            _validate_request_body("/api/bridge/inbox", {
-                "source": "peer", "summary": "ping",
-            })
-        assert _warnings(caplog) == []
-
     def test_speak_minimal_valid(self, caplog):
         with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
             _validate_request_body("/api/speak", {"text": "hello world"})
@@ -125,21 +117,6 @@ class TestKnownPathInvalid:
                                    {"command": "refresh", "extra": 1})
         msgs = _warnings(caplog)
         assert any("extra" in m for m in msgs), msgs
-
-    def test_bridge_inbox_extra_field_passes_allow_extra(self, caplog):
-        # BridgeInboxRequest uses _AllowExtra - extras should NOT warn.
-        with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
-            _validate_request_body("/api/bridge/inbox", {
-                "source": "peer", "summary": "ok",
-                "rich_metadata": {"deep": {"nested": True}},
-            })
-        assert _warnings(caplog) == []
-
-    def test_bridge_inbox_missing_summary_warns(self, caplog):
-        with caplog.at_level(logging.WARNING, logger="rc.dispatch"):
-            _validate_request_body("/api/bridge/inbox", {"source": "peer"})
-        msgs = _warnings(caplog)
-        assert any("summary" in m for m in msgs), msgs
 
     def test_ds_preview_missing_champion_warns(self, caplog):
         with caplog.at_level(logging.WARNING, logger="rc.dispatch"):

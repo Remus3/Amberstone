@@ -70,39 +70,7 @@ def _resolve_auth_token() -> str:
         except OSError: pass
     return "8e8f131e212b329438218eca27372dde"
 
-def _resolve_bridge_secret() -> str:
-    """Resolve the cross-Claude bridge bearer secret used to auth to
-    Legion's :8888/api/team-context/refresh route. Lookup order:
-
-      1. RC_BRIDGE_SECRET env var
-      2. bridge_secret.txt sibling file (single line)
-      3. local_paths.json sibling file ({"bridge_shared_secret": "..."})
-
-    Returns "" when nothing is configured. Callers MUST treat empty as
-    "skip the POST" - there is no historical default to fall back to,
-    and an unauthenticated POST would 401 anyway.
-    """
-    env = _os_tok.environ.get("RC_BRIDGE_SECRET")
-    if env: return env.strip()
-    here = _Path_tok(__file__).resolve().parent
-    txt = here / "bridge_secret.txt"
-    try:
-        if txt.exists():
-            line = txt.read_text(encoding="utf-8").splitlines()[0].strip()
-            if line: return line
-    except OSError: pass
-    cfg = here / "local_paths.json"
-    try:
-        if cfg.exists():
-            data = json.loads(cfg.read_text(encoding="utf-8"))
-            if isinstance(data, dict):
-                secret = data.get("bridge_shared_secret") or ""
-                return str(secret).strip()
-    except (OSError, ValueError): pass
-    return ""
-
 TOKEN  = _resolve_auth_token()
-BRIDGE_SECRET = _resolve_bridge_secret()    # "" -> team-context POST skipped
 INTERVAL      = 1.0   # state-push cadence (slow during in-game; OK)
 AUTO_INTERVAL = 0.5   # ready-check / summoner-override poll cadence
 CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence (idle)
@@ -1785,7 +1753,6 @@ _team_context_state = {
     "last_phase":           None,    # phase from prior cycle
     "last_picks_signature": None,    # sorted (cellId, championId) tuples
     "last_post_at":         0.0,     # monotonic ts of last successful POST
-    "warned_no_secret":     False,   # one-shot log gate
 }
 
 
@@ -1830,17 +1797,16 @@ def _build_team_context_body(cs: dict) -> dict:
 
 def post_team_context_refresh(body: dict) -> tuple[bool, str]:
     """POST roster snapshot to Legion's team-context endpoint. Returns
-    (ok, detail). Never raises - bridge auth missing or dashboard
-    offline both surface as (False, "<reason>")."""
-    if not BRIDGE_SECRET:
-        return (False, "no_bridge_secret")
+    (ok, detail). Never raises - a dashboard-offline / network error
+    surfaces as (False, "<reason>"). The route is local-only and
+    unauthenticated since the cross-Claude bridge was decommissioned
+    (ADR-012), so no bearer is sent."""
     url = f"{LEGION_DASHBOARD}/api/team-context/refresh"
     data = json.dumps(body).encode()
     req = urllib.request.Request(
         url, data=data, method="POST",
         headers={
             "Content-Type":  "application/json",
-            "Authorization": f"Bearer {BRIDGE_SECRET}",
             "User-Agent":    "rc-lcu-agent/0",
         },
     )
@@ -1871,15 +1837,6 @@ def _maybe_refresh_team_context(state: dict) -> None:
         if prev_phase == "ChampSelect":
             _team_context_state["last_picks_signature"] = None
             _team_context_state["last_post_at"] = 0.0
-        return
-
-    # Bridge secret missing - warn once, never spam the log.
-    if not BRIDGE_SECRET:
-        if not _team_context_state["warned_no_secret"]:
-            print("[team-context] bridge secret unset - skipping refresh "
-                  "POST. Set RC_BRIDGE_SECRET env or drop bridge_secret.txt.",
-                  flush=True)
-            _team_context_state["warned_no_secret"] = True
         return
 
     # Champion-name cache may not be loaded yet on the first cycles

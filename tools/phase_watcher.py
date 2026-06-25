@@ -16,8 +16,9 @@ Operator scope-fork answers (session 2026-05-27):
 - Q4 Cherry urgency: standard per-tuple debounce; operator can flip
   CHERRY_NO_DEBOUNCE = True later if they need every available[] change
   per Arena game.
-- Q5 bridge envelope: YES emit kind=ui_capture envelope on Legion bridge
-  for UI-audit-ritual subagent subscription.
+  (The RC<->Peer cross-Claude bridge was decommissioned 2026-06-24; the
+  former kind=ui_capture envelope emit is removed. Captures land via the
+  /upload-frame vision pipeline + the JSON sidecar only.)
 
 Deploy (one-time):
   1. Copy this file to C:\\RC-Agent\\
@@ -41,11 +42,9 @@ import threading
 import time
 import urllib.error
 import urllib.request
-import uuid
 from pathlib import Path
 
 LEGION_VISION = "http://192.168.8.230:8889"
-LEGION_BRIDGE = "https://192.168.8.230:8888/api/bridge"
 DEFAULT_TIMEOUT = 4.0
 
 
@@ -127,10 +126,6 @@ log = logging.getLogger("phase_watcher")
 _ssl_ctx_lcu = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 _ssl_ctx_lcu.check_hostname = False
 _ssl_ctx_lcu.verify_mode = ssl.CERT_NONE
-
-_ssl_ctx_bridge = ssl.create_default_context()
-_ssl_ctx_bridge.check_hostname = False
-_ssl_ctx_bridge.verify_mode = ssl.CERT_NONE
 
 _lcu = {"port": None, "pwd": None}
 _lcu_lock = threading.Lock()
@@ -410,7 +405,7 @@ def capture_both_monitors() -> list[dict]:
     return out
 
 
-# -- Upload + sidecar + bridge ----------------------------------------------
+# -- Upload + sidecar -------------------------------------------------------
 
 def build_upload_payload(*, b64: str, fmt: str, w: int, h: int,
                          source: str, primary: bool,
@@ -471,36 +466,6 @@ def write_sidecar(base_dir: Path, meta: dict, frame_meta: list[dict]) -> Path:
     return path
 
 
-def build_bridge_envelope(*, topic: str, sub_phase: str,
-                          queue_id: int | None,
-                          captured_at: str,
-                          frames: list[dict]) -> dict:
-    """Build the ``kind=ui_capture`` envelope per Q5 default-YES.
-
-    Shape mirrors tools/bridge_cli.cmd_task (kind/id/source/target/
-    summary/body). The UI-audit-ritual subagent on Legion can subscribe
-    to ``kind=ui_capture`` envelopes specifically.
-    """
-    short = topic.lstrip("/").split("/")[0] if topic else "unknown"
-    qid_str = "none" if queue_id is None else str(queue_id)
-    summary = (f"ui_capture {short} {sub_phase} q={qid_str} "
-               f"frames={len(frames)}")
-    return {
-        "kind": "ui_capture",
-        "id": f"uicap-{uuid.uuid4().hex[:12]}",
-        "source": "legion",
-        "target": "legion",
-        "summary": summary,
-        "body": {
-            "topic": topic,
-            "sub_phase": sub_phase,
-            "queue_id": queue_id,
-            "captured_at": captured_at,
-            "frames": list(frames),
-        },
-    }
-
-
 def upload_event_frame(payload: dict, *,
                        timeout: float = DEFAULT_TIMEOUT) -> dict:
     body = json.dumps(payload).encode()
@@ -513,25 +478,14 @@ def upload_event_frame(payload: dict, *,
         return json.loads(r.read())
 
 
-def post_bridge_envelope(envelope: dict, *,
-                         timeout: float = DEFAULT_TIMEOUT) -> dict:
-    body = json.dumps(envelope).encode()
-    req = urllib.request.Request(
-        LEGION_BRIDGE, data=body, method="POST",
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=timeout,
-                                context=_ssl_ctx_bridge) as r:
-        return json.loads(r.read())
-
-
 # -- Capture orchestration --------------------------------------------------
 
 def handle_event(topic: str, data: object, queue_id: int | None, *,
                  debouncer: Debouncer,
-                 sidecar_dir: Path) -> dict | None:
-    """End-to-end event handler. Returns the bridge envelope on capture
-    success or None when debounced / classifier returned None.
+                 sidecar_dir: Path) -> list[dict] | None:
+    """End-to-end event handler. Returns the uploaded per-monitor frame
+    metadata list on capture success or None when debounced / classifier
+    returned None / no frames uploaded.
     """
     classified = dispatch_topic(topic, data=data, queue_id=queue_id)
     if classified is None:
@@ -578,7 +532,7 @@ def handle_event(topic: str, data: object, queue_id: int | None, *,
         })
 
     if not frames_meta:
-        log.warning("no frames uploaded for %s/%s; skipping sidecar+bridge",
+        log.warning("no frames uploaded for %s/%s; skipping sidecar",
                     topic_short, sub_phase)
         return None
 
@@ -593,16 +547,7 @@ def handle_event(topic: str, data: object, queue_id: int | None, *,
     except OSError as exc:
         log.warning("sidecar write failed: %s", exc)
 
-    envelope = build_bridge_envelope(
-        topic=topic, sub_phase=sub_phase, queue_id=qid,
-        captured_at=captured_at, frames=frames_meta,
-    )
-    try:
-        post_bridge_envelope(envelope)
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
-        log.warning("bridge envelope post failed: %s", exc)
-
-    return envelope
+    return frames_meta
 
 
 # -- WAMP loop (live deployment) --------------------------------------------

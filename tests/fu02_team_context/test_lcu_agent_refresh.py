@@ -1,12 +1,12 @@
 """FU02 last-mile - Legion-local LCU agent -> /api/team-context/refresh wiring.
 
 Pins the contract for the new helpers added to `tools/lcu_agent.py`:
-  - bridge-secret resolver (env -> bridge_secret.txt -> local_paths.json -> "")
   - _picks_signature edge-detection
   - _build_team_context_body wire-shape translation
   - _champion_name_for fallback behavior
   - _maybe_refresh_team_context edge-trigger + rate-limit + leave-CS reset
-  - post_team_context_refresh bearer-auth header + skip-when-no-secret
+  - post_team_context_refresh no-auth POST (route is local-only since the
+    cross-Claude bridge was decommissioned, ADR-012)
 
 The agent runs standalone (Legion-local) and is stdlib-only; tests import via
 `sys.path.insert("tools")` since tools/ has no __init__.py.
@@ -28,69 +28,14 @@ import lcu_agent as agent  # noqa: E402
 
 def _reset_module_state():
     """Reset the agent's shared mutable state between cases so order
-    can't leak. Tests that patch BRIDGE_SECRET still need to call this
-    in setUp/tearDown."""
+    can't leak."""
     agent._team_context_state.update({
         "last_phase":           None,
         "last_picks_signature": None,
         "last_post_at":         0.0,
-        "warned_no_secret":     False,
     })
     agent._CHAMP_NAME_CACHE.clear()
     agent._CHAMP_NAME_CACHE_LOADED = False
-
-
-class TestResolveBridgeSecret(unittest.TestCase):
-    def test_env_var_takes_priority(self):
-        with mock.patch.dict(agent._os_tok.environ,
-                             {"RC_BRIDGE_SECRET": "env-secret"}):
-            self.assertEqual(agent._resolve_bridge_secret(), "env-secret")
-
-    def test_env_var_strips_whitespace(self):
-        with mock.patch.dict(agent._os_tok.environ,
-                             {"RC_BRIDGE_SECRET": "  spaced  "}):
-            self.assertEqual(agent._resolve_bridge_secret(), "spaced")
-
-    def test_file_fallback_used_when_no_env(self):
-        # Patch the script's parent dir to a tmp dir + drop a token file.
-        import tempfile
-        with tempfile.TemporaryDirectory() as td:
-            tdp = Path(td)
-            (tdp / "bridge_secret.txt").write_text(
-                "file-secret\n", encoding="utf-8")
-            with mock.patch.dict(agent._os_tok.environ,
-                                 {}, clear=True), \
-                 mock.patch.object(agent, "_Path_tok") as fakepath:
-                # _Path_tok(__file__).resolve().parent -> our tdp
-                fakepath.return_value.resolve.return_value.parent = tdp
-                # ".../bridge_secret.txt" composes via /; rebuild it from
-                # our real Path so .exists() / .read_text() work.
-                self.assertEqual(
-                    agent._resolve_bridge_secret(), "file-secret")
-
-    def test_local_paths_json_fallback(self):
-        import tempfile
-        with tempfile.TemporaryDirectory() as td:
-            tdp = Path(td)
-            (tdp / "local_paths.json").write_text(
-                json.dumps({"bridge_shared_secret": "json-secret"}),
-                encoding="utf-8")
-            with mock.patch.dict(agent._os_tok.environ,
-                                 {}, clear=True), \
-                 mock.patch.object(agent, "_Path_tok") as fakepath:
-                fakepath.return_value.resolve.return_value.parent = tdp
-                self.assertEqual(
-                    agent._resolve_bridge_secret(), "json-secret")
-
-    def test_empty_when_nothing_configured(self):
-        import tempfile
-        with tempfile.TemporaryDirectory() as td:
-            tdp = Path(td)
-            with mock.patch.dict(agent._os_tok.environ,
-                                 {}, clear=True), \
-                 mock.patch.object(agent, "_Path_tok") as fakepath:
-                fakepath.return_value.resolve.return_value.parent = tdp
-                self.assertEqual(agent._resolve_bridge_secret(), "")
 
 
 class TestPicksSignature(unittest.TestCase):
@@ -231,14 +176,9 @@ class TestPostTeamContextRefresh(unittest.TestCase):
     def tearDown(self):
         _reset_module_state()
 
-    def test_skipped_when_no_secret(self):
-        with mock.patch.object(agent, "BRIDGE_SECRET", ""):
-            ok, detail = agent.post_team_context_refresh(
-                {"queue_id": 420, "roster": []})
-        self.assertFalse(ok)
-        self.assertEqual(detail, "no_bridge_secret")
-
-    def test_posts_with_bearer_header(self):
+    def test_posts_no_auth_header(self):
+        # Post-ADR-012 the route is local-only + unauthenticated, so the
+        # client always posts and sends NO Authorization header.
         captured = {}
 
         class _FakeResp:
@@ -257,8 +197,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
         body = {"queue_id": 420,
                 "roster": [{"puuid": "p1", "summoner_name": "S",
                             "team_id": 100, "locked_champion": "Camille"}]}
-        with mock.patch.object(agent, "BRIDGE_SECRET", "test-secret"), \
-             mock.patch.object(agent.urllib.request, "urlopen",
+        with mock.patch.object(agent.urllib.request, "urlopen",
                                side_effect=_fake_urlopen):
             ok, detail = agent.post_team_context_refresh(body)
         self.assertTrue(ok)
@@ -266,7 +205,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
         self.assertEqual(captured["url"],
                          "https://192.168.8.230:8888/api/team-context/refresh")
         self.assertEqual(captured["method"], "POST")
-        self.assertEqual(captured["auth"], "Bearer test-secret")
+        self.assertIsNone(captured["auth"])   # no bearer post-decommission
         self.assertEqual(captured["ctype"], "application/json")
         sent = json.loads(captured["body"])
         self.assertEqual(sent["queue_id"], 420)
@@ -278,8 +217,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
         def _fake_urlopen(*_, **__):
             raise urllib.error.HTTPError(
                 "u", 401, "unauth", hdrs=None, fp=None)
-        with mock.patch.object(agent, "BRIDGE_SECRET", "test-secret"), \
-             mock.patch.object(agent.urllib.request, "urlopen",
+        with mock.patch.object(agent.urllib.request, "urlopen",
                                side_effect=_fake_urlopen):
             ok, detail = agent.post_team_context_refresh(
                 {"queue_id": 0, "roster": []})
@@ -291,8 +229,7 @@ class TestPostTeamContextRefresh(unittest.TestCase):
 
         def _fake_urlopen(*_, **__):
             raise urllib.error.URLError("connection refused")
-        with mock.patch.object(agent, "BRIDGE_SECRET", "test-secret"), \
-             mock.patch.object(agent.urllib.request, "urlopen",
+        with mock.patch.object(agent.urllib.request, "urlopen",
                                side_effect=_fake_urlopen):
             ok, detail = agent.post_team_context_refresh(
                 {"queue_id": 0, "roster": []})
@@ -319,36 +256,17 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
         return {"phase": phase, "champ_select": cs or {}}
 
     def test_no_post_outside_champselect(self):
-        with mock.patch.object(agent, "BRIDGE_SECRET", "x"), \
-             mock.patch.object(agent, "post_team_context_refresh",
+        with mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m:
             agent._maybe_refresh_team_context(self._state("Lobby"))
         self.assertEqual(m.call_count, 0)
-
-    def test_skipped_when_no_bridge_secret_warns_once(self):
-        cs = self._state("ChampSelect",
-                          picks={"my": [{"cellId": 0, "championId": 1,
-                                         "puuid": "p"}],
-                                 "their": []})
-        with mock.patch.object(agent, "BRIDGE_SECRET", ""), \
-             mock.patch.object(agent, "post_team_context_refresh",
-                               return_value=(True, "ok")) as m, \
-             mock.patch("builtins.print") as pr:
-            agent._maybe_refresh_team_context(cs)
-            agent._maybe_refresh_team_context(cs)   # second cycle
-        self.assertEqual(m.call_count, 0)
-        # Warned exactly once across two cycles.
-        warn_calls = [c for c in pr.call_args_list
-                      if "bridge secret unset" in str(c)]
-        self.assertEqual(len(warn_calls), 1)
 
     def test_posts_on_champselect_entry(self):
         cs = self._state("ChampSelect",
                           picks={"my": [{"cellId": 0, "championId": 1,
                                          "puuid": "p"}],
                                  "their": []})
-        with mock.patch.object(agent, "BRIDGE_SECRET", "x"), \
-             mock.patch.object(agent, "_maybe_load_champion_names"), \
+        with mock.patch.object(agent, "_maybe_load_champion_names"), \
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m:
             agent._maybe_refresh_team_context(cs)
@@ -361,8 +279,7 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
                           picks={"my": [{"cellId": 0, "championId": 1,
                                          "puuid": "p"}],
                                  "their": []})
-        with mock.patch.object(agent, "BRIDGE_SECRET", "x"), \
-             mock.patch.object(agent, "_maybe_load_champion_names"), \
+        with mock.patch.object(agent, "_maybe_load_champion_names"), \
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m:
             agent._maybe_refresh_team_context(cs)   # entry -> POST
@@ -379,8 +296,7 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
                            picks={"my": [{"cellId": 0, "championId": 99,
                                           "puuid": "p"}],
                                   "their": []})
-        with mock.patch.object(agent, "BRIDGE_SECRET", "x"), \
-             mock.patch.object(agent, "_maybe_load_champion_names"), \
+        with mock.patch.object(agent, "_maybe_load_champion_names"), \
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m, \
              mock.patch.object(agent, "TEAM_CONTEXT_REPOST_S", 0.0):
@@ -397,8 +313,7 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
                            picks={"my": [{"cellId": 0, "championId": 1,
                                           "puuid": "p"}],
                                   "their": []})
-        with mock.patch.object(agent, "BRIDGE_SECRET", "x"), \
-             mock.patch.object(agent, "_maybe_load_champion_names"), \
+        with mock.patch.object(agent, "_maybe_load_champion_names"), \
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m, \
              mock.patch.object(agent, "TEAM_CONTEXT_REPOST_S", 999.0):
@@ -412,8 +327,7 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
                           picks={"my": [{"cellId": 0, "championId": 1,
                                          "puuid": "p"}],
                                  "their": []})
-        with mock.patch.object(agent, "BRIDGE_SECRET", "x"), \
-             mock.patch.object(agent, "_maybe_load_champion_names"), \
+        with mock.patch.object(agent, "_maybe_load_champion_names"), \
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(True, "ok")) as m:
             agent._maybe_refresh_team_context(cs)
@@ -432,8 +346,7 @@ class TestMaybeRefreshTeamContext(unittest.TestCase):
                           picks={"my": [{"cellId": 0, "championId": 1,
                                          "puuid": "p"}],
                                  "their": []})
-        with mock.patch.object(agent, "BRIDGE_SECRET", "x"), \
-             mock.patch.object(agent, "_maybe_load_champion_names"), \
+        with mock.patch.object(agent, "_maybe_load_champion_names"), \
              mock.patch.object(agent, "post_team_context_refresh",
                                return_value=(False, "http_500")) as m:
             agent._maybe_refresh_team_context(cs)

@@ -46,10 +46,6 @@ _ALLOWLIST = (
     "tools/wrap-gamepc.md",      # gamepc-machine surface, retired - P3 prunes
     "tools/done-gamepc.md",      # gamepc-machine surface, retired - P3 prunes
     "tools/GAMEPC_CLAUDE.md",    # gamepc-machine surface, retired - P3 prunes
-    "tools/process-bridge-tasks.md",  # frozen gamepc-era surface - P3 prunes
-    "tools/BRIDGE_WATCHER_PLAN.md",   # gamepc-machine surface, retired - P3 prunes
-    "tools/BRIDGE_WATCHER_INSTALL_PS1_LANES_DIFF.md",  # gamepc surface - P3 prunes
-    "tools/bridge_watcher_config.json",  # frozen gamepc-era config - P3 prunes
     "bootstrap_riot_commander_dev.ps1",  # fresh-machine bootstrap; canonical interpreter absent there
     "ops/loop/control/**",       # loop scratch/control surfaces
     "tests/test_bare_py_ban.py",  # this guard - carries the banned pattern itself

@@ -43,16 +43,8 @@ foreach ($s in ($AGENT_SCRIPTS + $SUPPORT_SCRIPTS)) {
         Write-Host "  fetch $s FAILED, no local copy" -ForegroundColor Red
     }
 }
-$cmdsDir = Join-Path $env:USERPROFILE '.claude\commands'
-if (-not (Test-Path $cmdsDir)) { New-Item -ItemType Directory -Path $cmdsDir | Out-Null }
-$SLASH = @(@{src='process-bridge-tasks.md';dst='process-bridge-tasks.md'})
-foreach ($c in $SLASH) {
-    $out = Join-Path $cmdsDir $c.dst
-    & curl.exe -sk -m 5 -o $out "https://legion-rc:8888/agent/$($c.src)" 2>$null
-    if ($LASTEXITCODE -eq 0 -and (Test-Path $out) -and (Get-Item $out).Length -gt 0) {
-        Write-Host "  fetched $($c.src) -> ~/.claude/commands/$($c.dst)" -ForegroundColor Green
-    }
-}
+# Slash-command sync removed 2026-06-24: the only entry (process-bridge-tasks.md)
+# was deleted with the cross-Claude bridge decommission (ADR-012).
 
 # 2. Interpreters. pythoncore-3.14-64 is the bettercam-capable interpreter the
 #    screen agent requires; fall back to the standard Python314 install.

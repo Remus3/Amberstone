@@ -6,11 +6,11 @@ failed main run, runs a tool-restricted headless claude on a dedicated worktree
 to produce a minimal lint/compile/import/single-test fix, opens a ci-fix PR,
 and - per the operator's 2026-06-18 decisions - auto-merges that PR once its own
 CI goes green, cancels a fix whose target run is already stale (main moved on),
-and escalates over the existing core.bridge.send envelope after two strikes.
+and escalates to a local-only ESCALATION.md after two strikes.
 
 Operator decisions wired here (ROADMAP item 204, UNBLOCKED 2026-06-18):
   1. AUTO-MERGE green ci-fix PRs (self-heal unattended).         -> _MERGE_METHOD
-  2. Reuse the EXISTING core.bridge.send schema for escalation.  -> send_escalation
+  2. Escalate to local-only ESCALATION.md after two strikes.     -> send_escalation
   3. CANCEL + restart on newest HEAD (never fix stale code).     -> is_stale
 
 The decision logic below is pure + unit-tested (tests/test_ci_watchdog.py);
@@ -84,20 +84,8 @@ FROZEN_FILES = frozenset({
     "app/_state_authority.py",
     "app/_overlay_manager.py",
     "app/_game_lifecycle.py",
-    "tools/bridge_watcher_classify.py",
-    "tools/bridge_watcher_actions.py",
-    "tools/bridge_watcher_action_prompt.md",
-    "tools/bridge_watcher_history.py",
-    "tools/bridge_watcher_install.ps1",
-    "tools/bridge_watcher_hook.ps1",
-    "tools/bridge_watcher_config.json",
-    "tools/bridge_post_result.py",
-    "tools/bridge_pull_tasks.py",
-    "tools/process-bridge-tasks.md",
     "tools/diagnose.md",
     "tools/caveman.md",
-    "dashboard/routes_bridge_pending.py",
-    "ops/RC-BridgeWatcher.xml",
 })
 
 
@@ -279,7 +267,10 @@ def audit_line(record: dict, path: Path = AUDIT) -> None:
 
 
 def escalation_body(run_id: int, head_sha: str, reason: str, detail: str = "") -> dict:
-    """The core.bridge.send body for a 2-strike escalation (decision 2)."""
+    """The on-disk record shape for a 2-strike escalation (decision 2).
+
+    Retained as the structured escalation payload; the cross-Claude bridge was
+    decommissioned 2026-06-24 so escalation is now local-only (ESCALATION.md)."""
     return {
         "run_id": run_id,
         "head_sha": head_sha,
@@ -325,17 +316,13 @@ def _gh() -> str:
 
 
 def send_escalation(run_id: int, head_sha: str, reason: str, detail: str = "") -> tuple[bool, str]:
-    """Escalate over the existing bridge envelope (decision 2). Never raises."""
-    write_escalation(run_id, head_sha, reason, detail)
+    """Record a 2-strike escalation to the local ESCALATION.md. Never raises.
+
+    The cross-Claude bridge was decommissioned 2026-06-24, so escalation is now
+    local-only: the operator reads ESCALATION.md + audit.jsonl."""
     try:
-        from core import bridge
-        return bridge.send(
-            source="legion",
-            summary=f"CI red after {MAX_ATTEMPTS} strikes: run {run_id} ({reason})",
-            kind="ci_watchdog_escalation",
-            target="peer",
-            body=escalation_body(run_id, head_sha, reason, detail),
-        )
+        write_escalation(run_id, head_sha, reason, detail)
+        return (True, "escalation recorded to ESCALATION.md")
     except Exception as exc:  # noqa: BLE001 - escalation must never crash the loop
         return (False, f"{type(exc).__name__}: {exc}")
 

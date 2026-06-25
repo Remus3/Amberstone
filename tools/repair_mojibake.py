@@ -125,20 +125,8 @@ _FROZEN = frozenset({
     "app/_state_authority.py",
     "app/_overlay_manager.py",
     "app/_game_lifecycle.py",
-    "tools/bridge_watcher_classify.py",
-    "tools/bridge_watcher_actions.py",
-    "tools/bridge_watcher_action_prompt.md",
-    "tools/bridge_watcher_history.py",
-    "tools/bridge_watcher_install.ps1",
-    "tools/bridge_watcher_hook.ps1",
-    "tools/bridge_watcher_config.json",
-    "tools/bridge_post_result.py",
-    "tools/bridge_pull_tasks.py",
-    "tools/process-bridge-tasks.md",
     "tools/diagnose.md",
     "tools/caveman.md",
-    "dashboard/routes_bridge_pending.py",
-    "ops/RC-BridgeWatcher.xml",
 })
 
 _SKIP_DIR_PARTS = {"_archive", "node_modules"}

@@ -2,6 +2,8 @@
 
 _Now + Next only. Full history in `docs/history_notes.md`. Aspirational in `BACKLOG.md`._
 
+> **Decommissioned 2026-06-24 (operator-directed, ADR-012):** the RC<->Peer cross-Claude bridge + the lessons cross-project sync subsystem were fully removed (daemons + scheduled tasks + ~67 modules/routes/tests + docs + memory). No cross-Claude messaging remains; Peer is now only the separate private-project machine. Do NOT re-pitch a bridge or lessons-sync.
+
 ---
 
 ## Open items - High priority

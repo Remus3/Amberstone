@@ -28,7 +28,6 @@ from typing import Callable
 from pydantic import ValidationError
 
 from dashboard.api_schema import (
-    BridgeInboxRequest,
     BuildOrderRequest,
     CommandRequest,
     DsPreviewRequest,
@@ -61,9 +60,8 @@ def _gather_get() -> list:
     global _GET_CACHE
     if _GET_CACHE is None:
         from dashboard import (routes_static, routes_state, routes_history,
-                               routes_diag, routes_coach, routes_bridge,
+                               routes_diag, routes_coach, routes_champions,
                                routes_ban_suggest,
-                               routes_bridge_pending, routes_bridge_cadence,
                                routes_cc_blended_ehp_threat,
                                routes_cc_conditional_pressure,
                                routes_cc_pairing,
@@ -78,12 +76,10 @@ def _gather_get() -> list:
                                routes_auto_accept,
                                routes_damage_mix, routes_draft_elo,
                                routes_duo_synergy,
-                               routes_health_peer,
                                routes_item_wpa,
                                routes_skill_wpa,
                                routes_rune_wpa,
                                routes_summspell_wpa,
-                               routes_lessons,
                                routes_loadout, routes_loop_status,
                                routes_loop_monitor,
                                routes_lobby_aux, routes_metrics,
@@ -111,9 +107,7 @@ def _gather_get() -> list:
                       + list(routes_history.GET_ROUTES)
                       + list(routes_diag.GET_ROUTES)
                       + list(routes_coach.GET_ROUTES)
-                      + list(routes_bridge.GET_ROUTES)
-                      + list(routes_bridge_pending.GET_ROUTES)
-                      + list(routes_bridge_cadence.GET_ROUTES)
+                      + list(routes_champions.GET_ROUTES)
                       + list(routes_ban_suggest.GET_ROUTES)
                       + list(routes_cc_blended_ehp_threat.GET_ROUTES)
                       + list(routes_cc_conditional_pressure.GET_ROUTES)
@@ -132,12 +126,10 @@ def _gather_get() -> list:
                       + list(routes_damage_mix.GET_ROUTES)
                       + list(routes_draft_elo.GET_ROUTES)
                       + list(routes_duo_synergy.GET_ROUTES)
-                      + list(routes_health_peer.GET_ROUTES)
                       + list(routes_item_wpa.GET_ROUTES)
                       + list(routes_skill_wpa.GET_ROUTES)
                       + list(routes_rune_wpa.GET_ROUTES)
                       + list(routes_summspell_wpa.GET_ROUTES)
-                      + list(routes_lessons.GET_ROUTES)
                       + list(routes_loadout.GET_ROUTES)
                       + list(routes_loop_status.GET_ROUTES)
                       + list(routes_loop_monitor.GET_ROUTES)
@@ -173,12 +165,9 @@ def _gather_post() -> list:
     global _POST_CACHE
     if _POST_CACHE is None:
         from dashboard import (routes_static, routes_state, routes_history,
-                               routes_diag, routes_coach, routes_bridge,
-                               routes_bridge_pending, routes_bridge_cadence,
-                               routes_bridge_pending_actions,
+                               routes_diag, routes_coach,
                                routes_auto_accept,
                                routes_coach_choice,
-                               routes_health_peer,
                                routes_loadout, routes_loop_control,
                                routes_lobby_aux, routes_metrics,
                                routes_scouting,
@@ -190,13 +179,8 @@ def _gather_post() -> list:
                        + list(routes_history.POST_ROUTES)
                        + list(routes_diag.POST_ROUTES)
                        + list(routes_coach.POST_ROUTES)
-                       + list(routes_bridge.POST_ROUTES)
-                       + list(routes_bridge_pending.POST_ROUTES)
-                       + list(routes_bridge_cadence.POST_ROUTES)
-                       + list(routes_bridge_pending_actions.POST_ROUTES)
                        + list(routes_auto_accept.POST_ROUTES)
                        + list(routes_coach_choice.POST_ROUTES)
-                       + list(routes_health_peer.POST_ROUTES)
                        + list(routes_loadout.POST_ROUTES)
                        + list(routes_loop_control.POST_ROUTES)
                        + list(routes_lobby_aux.POST_ROUTES)
@@ -234,7 +218,6 @@ _REQUEST_MODELS = {
     "/api/command":                 CommandRequest,
     "/api/ds-preview":              DsPreviewRequest,
     "/api/build-order":             BuildOrderRequest,
-    "/api/bridge/inbox":            BridgeInboxRequest,
     "/api/speak":                   SpeakRequest,
     "/api/team-context/refresh":    TeamContextRefreshRequest,
 }

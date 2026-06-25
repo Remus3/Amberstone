@@ -9,11 +9,11 @@ _Living document. Update after topology or module changes. See `docs/_archive/` 
 | Machine | Tailnet hostname | Tailnet IP | LAN IP | Role |
 |---|---|---|---|---|
 | **Legion** | `legion-rc` | `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): League + Vanguard + RC main process + vision server `:8889` + dashboard `:8888` + OBS. Relocated agents run local: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Windows hostname now `DESKTOP-JKZECV9`; Tailscale node stays `legion-rc` |
-| **Peer** | `peer-host` | `<peer-tailnet-ip>` | - | Cross-Claude peer; RC<->Peer bridge |
+| **Peer** | `peer-host` | `<peer-tailnet-ip>` | - | Separate separate private project machine (RC<->Peer bridge decommissioned 2026-06-24, ADR-012) |
 
 Both in tailnet `tailc150de.ts.net` (Game-PC retired from the League/RC pipeline 2026-05-29, ADR-011). Prefer tailnet hostnames for all cross-machine HTTP.
 
-Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The relocated relay agents (`lcu_agent` / `liveclient_relay` / `screen_agent`) run Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`) and is retained by design. The relocated-agent rename + Game-PC-bridge teardown executed 2026-06-20; the 3 running tasks (RC-LCUAgent/RC-LiveClientRelay/RC-HotkeyListener) launch the renamed Legion-local files.
+Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The relocated relay agents (`lcu_agent` / `liveclient_relay` / `screen_agent`) run Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`) and is retained by design. The relocated-agent rename + Game-PC teardown executed 2026-06-20; the 3 running tasks (RC-LCUAgent/RC-LiveClientRelay/RC-HotkeyListener) launch the renamed Legion-local files.
 
 ---
 
@@ -27,7 +27,6 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The relocated rel
 | `lcu_agent` (local) | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
 | Dashboard | `:8889/lcu-cmd` | HTTP POST | Queue a command for LCU (accept, bench, runes) | on user action |
 | Browser (Chrome) | `:8888/` | HTTP GET | Dashboard HTML + state polling | every 500ms |
-| Claude sessions | `:8888/api/bridge` | HTTP POST + GET | Cross-Claude activity log | per prompt / daemon poll |
 
 Post-1-PC (ADR-011) all relay agents run Legion-local. Both relay
 halves now self-heal in-process when stale + host local: liveclient reads `:2999`
@@ -98,10 +97,8 @@ self-grab is on-demand only, never a loop.
 | `dashboard/_state_cooldowns.py` | adapts Live Client snapshot -> compute_cooldowns input |
 | `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
 | `dashboard/routes_archetype.py` | cs archetype pick rest endpoints |
-| `dashboard/routes_bridge_pending.py` | GET /api/bridge/pending - escalation queue [FROZEN] |
 | `dashboard/routes_cc_blended_ehp_threat.py` | cc_blended_ehp threat panel backend |
 | `dashboard/routes_cc_conditional_pressure.py` | cc_conditional pressure panel backend |
-| `dashboard/routes_health_peer.py` | GET /api/health/peer + /api/health/all |
 | `dashboard/routes_lobby_aux.py` | top8 + mains backend |
 | `dashboard/routes_metrics.py` | /metrics Prometheus endpoint |
 | `dashboard/routes_spike_curve.py` | power-curve sparkline backend |
@@ -114,7 +111,6 @@ self-grab is on-demand only, never a loop.
 |---|---|
 | `core/archetype_mismatch.py` | first-purchase archetype mismatch nudge |
 | `core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
-| `core/bridge_envelope.py` | pydantic v2 schema for the cross-Claude bridge wire envelope |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
 | `core/defensive_picks.py` | defensive item ranker |
 | `core/enemy_aware_stats.py` | enemy stats from liveclient items |
@@ -127,19 +123,6 @@ self-grab is on-demand only, never a loop.
 | `core/ward_events.py` | ward-coverage rolling-window backend |
 | `core/ward_producer.py` | ward-placement producer over allPlayers inventory delta |
 | `lcu/lcu_client.py` | LCU auth + command client [FROZEN] |
-
-### Bridge tools
-| File | Role |
-|---|---|
-| `tools/bridge_cli.py` | consolidated bridge CLI entrypoint (Phase 6) |
-| `tools/bridge_fetch.py` | UserPromptSubmit hook - print recent peer activity |
-| `tools/bridge_heartbeat.py` | long-running alive heartbeat to the bridge |
-| `tools/bridge_ping.py` | end-to-end bridge + vision health validator |
-| `tools/bridge_post.py` | Stop-hook poster - extract last assistant message and post |
-| `tools/bridge_post_result.py` | post task result back to issuing machine [FROZEN] |
-| `tools/bridge_pull_tasks.py` | fetch pending bridge tasks targeted at this machine [FROZEN] |
-| `tools/bridge_task.py` | dispatch a task to the other Claude via the bridge |
-| `tools/bridge_watcher.py` | bridge watcher daemon - classify → action loop |
 
 ### Tools / ops
 | File | Role |
@@ -165,8 +148,8 @@ These run LEGION-LOCAL as ONLOGON scheduled tasks post-1-PC. The 2-PC-era
 | `phase_watcher.py` | DISABLED (no task) | LCU-phase DXGI capture - retired with the 1-PC consolidation (ADR-011). Patched item 209, has a test, deploy-allowlisted; kept as reference |
 | `keybind_listener.py` | OPTIONAL (unscheduled) | ADR-007 Alt+1/2/3 decision-respond keybinds; dashboard banner buttons are the live fallback. A working feature, not dead; safe to archive in a dedicated cleanup |
 
-The Game-PC cross-Claude bridge daemon + `:8892` MCP server were severed with
-the Game-PC retirement (2026-06-20); the Peer bridge peer stays. `screen_agent` +
+The Game-PC `:8892` MCP server was severed with the Game-PC retirement
+(2026-06-20). `screen_agent` +
 `phase_watcher` are kept references (phase_watcher has a test) and sit in the
 `routes_static.py` deploy allowlist; `keybind_listener` is an optional working
 feature. A clean archival would prune the deploy allowlist + relocate the
@@ -208,7 +191,6 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 2.4 | 2026-05-09 | `tools/build_portable.py:75` | vision server entrypoint shim (real code in vision_server/) |
 | 7 | 2026-05-09 | `scripts/precommit_msg_check.py:4` | make Conventional Commits subject lines mechanical |
 | 7 | 2026-05-09 | `scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
-| 4.2 | 2026-05-08 | `core/bridge_envelope.py:38` | bridge envelope schema additions (suggestions, body_path, claimed_by, ttl_at) |
 | 0.13 | - | `ops/rc_self_monitor.py:197` | bounded bootstrap window. |
 | 0.3 | - | `ops/rc_self_monitor.py:236` | monotonic timestamp when worker first seen dead (fix 3) |
 | 0.7 | - | `core/metrics_cache.py:330` | supervisor_state added to status.json; tolerate absence in older files |

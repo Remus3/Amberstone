@@ -265,22 +265,14 @@ def any_drift(fields) -> bool:
 
 # --------------------------------------------------------------------------- side effects
 def send_bridge_note(drift_fields) -> tuple[bool, str]:
-    """Send a cross-Claude bridge note. Never raises; returns (ok, detail)."""
+    """Log upstream content drift locally. Never raises; returns (ok, detail).
+
+    The cross-Claude bridge was decommissioned 2026-06-24, so drift is now
+    recorded to the log only (was a bridge note to Peer)."""
     try:
-        sys.path.insert(0, str(ROOT))
-        from core import bridge  # local import; bridge.send never raises
         changed = [f.name for f in drift_fields if f.changed]
-        ok, detail = bridge.send(
-            source="legion",
-            summary="upstream content drift: " + ", ".join(changed),
-            kind="note",
-            target="peer",
-            body={"drift": [
-                {"name": f.name, "previous": f.previous, "current": f.current}
-                for f in drift_fields if f.changed
-            ]},
-        )
-        return bool(ok), str(detail)
+        logger.info("upstream content drift: %s", ", ".join(changed))
+        return True, "drift logged locally (bridge decommissioned)"
     except Exception as e:  # noqa: BLE001 - side effect must never crash main
         logger.warning("send_bridge_note failed: %s", e)
         return False, f"{type(e).__name__}: {e}"
@@ -326,7 +318,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="probe + compare only; do not write sentinel or fire "
                         "side effects. Exit 1 on drift, 0 otherwise.")
     p.add_argument("--bridge-note", action="store_true",
-                   help="on drift, send a cross-Claude bridge note")
+                   help="deprecated (bridge decommissioned, ADR-012); on drift, "
+                        "log it locally. Flag kept for back-compat with the "
+                        "RC-UpstreamDriftCheck task + tests.")
     p.add_argument("--auto-refresh", action="store_true",
                    help="on drift, trigger the ddragon mirror refresh")
     p.add_argument("--json", default=None, metavar="PATH",
