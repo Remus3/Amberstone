@@ -223,6 +223,62 @@ class EngineCharacterizationTests(unittest.TestCase):
         self.assertIn("Darius", per_enemy)
         self.assertNotIn("BadGuy", per_enemy)
 
+    # --- item 575: symmetric enemy cd-state (MODEL-ERROR fix) ----------------
+    # The enemy sequence_b was hardcoded to the FULL combo (Q/W/E/R) regardless
+    # of the cell's cd_state, so a no_ult cell fired MY (Q/W/E) into an enemy
+    # still landing their ult - over-stating incoming damage and skewing the
+    # verdict toward back_off (the diagnosed back_off->trade pocket, item 575).
+    # The fix makes cd_state symmetric: the enemy also drops R in a no_ult cell.
+    def test_no_ult_mirror_is_even_symmetric_enemy_combo(self) -> None:
+        # A same-champ no_ult mirror at equal level/items is a true mirror: both
+        # sides fire (Q,W,E). net_swing must be exactly 0.0 (even). Before the
+        # fix the enemy fired (Q,W,E,R) while I fired (Q,W,E) -> spurious swing.
+        cell = lsp.compute_cell(
+            self.snap, "Annie", "Annie", "L6", "full", "no_ult", mode="SR"
+        )
+        self.assertEqual(cell["net_swing"], 0.0)
+        self.assertEqual(cell["verdict"], "even")
+
+    def test_all_up_mirror_unchanged_still_even(self) -> None:
+        # Regression guard: all_up cells are byte-identical to before the fix
+        # (combo_sequence("all_up") == the full rotation), so the full-vs-full
+        # mirror stays symmetric/even.
+        cell = lsp.compute_cell(
+            self.snap, "Annie", "Annie", "L6", "full", "all_up", mode="SR"
+        )
+        self.assertEqual(cell["net_swing"], 0.0)
+        self.assertEqual(cell["verdict"], "even")
+
+    def test_no_ult_mirror_symmetry_across_seed_sample(self) -> None:
+        # The strengthened invariant: every same-champ no_ult mirror removes the
+        # same HP fraction both ways (R dropped on BOTH sides), across a few
+        # R-burst champs and both real bands.
+        for champ in ("Annie", "Syndra", "Lux"):
+            for band in ("L6", "L11"):
+                cell = lsp.compute_cell(
+                    self.snap, champ, champ, band, "full", "no_ult", mode="SR"
+                )
+                self.assertEqual(
+                    cell["pct_my_removed"], cell["pct_enemy_removed"],
+                    f"{champ} {band} no_ult mirror not symmetric",
+                )
+                self.assertEqual(cell["net_swing"], 0.0)
+
+    def test_no_ult_cell_matches_symmetric_reference_matchup(self) -> None:
+        # Characterization lock: a no_ult cell must equal a compute_matchup where
+        # BOTH sequences drop R. Pins the symmetric enemy rule so a regression to
+        # sequence_b=_FULL_COMBO fails here.
+        from agents.daemon_slayer.matchup import compute_matchup
+        cell = lsp.compute_cell(
+            self.snap, "Garen", "Darius", "L6", "full", "no_ult", mode="SR"
+        )
+        ref = compute_matchup(
+            self.snap, "Garen", "Darius", 6, 6, mode="SR",
+            sequence_a=["Q", "W", "E"], sequence_b=["Q", "W", "E"],
+        )
+        self.assertEqual(cell["verdict"], ref.verdict)
+        self.assertEqual(cell["net_swing"], lsp._round(ref.net_swing))
+
 
 if __name__ == "__main__":
     unittest.main()
