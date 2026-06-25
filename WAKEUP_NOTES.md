@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-06-25 (personal-build card [623] + Arena anvil Haiku-elim shadow [624] + cost CLEAN)
+
+Two scoped slices, then an orchestrated headless-upgrade run (2026-06-25-01). All non-gated; the genuine
+non-gated queue is now drained (both scouts came back near-empty).
+
+- ITEM 623 (personal-build card, `5cd62bee`): wired the shipped /api/personal-build backend into a NEW
+  read-only champ-select card keyed on cs.my_champion (your winning items by confidence-weighted lift vs
+  your OWN baseline). 5-file frontend mount + grep wiring guard + an in-context render screenshot test (311
+  green); 5-phase UI audit PASS. OWED: live in-champ-select capture (render-gated on a real champ-select,
+  same as the cooldown-watch sibling). Also killed the Overlay App F ward-heatmap in BACKLOG - Match-V5 carries
+  0 ward x/y (probed timeline_events: WARD_PLACED 294518 / 0 with pos vs CHAMPION_KILL 270807/270807).
+- ITEM 624 (Arena anvil shadow, `afeb590b`): orchestrated headless run - 2 read-only scouts -> 1 worktree
+  build agent -> verifier CONFIRM -> merge. The live anvil Haiku call gained a deterministic SHADOW substrate
+  (`core/precomputed_anvil_advisor` + `core/anvil_shadow` mirroring augment_shadow); served field
+  byte-identical, the flip stays operator-gated. +18 tests. Cost 7-lever sweep = 0 SHIP / 7 CLEAN (already
+  optimal, 3 machine-guarded). Scout: anvil was the LAST clean non-gated shadow lane. RC restarted pid 16584;
+  DS untouched (1.151.0). Hygiene: removed 2 stale wf_3629e3d9 worktree dirs (kept the branch refs).
+
+NEXT (operator-gated / live-blocked):
+1. Anvil shadow + HZ precompute-vs-Haiku flips - need real-game shadow rows -> validate -> THEN flip.
+2. R30/PGR live-gated tail (physical game).
+3. Carry-forward: the 2 wf_3629e3d9 branch refs (RC2 E12-L2 RuneWriter lobby-mode memo + E7a ARAM bench
+   re-poll) need operator live-validation before merge (they change live LCU/runtime behavior).
+
+---
+
 # 2026-06-25 (CI Watchdog ARMED with a self-gate-on-green redesign [622])
 
 Operator picked "full live-arm now" for the gated CI Watchdog (item 204). De-blinded it FIRST (do-not-flip-blind):
@@ -72,41 +98,3 @@ NEXT (operator-gated / live-blocked, unchanged from 618):
 3. R30/PGR live-gated tail (physical game).
 4. Housekeeping: ARCHITECTURE.md:172 ENGINE/test-count drift - DONE (item 621, this session; also synced
    the DAEMON_SLAYER.md:5/:140 sibling pins + the abilities.py cdragon docstring mismatch from 619's note).
-
----
-
-# 2026-06-25 (DS patch refresh 16.12.1 -> 16.13.1 - orchestrated multi-agent SWARM + precompute regen)
-
-Ran the headline patch refresh as an orchestrated Tier-2 run. ENGINE_VERSION stays 1.151.0 (operator-confirmed
-via one AskUserQuestion: patch != engine code, matching the 3-refresh convention). 2 commits pushed (`cdc4f8aa`
-patch refresh + Share, 78 files / 3 LFS laning tables; `1f53f5ad` snapshot flake fix), ruff clean repo-wide.
-Full per-item record: docs/LEDGER.md item 618.
-
-- Upstream probe drove fresh-vs-copy decisions: DDragon moved 16.12->16.13; Meraki FROZEN at 25.15; CDragon
-  published a fresh 16.13 build. Extract chain wrote the 19-file 16.13.1 snapshot + flipped current.txt +
-  manifest content_patch backfill. New champ Locke (173 roster) fail-softs as a Meraki-miss (like Yunara/Zaahen) -
-  expected new-champ-catches-up case, NOT hand-backfilled (true adperlevel unavailable upstream).
-- KEY FIND (do-not-flip-blind win): the fresh CDragon 16.13 extract silently DROPPED all 12 SwapsInto CC tags
-  (Aphelios Q etc.; immob survived) - an extractor regression on 16.13 bins, caught by the DS-dir suite. REVERTED
-  the cdragon trio to the proven baseline rather than pin the consuming test; cdragon is an inert forward-marker
-  so zero live-scoring impact - PROVEN via byte-identical Ahri build re-gen post-revert. FOLLOW-UP: fix
-  daemon_slayer_cdragon_spell_extract SwapsInto detection on 16.13+ bins before re-enabling fresh cdragon.
-- Precompute regen all 3 modes / 173 roster (laning ~66MB/mode LFS + build_orders + variants); read-path VERIFIED
-  at 16.13.1 (lookup covered + A/B). Share re-synced (_PATCH 16.13.1, engine 1.151.0, --check clean). Live-header
-  patch anchors flipped (DAEMON_SLAYER/ARCHITECTURE/routes_dictionary/items_index.js); the ref had MOVED to
-  items_index.js DDRAGON_FALLBACK_VERSION (memory's main.js/pgr pointer was stale - ground-truth grep caught it).
-- Verified: dual suite green (DS-dir 7511 passed; tests/ 9423 passed); DS :8893 -> 16.13.1/1.151.0; builds
-  re-rank SANELY (55 AP champs adopt the engine's Liandry's-first valuation, marksman/tank/bruiser byte-stable;
-  engine-driven NOT data/cdragon - the 6 items are stat-identical + the prior table was an older-engine gen).
-- Secondary (parallel worktree agent): snapshot_panels at-scale Playwright flake fixed at ROOT (HTTP/1.0
-  connection-per-request -> TIME_WAIT port exhaustion; fix = HTTP/1.1 keep-alive + SSE gen-gating + per-test
-  reset). 274 passed x2 independent re-verify (never trusted the agent's 3x claim). REVERTED (`f68cf703`): the SSE gen-gating fails 4 CI/Linux render snapshot tests (a Windows-only verify was insufficient).
-
-NEXT (operator-gated / live-blocked, unchanged from 617):
-1. CI Watchdog ARM (item 204, do-not-flip-blind): create C:\RC-CIWatchdog\ worktree + enable repo auto-merge +
-   append --arm to ops/RC-CIWatchdog.xml. Detail: docs/CI_WATCHDOG_PLAN.md + LEDGER 613.
-2. HZ precompute-vs-Haiku agreement RE-MEASUREMENT (item 614 NEXT) - now ALSO needs the regenerated 16.13.1 tables
-   + real-game shadow rows; do AFTER accruing live games on them. Live coach flip stays operator-gated.
-3. R30/PGR live-gated tail (E.1 ACTIVE knob physical press + RC_COMP_HP_LEAN default-ON) - need a physical game.
-4. Housekeeping: fix the cdragon SwapsInto extractor (above); re-attempt the snapshot_panels flake fix WITH CI/Linux validation (keep HTTP/1.1 keep-alive, rework SSE gen-gating); WAKEUP now 5 sessions (weekly-hygiene to trim to
-   2-3); ARCHITECTURE.md:172 ENGINE/test-count drift (1.144.0/7361 vs live 1.151.0/7497) for a /sync-all-md.
