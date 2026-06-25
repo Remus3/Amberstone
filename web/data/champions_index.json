@@ -1,5 +1,5 @@
 {
-  "version": "16.12.1",
+  "version": "16.13.1",
   "byId": {
     "266": "Aatrox",
     "103": "Ahri",
@@ -75,6 +75,7 @@
     "89": "Leona",
     "876": "Lillia",
     "127": "Lissandra",
+    "805": "Locke",
     "236": "Lucian",
     "117": "Lulu",
     "99": "Lux",
@@ -249,6 +250,7 @@
     "leona": "Leona",
     "lillia": "Lillia",
     "lissandra": "Lissandra",
+    "locke": "Locke",
     "lucian": "Lucian",
     "lulu": "Lulu",
     "lux": "Lux",
