@@ -2,13 +2,13 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.151.0 - 7497 tests - patch 16.12.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.151.0 - 7497 tests - patch 16.13.1.
 
 ## Engine substrate & registries
 
 - `mana_sim.py` finite-mana bounded rotation + `rune_procs.py` keystone/proc rune layer + `self_shred.py` target_shred DPS uplift + `scenario_matrix.py` cross-interaction invariant sweep + `ability_hps.py` v2 passive-P/target-relative heal-shield
 - 547/547 DDragon purchasable items
-- patch 16.12.1
+- patch 16.13.1
 - Test golden fixtures: `data/daemon_slayer/16.10.1` + `16.11.1` are the only two permanent frozen snapshot dirs (deep-audit P2b gemini ruling, 2026-06-11). New disk pins target 16.11.1; never mint a new fixture dir; 16.9.1 is retired. Guard: `tests/test_ds_fixture_policy.py`.
 - cc_pressure aggregator + EHP-vs-CC blended scorer + `compute_hybrid(enemy_champions=...)` cc_blended_ehp scorer + dashboard UI consumer via `dashboard/routes_cc_blended_ehp_threat.py` (cc_blended_ehp ecosystem COMPLETE with 4 consumers: engine math + coach prompt + DS scorer + dashboard UI)
 - `_PER_SPELL_CC_DURATIONS` registry 108 entries / 89 champs after wave 9 (item 147 ENGINE 1.43.0: +2 multi-wave coexistence Chogath W silence + Malzahar Q silence; silence joins first-order CC scope per wave 6 stasis precedent; saturated for net-new champions at 16.10.1 - audit walked all 226 unregistered spells of 89 champs) via `_build_per_spell_cc_durations()` setdefault builder
