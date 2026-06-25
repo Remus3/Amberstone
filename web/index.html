@@ -1217,6 +1217,17 @@
               <div class="csv-sugg-section cc-pairing"
                    id="csv-sugg-cc-pairing"
                    hidden></div>
+              <!-- 2026-06-25: personal best-build card. For the operator's
+                   OWN locked champion (cs.my_champion), the completed items
+                   they actually WIN with from their rewind_history.db -
+                   confidence-weighted win-rate lift vs their own baseline, a
+                   "your best build" read alongside the DS engine pick. Backend:
+                   dashboard/routes_personal_build.py. Read-only, no Riot/Claude
+                   dependency. Hidden until a champion locks + the personal
+                   sample clears the backend threshold. -->
+              <div class="csv-sugg-section personal-build"
+                   id="csv-personal-build"
+                   hidden></div>
               <!-- 2026-05-30 competitor lift #1: engine-knobs re-rank strip.
                    Backend routes_ds_knobs. Render for the LOCKED champion
                    (cs.my_champion). Hidden until a champion locks.
