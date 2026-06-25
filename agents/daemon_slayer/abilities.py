@@ -486,9 +486,10 @@ def _apply_cdragon_block(block: DamageBlock, cd: dict) -> DamageBlock:
 def _apply_cdragon_ratio_preference(form: AbilityForm, cd_blocks: list) -> AbilityForm:
     """Re-source ``form``'s damage-block ratios from the CDragon sidecar slot list.
 
-    OPT-IN: runs only when ``AbilitiesSnapshot.load`` is called with
-    ``prefer_cdragon_ratios=True``. Only ``resolution == "mechanical"`` CDragon
-    blocks that resolved at least one usable field are eligible.
+    Runs whenever ``AbilitiesSnapshot.load`` is called with
+    ``prefer_cdragon_ratios=True`` (the default since the item 320 cutover; pass
+    False for the legacy Meraki-only path). Only ``resolution == "mechanical"``
+    CDragon blocks that resolved at least one usable field are eligible.
 
     The pairing is SEMANTIC, not positional (the old ``zip`` mis-paired multi-block
     abilities - a transform form's calc landing on the wrong block, or a tooltip
@@ -600,16 +601,18 @@ class AbilitiesSnapshot:
         P - effects-text-only self-shields) so ``compute_ability_hps`` scores
         them in ``total_shield_per_sec``. Default OFF = byte-identical.
 
-        ``prefer_cdragon_ratios`` (default False / OFF) re-sources per-ability
-        damage RATIOS from the live CommunityDragon mechanical sidecar
+        ``prefer_cdragon_ratios`` (default True / ON since item 320 / ENGINE
+        1.119.0 cutover) re-sources per-ability damage RATIOS from the live
+        CommunityDragon mechanical sidecar
         (``cdragon_ability_ratios.json``, ``tools/daemon_slayer_cdragon_ratio_extract.py``)
-        in preference to the frozen Meraki ``champion_abilities.json``. When True,
-        each primary form's damage-block scaling fields are overridden per-field by
-        the matching ``resolution == "mechanical"`` CDragon block; any field /
-        block the resolver could not mechanically resolve falls back to Meraki, as
-        does a missing sidecar. ``cdragon_root`` overrides where the sidecar is read
-        from (defaults to ``data_root``). Default OFF = byte-identical (the sidecar
-        is never read and forms are untouched).
+        in preference to the frozen Meraki ``champion_abilities.json``. When True
+        (the default), each primary form's damage-block scaling fields are
+        overridden per-field by the matching ``resolution == "mechanical"`` CDragon
+        block; any field / block the resolver could not mechanically resolve falls
+        back to Meraki, as does a missing sidecar. ``cdragon_root`` overrides where
+        the sidecar is read from (defaults to ``data_root``). Set False to force the
+        legacy Meraki-only path - the sidecar is never read and forms are
+        byte-identical to the pre-cutover behavior.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
