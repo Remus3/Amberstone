@@ -25,12 +25,14 @@ The mana-state + cd-state both resolve to the ``my`` champion's action-token
 ``sequence``, which threads into ``compute_matchup(sequence_a=...)`` - so a
 low-mana / no-ult cell fires a SHORTER combo into the enemy and the verdict
 shifts honestly (less burst -> fewer all-ins, more back-offs). The enemy side is
-modelled at the same level + item set AND always at FULL resources + cooldowns
-(``sequence_b`` = the full rotation): we vary only MY state per cell, so a
-same-level mirror at full state is symmetric (net_swing 0 -> even) while a
-restricted MY state reads as a genuine disadvantage. (Itemless; an item axis is a
-separate session, the HZ-B build-order precompute. HZ-A2 adds the gold-income +
-power-spike ``economy`` block, not items.)
+modelled at the same level + item set, at FULL mana, and at the SAME cd-state as
+the cell (``sequence_b`` = ``combo_sequence(cd_state)``): a ``no_ult`` window has
+ults down for BOTH laners (cooldowns cycle together in lane), an ``all_up`` window
+has them up for both. We vary only MY mana state asymmetrically (mana pools are
+champ-specific), so a same-level same-cd mirror is symmetric (net_swing 0 -> even)
+in BOTH bands while a restricted MY mana state reads as a genuine disadvantage.
+(Itemless; an item axis is a separate session, the HZ-B build-order precompute.
+HZ-A2 adds the gold-income + power-spike ``economy`` block, not items.)
 
 WHAT v1 IS (honest scope)
     BUILD + PERSIST + READ only. The live coach flip is EXCLUDED (charter 4b
@@ -342,17 +344,25 @@ def _matchup(
     enemy: str,
     level: int,
     seq: Sequence[str],
+    cd_state: str,
     mode: str,
     item_ids: Sequence[str | int],
 ):
-    """Fire MY ``seq`` into the enemy, with the enemy-modelling rule in ONE place:
-    the enemy is always at FULL resources + cooldowns (``sequence_b`` = the full
-    rotation). Only MY state varies per cell, so a same-level full-state mirror is
-    symmetric and a restricted MY state is a genuine disadvantage."""
+    """Fire MY ``seq`` into the enemy, with the enemy-modelling rule in ONE place.
+
+    The enemy fires the SAME cd-state rotation as the cell (``sequence_b`` =
+    ``combo_sequence(cd_state)``): ult-up (``all_up``) -> the full Q/W/E/R, ult
+    on cd (``no_ult``) -> Q/W/E on BOTH sides. Cooldowns cycle together in lane,
+    so a ``no_ult`` window means NEITHER laner has ult up - modelling MY ult down
+    while the enemy still lands theirs over-states incoming damage (the item-575
+    back_off->trade over-kill). The enemy stays at FULL mana (no per-cell
+    truncation - mana pools are champ-specific, so ``mana_state`` is MY axis
+    only); only MY mana state varies the asymmetry per cell. A same-level same-cd
+    mirror is therefore symmetric (net_swing 0 -> even) in BOTH bands."""
     return compute_matchup(
         snapshot, str(my_champion), str(enemy), level, level,
         item_ids_a=list(item_ids), item_ids_b=list(item_ids),
-        mode=mode, sequence_a=list(seq), sequence_b=list(_FULL_COMBO),
+        mode=mode, sequence_a=list(seq), sequence_b=list(combo_sequence(cd_state)),
     )
 
 
@@ -396,7 +406,7 @@ def compute_cell(
         snapshot, my_champion, level, mana_state, cd_state,
         mode=mode, item_ids=item_ids,
     )
-    result = _matchup(snapshot, my_champion, enemy, level, seq, mode, item_ids)
+    result = _matchup(snapshot, my_champion, enemy, level, seq, cd_state, mode, item_ids)
     economy = economy_cell(band, mana_state, mode=mode, manaless=manaless)
     return _cell_from_result(result, economy)
 
@@ -445,7 +455,7 @@ def generate_table(
                         for cd in CD_STATES:
                             seq, manaless = _seq(my, level, mana, cd)
                             result = _matchup(
-                                snapshot, my, enemy, level, seq, mode, item_ids
+                                snapshot, my, enemy, level, seq, cd, mode, item_ids
                             )
                             economy = economy_cell(
                                 band, mana, mode=mode, manaless=manaless,
