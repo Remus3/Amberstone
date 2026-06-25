@@ -172,19 +172,15 @@ class TestTeamContextCoercion(unittest.TestCase):
     def setUp(self):
         rtc._clear()
         self.addCleanup(rtc._clear)
-        p1 = mock.patch.object(rtc._bridge, "is_configured", lambda: True)
-        p2 = mock.patch.object(rtc._bridge, "shared_secret",
-                               lambda: "test-secret")
+        # Route is local-only + unauthenticated post-ADR-012; only the
+        # fan-out dispatcher needs stubbing to avoid a real Riot worker.
         p3 = mock.patch.object(rtc, "_FANOUT_DISPATCHER",
                                lambda a, e, q: None)
-        for p in (p1, p2, p3):
-            p.start()
-            self.addCleanup(p.stop)
+        p3.start()
+        self.addCleanup(p3.stop)
 
     def _post(self, body):
-        h = _StubHandler(
-            "/api/team-context/refresh",
-            headers={"Authorization": "Bearer test-secret"})
+        h = _StubHandler("/api/team-context/refresh", headers={})
         rtc._serve_refresh_post(h, body)
         return h
 

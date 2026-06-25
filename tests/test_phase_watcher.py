@@ -16,7 +16,8 @@ Operator scope-fork answers locked at session start:
 - Q2 debounce: per (topic, sub_phase, queue_id) per gameflow cycle
 - Q3 frame format: JPEG q75 (inherit screen_agent.py)
 - Q4 Cherry urgency: standard debounce
-- Q5 bridge envelope: YES emit kind=ui_capture on Legion bridge
+  (Q5 kind=ui_capture bridge emit removed 2026-06-24 with the RC<->Peer
+  bridge decommission; captures land via /upload-frame + sidecar only.)
 """
 from __future__ import annotations
 
@@ -382,64 +383,6 @@ class SidecarWriteTests(unittest.TestCase):
             self.assertEqual(written["frames"][1]["monitor"], "dashboard")
 
 
-class BridgeEnvelopeTests(unittest.TestCase):
-    """Q5 (default YES): on every capture, emit kind=ui_capture envelope
-    on the Legion bridge so the UI-audit-ritual subagent can subscribe to
-    event-tagged frames specifically.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        cls.mod = _load_watcher_module()
-
-    def test_envelope_shape(self):
-        env = self.mod.build_bridge_envelope(
-            topic="/lol-gameflow/v1/gameflow-phase",
-            sub_phase="ChampSelect",
-            queue_id=420,
-            captured_at="2026-05-27T21:15:00Z",
-            frames=[
-                {"monitor": "game", "width": 1920, "height": 1080},
-                {"monitor": "dashboard", "width": 1920, "height": 1280},
-            ],
-        )
-        self.assertEqual(env["kind"], "ui_capture")
-        self.assertEqual(env["source"], "legion")
-        self.assertEqual(env["target"], "legion")
-        self.assertIn("summary", env)
-        self.assertIn("body", env)
-        body = env["body"]
-        self.assertEqual(body["topic"], "/lol-gameflow/v1/gameflow-phase")
-        self.assertEqual(body["sub_phase"], "ChampSelect")
-        self.assertEqual(body["queue_id"], 420)
-        self.assertEqual(body["captured_at"], "2026-05-27T21:15:00Z")
-        self.assertEqual(len(body["frames"]), 2)
-
-    def test_envelope_id_field_present(self):
-        env = self.mod.build_bridge_envelope(
-            topic="/lol-lobby/v2/lobby",
-            sub_phase="joined",
-            queue_id=1750,
-            captured_at="2026-05-27T21:15:00Z",
-            frames=[{"monitor": "game"}],
-        )
-        self.assertIn("id", env)
-        # IDs are short hex slugs per bridge convention.
-        self.assertGreater(len(env["id"]), 4)
-
-    def test_summary_includes_topic_and_queue(self):
-        env = self.mod.build_bridge_envelope(
-            topic="/lol-cherry-game-intra-event/v1/augments",
-            sub_phase="available",
-            queue_id=1750,
-            captured_at="2026-05-27T21:15:00Z",
-            frames=[{"monitor": "game"}, {"monitor": "dashboard"}],
-        )
-        s = env["summary"]
-        self.assertIn("available", s)
-        self.assertIn("1750", s)
-
-
 class UploadFramePayloadShapeTests(unittest.TestCase):
     """The upload helper packages JPEG b64 + source + dimensions in the
     same shape as screen_agent.py.upload(), plus an event_meta
@@ -595,9 +538,6 @@ class WiredSitesGrepTests(unittest.TestCase):
 
     def test_build_upload_payload_defined(self):
         self.assertIn("def build_upload_payload", self.text)
-
-    def test_build_bridge_envelope_defined(self):
-        self.assertIn("def build_bridge_envelope", self.text)
 
     def test_write_sidecar_defined(self):
         self.assertIn("def write_sidecar", self.text)

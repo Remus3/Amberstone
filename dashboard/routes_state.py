@@ -25,35 +25,6 @@ from dashboard._writers import (
     set_pregame,
 )
 
-# Bridge watchdog thresholds (seconds since last bridge result; the
-# legion_daemon sentinel - the per-gamepc result watchdog was removed
-# when the Game-PC peer was severed). Below WARN: green. WARN..ALERT:
-# yellow. >= ALERT: red. 600s/3600s match the existing rc_facts.py
-# threshold (1hr) for the alert level and the 10-min audit recommendation
-# for the warn level.
-_BRIDGE_WARN_S = 600
-_BRIDGE_ALERT_S = 3600
-
-# Peer bridge health-publisher staleness (Audit7 H-01, 2026-05-18).
-# Each peer POSTs its watcher heartbeat ~every 60s to /api/health/peer.
-# WARN (300s = 5 missed posts) preserves the prior hardcoded `stale`
-# boundary; ALERT (1800s = 30 min silent) is "publisher almost
-# certainly dead while the bridge task loop may still be alive" - the
-# false-confidence shape the audit flagged. <=WARN green, <=ALERT
-# yellow, >ALERT red.
-_PEER_HEALTH_WARN_S = 300
-_PEER_HEALTH_ALERT_S = 1800
-
-
-def _peer_health_status(age_s: float) -> str:
-    """Graded peer health-publisher status from heartbeat age (seconds).
-    <=WARN green * <=ALERT yellow * >ALERT red. Pure - unit-tested."""
-    if age_s <= _PEER_HEALTH_WARN_S:
-        return "green"
-    if age_s <= _PEER_HEALTH_ALERT_S:
-        return "yellow"
-    return "red"
-
 def _agent6_audit_outcomes(max_count: int = 3) -> list:
     """Return the last ``max_count`` agent6-full-audit-pass final events from
     agents/state/task_queue.jsonl, oldest-first. Returns [] on any error."""
@@ -306,73 +277,6 @@ def _serve_health_all(h) -> None:
         except Exception as e:  # noqa: BLE001
             rollup["cost"] = {"error": str(e)[:120]}
         try:
-            # Post-1PC (ADR-011): the Game-PC bridge peer is severed, so the
-            # old result-age watchdog was removed with it. Bridge health is now
-            # the Legion-side autonomous /process-bridge-tasks sentinel
-            # (tools/legion_bridge_daemon.py) in the legion_daemon block below.
-            bridge_block = {
-                "status":  "unknown",
-                "warn_s":  _BRIDGE_WARN_S,
-                "alert_s": _BRIDGE_ALERT_S,
-            }
-            ld_path = APP_DIR / "ops" / "runtime" / "legion_bridge_daemon_health.json"
-            if ld_path.exists():
-                try:
-                    ld = json.loads(ld_path.read_text(encoding="utf-8"))
-                    last_check = ld.get("last_check_ts") or 0
-                    bridge_block["legion_daemon"] = {
-                        "status":                  ld.get("status"),
-                        "pid":                     ld.get("pid"),
-                        "invocations_since_boot":  ld.get("invocations_since_boot"),
-                        "last_task_ts":            ld.get("last_task_ts"),
-                        "last_check_age_s":        round(max(0.0, time.time() - last_check), 1) if last_check else None,
-                    }
-                except Exception as _e:  # noqa: BLE001
-                    bridge_block["legion_daemon"] = {"error": str(_e)[:120]}
-            else:
-                bridge_block["legion_daemon"] = {"status": "no_data"}
-            rollup["bridge"] = bridge_block
-        except Exception as e:  # noqa: BLE001
-            rollup["bridge"] = {"error": str(e)[:120], "status": "unknown"}
-        # (2026-05-03) Peer bridge_watcher heartbeats - published by the
-        # sidecar tools/bridge_watcher_health_publisher.py on each peer
-        # via POST /api/health/peer/<node>. Stale = no heartbeat in 5+
-        # minutes. No-data = peer hasn't been deployed yet.
-        try:
-            peers = {}
-            for node in ("peer",):
-                rec_path = APP_DIR / "ops" / "runtime" / "peer_health" / f"{node}.json"
-                if not rec_path.exists():
-                    peers[node] = {"status": "no_data"}
-                    continue
-                rec = json.loads(rec_path.read_text(encoding="utf-8"))
-                recv = rec.get("received_at") or 0
-                age_s = max(0.0, time.time() - recv)
-                hb = rec.get("heartbeat") or {}
-                hb_updated = hb.get("updated_at") or 0
-                hb_age_s: float | None = max(0.0, time.time() - hb_updated) if hb_updated else None
-                # Use the larger of publisher age and watcher heartbeat age so a
-                # frozen watcher that keeps relaying a stale snapshot is not
-                # reported green just because the publisher is posting on schedule.
-                effective_age_s = max(age_s, hb_age_s) if hb_age_s is not None else age_s
-                peer_status = _peer_health_status(effective_age_s)
-                peers[node] = {
-                    "age_s":            round(age_s, 1),
-                    "heartbeat_age_s":  round(hb_age_s, 1) if hb_age_s is not None else None,
-                    "stale":            effective_age_s > _PEER_HEALTH_WARN_S,
-                    "status":           peer_status,
-                    "watcher_alive":    bool(hb.get("alive")),
-                    "watcher_pid":      hb.get("pid"),
-                    "queue_depth":      hb.get("queue_depth"),
-                    "auto_ok":          hb.get("auto_ok_since_boot"),
-                    "auto_err":         hb.get("auto_err_since_boot"),
-                    "escalations":      hb.get("escalations_since_boot"),
-                    "tokens_today_usd": hb.get("tokens_used_today_usd"),
-                }
-            rollup["peers"] = peers
-        except Exception as e:  # noqa: BLE001
-            rollup["peers"] = {"error": str(e)[:120]}
-        try:
             agent6_outcomes = _agent6_audit_outcomes(max_count=3)
             last_two = agent6_outcomes[-2:]
             consecutive_fails = (
@@ -389,29 +293,12 @@ def _serve_health_all(h) -> None:
         vis_ok = bool(rollup.get("vision", {}).get("alive"))
         ds_ok = bool(rollup.get("daemon_slayer", {}).get("alive"))
         cost_ok = rollup.get("cost", {}).get("banner") != "over"
-        # Bridge silence does not flip overall to red - RC + coaching keep
-        # working without it. Cap the bridge contribution at yellow so a
-        # dead bridge auto-flow doesn't drown out actual RC/vision down
-        # signals.
-        bridge_status = (rollup.get("bridge") or {}).get("status")
-        bridge_degraded = bridge_status in ("yellow", "red")
-        # Audit7 H-01: a stale peer health-publisher is an observability
-        # gap, not an RC outage - cap at yellow (same philosophy as
-        # bridge silence) so the primary top-right dot flips instead of
-        # staying falsely green while a publisher is dead for hours.
-        peers_block = rollup.get("peers") or {}
-        peer_degraded = any(
-            isinstance(v, dict) and v.get("status") in ("yellow", "red")
-            for v in peers_block.values()
-        )
         agent6_degraded = (rollup.get("agent6") or {}).get("status") == "yellow"
         if not rc_ok or not vis_ok:
             rollup["status"] = "red"
         elif (not cost_ok
               or not ds_ok
               or rollup.get("cost", {}).get("banner") == "warn"
-              or bridge_degraded
-              or peer_degraded
               or agent6_degraded):
             rollup["status"] = "yellow"
         else:

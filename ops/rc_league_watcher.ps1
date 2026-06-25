@@ -65,9 +65,7 @@ function League-Running {
 function Stack-Running {
     $sup    = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
               Where-Object { $_.CommandLine -like "*rc_supervisor.py*" }
-    $bridge = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-              Where-Object { $_.CommandLine -like "*rc_file_bridge.py*" }
-    return ($sup -or $bridge)
+    return [bool]$sup
 }
 
 function Start-Stack {
@@ -78,8 +76,7 @@ function Start-Stack {
 
     # Ensure runtime dirs exist
     $dirs = @(
-        "deploy_requests","deploy_results","bridge_requests","bridge_results",
-        "bridge_results\images","logs","supervisor_requests",
+        "deploy_requests","deploy_results","logs","supervisor_requests",
         "control\commands","control\results"
     )
     foreach ($d in $dirs) {
@@ -87,7 +84,6 @@ function Start-Stack {
     }
 
     $supervisorScript = Join-Path $projectRoot "ops\rc_supervisor.py"
-    $bridgeScript     = Join-Path $projectRoot "ops\rc_file_bridge.py"
     $pidLockFile      = Join-Path $runtimeDir  "supervisor.pid"
 
     # -- Kill deprecated watchdog processes first --------------------------
@@ -142,27 +138,7 @@ function Start-Stack {
         -WindowStyle Hidden
     Start-Sleep -Seconds 1
 
-    # Start file bridge - skip if a healthy instance is already running
-    $bridgePidFile = Join-Path $runtimeDir "bridge.pid"
-    $bridgeAlreadyRunning = $false
-    if (Test-Path $bridgePidFile) {
-        try {
-            $bRaw = (Get-Content $bridgePidFile -Raw).Trim()
-            $bPid = if ($bRaw.StartsWith('{')) { [int]($bRaw | ConvertFrom-Json).pid } else { [int]$bRaw }
-            if ($bPid -and (Get-Process -Id $bPid -ErrorAction SilentlyContinue)) {
-                Write-Log "Bridge already running (PID=$bPid) - skipping start"
-                $bridgeAlreadyRunning = $true
-            }
-        } catch {}
-    }
-    if (-not $bridgeAlreadyRunning) {
-        Start-Process -FilePath $pythonExe `
-            -ArgumentList @($bridgeScript, "--config", $ConfigPath) `
-            -WorkingDirectory $projectRoot `
-            -WindowStyle Hidden
-    }
-
-    Write-Log "Stack started (supervisor [+self_monitor] + bridge)"
+    Write-Log "Stack started (supervisor [+self_monitor])"
 }
 
 function Stop-Stack {
@@ -194,26 +170,6 @@ function Stop-Stack {
             }
         }
         Remove-Item $pidLockFile -Force -ErrorAction SilentlyContinue
-    }
-
-    # Kill file bridge by its own PID file if present, otherwise by command-line match
-    $bridgePidFile = Join-Path $runtimeDir "bridge.pid"
-    if (Test-Path $bridgePidFile) {
-        try {
-            $raw = (Get-Content $bridgePidFile -Raw).Trim()
-            $bridgePid = if ($raw.StartsWith('{')) { [int]($raw | ConvertFrom-Json).pid } else { [int]$raw }
-            Stop-Process -Id $bridgePid -Force -ErrorAction SilentlyContinue
-            Write-Log "Bridge stopped by owned PID=$bridgePid"
-        } catch {}
-        Remove-Item $bridgePidFile -Force -ErrorAction SilentlyContinue
-    } else {
-        # Fallback: rc_file_bridge.py is specific enough to be safe
-        Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-            $_.CommandLine -like "*rc_file_bridge.py*"
-        } | ForEach-Object {
-            Write-Log "Bridge fallback-kill PID=$($_.ProcessId)"
-            Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
-        }
     }
 
     Write-Log "Stack stopped"

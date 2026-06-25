@@ -38,7 +38,6 @@ $logDir = Join-Path $runtimeDir "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 $supervisorScript = Join-Path $projectRoot "ops\rc_supervisor.py"
-$bridgeScript     = Join-Path $projectRoot "ops\rc_file_bridge.py"
 
 Write-Log "Self-healing watchdog started (PID=$PID)"
 Write-Log "Config: $ConfigPath"
@@ -88,20 +87,6 @@ while ($true) {
             -WorkingDirectory $projectRoot `
             -WindowStyle Hidden
         Start-Sleep -Seconds 2
-    }
-
-    # Check file bridge
-    $bridge = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-        $_.CommandLine -like "*rc_file_bridge.py*"
-    } | Select-Object -First 1
-
-    if (-not $bridge) {
-        Write-Log "File bridge not running - starting rc_file_bridge.py"
-        Start-Process -FilePath $pythonExe `
-            -ArgumentList @($bridgeScript, "--config", $ConfigPath) `
-            -WorkingDirectory $projectRoot `
-            -WindowStyle Hidden
-        Start-Sleep -Seconds 1
     }
 
     Start-Sleep -Seconds 2

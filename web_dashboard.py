@@ -137,37 +137,6 @@ from dashboard._champ_select import (  # noqa: E402, F401
 
 
 
-# -- Cross-Claude bridge -------------------------------------------------
-
-# Tier 2 helper-shake (2026-05-01): the bridge log moved to
-
-# dashboard/_bridge_log.py. Keep the underscore-prefixed names re-bound
-
-# here so any in-process caller that still does `from web_dashboard
-
-# import _bridge_post` keeps working without churn.
-
-from dashboard._bridge_log import (  # noqa: E402, F401
-
-    BRIDGE_LOG_DISK_MAX as _BRIDGE_LOG_DISK_MAX,
-
-    BRIDGE_LOG_PATH as _BRIDGE_LOG_PATH,
-
-    BRIDGE_ROTATE_INTERVAL as _BRIDGE_ROTATE_INTERVAL,
-
-    bridge_hydrate_from_disk as _bridge_hydrate_from_disk,
-
-    bridge_maybe_rotate as _bridge_maybe_rotate,
-
-    bridge_post as _bridge_post,
-
-    bridge_since as _bridge_since,
-
-)
-
-
-
-
 
 # Tier 2 helper-shake (2026-05-01): the diagnostics cache moved to
 

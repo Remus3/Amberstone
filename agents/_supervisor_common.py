@@ -112,21 +112,7 @@ _DETERMINISTIC_RECORDKEEPING_OPS = frozenset({
     "user-destructive-request",
     "user-unparsed",
     "ui-feedback-unhandled",
-    "bridge-publisher-stale",   # Audit7 H-01 - filing IS the alarm
 })
-
-# Audit7 H-01 (2026-05-18) - bridge health-publisher staleness alarm.
-# Peers POST their watcher heartbeat ~every 60s to /api/health/peer/<node>,
-# persisted at ops/runtime/peer_health/<node>.json. When that file goes
-# silent the bridge *task loop* may still be alive (only the publisher
-# sub-process died) - a false-confidence shape the rc_facts probe
-# rendered but nothing escalated (2026-05-18: gamepc silent ~2.7h while
-# peer was fresh at 25s). The watchdog files a deduped Agent-1 triage
-# task on threshold cross.
-_BRIDGE_PUB_PEERS = ("peer",)
-_BRIDGE_PUB_ALERT_S = 1800.0            # 30 min silent -> escalate
-_BRIDGE_PUB_CHECK_INTERVAL_S = 300.0    # poll cadence (publisher posts ~60s)
-_BRIDGE_PUB_REFILE_COOLDOWN_S = 21600.0  # one task per node per 6h outage
 
 # Audit-8 H-02 reconciler: task_queue.jsonl state-machine leak guard.
 # Periodic scan closes IN_PROGRESS envelopes that never received a
@@ -135,29 +121,6 @@ _BRIDGE_PUB_REFILE_COOLDOWN_S = 21600.0  # one task per node per 6h outage
 # bridge watchdog cadence so the two background loops co-exist cheaply.
 _RECONCILE_INTERVAL_S = 300.0    # 5 min between scans
 _RECONCILE_STALE_S = 1800.0      # 30 min before in_progress is considered stale
-
-
-def _bridge_pub_should_file(
-    age_s: float,
-    prev_fired_mono: "float | None",
-    now_mono: float,
-    *,
-    alert_s: float = _BRIDGE_PUB_ALERT_S,
-    cooldown_s: float = _BRIDGE_PUB_REFILE_COOLDOWN_S,
-) -> "tuple[bool, bool]":
-    """Pure dedup decision for the bridge-publisher watchdog (Audit7
-    H-01). Returns ``(should_file, rearm)``:
-
-      - healthy (age <= alert): ``(False, True)`` - publisher recovered;
-        clear the node's fired_at so a fresh outage re-alarms.
-      - stale, within re-file cooldown of the last filing: ``(False, False)``
-      - stale, never filed or cooldown elapsed: ``(True, False)``
-    """
-    if age_s <= alert_s:
-        return (False, True)
-    if prev_fired_mono is not None and (now_mono - prev_fired_mono) < cooldown_s:
-        return (False, False)
-    return (True, False)
 
 
 def _iso_now() -> str:

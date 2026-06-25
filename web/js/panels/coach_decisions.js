@@ -1,11 +1,17 @@
-// Bridge Pending panel - coach decisions banner, recent coach calls log,
-// bridge task pending display. setIntervals start at module load.
+// Coach decisions panel - coach decisions banner + recent coach calls log.
+// setIntervals start at module load.
+//
+// Recovered from the former panels/bridge_pending.js (2026-06-24): that
+// file was MIXED - it held this non-bridge coach UI alongside the now-
+// decommissioned cross-Claude bridge pending-tasks panel. The bridge
+// parts (renderBridgePending + its /api/bridge/pending poll) were dropped;
+// the coach rendering below is preserved byte-for-byte in behavior.
 import { el, safe, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { dedupFetch } from '../lib/dedup_fetch.js';
 
 
-// ── Coach decisions banner ─────────────────────────────────────────
+// -- Coach decisions banner -----------------------------------------
 // Polls /api/decisions, renders pending coachable moments as a
 // banner between header and main. Clicking Contest/Give/Skip POSTs
 // to /api/decisions/<id> and animates removal. Records survive in
@@ -125,7 +131,7 @@ async function pollCoachDecisions() {
 setInterval(pollCoachDecisions, COACH_DECISIONS.intervalMs);
 pollCoachDecisions();
 
-// ── Recent coach calls (Tier 4 #18, 2026-05-01) ─────────────────────
+// -- Recent coach calls (Tier 4 #18, 2026-05-01) --------------------
 // Reads /api/decisions/log every 30s and renders the last N resolved
 // decisions so the user can review "did I contest the right Barons?"
 // alongside the live pending banner above. The audit's "kill-time
@@ -186,156 +192,4 @@ async function pollRecentCoachCalls() {
 setInterval(pollRecentCoachCalls, RECENT_CALLS.intervalMs);
 pollRecentCoachCalls();
 
-// ── Bridge Pending escalations (2026-05-03) ────────────────────────
-// Reads /api/bridge/pending every 20s - the bridge_watcher writes
-// the queue, this only displays it. Render is idempotent (sig
-// change-detection) to avoid flicker. Menu badge shows depth so the
-// operator sees pending work without navigating; sub-page shows full
-// detail. Read-only at MVP; drain via /process-bridge-tasks.
-const BRIDGE_PENDING = {
-  list:    el("bridge-pending-list"),
-  empty:   el("bridge-pending-empty"),
-  count:   el("bridge-pending-count"),
-  badge:   el("bridge-pending-menu-badge"),
-  intervalMs: 20000,
-};
-
-function renderBridgePending(payload) {
-  const B = BRIDGE_PENDING;
-  const tasks = (payload && Array.isArray(payload.tasks)) ? payload.tasks : [];
-  const now = Date.now() / 1000;
-  const live = tasks.filter(t => !t.ttl_at || t.ttl_at > now);
-
-  if (B.count) B.count.textContent = String(live.length);
-  if (B.badge) {
-    B.badge.textContent = String(live.length);
-    B.badge.hidden = live.length === 0;
-  }
-
-  if (!B.list) return;
-  if (live.length === 0) {
-    if (B.list.dataset.sig !== "empty") {
-      B.list.innerHTML = "";
-      B.list.dataset.sig = "empty";
-    }
-    if (B.empty) B.empty.hidden = false;
-    return;
-  }
-  if (B.empty) B.empty.hidden = true;
-
-  const sig = live.map(t => `${t.task_id}:${t.claimed_by||""}:${t.received_at||0}`).join("|");
-  if (B.list.dataset.sig === sig) return;
-  B.list.dataset.sig = sig;
-  B.list.innerHTML = "";
-  for (const t of live) {
-    const li = document.createElement("li");
-    li.className = "bridge-pending-item";
-    if (t.claimed_by) li.classList.add("bp-claimed");
-
-    const head = document.createElement("div");
-    head.className = "bp-head";
-    const from = document.createElement("span");
-    from.className = "bp-from";
-    from.textContent = (t.from || "?").toUpperCase();
-    const kind = document.createElement("span");
-    kind.className = "bp-kind";
-    kind.textContent = t.kind || "task";
-    const age = document.createElement("span");
-    age.className = "bp-age";
-    age.textContent = _formatRelativeAge(t.received_at);
-    const id = document.createElement("span");
-    id.className = "bp-id";
-    id.textContent = t.task_id || "";
-    id.title = "click to copy";
-    head.append(from, kind, age, id);
-
-    const summary = document.createElement("div");
-    summary.className = "bp-summary";
-    summary.textContent = t.summary || "(no summary)";
-
-    li.append(head, summary);
-
-    if (t.reason) {
-      const reason = document.createElement("div");
-      reason.className = "bp-reason";
-      reason.textContent = t.reason;
-      li.append(reason);
-    }
-    if (t.prompt) {
-      const prompt = document.createElement("pre");
-      prompt.className = "bp-prompt";
-      prompt.textContent = t.prompt;
-      li.append(prompt);
-    }
-    if (t.claimed_by) {
-      const claim = document.createElement("div");
-      claim.className = "bp-claim";
-      claim.textContent = `claimed by ${t.claimed_by}`;
-      li.append(claim);
-    }
-
-    // Action row (accept / defer / dismiss). POSTs to
-    // /api/bridge/pending/<id>/<action>; on success refresh the panel.
-    const actions = document.createElement("div");
-    actions.className = "bp-actions";
-    for (const action of ["accept", "defer", "dismiss"]) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = `bp-btn bp-btn-${action}`;
-      btn.textContent = action.toUpperCase();
-      btn.dataset.taskId = t.task_id || "";
-      btn.dataset.action = action;
-      btn.addEventListener("click", _bridgePendingAction);
-      actions.append(btn);
-    }
-    li.append(actions);
-
-    B.list.appendChild(li);
-  }
-}
-
-async function _bridgePendingAction(ev) {
-  const btn = ev.currentTarget;
-  const taskId = btn.dataset.taskId;
-  const action = btn.dataset.action;
-  if (!taskId || !action) return;
-  if (action === "dismiss" && !confirm(`Dismiss "${taskId}"?`)) return;
-  btn.disabled = true;
-  btn.classList.add("bp-btn-busy");
-  try {
-    const r = await fetch(`/api/bridge/pending/${encodeURIComponent(taskId)}/${action}`, {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: "{}",
-    });
-    if (!r.ok) {
-      const err = await r.text();
-      btn.classList.add("bp-btn-err");
-      btn.title = `failed: ${err.slice(0, 200)}`;
-    } else {
-      // Force re-render by invalidating the sig cache.
-      if (BRIDGE_PENDING.list) BRIDGE_PENDING.list.dataset.sig = "";
-      pollBridgePending();
-    }
-  } catch (e) {
-    btn.classList.add("bp-btn-err");
-    btn.title = `error: ${String(e).slice(0, 200)}`;
-  } finally {
-    btn.disabled = false;
-    btn.classList.remove("bp-btn-busy");
-  }
-}
-
-async function pollBridgePending() {
-  if (document.hidden) return;
-  try {
-    const r = await fetch("/api/bridge/pending");
-    if (!r.ok) return;
-    const d = await r.json();
-    renderBridgePending(d);
-  } catch (_) {}
-}
-setInterval(pollBridgePending, BRIDGE_PENDING.intervalMs);
-pollBridgePending();
-
-export { renderCoachDecisions, renderRecentCoachCalls, renderBridgePending };
+export { renderCoachDecisions, renderRecentCoachCalls };

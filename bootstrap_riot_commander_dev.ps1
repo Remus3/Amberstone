@@ -102,9 +102,6 @@ $dirs = @(
     "ops\runtime\deploy_requests",
     "ops\runtime\deploy_results",
     "ops\runtime\health",
-    "ops\bridge",
-    "ops\bridge\requests",
-    "ops\bridge\results",
     "tools"
 )
 
@@ -166,7 +163,6 @@ apply_patches.py
 # Runtime state
 ops/runtime/health/
 ops/runtime/deploy_results/
-ops/bridge/results/
 data/coaching_data.json
 data/tft_coaching_data.json
 data/tft_live_data.json

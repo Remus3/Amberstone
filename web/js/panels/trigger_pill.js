@@ -4,7 +4,7 @@
 // header row 2 with eval counter + green/amber/grey alive indicator.
 // Also peeks /api/decisions for pending count so the pill outlines
 // blue when something is actively asking for a choice (the actual
-// A/B banner lives in panels/bridge_pending.js - this is just status).
+// A/B banner lives in panels/coach_decisions.js - this is just status).
 //
 // Hidden by CSS on client/tft modes; render still runs so the pill
 // is up-to-date the moment the operator drops into a game.
@@ -27,7 +27,7 @@ async function _tick() {
     if (r.ok) hb = await r.json();
   } catch (_) { /* swallow - pill will go grey */ }
   try {
-    // item 186: dedupFetch coalesces with bridge_pending's parallel
+    // item 186: dedupFetch coalesces with coach_decisions' parallel
     // /api/decisions poll (20s cadence vs this module's 500ms).
     const r = await dedupFetch("/api/decisions");
     if (r.ok) {
