@@ -7,9 +7,9 @@
  ],
  "_champ_count": 171,
  "_errors": [],
- "_note": "OPTIONAL DS per-spell overlay. ammo = {max[],recharge[]} when the spell has real charges (else null). missile_speed = resolved travel speed (prefers the <...>Missile sub-record when the cast record is 0/tiny; cast/sub speeds kept in missile_cast_record/missile_sub_record). cc_tags = COARSE CC-class flag from mSpellTags (the ImmobilizingCCSpell umbrella; NOT a duration, NOT stun-vs-root). geometry.cast_radius is CONFLATED (boilerplate 210/100 on point spells) - trust cone_distance/cone_angle, check cast_radius_conflated before using cast_radius. Meraki stays authoritative for damage/ratios/CC durations. A run with every _with_* == 0 means the host could not reach CDragon - do NOT commit.",
- "_patch": "16.11.1",
- "_patch_segment": "16.11",
+ "_note": "OPTIONAL DS per-spell overlay. ammo = {max[],recharge[]} when the spell has real charges (else null). missile_speed = resolved travel speed (prefers the <...>Missile sub-record when the cast record is 0/tiny; cast/sub speeds kept in missile_cast_record/missile_sub_record). cc_tags = COARSE CC-class flag from mSpellTags (the ImmobilizingCC umbrella, 16.13 ...CCAbility suffix canonicalized back to ...CCSpell; NOT a duration, NOT stun-vs-root). geometry.cast_radius is CONFLATED (boilerplate 210/100 on point spells) - trust cone_distance/cone_angle, check cast_radius_conflated before using cast_radius. Meraki stays authoritative for damage/ratios/CC durations. A run with every _with_* == 0 means the host could not reach CDragon - do NOT commit.",
+ "_patch": "16.13.1",
+ "_patch_segment": "16.13",
  "_slot_keying": "Q/W/E/R via CharacterRecords/Root.spellNames (passive not emitted)",
  "_source": "CommunityDragon game/data/characters/<slug>/<slug>.bin.json (2-segment patch; CharacterRecords/Root.spellNames slot order)",
  "_with_ammo": 24,
@@ -1287,7 +1287,7 @@
     "E": {
      "ammo": null,
      "cc_tags": [
-      "Trait_SwapsIntoImmobilizingCCSpell"
+      "Trait_ImmobilizingCCSpell"
      ],
      "geometry": null,
      "missile_cast_record": null,
@@ -4966,7 +4966,9 @@
    "spells": {
     "E": {
      "ammo": null,
-     "cc_tags": [],
+     "cc_tags": [
+      "Trait_ImmobilizingCCSpell"
+     ],
      "geometry": {
       "cast_radius": null,
       "cone_angle": 0.0,
@@ -5215,7 +5217,9 @@
     },
     "R": {
      "ammo": null,
-     "cc_tags": [],
+     "cc_tags": [
+      "Trait_ImmobilizingCCSpell"
+     ],
      "geometry": {
       "cast_radius": 300.0,
       "cast_radius_conflated": false,
@@ -5972,9 +5976,7 @@
     },
     "Q": {
      "ammo": null,
-     "cc_tags": [
-      "Trait_ImmobilizingCCSpell"
-     ],
+     "cc_tags": [],
      "geometry": {
       "cast_radius": 210.0,
       "cast_radius_conflated": true,
@@ -5989,7 +5991,7 @@
     "R": {
      "ammo": null,
      "cc_tags": [
-      "Trait_SwapsIntoImmobilizingCCSpell"
+      "Trait_ImmobilizingCCSpell"
      ],
      "geometry": {
       "cast_radius": 100.0,
@@ -6179,7 +6181,7 @@
     "Q": {
      "ammo": null,
      "cc_tags": [
-      "Trait_SwapsIntoImmobilizingCCSpell"
+      "Trait_ImmobilizingCCSpell"
      ],
      "geometry": {
       "cast_radius": 180.0,
@@ -7852,7 +7854,7 @@
     "E": {
      "ammo": null,
      "cc_tags": [
-      "Trait_SwapsIntoImmobilizingCCSpell"
+      "Trait_ImmobilizingCCSpell"
      ],
      "geometry": {
       "cast_radius": 210.0,
@@ -8712,7 +8714,7 @@
     "R": {
      "ammo": null,
      "cc_tags": [
-      "Trait_SwapsIntoImmobilizingCCSpell"
+      "Trait_ImmobilizingCCSpell"
      ],
      "geometry": {
       "cast_radius": 210.0,
@@ -9644,7 +9646,7 @@
     "Q": {
      "ammo": null,
      "cc_tags": [
-      "Trait_SwapsIntoImmobilizingCCSpell"
+      "Trait_ImmobilizingCCSpell"
      ],
      "geometry": {
       "cast_radius": 400.0,
@@ -9698,7 +9700,7 @@
     "Q": {
      "ammo": null,
      "cc_tags": [
-      "Trait_SwapsIntoImmobilizingCCSpell"
+      "Trait_ImmobilizingCCSpell"
      ],
      "geometry": {
       "cast_radius": 100.0,
@@ -9773,9 +9775,7 @@
     },
     "W": {
      "ammo": null,
-     "cc_tags": [
-      "Trait_ImmobilizingCCSpell"
-     ],
+     "cc_tags": [],
      "geometry": {
       "cast_radius": 225.0,
       "cast_radius_conflated": false,
