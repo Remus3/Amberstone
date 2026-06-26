@@ -453,6 +453,61 @@ def epic_buff_callouts(objective_events: object, game_time_s: float) -> list[dic
     return out
 
 
+# A team secures Dragon Soul on its 4th elemental drake, so at EXACTLY 3 the
+# next drake IS the soul drake - the single glanceable "force or deny"
+# inflection. Elder dragons spawn only AFTER soul and never count toward it.
+_SOUL_POINT_STACKS = 3
+_SOUL_POINT_LINES: dict[str, str] = {
+    "ally":  "Soul point - next drake is SOUL, force it",
+    "enemy": "Enemy soul point - next drake SOUL, deny or disengage",
+}
+
+
+def _is_elemental_drake(ev: dict) -> bool:
+    """True for a soul-counting elemental drake - a DragonKill that is NOT the
+    Elder dragon (Elder spawns post-soul and does not count toward soul)."""
+    if ev.get("name") != "dragon":
+        return False
+    dt = ev.get("dragon_type")
+    return not (isinstance(dt, str) and dt.strip().lower() == "elder")
+
+
+def dragon_soul_callout(objective_events: object) -> Optional[dict]:
+    """Return ONE ``kind="dragon_soul"`` soul-point row, or ``None``.
+
+    Counts elemental drakes per side from the ``objective_events`` stream
+    ({name, killer_team, down_at_s, dragon_type}). When a side sits at EXACTLY
+    ``_SOUL_POINT_STACKS`` (3) elemental drakes the next drake grants Dragon
+    Soul - the one correct-by-construction "force or deny" inflection - so a
+    sided row fires (enemy first: the defensive deny outranks the offensive
+    force for the single advisory slot). A side already at 4+ has soul (no
+    "next is soul" claim); 0-2 is pre-point. Unresolved-killer ("unknown")
+    drakes are NOT attributed - a conservative undercount so the row can never
+    FALSELY claim a soul point (a missed warning beats a wrong one, mirroring
+    the inhibitor/epic-buff side discipline). Standing advisory (``eta_s``
+    None) like the macro/heal rows, so the callouts renderer paints it with no
+    web change. Fail-soft: bad input -> None (never raises).
+    """
+    if not isinstance(objective_events, list):
+        return None
+    counts = {"ally": 0, "enemy": 0}
+    for ev in objective_events:
+        if not isinstance(ev, dict) or not _is_elemental_drake(ev):
+            continue
+        side = ev.get("killer_team")
+        if side in counts:
+            counts[side] += 1
+    for side in ("enemy", "ally"):  # enemy deny outranks ally force for the slot
+        if counts[side] == _SOUL_POINT_STACKS:
+            return {
+                "tag": f"soul_point_{side}",
+                "line": _SOUL_POINT_LINES[side],
+                "eta_s": None,
+                "kind": "dragon_soul",
+            }
+    return None
+
+
 def _sort_key(c: dict) -> tuple[int, float]:
     """Sort callouts active-first, then by ascending ETA, None last.
 
