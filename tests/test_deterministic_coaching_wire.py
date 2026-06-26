@@ -208,6 +208,51 @@ class ComputeDeterministicTests(unittest.TestCase):
         kinds = [c.get("kind") for c in out["callouts"]]
         self.assertNotIn("heal_threat", kinds)
 
+    def test_dragon_soul_callout_merged_into_callouts(self) -> None:
+        # Enemy at 3 elemental drakes -> a dragon_soul soul-point row rides in.
+        orig = dc.laning_choices
+        try:
+            dc.laning_choices = lambda gs, mode="SR": []
+            coach = {"champion": "Aatrox", "level": 14, "game_time_s": 1500}
+            lc = {"enemy_team": ["Garen"], "objective_events": [
+                {"name": "dragon", "killer_team": "enemy", "dragon_type": "Fire",
+                 "down_at_s": 600.0},
+                {"name": "dragon", "killer_team": "enemy", "dragon_type": "Earth",
+                 "down_at_s": 900.0},
+                {"name": "dragon", "killer_team": "enemy", "dragon_type": "Cloud",
+                 "down_at_s": 1200.0},
+            ]}
+            out = dc.compute_deterministic(coach, lc, "sr")
+        finally:
+            dc.laning_choices = orig
+        kinds = [c.get("kind") for c in out["callouts"]]
+        self.assertIn("dragon_soul", kinds)
+        soul = next(c for c in out["callouts"] if c.get("kind") == "dragon_soul")
+        self.assertIn("enemy", soul["tag"])
+        self.assertIsNone(soul["eta_s"])
+
+    def test_dragon_soul_wins_advisory_slot_over_heal(self) -> None:
+        # Soul point AND a heal threat both fire; soul takes the single slot.
+        orig = dc.laning_choices
+        try:
+            dc.laning_choices = lambda gs, mode="SR": []
+            coach = {"champion": "Aatrox", "level": 14, "game_time_s": 1500}
+            lc = {"enemy_team": ["Soraka"], "enemy_item_ids": ["3072"],
+                  "ally_item_ids": ["3047"], "objective_events": [
+                {"name": "dragon", "killer_team": "ally", "dragon_type": "Fire",
+                 "down_at_s": 600.0},
+                {"name": "dragon", "killer_team": "ally", "dragon_type": "Earth",
+                 "down_at_s": 900.0},
+                {"name": "dragon", "killer_team": "ally", "dragon_type": "Cloud",
+                 "down_at_s": 1200.0},
+            ]}
+            out = dc.compute_deterministic(coach, lc, "sr")
+        finally:
+            dc.laning_choices = orig
+        kinds = [c.get("kind") for c in out["callouts"]]
+        self.assertIn("dragon_soul", kinds)
+        self.assertNotIn("heal_threat", kinds)
+
     def test_fail_soft_returns_all_empty(self) -> None:
         # A laning path that raises must degrade to the all-empty result.
         orig = dc.laning_choices

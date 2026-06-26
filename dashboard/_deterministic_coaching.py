@@ -48,7 +48,7 @@ from core.coach_choices import (
     to_jsonable,
 )
 from core.event_callouts import _sort_key as _callout_sort_key
-from core.event_callouts import next_callouts
+from core.event_callouts import dragon_soul_callout, next_callouts
 from core.heal_threat import heal_threat_callout
 from core.laning_verdicts import laning_choices
 from core.lead_projection import phase_for, project_lead
@@ -552,7 +552,13 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
         gs.get("enemy_comp"), gs.get("enemy_item_ids"),
         gs.get("ally_item_ids"), mode=lower,
     )
-    advisory = macro or heal
+    # RC2 L2: dragon soul-point row (SR-only state read over objective_events).
+    # A standing advisory like macro/heal; it takes the single trailing slot
+    # below a fresh lost-objective macro directive but ABOVE the heal nudge - a
+    # soul-point inflection outweighs an item-counter cue. Naturally SR-only
+    # (no dragons feed objective_events off the Rift), gated for symmetry.
+    soul = dragon_soul_callout(gs.get("objective_events")) if lower == "sr" else None
+    advisory = macro or soul or heal
     if advisory is not None:
         callouts = callouts[:2] + [advisory]
     else:
