@@ -560,6 +560,47 @@ _SOUL_POINT_LINES: dict[str, str] = {
     "enemy": "Enemy soul point - next drake SOUL, deny or disengage",
 }
 
+# Soul SECURED (4+ stacks): the soul is live on the map - the highest-priority
+# soul read. "{el}" is the locked element (latest elemental drake's type); the
+# parenthetical is dropped when the element is unknown.
+_SOUL_SECURED_LINES: dict[str, str] = {
+    "ally":  "You have SOUL ({el}) - force 5v5 fights",
+    "enemy": "Enemy SOUL ({el}) - avoid 5v5, play for picks",
+}
+
+# Soul-RACE lead: a side ahead by >= _SOUL_RACE_MIN_LEAD with >= _SOUL_RACE_MIN_
+# STACKS drakes and nobody at the point yet. Glanceable race state (ally-enemy
+# score), not an inflection. Lower priority than secured / point.
+_SOUL_RACE_MIN_LEAD = 1
+_SOUL_RACE_MIN_STACKS = 2
+_SOUL_RACE_LINES: dict[str, str] = {
+    "ally":  "Ahead {a}-{b} on drakes - keep drake priority",
+    "enemy": "Behind {a}-{b} on drakes - contest or deny next",
+}
+
+
+def _locked_element(objective_events: object) -> str:
+    """Title-cased element of the LATEST elemental drake - the locked map element
+    (drakes 3+ are all one type) and thus the Dragon Soul type. '' if unknown."""
+    if not isinstance(objective_events, list):
+        return ""
+    latest_t: Optional[float] = None
+    el = ""
+    for ev in objective_events:
+        if not isinstance(ev, dict) or not _is_elemental_drake(ev):
+            continue
+        dt = ev.get("dragon_type")
+        if not isinstance(dt, str) or not dt.strip():
+            continue
+        try:
+            t = float(ev.get("down_at_s"))
+        except (TypeError, ValueError):
+            continue
+        if latest_t is None or t > latest_t:
+            latest_t = t
+            el = dt.strip().title()
+    return el
+
 
 def _is_elemental_drake(ev: dict) -> bool:
     """True for a soul-counting elemental drake - a DragonKill that is NOT the
@@ -589,29 +630,52 @@ def dragon_soul_callout(objective_events: object) -> Optional[dict]:
     """Return ONE ``kind="dragon_soul"`` soul-point row, or ``None``.
 
     Counts elemental drakes per side from the ``objective_events`` stream
-    ({name, killer_team, down_at_s, dragon_type}). When a side sits at EXACTLY
-    ``_SOUL_POINT_STACKS`` (3) elemental drakes the next drake grants Dragon
-    Soul - the one correct-by-construction "force or deny" inflection - so a
-    sided row fires (enemy first: the defensive deny outranks the offensive
-    force for the single advisory slot). A side already at 4+ has soul (no
-    "next is soul" claim); 0-2 is pre-point. Unresolved-killer ("unknown")
-    drakes are NOT attributed - a conservative undercount so the row can never
-    FALSELY claim a soul point (a missed warning beats a wrong one, mirroring
-    the inhibitor/epic-buff side discipline). Standing advisory (``eta_s``
-    None) like the macro/heal rows, so the callouts renderer paints it with no
-    web change. Fail-soft: bad input -> None (never raises).
+    ({name, killer_team, down_at_s, dragon_type}) and returns the single
+    highest-priority soul read, by a 3-tier cascade (enemy outranks ally within
+    a tier - the enemy state is the bigger threat):
+
+      1. SOUL SECURED (>= 4 elemental): the soul is live -> a locked-element
+         "they have SOUL (<element>)" row.
+      2. SOUL POINT (EXACTLY 3): the next drake grants soul -> the
+         correct-by-construction "force or deny" inflection row.
+      3. SOUL RACE: a side leads by >= _SOUL_RACE_MIN_LEAD with >=
+         _SOUL_RACE_MIN_STACKS drakes (nobody at the point) -> a glanceable
+         ally-enemy race-lead row.
+
+    Unresolved-killer ("unknown") drakes are NOT attributed - a conservative
+    undercount so the row can never FALSELY claim a point/soul (a missed warning
+    beats a wrong one, mirroring the inhibitor/epic-buff side discipline).
+    Standing advisory (``eta_s`` None) like the macro/heal rows, so the callouts
+    renderer paints it with no web change. Fail-soft: bad input -> None.
     """
     if not isinstance(objective_events, list):
         return None
     counts = _elemental_drake_counts(objective_events)
+
+    # 1. Soul secured - a live soul on the map is the highest-priority read.
+    for side in ("enemy", "ally"):
+        if counts[side] >= _SOUL_SECURED_STACKS:
+            el = _locked_element(objective_events)
+            tmpl = _SOUL_SECURED_LINES[side]
+            line = tmpl.format(el=el) if el else tmpl.replace(" ({el})", "")
+            return {"tag": f"soul_secured_{side}", "line": line,
+                    "eta_s": None, "kind": "dragon_soul"}
+
+    # 2. Soul point - the force-or-deny inflection.
     for side in ("enemy", "ally"):  # enemy deny outranks ally force for the slot
         if counts[side] == _SOUL_POINT_STACKS:
-            return {
-                "tag": f"soul_point_{side}",
-                "line": _SOUL_POINT_LINES[side],
-                "eta_s": None,
-                "kind": "dragon_soul",
-            }
+            return {"tag": f"soul_point_{side}", "line": _SOUL_POINT_LINES[side],
+                    "eta_s": None, "kind": "dragon_soul"}
+
+    # 3. Soul race - a meaningful pre-point lead (ally-enemy score always).
+    a, e = counts["ally"], counts["enemy"]
+    leader = "ally" if a > e else ("enemy" if e > a else None)
+    if leader is not None:
+        hi = a if leader == "ally" else e
+        if hi >= _SOUL_RACE_MIN_STACKS and abs(a - e) >= _SOUL_RACE_MIN_LEAD:
+            return {"tag": f"soul_race_{leader}",
+                    "line": _SOUL_RACE_LINES[leader].format(a=a, b=e),
+                    "eta_s": None, "kind": "dragon_soul"}
     return None
 
 
