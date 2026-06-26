@@ -143,13 +143,16 @@ def register_detector(fn: DetectorFn) -> DetectorFn:
 
 
 # -- Helpers -------------------------------------------------------------------
-# Approximate spawn timings for SR (2026 patch). First-spawn / respawn pairs.
+# SR epic-objective spawn timings (first-spawn / respawn). ONE cited source:
+# imported from core.event_callouts so the served callout path and this
+# vision-gated detector can never drift apart (L3 reconciliation).
 # Atakhan currently replaces Herald - skipped here pending mode-aware logic.
-
-_DRAGON_FIRST_S    = 300.0
-_DRAGON_RESPAWN_S  = 300.0
-_BARON_FIRST_S     = 1200.0
-_BARON_RESPAWN_S   = 360.0
+from core.event_callouts import (  # noqa: E402
+    SR_BARON_FIRST_S as _BARON_FIRST_S,
+    SR_BARON_RESPAWN_S as _BARON_RESPAWN_S,
+    SR_DRAGON_FIRST_S as _DRAGON_FIRST_S,
+    SR_DRAGON_RESPAWN_S as _DRAGON_RESPAWN_S,
+)
 
 
 def _next_objective_spawn(events: list, game_time: float, *,
