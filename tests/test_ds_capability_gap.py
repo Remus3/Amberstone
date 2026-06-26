@@ -24,14 +24,22 @@ from agents.daemon_slayer.threatrange import compute_threatrange
 from core.archetype_picks import get_archetype_for
 from core.ds_capability_gap import (
     POKE_ENEMY_MIN,
+    SUSTAIN_ENEMY_MIN,
+    SUSTAIN_HIGH_SCORE,
     _rank_gaps,
     build_capability_gap,
 )
+from agents.daemon_slayer.sustain import compute_sustain
 
 # Tanky enemies (tank/bruiser archetype) that are NOT flagged is_artillery.
 _TANKY_NO_POKE = ["Malphite", "Sett", "MasterYi"]
 # Artillery enemies (is_artillery True) that are NOT tank/bruiser archetype.
 _ARTILLERY_SQUISH = ["Xerath", "Ziggs", "Velkoz"]
+# Heavy-sustain enemies (total_sustain_score >= SUSTAIN_HIGH_SCORE) that are
+# NOT is_artillery and do NOT trip the anti-tank recommend threshold, so a comp
+# of these fires the sustain gap alone. Probed live 2026-06-26:
+#   Vladimir 1.600 / Fiddlesticks 2.933 / Warwick 11.667.
+_HIGH_SUSTAIN_NO_POKE = ["Vladimir", "Fiddlesticks", "Warwick"]
 
 
 # --- precondition guards: fail loudly if the underlying data shifts ----------
@@ -47,6 +55,13 @@ def test_fixture_preconditions_hold():
         assert compute_threatrange(champ, "SR").is_artillery is False, champ
         assert get_archetype_for(champ).get("primary") in {"tank", "bruiser"}, champ
     assert compute_threatrange("Garen", "SR").is_artillery is False
+    # Sustain-gap fixtures: heavy-sustain AND non-artillery, so they fire the
+    # sustain axis without bleeding into the poke axis.
+    for champ in _HIGH_SUSTAIN_NO_POKE:
+        assert compute_sustain(champ, "SR").total_sustain_score >= SUSTAIN_HIGH_SCORE, champ
+        assert compute_threatrange(champ, "SR").is_artillery is False, champ
+    # Lux is the low-sustain probe used as "me" - must stay below the threshold.
+    assert compute_sustain("Lux", "SR").total_sustain_score < SUSTAIN_HIGH_SCORE
 
 
 # --- anti-tank gap -----------------------------------------------------------
@@ -96,6 +111,30 @@ def test_poke_gap_below_min_does_not_fire():
     res = build_capability_gap("Garen", ["Xerath", "Garen", "Sett"])
     poke = [g for g in res["gaps"] if g["axis"] == "poke"]
     assert poke == []
+
+
+# --- sustain gap -------------------------------------------------------------
+
+def test_sustain_gap_fires_for_low_sustain_vs_heavy_sustain():
+    res = build_capability_gap("Lux", _HIGH_SUSTAIN_NO_POKE)
+    assert res["applies"] is True
+    assert res["top_gap"] == "sustain"
+    assert "anti-heal" in res["verdict"].lower() or "grievous" in res["verdict"].lower()
+    sus = next(g for g in res["gaps"] if g["axis"] == "sustain")
+    assert sus["demand_count"] == 3
+
+
+def test_sustain_gap_blocked_when_i_out_sustain():
+    # Aatrox out-sustains in kind (>= SUSTAIN_HIGH_SCORE) -> no sustain deficit.
+    res = build_capability_gap("Aatrox", _HIGH_SUSTAIN_NO_POKE)
+    assert all(g["axis"] != "sustain" for g in res["gaps"])
+
+
+def test_sustain_gap_below_min_does_not_fire():
+    # Only one heavy-sustain enemy (< SUSTAIN_ENEMY_MIN) -> no sustain gap.
+    assert SUSTAIN_ENEMY_MIN == 2
+    res = build_capability_gap("Lux", ["Warwick", "Garen", "Annie"])
+    assert all(g["axis"] != "sustain" for g in res["gaps"])
 
 
 # --- ranking across axes -----------------------------------------------------

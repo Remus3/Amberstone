@@ -39,9 +39,20 @@ _log = logging.getLogger("rc.ds_capability_gap")
 # "poke-heavy" enough to warrant a siege-respect call-out.
 POKE_ENEMY_MIN: int = 2
 
+# Sustain gap: a heavy-sustain enemy is one whose SustainResult.total_sustain_score
+# clears SUSTAIN_HIGH_SCORE, and the gap fires only when at least
+# SUSTAIN_ENEMY_MIN of them are present. The score cut (1.5) is grounded against
+# live compute_sustain output (probed 2026-06-26): it cleanly separates the
+# drain/lifesteal bruisers + mages (Warwick 11.67 / Aatrox 6.99 / Swain 3.29 /
+# Fiddlesticks 2.93 / Vladimir 1.60) from everyone else (DrMundo 0.60 and below).
+SUSTAIN_ENEMY_MIN: int = 2
+SUSTAIN_HIGH_SCORE: float = 1.5
+
 # Axis priority order. Used as the stable tie-break when two gaps share the same
-# severity (the earlier axis is the more itemization-direct, actionable call).
-_AXIS_PRIORITY: tuple[str, ...] = ("anti_tank", "poke")
+# severity (the earlier axis is the more itemization-direct, actionable call):
+# anti-tank and anti-heal are both direct item buys, ahead of the positional
+# poke call.
+_AXIS_PRIORITY: tuple[str, ...] = ("anti_tank", "sustain", "poke")
 
 
 # --- gap detectors -----------------------------------------------------------
@@ -104,9 +115,46 @@ def _detect_poke_gap(my_champion: str, enemy_champions: list[str], mode: str) ->
     }
 
 
+def _detect_sustain_gap(my_champion: str, enemy_champions: list[str], mode: str) -> dict | None:
+    """Sustain deficit: enemy comp fields >=SUSTAIN_ENEMY_MIN heavy-sustain
+    threats AND my own kit does not out-sustain in kind, so they out-heal my
+    trades and I need anti-heal (Grievous Wounds).
+
+    Keys on ``SustainResult.total_sustain_score`` against ``SUSTAIN_HIGH_SCORE``
+    - the calibrated cut the sustain scorer's total exposes for a consumer."""
+    from agents.daemon_slayer.sustain import compute_sustain
+
+    heavy = 0
+    for champ in enemy_champions:
+        try:
+            if compute_sustain(champ, mode).total_sustain_score >= SUSTAIN_HIGH_SCORE:
+                heavy += 1
+        except Exception:  # noqa: BLE001 - never break the synthesis on one champ
+            _log.debug("ds_capability_gap: compute_sustain(%r) raised - skipping", champ)
+    if heavy < SUSTAIN_ENEMY_MIN:
+        return None
+    # If my own kit out-sustains in kind I can trade heal-for-heal - no deficit.
+    try:
+        if compute_sustain(my_champion, mode).total_sustain_score >= SUSTAIN_HIGH_SCORE:
+            return None
+    except Exception:  # noqa: BLE001
+        _log.debug("ds_capability_gap: compute_sustain(self=%r) raised", my_champion)
+        return None
+    detail = (
+        f"Enemy comp out-sustains you ({heavy} heavy-sustain); itemize anti-heal "
+        "(Grievous Wounds)."
+    )
+    return {
+        "axis": "sustain",
+        "demand_count": heavy,
+        "severity": float(heavy),
+        "detail": detail,
+    }
+
+
 # Registry of detectors, in _AXIS_PRIORITY order. Append a detector to extend
 # the synthesis to another capability axis.
-_DETECTORS = (_detect_antitank_gap, _detect_poke_gap)
+_DETECTORS = (_detect_antitank_gap, _detect_sustain_gap, _detect_poke_gap)
 
 
 # --- ranking -----------------------------------------------------------------
@@ -199,4 +247,9 @@ def _zero_result(champion: str, mode: str) -> dict:
     }
 
 
-__all__ = ["build_capability_gap", "POKE_ENEMY_MIN"]
+__all__ = [
+    "build_capability_gap",
+    "POKE_ENEMY_MIN",
+    "SUSTAIN_ENEMY_MIN",
+    "SUSTAIN_HIGH_SCORE",
+]
