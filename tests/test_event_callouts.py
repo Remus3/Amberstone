@@ -13,6 +13,7 @@ import unittest
 
 from core.event_callouts import (
     _inhib_lane,
+    dragon_soul_callout,
     epic_buff_callouts,
     inhibitor_callouts,
     milestone_line,
@@ -416,6 +417,82 @@ class EpicBuffCalloutTests(unittest.TestCase):
         aram = next_callouts("aram", 1260.0, 14, 3, max_n=99, objective_events=ev)
         self.assertTrue(any(c["kind"] == "epic_buff" for c in sr))
         self.assertFalse(any(c["kind"] == "epic_buff" for c in aram))
+
+
+class DragonSoulCalloutTests(unittest.TestCase):
+    """Per-side elemental-drake count -> the single 3-stack 'soul point' row.
+    Soul locks on the 4th drake, so EXACTLY 3 means the next drake is SOUL."""
+
+    @staticmethod
+    def _drake(side: str, dtype: str = "Fire", t: float = 600.0) -> dict:
+        return {"name": "dragon", "killer_team": side, "dragon_type": dtype,
+                "down_at_s": t}
+
+    def test_ally_at_soul_point(self):
+        evs = [self._drake("ally", "Fire"), self._drake("ally", "Earth"),
+               self._drake("ally", "Cloud")]
+        out = dragon_soul_callout(evs)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["kind"], "dragon_soul")
+        self.assertIn("ally", out["tag"])
+        self.assertIsNone(out["eta_s"])
+        self.assertIn("force", out["line"].lower())
+
+    def test_enemy_at_soul_point(self):
+        evs = [self._drake("enemy"), self._drake("enemy", "Earth"),
+               self._drake("enemy", "Cloud")]
+        out = dragon_soul_callout(evs)
+        self.assertIsNotNone(out)
+        self.assertIn("enemy", out["tag"])
+        self.assertIn("deny", out["line"].lower())
+
+    def test_enemy_outranks_ally_when_both_at_point(self):
+        # Degenerate (both at 3); the defensive deny takes the single slot.
+        evs = [self._drake("ally"), self._drake("ally", "Earth"),
+               self._drake("ally", "Cloud"),
+               self._drake("enemy"), self._drake("enemy", "Earth"),
+               self._drake("enemy", "Cloud")]
+        out = dragon_soul_callout(evs)
+        self.assertIn("enemy", out["tag"])
+
+    def test_two_drakes_no_row(self):
+        evs = [self._drake("ally"), self._drake("ally", "Earth")]
+        self.assertIsNone(dragon_soul_callout(evs))
+
+    def test_four_drakes_soul_secured_no_next_is_soul_row(self):
+        # 4 elemental = soul already taken; no "next drake is SOUL" claim.
+        evs = [self._drake("ally"), self._drake("ally", "Earth"),
+               self._drake("ally", "Cloud"), self._drake("ally", "Mountain")]
+        self.assertIsNone(dragon_soul_callout(evs))
+
+    def test_elder_does_not_count_toward_soul(self):
+        # 3 elemental + an Elder for the same side is still 3 elemental.
+        evs = [self._drake("ally"), self._drake("ally", "Earth"),
+               self._drake("ally", "Cloud"), self._drake("ally", "Elder")]
+        out = dragon_soul_callout(evs)
+        self.assertIsNotNone(out)
+        self.assertIn("ally", out["tag"])
+        # And an Elder-only side never reads as a soul point.
+        self.assertIsNone(dragon_soul_callout([self._drake("enemy", "Elder")]))
+
+    def test_unknown_killer_not_attributed(self):
+        # Two ally drakes + an unresolved one -> ally at 2, not 3.
+        evs = [self._drake("ally"), self._drake("ally", "Earth"),
+               self._drake("unknown", "Cloud")]
+        self.assertIsNone(dragon_soul_callout(evs))
+
+    def test_baron_events_ignored(self):
+        evs = [{"name": "baron", "killer_team": "ally", "down_at_s": 1200.0},
+               self._drake("ally"), self._drake("ally", "Earth"),
+               self._drake("ally", "Cloud")]
+        out = dragon_soul_callout(evs)
+        self.assertIn("ally", out["tag"])  # baron does not perturb the count
+
+    def test_fail_soft_on_bad_input(self):
+        self.assertIsNone(dragon_soul_callout(None))
+        self.assertIsNone(dragon_soul_callout("nope"))
+        self.assertIsNone(dragon_soul_callout([42, None, "x"]))
+        self.assertIsNone(dragon_soul_callout([]))
 
 
 if __name__ == "__main__":
