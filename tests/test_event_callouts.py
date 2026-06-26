@@ -455,15 +455,52 @@ class DragonSoulCalloutTests(unittest.TestCase):
         out = dragon_soul_callout(evs)
         self.assertIn("enemy", out["tag"])
 
-    def test_two_drakes_no_row(self):
+    def test_two_zero_is_soul_race_lead(self):
+        # Follow-on: a >=2-drake lead with no one at the point surfaces the race.
         evs = [self._drake("ally"), self._drake("ally", "Earth")]
-        self.assertIsNone(dragon_soul_callout(evs))
+        out = dragon_soul_callout(evs)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["kind"], "dragon_soul")
+        self.assertIn("soul_race", out["tag"])
+        self.assertIn("ally", out["tag"])
+        self.assertIn("2-0", out["line"])
 
-    def test_four_drakes_soul_secured_no_next_is_soul_row(self):
-        # 4 elemental = soul already taken; no "next drake is SOUL" claim.
-        evs = [self._drake("ally"), self._drake("ally", "Earth"),
-               self._drake("ally", "Cloud"), self._drake("ally", "Mountain")]
-        self.assertIsNone(dragon_soul_callout(evs))
+    def test_behind_on_race_from_operator_pov(self):
+        evs = [self._drake("enemy"), self._drake("enemy", "Earth")]
+        out = dragon_soul_callout(evs)
+        self.assertIn("soul_race_enemy", out["tag"])
+        self.assertIn("0-2", out["line"])          # always ally-enemy ordering
+        self.assertIn("behind", out["line"].lower())
+
+    def test_even_or_one_drake_no_row(self):
+        self.assertIsNone(dragon_soul_callout([]))                       # 0-0
+        self.assertIsNone(dragon_soul_callout([self._drake("ally")]))    # 1-0 early
+        self.assertIsNone(dragon_soul_callout(                            # 2-2 tie
+            [self._drake("ally"), self._drake("ally", "Earth"),
+             self._drake("enemy"), self._drake("enemy", "Earth")]))
+
+    def test_four_drakes_is_soul_secured_not_point(self):
+        # Follow-on: 4 elemental = soul SECURED -> a locked-element row (not the
+        # "next drake is SOUL" point row).
+        evs = [self._drake("ally", "Fire", 400.0),
+               self._drake("ally", "Earth", 800.0),
+               self._drake("ally", "Cloud", 1200.0),
+               self._drake("ally", "Mountain", 1600.0)]
+        out = dragon_soul_callout(evs)
+        self.assertIsNotNone(out)
+        self.assertIn("soul_secured_ally", out["tag"])
+        self.assertIn("SOUL", out["line"])
+        self.assertIn("Mountain", out["line"])     # latest drake = locked element
+
+    def test_enemy_soul_secured_outranks_ally_point(self):
+        # enemy has soul (4) while ally is at the point (3) -> the live enemy
+        # soul is the headline.
+        evs = [self._drake("enemy", "Fire"), self._drake("enemy", "Earth"),
+               self._drake("enemy", "Cloud"), self._drake("enemy", "Ocean"),
+               self._drake("ally", "Fire"), self._drake("ally", "Earth"),
+               self._drake("ally", "Cloud")]
+        out = dragon_soul_callout(evs)
+        self.assertIn("soul_secured_enemy", out["tag"])
 
     def test_elder_does_not_count_toward_soul(self):
         # 3 elemental + an Elder for the same side is still 3 elemental.
@@ -471,15 +508,17 @@ class DragonSoulCalloutTests(unittest.TestCase):
                self._drake("ally", "Cloud"), self._drake("ally", "Elder")]
         out = dragon_soul_callout(evs)
         self.assertIsNotNone(out)
-        self.assertIn("ally", out["tag"])
-        # And an Elder-only side never reads as a soul point.
+        self.assertIn("soul_point_ally", out["tag"])
+        # And an Elder-only side never reads as a soul point or race.
         self.assertIsNone(dragon_soul_callout([self._drake("enemy", "Elder")]))
 
     def test_unknown_killer_not_attributed(self):
-        # Two ally drakes + an unresolved one -> ally at 2, not 3.
+        # 3 ally + 1 unknown -> ally counts 3 (soul point), NOT 4 (secured):
+        # the unresolved drake is not attributed.
         evs = [self._drake("ally"), self._drake("ally", "Earth"),
-               self._drake("unknown", "Cloud")]
-        self.assertIsNone(dragon_soul_callout(evs))
+               self._drake("ally", "Cloud"), self._drake("unknown", "Ocean")]
+        out = dragon_soul_callout(evs)
+        self.assertIn("soul_point_ally", out["tag"])
 
     def test_baron_events_ignored(self):
         evs = [{"name": "baron", "killer_team": "ally", "down_at_s": 1200.0},
