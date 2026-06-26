@@ -508,6 +508,7 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
         lower, gt, lvl, item_count, max_n=3,
         gold=gold, next_item_name=next_name, next_item_cost=next_cost,
         inhib_events=gs.get("inhib_events"),
+        objective_events=gs.get("objective_events"),
     )
     if not isinstance(callouts, list):
         callouts = []

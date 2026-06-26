@@ -67,6 +67,27 @@ _SR_PLATES_FALL_S = 840.0      # 14:00 (turret plating gone)
 _SR_ELDER_NOMINAL_S = 2100.0   # ~35:00 nominal late marker
 _INHIB_RESPAWN_S = 300.0       # 5:00 - inhibitor respawn after it falls
 
+# Epic-monster team-buff durations (seconds). Stable map constants, NOT balance
+# churn: Baron Nashor's "Hand of Baron" lasts 180s; Elder Dragon's "Aspect of the
+# Dragon" execute buff lasts 150s. Keyed PER objective so each countdown is
+# correct-by-construction rather than one averaged window (the research-doc title
+# merged both as 180s; the accurate per-monster durations are used here so the
+# late-game macro read is exact). Elemental drakes grant no expiring team buff,
+# so they are deliberately absent.
+_BARON_BUFF_S = 180.0
+_ELDER_BUFF_S = 150.0
+_EPIC_BUFF_S: dict[str, float] = {"baron": _BARON_BUFF_S, "elder": _ELDER_BUFF_S}
+
+# Per (objective, side) epic-buff directive. The SIDE is the whole value - the
+# correct response inverts on who holds the buff - so a side-less buff is dropped
+# rather than rendered ambiguously. <= 10 words, ASCII, " - " clause break.
+_EPIC_BUFF_LINES: dict[tuple[str, str], str] = {
+    ("baron", "ally"):  "Baron buff - take towers and objectives now",
+    ("baron", "enemy"): "Enemy baron - defend, do not face-check",
+    ("elder", "ally"):  "Elder buff - force the fight now",
+    ("elder", "enemy"): "Enemy elder - disengage, avoid the fight",
+}
+
 # Live Client inhibitor structure-name lane token -> label. Best-effort: an
 # unrecognized name yields no lane, so the callout stays generic and a naming
 # convention change can never produce a WRONG lane.
@@ -366,6 +387,72 @@ def inhibitor_callouts(inhib_events: object, game_time_s: float) -> list[dict]:
     return out
 
 
+def _epic_kind(ev: dict) -> Optional[str]:
+    """Classify a Baron/Elder buff event -> 'baron' | 'elder' | None.
+
+    Baron is the BaronKill stream (``name == 'baron'``). Elder is a DragonKill
+    (``name == 'dragon'``) whose ``dragon_type`` is 'Elder'; the elemental drakes
+    grant no expiring team buff, so they are NOT epic-buff events. Keeping the
+    elder discriminator on a separate ``dragon_type`` field (rather than renaming
+    the event) leaves ``core.macro_response`` - which keys on ``name == 'dragon'``
+    - byte-identical. Fail-soft: unrecognized -> None.
+    """
+    name = ev.get("name")
+    if name == "baron":
+        return "baron"
+    if name == "dragon":
+        dt = ev.get("dragon_type")
+        if isinstance(dt, str) and dt.strip().lower() == "elder":
+            return "elder"
+    return None
+
+
+def epic_buff_callouts(objective_events: object, game_time_s: float) -> list[dict]:
+    """Build sided epic-buff-expiry countdowns from Baron/Elder kill events.
+
+    Correct-by-construction: an epic buff expires exactly its fixed duration
+    after the objective falls, so remaining = ``(down_at_s + dur) - game_time`` -
+    a hard fact, not a prediction. Each event is the
+    ``{name, killer_team, down_at_s}`` shape ``dashboard/_liveclient.py`` emits
+    (dragon events additionally carry ``dragon_type`` for the Elder
+    discriminator). Unlike the inhibitor callout the SIDE is the whole value here
+    (the correct response inverts on who holds the buff), so a ``killer_team`` of
+    "unknown" is dropped rather than rendered side-less. Expired buffs
+    (remaining <= 0) drop - a later re-take re-surfaces with a fresh window.
+    Fail-soft: non-list / bad entry -> ``[]`` (never raises).
+    """
+    if not isinstance(objective_events, list):
+        return []
+    try:
+        gt = float(game_time_s)
+    except (TypeError, ValueError):
+        gt = 0.0
+    out: list[dict] = []
+    for ev in objective_events:
+        if not isinstance(ev, dict):
+            continue
+        kind = _epic_kind(ev)
+        if kind is None:
+            continue
+        side = ev.get("killer_team")
+        if side not in ("ally", "enemy"):
+            continue  # the side IS the value; never render an unsided epic buff
+        try:
+            down_at = float(ev.get("down_at_s"))
+        except (TypeError, ValueError):
+            continue
+        remaining = (down_at + _EPIC_BUFF_S[kind]) - gt
+        if remaining <= 0:
+            continue  # buff expired
+        out.append({
+            "tag": f"{kind}_buff_{side}",
+            "line": _EPIC_BUFF_LINES[(kind, side)],
+            "eta_s": round(remaining, 1),
+            "kind": "epic_buff",
+        })
+    return out
+
+
 def _sort_key(c: dict) -> tuple[int, float]:
     """Sort callouts active-first, then by ascending ETA, None last.
 
@@ -394,6 +481,7 @@ def next_callouts(
     next_item_name: object = None,
     next_item_cost: object = None,
     inhib_events: object = None,
+    objective_events: object = None,
 ) -> list[dict]:
     """Return up to ``max_n`` upcoming/active milestone callouts.
 
@@ -413,10 +501,13 @@ def next_callouts(
         inhib_events: list of ``{down_at_s, name}`` InhibKilled events (SR
             only). Each still-down inhibitor yields a respawn-timing callout
             300s after it fell (see inhibitor_callouts).
+        objective_events: list of ``{name, killer_team, down_at_s}`` Baron/Elder
+            kill events (SR only). Each live epic buff yields a sided expiry
+            countdown (see epic_buff_callouts).
 
     Returns:
         list of dicts ``{tag, line, eta_s, kind}`` where:
-          - kind in {objective, level_spike, item_spike, recall}
+          - kind in {objective, level_spike, item_spike, recall, epic_buff}
           - eta_s is seconds-to-event; <= 0 means active/just-happened;
             None means the ETA is not deterministic (level/item spikes).
         Sorted active-first, then ascending ETA, None-ETA last.
@@ -445,6 +536,8 @@ def next_callouts(
         callouts.extend(_objective_callouts(gt))
         # Inhibitor respawn is SR-only (Howling Abyss has no inhibitors).
         callouts.extend(inhibitor_callouts(inhib_events, gt))
+        # Epic-buff (Baron/Elder) expiry countdowns - SR-only neutral objectives.
+        callouts.extend(epic_buff_callouts(objective_events, gt))
     callouts.extend(_level_spike_callouts(lvl))
     callouts.extend(_item_spike_callouts(items))
 

@@ -13,6 +13,7 @@ import unittest
 
 from core.event_callouts import (
     _inhib_lane,
+    epic_buff_callouts,
     inhibitor_callouts,
     milestone_line,
     next_callouts,
@@ -340,6 +341,81 @@ class InhibitorCalloutTests(unittest.TestCase):
         aram = next_callouts("aram", 700.0, 6, 1, max_n=99, inhib_events=ev)
         self.assertTrue(any(c["kind"] == "inhibitor" for c in sr))
         self.assertFalse(any(c["kind"] == "inhibitor" for c in aram))
+
+
+class EpicBuffCalloutTests(unittest.TestCase):
+    """Baron/Elder buff-expiry countdowns - correct-by-construction fixed-window
+    timing keyed by killer side (the side IS the value, so an unsided buff drops)."""
+
+    def test_ally_baron_buff_countdown(self):
+        # Baron taken by ally at 1200s, now 1260s -> 180s window -> 120s left.
+        out = epic_buff_callouts(
+            [{"name": "baron", "killer_team": "ally", "down_at_s": 1200.0}], 1260.0)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["kind"], "epic_buff")
+        self.assertAlmostEqual(out[0]["eta_s"], 120.0)
+        self.assertIn("ally", out[0]["tag"])
+        # ally directive is proactive (take towers / objectives), not defensive.
+        self.assertNotIn("face-check", out[0]["line"].lower())
+
+    def test_enemy_baron_buff_defend(self):
+        # Enemy baron at 1200s, now 1300s -> 80s left; defensive directive.
+        out = epic_buff_callouts(
+            [{"name": "baron", "killer_team": "enemy", "down_at_s": 1200.0}], 1300.0)
+        self.assertEqual(len(out), 1)
+        self.assertAlmostEqual(out[0]["eta_s"], 80.0)
+        self.assertIn("enemy", out[0]["tag"])
+        self.assertIn("face-check", out[0]["line"].lower())
+
+    def test_expired_baron_dropped(self):
+        # Baron at 1200s, now 1400s -> window ended at 1380s -> dropped.
+        out = epic_buff_callouts(
+            [{"name": "baron", "killer_team": "ally", "down_at_s": 1200.0}], 1400.0)
+        self.assertEqual(out, [])
+
+    def test_elder_buff_via_dragon_type(self):
+        # Elder is a DragonKill (name=='dragon') with dragon_type 'Elder';
+        # 150s window. Ally elder at 2000s, now 2050s -> 100s left.
+        out = epic_buff_callouts(
+            [{"name": "dragon", "dragon_type": "Elder", "killer_team": "ally",
+              "down_at_s": 2000.0}], 2050.0)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["kind"], "epic_buff")
+        self.assertAlmostEqual(out[0]["eta_s"], 100.0)
+        self.assertIn("elder", out[0]["tag"])
+
+    def test_elemental_dragon_not_epic_buff(self):
+        # Elemental drakes grant no expiring TEAM buff -> not an epic-buff event.
+        out = epic_buff_callouts(
+            [{"name": "dragon", "dragon_type": "Fire", "killer_team": "enemy",
+              "down_at_s": 1200.0}], 1260.0)
+        self.assertEqual(out, [])
+        # A dragon with no type at all is also not an epic buff.
+        out2 = epic_buff_callouts(
+            [{"name": "dragon", "killer_team": "enemy", "down_at_s": 1200.0}], 1260.0)
+        self.assertEqual(out2, [])
+
+    def test_unknown_side_dropped(self):
+        # The side drives the directive (defend vs take); an unsided buff is
+        # dropped rather than rendered ambiguously.
+        out = epic_buff_callouts(
+            [{"name": "baron", "killer_team": "unknown", "down_at_s": 1200.0}], 1260.0)
+        self.assertEqual(out, [])
+
+    def test_fail_soft_on_bad_input(self):
+        self.assertEqual(epic_buff_callouts(None, 100.0), [])
+        self.assertEqual(epic_buff_callouts("nope", 100.0), [])
+        self.assertEqual(epic_buff_callouts([42], 100.0), [])
+        # Missing down_at_s -> skipped, not raised.
+        self.assertEqual(
+            epic_buff_callouts([{"name": "baron", "killer_team": "ally"}], 100.0), [])
+
+    def test_sr_only_via_next_callouts(self):
+        ev = [{"name": "baron", "killer_team": "ally", "down_at_s": 1200.0}]
+        sr = next_callouts("sr", 1260.0, 14, 3, max_n=99, objective_events=ev)
+        aram = next_callouts("aram", 1260.0, 14, 3, max_n=99, objective_events=ev)
+        self.assertTrue(any(c["kind"] == "epic_buff" for c in sr))
+        self.assertFalse(any(c["kind"] == "epic_buff" for c in aram))
 
 
 if __name__ == "__main__":
