@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-06-26 (L4 Phase-D capability-gap synthesizer - item 631, `d52d6152`, CI green)
+
+First bet from the item-626 research report after the objective-state pack. Operator picked L4,
+then the multi-axis-synthesizer slice. Grounding found the report's "first slice = anti-tank, it
+is unconsumed" was WRONG: `core.ds_antitank_hint.build_antitank_hint` already exists + is consumed
+(A3 axis in build_order_variants), and `routes_ds_profile.py` already does a single-champion radar.
+So slice 1 = the genuinely-unbuilt SYNTHESIS.
+
+- NEW `core/ds_capability_gap.py` `build_capability_gap(my_champ, enemies, mode)` - detector-registry
+  consumer that reads existing DS scorers vs a live enemy comp, emits the single highest-severity
+  capability DEFICIT. v1 detectors: **anti_tank** (delegates to build_antitank_hint) + **poke** (keys
+  on `ThreatRangeResult.is_artillery`). Ranks by enemy-demand count, tie-break anti_tank>poke. Adding
+  an axis = append a detector.
+- Pure read-only, never raises, **default-inert** (NOT yet wired into a served path - awaits a live
+  coach surface + shadow-log per flip discipline). No ENGINE bump, no Share mirror. Tier-1.
+- RED-first; fixtures grounded vs live scorer output. GREEN: 17/17 new tests, ruff clean, sibling
+  ds_antitank_hint 13/13.
+
+NEXT: more detectors (sustain/zone/objdamage) + wire into a live coach surface behind a shadow flag.
+Other untouched report bets: L9/L10 live championStats + stat-shard ingestion, E1 TFT det twin.
+STILL UNVERIFIED (carried): no live SR-game validation of EITHER the 627-630 objective rows OR this
+consumer - all client mode. Do NOT re-derive anti-tank or the ds-profile radar (both already exist).
+
+---
+
 # 2026-06-26 (OBJECTIVE-STATE COACHING PACK shipped end-to-end - items 627-630)
 
 Built the whole pack queued by item 626, one slice per turn, RED-first TDD, commit+push each.
@@ -53,29 +78,3 @@ surface; built an exclusion ledger first and killed any re-pitch. 9 vectors -> 3
 NEXT: the director should pick L1 first (smallest, unambiguous BaronKill EventName). Bigger
 FUTURE bets in the report: L4 Phase-D capability-scorer consumer, L9/L10 live championStats +
 stat-shard ingestion, E1 TFT deterministic twin (north-star advance), E2 spatial timeline metrics.
-
----
-
-# 2026-06-25 (personal-build card [623] + Arena anvil Haiku-elim shadow [624] + cost CLEAN)
-
-Two scoped slices, then an orchestrated headless-upgrade run (2026-06-25-01). All non-gated; the genuine
-non-gated queue is now drained (both scouts came back near-empty).
-
-- ITEM 623 (personal-build card, `5cd62bee`): wired the shipped /api/personal-build backend into a NEW
-  read-only champ-select card keyed on cs.my_champion (your winning items by confidence-weighted lift vs
-  your OWN baseline). 5-file frontend mount + grep wiring guard + an in-context render screenshot test (311
-  green); 5-phase UI audit PASS. OWED: live in-champ-select capture (render-gated on a real champ-select,
-  same as the cooldown-watch sibling). Also killed the Overlay App F ward-heatmap in BACKLOG - Match-V5 carries
-  0 ward x/y (probed timeline_events: WARD_PLACED 294518 / 0 with pos vs CHAMPION_KILL 270807/270807).
-- ITEM 624 (Arena anvil shadow, `afeb590b`): orchestrated headless run - 2 read-only scouts -> 1 worktree
-  build agent -> verifier CONFIRM -> merge. The live anvil Haiku call gained a deterministic SHADOW substrate
-  (`core/precomputed_anvil_advisor` + `core/anvil_shadow` mirroring augment_shadow); served field
-  byte-identical, the flip stays operator-gated. +18 tests. Cost 7-lever sweep = 0 SHIP / 7 CLEAN (already
-  optimal, 3 machine-guarded). Scout: anvil was the LAST clean non-gated shadow lane. RC restarted pid 16584;
-  DS untouched (1.151.0). Hygiene: removed 2 stale wf_3629e3d9 worktree dirs (kept the branch refs).
-
-NEXT (operator-gated / live-blocked):
-1. Anvil shadow + HZ precompute-vs-Haiku flips - need real-game shadow rows -> validate -> THEN flip.
-2. R30/PGR live-gated tail (physical game).
-3. Carry-forward: the 2 wf_3629e3d9 branch refs (RC2 E12-L2 RuneWriter lobby-mode memo + E7a ARAM bench
-   re-poll) need operator live-validation before merge (they change live LCU/runtime behavior).

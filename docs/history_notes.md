@@ -142,6 +142,32 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-25 (personal-build card [623] + Arena anvil Haiku-elim shadow [624] + cost CLEAN)
+
+Two scoped slices, then an orchestrated headless-upgrade run (2026-06-25-01). All non-gated; the genuine
+non-gated queue is now drained (both scouts came back near-empty).
+
+- ITEM 623 (personal-build card, `5cd62bee`): wired the shipped /api/personal-build backend into a NEW
+  read-only champ-select card keyed on cs.my_champion (your winning items by confidence-weighted lift vs
+  your OWN baseline). 5-file frontend mount + grep wiring guard + an in-context render screenshot test (311
+  green); 5-phase UI audit PASS. OWED: live in-champ-select capture (render-gated on a real champ-select,
+  same as the cooldown-watch sibling). Also killed the Overlay App F ward-heatmap in BACKLOG - Match-V5 carries
+  0 ward x/y (probed timeline_events: WARD_PLACED 294518 / 0 with pos vs CHAMPION_KILL 270807/270807).
+- ITEM 624 (Arena anvil shadow, `afeb590b`): orchestrated headless run - 2 read-only scouts -> 1 worktree
+  build agent -> verifier CONFIRM -> merge. The live anvil Haiku call gained a deterministic SHADOW substrate
+  (`core/precomputed_anvil_advisor` + `core/anvil_shadow` mirroring augment_shadow); served field
+  byte-identical, the flip stays operator-gated. +18 tests. Cost 7-lever sweep = 0 SHIP / 7 CLEAN (already
+  optimal, 3 machine-guarded). Scout: anvil was the LAST clean non-gated shadow lane. RC restarted pid 16584;
+  DS untouched (1.151.0). Hygiene: removed 2 stale wf_3629e3d9 worktree dirs (kept the branch refs).
+
+NEXT (operator-gated / live-blocked):
+1. Anvil shadow + HZ precompute-vs-Haiku flips - need real-game shadow rows -> validate -> THEN flip.
+2. R30/PGR live-gated tail (physical game).
+3. Carry-forward: the 2 wf_3629e3d9 branch refs (RC2 E12-L2 RuneWriter lobby-mode memo + E7a ARAM bench
+   re-poll) need operator live-validation before merge (they change live LCU/runtime behavior).
+
+---
+
 # 2026-06-25 (CI Watchdog ARMED with a self-gate-on-green redesign [622])
 
 Operator picked "full live-arm now" for the gated CI Watchdog (item 204). De-blinded it FIRST (do-not-flip-blind):
