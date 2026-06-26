@@ -95,6 +95,24 @@ class ObjectiveEventsTests(unittest.TestCase):
         self.assertEqual(oes[0]["name"], "baron")
         self.assertEqual(oes[0]["killer_team"], "ally")
 
+    def test_dragon_type_captured_for_elder_discriminator(self) -> None:
+        # DragonKill carries a DragonType; surface it as an additive key so the
+        # epic-buff countdown can tell Elder from an elemental drake. name stays
+        # "dragon" (macro_response unchanged).
+        events = [{"EventName": "DragonKill", "EventTime": 2000.0,
+                   "KillerName": "Ashe", "DragonType": "Elder"}]
+        out = _summary(_allgamedata("Ashe", _PLAYERS, events, game_time=2050.0))
+        oes = out["objective_events"]
+        self.assertEqual(oes[0]["name"], "dragon")
+        self.assertEqual(oes[0]["dragon_type"], "Elder")
+        self.assertEqual(oes[0]["killer_team"], "ally")
+
+    def test_baron_kill_has_no_dragon_type(self) -> None:
+        events = [{"EventName": "BaronKill", "EventTime": 1295.0,
+                   "KillerName": "Leona"}]
+        out = _summary(_allgamedata("Ashe", _PLAYERS, events))
+        self.assertNotIn("dragon_type", out["objective_events"][0])
+
     def test_herald_and_unknown_killer(self) -> None:
         events = [{"EventName": "HeraldKill", "EventTime": 800.0,
                    "KillerName": "Minion_CHAOS"}]
