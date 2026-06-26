@@ -137,6 +137,91 @@ def _state_payload_cached() -> bytes:
     return payload
 
 
+# --- capability-gap shadow telemetry (L4 Phase-D consumer, item 632) ---------
+# Default-OFF (RC flip discipline): when RC_CAPGAP_SHADOW is truthy, the live
+# /api/state path computes core.ds_capability_gap.build_capability_gap from the
+# liveclient snapshot and LOGS the top capability deficit. It adds no served
+# field, never raises, and is throttled to one line per _CAPGAP_THROTTLE_S.
+_CAPGAP_THROTTLE_S = 30.0
+_capgap_last_log = 0.0
+
+
+def _resolve_my_champion(liveclient_data) -> str:
+    """Active player's DDragon championName from a liveclient snapshot ("" if
+    absent). Mirrors enemy_aware_stats.active_player_team's name-matching."""
+    if not isinstance(liveclient_data, dict):
+        return ""
+    ap = liveclient_data.get("activePlayer")
+    if not isinstance(ap, dict):
+        return ""
+    me_name = ap.get("summonerName") or ap.get("riotIdGameName") or ""
+    if not me_name:
+        return ""
+    for p in (liveclient_data.get("allPlayers") or []):
+        if not isinstance(p, dict):
+            continue
+        rid = p.get("riotIdGameName") or p.get("summonerName") or ""
+        if rid == me_name or me_name.startswith(rid + "#") or rid == me_name.split("#", 1)[0]:
+            return str(p.get("championName") or "")
+    return ""
+
+
+def _capgap_shadow_eval(liveclient_data, mode: str = "SR"):
+    """Resolve my champ + enemy comp from a liveclient snapshot and return the
+    capability-gap verdict dict, or None when uncomputable / no gap fired.
+    Pure (no IO), never raises."""
+    try:
+        from core.ds_capability_gap import build_capability_gap
+        from core.enemy_aware_stats import active_player_team
+
+        my_champ = _resolve_my_champion(liveclient_data)
+        if not my_champ:
+            return None
+        my_team = active_player_team(liveclient_data)
+        if not my_team:
+            return None
+        enemies = [
+            str(p.get("championName") or "")
+            for p in (liveclient_data.get("allPlayers") or [])
+            if isinstance(p, dict) and p.get("team") != my_team and p.get("championName")
+        ]
+        res = build_capability_gap(my_champ, enemies, mode)
+        return res if res.get("applies") else None
+    except Exception as exc:  # noqa: BLE001 - shadow telemetry never breaks /api/state
+        log.debug("capgap-shadow eval: %s", exc)
+        return None
+
+
+def _capgap_shadow_log():
+    """Default-OFF shadow telemetry: log the live capability-gap top deficit.
+    Returns the verdict dict it logged (for tests), or None. Never raises."""
+    global _capgap_last_log
+    if os.environ.get("RC_CAPGAP_SHADOW", "0").strip().lower() not in ("1", "true", "yes", "on"):
+        return None
+    now = time.time()
+    if now - _capgap_last_log < _CAPGAP_THROTTLE_S:
+        return None
+    try:
+        from core.liveclient_cache import get as _lc_get
+
+        snap = _lc_get()
+        if snap.data is None or snap.age_s >= 8.0:
+            return None
+        res = _capgap_shadow_eval(snap.data)
+        if res:
+            _capgap_last_log = now
+            top = (res.get("gaps") or [{}])[0]
+            log.info(
+                "capgap-shadow: champ=%s top_gap=%s demand=%s verdict=%s",
+                res.get("my_champion"), res.get("top_gap"),
+                top.get("demand_count"), res.get("verdict"),
+            )
+        return res
+    except Exception as exc:  # noqa: BLE001
+        log.debug("capgap-shadow log: %s", exc)
+        return None
+
+
 def _serve_state(h) -> None:
     try:
         payload = _state_payload_cached()
@@ -144,6 +229,11 @@ def _serve_state(h) -> None:
     except Exception as exc:  # noqa: BLE001
         log.warning("api/state: %s", exc)
         h._send(500, b'{"error":"state_build_failed"}', "application/json")
+    # Shadow telemetry side-effect - never affects the response (default OFF).
+    try:
+        _capgap_shadow_log()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # /api/state-stream SSE - Tier 4 #16 (2026-05-01). Pushes /api/state
