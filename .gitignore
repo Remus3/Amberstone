@@ -251,3 +251,11 @@ ops/audit/p0_pytest_full.txt
 /.rc_dsprev.json
 /.rc_state_audit.json
 /overlay_*.png
+
+# Live-flip watcher transient runtime output (tools/live_flip_watcher.py):
+# the per-toast PowerShell scratch + per-game verdict files; the baked
+# live_flip_eyeball.* reports stay tracked.
+ops/audit/ds_perm_swarm/report/_toast.ps1
+ops/audit/ds_perm_swarm/report/live_verdict.md
+ops/audit/ds_perm_swarm/report/live_verdict.jsonl
+ops/audit/ds_perm_swarm/report/WATCHER_STOP

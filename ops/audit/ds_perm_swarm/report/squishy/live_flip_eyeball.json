@@ -4,7 +4,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -78,7 +78,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Rabadon's Deathcap",
@@ -90,14 +90,14 @@
         "on_top": [
           "Wooglet's Witchcap",
           "Rabadon's Deathcap",
-          "Void Staff",
           "Lich Bane",
+          "Shadowflame",
           "Hextech Gunblade",
-          "Shadowflame"
+          "Void Staff"
         ],
         "entered": [
-          "Void Staff",
-          "Shadowflame"
+          "Shadowflame",
+          "Void Staff"
         ],
         "left": [
           "Essence Reaver",
@@ -249,7 +249,7 @@
       "DSP11_kit_axis_burst",
       "DSP11_kit_axis_dps",
       "DSP2_exempt_offclass",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV2_assume_takedown",
       "DSV3_assume_squishy_target"
     ],
@@ -327,7 +327,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Infinity Edge",
@@ -341,11 +341,11 @@
           "Infinity Edge",
           "Bloodthirster",
           "Essence Reaver",
-          "Void Staff",
+          "Umbral Glaive",
           "Hextech Gunblade"
         ],
         "entered": [
-          "Void Staff",
+          "Umbral Glaive",
           "Hextech Gunblade"
         ],
         "left": [
@@ -501,7 +501,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -573,7 +573,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Trinity Force",
           "Essence Reaver",
@@ -587,15 +587,13 @@
           "Trinity Force",
           "Infinity Edge",
           "Bloodthirster",
-          "Serylda's Grudge",
-          "Lord Dominik's Regards"
+          "Sundered Sky",
+          "Umbral Glaive"
         ],
         "entered": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards"
+          "Umbral Glaive"
         ],
         "left": [
-          "Sundered Sky",
           "Kraken Slayer"
         ],
         "moves": true
@@ -746,7 +744,7 @@
       "DSP11_kit_axis_burst",
       "DSP11_kit_axis_dps",
       "DSP2_exempt_offclass",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target"
     ],
     "seams": {
@@ -817,7 +815,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Essence Reaver",
@@ -828,14 +826,14 @@
         ],
         "on_top": [
           "Wooglet's Witchcap",
-          "Void Staff",
           "Lich Bane",
-          "Rabadon's Deathcap",
           "Essence Reaver",
+          "Rabadon's Deathcap",
+          "Shadowflame",
           "Trinity Force"
         ],
         "entered": [
-          "Void Staff"
+          "Shadowflame"
         ],
         "left": [
           "Infinity Edge"
@@ -983,7 +981,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -1055,7 +1053,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Trinity Force",
@@ -1067,17 +1065,15 @@
         "on_top": [
           "Wooglet's Witchcap",
           "Lich Bane",
-          "Lord Dominik's Regards",
-          "Serylda's Grudge",
           "Trinity Force",
-          "Essence Reaver"
+          "Essence Reaver",
+          "Rabadon's Deathcap",
+          "Lord Dominik's Regards"
         ],
         "entered": [
-          "Lord Dominik's Regards",
-          "Serylda's Grudge"
+          "Lord Dominik's Regards"
         ],
         "left": [
-          "Rabadon's Deathcap",
           "Infinity Edge"
         ],
         "moves": true
@@ -1225,7 +1221,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV2_assume_takedown",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
@@ -1306,7 +1302,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Essence Reaver",
           "Trinity Force",
@@ -1318,20 +1314,16 @@
         "on_top": [
           "Essence Reaver",
           "Trinity Force",
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
+          "Infinity Edge",
           "Wooglet's Witchcap",
-          "Mortal Reminder"
+          "Umbral Glaive",
+          "Bloodthirster"
         ],
         "entered": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
           "Wooglet's Witchcap",
-          "Mortal Reminder"
+          "Umbral Glaive"
         ],
         "left": [
-          "Infinity Edge",
-          "Bloodthirster",
           "Sundered Sky",
           "Kraken Slayer"
         ],
@@ -1478,7 +1470,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF36_survivability_ehp"
     ],
@@ -1554,7 +1546,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Trinity Force",
           "Essence Reaver",
@@ -1565,21 +1557,17 @@
         ],
         "on_top": [
           "Trinity Force",
-          "Lord Dominik's Regards",
           "Essence Reaver",
-          "Serylda's Grudge",
-          "Mortal Reminder",
-          "Black Cleaver"
+          "Iceborn Gauntlet",
+          "Lord Dominik's Regards",
+          "Lich Bane",
+          "Sundered Sky"
         ],
         "entered": [
           "Lord Dominik's Regards",
-          "Serylda's Grudge",
-          "Mortal Reminder",
-          "Black Cleaver"
+          "Lich Bane"
         ],
         "left": [
-          "Iceborn Gauntlet",
-          "Sundered Sky",
           "Runaan's Hurricane",
           "Infinity Edge"
         ],
@@ -1726,7 +1714,7 @@
     "moved_seams": [
       "DSP11_kit_axis_burst",
       "DSP11_kit_axis_dps",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV2_assume_takedown",
       "DSV3_assume_squishy_target"
     ],
@@ -1804,7 +1792,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Infinity Edge",
           "Essence Reaver",
@@ -1814,22 +1802,18 @@
           "Trinity Force"
         ],
         "on_top": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
           "Infinity Edge",
-          "Mortal Reminder",
           "Essence Reaver",
-          "Black Cleaver"
-        ],
-        "entered": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
-          "Mortal Reminder",
-          "Black Cleaver"
-        ],
-        "left": [
+          "Umbral Glaive",
           "Bloodthirster",
           "Sundered Sky",
+          "Axiom Arc"
+        ],
+        "entered": [
+          "Umbral Glaive",
+          "Axiom Arc"
+        ],
+        "left": [
           "Kraken Slayer",
           "Trinity Force"
         ],
@@ -1982,7 +1966,7 @@
     "moved_seams": [
       "DSP11_kit_axis_burst",
       "DSP11_kit_axis_dps",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target"
     ],
     "seams": {
@@ -2053,7 +2037,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Essence Reaver",
           "Trinity Force",
@@ -2065,19 +2049,15 @@
         "on_top": [
           "Essence Reaver",
           "Trinity Force",
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
           "Infinity Edge",
-          "Mortal Reminder"
-        ],
-        "entered": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
-          "Mortal Reminder"
-        ],
-        "left": [
           "Sundered Sky",
           "Bloodthirster",
+          "Umbral Glaive"
+        ],
+        "entered": [
+          "Umbral Glaive"
+        ],
+        "left": [
           "Kraken Slayer"
         ],
         "moves": true
@@ -2235,7 +2215,7 @@
     "moved_seams": [
       "DSP11_kit_axis_burst",
       "DSP11_kit_axis_dps",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV2_assume_takedown",
       "DSV3_assume_squishy_target"
     ],
@@ -2313,7 +2293,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Sundered Sky",
           "Essence Reaver",
@@ -2323,20 +2303,18 @@
           "Kraken Slayer"
         ],
         "on_top": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
           "Sundered Sky",
           "Essence Reaver",
-          "Mortal Reminder",
-          "Trinity Force"
+          "Trinity Force",
+          "Infinity Edge",
+          "Umbral Glaive",
+          "Serylda's Grudge"
         ],
         "entered": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
-          "Mortal Reminder"
+          "Umbral Glaive",
+          "Serylda's Grudge"
         ],
         "left": [
-          "Infinity Edge",
           "Bloodthirster",
           "Kraken Slayer"
         ],
@@ -2489,7 +2467,7 @@
     "moved_seams": [
       "DSP11_kit_axis_burst",
       "DSP11_kit_axis_dps",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target"
     ],
     "seams": {
@@ -2562,7 +2540,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Trinity Force",
           "Essence Reaver",
@@ -2574,17 +2552,15 @@
         "on_top": [
           "Trinity Force",
           "Essence Reaver",
-          "Lich Bane",
-          "Lord Dominik's Regards",
           "Infinity Edge",
-          "Sundered Sky"
+          "Lich Bane",
+          "Sundered Sky",
+          "Kraken Slayer"
         ],
         "entered": [
-          "Lich Bane",
-          "Lord Dominik's Regards"
+          "Lich Bane"
         ],
         "left": [
-          "Kraken Slayer",
           "Iceborn Gauntlet"
         ],
         "moves": true
@@ -2742,7 +2718,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF2_survivability_hps"
     ],
@@ -2814,7 +2790,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Trinity Force",
@@ -2825,18 +2801,16 @@
         ],
         "on_top": [
           "Wooglet's Witchcap",
-          "Void Staff",
           "Lich Bane",
           "Trinity Force",
           "Rabadon's Deathcap",
-          "Cryptbloom"
+          "Shadowflame",
+          "Essence Reaver"
         ],
         "entered": [
-          "Void Staff",
-          "Cryptbloom"
+          "Shadowflame"
         ],
         "left": [
-          "Essence Reaver",
           "Iceborn Gauntlet"
         ],
         "moves": true
@@ -2982,7 +2956,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -3056,7 +3030,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Trinity Force",
           "Essence Reaver",
@@ -3068,19 +3042,15 @@
         "on_top": [
           "Trinity Force",
           "Essence Reaver",
-          "Lord Dominik's Regards",
-          "Serylda's Grudge",
           "Infinity Edge",
-          "Mortal Reminder"
+          "Sundered Sky",
+          "Umbral Glaive",
+          "Bloodthirster"
         ],
         "entered": [
-          "Lord Dominik's Regards",
-          "Serylda's Grudge",
-          "Mortal Reminder"
+          "Umbral Glaive"
         ],
         "left": [
-          "Sundered Sky",
-          "Bloodthirster",
           "Kraken Slayer"
         ],
         "moves": true
@@ -3224,7 +3194,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF36_survivability_ehp"
     ],
@@ -3298,7 +3268,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Lich Bane",
@@ -3309,19 +3279,17 @@
         ],
         "on_top": [
           "Wooglet's Witchcap",
-          "Void Staff",
           "Lich Bane",
           "Rabadon's Deathcap",
-          "Cryptbloom",
-          "Shadowflame"
+          "Shadowflame",
+          "Trinity Force",
+          "Void Staff"
         ],
         "entered": [
-          "Void Staff",
-          "Cryptbloom",
-          "Shadowflame"
+          "Shadowflame",
+          "Void Staff"
         ],
         "left": [
-          "Trinity Force",
           "Essence Reaver",
           "Dusk and Dawn"
         ],
@@ -3466,7 +3434,7 @@
     "moved_seams": [
       "DSP11_kit_axis_burst",
       "DSP11_kit_axis_dps",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target"
     ],
     "seams": {
@@ -3543,7 +3511,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Essence Reaver",
           "Infinity Edge",
@@ -3553,18 +3521,18 @@
           "Kraken Slayer"
         ],
         "on_top": [
+          "Essence Reaver",
+          "Infinity Edge",
+          "Umbral Glaive",
           "Serylda's Grudge",
           "Lord Dominik's Regards",
-          "Mortal Reminder",
-          "Black Cleaver",
-          "Essence Reaver",
-          "Infinity Edge"
+          "Axiom Arc"
         ],
         "entered": [
+          "Umbral Glaive",
           "Serylda's Grudge",
           "Lord Dominik's Regards",
-          "Mortal Reminder",
-          "Black Cleaver"
+          "Axiom Arc"
         ],
         "left": [
           "Trinity Force",
@@ -3716,7 +3684,7 @@
     "level": 13,
     "moved_seams": [
       "DSP2_exempt_offclass",
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV2_assume_takedown",
       "DSV3_assume_squishy_target"
     ],
@@ -3794,7 +3762,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Infinity Edge",
@@ -3805,21 +3773,17 @@
         ],
         "on_top": [
           "Wooglet's Witchcap",
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
-          "Mortal Reminder",
-          "Black Cleaver",
-          "Infinity Edge"
-        ],
-        "entered": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
-          "Mortal Reminder",
-          "Black Cleaver"
-        ],
-        "left": [
+          "Infinity Edge",
+          "Umbral Glaive",
           "Essence Reaver",
           "Bloodthirster",
+          "Serylda's Grudge"
+        ],
+        "entered": [
+          "Umbral Glaive",
+          "Serylda's Grudge"
+        ],
+        "left": [
           "Trinity Force",
           "Endless Hunger"
         ],
@@ -3962,7 +3926,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -4034,7 +3998,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Trinity Force",
           "Essence Reaver",
@@ -4192,7 +4156,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -4266,7 +4230,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Wooglet's Witchcap",
           "Trinity Force",
@@ -4277,18 +4241,16 @@
         ],
         "on_top": [
           "Wooglet's Witchcap",
-          "Lich Bane",
           "Trinity Force",
+          "Lich Bane",
           "Essence Reaver",
           "Dusk and Dawn",
-          "Rabadon's Deathcap"
+          "Iceborn Gauntlet"
         ],
         "entered": [
-          "Dusk and Dawn",
-          "Rabadon's Deathcap"
+          "Dusk and Dawn"
         ],
         "left": [
-          "Iceborn Gauntlet",
           "Sundered Sky"
         ],
         "moves": true
@@ -4434,7 +4396,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -4510,7 +4472,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Trinity Force",
           "Essence Reaver",
@@ -4522,20 +4484,16 @@
         "on_top": [
           "Trinity Force",
           "Essence Reaver",
+          "Infinity Edge",
           "Lord Dominik's Regards",
-          "Serylda's Grudge",
-          "Mortal Reminder",
-          "Black Cleaver"
+          "Umbral Glaive",
+          "Sundered Sky"
         ],
         "entered": [
           "Lord Dominik's Regards",
-          "Serylda's Grudge",
-          "Mortal Reminder",
-          "Black Cleaver"
+          "Umbral Glaive"
         ],
         "left": [
-          "Infinity Edge",
-          "Sundered Sky",
           "Bloodthirster",
           "Kraken Slayer"
         ],
@@ -4686,7 +4644,7 @@
     "mode": "ARAM",
     "level": 13,
     "moved_seams": [
-      "DSP8_target_preset=tank",
+      "DSP8_target_preset=squishy",
       "DSV3_assume_squishy_target",
       "RF1_survivability_hybrid"
     ],
@@ -4760,7 +4718,7 @@
         "left": [],
         "moves": false
       },
-      "DSP8_target_preset=tank": {
+      "DSP8_target_preset=squishy": {
         "off_top": [
           "Essence Reaver",
           "Trinity Force",
@@ -4773,13 +4731,13 @@
           "Wooglet's Witchcap",
           "Essence Reaver",
           "Trinity Force",
-          "Serylda's Grudge",
-          "Lord Dominik's Regards",
-          "Infinity Edge"
+          "Infinity Edge",
+          "Lich Bane",
+          "Umbral Glaive"
         ],
         "entered": [
-          "Serylda's Grudge",
-          "Lord Dominik's Regards"
+          "Lich Bane",
+          "Umbral Glaive"
         ],
         "left": [
           "Sundered Sky",

@@ -7,10 +7,10 @@ move for a champ is a no-op there (expected for non-tabled champs).
 champs: 20 | level 13 | top-6
 
 ## Briar (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Rabadon's Deathcap, Lich Bane, Hextech Gunblade, Essence Reaver, Trinity Force
-    ON : Wooglet's Witchcap, Rabadon's Deathcap, Void Staff, Lich Bane, Hextech Gunblade, Shadowflame
-    +in : Void Staff, Shadowflame
+    ON : Wooglet's Witchcap, Rabadon's Deathcap, Lich Bane, Shadowflame, Void Staff, Hextech Gunblade
+    +in : Shadowflame, Void Staff
     -out: Essence Reaver, Trinity Force
 - **DSV3_assume_squishy_target**
     OFF: Wooglet's Witchcap, Rabadon's Deathcap, Lich Bane, Hextech Gunblade, Essence Reaver, Trinity Force
@@ -39,11 +39,11 @@ champs: 20 | level 13 | top-6
     ON : Kraken Slayer, Runaan's Hurricane, Stormrazor, Essence Reaver, Trinity Force, Infinity Edge
     +in : Trinity Force
     -out: Yun Tal Wildarrows
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Infinity Edge, Essence Reaver, Bloodthirster, Trinity Force, Endless Hunger
-    ON : Wooglet's Witchcap, Infinity Edge, Bloodthirster, Essence Reaver, Void Staff, Hextech Gunblade
-    +in : Void Staff, Hextech Gunblade
-    -out: Trinity Force, Endless Hunger
+    ON : Wooglet's Witchcap, Infinity Edge, Bloodthirster, Essence Reaver, Trinity Force, Umbral Glaive
+    +in : Umbral Glaive
+    -out: Endless Hunger
 - **DSV2_assume_takedown**
     OFF: Wooglet's Witchcap, Infinity Edge, Essence Reaver, Bloodthirster, Trinity Force, Endless Hunger
     ON : Wooglet's Witchcap, Infinity Edge, Essence Reaver, Bloodthirster, Hubris, Trinity Force
@@ -56,11 +56,11 @@ champs: 20 | level 13 | top-6
     -out: Trinity Force, Endless Hunger
 
 ## Darius (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
-    ON : Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Serylda's Grudge, Lord Dominik's Regards
-    +in : Serylda's Grudge, Lord Dominik's Regards
-    -out: Sundered Sky, Kraken Slayer
+    ON : Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Sundered Sky, Umbral Glaive
+    +in : Umbral Glaive
+    -out: Kraken Slayer
 - **DSV3_assume_squishy_target**
     OFF: Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
     ON : Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Sundered Sky, Umbral Glaive
@@ -86,9 +86,9 @@ champs: 20 | level 13 | top-6
     ON : Runaan's Hurricane, Kraken Slayer, Essence Reaver, Trinity Force, Stormrazor, Infinity Edge
     +in : Trinity Force
     -out: Yun Tal Wildarrows
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Essence Reaver, Trinity Force, Infinity Edge, Lich Bane, Rabadon's Deathcap
-    ON : Wooglet's Witchcap, Void Staff, Lich Bane, Rabadon's Deathcap, Essence Reaver, Trinity Force
+    ON : Wooglet's Witchcap, Essence Reaver, Lich Bane, Rabadon's Deathcap, Void Staff, Trinity Force
     +in : Void Staff
     -out: Infinity Edge
 - **DSV3_assume_squishy_target**
@@ -98,11 +98,11 @@ champs: 20 | level 13 | top-6
     -out: Trinity Force
 
 ## Gnar (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Trinity Force, Essence Reaver, Lich Bane, Rabadon's Deathcap, Infinity Edge
-    ON : Wooglet's Witchcap, Lich Bane, Lord Dominik's Regards, Serylda's Grudge, Trinity Force, Essence Reaver
-    +in : Lord Dominik's Regards, Serylda's Grudge
-    -out: Rabadon's Deathcap, Infinity Edge
+    ON : Wooglet's Witchcap, Lich Bane, Trinity Force, Essence Reaver, Rabadon's Deathcap, Lord Dominik's Regards
+    +in : Lord Dominik's Regards
+    -out: Infinity Edge
 - **DSV3_assume_squishy_target**
     OFF: Wooglet's Witchcap, Trinity Force, Essence Reaver, Lich Bane, Rabadon's Deathcap, Infinity Edge
     ON : Wooglet's Witchcap, Lich Bane, Rabadon's Deathcap, Trinity Force, Essence Reaver, Dusk and Dawn
@@ -115,11 +115,11 @@ champs: 20 | level 13 | top-6
     -out: Heartsteel, Essence Reaver, Runaan's Hurricane, Stormrazor
 
 ## JarvanIV (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Sundered Sky, Kraken Slayer
-    ON : Essence Reaver, Trinity Force, Serylda's Grudge, Lord Dominik's Regards, Wooglet's Witchcap, Mortal Reminder
-    +in : Serylda's Grudge, Lord Dominik's Regards, Wooglet's Witchcap, Mortal Reminder
-    -out: Infinity Edge, Bloodthirster, Sundered Sky, Kraken Slayer
+    ON : Essence Reaver, Trinity Force, Infinity Edge, Wooglet's Witchcap, Serylda's Grudge, Lord Dominik's Regards
+    +in : Wooglet's Witchcap, Serylda's Grudge, Lord Dominik's Regards
+    -out: Bloodthirster, Sundered Sky, Kraken Slayer
 - **DSV2_assume_takedown**
     OFF: Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Sundered Sky, Kraken Slayer
     ON : Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Sundered Sky, Hubris
@@ -137,11 +137,11 @@ champs: 20 | level 13 | top-6
     -out: Kraken Slayer, Essence Reaver, Heartsteel
 
 ## KSante (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Trinity Force, Essence Reaver, Iceborn Gauntlet, Sundered Sky, Runaan's Hurricane, Infinity Edge
-    ON : Trinity Force, Lord Dominik's Regards, Essence Reaver, Serylda's Grudge, Mortal Reminder, Black Cleaver
-    +in : Lord Dominik's Regards, Serylda's Grudge, Mortal Reminder, Black Cleaver
-    -out: Iceborn Gauntlet, Sundered Sky, Runaan's Hurricane, Infinity Edge
+    ON : Trinity Force, Essence Reaver, Lord Dominik's Regards, Iceborn Gauntlet, Mortal Reminder, Serylda's Grudge
+    +in : Lord Dominik's Regards, Mortal Reminder, Serylda's Grudge
+    -out: Sundered Sky, Runaan's Hurricane, Infinity Edge
 - **DSV3_assume_squishy_target**
     OFF: Trinity Force, Essence Reaver, Iceborn Gauntlet, Sundered Sky, Runaan's Hurricane, Infinity Edge
     ON : Trinity Force, Essence Reaver, Lich Bane, Iceborn Gauntlet, Lord Dominik's Regards, Dusk and Dawn
@@ -164,11 +164,11 @@ champs: 20 | level 13 | top-6
     ON : The Collector, Hubris, Trinity Force, Essence Reaver, Kraken Slayer, Stormrazor
     +in : The Collector, Hubris
     -out: Heartsteel, Runaan's Hurricane
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Infinity Edge, Essence Reaver, Bloodthirster, Sundered Sky, Kraken Slayer, Trinity Force
-    ON : Serylda's Grudge, Lord Dominik's Regards, Infinity Edge, Mortal Reminder, Essence Reaver, Black Cleaver
-    +in : Serylda's Grudge, Lord Dominik's Regards, Mortal Reminder, Black Cleaver
-    -out: Bloodthirster, Sundered Sky, Kraken Slayer, Trinity Force
+    ON : Infinity Edge, Essence Reaver, Serylda's Grudge, Bloodthirster, Sundered Sky, Lord Dominik's Regards
+    +in : Serylda's Grudge, Lord Dominik's Regards
+    -out: Kraken Slayer, Trinity Force
 - **DSV2_assume_takedown**
     OFF: Infinity Edge, Essence Reaver, Bloodthirster, Sundered Sky, Kraken Slayer, Trinity Force
     ON : Infinity Edge, Essence Reaver, Bloodthirster, Sundered Sky, Kraken Slayer, Hubris
@@ -191,11 +191,11 @@ champs: 20 | level 13 | top-6
     ON : Infinity Edge, Navori Flickerblade, Immortal Shieldbow, Lord Dominik's Regards, Trinity Force, Essence Reaver
     +in : Infinity Edge, Navori Flickerblade, Immortal Shieldbow, Lord Dominik's Regards
     -out: Kraken Slayer, Stormrazor, Heartsteel, Runaan's Hurricane
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Essence Reaver, Trinity Force, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
-    ON : Essence Reaver, Trinity Force, Serylda's Grudge, Lord Dominik's Regards, Infinity Edge, Mortal Reminder
-    +in : Serylda's Grudge, Lord Dominik's Regards, Mortal Reminder
-    -out: Sundered Sky, Bloodthirster, Kraken Slayer
+    ON : Essence Reaver, Trinity Force, Infinity Edge, Sundered Sky, Bloodthirster, Serylda's Grudge
+    +in : Serylda's Grudge
+    -out: Kraken Slayer
 - **DSV3_assume_squishy_target**
     OFF: Essence Reaver, Trinity Force, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
     ON : Essence Reaver, Trinity Force, Infinity Edge, Sundered Sky, Bloodthirster, Umbral Glaive
@@ -213,11 +213,11 @@ champs: 20 | level 13 | top-6
     ON : Axiom Arc, Youmuu's Ghostblade, Trinity Force, Kraken Slayer, Essence Reaver, Runaan's Hurricane
     +in : Axiom Arc, Youmuu's Ghostblade
     -out: Stormrazor, Heartsteel
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Sundered Sky, Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Kraken Slayer
-    ON : Serylda's Grudge, Lord Dominik's Regards, Sundered Sky, Essence Reaver, Mortal Reminder, Trinity Force
-    +in : Serylda's Grudge, Lord Dominik's Regards, Mortal Reminder
-    -out: Infinity Edge, Bloodthirster, Kraken Slayer
+    ON : Sundered Sky, Essence Reaver, Trinity Force, Serylda's Grudge, Infinity Edge, Lord Dominik's Regards
+    +in : Serylda's Grudge, Lord Dominik's Regards
+    -out: Bloodthirster, Kraken Slayer
 - **DSV2_assume_takedown**
     OFF: Sundered Sky, Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Kraken Slayer
     ON : Sundered Sky, Essence Reaver, Trinity Force, Infinity Edge, Bloodthirster, Hubris
@@ -240,9 +240,9 @@ champs: 20 | level 13 | top-6
     ON : Infinity Edge, Statikk Shiv, The Collector, Mortal Reminder, Lord Dominik's Regards, Runaan's Hurricane
     +in : Statikk Shiv, The Collector, Mortal Reminder, Lord Dominik's Regards
     -out: Kraken Slayer, Essence Reaver, Stormrazor, Yun Tal Wildarrows
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Kraken Slayer, Iceborn Gauntlet
-    ON : Trinity Force, Essence Reaver, Lich Bane, Lord Dominik's Regards, Infinity Edge, Sundered Sky
+    ON : Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Lich Bane, Lord Dominik's Regards
     +in : Lich Bane, Lord Dominik's Regards
     -out: Kraken Slayer, Iceborn Gauntlet
 - **DSV3_assume_squishy_target**
@@ -252,11 +252,11 @@ champs: 20 | level 13 | top-6
     -out: Kraken Slayer, Iceborn Gauntlet
 
 ## Rakan (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Trinity Force, Essence Reaver, Lich Bane, Rabadon's Deathcap, Iceborn Gauntlet
-    ON : Wooglet's Witchcap, Void Staff, Lich Bane, Trinity Force, Rabadon's Deathcap, Cryptbloom
-    +in : Void Staff, Cryptbloom
-    -out: Essence Reaver, Iceborn Gauntlet
+    ON : Wooglet's Witchcap, Lich Bane, Trinity Force, Void Staff, Essence Reaver, Rabadon's Deathcap
+    +in : Void Staff
+    -out: Iceborn Gauntlet
 - **DSV3_assume_squishy_target**
     OFF: Wooglet's Witchcap, Trinity Force, Essence Reaver, Lich Bane, Rabadon's Deathcap, Iceborn Gauntlet
     ON : Wooglet's Witchcap, Lich Bane, Rabadon's Deathcap, Dusk and Dawn, Trinity Force, Essence Reaver
@@ -269,11 +269,11 @@ champs: 20 | level 13 | top-6
     -out: Locket of the Iron Solari, Knight's Vow, Redemption
 
 ## RekSai (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
-    ON : Trinity Force, Essence Reaver, Lord Dominik's Regards, Serylda's Grudge, Infinity Edge, Mortal Reminder
-    +in : Lord Dominik's Regards, Serylda's Grudge, Mortal Reminder
-    -out: Sundered Sky, Bloodthirster, Kraken Slayer
+    ON : Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Lord Dominik's Regards, Serylda's Grudge
+    +in : Lord Dominik's Regards, Serylda's Grudge
+    -out: Bloodthirster, Kraken Slayer
 - **DSV3_assume_squishy_target**
     OFF: Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
     ON : Trinity Force, Essence Reaver, Infinity Edge, Lich Bane, Sundered Sky, Umbral Glaive
@@ -286,11 +286,11 @@ champs: 20 | level 13 | top-6
     -out: Essence Reaver, Kraken Slayer
 
 ## Rell (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Lich Bane, Trinity Force, Essence Reaver, Rabadon's Deathcap, Dusk and Dawn
-    ON : Wooglet's Witchcap, Void Staff, Lich Bane, Rabadon's Deathcap, Cryptbloom, Shadowflame
-    +in : Void Staff, Cryptbloom, Shadowflame
-    -out: Trinity Force, Essence Reaver, Dusk and Dawn
+    ON : Wooglet's Witchcap, Lich Bane, Rabadon's Deathcap, Void Staff, Shadowflame, Trinity Force
+    +in : Void Staff, Shadowflame
+    -out: Essence Reaver, Dusk and Dawn
 - **DSV3_assume_squishy_target**
     OFF: Wooglet's Witchcap, Lich Bane, Trinity Force, Essence Reaver, Rabadon's Deathcap, Dusk and Dawn
     ON : Wooglet's Witchcap, Lich Bane, Rabadon's Deathcap, Dusk and Dawn, Shadowflame, Riftmaker
@@ -313,10 +313,10 @@ champs: 20 | level 13 | top-6
     ON : Black Cleaver, Kraken Slayer, Stormrazor, Essence Reaver, Infinity Edge, Void Immolation
     +in : Black Cleaver
     -out: Voltaic Cyclosword
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Essence Reaver, Infinity Edge, Trinity Force, Bloodthirster, Sundered Sky, Kraken Slayer
-    ON : Serylda's Grudge, Lord Dominik's Regards, Mortal Reminder, Black Cleaver, Essence Reaver, Infinity Edge
-    +in : Serylda's Grudge, Lord Dominik's Regards, Mortal Reminder, Black Cleaver
+    ON : Serylda's Grudge, Lord Dominik's Regards, Essence Reaver, Infinity Edge, Umbral Glaive, Mortal Reminder
+    +in : Serylda's Grudge, Lord Dominik's Regards, Umbral Glaive, Mortal Reminder
     -out: Trinity Force, Bloodthirster, Sundered Sky, Kraken Slayer
 - **DSV3_assume_squishy_target**
     OFF: Essence Reaver, Infinity Edge, Trinity Force, Bloodthirster, Sundered Sky, Kraken Slayer
@@ -330,11 +330,11 @@ champs: 20 | level 13 | top-6
     ON : Kraken Slayer, Trinity Force, Essence Reaver, Runaan's Hurricane, Stormrazor, Infinity Edge
     +in : Trinity Force
     -out: Yun Tal Wildarrows
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Infinity Edge, Essence Reaver, Bloodthirster, Trinity Force, Endless Hunger
-    ON : Wooglet's Witchcap, Serylda's Grudge, Lord Dominik's Regards, Mortal Reminder, Black Cleaver, Infinity Edge
-    +in : Serylda's Grudge, Lord Dominik's Regards, Mortal Reminder, Black Cleaver
-    -out: Essence Reaver, Bloodthirster, Trinity Force, Endless Hunger
+    ON : Wooglet's Witchcap, Serylda's Grudge, Infinity Edge, Essence Reaver, Bloodthirster, Umbral Glaive
+    +in : Serylda's Grudge, Umbral Glaive
+    -out: Trinity Force, Endless Hunger
 - **DSV2_assume_takedown**
     OFF: Wooglet's Witchcap, Infinity Edge, Essence Reaver, Bloodthirster, Trinity Force, Endless Hunger
     ON : Wooglet's Witchcap, Infinity Edge, Essence Reaver, Bloodthirster, Trinity Force, Hubris
@@ -347,7 +347,7 @@ champs: 20 | level 13 | top-6
     -out: Trinity Force, Endless Hunger
 
 ## Tryndamere (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Trinity Force, Essence Reaver, Wooglet's Witchcap, Iceborn Gauntlet, Sundered Sky, Lich Bane
     ON : Trinity Force, Essence Reaver, Lich Bane, Wooglet's Witchcap, Iceborn Gauntlet, Sundered Sky
 - **DSV3_assume_squishy_target**
@@ -362,11 +362,11 @@ champs: 20 | level 13 | top-6
     -out: Heartsteel
 
 ## Udyr (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Wooglet's Witchcap, Trinity Force, Essence Reaver, Lich Bane, Iceborn Gauntlet, Sundered Sky
-    ON : Wooglet's Witchcap, Lich Bane, Trinity Force, Essence Reaver, Dusk and Dawn, Rabadon's Deathcap
-    +in : Dusk and Dawn, Rabadon's Deathcap
-    -out: Iceborn Gauntlet, Sundered Sky
+    ON : Wooglet's Witchcap, Trinity Force, Lich Bane, Essence Reaver, Dusk and Dawn, Iceborn Gauntlet
+    +in : Dusk and Dawn
+    -out: Sundered Sky
 - **DSV3_assume_squishy_target**
     OFF: Wooglet's Witchcap, Trinity Force, Essence Reaver, Lich Bane, Iceborn Gauntlet, Sundered Sky
     ON : Wooglet's Witchcap, Lich Bane, Trinity Force, Dusk and Dawn, Essence Reaver, Rabadon's Deathcap
@@ -379,11 +379,11 @@ champs: 20 | level 13 | top-6
     -out: Essence Reaver, Dusk and Dawn, Iceborn Gauntlet
 
 ## Urgot (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
-    ON : Trinity Force, Essence Reaver, Lord Dominik's Regards, Serylda's Grudge, Mortal Reminder, Black Cleaver
-    +in : Lord Dominik's Regards, Serylda's Grudge, Mortal Reminder, Black Cleaver
-    -out: Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
+    ON : Trinity Force, Essence Reaver, Lord Dominik's Regards, Infinity Edge, Serylda's Grudge, Mortal Reminder
+    +in : Lord Dominik's Regards, Serylda's Grudge, Mortal Reminder
+    -out: Sundered Sky, Bloodthirster, Kraken Slayer
 - **DSV3_assume_squishy_target**
     OFF: Trinity Force, Essence Reaver, Infinity Edge, Sundered Sky, Bloodthirster, Kraken Slayer
     ON : Trinity Force, Essence Reaver, Infinity Edge, Lich Bane, Lord Dominik's Regards, Umbral Glaive
@@ -396,9 +396,9 @@ champs: 20 | level 13 | top-6
     -out: Trinity Force, Heartsteel, Essence Reaver, Runaan's Hurricane, Iceborn Gauntlet
 
 ## Yasuo (ARAM)
-- **DSP8_target_preset=tank**
+- **DSP8_target_preset=bruiser**
     OFF: Essence Reaver, Trinity Force, Wooglet's Witchcap, Infinity Edge, Sundered Sky, Bloodthirster
-    ON : Wooglet's Witchcap, Essence Reaver, Trinity Force, Serylda's Grudge, Lord Dominik's Regards, Infinity Edge
+    ON : Wooglet's Witchcap, Essence Reaver, Trinity Force, Infinity Edge, Serylda's Grudge, Lord Dominik's Regards
     +in : Serylda's Grudge, Lord Dominik's Regards
     -out: Sundered Sky, Bloodthirster
 - **DSV3_assume_squishy_target**
