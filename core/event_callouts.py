@@ -59,10 +59,20 @@ from typing import Optional
 # the game runs long). cadence None => one-shot (herald, baron, elder,
 # plates).
 # ---------------------------------------------------------------------------
-_SR_FIRST_DRAGON_S = 300.0     # 5:00
-_SR_DRAGON_CADENCE_S = 300.0   # 5:00 respawn cadence
+# Canonical SR epic-objective spawn schedule (seconds). ONE cited source: the
+# served callout path (this module) AND the vision-gated contest detector
+# (core.decision_detector imports these) read the SAME constants so the two can
+# never drift. Stable LoL Summoner's Rift map constants.
+SR_DRAGON_FIRST_S = 300.0      # 5:00 first drake
+SR_DRAGON_RESPAWN_S = 300.0    # 5:00 after a take
+SR_BARON_FIRST_S = 1200.0      # 20:00 first Baron
+SR_BARON_RESPAWN_S = 360.0     # 6:00 after a take
+
+# Back-compat aliases used by the static schedule table below.
+_SR_FIRST_DRAGON_S = SR_DRAGON_FIRST_S
+_SR_DRAGON_CADENCE_S = SR_DRAGON_RESPAWN_S
 _SR_RIFT_HERALD_S = 840.0      # 14:00
-_SR_BARON_S = 1200.0           # 20:00
+_SR_BARON_S = SR_BARON_FIRST_S
 _SR_PLATES_FALL_S = 840.0      # 14:00 (turret plating gone)
 _SR_ELDER_NOMINAL_S = 2100.0   # ~35:00 nominal late marker
 _INHIB_RESPAWN_S = 300.0       # 5:00 - inhibitor respawn after it falls
@@ -167,19 +177,106 @@ def milestone_line(tag: object) -> str:
     return ""
 
 
-def _objective_callouts(game_time_s: float) -> list[dict]:
+# Window (seconds) after a spawn during which an objective still surfaces as
+# "active" ("UP now") so the coach can call the contest, not just the pre-warn.
+_OBJ_ACTIVE_WINDOW_S = 30.0
+
+
+def _last_kill_t(objective_events: object, *, name: str,
+                 elemental_only: bool = False) -> Optional[float]:
+    """Latest ``down_at_s`` of a kill of ``name`` in the events list, or None.
+
+    ``elemental_only`` (dragon) excludes the Elder dragon - an Elder take is not
+    an elemental-drake respawn anchor (it has its own slower timer + a post-soul
+    pit). Fail-soft: bad entries skipped."""
+    if not isinstance(objective_events, list):
+        return None
+    last: Optional[float] = None
+    for ev in objective_events:
+        if not isinstance(ev, dict) or ev.get("name") != name:
+            continue
+        if elemental_only and not _is_elemental_drake(ev):
+            continue
+        try:
+            t = float(ev.get("down_at_s"))
+        except (TypeError, ValueError):
+            continue
+        if last is None or t > last:
+            last = t
+    return last
+
+
+def _schedule_row(tag: str, next_spawn: float, game_time_s: float) -> dict:
+    """One objective row from an absolute next-spawn time: an upcoming ETA when
+    the spawn is in the future, else an active 'UP now' row (eta_s <= 0)."""
+    eta = next_spawn - game_time_s
+    if eta > 0:
+        return {"tag": tag, "line": milestone_line(tag),
+                "eta_s": round(eta, 1), "kind": "objective"}
+    return {"tag": tag, "line": _active_line(tag, milestone_line(tag)),
+            "eta_s": round(eta, 1), "kind": "objective"}
+
+
+def _dynamic_epic_callouts(objective_events: object,
+                           game_time_s: float) -> tuple[list[dict], set]:
+    """Real-take-driven drake/baron rows + the set of tags they CLAIM.
+
+    Promotes the ``last_kill + respawn`` math (the same shape as
+    ``core.decision_detector._next_objective_spawn``) into the served path so a
+    drake/baron ETA tracks the actual take instead of the static game-start
+    cadence. A claimed tag is skipped by the static schedule. Claims:
+      - dragon: when Soul is already secured (>= 4 elemental drakes) the pit
+        spawns Elder, so the elemental-drake row is SUPPRESSED (claimed, no
+        row). Otherwise, when an elemental drake has been taken, the row keys
+        off that take (last elemental kill + 300s).
+      - baron: when a Baron has been taken, the row keys off it (last kill +
+        360s) - which also gives Baron a real RESPAWN ETA the static one-shot
+        schedule never had.
+    Objectives with no kill yet are left to the static schedule (unclaimed).
+    """
+    rows: list[dict] = []
+    claimed: set = set()
+    if not isinstance(objective_events, list) or not objective_events:
+        return rows, claimed
+
+    counts = _elemental_drake_counts(objective_events)
+    if max(counts.values()) >= _SOUL_SECURED_STACKS:
+        claimed.add("dragon")  # Soul locked; Elder pit, no elemental-drake row
+    else:
+        last_drake = _last_kill_t(objective_events, name="dragon",
+                                  elemental_only=True)
+        if last_drake is not None:
+            claimed.add("dragon")
+            rows.append(_schedule_row(
+                "dragon", last_drake + SR_DRAGON_RESPAWN_S, game_time_s))
+
+    last_baron = _last_kill_t(objective_events, name="baron")
+    if last_baron is not None:
+        claimed.add("baron")
+        rows.append(_schedule_row(
+            "baron", last_baron + SR_BARON_RESPAWN_S, game_time_s))
+
+    return rows, claimed
+
+
+def _objective_callouts(game_time_s: float,
+                        objective_events: object = None) -> list[dict]:
     """Build SR neutral-objective callouts at the given game time.
 
-    For cadence objectives (dragon) returns the next spawn ETA, or an
-    active callout (eta_s <= 0) within a short window after a spawn so a
-    coach can say "drake UP now". One-shot objectives (herald/baron/
-    plates/elder) return their single ETA, or active once reached.
+    Drake/Baron ETAs track the REAL last take (last_kill + respawn) once a kill
+    event is present (see _dynamic_epic_callouts); absent any kill they fall
+    back to the static schedule. For cadence objectives (dragon) the static path
+    returns the next spawn ETA, or an active callout (eta_s <= 0) within a short
+    window after a spawn so a coach can say "drake UP now". One-shot objectives
+    (herald/baron/plates/elder) return their single ETA, or active once reached.
     """
-    out: list[dict] = []
+    out, claimed = _dynamic_epic_callouts(objective_events, game_time_s)
     # Window (seconds) after a spawn during which we still surface it as
     # "active" so the coach can call the contest, not just the pre-warn.
-    active_window = 30.0
+    active_window = _OBJ_ACTIVE_WINDOW_S
     for tag, spawn_s, _line, cadence_s in _SR_OBJECTIVES:
+        if tag in claimed:
+            continue  # emitted (or suppressed) with real-take timing above
         line = milestone_line(tag)
         if cadence_s and cadence_s > 0:
             if game_time_s < spawn_s:
@@ -457,6 +554,7 @@ def epic_buff_callouts(objective_events: object, game_time_s: float) -> list[dic
 # next drake IS the soul drake - the single glanceable "force or deny"
 # inflection. Elder dragons spawn only AFTER soul and never count toward it.
 _SOUL_POINT_STACKS = 3
+_SOUL_SECURED_STACKS = 4   # the 4th elemental drake locks Soul; pit -> Elder
 _SOUL_POINT_LINES: dict[str, str] = {
     "ally":  "Soul point - next drake is SOUL, force it",
     "enemy": "Enemy soul point - next drake SOUL, deny or disengage",
@@ -470,6 +568,21 @@ def _is_elemental_drake(ev: dict) -> bool:
         return False
     dt = ev.get("dragon_type")
     return not (isinstance(dt, str) and dt.strip().lower() == "elder")
+
+
+def _elemental_drake_counts(objective_events: object) -> dict:
+    """Per-side count of elemental drakes taken (Elder + unknown-killer
+    excluded). Shared by the soul-point row and the L3 soul-secured guard."""
+    counts = {"ally": 0, "enemy": 0}
+    if not isinstance(objective_events, list):
+        return counts
+    for ev in objective_events:
+        if not isinstance(ev, dict) or not _is_elemental_drake(ev):
+            continue
+        side = ev.get("killer_team")
+        if side in counts:
+            counts[side] += 1
+    return counts
 
 
 def dragon_soul_callout(objective_events: object) -> Optional[dict]:
@@ -490,13 +603,7 @@ def dragon_soul_callout(objective_events: object) -> Optional[dict]:
     """
     if not isinstance(objective_events, list):
         return None
-    counts = {"ally": 0, "enemy": 0}
-    for ev in objective_events:
-        if not isinstance(ev, dict) or not _is_elemental_drake(ev):
-            continue
-        side = ev.get("killer_team")
-        if side in counts:
-            counts[side] += 1
+    counts = _elemental_drake_counts(objective_events)
     for side in ("enemy", "ally"):  # enemy deny outranks ally force for the slot
         if counts[side] == _SOUL_POINT_STACKS:
             return {
@@ -588,7 +695,7 @@ def next_callouts(
 
     callouts: list[dict] = []
     if m in _OBJECTIVE_MODES:
-        callouts.extend(_objective_callouts(gt))
+        callouts.extend(_objective_callouts(gt, objective_events))
         # Inhibitor respawn is SR-only (Howling Abyss has no inhibitors).
         callouts.extend(inhibitor_callouts(inhib_events, gt))
         # Epic-buff (Baron/Elder) expiry countdowns - SR-only neutral objectives.

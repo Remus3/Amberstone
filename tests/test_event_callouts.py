@@ -495,5 +495,96 @@ class DragonSoulCalloutTests(unittest.TestCase):
         self.assertIsNone(dragon_soul_callout([]))
 
 
+class DynamicObjectiveRespawnTests(unittest.TestCase):
+    """L3: drake/baron ETA tracks the REAL last-take (last_kill + respawn) once
+    a kill event exists, replacing the static game-start cadence. The no-events
+    path stays byte-identical (characterization guard)."""
+
+    @staticmethod
+    def _drake(side="ally", dtype="Fire", t=450.0):
+        return {"name": "dragon", "killer_team": side, "dragon_type": dtype,
+                "down_at_s": t}
+
+    # -- characterization: the static path is preserved without real events ----
+    def test_characterization_static_when_no_events(self):
+        cs = next_callouts("sr", 700.0, 6, 1, max_n=99)
+        drake = _by_tag(cs, "dragon")
+        self.assertAlmostEqual(drake["eta_s"], 200.0, delta=0.01)  # 900-grid - 700
+
+    def test_empty_events_identical_to_no_events(self):
+        no_ev = _by_tag(next_callouts("sr", 700.0, 6, 1, max_n=99), "dragon")
+        empty = _by_tag(
+            next_callouts("sr", 700.0, 6, 1, max_n=99, objective_events=[]), "dragon")
+        self.assertAlmostEqual(no_ev["eta_s"], empty["eta_s"], delta=0.01)
+
+    # -- dynamic: real take drives the ETA -------------------------------------
+    def test_dragon_respawn_tracks_real_take(self):
+        # Drake taken at 450, now 700 -> next = 450+300 = 750 -> eta 50,
+        # NOT the static 5min-grid eta of 200.
+        cs = next_callouts("sr", 700.0, 6, 1, max_n=99,
+                           objective_events=[self._drake(t=450.0)])
+        drake = _by_tag(cs, "dragon")
+        self.assertAlmostEqual(drake["eta_s"], 50.0, delta=0.01)
+
+    def test_dragon_up_when_respawn_passed(self):
+        # Taken at 450, now 800 -> next 750 already passed -> drake UP (eta<=0).
+        cs = next_callouts("sr", 800.0, 6, 1, max_n=99,
+                           objective_events=[self._drake(t=450.0)])
+        drake = _by_tag(cs, "dragon")
+        self.assertLessEqual(drake["eta_s"], 0.0)
+
+    def test_baron_respawn_eta_after_take(self):
+        # Baron taken at 1300, now 1400 -> next = 1300+360 = 1660 -> eta 260.
+        # (Static path treats baron as a one-shot at 1200 and drops it here.)
+        cs = next_callouts("sr", 1400.0, 14, 3, max_n=99, objective_events=[
+            {"name": "baron", "killer_team": "enemy", "down_at_s": 1300.0}])
+        baron = _by_tag(cs, "baron")
+        self.assertIsNotNone(baron)
+        self.assertAlmostEqual(baron["eta_s"], 260.0, delta=0.01)
+
+    def test_baron_up_when_respawn_passed(self):
+        cs = next_callouts("sr", 1700.0, 16, 4, max_n=99, objective_events=[
+            {"name": "baron", "killer_team": "ally", "down_at_s": 1300.0}])
+        baron = _by_tag(cs, "baron")
+        self.assertIsNotNone(baron)
+        self.assertLessEqual(baron["eta_s"], 0.0)
+
+    def test_soul_secured_suppresses_drake_row(self):
+        # 4 elemental drakes -> soul taken, the pit spawns Elder, so there is no
+        # elemental-drake row to time.
+        evs = [self._drake(dtype="Fire", t=400.0),
+               self._drake(dtype="Earth", t=800.0),
+               self._drake(dtype="Cloud", t=1200.0),
+               self._drake(dtype="Mountain", t=1600.0)]
+        cs = next_callouts("sr", 1700.0, 16, 4, max_n=99, objective_events=evs)
+        self.assertIsNone(_by_tag(cs, "dragon"))
+
+    def test_elder_kill_does_not_anchor_drake_timer(self):
+        # An Elder kill is NOT an elemental take; the drake row must NOT key off
+        # it (would give eta 200 = 2000+300-2100). With no elemental kill it
+        # falls back to the static cadence (active at 2100).
+        cs = next_callouts("sr", 2100.0, 16, 4, max_n=99, objective_events=[
+            self._drake(dtype="Elder", t=2000.0)])
+        drake = _by_tag(cs, "dragon")
+        self.assertIsNotNone(drake)
+        self.assertLessEqual(drake["eta_s"], 0.0)  # static-active, not eta 200
+
+
+class CadenceConstantReconciliationTests(unittest.TestCase):
+    """L3: the drake/baron spawn constants live in ONE place (event_callouts)
+    and core.decision_detector imports them - the two paths cannot drift."""
+
+    def test_decision_detector_imports_canonical_constants(self):
+        from core import decision_detector, event_callouts
+        self.assertEqual(decision_detector._DRAGON_FIRST_S,
+                         event_callouts.SR_DRAGON_FIRST_S)
+        self.assertEqual(decision_detector._DRAGON_RESPAWN_S,
+                         event_callouts.SR_DRAGON_RESPAWN_S)
+        self.assertEqual(decision_detector._BARON_FIRST_S,
+                         event_callouts.SR_BARON_FIRST_S)
+        self.assertEqual(decision_detector._BARON_RESPAWN_S,
+                         event_callouts.SR_BARON_RESPAWN_S)
+
+
 if __name__ == "__main__":
     unittest.main()
