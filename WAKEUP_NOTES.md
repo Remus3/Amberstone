@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-06-26 (orchestrated lift/expansion/UI-UX research [626] + queued objective-state pack)
+
+Operator asked for a non-superficial orchestrated research pass. Ran a 4-phase Workflow
+(`wf_7b49d885-771`, 48 agents): exclusion-ledger grounding -> 9 web+code scouts -> adversarial
+verify -> synthesis. The whole point on THIS repo is filtering against the huge shipped/CLOSED
+surface; built an exclusion ledger first and killed any re-pitch. 9 vectors -> 35 candidates ->
+24 verified-novel survivors. Report: `docs/research/LIFT_EXPANSION_UIUX_2026-06-26.md`.
+
+- Through-line: RC already reads-and-discards the data for most of its highest-value gaps.
+- QUEUED (ROADMAP NOW, top, RED) - OBJECTIVE-STATE COACHING PACK = L1 buff-expiry timer +
+  L2 dragon soul tracker + L3 dynamic respawn fix. All S-effort zero-LLM folds over the
+  BaronKill/DragonKill stream RC parses at `dashboard/_liveclient.py:215` and discards. Tier-1
+  additive callouts via the existing callouts.js, no engine/flip. Director picks ONE per cycle.
+- Recovery note: the first run's Verify+Synthesis was wiped by a TRANSIENT server rate-limit
+  (35 concurrent verifiers). Fixed by batching verify (6 agents) + `resumeFromRunId` (Ground+
+  Scout returned cached). The run-id-resume + batched-fanout pattern is the durable fix.
+- Docs-only Tier-0: commit `510c000c`, no code/engine/ENGINE/Share. RC untouched (DS 1.151.0).
+
+NEXT: the director should pick L1 first (smallest, unambiguous BaronKill EventName). Bigger
+FUTURE bets in the report: L4 Phase-D capability-scorer consumer, L9/L10 live championStats +
+stat-shard ingestion, E1 TFT deterministic twin (north-star advance), E2 spatial timeline metrics.
+
+---
+
 # 2026-06-25 (personal-build card [623] + Arena anvil Haiku-elim shadow [624] + cost CLEAN)
 
 Two scoped slices, then an orchestrated headless-upgrade run (2026-06-25-01). All non-gated; the genuine
