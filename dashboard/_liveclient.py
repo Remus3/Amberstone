@@ -232,8 +232,18 @@ def liveclient_summary() -> dict:
                     killer_team = "ally"
                 else:
                     killer_team = "unknown"
-                objective_events.append({"name": obj, "killer_team": killer_team,
-                                         "down_at_s": float(t)})
+                entry = {"name": obj, "killer_team": killer_team,
+                         "down_at_s": float(t)}
+                # Elder discriminator for the epic-buff countdown
+                # (core.event_callouts.epic_buff_callouts). DragonKill carries a
+                # DragonType ("Fire"/"Earth".../"Elder"); surface it as an
+                # additive key so name stays "dragon" and macro_response is
+                # unchanged. Only dragon events carry it.
+                if obj == "dragon":
+                    dt = ev.get("DragonType")
+                    if isinstance(dt, str) and dt:
+                        entry["dragon_type"] = dt
+                objective_events.append(entry)
         except Exception:  # noqa: BLE001
             objective_events = []
         out["objective_events"] = objective_events
