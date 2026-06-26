@@ -142,6 +142,77 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-25 (CI Watchdog ARMED with a self-gate-on-green redesign [622])
+
+Operator picked "full live-arm now" for the gated CI Watchdog (item 204). De-blinded it FIRST (do-not-flip-blind):
+the planned `gh pr merge --auto` needed branch protection RC does NOT have (`allow_auto_merge=false`, main unprotected
+404, private personal account where branch protection is gated), and a required-check gate on main would have BROKEN
+direct-push-to-main. So I REDESIGNED to a self-gate, then armed.
+
+- SELF-GATE (`ceef7b33`, +3 RED-first tests, 30 total, ruff clean): dropped `--auto`; after `pr_create` the dispatch
+  now BLOCKS on the ci-fix PR's OWN CI (`gh pr checks <branch> --watch --fail-fast`) and squash-merges ONLY on green
+  (red/timeout -> escalate, NEVER merge). No branch protection / allow_auto_merge -> direct-push preserved. CI's
+  `pull_request:[main]` trigger gives the PR real checks. NEW `_STEP_TIMEOUTS` (claude_fix 600s / wait_checks 900s);
+  ETL PT10M->PT30M; `MultipleInstancesPolicy=IgnoreNew` already prevents overlapping armed cycles during the wait.
+- ARMED: worktree `C:\RC-CIWatchdog` created (OUT of the live checkout); `RC-CIWatchdog` registered (State=Ready,
+  `--arm`, PT2M, ETL PT30M). XML gotcha (`0396f495`): the `encoding="UTF-8"` decl broke `Register-ScheduledTask -Xml`
+  ("unable to switch the encoding" - PS string is UTF-16); removed the declaration (`<?xml version="1.0"?>`).
+- VERIFIED: armed MANUAL run vs GREEN main = clean no-op (last-5 runs all success -> 0 failed -> NO PR/branch/merge,
+  LastTaskResult 0). CI green (run 28189959300). Kill-switch: `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask`.
+  The FIRST real red main at HEAD is the live proving ground.
+
+NEXT (operator-gated / live-blocked):
+1. HZ precompute-vs-Haiku RE-MEASUREMENT - needs the regenerated 16.13.1 tables + real-game shadow rows.
+2. R30/PGR live-gated tail (physical game).
+(Done this 2026-06-25 run: 619 cdragon CC fix, 620 snapshot flake, 621 doc-drift + cdragon docstring, 622 CI Watchdog ARM.)
+
+---
+
+# 2026-06-25 (cdragon 16.13 CC-detection fix [619] + snapshot_panels flake fix CI-validated [620] + doc-drift sync + cdragon docstring reconcile [621])
+
+Cleared both NON-gated items from 618's NEXT, both CI-green on Linux. 5 commits pushed. Each item
+ROOT-CAUSE-CORRECTED a wrong 618 triage (ground-truth probes over recollection).
+
+- ITEM 619 (cdragon SwapsInto extractor, `95972f57`): the 12 dropped CC tags were NOT a "bin-format
+  parse break / pure rename, swap-count=12" (618's guess) - they were a Riot 16.13 TAXONOMY change:
+  `...ImmobilizingCCSpell` -> `...CCAbility` suffix rename + 7 of 12 swap spells reclassified
+  swap->DIRECT-immob. Fix in `daemon_slayer_cdragon_spell_extract.py`: match the stable `ImmobilizingCC`
+  stem + `_canon_cc_tag` canonicalizes `...CCAbility`->`...CCSpell` (suffix-only, swap/direct preserved).
+  Re-enabled fresh 16.13 spell_stats: _with_cc_tags=186 unchanged, HONEST swap=5/immob=181, other buckets
+  byte-identical, 4 legit Riot bin deltas (Mel E snare gained; Ornn Q/Yorick W lost; Morde R gained).
+  NO ENGINE bump (forward-marker inert); Share synced; DS restarted -> 16.13.1; DS-dir 7575 + cc-test 31
+  green. ability_ratios + ratio_drift LEFT copy-forward (CONSUMED ratio source via abilities.py
+  prefer_cdragon_ratios=True default - a separate Tier-2; NOTE doc says "False/OFF" - doc/code mismatch).
+
+- ITEM 620 (snapshot_panels flake, `1a974bd9` re-attempt + `0fe7e3bf` fix): KEY finding - the HTTP/1.1
+  keep-alive ITSELF (not the SSE gen-gating 618 blamed) breaks the Linux render tests. CI run 28159713805
+  proved BOTH keep-alive variants fail the same 5 tests (spike_markers/ds_relscore/overlay_combat/
+  header_single_row/player_gpi) while HTTP/1.0 passes: the gitignored ddragon PNG mirror is absent on CI
+  so champion/item PNGs 404 -> send_error BrokenPipe -> wedged keep-alive pool -> half-rendered panels.
+  Fix: scope keep-alive to win32 (TIME_WAIT flake is Windows-only); Linux keeps proven HTTP/1.0; SSE hold
+  reverted to sleep(15). Windows 274x2 local; Linux CI 274 passed. DEVIATES from the literal "keep
+  keep-alive" instruction (it is NOT Linux-sound) - implemented the intent. Corrected the stale
+  `reference_snapshot_panels_session_browser_flake` memory ("CI runs no pytest" was wrong).
+
+- ITEM 621 (cdragon docstring reconcile `15809ab8` + doc-drift sync): post-620 housekeeping, both Tier-0,
+  no ENGINE bump. (a) The abilities.py `prefer_cdragon_ratios` signature(=True)/docstring("False/OFF")
+  mismatch from 619's note: git-traced the True default to item 320's "default-ON cutover" (`1f172fcc`,
+  ENGINE 1.119.0) + `test_cdragon_ratio_matcher.py` ("now defaults ON") -> the DOCSTRING was the stale
+  side, NOT a behavioral bug; fixed `load()` + the `_apply_cdragon_ratio_preference` "OPT-IN" sibling;
+  Share re-synced (--check clean). (b) ARCHITECTURE.md:172 (1.144.0->1.151.0, 7361->7511) +
+  DAEMON_SLAYER.md:5/:140 (7497/7362->7511). Count RE-MEASURED fresh: 7511 passed / 1 skip (7512 collected
+  x3, zero collection errors over 251 files) - the 619-note "7575" was NOT reproducible. Dated
+  changelog/ledger/history left untouched (no-history-rewrite). DS-dir 7511 + 6 tests/ drift-guards (37) green.
+
+NEXT (operator-gated / live-blocked, unchanged from 618):
+1. CI Watchdog ARM (item 204, do-not-flip-blind).
+2. HZ precompute-vs-Haiku RE-MEASUREMENT - needs the regenerated 16.13.1 tables + real-game shadow rows.
+3. R30/PGR live-gated tail (physical game).
+4. Housekeeping: ARCHITECTURE.md:172 ENGINE/test-count drift - DONE (item 621, this session; also synced
+   the DAEMON_SLAYER.md:5/:140 sibling pins + the abilities.py cdragon docstring mismatch from 619's note).
+
+---
+
 # 2026-06-25 (DS patch refresh 16.12.1 -> 16.13.1 - orchestrated multi-agent SWARM + precompute regen)
 
 Ran the headline patch refresh as an orchestrated Tier-2 run. ENGINE_VERSION stays 1.151.0 (operator-confirmed

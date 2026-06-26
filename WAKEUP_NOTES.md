@@ -4,6 +4,34 @@
 
 ---
 
+# 2026-06-26 (OBJECTIVE-STATE COACHING PACK shipped end-to-end - items 627-630)
+
+Built the whole pack queued by item 626, one slice per turn, RED-first TDD, commit+push each.
+All zero-LLM deterministic folds over the BaronKill/DragonKill `objective_events` stream
+(`dashboard/_liveclient.py:215`); all render via the kind-agnostic `web/js/panels/callouts.js`
+with NO JS edit; all Tier-1, no engine/ENGINE/Share/flip.
+
+- L1 (627, `1e07d91a`): `epic_buff_callouts` - sided Baron(180s)/Elder(150s) buff-expiry
+  countdowns. Elder via an additive `dragon_type` field on the dragon event (name stays
+  "dragon" so macro_response is byte-identical). Used ACCURATE per-monster durations, NOT the
+  research doc's merged 180s.
+- L2 (628, `cc41f14a`): `dragon_soul_callout` - 3-stack "SOUL next drake - force/deny" advisory.
+  Wired into the `_deterministic_coaching` advisory chain at `advisory = macro or soul or heal`.
+- L3 (629, `528926d5`): dynamic respawn fix (the served-path slice). `_objective_callouts` now
+  uses last_kill+respawn (drake 300s / baron 360s) once a kill exists; baron gains a real
+  respawn ETA; soul-secured suppresses the drake row. Cadence constants reconciled to ONE source
+  (event_callouts owns `SR_{DRAGON,BARON}_{FIRST,RESPAWN}_S`; decision_detector imports them).
+  No-kill path byte-identical (characterization-guarded).
+- L2 follow-on (630, `e37eb405`): soul cascade extended - secured(4+) locked-element row +
+  soul-race delta row. Honest test churn: 3 L2 tests updated (2-drake now a race row).
+
+NEXT: optional bigger bets from the report - L4 Phase-D capability-scorer consumer, L9/L10 live
+championStats + stat-shard ingestion, E1 TFT deterministic twin. No live-game validation done
+(client mode all session); the pack is pure + fully unit-tested. Pre-existing anomaly (not mine):
+RC-LiveFlipWatcher task Disabled/result=1.
+
+---
+
 # 2026-06-26 (orchestrated lift/expansion/UI-UX research [626] + queued objective-state pack)
 
 Operator asked for a non-superficial orchestrated research pass. Ran a 4-phase Workflow
@@ -51,74 +79,3 @@ NEXT (operator-gated / live-blocked):
 2. R30/PGR live-gated tail (physical game).
 3. Carry-forward: the 2 wf_3629e3d9 branch refs (RC2 E12-L2 RuneWriter lobby-mode memo + E7a ARAM bench
    re-poll) need operator live-validation before merge (they change live LCU/runtime behavior).
-
----
-
-# 2026-06-25 (CI Watchdog ARMED with a self-gate-on-green redesign [622])
-
-Operator picked "full live-arm now" for the gated CI Watchdog (item 204). De-blinded it FIRST (do-not-flip-blind):
-the planned `gh pr merge --auto` needed branch protection RC does NOT have (`allow_auto_merge=false`, main unprotected
-404, private personal account where branch protection is gated), and a required-check gate on main would have BROKEN
-direct-push-to-main. So I REDESIGNED to a self-gate, then armed.
-
-- SELF-GATE (`ceef7b33`, +3 RED-first tests, 30 total, ruff clean): dropped `--auto`; after `pr_create` the dispatch
-  now BLOCKS on the ci-fix PR's OWN CI (`gh pr checks <branch> --watch --fail-fast`) and squash-merges ONLY on green
-  (red/timeout -> escalate, NEVER merge). No branch protection / allow_auto_merge -> direct-push preserved. CI's
-  `pull_request:[main]` trigger gives the PR real checks. NEW `_STEP_TIMEOUTS` (claude_fix 600s / wait_checks 900s);
-  ETL PT10M->PT30M; `MultipleInstancesPolicy=IgnoreNew` already prevents overlapping armed cycles during the wait.
-- ARMED: worktree `C:\RC-CIWatchdog` created (OUT of the live checkout); `RC-CIWatchdog` registered (State=Ready,
-  `--arm`, PT2M, ETL PT30M). XML gotcha (`0396f495`): the `encoding="UTF-8"` decl broke `Register-ScheduledTask -Xml`
-  ("unable to switch the encoding" - PS string is UTF-16); removed the declaration (`<?xml version="1.0"?>`).
-- VERIFIED: armed MANUAL run vs GREEN main = clean no-op (last-5 runs all success -> 0 failed -> NO PR/branch/merge,
-  LastTaskResult 0). CI green (run 28189959300). Kill-switch: `ops\runtime\ci_watchdog\HALT` or `Disable-ScheduledTask`.
-  The FIRST real red main at HEAD is the live proving ground.
-
-NEXT (operator-gated / live-blocked):
-1. HZ precompute-vs-Haiku RE-MEASUREMENT - needs the regenerated 16.13.1 tables + real-game shadow rows.
-2. R30/PGR live-gated tail (physical game).
-(Done this 2026-06-25 run: 619 cdragon CC fix, 620 snapshot flake, 621 doc-drift + cdragon docstring, 622 CI Watchdog ARM.)
-
----
-
-# 2026-06-25 (cdragon 16.13 CC-detection fix [619] + snapshot_panels flake fix CI-validated [620] + doc-drift sync + cdragon docstring reconcile [621])
-
-Cleared both NON-gated items from 618's NEXT, both CI-green on Linux. 5 commits pushed. Each item
-ROOT-CAUSE-CORRECTED a wrong 618 triage (ground-truth probes over recollection).
-
-- ITEM 619 (cdragon SwapsInto extractor, `95972f57`): the 12 dropped CC tags were NOT a "bin-format
-  parse break / pure rename, swap-count=12" (618's guess) - they were a Riot 16.13 TAXONOMY change:
-  `...ImmobilizingCCSpell` -> `...CCAbility` suffix rename + 7 of 12 swap spells reclassified
-  swap->DIRECT-immob. Fix in `daemon_slayer_cdragon_spell_extract.py`: match the stable `ImmobilizingCC`
-  stem + `_canon_cc_tag` canonicalizes `...CCAbility`->`...CCSpell` (suffix-only, swap/direct preserved).
-  Re-enabled fresh 16.13 spell_stats: _with_cc_tags=186 unchanged, HONEST swap=5/immob=181, other buckets
-  byte-identical, 4 legit Riot bin deltas (Mel E snare gained; Ornn Q/Yorick W lost; Morde R gained).
-  NO ENGINE bump (forward-marker inert); Share synced; DS restarted -> 16.13.1; DS-dir 7575 + cc-test 31
-  green. ability_ratios + ratio_drift LEFT copy-forward (CONSUMED ratio source via abilities.py
-  prefer_cdragon_ratios=True default - a separate Tier-2; NOTE doc says "False/OFF" - doc/code mismatch).
-
-- ITEM 620 (snapshot_panels flake, `1a974bd9` re-attempt + `0fe7e3bf` fix): KEY finding - the HTTP/1.1
-  keep-alive ITSELF (not the SSE gen-gating 618 blamed) breaks the Linux render tests. CI run 28159713805
-  proved BOTH keep-alive variants fail the same 5 tests (spike_markers/ds_relscore/overlay_combat/
-  header_single_row/player_gpi) while HTTP/1.0 passes: the gitignored ddragon PNG mirror is absent on CI
-  so champion/item PNGs 404 -> send_error BrokenPipe -> wedged keep-alive pool -> half-rendered panels.
-  Fix: scope keep-alive to win32 (TIME_WAIT flake is Windows-only); Linux keeps proven HTTP/1.0; SSE hold
-  reverted to sleep(15). Windows 274x2 local; Linux CI 274 passed. DEVIATES from the literal "keep
-  keep-alive" instruction (it is NOT Linux-sound) - implemented the intent. Corrected the stale
-  `reference_snapshot_panels_session_browser_flake` memory ("CI runs no pytest" was wrong).
-
-- ITEM 621 (cdragon docstring reconcile `15809ab8` + doc-drift sync): post-620 housekeeping, both Tier-0,
-  no ENGINE bump. (a) The abilities.py `prefer_cdragon_ratios` signature(=True)/docstring("False/OFF")
-  mismatch from 619's note: git-traced the True default to item 320's "default-ON cutover" (`1f172fcc`,
-  ENGINE 1.119.0) + `test_cdragon_ratio_matcher.py` ("now defaults ON") -> the DOCSTRING was the stale
-  side, NOT a behavioral bug; fixed `load()` + the `_apply_cdragon_ratio_preference` "OPT-IN" sibling;
-  Share re-synced (--check clean). (b) ARCHITECTURE.md:172 (1.144.0->1.151.0, 7361->7511) +
-  DAEMON_SLAYER.md:5/:140 (7497/7362->7511). Count RE-MEASURED fresh: 7511 passed / 1 skip (7512 collected
-  x3, zero collection errors over 251 files) - the 619-note "7575" was NOT reproducible. Dated
-  changelog/ledger/history left untouched (no-history-rewrite). DS-dir 7511 + 6 tests/ drift-guards (37) green.
-
-NEXT (operator-gated / live-blocked, unchanged from 618):
-1. CI Watchdog ARM (item 204, do-not-flip-blind).
-2. HZ precompute-vs-Haiku RE-MEASUREMENT - needs the regenerated 16.13.1 tables + real-game shadow rows.
-3. R30/PGR live-gated tail (physical game).
-4. Housekeeping: ARCHITECTURE.md:172 ENGINE/test-count drift - DONE (item 621, this session; also synced
-   the DAEMON_SLAYER.md:5/:140 sibling pins + the abilities.py cdragon docstring mismatch from 619's note).
