@@ -1,20 +1,25 @@
 """hotkey_listener.py - Legion-local global hotkeys for coach decisions.
 
-Background process that registers Ctrl+Shift+1 / Ctrl+Shift+2 as Win32
-global hotkeys (NOT a keyboard hook - uses RegisterHotKey, which is the
-quiet, registered-accelerator API that doesn't trip anti-cheat watch
-patterns the way `pynput`/`keyboard` low-level hooks tend to).
+Background process that registers Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A as
+Win32 global hotkeys (NOT a keyboard hook - uses RegisterHotKey, which is the
+quiet, registered-accelerator API that doesn't trip anti-cheat watch patterns
+the way `pynput`/`keyboard` low-level hooks tend to).
 
 When a hotkey fires:
   1. The most recently created pending decision is fetched from the
      local cache (refreshed every 2 s in a worker thread).
   2. Ctrl+Shift+1 -> POST the FIRST option in `options`.
      Ctrl+Shift+2 -> POST the SECOND option.
-  3. If no pending decision: silent no-op (no crash, no toast).
+  3. Ctrl+Shift+A -> stamp the overlay ACTIVE-toggle signal file so rc-shell
+     flips the overlay interactive. This combo is owned HERE, not by the
+     Electron overlay: Electron's globalShortcut does NOT deliver while League
+     holds foreground focus, but this Win32 RegisterHotKey does (proven
+     2026-06-27 - Ctrl+Shift+1 receipts logged in-game).
+  4. If no pending decision (slots 1/2): silent no-op (no crash, no toast).
 
-This lets the player answer a coach decision without alt-tabbing out
-of League. The Edge dashboard updates from its own poll loop within a
-second of the POST landing, so the banner clears whether the player
+This lets the player answer a coach decision OR move the overlay without
+alt-tabbing out of League. The Edge dashboard updates from its own poll loop
+within a second of the POST landing, so the banner clears whether the player
 glances over or not.
 
 Deploy:
@@ -33,6 +38,7 @@ from __future__ import annotations
 import ctypes
 import json
 import logging
+import os
 import ssl
 import sys
 import threading
@@ -46,6 +52,13 @@ LEGION_BASE   = "https://192.168.8.230:8888"
 DECISIONS_URL = f"{LEGION_BASE}/api/decisions"
 POLL_S        = 2.0
 HTTP_TIMEOUT  = 3.0
+
+# Overlay ACTIVE-toggle signal file. Ctrl+Shift+A (id 3) stamps this with the
+# current epoch time on each press; rc-shell's main process polls it and flips
+# the overlay ACTIVE (rc-shell/src/main.js startActiveToggleWatch). Hardcoded
+# Legion-absolute, matching the LEGION_BASE convention above + the path
+# rc-shell resolves (C:\Riot Commander\ops\runtime\).
+TOGGLE_SIGNAL_FILE = r"C:\Riot Commander\ops\runtime\overlay_active_toggle.txt"
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(message)s")
@@ -122,6 +135,19 @@ def post_choice(decision_id: str, choice: str) -> bool:
         return False
 
 
+def signal_overlay_active_toggle() -> None:
+    """Stamp the toggle-signal file (atomic tmp+replace) so rc-shell flips the
+    overlay ACTIVE. Fire-and-forget: a write failure must never crash the loop."""
+    try:
+        tmp = TOGGLE_SIGNAL_FILE + ".tmp"
+        with open(tmp, "w", encoding="ascii") as f:
+            f.write("%.3f" % time.time())
+        os.replace(tmp, TOGGLE_SIGNAL_FILE)
+        log.info("overlay ACTIVE toggle signaled")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("overlay toggle signal failed: %s", exc)
+
+
 def handle_hotkey(cache: DecisionCache, slot: int) -> None:
     """slot=1 -> first option; slot=2 -> second option."""
     d = cache.topmost()
@@ -144,8 +170,10 @@ _MOD_SHIFT    = 0x0004
 _MOD_NOREPEAT = 0x4000
 _VK_1         = 0x31
 _VK_2         = 0x32
+_VK_A         = 0x41
 _WM_HOTKEY    = 0x0312
 _HOTKEY_FLAGS = _MOD_CONTROL | _MOD_SHIFT | _MOD_NOREPEAT
+_SLOT_OVERLAY_TOGGLE = 3
 
 
 def _register(hotkey_id: int, vk: int) -> None:
@@ -171,9 +199,12 @@ def message_loop(cache: DecisionCache) -> None:
             log.error("GetMessageA failed (%d)", ctypes.get_last_error())
             break
         if msg.message == _WM_HOTKEY:
-            slot = int(msg.wParam)        # 1 or 2 by registration
+            slot = int(msg.wParam)   # 1/2 = coach choice; 3 = overlay toggle
             try:
-                handle_hotkey(cache, slot)
+                if slot == _SLOT_OVERLAY_TOGGLE:
+                    signal_overlay_active_toggle()
+                else:
+                    handle_hotkey(cache, slot)
             except Exception as exc:
                 log.exception("hotkey handler crashed: %s", exc)
         _user32.TranslateMessage(ctypes.byref(msg))
@@ -181,7 +212,8 @@ def message_loop(cache: DecisionCache) -> None:
 
 
 def main() -> int:
-    log.info("hotkey_listener starting (Ctrl+Shift+1 / Ctrl+Shift+2)")
+    log.info("hotkey_listener starting "
+             "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A)")
     cache = DecisionCache()
     stop = threading.Event()
     worker = threading.Thread(
@@ -193,6 +225,7 @@ def main() -> int:
     try:
         _register(1, _VK_1)
         _register(2, _VK_2)
+        _register(_SLOT_OVERLAY_TOGGLE, _VK_A)  # Ctrl+Shift+A -> overlay toggle
     except OSError as exc:
         log.error("%s", exc)
         return 2
@@ -205,6 +238,7 @@ def main() -> int:
     finally:
         _unregister(1)
         _unregister(2)
+        _unregister(_SLOT_OVERLAY_TOGGLE)
         stop.set()
         log.info("hotkey_listener shutting down")
     return 0
