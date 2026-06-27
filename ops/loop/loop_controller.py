@@ -108,11 +108,89 @@ def git(*args):
 def head():
     return git("rev-parse", "HEAD")
 
-def tail(rel, n):
-    p = ROOT / rel
+def tail(rel, n, root=None):
+    base = Path(root) if root is not None else ROOT
+    p = base / rel
     if not p.exists():
         return ""
     return "\n".join(p.read_text(encoding="utf-8", errors="replace").splitlines()[-n:])
+
+def head_lines(rel, n, root=None):
+    # The HEAD n lines. For a newest-first append-at-top ledger (docs/LEDGER.md)
+    # this is the NEWEST n entries. Using tail() here was the continuity bug:
+    # it fed the director the OLDEST ledger items, so just-completed work was
+    # invisible and the director re-proposed already-shipped items.
+    base = Path(root) if root is not None else ROOT
+    p = base / rel
+    if not p.exists():
+        return ""
+    return "\n".join(p.read_text(encoding="utf-8", errors="replace").splitlines()[:n])
+
+# ---- directive-chain continuity (persisted; survives controller restarts) ---
+def directive_title(body):
+    """A compact one-line label for an issued directive (for the chain digest)."""
+    if not body:
+        return "(empty)"
+    theme = scope = ""
+    for line in body.splitlines():
+        s = line.strip()
+        u = s.upper()
+        if u.startswith("THEME:") and not theme:
+            theme = s.split(":", 1)[1].strip()
+        elif u.startswith("SCOPE:") and not scope:
+            scope = s.split(":", 1)[1].strip()
+    if theme or scope:
+        return (f"{theme} - {scope}".strip(" -"))[:160]
+    for line in body.splitlines():
+        s = line.strip().lstrip("#").strip()
+        if s:
+            return s[:160]
+    return "(empty)"
+
+def record_directive_outcome(cycle, body, sha_before, sha_after, done, verdict, ctl=None):
+    """Append one resolved-cycle record to control/directive_history.jsonl.
+
+    The controller is the single writer; the file is gitignored runtime state and
+    is NEVER cleared (newest-first read via read_directive_history), so the
+    directive chain persists across the frequent mid-run controller restarts."""
+    base = Path(ctl) if ctl is not None else CTL
+    d = done or {}
+    rec = {"cycle": cycle, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+           "title": directive_title(body),
+           "sha_before": (sha_before or "")[:8], "sha_after": (sha_after or "")[:8],
+           "tests": d.get("tests_pass"), "regress": bool(d.get("regressions")),
+           "verdict": ((verdict or "").strip().splitlines() or [""])[0]}
+    try:
+        with open(base / "directive_history.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
+    except OSError as e:
+        log(f"directive_history append failed: {e}")
+    return rec
+
+def read_directive_history(n, ctl=None):
+    base = Path(ctl) if ctl is not None else CTL
+    p = base / "directive_history.jsonl"
+    if not p.exists():
+        return []
+    recs = []
+    for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            recs.append(json.loads(line))
+        except Exception:  # noqa: BLE001
+            continue
+    return recs[-n:]
+
+def _format_directive_chain(recs):
+    if not recs:
+        return "(none issued yet this run)"
+    out = []
+    for r in reversed(recs):  # newest first
+        out.append(f"- cycle {r.get('cycle')}: {r.get('title', '')} "
+                   f"-> {r.get('sha_after', '')} [{r.get('verdict', '')}]")
+    return "\n".join(out)
 
 # ---- gemini (read-only, STDIN pipe; mirrors tools/gemini_audit.ps1) ----
 def gemini(prompt_body, instruction):
@@ -142,17 +220,35 @@ def gemini(prompt_body, instruction):
     return out
 
 # ---- gemini roles ------------------------------------------------------
-def director(last_done, last_audit):
-    tmpl = (ROOT / "ops/loop/director_prompt.md").read_text(encoding="utf-8")
-    plan = ROOT / "docs/ORCHESTRATION_PLAN.md"
+def build_director_context(last_done, last_audit, *, root=None, ctl=None):
+    """Pure: assemble the context appended after the director prompt template.
+
+    Carries an explicit ALREADY-COMPLETED DIGEST (recent commits newest-first +
+    the NEWEST docs/LEDGER.md items via head_lines, NOT the stale tail + the
+    directive chain already issued this run) plus a BUILD-ON / de-dup rule, so
+    the director cannot re-issue just-shipped work. root/ctl are injectable for
+    tests; production calls use the module ROOT/CTL."""
+    base = Path(root) if root is not None else ROOT
+    plan = base / "docs/ORCHESTRATION_PLAN.md"
     plan_txt = plan.read_text(encoding="utf-8", errors="replace") if plan.exists() else "(no plan file)"
-    ctx = (f"\n\n=== ORCHESTRATION PLAN (PRIMARY work source; pick next OPEN session, skip EXCLUDED) ===\n{plan_txt}"
-           f"\n\n=== RECENT COMMITS ===\n{git('log','--oneline','-n','25')}"
-           f"\n\n=== docs/LEDGER.md (tail) ===\n{tail('docs/LEDGER.md', 90)}"
-           f"\n\n=== ROADMAP.md (tail) ===\n{tail('ROADMAP.md', 120)}"
-           f"\n\n=== LAST claude.done ===\n{json.dumps(last_done)}"
-           f"\n\n=== LAST AUDIT (if REGRESS, the directive MUST fix it first) ===\n{last_audit or '(none)'}")
-    ask = CTL / "gemini_ask.txt"
+    chain = _format_directive_chain(read_directive_history(12, ctl=ctl))
+    ctx = (
+        f"\n\n=== ORCHESTRATION PLAN (PRIMARY work source; pick next OPEN session, skip EXCLUDED) ===\n{plan_txt}"
+        "\n\n=== ALREADY-COMPLETED DIGEST - every item below is DONE. BUILD ON it; NEVER re-issue it ==="
+        f"\n\n--- RECENT COMMITS (newest first) ---\n{git('log', '--oneline', '-n', '25')}"
+        "\n\n--- docs/LEDGER.md NEWEST items (newest-first; each line is a COMPLETED item) ---\n"
+        f"{head_lines('docs/LEDGER.md', 60, root=root)}"
+        "\n\n--- DIRECTIVES ALREADY ISSUED THIS RUN (do NOT re-issue any unit below) ---\n"
+        f"{chain}"
+        "\n\nDE-DUP RULE: before emitting the directive, cross-check your chosen unit against the "
+        "ALREADY-COMPLETED DIGEST above (recent commits + newest LEDGER items + issued directives). "
+        "If it duplicates a DONE ledger item, a recent commit, or a directive already issued, DISCARD "
+        "it and synthesize the next NON-duplicate unit. BUILD ON completed work; never re-narrate or "
+        "re-do it."
+        f"\n\n=== ROADMAP.md (open items - high priority at TOP; head read) ===\n{head_lines('ROADMAP.md', 120, root=root)}"
+        f"\n\n=== LAST claude.done ===\n{json.dumps(last_done)}"
+        f"\n\n=== LAST AUDIT (if REGRESS, the directive MUST fix it first) ===\n{last_audit or '(none)'}")
+    ask = (Path(ctl) if ctl is not None else CTL) / "gemini_ask.txt"
     if ask.exists():
         try:
             q = ask.read_text(encoding="utf-8", errors="replace").strip()
@@ -163,6 +259,11 @@ def director(last_done, last_audit):
                     "decision + instruct the scaffolding + any ROADMAP/BACKLOG reshape) ===\n" + q)
         ask.unlink(missing_ok=True)
     ctx += "\n\n" + CFG.get("directive_suffix", "")
+    return ctx
+
+def director(last_done, last_audit):
+    tmpl = (ROOT / "ops/loop/director_prompt.md").read_text(encoding="utf-8")
+    ctx = build_director_context(last_done, last_audit)
     return gemini(tmpl + ctx, "Output ONLY the directive markdown for the next cycle. No preamble.")
 
 def auditor(prev_sha, new_sha):
@@ -325,6 +426,9 @@ def main():
         last_audit = verdict
         regress = verdict.strip().upper().startswith("VERDICT: REGRESS")
         log(f"cycle {cycle}: audit -> {'REGRESS' if regress else 'CLEAN'}")
+        # Persist the resolved directive to the chain so the NEXT director cycle
+        # sees what was already issued + shipped and builds on it (continuity fix).
+        record_directive_outcome(cycle, body, prev_sha, new_sha, done, verdict)
         prev_sha = new_sha
 
     stop(f"max_cycles {CFG['max_cycles']} reached")
