@@ -243,6 +243,11 @@
       var canvas=document.getElementById('hexcore-canvas');
       var ctx=canvas.getContext('2d');
 
+      var USE_GL = /[?&]webgl=1\b/.test(location.search);
+      var GLDPR_CAP = 1.5;
+      var glow = null;            // glow-field module (created below if USE_GL)
+      var glCanvas = null;
+
       var CATS={
         rules:{c:'#f0d28a',n:'Rules'}, agents:{c:'#e76aa0',n:'Agents'}, skills:{c:'#4fe8df',n:'Skills'},
         commands:{c:'#f0925a',n:'Commands'}, docs:{c:'#3fb8e0',n:'Docs'}, adr:{c:'#a98cf0',n:'ADR'},
@@ -687,6 +692,231 @@
       // zoom: multiplier applied to SCALE, eased toward target
       var zoom=1, zoomTarget=1, SCALE_BASE=1;
 
+      // ---- WEBGL GLOW-FIELD (opt-in via ?webgl=1) ----
+      // Moves the additive Canvas2D "glow" layers (radial-gradient discs + dust shadowBlur)
+      // onto ONE instanced WebGL draw call to fix the fill-rate / draw-bound bottleneck.
+      // Premultiplied additive soft discs with an analytic falloff (no texture). Returns null
+      // if WebGL is unavailable so the caller transparently falls back to the 2D path.
+      function createGlowField(glCanvas){
+        var gl=null;
+        try{
+          var attrs={premultipliedAlpha:true, alpha:true, antialias:false, depth:false, stencil:false};
+          gl=glCanvas.getContext('webgl', attrs) || glCanvas.getContext('experimental-webgl', attrs);
+        }catch(e){ return null; }
+        if(!gl) return null;
+        try{
+          var inst=gl.getExtension('ANGLE_instanced_arrays');  // null -> expanded-vert fallback
+
+          // floats per sprite instance: cx,cy, radius, r,g,b, a, vScale, rot  = 9
+          var FPS=9;
+          var cap=2048;                        // initial instance capacity (auto-grows)
+          var data=new Float32Array(cap*FPS);  // CPU staging buffer
+          var count=0;                         // instance write cursor
+          var bbW=1, bbH=1, _dpr=1;
+
+          function compile(type, src){
+            var s=gl.createShader(type);
+            gl.shaderSource(s, src); gl.compileShader(s);
+            if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+              throw new Error('glow shader: '+gl.getShaderInfoLog(s));
+            }
+            return s;
+          }
+          // Vertex shader: builds the quad from a unit corner q in [-1,1]^2.
+          //   q.y *= vScale (Y squash); rotate by rot; pos = center + q*radius (device px);
+          //   then device px -> clip space via backbuffer width/height. Pass the PRE-SCALE
+          //   unit corner to the fragment as the round falloff coord (disc stays round).
+          var vsrc=
+            'attribute vec2 aCorner;'+
+            'attribute vec2 aCenter;'+
+            'attribute float aRadius;'+
+            'attribute vec3 aColor;'+
+            'attribute float aAlpha;'+
+            'attribute float aVScale;'+
+            'attribute float aRot;'+
+            'uniform float uBBW;'+
+            'uniform float uBBH;'+
+            'varying vec2 vUV;'+
+            'varying vec3 vColor;'+
+            'varying float vAlpha;'+
+            'void main(){'+
+              'vUV=aCorner;'+
+              'vColor=aColor;'+
+              'vAlpha=aAlpha;'+
+              'vec2 q=aCorner;'+
+              'q.y*=aVScale;'+
+              'float c=cos(aRot), s=sin(aRot);'+
+              'vec2 qr=vec2(q.x*c - q.y*s, q.x*s + q.y*c);'+
+              'vec2 pos=aCenter + qr*aRadius;'+
+              'vec2 clip=vec2(pos.x/uBBW*2.0-1.0, 1.0 - pos.y/uBBH*2.0);'+
+              'gl_Position=vec4(clip,0.0,1.0);'+
+            '}';
+          // Fragment shader: analytic soft-disc falloff, premultiplied additive.
+          var fsrc=
+            'precision mediump float;'+
+            'varying vec2 vUV;'+
+            'varying vec3 vColor;'+
+            'varying float vAlpha;'+
+            'void main(){'+
+              'float d=length(vUV);'+
+              'if(d>1.0){ discard; }'+
+              'float a=pow(clamp(1.0-d,0.0,1.0),1.8);'+
+              'float pa=vAlpha*a;'+
+              'gl_FragColor=vec4(vColor*pa, pa);'+
+            '}';
+          var prog=gl.createProgram();
+          gl.attachShader(prog, compile(gl.VERTEX_SHADER, vsrc));
+          gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, fsrc));
+          gl.linkProgram(prog);
+          if(!gl.getProgramParameter(prog, gl.LINK_STATUS)){
+            throw new Error('glow link: '+gl.getProgramInfoLog(prog));
+          }
+          gl.useProgram(prog);
+
+          var locCorner=gl.getAttribLocation(prog,'aCorner');
+          var locCenter=gl.getAttribLocation(prog,'aCenter');
+          var locRadius=gl.getAttribLocation(prog,'aRadius');
+          var locColor=gl.getAttribLocation(prog,'aColor');
+          var locAlpha=gl.getAttribLocation(prog,'aAlpha');
+          var locVScale=gl.getAttribLocation(prog,'aVScale');
+          var locRot=gl.getAttribLocation(prog,'aRot');
+          var uBBW=gl.getUniformLocation(prog,'uBBW');
+          var uBBH=gl.getUniformLocation(prog,'uBBH');
+
+          // unit quad corners in [-1,1]^2 (two triangles)
+          var QUAD=new Float32Array([-1,-1, 1,-1, -1,1,  -1,1, 1,-1, 1,1]);
+          var quadBuf=gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+          gl.bufferData(gl.ARRAY_BUFFER, QUAD, gl.STATIC_DRAW);
+
+          var instBuf=gl.createBuffer();
+          gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+          gl.bufferData(gl.ARRAY_BUFFER, data.byteLength, gl.DYNAMIC_DRAW);
+
+          // expanded-vert fallback (no instancing): 6 verts/sprite, attrs duplicated per vert
+          var EXPV=6;
+          var expCorner=null, expData=null;
+          if(!inst){
+            expCorner=new Float32Array(cap*EXPV*2);
+            expData=new Float32Array(cap*EXPV*FPS);
+          }
+
+          function growTo(n){
+            if(n<=cap) return;
+            var ncap=cap; while(ncap<n) ncap*=2;
+            var nd=new Float32Array(ncap*FPS); nd.set(data); data=nd;
+            cap=ncap;
+            gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+            gl.bufferData(gl.ARRAY_BUFFER, data.byteLength, gl.DYNAMIC_DRAW);
+            if(!inst){
+              expCorner=new Float32Array(cap*EXPV*2);
+              expData=new Float32Array(cap*EXPV*FPS);
+            }
+          }
+
+          function begin(cssW, cssH, dprCap){
+            _dpr=dprCap;
+            var w=Math.max(1,Math.round(cssW*dprCap));
+            var h=Math.max(1,Math.round(cssH*dprCap));
+            if(w!==glCanvas.width || h!==glCanvas.height){
+              glCanvas.width=w; glCanvas.height=h;
+            }
+            bbW=glCanvas.width; bbH=glCanvas.height;
+            gl.viewport(0,0,bbW,bbH);
+            gl.useProgram(prog);
+            gl.uniform1f(uBBW, bbW);
+            gl.uniform1f(uBBH, bbH);
+            gl.clearColor(0,0,0,0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            count=0;
+          }
+
+          function push(x, y, radiusCss, r, g, b, a, vScale, rot){
+            if(a===undefined) a=1; if(a<=0) return;
+            if(radiusCss<=0) return;
+            var rad=radiusCss*_dpr;
+            if(rad<=0) return;
+            growTo(count+1);
+            var o=count*FPS;
+            data[o]=x*_dpr; data[o+1]=y*_dpr;
+            data[o+2]=rad;
+            data[o+3]=r/255; data[o+4]=g/255; data[o+5]=b/255;
+            data[o+6]=a;
+            data[o+7]=(vScale===undefined?1:vScale);
+            data[o+8]=(rot===undefined?0:rot);
+            count++;
+          }
+
+          function bindInstanceAttribs(stride, baseOffsetFloats){
+            // layout within a record: center(2) radius(1) color(3) alpha(1) vScale(1) rot(1)
+            var FS=4; // bytes per float
+            var b0=baseOffsetFloats*FS;
+            gl.vertexAttribPointer(locCenter,2,gl.FLOAT,false,stride,b0+0*FS);
+            gl.enableVertexAttribArray(locCenter);
+            gl.vertexAttribPointer(locRadius,1,gl.FLOAT,false,stride,b0+2*FS);
+            gl.enableVertexAttribArray(locRadius);
+            gl.vertexAttribPointer(locColor,3,gl.FLOAT,false,stride,b0+3*FS);
+            gl.enableVertexAttribArray(locColor);
+            gl.vertexAttribPointer(locAlpha,1,gl.FLOAT,false,stride,b0+6*FS);
+            gl.enableVertexAttribArray(locAlpha);
+            gl.vertexAttribPointer(locVScale,1,gl.FLOAT,false,stride,b0+7*FS);
+            gl.enableVertexAttribArray(locVScale);
+            gl.vertexAttribPointer(locRot,1,gl.FLOAT,false,stride,b0+8*FS);
+            gl.enableVertexAttribArray(locRot);
+          }
+
+          function flush(){
+            if(count===0) return;
+            gl.useProgram(prog);
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.ONE, gl.ONE);   // premultiplied additive
+            var FS=4, stride=FPS*FS;
+            if(inst){
+              // ONE instanced draw call: per-vertex unit corner + per-instance record
+              gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+              gl.bufferSubData(gl.ARRAY_BUFFER, 0, data.subarray(0, count*FPS));
+              gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+              gl.vertexAttribPointer(locCorner,2,gl.FLOAT,false,0,0);
+              gl.enableVertexAttribArray(locCorner);
+              inst.vertexAttribDivisorANGLE(locCorner,0);
+              gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+              bindInstanceAttribs(stride, 0);
+              inst.vertexAttribDivisorANGLE(locCenter,1);
+              inst.vertexAttribDivisorANGLE(locRadius,1);
+              inst.vertexAttribDivisorANGLE(locColor,1);
+              inst.vertexAttribDivisorANGLE(locAlpha,1);
+              inst.vertexAttribDivisorANGLE(locVScale,1);
+              inst.vertexAttribDivisorANGLE(locRot,1);
+              inst.drawArraysInstancedANGLE(gl.TRIANGLES, 0, 6, count);
+            }else{
+              // fallback: expand to 6 verts/sprite into one dynamic VBO, ONE draw call
+              var QC=QUAD;
+              for(var i=0;i<count;i++){
+                var so=i*FPS;
+                var eo=i*EXPV*FPS;
+                var co=i*EXPV*2;
+                for(var v=0;v<EXPV;v++){
+                  expCorner[co+v*2]=QC[v*2];
+                  expCorner[co+v*2+1]=QC[v*2+1];
+                  var d=eo+v*FPS;
+                  for(var k=0;k<FPS;k++){ expData[d+k]=data[so+k]; }
+                }
+              }
+              gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+              gl.bufferData(gl.ARRAY_BUFFER, expCorner.subarray(0,count*EXPV*2), gl.DYNAMIC_DRAW);
+              gl.vertexAttribPointer(locCorner,2,gl.FLOAT,false,0,0);
+              gl.enableVertexAttribArray(locCorner);
+              gl.bindBuffer(gl.ARRAY_BUFFER, instBuf);
+              gl.bufferData(gl.ARRAY_BUFFER, expData.subarray(0,count*EXPV*FPS), gl.DYNAMIC_DRAW);
+              bindInstanceAttribs(stride, 0);
+              gl.drawArrays(gl.TRIANGLES, 0, count*EXPV);
+            }
+          }
+
+          return { begin:begin, push:push, flush:flush };
+        }catch(e){ return null; }
+      }
+
       function resize(){
         var r=root.getBoundingClientRect();
         W=r.width; H=r.height;
@@ -698,7 +928,22 @@
         // shrink base scale so the now-larger RMAX disc still fits at default zoom
         SCALE_BASE=Math.min(W,H)*0.335;
         SCALE=SCALE_BASE*zoom;
+        if(USE_GL && glCanvas){
+          var GLDPR=Math.min(window.devicePixelRatio||1, GLDPR_CAP);
+          glCanvas.width=Math.max(1,Math.round(W*GLDPR));
+          glCanvas.height=Math.max(1,Math.round(H*GLDPR));
+        }
         if(typeof positionStats==='function') positionStats();
+      }
+      if(USE_GL){
+        try{
+          glCanvas=document.createElement('canvas');
+          glCanvas.id='hexcore-gl';
+          glCanvas.style.cssText=canvas.style.cssText;
+          root.insertBefore(glCanvas, canvas);   // BEHIND the 2D canvas (earlier sibling)
+          glow=createGlowField(glCanvas);
+          if(!glow){ USE_GL=false; if(glCanvas&&glCanvas.parentNode) glCanvas.parentNode.removeChild(glCanvas); glCanvas=null; }
+        }catch(e){ USE_GL=false; glow=null; }
       }
       var ro=new ResizeObserver(resize); ro.observe(root);
       window.addEventListener('resize',resize); resize();
@@ -864,6 +1109,8 @@
         // Saturates by 3x and stays lively from 3x..5x.
         var pulseZoomMul=0.6+1.9*smoothstep(1.0,3.0,zoom);
 
+        if(USE_GL && glow){ glow.begin(W, H, Math.min(window.devicePixelRatio||1, GLDPR_CAP)); }
+
         if(W<=0||H<=0){ requestAnimationFrame(draw); return; }
 
         ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -895,9 +1142,14 @@
             if(b<0.03) continue;
             var sr=st.s*bgZoom;
             // subtle warm/cool tint, kept low-saturation
-            var col = st.hue>0.5 ? 'rgba(255,236,205,' : 'rgba(205,224,255,';
-            ctx.fillStyle=col+Math.min(0.7,b).toFixed(3)+')';
-            ctx.beginPath(); ctx.arc(sx,sy,sr,0,6.283); ctx.fill();
+            if(USE_GL){
+              var sc = st.hue>0.5 ? [255,236,205] : [205,224,255];
+              glow.push(sx,sy,sr, sc[0],sc[1],sc[2], Math.min(0.7,b), 1, 0);
+            } else {
+              var col = st.hue>0.5 ? 'rgba(255,236,205,' : 'rgba(205,224,255,';
+              ctx.fillStyle=col+Math.min(0.7,b).toFixed(3)+')';
+              ctx.beginPath(); ctx.arc(sx,sy,sr,0,6.283); ctx.fill();
+            }
           }
         }
 
@@ -938,18 +1190,22 @@
             Math.round(baseRGB[2]+(tintRGB[2]-baseRGB[2])*tintAmt*0.85)
           ];
           var aBoost=a*(1+tintAmt*0.9);
-          ctx.save();
-          ctx.translate(cxp,cyp);
-          ctx.rotate(cl.rot);
-          ctx.scale(1,ry/rx);
-          var cg=ctx.createRadialGradient(0,0,0,0,0,rx);
-          cg.addColorStop(0,rgbaFrom(useRGB,aBoost));
-          cg.addColorStop(0.35,rgbaFrom(useRGB,aBoost*0.62));
-          cg.addColorStop(0.7,rgbaFrom(useRGB,aBoost*0.22));
-          cg.addColorStop(1,rgbaFrom(useRGB,0));
-          ctx.fillStyle=cg;
-          ctx.beginPath(); ctx.arc(0,0,rx,0,6.283); ctx.fill();
-          ctx.restore();
+          if(USE_GL){
+            glow.push(cxp, cyp, rx, useRGB[0],useRGB[1],useRGB[2], aBoost, ry/rx, cl.rot);
+          } else {
+            ctx.save();
+            ctx.translate(cxp,cyp);
+            ctx.rotate(cl.rot);
+            ctx.scale(1,ry/rx);
+            var cg=ctx.createRadialGradient(0,0,0,0,0,rx);
+            cg.addColorStop(0,rgbaFrom(useRGB,aBoost));
+            cg.addColorStop(0.35,rgbaFrom(useRGB,aBoost*0.62));
+            cg.addColorStop(0.7,rgbaFrom(useRGB,aBoost*0.22));
+            cg.addColorStop(1,rgbaFrom(useRGB,0));
+            ctx.fillStyle=cg;
+            ctx.beginPath(); ctx.arc(0,0,rx,0,6.283); ctx.fill();
+            ctx.restore();
+          }
         });
 
         // ---- REGION HUE WASH (one soft diffuse color blob per region) ----
@@ -968,18 +1224,23 @@
           var breathe=0.92+0.08*Math.sin(tsec*0.16 + ringIndex[rg.cat]);
           var a=0.030*regDim*grp*fzc*breathe;   // low opacity diffuse hue
           if(a<0.003) return;
-          ctx.save();
-          ctx.translate(pc.x,pc.y);
-          ctx.scale(1,vsqR);
-          // smooth multi-stop falloff from center to nothing - no edge, no ring
-          var rg2=ctx.createRadialGradient(0,0,0,0,0,wash);
-          rg2.addColorStop(0,hexA(rg.col,a));
-          rg2.addColorStop(0.4,hexA(rg.col,a*0.5));
-          rg2.addColorStop(0.72,hexA(rg.col,a*0.18));
-          rg2.addColorStop(1,hexA(rg.col,0));
-          ctx.fillStyle=rg2;
-          ctx.beginPath(); ctx.arc(0,0,wash,0,6.283); ctx.fill();
-          ctx.restore();
+          if(USE_GL){
+            var rgw=parseHex(rg.col);
+            glow.push(pc.x, pc.y, wash, rgw[0],rgw[1],rgw[2], a, vsqR, 0);
+          } else {
+            ctx.save();
+            ctx.translate(pc.x,pc.y);
+            ctx.scale(1,vsqR);
+            // smooth multi-stop falloff from center to nothing - no edge, no ring
+            var rg2=ctx.createRadialGradient(0,0,0,0,0,wash);
+            rg2.addColorStop(0,hexA(rg.col,a));
+            rg2.addColorStop(0.4,hexA(rg.col,a*0.5));
+            rg2.addColorStop(0.72,hexA(rg.col,a*0.18));
+            rg2.addColorStop(1,hexA(rg.col,0));
+            ctx.fillStyle=rg2;
+            ctx.beginPath(); ctx.arc(0,0,wash,0,6.283); ctx.fill();
+            ctx.restore();
+          }
         });
 
         // ---- GASEOUS ZONE NEBULA (full 12-cat palette, many additive puffs per region) ----
@@ -1006,16 +1267,21 @@
             if(rad<2) continue;
             var a=zc.amp*pf.op*breathe*zoneDim*grp*fzc;
             if(a<0.004) continue;
-            ctx.save();
-            ctx.translate(pc.x,pc.y);
-            ctx.scale(1,vsqZ);
-            var zg=ctx.createRadialGradient(0,0,0,0,0,rad);
-            zg.addColorStop(0,hexA(col,a));
-            zg.addColorStop(0.45,hexA(col,a*0.42));
-            zg.addColorStop(1,hexA(col,0));
-            ctx.fillStyle=zg;
-            ctx.beginPath(); ctx.arc(0,0,rad,0,6.283); ctx.fill();
-            ctx.restore();
+            if(USE_GL){
+              var zcc=parseHex(col);
+              glow.push(pc.x, pc.y, rad, zcc[0],zcc[1],zcc[2], a, vsqZ, 0);
+            } else {
+              ctx.save();
+              ctx.translate(pc.x,pc.y);
+              ctx.scale(1,vsqZ);
+              var zg=ctx.createRadialGradient(0,0,0,0,0,rad);
+              zg.addColorStop(0,hexA(col,a));
+              zg.addColorStop(0.45,hexA(col,a*0.42));
+              zg.addColorStop(1,hexA(col,0));
+              ctx.fillStyle=zg;
+              ctx.beginPath(); ctx.arc(0,0,rad,0,6.283); ctx.fill();
+              ctx.restore();
+            }
           }
         });
 
@@ -1026,11 +1292,15 @@
         // galactic core glow (pans with the disc; the gradient center is the disc core)
         // - kept restrained so the core reads warm but never blinding.
         var gcx=CX+panX, gcy=CY+panY-6;
-        var cg2=ctx.createRadialGradient(gcx,gcy,0,gcx,gcy,SCALE*0.92);
-        cg2.addColorStop(0,'rgba(255,176,84,0.22)');
-        cg2.addColorStop(0.28,'rgba(255,148,58,0.09)');
-        cg2.addColorStop(1,'rgba(255,140,40,0)');
-        ctx.fillStyle=cg2; ctx.fillRect(0,0,W,H);
+        if(USE_GL){
+          glow.push(gcx, gcy, SCALE*0.92, 255,176,84, 0.22, 1, 0);
+        } else {
+          var cg2=ctx.createRadialGradient(gcx,gcy,0,gcx,gcy,SCALE*0.92);
+          cg2.addColorStop(0,'rgba(255,176,84,0.22)');
+          cg2.addColorStop(0.28,'rgba(255,148,58,0.09)');
+          cg2.addColorStop(1,'rgba(255,140,40,0)');
+          ctx.fillStyle=cg2; ctx.fillRect(0,0,W,H);
+        }
 
         // ---- DUST LEVEL-OF-DETAIL LAYER ----
         // DEFAULT zoom: an always-on collective shimmer/twinkle - clearly PERCEPTIBLE so you
@@ -1080,21 +1350,30 @@
             var ringA=(0.30*resolve+ (isHotDust?0.25:0))*fz*dimSel;
             if(ringA>0.012){
               var ringR=sz*(isHotDust?3.2:2.6);
-              var rg3=ctx.createRadialGradient(p.x,p.y,sz*0.5,p.x,p.y,ringR);
-              rg3.addColorStop(0,hexA2(d.col,0));
-              rg3.addColorStop(0.55,hexA2(d.col,ringA));
-              rg3.addColorStop(1,hexA2(d.col,0));
-              ctx.fillStyle=rg3;
-              ctx.beginPath(); ctx.arc(p.x,p.y,ringR,0,6.283); ctx.fill();
+              if(USE_GL){
+                var drc=parseHex(d.col);
+                glow.push(p.x, p.y, ringR, drc[0],drc[1],drc[2], ringA, 1, 0);
+              } else {
+                var rg3=ctx.createRadialGradient(p.x,p.y,sz*0.5,p.x,p.y,ringR);
+                rg3.addColorStop(0,hexA2(d.col,0));
+                rg3.addColorStop(0.55,hexA2(d.col,ringA));
+                rg3.addColorStop(1,hexA2(d.col,0));
+                ctx.fillStyle=rg3;
+                ctx.beginPath(); ctx.arc(p.x,p.y,ringR,0,6.283); ctx.fill();
+              }
             }
           }
           // category-tinted bloom on the core (crisper up close)
-          if(dustGlow>0.01||isHotDust){
+          if(USE_GL){
+            var bl=sz + (isHotDust?8:7*dustGlow)*fz;
+            var dc=parseHex(d.col);
+            glow.push(p.x,p.y, bl, dc[0],dc[1],dc[2], a*0.6, 1, 0);
+          } else if(dustGlow>0.01||isHotDust){
             ctx.shadowColor=d.col; ctx.shadowBlur=(isHotDust?8:7*dustGlow)*fz;
           }
           ctx.fillStyle=hexA2(col,a);
           ctx.beginPath(); ctx.arc(p.x,p.y,sz,0,6.283); ctx.fill();
-          if(dustGlow>0.01||isHotDust){ ctx.shadowBlur=0; }
+          if(!USE_GL && (dustGlow>0.01||isHotDust)){ ctx.shadowBlur=0; }
           // tiny crisp pinpoint when well-resolved (sharpens the star vs a soft bg dot)
           if(resolve>0.5||isHotDust){
             ctx.fillStyle=hexA2('#fff6e8',Math.min(0.8,a*0.85));
@@ -1103,6 +1382,11 @@
           // record for hit-testing only when interactive (perf: skip array churn when zoomed out)
           if(dustHit){ d._x=p.x; d._y=p.y; d._sz=sz; dustPts.push(d); }
         }
+
+        // flush ALL glow-field sprites (bg-stars, clouds, washes, zone puffs, core, dust
+        // rings + blooms) accumulated this frame in ONE additive WebGL draw call, drawn
+        // behind the 2D canvas. No-op when the 2D fallback path is active.
+        if(USE_GL && glow){ glow.flush(); }
 
         // ---- DUST CONNECTION LANE (single link to parent node) ----
         // When a dust file is hovered or locked while interactive, draw its one connection
