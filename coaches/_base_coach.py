@@ -34,6 +34,12 @@ _log = logging.getLogger("rc.coaches.base")
 # Root directory (two levels up from coaches/)
 _APP_DIR = Path(__file__).parent.parent
 
+# Coach-tick instrumentation: a synchronous phase (parse / shadow-log) slower
+# than this (ms) gets a trace line in data/coach_tick_trace.jsonl. The coaching
+# call itself is always traced. Substrate for the "long coach tick on
+# base-attack" report - correlate tick duration vs structure/objective events.
+_SLOW_TICK_MS = 150.0
+
 
 # ==============================================================================
 # SECTION 1 - Utility functions
@@ -382,7 +388,16 @@ class BaseCoach(abc.ABC):
         raw = self._fetch_game_data()
         if not raw:
             return
+        # Stash structure/objective-event counts for the tick trace, then time
+        # the parse (a growing late-game events list is a base-attack suspect).
+        self._tick_struct = self._structure_event_counts(raw)
+        _t0 = time.perf_counter()
         state = self._parse_raw_state(raw)
+        _parse_ms = (time.perf_counter() - _t0) * 1000.0
+        if _parse_ms > _SLOW_TICK_MS:
+            self._trace_coach_tick(
+                "parse", _parse_ms, self._tick_struct, (state or {}).get("game_time")
+            )
         if not state:
             return
         self._on_state_received(state)
@@ -469,7 +484,12 @@ class BaseCoach(abc.ABC):
             # A3 (DS-coach): fire-and-forget shadow-log of the deterministic
             # anti-tank + scaling power-curve hints for this matchup. Pure
             # substrate accrual - never touches the prompt, UI, or coach output.
+            _sh0 = time.perf_counter()
             self._shadow_log_hints(state)
+            _sh_ms = (time.perf_counter() - _sh0) * 1000.0
+            _struct = getattr(self, "_tick_struct", {}) or {}
+            if _sh_ms > _SLOW_TICK_MS:
+                self._trace_coach_tick("shadow", _sh_ms, _struct, state.get("game_time"))
             _mn = self._MODE_NAME.capitalize()
             _state_copy = dict(state)
             try:
@@ -478,14 +498,74 @@ class BaseCoach(abc.ABC):
             except Exception:  # noqa: BLE001
                 _sched = None
             if _sched is not None:
-                _sched.spawn_task(asyncio.to_thread(self._run_coach, _state_copy))
+                _sched.spawn_task(
+                    asyncio.to_thread(self._dispatch_coach, _state_copy, _struct))
             else:
                 threading.Thread(
-                    target=self._run_coach, args=(_state_copy,),
+                    target=self._dispatch_coach, args=(_state_copy, _struct),
                     daemon=True, name=f"{_mn}Coach",
                 ).start()
         finally:
             self._lock.release()
+
+    # -- Coach-tick instrumentation -------------------------------------------
+    # Diagnostic substrate for the "long coach tick on base-attack" report:
+    # time each coaching dispatch (and any slow parse / shadow-log phase) and
+    # stamp it with live structure/objective-event counts so the spikes can be
+    # correlated to turret/inhib/nexus events post-game. Pure substrate - it
+    # never alters coaching output, and every write is best-effort.
+
+    def _structure_event_counts(self, raw: dict) -> dict:
+        """Count turret / inhibitor / nexus(GameEnd) kill events from a raw
+        /allgamedata snapshot, plus the total event count."""
+        ev = ((raw or {}).get("events") or {}).get("Events") or []
+        out = {"turret": 0, "inhib": 0, "nexus": 0, "total": 0}
+        for e in ev:
+            if not isinstance(e, dict):
+                continue
+            name = e.get("EventName", "")
+            if name == "TurretKilled":
+                out["turret"] += 1
+            elif name == "InhibKilled":
+                out["inhib"] += 1
+            elif name in ("GameEnd", "NexusKilled"):
+                out["nexus"] += 1
+        out["total"] = len(ev)
+        return out
+
+    def _trace_coach_tick(self, phase: str, dur_ms: float,
+                          struct: "dict | None", game_time) -> None:
+        """Append one coach-tick timing record to data/coach_tick_trace.jsonl.
+        Best-effort: a write failure must never disturb coaching."""
+        try:
+            struct = struct or {}
+            rec = {
+                "ts":        round(time.time(), 3),
+                "mode":      self._MODE_NAME,
+                "phase":     phase,
+                "dur_ms":    round(float(dur_ms), 1),
+                "game_time": game_time,
+                "turret":    struct.get("turret", 0),
+                "inhib":     struct.get("inhib", 0),
+                "nexus":     struct.get("nexus", 0),
+                "n_events":  struct.get("total", 0),
+            }
+            path = _APP_DIR / "data" / "coach_tick_trace.jsonl"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(rec) + "\n")
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _dispatch_coach(self, state: dict, struct: "dict | None" = None) -> None:
+        """Timed wrapper around the subclass _run_coach (the coaching call).
+        Runs on the worker thread; records wall duration + structure context."""
+        t0 = time.perf_counter()
+        try:
+            self._run_coach(state)
+        finally:
+            dt = (time.perf_counter() - t0) * 1000.0
+            self._trace_coach_tick("coach", dt, struct, state.get("game_time"))
 
     def _ensure_data(self) -> None:
         try:
