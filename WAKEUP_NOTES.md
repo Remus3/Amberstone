@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-27 (ACTUALIZE 637: DS seam-wiring across /rank + overlay in-game hotkey/drag, `2943828b` + `b4d45636` + `1a9081e8`)
+
+Operator live session (Veigar Practice Tool). Built the fixes for the gaps item 637 only diagnosed.
+
+- **(A) DS seam-wiring SHIPPED (`2943828b`, ENGINE 1.153.0 -> 1.154.0, Tier-2, behavior-preserving DEFAULT-OFF).** The live-flip seam flags now thread across /rank -> client -> dispatch (+ R5 caster_missing_hp_pct from live self hp/hp_max). server.py 5 archetype routes accept them; R7/R12 scoped to /dps, R30 to /burst. hps.py compute_hps + rank_items_by_hps forward the R5 pair. SR coach wired; ARAM/Arena/Brawl pass-through guarded (snapshot dicts lack raw hp/hp_max - FOLLOW-UP). Re-verified FRESH post-:8893-restart: DS 7557/0, tests/ 9579/0, Share --check clean, /health 1.154.0. Default-ON flips still gated. Built via worktree workflow (engine+client agents, verifier-gated).
+- **(B) Overlay SHIPPED (`b4d45636`).** Ctrl+Shift+A dead in-game = Electron globalShortcut does not deliver under League foreground focus (DISPROVED the collision theory - all 5 accelerators register()=true). Routed the ACTIVE toggle through the Win32 `tools/hotkey_listener.py` (owns Ctrl+Shift+A id 3 -> stamps `ops/runtime/overlay_active_toggle.txt` -> `main.js startActiveToggleWatch` polls 200ms + flips). Body-drag-in-ACTIVE added (was: only a hidden 3px grip; the "still broken" report was STALE CACHED JS, cleared by fresh relaunch). 3 drag tests, rc-shell 274/274. Operator live-confirmed both. `1a9081e8`: ruff UP031 + Share CHANGELOG 1.154.0.
+
+NEXT: (1) **RC-HotkeyListener task exits result=1** - listener works + runs manually but the scheduled task fails, so #3 is not durable across reboot; fix the task config (script is fine - it is a task/launcher config issue). (2) ARAM/Arena/Brawl R5 self-HP (surface raw hp/hp_max in their snapshot dicts; SR already wired). (3) seam default-ON flips (DSP11/RF1 live-validated). (4) untouched original list: coach-tick trace on base-attack, in-game build-chooser overlay widget, hexcore speedup (profile first), repo cleanup (worktrees ~1.9GB + gemini_io + scratch; deletes hit a sandbox guard - needs a workaround). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-27 (live-flip validation + overlay launcher fix, `2e8abb36`)
 
 Operator-driven live session: Practice Tool games (KSante / Briar / Ezreal) to close the "live half" of the offline-confirmed DS seam flips, tracked via /api/state + game-monitor.
@@ -34,16 +45,3 @@ NEXT: /gemini-headless-upgrade launched for the overnight (deep audit + lift + U
 - **R33 (loop cycle 4, `9eb644c9`)** - Section-3b overlay-cue typography audit. ward_cue.css + objective_chips.css (overlay-only) were sized on the dashboard token var(--fs-xs) 16px, out-shouting the 14px w-call ACTION verb; routed both to overlay var(--fs-ov-chip) 13px (R8 overlay-scoped-token doctrine). RED-first guard added to test_overlay_css_typography_tokens.py. CSS-only asset-hash reload, no restart/ENGINE/Share. **VISUAL OWED:** populated overlay pixel capture of the ward/objective cues - deferred, no live game (mode=client); cues need live data to render. Capture on the next live SR/ARAM game.
 
 - **R34 (loop cycle 5, `a3d38c0e`; ledger 635)** - Section-7b heavyweight Aggregator D deep-dive (`docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md`, 12 findings). Signature = delta-vs-baseline + popular-vs-winrate dichotomy. SHIPPED F1 in-run: the personal_build champ-select panel dropped the served `most_common_build`; now renders a "Usual" line + per-row usual pips + a conditional survivorship insight (underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash reload, no restart/ENGINE/Share). TDD RED-first, verifier CONFIRM 24/24, 5-phase UI-audit PASS. F3 matchup delta-stats table (HIGH/new-compute) + F8 snowball/comeback bar (MED) -> BACKLOG. **VISUAL OWED:** populated champ-select pixel capture (no live game; headless snapshot `champ-select_personal-build.png` is the audit-trail proof).
-
----
-
-# 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
-
-Operator reported terminal windows flashing open/closed intermittently on Legion. Diagnosed + fixed in one pass.
-
-- **Root cause.** RC-CIWatchdog fires every 2 min (`PT2M`) under a `pythonw.exe`-hosted task; its `_run` helper at `tools/ci_watchdog.py:316` spawned `git`/`gh` children with no `CREATE_NO_WINDOW`, so each child allocated a console that flashed onscreen. Exact `feedback_avoid_console_flash_legion` mode.
-- **Fix.** Added `creationflags = 0x08000000 if os.name == "nt" else 0` to the `_run` subprocess call (repo's cross-platform-safe idiom; no-op off Windows). Tier-1, no restart - the scheduled task re-reads the script on its next fire, so flashing stops within ~2 min.
-- **Swept siblings, both clean:** `cost_health_watchdog.py` (no subprocess - in-process HTTP); `ops/rc_supervisor.py` frozen but ALREADY has `CREATE_NO_WINDOW` at :857. CIWatchdog was the only offender.
-- **Verified.** `py_compile` OK; `test_ci_watchdog.py` 30/30; hygiene gate 13/13. Pushed `0028c8ac`.
-
-NEXT: nothing pending from this fix. Confirm the flashing is gone over the next few CIWatchdog cycles. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
