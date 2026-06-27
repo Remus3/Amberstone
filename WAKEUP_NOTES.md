@@ -19,6 +19,8 @@ NEXT: /gemini-headless-upgrade launched for the overnight (deep audit + lift + U
 
 - **R33 (loop cycle 4, `9eb644c9`)** - Section-3b overlay-cue typography audit. ward_cue.css + objective_chips.css (overlay-only) were sized on the dashboard token var(--fs-xs) 16px, out-shouting the 14px w-call ACTION verb; routed both to overlay var(--fs-ov-chip) 13px (R8 overlay-scoped-token doctrine). RED-first guard added to test_overlay_css_typography_tokens.py. CSS-only asset-hash reload, no restart/ENGINE/Share. **VISUAL OWED:** populated overlay pixel capture of the ward/objective cues - deferred, no live game (mode=client); cues need live data to render. Capture on the next live SR/ARAM game.
 
+- **R34 (loop cycle 5, `a3d38c0e`; ledger 635)** - Section-7b heavyweight Aggregator D deep-dive (`docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md`, 12 findings). Signature = delta-vs-baseline + popular-vs-winrate dichotomy. SHIPPED F1 in-run: the personal_build champ-select panel dropped the served `most_common_build`; now renders a "Usual" line + per-row usual pips + a conditional survivorship insight (underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash reload, no restart/ENGINE/Share). TDD RED-first, verifier CONFIRM 24/24, 5-phase UI-audit PASS. F3 matchup delta-stats table (HIGH/new-compute) + F8 snowball/comeback bar (MED) -> BACKLOG. **VISUAL OWED:** populated champ-select pixel capture (no live game; headless snapshot `champ-select_personal-build.png` is the audit-trail proof).
+
 ---
 
 # 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
