@@ -2236,6 +2236,13 @@
                their render fns are unchanged. Hidden until live data lands. -->
           <div class="ds-sweep" id="csv-sugg-ds-sweep" hidden></div>
           <div class="ds-matchup" id="csv-sugg-ds-matchup" hidden></div>
+          <!-- L4 capability-gap chip (active-match twin of the item-633
+               champ-select chip). Reuses the EXISTING /api/ds-preview
+               capability_gap field (default-OFF RC_CAPGAP_SURFACE); the
+               am- prefix avoids colliding with champ-select's
+               csv-sugg-capability-gap mount (both views live in the DOM).
+               Styling inherits from web/css/panels/capability_gap.css. -->
+          <div class="capability-gap" id="am-sugg-capability-gap" hidden></div>
           <div class="ds-combo" id="csv-sugg-ds-combo" hidden></div>
           <div class="ds-relscore" id="csv-ds-relscore" hidden></div>
           <div class="am-pane-body" id="am-build-body">
