@@ -46,6 +46,29 @@ if ($dsListening) {
 Start-Process -FilePath 'C:\Windows\explorer.exe' -ArgumentList 'shell:AppsFolder\Claude_pzs8sxrjxfjjc!Claude'
 Write-Host "[on] Claude Desktop launched"
 
+# 3b. rc-shell Electron overlay. The app already holds requestSingleInstanceLock so a
+# 2nd launch is a no-op (focuses the existing window); we singleton-check first anyway
+# to avoid spawning a doomed helper - mirrors the DS :8893 check above. Matched ONLY by
+# the rc-shell path so other Electron apps (Claude Desktop) are never confused for it.
+$rcShell = Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -and $_.CommandLine -match 'rc-shell' }
+if ($rcShell) {
+  Write-Host "[on] rc-shell overlay already running (pid $($rcShell[0].ProcessId))"
+} else {
+  $electron = 'C:\Riot Commander\rc-shell\node_modules\electron\dist\electron.exe'
+  if (Test-Path $electron) {
+    # Launch via the cmd 'start' trampoline: cmd exits immediately and orphans Electron
+    # with NO console attachment, so closing this Legion ON terminal can never close the
+    # overlay. (A plain Start-Process -WindowStyle Hidden child inherits this console and
+    # dies on its CTRL_CLOSE event - the bug this replaces.)
+    $cmdLine = '/c start "rcshell" /d "C:\Riot Commander\rc-shell" "' + $electron + '" .'
+    Start-Process -FilePath 'cmd.exe' -ArgumentList $cmdLine -WindowStyle Hidden
+    Write-Host "[on] rc-shell overlay launching (detached)"
+  } else {
+    Write-Host "[on] WARN: rc-shell electron binary not found ($electron)"
+  }
+}
+
 # 4. Status snapshot
 Start-Sleep -Seconds 1
 $ports = @{8888='dashboard'; 8889='vision'; 8890='phase3-prod'; 8891='phase3-dev'; 8893='ds'; 8894='ds-matchdb-mcp'}
@@ -56,5 +79,5 @@ foreach ($p in ($ports.Keys | Sort-Object)) {
 }
 
 Write-Host "=== Legion ON complete ==="
-Write-Host "Press any key to close..."
-$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+Write-Host "Overlay runs independently - safe to close this window now; it auto-closes in 8s."
+Start-Sleep -Seconds 8
