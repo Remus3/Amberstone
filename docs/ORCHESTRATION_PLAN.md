@@ -205,6 +205,19 @@ genuinely-open ROADMAP/BACKLOG work.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-27 R29 (DIRECTOR REFILL cycle, head 32a14490) SUPERSEDED - the L4
+  capability-gap TAIL (zone_control via ZoneControlResult.controls_terrain boolean
+  min 2; objective_damage via ObjDamageResult.objdamage_score >= 0.5 min 2 - score
+  not boolean because pressures_structures is True for nearly every champ; + the
+  active-match chip twin reusing /api/ds-preview) was scoped + thresholds grounded
+  live 2026-06-27, ready to dispatch as 2 disjoint worktree slices - but an OPERATOR
+  INTERRUPT redirected this session to live in-game overlay fixes (Ctrl+Shift+A
+  ACTIVE rebind, keepCompanion default OFF = overlay-only in-game, console-flash
+  suppression), the wenyan output-dialect default (caveman + gemini director/auditor
+  + revived tools/caveman_default.py hook), and a loop-improvement deep-research
+  report (docs/LOOP_IMPROVEMENTS_2026-06-27.md, NOW 12 / FUTURE 8 / CLOSED 16). The
+  gemini loop was STOP'd (operator took manual control). The capability-gap tail
+  remains OPEN for a future cycle (grounded thresholds + fixtures in this transcript).
 - 2026-06-25 R28 (DIRECTOR REFILL cycle, loop restart head cf2ea80c) CLEAN no-op
   (docs-only) - the director re-proposed the ledger-618 housekeeping TAIL, but a
   verify-the-premise pass (CLAUDE.md verify-before-declare-broken /
