@@ -142,6 +142,31 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-26 (L4 Phase-D capability-gap synthesizer - item 631, `d52d6152`, CI green)
+
+First bet from the item-626 research report after the objective-state pack. Operator picked L4,
+then the multi-axis-synthesizer slice. Grounding found the report's "first slice = anti-tank, it
+is unconsumed" was WRONG: `core.ds_antitank_hint.build_antitank_hint` already exists + is consumed
+(A3 axis in build_order_variants), and `routes_ds_profile.py` already does a single-champion radar.
+So slice 1 = the genuinely-unbuilt SYNTHESIS.
+
+- NEW `core/ds_capability_gap.py` `build_capability_gap(my_champ, enemies, mode)` - detector-registry
+  consumer that reads existing DS scorers vs a live enemy comp, emits the single highest-severity
+  capability DEFICIT. v1 detectors: **anti_tank** (delegates to build_antitank_hint) + **poke** (keys
+  on `ThreatRangeResult.is_artillery`). Ranks by enemy-demand count, tie-break anti_tank>poke. Adding
+  an axis = append a detector.
+- Pure read-only, never raises, **default-inert** (NOT yet wired into a served path - awaits a live
+  coach surface + shadow-log per flip discipline). No ENGINE bump, no Share mirror. Tier-1.
+- RED-first; fixtures grounded vs live scorer output. GREEN: 17/17 new tests, ruff clean, sibling
+  ds_antitank_hint 13/13.
+
+NEXT: more detectors (sustain/zone/objdamage) + wire into a live coach surface behind a shadow flag.
+Other untouched report bets: L9/L10 live championStats + stat-shard ingestion, E1 TFT det twin.
+STILL UNVERIFIED (carried): no live SR-game validation of EITHER the 627-630 objective rows OR this
+consumer - all client mode. Do NOT re-derive anti-tank or the ds-profile radar (both already exist).
+
+---
+
 # 2026-06-26 (OBJECTIVE-STATE COACHING PACK shipped end-to-end - items 627-630)
 
 Built the whole pack queued by item 626, one slice per turn, RED-first TDD, commit+push each.
