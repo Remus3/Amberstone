@@ -142,6 +142,25 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-27 (gemini-headless director CONTINUITY fix + gemini artifacts + overlay-only, `d8445fec`/`8554d2a8`/`f3346b83`)
+
+Operator overnight (Opus 4.8, ultracode): fix the gemini-headless self-handoff redundancy (director re-issues completed work), verify Gemini<->Claude, run /gemini-headless-upgrade. Plus: overlay-only UI, fix gemini tone/style/memory artifacts, commit hexcore.
+
+- **Root cause (3-way confirmed).** docs/LEDGER.md is newest-first (top=newest); `director()` fed `tail('docs/LEDGER.md',90)` = the OLDEST entries (~item 325, 3wk stale), so shipped items 618-633 were INVISIBLE and got re-proposed. Git proves it: `e24410d6`/`b951f985` "R28 CLEAN no-op - directive premises already shipped 618-621".
+- **Fix (TDD `d8445fec`).** new `head_lines()` newest-first reader; `build_director_context` now sends an explicit ALREADY-COMPLETED DIGEST (recent commits + LEDGER HEAD + the persisted directive chain `ops/loop/control/directive_history.jsonl`, gitignored, survives restarts) + a BUILD-ON/de-dup HARD RULE. Sibling tail-inversions fixed: loop_controller ROADMAP read + `tools/gemini_audit.ps1` ROADMAP/BACKLOG (Head helper). GEMINI.md gains the continuity/memory model + bans the meta-narration preamble ("last directive was a false positive / stale read" artifact). 7 RED-first tests + 10 existing loop tests green; ruff clean; gemini_audit.ps1 parses.
+- **Verified live.** gemini_ask round-trip grounded; REAL 2-cycle director proof PASS (builds on 631-633, no re-issue, chain visible); dry controller<->stub handshake PASS (2 chain records persisted). Independent verifier + repo-wide sibling-sweep workflow CONFIRM (16/16 clean-state).
+- **Overlay-only (operator 2026-06-27).** Chrome :8888 dashboard RETIRED as a viewing/audit surface; UI = Electron overlay ONLY. director_prompt.md + skill 3b UI-audit refs retargeted to the overlay (`?overlay=1` / rc-shell). Memory: `feedback_electron_overlay_only`.
+- **Opportunistic (`8554d2a8`).** CLAUDE.md DS banner -> live /health 1.151.0 / 706 items / 173 champs (patch 16.13.1).
+- **Hexcore (`f3346b83`).** Operator's "accretion disk" rework committed.
+
+NEXT: /gemini-headless-upgrade launched for the overnight (deep audit + lift + UI/overlay audit + DS sweeps); the director now BUILDS ON completed work, no re-issue. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+- **R33 (loop cycle 4, `9eb644c9`)** - Section-3b overlay-cue typography audit. ward_cue.css + objective_chips.css (overlay-only) were sized on the dashboard token var(--fs-xs) 16px, out-shouting the 14px w-call ACTION verb; routed both to overlay var(--fs-ov-chip) 13px (R8 overlay-scoped-token doctrine). RED-first guard added to test_overlay_css_typography_tokens.py. CSS-only asset-hash reload, no restart/ENGINE/Share. **VISUAL OWED:** populated overlay pixel capture of the ward/objective cues - deferred, no live game (mode=client); cues need live data to render. Capture on the next live SR/ARAM game.
+
+- **R34 (loop cycle 5, `a3d38c0e`; ledger 635)** - Section-7b heavyweight Aggregator D deep-dive (`docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md`, 12 findings). Signature = delta-vs-baseline + popular-vs-winrate dichotomy. SHIPPED F1 in-run: the personal_build champ-select panel dropped the served `most_common_build`; now renders a "Usual" line + per-row usual pips + a conditional survivorship insight (underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash reload, no restart/ENGINE/Share). TDD RED-first, verifier CONFIRM 24/24, 5-phase UI-audit PASS. F3 matchup delta-stats table (HIGH/new-compute) + F8 snowball/comeback bar (MED) -> BACKLOG. **VISUAL OWED:** populated champ-select pixel capture (no live game; headless snapshot `champ-select_personal-build.png` is the audit-trail proof).
+
+---
+
 # 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
 
 Operator reported terminal windows flashing open/closed intermittently on Legion. Diagnosed + fixed in one pass.
