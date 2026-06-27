@@ -218,6 +218,13 @@ genuinely-open ROADMAP/BACKLOG work.
   report (docs/LOOP_IMPROVEMENTS_2026-06-27.md, NOW 12 / FUTURE 8 / CLOSED 16). The
   gemini loop was STOP'd (operator took manual control). The capability-gap tail
   remains OPEN for a future cycle (grounded thresholds + fixtures in this transcript).
+  UPDATE (same-day autonomous continuation, operator-delegated "continue prior
+  requests; use Gemini for answers"): the capability-gap tail was COMPLETED as ledger
+  item 634 - slice 1 `992dd455` (zone_control + objective_damage detectors, 28 pytest)
+  + slice 2 `eda8870d` (active-match chip twin, 6 node tests) + reconcile `4ea6de03`,
+  2 disjoint worktree slices merged + verifier-gated, broader capgap sweep 88 passed
+  (0 real failures; lone teardown error = the live in-game vision daemon, not code).
+  No ENGINE bump. Only live SR validation with RC_CAPGAP_SURFACE=1 still owed.
 - 2026-06-25 R28 (DIRECTOR REFILL cycle, loop restart head cf2ea80c) CLEAN no-op
   (docs-only) - the director re-proposed the ledger-618 housekeeping TAIL, but a
   verify-the-premise pass (CLAUDE.md verify-before-declare-broken /
