@@ -142,6 +142,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 2 - item 632, `de4c40e4`)
+
+Operator picked "both directions" this session: extend the capgap registry AND wire the live shadow-log.
+
+- **Extend - sustain axis.** `core/ds_capability_gap.py` `_detect_sustain_gap` keys on `SustainResult.total_sustain_score` vs a live-calibrated `SUSTAIN_HIGH_SCORE=1.5` cut (probed `compute_sustain`: Warwick 11.7 / Aatrox 7.0 / Swain 3.3 / Fiddle 2.9 / Vlad 1.6 vs DrMundo 0.6 down). Fires when >=2 heavy-sustain enemies AND I do not out-sustain in kind -> anti-heal/Grievous. `_AXIS_PRIORITY` now (anti_tank, sustain, poke).
+- **Wire - live shadow-log.** `dashboard/routes_state.py` `_capgap_shadow_log` runs at the end of `_serve_state`, gated on `RC_CAPGAP_SHADOW` (default OFF). Resolves my champ + enemy comp from the liveclient snapshot, logs the top deficit (throttled 30s, skips stale >=8s, never raises). NO served-field change.
+- **Verified:** RED-first both slices. `test_ds_capability_gap.py` 20/20 + new `test_capability_gap_shadow.py` 9/9; ruff clean; regression sweep 1365 passed. No ENGINE bump, no Share (DS untouched), no RC restart (flag OFF -> live behavior unchanged).
+- Commit-msg gotcha: first push mangled the subject (PowerShell `@'...'@` heredoc used in the Bash tool is literal) - fixed via amend + `--force-with-lease`. Use a `-F msgfile` for multi-line Bash commit messages.
+
+NEXT (L4 tail): more axes (zone-control / objective-damage) + promote the shadow-log to a user-visible champ-select/active-match surface once telemetry validates the axes. Other report bets: L9/L10 live championStats + stat-shard ingestion (M), E1 TFT deterministic twin (L). STILL UNVERIFIED: no live SR-game validation of 627-632 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-26 (L4 Phase-D capability-gap synthesizer - item 631, `d52d6152`, CI green)
 
 First bet from the item-626 research report after the objective-state pack. Operator picked L4,
