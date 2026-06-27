@@ -142,6 +142,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
+
+Operator reported terminal windows flashing open/closed intermittently on Legion. Diagnosed + fixed in one pass.
+
+- **Root cause.** RC-CIWatchdog fires every 2 min (`PT2M`) under a `pythonw.exe`-hosted task; its `_run` helper at `tools/ci_watchdog.py:316` spawned `git`/`gh` children with no `CREATE_NO_WINDOW`, so each child allocated a console that flashed onscreen. Exact `feedback_avoid_console_flash_legion` mode.
+- **Fix.** Added `creationflags = 0x08000000 if os.name == "nt" else 0` to the `_run` subprocess call (repo's cross-platform-safe idiom; no-op off Windows). Tier-1, no restart - the scheduled task re-reads the script on its next fire, so flashing stops within ~2 min.
+- **Swept siblings, both clean:** `cost_health_watchdog.py` (no subprocess - in-process HTTP); `ops/rc_supervisor.py` frozen but ALREADY has `CREATE_NO_WINDOW` at :857. CIWatchdog was the only offender.
+- **Verified.** `py_compile` OK; `test_ci_watchdog.py` 30/30; hygiene gate 13/13. Pushed `0028c8ac`.
+
+NEXT: nothing pending from this fix. Confirm the flashing is gone over the next few CIWatchdog cycles. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 3 - item 633, `62fe235a`)
 
 Operator picked "surface it" over adding more axes. Promoted the item-632 shadow-log to a user-visible champ-select chip behind its own default-OFF flip flag.
