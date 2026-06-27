@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.152.0 (R30 / DSV6 - on-cast magic-burst valuation seam, default-OFF, byte-identical.
+The per-cast burst combo loop (compute_burst_damage) sums only ability casts + AA hits, so item on-cast magic
+procs (Luden's Echo 6655 75+5%AP, Stormsurge Squall 4646 125+10%AP, Malignance Hatefog 3118 180+15%AP) were never
+credited in a burst window - AP/magic builds scored too low on the offense-burst axis. ItemEffect gains two
+END-appended fields magic_burst_base / magic_burst_ap_ratio (default 0.0, the one-shot burst-window magnitude;
+every positional construction survives), plus effects.total_magic_burst_damage(effects, caster_ap). Both consumers
+gain assume_magic_burst (default False). compute_burst_damage folds sum(base + ap_ratio*ap) MR-mitigated (MAGIC
+routing) x mode_mult x magic_amp into total_burst - the same mitigation + amp shape the periodic layer applies to
+these exact procs in compute_dps. compute_ability_dps takes the param for caller API symmetry but is DELIBERATELY
+INERT (byte-identical ON or OFF): a one-shot magnitude has no dimensionally-sound place in a per-second metric, and
+compute_dps already values these at their PeriodicProc rate (ability_dot_only=False), so folding them in the
+ability-DPS scorer would be wrong-units AND a partial double-count. DEFAULT-OFF leaves every existing item + caller
+byte-identical. The live default-ON flip (a scorer/rank call with assume_magic_burst=True) is operator-gated
+(docs/LIVE_GAME_GATED_SYNC.md). Offline Meraki-grounded characterization tests (test_magic_burst_valuation_dsv5.py).
+Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.152.0.)
+
 1.151.0 (R17 - anti-tank level-ramp %max-HP endpoints, default-OFF, byte-identical.
 A real subset of the antitank %max-HP rows deal a percentage that scales with the CASTER's champion level
 (Aatrox P "4% : 8% (based on level)", Brand P "8% : 12%", Skarner P "5% : 9%", ...). AntiTankEntry gains optional

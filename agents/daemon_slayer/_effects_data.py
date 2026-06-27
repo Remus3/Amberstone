@@ -919,6 +919,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=12.0,
         ),),
+        # DSV6 (1.152.0): single-Echo burst-window magnitude for the on-cast
+        # magic-burst seam (assume_magic_burst). Same Meraki 75 (+5% AP) as the
+        # periodic; credited once per burst combo by compute_burst_damage. The
+        # periodic above owns the sustained-DPS valuation in compute_dps (no
+        # double-count - the one-shot magnitude lives only in the burst window).
+        magic_burst_base=75.0,
+        magic_burst_ap_ratio=0.05,
         note="Luden's Echo: Echo 75 (+5% AP) magic / 12s primary target (Meraki confirmed; AoE splash not modeled)",
     ),
     "4633": ItemEffect(
@@ -1390,6 +1397,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_seconds=30.0,
         ),),
+        # DSV6 (1.152.0): single-Squall burst-window magnitude for the on-cast
+        # magic-burst seam. Same Meraki 125 (+10% AP) as the periodic; credited
+        # once per burst combo by compute_burst_damage (the periodic owns the
+        # sustained-DPS valuation, no double-count).
+        magic_burst_base=125.0,
+        magic_burst_ap_ratio=0.10,
         note=(
             "Stormsurge: 15 flat magic pen + Squall 125 (+10% AP) magic / 30s "
             "(Stormraider gate modeled at minimum-CD sustained rate; Meraki confirmed)"
@@ -1804,6 +1817,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_seconds=1.0,
             ),
         ),
+        # DSV6 (1.152.0): one-ult-zone burst-window magnitude (180 + 15% AP) for
+        # the on-cast magic-burst seam - NO ult_casts_per_sec rate factor (that
+        # is the sustained-DPS rate concept the periodic owns). Credited once per
+        # burst combo by compute_burst_damage; no double-count with the periodic.
+        magic_burst_base=180.0,
+        magic_burst_ap_ratio=0.15,
         note="Malignance Hatefog: (180+15%AP) magic per ult zone hit; rate from rewind_history spell4_casts",
     ),
     "2503": ItemEffect(
