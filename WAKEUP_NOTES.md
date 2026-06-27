@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
+
+Operator reported terminal windows flashing open/closed intermittently on Legion. Diagnosed + fixed in one pass.
+
+- **Root cause.** RC-CIWatchdog fires every 2 min (`PT2M`) under a `pythonw.exe`-hosted task; its `_run` helper at `tools/ci_watchdog.py:316` spawned `git`/`gh` children with no `CREATE_NO_WINDOW`, so each child allocated a console that flashed onscreen. Exact `feedback_avoid_console_flash_legion` mode.
+- **Fix.** Added `creationflags = 0x08000000 if os.name == "nt" else 0` to the `_run` subprocess call (repo's cross-platform-safe idiom; no-op off Windows). Tier-1, no restart - the scheduled task re-reads the script on its next fire, so flashing stops within ~2 min.
+- **Swept siblings, both clean:** `cost_health_watchdog.py` (no subprocess - in-process HTTP); `ops/rc_supervisor.py` frozen but ALREADY has `CREATE_NO_WINDOW` at :857. CIWatchdog was the only offender.
+- **Verified.** `py_compile` OK; `test_ci_watchdog.py` 30/30; hygiene gate 13/13. Pushed `0028c8ac`.
+
+NEXT: nothing pending from this fix. Confirm the flashing is gone over the next few CIWatchdog cycles. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 3 - item 633, `62fe235a`)
 
 Operator picked "surface it" over adding more axes. Promoted the item-632 shadow-log to a user-visible champ-select chip behind its own default-OFF flip flag.
@@ -27,28 +40,3 @@ Operator picked "both directions" this session: extend the capgap registry AND w
 - Commit-msg gotcha: first push mangled the subject (PowerShell `@'...'@` heredoc used in the Bash tool is literal) - fixed via amend + `--force-with-lease`. Use a `-F msgfile` for multi-line Bash commit messages.
 
 NEXT (L4 tail): more axes (zone-control / objective-damage) + promote the shadow-log to a user-visible champ-select/active-match surface once telemetry validates the axes. Other report bets: L9/L10 live championStats + stat-shard ingestion (M), E1 TFT deterministic twin (L). STILL UNVERIFIED: no live SR-game validation of 627-632 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
-
----
-
-# 2026-06-26 (L4 Phase-D capability-gap synthesizer - item 631, `d52d6152`, CI green)
-
-First bet from the item-626 research report after the objective-state pack. Operator picked L4,
-then the multi-axis-synthesizer slice. Grounding found the report's "first slice = anti-tank, it
-is unconsumed" was WRONG: `core.ds_antitank_hint.build_antitank_hint` already exists + is consumed
-(A3 axis in build_order_variants), and `routes_ds_profile.py` already does a single-champion radar.
-So slice 1 = the genuinely-unbuilt SYNTHESIS.
-
-- NEW `core/ds_capability_gap.py` `build_capability_gap(my_champ, enemies, mode)` - detector-registry
-  consumer that reads existing DS scorers vs a live enemy comp, emits the single highest-severity
-  capability DEFICIT. v1 detectors: **anti_tank** (delegates to build_antitank_hint) + **poke** (keys
-  on `ThreatRangeResult.is_artillery`). Ranks by enemy-demand count, tie-break anti_tank>poke. Adding
-  an axis = append a detector.
-- Pure read-only, never raises, **default-inert** (NOT yet wired into a served path - awaits a live
-  coach surface + shadow-log per flip discipline). No ENGINE bump, no Share mirror. Tier-1.
-- RED-first; fixtures grounded vs live scorer output. GREEN: 17/17 new tests, ruff clean, sibling
-  ds_antitank_hint 13/13.
-
-NEXT: more detectors (sustain/zone/objdamage) + wire into a live coach surface behind a shadow flag.
-Other untouched report bets: L9/L10 live championStats + stat-shard ingestion, E1 TFT det twin.
-STILL UNVERIFIED (carried): no live SR-game validation of EITHER the 627-630 objective rows OR this
-consumer - all client mode. Do NOT re-derive anti-tank or the ds-profile radar (both already exist).
