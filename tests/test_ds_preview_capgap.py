@@ -120,19 +120,21 @@ class DsPreviewCapabilityGapTests(unittest.TestCase):
     @mock.patch.dict("os.environ", {"RC_CAPGAP_SURFACE": "1"})
     @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
     def test_capgap_none_when_no_gap(self, mock_disp):
-        # Aatrox out-sustains the same heavy-sustain comp in kind, and no
-        # other axis fires -> build_capability_gap reports applies=False, so
-        # the route faithfully passes through None (verified live:
-        # build_capability_gap('Aatrox', [...], 'SR')["applies"] is False).
-        mock_disp.return_value = _dispatcher_response("hybrid", [
-            {"item_id": "3078", "item_name": "Trinity Force",
-             "hybrid_delta_pct": 0.08, "gold": 3333},
-        ])
+        # A low-threat enemy comp trips NO capability axis: not tanky (no
+        # anti_tank), < 2 artillery (no poke), no heavy-sustain, no terrain
+        # control (no zone_control), and < 2 high-objdamage (no objective_damage),
+        # so build_capability_gap reports applies=False across all 5 axes and the
+        # route faithfully passes through None. Verified live 2026-06-27:
+        # build_capability_gap('Lux', ['Lulu','Karma','Orianna'], 'SR')["applies"]
+        # is False. (The original Aatrox-vs-heavy-sustain fixture now trips the new
+        # objective_damage axis - Warwick 0.98 + Fiddlesticks 0.65 out-pressure
+        # structures vs Aatrox 0.34 - so it no longer exercises the no-gap path.)
+        mock_disp.return_value = _dispatcher_response("mage", _MAGE_ROWS)
         h = _Handler()
         _serve_ds_preview_post(h, {
-            "champion": "Aatrox", "mode": "SR", "level": 6,
-            "archetype": "bruiser",
-            "enemies": ["Vladimir", "Fiddlesticks", "Warwick"],
+            "champion": "Lux", "mode": "SR", "level": 6,
+            "archetype": "mage",
+            "enemies": ["Lulu", "Karma", "Orianna"],
         })
         self.assertEqual(h.status, 200)
         resp = h.json()
