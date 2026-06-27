@@ -191,7 +191,7 @@ genuinely-open ROADMAP/BACKLOG work.
 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
-| R35 | ds-sweep | LOOP cycle 6 (DIRECTOR REFILL): DS schema lift - survivability spell_damage_reduction_pct LIVE consumer. R19 added the forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ, slot) (per-rank PERCENT damage reduction from champion_abilities.json defensive modifier blocks); R35 wires it into _passive_mitigation_overrides.mitigation_multipliers via a trailing snapshot=None param. When snapshot present AND apply_passive_mitigation True, each percent-DR block folds into the EHP DENOMINATOR (mathematically correct vs the directive's "numerator like flat-DR R9" framing - percent DR is a damage-taken multiplier, not prevented HP) - read at _ASSUMED_ABILITY_RANK=4 (clamped to the per-rank tuple bounds), amortized by _ACTIVE_DR_PROB=0.3, axis by case-insensitive substring (physical->PHYS, magic->MAG, else ANY). DEVIATION (followed the data): the directive's literal 3-key map (Physical/Magic/Damage Reduction) misses Braum's lowercased "Damage reduction" + MasterYi's "Modified Damage Reduction" - substring classify required. 8 snapshot champs (Alistar/Belveth/Braum/Galio-split/Garen/Gragas/MasterYi/Warwick); _HAND_AUTHORED_DR_CHAMPS guard prevents double-count (disjoint today). compute_ehp passes snapshot through. DEFAULT-OFF byte-identical (short-circuits before snapshot consulted; legacy 3-arg call unchanged). 2 item-261/262 "no-DR baseline" tests repointed Garen->Ashe/Caitlyn. Offline characterization tests (test_passive_mitigation_snapshot_r35.py, 13 cases, RED-first). ENGINE 1.152.0 -> 1.153.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | WIP | - |
+| R35 | ds-sweep | LOOP cycle 6 (DIRECTOR REFILL): DS schema lift - survivability spell_damage_reduction_pct LIVE consumer. R19 added the forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ, slot) (per-rank PERCENT damage reduction from champion_abilities.json defensive modifier blocks); R35 wires it into _passive_mitigation_overrides.mitigation_multipliers via a trailing snapshot=None param. When snapshot present AND apply_passive_mitigation True, each percent-DR block folds into the EHP DENOMINATOR (mathematically correct vs the directive's "numerator like flat-DR R9" framing - percent DR is a damage-taken multiplier, not prevented HP) - read at _ASSUMED_ABILITY_RANK=4 (clamped to the per-rank tuple bounds), amortized by _ACTIVE_DR_PROB=0.3, axis by case-insensitive substring (physical->PHYS, magic->MAG, else ANY). DEVIATION (followed the data): the directive's literal 3-key map (Physical/Magic/Damage Reduction) misses Braum's lowercased "Damage reduction" + MasterYi's "Modified Damage Reduction" - substring classify required. 8 snapshot champs (Alistar/Belveth/Braum/Galio-split/Garen/Gragas/MasterYi/Warwick); _HAND_AUTHORED_DR_CHAMPS guard prevents double-count (disjoint today). compute_ehp passes snapshot through. DEFAULT-OFF byte-identical (short-circuits before snapshot consulted; legacy 3-arg call unchanged). 2 item-261/262 "no-DR baseline" tests repointed Garen->Ashe/Caitlyn. Offline characterization tests (test_passive_mitigation_snapshot_r35.py, 13 cases, RED-first). ENGINE 1.152.0 -> 1.153.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `ae123ca9` |
 | R34 | lift | LOOP cycle 5 (DIRECTOR REFILL): Section-7b heavyweight deep-dive competitor lift of Aggregator D. 6-point checklist per finding. Output docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md (12 findings). SHIPPED F1 IN-RUN (HIGH-lift LOW-risk presentation): the personal_build champ-select panel dropped the served `most_common_build`; now renders the popular-vs-winning dichotomy (a "Usual" line + per-row usual pips + a conditional survivorship insight: underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash auto-reload ADR-008, no RC restart, no ENGINE/Share). TDD RED-first, verifier-gated 24/24, 5-phase UI-audit PASS. F3 per-opponent matchup delta-stats (HIGH/new-compute) + F8 early/mid/late+snowball bar (MED) -> BACKLOG FUTURE; F2/F5/F6 defer; F4/F7/F9/F10/F12 CLOSED. Vendor names kept out of repo source (docs only). | DONE | `a3d38c0e` |
 | R28 | housekeeping | DIRECTOR REFILL: re-proposed ledger-618 tail (SwapsInto extractor fix + snapshot_panels flake + ARCHITECTURE.md:172 drift). VERIFY-THE-PREMISE -> ALL already shipped: SLICE 1 = item 619 (`95972f57`, Riot 16.13 `...ImmobilizingCCAbility` taxonomy fix - extractor canonicalizes the suffix to the legacy stem, 16.13.1 cdragon carries 5 SwapsInto correct, spell_cc_tags 31/31 green; inert-data so NO ENGINE bump per the 339/343 convention - the directive's "MUST bump ENGINE_VERSION" was itself wrong); SLICE 2a snapshot flake = item 620 (`0fe7e3bf`, Windows-scoped keep-alive, CI green - 620 ground-truth-corrected the directive's "keep HTTP/1.1 keep-alive" premise: the keep-alive ITSELF is the Linux culprit); SLICE 2b doc-drift = FALSE premise (line 172 already reads ENGINE 1.151.0 / 7511 tests / patch 16.13.1, NOT the hallucinated 1.144.0/7361). No code change warranted - a redundant ENGINE re-bump or flake re-attempt would REGRESS shipped work. CLEAN no-op, evidence-logged. | CLEAN | (docs) |
 | R33 | ui-audit | LOOP cycle 4 (DIRECTOR REFILL): 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Electron-overlay cue panels web/js/panels/{ward_cue,spike_cue,objective_chips,minimap_zoi,minimap_rect}.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. FINDING (TYPOGRAPHY/HIERARCHY MUST-FIX): ward_cue.css + objective_chips.css sized their chips on the dashboard token var(--fs-xs) 16px while the sibling spike_cue.css + all overlay chrome use the overlay token var(--fs-ov-chip) 13px - the 16px ancillary cues out-shouted the 14px w-call ACTION verb (--fs-ov-call), breaking overlay hierarchy. Fixed in-slice: both routed to var(--fs-ov-chip) (overlay-scoped item-184 token; global tokens.css >=16px floor untouched - same doctrine R8 locked). RED-first guard added to test_overlay_css_typography_tokens.py. ASCII clean (\\25xx glyph escapes); HIT-TARGETS N/A (pure-display cues); minimap_rect/minimap_zoi carry no text (exempt). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. Populated overlay pixel capture OWED (no live game). | DONE | `9eb644c9` |
@@ -209,6 +209,47 @@ genuinely-open ROADMAP/BACKLOG work.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-27 R35 (LOOP cycle 6, DIRECTOR REFILL, head d4b0b75d) DONE (`ae123ca9`)
+  - DS schema lift: the LIVE consumer for R19's forward-marker accessor
+    `DataSnapshot.spell_damage_reduction_pct(champ, slot)`. R19 surfaced per-rank
+    PERCENT damage-reduction blocks from `champion_abilities.json` with no
+    consumer; R35 folds them into the EHP DENOMINATOR inside
+    `_passive_mitigation_overrides.mitigation_multipliers` via a trailing
+    `snapshot=None` param (`compute_ehp` passes its snapshot through).
+  - DENOMINATOR not numerator: corrected the R19 ledger's "fold into EHP
+    numerator like flat-DR R9" framing. Flat DR (R9) is prevented HP -> numerator;
+    percent DR is a damage-taken multiplier -> denominator (mit_phys/mit_mag/
+    mit_true). Read at `_ASSUMED_ABILITY_RANK`=4 (clamped to the per-rank tuple
+    bounds), amortized at `_ACTIVE_DR_PROB`=0.3 (cooldown-gated self-buffs).
+  - DEVIATION (followed the data, verified live): the directive's literal 3-key
+    map (Physical/Magic/Damage Reduction -> PHYS/MAG/ANY) misses 2 of the 8
+    snapshot champs - Braum's lowercased "Damage reduction" and MasterYi's
+    "Modified Damage Reduction". Replaced with case-insensitive substring classify
+    (physical token -> PHYS, magic token -> MAG, else ANY). 8 champs fold: Alistar
+    R / Belveth E / Braum E / Galio W (split phys+mag) / Garen W / Gragas W /
+    MasterYi W / Warwick E.
+  - Forward-safe `_HAND_AUTHORED_DR_CHAMPS` guard skips the snapshot fold for any
+    champ already carrying a curated hand-authored entry (the two sets are
+    disjoint at 16.13.1; the guard prevents a double-count if a future champ lands
+    in both).
+  - DEFAULT-OFF byte-identical: `apply_passive_mitigation=False` short-circuits to
+    (1,1,1) before the snapshot is consulted; the legacy 3-arg call (snapshot
+    defaults None) is unchanged (item-261 pin holds). No live scorer/rank call
+    passes the flag, so live DS output is byte-identical; the default-ON flip is
+    operator-gated (`docs/LIVE_GAME_GATED_SYNC.md`).
+  - 2 item-261/262 "no-DR baseline" tests repointed Garen -> Ashe/Caitlyn (Garen
+    now folds a snapshot DR block - intended behavior change, not a regression).
+  - TDD RED-first `test_passive_mitigation_snapshot_r35.py` (13 cases incl
+    compute_ehp wiring + clamp + double-count guard). DS suite 7537 passed / 1
+    skipped; RC tests/ 9553 passed. The 2 in-suite failures were both fallout, not
+    code bugs: a `docs/DAEMON_SLAYER.md` ENGINE-pin drift (the drift guard - fixed
+    + ARCHITECTURE.md banner synced) and a phase8 live-integration test racing the
+    mid-suite DS bounce (green once :8893 reached 1.153.0).
+  - LESSON: bounce DS to the new ENGINE BEFORE running the RC tests/ live-
+    integration suite - a mid-suite restart makes the live :8893 engine_version
+    momentarily lag the module ENGINE_VERSION and fails the live assertion.
+  - ENGINE 1.152.0 -> 1.153.0; 97 pins; DS :8893 live on 1.153.0; Share
+    re-synced (--check green). Ledger 636.
 - 2026-06-27 R34 (LOOP cycle 5, DIRECTOR REFILL, head 7577e3e4) DONE (`a3d38c0e`)
   - Section-7b heavyweight deep-dive of Aggregator D. Artifact:
     `docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md` (12 findings, 6-point
