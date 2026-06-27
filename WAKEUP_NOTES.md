@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-06-27 (gemini-headless director CONTINUITY fix + gemini artifacts + overlay-only, `d8445fec`/`8554d2a8`/`f3346b83`)
+
+Operator overnight (Opus 4.8, ultracode): fix the gemini-headless self-handoff redundancy (director re-issues completed work), verify Gemini<->Claude, run /gemini-headless-upgrade. Plus: overlay-only UI, fix gemini tone/style/memory artifacts, commit hexcore.
+
+- **Root cause (3-way confirmed).** docs/LEDGER.md is newest-first (top=newest); `director()` fed `tail('docs/LEDGER.md',90)` = the OLDEST entries (~item 325, 3wk stale), so shipped items 618-633 were INVISIBLE and got re-proposed. Git proves it: `e24410d6`/`b951f985` "R28 CLEAN no-op - directive premises already shipped 618-621".
+- **Fix (TDD `d8445fec`).** new `head_lines()` newest-first reader; `build_director_context` now sends an explicit ALREADY-COMPLETED DIGEST (recent commits + LEDGER HEAD + the persisted directive chain `ops/loop/control/directive_history.jsonl`, gitignored, survives restarts) + a BUILD-ON/de-dup HARD RULE. Sibling tail-inversions fixed: loop_controller ROADMAP read + `tools/gemini_audit.ps1` ROADMAP/BACKLOG (Head helper). GEMINI.md gains the continuity/memory model + bans the meta-narration preamble ("last directive was a false positive / stale read" artifact). 7 RED-first tests + 10 existing loop tests green; ruff clean; gemini_audit.ps1 parses.
+- **Verified live.** gemini_ask round-trip grounded; REAL 2-cycle director proof PASS (builds on 631-633, no re-issue, chain visible); dry controller<->stub handshake PASS (2 chain records persisted). Independent verifier + repo-wide sibling-sweep workflow CONFIRM (16/16 clean-state).
+- **Overlay-only (operator 2026-06-27).** Chrome :8888 dashboard RETIRED as a viewing/audit surface; UI = Electron overlay ONLY. director_prompt.md + skill 3b UI-audit refs retargeted to the overlay (`?overlay=1` / rc-shell). Memory: `feedback_electron_overlay_only`.
+- **Opportunistic (`8554d2a8`).** CLAUDE.md DS banner -> live /health 1.151.0 / 706 items / 173 champs (patch 16.13.1).
+- **Hexcore (`f3346b83`).** Operator's "accretion disk" rework committed.
+
+NEXT: /gemini-headless-upgrade launched for the overnight (deep audit + lift + UI/overlay audit + DS sweeps); the director now BUILDS ON completed work, no re-issue. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
 
 Operator reported terminal windows flashing open/closed intermittently on Legion. Diagnosed + fixed in one pass.
