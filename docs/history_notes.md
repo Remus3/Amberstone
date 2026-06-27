@@ -142,6 +142,34 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-26 (OBJECTIVE-STATE COACHING PACK shipped end-to-end - items 627-630)
+
+Built the whole pack queued by item 626, one slice per turn, RED-first TDD, commit+push each.
+All zero-LLM deterministic folds over the BaronKill/DragonKill `objective_events` stream
+(`dashboard/_liveclient.py:215`); all render via the kind-agnostic `web/js/panels/callouts.js`
+with NO JS edit; all Tier-1, no engine/ENGINE/Share/flip.
+
+- L1 (627, `1e07d91a`): `epic_buff_callouts` - sided Baron(180s)/Elder(150s) buff-expiry
+  countdowns. Elder via an additive `dragon_type` field on the dragon event (name stays
+  "dragon" so macro_response is byte-identical). Used ACCURATE per-monster durations, NOT the
+  research doc's merged 180s.
+- L2 (628, `cc41f14a`): `dragon_soul_callout` - 3-stack "SOUL next drake - force/deny" advisory.
+  Wired into the `_deterministic_coaching` advisory chain at `advisory = macro or soul or heal`.
+- L3 (629, `528926d5`): dynamic respawn fix (the served-path slice). `_objective_callouts` now
+  uses last_kill+respawn (drake 300s / baron 360s) once a kill exists; baron gains a real
+  respawn ETA; soul-secured suppresses the drake row. Cadence constants reconciled to ONE source
+  (event_callouts owns `SR_{DRAGON,BARON}_{FIRST,RESPAWN}_S`; decision_detector imports them).
+  No-kill path byte-identical (characterization-guarded).
+- L2 follow-on (630, `e37eb405`): soul cascade extended - secured(4+) locked-element row +
+  soul-race delta row. Honest test churn: 3 L2 tests updated (2-drake now a race row).
+
+NEXT: optional bigger bets from the report - L4 Phase-D capability-scorer consumer, L9/L10 live
+championStats + stat-shard ingestion, E1 TFT deterministic twin. No live-game validation done
+(client mode all session); the pack is pure + fully unit-tested. Pre-existing anomaly (not mine):
+RC-LiveFlipWatcher task Disabled/result=1.
+
+---
+
 # 2026-06-26 (orchestrated lift/expansion/UI-UX research [626] + queued objective-state pack)
 
 Operator asked for a non-superficial orchestrated research pass. Ran a 4-phase Workflow
