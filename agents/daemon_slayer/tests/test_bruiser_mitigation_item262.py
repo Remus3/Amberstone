@@ -32,7 +32,7 @@ _SUNFIRE = ["3068"]            # Sunfire Aegis - a sensible bruiser/tank termina
 _KSANTE = "KSante"            # W Path Maker 30% ALL active -> mit 0.91 all 3 @ prob 0.3
 _BRIAR = "Briar"             # E Chilling Scream 35% ALL active -> mit 0.895 all 3
 _IRELIA = "Irelia"           # W Defiant Dance phys 0.8271 / mag 0.9135 / true 1.0 level_scaled
-_GAREN = "Garen"             # NO mitigation entry -> byte-identical flag-on
+_NO_DR_CHAMP = "Caitlyn"           # NO DR in either registry -> byte-identical flag-on (R35: Garen moved out - its W now folds a snapshot percent-DR block)
 _LIGHT_CC = ["Ashe"]         # ~1.5s CC - below the 6s saturation cap
 
 
@@ -72,9 +72,9 @@ class ComputeHybridMitigationTests(_Base):
         self.assertAlmostEqual(on.ehp / off.ehp, 1.0 / 0.91, places=4)
 
     def test_no_entry_champ_byte_identical(self) -> None:
-        off = compute_hybrid(self.snap, _GAREN, 11, item_ids=_SUNFIRE, mode="SR",
+        off = compute_hybrid(self.snap, _NO_DR_CHAMP, 11, item_ids=_SUNFIRE, mode="SR",
                              apply_passive_mitigation=False)
-        on = compute_hybrid(self.snap, _GAREN, 11, item_ids=_SUNFIRE, mode="SR",
+        on = compute_hybrid(self.snap, _NO_DR_CHAMP, 11, item_ids=_SUNFIRE, mode="SR",
                             apply_passive_mitigation=True)
         self.assertEqual(off.hybrid_score, on.hybrid_score)
         self.assertEqual(off.ehp, on.ehp)
@@ -132,9 +132,9 @@ class RankHybridMitigationTests(_Base):
         self.assertGreater(on.ranked[0].cc_blended_ehp, off.ranked[0].cc_blended_ehp)
 
     def test_no_entry_champ_rank_byte_identical(self) -> None:
-        off = rank_items_by_hybrid(self.snap, _GAREN, 11, current_item_ids=_SUNFIRE,
+        off = rank_items_by_hybrid(self.snap, _NO_DR_CHAMP, 11, current_item_ids=_SUNFIRE,
                                    mode="SR", top_n=10, apply_passive_mitigation=False)
-        on = rank_items_by_hybrid(self.snap, _GAREN, 11, current_item_ids=_SUNFIRE,
+        on = rank_items_by_hybrid(self.snap, _NO_DR_CHAMP, 11, current_item_ids=_SUNFIRE,
                                   mode="SR", top_n=10, apply_passive_mitigation=True)
         self.assertEqual([r.hybrid_score for r in off.ranked],
                          [r.hybrid_score for r in on.ranked])
