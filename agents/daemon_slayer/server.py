@@ -358,6 +358,15 @@ def _route_dps(body: dict) -> dict:
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
     apply_ability_amps = _opt_bool(body, "apply_ability_amps", False)
     apply_passive_damage = _opt_bool(body, "apply_passive_damage", False)
+    # R7 / R12 seam flags (DEFAULT-OFF -> byte-identical when the body omits them).
+    # Scoped to /dps: rank_items() does NOT forward these to compute_dps, so the
+    # clean wiring point is the direct compute_dps route. compute_dps accepts both
+    # (dps.py: assume_passive_as_stacks, apply_target_vuln).
+    #   assume_passive_as_stacks (R7) - assume the per-stack champion self-AS
+    #     passive is at max stacks (folded onto base AS).
+    #   apply_target_vuln (R12) - resolve the target-vulnerability damage multiplier.
+    assume_passive_as_stacks = _opt_bool(body, "assume_passive_as_stacks", False)
+    apply_target_vuln = _opt_bool(body, "apply_target_vuln", False)
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     try:
@@ -369,7 +378,9 @@ def _route_dps(body: dict) -> dict:
                              phase=phase, augments=augments,
                              apply_mode_modifiers=apply_mode_modifiers,
                              apply_ability_amps=apply_ability_amps,
-                             apply_passive_damage=apply_passive_damage)
+                             apply_passive_damage=apply_passive_damage,
+                             assume_passive_as_stacks=assume_passive_as_stacks,
+                             apply_target_vuln=apply_target_vuln)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
@@ -405,6 +416,14 @@ def _route_rank(body: dict) -> dict:
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
     apply_mode_modifiers = _opt_bool(body, "apply_mode_modifiers", False)
+    # /rank seam flags (DEFAULT-OFF -> byte-identical when the body omits them):
+    #   exempt_offclass_by_win (DSP2) - un-strip the off-class items a caster-marksman
+    #     genuinely wins on (Ezreal/Corki/Smolder Trinity Force / Spear of Shojin).
+    #   prefer_kit_axis_by_win (DSP11) - float a champ's WIN-anchored kit-axis items.
+    #   cost_ceiling (F2) - drop candidates above the gold ceiling.
+    exempt_offclass_by_win = _opt_bool(body, "exempt_offclass_by_win", False)
+    prefer_kit_axis_by_win = _opt_bool(body, "prefer_kit_axis_by_win", False)
+    cost_ceiling = _opt_int(body, "cost_ceiling", None)
     try:
         result = rank_items(
             snap,
@@ -420,6 +439,9 @@ def _route_rank(body: dict) -> dict:
             augments=augments,
             filter_shared_uniques=filter_shared_uniques,
             apply_mode_modifiers=apply_mode_modifiers,
+            exempt_offclass_by_win=exempt_offclass_by_win,
+            prefer_kit_axis_by_win=prefer_kit_axis_by_win,
+            cost_ceiling=cost_ceiling,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -553,6 +575,11 @@ def _route_rank_tank(body: dict) -> dict:
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
     # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
     apply_survival_window = _opt_bool(body, "apply_survival_window", False)
+    # /rank-tank seam flags (DEFAULT-OFF/null -> byte-identical when omitted):
+    #   cost_ceiling (F2) - drop candidates above the gold ceiling.
+    #   prefer_survivability_by_win (RF3) - float the WIN-anchored survivability set.
+    cost_ceiling = _opt_int(body, "cost_ceiling", None)
+    prefer_survivability_by_win = _opt_bool(body, "prefer_survivability_by_win", False)
     try:
         result = rank_items_by_ehp(
             snap,
@@ -576,6 +603,8 @@ def _route_rank_tank(body: dict) -> dict:
             apply_champion_tenacity=apply_champion_tenacity,
             apply_spell_shield=apply_spell_shield,
             apply_survival_window=apply_survival_window,
+            prefer_survivability_by_win=prefer_survivability_by_win,
+            cost_ceiling=cost_ceiling,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -725,6 +754,11 @@ def _route_rank_bruiser(body: dict) -> dict:
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
     # / Elise E / Fizz E / Mel W). Default off -> byte-identical.
     apply_survival_window = _opt_bool(body, "apply_survival_window", False)
+    # /rank-bruiser seam flags (DEFAULT-OFF/null -> byte-identical when omitted):
+    #   cost_ceiling (F2) - drop candidates above the gold ceiling.
+    #   prefer_survivability_by_win (RF1) - float the WIN-anchored survivability set.
+    cost_ceiling = _opt_int(body, "cost_ceiling", None)
+    prefer_survivability_by_win = _opt_bool(body, "prefer_survivability_by_win", False)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -751,6 +785,8 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_survival_window=apply_survival_window,
             score_by=score_by,
             alpha=alpha, beta=beta,
+            prefer_survivability_by_win=prefer_survivability_by_win,
+            cost_ceiling=cost_ceiling,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1037,6 +1073,10 @@ def _route_burst(body: dict) -> dict:
     block_index_overrides = _parse_block_index(body)
     combo_sequence = _parse_combo_sequence(body)
     aoe_targets_hit = _opt_int(body, "aoe_targets_hit", 1) or 1
+    # R30 seam flag (DEFAULT-OFF -> byte-identical when the body omits it). Scoped to
+    # /burst: rank_items_by_burst does NOT accept assume_magic_burst, only the direct
+    # compute_burst_damage does (burst.py:485 - the on-cast magic-burst item proc).
+    assume_magic_burst = _opt_bool(body, "assume_magic_burst", False)
     try:
         result = compute_burst_damage(
             snap, champion_id=champion, level=level,
@@ -1051,6 +1091,7 @@ def _route_burst(body: dict) -> dict:
             block_index_overrides=block_index_overrides,
             combo_sequence=combo_sequence,
             aoe_targets_hit=aoe_targets_hit,
+            assume_magic_burst=assume_magic_burst,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1465,6 +1506,11 @@ def _route_rank_assassin(body: dict) -> dict:
         if str(x).strip().lstrip("-").isdigit()
     ]
     aoe_targets_hit = _opt_int(body, "aoe_targets_hit", 1) or 1
+    # /rank-assassin seam flag (DEFAULT-OFF -> byte-identical when omitted):
+    #   prefer_kit_axis_by_win (DSP11) - float a champ's WIN-anchored kit-axis items.
+    # R30 assume_magic_burst is scoped to the /burst route: rank_items_by_burst does
+    # NOT accept it (only compute_burst_damage does at burst.py:485).
+    prefer_kit_axis_by_win = _opt_bool(body, "prefer_kit_axis_by_win", False)
     try:
         result = rank_items_by_burst(
             snap,
@@ -1485,6 +1531,7 @@ def _route_rank_assassin(body: dict) -> dict:
             filter_shared_uniques=filter_shared_uniques,
             runes=(runes or None),
             aoe_targets_hit=aoe_targets_hit,
+            prefer_kit_axis_by_win=prefer_kit_axis_by_win,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1567,6 +1614,15 @@ def _route_rank_enchanter(body: dict) -> dict:
     only_ids: Optional[list[str]] = None
     if "only" in body and body["only"] not in (None, ""):
         only_ids = _coerce_str_list(body["only"], "only")
+    # /rank-enchanter seam flags (DEFAULT-OFF/0.0 -> byte-identical when omitted):
+    #   prefer_survivability_by_win (RF2) - inject + float the WIN-anchored
+    #     enchanter survivability set above the generic template.
+    #   assume_missing_hp_heal_amp / caster_missing_hp_pct (R5) - the comeback
+    #     missing-HP heal-amp for a champ's own ability heals (MasterYi W / Sylas W
+    #     / Lissandra R / Briar P), threaded into compute_hps -> compute_ability_hps.
+    prefer_survivability_by_win = _opt_bool(body, "prefer_survivability_by_win", False)
+    assume_missing_hp_heal_amp = _opt_bool(body, "assume_missing_hp_heal_amp", False)
+    caster_missing_hp_pct = _opt_float(body, "caster_missing_hp_pct", 0.0)
     try:
         result = rank_items_by_hps(
             snap,
@@ -1579,6 +1635,9 @@ def _route_rank_enchanter(body: dict) -> dict:
             filter_shared_uniques=filter_shared_uniques,
             targets_per_proc_override=targets_override,
             enchanter_only=enchanter_only,
+            prefer_survivability_by_win=prefer_survivability_by_win,
+            assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
+            caster_missing_hp_pct=caster_missing_hp_pct,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
