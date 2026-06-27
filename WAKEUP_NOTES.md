@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-06-27 (live-flip validation + overlay launcher fix, `2e8abb36`)
+
+Operator-driven live session: Practice Tool games (KSante / Briar / Ezreal) to close the "live half" of the offline-confirmed DS seam flips, tracked via /api/state + game-monitor.
+
+- **KEY FINDING - do NOT re-investigate.** The live-flip DS seams (R5 missing-HP heal-amp, DSP2 off-class exempt, DSP11 kit-axis, and by inference R12/R30/RF1/RF3) are UNWIRED across the DS /rank HTTP boundary. The flags live ONLY in the in-process scorers + tests + offline `live_flip_eyeball.py`; `dispatch_for_coach` (archetype_dispatch.py:232) -> client -> server.py /rank passes NONE of them and /rank does not accept them. The live build-chooser runs every scorer DEFAULT-OFF. PROVEN live: Briar at 7% HP gave byte-identical daemon_slayer_picks to 100% HP. So these are NOT eyeball-able by gameplay - flipping default-ON is multi-file engine wiring (+ self-HP input for R5) + ENGINE bump + Tier-2, not a toggle.
+- R12 Evenshroud is Arena-only (map30) on 16.13.1 - SR-untestable. No in-game build widget on the overlay (build-chooser is dashboard-only).
+- **Ctrl+Shift+A is NOT a focus/keydown bug.** It is an Electron globalShortcut (rc-shell/src/main.js:1063; overlay_state.js:44 tagged "operator's expected combo 2026-06-27"), focus-independent. Shell IS running (1 instance, requestSingleInstanceLock works - the 5 electron.exe are one instance + helpers). Likely an accelerator collision; register() failure is swallowed (main.js:1081). Diagnostic-first next: log the register() booleans.
+- **SHIPPED (`2e8abb36`).** Legion ON/OFF now manage the rc-shell overlay: ON launches it via a cmd-start trampoline (console-detached - closing the launcher terminal no longer kills the overlay; was a coupling bug I introduced) + auto-close window; OFF taskkills rc-shell electron matched by cmdline only (Claude Desktop spared). rc-shell was already idempotent.
+- **Operator vision captured -> `docs/NO_LLM_PRECOMPUTE_PLAN.md`.** Drive the WHOLE project to no live LLM via a client-side CV tier + precomputed "expansive DB" (pay-once-build, runtime API-key-free). Budget is idle: Max 20x at 11%/17% used, Sonnet 0%, $418 credits untouched. Findings detail: `ops/audit/ds_perm_swarm/report/live_input_seam_findings_2026-06-27.md`.
+
+NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-27 (gemini-headless director CONTINUITY fix + gemini artifacts + overlay-only, `d8445fec`/`8554d2a8`/`f3346b83`)
 
 Operator overnight (Opus 4.8, ultracode): fix the gemini-headless self-handoff redundancy (director re-issues completed work), verify Gemini<->Claude, run /gemini-headless-upgrade. Plus: overlay-only UI, fix gemini tone/style/memory artifacts, commit hexcore.
@@ -33,16 +47,3 @@ Operator reported terminal windows flashing open/closed intermittently on Legion
 - **Verified.** `py_compile` OK; `test_ci_watchdog.py` 30/30; hygiene gate 13/13. Pushed `0028c8ac`.
 
 NEXT: nothing pending from this fix. Confirm the flashing is gone over the next few CIWatchdog cycles. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
-
----
-
-# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 3 - item 633, `62fe235a`)
-
-Operator picked "surface it" over adding more axes. Promoted the item-632 shadow-log to a user-visible champ-select chip behind its own default-OFF flip flag.
-
-- **Backend.** `dashboard/routes_state.py` `_serve_ds_preview_post`: NEW `capability_gap` field on the `/api/ds-preview` envelope, gated on `RC_CAPGAP_SURFACE` (default OFF). Resolves enemy comp via the existing `_resolve_enemy_champions`, runs `build_capability_gap`, populates only when `applies` else null; never raises. Built RED-first by a worktree subagent, merged + re-verified on main.
-- **Frontend.** `web/js/panels/champ_select.js` `_csvRenderCapabilityGap` (render tick, after cooldown-watch) + new `web/css/panels/capability_gap.css`: amber GAP badge + axis label (Anti-tank / Anti-heal / Anti-poke) + verdict; self-contained fetch/cache off the same route; hidden until a gap fires (inert until flag flipped). `ui_mock` short-circuit seeds a grounded `capability_gap` block in `web/data/ui_mock/champ_select_sr.json` (real Jinx-vs-comp verdict) for the visual audit.
-- **Verified.** `test_ds_preview_capgap.py` 11 passed (with sibling route test); 74-test focused sweep; ruff + `node --check` clean; 0 non-ASCII; live preview (`?ui_mock=1#champ-select`) renders the chip, styles resolve from tokens, no console errors; 5-phase UI-audit clean (zero MUST-FIX); RC restarted (pid 16072), live `/api/ds-preview` curl confirms field serves null with flag OFF (default-OFF deploy proven). No ENGINE bump, no Share (DS untouched).
-- **To activate live:** set `RC_CAPGAP_SURFACE=1` in the RC env + restart -> chip lights up in real champ-select.
-
-NEXT (L4 tail): the two remaining axes (zone-control `controls_terrain`/`zonecontrol_score`, objective-damage `pressures_structures`/`objdamage_score` - both scorers confirmed to expose usable fields) + an active-match twin of the chip + live SR-game validation with the flag ON. STILL UNVERIFIED: no live SR-game validation of 627-633 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
