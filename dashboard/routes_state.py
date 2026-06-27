@@ -614,13 +614,31 @@ def _serve_ds_preview_post(h, payload) -> None:
                 )
         except Exception as exc:  # noqa: BLE001
             log.debug("ds-preview defensive resolve: %s", exc)
+        # L4 Phase-D capability-gap surface (default-OFF RC_CAPGAP_SURFACE).
+        # Pure additive consumer of the in-process multi-axis capability-gap
+        # synthesizer (core.ds_capability_gap.build_capability_gap). Never
+        # raises into the envelope - any failure leaves the field None and is
+        # logged at debug. Only populated when the flag is ON, enemies
+        # resolve, and the synthesizer reports applies=True.
+        capability_gap = None
+        try:
+            if os.environ.get("RC_CAPGAP_SURFACE", "0").strip().lower() in ("1", "true", "yes", "on"):
+                from core.ds_capability_gap import build_capability_gap
+                cg_enemies = _resolve_enemy_champions(payload)
+                if cg_enemies:
+                    cg = build_capability_gap(champion, cg_enemies, mode)
+                    if cg.get("applies"):
+                        capability_gap = cg
+        except Exception as exc:  # noqa: BLE001
+            log.debug("ds-preview capability_gap: %s", exc)
         h._send(200, json.dumps({
             "ok": True, "ranked": result,
-            "scorer":       scorer,
-            "archetype":    archetype,
-            "target_stats": tgt,
-            "threat":       threat,
-            "defensive":    defensive,
+            "scorer":          scorer,
+            "archetype":       archetype,
+            "target_stats":    tgt,
+            "threat":          threat,
+            "defensive":       defensive,
+            "capability_gap":  capability_gap,
         }).encode(), "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("ds-preview: %s", exc)
