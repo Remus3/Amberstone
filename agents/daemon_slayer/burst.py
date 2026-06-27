@@ -100,6 +100,7 @@ from .effects import (
     total_execute_max_hp_pct,
     total_giant_slayer_multiplier,
     total_magic_amp_multiplier,
+    total_magic_burst_damage,
     total_stacked_ap,
     total_takedown_bonus_ad,
     total_target_bonus_hp_amp_multiplier,
@@ -481,6 +482,7 @@ def compute_burst_damage(
     aoe_targets_hit: int = 1,
     assume_takedown: bool = False,
     assume_ability_amp: bool = False,
+    assume_magic_burst: bool = False,
     score_completion_runes: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
@@ -950,6 +952,26 @@ def compute_burst_damage(
             execute_finisher_damage = execute_pct * target_max_hp
             total_burst += execute_finisher_damage
 
+    # DSV6 (1.152.0): on-cast magic-burst seam. assume_magic_burst=False ->
+    # magic_burst_damage stays 0.0, total_burst unchanged (byte-identical). When
+    # True, the item on-cast magic procs the per-cast combo loop never credited
+    # (Luden's Echo, Stormsurge Squall, Malignance Hatefog) land once in the
+    # burst window: pre-mit magic = sum(base + ap_ratio * ap_total) across items,
+    # MR-mitigated (magic routing) + mode_mult + magic_amp - same mitigation +
+    # amp shape the periodic layer applies to these exact procs in the DPS
+    # scorer. Added after the rune + execute layers so keystone amps don't
+    # double-amp an item proc. compute_ability_dps already counts these via
+    # their PeriodicProc, so this seam only lifts the BURST scorer.
+    magic_burst_damage = 0.0
+    if assume_magic_burst:
+        magic_burst_raw = total_magic_burst_damage(item_effects, ap_total)
+        if magic_burst_raw > 0.0:
+            magic_burst_mit = _mitigation_factor(
+                "MAGIC", target_armor_eff, target_mr_eff
+            )
+            magic_burst_damage = magic_burst_raw * mode_mult * magic_amp * magic_burst_mit
+            total_burst += magic_burst_damage
+
     primary = _classify_primary_scaling(per_cast, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
@@ -1061,6 +1083,11 @@ def compute_burst_damage(
         notes.append(
             f"Collector execute finisher +{execute_finisher_damage:.0f} true "
             f"(5% of {target_max_hp:.0f} target max HP, kill-state seam)"
+        )
+    if magic_burst_damage > 0:
+        notes.append(
+            f"magic on-cast burst +{magic_burst_damage:.0f} "
+            f"(Luden's/Stormsurge/Malignance class item proc, assume_magic_burst seam)"
         )
 
     return BurstResult(

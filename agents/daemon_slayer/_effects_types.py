@@ -773,3 +773,22 @@ class ItemEffect:
     # appended at the END per the dataclass convention.
     ability_damage_amp_per_stack: float = 0.0
     ability_damage_amp_max_stacks: int = 0
+    # DSV6 (1.152.0): magic on-cast burst valuation seam. The per-cast burst
+    # combo loop (compute_burst_damage) sums only ability casts + AA hits, so
+    # item on-cast magic procs (Luden's Echo, Stormsurge Squall, Malignance
+    # Hatefog) were never credited in a burst window - AP/magic builds scored
+    # too low on the offense-burst axis. These fields carry the single-proc
+    # burst-window magnitude: magic damage = ``magic_burst_base +
+    # magic_burst_ap_ratio * caster_ap``, MR-mitigated by the consumer. Read
+    # ONLY when the consumer is called with ``assume_magic_burst=True``; default
+    # 0.0 keeps every existing item + caller byte-identical (the seam is inert
+    # until both the data field AND the flag are set). Read ONLY by the BURST
+    # scorer (compute_burst_damage): the same proc is modeled as a PeriodicProc
+    # for the sustained-DPS scorer (compute_dps values it at its periodic rate),
+    # so there is no double-count - the one-shot magnitude lives only in the
+    # burst window. compute_ability_dps (single ability rotation) intentionally
+    # leaves this one-shot magnitude out of its per-second metric. Appended at
+    # the END per the dataclass convention (a mid-class insert breaks positional
+    # construction + every existing test).
+    magic_burst_base: float = 0.0
+    magic_burst_ap_ratio: float = 0.0

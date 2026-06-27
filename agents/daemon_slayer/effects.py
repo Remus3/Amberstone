@@ -346,6 +346,34 @@ def total_execute_max_hp_pct(effects: Iterable[ItemEffect]) -> float:
     return sum(e.execute_max_hp_pct for e in effects)
 
 
+def total_magic_burst_damage(
+    effects: Iterable[ItemEffect],
+    caster_ap: float,
+) -> float:
+    """Sum the on-cast magic burst-window magnitude across the build (DSV6 seam).
+
+    Items like Luden's Echo (75 + 5% AP), Stormsurge Squall (125 + 10% AP), and
+    Malignance Hatefog (180 + 15% AP) deal an on-cast magic proc the per-cast
+    burst combo loop never credited. Each contributing item adds
+    ``magic_burst_base + magic_burst_ap_ratio * caster_ap`` PRE-mitigation magic
+    damage; the burst consumer (compute_burst_damage) applies the MR factor +
+    mode multiplier + magic amp on top. Returns 0.0 when no item carries the
+    field. Additive across items.
+
+    Read ONLY by the BURST scorer. The same proc is modeled as a PeriodicProc
+    for the sustained-DPS scorer (compute_dps values it at its periodic rate),
+    so there is no double-count: this one-shot magnitude lives only in the burst
+    window, the periodic rate only in compute_dps. compute_ability_dps (a single
+    ability rotation) intentionally does NOT fold a one-shot magnitude into its
+    per-second metric (see its assume_magic_burst docstring).
+    """
+    return sum(
+        e.magic_burst_base + e.magic_burst_ap_ratio * caster_ap
+        for e in effects
+        if (e.magic_burst_base or e.magic_burst_ap_ratio)
+    )
+
+
 def total_ability_damage_amp(
     effects: Iterable[ItemEffect],
     assumed_stacks: float,
