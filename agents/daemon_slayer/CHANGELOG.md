@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.153.0 (R35 - survivability percent-DR LIVE consumer, default-OFF, byte-identical.
+R19 shipped the forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ, slot) (per-rank PERCENT
+damage reduction from champion_abilities.json defensive modifier blocks, pure-% filter) with NO consumer. R35 wires
+it into _passive_mitigation_overrides.mitigation_multipliers via a new trailing snapshot=None param: when a snapshot
+is passed AND apply_passive_mitigation is True, each (champ, slot) percent-DR block folds into the matching EHP
+DENOMINATOR multiplier (mit_phys / mit_mag / mit_true) exactly like a hand-authored PassiveMitigationEntry active -
+read at _ASSUMED_ABILITY_RANK=4 (index 3, clamped to the per-rank tuple bounds), amortized by _ACTIVE_DR_PROB=0.3
+(these are cooldown-gated self-buffs), and classified to an axis by case-insensitive substring (a "physical" token ->
+PHYS, a "magic" token -> MAG, else ANY). The substring classify follows the LIVE 16.13.1 labels, which the directive's
+literal 3-key map missed: "Damage Reduction", Braum's lowercased "Damage reduction", "Magic Damage Reduction",
+"Physical Damage Reduction", MasterYi's "Modified Damage Reduction". 8 champs land in the snapshot map (Alistar R,
+Belveth E, Braum E, Galio W split phys+mag, Garen W, Gragas W, MasterYi W, Warwick E); a forward-safe
+_HAND_AUTHORED_DR_CHAMPS guard skips the snapshot fold for any champ already in the curated registry so a future
+overlap is never double-counted (disjoint today). compute_ehp passes its existing snapshot through to the consumer.
+DEFAULT-OFF (apply_passive_mitigation=False) short-circuits to (1,1,1) before the snapshot is consulted, and the
+legacy 3-arg call (snapshot defaults None) is unchanged, so live DS output is byte-identical. Two item-261 / item-262
+characterization tests that used Garen as a "no-DR" baseline were repointed to Ashe / Caitlyn (Garen now carries a
+folded snapshot DR block). The live default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md). Offline
+champion_abilities.json-grounded characterization tests (test_passive_mitigation_snapshot_r35.py, 13 cases).
+Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.153.0.)
+
 1.152.0 (R30 / DSV6 - on-cast magic-burst valuation seam, default-OFF, byte-identical.
 The per-cast burst combo loop (compute_burst_damage) sums only ability casts + AA hits, so item on-cast magic
 procs (Luden's Echo 6655 75+5%AP, Stormsurge Squall 4646 125+10%AP, Malignance Hatefog 3118 180+15%AP) were never
