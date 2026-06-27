@@ -385,6 +385,7 @@ class BaseCoach(abc.ABC):
         the assignment happened first, making prev identical to state and
         leaving the hp-drop / new-kill fast path dead (audit cycle 9).
         """
+        _tick0 = time.perf_counter()
         raw = self._fetch_game_data()
         if not raw:
             return
@@ -400,10 +401,29 @@ class BaseCoach(abc.ABC):
             )
         if not state:
             return
+        # _on_state_received does synchronous artifact I/O (load_json +
+        # safe_write) on every changed tick - during a base siege the state
+        # changes every poll, so this disk read+atomic-replace fires every 1.5s
+        # and is a (previously untimed) stall suspect under Defender contention.
+        _o0 = time.perf_counter()
         self._on_state_received(state)
+        _on_ms = (time.perf_counter() - _o0) * 1000.0
+        if _on_ms > _SLOW_TICK_MS:
+            self._trace_coach_tick(
+                "on_state", _on_ms, self._tick_struct, state.get("game_time")
+            )
         prev = self._last_state
         self._last_state = state
         self._maybe_coach(state, prev)
+        # Whole synchronous poll-tick wall time = parse + on_state + the
+        # synchronous part of _maybe_coach (shadow-log + spawn). The coach Haiku
+        # call is offloaded to a worker thread and is intentionally NOT included,
+        # so this measures exactly what can stall the 1.5s poll loop.
+        _tick_ms = (time.perf_counter() - _tick0) * 1000.0
+        if _tick_ms > _SLOW_TICK_MS:
+            self._trace_coach_tick(
+                "tick", _tick_ms, self._tick_struct, state.get("game_time")
+            )
 
     async def _vision_loop(self) -> None:
         _force_file = _APP_DIR / "data" / "force_scan.json"
