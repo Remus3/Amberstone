@@ -34,7 +34,7 @@ body[data-shell="overlay"] .ward-cue[hidden] {
   gap: var(--space-1);
   padding: 2px var(--space-2);
   border-radius: 999px;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-ov-chip); /* overlay-only surface: overlay chip scale, not the 16px dashboard --fs-xs (matches spike_cue + the w-call chrome) */
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.2;
