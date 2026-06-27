@@ -117,6 +117,13 @@ _VALID_TYPES = frozenset((PHYS, MAG, TRUE, ANY))
 # Phase D tunes per-champ live. PERMANENT innate DR uses prob 1.0 (always on).
 _ACTIVE_DR_PROB = 0.3
 
+# The ability rank a snapshot-driven per-rank percent-DR block is read at when no
+# live per-instance rank feed exists - the analog of the flat registry's
+# ``_passive_flat_mitigation_overrides._ASSUMED_ABILITY_RANK`` (kept in sync). A
+# rank-4 read (index 3, clamped to the tuple bounds) is the mid-late-game default
+# a future live per-instance consumer replaces.
+_ASSUMED_ABILITY_RANK = 4
+
 
 @dataclass(frozen=True)
 class PassiveMitigationEntry:
@@ -203,15 +210,45 @@ _PASSIVE_MITIGATION_OVERRIDES: dict[tuple[str, str, int], PassiveMitigationEntry
     ),
 }
 
+# Champions carrying a CURATED hand-authored percent-DR entry. The snapshot fold
+# (below) skips these so a champ landing in BOTH the hand-authored registry and
+# the ``champion_abilities.json`` defensive-block scan is never double-counted -
+# the curated entry wins. Disjoint from the snapshot map today (R35); a forward
+# safety guard for future overlap.
+_HAND_AUTHORED_DR_CHAMPS = frozenset(c for (c, _k, _f) in _PASSIVE_MITIGATION_OVERRIDES)
+
+# The labels the abilities-snapshot percent-DR accessor surfaces are an open set
+# (16.13.1: "Damage Reduction", Braum's lowercased "Damage reduction", "Magic
+# Damage Reduction", "Physical Damage Reduction", MasterYi's "Modified Damage
+# Reduction"). A new champ can mint any phrasing, so classify by case-insensitive
+# substring rather than an exact map: a "physical" token -> PHYS, a "magic" token
+# -> MAG, anything else -> ANY (reduces all three EHP axes).
+_AXIS_BY_TOKEN = ((PHYS, "physical"), (MAG, "magic"))
+
 __all__ = [
     "PassiveMitigationEntry",
     "_PASSIVE_MITIGATION_OVERRIDES",
+    "_HAND_AUTHORED_DR_CHAMPS",
+    "_ASSUMED_ABILITY_RANK",
     "mitigation_multipliers",
     "PHYS",
     "MAG",
     "TRUE",
     "ANY",
 ]
+
+
+def _classify_dr_axis(label: str) -> str:
+    """Map a snapshot percent-DR attribute label to a damage axis token.
+
+    Case-insensitive substring: a ``physical`` token -> PHYS, a ``magic`` token
+    -> MAG, otherwise ANY (a generic "Damage Reduction" reduces all three axes).
+    """
+    low = str(label).lower()
+    for axis, token in _AXIS_BY_TOKEN:
+        if token in low:
+            return axis
+    return ANY
 
 
 def _value_at_level(pct: float | tuple[float, ...], level: int, level_scaled: bool) -> float:
@@ -232,14 +269,34 @@ def _value_at_level(pct: float | tuple[float, ...], level: int, level_scaled: bo
 
 
 def mitigation_multipliers(
-    champion_id: str, level: int, apply_passive_mitigation: bool
+    champion_id: str,
+    level: int,
+    apply_passive_mitigation: bool,
+    snapshot=None,
 ) -> tuple[float, float, float]:
     """Return ``(mit_phys, mit_mag, mit_true)`` damage-reduction multipliers.
 
     Each multiplier is ``prod(1 - pct/100 * conditional_probability)`` over every
     registered mitigation term matching ``champion_id`` for its damage axis (an
     ``any`` term contributes to all three). When ``apply_passive_mitigation`` is
-    False (the default) all three are 1.0 - the EHP math is byte-identical.
+    False (the default) all three are 1.0 - the EHP math is byte-identical and
+    ``snapshot`` is never consulted.
+
+    Two sources fold in when the flag is on:
+
+    1. The hand-authored ``_PASSIVE_MITIGATION_OVERRIDES`` registry (effects-text
+       formulas the abilities snapshot cannot express - level-scaled / form-gated
+       / innate-always-on terms).
+    2. R35 - when ``snapshot`` is a ``DataSnapshot``, the per-rank PERCENT
+       damage-reduction blocks the R19 accessor
+       ``snapshot.spell_damage_reduction_pct(champ, slot)`` surfaces from
+       ``champion_abilities.json``. Each block's magnitude is read at
+       ``_ASSUMED_ABILITY_RANK`` (clamped to the tuple bounds), amortized by
+       ``_ACTIVE_DR_PROB`` (the active-uptime midpoint, since these are
+       cooldown-gated self-buffs), classified to a damage axis by
+       ``_classify_dr_axis``, and folded identically. A champ already carrying a
+       hand-authored entry is SKIPPED (``_HAND_AUTHORED_DR_CHAMPS``) so the
+       curated formula wins and nothing is double-counted.
 
     The caller folds each multiplier into the matching EHP denominator
     (``physical_ehp /= mit_phys``); a multiplier < 1.0 = a smaller divisor =
@@ -266,4 +323,29 @@ def mitigation_multipliers(
                 mit_mag *= mult
             if dtype in (TRUE, ANY):
                 mit_true *= mult
+
+    # R35 snapshot-driven percent-DR fold (skip hand-authored champs to avoid a
+    # double count). The per-rank tuple is read at the assumed ability rank and
+    # amortized at the active-uptime midpoint - the same denominator treatment as
+    # a hand-authored active entry.
+    if snapshot is not None and cid not in _HAND_AUTHORED_DR_CHAMPS:
+        idx = _ASSUMED_ABILITY_RANK - 1
+        for slot in ("Q", "W", "E", "R"):
+            labels = snapshot.spell_damage_reduction_pct(cid, slot)
+            if not labels:
+                continue
+            for label, per_rank in labels.items():
+                if not per_rank:
+                    continue
+                rank_idx = max(0, min(idx, len(per_rank) - 1))
+                pct = float(per_rank[rank_idx])
+                frac = max(0.0, min(1.0, (pct / 100.0) * _ACTIVE_DR_PROB))
+                mult = 1.0 - frac
+                axis = _classify_dr_axis(label)
+                if axis in (PHYS, ANY):
+                    mit_phys *= mult
+                if axis in (MAG, ANY):
+                    mit_mag *= mult
+                if axis in (TRUE, ANY):
+                    mit_true *= mult
     return mit_phys, mit_mag, mit_true

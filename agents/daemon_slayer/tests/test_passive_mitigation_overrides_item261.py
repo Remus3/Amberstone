@@ -173,7 +173,10 @@ class ComputeEhpByteIdenticalTests(unittest.TestCase):
             self.assertEqual(off.magical_ehp, on_default.magical_ehp)
 
     def test_non_dr_champ_flag_on_byte_identical(self):
-        for cid in ("Garen", "Caitlyn", "Lux"):
+        # R35: Garen moved OUT of this set - its W carries a snapshot percent-DR
+        # block now consumed via compute_ehp, so the flag is no longer a no-op
+        # for it. Ashe / Caitlyn / Lux carry no DR in either registry.
+        for cid in ("Ashe", "Caitlyn", "Lux"):
             off = _ehp(cid)
             on = _ehp(cid, apply_passive_mitigation=True)
             self.assertEqual(off.blended_ehp, on.blended_ehp)
@@ -256,9 +259,11 @@ class RankItemsByEhpTests(unittest.TestCase):
         self.assertGreater(on.baseline_ehp, off.baseline_ehp)
 
     def test_flag_on_non_dr_champ_byte_identical(self):
-        off = rank_items_by_ehp(_SNAP, "Garen", 11, mode="SR", top_n=8)
+        # R35: Ashe (no DR in either registry) replaces Garen here - Garen's W
+        # now folds a snapshot percent-DR block, so it is no longer DR-free.
+        off = rank_items_by_ehp(_SNAP, "Ashe", 11, mode="SR", top_n=8)
         on = rank_items_by_ehp(
-            _SNAP, "Garen", 11, mode="SR", top_n=8, apply_passive_mitigation=True
+            _SNAP, "Ashe", 11, mode="SR", top_n=8, apply_passive_mitigation=True
         )
         self.assertEqual(off.baseline_ehp, on.baseline_ehp)
         self.assertEqual(
@@ -269,8 +274,8 @@ class RankItemsByEhpTests(unittest.TestCase):
 
 class EngineAndHygieneTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.152.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.152.0")
+        self.assertEqual(ENGINE_VERSION, "1.153.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.153.0")
 
     def test_module_ascii(self):
         import agents.daemon_slayer._passive_mitigation_overrides as m
