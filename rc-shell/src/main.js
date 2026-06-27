@@ -46,6 +46,7 @@
 "use strict";
 
 const path = require("path");
+const fs = require("fs");
 const https = require("https");
 const http = require("http");
 const { app, BrowserWindow, Menu, screen, shell, globalShortcut, ipcMain } = require("electron");
@@ -1043,44 +1044,89 @@ function startPoll() {
   runPoll();
 }
 
-// Global hotkeys (RegisterHotKey under the hood; anti-cheat-safe). Toggle hides
-// the active surface; Active flips overlay click-through (with a 20s auto-
-// revert to passive); Cycle rotates the overlay panel set. Every hotkey press
-// re-evaluates the auto-revert countdown (press = the operator is interacting).
-function registerHotkeys() {
+// --- ACTIVE toggle (shared by the Electron fallback hotkey + the Win32 signal)
+// Flip the overlay between PASSIVE (click-through HUD) and ACTIVE (interactive +
+// body-draggable). Module-level so the Win32-listener file signal can call it.
+function doToggleActive() {
+  overlayClickThrough = !overlayClickThrough;
+  applyClickThrough();
+  scheduleActiveRevert(); // ACTIVE arms the 20s revert; PASSIVE cancels it.
+}
+
+// Win32 listener -> overlay ACTIVE-toggle signal. tools/hotkey_listener.py owns
+// Ctrl+Shift+A (the ONLY path that delivers while League holds foreground focus,
+// proven 2026-06-27) and writes an epoch timestamp here on each press. We poll
+// it (fs.watch is unreliable across the atomic tmp+replace on Windows) and flip
+// ACTIVE when the value advances. Seeded at boot so a pre-existing file does not
+// toggle on launch.
+const ACTIVE_TOGGLE_SIGNAL = path.join(
+  __dirname, "..", "..", "ops", "runtime", "overlay_active_toggle.txt"
+);
+let _lastActiveToggleSeen = 0;
+function _readActiveToggleSignal() {
   try {
-    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyToggle, () => {
-      surfaceHidden = !surfaceHidden;
-      lastSurface = null; // force a re-apply
-      refreshSurface(lastMode);
-      scheduleActiveRevert();
-    });
-    const toggleActive = () => {
-      overlayClickThrough = !overlayClickThrough;
-      applyClickThrough();
-      scheduleActiveRevert(); // ACTIVE arms the revert; PASSIVE cancels it.
-    };
-    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyActive, toggleActive);
-    // Operator 2026-06-27: Ctrl+Shift+A is the primary ACTIVE combo now; keep the
-    // legacy Alt+Shift+A bound in parallel so existing muscle memory still flips
-    // it (and if one combo is already owned by another app, the other still works).
-    if (
-      ov.OVERLAY_DEFAULTS.hotkeyActiveAlt &&
-      ov.OVERLAY_DEFAULTS.hotkeyActiveAlt !== ov.OVERLAY_DEFAULTS.hotkeyActive
-    ) {
-      globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyActiveAlt, toggleActive);
-    }
-    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyCycle, () => {
-      applyPanelSet(ov.cyclePanelSet(panelSet));
-      scheduleActiveRevert();
-    });
-    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyReset, () => {
-      resetOverlayLayout();
-      scheduleActiveRevert();
-    });
+    const v = parseFloat(fs.readFileSync(ACTIVE_TOGGLE_SIGNAL, "utf8").trim());
+    return Number.isFinite(v) ? v : 0;
   } catch (_e) {
-    // a busy accelerator is non-fatal; the menu still works.
+    return 0; // absent / unreadable -> treat as no signal
   }
+}
+function startActiveToggleWatch() {
+  _lastActiveToggleSeen = _readActiveToggleSignal(); // ignore a stale value
+  setInterval(() => {
+    const v = _readActiveToggleSignal();
+    if (v > _lastActiveToggleSeen) {
+      _lastActiveToggleSeen = v;
+      doToggleActive();
+    }
+  }, 200);
+}
+
+// Global hotkeys (Electron globalShortcut). Toggle hides the active surface;
+// Cycle rotates the overlay panel set; Reset restores the default layout. The
+// ACTIVE toggle (Ctrl+Shift+A) is intentionally NOT registered here: Electron
+// globalShortcut does not deliver while League holds foreground focus (proven
+// 2026-06-27 - it fired only when alt-tabbed), so the Win32 listener owns
+// Ctrl+Shift+A and signals via startActiveToggleWatch. Alt+Shift+A stays on
+// Electron as an out-of-game ACTIVE fallback. Every press re-arms the revert.
+function registerHotkeys() {
+  // Register each accelerator with its own try/catch so one busy combo cannot
+  // abort the rest; warn (not throw) on a failed/owned accelerator.
+  const reg = (accel, handler) => {
+    let ok = false;
+    let err = "";
+    try {
+      ok = globalShortcut.register(accel, handler);
+    } catch (e) {
+      err = e && e.message ? e.message : String(e);
+    }
+    if (!ok) {
+      console.warn(
+        "[rc-shell] hotkey register FAILED accel=" + accel +
+          (err ? " error=" + err : " (busy / owned by another app)")
+      );
+    }
+    return ok;
+  };
+  reg(ov.OVERLAY_DEFAULTS.hotkeyToggle, () => {
+    surfaceHidden = !surfaceHidden;
+    lastSurface = null; // force a re-apply
+    refreshSurface(lastMode);
+    scheduleActiveRevert();
+  });
+  // Alt+Shift+A: out-of-game ACTIVE fallback only (Electron). The in-game path
+  // is the Win32 listener's Ctrl+Shift+A -> startActiveToggleWatch.
+  if (ov.OVERLAY_DEFAULTS.hotkeyActiveAlt) {
+    reg(ov.OVERLAY_DEFAULTS.hotkeyActiveAlt, doToggleActive);
+  }
+  reg(ov.OVERLAY_DEFAULTS.hotkeyCycle, () => {
+    applyPanelSet(ov.cyclePanelSet(panelSet));
+    scheduleActiveRevert();
+  });
+  reg(ov.OVERLAY_DEFAULTS.hotkeyReset, () => {
+    resetOverlayLayout();
+    scheduleActiveRevert();
+  });
 }
 
 // Scoped certificate trust: trust ONLY the RC origin host's self-signed cert.
@@ -1125,6 +1171,7 @@ if (!gotLock) {
     applyCompanionAlwaysOnTop();
     setupAutoUpdater();
     registerHotkeys();
+    startActiveToggleWatch();
     startPoll();
     app.on("activate", () => {
       // macOS re-open behavior; harmless on Windows.
