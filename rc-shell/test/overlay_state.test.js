@@ -452,7 +452,7 @@ test("overlaySettingsFrom: defaults when nothing saved", () => {
   assert.deepStrictEqual(ov.overlaySettingsFrom({}), {
     pulseNotify: true,
     activeRevertSec: 20,
-    keepCompanion: true,
+    keepCompanion: false,
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
@@ -467,7 +467,7 @@ test("overlaySettingsFrom: reads saved overlay.settings", () => {
   assert.deepStrictEqual(s, {
     pulseNotify: false,
     activeRevertSec: 45,
-    keepCompanion: true,
+    keepCompanion: false,
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
@@ -492,7 +492,7 @@ test("overlaySettingsFrom: non-boolean pulse / non-finite revert -> defaults", (
   assert.deepStrictEqual(s, {
     pulseNotify: true,
     activeRevertSec: 20,
-    keepCompanion: true,
+    keepCompanion: false,
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
@@ -526,7 +526,7 @@ test("overlaySettingsFrom: garbage-safe (null / arrays / strings / junk overlay)
       {
         pulseNotify: true,
         activeRevertSec: 20,
-        keepCompanion: true,
+        keepCompanion: false,
         companionAlwaysOnTop: true,
         overlayOpacity: 1,
         clickThroughZones: true,
@@ -596,7 +596,7 @@ test("overlaySettingsFrom round-trips a mergeOverlaySettingsPatch write (positio
   assert.deepStrictEqual(ov.overlaySettingsFrom(saved), {
     pulseNotify: false,
     activeRevertSec: 33,
-    keepCompanion: true,
+    keepCompanion: false,
     companionAlwaysOnTop: true,
     overlayOpacity: 1,
     clickThroughZones: true,
@@ -658,16 +658,16 @@ test("windowActionsWithPolicy: missing / garbage opts default to legacy actions"
 
 // --- RC2 E1: keepCompanion + companionAlwaysOnTop overlay settings -----------
 
-test("OVERLAY_SETTINGS_DEFAULTS: keepCompanion on, companionAlwaysOnTop on", () => {
-  // Default ON for keepCompanion is the bug fix - the dashboard PERSISTS unless
-  // the operator opts out.
-  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.keepCompanion, true);
+test("OVERLAY_SETTINGS_DEFAULTS: keepCompanion off, companionAlwaysOnTop on", () => {
+  // Operator 2026-06-27: keepCompanion default OFF - the companion is NOT a viewing
+  // surface in-game (it covers the game); it is the opt-in "use in tandem" setting.
+  assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.keepCompanion, false);
   assert.strictEqual(ov.OVERLAY_SETTINGS_DEFAULTS.companionAlwaysOnTop, true);
 });
 
 test("overlaySettingsFrom: defaults include keepCompanion + companionAlwaysOnTop", () => {
   const s = ov.overlaySettingsFrom({});
-  assert.strictEqual(s.keepCompanion, true);
+  assert.strictEqual(s.keepCompanion, false);
   assert.strictEqual(s.companionAlwaysOnTop, true);
 });
 
@@ -679,11 +679,11 @@ test("overlaySettingsFrom: reads saved keepCompanion + companionAlwaysOnTop bool
   assert.strictEqual(s.companionAlwaysOnTop, false);
 });
 
-test("overlaySettingsFrom: non-boolean keepCompanion / companionAlwaysOnTop -> default true", () => {
+test("overlaySettingsFrom: non-boolean keepCompanion -> false default, companionAlwaysOnTop -> true default", () => {
   const s = ov.overlaySettingsFrom({
     overlay: { settings: { keepCompanion: "no", companionAlwaysOnTop: 0 } },
   });
-  assert.strictEqual(s.keepCompanion, true);
+  assert.strictEqual(s.keepCompanion, false);
   assert.strictEqual(s.companionAlwaysOnTop, true);
 });
 
