@@ -1188,6 +1188,10 @@ def _parse_arena_state(raw: dict) -> dict:
         "game_seconds":     game_time,
         "champion":         (me or ap).get("championName", "Unknown"),
         "hp_pct":           hp_pct,
+        # R5 self-HP: raw numeric hp/hp_max so dispatch_for_coach can derive
+        # caster_missing_hp_pct (state.get("hp") was absent -> seam zeroed).
+        "hp":               hp,
+        "hp_max":           hp_max,
         "gold":             int(finite(ap.get("currentGold", 0))),
         "level":            int(finite(ap.get("level", 1), 1)),
         "kda":              f"{sc.get('kills',0)}/{sc.get('deaths',0)}/{sc.get('assists',0)}",
