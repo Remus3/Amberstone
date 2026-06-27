@@ -1109,8 +1109,14 @@ def compute_ehp(
     # all three multipliers are 1.0 -> BYTE-IDENTICAL to 1.90.0. Active /
     # cooldown-gated DRs are amortized inside ``mitigation_multipliers`` by their
     # entry's operator-tunable ``conditional_probability`` midpoint.
+    # ENGINE 1.153.0 (R35, 2026-06-27): the snapshot-driven percent-DR consumer.
+    # Passing ``snapshot`` lets mitigation_multipliers fold the per-rank percent
+    # damage-reduction blocks the R19 forward-marker accessor surfaced (Galio W,
+    # Garen W, MasterYi W, ...) into the denominator alongside the hand-authored
+    # registry. Still DEFAULT-OFF: apply_passive_mitigation=False returns (1,1,1)
+    # before the snapshot is consulted, so live DS output is byte-identical.
     mit_phys, mit_mag, mit_true = mitigation_multipliers(
-        resolved.champion_id, level, apply_passive_mitigation
+        resolved.champion_id, level, apply_passive_mitigation, snapshot
     )
 
     # ENGINE 1.148.0 (R9, 2026-06-21): GAP - per-instance FLAT-AMOUNT damage
