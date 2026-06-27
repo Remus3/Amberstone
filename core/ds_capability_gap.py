@@ -17,6 +17,10 @@ and returns either ``None`` (the axis does not qualify) or a gap dict:
 
     {"axis": str, "demand_count": int, "severity": float, "detail": str}
 
+Axes in _AXIS_PRIORITY order: anti_tank, sustain, poke (itemization / positional
+trades), then zone_control and objective_damage (the two strategic/positional
+tail axes - terrain caging and objective tempo).
+
 ``severity`` is the cross-axis ranking key (v1: the number of enemies driving
 the demand, so "more enemies forcing the issue" ranks higher). Detectors gate on
 the scorers' own calibrated thresholds / boolean identity flags, so NO new
@@ -48,11 +52,41 @@ POKE_ENEMY_MIN: int = 2
 SUSTAIN_ENEMY_MIN: int = 2
 SUSTAIN_HIGH_SCORE: float = 1.5
 
+# Zone-control gap: the enemy comp caps walls/chokes/terrain and my own pick
+# does not, so I get caged or cut off. Fires when at least ZONE_ENEMY_MIN enemies
+# read controls_terrain=True. The boolean controls_terrain is the clean separator
+# (live probe 2026-06-27: terrain-True Anivia 1.32 / JarvanIV 0.42 / Veigar 0.64 /
+# Azir / Taliyah / Yasuo vs terrain-False Cassiopeia 0.37 / Lux 0.27; the
+# zonecontrol_score overlaps across the boolean so gate on the identity flag,
+# mirroring poke's is_artillery).
+ZONE_ENEMY_MIN: int = 2
+
+# Objective-damage gap: the enemy comp out-pressures objectives (split push /
+# sustained structure DPS) and my pick does not, so they out-tempo me on towers
+# and neutrals. Fires when at least OBJDMG_ENEMY_MIN enemies clear
+# OBJDMG_HIGH_SCORE. The pressures_structures boolean is True for nearly EVERY
+# champ (live probe 2026-06-27: even Lux 0.140 / Soraka 0.105 read struct=True),
+# so it is NOT a usable gate; the SCORE is. The 0.5 cut sits in the natural gap
+# between Sett 0.41 and Yasuo 0.50, separating split-push / sustained-DPS threats
+# (Nasus 0.95 / Tryndamere 0.94 / Twitch 0.90 / Shyvana 0.89 / Ziggs 0.89 /
+# Jinx 0.66 / Sivir 0.55) from supports/control-mages/tanks (Sett 0.41 /
+# Velkoz 0.31 / JarvanIV 0.29 / Anivia 0.27 / Malphite 0.21 / Ornn 0.20 /
+# Lux 0.14 / Lulu 0.13).
+OBJDMG_ENEMY_MIN: int = 2
+OBJDMG_HIGH_SCORE: float = 0.5
+
 # Axis priority order. Used as the stable tie-break when two gaps share the same
 # severity (the earlier axis is the more itemization-direct, actionable call):
 # anti-tank and anti-heal are both direct item buys, ahead of the positional
-# poke call.
-_AXIS_PRIORITY: tuple[str, ...] = ("anti_tank", "sustain", "poke")
+# poke call; the two strategic/positional axes (zone_control, objective_damage)
+# trail it.
+_AXIS_PRIORITY: tuple[str, ...] = (
+    "anti_tank",
+    "sustain",
+    "poke",
+    "zone_control",
+    "objective_damage",
+)
 
 
 # --- gap detectors -----------------------------------------------------------
@@ -152,9 +186,90 @@ def _detect_sustain_gap(my_champion: str, enemy_champions: list[str], mode: str)
     }
 
 
+def _detect_zonecontrol_gap(my_champion: str, enemy_champions: list[str], mode: str) -> dict | None:
+    """Zone-control deficit: enemy comp fields >=ZONE_ENEMY_MIN terrain-control
+    threats AND my own kit does not cap terrain, so they cage / cut me off.
+
+    Keys on ``ZoneControlResult.controls_terrain`` - the wall/terrain identity
+    flag the zonecontrol scorer exposes (the score overlaps across the boolean,
+    so gate on the flag, mirroring poke's is_artillery)."""
+    from agents.daemon_slayer.zonecontrol import compute_zonecontrol
+
+    count = 0
+    for champ in enemy_champions:
+        try:
+            if compute_zonecontrol(champ, mode).controls_terrain:
+                count += 1
+        except Exception:  # noqa: BLE001 - never break the synthesis on one champ
+            _log.debug("ds_capability_gap: compute_zonecontrol(%r) raised - skipping", champ)
+    if count < ZONE_ENEMY_MIN:
+        return None
+    # If my own kit controls terrain I am not the one getting caged - no deficit.
+    try:
+        if compute_zonecontrol(my_champion, mode).controls_terrain:
+            return None
+    except Exception:  # noqa: BLE001
+        _log.debug("ds_capability_gap: compute_zonecontrol(self=%r) raised", my_champion)
+        return None
+    detail = (
+        f"Enemy comp controls terrain ({count} zoners); respect walls and chokes, "
+        "do not get caged or cut off."
+    )
+    return {
+        "axis": "zone_control",
+        "demand_count": count,
+        "severity": float(count),
+        "detail": detail,
+    }
+
+
+def _detect_objdamage_gap(my_champion: str, enemy_champions: list[str], mode: str) -> dict | None:
+    """Objective-damage deficit: enemy comp fields >=OBJDMG_ENEMY_MIN
+    objective-pressure threats AND my own kit does not out-pressure structures,
+    so they out-tempo me on towers and neutrals.
+
+    Keys on ``ObjDamageResult.objdamage_score`` against ``OBJDMG_HIGH_SCORE`` -
+    the pressures_structures boolean is True for nearly every champ so it is not
+    a usable gate; the calibrated SCORE cut is."""
+    from agents.daemon_slayer.objdamage import compute_objdamage
+
+    count = 0
+    for champ in enemy_champions:
+        try:
+            if compute_objdamage(champ, mode).objdamage_score >= OBJDMG_HIGH_SCORE:
+                count += 1
+        except Exception:  # noqa: BLE001 - never break the synthesis on one champ
+            _log.debug("ds_capability_gap: compute_objdamage(%r) raised - skipping", champ)
+    if count < OBJDMG_ENEMY_MIN:
+        return None
+    # If my own kit out-pressures objectives I can match their split - no deficit.
+    try:
+        if compute_objdamage(my_champion, mode).objdamage_score >= OBJDMG_HIGH_SCORE:
+            return None
+    except Exception:  # noqa: BLE001
+        _log.debug("ds_capability_gap: compute_objdamage(self=%r) raised", my_champion)
+        return None
+    detail = (
+        f"Enemy comp out-pressures objectives ({count}); group for picks, "
+        "defend structures, match their split push."
+    )
+    return {
+        "axis": "objective_damage",
+        "demand_count": count,
+        "severity": float(count),
+        "detail": detail,
+    }
+
+
 # Registry of detectors, in _AXIS_PRIORITY order. Append a detector to extend
 # the synthesis to another capability axis.
-_DETECTORS = (_detect_antitank_gap, _detect_sustain_gap, _detect_poke_gap)
+_DETECTORS = (
+    _detect_antitank_gap,
+    _detect_sustain_gap,
+    _detect_poke_gap,
+    _detect_zonecontrol_gap,
+    _detect_objdamage_gap,
+)
 
 
 # --- ranking -----------------------------------------------------------------
@@ -252,4 +367,7 @@ __all__ = [
     "POKE_ENEMY_MIN",
     "SUSTAIN_ENEMY_MIN",
     "SUSTAIN_HIGH_SCORE",
+    "ZONE_ENEMY_MIN",
+    "OBJDMG_ENEMY_MIN",
+    "OBJDMG_HIGH_SCORE",
 ]
