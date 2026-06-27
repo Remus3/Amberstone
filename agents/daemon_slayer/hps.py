@@ -496,6 +496,8 @@ def compute_hps(
     augments: Optional[Iterable] = None,
     targets_per_proc_override: Optional[float] = None,
     formulas: Optional[EnchanterFormulasSnapshot] = None,
+    assume_missing_hp_heal_amp: bool = False,
+    caster_missing_hp_pct: float = 0.0,
 ) -> HpsResult:
     """Compute total healing+shielding+buff throughput for the resolved build.
 
@@ -508,6 +510,14 @@ def compute_hps(
     ``heal_targets_per_proc`` / ``shield_targets_per_proc`` values for ALL
     items in the build - useful for Arena (2v2 -> override=1) or solo-lane
     pre-grouping scenarios. None preserves the per-item curated defaults.
+
+    ``assume_missing_hp_heal_amp`` / ``caster_missing_hp_pct`` (R5 seam,
+    DEFAULT-OFF/0.0) are threaded straight into the champion-ability heal scorer
+    (``compute_ability_hps``). When OFF (default) the missing-HP comeback heal-amp
+    (MasterYi W / Sylas W / Lissandra R / Briar P) is never applied -> the ability
+    heal throughput, and therefore ``total_throughput``, is byte-identical to
+    today. When ON with a positive ``caster_missing_hp_pct`` the registered
+    ability heals are multiplied by ``1 + max_bonus * caster_missing_hp_pct``.
     """
     level = clamp_level(level)
 
@@ -618,6 +628,8 @@ def compute_hps(
             augments=augments,
             include_passive=True,
             resolve_target_relative=False,
+            assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
+            caster_missing_hp_pct=caster_missing_hp_pct,
         )
         ability_heal_hps = a.total_heal_per_sec
         ability_shield_hps = a.total_shield_per_sec
@@ -813,6 +825,8 @@ def rank_items_by_hps(
     enchanter_only: bool = True,
     formulas: Optional[EnchanterFormulasSnapshot] = None,
     prefer_survivability_by_win: bool = False,
+    assume_missing_hp_heal_amp: bool = False,
+    caster_missing_hp_pct: float = 0.0,
 ) -> HpsRankResult:
     """Rank items by total-throughput contribution when added to current build.
 
@@ -846,6 +860,14 @@ def rank_items_by_hps(
     floats - the bruiser scorer already pools survivability items), RF2 must inject
     first because ``enchanter_only`` drops them. Champs absent from the table are a
     no-op. The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``assume_missing_hp_heal_amp`` / ``caster_missing_hp_pct`` (R5 seam,
+    DEFAULT-OFF/0.0) are forwarded into BOTH the baseline and per-candidate
+    ``compute_hps`` calls so the missing-HP comeback heal-amp shifts the throughput
+    of every build consistently. When OFF (default) the output is byte-identical -
+    no ability heal is amplified. When ON with a positive ``caster_missing_hp_pct``
+    a champ with a registered missing-HP heal (MasterYi W / Sylas W / Lissandra R /
+    Briar P) sees its ability-heal throughput, and therefore its delta, rise.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -907,6 +929,8 @@ def rank_items_by_hps(
         augments=augments,
         targets_per_proc_override=targets_per_proc_override,
         formulas=snap_formulas,
+        assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
+        caster_missing_hp_pct=caster_missing_hp_pct,
     )
 
     candidates = _filter_candidates(
@@ -939,6 +963,8 @@ def rank_items_by_hps(
                 augments=augments,
                 targets_per_proc_override=targets_per_proc_override,
                 formulas=snap_formulas,
+                assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
+                caster_missing_hp_pct=caster_missing_hp_pct,
             )
         except (KeyError, ValueError):
             continue
