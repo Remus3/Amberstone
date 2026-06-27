@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 3 - item 633, `62fe235a`)
+
+Operator picked "surface it" over adding more axes. Promoted the item-632 shadow-log to a user-visible champ-select chip behind its own default-OFF flip flag.
+
+- **Backend.** `dashboard/routes_state.py` `_serve_ds_preview_post`: NEW `capability_gap` field on the `/api/ds-preview` envelope, gated on `RC_CAPGAP_SURFACE` (default OFF). Resolves enemy comp via the existing `_resolve_enemy_champions`, runs `build_capability_gap`, populates only when `applies` else null; never raises. Built RED-first by a worktree subagent, merged + re-verified on main.
+- **Frontend.** `web/js/panels/champ_select.js` `_csvRenderCapabilityGap` (render tick, after cooldown-watch) + new `web/css/panels/capability_gap.css`: amber GAP badge + axis label (Anti-tank / Anti-heal / Anti-poke) + verdict; self-contained fetch/cache off the same route; hidden until a gap fires (inert until flag flipped). `ui_mock` short-circuit seeds a grounded `capability_gap` block in `web/data/ui_mock/champ_select_sr.json` (real Jinx-vs-comp verdict) for the visual audit.
+- **Verified.** `test_ds_preview_capgap.py` 11 passed (with sibling route test); 74-test focused sweep; ruff + `node --check` clean; 0 non-ASCII; live preview (`?ui_mock=1#champ-select`) renders the chip, styles resolve from tokens, no console errors; 5-phase UI-audit clean (zero MUST-FIX); RC restarted (pid 16072), live `/api/ds-preview` curl confirms field serves null with flag OFF (default-OFF deploy proven). No ENGINE bump, no Share (DS untouched).
+- **To activate live:** set `RC_CAPGAP_SURFACE=1` in the RC env + restart -> chip lights up in real champ-select.
+
+NEXT (L4 tail): the two remaining axes (zone-control `controls_terrain`/`zonecontrol_score`, objective-damage `pressures_structures`/`objdamage_score` - both scorers confirmed to expose usable fields) + an active-match twin of the chip + live SR-game validation with the flag ON. STILL UNVERIFIED: no live SR-game validation of 627-633 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 2 - item 632, `de4c40e4`)
 
 Operator picked "both directions" this session: extend the capgap registry AND wire the live shadow-log.
@@ -39,31 +52,3 @@ NEXT: more detectors (sustain/zone/objdamage) + wire into a live coach surface b
 Other untouched report bets: L9/L10 live championStats + stat-shard ingestion, E1 TFT det twin.
 STILL UNVERIFIED (carried): no live SR-game validation of EITHER the 627-630 objective rows OR this
 consumer - all client mode. Do NOT re-derive anti-tank or the ds-profile radar (both already exist).
-
----
-
-# 2026-06-26 (OBJECTIVE-STATE COACHING PACK shipped end-to-end - items 627-630)
-
-Built the whole pack queued by item 626, one slice per turn, RED-first TDD, commit+push each.
-All zero-LLM deterministic folds over the BaronKill/DragonKill `objective_events` stream
-(`dashboard/_liveclient.py:215`); all render via the kind-agnostic `web/js/panels/callouts.js`
-with NO JS edit; all Tier-1, no engine/ENGINE/Share/flip.
-
-- L1 (627, `1e07d91a`): `epic_buff_callouts` - sided Baron(180s)/Elder(150s) buff-expiry
-  countdowns. Elder via an additive `dragon_type` field on the dragon event (name stays
-  "dragon" so macro_response is byte-identical). Used ACCURATE per-monster durations, NOT the
-  research doc's merged 180s.
-- L2 (628, `cc41f14a`): `dragon_soul_callout` - 3-stack "SOUL next drake - force/deny" advisory.
-  Wired into the `_deterministic_coaching` advisory chain at `advisory = macro or soul or heal`.
-- L3 (629, `528926d5`): dynamic respawn fix (the served-path slice). `_objective_callouts` now
-  uses last_kill+respawn (drake 300s / baron 360s) once a kill exists; baron gains a real
-  respawn ETA; soul-secured suppresses the drake row. Cadence constants reconciled to ONE source
-  (event_callouts owns `SR_{DRAGON,BARON}_{FIRST,RESPAWN}_S`; decision_detector imports them).
-  No-kill path byte-identical (characterization-guarded).
-- L2 follow-on (630, `e37eb405`): soul cascade extended - secured(4+) locked-element row +
-  soul-race delta row. Honest test churn: 3 L2 tests updated (2-drake now a race row).
-
-NEXT: optional bigger bets from the report - L4 Phase-D capability-scorer consumer, L9/L10 live
-championStats + stat-shard ingestion, E1 TFT deterministic twin. No live-game validation done
-(client mode all session); the pack is pure + fully unit-tested. Pre-existing anomaly (not mine):
-RC-LiveFlipWatcher task Disabled/result=1.
