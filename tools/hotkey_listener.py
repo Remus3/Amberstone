@@ -141,7 +141,7 @@ def signal_overlay_active_toggle() -> None:
     try:
         tmp = TOGGLE_SIGNAL_FILE + ".tmp"
         with open(tmp, "w", encoding="ascii") as f:
-            f.write("%.3f" % time.time())
+            f.write(f"{time.time():.3f}")
         os.replace(tmp, TOGGLE_SIGNAL_FILE)
         log.info("overlay ACTIVE toggle signaled")
     except Exception as exc:  # noqa: BLE001
