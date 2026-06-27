@@ -39,6 +39,20 @@ if ($null -eq $rcProcs -or $rcProcs.Count -eq 0) {
   }
 }
 
+# 2b. Kill the rc-shell Electron overlay (main + helper procs). Matched ONLY by the
+# rc-shell path in the command line, so other Electron apps (Claude Desktop, editors)
+# are left running. taskkill /F /PID per the hard rule - never Stop-Process.
+$rcShell = Get-CimInstance Win32_Process -Filter "Name='electron.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -and $_.CommandLine -match 'rc-shell' }
+if ($null -eq $rcShell -or $rcShell.Count -eq 0) {
+  Write-Host "[off] no rc-shell Electron overlay running"
+} else {
+  foreach ($p in $rcShell) {
+    & taskkill.exe /F /PID $p.ProcessId 2>&1 | Out-Null
+    Write-Host "[off] taskkill /F /PID $($p.ProcessId) (rc-shell overlay)"
+  }
+}
+
 # 3. Verify ports cleared (informational - if still listening, something is alive that we missed)
 Start-Sleep -Seconds 1
 $ports = 8888, 8889, 8890, 8891, 8893, 8894
