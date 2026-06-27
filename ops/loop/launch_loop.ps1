@@ -36,7 +36,7 @@ else {
   Start-Process $ahk -ArgumentList "`"$bridge`""
   Write-Host "live: AHK bridge -> Claude pid $($win.Id)"
 }
-Start-Process $py -ArgumentList "`"$ctrl`"", "`"$Cfg`"" -WorkingDirectory $root
+Start-Process $py -ArgumentList "`"$ctrl`"", "`"$Cfg`"" -WorkingDirectory $root -WindowStyle Hidden
 Write-Host "controller launched cfg=$(Split-Path $Cfg -Leaf)"
 Write-Host "control dir: $ctl"
 Write-Host "abort: create $ctl\STOP   |   live log: $ctl\controller.log"

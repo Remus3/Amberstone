@@ -41,7 +41,8 @@ const GAME_MODES = Object.freeze(
 // the operator can interact with overlay controls (Phase 4 wires the controls).
 const OVERLAY_DEFAULTS = Object.freeze({
   hotkeyToggle: "Alt+Shift+O", // show/hide the active surface
-  hotkeyActive: "Alt+Shift+A", // toggle overlay click-through (passive <-> active)
+  hotkeyActive: "Ctrl+Shift+A", // toggle overlay click-through (passive <-> active) - operator's expected combo (2026-06-27)
+  hotkeyActiveAlt: "Alt+Shift+A", // legacy ACTIVE combo, registered in parallel so either modifier flips it
   hotkeyCycle: "Alt+Shift+C", // cycle overlay panel set (spec sec 5)
   hotkeyReset: "Alt+Shift+R", // reset the movable widget field to defaults (doctrine sec 3)
   pollMs: 2000, // /api/state poll cadence (no sub-500ms per the cost rule)
@@ -419,11 +420,14 @@ function mergeOverlayPatch(prevState, patch) {
 const OVERLAY_SETTINGS_DEFAULTS = Object.freeze({
   pulseNotify: true,
   activeRevertSec: Math.round(OVERLAY_DEFAULTS.activeRevertDelayMs / 1000),
-  // RC2 E1: keepCompanion default TRUE is the dashboard-persist bug fix - the
-  // full dashboard window stays available while the in-game overlay is shown
-  // unless the operator opts out. companionAlwaysOnTop is the persisted
-  // on-screen pin toggle for the companion/dashboard window.
-  keepCompanion: true,
+  // Operator 2026-06-27: keepCompanion default FALSE - the companion dashboard is
+  // NOT a viewing surface in-game (it covers the game on a single monitor); only
+  // the transparent overlay HUD shows mid-game. keepCompanion=true is the opt-in
+  // "use the companion in tandem" setting (e.g. a 2nd monitor). This supersedes the
+  // RC2 E1 default-TRUE (the prior "dashboard disappears" fix); the companion is
+  // still reachable on demand via the #ovset "Show dashboard" control, just hidden
+  // by default. companionAlwaysOnTop is the persisted on-screen pin toggle.
+  keepCompanion: false,
   companionAlwaysOnTop: true,
   // RC2 4.2 (non-intrusive overlay): operator-tunable window opacity (the HUD
   // recedes into the game without going away) + click-through ZONES (PASSIVE

@@ -1055,11 +1055,21 @@ function registerHotkeys() {
       refreshSurface(lastMode);
       scheduleActiveRevert();
     });
-    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyActive, () => {
+    const toggleActive = () => {
       overlayClickThrough = !overlayClickThrough;
       applyClickThrough();
       scheduleActiveRevert(); // ACTIVE arms the revert; PASSIVE cancels it.
-    });
+    };
+    globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyActive, toggleActive);
+    // Operator 2026-06-27: Ctrl+Shift+A is the primary ACTIVE combo now; keep the
+    // legacy Alt+Shift+A bound in parallel so existing muscle memory still flips
+    // it (and if one combo is already owned by another app, the other still works).
+    if (
+      ov.OVERLAY_DEFAULTS.hotkeyActiveAlt &&
+      ov.OVERLAY_DEFAULTS.hotkeyActiveAlt !== ov.OVERLAY_DEFAULTS.hotkeyActive
+    ) {
+      globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyActiveAlt, toggleActive);
+    }
     globalShortcut.register(ov.OVERLAY_DEFAULTS.hotkeyCycle, () => {
       applyPanelSet(ov.cyclePanelSet(panelSet));
       scheduleActiveRevert();

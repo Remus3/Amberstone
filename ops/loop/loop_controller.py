@@ -100,7 +100,8 @@ def git(*args):
     # (prev_sha[:8] of "" is "", auditor guards `if not new_sha`).
     try:
         return subprocess.run(["git", "-C", str(ROOT), *args],
-                              capture_output=True, text=True, timeout=30).stdout.strip()
+                              capture_output=True, text=True, timeout=30,
+                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).stdout.strip()
     except (subprocess.SubprocessError, OSError) as e:
         log(f"git {args[0] if args else ''} failed: {e}")
         return ""
@@ -207,7 +208,8 @@ def gemini(prompt_body, instruction):
     for tryn in range(1, 4):
         try:
             r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
-                               capture_output=True, text=True, timeout=300)
+                               capture_output=True, text=True, timeout=300,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             out = (r.stdout or "").strip()
         except Exception as e:  # noqa: BLE001
             out = ""
