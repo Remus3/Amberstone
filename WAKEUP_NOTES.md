@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 2 - item 632, `de4c40e4`)
+
+Operator picked "both directions" this session: extend the capgap registry AND wire the live shadow-log.
+
+- **Extend - sustain axis.** `core/ds_capability_gap.py` `_detect_sustain_gap` keys on `SustainResult.total_sustain_score` vs a live-calibrated `SUSTAIN_HIGH_SCORE=1.5` cut (probed `compute_sustain`: Warwick 11.7 / Aatrox 7.0 / Swain 3.3 / Fiddle 2.9 / Vlad 1.6 vs DrMundo 0.6 down). Fires when >=2 heavy-sustain enemies AND I do not out-sustain in kind -> anti-heal/Grievous. `_AXIS_PRIORITY` now (anti_tank, sustain, poke).
+- **Wire - live shadow-log.** `dashboard/routes_state.py` `_capgap_shadow_log` runs at the end of `_serve_state`, gated on `RC_CAPGAP_SHADOW` (default OFF). Resolves my champ + enemy comp from the liveclient snapshot, logs the top deficit (throttled 30s, skips stale >=8s, never raises). NO served-field change.
+- **Verified:** RED-first both slices. `test_ds_capability_gap.py` 20/20 + new `test_capability_gap_shadow.py` 9/9; ruff clean; regression sweep 1365 passed. No ENGINE bump, no Share (DS untouched), no RC restart (flag OFF -> live behavior unchanged).
+- Commit-msg gotcha: first push mangled the subject (PowerShell `@'...'@` heredoc used in the Bash tool is literal) - fixed via amend + `--force-with-lease`. Use a `-F msgfile` for multi-line Bash commit messages.
+
+NEXT (L4 tail): more axes (zone-control / objective-damage) + promote the shadow-log to a user-visible champ-select/active-match surface once telemetry validates the axes. Other report bets: L9/L10 live championStats + stat-shard ingestion (M), E1 TFT deterministic twin (L). STILL UNVERIFIED: no live SR-game validation of 627-632 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-26 (L4 Phase-D capability-gap synthesizer - item 631, `d52d6152`, CI green)
 
 First bet from the item-626 research report after the objective-state pack. Operator picked L4,
@@ -54,27 +67,3 @@ NEXT: optional bigger bets from the report - L4 Phase-D capability-scorer consum
 championStats + stat-shard ingestion, E1 TFT deterministic twin. No live-game validation done
 (client mode all session); the pack is pure + fully unit-tested. Pre-existing anomaly (not mine):
 RC-LiveFlipWatcher task Disabled/result=1.
-
----
-
-# 2026-06-26 (orchestrated lift/expansion/UI-UX research [626] + queued objective-state pack)
-
-Operator asked for a non-superficial orchestrated research pass. Ran a 4-phase Workflow
-(`wf_7b49d885-771`, 48 agents): exclusion-ledger grounding -> 9 web+code scouts -> adversarial
-verify -> synthesis. The whole point on THIS repo is filtering against the huge shipped/CLOSED
-surface; built an exclusion ledger first and killed any re-pitch. 9 vectors -> 35 candidates ->
-24 verified-novel survivors. Report: `docs/research/LIFT_EXPANSION_UIUX_2026-06-26.md`.
-
-- Through-line: RC already reads-and-discards the data for most of its highest-value gaps.
-- QUEUED (ROADMAP NOW, top, RED) - OBJECTIVE-STATE COACHING PACK = L1 buff-expiry timer +
-  L2 dragon soul tracker + L3 dynamic respawn fix. All S-effort zero-LLM folds over the
-  BaronKill/DragonKill stream RC parses at `dashboard/_liveclient.py:215` and discards. Tier-1
-  additive callouts via the existing callouts.js, no engine/flip. Director picks ONE per cycle.
-- Recovery note: the first run's Verify+Synthesis was wiped by a TRANSIENT server rate-limit
-  (35 concurrent verifiers). Fixed by batching verify (6 agents) + `resumeFromRunId` (Ground+
-  Scout returned cached). The run-id-resume + batched-fanout pattern is the durable fix.
-- Docs-only Tier-0: commit `510c000c`, no code/engine/ENGINE/Share. RC untouched (DS 1.151.0).
-
-NEXT: the director should pick L1 first (smallest, unambiguous BaronKill EventName). Bigger
-FUTURE bets in the report: L4 Phase-D capability-scorer consumer, L9/L10 live championStats +
-stat-shard ingestion, E1 TFT deterministic twin (north-star advance), E2 spatial timeline metrics.
