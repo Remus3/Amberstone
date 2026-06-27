@@ -41,6 +41,7 @@ data/cold_advisories.json
 data/insight_cooldowns.json
 data/ratings/last_*.json
 data/coach_trace.jsonl
+data/coach_tick_trace.jsonl
 data/spend/
 data/vision_state.json
 data/screen_read.json
