@@ -14,7 +14,7 @@ Operator-driven live session: Practice Tool games (KSante / Briar / Ezreal) to c
 - **SHIPPED (`2e8abb36`).** Legion ON/OFF now manage the rc-shell overlay: ON launches it via a cmd-start trampoline (console-detached - closing the launcher terminal no longer kills the overlay; was a coupling bug I introduced) + auto-close window; OFF taskkills rc-shell electron matched by cmdline only (Claude Desktop spared). rc-shell was already idempotent.
 - **Operator vision captured -> `docs/NO_LLM_PRECOMPUTE_PLAN.md`.** Drive the WHOLE project to no live LLM via a client-side CV tier + precomputed "expansive DB" (pay-once-build, runtime API-key-free). Budget is idle: Max 20x at 11%/17% used, Sonnet 0%, $418 credits untouched. Findings detail: `ops/audit/ds_perm_swarm/report/live_input_seam_findings_2026-06-27.md`.
 
-NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. (5) repo cleanup pass - orphan files + scratch files (operator-requested 2026-06-27). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1. CI flake (not mine): snapshot_panels missing-DDragon-asset Renata.png on `2e8abb36` - prior commit `a2e3e95c` with identical web/ state passed; rerun to clear.
 
 ---
 
