@@ -192,6 +192,7 @@ genuinely-open ROADMAP/BACKLOG work.
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | R28 | housekeeping | DIRECTOR REFILL: re-proposed ledger-618 tail (SwapsInto extractor fix + snapshot_panels flake + ARCHITECTURE.md:172 drift). VERIFY-THE-PREMISE -> ALL already shipped: SLICE 1 = item 619 (`95972f57`, Riot 16.13 `...ImmobilizingCCAbility` taxonomy fix - extractor canonicalizes the suffix to the legacy stem, 16.13.1 cdragon carries 5 SwapsInto correct, spell_cc_tags 31/31 green; inert-data so NO ENGINE bump per the 339/343 convention - the directive's "MUST bump ENGINE_VERSION" was itself wrong); SLICE 2a snapshot flake = item 620 (`0fe7e3bf`, Windows-scoped keep-alive, CI green - 620 ground-truth-corrected the directive's "keep HTTP/1.1 keep-alive" premise: the keep-alive ITSELF is the Linux culprit); SLICE 2b doc-drift = FALSE premise (line 172 already reads ENGINE 1.151.0 / 7511 tests / patch 16.13.1, NOT the hallucinated 1.144.0/7361). No code change warranted - a redundant ENGINE re-bump or flake re-attempt would REGRESS shipped work. CLEAN no-op, evidence-logged. | CLEAN | (docs) |
+| R32 | haiku-zero | LOOP cycle 3 (DIRECTOR REFILL): Lane A precompute-vs-Haiku agreement RE-MEASUREMENT via `tools/hz_shadow_report.py` on the item-614 corrected laning tables. Offline measurement only, ENGINE-IMPACT NONE (no math/network/write). Bucketed the 24,289 choice shadow records pre/post the item-614 fix boundary (commit `7383e712`, 2026-06-25T00:45:07 UTC), reusing the tool's own `record_agreement`/`classify_verdict` (whole-log result reconciles exactly to the live tool aggregate 1733/3717 0.4662). FINDING: the targeted `back_off->trade` model-error pocket is ELIMINATED (138 pre -> 0 post); post-fix aggregate dip (0.4863 -> 0.2468) is a 2-game small-sample artifact (Renekton-vs-Gragas 235/235 disagree + Nasus-vs-Gragas 77/77 agree), NOT a fix regression; a NEW pocket surfaced (`all_in->hold`, all Renekton-vs-Gragas) logged FUTURE for the next HZ_MISMATCH_DIAGNOSE. Flip readiness STILL NOT MET - do-not-flip-blind operator gate HOLDS, live coach NOT flipped. Findings doc `ops/audit/HZ_REMEASUREMENT_2026-06-27.md`. Docs+audit only (no code change -> no TDD target per the CSS-only-audit precedent item 435; full suite stays green, zero delta). | DONE | (pending) |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
 
@@ -205,6 +206,28 @@ genuinely-open ROADMAP/BACKLOG work.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-27 R32 (LOOP cycle 3, DIRECTOR REFILL, head 34f58257) DONE (docs+audit
+  only, offline measurement, ENGINE-IMPACT NONE). Lane A precompute-vs-Haiku
+  agreement re-measurement on the item-614 corrected laning tables via
+  `tools/hz_shadow_report.py`. Bucketed 24,289 choice shadow records at the
+  item-614 fix boundary (commit `7383e712`, 2026-06-25T00:45:07 UTC), reusing the
+  tool's own classifiers (whole-log reconciles exactly to the live aggregate
+  1733/3717 = 0.4662). HEADLINE: the targeted `back_off->trade` model-error pocket
+  is ELIMINATED - 138 pre-fix -> 0 post-fix (all 138 are <= 06-18..06-20 records;
+  none recurred in post-fix games). The post-fix aggregate dip (0.4863 -> 0.2468)
+  is NOT a fix regression: the entire post-fix comparable-covered sample is TWO
+  games from one day (Renekton-vs-Gragas 235 ticks all_in->hold 0 agree +
+  Nasus-vs-Gragas 77 ticks all agree), so 77/312 is mechanically "one game agreed,
+  one disagreed"; the fix only touches `no_ult` cells and cannot have caused the
+  Renekton all_in lean. A NEW pocket surfaced - `all_in->hold` driven entirely by
+  Renekton-vs-Gragas - logged FUTURE for the next HZ_MISMATCH_DIAGNOSE (single
+  matchup, too thin to act on). Build axis unmeasurable post-fix (0 covered+native
+  build records in the 2 games). Flip readiness STILL NOT MET (~47% aggregate,
+  post window dominated by one un-diagnosed pocket) - do-not-flip-blind operator
+  gate HOLDS, live coach NOT flipped (directive-mandated). Findings doc
+  `ops/audit/HZ_REMEASUREMENT_2026-06-27.md`. No code touched -> no TDD target (the
+  CSS-only-audit precedent item 435); full suite stays green, zero delta; no ENGINE
+  bump (stays 1.152.0); no DS/Share change. regressions=0.
 - 2026-06-27 R31 (LOOP cycle 2, FIX-FIRST directive, head 34f58257) CLEAN no-op
   (docs-only) - FALSE-POSITIVE REGRESS verdict. The cycle-1 auditor flagged the
   DSV6 assume_magic_burst seam (burst.py / ability_dps.py / effects.py) as shipped
