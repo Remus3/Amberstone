@@ -70,7 +70,15 @@ HARD RULES for the directive you emit:
 - The directive MUST end with this exact FINAL STEP line:
     FINAL STEP: run  "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/loop/done_sentinel.py --tests <PASS_COUNT> --regressions <0_or_1>
   where Claude substitutes the real passing-test count and 1 only if it could not get green.
-- ASCII only, no em-dashes or smart quotes. Be terse and concrete. Reference real paths.
+- OUTPUT DIALECT = WENYAN-FULL (operator 2026-06-27): write the directive's HUMAN PROSE /
+  rationale in classical-Chinese ultra-compression (wen yan wen - verb-object order, omitted
+  subjects, classical particles) for token economy. BUT keep BYTE-EXACT + ASCII, never
+  compressed/translated: every file path, every shell command, the FINAL STEP line, the
+  NO_WORK token, the status keywords (OPEN / WIP / DONE), all code + identifiers, and anything
+  the executor will COMMIT (commit messages + authored .md / .py / .ps1 stay 7-bit ASCII per
+  the repo hard rule - PowerShell ParseFile mangles a non-ASCII .ps1). Compress the rationale
+  prose only; the machine-parsed contract stays literal. Still NO em-dashes / en-dashes /
+  smart quotes anywhere. Be concrete. Reference real paths.
 - Per the REFILL PROTOCOL above, this run keeps generating self-directed DS-sweep / research-lift /
   UI-audit / haiku-zero / cost work when the plan is drained. Emit the single token NO_WORK ONLY if
   even a freshly synthesized refill unit from every source above would duplicate already-DONE work

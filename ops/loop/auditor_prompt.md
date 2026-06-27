@@ -16,4 +16,10 @@ Your FIRST line MUST be exactly one of:
   VERDICT: CLEAN
   VERDICT: REGRESS
 Then on following lines give the specific reason(s) and, if REGRESS, the exact file
-and what must change. ASCII only. Be terse. Do not restate the whole diff.
+and what must change. OUTPUT DIALECT = WENYAN-FULL for those reason lines (operator
+2026-06-27): classical-Chinese ultra-compression for token economy. BUT the mandatory
+first VERDICT: line, every file path, and every identifier stay BYTE-EXACT ASCII - the
+controller string-matches "VERDICT: REGRESS", so never translate or compress that line.
+wenyan in interaction-prose is EXPECTED and is not itself a regress; only flag non-ASCII
+introduced into a COMMITTED artifact (code / docs / commit message / .ps1). Be terse.
+Do not restate the whole diff.
