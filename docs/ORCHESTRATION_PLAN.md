@@ -205,6 +205,23 @@ genuinely-open ROADMAP/BACKLOG work.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-27 R31 (LOOP cycle 2, FIX-FIRST directive, head 34f58257) CLEAN no-op
+  (docs-only) - FALSE-POSITIVE REGRESS verdict. The cycle-1 auditor flagged the
+  DSV6 assume_magic_burst seam (burst.py / ability_dps.py / effects.py) as shipped
+  with "No tests added" and demanded tests for the assume_magic_burst=True path. A
+  verify-the-premise pass (CLAUDE.md verify-before-declare-broken /
+  audit-proposals-are-intent) found the premise FALSE: the test file
+  agents/daemon_slayer/tests/test_magic_burst_valuation_dsv6.py was committed in the
+  SAME commit as the seam (42f0111c, not a later one) and already covers ALL THREE
+  demanded targets - effects.total_magic_burst_damage (MagicBurstHelper, 4 tests),
+  compute_burst_damage(assume_magic_burst=True) (ComputeBurstSeam, 3 tests incl MR
+  routing + no-field byte-identical), and compute_ability_dps(assume_magic_burst=True)
+  (ComputeAbilityDpsInertSeam, the documented-inert ON==OFF==base proof), plus schema
+  defaults / Meraki-pin / periodic-bonus drift guard / ENGINE_VERSION pin. The 13
+  tests pass and the full DS suite is 7524 passed / 1 skipped / 1943 subtests green.
+  The auditor diffed a stale digest that did not see the test file. No new tests
+  fabricated (redundant duplicate coverage is churn, not value); no engine math
+  touched; no ENGINE bump (stays 1.152.0). regressions=0 reported to done_sentinel.
 - 2026-06-27 R30 (DIRECTOR REFILL cycle, head a24e7e39) dsv6-magic-burst DONE ->
   NAMING DEVIATION (audit-proposals-are-intent): the directive theme was
   "dsv5-magic-burst", but a ground-truth grep found DSV5 already taken (the
