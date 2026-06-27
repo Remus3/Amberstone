@@ -142,6 +142,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 3 - item 633, `62fe235a`)
+
+Operator picked "surface it" over adding more axes. Promoted the item-632 shadow-log to a user-visible champ-select chip behind its own default-OFF flip flag.
+
+- **Backend.** `dashboard/routes_state.py` `_serve_ds_preview_post`: NEW `capability_gap` field on the `/api/ds-preview` envelope, gated on `RC_CAPGAP_SURFACE` (default OFF). Resolves enemy comp via the existing `_resolve_enemy_champions`, runs `build_capability_gap`, populates only when `applies` else null; never raises. Built RED-first by a worktree subagent, merged + re-verified on main.
+- **Frontend.** `web/js/panels/champ_select.js` `_csvRenderCapabilityGap` (render tick, after cooldown-watch) + new `web/css/panels/capability_gap.css`: amber GAP badge + axis label (Anti-tank / Anti-heal / Anti-poke) + verdict; self-contained fetch/cache off the same route; hidden until a gap fires (inert until flag flipped). `ui_mock` short-circuit seeds a grounded `capability_gap` block in `web/data/ui_mock/champ_select_sr.json` (real Jinx-vs-comp verdict) for the visual audit.
+- **Verified.** `test_ds_preview_capgap.py` 11 passed (with sibling route test); 74-test focused sweep; ruff + `node --check` clean; 0 non-ASCII; live preview (`?ui_mock=1#champ-select`) renders the chip, styles resolve from tokens, no console errors; 5-phase UI-audit clean (zero MUST-FIX); RC restarted (pid 16072), live `/api/ds-preview` curl confirms field serves null with flag OFF (default-OFF deploy proven). No ENGINE bump, no Share (DS untouched).
+- **To activate live:** set `RC_CAPGAP_SURFACE=1` in the RC env + restart -> chip lights up in real champ-select.
+
+NEXT (L4 tail): the two remaining axes (zone-control `controls_terrain`/`zonecontrol_score`, objective-damage `pressures_structures`/`objdamage_score` - both scorers confirmed to expose usable fields) + an active-match twin of the chip + live SR-game validation with the flag ON. STILL UNVERIFIED: no live SR-game validation of 627-633 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
+
+---
+
 # 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 2 - item 632, `de4c40e4`)
 
 Operator picked "both directions" this session: extend the capgap registry AND wire the live shadow-log.
