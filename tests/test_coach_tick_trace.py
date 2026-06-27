@@ -81,6 +81,61 @@ class TestStructureEventCounts(unittest.TestCase):
         self.assertEqual(out["total"], 3)
 
 
+class TestPollTickTrace(unittest.TestCase):
+    """The two untimed synchronous stall suspects: the per-tick artifact I/O
+    in _on_state_received, and the whole-poll-tick wall time. _maybe_coach is
+    mocked to a no-op so the timing isolates parse + on_state (the Haiku call
+    is offloaded to a worker thread and is intentionally NOT in the tick total).
+    """
+
+    def _poll_once(self, td: str, slow_ms: float = 0.0) -> list:
+        c = _mk()
+        c._last_state = {}
+        c._fetch_game_data = lambda: _RAW
+        c._parse_raw_state = lambda raw: {"game_time": "30:00"}
+        c._on_state_received = lambda state: None
+        c._maybe_coach = lambda state, prev: None  # isolate synchronous timing
+        with mock.patch.object(bc, "_APP_DIR", Path(td)):
+            with mock.patch.object(bc, "_SLOW_TICK_MS", slow_ms):
+                c._poll_tick()
+        trace = Path(td) / "data" / "coach_tick_trace.jsonl"
+        if not trace.exists():
+            return []
+        return [
+            json.loads(line)
+            for line in trace.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
+    def test_on_state_phase_traced(self):
+        with tempfile.TemporaryDirectory() as td:
+            rows = self._poll_once(td)
+        phases = {r["phase"] for r in rows}
+        self.assertIn("on_state", phases, f"no on_state row; phases={phases}")
+        on = next(r for r in rows if r["phase"] == "on_state")
+        self.assertEqual(on["mode"], "test")
+        self.assertEqual(on["game_time"], "30:00")
+        self.assertEqual(on["turret"], 3)   # stamped from _RAW struct counts
+        self.assertEqual(on["inhib"], 1)
+        self.assertEqual(on["n_events"], 6)
+        self.assertIn("dur_ms", on)
+
+    def test_whole_tick_phase_traced(self):
+        with tempfile.TemporaryDirectory() as td:
+            rows = self._poll_once(td)
+        phases = {r["phase"] for r in rows}
+        self.assertIn("tick", phases, f"no tick row; phases={phases}")
+        tk = next(r for r in rows if r["phase"] == "tick")
+        self.assertEqual(tk["game_time"], "30:00")
+        self.assertEqual(tk["n_events"], 6)
+        self.assertIn("dur_ms", tk)
+
+    def test_fast_tick_emits_no_slow_rows(self):
+        with tempfile.TemporaryDirectory() as td:
+            rows = self._poll_once(td, slow_ms=1.0e9)
+        self.assertEqual(rows, [], "a sub-threshold tick must write no rows")
+
+
 class TestDispatchCoachTrace(unittest.TestCase):
     def test_dispatch_runs_coach_and_traces(self):
         c = _mk()
