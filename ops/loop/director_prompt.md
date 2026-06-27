@@ -3,13 +3,21 @@ Commander / Daemon Slayer repo. You are read-only. Your sole output is the next
 DIRECTIVE: a complete, self-contained instruction block that a fresh Claude Code
 session (context just cleared) will read and execute via /gemini-headless-upgrade.
 
-Using the context appended below (the ORCHESTRATION PLAN, recent commits,
-docs/LEDGER.md tail, ROADMAP tail, last claude.done, last audit), decide the
+Using the context appended below (the ORCHESTRATION PLAN, the ALREADY-COMPLETED
+DIGEST = recent commits + the NEWEST docs/LEDGER.md items + the directives already
+issued this run, the ROADMAP open items, last claude.done, last audit), decide the
 SINGLE next bounded unit of work. The ORCHESTRATION PLAN (docs/ORCHESTRATION_PLAN.md)
 is the PRIMARY work source: pick the next session whose Status is OPEN, top-to-bottom
 in phase order. Never pick a session listed in the plan's EXCLUDED section.
 
 HARD RULES for the directive you emit:
+- BUILD ON, NEVER REPEAT (continuity is on disk, not in your memory). The context below
+  carries an "ALREADY-COMPLETED DIGEST": the recent commits (newest first), the NEWEST
+  docs/LEDGER.md items (each line is a DONE item), and "DIRECTIVES ALREADY ISSUED THIS RUN"
+  (the directive chain). Before you emit ANYTHING, cross-check your chosen unit against that
+  digest. If it duplicates a DONE ledger item, a recent commit, or a directive already issued,
+  DISCARD it and synthesize the next NON-duplicate unit. Treat every digest line as finished
+  work to extend, never to re-do or re-narrate. A re-issued done item is the worst failure mode.
 - If the LAST AUDIT block begins "VERDICT: REGRESS": the directive's ONLY job is to
   FIX that regression first. Restate the specific failure. Do NOT advance to a new item.
 - If an "EXECUTOR ESCALATION" block is present: the directive MUST resolve that scope /
@@ -32,8 +40,9 @@ HARD RULES for the directive you emit:
     2. Research + competitor lift (Section 7b 6-point depth checklist): ONE heavyweight deep-dive
        target -> docs/COMPETITOR_LIFT_<date>.md; a HIGH-lift low-risk presentation-over-DS-math
        finding ships in-run as its own slice (+ Section 3b proof if UI), else BACKLOG + issue.
-    3. UI audit (Section 3b 5-phase ritual): ONE un-audited dashboard surface vs docs/UI_SCALE_SPEC_V2.md
-       + Claude_Preview visual vs /api/state. Pick a surface not already audited in the DONE rows.
+    3. UI audit (Section 3b 5-phase ritual): ONE un-audited Electron-OVERLAY surface vs docs/UI_SCALE_SPEC_V2.md
+       + an overlay visual (rc-shell over League, or ?overlay=1 against live /api/state). The Chrome :8888
+       dashboard is RETIRED as a viewing/audit surface - audit the overlay only. Pick a surface not in the DONE rows.
     4. Haiku-to-ZERO lane advance (Section 4b): advance one of Lane A/B/C/D toward a validated
        precompute that retires a live Haiku call.
     5. Cost/latency lever sweep (Section 4): ship a net-positive fix or record a CLEAN no-commit.
@@ -52,8 +61,9 @@ HARD RULES for the directive you emit:
   session Status OPEN/WIP -> DONE (or leave WIP if only a slice shipped), fill its Commit sha,
   and append any newly discovered work to the Findings log.
 - If the session touches any UI (Phase C, or any web/ slice): the directive MUST instruct the
-  5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) plus a Claude_Preview
-  visual validation against /api/state on the live :8888 dashboard, BEFORE merge.
+  5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) plus an Electron-OVERLAY
+  visual validation (rc-shell window over League, or ?overlay=1 against live /api/state), BEFORE merge.
+  The Chrome :8888 dashboard window is RETIRED as a viewing surface - validate the overlay, not Chrome.
 - The directive MUST instruct Claude to COMMIT with a descriptive message, PUSH to origin/main,
   then run the /done ritual (append docs/LEDGER.md, sync ROADMAP.md + docs/ORCHESTRATION_PLAN.md),
   before the FINAL STEP, so the auditor has a diff to review.

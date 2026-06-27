@@ -40,12 +40,17 @@ $diffStat = (git diff --stat $range | Out-String)
 $diff = (git diff $range | Out-String)
 if ($diff.Length -gt 60000) { $diff = $diff.Substring(0, 60000) + "`n...[diff truncated at 60k chars]" }
 function Tail($p, $n) { if (Test-Path $p) { (Get-Content $p -Tail $n | Out-String) } else { "" } }
+# Head: the FIRST n lines. ROADMAP.md / BACKLOG.md are priority/newest at the TOP
+# (open high-priority items first), so the auditor must read the HEAD, not the tail
+# (which is the oldest/settled boilerplate) - same newest-first inversion the loop
+# director's LEDGER read was fixed for (2026-06-27).
+function Head($p, $n) { if (Test-Path $p) { (Get-Content $p -TotalCount $n | Out-String) } else { "" } }
 
 $tmpl = Get-Content (Join-Path $RepoRoot "tools\gemini_audit_prompt.md") -Raw
 $prompt = $tmpl + "`n`n=== COMMITS ($range) ===`n" + $commits +
   "`n`n=== DIFF STAT ===`n" + $diffStat +
-  "`n`n=== ROADMAP (tail) ===`n" + (Tail "ROADMAP.md" 120) +
-  "`n`n=== BACKLOG (tail) ===`n" + (Tail "BACKLOG.md" 80) +
+  "`n`n=== ROADMAP (open items, top) ===`n" + (Head "ROADMAP.md" 120) +
+  "`n`n=== BACKLOG (top) ===`n" + (Head "BACKLOG.md" 80) +
   "`n`n=== FULL DIFF ===`n" + $diff
 
 # gemini writes benign warnings to stderr; under Stop those wrap as a terminating
