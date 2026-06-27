@@ -1,0 +1,71 @@
+/* L4 Phase-D capability-gap chip (item 633 - FIRST user-visible consumer
+ * of core.ds_capability_gap.build_capability_gap).
+ *
+ * Mounts inside the Suggestions card (.csv-card-suggestions) just below
+ * the cc-conditional-pressure chip during champ-select. Surfaces the single
+ * highest-severity CAPABILITY DEFICIT the operator's pick has versus the
+ * enemy comp's demand (anti-tank / anti-heal / anti-poke) + the actionable
+ * one-liner verdict.
+ *
+ * Data rides on the existing /api/ds-preview response (new capability_gap
+ * field, default-OFF RC_CAPGAP_SURFACE flip flag) - the chip stays hidden
+ * until the flag is flipped ON and a gap actually fires.
+ *
+ * A gap is always an actionable deficit, so the chip uses a single warn-tier
+ * accent (no good/bad split). Uses the semantic-color + spacing + font
+ * tokens from web/css/tokens.css so it stays in sync with the dashboard
+ * palette and the sibling cc_* chips.
+ */
+
+.capability-gap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--signal-warn-soft, rgba(241, 176, 74, 0.12));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-warn, #f1b04a);
+  border-radius: var(--panel-radius-sm);
+}
+
+.capability-gap[hidden] {
+  display: none;
+}
+
+/* Header row: solid GAP badge + the axis label (the counter to buy/play). */
+.capability-gap-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.capability-gap-badge {
+  display: inline-block;
+  padding: var(--space-1) var(--space-1);
+  border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  background: var(--signal-warn, #f1b04a);
+  color: rgba(20, 22, 30, 0.95);
+}
+
+.capability-gap-axis {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+/* Plain-language verdict line - the actionable one-liner. */
+.capability-gap-verdict {
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.88);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}

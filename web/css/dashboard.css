@@ -43,6 +43,7 @@
 @import './panels/ban_suggest_toggle.css';
 @import './panels/cc_blended_ehp_threat.css';
 @import './panels/cc_conditional_pressure.css';
+@import './panels/capability_gap.css';
 @import './panels/cc_pairing.css';
 @import './panels/cooldown_watch.css';
 @import './panels/personal_build.css';
