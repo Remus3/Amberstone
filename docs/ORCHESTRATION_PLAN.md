@@ -192,6 +192,7 @@ genuinely-open ROADMAP/BACKLOG work.
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
 | R28 | housekeeping | DIRECTOR REFILL: re-proposed ledger-618 tail (SwapsInto extractor fix + snapshot_panels flake + ARCHITECTURE.md:172 drift). VERIFY-THE-PREMISE -> ALL already shipped: SLICE 1 = item 619 (`95972f57`, Riot 16.13 `...ImmobilizingCCAbility` taxonomy fix - extractor canonicalizes the suffix to the legacy stem, 16.13.1 cdragon carries 5 SwapsInto correct, spell_cc_tags 31/31 green; inert-data so NO ENGINE bump per the 339/343 convention - the directive's "MUST bump ENGINE_VERSION" was itself wrong); SLICE 2a snapshot flake = item 620 (`0fe7e3bf`, Windows-scoped keep-alive, CI green - 620 ground-truth-corrected the directive's "keep HTTP/1.1 keep-alive" premise: the keep-alive ITSELF is the Linux culprit); SLICE 2b doc-drift = FALSE premise (line 172 already reads ENGINE 1.151.0 / 7511 tests / patch 16.13.1, NOT the hallucinated 1.144.0/7361). No code change warranted - a redundant ENGINE re-bump or flake re-attempt would REGRESS shipped work. CLEAN no-op, evidence-logged. | CLEAN | (docs) |
+| R33 | ui-audit | LOOP cycle 4 (DIRECTOR REFILL): 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Electron-overlay cue panels web/js/panels/{ward_cue,spike_cue,objective_chips,minimap_zoi,minimap_rect}.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. FINDING (TYPOGRAPHY/HIERARCHY MUST-FIX): ward_cue.css + objective_chips.css sized their chips on the dashboard token var(--fs-xs) 16px while the sibling spike_cue.css + all overlay chrome use the overlay token var(--fs-ov-chip) 13px - the 16px ancillary cues out-shouted the 14px w-call ACTION verb (--fs-ov-call), breaking overlay hierarchy. Fixed in-slice: both routed to var(--fs-ov-chip) (overlay-scoped item-184 token; global tokens.css >=16px floor untouched - same doctrine R8 locked). RED-first guard added to test_overlay_css_typography_tokens.py. ASCII clean (\\25xx glyph escapes); HIT-TARGETS N/A (pure-display cues); minimap_rect/minimap_zoi carry no text (exempt). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. Populated overlay pixel capture OWED (no live game). | DONE | `9eb644c9` |
 | R32 | haiku-zero | LOOP cycle 3 (DIRECTOR REFILL): Lane A precompute-vs-Haiku agreement RE-MEASUREMENT via `tools/hz_shadow_report.py` on the item-614 corrected laning tables. Offline measurement only, ENGINE-IMPACT NONE (no math/network/write). Bucketed the 24,289 choice shadow records pre/post the item-614 fix boundary (commit `7383e712`, 2026-06-25T00:45:07 UTC), reusing the tool's own `record_agreement`/`classify_verdict` (whole-log result reconciles exactly to the live tool aggregate 1733/3717 0.4662). FINDING: the targeted `back_off->trade` model-error pocket is ELIMINATED (138 pre -> 0 post); post-fix aggregate dip (0.4863 -> 0.2468) is a 2-game small-sample artifact (Renekton-vs-Gragas 235/235 disagree + Nasus-vs-Gragas 77/77 agree), NOT a fix regression; a NEW pocket surfaced (`all_in->hold`, all Renekton-vs-Gragas) logged FUTURE for the next HZ_MISMATCH_DIAGNOSE. Flip readiness STILL NOT MET - do-not-flip-blind operator gate HOLDS, live coach NOT flipped. Findings doc `ops/audit/HZ_REMEASUREMENT_2026-06-27.md`. Docs+audit only (no code change -> no TDD target per the CSS-only-audit precedent item 435; full suite stays green, zero delta). | DONE | `760ff386` |
 
 ## EXCLUDED (live-game / operator-gated; the director MUST NOT pick these)
@@ -206,6 +207,44 @@ genuinely-open ROADMAP/BACKLOG work.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-27 R33 (LOOP cycle 4, DIRECTOR REFILL, head 6f3faba5) DONE (`9eb644c9`)
+  - Section-3b 5-phase fixture audit of the un-audited Electron-overlay glance
+  cues (web/js/panels/ward_cue.js, spike_cue.js, objective_chips.js,
+  minimap_zoi.js, minimap_rect.js + their CSS) vs docs/UI_SCALE_SPEC_V2.md.
+  ROOT-CAUSE FINDING (TYPOGRAPHY + HIERARCHY, MUST-FIX): ward_cue.css and
+  objective_chips.css are overlay-ONLY surfaces (base rule display:none, shown
+  only under body[data-shell="overlay"]) yet sized their chips on the DASHBOARD
+  chip token var(--fs-xs) (16px). Their sibling in the same overlay CALL pane,
+  spike_cue.css, and ALL overlay chrome (overlay.css .rc-src / .cd-chip /
+  cd-row-initial / w-call lines) use the OVERLAY chip token var(--fs-ov-chip)
+  (13px, the item-184 operator-relaxed sub-floor defined under
+  body[data-shell="overlay"]). Result: the 16px ward/objective cues out-shouted
+  the 14px w-call ACTION verb (--fs-ov-call) - the dominant play signal - so the
+  overlay's most important line read SMALLER than ancillary cues. This is the
+  exact overlay-scoped-token drift R8 (`4916d8e4`) locked for overlay.css, in
+  two panel CSS files R8 did not cover (the R8 guard scans overlay.css only).
+  FIX (in-slice): routed both cue chips to var(--fs-ov-chip); the global
+  tokens.css >=16px floor is untouched. TDD RED-first: extended
+  tests/test_overlay_css_typography_tokens.py with
+  test_overlay_cue_panels_use_overlay_chip_token (asserts each overlay-only cue
+  CSS consumes var(--fs-ov-chip) and never font-size: var(--fs-xs)) +
+  test_overlay_cue_panels_no_bare_subfloor_font_px - confirmed RED on ward_cue
+  then GREEN after the fix. Other audit phases CLEAN: ASCII (glyphs are \25C6 /
+  \25CF / \25B2 / 0.9em escapes, zero non-ASCII bytes); HIT-TARGETS N/A (cues
+  are pure-display, not clickable - the overlay A/B chips elsewhere already hold
+  min-height 44px); STRUCTURE intact (snapshot_panels/test_overlay_view.py green
+  with the change); minimap_rect (gold-hairline outline) + minimap_zoi (ZOI
+  canvas) carry NO text, exempt. NICE-TO-HAVE deferred (FUTURE, not MUST):
+  ward_cue/obj_chips padding 2px is off the 8px grid (pre-existing, not new);
+  chip radius is inconsistent across the three cues (ward 999px pill / obj 6px /
+  spike frameless) - cosmetic, no hierarchy impact. CSS-only -> asset-hash
+  auto-reload (ADR-008), no RC restart, no ENGINE bump (stays 1.152.0), no
+  DS/Share change. Verification: targeted overlay/token/ward suites 56 passed;
+  snapshot overlay + ASCII/u2500/smart-quote/mojibake hygiene + R18/core v2.1
+  typography-floor guards 56 passed; ruff + py_compile clean. VISUAL OWED:
+  populated overlay pixel capture of the ward/objective cues deferred - no live
+  game in progress (mode=client) and the cues require live ward/objective data
+  to render; carry-forward logged in WAKEUP_NOTES. regressions=0.
 - 2026-06-27 R32 (LOOP cycle 3, DIRECTOR REFILL, head 34f58257) DONE (docs+audit
   only, offline measurement, ENGINE-IMPACT NONE). Lane A precompute-vs-Haiku
   agreement re-measurement on the item-614 corrected laning tables via
