@@ -17,6 +17,8 @@ Operator overnight (Opus 4.8, ultracode): fix the gemini-headless self-handoff r
 
 NEXT: /gemini-headless-upgrade launched for the overnight (deep audit + lift + UI/overlay audit + DS sweeps); the director now BUILDS ON completed work, no re-issue. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
 
+- **R33 (loop cycle 4, `9eb644c9`)** - Section-3b overlay-cue typography audit. ward_cue.css + objective_chips.css (overlay-only) were sized on the dashboard token var(--fs-xs) 16px, out-shouting the 14px w-call ACTION verb; routed both to overlay var(--fs-ov-chip) 13px (R8 overlay-scoped-token doctrine). RED-first guard added to test_overlay_css_typography_tokens.py. CSS-only asset-hash reload, no restart/ENGINE/Share. **VISUAL OWED:** populated overlay pixel capture of the ward/objective cues - deferred, no live game (mode=client); cues need live data to render. Capture on the next live SR/ARAM game.
+
 ---
 
 # 2026-06-26 (console-flash fix - RC-CIWatchdog subprocess, `0028c8ac`)
@@ -42,16 +44,3 @@ Operator picked "surface it" over adding more axes. Promoted the item-632 shadow
 - **To activate live:** set `RC_CAPGAP_SURFACE=1` in the RC env + restart -> chip lights up in real champ-select.
 
 NEXT (L4 tail): the two remaining axes (zone-control `controls_terrain`/`zonecontrol_score`, objective-damage `pressures_structures`/`objdamage_score` - both scorers confirmed to expose usable fields) + an active-match twin of the chip + live SR-game validation with the flag ON. STILL UNVERIFIED: no live SR-game validation of 627-633 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
-
----
-
-# 2026-06-26 (L4 Phase-D capability-gap consumer SLICE 2 - item 632, `de4c40e4`)
-
-Operator picked "both directions" this session: extend the capgap registry AND wire the live shadow-log.
-
-- **Extend - sustain axis.** `core/ds_capability_gap.py` `_detect_sustain_gap` keys on `SustainResult.total_sustain_score` vs a live-calibrated `SUSTAIN_HIGH_SCORE=1.5` cut (probed `compute_sustain`: Warwick 11.7 / Aatrox 7.0 / Swain 3.3 / Fiddle 2.9 / Vlad 1.6 vs DrMundo 0.6 down). Fires when >=2 heavy-sustain enemies AND I do not out-sustain in kind -> anti-heal/Grievous. `_AXIS_PRIORITY` now (anti_tank, sustain, poke).
-- **Wire - live shadow-log.** `dashboard/routes_state.py` `_capgap_shadow_log` runs at the end of `_serve_state`, gated on `RC_CAPGAP_SHADOW` (default OFF). Resolves my champ + enemy comp from the liveclient snapshot, logs the top deficit (throttled 30s, skips stale >=8s, never raises). NO served-field change.
-- **Verified:** RED-first both slices. `test_ds_capability_gap.py` 20/20 + new `test_capability_gap_shadow.py` 9/9; ruff clean; regression sweep 1365 passed. No ENGINE bump, no Share (DS untouched), no RC restart (flag OFF -> live behavior unchanged).
-- Commit-msg gotcha: first push mangled the subject (PowerShell `@'...'@` heredoc used in the Bash tool is literal) - fixed via amend + `--force-with-lease`. Use a `-F msgfile` for multi-line Bash commit messages.
-
-NEXT (L4 tail): more axes (zone-control / objective-damage) + promote the shadow-log to a user-visible champ-select/active-match surface once telemetry validates the axes. Other report bets: L9/L10 live championStats + stat-shard ingestion (M), E1 TFT deterministic twin (L). STILL UNVERIFIED: no live SR-game validation of 627-632 (all client mode). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
