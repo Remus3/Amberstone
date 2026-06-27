@@ -1,6 +1,6 @@
 {
   "mock": true,
-  "note": "Active Match SR mock fixture (item 188, 2026-05-25). Authored for the UI scale v2.1 page #11 audit ritual + Live UI capture. Activated via ?ui_mock=1&mode=sr URL flags. Renders into #view-active-match via main.js renderActiveMatch dispatcher. Coach payload mirrors data/sr_coaching_data.json shape; ctx.lcuPhase forced to InProgress so the isLive freshness gate passes.",
+  "note": "Active Match SR mock fixture (item 188, 2026-05-25). Authored for the UI scale v2.1 page #11 audit ritual + Live UI capture. Activated via ?ui_mock=1&mode=sr URL flags. Renders into #view-active-match via main.js renderActiveMatch dispatcher. Coach payload mirrors data/sr_coaching_data.json shape; ctx.lcuPhase forced to InProgress so the isLive freshness gate passes. The top-level capability_gap block seeds the active-match capability-gap chip (am-sugg-capability-gap) for the visual-audit ritual; the live path reads the same field off /api/ds-preview behind the default-OFF RC_CAPGAP_SURFACE flag.",
   "mode": "sr",
   "phase": "InProgress",
   "coach": {
@@ -18,6 +18,16 @@
       {"name": "Lord Dominik's Regards", "item_id": 3036, "scorer": "carry", "delta_dps": 76},
       {"name": "Bloodthirster", "item_id": 3072, "scorer": "carry", "delta_dps": 64},
       {"name": "Rapid Firecannon", "item_id": 3094, "scorer": "carry", "delta_dps": 51}
+    ]
+  },
+  "capability_gap": {
+    "applies": true,
+    "my_champion": "Jinx",
+    "mode": "sr",
+    "top_gap": "zone_control",
+    "verdict": "Enemy comp controls terrain (3 zoners); respect walls and chokes, do not get caged or cut off.",
+    "gaps": [
+      {"axis": "zone_control", "demand_count": 3, "severity": 3.0, "detail": "Enemy comp controls terrain (3 zoners); respect walls and chokes, do not get caged or cut off."}
     ]
   },
   "liveclient": {

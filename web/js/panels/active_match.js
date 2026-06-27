@@ -20,7 +20,7 @@ import {
 } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
-import { classifyAction } from '../lib/helpers.js';
+import { classifyAction, escHtml } from '../lib/helpers.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
 import { renderSpikeMarkers, fetchSpikeMarkers, getCachedSpikeMarkers } from './spike_markers.js';
@@ -582,6 +582,128 @@ function _amRenderDsCluster(p, ctx, isLive) {
   // Combo needs the slug + a host wrapper (the panel renders the input row
   // once then leaves the re-fetch cadence to the host).
   if (combo) _amRenderDsCombo(combo, p, ctx);
+  // L4 capability-gap chip (active-match twin of the item-633 champ-select
+  // chip). Rides the SAME /api/ds-preview response (capability_gap field,
+  // default-OFF RC_CAPGAP_SURFACE) - no new endpoint. Read-only.
+  _amRenderCapabilityGap(p, ctx, isLive);
+}
+
+// --- L4 capability-gap chip (active-match twin of item 633) ----------
+//
+// fetch/cache/render mirrors champ_select.js's _csvFetchCapabilityGap /
+// _csvRenderCapabilityGap. The verdict rides on the EXISTING /api/ds-preview
+// response (new `capability_gap` field, default-OFF RC_CAPGAP_SURFACE) so no
+// new endpoint is added - a deliberate route-around with zero backend change.
+// Keyed by my-champion + enemy roster + mode so a roster swap re-fetches. The
+// cache stores `false` for a resolved no-gap (or flag-off) response so we do
+// not refetch the same key forever.
+const _AM_CAPGAP_CACHE = {};
+const _AM_CAPGAP_INFLIGHT = {};
+
+// Axis -> operator-facing label. The backend axis keys are itemization-direct;
+// the labels name the COUNTER the operator should buy/play toward. Mirrors
+// champ-select's _CSV_CAPGAP_AXIS_LABEL plus the active-match-new zone_control
+// + objective_damage axes.
+const _AM_CAPGAP_AXIS_LABEL = {
+  anti_tank:        "Anti-tank",
+  sustain:          "Anti-heal",
+  poke:             "Anti-poke",
+  zone_control:     "Anti-zone",
+  objective_damage: "Anti-siege",
+};
+
+function _amCapgapKey(myChamp, enemyNames, mode) {
+  return `${myChamp}|${(enemyNames || []).join(",")}|${mode}`;
+}
+
+function _amFetchCapabilityGap(myChamp, enemyNames, mode, cb) {
+  if (!myChamp || !(enemyNames && enemyNames.length) || !mode) return;
+  const key = _amCapgapKey(myChamp, enemyNames, mode);
+  if (key in _AM_CAPGAP_CACHE || _AM_CAPGAP_INFLIGHT[key]) return;
+  _AM_CAPGAP_INFLIGHT[key] = true;
+  // UI mock short-circuit (mirrors the champ-select chip): under ?ui_mock=1
+  // the chip seeds from the fixture's capability_gap block so the active-
+  // match page renders deterministically for the visual-audit ritual (the
+  // live /api/ds-preview path is default-OFF).
+  const isMock = !!(typeof document !== "undefined" && document.body
+                    && document.body.dataset.uiMock === "1");
+  if (isMock) {
+    fetch("/data/ui_mock/active_match_sr.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _AM_CAPGAP_INFLIGHT[key] = false;
+        _AM_CAPGAP_CACHE[key] = (data && data.capability_gap) || false;
+        if (_AM_CAPGAP_CACHE[key]) { try { cb && cb(); } catch (_) {} }
+      })
+      .catch(() => { _AM_CAPGAP_INFLIGHT[key] = false; _AM_CAPGAP_CACHE[key] = false; });
+    return;
+  }
+  fetch("/api/ds-preview", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      champion: myChamp, enemies: enemyNames, mode, level: 6, items: [],
+    }),
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data) => {
+      _AM_CAPGAP_INFLIGHT[key] = false;
+      // null (flag OFF / no gap) -> store `false` so the `in` guard above
+      // treats the key as resolved and we stop refetching it.
+      _AM_CAPGAP_CACHE[key] = (data && data.capability_gap) || false;
+      if (_AM_CAPGAP_CACHE[key]) { try { cb && cb(); } catch (_) {} }
+    })
+    .catch(() => { _AM_CAPGAP_INFLIGHT[key] = false; });
+}
+
+// Pure render helper (exported for the node test). Sets the block's hidden /
+// dataset / innerHTML from a capability_gap payload, mirroring the exact
+// markup the champ-select chip emits. A falsy payload (no gap / flag off)
+// hides the chip. HTML-escaped to stay XSS-safe + ASCII.
+export function renderCapabilityGapChip(block, payload) {
+  if (!block) return;
+  if (!payload || !payload.applies) { block.hidden = true; return; }
+  const axis = String(payload.top_gap || "");
+  const axisLabel = _AM_CAPGAP_AXIS_LABEL[axis]
+    || (axis ? axis.replace(/_/g, " ") : "Gap");
+  const verdict = String(payload.verdict || "");
+  block.dataset.capgapAxis = axis || "none";
+  block.hidden = false;
+  block.innerHTML = `
+    <div class="capability-gap-head">
+      <span class="capability-gap-badge">GAP</span>
+      <span class="capability-gap-axis">${escHtml(axisLabel)}</span>
+    </div>
+    <div class="capability-gap-verdict">${escHtml(verdict)}</div>`;
+}
+
+// Host: resolve the operator's champion + the live enemy NAME roster + mode,
+// then fetch (cache-guarded) + render. Idempotent (innerHTML rebuild each
+// tick). Guards hide the chip when the mount, my champion, or the enemy
+// roster is unavailable (e.g. CHAMPS index not loaded, between games).
+function _amRenderCapabilityGap(p, ctx, isLive) {
+  const block = (typeof document !== "undefined")
+    ? document.getElementById("am-sugg-capability-gap") : null;
+  if (!block) return;
+  if (!isLive) { block.hidden = true; return; }
+  const myChamp = (p && p.champion) || "";
+  const lc = (ctx && ctx.liveclient) || null;
+  const enemyNames = [];
+  if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
+    const myTeam = _resolveMyTeam(lc);
+    for (const pl of lc.allPlayers) {
+      if (!pl || typeof pl !== "object") continue;
+      if (myTeam && pl.team === myTeam) continue;
+      const name = pl.championName || pl.rawChampionName || "";
+      if (name) enemyNames.push(name);
+    }
+  }
+  if (!myChamp || !enemyNames.length) { block.hidden = true; return; }
+  const mode = String((ctx && ctx.mode) || "sr").toUpperCase();
+  _amFetchCapabilityGap(myChamp, enemyNames, mode,
+    () => renderCapabilityGapChip(block, _AM_CAPGAP_CACHE[_amCapgapKey(myChamp, enemyNames, mode)]));
+  const cached = _AM_CAPGAP_CACHE[_amCapgapKey(myChamp, enemyNames, mode)];
+  renderCapabilityGapChip(block, cached || null);
 }
 
 // Host wrapper for the action-queue combo panel (relocated from champ_select
