@@ -205,12 +205,14 @@ def gemini(prompt_body, instruction):
           f"Get-Content -Raw '{infile}' | "
           f"{CFG['gemini_cmd']} -p '{inst}' -m '{model}' --approval-mode plan --skip-trust 2>$null | Out-String")
     out = ""
+    any_success = False  # N3: a completed call (even empty stdout) vs all-retries-errored
     for tryn in range(1, 4):
         try:
             r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
                                capture_output=True, text=True, timeout=300,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             out = (r.stdout or "").strip()
+            any_success = True
         except Exception as e:  # noqa: BLE001
             out = ""
             log(f"gemini try {tryn} error: {e}")
@@ -219,6 +221,12 @@ def gemini(prompt_body, instruction):
         time.sleep(8 * tryn)
     gp = CFG.get("gemini_price_per_mtok", {"input": 2.0, "output": 12.0})
     GEMINI_USD += (len(prompt_body) / 4 * gp["input"] + len(out) / 4 * gp["output"]) / 1_000_000
+    # N3: distinguish a TIMEOUT / CLI-error (every try raised, never completed) from a
+    # genuine empty answer. Return the None sentinel ONLY when no try completed, so the
+    # director path can re-enter the cycle instead of mis-reading "" as NO_WORK and
+    # falsely terminating a multi-cycle run (the 2026-06-22 300s-timeout false-stop class).
+    if not out and not any_success:
+        return None
     return out
 
 # ---- gemini roles ------------------------------------------------------
@@ -277,7 +285,13 @@ def auditor(prev_sha, new_sha):
         diff = diff[:55000] + "\n...[truncated]"
     tmpl = (ROOT / "ops/loop/auditor_prompt.md").read_text(encoding="utf-8")
     body = f"{tmpl}\n\n=== RANGE {rng} ===\n{git('log','--oneline',rng)}\n\n=== DIFF ===\n{diff}"
-    return gemini(body, "Audit. First line MUST be 'VERDICT: CLEAN' or 'VERDICT: REGRESS', then the reason.")
+    verdict = gemini(body, "Audit. First line MUST be 'VERDICT: CLEAN' or 'VERDICT: REGRESS', then the reason.")
+    if verdict is None:
+        # N3: gemini errored (timeout / CLI) - an un-auditable cycle is NOT a regression.
+        # Return a safe CLEAN so the controller's string ops never hit the None sentinel
+        # and a flaky auditor never falsely blocks a clean cycle.
+        return "VERDICT: CLEAN\n(auditor gemini error - could not audit this cycle; treated as non-regress)"
+    return verdict
 
 # ---- budget meter: sum active-session JSONL usage since start_ts -------
 def _price(model, usage):
@@ -378,6 +392,12 @@ def main():
             body = FIXED
         else:
             body = director(last_done, last_audit)
+            if body is None:
+                # N3: gemini retries exhausted (timeout / CLI error) - NOT a real NO_WORK
+                # signal. Advance to the next cycle instead of terminating the whole run;
+                # the no-progress (same-sha) guard still stops a persistent outage cleanly.
+                log(f"cycle {cycle}: director gemini error (retries exhausted) - advancing, NOT terminating")
+                continue
             if not body or body[:40].upper().find("NO_WORK") >= 0:
                 stop("director returned no work (NO_WORK / empty)")
         awrite(CTL / "directive.md", body)

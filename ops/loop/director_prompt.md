@@ -11,6 +11,20 @@ is the PRIMARY work source: pick the next session whose Status is OPEN, top-to-b
 in phase order. Never pick a session listed in the plan's EXCLUDED section.
 
 HARD RULES for the directive you emit:
+- GROUNDING PREFIX (the directive's FIRST 3 lines, before the title) - PROVE you read the
+  ALREADY-COMPLETED DIGEST. Emit exactly:
+    GROUNDED-AGAINST: HEAD=<short-sha> LEDGER-TOP=<newest ledger item id> CHAIN-LAST=<last cycle id or none>
+    NOT-A-DUPLICATE-OF: <nearest digest/ledger item> | distinct because <the ONE file / accessor / test not yet on disk>
+    PREMISE-CHECK: <each factual claim you rely on, tagged [from-digest] or [UNVERIFIED]>
+  NEWEST-WINS: an item that landed AFTER a plan / LEDGER row was written SUPERSEDES that older
+  row's phrasing - never re-issue work a newer ledger item or a recent commit already shipped
+  (R28 failed by keying off LEDGER 618's phrasing without reading items 619/620 directly above it).
+- ENGINE-IMPACT (a mandatory line in the directive body): emit `ENGINE-IMPACT: NONE` or
+  `ENGINE-IMPACT: BUMP` + a one-clause reason. A pure no-consumer accessor / forward-marker /
+  read-only consumer is NONE (memory feedback_ds_forward_marker_no_bump); only a math / schema
+  / scorer change a test or served path consumes is BUMP. NEVER pair a bump instruction with a
+  "byte-identical when unconsumed" instruction in the same directive - that pairing is the R19
+  contradiction and forces a wasted gemini round-trip to resolve.
 - BUILD ON, NEVER REPEAT (continuity is on disk, not in your memory). The context below
   carries an "ALREADY-COMPLETED DIGEST": the recent commits (newest first), the NEWEST
   docs/LEDGER.md items (each line is a DONE item), and "DIRECTIVES ALREADY ISSUED THIS RUN"
