@@ -163,14 +163,19 @@ function _installHideMenu(el, w) {
   });
 }
 
-function _installDrag(handle, el, w) {
+// Drag core. Returns a `begin(e)` starter the caller wires to whichever element
+// should grab the drag: the small handle (always - the passive quick-drag via
+// data-rc-zone) AND, in ACTIVE mode, the whole widget body (operator 2026-06-27:
+// "in ACTIVE I expect to drag the panel, not hunt a 3px grip"). Capture +
+// move/up live on `el` so a drag begun from either trigger tracks identically.
+function _installDrag(el, w) {
   let dragging = false;
   let startX = 0;
   let startY = 0;
   let originX = 0;
   let originY = 0;
 
-  handle.addEventListener("pointerdown", (e) => {
+  const begin = (e) => {
     dragging = true;
     startX = e.clientX;
     startY = e.clientY;
@@ -179,14 +184,14 @@ function _installDrag(handle, el, w) {
     originY = p.y;
     el.classList.add("ovx-dragging");
     try {
-      handle.setPointerCapture(e.pointerId);
+      el.setPointerCapture(e.pointerId);
     } catch (_e) {
       // setPointerCapture can throw if the pointer is gone; harmless.
     }
     e.preventDefault();
-  });
+  };
 
-  handle.addEventListener("pointermove", (e) => {
+  el.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     // clientX/Y are screen px; the stored (x,y) are design px, so divide the
     // delta by the body zoom to keep 1:1 cursor tracking at any ovscale.
@@ -203,15 +208,23 @@ function _installDrag(handle, el, w) {
     dragging = false;
     el.classList.remove("ovx-dragging");
     try {
-      handle.releasePointerCapture(e.pointerId);
+      el.releasePointerCapture(e.pointerId);
     } catch (_e) {
       // already released; harmless.
     }
     _persist();
   };
-  handle.addEventListener("pointerup", end);
-  handle.addEventListener("pointercancel", end);
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+  return begin;
 }
+
+// Clickable controls inside a widget that must NOT start a body drag in ACTIVE
+// mode - a press on these should still actuate the control (and the handle has
+// its own grab). Everything else in the body becomes a drag surface in ACTIVE.
+const _NO_BODY_DRAG =
+  ".ovx-handle, button, input, select, textarea, a, [contenteditable], " +
+  "#ovset, #rn-choices, #am-pane-ovds, [data-rc-zone]";
 
 function _makeHandle(el, w) {
   if (el.querySelector(":scope > .ovx-handle")) return;
@@ -224,7 +237,17 @@ function _makeHandle(el, w) {
   h.title = "drag to move (saves automatically); right-click to hide (ACTIVE)";
   h.innerHTML = "<span></span><span></span><span></span>";
   el.appendChild(h);
-  _installDrag(h, el, w);
+  const begin = _installDrag(el, w);
+  // Handle: always grabbable (the passive quick-drag target).
+  h.addEventListener("pointerdown", begin);
+  // Body: grabbable ONLY in ACTIVE mode, and never on an interactive control or
+  // the handle (operator 2026-06-27: once you have explicitly entered ACTIVE,
+  // drag the whole panel instead of hunting the small grip).
+  el.addEventListener("pointerdown", (e) => {
+    if (!_isActiveMode()) return;
+    if (e.target && e.target.closest && e.target.closest(_NO_BODY_DRAG)) return;
+    begin(e);
+  });
 }
 
 // Attach the right-click hide listener once per mount. Idempotent: a dataset
@@ -340,6 +363,7 @@ export const _internals = {
   _isActiveMode,
   _hideWidget,
   _installHideMenu,
+  _makeHandle,
   _persist,
   _applyPos,
   _getLayout: () => _layout,
