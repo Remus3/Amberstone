@@ -46,6 +46,8 @@ import time
 import urllib.error
 import urllib.request
 from ctypes import wintypes
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 # -- Config --------------------------------------------------------------------
 LEGION_BASE   = "https://192.168.8.230:8888"
@@ -60,9 +62,37 @@ HTTP_TIMEOUT  = 3.0
 # rc-shell resolves (C:\Riot Commander\ops\runtime\).
 TOGGLE_SIGNAL_FILE = r"C:\Riot Commander\ops\runtime\overlay_active_toggle.txt"
 
-logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger("rc.hotkey")
+def _setup_logging() -> logging.Logger:
+    """Log to a durable file (always) plus the console when one exists.
+
+    Under pythonw.exe (how the RC-HotkeyListener logon task launches us)
+    sys.stderr is None, so a stderr-only logger silently drops every line and an
+    unhandled exception's traceback vanishes - which is exactly why a boot-time
+    failure here was historically invisible. The rotating file handler
+    guarantees any future failure is diagnosable. The path is resolved from
+    __file__, not cwd, so it is correct whatever working directory the scheduled
+    task hands us (the task sets none)."""
+    logger = logging.getLogger("rc.hotkey")
+    logger.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    log_path = Path(__file__).resolve().parent.parent / "logs" / "hotkey_listener.log"
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        fh = RotatingFileHandler(
+            log_path, maxBytes=512_000, backupCount=2, encoding="utf-8",
+        )
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
+    except OSError:
+        pass  # never let logging setup crash the daemon
+    if sys.stderr is not None:
+        sh = logging.StreamHandler()
+        sh.setFormatter(fmt)
+        logger.addHandler(sh)
+    return logger
+
+
+log = _setup_logging()
 
 _SSL_CTX = ssl.create_default_context()
 _SSL_CTX.check_hostname = False
@@ -189,6 +219,52 @@ def _unregister(hotkey_id: int) -> None:
     _user32.UnregisterHotKey(None, hotkey_id)
 
 
+# Hotkeys we claim, as a set: (id, vk). Ctrl+Shift+1/2 = coach slots, A = overlay.
+_HOTKEYS = ((1, _VK_1), (2, _VK_2), (_SLOT_OVERLAY_TOGGLE, _VK_A))
+# Retry the whole set on failure. A logon race (another global-hotkey app -
+# Discord / Overlay Platform M / CurseForge - transiently holding a combo, or the
+# interactive window station still settling right after logon) must not kill the
+# listener permanently, or Ctrl+Shift+A is dead until a manual restart. 15 x 2s
+# = ~30s of backoff covers the logon settle window; the task's RestartOnFailure
+# is the second line of defense for a hard crash.
+_REGISTER_RETRY_ATTEMPTS = 15
+_REGISTER_RETRY_WAIT_S = 2.0
+
+
+def _register_all() -> None:
+    for hotkey_id, vk in _HOTKEYS:
+        _register(hotkey_id, vk)
+
+
+def _unregister_all() -> None:
+    for hotkey_id, _vk in _HOTKEYS:
+        _unregister(hotkey_id)
+
+
+def _register_all_with_retry(stop: threading.Event) -> bool:
+    """Claim every hotkey, retrying the whole set on failure. Returns True once
+    all are registered, False if every attempt is exhausted or stop is set. A
+    partial claim is rolled back before each retry (RegisterHotKey is per-id, so
+    id 1/2 can succeed while A fails)."""
+    for attempt in range(1, _REGISTER_RETRY_ATTEMPTS + 1):
+        try:
+            _register_all()
+            return True
+        except OSError as exc:
+            _unregister_all()  # roll back any partial claim before retrying
+            if attempt == _REGISTER_RETRY_ATTEMPTS:
+                log.error("RegisterHotKey failed after %d attempts: %s",
+                          attempt, exc)
+                return False
+            log.warning(
+                "RegisterHotKey attempt %d/%d failed (%s); retrying in %.0fs",
+                attempt, _REGISTER_RETRY_ATTEMPTS, exc, _REGISTER_RETRY_WAIT_S,
+            )
+            if stop.wait(_REGISTER_RETRY_WAIT_S):
+                return False  # asked to stop mid-backoff
+    return False
+
+
 def message_loop(cache: DecisionCache) -> None:
     msg = wintypes.MSG()
     while True:
@@ -222,13 +298,9 @@ def main() -> int:
     )
     worker.start()
 
-    try:
-        _register(1, _VK_1)
-        _register(2, _VK_2)
-        _register(_SLOT_OVERLAY_TOGGLE, _VK_A)  # Ctrl+Shift+A -> overlay toggle
-    except OSError as exc:
-        log.error("%s", exc)
-        return 2
+    if not _register_all_with_retry(stop):
+        stop.set()
+        return 2  # task RestartOnFailure will retry the whole process
 
     log.info("hotkeys registered; entering message loop")
     try:
@@ -236,13 +308,22 @@ def main() -> int:
     except KeyboardInterrupt:
         pass
     finally:
-        _unregister(1)
-        _unregister(2)
-        _unregister(_SLOT_OVERLAY_TOGGLE)
+        _unregister_all()
         stop.set()
         log.info("hotkey_listener shutting down")
     return 0
 
 
+def _entrypoint() -> int:
+    """Last-resort guard: under pythonw an unhandled exception's traceback is
+    lost (stderr is None) and the process just exits 1 invisibly. Log it to the
+    file first, then return 1 so the task's RestartOnFailure can recover."""
+    try:
+        return main()
+    except Exception:  # noqa: BLE001
+        log.exception("hotkey_listener crashed")
+        return 1
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_entrypoint())
