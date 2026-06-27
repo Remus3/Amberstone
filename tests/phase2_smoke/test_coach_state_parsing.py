@@ -187,6 +187,22 @@ class TestAramCoachParsing(unittest.TestCase):
         self.assertIsInstance(out["enemy_comp"], list)
         self.assertIn("Garen", out["enemy_comp"])
 
+    def test_fixture_surfaces_numeric_hp(self):
+        # R5 self-HP: the parser must surface raw numeric hp/hp_max (not only
+        # the hp_pct display value) so dispatch_for_coach can derive
+        # caster_missing_hp_pct. Without these keys state.get("hp") is None and
+        # the dispatch guard zeroes the seam (SR already carries them).
+        out = self._parse(_ARAM_RAW)
+        self.assertEqual(out["hp"], 900)
+        self.assertEqual(out["hp_max"], 1100)
+        self.assertIsInstance(out["hp"], int)
+        self.assertIsInstance(out["hp_max"], int)
+
+    def test_empty_input_numeric_hp_present(self):
+        out = self._parse({})
+        self.assertIsInstance(out.get("hp"), int)
+        self.assertIsInstance(out.get("hp_max"), int)
+
 
 # -----------------------------------------------------------------------------
 # Arena - arena_coach._parse_arena_state
@@ -228,6 +244,14 @@ class TestArenaCoachParsing(unittest.TestCase):
         self.assertGreaterEqual(out["hp_pct"], 0)
         self.assertLessEqual(out["hp_pct"], 100)
 
+    def test_fixture_surfaces_numeric_hp(self):
+        # R5 self-HP (see ARAM note): arena dispatch reads state.get("hp").
+        out = self._parse(_ARENA_RAW)
+        self.assertEqual(out["hp"], 1800)
+        self.assertEqual(out["hp_max"], 2200)
+        self.assertIsInstance(out["hp"], int)
+        self.assertIsInstance(out["hp_max"], int)
+
 
 # -----------------------------------------------------------------------------
 # Brawl - brawl_coach._parse_brawl_state
@@ -268,6 +292,14 @@ class TestBrawlCoachParsing(unittest.TestCase):
     def test_fixture_input_game_mode(self):
         out = self._parse(_BRAWL_RAW)
         self.assertEqual(out["game_mode"], "NEXUSBLITZ")
+
+    def test_fixture_surfaces_numeric_hp(self):
+        # R5 self-HP (see ARAM note): brawl dispatch reads state.get("hp").
+        out = self._parse(_BRAWL_RAW)
+        self.assertEqual(out["hp"], 1000)
+        self.assertEqual(out["hp_max"], 1400)
+        self.assertIsInstance(out["hp"], int)
+        self.assertIsInstance(out["hp_max"], int)
 
 
 # -----------------------------------------------------------------------------
