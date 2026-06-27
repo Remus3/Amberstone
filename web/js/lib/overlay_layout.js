@@ -43,8 +43,12 @@ const WIDGETS = [
   // (rule 9), and Alt+Shift+R resets the field to THESE defaults (section 3).
   // (x,y) is design-px in 1920x1080; the fullscreen window's body zoom scales them
   // with the resolution.
+  // Operator 2026-06-27 nudge: CALL (760,140 -> 180,130) + the WARD/trinket glyph
+  // (920,540 -> 340,600) moved OFF the center combat column - they were rendering
+  // over the champion / top play lane in-game. The rest keep the near-eye anchors;
+  // drag still overrides per-widget (Ctrl+Shift+A then drag; Alt+Shift+R resets).
   { id: "w-lead", sel: "#rn-lead", x: 786, y: 44, tier: "ambient" },
-  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 760, y: 140, tier: "primary" },
+  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 180, y: 130, tier: "primary" },
   { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent" },
   { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient" },
   { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent" },
@@ -54,7 +58,7 @@ const WIDGETS = [
   // renderer un-hides the mount only when actionable) + coach-core (shown in
   // every panel set). Mounted as direct am-grid children (NOT inside a pane) so
   // position:fixed is viewport-relative, not trapped by a transformed pane.
-  { id: "w-trinket", sel: "#am-ward-cue", x: 920, y: 540, tier: "urgent" },
+  { id: "w-trinket", sel: "#am-ward-cue", x: 340, y: 600, tier: "urgent" },
   { id: "w-spike", sel: "#am-spike-cue", x: 360, y: 840, tier: "urgent" },
 ];
 
