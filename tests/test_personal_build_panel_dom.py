@@ -100,6 +100,25 @@ class JsConsumptionTests(unittest.TestCase):
         self.assertIn("getPersonalBuildCacheCount", self.cs_text)
         self.assertIn("pbw:", self.cs_text)
 
+    # --- R34 (popular-vs-winning lift) -------------------------------------
+    # The served payload carries `most_common_build` (the operator's most
+    # FREQUENT completed build) but the panel previously dropped it. Surface
+    # it as the popular-vs-winrate dichotomy: a "usual build" line,
+    # a per-row marker for items in the usual build, and a survivorship insight.
+    def test_panel_reads_most_common_build(self) -> None:
+        self.assertIn("most_common_build", self.panel_text)
+
+    def test_panel_renders_usual_build_line(self) -> None:
+        self.assertIn("pbw-usual", self.panel_text)
+
+    def test_panel_renders_insight_callout(self) -> None:
+        self.assertIn("pbw-insight", self.panel_text)
+
+    def test_panel_exports_insight_helper(self) -> None:
+        # The survivorship insight is computed from served data; exposed on
+        # __test so the popular-vs-winning logic is unit-coverable.
+        self.assertIn("_usualBuildInsight", self.panel_text)
+
 
 class CssTests(unittest.TestCase):
     @classmethod
@@ -110,6 +129,11 @@ class CssTests(unittest.TestCase):
     def test_card_class_present(self) -> None:
         self.assertIn(".personal-build", self.panel_css)
         self.assertIn(".pbw-row", self.panel_css)
+
+    def test_usual_build_styled(self) -> None:
+        # R34: the popular-build line + the survivorship insight carry styling.
+        self.assertIn(".pbw-usual", self.panel_css)
+        self.assertIn(".pbw-insight", self.panel_css)
 
     def test_uses_signal_tokens(self) -> None:
         self.assertIn("var(--signal-good", self.panel_css)

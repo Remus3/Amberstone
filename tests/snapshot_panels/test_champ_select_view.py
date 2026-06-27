@@ -136,16 +136,43 @@ def test_personal_build_card_renders(mock_server, pw_browser):
 
     ctx, page, errors = _open_champ_select(pw_browser, mock_server, "aram")
     try:
-        n_rows = page.evaluate(
+        counts = page.evaluate(
             """async (payload) => {
               const m = await import('/js/panels/personal_build.js');
               const block = document.getElementById('csv-personal-build');
               m.renderPersonalBuild(block, payload);
-              return block.querySelectorAll('.pbw-row').length;
+              return {
+                rows: block.querySelectorAll('.pbw-row').length,
+                pips: block.querySelectorAll('.pbw-row[data-usual="1"]').length,
+                usual: block.querySelectorAll('.pbw-usual-build').length,
+              };
             }""",
             _PERSONAL_BUILD_FIXTURE,
         )
-        assert n_rows == 5, f"expected 5 item rows, got {n_rows}"
+        assert counts["rows"] == 5, f"expected 5 item rows, got {counts['rows']}"
+        # R34: 4 of the 5 ranked items are in most_common_build -> 4 usual pips,
+        # and the popular-build summary line renders.
+        assert counts["pips"] == 4, f"expected 4 usual-build pips, got {counts['pips']}"
+        assert counts["usual"] == 1, "popular-build summary line missing"
+        # R34: the survivorship insight helper across all four branches.
+        kinds = page.evaluate(
+            """async () => {
+              const m = await import('/js/panels/personal_build.js');
+              const f = m.__test._usualBuildInsight;
+              const mk = (items, usual) => ({items, most_common_build: usual});
+              return {
+                swap: f(mk([{item_id:1,name:'A',lift:0.06},
+                            {item_id:2,name:'B',lift:-0.05}], [2])),
+                winner: f(mk([{item_id:1,name:'A',lift:0.06}], [])),
+                loser: f(mk([{item_id:2,name:'B',lift:-0.05}], [2])),
+                none: f(mk([{item_id:2,name:'B',lift:0.0}], [2])),
+              };
+            }"""
+        )
+        assert kinds["swap"]["kind"] == "swap", kinds["swap"]
+        assert kinds["winner"]["kind"] == "winner", kinds["winner"]
+        assert kinds["loser"]["kind"] == "loser", kinds["loser"]
+        assert kinds["none"] is None, kinds["none"]
         block = page.locator("#csv-personal-build")
         assert block.is_visible(), "personal-build card not visible"
         # inner_text uppercases the header (CSS text-transform), so match
