@@ -118,9 +118,9 @@ def test_overlay_shell_is_widget_field(mock_server, pw_browser):
             )
             assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
 
-        # Eye-line anchor default (doctrine section 4: w-call upper-center 760,140),
-        # and the PRIMARY widget carries its tier marker.
-        assert _css(page, "#view-active-match .am-pane-call", "left") == "760px"
+        # Left-gutter default (operator 2026-06-27 nudged w-call off-center: 760,140
+        # -> 180,130 to clear the play column), and the PRIMARY carries its tier marker.
+        assert _css(page, "#view-active-match .am-pane-call", "left") == "180px"
         assert page.eval_on_selector(
             "#view-active-match .am-pane-call", "e => e.dataset.ovxTier"
         ) == "primary"
@@ -251,7 +251,7 @@ def test_overlay_widget_field_eye_line_positions(mock_server, pw_browser):
         # sits at its eye-line default `left` (doctrine section-4 (x,y) table).
         for sel, left in (
             ("#rn-lead", "786px"),
-            ("#view-active-match .am-pane-call", "760px"),
+            ("#view-active-match .am-pane-call", "180px"),
             ("#rn-callouts", "1486px"),
         ):
             assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
@@ -259,10 +259,10 @@ def test_overlay_widget_field_eye_line_positions(mock_server, pw_browser):
                 f"{sel} not at its eye-line default ({left})"
             )
         # No ~460px dock any more: the visible primary is a narrow accent at its
-        # upper-center anchor, not a fat right-edge column.
+        # left-gutter anchor, not a fat right-edge column.
         call = page.locator("#view-active-match .am-pane-call").bounding_box()
         assert call is not None, "call widget has no box"
-        assert 750 <= call["x"] <= 770, f"call not at its upper-center anchor (x={call['x']})"
+        assert 170 <= call["x"] <= 190, f"call not at its left-gutter anchor (x={call['x']})"
         assert call["width"] <= 280, (
             f"widget width {call['width']} should be a narrow accent, not a ~460 dock"
         )
@@ -403,7 +403,7 @@ def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browse
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         for sel, wid, left in (
-            ("#am-ward-cue", "w-trinket", "920px"),
+            ("#am-ward-cue", "w-trinket", "340px"),
             ("#am-spike-cue", "w-spike", "360px"),
         ):
             assert page.eval_on_selector(
@@ -1060,12 +1060,12 @@ def test_overlay_ovscale_zooms_widget_field_at_1440(mock_server, pw_browser):
             "body zoom did not pick up the overlay scale"
         )
 
-        # The call widget keeps its 760px design-px `left`, but the body zoom puts
-        # its on-screen x at 760*1.3 ~= 988 - the FIELD zoomed up with the window.
-        assert _css(page, "#view-active-match .am-pane-call", "left") == "760px"
+        # The call widget keeps its 180px design-px `left`, but the body zoom puts
+        # its on-screen x at 180*1.3 ~= 234 - the FIELD zoomed up with the window.
+        assert _css(page, "#view-active-match .am-pane-call", "left") == "180px"
         box = page.locator("#view-active-match .am-pane-call").bounding_box()
         assert box is not None, "call widget has no box"
-        assert 978 <= box["x"] <= 998, f"scaled widget x {box['x']} not ~988 (760*1.3)"
+        assert 224 <= box["x"] <= 244, f"scaled widget x {box['x']} not ~234 (180*1.3)"
         SCREENSHOTS.mkdir(exist_ok=True)
         page.screenshot(path=str(SCREENSHOTS / "overlay_sr_1440_scaled.png"))
     finally:
@@ -1090,8 +1090,8 @@ def test_overlay_ovscale_absent_is_baseline_noop(mock_server, pw_browser):
             "body zoom must be the baseline no-op"
         )
         box = page.locator("#view-active-match .am-pane-call").bounding_box()
-        assert box is not None and 750 <= box["x"] <= 770, (
-            f"baseline widget x {box and box['x']} not ~760"
+        assert box is not None and 170 <= box["x"] <= 190, (
+            f"baseline widget x {box and box['x']} not ~180"
         )
     finally:
         page.close()
