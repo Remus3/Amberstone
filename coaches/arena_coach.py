@@ -653,6 +653,9 @@ class Coach(BaseCoach):
                     enemy_stats=_es,
                     augments=state.get("augments") or None,
                     top=5,
+                    # R5 self-HP: absent -> dispatch guard yields 0.0 (OFF).
+                    caster_hp=state.get("hp"),
+                    caster_hp_max=state.get("hp_max"),
                 )
                 if _ds_dispatch is not None:
                     _ds_picks_str = _ds_dispatch.picks_str

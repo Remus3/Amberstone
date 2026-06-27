@@ -128,6 +128,13 @@ def rank_for(
     augments: Optional[Iterable[str]] = None,
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
+    # Seam flags (Tier-2, behavior-preserving). Each default OFF/null so a
+    # payload omitting it is byte-identical to today; emitted only when set.
+    exempt_offclass_by_win: bool = False,    # DSP2
+    prefer_kit_axis_by_win: bool = False,    # DSP11
+    cost_ceiling: Optional[int] = None,      # F2
+    assume_passive_as_stacks: bool = False,  # R7
+    apply_target_vuln: bool = False,         # R12
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
 
@@ -169,6 +176,16 @@ def rank_for(
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if exempt_offclass_by_win:
+        body["exempt_offclass_by_win"] = True
+    if prefer_kit_axis_by_win:
+        body["prefer_kit_axis_by_win"] = True
+    if cost_ceiling is not None:
+        body["cost_ceiling"] = int(cost_ceiling)
+    if assume_passive_as_stacks:
+        body["assume_passive_as_stacks"] = True
+    if apply_target_vuln:
+        body["apply_target_vuln"] = True
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
@@ -217,6 +234,9 @@ def rank_tank_for(
     augments: Optional[Iterable[str]] = None,
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
+    # Seam flags (Tier-2, behavior-preserving; emitted only when set).
+    prefer_survivability_by_win: bool = False,  # RF3
+    cost_ceiling: Optional[int] = None,         # F2
 ) -> Optional[list[TankRankedItem]]:
     """Call POST /rank-tank and return the parsed top-N rows. None on engine failure.
 
@@ -245,6 +265,10 @@ def rank_tank_for(
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if prefer_survivability_by_win:
+        body["prefer_survivability_by_win"] = True
+    if cost_ceiling is not None:
+        body["cost_ceiling"] = int(cost_ceiling)
     data = _post_json("/rank-tank", body, timeout=timeout)
     if data is None:
         return None
@@ -336,6 +360,9 @@ def rank_bruiser_for(
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
     timeout: float = DEFAULT_TIMEOUT,
+    # Seam flags (Tier-2, behavior-preserving; emitted only when set).
+    prefer_survivability_by_win: bool = False,  # RF1
+    cost_ceiling: Optional[int] = None,         # F2
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
@@ -369,6 +396,10 @@ def rank_bruiser_for(
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if prefer_survivability_by_win:
+        body["prefer_survivability_by_win"] = True
+    if cost_ceiling is not None:
+        body["cost_ceiling"] = int(cost_ceiling)
     data = _post_json("/rank-bruiser", body, timeout=timeout)
     if data is None:
         return None
@@ -573,6 +604,9 @@ def rank_assassin_for(
     combo_sequence: Optional[Iterable[str]] = None,
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
+    # Seam flags (Tier-2, behavior-preserving; emitted only when set).
+    prefer_kit_axis_by_win: bool = False,  # DSP11
+    assume_magic_burst: bool = False,      # R30
 ) -> Optional[list[AssassinRankedItem]]:
     """Call POST /rank-assassin and return the parsed top-N rows. None on engine failure.
 
@@ -612,6 +646,10 @@ def rank_assassin_for(
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if prefer_kit_axis_by_win:
+        body["prefer_kit_axis_by_win"] = True
+    if assume_magic_burst:
+        body["assume_magic_burst"] = True
     data = _post_json("/rank-assassin", body, timeout=timeout)
     if data is None:
         return None
@@ -753,6 +791,10 @@ def rank_enchanter_for(
     enchanter_only: bool = True,
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
+    # Seam flags (Tier-2, behavior-preserving; emitted only when set).
+    prefer_survivability_by_win: bool = False,  # RF2
+    assume_missing_hp_heal_amp: bool = False,   # R5
+    caster_missing_hp_pct: float = 0.0,         # R5 input
 ) -> Optional[list[EnchanterRankedItem]]:
     """Call POST /rank-enchanter and return the parsed top-N rows. None on engine failure.
 
@@ -781,6 +823,12 @@ def rank_enchanter_for(
         body["only"] = [str(i) for i in only_item_ids if i]
     if augments:
         body["augments"] = [str(a) for a in augments if a]
+    if prefer_survivability_by_win:
+        body["prefer_survivability_by_win"] = True
+    if assume_missing_hp_heal_amp:
+        body["assume_missing_hp_heal_amp"] = True
+    if caster_missing_hp_pct:
+        body["caster_missing_hp_pct"] = float(caster_missing_hp_pct)
     data = _post_json("/rank-enchanter", body, timeout=timeout)
     if data is None:
         return None
@@ -919,6 +967,19 @@ def rank_for_primary_archetype(
     augments: Optional[Iterable[str]] = None,
     filter_shared_uniques: bool = True,
     timeout: float = DEFAULT_TIMEOUT,
+    # Seam flags (Tier-2, behavior-preserving). Each routes to the correct
+    # archetype branch only; defaults OFF/null/0.0 so a flagless call is
+    # byte-identical to pre-seam behavior. Branches that don't take a given
+    # flag never receive it (it stays a no-op for that archetype).
+    exempt_offclass_by_win: bool = False,        # carry (DSP2)
+    prefer_kit_axis_by_win: bool = False,        # carry (DSP11) + assassin (DSP11)
+    cost_ceiling: Optional[int] = None,          # carry (F2) + tank + bruiser
+    prefer_survivability_by_win: bool = False,   # bruiser (RF1) + tank (RF3) + enchanter (RF2)
+    assume_magic_burst: bool = False,            # assassin (R30)
+    assume_passive_as_stacks: bool = False,      # carry (R7)
+    apply_target_vuln: bool = False,             # carry (R12)
+    assume_missing_hp_heal_amp: bool = False,    # enchanter (R5)
+    caster_missing_hp_pct: float = 0.0,          # enchanter (R5 input)
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
@@ -961,6 +1022,8 @@ def rank_for_primary_archetype(
             augments=augments,
             filter_shared_uniques=filter_shared_uniques,
             timeout=timeout,
+            prefer_survivability_by_win=prefer_survivability_by_win,
+            cost_ceiling=cost_ceiling,
         )
         if rows is None:
             return None
@@ -996,6 +1059,8 @@ def rank_for_primary_archetype(
             filter_shared_uniques=filter_shared_uniques,
             alpha=alpha, beta=beta,
             timeout=timeout,
+            prefer_survivability_by_win=prefer_survivability_by_win,
+            cost_ceiling=cost_ceiling,
         )
         if rows is None:
             return None
@@ -1074,6 +1139,8 @@ def rank_for_primary_archetype(
             combo_sequence=combo_sequence,
             filter_shared_uniques=filter_shared_uniques,
             timeout=timeout,
+            prefer_kit_axis_by_win=prefer_kit_axis_by_win,
+            assume_magic_burst=assume_magic_burst,
         )
         if rows is None:
             return None
@@ -1107,6 +1174,9 @@ def rank_for_primary_archetype(
             targets_per_proc_override=targets_per_proc_override,
             filter_shared_uniques=filter_shared_uniques,
             timeout=timeout,
+            prefer_survivability_by_win=prefer_survivability_by_win,
+            assume_missing_hp_heal_amp=assume_missing_hp_heal_amp,
+            caster_missing_hp_pct=caster_missing_hp_pct,
         )
         if rows is None:
             return None
@@ -1144,6 +1214,11 @@ def rank_for_primary_archetype(
         augments=augments,
         filter_shared_uniques=filter_shared_uniques,
         timeout=timeout,
+        exempt_offclass_by_win=exempt_offclass_by_win,
+        prefer_kit_axis_by_win=prefer_kit_axis_by_win,
+        cost_ceiling=cost_ceiling,
+        assume_passive_as_stacks=assume_passive_as_stacks,
+        apply_target_vuln=apply_target_vuln,
     )
     if rows is None:
         return None
