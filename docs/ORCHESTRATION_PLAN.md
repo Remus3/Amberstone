@@ -191,6 +191,7 @@ genuinely-open ROADMAP/BACKLOG work.
 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
+| R34 | lift | LOOP cycle 5 (DIRECTOR REFILL): Section-7b heavyweight deep-dive competitor lift of Aggregator D. 6-point checklist per finding. Output docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md (12 findings). SHIPPED F1 IN-RUN (HIGH-lift LOW-risk presentation): the personal_build champ-select panel dropped the served `most_common_build`; now renders the popular-vs-winning dichotomy (a "Usual" line + per-row usual pips + a conditional survivorship insight: underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash auto-reload ADR-008, no RC restart, no ENGINE/Share). TDD RED-first, verifier-gated 24/24, 5-phase UI-audit PASS. F3 per-opponent matchup delta-stats (HIGH/new-compute) + F8 early/mid/late+snowball bar (MED) -> BACKLOG FUTURE; F2/F5/F6 defer; F4/F7/F9/F10/F12 CLOSED. Vendor names kept out of repo source (docs only). | DONE | `a3d38c0e` |
 | R28 | housekeeping | DIRECTOR REFILL: re-proposed ledger-618 tail (SwapsInto extractor fix + snapshot_panels flake + ARCHITECTURE.md:172 drift). VERIFY-THE-PREMISE -> ALL already shipped: SLICE 1 = item 619 (`95972f57`, Riot 16.13 `...ImmobilizingCCAbility` taxonomy fix - extractor canonicalizes the suffix to the legacy stem, 16.13.1 cdragon carries 5 SwapsInto correct, spell_cc_tags 31/31 green; inert-data so NO ENGINE bump per the 339/343 convention - the directive's "MUST bump ENGINE_VERSION" was itself wrong); SLICE 2a snapshot flake = item 620 (`0fe7e3bf`, Windows-scoped keep-alive, CI green - 620 ground-truth-corrected the directive's "keep HTTP/1.1 keep-alive" premise: the keep-alive ITSELF is the Linux culprit); SLICE 2b doc-drift = FALSE premise (line 172 already reads ENGINE 1.151.0 / 7511 tests / patch 16.13.1, NOT the hallucinated 1.144.0/7361). No code change warranted - a redundant ENGINE re-bump or flake re-attempt would REGRESS shipped work. CLEAN no-op, evidence-logged. | CLEAN | (docs) |
 | R33 | ui-audit | LOOP cycle 4 (DIRECTOR REFILL): 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY) of the un-audited Electron-overlay cue panels web/js/panels/{ward_cue,spike_cue,objective_chips,minimap_zoi,minimap_rect}.js + their CSS vs docs/UI_SCALE_SPEC_V2.md. FINDING (TYPOGRAPHY/HIERARCHY MUST-FIX): ward_cue.css + objective_chips.css sized their chips on the dashboard token var(--fs-xs) 16px while the sibling spike_cue.css + all overlay chrome use the overlay token var(--fs-ov-chip) 13px - the 16px ancillary cues out-shouted the 14px w-call ACTION verb (--fs-ov-call), breaking overlay hierarchy. Fixed in-slice: both routed to var(--fs-ov-chip) (overlay-scoped item-184 token; global tokens.css >=16px floor untouched - same doctrine R8 locked). RED-first guard added to test_overlay_css_typography_tokens.py. ASCII clean (\\25xx glyph escapes); HIT-TARGETS N/A (pure-display cues); minimap_rect/minimap_zoi carry no text (exempt). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. Populated overlay pixel capture OWED (no live game). | DONE | `9eb644c9` |
 | R32 | haiku-zero | LOOP cycle 3 (DIRECTOR REFILL): Lane A precompute-vs-Haiku agreement RE-MEASUREMENT via `tools/hz_shadow_report.py` on the item-614 corrected laning tables. Offline measurement only, ENGINE-IMPACT NONE (no math/network/write). Bucketed the 24,289 choice shadow records pre/post the item-614 fix boundary (commit `7383e712`, 2026-06-25T00:45:07 UTC), reusing the tool's own `record_agreement`/`classify_verdict` (whole-log result reconciles exactly to the live tool aggregate 1733/3717 0.4662). FINDING: the targeted `back_off->trade` model-error pocket is ELIMINATED (138 pre -> 0 post); post-fix aggregate dip (0.4863 -> 0.2468) is a 2-game small-sample artifact (Renekton-vs-Gragas 235/235 disagree + Nasus-vs-Gragas 77/77 agree), NOT a fix regression; a NEW pocket surfaced (`all_in->hold`, all Renekton-vs-Gragas) logged FUTURE for the next HZ_MISMATCH_DIAGNOSE. Flip readiness STILL NOT MET - do-not-flip-blind operator gate HOLDS, live coach NOT flipped. Findings doc `ops/audit/HZ_REMEASUREMENT_2026-06-27.md`. Docs+audit only (no code change -> no TDD target per the CSS-only-audit precedent item 435; full suite stays green, zero delta). | DONE | `760ff386` |
@@ -206,6 +207,37 @@ genuinely-open ROADMAP/BACKLOG work.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-27 R34 (LOOP cycle 5, DIRECTOR REFILL, head 7577e3e4) DONE (`a3d38c0e`)
+  - Section-7b heavyweight deep-dive of Aggregator D. Artifact:
+    `docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md` (12 findings, 6-point
+    checklist each). Two heavyweight agents (external teardown + RC capability
+    map hunting the R10-F8 "computed-but-never-rendered" pattern), every HAVE
+    claim re-verified against live code.
+  - Aggregator D signature = delta-vs-baseline on every row + the popular-vs
+    -winrate dichotomy (what you BUILD next to what you WIN with).
+  - SHIPPED F1 IN-RUN (HIGH-lift LOW-risk presentation, `a3d38c0e`): the
+    personal best-build champ-select card already SERVED `most_common_build`
+    (the modal completed build) + per-item `lift` but the panel dropped the
+    popular half. Now renders a "Usual" line (most-frequent build, names
+    resolved from the served items), a per-row pip marking ranked items in the
+    usual build (data-usual), and a conditional survivorship insight
+    (.pbw-insight) naming an underused-winner (positive lift, not usual) and/or
+    overused-loser (negative lift, in usual). Pure presentation over the
+    already-served /api/personal-build payload: no new compute/route/dependency.
+    Tier-1 frontend; CSS+JS only -> asset-hash auto-reload (ADR-008), no RC
+    restart, no ENGINE/Share. TDD RED-first (DOM guards `tests/
+    test_personal_build_panel_dom.py` + render/insight-branch assertions in
+    `tests/snapshot_panels/test_champ_select_view.py`); verifier CONFIRM 24/24;
+    5-phase UI-audit PASS (no MUST-FIX). Vendor names scrubbed from source
+    (docs-only). Ledger 635.
+  - FUTURE -> BACKLOG: F3 per-opponent matchup delta-stats table (HIGH, top
+    candidate; raw fields csd_at_15/team_gold_diff_trend/matchup_history already
+    recorded, only the aggregator+route+panel missing; new-compute over a
+    gitignored DB -> not built blind, same class as Aggregator B F1) + F8 early/mid/late
+    + snowball/comeback rating bar (MED, over core/lead_projection phase
+    classifier). F2/F5/F6 defer; F4/F7/F9/F10/F12 CLOSED (global-meta or shipped
+    or no multi-player corpus).
 
 - 2026-06-27 R33 (LOOP cycle 4, DIRECTOR REFILL, head 6f3faba5) DONE (`9eb644c9`)
   - Section-3b 5-phase fixture audit of the un-audited Electron-overlay glance
