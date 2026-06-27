@@ -318,6 +318,9 @@ class CoachIntegration:
                 item_ids=_owned_ids,
                 enemy_stats=_es,
                 top=5,
+                # R5 self-HP: absent -> dispatch guard yields 0.0 (OFF).
+                caster_hp=game_state.get("hp"),
+                caster_hp_max=game_state.get("hp_max"),
             )
             if _ds_dispatch is not None:
                 _ds_picks_str = _ds_dispatch.picks_str

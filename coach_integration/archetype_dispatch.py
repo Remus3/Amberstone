@@ -202,6 +202,20 @@ def dispatch_for_coach(
     timeout: Optional[float] = None,
     with_build_order: bool = False,
     build_order_slots: int = 6,
+    # Seam flags (Tier-2, behavior-preserving). Forwarded to
+    # rank_for_primary_archetype only when non-default, so a call that omits
+    # them is byte-identical to pre-seam dispatch. R5 self-HP is derived
+    # from caster_hp / caster_hp_max into caster_missing_hp_pct below.
+    exempt_offclass_by_win: bool = False,
+    prefer_kit_axis_by_win: bool = False,
+    cost_ceiling: Optional[int] = None,
+    prefer_survivability_by_win: bool = False,
+    assume_magic_burst: bool = False,
+    assume_passive_as_stacks: bool = False,
+    apply_target_vuln: bool = False,
+    assume_missing_hp_heal_amp: bool = False,
+    caster_hp: Optional[float] = None,
+    caster_hp_max: Optional[float] = None,
 ) -> Optional[CoachDispatchResult]:
     """Resolve archetype for ``champion`` + call the right DS scorer.
 
@@ -250,6 +264,38 @@ def dispatch_for_coach(
         }
         if timeout is not None:
             kwargs["timeout"] = float(timeout)
+
+        # Seam flags: forward only non-default values so a flagless dispatch
+        # stays byte-identical to pre-seam behavior (the rank_* helpers emit
+        # a body key only when truthy/non-null, mirroring `if augments:`).
+        if exempt_offclass_by_win:
+            kwargs["exempt_offclass_by_win"] = True
+        if prefer_kit_axis_by_win:
+            kwargs["prefer_kit_axis_by_win"] = True
+        if cost_ceiling is not None:
+            kwargs["cost_ceiling"] = int(cost_ceiling)
+        if prefer_survivability_by_win:
+            kwargs["prefer_survivability_by_win"] = True
+        if assume_magic_burst:
+            kwargs["assume_magic_burst"] = True
+        if assume_passive_as_stacks:
+            kwargs["assume_passive_as_stacks"] = True
+        if apply_target_vuln:
+            kwargs["apply_target_vuln"] = True
+        if assume_missing_hp_heal_amp:
+            kwargs["assume_missing_hp_heal_amp"] = True
+
+        # R5 self-HP -> caster_missing_hp_pct. Shared guard: absent HP or
+        # hp_max <= 0 yields 0.0 ("no signal", OFF) and is NOT forwarded.
+        try:
+            _hp = float(caster_hp) if caster_hp is not None else 0.0
+            _hp_max = float(caster_hp_max) if caster_hp_max is not None else 0.0
+        except (TypeError, ValueError):
+            _hp, _hp_max = 0.0, 0.0
+        if _hp_max > 0:
+            _missing = max(0.0, min(1.0, 1.0 - _hp / _hp_max))
+            if _missing:
+                kwargs["caster_missing_hp_pct"] = _missing
 
         out = _ds.rank_for_primary_archetype(**kwargs)
     except Exception as exc:  # noqa: BLE001
