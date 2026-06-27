@@ -312,10 +312,13 @@ def write_escalation(run_id: int, head_sha: str, reason: str, detail: str = "",
 
 def _run(cmd: list[str], cwd: Path | None = None, timeout: int = 120) -> tuple[int, str]:
     """Run a command, return (returncode, combined stdout+stderr). Never raises."""
+    # CREATE_NO_WINDOW: this runs under a pythonw.exe-hosted scheduled task every
+    # 2 min; without it each git/gh child allocates a console that flashes onscreen.
+    no_window = 0x08000000 if os.name == "nt" else 0
     try:
         p = subprocess.run(
             cmd, cwd=str(cwd) if cwd else None, capture_output=True,
-            text=True, timeout=timeout,
+            text=True, timeout=timeout, creationflags=no_window,
         )
         return p.returncode, (p.stdout or "") + (p.stderr or "")
     except (OSError, subprocess.SubprocessError) as exc:
