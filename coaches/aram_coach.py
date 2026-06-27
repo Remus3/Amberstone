@@ -1155,6 +1155,10 @@ def _parse_state(raw: dict) -> dict:
         "game_seconds":  game_time,
         "champion":      (me or ap).get("championName", "Unknown"),
         "hp_pct":        int(100 * hp / max(hp_max, 1)),
+        # R5 self-HP: raw numeric hp/hp_max so dispatch_for_coach can derive
+        # caster_missing_hp_pct (state.get("hp") was absent -> seam zeroed).
+        "hp":            hp,
+        "hp_max":        hp_max,
         "mana_pct":      int(100 * mp / max(mp_max, 1)),
         "gold":          int(finite(ap.get("currentGold", 0))),
         "level":         int(finite(ap.get("level", 1), 1)),
