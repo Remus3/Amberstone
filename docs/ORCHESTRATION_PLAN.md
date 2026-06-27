@@ -205,6 +205,33 @@ genuinely-open ROADMAP/BACKLOG work.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-27 R30 (DIRECTOR REFILL cycle, head a24e7e39) dsv6-magic-burst DONE ->
+  NAMING DEVIATION (audit-proposals-are-intent): the directive theme was
+  "dsv5-magic-burst", but a ground-truth grep found DSV5 already taken (the
+  comp_hp_lean AP-DoT-vs-burst EHP-gating arc, test_comp_hp_lean_dsv5.py); DSV1-5
+  are all in use, so this work ships as DSV6 (next free arc label) to keep the
+  arc labels unambiguous. The burst scorer (compute_burst_damage) under-valued AP
+  on-cast magic procs because the per-cast combo loop sums only ability casts +
+  AA hits, never the item on-cast magic burst (Luden's Echo 75+5%AP/6655,
+  Stormsurge Squall 125+10%AP/4646, Malignance Hatefog 180+15%AP/3118).
+  PREMISE-CHECK vs ground truth: all 3 ARE already modeled as PeriodicProcs so
+  compute_dps values them at their periodic RATE (ability_dot_only=False), while
+  compute_ability_dps (ability_dot_only=True) and compute_burst_damage do NOT -
+  so both the ability-DPS and burst scorers under-credit AP burst builds. DSV6
+  seam: 2 new ItemEffect fields (magic_burst_base / magic_burst_ap_ratio, the
+  one-shot burst-window magnitude) appended at END + effects.total_magic_burst_damage
+  helper + assume_magic_burst=False param on BOTH consumers. compute_burst_damage
+  folds the MR-mitigated + mode + magic-amp magic burst into total_burst (the
+  real fix - a one-shot magnitude belongs in a burst window). compute_ability_dps
+  takes the param for API symmetry but is a DOCUMENTED-INERT seam (byte-identical
+  ON or OFF): a one-shot magnitude has no dimensionally-sound place in a
+  per-second metric, and these procs are already sustained-valued in compute_dps,
+  so folding them here would be both wrong-units and a partial double-count.
+  DEFAULT-OFF -> every existing item + caller byte-identical. ENGINE_VERSION bump + DS :8893 restart
+  + Share sync in the same commit. Orchestration: single ~30-line tightly
+  coupled (schema-first) seam implemented inline by the sole merger on the
+  ground-truth-verified spec; mandatory read-only verifier gate before commit
+  (worktree fanout reserved for large disjoint workloads, not a 30-line seam).
 - 2026-06-27 R29 (DIRECTOR REFILL cycle, head 32a14490) SUPERSEDED - the L4
   capability-gap TAIL (zone_control via ZoneControlResult.controls_terrain boolean
   min 2; objective_damage via ObjDamageResult.objdamage_score >= 0.5 min 2 - score
