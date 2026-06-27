@@ -87,9 +87,10 @@ function _signature(payload) {
     return payload && payload.confidence ? `_${payload.confidence}` : "_empty";
   }
   const champ = payload.champion || "";
+  const usual = (payload.most_common_build || []).join(",");
   return champ + "#" + items
     .map((it) => `${it.item_id}:${Math.round((+it.lift || 0) * 100)}`)
-    .join("|");
+    .join("|") + "#u:" + usual;
 }
 
 // HTML-escape backend item names / champ slug before innerHTML
@@ -114,15 +115,61 @@ function _liftLabel(lift) {
   return pp > 0 ? `+${pp}` : String(pp);
 }
 
-function _rowHtml(it) {
+// Set of most_common_build ids (as strings) - the operator's MOST FREQUENT
+// completed build, served alongside the win-rate ranking. Surfacing the
+// popular build next to the win-rate build exposes the gap between "what you
+// build" and "what you win with" (the survivorship-bias read).
+function _usualSet(payload) {
+  const ids = payload && Array.isArray(payload.most_common_build)
+    ? payload.most_common_build : [];
+  return new Set(ids.map((x) => String(x)));
+}
+
+// The popular-vs-winning survivorship insight, computed PURELY from the served
+// payload (no DOM): an UNDERUSED WINNER (positive lift, NOT in the usual build)
+// and/or an OVERUSED LOSER (negative lift, IN the usual build). A >=1pp gate
+// drops sub-rounding noise. Returns {kind, text} or null.
+function _usualBuildInsight(payload) {
+  const items = _items(payload);
+  if (!items.length) return null;
+  const usual = _usualSet(payload);
+  const pp = (it) => Math.round((+it.lift || 0) * 100);
+  let winner = null;   // best positive-lift item NOT in the usual build
+  let loser = null;    // most-negative-lift item IN the usual build
+  for (const it of items) {
+    const v = pp(it);
+    const inUsual = usual.has(String(it.item_id));
+    if (!inUsual && v >= 1 && (!winner || v > pp(winner))) winner = it;
+    if (inUsual && v <= -1 && (!loser || v < pp(loser))) loser = it;
+  }
+  const nm = (it) => _esc(it.name || it.item_id || "");
+  if (winner && loser) {
+    return { kind: "swap",
+      text: `Try ${nm(winner)} (+${pp(winner)}) over your usual `
+        + `${nm(loser)} (${pp(loser)})` };
+  }
+  if (winner) {
+    return { kind: "winner",
+      text: `Underused: ${nm(winner)} (+${pp(winner)}) wins but is not `
+        + `your usual build` };
+  }
+  if (loser) {
+    return { kind: "loser", text: `Usual but losing: ${nm(loser)} (${pp(loser)})` };
+  }
+  return null;
+}
+
+function _rowHtml(it, usual) {
   const wr = _clampPct((+it.adj_win_rate || 0) * 100);
   // Sign drives the bar + lift color. A lift that rounds to 0pp is neutral
   // (muted), NOT red - a red "0" reads as a contradiction.
   const pp = Math.round((+it.lift || 0) * 100);
   const sign = pp > 0 ? "pos" : pp < 0 ? "neg" : "zero";
   const games = +it.games || 0;
+  const inUsual = !!(usual && usual.has(String(it.item_id)));
   return (
-    `<div class="pbw-row">`
+    `<div class="pbw-row" data-usual="${inUsual ? 1 : 0}">`
+    + `<span class="pbw-usual-pip" title="in your usual build"></span>`
     + `<span class="pbw-item">${_esc(it.name || it.item_id || "")}</span>`
     + `<span class="pbw-bar"><span class="pbw-bar-fill" data-sign="${sign}"`
     + ` style="width:${wr}%"></span></span>`
@@ -165,9 +212,30 @@ export function renderPersonalBuild(blockEl, payload) {
   );
   const note = thin
     ? `<div class="pbw-thin">thin sample - directional only</div>` : "";
-  const rows = items.map(_rowHtml).join("");
 
-  blockEl.innerHTML = head + note + `<div class="pbw-rows">${rows}</div>`;
+  // Popular-vs-winning: the operator's MOST FREQUENT completed build shown
+  // next to the win-rate ranking, resolved to names via the served
+  // items (falls back to the raw id when a usual item was min-sample filtered
+  // out of the ranked list).
+  const usual = _usualSet(payload);
+  const rows = items.map((it) => _rowHtml(it, usual)).join("");
+  let usualLine = "";
+  if (usual.size) {
+    const nameById = Object.create(null);
+    for (const it of items) nameById[String(it.item_id)] = it.name || it.item_id;
+    const names = (payload.most_common_build || [])
+      .map((id) => _esc(nameById[String(id)] || id));
+    usualLine = `<div class="pbw-usual-build">`
+      + `<span class="pbw-usual-label">Usual</span> ${names.join(", ")}</div>`;
+  }
+
+  const insight = _usualBuildInsight(payload);
+  const insightLine = insight
+    ? `<div class="pbw-insight" data-kind="${insight.kind}">${insight.text}</div>`
+    : "";
+
+  blockEl.innerHTML = head + note + usualLine
+    + `<div class="pbw-rows">${rows}</div>` + insightLine;
 }
 
 // Reset helper for tests (clears in-memory cache + sig stamps).
@@ -183,6 +251,8 @@ export const __test = {
   _signature,
   _liftLabel,
   _clampPct,
+  _usualSet,
+  _usualBuildInsight,
   pbwModeForQueue,
   _PBW_TTL_MS,
 };

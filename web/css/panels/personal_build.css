@@ -60,6 +60,45 @@
   margin-bottom: 2px;
 }
 
+/* R34 (popular-vs-winning): the operator's most FREQUENT completed
+ * build, shown next to the win-rate ranking; per-row pips mark which ranked
+ * items belong to it; the insight callout names the popular-vs-winning gap. */
+.pbw-usual-build {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 2px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pbw-usual-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.45);
+  margin-right: 4px;
+}
+
+.pbw-insight {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  line-height: 1.3;
+}
+
+.pbw-insight[data-kind="loser"] {
+  color: var(--signal-warn, #E8A33D);
+}
+
+.pbw-insight[data-kind="swap"],
+.pbw-insight[data-kind="winner"] {
+  color: var(--signal-good, #37D08A);
+}
+
 .pbw-rows {
   display: flex;
   flex-direction: column;
@@ -78,6 +117,21 @@
 
 .pbw-row:first-of-type {
   border-top: none;
+}
+
+/* Per-row pip: a small dot marking an item that is in the usual build. Always
+ * laid out (stable name alignment); only painted on rows flagged usual. */
+.pbw-usual-pip {
+  flex: 0 0 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal-good, #37D08A);
+  visibility: hidden;
+}
+
+.pbw-row[data-usual="1"] .pbw-usual-pip {
+  visibility: visible;
 }
 
 .pbw-item {

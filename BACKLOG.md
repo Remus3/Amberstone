@@ -146,3 +146,12 @@ Full artifact: `docs/COMPETITOR_LIFT_2026-06-16.md`. 3 net-new targets (Aggregat
 **SUPERSEDED (no lift):**
 - **Overlay App F per-ability/per-phase damage breakdown** - DS per-spell DPS/burst is already richer than the observed split. No lift.
 - **Overlay App E post-game behavioral grading** - mostly at-parity with RC's PGR + the aggregator G reframe; only the "biggest swing moment" timeline-delta localizer is net-new and folds into the PGR work.
+
+### Competitor lift teardown - 2026-06-27 (Aggregator D, Section 7b deep-dive, R34)
+
+Full artifact: `docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md`. Signature = delta-vs-baseline on every row + the popular-vs-winrate dichotomy. F1 (popular build shown next to the win-rate build + survivorship insight) SHIPPED in-run on the personal_build champ-select panel (presentation over the already-served `most_common_build`).
+
+**FUTURE (worth noting; condition to act):**
+- **F3 per-opponent matchup delta-stats table (TOP candidate)** - a new aggregator over `core/match_metrics.py` `csd_at_15`/`team_gold_diff_trend`/`matchup_history` + `rewind_history.db`, surfacing "vs champ X over my corpus: avg gold/CS/kill diff @15" + a new route + a Build Insights tab. The raw fields are RECORDED (only surfaced as a single live in-game value at `dashboard/_adaptation_latch.py:177`); `/api/personal-vs` returns W/L + threat only, no stat diffs. MED: new aggregation over a gitignored DB (needs fixtures, clean-checkout-probe risk). Same class as the Aggregator B F1 deferral - do not build blind in-run. Trigger: a Build Insights matchup expansion.
+- **F8 early/mid/late + snowball/comeback rating bar** - a per-champ corpus aggregation over the already-computed `core/lead_projection.py` `_phase` + `comeback_odds` (today a single live pill, not a per-champ rating panel). MED new-compute. Trigger: a Player Profile / PGR expansion.
+- **F2/F5/F6 (defer)** - delta column on the WPA tabs (headline per-item lift already shipped); skill priority(lvl10) vs order(lvl15) split (needs timeline frames); per-rune pick% column on rune-WPA. All MED, touch don't-redo tabs.
