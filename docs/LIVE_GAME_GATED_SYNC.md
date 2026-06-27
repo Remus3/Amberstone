@@ -808,3 +808,17 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   and confirm the early-vs-late level-discounted anti-tank scores read sane vs a real game (e.g. a level-3 Aatrox
   ranks below a level-16 Aatrox on the same tank). A WRONG ramp is worse than the flat magnitude, so do NOT
   default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-06-27 R30 / DSV6 on-cast magic-burst seam (`compute_burst_damage(assume_magic_burst=)`, ENGINE 1.152.0,
+  default-OFF). Item on-cast magic procs the per-cast burst combo loop never credited
+  (`agents/daemon_slayer/_effects_data.py` magic_burst_base/magic_burst_ap_ratio: Luden's Echo 6655 75+5%AP,
+  Stormsurge Squall 4646 125+10%AP, Malignance Hatefog 3118 180+15%AP one ult-zone). compute_burst_damage stays
+  byte-identical until `assume_magic_burst=True`, when sum(base + ap_ratio*ap) is credited MR-mitigated (MAGIC
+  routing) x mode_mult x magic_amp into total_burst (after the rune + execute layers). compute_ability_dps takes
+  the same kwarg but is DELIBERATELY INERT (a one-shot magnitude has no place in a per-second metric; compute_dps
+  already values these at their PeriodicProc rate, so folding them in the ability-DPS scorer would be wrong-units
+  AND a partial double-count). OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): wire a
+  burst-scoring / rank consumer (burst.rank_items_by_burst, /rank-assassin, the offense-burst surface) to call
+  compute_burst_damage with assume_magic_burst=True, and confirm an AP/magic burst build (Veigar/Syndra/Annie with
+  Luden's or Stormsurge) ranks its on-cast magic item ABOVE where the seam-OFF engine placed it, vs a real game.
+  A WRONG burst credit is worse than no credit, so do NOT default-ON until validated. DS `:8893` restart on flip.
+  Does NOT block any further stage.
