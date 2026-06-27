@@ -243,7 +243,7 @@
       var canvas=document.getElementById('hexcore-canvas');
       var ctx=canvas.getContext('2d');
 
-      var USE_GL = /[?&]webgl=1\b/.test(location.search);
+      var USE_GL = !/[?&]webgl=0\b/.test(location.search);  // default ON; ?webgl=0 forces the 2D path (auto-falls back to 2D if WebGL is unavailable)
       var GLDPR_CAP = 1.5;
       var glow = null;            // glow-field module (created below if USE_GL)
       var glCanvas = null;
