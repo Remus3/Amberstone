@@ -25,13 +25,16 @@ ROOT = Path(__file__).resolve().parent.parent
 ARCHIVE_DIR = ROOT / "_archive" / "2026-06-20-rc2-p73"
 TOOLS = ROOT / "tools"
 
-# The 8 one-shot scripts quarantined this stage (already-applied hotfixes,
+# The 7 one-shot scripts quarantined this stage (already-applied hotfixes,
 # migrations, and loadout one-shots; refs only in dated docs + docstrings).
+# NOTE: caveman_default.py was REMOVED from this list 2026-06-27 - it was revived
+# (R29) as the live SessionStart output-dialect hook (tools/caveman_default.py,
+# wired in .claude/settings.json), so it is intentionally present under tools/ and
+# must NOT be quarantined.
 QUARANTINED = [
     "hotfix_sr_adc_loadouts_item167.py",
     "hotfix_arena_mage_mislabel_item273.py",
     "migrate_abilities_units_2026_05_30.py",
-    "caveman_default.py",
     "champion_loadout_handcurate_merge.py",
     "champion_loadout_handcurate.py",
     "migrate_carry_summoners_flash_barrier.py",
