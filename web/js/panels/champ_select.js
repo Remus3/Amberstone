@@ -991,7 +991,8 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     ${buildsHtml}
     ${boHtml}
     <div class="csv-sugg-section cc-blended-ehp-threat" id="csv-sugg-cc-blended-ehp-threat" data-cc-tier="warn" hidden></div>
-    <div class="csv-sugg-section cc-conditional-pressure" id="csv-sugg-cc-conditional-pressure" data-cc-cond-tier="warn" hidden></div>`;
+    <div class="csv-sugg-section cc-conditional-pressure" id="csv-sugg-cc-conditional-pressure" data-cc-cond-tier="warn" hidden></div>
+    <div class="csv-sugg-section capability-gap" id="csv-sugg-capability-gap" hidden></div>`;
   // Wire click handlers on the summoner-spell strip (idempotent - body
   // innerHTML rebuild on each render attaches fresh handlers). Click N=1
   // fills the D slot, click N=2 fills the F slot, then wraps. Skips
@@ -1158,6 +1159,15 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
   // max-rank base cooldown ("watch their hook - 16s"). Joins the CC threat
   // registries to per-rank ability cooldowns from champion_abilities.json.
   _csvRenderCooldownWatch(cs);
+  // 2026-06-26 (item 633): L4 Phase-D capability-gap surface. For the
+  // operator's OWN locked champion vs the live enemy roster, the single
+  // highest-severity capability DEFICIT (anti-tank / anti-heal / anti-poke)
+  // from core.ds_capability_gap, surfaced behind the backend default-OFF
+  // RC_CAPGAP_SURFACE flag - the chip stays hidden until the flag is ON
+  // (the route returns capability_gap=null otherwise), so this is inert by
+  // default. Mirrors the my-champion + enemy-roster resolution of
+  // _csvRenderPersonalBuild + _csvRenderCooldownWatch.
+  _csvRenderCapabilityGap(cs);
   // 2026-06-25: personal best-build card. For the operator's OWN locked
   // champion (cs.my_champion), the completed items they win with from their
   // rewind_history.db - a "your best build" read alongside the DS engine
@@ -2204,6 +2214,114 @@ function _csvRenderCooldownWatch(cs) {
   fetchCooldownWatch(enemyNames, _csvScheduleRender);
   const payload = getCachedCooldownWatch(enemyNames);
   renderCooldownWatch(block, payload);
+}
+
+// 2026-06-26 (item 633): L4 Phase-D capability-gap chip. Self-contained
+// fetch/cache/render: the verdict rides on the EXISTING /api/ds-preview
+// response (new `capability_gap` field, default-OFF RC_CAPGAP_SURFACE) so
+// no new endpoint is added. Keyed by my-champion + enemy roster + mode so a
+// pick/ban swap re-fetches. The cache stores `false` for a resolved
+// no-gap (or flag-off) response so we do not refetch the same key forever.
+const _CSV_CAPGAP_CACHE = {};
+const _CSV_CAPGAP_INFLIGHT = {};
+
+function _csvCapgapKey(myChamp, enemyNames, mode) {
+  return `${myChamp}|${(enemyNames || []).join(",")}|${mode}`;
+}
+
+function _csvFetchCapabilityGap(myChamp, enemyNames, mode, cb) {
+  if (!myChamp || !(enemyNames && enemyNames.length) || !mode) return;
+  const key = _csvCapgapKey(myChamp, enemyNames, mode);
+  if (key in _CSV_CAPGAP_CACHE || _CSV_CAPGAP_INFLIGHT[key]) return;
+  _CSV_CAPGAP_INFLIGHT[key] = true;
+  // UI mock short-circuit (mirrors _csvFetchUserVariants): under
+  // ?ui_mock=1 the chip seeds from the fixture's capability_gap block so
+  // the champ-select page renders the chip deterministically for the
+  // visual-audit ritual (the live /api/ds-preview path is default-OFF).
+  const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
+  if (isMock) {
+    fetch("/data/ui_mock/champ_select_sr.json", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((data) => {
+        _CSV_CAPGAP_INFLIGHT[key] = false;
+        _CSV_CAPGAP_CACHE[key] = (data && data.capability_gap) || false;
+        if (_CSV_CAPGAP_CACHE[key]) { try { cb && cb(); } catch (_) {} }
+      })
+      .catch(() => { _CSV_CAPGAP_INFLIGHT[key] = false; _CSV_CAPGAP_CACHE[key] = false; });
+    return;
+  }
+  fetch("/api/ds-preview", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      champion: myChamp, enemies: enemyNames, mode, level: 6, items: [],
+    }),
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data) => {
+      _CSV_CAPGAP_INFLIGHT[key] = false;
+      // null (flag OFF / no gap) -> store `false` so the `in` guard above
+      // treats the key as resolved and we stop refetching it.
+      _CSV_CAPGAP_CACHE[key] = (data && data.capability_gap) || false;
+      if (_CSV_CAPGAP_CACHE[key]) { try { cb && cb(); } catch (_) {} }
+    })
+    .catch(() => { _CSV_CAPGAP_INFLIGHT[key] = false; });
+}
+
+function _csvGetCachedCapabilityGap(myChamp, enemyNames, mode) {
+  const v = _CSV_CAPGAP_CACHE[_csvCapgapKey(myChamp, enemyNames, mode)];
+  return v || null;  // `false`/undefined -> null (render hides the chip)
+}
+
+// Axis -> operator-facing label. The backend axis keys are itemization-
+// direct; the labels name the COUNTER the operator should buy/play toward.
+const _CSV_CAPGAP_AXIS_LABEL = {
+  anti_tank: "Anti-tank",
+  sustain:   "Anti-heal",
+  poke:      "Anti-poke",
+};
+
+function _csvRenderCapabilityGapBlock(block, payload) {
+  if (!payload || !payload.applies) { block.hidden = true; return; }
+  const axis = String(payload.top_gap || "");
+  const axisLabel = _CSV_CAPGAP_AXIS_LABEL[axis]
+    || (axis ? axis.replace(/_/g, " ") : "Gap");
+  const verdict = String(payload.verdict || "");
+  block.dataset.capgapAxis = axis || "none";
+  block.hidden = false;
+  block.innerHTML = `
+    <div class="capability-gap-head">
+      <span class="capability-gap-badge">GAP</span>
+      <span class="capability-gap-axis">${escHtml(axisLabel)}</span>
+    </div>
+    <div class="capability-gap-verdict">${escHtml(verdict)}</div>`;
+}
+
+function _csvRenderCapabilityGap(cs) {
+  const block = document.getElementById("csv-sugg-capability-gap");
+  if (!block) return;
+  const myId = (cs.my_champion | 0);
+  const enemyNumericIds = (cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0)
+    .filter((x) => x > 0);
+  if (myId <= 0 || !enemyNumericIds.length) { block.hidden = true; return; }
+  const myNames = resolveChampNames([myId]);
+  const myChamp = myNames.length ? myNames[0] : "";
+  const enemyNames = resolveChampNames(enemyNumericIds);
+  if (!myChamp || !enemyNames.length) {
+    // CHAMPS index not yet loaded - keep hidden, resolves next tick.
+    block.hidden = true;
+    return;
+  }
+  // Map queue_id to mode (same vocabulary as the sibling chips). Default SR.
+  let mode = "SR";
+  const q = cs.queue_id | 0;
+  if (q === 2400) mode = "KIWI";
+  else if (q === 1700 || q === 1710 || q === 1750) mode = "ARENA";
+  else if (q === 450 || q === 920) mode = "ARAM";
+  _csvFetchCapabilityGap(myChamp, enemyNames, mode, _csvScheduleRender);
+  const payload = _csvGetCachedCapabilityGap(myChamp, enemyNames, mode);
+  _csvRenderCapabilityGapBlock(block, payload);
 }
 
 // 2026-06-25: personal best-build card. Reads the operator's OWN locked

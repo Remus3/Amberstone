@@ -197,5 +197,20 @@
         ]
       }
     ]
+  },
+  "capability_gap": {
+    "applies": true,
+    "my_champion": "Jinx",
+    "mode": "SR",
+    "top_gap": "anti_tank",
+    "verdict": "Enemy comp tanky (2); itemize anti-tank (%max-HP / armor pen).",
+    "gaps": [
+      {
+        "axis": "anti_tank",
+        "demand_count": 2,
+        "severity": 2.0,
+        "detail": "Enemy comp tanky (2); itemize anti-tank (%max-HP / armor pen)."
+      }
+    ]
   }
 }
