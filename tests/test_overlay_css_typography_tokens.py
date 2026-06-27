@@ -29,6 +29,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OVERLAY_CSS = ROOT / "web" / "css" / "overlay.css"
 TOKENS_CSS = ROOT / "web" / "css" / "tokens.css"
+PANELS_CSS = ROOT / "web" / "css" / "panels"
+
+# The overlay-ONLY glance-cue panel stylesheets (each base rule is display:none
+# and only body[data-shell="overlay"] shows it). They are siblings in the overlay
+# CALL pane, so their chips MUST consume the overlay chip token --fs-ov-chip (13px)
+# - NOT the dashboard chip token --fs-xs (16px), which out-shouts the w-call ACTION
+# verb (--fs-ov-call 14px) and breaks the overlay typographic hierarchy. This is
+# the same overlay-scoped-token doctrine R8 locked for overlay.css (the global
+# tokens.css keeps its >=16px floor; overlay surfaces use the --fs-ov-* scale).
+_OVERLAY_CUE_CSS = ("ward_cue.css", "spike_cue.css", "objective_chips.css")
 
 # Every property declaration of the shape `font-size: <N>px` (a bare pixel
 # literal, not a var() reference). The token DEFINITIONS (--fs-ov-chip: 13px)
@@ -91,4 +101,39 @@ def test_overlay_subfloor_tokens_are_overlay_scoped_not_global():
         assert int(m.group(1)) >= 16, (
             f"tokens.css gained a sub-16px font token ({m.group(0)}); overlay "
             "sub-floor exceptions belong in overlay.css, not the global scale"
+        )
+
+
+def test_overlay_cue_panels_use_overlay_chip_token():
+    """R33 (DIRECTOR REFILL 2026-06-27) - the overlay-only glance cue panels
+    (ward/spike/objective) size their chips on the overlay chip token
+    var(--fs-ov-chip), not the dashboard var(--fs-xs). They are siblings in the
+    overlay CALL pane; a 16px dashboard chip out-shouts the 14px w-call ACTION
+    verb and breaks the overlay hierarchy (same doctrine R8 locked for
+    overlay.css)."""
+    for name in _OVERLAY_CUE_CSS:
+        css = (PANELS_CSS / name).read_text(encoding="utf-8")
+        assert "var(--fs-ov-chip" in css, (
+            f"{name}: an overlay-only cue panel must size its chip on the overlay "
+            "chip token var(--fs-ov-chip), not a dashboard font token"
+        )
+        # No font-size routed through the dashboard --fs-xs token on an
+        # overlay-only surface (the overlay scale is --fs-ov-*).
+        assert not re.search(r"font-size:\s*var\(--fs-xs\)", css), (
+            f"{name}: overlay-only cue chip uses dashboard font-size "
+            "var(--fs-xs) (16px); use the overlay token var(--fs-ov-chip) (13px)"
+        )
+
+
+def test_overlay_cue_panels_no_bare_subfloor_font_px():
+    """No bare `font-size: Npx` literal in the overlay cue panel CSS - every
+    font-size resolves through a var(--fs-*) token (mirrors the overlay.css
+    guard). The relative-em glyph sizes (0.9em / 0.95em) are intentionally not
+    pixel literals and are unaffected."""
+    for name in _OVERLAY_CUE_CSS:
+        css = (PANELS_CSS / name).read_text(encoding="utf-8")
+        offenders = _BARE_FONT_PX.findall(css)
+        assert not offenders, (
+            f"{name} has bare px font-size literal(s): {offenders} - tokenize "
+            "them through var(--fs-ov-chip)"
         )
