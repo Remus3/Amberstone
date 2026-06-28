@@ -385,7 +385,6 @@ function renderStats(p) {
   setv("st-death-pattern",p.death_pattern);
   setv("st-winc",         p.wincon_ability_up);
   setv("st-ally-summs",   p.ally_summs_up);
-  setv("st-enemy-summs",  p.enemy_summs_tracked);
   setv("st-flank",        p.flank_success);
   // MAP PRESENCE
   setv("st-vision",       p.vision_summary);
