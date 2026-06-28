@@ -806,7 +806,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | B2 horizontal 3-row scaffold | W3 | B1, C5 | T1 | OPEN |
 | B3 Live+Meta item semantics | W4 | B2 | T1 | OPEN |
 | B4 MF SR fixture oracle | W3 | B2, C2 | T1 | OPEN |
-| C1 kit-synergy profiles | W2 | - | T1 | OPEN |
+| C1 kit-synergy profiles | W2 | - | T1 | DONE 2026-06-28 (a4e1cde3) |
 | C2 scoring + beam search | W2 | C1 | T1 | OPEN |
 | C3 live counter-build | W3 | C2 | T1 | OPEN |
 | C4 owned re-plan + hysteresis | W3 | C2, C3 | T1 | OPEN |
