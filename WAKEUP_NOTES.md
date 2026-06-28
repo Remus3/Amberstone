@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-28 (overlay-build loop - WP-A6 remove CALL/FIGHT MODEL/MAP pane name headers; b089d130)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). Next OPEN W1 after A5: A6 (T1, deps A5 DONE). A1-A6 now ALL DONE - the A-section is complete.
+
+- **WP-A6 (b089d130).** index.html ONLY (DOM removal, A4/A5 precedent - turned out no overlay.css edit, so no shared-file collision). Removed the CALL/FIGHT MODEL/MAP `<div class="am-pane-head">` title divs (pure titles, zero JS consumers). CDS: dropped only the `<span>CDS</span>` label, KEPT cd-ledger-head + cd-chev (cd_ledger.js wires the collapse click + chevron onto that head - removing it breaks collapse). BUILD untouched (its header holds am-draft-elo; -> WP-B1). Updated the existing DS-controls MountTests assertion (pinned FIGHT MODEL header present -> now asserts removed). RED-first tests/test_overlay_a6_pane_headers_removed.py 4->9 green. Tier-1, ADR-008 (no RC restart). LEDGER 658, Section J A6 -> DONE.
+- **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static :8810 ?overlay=1#active-match: CALL/FIGHT MODEL/MAP hasHead=false, BUILD hasHead=true+am-draft-elo, CDS head+chev present + "CDS" text gone; imported cd_ledger.js + attachCooldownLedgerHandlers() + clicked head -> collapse round-trips (chev - <-> +, pane cd-collapsed toggles). Verifier CONFIRM (A6 9/0).
+- **PRE-EXISTING (do-not-chase, NOT A6):** 4 [data-panelset] overlay.css drift failures + 1 AsciiHygiene collection error (task_72ca84ec) - PROVEN pre-existing by stash (web/index.html + the ds_controls test stashed -> the same 4+1 fail identically on HEAD; A6 edited NO overlay.css). Local sweep 110 passed.
+- **NEXT (loop):** Section J next OPEN W1 = B1 (strip DS-ENGINE caption + "No Draft prior", T1, active_match.js - foundational for B2/B3; serialize ALL of Section B on active_match.js). Then C1 (kit-synergy, W2). E5 (docs sweep, T0) + F5-H02/F5-M01 (W0) still open.
+
+---
+
 # 2026-06-28 (overlay-build loop - WP-A5 enemy-spells drop name + full aligned champ names; 69a3929f)
 
 Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). Next OPEN W1 after A4b: A5 (T1, deps none).
@@ -26,15 +37,4 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 
 ---
 
-# 2026-06-28 (electron companion window controls + overlay launcher + WP-A4a role-bracket bench route; 93550a4e + c172f6b5 + b883254c)
-
-Two-part session: operator-direct electron UX, then headless overlay-build-continue WP-A4a. 3 commits, all pushed, CI green. RC restarted (now pid 4808, reload_ok).
-
-- **Companion window controls + launcher (93550a4e).** Desktop "RC Overlay.lnk" -> electron.exe . (no console flash) + rc-shell/launch_overlay.bat. Minimize / Close / always-on-top-toggle top-right in the FRAMELESS companion (not-in-game) titlebar; COMPANION-ONLY (the in-game overlay HUD never gets close/min - focus hazard). NEW pure rc-shell/src/window_controls.js (CSS-drawn ASCII glyphs) + preload bridge (winMinimize/winClose/winToggleAlwaysOnTop/winGetAlwaysOnTop) + ipcMain reusing the existing toggleAlwaysOnTop() so menu checkbox + pin stay coherent (gold chevron when pinned). 299 rc-shell node tests (9 new). Visual proxy via Claude_Preview inject - real electron launch is operator-gated.
-- **WP-A4a /api/role-bracket-bench (c172f6b5).** Operator role x game-time-bracket SR averages (lvl/cs/tf/kda) -> feeds the A4b stats panel. DATA-SOURCE DEVIATION (do-not-redo, in RC_WORK_TRACKER): plan named core.benchmarks but it is per-CHAMPION only (no role/bracket/kda); used data/rewind_history.db tracked-participant rows -> NEW core/role_bracket_bench.py + dashboard/routes_bench_role_bracket.py. Brackets early(<25m)/mid(25-35m)/late(>=35m) over game_duration_s; tf=tracked_kp. Read-only DB connect; empty grid on CI/clean-checkout (route ok:true/n:0, never 500). RED-first tests/test_routes_bench_role_bracket.py 18 green; live 200 {lvl 16.58 cs 224.82 tf 52.67 kda 3.96 n33}, role-correct (support cs~33/KP~63). Tier-2 full tests/ 9748 passed; no DS/ENGINE/Share. Verifier CONFIRM. Section J A4a -> DONE; LEDGER 655.
-- **PRE-EXISTING failures (do-not-redo, NOT A4a regressions; flagged task_72ca84ec):** the full tests/ run had 9 fails + 1 error all UNRELATED - overlay.css [data-panelset] gate drift (RC2 redesign), ROADMAP.md over the 80KB budget, zoi teardown, ds_preview capgap order-flake. PROVEN pre-existing: stash the _dispatch.py edit and they fail identically; the suspect tests grep zero role-bracket.
-- **NEXT (loop):** Section J next OPEN W0 = A4b (stats vertical frontend - deps A4a now DONE -> READY, a UI WP so it needs the G.9 5-phase audit + Claude_Preview vs /api/state), A5 (enemy-spells widen+unname, T1), B1 (strip DS-ENGINE caption, T1), C1 (kit-synergy profiles, W2). E5 docs sweep (T0) still open.
-
----
-
-(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-A5 /done prune)
+(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-A6 /done prune)

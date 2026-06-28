@@ -1,5 +1,18 @@
 # RC session history archive
 
+## Relocated 2026-06-28 (WP-A6 /done - keep last 3 sessions: A6 + A5 + A4b)
+
+# 2026-06-28 (electron companion window controls + overlay launcher + WP-A4a role-bracket bench route; 93550a4e + c172f6b5 + b883254c)
+
+Two-part session: operator-direct electron UX, then headless overlay-build-continue WP-A4a. 3 commits, all pushed, CI green. RC restarted (now pid 4808, reload_ok).
+
+- **Companion window controls + launcher (93550a4e).** Desktop "RC Overlay.lnk" -> electron.exe . (no console flash) + rc-shell/launch_overlay.bat. Minimize / Close / always-on-top-toggle top-right in the FRAMELESS companion (not-in-game) titlebar; COMPANION-ONLY (the in-game overlay HUD never gets close/min - focus hazard). NEW pure rc-shell/src/window_controls.js (CSS-drawn ASCII glyphs) + preload bridge (winMinimize/winClose/winToggleAlwaysOnTop/winGetAlwaysOnTop) + ipcMain reusing the existing toggleAlwaysOnTop() so menu checkbox + pin stay coherent (gold chevron when pinned). 299 rc-shell node tests (9 new). Visual proxy via Claude_Preview inject - real electron launch is operator-gated.
+- **WP-A4a /api/role-bracket-bench (c172f6b5).** Operator role x game-time-bracket SR averages (lvl/cs/tf/kda) -> feeds the A4b stats panel. DATA-SOURCE DEVIATION (do-not-redo, in RC_WORK_TRACKER): plan named core.benchmarks but it is per-CHAMPION only (no role/bracket/kda); used data/rewind_history.db tracked-participant rows -> NEW core/role_bracket_bench.py + dashboard/routes_bench_role_bracket.py. Brackets early(<25m)/mid(25-35m)/late(>=35m) over game_duration_s; tf=tracked_kp. Read-only DB connect; empty grid on CI/clean-checkout (route ok:true/n:0, never 500). RED-first tests/test_routes_bench_role_bracket.py 18 green; live 200 {lvl 16.58 cs 224.82 tf 52.67 kda 3.96 n33}, role-correct (support cs~33/KP~63). Tier-2 full tests/ 9748 passed; no DS/ENGINE/Share. Verifier CONFIRM. Section J A4a -> DONE; LEDGER 655.
+- **PRE-EXISTING failures (do-not-redo, NOT A4a regressions; flagged task_72ca84ec):** the full tests/ run had 9 fails + 1 error all UNRELATED - overlay.css [data-panelset] gate drift (RC2 redesign), ROADMAP.md over the 80KB budget, zoi teardown, ds_preview capgap order-flake. PROVEN pre-existing: stash the _dispatch.py edit and they fail identically; the suspect tests grep zero role-bracket.
+- **NEXT (loop):** Section J next OPEN W0 = A4b (stats vertical frontend - deps A4a now DONE -> READY, a UI WP so it needs the G.9 5-phase audit + Claude_Preview vs /api/state), A5 (enemy-spells widen+unname, T1), B1 (strip DS-ENGINE caption, T1), C1 (kit-synergy profiles, W2). E5 docs sweep (T0) still open.
+
+---
+
 ## Relocated 2026-06-28 (WP-A5 /done - keep last 3 sessions: A5 + A4b + A4a/companion)
 
 # 2026-06-28 (overlay-build loop - WP-A3 coach [t]-tag strip + truncation removal; ea100097 + 68841ce5)
