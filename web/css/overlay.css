@@ -719,17 +719,7 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-slider input[type="range
 /* --- Enemy summoner-spell tap-tracker (w-enemyspells) ------------------------
  * A click-through zone: tap a chip when a spell is used -> base-CD countdown. */
 body[data-shell="overlay"] .ovx-enemyspells {
-  max-width: 230px;
-}
-body[data-shell="overlay"] .ovx-enemyspells .es-head {
-  color: rgba(var(--ovx-gold), 0.90);
-  font-size: var(--fs-ov-head);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  padding-bottom: 4px;
-  margin-bottom: 5px;
-  border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
+  max-width: 360px;
 }
 body[data-shell="overlay"] .ovx-enemyspells .es-row {
   display: flex;
@@ -737,12 +727,14 @@ body[data-shell="overlay"] .ovx-enemyspells .es-row {
   gap: 5px;
   margin: 3px 0;
 }
+/* Name column sizes to the shared longest-name basis (--es-champ-ch, set per
+ * roster by enemy_spells.js) so every row's chips align; no slice, no ellipsis -
+ * the full champion name always renders. */
 body[data-shell="overlay"] .ovx-enemyspells .es-champ {
-  flex: 0 0 58px;
+  flex: 0 0 auto;
+  min-width: calc(var(--es-champ-ch, 12) * 1ch);
   font-size: var(--fs-sm);
   color: rgba(var(--ovx-text), 0.82);
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 body[data-shell="overlay"] .ovx-enemyspells .es-chip {
