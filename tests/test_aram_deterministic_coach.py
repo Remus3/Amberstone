@@ -154,3 +154,76 @@ def test_heal_threat_appended_to_reasons() -> None:
     assert any(
         "grievous" in str(v).lower() for v in block["item_build_reasons"].values()
     )
+
+
+# ---------------------------------------------------------------------------
+# build_order -> item_build assembly (deterministic fill from the ARAM table).
+# Previously item_build was always passed "" by the caller; now the caller
+# passes the full ordered completed-item list and build_block joins the first
+# 4-6 into a comma-separated string. Empty/None order keeps item_build "".
+# ---------------------------------------------------------------------------
+
+
+def test_build_order_list_joined_into_item_build() -> None:
+    # A full 6-item ARAM order joins into a comma-separated string of <=6 items.
+    order = [
+        "Blade of The Ruined King",
+        "Berserker's Greaves",
+        "Runaan's Hurricane",
+        "Lord Dominik's Regards",
+        "Yun Tal Wildarrows",
+        "Infinity Edge",
+    ]
+    block = build_block(hp_pct=80.0, build_order=order)
+    items = [s.strip() for s in block["item_build"].split(",")]
+    assert items == order
+    assert len(items) <= 6
+    assert ", " in block["item_build"]
+
+
+def test_build_order_caps_at_six_items() -> None:
+    # A longer-than-6 order is truncated to the first 6 completed items.
+    order = [f"Item{i}" for i in range(9)]
+    block = build_block(hp_pct=80.0, build_order=order)
+    items = [s.strip() for s in block["item_build"].split(",")]
+    assert items == [f"Item{i}" for i in range(6)]
+    assert len(items) == 6
+
+
+def test_build_order_skips_blank_and_none_entries() -> None:
+    # Components / None / blank entries are skipped; only real completed items
+    # land in the joined string, still capped at 6.
+    order = ["Eclipse", None, "", "   ", "Serylda's Grudge", "Edge of Night"]
+    block = build_block(hp_pct=80.0, build_order=order)
+    items = [s.strip() for s in block["item_build"].split(",")]
+    assert items == ["Eclipse", "Serylda's Grudge", "Edge of Night"]
+
+
+def test_build_order_empty_keeps_item_build_empty() -> None:
+    # An empty list or None order keeps the fail-soft "" (unchanged behavior).
+    assert build_block(hp_pct=80.0, build_order=[]).get("item_build") == ""
+    assert build_block(hp_pct=80.0, build_order=None).get("item_build") == ""
+
+
+def test_build_order_with_reasons_and_hints_coexist() -> None:
+    # The assembled item_build coexists with the folded antitank/heal reasons.
+    block = build_block(
+        hp_pct=80.0,
+        build_order=["Kraken Slayer", "Infinity Edge"],
+        item_build_reasons={"Kraken": "spear proc"},
+        antitank_hint="Enemy comp tanky (3); itemize anti-tank.",
+    )
+    assert block["item_build"] == "Kraken Slayer, Infinity Edge"
+    assert block["item_build_reasons"].get("Kraken") == "spear proc"
+    assert any(
+        "anti-tank" in str(v).lower() for v in block["item_build_reasons"].values()
+    )
+
+
+def test_build_order_garbage_type_keeps_item_build_empty() -> None:
+    # A non-list / non-iterable-of-str build_order degrades to "" (never raises).
+    assert build_block(hp_pct=80.0, build_order="not-a-list-but-str").get(
+        "item_build"
+    ) == ""
+    assert build_block(hp_pct=80.0, build_order=12345).get("item_build") == ""
+    assert build_block(hp_pct=80.0, build_order=[1, 2, 3]).get("item_build") == ""

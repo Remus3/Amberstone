@@ -100,6 +100,35 @@ def _clean_str(value: object) -> str:
     return value.strip() if isinstance(value, str) and value.strip() else ""
 
 
+# How many completed items the assembled build path shows. The ARAM build-order
+# table is a curated 6-item path (boots + legendaries, already ward/jungle-free
+# upstream), so 6 is the natural cap; a shorter real order just shows fewer.
+_MAX_BUILD_ITEMS = 6
+
+
+def _build_path_from_order(build_order: object) -> str:
+    """Join the first up-to-6 COMPLETED item names from ``build_order``.
+
+    ``build_order`` is the full ordered list of completed-item display NAMES for
+    the champion+mode (as the ARAM build-order table provides it). Non-str /
+    blank / None entries (components or gaps) are skipped; the result is a
+    ", "-joined string of at most _MAX_BUILD_ITEMS names. A non-list order, an
+    empty list, or an all-blank list yields "" - the fail-soft default that
+    leaves item_build unchanged. Never raises.
+    """
+    if not isinstance(build_order, list):
+        return ""
+    names: list[str] = []
+    for entry in build_order:
+        name = _clean_str(entry)
+        if not name:
+            continue
+        names.append(name)
+        if len(names) >= _MAX_BUILD_ITEMS:
+            break
+    return ", ".join(names)
+
+
 def _reset_line(next_item_name: object, next_item_remaining_gold: object) -> str:
     """Compose the ARAM reset/item line, or "" when no next item is known.
 
@@ -150,6 +179,7 @@ def build_block(
     *,
     cc_threat_line: object = None,
     item_build: object = None,
+    build_order: object = None,
     item_build_reasons: object = None,
     next_item_name: object = None,
     next_item_remaining_gold: object = None,
@@ -171,8 +201,13 @@ def build_block(
         cc_threat_line: the ``enemy_cc_threat_line`` string OR a ranked
             iterable of CC entries (see core.aram_fight_risk). Drives
             fight_rule + risk. Absent / malformed -> both "".
-        item_build: the ARAM build-path string (e.g. "BorK -> Kraken"). Absent
-            -> "".
+        item_build: an explicit ARAM build-path string (e.g. "BorK -> Kraken").
+            When non-empty it WINS and is used verbatim. Absent / blank ->
+            assembled from ``build_order`` instead (then "").
+        build_order: the full ordered list of completed-item display NAMES for
+            this champion+mode (as the ARAM build-order table provides). Used to
+            assemble ``item_build`` (first up-to-6 names, ", "-joined) only when
+            ``item_build`` is blank. Empty / None / non-list -> item_build "".
         item_build_reasons: a {item_name: reason} dict. Absent -> {} (then
             possibly populated by the hint reasons below).
         next_item_name: display name of the next un-bought core item. Anchors
@@ -191,7 +226,9 @@ def build_block(
             "fight_rule": _safe_fight_rule(cc_threat_line),
             "risk": _safe_risk(cc_threat_line),
             "reset_item": _reset_line(next_item_name, next_item_remaining_gold),
-            "item_build": _clean_str(item_build),
+            "item_build": _clean_str(item_build) or _build_path_from_order(
+                build_order
+            ),
             "item_build_reasons": _build_reasons(
                 item_build_reasons, antitank_hint, heal_threat_line
             ),
