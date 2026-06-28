@@ -710,6 +710,144 @@ def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str,
         return
 
 
+def _live_aram_block(path: Path | None = None) -> dict:
+    """Read the live ARAM Haiku block (the six coach fields) from the artifact.
+
+    Returns just the six comparison fields from data/aram_coaching_data.json
+    (the live coach writes many more). Fail-soft: a missing / unreadable /
+    malformed artifact -> {} (then log_aram_coach normalizes to all-empty).
+    Never raises. ``path`` overrides the artifact location (test seam)."""
+    target = path if path is not None else (
+        Path(__file__).resolve().parent.parent / "data" / "aram_coaching_data.json"
+    )
+    try:
+        data = json.loads(Path(target).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    keys = (
+        "action", "fight_rule", "risk", "reset_item",
+        "item_build", "item_build_reasons",
+    )
+    return {k: data.get(k) for k in keys if k in data}
+
+
+def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
+                          *, path=None, live_path=None) -> None:
+    """Fail-soft Stage 2 ARAM deterministic-vs-Haiku shadow-log.
+
+    Assembles the deterministic ARAM block (core.aram_deterministic_coach.
+    build_block) from the available dashboard state + the existing ARAM build /
+    anti-tank / heal-threat surfaces, reads the live Haiku block from
+    data/aram_coaching_data.json, and appends ONE record per distinct coarse
+    state to data/aram_coach_shadow.jsonl so the operator can eyeball the two
+    side-by-side. SHADOW-ONLY: NEVER mutates coach / lc / any served field,
+    never raises, has NO effect on /api/state output.
+
+    Fires only for an ARAM in-game tick - mode_key == "aram" AND lc["champion"]
+    present (the item-386 live-game gate; the stale coach file keeps `champion`
+    after a game ends, so coach-side presence alone is not enough). ``path``
+    overrides the jsonl target and ``live_path`` the live-artifact source (test
+    seams).
+
+    PARTIAL-READ (by design): wave_pct is vision-only and usually ABSENT
+    server-side, so decide_action just gets None (no tier shift); a missing
+    enemy CC line / build table degrades the corresponding block fields to
+    empty inside build_block. The assembler works from whatever is present.
+    """
+    try:
+        mk = str(mode_key or "").strip().lower()
+        if mk != "aram":
+            return
+        # Live-game gate (item-386): only a real in-game liveclient tick carries
+        # lc["champion"]. Cheap pre-check before any engine read.
+        if not (isinstance(lc, dict) and lc.get("champion")):
+            return
+
+        gs = _build_game_state(coach, lc, mode_key)
+        champ = gs.get("my_champion")
+        if not champ:
+            return
+        enemy_comp = [str(e) for e in (gs.get("enemy_comp") or [])]
+
+        # hp_pct: prefer a direct coach hp_pct, else derive from the 0..1
+        # hp_fraction _build_game_state already resolved (lc hp / hp_max).
+        hp_pct = None
+        if isinstance(coach, dict):
+            raw = coach.get("hp_pct")
+            if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+                hp_pct = float(raw)
+        if hp_pct is None:
+            frac = gs.get("hp_fraction")
+            if isinstance(frac, (int, float)) and not isinstance(frac, bool):
+                hp_pct = float(frac) * 100.0
+
+        # Enemy-CC threat line (drives fight_rule / risk). Fail-soft to "".
+        cc_line = ""
+        try:
+            from core.enemy_cc_threat_context import enemy_cc_threat_line  # lazy
+            cc_line = enemy_cc_threat_line(enemy_comp, "ARAM") or ""
+        except Exception:  # noqa: BLE001
+            cc_line = ""
+
+        # Next build item (anchors the no-recall reset line). Reuses the same
+        # balanced-order reader the recall callout uses; None when unknown.
+        items = gs.get("items")
+        item_count = len(items) if isinstance(items, list) else 0
+        nxt = _next_build_item(champ, "aram", item_count)
+        next_name = nxt[0] if nxt else None
+        next_cost = nxt[1] if nxt else None
+
+        # Anti-tank hint reason (ARAM). Fail-soft to "".
+        antitank_hint = ""
+        try:
+            from core.ds_antitank_hint import build_antitank_hint  # lazy
+            ah = build_antitank_hint(str(champ), enemy_comp, mode="ARAM")
+            if isinstance(ah, dict):
+                antitank_hint = ah.get("hint") or ""
+        except Exception:  # noqa: BLE001
+            antitank_hint = ""
+
+        # Heal-threat / anti-heal reason (ARAM). Fail-soft to "".
+        heal_line = ""
+        try:
+            from core.heal_threat import heal_threat_callout  # lazy
+            ht = heal_threat_callout(
+                enemy_comp, gs.get("enemy_item_ids"),
+                gs.get("ally_item_ids"), mode="aram",
+            )
+            if isinstance(ht, dict):
+                heal_line = ht.get("line") or ""
+        except Exception:  # noqa: BLE001
+            heal_line = ""
+
+        # The deterministic build path itself: the dashboard does not currently
+        # precompute an ARAM build STRING server-side (the live build text comes
+        # from Haiku), so we leave item_build/reasons to the rule inputs above.
+        # build_block folds the anti-tank + heal reasons into item_build_reasons.
+        from core.aram_deterministic_coach import build_block  # lazy
+        det_block = build_block(
+            hp_pct=hp_pct,
+            wave_pct=None,  # vision-only; absent server-side -> no tier shift
+            low_enemy_count=None,
+            cc_threat_line=cc_line,
+            item_build="",
+            item_build_reasons={},
+            next_item_name=next_name,
+            next_item_remaining_gold=next_cost,
+            antitank_hint=antitank_hint,
+            heal_threat_line=heal_line,
+        )
+
+        live_block = _live_aram_block(live_path)
+
+        from core.aram_coach_shadow import log_aram_coach  # lazy
+        log_aram_coach(det_block, live_block, lc, mk, path=path)
+    except Exception:  # noqa: BLE001
+        return
+
+
 def _mana_fraction(coach: dict, lc: dict | None) -> float | None:
     """Best-effort current mana as a 0..1 fraction of the pool, or None.
 
