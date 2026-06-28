@@ -33,10 +33,31 @@ export function fmtList(v) {
   return (v == null ? "" : String(v));
 }
 
-// Null-safe string trim.
+// Strip the coach inline bracket-markup tags - timer tags like [t]14s[/t]
+// and sibling single-letter tags [x]...[/x] - that are an internal authoring
+// convention, not display text. The paired form removes the WHOLE tag
+// including its inner content (so [t]14s[/t] disappears, "14s" and all), then
+// any stray/unclosed single-letter tag goes, then the whitespace the removal
+// left behind is collapsed. Only single LOWERCASE-letter tags match, so item
+// refs like [Kraken Slayer] and digit refs like [3153] are preserved. A
+// no-tag string is returned byte-identical (internal whitespace kept) so
+// folding this into safe() never alters non-coach values.
+export function stripCoachTags(s) {
+  if (s == null) return "";
+  const str = String(s);
+  const out = str
+    .replace(/\[[a-z]\].*?\[\/[a-z]\]/gi, " ")
+    .replace(/\[\/?[a-z]\]/gi, " ");
+  return out === str ? str : out.replace(/\s+/g, " ").trim();
+}
+
+// Null-safe string trim. Also strips the coach bracket-timer tags (a no-op
+// for non-coach values, which carry no single-letter bracket tags), so every
+// render sink that already routes through safe() - right_now.js + next.js -
+// inherits a tag-free, untruncated coach string and a clean clipboard copy.
 export function safe(s) {
   if (s == null) return "";
-  return String(s).trim();
+  return stripCoachTags(String(s)).trim();
 }
 
 // Escape the five HTML-significant characters so an untrusted string can

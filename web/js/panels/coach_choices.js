@@ -18,6 +18,8 @@
 // When state.coach.choices is empty or absent, the mount is hidden + no
 // DOM is generated. The hotkey handler is a NO-OP when no chips exist.
 
+import { stripCoachTags } from '../lib/helpers.js';
+
 const MOUNT_ID = "rn-choices";
 
 // Module-level state: latest rendered state (for game_context snapshot
@@ -62,11 +64,13 @@ function _esc(s) {
 
 function _chipHtml(c) {
   const k = (c.key || "?").slice(0, 1).toUpperCase();
-  const label = (c.label || "").slice(0, 80);
-  const outcome = (c.expected_outcome || "").slice(0, 160);
+  // Strip the coach bracket-timer tags BEFORE the length slice (these raw
+  // fields bypass safe(), so they would otherwise render literal [t]..[/t]).
+  const label = stripCoachTags(c.label || "").slice(0, 80);
+  const outcome = stripCoachTags(c.expected_outcome || "").slice(0, 160);
   const src = (c.source_tag || "").slice(0, 32);
-  const trigger = (c.trigger || "").slice(0, 120);
-  const rebranchWhen = (c.rebranch_when || "").slice(0, 120);
+  const trigger = stripCoachTags(c.trigger || "").slice(0, 120);
+  const rebranchWhen = stripCoachTags(c.rebranch_when || "").slice(0, 120);
   const rebranchTo = (c.rebranch_to || "").slice(0, 1).toUpperCase();
   const confidence = String(c.confidence == null ? "" : c.confidence);
   const srcPill = src ? `<span class="rc-src">${_esc(src)}</span>` : "";
