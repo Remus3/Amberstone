@@ -770,59 +770,75 @@ body[data-shell="overlay"] .ovx-enemyspells .es-chip.es-down {
   color: rgb(var(--ovx-warn));
 }
 
-/* --- Stats mini-panel (w-stats): API-backed HP/mana bars + key stats --------- */
+/* --- Stats mini-panel (w-stats): vertical "You vs benchmark" table (WP-A4b) --- */
 body[data-shell="overlay"] .ovx-statspanel {
-  max-width: 190px;
+  max-width: 220px;
 }
-body[data-shell="overlay"] .ovx-statspanel .sp-head {
-  color: rgba(var(--ovx-gold), 0.90);
-  font-size: var(--fs-ov-head);
+body[data-shell="overlay"] .ovx-statspanel .sp-selrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-role {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-ov-chip);
+  font-weight: 700;
+  color: rgba(var(--ovx-gold), 0.95);
+  background: rgba(var(--ovx-bg-nested), 0.95);
+  border: 1px solid rgba(var(--ovx-gold), 0.40);
+  border-radius: 3px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-role option {
+  color: #ffffff;
+  background: #0a0e14;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-bracket {
+  flex: 0 0 auto;
+  font-size: var(--fs-ov-sigil);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  padding-bottom: 4px;
-  margin-bottom: 5px;
-  border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
+  letter-spacing: 0.06em;
+  color: rgba(var(--ovx-cyan), 0.90);
 }
-body[data-shell="overlay"] .ovx-statspanel .sp-bar {
-  position: relative;
-  height: 14px;
-  margin: 3px 0;
-  border-radius: 3px;
-  background: rgba(var(--ovx-bg-nested), 0.95);
-  overflow: hidden;
-}
-body[data-shell="overlay"] .ovx-statspanel .sp-fill {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 0;
-}
-body[data-shell="overlay"] .ovx-statspanel .sp-hp .sp-fill {
-  background: rgba(var(--ovx-good), 0.55);
-}
-body[data-shell="overlay"] .ovx-statspanel .sp-mp .sp-fill {
-  background: rgba(var(--ovx-cyan), 0.50);
-}
-body[data-shell="overlay"] .ovx-statspanel .sp-bar-txt {
-  position: relative;
-  z-index: 1;
-  display: block;
-  text-align: center;
-  font-size: var(--fs-ov-head);
-  font-weight: 700;
-  line-height: 14px;
-  color: rgba(var(--ovx-text), 0.95);
-}
-body[data-shell="overlay"] .ovx-statspanel .sp-grid {
+body[data-shell="overlay"] .ovx-statspanel .sp-colhead,
+body[data-shell="overlay"] .ovx-statspanel .sp-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 3px 6px;
-  margin-top: 5px;
+  gap: 2px 6px;
+  align-items: center;
 }
-body[data-shell="overlay"] .ovx-statspanel .sp-kv {
-  font-size: var(--fs-ov-head);
-  color: rgba(var(--ovx-text), 0.78);
+body[data-shell="overlay"] .ovx-statspanel .sp-colhead {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-bottom: 3px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-row {
+  padding: 3px 0;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-row + .sp-row {
+  border-top: 1px solid rgba(var(--ovx-gold), 0.10);
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-metric {
+  font-size: var(--fs-ov-chip);
+  font-weight: 700;
+  color: rgba(var(--ovx-text), 0.80);
   white-space: nowrap;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-you {
+  font-size: var(--fs-ov-chip);
+  font-weight: 700;
+  color: rgba(var(--ovx-text), 0.96);
+  text-align: right;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-bench-cell {
+  font-size: var(--fs-ov-chip);
+  color: rgba(var(--ovx-text), 0.62);
+  text-align: right;
 }
