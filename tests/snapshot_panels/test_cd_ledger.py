@@ -162,8 +162,11 @@ def test_index_html_has_mount_point():
 def test_active_match_grid_hides_cd_rail_visual_only():
     """Operator 2026-06-10: the CDS rail is visually retired from the
     dashboard grid (display:none, no cd column/area) but the pane + its
-    wiring stay - the overlay threat panelset re-shows it. This replaces
-    the old 280px-rail allocation contract."""
+    wiring stay - the overlay re-shows it. Updated 2026-06-28: the
+    coach/build/threat panel-set gating was RETIRED (all panels accessible),
+    so the overlay shows the CDS pane UNCONDITIONALLY (when not per-widget
+    .ovx-hidden), not only in a threat set. This replaces the old 280px-rail
+    allocation contract."""
     css = _read(ROOT / "web" / "css" / "panels" / "active_match.css")
     # Rail column gone; two-column template remains.
     assert "280px" not in css
@@ -177,13 +180,13 @@ def test_active_match_grid_hides_cd_rail_visual_only():
     assert re.search(
         r"#view-active-match \.am-grid \.am-pane-cd\s*\{[^}]*display:\s*none",
         css)
-    # Overlay threat panelset keeps its CDS surface. The widget-field doctrine
-    # (2026-06-21) made the cd pane a w-threat .ovx-widget, so the selector
+    # Overlay keeps its CDS surface - now shown UNCONDITIONALLY (all-panels
+    # doctrine 2026-06-28). The pane is a w-threat .ovx-widget, so the selector
     # carries a `.ovx-widget:not(.ovx-hidden)` suffix before the brace - allow
     # any selector continuation between .am-pane-cd and the rule body.
     overlay = _read(ROOT / "web" / "css" / "overlay.css")
     assert re.search(
-        r'\[data-panelset="threat"\] #view-active-match \.am-pane-cd'
+        r'body\[data-shell="overlay"\] #view-active-match \.am-pane-cd'
         r"[^{]*\{[^}]*display:\s*block\s*!important", overlay)
 
 
