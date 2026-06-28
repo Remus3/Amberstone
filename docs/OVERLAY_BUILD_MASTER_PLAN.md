@@ -797,7 +797,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 |---|---|---|---|---|
 | A1 settings sliders | W0 | - | T1 | DONE 2026-06-28 |
 | A2 drop legacy enemy-summs | W0 | - | T1 | DONE 2026-06-28 (7205d73c) |
-| A3 coach [t] strip + truncation | W0 | - | T1 | OPEN |
+| A3 coach [t] strip + truncation | W0 | - | T1 | DONE 2026-06-28 (ea100097) |
 | A4a role-bracket bench route | W0 | - | T2 | OPEN |
 | A4b stats vertical frontend | W1 | A4a | T1 | OPEN |
 | A5 enemy-spells widen+unname | W1 | - | T1 | OPEN |
