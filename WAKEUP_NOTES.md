@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-28 (overlay-build loop - WP-B1 strip DS ENGINE caption + "no draft prior" from build pane; 62a9a10a)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN Section-B WP after A1-A6 complete: B1 (T1, foundational for B2/B3 on active_match.js).
+
+- **WP-B1 (62a9a10a).** active_match.js _renderAmBuildBody: removed the `DS ENGINE - vs <armor>...<n> enemies` caption render above the item strip; renamed the empty-pane placeholder "DS ENGINE" -> "BUILD". _dsTargetStatsCaption() KEPT - still feeds the render sig (enemy-item shifts still refresh the pane + donuts; target_stats still flows to Section C). draft_elo.js: empty-state "<div class=de-empty>no draft prior</div>" -> empty div (de-empty class kept for the panel test). draft_elo.css: .draft-elo-chip[data-de-state="empty"] -> display:none (removing just the text left a dimmed empty pill; hide the chip outright). RED-first tests/test_overlay_b1_strip_ds_engine_caption.py 2->7 green. Tier-1, ADR-008 (no RC restart), no ENGINE/DS/Share. LEDGER 659, Section J B1 -> DONE.
+- **SCOPE DEVIATION (do-not-redo):** plan cited build_order.js:136-140 ctxLine as a sibling caption, but that "DS vs Enemy Comp" card renders in CHAMP-SELECT (champ_select.js imports buildOrderCardHtml; :3154), NOT the in-game pane - outside B1's "in-game build pane" goal + champ-select settled-complete, so LEFT UNTOUCHED (verifier-confirmed still present).
+- **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static :8810; _renderAmBuildBody empty -> "BUILD waiting for live data...", hasDsEngine=false; renderDraftElo(chip,null) -> empty de-empty div, no "no draft prior". Static page does NOT auto-load panel CSS so the chip read inline-flex; injecting the rule flipped it -> display:none vs the live data-de-state="empty" (production loads draft_elo.css via the ADR-008 asset hash). Verifier CONFIRM (B1 7/0, regression 46/0).
+- **INFRA gotcha (not B1):** tests/conftest.py:145 assert_prod_artifacts_unchanged (session-scoped) intermittently ERRORs because LIVE RC (pid 4808) writes data/decisions_heartbeat.json + *_shadow.jsonl DURING a run (caught 119->118 once); the B1 test alone is hermetic. CdsVisualHide [data-panelset] = the same pre-existing task_72ca84ec overlay.css drift.
+- **NEXT (loop) - INFLECTION:** the cosmetic A/B-panel work (A1-A6 + B1) is DONE; the remaining ready WPs jump waves. Next dependency-free overlay-critical = C1 (kit-synergy profiles, W2, NEW core/build_planner/kit_synergy.py - the build-brain long pole that B2's live Row1 ultimately needs; B2 is blocked on C5<-C2<-C1). C1 is a SUBSTANTIVE new module (warrants a high-effort build, not a cosmetic tweak). Also OPEN dependency-free: E5 (docs sweep, T0), F5-H02/F5-M01 (W0). Recommend C1 to start Section C.
+
+---
+
 # 2026-06-28 (overlay-build loop - WP-A6 remove CALL/FIGHT MODEL/MAP pane name headers; b089d130)
 
 Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). Next OPEN W1 after A5: A6 (T1, deps A5 DONE). A1-A6 now ALL DONE - the A-section is complete.
@@ -26,15 +38,4 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 
 ---
 
-# 2026-06-28 (overlay-build loop - WP-A4b stats panel vertical "You vs benchmark" frontend; 14effd16)
-
-Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W1 WP whose deps are DONE: A4b (T1, deps A4a DONE). The frontend half of WP-A4, consuming last cycle's /api/role-bracket-bench.
-
-- **WP-A4b (14effd16).** Full rebuild of web/js/panels/stats_panel.js: dropped the panel name + HP/mana bars + 6-stat grid; new vertical "You vs Avg" table. Header = role <select> (top/jungle/mid/bot/support -> route role param) + auto-derived game-time bracket (lc.game_time_s; <1500s early / <2100s mid / else late, mirrors core.role_bracket_bench). 4 rows LVL/CS/TF/KDA. You = live lc.* (KDA=(k+a)/max(d,1) from the "k/d/a" string); Bench = /api/role-bracket-bench stats.<k>.avg, champ_benchmarks-style (role,bracket) cache+TTL+inflight, degraded "-" on error. overlay.css: max-width 190->220, bar/grid rules -> vertical table (You white-.96/bold vs Avg white-.62 = opacity compare signal, colorblind-safe). RED-first tests/test_overlay_a4b_stats_vertical.py 17->20 green. Tier-1, ADR-008 (no RC restart), no ENGINE/DS/Share. LEDGER 656, Section J A4b -> DONE.
-- **DO-NOT-REDO / gaps:** (1) TF (kill-participation) has NO live producer (Live Client API, reference_liveclient_no_hud_data) -> You TF cell is an honest "-"; the benchmark column still shows historical KP. (2) renderStatsPanel(lc) consumes the DERIVED liveclient_summary shape (hp_max/game_time_s/kda/level/cs), NOT the raw envelope -> the active_match_sr.json ui_mock (raw shape) does NOT render the panel; live /api/state is its feed. (3) index.html:2206 #am-statspanel mount already correct - no edit. (4) the plan's web/js/test/*.test.js paths do NOT exist; overlay panels are tested by Python grep-contract tests in tests/ (no jsdom/node harness).
-- **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static preview (:8810) + synthetic derived lc inject (no live game) + preview_inspect computed styles; bracket="early" from game_time_s=1320, You KDA=6.5 from "5/2/8", zero console errors. Verifier CONFIRM (A4b 20/0, regression 41/0); local sweep incl Playwright overlay snapshot = 87 passed.
-- **NEXT (loop):** Section J next OPEN W1 = A5 (enemy-spells widen+unname, T1, deps none), then A6 (remove pane name headers, deps A5), B1 (strip DS-ENGINE caption, T1). C1 (kit-synergy, W2) + E5 (docs sweep, T0) also open. Serialize overlay.css edits A5->A6 (shared file; A4b already off overlay.css this cycle).
-
----
-
-(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-A6 /done prune)
+(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-B1 /done prune)
