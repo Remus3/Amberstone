@@ -361,6 +361,23 @@ def wait_gone(path, deadline_ts):
         time.sleep(CFG["poll_sec"])
     return False
 
+def stall_recovery_directive(cycle):
+    """WP-I3: the one-shot recovery typed into the EXISTING (stalled) executor on the
+    FIRST cycle-deadline breach, before any hard STOP. NO /clear - the wedged session's
+    context is exactly what /diagnose must inspect. The instruction self-terminates by
+    running the done_sentinel final step, so the controller gets its claude.done either
+    way (recovered or blocked). Line 1 is the CYCLE header the AHK bridge skips. Pure +
+    unit-testable; the main() wiring extends the deadline once around it."""
+    py = r"C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe"
+    return (
+        f"CYCLE={cycle}\n"
+        "/diagnose the loop stall: run git status, read the newest pytest result file, read "
+        "ops/runtime/health.json, and read the tail of ops/loop/control/controller.log; then "
+        "either recover THIS cycle (finish the work package, commit + push + /done) OR write a "
+        "one-line blocker to ops/loop/control/blocker.txt. Either way FINISH by running: "
+        f"\"{py}\" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>"
+    )
+
 def main():
     for f in ("STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt"):
         (CTL / f).unlink(missing_ok=True)
@@ -420,7 +437,17 @@ def main():
         log(f"cycle {cycle}: typed (ready consumed); deadline in {CFG['cycle_deadline_sec']}s")
 
         if not wait_for(CTL / "claude.done", deadline):
-            stop(f"cycle {cycle}: claude.done not seen before deadline (hang)")
+            # WP-I3: one-shot stall recovery before a hard STOP. Inject a /diagnose
+            # recovery directive into the existing (stalled) session and extend the
+            # deadline ONCE; hard-STOP only if it breaches again. The no-progress and
+            # AHK-never-typed guards remain the runaway backstops so a truly wedged run
+            # still stops cleanly after exactly one recovery attempt.
+            log(f"cycle {cycle}: deadline breach 1 - injecting stall recovery, extending once")
+            awrite(CTL / "gemini.ready", stall_recovery_directive(cycle))
+            if not wait_gone(CTL / "gemini.ready", time.time() + 120):
+                stop(f"cycle {cycle}: AHK never typed the stall-recovery directive")
+            if not wait_for(CTL / "claude.done", time.time() + CFG["cycle_deadline_sec"]):
+                stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
         done = rjson(CTL / "claude.done", {})
         (CTL / "claude.done").unlink(missing_ok=True)
         last_done = done
