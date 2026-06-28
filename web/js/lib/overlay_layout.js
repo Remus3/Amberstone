@@ -47,20 +47,35 @@ const WIDGETS = [
   // (920,540 -> 340,600) moved OFF the center combat column - they were rendering
   // over the champion / top play lane in-game. The rest keep the near-eye anchors;
   // drag still overrides per-widget (Ctrl+Shift+A then drag; Alt+Shift+R resets).
-  { id: "w-lead", sel: "#rn-lead", x: 786, y: 44, tier: "ambient" },
-  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 180, y: 130, tier: "primary" },
-  { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent" },
-  { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient" },
-  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent" },
-  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient" },
-  { id: "w-ovds", sel: "#am-pane-ovds", x: 20, y: 780, tier: "ambient" },
+  { id: "w-lead", sel: "#rn-lead", x: 786, y: 44, tier: "ambient", label: "Macro Lead" },
+  { id: "w-call", sel: "#view-active-match .am-pane-call", x: 180, y: 130, tier: "primary", label: "Coach Call" },
+  { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent", label: "A/B Choices" },
+  { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient", label: "Callouts" },
+  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent", label: "Threat / CDs" },
+  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build" },
+  { id: "w-ovds", sel: "#am-pane-ovds", x: 20, y: 780, tier: "ambient", label: "DS Controls" },
   // New doctrine cues (OVERLAY_DOCTRINE section 4). Both are data-gated (their
   // renderer un-hides the mount only when actionable) + coach-core (shown in
   // every panel set). Mounted as direct am-grid children (NOT inside a pane) so
   // position:fixed is viewport-relative, not trapped by a transformed pane.
-  { id: "w-trinket", sel: "#am-ward-cue", x: 340, y: 600, tier: "urgent" },
-  { id: "w-spike", sel: "#am-spike-cue", x: 360, y: 840, tier: "urgent" },
+  { id: "w-trinket", sel: "#am-ward-cue", x: 340, y: 600, tier: "urgent", label: "Ward Cue" },
+  { id: "w-spike", sel: "#am-spike-cue", x: 360, y: 840, tier: "urgent", label: "Spike Cue" },
 ];
+
+// The launcher is a CONTROL widget, not a panel: a small always-visible square
+// (HUD summoner-spell sized) the operator drags anywhere and taps (in ACTIVE) to
+// open the layout control center - per-panel show/hide + reset + panel-set. It is
+// the in-game escape hatch back to a panel that was right-click-hidden: the only
+// other un-hide path (Alt+Shift+R resetOverlayLayout) is Electron-globalShortcut-
+// only and so dead while League holds foreground focus. Deliberately NOT in
+// WIDGETS - it is never itself hideable and never appears in its own panel list.
+// Its position rides the same _layout mirror under its own id; a reset clears that
+// entry, so it returns to the default corner (and stays visible) like every panel.
+const LAUNCHER = { id: "w-launcher", sel: "#w-launcher", x: 24, y: 24, tier: "control", label: "Overlay menu" };
+
+// Panel sets the menu can switch to (mirror of rc-shell overlay_state PANEL_SETS;
+// the shell's normOverlayAction re-validates, so this list is only the UI source).
+const PANEL_SETS = ["coach", "build", "threat"];
 
 let _layout = {};
 let _saveTimer = 0;
@@ -148,6 +163,40 @@ function _hideWidget(el, w) {
   _layout[w.id] = { ...(_layout[w.id] || {}), hidden: true };
   _applyPos(el, _posFor(w));
   _persist();
+}
+
+// Bidirectional show/hide for the launcher menu's per-panel toggles. _hideWidget
+// only sets hidden:true (the right-click affordance); the menu must also bring a
+// panel BACK - the whole reason the launcher exists. Same read-side path
+// (_applyPos -> .ovx-hidden) and same persistence (mirror) as every other layout
+// mutation. The mount is looked up fresh (the menu has no el in hand).
+function _setHidden(w, hidden) {
+  _layout[w.id] = { ...(_layout[w.id] || {}), hidden: !!hidden };
+  const el = document.querySelector(w.sel);
+  if (el) _applyPos(el, _posFor(w));
+  _persist();
+}
+
+// Toggle one panel's visibility; returns the new hidden state (for the menu row).
+function _toggleHidden(w) {
+  const next = !_posFor(w).hidden;
+  _setHidden(w, next);
+  return next;
+}
+
+// Fire an overlay action through the rc-shell bridge (set-panel / set-active).
+// Degrades to a no-op in a plain browser (no bridge); returns whether it fired.
+// best-effort: a missing/locked bridge must never throw into a click handler.
+function _shellAction(msg) {
+  try {
+    if (window.rcShell && typeof window.rcShell.overlayAction === "function") {
+      window.rcShell.overlayAction(msg);
+      return true;
+    }
+  } catch (_e) {
+    // swallow: the click is a convenience, never a crash surface.
+  }
+  return false;
 }
 
 // Right-click hide, mirroring _installDrag's structure. STRICTLY gated on ACTIVE:
@@ -273,6 +322,184 @@ function _placeAll() {
   }
 }
 
+// --- Launcher control widget + layout control center -------------------------
+// The launcher is a small square (HUD summoner-spell sized) that is ALWAYS
+// present, ACTIVE-only interactive (no data-rc-zone, so PASSIVE clicks fall
+// through to the game - no accidental menu mid-fight). Tap it in ACTIVE to open
+// the menu; drag it (movement past a small threshold) to reposition. Both gates
+// match the panel drag affordance (ACTIVE-only) so the operator's "enter ACTIVE,
+// arrange, leave" flow is uniform.
+let _menuEl = null;
+
+// Drag-vs-tap on the launcher: a press that does not move past THRESH px is a TAP
+// (open/close the menu); a press that does is a DRAG (reposition + persist). We
+// cannot reuse _installDrag (it treats every pointerdown as a drag) because the
+// launcher must distinguish the two from a single press.
+function _installLauncher(el, w, onTap) {
+  const THRESH = 4;
+  let down = false;
+  let moved = false;
+  let startX = 0;
+  let startY = 0;
+  let originX = 0;
+  let originY = 0;
+  el.addEventListener("pointerdown", (e) => {
+    if (!_isActiveMode()) return; // PASSIVE: ignore so the press falls through.
+    down = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    const p = _posFor(w);
+    originX = p.x;
+    originY = p.y;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch (_e) {
+      // harmless if the pointer is gone.
+    }
+    e.preventDefault();
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!down) return;
+    if (!moved && (Math.abs(e.clientX - startX) > THRESH || Math.abs(e.clientY - startY) > THRESH)) {
+      moved = true;
+      el.classList.add("ovx-dragging");
+    }
+    if (!moved) return;
+    const z = _bodyZoom();
+    const nx = Math.round(originX + (e.clientX - startX) / z);
+    const ny = Math.round(originY + (e.clientY - startY) / z);
+    _layout[w.id] = { ...(_layout[w.id] || {}), x: nx, y: ny };
+    el.style.left = nx + "px";
+    el.style.top = ny + "px";
+  });
+  const end = (e) => {
+    if (!down) return;
+    down = false;
+    el.classList.remove("ovx-dragging");
+    try {
+      el.releasePointerCapture(e.pointerId);
+    } catch (_e) {
+      // already released; harmless.
+    }
+    if (moved) _persist(); // a real drag settled - save the new position.
+    else onTap(); // a tap - toggle the menu.
+  };
+  el.addEventListener("pointerup", end);
+  el.addEventListener("pointercancel", end);
+}
+
+function _setMenu(open) {
+  if (!_menuEl) return;
+  _menuEl.classList.toggle("ovx-menu-open", !!open);
+  if (open) _renderMenu(_menuEl);
+}
+
+// Rebuild the menu rows from CURRENT state each open so the per-panel [x]/[ ]
+// markers reflect what is actually shown right now.
+function _renderMenu(menu) {
+  menu.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "ovx-menu-head";
+  head.textContent = "PANELS";
+  menu.appendChild(head);
+
+  for (const w of WIDGETS) {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "ovx-menu-row ovx-menu-toggle";
+    const hidden = _posFor(w).hidden;
+    row.dataset.ovxTarget = w.id;
+    row.dataset.on = hidden ? "0" : "1";
+    row.textContent = (hidden ? "[ ] " : "[x] ") + (w.label || w.id);
+    row.addEventListener("click", () => {
+      _toggleHidden(w);
+      _renderMenu(menu);
+    });
+    menu.appendChild(row);
+  }
+
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "ovx-menu-row ovx-menu-reset";
+  reset.textContent = "Reset all panels";
+  reset.addEventListener("click", () => {
+    resetOverlayLayout();
+    _renderMenu(menu);
+  });
+  menu.appendChild(reset);
+
+  const psHead = document.createElement("div");
+  psHead.className = "ovx-menu-head";
+  psHead.textContent = "PANEL SET";
+  menu.appendChild(psHead);
+  for (const ps of PANEL_SETS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ovx-menu-row ovx-menu-panelset";
+    b.textContent = ps;
+    b.addEventListener("click", () => {
+      _shellAction({ action: "set-panel", panelSet: ps });
+    });
+    menu.appendChild(b);
+  }
+
+  const done = document.createElement("button");
+  done.type = "button";
+  done.className = "ovx-menu-row ovx-menu-done";
+  done.textContent = "Done (back to play)";
+  done.addEventListener("click", () => {
+    _setMenu(false);
+    _shellAction({ action: "set-active" }); // flip back to PASSIVE / click-through
+  });
+  menu.appendChild(done);
+}
+
+// Create the launcher mount once (idempotent: returns the existing node on a
+// re-render). Mounted as a direct #am-grid child (NOT inside a pane) so its
+// position:fixed is viewport-relative, matching the doctrine cues.
+function _ensureLauncher() {
+  // best-effort: a locked-down / minimal document (or a host with no appendChild)
+  // must never throw into resetOverlayLayout / init - the launcher is additive.
+  try {
+    let el = document.querySelector(LAUNCHER.sel);
+    if (el) {
+      _menuEl = (el.querySelector && el.querySelector(".ovx-launcher-menu")) || _menuEl;
+      _applyPos(el, _posFor(LAUNCHER));
+      return el;
+    }
+    const host = document.querySelector("#am-grid") || document.body;
+    if (!host || typeof host.appendChild !== "function") return null;
+
+    el = document.createElement("div");
+    el.id = "w-launcher";
+    el.className = "ovx-widget ovx-launcher";
+    el.dataset.ovxId = LAUNCHER.id;
+    el.dataset.ovxTier = LAUNCHER.tier;
+    el.title = "overlay menu - tap to open (ACTIVE), drag to move";
+    el.setAttribute("aria-label", "Open overlay layout menu");
+
+    const icon = document.createElement("div");
+    icon.className = "ovx-launcher-icon";
+    // three CSS bars (a hamburger glyph drawn in CSS - no non-ASCII source char).
+    icon.innerHTML = "<span></span><span></span><span></span>";
+    el.appendChild(icon);
+
+    const menu = document.createElement("div");
+    menu.className = "ovx-launcher-menu";
+    menu.id = "ovx-launcher-menu";
+    el.appendChild(menu);
+    _menuEl = menu;
+
+    host.appendChild(el);
+    _applyPos(el, _posFor(LAUNCHER));
+    _installLauncher(el, LAUNCHER, () => _setMenu(!menu.classList.contains("ovx-menu-open")));
+    return el;
+  } catch (_e) {
+    return null; // additive widget; never break the field over it.
+  }
+}
+
 export function initOverlayLayout() {
   if (document.body.dataset.shell !== "overlay") return;
   _layout = _readLayout();
@@ -306,9 +533,13 @@ export function initOverlayLayout() {
         }
       })
       .catch(() => {})
-      .finally(_placeAll);
+      .finally(() => {
+        _placeAll();
+        _ensureLauncher();
+      });
   } else {
     _placeAll();
+    _ensureLauncher();
   }
 
   // The body zoom can change with the window (ovscale); re-apply on resize so
@@ -333,6 +564,7 @@ export function initOverlayLayout() {
       reTimer = 0;
       mo.disconnect();
       _placeAll();
+      _ensureLauncher(); // re-create the launcher if a re-render dropped it
       mo.observe(document.body, { childList: true, subtree: true });
     }, 150);
   });
@@ -349,6 +581,7 @@ export function resetOverlayLayout() {
     // best-effort.
   }
   _placeAll();
+  _ensureLauncher(); // restore the launcher to its default corner + keep it shown
   _persist();
 }
 
@@ -357,11 +590,18 @@ export function resetOverlayLayout() {
 // contextmenu + reset behavior can be exercised without a real rc-shell bridge.
 export const _internals = {
   WIDGETS,
+  LAUNCHER,
+  PANEL_SETS,
   LS_KEY,
   _posFor,
   _readLayout,
   _isActiveMode,
   _hideWidget,
+  _setHidden,
+  _toggleHidden,
+  _shellAction,
+  _ensureLauncher,
+  _renderMenu,
   _installHideMenu,
   _makeHandle,
   _persist,

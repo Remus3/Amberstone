@@ -611,3 +611,96 @@ body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-call"] #am
 body[data-shell="overlay"][data-fight="1"][data-rc-idle="1"] .ovx-widget {
   opacity: 1 !important;
 }
+
+/* --- Launcher control widget (the always-visible overlay-menu square) --------
+ * A small HUD-summoner-spell-sized square the operator drags anywhere and taps
+ * (in ACTIVE) to open the layout control center - per-panel show/hide, reset,
+ * panel-set. ACTIVE-only interactive (no data-rc-zone): in PASSIVE it is click-
+ * through like the rest of the field, so it never eats a press mid-fight. It must
+ * out-z-index the panels (always reachable) and let its menu escape the frame. */
+body[data-shell="overlay"] .ovx-launcher {
+  width: 34px;
+  height: 34px;
+  max-width: 34px;
+  min-width: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible; /* let the popup menu escape the .ovx-widget clip */
+  z-index: 60;       /* above every panel so the escape hatch is always on top */
+  cursor: pointer;
+}
+body[data-shell="overlay"] .ovx-launcher .ovx-launcher-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  width: 16px;
+  pointer-events: none; /* taps land on the square, not the bars */
+}
+body[data-shell="overlay"] .ovx-launcher .ovx-launcher-icon span {
+  display: block;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(var(--ovx-gold), 0.92);
+}
+/* The popup menu (the layout control center), anchored under the square. */
+body[data-shell="overlay"] .ovx-launcher .ovx-launcher-menu {
+  display: none;
+  position: absolute;
+  top: 40px;
+  left: 0;
+  min-width: 172px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 6px;
+  background: rgba(var(--ovx-bg), 0.96);
+  border: 1px solid rgba(var(--ovx-gold), 0.70);
+  border-radius: 7px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  z-index: 61;
+}
+body[data-shell="overlay"] .ovx-launcher .ovx-launcher-menu.ovx-menu-open {
+  display: block;
+}
+body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-head {
+  color: rgba(var(--ovx-gold), 0.90);
+  font-size: var(--fs-ov-head);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 4px 4px 5px;
+  margin: 2px 0 4px;
+  border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
+}
+body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 5px 7px;
+  margin: 1px 0;
+  background: rgba(var(--ovx-bg-nested), 0.9);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: rgba(var(--ovx-text), 0.92);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-row:hover {
+  border-color: rgba(var(--ovx-gold), 0.55);
+}
+body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-reset {
+  color: rgba(var(--ovx-warn), 0.95);
+  margin-top: 4px;
+}
+body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-panelset {
+  display: inline-block;
+  width: auto;
+  margin-right: 4px;
+  text-transform: capitalize;
+}
+body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-done {
+  color: rgba(var(--ovx-cyan), 0.95);
+  margin-top: 4px;
+}
