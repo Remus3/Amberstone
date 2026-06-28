@@ -64,6 +64,14 @@ body[data-shell="overlay"] {
   background: transparent !important;
   overflow: hidden;
   zoom: var(--rc-overlay-scale, 1);
+  /* A1: global overlay opacity (the #ovset-opacity slider) applied page-side in a
+   * plain browser; writeOverlaySettings sets --rc-overlay-opacity only when NOT
+   * inside the rc-shell (the Electron window opacity is the authority there, so
+   * this never double-dims). Per-panel opacity is an inline style on each
+   * .ovx-widget, so it composes (multiplies) over this body-level global. Opacity
+   * does NOT establish a containing block, so the position:fixed widgets stay
+   * viewport-anchored. Default 1 = exact no-op. */
+  opacity: var(--rc-overlay-opacity, 1);
 }
 
 /* 2. Chrome + every non-active-match surface off. */
@@ -156,8 +164,12 @@ body[data-shell="overlay"] .ovx-widget {
               0 4px 14px rgba(0, 0, 0, 0.55);
   font-size: var(--fs-sm);
   overflow: hidden;
-  transform: scale(var(--ovx-scale, 1));
-  transform-origin: top left;
+  /* A1: per-panel scale via zoom (NOT transform:scale) so it is layout-affecting
+   * - the used box grows with scale, so a scaled-up panel no longer clips against
+   * the max-width slot (overflow:hidden clips a transform pre-scale). Grows from
+   * the top-left anchor like the old transform-origin, and composes (multiplies)
+   * with the body --rc-overlay-scale zoom. */
+  zoom: var(--ovx-scale, 1);
 }
 /* Pane heads -> gold, uppercase, etched, with a hairline rule under (Gemini
  * premium pass). !important on color beats the dashboard's id-specificity

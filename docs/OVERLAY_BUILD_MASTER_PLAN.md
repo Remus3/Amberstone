@@ -795,7 +795,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 
 | WP | Wave | Deps | Tier | Status |
 |---|---|---|---|---|
-| A1 settings sliders | W0 | - | T1 | OPEN |
+| A1 settings sliders | W0 | - | T1 | DONE 2026-06-28 |
 | A2 drop legacy enemy-summs | W0 | - | T1 | OPEN |
 | A3 coach [t] strip + truncation | W0 | - | T1 | OPEN |
 | A4a role-bracket bench route | W0 | - | T2 | OPEN |

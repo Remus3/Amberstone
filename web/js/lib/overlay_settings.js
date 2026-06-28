@@ -118,6 +118,19 @@ export function writeOverlaySettings(patch) {
   } catch (_e) {
     // no bridge (plain browser) - localStorage already holds the value.
   }
+  // A1: apply the global overlay opacity page-side as a CSS var so a plain
+  // browser (preview / headless) actually dims - #ovset-opacity had no page-side
+  // consumer and was a no-op outside Electron. INSIDE the rc-shell the Electron
+  // window opacity is the authority (main.js applyOverlayOpacity), so gate on the
+  // bridge being ABSENT or the two would double-dim. overlay.css consumes the var
+  // on body[data-shell="overlay"]; per-panel inline opacity composes over it.
+  try {
+    if (!window.rcShell && document.body) {
+      document.body.style.setProperty("--rc-overlay-opacity", String(next.overlayOpacity));
+    }
+  } catch (_e) {
+    // no document (node / test) - the CSS var is a browser-only convenience.
+  }
   return next;
 }
 
