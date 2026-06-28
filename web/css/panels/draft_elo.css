@@ -33,8 +33,9 @@
 }
 
 .draft-elo-chip[data-de-state="empty"] {
-  color: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.04);
+  /* B1 (overlay redesign): no draft-prior data -> hide the chip entirely
+   * (was a dimmed "no draft prior" pill in the BUILD header). */
+  display: none;
 }
 
 .draft-elo-chip .de-label {
