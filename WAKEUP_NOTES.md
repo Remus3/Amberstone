@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-06-28 (overlay redesign: launcher control-center + all-panels + per-panel opacity/scale + interactive zones + enemy spell tap-tracker + stats panel; live-verified last session's 4 fixes)
+
+Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2026-06-27, then a big operator-driven overlay redesign. 5 commits, all pushed; RC restarted pid 11856.
+
+- **Live-verify (all PASS).** events-path (`7b325e3e`): turret fell -> base-siege callout fired eta_s=0 atop #rn-callouts; dragon -> objective_events populated + dynamic drake row. Mid-pick spells (`1aed8f06`): draft pushed 4+7 Flash+Heal role-aware (NOT 4+12 TP); manual 4+21 Barrier stuck. Hotkeys (`aa008079`): Ctrl+Shift+B + Ctrl+Shift+A both signal via WH_KEYBOARD_LL.
+- **Launcher widget (`6370f7da`).** Draggable HUD-spell-square -> layout control center. The ONLY in-game un-hide path (Alt+Shift+R reset is Electron-globalShortcut-only = dead under League focus).
+- **Build-pane flicker fix (`5af5b17d`).** active_match did `build.innerHTML=""` EVERY tick -> icons/donuts re-fetched + blinked. Extracted `_renderAmBuildBody` with sig-dedup + the R27 reshow guard.
+- **All panels accessible + per-panel opacity/scale (`b16bfce1`).** Retired the coach/build/threat quick-swap auto-hide; all panels show by default; launcher menu = per-panel toggle + opacity + scale sliders.
+- **3 panels interactive while playing (`c79508d2`).** A/B/C (already a zone), launcher (+data-rc-zone, ACTIVE gate dropped), spell/CD (zone:true) work in PASSIVE via hover-to-interact.
+- **Enemy spell tap-tracker + stats panel (`5ff56099`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
+- **DO-NOT-REDO: a HUD *replacement* is impossible.** Live Client API has NO ability/summoner cooldowns, buffs, wards, or XP - only HP/mana/level/CS/stats + spell NAMES (confirmed live on :2999). Overlay AUGMENTS only; can't drive League's Tab-ping (injection-free). Enemy tracker is MANUAL, no auto-feed.
+- **DEPLOY OWED:** operator must Ctrl+Shift+B in-game to reload the overlay (no-store JS = fresh) to see slices 1-4b live; NOT yet confirmed on the Electron overlay (tools can't reach it).
+
+---
+
 # 2026-06-27 (PGL PARTY MAINS wired + liveclient events-path bug fix + WH_KEYBOARD_LL hotkey hook, `aa008079` + `dfff433d` + `7b325e3e`)
 
 Live operator session (back-to-back ranked SR). Restarted RC to activate last session's mid-pick spell fix, then 3 shipped items incl a MAJOR live-bug find. All committed + pushed + live-verified.
@@ -27,45 +42,3 @@ Live operator session (Lulu/Kalista ARAM then ranked Caitlyn SR). Resumed the no
 - **Summoner-spell revert fix (`1aed8f06`).** The RuneWriter mid-pick branch pushed the generic role-blind Flash+Teleport every ~1s poll, reverting ADC spells throughout the ranked-draft hover. Now role-aware (`spells_for_role`: BOTTOM->Flash+Heal) + respects a manual change (mirrors the post-lock branch). 7 new tests, e6 green. ACTIVATES ON NEXT RC RESTART (deferred - operator was in a live ranked game).
 
 OWED: RC restart (deferred, operator in-game) activates the spell fix. Overlay keypress delivery (low-level hook). ARAM coach flip gate (eyeball more games). Base-siege callout live confirm (from-start sampler still armed).
-
----
-
-# 2026-06-27 (slow-tick ROOT-CAUSE conclusive + rc_facts / scheduled-task triage / overlay build-panel hotkey / instant base-siege callout, `b3453044`..`17c1061d`)
-
-5 commits, verified across 2 live ARAM Mayhem games. Resolved item-639's OPEN coach-tick root-cause + operator overlay/coach follow-ons. The no-LLM precompute DB (B) is STILL deferred.
-
-- **Slow-tick ROOT-CAUSE = pure Haiku latency, CONCLUSIVE** (`b3453044`). Widened `_base_coach._poll_tick` to time `_on_state_received` + the whole synchronous poll-tick (Haiku call EXCLUDED - it is worker-thread-offloaded, never stalls the 1.5s loop). 2 games (12:52 + 19:33, full sieges 4t+1i / 6t+2i down, 195 events): ZERO parse/on_state/tick/shadow rows >150ms, only `coach` (~6s med, 12.3s max); latency FLAT vs base-attack (5865ms no-structure vs 6255ms structures-down), cadence did not speed up. The "slow tick" is just the ~6s Haiku call, salient during a chaotic siege. DO NOT re-chase parse/IO; fix = latency-bridging (-> siege callout below).
-- **rc_facts false-positives FIXED** (`6956affb`). CostHealthWatchdog `result=1` is its DESIGNED breach signal (`return 1 if breached`; today $0.51 vs $0.08 baseline) - suppressed; Disabled tasks no longer flagged. RC-LCUAgent + RC-LiveClientRelay were healthy daemons KILLED post-06-24 (exit-1=terminated; non-integral in 1-PC - RC self-heals :2999/LCU in-process) - restarted via Start-ScheduledTask, LCU posting confirmed. Memory `reference_session_start_anomaly_triage`. DO NOT re-chase these 4 as broken.
-- **Overlay build-panel reachable in-game** (`f69ae1eb` + `17c1061d`). `w-build` shows ONLY in the `build` panelset; the only in-game switch (Alt+Shift+C) was on the dead Electron globalShortcut path, and the in-overlay switcher is itself build-only -> circular. Routed a panel-cycle through the Win32 listener (mirrors the Ctrl+Shift+A template): `hotkey_listener.py` stamps `ops/runtime/overlay_panel_cycle.txt` -> `main.js startPanelCycleWatch -> applyPanelSet`. Bind is **Ctrl+Shift+B** (NOT C - C is contended by Discord/Overlay Platform M/DevTools); listener-verified on a physical press (alongside Ctrl+Shift+A control). OPEN: needs an overlay relaunch (`cd rc-shell; npm start`) for the VISIBLE cycle.
-- **Instant base-siege callout** (`fcb49e70`). `core.event_callouts.structure_siege_callout` - active "NOW" callout the moment a turret/inhib falls (30s recency, SR+ARAM via `_SIEGE_MODES`, inhib>turret, side not claimed). Wired through `next_callouts(turret_events=)` + `_liveclient` TurretKilled extraction + `_deterministic_coaching` passthrough -> renders in `#rn-callouts` (coach-core panel, no switch needed). Server-side chain proven end-to-end via a synthetic recent-structure state (both callouts surface); the live watcher capture missed the mid-game windows (armed at trace row 218, game's end) - harness-timing gap, NOT a bug.
-
-RC live pid 16360. Verifications: 2 live ARAM games (slow-tick), server-side synthetic (siege callout), physical keypress (Ctrl+Shift+B).
-
-NEXT: (1) operator relaunch rc-shell overlay -> press Ctrl+Shift+B in-game to confirm the VISIBLE build-panel cycle + watch a structure fall for the live "NOW" siege callout. (2) hexcore gas-brightness fine-tune (item 639, optional). (3) the strategic no-LLM precompute DB (B) - still the big deferred item (`docs/NO_LLM_PRECOMPUTE_PLAN.md`).
-
----
-
-# 2026-06-27 (item-638 tails + perf/polish: hotkey durability / R5 self-HP / coach-tick trace / hexcore WebGL, `f80915f7`..`718ecede`)
-
-5 commits, all CI-green (hexcore CI is docs-only HTML). Closed the item-638 OPEN tails + the operator's chosen perf/polish lane; operator DEFERRED the strategic no-LLM precompute DB (B) this session.
-
-- **RC-HotkeyListener `result=1` was STALE, not a live bug** (`f80915f7`). It was the 06-24 boot of the pre-`b4d45636` script; a LogonTrigger task only updates LastTaskResult on a run, none happened since. PROVEN: current script runs clean under the task's pythonw (0x41301, hotkeys registered); the task is the SOLE logon launcher (`legion_agent_boot.ps1` is a MANUAL desktop shortcut, NOT in Startup/Run keys). DO NOT re-chase it as broken. Hardened anyway: file-logging (`logs/hotkey_listener.log`, pythonw has no stderr) + RegisterHotKey 15x2s retry + task RestartOnFailure/20s-Delay/WorkingDirectory. Live pythonw alive (pid 24956 at fix time).
-- **ARAM/Arena/Brawl R5 self-HP** (`524b1789`). The 3 `_parse_*_state` builders now emit numeric `hp`/`hp_max` (were computing them but emitting only hp_pct), so `caster_missing_hp_pct` flows like SR. No ENGINE bump (coach-side). DON'T redo: dispatch already passed `caster_hp=state.get("hp")`; the gap was the snapshot dict lacking the key.
-- **Coach-tick instrumentation** (`e175e7a8`). `coaches/_base_coach.py` times each dispatch + any slow parse/shadow phase (>150ms) vs turret/inhib/nexus counts -> `data/coach_tick_trace.jsonl` (gitignored). NEXT: read the trace after a live ARAM/Arena/Brawl game to root-cause the base-attack slow tick (needs live data - not observable headless).
-- **Hexcore = DRAW/fill-rate bound, NOT CPU-sim** -> WebGL glow-field shipped + DEFAULT-ON (`19c5abc2` + `718ecede`; `?webgl=0` forces 2D + is the auto-fallback). ~2x FPS at emulated HiDPI (47->92), faithful render, zero GL errors. A Web Worker would NOT have helped - do NOT re-pitch one. Minor open: GL gas reads slightly brighter than the 2D multi-stop gradients (tunable). Bundled fonts untouched.
-- **Repo cleanup:** `.claude/worktrees` 1.9GB->4KB (3 merged worktrees removed via `git worktree remove` + branches pruned); the live `C:/RC-CIWatchdog` worktree spared.
-
-RC live pid 28984. Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
-
----
-
-# 2026-06-27 (ACTUALIZE 637: DS seam-wiring across /rank + overlay in-game hotkey/drag, `2943828b` + `b4d45636` + `1a9081e8`)
-
-Operator live session (Veigar Practice Tool). Built the fixes for the gaps item 637 only diagnosed.
-
-- **(A) DS seam-wiring SHIPPED (`2943828b`, ENGINE 1.153.0 -> 1.154.0, Tier-2, behavior-preserving DEFAULT-OFF).** The live-flip seam flags now thread across /rank -> client -> dispatch (+ R5 caster_missing_hp_pct from live self hp/hp_max). server.py 5 archetype routes accept them; R7/R12 scoped to /dps, R30 to /burst. hps.py compute_hps + rank_items_by_hps forward the R5 pair. SR coach wired; ARAM/Arena/Brawl pass-through guarded (snapshot dicts lack raw hp/hp_max - FOLLOW-UP). Re-verified FRESH post-:8893-restart: DS 7557/0, tests/ 9579/0, Share --check clean, /health 1.154.0. Default-ON flips still gated. Built via worktree workflow (engine+client agents, verifier-gated).
-- **(B) Overlay SHIPPED (`b4d45636`).** Ctrl+Shift+A dead in-game = Electron globalShortcut does not deliver under League foreground focus (DISPROVED the collision theory - all 5 accelerators register()=true). Routed the ACTIVE toggle through the Win32 `tools/hotkey_listener.py` (owns Ctrl+Shift+A id 3 -> stamps `ops/runtime/overlay_active_toggle.txt` -> `main.js startActiveToggleWatch` polls 200ms + flips). Body-drag-in-ACTIVE added (was: only a hidden 3px grip; the "still broken" report was STALE CACHED JS, cleared by fresh relaunch). 3 drag tests, rc-shell 274/274. Operator live-confirmed both. `1a9081e8`: ruff UP031 + Share CHANGELOG 1.154.0.
-
-NEXT: (1) **RC-HotkeyListener task exits result=1** - listener works + runs manually but the scheduled task fails, so #3 is not durable across reboot; fix the task config (script is fine - it is a task/launcher config issue). (2) ARAM/Arena/Brawl R5 self-HP (surface raw hp/hp_max in their snapshot dicts; SR already wired). (3) seam default-ON flips (DSP11/RF1 live-validated). (4) untouched original list: coach-tick trace on base-attack, in-game build-chooser overlay widget, hexcore speedup (profile first), repo cleanup (worktrees ~1.9GB + gemini_io + scratch; deletes hit a sandbox guard - needs a workaround). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1.
-
-> Older sessions (live-flip validation `2e8abb36` and earlier) archived to `docs/history_notes.md`.
