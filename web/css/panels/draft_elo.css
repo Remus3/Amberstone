@@ -33,9 +33,12 @@
 }
 
 .draft-elo-chip[data-de-state="empty"] {
-  /* B1 (overlay redesign): no draft-prior data -> hide the chip entirely
-   * (was a dimmed "no draft prior" pill in the BUILD header). */
-  display: none;
+  /* B1 (overlay redesign): the "no draft prior" TEXT was removed (the de-empty
+   * div renders empty), but the chip stays VISIBLE - it is a 5v5-only surface
+   * that must be present (enabled) in SR/ARAM and hidden only in Arena (the
+   * mode gate), per test_active_match_draft_elo_mode_gate. Dimmed empty state. */
+  color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.04);
 }
 
 .draft-elo-chip .de-label {
