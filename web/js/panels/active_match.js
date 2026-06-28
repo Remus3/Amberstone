@@ -242,11 +242,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     picks.slice(0, 5).forEach((r) => {
       strip.appendChild(_dsIcon(r, ownedSet));
     });
-    // s171.4: live target-stats caption - the armor/MR/HP profile the DS ranker
-    // computes against, so the operator sees when rankings shift on enemy items.
-    const tgtCaption = _dsTargetStatsCaption();
-    const label = tgtCaption ? `DS ENGINE - ${tgtCaption}` : "DS ENGINE";
-    build.appendChild(_line(label, ""));
+    // B1 (overlay redesign): the DS-context caption header was removed - the
+    // build pane renders just the icon strip, no caption. target_stats still
+    // feeds the render sig (the _dsTargetStatsCaption() call in `sig` above), so
+    // an enemy itemization shift still refreshes the pane + its donuts.
     build.appendChild(strip);
   }
   if (ownedNames.length) {
@@ -286,7 +285,7 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   }
   if (!picks.length && !ownedNames.length) {
     // Empty pane shouldn't be blank - surface that we're waiting.
-    build.appendChild(_line("DS ENGINE", "waiting for live data..."));
+    build.appendChild(_line("BUILD", "waiting for live data..."));
   }
 }
 

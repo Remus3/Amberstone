@@ -180,7 +180,7 @@ export function renderDraftElo(parentEl, payload, opts) {
 
   if (!payload || !payload.ok) {
     parentEl.dataset.deState = "empty";
-    parentEl.innerHTML = '<div class="de-empty">no draft prior</div>';
+    parentEl.innerHTML = '<div class="de-empty"></div>';
     return;
   }
 
