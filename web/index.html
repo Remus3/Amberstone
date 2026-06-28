@@ -2199,6 +2199,12 @@
              dashboard so they never take a grid cell there. -->
         <div class="ward-cue" id="am-ward-cue" hidden></div>
         <div class="spike-cue" id="am-spike-cue" hidden></div>
+        <!-- w-enemyspells (2026-06-28): manual enemy summoner-spell tap-tracker
+             (panels/enemy_spells.js). A click-through zone so taps land mid-game.
+             w-statspanel: API-backed HP/mana/stats mini-panel (panels/stats_panel
+             .js). Both overlay-only am-grid children, lifted to position:fixed. -->
+        <div class="ovx-enemyspells" id="am-enemyspells" hidden></div>
+        <div class="ovx-statspanel" id="am-statspanel" hidden></div>
         <!-- w-mmrect (ZOI foundation): the settings-driven minimap OUTLINE box.
              Position + size derive from League's game.cfg via
              /api/state.minimap_rect (panels/minimap_rect.js). Click-through,
