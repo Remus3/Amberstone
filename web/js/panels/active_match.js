@@ -185,6 +185,111 @@ export function activeMatchEnabled() {
   }
 }
 
+// Build-pane body render (extracted 2026-06-28, flicker fix). Previously this ran
+// inline in renderActiveMatch and wiped + rebuilt the pane on EVERY state tick
+// (~1-2s), so the DS item icons + THREATS damage-mix donuts were destroyed and
+// re-fetched each tick - a visible on/off flicker in the overlay build set. Now it
+// dedups on a signature of everything the pane paints from (mirrors
+// renderOverlayDsControls' _ovdsSig): unchanged -> keep the already-painted nodes
+// (no flicker); changed -> rebuild once. _maybeRefreshDsPicks still runs every
+// tick (it owns the 4s rerank cooldown), and the DS target-stats caption is part
+// of the sig, so enemy itemization shifts still refresh the pane + its donuts.
+export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
+  // s170 step 2: per-tick rerank. Coach-emitted picks (state.daemon_slayer_picks)
+  // are the fallback; the live rerank goes through /api/ds-preview every 4s when
+  // champion/mode/level/items change. Live rerank wins when available.
+  const champion = p.champion || "";
+  const mode     = (ctx && ctx.mode) ? String(ctx.mode).toUpperCase() : "SR";
+  const level    = parseInt(p.level || 0, 10) || 1;
+  // ownedIds are numeric-id strings; the OWNED overlay matches by id OR lowercased
+  // name so DS rows light up regardless of which currency they carry.
+  const ownedNames = _amOwnedItemNames(p, ownedIds);
+  const ownedSet = new Set(ownedIds.map(String));
+  ownedNames.forEach((o) => ownedSet.add(String(o || "").toLowerCase()));
+  const livePicks  = _maybeRefreshDsPicks(champion, mode, level, ownedIds);
+  const coachPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
+  const picks = (livePicks && livePicks.length) ? livePicks : coachPicks;
+
+  // s171.6 defensive state + the enemy roster feed both the render AND the sig.
+  const threat = _DS_RERANK.lastThreat;
+  const defensive = _DS_RERANK.lastDefensive;
+  const enemyKey = (lc && Array.isArray(lc.allPlayers))
+    ? lc.allPlayers.map((pl) => (pl && (pl.championName || pl.summonerName)) || "").join(",")
+    : "";
+  // Idempotency signature - the full set of inputs the pane paints from. The
+  // target-stats caption (_dsTargetStatsCaption) reflects enemy itemization, so a
+  // meaningful item buy changes the sig and refreshes the donuts; idle ticks do
+  // not, so the resolved icon/donut <img> nodes persist (no flicker).
+  const sig = JSON.stringify({
+    p: picks.slice(0, 5).map((r) => (r && (r.id != null ? r.id : (r.item_id != null ? r.item_id : r.name))) || r),
+    c: _dsTargetStatsCaption(),
+    o: ownedNames,
+    t: threat ? [threat.summary, threat.burst_threat, threat.ad_threat, threat.ap_threat] : 0,
+    d: Array.isArray(defensive) ? defensive.slice(0, 3).map((r) => (r && (r.id != null ? r.id : r.name)) || r) : 0,
+    e: enemyKey,
+  });
+  // Short-circuit ONLY when the sig matches AND the DOM still holds content. The
+  // innerHTML guard is the R27 reshow fix (test_render_dedup_reshow): if an outer
+  // hide-path clears innerHTML while the sig stays stamped, a bare sig check would
+  // early-return and leave the pane visible-but-empty until data changed.
+  if (build.dataset.amBuildSig === sig && build.innerHTML) return; // unchanged + intact - no flicker
+  build.dataset.amBuildSig = sig;
+
+  build.innerHTML = "";
+  if (picks.length) {
+    const strip = document.createElement("div");
+    strip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
+    picks.slice(0, 5).forEach((r) => {
+      strip.appendChild(_dsIcon(r, ownedSet));
+    });
+    // s171.4: live target-stats caption - the armor/MR/HP profile the DS ranker
+    // computes against, so the operator sees when rankings shift on enemy items.
+    const tgtCaption = _dsTargetStatsCaption();
+    const label = tgtCaption ? `DS ENGINE - ${tgtCaption}` : "DS ENGINE";
+    build.appendChild(_line(label, ""));
+    build.appendChild(strip);
+  }
+  if (ownedNames.length) {
+    build.appendChild(_line("OWNED", ownedNames.join(" - ")));
+  }
+  // s171.6: defensive-pick row. Renders only when the enemy team's threat crosses
+  // the "worth recommending defense" line (burst>=5 OR ad>=7 OR ap>=7).
+  if (threat && Array.isArray(defensive) && defensive.length) {
+    const bt = +threat.burst_threat || 0;
+    const at = +threat.ad_threat || 0;
+    const pt = +threat.ap_threat || 0;
+    const surface = (bt >= 5) || (at >= 7) || (pt >= 7);
+    if (surface) {
+      const defLabel = `DEFENSE - ${threat.summary || "threat detected"}`;
+      build.appendChild(_line(defLabel, ""));
+      const defStrip = document.createElement("div");
+      defStrip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
+      defensive.slice(0, 3).forEach((r) => {
+        defStrip.appendChild(_defIcon(r, ownedSet));
+      });
+      build.appendChild(defStrip);
+    }
+  }
+  // UX-2: THREATS strip - per-enemy portrait + inline damage-mix donut. Skips
+  // when liveclient/enemies are absent or in shared-vision modes.
+  if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
+    const myTeam = _resolveMyTeam(lc);
+    const enemies = lc.allPlayers.filter((pl) => pl && pl.team && pl.team !== myTeam);
+    if (enemies.length) {
+      build.appendChild(_line("THREATS", ""));
+      const strip = document.createElement("div");
+      strip.className = "threat-strip";
+      strip.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;align-items:center;";
+      enemies.forEach((pl) => strip.appendChild(_threatRow(pl, mode, level)));
+      build.appendChild(strip);
+    }
+  }
+  if (!picks.length && !ownedNames.length) {
+    // Empty pane shouldn't be blank - surface that we're waiting.
+    build.appendChild(_line("DS ENGINE", "waiting for live data..."));
+  }
+}
+
 export function renderActiveMatch(payload, ctx) {
   // ctx: { mode: state.mode, lcuPhase: lcu.phase }
   // Defensive: every getter is null-safe so a missing pane in DOM
@@ -298,94 +403,7 @@ export function renderActiveMatch(payload, ctx) {
   _renderDraftEloFromCtx(ctx);
 
   const build = _AM.buildBody();
-  if (build) {
-    // s170 step 2: per-tick rerank. Coach-emitted picks
-    // (state.daemon_slayer_picks, written every coach tick) are the
-    // fallback; the live rerank goes through /api/ds-preview every
-    // 4s when champion/mode/level/items change. Live rerank wins when
-    // available because it's freshly computed against the current
-    // inventory, not the coach's last snapshot.
-    const champion = p.champion || "";
-    const mode     = (ctx && ctx.mode) ? String(ctx.mode).toUpperCase() : "SR";
-    const level    = parseInt(p.level || 0, 10) || 1;
-    // ownedIds are numeric-id strings (liveclient itemID first, resolved
-    // items_display names second); the rerank + the engine both speak
-    // ids. The OWNED overlay matches by id OR lowercased name so DS rows
-    // light up regardless of which currency they carry.
-    const ownedNames = _amOwnedItemNames(p, ownedIds);
-    const ownedSet = new Set(ownedIds.map(String));
-    ownedNames.forEach((o) => ownedSet.add(String(o || "").toLowerCase()));
-    const livePicks  = _maybeRefreshDsPicks(champion, mode, level, ownedIds);
-    const coachPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
-    const picks = (livePicks && livePicks.length) ? livePicks : coachPicks;
-    build.innerHTML = "";
-    if (picks.length) {
-      const strip = document.createElement("div");
-      strip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
-      picks.slice(0, 5).forEach((r) => {
-        strip.appendChild(_dsIcon(r, ownedSet));
-      });
-      // s171.4: live target-stats caption - shows the operator what
-      // armor/MR/HP profile the DS ranker is computing against, so
-      // they can see when the rankings shift due to enemy itemization.
-      const tgtCaption = _dsTargetStatsCaption();
-      const label = tgtCaption ? `DS ENGINE - ${tgtCaption}` : "DS ENGINE";
-      build.appendChild(_line(label, ""));
-      build.appendChild(strip);
-    }
-    if (ownedNames.length) {
-      build.appendChild(_line("OWNED", ownedNames.join(" - ")));
-    }
-    // s171.6: defensive-pick row. Renders only when enemy team's
-    // threat score crosses the "worth recommending defense" line:
-    //   burst_threat >= 5  (assassin / mage burst)
-    //   OR ad_threat >= 7  (AD-heavy team)
-    //   OR ap_threat >= 7  (AP-heavy team)
-    // Shows up to 3 defensive picks with their reasons, plus the
-    // threat summary so operator sees the "why".
-    const threat = _DS_RERANK.lastThreat;
-    const defensive = _DS_RERANK.lastDefensive;
-    if (threat && Array.isArray(defensive) && defensive.length) {
-      const bt = +threat.burst_threat || 0;
-      const at = +threat.ad_threat || 0;
-      const pt = +threat.ap_threat || 0;
-      const surface = (bt >= 5) || (at >= 7) || (pt >= 7);
-      if (surface) {
-        const defLabel = `DEFENSE - ${threat.summary || "threat detected"}`;
-        build.appendChild(_line(defLabel, ""));
-        const defStrip = document.createElement("div");
-        defStrip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
-        defensive.slice(0, 3).forEach((r) => {
-          defStrip.appendChild(_defIcon(r, ownedSet));
-        });
-        build.appendChild(defStrip);
-      }
-    }
-
-    // UX-2 (2026-05-20): THREATS strip - per-enemy champion portrait +
-    // inline damage-mix donut driven by /api/damage-mix. Reads from
-    // ctx.liveclient.allPlayers + activePlayer.team (the active player's
-    // team is excluded so we only see enemies). Skips silently when
-    // liveclient is missing, when there are no enemy entries, or in
-    // shared-vision modes where the operator already has full info.
-    if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
-      const myTeam = _resolveMyTeam(lc);
-      const enemies = lc.allPlayers.filter((pl) => pl && pl.team && pl.team !== myTeam);
-      if (enemies.length) {
-        build.appendChild(_line("THREATS", ""));
-        const strip = document.createElement("div");
-        strip.className = "threat-strip";
-        strip.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;align-items:center;";
-        enemies.forEach((pl) => strip.appendChild(_threatRow(pl, mode, level)));
-        build.appendChild(strip);
-      }
-    }
-
-    if (!picks.length && !ownedNames.length) {
-      // Empty pane shouldn't be blank - surface that we're waiting.
-      build.appendChild(_line("DS ENGINE", "waiting for live data..."));
-    }
-  }
+  if (build) _renderAmBuildBody(build, p, ctx, lc, ownedIds);
 
   const map = _AM.mapBody();
   if (map) {
