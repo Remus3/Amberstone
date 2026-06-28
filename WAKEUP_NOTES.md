@@ -42,3 +42,26 @@ Live operator session (Lulu/Kalista ARAM then ranked Caitlyn SR). Resumed the no
 - **Summoner-spell revert fix (`1aed8f06`).** The RuneWriter mid-pick branch pushed the generic role-blind Flash+Teleport every ~1s poll, reverting ADC spells throughout the ranked-draft hover. Now role-aware (`spells_for_role`: BOTTOM->Flash+Heal) + respects a manual change (mirrors the post-lock branch). 7 new tests, e6 green. ACTIVATES ON NEXT RC RESTART (deferred - operator was in a live ranked game).
 
 OWED: RC restart (deferred, operator in-game) activates the spell fix. Overlay keypress delivery (low-level hook). ARAM coach flip gate (eyeball more games). Base-siege callout live confirm (from-start sampler still armed).
+
+---
+
+# 2026-06-28 weekly-hygiene (unattended)
+
+No doc relocations this pass. No code/engine changes.
+
+**Section 1 - WAKEUP trim:** 3 sessions present (at limit). No relocation needed.
+
+**Section 2 - CLAUDE.md overhead:** 24KB (well under 60KB budget). No leaked ledger entries found.
+
+**Section 3 - Memory suspects (FLAG for operator - not auto-edited):**
+- `reference_topology.md` (41d): describes dashboard on Game-PC secondary monitor; Game-PC retired ADR-011 (2026-05-29). Needs full rewrite for Legion-only 1-PC layout.
+- `user_operator_profile.md` (38d): "Game-PC (runs League; dashboard shown in Chrome on its secondary monitor)" is stale. League now runs on Legion.
+- `reference_api_keys.md` (41d): `riot-commander-gamepc` listed as active ("Claude Code CLI on Game-PC + bridge daemon tasks"); bridge decommissioned ADR-012. Gamepc key row should be marked retired.
+- `feedback_gamepc_league_fullscreen_lockup.md` (24d): Game-PC exclusive-fullscreen rule; Game-PC retired. Evaluate if the Borderless rule now applies to Legion's display setup instead.
+
+**Section 4 - Anomaly triage (all EXPECTED):** RC pid=3348 alive / DS :8893 ok patch=16.13.1 / RC-LiveFlipWatcher Disabled=by-design / all 18 tasks normal / LCU InProgress + relay empty = lobby with no active game.
+
+**Untracked auditor artifacts (not committed - operator review):**
+- `agents/agent6_auditor/proposals/20260628-081728-m05-smb-push-deadcode/`
+- `agents/agent6_auditor/reports/20260628-081728-eleventh-audit-phase3.md`
+- `agents/agent6_auditor/proposals/20260621-100200-m04-decisions-drift/REESCALATION-20260628.md`
