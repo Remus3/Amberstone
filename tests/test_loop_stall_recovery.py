@@ -54,3 +54,22 @@ def test_recovery_is_ascii_clean(lc):
     banned = {0x2014, 0x2013, 0x2018, 0x2019, 0x201C, 0x201D}
     assert not [c for c in out if ord(c) in banned]
     assert out.isascii()
+
+
+# --- stall_action: the pure recover-once-then-stop decision (WP-I3 core) ---
+
+def test_first_breach_recovers(lc):
+    # FIRST cycle-deadline breach earns the one-shot recovery (no hard STOP yet).
+    assert lc.stall_action(1) == "recover"
+
+
+def test_second_breach_stops(lc):
+    # A SECOND consecutive breach (claude.done still missing after recovery) is a
+    # genuine hang -> hard STOP.
+    assert lc.stall_action(2) == "stop"
+
+
+def test_further_breaches_stop(lc):
+    # Recovery is one-shot: any breach past the first stops, never re-recovers.
+    assert lc.stall_action(3) == "stop"
+    assert lc.stall_action(9) == "stop"
