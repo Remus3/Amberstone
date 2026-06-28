@@ -1,0 +1,26 @@
+{
+  "repo_root": "C:\\Riot Commander",
+  "control_dir": "C:\\Riot Commander\\ops\\loop\\control",
+  "ceiling_usd": 200.0,
+  "_ceiling_note": "ceiling_usd caps GEMINI (auditor) spend only. Claude/executor spend UNCAPPED per the operator overlay-build program policy. 200 = runaway backstop only.",
+  "max_cycles": 40,
+  "cycle_deadline_sec": 5400,
+  "poll_sec": 5,
+  "dry_run": false,
+  "ignore_no_progress": false,
+  "clear_each_cycle": true,
+  "session_jsonl": "",
+  "cycle_command": "go\n/remote-control\n/overlay-build-continue headlessly: execute the FIRST OPEN work package in the docs/OVERLAY_BUILD_MASTER_PLAN.md Section J tracker whose deps are DONE (honor the Section H waves + shared-file collision map; skip GATED/DEFER). TDD failing test first; swarm worktree-isolated agents on disjoint files (sole merger) for parallelizable WPs, inline trivial ones; tiered verification R5-R7 (Tier-2 A4a/C5 = full dual suite + DS :8893 restart + Share sync same commit); UI WPs run the Section G.9 5-phase audit + Claude_Preview vs /api/state and honor the Section G UX doctrine; read-only verifier gate before merge. The Section C adaptive module sits ABOVE DS (no engine/ENGINE_VERSION change; /api/build-plan is HTTP not in-process; per-match state in-memory). Commit + push + CI green + /done (append docs/LEDGER.md), then flip the WP row to DONE with the commit sha in Section J. Auto-pick the recommended option, ask no questions, never block on operator sign-off. FINAL STEP (required, even if no commit this cycle): \"C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python314\\python.exe\" ops/loop/done_sentinel.py --tests <pass_count> --regressions <0|1>",
+  "_cycle_command_note": "Multi-line: AHK types /clear (controller-prefixed), then 'go' (1-token activation), then /remote-control (fire-and-forget, operator requirement every new session), then the self-directing /overlay-build-continue line. The gemini DIRECTOR is skipped (the command self-directs from docs/OVERLAY_BUILD_MASTER_PLAN.md Section J); the gemini AUDITOR still reviews every commit. The executor runs its own /done before the done_sentinel final step.",
+  "claude_window_title": "Claude",
+  "gemini_model": "gemini-3-pro-preview",
+  "gemini_cmd": "gemini",
+  "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
+  "gemini_price_per_mtok": {"input": 2.0, "output": 12.0},
+  "price_per_mtok": {
+    "opus":   {"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5},
+    "sonnet": {"input": 3.0,  "output": 15.0, "cache_write": 3.75,  "cache_read": 0.3},
+    "haiku":  {"input": 1.0,  "output": 5.0,  "cache_write": 1.25,  "cache_read": 0.1},
+    "default":{"input": 15.0, "output": 75.0, "cache_write": 18.75, "cache_read": 1.5}
+  }
+}
