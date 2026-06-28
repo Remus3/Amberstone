@@ -175,9 +175,18 @@ def main() -> int:
             #   instance is still alive. state==Running proves the daemon is up, so
             #   the refused-duplicate code is benign, not a failure.
             running_now = str(s) in ("Running", "4")
+            # RC-CostHealthWatchdog returns exit 1 BY DESIGN when it detects a
+            # cost/health breach (tools/cost_health_watchdog.py: "return 1 if
+            # breached else 0"). That is the watchdog doing its job, not a
+            # failure - it fires whenever today's spend exceeds the trailing
+            # baseline (i.e. after any coaching game). Suppress the "probably
+            # failing" anomaly; the breach detail is in logs/cost_health_watchdog.log.
+            # A Disabled task is not running, so its stale last_result is a
+            # historical code, not a current-health signal - never flag it as
+            # "probably failing" (e.g. RC-LiveFlipWatcher, intentionally off).
             suppress = (n == "RC-DaemonSlayer" and r == 1 and ds_alive) or (
                 r == 2147946720 and running_now
-            )
+            ) or (n == "RC-CostHealthWatchdog" and r == 1) or (str(s) == "Disabled")
             mark = "" if r in (0, 267009, 267011, 267014) or suppress else f"  ⚠ result={r}"
             out.append(f"  - {n}: state={s}{mark}")
             if r not in (0, 267009, 267011, 267014, None) and not suppress:
