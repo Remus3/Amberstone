@@ -1,5 +1,18 @@
 # RC session history archive
 
+## Relocated 2026-06-28 (WP-B1 /done - keep last 3 sessions: B1 + A6 + A5)
+
+# 2026-06-28 (overlay-build loop - WP-A4b stats panel vertical "You vs benchmark" frontend; 14effd16)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W1 WP whose deps are DONE: A4b (T1, deps A4a DONE). The frontend half of WP-A4, consuming last cycle's /api/role-bracket-bench.
+
+- **WP-A4b (14effd16).** Full rebuild of web/js/panels/stats_panel.js: dropped the panel name + HP/mana bars + 6-stat grid; new vertical "You vs Avg" table. Header = role <select> (top/jungle/mid/bot/support -> route role param) + auto-derived game-time bracket (lc.game_time_s; <1500s early / <2100s mid / else late, mirrors core.role_bracket_bench). 4 rows LVL/CS/TF/KDA. You = live lc.* (KDA=(k+a)/max(d,1) from the "k/d/a" string); Bench = /api/role-bracket-bench stats.<k>.avg, champ_benchmarks-style (role,bracket) cache+TTL+inflight, degraded "-" on error. overlay.css: max-width 190->220, bar/grid rules -> vertical table (You white-.96/bold vs Avg white-.62 = opacity compare signal, colorblind-safe). RED-first tests/test_overlay_a4b_stats_vertical.py 17->20 green. Tier-1, ADR-008 (no RC restart), no ENGINE/DS/Share. LEDGER 656, Section J A4b -> DONE.
+- **DO-NOT-REDO / gaps:** (1) TF (kill-participation) has NO live producer (Live Client API, reference_liveclient_no_hud_data) -> You TF cell is an honest "-"; the benchmark column still shows historical KP. (2) renderStatsPanel(lc) consumes the DERIVED liveclient_summary shape (hp_max/game_time_s/kda/level/cs), NOT the raw envelope -> the active_match_sr.json ui_mock (raw shape) does NOT render the panel; live /api/state is its feed. (3) index.html:2206 #am-statspanel mount already correct - no edit. (4) the plan's web/js/test/*.test.js paths do NOT exist; overlay panels are tested by Python grep-contract tests in tests/ (no jsdom/node harness).
+- **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static preview (:8810) + synthetic derived lc inject (no live game) + preview_inspect computed styles; bracket="early" from game_time_s=1320, You KDA=6.5 from "5/2/8", zero console errors. Verifier CONFIRM (A4b 20/0, regression 41/0); local sweep incl Playwright overlay snapshot = 87 passed.
+- **NEXT (loop):** Section J next OPEN W1 = A5 (enemy-spells widen+unname, T1, deps none), then A6 (remove pane name headers, deps A5), B1 (strip DS-ENGINE caption, T1). C1 (kit-synergy, W2) + E5 (docs sweep, T0) also open. Serialize overlay.css edits A5->A6 (shared file; A4b already off overlay.css this cycle).
+
+---
+
 ## Relocated 2026-06-28 (WP-A6 /done - keep last 3 sessions: A6 + A5 + A4b)
 
 # 2026-06-28 (electron companion window controls + overlay launcher + WP-A4a role-bracket bench route; 93550a4e + c172f6b5 + b883254c)
