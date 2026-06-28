@@ -515,6 +515,39 @@ def get_champion_mastery(
     return data
 
 
+def get_top_champion_masteries(
+    puuid: str,
+    count: int = 3,
+    region: str = "na1",
+) -> Optional[list]:
+    """Champion-Mastery-V4: a PUUID's top-``count`` champions by mastery points,
+    highest first. TTL-cached (5 min). Returns a list of mastery dicts
+    (``championId`` / ``championLevel`` / ``championPoints`` ...) or None on any
+    failure. Used to surface each party member's main in the pre-game lobby.
+    """
+    if not puuid:
+        return None
+    try:
+        count = max(1, int(count))
+    except (TypeError, ValueError):
+        count = 3
+    cache_key = f"mastery_top:v4:{region}:{puuid}:{count}"
+    cached = get_cache().get_ttl(cache_key)
+    if cached is not None:
+        _bump_metric("mastery_v4_top", "cache")
+        return cached
+    url = (
+        f"https://{region}.api.riotgames.com"
+        f"/lol/champion-mastery/v4/champion-masteries/by-puuid/"
+        f"{urllib.parse.quote(puuid, safe='')}/top?count={count}"
+    )
+    data = _call("mastery_v4_top", url)
+    if isinstance(data, list):
+        get_cache().set_ttl(cache_key, data, _MASTERY_TTL_S)
+        return data
+    return None
+
+
 # -- high-level helpers used by the team-context fan-out -----------------
 
 # Mapping from Riot tier name -> ordinal for sorting / formatting.
@@ -662,6 +695,7 @@ __all__ = [
     "format_rank_entry",
     "get_account_by_riot_id",
     "get_champion_mastery",
+    "get_top_champion_masteries",
     "get_match",
     "get_match_timeline",
     "get_recent_matches",

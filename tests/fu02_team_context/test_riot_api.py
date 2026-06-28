@@ -255,6 +255,33 @@ class TestEndpointsHappyPath(_ApiKeyTestCase):
             self.assertIsNone(RA.get_champion_mastery("PUUID1", 0))
         self.assertFalse(m.called)
 
+    def test_get_top_champion_masteries_caches_list(self):
+        top = [
+            {"championId": 222, "championLevel": 7, "championPoints": 43_989},
+            {"championId": 145, "championLevel": 6, "championPoints": 32_727},
+        ]
+        with mock.patch.object(RA, "_http_get",
+                               return_value=_resp(200, top)) as m:
+            r1 = RA.get_top_champion_masteries("PUUID1", count=2)
+            r2 = RA.get_top_champion_masteries("PUUID1", count=2)
+        self.assertEqual(r1, top)
+        self.assertEqual(r2, top)
+        self.assertEqual(m.call_count, 1)  # second call served from TTL cache
+        # The request must hit the /top endpoint with the count query.
+        called_url = m.call_args[0][0]
+        self.assertIn("/champion-masteries/by-puuid/PUUID1/top?count=2", called_url)
+
+    def test_get_top_champion_masteries_missing_puuid_short_circuits(self):
+        with mock.patch.object(RA, "_http_get") as m:
+            self.assertIsNone(RA.get_top_champion_masteries("", count=1))
+        self.assertFalse(m.called)
+
+    def test_get_top_champion_masteries_non_list_returns_none(self):
+        # A dict body (unexpected shape) is rejected, not cached as truth.
+        with mock.patch.object(RA, "_http_get",
+                               return_value=_resp(200, {"oops": True})):
+            self.assertIsNone(RA.get_top_champion_masteries("PUUID1", count=1))
+
 
 class TestEndpointFailureModes(_ApiKeyTestCase):
     def test_401_returns_none(self):
