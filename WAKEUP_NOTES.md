@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-28 (overlay-build loop - WP-A3 coach [t]-tag strip + truncation removal; ea100097 + 68841ce5)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W0 WP after A1/A2: A3 (T1, deps none).
+
+- **WP-A3 (ea100097).** NEW helpers.stripCoachTags folded into safe() -> right_now.js + next.js inherit the strip with ZERO edits (both route coach text + the dataset.raw clipboard through safe()); byte-identical for tag-free strings (item refs [Kraken Slayer] / digit refs [3153] preserved). coach_choices.js gets an explicit strip (it slices raw fields, bypassing safe()). CSS: un-clamp .action / .immediate / .action-mid / kv body rows (fixed height -> min-height reserve); the Arena .immediate.is-pregame dense card clip re-stated as a regression guard (it used to inherit the now-removed base clamp). RED-first tests/test_overlay_a3_coach_tag_strip.py 11 -> 18 green; verifier PASS; 68-test regression incl Playwright snapshots, 0 regressions; CI green. LEDGER 654, Section J A3 -> DONE.
+- **Stale-cite corrections (do-not-redo):** the plan's overlay.css:349 .action clamp does NOT exist (overlay reuses right_now.css -> no overlay.css edit, no shared-file collision); the right_now.js "see .action in dashboard.css" comment is stale (no dashboard.css). Bare .action/.immediate selectors live ONLY in right_now.css.
+- **PARKED (out of this loop's scope - F.2 DS-batch):** the DS target-current-HP% lever research (kicked off before the operator redirected to the overlay loop) finished - lolmath ~50% baseline CONFIRMED (enemyAverageCurrentHp field, default 0.5; ONLY the mage/assassin scorers consume target_current_hp_pct; the seam is built default-OFF but UNWIRED across the /rank HTTP boundary). Full spec is in the workflow output file. Do NOT re-run the research; the per-archetype flip is a gated DS-batch Tier-2 (ENGINE bump + 3-game live eyeball), NOT part of the overlay loop.
+- **NEXT (loop):** Section J next OPEN W0 = A4a (role-bracket bench route, T2), E5 (docs sweep, T0), F5-H02, F5-M01; F6a gated on E5.
+
+---
+
 # 2026-06-28 (overlay redesign: launcher control-center + all-panels + per-panel opacity/scale + interactive zones + enemy spell tap-tracker + stats panel; live-verified last session's 4 fixes)
 
 Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2026-06-27, then a big operator-driven overlay redesign. 5 commits, all pushed; RC restarted pid 11856.
@@ -29,39 +40,3 @@ Live operator session (back-to-back ranked SR). Restarted RC to activate last se
 - **Restarts (operator-requested wrap):** RC pid 17748 -> 29032 (spell fix + PARTY MAINS + events-fix all live); overlay relaunched (4 electron); hotkey listener pid 25208 (hook installed). Spell fix was already live from the first restart (this session draft spells = fixed role-aware behavior).
 
 OWED: events-fix in-game live confirm (next game tower fall -> siege callout in /api/state callouts; unit + live-path proven, just not yet eyeballed in a served callout); draft spell-hover confirm (BOTTOM self-corrects Flash+Heal, manual sticks); in-game Ctrl+Shift+B VISIBLE panel cycle; deterministic ARAM coach Stage-4 flip (eyeball more games).
-
----
-
-# 2026-06-27 (deterministic ARAM coach Haiku-to-zero Stages 1-2 + legion_on agent fix + overlay/spell diagnosis, `5b74f9f2`..`1aed8f06`)
-
-Live operator session (Lulu/Kalista ARAM then ranked Caitlyn SR). Resumed the no-live-LLM precompute program (B), coach lane.
-
-- **Deterministic ARAM coach - correct-by-construction, SHADOW-only (commits `338ee4e3` + `914f3acf` + `7ff205e7`).** Re-measured the HZ laning-VERDICT precompute vs Haiku on the item-614 CORRECTED tables (ts>=2026-06-24, ARAM only, n=269): **23% agreement** (62/269), precompute systematically too passive (says hold, Haiku says trade; emits "trade" ZERO times for ARAM). Re-confirms the SETTLED item-266 matchup-verdict coin-flip + no ARAM rewind ground truth -> the laning-verdict flip is a DEAD-END (memory `project_aram_haiku_zero_path`; do NOT re-attempt / re-tune matchup thresholds). PIVOTED to correct-by-construction: NEW `core/aram_action_rule` (HP-band/wave tree from `aram_coach.py:251-260`) + `core/aram_fight_risk` (enemy-CC projection) + `core/aram_deterministic_coach.build_block` (assembler) + `core/aram_coach_shadow` (whole-output shadow) wired in `dashboard/_state_builder` + `_deterministic_coaching`; `item_build` fills from `build_orders_aram.json`. Logs deterministic-vs-Haiku per ARAM tick to `data/aram_coach_shadow.jsonl`. **Eyeball-validated LIVE (Kalista ARAM): the ACTION verdict MATCHES Haiku** (POKE==POKE PHASE, FALL BACK~=WAIT RESPAWN) - the keystone works zero-LLM. Gap: fight_rule/risk correct-but-generic vs Haiku's champ-specific mechanics. SHADOW-only (served /api/state byte-unchanged, safety-property test). RC reloaded pid 7096 = shadow LIVE. NEXT: eyeball more games -> Stage-4 default-OFF flip (operator-gated, do-not-flip-blind); optional Stage 0 build-A/B variants table + richer fight_rule.
-- **legion_on agent-death fix (`5b74f9f2`).** legion_off kills RC-HotkeyListener / RC-LCUAgent / RC-LiveClientRelay via its broad "Riot Commander" python pattern, but legion_on never restarted them (LogonTrigger tasks) - every off/on cycle silently left in-game hotkeys + LCU + relay DEAD. legion_on now restarts all 3, process-guarded vs the pythonw launcher-stub double-launch (RegisterHotKey 1409).
-- **Ctrl+Shift+B overlay - PARTIAL.** In-game failure root cause = the hotkey listener was DEAD (the legion off/on gap above); restarted it (pid 22880, registers Ctrl+Shift+A/B clean). BUT the in-game keypress STILL does not reach the listener (panel_cycle.txt mtime frozen, ZERO signals since restart) - League/Overlay Platform M is swallowing the global RegisterHotKey. Stamped the signal file directly to isolate overlay-side vs keypress-side; OPEN: operator to confirm whether the overlay cycled on the direct stamp -> if yes, switch the listener to a low-level WH_KEYBOARD_LL hook. (Side note: a test pollutes the real `logs/hotkey_listener.log` with `Z:\nonexistent` writes - separate test-isolation slice.)
-- **Summoner-spell revert fix (`1aed8f06`).** The RuneWriter mid-pick branch pushed the generic role-blind Flash+Teleport every ~1s poll, reverting ADC spells throughout the ranked-draft hover. Now role-aware (`spells_for_role`: BOTTOM->Flash+Heal) + respects a manual change (mirrors the post-lock branch). 7 new tests, e6 green. ACTIVATES ON NEXT RC RESTART (deferred - operator was in a live ranked game).
-
-OWED: RC restart (deferred, operator in-game) activates the spell fix. Overlay keypress delivery (low-level hook). ARAM coach flip gate (eyeball more games). Base-siege callout live confirm (from-start sampler still armed).
-
----
-
-# 2026-06-28 weekly-hygiene (unattended)
-
-No doc relocations this pass. No code/engine changes.
-
-**Section 1 - WAKEUP trim:** 3 sessions present (at limit). No relocation needed.
-
-**Section 2 - CLAUDE.md overhead:** 24KB (well under 60KB budget). No leaked ledger entries found.
-
-**Section 3 - Memory suspects (FLAG for operator - not auto-edited):**
-- `reference_topology.md` (41d): describes dashboard on Game-PC secondary monitor; Game-PC retired ADR-011 (2026-05-29). Needs full rewrite for Legion-only 1-PC layout.
-- `user_operator_profile.md` (38d): "Game-PC (runs League; dashboard shown in Chrome on its secondary monitor)" is stale. League now runs on Legion.
-- `reference_api_keys.md` (41d): `riot-commander-gamepc` listed as active ("Claude Code CLI on Game-PC + bridge daemon tasks"); bridge decommissioned ADR-012. Gamepc key row should be marked retired.
-- `feedback_gamepc_league_fullscreen_lockup.md` (24d): Game-PC exclusive-fullscreen rule; Game-PC retired. Evaluate if the Borderless rule now applies to Legion's display setup instead.
-
-**Section 4 - Anomaly triage (all EXPECTED):** RC pid=3348 alive / DS :8893 ok patch=16.13.1 / RC-LiveFlipWatcher Disabled=by-design / all 18 tasks normal / LCU InProgress + relay empty = lobby with no active game.
-
-**Untracked auditor artifacts (not committed - operator review):**
-- `agents/agent6_auditor/proposals/20260628-081728-m05-smb-push-deadcode/`
-- `agents/agent6_auditor/reports/20260628-081728-eleventh-audit-phase3.md`
-- `agents/agent6_auditor/proposals/20260621-100200-m04-decisions-drift/REESCALATION-20260628.md`
