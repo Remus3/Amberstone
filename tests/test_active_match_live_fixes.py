@@ -274,14 +274,16 @@ class CdsVisualHideTests(unittest.TestCase):
         self.assertIn("renderCooldownLedger(", self.js)
         self.assertIn("attachCooldownLedgerHandlers(", self.js)
 
-    def test_overlay_threat_panelset_reshow_untouched(self) -> None:
-        # Widget-field doctrine: the threat-set CDS reveal carries the
-        # .ovx-widget:not(.ovx-hidden) widget-field qualifier before the brace.
+    def test_overlay_cds_ledger_reshow_untouched(self) -> None:
+        # Widget-field doctrine (panel sets retired 2026-06-28): the CDS ledger
+        # (.am-pane-cd / w-threat) is reshown UNCONDITIONALLY when not per-widget-
+        # hidden - the reveal carries the .ovx-widget:not(.ovx-hidden) widget-field
+        # qualifier before the brace, with NO [data-panelset] gate.
         m = re.search(
-            r'\[data-panelset="threat"\] #view-active-match \.am-pane-cd'
+            r'\.am-pane-cd\.ovx-widget:not\(\.ovx-hidden\)'
             r"[^{]*\{[^}]*display:\s*block\s*!important", self.overlay)
-        self.assertIsNotNone(m, "overlay threat panelset must keep its CDS "
-                                "surface (display: block !important)")
+        self.assertIsNotNone(m, "overlay CDS ledger must keep its display: "
+                                "block !important reveal (widget-field gate)")
 
 
 class AsciiHygieneTests(unittest.TestCase):
