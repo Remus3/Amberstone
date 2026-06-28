@@ -195,6 +195,62 @@ test("_shellAction degrades to a no-op (no throw) when the bridge is absent", ()
   assert.strictEqual(I._shellAction({ action: "set-active" }), false);
 });
 
+// --- per-panel opacity + scale (the menu sliders) ----------------------------
+
+test("_setOpacity clamps to [0.3,1], applies inline opacity, persists", async () => {
+  const dom = installDom();
+  const I = mod._internals;
+  I._setLayout({});
+  const w = I.WIDGETS[0];
+  const el = makeNode();
+  dom.nodes[w.sel] = el;
+
+  I._setOpacity(w, 0.5);
+  assert.strictEqual(I._posFor(w).opacity, 0.5);
+  assert.strictEqual(el.style.opacity, "0.5", "dimmed opacity applied inline");
+
+  I._setOpacity(w, 5);   // out of range high -> clamps to 1
+  assert.strictEqual(I._posFor(w).opacity, 1);
+  // opacity 1 is the default -> inline style is removed (clean DOM)
+  assert.strictEqual(el.style.opacity, "", "opacity 1 clears the inline style");
+
+  I._setOpacity(w, 0.05); // out of range low -> clamps to 0.3
+  assert.strictEqual(I._posFor(w).opacity, 0.3);
+
+  await flushPersist();
+  assert.strictEqual(JSON.parse(dom.store.get(I.LS_KEY))[w.id].opacity, 0.3, "opacity persisted");
+});
+
+test("_setScale clamps to [0.5,1.6], drives --ovx-scale, persists", async () => {
+  const dom = installDom();
+  const I = mod._internals;
+  I._setLayout({});
+  const w = I.WIDGETS[1];
+  const el = makeNode();
+  dom.nodes[w.sel] = el;
+
+  I._setScale(w, 1.4);
+  assert.strictEqual(I._posFor(w).scale, 1.4);
+  assert.strictEqual(el.style._props["--ovx-scale"], "1.4", "scale drives the CSS var");
+
+  I._setScale(w, 9);   // clamps to 1.6
+  assert.strictEqual(I._posFor(w).scale, 1.6);
+  I._setScale(w, 0.1); // clamps to 0.5
+  assert.strictEqual(I._posFor(w).scale, 0.5);
+
+  await flushPersist();
+  assert.strictEqual(JSON.parse(dom.store.get(I.LS_KEY))[w.id].scale, 0.5, "scale persisted");
+});
+
+test("_posFor defaults opacity to 1 and scale to 1 when unset", () => {
+  installDom();
+  const I = mod._internals;
+  I._setLayout({});
+  const p = I._posFor(I.WIDGETS[0]);
+  assert.strictEqual(p.opacity, 1);
+  assert.strictEqual(p.scale, 1);
+});
+
 // --- regression: the existing reset still works with the launcher present ----
 
 test("resetOverlayLayout reopens a menu-hidden panel and leaves the launcher", () => {

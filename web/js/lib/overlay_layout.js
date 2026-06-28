@@ -116,6 +116,9 @@ function _posFor(w) {
     y: Number.isFinite(saved.y) ? saved.y : w.y,
     hidden: saved.hidden === true,
     scale: Number.isFinite(saved.scale) ? saved.scale : 1,
+    // Per-panel opacity (operator 2026-06-28): a 0.3-1.0 multiplier so each cue
+    // can recede independently of the global window opacity. Absent -> 1 (opaque).
+    opacity: Number.isFinite(saved.opacity) ? saved.opacity : 1,
   };
 }
 
@@ -127,6 +130,13 @@ function _applyPos(el, p) {
     el.style.setProperty("--ovx-scale", String(p.scale));
   } else {
     el.style.removeProperty("--ovx-scale");
+  }
+  // Per-panel opacity is an inline style (composes with the Electron window-level
+  // global opacity); only set it when dimmed so the default stays clean.
+  if (Number.isFinite(p.opacity) && p.opacity < 1) {
+    el.style.opacity = String(p.opacity);
+  } else {
+    el.style.opacity = ""; // standard prop - clearing the string removes it
   }
   el.classList.toggle("ovx-hidden", p.hidden);
 }
@@ -182,6 +192,26 @@ function _toggleHidden(w) {
   const next = !_posFor(w).hidden;
   _setHidden(w, next);
   return next;
+}
+
+// Per-panel opacity (0.3-1.0) + scale (0.5-1.6) setters for the menu sliders.
+// Same read-side path (_applyPos) + persistence (mirror) as hide/position.
+function _clampNum(v, lo, hi, dflt) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return dflt;
+  return Math.max(lo, Math.min(hi, n));
+}
+function _setOpacity(w, value) {
+  _layout[w.id] = { ...(_layout[w.id] || {}), opacity: _clampNum(value, 0.3, 1, 1) };
+  const el = document.querySelector(w.sel);
+  if (el) _applyPos(el, _posFor(w));
+  _persist();
+}
+function _setScale(w, value) {
+  _layout[w.id] = { ...(_layout[w.id] || {}), scale: _clampNum(value, 0.5, 1.6, 1) };
+  const el = document.querySelector(w.sel);
+  if (el) _applyPos(el, _posFor(w));
+  _persist();
 }
 
 // Fire an overlay action through the rc-shell bridge (set-panel / set-active).
@@ -395,8 +425,61 @@ function _setMenu(open) {
   if (open) _renderMenu(_menuEl);
 }
 
-// Rebuild the menu rows from CURRENT state each open so the per-panel [x]/[ ]
-// markers reflect what is actually shown right now.
+// Build one per-panel control row: a show/hide toggle + an opacity slider + a
+// scale slider. Each control mutates only its own _layout field through the
+// shared read-side path (_applyPos) + persistence, so they compose cleanly.
+function _menuPanelRow(menu, w) {
+  const p = _posFor(w);
+  const row = document.createElement("div");
+  row.className = "ovx-menu-prow";
+  row.dataset.ovxTarget = w.id;
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "ovx-menu-row ovx-menu-toggle";
+  toggle.dataset.on = p.hidden ? "0" : "1";
+  toggle.textContent = (p.hidden ? "[ ] " : "[x] ") + (w.label || w.id);
+  toggle.addEventListener("click", () => {
+    _toggleHidden(w);
+    _renderMenu(menu); // refresh every row's state
+  });
+  row.appendChild(toggle);
+
+  // Sliders only matter for a shown panel; render them regardless so toggling
+  // back on does not change the row height, but dim them when hidden.
+  const sliders = document.createElement("div");
+  sliders.className = "ovx-menu-sliders" + (p.hidden ? " ovx-dim" : "");
+
+  const opWrap = document.createElement("label");
+  opWrap.className = "ovx-menu-slider";
+  opWrap.appendChild(document.createTextNode("op"));
+  const op = document.createElement("input");
+  op.type = "range";
+  op.min = "30"; op.max = "100"; op.step = "5";
+  op.value = String(Math.round((p.opacity == null ? 1 : p.opacity) * 100));
+  op.addEventListener("input", () => { _setOpacity(w, Number(op.value) / 100); });
+  opWrap.appendChild(op);
+  sliders.appendChild(opWrap);
+
+  const scWrap = document.createElement("label");
+  scWrap.className = "ovx-menu-slider";
+  scWrap.appendChild(document.createTextNode("sz"));
+  const sc = document.createElement("input");
+  sc.type = "range";
+  sc.min = "50"; sc.max = "160"; sc.step = "10";
+  sc.value = String(Math.round((p.scale == null ? 1 : p.scale) * 100));
+  sc.addEventListener("input", () => { _setScale(w, Number(sc.value) / 100); });
+  scWrap.appendChild(sc);
+  sliders.appendChild(scWrap);
+
+  row.appendChild(sliders);
+  menu.appendChild(row);
+}
+
+// Rebuild the menu from CURRENT state each open so every row reflects what is
+// actually shown / its live opacity + scale. The coach/build/threat panel-set
+// quick-swap is RETIRED (operator 2026-06-28): all panels are accessible and the
+// operator manages each one here (hide / reposition / opacity / scale).
 function _renderMenu(menu) {
   menu.innerHTML = "";
   const head = document.createElement("div");
@@ -404,20 +487,7 @@ function _renderMenu(menu) {
   head.textContent = "PANELS";
   menu.appendChild(head);
 
-  for (const w of WIDGETS) {
-    const row = document.createElement("button");
-    row.type = "button";
-    row.className = "ovx-menu-row ovx-menu-toggle";
-    const hidden = _posFor(w).hidden;
-    row.dataset.ovxTarget = w.id;
-    row.dataset.on = hidden ? "0" : "1";
-    row.textContent = (hidden ? "[ ] " : "[x] ") + (w.label || w.id);
-    row.addEventListener("click", () => {
-      _toggleHidden(w);
-      _renderMenu(menu);
-    });
-    menu.appendChild(row);
-  }
+  for (const w of WIDGETS) _menuPanelRow(menu, w);
 
   const reset = document.createElement("button");
   reset.type = "button";
@@ -428,21 +498,6 @@ function _renderMenu(menu) {
     _renderMenu(menu);
   });
   menu.appendChild(reset);
-
-  const psHead = document.createElement("div");
-  psHead.className = "ovx-menu-head";
-  psHead.textContent = "PANEL SET";
-  menu.appendChild(psHead);
-  for (const ps of PANEL_SETS) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "ovx-menu-row ovx-menu-panelset";
-    b.textContent = ps;
-    b.addEventListener("click", () => {
-      _shellAction({ action: "set-panel", panelSet: ps });
-    });
-    menu.appendChild(b);
-  }
 
   const done = document.createElement("button");
   done.type = "button";
@@ -599,6 +654,8 @@ export const _internals = {
   _hideWidget,
   _setHidden,
   _toggleHidden,
+  _setOpacity,
+  _setScale,
   _shellAction,
   _ensureLauncher,
   _renderMenu,

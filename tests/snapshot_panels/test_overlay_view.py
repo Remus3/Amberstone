@@ -13,10 +13,10 @@ chips, the lead pill, the objective/spike callouts, the enemy CD ledger, the
 build re-rank, the fight-model knobs) is lifted to position:fixed at a saved-or-
 default (x,y); the default is the eye-line anchor map (OVERLAY_DOCTRINE section 4:
 call upper-center 760,140; lead under the score bar 786,44; callouts at the
-minimap; spike bottom-left). Reveal-
-only widgets (build / threat / fight-model) hide in the default coach set and
-appear in their panel set. Header / nav / footer / every other view is
-display:none over a transparent background.
+minimap; spike bottom-left). ALL panels are accessible (the coach/build/threat
+panel-set auto-hide was retired 2026-06-28); per-widget .ovx-hidden is the only
+visibility gate. Header / nav / footer / every other view is display:none over a
+transparent background.
 
 Drive path mirrors test_active_match_view.py (C2):
 /?ui_mock=1&mode=sr&overlay=1. The forced applyView("active-match") fires
@@ -95,9 +95,9 @@ def _open_overlay(pw_browser, mock_server, query="?ui_mock=1&mode=sr&overlay=1")
 def test_overlay_shell_is_widget_field(mock_server, pw_browser):
     """?overlay=1: shell flag + forced active-match view, then the cue mounts are
     lifted to absolutely-positioned .ovx-widget accents (the widget FIELD, not a
-    dock). The coach-set widgets paint at their eye-line anchor default; the
-    reveal-only build / threat / fight-model widgets are hidden; header / footer /
-    every other view is display:none over a transparent page (doctrine 2+4)."""
+    dock). All widgets paint at their eye-line anchor default (panel-set auto-hide
+    retired 2026-06-28 - every panel is accessible); header / footer / every other
+    view is display:none over a transparent page (doctrine 2+4)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         # Shell flag + forced view.
@@ -127,14 +127,17 @@ def test_overlay_shell_is_widget_field(mock_server, pw_browser):
         # The fixture's coach payload actually rendered into the CALL pane.
         assert page.locator("#am-call-body div").count() > 0, "CALL pane empty"
 
-        # Reveal-only widgets are hidden in the default coach set.
+        # All-panels-accessible doctrine (operator 2026-06-28): the panel-set
+        # auto-hide is retired, so the formerly reveal-only build / CDS ledger /
+        # fight-model panes all SHOW by default (per-widget .ovx-hidden is now the
+        # only gate). See test_all_panels_visible_by_default for the focused check.
         for sel in (
             "#view-active-match .am-pane-build",
             "#view-active-match .am-pane-cd",
             "#am-pane-ovds",
         ):
-            assert _display(page, sel) == "none", (
-                f"{sel} must be reveal-only (hidden in the default coach set)"
+            assert _display(page, sel) != "none", (
+                f"{sel} must be visible by default (all panels accessible)"
             )
         # The map pane never paints on the HUD.
         assert _display(page, ".am-pane-map") == "none", "map pane should hide"
@@ -893,129 +896,53 @@ def _open_overlay_set(pw_browser, mock_server, panelset):
     )
 
 
-def test_panelset_coach_hides_build(mock_server, pw_browser):
-    """panelset=coach: CALL pane + right-now mounts only - BUILD pane off."""
-    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "coach")
+def test_all_panels_visible_by_default(mock_server, pw_browser):
+    """All-panels-accessible doctrine (operator 2026-06-28): the coach/build/threat
+    quick-swap auto-hide is RETIRED. A plain ?overlay=1 shows EVERY panel - including
+    the formerly reveal-only build re-rank, CDS ledger, and fight-model panes - plus
+    the primary call. Per-widget .ovx-hidden (the launcher toggle / right-click hide)
+    is now the only visibility gate; no panel-set keys off body[data-panelset]."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
-        assert page.evaluate("document.body.dataset.panelset") == "coach"
-        assert page.locator("#view-active-match .am-pane-call").is_visible()
-        assert _display(page, ".am-pane-build") == "none", "build pane should hide"
-        assert _display(page, "main") != "none", "mount column must stay"
-        assert page.locator("#rn-lead").count() == 1
+        for sel in (
+            "#view-active-match .am-pane-call",
+            "#view-active-match .am-pane-build",
+            "#view-active-match .am-pane-cd",
+            "#am-pane-ovds",
+        ):
+            assert _display(page, sel) != "none", (
+                f"{sel} must be visible by default (all panels accessible)"
+            )
+        # The map pane still never paints on the HUD (not part of the field).
+        assert _display(page, ".am-pane-map") == "none", "map pane should stay hidden"
         SCREENSHOTS.mkdir(exist_ok=True)
-        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_coach.png"))
+        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_all_panels.png"))
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [panelset coach]: {errors[:3]}"
+    assert not errors, f"JS errors [all panels]: {errors[:3]}"
 
 
-def test_panelset_build_reveals_build_widget(mock_server, pw_browser):
-    """panelset=build (doctrine section 4 delta = coach core + w-build + w-ovds,
-    MINUS w-threat): the build re-rank widget + the fight-model knob strip reveal;
-    the threat ledger stays hidden; the PRIMARY call widget PERSISTS - the build
-    set is a reveal layered on the coach base, not a column swap."""
-    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "build")
+def test_ovx_hidden_suppresses_a_panel(mock_server, pw_browser):
+    """Per-widget hide is now the only visibility gate: adding .ovx-hidden to a shown
+    panel (what the launcher menu toggle / right-click hide do) removes it, while its
+    siblings stay - the replacement for the retired panel-set hiding."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
-        assert page.evaluate("document.body.dataset.panelset") == "build"
-        # Reveal: build re-rank + the fight-model knobs (w-ovds) now paint.
-        assert _display(page, "#view-active-match .am-pane-build") != "none", (
-            "build widget must reveal in the build set"
-        )
-        assert _display(page, "#am-pane-ovds") != "none", (
-            "fight-model knobs (w-ovds) must reveal in the build set"
-        )
-        # The coach core persists (doctrine: build keeps the call + choices).
-        assert _display(page, "#view-active-match .am-pane-call") != "none", (
-            "the primary call widget must persist in the build set"
-        )
-        # The threat ledger is NOT part of the build set.
-        assert _display(page, "#view-active-match .am-pane-cd") == "none", (
-            "the threat ledger must stay hidden in the build set"
-        )
-        SCREENSHOTS.mkdir(exist_ok=True)
-        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_build.png"))
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors [panelset build]: {errors[:3]}"
-
-
-def test_panelset_threat_reveals_cd_ledger(mock_server, pw_browser):
-    """panelset=threat (doctrine section 4 delta = coach core + w-threat, MINUS
-    w-build, w-choices, w-ovds): the enemy cooldown ledger reveals; build + the
-    A/B choice chips drop (threat-watching is not a fight-decision moment); the
-    primary call + lead + callouts timing widgets persist. The #rn-choices hide
-    must beat the section-4a id-flex rule even when the chips are populated."""
-    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "threat")
-    try:
-        assert page.evaluate("document.body.dataset.panelset") == "threat"
-        assert _display(page, "#view-active-match .am-pane-cd") != "none", (
-            "the cooldown ledger must reveal in the threat set"
+        assert _display(page, "#view-active-match .am-pane-build") != "none"
+        page.evaluate(
+            "() => document.querySelector('#view-active-match .am-pane-build')"
+            ".classList.add('ovx-hidden')"
         )
         assert _display(page, "#view-active-match .am-pane-build") == "none", (
-            "build must drop in the threat set"
+            ".ovx-hidden must suppress the panel"
         )
-        # Choices drop in threat even when populated (the id-mount hide must
-        # out-rank the section-4a `#rn-choices:not([hidden])` flex rule).
-        page.evaluate(
-            "() => {"
-            "  const ch = document.getElementById('rn-choices');"
-            "  ch.hidden = false;"
-            "  ch.innerHTML = '<button class=\"rc-chip\">A</button>';"
-            "}"
-        )
-        assert _display(page, "#rn-choices") == "none", "choices must drop in threat"
-        # Coach core persists: the primary call stays, and the lead pill (an
-        # ambient coach-core widget) is not dropped by the threat set - populate
-        # it and confirm the panel set still leaves it shown.
-        assert _display(page, "#view-active-match .am-pane-call") != "none", (
-            "the primary call widget must persist in the threat set"
-        )
-        page.evaluate(
-            "() => {"
-            "  const ld = document.getElementById('rn-lead');"
-            "  ld.hidden = false;"
-            "  ld.innerHTML = '<span>+1.2k gold lead</span>';"
-            "}"
-        )
-        assert _display(page, "#rn-lead") != "none", "the lead pill must persist in threat"
-        # Callouts persist (timing surface).
-        page.evaluate(
-            "() => {"
-            "  const co = document.getElementById('rn-callouts');"
-            "  co.hidden = false;"
-            "  co.innerHTML = '<div class=\"rc-co-row\">"
-            "<span class=\"rc-co-line\">Drake 0:45</span></div>';"
-            "}"
-        )
-        assert _display(page, "#rn-callouts") != "none", "callouts must persist in threat"
-        SCREENSHOTS.mkdir(exist_ok=True)
-        page.screenshot(path=str(SCREENSHOTS / "overlay_sr_threat.png"))
+        # A sibling pane is unaffected by another panel's hide.
+        assert _display(page, "#am-pane-ovds") != "none", "sibling pane must stay shown"
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [panelset threat]: {errors[:3]}"
-
-
-def test_panelset_unknown_keeps_coach_set(mock_server, pw_browser):
-    """Defensive: an unknown panelset never stamps body[data-panelset], so the
-    DEFAULT coach set renders - the coach-core widgets paint and the reveal-only
-    build / threat / fight-model widgets stay hidden. The plain ?overlay=1 URL is
-    the coach set (doctrine section 4)."""
-    ctx, page, errors = _open_overlay_set(pw_browser, mock_server, "garbage")
-    try:
-        assert page.evaluate("document.body.dataset.panelset || ''") == ""
-        # Coach core renders (the always-on primary call widget is shown).
-        assert _display(page, "#view-active-match .am-pane-call") != "none"
-        # Reveal-only widgets hidden in the default coach set.
-        assert _display(page, "#view-active-match .am-pane-build") == "none"
-        assert _display(page, "#view-active-match .am-pane-cd") == "none"
-        assert _display(page, "#am-pane-ovds") == "none"
-    finally:
-        page.close()
-        ctx.close()
-    assert not errors, f"JS errors [panelset unknown]: {errors[:3]}"
+    assert not errors, f"JS errors [ovx-hidden]: {errors[:3]}"
 
 
 def _open_overlay_scaled(pw_browser, mock_server, query, vw, vh):
