@@ -1,5 +1,18 @@
 # RC session history archive
 
+## Relocated 2026-06-28 (WP-A5 /done - keep last 3 sessions: A5 + A4b + A4a/companion)
+
+# 2026-06-28 (overlay-build loop - WP-A3 coach [t]-tag strip + truncation removal; ea100097 + 68841ce5)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W0 WP after A1/A2: A3 (T1, deps none).
+
+- **WP-A3 (ea100097).** NEW helpers.stripCoachTags folded into safe() -> right_now.js + next.js inherit the strip with ZERO edits (both route coach text + the dataset.raw clipboard through safe()); byte-identical for tag-free strings (item refs [Kraken Slayer] / digit refs [3153] preserved). coach_choices.js gets an explicit strip (it slices raw fields, bypassing safe()). CSS: un-clamp .action / .immediate / .action-mid / kv body rows (fixed height -> min-height reserve); the Arena .immediate.is-pregame dense card clip re-stated as a regression guard (it used to inherit the now-removed base clamp). RED-first tests/test_overlay_a3_coach_tag_strip.py 11 -> 18 green; verifier PASS; 68-test regression incl Playwright snapshots, 0 regressions; CI green. LEDGER 654, Section J A3 -> DONE.
+- **Stale-cite corrections (do-not-redo):** the plan's overlay.css:349 .action clamp does NOT exist (overlay reuses right_now.css -> no overlay.css edit, no shared-file collision); the right_now.js "see .action in dashboard.css" comment is stale (no dashboard.css). Bare .action/.immediate selectors live ONLY in right_now.css.
+- **PARKED (out of this loop's scope - F.2 DS-batch):** the DS target-current-HP% lever research (kicked off before the operator redirected to the overlay loop) finished - lolmath ~50% baseline CONFIRMED (enemyAverageCurrentHp field, default 0.5; ONLY the mage/assassin scorers consume target_current_hp_pct; the seam is built default-OFF but UNWIRED across the /rank HTTP boundary). Full spec is in the workflow output file. Do NOT re-run the research; the per-archetype flip is a gated DS-batch Tier-2 (ENGINE bump + 3-game live eyeball), NOT part of the overlay loop.
+- **NEXT (loop):** Section J next OPEN W0 = A4a (role-bracket bench route, T2), E5 (docs sweep, T0), F5-H02, F5-M01; F6a gated on E5.
+
+---
+
 ## Relocated 2026-06-28 (WP-A4b /done - keep last 3 sessions: A4b + A4a/companion + A3)
 
 # 2026-06-28 (overlay redesign: launcher control-center + all-panels + per-panel opacity/scale + interactive zones + enemy spell tap-tracker + stats panel; live-verified last session's 4 fixes)
