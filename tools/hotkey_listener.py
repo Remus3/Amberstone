@@ -62,6 +62,13 @@ HTTP_TIMEOUT  = 3.0
 # rc-shell resolves (C:\Riot Commander\ops\runtime\).
 TOGGLE_SIGNAL_FILE = r"C:\Riot Commander\ops\runtime\overlay_active_toggle.txt"
 
+# Overlay panel-cycle signal file. Ctrl+Shift+C (id 4) stamps this with the
+# current epoch on each press; rc-shell polls it and rotates the overlay panel
+# set coach -> build -> threat (rc-shell/src/main.js startPanelCycleWatch). The
+# in-game build panel was otherwise unreachable: its only switch (Electron
+# Alt+Shift+C) is dead while League holds foreground focus, same as Ctrl+Shift+A.
+PANEL_CYCLE_SIGNAL_FILE = r"C:\Riot Commander\ops\runtime\overlay_panel_cycle.txt"
+
 def _setup_logging() -> logging.Logger:
     """Log to a durable file (always) plus the console when one exists.
 
@@ -178,6 +185,20 @@ def signal_overlay_active_toggle() -> None:
         log.warning("overlay toggle signal failed: %s", exc)
 
 
+def signal_overlay_panel_cycle() -> None:
+    """Stamp the panel-cycle signal file (atomic tmp+replace) so rc-shell rotates
+    the overlay panel set. Fire-and-forget: a write failure must never crash the
+    loop."""
+    try:
+        tmp = PANEL_CYCLE_SIGNAL_FILE + ".tmp"
+        with open(tmp, "w", encoding="ascii") as f:
+            f.write(f"{time.time():.3f}")
+        os.replace(tmp, PANEL_CYCLE_SIGNAL_FILE)
+        log.info("overlay panel-cycle signaled")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("overlay panel-cycle signal failed: %s", exc)
+
+
 def handle_hotkey(cache: DecisionCache, slot: int) -> None:
     """slot=1 -> first option; slot=2 -> second option."""
     d = cache.topmost()
@@ -201,9 +222,11 @@ _MOD_NOREPEAT = 0x4000
 _VK_1         = 0x31
 _VK_2         = 0x32
 _VK_A         = 0x41
+_VK_C         = 0x43
 _WM_HOTKEY    = 0x0312
 _HOTKEY_FLAGS = _MOD_CONTROL | _MOD_SHIFT | _MOD_NOREPEAT
 _SLOT_OVERLAY_TOGGLE = 3
+_SLOT_OVERLAY_PANEL_CYCLE = 4
 
 
 def _register(hotkey_id: int, vk: int) -> None:
@@ -219,8 +242,12 @@ def _unregister(hotkey_id: int) -> None:
     _user32.UnregisterHotKey(None, hotkey_id)
 
 
-# Hotkeys we claim, as a set: (id, vk). Ctrl+Shift+1/2 = coach slots, A = overlay.
-_HOTKEYS = ((1, _VK_1), (2, _VK_2), (_SLOT_OVERLAY_TOGGLE, _VK_A))
+# Hotkeys we claim, as a set: (id, vk). Ctrl+Shift+1/2 = coach slots,
+# A = overlay ACTIVE toggle, C = overlay panel-set cycle (coach/build/threat).
+_HOTKEYS = (
+    (1, _VK_1), (2, _VK_2),
+    (_SLOT_OVERLAY_TOGGLE, _VK_A), (_SLOT_OVERLAY_PANEL_CYCLE, _VK_C),
+)
 # Retry the whole set on failure. A logon race (another global-hotkey app -
 # Discord / Overlay Platform M / CurseForge - transiently holding a combo, or the
 # interactive window station still settling right after logon) must not kill the
@@ -275,10 +302,12 @@ def message_loop(cache: DecisionCache) -> None:
             log.error("GetMessageA failed (%d)", ctypes.get_last_error())
             break
         if msg.message == _WM_HOTKEY:
-            slot = int(msg.wParam)   # 1/2 = coach choice; 3 = overlay toggle
+            slot = int(msg.wParam)   # 1/2 = coach choice; 3 = toggle; 4 = cycle
             try:
                 if slot == _SLOT_OVERLAY_TOGGLE:
                     signal_overlay_active_toggle()
+                elif slot == _SLOT_OVERLAY_PANEL_CYCLE:
+                    signal_overlay_panel_cycle()
                 else:
                     handle_hotkey(cache, slot)
             except Exception as exc:
@@ -289,7 +318,7 @@ def message_loop(cache: DecisionCache) -> None:
 
 def main() -> int:
     log.info("hotkey_listener starting "
-             "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A)")
+             "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A / Ctrl+Shift+C)")
     cache = DecisionCache()
     stop = threading.Event()
     worker = threading.Thread(

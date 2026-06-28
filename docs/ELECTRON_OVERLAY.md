@@ -143,9 +143,15 @@ post-game                            show             fade out
 
 Hotkeys override auto-behavior:
 - `Alt+Shift+O` - toggle overlay show/hide
-- `Alt+Shift+A` - toggle overlay PASSIVE <-> ACTIVE
-- `Alt+Shift+C` - cycle overlay panel set (coach / build / threat / map)
-- (all rebindable in companion Settings; registered via `globalShortcut`)
+- `Alt+Shift+A` / `Ctrl+Shift+A` - toggle overlay PASSIVE <-> ACTIVE
+- `Alt+Shift+C` / `Ctrl+Shift+C` - cycle overlay panel set (coach / build / threat)
+- In-game vs out-of-game: the `Alt+Shift+*` binds use Electron `globalShortcut`,
+  which does NOT deliver while League holds foreground focus. The `Ctrl+Shift+*`
+  binds are owned by the Win32 `tools/hotkey_listener.py` (RegisterHotKey), which
+  DOES deliver in-game; it stamps a signal file under `ops/runtime/` that the
+  rc-shell main process polls (`startActiveToggleWatch` / `startPanelCycleWatch`).
+  Use `Ctrl+Shift+C` in-game to reach the build panel. (Alt binds rebindable in
+  companion Settings.)
 
 The auto-hide of the companion when a match starts keeps everything to one
 screen: companion for idle, overlay for the match.
