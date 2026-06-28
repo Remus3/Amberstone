@@ -138,6 +138,17 @@ _RECALL_KIND = "recall"
 # Modes that have neutral map objectives. Only Summoner's Rift.
 _OBJECTIVE_MODES: frozenset[str] = frozenset({"sr"})
 
+# Modes that have lane structures (turrets/inhibitors) to siege. SR + ARAM
+# (Howling Abyss has a single lane with turrets + an inhibitor); Arena's ring
+# has none, so the instant siege callout never fires there.
+_SIEGE_MODES: frozenset[str] = frozenset({"sr", "aram"})
+
+# A structure that fell within this many seconds is a LIVE siege moment - the
+# instant deterministic callout fires so coaching is on-screen immediately,
+# bridging the multi-second Haiku coach latency during a base push (the slow
+# "base-attack tick" was just inherent Haiku latency; this is the no-LLM bridge).
+_SIEGE_RECENCY_S: float = 30.0
+
 # Modes this table understands at all. Unknown -> [] (fail-soft).
 _KNOWN_MODES: frozenset[str] = frozenset({"sr", "aram", "arena"})
 
@@ -484,6 +495,61 @@ def inhibitor_callouts(inhib_events: object, game_time_s: float) -> list[dict]:
     return out
 
 
+def structure_siege_callout(
+    turret_events: object,
+    inhib_events: object,
+    game_time_s: float,
+    *,
+    recency_s: float = _SIEGE_RECENCY_S,
+) -> list[dict]:
+    """Active siege callouts for structures that fell within ``recency_s``.
+
+    Pure + fail-soft (no network/LLM). Each turret/inhib event is the Live
+    Client ``{down_at_s, name}`` shape dashboard/_liveclient surfaces. A kill
+    still inside the recency window yields an ACTIVE (eta_s=0) callout so the
+    dashboard/overlay shows it instantly - bridging the multi-second Haiku coach
+    latency during a base push. Older kills fade (no callout). An inhibitor
+    outranks a turret (appended first; both are active so a stable sort keeps the
+    order). Team side is deliberately NOT claimed - a wrong side is worse than
+    none, and the operator already sees which structure fell.
+    """
+    try:
+        gt = float(game_time_s)
+    except (TypeError, ValueError):
+        return []
+
+    def _has_recent(evs: object) -> bool:
+        if not isinstance(evs, list):
+            return False
+        for ev in evs:
+            if not isinstance(ev, dict):
+                continue
+            try:
+                d = float(ev.get("down_at_s"))
+            except (TypeError, ValueError):
+                continue
+            if 0.0 <= (gt - d) <= recency_s:
+                return True
+        return False
+
+    out: list[dict] = []
+    if _has_recent(inhib_events):
+        out.append({
+            "tag": "siege_inhib",
+            "line": "Inhibitor down - super minions pushing; group to siege or peel, do not split low",
+            "eta_s": 0,
+            "kind": "siege",
+        })
+    if _has_recent(turret_events):
+        out.append({
+            "tag": "siege_turret",
+            "line": "Turret down - space opened; re-ward the flank, do not dive without numbers",
+            "eta_s": 0,
+            "kind": "siege",
+        })
+    return out
+
+
 def _epic_kind(ev: dict) -> Optional[str]:
     """Classify a Baron/Elder buff event -> 'baron' | 'elder' | None.
 
@@ -707,6 +773,7 @@ def next_callouts(
     next_item_name: object = None,
     next_item_cost: object = None,
     inhib_events: object = None,
+    turret_events: object = None,
     objective_events: object = None,
 ) -> list[dict]:
     """Return up to ``max_n`` upcoming/active milestone callouts.
@@ -764,6 +831,11 @@ def next_callouts(
         callouts.extend(inhibitor_callouts(inhib_events, gt))
         # Epic-buff (Baron/Elder) expiry countdowns - SR-only neutral objectives.
         callouts.extend(epic_buff_callouts(objective_events, gt))
+    # Instant base-siege callout (active, eta_s=0) - SR + ARAM, both have lane
+    # structures. Fires for ~_SIEGE_RECENCY_S after a turret/inhib falls so the
+    # no-LLM bridge is on-screen before the Haiku coach tick lands.
+    if m in _SIEGE_MODES:
+        callouts.extend(structure_siege_callout(turret_events, inhib_events, gt))
     callouts.extend(_level_spike_callouts(lvl))
     callouts.extend(_item_spike_callouts(items))
 
