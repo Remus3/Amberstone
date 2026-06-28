@@ -361,6 +361,13 @@ def wait_gone(path, deadline_ts):
         time.sleep(CFG["poll_sec"])
     return False
 
+def stall_action(breach_n):
+    """WP-I3 pure decision: how to answer the Nth consecutive cycle-deadline breach.
+    The FIRST breach earns a one-shot recovery (inject /diagnose + extend the deadline
+    once); a SECOND breach is a genuine hang -> hard STOP. Pure + unit-testable headless
+    (no CFG / IO). main() wires this to the actual recover/stop side effects."""
+    return "recover" if breach_n <= 1 else "stop"
+
 def stall_recovery_directive(cycle):
     """WP-I3: the one-shot recovery typed into the EXISTING (stalled) executor on the
     FIRST cycle-deadline breach, before any hard STOP. NO /clear - the wedged session's
@@ -436,18 +443,22 @@ def main():
         deadline = time.time() + CFG["cycle_deadline_sec"]
         log(f"cycle {cycle}: typed (ready consumed); deadline in {CFG['cycle_deadline_sec']}s")
 
-        if not wait_for(CTL / "claude.done", deadline):
-            # WP-I3: one-shot stall recovery before a hard STOP. Inject a /diagnose
-            # recovery directive into the existing (stalled) session and extend the
-            # deadline ONCE; hard-STOP only if it breaches again. The no-progress and
-            # AHK-never-typed guards remain the runaway backstops so a truly wedged run
-            # still stops cleanly after exactly one recovery attempt.
-            log(f"cycle {cycle}: deadline breach 1 - injecting stall recovery, extending once")
+        # WP-I3: one-shot stall recovery before a hard STOP. On the FIRST cycle-deadline
+        # breach, inject a /diagnose recovery directive into the existing (stalled) session
+        # and extend the deadline ONCE (decision = stall_action, pure + tested); hard-STOP
+        # only on a SECOND breach. The no-progress and AHK-never-typed guards remain the
+        # runaway backstops so a truly wedged run still stops cleanly after exactly one
+        # recovery attempt.
+        breach = 0
+        while not wait_for(CTL / "claude.done", deadline):
+            breach += 1
+            if stall_action(breach) == "stop":
+                stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
+            log(f"cycle {cycle}: deadline breach {breach} - injecting stall recovery, extending once")
             awrite(CTL / "gemini.ready", stall_recovery_directive(cycle))
             if not wait_gone(CTL / "gemini.ready", time.time() + 120):
                 stop(f"cycle {cycle}: AHK never typed the stall-recovery directive")
-            if not wait_for(CTL / "claude.done", time.time() + CFG["cycle_deadline_sec"]):
-                stop(f"cycle {cycle}: claude.done not seen after stall recovery (hard hang)")
+            deadline = time.time() + CFG["cycle_deadline_sec"]
         done = rjson(CTL / "claude.done", {})
         (CTL / "claude.done").unlink(missing_ok=True)
         last_done = done
