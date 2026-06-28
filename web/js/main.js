@@ -41,6 +41,8 @@ import { renderOverlayDsControls } from './panels/overlay_ds_controls.js';
 // body[data-shell="overlay"]; a cheap no-op on the 1920 dashboard.
 import { renderWardCue } from './panels/ward_cue.js';
 import { renderSpikeCue } from './panels/spike_cue.js';
+import { renderEnemySpells } from './panels/enemy_spells.js';
+import { renderStatsPanel } from './panels/stats_panel.js';
 import { renderMinimapRect } from './panels/minimap_rect.js';
 // ZOI w-mmrect fill (item 567 slice 3): the influence shading INSIDE the box.
 import { renderMinimapZoi } from './panels/minimap_zoi.js';
@@ -1402,6 +1404,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
         renderWardCue(_amMockData.liveclient || null);
         renderSpikeCue(_amMockData.liveclient || null);
+        renderEnemySpells(_amMockData.liveclient || null);
+        renderStatsPanel(_amMockData.liveclient || null);
         renderMinimapRect(_amMockData.minimap_rect || null);
         renderMinimapZoi(_amMockData.zoi || null);
         renderObjectiveChips(_amMockData.liveclient || null);
@@ -1448,6 +1452,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // QA1: ward-ready glyph cue rides the same overlay-gated dispatch off the
       // raw liveclient block (lc.ward_cue). Null-safe; hides when not in-game.
       renderWardCue((state.latest && state.latest.liveclient) || null);
+      // Slice 4 / 4b (2026-06-28): enemy summoner-spell tap-tracker + the
+      // API-backed stats mini-panel ride the same overlay-gated dispatch off the
+      // live block. Both self-gate on body[data-shell="overlay"] - no-op on 1920.
+      renderEnemySpells((state.latest && state.latest.liveclient) || null);
+      renderStatsPanel((state.latest && state.latest.liveclient) || null);
       // RC Overlay Doctrine w-spike: the ultimate power-spike crossed cue rides
       // the same overlay-gated dispatch off the live level (lc.level). One-shot
       // + transient; null-safe; no-op out of game / off the overlay shell.

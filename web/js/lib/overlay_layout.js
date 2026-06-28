@@ -60,6 +60,10 @@ const WIDGETS = [
   // position:fixed is viewport-relative, not trapped by a transformed pane.
   { id: "w-trinket", sel: "#am-ward-cue", x: 340, y: 600, tier: "urgent", label: "Ward Cue" },
   { id: "w-spike", sel: "#am-spike-cue", x: 360, y: 840, tier: "urgent", label: "Spike Cue" },
+  // Operator 2026-06-28: the enemy summoner-spell tap-tracker (zone -> tappable
+  // mid-game) + the API-backed HP/mana/stats mini-panel. Both overlay-only.
+  { id: "w-enemyspells", sel: "#am-enemyspells", x: 1500, y: 120, tier: "urgent", label: "Enemy Spells", zone: true },
+  { id: "w-stats", sel: "#am-statspanel", x: 40, y: 250, tier: "ambient", label: "Stats" },
 ];
 
 // The launcher is a CONTROL widget, not a panel: a small always-visible square
