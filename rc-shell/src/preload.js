@@ -42,4 +42,14 @@ contextBridge.exposeInMainWorld("rcShell", {
   // layout: the full { <id>: {x,y,hidden,scale} } blob -> Promise<sanitized layout>
   setWidgetLayout: (layout) =>
     ipcRenderer.invoke("rc-shell:overlay-layout:set", layout),
+  // Companion titlebar window controls. The companion is frameless, so the
+  // injected top-right strip (window_controls.js) drives these. minimize/close
+  // are one-way sends; the always-on-top toggle/get return the new/current
+  // boolean so the strip can light its pinned state.
+  winMinimize: () => ipcRenderer.send("rc-shell:win:minimize"),
+  winClose: () => ipcRenderer.send("rc-shell:win:close"),
+  // -> Promise<boolean> the new always-on-top state
+  winToggleAlwaysOnTop: () => ipcRenderer.invoke("rc-shell:win:toggle-aot"),
+  // -> Promise<boolean> the current always-on-top state
+  winGetAlwaysOnTop: () => ipcRenderer.invoke("rc-shell:win:get-aot"),
 });

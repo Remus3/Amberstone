@@ -55,6 +55,7 @@ const cfgmod = require("./config");
 const store = require("./store");
 const ov = require("./overlay_state");
 const drag = require("./drag_region");
+const wctl = require("./window_controls");
 const ind = require("./active_indicator");
 const ctz = require("./clickthrough_zones");
 const upd = require("./update_channel");
@@ -382,6 +383,20 @@ function injectDragRegion(win) {
   win.webContents.executeJavaScript(drag.dragRegionMountJS(), true).catch(() => {});
 }
 
+// Inject the COMPANION-ONLY titlebar window controls (minimize / close /
+// always-on-top toggle). The companion is frameless and loads the remote
+// dashboard, which ships no window chrome, so the strip is injected here. The
+// overlay deliberately never gets these - it is a passive in-game HUD where a
+// close/minimize button would be a focus hazard. Rejection is swallowed (the
+// frame may be mid-navigation); a missed strip self-heals on the next load.
+function injectWindowControls(win) {
+  if (!win || win.isDestroyed()) {
+    return;
+  }
+  win.webContents.insertCSS(wctl.windowControlsCSS()).catch(() => {});
+  win.webContents.executeJavaScript(wctl.windowControlsMountJS(), true).catch(() => {});
+}
+
 // Inject the Phase 4 ACTIVE glow frame (overlay-only; the companion is always
 // interactive so a cue there would be noise). The set call re-applies the
 // CURRENT click-through state, so a mid-game reload that wipes the page keeps
@@ -513,8 +528,13 @@ function createWindow() {
   // companion out-of-game (surface=companion -> mainWindow.showInactive) and
   // hides it in-game, so visibility stays correct without the launch flash.
 
-  // Re-mount the drag strip on every (re)load - Cmd+R wipes injected DOM.
-  mainWindow.webContents.on("did-finish-load", () => injectDragRegion(mainWindow));
+  // Re-mount the drag strip + companion window controls on every (re)load -
+  // Cmd+R wipes injected DOM. Controls are companion-only (the overlay HUD
+  // never gets min/close/pin chrome).
+  mainWindow.webContents.on("did-finish-load", () => {
+    injectDragRegion(mainWindow);
+    injectWindowControls(mainWindow);
+  });
 
   attachCrashGuard(mainWindow, "companion");
 
@@ -837,6 +857,28 @@ function registerIpc() {
     } else if (m.action === "raise-companion") {
       raiseCompanion();
     }
+  });
+  // Companion titlebar window controls (window_controls.js, companion-only).
+  // minimize/close are one-way; the always-on-top toggle reuses the existing
+  // toggleAlwaysOnTop() so the menu checkbox + persisted companionAlwaysOnTop
+  // stay coherent with the on-screen pin, and returns the new state for the
+  // strip to reflect. get returns the live state to seed the strip on load.
+  ipcMain.on("rc-shell:win:minimize", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.minimize();
+    }
+  });
+  ipcMain.on("rc-shell:win:close", () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.close();
+    }
+  });
+  ipcMain.handle("rc-shell:win:toggle-aot", () => {
+    toggleAlwaysOnTop();
+    return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isAlwaysOnTop() : false;
+  });
+  ipcMain.handle("rc-shell:win:get-aot", () => {
+    return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isAlwaysOnTop() : false;
   });
 }
 
