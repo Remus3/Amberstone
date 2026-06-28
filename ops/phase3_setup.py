@@ -11,8 +11,10 @@ Creates:
   - agents/state/lockfile (empty)
   - agents/state/resolved_decisions.json (atomic write)
 
-Idempotent - safe to re-run. Existing files are left untouched unless they are
-part of the locked-register atomic rewrite for resolved_decisions.json.
+Idempotent - safe to re-run. Existing files are left untouched. The
+resolved_decisions.json register is rewritten to refresh the static blocks
+(topology/agents/panels/...) but PRESERVES any accreted `decisions` array +
+its version/locked_at stamps - a re-run never wipes locked decisions.
 """
 from __future__ import annotations
 
@@ -59,6 +61,11 @@ FOLDERS = [
 RESOLVED_DECISIONS = {
     "version": "phase3-1.1",
     "locked_at": "2026-04-22",
+    # The locked-decision register is the runtime source of truth (charter
+    # L18) and ACCRETES via audit backfills into the runtime file, so it is
+    # NOT authored here - merge_resolved_decisions() preserves an existing
+    # register and only seeds this empty list on a fresh `to restore` scaffold.
+    "decisions": [],
     "topology": {
         "legion_pc": "192.168.8.230",
         "game_pc": "192.168.8.237",
@@ -175,6 +182,30 @@ def atomic_write_json(path: Path, data: dict) -> None:
     os.replace(tmp, path)
 
 
+def merge_resolved_decisions(existing: dict | None) -> dict:
+    """Build the resolved_decisions.json payload without wiping locked decisions.
+
+    The static register blocks (topology/agents/panels/...) are refreshed from
+    RESOLVED_DECISIONS, but the locked-decision register itself - the
+    `decisions` array plus its `version`/`locked_at` stamps - is the runtime
+    source of truth (charter L18) and ACCRETES via audit backfills. A re-run
+    MUST preserve an existing register rather than overwrite it (idempotency
+    bug fixed 2026-06-28; the prior unconditional rewrite dropped every
+    accreted decision). When no file exists yet (fresh `to restore` scaffold)
+    we seed an empty register from the generator defaults.
+    """
+    payload = dict(RESOLVED_DECISIONS)
+    if existing:
+        payload["decisions"] = existing.get("decisions", [])
+        payload["version"] = existing.get("version", RESOLVED_DECISIONS["version"])
+        payload["locked_at"] = existing.get(
+            "locked_at", RESOLVED_DECISIONS["locked_at"]
+        )
+    else:
+        payload.setdefault("decisions", [])
+    return payload
+
+
 def main() -> int:
     created = []
     skipped = []
@@ -196,8 +227,16 @@ def main() -> int:
         else:
             skipped.append(f"agents/state/{name}")
 
-    # Atomic write of resolved_decisions.json (always rewrite - locked register).
-    atomic_write_json(state / "resolved_decisions.json", RESOLVED_DECISIONS)
+    # Rewrite resolved_decisions.json, PRESERVING the accreted locked-decision
+    # register if the file already exists (idempotent - never wipe decisions).
+    decisions_path = state / "resolved_decisions.json"
+    existing = None
+    if decisions_path.exists():
+        try:
+            existing = json.loads(decisions_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            existing = None
+    atomic_write_json(decisions_path, merge_resolved_decisions(existing))
     created.append("agents/state/resolved_decisions.json")
 
     # Agent log stubs so RotatingFileHandler has a seed file.

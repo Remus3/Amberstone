@@ -1,6 +1,6 @@
 {
   "version": "phase3-1.1",
-  "locked_at": "2026-04-22",
+  "locked_at": "2026-06-28",
   "decisions": [
     {
       "id": "phase3-d001",
@@ -160,6 +160,46 @@
       "decided_at": "2026-04-22",
       "summary": "EXPECTED_DECISIONS_VERSION in agents/_supervisor_common.py = 'phase3-1.1'. On supervisor startup _verify_decisions_version checks resolved_decisions.json version field matches this constant. Bump this constant whenever resolved_decisions.json version increments AND the code has been updated to honour the new contract. The version stamp + this constant gate any framework migration.",
       "source": "CLAUDE.md / Settled + agents/_supervisor_common.py",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d021",
+      "title": "ADR-011 Legion 1-PC consolidation - Game-PC retired from pipeline",
+      "decided_at": "2026-05-29",
+      "summary": "Item 215 executed: Legion is the only runtime host. League + Vanguard + RC + supervisor + vision server + dashboard + OBS all on Legion. Game-PC retired from the live pipeline. RC_GAME_HOST defaults to 127.0.0.1; bridge no longer routes to gamepc-rc. Relocated agents (RC-LCUAgent, RC-LiveClientRelay, RC-HotkeyListener) run local as ONLOGON tasks on Legion. gamepc_*.py modules remain in tree for archival until Phase 11 relay collapse completes. Frozen-file list is unchanged. Do NOT re-pitch Game-PC as a live host.",
+      "source": "CLAUDE.md / Settled / ADR-011 + item 215",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d022",
+      "title": "101.qq.com duo-synergy live-wired with kill switch (item 277)",
+      "decided_at": "2026-06-02",
+      "summary": "core/synergy_external_source.fetch_rows feeds existing core/smoothed_rates_101qq lane: live-first with static May-25 seed fallback. Endpoint faas-6831.native.qq.com getRankDouble (lane STRINGS, championid DDragon keys 1:1). 6h TTL, fail-soft, Referer-gated, never persisted to disk. Kill switch RC_DUO_SYNERGY_LIVE=0. /api/duo-synergy + bot/sup grid unchanged. Raw payload gitignored (redistributable). NOT geo-fenced, reachable from Legion, dynamic API (NOT static gtimg JSON). Do NOT re-pitch a static-only path or re-flag as geo-fenced.",
+      "source": "CLAUDE.md / Settled / item 277",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d023",
+      "title": "DS live truth = data/daemon_slayer/current.txt + /health, NOT recomputed",
+      "decided_at": "2026-06-01",
+      "summary": "Daemon Slayer coverage %, match-row prose, patch, and ENGINE_VERSION must be read from data/daemon_slayer/current.txt + agents/daemon_slayer/__init__.py + DS :8893 /health. The registry is nested - a flat count mis-parses. DS coverage prose recompute is a DS-batch docs-sync job, never executed in a general sync. After ENGINE_VERSION bump DS is NOT supervisor-watched; taskkill the pid + relaunch via schtasks /Run /TN RC-DaemonSlayer. memory: feedback_ds_coverage_prose_recompute + reference_ds_server_not_supervisor_watched.",
+      "source": "CLAUDE.md / Settled / DS live truth",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d024",
+      "title": "ADR-012 RC<->Peer cross-Claude bridge decommissioned",
+      "decided_at": "2026-06-24",
+      "summary": "Commit 49b1c9ea removed dashboard/routes_health_peer.py, the entire ops/runtime/peer_health/ folder, every bridge_watcher_*.py polling tool, and the core.bridge.send() outbound route. Charter line 'no cross-machine authority - never write to \\\\192.168.8.237\\RCClient\\*' still holds, but the rationale is now 'Game-PC + Peer peers no longer exist in the topology', not 'peer is read-only'. /api/health/all no longer carries a peers block; agent6 + supervisor + DS rollup remain. Peer is now only the separate private-project machine. Do NOT re-pitch a bridge or lessons-sync revival - operator-decided closure.",
+      "source": "CLAUDE.md / Settled / ADR-012 + commit 49b1c9ea",
+      "authority": "operator"
+    },
+    {
+      "id": "phase3-d025",
+      "title": "Overlay all-panels doctrine + click-through interactivity (ledger 644-648)",
+      "decided_at": "2026-06-27",
+      "summary": "rc-shell overlay: every panel individually accessible with per-panel opacity/scale; panel-set abstraction retired (commit b16bfce1). 3 panels stay interactive while playing via passive click-through zones (commit c79508d2). Draggable launcher widget acts as layout control center + the only in-game un-hide path (commit 6370f7da). Enemy summoner-spell MANUAL tap-tracker + API stats mini-panel landed (commit 5ff56099). In-game ACTIVE hotkey routes through tools/hotkey_listener.py WH_KEYBOARD_LL Win32 hook + signal file (Electron globalShortcut dead under League focus). A native-HUD replacement is impossible - Live Client :2999 exposes no ability/summoner cooldowns/buffs/wards/XP. Do NOT re-pitch a single-panel or panel-set design.",
+      "source": "CLAUDE.md / Settled / overlay redesign + ledger 644-648",
       "authority": "operator"
     }
   ],
