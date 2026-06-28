@@ -796,7 +796,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | WP | Wave | Deps | Tier | Status |
 |---|---|---|---|---|
 | A1 settings sliders | W0 | - | T1 | DONE 2026-06-28 |
-| A2 drop legacy enemy-summs | W0 | - | T1 | OPEN |
+| A2 drop legacy enemy-summs | W0 | - | T1 | DONE 2026-06-28 (7205d73c) |
 | A3 coach [t] strip + truncation | W0 | - | T1 | OPEN |
 | A4a role-bracket bench route | W0 | - | T2 | OPEN |
 | A4b stats vertical frontend | W1 | A4a | T1 | OPEN |
@@ -816,7 +816,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | D3 override state + reset | W5 | C4, D2 | T1 | OPEN |
 | E5 doc remediation sweep | W0 | - | T0 | OPEN |
 | F5-M04 decisions drift | W0 | - | T1 | DONE 2026-06-28 (e599e610; drift closed at 1.1, 1.2 bump operator-declined) |
-| F5-M05 smb_push deadcode | W0 | - | T1 | OPEN |
+| F5-M05 smb_push deadcode | W0 | - | T1 | DONE 2026-06-28 (c20d75da; Path A defer-delete, audit-11 M-05) |
 | F5-H02 task_queue leak | W0 | - | T1 | OPEN |
 | F5-M01 body-data-mode test | W0 | - | T1 | OPEN |
 | F5-L03 inventory csv stale | W6 | - | T0 | OPEN |
