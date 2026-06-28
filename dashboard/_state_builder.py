@@ -488,7 +488,7 @@ def build_state() -> dict:
             compute_deterministic, resolve_choices, shadow_log_det,
             shadow_log_precomputed_choices, shadow_log_precomputed_build,
             shadow_log_live_benchmark_band, shadow_log_objective_playbook,
-            shadow_log_macro_response,
+            shadow_log_macro_response, shadow_log_aram_coach,
         )
         det = compute_deterministic(coach, lc, mode_key)
         # Shadow-log BEFORE resolve_choices overwrites coach["choices"] - the
@@ -511,6 +511,12 @@ def build_state() -> dict:
         # LBAND1: also shadow-log the live personal-percentile benchmark bands
         # (do-not-flip-blind). Fail-soft, additive, NO effect on live output.
         shadow_log_live_benchmark_band(coach, lc, mode_key)
+        # ARAM Stage 2: assemble the WHOLE deterministic ARAM block and
+        # shadow-log it beside the live Haiku block so the operator can eyeball
+        # them side-by-side in a live game. SHADOW-ONLY - mutates NO served
+        # field, fail-soft, ARAM in-game ticks only. The live coach flip is a
+        # later operator-gated stage; this only writes data/aram_coach_shadow.jsonl.
+        shadow_log_aram_coach(coach, lc, mode_key)
         coach["choices"] = resolve_choices(coach, det)
     except Exception:  # noqa: BLE001
         det = {"choices": [], "callouts": [], "lead_projection": {}}
