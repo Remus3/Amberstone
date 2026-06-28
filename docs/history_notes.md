@@ -1,5 +1,21 @@
 # RC session history archive
 
+## Relocated 2026-06-27 (item-640 /done - keep last 3 sessions: item-640 + item-638-tails + ACTUALIZE-637)
+
+# 2026-06-27 (live-flip validation + overlay launcher fix, `2e8abb36`)
+
+Operator-driven live session: Practice Tool games (KSante / Briar / Ezreal) to close the "live half" of the offline-confirmed DS seam flips, tracked via /api/state + game-monitor.
+
+- **KEY FINDING - do NOT re-investigate.** The live-flip DS seams (R5 missing-HP heal-amp, DSP2 off-class exempt, DSP11 kit-axis, and by inference R12/R30/RF1/RF3) are UNWIRED across the DS /rank HTTP boundary. The flags live ONLY in the in-process scorers + tests + offline `live_flip_eyeball.py`; `dispatch_for_coach` (archetype_dispatch.py:232) -> client -> server.py /rank passes NONE of them and /rank does not accept them. The live build-chooser runs every scorer DEFAULT-OFF. PROVEN live: Briar at 7% HP gave byte-identical daemon_slayer_picks to 100% HP. So these are NOT eyeball-able by gameplay - flipping default-ON is multi-file engine wiring (+ self-HP input for R5) + ENGINE bump + Tier-2, not a toggle.
+- R12 Evenshroud is Arena-only (map30) on 16.13.1 - SR-untestable. No in-game build widget on the overlay (build-chooser is dashboard-only).
+- **Ctrl+Shift+A is NOT a focus/keydown bug.** It is an Electron globalShortcut (rc-shell/src/main.js:1063; overlay_state.js:44 tagged "operator's expected combo 2026-06-27"), focus-independent. Shell IS running (1 instance, requestSingleInstanceLock works - the 5 electron.exe are one instance + helpers). Likely an accelerator collision; register() failure is swallowed (main.js:1081). Diagnostic-first next: log the register() booleans.
+- **SHIPPED (`2e8abb36`).** Legion ON/OFF now manage the rc-shell overlay: ON launches it via a cmd-start trampoline (console-detached - closing the launcher terminal no longer kills the overlay; was a coupling bug I introduced) + auto-close window; OFF taskkills rc-shell electron matched by cmdline only (Claude Desktop spared). rc-shell was already idempotent.
+- **Operator vision captured -> `docs/NO_LLM_PRECOMPUTE_PLAN.md`.** Drive the WHOLE project to no live LLM via a client-side CV tier + precomputed "expansive DB" (pay-once-build, runtime API-key-free). Budget is idle: Max 20x at 11%/17% used, Sonnet 0%, $418 credits untouched. Findings detail: `ops/audit/ds_perm_swarm/report/live_input_seam_findings_2026-06-27.md`.
+
+NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. (5) repo cleanup pass - orphan + scratch files (operator-requested 2026-06-27); targets incl stale `.claude/worktrees/agent-*` worktree copies + `gemini_io/` artifacts. **SPARE `docs/HEXCORE_offline.html` + its bundled fonts (intentional, NOT orphans).** (6) hexcore: keep `docs/HEXCORE_offline.html` as the ONLY hexcore HTML viewing file (shipped fonts are intentional, not one-off; likely retire the non-offline `docs/HEXCORE.html`). It is sluggish when viewed on another computer - investigate browser multi-threading to speed it up: Web Workers (compute off main thread) + OffscreenCanvas + WebGL/GPU offload; profile the bottleneck first (CPU-sim vs draw-bound); note a `file://` origin needs Blob-URL inline workers (worker-from-file restrictions). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1. CI flake (not mine): snapshot_panels missing-DDragon-asset Renata.png on `2e8abb36` - prior commit `a2e3e95c` with identical web/ state passed; rerun to clear.
+
+---
+
 ## Relocated 2026-06-23 (R25 /done - keep last 3 sessions: R25 + R24 + R23)
 
 # 2026-06-23 (R22 DIRECTOR REFILL) - det_coach_shadow agreement aggregator (Haiku-to-ZERO)
