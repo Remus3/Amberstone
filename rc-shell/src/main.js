@@ -1082,6 +1082,36 @@ function startActiveToggleWatch() {
   }, 200);
 }
 
+// Win32 listener -> overlay panel-cycle signal. tools/hotkey_listener.py owns
+// Ctrl+Shift+C (delivers while League holds foreground focus, where the Electron
+// Alt+Shift+C globalShortcut below does NOT - same constraint as Ctrl+Shift+A)
+// and stamps an epoch here on each press. Same poll-on-advance contract as the
+// ACTIVE-toggle watch above; rotates coach -> build -> threat so the build
+// widget (hidden outside the build panelset) is reachable in-game.
+const PANEL_CYCLE_SIGNAL = path.join(
+  __dirname, "..", "..", "ops", "runtime", "overlay_panel_cycle.txt"
+);
+let _lastPanelCycleSeen = 0;
+function _readPanelCycleSignal() {
+  try {
+    const v = parseFloat(fs.readFileSync(PANEL_CYCLE_SIGNAL, "utf8").trim());
+    return Number.isFinite(v) ? v : 0;
+  } catch (_e) {
+    return 0; // absent / unreadable -> treat as no signal
+  }
+}
+function startPanelCycleWatch() {
+  _lastPanelCycleSeen = _readPanelCycleSignal(); // ignore a stale value
+  setInterval(() => {
+    const v = _readPanelCycleSignal();
+    if (v > _lastPanelCycleSeen) {
+      _lastPanelCycleSeen = v;
+      applyPanelSet(ov.cyclePanelSet(panelSet));
+      scheduleActiveRevert();
+    }
+  }, 200);
+}
+
 // Global hotkeys (Electron globalShortcut). Toggle hides the active surface;
 // Cycle rotates the overlay panel set; Reset restores the default layout. The
 // ACTIVE toggle (Ctrl+Shift+A) is intentionally NOT registered here: Electron
@@ -1172,6 +1202,7 @@ if (!gotLock) {
     setupAutoUpdater();
     registerHotkeys();
     startActiveToggleWatch();
+    startPanelCycleWatch();
     startPoll();
     app.on("activate", () => {
       // macOS re-open behavior; harmless on Windows.
