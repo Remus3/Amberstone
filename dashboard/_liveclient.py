@@ -103,11 +103,26 @@ def liveclient_summary() -> dict:
         out["hp_max"]   = int(cs.get("maxHealth", 0))
         out["mana"]  = int(cs.get("resourceValue", 0))
         out["mana_max"] = int(cs.get("resourceMax", 0))
+        # Slice 4b (2026-06-28): the API-backed stats the overlay stats mini-panel
+        # renders. championStats is ground truth (HP/mana above + these); the
+        # overlay augments the native HUD with them (a HUD *replacement* is not
+        # possible - the API has no live ability/summoner cooldowns, buffs, or
+        # wards, see docs). Ints are fine for a glanceable read.
+        out["stats"] = {
+            "ability_haste": int(cs.get("abilityHaste", 0)),
+            "move_speed":    int(cs.get("moveSpeed", 0)),
+            "armor":         int(cs.get("armor", 0)),
+            "magic_resist":  int(cs.get("magicResist", 0)),
+            "attack_damage": int(cs.get("attackDamage", 0)),
+            "ability_power": int(cs.get("abilityPower", 0)),
+            "resource_type": cs.get("resourceType", ""),
+        }
         owned_items: list = []
         enemy_team: list = []
         ally_team: list = []
         enemy_item_ids: list = []
         ally_item_ids: list = []
+        enemy_spells: list = []
         if me_pl:
             s = me_pl.get("scores") or {}
             out["kda"] = f'{s.get("kills",0)}/{s.get("deaths",0)}/{s.get("assists",0)}'
@@ -137,6 +152,22 @@ def liveclient_summary() -> dict:
             ally_item_ids = [str(it.get("itemID", "")) for p in all_players
                              if p.get("team") and p.get("team") == my_team
                              for it in (p.get("items") or [])]
+            # Slice 4 (2026-06-28): per-enemy summoner spells for the overlay spell
+            # tap-tracker. allPlayers[].summonerSpells is PUBLIC scoreboard data
+            # (names only - the API exposes NO live cooldown, hence the MANUAL
+            # tap-to-count-down tracker). Each entry: champion + its two spell
+            # display names (Flash / Barrier / ...).
+            enemy_spells = [
+                {
+                    "champion": p.get("championName", ""),
+                    "spells": [
+                        ((p.get("summonerSpells") or {}).get("summonerSpellOne") or {}).get("displayName", ""),
+                        ((p.get("summonerSpells") or {}).get("summonerSpellTwo") or {}).get("displayName", ""),
+                    ],
+                }
+                for p in all_players
+                if p.get("team") and p.get("team") != my_team
+            ]
             # Per-player position + creep_score slice consumed by
             # _adaptation_latch.compute() to derive csd_at_15 (SR only).
             # is_active flags the operator's own row so the latch can find
@@ -184,6 +215,7 @@ def liveclient_summary() -> dict:
         out["ward_cue"] = compute_ward_cue(me_pl.get("items") if me_pl else None)
         out["enemy_team"]  = enemy_team
         out["ally_team"]   = ally_team
+        out["enemy_spells"] = enemy_spells
         out["enemy_item_ids"] = enemy_item_ids
         out["ally_item_ids"]  = ally_item_ids
         # Inhibitor-down events for the respawn-timing callout. Live Client

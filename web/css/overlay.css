@@ -703,3 +703,114 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-slider input[type="range
   accent-color: rgb(var(--ovx-gold));
   cursor: pointer;
 }
+
+/* --- Enemy summoner-spell tap-tracker (w-enemyspells) ------------------------
+ * A click-through zone: tap a chip when a spell is used -> base-CD countdown. */
+body[data-shell="overlay"] .ovx-enemyspells {
+  max-width: 230px;
+}
+body[data-shell="overlay"] .ovx-enemyspells .es-head {
+  color: rgba(var(--ovx-gold), 0.90);
+  font-size: var(--fs-ov-head);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
+}
+body[data-shell="overlay"] .ovx-enemyspells .es-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 3px 0;
+}
+body[data-shell="overlay"] .ovx-enemyspells .es-champ {
+  flex: 0 0 58px;
+  font-size: var(--fs-sm);
+  color: rgba(var(--ovx-text), 0.82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-shell="overlay"] .ovx-enemyspells .es-chip {
+  flex: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  font-size: var(--fs-ov-head);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* UP = ready (good/green); DOWN = on cooldown (warn/amber, the count). */
+body[data-shell="overlay"] .ovx-enemyspells .es-chip.es-up {
+  background: rgba(var(--ovx-good), 0.16);
+  border-color: rgba(var(--ovx-good), 0.55);
+  color: rgb(var(--ovx-good));
+}
+body[data-shell="overlay"] .ovx-enemyspells .es-chip.es-down {
+  background: rgba(var(--ovx-warn), 0.16);
+  border-color: rgba(var(--ovx-warn), 0.55);
+  color: rgb(var(--ovx-warn));
+}
+
+/* --- Stats mini-panel (w-stats): API-backed HP/mana bars + key stats --------- */
+body[data-shell="overlay"] .ovx-statspanel {
+  max-width: 190px;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-head {
+  color: rgba(var(--ovx-gold), 0.90);
+  font-size: var(--fs-ov-head);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-bar {
+  position: relative;
+  height: 14px;
+  margin: 3px 0;
+  border-radius: 3px;
+  background: rgba(var(--ovx-bg-nested), 0.95);
+  overflow: hidden;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-hp .sp-fill {
+  background: rgba(var(--ovx-good), 0.55);
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-mp .sp-fill {
+  background: rgba(var(--ovx-cyan), 0.50);
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-bar-txt {
+  position: relative;
+  z-index: 1;
+  display: block;
+  text-align: center;
+  font-size: var(--fs-ov-head);
+  font-weight: 700;
+  line-height: 14px;
+  color: rgba(var(--ovx-text), 0.95);
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 3px 6px;
+  margin-top: 5px;
+}
+body[data-shell="overlay"] .ovx-statspanel .sp-kv {
+  font-size: var(--fs-ov-head);
+  color: rgba(var(--ovx-text), 0.78);
+  white-space: nowrap;
+}
