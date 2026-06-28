@@ -152,40 +152,45 @@ class CssTests(unittest.TestCase):
         self.assertIn("./panels/overlay_ds_controls.css", self.dash)
 
     def test_overlay_reveal_rule(self):
-        # Widget-field doctrine (docs/OVERLAY_DOCTRINE.md section 4): the FIGHT
-        # MODEL pane (w-ovds) is REVEAL-ONLY - the BUILD set re-enables it
-        # (display:block) over the base #view-active-match #am-pane-ovds
-        # {display:none}. It is hidden in the coach/default + threat sets.
+        # Widget-field doctrine (docs/OVERLAY_DOCTRINE.md section 4 + overlay.css
+        # section 4d; panel sets RETIRED 2026-06-28, commit b16bfce1): the FIGHT
+        # MODEL pane (w-ovds) is shown UNCONDITIONALLY when not per-widget-hidden
+        # (display:block !important) over the base #view-active-match
+        # #am-pane-ovds {display:none}. No panel set gates it - .ovx-hidden /
+        # [hidden] is the only gate.
         self.assertIn(
-            'body[data-shell="overlay"][data-panelset="build"] #am-pane-ovds',
+            'body[data-shell="overlay"] #am-pane-ovds.ovx-widget'
+            ':not([hidden]):not(.ovx-hidden)',
             self.ov)
         m = re.search(
-            r'\[data-panelset="build"\] #am-pane-ovds[^{]*\{([^}]*)\}', self.ov)
+            r'#am-pane-ovds\.ovx-widget:not\(\[hidden\]\):not\(\.ovx-hidden\)'
+            r'[^{]*\{([^}]*)\}', self.ov)
         self.assertIsNotNone(m)
         self.assertIn("display: block !important", m.group(1))
 
-    def test_overlay_coach_and_threat_panelsets_exclude_pane(self):
-        # Coach/default + threat hide w-ovds via its widget-field id (the
-        # [data-ovx-id] selector, not a bare #am-pane-ovds).
-        for ps_sel in (
-            'body[data-shell="overlay"]:not([data-panelset]) '
+    def test_overlay_pane_hidden_only_by_widget_and_combat(self):
+        # Panel sets retired (2026-06-28): w-ovds is no longer excluded by a
+        # coach/threat panel set. It hides ONLY (a) per-widget via .ovx-hidden
+        # (the reveal above carries :not(.ovx-hidden)) and (b) in combat via the
+        # section-7 declutter shed. No valued [data-panelset="..."] gate touches
+        # it (the section-4d comment's bare `body[data-panelset]` prose aside).
+        self.assertNotIn('[data-panelset="', self.ov)
+        self.assertIn(
+            'body[data-shell="overlay"][data-fight="1"] '
             '.ovx-widget[data-ovx-id="w-ovds"]',
-            'body[data-shell="overlay"][data-panelset="coach"] '
-            '.ovx-widget[data-ovx-id="w-ovds"]',
-            'body[data-shell="overlay"][data-panelset="threat"] '
-            '.ovx-widget[data-ovx-id="w-ovds"]',
-        ):
-            self.assertIn(ps_sel, self.ov, f"missing w-ovds hide: {ps_sel}")
+            self.ov, "w-ovds must still be shed by the combat declutter")
 
     def test_overlay_gate_order(self):
-        # Source order keeps the cascade unambiguous: the coach/default hide is
-        # sourced BEFORE the build reveal, so a build-set reveal is never
-        # shadowed by an earlier blanket hide.
-        coach_hide = self.ov.index(
-            'body[data-shell="overlay"]:not([data-panelset]) '
+        # Source order is a structural invariant now that panel sets are retired:
+        # the unconditional reveal (section 4d) is sourced BEFORE the combat
+        # declutter shed (section 7). The reveal also carries :not(.ovx-hidden)
+        # so a per-widget hide is honored without depending on order.
+        reveal = self.ov.index(
+            '#am-pane-ovds.ovx-widget:not([hidden]):not(.ovx-hidden)')
+        combat_hide = self.ov.index(
+            'body[data-shell="overlay"][data-fight="1"] '
             '.ovx-widget[data-ovx-id="w-ovds"]')
-        build_reveal = self.ov.index('[data-panelset="build"] #am-pane-ovds')
-        self.assertLess(coach_hide, build_reveal)
+        self.assertLess(reveal, combat_hide)
 
 
 class MainJsWireTests(unittest.TestCase):
