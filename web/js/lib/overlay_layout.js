@@ -51,7 +51,7 @@ const WIDGETS = [
   { id: "w-call", sel: "#view-active-match .am-pane-call", x: 180, y: 130, tier: "primary", label: "Coach Call" },
   { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent", label: "A/B Choices" },
   { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient", label: "Callouts" },
-  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent", label: "Threat / CDs" },
+  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent", label: "Threat / CDs", zone: true },
   { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build" },
   { id: "w-ovds", sel: "#am-pane-ovds", x: 20, y: 780, tier: "ambient", label: "DS Controls" },
   // New doctrine cues (OVERLAY_DOCTRINE section 4). Both are data-gated (their
@@ -346,6 +346,11 @@ function _placeAll() {
     el.classList.add("ovx-widget");
     el.dataset.ovxId = w.id;
     el.dataset.ovxTier = w.tier;
+    // Zone widgets (operator 2026-06-28: the spell/CD panel) are interactive while
+    // playing - mark them [data-rc-zone] so the rc-shell makes the window
+    // interactive on hover in PASSIVE, no ACTIVE toggle needed. (A/B/C #rn-choices
+    // is already a static zone in clickthrough_zones.js.)
+    if (w.zone) el.setAttribute("data-rc-zone", "");
     _applyPos(el, _posFor(w));
     _makeHandle(el, w);
     _makeHideMenu(el, w);
@@ -354,11 +359,10 @@ function _placeAll() {
 
 // --- Launcher control widget + layout control center -------------------------
 // The launcher is a small square (HUD summoner-spell sized) that is ALWAYS
-// present, ACTIVE-only interactive (no data-rc-zone, so PASSIVE clicks fall
-// through to the game - no accidental menu mid-fight). Tap it in ACTIVE to open
-// the menu; drag it (movement past a small threshold) to reposition. Both gates
-// match the panel drag affordance (ACTIVE-only) so the operator's "enter ACTIVE,
-// arrange, leave" flow is uniform.
+// present and a click-through ZONE (data-rc-zone) - the rc-shell makes the window
+// interactive on hover, so it is usable mid-game in PASSIVE without the ACTIVE
+// toggle (operator 2026-06-28). Tap it to open the menu; drag it (movement past a
+// small threshold) to reposition. Off the square, clicks fall through to the game.
 let _menuEl = null;
 
 // Drag-vs-tap on the launcher: a press that does not move past THRESH px is a TAP
@@ -374,7 +378,11 @@ function _installLauncher(el, w, onTap) {
   let originX = 0;
   let originY = 0;
   el.addEventListener("pointerdown", (e) => {
-    if (!_isActiveMode()) return; // PASSIVE: ignore so the press falls through.
+    // The launcher is a click-through ZONE (data-rc-zone), so the rc-shell makes
+    // the window interactive whenever the cursor is over it - in PASSIVE too. A
+    // pointerdown therefore only lands here when the operator is actually on the
+    // square (hover-to-interact), so no ACTIVE-mode gate is needed: the launcher
+    // is reachable mid-game without flipping the whole overlay interactive.
     down = true;
     moved = false;
     startX = e.clientX;
@@ -531,8 +539,12 @@ function _ensureLauncher() {
     el.className = "ovx-widget ovx-launcher";
     el.dataset.ovxId = LAUNCHER.id;
     el.dataset.ovxTier = LAUNCHER.tier;
-    el.title = "overlay menu - tap to open (ACTIVE), drag to move";
+    el.title = "overlay menu - tap to open, drag to move";
     el.setAttribute("aria-label", "Open overlay layout menu");
+    // Click-through ZONE: the rc-shell makes the window interactive on hover over
+    // any [data-rc-zone] element, so the launcher (+ its menu, a child) is usable
+    // mid-game in PASSIVE without the ACTIVE toggle (operator 2026-06-28).
+    el.setAttribute("data-rc-zone", "");
 
     const icon = document.createElement("div");
     icon.className = "ovx-launcher-icon";

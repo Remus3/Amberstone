@@ -130,6 +130,13 @@ test("LAUNCHER is a control widget, never a panel (excluded from WIDGETS)", () =
   assert.strictEqual(inPanels, false, "launcher must NOT appear in the panel list");
 });
 
+test("the spell/CD panel (w-threat) is flagged as a click-through zone", () => {
+  const I = mod._internals;
+  const threat = I.WIDGETS.find((w) => w.id === "w-threat");
+  assert.ok(threat, "w-threat widget exists");
+  assert.strictEqual(threat.zone, true, "w-threat must be a zone (interactive while playing)");
+});
+
 // --- _setHidden / _toggleHidden: bidirectional show/hide for the menu ---------
 
 test("_setHidden(false) reopens a previously hidden panel and persists it", async () => {
