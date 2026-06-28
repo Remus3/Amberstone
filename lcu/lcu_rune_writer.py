@@ -526,6 +526,14 @@ class RuneWriter:
         self._spell_pushed_mode: str = ""
         self._spell_pushed_pair: Optional[tuple[int, int]] = None
         self._spell_manual_override = False
+        # RC2 - mid-pick (pre-lock hover) spell state, mirroring the post-lock
+        # pair above. The MID-PICK branch of _sync_spells used to re-push the
+        # generic mode default (Flash+Teleport for SR, role-BLIND) every ~1s
+        # poll, reverting the operator's manual ADC spells during the long
+        # ranked-draft hover window. These two vars give that branch the same
+        # push-once + respect-manual-change behavior as the post-lock branch.
+        self._midpick_pushed_pair: Optional[tuple[int, int]] = None
+        self._midpick_manual_override = False
         # RC2 E12-L2 - lobby gameMode is immutable mid-champ-select, so the
         # first successful read per session is authoritative. Memoize it to
         # stop one GET /lol-lobby/v2/lobby per poll tick. Cleared on champ-
@@ -639,6 +647,8 @@ class RuneWriter:
         self._spell_pushed_mode = ""
         self._spell_pushed_pair = None
         self._spell_manual_override = False
+        self._midpick_pushed_pair = None
+        self._midpick_manual_override = False
         # RC2 E12-L2 - drop the memoized lobby mode so the next session
         # re-reads the live lobby (mode can differ across champ-selects).
         self._cached_lobby_mode = None
@@ -736,13 +746,37 @@ class RuneWriter:
 
             champion = self._detect_my_champion(session)
 
-            # --- mid-pick (no champion locked): legacy self-correct only ---
-            if not champion:
-                want1, want2 = resolve_spell_pair("", mode)
-                return bool(self._lcu.set_summoner_spells(
-                    want1, want2, current_pair=cur))
-
             role = my_pick.get("assignedPosition") or ""
+
+            # --- mid-pick (no champion locked): role-aware self-correct that
+            # respects a manual change, mirroring the post-lock branch below.
+            # Previously this pushed the GENERIC mode default (role-BLIND
+            # Flash+Teleport for SR) on EVERY ~1s poll, reverting the
+            # operator's manual ADC spells throughout the ranked-draft hover
+            # window. Now: resolve a role-aware pair, push it ONCE, then stop
+            # if the live pair drifts (operator changed it). No champ key
+            # exists yet, so we do NOT record a per-champ preference here.
+            if not champion:
+                try:
+                    from lcu.lcu_pregame import spells_for_role
+                    want = spells_for_role(role) if role else resolve_spell_pair("", mode)
+                except Exception:  # noqa: BLE001
+                    want = resolve_spell_pair("", mode)
+                if self._midpick_manual_override:
+                    return True  # operator owns the spells now - never re-push
+                if (self._midpick_pushed_pair is not None
+                        and cur == self._midpick_pushed_pair):
+                    return True  # still our pair - nothing to do
+                if (self._midpick_pushed_pair is not None
+                        and cur != (0, 0)):
+                    # Live pair drifted from what RC pushed -> operator changed
+                    # it by hand. Stop overwriting (no champ key to remember).
+                    self._midpick_manual_override = True
+                    return True
+                ok = bool(self._lcu.set_summoner_spells(
+                    want[0], want[1], current_pair=cur))
+                self._midpick_pushed_pair = (int(want[0]), int(want[1]))
+                return ok
 
             # --- NEW (champion, mode) lock: push the intended pair ONCE ---
             if (champion != self._spell_pushed_champion
