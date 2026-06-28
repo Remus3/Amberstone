@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-28 (overlay-build loop - WP-C1 kit-synergy scaling profiles, first Section C module; a4e1cde3)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). The A1-A6 + B1 cosmetic A/B-panel work is DONE; C1 is the first dependency-free Section C build-brain WP (W2, T1, deps none) - a SUBSTANTIVE new module, not a cosmetic tweak.
+
+- **WP-C1 (a4e1cde3).** NEW `core/build_planner/` package (greenfield): `__init__.py` + `kit_synergy.py` ~495 lines. `synergy_score(item, champ) = dot(item_vector, kit_weights) + effect_synergy - anti_synergy_penalty` over axes `{AD,bonusAD,AP,AS,crit,on-hit,AH,HP-scaling,%maxHP,true}`. Loader MIRRORS core/archetype_picks.py:174-220 (current.txt -> patch -> items.json/champions.json, fail-soft); imports ONLY the public core.archetype_picks helpers (get_archetype_for, kit_damage_axis) - NO DS engine import (routes_state.py:549 split-brain guard; no ENGINE/DS touch). item_vector: 4 DDragon stat fields direct (FlatPhysicalDamageMod/FlatMagicDamageMod/PercentAttackSpeedMod/FlatCritChanceMod/FlatHPPoolMod/PercentLifeStealMod) + curated frozenset id tables for the passive axes (AH/on-hit/%maxHP/spellblade/bonusAD; _TRUE_DAMAGE_IDS empty=forward-looking). kit_weights: archetype base -> AP/AD axis refine -> per-champ _KIT_TRAITS absolute override (in that order). 4 gates: double-crit (Yasuo/Yone crit 1.0->2.0), AS-cap (Kog over-values AS until ~2.5 then collapses to 0), spellblade cadence, %maxHP-on-hit. RED-first tests/test_kit_synergy_profiles.py (14 tests, relative/ordinal asserts) 14/14 green. Tier-1, no ENGINE/DS restart, NOT Share-mirrored. LEDGER 660, Section J C1 -> DONE.
+- **GROUNDED-FACT CORRECTION (do-not-redo):** the spec-prose archetypes were wrong; verified LIVE via get_archetype_for/kit_damage_axis - Yasuo/Yone -> bruiser (not assassin); Kog'Maw -> mage + axis `ap` (so its override pins AD:0.6 since the `ap` axis zeroes base AD); Ornn -> tank+ap; Sion -> tank+ad; MF -> carry+ad. The _KIT_TRAITS override MUST run AFTER the axis refine to restore Kog's AD/AS/crit/on-hit (the open_risk the spec flagged).
+- **Built via a 4-phase TDD workflow** (Spec[Plan agent, grounded] -> RED tests -> implement-to-green -> independent verifier gate). Verifier fresh re-run 14/0, no agents.daemon_slayer import (the 2 grep hits are comments at L19/62), 3 acceptance checks PASS with live probes (MF AD=1.0/AS=1.0/crit=1.1/AH=0.05, synergy(IE,MF)=2.171 > synergy(Rabadon,MF)=0.0; Yasuo crit=2.0; anti BoRK no-auto 3.668 < with-auto 3.968). Orchestrator independent probe: git ls-tree confirms 3 files in a4e1cde3 (689 ins), HEAD==origin/main, fresh pytest 14 passed 0.15s.
+- **NEXT (loop) = WP-C2** (scoring model + candidate gen + beam search; W2, T1, deps C1 now satisfied - NEW core/build_planner/planner.py + scoring.py, seeds from /api/ds-preview ranked[] + /api/build-order order[], beam width 5-8 depth 6, the cohesion term reuses C1 synergy). C2 is the core planner - substantive, high-effort. Also still OPEN dependency-free: B2 (blocked on C5<-C2), E5 docs sweep (T0), F5-H02/F5-M01 (W0).
+
+---
+
 # 2026-06-28 (overlay-build loop - WP-B1 strip DS ENGINE caption + "no draft prior" from build pane; 62a9a10a)
 
 Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN Section-B WP after A1-A6 complete: B1 (T1, foundational for B2/B3 on active_match.js).
@@ -25,14 +36,3 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 - **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static :8810 ?overlay=1#active-match: CALL/FIGHT MODEL/MAP hasHead=false, BUILD hasHead=true+am-draft-elo, CDS head+chev present + "CDS" text gone; imported cd_ledger.js + attachCooldownLedgerHandlers() + clicked head -> collapse round-trips (chev - <-> +, pane cd-collapsed toggles). Verifier CONFIRM (A6 9/0).
 - **PRE-EXISTING (do-not-chase, NOT A6):** 4 [data-panelset] overlay.css drift failures + 1 AsciiHygiene collection error (task_72ca84ec) - PROVEN pre-existing by stash (web/index.html + the ds_controls test stashed -> the same 4+1 fail identically on HEAD; A6 edited NO overlay.css). Local sweep 110 passed.
 - **NEXT (loop):** Section J next OPEN W1 = B1 (strip DS-ENGINE caption + "No Draft prior", T1, active_match.js - foundational for B2/B3; serialize ALL of Section B on active_match.js). Then C1 (kit-synergy, W2). E5 (docs sweep, T0) + F5-H02/F5-M01 (W0) still open.
-
----
-
-# 2026-06-28 (overlay-build loop - WP-A5 enemy-spells drop name + full aligned champ names; 69a3929f)
-
-Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). Next OPEN W1 after A4b: A5 (T1, deps none).
-
-- **WP-A5 (69a3929f).** enemy_spells.js: removed _shortChamp (9-char slice) + the .es-head "ENEMY SPELLS" title; render full champion names. _buildRows computes maxLen over the roster and sets mount --es-champ-ch = maxLen+1 so every row's name column shares one width (chips align). overlay.css: dropped .es-head; max-width 230->360 (a CAP, content-driven so short-name rosters stay compact); .es-champ flex:0 0 58px+ellipsis -> flex:0 0 auto + min-width calc(var(--es-champ-ch)*1ch), no clip. .es-chip ellipsis unchanged (out of scope). RED-first tests/test_overlay_a5_enemy_spells_unname_widen.py 13->15 green. Tier-1, ADR-008 (no RC restart), no ENGINE/DS/Share. LEDGER 657, Section J A5 -> DONE.
-- **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static :8810 + synthetic 5-enemy roster (incl "Nunu & Willump") + preview_inspect; names full + un-clipped, all five name columns 157px, first chips aligned same x, --es-champ-ch=15, no es-head. Verifier CONFIRM (A5 15/0, regression 33/0); local sweep incl overlay snapshot = 101 passed.
-- **GOTCHA (do-not-redo):** the Claude_Preview browser CACHES ES modules across preview_start/stop cycles - the first A5 render served the STALE A4b-era enemy_spells.js (truncated names, es-head present). Fix = cache-bust the dynamic import: import('/js/panels/x.js?bust='+Date.now()). Captured in memory reference_claude_preview_live_8888.
-- **NEXT (loop):** Section J next OPEN W1 = A6 (remove pane name headers, deps A5 now DONE -> READY; index.html + overlay.css, serialize overlay.css after A5), then B1 (strip DS-ENGINE caption, T1, active_match.js). C1 (kit-synergy, W2) + E5 (docs sweep, T0) + F5-H02/F5-M01 (W0) also open.
