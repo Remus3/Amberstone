@@ -1,53 +1,145 @@
 // web/js/panels/stats_panel.js
 //
-// Overlay-only stats mini-panel (operator 2026-06-28). An AUGMENTING readout
-// beside the native HUD (a HUD *replacement* is impossible - the Live Client API
-// exposes no live ability/summoner cooldowns, buffs, or wards). It shows ONLY the
-// API-backed ground truth: HP + resource bars, level, CS, and the key stats the
-// native HUD does not surface at a glance (ability haste, move speed, armor, MR).
+// Overlay-only "You vs benchmark" mini-panel (WP-A4b, operator 2026-06-28). A
+// vertical two-column compare beside the native HUD: the live game ("You") next
+// to the operator's OWN historical average for the selected role at the current
+// game-time bracket ("Avg"). The benchmark side is a DESCRIPTIVE personal-corpus
+// lens (your own baselines), never a meta / Riot / Claude number.
 //
-// The scaffold is built once; every tick updates bar widths + numbers IN PLACE
-// (no innerHTML churn) so the bars never flicker.
+// Header  = a role <select> (the operator picks the lane to compare against) plus
+//           the auto-derived game-time bracket label.
+// Rows    = LVL / CS / TF / KDA. You cell = live ground truth; Bench cell = the
+//           role x bracket average from GET /api/role-bracket-bench.
+//
+// TF (kill participation) has NO live producer in the Live Client API, so the You
+// side renders an honest "-"; the benchmark column still shows the historical KP.
+//
+// The scaffold is built once; every tick updates the cell text IN PLACE (no
+// innerHTML churn) so the panel never flickers. Benchmark fetches are cached per
+// (role, bracket) with a TTL + inflight guard (mirrors champ_benchmarks.js) so a
+// per-tick repaint never re-hits the route. A fetch error leaves the cells at "-"
+// (degraded), never a raw error string (repo Error-Handling rule).
 
-function _pct(cur, max) {
-  const c = Number(cur) || 0;
-  const m = Number(max) || 0;
-  if (m <= 0) return 0;
-  return Math.max(0, Math.min(100, Math.round((c / m) * 100)));
+const _BENCH_URL = "/api/role-bracket-bench";
+const _ROLES = [["top", "Top"], ["jungle", "Jungle"], ["mid", "Mid"], ["bot", "Bot"], ["support", "Support"]];
+const _ROWS = [["lvl", "LVL"], ["cs", "CS"], ["tf", "TF"], ["kda", "KDA"]];
+const _TTL_MS = 5 * 60 * 1000;
+
+// Game-time brackets over the live clock (seconds), mirroring the backend
+// core.role_bracket_bench boundaries so "You" compares to same-length games:
+// < 1500s (25:00) = early, < 2100s (35:00) = mid, else late.
+const _BRACKET_EARLY_MAX_S = 1500;
+const _BRACKET_MID_MAX_S = 2100;
+
+let _role = "mid";      // route default; the selector switches it
+let _bracket = "mid";
+let _lastLc = null;     // remembered so a selector change can repaint immediately
+const _cache = Object.create(null);     // "role|bracket" -> response JSON
+const _ts = Object.create(null);
+const _inflight = Object.create(null);
+
+function _bracketFor(secs) {
+  const s = Number(secs) || 0;
+  if (s <= 0) return "mid";
+  if (s < _BRACKET_EARLY_MAX_S) return "early";
+  if (s < _BRACKET_MID_MAX_S) return "mid";
+  return "late";
+}
+
+// lc.kda is the "k/d/a" string; the benchmark is the (k+a)/max(d,1) ratio, so the
+// You cell computes that same ratio for a like-for-like compare.
+function _kdaRatio(kda) {
+  const parts = String(kda == null ? "" : kda).split("/");
+  if (parts.length !== 3) return null;
+  const k = Number(parts[0]) || 0;
+  const d = Number(parts[1]) || 0;
+  const a = Number(parts[2]) || 0;
+  return (k + a) / (d > 0 ? d : 1);
+}
+
+function _fmt(v) {
+  if (v === null || v === undefined) return "-";
+  const n = Number(v);
+  if (!isFinite(n)) return "-";
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
 function _ensureScaffold(mount) {
   if (mount.dataset.built === "1") return;
   mount.dataset.built = "1";
+  const opts = _ROLES.map(
+    ([v, lab]) => '<option value="' + v + '">' + lab + "</option>"
+  ).join("");
+  const rows = _ROWS.map(
+    ([k, lab]) =>
+      '<div class="sp-row" data-row="' + k + '">' +
+        '<span class="sp-metric">' + lab + "</span>" +
+        '<span class="sp-you" data-c="' + k + '">-</span>' +
+        '<span class="sp-bench-cell" data-c="' + k + '">-</span>' +
+      "</div>"
+  ).join("");
   mount.innerHTML =
-    '<div class="sp-head">STATS</div>' +
-    '<div class="sp-bar sp-hp"><span class="sp-fill"></span><span class="sp-bar-txt"></span></div>' +
-    '<div class="sp-bar sp-mp"><span class="sp-fill"></span><span class="sp-bar-txt"></span></div>' +
-    '<div class="sp-grid">' +
-    '<span class="sp-kv" data-k="lvl">LV -</span>' +
-    '<span class="sp-kv" data-k="cs">CS -</span>' +
-    '<span class="sp-kv" data-k="ah">AH -</span>' +
-    '<span class="sp-kv" data-k="ms">MS -</span>' +
-    '<span class="sp-kv" data-k="ar">AR -</span>' +
-    '<span class="sp-kv" data-k="mr">MR -</span>' +
-    "</div>";
+    '<div class="sp-selrow">' +
+      '<select class="sp-role" aria-label="Compare role">' + opts + "</select>" +
+      '<span class="sp-bracket">-</span>' +
+    "</div>" +
+    '<div class="sp-colhead">' +
+      '<span class="sp-metric"></span>' +
+      '<span class="sp-you">You</span>' +
+      '<span class="sp-bench-cell">Avg</span>' +
+    "</div>" +
+    rows;
+  const sel = mount.querySelector(".sp-role");
+  if (sel) {
+    sel.value = _role;
+    sel.addEventListener("change", () => {
+      _role = sel.value || "mid";
+      renderStatsPanel(_lastLc);
+    });
+  }
 }
 
-function _set(mount, k, text) {
-  const el = mount.querySelector('.sp-kv[data-k="' + k + '"]');
+function _setCell(mount, side, k, text) {
+  const el = mount.querySelector("." + side + '[data-c="' + k + '"]');
   if (el) el.textContent = text;
 }
 
-function _setBar(mount, cls, cur, max, label) {
-  const bar = mount.querySelector("." + cls);
-  if (!bar) return;
-  const fill = bar.querySelector(".sp-fill");
-  const txt = bar.querySelector(".sp-bar-txt");
-  if (fill) fill.style.width = _pct(cur, max) + "%";
-  if (txt) txt.textContent = label + " " + (Number(cur) || 0) + "/" + (Number(max) || 0);
+function _paintBench(mount) {
+  const data = _cache[_role + "|" + _bracket];
+  const stats = (data && data.stats) || {};
+  _ROWS.forEach(([k]) => {
+    const cell = stats[k] || {};
+    _setCell(mount, "sp-bench-cell", k, _fmt(cell.avg));
+  });
 }
 
-// Self-gated on the overlay shell + a live player block (hp/mana/level present).
+function _fetchBench(mount) {
+  // Reflect whatever is cached for the current (role, bracket) right now - on a
+  // miss this blanks the bench cells to "-" so a stale column never lingers
+  // after a role switch or a bracket roll.
+  _paintBench(mount);
+  const key = _role + "|" + _bracket;
+  const now = Date.now();
+  if (_cache[key] && _ts[key] && (now - _ts[key]) < _TTL_MS) return;
+  if (_inflight[key]) return;
+  _inflight[key] = true;
+  const url =
+    _BENCH_URL +
+    "?role=" + encodeURIComponent(_role) +
+    "&bracket=" + encodeURIComponent(_bracket);
+  fetch(url, { headers: { Accept: "application/json" } })
+    .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then((data) => {
+      if (!data || data.ok === false) return;     // leave cells at "-" (degraded)
+      _cache[key] = data;
+      _ts[key] = Date.now();
+      if (_role + "|" + _bracket === key) _paintBench(mount);
+    })
+    .catch(() => {})       // never leak a raw error string; cells stay "-"
+    .finally(() => { _inflight[key] = false; });
+}
+
+// Self-gated on the overlay shell + a live player block (hp_max present).
 export function renderStatsPanel(lc) {
   const mount = document.getElementById("am-statspanel");
   if (!mount) return;
@@ -60,17 +152,19 @@ export function renderStatsPanel(lc) {
     mount.hidden = true;
     return;
   }
+  _lastLc = lc;
   _ensureScaffold(mount);
-  _setBar(mount, "sp-hp", lc.hp, lc.hp_max, "HP");
-  const st = lc.stats || {};
-  const rtype = (st.resource_type || "MP").slice(0, 2).toUpperCase();
-  _setBar(mount, "sp-mp", lc.mana, lc.mana_max, rtype);
-  _set(mount, "lvl", "LV " + (lc.level == null ? "-" : lc.level));
-  _set(mount, "cs", "CS " + (lc.cs == null ? "-" : lc.cs));
-  _set(mount, "ah", "AH " + (st.ability_haste == null ? "-" : st.ability_haste));
-  _set(mount, "ms", "MS " + (st.move_speed == null ? "-" : st.move_speed));
-  _set(mount, "ar", "AR " + (st.armor == null ? "-" : st.armor));
-  _set(mount, "mr", "MR " + (st.magic_resist == null ? "-" : st.magic_resist));
+  // Bracket follows the live clock so the benchmark is same-length games.
+  _bracket = _bracketFor(lc.game_time_s);
+  const bl = mount.querySelector(".sp-bracket");
+  if (bl) bl.textContent = _bracket;
+  // You side - live ground truth.
+  _setCell(mount, "sp-you", "lvl", lc.level == null ? "-" : String(lc.level));
+  _setCell(mount, "sp-you", "cs", lc.cs == null ? "-" : String(lc.cs));
+  _setCell(mount, "sp-you", "tf", "-");     // no live KP producer (see header note)
+  _setCell(mount, "sp-you", "kda", _fmt(_kdaRatio(lc.kda)));
+  // Benchmark side - cached role x bracket averages.
+  _fetchBench(mount);
   mount.hidden = false;
 }
 
