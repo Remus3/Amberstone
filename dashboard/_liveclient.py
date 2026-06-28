@@ -191,9 +191,13 @@ def liveclient_summary() -> dict:
         # raw {down_at_s, name} and let core.event_callouts compute the 300s
         # respawn ETA + parse the lane. Isolated try so a malformed events
         # block degrades to [] without dropping the rest of the summary.
+        # NB: the Live Client `events` block is a TOP-LEVEL key of allgamedata
+        # (sibling of gameData), NOT nested in gameData - read `d.get("events")`,
+        # never `gd.get("events")` (the latter is always None and silently empties
+        # every event-derived callout; verified live 2026-06-27).
         inhib_events: list = []
         try:
-            for ev in (gd.get("events") or {}).get("Events") or []:
+            for ev in (d.get("events") or {}).get("Events") or []:
                 if not isinstance(ev, dict) or ev.get("EventName") != "InhibKilled":
                     continue
                 t = ev.get("EventTime")
@@ -209,7 +213,7 @@ def liveclient_summary() -> dict:
         # name. Isolated try so a malformed block degrades to [].
         turret_events: list = []
         try:
-            for ev in (gd.get("events") or {}).get("Events") or []:
+            for ev in (d.get("events") or {}).get("Events") or []:
                 if not isinstance(ev, dict) or ev.get("EventName") != "TurretKilled":
                     continue
                 t = ev.get("EventTime")
@@ -232,7 +236,7 @@ def liveclient_summary() -> dict:
                           "HeraldKill": "herald"}
             enemy_set = {c for c in enemy_team if c}
             ally_set = {c for c in ally_team if c}
-            for ev in (gd.get("events") or {}).get("Events") or []:
+            for ev in (d.get("events") or {}).get("Events") or []:
                 if not isinstance(ev, dict):
                     continue
                 obj = _obj_names.get(ev.get("EventName"))
