@@ -49,10 +49,11 @@ def test_signal_never_raises_on_bad_path(monkeypatch):
 
 
 def test_panel_cycle_hotkey_registered():
-    # Ctrl+Shift+C (_VK_C) must be in the claimed hotkey set under its own slot.
+    # Ctrl+Shift+B (_VK_B) must be in the claimed hotkey set under its own slot
+    # (B not C: Ctrl+Shift+C is commonly bound by other apps).
     ids = {hid for hid, _vk in hk._HOTKEYS}
     assert hk._SLOT_OVERLAY_PANEL_CYCLE in ids
-    assert (hk._SLOT_OVERLAY_PANEL_CYCLE, hk._VK_C) in hk._HOTKEYS
+    assert (hk._SLOT_OVERLAY_PANEL_CYCLE, hk._VK_B) in hk._HOTKEYS
     # Distinct slot id from the ACTIVE toggle.
     assert hk._SLOT_OVERLAY_PANEL_CYCLE != hk._SLOT_OVERLAY_TOGGLE
 
