@@ -326,6 +326,11 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
     if isinstance(inhib_events, list) and inhib_events:
         gs["inhib_events"] = inhib_events
 
+    # Turret-down events for the instant base-siege callout (SR + ARAM).
+    turret_events = lc.get("turret_events")
+    if isinstance(turret_events, list) and turret_events:
+        gs["turret_events"] = turret_events
+
     # RC2 P5.7 (WS4): neutral-objective kill events for the lost-objective macro
     # response. Liveclient-only (SR live events); absent -> omitted, the pure
     # macro_response handles the gap.
@@ -508,6 +513,7 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
         lower, gt, lvl, item_count, max_n=3,
         gold=gold, next_item_name=next_name, next_item_cost=next_cost,
         inhib_events=gs.get("inhib_events"),
+        turret_events=gs.get("turret_events"),
         objective_events=gs.get("objective_events"),
     )
     if not isinstance(callouts, list):

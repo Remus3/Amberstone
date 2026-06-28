@@ -203,6 +203,22 @@ def liveclient_summary() -> dict:
         except Exception:  # noqa: BLE001
             inhib_events = []
         out["inhib_events"] = inhib_events
+        # Turret-down events for the instant base-siege callout
+        # (core.event_callouts.structure_siege_callout). Same Live Client shape
+        # as inhib_events: TurretKilled carries EventTime (s) + the structure
+        # name. Isolated try so a malformed block degrades to [].
+        turret_events: list = []
+        try:
+            for ev in (gd.get("events") or {}).get("Events") or []:
+                if not isinstance(ev, dict) or ev.get("EventName") != "TurretKilled":
+                    continue
+                t = ev.get("EventTime")
+                if isinstance(t, (int, float)) and not isinstance(t, bool):
+                    turret_events.append({"down_at_s": float(t),
+                                          "name": ev.get("TurretKilled")})
+        except Exception:  # noqa: BLE001
+            turret_events = []
+        out["turret_events"] = turret_events
         # RC2 P5.7 (WS4): neutral-objective kill events (dragon/baron/herald) for
         # the lost-objective macro response (core.macro_response). Same Live Client
         # events stream + EventTime (s) pattern as inhib_events above. KillerName is
