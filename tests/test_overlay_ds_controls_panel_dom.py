@@ -56,9 +56,11 @@ class MountTests(unittest.TestCase):
         self.assertLess(build, ovds)
         self.assertLess(ovds, map_pane)
 
-    def test_mount_contains_body_and_head(self):
+    def test_mount_contains_body_no_head(self):
+        # A6 (OVERLAY_BUILD_MASTER_PLAN WP-A6) removed the FIGHT MODEL name
+        # header; the pane keeps its body mount but no longer renders a title.
         self.assertIn('id="ovds-body"', self.html)
-        self.assertIn('<div class="am-pane-head">FIGHT MODEL</div>', self.html)
+        self.assertNotIn('<div class="am-pane-head">FIGHT MODEL</div>', self.html)
 
 
 class PanelJsTests(unittest.TestCase):
