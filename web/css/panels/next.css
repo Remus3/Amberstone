@@ -13,24 +13,21 @@
   margin-bottom: 10px;
   line-height: 1.25;
   /* Visual balance for multi-line wrap on the NEXT headline -
-   * avoids an orphaned trailing word on the second line. */
+   * avoids an orphaned trailing word on the last line. */
   text-wrap: balance;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* A3 (WP-A3): removed the hard 2-line clamp so the NEXT headline renders
+   * fully (operator: no mid-sentence ellipsis). */
 }
 /* NEXT body rows - 3-line cap via line-clamp. Wave-state lanes are
  * now block-display + nowrap (.wave-line) so they're guaranteed
  * exactly 3 lines, no sub-pixel wrap risk; the older 4-line bump
  * isn't needed. */
 .panel-next .kv > span:last-child {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* A3 (WP-A3): was a 3-line clamp + overflow:hidden that ellipsized the
+   * Objective/Position/Wave body mid-sentence. display:block (the wave-state
+   * lanes are block children) + the .panel-next .kv min-height below keep the
+   * slot reserved while long coach content renders fully. */
+  display: block;
   /* Tabular-nums on values that mix numbers + short words (Objective
    * timers, Position dist, Wave state pcts) so digits stay aligned
    * column-to-column across Early/Mid/Late ticks. */
@@ -45,11 +42,10 @@
  * min-height so all three rows are the same height regardless of whether
  * their content is 1 short sentence or 2 lines of stress text. */
 .panel-right-now .kv > span:last-child {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* A3 (WP-A3): removed the 2-line clamp + overflow:hidden (mid-sentence
+   * ellipsis). display:block + the .panel-right-now .kv min-height below keep
+   * the slot stable while long Watch/Fight/Base content renders fully. */
+  display: block;
   /* Tabular-nums for the Watch/Fight/Base values that mix short words
    * with numbers (e.g. "Mid - 45g", "Trade at 5"). The short word
    * tokens are unaffected; the digit columns stay aligned tick-to-tick. */
