@@ -28,8 +28,10 @@ invoked by Agent 1 for three reasons:
 ## Testing rules
 - **Unit tests use temp paths.** Never write under `data/` or `agents/state/`
   during a test - always `tmp_path`.
-- **Integration tests that touch the SMB share** must check
-  `smb_push.share_reachable()` and `pytest.skip()` if false.
+- **Integration tests that touch the (retired) SMB share** stay gated on
+  `smb_push.share_reachable()` (now hard-False, ADR-011/012, phase3-d026) and
+  `pytest.skip()`; there is no live share to write to. `test_smb_push.py` now
+  pins the retired contract (push/trigger raise) instead.
 - **Live-system tests** (supervisor spawn, WS port bind) clean up their
   own lockfiles on teardown using `taskkill /F /PID`, never `Stop-Process`.
 - **Deterministic** - no `time.sleep` loops without a timeout guard; no
