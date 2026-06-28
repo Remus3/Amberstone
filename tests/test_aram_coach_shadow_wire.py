@@ -106,6 +106,50 @@ def test_no_champion_liveclient_does_not_log(tmp_path):
     assert not target.exists()
 
 
+def test_deterministic_item_build_filled_from_table(tmp_path):
+    # The deterministic block's item_build is now filled from the curated ARAM
+    # build-order table (previously always ""). For a champ with a real table
+    # entry it is a comma-separated list of completed items (<=6). SHADOW-ONLY:
+    # this changes only the logged deterministic block, never served output.
+    target = tmp_path / "aram_coach_shadow.jsonl"
+    coach = {"champion": "Kalista", "hp_pct": 85}
+    lc = {
+        "champion": "Kalista",
+        "enemy_team": ["Ashe", "Annie", "Leona", "Malphite", "Sett"],
+        "hp": 850,
+        "hp_max": 1000,
+        "owned_items": ["Berserker's Greaves"],
+    }
+
+    shadow_log_aram_coach(coach, lc, "aram", path=target)
+
+    row = json.loads(_read_lines(target)[0])
+    item_build = row["deterministic"]["item_build"]
+    # Kalista has a curated ARAM order; item_build is now a non-empty join.
+    assert item_build != ""
+    parts = [p.strip() for p in item_build.split(",")]
+    assert 1 <= len(parts) <= 6
+    assert "Infinity Edge" in parts
+
+
+def test_deterministic_item_build_empty_for_unknown_champ(tmp_path):
+    # A champion with NO build-order table entry keeps item_build "" (fail-soft,
+    # unchanged behavior) while the record is still written.
+    target = tmp_path / "aram_coach_shadow.jsonl"
+    coach = {"champion": "ZzNotARealChampZz", "hp_pct": 85}
+    lc = {
+        "champion": "ZzNotARealChampZz",
+        "enemy_team": ["Ashe", "Annie"],
+        "hp": 850,
+        "hp_max": 1000,
+    }
+
+    shadow_log_aram_coach(coach, lc, "aram", path=target)
+
+    row = json.loads(_read_lines(target)[0])
+    assert row["deterministic"]["item_build"] == ""
+
+
 def test_failsoft_garbage_inputs_no_raise(tmp_path):
     target = tmp_path / "aram_coach_shadow.jsonl"
     # Must not raise on any garbage; just returns having logged or not.
