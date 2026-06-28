@@ -137,6 +137,35 @@ def _next_build_item(champ: object, mode_lower: str, owned_count: int):
         return None
     return entry
 
+
+def _full_build_order(champ: object, mode_lower: str) -> list[str]:
+    """Return the FULL ordered list of completed-item NAMES for ``champ``.
+
+    Reuses the SAME memoised readers ``_next_build_item`` uses
+    (``_load_build_orders`` + ``_load_item_costs``) over the ``balanced``
+    bucket, but returns every resolvable item name in order instead of one
+    index. The table is already curated (boots + legendaries, no ward / jungle
+    items), so the names pass through as-is. Fail-soft: unknown champ / missing
+    table / missing item catalog -> [] (so the caller leaves item_build "")."""
+    if not isinstance(champ, str) or not champ.strip():
+        return []
+    orders = _load_build_orders(mode_lower)
+    champ_orders = orders.get(champ.strip())
+    if not isinstance(champ_orders, dict):
+        return []
+    order = champ_orders.get(_RECALL_BUCKET)
+    if not isinstance(order, list):
+        order = next((v for v in champ_orders.values() if isinstance(v, list)), None)
+    if not isinstance(order, list) or not order:
+        return []
+    costs = _load_item_costs()
+    names: list[str] = []
+    for iid in order:
+        entry = costs.get(str(iid))
+        if entry and entry[0]:
+            names.append(entry[0])
+    return names
+
 # ---------------------------------------------------------------------------
 # Mode mapping. The dashboard mode_key is lower-case (sr / aram / arena / tft /
 # brawl / client / game). laning_choices + project_lead want an UPPER-case mode
@@ -822,17 +851,24 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
         except Exception:  # noqa: BLE001
             heal_line = ""
 
-        # The deterministic build path itself: the dashboard does not currently
-        # precompute an ARAM build STRING server-side (the live build text comes
-        # from Haiku), so we leave item_build/reasons to the rule inputs above.
-        # build_block folds the anti-tank + heal reasons into item_build_reasons.
+        # The deterministic build path: fill item_build from the SAME curated
+        # ARAM build-order table _next_build_item reads (the full ordered
+        # completed-item list, not just the next index). build_block joins the
+        # first 4-6 names and folds the anti-tank + heal reasons into
+        # item_build_reasons. Fail-soft: any failure -> [] so item_build stays
+        # "" (unchanged shadow behavior). Does NOT touch reset_item /
+        # _next_build_item logic above.
+        try:
+            build_order = _full_build_order(champ, "aram")
+        except Exception:  # noqa: BLE001
+            build_order = []
         from core.aram_deterministic_coach import build_block  # lazy
         det_block = build_block(
             hp_pct=hp_pct,
             wave_pct=None,  # vision-only; absent server-side -> no tier shift
             low_enemy_count=None,
             cc_threat_line=cc_line,
-            item_build="",
+            build_order=build_order,
             item_build_reasons={},
             next_item_name=next_name,
             next_item_remaining_gold=next_cost,
