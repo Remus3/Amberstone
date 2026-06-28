@@ -13,8 +13,11 @@ instead of going dark in-game.
 
 Contract areas, each one TestCase below:
   1. PANEL_SETS source of truth in overlay_state.js (frozen member list).
-  2. overlay.css carries a body[data-shell="overlay"][data-panelset=...]
-     gate for EVERY PANEL_SETS member (the item-378 regression class).
+  2. overlay.css gates widget visibility PER-WIDGET (.ovx-hidden), NOT by
+     panel set - the coach/build/threat CSS gates were retired 2026-06-28
+     (commit b16bfce1, OVERLAY_DOCTRINE.md sec 4); body[data-panelset]
+     stamping is now inert. Pin the replacement contract so a re-added gate
+     (which would silently hide an always-reachable panel) goes red.
   3. main.js stamps data-shell/data-panelset from the URL and pins the
      view router to active-match in overlay mode.
   4. index.html actually loads overlay.css (a dead stylesheet renders the
@@ -73,39 +76,57 @@ class ShellPanelSetsSourceTests(unittest.TestCase):
         self.assertEqual(["coach", "build", "threat"], _shell_panel_sets())
 
 
-class OverlayCssPanelSetGateTests(unittest.TestCase):
-    """The item-378 regression class: a panel set the shell can request
-    MUST have overlay.css narrowing rules, else that cycle stop renders
-    dark (or worse, un-gated full-grid) over the live game."""
+class OverlayCssVisibilityGateTests(unittest.TestCase):
+    """Panel-set CSS gating was RETIRED 2026-06-28 (commit b16bfce1; overlay.css
+    section 4d + OVERLAY_DOCTRINE.md section 4): the coach/build/threat quick-swap
+    no longer narrows the field. Every widget shows by default and the operator
+    hides one from the launcher menu, so the item-378 "every panel set needs a CSS
+    gate" contract is gone - body[data-panelset] stamping (still emitted by main.js
+    + the shell, harmless) is now INERT. These tests pin the REPLACEMENT contract:
+    a re-introduced [data-panelset] gate (which would silently hide a panel the
+    doctrine says is always reachable) goes red, and the per-widget hide + the two
+    unconditional at-rest reveals stay wired."""
 
     def setUp(self):
         self.css = OVERLAY_CSS.read_text(encoding="utf-8")
         self.sets = _shell_panel_sets()
         self.assertTrue(self.sets)
 
-    def test_every_shell_panel_set_has_a_css_gate(self):
+    def test_no_shell_panel_set_has_a_css_gate(self):
+        # The inverse of the retired item-378 contract: NO shell PANEL_SETS
+        # member may carry a valued [data-panelset="<name>"] gate in overlay.css.
+        # (The section-4d comment mentions a bare `body[data-panelset]` to note
+        # the stamp is inert; the valued-selector check ignores that prose.)
         for name in self.sets:
             with self.subTest(panelset=name):
-                pat = (
-                    r'body\[data-shell="overlay"\]'
-                    r'\[data-panelset="' + re.escape(name) + r'"\]'
-                )
-                self.assertRegex(
-                    self.css, pat,
-                    f"shell PANEL_SETS member '{name}' has no "
-                    f"[data-panelset] gate in overlay.css",
+                self.assertNotIn(
+                    f'[data-panelset="{name}"]', self.css,
+                    f"overlay.css still gates panelset '{name}' - panel sets "
+                    "were retired 2026-06-28; per-widget .ovx-hidden is the gate",
                 )
 
-    def test_css_has_no_orphan_panelset_gates(self):
-        # Reverse drift: a set renamed/removed shell-side leaves dead CSS
-        # that silently never matches - flag it so the rename lands on
-        # both sides in the same change.
-        for name in set(re.findall(r'\[data-panelset="([a-z]+)"\]', self.css)):
-            with self.subTest(panelset=name):
-                self.assertIn(
-                    name, self.sets,
-                    f"overlay.css gates panelset '{name}' which the shell "
-                    f"PANEL_SETS no longer contains",
+    def test_per_widget_hide_is_the_visibility_gate(self):
+        # The launcher menu's per-widget toggle adds .ovx-hidden; that is now
+        # the single visibility gate (doctrine section 4).
+        self.assertRegex(
+            self.css,
+            r'body\[data-shell="overlay"\] \.ovx-hidden\s*\{[^}]*'
+            r'display:\s*none\s*!important',
+        )
+
+    def test_at_rest_panes_revealed_when_not_hidden(self):
+        # The two panes that ship display:none in their own renderer CSS - the
+        # CDS ledger (w-threat / .am-pane-cd) and the fight-model knobs
+        # (w-ovds / #am-pane-ovds) - are shown UNCONDITIONALLY here unless
+        # per-widget-hidden, so they are reachable with no panel set.
+        for sel in (
+            r'\.am-pane-cd\.ovx-widget:not\(\.ovx-hidden\)',
+            r'#am-pane-ovds\.ovx-widget:not\(\[hidden\]\):not\(\.ovx-hidden\)',
+        ):
+            with self.subTest(reveal=sel):
+                self.assertRegex(
+                    self.css,
+                    sel + r'\s*\{[^}]*display:\s*block\s*!important',
                 )
 
 
