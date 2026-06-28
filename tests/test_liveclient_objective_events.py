@@ -32,6 +32,11 @@ def _player(name: str, team: str) -> dict:
 
 def _allgamedata(active_name: str, players: list, events: list,
                  game_time: float = 1300.0) -> dict:
+    # The Live Client /liveclientdata/allgamedata puts ``events`` at the TOP
+    # LEVEL (a sibling of gameData), NOT inside gameData - verified live
+    # 2026-06-27 (data.events.Events). A fixture that nested events under
+    # gameData matched a parse bug 1:1, so the parse looked covered while it
+    # emitted nothing in a real game.
     return {
         "activePlayer": {
             "summonerName": active_name, "level": 14, "currentGold": 1200,
@@ -39,8 +44,8 @@ def _allgamedata(active_name: str, players: list, events: list,
                               "resourceValue": 200, "resourceMax": 300},
         },
         "allPlayers": players,
-        "gameData": {"gameTime": game_time, "gameMode": "CLASSIC",
-                     "events": {"Events": events}},
+        "events": {"Events": events},
+        "gameData": {"gameTime": game_time, "gameMode": "CLASSIC"},
     }
 
 
@@ -142,6 +147,32 @@ class ObjectiveEventsTests(unittest.TestCase):
     def test_no_events_empty_list(self) -> None:
         out = _summary(_allgamedata("Ashe", _PLAYERS, []))
         self.assertEqual(out["objective_events"], [])
+
+
+class StructureEventsTests(unittest.TestCase):
+    """turret_events / inhib_events parse - the base-siege + inhib-respawn
+    callouts read these. Previously UNTESTED, which let the top-level-events
+    path bug ship: a turret/inhib fall produced an empty list live, so the
+    instant siege callout never fired (verified live 2026-06-27)."""
+
+    def test_turret_and_inhib_events_parsed(self) -> None:
+        events = [
+            {"EventName": "TurretKilled", "EventTime": 1290.0,
+             "TurretKilled": "Turret_T1_C_05_A"},
+            {"EventName": "InhibKilled", "EventTime": 1305.0,
+             "InhibKilled": "Barracks_T1_L1"},
+            {"EventName": "ChampionKill", "EventTime": 100.0},  # ignored
+        ]
+        out = _summary(_allgamedata("Ashe", _PLAYERS, events))
+        self.assertEqual(out["turret_events"],
+                         [{"down_at_s": 1290.0, "name": "Turret_T1_C_05_A"}])
+        self.assertEqual(out["inhib_events"],
+                         [{"down_at_s": 1305.0, "name": "Barracks_T1_L1"}])
+
+    def test_no_structure_events_empty(self) -> None:
+        out = _summary(_allgamedata("Ashe", _PLAYERS, []))
+        self.assertEqual(out["turret_events"], [])
+        self.assertEqual(out["inhib_events"], [])
 
 
 class AsciiHygieneTests(unittest.TestCase):
