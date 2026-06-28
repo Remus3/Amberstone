@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-27 (deterministic ARAM coach Haiku-to-zero Stages 1-2 + legion_on agent fix + overlay/spell diagnosis, `5b74f9f2`..`1aed8f06`)
+
+Live operator session (Lulu/Kalista ARAM then ranked Caitlyn SR). Resumed the no-live-LLM precompute program (B), coach lane.
+
+- **Deterministic ARAM coach - correct-by-construction, SHADOW-only (commits `338ee4e3` + `914f3acf` + `7ff205e7`).** Re-measured the HZ laning-VERDICT precompute vs Haiku on the item-614 CORRECTED tables (ts>=2026-06-24, ARAM only, n=269): **23% agreement** (62/269), precompute systematically too passive (says hold, Haiku says trade; emits "trade" ZERO times for ARAM). Re-confirms the SETTLED item-266 matchup-verdict coin-flip + no ARAM rewind ground truth -> the laning-verdict flip is a DEAD-END (memory `project_aram_haiku_zero_path`; do NOT re-attempt / re-tune matchup thresholds). PIVOTED to correct-by-construction: NEW `core/aram_action_rule` (HP-band/wave tree from `aram_coach.py:251-260`) + `core/aram_fight_risk` (enemy-CC projection) + `core/aram_deterministic_coach.build_block` (assembler) + `core/aram_coach_shadow` (whole-output shadow) wired in `dashboard/_state_builder` + `_deterministic_coaching`; `item_build` fills from `build_orders_aram.json`. Logs deterministic-vs-Haiku per ARAM tick to `data/aram_coach_shadow.jsonl`. **Eyeball-validated LIVE (Kalista ARAM): the ACTION verdict MATCHES Haiku** (POKE==POKE PHASE, FALL BACK~=WAIT RESPAWN) - the keystone works zero-LLM. Gap: fight_rule/risk correct-but-generic vs Haiku's champ-specific mechanics. SHADOW-only (served /api/state byte-unchanged, safety-property test). RC reloaded pid 7096 = shadow LIVE. NEXT: eyeball more games -> Stage-4 default-OFF flip (operator-gated, do-not-flip-blind); optional Stage 0 build-A/B variants table + richer fight_rule.
+- **legion_on agent-death fix (`5b74f9f2`).** legion_off kills RC-HotkeyListener / RC-LCUAgent / RC-LiveClientRelay via its broad "Riot Commander" python pattern, but legion_on never restarted them (LogonTrigger tasks) - every off/on cycle silently left in-game hotkeys + LCU + relay DEAD. legion_on now restarts all 3, process-guarded vs the pythonw launcher-stub double-launch (RegisterHotKey 1409).
+- **Ctrl+Shift+B overlay - PARTIAL.** In-game failure root cause = the hotkey listener was DEAD (the legion off/on gap above); restarted it (pid 22880, registers Ctrl+Shift+A/B clean). BUT the in-game keypress STILL does not reach the listener (panel_cycle.txt mtime frozen, ZERO signals since restart) - League/Overlay Platform M is swallowing the global RegisterHotKey. Stamped the signal file directly to isolate overlay-side vs keypress-side; OPEN: operator to confirm whether the overlay cycled on the direct stamp -> if yes, switch the listener to a low-level WH_KEYBOARD_LL hook. (Side note: a test pollutes the real `logs/hotkey_listener.log` with `Z:\nonexistent` writes - separate test-isolation slice.)
+- **Summoner-spell revert fix (`1aed8f06`).** The RuneWriter mid-pick branch pushed the generic role-blind Flash+Teleport every ~1s poll, reverting ADC spells throughout the ranked-draft hover. Now role-aware (`spells_for_role`: BOTTOM->Flash+Heal) + respects a manual change (mirrors the post-lock branch). 7 new tests, e6 green. ACTIVATES ON NEXT RC RESTART (deferred - operator was in a live ranked game).
+
+OWED: RC restart (deferred, operator in-game) activates the spell fix. Overlay keypress delivery (low-level hook). ARAM coach flip gate (eyeball more games). Base-siege callout live confirm (from-start sampler still armed).
+
+---
+
 # 2026-06-27 (slow-tick ROOT-CAUSE conclusive + rc_facts / scheduled-task triage / overlay build-panel hotkey / instant base-siege callout, `b3453044`..`17c1061d`)
 
 5 commits, verified across 2 live ARAM Mayhem games. Resolved item-639's OPEN coach-tick root-cause + operator overlay/coach follow-ons. The no-LLM precompute DB (B) is STILL deferred.
