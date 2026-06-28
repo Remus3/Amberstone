@@ -33,6 +33,7 @@ from dashboard._adaptation_latch import compute as _latch_compute
 from dashboard._context import APP_DIR, read_json
 from dashboard._cs_retention import apply_cs_retention
 from dashboard._liveclient import lcu_summary, liveclient_summary
+from dashboard._party_mains import enrich_party_mains
 from dashboard.routes_team_context import get_team_context
 
 
@@ -313,6 +314,10 @@ def build_state() -> dict:
     # staleness. Applied before resolve_mode_key so the s150 pre-flip
     # mode survives the transient loss too.
     lcu_snapshot = apply_cs_retention(lcu_snapshot)
+    # PARTY MAINS: enrich the forwarded lobby members with each non-self
+    # member's top champion (Riot Champion-Mastery-V4). Non-blocking - serves
+    # cached data, refreshes in the background (see dashboard._party_mains).
+    lcu_snapshot = enrich_party_mains(lcu_snapshot)
     mode_key, preflip_active = resolve_mode_key(health, lcu_snapshot)
     health = apply_preflip_mirror(health, mode_key, preflip_active)
 
