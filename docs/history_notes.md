@@ -214,6 +214,10 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-B1 /done prune)
+
+---
+
 # 2026-06-27 (PGL PARTY MAINS wired + liveclient events-path bug fix + WH_KEYBOARD_LL hotkey hook, `aa008079` + `dfff433d` + `7b325e3e`)
 
 Live operator session (back-to-back ranked SR). Restarted RC to activate last session's mid-pick spell fix, then 3 shipped items incl a MAJOR live-bug find. All committed + pushed + live-verified.
