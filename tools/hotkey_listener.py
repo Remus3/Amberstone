@@ -62,7 +62,7 @@ HTTP_TIMEOUT  = 3.0
 # rc-shell resolves (C:\Riot Commander\ops\runtime\).
 TOGGLE_SIGNAL_FILE = r"C:\Riot Commander\ops\runtime\overlay_active_toggle.txt"
 
-# Overlay panel-cycle signal file. Ctrl+Shift+C (id 4) stamps this with the
+# Overlay panel-cycle signal file. Ctrl+Shift+B (id 4) stamps this with the
 # current epoch on each press; rc-shell polls it and rotates the overlay panel
 # set coach -> build -> threat (rc-shell/src/main.js startPanelCycleWatch). The
 # in-game build panel was otherwise unreachable: its only switch (Electron
@@ -222,7 +222,7 @@ _MOD_NOREPEAT = 0x4000
 _VK_1         = 0x31
 _VK_2         = 0x32
 _VK_A         = 0x41
-_VK_C         = 0x43
+_VK_B         = 0x42
 _WM_HOTKEY    = 0x0312
 _HOTKEY_FLAGS = _MOD_CONTROL | _MOD_SHIFT | _MOD_NOREPEAT
 _SLOT_OVERLAY_TOGGLE = 3
@@ -243,10 +243,13 @@ def _unregister(hotkey_id: int) -> None:
 
 
 # Hotkeys we claim, as a set: (id, vk). Ctrl+Shift+1/2 = coach slots,
-# A = overlay ACTIVE toggle, C = overlay panel-set cycle (coach/build/threat).
+# A = overlay ACTIVE toggle, B = overlay panel-set cycle (coach/build/threat).
+# (B not C: Ctrl+Shift+C is commonly bound by other apps - Discord / Overlay Platform M /
+# browser DevTools - so B is the less-contended choice; B confirmed delivering
+# in-game 2026-06-27.)
 _HOTKEYS = (
     (1, _VK_1), (2, _VK_2),
-    (_SLOT_OVERLAY_TOGGLE, _VK_A), (_SLOT_OVERLAY_PANEL_CYCLE, _VK_C),
+    (_SLOT_OVERLAY_TOGGLE, _VK_A), (_SLOT_OVERLAY_PANEL_CYCLE, _VK_B),
 )
 # Retry the whole set on failure. A logon race (another global-hotkey app -
 # Discord / Overlay Platform M / CurseForge - transiently holding a combo, or the
@@ -318,7 +321,7 @@ def message_loop(cache: DecisionCache) -> None:
 
 def main() -> int:
     log.info("hotkey_listener starting "
-             "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A / Ctrl+Shift+C)")
+             "(Ctrl+Shift+1 / Ctrl+Shift+2 / Ctrl+Shift+A / Ctrl+Shift+B)")
     cache = DecisionCache()
     stop = threading.Event()
     worker = threading.Thread(
