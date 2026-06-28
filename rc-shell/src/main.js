@@ -1083,8 +1083,10 @@ function startActiveToggleWatch() {
 }
 
 // Win32 listener -> overlay panel-cycle signal. tools/hotkey_listener.py owns
-// Ctrl+Shift+C (delivers while League holds foreground focus, where the Electron
-// Alt+Shift+C globalShortcut below does NOT - same constraint as Ctrl+Shift+A)
+// Ctrl+Shift+B (delivers while League holds foreground focus, where the Electron
+// Alt+Shift+C globalShortcut below does NOT - same constraint as Ctrl+Shift+A;
+// B not C because Ctrl+Shift+C is commonly bound by other apps - Discord /
+// Overlay Platform M / DevTools)
 // and stamps an epoch here on each press. Same poll-on-advance contract as the
 // ACTIVE-toggle watch above; rotates coach -> build -> threat so the build
 // widget (hidden outside the build panelset) is reachable in-game.
