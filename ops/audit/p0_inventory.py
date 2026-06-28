@@ -4,6 +4,7 @@ Run from repo root:
     "C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe" ops/audit/p0_inventory.py
 """
 import csv
+import datetime
 import os
 import subprocess
 import sys
@@ -62,7 +63,14 @@ def main() -> int:
 
     rows.sort(key=lambda r: -r[1])
     csv_path = OUT_DIR / "p0_inventory_full.csv"
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    provenance = (
+        f"# point-in-time snapshot generated {stamp} by ops/audit/p0_inventory.py "
+        "- lists files present AT GENERATION TIME only - may include since-deleted "
+        "paths - regenerate after structural deletions before trusting for an audit"
+    )
     with csv_path.open("w", newline="", encoding="utf-8") as f:
+        f.write(provenance + "\n")
         w = csv.writer(f)
         w.writerow(["relpath", "bytes", "ext", "top"])
         w.writerows(rows)
