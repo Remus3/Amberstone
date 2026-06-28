@@ -6,14 +6,12 @@
  * was drowning the immediate/risk rows underneath; weight+color still
  * differentiate the headline from the 20px body copy below. */
 .action {
-  /* Size-to-content with a hard 2-line cap. 1-line content takes 22px,
-   * 2-line takes 44px, 3+ lines clip at line 2 with ellipsis. Prior
-   * revisions used a fixed 52px slot to keep subsequent rows from
-   * shifting between fixtures - but that reserved ~30px of whitespace
-   * below 1-line headlines (the common case), which is what the user
-   * flagged as "20+ pixel space" (2026-04-24). Layout now flexes by
-   * one line height between 1- and 2-line fixtures; acceptable trade
-   * given the current coach prompts target short headlines. */
+  /* A3 (WP-A3): size-to-content, NO clamp. The prior hard 2-line
+   * -webkit-line-clamp + overflow:hidden ellipsized coach headlines
+   * mid-sentence (operator: no mid-sentence truncation). With the
+   * [t]..[/t] timer tags now stripped at the render sink
+   * (helpers.stripCoachTags) the common headline is short and stays one
+   * line; only genuinely long coach output grows the slot. */
   font-size: 21px;
   letter-spacing: 0.005em;
   font-weight: 900;
@@ -21,13 +19,8 @@
   word-break: break-word;
   line-height: 1.1;
   /* Visual balance for multi-line wrap: balance avoids a single
-   * orphaned word on the second line of a 2-line coach headline. */
+   * orphaned word on the last line of a multi-line coach headline. */
   text-wrap: balance;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 /* Coach prompt fresh-update pulse (2026-05-20 UI polish sweep). Wired
@@ -86,19 +79,12 @@
   font-weight: 400;
   line-height: 1.35;
   margin-bottom: 4px;
-  /* Fixed 2-line slot at the sub-headline font size. Short text still
-   * leaves the box the same height, so subsequent KV rows never shift
-   * between fixtures. (2026-04-24: shrunk from 3-line / 84px + 10px
-   * margin to a 2-line / 54px + 4px margin - the previous 3-line slot
-   * was reserving ~30px of whitespace on typical 2-line coach output.
-   * Coach prompts already cap the immediate around 12 words, so the
-   * 3rd-line escape hatch was rarely used.) */
-  height: 54px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* A3 (WP-A3): min-height (not a fixed height) reserves the ~2-line slot so
+   * short content does not shift the KV rows below, while long coach prose now
+   * grows the slot and renders FULLY (the prior fixed 54px box + 2-line
+   * -webkit-line-clamp ellipsized mid-sentence). The Arena pregame dense card
+   * keeps its deliberate clip via .immediate.is-pregame below. */
+  min-height: 54px;
 }
 /* Arena pregame briefing - dense card (build + augments + combos +
  * round phasing). Clipped, not scrolled per round 44. */
@@ -112,6 +98,15 @@
   border-left: 3px solid var(--gold-soft);
   padding-left: 10px;
   font-variant-numeric: tabular-nums;
+  /* A3 (WP-A3) regression guard: keep the clipped-not-scrolled box that this
+   * dense card used to INHERIT from the base .immediate (now un-clamped).
+   * Without re-stating it the pregame card would grow unbounded. */
+  height: 54px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .immediate.is-pregame br { line-height: 1.55; }
 
