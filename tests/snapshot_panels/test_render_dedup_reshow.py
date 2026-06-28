@@ -149,6 +149,52 @@ def test_draft_elo_repaints_after_external_clear(mock_server, pw_browser):
     assert not errors, f"JS errors: {errors[:3]}"
 
 
+_BUILD_PAYLOAD = {
+    "p": {
+        "champion": "Jinx", "level": 11,
+        "daemon_slayer_picks": [
+            {"id": 3031, "name": "Infinity Edge"},
+            {"id": 3094, "name": "Rapid Firecannon"},
+        ],
+    },
+    "ctx": {"mode": "sr"},
+    "lc": None,
+    "ownedIds": [],
+}
+
+
+def test_build_body_repaints_after_external_clear(mock_server, pw_browser):
+    """active_match build pane (flicker fix 2026-06-28): the sig-dedup added to
+    _renderAmBuildBody must carry the R27 reshow guard - an external innerHTML
+    clear with identical data must still repaint, not stay visible-but-empty."""
+    ctx, page, errors = _new_page(mock_server, pw_browser, {})
+    try:
+        r = page.evaluate(
+            """async (P) => {
+              const m = await import('/js/panels/active_match.js');
+              const el = document.getElementById('am-build-body');
+              const call = () => m._renderAmBuildBody(el, P.p, P.ctx, P.lc, P.ownedIds);
+              call();
+              const firstLen = el.innerHTML.length;
+              el.style.display = 'none';
+              el.innerHTML = '';        // outer hide-path clobber (no renderer)
+              el.style.display = '';
+              call();                   // re-show, identical data
+              return { firstLen, reshowLen: el.innerHTML.length };
+            }""",
+            _BUILD_PAYLOAD,
+        )
+        assert r["firstLen"] > 0, "build body did not render content initially"
+        assert r["reshowLen"] > 0, (
+            "build body stayed EMPTY after an external clear + identical-data "
+            "re-render (sig-dedup desync - the flicker fix's reshow guard)"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     raw = Path(__file__).read_bytes()
