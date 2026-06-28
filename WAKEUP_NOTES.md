@@ -36,7 +36,3 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 - **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static :8810 + synthetic 5-enemy roster (incl "Nunu & Willump") + preview_inspect; names full + un-clipped, all five name columns 157px, first chips aligned same x, --es-champ-ch=15, no es-head. Verifier CONFIRM (A5 15/0, regression 33/0); local sweep incl overlay snapshot = 101 passed.
 - **GOTCHA (do-not-redo):** the Claude_Preview browser CACHES ES modules across preview_start/stop cycles - the first A5 render served the STALE A4b-era enemy_spells.js (truncated names, es-head present). Fix = cache-bust the dynamic import: import('/js/panels/x.js?bust='+Date.now()). Captured in memory reference_claude_preview_live_8888.
 - **NEXT (loop):** Section J next OPEN W1 = A6 (remove pane name headers, deps A5 now DONE -> READY; index.html + overlay.css, serialize overlay.css after A5), then B1 (strip DS-ENGINE caption, T1, active_match.js). C1 (kit-synergy, W2) + E5 (docs sweep, T0) + F5-H02/F5-M01 (W0) also open.
-
----
-
-(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-B1 /done prune)
