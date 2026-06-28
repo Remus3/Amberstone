@@ -23,6 +23,29 @@ foreach ($t in $tasks) {
   }
 }
 
+# 1b. ONLOGON relocated agents (RC-HotkeyListener / RC-LCUAgent / RC-LiveClientRelay).
+# legion_off kills these via its broad python-name pattern, but they are LogonTrigger
+# tasks that do NOT auto-relaunch until the next logon - so an off/on cycle would
+# silently leave hotkeys + LCU + the live-client relay dead unless we restart them here.
+# Guard on the live PROCESS, not task.State: the pythonw launcher stub exits at once,
+# leaving the task Ready while its child runs, so a State check would double-launch - and
+# a second hotkey_listener fails RegisterHotKey (GetLastError 1409, combo already owned).
+$agents = @(
+  @{ Task = 'RC-HotkeyListener';  Match = 'hotkey_listener' },
+  @{ Task = 'RC-LCUAgent';        Match = 'lcu_agent' },
+  @{ Task = 'RC-LiveClientRelay'; Match = 'liveclient_relay' }
+)
+foreach ($a in $agents) {
+  $alive = Get-CimInstance Win32_Process -Filter "Name='pythonw.exe' OR Name='python.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -and $_.CommandLine -match $a.Match }
+  if ($alive) {
+    Write-Host "[on] $($a.Task) : already running (pid $($alive[0].ProcessId))"
+  } else {
+    Start-ScheduledTask -TaskName $a.Task -ErrorAction SilentlyContinue
+    Write-Host "[on] $($a.Task) : started"
+  }
+}
+
 # 2. DS server :8893 - not supervisor-watched per memory; launch manually if absent
 $dsListening = Get-NetTCPConnection -LocalPort 8893 -State Listen -ErrorAction SilentlyContinue
 if ($dsListening) {
