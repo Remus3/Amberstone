@@ -24,14 +24,12 @@ tests/test_overlay_a5_enemy_spells_unname_widen.
 
 from __future__ import annotations
 
-import re
 import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 ACTIVE_MATCH_JS = REPO / "web" / "js" / "panels" / "active_match.js"
 DRAFT_ELO_JS = REPO / "web" / "js" / "panels" / "draft_elo.js"
-DRAFT_ELO_CSS = REPO / "web" / "css" / "panels" / "draft_elo.css"
 
 
 class DsEngineCaptionRemoved(unittest.TestCase):
@@ -76,17 +74,10 @@ class NoDraftPriorRemoved(unittest.TestCase):
 
     def test_de_empty_class_kept(self):
         # The empty-state mount class stays (draft_elo.css + the panel test
-        # pin it); only the prose inside is removed.
+        # pin it); only the prose inside is removed. The chip itself stays
+        # VISIBLE in SR/ARAM (5v5-only surface, mode-gated) - it is NOT hidden
+        # when empty, or test_active_match_draft_elo_mode_gate would fail.
         self.assertIn("de-empty", self.js)
-
-    def test_empty_chip_hidden_in_css(self):
-        # Removing the text alone would leave a dimmed empty pill (the chip has
-        # padding + bg + border); the empty-state chip is hidden outright.
-        css = DRAFT_ELO_CSS.read_text(encoding="utf-8")
-        m = re.search(
-            r'\.draft-elo-chip\[data-de-state="empty"\][^{]*\{[^}]*'
-            r"display:\s*none", css)
-        self.assertIsNotNone(m, "empty draft-elo chip must be display:none")
 
 
 if __name__ == "__main__":
