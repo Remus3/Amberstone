@@ -201,6 +201,14 @@
       "summary": "rc-shell overlay: every panel individually accessible with per-panel opacity/scale; panel-set abstraction retired (commit b16bfce1). 3 panels stay interactive while playing via passive click-through zones (commit c79508d2). Draggable launcher widget acts as layout control center + the only in-game un-hide path (commit 6370f7da). Enemy summoner-spell MANUAL tap-tracker + API stats mini-panel landed (commit 5ff56099). In-game ACTIVE hotkey routes through tools/hotkey_listener.py WH_KEYBOARD_LL Win32 hook + signal file (Electron globalShortcut dead under League focus). A native-HUD replacement is impossible - Live Client :2999 exposes no ability/summoner cooldowns/buffs/wards/XP. Do NOT re-pitch a single-panel or panel-set design.",
       "source": "CLAUDE.md / Settled / overlay redesign + ledger 644-648",
       "authority": "operator"
+    },
+    {
+      "id": "phase3-d026",
+      "title": "Game-PC SMB push deadcode pending cleanup pass (ADR-011/012)",
+      "decided_at": "2026-06-28",
+      "summary": "agents/agent2_backend/smb_push.py implemented the 2-PC Legion -> Game-PC file-write path over \\\\192.168.8.237\\RCClient. Game-PC retired from the pipeline 2026-05-29 (ADR-011) and the RC<->Peer bridge was decommissioned 2026-06-24 (ADR-012), so the share has no receiving end. Path A (defer-delete, operator-decided 2026-06-28, mirror of d019 Brawl retirement): share_reachable() is hard-False and push()/trigger_forwarder_restart() raise a retired RuntimeError; the gatekeeper P-audit-h1 traversal guard in agents/agent0_gatekeeper/evaluator.py is KEPT as the standing safety net (it gates Task dataclasses, independent of smb_push). Agent 2/3/5/6 charters point at the Legion-local filesystem. A future quiescent-point cleanup pass may delete smb_push.py + the guard + charter lines in one swing. Do NOT re-wire a cross-machine push - there is no remote machine. Filed by audit-11 M-05.",
+      "source": "CLAUDE.md / Settled / ADR-011 + ADR-012 + audit-11 M-05",
+      "authority": "operator"
     }
   ],
   "topology": {

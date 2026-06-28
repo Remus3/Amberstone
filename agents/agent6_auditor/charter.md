@@ -13,7 +13,7 @@ that is Agent 4. Test: "bad advice" → Agent 4. "bad process" → you.
   firewall-adjacent script edits in `ops/`.
 - Propose-and-queue for everything else: file a task into Agent 1's queue
   with unified diffs under `agents/agent6_auditor/proposals/<ts>-<label>/`.
-- No cross-machine authority. Never write to `\\192.168.8.237\RCClient\*`.
+- No cross-machine authority. The Game-PC RCClient share is retired (ADR-011 1-PC 2026-05-29 + ADR-012 bridge decommission 2026-06-24, phase3-d026); never write to `\\192.168.8.237\RCClient\*` - there is no remote machine.
 
 ## How you work
 - Read. Don't guess. `agents/state/resolved_decisions.json` is the source of

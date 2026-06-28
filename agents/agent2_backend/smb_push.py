@@ -42,6 +42,19 @@ SHARE_UNC = r"\\192.168.8.237\RCClient"
 ALLOWED_SUBDIRS = ("forwarder", "web")
 FORWARDER_RESTART_SIGNAL = SHARE_UNC + r"\forwarder\restart_trigger.txt"
 
+# Defer-delete retirement (Path A, resolved_decisions phase3-d026). push() and
+# trigger_forwarder_restart() hard-fail with this message: the Game-PC RCClient
+# SMB share is retired (ADR-011 1-PC 2026-05-29 + ADR-012 bridge decommission
+# 2026-06-24) and has no receiving end. Write to the Legion local filesystem /
+# :8888 dashboard instead. The implementation below is preserved unreachable for
+# the historical contract until a future quiescent-point cleanup pass deletes it.
+_RETIRED_MSG = (
+    "smb_push is retired - the Game-PC RCClient SMB share has no receiving end "
+    "(ADR-011 1-PC consolidation + ADR-012 bridge decommission). There is no "
+    "remote machine to push to; write to the Legion local filesystem / :8888 "
+    "dashboard instead. See resolved_decisions phase3-d026."
+)
+
 logger = logging.getLogger("agent2.smb_push")
 
 
@@ -58,10 +71,10 @@ class SmbVerifyFailed(RuntimeError):
 
 
 def share_reachable() -> bool:
-    try:
-        return os.path.exists(SHARE_UNC)
-    except OSError:
-        return False
+    # RETIRED (ADR-011/012, phase3-d026): Game-PC is out of the pipeline and the
+    # RCClient share has no receiving end. Hard-False (no network probe) so the
+    # legacy skip-gates short-circuit and nothing live attempts a dead push.
+    return False
 
 
 def _sha256(path: Path) -> str:
@@ -126,7 +139,12 @@ def push(
     destination basename; defaults to the local filename.
 
     Returns a dict: ``{"remote": str, "sha256": str, "backup": str|None, "bytes": int}``.
+
+    RETIRED (phase3-d026): hard-fails - see ``_RETIRED_MSG``. The body below is
+    preserved unreachable for the historical contract.
     """
+    raise RuntimeError(_RETIRED_MSG)
+
     local = Path(local_path)
     if not local.is_file():
         raise SmbRejected(f"local_path is not a file: {local}")
@@ -187,7 +205,12 @@ def trigger_forwarder_restart(label: str = "manual") -> dict:
 
     Uses ``push()`` semantics so the write is logged, checksummed, and backed
     up. Forwarder polls this file's mtime and self-restarts on change.
+
+    RETIRED (phase3-d026): hard-fails - see ``_RETIRED_MSG``. The body below is
+    preserved unreachable for the historical contract.
     """
+    raise RuntimeError(_RETIRED_MSG)
+
     if not share_reachable():
         raise SmbUnavailable(f"{SHARE_UNC} unreachable")
     payload = datetime.now(timezone.utc).isoformat().encode("utf-8")
