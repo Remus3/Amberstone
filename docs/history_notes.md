@@ -1,5 +1,22 @@
 # RC session history archive
 
+## Relocated 2026-06-28 (WP-A4b /done - keep last 3 sessions: A4b + A4a/companion + A3)
+
+# 2026-06-28 (overlay redesign: launcher control-center + all-panels + per-panel opacity/scale + interactive zones + enemy spell tap-tracker + stats panel; live-verified last session's 4 fixes)
+
+Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2026-06-27, then a big operator-driven overlay redesign. 5 commits, all pushed; RC restarted pid 11856.
+
+- **Live-verify (all PASS).** events-path (`7b325e3e`): turret fell -> base-siege callout fired eta_s=0 atop #rn-callouts; dragon -> objective_events populated + dynamic drake row. Mid-pick spells (`1aed8f06`): draft pushed 4+7 Flash+Heal role-aware (NOT 4+12 TP); manual 4+21 Barrier stuck. Hotkeys (`aa008079`): Ctrl+Shift+B + Ctrl+Shift+A both signal via WH_KEYBOARD_LL.
+- **Launcher widget (`6370f7da`).** Draggable HUD-spell-square -> layout control center. The ONLY in-game un-hide path (Alt+Shift+R reset is Electron-globalShortcut-only = dead under League focus).
+- **Build-pane flicker fix (`5af5b17d`).** active_match did `build.innerHTML=""` EVERY tick -> icons/donuts re-fetched + blinked. Extracted `_renderAmBuildBody` with sig-dedup + the R27 reshow guard.
+- **All panels accessible + per-panel opacity/scale (`b16bfce1`).** Retired the coach/build/threat quick-swap auto-hide; all panels show by default; launcher menu = per-panel toggle + opacity + scale sliders.
+- **3 panels interactive while playing (`c79508d2`).** A/B/C (already a zone), launcher (+data-rc-zone, ACTIVE gate dropped), spell/CD (zone:true) work in PASSIVE via hover-to-interact.
+- **Enemy spell tap-tracker + stats panel (`5ff56099`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
+- **DO-NOT-REDO: a HUD *replacement* is impossible.** Live Client API has NO ability/summoner cooldowns, buffs, wards, or XP - only HP/mana/level/CS/stats + spell NAMES (confirmed live on :2999). Overlay AUGMENTS only; can't drive League's Tab-ping (injection-free). Enemy tracker is MANUAL, no auto-feed.
+- **DEPLOY OWED:** operator must Ctrl+Shift+B in-game to reload the overlay (no-store JS = fresh) to see slices 1-4b live; NOT yet confirmed on the Electron overlay (tools can't reach it).
+
+---
+
 ## Relocated 2026-06-27 (item-640 /done - keep last 3 sessions: item-640 + item-638-tails + ACTUALIZE-637)
 
 # 2026-06-27 (live-flip validation + overlay launcher fix, `2e8abb36`)

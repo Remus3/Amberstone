@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-28 (overlay-build loop - WP-A4b stats panel vertical "You vs benchmark" frontend; 14effd16)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W1 WP whose deps are DONE: A4b (T1, deps A4a DONE). The frontend half of WP-A4, consuming last cycle's /api/role-bracket-bench.
+
+- **WP-A4b (14effd16).** Full rebuild of web/js/panels/stats_panel.js: dropped the panel name + HP/mana bars + 6-stat grid; new vertical "You vs Avg" table. Header = role <select> (top/jungle/mid/bot/support -> route role param) + auto-derived game-time bracket (lc.game_time_s; <1500s early / <2100s mid / else late, mirrors core.role_bracket_bench). 4 rows LVL/CS/TF/KDA. You = live lc.* (KDA=(k+a)/max(d,1) from the "k/d/a" string); Bench = /api/role-bracket-bench stats.<k>.avg, champ_benchmarks-style (role,bracket) cache+TTL+inflight, degraded "-" on error. overlay.css: max-width 190->220, bar/grid rules -> vertical table (You white-.96/bold vs Avg white-.62 = opacity compare signal, colorblind-safe). RED-first tests/test_overlay_a4b_stats_vertical.py 17->20 green. Tier-1, ADR-008 (no RC restart), no ENGINE/DS/Share. LEDGER 656, Section J A4b -> DONE.
+- **DO-NOT-REDO / gaps:** (1) TF (kill-participation) has NO live producer (Live Client API, reference_liveclient_no_hud_data) -> You TF cell is an honest "-"; the benchmark column still shows historical KP. (2) renderStatsPanel(lc) consumes the DERIVED liveclient_summary shape (hp_max/game_time_s/kda/level/cs), NOT the raw envelope -> the active_match_sr.json ui_mock (raw shape) does NOT render the panel; live /api/state is its feed. (3) index.html:2206 #am-statspanel mount already correct - no edit. (4) the plan's web/js/test/*.test.js paths do NOT exist; overlay panels are tested by Python grep-contract tests in tests/ (no jsdom/node harness).
+- **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static preview (:8810) + synthetic derived lc inject (no live game) + preview_inspect computed styles; bracket="early" from game_time_s=1320, You KDA=6.5 from "5/2/8", zero console errors. Verifier CONFIRM (A4b 20/0, regression 41/0); local sweep incl Playwright overlay snapshot = 87 passed.
+- **NEXT (loop):** Section J next OPEN W1 = A5 (enemy-spells widen+unname, T1, deps none), then A6 (remove pane name headers, deps A5), B1 (strip DS-ENGINE caption, T1). C1 (kit-synergy, W2) + E5 (docs sweep, T0) also open. Serialize overlay.css edits A5->A6 (shared file; A4b already off overlay.css this cycle).
+
+---
+
 # 2026-06-28 (electron companion window controls + overlay launcher + WP-A4a role-bracket bench route; 93550a4e + c172f6b5 + b883254c)
 
 Two-part session: operator-direct electron UX, then headless overlay-build-continue WP-A4a. 3 commits, all pushed, CI green. RC restarted (now pid 4808, reload_ok).
@@ -26,15 +37,4 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 
 ---
 
-# 2026-06-28 (overlay redesign: launcher control-center + all-panels + per-panel opacity/scale + interactive zones + enemy spell tap-tracker + stats panel; live-verified last session's 4 fixes)
-
-Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2026-06-27, then a big operator-driven overlay redesign. 5 commits, all pushed; RC restarted pid 11856.
-
-- **Live-verify (all PASS).** events-path (`7b325e3e`): turret fell -> base-siege callout fired eta_s=0 atop #rn-callouts; dragon -> objective_events populated + dynamic drake row. Mid-pick spells (`1aed8f06`): draft pushed 4+7 Flash+Heal role-aware (NOT 4+12 TP); manual 4+21 Barrier stuck. Hotkeys (`aa008079`): Ctrl+Shift+B + Ctrl+Shift+A both signal via WH_KEYBOARD_LL.
-- **Launcher widget (`6370f7da`).** Draggable HUD-spell-square -> layout control center. The ONLY in-game un-hide path (Alt+Shift+R reset is Electron-globalShortcut-only = dead under League focus).
-- **Build-pane flicker fix (`5af5b17d`).** active_match did `build.innerHTML=""` EVERY tick -> icons/donuts re-fetched + blinked. Extracted `_renderAmBuildBody` with sig-dedup + the R27 reshow guard.
-- **All panels accessible + per-panel opacity/scale (`b16bfce1`).** Retired the coach/build/threat quick-swap auto-hide; all panels show by default; launcher menu = per-panel toggle + opacity + scale sliders.
-- **3 panels interactive while playing (`c79508d2`).** A/B/C (already a zone), launcher (+data-rc-zone, ACTIVE gate dropped), spell/CD (zone:true) work in PASSIVE via hover-to-interact.
-- **Enemy spell tap-tracker + stats panel (`5ff56099`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
-- **DO-NOT-REDO: a HUD *replacement* is impossible.** Live Client API has NO ability/summoner cooldowns, buffs, wards, or XP - only HP/mana/level/CS/stats + spell NAMES (confirmed live on :2999). Overlay AUGMENTS only; can't drive League's Tab-ping (injection-free). Enemy tracker is MANUAL, no auto-feed.
-- **DEPLOY OWED:** operator must Ctrl+Shift+B in-game to reload the overlay (no-store JS = fresh) to see slices 1-4b live; NOT yet confirmed on the Electron overlay (tools can't reach it).
+(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-A4b /done prune)
