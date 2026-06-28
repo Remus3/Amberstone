@@ -746,7 +746,7 @@ min). The operator wants the loop to NOT end randomly - to detect a stall and ha
 |---|---|
 | Goal | On the FIRST deadline breach of a cycle, inject a recovery directive + extend the deadline ONCE; hard-STOP only on a second consecutive breach. |
 | Files | `ops/loop/loop_controller.py` (the `wait_for(claude.done)` branch ~:422) - NOT frozen. |
-| TDD test first | `ops/loop/test_loop_stall_recovery.py`: simulate a missed `claude.done` once -> assert a recovery `gemini.ready` is written (types `/diagnose ...`) + deadline extended + no STOP; simulate twice -> assert STOP. Pure-function the recovery decision so it is unit-testable headless. |
+| TDD test first | `tests/test_loop_stall_recovery.py`: assert `stall_action(1)=="recover"` (one-shot recovery, no STOP) and `stall_action(2+)=="stop"` (second breach = hard hang); plus the `stall_recovery_directive` content (CYCLE header for the AHK skip, `/diagnose`, done_sentinel final step, NO `/clear`, single typed line, ASCII). Pure-function the recovery decision so it is unit-testable headless. |
 | Recovery directive | Types: `/diagnose the loop stall: check git status, the last pytest output file, ops/runtime/health.json, and the controller.log tail; recover this cycle and /done, or write a one-line blocker to ops/loop/control/blocker.txt and /done.` |
 | Backstops kept | The existing no-progress guard (same sha 2 cycles -> STOP) and AHK-never-typed (120s -> STOP) remain. The `/loop-monitor` dashboard surface (`/api/loop-monitor`) gives the operator a live per-tool-call timeline to watch for stalls. |
 | Tier | Tier-1 (loop module + its own test). |
@@ -823,7 +823,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | F6a stale engine-header | W0 | E5 | T1 | OPEN |
 | F4a ward keep-vs-retire | W4 | operator | T1 | GATED |
 | F6c park auto-ops gate | W6 | - | T0 | OPEN |
-| I3 loop stall-recovery | pre | - | T1 | OPEN (pre-launch) |
+| I3 loop stall-recovery | pre | - | T1 | DONE 2026-06-28 |
 
 GATED-on-live-game (verify-pass after W1 + W5, not a cycle): F1-01, F1-04, F1-05, F1-06.
 DS-batch (separate Tier-2 ENGINE sessions, NOT this loop): all of F.2. DEFER/THEORIZED: F.7.
