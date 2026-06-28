@@ -87,26 +87,23 @@ function _remaining(champ, slot, spellName) {
   return rem;
 }
 
-function _shortChamp(name) {
-  const n = String(name || "");
-  return n.length > 9 ? n.slice(0, 9) : n;
-}
-
 // Build the row DOM once per roster. Each spell is a <button> chip carrying its
 // champ + slot so the delegated click can toggle it.
 function _buildRows(mount, enemies) {
   mount.innerHTML = "";
-  const head = document.createElement("div");
-  head.className = "es-head";
-  head.textContent = "ENEMY SPELLS";
-  mount.appendChild(head);
+  // Shared champ-name column width = the longest name in this roster (+1 char of
+  // proportional-font slack) so every row's chips align and no name is clipped -
+  // the .es-champ rule reads it as `var(--es-champ-ch)`.
+  const maxLen = enemies.reduce(
+    (m, e) => Math.max(m, String(e.champion || "").length), 0);
+  mount.style.setProperty("--es-champ-ch", String(maxLen + 1));
 
   for (const e of enemies) {
     const row = document.createElement("div");
     row.className = "es-row";
     const name = document.createElement("span");
     name.className = "es-champ";
-    name.textContent = _shortChamp(e.champion);
+    name.textContent = e.champion;
     row.appendChild(name);
     (e.spells || []).forEach((spell, slot) => {
       if (!spell) return;
