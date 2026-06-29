@@ -218,6 +218,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-29 (Section B - WP-B2 horizontal 3-row build module scaffold shipped; commit `adedacde`)
+
+Scoped build session. Operator picked B2 via a framed scope question - it is the gate for the entire D-series. First Section B panel slice; UNBLOCKS D1/D2/D3 + B3/B4.
+
+- **666 WP-B2 3-row build module (commit `adedacde`).** `active_match.js` `_renderAmBuildBody` rebuilt: the old single vertical DS picks strip -> a horizontal `.bm-module` with Row1 `.bm-live` (the EXISTING C5 `/api/build-plan` `planStates` feed), Row2 `.bm-meta` (NEW `_maybeRefreshBuildOrder` -> `/api/build-order` `order[]`, mirrors the build-plan fetcher), Row3 `.bm-knobs` (NEW `_renderBmKnobs` REUSES the `ds_knobs.js` `fetchDsKnobs`/`getCachedDsKnobs` champ-NAME data layer - the champ-select `renderDsKnobs` panel untouched). NEW `web/css/panels/build_module.css` + the `dashboard.css` `@import` (parity guard). The dedup sig gains the META order ids.
+- **TDD + gates:** RED-first NEW `tests/test_overlay_b2_three_row_build_module.py` (grep-style, no jsdom). 147/0 Tier-1 sweep. UI-audit ritual PASS (real Playwright render, 5/5 phases, zero MUST-FIX; `--fs-xs` resolves to 16px live, inputs 26px >= the 24px floor). ASCII-clean (real per-line scan, NOT the locale-broken `grep -P` which silently no-op'd). Built mostly inline (single serialized file = R9) with the two mandatory subagent gates (UI-audit + a live-curl integration check); the `verifier` subagent skipped per R7 (own single-thread edit, fresh-green this turn).
+- **Live integration verified vs running RC `:8888`:** `/api/build-order` + `/api/ds-knobs` return the EXACT Row2/Row3 shapes. `/api/build-plan` 404s on the running pid 7120 (booted 01:52, predates the C5 route) -> the client fail-softs to an empty LIVE row. **OWED: an RC restart + a live in-game capture of the module** (gated on `project_liveclient_loopback_regression`; the running RC is on `main`, so B2 goes live only after this branch merges + restart).
+- **Bookkeeping:** Section J B2 OPEN -> DONE + the stale C5 OPEN -> DONE drift corrected (branch C5 = `0e44a8fc` never flipped its own row). LEDGER DIVERGENCE: this branch tops at 666 while main is at 670 (main C5 = `cedb78c2`) - renumber at landing per `feedback_ledger_renumber_on_parallel_landing`.
+- **NEXT:** B3 (Row1/Row2 owned-greying + partial-component pips + meta right-click alt-cycle; deps B2 satisfied) or B4 (MF SR fixture oracle; deps B2+C2). The whole D-series is now unblocked.
+
+---
+
 # 2026-06-29 (Section C - WP-C4 owned-aware re-plan loop + sell/swap + hysteresis shipped; commit `51f3141d`)
 
 Scoped build session (ultracode workflow). Fourth + last build-brain MODULE before the C5 route wires it live.
