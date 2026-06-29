@@ -160,6 +160,77 @@ function _dsTargetStatsCaption() {
   return `vs ${a} armor - ${m} mr - ${hp} hp - ${tag}`;
 }
 
+// WP-C5 (2026-06-29): adaptive build-plan data contract. The Row1 build
+// strip consumes /api/build-plan's live[] item states (owned | next | swap |
+// partial | future) to annotate each DS icon. This is the data-contract SEAM
+// only - the heavy Row1 visual polish is the separate B-series. Non-blocking,
+// same cache+cooldown discipline as _maybeRefreshDsPicks (the DS engine is
+// reached server-side; this just polls the composed plan).
+const _BUILD_PLAN = {
+  lastKey:    "",
+  lastFired:  0,
+  stateById:  null,   // {item_id: state} from the most recent live[]
+  inFlight:   false,
+};
+const _BUILD_PLAN_COOLDOWN_MS = 4000;
+
+// Map a build-plan live[] array into an {item_id: state} lookup. Tolerates a
+// missing / malformed payload (returns an empty map -> icons render unchanged).
+function _buildPlanStateMap(live) {
+  const out = {};
+  if (Array.isArray(live)) {
+    live.forEach((row) => {
+      if (row && row.item_id != null && typeof row.state === "string") {
+        out[String(row.item_id)] = row.state;
+      }
+    });
+  }
+  return out;
+}
+
+// Schedule a background /api/build-plan refresh keyed on champion/mode/level/
+// items (same fingerprint as the DS rerank). Non-blocking: returns whatever
+// state map is already cached; the next render picks up fresh data once the
+// POST completes. Fail-soft - any error leaves the prior map intact.
+function _maybeRefreshBuildPlan(champion, mode, level, items) {
+  if (!champion || !mode) return _BUILD_PLAN.stateById;
+  const key = _dsRerankKey(champion, mode, level, items);
+  const now = Date.now();
+  const stale = (key !== _BUILD_PLAN.lastKey)
+              || ((now - _BUILD_PLAN.lastFired) > _BUILD_PLAN_COOLDOWN_MS);
+  if (!stale || _BUILD_PLAN.inFlight) return _BUILD_PLAN.stateById;
+  _BUILD_PLAN.inFlight  = true;
+  _BUILD_PLAN.lastKey   = key;
+  _BUILD_PLAN.lastFired = now;
+  fetch("/api/build-plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      champion: champion,
+      mode:     mode,
+      level:    level | 0,
+      items:    items || [],
+    }),
+  }).then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _BUILD_PLAN.inFlight = false;
+      if (j && j.ok && Array.isArray(j.live)) {
+        _BUILD_PLAN.stateById = _buildPlanStateMap(j.live);
+      }
+    })
+    .catch(() => { _BUILD_PLAN.inFlight = false; });
+  return _BUILD_PLAN.stateById;
+}
+
+// State -> visual descriptor for the Row1 icon badge. ``owned`` keeps the
+// existing OWNED overlay (handled in _dsIcon by ownedSet), so it is omitted
+// here. ``future`` greys the icon; next/swap/partial get a colored pip.
+const _BUILD_PLAN_BADGE = {
+  next:    { label: "NEXT",    color: "#6cf" },
+  swap:    { label: "SWAP",    color: "#f59e0b" },
+  partial: { label: "PARTIAL", color: "#9aa0b5" },
+};
+
 // s171: opt-OUT (was opt-in). Active Match is the default in-game
 // surface - it renders coach action/immediate/objective/next + DS
 // live rerank + the static map with enemy dots. Operator opts OUT via
@@ -209,6 +280,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   const livePicks  = _maybeRefreshDsPicks(champion, mode, level, ownedIds);
   const coachPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
   const picks = (livePicks && livePicks.length) ? livePicks : coachPicks;
+  // WP-C5: adaptive build-plan item states for the Row1 icon badges. Non-
+  // blocking; null until the first /api/build-plan POST resolves (icons just
+  // render without a state pip until then).
+  const planStates = _maybeRefreshBuildPlan(champion, mode, level, ownedIds) || {};
 
   // s171.6 defensive state + the enemy roster feed both the render AND the sig.
   const threat = _DS_RERANK.lastThreat;
@@ -227,6 +302,12 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     t: threat ? [threat.summary, threat.burst_threat, threat.ad_threat, threat.ap_threat] : 0,
     d: Array.isArray(defensive) ? defensive.slice(0, 3).map((r) => (r && (r.id != null ? r.id : r.name)) || r) : 0,
     e: enemyKey,
+    // WP-C5: per-pick build-plan state, so a state transition (e.g. an item
+    // becoming NEXT or flipping to SWAP) refreshes the strip's badges.
+    bp: picks.slice(0, 5).map((r) => {
+      const id = (r && (r.id != null ? r.id : r.item_id)) || "";
+      return planStates[String(id)] || "";
+    }),
   });
   // Short-circuit ONLY when the sig matches AND the DOM still holds content. The
   // innerHTML guard is the R27 reshow fix (test_render_dedup_reshow): if an outer
@@ -240,7 +321,8 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     const strip = document.createElement("div");
     strip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
     picks.slice(0, 5).forEach((r) => {
-      strip.appendChild(_dsIcon(r, ownedSet));
+      const id = (r && (r.id != null ? r.id : r.item_id)) || "";
+      strip.appendChild(_dsIcon(r, ownedSet, planStates[String(id)] || ""));
     });
     // B1 (overlay redesign): the DS-context caption header was removed - the
     // build pane renders just the icon strip, no caption. target_stats still
@@ -1460,7 +1542,7 @@ function _line(label, value, band) {
 // Icon falls back to a labeled grey tile when the item_id isn't known
 // (DS server occasionally returns names without ids during ARAM/Arena
 // re-skin resolution) or both DDragon paths 404.
-function _dsIcon(r, ownedSet) {
+function _dsIcon(r, ownedSet, planState) {
   const wrap = document.createElement("div");
   wrap.style.cssText = "position:relative;width:48px;text-align:center;";
   const name = r.name || r.item_name || "?";
@@ -1470,13 +1552,21 @@ function _dsIcon(r, ownedSet) {
   // ownedSet carries id strings AND lowercased names (2026-06-10).
   const owned = ownedSet && (ownedSet.has(String(id))
                              || ownedSet.has(String(name).toLowerCase()));
+  // WP-C5: build-plan state badge. ``future`` dims the icon; next/swap/partial
+  // get a colored pip. ``owned`` keeps the existing OWNED overlay below.
+  const state = planState || "";
+  const badge = (!owned && state) ? _BUILD_PLAN_BADGE[state] : null;
   if (id) {
     const ver = (ITEMS && ITEMS.version) || "latest";
     const img = document.createElement("img");
     img.src = `/data/ddragon/${ver}/img/item/${id}.png`;
     img.alt = name;
     img.title = `${name} (+${(delta || 0).toFixed(0)}${unit})`;
-    img.style.cssText = "width:44px;height:44px;border-radius:6px;border:1px solid var(--border, #303040);display:block;margin:0 auto;";
+    let border = "1px solid var(--border, #303040)";
+    let opacity = "1";
+    if (badge) border = `2px solid ${badge.color}`;
+    else if (!owned && state === "future") opacity = "0.45";
+    img.style.cssText = `width:44px;height:44px;border-radius:6px;border:${border};opacity:${opacity};display:block;margin:0 auto;`;
     img.onerror = () => {
       if (!img.dataset.cdnRetry) {
         img.dataset.cdnRetry = "1";
@@ -1488,6 +1578,12 @@ function _dsIcon(r, ownedSet) {
     wrap.appendChild(img);
   } else {
     wrap.appendChild(_dsIconFallback(name, id, delta));
+  }
+  if (badge) {
+    const pip = document.createElement("div");
+    pip.textContent = badge.label;
+    pip.style.cssText = `position:absolute;left:0;right:0;bottom:18px;text-align:center;font-size:9px;font-weight:700;letter-spacing:0.06em;background:rgba(0,0,0,0.7);color:${badge.color};padding:1px 0;pointer-events:none;`;
+    wrap.appendChild(pip);
   }
   if (owned) {
     const ow = document.createElement("div");
