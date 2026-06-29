@@ -20,6 +20,14 @@ import the DS engine (agents/daemon_slayer/*) - the in-process split-brain guard
 (dashboard/routes_state.py:548-549) forbids it. DS effect files were read
 REFERENCE-ONLY to pick the curated item-id tables below; nothing is imported.
 
+The kit_weights BASE is PER-CHAMPION: core.build_planner.champ_kit_data derives a
+distinct weight vector for each of the 173 champions from champions.json ground
+truth (damage_distribution + roles/tags + attackrange + attackspeedperlevel +
+healing/shielding), so the scorer discriminates every champion - not just an
+archetype. The flat _ARCHETYPE_WEIGHTS vector below is now only the FALLBACK for a
+blank / unknown champ; the ~6 _KIT_TRAITS overrides still fine-tune the curated
+champs on top of the derived base.
+
 ASCII only - use " - " for a clause break (repo hard rule).
 """
 from __future__ import annotations
@@ -31,6 +39,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.archetype_picks import get_archetype_for, kit_damage_axis
+from core.build_planner.champ_kit_data import derive_kit_weights
 
 _log = logging.getLogger("rc.build_planner.kit_synergy")
 
@@ -368,11 +377,22 @@ def champ_kit_traits(champ) -> dict:
 # kit_weights
 # --------------------------------------------------------------------------- #
 def _base_axis_weights(champ: str) -> dict[str, float]:
-    """Base archetype vector after the AD/AP axis refinement (pre-override).
+    """Per-champion base weight vector (pre-override).
 
-    Separated so the spellblade-user heuristic can read the AH weight without
-    recursing through the per-champ override.
+    Prefers the PER-CHAMPION derived vector (champ_kit_data.derive_kit_weights,
+    from champions.json ground truth) so each of the 173 champions gets a
+    distinct base - the WP-C1 model only distinguished ~6 curated champs and fell
+    back to a flat per-archetype vector for the rest. Falls back to that flat
+    archetype vector + AD/AP axis refinement only when the champ is blank or
+    absent from champions.json (the derivation returns None). Separated so the
+    spellblade-user heuristic can read the AH weight without recursing through
+    the per-champ override.
     """
+    derived = derive_kit_weights(champ)
+    if derived is not None:
+        # The derivation already encodes the damage axis (via the champ's
+        # damage_distribution), so no extra AD/AP refinement is applied here.
+        return dict(derived)
     arch = (get_archetype_for(champ) or {}).get("primary", "carry")
     base = dict(_ARCHETYPE_WEIGHTS.get(arch, _ARCHETYPE_WEIGHTS["carry"]))
     axis = kit_damage_axis(champ)
