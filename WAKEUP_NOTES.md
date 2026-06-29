@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-06-28 (overlay panel-set gate test cluster reconciled to retired-panel-sets model + ROADMAP trim; `6c3d2586`)
+
+Scoped session on worktree branch `claude/hardcore-saha-0592d5`: closed the pre-existing failure cluster that items 651-655 kept flagging UNRELATED.
+
+- **Verdict: STALE TESTS, not a CSS bug.** Panel-set CSS gating was intentionally retired 2026-06-28 (`b16bfce1`; overlay.css section 4d + OVERLAY_DOCTRINE.md section 4). Per-widget `.ovx-hidden` is now the only visibility gate; `body[data-panelset]` stamping is inert. Confirmed across 5 sources before editing.
+- **5 assertions rewritten** to the per-widget-hide / unconditional-reveal / combat-shed contract: `test_overlay_route_smoke.py` (class -> `OverlayCssVisibilityGateTests`), `test_overlay_ds_controls_panel_dom.py`, `test_active_match_live_fixes.py`.
+- **ROADMAP.md** 83044 -> 80481 B: 5 CLOSED/superseded rows relocated verbatim to `docs/ROADMAP_HISTORY.md` (no rewrite).
+- **zoi teardown = NOT a bug.** It is the session-scoped `assert_prod_artifacts_unchanged` guard (`tests/conftest.py`) blaming the last-collected test (zoi). Clean-worktree full run (9740 passed) did NOT reproduce it (guarded `data/` files absent). Memory: `reference_session_guard_teardown_attribution`.
+- **DO-NOT-REDO:** the 2 `test_home_rank_identity` reds are clean-checkout artifacts (`match_history.db` absent) - they pass on the populated Legion checkout; do not chase them.
+- **Flagged (chip, not fixed here):** latent overlay.css combat-shed specificity bug for w-ovds (reveal 1,4,1 beats shed 0,4,1, both `!important`) - own task.
+- LEDGER 656. Commit `6c3d2586` pushed to origin.
+
+---
+
 # 2026-06-28 (overlay-build loop - WP-A3 coach [t]-tag strip + truncation removal; ea100097 + 68841ce5)
 
 Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W0 WP after A1/A2: A3 (T1, deps none).
@@ -27,16 +41,3 @@ Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2
 - **Enemy spell tap-tracker + stats panel (`5ff56099`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
 - **DO-NOT-REDO: a HUD *replacement* is impossible.** Live Client API has NO ability/summoner cooldowns, buffs, wards, or XP - only HP/mana/level/CS/stats + spell NAMES (confirmed live on :2999). Overlay AUGMENTS only; can't drive League's Tab-ping (injection-free). Enemy tracker is MANUAL, no auto-feed.
 - **DEPLOY OWED:** operator must Ctrl+Shift+B in-game to reload the overlay (no-store JS = fresh) to see slices 1-4b live; NOT yet confirmed on the Electron overlay (tools can't reach it).
-
----
-
-# 2026-06-27 (PGL PARTY MAINS wired + liveclient events-path bug fix + WH_KEYBOARD_LL hotkey hook, `aa008079` + `dfff433d` + `7b325e3e`)
-
-Live operator session (back-to-back ranked SR). Restarted RC to activate last session's mid-pick spell fix, then 3 shipped items incl a MAJOR live-bug find. All committed + pushed + live-verified.
-
-- **WH_KEYBOARD_LL hotkey hook (`aa008079`).** RegisterHotKey global accelerators are SWALLOWED while League/Overlay Platform M holds foreground focus, so in-game Ctrl+Shift+A (overlay ACTIVE) / Ctrl+Shift+B (panel cycle) never reached `tools/hotkey_listener.py`. Switched to a WH_KEYBOARD_LL low-level hook (sees the press at the OS input queue ahead of the focused app). Pure `HotkeyDecoder` (Ctrl+Shift gate + press-edge debounce) for headless tests; hook proc only enqueues -> dispatch worker runs the slow handlers (post_choice 3s HTTP stays off the hook thread, under LowLevelHooksTimeout); always CallNextHookEx (observe, never swallow). 8 decoder + 4 panel-cycle tests green. LIVE: listener restarted (pid 25208), log confirms "keyboard hook installed". OWED: in-game physical-press confirm of the VISIBLE panel cycle.
-- **PGL PARTY MAINS wired (`dfff433d`).** Operator-reported empty MAINS grids. Root cause: the dashboard read `lcu.party_mains` but the backend NEVER emitted it (s162 lobby UI built vs fixtures; live read-path never wired). LCU on this client build exposes only the LOCAL player mastery (by-puuid 404s), so party-member mastery is not LCU-fetchable; the agent is forwarder-only (ADR-011, no core.*). Enrich Legion-side: NEW `dashboard/_party_mains.py` - per non-self lobby member, resolve the Riot-API encrypted puuid from their riot-id via Account-V1 (the LCU member puuid is a different form that 400s mastery - verified live), then top-1 Champion-Mastery-V4 -> `{name, player, mastery_level, mastery_points}`. NEW `core.riot_api.get_top_champion_masteries` (/top wrapper). Non-blocking (background fetch, serves cached, never stalls /api/state), TTL-cached by member-set, fail-soft per member. Wired in `_state_builder.build_state`. 12 tests green. LIVE-CONFIRMED: zChunjae#Sera2 -> Seraphine mastery 7 / 42836, self excluded. (W/L/KDA columns stay "-" - need that player match history, which RC does not hold.)
-- **MAJOR BUG: liveclient events read from the wrong JSON path (`7b325e3e`).** Found via the task-4 base-siege live confirm: a ground-truth relay poller caught 7 turrets + 1 inhib falling while the served siege callout fired in 0/1368 samples; `liveclient_summary` returned `turret_events=[]` though the relay snapshot held 131 events (13 TurretKilled) at `data.events.Events`. Root cause: the parse read `gd.get("events")` (= `gameData.events`, ALWAYS None - the Live Client puts `events` at the TOP LEVEL of allgamedata, sibling of gameData). So EVERY in-game event-derived callout was silently dead live: base-siege, inhib-respawn, dragon-soul, epic-buff, lost-objective macro-response. The objective-events test passed only because its fixture nested events under gameData too (fixture shaped to the bug). Corrected the fixture to the real shape + added the missing turret/inhib coverage; fix is `gd`->`d` x3. 21 callout/liveclient tests green.
-- **Restarts (operator-requested wrap):** RC pid 17748 -> 29032 (spell fix + PARTY MAINS + events-fix all live); overlay relaunched (4 electron); hotkey listener pid 25208 (hook installed). Spell fix was already live from the first restart (this session draft spells = fixed role-aware behavior).
-
-OWED: events-fix in-game live confirm (next game tower fall -> siege callout in /api/state callouts; unit + live-path proven, just not yet eyeballed in a served callout); draft spell-hover confirm (BOTTOM self-corrects Flash+Heal, manual sticks); in-game Ctrl+Shift+B VISIBLE panel cycle; deterministic ARAM coach Stage-4 flip (eyeball more games).
