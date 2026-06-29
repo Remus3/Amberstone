@@ -18,8 +18,14 @@ profile, it re-plans the remaining build each tick WITHOUT whiplash:
     free trinket upgrade bypasses every gate.
   * the Schmitt-trigger counter-build pivot is a banded hysteresis (low < high
     enforced, inclusive boundaries, no flicker inside the band, denom guarded).
+  * WP-D3 operator overrides (ItemOverrideStore): a manual Build-Earlier /
+    Build-Later shift, a Defer-Once sink (re-enters after one full item), a Keep
+    pin (stops re-ranking the incumbent), and a Silence flag (drops the item
+    from swap suggestions) are honored by ``tick`` when an optional store is
+    passed. The store is PURE stdlib and lives in THIS module so the import
+    purity holds (no new importable module).
 
-Master plan: docs/OVERLAY_BUILD_MASTER_PLAN.md WP-C4 (lines 202-212).
+Master plan: docs/OVERLAY_BUILD_MASTER_PLAN.md WP-C4 (lines 202-212) + WP-D3.
 
 PURITY boundary (mirrors situational.py + planner.py):
 
@@ -151,6 +157,203 @@ def schmitt(prev_on: bool, value: float, *, high: float, low: float) -> bool:
     the ReplanConfig band-invariant guard (this primitive trusts the caller).
     """
     return (value >= low) if prev_on else (value >= high)
+
+
+# --------------------------------------------------------------------------- #
+# ItemOverrideStore - operator per-item build-order pins (WP-D3 server half).
+# --------------------------------------------------------------------------- #
+class ItemOverrideStore:
+    """Server-side mirror of the client store (web/js/lib/item_overrides.js).
+
+    Holds the operator's per-item build-order overrides so a manual shift / pin
+    SURVIVES the re-plan tick (the engine honors them as soft constraints rather
+    than re-ranking them away). PURE stdlib - it lives INSIDE replan.py so the
+    module's import purity (stdlib + core.build_planner.{planner,scoring,
+    situational} only) is preserved (the StructuralGuardTests ast-scan forbids a
+    new importable module here).
+
+    Entry shape mirrors the client EXACTLY (item ids are STRINGS):
+      {"shift": int, "deferred": bool, "keep": bool, "silenced": bool}
+
+      * shift    - Build-Earlier (-1 each) / Build-Later (+1 each); accumulates.
+      * deferred - Defer-Once: sink the item until exactly one full item buys,
+        then it RE-ENTERS (the "after one full item completes" timing the client
+        approximates and the server makes exact via reconcile()).
+      * keep     - lock the pick; the loop stops re-ranking a kept incumbent.
+      * silenced - drop the item from swap / sell suggestions.
+
+    ``action_log`` is an action-ONLY ledger (no build-state) - one dict per
+    operator action like {"kind":"override","action":"build_earlier",
+    "item_id":id}; clear() appends exactly ONE {"kind":"override",
+    "action":"reset"} line. The ordering math (eff = i + shift + nudge +
+    deferBias) is a byte-for-byte port of the client applyItemOverrides so the
+    server reorder matches what the operator saw on screen.
+
+    ASCII only - use " - " for a clause break (repo hard rule).
+    """
+
+    def __init__(self):
+        # id_str -> {"shift", "deferred", "keep", "silenced"} (lazy via _ent).
+        self._ov: dict[str, dict] = {}
+        # id_str -> owned_count at the moment defer() was pressed (re-entry base).
+        self._defer_baseline: dict[str, int] = {}
+        # owned_count of the most recent reconcile() / from_snapshot (None = unset).
+        self._last_owned_count: Optional[int] = None
+        # action-ONLY ledger (no build-state).
+        self.action_log: list[dict] = []
+
+    def _ent(self, item_id) -> dict:
+        """Lazily create + return the default entry for an id (STRING-keyed)."""
+        k = str(item_id)
+        if k not in self._ov:
+            self._ov[k] = {"shift": 0, "deferred": False,
+                           "keep": False, "silenced": False}
+        return self._ov[k]
+
+    def _log(self, action: str, item_id=None) -> None:
+        entry = {"kind": "override", "action": action}
+        if item_id is not None:
+            entry["item_id"] = str(item_id)
+        self.action_log.append(entry)
+
+    # ------------------------------------------------------------------- #
+    # operator-action mutators (each appends exactly ONE action-log line)
+    # ------------------------------------------------------------------- #
+    def build_earlier(self, item_id) -> None:
+        """N - shift one slot toward the front (overtakes the nearest neighbor)."""
+        self._ent(item_id)["shift"] -= 1
+        self._log("build_earlier", item_id)
+
+    def build_later(self, item_id) -> None:
+        """E - shift one slot toward the back."""
+        self._ent(item_id)["shift"] += 1
+        self._log("build_later", item_id)
+
+    def defer(self, item_id) -> None:
+        """S - sink the item; record the owned-count baseline for re-entry."""
+        self._ent(item_id)["deferred"] = True
+        self._defer_baseline[str(item_id)] = self._last_owned_count or 0
+        self._log("defer", item_id)
+
+    def keep(self, item_id) -> None:
+        """W - toggle the keep lock."""
+        ent = self._ent(item_id)
+        ent["keep"] = not ent["keep"]
+        self._log("keep", item_id)
+
+    def silence(self, item_id) -> None:
+        """Center - toggle silenced (drop from swap / sell suggestions)."""
+        ent = self._ent(item_id)
+        ent["silenced"] = not ent["silenced"]
+        self._log("silence", item_id)
+
+    def clear(self) -> None:
+        """Reset item status - wipe every override + baseline, log ONE line."""
+        self._ov.clear()
+        self._defer_baseline.clear()
+        self._log("reset")
+
+    # ------------------------------------------------------------------- #
+    # cross-tick reconcile (Defer-Once re-entry timing)
+    # ------------------------------------------------------------------- #
+    def reconcile(self, owned_count: int) -> None:
+        """Re-enter every deferred item once ONE full item completes.
+
+        For each id with a recorded defer baseline, if ``owned_count`` has grown
+        by at least one since the defer press (owned_count >= baseline + 1) the
+        item RE-ENTERS the plan: its ``deferred`` flag clears and the baseline is
+        dropped. Then ``_last_owned_count`` advances so a FRESH defer measures
+        from the current count.
+        """
+        for iid in list(self._defer_baseline.keys()):
+            baseline = self._defer_baseline[iid]
+            if owned_count >= baseline + 1:
+                if iid in self._ov:
+                    self._ov[iid]["deferred"] = False
+                del self._defer_baseline[iid]
+        self._last_owned_count = owned_count
+
+    # ------------------------------------------------------------------- #
+    # queries (all safe on unknown ids -> 0 / False)
+    # ------------------------------------------------------------------- #
+    def shift_of(self, item_id) -> int:
+        ent = self._ov.get(str(item_id))
+        return int(ent["shift"]) if ent else 0
+
+    def is_deferred(self, item_id) -> bool:
+        ent = self._ov.get(str(item_id))
+        return bool(ent and ent["deferred"])
+
+    def is_kept(self, item_id) -> bool:
+        ent = self._ov.get(str(item_id))
+        return bool(ent and ent["keep"])
+
+    def is_silenced(self, item_id) -> bool:
+        ent = self._ov.get(str(item_id))
+        return bool(ent and ent["silenced"])
+
+    # ------------------------------------------------------------------- #
+    # pure reorder (byte-for-byte port of the client applyItemOverrides)
+    # ------------------------------------------------------------------- #
+    def apply_ordering(self, ids) -> list:
+        """Reorder a list of id strings by the stored shifts; return a NEW list.
+
+        eff = i + shift + nudge + deferBias, with nudge a half-step in the shift
+        direction (so a single Build-Earlier sorts STRICTLY ahead of the neighbor
+        it overtakes - an integer shift would tie) and deferBias = 1000 when
+        deferred (sinks the item last). Stable on (eff, original_index) so an
+        unoverridden order is preserved. The input list is NOT mutated.
+        """
+        rows = list(ids or [])
+        keyed = []
+        for i, iid in enumerate(rows):
+            ent = self._ov.get(str(iid))
+            sh = int(ent["shift"]) if ent else 0
+            nudge = -0.5 if sh < 0 else (0.5 if sh > 0 else 0)
+            defer_bias = 1000 if (ent and ent["deferred"]) else 0
+            keyed.append((sh + nudge + defer_bias + i, i, iid))
+        keyed.sort(key=lambda t: (t[0], t[1]))
+        return [t[2] for t in keyed]
+
+    # ------------------------------------------------------------------- #
+    # from a client-serialized snapshot (route use - NO logging)
+    # ------------------------------------------------------------------- #
+    @classmethod
+    def from_snapshot(cls, snapshot, owned_count: int = 0) -> "ItemOverrideStore":
+        """Build a store from a client {id:{shift,deferred,keep,silenced}} dict.
+
+        Coerces defensively (a bad field is skipped, not raised) and appends
+        NOTHING to action_log (a snapshot is state, not an operator action). For
+        any deferred entry the defer baseline is seeded at ``owned_count`` so the
+        re-entry timing measures from the current inventory; ``_last_owned_count``
+        is set to ``owned_count`` so a later reconcile compares correctly.
+        """
+        store = cls()
+        try:
+            oc = int(owned_count)
+        except (TypeError, ValueError):
+            oc = 0
+        if isinstance(snapshot, dict):
+            for raw_id, raw_ent in snapshot.items():
+                iid = str(raw_id)
+                if not isinstance(raw_ent, dict):
+                    continue
+                ent = store._ent(iid)
+                if "shift" in raw_ent:
+                    try:
+                        ent["shift"] = int(raw_ent["shift"])
+                    except (TypeError, ValueError):
+                        pass
+                for flag in ("deferred", "keep", "silenced"):
+                    if flag in raw_ent:
+                        try:
+                            ent[flag] = bool(raw_ent[flag])
+                        except (TypeError, ValueError):
+                            pass
+                if ent["deferred"]:
+                    store._defer_baseline[iid] = oc
+        store._last_owned_count = oc
+        return store
 
 
 # --------------------------------------------------------------------------- #
@@ -363,7 +566,7 @@ class ReplanLoop:
     def tick(self, *, champion, owned_item_ids, seed_fn,
              clock_s=0.0, enemy_profile=None, ally_state=None,
              surplus_gold=0, stage=None, mode="SR",
-             beam_width=6, depth=6) -> ReplanResult:
+             beam_width=6, depth=6, overrides=None) -> ReplanResult:
         cfg = self.config
         notes: list[str] = []
 
@@ -375,6 +578,11 @@ class ReplanLoop:
             self._last_purchase_clock_s = clock_s
             notes.append("purchase detected")
         self._prev_owned = owned_set
+
+        # WP-D3: reconcile operator overrides against the live owned count so a
+        # deferred item RE-ENTERS the plan once one full item has completed.
+        if overrides is not None:
+            overrides.reconcile(len(owned))
 
         # 2. stage + per-stage sell-counter reset on a stage change.
         stg = stage or stage_for(clock_s, len(owned))
@@ -402,6 +610,17 @@ class ReplanLoop:
         deferred = tuple(i for i in plan_tail if i in comp)
         non_deferred_tail = [i for i in plan_tail if i not in comp]
 
+        # WP-D3: reorder the display tail by the operator shifts so a manual
+        # Build-Earlier / Build-Later SURVIVES the re-plan (the shift shows in
+        # plan_tail), then recompute non_deferred_tail AFTER reordering and also
+        # exclude any override-deferred id from the next-item choice.
+        if overrides is not None:
+            plan_tail = tuple(overrides.apply_ordering(list(plan_tail)))
+            non_deferred_tail = [
+                i for i in plan_tail
+                if i not in comp and not overrides.is_deferred(i)
+            ]
+
         # 5. stickiness (next-item hysteresis via single-item totals).
         challenger = non_deferred_tail[0] if non_deferred_tail else None
         if challenger is None:
@@ -412,7 +631,20 @@ class ReplanLoop:
             incumbent = self._incumbent
             viable = (incumbent is not None and incumbent not in owned_set
                       and incumbent in pool_ids)
-            if incumbent is None or incumbent == challenger or not viable:
+            # WP-D3: an override-deferred incumbent is NOT viable - defer must
+            # sink it from the next-item choice even when the stickiness latch
+            # would otherwise re-select it.
+            if (viable and overrides is not None
+                    and overrides.is_deferred(incumbent)):
+                viable = False
+            # WP-D3: a KEPT incumbent that is still viable stops being re-ranked
+            # - the operator pinned it, so the loop keeps it (sticky) regardless
+            # of the single-item challenger total.
+            if (overrides is not None and viable
+                    and overrides.is_kept(incumbent)):
+                next_id = incumbent
+                sticky = True
+            elif incumbent is None or incumbent == challenger or not viable:
                 next_id = challenger
                 sticky = False
             else:
@@ -496,6 +728,11 @@ class ReplanLoop:
             if gated is not None:
                 actions.append(gated)
                 break  # the rate-limit allows only one this stage.
+
+        # WP-D3: drop any action whose target item the operator silenced - a
+        # silenced item is excluded from swap / sell suggestions.
+        if overrides is not None:
+            actions = [a for a in actions if not overrides.is_silenced(a.item_id)]
 
         return ReplanResult(
             champion=str(champion),

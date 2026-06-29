@@ -156,11 +156,13 @@ body[data-shell="overlay"]:not(.ovx-ready) .ovx-widget {
 body[data-shell="overlay"] .ovx-widget {
   position: fixed !important;
   z-index: 40;
-  width: fit-content;
-  /* Non-intrusive: a glance accent, not a blocking card. Narrow + see-through so
-   * the game reads through it (operator feedback 2026-06-21: "so intrusive").
-   * max-width 240 (was 360), backing 0.72 (was 0.88) - the game shows through. */
-  max-width: 210px;
+  /* FIXED width (operator 2026-06-29: "fixed maximum panel size: not changing
+   * sizes"). Was width:fit-content + max-width:210 - content-driven, so a longer
+   * champion name / item row / callout resized the box every match (the "widgets
+   * keep shifting slightly" report). A fixed --ovx-w pins the box so content
+   * variation no longer moves the edges; per-widget overrides set --ovx-w. Still
+   * narrow + see-through (operator 2026-06-21: "so intrusive"). */
+  width: var(--ovx-w, 210px);
   margin: 0 !important;
   padding: 6px 8px;
   background: rgba(var(--ovx-bg), 0.58);
@@ -174,7 +176,18 @@ body[data-shell="overlay"] .ovx-widget {
               0 0 0 1px rgba(var(--ovx-bg-nested), 1),
               0 4px 14px rgba(0, 0, 0, 0.55);
   font-size: var(--fs-sm);
-  overflow: hidden;
+  /* FIXED max-height (operator 2026-06-29): overlay_layout._applyPos sets
+   * --ovx-maxh = (viewport bottom - the widget anchor), so a content-tall panel
+   * (the settings strip + fight-model rows, the 6-row build module) is bounded to
+   * the screen instead of spilling below 1080 with its controls (the opacity
+   * slider sat off-screen + unclickable). The .am-pane widgets keep their
+   * id-specificity overflow:hidden (active_match.css) so content past the bound is
+   * CLIPPED to the fixed size; the lighter non-pane mounts (callouts / cues) take
+   * overflow-y:auto. overflow-x stays clipped (no horizontal scrollbar). */
+  max-height: var(--ovx-maxh, none);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
   /* A1: per-panel scale via zoom (NOT transform:scale) so it is layout-affecting
    * - the used box grows with scale, so a scaled-up panel no longer clips against
    * the max-width slot (overflow:hidden clips a transform pre-scale). Grows from
