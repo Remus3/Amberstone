@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-29 (Landed the overlay build-module branch to main - CI green + RC live)
+
+Operator asked whether the worktree branches were healthy (this session ran in a worktree on `claude/hardcore-saha-0592d5`; the `C:/Riot Commander` checkout was always on main) and chose to LAND. The branch's 18 commits (Section B/D build module + per-champion kit-synergy) merged to main + activated live.
+
+- **Merge `99ebd263`.** Landed WP-B2/B3/B4 + per-champ kit-synergy (173 champs) + WP-D1/D2/D3. 28 code/test files auto-merged clean; the 4 doc conflicts resolved per `feedback_ledger_renumber_on_parallel_landing` - LEDGER 666-674 renumbered +5 to 671-679 above main's 670 (contiguous 664..679, no dupes); Section J unioned C5(main `cedb78c2`)+D1/D2/D3 DONE; WAKEUP kept last 3; history_notes kept BOTH archived blocks (non-lossy).
+- **Fix `90002f69` (the real find).** The merged `tests/test_per_champion_scoring_coverage.py` failed locally (Lulu carry -0.688 < mage 0.49) yet passed on the clean branch worktree + on CI: it read `get_archetype_for`, which consults the operator's GITIGNORED `cs_archetype_picks.json` (Lulu pinned -> carry, 2026-05-17). Non-hermetic - green on CI, red only on the live machine; the branch's CI never ran (CI fires on main/PR, not `claude/*`). Switched to `default_for_champion` (kit-derived, git-tracked) -> hermetic; Kog'Maw stays the lone exception. 199 passed.
+- **CI green on main** (run 28409641311, 3m53s). **RC restarted** pid 7120 -> 7604, alive + reload_ok, mode=client. The D-series + `/api/build-plan` override route are LIVE (they predated the running RC).
+- **`de4a2834`.** Committed + pushed the operator's pending `tools/done.md` edit (mandatory next-session-prompt block in /done); CI green.
+- **OWED (loopback-gated, unchanged):** live in-game capture of the radial/tooltip/override/reset in the rc-shell overlay.
+- **NEXT:** branch landed - pick the next OPEN Section J WP (E5/F6a doc remediation, F5-H02 task_queue leak) per `docs/OVERLAY_BUILD_MASTER_PLAN.md` Section J.
+
+---
+
 # 2026-06-29 (Section D - WP-D3 server-side item-override honoring + reset control shipped)
 
 Final Section D item (deps C4 + D2). D2 shipped the client override store + radial; D3 makes the SERVER honor it + adds the reset control + game-end clear. Built via 2 parallel disjoint-slice subagents (Python engine | JS UI) + orchestrator merge + fresh re-run gate + 5-phase UI-audit. Section D COMPLETE.
@@ -26,17 +39,3 @@ Operator reported 3 in-game overlay (rc-shell widget) issues: (1) settings-panel
 - **Verify (real Playwright overlay render + measurement):** slider y 1066 -> 366; w-ovds 822@780 -> 783@80 (fits); w-build 891 -> 594 (capped); call width fixed 210px; before/after screenshots show the full settings panel + slider on-screen, no overlap. NEW grep guard `tests/test_overlay_widget_fixed_size.py` (7) + Playwright `tests/snapshot_panels/test_overlay_widget_fixed_size.py`. 383 passed across the overlay sweep (w-call width<=280, w-mmrect 312, ovset hit-targets all still green = no regression).
 - **Tier-1** (overlay css/js; ADR-008 asset-hash auto-reloads). **OWED:** live in-game slider-drag confirm (loopback-gated; the off-screen root cause is measured-fixed). Operator can fine-tune widget px/positions by dragging (persists to the rc-shell layout).
 - **NEXT:** D3 (the still-open D-series item: server replan honoring the D2 overrides + reset control), or operator-directed.
-
----
-
-# 2026-06-29 (Section D - WP-D2 build-module right-click radial shipped)
-
-Scoped build session, "continue" after D1. The interaction sibling of D1 on the same icons. Grounded the design live (champ_select singleton popup + the ACTIVE hide-menu + _cycleMeta coexistence) -> TDD red -> inline build -> node semantics probe -> REAL Playwright UI-audit (caught + fixed a cardinal-mapping MUST-FIX) -> Tier-1 sweep.
-
-- **671 WP-D2 (LEDGER 671; renumber at landing).** Right-click a LIVE build icon -> a 5-wedge radial (N=Earlier, E=Later, S=Defer, W=Keep, center=Silence) whose actions write a per-item override store; the LIVE row re-renders through the store so the reorder survives the 4s rerank. **NEW `web/js/lib/item_overrides.js`** - in-memory `ITEM_OVERRIDES` store + setters (`buildEarlier`/`buildLater`/`deferItem`/`keepItem`/`silenceItem`) + `clearItemOverrides` (D3 reset + game-end) + pure `applyItemOverrides(rows)` (effective index = i + shift + a half-step directional nudge so one Build-Earlier strictly overtakes its neighbor; deferred sinks last; stable on ties). **NEW `web/js/lib/overlay_item_radial.js`** - singleton ring on `<html>` (champ_select.js:303 zoom trick), 5 `data-action` wedges, render-then-measure cursor-centered + viewport-clamped, delegated click -> store setter + re-render hook + close, document-click outside-dismiss; `installItemRadial` contextmenu `preventDefault`+`stopPropagation` so it neither hides the overlay (ACTIVE `_installHideMenu`) nor cycles META (`_cycleMeta`). **EDIT `active_match.js`** - import + `_bmReRender` closure + `applyItemOverrides(picks.slice(0,6))` before the owned-first partition + `_dsIcon` installs the radial only on the LIVE row (via `opts.onOverride`).
-- **Proven:** node probe confirmed all reorder semantics (early overtakes one, early x2 jumps two, later drops one, defer sinks last, clear resets). The grep test mirrors D1 (15 RED -> GREEN; 1 test-quality fix - wedge `data-action` is set dynamically).
-- **UI-audit (REAL Playwright):** right-clicked the 3rd LIVE icon -> radial opened with all 5 wedges, in-viewport; Build-Earlier moved 3036 slot3->slot2 (overtook 3046, a permutation), radial closed, 0 JS errors; screenshot (gitignored). 5/5 phases PASS. **MUST-FIX in-slice:** first cut had Later=S/Defer=W/Keep=E - realigned to the spec (E=Later, S=Defer, W=Keep) + added an elevation shadow.
-- **Verification (fresh):** D2 15/15; Tier-1 349 passed; `node --check` clean on all 3 modules; both new files ASCII-clean. **Tier-1** - no ENGINE bump, NOT Share-mirrored, no DS restart. Section J: D2 OPEN -> DONE (UI + store + client reorder).
-- **Overlay-zone follow-up (LEDGER 672, operator: "the radial dial should be in the ingame overlay as well").** The rc-shell overlay is click-through except `[data-rc-zone]` regions (clickthrough_zones.js ZONE_SELECTOR). Added `data-rc-zone` to the LIVE strip (so the right-click is captured in PASSIVE) + the radial element (so wedge clicks land once open). Playwright-verified both render the attribute; the Electron flip is the proven settings-strip/knobs mechanism. D2 18/18, Tier-1 352.
-- **NEXT = D3** (deps C4 + D2, now unblocked): server replan (`replan.py`) honoring pins/shifts as beam constraints + Defer-Once re-entry timing + silence-suppression + per-match clear-on-game-end + the "reset item status" settings control (overlay_ds_controls.js) + an action-log line. OWED: live in-game radial capture (loopback-gated).
-
