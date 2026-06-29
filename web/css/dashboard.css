@@ -32,6 +32,7 @@
  * + base/primitives so the --hextech-* / palette vars resolve first. */
 @import './hextech.css';
 @import './panels/active_match.css';
+@import './panels/build_module.css';
 @import './panels/aram_balance.css';
 @import './panels/ward_cue.css';
 @import './panels/spike_cue.css';
