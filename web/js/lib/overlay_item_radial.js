@@ -55,6 +55,10 @@ function _ensureRadial() {
   if (_radial) return _radial;
   _radial = document.createElement("div");
   _radial.id = "rc-item-radial";
+  // data-rc-zone keeps the in-game overlay (rc-shell click-through) interactive
+  // while the cursor is over the open ring, so the wedge clicks land instead of
+  // passing through to the game (clickthrough_zones.js ZONE_SELECTOR).
+  _radial.setAttribute("data-rc-zone", "");
   _radial.style.cssText = [
     "position:fixed", "z-index:2147483601", "width:172px", "height:172px",
     "visibility:hidden", "left:0", "top:0",

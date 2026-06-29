@@ -511,6 +511,11 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     const liveRow = _bmRow("bm-live", "LIVE");
     if (picks.length) {
       const liveStrip = _bmStrip();
+      // WP-D2: mark the LIVE strip an interactive zone so the in-game overlay
+      // (rc-shell click-through) captures the cursor here - without it the
+      // right-click radial is unreachable in PASSIVE (clickthrough_zones.js
+      // ZONE_SELECTOR). The META strip is already a zone (B3 cycle).
+      liveStrip.setAttribute("data-rc-zone", "");
       let liveNext = false;
       // WP-D2: apply the operator's per-item overrides (shift/defer) to the live
       // plan order BEFORE the owned-first partition, so a reorder survives the
