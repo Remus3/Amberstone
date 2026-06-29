@@ -35,6 +35,11 @@ import {
   renderDsSweepForChampSelect, setDsSweepScheduler,
 } from './ds_sweep.js';
 import { renderDsMatchupForChampSelect, setDsMatchupScheduler } from './ds_matchup.js';
+// WP-B2 Row3: reuse the ds_knobs /api/ds-knobs data layer (champ-NAME based
+// fetch/cache) for the in-game build module's fight-model knob strip. We touch
+// only the exported data fns - the champ-select-bound renderDsKnobs panel is
+// left untouched (test_ds_knobs_panel_dom pins it).
+import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
 import {
   fetchDsCombo, getCachedDsCombo, parseSeqInput, renderDsCombo,
 } from './ds_combo.js';
@@ -222,6 +227,130 @@ function _maybeRefreshBuildPlan(champion, mode, level, items) {
   return _BUILD_PLAN.stateById;
 }
 
+// WP-B2 Row2 (META): the static standard ordered build from /api/build-order.
+// Mirrors _maybeRefreshBuildPlan - non-blocking, fail-soft, keyed on the same DS
+// rerank fingerprint. Returns the cached order[] (empty until the first POST
+// resolves; the next render picks up fresh data).
+const _BUILD_ORDER = { lastKey: "", lastFired: 0, order: [], inFlight: false };
+const _BUILD_ORDER_COOLDOWN_MS = 8000;
+
+function _maybeRefreshBuildOrder(champion, mode, level, items) {
+  if (!champion || !mode) return _BUILD_ORDER.order;
+  const key = _dsRerankKey(champion, mode, level, items);
+  const now = Date.now();
+  const stale = (key !== _BUILD_ORDER.lastKey)
+              || ((now - _BUILD_ORDER.lastFired) > _BUILD_ORDER_COOLDOWN_MS);
+  if (!stale || _BUILD_ORDER.inFlight) return _BUILD_ORDER.order;
+  _BUILD_ORDER.inFlight  = true;
+  _BUILD_ORDER.lastKey   = key;
+  _BUILD_ORDER.lastFired = now;
+  fetch("/api/build-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      champion: champion,
+      mode:     mode,
+      level:    level | 0,
+      items:    items || [],
+    }),
+  }).then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _BUILD_ORDER.inFlight = false;
+      if (j && j.ok && Array.isArray(j.order)) _BUILD_ORDER.order = j.order;
+    })
+    .catch(() => { _BUILD_ORDER.inFlight = false; });
+  return _BUILD_ORDER.order;
+}
+
+// WP-B2 Row3 (KNOBS): in-game fight-model knob state. Reuses the ds_knobs.js
+// /api/ds-knobs data layer (champ-NAME based). A null knob => auto / no-cap.
+const _BM_KNOBS = Object.create(null);   // champ -> {armor, mr, budget, fight_length}
+const _BM_KNOB_LEVEL = 11;
+let _bmKnobsDebounce = null;
+
+function _bmKnobsFor(champ) {
+  if (!_BM_KNOBS[champ]) {
+    _BM_KNOBS[champ] = { armor: null, mr: null, budget: null, fight_length: null };
+  }
+  return _BM_KNOBS[champ];
+}
+
+function _bmNumOrNull(raw) {
+  const s = String(raw == null ? "" : raw).trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Row-builder helpers - a labeled row + its horizontal item strip.
+function _bmRow(variant, label) {
+  const row = document.createElement("div");
+  row.className = `bm-row ${variant}`;
+  const lab = document.createElement("div");
+  lab.className = "bm-row-label";
+  lab.textContent = label;
+  row.appendChild(lab);
+  return row;
+}
+
+function _bmStrip() {
+  const s = document.createElement("div");
+  s.className = "bm-strip";
+  return s;
+}
+
+function _bmEmptyStrip(msg) {
+  const s = _bmStrip();
+  s.classList.add("bm-empty");
+  s.textContent = msg;
+  return s;
+}
+
+// Render the Row3 knob strip: four inputs (armor / MR / budget / fight-length)
+// driving a debounced /api/ds-knobs re-fetch through the reused ds_knobs data
+// layer. Knob state persists in _BM_KNOBS across rebuilds, so a natural
+// sig-change repaint repopulates the input values (a deliberate set is not lost).
+function _renderBmKnobs(rowEl, champ, mode, items, level) {
+  const knobs = _bmKnobsFor(champ || "");
+  const lvl = level || _BM_KNOB_LEVEL;
+  if (champ) fetchDsKnobs(champ, mode, items, knobs, lvl, null);
+  const cached = champ ? getCachedDsKnobs(champ, mode, items, knobs, lvl) : null;
+  const auto = (cached && cached.knobs) ? cached.knobs : {};
+  const defs = [
+    { id: "bm-armor",  key: "armor",        label: "Enemy armor",
+      ph: auto.target_armor != null ? `auto ${auto.target_armor}` : "auto" },
+    { id: "bm-mr",     key: "mr",           label: "Enemy MR",
+      ph: auto.target_mr != null ? `auto ${auto.target_mr}` : "auto" },
+    { id: "bm-budget", key: "budget",       label: "Gold cap",  ph: "none" },
+    { id: "bm-fight",  key: "fight_length", label: "Fight (s)", ph: "auto" },
+  ];
+  const strip = document.createElement("div");
+  strip.className = "bm-knob-strip";
+  defs.forEach((d) => {
+    const lab = document.createElement("label");
+    lab.className = "bm-knob";
+    const span = document.createElement("span");
+    span.textContent = d.label;
+    const inp = document.createElement("input");
+    inp.type = "number";
+    inp.id = d.id;
+    inp.placeholder = d.ph;
+    const v = knobs[d.key];
+    inp.value = (v === null || v === undefined) ? "" : v;
+    inp.addEventListener("input", () => {
+      knobs[d.key] = _bmNumOrNull(inp.value);
+      if (_bmKnobsDebounce) clearTimeout(_bmKnobsDebounce);
+      _bmKnobsDebounce = setTimeout(() => {
+        if (champ) fetchDsKnobs(champ, mode, items, knobs, lvl, null);
+      }, 350);
+    });
+    lab.appendChild(span);
+    lab.appendChild(inp);
+    strip.appendChild(lab);
+  });
+  rowEl.appendChild(strip);
+}
+
 // State -> visual descriptor for the Row1 icon badge. ``owned`` keeps the
 // existing OWNED overlay (handled in _dsIcon by ownedSet), so it is omitted
 // here. ``future`` greys the icon; next/swap/partial get a colored pip.
@@ -284,6 +413,8 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // blocking; null until the first /api/build-plan POST resolves (icons just
   // render without a state pip until then).
   const planStates = _maybeRefreshBuildPlan(champion, mode, level, ownedIds) || {};
+  // WP-B2 Row2 META feed - the static standard ordered build.
+  const metaOrder  = _maybeRefreshBuildOrder(champion, mode, level, ownedIds) || [];
 
   // s171.6 defensive state + the enemy roster feed both the render AND the sig.
   const threat = _DS_RERANK.lastThreat;
@@ -299,6 +430,8 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     p: picks.slice(0, 5).map((r) => (r && (r.id != null ? r.id : (r.item_id != null ? r.item_id : r.name))) || r),
     c: _dsTargetStatsCaption(),
     o: ownedNames,
+    // WP-B2: Row2 META order ids, so a standard-build change repaints the strip.
+    m: metaOrder.slice(0, 6).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
     t: threat ? [threat.summary, threat.burst_threat, threat.ad_threat, threat.ap_threat] : 0,
     d: Array.isArray(defensive) ? defensive.slice(0, 3).map((r) => (r && (r.id != null ? r.id : r.name)) || r) : 0,
     e: enemyKey,
@@ -317,18 +450,50 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   build.dataset.amBuildSig = sig;
 
   build.innerHTML = "";
-  if (picks.length) {
-    const strip = document.createElement("div");
-    strip.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;";
-    picks.slice(0, 5).forEach((r) => {
-      const id = (r && (r.id != null ? r.id : r.item_id)) || "";
-      strip.appendChild(_dsIcon(r, ownedSet, planStates[String(id)] || ""));
-    });
-    // B1 (overlay redesign): the DS-context caption header was removed - the
-    // build pane renders just the icon strip, no caption. target_stats still
-    // feeds the render sig (the _dsTargetStatsCaption() call in `sig` above), so
-    // an enemy itemization shift still refreshes the pane + its donuts.
-    build.appendChild(strip);
+
+  // WP-B2: the horizontal 3-row build module replaces the old single vertical
+  // picks strip. Row1 LIVE (iterative live plan, owned-aware via planStates),
+  // Row2 META (static standard ordered build from /api/build-order), Row3
+  // FIGHT MODEL (the DS knobs). target_stats still feeds the render sig (the
+  // _dsTargetStatsCaption() call above), so an enemy itemization shift refreshes
+  // the pane. The DEFENSE + THREATS strips follow the module below, unchanged.
+  if (picks.length || metaOrder.length || champion) {
+    const mod = document.createElement("div");
+    mod.className = "bm-module";
+
+    // Row1 - LIVE
+    const liveRow = _bmRow("bm-live", "LIVE");
+    if (picks.length) {
+      const liveStrip = _bmStrip();
+      picks.slice(0, 6).forEach((r) => {
+        const id = (r && (r.id != null ? r.id : r.item_id)) || "";
+        liveStrip.appendChild(_dsIcon(r, ownedSet, planStates[String(id)] || ""));
+      });
+      liveRow.appendChild(liveStrip);
+    } else {
+      liveRow.appendChild(_bmEmptyStrip("waiting for live plan..."));
+    }
+    mod.appendChild(liveRow);
+
+    // Row2 - META (static standard build)
+    const metaRow = _bmRow("bm-meta", "META");
+    if (metaOrder.length) {
+      const metaStrip = _bmStrip();
+      metaOrder.slice(0, 6).forEach((r) => {
+        metaStrip.appendChild(_dsIcon(r, ownedSet, ""));
+      });
+      metaRow.appendChild(metaStrip);
+    } else {
+      metaRow.appendChild(_bmEmptyStrip("loading standard build..."));
+    }
+    mod.appendChild(metaRow);
+
+    // Row3 - FIGHT MODEL knobs (reuses the ds_knobs /api/ds-knobs data layer)
+    const knobRow = _bmRow("bm-knobs", "FIGHT MODEL");
+    _renderBmKnobs(knobRow, champion, mode, ownedIds, level);
+    mod.appendChild(knobRow);
+
+    build.appendChild(mod);
   }
   if (ownedNames.length) {
     build.appendChild(_line("OWNED", ownedNames.join(" - ")));
