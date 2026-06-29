@@ -12,6 +12,8 @@ export const DDRAGON_FALLBACK_VERSION = "16.13.1";
 
 export const ITEMS = { ready: false, version: DDRAGON_FALLBACK_VERSION, byName: {}, byId: {} };
 export const ITEM_COSTS = { ready: false, byId: {} };
+// WP-B3: recipe `from`-graph (DDragon) for partial-component pips/rings.
+export const ITEM_RECIPES = { ready: false, byId: {} };
 export const CHAMPS = { ready: false, version: DDRAGON_FALLBACK_VERSION, byName: {}, byId: {} };
 export const SPELLS = { ready: false, byName: {} };
 
@@ -138,6 +140,43 @@ export function _resolveSpell(name) {
     ITEM_COSTS.ready = true;
   } catch (_) {}
 })();
+
+// WP-B3: recipe from-graph loader. The raw DDragon items dictionary
+// (/api/dictionary/items) carries `from` (the recipe components), which
+// lol_descriptions.js strips. force-cache makes a 2nd hit a cache read, not a
+// network round-trip. Fail-soft - no recipes -> componentProgress returns 0/0.
+(async () => {
+  try {
+    const r = await fetch("/api/dictionary/items", { cache: "force-cache" });
+    if (!r.ok) return;
+    const j = await r.json();
+    const items = j.data || j;
+    for (const [id, it] of Object.entries(items)) {
+      if (!it || typeof it !== "object") continue;
+      ITEM_RECIPES.byId[String(id)] = {
+        from: Array.isArray(it.from) ? it.from.map(String) : [],
+        gold: (it.gold && it.gold.total) || 0,
+      };
+    }
+    ITEM_RECIPES.ready = true;
+    document.dispatchEvent(new CustomEvent("rc:recipes-ready"));
+  } catch (_) {}
+})();
+
+// Pure: how many of targetId's DIRECT recipe components are in ownedSet, and the
+// total component count. Drives the partial-component pip (owned/total) + the
+// fractional ring. Direct children only (mirrors the server `from` read in
+// replan.component_ids_of). A base item with no recipe returns {owned:0,total:0}
+// (no pip/ring). ownedSet carries id strings (+ lowercased names); recipe `from`
+// are numeric id strings, so the id half matches.
+export function componentProgress(targetId, ownedSet) {
+  const e = ITEM_RECIPES.byId[String(targetId)];
+  const from = (e && e.from) || [];
+  if (!from.length) return { owned: 0, total: 0 };
+  let owned = 0;
+  from.forEach((c) => { if (ownedSet && ownedSet.has(String(c))) owned += 1; });
+  return { owned, total: from.length };
+}
 
 // Cache-bust query defeats aggressive PWA/SW caching (2026-04-26 rebuild).
 (async () => {
