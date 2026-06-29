@@ -91,6 +91,7 @@ function statePath() {
 
 let mainWindow = null;
 let overlayWindow = null;
+let overlayReady = false; // false until the overlay window fires 'ready-to-show' (first paint); gates the first show so it never appears pre-layout.
 let originHost = ""; // host:port we trust the self-signed cert for.
 let resolvedOrigin = ""; // the origin resolved at boot (companion + overlay + poll).
 let surfaceHidden = false; // hotkey-driven force-hide override.
@@ -644,6 +645,19 @@ function createOverlayWindow() {
     return { action: "deny" };
   });
   overlayWindow.loadURL(ov.overlayUrl(resolvedOrigin, panelSet, overlayScale));
+  // First-paint show gate (flash fix). show:false + loadURL means the window is
+  // not yet painted; showing it in the create tick (as applySurface used to) pops
+  // the full-screen transparent window before the renderer applies per-widget
+  // positions + scale, so the widgets flash at their unscaled "max size". Defer
+  // the FIRST show to 'ready-to-show' (first paint), and only if the surface still
+  // wants the overlay. applySurface owns every LATER show (overlayReady is true by
+  // then), so this fires at most once per window lifetime.
+  overlayWindow.once("ready-to-show", () => {
+    overlayReady = true;
+    if (ov.shouldShowOverlayNow(overlayReady, lastSurface === ov.SURFACES.OVERLAY)) {
+      overlayWindow.showInactive();
+    }
+  });
   // Inert while click-through (events forward to the game); once the ACTIVE
   // hotkey flips interactivity the same strip makes the overlay user-movable.
   overlayWindow.webContents.on("did-finish-load", () => {
@@ -655,6 +669,7 @@ function createOverlayWindow() {
   overlayWindow.on("move", persistOverlayState);
   overlayWindow.on("closed", () => {
     overlayWindow = null;
+    overlayReady = false; // a recreated window must re-gate its first show.
   });
   return overlayWindow;
 }
@@ -976,7 +991,15 @@ function applySurface(surface) {
   }
   if (actions.overlay === "show") {
     createOverlayWindow();
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
+    // First show is gated: a window just created here has not painted yet
+    // (overlayReady false), so its own 'ready-to-show' handler does the first show
+    // once laid out - showing here would flash it full-screen pre-layout. A LATER
+    // show reuses an already-painted window (overlayReady true) and shows now.
+    if (
+      overlayWindow &&
+      !overlayWindow.isDestroyed() &&
+      ov.shouldShowOverlayNow(overlayReady, true)
+    ) {
       overlayWindow.showInactive();
     }
   } else if (overlayWindow && !overlayWindow.isDestroyed()) {
