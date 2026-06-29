@@ -58,9 +58,12 @@ def test_home_rank_identity_none_client():
 
 
 def test_build_home_summary_carries_rank_key():
-    """`_build_home_summary` always includes a `rank` field. The DB read is
-    real (read-only); we patch the LCU factory so no client is needed."""
-    with mock.patch.object(bh, "_get_lcu_for_rank", return_value=_FakeLcu(_solo_payload())):
+    """`_build_home_summary` always includes a `rank` field - even on a clean
+    checkout with no match_history.db (the CI case), where the DB read
+    early-returns. LCU factory patched so no client is needed; _ro_conn patched
+    to None to pin the missing-DB path on every platform."""
+    with mock.patch.object(bh, "_get_lcu_for_rank", return_value=_FakeLcu(_solo_payload())), \
+            mock.patch.object(bh, "_ro_conn", return_value=None):
         summary = bh._build_home_summary()
     assert "rank" in summary
     assert summary["rank"]["tier"] == "EMERALD"
@@ -68,7 +71,8 @@ def test_build_home_summary_carries_rank_key():
 
 
 def test_build_home_summary_rank_graceful_when_no_lcu():
-    with mock.patch.object(bh, "_get_lcu_for_rank", return_value=None):
+    with mock.patch.object(bh, "_get_lcu_for_rank", return_value=None), \
+            mock.patch.object(bh, "_ro_conn", return_value=None):
         summary = bh._build_home_summary()
     assert "rank" in summary
     assert summary["rank"]["ranked"] is False

@@ -65,3 +65,17 @@ def test_auditor_maps_gemini_error_to_clean(lc):
         verdict = lc.auditor("aaaaaa", "bbbbbb")
     assert verdict.startswith("VERDICT: CLEAN")
     assert "could not audit" in verdict
+
+
+def test_gemini_robust_to_empty_cfg(lc):
+    # A clean / non-Legion checkout loads CFG = {} (no config.json - see the
+    # import-only fallback at the controller top). gemini() must not KeyError on
+    # the absent gemini_model / gemini_cmd keys; it falls back to the production
+    # defaults. The CI nightly hit exactly this KeyError before the .get() fix.
+    with mock.patch.object(lc, "CFG", {}), \
+            mock.patch.object(lc.subprocess, "run", return_value=mock.Mock(stdout="ok")), \
+            mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "log", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "awrite", lambda *_a, **_k: None):
+        out = lc.gemini("body", "inst")
+    assert out == "ok"

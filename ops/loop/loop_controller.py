@@ -198,12 +198,12 @@ def gemini(prompt_body, instruction):
     global GEMINI_USD
     infile = CTL / "_gemini_in.txt"
     awrite(infile, prompt_body)
-    model = CFG["gemini_model"]
+    model = CFG.get("gemini_model", "gemini-3-pro-preview")
     inst = instruction.replace("'", "''")
     ps = ("$ErrorActionPreference='Continue';"
           "$env:GEMINI_API_KEY=[Environment]::GetEnvironmentVariable('GEMINI_API_KEY','User');"
           f"Get-Content -Raw '{infile}' | "
-          f"{CFG['gemini_cmd']} -p '{inst}' -m '{model}' --approval-mode plan --skip-trust 2>$null | Out-String")
+          f"{CFG.get('gemini_cmd', 'gemini')} -p '{inst}' -m '{model}' --approval-mode plan --skip-trust 2>$null | Out-String")
     out = ""
     any_success = False  # N3: a completed call (even empty stdout) vs all-retries-errored
     for tryn in range(1, 4):
