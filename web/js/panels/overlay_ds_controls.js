@@ -30,6 +30,7 @@
 import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
 import { CHAMPS, _resolveItemId } from '../lib/items_index.js';
 import { readOverlaySettings, writeOverlaySettings, hydrateOverlaySettings, sendOverlayAction } from '../lib/overlay_settings.js';
+import { clearItemOverrides } from '../lib/item_overrides.js';
 
 const _OVDS_DEBOUNCE_MS = 350;
 const _OVDS_ROW_CAP = 5;
@@ -277,6 +278,9 @@ function _settingsHtml() {
     + `<button type="button" class="ovset-act" id="ovset-rearrange">Re-arrange</button>`
     + `<button type="button" class="ovset-act" id="ovset-raise">Show dashboard</button>`
     + `</div>`
+    // D3: clears the per-match item-override store (shift/defer/keep/silence) that
+    // the D2 right-click radial writes + emits one action-log line at the shell.
+    + `<button type="button" class="ovset-row ovset-act" id="ovset-reset-items">Reset item status</button>`
     + `</div>`
   );
 }
@@ -409,6 +413,16 @@ function _wireSettings(body) {
   if (raise) {
     raise.addEventListener("click", () => {
       sendOverlayAction({ action: "raise-companion" });
+    });
+  }
+  // D3: clear the per-match item-override store (the D2 radial's shift/defer/
+  // keep/silence pins) + emit one action-log line. Mirrors the #ovset-interact
+  // one-way action; a plain browser (no rcShell bridge) is a silent no-op.
+  const resetItems = body.querySelector("#ovset-reset-items");
+  if (resetItems) {
+    resetItems.addEventListener("click", () => {
+      clearItemOverrides();
+      sendOverlayAction({ action: "reset-item-status" });
     });
   }
 }
