@@ -37,9 +37,3 @@ Operator played practice + ARAM Mayhem; ran the E2 live-flip pass + landed item 
 - **Overlay "flash to max size at match launch"** diagnosed, not fixed: `rc-shell/src/main.js:980` shows `overlayWindow` via `showInactive()` on FIRST-match lazy-create BEFORE `ready-to-show`/first paint + no renderer visibility gate until `overlay_layout._applyPos` runs. Fix = `once("ready-to-show")` show-gate + a `.ovx-ready` CSS gate. Verification needs a live game (gated on the loopback fix).
 
 NEXT: (1) resolve the loopback regression (Windows/operator-level) then retry E2 + verify the overlay-flash fix; (2) headless RC CODE work (Section C WP-C2 + ROADMAP) proceeds independently - loopback does not block code.
-
----
-
-# 2026-06-28 (item 661 landed - overlay panel-set gate tests reconciled to retired-panel-sets model; `6c3d2586` merged to main)
-
-Worktree branch `claude/hardcore-saha-0592d5` (built earlier in parallel) merged to main via no-ff. Test + doc only, zero production code; renumbered 656->661 (the WP-A4b item 656 landed on main concurrently). 5 stale overlay panel-set gate tests rewritten to the `.ovx-hidden` per-widget contract (panel-sets retired `b16bfce1`); ROADMAP.md trimmed 83044 -> 80481 B (5 CLOSED rows -> docs/ROADMAP_HISTORY.md). See LEDGER 661. CI GREEN on main (run 28341328586, all jobs incl panel snapshots + authored-source hygiene).
