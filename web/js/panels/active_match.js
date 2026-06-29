@@ -19,6 +19,7 @@ import {
   _resolveItemId, _splitItemList, componentProgress,
 } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
+import { installItemTooltip } from '../lib/overlay_tooltip.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { classifyAction, escHtml } from '../lib/helpers.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
@@ -1853,6 +1854,8 @@ function _dsIcon(r, ownedSet, planState, opts) {
   // still fits the 48px icon cell).
   dlt.style.cssText = "font-size:var(--fs-xs);font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
   wrap.appendChild(dlt);
+  // WP-D1: hover tooltip (name + stats + passive from /api/dictionary/items).
+  installItemTooltip(wrap, id, name);
   return wrap;
 }
 
