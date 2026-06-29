@@ -119,6 +119,29 @@ class RadialWiring(unittest.TestCase):
                       "applyItemOverrides not used in _renderAmBuildBody")
 
 
+class OverlayInteractivity(unittest.TestCase):
+    """The radial must be reachable + clickable in the in-game overlay widget
+    (rc-shell click-through). clickthrough_zones.js ZONE_SELECTOR makes any
+    [data-rc-zone] element flip the window interactive on hover, so both the
+    LIVE strip (to open the radial) and the radial itself (to click a wedge)
+    must carry data-rc-zone."""
+
+    def test_radial_is_zone(self):
+        self.assertIn("data-rc-zone", RADIAL_JS.read_text(encoding="utf-8"))
+
+    def test_live_strip_is_zone(self):
+        js = ACTIVE_MATCH_JS.read_text(encoding="utf-8")
+        self.assertIn('liveStrip.setAttribute("data-rc-zone"', js,
+                      "LIVE strip must be a data-rc-zone for the overlay radial")
+
+    def test_zone_selector_covers_data_rc_zone(self):
+        # Anti-drift: the rc-shell zone selector must still include the generic
+        # [data-rc-zone] hook the radial + LIVE strip rely on.
+        cz = (REPO / "rc-shell" / "src" / "clickthrough_zones.js").read_text(
+            encoding="utf-8")
+        self.assertIn("[data-rc-zone]", cz)
+
+
 class AsciiHygiene(unittest.TestCase):
     def test_authored_files_ascii(self):
         for p in (RADIAL_JS, OVERRIDES_JS, Path(__file__)):
