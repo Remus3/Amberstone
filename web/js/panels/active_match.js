@@ -21,7 +21,7 @@ import {
 import { scorerUnit } from '../lib/scorer_units.js';
 import { installItemTooltip } from '../lib/overlay_tooltip.js';
 import { installItemRadial } from '../lib/overlay_item_radial.js';
-import { applyItemOverrides } from '../lib/item_overrides.js';
+import { applyItemOverrides, clearItemOverrides } from '../lib/item_overrides.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { classifyAction, escHtml } from '../lib/helpers.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
@@ -626,6 +626,7 @@ export function renderActiveMatch(payload, ctx) {
   // one. Treat anything other than phase=InProgress as "between games"
   // and clear the coach panes so the operator isn't misled.
   const isLive = (phase === "InProgress");
+  if (!isLive) clearItemOverrides();  // D3: drop per-match item overrides between games
 
   const sub = _AM.sub();
   if (sub) {

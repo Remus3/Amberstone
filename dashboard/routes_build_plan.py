@@ -313,14 +313,34 @@ def _serve_build_plan(h, payload) -> None:
         # any failure leaves enemy_profile None (the planner stays DPS-only).
         enemy_profile = _resolve_enemy_profile(enemies, level)
 
+        from core.build_planner.replan import ItemOverrideStore, ReplanLoop
+
+        # WP-D3: optional per-item operator overrides snapshot (mirrors the
+        # client store web/js/lib/item_overrides.js). A truthy reset_overrides
+        # forces an empty store (nothing to honor). Snapshot parsing is wrapped
+        # so a malformed payload NEVER raises into the route.
+        # NOTE: full cross-tick Defer-Once re-entry timing in the LIVE route is
+        # OWED - this per-request loop only sinks a deferred item that tick (no
+        # persisted owned-count baseline across requests); shift / keep / silence
+        # are honored live now.
+        store = None
+        try:
+            if not payload.get("reset_overrides"):
+                ov_snap = payload.get("overrides")
+                if isinstance(ov_snap, dict) and ov_snap:
+                    store = ItemOverrideStore.from_snapshot(
+                        ov_snap, owned_count=len(owned))
+        except Exception:  # noqa: BLE001 - bad snapshot -> no overrides honored.
+            store = None
+
         # One re-plan tick. ReplanLoop is per-request (in-memory; no cross-tick
         # hysteresis is meaningful for a single stateless HTTP call - the loop
         # still emits the correct first-tick next/defer/swap classification).
-        from core.build_planner.replan import ReplanLoop
         loop = ReplanLoop()
         result = loop.tick(
             champion=champion, owned_item_ids=owned, seed_fn=seed_fn,
             clock_s=clock_s, enemy_profile=enemy_profile, mode=mode,
+            overrides=store,
         )
 
         # Component-defer + swap maps for the state tagging.
