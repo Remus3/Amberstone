@@ -4,6 +4,12 @@
 
 ---
 
+# 2026-06-28 (item 661 landed - overlay panel-set gate tests reconciled to retired-panel-sets model; `6c3d2586` merged to main)
+
+Worktree branch `claude/hardcore-saha-0592d5` (built earlier in parallel) merged to main via no-ff. Test + doc only, zero production code; renumbered 656->661 (the WP-A4b item 656 landed on main concurrently). 5 stale overlay panel-set gate tests rewritten to the `.ovx-hidden` per-widget contract (panel-sets retired `b16bfce1`); ROADMAP.md trimmed 83044 -> 80481 B (5 CLOSED rows -> docs/ROADMAP_HISTORY.md). See LEDGER 661. Pushed to main; CI confirmation pending the merge SHA.
+
+---
+
 # 2026-06-28 (overlay-build loop - WP-C1 kit-synergy scaling profiles, first Section C module; a4e1cde3)
 
 Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). The A1-A6 + B1 cosmetic A/B-panel work is DONE; C1 is the first dependency-free Section C build-brain WP (W2, T1, deps none) - a SUBSTANTIVE new module, not a cosmetic tweak.
