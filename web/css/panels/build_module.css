@@ -74,3 +74,59 @@
   outline: none;
   border-color: var(--accent, #6cf);
 }
+
+/* WP-B3 - owned greying, redundant-coded per WCAG 1.4.1 (opacity + grayscale +
+   the check glyph + the sorted-left position) on the build-module row icons. */
+.bm-owned img {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.bm-check {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ok, #5dd47e);
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+/* the first non-owned icon = the next buy. Cyan (matching the in-file NEXT
+   badge _BUILD_PLAN_BADGE.next) - NOT --accent, which is the ambient Hextech
+   gold the +Ndps delta caption already uses, so "next" would not pop. */
+.bm-next img {
+  outline: 2px solid #6cf;
+  outline-offset: 1px;
+}
+
+/* WP-B3 - partial-component progress: a count pip + a conic fractional ring when
+   an unowned planned item already has some recipe components owned. */
+.bm-pip {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--text-faint, #9aa0b5);
+  padding: 0 3px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.bm-ring {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: conic-gradient(#6cf var(--ring-pct, 0%),
+                             rgba(255, 255, 255, 0.12) 0);
+  pointer-events: none;
+}

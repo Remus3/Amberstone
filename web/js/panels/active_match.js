@@ -16,7 +16,7 @@
 
 import {
   ITEMS, ITEM_COSTS, CHAMPS, DDRAGON_FALLBACK_VERSION, _resolveChampId,
-  _resolveItemId, _splitItemList,
+  _resolveItemId, _splitItemList, componentProgress,
 } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { renderThreatDonut } from './threat_donut.js';
@@ -234,9 +234,23 @@ function _maybeRefreshBuildPlan(champion, mode, level, items) {
 const _BUILD_ORDER = { lastKey: "", lastFired: 0, order: [], inFlight: false };
 const _BUILD_ORDER_COOLDOWN_MS = 8000;
 
+// WP-B3: META alt-build cycle. metaIndex 0 = the champion's natural build (no
+// archetype param -> the server default = the resolved primary). Right-click on
+// Row2 advances through the canonical archetype ring (mirrors
+// core/archetype_picks.py ARCHETYPES - the b3 test guards drift). Off-archetype
+// builds are fail-soft (an empty / identical order[] just shows the same icons).
+const _BM_META_RING = ["carry", "bruiser", "tank", "mage", "assassin", "enchanter"];
+const _BM_META = { metaIndex: 0 };
+
+function _cycleMeta() {
+  _BM_META.metaIndex = (_BM_META.metaIndex + 1) % _BM_META_RING.length;
+  _BUILD_ORDER.lastKey = "";   // force a re-fetch with the new archetype
+}
+
 function _maybeRefreshBuildOrder(champion, mode, level, items) {
   if (!champion || !mode) return _BUILD_ORDER.order;
-  const key = _dsRerankKey(champion, mode, level, items);
+  const arche = _BM_META.metaIndex === 0 ? "" : _BM_META_RING[_BM_META.metaIndex];
+  const key = _dsRerankKey(champion, mode, level, items) + "|" + _BM_META.metaIndex;
   const now = Date.now();
   const stale = (key !== _BUILD_ORDER.lastKey)
               || ((now - _BUILD_ORDER.lastFired) > _BUILD_ORDER_COOLDOWN_MS);
@@ -248,10 +262,11 @@ function _maybeRefreshBuildOrder(champion, mode, level, items) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      champion: champion,
-      mode:     mode,
-      level:    level | 0,
-      items:    items || [],
+      champion:  champion,
+      mode:      mode,
+      level:     level | 0,
+      items:     items || [],
+      archetype: arche,
     }),
   }).then((r) => r.ok ? r.json() : null)
     .then((j) => {
@@ -297,6 +312,24 @@ function _bmStrip() {
   const s = document.createElement("div");
   s.className = "bm-strip";
   return s;
+}
+
+// WP-B3: owned membership (id OR lowercased name) - the SAME test _dsIcon uses.
+function _bmIsOwned(r, ownedSet) {
+  const id = (r && (r.id != null ? r.id : r.item_id)) || "";
+  const name = (r && (r.name || r.item_name)) || "";
+  return !!(ownedSet && (ownedSet.has(String(id))
+            || ownedSet.has(String(name).toLowerCase())));
+}
+
+// WP-B3: stable owned-first partition (sort-left). Owned items move to the front
+// preserving each sub-list's order, so the plan order of the unowned tail stays
+// intact (NOT a full re-sort).
+function _bmPartitionOwned(rows, ownedSet) {
+  const owned = [];
+  const rest = [];
+  rows.forEach((r) => (_bmIsOwned(r, ownedSet) ? owned : rest).push(r));
+  return owned.concat(rest);
 }
 
 function _bmEmptyStrip(msg) {
@@ -432,6 +465,8 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     o: ownedNames,
     // WP-B2: Row2 META order ids, so a standard-build change repaints the strip.
     m: metaOrder.slice(0, 6).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
+    // WP-B3: the META alt-cycle index, so a right-click cycle repaints at once.
+    mi: _BM_META.metaIndex,
     t: threat ? [threat.summary, threat.burst_threat, threat.ad_threat, threat.ap_threat] : 0,
     d: Array.isArray(defensive) ? defensive.slice(0, 3).map((r) => (r && (r.id != null ? r.id : r.name)) || r) : 0,
     e: enemyKey,
@@ -461,13 +496,17 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     const mod = document.createElement("div");
     mod.className = "bm-module";
 
-    // Row1 - LIVE
+    // Row1 - LIVE (owned greyed + sorted-left; first non-owned = next)
     const liveRow = _bmRow("bm-live", "LIVE");
     if (picks.length) {
       const liveStrip = _bmStrip();
-      picks.slice(0, 6).forEach((r) => {
+      let liveNext = false;
+      _bmPartitionOwned(picks.slice(0, 6), ownedSet).forEach((r) => {
         const id = (r && (r.id != null ? r.id : r.item_id)) || "";
-        liveStrip.appendChild(_dsIcon(r, ownedSet, planStates[String(id)] || ""));
+        const isNext = !_bmIsOwned(r, ownedSet) && !liveNext;
+        if (isNext) liveNext = true;
+        liveStrip.appendChild(
+          _dsIcon(r, ownedSet, planStates[String(id)] || "", { bm: true, next: isNext }));
       });
       liveRow.appendChild(liveStrip);
     } else {
@@ -475,12 +514,26 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     }
     mod.appendChild(liveRow);
 
-    // Row2 - META (static standard build)
+    // Row2 - META (static standard build; owned greyed; right-click cycles alts)
     const metaRow = _bmRow("bm-meta", "META");
     if (metaOrder.length) {
       const metaStrip = _bmStrip();
-      metaOrder.slice(0, 6).forEach((r) => {
-        metaStrip.appendChild(_dsIcon(r, ownedSet, ""));
+      metaStrip.setAttribute("data-rc-zone", "");  // capture cursor off the ACTIVE hotkey
+      let metaNext = false;
+      _bmPartitionOwned(metaOrder.slice(0, 6), ownedSet).forEach((r) => {
+        const isNext = !_bmIsOwned(r, ownedSet) && !metaNext;
+        if (isNext) metaNext = true;
+        metaStrip.appendChild(_dsIcon(r, ownedSet, "", { bm: true, next: isNext }));
+      });
+      // Right-click cycles alternative archetype builds. stopPropagation is
+      // REQUIRED so the overlay_layout ACTIVE-mode contextmenu hide-handler does
+      // not dismiss the overlay on a meta right-click.
+      metaStrip.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        _cycleMeta();
+        build.dataset.amBuildSig = "";
+        _renderAmBuildBody(build, p, ctx, lc, ownedIds);
       });
       metaRow.appendChild(metaStrip);
     } else {
@@ -1707,7 +1760,8 @@ function _line(label, value, band) {
 // Icon falls back to a labeled grey tile when the item_id isn't known
 // (DS server occasionally returns names without ids during ARAM/Arena
 // re-skin resolution) or both DDragon paths 404.
-function _dsIcon(r, ownedSet, planState) {
+function _dsIcon(r, ownedSet, planState, opts) {
+  opts = opts || {};
   const wrap = document.createElement("div");
   wrap.style.cssText = "position:relative;width:48px;text-align:center;";
   const name = r.name || r.item_name || "?";
@@ -1721,6 +1775,11 @@ function _dsIcon(r, ownedSet, planState) {
   // get a colored pip. ``owned`` keeps the existing OWNED overlay below.
   const state = planState || "";
   const badge = (!owned && state) ? _BUILD_PLAN_BADGE[state] : null;
+  // WP-B3: in the build-module rows (opts.bm) owned items GREY (redundant-coded:
+  // .bm-owned opacity/grayscale + the check glyph below + the sorted-left
+  // position), and the first non-owned icon is flagged as the "next" buy.
+  if (opts.bm && owned) wrap.classList.add("bm-owned");
+  if (opts.bm && opts.next && !owned) wrap.classList.add("bm-next");
   if (id) {
     const ver = (ITEMS && ITEMS.version) || "latest";
     const img = document.createElement("img");
@@ -1731,6 +1790,9 @@ function _dsIcon(r, ownedSet, planState) {
     let opacity = "1";
     if (badge) border = `2px solid ${badge.color}`;
     else if (!owned && state === "future") opacity = "0.45";
+    // WP-B3: owned greying must DIM here, inline - the inline style beats the
+    // .bm-owned stylesheet rule, so the CSS opacity alone never lands.
+    if (opts.bm && owned) opacity = "0.4";
     img.style.cssText = `width:44px;height:44px;border-radius:6px;border:${border};opacity:${opacity};display:block;margin:0 auto;`;
     img.onerror = () => {
       if (!img.dataset.cdnRetry) {
@@ -1751,10 +1813,38 @@ function _dsIcon(r, ownedSet, planState) {
     wrap.appendChild(pip);
   }
   if (owned) {
-    const ow = document.createElement("div");
-    ow.textContent = "OWNED";
-    ow.style.cssText = "position:absolute;left:0;right:0;top:14px;text-align:center;font-size:9px;font-weight:700;letter-spacing:0.08em;background:rgba(0,0,0,0.7);color:#5dd47e;padding:2px 0;pointer-events:none;";
-    wrap.appendChild(ow);
+    if (opts.bm) {
+      // WP-B3: greyed rows use a compact check glyph (the redundant owned
+      // channel), not the full OWNED badge. String.fromCharCode keeps the source
+      // 7-bit ASCII while rendering the check (repo no-unicode-literal rule).
+      const ck = document.createElement("div");
+      ck.className = "bm-check";
+      ck.setAttribute("aria-label", "owned");
+      ck.textContent = String.fromCharCode(0x2713);
+      wrap.appendChild(ck);
+    } else {
+      const ow = document.createElement("div");
+      ow.textContent = "OWNED";
+      ow.style.cssText = "position:absolute;left:0;right:0;top:14px;text-align:center;font-size:9px;font-weight:700;letter-spacing:0.08em;background:rgba(0,0,0,0.7);color:#5dd47e;padding:2px 0;pointer-events:none;";
+      wrap.appendChild(ow);
+    }
+  }
+  // WP-B3: partial-component pip + fractional ring - when an unowned planned item
+  // already has some of its recipe components owned (componentProgress reads the
+  // DDragon `from`-graph). Build-module rows only (opts.bm).
+  if (opts.bm && !owned && id) {
+    const prog = componentProgress(id, ownedSet);
+    if (prog.total && prog.owned > 0 && prog.owned < prog.total) {
+      const pip = document.createElement("div");
+      pip.className = "bm-pip";
+      pip.textContent = `${prog.owned}/${prog.total}`;
+      wrap.appendChild(pip);
+      const ring = document.createElement("div");
+      ring.className = "bm-ring";
+      ring.style.setProperty("--ring-pct",
+        `${Math.round(prog.owned / prog.total * 100)}%`);
+      wrap.appendChild(ring);
+    }
   }
   const dlt = document.createElement("div");
   dlt.textContent = `+${(delta || 0).toFixed(0)}`;
