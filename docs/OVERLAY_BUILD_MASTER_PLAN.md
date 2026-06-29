@@ -809,7 +809,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | C1 kit-synergy profiles | W2 | - | T1 | DONE 2026-06-28 (a4e1cde3) |
 | C2 scoring + beam search | W2 | C1 | T1 | DONE 2026-06-29 (4f1d4126) |
 | C3 live counter-build | W3 | C2 | T1 | DONE 2026-06-29 (64b7c634) |
-| C4 owned re-plan + hysteresis | W3 | C2, C3 | T1 | OPEN |
+| C4 owned re-plan + hysteresis | W3 | C2, C3 | T1 | DONE 2026-06-29 (51f3141d) |
 | C5 /api/build-plan contract | W2/W4 | C2 | T2 | OPEN |
 | D1 item tooltip | W5 | B2 | T1 | OPEN |
 | D2 right-click radial | W5 | B2, D3 | T1 | OPEN |
