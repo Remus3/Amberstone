@@ -1,0 +1,88 @@
+{
+  "_meta": {
+    "wp": "WP-B4",
+    "spec": "docs/OVERLAY_BUILD_MASTER_PLAN.md lines 145-155",
+    "purpose": "Deterministic ADC Miss Fortune SR oracle for the in-game build module (B2 3-row scaffold + B3 owned-greying) and the C2 scoring model (core/build_planner/scoring). ASCII-only (repo hard rule). Consumed by tests/test_overlay_b4_mf_sr_fixture.py - there is NO JS test runner, so a Python test is the consumer.",
+    "captured_from": "live RC :8888 /api/build-order + /api/ds-preview + /api/dictionary/items, patch 16.13.1, 2026-06-29"
+  },
+  "champion": "MissFortune",
+  "mode": "SR",
+  "level": 11,
+  "context": {
+    "target_armor": 95.0,
+    "target_mr": 63.0,
+    "target_max_hp": 2210.0,
+    "target_bonus_hp": 1610.0
+  },
+  "meta_build": {
+    "archetype": "carry",
+    "scorer": "dps",
+    "source": "/api/build-order {champion: MissFortune, archetype: carry, mode: sr}",
+    "note": "Marksman-correct path. MF DEFAULT archetype resolves to assassin (burst scorer), so archetype=carry MUST be passed explicitly to reach this build. delta_dps here is the per-slot incremental display delta the build module renders (a different basis than scoring_oracle.seed_rows).",
+    "order": [
+      {"slot": 1, "item_id": "3153", "item_name": "Blade of The Ruined King", "delta_dps": 71.64, "gold": 3200},
+      {"slot": 2, "item_id": "3172", "item_name": "Gunmetal Greaves", "delta_dps": 0.0, "gold": 900, "boots": true},
+      {"slot": 3, "item_id": "3085", "item_name": "Runaan's Hurricane", "delta_dps": 76.25, "gold": 2650},
+      {"slot": 4, "item_id": "3036", "item_name": "Lord Dominik's Regards", "delta_dps": 130.83, "gold": 3300},
+      {"slot": 5, "item_id": "3032", "item_name": "Yun Tal Wildarrows", "delta_dps": 160.31, "gold": 3100},
+      {"slot": 6, "item_id": "3031", "item_name": "Infinity Edge", "delta_dps": 216.44, "gold": 3500}
+    ]
+  },
+  "alt_assassin_build": {
+    "archetype": "assassin",
+    "scorer": "burst",
+    "source": "/api/build-order {champion: MissFortune, archetype: assassin OR default, mode: sr}",
+    "note": "The MF DEFAULT (no-archetype) build, identical to archetype=assassin. Anchors the archetype-routing gotcha: it differs from the marksman meta build by its lethality boots (3173 Chainlaced Crushers) + Essence Reaver (3508), and lacks the carry boots (3172) + Yun Tal (3032). The build module must request archetype=carry to override this default.",
+    "order": [
+      {"slot": 1, "item_id": "3153", "item_name": "Blade of The Ruined King", "delta_burst": 277.85, "gold": 3200},
+      {"slot": 2, "item_id": "3173", "item_name": "Chainlaced Crushers", "delta_burst": 0.0, "gold": 900, "boots": true},
+      {"slot": 3, "item_id": "3036", "item_name": "Lord Dominik's Regards", "delta_burst": 327.64, "gold": 3300},
+      {"slot": 4, "item_id": "3508", "item_name": "Essence Reaver", "delta_burst": 365.65, "gold": 3050},
+      {"slot": 5, "item_id": "3031", "item_name": "Infinity Edge", "delta_burst": 411.65, "gold": 3500},
+      {"slot": 6, "item_id": "3085", "item_name": "Runaan's Hurricane", "delta_burst": 552.61, "gold": 2650}
+    ]
+  },
+  "owned_snapshots": [
+    {"label": "0 owned", "owned_item_ids": [], "expected_greyed": [], "expected_next_id": "3153", "expected_next_name": "Blade of The Ruined King"},
+    {"label": "1 owned (BRK)", "owned_item_ids": ["3153"], "expected_greyed": ["3153"], "expected_next_id": "3172", "expected_next_name": "Gunmetal Greaves"},
+    {"label": "2 owned (BRK + boots)", "owned_item_ids": ["3153", "3172"], "expected_greyed": ["3153", "3172"], "expected_next_id": "3085", "expected_next_name": "Runaan's Hurricane"},
+    {"label": "3 owned (BRK + boots + Runaan)", "owned_item_ids": ["3153", "3172", "3085"], "expected_greyed": ["3153", "3172", "3085"], "expected_next_id": "3036", "expected_next_name": "Lord Dominik's Regards"},
+    {"label": "1 owned non-prefix (IE early) - exercises sort-left", "owned_item_ids": ["3031"], "expected_greyed": ["3031"], "expected_next_id": "3153", "expected_next_name": "Blade of The Ruined King"}
+  ],
+  "live_deviation": {
+    "note": "Live-row deviation vs a heavy-heal enemy comp: the planner inserts an early antiheal component (Executioner's Calling) ahead of the standard slot, completing into Mortal Reminder. Mirrors the core/build_planner/situational antiheal counter-build criterion.",
+    "enemy_heal_sources": 2,
+    "inserted_component": {"item_id": "3123", "item_name": "Executioner's Calling", "gold": 800},
+    "completed_swap_target": {"item_id": "3033", "item_name": "Mortal Reminder", "gold": 3000},
+    "recipe_check": "3123 is a direct component of 3033 (verified vs /api/dictionary/items: 3033.from includes 3123)"
+  },
+  "scoring_oracle": {
+    "note": "C2 score_build (core/build_planner/scoring) must rank the kit-appropriate marksman build far above an off-archetype AP build for MissFortune. The margin is robust (NOT fixture-shaped): the AP build scores negative on kit anti-synergy and zero DPS, while the marksman build carries real DS deltas + positive kit synergy. Live-measured 2026-06-29: marksman total ~1.499 vs AP ~-0.038.",
+    "champ": "MissFortune",
+    "owned_count": 6,
+    "source": "/api/ds-preview {champion: MissFortune, archetype: carry, mode: sr} ranked[] (DPS scorer, top=8) + boots/LDR rows at delta_dps 0",
+    "seed_rows": [
+      {"item_id": "3153", "delta_dps": 75.2, "gold": 3200},
+      {"item_id": "6672", "delta_dps": 47.3, "gold": 3000},
+      {"item_id": "3097", "delta_dps": 45.9, "gold": 3200},
+      {"item_id": "3508", "delta_dps": 42.0, "gold": 3050},
+      {"item_id": "3085", "delta_dps": 39.0, "gold": 2650},
+      {"item_id": "3032", "delta_dps": 37.4, "gold": 3100},
+      {"item_id": "3031", "delta_dps": 37.1, "gold": 3500},
+      {"item_id": "6692", "delta_dps": 36.5, "gold": 2900},
+      {"item_id": "3036", "delta_dps": 0.0, "gold": 3300},
+      {"item_id": "3172", "delta_dps": 0.0, "gold": 900}
+    ],
+    "marksman_build_ids": ["3153", "3172", "3085", "3036", "3032", "3031"],
+    "offclass_ap_build_ids": ["6655", "3089", "3157", "3135", "4645", "3116"],
+    "offclass_ap_names": ["Luden's Echo", "Rabadon's Deathcap", "Zhonya's Hourglass", "Void Staff", "Shadowflame", "Rylai's Crystal Scepter"],
+    "expect": "score(marksman_build_ids).total > score(offclass_ap_build_ids).total"
+  },
+  "knob_defaults": {
+    "note": "DS fight-model knob defaults for an ADC (MF) vs the example enemy comp - the Row3 knob placeholders the build module shows (auto 95 / auto 63 from the SR mode-level curve at level 11).",
+    "champion": "MissFortune",
+    "archetype": "carry",
+    "target_armor": 95.0,
+    "target_mr": 63.0
+  }
+}
