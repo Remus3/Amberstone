@@ -32,8 +32,9 @@ CRITICAL boundaries (verified against THIS worktree):
     each row's ``unique_passive_key`` and never write a family literal (a guard
     test fails on any family literal).
 
-  * situational_fit is a 0.0 stub here - enemy/ally counter-build fit is the
-    WP-C3 concern (docs/OVERLAY_BUILD_MASTER_PLAN.md WP-C3).
+  * situational_fit is delegated to core.build_planner.situational (WP-C3) and
+    imported LAZILY inside score_build so this module's import stays light. It
+    stays 0.0 when no ``enemy_profile`` is supplied (the stub-equivalent path).
 
 ASCII only - use " - " for a clause break (repo hard rule).
 """
@@ -299,6 +300,8 @@ def score_build(
     clock_s: float = 0.0,
     owned_count: int = 0,
     stage: Optional[str] = None,
+    enemy_profile=None,
+    ally_state=None,
 ) -> ScoreTerms:
     """Score an (ordered) partial build - PURE, no I/O, no DS-engine call.
 
@@ -318,7 +321,13 @@ def score_build(
     cohesion = _cohesion_term(ids, champ, rows_by_id)
     spike = _spike_term(ids, rows_by_id, stg)
     gold = _gold_term(ids, rows_by_id)
-    situational = 0.0  # WP-C3 concern - stubbed 0.0 here.
+    if enemy_profile is None:
+        situational = 0.0  # stub-equivalent: no enemy comp -> no counter signal.
+    else:
+        # Lazy import keeps this module's import light (situational reads the
+        # item catalog on first use). WP-C3 counter-build fit.
+        from core.build_planner.situational import situational_fit
+        situational = situational_fit(ids, enemy_profile, ally_state, stage=stg)
     penalties = _penalty_term(ids, rows_by_id)
 
     total = (
