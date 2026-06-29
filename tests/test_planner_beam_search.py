@@ -291,6 +291,7 @@ class StructuralGuardTests(unittest.TestCase):
     _SOURCES = (
         _ROOT / "core" / "build_planner" / "scoring.py",
         _ROOT / "core" / "build_planner" / "planner.py",
+        _ROOT / "core" / "build_planner" / "situational.py",
     )
 
     def test_no_in_process_engine_import(self):
