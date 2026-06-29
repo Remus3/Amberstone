@@ -53,7 +53,7 @@ const WIDGETS = [
   { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient", label: "Callouts" },
   { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent", label: "Threat / CDs", zone: true },
   { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build" },
-  { id: "w-ovds", sel: "#am-pane-ovds", x: 20, y: 780, tier: "ambient", label: "DS Controls" },
+  { id: "w-ovds", sel: "#am-pane-ovds", x: 430, y: 80, tier: "ambient", label: "DS Controls" },
   // New doctrine cues (OVERLAY_DOCTRINE section 4). Both are data-gated (their
   // renderer un-hides the mount only when actionable) + coach-core (shown in
   // every panel set). Mounted as direct am-grid children (NOT inside a pane) so
@@ -130,6 +130,14 @@ function _applyPos(el, p) {
   // CSS owns position:fixed; this sets only the dynamic values.
   el.style.left = p.x + "px";
   el.style.top = p.y + "px";
+  // Cap the widget so a content-tall panel never runs off the viewport bottom
+  // from its anchor (the bug behind the unreachable opacity slider + the
+  // settings panel spilling below 1080); overflow-y:auto then scrolls any
+  // remainder. innerHeight/zoom -> design-px height (the field is design-px, the
+  // body zoom is the ovscale). A 140px floor keeps a bottom-anchored widget
+  // usable. Recomputed on resize (the resize handler re-runs _applyPos).
+  const availH = (window.innerHeight / (_bodyZoom() || 1)) - p.y - 16;
+  el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(availH)) + "px");
   if (p.scale && p.scale !== 1) {
     el.style.setProperty("--ovx-scale", String(p.scale));
   } else {

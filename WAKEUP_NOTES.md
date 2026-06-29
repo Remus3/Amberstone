@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-29 (Overlay widget fixed-size + on-screen-fit - 3 operator reports)
+
+Operator reported 3 in-game overlay (rc-shell widget) issues: (1) settings-panel sliders unclickable, (2) widgets shift slightly every match, (3) wants fixed max panel sizes so the settings widget resizes properly. Diagnosed via a headless overlay render + bounding-box probe -> one root cause -> 3 surgical fixes -> real-render verify.
+
+- **673 (LEDGER 673).** ROOT CAUSE: `.ovx-widget` was `width:fit-content` (content resized the box each match = the "shifting") with NO height bound, so the w-ovds settings widget was 822px tall at y=780 -> the opacity slider rendered at y~1066, BELOW the 1080 viewport = off-screen/unclickable. FIX (3 changes): **overlay.css** `.ovx-widget` width:fit-content -> `width:var(--ovx-w,210px)` (fixed) + `max-height:var(--ovx-maxh)` + overflow-y:auto; **overlay_layout.js `_applyPos`** sets `--ovx-maxh = innerHeight/zoom - y - 16` (bounds every widget to the viewport bottom, zoom-correct, re-applied on resize); **w-ovds registry default (20,780) -> (430,80)** (slider now at y=366, on-screen, clear of the coach call). The `.am-pane` widgets keep their id-specificity `overflow:hidden` (active_match.css:65) so a too-tall pane CLIPS to the fixed bound ("acceptable rowcounts").
+- **Verify (real Playwright overlay render + measurement):** slider y 1066 -> 366; w-ovds 822@780 -> 783@80 (fits); w-build 891 -> 594 (capped); call width fixed 210px; before/after screenshots show the full settings panel + slider on-screen, no overlap. NEW grep guard `tests/test_overlay_widget_fixed_size.py` (7) + Playwright `tests/snapshot_panels/test_overlay_widget_fixed_size.py`. 383 passed across the overlay sweep (w-call width<=280, w-mmrect 312, ovset hit-targets all still green = no regression).
+- **Tier-1** (overlay css/js; ADR-008 asset-hash auto-reloads). **OWED:** live in-game slider-drag confirm (loopback-gated; the off-screen root cause is measured-fixed). Operator can fine-tune widget px/positions by dragging (persists to the rc-shell layout).
+- **NEXT:** D3 (the still-open D-series item: server replan honoring the D2 overrides + reset control), or operator-directed.
+
+---
+
 # 2026-06-29 (Section D - WP-D2 build-module right-click radial shipped)
 
 Scoped build session, "continue" after D1. The interaction sibling of D1 on the same icons. Grounded the design live (champ_select singleton popup + the ACTIVE hide-menu + _cycleMeta coexistence) -> TDD red -> inline build -> node semantics probe -> REAL Playwright UI-audit (caught + fixed a cardinal-mapping MUST-FIX) -> Tier-1 sweep.
@@ -27,15 +38,3 @@ Scoped build session, "continue" after the per-champion model. Bootstrap -> veri
 - **Verification (fresh):** D1 22/22 (21 RED -> 22 GREEN); Tier-1 sweep 334 passed (all `test_overlay_*.py` + ddragon-drift); `node --check` clean on both edited modules; both new files ASCII-clean; `git status` = 2 edits + 2 new. **Tier-1** - no ENGINE bump, NOT Share-mirrored, no DS restart (ADR-008 asset-hash auto-reloads). Section J: D1 OPEN -> DONE.
 - **OWED (gated):** live in-game capture of the hover in the rc-shell overlay (LIVE row is not a `data-rc-zone`, so the in-overlay PASSIVE hover is gated on the loopback regression; dashboard hover fully proven).
 - **NEXT:** D2 right-click radial (deps B2 + D3) / D3 override store + reset (deps C4, D2). The D2/D3 pair couples (D2 needs D3's override semantics).
-
----
-
-# 2026-06-29 (Per-champion kit-synergy model for all 173 champions shipped; work commit `6c787536`)
-
-Operator directive after B4: "that same deterministic scoring needs to be done per champion, for all champions." Probed feasibility -> framed scope question -> operator chose the TRUE per-champion model (not a coverage-only guard) -> built + verified inline (tight tuning loop) with a fresh-green gate.
-
-- **669 per-champion kit-synergy (work commit `6c787536`).** WP-C1's model only distinguished ~6 curated champs; the other 167 fell back to a FLAT per-archetype vector (all 54 mages scored identically; only 85/173 ranked own archetype #1). **NEW `core/build_planner/champ_kit_data.py`** `derive_kit_weights(champ)` derives a DISTINCT 10-axis vector per champ from champions.json ground truth (damage_distribution + roles/tags + attackrange + attackspeedperlevel + healing/shielding; cdragon_ability_ratios as AD/AP confirm). NEVER imports the DS engine (loads the same patch data files); leaf module (own `_AXES`, guard-tested == kit_synergy.AXES). **EDIT `kit_synergy._base_axis_weights`** prefers the derived vector; flat archetype = fallback for blank/unknown only; the ~6 `_KIT_TRAITS` overrides + gates preserved on top. **Result: 173/173 distinct vectors (was 6).**
-- **Verify-before-assert caught 2 recipe bugs pre-commit** (standalone derive probe): the "Marksman,Mage" dual-tag gave MF AH=0.90 (would flip MF's spellblade_user heuristic + break a C1 test) -> gated mage-treatment on `is_mage_primary` (Mage tag AND not marksman); on-hit marksmen over-valued AP -> discount AP for all marksmen. The carry-vs-assassin oracle from B4 stays a generation fact; the scoring oracle generalized to "own-archetype build > opposite-damage-type build" (172/173, Kog'Maw the one documented exception - label-mage but an AS/on-hit marksman that correctly builds AD-carry).
-- **TDD:** NEW `tests/test_champ_kit_data.py` (axis anti-drift + None-contract + per-champ distinctness + known profiles + wired-through) + `tests/test_per_champion_scoring_coverage.py` (all 173 coverage guard, Kog exception, within-archetype variation). Deterministic (pinned canonical sets + pure score_build); DS data git-tracked so it runs on CI.
-- **Verification (fresh):** 174 (build_planner C1-C4 + new + overlay B1-B4) + 14 build_plan_contract (C5 unaffected); C1 14/14 + B4 23/23 preserved; ruff + ASCII clean; `git status` = only kit_synergy.py edited + 3 new files (no existing test weakened). **Tier-1** - no ENGINE bump, NOT Share-mirrored. Verifier skipped per R7 (own single-thread, fresh-green). LEDGER branch-local 669 (main at 670) - renumber at landing.
-- **NEXT:** feeds C5 `/api/build-plan` (cohesion now per-champion); patch-refresh re-derives automatically (data-driven, no re-curation). The D-series (D1 tooltip / D2 radial / D3 override store) remains the open overlay track.
