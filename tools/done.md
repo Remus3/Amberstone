@@ -91,12 +91,35 @@ Print a tight banner - exactly this format:
   • living docs          : roadmap/claude.md/readme - <N items updated | skipped>
   • lessons triaged      : <N applied | none pending | err: ...>
   • mid-game             : no | YES - wait until safe to /clear
+  • next-session prompt  : printed below
 ══════════════════════════════════════════════════════════════════
   Type /clear to start a fresh session with reset token budget.
 ══════════════════════════════════════════════════════════════════
 ```
 
 If anything failed (commit blocked, push failed, mid-game, etc.), surface the issue ABOVE the banner and substitute "⚠️ resolve <X> before /clear" on the bottom line.
+
+### 10. Next-session prompt (ALWAYS - never skip)
+
+Every /done ends by handing the next session a running start. After the banner, ALWAYS print a fenced, copy-pasteable prompt block the operator can drop straight into a fresh `/clear`ed session. Source it from ground truth this turn, not memory:
+
+- The "what's next" line you just wrote into `WAKEUP_NOTES.md` (§6).
+- The top open item in `ROADMAP.md` (the next `🟡` / NEXT).
+- Any blocker or do-NOT-redo you flagged this session.
+
+Keep it self-contained - the next session boots with zero context: name the single next task, the key file paths / endpoints / live-state it touches, the acceptance check, and any "already shipped - don't re-investigate" note. One tight block, no preamble:
+
+```
+NEXT SESSION
+------------
+Task: <one-line next task from ROADMAP/WAKEUP>
+Context: <key files / endpoints / live-state to probe first>
+Acceptance: <how the next session knows it is done>
+Do NOT redo: <anything shipped this session that still looks open>
+Start with: /clear, then bootstrap from CLAUDE.md + MEMORY.md + WAKEUP_NOTES + git log.
+```
+
+This is mandatory. Never end /done without it - even when the only next task is "pick the next ROADMAP item".
 
 ### Safety rails
 
