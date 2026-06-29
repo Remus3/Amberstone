@@ -119,15 +119,17 @@ class EconomyIntegrationTests(unittest.TestCase):
         # Slim v3 drops the redundant per-cell sequence array.
         self.assertNotIn("sequence", cell)
 
-    def test_generate_table_schema_v3_and_economy_dimensions(self):
+    def test_generate_table_schema_v4_and_economy_dimensions(self):
         payload = lsp.generate_table(
             self.snap, ["Garen"], ["Darius"], mode="SR", bands=["L6"]
         )
-        self.assertEqual(payload["schema"], "laning_scenarios/v3")
+        self.assertEqual(payload["schema"], "laning_scenarios/v4")
         eco_dim = payload["dimensions"]["economy"]
         self.assertIn("income_per_min", eco_dim)
         self.assertIn("spike_ladder", eco_dim)
-        leaf = payload["scenarios"]["Garen"]["Darius"]["L6"]["full"]["all_up"]
+        # v4 nests a 6th item-state key under cd-state, so the leaf is one level
+        # deeper. item-state "none" is present at every band.
+        leaf = payload["scenarios"]["Garen"]["Darius"]["L6"]["full"]["all_up"]["none"]
         self.assertIn("economy", leaf)
 
     def test_generated_table_serializes_ascii(self):
