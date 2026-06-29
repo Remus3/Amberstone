@@ -812,7 +812,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | C4 owned re-plan + hysteresis | W3 | C2, C3 | T1 | DONE 2026-06-29 (51f3141d) |
 | C5 /api/build-plan contract | W2/W4 | C2 | T2 | DONE 2026-06-29 (0e44a8fc; branch C5 commit, tracker drift corrected) |
 | D1 item tooltip | W5 | B2 | T1 | DONE |
-| D2 right-click radial | W5 | B2, D3 | T1 | DONE (UI + store + client reorder; D3 owns server-honoring) |
+| D2 right-click radial | W5 | B2, D3 | T1 | DONE (UI + store + client reorder + overlay data-rc-zone; D3 owns server-honoring) |
 | D3 override state + reset | W5 | C4, D2 | T1 | OPEN |
 | E5 doc remediation sweep | W0 | - | T0 | OPEN |
 | F5-M04 decisions drift | W0 | - | T1 | DONE 2026-06-28 (e599e610; drift closed at 1.1, 1.2 bump operator-declined) |
