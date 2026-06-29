@@ -1,0 +1,76 @@
+/* WP-B2 - horizontal 3-row in-game build module (active_match.js
+   _renderAmBuildBody). Row1 .bm-live (iterative live plan), Row2 .bm-meta
+   (static standard build), Row3 .bm-knobs (DS fight-model knobs).
+
+   Layout doctrine (OVERLAY_BUILD_MASTER_PLAN Section G.8): each row is a
+   labeled horizontal strip ordered left-to-right; the module stacks the
+   three rows vertically. ASCII only (repo hard rule). */
+
+.bm-module {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.bm-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* eyebrow label above each row strip */
+.bm-row-label {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-faint, #9aa0b5);
+  text-transform: uppercase;
+}
+
+/* the horizontal item strip - Row1 + Row2 */
+.bm-strip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.bm-strip.bm-empty {
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-faint, #9aa0b5);
+  font-style: italic;
+}
+
+/* Row3 - the four DS fight-model knobs in a compact horizontal strip */
+.bm-knobs .bm-knob-strip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.bm-knob {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-xs, 16px);
+  color: var(--text-faint, #9aa0b5);
+}
+
+.bm-knob input {
+  width: 64px;
+  background: var(--surface-2, #1b1d27);
+  border: 1px solid var(--border, #303040);
+  border-radius: 4px;
+  color: var(--text, #e8e8ef);
+  font-size: var(--fs-xs, 16px);
+  padding: 3px 5px;
+}
+
+.bm-knob input:focus {
+  outline: none;
+  border-color: var(--accent, #6cf);
+}
