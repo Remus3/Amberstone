@@ -7,9 +7,14 @@ rank the champion's OWN-archetype canonical build above an OPPOSITE-damage-type
 build. That proves the per-champion kit-synergy model (champ_kit_data) actually
 discriminates kit-fit for each champion - not just the ~6 WP-C1 curated champs.
 
-Deterministic: pinned canonical item sets (real 16.13.1 item NAMES resolved to
-ids against the patch items.json) + the pure score_build (no live API, no DS
-engine). ASCII only - use " - " for a clause break.
+Deterministic + hermetic: pinned canonical item sets (real 16.13.1 item NAMES
+resolved to ids against the patch items.json) + the pure score_build (no live
+API, no DS engine) + the kit-derived archetype DEFAULT (default_for_champion,
+which reads only git-tracked DDragon/DS data). It deliberately does NOT call
+get_archetype_for, whose operator champ-select picks live in the gitignored
+data/cs_archetype_picks.json - reading those made this non-hermetic (green on a
+clean CI checkout, red on a machine where the operator pinned a champ off its
+kit axis, e.g. Lulu -> carry). ASCII only - use " - " for a clause break.
 """
 from __future__ import annotations
 
@@ -18,7 +23,7 @@ import unittest
 from collections import defaultdict
 from pathlib import Path
 
-from core.archetype_picks import get_archetype_for
+from core.archetype_picks import default_for_champion
 from core.build_planner.scoring import score_build
 
 REPO = Path(__file__).resolve().parent.parent
@@ -99,7 +104,7 @@ class PerChampionCoverage(_Base):
     def test_own_archetype_beats_opposite_damage_type(self):
         failures = []
         for champ in self.roster:
-            prim = get_archetype_for(champ)["primary"]
+            prim = default_for_champion(champ)[0]
             opp = _OPPOSITE.get(prim, "mage")
             if opp == prim:
                 opp = "carry" if prim != "carry" else "mage"
@@ -117,7 +122,7 @@ class PerChampionCoverage(_Base):
         # score is NOT constant across champs (WP-C1 collapsed it to one value).
         byarch = defaultdict(set)
         for champ in self.roster:
-            prim = get_archetype_for(champ)["primary"]
+            prim = default_for_champion(champ)[0]
             s = round(score_build(self.canon[prim], champ, [], owned_count=6).total, 3)
             byarch[prim].add(s)
         for arch, scores in byarch.items():
