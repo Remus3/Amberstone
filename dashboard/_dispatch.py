@@ -169,6 +169,7 @@ def _gather_post() -> list:
         from dashboard import (routes_static, routes_state, routes_history,
                                routes_diag, routes_coach,
                                routes_auto_accept,
+                               routes_build_plan,
                                routes_coach_choice,
                                routes_loadout, routes_loop_control,
                                routes_lobby_aux, routes_metrics,
@@ -182,6 +183,7 @@ def _gather_post() -> list:
                        + list(routes_diag.POST_ROUTES)
                        + list(routes_coach.POST_ROUTES)
                        + list(routes_auto_accept.POST_ROUTES)
+                       + list(routes_build_plan.POST_ROUTES)
                        + list(routes_coach_choice.POST_ROUTES)
                        + list(routes_loadout.POST_ROUTES)
                        + list(routes_loop_control.POST_ROUTES)
