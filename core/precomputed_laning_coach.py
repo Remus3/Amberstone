@@ -85,6 +85,21 @@ _RECALL_LABELS: dict[str, str] = {
     "back_soon": "Back soon",
 }
 
+# v4 (Lane A) additive chips. The cooldown-window block surfaces a punish-window
+# chip ("their key CC is down - your combo is up"); the spike-timing block
+# surfaces a play-for-spike chip. Both are OPTIONAL + additive (absent block ->
+# no chip; the verdict-as-"even" filler never emits) so the v3 A/B trade chips
+# are unchanged. Keyed on the block's pure derived verdict (window_verdict /
+# spike_verdict in core.laning_scenario_precompute).
+_WINDOW_LABELS: dict[str, str] = {
+    "punish_now": "Punish - their {spell} is down",
+    "wait_cd": "Wait for your ult cooldown",
+}
+_SPIKE_LABELS: dict[str, str] = {
+    "play_for_spike": "Play for your {label} spike",
+    "spike_up": "Spike up - press your advantage",
+}
+
 # RC2 5.3 - mana/cd discrete state -> a human clause for the trigger sub-line.
 _MANA_WORD: dict[str, str] = {"full": "full mana", "low": "low mana"}
 _CD_WORD: dict[str, str] = {"all_up": "ult up", "no_ult": "ult down"}
@@ -216,6 +231,27 @@ def cd_state_for(ult_up: Optional[bool]) -> str:
     return "all_up" if bool(ult_up) else "no_ult"
 
 
+def item_state_for(item_count: Optional[int]) -> str:
+    """``none`` / ``one_item`` / ``two_item`` from a completed-legendary COUNT.
+
+    Parallel to mana_state_for / cd_state_for: maps the live owned-item count to
+    the v4 table's discrete item-state key. 0 (or unknown / non-numeric) ->
+    ``none``; 1 -> ``one_item``; >=2 -> ``two_item`` (the table caps the axis at
+    two completed legendaries). Fail-soft to ``none`` (the itemless baseline) -
+    the table always has a ``none`` cell, and lookup descends to it anyway."""
+    if item_count is None:
+        return "none"
+    try:
+        n = int(item_count)
+    except (TypeError, ValueError):
+        return "none"
+    if n <= 0:
+        return "none"
+    if n == 1:
+        return "one_item"
+    return "two_item"
+
+
 def _confidence_for(net_swing: object) -> str:
     """Confidence band from the absolute net swing magnitude.
 
@@ -308,6 +344,59 @@ def _recall_outcome(economy: dict, next_item: Optional[Tuple[str, int]]) -> str:
     return f"{gold_s} banked; next spike {spike}"
 
 
+def _window_chip(cell: dict, trigger: str) -> Optional[CoachChoice]:
+    """Optional cooldown-window chip from the v4 ``cooldown_window`` block.
+
+    Emits a chip only for an ACTIONABLE window_verdict (punish_now / wait_cd);
+    the ``even`` filler (no enemy threat spell) emits nothing. A v3 cell has no
+    cooldown_window block -> None. Pure + fail-soft (never raises)."""
+    cw = cell.get("cooldown_window") if isinstance(cell.get("cooldown_window"), dict) else None
+    if not cw:
+        return None
+    wv = str(cw.get("window_verdict") or "")
+    tpl = _WINDOW_LABELS.get(wv)
+    if not tpl:
+        return None
+    spell = str(cw.get("enemy_threat_spell") or "ability")
+    try:
+        cd_s = float(cw.get("enemy_cd_s"))
+    except (TypeError, ValueError):
+        cd_s = 0.0
+    return CoachChoice(
+        key="C",
+        label=tpl.format(spell=spell),
+        expected_outcome=(f"their {spell} cd ~{cd_s:.0f}s; your ult is your window"
+                          if wv == "punish_now" else "hold until your ult is back"),
+        confidence="mid",
+        source_tag=SOURCE_TAG,
+        trigger=trigger,
+    )
+
+
+def _spike_chip(cell: dict, trigger: str) -> Optional[CoachChoice]:
+    """Optional spike-timing chip from the v4 ``spike_timing`` block.
+
+    Emits a chip only for an ACTIONABLE spike_verdict (play_for_spike /
+    spike_up); the ``even`` filler emits nothing. A v3 cell has no spike_timing
+    block -> None. Pure + fail-soft (never raises)."""
+    st = cell.get("spike_timing") if isinstance(cell.get("spike_timing"), dict) else None
+    if not st:
+        return None
+    sv = str(st.get("spike_verdict") or "")
+    tpl = _SPIKE_LABELS.get(sv)
+    if not tpl:
+        return None
+    label = str(st.get("next_label") or "next")
+    return CoachChoice(
+        key="C",
+        label=tpl.format(label=label),
+        expected_outcome=f"next spike: {label}",
+        confidence="low",
+        source_tag=SOURCE_TAG,
+        trigger=trigger,
+    )
+
+
 def _build_choices(
     cell: dict,
     enemy: str,
@@ -367,7 +456,15 @@ def _build_choices(
             source_tag=SOURCE_TAG,
             trigger=trigger,
         )
-    return [a, b]
+    out = [a, b]
+    # v4: ONE optional additive chip (key C) from the new blocks. The
+    # punish-window is more time-sensitive than the spike note, so it wins when
+    # both are actionable; absent / even blocks add nothing (the v3 A/B chips
+    # are unchanged). _MAX_CHOICES (coach_choices) is 3, so at most one extra.
+    extra = _window_chip(cell, trigger) or _spike_chip(cell, trigger)
+    if extra is not None:
+        out.append(extra)
+    return out
 
 
 def resolve_enemy(
@@ -404,22 +501,28 @@ def _resolve_cell_ctx(
     ult_up: Optional[bool],
     mode: str,
     payload: Optional[dict],
+    item_count: Optional[int] = None,
 ) -> Tuple[Optional[dict], dict]:
     """Resolve the laning cell AND the lookup context it was found at.
 
     Returns ``(cell_or_None, ctx)`` where ctx carries the loaded ``data`` + the
     canonical ids + the RESOLVED axes (``band`` is the post-fallback band the
     cell was actually read from, so a rebranch probe varies the SAME band). The
-    item-370 L16->L11 descend-only fallback is applied here. No exception
-    handling - the public callers wrap it so the hot path never raises."""
+    item-370 L16->L11 descend-only fallback is applied here. v4 threads the
+    ``item_state`` 6th key (item_state_for(item_count)); lookup itself descends
+    to the item-state ``none`` cell when the requested state is absent, and is
+    backward-compatible with the v3 (item-state-less) committed tables. No
+    exception handling - the public callers wrap it so the hot path never
+    raises."""
     band = band_for_level(level)
     mana = mana_state_for(mana_fraction)
     cd = cd_state_for(ult_up)
+    item_state = item_state_for(item_count)
     data = payload if payload is not None else load_laning_scenarios(mode)
     my_id = canonical_champion_id(my_champion)
     enemy_id = canonical_champion_id(enemy)
     band_used = band
-    cell = lookup(data, my_id, enemy_id, band, mana, cd)
+    cell = lookup(data, my_id, enemy_id, band, mana, cd, item_state)
     if not cell and band not in GEN_BANDS:
         # item 370 dropped L16 from the generated sweep to halve the
         # full-roster artifact; the documented lvl>=14 fail-soft now reads
@@ -430,10 +533,10 @@ def _resolve_cell_ctx(
         # flip gate. Descend-only: rescues the level axis, never the pair /
         # mana / cd axes (a genuinely uncovered cell still yields []).
         band_used = GEN_BANDS[-1] if GEN_BANDS else band
-        cell = lookup(data, my_id, enemy_id, band_used, mana, cd)
+        cell = lookup(data, my_id, enemy_id, band_used, mana, cd, item_state)
     ctx = {
         "data": data, "my_id": my_id, "enemy_id": enemy_id,
-        "band": band_used, "mana": mana, "cd": cd,
+        "band": band_used, "mana": mana, "cd": cd, "item_state": item_state,
     }
     return (cell if cell else None), ctx
 
@@ -447,6 +550,7 @@ def _resolve_cell(
     ult_up: Optional[bool],
     mode: str,
     payload: Optional[dict],
+    item_count: Optional[int] = None,
 ) -> Optional[dict]:
     """Look up the one laning cell for the live state (or ``None``).
 
@@ -456,7 +560,7 @@ def _resolve_cell(
     context the band probe needs."""
     cell, _ctx = _resolve_cell_ctx(
         my_champion, enemy, level, mana_fraction=mana_fraction,
-        ult_up=ult_up, mode=mode, payload=payload,
+        ult_up=ult_up, mode=mode, payload=payload, item_count=item_count,
     )
     return cell
 
@@ -473,14 +577,17 @@ def _resolve_rebranch(cell: dict, ctx: dict, enemy: str, verdict: str) -> Tuple[
 
     upgrade_axis: Optional[str] = None
     probe_cell: Optional[dict] = None
+    istate = ctx.get("item_state", "none")
     if ctx["cd"] == "no_ult":
         upgrade_axis = "ult"
         probe_cell = lookup(
-            ctx["data"], ctx["my_id"], ctx["enemy_id"], ctx["band"], ctx["mana"], "all_up")
+            ctx["data"], ctx["my_id"], ctx["enemy_id"], ctx["band"],
+            ctx["mana"], "all_up", istate)
     elif ctx["mana"] == "low":
         upgrade_axis = "mana"
         probe_cell = lookup(
-            ctx["data"], ctx["my_id"], ctx["enemy_id"], ctx["band"], "full", ctx["cd"])
+            ctx["data"], ctx["my_id"], ctx["enemy_id"], ctx["band"],
+            "full", ctx["cd"], istate)
 
     upgrade_unlocks = bool(probe_cell) and _more_aggressive(
         laning_band(probe_cell), verdict)
@@ -500,19 +607,22 @@ def precomputed_choices(
     mode: str = "sr",
     payload: Optional[dict] = None,
     next_item: Optional[Tuple[str, int]] = None,
+    item_count: Optional[int] = None,
 ) -> list[CoachChoice]:
     """Two A/B choices for the live (champ vs enemy) laning cell, or ``[]``.
 
-    Resolves the band / mana-state / cd-state from the live inputs, looks the
-    cell up in the HZ-A table (``payload`` overrides for tests), and shapes the
-    A/B choices. Returns ``[]`` fail-soft on a missing table or uncovered cell.
-    """
+    Resolves the band / mana-state / cd-state / item-state from the live inputs,
+    looks the cell up in the HZ-A table (``payload`` overrides for tests), and
+    shapes the A/B choices. v4: the optional ``cooldown_window`` / ``spike_timing``
+    blocks add additive chips when present (absent -> no extra chip; the v3 A/B
+    trade chips are unchanged). Returns ``[]`` fail-soft on a missing table or
+    uncovered cell."""
     try:
         if not my_champion or not enemy:
             return []
         cell, ctx = _resolve_cell_ctx(
             my_champion, enemy, level, mana_fraction=mana_fraction,
-            ult_up=ult_up, mode=mode, payload=payload,
+            ult_up=ult_up, mode=mode, payload=payload, item_count=item_count,
         )
         if not cell:
             return []
@@ -541,20 +651,22 @@ def resolve_band(
     ult_up: Optional[bool] = None,
     mode: str = "sr",
     payload: Optional[dict] = None,
+    item_count: Optional[int] = None,
 ) -> Optional[str]:
     """The recalibrated ``laning_band`` verdict for the live cell, or ``None``.
 
     RC2 P5.1: the CV-override layer (``core.laning_cv_overrides``) needs the
     STATIC band verdict to decide whether a low-HP read should veto an
     aggressive call. This exposes exactly that - the same cell resolution as
-    ``precomputed_choices`` (incl. the L16 fallback), reduced to its verdict.
-    Fail-soft ``None`` on a missing table or uncovered cell (never raises)."""
+    ``precomputed_choices`` (incl. the L16 + item-state fallbacks), reduced to
+    its verdict. Fail-soft ``None`` on a missing table or uncovered cell (never
+    raises)."""
     try:
         if not my_champion or not enemy:
             return None
         cell = _resolve_cell(
             my_champion, enemy, level, mana_fraction=mana_fraction,
-            ult_up=ult_up, mode=mode, payload=payload,
+            ult_up=ult_up, mode=mode, payload=payload, item_count=item_count,
         )
         return laning_band(cell) if cell else None
     except Exception:  # noqa: BLE001 - the coach hot path must never raise
@@ -568,6 +680,7 @@ __all__ = [
     "band_for_level",
     "mana_state_for",
     "cd_state_for",
+    "item_state_for",
     "laning_band",
     "laning_trigger",
     "laning_rebranch",
