@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-29 (Per-champion kit-synergy model for all 173 champions shipped; work commit `6c787536`)
+
+Operator directive after B4: "that same deterministic scoring needs to be done per champion, for all champions." Probed feasibility -> framed scope question -> operator chose the TRUE per-champion model (not a coverage-only guard) -> built + verified inline (tight tuning loop) with a fresh-green gate.
+
+- **669 per-champion kit-synergy (work commit `6c787536`).** WP-C1's model only distinguished ~6 curated champs; the other 167 fell back to a FLAT per-archetype vector (all 54 mages scored identically; only 85/173 ranked own archetype #1). **NEW `core/build_planner/champ_kit_data.py`** `derive_kit_weights(champ)` derives a DISTINCT 10-axis vector per champ from champions.json ground truth (damage_distribution + roles/tags + attackrange + attackspeedperlevel + healing/shielding; cdragon_ability_ratios as AD/AP confirm). NEVER imports the DS engine (loads the same patch data files); leaf module (own `_AXES`, guard-tested == kit_synergy.AXES). **EDIT `kit_synergy._base_axis_weights`** prefers the derived vector; flat archetype = fallback for blank/unknown only; the ~6 `_KIT_TRAITS` overrides + gates preserved on top. **Result: 173/173 distinct vectors (was 6).**
+- **Verify-before-assert caught 2 recipe bugs pre-commit** (standalone derive probe): the "Marksman,Mage" dual-tag gave MF AH=0.90 (would flip MF's spellblade_user heuristic + break a C1 test) -> gated mage-treatment on `is_mage_primary` (Mage tag AND not marksman); on-hit marksmen over-valued AP -> discount AP for all marksmen. The carry-vs-assassin oracle from B4 stays a generation fact; the scoring oracle generalized to "own-archetype build > opposite-damage-type build" (172/173, Kog'Maw the one documented exception - label-mage but an AS/on-hit marksman that correctly builds AD-carry).
+- **TDD:** NEW `tests/test_champ_kit_data.py` (axis anti-drift + None-contract + per-champ distinctness + known profiles + wired-through) + `tests/test_per_champion_scoring_coverage.py` (all 173 coverage guard, Kog exception, within-archetype variation). Deterministic (pinned canonical sets + pure score_build); DS data git-tracked so it runs on CI.
+- **Verification (fresh):** 174 (build_planner C1-C4 + new + overlay B1-B4) + 14 build_plan_contract (C5 unaffected); C1 14/14 + B4 23/23 preserved; ruff + ASCII clean; `git status` = only kit_synergy.py edited + 3 new files (no existing test weakened). **Tier-1** - no ENGINE bump, NOT Share-mirrored. Verifier skipped per R7 (own single-thread, fresh-green). LEDGER branch-local 669 (main at 670) - renumber at landing.
+- **NEXT:** feeds C5 `/api/build-plan` (cohesion now per-champion); patch-refresh re-derives automatically (data-driven, no re-curation). The D-series (D1 tooltip / D2 radial / D3 override store) remains the open overlay track.
+
+---
+
 # 2026-06-29 (Section B - WP-B4 MF SR fixture oracle shipped; work commit `189117d6`)
 
 Scoped build session, "continue" after B3. Bootstrap -> verify the spec live -> author fixture + Python test inline (2 files = R9 inline) -> Tier-1 sweep -> commit/push. The deterministic acceptance anchor the B/C agents share.
@@ -25,15 +37,3 @@ Scoped build session, "continue" after B2. Spec-first (a grounded Plan subagent)
 - **Live-verified the meta-cycle is real:** MF carry/tank/mage return distinct builds (carry -> Runaan's; MF default resolves "assassin", so cycling to carry reaches the better build). 185 tests green across two Tier-1 sweeps; ASCII-clean (added lines; the pre-existing arrow/box-drawing chars in items_index.js are not mine).
 - **OWED:** a live in-game capture of the greying/pip/ring + the meta right-click coexistence with the real overlay hide-menu (gated on the loopback regression; the stopPropagation guard is code-verified).
 - **NEXT:** B4 (the MF SR fixture oracle; deps B2+C2) or the D-series (D1/D2/D3, all unblocked by B2).
-
----
-
-# 2026-06-29 (Section B - WP-B2 horizontal 3-row build module scaffold shipped; commit `adedacde`)
-
-Scoped build session. Operator picked B2 via a framed scope question - it is the gate for the entire D-series. First Section B panel slice; UNBLOCKS D1/D2/D3 + B3/B4.
-
-- **666 WP-B2 3-row build module (commit `adedacde`).** `active_match.js` `_renderAmBuildBody` rebuilt: the old single vertical DS picks strip -> a horizontal `.bm-module` with Row1 `.bm-live` (the EXISTING C5 `/api/build-plan` `planStates` feed), Row2 `.bm-meta` (NEW `_maybeRefreshBuildOrder` -> `/api/build-order` `order[]`, mirrors the build-plan fetcher), Row3 `.bm-knobs` (NEW `_renderBmKnobs` REUSES the `ds_knobs.js` `fetchDsKnobs`/`getCachedDsKnobs` champ-NAME data layer - the champ-select `renderDsKnobs` panel untouched). NEW `web/css/panels/build_module.css` + the `dashboard.css` `@import` (parity guard). The dedup sig gains the META order ids.
-- **TDD + gates:** RED-first NEW `tests/test_overlay_b2_three_row_build_module.py` (grep-style, no jsdom). 147/0 Tier-1 sweep. UI-audit ritual PASS (real Playwright render, 5/5 phases, zero MUST-FIX; `--fs-xs` resolves to 16px live, inputs 26px >= the 24px floor). ASCII-clean (real per-line scan, NOT the locale-broken `grep -P` which silently no-op'd). Built mostly inline (single serialized file = R9) with the two mandatory subagent gates (UI-audit + a live-curl integration check); the `verifier` subagent skipped per R7 (own single-thread edit, fresh-green this turn).
-- **Live integration verified vs running RC `:8888`:** `/api/build-order` + `/api/ds-knobs` return the EXACT Row2/Row3 shapes. `/api/build-plan` 404s on the running pid 7120 (booted 01:52, predates the C5 route) -> the client fail-softs to an empty LIVE row. **OWED: an RC restart + a live in-game capture of the module** (gated on `project_liveclient_loopback_regression`; the running RC is on `main`, so B2 goes live only after this branch merges + restart).
-- **Bookkeeping:** Section J B2 OPEN -> DONE + the stale C5 OPEN -> DONE drift corrected (branch C5 = `0e44a8fc` never flipped its own row). LEDGER DIVERGENCE: this branch tops at 666 while main is at 670 (main C5 = `cedb78c2`) - renumber at landing per `feedback_ledger_renumber_on_parallel_landing`.
-- **NEXT:** B3 (Row1/Row2 owned-greying + partial-component pips + meta right-click alt-cycle; deps B2 satisfied) or B4 (MF SR fixture oracle; deps B2+C2). The whole D-series is now unblocked.
