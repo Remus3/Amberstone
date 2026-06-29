@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-06-29 (Section C - WP-C4 owned-aware re-plan loop + sell/swap + hysteresis shipped; commit `51f3141d`)
+
+Scoped build session (ultracode workflow). Fourth + last build-brain MODULE before the C5 route wires it live.
+
+- **665 WP-C4 owned-aware re-plan (commit `51f3141d`).** NEW `core/build_planner/replan.py` - `ReplanLoop.tick()` keeps owned items as a FIXED prefix (never re-planned; C2 `plan_build` already drops owned from the pool), re-beams only the tail, and applies anti-flip-flop hysteresis. **Hysteresis:** stickiness margin (challenger flips only if single-item `score_build([id]).total > incumbent*1.10`), pure `schmitt()` pivot (add 1.20 / drop 0.90, inclusive, drop<add invariant), just-bought lock (game-clock seconds; off-build mid+ exempt; purchase = owned COUNT growth so a 3340->3363 trinket swap is not a false purchase; first tick = no phantom), sell rate-limit (<=1/stage, resets on stage change). **Sell/swap:** free trinket upgrade 3340->3363 (bypasses all gates), boots-sell at 6-item+surplus (boots = `Boots` tag OR from-closure to 1001), true swap ONLY on matchup-invalidated (antiheal vs heal_sources==0, %armor-pen vs squishy kill target; one swap/item). **Component-defer = real recipe membership:** `component_ids_of` transitive `from`-closure (owned 3036 -> defers planned 3035, live-verified). State IN-MEMORY: `accept()` logs, `end_match(path)` opt-in atomic save. replan.py added to planner-test `_SOURCES` (split-brain + family-literal guard).
+- **Built via ultracode workflow:** 2-agent adversarial DESIGN CRITIQUE -> spec synthesis -> RED agent -> GREEN agent -> 4 adversarial verifiers (ground-truth + hysteresis + sell-gating + prefix/defer/purity). **The critique CAUGHT a real blocker** - the original spec's `_first_item_totals` beam-map gate would collapse at full depth (bw6 dp6 -> 1 distinct opener) and flip the incumbent every tick, DEFEATING no-whiplash; the impl correctly diverged to a single-item `score_build` gate with "viable == in pool AND unowned". All 4 verdicts CONFIRM/high, none fixture-shaped. **Orchestrator fresh ground-truth gate:** 49/0 (replan 30 + planner 19), py_compile + ruff + ASCII clean, zero banned literal, zero `agents.daemon_slayer` import.
+- **Tier-1:** no ENGINE bump, not Share-mirrored, no DS restart, NOT live-wired. **NEXT Section C: WP-C5** (`/api/build-plan` data contract DS->module->panel; Tier-2 route + integration tests; deps C2/C3/C4 now ALL satisfied + B2 panel). D3 also reuses replan.py for the per-item override store.
+
+---
+
 # 2026-06-29 (Section C - WP-C3 live counter-build / situational_fit shipped; commit `64b7c634`)
 
 Scoped build session (ultracode workflow). Filled the `situational_fit` 0.0 stub left by WP-C2.
