@@ -218,6 +218,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-29 (Section B - WP-B4 MF SR fixture oracle shipped; work commit `189117d6`)
+
+Scoped build session, "continue" after B3. Bootstrap -> verify the spec live -> author fixture + Python test inline (2 files = R9 inline) -> Tier-1 sweep -> commit/push. The deterministic acceptance anchor the B/C agents share.
+
+- **668 WP-B4 (work commit `189117d6`).** NEW `web/js/test/fixtures/mf_sr_build.json` (every number captured LIVE: `/api/build-order` + `/api/ds-preview` + `/api/dictionary/items`, patch 16.13.1) + `tests/test_overlay_b4_mf_sr_fixture.py` (the Python consumer; NO JS test runner exists, mirrors the grep-style B3 test). Fixture: the marksman-correct carry META build (archetype=carry EXPLICIT since MF default resolves "assassin"), the assassin default build (routing-gotcha anchor), owned snapshots at 0/1/2/3 items + a non-prefix snapshot (sort-left), the antiheal live-deviation (3123 Executioner's -> 3033 Mortal Reminder, recipe-verified), the C2 score seed table, ADC knob defaults. Test (23): shape + 7-bit ASCII + exact meta order + archetype signatures + an owned-greying oracle (faithful mirror of `_bmPartitionOwned` + first-non-owned next) + a C2 `score_build` assertion + the antiheal linkage.
+- **Verify-before-assert caught a false oracle:** the first-pitched "carry build outscores assassin" was REFUTED by a live `score_build` probe (assassin edges carry 1.515 vs 1.499 - Essence Reaver scores HIGH MF kit-synergy 2.76 > Yun Tal 1.71 AND a higher ds-preview DPS delta). So carry-vs-assassin is a BUILD-GENERATION fact (archetype routing), NOT a score ranking; the scoring assertion was pivoted to the robust true floor (marksman ~1.499 >> off-class AP ~-0.038; the AP build scores negative on kit anti-synergy + zero DPS - large margin, robust to a data-absent CI checkout). Every item id verified vs the live catalog before encoding (3123 confirmed a direct component of 3033; the 6 AP-misfit ids all resolve in items.json).
+- **Verification:** B4 23/0; Tier-1 sweep 157/0 (overlay B1-B4 + planner C1-C4 - the C-cluster included because the test imports score_build); both new files ASCII-clean. **Tier-1**: no ENGINE bump, NOT Share-mirrored, no DS restart; a pure test artifact (NO web/css or web/js page-code change) so the UI-audit ritual does not apply. Section J: B4 OPEN -> DONE (`189117d6`). LEDGER branch-local 668 (vs main 670) - renumber at landing per `feedback_ledger_renumber_on_parallel_landing`.
+- **NEXT:** the D-series (D1 item tooltip is the clean independent entry, deps B2 only; D2 right-click radial + D3 override store also unblocked by B2). OWED (gated, not next-task): a live in-game capture onto the C5 route (blocked by the loopback regression).
+
+---
+
 # 2026-06-29 (Section B - WP-B3 live/meta row item semantics shipped; commit `be48d3f7`)
 
 Scoped build session, "continue" after B2. Spec-first (a grounded Plan subagent) -> TDD -> inline build -> UI-audit ritual. Adds the item semantics onto the B2 scaffold.
