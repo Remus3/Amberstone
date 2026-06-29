@@ -343,6 +343,19 @@ function _makeHideMenu(el, w) {
   _installHideMenu(el, w);
 }
 
+// Reveal the field once the first full place pass has run. The CSS keeps every
+// .ovx-widget visibility:hidden until <body>.ovx-ready, so the lazily-created
+// full-screen overlay window never flashes the widgets at their pre-layout "max
+// size" before _placeAll positions + scales them (the first-match flash). Set
+// once; subsequent re-render passes (_placeAll via the observer) are no-ops here.
+function _markFieldReady() {
+  try {
+    document.body.classList.add("ovx-ready");
+  } catch (_e) {
+    // headless / locked-down document: the field still positions; nothing to reveal.
+  }
+}
+
 function _placeAll() {
   for (const w of WIDGETS) {
     const el = document.querySelector(w.sel);
@@ -607,10 +620,12 @@ export function initOverlayLayout() {
       .finally(() => {
         _placeAll();
         _ensureLauncher();
+        _markFieldReady(); // first pass done -> reveal the gated field
       });
   } else {
     _placeAll();
     _ensureLauncher();
+    _markFieldReady(); // first pass done -> reveal the gated field
   }
 
   // The body zoom can change with the window (ovscale); re-apply on resize so
