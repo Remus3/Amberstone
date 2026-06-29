@@ -797,8 +797,8 @@ body[data-shell="overlay"] .ovx-statspanel .sp-role {
   cursor: pointer;
 }
 body[data-shell="overlay"] .ovx-statspanel .sp-role option {
-  color: #ffffff;
-  background: #0a0e14;
+  color: rgb(var(--ovx-text));
+  background: rgb(var(--ovx-bg-nested));
 }
 body[data-shell="overlay"] .ovx-statspanel .sp-bracket {
   flex: 0 0 auto;
