@@ -804,7 +804,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | A6 remove pane name headers | W1 | A5 | T1 | DONE 2026-06-28 (b089d130) |
 | B1 strip DS-ENGINE caption | W1 | - | T1 | DONE 2026-06-28 (62a9a10a) |
 | B2 horizontal 3-row scaffold | W3 | B1, C5 | T1 | DONE 2026-06-29 (adedacde) |
-| B3 Live+Meta item semantics | W4 | B2 | T1 | OPEN |
+| B3 Live+Meta item semantics | W4 | B2 | T1 | DONE 2026-06-29 (be48d3f7) |
 | B4 MF SR fixture oracle | W3 | B2, C2 | T1 | OPEN |
 | C1 kit-synergy profiles | W2 | - | T1 | DONE 2026-06-28 (a4e1cde3) |
 | C2 scoring + beam search | W2 | C1 | T1 | DONE 2026-06-29 (4f1d4126) |
