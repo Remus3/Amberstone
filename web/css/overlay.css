@@ -142,6 +142,17 @@ body[data-shell="overlay"] .am-pane-build .ds-relscore {
  * frame. Data-ink first: a widget is its content + a gold hairline, nothing
  * more. The #16202E backing at 0.85 reads over a bright game without blacking
  * the screen; a 1px inner top highlight gives the etched-glass Hextech feel. */
+/* 4-pre. FIRST-PAINT GATE. overlay_layout.js positions each .ovx-widget in JS
+ * (left/top + body zoom) AFTER the first paint, so the lazily-created full-screen
+ * transparent window would otherwise flash the widgets at their natural unscaled,
+ * unpositioned "max size" before that pass landed. Keep the field invisible until
+ * overlay_layout marks the body .ovx-ready (its first _placeAll pass completed).
+ * visibility (not display) so the boxes still lay out + can be measured while
+ * gated. Distinct from the per-widget .ovx-hidden gate - this is load-time only. */
+body[data-shell="overlay"]:not(.ovx-ready) .ovx-widget {
+  visibility: hidden;
+}
+
 body[data-shell="overlay"] .ovx-widget {
   position: fixed !important;
   z-index: 40;

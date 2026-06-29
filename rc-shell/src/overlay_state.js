@@ -237,6 +237,16 @@ function nextPollDelay(consecutiveFailures, baseMs) {
   return Math.min(OVERLAY_DEFAULTS.pollMaxMs, base * Math.pow(2, n));
 }
 
+// --- overlay first-paint show gate -------------------------------------------
+// May applySurface show the overlay window in THIS tick? Only once the window has
+// painted (overlayReady, set on its 'ready-to-show'). Before first paint the show
+// is owned by the ready-to-show handler instead - showing in the create tick is
+// what flashed the full-screen transparent window before its widgets laid out.
+// Strict-true on both args so a truthy non-boolean never leaks an early show.
+function shouldShowOverlayNow(overlayReady, surfaceWantsOverlay) {
+  return overlayReady === true && surfaceWantsOverlay === true;
+}
+
 // Does a surface transition require showing/hiding either window? Pure helper
 // the poll loop uses to avoid redundant show()/hide() churn: returns the set of
 // actions {companion: "show"|"hide", overlay: "show"|"hide"} for a target
@@ -734,6 +744,7 @@ module.exports = {
   overlayUrl,
   windowActions,
   windowActionsWithPolicy,
+  shouldShowOverlayNow,
   cyclePanelSet,
   OVERLAY_ACTIONS,
   normOverlayAction,
