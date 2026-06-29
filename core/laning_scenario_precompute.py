@@ -48,24 +48,38 @@ SHAPE (per mode, atomic write to data/daemon_slayer/laning_scenarios/<patch>/)::
 
     {
       "version": "<patch>", "generated_at": "<iso>", "mode": "<sr|aram|arena>",
-      "schema": "laning_scenarios/v3",
+      "schema": "laning_scenarios/v4",
       "dimensions": {"level_bands": {...}, "mana_states": [...], "cd_states": [...],
+                     "item_states": [...], "item_states_by_band": {...},
                      "economy": {"income_per_min": <float>, "spike_ladder": [...],
                                  "recall_states": [...], "back_soon_window_s": <float>}},
       "scenarios": {
-        "<my_champ>": {"<enemy>": {"<band>": {"<mana>": {"<cd>": {
+        "<my_champ>": {"<enemy>": {"<band>": {"<mana>": {"<cd>": {"<item_state>": {
             "verdict": "...", "net_swing": <float>, "pct_my_removed": <float>,
-            "pct_enemy_removed": <float>,
+            "pct_enemy_removed": <float>, "kill_threshold_met": <bool>,
             "economy": {"recall": "recall_now|back_soon|hold",
                         "next_spike": "component|first_item|two_item|three_item|complete",
-                        "gold_at_band": <float>}}}}}}
+                        "gold_at_band": <float>},
+            "cooldown_window": {"enemy_threat_spell": "<Q|W|E|R>", "enemy_cc_s": <float>,
+                        "enemy_cd_s": <float>, "my_ult_cd_s": <float>,
+                        "window_verdict": "punish_now|wait_cd|even"},
+            "spike_timing": {"next_kind": "level|item", "next_threshold": <int>,
+                        "next_label": "...", "crossed_dps_at": <float|null>,
+                        "spike_verdict": "play_for_spike|spike_up|even"}}}}}}}
       }
     }
 
-Slim v3 leaf: only the reader-consumed fields are persisted (the derived
+v4 (Lane A) adds the ``item_state`` axis (0/1/2 completed legendaries, band-
+pruned) + the ``kill_threshold_met`` flag + the ``cooldown_window`` and
+``spike_timing`` verdict blocks. The trade fields are unchanged from v3 (same
+compute_matchup). The new blocks call EXISTING substrate (cooldown_watch /
+spike_markers / combo) as read-only probes - no ENGINE math change. The
+committed v3 tables stay v3 and the v4 reader is backward-compatible with them.
+
+Slim leaf: only the reader-consumed fields are persisted (the derived
 ``my_can_full_combo`` / ``manaless`` / ``sequence`` and the intermediate
 ``economy.spike_eta_s`` are dropped) and the table is written COMPACT, halving
-the full-roster (171x171x3-band) artifact. The HZ-A2 ``economy`` block is
+the full-roster artifact. The HZ-A2 ``economy`` block is
 gold-income + item-completion driven (the gold / spike math lives in
 core.lead_projection): ``gold_at_band`` / ``next_spike`` are the expected economy
 at the band's representative minute (the project_lead level<->minute curve);
@@ -106,6 +120,15 @@ log = logging.getLogger(__name__)
 from agents.daemon_slayer.data_loader import DataSnapshot
 from agents.daemon_slayer.mana_sim import compute_mana_bounded_combo
 from agents.daemon_slayer.matchup import compute_matchup
+
+# v4 (Lane A): the cooldown-window + spike-timing verdict substrate. All three
+# are READ-ONLY probes over the existing engine - no new combat math here (the
+# trade verdict stays compute_matchup). compute_combo gives MY per-cast R
+# cooldown; compute_cooldown_watch gives the enemy highest-threat CC + its base
+# cooldown; compute_spike_markers gives the discrete power-spike picture.
+from agents.daemon_slayer.combo import compute_combo
+from agents.daemon_slayer.cooldown_watch import compute_cooldown_watch
+from agents.daemon_slayer.spike_markers import compute_spike_markers
 
 # HZ-A2: the gold-income + power-spike primitives live in lead_projection (the
 # shared deterministic macro-economy authority); this module composes them into a
@@ -169,6 +192,33 @@ SEED_CHAMPIONS: Tuple[str, ...] = (
     "Ezreal", "Lux", "Malphite", "Jax", "Syndra",
 )
 
+# v4 (Lane A) item-state axis. Keyed on COMPLETED-legendary COUNT (0 / 1 / 2),
+# NOT item identity (per-item identity is the separate HZ-B build-order
+# pipeline). Mirrors spike_markers._ITEM_SPIKES = (1, 2, 3). The concrete item
+# ids per state come from the curated balanced build order (build_for_item_state).
+ITEM_STATES: Tuple[str, ...] = ("none", "one_item", "two_item")
+_ITEM_STATE_COUNT: dict[str, int] = {"none": 0, "one_item": 1, "two_item": 2}
+
+# Band -> the item-states GENERATED at that band (spec 2.1 prune): you do not
+# have two completed legendaries at level 2, so item-state grows with the band.
+# An unknown band degrades to the full ladder (fail-soft). This roughly halves
+# the new cells vs the naive 3-item-states-everywhere cross product.
+_ITEM_STATES_BY_BAND: dict[str, Tuple[str, ...]] = {
+    "L2": ("none",),
+    "L6": ("none", "one_item"),
+    "L11": ("none", "one_item", "two_item"),
+}
+
+# build_orders_<mode>.json bucket the item-state ids are pulled from. The
+# balanced order is the honest itemless->item-state ladder (same bucket the
+# recall back-timing reader uses). Mirrors the dashboard build-order loader,
+# but returns the raw item IDS the engine wants (compute_matchup(item_ids_a=...))
+# rather than display names - no dashboard import (this module is core, slice A).
+_BUILD_BUCKET = "balanced"
+
+# Memoised build_orders_<mode>.json by lower-case mode: champ -> bucket -> [id].
+_BUILD_ORDERS_CACHE: dict[str, dict] = {}
+
 # Read cache keyed (mode, patch) -> (mtime, payload). mtime-aware: a stale entry
 # is dropped when the file on disk is newer than what we cached.
 _CACHE: dict[Tuple[str, str], Tuple[float, dict]] = {}
@@ -192,6 +242,120 @@ def level_for_band(band: str) -> int:
     """Representative level for a band label (raises KeyError on an unknown band -
     band labels are a closed set the caller controls)."""
     return LEVEL_BANDS[band]
+
+
+def item_states_for_band(band: str) -> Tuple[str, ...]:
+    """Item-states generated at ``band`` (spec 2.1 prune; fail-soft full ladder).
+
+    An unknown band returns the full ITEM_STATES ladder so a caller passing a
+    non-standard band still gets every state (the generator only ever passes
+    GEN_BANDS, which are all in the prune map)."""
+    return _ITEM_STATES_BY_BAND.get(band, ITEM_STATES)
+
+
+def window_verdict(
+    enemy_cd_s: object,
+    my_ult_cd_s: object,
+    cd_state: str,
+) -> str:
+    """Cooldown-window verdict - PURE, no engine (mirrors laning_band's shape).
+
+    Deterministic from the two cooldown scalars + the cd_state axis:
+      * ``wait_cd`` when MY ult is down (the no_ult axis) - my key combo cannot
+        come out, so the honest call is to wait for the cooldown.
+      * ``punish_now`` when my ult IS up AND the enemy has a real threat spell on
+        a finite cooldown to bait/punish (their key CC is the punish trigger).
+      * ``even`` otherwise (no enemy threat spell, or non-numeric inputs).
+    Fail-soft to ``even`` on any malformed scalar (the coach hot path contract)."""
+    if str(cd_state) == "no_ult":
+        return "wait_cd"
+    try:
+        enemy_cd = float(enemy_cd_s)
+    except (TypeError, ValueError):
+        return "even"
+    try:
+        my_cd = float(my_ult_cd_s)
+    except (TypeError, ValueError):
+        my_cd = 0.0
+    if enemy_cd > 0.0 and my_cd >= 0.0:
+        return "punish_now"
+    return "even"
+
+
+def spike_verdict(
+    next_kind: object,
+    next_threshold: object,
+    band: str,
+    item_state: str,
+) -> str:
+    """Spike-timing verdict - PURE, no engine (mirrors laning_band's shape).
+
+    Deterministic from the next-spike descriptor + the cell's discrete band /
+    item-state:
+      * ``spike_up`` when this cell is AT a major spike: the R-unlock band (L6+)
+        OR a cell that already holds at least one completed item (item-state past
+        ``none``) - you have just gained a power step, so play the window.
+      * ``play_for_spike`` when the next spike is imminent (a gap of exactly one
+        level or one item from the next marker) - itemless and pre-6 / pre-item.
+      * ``even`` otherwise (no next marker, or far from one).
+    Fail-soft to ``even`` on any malformed input."""
+    at_ult = str(band) in ("L6", "L11", "L16")
+    has_item = str(item_state) in ("one_item", "two_item")
+    if at_ult or has_item:
+        return "spike_up"
+    kind = str(next_kind or "")
+    if not kind:
+        return "even"
+    return "play_for_spike"
+
+
+def load_build_orders(mode: str = "SR") -> dict:
+    """champ -> bucket -> [item_id_str] from build_orders_<mode>.json (memoised).
+
+    Mirrors dashboard._deterministic_coaching._load_build_orders but lives in
+    core (slice A owns this file; no dashboard import). Reads the patch-pinned
+    table; fail-soft to ``{}`` on any missing file / parse error."""
+    key = str(mode).lower()
+    if key in _BUILD_ORDERS_CACHE:
+        return _BUILD_ORDERS_CACHE[key]
+    out: dict = {}
+    patch = resolve_patch()
+    path = _DS_DIR / patch / f"build_orders_{key}.json"
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        out = raw.get("build_orders") or {}
+        if not isinstance(out, dict):
+            out = {}
+    except Exception:  # noqa: BLE001 - missing / malformed -> no item bonus
+        out = {}
+    _BUILD_ORDERS_CACHE[key] = out
+    return out
+
+
+def build_for_item_state(
+    champ: str, item_state: str, mode: str = "SR",
+) -> Tuple[str, ...]:
+    """First 0 / 1 / 2 completed-legendary item IDS for a champion's item-state.
+
+    Reuses the curated balanced build order (load_build_orders) instead of
+    inventing a build (charter: mirror, do not duplicate). item-state ``none``
+    is itemless ``()``; ``one_item`` is the first completed item; ``two_item``
+    the first two. Fail-soft: an unknown champ / missing table / unknown
+    item-state yields ``()`` (the cell is still generated, just without the item
+    bonus - spec risk 5)."""
+    n = _ITEM_STATE_COUNT.get(str(item_state), 0)
+    if n <= 0:
+        return ()
+    orders = load_build_orders(mode)
+    champ_orders = orders.get(str(champ).strip()) if isinstance(orders, dict) else None
+    if not isinstance(champ_orders, dict):
+        return ()
+    order = champ_orders.get(_BUILD_BUCKET)
+    if not isinstance(order, list):
+        order = next((v for v in champ_orders.values() if isinstance(v, list)), None)
+    if not isinstance(order, list) or not order:
+        return ()
+    return tuple(str(i) for i in order[:n])
 
 
 def _round(value: object) -> float:
@@ -366,22 +530,149 @@ def _matchup(
     )
 
 
-def _cell_from_result(result, economy: Optional[dict] = None) -> dict:
+def _enemy_cooldown_card(enemy: str):
+    """The enemy's single highest-threat CC card, or None (fail-soft).
+
+    ``compute_cooldown_watch`` is level- and build-INVARIANT (base cd by rank,
+    enemy-CC-only per its honesty contract), so the caller memoizes this per
+    enemy across every band / mana / cd / item-state. A champion with no
+    registered first-order CC yields no card (the block degrades to even)."""
+    try:
+        res = compute_cooldown_watch([str(enemy)], top_n=1)
+    except Exception:  # noqa: BLE001 - one bad enemy never sinks the sweep
+        return None
+    return res.cards[0] if res.cards else None
+
+
+def _my_ult_cd_s(
+    snapshot: DataSnapshot,
+    my_champion: str,
+    level: int,
+    item_ids: Sequence[str | int],
+    mode: str,
+) -> float:
+    """MY R (ult) base cooldown at this cell, via one compute_combo R-row read.
+
+    Walks the full Q/W/E/R combo and returns the ``cooldown_s`` of the first
+    ``"R"`` action row (ComboHit.action == "R"). Fail-soft to ``0.0`` on any
+    engine error or a champ whose R has no resolvable cooldown."""
+    try:
+        res = compute_combo(
+            str(my_champion), int(level), item_ids=list(item_ids),
+            sequence=list(_FULL_COMBO), mode=mode, snapshot=snapshot,
+        )
+    except Exception:  # noqa: BLE001 - fail-soft, no cooldown
+        return 0.0
+    for hit in res.hits:
+        if str(getattr(hit, "action", "")) == "R":
+            return _round(getattr(hit, "cooldown_s", 0.0))
+    return 0.0
+
+
+def cooldown_window_cell(
+    snapshot: DataSnapshot,
+    my_champion: str,
+    level: int,
+    item_ids: Sequence[str | int],
+    cd_state: str,
+    mode: str,
+    enemy_card,
+) -> dict:
+    """The v4 cooldown-window verdict block for one cell.
+
+    ``enemy_card`` is the memoized CooldownWatchCard for the enemy (or None).
+    ``my_ult_cd_s`` is read from MY combo at this cell's level + items. The
+    derived ``window_verdict`` is pure (window_verdict). enemy_threat_spell / cc
+    fail-soft to "" / 0.0 when the enemy has no registered first-order CC."""
+    enemy_spell = str(getattr(enemy_card, "spell_key", "") or "")
+    enemy_cc_s = _round(getattr(enemy_card, "cc_duration_s", 0.0)) if enemy_card else 0.0
+    enemy_cd_s = _round(getattr(enemy_card, "cooldown_s", 0.0)) if enemy_card else 0.0
+    my_cd = _my_ult_cd_s(snapshot, my_champion, level, item_ids, mode)
+    return {
+        "enemy_threat_spell": enemy_spell,
+        "enemy_cc_s": enemy_cc_s,
+        "enemy_cd_s": enemy_cd_s,
+        "my_ult_cd_s": my_cd,
+        "window_verdict": window_verdict(enemy_cd_s, my_cd, cd_state),
+    }
+
+
+def spike_timing_cell(
+    my_champion: str,
+    band: str,
+    item_state: str,
+    item_ids: Sequence[str | int],
+    mode: str,
+) -> dict:
+    """The v4 spike-timing verdict block for one cell.
+
+    One compute_spike_markers call per (my, band, item-state) - the caller
+    memoizes across enemy / mana / cd (independent of the enemy + my resource
+    state). ``crossed_dps_at`` is the dps_at of the band-level marker (the DPS at
+    this band, None when the DS curve annotation fail-softs - spec risk 7). The
+    derived ``spike_verdict`` is pure (spike_verdict)."""
+    level = level_for_band(band)
+    item_count_done = _ITEM_STATE_COUNT.get(str(item_state), 0)
+    try:
+        res = compute_spike_markers(
+            str(my_champion), level, list(item_ids), mode=mode,
+            item_count_done=item_count_done,
+        )
+    except Exception:  # noqa: BLE001 - fail-soft, even block
+        return {
+            "next_kind": "", "next_threshold": 0, "next_label": "",
+            "crossed_dps_at": None, "spike_verdict": "even",
+        }
+    nm = res.next_marker
+    next_kind = str(nm.kind) if nm else ""
+    next_threshold = int(nm.threshold) if nm else 0
+    next_label = str(nm.label) if nm else ""
+    crossed_dps_at: Optional[float] = None
+    for m in res.markers:
+        if m.kind == "level" and int(m.threshold) == int(level) and m.dps_at is not None:
+            crossed_dps_at = _round(m.dps_at)
+            break
+    return {
+        "next_kind": next_kind,
+        "next_threshold": next_threshold,
+        "next_label": next_label,
+        "crossed_dps_at": crossed_dps_at,
+        "spike_verdict": spike_verdict(next_kind, next_threshold, band, item_state),
+    }
+
+
+def _cell_from_result(
+    result,
+    economy: Optional[dict] = None,
+    cooldown_window: Optional[dict] = None,
+    spike_timing: Optional[dict] = None,
+) -> dict:
     """Shape a MatchupResult into the persisted SLIM leaf dict (single source so
     compute_cell + generate_table never drift). ``net_swing`` > 0 = my champ
     favored; ``pct_my_removed`` is the fraction of MY effective HP the enemy
     combo removes. ``economy`` (HZ-A2) is the optional recall/back-timing block;
-    omitted when None. Slim v3 persists ONLY the reader-consumed fields - the
-    derived ``my_can_full_combo`` / ``manaless`` / ``sequence`` are dropped to
-    halve the full-roster NxN artifact (no consumer reads them)."""
+    omitted when None. v4 adds ``kill_threshold_met`` (the explicit all-in gate)
+    + the optional ``cooldown_window`` / ``spike_timing`` blocks. Slim leaf
+    persists ONLY reader-consumed fields - the derived ``my_can_full_combo`` /
+    ``manaless`` / ``sequence`` stay dropped."""
     cell = {
         "verdict": str(result.verdict),
         "net_swing": _round(result.net_swing),
         "pct_my_removed": _round(result.pct_a_removed),
         "pct_enemy_removed": _round(result.pct_b_removed),
+        # v4 all-in gate, surfaced explicitly so the ordinal invariant can pin
+        # it (matchup._classify all_in == pct_b_removed >= 1.0 AND a_can_full_combo
+        # AND pct_a_removed < 1.0; this names the kill-threshold half).
+        "kill_threshold_met": bool(
+            float(result.pct_b_removed) >= 1.0 and result.a_can_full_combo
+        ),
     }
     if economy is not None:
         cell["economy"] = economy
+    if cooldown_window is not None:
+        cell["cooldown_window"] = cooldown_window
+    if spike_timing is not None:
+        cell["spike_timing"] = spike_timing
     return cell
 
 
@@ -394,21 +685,33 @@ def compute_cell(
     cd_state: str,
     mode: str = "SR",
     item_ids: Sequence[str | int] = (),
+    item_state: str = "none",
 ) -> dict:
     """Compute ONE scenario cell via the DS matchup engine.
 
     Resolves the level from the band + the ``my`` action sequence from
     (mana, cd), then fires ``compute_matchup`` (my champ as A, enemy at full
-    resources). The returned dict is the persisted leaf shape.
+    resources). When ``item_state`` is past ``none`` and ``item_ids`` is not
+    supplied, the curated build-order ids for that item-state are resolved
+    (build_for_item_state) and threaded into BOTH sides (the enemy mirrors my
+    item-state - the existing _matchup symmetry rule). The returned dict is the
+    persisted v4 leaf shape (incl. the cooldown_window + spike_timing blocks).
     """
     level = level_for_band(band)
+    if not item_ids and item_state != "none":
+        item_ids = build_for_item_state(my_champion, item_state, mode)
     seq, manaless = derive_sequence(
         snapshot, my_champion, level, mana_state, cd_state,
         mode=mode, item_ids=item_ids,
     )
     result = _matchup(snapshot, my_champion, enemy, level, seq, cd_state, mode, item_ids)
     economy = economy_cell(band, mana_state, mode=mode, manaless=manaless)
-    return _cell_from_result(result, economy)
+    cw = cooldown_window_cell(
+        snapshot, my_champion, level, item_ids, cd_state, mode,
+        _enemy_cooldown_card(enemy),
+    )
+    spike = spike_timing_cell(my_champion, band, item_state, item_ids, mode)
+    return _cell_from_result(result, economy, cw, spike)
 
 
 def generate_table(
@@ -426,15 +729,45 @@ def generate_table(
     sequence is memoized across enemies (enemy does not change my rotation).
     """
     band_keys = list(bands) if bands is not None else list(GEN_BANDS)
-    seq_cache: dict[Tuple[str, int, str, str], Tuple[Tuple[str, ...], bool]] = {}
+    # Sequence + build-id + spike-block memo caches. The enemy CC card is
+    # level/build/mana/cd-invariant so it memoizes per enemy; the spike block is
+    # enemy/mana/cd-invariant so it memoizes per (my, band, item_state); the
+    # build ids memoize per (my, item_state). v3 keys are unchanged (the seq
+    # cache now also keys on item_state since the affordable prefix depends on
+    # the item-bonus mana pool).
+    seq_cache: dict[Tuple[str, int, str, str, str], Tuple[Tuple[str, ...], bool]] = {}
+    build_cache: dict[Tuple[str, str], Tuple[str, ...]] = {}
+    enemy_cd_cache: dict[str, object] = {}
+    spike_cache: dict[Tuple[str, str, str], dict] = {}
 
-    def _seq(champ: str, level: int, mana: str, cd: str) -> Tuple[Tuple[str, ...], bool]:
-        key = (champ, level, mana, cd)
+    def _ids(champ: str, item_state: str) -> Tuple[str, ...]:
+        key = (champ, item_state)
+        if key not in build_cache:
+            build_cache[key] = build_for_item_state(champ, item_state, mode)
+        return build_cache[key]
+
+    def _seq(champ: str, level: int, mana: str, cd: str, item_state: str
+             ) -> Tuple[Tuple[str, ...], bool]:
+        key = (champ, level, mana, cd, item_state)
         if key not in seq_cache:
             seq_cache[key] = derive_sequence(
-                snapshot, champ, level, mana, cd, mode=mode, item_ids=item_ids
+                snapshot, champ, level, mana, cd, mode=mode,
+                item_ids=_ids(champ, item_state),
             )
         return seq_cache[key]
+
+    def _enemy_card(enemy: str):
+        if enemy not in enemy_cd_cache:
+            enemy_cd_cache[enemy] = _enemy_cooldown_card(enemy)
+        return enemy_cd_cache[enemy]
+
+    def _spike(champ: str, band: str, item_state: str) -> dict:
+        key = (champ, band, item_state)
+        if key not in spike_cache:
+            spike_cache[key] = spike_timing_cell(
+                champ, band, item_state, _ids(champ, item_state), mode,
+            )
+        return spike_cache[key]
 
     scenarios: dict = {}
     skipped = 0
@@ -446,6 +779,7 @@ def generate_table(
             # drop the offending pair whole (a partial pair is worse than a
             # missing one; the reader fail-softs uncovered pairs) and continue.
             try:
+                card = _enemy_card(enemy)
                 per_band: dict = {}
                 for band in band_keys:
                     level = level_for_band(band)
@@ -453,14 +787,23 @@ def generate_table(
                     for mana in MANA_STATES:
                         per_cd: dict = {}
                         for cd in CD_STATES:
-                            seq, manaless = _seq(my, level, mana, cd)
-                            result = _matchup(
-                                snapshot, my, enemy, level, seq, cd, mode, item_ids
-                            )
-                            economy = economy_cell(
-                                band, mana, mode=mode, manaless=manaless,
-                            )
-                            per_cd[cd] = _cell_from_result(result, economy)
+                            per_item: dict = {}
+                            for istate in item_states_for_band(band):
+                                ids = _ids(my, istate)
+                                seq, manaless = _seq(my, level, mana, cd, istate)
+                                result = _matchup(
+                                    snapshot, my, enemy, level, seq, cd, mode, ids
+                                )
+                                economy = economy_cell(
+                                    band, mana, mode=mode, manaless=manaless,
+                                )
+                                cw = cooldown_window_cell(
+                                    snapshot, my, level, ids, cd, mode, card,
+                                )
+                                per_item[istate] = _cell_from_result(
+                                    result, economy, cw, _spike(my, band, istate),
+                                )
+                            per_cd[cd] = per_item
                         per_mana[mana] = per_cd
                     per_band[band] = per_mana
             except Exception as exc:  # noqa: BLE001 - one bad pair must not abort
@@ -478,11 +821,15 @@ def generate_table(
         "version": resolve_patch(),
         "generated_at": _now_iso(),
         "mode": str(mode).lower(),
-        "schema": "laning_scenarios/v3",
+        "schema": "laning_scenarios/v4",
         "dimensions": {
             "level_bands": {k: LEVEL_BANDS[k] for k in band_keys},
             "mana_states": list(MANA_STATES),
             "cd_states": list(CD_STATES),
+            "item_states": list(ITEM_STATES),
+            "item_states_by_band": {
+                k: list(item_states_for_band(k)) for k in band_keys
+            },
             "economy": {
                 "income_per_min": _lead.gold_income_per_min(mode),
                 "spike_ladder": _lead.spike_ladder(),
@@ -589,16 +936,34 @@ def lookup(
     band: str,
     mana_state: str,
     cd_state: str,
+    item_state: str = "none",
 ) -> dict:
     """Navigate a loaded payload to one scenario cell (``{}`` when any key is
     absent). Pure - operates on an already-loaded dict so it is trivially
-    testable + reusable by a future live consumer (HZ-C1)."""
+    testable + reusable by the live consumer (HZ-C1).
+
+    v4 adds the 6th ``item_state`` key with a DESCEND-ONLY fallback (mirroring
+    the reader's L16->L11 band fallback): when the requested item_state is
+    absent at the cd node but the node IS the v4 item-state dict, fall back to
+    the ``none`` cell. A v3 payload's cd node IS the leaf cell itself (it has
+    ``verdict``), so it is returned as-is - this is what keeps the v4 reader
+    backward-compatible with the committed v3 tables (spec 6.1)."""
     node: object = payload.get("scenarios") if isinstance(payload, dict) else None
     for step in (my_champion, enemy, band, mana_state, cd_state):
         if not isinstance(node, dict):
             return {}
         node = node.get(step)
-    return node if isinstance(node, dict) else {}
+    if not isinstance(node, dict):
+        return {}
+    # v3 compat: a v3 cd node is the leaf cell (carries "verdict"), not an
+    # item-state dict - return it unchanged so old tables still resolve.
+    if "verdict" in node:
+        return node
+    # v4: descend the item_state key, then fall back to the "none" cell.
+    cell = node.get(item_state)
+    if not isinstance(cell, dict) or "verdict" not in cell:
+        cell = node.get("none")
+    return cell if isinstance(cell, dict) else {}
 
 
 # --------------------------------------------------------------------------- #
@@ -613,12 +978,14 @@ def _parse_csv(value: str) -> list[str]:
 
 
 def _count_leaves(payload: dict) -> int:
+    # v4 leaf nesting: my -> enemy -> band -> mana -> cd -> item_state -> cell.
     total = 0
     for per_enemy in (payload.get("scenarios") or {}).values():
         for per_band in (per_enemy or {}).values():
             for per_mana in (per_band or {}).values():
                 for per_cd in (per_mana or {}).values():
-                    total += len(per_cd or {})
+                    for per_item in (per_cd or {}).values():
+                        total += len(per_item or {})
     return total
 
 
