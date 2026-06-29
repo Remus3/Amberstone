@@ -52,6 +52,7 @@ def log_precomputed_choices(
     level=None,
     item_count=None,
     cv_override: dict | None = None,
+    verdict_blocks: dict | None = None,
     path: Path | None = None,
     now_iso: str | None = None,
 ) -> dict | None:
@@ -134,6 +135,12 @@ def log_precomputed_choices(
             # Shadow-only: hz_shadow_report re-measures agreement WITH this
             # layer applied before any served flip (do-not-flip-blind).
             "cv_override": cv_override if isinstance(cv_override, dict) else None,
+            # v4 (Lane A) cooldown_window + spike_timing blocks for the resolved
+            # cell ({cooldown_window:{...}, spike_timing:{...}}) or None when the
+            # cell is uncovered / v3. Shadow-only: lets a future hz_shadow_report
+            # pass measure cooldown-window / spike-timing agreement (spec 7.4)
+            # before any served flip (do-not-flip-blind).
+            "verdict_blocks": verdict_blocks if isinstance(verdict_blocks, dict) else None,
         }
 
         target.parent.mkdir(parents=True, exist_ok=True)
