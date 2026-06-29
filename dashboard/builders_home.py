@@ -129,6 +129,10 @@ def _build_home_summary() -> dict:
     """
     from datetime import datetime, timedelta
     out = {"today": {}, "recent": [], "this_week": [], "services": []}
+    # Rank header is assembled up front so it survives the missing-DB early
+    # return below - a clean checkout / CI has no match_history.db, but the home
+    # payload must always carry a rank field (graceful-unranked when no LCU).
+    out["rank"] = _home_rank_identity(_get_lcu_for_rank())
     db_path = _APP_DIR / "data" / "match_history.db"
     conn = _ro_conn(db_path)
     if conn is None:
@@ -257,10 +261,6 @@ def _build_home_summary() -> dict:
     out["last_build"]   = _home_last_build()
     out["trends"]       = _home_trends_14d(db_path)
     out["streaks"]      = _home_streaks(db_path)
-    # RC 2.0 E9 rank-identity header. Local-LCU read (no Riot key); the
-    # operator plays mostly ARAM/Arena/event modes so this is frequently
-    # "Unranked" - a graceful placeholder, never a fabricated rank.
-    out["rank"]         = _home_rank_identity(_get_lcu_for_rank())
     # LIFT 3: last-20 W/L pip strip + recent-form WR for the hero, read
     # from rewind_history.db.matches.tracked_win (the clean single-account
     # historical win column). Reuses the History builder's helper so the
