@@ -20,6 +20,8 @@ import {
 } from '../lib/items_index.js';
 import { scorerUnit } from '../lib/scorer_units.js';
 import { installItemTooltip } from '../lib/overlay_tooltip.js';
+import { installItemRadial } from '../lib/overlay_item_radial.js';
+import { applyItemOverrides } from '../lib/item_overrides.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { classifyAction, escHtml } from '../lib/helpers.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
@@ -487,6 +489,14 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
 
   build.innerHTML = "";
 
+  // WP-D2: re-render hook for the right-click radial - clears the idempotency
+  // sig and repaints so an operator override (shift/defer/keep/silence) shows at
+  // once. Closed over the live render inputs (mirrors the META cycle handler).
+  const _bmReRender = () => {
+    build.dataset.amBuildSig = "";
+    _renderAmBuildBody(build, p, ctx, lc, ownedIds);
+  };
+
   // WP-B2: the horizontal 3-row build module replaces the old single vertical
   // picks strip. Row1 LIVE (iterative live plan, owned-aware via planStates),
   // Row2 META (static standard ordered build from /api/build-order), Row3
@@ -502,12 +512,16 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     if (picks.length) {
       const liveStrip = _bmStrip();
       let liveNext = false;
-      _bmPartitionOwned(picks.slice(0, 6), ownedSet).forEach((r) => {
+      // WP-D2: apply the operator's per-item overrides (shift/defer) to the live
+      // plan order BEFORE the owned-first partition, so a reorder survives the
+      // 4s rerank tick. _bmPartitionOwned is stable, so the unowned tail keeps
+      // the override order while owned items stay sorted-left.
+      _bmPartitionOwned(applyItemOverrides(picks.slice(0, 6)), ownedSet).forEach((r) => {
         const id = (r && (r.id != null ? r.id : r.item_id)) || "";
         const isNext = !_bmIsOwned(r, ownedSet) && !liveNext;
         if (isNext) liveNext = true;
         liveStrip.appendChild(
-          _dsIcon(r, ownedSet, planStates[String(id)] || "", { bm: true, next: isNext }));
+          _dsIcon(r, ownedSet, planStates[String(id)] || "", { bm: true, next: isNext, onOverride: _bmReRender }));
       });
       liveRow.appendChild(liveStrip);
     } else {
@@ -1856,6 +1870,10 @@ function _dsIcon(r, ownedSet, planState, opts) {
   wrap.appendChild(dlt);
   // WP-D1: hover tooltip (name + stats + passive from /api/dictionary/items).
   installItemTooltip(wrap, id, name);
+  // WP-D2: right-click radial (Build-Earlier/Later/Defer/Keep/Silence). Only the
+  // LIVE row passes opts.onOverride (the re-render hook), so the radial steers the
+  // adaptive plan, not the static META reference row.
+  if (opts.onOverride) installItemRadial(wrap, id, opts.onOverride);
   return wrap;
 }
 
