@@ -94,6 +94,44 @@ class PersistAndReaderTests(unittest.TestCase):
         )
         self.assertEqual(lsp.lookup({}, "Garen", "Darius", "L6", "full", "all_up"), {})
 
+    def test_lookup_v3_payload_back_compat(self) -> None:
+        # The v4 lookup reads a v3 payload (cd node IS the leaf, no item_state
+        # dict) unchanged - the property that keeps the committed v3 tables
+        # readable by the v4 reader (spec 6.1). _payload() is a v3 shape.
+        payload = self._payload()
+        cell = lsp.lookup(payload, "Garen", "Darius", "L6", "full", "all_up", "two_item")
+        self.assertEqual(cell["verdict"], "trade")
+
+    def _payload_v4(self) -> dict:
+        # A minimal v4 payload: cd node is an item-state dict with a none cell.
+        none_cell = {
+            "verdict": "even", "net_swing": 0.0, "pct_my_removed": 0.1,
+            "pct_enemy_removed": 0.1, "kill_threshold_met": False,
+        }
+        one_cell = {
+            "verdict": "trade", "net_swing": 0.2, "pct_my_removed": 0.1,
+            "pct_enemy_removed": 0.3, "kill_threshold_met": False,
+        }
+        return {
+            "version": "16.13.1", "generated_at": "2026-06-29T00:00:00Z",
+            "mode": "sr", "schema": "laning_scenarios/v4",
+            "scenarios": {"Garen": {"Darius": {"L11": {"full": {"all_up": {
+                "none": none_cell, "one_item": one_cell,
+            }}}}}},
+        }
+
+    def test_lookup_v4_item_state_navigates(self) -> None:
+        payload = self._payload_v4()
+        cell = lsp.lookup(payload, "Garen", "Darius", "L11", "full", "all_up", "one_item")
+        self.assertEqual(cell["verdict"], "trade")
+
+    def test_lookup_v4_missing_item_state_descends_to_none(self) -> None:
+        # Asking for two_item (absent) descends to the none cell, not {} (the
+        # new descend-only fallback mirroring the L16->L11 band fallback).
+        payload = self._payload_v4()
+        cell = lsp.lookup(payload, "Garen", "Darius", "L11", "full", "all_up", "two_item")
+        self.assertEqual(cell["verdict"], "even")
+
     def test_load_missing_db_failsoft(self) -> None:
         # A patch with no committed file must degrade to {} (never raise),
         # for every mode's per-mode table path (sr/aram/arena all shipped,
@@ -170,20 +208,39 @@ class EngineCharacterizationTests(unittest.TestCase):
             mode="SR", bands=["L6", "L11"],
         )
         self.assertEqual(payload["mode"], "sr")
-        self.assertEqual(payload["schema"], "laning_scenarios/v3")
+        self.assertEqual(payload["schema"], "laning_scenarios/v4")
         self.assertTrue(payload["version"])
+        # v4 dimensions advertise the item-state axis + per-band prune ladder.
+        dims = payload["dimensions"]
+        self.assertEqual(dims["item_states"], list(lsp.ITEM_STATES))
+        self.assertEqual(dims["item_states_by_band"]["L6"], ["none", "one_item"])
+        self.assertEqual(
+            dims["item_states_by_band"]["L11"], ["none", "one_item", "two_item"]
+        )
         scen = payload["scenarios"]
         leaves = 0
         for my, per_enemy in scen.items():
             for en, per_band in per_enemy.items():
                 for band, per_mana in per_band.items():
                     for mana, per_cd in per_mana.items():
-                        for cd, cell in per_cd.items():
-                            self.assertIn(cell["verdict"], lsp.VALID_VERDICTS)
-                            self.assertNotIn("sequence", cell)
-                            leaves += 1
-        # 2 champs x 2 enemies x 2 bands x 2 mana x 2 cd = 32 leaf cells.
-        self.assertEqual(leaves, 32)
+                        for cd, per_item in per_cd.items():
+                            # v4 item-state prune: L6 -> {none, one_item};
+                            # L11 -> {none, one_item, two_item}.
+                            self.assertEqual(
+                                set(per_item), set(lsp.item_states_for_band(band))
+                            )
+                            for istate, cell in per_item.items():
+                                self.assertIn(cell["verdict"], lsp.VALID_VERDICTS)
+                                self.assertNotIn("sequence", cell)
+                                # v4 blocks present on every leaf.
+                                self.assertIn("kill_threshold_met", cell)
+                                self.assertIsInstance(cell["kill_threshold_met"], bool)
+                                self.assertIn("cooldown_window", cell)
+                                self.assertIn("spike_timing", cell)
+                                leaves += 1
+        # 2 champs x 2 enemies x [L6: 2 mana x 2 cd x 2 item + L11: 2x2x3] =
+        # 2 x 2 x (8 + 12) = 80 leaf cells (band-pruned item-state).
+        self.assertEqual(leaves, 80)
         # ASCII-clean serialization.
         json.dumps(payload, ensure_ascii=True).encode("ascii")
 
@@ -199,7 +256,7 @@ class EngineCharacterizationTests(unittest.TestCase):
             text = out.read_text(encoding="utf-8")
         self.assertEqual(text.count("\n"), 1)
         self.assertNotIn(": ", text)
-        self.assertEqual(json.loads(text)["schema"], "laning_scenarios/v3")
+        self.assertEqual(json.loads(text)["schema"], "laning_scenarios/v4")
 
     def test_generate_table_fail_soft_skips_bad_pair(self) -> None:
         # A champ the engine cannot model must not abort a full-roster sweep;
