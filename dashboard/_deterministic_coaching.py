@@ -1010,8 +1010,9 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             return  # tft / brawl have no laning table; do not score vs SR
 
         from core import precomputed_laning_coach as plc  # lazy import
-        from core.laning_scenario_precompute import load_laning_scenarios
+        from core.laning_scenario_precompute import load_laning_scenarios, lookup
         from core.hz_choice_shadow import log_precomputed_choices
+        from core.archetype_picks import canonical_champion_id  # lazy
 
         level = gs.get("level")
         band = plc.band_for_level(level)
@@ -1022,8 +1023,11 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
         ult_up = None
         mana_state = plc.mana_state_for(mana_fraction)
         cd_state = plc.cd_state_for(ult_up)
-        items = gs.get("items")
-        item_count = len(items) if isinstance(items, list) else 0
+        # v4: the completed-legendary count drives BOTH the next-build-item
+        # index and the item-state lookup axis. Use the canonical
+        # _completed_item_count over the liveclient (the existing coarse proxy).
+        item_count = _completed_item_count(lc)
+        item_state = plc.item_state_for(item_count)
 
         payload = load_laning_scenarios(lower)
         enemy_comp = gs.get("enemy_comp") or []
@@ -1034,12 +1038,14 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
         choices: list = []
         covered = False
         cv = None
+        verdict_blocks = None
         if enemy:
             next_item = _next_build_item(champ, lower, item_count)
             cc = plc.precomputed_choices(
                 str(champ), enemy, level,
                 mana_fraction=mana_fraction, ult_up=ult_up,
                 mode=lower, payload=payload, next_item=next_item,
+                item_count=item_count,
             )
             choices = to_jsonable(cc)
             covered = bool(cc)
@@ -1052,11 +1058,28 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             base_verdict = plc.resolve_band(
                 str(champ), enemy, level,
                 mana_fraction=mana_fraction, ult_up=ult_up,
-                mode=lower, payload=payload,
+                mode=lower, payload=payload, item_count=item_count,
             )
             cv = resolve_cv_override(
                 enemy, _hp_fraction(coach, lc), base_verdict,
             )
+            # v4: pull the resolved cell's new verdict blocks for the shadow row
+            # (spec 7.4) so a future agreement pass can score cooldown-window /
+            # spike-timing. Shadow-only; the same band/mana/cd/item-state the
+            # reader resolved by. Fail-soft to None (uncovered / v3 cell).
+            cell = lookup(
+                payload, canonical_champion_id(str(champ)),
+                canonical_champion_id(enemy), band, mana_state, cd_state,
+                item_state,
+            )
+            if isinstance(cell, dict):
+                cw = cell.get("cooldown_window")
+                st = cell.get("spike_timing")
+                if isinstance(cw, dict) or isinstance(st, dict):
+                    verdict_blocks = {
+                        "cooldown_window": cw if isinstance(cw, dict) else None,
+                        "spike_timing": st if isinstance(st, dict) else None,
+                    }
 
         log_precomputed_choices(
             mk, str(champ), enemy,
@@ -1065,7 +1088,8 @@ def shadow_log_precomputed_choices(coach: dict, lc: dict | None, mode_key: str,
             native_action=_native_laning_action(coach),
             native_choices=to_jsonable(parse_choices(coach)),
             game_time_s=gs.get("game_time_s"),
-            level=level, item_count=item_count, cv_override=cv, path=path,
+            level=level, item_count=item_count, cv_override=cv,
+            verdict_blocks=verdict_blocks, path=path,
         )
     except Exception:  # noqa: BLE001
         return
