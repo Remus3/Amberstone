@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-06-29 (headless run 2026-06-29-02 + WP-C5: CI baseline fully restored + Lane A v4 + /api/build-plan route)
+
+Headless cycle (skill headless-upgrade), then a WP-C5 follow-on after the operator archived an
+accidental 2nd loop. Sole-writer across my commits (disjoint files; zero collisions with the loop).
+
+- **670 WP-C5 /api/build-plan route (merge `cedb78c2`).** NEW `dashboard/routes_build_plan.py` composes
+  ds-preview + build-order + `ReplanLoop.tick` -> the `{ok,live[],meta[],knobs,plan_meta}` contract; HTTP
+  `seed_fn` boundary (no in-process engine - split-brain); registered in `_dispatch.py`; active_match.js
+  Row1 wired. P1L4 guard WIDENED (situational is the on-demand planner brain, ZERO coach-tick callers) -
+  fixes the nightly red WP-C3 introduced. Tier-2, no ENGINE bump. Verifier 9/9 CONFIRM; backend gate 9941 passed.
+- **666-669 CI baseline RESTORE + Lane A v4.** 666 fixed the nightly COLLECTION crash (importorskip numpy +
+  win32-only hotkey skips) - the full Linux suite had NEVER completed. That unmasked 668's 5 pre-existing
+  failures (home-rank missing-DB / loop empty-CFG / overlay raw-hex) - all fixed. 667 = Lane A v4 (schema v4 +
+  cooldown_window + spike_timing + item-state axis; charter 4b; shadow-only, slice E full-roster regen + F
+  coach-flip GATED). 669 = a v4 test follow-up (test_laning_scenario_economy v3->v4, the import-sweep blind spot).
+- **NEXT:** Section C continues (the master-plan Section J tracker is the live WP map) - WP-D series (D3 reuses
+  replan.py for the per-item override store) + the B-series Row1 visual polish; Lane A slice E (full-roster v4
+  regen, isolated) + slice F (gated flip, do-not-flip-blind). **OWED:** live in-game overlay visual capture for
+  WP-C5 Row1 (not agent-reachable). Memory added: `feedback_schema_bump_grep_literal_value`.
+
+---
+
 # 2026-06-29 (Section C - WP-C4 owned-aware re-plan loop + sell/swap + hysteresis shipped; commit `51f3141d`)
 
 Scoped build session (ultracode workflow). Fourth + last build-brain MODULE before the C5 route wires it live.
@@ -22,28 +44,3 @@ Scoped build session (ultracode workflow). Filled the `situational_fit` 0.0 stub
 - **Built via ultracode workflow:** 3-agent divergent design panel -> synthesis-to-locked-spec -> RED agent -> GREEN agent -> 7 per-criterion adversarial verifiers + structural verifier (all CONFIRM, none fixture-shaped). **Orchestrator fresh ground-truth gate:** 54/0 (situational 35/0 + planner 19/0), py_compile + ruff + ASCII clean, zero banned literal, zero `agents.daemon_slayer` import.
 - **Tier-1:** no ENGINE bump, not Share-mirrored, no DS restart, NOT live-wired (WP-C5 `/api/build-plan` consumes it later). **Section J bookkeeping:** also corrected the stale C2 row OPEN -> DONE (`4f1d4126`; the WAKEUP-flagged loop drift - code was already merged item 663).
 - **NEXT Section C: WP-C4** (owned-aware re-plan loop + sell/swap + hysteresis; deps C2+C3 satisfied). Lane-A v4 remains a separate open spec (`docs/specs/LANE_A_SCENARIO_PRECOMPUTE_SPEC.md`).
-
----
-
-# 2026-06-29 (headless run 2026-06-29-01: shipped overlay-flash fix + WP-C2 build planner; Lane A reframed)
-
-Autonomous headless cycle (skill headless-upgrade). 2 verified code slices merged to main + CI-green, cost-sweep CLEAN, 1 forward spec. NO live-game work (gated - see below).
-
-- **662 overlay match-launch flash fix (merge `f99de71b`).** main.js show-before-ready -> `once("ready-to-show")` gate + pure `shouldShowOverlayNow` + a `.ovx-ready` renderer load-gate (distinct from `.ovx-hidden`). rc-shell 306/0 (+7, RED-first). Verifier CONFIRM. OWED: Electron redeploy (Ctrl+Shift+B) + live no-flash pixel capture (gated).
-- **663 WP-C2 build planner (merge `4f1d4126`).** NEW core/build_planner/{scoring,planner}.py - pure score_build (DPS READ from ds-preview seed = no split-brain, cohesion via C1 synergy_score) + beam search (width 5-8, depth 6) mirroring beam.py without importing it. 19/0, split-brain ast-guarded, no family literal, NOT live-wired. NEXT Section C: WP-C3 (the situational_fit 0.0 stub).
-- **cost-sweep CLEAN** - all 7 levers tight (caches/TTL/polls/log-suppress/haiku-floor/tasks/bundle-parity), no commit.
-- **Lane A REFRAMED (spec docs/specs/LANE_A_SCENARIO_PRECOMPUTE_SPEC.md):** the laning-verdict precompute is ALREADY SHIPPED (core/laning_scenario_precompute.py + patch-keyed artifacts + precomputed_laning_coach.py shadow reader) - NOT greenfield. Remaining = a bounded v4 EXTENSION: add cooldown-window + spike-timing verdicts (substrate exists - cooldown_watch/recharge_ledger/spike_markers, unwired) + an item-state axis. The coach-FLIP is GATED (shadow data-starved per LEDGER cycle 55, 0/0 comparable agreement; + no Live Client cooldown producer, ult_up hardcoded None at _deterministic_coaching.py:1019). NEXT cycle builds v4 from the spec.
-- **ORCHESTRATION LESSON:** session ran from a STALE worktree (016b3228, pre-C1); a non-isolated Plan agent specced vs old code. FF'd the worktree to main mid-run. Always confirm a non-isolated subagent's checkout == main.
-- **STILL OPERATOR-GATED:** the loopback regression (memory project_liveclient_loopback_regression) blocks E2 + ALL live-game verification; it is a Windows-level fix (WFP/Vanguard), NOT RC code.
-
----
-
-# 2026-06-29 (live-ops session: E2 attempt blown by a SYSTEM loopback regression + overlay-flash + GPU-crash diagnoses; ZERO code shipped)
-
-Operator played practice + ARAM Mayhem; ran the E2 live-flip pass + landed item 661 (below). Three diagnoses, no code change (all system-level or gated on a live game):
-
-- **E2 (3-game live pass) BLOWN.** RC-LiveFlipWatcher (now Running, durable logon trigger) never fired - its gate needs `liveclient.allPlayers`, empty during all 3 games. ROOT = a SYSTEM loopback regression (memory `project_liveclient_loopback_regression`): a connect to ANY closed loopback port refuses in ~2000ms instead of instant, so RC's 1s `:2999` self-read times out -> empty liveclient -> blind 10-player roster + dead watcher. **Survives a reboot.** Ruled out token / `:8889` threading / RC-restart / winsock-LSP (all clean); :2999 + :8889 serve allPlayers=10 in <20ms when hit directly with the token. NOT RC code - needs WFP-filter / Vanguard investigation, operator-gated (do NOT blind-reset networking headless). Core coach (game_reader path) unaffected.
-- **GPU DEVICE_HUNG crash (game 1, 21:57)** = a TDR storm (22 nvlddmkm events that evening). Prime cause = the **Parsec Virtual Display Adapter** (operator uninstalled it); driver 610.62 on the RTX 5070. Crash class gone after removal (0 severe 4101 since).
-- **Overlay "flash to max size at match launch"** diagnosed, not fixed: `rc-shell/src/main.js:980` shows `overlayWindow` via `showInactive()` on FIRST-match lazy-create BEFORE `ready-to-show`/first paint + no renderer visibility gate until `overlay_layout._applyPos` runs. Fix = `once("ready-to-show")` show-gate + a `.ovx-ready` CSS gate. Verification needs a live game (gated on the loopback fix).
-
-NEXT: (1) resolve the loopback regression (Windows/operator-level) then retry E2 + verify the overlay-flash fix; (2) headless RC CODE work (Section C WP-C2 + ROADMAP) proceeds independently - loopback does not block code.
