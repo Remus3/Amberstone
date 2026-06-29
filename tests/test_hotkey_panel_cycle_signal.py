@@ -14,9 +14,15 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
+
+# tools.hotkey_listener binds user32 via ctypes.WinDLL at import (Windows-only)
+if sys.platform != "win32":
+    pytest.skip("Windows-only Win32 hotkey listener", allow_module_level=True)
 
 import tools.hotkey_listener as hk  # noqa: E402
 
