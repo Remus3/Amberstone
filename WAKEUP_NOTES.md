@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-06-29 (Section C - WP-C3 live counter-build / situational_fit shipped; commit `64b7c634`)
+
+Scoped build session (ultracode workflow). Filled the `situational_fit` 0.0 stub left by WP-C2.
+
+- **664 WP-C3 situational counter-build (commit `64b7c634`).** NEW `core/build_planner/situational.py` (390 lines) - pure `situational_fit(build_ids, enemy_profile, ally_state, *, stage) -> [0,1)` over 7 criteria: C1 resist-vs-damage-split, C2 antiheal (ally de-dup), C3 fed-override (additive -> widens resist margin), C4 HP+resist vs pen, C5 pen TYPE from kill-target armor/MR not team avg, C6 tenacity vs CC, C7 `reanchor_plan` operator-deviation. `classify_item` patch-stable (flats + tags + curated NAME rosters on resolved name; both id keyspaces). `build_enemy_profile` is the ONLY impure helper, NEVER in the score_build path. `scoring.score_build` gains `enemy_profile=`/`ally_state=` (lazy import); `enemy_profile=None` stays 0.0 (stub-equivalent, existing test unchanged). Added to planner-test `_SOURCES` (split-brain ast guard + family-literal ban).
+- **Built via ultracode workflow:** 3-agent divergent design panel -> synthesis-to-locked-spec -> RED agent -> GREEN agent -> 7 per-criterion adversarial verifiers + structural verifier (all CONFIRM, none fixture-shaped). **Orchestrator fresh ground-truth gate:** 54/0 (situational 35/0 + planner 19/0), py_compile + ruff + ASCII clean, zero banned literal, zero `agents.daemon_slayer` import.
+- **Tier-1:** no ENGINE bump, not Share-mirrored, no DS restart, NOT live-wired (WP-C5 `/api/build-plan` consumes it later). **Section J bookkeeping:** also corrected the stale C2 row OPEN -> DONE (`4f1d4126`; the WAKEUP-flagged loop drift - code was already merged item 663).
+- **NEXT Section C: WP-C4** (owned-aware re-plan loop + sell/swap + hysteresis; deps C2+C3 satisfied). Lane-A v4 remains a separate open spec (`docs/specs/LANE_A_SCENARIO_PRECOMPUTE_SPEC.md`).
+
+---
+
 # 2026-06-29 (headless run 2026-06-29-01: shipped overlay-flash fix + WP-C2 build planner; Lane A reframed)
 
 Autonomous headless cycle (skill headless-upgrade). 2 verified code slices merged to main + CI-green, cost-sweep CLEAN, 1 forward spec. NO live-game work (gated - see below).
