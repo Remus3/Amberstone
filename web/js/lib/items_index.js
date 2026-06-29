@@ -14,6 +14,10 @@ export const ITEMS = { ready: false, version: DDRAGON_FALLBACK_VERSION, byName: 
 export const ITEM_COSTS = { ready: false, byId: {} };
 // WP-B3: recipe `from`-graph (DDragon) for partial-component pips/rings.
 export const ITEM_RECIPES = { ready: false, byId: {} };
+// WP-D1: per-item tooltip source (name + raw DDragon `description`) for the
+// build-module hover tip. Populated off the SAME /api/dictionary/items fetch
+// as ITEM_RECIPES; parsed lazily on hover via parseItemTooltip below.
+export const ITEM_DETAILS = { ready: false, byId: {} };
 export const CHAMPS = { ready: false, version: DDRAGON_FALLBACK_VERSION, byName: {}, byId: {} };
 export const SPELLS = { ready: false, byName: {} };
 
@@ -157,8 +161,15 @@ export function _resolveSpell(name) {
         from: Array.isArray(it.from) ? it.from.map(String) : [],
         gold: (it.gold && it.gold.total) || 0,
       };
+      // WP-D1: stash the name + raw description for the hover tooltip (parsed
+      // lazily on hover by parseItemTooltip, so the upfront pass stays cheap).
+      ITEM_DETAILS.byId[String(id)] = {
+        name: it.name || "",
+        description: it.description || "",
+      };
     }
     ITEM_RECIPES.ready = true;
+    ITEM_DETAILS.ready = true;
     document.dispatchEvent(new CustomEvent("rc:recipes-ready"));
   } catch (_) {}
 })();
@@ -176,6 +187,35 @@ export function componentProgress(targetId, ownedSet) {
   let owned = 0;
   from.forEach((c) => { if (ownedSet && ownedSet.has(String(c))) owned += 1; });
   return { owned, total: from.length };
+}
+
+// WP-D1: parse a DDragon item detail ({name, description}) into the three
+// tooltip channels {name, stats:[lines], passive}. The `description` is an HTML
+// blob like `<mainText><stats>55 Attack Damage<br>...</stats><br><br>` +
+// `<passive>Spellblade</passive><br>After using an Ability ...</mainText>`.
+// Pure + fail-soft: a blank/odd description yields empty stats + passive, so a
+// base item (or an id with no dict entry) still shows its name. The passive
+// channel carries any active prose too - it is the item's effect text.
+export function parseItemTooltip(detail) {
+  const d = detail || {};
+  const name = d.name || "";
+  const desc = String(d.description || "");
+  const strip = (s) => s
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+  const lines = (s) => strip(s).split("\n").map((x) => x.trim()).filter(Boolean);
+  let stats = [];
+  const sm = desc.match(/<stats>([\s\S]*?)<\/stats>/i);
+  if (sm) stats = lines(sm[1]);
+  // Effect prose = the body with the stats span removed (or the whole body when
+  // there is no stats span).
+  const rest = sm ? desc.replace(sm[0], "") : desc;
+  const passive = lines(rest).join("\n");
+  return { name, stats, passive };
 }
 
 // Cache-bust query defeats aggressive PWA/SW caching (2026-04-26 rebuild).

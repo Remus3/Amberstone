@@ -811,7 +811,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | C3 live counter-build | W3 | C2 | T1 | DONE 2026-06-29 (64b7c634) |
 | C4 owned re-plan + hysteresis | W3 | C2, C3 | T1 | DONE 2026-06-29 (51f3141d) |
 | C5 /api/build-plan contract | W2/W4 | C2 | T2 | DONE 2026-06-29 (0e44a8fc; branch C5 commit, tracker drift corrected) |
-| D1 item tooltip | W5 | B2 | T1 | OPEN |
+| D1 item tooltip | W5 | B2 | T1 | DONE |
 | D2 right-click radial | W5 | B2, D3 | T1 | OPEN |
 | D3 override state + reset | W5 | C4, D2 | T1 | OPEN |
 | E5 doc remediation sweep | W0 | - | T0 | OPEN |

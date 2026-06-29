@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-29 (Section B - WP-B3 live/meta row item semantics shipped; commit `be48d3f7`)
+
+Scoped build session, "continue" after B2. Spec-first (a grounded Plan subagent) -> TDD -> inline build -> UI-audit ritual. Adds the item semantics onto the B2 scaffold.
+
+- **667 WP-B3 (commit `be48d3f7`).** THREE behaviors on the bm rows: (1) owned-GREYING (`.bm-owned`: inline opacity 0.4 + grayscale + a `String.fromCharCode(0x2713)` check glyph + sort-left via `_bmPartitionOwned`; WCAG 1.4.1 redundant) replacing the OWNED badge, first non-owned = `.bm-next`; (2) partial-component `.bm-pip` + `.bm-ring` from a NEW `ITEM_RECIPES`/`componentProgress` in `items_index.js` reading the `/api/dictionary/items` `from`-graph; (3) Row2 right-click cycles archetype builds (`_cycleMeta`/`_BM_META_RING` mirrors `core/archetype_picks.py` ARCHETYPES; `_maybeRefreshBuildOrder` re-POSTs `/api/build-order` with `archetype`; `contextmenu`+`stopPropagation`+`data-rc-zone`).
+- **Spec-first + verify:** the Plan subagent resolved the design forks (alt-meta = build-order archetype variants NOT build-plan meta[]; greying via a `_dsIcon opts.bm` flag; recipe via `/api/dictionary/items`); I re-verified every load-bearing claim before building. Blast radius contained: `_dsIcon` only has the 2 bm callers; `_defIcon` (THREATS/DEFENSE) keeps its OWNED badge (guarded). ds_knobs reuse untouched.
+- **UI-audit ritual: REAL Playwright render, all 6 behaviors fired live, 5/5 PASS, 2 MUST-FIX fixed in-slice** - (1) the `.bm-owned` stylesheet opacity was DEAD (inline `opacity:1` won the cascade) -> set inline 0.4; (2) `.bm-next`/`.bm-ring` were Hextech-gold (--accent) colliding with the +Ndps captions -> cyan `#6cf` (the in-file NEXT color).
+- **Live-verified the meta-cycle is real:** MF carry/tank/mage return distinct builds (carry -> Runaan's; MF default resolves "assassin", so cycling to carry reaches the better build). 185 tests green across two Tier-1 sweeps; ASCII-clean (added lines; the pre-existing arrow/box-drawing chars in items_index.js are not mine).
+- **OWED:** a live in-game capture of the greying/pip/ring + the meta right-click coexistence with the real overlay hide-menu (gated on the loopback regression; the stopPropagation guard is code-verified).
+- **NEXT:** B4 (the MF SR fixture oracle; deps B2+C2) or the D-series (D1/D2/D3, all unblocked by B2).
+
+---
+
 # 2026-06-29 (Section B - WP-B2 horizontal 3-row build module scaffold shipped; commit `adedacde`)
 
 Scoped build session. Operator picked B2 via a framed scope question - it is the gate for the entire D-series. First Section B panel slice; UNBLOCKS D1/D2/D3 + B3/B4.
