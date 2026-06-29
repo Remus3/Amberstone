@@ -21,7 +21,9 @@ Two classes of test:
     headline reality: the per-tick coach loop feeds DS a FIXED level-only
     heuristic curve, NOT the real enemy build.
   * BUG - ``compute_target_stats_from_items`` (the live-items path, used
-    by ``/api/ds-preview``) omits the champion base resist-by-level
+    by the ON-DEMAND ``/api/ds-preview`` route + the on-demand
+    build-planner brain, NEVER the coach tick) omits the champion base
+    resist-by-level
     entirely; its docstring's "engine adds base separately / additive
     delta" rationale is contradicted by the engine, which treats
     ``target_armor`` as the absolute target armor. Fixed test-first in
@@ -177,10 +179,18 @@ class TestCoachFeedsFixedCurveNotEnemyBuild:
 
     def test_live_items_path_only_wired_to_ds_preview(self):
         """The s170 live-items remedy (core.enemy_aware_stats) is wired
-        ONLY into the /api/ds-preview route, never the per-tick coach
+        ONLY into the ON-DEMAND routes / planner, NEVER the per-tick coach
         loop. This is THE key deliverable: in-game, the coach's DS armor
         / MR target does not move when the enemy team buys defensive
-        items - only champion level moves it."""
+        items - only champion level moves it.
+
+        Two production callers, both ON-DEMAND (request-scoped, not the
+        coach tick): the /api/ds-preview route (dashboard/routes_state.py)
+        and the WP-C3 counter-build planner brain
+        (core/build_planner/situational.build_enemy_profile), which is
+        reached only via the on-demand /api/build-plan route - same
+        category as the ds-preview route, NOT coach_integration/_coach.py,
+        coaches/*_coach.py, or the _state_builder tick (verified WP-C5)."""
         needle = "compute_target_stats" + "_from_items("  # avoid self-match
         skip_names = {"enemy_aware_stats.py", Path(__file__).name}
         callers = []
@@ -198,8 +208,13 @@ class TestCoachFeedsFixedCurveNotEnemyBuild:
             txt = p.read_text(encoding="utf-8", errors="ignore")
             if needle in txt:
                 callers.append(p.relative_to(_ROOT).as_posix())
-        # Exactly one production caller, and it is the dashboard route.
-        assert callers == ["dashboard/routes_state.py"], callers
+        # Exactly the two ON-DEMAND production callers (sorted): the
+        # ds-preview route + the on-demand build-planner brain. NEVER the
+        # coach tick.
+        assert sorted(callers) == [
+            "core/build_planner/situational.py",
+            "dashboard/routes_state.py",
+        ], callers
 
 
 # ===========================================================================
