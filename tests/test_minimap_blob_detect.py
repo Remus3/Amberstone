@@ -1,8 +1,9 @@
 """Tests for core.minimap_blob_detect - pure-numpy team-color blob detection on
 a minimap crop (item 567 slice 2). Synthetic fixtures only (deterministic, no
 live frame needed) so they run on a clean checkout / CI."""
-import numpy as np
 import pytest
+
+np = pytest.importorskip("numpy")
 
 from core.minimap_blob_detect import crop_minimap, detect_team_dots
 
