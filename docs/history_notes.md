@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-29 (Section D - WP-D2 build-module right-click radial shipped)
+
+Scoped build session, "continue" after D1. The interaction sibling of D1 on the same icons. Grounded the design live (champ_select singleton popup + the ACTIVE hide-menu + _cycleMeta coexistence) -> TDD red -> inline build -> node semantics probe -> REAL Playwright UI-audit (caught + fixed a cardinal-mapping MUST-FIX) -> Tier-1 sweep.
+
+- **671 WP-D2 (LEDGER 671; renumber at landing).** Right-click a LIVE build icon -> a 5-wedge radial (N=Earlier, E=Later, S=Defer, W=Keep, center=Silence) whose actions write a per-item override store; the LIVE row re-renders through the store so the reorder survives the 4s rerank. **NEW `web/js/lib/item_overrides.js`** - in-memory `ITEM_OVERRIDES` store + setters (`buildEarlier`/`buildLater`/`deferItem`/`keepItem`/`silenceItem`) + `clearItemOverrides` (D3 reset + game-end) + pure `applyItemOverrides(rows)` (effective index = i + shift + a half-step directional nudge so one Build-Earlier strictly overtakes its neighbor; deferred sinks last; stable on ties). **NEW `web/js/lib/overlay_item_radial.js`** - singleton ring on `<html>` (champ_select.js:303 zoom trick), 5 `data-action` wedges, render-then-measure cursor-centered + viewport-clamped, delegated click -> store setter + re-render hook + close, document-click outside-dismiss; `installItemRadial` contextmenu `preventDefault`+`stopPropagation` so it neither hides the overlay (ACTIVE `_installHideMenu`) nor cycles META (`_cycleMeta`). **EDIT `active_match.js`** - import + `_bmReRender` closure + `applyItemOverrides(picks.slice(0,6))` before the owned-first partition + `_dsIcon` installs the radial only on the LIVE row (via `opts.onOverride`).
+- **Proven:** node probe confirmed all reorder semantics (early overtakes one, early x2 jumps two, later drops one, defer sinks last, clear resets). The grep test mirrors D1 (15 RED -> GREEN; 1 test-quality fix - wedge `data-action` is set dynamically).
+- **UI-audit (REAL Playwright):** right-clicked the 3rd LIVE icon -> radial opened with all 5 wedges, in-viewport; Build-Earlier moved 3036 slot3->slot2 (overtook 3046, a permutation), radial closed, 0 JS errors; screenshot (gitignored). 5/5 phases PASS. **MUST-FIX in-slice:** first cut had Later=S/Defer=W/Keep=E - realigned to the spec (E=Later, S=Defer, W=Keep) + added an elevation shadow.
+- **Verification (fresh):** D2 15/15; Tier-1 349 passed; `node --check` clean on all 3 modules; both new files ASCII-clean. **Tier-1** - no ENGINE bump, NOT Share-mirrored, no DS restart. Section J: D2 OPEN -> DONE (UI + store + client reorder).
+- **Overlay-zone follow-up (LEDGER 672, operator: "the radial dial should be in the ingame overlay as well").** The rc-shell overlay is click-through except `[data-rc-zone]` regions (clickthrough_zones.js ZONE_SELECTOR). Added `data-rc-zone` to the LIVE strip (so the right-click is captured in PASSIVE) + the radial element (so wedge clicks land once open). Playwright-verified both render the attribute; the Electron flip is the proven settings-strip/knobs mechanism. D2 18/18, Tier-1 352.
+- **NEXT = D3** (deps C4 + D2, now unblocked): server replan (`replan.py`) honoring pins/shifts as beam constraints + Defer-Once re-entry timing + silence-suppression + per-match clear-on-game-end + the "reset item status" settings control (overlay_ds_controls.js) + an action-log line. OWED: live in-game radial capture (loopback-gated).
+
+---
+
 # 2026-06-29 (Per-champion kit-synergy model for all 173 champions shipped; work commit `6c787536`)
 
 Operator directive after B4: "that same deterministic scoring needs to be done per champion, for all champions." Probed feasibility -> framed scope question -> operator chose the TRUE per-champion model (not a coverage-only guard) -> built + verified inline (tight tuning loop) with a fresh-green gate.
