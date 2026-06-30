@@ -36,13 +36,15 @@
 // dashboard. Pure ESM, ASCII only.
 
 // -- tunables ----------------------------------------------------------
-// DEBUG (2026-06-29, TEMPORARY): the ZOI shading has never been visible in the
-// live overlay. When true, renderMinimapZoi strokes a bright magenta border
-// around the ZOI canvas after the normal paint - a ground-truth probe: if the
-// operator sees a magenta box ON the minimap, the canvas is positioned + painting
-// (so the bubbles are just too faint / normZoi is dropping them); if not, the
-// canvas is not sized / visible / reached. REMOVE once the cause is found.
-const DEBUG_ZOI = true;
+// DEBUG (2026-06-29): the ZOI shading has never been visible in the live overlay.
+// The data path is now fixed (the dedicated minimap poller in main.js feeds valid
+// zoi to renderMinimapZoi), but the shading still does not paint - so the cause is
+// render-side, not data. Flip this to true to stroke a bright magenta border +
+// fill around the ZOI canvas after the normal paint: a ground-truth probe for the
+// NEXT session - if the operator sees a magenta box ON the minimap, the canvas is
+// positioned + painting (bubbles just too faint / normZoi dropping them); if NOT,
+// the canvas is not sized / visible / reached. Left OFF so no debug box ships.
+const DEBUG_ZOI = false;
 const MAX_ALPHA = 0.25; // hard ceiling on ANY fill alpha (minimap readability)
 const ALLY_TINT_MAX = 0.1; // the ally-side flood tint - fainter than the bubbles
 const EMA_ALPHA = 0.35; // low-pass coefficient (~1s settle at 2Hz)
