@@ -226,6 +226,137 @@ class PollerPilotTests(unittest.TestCase):
         self.assertIn("Authorization", seen["headers"])
 
 
+class LcuClientPoolPilotTests(unittest.TestCase):
+    """lcu.lcu_client.LcuClient._request pilot (E7, operator frozen-grant
+    2026-06-30): default-OFF uses urlopen byte-for-byte; RC_LCU_POOL=1
+    routes the every-tick auto-accept path through the shared pool. Because
+    _request returns {} for an empty body and None on error (and callers
+    like _maybe_apply_runes treat any dict as a valid session), the pooled
+    path preserves that contract: a non-2xx pooled response returns None
+    (mirrors urlopen HTTPError -> None) and a fail-soft pool None falls
+    through to the per-call urlopen read."""
+
+    def _stub(self):
+        from lcu.lcu_client import LcuClient
+        obj = LcuClient.__new__(LcuClient)
+        obj._port = 5000
+        obj._auth = "QUJD"
+        obj._ssl = None
+        return obj
+
+    def test_pool_off_uses_urlopen(self):
+        os.environ.pop("RC_LCU_POOL", None)
+        self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
+        import lcu.lcu_client as cmod
+
+        calls = []
+
+        class _R:
+            def read(self):
+                return b'{"via": "urlopen"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(req, context=None, timeout=None):
+            calls.append(req.full_url)
+            return _R()
+
+        orig = cmod.urllib.request.urlopen
+        cmod.urllib.request.urlopen = fake_urlopen
+        self.addCleanup(lambda: setattr(cmod.urllib.request, "urlopen", orig))
+        out = self._stub()._request("GET", "/x")
+        self.assertEqual(out, {"via": "urlopen"})
+        self.assertEqual(len(calls), 1)
+
+    def test_pool_on_routes_through_pool(self):
+        os.environ["RC_LCU_POOL"] = "1"
+        self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
+        seen = {}
+
+        class _P:
+            def request(self, host, port, method, path, headers=None, body=None):
+                seen.update(host=host, port=port, method=method,
+                            path=path, headers=headers, body=body)
+                return (200, b'{"via": "pool"}')
+
+        orig = lcu_pool.get_shared_pool
+        lcu_pool.get_shared_pool = lambda: _P()
+        self.addCleanup(lambda: setattr(lcu_pool, "get_shared_pool", orig))
+        out = self._stub()._request("GET", "/lol-champ-select/v1/session")
+        self.assertEqual(out, {"via": "pool"})
+        self.assertEqual(seen["path"], "/lol-champ-select/v1/session")
+        self.assertEqual(seen["method"], "GET")
+        self.assertIn("Authorization", seen["headers"])
+
+    def test_pool_on_post_passes_json_body(self):
+        os.environ["RC_LCU_POOL"] = "1"
+        self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
+        seen = {}
+
+        class _P:
+            def request(self, host, port, method, path, headers=None, body=None):
+                seen.update(method=method, body=body)
+                return (200, b"")  # empty body -> {} per the contract
+
+        orig = lcu_pool.get_shared_pool
+        lcu_pool.get_shared_pool = lambda: _P()
+        self.addCleanup(lambda: setattr(lcu_pool, "get_shared_pool", orig))
+        out = self._stub()._request("POST", "/x", {"code": "abc"})
+        self.assertEqual(out, {})  # empty body decodes to {}
+        self.assertEqual(seen["method"], "POST")
+        self.assertEqual(seen["body"], b'{"code": "abc"}')
+
+    def test_pool_non_2xx_returns_none(self):
+        os.environ["RC_LCU_POOL"] = "1"
+        self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
+
+        class _P:
+            def request(self, *a, **k):
+                return (404, b'{"errorCode": "RPC_ERROR"}')
+
+        orig = lcu_pool.get_shared_pool
+        lcu_pool.get_shared_pool = lambda: _P()
+        self.addCleanup(lambda: setattr(lcu_pool, "get_shared_pool", orig))
+        # A 404 error body must NOT leak as a dict to _maybe_apply_runes.
+        out = self._stub()._request("GET", "/lol-champ-select/v1/session")
+        self.assertIsNone(out)
+
+    def test_pool_fail_soft_none_falls_through_to_urlopen(self):
+        os.environ["RC_LCU_POOL"] = "1"
+        self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
+        import lcu.lcu_client as cmod
+
+        class _P:
+            def request(self, *a, **k):
+                return None  # connection-level fail-soft
+
+        class _R:
+            def read(self):
+                return b'{"via": "urlopen_fallback"}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(req, context=None, timeout=None):
+            return _R()
+
+        orig_pool = lcu_pool.get_shared_pool
+        lcu_pool.get_shared_pool = lambda: _P()
+        self.addCleanup(lambda: setattr(lcu_pool, "get_shared_pool", orig_pool))
+        orig_uo = cmod.urllib.request.urlopen
+        cmod.urllib.request.urlopen = fake_urlopen
+        self.addCleanup(lambda: setattr(cmod.urllib.request, "urlopen", orig_uo))
+        out = self._stub()._request("GET", "/x")
+        self.assertEqual(out, {"via": "urlopen_fallback"})
+
+
 class RelaySelfReadFloorTests(unittest.TestCase):
     """L8 regression: the :2999 direct self-read throttle must never drop
     below the 1.5s hard floor documented in the port-safety audit."""
