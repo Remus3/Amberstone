@@ -92,6 +92,23 @@ def test_file_task_endpoint_frozen_file_gates(live_supervisor) -> None:
     assert data["status"] == "needs_explicit_approval"
     assert "main.py" in (data.get("frozen_file_hits") or [])
 
+    # Hermeticity (WP-F5-H02): a frozen-gate task lands in NEEDS_APPROVAL
+    # which has no automatic terminal transition - left filed it leaks
+    # into the live queue forever (1567 such orphans accumulated before
+    # this cleanup landed). Dismiss it so the test leaves no residue.
+    tid = data.get("id")
+    if tid:
+        dismiss = urllib.request.Request(
+            f"http://127.0.0.1:8890/api/task/{tid}/dismiss",
+            data=b"{}",
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(dismiss, timeout=3).close()
+        except urllib.error.HTTPError:
+            pass  # best-effort cleanup; the gate-limbo reaper is the backstop
+
 
 # -- ops/_scheduler_client.py fallback path -------------------------
 
