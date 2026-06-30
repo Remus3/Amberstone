@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-30 (ZOI render bug SOLVED + asset-stamp trap + drag fix + overlay panel triage)
+
+Continued the NEXT-session ZOI task. Long live in-game co-QA with the operator (SR ranked + ARAM, many overlay hot-reloads). Each web/js|css edit hot-reloads the overlay; verified live via the operator + Legion vision frames (`:8889/latest-frame`, X-RC-Token from `config/vision_token.txt`).
+
+- **ZOI shading SOLVED (`8f149677` fix + `4d64e2d4` alpha).** Root cause was NOT data/sizing/paint - the `#am-zoi-canvas` was rendering at computed **opacity 0** in the live Electron overlay, so the fill drew correctly but was fully transparent. Proven with an on-canvas magenta probe + an on-screen numeric readout (op=0; forcing opacity=1 made it appear). No CSS/JS rule sets it (Chromium quirk for an absolute child inside the position:fixed + zoomed `#am-mmrect`). FIX: `canvas.style.opacity="1"` + a px display-size pin in `renderMinimapZoi`. The prior session's `setupMinimapPoller` was necessary-not-sufficient. Operator-confirmed visible; alpha was "very very faint" so MAX_ALPHA 0.25->0.55 + OFFSCREEN_CORE_ALPHA 0.55->0.85 - **tunable, fine-tune live next session.** DEBUG_ZOI OFF.
+- **asset-stamp trap SOLVED (`6c355c34`) - root cause of the whole "fix never reaches the overlay" / electron_overlay_only saga.** `/api/asset-stamp` (`dashboard/routes_state.py`) only stat'd index.html/dashboard.css/main.js, never `js/panels/*` - so per-panel edits never bumped the stamp -> the overlay hot-reload never fired -> stale panel JS until a manual rc-shell relaunch. Now mirrors `compute_asset_hash`'s fileset (panels+lib+overlay.css). The in-game overlay DOES hot-reload now. (Cache-Control is already no-store, so a reload fetches fresh.)
+- **Panel drag fling/unretrievable SOLVED (`af2b9ae0`).** `overlay_layout.js`: the bottom-corner snap fired for EVERY widget dropped below mid-screen (added for tall BUILD) + no on-screen clamp -> panels flung to the bottom / off-screen near the minimap. Now snap keys off a per-widget `tall` flag (only w-build); new pure `_clampXY` (MIN_VISIBLE=48) keeps every widget + the launcher grabbable. node tests added.
+- **Overlay panel triage (`4d64e2d4` + `cfb203e1` doc).** Build OWNED text row removed (visual-only, icon badge stays) - LIVE pending confirm. macro lead (`#rn-lead`) un-shed from combat (ARAM constant-fight hid it ~always) - LIVE pending confirm. threat/CD already hidden in saved layout; ward cue = operator hide via launcher; spike cue not broken (level-gated L6/11/16).
+- **BACKLOG queued (`cab3504a`):** mode-specific overlay settings (SR/ARAM) + out-of-game stats-panel ARAM mode-selector (auto-select in ARAM).
+- **OPEN for next session (all overlay-render, want live verification):** (1) **a/b choices (`#rn-choices`)** - has live `coach.choices` data, renderer runs (main.js:1376), NOT combat-shed, yet absent - the one genuine unknown, needs live overlay DOM inspection. (2) **champ-select lane defaults to MID** - `_csvResolveRole` (champ_select.js:3898) mis-resolves the assigned position; capture live `lcu.champ_select` (local_cell + my_team cellId/assignedPosition) at a draft to root-cause, then fix + test. (3) **champ-select flicker** - `renderChampSelectView` (champ_select.js:675) rebuilds innerHTML every tick; add an entry sig-guard. (4) verify-live the ZOI 0.55 alpha + build-OWNED removal + macro-lead un-shed. Operator: resume the headless loop next session. Tracker: `docs/OVERLAY_QA_2026-06-29.md`.
+
+---
+
 # 2026-06-29 (overlay live-QA: minimap aligned + 9 in-game overlay fixes; ZOI still dark)
 
 Started with WP-F5-M01 then turned into a long live in-game overlay QA pass with the operator (Practice Tool SR -> ARAM), 18 commits. Each web/js|css edit hot-reloads the overlay (4s ui-version poller), so fixes were verified live.
