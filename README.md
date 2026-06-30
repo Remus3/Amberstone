@@ -1,5 +1,7 @@
 # Riot Commander
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/Remus3/riot-commander?utm_source=badge)
+
 A live coaching companion for League of Legends and Teamfight Tactics. RC reads the game's local data feed, watches the screen, and shows a second-screen dashboard with real-time advice - what to build next, when to fight, who to ban during the picking phase before a match.
 
 Personal project. Private repo. Not packaged for general use.
