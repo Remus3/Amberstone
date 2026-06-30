@@ -408,7 +408,7 @@ stale-engine-header hygiene. Each is a work package or explicitly deferred with 
 
 | ID | Item | Source | Disposition |
 |---|---|---|---|
-| F1-01 | Overlay redesign live-deploy confirm (Ctrl+Shift+B in-game) | ROADMAP:13 | GATED live deploy - verify at end of each overlay wave |
+| F1-01 | Overlay redesign live-deploy confirm (Ctrl+Shift+B in-game) | ROADMAP:13 | LIVE-CONFIRMED 2026-06-29 (Practice Tool SR, Caitlyn): :8889 self_grab frame shows redesigned overlay rendering in-game - BUILD LIVE/META panel, stats YOU-vs-AVG table, coach card, enemy summs panel - all consistent with /api/state liveclient + coach (action/objective/stats match). Re-verify each overlay wave |
 | F1-02 | Manual ward tracker overlay panel (optional fold into CD ledger) | ROADMAP:13 | DEFER - decide after Section A ships (one-panel-vs-two) |
 | F1-03 | In-game build widget on overlay | ROADMAP:14 | RESOLVED-BY Section B |
 | F1-04 | L4 capability-gap live SR validation (`RC_CAPGAP_SURFACE=1`) | ROADMAP:16 | GATED live SR game |
