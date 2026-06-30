@@ -47,6 +47,10 @@
 const DEBUG_ZOI = false;
 const MAX_ALPHA = 0.55; // hard ceiling on ANY fill alpha (operator 2026-06-30: 0.25 was invisible and 0.42 still "very very faint" on the live minimap once the opacity bug was fixed; raised to 0.55 - tunable, fine-tune live next session if too strong/faint)
 const ALLY_TINT_MAX = 0.1; // the ally-side flood tint - fainter than the bubbles
+// Gaussian blur (px) applied to each flattened per-team layer as it is blitted so
+// the per-champion bubbles merge into a SOFT presence zone rather than reading as
+// scattered hard dots (operator 2026-06-30). 0 disables. Tunable - fine-tune live.
+const ZOI_BLUR_PX = 12;
 const EMA_ALPHA = 0.35; // low-pass coefficient (~1s settle at 2Hz)
 const EMA_EPS = 0.002; // "settled" threshold; below this we stop redrawing
 // Per-bubble core alpha inside the per-team OFFSCREEN buffer. The whole team
@@ -329,7 +333,13 @@ function _paint(ctx, scene, demarcRaw, w, h) {
       drew = _drawTeamBubbles(octx, scene, team, w, h, OFFSCREEN_CORE_ALPHA, _rawTeamRgba) || drew;
       if (drew) {
         ctx.globalAlpha = _clampAlpha(MAX_ALPHA);
+        // Blur the flattened team layer as it lands so the per-champion bubbles
+        // MERGE into a soft presence ZONE instead of reading as scattered hard
+        // dots (operator 2026-06-30: "random red blue dots, no bubbles/coloring").
+        // The demarcation LINE is stroked later on the main ctx, so it stays crisp.
+        if (ZOI_BLUR_PX > 0 && "filter" in ctx) ctx.filter = `blur(${ZOI_BLUR_PX}px)`;
         ctx.drawImage(off, 0, 0);
+        ctx.filter = "none";
       }
     }
     ctx.globalAlpha = 1;
