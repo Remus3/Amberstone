@@ -394,6 +394,13 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   display: none !important;
 }
 
+/* FIGHT MODEL (the bm-knobs row) is hidden on the in-game overlay (operator
+ * 2026-06-29: the build panel should not carry the knob row in-game - it is
+ * managed off the overlay). Dashboard surface keeps it. */
+body[data-shell="overlay"] .bm-row.bm-knobs {
+  display: none !important;
+}
+
 /* 4c. DRAG HANDLE - a small gold-dot grab bar (top-right). data-rc-zone makes
  * JUST the handle interactive to the rc-shell click-through machine, so the body
  * stays click-through during play (no accidental mid-fight drags). Hidden until
