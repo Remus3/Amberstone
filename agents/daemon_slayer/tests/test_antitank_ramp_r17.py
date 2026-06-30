@@ -141,11 +141,13 @@ class ByteIdenticalTests(unittest.TestCase):
             )
 
     def test_all_unramped_rows_byte_identical_at_any_level(self):
-        # EVERY champion carrying no ramp endpoint is byte-identical even when a
-        # level is injected (the additive guarantee, mirrors P3.2).
-        ramped = {champ for champ, _src in EXPECTED_RAMP}
-        for champ in _ANTITANK_REGISTRY:
-            if champ in ramped:
+        # EVERY champion carrying no ramp endpoint of ANY kind - max-HP (R17,
+        # ramp_hi) or current-HP (R39, current_hp_ramp_hi) - is byte-identical even
+        # when a level is injected (the additive guarantee, mirrors P3.2). The skip
+        # set is derived from the registry so a future ramp seed cannot silently
+        # break this invariant.
+        for champ, entries in _ANTITANK_REGISTRY.items():
+            if any(e.ramp_hi != 0.0 or e.current_hp_ramp_hi != 0.0 for e in entries):
                 continue
             base = compute_antitank(champ).antitank_score
             for lvl in (1, 6, 11, 18):
@@ -246,7 +248,7 @@ class ToDictShapeTests(unittest.TestCase):
 
 class EngineVersionTest(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.154.0")
+        self.assertEqual(ENGINE_VERSION, "1.155.0")
 
 
 if __name__ == "__main__":
