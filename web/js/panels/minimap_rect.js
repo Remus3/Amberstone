@@ -44,6 +44,14 @@ function normRect(rect) {
 const DESIGN_W = 1920;
 const DESIGN_H = 1080;
 
+// Operator calibration nudge in true screen px (the docstring's "operator-nudge"
+// the proportional scale model leaves for residual off-mark error). Applied
+// AFTER the body-zoom is cancelled, so these are literal on-screen px at any
+// ovscale. +x = right, +y = down. 2026-06-29: operator live-tuned to +8px
+// right (first +15 overshot, backed off 7).
+const NUDGE_X_PX = 8;
+const NUDGE_Y_PX = 0;
+
 // Live body zoom (ovscale). Mirrors overlay_layout._bodyZoom (module-private
 // there); a non-finite / non-positive zoom degrades to 1.
 function _bodyZoom() {
@@ -119,8 +127,8 @@ export function renderMinimapRect(rect) {
   mount.dataset.ovxId = "w-mmrect";
   mount.dataset.ovxTier = "ambient";
   const p = _placement(r, iw, ih, z);
-  mount.style.left = p.left + "px";
-  mount.style.top = p.top + "px";
+  mount.style.left = (p.left + NUDGE_X_PX) + "px";
+  mount.style.top = (p.top + NUDGE_Y_PX) + "px";
   mount.style.width = p.width + "px";
   mount.style.height = p.height + "px";
   mount.style.zoom = String(p.zoom);
