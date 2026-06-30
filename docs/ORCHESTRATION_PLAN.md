@@ -220,6 +220,29 @@ genuinely-open ROADMAP/BACKLOG work.
 
 ## Findings log (executor appends; newest first)
 
+- 2026-06-30 R46-regress-fix (REGRESS-fix directive on `2b3f8d38`, head ec0dee35) -> AUDITOR FALSE POSITIVE, CLEAN no-op (docs only)
+  - The gemini AUDIT of R46 returned VERDICT REGRESS: "behavior change no test.
+    _passive_health_overrides.py added. ehp.py assume_passive_health_stacks added. must add test
+    for passive_health_stack_hp and ehp integration." Verify-the-premise (CLAUDE.md verify-before-
+    declare-broken: read the file + fresh pytest, NOT the digest) found the premise FALSE.
+  - Ground truth: `agents/daemon_slayer/tests/test_passive_health_overrides_r46.py` EXISTS on disk
+    (shipped in `2b3f8d38`, LEDGER 700), 18 cases covering BOTH flagged surfaces:
+    * `passive_health_stack_hp` -> `PassiveHealthStackHpTests` (6): test_off_returns_zero,
+      test_unregistered_champ_zero_even_on, test_sion_equals_hp_per_stack_times_stacks,
+      test_swain_equals_hp_per_stack_times_stacks, test_chogath_zero_below_ult_then_rank_scaled,
+      test_monotonic_nondecreasing_in_level (+ `RegistryShapeTests` 5 + `CharacterizationTests` 3
+      over the registry/helpers it reads).
+    * EHP integration -> `EhpByteIdenticalTests` (3): test_default_equals_explicit_false_registered_champ
+      (compute_ehp default == flag-False byte-identical), test_unregistered_champ_identical_on_vs_off
+      (Garen ON==OFF), test_registered_champ_raises_all_three_axes_on (Sion ON > OFF on
+      phys/mag/true/blended). Plus `EnginePinTests` pinning ENGINE_VERSION 1.160.0.
+  - Fresh proof THIS cycle: `pytest test_passive_health_overrides_r46.py -v` = 18 passed in 0.17s,
+    exit 0 (count observed this run, not carried from LEDGER). The `20260630-000708-FAILED-t-exitfail.md`
+    auditor artifact is an unrelated agent6 DEMO self-test (op=demo, task_id=t-exitfail, "No report
+    artifact written"), NOT an R46 verdict.
+  - VERDICT: AUDITOR FALSE POSITIVE. Did NOT fabricate redundant tests (directive-mandated). CLEAN
+    no-op on code (zero production/test edits); Tier-0 docs-only (no ENGINE bump, no DS/Share, no
+    restart, no UI). Precedent: the DSP8 / A2b / cycle-3 FALSE-POSITIVE REGRESS rechecks.
 - 2026-06-30 R46 (LOOP cycle 15, DIRECTOR REFILL, head ce9fbaa5) DONE (`2b3f8d38`)
   - DS schema lift: infinitely/permanently STACKING max-HP passive registry - a NEW
     survivability axis + the SECOND EHP-NUMERATOR term (after the revive multiplier).
