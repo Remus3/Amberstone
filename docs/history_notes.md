@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-29 (Landed the overlay build-module branch to main - CI green + RC live)
+
+Operator asked whether the worktree branches were healthy (this session ran in a worktree on `claude/hardcore-saha-0592d5`; the `C:/Riot Commander` checkout was always on main) and chose to LAND. The branch's 18 commits (Section B/D build module + per-champion kit-synergy) merged to main + activated live.
+
+- **Merge `99ebd263`.** Landed WP-B2/B3/B4 + per-champ kit-synergy (173 champs) + WP-D1/D2/D3. 28 code/test files auto-merged clean; the 4 doc conflicts resolved per `feedback_ledger_renumber_on_parallel_landing` - LEDGER 666-674 renumbered +5 to 671-679 above main's 670 (contiguous 664..679, no dupes); Section J unioned C5(main `cedb78c2`)+D1/D2/D3 DONE; WAKEUP kept last 3; history_notes kept BOTH archived blocks (non-lossy).
+- **Fix `90002f69` (the real find).** The merged `tests/test_per_champion_scoring_coverage.py` failed locally (Lulu carry -0.688 < mage 0.49) yet passed on the clean branch worktree + on CI: it read `get_archetype_for`, which consults the operator's GITIGNORED `cs_archetype_picks.json` (Lulu pinned -> carry, 2026-05-17). Non-hermetic - green on CI, red only on the live machine; the branch's CI never ran (CI fires on main/PR, not `claude/*`). Switched to `default_for_champion` (kit-derived, git-tracked) -> hermetic; Kog'Maw stays the lone exception. 199 passed.
+- **CI green on main** (run 28409641311, 3m53s). **RC restarted** pid 7120 -> 7604, alive + reload_ok, mode=client. The D-series + `/api/build-plan` override route are LIVE (they predated the running RC).
+- **`de4a2834`.** Committed + pushed the operator's pending `tools/done.md` edit (mandatory next-session-prompt block in /done); CI green.
+- **OWED (loopback-gated, unchanged):** live in-game capture of the radial/tooltip/override/reset in the rc-shell overlay.
+- **NEXT:** branch landed - pick the next OPEN Section J WP (E5/F6a doc remediation, F5-H02 task_queue leak) per `docs/OVERLAY_BUILD_MASTER_PLAN.md` Section J.
+
+---
+
 # 2026-06-29 (Section D - WP-D3 server-side item-override honoring + reset control shipped)
 
 Final Section D item (deps C4 + D2). D2 shipped the client override store + radial; D3 makes the SERVER honor it + adds the reset control + game-end clear. Built via 2 parallel disjoint-slice subagents (Python engine | JS UI) + orchestrator merge + fresh re-run gate + 5-phase UI-audit. Section D COMPLETE.

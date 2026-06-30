@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-29 (overlay live-QA: minimap aligned + 9 in-game overlay fixes; ZOI still dark)
+
+Started with WP-F5-M01 then turned into a long live in-game overlay QA pass with the operator (Practice Tool SR -> ARAM), 18 commits. Each web/js|css edit hot-reloads the overlay (4s ui-version poller), so fixes were verified live.
+
+- **WP-F5-M01 (`76a783b4`, row flip `86f7a864`).** Cross-seam `body[data-mode]` no-flap guard `tests/preflip_mode/test_body_data_mode_no_flap.py` (HTTP build_state vs WS file_ingest agree from one LCU snapshot). Audit's `e4b08ba` SHA was wrong - real fix is `5bfa7ea5`. **F1-01** live-deploy confirmed (`23e624a5`).
+- **Minimap alignment (`52b694d6` + nudge `66309baf`).** w-mmrect was placed in 1920x1080 design px scaled by ovscale (a DPI knob, NOT the design->native ratio) -> mispositioned on 2560x1440. Now placed by window fraction + zoom-immune; operator-tuned nudge +6px right / +2px down. **Operator-confirmed aligned.**
+- **Shipped + operator-confirmed:** coach timer-tag strip + objective clamp 2->3 (`736b1756`), META +0 suppress + FIGHT MODEL hide in-game (`4640cb57`).
+- **Shipped, pending operator re-verify (was mid-ARAM):** BUILD anti-flicker retain-last-good, broadened (`ef716c66` + `1d6fa0c0`); enemy-spell compact pills `FL/TP` + hover name (`e49067a3`); OP/SZ sliders draggable - launcher pointerdown was eating the slider drag (`86cd31db`); tooltip lands at anchor not z-times right/down (`876093db`); BUILD horizontal 3-row band, widen 350px + nowrap (`465a84d4`).
+- **STILL OPEN - ZOI/minimap dots never render (`6b8fe07a` data fix done, render still dark).** Added a dedicated 2s minimap poller (the zoi-bearing /api/state polls were all staleness-gated during a healthy game), but the blue/red shading STILL does not paint -> cause is render-side in `renderMinimapZoi`, not data. `DEBUG_ZOI` probe in `web/js/panels/minimap_zoi.js` is one-flag-ready (set true) to confirm canvas visibility next session, then fix per the operator's magenta-box verdict.
+- **NEXT:** ZOI render bug (flip DEBUG_ZOI, get magenta verdict in an SR/ARAM game, fix). Tracker: `docs/OVERLAY_QA_2026-06-29.md`. Item-tooltip "name-only" is an unconfirmed operator preference, not a bug.
+
+---
+
 # 2026-06-29 (Section J WPs F5-H02 + F6a shipped; terminal-window noise eliminated; branches collapsed)
 
 Picked two OPEN Section J WPs from `docs/OVERLAY_BUILD_MASTER_PLAN.md`, then handled two operator reports about stray terminal windows + a branch cleanup. All on main, CI green.
@@ -24,16 +37,3 @@ Session ran in worktree `claude/thirsty-keller-e732b1` (forked at item 652). Clo
 - **Fix (`ops/audit/p0_inventory.py`).** Emits a `# point-in-time snapshot generated <ts> ... may include since-deleted paths - regenerate after structural deletions` line as the CSV's first row every run (datetime-stamped). No parser consumers (grep-verified) so the `#` row breaks nothing. Regenerated the live Legion CSV with the new code -> stale rows gone; restored main's tracked p0_inventory.py + P0_INVENTORY.md so only the gitignored CSV refreshed.
 - **Landed to main** as `1d790de8` (branch item 653 renumbered to 681 per parallel-landing). Used a throwaway `land-653` worktree off origin/main because the live main checkout had another session's uncommitted work - never touched it. Tier-0/1: ruff + 3 hygiene tests + py_compile green; no engine / Share / RC restart.
 - **NEXT:** unrelated to this session - other audit-11 findings or the OVERLAY_BUILD_MASTER_PLAN Section J queue.
-
----
-
-# 2026-06-29 (Landed the overlay build-module branch to main - CI green + RC live)
-
-Operator asked whether the worktree branches were healthy (this session ran in a worktree on `claude/hardcore-saha-0592d5`; the `C:/Riot Commander` checkout was always on main) and chose to LAND. The branch's 18 commits (Section B/D build module + per-champion kit-synergy) merged to main + activated live.
-
-- **Merge `99ebd263`.** Landed WP-B2/B3/B4 + per-champ kit-synergy (173 champs) + WP-D1/D2/D3. 28 code/test files auto-merged clean; the 4 doc conflicts resolved per `feedback_ledger_renumber_on_parallel_landing` - LEDGER 666-674 renumbered +5 to 671-679 above main's 670 (contiguous 664..679, no dupes); Section J unioned C5(main `cedb78c2`)+D1/D2/D3 DONE; WAKEUP kept last 3; history_notes kept BOTH archived blocks (non-lossy).
-- **Fix `90002f69` (the real find).** The merged `tests/test_per_champion_scoring_coverage.py` failed locally (Lulu carry -0.688 < mage 0.49) yet passed on the clean branch worktree + on CI: it read `get_archetype_for`, which consults the operator's GITIGNORED `cs_archetype_picks.json` (Lulu pinned -> carry, 2026-05-17). Non-hermetic - green on CI, red only on the live machine; the branch's CI never ran (CI fires on main/PR, not `claude/*`). Switched to `default_for_champion` (kit-derived, git-tracked) -> hermetic; Kog'Maw stays the lone exception. 199 passed.
-- **CI green on main** (run 28409641311, 3m53s). **RC restarted** pid 7120 -> 7604, alive + reload_ok, mode=client. The D-series + `/api/build-plan` override route are LIVE (they predated the running RC).
-- **`de4a2834`.** Committed + pushed the operator's pending `tools/done.md` edit (mandatory next-session-prompt block in /done); CI green.
-- **OWED (loopback-gated, unchanged):** live in-game capture of the radial/tooltip/override/reset in the rc-shell overlay.
-- **NEXT:** branch landed - pick the next OPEN Section J WP (E5/F6a doc remediation, F5-H02 task_queue leak) per `docs/OVERLAY_BUILD_MASTER_PLAN.md` Section J.
