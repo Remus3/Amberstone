@@ -852,11 +852,18 @@ def compute_dps(
     if cond_as > 0:
         if stats_for_rotation is stats:
             stats_for_rotation = dict(stats)
-        # League hard-caps attack speed at 2.5 (literal mirrors the crit
-        # min(..., 1.0) clamp in this module; the engine caps base+item AS,
-        # this re-clamps after conditional AS is folded in).
+        # R42 (1.157.0): cond_as is a bonus-AS FRACTION (Yun Tal Flurry,
+        # uptime-weighted ~0.08 = +8% bonus AS), but stats["as"] is FINAL
+        # attacks/sec (engine resolves it as base_as * (1 + bonus_pct)). League
+        # folds bonus AS onto the INNATE base AS, so scale the fraction by
+        # base_as before adding to the final AS - adding the raw fraction
+        # over-credits by 1/base_as. Mirrors the R7 passive_as fold directly
+        # below. The 2.5 League hard-cap re-clamp still applies after the fold.
+        innate_base_as = float(
+            (champ.get("stats") or {}).get("attackspeed", 0.0) or 0.0
+        )
         stats_for_rotation["as"] = min(
-            2.5, stats_for_rotation.get("as", 0.0) + cond_as
+            2.5, stats_for_rotation.get("as", 0.0) + innate_base_as * cond_as
         )
     # DSV2 (1.125.0): fold the takedown bonus AD into the rotation AD so the
     # AA damage reflects Hubris Eminence. Gated on > 0 so the OFF path (and any
@@ -1145,7 +1152,8 @@ def compute_dps(
         )
     if cond_as > 0:
         notes.append(
-            f"conditional AS bonus: +{cond_as:.3f} (Yun Tal Flurry ~27% uptime)"
+            f"conditional AS bonus: +{cond_as * 100:.1f}% bonus AS "
+            "(Yun Tal Flurry ~27% uptime, folded onto base AS)"
         )
     if passive_as > 0:
         notes.append(
