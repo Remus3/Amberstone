@@ -218,6 +218,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (R36 headless cycle 7 - 5-phase UI audit of the #w-launcher overlay menu)
+
+Gemini-directed headless loop, cycle 7. Pure UI audit (ENGINE-IMPACT NONE) of the Electron-overlay launcher control center + its layout menu, shipped un-audited in LEDGER 688. Full detail in LEDGER 690 + ORCHESTRATION_PLAN R36.
+
+- **HIT-TARGETS MUST-FIX (`88fc8b05`).** The launcher menu action rows (`.ovx-menu-row`: per-panel toggle / reset / done) + the opacity/scale slider rows (`.ovx-menu-slider`) were ~30-33px tall, below the `--hit-min` 42px tap floor (UI_SCALE_SPEC_V2 L112/118). Both now reserve `min-height: var(--hit-min)`; the action row went `display:block` -> `flex+center`. Live-measured offsetHeight >= 42 in a real browser.
+- **STRUCTURE.** Removed the dead `.ovx-menu-panelset` rule (panel-set quick-swap retired 2026-06-28; `_renderMenu` emits no such node).
+- **TYPOGRAPHY/ASCII/HIERARCHY pass.** Menu rows kept at `--fs-sm` 18px on purpose - an on-demand control center wants readability, NOT the 11-14px overlay cue scale (unlike R33's always-visible chips). The 34px launcher square is the operator HUD-summoner-spell exception, kept.
+- **TDD + proof.** RED-first `tests/test_overlay_launcher_hit_targets.py` (4 static CSS guards) + Playwright `tests/snapshot_panels/test_overlay_launcher_menu.py` (taps the launcher, measures live row/slider heights, writes `screenshots/overlay_launcher_menu.png`). Verifier-CONFIRMED. FULL RC suite 10115 passed / 0 failed.
+- **NEXT:** the ZOI / overlay live-verify tail (a/b choices `#rn-choices` absent, champ-select lane->MID, champ-select flicker, ZOI blur/alpha tuning) from the 2026-06-30 ZOI session still wants a live game. Resume the headless loop.
+
+---
+
 # 2026-06-30 (ZOI render bug SOLVED + asset-stamp trap + drag fix + overlay panel triage)
 
 Continued the NEXT-session ZOI task. Long live in-game co-QA with the operator (SR ranked + ARAM, many overlay hot-reloads). Each web/js|css edit hot-reloads the overlay; verified live via the operator + Legion vision frames (`:8889/latest-frame`, X-RC-Token from `config/vision_token.txt`).
