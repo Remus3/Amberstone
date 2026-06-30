@@ -114,6 +114,7 @@ from ._effects_types import ANY, MAGICAL, PHYSICAL, TRUE
 from .engine import build_champion
 from ._passive_mitigation_overrides import mitigation_multipliers
 from ._passive_flat_mitigation_overrides import flat_mitigation_hp
+from ._passive_health_overrides import passive_health_stack_hp
 from ._passive_resist_overrides import resist_grants
 from ._passive_revive_overrides import revive_multiplier, revive_egg_resist
 from ._champion_cc_mitigation_overrides import champion_cc_tenacity_fraction
@@ -931,6 +932,7 @@ def compute_ehp(
     enemy_magic_pen_flat: float = 0.0,
     enemy_magic_pen_pct: float = 0.0,
     caster_current_hp_pct: float = 1.0,
+    assume_passive_health_stacks: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1135,6 +1137,21 @@ def compute_ehp(
         resolved.champion_id, level, assume_passive_flat_mitigation
     )
 
+    # ENGINE 1.160.0 (R46, 2026-06-30): GAP - infinitely / permanently STACKING
+    # max-HP passives (Sion W Soul Furnace +4 per kill, Cho'Gath R Feast
+    # +80/120/160 per stack by rank, Swain P Ravenous Flock +15 per Soul Fragment).
+    # A permanent bonus max-HP grant is NOT in the resolved stat block (not
+    # base-per-level, not an item), so it sits at the TOP of the damage stack
+    # exactly like ``ext_flat_hp`` / ``flat_mit_*`` - it adds RAW to every per-type
+    # numerator and rides the SAME armor/MR curve, lifting every damage-type EHP
+    # (incl. true) uniformly. ``assume_passive_health_stacks`` defaults False ->
+    # 0.0 -> BYTE-IDENTICAL. The per-stack HP is EXACT 16.13.1 Meraki; the assumed
+    # stack COUNT by level is an operator-tunable conservative midpoint (the live
+    # stack feed we lack), amortized inside ``passive_health_stack_hp``.
+    passive_health_hp = passive_health_stack_hp(
+        resolved.champion_id, level, assume_passive_health_stacks
+    )
+
     # ENGINE 1.93.0 (2026-06-02): GAP-2 effects-text passive RESIST-STAT grants.
     # The FOURTH survivability axis - champion-passive bonus armor / MR (Garen W
     # Courage, Wukong P, Shyvana P, Sejuani P, Gwen W, Pantheon E) that is NOT in
@@ -1225,9 +1242,9 @@ def compute_ehp(
     # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
     # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
     # byte-identical.
-    physical_ehp = (hp + ext_flat_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
-    magical_ehp = (hp + ext_flat_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
-    true_ehp = (hp + ext_flat_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
+    physical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
+    magical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
+    true_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
