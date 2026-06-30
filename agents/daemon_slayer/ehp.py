@@ -930,6 +930,7 @@ def compute_ehp(
     enemy_shred_pct: float = 0.0,
     enemy_magic_pen_flat: float = 0.0,
     enemy_magic_pen_pct: float = 0.0,
+    caster_current_hp_pct: float = 1.0,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1150,11 +1151,15 @@ def compute_ehp(
     # resists - the grant is a PERCENT of the champion's own armor / MR, not a flat
     # add. The flat-add half (item 264/267) ignores these kwargs. total_* exclude
     # the passive grants (not in base/items) so there is no self-feedback.
+    # ENGINE 1.158.0 (R45): caster_current_hp_pct threads the live HP fraction so
+    # the low-HP DOUBLED tier (Poppy W "24% below 40% max HP") can fire. Defaults
+    # to 1.0 (full HP) -> the tier is dormant -> byte-identical to 1.96.0.
     bonus_armor, bonus_mr = resist_grants(
         resolved.champion_id, level, apply_passive_resist,
         total_armor=armor, total_mr=mr,
         base_armor=float(base.get("armor", 0.0)),
         base_mr=float(base.get("mr", 0.0)),
+        caster_current_hp_pct=caster_current_hp_pct,
     )
     # ENGINE 1.102.0 (2026-06-03): GAP-2 SIXTH survivability axis - an
     # ALLY-TARGETED resist grant a TEAMMATE confers on THIS champion (Orianna E
