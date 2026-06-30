@@ -709,7 +709,12 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-head {
   border-bottom: 1px solid rgba(var(--ovx-gold), 0.28);
 }
 body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-row {
-  display: block;
+  /* Action rows (per-panel toggle, reset, done) are clickables: reserve the
+   * --hit-min 42px tap target (spec UI_SCALE_SPEC_V2 line 112). flex + center
+   * so the single text line sits mid-button in the taller box, left-aligned. */
+  display: flex;
+  align-items: center;
+  min-height: var(--hit-min);
   width: 100%;
   text-align: left;
   padding: 5px 7px;
@@ -727,12 +732,6 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-row:hover {
 body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-reset {
   color: rgba(var(--ovx-warn), 0.95);
   margin-top: 4px;
-}
-body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-panelset {
-  display: inline-block;
-  width: auto;
-  margin-right: 4px;
-  text-transform: capitalize;
 }
 body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-done {
   color: rgba(var(--ovx-cyan), 0.95);
@@ -754,6 +753,9 @@ body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-sliders.ovx-dim {
 body[data-shell="overlay"] .ovx-launcher-menu .ovx-menu-slider {
   display: flex;
   align-items: center;
+  /* The opacity/scale range thumb is a drag target: give the row the --hit-min
+   * 42px height (spec line 118 - thumb visual is small, target is --hit-min). */
+  min-height: var(--hit-min);
   gap: 4px;
   flex: 1;
   font-size: var(--fs-ov-head);
