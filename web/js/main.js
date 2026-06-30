@@ -7175,6 +7175,46 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     pollLcu();   // fire once on load
   })();
 
+  // ── Dedicated minimap (ZOI) poller (2026-06-29) ──────────────────
+  // The w-mmrect outline + ZOI fill + dots are /api/state TOP-LEVEL
+  // siblings computed in build_state - they are NOT carried by the :8891
+  // WS push (the raw coaching file) that drives the live overlay. The
+  // three zoi-bearing fetch paths above (HTTP-fallback / LCU poller / SSE)
+  // ALL short-circuit while the WS/SSE feed is fresh (state.frames moved,
+  // or lastSseTs < 4s), so during a healthy in-game session
+  // state.latest.zoi never lands a non-null value and the ZOI shading
+  // never paints - the STATIC rect survived from an early capture, the
+  // DYNAMIC zoi/dots did not (operator: never once visible). This
+  // UNCONDITIONAL 2s poll keeps the three minimap fields fresh independent
+  // of the WS/SSE gates and repaints. Overlay-only + minimap-mode-only;
+  // the renderers are idempotent (sig-dedup) so the steady-state cost is
+  // ~nil and the server build_state is itself ~1s-cached.
+  (function setupMinimapPoller() {
+    let inflight = false;
+    async function pollMinimap() {
+      if (typeof document === "undefined" || !document.body) return;
+      if (document.body.dataset.shell !== "overlay") return;
+      if (document.hidden || inflight) return;
+      inflight = true;
+      try {
+        const r = await fetch("/api/state", { cache: "no-store" });
+        if (r.ok) {
+          const st = await r.json();
+          if (st && ["sr", "aram", "brawl"].includes(st.mode_key)) {
+            state.latest.minimap_rect = st.minimap_rect || null;
+            state.latest.minimap_dots = st.minimap_dots || null;
+            state.latest.zoi = st.zoi || null;
+            renderMinimapRect(state.latest.minimap_rect);
+            renderMinimapZoi(state.latest.zoi);
+          }
+        }
+      } catch (_) { /* silent */ }
+      finally { inflight = false; }
+    }
+    setInterval(pollMinimap, 2000);
+    pollMinimap();   // fire once on load
+  })();
+
   // ── Voice TTS toggle ─────────────────────────────────────────────
   // (2026-04-25, revised same-day) Speech now uses the browser's
   // window.speechSynthesis (Web Speech API) so audio plays on the
