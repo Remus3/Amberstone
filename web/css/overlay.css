@@ -618,7 +618,10 @@ body[data-shell="overlay"][data-rc-idle="1"] .ovx-widget {
  * via lib/combat_mode when S0 arbitration flags a high-stakes moment. The field
  * sheds ambient widgets so the call + the A/B decision own the screen; nothing
  * dims while a fight is live. Display/opacity toggles only - no layout loop. */
-body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-build"],
+/* w-build is NO LONGER shed in a fight (operator 2026-06-29: the build panel
+ * vanishing for the fight duration then refreshing on the next coach tick read
+ * as a bug - the operator wants the build reference to persist through combat).
+ * w-ovds (the DS detail cluster) still sheds. */
 body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-ovds"] {
   display: none !important;
 }
