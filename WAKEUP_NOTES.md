@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-30 (R42 headless cycle 7 - DS engine fix: Yun Tal conditional-AS unit mismatch; ENGINE 1.156.0 -> 1.157.0)
+
+Gemini-directed headless loop cycle 7 (from directive.md). DS engine math fix. Full detail in LEDGER 696 + ORCHESTRATION_PLAN R42.
+
+- **Bug + fix (`01875f4e` feat).** `compute_dps` folded `cond_as` (a bonus-AS FRACTION from `total_conditional_as`, Yun Tal Flurry ~0.08) directly onto the FINAL rotation AS, but `stats["as"]` is attacks/sec (`base_as * (1 + bonus_pct)`), so the raw add over-credited AS by `1/base_as`. Now scales the fraction by innate base AS before adding (`base_as * cond_as`), same 2.5 hard-cap re-clamp - the IDENTICAL unit bug + fix pattern as R7's `passive_as` fold ~20 lines below. `raw_attack_dps` unchanged (un-folded `eff_as`); explain note repointed to "+X% bonus AS ... folded onto base AS".
+- **TDD RED-first** `test_conditional_as_base_fold_r42.py` (2 cases, mirrors R7 `SeamAddsBaseAsScaledFraction`): cond_as has no flag, so the counterfactual is a `mock.patch` of `dps.total_conditional_as`=0 + a Dagger (1042) pure-AS calibration; pins `on.weighted_dps` to the base_as-scaled magnitude, NOT the raw fraction. RED confirmed (63.659 vs 62.721); GREEN after.
+- **Dependent fix:** `test_routes_ds_relscore.py` double-rounding tolerance 0.2 -> 0.25 (the corrected Yun Tal DPS shifted item 3032 onto a float-epsilon boundary: route score_pct uses unrounded delta, test recomputes from 1dp-stored -> `71.3 - 71.1 = 0.2000...0284`). NOT a route bug nor a fix bug.
+- **Tier-2.** ENGINE 1.156.0 -> 1.157.0 (90 pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.157.0) + Share `--check` green (381 files) + DAEMON_SLAYER.md banner 7604 -> 7606, all in the feat commit. DS 7606 pass / RC 10128 pass; read-only verifier CONFIRM (7/7, fix base_as-scaled at dps.py:865-866). Built inline (trivial one-file, verifier-gated).
+- **NEXT:** resume the headless loop. No live-flip gate needed - this corrects an already-live default-ON path (cond_as fires whenever Yun Tal is in a build), not a default-OFF seam.
+
+---
+
 # 2026-06-30 (R41 headless cycle 12 - DS ally mark-detonation seam; ENGINE 1.155.0 -> 1.156.0)
 
 Gemini-directed headless loop cycle 12 (from directive.md). DS schema lift fulfilling R12's explicit handoff. Full detail in LEDGER 695 + ORCHESTRATION_PLAN R41.
@@ -23,15 +35,3 @@ Gemini-directed headless loop cycle 9 (run manually from directive.md), then the
 - **ROADMAP budget (`edace211`).** The full local suite caught a pre-existing `test_doc_size_budget::test_roadmap_md_under_budget` red - ROADMAP.md was 81979 LF bytes, 59 over the 80KiB ceiling (CI happened to mask it). Compressed the verbose set_augment_intent Cherry bullet to a pointer (full record preserved in CHERRY_AUGMENT_SCAFFOLD_NOTES.md) + normalized to LF -> 80236 bytes; both budget guards green.
 - **HEXCORE galaxy refresh (`355cad01`).** Operator-requested. Updated BOTH docs/HEXCORE_offline.html + docs/HEXCORE.html (shared node data, kept in sync): +8 nodes (Haiku-zero precompute lane laning+build, build_planner, det-coaching seam, overlay panels enemy_spells/stats_panel/launcher), +10 edges, stale ENGINE 1.151.0 -> 1.154.0. Validated by replicating the viewer's own RAW/EDG parser (125 nodes, all 8 resolve at arity 5, 10 edges connect, ASCII-clean). Self-contained + base64 fonts untouched. Live galaxy-render eyeball OWED (operator-side; data is parser-verified).
 - **NEXT:** the overlay live-verify tail still wants a live game (a/b choices `#rn-choices` absent, champ-select lane->MID, flicker, ZOI alpha/blur). The R38 in-game populated pixel capture is OWED. Resume the headless loop.
-
----
-
-# 2026-06-30 (R36 headless cycle 7 - 5-phase UI audit of the #w-launcher overlay menu)
-
-Gemini-directed headless loop, cycle 7. Pure UI audit (ENGINE-IMPACT NONE) of the Electron-overlay launcher control center + its layout menu, shipped un-audited in LEDGER 688. Full detail in LEDGER 690 + ORCHESTRATION_PLAN R36.
-
-- **HIT-TARGETS MUST-FIX (`88fc8b05`).** The launcher menu action rows (`.ovx-menu-row`: per-panel toggle / reset / done) + the opacity/scale slider rows (`.ovx-menu-slider`) were ~30-33px tall, below the `--hit-min` 42px tap floor (UI_SCALE_SPEC_V2 L112/118). Both now reserve `min-height: var(--hit-min)`; the action row went `display:block` -> `flex+center`. Live-measured offsetHeight >= 42 in a real browser.
-- **STRUCTURE.** Removed the dead `.ovx-menu-panelset` rule (panel-set quick-swap retired 2026-06-28; `_renderMenu` emits no such node).
-- **TYPOGRAPHY/ASCII/HIERARCHY pass.** Menu rows kept at `--fs-sm` 18px on purpose - an on-demand control center wants readability, NOT the 11-14px overlay cue scale (unlike R33's always-visible chips). The 34px launcher square is the operator HUD-summoner-spell exception, kept.
-- **TDD + proof.** RED-first `tests/test_overlay_launcher_hit_targets.py` (4 static CSS guards) + Playwright `tests/snapshot_panels/test_overlay_launcher_menu.py` (taps the launcher, measures live row/slider heights, writes `screenshots/overlay_launcher_menu.png`). Verifier-CONFIRMED. FULL RC suite 10115 passed / 0 failed.
-- **NEXT:** the ZOI / overlay live-verify tail (a/b choices `#rn-choices` absent, champ-select lane->MID, champ-select flicker, ZOI blur/alpha tuning) from the 2026-06-30 ZOI session still wants a live game. Resume the headless loop.
