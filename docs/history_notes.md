@@ -218,6 +218,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (R41 headless cycle 12 - DS ally mark-detonation seam; ENGINE 1.155.0 -> 1.156.0)
+
+Gemini-directed headless loop cycle 12 (from directive.md). DS schema lift fulfilling R12's explicit handoff. Full detail in LEDGER 695 + ORCHESTRATION_PLAN R41.
+
+- **Seam (`8b3cee60` feat, `9c85515d` docs).** New PURE `agents/daemon_slayer/_ally_detonation_overrides.py` (no engine imports) models a champion MARK an ALLY consumes for bonus damage - the mark-enabler's TEAM-damage contribution, distinct from the self-amp + all-source-vulnerability registries. `compute_dps` + `compute_burst_damage` gain `assume_ally_detonation` (END-appended, default False -> byte-identical): per-event magic for burst, per-event/cadence for the DPS rate, each MR-mitigated x mode_mult x magic_amp x `_ASSUMED_ALLY_DETONATION_PROB`=0.5. Seeded Leona P Sunlight (FLAT_MAGIC 32:151 based-on-level, 2.5s cadence) verified vs champion_abilities.json 16.13.1.
+- **PREMISE CORRECTED (verify-the-premise win).** The directive named Imperial Mandate 4005 a "10% current-HP detonation", but that is STALE: DDragon 16.13.1 shows IM reworked to a 7% Vulnerable all-source amp (Control/Command passives) - the 16.12.1 Coordinated Fire detonation is GONE (only the stale Meraki items mirror, content_patch=None, still carries it). Seeding it would be a WRONG precompute, so 4005 is a documented NON-FIT and belongs in `_target_vulnerability_overrides`, not this seam. Leona is the sole seed.
+- **Tier-2.** TDD RED-first `test_ally_detonation_r41.py` (19 cases). ENGINE 1.155.0 -> 1.156.0 (99 assertion pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.156.0) + Share `--check` green SAME commit + DAEMON_SLAYER.md banner. DS 7604 pass / RC 10128 pass (2 transient first-run fails - doc-drift banner [fixed] + a live-engine smoke during the DS-restart window [re-run green]); read-only verifier CONFIRM (Aatrox ON==OFF, Leona burst delta 75.5 @mr=0).
+- **NEXT:** live default-ON flip EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md` (wire a DPS/burst/rank consumer + eyeball Leona's mark value vs a real game; validate the 2.5s cadence + 0.5 proc-rate). Resume the headless loop.
+
+---
+
 # 2026-06-30 (R38 headless cycle 9 - overlay enemy_spells/stats_panel 5-phase audit; + ROADMAP budget fix + HEXCORE galaxy refresh)
 
 Gemini-directed headless loop cycle 9 (run manually from directive.md), then the operator added a HEXCORE viewer refresh mid-cycle. Full detail in LEDGER 692 + ORCHESTRATION_PLAN R38.
