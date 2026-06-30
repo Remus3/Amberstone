@@ -22,6 +22,11 @@ import py_compile
 import subprocess
 import sys
 
+# Hooks run under windowless pythonw.exe; a console-subsystem child (python /
+# ruff / git) would otherwise get a fresh console allocated - an on-screen +
+# taskbar flash. CREATE_NO_WINDOW suppresses it (Windows-only; 0 elsewhere).
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 CODE_SKIP_SUFFIXES = (".md", ".txt")
 
 
@@ -52,6 +57,7 @@ def _full_suite() -> int:
         [sys.executable, "-m", "pytest", "-x", "--ff", "-q"],
         capture_output=True,
         text=True,
+        creationflags=_NO_WINDOW,
     )
     combined = (proc.stdout or "") + (proc.stderr or "")
     tail = combined.splitlines()[-20:]
