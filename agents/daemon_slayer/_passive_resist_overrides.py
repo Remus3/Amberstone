@@ -208,6 +208,16 @@ class PassiveResistEntry:
     per_stack_armor: float = 0.0
     per_stack_mr: float = 0.0
     assumed_stacks: float = 0.0
+    # R45 (low-HP DOUBLED percent tier): an INCREMENTAL percent added on top of
+    # the steady-state percent half when the caster's current-HP fraction is
+    # strictly below ``low_hp_threshold`` (Poppy W "doubled to 24% below 40% max
+    # HP" -> base 12% + incremental 12%). Lives inside the percent block (a
+    # "doubled" tier requires a base percent, so it shares ``res_a`` / ``res_m``).
+    # Default threshold 0.0 -> dormant (no caster HP fraction is < 0.0), so an
+    # entry without these fields is byte-identical at any ``caster_current_hp_pct``.
+    low_hp_pct_armor: float | tuple[float, ...] = 0.0
+    low_hp_pct_mr: float | tuple[float, ...] = 0.0
+    low_hp_threshold: float = 0.0
 
 
 # (champion_id, key, form_index) -> PassiveResistEntry. Keyed for parity with the
@@ -399,17 +409,23 @@ _PASSIVE_RESIST_OVERRIDES: dict[tuple[str, str, int], PassiveResistEntry] = {
     ),
     # Poppy W Steadfast Presence passive (Stubborn to a Fault): "increases her
     # total armor and total magic resistance by 12%, doubled to 24% while below 40%
-    # maximum health." FLAT 12% of TOTAL armor + MR (NOT rank-scaled). The
-    # doubled-to-24%-below-40%-HP conditional is OMITTED (the steady-state
-    # above-40%-HP value is seeded; same boundary as Sejuani's +75% sub-terms).
-    # PERMANENT passive (the Garen-W / Shyvana-P flat-permanent convention,
-    # level-invariant) -> prob 1.0.
+    # maximum health." FLAT 12% of TOTAL armor + MR (NOT rank-scaled). R45 MODELS
+    # the doubled-to-24%-below-40%-HP tier: the steady-state base is +12% (the
+    # above-40%-HP value), and an INCREMENTAL +12% (low_hp_pct_*) folds on top
+    # when the caster current-HP fraction is strictly below 0.40 (base 12% +
+    # incremental 12% = 24%). The low-HP half is DEFAULT-OFF (resist_grants
+    # caster_current_hp_pct defaults to 1.0 = full HP -> dormant). PERMANENT
+    # passive (the Garen-W / Shyvana-P flat-permanent convention, level-invariant)
+    # -> prob 1.0.
     ("Poppy", "W", 0): PassiveResistEntry(
         armor_pct=12.0,
         mr_pct=12.0,
         pct_base="total",
         conditional_probability=1.0,
-        note="Stubborn to a Fault: +12% of TOTAL armor + MR (flat, level-invariant); doubled-to-24%-below-40%-HP conditional omitted; permanent",
+        low_hp_pct_armor=12.0,
+        low_hp_pct_mr=12.0,
+        low_hp_threshold=0.40,
+        note="Stubborn to a Fault: +12% of TOTAL armor + MR (flat, level-invariant), doubled to +24% below 40% max HP (incremental low-HP tier, default-off); permanent",
         attribute="Stubborn to a Fault",
     ),
     # Rell W form 1 (Mount Up / Dismounted passive): "While Rell is Dismounted, she
@@ -614,6 +630,7 @@ def resist_grants(
     total_mr: float = 0.0,
     base_armor: float = 0.0,
     base_mr: float = 0.0,
+    caster_current_hp_pct: float = 1.0,
 ) -> tuple[float, float]:
     """Return ``(bonus_armor, bonus_mr)`` from effects-text resist grants.
 
@@ -625,6 +642,14 @@ def resist_grants(
       - the PER-STACK UNBOUNDED half (item 272): ``per_stack_* * assumed_stacks *
         prob`` (Thresh souls - a flat coefficient times the assumed steady-state
         count; default 0.0 leaves flat/percent entries unchanged).
+      - the LOW-HP DOUBLED half (R45): an INCREMENTAL percent of the SAME resolved
+        resist added on top of the percent half when ``caster_current_hp_pct`` is
+        strictly below the entry's ``low_hp_threshold`` (Poppy W "doubled to 24%
+        below 40% max HP" - base 12% + incremental 12%). ``caster_current_hp_pct``
+        defaults to 1.0 (full HP) so the tier is DORMANT (1.0 < threshold is False)
+        and every pre-R45 call is byte-identical; it lives INSIDE the percent block
+        so it shares ``res_a`` / ``res_m`` (a "doubled" tier requires a base
+        percent).
 
     The resolved build resists (``total_*`` / ``base_*``) are keyword-only with
     0.0 defaults so a legacy positional call (the item 264/267 tests) returns the
@@ -686,6 +711,24 @@ def resist_grants(
             )
             bonus_armor += (pa / 100.0) * res_a * prob
             bonus_mr += (pm / 100.0) * res_m * prob
+            # R45: low-HP DOUBLED half. An INCREMENTAL percent of the SAME
+            # resolved resist (res_a/res_m, finite-guarded above) added on top
+            # when the caster current-HP fraction is strictly below the entry's
+            # threshold (Poppy W: base 12% + incremental 12% = 24% below 40% HP).
+            # caster_current_hp_pct defaults to 1.0 -> 1.0 < threshold is False ->
+            # dormant -> byte-identical for every pre-R45 call and every entry
+            # without a low_hp_threshold (default 0.0).
+            if entry.low_hp_threshold and float(caster_current_hp_pct) < float(entry.low_hp_threshold):
+                la = _value_at_level(
+                    entry.low_hp_pct_armor, lvl, entry.level_scaled,
+                    key=_key, rank_scaled=entry.rank_scaled,
+                )
+                lm = _value_at_level(
+                    entry.low_hp_pct_mr, lvl, entry.level_scaled,
+                    key=_key, rank_scaled=entry.rank_scaled,
+                )
+                bonus_armor += (la / 100.0) * res_a * prob
+                bonus_mr += (lm / 100.0) * res_m * prob
         # item 272: per-stack UNBOUNDED half (flat coefficient * assumed count).
         if entry.per_stack_armor or entry.per_stack_mr:
             n = float(entry.assumed_stacks)

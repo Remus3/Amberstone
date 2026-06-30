@@ -214,6 +214,7 @@ def compute_hybrid(
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
     apply_melee_aa_gate: bool = False,
+    caster_current_hp_pct: float = 1.0,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -331,6 +332,7 @@ def compute_hybrid(
         apply_passive_mitigation=apply_passive_mitigation,
         apply_passive_resist=apply_passive_resist,
         apply_passive_revive=apply_passive_revive,
+        caster_current_hp_pct=caster_current_hp_pct,
         **_ehp_kwargs,
     )
 
