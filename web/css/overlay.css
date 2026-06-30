@@ -800,6 +800,9 @@ body[data-shell="overlay"] .ovx-enemyspells .es-chip {
   font-size: var(--fs-ov-head);
   font-weight: 700;
   letter-spacing: 0.03em;
+  /* R38 HIT-TARGETS: deliberately below --hit-min - an operator-tuned compact
+   * in-game tap-tracker (A5-locked); six rows of 42px chips would swamp the
+   * overlay. Sanctioned sub-floor relaxation, like the R36 launcher square. */
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -839,6 +842,9 @@ body[data-shell="overlay"] .ovx-statspanel .sp-role {
   border-radius: 3px;
   padding: 2px 4px;
   cursor: pointer;
+  /* R38 HIT-TARGETS: the panel's one clickable (role selector) reserves the
+   * 42px tap floor, matching the sibling overlay controls. */
+  min-height: var(--hit-min);
 }
 body[data-shell="overlay"] .ovx-statspanel .sp-role option {
   color: rgb(var(--ovx-text));
