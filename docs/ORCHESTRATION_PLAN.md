@@ -191,6 +191,7 @@ genuinely-open ROADMAP/BACKLOG work.
 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
+| R37 | haiku-zero | LOOP cycle 8 (DIRECTOR REFILL): Lane A v4 scenario-precompute "build". VERIFY-THE-PREMISE (CLAUDE.md verify-before-declare-broken) found the directive premise "v4 not yet built" FALSE: the v4 code half (Slices A-D) already SHIPPED at `84248459` (cooldown_window + spike_timing + item_state axis + kill_threshold_met gate; schema laning_scenarios/v4 in core/laning_scenario_precompute.py lines 51/824), reader core/precomputed_laning_coach.py + shadow seam dashboard/_deterministic_coaching.py threaded, both test files present -> tests/test_laning_scenario_precompute.py + tests/test_lane_a_v4_verdicts.py (408 lines) = 52 passed fresh. Dispatching the 4 build slices would duplicate/regress shipped green code. Slice E (data regen) PROVEN end-to-end on a bounded Ahri,Zed SR sample (0.66s -> schema=v4, all 4 v4 blocks present); the full-roster v4 data regen is DEFERRED to BACKLOG FUTURE - it serves NOTHING live (Slice F flip EXCLUDED this run), cannot be shadow-validated (spec Blocker 1: zero live laning ticks), and is a ~190MB/mode LFS monolith-vs-shard decision the spec itself flags (Risk 4); committing it blind = permanent repo bloat for zero realized value. No production code warranted. CLEAN no-op, evidence-logged. | CLEAN | (docs) |
 | R36 | ui-audit | LOOP cycle 7 (DIRECTOR REFILL): 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY per docs/UI_SCALE_SPEC_V2.md) of the Electron-overlay launcher control center (#w-launcher + its layout menu), shipped un-audited in LEDGER 688. HIT-TARGETS MUST-FIX: the menu action rows (.ovx-menu-row: per-panel toggle / reset / done) + the opacity/scale slider rows (.ovx-menu-slider) now reserve min-height var(--hit-min) 42px (were ~30-33px, below the spec tap floor line 112/118). STRUCTURE: dead .ovx-menu-panelset rule removed (panel-set quick-swap RETIRED 2026-06-28; _renderMenu emits no such element). TYPOGRAPHY/ASCII/HIERARCHY pass (menu rows at --fs-sm 18px = correct for an on-demand control center, NOT a glance cue; launcher 34px square kept = operator HUD-summoner-spell exception, inline rationale). TDD RED-first tests/test_overlay_launcher_hit_targets.py (static CSS guard) + tests/snapshot_panels/test_overlay_launcher_menu.py (Playwright live offsetHeight>=42 proof + screenshots/overlay_launcher_menu.png). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. | DONE | `88fc8b05` |
 | R35 | ds-sweep | LOOP cycle 6 (DIRECTOR REFILL): DS schema lift - survivability spell_damage_reduction_pct LIVE consumer. R19 added the forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ, slot) (per-rank PERCENT damage reduction from champion_abilities.json defensive modifier blocks); R35 wires it into _passive_mitigation_overrides.mitigation_multipliers via a trailing snapshot=None param. When snapshot present AND apply_passive_mitigation True, each percent-DR block folds into the EHP DENOMINATOR (mathematically correct vs the directive's "numerator like flat-DR R9" framing - percent DR is a damage-taken multiplier, not prevented HP) - read at _ASSUMED_ABILITY_RANK=4 (clamped to the per-rank tuple bounds), amortized by _ACTIVE_DR_PROB=0.3, axis by case-insensitive substring (physical->PHYS, magic->MAG, else ANY). DEVIATION (followed the data): the directive's literal 3-key map (Physical/Magic/Damage Reduction) misses Braum's lowercased "Damage reduction" + MasterYi's "Modified Damage Reduction" - substring classify required. 8 snapshot champs (Alistar/Belveth/Braum/Galio-split/Garen/Gragas/MasterYi/Warwick); _HAND_AUTHORED_DR_CHAMPS guard prevents double-count (disjoint today). compute_ehp passes snapshot through. DEFAULT-OFF byte-identical (short-circuits before snapshot consulted; legacy 3-arg call unchanged). 2 item-261/262 "no-DR baseline" tests repointed Garen->Ashe/Caitlyn. Offline characterization tests (test_passive_mitigation_snapshot_r35.py, 13 cases, RED-first). ENGINE 1.152.0 -> 1.153.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `ae123ca9` |
 | R34 | lift | LOOP cycle 5 (DIRECTOR REFILL): Section-7b heavyweight deep-dive competitor lift of Aggregator D. 6-point checklist per finding. Output docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md (12 findings). SHIPPED F1 IN-RUN (HIGH-lift LOW-risk presentation): the personal_build champ-select panel dropped the served `most_common_build`; now renders the popular-vs-winning dichotomy (a "Usual" line + per-row usual pips + a conditional survivorship insight: underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash auto-reload ADR-008, no RC restart, no ENGINE/Share). TDD RED-first, verifier-gated 24/24, 5-phase UI-audit PASS. F3 per-opponent matchup delta-stats (HIGH/new-compute) + F8 early/mid/late+snowball bar (MED) -> BACKLOG FUTURE; F2/F5/F6 defer; F4/F7/F9/F10/F12 CLOSED. Vendor names kept out of repo source (docs only). | DONE | `a3d38c0e` |
@@ -209,6 +210,39 @@ genuinely-open ROADMAP/BACKLOG work.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-30 R37 (LOOP cycle 8, DIRECTOR REFILL, head 91d74274) CLEAN no-op (docs)
+  - Directive R37 ordered a 4-slice worktree build of "Lane A v4 scenario
+    precompute"; its PREMISE-CHECK self-flagged "[UNVERIFIED] v4 not yet built".
+    Verify-the-premise (grep cited file:line + fresh pytest + git log, NOT the
+    digest) found the premise FALSE - the v4 substrate already SHIPPED.
+  - Ground truth: core/laning_scenario_precompute.py is at schema
+    laning_scenarios/v4 (lines 51, 824) with ITEM_STATES + cooldown_window +
+    spike_timing + kill_threshold_met; reader core/precomputed_laning_coach.py +
+    shadow seam dashboard/_deterministic_coaching.py threaded; both test files on
+    disk. Commit 84248459 "feat(lane-a): v4 laning-scenario precompute -
+    cooldown-window + spike-timing + item-state axis" landed Slices A-D. The
+    spec's own Section 0: "this is an EXTENSION, not a greenfield build ...
+    already exists and is shipped." The director read a stale ~4f1d4126 digest.
+  - Fresh proof: tests/test_laning_scenario_precompute.py +
+    tests/test_lane_a_v4_verdicts.py = 52 passed in 2.27s. Dispatching the 4
+    build slices would duplicate/regress shipped green code (the anti-pattern).
+  - Slice E (data regen) is the only residual; its PATH is PROVEN - py -m
+    core.laning_scenario_precompute --mode sr --champions Ahri,Zed --out <tmp>
+    -> 45861 bytes, schema=v4, item_state + cooldown_window + spike_timing +
+    kill_threshold_met all present, 0.66s.
+  - DEFERRED the full-roster v4 data regen (BACKLOG Data-pipeline FUTURE), NOT
+    committed: (a) the shipped 16.13.1 tables are still laning_scenarios/v3
+    (64MB/mode LFS, full 171-roster; SEED_CHAMPIONS default is only 10 so the
+    full tables need the explicit roster list); (b) v4 ~doubles cells
+    (band-pruned item-states L2:1/L6:2/L11:3) + adds 2 blocks/cell -> a
+    ~190MB/mode LFS monolith; (c) it serves NOTHING live (Slice F flip EXCLUDED
+    this run), cannot be shadow-validated (spec Blocker 1: zero live laning
+    ticks), and spec Risk 4 flags the monolith-vs-shard size decision.
+    Committing 190MB+ unconsumed LFS blind = repo bloat for zero current value;
+    operator "auto-pick safest" = prove path, defer commit.
+  - No production code touched (docs-only). R37 v4 code stays 52-green at HEAD;
+    full suite unaffected. CI green baseline at HEAD (run 28447514241).
 
 - 2026-06-30 R36 (LOOP cycle 7, DIRECTOR REFILL, head 5e2931ec) DONE (`88fc8b05`)
   - 5-phase fixture audit of the Electron-overlay launcher control center
