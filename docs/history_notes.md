@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (R46 headless cycle 15 - DS schema lift: STACKING permanent max-HP passives (Sion W / Cho'Gath R / Swain P); ENGINE 1.159.0 -> 1.160.0)
+
+Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift. Full detail in LEDGER 700 + ORCHESTRATION_PLAN R46.
+
+- **A NEW survivability axis + the SECOND EHP-NUMERATOR term** (after the revive multiplier): champion passives granting PERMANENT bonus max health PER STACK, not in the resolved stat block so neither EHP scorer saw them. Premise was correct + not-yet-on-disk (the named module did not exist); no premise correction needed.
+- **Ground truth (vs `data/daemon_slayer/16.13.1/champion_abilities.json`):** Sion W Soul Furnace "+4 bonus health per kill (+15 large/champ)"; Cho'Gath R Feast per-stack health = parsed "Bonus Health Per Stack" damage_block `[80,120,160]` by rank; Swain P "+15 bonus health permanently per Soul Fragment".
+- **Module + seam (`2b3f8d38` feat).** New pure `agents/daemon_slayer/_passive_health_overrides.py` (`passive_health_stack_hp` + 3 seeds). `compute_ehp` gains END-appended `assume_passive_health_stacks=False`; True adds the per-champ bonus max-HP RAW to every per-type numerator (phys/mag/true) like `ext_flat_hp`/`flat_mit_*`. Per-stack HP EXACT Meraki; the assumed STACK COUNT by level is a CONSERVATIVE midpoint (LOW 18-entry curves; Sion +15-upside omitted) - never over-states.
+- **DEFAULT-OFF byte-identical** (flag False -> 0.0 -> identical to 1.159.0; no live consumer passes it; unregistered champ 0 even ON).
+- **Tier-2.** TDD RED-first `test_passive_health_overrides_r46.py` (RED import-fail -> GREEN 18). Read-only verifier CONFIRM 7/7 (fresh DS 7658; OFF byte-identical Sion L11; ON strictly > OFF all 3 axes; Garen ON==OFF; Meraki `[80,120,160]`; ruff/0-stray clean). ENGINE 1.159.0 -> 1.160.0 (93 files / 106 pins, 0 stray) + DS `:8893` bounce (PID 6972 -> live 1.160.0) + Share `--check` green (385 files) + banner 7640 -> 7658 SAME feat commit. DS 7658 pass / RC 10128 pass (9 mid-bump Share/doc/live drift failures cleared post-sync+bounce, re-run 43/43).
+- **NEXT:** live default-ON flip EXCLUDED (no live per-champ stack feed; scorer reads a conservative assumed curve) -> `docs/LIVE_GAME_GATED_SYNC.md`. Resume the headless loop.
+
+---
+
 # 2026-06-30 (R45 headless cycle 14 - DS schema lift: percent-of-resist LOW-HP DOUBLED tier (Poppy W); ENGINE 1.158.0 -> 1.159.0)
 
 Gemini-directed headless loop cycle 14 (from directive.md; operator-triggered single cycle). DS schema lift. Full detail in LEDGER 699 + ORCHESTRATION_PLAN R45.
