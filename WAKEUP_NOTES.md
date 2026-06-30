@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-30 (R44 headless cycle 13 - Section-7b competitor deep-dive: Guide Site Q; docs-only CLEAN no-op)
+
+Gemini-directed headless loop cycle 13 (from directive.md). Competitor-lift research, ENGINE-IMPACT NONE. Full detail in LEDGER 698 + ORCHESTRATION_PLAN R44.
+
+- **Deliverable (`(docs)` commit).** docs/COMPETITOR_LIFT_2026-06-30_GUIDE_SITE_Q.md - Section-7b 6-point teardown of Guide Site Q (the human-authored guide site, NOT a stats aggregator), one heavyweight general-purpose agent. Guide Site Q bot-defended (WebFetch 403 / rag 500; playwright+residential-proxy loaded only the JS-tab-gated static shell -> THREATS/cheat-sheet shapes [INFERRED]); every RC HAVE cited to live code.
+- **RECOMMENDED IN-RUN SHIP = NONE (CLEAN no-op).** Independently re-verified the 3 load-bearing cites before accepting "no ship": F2 theorycraft stat-totals ALREADY SHIPPED + stronger in RC (ds-statcheck: routes_ds_statcheck.py:213-228 serves the resolved stat block, ds_statcheck.js:45-56 renders it) -> CLOSED; F1 all-5-enemy danger grid is the best Guide Site Q-distinct idea but RC renders only enemyIds[0] (ds_matchup.js:247-251) and the lift is multi-fetch (up-to-5 /api/ds-matchup calls) not a one-served-field re-render -> fails the HIGH+LOW+one-payload gate -> FUTURE.
+- **BACKLOG FUTURE:** F1 lane/fight threat column (MED, pure frontend multi-fetch over the EXISTING per-pair-cached /api/ds-matchup) + F3 skill-order max-priority grid (new compute; core/skill_wpa.py exists but is not served to champ-select). F4/F5/F6 CLOSED. Triage NOW=0 / FUTURE=2 / CLOSED=4.
+- **Tier-0 docs-only:** no code/engine/route/JS/DS/Share change, no restart, no UI-audit (no frontend slice). ASCII-hygiene gate green. Vendor name (Guide Site Q) kept in docs only, out of repo source.
+- **NEXT:** resume the headless loop. F1 is the standout BACKLOG candidate if the operator later wants a champ-select multi-enemy threat readout.
+
+---
+
 # 2026-06-30 (R42 headless cycle 7 - DS engine fix: Yun Tal conditional-AS unit mismatch; ENGINE 1.156.0 -> 1.157.0)
 
 Gemini-directed headless loop cycle 7 (from directive.md). DS engine math fix. Full detail in LEDGER 696 + ORCHESTRATION_PLAN R42.
@@ -24,14 +36,3 @@ Gemini-directed headless loop cycle 12 (from directive.md). DS schema lift fulfi
 - **PREMISE CORRECTED (verify-the-premise win).** The directive named Imperial Mandate 4005 a "10% current-HP detonation", but that is STALE: DDragon 16.13.1 shows IM reworked to a 7% Vulnerable all-source amp (Control/Command passives) - the 16.12.1 Coordinated Fire detonation is GONE (only the stale Meraki items mirror, content_patch=None, still carries it). Seeding it would be a WRONG precompute, so 4005 is a documented NON-FIT and belongs in `_target_vulnerability_overrides`, not this seam. Leona is the sole seed.
 - **Tier-2.** TDD RED-first `test_ally_detonation_r41.py` (19 cases). ENGINE 1.155.0 -> 1.156.0 (99 assertion pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.156.0) + Share `--check` green SAME commit + DAEMON_SLAYER.md banner. DS 7604 pass / RC 10128 pass (2 transient first-run fails - doc-drift banner [fixed] + a live-engine smoke during the DS-restart window [re-run green]); read-only verifier CONFIRM (Aatrox ON==OFF, Leona burst delta 75.5 @mr=0).
 - **NEXT:** live default-ON flip EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md` (wire a DPS/burst/rank consumer + eyeball Leona's mark value vs a real game; validate the 2.5s cadence + 0.5 proc-rate). Resume the headless loop.
-
----
-
-# 2026-06-30 (R38 headless cycle 9 - overlay enemy_spells/stats_panel 5-phase audit; + ROADMAP budget fix + HEXCORE galaxy refresh)
-
-Gemini-directed headless loop cycle 9 (run manually from directive.md), then the operator added a HEXCORE viewer refresh mid-cycle. Full detail in LEDGER 692 + ORCHESTRATION_PLAN R38.
-
-- **R38 overlay audit (`043e0d53` fix, `9979c46e` docs).** 5-phase fixture audit of the un-audited overlay panels enemy_spells.js + stats_panel.js (2 parallel read-only audit subagents, orchestrator-merged). HIT-TARGETS MUST-FIX: the stats `.sp-role` <select> (the panel's lone clickable) was ~20px -> `min-height: var(--hit-min)` 42px (siblings at overlay.css:717/758 already comply). enemy_spells `.es-chip` (~19px) = deliberate A5-locked compact-tracker sub-floor exception, inline rationale (no size bump, like the R36 launcher square). TYPOGRAPHY/ASCII/STRUCTURE/HIERARCHY pass (R8/R33 overlay-scoped tokens). TDD RED-first static guard + Playwright pixel proof (.sp-role offsetHeight>=42 + screenshot). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. Full RC suite 10116 passed.
-- **ROADMAP budget (`edace211`).** The full local suite caught a pre-existing `test_doc_size_budget::test_roadmap_md_under_budget` red - ROADMAP.md was 81979 LF bytes, 59 over the 80KiB ceiling (CI happened to mask it). Compressed the verbose set_augment_intent Cherry bullet to a pointer (full record preserved in CHERRY_AUGMENT_SCAFFOLD_NOTES.md) + normalized to LF -> 80236 bytes; both budget guards green.
-- **HEXCORE galaxy refresh (`355cad01`).** Operator-requested. Updated BOTH docs/HEXCORE_offline.html + docs/HEXCORE.html (shared node data, kept in sync): +8 nodes (Haiku-zero precompute lane laning+build, build_planner, det-coaching seam, overlay panels enemy_spells/stats_panel/launcher), +10 edges, stale ENGINE 1.151.0 -> 1.154.0. Validated by replicating the viewer's own RAW/EDG parser (125 nodes, all 8 resolve at arity 5, 10 edges connect, ASCII-clean). Self-contained + base64 fonts untouched. Live galaxy-render eyeball OWED (operator-side; data is parser-verified).
-- **NEXT:** the overlay live-verify tail still wants a live game (a/b choices `#rn-choices` absent, champ-select lane->MID, flicker, ZOI alpha/blur). The R38 in-game populated pixel capture is OWED. Resume the headless loop.
