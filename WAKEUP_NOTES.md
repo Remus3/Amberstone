@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-30 (R46 headless cycle 15 - DS schema lift: STACKING permanent max-HP passives (Sion W / Cho'Gath R / Swain P); ENGINE 1.159.0 -> 1.160.0)
+
+Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift. Full detail in LEDGER 700 + ORCHESTRATION_PLAN R46.
+
+- **A NEW survivability axis + the SECOND EHP-NUMERATOR term** (after the revive multiplier): champion passives granting PERMANENT bonus max health PER STACK, not in the resolved stat block so neither EHP scorer saw them. Premise was correct + not-yet-on-disk (the named module did not exist); no premise correction needed.
+- **Ground truth (vs `data/daemon_slayer/16.13.1/champion_abilities.json`):** Sion W Soul Furnace "+4 bonus health per kill (+15 large/champ)"; Cho'Gath R Feast per-stack health = parsed "Bonus Health Per Stack" damage_block `[80,120,160]` by rank; Swain P "+15 bonus health permanently per Soul Fragment".
+- **Module + seam (`2b3f8d38` feat).** New pure `agents/daemon_slayer/_passive_health_overrides.py` (`passive_health_stack_hp` + 3 seeds). `compute_ehp` gains END-appended `assume_passive_health_stacks=False`; True adds the per-champ bonus max-HP RAW to every per-type numerator (phys/mag/true) like `ext_flat_hp`/`flat_mit_*`. Per-stack HP EXACT Meraki; the assumed STACK COUNT by level is a CONSERVATIVE midpoint (LOW 18-entry curves; Sion +15-upside omitted) - never over-states.
+- **DEFAULT-OFF byte-identical** (flag False -> 0.0 -> identical to 1.159.0; no live consumer passes it; unregistered champ 0 even ON).
+- **Tier-2.** TDD RED-first `test_passive_health_overrides_r46.py` (RED import-fail -> GREEN 18). Read-only verifier CONFIRM 7/7 (fresh DS 7658; OFF byte-identical Sion L11; ON strictly > OFF all 3 axes; Garen ON==OFF; Meraki `[80,120,160]`; ruff/0-stray clean). ENGINE 1.159.0 -> 1.160.0 (93 files / 106 pins, 0 stray) + DS `:8893` bounce (PID 6972 -> live 1.160.0) + Share `--check` green (385 files) + banner 7640 -> 7658 SAME feat commit. DS 7658 pass / RC 10128 pass (9 mid-bump Share/doc/live drift failures cleared post-sync+bounce, re-run 43/43).
+- **NEXT:** live default-ON flip EXCLUDED (no live per-champ stack feed; scorer reads a conservative assumed curve) -> `docs/LIVE_GAME_GATED_SYNC.md`. Resume the headless loop.
+
+---
+
 # 2026-06-30 (R45 headless cycle 14 - DS schema lift: percent-of-resist LOW-HP DOUBLED tier (Poppy W); ENGINE 1.158.0 -> 1.159.0)
 
 Gemini-directed headless loop cycle 14 (from directive.md; operator-triggered single cycle). DS schema lift. Full detail in LEDGER 699 + ORCHESTRATION_PLAN R45.
@@ -25,15 +38,3 @@ Gemini-directed headless loop cycle 13 (from directive.md). Competitor-lift rese
 - **BACKLOG FUTURE:** F1 lane/fight threat column (MED, pure frontend multi-fetch over the EXISTING per-pair-cached /api/ds-matchup) + F3 skill-order max-priority grid (new compute; core/skill_wpa.py exists but is not served to champ-select). F4/F5/F6 CLOSED. Triage NOW=0 / FUTURE=2 / CLOSED=4.
 - **Tier-0 docs-only:** no code/engine/route/JS/DS/Share change, no restart, no UI-audit (no frontend slice). ASCII-hygiene gate green. Vendor name (Guide Site Q) kept in docs only, out of repo source.
 - **NEXT:** resume the headless loop. F1 is the standout BACKLOG candidate if the operator later wants a champ-select multi-enemy threat readout.
-
----
-
-# 2026-06-30 (R42 headless cycle 7 - DS engine fix: Yun Tal conditional-AS unit mismatch; ENGINE 1.156.0 -> 1.157.0)
-
-Gemini-directed headless loop cycle 7 (from directive.md). DS engine math fix. Full detail in LEDGER 696 + ORCHESTRATION_PLAN R42.
-
-- **Bug + fix (`01875f4e` feat).** `compute_dps` folded `cond_as` (a bonus-AS FRACTION from `total_conditional_as`, Yun Tal Flurry ~0.08) directly onto the FINAL rotation AS, but `stats["as"]` is attacks/sec (`base_as * (1 + bonus_pct)`), so the raw add over-credited AS by `1/base_as`. Now scales the fraction by innate base AS before adding (`base_as * cond_as`), same 2.5 hard-cap re-clamp - the IDENTICAL unit bug + fix pattern as R7's `passive_as` fold ~20 lines below. `raw_attack_dps` unchanged (un-folded `eff_as`); explain note repointed to "+X% bonus AS ... folded onto base AS".
-- **TDD RED-first** `test_conditional_as_base_fold_r42.py` (2 cases, mirrors R7 `SeamAddsBaseAsScaledFraction`): cond_as has no flag, so the counterfactual is a `mock.patch` of `dps.total_conditional_as`=0 + a Dagger (1042) pure-AS calibration; pins `on.weighted_dps` to the base_as-scaled magnitude, NOT the raw fraction. RED confirmed (63.659 vs 62.721); GREEN after.
-- **Dependent fix:** `test_routes_ds_relscore.py` double-rounding tolerance 0.2 -> 0.25 (the corrected Yun Tal DPS shifted item 3032 onto a float-epsilon boundary: route score_pct uses unrounded delta, test recomputes from 1dp-stored -> `71.3 - 71.1 = 0.2000...0284`). NOT a route bug nor a fix bug.
-- **Tier-2.** ENGINE 1.156.0 -> 1.157.0 (90 pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.157.0) + Share `--check` green (381 files) + DAEMON_SLAYER.md banner 7604 -> 7606, all in the feat commit. DS 7606 pass / RC 10128 pass; read-only verifier CONFIRM (7/7, fix base_as-scaled at dps.py:865-866). Built inline (trivial one-file, verifier-gated).
-- **NEXT:** resume the headless loop. No live-flip gate needed - this corrects an already-live default-ON path (cond_as fires whenever Yun Tal is in a build), not a default-OFF seam.
