@@ -38,10 +38,47 @@ function normRect(rect) {
   };
 }
 
-// Stable signature so an unchanged rect (the common case - it only moves when
-// the operator edits game.cfg) does not touch the DOM each poll tick.
-function _sig(r) {
-  return r ? `${r.x},${r.y},${r.w},${r.h},${r.flip ? 1 : 0}` : "";
+// The overlay design canvas (every widget is authored in 1920x1080; the body
+// zoom = ovscale reconciles it to the live window). minimap_rect arrives in this
+// space.
+const DESIGN_W = 1920;
+const DESIGN_H = 1080;
+
+// Live body zoom (ovscale). Mirrors overlay_layout._bodyZoom (module-private
+// there); a non-finite / non-positive zoom degrades to 1.
+function _bodyZoom() {
+  if (typeof document === "undefined" || !document.body) return 1;
+  const z = parseFloat(getComputedStyle(document.body).zoom);
+  return Number.isFinite(z) && z > 0 ? z : 1;
+}
+
+// Pure placement math: map the 1920x1080 design rect onto the live window so the
+// box lands PIXEL-EXACT over the native in-game minimap, immune to ovscale.
+//
+// The minimap is anchored bottom-right at a fixed FRACTION of the render, so the
+// box's window-fraction (x/1920, y/1080, ...) is resolution- AND ovscale-
+// independent. Positioning the box in raw design px instead scales it by the
+// inherited body zoom (ovscale - a DPI/readability knob, NOT the design->native
+// ratio), landing it up-and-left of + smaller than the real minimap. So: place
+// by window-fraction px and set the box's own zoom to 1/ovscale to cancel the
+// inherited body zoom, leaving the box on true window px at any ovscale.
+function _placement(r, iw, ih, z) {
+  const zz = Number.isFinite(z) && z > 0 ? z : 1;
+  return {
+    left: (r.x / DESIGN_W) * iw,
+    top: (r.y / DESIGN_H) * ih,
+    width: (r.w / DESIGN_W) * iw,
+    height: (r.h / DESIGN_H) * ih,
+    zoom: 1 / zz,
+  };
+}
+
+// Stable signature so an unchanged scene (the common case - the rect only moves
+// when the operator edits game.cfg, but the window size / ovscale can also
+// change) does not touch the DOM each poll tick. Includes the viewport + zoom so
+// a resize / ovscale flip repositions the box.
+function _sig(r, iw, ih, z) {
+  return r ? `${r.x},${r.y},${r.w},${r.h},${r.flip ? 1 : 0}|${iw}x${ih}@${z}` : "";
 }
 
 let _lastSig = "_unset_";
@@ -59,7 +96,10 @@ export function renderMinimapRect(rect) {
   }
 
   const r = normRect(rect);
-  const sig = _sig(r);
+  const z = _bodyZoom();
+  const iw = (typeof window !== "undefined" && window.innerWidth) || DESIGN_W;
+  const ih = (typeof window !== "undefined" && window.innerHeight) || DESIGN_H;
+  const sig = _sig(r, iw, ih, z);
   if (sig === _lastSig) return; // idempotent: nothing changed this tick
   _lastSig = sig;
 
@@ -68,17 +108,22 @@ export function renderMinimapRect(rect) {
     return;
   }
 
-  // Lift to a position-fixed overlay widget. The .ovx-widget base owns
-  // position:fixed + the body-zoom transform that maps design px to the live
-  // window; overlay.css [data-ovx-id="w-mmrect"] strips the backing/shadow/
-  // bracket to a single gold hairline + pointer-events:none (click-through).
+  // Lift to a position-fixed overlay widget. overlay.css [data-ovx-id="w-mmrect"]
+  // strips the backing/shadow/bracket to a single gold hairline +
+  // pointer-events:none (click-through). Unlike every other ovx-widget (which is
+  // edge-anchored and WANTS the ovscale body zoom for readability), this box must
+  // align pixel-exact to a NATIVE in-game element, so it is placed by window
+  // fraction with its own zoom set to cancel the inherited ovscale - see
+  // _placement.
   mount.classList.add("ovx-widget");
   mount.dataset.ovxId = "w-mmrect";
   mount.dataset.ovxTier = "ambient";
-  mount.style.left = r.x + "px";
-  mount.style.top = r.y + "px";
-  mount.style.width = r.w + "px";
-  mount.style.height = r.h + "px";
+  const p = _placement(r, iw, ih, z);
+  mount.style.left = p.left + "px";
+  mount.style.top = p.top + "px";
+  mount.style.width = p.width + "px";
+  mount.style.height = p.height + "px";
+  mount.style.zoom = String(p.zoom);
   mount.hidden = false;
 }
 
@@ -87,4 +132,4 @@ export function _resetMinimapRect() {
   _lastSig = "_unset_";
 }
 
-export const __test = { normRect, _sig };
+export const __test = { normRect, _sig, _placement, DESIGN_W, DESIGN_H };
