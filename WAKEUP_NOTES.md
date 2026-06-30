@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-30 (R47 headless cycle 16 - 5-phase UI audit of the 4 PGR child panels; 2 sub-floor fixes + a floor guard; Tier-1 CSS-only)
+
+Gemini-directed headless loop cycle 16 (from directive.md; operator-triggered). UI audit, ENGINE-IMPACT NONE. Full detail in LEDGER 702 + ORCHESTRATION_PLAN R47.
+
+- **Scope.** C3 (item 332) audited the parent last_match.js/css but left the 4 PGR child panels (`web/{js,css}/panels/pgr_build_wpa`, `pgr_lane_compare`, `pgr_loadout`, `pgr_winprob`) un-audited. R47 is that 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY vs `docs/UI_SCALE_SPEC_V2.md`).
+- **Method.** 4 parallel read-only audit subagents (one per panel) + an orchestrator ground-truth grep cross-check (non-ASCII + font-size + pointer/hit-min). One subagent FLAKED (hallucinated the game-monitor skill's live-state gate instead of auditing) -> re-audited that panel inline per never-trust-a-flaked-subagent.
+- **Findings.** 3 panels 0 MUST-FIX (fully tokenized, pure-display, 0 non-ASCII). 2 sub-floor hardcodes, both resolved in-slice: `pgr_loadout.css:133` `.pld-aug-name` 13px inside `@media(max-width:900px)` -> REMOVED (base `var(--fs-xs,16px)` applies; the column stack, not a font shrink, is the anti-clip; operator monitor fixed 1920x1080 so it never rendered); `pgr_winprob.css:86` `.pwp-ylab/.pwp-xlab` 11px inline-SVG chart-axis labels -> KEPT + inline operator-exception rationale (chart-density; 16px would crowd the 180px curve; R40/item-184).
+- **Deliverable + verify.** New `tests/test_pgr_child_panel_floor_guard.py` (8 tests, RED-first - flagged both offenders -> GREEN). Read-only verifier CONFIRM 4/4. Full RC suite `tests/ --ignore=tests/daemon_slayer` 10136 passed / 0 failed (+8). CSS-only asset-hash reload (ADR-008); no RC restart, no ENGINE/DS/Share.
+- **NEXT.** PGR dashboard pixel capture OWED (Chrome surface retired 2026-06-27 overlay-only + PGR not in overlay + no live game; baseline render byte-identical). Commits `c5f0cf3d` (slice) + `7f800a4d` (docs). Resume the headless loop.
+
+---
+
 # 2026-06-30 (R46 headless cycle 15 - DS schema lift: STACKING permanent max-HP passives (Sion W / Cho'Gath R / Swain P); ENGINE 1.159.0 -> 1.160.0)
 
 Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift. Full detail in LEDGER 700 + ORCHESTRATION_PLAN R46.
@@ -26,15 +38,3 @@ Gemini-directed headless loop cycle 14 (from directive.md; operator-triggered si
 - **DEFAULT-OFF byte-identical on two axes:** `apply_passive_resist=False` short-circuits; `apply_passive_resist=True` at the default full-HP 1.0 leaves the low-HP branch dormant (1.0 not < 0.40) = identical to 1.158.0. No live consumer passes the kwarg.
 - **Tier-2.** TDD RED-first `test_passive_resist_low_hp_tier_r45.py` (RED 15-fail -> GREEN). Build agent (main tree) + read-only verifier CONFIRM 6/6 (independent `resist_grants` math 0.24*200=48.0; Rell + unseeded byte-identical; scope clean). ENGINE 1.158.0 -> 1.159.0 (92 files / 105 pins, 0 stray) + DS `:8893` taskkill (PID 11308) / relaunch (live 1.159.0) + Share `--check` green (383 files) + DAEMON_SLAYER.md banner 7621 -> 7640 SAME feat commit. DS 7640 pass / RC 10128 pass.
 - **NEXT:** live default-ON flip EXCLUDED (the EHP scorer never reads caster HP) -> `docs/LIVE_GAME_GATED_SYNC.md`. Resume the headless loop.
-
----
-
-# 2026-06-30 (R44 headless cycle 13 - Section-7b competitor deep-dive: Guide Site Q; docs-only CLEAN no-op)
-
-Gemini-directed headless loop cycle 13 (from directive.md). Competitor-lift research, ENGINE-IMPACT NONE. Full detail in LEDGER 698 + ORCHESTRATION_PLAN R44.
-
-- **Deliverable (`(docs)` commit).** docs/COMPETITOR_LIFT_2026-06-30_GUIDE_SITE_Q.md - Section-7b 6-point teardown of Guide Site Q (the human-authored guide site, NOT a stats aggregator), one heavyweight general-purpose agent. Guide Site Q bot-defended (WebFetch 403 / rag 500; playwright+residential-proxy loaded only the JS-tab-gated static shell -> THREATS/cheat-sheet shapes [INFERRED]); every RC HAVE cited to live code.
-- **RECOMMENDED IN-RUN SHIP = NONE (CLEAN no-op).** Independently re-verified the 3 load-bearing cites before accepting "no ship": F2 theorycraft stat-totals ALREADY SHIPPED + stronger in RC (ds-statcheck: routes_ds_statcheck.py:213-228 serves the resolved stat block, ds_statcheck.js:45-56 renders it) -> CLOSED; F1 all-5-enemy danger grid is the best Guide Site Q-distinct idea but RC renders only enemyIds[0] (ds_matchup.js:247-251) and the lift is multi-fetch (up-to-5 /api/ds-matchup calls) not a one-served-field re-render -> fails the HIGH+LOW+one-payload gate -> FUTURE.
-- **BACKLOG FUTURE:** F1 lane/fight threat column (MED, pure frontend multi-fetch over the EXISTING per-pair-cached /api/ds-matchup) + F3 skill-order max-priority grid (new compute; core/skill_wpa.py exists but is not served to champ-select). F4/F5/F6 CLOSED. Triage NOW=0 / FUTURE=2 / CLOSED=4.
-- **Tier-0 docs-only:** no code/engine/route/JS/DS/Share change, no restart, no UI-audit (no frontend slice). ASCII-hygiene gate green. Vendor name (Guide Site Q) kept in docs only, out of repo source.
-- **NEXT:** resume the headless loop. F1 is the standout BACKLOG candidate if the operator later wants a champ-select multi-enemy threat readout.

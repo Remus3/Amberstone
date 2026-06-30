@@ -218,6 +218,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (R44 headless cycle 13 - Section-7b competitor deep-dive: Guide Site Q; docs-only CLEAN no-op)
+
+Gemini-directed headless loop cycle 13 (from directive.md). Competitor-lift research, ENGINE-IMPACT NONE. Full detail in LEDGER 698 + ORCHESTRATION_PLAN R44.
+
+- **Deliverable (`(docs)` commit).** docs/COMPETITOR_LIFT_2026-06-30_GUIDE_SITE_Q.md - Section-7b 6-point teardown of Guide Site Q (the human-authored guide site, NOT a stats aggregator), one heavyweight general-purpose agent. Guide Site Q bot-defended (WebFetch 403 / rag 500; playwright+residential-proxy loaded only the JS-tab-gated static shell -> THREATS/cheat-sheet shapes [INFERRED]); every RC HAVE cited to live code.
+- **RECOMMENDED IN-RUN SHIP = NONE (CLEAN no-op).** Independently re-verified the 3 load-bearing cites before accepting "no ship": F2 theorycraft stat-totals ALREADY SHIPPED + stronger in RC (ds-statcheck: routes_ds_statcheck.py:213-228 serves the resolved stat block, ds_statcheck.js:45-56 renders it) -> CLOSED; F1 all-5-enemy danger grid is the best Guide Site Q-distinct idea but RC renders only enemyIds[0] (ds_matchup.js:247-251) and the lift is multi-fetch (up-to-5 /api/ds-matchup calls) not a one-served-field re-render -> fails the HIGH+LOW+one-payload gate -> FUTURE.
+- **BACKLOG FUTURE:** F1 lane/fight threat column (MED, pure frontend multi-fetch over the EXISTING per-pair-cached /api/ds-matchup) + F3 skill-order max-priority grid (new compute; core/skill_wpa.py exists but is not served to champ-select). F4/F5/F6 CLOSED. Triage NOW=0 / FUTURE=2 / CLOSED=4.
+- **Tier-0 docs-only:** no code/engine/route/JS/DS/Share change, no restart, no UI-audit (no frontend slice). ASCII-hygiene gate green. Vendor name (Guide Site Q) kept in docs only, out of repo source.
+- **NEXT:** resume the headless loop. F1 is the standout BACKLOG candidate if the operator later wants a champ-select multi-enemy threat readout.
+
+---
+
 # 2026-06-30 (R42 headless cycle 7 - DS engine fix: Yun Tal conditional-AS unit mismatch; ENGINE 1.156.0 -> 1.157.0)
 
 Gemini-directed headless loop cycle 7 (from directive.md). DS engine math fix. Full detail in LEDGER 696 + ORCHESTRATION_PLAN R42.
