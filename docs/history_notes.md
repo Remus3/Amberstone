@@ -218,6 +218,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-29 (Section J WPs F5-H02 + F6a shipped; terminal-window noise eliminated; branches collapsed)
+
+Picked two OPEN Section J WPs from `docs/OVERLAY_BUILD_MASTER_PLAN.md`, then handled two operator reports about stray terminal windows + a branch cleanup. All on main, CI green.
+
+- **682 / WP-F5-H02 (`decd681f`, flip `4e03ee66`).** task_queue gate-limbo state-machine leak. The audit-8 reconciler only closes `IN_PROGRESS`; `needs_explicit_approval`/`agent0_review`/`retry_pending` had no terminal transition. Root cause of the live pile-up: `test_file_task_endpoint_frozen_file_gates` POSTs `test-round22-frozen` to the live `:8890` supervisor every run -> a real orphan envelope each time (1566 accumulated). Fix: new `Scheduler.reconcile_stale_gated()` (7-day generous threshold -> `dead_letter`, separate from the in-progress reconciler so its NEEDS_APPROVAL-off-limits contract stays pinned) + wired boot + 5-min loop + the polluting test now self-dismisses. Backfill: live supervisor boot reaper dead-lettered the 1566 (verified `by_status: dead_letter 1566, needs_approval 1`, the 1 is 4 days old/in-window). 16 new tests; 403+50+12 green.
+- **683 / WP-F6a (`b0720386`, flip `16bb6c9f`).** `ARCHITECTURE.md:172` recited `ENGINE_VERSION 1.153.0 / 547 items / 7537 tests` - drifted vs live `1.154.0` (CI runs no pytest on docs). Replaced the numeric recital with a pointer to the drift-guarded `docs/DAEMON_SLAYER.md`; new `tests/test_architecture_no_stale_engine_header.py` (2) guards re-drift. CLAUDE.md left alone (24KB < 60KB, current not drifted); `test_engine_version_is_1_X` rename deferred (Share-mirror churn).
+- **684 / terminal-window noise (`2903d802`).** (a) Per-edit console FLASH = hooks (windowless pythonw) shelling out to console children (ruff/git/pytest/powershell) with no `creationflags` -> Windows allocates a fresh console per child. Added `CREATE_NO_WINDOW` to all 4 hook scripts' `subprocess.run`. (b) `DesktopWindowXamlSource` taskbar GHOST = Windows Terminal was the default terminal app, COM-activated `-Embedding` on every console spawn. Operator chose Console Host: set `HKCU\Console\%%Startup` delegation GUIDs to null + `taskkill`'d the resident WT. Verified 0 ghosts.
+- **Branch cleanup.** Remote had 2 stale `claude/*` branches: `hardcore-saha-0592d5` (fully merged, item 680) + `thirsty-keller-e732b1` (byte-identical to main's `c27bb378`, superseded). Deleted both (no open PRs); also pruned 2 stale local worktrees. Remote now `main` only. LEFT ALONE: the `ci-fix/*` branches + `C:/RC-CIWatchdog` worktree (active RC-CIWatchdog agent).
+- **NEXT:** more OPEN Section J WPs - E5 (T0 doc sweep), F5-M01 (body-data-mode regression test, T1), F6c (park auto-ops gate, T0). F5-L03 was closed externally (`c27bb378`, audit-11 L-03) by the auditor.
+
+---
+
 # 2026-06-28 (audit-11 L-03 closed - p0_inventory CSV self-documents as a point-in-time snapshot)
 
 Session ran in worktree `claude/thirsty-keller-e732b1` (forked at item 652). Closed the deferred audit-11 L-03 housekeeping finding.
