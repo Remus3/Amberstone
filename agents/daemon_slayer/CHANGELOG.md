@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.156.0 (R41 - ally mark-detonation magic-damage seam, default-OFF, byte-identical.
+A handful of champions lay a MARK an ALLY consumes for bonus damage - the mark-enabler's contribution to
+TEAM damage, distinct from the self-amp (_ability_amp_overrides) and all-source-vulnerability
+(_target_vulnerability_overrides) mark registries. R12 explicitly handed this seam off. New PURE module
+_ally_detonation_overrides.py (no engine imports) returns the pre-mitigation raw detonation magic; both
+compute_dps and compute_burst_damage gain an assume_ally_detonation flag (END-appended, default False ->
+byte-identical) that credits it: per-event magic for burst, per-event/cadence for the DPS rate, each
+MR-mitigated (magic routing) + mode_mult + magic_amp + the _ASSUMED_ALLY_DETONATION_PROB=0.5 assumed ally
+proc rate. Seeded Leona P Sunlight (FLAT_MAGIC 32:151 based on level, 2.5s mark cadence), VERIFIED vs
+champion_abilities.json 16.13.1. Imperial Mandate 4005 - the directive's named 10% current-HP detonation -
+is a documented NON-FIT: DDragon 16.13.1 shows it reworked to a 7% Vulnerable all-source amp (Control /
+Command passives); the old Coordinated Fire detonation is gone (only the stale Meraki mirror, content_patch
+None, still carries it), so seeding it would be a WRONG precompute - it now belongs in
+_target_vulnerability_overrides. An unmarked champion contributes 0 even with the flag on. The live
+default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md). Offline Meraki-grounded characterization
+tests (test_ally_detonation_r41.py, 19 cases). Credits Riot Data Dragon / CommunityDragon / Meraki. DS
+:8893 bounced -> 1.156.0.)
+
 1.155.0 (R39 - anti-tank current-HP level-ramp endpoints, default-OFF, byte-identical.
 The CURRENT_HP-kind sibling of R17 (1.151.0). A real subset of the antitank %current-HP rows deal a
 percentage that scales with the CASTER's champion level - Senna P Absolution "1% : 10% (based on level) of
