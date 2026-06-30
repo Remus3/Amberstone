@@ -893,3 +893,17 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   current-HP fraction (the scorer today never reads caster HP) and confirm her sub-40%-HP EHP ranking reads sane vs a
   real game. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893` restart on flip.
   Does NOT block any further stage.
+- 2026-06-30 R46 stacking permanent max-HP passive registry (`compute_ehp(assume_passive_health_stacks=)`, ENGINE
+  1.160.0, default-OFF). A NEW survivability axis + the SECOND EHP-NUMERATOR term: champion passives that grant
+  PERMANENT bonus max health PER STACK (the new PURE registry `agents/daemon_slayer/_passive_health_overrides.py`;
+  seeded Sion W Soul Furnace +4/kill, Cho'Gath R Feast +80/120/160 per stack by rank, Swain P Ravenous Flock +15 per
+  Soul Fragment, all verified vs champion_abilities.json 16.13.1). When the flag is True the per-champ bonus max-HP is
+  added RAW to every per-type EHP numerator (physical/magical/true), riding the same armor/MR curve. The per-stack HP
+  is EXACT Meraki; the assumed STACK COUNT by level is an operator-tunable CONSERVATIVE midpoint (the live stack feed
+  we lack). DEFAULT-OFF byte-identical (flag False -> 0.0; no live consumer passes it). OWED (operator/Gemini-gated,
+  NOT headless - charter 4b do-not-flip-blind): (1) wire a live EHP / survivability consumer to pass
+  `assume_passive_health_stacks=True` for Sion/Cho'Gath/Swain and confirm their stacked EHP ranks ABOVE the seam-OFF
+  placement vs a real game; (2) ideally replace the conservative assumed-stack curve with the LIVE stack count (the
+  in-game buff/stack reading from the Live Client buff list, if/when that surfaces) so the credit tracks the real
+  game state, not a midpoint. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893`
+  restart on flip. Does NOT block any further stage.
