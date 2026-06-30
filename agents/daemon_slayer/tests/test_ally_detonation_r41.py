@@ -18,16 +18,14 @@ Seeded (VERIFIED vs patch-16.13.1 champion_abilities.json, Meraki content 25.15)
     marked target will consume the mark to deal 32 : 151 (based on level) bonus
     magic damage." -> FLAT_MAGIC flat_lo=32, flat_hi=151, MAGIC, 2.5s mark cadence.
 
-Documented NON-FIT (NOT seeded) - the directive named Imperial Mandate 4005 as a
-"10% current HP magic" detonation, but that premise is STALE. The official Riot
-DDragon 16.13.1 item tooltip shows Imperial Mandate REWORKED to "Command: On
-Immobilizing an enemy champion, mark them as 7% Vulnerable for 4 seconds" (an
-all-source damage-amp mark; passives renamed Control / Command) - the 16.12.1
-"Coordinated Fire" 10% current-HP detonation is GONE. The Meraki items mirror
-(content_patch=None, stale provenance) still carries the old Coordinated Fire text,
-but an official Riot rework overrides a null-provenance community mirror (do-not-
-flip-blind; a WRONG precompute is worse than none). The reworked 7% Vulnerable now
-belongs in ``_target_vulnerability_overrides``, not this detonation seam.
+Handoff EXECUTED (R43) - the directive named Imperial Mandate 4005 as a "10% current
+HP magic" detonation, but that premise was STALE. The official Riot DDragon 16.13.1
+item tooltip shows Imperial Mandate REWORKED to "Command: On Immobilizing an enemy
+champion, mark them as 7% Vulnerable for 4 seconds" (an all-source damage-amp mark;
+passives renamed Control / Command) - the 16.12.1 "Coordinated Fire" 10% current-HP
+detonation is GONE. R41 recorded it as a non-fit handoff; R43 seeded the reworked 7%
+Vulnerable into ``_target_vulnerability_overrides`` (4005 / Arena 224005 / ARAM
+324005) and emptied this seam's non-fit registry.
 """
 from __future__ import annotations
 
@@ -96,10 +94,11 @@ class RegistrySeedTests(unittest.TestCase):
         self.assertNotIn("4005", _ITEM_DETONATION_OVERRIDES)
         self.assertEqual(_ITEM_DETONATION_OVERRIDES, {})
 
-    def test_imperial_mandate_documented_nonfit(self):
-        self.assertIn("4005", _NONFIT_DETONATION_CANDIDATES)
-        reason = _NONFIT_DETONATION_CANDIDATES["4005"].lower()
-        self.assertIn("vulnerable", reason)
+    def test_imperial_mandate_handed_off_to_vuln_registry(self):
+        # R43 executed the handoff: 4005 reworked to a 7% Vulnerable all-source
+        # mark, seeded in _target_vulnerability_overrides, removed from this seam.
+        self.assertNotIn("4005", _NONFIT_DETONATION_CANDIDATES)
+        self.assertEqual(_NONFIT_DETONATION_CANDIDATES, {})
 
     def test_unknown_champion_is_none(self):
         self.assertIsNone(champion_detonation_for("Aatrox"))
@@ -205,7 +204,7 @@ class OnPathDeltaTests(unittest.TestCase):
 
 class EngineVersionTest(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.157.0")
+        self.assertEqual(ENGINE_VERSION, "1.158.0")
 
 
 if __name__ == "__main__":

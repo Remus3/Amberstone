@@ -781,6 +781,18 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   here. Imperial Mandate (4005) is EXCLUDED as a non-fit (current-HP detonation, not an all-source %amp). A
   WRONG precompute is worse than no credit, so do NOT default-ON until validated. DS `:8893` restart on flip.
   Does NOT block any further stage.
+- 2026-06-30 R43 Imperial Mandate target-vulnerability mark SEEDED (ENGINE 1.158.0, default-OFF) - SUPERSEDES
+  the R12 bullet's "Imperial Mandate (4005) is EXCLUDED" note above. DDragon 16.13.1 `item.json` reworked
+  Imperial Mandate to "Command: On Immobilizing an enemy champion, mark them as 7% Vulnerable for 4 seconds" -
+  a +7% all-source mark - so 4005 / Arena 224005 / ARAM 324005 are now seeded at 0.07 in
+  `_target_vulnerability_overrides._ITEM_VULN_OVERRIDES` (R41's handoff, executed; the stale Meraki Coordinated
+  Fire mirror is overridden by the official Riot rework). This rides the EXISTING R12 `apply_target_vuln` seam
+  and carries NO new flag: a build holding Imperial Mandate is amplified x1.07 only when that flag flips ON, so
+  it is folded into the R12 flip already OWED above (wire the scorer-dispatch / rank / coach surfaces to pass
+  `apply_target_vuln=True` for a marked wielder). OWED (operator/Gemini-gated, NOT headless): when the R12 seam
+  is validated in a real game, also confirm an Imperial Mandate build's marked-target effective DPS / item
+  ranking reads sanely higher, and an unmarked wielder stays byte-identical. A WRONG precompute is worse than no
+  credit, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
 - 2026-06-22 R14 cc_conditional durations_floor_s CC-floor seam (`apply_cc_floor`, ENGINE 1.150.0, default-OFF).
   The NEW guaranteed-minimum floor band on distance / channel-scaled conditional CC
   (`agents/daemon_slayer/cc_conditional.py` ConditionalCcEntry.durations_floor_s: Maokai R 0.75 / Hecarim R 0.75 /

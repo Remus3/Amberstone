@@ -46,21 +46,19 @@ Seeded (VERIFIED vs patch-16.13.1 champion_abilities.json, Meraki content 25.15)
     Sunlight mark/refresh window - a conservative re-proc cadence for DPS; the
     detonation can recur about once per mark cycle).
 
-Documented NON-FIT (NOT seeded) - ``_NONFIT_DETONATION_CANDIDATES``:
+Handoff EXECUTED (R43, 2026-06-30) - ``_NONFIT_DETONATION_CANDIDATES`` is EMPTY:
   * Imperial Mandate (4005): the R41 directive named it a "10% current HP magic"
-    detonation (carried from R12's 16.12.1 note), but that premise is STALE. The
-    official Riot DDragon 16.13.1 item tooltip shows Imperial Mandate REWORKED to
+    detonation (carried from R12's 16.12.1 note), but that premise was STALE. The
+    official Riot DDragon 16.13.1 ``item.json`` shows Imperial Mandate REWORKED to
     "Control: Gain 20 Ability Haste for abilities with Immobilizing effects" +
     "Command: On Immobilizing an enemy champion, mark them as 7% Vulnerable for 4
-    seconds" - an all-source damage-amp mark, with the passives renamed Control /
-    Command. The 16.12.1 "Coordinated Fire" 10% current-HP detonation is GONE. The
-    Meraki items mirror (items_meraki.json content_patch=None, stale provenance)
-    still carries the old Coordinated Fire text, but an official Riot rework
-    overrides a null-provenance community mirror (do-not-flip-blind; a WRONG
-    precompute is worse than none). The reworked 7% Vulnerable now belongs in
-    ``_target_vulnerability_overrides`` (the all-source-%amp registry), not this
-    detonation seam. Recorded here as a handoff marker with its real 16.13.1
-    mechanic, mirroring the ``_NONFIT_VULN_CANDIDATES`` INERT-with-reason doctrine.
+    seconds" - an all-source damage-amp mark (the 16.12.1 "Coordinated Fire" 10%
+    current-HP detonation is GONE; only the stale Meraki mirror, content_patch=None,
+    still carries it). R41 recorded it as a non-fit handoff; R43 seeded the reworked
+    7% Vulnerable into ``_target_vulnerability_overrides`` (4005 / Arena 224005 /
+    ARAM 324005) and removed it from this seam. No live item carries a current-HP
+    ally detonation today; future detonation non-fits are recorded here with their
+    real mechanic, mirroring the ``_NONFIT_VULN_CANDIDATES`` INERT-with-reason doctrine.
 """
 from __future__ import annotations
 
@@ -131,20 +129,11 @@ _CHAMPION_DETONATION_OVERRIDES: dict[str, AllyDetonationEntry] = {
 # in 16.13.1 (see _NONFIT_DETONATION_CANDIDATES); no live item carries this today.
 _ITEM_DETONATION_OVERRIDES: dict[str, AllyDetonationEntry] = {}
 
-# Documented NON-FIT (NOT consumed). The directive named Imperial Mandate (4005) as
-# a 10% current-HP detonation, but DDragon 16.13.1 shows it reworked to a 7%
-# Vulnerable all-source amp (Control / Command passives); the old Coordinated Fire
-# detonation is gone. Only the stale Meraki mirror (content_patch=None) still shows
-# it. Recorded as a handoff marker; the reworked 7% Vulnerable belongs in
-# _target_vulnerability_overrides, not this detonation seam.
-_NONFIT_DETONATION_CANDIDATES: dict[str, str] = {
-    "4005": "Imperial Mandate was reworked in patch 16.13.1: DDragon shows "
-    "'Command: On Immobilizing an enemy champion, mark them as 7% Vulnerable for 4 "
-    "seconds' (an all-source damage-amp mark), NOT the 16.12.1 Coordinated Fire 10% "
-    "current-HP ally detonation (which is gone from the live tooltip; only the "
-    "stale Meraki mirror still carries it). The reworked 7% Vulnerable belongs in "
-    "_target_vulnerability_overrides, not this ally-detonation seam.",
-}
+# Non-fit handoff registry: items evaluated for the detonation seam but characterized
+# elsewhere. EMPTY since R43 - Imperial Mandate 4005 (the lone prior entry) was a
+# 16.13.1 rework to a 7% Vulnerable all-source mark (NOT a current-HP detonation) and
+# is now seeded in _target_vulnerability_overrides (R43 executed the R41 handoff).
+_NONFIT_DETONATION_CANDIDATES: dict[str, str] = {}
 
 
 def champion_detonation_for(champion_id: str) -> AllyDetonationEntry | None:
