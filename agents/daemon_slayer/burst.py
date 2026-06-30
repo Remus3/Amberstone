@@ -484,6 +484,7 @@ def compute_burst_damage(
     assume_ability_amp: bool = False,
     assume_magic_burst: bool = False,
     score_completion_runes: bool = False,
+    assume_ally_detonation: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -972,9 +973,45 @@ def compute_burst_damage(
             magic_burst_damage = magic_burst_raw * mode_mult * magic_amp * magic_burst_mit
             total_burst += magic_burst_damage
 
+    # R41 (1.156.0): ally mark-detonation seam. assume_ally_detonation=False ->
+    # ally_detonation_damage stays 0.0, total_burst unchanged (byte-identical).
+    # When True, a champion whose mark an ALLY consumes for bonus damage (Leona P
+    # Sunlight) is credited one detonation event landing in the burst window:
+    # pre-mit per-event magic (ally_detonation_burst_raw), MR-mitigated (magic
+    # routing) + mode_mult + magic_amp, x the assumed ally proc rate. An unmarked
+    # champion contributes 0 even with the flag on. compute_dps's AA-probe call
+    # above leaves the seam OFF, so the detonation is credited once here (no
+    # double-count). The live default-ON flip is operator-gated
+    # (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+    ally_detonation_damage = 0.0
+    if assume_ally_detonation:
+        from ._ally_detonation_overrides import (
+            _ASSUMED_ALLY_DETONATION_PROB,
+            ally_detonation_burst_raw,
+        )
+
+        det_target_current_hp = target_max_hp * target_current_hp_pct
+        det_raw = ally_detonation_burst_raw(
+            resolved.champion_id, level, resolved.item_ids, det_target_current_hp
+        )
+        if det_raw > 0.0:
+            det_mit = _mitigation_factor("MAGIC", target_armor_eff, target_mr_eff)
+            ally_detonation_damage = (
+                det_raw * mode_mult * magic_amp * det_mit
+                * _ASSUMED_ALLY_DETONATION_PROB
+            )
+            total_burst += ally_detonation_damage
+
     primary = _classify_primary_scaling(per_cast, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
+    if ally_detonation_damage > 0.0:
+        notes.append(
+            f"ally-detonation +{ally_detonation_damage:.1f} burst "
+            f"({resolved.champion_name} mark consumed by allies at "
+            f"{_ASSUMED_ALLY_DETONATION_PROB:.0%} assumed proc rate; "
+            "assume_ally_detonation seam)"
+        )
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(f"ARAM aramDamageDealt={mode_mult:.3f} on per-cast damage")
     if ap_amp != 1.0:
