@@ -47,10 +47,10 @@ const DESIGN_H = 1080;
 // Operator calibration nudge in true screen px (the docstring's "operator-nudge"
 // the proportional scale model leaves for residual off-mark error). Applied
 // AFTER the body-zoom is cancelled, so these are literal on-screen px at any
-// ovscale. +x = right, +y = down. 2026-06-29: operator live-tuned to +7px
-// right, +1px down (path: +15 overshot -> 8 -> left 1 / down 1).
-const NUDGE_X_PX = 7;
-const NUDGE_Y_PX = 1;
+// ovscale. +x = right, +y = down. 2026-06-29: operator live-tuned to +6px
+// right, +2px down (path: +15 overshot -> 8 -> 7,1 -> 6,2).
+const NUDGE_X_PX = 6;
+const NUDGE_Y_PX = 2;
 
 // Live body zoom (ovscale). Mirrors overlay_layout._bodyZoom (module-private
 // there); a non-finite / non-positive zoom degrades to 1.
