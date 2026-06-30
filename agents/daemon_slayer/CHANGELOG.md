@@ -1331,6 +1331,15 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.157.0 (R42 - Yun Tal conditional-AS (Flurry) unit-mismatch fix. compute_dps folded cond_as - a
+bonus-AS FRACTION from total_conditional_as (uptime-weighted ~0.08) - directly onto the FINAL rotation
+AS, but stats["as"] is attacks/sec (the engine resolves it as base_as * (1 + bonus_pct)), so the raw add
+over-credited AS by a factor of 1/base_as. Corrected to scale the fraction by the champion's innate base
+AS before adding (base_as * cond_as), mirroring the R7 passive_as fold directly below it, with the same
+2.5 League hard-cap re-clamp; the explain note now reads "+X% bonus AS ... folded onto base AS".
+raw_attack_dps is unchanged (it reads the un-folded eff_as). TDD RED-first
+test_conditional_as_base_fold_r42.py. No new data, dependency, or schema.)
+
 1.156.0 (R41 - ally mark-detonation magic-damage seam, default-OFF, byte-identical.
 A handful of champions lay a MARK an ALLY consumes for bonus damage - the mark-enabler's contribution to
 TEAM damage, distinct from the self-amp (_ability_amp_overrides) and all-source-vulnerability
