@@ -1331,6 +1331,38 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.161.0 (R49 - on-being-hit reflect damage seam + full-MR scaling target. Rammus W
+Defensive Ball Curl reflects magic damage to basic attackers - a REACTIVE
+(incoming-triggered) TOTAL-resist form that was a documented NOT-seeded case in
+_passive_damage_overrides (item 513: "no caster total-MR _SCALING_TARGETS field AND
+wrong cadence for that empowered-AA seam"). New module
+agents/daemon_slayer/_passive_reflect_overrides.py (PassiveReflectEntry +
+reflect_entry + reflect_per_proc + _ASSUMED_REFLECT_BURST_WINDOW_S), seeded 1 vs
+verbatim 16.13.1 Meraki truth (data/daemon_slayer/16.13.1/champion_abilities.json
+Rammus W: "dealt 15 (+ 10% total armor) (+ 10% total magic resistance) magic
+damage", parse_status no_damage). The blocker is resolved by a symmetric schema lift:
+AbilityContext gains a FULL-MR caster_mr attribute (the MR sibling of the existing
+full-armor caster_armor) and _registries._SCALING_TARGETS gains the
+("caster_mr_pct","caster_mr") mapping - byte-identical (value_at returns 0.0 for the
+missing DamageBlock field on every existing block). compute_dps gains an END-appended
+assume_passive_reflect=False flag; when True the reflect per-incoming-attack magnitude
+(flat + % of the caster's resolved TOTAL armor + % of TOTAL MR) is MR-mitigated by the
+duel target's effective MR (same curve the AA uses) + mode_mult + magic_amp + build
+amp, amortized into DPS by the assumed incoming-attack rate (1 / reflect_cadence_s),
+and folded into total + per-phase DPS (a separate incoming stream - NOT added to the
+per-hit AA display). compute_burst_damage gains the same END-appended flag; when True
+the reflect is credited over the assumed burst exposure window
+(_ASSUMED_REFLECT_BURST_WINDOW_S / reflect_cadence_s procs) into total_burst, mirroring
+the assume_magic_burst / assume_ally_detonation burst seams (the AA-probe compute_dps
+call leaves the seam OFF -> no double-count). The % terms scale on the build's resolved
+resists which do NOT include W's own active self-buff resists (the _passive_resist
+EHP seam) - a documented modeling lower bound. DEFAULT-OFF byte-identical: both flags
+default False -> the registry is never read -> identical to 1.160.0; no live :8893
+default scorer flips them on. TDD RED-first test_passive_reflect_overrides_r49.py (16
+cases). Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. No new
+dependency. Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced ->
+1.161.0.)
+
 1.160.0 (R46 - stacking permanent max-HP passive registry. A NEW survivability axis
 and the SECOND EHP-NUMERATOR term (after the revive multiplier): champion passives
 that grant PERMANENT bonus maximum health PER STACK and accumulate (effectively)

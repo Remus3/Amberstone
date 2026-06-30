@@ -907,3 +907,20 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   in-game buff/stack reading from the Live Client buff list, if/when that surfaces) so the credit tracks the real
   game state, not a midpoint. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893`
   restart on flip. Does NOT block any further stage.
+- 2026-06-30 R49 on-being-hit reflect damage seam (`compute_dps(assume_passive_reflect=)` /
+  `compute_burst_damage(assume_passive_reflect=)`, ENGINE 1.161.0, default-OFF). Rammus W Defensive Ball Curl reflects
+  magic damage to basic attackers - a REACTIVE (incoming-triggered) TOTAL-resist form the empowered-AA
+  `_passive_damage` seam could not carry. The new registry `agents/daemon_slayer/_passive_reflect_overrides.py`
+  (seeded 1 vs verbatim 16.13.1 Meraki: Rammus W "15 (+ 10% total armor) (+ 10% total magic resistance) magic")
+  computes the per-incoming-attack magnitude on the caster's resolved TOTAL armor/MR (full-MR via the new
+  `caster_mr` scaling target). When the flag is True the reflect is MR-mitigated by the duel target's effective MR
+  and amortized into DPS by the assumed incoming attack rate (1 / `reflect_cadence_s`, default 1.0s), or into burst
+  over the `_ASSUMED_REFLECT_BURST_WINDOW_S` exposure window. The % terms scale on the build's resolved resists which
+  do NOT include W's own active self-buff resists (the `_passive_resist` EHP seam) - a documented LOWER BOUND.
+  DEFAULT-OFF byte-identical (both flags False -> the registry is never read; unregistered champ contributes 0 even
+  ON). OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): (1) wire a live DPS / burst / rank
+  consumer to pass `assume_passive_reflect=True` for Rammus and confirm his W-tank reflect value ranks ABOVE the
+  seam-OFF placement vs a real game, and that the `reflect_cadence_s` 1.0s incoming-attack + 3.0s burst-window
+  assumptions read sane; (2) ideally feed the W-ACTIVE buffed total armor/MR (so the % terms match League's
+  recalculate-over-duration) instead of the resting build resists. A WRONG precompute is worse than none, so do NOT
+  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.

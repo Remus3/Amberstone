@@ -485,6 +485,7 @@ def compute_burst_damage(
     assume_magic_burst: bool = False,
     score_completion_runes: bool = False,
     assume_ally_detonation: bool = False,
+    assume_passive_reflect: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -1002,6 +1003,45 @@ def compute_burst_damage(
             )
             total_burst += ally_detonation_damage
 
+    # R49 (1.161.0): Rammus-style on-being-hit reflect seam (burst).
+    # assume_passive_reflect=False -> reflect_burst_damage stays 0.0, total_burst
+    # unchanged (byte-identical). When True, a champion with a registered reflect
+    # (Rammus W Defensive Ball Curl) is credited the reflect procs landing in the
+    # burst exposure window: per-proc magnitude (flat + % of the caster's TOTAL
+    # armor + % of TOTAL MR), MR-mitigated (MAGIC routing) + mode_mult + magic_amp,
+    # x the assumed incoming-attack count over the window
+    # (_ASSUMED_REFLECT_BURST_WINDOW_S / reflect_cadence_s). compute_dps's AA-probe
+    # call above leaves the seam OFF, so the reflect is credited once here (no
+    # double-count). Live default-ON flip operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+    reflect_burst_damage = 0.0
+    if assume_passive_reflect:
+        from ._passive_reflect_overrides import (
+            _ASSUMED_REFLECT_BURST_WINDOW_S,
+            reflect_entry,
+            reflect_per_proc,
+        )
+
+        _rentry = reflect_entry(resolved.champion_id)
+        if _rentry is not None:
+            _rproc = reflect_per_proc(
+                _rentry,
+                caster_total_armor=float(resolved.stats.get("armor", 0.0)),
+                caster_total_mr=float(resolved.stats.get("mr", 0.0)),
+            )
+            if _rproc > 0.0:
+                _rmit = _mitigation_factor(
+                    _rentry.damage_type, target_armor_eff, target_mr_eff
+                )
+                _ramp = magic_amp if _rentry.damage_type == "MAGIC" else 1.0
+                _rcad = (
+                    _rentry.reflect_cadence_s
+                    if _rentry.reflect_cadence_s > 0.0
+                    else 1.0
+                )
+                _rhits = _ASSUMED_REFLECT_BURST_WINDOW_S / _rcad
+                reflect_burst_damage = _rproc * mode_mult * _ramp * _rmit * _rhits
+                total_burst += reflect_burst_damage
+
     primary = _classify_primary_scaling(per_cast, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
@@ -1011,6 +1051,12 @@ def compute_burst_damage(
             f"({resolved.champion_name} mark consumed by allies at "
             f"{_ASSUMED_ALLY_DETONATION_PROB:.0%} assumed proc rate; "
             "assume_ally_detonation seam)"
+        )
+    if reflect_burst_damage > 0.0:
+        notes.append(
+            f"on-being-hit reflect +{reflect_burst_damage:.1f} burst "
+            f"({resolved.champion_name} returns magic to attackers over the "
+            "assumed burst exposure window; assume_passive_reflect seam)"
         )
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(f"ARAM aramDamageDealt={mode_mult:.3f} on per-cast damage")
