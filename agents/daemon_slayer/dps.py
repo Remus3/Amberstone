@@ -628,6 +628,7 @@ def compute_dps(
     apply_melee_aa_gate: bool = False,
     assume_passive_as_stacks: bool = False,
     apply_target_vuln: bool = False,
+    assume_ally_detonation: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -1191,6 +1192,40 @@ def compute_dps(
         notes.append("no scenarios in snapshot for this champion - DPS=0")
     elif not rotations_by_phase[selected_phase]:
         notes.append(f"no rotations defined for phase={selected_phase!r}")
+
+    # R41 (1.156.0): ally mark-detonation seam. assume_ally_detonation=False (the
+    # default) -> ally_detonation_dps stays 0.0 and weighted_dps / phase_dps are
+    # byte-identical. When True, a champion whose mark an ALLY consumes for bonus
+    # damage (Leona P Sunlight) is credited the amortized team-damage her mark
+    # enables: the pre-mit per-event magic / its re-proc cadence (ally_detonation_
+    # dps_raw), MR-mitigated (magic routing via _armor_factor), x mode_mult x
+    # magic_amp, x the assumed ally proc rate. An unmarked champion contributes 0
+    # even with the flag on. The live default-ON flip is operator-gated
+    # (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+    ally_detonation_dps = 0.0
+    if assume_ally_detonation:
+        from ._ally_detonation_overrides import (
+            _ASSUMED_ALLY_DETONATION_PROB,
+            ally_detonation_dps_raw,
+        )
+
+        det_target_current_hp = target_max_hp * target_current_hp_pct
+        det_raw = ally_detonation_dps_raw(
+            resolved.champion_id, level, resolved.item_ids, det_target_current_hp
+        )
+        if det_raw > 0.0:
+            ally_detonation_dps = (
+                det_raw * _armor_factor(target_mr_eff) * mode_mult
+                * magic_amp * _ASSUMED_ALLY_DETONATION_PROB
+            )
+            weighted_dps += ally_detonation_dps
+            phase_dps = {p: v + ally_detonation_dps for p, v in phase_dps.items()}
+            notes.append(
+                f"ally-detonation +{ally_detonation_dps:.1f} DPS "
+                f"({resolved.champion_name} mark consumed by allies at "
+                f"{_ASSUMED_ALLY_DETONATION_PROB:.0%} assumed proc rate; "
+                "assume_ally_detonation seam)"
+            )
 
     return DpsResult(
         champion_id=resolved.champion_id,
