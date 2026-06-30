@@ -392,6 +392,11 @@ _SCALING_TARGETS: tuple[tuple[str, str], ...] = (
     ("caster_armor_pct", "caster_armor"),
     ("caster_bonus_mp_pct", "caster_bonus_mp"),
     ("caster_bonus_ms_pct", "caster_bonus_ms"),
+    # R49: FULL magic resistance scaling (the MR sibling of caster_armor). No
+    # current DamageBlock populates caster_mr_pct (value_at returns 0.0 for the
+    # missing field), so this is byte-identical; it makes total-MR a first-class
+    # scaling target for the reflect seam + future total-MR scalers.
+    ("caster_mr_pct", "caster_mr"),
 )
 
 # Valid block-strategies. Phase 5.9 (s191) added ``"indexed"`` - pick a

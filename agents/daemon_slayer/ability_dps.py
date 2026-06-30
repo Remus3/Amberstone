@@ -244,6 +244,10 @@ class AbilityContext:
     caster_armor: float = 0.0
     caster_bonus_mp: float = 0.0
     caster_bonus_ms: float = 0.0
+    # R49: FULL magic resistance (base + bonus), the MR sibling of caster_armor.
+    # Routes from DamageBlock.caster_mr_pct via _SCALING_TARGETS; default 0.0 so
+    # existing manual AbilityContext(...) constructions stay valid.
+    caster_mr: float = 0.0
 
     @staticmethod
     def from_build(
@@ -274,6 +278,7 @@ class AbilityContext:
         caster_base_mr = float(base.get("mr", 0.0))
         caster_bonus_mr = max(0.0, float(stats.get("mr", 0.0)) - caster_base_mr)
         caster_armor = float(stats.get("armor", 0.0))
+        caster_mr = float(stats.get("mr", 0.0))
         caster_max_mp = float(stats.get("mp", 0.0))
         caster_bonus_mp = max(0.0, caster_max_mp - float(base.get("mp", 0.0)))
         caster_bonus_ms = max(0.0, float(stats.get("ms", 0.0)) - float(base.get("ms", 0.0)))
@@ -292,6 +297,7 @@ class AbilityContext:
             caster_bonus_armor=caster_bonus_armor,
             caster_bonus_mr=caster_bonus_mr,
             caster_armor=caster_armor,
+            caster_mr=caster_mr,
             caster_max_mp=caster_max_mp,
             caster_bonus_mp=caster_bonus_mp,
             caster_bonus_ms=caster_bonus_ms,

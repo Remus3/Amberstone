@@ -629,6 +629,7 @@ def compute_dps(
     assume_passive_as_stacks: bool = False,
     apply_target_vuln: bool = False,
     assume_ally_detonation: bool = False,
+    assume_passive_reflect: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -1080,6 +1081,48 @@ def compute_dps(
                     f"+{passive_aa_per_hit:.1f}/hit ({_pentry.damage_type}), "
                     f"+{_passive_dps:.1f} DPS (apply_passive_damage)"
                 )
+
+    # R49 (1.161.0): Rammus-style ON-BEING-HIT reflect seam. assume_passive_reflect
+    # default False -> byte-identical (the registry is never read). When True, the
+    # champion's registered reflect (Rammus W Defensive Ball Curl) per-incoming-
+    # attack magnitude (flat + % of the caster's TOTAL armor + % of TOTAL MR) is
+    # mitigated by the attacker's resistance (the duel target's effective MR for a
+    # MAGIC reflect, the same curve the AA uses), amortized into DPS by the assumed
+    # incoming attack rate (1 / reflect_cadence_s), and folded into the total +
+    # per-phase DPS. It is a separate incoming-triggered stream, so it is NOT added
+    # to the per-hit AA display. A champion with no reflect entry adds 0 even with
+    # the flag on. Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+    if assume_passive_reflect:
+        from ._passive_reflect_overrides import reflect_entry, reflect_per_proc
+
+        _rentry = reflect_entry(resolved.champion_id)
+        if _rentry is not None:
+            _rproc = reflect_per_proc(
+                _rentry,
+                caster_total_armor=float(stats.get("armor", 0.0)),
+                caster_total_mr=float(stats.get("mr", 0.0)),
+            )
+            if _rproc > 0.0:
+                if _rentry.damage_type == "PHYSICAL":
+                    _rmit = _armor_factor(target_armor_eff)
+                elif _rentry.damage_type == "TRUE":
+                    _rmit = 1.0
+                else:  # MAGIC - mitigated by the attacker's MR, plus magic amp.
+                    _rmit = _armor_factor(target_mr_eff) * magic_amp
+                _rcad = (
+                    _rentry.reflect_cadence_s
+                    if _rentry.reflect_cadence_s > 0.0
+                    else 1.0
+                )
+                _reflect_dps = _rproc * _rmit * mode_mult * damage_amp / _rcad
+                if _reflect_dps > 0.0:
+                    weighted_dps += _reflect_dps
+                    phase_dps = {p: v + _reflect_dps for p, v in phase_dps.items()}
+                    notes.append(
+                        f"on-being-hit reflect {_rentry.attribute} folded to DPS: "
+                        f"+{_reflect_dps:.1f} DPS ({_rentry.damage_type}, "
+                        f"1 incoming basic / {_rcad:.2g}s; assume_passive_reflect)"
+                    )
 
     # R12 (1.149.0): all-source target-vulnerability mark seam. A vulnerability
     # mark (Vladimir R Hemoplague, Evenshroud Coruscation) makes the marked
