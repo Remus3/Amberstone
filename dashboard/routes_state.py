@@ -418,15 +418,42 @@ def _serve_ui_version(h) -> None:
         h._send(500, json.dumps({"error": str(exc)[:200]}).encode(), "application/json")
 
 
+def _asset_stamp_mtime() -> float:
+    """Max mtime across EVERY static asset the overlay/dashboard serves out of
+    web/ - the hot-reload poller signal. 2026-06-29: this MUST mirror the
+    fileset dashboard._static.compute_asset_hash walks (the explicit roots PLUS
+    css/panels, js/panels, js/lib), not just the original three files. With only
+    index.html/dashboard.css/main.js tracked, edits to a per-panel ESM module
+    (e.g. js/panels/minimap_zoi.js) never bumped the stamp, so the in-game
+    Electron overlay never auto-reloaded and the operator only ever saw stale
+    panel JS unless they manually relaunched rc-shell (the root cause of the
+    long-standing "fix never reached the overlay" / electron_overlay_only trap)."""
+    root = APP_DIR / "web"
+    mtimes = []
+    for rel in ("index.html", "css/dashboard.css", "css/overlay.css",
+                "js/main.js", "js/overlay_pulse.js", "js/ws_client.js"):
+        p = root / rel
+        if p.exists():
+            mtimes.append(os.path.getmtime(p))
+    for subdir, ext in (("css/panels", ".css"),
+                        ("js/panels", ".js"),
+                        ("js/lib", ".js")):
+        d = root / subdir
+        try:
+            for f in d.iterdir():
+                if f.is_file() and f.suffix == ext:
+                    mtimes.append(os.path.getmtime(f))
+        except OSError:
+            pass
+    return max(mtimes) if mtimes else 0.0
+
+
 def _serve_asset_stamp(h) -> None:
     # 2026-04-30: hot-reload signal. Returns the max mtime across the
     # dashboard's static assets so a tiny client poller can detect file
     # changes and refresh without the user alt-tabbing to hit Ctrl+F5.
     try:
-        root = APP_DIR / "web"
-        files = ["index.html", "css/dashboard.css", "js/main.js"]
-        stamp = max(os.path.getmtime(root / f) for f in files
-                    if (root / f).exists())
+        stamp = _asset_stamp_mtime()
         h._send(200, json.dumps({"mtime": stamp}).encode(),
                 "application/json")
     except Exception as exc:  # noqa: BLE001

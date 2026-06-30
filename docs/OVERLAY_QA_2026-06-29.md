@@ -50,3 +50,40 @@ Items 6, 8 (and the timer tags) are the SAME failure shape: a fix verified on th
 :8888 dashboard never reached the Electron overlay render path
 (electron_overlay_only trap). Worth a single audit of overlay vs :8888 divergence
 rather than per-symptom patching.
+
+## ROOT CAUSE of the electron_overlay_only trap (2026-06-29, this session)
+The overlay's in-page hot-reload poller (main.js _hotReloadInit) polls
+/api/asset-stamp every 3s and reloads on an mtime bump. But _serve_asset_stamp
+(dashboard/routes_state.py) only stats THREE files: index.html, css/dashboard.css,
+js/main.js. It does NOT walk js/panels/*. So every edit to a panel module
+(minimap_zoi.js, active_match.js, etc.) NEVER bumps the stamp -> the overlay never
+auto-reloads -> the operator only ever saw stale panel JS unless they manually
+relaunched rc-shell. This is WHY panel fixes "never reached the overlay" all saga.
+compute_asset_hash (dashboard/_static.py) already walks js/panels for cache-bust,
+and _send defaults Cache-Control: no-store, so a reload DOES fetch fresh panel JS -
+the only gap is the stamp file list. FIX: add the js/panels (+ css/panels, js/lib,
+css/overlay.css) walk to _serve_asset_stamp so panel edits trigger the reload.
+(Needs RC restart to take effect.) Interim unblock used this session: `touch`
+web/js/main.js to force the stamp to bump.
+
+## ZOI verdict (item 3) - STILL PENDING a live game
+First "NO magenta" verdict was on STALE JS (stamp never bumped, above). After the
+main.js touch the overlay reloaded with DEBUG_ZOI=true loaded, but the game ended
+before re-check. DEBUG_ZOI is left TRUE; operator will read the magenta verdict in
+the next SR Ranked. minimap_zoi.js reasoning confirmed this session: renderMinimapZoi
+DOES receive valid 15-bubble data (SSE payload carries zoi + the dedicated 2s
+minimap poller feeds it); the snapshot test proves canvas sizes to 312px with no JS
+error. So the bug is purely paint/visibility - magenta probe will disambiguate.
+
+## New operator findings (2026-06-29, between games) - NOT yet fixed
+A. **Out-of-game overlay flickers a bit.** Unverified cause (could be the one-time
+   reload from the stamp touch, or a render idempotency miss). Watch for repeat.
+B. **In-game panel drag glitch / unretrievable.** Dragging a movable widget too
+   close to the minimap area makes it "glitch to the bottom of the screen and be
+   un-retrievable." Mechanism (overlay_layout.js): the bottom-corner anchor snap
+   (_applyPos: p.y > H*0.5 -> top:auto; bottom:16px, operator-tuned for the tall
+   BUILD panel) fires for ANY widget dropped below the midline, teleporting it to
+   the bottom; combined with NO on-screen clamp on the drag nx/ny, a widget can
+   land off-screen / behind the minimap with no grabbable handle. Fix needs a clamp
+   that guarantees retrievability; bottom-snap-for-all-vs-free-place is an open
+   design call for the operator.
