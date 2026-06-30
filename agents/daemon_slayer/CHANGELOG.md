@@ -1331,6 +1331,34 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.155.0 (R39 - anti-tank current-HP level-ramp endpoints, default-OFF, byte-identical.
+The CURRENT_HP-kind sibling of R17 (1.151.0). A real subset of the antitank %current-HP rows deal a
+percentage that scales with the CASTER's champion level - Senna P Absolution "1% : 10% (based on level) of
+target's current health". AntiTankEntry gains optional current_hp_ramp_lo / current_hp_ramp_hi endpoints
+(default 0.0, END-appended so every positional / P3.2 / R17 construction survives), and a parallel
+_current_hp_level_ramp_factor shares R17's lerp through an extracted _ramp_lerp_factor helper.
+_effective_magnitude multiplies BOTH ramp factors; a row carries at most one ramp pair (max-HP OR current-HP,
+never both), so the other factor is always 1.0 and every existing row is byte-identical. With level=None (the
+/anti-tank route default) and at level 18 the score equals the item-308/315/R17 value; below 18 a seeded row
+discounts toward its current_hp_ramp_lo endpoint. Seeded set = the 1 CURRENT_HP champion-level ramp in
+antitank_registry_notes.json (patch 16.12.1): Senna P 1:10. The live default-ON flip (a survivability / draft
+consumer calling with the live champion level) is operator-gated (docs/LIVE_GAME_GATED_SYNC.md). Offline
+Meraki-grounded characterization tests (test_antitank_ramp_current_hp_r39.py, 28 cases). Credits Riot Data
+Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.155.0.)
+
+1.154.0 (item 638 - live-flip seam flags wired across the /rank HTTP boundary + R5 self-HP, default-OFF, byte-identical.
+The seam flags (off-class WIN exemption, kit-axis WIN credit, survivability-by-win, magic-burst, passive-as-stacks,
+target-vulnerability, cost ceiling, and the caster missing-HP heal amplification) previously existed only on the
+in-process scorers; the /rank route family neither accepted nor forwarded them, so the served build ranking always
+ran every scorer at its DEFAULT. server.py /rank + /rank-tank + /rank-bruiser + /rank-assassin + /rank-enchanter now
+read the applicable flags from the request body and thread them into the archetype scorer; passive-as-stacks +
+target-vulnerability exposed on /dps, magic-burst on /burst. hps.py compute_hps + rank_items_by_hps gain
+assume_missing_hp_heal_amp + caster_missing_hp_pct (END-appended), forwarded into compute_ability_hps. Every flag
+defaults OFF / null / 0.0; a request omitting a flag is byte-identical to the prior version, and the default-ON
+activation of any flag is a separate gated decision. (Backfilled 2026-06-30 under R39 - the engine changelog entry
+was omitted when 1.154.0 shipped 2026-06-27; sourced verbatim from the Share/CHANGELOG.md 1.153.0 -> 1.154.0 entry.)
+Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.154.0.)
+
 1.153.0 (R35 - survivability percent-DR LIVE consumer, default-OFF, byte-identical.
 R19 shipped the forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ, slot) (per-rank PERCENT
 damage reduction from champion_abilities.json defensive modifier blocks, pure-% filter) with NO consumer. R35 wires

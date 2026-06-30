@@ -808,6 +808,20 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   and confirm the early-vs-late level-discounted anti-tank scores read sane vs a real game (e.g. a level-3 Aatrox
   ranks below a level-16 Aatrox on the same tank). A WRONG ramp is worse than the flat magnitude, so do NOT
   default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-06-30 R39 anti-tank current-HP level-ramp %current-HP seam (`compute_antitank(level=)`, ENGINE 1.155.0,
+  default-OFF). The CURRENT_HP sibling of R17: a real subset of antitank %current-HP rows scale their percentage
+  with the CASTER's champion level (`agents/daemon_slayer/antitank.py`
+  AntiTankEntry.current_hp_ramp_lo/current_hp_ramp_hi: Senna P 1:10 - Absolution "1% : 10% (based on level) of
+  target's current health"). The hand-tuned magnitude encodes the max-ramp (late-game) reliability;
+  compute_antitank stays byte-identical until a `level` is injected, when a current-HP-ramp-seeded row's effective
+  magnitude scales by lerp(lo, hi,(level-1)/17)/hi via the shared _current_hp_level_ramp_factor (level=18 and
+  level=None both byte-identical; rows with no current-HP ramp byte-identical at any level - the same additive
+  contract R17 holds, and the two ramp kinds never compound since a row carries at most one pair). OWED
+  (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): wire a survivability / draft consumer to
+  call compute_antitank with the live champion level (the /anti-tank route still passes no level, byte-identical),
+  and confirm the early-vs-late level-discounted Senna anti-tank score reads sane vs a real game (a level-3 Senna
+  ranks below a level-16 Senna on the same target). A WRONG ramp is worse than the flat magnitude, so do NOT
+  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
 - 2026-06-27 R30 / DSV6 on-cast magic-burst seam (`compute_burst_damage(assume_magic_burst=)`, ENGINE 1.152.0,
   default-OFF). Item on-cast magic procs the per-cast burst combo loop never credited
   (`agents/daemon_slayer/_effects_data.py` magic_burst_base/magic_burst_ap_ratio: Luden's Echo 6655 75+5%AP,
