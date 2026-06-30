@@ -122,7 +122,9 @@
 .pld-aug[data-rarity="bronze"]    { border-color: #cd7f32; }
 
 /* Responsive: stack the label above the icons on narrow viewports so the
- * augment names never clip the panel edge. */
+ * augment names never clip the panel edge. Names keep the --fs-xs 16px
+ * floor; the column stack (not a sub-floor font shrink) is the anti-clip
+ * mechanism. */
 @media (max-width: 900px) {
   .pld-row {
     flex-direction: column;
@@ -130,5 +132,4 @@
     gap: 4px;
   }
   .pld-label { min-width: 0; }
-  .pld-aug-name { font-size: 13px; }
 }

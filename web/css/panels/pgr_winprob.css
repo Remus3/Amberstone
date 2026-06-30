@@ -83,6 +83,11 @@
 .pwp-ylab,
 .pwp-xlab {
   fill: var(--text-dim, #8b93a7);
+  /* operator-exception: inline-SVG chart-axis tick labels (0/50/100%,
+   * 0:00, end-time). Sub-floor by design - the --fs-xs 16px floor would
+   * crowd the 180px-tall curve and out-shout the line itself. Density
+   * context, the same sanctioned relaxation as compact chips (R40 /
+   * item-184). The operator reads the CURVE at a glance, not the ticks. */
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
