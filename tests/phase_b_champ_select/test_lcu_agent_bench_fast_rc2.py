@@ -16,6 +16,7 @@ phase-B test module.
 from __future__ import annotations
 
 import sys
+import threading
 import unittest
 from pathlib import Path
 
@@ -156,6 +157,42 @@ class TestBenchSwapDispatch(unittest.TestCase):
         self.assertEqual(method, "POST")
         self.assertEqual(
             path, "/lol-champ-select/v1/session/bench/swap/105")
+
+
+class TestSwapWakeSignal(unittest.TestCase):
+    """RC2 E7 TODO-1 - after a latency-sensitive drain the cmd loop wakes
+    the state-push loop immediately via a threading.Event, so a freshly
+    swapped champ reflects in /api/state in ~BENCH_CMD_FAST_INTERVAL rather
+    than waiting the full state-push INTERVAL. Only ONE thread
+    (_state_push_loop) ever calls capture_state(), so no new races: the
+    cmd loop just SETS the event."""
+
+    def setUp(self):
+        agent._swap_wake.clear()
+
+    def tearDown(self):
+        agent._swap_wake.clear()
+
+    def test_swap_wake_is_threading_event(self):
+        self.assertIsInstance(agent._swap_wake, threading.Event)
+
+    def test_fast_drain_signals_wake(self):
+        woke = agent._signal_state_refresh(fast=True, processed=1)
+        self.assertTrue(woke)
+        self.assertTrue(agent._swap_wake.is_set())
+
+    def test_slow_drain_does_not_wake(self):
+        woke = agent._signal_state_refresh(fast=False, processed=3)
+        self.assertFalse(woke)
+        self.assertFalse(agent._swap_wake.is_set())
+
+    def test_empty_fast_flag_does_not_wake(self):
+        # Defensive: a fast flag with nothing processed must not wake
+        # (drain_once only sets fast when an item was iterated, but the
+        # guard keeps the contract explicit).
+        woke = agent._signal_state_refresh(fast=True, processed=0)
+        self.assertFalse(woke)
+        self.assertFalse(agent._swap_wake.is_set())
 
 
 if __name__ == "__main__":
