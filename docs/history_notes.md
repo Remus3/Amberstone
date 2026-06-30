@@ -218,6 +218,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-28 (audit-11 L-03 closed - p0_inventory CSV self-documents as a point-in-time snapshot)
+
+Session ran in worktree `claude/thirsty-keller-e732b1` (forked at item 652). Closed the deferred audit-11 L-03 housekeeping finding.
+
+- **L-03.** `ops/audit/p0_inventory_full.csv` carried paths deleted in the ADR-012 bridge decommission (`dashboard/routes_health_peer.py` row 16915 + `ops/runtime/peer_health/{gamepc,peer}.json`) - a frozen snapshot that could re-confuse a future grep-audit. Ground truth reframed it: the CSV is GITIGNORED + machine-regenerated, so a static CSV header is wiped on next regen + never committed; the correct home is the GENERATOR.
+- **Fix (`ops/audit/p0_inventory.py`).** Emits a `# point-in-time snapshot generated <ts> ... may include since-deleted paths - regenerate after structural deletions` line as the CSV's first row every run (datetime-stamped). No parser consumers (grep-verified) so the `#` row breaks nothing. Regenerated the live Legion CSV with the new code -> stale rows gone; restored main's tracked p0_inventory.py + P0_INVENTORY.md so only the gitignored CSV refreshed.
+- **Landed to main** as `1d790de8` (branch item 653 renumbered to 681 per parallel-landing). Used a throwaway `land-653` worktree off origin/main because the live main checkout had another session's uncommitted work - never touched it. Tier-0/1: ruff + 3 hygiene tests + py_compile green; no engine / Share / RC restart.
+- **NEXT:** unrelated to this session - other audit-11 findings or the OVERLAY_BUILD_MASTER_PLAN Section J queue.
+
+---
+
 # 2026-06-29 (Landed the overlay build-module branch to main - CI green + RC live)
 
 Operator asked whether the worktree branches were healthy (this session ran in a worktree on `claude/hardcore-saha-0592d5`; the `C:/Riot Commander` checkout was always on main) and chose to LAND. The branch's 18 commits (Section B/D build module + per-champion kit-synergy) merged to main + activated live.
