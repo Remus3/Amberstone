@@ -118,3 +118,28 @@ D. **Champ-select view flicker (item A, refined).** renderChampSelectView
    (champ_select.js:675) rebuilds large body.innerHTML every envelope tick; add an
    entry sig-guard so it only rebuilds on real state change. DEFERRED to the same
    post-game window as C.
+
+## Overlay panel triage (operator 2026-06-30, in live ARAM)
+Operator: doesn't see macro lead / a/b choices / spike cue; ward cue + threat/CD
+not needed. Root causes (live /api/state + rc-shell-state.json widgetLayout +
+overlay.css):
+- **macro lead (w-lead / #rn-lead)** - has live data (lead_projection present),
+  default-shown (no saved hide), but **combat-shed by design**: overlay.css:632
+  `[data-fight="1"] #rn-lead:not([hidden]) { display:none }`. In ARAM the field is
+  in fight-mode almost constantly, so it's hidden ~always. FIX (operator wants it
+  visible): relax/remove the macro-lead combat shed, or exempt ARAM. 1-line CSS +
+  a doctrine call (the shed was intentional declutter).
+- **a/b choices (w-choices / #rn-choices)** - has live data (coach.choices
+  present), default-shown, NOT combat-shed, renderer runs in onState (main.js:1376).
+  Yet absent. Needs live overlay DOM inspection (render/position) - the one genuine
+  unknown; investigate next.
+- **spike cue (w-spike / #am-spike-cue)** - NOT a bug. Positioned (955,960), not
+  hidden; it is LEVEL-GATED (fires at ult spikes L6/11/16). Operator was L3-4.
+- **threat / CD (w-threat)** - already `hidden:True` in the operator's saved
+  layout. Nothing to do (already gone).
+- **ward cue (w-trinket)** - shown (458,157); operator wants it gone. Operator-
+  actionable: hide via the launcher menu (Alt+Shift+O) like w-threat, OR set a code
+  default-hidden if a permanent preference.
+Recommend a focused follow-up session for the two code items (macro-lead shed relax
++ a/b choices render) alongside champ-select C+D - all overlay-render work that
+wants live verification, not blind tail-of-session edits.
