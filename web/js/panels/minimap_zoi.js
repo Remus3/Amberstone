@@ -36,6 +36,13 @@
 // dashboard. Pure ESM, ASCII only.
 
 // -- tunables ----------------------------------------------------------
+// DEBUG (2026-06-29, TEMPORARY): the ZOI shading has never been visible in the
+// live overlay. When true, renderMinimapZoi strokes a bright magenta border
+// around the ZOI canvas after the normal paint - a ground-truth probe: if the
+// operator sees a magenta box ON the minimap, the canvas is positioned + painting
+// (so the bubbles are just too faint / normZoi is dropping them); if not, the
+// canvas is not sized / visible / reached. REMOVE once the cause is found.
+const DEBUG_ZOI = true;
 const MAX_ALPHA = 0.25; // hard ceiling on ANY fill alpha (minimap readability)
 const ALLY_TINT_MAX = 0.1; // the ally-side flood tint - fainter than the bubbles
 const EMA_ALPHA = 0.35; // low-pass coefficient (~1s settle at 2Hz)
@@ -395,6 +402,18 @@ export function renderMinimapZoi(zoi) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   _paint(ctx, bubbles, demarc, w, h);
+  if (DEBUG_ZOI) {
+    // Ground-truth probe (see DEBUG_ZOI note): bright magenta border + faint
+    // fill so we can tell if this canvas is visible + positioned at all.
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "rgba(255,0,255,0.95)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(2, 2, Math.max(0, w - 4), Math.max(0, h - 4));
+    ctx.fillStyle = "rgba(255,0,255,0.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
 }
 
 function _clearCanvas() {
