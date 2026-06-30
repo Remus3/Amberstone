@@ -16,25 +16,28 @@ import assert from "node:assert";
 
 import { _shouldRetainBuild } from "./active_match.js";
 
-test("empty tick WITH existing content -> retain (the core fix)", () => {
-  // no champion, no picks, no meta, but the pane already has a render.
+test("no items WITH existing content -> retain (the core fix)", () => {
+  // no picks, no meta, but the pane already has a render.
   assert.strictEqual(_shouldRetainBuild("", 0, 0, true), true);
 });
 
-test("empty tick with NO existing content -> do not retain (first paint)", () => {
+test("no items with NO existing content -> do not retain (first paint)", () => {
   // Nothing drawn yet: fall through so the empty/placeholder state renders.
   assert.strictEqual(_shouldRetainBuild("", 0, 0, false), false);
 });
 
-test("a live champion present -> never retain (normal render)", () => {
-  assert.strictEqual(_shouldRetainBuild("Caitlyn", 0, 0, true), false);
+test("champion present but NO items + content -> retain (no placeholder swap)", () => {
+  // The broadened guard: a transient tick with a champion but empty picks/meta
+  // must keep the real items, not swap them for "waiting..."/"loading...".
+  assert.strictEqual(_shouldRetainBuild("Caitlyn", 0, 0, true), true);
 });
 
-test("live picks present (no champion) -> never retain", () => {
+test("live picks present -> never retain (real render proceeds)", () => {
   assert.strictEqual(_shouldRetainBuild("", 3, 0, true), false);
+  assert.strictEqual(_shouldRetainBuild("Caitlyn", 3, 0, true), false);
 });
 
-test("meta order present (no champion) -> never retain", () => {
+test("meta order present -> never retain (real render proceeds)", () => {
   assert.strictEqual(_shouldRetainBuild("", 0, 6, true), false);
 });
 

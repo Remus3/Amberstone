@@ -431,14 +431,18 @@ export function activeMatchEnabled() {
 // tick (it owns the 4s rerank cooldown), and the DS target-stats caption is part
 // of the sig, so enemy itemization shifts still refresh the pane + its donuts.
 // Pure guard for the BUILD-panel anti-flicker (2026-06-29). Returns true when
-// there is nothing to draw this tick (no champion, no live picks, no meta order)
-// BUT the pane already holds a good render - in which case the caller keeps the
-// last paint instead of wiping it. Returns false on a first paint (no content
-// yet) so the empty/placeholder state still renders, and false whenever any
-// real input is present. Exported for the node test.
+// there is nothing REAL to draw this tick (no live picks AND no meta order) BUT
+// the pane already holds a good render - in which case the caller keeps the last
+// paint instead of swapping the items out. champion alone (with empty picks +
+// meta) only yields the "waiting for live plan..." / "loading standard build..."
+// placeholders, so a transient empty-data tick must NOT replace real item icons
+// with placeholders (operator: the panel "randomly hides then comes back" - the
+// items vanish for a tick). First paint (no content yet) returns false so the
+// placeholder state still renders; game-end hides the whole active-match surface
+// upstream so this never wedges stale items post-match. Exported for the test.
 export function _shouldRetainBuild(champion, picksLen, metaLen, hasContent) {
-  const empty = !champion && !picksLen && !metaLen;
-  return empty && !!hasContent;
+  const nothingToPaint = !picksLen && !metaLen;
+  return nothingToPaint && !!hasContent;
 }
 
 export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
