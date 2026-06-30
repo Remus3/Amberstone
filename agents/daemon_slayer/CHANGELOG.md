@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.159.0 (R45 - Poppy W low-HP doubled percent-of-resist tier. The item-268 percent-of-resist
+survivability mode seeded Poppy W "Stubborn to a Fault" at +12% of TOTAL armor + MR but OMITTED
+the "doubled to 24% while below 40% maximum health" conditional (verified vs
+data/daemon_slayer/16.13.1/champion_abilities.json). R45 models that tier. PassiveResistEntry gains
+three END-appended fields (low_hp_pct_armor, low_hp_pct_mr, low_hp_threshold, default 0.0 -> dormant);
+resist_grants gains a keyword-only caster_current_hp_pct=1.0 (END) and, INSIDE the existing percent
+block, adds an INCREMENTAL (low_hp_pct/100)*resist*prob when caster_current_hp_pct < low_hp_threshold
+(base 12% + incremental 12% = 24% below 40% HP). compute_ehp + compute_hybrid thread
+caster_current_hp_pct (END-appended default 1.0, forwarding only). Poppy seeded 12.0/12.0/0.40; Rell W
+(15% of BONUS, already correct) UNCHANGED. DEFAULT-OFF byte-identical on two axes: apply_passive_resist
+False short-circuits, and apply_passive_resist True at the default full-HP fraction (1.0 not < 0.40)
+leaves the low-HP branch dormant -> identical to 1.158.0. TDD RED-first
+test_passive_resist_low_hp_tier_r45.py (RED 15-fail proof). The directive's "Poppy 10%/20%, Rell 10%"
+numbers were WRONG vs Meraki 16.13.1; the shipped 12%/24%@40% + Rell 15%-bonus are correct. No new
+dependency. Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.159.0.)
+
 1.158.0 (R43 - Imperial Mandate target-vulnerability mark, executing R41's handoff.
 DDragon 16.13.1 item.json 4005 reworked to "Command: On Immobilizing an enemy champion, mark them as 7%
 Vulnerable for 4 seconds" - a +7% increased-damage-from-ALL-SOURCES mark, the shape _target_vulnerability_
