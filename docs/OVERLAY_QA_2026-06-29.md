@@ -13,12 +13,25 @@ LIVE = fix is hot-loaded, pending operator visual confirm, OPEN = not started.
    (_shouldRetainBuild). web/js/panels/active_match.js + test, 12/12 green.
 
 ## Pending verify
-3. **ZOI / minimap dots never render** - LIVE (uncommitted, main.js). Root cause:
-   zoi/minimap_dots are HTTP /api/state-only (build_state); the live overlay
-   feed (:8891 WS push + the staleness-gated polls) never lands a non-null zoi
-   in state.latest, so renderMinimapZoi(null) clears every tick. Added an
-   unconditional 2s minimap poller (setupMinimapPoller). NEEDS operator visual
-   confirm (faint blue/red bubbles inside the outline) before commit.
+3. **ZOI / minimap dots never render** - ROOT-CAUSED + FIXED 2026-06-30. The
+   canvas (#am-zoi-canvas) was rendering at computed **opacity 0** in the live
+   Electron overlay - the ZOI fill drew correctly but was fully transparent, so it
+   NEVER appeared in-game even though the data, box, sizing, and paint were all
+   right. Proven live with an on-canvas magenta probe + an on-screen numeric
+   readout (op=0; forcing opacity=1 made the fill appear). No CSS/JS rule sets it
+   (most likely a Chromium quirk for an absolutely-positioned child inside the
+   position:fixed + zoomed #am-mmrect). FIX: `canvas.style.opacity = "1"` in
+   renderMinimapZoi (the ZOI faintness is the 2D globalAlpha cap, not element
+   opacity), plus an explicit px display-size pin. The data-side groundwork from
+   the prior session (the unconditional setupMinimapPoller in main.js feeding
+   /api/state.zoi) stays - it was necessary but not sufficient. DEBUG_ZOI back OFF.
+   Open tail: confirm the real faint bubbles read well next game; one-line alpha
+   bump (MAX_ALPHA / OFFSCREEN_CORE_ALPHA) if too subtle.
+
+   ALSO fixed this session: the in-game overlay DID hot-reload, but only because
+   the earlier asset-stamp fix (commit 6c355c34) made /api/asset-stamp track
+   js/panels + js/lib; before that, panel edits never reloaded the overlay (the
+   electron_overlay_only trap). The long "no magenta" run was partly stale JS.
 
 ## Fixed this session (cont.)
 4. **Coach card timer tags raw** - DONE. active_match.js routed
@@ -91,3 +104,17 @@ B. **In-game panel drag glitch / unretrievable.** - LIVE (pending operator
    top-left (MIN_VISIBLE=48px) on-screen during the drag, on drop, and on load, so
    nothing is ever stranded. The launcher button is clamped too. node --test green
    (web/js/lib/overlay_layout.test.mjs).
+C. **Champ-select coaching defaults to MID, not the operator's assigned lane.**
+   - OPEN. Live shot 2026-06-29: operator was Caitlyn BOTTOM/ADC (RC build dropdown
+   correctly read "Caitlyn sr-collapsed-a dc-crit"), but PICK-INTO-THIS-COMP /
+   counter panels showed MID content (Akali/Diana/Talon "counters Annie"). Suspect:
+   _csvResolveRole (web/js/panels/champ_select.js:3898) reads assignedPosition via
+   cs.my_team.find(cellId === cs.local_cell); when that lookup misses it returns "-"
+   and downstream counter/tip pools render mid-centric. Root-cause (is local_cell /
+   my_team / assignedPosition populated in ranked solo? does "-" fall through to a
+   MID default pool?) + fix DEFERRED to post-game (editing champ_select.js mid-draft
+   would hot-reload the live pick screen).
+D. **Champ-select view flicker (item A, refined).** renderChampSelectView
+   (champ_select.js:675) rebuilds large body.innerHTML every envelope tick; add an
+   entry sig-guard so it only rebuilds on real state change. DEFERRED to the same
+   post-game window as C.

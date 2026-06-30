@@ -43,6 +43,7 @@ _2026-05-21 sweep: aramAbilityHaste + augment formula evaluator + item-AH lane +
 ## Platform / observability
 
 - **Streaming vision**: delta-encoded frames instead of full JPEG every 2s. ~5x bandwidth reduction.
+- **Mode-specific overlay settings (SR vs ARAM) + mode-specific out-of-game stats overlay** _(operator-requested 2026-06-30, queue for planning + implementation)._ The overlay widget field (positions / visibility / opacity / scale) is currently ONE global layout (`web/js/lib/overlay_layout.js` `_layout` keyed by widget id, persisted to localStorage `LS_KEY` + the rc-shell on-disk mirror via `window.rcShell.getWidgetLayout`/`setWidgetLayout`). Operator wants the layout to be PER-MODE so SR and ARAM (and Arena) each remember their own widget arrangement - e.g. the minimap-area widgets differ by map, the ARAM-only panels want a different home than the SR ones. AND the same per-mode notion for the OUT-OF-GAME companion "stats" overlay (the lobby/idle stats surface) so it can show mode-appropriate stats. Design questions for planning: key the layout store by mode_key ({sr,aram,arena}) with a shared/default fallback; migration of the existing single layout into the SR slot; how the rc-shell mirror + Alt+Shift+R reset interact with per-mode slots; whether the launcher menu gets a "copy layout to other mode" affordance. Touches overlay_layout.js (layout keyspace), the rc-shell preload bridge (mirror schema), and the companion stats surface. Each its own session + the per-page UI-audit ritual.
 
 ## Data pipeline
 
