@@ -1331,6 +1331,30 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.160.0 (R46 - stacking permanent max-HP passive registry. A NEW survivability axis
+and the SECOND EHP-NUMERATOR term (after the revive multiplier): champion passives
+that grant PERMANENT bonus maximum health PER STACK and accumulate (effectively)
+without bound over a game - not in the resolved stat block (not base-per-level, not
+an item), so neither EHP scorer saw them. New module
+agents/daemon_slayer/_passive_health_overrides.py (passive_health_stack_hp +
+_PASSIVE_HEALTH_OVERRIDES), seeded 3 vs verbatim 16.13.1 Meraki truth
+(data/daemon_slayer/16.13.1/champion_abilities.json): Sion W Soul Furnace (+4 health
+per kill, the +15 large/champ upside omitted conservative; infinitely farm-stacking),
+Cho'Gath R Feast (per-stack health from the parsed 'Bonus Health Per Stack'
+damage_block [80,120,160] by R rank, level-gated at the level-6 ult), Swain P
+Ravenous Flock (+15 per collected Soul Fragment). The per-stack HP is EXACT Meraki;
+the assumed STACK COUNT by level is an operator-tunable CONSERVATIVE midpoint (the
+live stack feed we lack), the analog of _REVIVE_PROB / _ASSUMED_FLAT_DR_INSTANCES.
+compute_ehp gains an END-appended assume_passive_health_stacks=False flag; when True
+the per-champ bonus max-HP is added RAW to every per-type EHP numerator (physical /
+magical / true) exactly like ext_flat_hp / flat_mit_*, riding the same armor/MR curve
+and lifting every damage-type EHP uniformly. DEFAULT-OFF byte-identical: the flag
+defaults False -> passive_health_stack_hp returns 0.0 -> identical to 1.159.0; no live
+:8893 default scorer flips it on. TDD RED-first test_passive_health_overrides_r46.py
+(18 cases). Live default-ON flip EXCLUDED (no live stack feed) ->
+docs/LIVE_GAME_GATED_SYNC.md. No new dependency. Credits Riot Data Dragon /
+CommunityDragon / Meraki. DS :8893 bounced -> 1.160.0.)
+
 1.159.0 (R45 - Poppy W low-HP doubled percent-of-resist tier. The item-268 percent-of-resist
 survivability mode seeded Poppy W "Stubborn to a Fault" at +12% of TOTAL armor + MR but OMITTED
 the "doubled to 24% while below 40% maximum health" conditional (verified vs
