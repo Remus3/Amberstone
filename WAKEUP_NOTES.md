@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-06-30 (E7 operator session - ARAM bench-swap responsiveness + LCU pool wired onto the frozen LcuClient; Tier-1, NO ENGINE/DS/Share)
+
+Operator-driven session (NOT the headless loop): RC2 E7 (PRIORITY HIGH in the tracker), grounded spec-first by a Plan subagent before any code. Full detail in LEDGER 704.
+
+- **Part 1 bench-swap responsiveness (`fe34040c`, `tools/lcu_agent.py` non-frozen).** E7a (item 555) made the latency-sensitive command DRAIN fast (0.1s); the swapped champ still lagged up-to-1.0s reaching /api/state (the state-push loop is a separate thread on INTERVAL=1.0). Added `_swap_wake` threading.Event - the cmd loop SETS it after a latency-sensitive drain (`_signal_state_refresh`), `_state_push_loop` waits on it (clear-at-top, race-safe; only that loop calls capture_state). Swap now ~0.1s. TDD +4.
+- **Part 2 LCU pool onto the frozen client (`453b9ddd`, OPERATOR FROZEN-GRANT for `lcu/lcu_client.py`).** Wired `_request` onto `lcu_pool.get_shared_pool()` behind the existing `RC_LCU_POOL` flag (DEFAULT-OFF byte-identical; lazy import keeps the frozen top-level block untouched). Pools the heavy `_auto_accept_tick` path (~2 GETs/s). Contract preserved: 2xx->JSON ({} empty), non-2xx->None (no 404 dict leak to _maybe_apply_runes), fail-soft->urlopen. TDD +5.
+- **Default-ON flip NOT shipped - LIVE-GATED** (`docs/LIVE_GAME_GATED_SYNC.md:746`, `9451d660`). OWED (operator, next live game): one ARAM champ-select+game with `RC_LCU_POOL=1` - confirm no SSL EOF on reused sockets / reconnect self-heals / bounded socket count -> then the flip is a one-liner (`core/lcu_pool.py:40`).
+- **Verify.** ruff + py_compile + hygiene green; 13 + 86 + 99 + 20 tests green. Tier-1: no ENGINE/DS/Share/restart. Did NOT stage pre-existing `data/spell_prefs.json` drift or the agent6 FAILED demo report.
+- **DS swarm cycle = NO_WORK** (operator asked for one; grounded by an Explore subagent, NOT fabricated). Round-2 refill queue DRAINED (ROADMAP:26), 4 pure-data registries machine-guarded saturated, conditional-target-state/effects.py/7th-scorer operator-CLOSED, DS cross-eval Tier-2 B1/F2 shipped default-OFF + B2 live-owed + A a Shaco product call. Only unbuilt DS item = the `/rank` HTTP-boundary live-flip wiring (Tier-2 ENGINE-bump, needs explicit operator go; memory `project_ds_live_flip_seams_unwired`).
+- **NEXT.** E7 default-ON flip (operator live eyeball) OR the next tracker QA item (overlay/PGR queue, all same-priority). DS needs an operator refill or the `/rank` wiring go-ahead - do NOT re-scan the saturated registries.
+
+---
+
 # 2026-06-30 (R49 headless cycle 15 - DS schema lift: on-being-hit REFLECT damage seam (Rammus W); ENGINE 1.160.0 -> 1.161.0) [OPERATOR-INTERRUPTED -> loop STOPped]
 
 Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift, executing the R3 handoff. Full detail in LEDGER 703 + ORCHESTRATION_PLAN R49.
@@ -27,16 +40,3 @@ Gemini-directed headless loop cycle 16 (from directive.md; operator-triggered). 
 - **Findings.** 3 panels 0 MUST-FIX (fully tokenized, pure-display, 0 non-ASCII). 2 sub-floor hardcodes, both resolved in-slice: `pgr_loadout.css:133` `.pld-aug-name` 13px inside `@media(max-width:900px)` -> REMOVED (base `var(--fs-xs,16px)` applies; the column stack, not a font shrink, is the anti-clip; operator monitor fixed 1920x1080 so it never rendered); `pgr_winprob.css:86` `.pwp-ylab/.pwp-xlab` 11px inline-SVG chart-axis labels -> KEPT + inline operator-exception rationale (chart-density; 16px would crowd the 180px curve; R40/item-184).
 - **Deliverable + verify.** New `tests/test_pgr_child_panel_floor_guard.py` (8 tests, RED-first - flagged both offenders -> GREEN). Read-only verifier CONFIRM 4/4. Full RC suite `tests/ --ignore=tests/daemon_slayer` 10136 passed / 0 failed (+8). CSS-only asset-hash reload (ADR-008); no RC restart, no ENGINE/DS/Share.
 - **NEXT.** PGR dashboard pixel capture OWED (Chrome surface retired 2026-06-27 overlay-only + PGR not in overlay + no live game; baseline render byte-identical). Commits `c5f0cf3d` (slice) + `7f800a4d` (docs). Resume the headless loop.
-
----
-
-# 2026-06-30 (R46 headless cycle 15 - DS schema lift: STACKING permanent max-HP passives (Sion W / Cho'Gath R / Swain P); ENGINE 1.159.0 -> 1.160.0)
-
-Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift. Full detail in LEDGER 700 + ORCHESTRATION_PLAN R46.
-
-- **A NEW survivability axis + the SECOND EHP-NUMERATOR term** (after the revive multiplier): champion passives granting PERMANENT bonus max health PER STACK, not in the resolved stat block so neither EHP scorer saw them. Premise was correct + not-yet-on-disk (the named module did not exist); no premise correction needed.
-- **Ground truth (vs `data/daemon_slayer/16.13.1/champion_abilities.json`):** Sion W Soul Furnace "+4 bonus health per kill (+15 large/champ)"; Cho'Gath R Feast per-stack health = parsed "Bonus Health Per Stack" damage_block `[80,120,160]` by rank; Swain P "+15 bonus health permanently per Soul Fragment".
-- **Module + seam (`2b3f8d38` feat).** New pure `agents/daemon_slayer/_passive_health_overrides.py` (`passive_health_stack_hp` + 3 seeds). `compute_ehp` gains END-appended `assume_passive_health_stacks=False`; True adds the per-champ bonus max-HP RAW to every per-type numerator (phys/mag/true) like `ext_flat_hp`/`flat_mit_*`. Per-stack HP EXACT Meraki; the assumed STACK COUNT by level is a CONSERVATIVE midpoint (LOW 18-entry curves; Sion +15-upside omitted) - never over-states.
-- **DEFAULT-OFF byte-identical** (flag False -> 0.0 -> identical to 1.159.0; no live consumer passes it; unregistered champ 0 even ON).
-- **Tier-2.** TDD RED-first `test_passive_health_overrides_r46.py` (RED import-fail -> GREEN 18). Read-only verifier CONFIRM 7/7 (fresh DS 7658; OFF byte-identical Sion L11; ON strictly > OFF all 3 axes; Garen ON==OFF; Meraki `[80,120,160]`; ruff/0-stray clean). ENGINE 1.159.0 -> 1.160.0 (93 files / 106 pins, 0 stray) + DS `:8893` bounce (PID 6972 -> live 1.160.0) + Share `--check` green (385 files) + banner 7640 -> 7658 SAME feat commit. DS 7658 pass / RC 10128 pass (9 mid-bump Share/doc/live drift failures cleared post-sync+bounce, re-run 43/43).
-- **NEXT:** live default-ON flip EXCLUDED (no live per-champ stack feed; scorer reads a conservative assumed curve) -> `docs/LIVE_GAME_GATED_SYNC.md`. Resume the headless loop.
