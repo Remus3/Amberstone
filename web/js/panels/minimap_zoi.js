@@ -36,14 +36,14 @@
 // dashboard. Pure ESM, ASCII only.
 
 // -- tunables ----------------------------------------------------------
-// DEBUG (2026-06-29): the ZOI shading has never been visible in the live overlay.
-// The data path is now fixed (the dedicated minimap poller in main.js feeds valid
-// zoi to renderMinimapZoi), but the shading still does not paint - so the cause is
-// render-side, not data. Flip this to true to stroke a bright magenta border +
-// fill around the ZOI canvas after the normal paint: a ground-truth probe for the
-// NEXT session - if the operator sees a magenta box ON the minimap, the canvas is
-// positioned + painting (bubbles just too faint / normZoi dropping them); if NOT,
-// the canvas is not sized / visible / reached. Left OFF so no debug box ships.
+// DEBUG (resolved 2026-06-30): the ZOI shading never appeared in the live overlay
+// because the canvas was rendering at computed opacity 0 - the fill drew correctly
+// but was fully transparent. NOT a data / sizing / paint bug. Root-caused with an
+// on-canvas probe + an on-screen numeric readout; fixed by forcing
+// canvas.style.opacity = "1" in renderMinimapZoi. Flip this to true to stroke a
+// bright magenta border + fill over the ZOI canvas after the normal paint (a
+// ground-truth probe: magenta on the minimap => canvas opaque + sized + painting).
+// Ships OFF.
 const DEBUG_ZOI = false;
 const MAX_ALPHA = 0.25; // hard ceiling on ANY fill alpha (minimap readability)
 const ALLY_TINT_MAX = 0.1; // the ally-side flood tint - fainter than the bubbles
@@ -389,9 +389,20 @@ export function renderMinimapZoi(zoi) {
   const { w, h } = _boxSize(parent);
   if (w <= 0 || h <= 0) return; // box not laid out yet (slice-1 hasn't sized it)
 
-  // size the backing store to the box px; CSS keeps it stretched to 100%.
+  // Size the backing store to the box px, and pin the CSS display size to match.
   if (canvas.width !== w) canvas.width = w;
   if (canvas.height !== h) canvas.height = h;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+  // THE bug (root-caused 2026-06-30 via an on-canvas probe): the ZOI canvas was
+  // rendering at computed opacity 0 in the live Electron overlay, so the shading
+  // drew correctly but was fully transparent and NEVER appeared in-game - even
+  // though the data + box + paint were all right. No CSS/JS rule set it (most
+  // likely a Chromium quirk for an absolutely-positioned child inside the
+  // position:fixed + zoomed #am-mmrect). Force the element opaque. The ZOI's
+  // intended faintness is the 2D globalAlpha cap (MAX_ALPHA), NOT element opacity,
+  // so pinning this to 1 is correct.
+  canvas.style.opacity = "1";
 
   const { bubbles, demarc, settled } = _advanceEma(z);
   const sig = _sig(z);
@@ -405,14 +416,14 @@ export function renderMinimapZoi(zoi) {
   if (!ctx) return;
   _paint(ctx, bubbles, demarc, w, h);
   if (DEBUG_ZOI) {
-    // Ground-truth probe (see DEBUG_ZOI note): bright magenta border + faint
-    // fill so we can tell if this canvas is visible + positioned at all.
+    // Ground-truth probe (DEBUG_ZOI ships OFF): a bright magenta border + fill
+    // confirms the canvas is opaque + sized + painting (see the DEBUG_ZOI note).
     ctx.save();
     ctx.globalAlpha = 1;
     ctx.strokeStyle = "rgba(255,0,255,0.95)";
     ctx.lineWidth = 4;
     ctx.strokeRect(2, 2, Math.max(0, w - 4), Math.max(0, h - 4));
-    ctx.fillStyle = "rgba(255,0,255,0.18)";
+    ctx.fillStyle = "rgba(255,0,255,0.35)";
     ctx.fillRect(0, 0, w, h);
     ctx.restore();
   }
