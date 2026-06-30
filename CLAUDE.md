@@ -29,6 +29,7 @@ Both in tailnet `tailc150de.ts.net` (Game-PC retired from the pipeline 2026-05-2
 - **Always `py_compile` before restart.** Syntax errors crash silently under `pythonw.exe`.
 - **Atomic writes only:** `tmp.write_text(...); tmp.replace(target)`. Overlays poll mid-write.
 - **Never `Stop-Process`.** Hangs MCP pipe. Use `taskkill /F /PID`.
+- **Commit messages with special chars:** use `git commit -F <tmpfile>` (Write the file, ASCII-only) or a single-quoted here-string - never a double-quoted here-string or a piped string (BOM + ANSI-mangle risk, same root cause as the no-em-dash rule below). `tools/precommit_gate.py` (PreToolUse hook on `git commit` + PowerShell) is the backstop: it blocks banned glyphs + net-new ruff on staged lines.
 - **Restart via `restart_trigger.txt`** (write any content; supervisor clears + restarts within ~5s).
 - **`SCRIPT_DIR` in `app/__init__.py` MUST be `Path(__file__).parent.parent`** (package layout).
 - **State assumptions explicitly before coding.**
@@ -175,7 +176,7 @@ A data-corruption or pollution fix is not done until already-corrupted rows are 
 
 ## Engine / Build Conventions
 
-Champion-specific build / scorer fixes are validated per-champion, not with one generic ADC-crit shape; expect to patch multiple champions. A narrow first fix (item 208 marksman pollution) missed Golden Spatula + duplicate-path pollution and forced a second comprehensive cleanup (item 213). Before shipping a build/scorer fix: grep for sibling cases (other champions, other modes, duplicate build paths) and add a test covering each, root-cause-first (see the `root-cause-fix` skill).
+Champion-specific build / scorer fixes are validated per-champion, not with one generic ADC-crit shape; expect to patch multiple champions. A narrow first fix (item 208 marksman pollution) missed Golden Spatula + duplicate-path pollution and forced a second comprehensive cleanup (item 213). Before shipping a build/scorer fix: grep for sibling cases (other champions, other modes, duplicate build paths) and add a test covering each, root-cause-first (see the `root-cause-fix` skill). When narrowing a proc/effect fold (burn / kill-state / item-DoT credit): start with the tightest matching item/effect set and add a test asserting unrelated proc types (physical / tank / spellblade) are excluded BEFORE widening; widen only on test evidence (the DSV1 burn-proc fold over-counted on its first pass and took two narrowing iterations).
 
 ## Windows Environment Notes
 
@@ -184,6 +185,8 @@ Claude Desktop on Windows may be installed via the Microsoft Store (check `%LOCA
 ## Daemon Slayer Batch Workflow
 
 When continuing Daemon Slayer work: pick the next batch from ROADMAP, implement schema/engine changes, add tests (target green before commit), bump engine version, commit + push, verify live, update hand-off notes.
+
+Before launching a background RC or test suite right after a DS change, wait for the Share mirror sync + DS `:8893` restart to settle; a mid-suite DS bounce produces false anchor-mismatch / live-integration failures that then cost a re-run to confirm they were transient.
 
 ## Session Wrap-up
 
