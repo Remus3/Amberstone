@@ -52,7 +52,7 @@ const WIDGETS = [
   { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent", label: "A/B Choices" },
   { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient", label: "Callouts" },
   { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent", label: "Threat / CDs", zone: true },
-  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build" },
+  { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build", tall: true },
   { id: "w-ovds", sel: "#am-pane-ovds", x: 430, y: 80, tier: "ambient", label: "DS Controls" },
   // New doctrine cues (OVERLAY_DOCTRINE section 4). Both are data-gated (their
   // renderer un-hides the mount only when actionable) + coach-core (shown in
@@ -80,6 +80,29 @@ const LAUNCHER = { id: "w-launcher", sel: "#w-launcher", x: 24, y: 24, tier: "co
 // Panel sets the menu can switch to (mirror of rc-shell overlay_state PANEL_SETS;
 // the shell's normOverlayAction re-validates, so this list is only the UI source).
 const PANEL_SETS = ["coach", "build", "threat"];
+
+// Widgets that anchor by their BOTTOM (growing upward) when dropped in the lower
+// half - only the tall content panels that would otherwise shrink against the
+// maxh floor or overflow when top-anchored near the screen bottom (operator
+// 2026-06-29: BUILD). Every OTHER widget is free-placed exactly where dropped, so
+// dragging one near the bottom-right minimap no longer flings it to the bottom
+// corner. See _applyPos.
+const TALL_IDS = new Set(WIDGETS.filter((w) => w.tall).map((w) => w.id));
+
+// Keep at least this many design-px of a widget's top-left corner (where the drag
+// handle lives) on-screen so a drag - or a stale saved position - can NEVER strand
+// a panel off-screen / fully behind the minimap with no grabbable handle (operator
+// 2026-06-29: "un-retrievable" panels). Pure; clamps the stored (x,y) before it is
+// applied or persisted.
+const MIN_VISIBLE = 48;
+function _clampXY(x, y, W, H, minVis = MIN_VISIBLE) {
+  const nx = Number.isFinite(x) ? x : 0;
+  const ny = Number.isFinite(y) ? y : 0;
+  return {
+    x: Math.min(Math.max(nx, 0), Math.max(0, W - minVis)),
+    y: Math.min(Math.max(ny, 0), Math.max(0, H - minVis)),
+  };
+}
 
 let _layout = {};
 let _saveTimer = 0;
@@ -128,26 +151,32 @@ function _posFor(w) {
 
 function _applyPos(el, p) {
   // CSS owns position:fixed; this sets only the dynamic values.
-  el.style.left = p.x + "px";
-  // design-px viewport height (the field is design-px; the body zoom is ovscale).
-  const H = (window.innerHeight / (_bodyZoom() || 1)) || 1080;
-  // Bottom-corner anchoring (operator 2026-06-29): a content-tall panel
+  // design-px viewport box (the field is design-px; the body zoom is ovscale).
+  const z = _bodyZoom() || 1;
+  const H = (window.innerHeight / z) || 1080;
+  const W = (window.innerWidth / z) || 1920;
+  // Bottom-corner anchoring (operator 2026-06-29): a content-TALL panel (BUILD)
   // positioned by its TOP near the screen bottom either shrinks against the maxh
-  // floor (140px) or overflows off-screen - so the BUILD panel could not sit in
-  // the bottom-left corner ("keeps auto shrinking"). When a widget is dragged
-  // into the LOWER half, anchor it by its BOTTOM (16px margin) so it grows UPWARD
-  // at full height; cap maxh to the room from the top margin to that anchor.
-  // Above the midline, keep the original top-anchored behavior + room-below cap.
-  // The drag handler clears `bottom` while moving and re-applies this on drop so
-  // the snap-to-corner is immediate. Recomputed on resize.
-  if (p.y > H * 0.5) {
+  // floor (140px) or overflows off-screen - so it could not sit in the bottom-left
+  // corner ("keeps auto shrinking"). For a TALL widget dropped in the LOWER half,
+  // anchor it by its BOTTOM (16px margin) so it grows UPWARD at full height; cap
+  // maxh to the room from the top margin to that anchor. Every OTHER widget is
+  // free-placed exactly where dropped (operator 2026-06-29: the snap-everything
+  // rule flung panels to the bottom when dragged near the minimap). Either way the
+  // (x,y) is clamped on-screen so the panel stays grabbable. The drag handler
+  // clears `bottom` while moving and re-applies this on drop. Recomputed on resize.
+  const isTall = TALL_IDS.has(el.dataset && el.dataset.ovxId);
+  if (isTall && p.y > H * 0.5) {
+    el.style.left = _clampXY(p.x, 0, W, H).x + "px";
     el.style.top = "auto";
     el.style.bottom = "16px";
     el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(H - 32)) + "px");
   } else {
+    const c = _clampXY(p.x, p.y, W, H);
+    el.style.left = c.x + "px";
     el.style.bottom = "auto";
-    el.style.top = p.y + "px";
-    const availH = H - p.y - 16;
+    el.style.top = c.y + "px";
+    const availH = H - c.y - 16;
     el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(availH)) + "px");
   }
   if (p.scale && p.scale !== 1) {
@@ -299,14 +328,20 @@ function _installDrag(el, w) {
     // clientX/Y are screen px; the stored (x,y) are design px, so divide the
     // delta by the body zoom to keep 1:1 cursor tracking at any ovscale.
     const z = _bodyZoom();
-    const nx = Math.round(originX + (e.clientX - startX) / z);
-    const ny = Math.round(originY + (e.clientY - startY) / z);
-    _layout[w.id] = { ...(_layout[w.id] || {}), x: nx, y: ny };
-    el.style.left = nx + "px";
+    const H = (window.innerHeight / (z || 1)) || 1080;
+    const W = (window.innerWidth / (z || 1)) || 1920;
+    // Clamp so the top-left (drag handle) can never leave the screen mid-drag -
+    // guarantees the panel stays retrievable (operator 2026-06-29).
+    const c = _clampXY(
+      Math.round(originX + (e.clientX - startX) / z),
+      Math.round(originY + (e.clientY - startY) / z),
+      W, H);
+    _layout[w.id] = { ...(_layout[w.id] || {}), x: c.x, y: c.y };
+    el.style.left = c.x + "px";
     // Track by TOP while moving (clear any bottom-anchor from a prior drop) so the
     // panel follows the cursor 1:1; _applyPos on drop re-decides top vs bottom.
     el.style.bottom = "auto";
-    el.style.top = ny + "px";
+    el.style.top = c.y + "px";
   });
 
   const end = (e) => {
@@ -456,11 +491,17 @@ function _installLauncher(el, w, onTap) {
     }
     if (!moved) return;
     const z = _bodyZoom();
-    const nx = Math.round(originX + (e.clientX - startX) / z);
-    const ny = Math.round(originY + (e.clientY - startY) / z);
-    _layout[w.id] = { ...(_layout[w.id] || {}), x: nx, y: ny };
-    el.style.left = nx + "px";
-    el.style.top = ny + "px";
+    const H = (window.innerHeight / (z || 1)) || 1080;
+    const W = (window.innerWidth / (z || 1)) || 1920;
+    // Clamp the launcher too - losing the menu button off-screen would strand the
+    // operator with no way to reach panel settings (operator 2026-06-29).
+    const c = _clampXY(
+      Math.round(originX + (e.clientX - startX) / z),
+      Math.round(originY + (e.clientY - startY) / z),
+      W, H);
+    _layout[w.id] = { ...(_layout[w.id] || {}), x: c.x, y: c.y };
+    el.style.left = c.x + "px";
+    el.style.top = c.y + "px";
   });
   const end = (e) => {
     if (!down) return;
@@ -712,6 +753,9 @@ export const _internals = {
   WIDGETS,
   LAUNCHER,
   PANEL_SETS,
+  TALL_IDS,
+  _clampXY,
+  MIN_VISIBLE,
   LS_KEY,
   _posFor,
   _readLayout,
