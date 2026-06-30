@@ -285,7 +285,8 @@ def test_overlay_call_value_tiering(mock_server, pw_browser):
     try:
         obj = '#am-call-body > div[data-call-line="objective"] > span:last-child'
         assert page.locator(obj).count() == 1, "no OBJECTIVE line rendered"
-        assert _css(page, obj, "-webkit-line-clamp") == "2", "OBJECTIVE not clamped to 2 lines"
+        # 2026-06-29: bumped 2 -> 3 lines (operator: objective truncated mid-sentence).
+        assert _css(page, obj, "-webkit-line-clamp") == "3", "OBJECTIVE not clamped to 3 lines"
         # Tier colors apply over the inline color:var(--text) (needs !important).
         rn = _css(page, '#am-call-body > div[data-call-line="right-now"] > span:last-child', "color")
         assert "10, 200, 185" in rn, f"RIGHT NOW value not cyan (got {rn!r})"
@@ -456,9 +457,12 @@ def test_overlay_minimap_rect_is_clickthrough_outline_widget(mock_server, pw_bro
         assert page.eval_on_selector(sel, "e => e.dataset.ovxId") == "w-mmrect"
         assert page.eval_on_selector(sel, "e => !e.hidden"), f"{sel} should be shown"
         assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
-        # game.cfg-derived rect (design px), from the mock fixture
-        assert _css(page, sel, "left") == "1600px", f"{sel} not at settings x"
-        assert _css(page, sel, "top") == "760px", f"{sel} not at settings y"
+        # game.cfg-derived rect placed by WINDOW FRACTION + the operator calibration
+        # nudge (2026-06-29: x/1920*innerWidth + 6px right, y/1080*innerHeight + 2px
+        # down; at the 1920x1080 test viewport with bodyZoom=1 -> 1600+6, 760+2). The
+        # box is now ovscale-immune (zoom=1/bodyZoom) - see minimap_rect._placement.
+        assert _css(page, sel, "left") == "1606px", f"{sel} not at settings x"
+        assert _css(page, sel, "top") == "762px", f"{sel} not at settings y"
         assert _css(page, sel, "width") == "312px", f"{sel} wrong width"
         assert _css(page, sel, "height") == "312px", f"{sel} wrong height"
         # click-through (no grab zone over the minimap)
@@ -521,7 +525,8 @@ def test_overlay_minimap_rect_threads_through_live_state(mock_server, pw_browser
             timeout=10_000,
         )
         assert page.eval_on_selector("#am-mmrect", "e => e.dataset.ovxId") == "w-mmrect"
-        assert _css(page, "#am-mmrect", "left") == "1600px", "box not at the threaded x"
+        # window-fraction placement + the +6px calibration nudge (1600/1920*1920+6).
+        assert _css(page, "#am-mmrect", "left") == "1606px", "box not at the threaded x"
         assert _css(page, "#am-mmrect", "position") == "fixed"
     finally:
         page.close()
