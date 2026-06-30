@@ -23,7 +23,7 @@ import { installItemTooltip } from '../lib/overlay_tooltip.js';
 import { installItemRadial } from '../lib/overlay_item_radial.js';
 import { applyItemOverrides, clearItemOverrides } from '../lib/item_overrides.js';
 import { renderThreatDonut } from './threat_donut.js';
-import { classifyAction, escHtml } from '../lib/helpers.js';
+import { classifyAction, escHtml, safe } from '../lib/helpers.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
 import { renderSpikeCurve, fetchSpikeCurve, getCachedSpikeCurve } from './spike_curve.js';
 import { renderSpikeMarkers, fetchSpikeMarkers, getCachedSpikeMarkers } from './spike_markers.js';
@@ -681,10 +681,15 @@ export function renderActiveMatch(payload, ctx) {
         : "no in-game session - waiting for next game"));
       return;
     }
-    const action = p.action || "";
-    const immediate = p.immediate || "";
-    const next = p.next || "";
-    const objective = p.objective || "";
+    // safe() strips the coach inline bracket-markup tags ([t]1:50s[/t],
+    // [a]ally[/a], [e]enemy[/e]) - an internal authoring convention, not display
+    // text (the BARON/DRAKE/HERALD chips carry the real timers). Without this the
+    // raw [T]...[/T] markup leaked into the overlay coach card (operator-reported
+    // 2026-06-29). Matches right_now.js / next.js, which already route through it.
+    const action = safe(p.action);
+    const immediate = safe(p.immediate);
+    const next = safe(p.next);
+    const objective = safe(p.objective);
     // s171: ``immediate`` is the most actionable field - the coach's
     // RIGHT NOW prompt (e.g. "Recall now - Ryze + Yi respawn ~47s").
     // It was being dropped from the active-match render even though

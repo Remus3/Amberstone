@@ -373,16 +373,19 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"][data-call-band="good"] .am-call-glyph {
   color: rgb(var(--ovx-good));
 }
-/* OBJECTIVE: the macro footer, clamped to 2 lines so a verbose objective can
- * never blow the card past the 1.5s glance budget (rule 1) - the full text stays
- * on the dashboard surface. -webkit-box line-clamp is the cross-Chromium idiom. */
+/* OBJECTIVE: the macro footer, clamped so a verbose objective can never blow the
+ * card past the glance budget (rule 1) - the full text stays on the dashboard
+ * surface. 2026-06-29: bumped 2 -> 3 lines (operator: objective truncated mid-
+ * sentence); paired with the safe() tag-strip in active_match.js the prose is
+ * shorter now, so 3 lines lands the full call without overrunning the card.
+ * -webkit-box line-clamp is the cross-Chromium idiom. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="objective"] > span:last-child {
   font-size: var(--fs-ov-sigil) !important;
   font-weight: 400;
   color: rgba(var(--ovx-text), 0.55) !important;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   overflow: hidden;
   line-height: 1.25;
 }
