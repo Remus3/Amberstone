@@ -81,6 +81,14 @@ CMD_INTERVAL  = 0.5   # Legion command-queue drain cadence (idle)
 # CMD_INTERVAL (no busy-spin).
 BENCH_CMD_FAST_INTERVAL = 0.1
 LATENCY_SENSITIVE_CMDS = {"bench_swap", "reroll", "accept_ready"}
+# RC2 E7 TODO-1: a fast command DRAIN (above) only fires the LCU POST
+# quickly - the swapped champ still didn't reach /api/state until the next
+# _state_push_loop tick (up to INTERVAL=1.0s away, a separate thread). This
+# event lets the cmd loop WAKE the state-push loop the instant a
+# latency-sensitive batch is drained, so the new pick/bench reflects in
+# ~BENCH_CMD_FAST_INTERVAL. Only _state_push_loop ever calls capture_state(),
+# so the cmd loop merely sets this flag - no new cross-thread capture race.
+_swap_wake = threading.Event()
 # Min seconds between team-context POSTs while still in champ-select.
 # The route is idempotent - re-posting just refreshes the cache, but no
 # point hammering it on every 1s state-push cycle.
@@ -2109,6 +2117,10 @@ def _state_push_loop():
     don't compute 2**huge_int after hours of failures."""
     consecutive_fail = 0
     while True:
+        # E7 TODO-1: consume any pending swap-wake at the top so a swap that
+        # lands DURING this capture/post still forces a fresh capture next
+        # pass (the event stays set through the wait() below).
+        _swap_wake.clear()
         try:
             state = capture_state()
             try:
@@ -2134,11 +2146,15 @@ def _state_push_loop():
                 print(f"  [last-match-ingest err] {e}", flush=True)
         except Exception as e:  # noqa: BLE001
             print(f"[state loop err] {e}", flush=True)
+        # E7 TODO-1: wake early when the cmd loop drained a latency-sensitive
+        # batch (bench swap / reroll / accept) so the new pick reflects in
+        # ~BENCH_CMD_FAST_INTERVAL; an idle wait still times out at the
+        # normal cadence (identical to the old sleep when no swap fires).
         if consecutive_fail >= 3:
             exp = min(consecutive_fail - 2, 6)
-            time.sleep(min(30.0, INTERVAL * (2 ** exp)))
+            _swap_wake.wait(timeout=min(30.0, INTERVAL * (2 ** exp)))
         else:
-            time.sleep(INTERVAL)
+            _swap_wake.wait(timeout=INTERVAL)
 
 
 def _auto_features_loop():
@@ -2194,12 +2210,27 @@ def drain_once(get_fn, post_fn, exec_fn):
     return processed, fast
 
 
+def _signal_state_refresh(fast: bool, processed: int) -> bool:
+    """RC2 E7 TODO-1: wake _state_push_loop immediately after a
+    latency-sensitive drain so a freshly swapped champ reflects in
+    /api/state in ~BENCH_CMD_FAST_INTERVAL rather than the full INTERVAL.
+
+    Wakes ONLY when a latency-sensitive batch actually moved a command
+    (``fast and processed``). Returns True iff the wake was signalled."""
+    if fast and processed:
+        _swap_wake.set()
+        return True
+    return False
+
+
 def _cmd_poll_loop():
     """Drain Legion's command queue. Posts results back even on exception
     so dashboard flows always see a definitive ok/err. Re-polls FAST after
-    a latency-sensitive batch (RC2 E7a), full idle sleep otherwise."""
+    a latency-sensitive batch (RC2 E7a) and wakes the state-push loop
+    (E7 TODO-1), full idle sleep otherwise."""
     while True:
         fast = False
+        _processed = 0
         try:
             _processed, fast = drain_once(get, post, execute_command)
         except urllib.error.HTTPError as e:
@@ -2207,6 +2238,7 @@ def _cmd_poll_loop():
                 print(f"  [cmd-poll err] {e}", flush=True)
         except Exception as e:  # noqa: BLE001
             print(f"  [cmd-poll err] {e}", flush=True)
+        _signal_state_refresh(fast, _processed)
         time.sleep(BENCH_CMD_FAST_INTERVAL if fast else CMD_INTERVAL)
 
 
