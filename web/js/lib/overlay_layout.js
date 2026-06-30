@@ -403,6 +403,14 @@ function _installLauncher(el, w, onTap) {
   let originX = 0;
   let originY = 0;
   el.addEventListener("pointerdown", (e) => {
+    // The OP/SZ sliders + the toggle/reset/done buttons live INSIDE the menu,
+    // which is a DOM child of this launcher el - so their pointerdown bubbles
+    // here. The handler's e.preventDefault() (below) then blocked the slider's
+    // native thumb-drag, so the sliders looked dead (operator 2026-06-29). Let
+    // any interactive control handle its own pointer events.
+    if (e.target && e.target.closest && e.target.closest("input, button, select, textarea")) {
+      return;
+    }
     // The launcher is a click-through ZONE (data-rc-zone), so the rc-shell makes
     // the window interactive whenever the cursor is over it - in PASSIVE too. A
     // pointerdown therefore only lands here when the operator is actually on the
