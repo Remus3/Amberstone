@@ -191,6 +191,7 @@ genuinely-open ROADMAP/BACKLOG work.
 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
+| R36 | ui-audit | LOOP cycle 7 (DIRECTOR REFILL): 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/HIERARCHY per docs/UI_SCALE_SPEC_V2.md) of the Electron-overlay launcher control center (#w-launcher + its layout menu), shipped un-audited in LEDGER 688. HIT-TARGETS MUST-FIX: the menu action rows (.ovx-menu-row: per-panel toggle / reset / done) + the opacity/scale slider rows (.ovx-menu-slider) now reserve min-height var(--hit-min) 42px (were ~30-33px, below the spec tap floor line 112/118). STRUCTURE: dead .ovx-menu-panelset rule removed (panel-set quick-swap RETIRED 2026-06-28; _renderMenu emits no such element). TYPOGRAPHY/ASCII/HIERARCHY pass (menu rows at --fs-sm 18px = correct for an on-demand control center, NOT a glance cue; launcher 34px square kept = operator HUD-summoner-spell exception, inline rationale). TDD RED-first tests/test_overlay_launcher_hit_targets.py (static CSS guard) + tests/snapshot_panels/test_overlay_launcher_menu.py (Playwright live offsetHeight>=42 proof + screenshots/overlay_launcher_menu.png). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. | DONE | `88fc8b05` |
 | R35 | ds-sweep | LOOP cycle 6 (DIRECTOR REFILL): DS schema lift - survivability spell_damage_reduction_pct LIVE consumer. R19 added the forward-marker accessor DataSnapshot.spell_damage_reduction_pct(champ, slot) (per-rank PERCENT damage reduction from champion_abilities.json defensive modifier blocks); R35 wires it into _passive_mitigation_overrides.mitigation_multipliers via a trailing snapshot=None param. When snapshot present AND apply_passive_mitigation True, each percent-DR block folds into the EHP DENOMINATOR (mathematically correct vs the directive's "numerator like flat-DR R9" framing - percent DR is a damage-taken multiplier, not prevented HP) - read at _ASSUMED_ABILITY_RANK=4 (clamped to the per-rank tuple bounds), amortized by _ACTIVE_DR_PROB=0.3, axis by case-insensitive substring (physical->PHYS, magic->MAG, else ANY). DEVIATION (followed the data): the directive's literal 3-key map (Physical/Magic/Damage Reduction) misses Braum's lowercased "Damage reduction" + MasterYi's "Modified Damage Reduction" - substring classify required. 8 snapshot champs (Alistar/Belveth/Braum/Galio-split/Garen/Gragas/MasterYi/Warwick); _HAND_AUTHORED_DR_CHAMPS guard prevents double-count (disjoint today). compute_ehp passes snapshot through. DEFAULT-OFF byte-identical (short-circuits before snapshot consulted; legacy 3-arg call unchanged). 2 item-261/262 "no-DR baseline" tests repointed Garen->Ashe/Caitlyn. Offline characterization tests (test_passive_mitigation_snapshot_r35.py, 13 cases, RED-first). ENGINE 1.152.0 -> 1.153.0 + DS :8893 restart + Share sync SAME commit. Live flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | `ae123ca9` |
 | R34 | lift | LOOP cycle 5 (DIRECTOR REFILL): Section-7b heavyweight deep-dive competitor lift of Aggregator D. 6-point checklist per finding. Output docs/COMPETITOR_LIFT_2026-06-27_AGGREGATOR_D.md (12 findings). SHIPPED F1 IN-RUN (HIGH-lift LOW-risk presentation): the personal_build champ-select panel dropped the served `most_common_build`; now renders the popular-vs-winning dichotomy (a "Usual" line + per-row usual pips + a conditional survivorship insight: underused-winner / overused-loser) - pure presentation over the already-served /api/personal-build payload, no new compute/route/dependency. Tier-1 frontend (CSS+JS, asset-hash auto-reload ADR-008, no RC restart, no ENGINE/Share). TDD RED-first, verifier-gated 24/24, 5-phase UI-audit PASS. F3 per-opponent matchup delta-stats (HIGH/new-compute) + F8 early/mid/late+snowball bar (MED) -> BACKLOG FUTURE; F2/F5/F6 defer; F4/F7/F9/F10/F12 CLOSED. Vendor names kept out of repo source (docs only). | DONE | `a3d38c0e` |
 | R28 | housekeeping | DIRECTOR REFILL: re-proposed ledger-618 tail (SwapsInto extractor fix + snapshot_panels flake + ARCHITECTURE.md:172 drift). VERIFY-THE-PREMISE -> ALL already shipped: SLICE 1 = item 619 (`95972f57`, Riot 16.13 `...ImmobilizingCCAbility` taxonomy fix - extractor canonicalizes the suffix to the legacy stem, 16.13.1 cdragon carries 5 SwapsInto correct, spell_cc_tags 31/31 green; inert-data so NO ENGINE bump per the 339/343 convention - the directive's "MUST bump ENGINE_VERSION" was itself wrong); SLICE 2a snapshot flake = item 620 (`0fe7e3bf`, Windows-scoped keep-alive, CI green - 620 ground-truth-corrected the directive's "keep HTTP/1.1 keep-alive" premise: the keep-alive ITSELF is the Linux culprit); SLICE 2b doc-drift = FALSE premise (line 172 already reads ENGINE 1.151.0 / 7511 tests / patch 16.13.1, NOT the hallucinated 1.144.0/7361). No code change warranted - a redundant ENGINE re-bump or flake re-attempt would REGRESS shipped work. CLEAN no-op, evidence-logged. | CLEAN | (docs) |
@@ -208,6 +209,30 @@ genuinely-open ROADMAP/BACKLOG work.
 - DSP/DSV default-OFF seam live default-ON flips in rank.py/burst.py + every row in docs/LIVE_GAME_GATED_SYNC.md - need a real game. The DSP* sessions ship the seam DEFAULT-OFF + offline-validate it; the executor APPENDS each new seam's live flip to docs/LIVE_GAME_GATED_SYNC.md and NEVER flips blind.
 
 ## Findings log (executor appends; newest first)
+
+- 2026-06-30 R36 (LOOP cycle 7, DIRECTOR REFILL, head 5e2931ec) DONE (`88fc8b05`)
+  - 5-phase fixture audit of the Electron-overlay launcher control center
+    (#w-launcher + its layout menu), the un-audited LEDGER-688 widget. Pure UI,
+    ENGINE-IMPACT NONE.
+  - HIT-TARGETS MUST-FIX: the menu action rows (.ovx-menu-row toggle/reset/done)
+    + the opacity/scale slider rows (.ovx-menu-slider) were ~30-33px tall, below
+    the --hit-min 42px tap floor (UI_SCALE_SPEC_V2 line 112/118). Both now reserve
+    min-height var(--hit-min); the action row went display:block -> flex+center so
+    the text sits mid-button in the taller box.
+  - STRUCTURE: removed the dead .ovx-menu-panelset rule (the coach/build/threat
+    panel-set quick-swap was retired 2026-06-28; _renderMenu emits no such node).
+  - TYPOGRAPHY/ASCII/HIERARCHY pass. Menu rows stay at --fs-sm 18px - the launcher
+    menu is an on-demand control center, NOT a glance cue, so it wants readability
+    (NOT routed to the 11-14px overlay cue scale, unlike R33's always-visible
+    chips). The 34px launcher square is the operator HUD-summoner-spell exception
+    (inline rationale), intentionally NOT forced to 42px.
+  - TDD RED-first tests/test_overlay_launcher_hit_targets.py (4 static CSS guards,
+    3 failed pre-fix) + Playwright tests/snapshot_panels/test_overlay_launcher_menu.py
+    (taps the launcher, measures the rendered rows + sliders offsetHeight>=42 in a
+    real browser, writes screenshots/overlay_launcher_menu.png). Verifier-CONFIRMED.
+  - Gate: 4 new static + node launcher 11 + overlay snapshot 26; FULL RC suite
+    10115 passed / 2 skipped / 0 failed (fresh, 14m28s). CSS-only asset-hash
+    auto-reload (ADR-008); no RC restart, no ENGINE bump, no DS Share sync.
 
 - 2026-06-27 R35 (LOOP cycle 6, DIRECTOR REFILL, head d4b0b75d) DONE (`ae123ca9`)
   - DS schema lift: the LIVE consumer for R19's forward-marker accessor

@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-30 (R36 headless cycle 7 - 5-phase UI audit of the #w-launcher overlay menu)
+
+Gemini-directed headless loop, cycle 7. Pure UI audit (ENGINE-IMPACT NONE) of the Electron-overlay launcher control center + its layout menu, shipped un-audited in LEDGER 688. Full detail in LEDGER 690 + ORCHESTRATION_PLAN R36.
+
+- **HIT-TARGETS MUST-FIX (`88fc8b05`).** The launcher menu action rows (`.ovx-menu-row`: per-panel toggle / reset / done) + the opacity/scale slider rows (`.ovx-menu-slider`) were ~30-33px tall, below the `--hit-min` 42px tap floor (UI_SCALE_SPEC_V2 L112/118). Both now reserve `min-height: var(--hit-min)`; the action row went `display:block` -> `flex+center`. Live-measured offsetHeight >= 42 in a real browser.
+- **STRUCTURE.** Removed the dead `.ovx-menu-panelset` rule (panel-set quick-swap retired 2026-06-28; `_renderMenu` emits no such node).
+- **TYPOGRAPHY/ASCII/HIERARCHY pass.** Menu rows kept at `--fs-sm` 18px on purpose - an on-demand control center wants readability, NOT the 11-14px overlay cue scale (unlike R33's always-visible chips). The 34px launcher square is the operator HUD-summoner-spell exception, kept.
+- **TDD + proof.** RED-first `tests/test_overlay_launcher_hit_targets.py` (4 static CSS guards) + Playwright `tests/snapshot_panels/test_overlay_launcher_menu.py` (taps the launcher, measures live row/slider heights, writes `screenshots/overlay_launcher_menu.png`). Verifier-CONFIRMED. FULL RC suite 10115 passed / 0 failed.
+- **NEXT:** the ZOI / overlay live-verify tail (a/b choices `#rn-choices` absent, champ-select lane->MID, champ-select flicker, ZOI blur/alpha tuning) from the 2026-06-30 ZOI session still wants a live game. Resume the headless loop.
+
+---
+
 # 2026-06-30 (ZOI render bug SOLVED + asset-stamp trap + drag fix + overlay panel triage)
 
 Continued the NEXT-session ZOI task. Long live in-game co-QA with the operator (SR ranked + ARAM, many overlay hot-reloads). Each web/js|css edit hot-reloads the overlay; verified live via the operator + Legion vision frames (`:8889/latest-frame`, X-RC-Token from `config/vision_token.txt`).
@@ -28,15 +40,3 @@ Started with WP-F5-M01 then turned into a long live in-game overlay QA pass with
 - **STILL OPEN - ZOI/minimap dots never render (`6b8fe07a` data fix done, render still dark).** Added a dedicated 2s minimap poller (the zoi-bearing /api/state polls were all staleness-gated during a healthy game), but the blue/red shading STILL does not paint -> cause is render-side in `renderMinimapZoi`, not data. `DEBUG_ZOI` probe in `web/js/panels/minimap_zoi.js` is one-flag-ready (set true) to confirm canvas visibility next session, then fix per the operator's magenta-box verdict.
 - **Post-/done (LEDGER 687).** Two more BUILD-panel bugs from a second live game: (a) auto-shrink when dragged to the bottom-left -> `_applyPos` now bottom-anchors lower-half widgets (grow upward, no 140px floor); (b) "invisible ~20s then back on coach tick" was the COMBAT DECLUTTER (`body[data-fight=1]` -> `display:none` on `w-build`), not the per-tick flicker the batch chased - dropped `w-build` from that rule so it persists through fights. Also fixed the CI red the batch left: `test_overlay_view.py` pinned the old clamp=2 + minimap left=1600; updated to 3 + 1606 (window-fraction + nudge) and `Math.round`ed the minimap px. node 5/5 + overlay snapshot 26 green.
 - **NEXT:** ZOI render bug (flip DEBUG_ZOI, get magenta verdict in an SR/ARAM game, fix). Tracker: `docs/OVERLAY_QA_2026-06-29.md`. Item-tooltip "name-only" is an unconfirmed operator preference, not a bug.
-
----
-
-# 2026-06-29 (Section J WPs F5-H02 + F6a shipped; terminal-window noise eliminated; branches collapsed)
-
-Picked two OPEN Section J WPs from `docs/OVERLAY_BUILD_MASTER_PLAN.md`, then handled two operator reports about stray terminal windows + a branch cleanup. All on main, CI green.
-
-- **682 / WP-F5-H02 (`decd681f`, flip `4e03ee66`).** task_queue gate-limbo state-machine leak. The audit-8 reconciler only closes `IN_PROGRESS`; `needs_explicit_approval`/`agent0_review`/`retry_pending` had no terminal transition. Root cause of the live pile-up: `test_file_task_endpoint_frozen_file_gates` POSTs `test-round22-frozen` to the live `:8890` supervisor every run -> a real orphan envelope each time (1566 accumulated). Fix: new `Scheduler.reconcile_stale_gated()` (7-day generous threshold -> `dead_letter`, separate from the in-progress reconciler so its NEEDS_APPROVAL-off-limits contract stays pinned) + wired boot + 5-min loop + the polluting test now self-dismisses. Backfill: live supervisor boot reaper dead-lettered the 1566 (verified `by_status: dead_letter 1566, needs_approval 1`, the 1 is 4 days old/in-window). 16 new tests; 403+50+12 green.
-- **683 / WP-F6a (`b0720386`, flip `16bb6c9f`).** `ARCHITECTURE.md:172` recited `ENGINE_VERSION 1.153.0 / 547 items / 7537 tests` - drifted vs live `1.154.0` (CI runs no pytest on docs). Replaced the numeric recital with a pointer to the drift-guarded `docs/DAEMON_SLAYER.md`; new `tests/test_architecture_no_stale_engine_header.py` (2) guards re-drift. CLAUDE.md left alone (24KB < 60KB, current not drifted); `test_engine_version_is_1_X` rename deferred (Share-mirror churn).
-- **684 / terminal-window noise (`2903d802`).** (a) Per-edit console FLASH = hooks (windowless pythonw) shelling out to console children (ruff/git/pytest/powershell) with no `creationflags` -> Windows allocates a fresh console per child. Added `CREATE_NO_WINDOW` to all 4 hook scripts' `subprocess.run`. (b) `DesktopWindowXamlSource` taskbar GHOST = Windows Terminal was the default terminal app, COM-activated `-Embedding` on every console spawn. Operator chose Console Host: set `HKCU\Console\%%Startup` delegation GUIDs to null + `taskkill`'d the resident WT. Verified 0 ghosts.
-- **Branch cleanup.** Remote had 2 stale `claude/*` branches: `hardcore-saha-0592d5` (fully merged, item 680) + `thirsty-keller-e732b1` (byte-identical to main's `c27bb378`, superseded). Deleted both (no open PRs); also pruned 2 stale local worktrees. Remote now `main` only. LEFT ALONE: the `ci-fix/*` branches + `C:/RC-CIWatchdog` worktree (active RC-CIWatchdog agent).
-- **NEXT:** more OPEN Section J WPs - E5 (T0 doc sweep), F5-M01 (body-data-mode regression test, T1), F6c (park auto-ops gate, T0). F5-L03 was closed externally (`c27bb378`, audit-11 L-03) by the auditor.
