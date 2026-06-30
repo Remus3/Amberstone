@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-06-30 (R45 headless cycle 14 - DS schema lift: percent-of-resist LOW-HP DOUBLED tier (Poppy W); ENGINE 1.158.0 -> 1.159.0)
+
+Gemini-directed headless loop cycle 14 (from directive.md; operator-triggered single cycle). DS schema lift. Full detail in LEDGER 699 + ORCHESTRATION_PLAN R45.
+
+- **Premise correction (spec subagent + my independent re-verify of every cite).** The item-268 percent-of-resist mode already credited Poppy W +12% of TOTAL armor/MR + Rell W +15% of BONUS; the directive's "Poppy 10%/20%, Rell 10%" numbers were WRONG vs Meraki 16.13.1. The ONE genuine gap = Poppy "doubled to 24% below 40% max HP" (omitted at `_passive_resist_overrides.py:407`). Rell was already correct - untouched.
+- **Seam (`22dca695` feat).** `PassiveResistEntry` gains 3 END-appended fields (`low_hp_pct_armor` / `low_hp_pct_mr` / `low_hp_threshold`, default 0.0 dormant); `resist_grants` gains keyword-only `caster_current_hp_pct=1.0` (END) + an INCREMENTAL low-HP branch inside the percent block (base 12% + incremental 12% = 24% when caster HP < threshold); `compute_ehp` + `compute_hybrid` thread it (forward-only). Poppy seeded 12/12/0.40.
+- **DEFAULT-OFF byte-identical on two axes:** `apply_passive_resist=False` short-circuits; `apply_passive_resist=True` at the default full-HP 1.0 leaves the low-HP branch dormant (1.0 not < 0.40) = identical to 1.158.0. No live consumer passes the kwarg.
+- **Tier-2.** TDD RED-first `test_passive_resist_low_hp_tier_r45.py` (RED 15-fail -> GREEN). Build agent (main tree) + read-only verifier CONFIRM 6/6 (independent `resist_grants` math 0.24*200=48.0; Rell + unseeded byte-identical; scope clean). ENGINE 1.158.0 -> 1.159.0 (92 files / 105 pins, 0 stray) + DS `:8893` taskkill (PID 11308) / relaunch (live 1.159.0) + Share `--check` green (383 files) + DAEMON_SLAYER.md banner 7621 -> 7640 SAME feat commit. DS 7640 pass / RC 10128 pass.
+- **NEXT:** live default-ON flip EXCLUDED (the EHP scorer never reads caster HP) -> `docs/LIVE_GAME_GATED_SYNC.md`. Resume the headless loop.
+
+---
+
 # 2026-06-30 (R44 headless cycle 13 - Section-7b competitor deep-dive: Guide Site Q; docs-only CLEAN no-op)
 
 Gemini-directed headless loop cycle 13 (from directive.md). Competitor-lift research, ENGINE-IMPACT NONE. Full detail in LEDGER 698 + ORCHESTRATION_PLAN R44.
@@ -25,14 +37,3 @@ Gemini-directed headless loop cycle 7 (from directive.md). DS engine math fix. F
 - **Dependent fix:** `test_routes_ds_relscore.py` double-rounding tolerance 0.2 -> 0.25 (the corrected Yun Tal DPS shifted item 3032 onto a float-epsilon boundary: route score_pct uses unrounded delta, test recomputes from 1dp-stored -> `71.3 - 71.1 = 0.2000...0284`). NOT a route bug nor a fix bug.
 - **Tier-2.** ENGINE 1.156.0 -> 1.157.0 (90 pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.157.0) + Share `--check` green (381 files) + DAEMON_SLAYER.md banner 7604 -> 7606, all in the feat commit. DS 7606 pass / RC 10128 pass; read-only verifier CONFIRM (7/7, fix base_as-scaled at dps.py:865-866). Built inline (trivial one-file, verifier-gated).
 - **NEXT:** resume the headless loop. No live-flip gate needed - this corrects an already-live default-ON path (cond_as fires whenever Yun Tal is in a build), not a default-OFF seam.
-
----
-
-# 2026-06-30 (R41 headless cycle 12 - DS ally mark-detonation seam; ENGINE 1.155.0 -> 1.156.0)
-
-Gemini-directed headless loop cycle 12 (from directive.md). DS schema lift fulfilling R12's explicit handoff. Full detail in LEDGER 695 + ORCHESTRATION_PLAN R41.
-
-- **Seam (`8b3cee60` feat, `9c85515d` docs).** New PURE `agents/daemon_slayer/_ally_detonation_overrides.py` (no engine imports) models a champion MARK an ALLY consumes for bonus damage - the mark-enabler's TEAM-damage contribution, distinct from the self-amp + all-source-vulnerability registries. `compute_dps` + `compute_burst_damage` gain `assume_ally_detonation` (END-appended, default False -> byte-identical): per-event magic for burst, per-event/cadence for the DPS rate, each MR-mitigated x mode_mult x magic_amp x `_ASSUMED_ALLY_DETONATION_PROB`=0.5. Seeded Leona P Sunlight (FLAT_MAGIC 32:151 based-on-level, 2.5s cadence) verified vs champion_abilities.json 16.13.1.
-- **PREMISE CORRECTED (verify-the-premise win).** The directive named Imperial Mandate 4005 a "10% current-HP detonation", but that is STALE: DDragon 16.13.1 shows IM reworked to a 7% Vulnerable all-source amp (Control/Command passives) - the 16.12.1 Coordinated Fire detonation is GONE (only the stale Meraki items mirror, content_patch=None, still carries it). Seeding it would be a WRONG precompute, so 4005 is a documented NON-FIT and belongs in `_target_vulnerability_overrides`, not this seam. Leona is the sole seed.
-- **Tier-2.** TDD RED-first `test_ally_detonation_r41.py` (19 cases). ENGINE 1.155.0 -> 1.156.0 (99 assertion pins, 0 stray) + DS `:8893` taskkill/relaunch (live 1.156.0) + Share `--check` green SAME commit + DAEMON_SLAYER.md banner. DS 7604 pass / RC 10128 pass (2 transient first-run fails - doc-drift banner [fixed] + a live-engine smoke during the DS-restart window [re-run green]); read-only verifier CONFIRM (Aatrox ON==OFF, Leona burst delta 75.5 @mr=0).
-- **NEXT:** live default-ON flip EXCLUDED -> `docs/LIVE_GAME_GATED_SYNC.md` (wire a DPS/burst/rank consumer + eyeball Leona's mark value vs a real game; validate the 2.5s cadence + 0.5 proc-rate). Resume the headless loop.
