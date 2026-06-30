@@ -820,7 +820,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | F5-H02 task_queue leak | W0 | - | T1 | DONE 2026-06-29 (decd681f; gate-limbo reaper + 1566 orphans backfilled) |
 | F5-M01 body-data-mode test | W0 | - | T1 | OPEN |
 | F5-L03 inventory csv stale | W6 | - | T0 | OPEN |
-| F6a stale engine-header | W0 | E5 | T1 | DONE 2026-06-29 (1fbdaba6; ARCHITECTURE:172 -> live-pointer + guard test. CLAUDE.md untouched: 24KB < 60KB, current. test_engine_version_is_1_X rename deferred - Share-mirror churn) |
+| F6a stale engine-header | W0 | E5 | T1 | DONE 2026-06-29 (b0720386; ARCHITECTURE:172 -> live-pointer + guard test. CLAUDE.md untouched: 24KB < 60KB, current. test_engine_version_is_1_X rename deferred - Share-mirror churn) |
 | F4a ward keep-vs-retire | W4 | operator | T1 | GATED |
 | F6c park auto-ops gate | W6 | - | T0 | OPEN |
 | I3 loop stall-recovery | pre | - | T1 | DONE 2026-06-28 |
