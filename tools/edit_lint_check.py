@@ -16,6 +16,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Hooks run under windowless pythonw.exe; a console-subsystem child (the `py`
+# launcher + ruff) would otherwise get a fresh console allocated - an on-screen
+# + taskbar flash on every edit. CREATE_NO_WINDOW suppresses it (Windows-only;
+# 0 elsewhere).
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 _BANNED = {
     chr(0x2014): "em-dash",
     chr(0x2013): "en-dash",
@@ -65,6 +71,7 @@ def main() -> int:
                 capture_output=True,
                 text=True,
                 timeout=15,
+                creationflags=_NO_WINDOW,
             )
         except (OSError, subprocess.SubprocessError):
             pass

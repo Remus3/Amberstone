@@ -28,6 +28,12 @@ import re
 import subprocess
 import sys
 
+# Hooks run under windowless pythonw.exe; a console-subsystem child (git /
+# `py` launcher + ruff) would otherwise get a fresh console allocated - an
+# on-screen + taskbar flash. CREATE_NO_WINDOW suppresses it (Windows-only;
+# 0 elsewhere).
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 _BANNED = {
     chr(0x2014): "em-dash",
     chr(0x2013): "en-dash",
@@ -58,7 +64,7 @@ def _git(args: list[str], root: str | None) -> str:
     try:
         out = subprocess.run(
             ["git", *args], cwd=root or None, capture_output=True, text=True,
-            timeout=20,
+            timeout=20, creationflags=_NO_WINDOW,
         )
         return out.stdout
     except (OSError, subprocess.SubprocessError):
@@ -181,6 +187,7 @@ def main() -> int:
             capture_output=True,
             text=True,
             timeout=60,
+            creationflags=_NO_WINDOW,
         )
         try:
             findings = json.loads(proc.stdout) if proc.stdout.strip() else []

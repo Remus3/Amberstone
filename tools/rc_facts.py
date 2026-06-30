@@ -29,6 +29,11 @@ import time
 import urllib.request
 from pathlib import Path
 
+# SessionStart hook runs under windowless pythonw.exe; a powershell.exe child
+# would otherwise get a fresh console allocated - an on-screen + taskbar flash.
+# CREATE_NO_WINDOW suppresses it (Windows-only; 0 elsewhere).
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 _APP = Path(__file__).resolve().parent.parent
 _HEALTH = _APP / "ops" / "runtime" / "health.json"
 _LEGION_BASE = "https://legion-rc:8888"
@@ -83,7 +88,7 @@ def _legion_tasks() -> list[dict]:
         p = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", cmd],
             capture_output=True, timeout=4.0, text=True,
-            encoding="utf-8", errors="replace",
+            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
         )
         if p.returncode != 0 or not p.stdout.strip():
             return []
@@ -101,7 +106,7 @@ def _last_boot_iso() -> str | None:
         p = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", cmd],
             capture_output=True, timeout=2.0, text=True,
-            encoding="utf-8", errors="replace",
+            encoding="utf-8", errors="replace", creationflags=_NO_WINDOW,
         )
         if p.returncode == 0:
             return p.stdout.strip() or None
