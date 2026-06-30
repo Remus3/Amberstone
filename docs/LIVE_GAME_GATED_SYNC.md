@@ -751,9 +751,13 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   `netsh interface portproxy show all` FIRST per `reference_iphlpsvc_portproxy_2999` - that is a self-loop
   rule, not a pool bug), (c) the reconnect-on-drop path self-heals across a client restart mid-session, and
   (d) loopback socket count stays bounded (one long-lived socket per LCU port instead of one-per-call) under
-  a tightened poll cadence. Only after (a)-(d) check out over a live game, authorize the default-ON flip
-  (and, separately, E7 wiring the frozen `lcu/lcu_client.py._request` onto the same pool). Does NOT block any
-  further stage.
+  a tightened poll cadence. Only after (a)-(d) check out over a live game, authorize the default-ON flip.
+  UPDATE 2026-06-30 (E7): the frozen `lcu/lcu_client.py._request` is NOW wired onto the same pool (commit
+  `453b9ddd`, operator frozen-grant, still DEFAULT-OFF), so the every-tick auto-accept path
+  (`LcuClient._auto_accept_tick`, ~2 LCU GETs/s) pools too once flipped - extend check (a) to also confirm
+  auto-accept + rune-apply read correctly with the pool active. After (a)-(d) pass, the flip is a one-liner
+  (`core/lcu_pool.py:40` default or `RC_LCU_POOL=1` in the runtime env). Does NOT block any further stage.
+  Bench-swap state-render responsiveness (E7 TODO-1, commit `fe34040c`) shipped independently, NOT gated.
 - 2026-06-21 R9 DS flat damage-reduction EHP seam (`assume_passive_flat_mitigation`, default-OFF). The NEW
   per-instance flat-DR registry (`agents/daemon_slayer/_passive_flat_mitigation_overrides.py`: Fizz P / Amumu E /
   Leona W) ships DEFAULT-OFF on `compute_ehp` + `rank_items_by_ehp` - the EHP math is byte-identical until
