@@ -85,6 +85,18 @@ Ornn P 10:18, Renata P 1:2, Skarner P 5:9, Urgot P 2:6, Zed P 6:10, Zeri P 1:11.
 Every un-ramped row is byte-identical at any level (the additive contract). The
 live default-ON flip (a consumer calling with the live champion level) is
 operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+
+R39 (ENGINE 1.155.0) schema lift: the CURRENT_HP-kind sibling of R17. Each
+``AntiTankEntry`` may carry optional ``current_hp_ramp_lo`` / ``current_hp_ramp_hi``
+endpoints (the verbatim "lo% : hi% (based on level)" %current-HP figures), and a
+parallel ``_current_hp_level_ramp_factor`` shares R17's lerp through the extracted
+``_ramp_lerp_factor`` helper. ``_effective_magnitude`` multiplies BOTH ramp factors;
+a row carries at most one ramp pair (max-HP OR current-HP, never both), so the other
+factor is always 1.0 and every existing row is byte-identical. The seeded set is the
+1 CURRENT_HP champion-level ramp in the registry source_quotes: Senna P 1:10
+(Absolution, "1% : 10% (based on level) of target's current health"). ``level=None``
+(the /anti-tank route default) and ``level=18`` stay byte-identical to item
+308/315/R17. The live default-ON flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
 """
 
 from __future__ import annotations
@@ -174,6 +186,11 @@ class AntiTankEntry:
     %HP truly carries a caster-stat term are seeded, verified against
     champion_abilities.json: Gwen P / Kog'Maw W / Varus W / Malzahar R on AP,
     Vi W / Camille W / Udyr Q on bonus AD.
+
+    ``ramp_lo`` / ``ramp_hi`` (R17) are the optional %max-HP "lo% : hi% (based on
+    level)" endpoints; ``current_hp_ramp_lo`` / ``current_hp_ramp_hi`` (R39) are the
+    same for a %current-HP row (Senna P). Default 0.0 keeps the row level-static.
+    A row carries at most ONE ramp pair (max-HP OR current-HP, never both).
     """
 
     source: str
@@ -185,6 +202,8 @@ class AntiTankEntry:
     ad_ratio: float = 0.0
     ramp_lo: float = 0.0
     ramp_hi: float = 0.0
+    current_hp_ramp_lo: float = 0.0
+    current_hp_ramp_hi: float = 0.0
 
 
 # Champion level endpoints the ramp interpolates between (levels 1..18).
@@ -192,26 +211,22 @@ _RAMP_MIN_LEVEL = 1
 _RAMP_MAX_LEVEL = 18
 
 
-def _level_ramp_factor(entry: AntiTankEntry, level: int | None = None) -> float:
-    """Level-interpolation multiplier on the magnitude (R17, ENGINE 1.151.0).
+def _ramp_lerp_factor(lo: float, hi: float, level: int | None) -> float:
+    """Shared level-interpolation multiplier for a (lo, hi) ramp pair (R17 / R39).
 
-    A real subset of %max-HP rows deal a percentage that scales with the CASTER's
-    champion level (Aatrox P 4%:8%, Brand P 8%:12%, Skarner P 5%:9%, ...). The
-    hand-tuned ``magnitude`` encodes the LATE-game (max-ramp) reliability, so this
+    A hand-tuned ``magnitude`` encodes the LATE-game (max-ramp) reliability; this
     returns the fraction of that power online at ``level``:
-    ``lerp(ramp_lo, ramp_hi, (level-1)/17) / ramp_hi``.
+    ``lerp(lo, hi, (level-1)/17) / hi``.
 
     Returns ``1.0`` (the default-OFF / byte-identical path) when ``level`` is None
     (what ``compute_antitank`` / the /anti-tank route passes), when the row carries
-    no ramp data (``ramp_hi == 0.0``), or when the endpoints are flat
-    (``ramp_lo == ramp_hi``). At ``level == 18`` the factor is exactly 1.0, so the
-    score equals the item-308 value; below 18 it discounts toward ``ramp_lo``. The
-    level is clamped to [1, 18]. Fail-soft: a degenerate factor falls back to 1.0.
+    no ramp data (``hi <= 0.0``), or when the endpoints are flat (``lo == hi``). At
+    ``level == 18`` the factor is exactly 1.0, so the score equals the item-308
+    value; below 18 it discounts toward ``lo``. The level is clamped to [1, 18].
+    Fail-soft: a degenerate factor falls back to 1.0.
     """
     if level is None:
         return 1.0
-    lo = entry.ramp_lo
-    hi = entry.ramp_hi
     if hi <= 0.0 or lo == hi:
         return 1.0
     lvl = level
@@ -225,6 +240,31 @@ def _level_ramp_factor(entry: AntiTankEntry, level: int | None = None) -> float:
     return factor if math.isfinite(factor) and factor > 0.0 else 1.0
 
 
+def _level_ramp_factor(entry: AntiTankEntry, level: int | None = None) -> float:
+    """%max-HP level-ramp multiplier on the magnitude (R17, ENGINE 1.151.0).
+
+    A real subset of %max-HP rows deal a percentage that scales with the CASTER's
+    champion level (Aatrox P 4%:8%, Brand P 8%:12%, Skarner P 5%:9%, ...). Reads the
+    row's ``ramp_lo`` / ``ramp_hi`` endpoints through the shared ``_ramp_lerp_factor``
+    (see it for the interpolation + default-OFF contract). ``level=None`` /
+    ``level=18`` / a row carrying no ramp data is byte-identical to item 308/315.
+    """
+    return _ramp_lerp_factor(entry.ramp_lo, entry.ramp_hi, level)
+
+
+def _current_hp_level_ramp_factor(entry: AntiTankEntry, level: int | None = None) -> float:
+    """%current-HP level-ramp multiplier on the magnitude (R39, ENGINE 1.155.0).
+
+    The CURRENT_HP-kind sibling of ``_level_ramp_factor``: a real subset of the
+    %current-HP rows deal a percentage that scales with the caster's level (Senna P
+    Absolution "1% : 10% (based on level) of target's current health"). Reads the
+    row's ``current_hp_ramp_lo`` / ``current_hp_ramp_hi`` endpoints through the same
+    shared ``_ramp_lerp_factor``. ``level=None`` / ``level=18`` / a row carrying no
+    current-HP ramp data is byte-identical to item 308/315/R17.
+    """
+    return _ramp_lerp_factor(entry.current_hp_ramp_lo, entry.current_hp_ramp_hi, level)
+
+
 def _effective_magnitude(
     entry: AntiTankEntry,
     stats: ResolvedStats | None = None,
@@ -233,15 +273,16 @@ def _effective_magnitude(
     """Magnitude after optional caster-stat (P3.2) + level-ramp (R17) scaling.
 
     Returns ``entry.magnitude`` unchanged when no ``stats`` are injected or the
-    row carries no ratio (the item-308 static path), then multiplies by the
-    optional level-ramp factor (R17). The caster-stat half is the P3.2 formula
-    ``base + ap * ap_ratio + ad * ad_ratio`` (``ap`` / ``ad`` read from ``stats``,
-    a ``ResolvedStats`` or any ``.get`` mapping). Only seeded rows carry a non-zero
-    ratio (Gwen P / Kog'Maw W / Varus W / Malzahar R on AP, Vi W / Camille W /
-    Udyr Q on bonus AD), so every other row is byte-identical even when stats are
-    passed. The level-ramp factor is 1.0 unless ``level`` is supplied AND the row
-    carries ramp endpoints, so ``level=None`` (the route default) is byte-identical
-    to item 308/315.
+    row carries no ratio (the item-308 static path), then multiplies by the optional
+    level-ramp factors - the %max-HP ramp (R17) AND the %current-HP ramp (R39). The
+    caster-stat half is the P3.2 formula ``base + ap * ap_ratio + ad * ad_ratio``
+    (``ap`` / ``ad`` read from ``stats``, a ``ResolvedStats`` or any ``.get``
+    mapping). Only seeded rows carry a non-zero ratio (Gwen P / Kog'Maw W / Varus W /
+    Malzahar R on AP, Vi W / Camille W / Udyr Q on bonus AD), so every other row is
+    byte-identical even when stats are passed. Each ramp factor is 1.0 unless
+    ``level`` is supplied AND the row carries that ramp's endpoints, and a row carries
+    at most one ramp pair, so ``level=None`` (the route default) is byte-identical to
+    item 308/315/R17.
     """
     base = entry.magnitude
     if stats is None or (entry.ap_ratio == 0.0 and entry.ad_ratio == 0.0):
@@ -251,7 +292,11 @@ def _effective_magnitude(
         ad = _finite_float(stats.get("ad", 0.0))
         s = base + ap * entry.ap_ratio + ad * entry.ad_ratio
         scaled = s if math.isfinite(s) else base
-    out = scaled * _level_ramp_factor(entry, level)
+    out = (
+        scaled
+        * _level_ramp_factor(entry, level)
+        * _current_hp_level_ramp_factor(entry, level)
+    )
     return out if math.isfinite(out) else scaled
 
 
@@ -301,6 +346,8 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
         ad_ratio: float = 0.0,
         ramp_lo: float = 0.0,
         ramp_hi: float = 0.0,
+        current_hp_ramp_lo: float = 0.0,
+        current_hp_ramp_hi: float = 0.0,
     ) -> None:
         raw.setdefault(champ, []).append(
             AntiTankEntry(
@@ -313,6 +360,8 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
                 ad_ratio=float(ad_ratio),
                 ramp_lo=float(ramp_lo),
                 ramp_hi=float(ramp_hi),
+                current_hp_ramp_lo=float(current_hp_ramp_lo),
+                current_hp_ramp_hi=float(current_hp_ramp_hi),
             )
         )
 
@@ -438,8 +487,9 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Rumble", "E", "SHRED", "PERIODIC", magnitude=0.65)
     # Sejuani
     add("Sejuani", "P", "MAX_HP", "PERIODIC", magnitude=0.7, cond=True)
-    # Senna
-    add("Senna", "P", "CURRENT_HP", "SUSTAINED", magnitude=0.5)
+    # Senna - P Absolution deals current-HP physical damage ramping 1%:10% (based
+    # on level) per the kit source_quote (R39 current-HP level-ramp seed).
+    add("Senna", "P", "CURRENT_HP", "SUSTAINED", magnitude=0.5, current_hp_ramp_lo=1.0, current_hp_ramp_hi=10.0)
     # Sett
     add("Sett", "Q", "MAX_HP", "PERIODIC", magnitude=0.4)
     add("Sett", "R", "MAX_HP", "BURST", magnitude=0.8, cond=True)
@@ -674,6 +724,7 @@ __all__ = [
     "_ANTITANK_CONDITIONAL_PROB",
     "_ANTITANK_REGISTRY",
     "_level_ramp_factor",
+    "_current_hp_level_ramp_factor",
 ]
 
 
