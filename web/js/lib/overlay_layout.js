@@ -129,15 +129,27 @@ function _posFor(w) {
 function _applyPos(el, p) {
   // CSS owns position:fixed; this sets only the dynamic values.
   el.style.left = p.x + "px";
-  el.style.top = p.y + "px";
-  // Cap the widget so a content-tall panel never runs off the viewport bottom
-  // from its anchor (the bug behind the unreachable opacity slider + the
-  // settings panel spilling below 1080); overflow-y:auto then scrolls any
-  // remainder. innerHeight/zoom -> design-px height (the field is design-px, the
-  // body zoom is the ovscale). A 140px floor keeps a bottom-anchored widget
-  // usable. Recomputed on resize (the resize handler re-runs _applyPos).
-  const availH = (window.innerHeight / (_bodyZoom() || 1)) - p.y - 16;
-  el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(availH)) + "px");
+  // design-px viewport height (the field is design-px; the body zoom is ovscale).
+  const H = (window.innerHeight / (_bodyZoom() || 1)) || 1080;
+  // Bottom-corner anchoring (operator 2026-06-29): a content-tall panel
+  // positioned by its TOP near the screen bottom either shrinks against the maxh
+  // floor (140px) or overflows off-screen - so the BUILD panel could not sit in
+  // the bottom-left corner ("keeps auto shrinking"). When a widget is dragged
+  // into the LOWER half, anchor it by its BOTTOM (16px margin) so it grows UPWARD
+  // at full height; cap maxh to the room from the top margin to that anchor.
+  // Above the midline, keep the original top-anchored behavior + room-below cap.
+  // The drag handler clears `bottom` while moving and re-applies this on drop so
+  // the snap-to-corner is immediate. Recomputed on resize.
+  if (p.y > H * 0.5) {
+    el.style.top = "auto";
+    el.style.bottom = "16px";
+    el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(H - 32)) + "px");
+  } else {
+    el.style.bottom = "auto";
+    el.style.top = p.y + "px";
+    const availH = H - p.y - 16;
+    el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(availH)) + "px");
+  }
   if (p.scale && p.scale !== 1) {
     el.style.setProperty("--ovx-scale", String(p.scale));
   } else {
@@ -291,6 +303,9 @@ function _installDrag(el, w) {
     const ny = Math.round(originY + (e.clientY - startY) / z);
     _layout[w.id] = { ...(_layout[w.id] || {}), x: nx, y: ny };
     el.style.left = nx + "px";
+    // Track by TOP while moving (clear any bottom-anchor from a prior drop) so the
+    // panel follows the cursor 1:1; _applyPos on drop re-decides top vs bottom.
+    el.style.bottom = "auto";
     el.style.top = ny + "px";
   });
 
@@ -303,6 +318,9 @@ function _installDrag(el, w) {
     } catch (_e) {
       // already released; harmless.
     }
+    // Re-apply so a drop into the lower half snaps to the bottom-corner anchor
+    // immediately (not only on the next load/resize).
+    _applyPos(el, _posFor(w));
     _persist();
   };
   el.addEventListener("pointerup", end);
