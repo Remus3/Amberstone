@@ -122,6 +122,12 @@ _DETERMINISTIC_RECORDKEEPING_OPS = frozenset({
 _RECONCILE_INTERVAL_S = 300.0    # 5 min between scans
 _RECONCILE_STALE_S = 1800.0      # 30 min before in_progress is considered stale
 
+# Gate-limbo reaper (WP-F5-H02): dead-letter needs_approval / agent0_review
+# / retry_pending envelopes that have waited on an external actor far past
+# any reasonable window. Generous threshold (7 days) so a genuine pending
+# approval is never reaped out from under the operator.
+_GATE_LIMBO_STALE_S = 7 * 86400.0   # 7 days
+
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()

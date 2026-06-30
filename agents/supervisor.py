@@ -107,6 +107,7 @@ from agents._supervisor_common import (
     WS_PORT,
     _RECONCILE_INTERVAL_S,
     _RECONCILE_STALE_S,
+    _GATE_LIMBO_STALE_S,
     _DETERMINISTIC_HANDLED_OPS,
     _DETERMINISTIC_RECORDKEEPING_OPS,
     _PROJECT_ROOT,
@@ -155,6 +156,7 @@ __all__ = [
     "WS_PORT",
     "_RECONCILE_INTERVAL_S",
     "_RECONCILE_STALE_S",
+    "_GATE_LIMBO_STALE_S",
     "_DETERMINISTIC_HANDLED_OPS",
     "_DETERMINISTIC_RECORDKEEPING_OPS",
     "_PROJECT_ROOT",
@@ -284,6 +286,24 @@ class Supervisor:
                     )
             except Exception as e:  # noqa: BLE001
                 log.warning("boot reconciler raised: %s", e)
+
+            # Gate-limbo reaper (WP-F5-H02): dead-letter needs_approval /
+            # agent0_review / retry_pending envelopes abandoned past the
+            # generous 7-day window. Bounds the second state-machine leak
+            # (1567 orphaned frozen-gate envelopes) at boot.
+            try:
+                reaped = self._scheduler.reconcile_stale_gated(
+                    stale_seconds=_GATE_LIMBO_STALE_S,
+                    reason="supervisor-restart-gate-limbo",
+                )
+                if reaped:
+                    log.warning(
+                        "boot gate-limbo reaper: dead-lettered %d abandoned "
+                        "gate-limbo task(s): %s",
+                        len(reaped), reaped[:10],
+                    )
+            except Exception as e:  # noqa: BLE001
+                log.warning("boot gate-limbo reaper raised: %s", e)
 
         # Bootstrap tasks.
         asyncio.create_task(self._heartbeat_loop())
@@ -436,6 +456,23 @@ class Supervisor:
                         "task-queue reconciler: closed %d stale "
                         "in_progress task(s): %s",
                         len(reconciled), reconciled[:10],
+                    )
+                # WP-F5-H02: same cadence dead-letters abandoned gate-limbo
+                # envelopes (needs_approval / agent0_review / retry_pending).
+                try:
+                    reaped = self._scheduler.reconcile_stale_gated(
+                        stale_seconds=_GATE_LIMBO_STALE_S,
+                    )
+                except Exception as e:  # noqa: BLE001
+                    log.warning(
+                        "task-queue reconciler: gate-limbo scan raised: %s", e,
+                    )
+                    continue
+                if reaped:
+                    log.warning(
+                        "task-queue reconciler: dead-lettered %d abandoned "
+                        "gate-limbo task(s): %s",
+                        len(reaped), reaped[:10],
                     )
         except asyncio.CancelledError:
             pass
