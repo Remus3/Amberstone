@@ -45,7 +45,7 @@
 // ground-truth probe: magenta on the minimap => canvas opaque + sized + painting).
 // Ships OFF.
 const DEBUG_ZOI = false;
-const MAX_ALPHA = 0.25; // hard ceiling on ANY fill alpha (minimap readability)
+const MAX_ALPHA = 0.55; // hard ceiling on ANY fill alpha (operator 2026-06-30: 0.25 was invisible and 0.42 still "very very faint" on the live minimap once the opacity bug was fixed; raised to 0.55 - tunable, fine-tune live next session if too strong/faint)
 const ALLY_TINT_MAX = 0.1; // the ally-side flood tint - fainter than the bubbles
 const EMA_ALPHA = 0.35; // low-pass coefficient (~1s settle at 2Hz)
 const EMA_EPS = 0.002; // "settled" threshold; below this we stop redrawing
@@ -53,7 +53,7 @@ const EMA_EPS = 0.002; // "settled" threshold; below this we stop redrawing
 // layer is flattened then blitted onto the minimap at MAX_ALPHA, so overlapping
 // same-team bubbles can never stack past the cap (a live CDP pixel sample caught
 // raw on-canvas overlaps compositing to ~0.47 on a dense ally blob).
-const OFFSCREEN_CORE_ALPHA = 0.55;
+const OFFSCREEN_CORE_ALPHA = 0.85;
 // Offscreen alpha for the ally-side flood so it lands at ALLY_TINT_MAX after the
 // MAX_ALPHA team-layer blit (it is folded INTO the blue layer, capped with it).
 const ALLY_TINT_BASE = ALLY_TINT_MAX / MAX_ALPHA;

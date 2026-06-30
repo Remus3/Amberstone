@@ -599,9 +599,10 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
 
     build.appendChild(mod);
   }
-  if (ownedNames.length) {
-    build.appendChild(_line("OWNED", ownedNames.join(" - ")));
-  }
+  // OWNED text row removed on the overlay (operator 2026-06-30: not needed -
+  // the per-icon OWNED overlay badge + sort-left already convey ownership).
+  // ownedNames/ownedSet stay computed above (they drive the icon overlay +
+  // partition), this only drops the redundant text line. Visual-only.
   // s171.6: defensive-pick row. Renders only when the enemy team's threat crosses
   // the "worth recommending defense" line (burst>=5 OR ad>=7 OR ap>=7).
   if (threat && Array.isArray(defensive) && defensive.length) {

@@ -42,11 +42,13 @@ test("_ema: a null/undefined prev seeds straight to the target (no warm-up lag)"
   assert.strictEqual(_ema(undefined, 0.8, 0.35), 0.8);
 });
 
-test("_clampAlpha never returns above MAX_ALPHA (0.25)", () => {
-  assert.strictEqual(MAX_ALPHA, 0.25);
-  assert.strictEqual(_clampAlpha(0.9), 0.25);
-  assert.strictEqual(_clampAlpha(1), 0.25);
-  assert.strictEqual(_clampAlpha(0.25), 0.25);
+test("_clampAlpha never returns above MAX_ALPHA", () => {
+  // MAX_ALPHA is an operator-tunable readability ceiling; assert against the
+  // constant, not a literal, so retuning it doesn't break the cap contract.
+  assert.ok(MAX_ALPHA > 0 && MAX_ALPHA <= 1, `MAX_ALPHA out of range: ${MAX_ALPHA}`);
+  assert.strictEqual(_clampAlpha(0.9), MAX_ALPHA);
+  assert.strictEqual(_clampAlpha(1), MAX_ALPHA);
+  assert.strictEqual(_clampAlpha(MAX_ALPHA), MAX_ALPHA);
   assert.strictEqual(_clampAlpha(0.1), 0.1);
 });
 
@@ -66,11 +68,11 @@ test("teamColor: ally=blue, enemy=red, alpha clamped <= 0.25", () => {
   assert.ok(/rgba\(\s*2\d\d\s*,/.test(red), `enemy not red-dominant: ${red}`);
 });
 
-test("teamColor: the requested alpha is hard-capped at 0.25", () => {
+test("teamColor: the requested alpha is hard-capped at MAX_ALPHA", () => {
   const over = teamColor("blue", 0.9);
   // pull the trailing alpha out of rgba(r,g,b,a)
   const a = Number(over.slice(over.lastIndexOf(",") + 1, over.lastIndexOf(")")));
-  assert.ok(a <= 0.25 + 1e-9, `alpha not capped: ${a}`);
+  assert.ok(a <= MAX_ALPHA + 1e-9, `alpha not capped: ${a}`);
 });
 
 test("teamColor: unknown team falls back to a neutral non-throwing color", () => {
