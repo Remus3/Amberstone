@@ -1331,6 +1331,19 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.158.0 (R43 - Imperial Mandate target-vulnerability mark, executing R41's handoff.
+DDragon 16.13.1 item.json 4005 reworked to "Command: On Immobilizing an enemy champion, mark them as 7%
+Vulnerable for 4 seconds" - a +7% increased-damage-from-ALL-SOURCES mark, the shape _target_vulnerability_
+overrides models. Seeded 4005 (SR) / 224005 (Arena) / 324005 (ARAM) at amp 0.07 into _ITEM_VULN_OVERRIDES
+(the same multi-mirror doctrine as Evenshroud 3001/223001). The 16.13.1 official rework SUPERSEDES the stale
+Meraki mirror (items_meraki.json content_patch None, which still shows the old "Coordinated Fire" current-HP
+detonation) - an official Riot rework overrides a null-provenance community mirror (do-not-flip-blind). 4005
+removed from both non-fit handoff registries (_NONFIT_VULN_CANDIDATES here + _NONFIT_DETONATION_CANDIDATES in
+_ally_detonation_overrides, now both empty). Consumed only under apply_target_vuln=True (default-OFF,
+byte-identical); a build holding Imperial Mandate is amplified x1.07. TDD RED-first
+test_target_vulnerability_overrides_r43.py; the R12 + R41 non-fit assertions flipped. No new dependency or
+schema. Credits Riot Data Dragon / CommunityDragon / Meraki. DS :8893 bounced -> 1.158.0.)
+
 1.157.0 (R42 - Yun Tal conditional-AS (Flurry) unit-mismatch fix. compute_dps folded cond_as - a
 bonus-AS FRACTION from total_conditional_as (uptime-weighted ~0.08) - directly onto the FINAL rotation
 AS, but stats["as"] is attacks/sec (the engine resolves it as base_as * (1 + bonus_pct)), so the raw add
