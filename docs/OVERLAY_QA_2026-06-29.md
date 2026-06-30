@@ -78,12 +78,16 @@ error. So the bug is purely paint/visibility - magenta probe will disambiguate.
 ## New operator findings (2026-06-29, between games) - NOT yet fixed
 A. **Out-of-game overlay flickers a bit.** Unverified cause (could be the one-time
    reload from the stamp touch, or a render idempotency miss). Watch for repeat.
-B. **In-game panel drag glitch / unretrievable.** Dragging a movable widget too
-   close to the minimap area makes it "glitch to the bottom of the screen and be
-   un-retrievable." Mechanism (overlay_layout.js): the bottom-corner anchor snap
-   (_applyPos: p.y > H*0.5 -> top:auto; bottom:16px, operator-tuned for the tall
-   BUILD panel) fires for ANY widget dropped below the midline, teleporting it to
-   the bottom; combined with NO on-screen clamp on the drag nx/ny, a widget can
-   land off-screen / behind the minimap with no grabbable handle. Fix needs a clamp
-   that guarantees retrievability; bottom-snap-for-all-vs-free-place is an open
-   design call for the operator.
+B. **In-game panel drag glitch / unretrievable.** - LIVE (pending operator
+   confirm). Dragging a movable widget near the minimap made it "glitch to the
+   bottom of the screen and be un-retrievable." Mechanism (overlay_layout.js): the
+   bottom-corner anchor snap (_applyPos: p.y > H*0.5 -> top:auto; bottom:16px, added
+   2026-06-29 for the tall BUILD panel) fired for ANY widget dropped below the
+   midline, teleporting it to the bottom; combined with NO on-screen clamp on the
+   drag nx/ny, a widget could land off-screen / behind the minimap with no grabbable
+   handle. FIX (operator chose "snap only tall panels"): the bottom-snap now keys
+   off a per-widget `tall` flag (only w-build carries it) - every other panel is
+   free-placed exactly where dropped; a new pure _clampXY keeps each widget's
+   top-left (MIN_VISIBLE=48px) on-screen during the drag, on drop, and on load, so
+   nothing is ever stranded. The launcher button is clamped too. node --test green
+   (web/js/lib/overlay_layout.test.mjs).
