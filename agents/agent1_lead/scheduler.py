@@ -65,6 +65,18 @@ _RECONCILE_STALE_SEC = 1800.0     # 30 min - audit-8 H-02 threshold
 _RECONCILE_INTERVAL_S = 300.0     # 5 min between scans
 _RECONCILE_TIMEOUT_REASON = "timeout-no-terminal-event"
 
+# Gate-limbo reaper (WP-F5-H02): the audit-8 reconciler only closes
+# IN_PROGRESS envelopes. Tasks that land in a gate-limbo state
+# (needs_explicit_approval / agent0_review / retry_pending) and are never
+# approved/accepted/promoted sit forever - a second state-machine leak
+# (the live queue accumulated 1567 such orphans from a non-hermetic
+# integration test POSTing a frozen-file payload to the running
+# supervisor). Threshold is intentionally generous (7 days) so a genuine
+# pending approval the operator is about to action is never reaped; only
+# long-abandoned limbo envelopes are dead-lettered.
+_GATE_LIMBO_STALE_SEC = 7 * 86400.0   # 7 days
+_GATE_LIMBO_REASON = "stale-gate-limbo-no-approval"
+
 logger = logging.getLogger("agent1.scheduler")
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -794,6 +806,71 @@ class Scheduler:
                     + (" ..." if len(reconciled) > 10 else ""),
                 )
         return reconciled
+
+    # Gate-limbo states the reaper targets. IN_PROGRESS is handled by
+    # reconcile_stale_in_progress; terminal states are already closed.
+    _GATE_LIMBO_STATES = frozenset({
+        TaskStatus.NEEDS_APPROVAL,
+        TaskStatus.AGENT0_REVIEW,
+        TaskStatus.RETRY_PENDING,
+    })
+
+    def reconcile_stale_gated(
+        self,
+        stale_seconds: float = _GATE_LIMBO_STALE_SEC,
+        reason: str = _GATE_LIMBO_REASON,
+    ) -> list[str]:
+        """Dead-letter any gate-limbo task whose ``updated_at`` is older
+        than ``stale_seconds``.
+
+        Gate-limbo = a non-terminal state that waits on an external actor
+        (NEEDS_APPROVAL -> operator approve, AGENT0_REVIEW -> agent 0,
+        RETRY_PENDING -> promote_retry). When that actor never arrives the
+        envelope leaks. WP-F5-H02 closes that leak by transitioning such
+        long-abandoned tasks to DEAD_LETTER (terminal) with a
+        ``reaped_gate_limbo`` event, so the filed == completed + failed +
+        dead-letter + still-pending audit math converges.
+
+        The threshold defaults to 7 days (vs the 30-minute IN_PROGRESS
+        window) so a genuine pending approval is never reaped out from
+        under the operator. ``stale_seconds <= 0`` disables the scan.
+
+        Returns the list of reaped task IDs (empty when nothing was
+        stale). Safe to call from any thread - takes the same RLock as
+        ``_append_log``.
+        """
+        if stale_seconds <= 0:
+            return []
+        now = datetime.now(timezone.utc)
+        reaped: list[str] = []
+        with self._lock:
+            stale_ids: list[str] = []
+            for tid, t in self._tasks.items():
+                if t.status not in self._GATE_LIMBO_STATES:
+                    continue
+                dt = self._parse_iso_ts(t.updated_at)
+                if dt is None:
+                    continue
+                if (now - dt).total_seconds() >= stale_seconds:
+                    stale_ids.append(tid)
+            for tid in stale_ids:
+                t = self._tasks.get(tid)
+                if t is None or t.status not in self._GATE_LIMBO_STATES:
+                    continue
+                t.status = TaskStatus.DEAD_LETTER
+                t.last_error = reason
+                t.updated_at = _iso_now()
+                self._append_log("reaped_gate_limbo", t)
+                reaped.append(tid)
+            if reaped:
+                logger.warning(
+                    "gate-limbo reaper: dead-lettered %d stale task(s) "
+                    "older than %.0fs (reason=%s): %s",
+                    len(reaped), stale_seconds, reason,
+                    ", ".join(reaped[:10])
+                    + (" ..." if len(reaped) > 10 else ""),
+                )
+        return reaped
 
 
 if __name__ == "__main__":
