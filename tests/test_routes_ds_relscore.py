@@ -140,10 +140,17 @@ class RelScoreMathTests(_Base):
         self.assertGreater(top, 0.0, "top delta_dps was non-positive")
         for r in rows:
             expect = round(float(r["delta_dps"]) / top * 100.0, 1)
-            # The route rounds delta_dps to 1dp before storing; recompute
-            # from the stored delta so the comparison is exact-to-rounding.
+            # The route computes score_pct from the UNROUNDED delta_dps
+            # (routes_ds_relscore.py:195) but stores delta_dps rounded to 1dp;
+            # this recompute uses the rounded stored numerator AND denominator,
+            # so the two paths can diverge by up to ~0.2 (independent 1dp
+            # rounding of numerator, denominator, and the final percent), and a
+            # value landing exactly on the boundary trips a tighter delta via
+            # float epsilon (e.g. 71.3 vs 71.1 -> 0.20000000000000284). 0.25
+            # absorbs the worst-case double-rounding; a real route inconsistency
+            # would produce a far larger gap.
             self.assertAlmostEqual(
-                r["score_pct"], expect, delta=0.2,
+                r["score_pct"], expect, delta=0.25,
                 msg=f"{r['item_id']} score_pct {r['score_pct']} != {expect}")
 
     def test_all_score_pcts_in_range(self) -> None:
