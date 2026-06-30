@@ -127,10 +127,12 @@ export function renderMinimapRect(rect) {
   mount.dataset.ovxId = "w-mmrect";
   mount.dataset.ovxTier = "ambient";
   const p = _placement(r, iw, ih, z);
-  mount.style.left = (p.left + NUDGE_X_PX) + "px";
-  mount.style.top = (p.top + NUDGE_Y_PX) + "px";
-  mount.style.width = p.width + "px";
-  mount.style.height = p.height + "px";
+  // Round to whole px so the fraction math never leaves sub-pixel noise in the
+  // inline style (keeps the placement deterministic + snapshot-testable).
+  mount.style.left = Math.round(p.left + NUDGE_X_PX) + "px";
+  mount.style.top = Math.round(p.top + NUDGE_Y_PX) + "px";
+  mount.style.width = Math.round(p.width) + "px";
+  mount.style.height = Math.round(p.height) + "px";
   mount.style.zoom = String(p.zoom);
   mount.hidden = false;
 }
