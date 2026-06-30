@@ -852,3 +852,21 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   rank-4 + 0.3-uptime assumption reads sane (a Galio with W up survives the magic burst the OFF engine under-credited).
   A WRONG DR credit is worse than none, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
   block any further stage.
+- 2026-06-30 R41 ally mark-detonation seam (`compute_dps(assume_ally_detonation=)` /
+  `compute_burst_damage(assume_ally_detonation=)`, ENGINE 1.156.0, default-OFF). A champion whose MARK an ALLY
+  consumes for bonus damage (the new PURE registry `agents/daemon_slayer/_ally_detonation_overrides.py`; seeded
+  Leona P Sunlight FLAT_MAGIC 32:151 based-on-level, 2.5s mark cadence, verified vs champion_abilities.json
+  16.13.1) is credited the amortized TEAM damage her mark enables: per-event magic for burst, per-event/cadence for
+  the DPS rate, each MR-mitigated (MAGIC routing) x mode_mult x magic_amp x `_ASSUMED_ALLY_DETONATION_PROB`=0.5.
+  Both compute_* stay byte-identical until the flag is True; an unmarked champion contributes 0 even with the flag
+  on (the AA-probe call inside compute_burst_damage leaves the seam OFF, so the detonation is credited once in the
+  burst total - no double-count). Imperial Mandate 4005 (the directive's named "10% current-HP" detonation) is a
+  documented NON-FIT: DDragon 16.13.1 shows it REWORKED to a 7% Vulnerable all-source amp (Control / Command
+  passives); the 16.12.1 Coordinated Fire detonation is gone (only the stale Meraki items mirror, content_patch
+  None, still carries it), so seeding it would be a WRONG precompute - it now belongs in
+  _target_vulnerability_overrides, not this detonation seam. OWED (operator/Gemini-gated, NOT headless - charter 4b
+  do-not-flip-blind): wire a DPS / burst / rank consumer (compute_dps / compute_burst_damage / a rank surface) to
+  call with `assume_ally_detonation=True` and confirm Leona's mark-enabling team value ranks ABOVE the seam-OFF
+  placement vs a real game, and that the 2.5s Sunlight cadence + 0.5 proc-rate assumptions read sane. A WRONG
+  detonation credit is worse than none, so do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
+  block any further stage.
