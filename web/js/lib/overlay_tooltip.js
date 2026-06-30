@@ -85,7 +85,8 @@ function _renderInto(tip, detail) {
 // half opens its tip rightward (toward the screen edge), left-half leftward;
 // flip if it would clip, then clamp into the viewport on both axes.
 function _place(tip, anchorEl) {
-  tip.style.zoom = String(_bodyZoom());  // match the dashboard visual scale
+  const z = _bodyZoom() || 1;
+  tip.style.zoom = String(z);  // match the dashboard / overlay visual scale
   const a = anchorEl.getBoundingClientRect();
   const r = tip.getBoundingClientRect();
   const vw = window.innerWidth;
@@ -96,8 +97,13 @@ function _place(tip, anchorEl) {
   if (left + r.width > vw - EDGE_GAP) left = a.left - r.width - EDGE_GAP; // flip left
   left = Math.max(EDGE_GAP, Math.min(left, vw - r.width - EDGE_GAP));
   let top = Math.max(EDGE_GAP, Math.min(a.top, vh - r.height - EDGE_GAP));
-  tip.style.left = Math.round(left) + "px";
-  tip.style.top = Math.round(top) + "px";
+  // a/r/vw/vh are SCREEN px (getBoundingClientRect is post-zoom), but the tip
+  // carries zoom=z, so style.left/top are multiplied by z when rendered. Divide
+  // by z so the tip lands at the computed SCREEN position instead of z-times
+  // further right + down (operator 2026-06-29: tooltip appeared far right/below
+  // the anchor at any overlay ovscale != 1).
+  tip.style.left = Math.round(left / z) + "px";
+  tip.style.top = Math.round(top / z) + "px";
 }
 
 function _clearTimers() {
