@@ -817,7 +817,7 @@ GATED (needs a live game or operator decision) / DEFER (out of this program).
 | E5 doc remediation sweep | W0 | - | T0 | OPEN |
 | F5-M04 decisions drift | W0 | - | T1 | DONE 2026-06-28 (e599e610; drift closed at 1.1, 1.2 bump operator-declined) |
 | F5-M05 smb_push deadcode | W0 | - | T1 | DONE 2026-06-28 (c20d75da; Path A defer-delete, audit-11 M-05) |
-| F5-H02 task_queue leak | W0 | - | T1 | OPEN |
+| F5-H02 task_queue leak | W0 | - | T1 | DONE 2026-06-29 (decd681f; gate-limbo reaper + 1566 orphans backfilled) |
 | F5-M01 body-data-mode test | W0 | - | T1 | OPEN |
 | F5-L03 inventory csv stale | W6 | - | T0 | OPEN |
 | F6a stale engine-header | W0 | E5 | T1 | OPEN |
