@@ -401,6 +401,21 @@ body[data-shell="overlay"] .bm-row.bm-knobs {
   display: none !important;
 }
 
+/* WP-6a (operator 2026-06-29): the in-game BUILD panel should read as a
+ * horizontal 3-row band, not a wrapped 2-col grid. Every ovx-widget defaults to
+ * --ovx-w:210px, too narrow for a 6-icon strip (~310px), so .bm-strip's
+ * flex-wrap folded each row into 2 columns (looked vertical). Widen w-build to
+ * fit a full row on one line, and stop the in-game strips wrapping. Wider but
+ * SHORTER (3 single-line rows) = less vertical footprint than the wrapped column.
+ * Tunable live via the SZ slider; adjust --ovx-w here if the operator wants a
+ * different band width. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
+  --ovx-w: 350px;
+}
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
+  flex-wrap: nowrap;
+}
+
 /* 4c. DRAG HANDLE - a small gold-dot grab bar (top-right). data-rc-zone makes
  * JUST the handle interactive to the rc-shell click-through machine, so the body
  * stays click-through during play (no accidental mid-fight drags). Hidden until
