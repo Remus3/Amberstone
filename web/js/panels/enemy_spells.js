@@ -25,6 +25,23 @@ const SPELL_CD = {
   Smite: 90, Clarity: 240, Mark: 80, Dash: 80, Snowball: 80, "To the King!": 80,
 };
 
+// Compact 2-letter spell labels (operator 2026-06-29: the full displayName +
+// state - "Flash UP" / "Unleashed Teleport 142s" - overran the chip and clipped
+// to "Fla..."/"Unl...", unreadable; A5's "unname" intent is a compact tag). Keys
+// match the Live Client displayName; an unknown spell falls back to its first two
+// letters uppercased so it still renders short, never an ellipsis.
+const SPELL_ABBR = {
+  Flash: "FL", Heal: "HL", Barrier: "BR", Exhaust: "EX", Ignite: "IG",
+  Cleanse: "CL", Ghost: "GH", Teleport: "TP", "Unleashed Teleport": "TP",
+  Smite: "SM", Clarity: "CY", Mark: "MK", Dash: "DA", Snowball: "SB",
+  "To the King!": "TK",
+};
+
+function _abbr(spell) {
+  if (SPELL_ABBR[spell]) return SPELL_ABBR[spell];
+  return String(spell || "?").replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase() || "?";
+}
+
 let _store = null;     // { gameId, map: { "champ|slot": tapEpochSec } }
 let _rosterSig = "";
 
@@ -135,12 +152,14 @@ function _updateTimers(mount) {
   for (const chip of chips) {
     const spell = chip.dataset.spell;
     const rem = _remaining(chip.dataset.champ, chip.dataset.slot, spell);
+    const tag = _abbr(spell);
+    chip.title = spell;  // full name on hover (the chip text is the compact tag)
     if (rem == null) {
-      chip.textContent = spell + " UP";
+      chip.textContent = tag + " UP";
       chip.classList.remove("es-down");
       chip.classList.add("es-up");
     } else {
-      chip.textContent = spell + " " + rem + "s";
+      chip.textContent = tag + " " + rem + "s";
       chip.classList.remove("es-up");
       chip.classList.add("es-down");
     }
@@ -186,4 +205,4 @@ export function _resetEnemySpells() {
   }
 }
 
-export const _esInternals = { SPELL_CD, _key, _toggle, _remaining, _load };
+export const _esInternals = { SPELL_CD, _key, _toggle, _remaining, _load, _abbr, SPELL_ABBR };
