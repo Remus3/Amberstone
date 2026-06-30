@@ -566,7 +566,11 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
       _bmPartitionOwned(metaOrder.slice(0, 6), ownedSet).forEach((r) => {
         const isNext = !_bmIsOwned(r, ownedSet) && !metaNext;
         if (isNext) metaNext = true;
-        metaStrip.appendChild(_dsIcon(r, ownedSet, "", { bm: true, next: isNext }));
+        // noDelta: the META row is the static standard build - it carries no DS
+        // rerank delta, so the shared icon's "+Ndps" badge would render a
+        // meaningless "+0" on every item (operator-reported 2026-06-29). Suppress
+        // it here; the LIVE row keeps its real deltas.
+        metaStrip.appendChild(_dsIcon(r, ownedSet, "", { bm: true, next: isNext, noDelta: true }));
       });
       // Right-click cycles alternative archetype builds. stopPropagation is
       // REQUIRED so the overlay_layout ACTIVE-mode contextmenu hide-handler does
@@ -1895,13 +1899,17 @@ function _dsIcon(r, ownedSet, planState, opts) {
       wrap.appendChild(ring);
     }
   }
-  const dlt = document.createElement("div");
-  dlt.textContent = `+${(delta || 0).toFixed(0)}`;
-  // C2 UI-audit: the +Ndps gain is the key build signal under each icon;
-  // bumped off the sub-floor 11px to the --fs-xs token (a 2-4 char number
-  // still fits the 48px icon cell).
-  dlt.style.cssText = "font-size:var(--fs-xs);font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
-  wrap.appendChild(dlt);
+  // noDelta suppresses the "+Ndps" badge for rows with no meaningful delta (the
+  // static META standard-build row) so it does not paint a "+0" on every item.
+  if (!opts.noDelta) {
+    const dlt = document.createElement("div");
+    dlt.textContent = `+${(delta || 0).toFixed(0)}`;
+    // C2 UI-audit: the +Ndps gain is the key build signal under each icon;
+    // bumped off the sub-floor 11px to the --fs-xs token (a 2-4 char number
+    // still fits the 48px icon cell).
+    dlt.style.cssText = "font-size:var(--fs-xs);font-weight:600;color:var(--accent, #6cf);margin-top:2px;";
+    wrap.appendChild(dlt);
+  }
   // WP-D1: hover tooltip (name + stats + passive from /api/dictionary/items).
   installItemTooltip(wrap, id, name);
   // WP-D2: right-click radial (Build-Earlier/Later/Defer/Keep/Silence). Only the
