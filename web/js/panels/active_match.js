@@ -430,6 +430,17 @@ export function activeMatchEnabled() {
 // (no flicker); changed -> rebuild once. _maybeRefreshDsPicks still runs every
 // tick (it owns the 4s rerank cooldown), and the DS target-stats caption is part
 // of the sig, so enemy itemization shifts still refresh the pane + its donuts.
+// Pure guard for the BUILD-panel anti-flicker (2026-06-29). Returns true when
+// there is nothing to draw this tick (no champion, no live picks, no meta order)
+// BUT the pane already holds a good render - in which case the caller keeps the
+// last paint instead of wiping it. Returns false on a first paint (no content
+// yet) so the empty/placeholder state still renders, and false whenever any
+// real input is present. Exported for the node test.
+export function _shouldRetainBuild(champion, picksLen, metaLen, hasContent) {
+  const empty = !champion && !picksLen && !metaLen;
+  return empty && !!hasContent;
+}
+
 export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // s170 step 2: per-tick rerank. Coach-emitted picks (state.daemon_slayer_picks)
   // are the fallback; the live rerank goes through /api/ds-preview every 4s when
@@ -451,6 +462,18 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   const planStates = _maybeRefreshBuildPlan(champion, mode, level, ownedIds) || {};
   // WP-B2 Row2 META feed - the static standard ordered build.
   const metaOrder  = _maybeRefreshBuildOrder(champion, mode, level, ownedIds) || [];
+
+  // Retain-last-good guard (2026-06-29): a transient tick can deliver an empty
+  // coach payload mid-game (no champion - e.g. the :8891 WS push of a momentarily
+  // stale coaching file, or a mode blip). Without this the sig changes,
+  // innerHTML is wiped (below), and the `picks||metaOrder||champion` module block
+  // is skipped, so the BUILD panel blanks for a tick then returns (operator-
+  // reported random flicker). When there is nothing to draw but the pane already
+  // holds a good render, keep it - game-end hides the whole active-match surface
+  // upstream, so this never wedges a stale pane after the match.
+  if (_shouldRetainBuild(champion, picks.length, metaOrder.length, !!build.innerHTML)) {
+    return;
+  }
 
   // s171.6 defensive state + the enemy roster feed both the render AND the sig.
   const threat = _DS_RERANK.lastThreat;
