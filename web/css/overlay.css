@@ -625,13 +625,14 @@ body[data-shell="overlay"][data-rc-idle="1"] .ovx-widget {
 body[data-shell="overlay"][data-fight="1"] .ovx-widget[data-ovx-id="w-ovds"] {
   display: none !important;
 }
-/* w-lead is the #rn-lead id-mount, so its combat hide needs the id + the
- * [data-fight] attr to out-rank the section-4a #rn-lead:not([hidden]) flex rule
- * (a bare [data-ovx-id] selector loses to the id and the pill leaks into the
- * fight). Same specificity lesson as the panel-set choices hide. */
-body[data-shell="overlay"][data-fight="1"] #rn-lead:not([hidden]) {
-  display: none !important;
-}
+/* w-lead (#rn-lead macro lead pill) is NO LONGER combat-shed (operator 2026-06-30:
+ * the macro-lead pill was effectively never visible because ARAM is in fight-mode
+ * almost constantly, so the shed hid it ~always; the operator wants the lead read
+ * to persist through combat, same call as w-build above). The rule is kept here,
+ * commented, so the prior shed intent is documented if ever re-litigated.
+ * body[data-shell="overlay"][data-fight="1"] #rn-lead:not([hidden]) {
+ *   display: none !important;
+ * } */
 body[data-shell="overlay"][data-fight="1"] #rn-callouts .rc-co-row:nth-child(n+2) {
   display: none;
 }
