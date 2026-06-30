@@ -218,6 +218,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (R38 headless cycle 9 - overlay enemy_spells/stats_panel 5-phase audit; + ROADMAP budget fix + HEXCORE galaxy refresh)
+
+Gemini-directed headless loop cycle 9 (run manually from directive.md), then the operator added a HEXCORE viewer refresh mid-cycle. Full detail in LEDGER 692 + ORCHESTRATION_PLAN R38.
+
+- **R38 overlay audit (`043e0d53` fix, `9979c46e` docs).** 5-phase fixture audit of the un-audited overlay panels enemy_spells.js + stats_panel.js (2 parallel read-only audit subagents, orchestrator-merged). HIT-TARGETS MUST-FIX: the stats `.sp-role` <select> (the panel's lone clickable) was ~20px -> `min-height: var(--hit-min)` 42px (siblings at overlay.css:717/758 already comply). enemy_spells `.es-chip` (~19px) = deliberate A5-locked compact-tracker sub-floor exception, inline rationale (no size bump, like the R36 launcher square). TYPOGRAPHY/ASCII/STRUCTURE/HIERARCHY pass (R8/R33 overlay-scoped tokens). TDD RED-first static guard + Playwright pixel proof (.sp-role offsetHeight>=42 + screenshot). CSS-only asset-hash auto-reload (ADR-008), no RC restart, no ENGINE/Share. Full RC suite 10116 passed.
+- **ROADMAP budget (`edace211`).** The full local suite caught a pre-existing `test_doc_size_budget::test_roadmap_md_under_budget` red - ROADMAP.md was 81979 LF bytes, 59 over the 80KiB ceiling (CI happened to mask it). Compressed the verbose set_augment_intent Cherry bullet to a pointer (full record preserved in CHERRY_AUGMENT_SCAFFOLD_NOTES.md) + normalized to LF -> 80236 bytes; both budget guards green.
+- **HEXCORE galaxy refresh (`355cad01`).** Operator-requested. Updated BOTH docs/HEXCORE_offline.html + docs/HEXCORE.html (shared node data, kept in sync): +8 nodes (Haiku-zero precompute lane laning+build, build_planner, det-coaching seam, overlay panels enemy_spells/stats_panel/launcher), +10 edges, stale ENGINE 1.151.0 -> 1.154.0. Validated by replicating the viewer's own RAW/EDG parser (125 nodes, all 8 resolve at arity 5, 10 edges connect, ASCII-clean). Self-contained + base64 fonts untouched. Live galaxy-render eyeball OWED (operator-side; data is parser-verified).
+- **NEXT:** the overlay live-verify tail still wants a live game (a/b choices `#rn-choices` absent, champ-select lane->MID, flicker, ZOI alpha/blur). The R38 in-game populated pixel capture is OWED. Resume the headless loop.
+
+---
+
 # 2026-06-30 (R36 headless cycle 7 - 5-phase UI audit of the #w-launcher overlay menu)
 
 Gemini-directed headless loop, cycle 7. Pure UI audit (ENGINE-IMPACT NONE) of the Electron-overlay launcher control center + its layout menu, shipped un-audited in LEDGER 688. Full detail in LEDGER 690 + ORCHESTRATION_PLAN R36.
