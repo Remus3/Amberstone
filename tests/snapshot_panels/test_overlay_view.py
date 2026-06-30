@@ -363,11 +363,11 @@ def test_overlay_call_action_band_channel(mock_server, pw_browser):
 
 def test_overlay_combat_mode_declutter(mock_server, pw_browser):
     """Doctrine section 6: body[data-fight="1"] (combat_mode flags a high-stakes
-    moment) sheds load - the ambient lead pill hides and the CALL drops its macro
-    OBJECTIVE footer, but the RIGHT NOW cue + the ACTION verb + the primary widget
-    persist (text -> preattentive). The lead-pill hide is the #rn-lead id-mount, so
-    it must out-rank the section-4a flex rule (the same specificity lesson as the
-    panel-set choices hide)."""
+    moment) sheds load - the CALL drops its macro OBJECTIVE footer, but the RIGHT
+    NOW cue + the ACTION verb + the primary widget persist (text -> preattentive).
+    The macro lead pill (#rn-lead) NO LONGER sheds (operator 2026-06-30: ARAM's
+    near-constant fight-mode hid it ~always; the operator wants the lead read to
+    persist through combat, same call as w-build)."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         page.evaluate(
@@ -377,7 +377,9 @@ def test_overlay_combat_mode_declutter(mock_server, pw_browser):
             "  document.body.dataset.fight = '1';"
             "}"
         )
-        assert _display(page, "#rn-lead") == "none", "the lead pill must shed in combat"
+        assert _display(page, "#rn-lead") != "none", (
+            "the lead pill must persist through combat (un-shed 2026-06-30)"
+        )
         assert _display(page, "#view-active-match .am-pane-call") != "none", (
             "the primary call must persist in combat"
         )
