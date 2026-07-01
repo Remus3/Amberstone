@@ -119,6 +119,41 @@ class CacheControlTests(unittest.TestCase):
         )
 
 
+class ChampionDamageProfileTests(unittest.TestCase):
+    """tag1 = the enemy cell's damage-profile chip. Regression (operator-reported
+    2026-06-30): Seraphine's DDragon info block is zeroed, so the old
+    attack>=magic tie (0>=0) defaulted her to AD. Zero-info champs now fall back
+    to their role tags; valid-info champs keep the attack/magic decision."""
+
+    def test_zero_info_mage_support_is_ap(self):
+        # Seraphine: zeroed info + Support/Mage tags -> AP (the reported fix).
+        self.assertEqual(
+            rd._damage_profile_tag("Seraphine", ["Support", "Mage"], 0, 0), "AP")
+
+    def test_zero_info_marksman_is_ad(self):
+        # Akshan: zeroed info + Marksman tag -> AD (fallback keeps ADCs AD).
+        self.assertEqual(
+            rd._damage_profile_tag("Akshan", ["Marksman", "Assassin"], 0, 0), "AD")
+
+    def test_valid_info_ap_mage_with_marksman_tag_unchanged(self):
+        # Azir carries a secondary Marksman tag but magic>attack -> stays AP;
+        # a tag-first rule would have wrongly flipped him to AD.
+        self.assertEqual(
+            rd._damage_profile_tag("Azir", ["Mage", "Marksman"], 6, 8), "AP")
+
+    def test_valid_info_ad_marksman_unchanged(self):
+        self.assertEqual(
+            rd._damage_profile_tag("Ezreal", ["Marksman", "Mage"], 7, 6), "AD")
+
+    def test_cc_override_wins_over_ratings(self):
+        self.assertEqual(
+            rd._damage_profile_tag("Thresh", ["Support", "Fighter"], 6, 4), "CC")
+
+    def test_burst_override_wins_over_ratings(self):
+        self.assertEqual(
+            rd._damage_profile_tag("Zed", ["Assassin"], 8, 2), "BURST")
+
+
 class RouteRegistrationTests(unittest.TestCase):
     def test_augments_route_registered(self):
         matchers = [m for (m, _fn) in rd.GET_ROUTES]

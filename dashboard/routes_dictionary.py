@@ -70,6 +70,29 @@ _BURST_NAMES = frozenset({
 })
 
 
+def _damage_profile_tag(name, tags_raw, attack, magic) -> str:
+    """tag1: the enemy cell's damage-profile chip (CC / BURST / AD / AP).
+
+    The hardcoded CC + BURST override sets win first; otherwise DDragon's
+    info.attack vs info.magic ratings decide AD vs AP. Guard: when BOTH ratings
+    are zero the champ's DDragon info block is missing (e.g. Seraphine, whose
+    zeroed block made the 0>=0 tie default to AD - operator-reported 2026-06-30);
+    fall back to the role tags there - a Marksman is AD, anything else
+    (mage / support / enchanter) is AP. Valid-info champs are UNCHANGED, so a
+    hybrid like Azir (Mage+Marksman, magic>attack) still resolves AP."""
+    if (name in _HARD_CC_NAMES
+            or name.replace("'", "") in _HARD_CC_NAMES
+            or name.replace(" ", "") in _HARD_CC_NAMES):
+        return "CC"
+    if (name in _BURST_NAMES
+            or name.replace("'", "") in _BURST_NAMES
+            or name.replace(" ", "") in _BURST_NAMES):
+        return "BURST"
+    if attack == 0 and magic == 0:
+        return "AD" if "Marksman" in tags_raw else "AP"
+    return "AD" if attack >= magic else "AP"
+
+
 def _serve_champion_tags(h) -> None:
     if not _CHAMPS_PATH.is_file():
         h._send(404, b'{"error":"ddragon_champions.json missing"}', "application/json")
@@ -89,16 +112,10 @@ def _serve_champion_tags(h) -> None:
             attack = int(info.get("attack") or 0)
             magic = int(info.get("magic") or 0)
             defense = int(info.get("defense") or 0)
-            is_cc = (name in _HARD_CC_NAMES
-                     or name.replace("'", "") in _HARD_CC_NAMES
-                     or name.replace(" ", "") in _HARD_CC_NAMES)
-            is_burst = (name in _BURST_NAMES
-                        or name.replace("'", "") in _BURST_NAMES
-                        or name.replace(" ", "") in _BURST_NAMES)
             # 2-piece identifier:
-            #  - tag 0 = damage profile or special signal (CC / BURST / AD / AP / TRUE)
+            #  - tag 0 = damage profile or special signal (CC / BURST / AD / AP)
             #  - tag 1 = archetype (TANK / BRUISER / ASSASSIN / SUPPORT / MAGE / ADC)
-            tag1 = "CC" if is_cc else ("BURST" if is_burst else ("AD" if attack >= magic else "AP"))
+            tag1 = _damage_profile_tag(name, tags_raw, attack, magic)
             if "Tank" in tags_raw:
                 tag2 = "TANK"
             elif "Fighter" in tags_raw:
