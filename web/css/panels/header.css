@@ -2133,6 +2133,19 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * digits aligned down the column. */
 .history-match-row .dim { font-variant-numeric: tabular-nums; }
 
+/* OQ8 (QA37): per-session W-L rollup chip in the session row. Wins read
+ * --good, losses --bad (redundant-encoded by the W/L letters, not hue
+ * alone); digits tabular so the column stays aligned. */
+.history-session-row .hs-wl {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.history-session-row .hs-wl .hs-w { color: var(--good); font-weight: 700; }
+.history-session-row .hs-wl .hs-l { color: var(--bad); font-weight: 700; }
+
 /* Result-first tint (item-77 WIN-CAPTURE: main.js stamps .result-win /
  * .result-loss when win is known; null-win rows stay neutral). The left
  * border becomes a green / red result bar and the row gets a faint

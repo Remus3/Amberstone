@@ -259,3 +259,37 @@ def test_no_em_dashes_or_smart_quotes():
         raw = p.read_bytes()
         offenders = [b for b in raw if b > 0x7F]
         assert not offenders, f"non-ASCII byte(s) in {p}: {offenders[:5]}"
+
+
+def test_history_session_wl_rollup(mock_server, pw_browser):
+    """OQ8 (QA37): each session row carries a client-computed W-L chip
+    (strict win === true / === false counts over the session's matches),
+    and clicking a session lands the W-L in the detail head. Expected
+    values derive from the fixture's 14d scope (session 0: 2W-2L over 4
+    matches; session 3: 1W-0L; session 4: 0W-1L)."""
+    ctx, page, errors = _open_history(pw_browser, mock_server)
+    try:
+        rows = page.locator("#history-session-list .history-session-row")
+        assert rows.count() == 5, f"expected 5 session rows, got {rows.count()}"
+        first_wl = rows.nth(0).locator(".hs-wl")
+        assert first_wl.count() == 1, "first session row missing the .hs-wl chip"
+        assert first_wl.inner_text().replace("\n", "") == "2W-2L", (
+            f"first session W-L chip wrong: {first_wl.inner_text()!r}"
+        )
+        # Wins/losses are separately colored spans (redundant W/L letters).
+        assert rows.nth(0).locator(".hs-wl .hs-w").inner_text() == "2W"
+        assert rows.nth(0).locator(".hs-wl .hs-l").inner_text() == "2L"
+        # Session 4 (0 wins, 1 loss) still shows a chip - decided matches
+        # exist even though wins are zero.
+        assert rows.nth(4).locator(".hs-wl").inner_text().replace("\n", "") == "0W-1L"
+        # Clicking the first session lands the W-L in the detail head.
+        rows.nth(0).click()
+        page.wait_for_function(
+            "document.querySelector('#history-detail-head').textContent"
+            ".includes('2W-2L')",
+            timeout=5_000,
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [session W-L]: {errors[:3]}"
