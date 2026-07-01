@@ -282,6 +282,21 @@ function windowActionsWithPolicy(surface, opts) {
   return base;
 }
 
+// --- second-instance relaunch: which window to bring forward ------------------
+// The "RC Overlay" desktop shortcut (and the in-game launcher re-tap) re-launch
+// rc-shell, which is single-instance - so the launch does NOT boot a fresh
+// window, it fires the second-instance handler on the existing process. The
+// operator clicked to SEE the shell, so the handler must SHOW + raise a window;
+// a bare focus() never un-hides a window that a crash-guard give-up (or an
+// in-game hide) put into .hide() state, which is exactly why the shortcut looked
+// dead. This pure helper names the surface's window: OVERLAY -> the in-game HUD;
+// COMPANION / HIDDEN / anything unknown -> the companion (the always-safe surface
+// the operator expects out of a game, and the right landing after a relaunch
+// clears a hotkey force-hide). main.js stays the thin applier (show + focus).
+function relaunchFocusTarget(surface) {
+  return surface === SURFACES.OVERLAY ? "overlay" : "companion";
+}
+
 // --- HZ-D1 slice 2: overlay position + panel-set persistence -----------------
 // The overlay rides the SAME state file as the companion, under one "overlay"
 // sub-object, so the two surfaces can never clobber each other's keys. These
@@ -744,6 +759,7 @@ module.exports = {
   overlayUrl,
   windowActions,
   windowActionsWithPolicy,
+  relaunchFocusTarget,
   shouldShowOverlayNow,
   cyclePanelSet,
   OVERLAY_ACTIONS,
