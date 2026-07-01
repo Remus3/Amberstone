@@ -1,0 +1,64 @@
+/* DS-Skill-Order champion panel. Renders the LOCKED champion's ability MAX
+ * ORDER (e.g. "Q > E > W") plus the ult level-ups as a small card. Mounts
+ * inside the Suggestions card (.csv-card-suggestions) during champ-select, a
+ * sibling of the ds-profile + cooldown-watch + cc-conditional-pressure cards.
+ *
+ * Uses the semantic tokens from web/css/tokens.css. Head styling mirrors the
+ * ds-profile card so the two read as one cohesive champion-intrinsic block.
+ *
+ * ASCII only (no em / en dashes, no smart quotes). Priority uses the ASCII
+ * '>' character - no unicode arrows.
+ */
+
+.ds-skill-order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding: var(--space-2);
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-info, #8a8cf0);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+
+.ds-skill-order[hidden] {
+  display: none;
+}
+
+.dsso-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.dsso-head-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dsso-head-sub {
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* Max-order line - the headline read (e.g. "Max: Q > E > W"). The order
+ * string is emphasised so it scans as the primary value of the card. */
+.dsso-max {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ult level-ups (e.g. "Ult: 6/11/16") - secondary, muted. */
+.dsso-ult {
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.55);
+  font-variant-numeric: tabular-nums;
+}
