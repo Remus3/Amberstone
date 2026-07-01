@@ -218,6 +218,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (operator session - lolmath/DS build-opt methodology QA + multi-agent next-layer research; RESEARCH + 2 ops probes, NO ENGINE/DS/Share)
+
+Operator-driven (NOT the headless loop): a Discord-QA thread with the lolmath admin drove a methodology inquiry into how build engines derive item logic, then a multi-agent next-layer research sweep that adversarially DEFLATED most proposals. Committed 2 offline ops probes (`87aebd08`); the durable value is the corrected findings (saved to memory).
+
+- **Two corrections to earlier claims, both grep-verified.** (1) The DS beam (`beam.py:381-382`) is a GREEDY WIDTH-TRUNCATED heuristic, NOT exact (so "warm-start preserves exact output" is false), and its ONLY live consumer is `coaches/sr_draft_profile.py` (SR champ-select) - `/api/ds-preview` + `/api/ds-knobs` + coach-dispatch use greedy `rank_items`, NOT the beam. Memory `reference_ds_beam_heuristic_and_live_consumers`. (2) RC/DS default rank is PURE SIMULATION, not a win-rate-fused hybrid - win-rate is only in default-OFF DSP/RF levers + the adjacent additive `core/personal_build_wr.py`. Memory `reference_ds_simulation_default_not_winrate_hybrid`.
+- **MEASURE-FIRST answered with real data (`ops/audit/ds_latency_probe.py`).** Live `rank_items` = ~11ms p50; beam cold ~680ms but champ-select-only + 60s-TTL cached. The whole "make build-opt faster" batch (ABWS surrogate, WIBR delta-beam, Pareto, bucket-cluster, team-joint, spike/VoI) targets a NON-bottleneck -> all CUT. Only defensible build = `sr_draft_beam_cache.json` for `:8893`-DOWNTIME RESILIENCE, plus a `compute_dps` LRU memo (exact, XS).
+- **Opponent-prior = VIABLE-descoped (`ops/audit/opponent_prior_gonogo.py` go/no-go PASSED).** Full miner collapses into the shipped anti_tank/anti_squishy (downstream is a step function). Non-duplicative sliver = an S-effort completion-prior CONFIDENCE GATE (Seam A `routes_state.py:781-791`, ARAM+CLASSIC, degrades to today byte-for-byte) catching the enemy who WON'T stack the wall. Probe: enemy build-armor variance 0-161, clear squishy low cohort. Ship only if an ARAM characterization test shows a real dissent case, else CUT.
+- **NEXT.** If build-opt resumes: (1) the ARAM go/no-go characterization test for the confidence-gate (decides build/cut); (2) `sr_draft_beam_cache.json` for downtime resilience; (3) `compute_dps` LRU memo. Do NOT re-pitch ABWS/WIBR/warm-start-the-live-beam (live path 11ms; beam is heuristic). Item 638: R5/DSP2/... /rank wiring already SHIPPED (flip = flag-default + Tier-2; supersedes stale `project_ds_live_flip_seams_unwired`). E7 default-ON flip still OWED (operator live eyeball).
+
+---
+
 # 2026-06-30 (operator session - QA15b home "true season WR" readout + CI minute-saver; Tier-1, NO ENGINE/DS/Share)
 
 Operator-driven (NOT the headless loop): picked tracker QA15 after E7's default-ON flip was confirmed BLOCKED (no live game - mode=client, relay empty; the operator eyeball cannot run). Grounded spec-first by a read-only Plan subagent. Full detail in LEDGER 705.
