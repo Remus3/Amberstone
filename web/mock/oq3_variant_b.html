@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" data-oq3-variant="b" data-oq3-tradeoff="Smallest peripheral footprint hugging a corner, but ETAs read positionally along the arc rather than as a prominent number.">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OQ3 Variant B - Peripheral Arc Rail</title>
+<style>
+  :root {
+    --bg: #0A0E14;
+    --gold: #C8AA6E;
+    --gold-track: rgba(200,170,110,0.20);
+    --gold-hair: rgba(200,170,110,0.70);
+    --muted: rgba(200,170,110,0.55);
+    --baron: #C8AA6E;
+    --drake: #E8A33D;
+    --elder: #E84057;
+    --summs: #0AC8B9;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--gold);
+    font-family: var(--font);
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 40px;
+  }
+  .page-header {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--gold);
+    margin: 0 0 6px;
+    font-weight: 600;
+  }
+  .page-sub {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 20px;
+  }
+  /* Simulated 16:9 game frame */
+  .game-frame {
+    position: relative;
+    width: min(90vw, 960px);
+    height: 540px;
+    max-height: calc(min(90vw, 960px) * 0.5625);
+    background:
+      radial-gradient(ellipse at 30% 25%, rgba(30,45,60,0.55), transparent 60%),
+      linear-gradient(160deg, #0d1420 0%, #0a0e14 55%, #070a10 100%);
+    border: 1px solid rgba(200,170,110,0.28);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(0,0,0,0.55);
+  }
+  .frame-tag {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(200,170,110,0.35);
+  }
+  .play-hint {
+    position: absolute;
+    top: 50%;
+    left: 40%;
+    transform: translate(-50%, -50%);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(200,170,110,0.14);
+  }
+  /* Arc rail widget anchored bottom-right corner */
+  .arc-rail {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 240px;
+    height: 240px;
+  }
+  .arc-rail svg {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 240px;
+    height: 240px;
+    overflow: visible;
+  }
+  /* Sigil markers positioned on the arc */
+  .sigil {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--gold-hair);
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 6px rgba(0,0,0,0.6);
+  }
+  .sigil::after {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  /* label + eta tag next to each sigil, reading inward along the rail */
+  .obj-tag {
+    position: absolute;
+    transform: translate(-100%, -50%);
+    text-align: right;
+    white-space: nowrap;
+    padding-right: 8px;
+  }
+  .obj-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1.1;
+  }
+  .obj-eta {
+    display: block;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+    line-height: 1.15;
+  }
+  /* brightness: closer-to-ready sigils glow harder */
+  .prox-hi   { opacity: 1.0;  filter: drop-shadow(0 0 5px currentColor); }
+  .prox-mid  { opacity: 0.85; }
+  .prox-lo   { opacity: 0.55; }
+  .obj-tag.prox-lo .obj-eta { color: var(--muted); }
+
+  .caption {
+    margin-top: 22px;
+    max-width: min(90vw, 960px);
+    font-size: 11px;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <h1 class="page-header">OQ3 Variant B - Peripheral Arc Rail</h1>
+  <p class="page-sub">Corner-hugging 90-degree objective arc</p>
+
+  <div class="game-frame">
+    <span class="frame-tag">1920 x 1080 game frame (sim)</span>
+    <span class="play-hint">PLAY AREA</span>
+
+    <!-- Peripheral arc rail: single 90-degree quarter-circle hugging the bottom-right corner -->
+    <div class="arc-rail" aria-label="objective arc rail">
+      <!--
+        Geometry: pivot at the corner (right:0, bottom:0) mapped to SVG (240,240).
+        Rail radius = 200. Quarter arc sweeps from top (0,40) to left of pivot (40,240).
+        Circumference of the quarter = (2*pi*200)/4 ~= 314. We fill each objective
+        segment FROM the rail toward "ready" using stroke-dasharray; longer fill = closer.
+      -->
+      <svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+        <!-- faint gold TRACK: full quarter arc -->
+        <path d="M 40 240 A 200 200 0 0 1 240 40"
+              fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="5"
+              stroke-linecap="round" />
+
+        <!-- SUMMS segment (cyan) - ETA 0:20, nearly ready: long fill -->
+        <circle cx="240" cy="240" r="200"
+                fill="none" stroke="#0AC8B9" stroke-width="5" stroke-linecap="round"
+                stroke-dasharray="70 1256" stroke-dashoffset="-6"
+                transform="rotate(180 240 240)" />
+
+        <!-- ELDER segment (emergency red) - UP: full segment fill -->
+        <circle cx="240" cy="240" r="200"
+                fill="none" stroke="#E84057" stroke-width="6" stroke-linecap="round"
+                stroke-dasharray="78 1256" stroke-dashoffset="-90"
+                transform="rotate(180 240 240)" />
+
+        <!-- DRAKE segment (warn amber) - ETA 0:45, mid-close: medium fill -->
+        <circle cx="240" cy="240" r="200"
+                fill="none" stroke="#E8A33D" stroke-width="5" stroke-linecap="round"
+                stroke-dasharray="52 1256" stroke-dashoffset="-176"
+                transform="rotate(180 240 240)" />
+
+        <!-- BARON segment (gold) - ETA 3:12, far: short fill -->
+        <circle cx="240" cy="240" r="200"
+                fill="none" stroke="#C8AA6E" stroke-width="5" stroke-linecap="round"
+                stroke-dasharray="26 1256" stroke-dashoffset="-250"
+                transform="rotate(180 240 240)" />
+      </svg>
+
+      <!-- Sigil markers spaced along the arc (bottom -> top: SUMMS, ELDER, DRAKE, BARON) -->
+      <!-- SUMMS: near the bottom of the arc, closest to ready -->
+      <span class="sigil prox-hi" style="color:#0AC8B9; left:52px; top:220px;"></span>
+      <div class="obj-tag prox-hi" style="left:44px; top:220px; color:#0AC8B9;">
+        <span class="obj-label">SUMMS</span>
+        <span class="obj-eta">0:20</span>
+      </div>
+
+      <!-- ELDER: up (ready) -->
+      <span class="sigil prox-hi" style="color:#E84057; left:82px; top:166px;"></span>
+      <div class="obj-tag prox-hi" style="left:74px; top:166px; color:#E84057;">
+        <span class="obj-label">ELDER</span>
+        <span class="obj-eta">UP</span>
+      </div>
+
+      <!-- DRAKE: mid arc -->
+      <span class="sigil prox-mid" style="color:#E8A33D; left:150px; top:104px;"></span>
+      <div class="obj-tag prox-mid" style="left:142px; top:104px; color:#E8A33D;">
+        <span class="obj-label">DRAKE</span>
+        <span class="obj-eta">0:45</span>
+      </div>
+
+      <!-- BARON: near the top of the arc, farthest from ready -->
+      <span class="sigil prox-lo" style="color:#C8AA6E; left:216px; top:60px;"></span>
+      <div class="obj-tag prox-lo" style="left:208px; top:60px; color:#C8AA6E;">
+        <span class="obj-label">BARON</span>
+        <span class="obj-eta">3:12</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption" data-oq3-tradeoff="Smallest peripheral footprint hugging a corner, but ETAs read positionally along the arc rather than as a prominent number.">
+    Tradeoff: Smallest peripheral footprint hugging a corner, but ETAs read positionally along the arc rather than as a prominent number.
+  </p>
+</body>
+</html>

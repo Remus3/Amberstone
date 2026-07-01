@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en" data-oq3-variant="c">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OQ3 Variant C - Stacked Sigil Gauges</title>
+<style>
+  :root {
+    --bg: #0A0E14;
+    --band-bg: rgba(22,32,46,0.85);
+    --band-hair: rgba(200,170,110,0.70);
+    --ring-track: rgba(200,170,110,0.20);
+    --hue-baron: #C8AA6E;
+    --hue-drake: #E8A33D;
+    --hue-elder: #E84057;
+    --hue-summs: #0AC8B9;
+    --muted: rgba(220,224,232,0.55);
+    --text: #DCE0E8;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 20px;
+  }
+  .page-header {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  /* The band: one Hextech widget holding the 4 badges */
+  .obj-band {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 18px;
+    background: var(--band-bg);
+    border: 1px solid var(--band-hair);
+    border-radius: 7px;
+    padding: 12px 18px 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(200,170,110,0.06);
+  }
+
+  .badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 62px;
+  }
+
+  .badge-ring {
+    position: relative;
+    width: 52px;
+    height: 52px;
+  }
+  .badge-ring svg {
+    display: block;
+    width: 52px;
+    height: 52px;
+    transform: rotate(-90deg);
+  }
+  .badge-glyph {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .badge-label {
+    margin-top: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  .badge-eta {
+    margin-top: 2px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Per-objective hues on glyph + eta */
+  .obj-drake .badge-glyph, .obj-drake .badge-eta { color: #E8A33D; }
+  .obj-baron .badge-glyph, .obj-baron .badge-eta { color: #C8AA6E; }
+  .obj-elder .badge-glyph, .obj-elder .badge-eta { color: #E84057; }
+  .obj-summs .badge-glyph, .obj-summs .badge-eta { color: #0AC8B9; }
+
+  .tradeoff-note {
+    margin-top: 26px;
+    max-width: 520px;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+  <div class="page-header">OQ3 Variant C - Stacked Sigil Gauges</div>
+
+  <div class="obj-band" data-oq3-tradeoff="Balanced compact row that keeps exact numeric ETAs and per-objective rings, but needs a wider horizontal slot than a single arc.">
+
+    <!-- DRAKE 0:45 -->
+    <div class="badge obj-drake">
+      <div class="badge-ring">
+        <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="4"></circle>
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#E8A33D" stroke-width="4" stroke-linecap="round" stroke-dasharray="55 138"></circle>
+        </svg>
+        <div class="badge-glyph">D</div>
+      </div>
+      <div class="badge-label">DRAKE</div>
+      <div class="badge-eta">0:45</div>
+    </div>
+
+    <!-- BARON 3:12 -->
+    <div class="badge obj-baron">
+      <div class="badge-ring">
+        <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="4"></circle>
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#C8AA6E" stroke-width="4" stroke-linecap="round" stroke-dasharray="104 138"></circle>
+        </svg>
+        <div class="badge-glyph">B</div>
+      </div>
+      <div class="badge-label">BARON</div>
+      <div class="badge-eta">3:12</div>
+    </div>
+
+    <!-- ELDER UP -->
+    <div class="badge obj-elder">
+      <div class="badge-ring">
+        <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="4"></circle>
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#E84057" stroke-width="4" stroke-linecap="round" stroke-dasharray="138 0"></circle>
+        </svg>
+        <div class="badge-glyph">E</div>
+      </div>
+      <div class="badge-label">ELDER</div>
+      <div class="badge-eta">UP</div>
+    </div>
+
+    <!-- SUMMS 0:20 -->
+    <div class="badge obj-summs">
+      <div class="badge-ring">
+        <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="4"></circle>
+          <circle cx="26" cy="26" r="22" fill="none" stroke="#0AC8B9" stroke-width="4" stroke-linecap="round" stroke-dasharray="28 138"></circle>
+        </svg>
+        <div class="badge-glyph">S</div>
+      </div>
+      <div class="badge-label">SUMMS</div>
+      <div class="badge-eta">0:20</div>
+    </div>
+
+  </div>
+
+  <div class="tradeoff-note">
+    Tradeoff: Balanced compact row that keeps exact numeric ETAs and per-objective rings, but needs a wider horizontal slot than a single arc.
+  </div>
+</body>
+</html>
