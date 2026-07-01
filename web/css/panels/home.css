@@ -1223,6 +1223,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .lobby-status.found     { color: var(--good); font-weight: 700; }
 .lobby-status.err       { color: var(--bad); }
 @keyframes lobbyPulse { from { opacity: 0.55; } to { opacity: 1; } }
+/* OQ4 reduced-motion (RC2 D2 static-replace): hold the searching state as
+ * a steady clock-gold emphasis instead of the opacity pulse - the meaning
+ * survives, the motion does not. */
+@media (prefers-reduced-motion: reduce) {
+  .lobby-status.searching {
+    animation: none !important;
+    opacity: 1;
+    font-weight: 700;
+  }
+}
 
 /* Change-queue dropdown (leader only). Theme-matched select. */
 .lobby-queue-select {
