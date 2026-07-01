@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (E7 operator session - ARAM bench-swap responsiveness + LCU pool wired onto the frozen LcuClient; Tier-1, NO ENGINE/DS/Share)
+
+Operator-driven session (NOT the headless loop): RC2 E7 (PRIORITY HIGH in the tracker), grounded spec-first by a Plan subagent before any code. Full detail in LEDGER 704.
+
+- **Part 1 bench-swap responsiveness (`fe34040c`, `tools/lcu_agent.py` non-frozen).** E7a (item 555) made the latency-sensitive command DRAIN fast (0.1s); the swapped champ still lagged up-to-1.0s reaching /api/state (the state-push loop is a separate thread on INTERVAL=1.0). Added `_swap_wake` threading.Event - the cmd loop SETS it after a latency-sensitive drain (`_signal_state_refresh`), `_state_push_loop` waits on it (clear-at-top, race-safe; only that loop calls capture_state). Swap now ~0.1s. TDD +4.
+- **Part 2 LCU pool onto the frozen client (`453b9ddd`, OPERATOR FROZEN-GRANT for `lcu/lcu_client.py`).** Wired `_request` onto `lcu_pool.get_shared_pool()` behind the existing `RC_LCU_POOL` flag (DEFAULT-OFF byte-identical; lazy import keeps the frozen top-level block untouched). Pools the heavy `_auto_accept_tick` path (~2 GETs/s). Contract preserved: 2xx->JSON ({} empty), non-2xx->None (no 404 dict leak to _maybe_apply_runes), fail-soft->urlopen. TDD +5.
+- **Default-ON flip NOT shipped - LIVE-GATED** (`docs/LIVE_GAME_GATED_SYNC.md:746`, `9451d660`). OWED (operator, next live game): one ARAM champ-select+game with `RC_LCU_POOL=1` - confirm no SSL EOF on reused sockets / reconnect self-heals / bounded socket count -> then the flip is a one-liner (`core/lcu_pool.py:40`).
+- **Verify.** ruff + py_compile + hygiene green; 13 + 86 + 99 + 20 tests green. Tier-1: no ENGINE/DS/Share/restart. Did NOT stage pre-existing `data/spell_prefs.json` drift or the agent6 FAILED demo report.
+- **DS swarm cycle = NO_WORK** (operator asked for one; grounded by an Explore subagent, NOT fabricated). Round-2 refill queue DRAINED (ROADMAP:26), 4 pure-data registries machine-guarded saturated, conditional-target-state/effects.py/7th-scorer operator-CLOSED, DS cross-eval Tier-2 B1/F2 shipped default-OFF + B2 live-owed + A a Shaco product call. Only unbuilt DS item = the `/rank` HTTP-boundary live-flip wiring (Tier-2 ENGINE-bump, needs explicit operator go; memory `project_ds_live_flip_seams_unwired`).
+- **NEXT.** E7 default-ON flip (operator live eyeball) OR the next tracker QA item (overlay/PGR queue, all same-priority). DS needs an operator refill or the `/rank` wiring go-ahead - do NOT re-scan the saturated registries.
+
+---
+
 # 2026-06-30 (R49 headless cycle 15 - DS schema lift: on-being-hit REFLECT damage seam (Rammus W); ENGINE 1.160.0 -> 1.161.0) [OPERATOR-INTERRUPTED -> loop STOPped]
 
 Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift, executing the R3 handoff. Full detail in LEDGER 703 + ORCHESTRATION_PLAN R49.
