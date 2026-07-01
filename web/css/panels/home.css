@@ -200,6 +200,25 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-size: var(--fs-xs); font-weight: 600; color: var(--text-faint);
   letter-spacing: 0.04em;
 }
+/* QA15b: ranked "season WR" readout, a thin inline row under the L20 pip
+ * strip. Ranked (420 Solo/Duo + 440 Flex) win-rate over the 90d season
+ * window. A label + a tabular value so it reads as its own metric, never
+ * competing with the all-modes L20 form above it. Display-only, sized off
+ * the --fs-xs token (the 16px floor). */
+.home-season-wr {
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  font-size: var(--fs-xs);
+}
+.home-season-wr-lbl {
+  font-weight: 700; color: var(--label);
+  letter-spacing: 0.14em; text-transform: uppercase;
+}
+.home-season-wr-val {
+  font-weight: 600; color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
 .home-hero-headline {
   font-size: var(--fs-xl); font-weight: 800; color: var(--text);
   letter-spacing: 0.01em;

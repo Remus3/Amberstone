@@ -18,6 +18,12 @@
     "losses": 7,
     "win_rate": 65.0
   },
+  "season_wr": {
+    "wins": 24,
+    "losses": 27,
+    "win_rate": 47.1,
+    "n": 51
+  },
   "recent": [
     {"champion": "Jinx",        "mode": "ARAM",        "kda": "12/3/8",  "grade": "S",  "items": [3094, 3006, 3144, 3072, 3046, 3158], "timestamp": "3:42 PM"},
     {"champion": "Senna",       "mode": "ARAM",        "kda": "5/8/22",  "grade": "A",  "items": [3107, 3504, 3158, 3001, 3050],       "timestamp": "3:14 PM"},
