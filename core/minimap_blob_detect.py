@@ -146,26 +146,70 @@ def crop_minimap(frame_rgb, minimap_rect: dict, design_w: int = 1920, design_h: 
 
 
 # --- live integration (I/O; the pure detection above stays unit-testable) -----
-# The vision server (:8889) holds the current game frame in-process; we GET it,
-# crop the minimap by fraction, and detect. TTL-cached + keyed on the frame ts so
-# /api/state (2 Hz) never re-detects the same frame and a slow/absent vision
-# server can never stall the state build. Fail-soft: any error -> [].
+# The minimap is grabbed and detected on demand. PRIMARY: a NATIVE full-screen
+# grab cropped to the minimap by fraction (~416px, 4x the pixels, no JPEG) so
+# champion icons are large + artifact-free. FALLBACK: the :8889 coaching frame
+# (1280-downscaled JPEG, ~208px). TTL + rect cached so /api/state (2 Hz) never
+# re-grabs mid-window; fail-soft everywhere -> [] on any error.
 _VISION_URL = "http://127.0.0.1:8889/latest-frame"
-_dots_cache: dict = {"wall": 0.0, "frame_ts": None, "rect": None, "dots": []}
+_dots_cache: dict = {"wall": 0.0, "rect": None, "dots": []}
+
+# Size-threshold baseline: _MIN_PX/_MAX_PX were tuned on the 208px coaching-frame
+# crop; _scaled_size_bounds rescales them to the actual crop width so the native
+# 416px crop detects the SAME physical footprints (resolution-invariant).
+_TUNED_CROP_W = 208.0
 
 
-def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5) -> list[dict]:
-    """Fetch the live frame, crop the minimap, and detect team dots. Cached for
-    `ttl_s` and skipped when the frame ts is unchanged. Returns [] on any failure
-    (no vision server, numpy missing, bad rect) so callers can stamp it blindly."""
+def _native_grab_enabled() -> bool:
+    """RC_ZOI_NATIVE_GRAB gates the high-res native minimap grab (default ON,
+    2026-07-01). The 1280 self-grab downscale + JPEG left champion icons too
+    small/blurry for reliable detection; the native grab gives a ~416px crop.
+    Set RC_ZOI_NATIVE_GRAB=0 to force the legacy coaching-frame crop."""
+    import os
+    return os.environ.get("RC_ZOI_NATIVE_GRAB", "1").strip().lower() \
+        not in ("0", "false", "no", "off", "")
+
+
+def _scaled_size_bounds(crop_w) -> tuple[int, int]:
+    """Rescale (_MIN_PX, _MAX_PX) from the 208px tuning baseline to `crop_w` by
+    AREA, so a native 416px crop (2x linear -> 4x area) keeps the same PHYSICAL
+    blob-size thresholds. Baseline width -> the tuned bounds unchanged."""
+    try:
+        sc = max(1.0, float(crop_w) / _TUNED_CROP_W)
+    except (TypeError, ValueError):
+        return _MIN_PX, _MAX_PX
+    area = sc * sc
+    minpx = max(_MIN_PX, int(round(_MIN_PX * area)))
+    maxpx = max(minpx + 1, int(round(_MAX_PX * area)))
+    return minpx, maxpx
+
+
+def _grab_native_minimap(minimap_rect):
+    """High-res minimap crop from a NATIVE full-screen grab (no 1280 downscale,
+    no JPEG). ~416px vs the 208px coaching-frame crop = 4x the pixels + clearer
+    icons. Same single-GDI-BitBlt grab as the vision self-grab
+    (vision_server/_frame.py) so there are no new multi-monitor assumptions -
+    only the resolution differs. Returns (H, W, 3) uint8 or None (PIL absent /
+    headless / grab error / bad rect)."""
     if np is None or not isinstance(minimap_rect, dict):
-        return []
-    import time as _time
-    now = _time.time()
-    rect_sig = (minimap_rect.get("x"), minimap_rect.get("y"),
-                minimap_rect.get("w"), minimap_rect.get("h"))
-    if (now - _dots_cache["wall"]) < ttl_s and _dots_cache["rect"] == rect_sig:
-        return _dots_cache["dots"]
+        return None
+    try:
+        from PIL import ImageGrab
+    except Exception:  # noqa: BLE001 - headless / PIL absent
+        return None
+    try:
+        full = ImageGrab.grab()
+        if full is None:
+            return None
+        return crop_minimap(np.asarray(full.convert("RGB")), minimap_rect)
+    except Exception:  # noqa: BLE001 - never let a grab hiccup break /api/state
+        return None
+
+
+def _grab_frame_minimap(minimap_rect):
+    """Fallback: crop the minimap from the :8889 coaching frame (1280-downscaled
+    JPEG, ~208px). Lower fidelity than _grab_native_minimap. Returns (H, W, 3)
+    or None on any failure."""
     try:
         import base64 as _b64
         import io as _io
@@ -180,19 +224,38 @@ def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5) -> li
             data = _json.loads(r.read())
         b64 = data.get("b64") if isinstance(data, dict) else None
         if not b64:
-            _dots_cache.update(wall=now, rect=rect_sig, dots=[])
-            return []
-        frame_ts = data.get("ts")
-        if frame_ts is not None and frame_ts == _dots_cache["frame_ts"] \
-                and _dots_cache["rect"] == rect_sig:
-            _dots_cache["wall"] = now
-            return _dots_cache["dots"]
+            return None
         img = _Image.open(_io.BytesIO(_b64.b64decode(b64))).convert("RGB")
-        crop = crop_minimap(np.asarray(img), minimap_rect)
-        dots = detect_team_dots(crop) if crop is not None else []
+        return crop_minimap(np.asarray(img), minimap_rect)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5) -> list[dict]:
+    """Grab the minimap and detect team dots. Prefers the NATIVE full-res grab
+    (RC_ZOI_NATIVE_GRAB, default ON) for 4x the pixels; falls back to the :8889
+    coaching-frame crop. TTL + rect cached. Returns [] on any failure (no vision
+    server, numpy missing, headless, bad rect) so callers can stamp it blindly."""
+    if np is None or not isinstance(minimap_rect, dict):
+        return []
+    import time as _time
+    now = _time.time()
+    rect_sig = (minimap_rect.get("x"), minimap_rect.get("y"),
+                minimap_rect.get("w"), minimap_rect.get("h"))
+    if (now - _dots_cache["wall"]) < ttl_s and _dots_cache["rect"] == rect_sig:
+        return _dots_cache["dots"]
+    try:
+        crop = _grab_native_minimap(minimap_rect) if _native_grab_enabled() else None
+        if crop is None:
+            crop = _grab_frame_minimap(minimap_rect)
+        if crop is None or getattr(crop, "size", 0) == 0:
+            dots = []
+        else:
+            minpx, maxpx = _scaled_size_bounds(crop.shape[1])
+            dots = detect_team_dots(crop, min_px=minpx, max_px=maxpx)
     except Exception:  # noqa: BLE001 - never let a vision hiccup break /api/state
         dots = _dots_cache["dots"]  # serve last good rather than flicker to []
         _dots_cache["wall"] = now
         return dots
-    _dots_cache.update(wall=now, frame_ts=frame_ts, rect=rect_sig, dots=dots)
+    _dots_cache.update(wall=now, rect=rect_sig, dots=dots)
     return dots
