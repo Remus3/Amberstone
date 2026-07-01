@@ -877,6 +877,52 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# R50 - K'Sante P "All Out Bonus" (a SEPARATE default-OFF seam, NOT part of the
+# base _PASSIVE_DAMAGE_OVERRIDES registry above).
+#
+# The item-255 K'Sante entry seeds the base Dauntless Instinct mark consume
+# (12 + 1% : 2% by level of target max HP). Its All Out Bonus - active ONLY
+# while K'Sante is in the R-empowered All Out state - was the documented OMIT
+# (the reject notes at the item-513 sibling sweep: "bilinear caster_bonus_resist
+# * target_max_hp PRODUCT AND gated on the All Out state"). It lives here, keyed
+# on caster_bonus_armor / caster_bonus_mr via _per_100 bilinear terms + a
+# conditional_probability for the All Out gate, so:
+#   * the item-255 base mark-consume magnitude stays byte-identical (this dict is
+#     never merged into _PASSIVE_DAMAGE_OVERRIDES, so its prior-entry invariants -
+#     conditional_probability == 1.0 for non-seeds - are untouched), and
+#   * a consumer models the All Out bonus ONLY by opting into the NEW
+#     ``apply_all_out_bonus`` load flag (default OFF = byte-identical).
+#
+# Verbatim 16.13.1 effects_descriptions (champion_abilities.json KSante P):
+#   "All Out Bonus: ... deal bonus physical damage equal to 1% (+ 1% per 100
+#    bonus armor) (+ 1% per 100 bonus magic resistance) of the target's maximum
+#    health."
+# -> target_max_hp_pct 1.0 (the flat 1%) + a caster_bonus_armor bilinear + a
+# caster_bonus_mr bilinear (each 1% per 100 resist OF target max HP), both
+# vanishing at the default no-build ctx (0 bonus resist), so an unfed context
+# yields only the flat 0.5% (the amortized 1%). conditional_probability 0.5 is
+# the documented operator-tunable All-Out-uptime firing midpoint (the same
+# convention as the Brand / Sejuani gates: All Out is a finite-uptime R state, so
+# the empowered mark-consume lands in All Out only a fraction of the time - always
+# crediting it would over-model).
+_ALL_OUT_BONUS_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
+    ("KSante", "P", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=1.0,
+        bilinear_terms=(
+            _per_100(1.0, "caster_bonus_armor", "target_max_hp"),
+            _per_100(1.0, "caster_bonus_mr", "target_max_hp"),
+        ),
+        damage_type="PHYSICAL",
+        cadence="on_hit",
+        conditional_probability=0.5,
+        note="All Out Bonus (R-empowered): 1% (+ 1% per 100 bonus armor) (+ 1% per 100 bonus magic resistance) of target max HP bonus physical, added on top of the item-255 base mark consume; conditional_probability 0.5 = documented amortized All-Out-uptime firing midpoint (operator-tunable); both bilinear terms are 0 at the default no-build ctx",
+        attribute="All Out Bonus",
+    ),
+}
+
+
 def to_damage_block(entry: PassiveDamageEntry):
     """Build a synthetic ``DamageBlock`` from a ``PassiveDamageEntry``.
 

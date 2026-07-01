@@ -312,6 +312,21 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-07-01 (R50, LOOP) K'Sante P "All Out Bonus" bilinear caster-resist seam - ENGINE 1.161.0 -> 1.162.0,
+  DEFAULT-OFF, live default-ON flip EXCLUDED. New registry `_ALL_OUT_BONUS_OVERRIDES` + new
+  `AbilitiesSnapshot.load(apply_all_out_bonus=...)` flag inject a SECOND K'Sante-P synthetic damage block modeling
+  the R-empowered All Out Bonus (verbatim 16.13.1: "1% (+ 1% per 100 bonus armor) (+ 1% per 100 bonus magic
+  resistance) of the target's maximum health") as a linear 1% max-HP plus two `_per_100` bilinear terms
+  (`caster_bonus_armor` x `target_max_hp` + the `caster_bonus_mr` sibling), gated by `conditional_probability` 0.5
+  (documented amortized All-Out-uptime firing midpoint, operator-tunable). Default OFF is byte-identical (no live
+  consumer passes the flag; the base item-255 mark-consume entry is untouched). OWED (operator/Gemini-gated, NOT
+  headless - charter 4b do-not-flip-blind): (1) wire a live rank / dps / burst consumer to pass
+  `apply_all_out_bonus=True` (ideally only while K'Sante's R "All Out" is active) and confirm his in-All-Out
+  empowered-mark value reads sane vs a real game; (2) tune `conditional_probability` 0.5 against real All-Out uptime
+  (or feed a live All-Out-state gate so the full in-form value is credited only during R). A WRONG precompute is
+  worse than none, so do NOT default-ON until validated in an actual All Out fight. DS `:8893` restart on flip.
+  Does NOT block any further stage.
+
 - 2026-07-01 RuneWriter silent-after-League-restart PERMANENT FIX (`lcu/lcu_client.py`, frozen-grant).
   Operator live-flagged rune push dead on the last champ-select. Root cause: the long-lived RC (up since
   6-29) held a STALE lockfile port after League restarted (the lockfile rotates port+password each launch);
