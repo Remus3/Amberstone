@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-07-01 evening (loop false-NO_WORK fix 2 + GEMINI CREDITS DEPLETED; direct-executor continuation)
+
+Operator re-invoked /gemini-headless-upgrade pointing at ops/loop/control/directive.md. Directive was STALE (OQ3, already shipped e14eedbd + docs 7f1dccee) - NOT re-executed. The 17:45 relaunch had STOPPED again on "NO_WORK / empty" with OQ11-OQ15 OPEN. Full detail LEDGER 728.
+
+- **ROOT CAUSE (reproduced, stderr captured): Gemini API prepay credits DEPLETED** - 429 RESOURCE_EXHAUSTED "Your prepayment credits are depleted", gemini CLI exit 1, stdout 0B. **OPERATOR: top up at https://ai.studio/projects, then relaunch via PART A.** The loop CANNOT run until then.
+- **LOOP FIX 2 (LEDGER 728):** gemini() no longer masks errors as NO_WORK - stderr captured to control/_gemini_err.txt + head logged on empty tries; empty output -> None sentinel -> director ADVANCES (same-sha guard still ends persistent outages); stop only on literal NO_WORK. TDD RED 2 -> GREEN, loop suites 34 passed.
+- Until credits are topped up: continue DIRECT-EXECUTOR top-down on the OQ queue (established fallback). Next OPEN = OQ11 (QA69 static-CD ability-haste consumer).
+
+---
+
 # 2026-07-01 (direct executor post-loop-death - OQ4 motion sweep + OQ5 two-tier tokens + rc-skel removal + OQ6 dark-values lock; ui, NO ENGINE/DS/Share)
 
 Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721 (OQ4) + 722 (OQ5) + 723 (rc-skel chip) + 724 (OQ6).

@@ -45,16 +45,39 @@ def test_gemini_returns_none_when_all_retries_error(lc):
     assert out is None
 
 
-def test_gemini_returns_empty_string_on_completed_empty(lc):
-    # A call that COMPLETES with empty stdout is a genuine empty answer, not the
-    # error sentinel -> "" (the successful-empty path is preserved).
+def test_gemini_returns_none_on_completed_empty(lc):
+    # 2026-07-01 17:57 false-stop: a completed call with EMPTY stdout is never a
+    # usable answer (the director prompt mandates a directive or the literal
+    # NO_WORK token; the auditor a VERDICT line) - it is a swallowed CLI/API
+    # error (quota, overload) whose stderr the old 2>$null discarded. It must
+    # map to the SAME None error sentinel as a timeout, so main() advances the
+    # cycle instead of misreading "" as NO_WORK and killing a run with OPEN
+    # queue rows.
     fake = mock.Mock(stdout="")
     with mock.patch.object(lc.subprocess, "run", return_value=fake), \
             mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
             mock.patch.object(lc, "log", lambda *_a, **_k: None), \
             mock.patch.object(lc, "awrite", lambda *_a, **_k: None):
         out = lc.gemini("body", "inst")
-    assert out == ""
+    assert out is None
+
+
+def test_gemini_logs_stderr_head_on_empty(lc, tmp_path):
+    # When stdout comes back empty the captured stderr head must reach the
+    # controller log so the operator can see WHY (429 quota, model overload)
+    # instead of a bare "NO_WORK / empty" stop.
+    (tmp_path / "_gemini_err.txt").write_text(
+        "Error: 429 RESOURCE_EXHAUSTED quota exceeded", encoding="utf-8")
+    lines = []
+    fake = mock.Mock(stdout="")
+    with mock.patch.object(lc, "CTL", tmp_path), \
+            mock.patch.object(lc.subprocess, "run", return_value=fake), \
+            mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "log", lambda m: lines.append(m)), \
+            mock.patch.object(lc, "awrite", lambda *_a, **_k: None):
+        out = lc.gemini("body", "inst")
+    assert out is None
+    assert any("RESOURCE_EXHAUSTED" in ln for ln in lines)
 
 
 def test_auditor_maps_gemini_error_to_clean(lc):
