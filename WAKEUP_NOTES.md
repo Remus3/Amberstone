@@ -4,9 +4,11 @@
 
 ---
 
-# 2026-07-01 (direct executor post-loop-death - OQ4 quiet motion sweep, reduced-motion static-replace; ui, NO ENGINE/DS/Share)
+# 2026-07-01 (direct executor post-loop-death - OQ4 motion sweep + OQ5 two-tier tokens; ui, NO ENGINE/DS/Share)
 
-Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721.
+Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721 (OQ4) + 722 (OQ5).
+
+- **OQ5 - two-tier design tokens, byte-identical (`9ba155ec`).** NEW primitive tier in tokens.css: 7 Hextech hues as rgb parts (--prim-green/amber/red/slate/blue/gold/teal, the --ovx-* precedent); every semantic color re-pointed as a pure rgb()/rgba() wrapper at its historical alpha (6 --signal-*, 3 -soft, hextech fill/glow/border, 3 --pulse-*). Byte-identity: parts==hex asserted numerically; no JS raw-value readers (status.js emits var() strings); overlay 0a re-point independent; snapshot_panels 278 passed = pixel proof. TDD tests/test_two_tier_tokens_oq5.py (5) RED 3 -> GREEN; design-tokens suite still green; 49 adjacent passed; ruff clean. New alpha variants should compose rgba(var(--prim-*), a), not mint literals.
 
 - **OQ4 - reduced-motion static-replace for ALL 10 infinite CSS loops (`40403363`).** Ground truth: 10 (not ~9) infinite declarations across primitives/item_build/home/map_state/header; tokens.css reduce block covered only coach-pulse one-shots; input_activity.css:473 global wildcard kill silently dropped signals (the RC2 D2 anti-pattern). Ultracode classification (10 agents: 5 analysts + 5 adversarial verifiers, all CONFIRMED): ZERO ambient loops - every site is a live signal (loading/buy-cue/search-heartbeat/zone-alarm/hp-alarm/advisory). So: default rendering byte-unchanged + every loop gains a same-file prefers-reduced-motion static hold (animation:none !important + ring/color/opacity). 9 blocks / 10 selectors.
 - **Verify:** TDD RED-first tests/test_motion_reduce_sweep_oq4.py (4: drift-guard, per-site, ASCII, default-loops-survive) RED 2 -> GREEN; adjacent suites 72 passed; snapshot_panels 278 passed (zero default-render delta); ruff clean; 5-phase audit 0 MUST-FIX; no capture owed (media-gated). CSS-only ADR-008 reload, no restart.
