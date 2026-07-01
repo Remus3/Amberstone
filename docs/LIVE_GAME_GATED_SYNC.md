@@ -223,6 +223,16 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 - [ ] Live adaptation `st-*` producers: ~88 ADAPTATION rows render "-" in-game (no live producer;
       ROADMAP item 281 gap 1). Confirm which surface live vs stay post-game-only.
 - [ ] Inhibitor-callout fires when an inhibitor is down (visual; ROADMAP item 283).
+- [PARKED 2026-07-01] ZOI per-champion minimap detection. Native-res grab SHIPPED (`f9ebcd3f`,
+      `RC_ZOI_NATIVE_GRAB` default ON -> ~416px vs 208px, `core/minimap_blob_detect.py`) - the resolution
+      lever the operator asked for. But per-champion ISOLATION is a CONFIRMED dead-end (validated live over
+      ~8 frames incl. a real SR game): color = 95-159 blobs, size = ARAM clusters merge with structures,
+      MOTION = 159->73 (minions move AND are team-colored). Every turret/minion/ward is team-colored, so the
+      presence detector cannot tell a champion from a minion/structure. Only template-matching the champion
+      PORTRAITS (vs minion dots) could isolate them - a major risky CV build, operator-gated. NOTE: "v1
+      worked" was a DEV-PREVIEW FIXTURE (`p.positions` has no live producer; Live Client exposes no
+      positions), NEVER live-accurate. RECOMMEND shelve per-champion; native-res grab stays as the
+      foundation. See LEDGER 711 + memory `project_zoi_minimap_reality`.
 - [ ] Vision self-heal `:8889` validated in a real game (relay-first poller; ROADMAP item 275/276).
 
 ## C. ARAM / ARAM Mayhem (KIWI)
