@@ -72,6 +72,7 @@ def _gather_get() -> list:
                                routes_ds_profile,
                                routes_ds_sweep,
                                routes_ds_relscore, routes_ds_statcheck,
+                               routes_ds_skill_order,
                                routes_aram_balance,
                                routes_auto_accept,
                                routes_damage_mix, routes_draft_elo,
@@ -122,6 +123,7 @@ def _gather_get() -> list:
                       + list(routes_ds_sweep.GET_ROUTES)
                       + list(routes_ds_relscore.GET_ROUTES)
                       + list(routes_ds_statcheck.GET_ROUTES)
+                      + list(routes_ds_skill_order.GET_ROUTES)
                       + list(routes_aram_balance.GET_ROUTES)
                       + list(routes_auto_accept.GET_ROUTES)
                       + list(routes_damage_mix.GET_ROUTES)
