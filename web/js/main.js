@@ -1976,6 +1976,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const slice = payload.scopes[scope] || payload.scopes["14d"] || null;
     return slice;
   }
+  // OQ8 (QA37): per-session W-L rollup, computed at render from the
+  // session's own matches (server + ui_mock rows both carry `win`).
+  // Strict booleans only - win === null (pre-ingest, undecided) is
+  // neither a W nor an L (builders.py no-guessed-outcome rule).
+  function _sessionWL(s) {
+    const ms = (s && s.matches) || [];
+    const wins = ms.filter((m) => m && m.win === true).length;
+    const losses = ms.filter((m) => m && m.win === false).length;
+    return { wins, losses, label: (wins + losses) ? `${wins}W-${losses}L` : "" };
+  }
   function _historyFetchAndRender() {
     const promise = _historyIsMock()
       ? _historyMockLoad().then((p) => _historyMockSliceForScope(p, _HISTORY.scope))
@@ -1993,7 +2003,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             const li = document.createElement("li");
             li.className = "history-session-row";
             li.dataset.sessionIdx = idx;
+            // OQ8: W-L chip (empty label when the session has no decided
+            // matches - the span is simply omitted, no 0W-0L noise).
+            const wl = _sessionWL(s);
             li.innerHTML = `<span style="flex:1">${escapeHtml(s.date)}</span>` +
+              (wl.label
+                ? `<span class="hs-wl"><b class="hs-w">${wl.wins}W</b>-<b class="hs-l">${wl.losses}L</b></span>`
+                : "") +
               `<span class="dim">${escapeHtml(s.games)}g</span>` +
               `<span class="dim" style="margin-left:8px">${escapeHtml(s.duration_label || "")}</span>`;
             li.addEventListener("click", () => {
@@ -2002,7 +2018,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
               li.classList.add("active");
               _historyRenderMatches(s);
               const head = document.getElementById("history-detail-head");
-              if (head) head.textContent = `MATCHES · ${s.date} · ${s.games}g`;
+              const wlLabel = _sessionWL(s).label;
+              if (head) head.textContent = `MATCHES · ${s.date} · ${s.games}g${wlLabel ? " · " + wlLabel : ""}`;
             });
             ul.appendChild(li);
           });
@@ -2048,7 +2065,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             if (sessionRow) sessionRow.classList.add("active");
             _historyRenderMatches(session);
             const head = document.getElementById("history-detail-head");
-            if (head) head.textContent = `MATCHES · ${session.date} · ${session.games}g · ${focusChamp}`;
+            const wlLabel = _sessionWL(session).label;
+            if (head) head.textContent = `MATCHES · ${session.date} · ${session.games}g${wlLabel ? " · " + wlLabel : ""} · ${focusChamp}`;
             requestAnimationFrame(() => {
               const matchUl = document.getElementById("history-match-list");
               if (!matchUl) return;
@@ -2087,7 +2105,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             if (sessionRow) sessionRow.classList.add("active");
             _historyRenderMatches(session);
             const head = document.getElementById("history-detail-head");
-            if (head) head.textContent = `MATCHES · ${session.date} · ${session.games}g`;
+            const wlLabel = _sessionWL(session).label;
+            if (head) head.textContent = `MATCHES · ${session.date} · ${session.games}g${wlLabel ? " · " + wlLabel : ""}`;
             requestAnimationFrame(() => {
               const matchUl = document.getElementById("history-match-list");
               if (!matchUl) return;
@@ -2261,7 +2280,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const sessions = _HISTORY._sessions || [];
       if (sIdx != null && sessions[sIdx]) {
         _historyRenderMatches(sessions[sIdx]);
-        if (head) head.textContent = `MATCHES · ${sessions[sIdx].date} · ${sessions[sIdx].games}g`;
+        const wlLabel = _sessionWL(sessions[sIdx]).label;
+        if (head) head.textContent = `MATCHES · ${sessions[sIdx].date} · ${sessions[sIdx].games}g${wlLabel ? " · " + wlLabel : ""}`;
       } else {
         // R30 page-5: advertise that the filters above query GLOBALLY across
         // every match in the scope, not only within a clicked session.
