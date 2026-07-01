@@ -67,6 +67,54 @@ def _compute_last20(rconn) -> dict:
     }
 
 
+def _compute_season_wr(rconn, *, window_days: int = 90,
+                       ranked_queues: tuple[int, ...] = (420, 440),
+                       now_ms: int | None = None) -> dict:
+    """Ranked (Solo/Duo + Flex) win-rate over the current season window.
+
+    "Season" reuses the repo-canonical best-effort definition - the last
+    ``window_days`` days (see ``_build_history`` scope "season", 90d). Only
+    the ranked queues count (420 Solo/Duo, 440 Flex); ARAM/Arena/event
+    modes have no meaningful season WR, so they are excluded. Takes an
+    already-open read-only rewind_history.db connection and returns
+    ``{wins, losses, win_rate, n}`` (``win_rate`` rounded 1dp, ``None`` when
+    no ranked games fall in the window so the home hero hides the readout),
+    or ``{}`` on a missing conn / any sqlite error. ``game_creation_ts`` is
+    epoch MILLISECONDS in rewind, so the cutoff is scaled x1000. ``now_ms``
+    is injectable for deterministic tests.
+    """
+    if rconn is None:
+        return {}
+    if now_ms is None:
+        from datetime import datetime
+        now_ms = int(datetime.now().timestamp() * 1000)
+    cutoff = now_ms - window_days * 86_400_000
+    qmarks = ",".join("?" for _ in ranked_queues)
+    try:
+        row = rconn.execute(
+            "SELECT "
+            "  SUM(CASE WHEN tracked_win = 1 THEN 1 ELSE 0 END), "
+            "  SUM(CASE WHEN tracked_win = 0 THEN 1 ELSE 0 END) "
+            "FROM matches "
+            "WHERE tracked_win IS NOT NULL "
+            f"  AND queue_id IN ({qmarks}) "
+            "  AND game_creation_ts >= ?",
+            (*ranked_queues, cutoff),
+        ).fetchone()
+    except sqlite3.Error as exc:
+        _log.debug("season wr compute: %s", exc)
+        return {}
+    wins = int(row[0] or 0)
+    losses = int(row[1] or 0)
+    n = wins + losses
+    return {
+        "wins":     wins,
+        "losses":   losses,
+        "win_rate": round(wins * 100.0 / n, 1) if n else None,
+        "n":        n,
+    }
+
+
 def _load_match_rows(limit: int | None = None) -> list[dict]:
     db = _APP_DIR / "data" / "match_history.db"
     conn = _ro_conn(db)

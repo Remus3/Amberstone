@@ -3454,6 +3454,28 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       + `<span class="home-wl-form tabular-nums">${form}</span>`;
     box.hidden = false;
   }
+  // QA15b: paint the ranked "season WR" line beside the L20 pip strip.
+  // `sw` is the home payload's season_wr dict ({wins, losses, win_rate,
+  // n}) - ranked (420/440) over the 90d season window. Hidden when
+  // win_rate is null (no ranked game in the window) so a mostly-ARAM
+  // session never shows a misleading stale 0%. Distinct from the L20 form
+  // (all modes) rendered above.
+  function _homeRenderSeasonWr(sw) {
+    const box = document.getElementById("home-hero-season-wr");
+    if (!box) return;
+    if (!sw || sw.win_rate == null) {
+      box.hidden = true;
+      box.innerHTML = "";
+      return;
+    }
+    const wins = (sw.wins != null) ? sw.wins : 0;
+    const losses = (sw.losses != null) ? sw.losses : 0;
+    box.innerHTML =
+      `<span class="home-season-wr-lbl">Ranked season</span>`
+      + `<span class="home-season-wr-val tabular-nums">`
+      + `${sw.win_rate}% (${wins}-${losses})</span>`;
+    box.hidden = false;
+  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
@@ -3477,6 +3499,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _HOME.last20 = data.last20 || {};
         _homeRenderRank(data.rank || null);
         _homeRenderWlStrip(data.last20 || null);
+        _homeRenderSeasonWr(data.season_wr || null);
         _homeRenderToday(data.today || {}, data.streaks || {});
         _homeRenderRecent(data.recent || []);
         _homeRenderWeek(data.this_week || []);

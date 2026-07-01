@@ -209,6 +209,68 @@ def test_home_wl_strip(mock_server, pw_browser):
     assert not errors, f"JS errors [home wl-strip]: {errors[:3]}"
 
 
+def test_home_season_wr(mock_server, pw_browser):
+    """QA15b: the ranked "season WR" readout renders below the pip strip.
+
+    Asserts the readout is visible, the label reads "Ranked season", and
+    the value carries the fixture win_rate + record - and that it is the
+    SEASON figure, not the all-modes L20 number (distinct fixtures: season
+    47.1 / 24-27 vs L20 65.0 / 13-7)."""
+    import json
+
+    fixture = json.loads(
+        (ROOT / "web" / "data" / "ui_mock" / "home.json").read_text()
+    )
+    sw = fixture["season_wr"]
+
+    ctx, page, errors = _open_home(pw_browser, mock_server)
+    try:
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#home-hero-season-wr .home-season-wr-val').length > 0",
+            timeout=10_000,
+        )
+        box = page.locator("#home-hero-season-wr")
+        assert box.is_visible(), "#home-hero-season-wr not visible"
+
+        lbl = (
+            page.locator("#home-hero-season-wr .home-season-wr-lbl")
+            .text_content() or ""
+        )
+        assert "Ranked season" in lbl, (
+            f"season label {lbl!r} missing 'Ranked season'"
+        )
+
+        val = (
+            page.locator("#home-hero-season-wr .home-season-wr-val")
+            .text_content() or ""
+        )
+        wr = sw["win_rate"]
+        wr_strs = {str(wr)}
+        if float(wr).is_integer():
+            wr_strs.add(str(int(wr)))
+        assert any(s in val for s in wr_strs), (
+            f"season value {val!r} missing win_rate {wr}"
+        )
+        assert f"{sw['wins']}-{sw['losses']}" in val, (
+            f"season value {val!r} missing record"
+        )
+        # Guard against reading the L20 number by mistake: the all-modes
+        # L20 win_rate (65) must NOT appear in the season readout.
+        assert str(fixture["last20"]["win_rate"]).split(".")[0] not in val, (
+            f"season value {val!r} leaked the L20 win_rate"
+        )
+
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.locator("#home-hero-season-wr").screenshot(
+            path=str(SCREENSHOTS / "home_season-wr.png")
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [home season-wr]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in the new
     test + the home fixture it drives. (home.css carries pre-existing

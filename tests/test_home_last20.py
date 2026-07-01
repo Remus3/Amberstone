@@ -46,6 +46,29 @@ def _make_rewind_db(path: Path, wins: list[int]) -> None:
     conn.close()
 
 
+def _make_rewind_db_q(path: Path, rows: list[tuple[int, int, int]]) -> None:
+    """Rewind DB carrying queue_id + an explicit game_creation_ts (epoch
+    MILLISECONDS) so the season-WR window + ranked-queue filter can be
+    exercised deterministically. ``rows`` is a list of
+    ``(tracked_win, queue_id, game_creation_ts_ms)``."""
+    conn = sqlite3.connect(str(path))
+    conn.execute(
+        "CREATE TABLE matches ("
+        "  match_id TEXT, game_creation_ts INTEGER,"
+        "  tracked_champion_name TEXT, tracked_win INTEGER,"
+        "  queue_id INTEGER)"
+    )
+    for i, (w, q, ts) in enumerate(rows):
+        conn.execute(
+            "INSERT INTO matches (match_id, game_creation_ts,"
+            " tracked_champion_name, tracked_win, queue_id)"
+            " VALUES (?,?,?,?,?)",
+            (f"NA1_{2000 + i}", ts, "Lux", w, q),
+        )
+    conn.commit()
+    conn.close()
+
+
 def _evict(db_path: Path) -> None:
     from dashboard import _context
     cached = getattr(_context.DB_CONN_LOCAL, "conns", {}).pop(
@@ -122,7 +145,8 @@ class HomeSummaryLast20Tests(unittest.TestCase):
     """_build_home_summary embeds last20 from the rewind DB, and degrades
     to {} when the DB is absent (the CI-safe clean-checkout path)."""
 
-    def _run(self, mh_present: bool, rewind_wins=None) -> dict:
+    def _run(self, mh_present: bool, rewind_wins=None,
+             rewind_q_rows=None) -> dict:
         import dashboard.builders_home as H
         with TemporaryDirectory() as td:
             app_dir = Path(td)
@@ -145,7 +169,9 @@ class HomeSummaryLast20Tests(unittest.TestCase):
                 )
                 conn.commit()
                 conn.close()
-            if rewind_wins is not None:
+            if rewind_q_rows is not None:
+                _make_rewind_db_q(rw, rewind_q_rows)
+            elif rewind_wins is not None:
                 _make_rewind_db(rw, rewind_wins)
             try:
                 # Pin rank to Unranked so the builder never touches a live
@@ -171,6 +197,97 @@ class HomeSummaryLast20Tests(unittest.TestCase):
         # clean-checkout / CI shape: last20 is {} and nothing crashes.
         out = self._run(True, rewind_wins=None)
         self.assertEqual(out.get("last20"), {})
+
+
+class ComputeSeasonWrTests(unittest.TestCase):
+    """_compute_season_wr counts only ranked (420 Solo/Duo, 440 Flex)
+    games inside the season window (repo-canonical best-effort = last 90d),
+    off a throwaway rewind DB with a deterministic injected ``now_ms``.
+    game_creation_ts is epoch MILLISECONDS."""
+
+    NOW_MS = 1_782_000_000_000  # fixed "now" for window math (mid-2026)
+    DAY = 86_400_000
+
+    def _season(self, rows, **kw):
+        import dashboard.builders as B
+        with TemporaryDirectory() as td:
+            rw = Path(td) / "rewind_history.db"
+            _make_rewind_db_q(rw, rows)
+            from dashboard._context import ro_conn
+            conn = ro_conn(rw)
+            try:
+                return B._compute_season_wr(conn, now_ms=self.NOW_MS, **kw)
+            finally:
+                _evict(rw)
+
+    def test_counts_ranked_within_window(self):
+        recent = self.NOW_MS - 10 * self.DAY
+        out = self._season([
+            (1, 420, recent), (1, 420, recent), (1, 440, recent),
+            (0, 420, recent),
+        ])
+        self.assertEqual(out["wins"], 3)
+        self.assertEqual(out["losses"], 1)
+        self.assertEqual(out["n"], 4)
+        self.assertEqual(out["win_rate"], 75.0)
+
+    def test_excludes_non_ranked_queue(self):
+        # An ARAM (450) win inside the window is NOT counted as season WR.
+        recent = self.NOW_MS - 5 * self.DAY
+        out = self._season([
+            (1, 420, recent), (1, 450, recent), (1, 450, recent),
+        ])
+        self.assertEqual(out["wins"], 1)
+        self.assertEqual(out["n"], 1)
+
+    def test_excludes_outside_window(self):
+        # A ranked win 120 days ago is outside the 90d season window.
+        old = self.NOW_MS - 120 * self.DAY
+        recent = self.NOW_MS - 3 * self.DAY
+        out = self._season([(1, 420, old), (0, 420, recent)])
+        self.assertEqual(out["wins"], 0)
+        self.assertEqual(out["losses"], 1)
+        self.assertEqual(out["n"], 1)
+        self.assertEqual(out["win_rate"], 0.0)
+
+    def test_no_ranked_games_win_rate_none(self):
+        # DB present but only ARAM -> n=0, win_rate None (frontend hides).
+        recent = self.NOW_MS - 2 * self.DAY
+        out = self._season([(1, 450, recent), (0, 450, recent)])
+        self.assertEqual(out["n"], 0)
+        self.assertIsNone(out["win_rate"])
+
+    def test_custom_window_and_queues(self):
+        # 14d window, custom ranked set -> respects both knobs.
+        in_win = self.NOW_MS - 7 * self.DAY
+        out_win = self.NOW_MS - 20 * self.DAY
+        out = self._season(
+            [(1, 700, in_win), (0, 700, in_win), (1, 700, out_win)],
+            window_days=14, ranked_queues=(700,))
+        self.assertEqual(out["n"], 2)
+        self.assertEqual(out["win_rate"], 50.0)
+
+    def test_none_conn_returns_empty(self):
+        import dashboard.builders as B
+        self.assertEqual(B._compute_season_wr(None), {})
+
+
+class HomeSummarySeasonWrTests(unittest.TestCase):
+    """_build_home_summary embeds season_wr as a dict when rewind is
+    present and degrades to {} on the clean-checkout / CI path."""
+
+    def test_season_wr_present_dict_when_rewind_present(self):
+        t = HomeSummaryLast20Tests()
+        out = t._run(True, rewind_q_rows=[(1, 420, 1_782_000_000_000)])
+        sw = out.get("season_wr")
+        self.assertIsInstance(sw, dict)
+        self.assertTrue(
+            {"wins", "losses", "win_rate", "n"} <= set(sw.keys()))
+
+    def test_season_wr_empty_when_rewind_absent(self):
+        t = HomeSummaryLast20Tests()
+        out = t._run(True, rewind_wins=None)
+        self.assertEqual(out.get("season_wr"), {})
 
 
 if __name__ == "__main__":

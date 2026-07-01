@@ -267,9 +267,16 @@ def _build_home_summary() -> dict:
     # two surfaces share one computation. Fail-soft: a missing DB / sqlite
     # error yields {} and the frontend hides the strip (never crashes the
     # home payload).
-    from dashboard.builders import _compute_last20
+    # QA15b: a "true season WR" - ranked (420/440) win-rate over the
+    # repo-canonical 90d season window - beside the L20 form. Same conn,
+    # same fail-soft {} contract (missing DB / no ranked games -> the hero
+    # hides the readout). "season WR" means the ranked ladder; ARAM/Arena/
+    # event modes have no meaningful season figure so they are excluded.
+    from dashboard.builders import _compute_last20, _compute_season_wr
     rdb = _APP_DIR / "data" / "rewind_history.db"
-    out["last20"]       = _compute_last20(_ro_conn(rdb))
+    rconn = _ro_conn(rdb)
+    out["last20"]       = _compute_last20(rconn)
+    out["season_wr"]    = _compute_season_wr(rconn)
     return out
 
 
