@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.164.0 (R53 - caster_hp gate seam for Last Stand 8299. Last Stand's amp scales with
+the CASTER's health (DDragon 16.13.1 runesReforged.json longDesc verbatim: "Deal 5% -
+11% increased damage to champions while you are below 60% health. Max damage gained at
+30% health."). Item 232 already modeled that ramp in keystone_amp via _last_stand_amp
+(1.0 at/above 0.60 caster HP -> 1.11 at/below 0.30) - unchanged and already correct for
+16.13.1. The burst scorer, though, always fed Last Stand caster_hp_pct (live default
+1.0 -> full HP -> NO amp), so Last Stand contributed NOTHING to the default burst
+total. R53 adds a DEFAULT-OFF caster_hp gate seam: keystone_amp(..., gate_caster_hp=
+False) (byte-identical parity plumbing - the 8299 ramp is single-sourced on
+caster_hp_pct) + compute_burst_damage(..., gate_caster_hp_amp=False,
+caster_current_hp_pct=1.0). When flipped ON, Last Stand's amp reads caster_current_hp_pct
+instead of the shared caster_hp_pct, so Absolute Focus 8233 (gates on HIGH caster HP)
+and Last Stand (gates on LOW caster HP) no longer conflict over one HP value. At the
+DEFAULT gate_caster_hp_amp=False Last Stand reads caster_hp_pct exactly as pre-R53 ->
+BYTE-IDENTICAL (all live/internal burst callers pass caster_hp_pct=1.0; no consumer
+passes the flag). TDD RED-first test_rune_caster_hp_gate_r53.py (10). ENGINE 1.163.0 ->
+1.164.0. Live default-ON flip EXCLUDED (do-not-flip-blind ->
+docs/LIVE_GAME_GATED_SYNC.md).)
+
 1.163.0 (R51 - target_hp gate seam for Cut Down 8017 / Coup de Grace 8014. The two
 Precision slot-4 stacking_amp runes previously applied their flat 8% amp
 UNCONDITIONALLY in keystone_amp (the burst-window approximation: a burst spans the
