@@ -312,6 +312,26 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-07-01 (R53, LOOP) caster_hp gate seam for Last Stand 8299 - ENGINE 1.163.0 -> 1.164.0, DEFAULT-OFF,
+  live default-ON flip EXCLUDED. `keystone_amp(..., gate_caster_hp=False)` +
+  `compute_burst_damage(..., gate_caster_hp_amp=False, caster_current_hp_pct=1.0)`. Last Stand's amp scales
+  with the CASTER's health (DDragon 16.13.1 longDesc verbatim: "Deal 5% - 11% increased damage to champions
+  while you are below 60% health. Max damage gained at 30% health."; the item-232 `_last_stand_amp` ramp -
+  1.0 at/above 0.60 caster HP -> 1.11 at/below 0.30 - is unchanged and already correct for 16.13.1). The
+  burst scorer feeds Last Stand `caster_hp_pct` (live default 1.0 -> full HP -> NO amp), so Last Stand
+  contributes NOTHING to the default burst total. R53 adds the seam: `gate_caster_hp_amp=True` routes Last
+  Stand's amp to read `caster_current_hp_pct` instead, so a per-instant scenario eval credits the honest
+  low-HP amp while Absolute Focus 8233 (gates on HIGH caster HP) keeps reading `caster_hp_pct` (the two
+  caster-hp gates do not conflict). At the DEFAULT `gate_caster_hp_amp=False` Last Stand reads `caster_hp_pct`
+  exactly as pre-R53 -> BYTE-IDENTICAL (no live consumer passes the flag; /rank / ds-preview / burst
+  unchanged). `keystone_amp`'s `gate_caster_hp` is byte-identical parity plumbing (the 8299 ramp is
+  single-sourced on `caster_hp_pct`). OWED (operator/Gemini-gated, NOT headless - charter 4b
+  do-not-flip-blind): wire a per-instant scenario / fight_report consumer to pass `gate_caster_hp_amp=True`
+  with the caster's real current-HP fraction (or a per-timestep HP band), then confirm the gated burst reads
+  sane vs a real game. Gating a whole burst on a single caster-HP snapshot is a scenario/stepped-eval use,
+  NOT a blind flip of the burst scorer. No DS math change on flip (seam already live); DS `:8893` needs no
+  restart for the flip itself. Does NOT block any further stage.
+
 - 2026-07-01 (R51, LOOP) target_hp gate seam for Cut Down 8017 / Coup de Grace 8014 - ENGINE 1.162.0 ->
   1.163.0, DEFAULT-OFF, live default-ON flip EXCLUDED. `keystone_amp(..., gate_target_hp=False)` +
   `compute_burst_damage(..., gate_target_hp_amp=False)`. Pre-R51 the burst-MAX scorer applied both Precision

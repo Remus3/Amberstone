@@ -487,6 +487,8 @@ def compute_burst_damage(
     assume_ally_detonation: bool = False,
     assume_passive_reflect: bool = False,
     gate_target_hp_amp: bool = False,
+    gate_caster_hp_amp: bool = False,
+    caster_current_hp_pct: float = 1.0,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -542,6 +544,18 @@ def compute_burst_damage(
     gates each amp on ``target_current_hp_pct`` per the live DDragon 16.13.1
     longDesc. The live default-ON flip is operator-gated
     (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+
+    ``gate_caster_hp_amp`` + ``caster_current_hp_pct`` (R53, 1.164.0): the
+    caster_hp gate seam for Last Stand (8299). Last Stand's amp scales with the
+    CASTER's health (DDragon 16.13.1: +5% below 60% HP -> +11% max at 30%). The
+    burst scorer feeds Last Stand ``caster_hp_pct`` (live default 1.0 -> full HP
+    -> no amp), so Last Stand contributes NOTHING to the default burst total.
+    Default ``gate_caster_hp_amp=False`` -> Last Stand keeps reading
+    ``caster_hp_pct`` (byte-identical). When True the Last Stand amp instead reads
+    ``caster_current_hp_pct`` so a scenario eval credits the honest low-HP amp;
+    Absolute Focus (8233, gates on HIGH caster HP) still reads ``caster_hp_pct``,
+    so the two caster-hp gates do not conflict. The live default-ON flip is
+    operator-gated (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
     """
     if block_strategy not in {"first", "sum", "max"}:
         raise ValueError(
@@ -942,12 +956,18 @@ def compute_burst_damage(
                 target_hp_pct=target_current_hp_pct,
             )
         amped_base = total_burst
+        # R53 caster_hp gate seam: Last Stand (8299) reads caster_current_hp_pct
+        # when gate_caster_hp_amp is ON, else caster_hp_pct (default 1.0 -> no amp,
+        # byte-identical). Only 8299 consumes caster_hp_pct in keystone_amp, so
+        # feeding the Last-Stand value here leaves the other amp runes unchanged.
+        _ls_caster_hp = caster_current_hp_pct if gate_caster_hp_amp else caster_hp_pct
         for _rid in _scored_runes:
             amped_base = keystone_amp(
                 _rid, amped_base,
-                caster_hp_pct=caster_hp_pct, game_time_s=game_time_s,
+                caster_hp_pct=_ls_caster_hp, game_time_s=game_time_s,
                 role=_caster_role, target_hp_pct=target_current_hp_pct,
                 gate_target_hp=gate_target_hp_amp,
+                gate_caster_hp=gate_caster_hp_amp,
             )
         total_burst = amped_base + rune_proc_damage
 
