@@ -118,9 +118,13 @@ class PoolEnabledTests(unittest.TestCase):
             os.environ["RC_LCU_POOL"] = val
         self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
 
-    def test_default_off(self):
+    def test_default_on(self):
+        # E7 flip 2026-06-30: pooling is DEFAULT-ON (validated live - one
+        # persistent LCU socket held ~3 min, zero SSL EOF). An UNSET env now
+        # opts IN; explicit RC_LCU_POOL=0 is the only way to force the legacy
+        # per-call path (see test_falsy_values_off).
         self._set(None)
-        self.assertFalse(lcu_pool.pool_enabled())
+        self.assertTrue(lcu_pool.pool_enabled())
 
     def test_truthy_values_on(self):
         for v in ("1", "true", "TRUE", "yes", "on"):
@@ -166,8 +170,9 @@ class SharedPoolTests(unittest.TestCase):
 
 
 class PollerPilotTests(unittest.TestCase):
-    """game_reader.poller._lcu_get pilot: default-OFF uses urlopen byte-for-byte;
-    RC_LCU_POOL=1 routes through the shared pool."""
+    """game_reader.poller._lcu_get pilot: explicit RC_LCU_POOL=0 uses urlopen
+    byte-for-byte; default / RC_LCU_POOL=1 routes through the shared pool
+    (E7 flipped the default ON 2026-06-30)."""
 
     def _stub(self):
         from game_reader.poller import _PollerMixin
@@ -178,7 +183,7 @@ class PollerPilotTests(unittest.TestCase):
         return obj
 
     def test_pool_off_uses_urlopen(self):
-        os.environ.pop("RC_LCU_POOL", None)
+        os.environ["RC_LCU_POOL"] = "0"  # explicit off; default is now ON (E7)
         self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
         import game_reader.poller as pmod
 
@@ -228,8 +233,9 @@ class PollerPilotTests(unittest.TestCase):
 
 class LcuClientPoolPilotTests(unittest.TestCase):
     """lcu.lcu_client.LcuClient._request pilot (E7, operator frozen-grant
-    2026-06-30): default-OFF uses urlopen byte-for-byte; RC_LCU_POOL=1
-    routes the every-tick auto-accept path through the shared pool. Because
+    2026-06-30): explicit RC_LCU_POOL=0 uses urlopen byte-for-byte; default /
+    RC_LCU_POOL=1 routes the every-tick auto-accept path through the shared
+    pool (E7 flipped the default ON 2026-06-30). Because
     _request returns {} for an empty body and None on error (and callers
     like _maybe_apply_runes treat any dict as a valid session), the pooled
     path preserves that contract: a non-2xx pooled response returns None
@@ -245,7 +251,7 @@ class LcuClientPoolPilotTests(unittest.TestCase):
         return obj
 
     def test_pool_off_uses_urlopen(self):
-        os.environ.pop("RC_LCU_POOL", None)
+        os.environ["RC_LCU_POOL"] = "0"  # explicit off; default is now ON (E7)
         self.addCleanup(lambda: os.environ.pop("RC_LCU_POOL", None))
         import lcu.lcu_client as cmod
 
