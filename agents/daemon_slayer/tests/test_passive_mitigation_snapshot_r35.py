@@ -147,7 +147,7 @@ class SnapshotMitigationConsumerTests(unittest.TestCase):
         self.assertEqual(base.physical_ehp, explicit_off.physical_ehp)
 
     def test_engine_version_bumped(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.165.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.166.0")
 
 
 if __name__ == "__main__":
