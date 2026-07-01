@@ -1331,6 +1331,28 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.162.0 (R50 - K'Sante P "All Out Bonus" bilinear caster-resist seam. The item-255
+K'Sante entry seeds the base Dauntless Instinct mark consume (12 + 1% : 2% by level
+of target max HP); its All Out Bonus - active only while K'Sante is in the
+R-empowered All Out state - was the documented OMIT in _passive_damage_overrides
+(the item-513 reject note: a bilinear caster_bonus_resist * target_max_hp PRODUCT
+gated on All Out). R50 seeds it in a SEPARATE registry _ALL_OUT_BONUS_OVERRIDES
+(NOT merged into _PASSIVE_DAMAGE_OVERRIDES, so the base entry stays byte-identical
+and its prior-entry invariants are untouched). Verbatim 16.13.1
+effects_descriptions: "1% (+ 1% per 100 bonus armor) (+ 1% per 100 bonus magic
+resistance) of the target's maximum health" -> target_max_hp_pct 1.0 + two bilinear
+terms (_per_100(1.0, caster_bonus_armor, target_max_hp) + the caster_bonus_mr
+sibling), each 0 at the default no-build ctx, gated by conditional_probability 0.5
+(documented amortized All-Out-uptime firing midpoint, operator-tunable - the
+Brand / Sejuani convention). A NEW default-OFF load flag apply_all_out_bonus on
+AbilitiesSnapshot.load appends a SECOND synthetic damage block onto K'Sante's P
+form via _apply_all_out_bonus_overrides; independent of apply_passive_damage (both
+flags ON coexist: base mark consume + All Out bonus). DEFAULT-OFF byte-identical
+(flag False -> the new registry is never read; no live consumer passes it, so no
+ranking changes). Live default-ON flip EXCLUDED (a WRONG precompute is worse than
+none until validated in a real All Out fight) -> docs/LIVE_GAME_GATED_SYNC.md. TDD
+RED-first test_passive_damage_all_out_bonus_r50.py (14). ENGINE 1.161.0 -> 1.162.0.)
+
 1.161.0 (R49 - on-being-hit reflect damage seam + full-MR scaling target. Rammus W
 Defensive Ball Curl reflects magic damage to basic attackers - a REACTIVE
 (incoming-triggered) TOTAL-resist form that was a documented NOT-seeded case in
