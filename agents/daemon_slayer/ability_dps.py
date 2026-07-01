@@ -97,6 +97,7 @@ scorer ships, the data is already on the result.
 from __future__ import annotations
 
 import json
+import re
 import threading
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -541,6 +542,72 @@ def _effective_ability_cd(base_cd: float, total_haste: float) -> float:
     return effective_cooldown(base_cd, total_haste)
 
 
+# OQ11 (QA69, ENGINE 1.166.0): only a single plain positive number qualifies
+# as a static-CD constant - the wiki sidecar mixes toggles ("True") and
+# formula strings ({{pp|...}}/{{fd|...}}/{{tt|...}}) into the same bucket.
+_STATIC_CD_PLAIN_NUMBER = re.compile(r"^\d+(?:\.\d+)?$")
+
+
+def _wiki_static_cd_value(raw: str | None) -> float | None:
+    """Parse a wiki sidecar ``static`` value into a haste-immune constant.
+
+    OQ11 (QA69, ENGINE 1.166.0) - HONEST COVERAGE ONLY: the sidecar's
+    ``static`` bucket is a raw string MIX (see ``DataSnapshot.
+    ability_static_cd``). Only a single plain positive number ("5", "240",
+    "0.8"-style decimals) parses; the "True" toggle marker, wiki formula
+    strings, and anything else return None (not static for this consumer).
+    """
+    if raw is None:
+        return None
+    s = raw.strip()
+    if not _STATIC_CD_PLAIN_NUMBER.match(s):
+        return None
+    v = float(s)
+    return v if v > 0 else None
+
+
+def _is_static_cd(
+    snapshot: DataSnapshot,
+    champ_id: str,
+    ability_name: str,
+    base_cooldown: float,
+) -> bool:
+    """True when the priced spell's cooldown is haste-immune (OQ11 / QA69).
+
+    The slot->ability-name bridge: the per-spell loop passes the priced
+    FORM's ``name`` (Meraki names match the wiki Template:Data page titles)
+    so the item-233 name-keyed ``ability_static_cd`` accessor becomes a
+    behavioral consumer. An ability is treated as haste-immune ONLY when
+    ALL THREE hold (honest coverage - each clause is a live trap):
+
+    * ``static`` parses as a single plain positive number
+      (``_wiki_static_cd_value``);
+    * the ability carries NO wiki ``recharge_ranks`` - a charge ability's
+      plain-number static is only the between-cast lockout while its real
+      cadence is the haste-affected recharge timer (Amumu Q "Bandage
+      Toss": static "3" + recharge 16..12 - the canonical trap);
+    * the parsed value agrees with the engine's own base cooldown at the
+      priced rank - when the wiki static describes a different mechanic
+      than the spell cooldown the sources disagree and the spell stays on
+      the haste path (Heimerdinger R "UPGRADE!!!": static "3" vs cd
+      100..70).
+
+    When gated, the caller keeps the engine's OWN ``base_cooldown`` and
+    skips the haste division (the conservative choice; the agreement
+    clause makes it coincide with the wiki-asserted constant anyway).
+    Gated live at ship: Samira R "Inferno Trigger" (5s), Swain R form-1
+    "Demonflare" (8s, form-override only).
+    """
+    static_val = _wiki_static_cd_value(
+        snapshot.ability_static_cd(champ_id, ability_name)
+    )
+    if static_val is None:
+        return False
+    if snapshot.ability_recharge(champ_id, ability_name) is not None:
+        return False
+    return abs(static_val - base_cooldown) < 1e-6
+
+
 def _total_ability_haste(
     scaled_stats: dict[str, float],
     mode: str,
@@ -643,6 +710,13 @@ class AbilitySpellDps:
     ``effective_cc_duration(base, aram_tenacity_mult)`` - identity in
     SR + non-ARAM modes; lengthened in ARAM for the 15 champs with
     aramTenacity > 1.0.
+
+    ENGINE 1.166.0 (2026-07-01, OQ11/QA69): added the ``static_cd``
+    marker (END-appended, defaulted). True when the spell's cooldown is
+    haste-immune per ``_is_static_cd`` - ``cooldown`` then equals
+    ``base_cooldown`` regardless of ``total_ability_haste``, and the
+    haste field keeps the honest build-wide SUM (the gate sits on the
+    application, not the sum).
     """
     key: str
     form_name: str
@@ -664,6 +738,7 @@ class AbilitySpellDps:
     cc_duration_s: tuple[float, ...] = ()                # per-rank base CC duration (ENGINE 1.29.0)
     cc_duration_post_tenacity: tuple[float, ...] = ()    # cc_duration_s x aram_tenacity_mult (ENGINE 1.29.0)
     notes: tuple[str, ...] = field(default_factory=tuple)
+    static_cd: bool = False             # haste-immune cooldown gate (ENGINE 1.166.0, OQ11)
 
     def to_dict(self) -> dict:
         return {
@@ -687,6 +762,7 @@ class AbilitySpellDps:
             "cc_duration_s": list(self.cc_duration_s),
             "cc_duration_post_tenacity": list(self.cc_duration_post_tenacity),
             "notes": list(self.notes),
+            "static_cd": self.static_cd,
         }
 
 
@@ -1071,7 +1147,18 @@ def compute_ability_dps(
         # the theoretical fallback rate + the surfaced .cooldown field
         # reflect the operator's true rotation cadence. Identity for
         # total_ah == 0 (SR mode + most ARAM champions).
-        cooldown = _effective_ability_cd(base_cooldown, total_ah)
+        # OQ11 (ENGINE 1.166.0) - static-CD gate on the APPLICATION only:
+        # total_ah stays summed (incl. the ARAM delta) so the reported
+        # total_ability_haste field remains honest; a haste-immune spell
+        # keeps its own base cooldown (see _is_static_cd for the three
+        # honest-coverage clauses + the Amumu Q / Heimerdinger R traps).
+        static_cd = _is_static_cd(
+            snapshot, resolved.champion_id, form.name, base_cooldown,
+        )
+        cooldown = (
+            base_cooldown if static_cd
+            else _effective_ability_cd(base_cooldown, total_ah)
+        )
         cost = _form_cost_at_rank(form, rank)
         # C1 (item 246, gap-plan Phase C1): staged-amp block-route. Under
         # apply_ability_amps, route a staged candidate (Hwei Q f2 "Maximum
@@ -1174,6 +1261,7 @@ def compute_ability_dps(
             total_ability_haste=total_ah,
             cc_duration_s=cc_base,
             cc_duration_post_tenacity=cc_post_ten,
+            static_cd=static_cd,
         ))
 
     total_dps = sum(s.dps for s in per_spell)
