@@ -94,6 +94,26 @@ class LoadChampIdToInfoTests(unittest.TestCase):
             self.assertIsInstance(pair[1], int)
 
 
+class ZeroedInfoOverrideTests(unittest.TestCase):
+    """DDragon zeroes info.attack/magic for some champs, so the damage-mix would
+    drop them (Seraphine 0/0 -> invisible) or mis-lean them (Qiyana 0/4 -> AP
+    despite being an AD assassin). The curated override
+    (core.champion_info_overrides) restores their real contribution."""
+
+    def setUp(self):
+        rp._CHAMP_ID_TO_INFO = None  # force a reload under the current code
+
+    def test_seraphine_contributes_ap(self):
+        info = rp._load_champ_id_to_info()
+        a, m = info[_IDS["Seraphine"]]
+        self.assertGreater(m, a, "Seraphine must contribute AP, not (0,0)")
+
+    def test_qiyana_leans_ad(self):
+        info = rp._load_champ_id_to_info()
+        a, m = info[_IDS["Qiyana"]]
+        self.assertGreaterEqual(a, m, "Qiyana must contribute AD, not the 0/4 AP lean")
+
+
 # ---------------------------------------------------------------------
 # PURE function: _compute_team_damage_mix
 # ---------------------------------------------------------------------
