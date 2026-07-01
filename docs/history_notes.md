@@ -218,6 +218,20 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-06-30 (R49 headless cycle 15 - DS schema lift: on-being-hit REFLECT damage seam (Rammus W); ENGINE 1.160.0 -> 1.161.0) [OPERATOR-INTERRUPTED -> loop STOPped]
+
+Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift, executing the R3 handoff. Full detail in LEDGER 703 + ORCHESTRATION_PLAN R49.
+
+- **WHAT.** Rammus W Defensive Ball Curl reflects magic to basic attackers - a REACTIVE (incoming-triggered) TOTAL-resist form that was a DOCUMENTED item-513 NOT-seeded reject of the empowered-AA `_passive_damage` seam ("no caster total-MR `_SCALING_TARGETS` field AND wrong cadence"). R49 builds the dedicated reflect seam + the missing full-MR target.
+- **Ground truth (verify-the-premise).** Verbatim vs `data/daemon_slayer/16.13.1/champion_abilities.json` Rammus W: "dealt 15 (+ 10% total armor) (+ 10% total magic resistance) magic damage", `parse_status no_damage`. Directive seed byte-exact.
+- **Module + schema lift (`a1e32939` feat).** New pure `agents/daemon_slayer/_passive_reflect_overrides.py` (`PassiveReflectEntry` + `reflect_entry` + `reflect_per_proc` + `_ASSUMED_REFLECT_BURST_WINDOW_S`=3.0; 1 seed). `AbilityContext` gains FULL-MR `caster_mr` (END-appended, `from_build` = stats["mr"]) + `_registries._SCALING_TARGETS` += `("caster_mr_pct","caster_mr")` - the MR sibling of full-armor `caster_armor`; byte-identical (no DamageBlock populates it; `value_at` returns 0.0 for the missing field).
+- **Consumers.** `compute_dps` + `compute_burst_damage` gain END-appended `assume_passive_reflect=False`. ON: per-proc (flat + caster_armor_pct%*TOTAL armor + caster_mr_pct%*TOTAL MR) MR-mitigated by the duel target's effective MR (same AA curve) x mode_mult x magic_amp x build amp; DPS amortizes by 1/reflect_cadence_s, burst credits window/cadence procs into total_burst (mirrors assume_magic_burst/assume_ally_detonation; AA-probe leaves it OFF -> no double-count). Separate incoming stream, NOT the per-hit AA display. % on RESTING resists, not W-active self-buff (documented lower bound).
+- **DEFAULT-OFF byte-identical** (both flags False -> registry never read -> identical to 1.160.0; unregistered champ 0 even ON).
+- **Tier-2.** TDD RED-first `test_passive_reflect_overrides_r49.py` (RED ModuleNotFound -> GREEN 16). ENGINE 1.160.0 -> 1.161.0 (93 test files, 0 stray) + DS `:8893` taskkill (PID 5084 via PowerShell - Bash mangles `/F /PID`) / relaunch (live 1.161.0) + Share `--check` green (387 files) + DAEMON_SLAYER.md banner 7658 -> 7674 SAME feat commit. DS 7674 pass / RC 10127 pass (9 mid-bump Share/doc/live drift failures cleared post-sync+bounce, re-run 26/26). Built inline as sole orchestrator (tightly-coupled; re-verified fresh this session).
+- **NEXT.** Live default-ON flip EXCLUDED (a DPS/burst/rank consumer + real-game eyeball of Rammus W-tank reflect ranking + the cadence/window assumptions; ideally feed W-active buffed resists) -> `docs/LIVE_GAME_GATED_SYNC.md`. **OPERATOR INTERRUPTED post-landing to start a fresh session -> the headless loop was STOPped (`ops/loop/control/STOP`) instead of feeding a next cycle. Do NOT relaunch the loop without an explicit operator go.**
+
+---
+
 # 2026-06-30 (R46 headless cycle 15 - DS schema lift: STACKING permanent max-HP passives (Sion W / Cho'Gath R / Swain P); ENGINE 1.159.0 -> 1.160.0)
 
 Gemini-directed headless loop cycle 15 (from directive.md; operator-triggered). DS schema lift. Full detail in LEDGER 700 + ORCHESTRATION_PLAN R46.
