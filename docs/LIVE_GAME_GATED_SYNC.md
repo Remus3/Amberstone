@@ -59,10 +59,17 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## A. Champ-select (any mode - enter a lobby + lock a champ)
 
-- [FAIL 2026-06-17] LCU push: rune pages + item sets + summoner spells push to the live client on champ-select enter
+- [FIXED 2026-07-01] LCU push: rune pages + item sets + summoner spells push to the live client on champ-select enter
       (`lcu/lcu_rune_writer.py`; ROADMAP item 215/259/212). Verify the pushed page matches the DS pick.
-      LIVE FINDING (LGS2 ledger): RuneWriter pushes ONLY on the first champ-select per RC session, then
-      goes silent (no re-arm after "champ select ended" L451). Fix post-session, needs RC restart.
+      ROOT CAUSE (supersedes the 2026-06-17 re-arm theory): the champ-select-exit re-arm was ALREADY fixed
+      (6-29 log shows a clean Caitlyn write + re-arm at L595). The recurring silence was `LcuClient` caching a
+      STALE lockfile port across a League restart - a long-lived RC read the lockfile only once at connect()
+      and never re-read the rotated port/password, so get_champ_select() returned None forever and RuneWriter
+      (shares the one _lcu) went silent until an RC restart. PERMANENT FIX (`lcu/lcu_client.py`, frozen-grant):
+      mtime-guarded `_refresh_conn_if_changed()` on the 1 Hz auto-accept tick + reactive reconnect-and-retry
+      in `_request`, mirroring the RC-LCUAgent `ensure_lcu_conn()` pattern - a League restart now heals within
+      ~1s with NO RC restart. Live re-confirm still worth a tick: push fires on the FIRST champ-select AFTER a
+      League restart mid-RC-session. See reference_runewriter_dies_after_game1.
 - [ ] CS2 summoner-spell auto-push: client defaults to wrong spells (Flash+Heal/TP random); confirm RC
       pushes the intended set via `/lol-champ-select/v1/session/my-selection` (ORCH CS2, commit 29cd2788).
 - [ ] Champ-select brief Haiku -> deterministic flip: flip ONLY after shadow-log accrues on real
@@ -294,6 +301,20 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 ---
 
 ## Live-flip ledger (loop appends; newest first)
+
+- 2026-07-01 RuneWriter silent-after-League-restart PERMANENT FIX (`lcu/lcu_client.py`, frozen-grant).
+  Operator live-flagged rune push dead on the last champ-select. Root cause: the long-lived RC (up since
+  6-29) held a STALE lockfile port after League restarted (the lockfile rotates port+password each launch);
+  `LcuClient` read the lockfile only once at connect() and never re-read, so get_champ_select() returned None
+  forever and RuneWriter (shares the one _lcu) went silent - NOT the 2026-06-17 re-arm theory (that path was
+  already fixed; the 6-29 log shows a clean Caitlyn write + re-arm). Immediate remediation: RC restart re-read
+  the lockfile (fresh port 50237). PERMANENT: ported the RC-LCUAgent `ensure_lcu_conn()` resilience into
+  `LcuClient` - mtime-guarded `_refresh_conn_if_changed()` on the 1 Hz auto-accept tick (heals every consumer
+  sharing the instance) + reactive reconnect-and-retry-once in `_request` on a dead-port connection error.
+  TDD: 6 new tests (`tests/test_lcu_client_lockfile_reconnect.py`) - rotate / no-op / gone + dead-port retry +
+  no-infinite-retry + tick-calls-refresh; the 114 prior LCU/RuneWriter/spell/loadout tests stay green. Tier-1
+  (LCU client logic; no ENGINE bump / Share sync / DS restart). Activation needs an RC restart to load the
+  edited frozen module - DEFERRED past the operator's live ARAM (do not bounce RC mid-game).
 
 - 2026-06-23 (item 598, R25) IN-GAME OVERLAY CAPTURE - E.1 cleared (validation + 1 durable test,
   NO live flip). Live SR game (champ Syndra AP mage vs a Braum/Gragas tank+CC comp); the rc-shell
