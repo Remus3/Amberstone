@@ -892,6 +892,7 @@ def keystone_amp(
     bonus_as: float = 0.0,
     target_hp_pct: float = 1.0,
     gate_target_hp: bool = False,
+    gate_caster_hp: bool = False,
 ) -> float:
     """Apply a flat-damage keystone AMPLIFIER to ``base_damage``.
 
@@ -908,6 +909,16 @@ def keystone_amp(
     byte-identical to the item-231 exclusion), ramping to 1.11x as the caller
     supplies a low caster HP. All other ``stacking_amp`` runes use the flat
     ``amp_mult`` and ignore the gating kwargs (byte-identical).
+
+    R53 (ENGINE 1.164.0) caster_hp gate seam: ``gate_caster_hp`` is the burst-path
+    companion to the Last Stand caster-hp gate. The 8299 ramp is single-sourced
+    through ``_last_stand_amp(caster_hp_pct)`` and is BYTE-IDENTICAL whether the
+    flag is True or False - the flag only travels alongside ``caster_hp_pct`` so
+    the caller's intent is explicit; the FUNCTIONAL default-OFF toggle (WHICH
+    caster HP the burst scorer feeds Last Stand) lives in
+    :func:`agents.daemon_slayer.burst.compute_burst_damage`
+    (``gate_caster_hp_amp`` + ``caster_current_hp_pct``). The live default-ON flip
+    is operator-gated (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
 
     Cut Down (8017, condition="target_hp_above") + Coup de Grace (8014,
     condition="target_hp_below") apply their 1.08 flat amp UNCONDITIONALLY here
@@ -945,6 +956,8 @@ def keystone_amp(
     if rune_id == 8299:
         # Last Stand: caster-hp-gated amp (NOT a flat amp_mult). Default
         # caster_hp_pct=1.0 -> _last_stand_amp returns 1.0 -> base unchanged.
+        # R53 gate_caster_hp is byte-identical here (the ramp is single-sourced on
+        # caster_hp_pct); the burst seam picks WHICH caster HP to feed in.
         try:
             return base * _last_stand_amp(caster_hp_pct=caster_hp_pct)
         except (TypeError, ValueError):
