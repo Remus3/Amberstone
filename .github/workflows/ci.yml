@@ -7,11 +7,29 @@ name: ci
 on:
   push:
     branches: [main]
+    # MINUTE SAVER (2026-06-30): docs-only commits (55% of recent history -
+    # the per-session LEDGER/WAKEUP/ORCHESTRATION sync) skip CI entirely.
+    # Any non-.md change in the same commit still triggers the full run. The
+    # ASCII-hygiene guard that scans .md is backstopped locally by the
+    # precommit_gate.py PreToolUse hook (blocks banned glyphs on staged
+    # lines), so nothing authored slips past on a docs-only push.
+    paths-ignore:
+      - '**/*.md'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
   schedule:
-    - cron: '0 8 * * *'  # Nightly run
+    - cron: '0 8 * * *'  # Nightly run (paths-ignore does not apply to schedule)
   workflow_dispatch:       # manual trigger to verify the full suite on demand
+
+# MINUTE SAVER (2026-06-30): cancel a superseded in-progress run when a newer
+# commit lands on the same ref, so rapid pushes do not each bill to completion.
+# event_name is in the group so a push never cancels the nightly schedule run
+# (or vice versa) - only same-event runs supersede each other.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 jobs:
   nightly-full-suite:
@@ -60,6 +78,17 @@ jobs:
           # for ImportError or be marked phase2_smoke / snapshot_regressions
           # which are pure-Python.
           pip install pytest pytest-asyncio pytest-timeout ruff pydantic>=2.0 playwright mypy
+
+      # MINUTE SAVER (2026-06-30): cache the Chromium browser binary so only
+      # the (fast) --with-deps apt step runs on a hit; the ~120MB download is
+      # skipped. `playwright install` stays idempotent - it detects the cached
+      # browser and re-downloads only on a Playwright upgrade (refreshing the
+      # cache post-job).
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-ms-playwright-v1
 
       - name: Install Playwright Chromium
         run: playwright install --with-deps chromium
