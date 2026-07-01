@@ -44,6 +44,7 @@ import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from core import champion_info_overrides as _cio
 from core import smoothed_rates as _sr
 
 log = logging.getLogger("rc.web_dashboard")
@@ -187,6 +188,10 @@ def _load_champ_id_to_info() -> dict[int, tuple[int, int]]:
             info = entry.get("info")
             if not isinstance(info, dict):
                 continue
+            # Curated override for DDragon-zeroed champs (Seraphine 0/0 would be
+            # invisible in the mix, Qiyana 0/4 would mis-lean AP) - see
+            # core.champion_info_overrides.
+            info = _cio.merged_info(entry.get("name"), info)
             try:
                 cid = int(entry["key"])
                 attack = int(info["attack"])

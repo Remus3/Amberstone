@@ -154,6 +154,25 @@ class ChampionDamageProfileTests(unittest.TestCase):
             rd._damage_profile_tag("Zed", ["Assassin"], 8, 2), "BURST")
 
 
+class ChampionTagsRouteClassificationTests(unittest.TestCase):
+    """End-to-end: _serve_champion_tags reads the REAL DDragon mirror. The
+    curated info override (core.champion_info_overrides) must make the
+    DDragon-zeroed champs classify correctly - Qiyana (attack=0/magic=4) is the
+    partial-zero the all-zero fallback alone cannot fix."""
+
+    def _tags(self):
+        h = _Handler()
+        rd._serve_champion_tags(h)
+        self.assertEqual(h.status, 200, "champion-tags served")
+        return json.loads(h.body.decode("utf-8"))
+
+    def test_qiyana_is_ad(self):
+        self.assertEqual(self._tags()["Qiyana"]["tags"][0], "AD")
+
+    def test_seraphine_is_ap(self):
+        self.assertEqual(self._tags()["Seraphine"]["tags"][0], "AP")
+
+
 class RouteRegistrationTests(unittest.TestCase):
     def test_augments_route_registered(self):
         matchers = [m for (m, _fn) in rd.GET_ROUTES]
