@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.163.0 (R51 - target_hp gate seam for Cut Down 8017 / Coup de Grace 8014. The two
+Precision slot-4 stacking_amp runes previously applied their flat 8% amp
+UNCONDITIONALLY in keystone_amp (the burst-window approximation: a burst spans the
+target HP range, so both gates - Cut Down >60%, Coup de Grace <40% - are met
+somewhere inside the window). R51 adds a DEFAULT-OFF gate_target_hp seam:
+keystone_amp(..., gate_target_hp=False) + compute_burst_damage(..., gate_target_hp_amp
+=False). When flipped ON, keystone_amp honestly gates each amp on target_hp_pct per
+the live DDragon 16.13.1 longDesc - Cut Down amps only when target_hp_pct is strictly
+ABOVE 0.60, Coup de Grace only when strictly BELOW 0.40; magnitude 1.08 unchanged. At
+the DEFAULT gate_target_hp=False the gate block is skipped entirely -> BYTE-IDENTICAL
+to the pre-R51 unconditional approximation (no live consumer passes the flag). The
+gate touches ONLY the two target_hp_above / target_hp_below runes; every other amp
+rune ignores the flag. TDD RED-first test_rune_target_hp_gate_r51.py (15). ENGINE
+1.162.0 -> 1.163.0. Live default-ON flip EXCLUDED (do-not-flip-blind ->
+docs/LIVE_GAME_GATED_SYNC.md).)
+
 1.162.0 (R50 - K'Sante P "All Out Bonus" bilinear caster-resist seam. The item-255
 K'Sante entry seeds the base Dauntless Instinct mark consume (12 + 1% : 2% by level
 of target max HP); its All Out Bonus - active only while K'Sante is in the

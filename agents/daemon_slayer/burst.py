@@ -486,6 +486,7 @@ def compute_burst_damage(
     score_completion_runes: bool = False,
     assume_ally_detonation: bool = False,
     assume_passive_reflect: bool = False,
+    gate_target_hp_amp: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -532,6 +533,15 @@ def compute_burst_damage(
     stays byte-identical to the pre-DSP4 engine. When True they contribute
     (Shield Bash's 5-30 + 2.5% bonus HP shield-proc floor). The live default-ON
     flip is operator-gated (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+
+    ``gate_target_hp_amp`` (R51, 1.163.0): the target_hp gate seam for the two
+    Precision slot-4 amp runes. Default False -> Cut Down (8017, >60% target HP)
+    and Coup de Grace (8014, <40% target HP) apply their flat 8% amp
+    UNCONDITIONALLY (the burst-window approximation - a burst spans the HP range),
+    byte-identical to the pre-R51 engine. When True, ``keystone_amp`` honestly
+    gates each amp on ``target_current_hp_pct`` per the live DDragon 16.13.1
+    longDesc. The live default-ON flip is operator-gated
+    (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
     """
     if block_strategy not in {"first", "sum", "max"}:
         raise ValueError(
@@ -906,9 +916,10 @@ def compute_burst_damage(
         # item 233 - role from attackrange feeds per_attack rune scaling (Lethal
         # Tempo melee 9-30 vs ranged 6-24). Only changes an explicit runes=[8008]
         # call on a ranged champ; the live default passes no runes so /rank is
-        # unaffected. target_current_hp_pct threads through for forward-compat
-        # (the amp registry's target_hp tags are metadata - keystone_amp applies
-        # them unconditionally for the burst-window approximation).
+        # unaffected. target_current_hp_pct threads into keystone_amp; the R51
+        # gate_target_hp_amp seam (default False) keeps Cut Down 8017 / Coup de
+        # Grace 8014 applying their amp UNCONDITIONALLY (burst-window
+        # approximation, byte-identical) unless a caller flips the seam ON.
         _attack_range = float(
             snapshot.champion(champion_id).get("stats", {}).get("attackrange", 0.0)
         )
@@ -936,6 +947,7 @@ def compute_burst_damage(
                 _rid, amped_base,
                 caster_hp_pct=caster_hp_pct, game_time_s=game_time_s,
                 role=_caster_role, target_hp_pct=target_current_hp_pct,
+                gate_target_hp=gate_target_hp_amp,
             )
         total_burst = amped_base + rune_proc_damage
 
