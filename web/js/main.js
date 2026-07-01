@@ -7800,19 +7800,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       tick();
       setInterval(tick, 3000);
     })();
-
-    // 3.6 - flag elements with data-rc-skel for the first 500 ms after
-    // game-start. Anything bearing the attribute that still reads "-"
-    // gets the .rc-skel class until the first data tick lands.
-    document.querySelectorAll("[data-rc-skel]").forEach(el => {
-      el.classList.add("rc-skel");
-    });
-    // Strip skeletons once any non-placeholder text appears in the
-    // tracked element. Polled cheaply from the regular state tick.
-    window.addEventListener("rc:state-tick", () => {
-      document.querySelectorAll(".rc-skel").forEach(el => {
-        const t = (el.textContent || "").trim();
-        if (t && t !== "-" && t.length > 0) el.classList.remove("rc-skel");
-      });
-    });
+    // (The 3.6 loading-skeleton block that lived here was removed
+    // 2026-07-01: dormant dead code - nothing ever set its opt-in attribute
+    // and its strip event was never dispatched anywhere. The "-" sentinel is
+    // the approved no-data display. Guard: tests/test_rc_skel_removed.py.)
   })();
