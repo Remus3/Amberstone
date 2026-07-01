@@ -758,6 +758,11 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   auto-accept + rune-apply read correctly with the pool active. After (a)-(d) pass, the flip is a one-liner
   (`core/lcu_pool.py:40` default or `RC_LCU_POOL=1` in the runtime env). Does NOT block any further stage.
   Bench-swap state-render responsiveness (E7 TODO-1, commit `fe34040c`) shipped independently, NOT gated.
+  **VALIDATED + FLIPPED 2026-07-01 (`c699b915`):** all four checks passed over a real live game - (a) auto-accept +
+  poller reads correct with the pool active (game started clean), (b) 0 SSL EOF on the reused socket (log + a raw
+  60-GET keep-alive control), (c) a forced-drop reconnect recovered HTTP 200, (d) main RC held exactly ONE persistent
+  loopback socket to the LCU port past 169s (bounded, no per-call churn). Flipped `core/lcu_pool.py:40` default 0->1 +
+  the tests to the default-ON contract. E7 default-ON flip is DONE - do NOT re-open this gate.
 - 2026-06-21 R9 DS flat damage-reduction EHP seam (`assume_passive_flat_mitigation`, default-OFF). The NEW
   per-instance flat-DR registry (`agents/daemon_slayer/_passive_flat_mitigation_overrides.py`: Fizz P / Amumu E /
   Leona W) ships DEFAULT-OFF on `compute_ehp` + `rank_items_by_ehp` - the EHP math is byte-identical until
