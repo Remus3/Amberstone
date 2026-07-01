@@ -75,6 +75,9 @@ def _serve_web_asset(h) -> None:
             ".json":"application/json; charset=utf-8",
             ".svg": "image/svg+xml",
             ".png": "image/png",
+            # .html so the /mock/ design mockups RENDER in the browser instead of
+            # downloading as octet-stream (OQ3 static overlay-widget mockup set).
+            ".html": "text/html; charset=utf-8",
         }.get(abs_path.suffix.lower(), "application/octet-stream")
         h._send(200, abs_path.read_bytes(), ctype)
     except Exception as exc:  # noqa: BLE001
@@ -176,6 +179,10 @@ GET_ROUTES = [
     (prefix("/css/"),                           _serve_web_asset),
     (prefix("/js/"),                            _serve_web_asset),
     (prefix("/data/"),                          _serve_web_asset),
+    # /mock/ serves the web/mock/ static design mockups (OQ3 objective-gauge
+    # overlay-widget variant set). Same _serve_web_asset guard (".." + null-byte
+    # + relative_to containment); .html renders as text/html (ctype map above).
+    (prefix("/mock/"),                          _serve_web_asset),
     (equals("/manifest.json"),                  _serve_manifest),
     (equals("/icon.svg"),                       _serve_icon),
     (prefix("/icons/champions/"),               _make_icon_handler("champions")),

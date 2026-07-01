@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-oq3-gallery="1">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OQ3 - Objective Gauge Overlay Mockups</title>
+  <style>
+    /* OQ3 gallery (static design mockup index, no live wire). Hextech-dark so
+     * the three peripheral-timer + ring-gauge variants read as they would over a
+     * game. Pick one; the build waits on the operator's choice. */
+    :root {
+      --gold: #C8AA6E;
+      --cyan: #0AC8B9;
+      --ink: #E6EDF5;
+      --dim: rgba(230, 237, 245, 0.55);
+      --bg: #0A0E14;
+      --card: rgba(22, 32, 46, 0.85);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 28px 24px 48px;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+    header { max-width: 1180px; margin: 0 auto 26px; }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: 0.04em;
+      color: var(--gold);
+    }
+    .sub { margin: 0; font-size: 14px; color: var(--dim); line-height: 1.5; }
+    .grid {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(200, 170, 110, 0.45);
+      border-radius: 9px;
+      overflow: hidden;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+    }
+    .card h2 {
+      margin: 0;
+      padding: 12px 14px 10px;
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      border-bottom: 1px solid rgba(200, 170, 110, 0.28);
+    }
+    .frame-wrap {
+      position: relative;
+      width: 100%;
+      height: 380px;
+      background: #0A0E14;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+    .tradeoff {
+      padding: 12px 14px 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--dim);
+      border-top: 1px solid rgba(200, 170, 110, 0.18);
+    }
+    .tradeoff b { color: var(--ink); font-weight: 600; }
+    .open {
+      align-self: flex-start;
+      margin: 0 14px 14px;
+      padding: 6px 12px;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--gold);
+      text-decoration: none;
+      border: 1px solid rgba(200, 170, 110, 0.55);
+      border-radius: 5px;
+    }
+    .open:hover { border-color: var(--gold); color: var(--cyan); }
+    footer {
+      max-width: 1180px;
+      margin: 30px auto 0;
+      font-size: 12px;
+      color: var(--dim);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>OQ3 - Peripheral Objective Gauge Overlay: 3 Mockups</h1>
+    <p class="sub">
+      Static design mockups (no live wire). Each shows the four objectives -
+      DRAKE / BARON / ELDER / SUMMS - as periphery ring / arc gauges for
+      at-a-glance reads while playing. Pick one variant to build; the tradeoff
+      note on each frames the choice. On-palette to the Hextech overlay doctrine.
+    </p>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Variant A - Radial Ring Cluster</h2>
+      <div class="frame-wrap"><iframe src="oq3_variant_a.html" title="Variant A - Radial Ring Cluster"></iframe></div>
+      <p class="tradeoff"><b>Tradeoff:</b> Clearest per-objective read with exact numeric ETA, but the tallest footprint (four full dials).</p>
+      <a class="open" href="oq3_variant_a.html" target="_blank" rel="noopener">Open full A</a>
+    </section>
+
+    <section class="card">
+      <h2>Variant B - Peripheral Arc Rail</h2>
+      <div class="frame-wrap"><iframe src="oq3_variant_b.html" title="Variant B - Peripheral Arc Rail"></iframe></div>
+      <p class="tradeoff"><b>Tradeoff:</b> Smallest peripheral footprint hugging a corner, but ETAs read positionally along the arc rather than as a prominent number.</p>
+      <a class="open" href="oq3_variant_b.html" target="_blank" rel="noopener">Open full B</a>
+    </section>
+
+    <section class="card">
+      <h2>Variant C - Stacked Sigil Gauges</h2>
+      <div class="frame-wrap"><iframe src="oq3_variant_c.html" title="Variant C - Stacked Sigil Gauges"></iframe></div>
+      <p class="tradeoff"><b>Tradeoff:</b> Balanced compact row that keeps exact numeric ETAs and per-objective rings, but needs a wider horizontal slot than a single arc.</p>
+      <a class="open" href="oq3_variant_c.html" target="_blank" rel="noopener">Open full C</a>
+    </section>
+  </div>
+
+  <footer>
+    Served at https://legion-rc:8888/mock/oq3_index.html (also opens directly from
+    disk). Objective hues map to the sanctioned overlay palette: BARON gold
+    #C8AA6E, DRAKE warn #E8A33D, ELDER red #E84057, SUMMS cyan #0AC8B9. No final
+    build and no live data wiring - this is the pick-one design step (OQ3, QA11).
+  </footer>
+</body>
+</html>
