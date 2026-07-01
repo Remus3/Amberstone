@@ -4,10 +4,22 @@ on:
   push:
     branches:
       - main
+    # MINUTE SAVER (2026-06-30): benchmarks only exercise the build engine
+    # (benchmarks/test_build_engine_bench.py); a docs-only commit cannot move
+    # a benchmark, so skip CodSpeed on pure-.md pushes (55% of recent commits).
+    paths-ignore:
+      - '**/*.md'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
   # `workflow_dispatch` allows CodSpeed to trigger backtest
   # performance analysis in order to generate initial data.
   workflow_dispatch:
+
+# MINUTE SAVER (2026-06-30): a newer push cancels a superseded benchmark run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
