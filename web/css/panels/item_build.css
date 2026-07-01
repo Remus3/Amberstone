@@ -208,6 +208,21 @@
   0%,100% { box-shadow: 0 0 0 2px var(--good), 0 0 12px rgba(127,209,154,0.4); }
   50%     { box-shadow: 0 0 0 3px var(--good), 0 0 24px rgba(127,209,154,0.75); }
 }
+/* OQ4 reduced-motion (RC2 D2, tokens.css pattern): REPLACE the buy-cue
+ * pulses with a static ring hold - gold ring = next to buy, green ring =
+ * can afford NOW. The green hold steps to a 3px ring + a glow between the
+ * base and the 50% keyframe, so the buy-now urgency survives as a static
+ * intensity step, not just a hue change. Signal survives; motion does not. */
+@media (prefers-reduced-motion: reduce) {
+  .item-tile.next-up .item-icon {
+    animation: none !important;
+    box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(245,184,124,0.45);
+  }
+  .item-tile.next-up.can-afford .item-icon {
+    animation: none !important;
+    box-shadow: 0 0 0 3px var(--good), 0 0 18px rgba(127,209,154,0.6);
+  }
+}
 /* (2026-04-25) Arrows between recommended-path tiles hidden per user -
  * tile order communicates sequence on its own. JS still inserts them so
  * a CSS un-hide is one-line if we want them back. */

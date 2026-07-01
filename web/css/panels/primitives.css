@@ -94,6 +94,17 @@ header { transition: height 180ms ease; }
   0%   { background-position: 100% 0; }
   100% { background-position: -100% 0; }
 }
+/* OQ4 reduced-motion (RC2 D2 static-replace, tokens.css pattern): the
+ * skeleton stops shimmering and HOLDS the lighter shimmer band as a solid
+ * fill, so a loading block still reads as "loading" (visibly distinct from
+ * the var(--surface) card fill) instead of silently dropping the signal.
+ * color: transparent from the base rule still hides the underlying "-". */
+@media (prefers-reduced-motion: reduce) {
+  .rc-skel {
+    animation: none !important;
+    background: var(--surface-head);
+  }
+}
 
 /* AUDIT 2026-04-28 - proposal 2.1 cost tile + 2.2 coach toggles +
  * 2.5 trace tab. These pieces live in the ops/diagnostics view and
