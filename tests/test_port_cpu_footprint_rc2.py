@@ -19,16 +19,18 @@ import importlib
 import unittest
 
 
-class LcuPoolDefaultOffTests(unittest.TestCase):
-    """6.4 L6 - connection pooling ships DEFAULT-OFF so the live socket
-    path stays byte-identical (no net-new long-lived sockets) until an
-    operator opts in via RC_LCU_POOL."""
+class LcuPoolDefaultOnTests(unittest.TestCase):
+    """6.4 L6 - connection pooling is DEFAULT-ON since E7 (2026-06-30,
+    validated live). The footprint stays BOUNDED: default-on means exactly
+    ONE long-lived socket per LCU port (reuse), NOT the per-call TCP+TLS
+    handshake churn it replaced. Explicit RC_LCU_POOL=0 restores the legacy
+    per-call path."""
 
-    def test_pool_disabled_by_default(self):
+    def test_pool_enabled_by_default(self):
         from core import lcu_pool
         import os
         os.environ.pop("RC_LCU_POOL", None)
-        self.assertFalse(lcu_pool.pool_enabled())
+        self.assertTrue(lcu_pool.pool_enabled())
 
     def test_shared_pool_is_lazy(self):
         # The singleton must not be eagerly built (no socket reserved) just
