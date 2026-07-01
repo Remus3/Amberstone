@@ -16,8 +16,9 @@ This module supplies two reusable, stdlib-only primitives:
        past a safe minimum. ready() is non-blocking (a loop skips its read when
        the floor has not elapsed).
 
-Both ship DEFAULT-OFF: pool_enabled() reads RC_LCU_POOL (default "0"), so the
-live path stays byte-identical until a caller opts in.
+pool_enabled() reads RC_LCU_POOL (default "1" since the E7 flip 2026-06-30 -
+validated over a live game); explicit RC_LCU_POOL=0 restores the byte-identical
+per-call path. MinIntervalGuard stays inert until a caller consults it.
 """
 from __future__ import annotations
 
@@ -35,9 +36,11 @@ _TRUTHY = ("1", "true", "yes", "on")
 
 
 def pool_enabled() -> bool:
-    """True when RC_LCU_POOL opts pooling in. Default OFF (byte-identical live
-    path) so wiring a pilot reader cannot change runtime behavior unless set."""
-    return os.environ.get("RC_LCU_POOL", "0").strip().lower() in _TRUTHY
+    """True when RC_LCU_POOL opts pooling in. Default ON since E7 (2026-06-30):
+    the pool was validated over a live game (one persistent LCU socket held
+    ~3 min, zero SSL EOF, reconnect self-heals, bounded socket count), so an
+    unset env now pools; explicit RC_LCU_POOL=0 forces the legacy per-call path."""
+    return os.environ.get("RC_LCU_POOL", "1").strip().lower() in _TRUTHY
 
 
 def _default_ssl_context() -> ssl.SSLContext:
