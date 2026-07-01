@@ -24,7 +24,7 @@ Curated loop-actionable items from the reconciled RC_WORK_TRACKER.md (2026-07-01
 
 | ID | Theme | Scope | Status | Commit |
 |----|-------|-------|--------|--------|
-| OQ1 | ds-engine | OPERATOR-DECIDED 2026-07-01: DS target-current-HP% per-archetype flip, decision (b). STEP 1 validate lolmath's actual ~50% EHP baseline (WebFetch lolmath.com/docs; confirm the model + value) BEFORE building. STEP 2 build the per-archetype scenario default via the EXISTING `target_current_hp_pct` seam (item 374, `CallContext` default 1.0 byte-identical): burst archetypes ~100%, sustained/juggernaut ~50%, resolved off the champ archetype. Touches ONLY the 3 genuine %-current-HP procs (BotRK 3153 / Hellfire 4017 / Fulmination 443055) - do NOT touch %-MAX-HP procs (Eclipse/Titanic/Hullbreaker). ENGINE bump + Tier-2 dual suite + Share sync + DS restart, TDD RED-first. Live default-ON 3-game eyeball EXCLUDED (operator-gated) -> docs/LIVE_GAME_GATED_SYNC.md. | OPEN | - |
+| OQ1 | ds-engine | OPERATOR-DECIDED 2026-07-01: DS target-current-HP% per-archetype flip, decision (b). STEP 1 validate lolmath's actual ~50% EHP baseline (WebFetch lolmath.com/docs; confirm the model + value) BEFORE building. STEP 2 build the per-archetype scenario default via the EXISTING `target_current_hp_pct` seam (item 374, `CallContext` default 1.0 byte-identical): burst archetypes ~100%, sustained/juggernaut ~50%, resolved off the champ archetype. Touches ONLY the 3 genuine %-current-HP procs (BotRK 3153 / Hellfire 4017 / Fulmination 443055) - do NOT touch %-MAX-HP procs (Eclipse/Titanic/Hullbreaker). ENGINE bump + Tier-2 dual suite + Share sync + DS restart, TDD RED-first. Live default-ON 3-game eyeball EXCLUDED (operator-gated) -> docs/LIVE_GAME_GATED_SYNC.md. | DONE | 505274c1 |
 | OQ2 | infra | OPERATOR-DECIDED 2026-07-01: decommission the Peer<->Legion cross-Claude bridge ENTIRELY (supersedes the L116/L110/L115 arm-it question - operator wants it gone, not armed). Completeness-sweep (memory feedback_decommission_completeness_sweep): remove residual bridge code + the RC-BridgeWatcher scheduled task + the frozen-list entries. Targets: tools/bridge_watcher_*, tools/bridge_post_result.py, tools/bridge_pull_tasks.py, tools/bridge_watcher_actions.py, dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml, tools/process-bridge-tasks.md. Grep-sweep every ref (charters, docs, tests, CLAUDE.md topology + frozen list). USES the headless frozen-file grant (these are on the frozen list - remove them FROM the list in the same change; note the grant in the commit body). Update ADR/topology docs. Tests + CI green. If the frozen removal cannot proceed safely in a cycle, escalate via PART C rather than half-remove. | OPEN | - |
 | OQ3 | overlay-ui | OPERATOR-DECIDED 2026-07-01 (QA11): produce a 3-VARIANT MOCKUP SET of the peripheral-timer + ring-gauge overlay widget (drake/baron/elder/summs shown as periphery ring/arc gauges for at-a-glance reads while playing) for the operator to pick from. Render each variant as a static fixture/mock (web/data/ui_mock or an ?overlay mock route) - NO final build, NO live wire yet. 5-phase UI audit each variant. Deliver the 3 variants + a one-line tradeoff note each; the build waits on the operator's pick. | OPEN | - |
 | OQ4 | ui | QA45: quiet-by-default motion sweep - trim ~9 infinite CSS animation loops repo-wide to reduce ambient motion (respect prefers-reduced-motion). CSS-only, asset-hash auto-reload, no RC restart. 5-phase audit. | OPEN | - |
@@ -3642,3 +3642,16 @@ genuinely-open ROADMAP/BACKLOG work.
 - A2 NEXT: add threat-range / zone-control / objective-damage / extended-duel /
   matchup axes to the same /api/ds-profile surface (engine fns already exist:
   threatrange.py / zonecontrol.py / objdamage.py / extendedduel.py).
+- 2026-07-01 OQ1 DONE (R55, ENGINE 1.165.0, commit 505274c1): archetype-aware
+  DEFAULT for the target_current_hp_pct seam, DEFAULT-OFF. STEP-1 FINDING: lolmath.com
+  is parked/unreachable (302 -> ww1.lolmath.com, ECONNREFUSED), so the ~50% baseline
+  could NOT be externally validated; 0.5 shipped as a conservative DESIGN midpoint (the
+  seam is linear in the fraction, so the value is a single tunable at flip time). BUILD
+  FINDING: the seam previously reached only the mage/assassin scorers, so it did nothing
+  for the sustained archetypes (bruiser/carry) that actually build the 3 %-current-HP
+  procs - R55 plumbed it into rank_items (carry) + rank_items_by_hybrid (bruiser) ->
+  compute_dps + the /rank + /rank-bruiser handlers. VERIFIER FINDING: the first cut put
+  the resolver in agents/daemon_slayer and imported it into core/daemon_slayer_client.py,
+  tripping the split-brain guard (TestNoEngineSplitBrain); moved the resolver to
+  core/ds_archetype_hp_pct.py (client-side, no engine import). OWED (operator/live-gated):
+  live default-ON 3-game eyeball + exact-% calibration -> docs/LIVE_GAME_GATED_SYNC.md.
