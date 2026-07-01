@@ -50,6 +50,7 @@
 @import './panels/personal_build.css';
 @import './panels/ds_sweep.css';
 @import './panels/ds_profile.css';
+@import './panels/ds_skill_order.css';
 @import './panels/player_gpi.css';
 @import './panels/duration_winrate.css';
 @import './panels/champ_benchmarks.css';
