@@ -40,8 +40,10 @@ CSS_DIR = ROOT / "web" / "css"
 REDUCE_AT = "@media (prefers-reduced-motion: reduce)"
 
 # Every infinite-loop site and the selector its reduce block must cover.
+# (panels/primitives.css .rc-skel was in the original 10 but the whole
+# dormant rc-skel mechanism was removed 2026-07-01 - see
+# tests/test_rc_skel_removed.py - leaving 9 live-signal loops.)
 SITES = {
-    "panels/primitives.css": [".rc-skel"],
     "panels/item_build.css": [
         ".item-tile.next-up .item-icon",
         ".item-tile.next-up.can-afford .item-icon",
@@ -133,12 +135,13 @@ def test_reduce_blocks_are_ascii():
 
 # --------------------------------------------------------------------- D
 def test_default_loops_unchanged():
-    """The sweep must NOT trim default rendering - all 10 live-signal loops
-    survive for motion-tolerant users (operator can re-litigate)."""
+    """The sweep must NOT trim default rendering - the live-signal loops
+    survive for motion-tolerant users (operator can re-litigate). 9 since
+    the dormant rc-skel loop was removed with its whole mechanism."""
     count = 0
     for rel in SITES:
         css = (CSS_DIR / rel).read_text(encoding="utf-8", errors="replace")
         count += len(_INFINITE.findall(css))
-    assert count == 10, (
-        f"expected the 10 classified default loops to survive, found {count}"
+    assert count == 9, (
+        f"expected the 9 classified default loops to survive, found {count}"
     )

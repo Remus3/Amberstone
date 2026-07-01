@@ -263,16 +263,16 @@ function buildPanelVisibilitySettings() {
   host.appendChild(card);
 }
 
-// One-time init: build the settings card, apply current prefs, and re-apply on
-// every state tick (the mode tag flips in-game <-> out-game as matches start /
-// end). setMode() in main.js also calls applyPanelVisibility on each real mode
-// change; the listener here is a belt-and-suspenders re-apply if that event is
-// ever wired to dispatch.
+// One-time init: build the settings card and apply current prefs. The live
+// re-apply path is setMode() in main.js calling applyPanelVisibility on each
+// real mode change (the mode tag flips in-game <-> out-game as matches start /
+// end). A belt-and-suspenders listener on a never-dispatched state-tick event
+// was removed 2026-07-01 with the dormant loading-skeleton mechanism (guard:
+// tests/test_rc_skel_removed.py).
 function initPanelVisibility() {
   try {
     buildPanelVisibilitySettings();
     applyPanelVisibility();
-    window.addEventListener("rc:state-tick", applyPanelVisibility);
   } catch (_e) {
     // visibility is a nicety; never let it break the dashboard boot.
   }
