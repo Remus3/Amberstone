@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-07-01 (Gemini headless loop - OQ2 finish the Peer cross-Claude bridge decommission; infra, NO ENGINE/DS/Share)
+
+Loop relaunched; director picked OQ2 from the operator queue. Full detail in LEDGER 719.
+
+- **OQ2 - finish the Peer cross-Claude bridge decommission (`6edfbd3e`).** PREMISE STALE (verify-before-build): the directive assumed the bridge files still existed + were frozen, but the SOURCE was already removed 2026-06-24 (ADR-012) - all tools/bridge_*, dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml, core/bridge*.py GONE; RC-BridgeWatcher task NOT registered; CLAUDE.md frozen list already clean. NO frozen edit + no fan-out warranted -> a ~6-file coupled dead-code sweep done inline (R9) behind a read-only verifier gate. SWEPT: prom_metrics.py dead BridgeMetrics namespace (0 consumers); main.js inert peer-bridge-health tooltip (j.peers is server-dead); extract_panels.py bridge_pending.js codegen -> repointed to coach_decisions.js; stale bridge lines in headless-upgrade.md + ROADMAP.md; git rm the 2 orphaned "docs io RC peer/" bridge contract docs. Guard tests/test_bridge_decommissioned_oq2.py (TDD RED 5 -> GREEN 5). Verifier CONFIRM 8/8; targeted blast-radius suite 356 passed; ruff clean; node --check OK. DS Share ritual n/a (no DS path). Full RC suite -> CI (7-min local timeout).
+- **OUT OF SCOPE (left intact - different subsystem):** the local FileBridge/DevRuntime admin gate (admin_bridge_enabled + bridge_poll_interval_seconds, LIVE in frozen main.py + ops/rc_dev_runtime.py) is the shell/process exec gate, NOT the Peer cross-Claude bridge. FUTURE nits: _supervisor_common.py:121 stale WHY-comment cites the removed bridge-watchdog cadence; bridge_poll_interval_seconds may be orphaned now rc_file_bridge.py is gone - a separate local-FileBridge assessment.
+- **NEXT.** OQ2 DONE; ORCHESTRATION_PLAN OQ2 flipped DONE (`6edfbd3e`). Director picks the next OPEN OQ row (OQ3 = QA11 ring-gauge 3-variant mockup set, no build until operator picks) top-down. Do NOT re-pitch a bridge or lessons-sync (ADR-012 + ADR-004 superseded).
+
+---
+
 # 2026-07-01 (Gemini headless R54 cycle + loop STOP + operator work-tracker reconcile + OQ queue seed; lift/docs + Tier-1 frontend, NO ENGINE/DS/Share)
 
 Gemini headless loop cycle 6 ran, then the operator interrupted to reconcile the work tracker + reseed the loop. Full R54 detail in LEDGER 717.
