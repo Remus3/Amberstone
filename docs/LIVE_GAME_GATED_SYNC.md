@@ -1016,3 +1016,19 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
   assumptions read sane; (2) ideally feed the W-ACTIVE buffed total armor/MR (so the % terms match League's
   recalculate-over-duration) instead of the resting build resists. A WRONG precompute is worse than none, so do NOT
   default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-01 R55 archetype-aware DEFAULT for the `target_current_hp_pct` seam
+  (`rank_for_primary_archetype(assume_archetype_hp_pct=)`, ENGINE 1.165.0, default-OFF). The seam (item 374) scales
+  ONLY the three genuine %-current-HP procs (BotRK 3153 / Hellfire 4017 / Fulmination 443055). R55 plumbs it into the
+  CARRY (`rank_items`) + BRUISER (`rank_items_by_hybrid`) scorers -> `compute_dps` (it previously reached only
+  mage/assassin) and adds a caller-side resolver `core.ds_archetype_hp_pct.archetype_target_current_hp_pct` mapping an
+  archetype to a conservative DEFAULT current-HP fraction (SUSTAINED/juggernaut -> 0.5, target ground down over the
+  fight; BURST + non-damage/unknown -> 1.0). DEFAULT-OFF byte-identical (flag False -> carry/bruiser get no override,
+  mage/assassin get the caller's value; no live consumer passes the flag). STEP-1 lolmath baseline validation was
+  IMPOSSIBLE - lolmath.com is parked (302 -> ww1.lolmath.com, connection refused), so the 0.5 is a conservative DESIGN
+  midpoint, NOT a measured constant. OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): (1)
+  wire a live carry/bruiser rank consumer to pass `assume_archetype_hp_pct=True` and eyeball across ~3 real games that
+  the archetype-resolved current-HP ranks read sane vs the flat-1.0 placement (especially that a bruiser/marksman
+  building BotRK does not over/under-rank it); (2) CALIBRATE the exact sustained fraction from a real
+  average-current-HP-over-fight measurement (replace the 0.5 midpoint) - the seam is linear in the fraction so the
+  value is a single tunable. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893`
+  restart on flip. Does NOT block any further stage.

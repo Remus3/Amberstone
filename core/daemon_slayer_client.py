@@ -21,6 +21,8 @@ from typing import Iterable, Optional
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
+from core.ds_archetype_hp_pct import archetype_target_current_hp_pct
+
 logger = logging.getLogger("rc.core.daemon_slayer_client")
 
 DEFAULT_HOST = "127.0.0.1"
@@ -135,6 +137,7 @@ def rank_for(
     cost_ceiling: Optional[int] = None,      # F2
     assume_passive_as_stacks: bool = False,  # R7
     apply_target_vuln: bool = False,         # R12
+    target_current_hp_pct: float = 1.0,      # R55
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
 
@@ -186,6 +189,9 @@ def rank_for(
         body["assume_passive_as_stacks"] = True
     if apply_target_vuln:
         body["apply_target_vuln"] = True
+    # R55: emit only when non-default so a call at 1.0 is byte-identical.
+    if target_current_hp_pct != 1.0:
+        body["target_current_hp_pct"] = float(target_current_hp_pct)
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
@@ -363,6 +369,7 @@ def rank_bruiser_for(
     # Seam flags (Tier-2, behavior-preserving; emitted only when set).
     prefer_survivability_by_win: bool = False,  # RF1
     cost_ceiling: Optional[int] = None,         # F2
+    target_current_hp_pct: float = 1.0,         # R55
 ) -> Optional[list[BruiserRankedItem]]:
     """Call POST /rank-bruiser and return the parsed top-N rows. None on engine failure.
 
@@ -400,6 +407,9 @@ def rank_bruiser_for(
         body["prefer_survivability_by_win"] = True
     if cost_ceiling is not None:
         body["cost_ceiling"] = int(cost_ceiling)
+    # R55: emit only when non-default so a call at 1.0 is byte-identical.
+    if target_current_hp_pct != 1.0:
+        body["target_current_hp_pct"] = float(target_current_hp_pct)
     data = _post_json("/rank-bruiser", body, timeout=timeout)
     if data is None:
         return None
@@ -980,6 +990,7 @@ def rank_for_primary_archetype(
     apply_target_vuln: bool = False,             # carry (R12)
     assume_missing_hp_heal_amp: bool = False,    # enchanter (R5)
     caster_missing_hp_pct: float = 0.0,          # enchanter (R5 input)
+    assume_archetype_hp_pct: bool = False,       # carry+bruiser+mage+assassin (R55)
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
@@ -1007,8 +1018,28 @@ def rank_for_primary_archetype(
     mage + assassin; ``combo_sequence`` applies to assassin only;
     ``targets_per_proc_override`` applies to enchanter only. Other
     archetypes silently ignore them.
+
+    ``assume_archetype_hp_pct`` (R55, DEFAULT-OFF) opts into the archetype-aware
+    DEFAULT for the ``target_current_hp_pct`` seam. When False (default) the
+    behavior is EXACTLY as before: carry / bruiser get no ``target_current_hp_pct``
+    override and mage / assassin get the caller's ``target_current_hp_pct``. When
+    True the seam value for ALL four damage branches (carry / bruiser / mage /
+    assassin) is resolved from the requested archetype via
+    ``archetype_target_current_hp_pct`` (SUSTAINED / juggernaut -> 0.5, target
+    ground down over the fight; BURST + non-damage / unknown -> 1.0). The live
+    default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     arch = (archetype or "").strip().lower()
+
+    # R55 (DEFAULT-OFF): resolve the archetype-aware current-HP fraction the four
+    # damage branches use. When the flag is off, keep the caller's value (mage /
+    # assassin) and leave carry / bruiser at their no-override default 1.0. The
+    # resolver lives in core (not the engine package) so this HTTP client never
+    # imports agents.daemon_slayer in-process (split-brain guard).
+    if assume_archetype_hp_pct:
+        effective_hp_pct = archetype_target_current_hp_pct(arch)
+    else:
+        effective_hp_pct = target_current_hp_pct
 
     # Routing table - explicit so future Phase 5-6 scorers slot in by
     # adding one branch each.
@@ -1047,6 +1078,12 @@ def rank_for_primary_archetype(
         }
 
     if arch == "bruiser":
+        # R55: carry / bruiser only receive the seam override when the flag is
+        # on (byte-identical no-override default otherwise).
+        _bruiser_hp_kwargs = (
+            {"target_current_hp_pct": effective_hp_pct}
+            if assume_archetype_hp_pct else {}
+        )
         rows = rank_bruiser_for(
             champion,
             level=level, item_ids=item_ids, mode=mode,
@@ -1061,6 +1098,7 @@ def rank_for_primary_archetype(
             timeout=timeout,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
+            **_bruiser_hp_kwargs,
         )
         if rows is None:
             return None
@@ -1091,7 +1129,9 @@ def rank_for_primary_archetype(
             level=level, item_ids=item_ids, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
-            target_current_hp_pct=target_current_hp_pct,
+            # R55: effective_hp_pct == the caller's target_current_hp_pct when
+            # the flag is off (byte-identical); the archetype default when on.
+            target_current_hp_pct=effective_hp_pct,
             top=top, sort_by=sort_by,
             only_item_ids=only_item_ids,
             augments=augments,
@@ -1129,7 +1169,9 @@ def rank_for_primary_archetype(
             level=level, item_ids=item_ids, mode=mode,
             target_armor=target_armor, target_mr=target_mr,
             target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
-            target_current_hp_pct=target_current_hp_pct,
+            # R55: effective_hp_pct == the caller's target_current_hp_pct when
+            # the flag is off (byte-identical); the archetype default when on.
+            target_current_hp_pct=effective_hp_pct,
             top=top, sort_by=sort_by,
             only_item_ids=only_item_ids,
             augments=augments,
@@ -1204,6 +1246,12 @@ def rank_for_primary_archetype(
     # Post-Phase-6 (s181): all 6 archetypes have their own scorer; this
     # path handles only the catch-all (empty string, unknown labels).
     fell_back = False
+    # R55: carry only receives the seam override when the flag is on
+    # (byte-identical no-override default otherwise).
+    _carry_hp_kwargs = (
+        {"target_current_hp_pct": effective_hp_pct}
+        if assume_archetype_hp_pct else {}
+    )
     rows = rank_for(
         champion,
         level=level, item_ids=item_ids, mode=mode,
@@ -1219,6 +1267,7 @@ def rank_for_primary_archetype(
         cost_ceiling=cost_ceiling,
         assume_passive_as_stacks=assume_passive_as_stacks,
         apply_target_vuln=apply_target_vuln,
+        **_carry_hp_kwargs,
     )
     if rows is None:
         return None

@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.165.0 (R55 - archetype-aware DEFAULT for the target_current_hp_pct seam. The seam
+(item 374) scales ONLY the three genuine %-current-HP procs (BotRK 3153 / Hellfire 4017
+/ Fulmination 443055). Before R55 it reached only the mage + assassin scorers; R55 plumbs
+target_current_hp_pct into the CARRY (rank_items) and BRUISER (rank_items_by_hybrid)
+scorers -> compute_dps too, and the server /rank + /rank-bruiser handlers now forward it.
+A new caller-side resolver core.ds_archetype_hp_pct.archetype_target_current_hp_pct maps
+an archetype to a conservative DEFAULT fraction (SUSTAINED / juggernaut -> 0.5, target
+ground down over the fight; BURST + non-damage / unknown -> 1.0). The dispatcher
+core.daemon_slayer_client.rank_for_primary_archetype opts in via a DEFAULT-OFF
+assume_archetype_hp_pct flag - byte-identical when off (carry / bruiser get no override;
+mage / assassin get the caller's value). The resolver lives in core, NOT the engine
+package, so the :8893 HTTP client never imports agents.daemon_slayer in-process
+(split-brain guard). The 0.5 value is a conservative DESIGN midpoint - lolmath.com is
+parked/unreachable so it is not a measured constant. Live default-ON flip + exact-%
+calibration EXCLUDED / operator-gated -> docs/LIVE_GAME_GATED_SYNC.md.)
+
 1.164.0 (R53 - caster_hp gate seam for Last Stand 8299. Last Stand's amp scales with
 the CASTER's health (DDragon 16.13.1 runesReforged.json longDesc verbatim: "Deal 5% -
 11% increased damage to champions while you are below 60% health. Max damage gained at
