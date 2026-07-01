@@ -1272,6 +1272,19 @@
  * label. The icon margin-top that cleared the old absolute tag is
  * dropped for ban cells. */
 .csv-pb168-ban .csv-pb168-icon { margin-top: 0; }
+/* OQ9 (QA26 remainder): why-banned sub-label under the ban-cell name.
+ * Dim secondary prose ("beats you 67% (4/6)") - deliberately quieter
+ * than the operator-#6-removed % tag; name stays the primary line. */
+.csv-pb168-reason {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
 .csv-pb168-struggle {
   font-size: var(--fs-xs);
   font-weight: 700;
@@ -2109,6 +2122,18 @@
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+/* OQ9 (QA26 remainder): why-banned sub-label on the global-top-bans
+ * suggestion card ("meta ban #3"). Dim secondary line under the name. */
+.csv-sugg-ban-reason {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: 1.1;
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
