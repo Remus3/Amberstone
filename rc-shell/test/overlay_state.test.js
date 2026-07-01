@@ -142,6 +142,28 @@ test("windowActions: hidden / unknown hides both (fail-safe to dark)", () => {
   });
 });
 
+// --- relaunchFocusTarget: which window a second-instance relaunch brings forward
+// The "RC Overlay" desktop shortcut / launcher re-click hits the single-instance
+// second-instance handler, NOT a fresh boot. The operator clicked to SEE the
+// shell, so the handler must SHOW + raise a window - focus() alone never un-hides
+// a .hide()'d window (the companion gets hidden by a crash-guard give-up and the
+// shortcut could not recover it before this fix). In a game that window is the
+// overlay HUD; out of a game (or after clearing a hotkey force-hide, or on any
+// unknown surface) it is the companion. Pure decision; main.js is the thin applier.
+test("relaunchFocusTarget: in-game surface raises the overlay", () => {
+  assert.strictEqual(ov.relaunchFocusTarget(ov.SURFACES.OVERLAY), "overlay");
+});
+
+test("relaunchFocusTarget: companion surface raises the companion", () => {
+  assert.strictEqual(ov.relaunchFocusTarget(ov.SURFACES.COMPANION), "companion");
+});
+
+test("relaunchFocusTarget: hidden / unknown -> companion (operator asked to see the shell)", () => {
+  assert.strictEqual(ov.relaunchFocusTarget(ov.SURFACES.HIDDEN), "companion");
+  assert.strictEqual(ov.relaunchFocusTarget("garbage"), "companion");
+  assert.strictEqual(ov.relaunchFocusTarget(undefined), "companion");
+});
+
 test("normMode: trims, lowercases, non-string -> empty", () => {
   assert.strictEqual(ov.normMode("  ARAM "), "aram");
   assert.strictEqual(ov.normMode(null), "");
