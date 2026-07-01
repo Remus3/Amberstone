@@ -1251,10 +1251,29 @@ if (!gotLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    // A second launch (the RC Overlay desktop shortcut / in-game launcher re-tap)
+    // is the operator asking to SEE the shell. The old handler only focus()ed the
+    // companion - but focus() never un-hides a .hide()'d window, so once a
+    // crash-guard give-up (or an in-game hide) had hidden the companion, the
+    // shortcut looked dead (diagnosed 2026-06-30: companion window present but
+    // IsWindowVisible=False, unreachable). Clear any hotkey force-hide, defeat the
+    // applySurface no-op guard (lastSurface = null) so the correct surface is
+    // actually (re)shown via showInactive, then raise + focus that window.
+    surfaceHidden = false;
+    lastSurface = null;
+    const surface = ov.resolveSurface(lastMode, surfaceHidden, lastInGame);
+    applySurface(surface);
+    if (ov.relaunchFocusTarget(surface) === "overlay") {
+      // In-game: raise the HUD (only once painted, so we never flash it pre-layout).
+      if (overlayWindow && !overlayWindow.isDestroyed() && overlayReady) {
+        overlayWindow.showInactive();
+        overlayWindow.moveTop();
+      }
+    } else if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) {
         mainWindow.restore();
       }
+      mainWindow.show(); // un-hide (focus alone will not) + raise to front
       mainWindow.focus();
     }
   });
