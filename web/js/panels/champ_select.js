@@ -1107,14 +1107,26 @@ function _csvRenderSuggestions(cs, myCid, myName, mode) {
       if (cached && Array.isArray(cached.suggestions) && cached.suggestions.length) {
         bansGrid.innerHTML = cached.suggestions.map((s) => {
           const isBanned = banned.has(s.champId);
+          // OQ9 (QA26 remainder): why-banned sub-label. `rank` is the
+          // champion's 1-based position in the meta top_bans list
+          // (routes_ban_suggestions.py, additive field) - honest "it's
+          // a top global ban" signal. Older cached payloads without
+          // rank render name-only as before.
+          const rank = s.rank | 0;
+          const reasonHtml = rank > 0
+            ? `<div class="csv-sugg-ban-reason">meta ban #${rank}</div>` : "";
+          const whyTitle = rank > 0
+            ? `Suggest ban: ${s.name} - global top ban #${rank} (patch ${cached.patch || "?"})`
+            : `Suggest ban: ${s.name}`;
           return `
             <div class="csv-sugg-ban-card${isBanned ? " is-banned" : ""}"
                  data-champ-id="${s.champId}"
-                 title="${isBanned ? `${s.name} already banned` : `Suggest ban: ${s.name}`}">
+                 title="${isBanned ? `${s.name} already banned` : whyTitle}">
               <div class="csv-sugg-ban-icon">
                 <img src="${s.icon}" alt="${s.name}" onerror="this.style.display='none'">
               </div>
               <div class="csv-sugg-ban-name">${s.name}</div>
+              ${reasonHtml}
             </div>`;
         }).join("");
         bansGrid.querySelectorAll(".csv-sugg-ban-card:not(.is-banned)").forEach((card) => {
@@ -4305,6 +4317,22 @@ function _csvRenderAllyRolesHtml(cs, champImg) {
   return `<div class="csv-allyroles-grid">${rows}</div>`;
 }
 
+// OQ9 (QA26 remainder): short why-banned label for a P&B ban cell.
+// Derived ONLY from fields already in the pickban-recs payload:
+// pct = operator's loss rate vs this champion in-role (routes_pickban.py
+// _query_loss_matchups), losses/encounters = the sample behind it.
+// Returns "" when there is nothing honest to say (placeholder cell or
+// no qualifying loss rate) - the cell then renders name-only as before.
+function _csvBanReasonLabel(b) {
+  if (!b || !(b.champId > 0)) return "";
+  const pct = b.pct | 0;
+  if (pct <= 0) return "";
+  const enc = b.encounters | 0;
+  const los = b.losses | 0;
+  const sample = (enc > 0) ? ` (${los}/${enc})` : "";
+  return `beats you ${pct}%${sample}`;
+}
+
 function _csvRenderPickBan(cs, myCid) {
   const body = document.getElementById("csv-pickban-body");
   if (!body) return;
@@ -4450,38 +4478,51 @@ function _csvRenderPickBan(cs, myCid) {
   // 3 counter bans + 1 struggle ban.
   const liveBans = (liveRecs && Array.isArray(liveRecs.performance_bans))
     ? liveRecs.performance_bans : [];
+  // OQ9 (QA26 remainder): carry encounters + losses through - the
+  // backend has always returned them per ban row (routes_pickban.py
+  // _query_loss_matchups) but the pre-OQ9 mapping dropped both, leaving
+  // the why-banned label with nothing to show. Placeholder rows have no
+  // sample so they default 0 (label formatter omits the sample part).
   const counterBans = [0, 1, 2].map((i) => {
     const b = liveBans[i];
     if (b) {
       return {
-        champId:   b.champId,
-        name:      b.name,
-        pct:       b.pct,
-        sourceKey: "counter",
+        champId:    b.champId,
+        name:       b.name,
+        pct:        b.pct,
+        encounters: b.encounters | 0,
+        losses:     b.losses | 0,
+        sourceKey:  "counter",
       };
     }
     // Use placeholder ban data when backend can't supply 3.
     const fbBan = (ph.performance.bans || [])[i] || {};
     return {
-      champId:   fbBan.champId || 0,
-      name:      fbBan.name    || "-",
-      pct:       fbBan.pct     || 0,
-      sourceKey: "counter",
+      champId:    fbBan.champId || 0,
+      name:       fbBan.name    || "-",
+      pct:        fbBan.pct     || 0,
+      encounters: 0,
+      losses:     0,
+      sourceKey:  "counter",
     };
   });
   const struggle = liveRecs && liveRecs.struggle_ban;
   const fourthBan = struggle
     ? {
-        champId:   struggle.champId,
-        name:      struggle.name,
-        pct:       struggle.pct,
-        sourceKey: "struggle",
+        champId:    struggle.champId,
+        name:       struggle.name,
+        pct:        struggle.pct,
+        encounters: struggle.encounters | 0,
+        losses:     struggle.losses | 0,
+        sourceKey:  "struggle",
       }
     : {
-        champId:   0,
-        name:      "-",
-        pct:       0,
-        sourceKey: "struggle",
+        champId:    0,
+        name:       "-",
+        pct:        0,
+        encounters: 0,
+        losses:     0,
+        sourceKey:  "struggle",
       };
   const allBans = [...counterBans, fourthBan];
 
@@ -4565,11 +4606,19 @@ function _csvRenderPickBan(cs, myCid) {
     // tag, no %); the struggle ban keeps a centered STRUGGLE label.
     const struggleLabel = b.sourceKey === "struggle"
       ? `<div class="csv-pb168-struggle">STRUGGLE</div>` : "";
+    // OQ9 (QA26 remainder): short why-banned sub-label under the name -
+    // dim prose ("beats you 67% (4/6)"), NOT the loud % tag operator #6
+    // removed. Empty for placeholder cells; title carries the same why.
+    const reason = _csvBanReasonLabel(b);
+    const reasonHtml = reason
+      ? `<div class="csv-pb168-reason">${reason}</div>` : "";
+    const cellTitle = reason ? `${b.name} - ${reason}` : b.name;
     return `
-      <div class="${cls}"${dataAttr} title="${b.name}">
+      <div class="${cls}"${dataAttr} title="${cellTitle}">
         ${struggleLabel}
         <div class="csv-pb168-icon">${champImg(b.champId)}</div>
         <div class="csv-pb168-name">${b.name}</div>
+        ${reasonHtml}
       </div>`;
   }).join("");
   // Sub-panel 3: item 213 (2026-05-28) - ally-picks-by-role panel.
