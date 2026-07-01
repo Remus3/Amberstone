@@ -619,6 +619,7 @@ def rank_items_by_hybrid(
     beta: Optional[float] = None,
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
+    target_current_hp_pct: float = 1.0,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -665,6 +666,14 @@ def rank_items_by_hybrid(
     surface them; the win-rate membership IS the signal the damage-biased sort is
     blind to. Champs absent from the table are a no-op. The live default-ON flip is
     EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``target_current_hp_pct`` (R55) is the seam that scales the three genuine
+    %-CURRENT-HP procs (BotRK 3153 / Hellfire 4017 / Fulmination 443055) by the
+    fraction of max HP the target sits at when the proc lands. It is forwarded
+    unchanged to both ``compute_dps`` calls (baseline + each candidate) so the
+    bruiser (hybrid) scorer's DPS axis surfaces the same current-HP model the
+    mage/assassin scorers already had. Default 1.0 is an identity multiply ->
+    byte-identical.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -724,6 +733,7 @@ def rank_items_by_hybrid(
         item_ids=current_ids, mode=mode,
         target_armor=target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+        target_current_hp_pct=target_current_hp_pct,
         phase=phase, augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
     )
@@ -807,6 +817,7 @@ def rank_items_by_hybrid(
                 item_ids=new_build, mode=mode,
                 target_armor=target_armor, target_mr=target_mr,
                 target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+                target_current_hp_pct=target_current_hp_pct,
                 phase=phase, augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
             )

@@ -424,6 +424,11 @@ def _route_rank(body: dict) -> dict:
     exempt_offclass_by_win = _opt_bool(body, "exempt_offclass_by_win", False)
     prefer_kit_axis_by_win = _opt_bool(body, "prefer_kit_axis_by_win", False)
     cost_ceiling = _opt_int(body, "cost_ceiling", None)
+    # R55: the target_current_hp_pct seam now reaches rank_items (carry/dps
+    # scorer) too. Default 1.0 -> byte-identical when the body omits it. NOTE
+    # /dps (the direct compute_dps route above) still does NOT forward this
+    # param per the R7/R12 comment; /rank forwards it via rank_items instead.
+    target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
     try:
         result = rank_items(
             snap,
@@ -442,6 +447,7 @@ def _route_rank(body: dict) -> dict:
             exempt_offclass_by_win=exempt_offclass_by_win,
             prefer_kit_axis_by_win=prefer_kit_axis_by_win,
             cost_ceiling=cost_ceiling,
+            target_current_hp_pct=target_current_hp_pct,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -759,6 +765,9 @@ def _route_rank_bruiser(body: dict) -> dict:
     #   prefer_survivability_by_win (RF1) - float the WIN-anchored survivability set.
     cost_ceiling = _opt_int(body, "cost_ceiling", None)
     prefer_survivability_by_win = _opt_bool(body, "prefer_survivability_by_win", False)
+    # R55: the target_current_hp_pct seam now reaches the bruiser (hybrid)
+    # scorer's DPS axis. Default 1.0 -> byte-identical when the body omits it.
+    target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
     try:
         result = rank_items_by_hybrid(
             snap,
@@ -787,6 +796,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             alpha=alpha, beta=beta,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
+            target_current_hp_pct=target_current_hp_pct,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
