@@ -925,6 +925,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lq-find.is-searching {
   animation: lq-find-pulse 1.8s ease-in-out infinite;
 }
+/* OQ4 reduced-motion (RC2 D2): replace the searching pulse with a static
+ * gold ring so "queue is searching" still reads without motion. */
+@media (prefers-reduced-motion: reduce) {
+  .lq-find.is-searching {
+    animation: none !important;
+    box-shadow: 0 0 0 3px var(--gold), 0 0 12px 4px var(--gold);
+  }
+}
 
 /* ---- Lane picker popup - anchored above the lane pair, centered ----
  * Position absolute, bottom edge offset above the lane-pair, left:50%
@@ -3327,6 +3335,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   0%,100% { box-shadow: 0 0 0 0 rgba(240,126,139,0); }
   50%     { box-shadow: 0 0 0 6px rgba(240,126,139,0.25); }
 }
+/* OQ4 reduced-motion (RC2 D2): hold the enemy-zone warning at the zoneWarn
+ * 50% keyframe (6px bad-tint ring) statically instead of pulsing. The deep
+ * variant (map_state.css) still out-reads it via its solid bad backing. */
+@media (prefers-reduced-motion: reduce) {
+  .zone-pill.zone-enemy {
+    animation: none !important;
+    box-shadow: 0 0 0 6px rgba(240,126,139,0.25);
+  }
+}
 
 /* Keyboard shortcuts toast - bottom-right, fades in on `?`. */
 .keybinds-toast {
@@ -3445,6 +3462,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .hp.hp-high     { color: var(--text-dim); }
 .hp.hp-dead     { color: var(--canvas); background: var(--bad); padding: 3px 11px; border-radius: 999px; letter-spacing: 0.12em; }
 @keyframes hpBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+/* OQ4 reduced-motion (RC2 D2): stop the opacity blink; hold full-opacity
+ * red with a stronger glow so critical HP still screams statically. */
+@media (prefers-reduced-motion: reduce) {
+  .hp.hp-critical {
+    animation: none !important;
+    opacity: 1;
+    text-shadow: 0 0 12px rgba(240,126,139,0.7);
+  }
+}
 
 /* win-pill starts the right-aligned group on header row 2 - auto-margin
  * here pushes it (and everything after: trend, advisory, status, heart)
@@ -3650,6 +3676,15 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 @keyframes advPulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(240,126,139,0.0); }
   50%      { box-shadow: 0 0 0 8px rgba(240,126,139,0.25); }
+}
+/* OQ4 reduced-motion (RC2 D2): static bad-tint ring in place of the
+ * new-advisory pulse (latent today - the badge ships [hidden] - but the
+ * signal must survive if the badge is ever revived). */
+@media (prefers-reduced-motion: reduce) {
+  .advisory-badge.pulse {
+    animation: none !important;
+    box-shadow: 0 0 0 8px rgba(240,126,139,0.25);
+  }
 }
 
 .pill {
