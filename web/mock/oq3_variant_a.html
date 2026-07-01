@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-oq3-variant="a" data-oq3-tradeoff="Clearest per-objective read with exact numeric ETA, but the tallest footprint (four full dials).">
+<head>
+<meta charset="utf-8">
+<title>OQ3 Variant A - Radial Ring Cluster</title>
+<style>
+  :root {
+    --bg: #0A0E14;
+    --panel: rgba(22,32,46,0.85);
+    --gold-frame: rgba(200,170,110,0.70);
+    --track: rgba(200,170,110,0.20);
+    --baron: #C8AA6E;
+    --drake: #E8A33D;
+    --elder: #E84057;
+    --summs: #0AC8B9;
+    --text-dim: rgba(200,170,110,0.55);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0A0E14;
+    font-family: system-ui, sans-serif;
+    color: #e8e8ea;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px;
+  }
+  .page-header {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--baron);
+    margin-bottom: 18px;
+    text-align: center;
+  }
+  .widget {
+    background: var(--panel);
+    border: 1px solid var(--gold-frame);
+    border-radius: 7px;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(200,170,110,0.05);
+    padding: 18px;
+  }
+  .dial-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+  .dial {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .dial svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: rotate(-90deg);
+  }
+  .dial-inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .obj-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 4px;
+  }
+  .obj-eta {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: #f4f4f6;
+  }
+  .obj-eta.up {
+    color: var(--elder);
+  }
+  .label-baron { color: var(--baron); }
+  .label-drake { color: var(--drake); }
+  .label-elder { color: var(--elder); }
+  .label-summs { color: var(--summs); }
+  .tradeoff-caption {
+    margin-top: 20px;
+    max-width: 380px;
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+  <div class="page-header">OQ3 Variant A - Radial Ring Cluster</div>
+
+  <div class="widget">
+    <div class="dial-grid">
+
+      <!-- DRAKE 0:45 - amber. Circumference for r=62 is ~389.56; ~62% elapsed -->
+      <div class="dial">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="9"></circle>
+          <circle cx="75" cy="75" r="62" fill="none" stroke="#E8A33D" stroke-width="9" stroke-linecap="round" stroke-dasharray="242 389.56"></circle>
+        </svg>
+        <div class="dial-inner">
+          <div class="obj-label label-drake">DRAKE</div>
+          <div class="obj-eta">0:45</div>
+        </div>
+      </div>
+
+      <!-- BARON 3:12 - gold. ~28% elapsed -->
+      <div class="dial">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="9"></circle>
+          <circle cx="75" cy="75" r="62" fill="none" stroke="#C8AA6E" stroke-width="9" stroke-linecap="round" stroke-dasharray="109 389.56"></circle>
+        </svg>
+        <div class="dial-inner">
+          <div class="obj-label label-baron">BARON</div>
+          <div class="obj-eta">3:12</div>
+        </div>
+      </div>
+
+      <!-- ELDER UP - red. Full ring -->
+      <div class="dial">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="9"></circle>
+          <circle cx="75" cy="75" r="62" fill="none" stroke="#E84057" stroke-width="9" stroke-linecap="round" stroke-dasharray="389.56 389.56"></circle>
+        </svg>
+        <div class="dial-inner">
+          <div class="obj-label label-elder">ELDER</div>
+          <div class="obj-eta up">UP</div>
+        </div>
+      </div>
+
+      <!-- SUMMS 0:20 - cyan. ~83% elapsed -->
+      <div class="dial">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="62" fill="none" stroke="rgba(200,170,110,0.20)" stroke-width="9"></circle>
+          <circle cx="75" cy="75" r="62" fill="none" stroke="#0AC8B9" stroke-width="9" stroke-linecap="round" stroke-dasharray="323 389.56"></circle>
+        </svg>
+        <div class="dial-inner">
+          <div class="obj-label label-summs">SUMMS</div>
+          <div class="obj-eta">0:20</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tradeoff-caption" data-oq3-tradeoff="Clearest per-objective read with exact numeric ETA, but the tallest footprint (four full dials).">
+    Clearest per-objective read with exact numeric ETA, but the tallest footprint (four full dials).
+  </div>
+</body>
+</html>
