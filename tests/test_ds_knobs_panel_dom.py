@@ -101,6 +101,30 @@ class CssTests(unittest.TestCase):
         self.assertIn("[hidden]", self.text)
 
 
+class HitTargetTests(unittest.TestCase):
+    """R52 5-phase audit MUST-FIX (HIT-TARGETS, docs/UI_SCALE_SPEC_V2.md
+    interaction rules): the operator-editable numeric knob inputs must reserve
+    the --hit-min 42px interactive floor. They previously rendered ~24px
+    (padding 3px + one text line), below the tap/click floor the sibling
+    ds_statcheck.css inputs already honor."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.text = _read(PANEL_CSS)
+
+    def _input_block(self) -> str:
+        marker = ".dsk-knob > input {"
+        start = self.text.find(marker)
+        self.assertNotEqual(start, -1, "missing .dsk-knob > input rule")
+        end = self.text.find("}", start)
+        return self.text[start:end]
+
+    def test_input_reserves_hit_min(self) -> None:
+        block = self._input_block()
+        self.assertIn("min-height", block)
+        self.assertIn("--hit-min", block)
+
+
 class AsciiHygieneTests(unittest.TestCase):
     _BAD = (chr(0x2013), chr(0x2014), chr(0x2018), chr(0x2019),
             chr(0x201C), chr(0x201D))
