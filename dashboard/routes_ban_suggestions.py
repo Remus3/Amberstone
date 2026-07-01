@@ -17,12 +17,19 @@ Response:
     "ok": true,
     "patch": "16.10.1",
     "suggestions": [
-      {"champId": 777, "name": "Yone", "icon": "/icons/champions/Yone.png"},
+      {"champId": 777, "name": "Yone", "icon": "/icons/champions/Yone.png",
+       "rank": 1},
       ...up to 4
     ],
     "excluded_count": int,
     "fell_back": bool   // true when fewer than N suggestions remained after filtering
   }
+
+``rank`` (OQ9, QA26 remainder) is the champion's 1-based position in the
+meta ``top_bans`` list - the honest why-banned signal for the suggestion
+card label ("meta ban #N"). It is NOT re-numbered after exclusion
+filtering, so a card can honestly read "meta ban #3" even when ranks 1-2
+were already banned. Additive field, appended at END of dict.
 """
 from __future__ import annotations
 
@@ -115,7 +122,7 @@ def _serve_ban_suggestions(h) -> None:
         idx = _load_name_to_id()
 
         suggestions: list[dict] = []
-        for name in bans_doc.get("top_bans", []):
+        for rank, name in enumerate(bans_doc.get("top_bans", []), start=1):
             if len(suggestions) >= top:
                 break
             cid = idx.get(name)
@@ -137,6 +144,10 @@ def _serve_ban_suggestions(h) -> None:
                 "champId": cid,
                 "name":    name,
                 "icon":    f"/icons/champions/{slug}.png",
+                # OQ9 (QA26 remainder): 1-based meta-list rank - the
+                # why-banned label source. Kept TRUE to the source list
+                # (not re-numbered post-filter). Additive, END of dict.
+                "rank":    rank,
             })
 
         h._send(200, json.dumps({
