@@ -4,9 +4,13 @@
 
 ---
 
-# 2026-07-01 (direct executor post-loop-death - OQ4 motion sweep + OQ5 two-tier tokens; ui, NO ENGINE/DS/Share)
+# 2026-07-01 (direct executor post-loop-death - OQ4 motion sweep + OQ5 two-tier tokens + rc-skel removal + OQ6 dark-values lock; ui, NO ENGINE/DS/Share)
 
-Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721 (OQ4) + 722 (OQ5).
+Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721 (OQ4) + 722 (OQ5) + 723 (rc-skel chip) + 724 (OQ6).
+
+- **OQ6 - dark-values grep-and-lock (`78d15b19`).** 132 hits classified (5-group fan-out) into docs/DARK_VALUES_AUDIT_2026-07-01.md: 1 EXACT-LOCK applied (coach_choices ink -> var(--canvas), byte-identical) / 94 RESKIN-CANDIDATE (champ_select_view.css = 42, a pre-Hextech skin; each row names its Hextech token; VISIBLE -> operator-gated FUTURE) / 37 JUSTIFIED. Lock = tests/test_dark_values_ratchet_oq6.py per-file ceilings (new literal fails CI; re-skins lower pins; stale-high pins fail). SHOVEL-READY FUTURE: champ_select_view Hextech re-skin session off the 42 mapped rows.
+- **rc-skel chip (task_6fa65ffc) executed (`b387a497`).** Dormant loading-skeleton dead code removed (nothing set data-rc-skel; strip event never dispatched; panel_visibility live path intact + guarded). tests/test_rc_skel_removed.py; oq4 SITES -> 9 loops; snapshot_panels 278 green.
+- **CI NOTE:** OQ5-push ci failed on test_player_gpi_champion_drilldown (runner-side missing untracked ddragon PNG + BrokenPipeError = environmental flake; local 278/278 x3 today); rerun issued; rc-skel push ci auto-cancelled by the rerun's concurrency group; the OQ6 push re-covers HEAD - confirm green at wrap.
 
 - **OQ5 - two-tier design tokens, byte-identical (`9ba155ec`).** NEW primitive tier in tokens.css: 7 Hextech hues as rgb parts (--prim-green/amber/red/slate/blue/gold/teal, the --ovx-* precedent); every semantic color re-pointed as a pure rgb()/rgba() wrapper at its historical alpha (6 --signal-*, 3 -soft, hextech fill/glow/border, 3 --pulse-*). Byte-identity: parts==hex asserted numerically; no JS raw-value readers (status.js emits var() strings); overlay 0a re-point independent; snapshot_panels 278 passed = pixel proof. TDD tests/test_two_tier_tokens_oq5.py (5) RED 3 -> GREEN; design-tokens suite still green; 49 adjacent passed; ruff clean. New alpha variants should compose rgba(var(--prim-*), a), not mint literals.
 
