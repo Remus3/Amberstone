@@ -74,37 +74,12 @@ header[data-compressed="1"] .header-row.header-row-1 {
 }
 header { transition: height 180ms ease; }
 
-/* 3.6 - loading skeletons. Drop .rc-skel on any block during the first
- * 500 ms after game-start to replace the "-" placeholder with a subtle
- * shimmer. JS adds + removes the class. */
-.rc-skel {
-  position: relative;
-  background: linear-gradient(
-    90deg,
-    var(--surface) 0%,
-    var(--surface-head) 40%,
-    var(--surface) 80%
-  );
-  background-size: 220% 100%;
-  animation: rc-skel-shimmer 1.4s ease-in-out infinite;
-  color: transparent !important;       /* hide the underlying "-" */
-  border-radius: var(--radius-sm);
-}
-@keyframes rc-skel-shimmer {
-  0%   { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
-/* OQ4 reduced-motion (RC2 D2 static-replace, tokens.css pattern): the
- * skeleton stops shimmering and HOLDS the lighter shimmer band as a solid
- * fill, so a loading block still reads as "loading" (visibly distinct from
- * the var(--surface) card fill) instead of silently dropping the signal.
- * color: transparent from the base rule still hides the underlying "-". */
-@media (prefers-reduced-motion: reduce) {
-  .rc-skel {
-    animation: none !important;
-    background: var(--surface-head);
-  }
-}
+/* (3.6 loading skeletons removed 2026-07-01: the mechanism was dormant dead
+ * code - nothing ever set its opt-in attribute and its strip event was never
+ * dispatched, so an adopted skeleton would have stuck forever. The "-"
+ * sentinel is the approved no-data display. Guard:
+ * tests/test_rc_skel_removed.py; re-add from git history WITH a dispatcher
+ * if a skeleton affordance is ever wanted.) */
 
 /* AUDIT 2026-04-28 - proposal 2.1 cost tile + 2.2 coach toggles +
  * 2.5 trace tab. These pieces live in the ops/diagnostics view and
