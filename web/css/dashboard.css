@@ -37,6 +37,7 @@
 @import './panels/ward_cue.css';
 @import './panels/spike_cue.css';
 @import './panels/objective_chips.css';
+@import './panels/objective_gauges.css';
 @import './panels/cd_ledger.css';
 @import './panels/spike_curve.css';
 @import './panels/ward_heat.css';
