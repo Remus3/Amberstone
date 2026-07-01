@@ -150,7 +150,8 @@
   font-weight: 700;
   letter-spacing: 0.5px;
   background: var(--signal-good, #6ec977);
-  color: #0a0e14;
+  /* OQ6 exact-lock: was the literal #0a0e14 (byte-equals --canvas). */
+  color: var(--canvas, #0a0e14);
   border-radius: 4px;
   opacity: 0;
   transform: translateY(-4px);
