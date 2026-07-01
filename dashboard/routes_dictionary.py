@@ -29,6 +29,12 @@ _CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddrag
 
 
 _DICT_CACHE_CONTROL = "public, max-age=86400, immutable"
+# champion-tags layers curated damage-profile overrides (core.champion_info_
+# overrides) on top of the patch data, so - unlike the immutable raw items/runes
+# dumps - it must be revalidatable: a short, NON-immutable cache lets a curated
+# edit or a DDragon refresh show up on a normal reload without a hard refresh
+# (honoring champion_tags.js's cache:"default" revalidation intent).
+_CHAMPION_TAGS_CACHE_CONTROL = "public, max-age=300"
 
 
 def _serve_file(h, path: Path) -> None:
@@ -155,7 +161,7 @@ def _serve_champion_tags(h) -> None:
             if slug:
                 out[slug] = tags_entry
         h._send(200, _json.dumps(out).encode("utf-8"), "application/json; charset=utf-8",
-                cache_control=_DICT_CACHE_CONTROL)
+                cache_control=_CHAMPION_TAGS_CACHE_CONTROL)
     except Exception as exc:  # noqa: BLE001
         log.warning("dictionary champion-tags: %s", exc)
         h._send(500, b'{"error":"champion_tags_failed"}', "application/json")

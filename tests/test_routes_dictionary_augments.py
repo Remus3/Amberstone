@@ -106,11 +106,16 @@ class CacheControlTests(unittest.TestCase):
         self.assertIn("max-age=86400", h.cache_control)
         self.assertIn("immutable", h.cache_control)
 
-    def test_serve_champion_tags_sets_long_cache(self):
+    def test_serve_champion_tags_uses_revalidate_cache(self):
+        # champion-tags carries curated overrides (not raw patch data), so it
+        # gets a SHORT, NON-immutable cache: a curated edit / DDragon refresh
+        # shows up on a normal reload without a hard refresh (unlike the
+        # immutable items/runes dumps).
         h = _Handler()
         rd._serve_champion_tags(h)
         if h.status == 200:
-            self.assertEqual(h.cache_control, rd._DICT_CACHE_CONTROL)
+            self.assertEqual(h.cache_control, rd._CHAMPION_TAGS_CACHE_CONTROL)
+            self.assertNotIn("immutable", h.cache_control)
 
     def test_constant_value(self):
         self.assertEqual(
