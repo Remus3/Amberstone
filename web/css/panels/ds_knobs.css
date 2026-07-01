@@ -38,7 +38,7 @@
 }
 
 .dsk-head-title {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-sm, 18px);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -46,7 +46,7 @@
 }
 
 .dsk-head-sub {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-xs, 16px);
   color: rgba(255, 255, 255, 0.55);
 }
 
@@ -68,7 +68,7 @@
 }
 
 .dsk-knob > span {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-xs, 16px);
   color: rgba(255, 255, 255, 0.60);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -77,12 +77,13 @@
 .dsk-knob > input {
   width: 100%;
   box-sizing: border-box;
-  padding: 3px 6px;
+  min-height: var(--hit-min, 42px);
+  padding: var(--space-1, 4px) var(--space-2, 8px);
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 3px;
+  border-radius: var(--panel-radius-sm, 10px);
   color: rgba(255, 255, 255, 0.92);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-sm, 18px);
   font-variant-numeric: tabular-nums;
 }
 
@@ -121,26 +122,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-sm, 18px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.90);
 }
 
 .dsk-delta {
   flex: 0 0 auto;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-sm, 18px);
   font-weight: 800;
   color: var(--signal-info, #8a8cf0);
 }
 
 .dsk-gold {
   flex: 0 0 auto;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-xs, 16px);
   color: rgba(255, 255, 255, 0.55);
 }
 
 .dsk-empty {
-  font-size: var(--fs-xs);
+  font-size: var(--fs-xs, 16px);
   color: rgba(255, 255, 255, 0.45);
   padding: 4px 0;
 }
