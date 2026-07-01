@@ -312,6 +312,23 @@ shadow accrual. These ride along the 3 games but close on a later cycle, not thi
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-07-01 (R51, LOOP) target_hp gate seam for Cut Down 8017 / Coup de Grace 8014 - ENGINE 1.162.0 ->
+  1.163.0, DEFAULT-OFF, live default-ON flip EXCLUDED. `keystone_amp(..., gate_target_hp=False)` +
+  `compute_burst_damage(..., gate_target_hp_amp=False)`. Pre-R51 the burst-MAX scorer applied both Precision
+  slot-4 amps (Cut Down >60% target HP, Coup de Grace <40% target HP) UNCONDITIONALLY - the burst-window
+  approximation, since a burst spans the target HP range. R51 makes the gate HONESTLY expressible: with
+  `gate_target_hp=True`, `keystone_amp` amps Cut Down only when `target_hp_pct` is strictly ABOVE 0.60 and Coup
+  de Grace only when strictly BELOW 0.40 (verbatim DDragon 16.13.1 longDesc: "more than 60% health" / "less
+  than 40% health"; magnitude 1.08 unchanged). At the DEFAULT `gate_target_hp=False` the gate block is skipped
+  entirely -> BYTE-IDENTICAL to the pre-R51 unconditional approximation (no live consumer passes the flag, so
+  /rank / ds-preview / burst are unchanged). OWED (operator/Gemini-gated, NOT headless - charter 4b
+  do-not-flip-blind): wire a per-instant scenario / fight_report consumer to pass `gate_target_hp_amp=True` with
+  a real `target_hp_pct` snapshot (or a per-timestep HP band) so the two runes credit only when the target is
+  actually in-band, then confirm the gated burst reads sane vs a real game. Gating a whole burst on a single HP
+  snapshot is LESS accurate than the unconditional window approximation for a full burst, so the honest use is
+  a per-instant / stepped eval, NOT a blind flip of the burst scorer. No DS math change on flip (seam already
+  live); DS `:8893` needs no restart for the flip itself. Does NOT block any further stage.
+
 - 2026-07-01 (R50, LOOP) K'Sante P "All Out Bonus" bilinear caster-resist seam - ENGINE 1.161.0 -> 1.162.0,
   DEFAULT-OFF, live default-ON flip EXCLUDED. New registry `_ALL_OUT_BONUS_OVERRIDES` + new
   `AbilitiesSnapshot.load(apply_all_out_bonus=...)` flag inject a SECOND K'Sante-P synthetic damage block modeling
