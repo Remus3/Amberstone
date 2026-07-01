@@ -460,6 +460,16 @@ _FIRST_STRIKE_AMP_MULT = 1.07
 _COUP_DE_GRACE_AMP_MULT = 1.08
 _CUT_DOWN_AMP_MULT = 1.08
 
+# R51 (ENGINE 1.163.0) target_hp gate thresholds. Verbatim from live DDragon
+# 16.13.1 runesReforged.json longDesc:
+#   Cut Down 8017      -> "more than 60% health"  (strict >; target_hp_above)
+#   Coup de Grace 8014 -> "less than 40% health"  (strict <; target_hp_below)
+# Consumed ONLY when keystone_amp is called with gate_target_hp=True (the
+# DEFAULT-OFF R51 seam); at the default the amp stays unconditional so every
+# pre-R51 caller is byte-identical (burst-window approximation preserved).
+_CUT_DOWN_HP_GATE = 0.60
+_COUP_DE_GRACE_HP_GATE = 0.40
+
 RUNE_PROCS: Dict[int, RuneProc] = {
     8112: RuneProc(
         rune_id=8112,
@@ -881,6 +891,7 @@ def keystone_amp(
     role: str = "melee",
     bonus_as: float = 0.0,
     target_hp_pct: float = 1.0,
+    gate_target_hp: bool = False,
 ) -> float:
     """Apply a flat-damage keystone AMPLIFIER to ``base_damage``.
 
@@ -900,17 +911,27 @@ def keystone_amp(
 
     Cut Down (8017, condition="target_hp_above") + Coup de Grace (8014,
     condition="target_hp_below") apply their 1.08 flat amp UNCONDITIONALLY here
-    (item 232/233): a burst spans the target HP range (opens >60%, kills <40%)
-    so the burst-MAX scorer meets BOTH gates within the window - gating by a
-    single ``target_hp_pct`` snapshot would be LESS accurate for a burst. The
-    condition tag + ``target_hp_pct`` kwarg are metadata / forward-compat for a
-    future per-instant scenario eval that wants to gate; this default is
-    byte-identical.
+    at the DEFAULT ``gate_target_hp=False`` (item 232/233): a burst spans the
+    target HP range (opens >60%, kills <40%) so the burst-MAX scorer meets BOTH
+    gates within the window - gating by a single ``target_hp_pct`` snapshot would
+    be LESS accurate for a burst.
+
+    R51 (ENGINE 1.163.0) target_hp gate seam: pass ``gate_target_hp=True`` to
+    HONESTLY gate those two runes on the supplied ``target_hp_pct`` per the live
+    DDragon 16.13.1 longDesc - Cut Down amps only when the target is strictly
+    ABOVE 60% health, Coup de Grace only when strictly BELOW 40% health; the gate
+    that fails returns ``base`` unchanged (no amp). At the DEFAULT
+    ``gate_target_hp=False`` the gate block is skipped entirely -> BYTE-IDENTICAL
+    to the pre-R51 unconditional burst-window approximation. The seam is
+    DEFAULT-OFF everywhere in this run; the live default-ON flip is operator-gated
+    (docs/LIVE_GAME_GATED_SYNC.md - do not flip blind). The gate only touches the
+    two ``target_hp_above`` / ``target_hp_below`` runes; every other amp rune
+    ignores ``gate_target_hp`` (byte-identical).
 
     Unknown rune ids and non-amp runes return ``base_damage`` unchanged.
-    ``stacks`` / ``game_time_s`` / ``role`` / ``bonus_as`` / ``target_hp_pct``
-    are accepted for forward compatibility / signature parity but are unused for
-    the current amp registry. Fail-soft.
+    ``stacks`` / ``game_time_s`` / ``role`` / ``bonus_as`` are accepted for
+    forward compatibility / signature parity but are unused for the current amp
+    registry. Fail-soft.
     """
     try:
         base = float(base_damage)
@@ -927,6 +948,16 @@ def keystone_amp(
         try:
             return base * _last_stand_amp(caster_hp_pct=caster_hp_pct)
         except (TypeError, ValueError):
+            return base
+    if gate_target_hp and proc.condition in ("target_hp_above", "target_hp_below"):
+        # R51 seam: honestly gate Cut Down (>60% target HP) / Coup de Grace
+        # (<40% target HP) on target_hp_pct. Gate not met -> no amp (base).
+        thp = _f(target_hp_pct)
+        if proc.condition == "target_hp_above":
+            gate_met = thp > _CUT_DOWN_HP_GATE
+        else:
+            gate_met = thp < _COUP_DE_GRACE_HP_GATE
+        if not gate_met:
             return base
     try:
         return base * float(proc.amp_mult)
