@@ -48,6 +48,10 @@ import { renderMinimapRect } from './panels/minimap_rect.js';
 import { renderMinimapZoi } from './panels/minimap_zoi.js';
 // QA4: overlay-only objective respawn-timer chips (dragon/baron/herald).
 import { renderObjectiveChips } from './panels/objective_chips.js';
+// OQ16 (OQ3 variant A): overlay-only peripheral objective gauge cluster
+// (DRAKE/BARON/ELDER/SUMMS ring dials). Self-gates on the overlay shell +
+// SR mode; a cheap no-op on the 1920 dashboard.
+import { renderObjectiveGauges } from './panels/objective_gauges.js';
 import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.js';
 // HIST2: detached historical PGR (archive view for a clicked History /
 // Session match row). Separate DOM + state from last_match.js - never
@@ -1409,6 +1413,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         renderMinimapRect(_amMockData.minimap_rect || null);
         renderMinimapZoi(_amMockData.zoi || null);
         renderObjectiveChips(_amMockData.liveclient || null);
+        // OQ16: objective gauge cluster rides the ui_mock dispatch too. The
+        // mock fixture's liveclient carries no game_time_s, so the widget
+        // honestly stays hidden there (SR-live-only by construction).
+        renderObjectiveGauges({
+          mode: _amMockData.mode || "sr",
+          liveclient: _amMockData.liveclient || null,
+          cooldowns: _amMockData.summoner_cooldowns || null,
+        });
         // ARAM balance grid rides the ui_mock dispatch too, so the
         // documented ?ui_mock=1&mode=aram#active-match audit/preview path
         // renders it (the live branch below wires it for real games). Mode
@@ -1473,6 +1485,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // QA4: objective respawn chips off the same liveclient block
       // (lc.objective_events + lc.game_time_s). Null-safe; hides when no respawn.
       renderObjectiveChips((state.latest && state.latest.liveclient) || null);
+      // OQ16: peripheral objective gauge cluster rides the same overlay-gated
+      // dispatch off mode_key + the liveclient block + the summoner_cooldowns
+      // ledger. Null-safe; hides entirely outside a live SR game.
+      renderObjectiveGauges({
+        mode: state.mode,
+        liveclient: (state.latest && state.latest.liveclient) || null,
+        cooldowns: (state.latest && state.latest.summoner_cooldowns) || null,
+      });
     }
     // s164: re-fire champ-select view on every state envelope when it's
     // active. lcu envelopes are one-shot from FakeSocket, so a render
