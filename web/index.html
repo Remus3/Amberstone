@@ -161,6 +161,13 @@
              history. W pips are filled good-token, L pips hollow
              bad-token (shape differs, not hue alone - WCAG 1.4.1). -->
         <div class="home-rank-wl" id="home-hero-rank-wl" hidden></div>
+        <!-- QA15b: true season WR - ranked (Solo/Duo + Flex) win-rate over
+             the 90d season window, from the home payload's season_wr dict
+             (rewind tracked_win, queue 420/440). Distinct from the L20
+             form above (all modes). Hidden when there is no ranked game in
+             the window, so the operator's mostly-ARAM sessions never show a
+             misleading 0%. -->
+        <div class="home-season-wr" id="home-hero-season-wr" hidden></div>
       </div>
       <!-- Center column: the momentum headline (idle = recent-form verdict,
            main.js _homeMomentumVerdict) + the primary Find Match CTA. Home's
