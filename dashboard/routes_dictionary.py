@@ -19,6 +19,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from core import champion_info_overrides as _cio
+
 log = logging.getLogger("rc.web_dashboard")
 
 _ITEMS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" / "ddragon_items.json"
@@ -107,7 +109,11 @@ def _serve_champion_tags(h) -> None:
             name = entry.get("name")
             if not name:
                 continue
-            info = entry.get("info") or {}
+            # Overlay the curated damage-profile override for champs DDragon
+            # leaves zeroed (Seraphine/Akshan/Rell/Vex all-zero, Qiyana attack=0)
+            # so the AD/AP chip is not driven by missing info - see
+            # core.champion_info_overrides.
+            info = _cio.merged_info(name, entry.get("info") or {})
             tags_raw = list(entry.get("tags") or [])
             attack = int(info.get("attack") or 0)
             magic = int(info.get("magic") or 0)
