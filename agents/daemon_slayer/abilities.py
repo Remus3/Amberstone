@@ -44,7 +44,11 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from ._ability_overrides import DAMAGE_TYPE_OVERRIDES, NON_DAMAGE_BLOCKS
-from ._passive_damage_overrides import _PASSIVE_DAMAGE_OVERRIDES, to_damage_block
+from ._passive_damage_overrides import (
+    _ALL_OUT_BONUS_OVERRIDES,
+    _PASSIVE_DAMAGE_OVERRIDES,
+    to_damage_block,
+)
 from ._passive_heal_overrides import _PASSIVE_HEAL_OVERRIDES, to_heal_block
 from ._passive_shield_overrides import _PASSIVE_SHIELD_OVERRIDES, to_shield_block
 
@@ -322,6 +326,37 @@ def _apply_passive_damage_overrides(cid: str, key: str, form: AbilityForm) -> Ab
     return replace(form, **changes)
 
 
+def _apply_all_out_bonus_overrides(cid: str, key: str, form: AbilityForm) -> AbilityForm:
+    """Inject the R50 K'Sante All Out Bonus block at load time.
+
+    OPT-IN: runs only when ``AbilitiesSnapshot.load`` is called with
+    ``apply_all_out_bonus=True``. Appends a SECOND synthetic
+    ``attribute_kind="damage"`` block - the R-empowered All Out Bonus (a
+    bilinear caster bonus-resist x target-max-HP term, amortized by its
+    All-Out-uptime firing probability) - onto a form that has a registered
+    ``_ALL_OUT_BONUS_OVERRIDES`` entry and ``parse_status == "no_damage"``.
+
+    Kept OUT of the base ``_PASSIVE_DAMAGE_OVERRIDES`` seam so the item-255 base
+    mark-consume block stays byte-identical (and its prior-entry invariants are
+    untouched); a consumer wanting K'Sante's full empowered-in-All-Out damage
+    sets BOTH ``apply_passive_damage`` and ``apply_all_out_bonus`` (the two
+    blocks then coexist on the P form). Returns ``form`` unchanged when the gate
+    is not met; the default (flag OFF) path never calls this, so forms are
+    byte-identical to the no-override behavior.
+    """
+    if form.parse_status != "no_damage":
+        return form
+    entry = _ALL_OUT_BONUS_OVERRIDES.get((cid, key, form.form_index))
+    if entry is None:
+        return form
+    changes: dict[str, Any] = {
+        "damage_blocks": form.damage_blocks + (to_damage_block(entry),),
+    }
+    if not form.damage_type:
+        changes["damage_type"] = entry.damage_type
+    return replace(form, **changes)
+
+
 def _apply_passive_heal_overrides(cid: str, key: str, form: AbilityForm) -> AbilityForm:
     """Inject the GAP-2 effects-text-only HEAL block at load time.
 
@@ -572,6 +607,7 @@ class AbilitiesSnapshot:
         apply_passive_damage: bool = False,
         apply_passive_heal: bool = False,
         apply_passive_shield: bool = False,
+        apply_all_out_bonus: bool = False,
         prefer_cdragon_ratios: bool = True,
         cdragon_root: Path | None = None,
     ) -> "AbilitiesSnapshot":
@@ -600,6 +636,15 @@ class AbilitiesSnapshot:
         Barrier, Vi/Shen/Rakan/Yasuo P, Skarner W, Volibear E, Viktor Q, Camille
         P - effects-text-only self-shields) so ``compute_ability_hps`` scores
         them in ``total_shield_per_sec``. Default OFF = byte-identical.
+
+        ``apply_all_out_bonus`` (R50, default False / OFF) is the K'Sante All Out
+        Bonus seam: when True, ``_apply_all_out_bonus_overrides`` appends a
+        SECOND synthetic damage block (the R-empowered bilinear caster
+        bonus-resist x target-max-HP term, gated by its All-Out-uptime
+        probability) onto K'Sante's P form. Independent of
+        ``apply_passive_damage`` - both flags ON coexist (base mark consume +
+        All Out bonus); it is kept out of the base registry so the item-255
+        magnitude stays byte-identical. Default OFF = byte-identical.
 
         ``prefer_cdragon_ratios`` (default True / ON since item 320 / ENGINE
         1.119.0 cutover) re-sources per-ability damage RATIOS from the live
@@ -668,6 +713,11 @@ class AbilitiesSnapshot:
                     # GAP 2 effects-text-only SHIELD: opt-in, default OFF.
                     if apply_passive_shield:
                         fm = _apply_passive_shield_overrides(cid, key, fm)
+                    # R50 K'Sante All Out Bonus (bilinear caster-resist): opt-in,
+                    # default OFF. Independent of apply_passive_damage - both flags
+                    # ON coexist (base mark consume + All Out bonus). Byte-identical OFF.
+                    if apply_all_out_bonus:
+                        fm = _apply_all_out_bonus_overrides(cid, key, fm)
                     # Prefer-CDragon mechanical ratios: opt-in, default OFF.
                     # Primary form only (the sidecar emits one block list per slot,
                     # no form_index) - transform forms keep Meraki.
