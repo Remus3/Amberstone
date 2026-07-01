@@ -49,6 +49,13 @@ class LcuClient(_PGMixin):
         self._thread: Optional[threading.Thread] = None
         self._task: Optional[Any] = None  # AppLoop task when riding asyncio
         self._rune_id_map: dict = {}  # perk id -> name, lazy-loaded
+        # 2026-07-01 lockfile-rotation resilience
+        # (reference_runewriter_dies_after_game1): remember which lockfile we
+        # connected from + its mtime so _refresh_conn_if_changed() can cheaply
+        # detect a League restart (rotated port/password) and re-auth WITHOUT
+        # an RC restart.
+        self._lockfile_path = None
+        self._lockfile_mtime = None
 
     def connect(self):
         for lf in _LOCKFILE_PATHS:
@@ -62,6 +69,11 @@ class LcuClient(_PGMixin):
                     self._port = int(parts[2])
                     pw = parts[3]
                     self._auth = base64.b64encode(f"riot:{pw}".encode()).decode()
+                    self._lockfile_path = lf
+                    try:
+                        self._lockfile_mtime = lf.stat().st_mtime
+                    except OSError:
+                        self._lockfile_mtime = None
                     _log.info("LCU connected: port %d (from %s)", self._port, lf)
                     return True
                 except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
@@ -69,7 +81,55 @@ class LcuClient(_PGMixin):
         _log.info("LCU lockfile not found - client may not be running")
         return False
 
-    def _request(self, method, endpoint, data=None):
+    def _refresh_conn_if_changed(self) -> None:
+        """Re-auth when the LCU lockfile rotates (League restart) so a
+        long-lived RC survives a client restart WITHOUT an RC restart.
+
+        Mirrors the RC-LCUAgent's ensure_lcu_conn() (tools/lcu_agent.py), the
+        reference pattern that already survives a rotation. mtime-guarded: the
+        every-tick (1 Hz) call is a pure stat() fast-path while the lockfile is
+        unchanged, so it neither re-parses nor log-spams. Swaps port/auth on a
+        real rotation; clears them when the lockfile is gone (League closed) so
+        the connect() cold-start path reconnects cleanly on the next launch.
+
+        Only acts once already connected; the initial connect is left to
+        connect() (and the _auto_accept_tick cold-start). See
+        reference_runewriter_dies_after_game1 (2026-07-01).
+        """
+        if not self._port:
+            return  # not yet connected - connect() owns the cold start
+        for lf in _LOCKFILE_PATHS:
+            try:
+                mtime = lf.stat().st_mtime
+            except OSError:
+                continue  # this install path absent - try the next
+            if lf == self._lockfile_path and mtime == self._lockfile_mtime:
+                return  # unchanged since last read - fast path, no re-parse
+            try:
+                parts = lf.read_text(encoding="utf-8").strip().split(":")
+                port = int(parts[2])
+                pw = parts[3]
+            except (OSError, IndexError, ValueError, UnicodeDecodeError) as e:
+                _log.warning("LCU lockfile parse (%s): %s", type(e).__name__, e)
+                return
+            auth = base64.b64encode(f"riot:{pw}".encode()).decode()
+            if port != self._port or auth != self._auth:
+                _log.info("LCU reconnected: port %d (lockfile rotated, from %s)",
+                          port, lf)
+            self._port = port
+            self._auth = auth
+            self._lockfile_path = lf
+            self._lockfile_mtime = mtime
+            return
+        # No lockfile on any known path -> League closed. Clear creds so a later
+        # launch reconnects via connect()/the cold-start path.
+        _log.info("LCU lockfile gone - client closed; creds cleared")
+        self._port = None
+        self._auth = None
+        self._lockfile_path = None
+        self._lockfile_mtime = None
+
+    def _request(self, method, endpoint, data=None, _retry=True):
         if not self._port or not self._auth:
             return None
         url = f"https://{GAME_HOST}:{self._port}{endpoint}"
@@ -110,8 +170,16 @@ class LcuClient(_PGMixin):
             with urllib.request.urlopen(req, context=self._ssl, timeout=3) as resp:
                 raw = resp.read().decode()
             return json.loads(raw) if raw.strip() else {}
-        except (urllib.error.URLError, OSError, TimeoutError,
-                json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        except (urllib.error.URLError, OSError, TimeoutError):
+            # Connection-level failure - most often a dead port after a League
+            # restart rotated the lockfile. Re-read it; if it rotated, retry
+            # ONCE on the fresh port. reference_runewriter_dies_after_game1.
+            if _retry:
+                self._refresh_conn_if_changed()
+                if self._port:
+                    return self._request(method, endpoint, data=data, _retry=False)
+            return None
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
             return None
 
     # === Auto-Accept ===========================================================
@@ -149,6 +217,11 @@ class LcuClient(_PGMixin):
             self._task = None
 
     def _auto_accept_tick(self) -> None:
+        # Keep creds fresh across a League restart (lockfile rotation) even when
+        # no request is in flight - the 1 Hz heartbeat that heals RuneWriter and
+        # every other consumer sharing this instance.
+        # reference_runewriter_dies_after_game1.
+        self._refresh_conn_if_changed()
         if not self._port:
             self.connect()
         if self._port:
