@@ -127,6 +127,21 @@ def head_lines(rel, n, root=None):
         return ""
     return "\n".join(p.read_text(encoding="utf-8", errors="replace").splitlines()[:n])
 
+def cap_bytes(text, limit, label):
+    # 2026-07-01 NO_WORK-starvation fix: the director prompt went out at 572KB
+    # (ORCHESTRATION_PLAN grew a 289KB findings log; modern LEDGER items are
+    # multi-KB single lines, so head-60 was 93KB) and gemini completed with an
+    # EMPTY body -> misread as NO_WORK -> STOP with 5 OPEN queue rows. Doc
+    # growth must never starve the director again: keep the HEAD (queue tables
+    # / newest entries live at the top of both docs) and stamp a visible cut.
+    if len(text) <= limit:
+        return text
+    return text[:limit] + f"\n...[{label} truncated at {limit} bytes - full text in the repo file]"
+
+# Hard byte budgets for the two unbounded director-context components.
+PLAN_CTX_CAP = 140_000
+LEDGER_CTX_CAP = 40_000
+
 # ---- directive-chain continuity (persisted; survives controller restarts) ---
 def directive_title(body):
     """A compact one-line label for an issued directive (for the chain digest)."""
@@ -241,13 +256,14 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None):
     base = Path(root) if root is not None else ROOT
     plan = base / "docs/ORCHESTRATION_PLAN.md"
     plan_txt = plan.read_text(encoding="utf-8", errors="replace") if plan.exists() else "(no plan file)"
+    plan_txt = cap_bytes(plan_txt, PLAN_CTX_CAP, "ORCHESTRATION_PLAN")
     chain = _format_directive_chain(read_directive_history(12, ctl=ctl))
     ctx = (
         f"\n\n=== ORCHESTRATION PLAN (PRIMARY work source; pick next OPEN session, skip EXCLUDED) ===\n{plan_txt}"
         "\n\n=== ALREADY-COMPLETED DIGEST - every item below is DONE. BUILD ON it; NEVER re-issue it ==="
         f"\n\n--- RECENT COMMITS (newest first) ---\n{git('log', '--oneline', '-n', '25')}"
         "\n\n--- docs/LEDGER.md NEWEST items (newest-first; each line is a COMPLETED item) ---\n"
-        f"{head_lines('docs/LEDGER.md', 60, root=root)}"
+        f"{cap_bytes(head_lines('docs/LEDGER.md', 60, root=root), LEDGER_CTX_CAP, 'LEDGER head')}"
         "\n\n--- DIRECTIVES ALREADY ISSUED THIS RUN (do NOT re-issue any unit below) ---\n"
         f"{chain}"
         "\n\nDE-DUP RULE: before emitting the directive, cross-check your chosen unit against the "
