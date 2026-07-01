@@ -113,7 +113,6 @@ _2026-05-23 sweep: shipped items 94-149 (May 19-22 sessions covering CLAUDE.md i
 - **set_augment_intent Cherry endpoint discovery** (s170 #6) - `tools/lcu_agent.py` ships a 4-endpoint PATCH chain for the Arena 1750 augment-select phase (first 2xx wins); live verification OWED at the next Arena augment phase. Recipe + full historical record: `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md`.
 - **Vision regions calibration** - tune `data/vision_regions.json` bboxes. Blocked on live game for calibration frame.
 - **DS calibration pipeline** - analyzes operator's actual DS pick outcomes vs game results to tune item-curve weights. Blocked on SR ranked freshness: `rewind_history.db` now has 2900 matches (latest 2026-05-14 via RC-RewindCatchup weekly cron item 101) but Ranked Solo (queue 420) latest is still 2025-12-15 + only 0 SR records in `data/ds_calibration.jsonl` per item 125 probe. Normal Draft (queue 400) has 11 SR matches in last 14 days but the calibration delta wants ranked specifically. Waits on ~20+ ranked-game samples. (Note: this is the SEPARATE DS-calibration concern. The ADR-007 phase 2 postmortem-from-rewind death-pattern analyzer `scripts/postmortem_analyze.py` SHIPPED 2026-05-21 per CLAUDE.md item 124 + cadence task LIVE per item 125; that pipeline is the personal-context death-pattern lane, not this DS-calibration delta lane.)
-- **Bridge Watcher acceptance-criteria** - need 50+ real-traffic auto-action samples (currently synthetic only). Watch `auto_ok_since_boot` vs `auto_err_since_boot` on RC heartbeat.
 
 ## Open items - Medium priority
 
@@ -140,4 +139,4 @@ Live status is intentionally NOT duplicated here - a static table goes stale (th
 - **`py_compile` before restart** - syntax errors crash silently under `pythonw.exe`.
 - **Restart via `restart_trigger.txt`** - never `Stop-Process`; `taskkill /F /PID` for hard kills.
 - **Coach prompt edits require RC restart** - batch edits, restart once.
-- **Don't break the cross-Claude bridge** - `vision_token` + `mcp_token` are SEPARATE; never let one resolver fall back to the other's file.
+- **Keep the `vision_token` + `mcp_token` resolvers SEPARATE** - never let one resolver fall back to the other's file.

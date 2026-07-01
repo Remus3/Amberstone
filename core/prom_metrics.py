@@ -208,38 +208,3 @@ def render_all() -> str:
     lines.append("")
     return "\n".join(lines)
 
-# Phase 6: cross-cutting bridge metrics. Co-located in this module so any
-# caller could record without each module re-declaring its own counters.
-# (The cross-Claude bridge was decommissioned 2026-06-24; these primitives
-# are retained as the generic metric mechanism.)
-#
-# Per-process counters reset across invocations - they accumulate usefully
-# only inside long-running processes (e.g. the dashboard). For one-shot CLI
-# invocations the counts are emitted but die with the process. That's by
-# design - no shared state file to coordinate across processes, no metrics
-# daemon.
-class BridgeMetrics:
-    """Namespace of bridge-related Prometheus metrics."""
-
-    posts_total = Counter(
-        "rc_bridge_posts_total",
-        "Successful POSTs to a bridge endpoint, by envelope kind and target.",
-        labelnames=("kind", "target"),
-    )
-    fetches_total = Counter(
-        "rc_bridge_fetches_total",
-        "GET fetches against the bridge, by outcome "
-        "(success / error / empty / self_only).",
-        labelnames=("status",),
-    )
-    pulls_total = Counter(
-        "rc_bridge_pulls_total",
-        "Pull-tasks polls, by target and outcome (found / empty).",
-        labelnames=("target", "status"),
-    )
-    pull_pending = Gauge(
-        "rc_bridge_pull_pending",
-        "Pending un-answered tasks for this machine on the last poll.",
-        labelnames=("target",),
-    )
-

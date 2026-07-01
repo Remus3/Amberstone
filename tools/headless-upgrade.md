@@ -146,7 +146,6 @@ Run `/done` skill: auto-commit + push + WAKEUP_NOTES + living-doc sync + final b
 - Do NOT add feature flags / backwards-compat shims (CLAUDE.md hard rule).
 - Do NOT add WHAT-the-code-does comments; comments are for WHY only.
 - Do NOT widen one frozen-file grant into wholesale frozen edits; route around.
-- Do NOT poll a peer node manually for state the bridge already delivers.
 - Do NOT use `Stop-Process` (hangs MCP pipe); always `taskkill /F /PID`.
 
 ### 16. Final banner

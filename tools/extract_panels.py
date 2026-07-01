@@ -166,24 +166,6 @@ with open(f"{PANELS_DIR}/champ_select.js", "w", encoding="utf-8") as f:
     f.write(CHAMP_SELECT_HEADER + cs_comment + cs_funcs1a + cs_funcs1b + "\n" + cs_panel_fixed + CHAMP_SELECT_FOOTER)
 print("ok champ_select.js")
 
-# -- 6. bridge_pending.js -----------------------------------------------------
-BRIDGE_PENDING_HEADER = """\
-// Bridge Pending panel - coach decisions banner, recent coach calls log,
-// bridge task pending display. setIntervals start at module load.
-import { el, safe, _formatRelativeAge } from '../lib/helpers.js';
-import { state } from '../lib/state.js';
-
-"""
-BRIDGE_PENDING_FOOTER = """
-export { renderCoachDecisions, renderRecentCoachCalls, renderBridgePending };
-"""
-
-bp_funcs = L(6500, 6829)  # COACH_DECISIONS ... pollBridgePending + setInterval
-
-with open(f"{PANELS_DIR}/bridge_pending.js", "w", encoding="utf-8") as f:
-    f.write(BRIDGE_PENDING_HEADER + bp_funcs + BRIDGE_PENDING_FOOTER)
-print("ok bridge_pending.js")
-
 # -- 7. dev.js ----------------------------------------------------------------
 DEV_HEADER = """\
 // Dev panel - settings, diagnostics, dev/sim fixture viewer, replay scrubber.
@@ -215,7 +197,7 @@ import { NX, renderNext, arenaDetectPartner, arenaPartnerLine, arenaWaveLine } f
 import { IB, renderItemBuild, renderItemTiles, _updateItemBuildHeader, _ibPushItems, _ibMaybeRenderBuilds, _ibFetchAndRender, _ibSetStatus, _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice } from './panels/item_build.js';
 import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _updateGameClock, _applyGamePhase, _snapshotSpells, _fmtMMSS, _renderMmStateLine } from './panels/map_state.js';
 import { handleChampSelect, renderChampSelectPanel, renderChampSelectCoach } from './panels/champ_select.js';
-import { renderBridgePending, renderCoachDecisions, renderRecentCoachCalls } from './panels/bridge_pending.js';
+import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
 import { _settingsRefresh, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 """
 
@@ -239,7 +221,6 @@ REMOVE_RANGES = [
     (3067, 4051),# champ_select panel functions section 1
     (4499, 4944),# dev panel functions
     (5816, 6223),# champ_select panel functions section 2
-    (6500, 6829),# bridge_pending panel functions
 ]
 
 removed = set()
