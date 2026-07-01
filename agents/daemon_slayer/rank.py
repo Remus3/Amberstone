@@ -549,6 +549,7 @@ def rank_items(
     exempt_offclass_by_win: bool = False,
     prefer_kit_axis_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
+    target_current_hp_pct: float = 1.0,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -638,6 +639,13 @@ def rank_items(
     Void Immolation (223069) - floated to RANK 1 by the cost-scaling
     ``sort_by="delta"`` surface - is excluded. None (default) is byte-identical.
     The live default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
+
+    ``target_current_hp_pct`` (R55) is the seam that scales the three genuine
+    %-CURRENT-HP procs (BotRK 3153 / Hellfire 4017 / Fulmination 443055) by the
+    fraction of max HP the target sits at when the proc lands. It is forwarded
+    unchanged to every ``compute_dps`` call (baseline + each candidate) so the
+    carry (dps) scorer surfaces the same current-HP model the mage/assassin
+    scorers already had. Default 1.0 is an identity multiply -> byte-identical.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -683,6 +691,7 @@ def rank_items(
         target_mr=target_mr,
         target_max_hp=target_max_hp,
         target_bonus_hp=target_bonus_hp,
+        target_current_hp_pct=target_current_hp_pct,
         phase=phase,
         augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
@@ -771,6 +780,7 @@ def rank_items(
                 target_mr=target_mr,
                 target_max_hp=target_max_hp,
                 target_bonus_hp=target_bonus_hp,
+                target_current_hp_pct=target_current_hp_pct,
                 phase=phase,
                 augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,

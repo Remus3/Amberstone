@@ -498,7 +498,7 @@ class EngineVersionPinTests(unittest.TestCase):
     """Pin ENGINE_VERSION at 1.57.0 for this test file's invariants."""
 
     def test_engine_version_at_1_57_0(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.164.0")
+        self.assertEqual(ENGINE_VERSION, "1.165.0")
 
 
 # ---------------- ASCII hygiene ----------------
