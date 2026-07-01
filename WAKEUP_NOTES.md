@@ -4,7 +4,7 @@
 
 ---
 
-# 2026-06-30 (operator session - QA15b home "true season WR" readout; Tier-1, NO ENGINE/DS/Share)
+# 2026-06-30 (operator session - QA15b home "true season WR" readout + CI minute-saver; Tier-1, NO ENGINE/DS/Share)
 
 Operator-driven (NOT the headless loop): picked tracker QA15 after E7's default-ON flip was confirmed BLOCKED (no live game - mode=client, relay empty; the operator eyeball cannot run). Grounded spec-first by a read-only Plan subagent. Full detail in LEDGER 705.
 
@@ -13,6 +13,7 @@ Operator-driven (NOT the headless loop): picked tracker QA15 after E7's default-
 - **DECISION (autonomous per the standing 2026-06-20 tracker directive; noted in RC_WORK_TRACKER for batch course-correct).** Season WR = RANKED (queue 420 Solo/Duo + 440 Flex) win-rate over the 90d window, hidden when 0 ranked games in window. "Season WR" means the ladder; ARAM/Arena/event have no meaningful season WR; and it is clearly distinct from the all-modes L20 form already shown.
 - **Build (`bf989ac1`).** New `_compute_season_wr` (`dashboard/builders.py`, mirrors `_compute_last20`; `game_creation_ts` is epoch MILLISECONDS so the 90d cutoff is scaled x1000 - the exact spec-flagged bug avoided) -> `season_wr` on the home payload (`builders_home.py`) -> `_homeRenderSeasonWr` into `#home-hero-season-wr` (`main.js`), token-only + display-only CSS (`home.css .home-season-wr*`). Fail-soft `{}` on a missing DB / no ranked game -> the readout hides (never a misleading 0% on ARAM-heavy sessions). Live: Ranked season 47.1% (24-27, n=51), distinct from L20 40%.
 - **Verify.** TDD 13-RED -> 23-GREEN (`ComputeSeasonWrTests` + `HomeSummarySeasonWrTests` + a feature-scoped floor guard `test_home_season_wr_floor_guard`) + the full related builders/home/history slice 115 passed + Playwright `test_home_view.py` 6 passed (the new render test produced the visual proof "RANKED SEASON 47.1% (24-27)"). 5-phase UI fixture audit = PASS, 0 MUST-FIX. Tier-1: no ENGINE/DS/Share (RC bounced once only to serve the new payload live; assets auto-reload). Did NOT stage the pre-existing `data/spell_prefs.json` drift or the agent6 FAILED demo report.
+- **Also this session - CI minute-saver (`9d66e47e`, LEDGER 706).** Private-repo 2000-min Actions cap was being hit; ~55% of commits are docs-only (per-session sync) yet each ran the full `check` (~4min) + CodSpeed. Added `paths-ignore: '**/*.md'` (docs-only commits now SKIP CI - EXPECTED, not a failure; local `precommit_gate.py` backstops .md hygiene) + `concurrency` cancel-in-progress + a Playwright browser cache, on both `.github/workflows/ci.yml` + `codspeed.yml`. YAML parse-validated + self-test CI green. Operator chose WAIT-AND-WATCH on the remaining lever (self-hosted runner on Legion - deferred, would contend with live RC during games). Memory `reference_ci_billing_fastfail` updated.
 - **NEXT.** E7 default-ON flip still OWED (operator live eyeball, `core/lcu_pool.py:40`). Next tracker QA item from the same-priority overlay/PGR queue (QA6/13/14/16/20/21/23/24/26/31, QA4 ZoI). DS still NO_WORK without an operator refill or the `/rank` live-flip go-ahead - do NOT re-scan the saturated registries.
 
 ---
