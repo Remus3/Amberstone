@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.166.0 (OQ11 / QA69 - static-CD ability-haste consumer. The item-233 name-keyed
+``ability_static_cd`` wiki-sidecar accessor gets its behavioral consumer: the
+per-spell DPS path bridges the priced FORM's name (Meraki names match the wiki
+Template:Data page titles) to the accessor and, when the ability is genuinely
+haste-immune, keeps the engine's own base cooldown instead of dividing by total
+ability haste. HONEST COVERAGE - gated iff ALL THREE hold: the raw ``static``
+value parses as a single plain positive number ("True" toggles + wiki formula
+strings do not); the ability carries NO wiki recharge_ranks (Amumu Q "Bandage
+Toss" static "3" + recharge 16..12 is the canonical charge-ability trap - its
+real cadence is the haste-affected recharge timer); the parsed value agrees with
+the engine's own base cooldown at the priced rank (Heimerdinger R "UPGRADE!!!"
+static "3" vs cd 100..70 disagrees -> stays on the haste path). The gate sits on
+the APPLICATION after the haste sum, so total_ability_haste keeps the honest
+build-wide sum; a new END-appended defaulted ``static_cd`` marker rides
+AbilitySpellDps + to_dict. Gated live at ship: Samira R "Inferno Trigger" (5s
+flat, e.g. 45 item AH no longer shows 3.45s) and Swain R form-1 "Demonflare"
+(8s, form-override only). Absent sidecar -> byte-identical haste path.)
+
 1.165.0 (R55 - archetype-aware DEFAULT for the target_current_hp_pct seam. The seam
 (item 374) scales ONLY the three genuine %-current-HP procs (BotRK 3153 / Hellfire 4017
 / Fulmination 443055). Before R55 it reached only the mage + assassin scorers; R55 plumbs
