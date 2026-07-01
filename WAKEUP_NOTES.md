@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-07-01 (direct executor post-loop-death - OQ4 quiet motion sweep, reduced-motion static-replace; ui, NO ENGINE/DS/Share)
+
+Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721.
+
+- **OQ4 - reduced-motion static-replace for ALL 10 infinite CSS loops (`40403363`).** Ground truth: 10 (not ~9) infinite declarations across primitives/item_build/home/map_state/header; tokens.css reduce block covered only coach-pulse one-shots; input_activity.css:473 global wildcard kill silently dropped signals (the RC2 D2 anti-pattern). Ultracode classification (10 agents: 5 analysts + 5 adversarial verifiers, all CONFIRMED): ZERO ambient loops - every site is a live signal (loading/buy-cue/search-heartbeat/zone-alarm/hp-alarm/advisory). So: default rendering byte-unchanged + every loop gains a same-file prefers-reduced-motion static hold (animation:none !important + ring/color/opacity). 9 blocks / 10 selectors.
+- **Verify:** TDD RED-first tests/test_motion_reduce_sweep_oq4.py (4: drift-guard, per-site, ASCII, default-loops-survive) RED 2 -> GREEN; adjacent suites 72 passed; snapshot_panels 278 passed (zero default-render delta); ruff clean; 5-phase audit 0 MUST-FIX; no capture owed (media-gated). CSS-only ADR-008 reload, no restart.
+- **FUTURE (chip task_6fa65ffc):** rc-skel skeleton mechanism is dormant dead code (nothing sets data-rc-skel; rc:state-tick never dispatched) - adopt-or-remove.
+- **NEXT.** OQ4 DONE (`40403363`). Loop is DOWN - relaunch via /gemini-headless-upgrade PART A, or continue direct-executor top-down: next OPEN = OQ5 (QA46 two-tier design tokens, byte-identical). Do NOT re-classify the 10 loops (double-verified); do NOT trim default motion (all signals live - test D pins it).
+
+---
+
 # 2026-07-01 (Gemini headless loop cycle 3 - OQ3 peripheral objective ring-gauge overlay MOCKUP set; overlay-ui, NO ENGINE/DS/Share)
 
 Director picked OQ3 from the operator queue. Full detail in LEDGER 720.
@@ -23,15 +34,3 @@ Loop relaunched; director picked OQ2 from the operator queue. Full detail in LED
 - **OQ2 - finish the Peer cross-Claude bridge decommission (`6edfbd3e`).** PREMISE STALE (verify-before-build): the directive assumed the bridge files still existed + were frozen, but the SOURCE was already removed 2026-06-24 (ADR-012) - all tools/bridge_*, dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml, core/bridge*.py GONE; RC-BridgeWatcher task NOT registered; CLAUDE.md frozen list already clean. NO frozen edit + no fan-out warranted -> a ~6-file coupled dead-code sweep done inline (R9) behind a read-only verifier gate. SWEPT: prom_metrics.py dead BridgeMetrics namespace (0 consumers); main.js inert peer-bridge-health tooltip (j.peers is server-dead); extract_panels.py bridge_pending.js codegen -> repointed to coach_decisions.js; stale bridge lines in headless-upgrade.md + ROADMAP.md; git rm the 2 orphaned "docs io RC peer/" bridge contract docs. Guard tests/test_bridge_decommissioned_oq2.py (TDD RED 5 -> GREEN 5). Verifier CONFIRM 8/8; targeted blast-radius suite 356 passed; ruff clean; node --check OK. DS Share ritual n/a (no DS path). Full RC suite -> CI (7-min local timeout).
 - **OUT OF SCOPE (left intact - different subsystem):** the local FileBridge/DevRuntime admin gate (admin_bridge_enabled + bridge_poll_interval_seconds, LIVE in frozen main.py + ops/rc_dev_runtime.py) is the shell/process exec gate, NOT the Peer cross-Claude bridge. FUTURE nits: _supervisor_common.py:121 stale WHY-comment cites the removed bridge-watchdog cadence; bridge_poll_interval_seconds may be orphaned now rc_file_bridge.py is gone - a separate local-FileBridge assessment.
 - **NEXT.** OQ2 DONE; ORCHESTRATION_PLAN OQ2 flipped DONE (`6edfbd3e`). Director picks the next OPEN OQ row (OQ3 = QA11 ring-gauge 3-variant mockup set, no build until operator picks) top-down. Do NOT re-pitch a bridge or lessons-sync (ADR-012 + ADR-004 superseded).
-
----
-
-# 2026-07-01 (Gemini headless R54 cycle + loop STOP + operator work-tracker reconcile + OQ queue seed; lift/docs + Tier-1 frontend, NO ENGINE/DS/Share)
-
-Gemini headless loop cycle 6 ran, then the operator interrupted to reconcile the work tracker + reseed the loop. Full R54 detail in LEDGER 717.
-
-- **R54 - Section-7b competitor lift of Aggregator S + in-run ship of the skill-order card (`7f7b82cb`).** Aggregator S (pro-build aggregator) deep-dive, 7 findings (NOW 1 / FUTURE 3 / CLOSED 3), `docs/COMPETITOR_LIFT_2026-07-01_AGGREGATOR_S.md`. Shipped F4: champ-select ability MAX-ORDER card ("Q > E > W") - `skill_order` was extracted+shipped for 173/173 champs but surfaced NOWHERE. New DASHBOARD route `dashboard/routes_ds_skill_order.py` (reads champions.json lolmath.skill_order directly, zero DS import; corrected the agent's DS-server.py Tier-2 sketch) + `web/js/panels/ds_skill_order.js` next to ds_profile. Tier-1-lite (RC restart only). TDD 17 tests, verifier CONFIRM 8/8, UI audit 0 MUST-FIX, live-probed. FUTURE F1/F2/F7 -> BACKLOG.
-- **Loop self-terminated** (gemini director NO_WORK -> STOP at 06:40) after cycle 6. The controller + AHK exited; not running now.
-- **RC_WORK_TRACKER.md reconciled** (last sync 06-20 -> 07-01) via a 7-cluster parallel verdict pass vs LEDGER 633-717. Closed 10 shipped rows (QA4/15/16, E7, E11, E12, 95, A4a, smb_push, HZ-B regen), tightened 4 partials (QA26/L117/L32/L45), kept the genuine-open set. File is gitignored (local).
-- **3 operator decisions (2026-07-01) -> queued as ORCHESTRATION_PLAN OQ1-OQ3 (`18bafdec`).** OQ1 = BUILD DS target-current-HP% per-archetype flip (validate lolmath ~50% baseline FIRST, then per-archetype via the item-374 seam, ENGINE bump; live eyeball gated). OQ2 = DECOMMISSION the Peer<->Legion cross-Claude bridge ENTIRELY (completeness-sweep incl. frozen bridge files + RC-BridgeWatcher task, under the headless frozen grant). OQ3 = QA11 produce a 3-VARIANT ring-gauge mockup set FIRST (no build until operator picks). Plus 12 curated loop-actionable OQ rows (UI/design/engine).
-- **NEXT.** Operator will `/clear` + relaunch `/gemini-headless-upgrade` to restart the headless loop; the director picks OQ1-OQ15 top-down (launch auto-clears the stale STOP). Do NOT re-run the R54 lift (shipped). Do NOT re-arm the bridge (decision is DECOMMISSION, OQ2). Live-gated items (E2 bundle, L33/L105/L108, L117 Release, E10, Arena-S2) stay in the tracker, not loop-actionable.
