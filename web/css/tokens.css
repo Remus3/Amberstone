@@ -25,31 +25,46 @@
  */
 
 :root {
+  /* PRIMITIVE hue layer (OQ5/QA46, two-tier tokens). Raw Hextech hue
+   * values stored ONCE as rgb parts (the overlay.css --ovx-* precedent)
+   * so any consumer can dial alpha per use without re-stating the hue.
+   * Byte-identical to the hexes they replace (guard:
+   * tests/test_two_tier_tokens_oq5.py). Semantic tokens below re-point
+   * here; widgets keep consuming ONLY the semantic layer. */
+  --prim-green: 55, 208, 138;   /* #37D08A Hextech good        */
+  --prim-amber: 232, 163, 61;   /* #E8A33D Hextech warn        */
+  --prim-red:   232, 64, 87;    /* #E84057 Hextech bad         */
+  --prim-slate: 143, 163, 191;  /* #8FA3BF Hextech dim ink     */
+  --prim-blue:  124, 168, 255;  /* #7CA8FF Hextech info        */
+  --prim-gold:  200, 170, 110;  /* #C8AA6E Hextech frame gold  */
+  --prim-teal:  10, 200, 185;   /* #0AC8B9 Hextech teal        */
+
   /* Semantic colors (additive to existing palette; do NOT replace
-   * --bg / --fg / --good / --bad / --gold which the primitives layer
-   * already owns). */
+   * --bg / --fg / --good / --bad / --gold which the primitives.css
+   * chrome layer already owns). */
   /* RC2 Hextech re-point (was neo-fintech #6ec977/#f1b04a/#ff5050/...).
-   * Hues now match docs/design/RC2_DESIGN.html (good #37D08A, warn
-   * #E8A33D, bad #E84057, info #7CA8FF, gold #C8AA6E, dim #8FA3BF). The
-   * -soft rgba()s share each new hue at .18 alpha; pulse-* below share
-   * each hue at .35 alpha. */
-  --signal-good: #37D08A;
-  --signal-warn: #E8A33D;
-  --signal-bad:  #E84057;
-  --signal-dim:  #8FA3BF;
-  --signal-info: #7CA8FF;
-  --signal-gold: #C8AA6E;
-  --signal-good-soft: rgba(55, 208, 138, 0.18);
-  --signal-warn-soft: rgba(232, 163, 61, 0.18);
-  --signal-bad-soft:  rgba(232, 64, 87, 0.18);
+   * Hues match docs/design/RC2_DESIGN.html; since OQ5 each semantic is a
+   * pure rgb()/rgba() wrapper over the primitive layer above - the
+   * -soft rgba()s share each hue at .18 alpha; pulse-* below share
+   * each hue at .35 alpha. Rendered output is byte-identical to the
+   * former literals. */
+  --signal-good: rgb(var(--prim-green));
+  --signal-warn: rgb(var(--prim-amber));
+  --signal-bad:  rgb(var(--prim-red));
+  --signal-dim:  rgb(var(--prim-slate));
+  --signal-info: rgb(var(--prim-blue));
+  --signal-gold: rgb(var(--prim-gold));
+  --signal-good-soft: rgba(var(--prim-green), 0.18);
+  --signal-warn-soft: rgba(var(--prim-amber), 0.18);
+  --signal-bad-soft:  rgba(var(--prim-red), 0.18);
 
   /* Additive Hextech component tokens (consumed by web/css/hextech.css
    * primitives). The fill is the teal->gold sweep used on progress bars
    * and decomposition tracks; the glow is the teal bloom for active /
    * fresh affordances; the border is the gold-tinted hairline. */
-  --hextech-fill: linear-gradient(90deg, #0AC8B9, #C8AA6E);
-  --hextech-glow: rgba(10, 200, 185, 0.30);
-  --hextech-border: rgba(200, 170, 110, 0.16);
+  --hextech-fill: linear-gradient(90deg, rgb(var(--prim-teal)), rgb(var(--prim-gold)));
+  --hextech-glow: rgba(var(--prim-teal), 0.30);
+  --hextech-border: rgba(var(--prim-gold), 0.16);
 
   /* Font-size scale (v2.1, 2026-05-23). Five existing tiers bumped
    * ~44% from v1 baseline (operator-directed: 25% first-pass + 15%
@@ -110,9 +125,9 @@
   /* Fresh-update affordance (coach prompt glow) - tints calibrated
    * against the panel canvas background so the pulse reads at 1920x1080
    * on the Legion dashboard display. */
-  --pulse-good: 0 0 12px rgba(55, 208, 138, 0.35);
-  --pulse-warn: 0 0 12px rgba(232, 163, 61, 0.35);
-  --pulse-bad:  0 0 12px rgba(232, 64, 87, 0.35);
+  --pulse-good: 0 0 12px rgba(var(--prim-green), 0.35);
+  --pulse-warn: 0 0 12px rgba(var(--prim-amber), 0.35);
+  --pulse-bad:  0 0 12px rgba(var(--prim-red), 0.35);
 }
 
 /* Tabular-nums utility (additive; opt-in via class on numeric cells).
