@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-02 (OQ14 - Interactive Item Shaper 3-knob strip; overlay-ui + backend route, NO ENGINE/DS/Share)
+
+Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; feature `639e2789` + docs `d8396df0`, LEDGER 735). PREMISE-CHECK first (did NOT scaffold on the directive's "pure UI" label): grep proved core/shaper.apply_shaper had ZERO prod callers, rank_items (rank.py:527) takes NO weight-dict arg, and the archetype blend is a 2-axis [alpha,beta] per-champ table - so a full nudge->re-ranked-item-list wire is an ENGINE SEAM the directive mislabeled. Took the SAFEST-REVERSIBLE scope (PART C + operator no-questions): an HONEST emphasis preview, logging the full re-rank as a BACKLOG FUTURE.
+
+- **Backend (`routes_ds_shape.py`):** NEW read-only GET /api/ds-shape (mirrors routes_ds_knobs) -> per-champ [alpha,beta] from the REAL archetype_weights.json -> baseline {damage:alpha, survivability:beta, utility:0.0} -> apply_shaper(ShaperState) -> baseline/shaped fractions + *_pct + archetype_source. Knobs int-clamped [-2,2]; 400 blank champion; graceful 500 (no raw traceback).
+- **Frontend (`ds_shaper.js` + `.css`):** 3-knob strip Row4 SHAPER (after FIGHT MODEL in active_match.js). Non-persisting module var (NO localStorage), snaps to 0 on champion change + resetShaper() for match end; debounced dedupFetch; escHtml; renders "LABEL base -> shaped". CSS tokens-only (--hit-min 42 buttons, --fs-xs/sm >=16, --signal-info operator tone).
+- **Orchestrated:** 2 parallel worktree slices on DISJOINT NEW files to a frozen route contract -> read-only verifier CONFIRM each (A 16 / B 6 node DOM passed fresh; cross-slice contract keys baseline_pct/shaped_pct + path + query MATCH) -> sole-merger wiring of the 3 shared files (_dispatch.py + dashboard.css + active_match.js). TDD RED-first both slices.
+- **Proof:** full RC suite fresh on merged main 10415 passed / 2 skipped / 193 subtests; RC restarted pid 15840 -> 18500 (alive/reload_ok); LIVE ROUTE PROBE end-to-end green Darius dmg+1/surv-1 -> 65/35/0 baseline -> 72/27/0 shaped (both push to damage, sums 1.0, 4ms). 5-phase UI audit PASS 0 MUST-FIX / 0 SHOULD-FIX. In-game overlay pixel capture OWED (no live game - the strip renders only in-game).
+- NO DS path -> no DS bounce, no Share sync, NO ENGINE (precommit confirmed no mirrored source staged). Did NOT stage the pre-existing data/spell_prefs.json drift. Frozen files untouched.
+- Remaining OPEN queue: OQ15 (GPI radar this-match dot). FUTURE (BACKLOG): Item Shaper full re-rank engine seam (3-axis weight surface + ranker threading; do NOT build blind).
+
+---
+
 # 2026-07-01 late night 3 (live-gated-sync full resync + operator decision queue + drain tooling; docs/meta, NO ENGINE/DS/Share)
 
 Operator-directed: refresh docs/LIVE_GAME_GATED_SYNC.md (consolidated headless-impossible checklist) + build reusable drain tooling + answer a local-AI question. Fable-5 orchestrated 46-agent Workflow (11 doc readers + repo grep sweep + git-evidence + seam-flag ground-truth + adversarial done-verify + verifier gate PASS). LEDGER 734.
