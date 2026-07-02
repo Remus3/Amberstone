@@ -1331,6 +1331,26 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.168.0 (OQ17, 2026-07-02 - /rank* HTTP-boundary seam transport (item-638 pattern).
+No math change: threads the existing ENGINE-ONLY default-OFF seams across the HTTP
+routes so each live eyeball is a pure flag flip, byte-identical when the body omits
+the flag. server.py only (plus the version stamp): ``_route_burst`` gains ``runes``
+parsing + the six compute-direct seams assume_takedown (DSV2) / assume_ability_amp
+(DSV4) / score_completion_runes (DSP4) / gate_target_hp_amp (R51) / gate_caster_hp_amp
++ caster_current_hp_pct (R53) - all /burst-scoped like R30 assume_magic_burst because
+a flat keystone amp washes out of a candidate-baseline delta, so they read the
+single-build burst NUMBER not the ranker delta. ``_route_rank_assassin`` gains the four
+enemy-comp / kill-state ranking seams the burst ranker already forwards -
+assume_takedown (DSV2) / assume_squishy_target (DSV3) / assume_ability_amp (DSV4) /
+target_preset (DSP8). ``_route_dps`` gains apply_melee_aa_gate (B1), /dps-scoped like
+R7/R12. Every seam DEFAULT-OFF/None -> byte-identical; the live default-ON flips stay
+EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md rows B2/B3/B6/B18/B19/B34). EXCLUDED from OQ17:
+R50 apply_all_out_bonus is a load-time AbilitiesSnapshot flag (not a per-call compute
+param), so it is not a pure flag-flip and needs per-request snapshot construction -
+logged as a separate follow-up. Client-helper emit (core/daemon_slayer_client.py) is a
+follow-up: the raw HTTP boundary is already a pure flag-flip; the typed Python helpers
+emit the new keys only once their named params are added.)
+
 1.167.0 (R58, 2026-07-02 - assume_ms_utility seam: Movement Speed utility valuation
 for the BRUISER/juggernaut (hybrid) scorer. New DEFAULT-OFF END-appended kwarg on
 ``compute_hybrid`` + ``rank_items_by_hybrid`` in ``hybrid.py``; all engine edits in

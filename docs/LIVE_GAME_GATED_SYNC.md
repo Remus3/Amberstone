@@ -96,12 +96,15 @@ no row carries it.
   + Experimental row).
 - B2. (PRACTICE-SR) DS Phase-D default-ON flag flips: `apply_passive_damage`, the 4
   non-every-AA `on_hit`, per-stack `assumed_stacks` - saner-not-different own-build re-rank.
-  NOTE: only the direct /dps debug route exposes `apply_passive_damage` today; /rank + client
-  plumbing needed first. SOURCE: ROADMAP DS Phase-D.
+  NOTE: `apply_passive_damage` stays /dps-scoped after OQ17 (matches the R7/R12 precedent -
+  `rank_items` does not forward it); the "4 non-every-AA on_hit" are the un-routed remainder
+  of that same router, not a distinct seam. /rank exposure + client plumbing still pending.
+  SOURCE: ROADMAP DS Phase-D.
 - B3. (PRACTICE-SR) DSV seam flips: `assume_takedown` (DSV2) / `assume_squishy_target` (DSV3)
   / `assume_ability_amp` (DSV4) on the BURST scorer `agents/daemon_slayer/burst.py
-  rank_items_by_burst` (NOT rank.py). ENGINE-ONLY - needs route + client plumbing before the
-  eyeball. DS `:8893` restart on flip.
+  rank_items_by_burst` (NOT rank.py). ENGINE-ONLY - route transport WIRED OQ17 (/rank-assassin
+  reads all three; /burst also reads assume_takedown + assume_ability_amp; ENGINE 1.168.0).
+  Client-helper emit + the live default-ON flip still pending. DS `:8893` restart on flip.
 - B4. (PRACTICE-SR) Anti-tank P3.2: wire a survivability/draft surface to call
   `antitank.compute_antitank_live` with the live build (producer is test-import-only today;
   `/anti-tank` still calls the static variant) + eyeball scaled %max-HP magnitudes. No DS
@@ -110,9 +113,11 @@ no row carries it.
   Ezreal surfaces Trinity/Manamune, crit ADCs byte-identical. DS restart.
 - B6. (PRACTICE-SR) DSP4 `score_completion_runes` flip (Shield Bash 8401): burst-NUMBER delta
   on `compute_burst_damage`/`compute_combo` with a real runes set - direct-call eyeball, NOT
-  in the re-rank harness. Needs plumbing.
+  in the re-rank harness. Route transport WIRED OQ17 (/burst reads it + now parses `runes`;
+  ENGINE 1.168.0); the live flip stays pending.
 - B7. (PRACTICE-SR) B1 `apply_melee_aa_gate` flip: melee bruiser build drops Runaan's, ranged
-  carry byte-identical. ENGINE-ONLY, needs plumbing. DS restart.
+  carry byte-identical. ENGINE-ONLY - /dps route transport WIRED OQ17 (/dps-scoped like R7/R12;
+  ENGINE 1.168.0); the live flip stays pending. DS restart.
 - B8. (PRACTICE-SR) R7 `assume_passive_as_stacks` flip (Irelia/Jax/Ezreal/Volibear at full
   stacks; stacks buildable vs dummies/minions; stack fraction operator-tunable). DS restart.
   SOURCE: ledger 2026-06-19 below.
@@ -147,10 +152,12 @@ no row carries it.
   the stricter read (re-check in the Mayhem game). DS restart. SOURCE: ledger 2026-06-30
   below.
 - B18. (PRACTICE-SR) R51 `gate_target_hp_amp` per-instant consumer (dummy HP is settable) -
-  per-instant / stepped scenario eval, NOT a blind burst-scorer flip. SOURCE: ledger
+  per-instant / stepped scenario eval, NOT a blind burst-scorer flip. Route transport WIRED
+  OQ17 (/burst reads it + `target_current_hp_pct`; ENGINE 1.168.0). SOURCE: ledger
   2026-07-01 below.
 - B19. (PRACTICE-SR) R53 `gate_caster_hp_amp` per-instant consumer (own HP droppable) - same
-  per-instant discipline. SOURCE: ledger 2026-07-01 below.
+  per-instant discipline. Route transport WIRED OQ17 (/burst reads it + `caster_current_hp_pct`;
+  ENGINE 1.168.0). SOURCE: ledger 2026-07-01 below.
 - B20. (PRACTICE-SR) OQ1/R55 `assume_archetype_hp_pct` 3-game own-build re-rank eyeball
   (BotRK 3153 / Hellfire 4017 / Fulmination 443055 only; bruiser/marksman BotRK neither
   over- nor under-ranks). The 0.5 sustained-fraction CALIBRATION is an ACCRUAL tail (G14).
@@ -210,14 +217,19 @@ no row carries it.
   `dsp_live_consumers.ally_protected_ehp` (ally beside Janna/Lulu/Soraka shows higher EHP;
   solo ally unchanged). Practice tool is solo.
 - B34. (REAL-SR) DSP8 `target_preset` derived from the LIVE enemy comp into burst /
-  /rank-assassin (lethality vs tank comp, magic pen vs high-CC comp). ENGINE-ONLY, needs
-  plumbing. DS restart.
+  /rank-assassin (lethality vs tank comp, magic pen vs high-CC comp). ENGINE-ONLY -
+  /rank-assassin route transport WIRED OQ17 (ENGINE 1.168.0); the live enemy-comp derivation
+  into the body + the flip stay pending. DS restart.
 - B35. (REAL-SR) R9 `assume_passive_flat_mitigation`: flip in the live survivability path +
   tune `_ASSUMED_FLAT_DR_INSTANCES`=6 / `_ASSUMED_ABILITY_RANK`=4 vs a real fight clock
   (needs sustained real incoming pressure). SOURCE: ledger 2026-06-21 below.
 - B36. (REAL-SR) R50 `apply_all_out_bonus` (K'Sante): confirm the empowered-mark value in an
   actual All Out fight + tune `conditional_probability` 0.5 vs real All-Out uptime. DS
-  restart. SOURCE: ledger 2026-07-01 below.
+  restart. NOTE: OQ17 EXCLUDED this seam - `apply_all_out_bonus` is a load-time
+  `AbilitiesSnapshot.load()` flag (abilities.py:610), NOT a per-call compute param, so it is
+  not a pure HTTP flag-flip; burst compute always uses the cached flags-off `load_default()`
+  snapshot. Threading it needs per-request snapshot construction (separate task, logged
+  FUTURE). SOURCE: ledger 2026-07-01 below.
 - B37. (REAL-SR) L4 capability-gap live validation with `RC_CAPGAP_SURFACE=1` (gap detectors
   key on real enemy champion identity). SOURCE: ROADMAP.md:16; docs/LEDGER.md items
   631-634.
