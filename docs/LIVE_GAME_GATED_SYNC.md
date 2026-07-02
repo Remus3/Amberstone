@@ -302,10 +302,6 @@ no row carries it.
 
 ## D. Arena / Cherry (queue 1750) - ARENA REQUIRED: every row here is Arena-only, FLAG LOUDLY
 
-- D1. (ARENA) Arena 6x3 champ-select visual capture - STATUS UNCLEAR: ROADMAP.md:18 records
-  champ-select COMPLETE across SR/ARAM/Arena via the headless ui_mock fixtures; keep only if
-  the operator still wants a live Arena capture beyond the fixture render. Re-check before
-  booking the game. SOURCE: ROADMAP.md:97 vs :18.
 - D2. (ARENA) set_augment_intent 4-PATCH endpoint discovery at a real Arena augment phase
   (`tools/gamepc_lcu_agent.py:1179` - path is stale post Game-PC retirement, re-home the
   chain before running; recipe `docs/CHERRY_AUGMENT_SCAFFOLD_NOTES.md`). SOURCE:
@@ -356,9 +352,6 @@ no row carries it.
   `68b6cc54` view-router hash cited in LEDGER item 520 does not resolve; a fired instance
   is not recorded anywhere). SOURCE: docs/LEDGER.md item 520.
 - F4. (POST-GAME) Per-page UI-audit ritual on the next live PGR open. SOURCE: ROADMAP.md:109.
-- F5. (POST-GAME) rewind_history.db SR records with game_id (wired `d66d14b`). STATUS: likely
-  stale - queue-420 rows now number 516; probe the DB for populated game_id BEFORE booking a
-  game for this. SOURCE: RC_WORK_TRACKER.md:107; BACKLOG.md:28.
 - F6. (POST-GAME) R47 PGR child-panel capture - UNCLEAR / likely moot (the entry itself says
   the baseline render is byte-identical, so there is no pixel delta to capture); operator
   call to discharge as no-op. SOURCE: docs/LEDGER.md item 702.
@@ -429,6 +422,18 @@ no row carries it.
 
 - Operator packaging: `npx electron-builder` + first GitHub Release + packaged update check -
   operator/release-gated, needs NO game.
+- D1 (OQ20 DISCHARGE 2026-07-02). Arena 6x3 champ-select is COVERED headless: fixture
+  `web/data/ui_mock/champ_select_arena.json` (6531B: phase + champ_select + build_variants) +
+  snapshot test `tests/snapshot_panels/test_champ_select_view.py` + committed renders
+  `champ-select_arena.png` / `champ-select-r30_arena.png` + harness
+  `ops/runtime/ui_recon/recon.py`. ROADMAP:18 (champ-select COMPLETE across SR/ARAM/Arena via
+  ui_mock) VALIDATED. A live Arena capture beyond the fixture render is operator-optional, NOT
+  gating. SOURCE: ORCHESTRATION_PLAN OQ20.
+- F5 (OQ20 DISCHARGE 2026-07-02). rewind_history.db game_id population probe PASSED with no
+  game: the game identifier is column `match_id` (there is NO separate `game_id` column in the
+  schema), 100 pct populated for queue_id=420 (516/516). The queue-420 count is exactly 516
+  (== the row baseline, so no NEW ranked SR game since it was authored - a freshness signal,
+  not a blocker); population is COMPLETE. SOURCE: ORCHESTRATION_PLAN OQ20; RC_WORK_TRACKER.md:107.
 - DSV5 RC_COMP_HP_LEAN default-ON flip AUTHORIZATION: the live eyeball is DONE 2026-06-23
   (R24, SANER NOT DIFFERENT); the remainder is ONE operator env / frozen-file decision
   (`ops/rc_supervisor.py` env or machine env) - consolidates the tripled ledger obligation
@@ -472,8 +477,9 @@ no row carries it.
 PREP (headless, before session 1): plumb the ENGINE-ONLY seams across /rank + client (DSV2/3/4,
 DSP4, DSP8, B1, R50/R51/R53, Phase-D) or lean on `live_flip_eyeball.py` OFF-vs-ON dumps; wire
 the DSP5/6/7 + P3.2 consumers to live inputs; relaunch rc-shell (E3 - picks up the P4.x MAIN
-logic); confirm RC-LiveFlipWatcher armed; regen HZ-B tables to 1.166.0; probe F5 (rewind
-game_id) and D1 (Arena fixture coverage) so neither books a game it does not need.
+logic); confirm RC-LiveFlipWatcher armed; regen HZ-B tables to 1.166.0; F5 (rewind game_id) +
+D1 (Arena fixture coverage) PROBED + DISCHARGED headless (OQ20, 2026-07-02) - neither books a
+game; both moved to "Not actually live-gated".
 
 SESSION 1 - PRACTICE TOOL SR (1 custom lobby + 1-2 practice games, one sitting).
 Champ-select (practice lobby): A8 panel captures, A1 LCU-push re-confirm (restart League
@@ -491,7 +497,7 @@ DSP5/6/7 plumbed eyeballs; B34 DSP8 preset; B37 L4 capgap flag-ON; B35 R9 fight-
 B36 R50 if K'Sante is played (else defer to any later real game); B38 P3.3/S0 Emergency
 eyeball; B20 game 2/3; B40 live UI watch tick; A13 close-out. Post-game (this is the
 Match-V5-eligible match): F1 PGR S3/S4/S5 + @N capture, F2 REPLAY1 freshness, F3 PGR
-auto-show, F4 PGR UI-audit ritual, F5 game_id probe confirm, F6 operator no-op call.
+auto-show, F4 PGR UI-audit ritual, F6 operator no-op call (F5 game_id DISCHARGED headless, OQ20).
 
 SESSION 3 - ARAM MAYHEM (1-2 games, queue 2400, one sitting).
 Champ-select: A6 bench-swap, A10 bench reassurance, C2 VARIANT (scenario-gated), A3 CC-pair if
@@ -503,12 +509,12 @@ fell short); C15 augment OCR rank-vs-pick; C16 augment-select render; B17 R49 st
 B20 game 3/3; B28 ARAM HUD regions.
 
 SESSION 4 - ARENA (1 game, queue 1750) - ONLY because open Arena-only items remain.
-ARENA NEEDED: YES - items: D1 6x3 champ-select capture (re-check fixtures first), D2
-set_augment_intent endpoint discovery, D3 boots-mirror augment-phase visual, D4
+ARENA NEEDED: YES - items: D2 set_augment_intent endpoint discovery (D1 6x3 champ-select
+DISCHARGED headless, OQ20 - fixtures confirmed), D3 boots-mirror augment-phase visual, D4
 apply_mode_modifiers re-rank, D5 arena-coach debounce (try the replay alternative first), D6
-augment + anvil shadow seeding (accrual can only start here), D7 Arena PGR capture. If D1 and
-D5 discharge headless and the operator defers D4/D6, the session can slip - but D2/D3/D7 have
-NO non-Arena path.
+augment + anvil shadow seeding (accrual can only start here), D7 Arena PGR capture. D1 is now
+DISCHARGED headless (OQ20); if D5 also discharges headless and the operator defers D4/D6, the
+session can slip - but D2/D3/D7 have NO non-Arena path.
 
 ACCRUAL items (ride every session; close on later cycles, never on one game): G1 Lane-A
 (`tools/hz_shadow_report.py`), G2 Lane-B (`tools/replay_build_order_validate.py --limit 0`
@@ -596,6 +602,14 @@ over normal play across later cycles, not in these sessions.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-07-02 OQ20 de-book probes (docs-only; no engine / flag / code change): F5 + D1
+  DISCHARGED without a game, moved to "Not actually live-gated". F5 = rewind_history.db
+  `matches` queue_id=420 is 516 rows with `match_id` 100 pct populated (there is NO `game_id`
+  column in the schema; `match_id` IS the game identifier); count == 516 baseline so no new
+  ranked game since the row was authored, population COMPLETE - no post-game confirm needed.
+  D1 = Arena 6x3 champ-select renders headless via `champ_select_arena.json` + snapshot test
+  + committed screenshots + `ops/runtime/ui_recon/recon.py`; ROADMAP:18 VALIDATED, a live
+  Arena capture is operator-optional only.
 - 2026-07-02 R58 `assume_ms_utility` shipped default-OFF (ENGINE 1.167.0, commit `304c88dd`):
   MS-utility DPS credit for the bruiser/juggernaut scorer (`compute_hybrid` +
   `rank_items_by_hybrid`, hybrid.py only; 1 pct bonus MS ~= 0.5 pct effective DPS, cap 0.15).
