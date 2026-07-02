@@ -21,6 +21,12 @@ the operator participant row (the matches.tracked_kp / tracked_ttmga_t
 summary columns are frequently empty strings in the live DB, so they are NOT
 used - aggression and tempo come from participant damage + gold instead).
 
+Each sufficient-history payload also carries ``this_match`` - the NEWEST
+filtered game scored per relative axis (midrank percentile vs the FULL
+history) so the radar can overlay "this game" on the longitudinal profile.
+The champion drilldown composes for free: ``games`` is already
+champion-filtered before the block is built.
+
 Public API:
     compute_gpi(mode="sr", window=20, champion=None) -> dict   # the contract
     list_champions(mode="sr") -> [{champion_id, n_games}, ...] # drilldown pool
@@ -89,6 +95,7 @@ def _empty(mode: str, window: int, n_games: int, champion: Optional[int],
         "overall": None,
         "weakest_axis": None,
         "tip": None,
+        "this_match": None,
     }
 
 
@@ -112,7 +119,8 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
         where.append("p.champion_id = ?")
         params.append(champion)
     sql = (
-        "SELECT m.match_id, m.game_duration_s, p.champion_id, "
+        "SELECT m.match_id, m.game_duration_s, m.game_creation_ts, "
+        "p.champion_id, "
         "p.total_minions_killed, p.neutral_minions_killed, p.vision_score, "
         "p.gold_earned, p.total_damage_dealt_to_champs, p.deaths, p.kills, "
         "p.assists, p.dragon_kills, p.baron_kills, p.turret_takedowns, "
@@ -126,8 +134,8 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
     seen: set[str] = set()
     games: list[dict] = []
     for row in conn.execute(sql, params):
-        (mid, dur_s, champ, minions, neutral, vis, gold, dmg, deaths, kills,
-         assists, drag, baron, turret, inhib) = row
+        (mid, dur_s, ts, champ, minions, neutral, vis, gold, dmg, deaths,
+         kills, assists, drag, baron, turret, inhib) = row
         if mid in seen:
             continue
         seen.add(mid)
@@ -135,6 +143,7 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
         games.append({
             "match_id": mid,
             "champion_id": champ,
+            "ts": ts,
             "dpm": float(dmg or 0) / dur_min,
             "cspm": float((minions or 0) + (neutral or 0)) / dur_min,
             "vspm": float(vis or 0) / dur_min,
@@ -256,6 +265,37 @@ def _consistency_axis(games: list[dict], window: int) -> dict:
     }
 
 
+def _this_match_block(games: list[dict]) -> Optional[dict]:
+    """Score the NEWEST filtered game per axis vs the FULL history.
+
+    The 6 relative axes get a midrank percentile of games[0] within the same
+    directional baseline _relative_axis uses, plus the raw single-game value.
+    The two window-shape axes (versatility / consistency) have no single-game
+    meaning, so they ride along with score/value None purely to keep the
+    block positionally aligned with the payload ``axes`` list.
+    """
+    if not games:
+        return None
+    newest = games[0]
+    axes: list[dict] = []
+    for key, _label, _unit, higher, sel in _RELATIVE_AXES:
+        sign = 1.0 if higher else -1.0
+        baseline = sorted(sign * sel(g) for g in games)
+        axes.append({
+            "key": key,
+            "score": round(100.0 * _percentile(baseline, sign * sel(newest)), 1),
+            "value": round(sel(newest), 2),
+        })
+    for key in ("versatility", "consistency"):
+        axes.append({"key": key, "score": None, "value": None})
+    return {
+        "match_id": newest["match_id"],
+        "champion_id": newest["champion_id"],
+        "game_creation_ts": newest["ts"],
+        "axes": axes,
+    }
+
+
 def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
                 champion: Optional[int] = None,
                 conn: Optional[sqlite3.Connection] = None) -> dict:
@@ -293,6 +333,7 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     out = _empty(mode, window, n_games, champion, confidence)
     out["axes"] = axes
     out["overall"] = overall
+    out["this_match"] = _this_match_block(games)
 
     # Weakest-axis call-out drives the single improvement tip. Only the relative
     # skill axes are eligible (see _AXIS_TIPS); ties break on axis order.
