@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-02 (OQ14 - Interactive Item Shaper 3-knob strip; overlay-ui + backend route, NO ENGINE/DS/Share)
+
+Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; feature `639e2789` + docs `d8396df0`, LEDGER 735). PREMISE-CHECK first (did NOT scaffold on the directive's "pure UI" label): grep proved core/shaper.apply_shaper had ZERO prod callers, rank_items (rank.py:527) takes NO weight-dict arg, and the archetype blend is a 2-axis [alpha,beta] per-champ table - so a full nudge->re-ranked-item-list wire is an ENGINE SEAM the directive mislabeled. Took the SAFEST-REVERSIBLE scope (PART C + operator no-questions): an HONEST emphasis preview, logging the full re-rank as a BACKLOG FUTURE.
+
+- **Backend (`routes_ds_shape.py`):** NEW read-only GET /api/ds-shape (mirrors routes_ds_knobs) -> per-champ [alpha,beta] from the REAL archetype_weights.json -> baseline {damage:alpha, survivability:beta, utility:0.0} -> apply_shaper(ShaperState) -> baseline/shaped fractions + *_pct + archetype_source. Knobs int-clamped [-2,2]; 400 blank champion; graceful 500 (no raw traceback).
+- **Frontend (`ds_shaper.js` + `.css`):** 3-knob strip Row4 SHAPER (after FIGHT MODEL in active_match.js). Non-persisting module var (NO localStorage), snaps to 0 on champion change + resetShaper() for match end; debounced dedupFetch; escHtml; renders "LABEL base -> shaped". CSS tokens-only (--hit-min 42 buttons, --fs-xs/sm >=16, --signal-info operator tone).
+- **Orchestrated:** 2 parallel worktree slices on DISJOINT NEW files to a frozen route contract -> read-only verifier CONFIRM each (A 16 / B 6 node DOM passed fresh; cross-slice contract keys baseline_pct/shaped_pct + path + query MATCH) -> sole-merger wiring of the 3 shared files (_dispatch.py + dashboard.css + active_match.js). TDD RED-first both slices.
+- **Proof:** full RC suite fresh on merged main 10415 passed / 2 skipped / 193 subtests; RC restarted pid 15840 -> 18500 (alive/reload_ok); LIVE ROUTE PROBE end-to-end green Darius dmg+1/surv-1 -> 65/35/0 baseline -> 72/27/0 shaped (both push to damage, sums 1.0, 4ms). 5-phase UI audit PASS 0 MUST-FIX / 0 SHOULD-FIX. In-game overlay pixel capture OWED (no live game - the strip renders only in-game).
+- NO DS path -> no DS bounce, no Share sync, NO ENGINE (precommit confirmed no mirrored source staged). Did NOT stage the pre-existing data/spell_prefs.json drift. Frozen files untouched.
+- Remaining OPEN queue: OQ15 (GPI radar this-match dot). FUTURE (BACKLOG): Item Shaper full re-rank engine seam (3-axis weight surface + ranker threading; do NOT build blind).
+
+---
+
 # 2026-07-01 late night 3 (live-gated-sync full resync + operator decision queue + drain tooling; docs/meta, NO ENGINE/DS/Share)
 
 Operator-directed: refresh docs/LIVE_GAME_GATED_SYNC.md (consolidated headless-impossible checklist) + build reusable drain tooling + answer a local-AI question. Fable-5 orchestrated 46-agent Workflow (11 doc readers + repo grep sweep + git-evidence + seam-flag ground-truth + adversarial done-verify + verifier gate PASS). LEDGER 734.
@@ -27,16 +40,3 @@ Loop directive OQ13 executed by this session (merges `4d2955f4` + `22cc3e80` + a
 - **5-phase audit PASS 0 MUST-FIX.** Both SHOULD-FIXes fixed in-slice (`acf54c4d`): head deduped to THIS WEEK BY MODE + ui_mock weekly_digest block (fixture flapped live-then-hide). NICE FUTURE: pre-existing U+2192 home.css:545 (next drift sweep).
 - **OPERATOR MID-RUN CORRECTION:** "why is the chrome dashboard being used?" - audit agent had been told to render :8888 in Chromium (old OQ8/OQ12 fixture precedent). Redirected mid-flight: sanctioned = rc-shell Electron capture or ?overlay=1. Result: rc-shell NOT running + ?overlay=1 hides #home-overlay BY DESIGN (overlay.css:80) -> code-side phases complete, **Electron-companion capture OWED**. Rule reinforced: NO Chrome :8888 renders as visual proof, ever.
 - Remaining OPEN queue: OQ14 (Item Shaper knobs), OQ15 (GPI radar dot).
-
----
-
-# 2026-07-01 late night (OQ12 - QA31 PGR normalized carry-metrics bundle; ui + backend, NO ENGINE/DS/Share)
-
-Loop directive OQ12 executed by this session (merges `12958b47` + `94c8224c`, LEDGER 732). Full orchestrator pattern: Explore recon -> Plan spec (citations spot-verified + live rewind DB schema probe) -> 2 parallel worktree agents on disjoint files coding a frozen payload contract -> verifier CONFIRM each -> sole merger. Operator interrupted mid-run ("complete + summarize open items") - slice finished per protocol, then wrap.
-
-- **Backend (`5e27b452`):** dmg_share_pct producer; scripts/build_carry_benchmarks.py (rewind DB read-only -> COMMITTED data/coach_reference/carry_benchmarks.json, 44 groups role-or-mode x short/mid/long/all, min_n=50); core/carry_benchmarks.py reader (fallback chain + band fences); builders_last_match.py appends dmg_share_pct + carry_normalized END-of-payload, fail-soft.
-- **Frontend (`2782e87e`):** 5 hidden bench sub-line spans (3 live grid + 2 hpgr), _setBenchSub "HIGH - p50 26" on --signal-good/bad, idempotent + old-payload-silent; tooltip " vs <bench_key> (n=N)" from stashed ttBase.
-- **Proof:** full RC suite fresh on merged main 10364 passed / 2 skipped / 193 subtests; RC restarted pid 18564 alive/reload_ok; LIVE /api/last-match (real Vayne SR): BOTTOM|mid, kp 67.0 vs p50 48.4 HIGH, gold 29.8 vs 21.5 HIGH, dmg 36.1 vs 22.2 HIGH.
-- **5-phase audit MUST-FIX NONE.** SHOULD-FIX FUTURE: stat-row baseline misalignment when subs unhide (reserve sub slot or top-align, last_match.css:388). NICE: tooltip n = kp n on all cells; hpgr helper duplicated. **Electron-overlay pixel capture OWED** (no live game).
-- **Corpus caveat:** benchmark percentiles reflect the rewind DB rows at build time - regenerate carry_benchmarks.json after rewind catchup runs.
-- Remaining OPEN queue: OQ13-OQ15.
