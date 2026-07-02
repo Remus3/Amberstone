@@ -80,6 +80,54 @@ def test_gemini_logs_stderr_head_on_empty(lc, tmp_path):
     assert any("RESOURCE_EXHAUSTED" in ln for ln in lines)
 
 
+def test_gemini_falls_back_to_flash_on_primary_exhaustion(lc, tmp_path):
+    # 2026-07-02 9h outage: gemini-3-pro-preview 503-overloaded for hours; the
+    # 3-try loop exhausted every cycle and the run burned 92 cycles doing
+    # nothing. After the primary-model tries exhaust, gemini() must retry on
+    # the configured fallback model so the loop keeps moving.
+    (tmp_path / "_gemini_err.txt").write_text("503 UNAVAILABLE", encoding="utf-8")
+    cmds = []
+
+    def fake_run(args, **_k):
+        cmds.append(args[-1])
+        # empty for the 3 primary tries; the fallback try answers
+        return mock.Mock(stdout="" if len(cmds) <= 3 else "flash-directive")
+
+    cfg = {"gemini_model": "gemini-3-pro-preview",
+           "gemini_fallback_model": "gemini-2.5-flash"}
+    with mock.patch.object(lc, "CTL", tmp_path), \
+            mock.patch.object(lc, "CFG", cfg), \
+            mock.patch.object(lc.subprocess, "run", side_effect=fake_run), \
+            mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "log", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "awrite", lambda *_a, **_k: None):
+        out = lc.gemini("body", "inst")
+    assert out == "flash-directive"
+    assert all("gemini-3-pro-preview" in c for c in cmds[:3])
+    assert "gemini-2.5-flash" in cmds[3]
+
+
+def test_gemini_stderr_utf16_decoded_and_error_line_surfaced(lc, tmp_path):
+    # PS 5.1 `2>file` writes UTF-16 LE; the old utf-8 read mojibake'd the
+    # stderr head and the node/terminal warnings masked the real 503 for 9h.
+    # The log line must carry the decoded ERROR line, not the warning head.
+    body = ("node.exe : Warning: Windows 10 detected. blah\n"
+            "Warning: 256-color support not detected.\n"
+            "Attempt 1 failed with status 503. UNAVAILABLE high demand\n")
+    (tmp_path / "_gemini_err.txt").write_bytes(b"\xff\xfe" + body.encode("utf-16-le"))
+    lines = []
+    with mock.patch.object(lc, "CTL", tmp_path), \
+            mock.patch.object(lc.subprocess, "run", return_value=mock.Mock(stdout="")), \
+            mock.patch.object(lc.time, "sleep", lambda *_a, **_k: None), \
+            mock.patch.object(lc, "log", lambda m: lines.append(m)), \
+            mock.patch.object(lc, "awrite", lambda *_a, **_k: None):
+        out = lc.gemini("body", "inst")
+    assert out is None
+    assert any("503" in ln and "UNAVAILABLE" in ln for ln in lines)
+    # no NUL interleave / replacement chars = the utf-16 stream was decoded
+    assert not any("\x00" in ln or "\ufffd" in ln for ln in lines)
+
+
 def test_auditor_maps_gemini_error_to_clean(lc):
     # An un-auditable cycle (gemini error -> None) must NOT crash the controller's
     # verdict string ops (".strip()", concat) nor read as a false REGRESS.
