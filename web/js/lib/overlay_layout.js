@@ -64,6 +64,11 @@ const WIDGETS = [
   // mid-game) + the API-backed HP/mana/stats mini-panel. Both overlay-only.
   { id: "w-enemyspells", sel: "#am-enemyspells", x: 1500, y: 120, tier: "urgent", label: "Enemy Spells", zone: true },
   { id: "w-stats", sel: "#am-statspanel", x: 40, y: 250, tier: "ambient", label: "Stats" },
+  // OQ16 (OQ3 variant A): peripheral objective gauge cluster (DRAKE/BARON/
+  // ELDER/SUMMS ring dials, panels/objective_gauges.js). Display-only +
+  // data-gated (SR in-game only); peripheral right-edge default above the
+  // threat ledger, clear of the minimap (1600,760) + w-threat (1604,560).
+  { id: "w-objgauges", sel: "#am-obj-gauges", x: 1690, y: 320, tier: "ambient", label: "Objective Gauges" },
 ];
 
 // The launcher is a CONTROL widget, not a panel: a small always-visible square

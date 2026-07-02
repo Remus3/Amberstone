@@ -1,0 +1,126 @@
+/* web/css/panels/objective_gauges.css
+ *
+ * OQ16 (OQ3 variant A "Radial Ring Cluster"): peripheral objective gauge
+ * cluster (web/js/panels/objective_gauges.js) - a 2x2 grid of full ring
+ * dials (DRAKE / BARON / ELDER / SUMMS) with the exact ETA in each center.
+ * Geometry follows the source mockup web/mock/oq3_variant_a.html, scaled
+ * to fit the fixed 210px .ovx-widget shell (overlay.css --ovx-w), which
+ * already provides the Hextech backing + gold hairline frame.
+ *
+ * Overlay-only: the base rule hides it on the 1920 dashboard; only
+ * body[data-shell="overlay"] shows it, and only when objective_gauges.js
+ * clears [hidden] (a live SR game). GPU-light: static SVG rings re-drawn
+ * per state tick, no animation.
+ *
+ * Hues (operator OQ3/OQ16 pick, docs/OVERLAY_DOCTRINE.md sec 5): BARON
+ * gold --ovx-gold #C8AA6E, ELDER red --ovx-red #E84057, SUMMS cyan
+ * --ovx-cyan #0AC8B9 all ride the overlay tokens. DRAKE warn #E8A33D is
+ * the ONE literal: no ovx token carries the warn-amber hue - OQ16
+ * operator-directed exception, scoped to this widget's custom prop.
+ */
+
+.obj-gauges {
+  display: none; /* dashboard surface: never shown */
+  /* Per-dial hue custom props (fallbacks = the same doctrine hex). */
+  --og-drake: #E8A33D; /* OQ16 operator-directed warn amber (no ovx token) */
+  --og-baron: rgb(var(--ovx-gold, 200, 170, 110));
+  --og-elder: rgb(var(--ovx-red, 232, 64, 87));
+  --og-summs: rgb(var(--ovx-cyan, 10, 200, 185));
+  --og-track: rgba(var(--ovx-gold, 200, 170, 110), 0.20);
+}
+
+body[data-shell="overlay"] .obj-gauges {
+  display: block;
+}
+
+body[data-shell="overlay"] .obj-gauges[hidden] {
+  display: none;
+}
+
+.obj-gauges .og-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  justify-items: center;
+}
+
+.obj-gauges .og-dial {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ring starts at 12 o'clock (mockup idiom: rotate the SVG, not the arc). */
+.obj-gauges .og-dial svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+.obj-gauges .og-track,
+.obj-gauges .og-arc {
+  fill: none;
+  stroke-width: 7;
+}
+
+.obj-gauges .og-track {
+  stroke: var(--og-track);
+}
+
+.obj-gauges .og-arc {
+  stroke-linecap: round;
+}
+
+.obj-gauges .og-drake .og-arc { stroke: var(--og-drake); }
+.obj-gauges .og-baron .og-arc { stroke: var(--og-baron); }
+.obj-gauges .og-elder .og-arc { stroke: var(--og-elder); }
+.obj-gauges .og-summs .og-arc { stroke: var(--og-summs); }
+
+.obj-gauges .og-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.obj-gauges .og-label {
+  font-size: var(--fs-ov-chip); /* overlay game-distance token (13px) - same operator-accepted sub-floor as objective_chips.css */
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.obj-gauges .og-drake .og-label { color: var(--og-drake); }
+.obj-gauges .og-baron .og-label { color: var(--og-baron); }
+.obj-gauges .og-elder .og-label { color: var(--og-elder); }
+.obj-gauges .og-summs .og-label { color: var(--og-summs); }
+
+.obj-gauges .og-eta {
+  font-size: 20px; /* clears the 16px --fs-xs floor; dial-scaled from the mockup's 34px */
+  font-weight: 800;
+  line-height: 1.05;
+  color: rgba(var(--ovx-text, 255, 255, 255), 0.96);
+  font-variant-numeric: tabular-nums; /* steady width as the countdown ticks */
+}
+
+/* UP: the objective is available to contest - the good-green signal pulls
+ * the eye (objective_chips.css is-up convention; doctrine sec 5 reserves
+ * lethal red for the ONE emergency pop-out, so UP is NOT red here even
+ * though the static mockup painted it red). The ring stays per-objective. */
+.obj-gauges .og-eta.is-up {
+  color: rgb(var(--ovx-good, 55, 208, 138));
+}
+
+/* "-" no-data sentinel dial: dim the center so a dead dial never reads as
+ * an imminent objective. */
+.obj-gauges .og-dial[data-og-state="none"] .og-eta {
+  color: rgba(var(--ovx-text, 255, 255, 255), 0.45);
+}
