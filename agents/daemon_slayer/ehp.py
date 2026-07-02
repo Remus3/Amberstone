@@ -130,6 +130,7 @@ from .rank import (
 )
 from .stats import clamp_level
 from .survivability_credit import survivability_item_ids_tank
+from ._hsp_amp import sum_wielder_hsp_pct
 
 
 def _armor_factor(resist: float) -> float:
@@ -933,6 +934,7 @@ def compute_ehp(
     enemy_magic_pen_pct: float = 0.0,
     caster_current_hp_pct: float = 1.0,
     assume_passive_health_stacks: bool = False,
+    assume_hsp_amp: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1098,7 +1100,23 @@ def compute_ehp(
     # multiplier value (today: Spirit Visage at 1.25) but conceptually a
     # sibling field so future heal-only or shield-only amp items stay
     # representable.
-    shield_amp_mult = heal_amp_mult
+    # ENGINE 1.171.0 (R60, 2026-07-02): wielder Heal/Shield Power (HSP) amp.
+    # HSP (Redemption / Mikael / Ardent / Moonstone / Staff of Flowing Water -
+    # the heal_shield_amp_pct stat) boosts the shields the WIELDER applies to
+    # ITSELF: its own item self-shields (Sterak's Gage, Shieldbow, Maw,
+    # Hexdrinker, Bloodthirster Ichorshield). Summed ADDITIVELY across the build
+    # (the "(1 + hsp_pct)" model, matching real-LoL additive HSP) and folded into
+    # the existing sibling shield-amp multiplier alongside Spirit Visage's
+    # Boundless Vitality. Distinct from R59 (the TARGET-side Lifeline shield).
+    # DEFAULT-OFF: assume_hsp_amp=False -> hsp_pct 0.0 -> shield_amp_mult ==
+    # heal_amp_mult -> BYTE-IDENTICAL to 1.170.0. The heal pool (heal_total) is
+    # NOT touched here: lifesteal is not HSP-amped and item heals are out of the
+    # directive scope (ItemShield only). The live default-ON flip is
+    # operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+    hsp_pct = (
+        sum_wielder_hsp_pct(resolved.item_ids) if assume_hsp_amp else 0.0
+    )
+    shield_amp_mult = heal_amp_mult * (1.0 + hsp_pct)
     shield_any_amped = shield_any * shield_amp_mult
     shield_phys_amped = shield_phys * shield_amp_mult
     shield_mag_amped = shield_mag * shield_amp_mult
