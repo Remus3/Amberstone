@@ -34,7 +34,9 @@ HIST_TS = "2026-05-30 21:15:00"
 
 # Minimal /api/last-match payloads. enriched=None keeps the roster table
 # in its pending state - we only assert on the hero champion here, which
-# is the load-bearing no-clobber signal.
+# is the load-bearing no-clobber signal. The LIVE payload deliberately
+# LACKS carry_normalized (old-payload shape) - OQ12 bench sub-lines must
+# stay hidden; the HIST payload carries the OQ12 slice-A contract sample.
 _LIVE_PAYLOAD = {
     "found": True, "history_count": 0,
     "match": {
@@ -56,6 +58,19 @@ _HIST_PAYLOAD = {
         "assists": 14, "cs": 230, "cs_per_min": 8.6, "gold": 15800,
         "gold_per_min": 593, "kp_pct": 72, "label": "", "ds_picks": [],
         "enriched": None,
+        # OQ12 slice-A contract sample (verbatim): per-metric percentile
+        # objects. dmg_share_pct.value is null -> its sub-line stays
+        # hidden even though carry_normalized is present.
+        "dmg_share_pct": 27.4,
+        "carry_normalized": {
+            "bench_key": "BOTTOM|mid",
+            "kp_pct":         {"value": 62.0, "p25": 41.2, "p50": 52.0,
+                               "p75": 63.5, "n": 238, "band": "avg"},
+            "gold_share_pct": {"value": 24.1, "p25": 19.8, "p50": 21.6,
+                               "p75": 23.9, "n": 240, "band": "high"},
+            "dmg_share_pct":  {"value": None, "p25": 21.0, "p50": 26.3,
+                               "p75": 31.8, "n": 240, "band": None},
+        },
     },
     "quick_review": {"right": [], "wrong_team": [], "my_chronic": []},
 }
@@ -120,6 +135,12 @@ def test_history_row_click_opens_detached_pgr_without_clobber(mock_server, pw_br
             timeout=10_000,
         )
 
+        # OQ12: the live payload has NO carry_normalized (old-payload
+        # shape) - the benchmark sub-line must stay hidden.
+        assert page.evaluate(
+            "document.getElementById('lm-kp-bench').hidden") is True, (
+            "lm-kp-bench must stay hidden when carry_normalized is absent")
+
         # 2. Navigate to History; the single session auto-selects? No - the
         # session list requires a click. Select the session, then the match
         # row renders. Drive via hash + the in-page wiring.
@@ -146,6 +167,20 @@ def test_history_row_click_opens_detached_pgr_without_clobber(mock_server, pw_br
         assert page.locator("#view-historical-pgr").is_visible()
         hpgr_champ = (page.locator("#hpgr-champion-name").text_content() or "").strip()
         assert hpgr_champ == HIST_CHAMP, f"detached PGR champ {hpgr_champ!r} != {HIST_CHAMP!r}"
+
+        # OQ12: carry_normalized IS present on the historical payload -
+        # the KP% benchmark sub-line renders (band AVG, p50 52).
+        assert page.evaluate(
+            "document.getElementById('hpgr-kp-bench').hidden") is False, (
+            "hpgr-kp-bench must be revealed when carry_normalized present")
+        bench_txt = (page.locator("#hpgr-kp-bench").text_content() or "").strip()
+        assert "p50" in bench_txt, (
+            f"hpgr-kp-bench text {bench_txt!r} missing 'p50'")
+        # dmg_share_pct.value is null -> its sub-line stays hidden even
+        # with carry_normalized present.
+        assert page.evaluate(
+            "document.getElementById('hpgr-dmg-bench').hidden") is True, (
+            "hpgr-dmg-bench must stay hidden when metric value is null")
 
         # 4. NO CLOBBER: the live PGR hero champion is UNCHANGED. The live
         # #view-last-match section is hidden now, but its DOM must still
