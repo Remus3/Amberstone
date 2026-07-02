@@ -50,6 +50,9 @@ prose by the item-298 ten-channel roster fan-out.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Iterable, Optional
+
+from ._hsp_amp import sum_wielder_hsp_pct
 
 _SPELL_ORDER = ("P", "Q", "W", "E", "R")
 
@@ -337,7 +340,12 @@ def _spell_sort_key(entry: SustainEntry) -> tuple[int, str]:
         return (len(_SPELL_ORDER), entry.spell)
 
 
-def compute_sustain(champion: str, mode: str = "SR") -> SustainResult:
+def compute_sustain(
+    champion: str,
+    mode: str = "SR",
+    item_ids: Optional[Iterable[str | int]] = None,
+    assume_hsp_amp: bool = False,
+) -> SustainResult:
     """Aggregate a champion's damage-conversion + regen sustain into a score.
 
     Reads ``_SUSTAIN_REGISTRY``. Each registered sustain spell is reduced to
@@ -346,6 +354,18 @@ def compute_sustain(champion: str, mode: str = "SR") -> SustainResult:
     by ``_SUSTAIN_CONDITIONAL_PROB``. ``mode`` is carried on the result for parity
     with the other scorers but does not change output today (self-sustain is
     target-independent).
+
+    ENGINE 1.171.0 (R60, 2026-07-02): the wielder Heal/Shield Power (HSP) seam.
+    ``assume_hsp_amp`` (DEFAULT-OFF) plus ``item_ids`` sums the wielder's own
+    ``heal_shield_amp_pct`` (Redemption / Mikael / Ardent / Moonstone / Staff of
+    Flowing Water) and amplifies the wielder's kit SELF-HEAL sustain by
+    ``(1 + hsp_pct)``. HSP amplifies heals/shields the wielder applies but does
+    NOT amplify vamp (LIFESTEAL / OMNIVAMP / SPELLVAMP / DRAIN), so the amp scopes
+    strictly to the ``REGEN`` kind - a vamp-only champion is byte-identical even
+    with the seam ON. ``assume_hsp_amp=False`` (default) or an empty ``item_ids``
+    -> hsp_pct 0.0 -> BYTE-IDENTICAL to 1.170.0. The raw ``raw_sustain_units``
+    (kind-agnostic pre-weight quantity) is left UNamped. The live default-ON flip
+    is operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
 
     Returns an all-zero ``SustainResult`` (empty ``spells``) when the champion
     is blank / None or absent from the registry; never raises.
@@ -357,6 +377,10 @@ def compute_sustain(champion: str, mode: str = "SR") -> SustainResult:
     if not entries:
         return _empty_result(champion, safe_mode)
 
+    hsp_mult = 1.0
+    if assume_hsp_amp and item_ids:
+        hsp_mult = 1.0 + sum_wielder_hsp_pct(item_ids)
+
     scored: list[SustainSpellEntry] = []
     sustain = 0.0
     conditional_sustain = 0.0
@@ -365,6 +389,10 @@ def compute_sustain(champion: str, mode: str = "SR") -> SustainResult:
         weight = _SUSTAIN_KIND_WEIGHT.get(entry.kind, 0.0)
         units = _normalized_units(entry)
         base_weighted = units * weight
+        # R60: HSP amplifies the self-heal (REGEN) sustain only. Vamp kinds
+        # (LIFESTEAL / OMNIVAMP / SPELLVAMP / DRAIN) are not HSP-affected.
+        if entry.kind == "REGEN":
+            base_weighted *= hsp_mult
         if entry.conditional:
             weighted = base_weighted * _SUSTAIN_CONDITIONAL_PROB
             conditional_sustain += weighted
