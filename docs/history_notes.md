@@ -218,6 +218,20 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-02 (OQ15 - QA20 this-match dot overlay on GPI radar; backend + ui, NO ENGINE/DS/Share)
+
+Loop directive OQ15 executed by this session (head 744e3e87; merges `b6f6220a` backend + `fd15a9fd` frontend, LEDGER 736). Premise verified first (radar geometry + OQ15 OPEN); Plan-agent spec citation-checked vs source before any build.
+
+- **Backend (core/player_gpi.py):** `_this_match_block(games)` - newest game scored per relative axis as 100*midrank-percentile vs the full directional baseline; versatility/consistency null (no single-match analog); `this_match` {match_id, champion_id, game_creation_ts, axes x8} rides the existing payload + route TTL cache (route change = docstring only; match_id flip drives the frontend repaint).
+- **Frontend (player_gpi.js/.css):** `_matchDotsSvg` by-KEY dots (r=2.4 amber --signal-warn, above polygon below labels, "" on absent/malformed this_match - old payloads byte-identical), `_matchLegend` "last game - <champ> - Nh ago", sig gains `|tm:` incl match_id. SVG user-units under the pre-existing documented exception.
+- **Orchestrated:** 2 parallel worktree slices on disjoint files to a frozen contract -> verifier CONFIRM each (A fresh 89/89, B fresh 9/9) -> sole merger --no-ff. TDD RED-first both (A 10F red, B 2F red observed).
+- **Proof:** full RC suite fresh on merged main 10435 passed / 2 skipped / 193 subtests (+20 over OQ14); RC restarted pid 18500 -> 16652 alive/reload_ok; LIVE /api/player-profile: this_match Vayne NA1_5592802194 aggression 93.9 / tempo 93.6 / survival 33.9, 6 non-null + 2 null. 5-phase audit PASS 0 MUST-FIX / 0 SHOULD-FIX; harness capture inspected (6 amber dots + legend).
+- **OWED carry-forward:** Electron-companion capture of the champ-select GPI panel with the dot overlay during a real champ-select (panel not on the in-game overlay view; live state idle - OQ12/OQ13/OQ14 precedent).
+- NICE FUTURE: legend age drift excluded from sig (coarse-by-design); stale "200-unit viewBox" comment player_gpi.css:142; _champName(null) cosmetic. NO DS path, NO ENGINE. Frozen files untouched.
+- OPERATOR-QUEUE: OQ12/13/14/15 now DONE; OQ18 (drain-plan PREP live-input wiring) remains OPEN in ORCHESTRATION_PLAN - a natural next-cycle pick.
+
+---
+
 # 2026-07-02 (OQ14 - Interactive Item Shaper 3-knob strip; overlay-ui + backend route, NO ENGINE/DS/Share)
 
 Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; feature `639e2789` + docs `d8396df0`, LEDGER 735). PREMISE-CHECK first (did NOT scaffold on the directive's "pure UI" label): grep proved core/shaper.apply_shaper had ZERO prod callers, rank_items (rank.py:527) takes NO weight-dict arg, and the archetype blend is a 2-axis [alpha,beta] per-champ table - so a full nudge->re-ranked-item-list wire is an ENGINE SEAM the directive mislabeled. Took the SAFEST-REVERSIBLE scope (PART C + operator no-questions): an HONEST emphasis preview, logging the full re-rank as a BACKLOG FUTURE.
