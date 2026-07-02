@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-02 (OQ17 LOOP - /rank* HTTP-boundary seam transport; ENGINE 1.167.0 -> 1.168.0)
+
+Loop directive OQ17 executed by this session (head da6489c1; commit `e73799f3`, LEDGER 739). Thread the ENGINE-ONLY default-OFF seams across the /rank* HTTP boundary so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). NO math change - server.py only + version stamp.
+
+- **Plan-agent spec caught 2 premise drifts** (verify-the-premise): R50 apply_all_out_bonus is a load-time AbilitiesSnapshot flag NOT a per-call compute param -> EXCLUDED (not a pure flag-flip, FUTURE); Phase-D "4 non-every-AA on_hit" is not a distinct seam (3 un-routed categories of apply_passive_damage, already /dps).
+- **Scope call (R30 precedent):** rune-gate seams DSP4/R51/R53 route to /burst not the ranker - a flat keystone amp washes out of the candidate-baseline delta. This DROPPED the planned burst.py ranker slice; OQ17 = single-file server.py change, main-thread + verifier gate.
+- **Wired:** /burst +runes +assume_takedown/assume_ability_amp/score_completion_runes/gate_target_hp_amp/gate_caster_hp_amp/caster_current_hp_pct; /rank-assassin +assume_takedown/assume_squishy_target/assume_ability_amp/target_preset (ranker already forwards); /dps +apply_melee_aa_gate. All DEFAULT-OFF -> byte-identical.
+- **TDD** test_oq17_route_seam_transport.py RED 8/12 divergence -> GREEN 12/12. **Verifier CONFIRM 6/6.** ENGINE 1.168.0 (pins 107/94, 0 stray) + Share --check green 394 files + DS :8893 bounce (pid 22732 -> 1.168.0). Dual suite DS 7763 / RC 10435, 0 real fail (the RC "1 failed" = live-integration engine_version anchor, GREEN post-bounce).
+- **Handoff:** R50 route wiring (needs per-request AbilitiesSnapshot construction); client-helper emit (core/daemon_slayer_client.py). Live flips stay gated -> LIVE_GAME_GATED_SYNC B2/B3/B6/B7/B18/B19/B34.
+- Frozen files untouched. CI green baseline held. Worktree note: C:/RC-CIWatchdog belongs to that scheduled task, untouched.
+
+---
+
 # 2026-07-02 (R58 LOOP - assume_ms_utility seam: MS utility valuation for bruiser/juggernaut; ENGINE 1.166.0 -> 1.167.0)
 
 Loop directive R58 executed by this session (head e7e95653; merge `304c88dd`, slice `9b42acd8`, LEDGER 738). Premise verified FIRST: item MS resolves into stats["ms"] (engine.py:200) but the bruiser/juggernaut scorer consumed it at ZERO (only consumer ability_dps.py:285); DDragon 16.13.1 DMP 3742 + FoN 4401 both 4 pct MS.
@@ -27,16 +40,3 @@ Loop directive OQ15 executed by this session (head 744e3e87; merges `b6f6220a` b
 - **OWED carry-forward:** Electron-companion capture of the champ-select GPI panel with the dot overlay during a real champ-select (panel not on the in-game overlay view; live state idle - OQ12/OQ13/OQ14 precedent).
 - NICE FUTURE: legend age drift excluded from sig (coarse-by-design); stale "200-unit viewBox" comment player_gpi.css:142; _champName(null) cosmetic. NO DS path, NO ENGINE. Frozen files untouched.
 - OPERATOR-QUEUE: OQ12/13/14/15 now DONE; OQ18 (drain-plan PREP live-input wiring) remains OPEN in ORCHESTRATION_PLAN - a natural next-cycle pick.
-
----
-
-# 2026-07-02 (OQ14 - Interactive Item Shaper 3-knob strip; overlay-ui + backend route, NO ENGINE/DS/Share)
-
-Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; feature `639e2789` + docs `d8396df0`, LEDGER 735). PREMISE-CHECK first (did NOT scaffold on the directive's "pure UI" label): grep proved core/shaper.apply_shaper had ZERO prod callers, rank_items (rank.py:527) takes NO weight-dict arg, and the archetype blend is a 2-axis [alpha,beta] per-champ table - so a full nudge->re-ranked-item-list wire is an ENGINE SEAM the directive mislabeled. Took the SAFEST-REVERSIBLE scope (PART C + operator no-questions): an HONEST emphasis preview, logging the full re-rank as a BACKLOG FUTURE.
-
-- **Backend (`routes_ds_shape.py`):** NEW read-only GET /api/ds-shape (mirrors routes_ds_knobs) -> per-champ [alpha,beta] from the REAL archetype_weights.json -> baseline {damage:alpha, survivability:beta, utility:0.0} -> apply_shaper(ShaperState) -> baseline/shaped fractions + *_pct + archetype_source. Knobs int-clamped [-2,2]; 400 blank champion; graceful 500 (no raw traceback).
-- **Frontend (`ds_shaper.js` + `.css`):** 3-knob strip Row4 SHAPER (after FIGHT MODEL in active_match.js). Non-persisting module var (NO localStorage), snaps to 0 on champion change + resetShaper() for match end; debounced dedupFetch; escHtml; renders "LABEL base -> shaped". CSS tokens-only (--hit-min 42 buttons, --fs-xs/sm >=16, --signal-info operator tone).
-- **Orchestrated:** 2 parallel worktree slices on DISJOINT NEW files to a frozen route contract -> read-only verifier CONFIRM each (A 16 / B 6 node DOM passed fresh; cross-slice contract keys baseline_pct/shaped_pct + path + query MATCH) -> sole-merger wiring of the 3 shared files (_dispatch.py + dashboard.css + active_match.js). TDD RED-first both slices.
-- **Proof:** full RC suite fresh on merged main 10415 passed / 2 skipped / 193 subtests; RC restarted pid 15840 -> 18500 (alive/reload_ok); LIVE ROUTE PROBE end-to-end green Darius dmg+1/surv-1 -> 65/35/0 baseline -> 72/27/0 shaped (both push to damage, sums 1.0, 4ms). 5-phase UI audit PASS 0 MUST-FIX / 0 SHOULD-FIX. In-game overlay pixel capture OWED (no live game - the strip renders only in-game).
-- NO DS path -> no DS bounce, no Share sync, NO ENGINE (precommit confirmed no mirrored source staged). Did NOT stage the pre-existing data/spell_prefs.json drift. Frozen files untouched.
-- Remaining OPEN queue: OQ15 (GPI radar this-match dot). FUTURE (BACKLOG): Item Shaper full re-rank engine seam (3-axis weight surface + ranker threading; do NOT build blind).
