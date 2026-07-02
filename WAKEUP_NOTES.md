@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-01 late night (OQ12 - QA31 PGR normalized carry-metrics bundle; ui + backend, NO ENGINE/DS/Share)
+
+Loop directive OQ12 executed by this session (merges `12958b47` + `94c8224c`, LEDGER 732). Full orchestrator pattern: Explore recon -> Plan spec (citations spot-verified + live rewind DB schema probe) -> 2 parallel worktree agents on disjoint files coding a frozen payload contract -> verifier CONFIRM each -> sole merger. Operator interrupted mid-run ("complete + summarize open items") - slice finished per protocol, then wrap.
+
+- **Backend (`5e27b452`):** dmg_share_pct producer; scripts/build_carry_benchmarks.py (rewind DB read-only -> COMMITTED data/coach_reference/carry_benchmarks.json, 44 groups role-or-mode x short/mid/long/all, min_n=50); core/carry_benchmarks.py reader (fallback chain + band fences); builders_last_match.py appends dmg_share_pct + carry_normalized END-of-payload, fail-soft.
+- **Frontend (`2782e87e`):** 5 hidden bench sub-line spans (3 live grid + 2 hpgr), _setBenchSub "HIGH - p50 26" on --signal-good/bad, idempotent + old-payload-silent; tooltip " vs <bench_key> (n=N)" from stashed ttBase.
+- **Proof:** full RC suite fresh on merged main 10364 passed / 2 skipped / 193 subtests; RC restarted pid 18564 alive/reload_ok; LIVE /api/last-match (real Vayne SR): BOTTOM|mid, kp 67.0 vs p50 48.4 HIGH, gold 29.8 vs 21.5 HIGH, dmg 36.1 vs 22.2 HIGH.
+- **5-phase audit MUST-FIX NONE.** SHOULD-FIX FUTURE: stat-row baseline misalignment when subs unhide (reserve sub slot or top-align, last_match.css:388). NICE: tooltip n = kp n on all cells; hpgr helper duplicated. **Electron-overlay pixel capture OWED** (no live game).
+- **Corpus caveat:** benchmark percentiles reflect the rewind DB rows at build time - regenerate carry_benchmarks.json after rewind catchup runs.
+- Remaining OPEN queue: OQ13-OQ15.
+
+---
+
 # 2026-07-01 night (R56 gemini-loop DIRECTOR REFILL - coach_decisions + trigger_pill 5-phase fixture audit; ui, NO ENGINE/DS/Share)
 
 Loop directive R56 executed by this session (`2f259dcb`, LEDGER 731). Inline (2 small panels, directive-sanctioned) with RED-first grep-contract lock.
@@ -26,26 +39,3 @@ Operator re-invoked /gemini-headless-upgrade pointing at ops/loop/control/direct
 - **OQ11 DONE (`aa9c7d90`, LEDGER 729): ENGINE 1.166.0** - static-CD haste gate (first ability_static_cd consumer; plain-number-static only; Amumu Q/Heimer R pinned ungated, Samira R 3.4483 -> 5.0). Dual suite fresh on main: DS 7733 / RC 10274, 0 failed. DS :8893 bounced -> 1.166.0. Share ingest bundle rebuilt (full ds_share_sync).
 - **Operator picked OQ3 variant A** -> OQ16 built live same session (`a5d2719a`, LEDGER 730): objective_gauges overlay widget at (1690,320), SR-live-only, schedule mirror-pinned vs event_callouts. **Live in-game overlay capture OWED** (no game was running).
 - Remaining OPEN queue: OQ12-OQ15.
-
----
-
-# 2026-07-01 (direct executor post-loop-death - OQ4 motion sweep + OQ5 two-tier tokens + rc-skel removal + OQ6 dark-values lock; ui, NO ENGINE/DS/Share)
-
-Loop controller + AHK died at 15:58 mid-cycle-3-audit; operator switched this session to fable-5 + ultracode and directed direct continuation on the OQ queue. Full detail in LEDGER 721 (OQ4) + 722 (OQ5) + 723 (rc-skel chip) + 724 (OQ6).
-
-- **OQ6 - dark-values grep-and-lock (`78d15b19`).** 132 hits classified (5-group fan-out) into docs/DARK_VALUES_AUDIT_2026-07-01.md: 1 EXACT-LOCK applied (coach_choices ink -> var(--canvas), byte-identical) / 94 RESKIN-CANDIDATE (champ_select_view.css = 42, a pre-Hextech skin; each row names its Hextech token; VISIBLE -> operator-gated FUTURE) / 37 JUSTIFIED. Lock = tests/test_dark_values_ratchet_oq6.py per-file ceilings (new literal fails CI; re-skins lower pins; stale-high pins fail). SHOVEL-READY FUTURE: champ_select_view Hextech re-skin session off the 42 mapped rows.
-- **rc-skel chip (task_6fa65ffc) executed (`b387a497`).** Dormant loading-skeleton dead code removed (nothing set data-rc-skel; strip event never dispatched; panel_visibility live path intact + guarded). tests/test_rc_skel_removed.py; oq4 SITES -> 9 loops; snapshot_panels 278 green.
-- **CI NOTE:** OQ5-push ci failed on test_player_gpi_champion_drilldown (runner-side missing untracked ddragon PNG + BrokenPipeError = environmental flake; local 278/278 x3 today); rerun issued; rc-skel push ci auto-cancelled by the rerun's concurrency group; HEAD cf699f10 ci went GREEN (4m32s) - authoritative full-tree green.
-- **OQ7 PREMISE STALE (zero work):** History champ/mode/result(+grade) filters already shipped in `c0ce9faf` (RC2 lift 4), live test re-run fresh 6 passed. Flipped DONE at the original sha.
-- **OQ9 - ban-reason labels via the full orchestrator pattern (`30bef7bc` merge).** Worktree agent built; verifier CONFIRM 5/5; sole-merger --no-ff; fresh MAIN re-run 111 passed. P&B cells "beats you 67% (4/6)" (payload fields were dropped client-side); suggestion cards "meta ban #N" (one additive rank field, pre-filter enumerate). Actual-bans strip + dual-score list untouched (scope calls logged). RC restarted (pid 20248). Champ-select capture OWED (LCU-gated).
-- **OQ10 PREMISE STALE (zero work):** QA59 gameMode cache = E12-L2, shipped `8ac8e8ff` (lcu_rune_writer `_cached_lobby_mode`); test re-run fresh 2 passed.
-- **INFRA:** RC-CIWatchdog spun a ci-fix/28548842685 worktree at C:/RC-CIWatchdog for the superseded OQ5 flake run (zero commits, no PR, task Ready) - left to its own lifecycle.
-- **LOOP-INFRA FIX (LEDGER 727):** the relaunched loop STOPPED on a false NO_WORK - the director prompt hit 572KB (plan 380KB incl. 289KB findings log + ledger head-60 = 93KB) and gemini returned an empty body. Fixed: loop_controller cap_bytes + PLAN_CTX_CAP 140K / LEDGER_CTX_CAP 40K (TDD, 3 tests) + findings relocate-prune (128 oldest -> NEW docs/ORCHESTRATION_FINDINGS_ARCHIVE.md, newest 10 stay; plan 380K -> 108K). Real context re-measured 234K. When the plan's findings log regrows past ~30 entries, re-run the same relocate prune.
-- **OQ8 - History per-session W-L rollup, client-only (`f959893f`).** Grouping + per-match `win` already existed (server + mock), so pure presentation: _sessionWL strict-boolean helper, .hs-wl chip in session rows (omitted when no decided matches), all 4 detail-head writers append W-L (incl. both s218 deep-links - found by RED test), header.css --good/--bad + W/L letters. String tests 4 + rendered Chromium proof (2W-2L/0W-1L chips + head). snapshot_panels 279 passed. No restart.
-
-- **OQ5 - two-tier design tokens, byte-identical (`9ba155ec`).** NEW primitive tier in tokens.css: 7 Hextech hues as rgb parts (--prim-green/amber/red/slate/blue/gold/teal, the --ovx-* precedent); every semantic color re-pointed as a pure rgb()/rgba() wrapper at its historical alpha (6 --signal-*, 3 -soft, hextech fill/glow/border, 3 --pulse-*). Byte-identity: parts==hex asserted numerically; no JS raw-value readers (status.js emits var() strings); overlay 0a re-point independent; snapshot_panels 278 passed = pixel proof. TDD tests/test_two_tier_tokens_oq5.py (5) RED 3 -> GREEN; design-tokens suite still green; 49 adjacent passed; ruff clean. New alpha variants should compose rgba(var(--prim-*), a), not mint literals.
-
-- **OQ4 - reduced-motion static-replace for ALL 10 infinite CSS loops (`40403363`).** Ground truth: 10 (not ~9) infinite declarations across primitives/item_build/home/map_state/header; tokens.css reduce block covered only coach-pulse one-shots; input_activity.css:473 global wildcard kill silently dropped signals (the RC2 D2 anti-pattern). Ultracode classification (10 agents: 5 analysts + 5 adversarial verifiers, all CONFIRMED): ZERO ambient loops - every site is a live signal (loading/buy-cue/search-heartbeat/zone-alarm/hp-alarm/advisory). So: default rendering byte-unchanged + every loop gains a same-file prefers-reduced-motion static hold (animation:none !important + ring/color/opacity). 9 blocks / 10 selectors.
-- **Verify:** TDD RED-first tests/test_motion_reduce_sweep_oq4.py (4: drift-guard, per-site, ASCII, default-loops-survive) RED 2 -> GREEN; adjacent suites 72 passed; snapshot_panels 278 passed (zero default-render delta); ruff clean; 5-phase audit 0 MUST-FIX; no capture owed (media-gated). CSS-only ADR-008 reload, no restart.
-- **FUTURE (chip task_6fa65ffc):** rc-skel skeleton mechanism is dormant dead code (nothing sets data-rc-skel; rc:state-tick never dispatched) - adopt-or-remove.
-- **NEXT.** OQ4 DONE (`40403363`). Loop is DOWN - relaunch via /gemini-headless-upgrade PART A, or continue direct-executor top-down: next OPEN = OQ5 (QA46 two-tier design tokens, byte-identical). Do NOT re-classify the 10 loops (double-verified); do NOT trim default motion (all signals live - test D pins it).
