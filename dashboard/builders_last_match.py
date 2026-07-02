@@ -21,7 +21,89 @@ from dashboard.builders_lcu_enrich import (
     _attach_match_timeline,
     _enrich_from_lcu,
 )
-from core.carry_share import gold_share_pct
+from core import carry_benchmarks as _carry_benchmarks
+from core.carry_share import dmg_share_pct, gold_share_pct
+
+# match_history.db mode strings -> the Match-V5 game_mode keys the carry
+# benchmark corpus (rewind_history.db) groups on. Used only when the row
+# has no LCU enrichment (enriched.game_mode is preferred).
+_MODE_TO_BENCH = {"SR": "CLASSIC", "ARAM": "ARAM", "ARENA": "CHERRY"}
+
+
+def _bench_role(enriched, lcu_detail) -> str | None:
+    """SR benchmark role (team_position vocabulary) for the operator.
+
+    Only CLASSIC games have lane roles; every other mode benchmarks on the
+    mode-wide group. The LCU participant's timeline.lane/timeline.role pair
+    maps onto Match-V5 team_position: BOTTOM splits into BOTTOM (carry) vs
+    UTILITY (support); TOP/JUNGLE/MIDDLE pass through."""
+    if not enriched or enriched.get("game_mode") != "CLASSIC":
+        return None
+    me = next((r for r in (enriched.get("roster") or []) if r.get("is_me")),
+              None)
+    if me is None:
+        return None
+    pid = me.get("participant_id")
+    part = next((p for p in ((lcu_detail or {}).get("participants") or [])
+                 if p.get("participantId") == pid), None)
+    if part is None:
+        return None
+    tl = part.get("timeline") or {}
+    lane = str(tl.get("lane") or "").upper()
+    role = str(tl.get("role") or "").upper()
+    if lane == "BOTTOM":
+        return "UTILITY" if role in ("SUPPORT", "DUO_SUPPORT") else "BOTTOM"
+    if lane in ("TOP", "JUNGLE", "MIDDLE"):
+        return lane
+    return None
+
+
+def _carry_normalized(match_row: dict, enriched, lcu_detail) -> dict:
+    """OQ12 normalized carry-metrics block for the PGR payload.
+
+    FROZEN CONTRACT (frontend slice codes to this verbatim):
+      {"bench_key": "BOTTOM|mid" | None,
+       "kp_pct":         {value, p25, p50, p75, n, band},
+       "gold_share_pct": {...}, "dmg_share_pct": {...}}
+    band: low iff value < p25; high iff value > p75; else avg; null when
+    the value is null. No benchmark resolved -> bench_key null + all
+    p/n/band null but values still populated when computable. Fail-soft:
+    any exception degrades to the all-null block - PGR must never break."""
+    values = {
+        "kp_pct":         match_row.get("kp_pct"),
+        "gold_share_pct": match_row.get("gold_share_pct"),
+        "dmg_share_pct":  match_row.get("dmg_share_pct"),
+    }
+
+    def _null_metric(v):
+        return {"value": v, "p25": None, "p50": None, "p75": None,
+                "n": None, "band": None}
+
+    try:
+        mode = (enriched.get("game_mode") if enriched
+                else _MODE_TO_BENCH.get(match_row.get("mode")))
+        role = _bench_role(enriched, lcu_detail)
+        bench_key, metrics = _carry_benchmarks.resolve(
+            role, mode, int(match_row.get("duration_s") or 0))
+        out: dict = {"bench_key": bench_key}
+        for metric, v in values.items():
+            bench = (metrics or {}).get(metric) or {}
+            if bench_key is None or not bench:
+                out[metric] = _null_metric(v)
+            else:
+                out[metric] = {
+                    "value": v,
+                    "p25":   bench.get("p25"),
+                    "p50":   bench.get("p50"),
+                    "p75":   bench.get("p75"),
+                    "n":     bench.get("n"),
+                    "band":  _carry_benchmarks.band(v, bench),
+                }
+        return out
+    except Exception as exc:  # noqa: BLE001 - degrade, never break the page
+        _log.warning("_carry_normalized: %s", exc)
+        return {"bench_key": None,
+                **{m: _null_metric(v) for m, v in values.items()}}
 
 
 def _compute_wrong_team_from_enriched(enriched: dict, op_k: int, op_d: int, op_a: int) -> list[dict]:
@@ -476,6 +558,13 @@ def _build_last_match(baseline: int = 20, match_ts: str | None = None) -> dict:
             "lcu_ingested_at":  lcu_ingested_at,
             "enriched":         enriched,
         }
+        # OQ12 slice A: normalized carry-metrics bundle. Appended AFTER the
+        # literal closes so the two keys land at the END of the payload
+        # (additive - no existing consumer sees a reordered field).
+        match_row["dmg_share_pct"] = (dmg_share_pct(enriched.get("roster"))
+                                      if enriched else None)
+        match_row["carry_normalized"] = _carry_normalized(
+            match_row, enriched, lcu_detail)
 
         # Baseline rows for chronic-fail computation (exclude this one)
         history: list[dict] = []
