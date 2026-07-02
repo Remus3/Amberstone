@@ -31,7 +31,7 @@ ALLOWED_CONFIDENCE = {"high", "low", "insufficient"}
 ALLOWED_SCORING = {"relative", "absolute"}
 EMPTY_KEYS = {
     "ok", "mode", "champion", "n_games", "window", "min_games",
-    "confidence", "axes", "overall", "weakest_axis", "tip",
+    "confidence", "axes", "overall", "weakest_axis", "tip", "this_match",
 }
 
 
