@@ -1331,6 +1331,32 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.167.0 (R58, 2026-07-02 - assume_ms_utility seam: Movement Speed utility valuation
+for the BRUISER/juggernaut (hybrid) scorer. New DEFAULT-OFF END-appended kwarg on
+``compute_hybrid`` + ``rank_items_by_hybrid`` in ``hybrid.py``; all engine edits in
+that one module. Pure helper ``_ms_utility_multiplier(resolved_ms, base_ms)`` credits
+bonus MS over the champion's base MS as effective bruiser DPS: each 1 pct bonus MS
+~= ``_MS_UTILITY_DPS_FRACTION`` (0.5, conservative operator-tunable uptime/stickiness
+midpoint) pct effective DPS, total credit capped at ``_MS_UTILITY_DPS_CAP`` (0.15,
+guards stacked pct-MS blowup); fail-soft identity on zero/missing base MS or
+at-or-below-base resolved MS (slows never penalize). The multiplier rescales ONLY the
+DPS term of ``hybrid_score`` / ``hybrid_delta_pct`` (baseline AND candidate, so a
+shared multiplier cancels in the normalized pct); the raw ``dps`` / ``delta_dps`` /
+``new_dps`` / ``delta_ehp`` surfaces keep RAW weighted_dps semantics - no double
+counting with stat-derived DPS procs (Dead Man's Plate Shipwrecker pinned in tests).
+New END-appended defaulted ``ms_utility_mult`` field rides HybridResult +
+HybridRankedItem + both to_dict()s (key appended LAST); a "ms utility ON" note
+surfaces the applied multiplier. Default False is BYTE-IDENTICAL: the OFF paths bind
+the same raw values with the same op order (no new float ops), pinned by
+omitted-vs-explicit-False full-dict equality tests. Worked pin: Darius (base MS 340,
+alpha 0.65) + DMP 3742 + FoN 4401 (additive 0.04 + 0.04 pct MS -> 367.2) -> x1.04 on
+the DPS axis; a zero-DPS MS item (FoN) gains exactly alpha * 0.5 * bonus_frac in
+hybrid_delta_pct on a naked baseline. OUT OF SCOPE - handoff: the non-DDragon-stat MS
+registry (Dead Man's Plate 3742 Shipwrecker +20 flat MS at 100 momentum stacks,
+Force of Nature 4401 Steadfast +6 pct MS at max stacks) is NOT folded into resolved MS yet;
+a follow-up registry would feed those into the same seam. Live default-ON flip
+operator-gated as with every DS seam.)
+
 1.166.0 (OQ11 / QA69 - static-CD ability-haste consumer. The item-233 name-keyed
 ``ability_static_cd`` wiki-sidecar accessor gets its behavioral consumer: the
 per-spell DPS path bridges the priced FORM's name (Meraki names match the wiki
