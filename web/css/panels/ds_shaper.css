@@ -1,0 +1,92 @@
+/* Interactive Item Shaper 3-knob strip (OQ14).
+ *
+ * A DAMAGE / SURV / UTILITY control strip the operator nudges with - / +
+ * buttons; each change re-fetches a SHAPED-EMPHASIS preview (GET /api/ds-shape)
+ * and renders three ASCII "LABEL base% -> shaped%" lines below.
+ *
+ * Uses the semantic tokens from web/css/tokens.css. Accent-toned (info) since
+ * it is an operator control surface, not an enemy-threat surface. The buttons
+ * are full --hit-min hit targets (keyboard + fingertip floor). 7-bit ASCII.
+ */
+
+.bm-shaper-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.bm-shaper-axis {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bm-shaper-label {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.65);
+  min-width: 48px;
+}
+
+.bm-shaper-btn {
+  min-width: var(--hit-min, 42px);
+  min-height: var(--hit-min, 42px);
+  padding: 0 var(--space-2, 8px);
+  cursor: pointer;
+  font-size: var(--fs-sm, 18px);
+  font-weight: 800;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.90);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--panel-radius-sm, 10px);
+  font-variant-numeric: tabular-nums;
+}
+
+.bm-shaper-btn:hover {
+  border-color: var(--signal-info, #8a8cf0);
+  color: #fff;
+}
+
+.bm-shaper-btn:focus {
+  outline: none;
+  border-color: var(--signal-info, #8a8cf0);
+  box-shadow: var(--focus-ring, 0 0 0 2px #8a8cf0);
+}
+
+.bm-shaper-btn:active {
+  background: var(--signal-info-soft, rgba(138, 140, 240, 0.18));
+}
+
+.bm-shaper-val {
+  min-width: 24px;
+  text-align: center;
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  font-variant-numeric: tabular-nums;
+}
+
+.bm-shaper-out {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--space-2, 8px);
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.80);
+  font-variant-numeric: tabular-nums;
+}
+
+.bm-shaper-line {
+  font-size: var(--fs-xs, 16px);
+  letter-spacing: 0.02em;
+  color: var(--signal-info, #8a8cf0);
+}
+
+.bm-shaper-note {
+  font-size: var(--fs-xs, 16px);
+  color: rgba(255, 255, 255, 0.45);
+}

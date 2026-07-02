@@ -43,6 +43,7 @@ import { renderDsMatchupForChampSelect, setDsMatchupScheduler } from './ds_match
 // only the exported data fns - the champ-select-bound renderDsKnobs panel is
 // left untouched (test_ds_knobs_panel_dom pins it).
 import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
+import { renderShaperStrip } from './ds_shaper.js';
 import {
   fetchDsCombo, getCachedDsCombo, parseSeqInput, renderDsCombo,
 } from './ds_combo.js';
@@ -596,6 +597,13 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     const knobRow = _bmRow("bm-knobs", "FIGHT MODEL");
     _renderBmKnobs(knobRow, champion, mode, ownedIds, level);
     mod.appendChild(knobRow);
+
+    // Row4 - SHAPER: interactive item-shaper axis knobs (OQ14). Nudges the
+    // archetype emphasis (damage / surv / utility) via core/shaper.apply_shaper
+    // over GET /api/ds-shape. Non-persisting; snaps back on champion change.
+    const shaperRow = _bmRow("bm-shaper", "SHAPER");
+    renderShaperStrip(shaperRow, champion, mode);
+    mod.appendChild(shaperRow);
 
     build.appendChild(mod);
   }
