@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-01 late night 2 (OQ13 - QA17 mode-factored weekly Good/Bad/Ugly digest; backend + ui, NO ENGINE/DS/Share)
+
+Loop directive OQ13 executed by this session (merges `4d2955f4` + `22cc3e80` + audit-fix `acf54c4d`, LEDGER 733). Premise live-verified BEFORE build (ARAM 7d 11.7 deaths/game + 2.0 CS/min vs SR 8.8 + 6.6 - mode-blind tips mis-grade ARAM). 2 parallel worktree agents on disjoint files to a frozen weekly_digest contract -> verifier CONFIRM each (A 24 / B 17 fresh) -> sole merger --no-ff.
+
+- **Backend (`c84d51af`):** _MODE_BENCH (SR strict 3.0/6.0/6.0; ARAM lenient 2.5/12.0/None, CS never judged; ARENA/BRAWL lenient; default) + pure _home_weekly_digest(rows); rows collected in the EXISTING week-cutoff loop (0 new SQL); games<=2 R30-style suppression; "" = suppressed line. KEYSTONE test: identical stats -> ARAM bad=="" / SR "10.0 deaths per game (bench 6 for SR)".
+- **Frontend (`128635c4`):** #home-weekly-digest card sibling AFTER #home-combo (combo.hidden is pick+trends-coupled - nesting would suppress); createElement/textContent only; dataset.sig idempotent; tokens-only CSS.
+- **Proof:** full RC suite fresh on merged main 10399 passed / 2 skipped / 193 subtests (+35 = new 18+17); RC restarted pid 15840 alive/reload_ok; LIVE /api/home/summary: ARAM 23g lenient (bad suppressed, good "2.6 KDA over 23 games") vs SR 10g strict (bad "8.8 deaths per game (bench 6 for SR)").
+- **5-phase audit PASS 0 MUST-FIX.** Both SHOULD-FIXes fixed in-slice (`acf54c4d`): head deduped to THIS WEEK BY MODE + ui_mock weekly_digest block (fixture flapped live-then-hide). NICE FUTURE: pre-existing U+2192 home.css:545 (next drift sweep).
+- **OPERATOR MID-RUN CORRECTION:** "why is the chrome dashboard being used?" - audit agent had been told to render :8888 in Chromium (old OQ8/OQ12 fixture precedent). Redirected mid-flight: sanctioned = rc-shell Electron capture or ?overlay=1. Result: rc-shell NOT running + ?overlay=1 hides #home-overlay BY DESIGN (overlay.css:80) -> code-side phases complete, **Electron-companion capture OWED**. Rule reinforced: NO Chrome :8888 renders as visual proof, ever.
+- Remaining OPEN queue: OQ14 (Item Shaper knobs), OQ15 (GPI radar dot).
+
+---
+
 # 2026-07-01 late night (OQ12 - QA31 PGR normalized carry-metrics bundle; ui + backend, NO ENGINE/DS/Share)
 
 Loop directive OQ12 executed by this session (merges `12958b47` + `94c8224c`, LEDGER 732). Full orchestrator pattern: Explore recon -> Plan spec (citations spot-verified + live rewind DB schema probe) -> 2 parallel worktree agents on disjoint files coding a frozen payload contract -> verifier CONFIRM each -> sole merger. Operator interrupted mid-run ("complete + summarize open items") - slice finished per protocol, then wrap.
