@@ -166,7 +166,17 @@ function _signature(payload) {
   const body = axes
     .map((a) => (a.key || "") + ":" + _fmtScore(a.score))
     .join(",");
-  return _mode(payload.mode) + "|" + _fmtScore(payload.overall) + "|" + body;
+  // this_match participates in the sig. match_id inclusion is load-bearing:
+  // a NEW game can post the same axis scores, and only the id flip forces the
+  // repaint that clears a stale overlay (cache-staleness guard).
+  const tm = payload.this_match;
+  const tmSig = (tm && Array.isArray(tm.axes))
+    ? (tm.match_id || "") + ":" + tm.axes
+        .map((a) => a.key + "=" + (a.score == null ? "-" : a.score))
+        .join(",")
+    : "none";
+  return _mode(payload.mode) + "|" + _fmtScore(payload.overall) + "|" + body
+       + "|tm:" + tmSig;
 }
 
 // Build the grid rings (concentric octagons) + radial spokes as one SVG string.
@@ -201,6 +211,30 @@ function _dataSvg(axes, tierCls) {
   }
   return '<polygon class="gpi-area ' + tierCls + '" points="'
        + pts.join(" ") + '" />' + dots;
+}
+
+// Overlay dots for the operator's LAST game on the same eight axes. Matched
+// by axis KEY (not position) so a backend axis reorder cannot mis-plot a dot;
+// axes with a null this-match score (versatility / consistency by contract)
+// draw nothing. Returns "" when the payload carries no this_match block so
+// the shipped radar renders byte-identical without it.
+function _matchDotsSvg(axes, thisMatch) {
+  if (!thisMatch || !Array.isArray(thisMatch.axes)) return "";
+  const byKey = Object.create(null);
+  for (const a of thisMatch.axes) {
+    if (a && a.key != null) byKey[String(a.key)] = a;
+  }
+  const n = axes.length;
+  let out = "";
+  for (let i = 0; i < n; i++) {
+    const key = axes[i] && axes[i].key;
+    const entry = key == null ? null : byKey[String(key)];
+    if (!entry || entry.score == null) continue;
+    const [x, y] = _vertex(i, n, _clampScore(entry.score) / 100);
+    out += '<circle class="gpi-match-dot" cx="' + x + '" cy="' + y
+         + '" r="2.4" />';
+  }
+  return out;
 }
 
 // Build the axis labels + per-vertex score chips placed just outside the outer
@@ -248,6 +282,37 @@ function _toggleSvgless(activeMode) {
 function _champName(cid) {
   const nm = CHAMPS && CHAMPS.byId ? CHAMPS.byId[String(cid)] : "";
   return nm || ("cid:" + cid);
+}
+
+// Coarse relative age for the match legend ("3h ago"). Coarse on purpose -
+// the read is "how recent was that game", not a precise timestamp.
+function _relAge(ts) {
+  const d = Date.now() - ts;
+  if (!isFinite(d) || d < 60 * 1000) return "just now";
+  const mins = Math.floor(d / 60000);
+  if (mins < 60) return mins + "m ago";
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + "h ago";
+  return Math.floor(hours / 24) + "d ago";
+}
+
+// One-line legend for the this-match overlay, rendered under the caption ONLY
+// when at least one axis actually drew a dot (an all-null this_match would
+// otherwise advertise an invisible overlay). The age suffix requires a real
+// epoch-ms timestamp (> 1e12) - seconds / null / garbage omit it fail-soft.
+function _matchLegend(thisMatch) {
+  if (!thisMatch || !Array.isArray(thisMatch.axes)) return "";
+  const any = thisMatch.axes.some((a) => a && a.score != null);
+  if (!any) return "";
+  let text = "last game - " + _champName(thisMatch.champion_id);
+  const ts = thisMatch.game_creation_ts;
+  if (typeof ts === "number" && ts > 1e12) {
+    text += " - " + _relAge(ts);
+  }
+  return '<div class="gpi-match-legend">'
+    + '<span class="gpi-match-swatch"></span>'
+    + '<span class="gpi-match-text">' + _esc(text) + "</span>"
+    + "</div>";
 }
 
 // Champion drilldown <select>: an "All champions" default plus one option per
@@ -330,6 +395,7 @@ export function renderPlayerGpi(blockEl, payload, activeMode, activeChampion) {
     + ' aria-label="eight-axis player profile radar">'
     + _gridSvg(n)
     + _dataSvg(axes, overallTier)
+    + _matchDotsSvg(axes, payload.this_match)
     + _labelsSvg(axes)
     + "</svg>";
 
@@ -368,6 +434,7 @@ export function renderPlayerGpi(blockEl, payload, activeMode, activeChampion) {
     + overallBlock
     + "</div>"
     + caption
+    + _matchLegend(payload.this_match)
     + tipBlock;
 }
 
@@ -435,6 +502,8 @@ export const __test = {
   _esc,
   _champName,
   _champSelect,
+  _matchDotsSvg,
+  _matchLegend,
   _GPI_TTL_MS,
   _R,
   _CX,
