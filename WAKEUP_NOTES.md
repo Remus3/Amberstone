@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-07-02 (OQ21 LOOP - resync doc-hygiene sweep + the OQ14 gap; docs-only, no engine/flag/code)
+
+Loop directive OQ21 executed by this session (head ca131150; commit `<this commit>`, LEDGER 744). Apply the `docs/LIVE_GAME_GATED_SYNC.md` "Doc hygiene follow-ups (2026-07-01 sweep)" (a)-proposals + append the missed OQ14 Item Shaper overlay-capture row. **PREMISE-CHECK first:** the gemini digest line numbers were unreliable, so every prune target was re-derived from the AUTHORITATIVE source spec (the LIVE_GAME_GATED_SYNC.md section itself) - it caught that a raw ROADMAP :90-108 range-prune would have deleted OPEN item 98 + the Arena-1750 don't-redo anchor.
+
+- **Implemented main-thread (R9 inline + anchor-preservation):** destructive doc pruning where a mis-prune silently drops a don't-redo anchor is where the sole-merger needs full context; worktree subagents against the same bad line numbers would raise risk, not lower it. Integrity control = a full git-diff re-read of every deletion + the doc-guard suite.
+- **ROADMAP:** deleted 8 verified-stale pointer carries (s246/s245/s231/s230/s229/s228 PGR-reframe-still-pending + items 275/273) via a prefix-filter script (9 prefixes, each matched exactly once; also cleared 2 lines carrying pre-existing non-ASCII arrows) + the orphaned Peer auto-action-lanes row (ADR-012); RE-MARKED the #11-13 / #89 capture carries headless (inline anchors kept); trimmed :14 slow-tick + :111 ARAM residue + dropped the :130 fleet ENGINE stamp. 82KB budget SAFE (77084 bytes).
+- **README:** dropped Brawl from the modes list (retired champ-select s214) + rewrote the two-machine / third-machine-bridge topology to the 1-PC reality (ADR-011 / ADR-012); DS coverage counts left untouched (DS-batch job).
+- **ARCHITECTURE:** item-276 "in-game validation OWED" -> "PROVEN in-game (LEDGER 685/688/711)"; the T2-#8 "asyncio not started" gotcha corrected to shipped; fixed the stale `# arch:` marker in FROZEN app/__init__.py (comment-only, under the headless grant) then regenned the archmap - a hygiene WIN (also normalized pre-existing non-ASCII arrows to ASCII + synced ~30 real module rows the map had silently lost; `--check` now green).
+- **ORCHESTRATION_PLAN:** Claude_Preview-vs-:8888 -> Playwright ui_recon + :8810 (R2); Game-PC :8892 marked retired. **LIVE_GAME_GATED_SYNC:** OQ14 Item Shaper strip appended to the B24 family + LEDGER 735; Doc-hygiene header annotated APPLIED.
+- **Tier-0 verify (R5 - docs + one inert frozen-comment + a deterministic archmap regen; full engine suite NOT gated, no engine/route/logic touched):** 18 doc-guard tests green (smart-quote/mojibake/u2500 hygiene, architecture-no-stale-engine, doc-size-budget, bare-py-ban) + `gen_archmap.py --check` green + `import app` OK + `py_compile app/__init__.py` OK.
+- **Handoff (FUTURE):** the remaining (a) OPERATIONS/BACKLOG/OVERLAY_BUILD_MASTER_PLAN/RC_WORK_TRACKER/CLAUDE-Vision/Share-docs/stale-hash items + the :42 OQ16-supersedes-OQ3 annotation + all (b) archive candidates.
+- Frozen edit: `app/__init__.py` `# arch:` comment only (headless-upgrade grant, not carried forward).
+
+---
+
 # 2026-07-02 (OQ19 LOOP - HZ-B build-order table regen to live ENGINE 1.169.0; static data, no engine math)
 
 Loop directive OQ19 executed by this session (head 12d9de2f; commit `221922c5`, LEDGER 741). Regen the current-patch (16.13.1) HZ-B precompute tables to the live DS engine via the deterministic `--static` path - the headless prereq for accrual rail G2. No engine math, no live flip.
@@ -29,16 +44,3 @@ Loop directive OQ18 executed by this session (head 3d7ce104; commit `3a96c0e3`, 
 - **TDD** test_oq18_route_seam_transport.py RED 9/11 -> GREEN 11/11. **Verifier CONFIRM 7/7 + byte-identical TRUE.** ENGINE 1.169.0 (pins 108/95, 0 stray) + Share --check green 395 files + DS :8893 bounce (pid 6332 -> 1.169.0). Dual suite DS 7774 / RC 10434, 0 real fail (the RC "1 failed" = live-integration engine_version anchor, GREEN post-bounce - identical to OQ17). Drift guard test_docs_daemon_slayer_drift CAUGHT the missing routes + stale banner mid-run.
 - **Handoff:** client-helper emit (core/daemon_slayer_client.py typed helpers for the new routes); the default-ON consumer half (a survivability/draft scorer that CALLS these producers with the live set). Live plumbs stay gated -> LIVE_GAME_GATED_SYNC B31-B33 / B4 / B12 (headless-prep-done).
 - Frozen files untouched. CI green baseline held.
-
----
-
-# 2026-07-02 (OQ17 LOOP - /rank* HTTP-boundary seam transport; ENGINE 1.167.0 -> 1.168.0)
-
-Loop directive OQ17 executed by this session (head da6489c1; commit `e73799f3`, LEDGER 739). Thread the ENGINE-ONLY default-OFF seams across the /rank* HTTP boundary so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). NO math change - server.py only + version stamp.
-
-- **Plan-agent spec caught 2 premise drifts** (verify-the-premise): R50 apply_all_out_bonus is a load-time AbilitiesSnapshot flag NOT a per-call compute param -> EXCLUDED (not a pure flag-flip, FUTURE); Phase-D "4 non-every-AA on_hit" is not a distinct seam (3 un-routed categories of apply_passive_damage, already /dps).
-- **Scope call (R30 precedent):** rune-gate seams DSP4/R51/R53 route to /burst not the ranker - a flat keystone amp washes out of the candidate-baseline delta. This DROPPED the planned burst.py ranker slice; OQ17 = single-file server.py change, main-thread + verifier gate.
-- **Wired:** /burst +runes +assume_takedown/assume_ability_amp/score_completion_runes/gate_target_hp_amp/gate_caster_hp_amp/caster_current_hp_pct; /rank-assassin +assume_takedown/assume_squishy_target/assume_ability_amp/target_preset (ranker already forwards); /dps +apply_melee_aa_gate. All DEFAULT-OFF -> byte-identical.
-- **TDD** test_oq17_route_seam_transport.py RED 8/12 divergence -> GREEN 12/12. **Verifier CONFIRM 6/6.** ENGINE 1.168.0 (pins 107/94, 0 stray) + Share --check green 394 files + DS :8893 bounce (pid 22732 -> 1.168.0). Dual suite DS 7763 / RC 10435, 0 real fail (the RC "1 failed" = live-integration engine_version anchor, GREEN post-bounce).
-- **Handoff:** R50 route wiring (needs per-request AbilitiesSnapshot construction); client-helper emit (core/daemon_slayer_client.py). Live flips stay gated -> LIVE_GAME_GATED_SYNC B2/B3/B6/B7/B18/B19/B34.
-- Frozen files untouched. CI green baseline held. Worktree note: C:/RC-CIWatchdog belongs to that scheduled task, untouched.
