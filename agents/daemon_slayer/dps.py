@@ -167,6 +167,13 @@ class DpsResult:
     # per combo because the 8s CD greatly exceeds typical burst window.
     lightshield_strike_per_proc_damage: float = 0.0
     lightshield_strike_item_name: str = ""
+    # R59 (1.170.0) - target-side Lifeline shield seam. The one-shot low-HP
+    # shield magnitude a modeled target (assume_lifeline_shield=True) holds,
+    # SURFACED for burst-window consumers. The steady-state DPS rate is
+    # intentionally NOT reduced (a one-trigger shield does not map to a
+    # per-second rate). 0.0 by default -> assume_lifeline_shield=False is
+    # byte-identical.
+    target_lifeline_shield: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -192,6 +199,7 @@ class DpsResult:
             "spellblade_item_name": self.spellblade_item_name,
             "lightshield_strike_per_proc_damage": self.lightshield_strike_per_proc_damage,
             "lightshield_strike_item_name": self.lightshield_strike_item_name,
+            "target_lifeline_shield": self.target_lifeline_shield,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -630,6 +638,7 @@ def compute_dps(
     apply_target_vuln: bool = False,
     assume_ally_detonation: bool = False,
     assume_passive_reflect: bool = False,
+    assume_lifeline_shield: bool = False,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -1278,6 +1287,25 @@ def compute_dps(
                 "assume_ally_detonation seam)"
             )
 
+    # R59 (1.170.0): target-side Lifeline shield surface. assume_lifeline_shield
+    # =False -> target_lifeline_shield stays 0.0, weighted_dps + phase_dps
+    # byte-identical. When True, surface the Meraki-exact one-shot Lifeline
+    # shield magnitude a modeled target holds (Immortal Shieldbow 6673 default)
+    # so consumers can subtract it from a burst window; the steady-state rate is
+    # intentionally NOT reduced (a wrong precompute is worse than none). Live
+    # default-ON flip operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+    target_lifeline_shield_value = 0.0
+    if assume_lifeline_shield:
+        from ._lifeline_target_shield import target_lifeline_shield as _tls
+
+        target_lifeline_shield_value = _tls(level=level)
+        if target_lifeline_shield_value > 0.0:
+            notes.append(
+                f"target Lifeline shield {target_lifeline_shield_value:.0f} "
+                "surfaced (one-shot; NOT folded into the DPS rate; "
+                "assume_lifeline_shield seam)"
+            )
+
     return DpsResult(
         champion_id=resolved.champion_id,
         champion_name=resolved.champion_name,
@@ -1299,6 +1327,7 @@ def compute_dps(
         spellblade_item_name=spellblade_name,
         lightshield_strike_per_proc_damage=lightshield_strike_per_proc,
         lightshield_strike_item_name=lightshield_strike_name,
+        target_lifeline_shield=target_lifeline_shield_value,
         stats=dict(stats),
         notes=tuple(notes),
     )
