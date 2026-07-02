@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-01 late night 2 (OQ13 - QA17 mode-factored weekly Good/Bad/Ugly digest; backend + ui, NO ENGINE/DS/Share)
+
+Loop directive OQ13 executed by this session (merges `4d2955f4` + `22cc3e80` + audit-fix `acf54c4d`, LEDGER 733). Premise live-verified BEFORE build (ARAM 7d 11.7 deaths/game + 2.0 CS/min vs SR 8.8 + 6.6 - mode-blind tips mis-grade ARAM). 2 parallel worktree agents on disjoint files to a frozen weekly_digest contract -> verifier CONFIRM each (A 24 / B 17 fresh) -> sole merger --no-ff.
+
+- **Backend (`c84d51af`):** _MODE_BENCH (SR strict 3.0/6.0/6.0; ARAM lenient 2.5/12.0/None, CS never judged; ARENA/BRAWL lenient; default) + pure _home_weekly_digest(rows); rows collected in the EXISTING week-cutoff loop (0 new SQL); games<=2 R30-style suppression; "" = suppressed line. KEYSTONE test: identical stats -> ARAM bad=="" / SR "10.0 deaths per game (bench 6 for SR)".
+- **Frontend (`128635c4`):** #home-weekly-digest card sibling AFTER #home-combo (combo.hidden is pick+trends-coupled - nesting would suppress); createElement/textContent only; dataset.sig idempotent; tokens-only CSS.
+- **Proof:** full RC suite fresh on merged main 10399 passed / 2 skipped / 193 subtests (+35 = new 18+17); RC restarted pid 15840 alive/reload_ok; LIVE /api/home/summary: ARAM 23g lenient (bad suppressed, good "2.6 KDA over 23 games") vs SR 10g strict (bad "8.8 deaths per game (bench 6 for SR)").
+- **5-phase audit PASS 0 MUST-FIX.** Both SHOULD-FIXes fixed in-slice (`acf54c4d`): head deduped to THIS WEEK BY MODE + ui_mock weekly_digest block (fixture flapped live-then-hide). NICE FUTURE: pre-existing U+2192 home.css:545 (next drift sweep).
+- **OPERATOR MID-RUN CORRECTION:** "why is the chrome dashboard being used?" - audit agent had been told to render :8888 in Chromium (old OQ8/OQ12 fixture precedent). Redirected mid-flight: sanctioned = rc-shell Electron capture or ?overlay=1. Result: rc-shell NOT running + ?overlay=1 hides #home-overlay BY DESIGN (overlay.css:80) -> code-side phases complete, **Electron-companion capture OWED**. Rule reinforced: NO Chrome :8888 renders as visual proof, ever.
+- Remaining OPEN queue: OQ14 (Item Shaper knobs), OQ15 (GPI radar dot).
+
+---
+
 # 2026-07-01 late night (OQ12 - QA31 PGR normalized carry-metrics bundle; ui + backend, NO ENGINE/DS/Share)
 
 Loop directive OQ12 executed by this session (merges `12958b47` + `94c8224c`, LEDGER 732). Full orchestrator pattern: Explore recon -> Plan spec (citations spot-verified + live rewind DB schema probe) -> 2 parallel worktree agents on disjoint files coding a frozen payload contract -> verifier CONFIRM each -> sole merger. Operator interrupted mid-run ("complete + summarize open items") - slice finished per protocol, then wrap.
@@ -26,16 +39,3 @@ Loop directive R56 executed by this session (`2f259dcb`, LEDGER 731). Inline (2 
 - **Adjacent latent red:** OQ16 objective_gauges.css header comment carried a 0-leading hex breaching the OQ6 dark-values ratchet (ceiling 0). Ratchet runs ONLY in the nightly full suite (push CI = light check job) - tonight's nightly would have gone red. Hex dropped from the comment in-slice.
 - **Proof:** RC suite fresh 10309 passed / 2 skipped / 193 subtests; computed-style proof (title 22 / sub 18 / btn 18 + 42px / pill 18) via the :8810 static-preview synthetic-DOM path (item 656); live :8888 curl-verified serving tokenized CSS (ADR-008, no restart).
 - **FUTURE:** ds-pill/augments-pill 21px hardcoded (siblings, out of scope); dead body[data-view="coach-calls"] rules in header.css.
-
----
-
-# 2026-07-01 evening (loop false-NO_WORK fix 2 + GEMINI CREDITS DEPLETED; direct-executor continuation)
-
-Operator re-invoked /gemini-headless-upgrade pointing at ops/loop/control/directive.md. Directive was STALE (OQ3, already shipped e14eedbd + docs 7f1dccee) - NOT re-executed. The 17:45 relaunch had STOPPED again on "NO_WORK / empty" with OQ11-OQ15 OPEN. Full detail LEDGER 728.
-
-- **ROOT CAUSE (reproduced, stderr captured): Gemini API prepay credits DEPLETED** - 429 RESOURCE_EXHAUSTED "Your prepayment credits are depleted", gemini CLI exit 1, stdout 0B. **OPERATOR: top up at https://ai.studio/projects, then relaunch via PART A.** The loop CANNOT run until then.
-- **LOOP FIX 2 (LEDGER 728):** gemini() no longer masks errors as NO_WORK - stderr captured to control/_gemini_err.txt + head logged on empty tries; empty output -> None sentinel -> director ADVANCES (same-sha guard still ends persistent outages); stop only on literal NO_WORK. TDD RED 2 -> GREEN, loop suites 34 passed.
-- Credits TOPPED UP mid-session (operator message); gemini liveness re-probed PONG. Loop relaunch after the in-flight slices merged.
-- **OQ11 DONE (`aa9c7d90`, LEDGER 729): ENGINE 1.166.0** - static-CD haste gate (first ability_static_cd consumer; plain-number-static only; Amumu Q/Heimer R pinned ungated, Samira R 3.4483 -> 5.0). Dual suite fresh on main: DS 7733 / RC 10274, 0 failed. DS :8893 bounced -> 1.166.0. Share ingest bundle rebuilt (full ds_share_sync).
-- **Operator picked OQ3 variant A** -> OQ16 built live same session (`a5d2719a`, LEDGER 730): objective_gauges overlay widget at (1690,320), SR-live-only, schedule mirror-pinned vs event_callouts. **Live in-game overlay capture OWED** (no game was running).
-- Remaining OPEN queue: OQ12-OQ15.
