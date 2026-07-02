@@ -28,7 +28,7 @@ async function _tick() {
   } catch (_) { /* swallow - pill will go grey */ }
   try {
     // item 186: dedupFetch coalesces with coach_decisions' parallel
-    // /api/decisions poll (20s cadence vs this module's 500ms).
+    // /api/decisions poll (1.5s cadence vs this module's 500ms).
     const r = await dedupFetch("/api/decisions");
     if (r.ok) {
       const j = await r.json();
