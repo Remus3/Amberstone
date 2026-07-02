@@ -47,6 +47,7 @@ data/vision_state.json
 data/screen_read.json
 data/decisions_pending.json
 data/auto_accept_pref.json
+data/spell_prefs.json
 data/decisions_log.jsonl
 data/ds_calibration.jsonl
 data/ds_coach_hints_shadow.jsonl
