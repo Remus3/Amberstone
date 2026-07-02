@@ -18,6 +18,9 @@ Response is ``compute_gpi(...)``'s dict plus ``champions`` (the operator's
 played-champion pool for ``mode`` as ``[{champion_id, n_games}, ...]`` newest
 first - powers the per-champion drilldown selector), ``cached`` (bool) and
 ``elapsed_ms`` (int). See ``core.player_gpi._empty`` for the axis shape.
+The compute dict includes ``this_match`` (newest filtered game scored per
+axis vs the full history; null when insufficient) - it passes through here
+untouched, cache included.
 
 Cache: 5min in-process LRU keyed by (mode, window, champion). The compute
 is a full scan + percentile pass over the rewind db; a panel that re-polls
