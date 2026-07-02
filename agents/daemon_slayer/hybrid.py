@@ -91,6 +91,38 @@ def get_weights_for(champion_id: str) -> tuple[float, float]:
     return (float(default[0]), float(default[1]))
 
 
+# R58 assume_ms_utility seam (ENGINE 1.167.0) - Movement Speed utility credit
+# for the bruiser/juggernaut scorer. WHY: bruisers convert stickiness into
+# uptime - bonus MS closes gaps, holds melee range, and dodges return poke,
+# none of which the raw auto-attack DPS math sees, so MS items (Dead Man's
+# Plate / Force of Nature / Deadman-style pct rollers) under-rank on the
+# damage axis. Each 1 pct bonus MS over the champion's BASE MS is credited
+# as _MS_UTILITY_DPS_FRACTION pct of effective bruiser DPS - 0.5 is the
+# conservative operator-tunable uptime/stickiness midpoint (a full 1:1 would
+# claim every MS point converts to hit-time, plainly too hot).
+_MS_UTILITY_DPS_FRACTION = 0.5
+# Ceiling on the TOTAL MS-derived DPS credit. WHY: pct-MS stacks additively
+# across items (DMP + FoN + boots + ...) and an uncapped linear credit blows
+# up on a stacked-MS build; +15 pct effective DPS is the most the stickiness
+# story can plausibly buy.
+_MS_UTILITY_DPS_CAP = 0.15
+
+
+def _ms_utility_multiplier(resolved_ms: float, base_ms: float) -> float:
+    """Effective-DPS multiplier for bonus MS over base (R58, DEFAULT-OFF seam).
+
+    Pure + fail-soft: a zeroed/missing ``base_ms`` or a resolved MS at or
+    below base returns the exact identity 1.0 (slows never PENALIZE through
+    this seam; it credits utility, it does not model impairment). Above base,
+    the bonus fraction converts at ``_MS_UTILITY_DPS_FRACTION`` and the total
+    credit clamps at ``_MS_UTILITY_DPS_CAP``.
+    """
+    if base_ms <= 0.0 or resolved_ms <= base_ms:
+        return 1.0
+    bonus_frac = (resolved_ms - base_ms) / base_ms
+    return 1.0 + min(_MS_UTILITY_DPS_CAP, bonus_frac * _MS_UTILITY_DPS_FRACTION)
+
+
 @dataclass(frozen=True)
 class HybridResult:
     champion_id: str
@@ -124,6 +156,11 @@ class HybridResult:
     cc_blended_ehp: float = 0.0        # blended_ehp * (1 - cc_fraction * 0.5) when enemies provided
     enemy_champions: tuple[str, ...] = ()
     notes: tuple[str, ...] = field(default_factory=tuple)
+    # R58 (ENGINE 1.167.0): the MS-utility multiplier applied to the DPS term
+    # of hybrid_score when assume_ms_utility=True. 1.0 on the default path
+    # AND whenever the build has no bonus MS - ``dps`` stays RAW weighted_dps
+    # either way (the credit lives ONLY in hybrid_score).
+    ms_utility_mult: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -151,6 +188,7 @@ class HybridResult:
             "cc_blended_ehp": self.cc_blended_ehp,
             "enemy_champions": list(self.enemy_champions),
             "notes": list(self.notes),
+            "ms_utility_mult": self.ms_utility_mult,
         }
 
     def format_table(self) -> str:
@@ -215,6 +253,7 @@ def compute_hybrid(
     beta: Optional[float] = None,
     apply_melee_aa_gate: bool = False,
     caster_current_hp_pct: float = 1.0,
+    assume_ms_utility: bool = False,
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -267,6 +306,13 @@ def compute_hybrid(
     CHAMPION passive (build-independent) so it scales the EHP denominator
     uniformly; it raises the displayed scalar but does NOT change the
     ratio-based ``hybrid_delta_pct`` sort (see ``rank_items_by_hybrid``).
+
+    ``assume_ms_utility`` (R58, ENGINE 1.167.0, DEFAULT-OFF) credits bonus
+    Movement Speed over the champion's base MS as effective bruiser DPS via
+    ``_ms_utility_multiplier`` (0.5 DPS-pct per MS-pct, capped +15 pct). The
+    multiplier scales ONLY the DPS term of ``hybrid_score``; the ``dps``
+    field stays RAW weighted_dps. Default False is byte-identical - the
+    score line runs on the same raw value with the same op order.
     """
     level = clamp_level(level)
     if alpha is None or beta is None:
@@ -343,7 +389,30 @@ def compute_hybrid(
     ehp_for_score = (
         ehp_result.cc_blended_ehp if enemy_champions_tuple else ehp_result.blended_ehp
     )
-    hybrid_score = alpha_resolved * dps_result.weighted_dps + beta_resolved * ehp_for_score
+    # R58 (ENGINE 1.167.0, DEFAULT-OFF): MS-utility credit on the DPS term
+    # only. OFF path binds the SAME raw value (a name bind, not a float op)
+    # so the score line below is byte-identical at the default; ON path with
+    # no bonus MS resolves to the exact identity 1.0 and skips the rescale.
+    dps_for_score = dps_result.weighted_dps
+    ms_utility_mult = 1.0
+    ms_utility_note = ""
+    if assume_ms_utility:
+        # Fail-soft base-MS resolve: a missing champion record or a zeroed
+        # movespeed collapses to base_ms 0.0 -> identity multiplier.
+        _champ_rec = snapshot.champions.get(str(champion_id)) or {}
+        base_ms = float((_champ_rec.get("stats") or {}).get("movespeed", 0.0) or 0.0)
+        ms_utility_mult = _ms_utility_multiplier(
+            float(dps_result.stats.get("ms", 0.0)), base_ms
+        )
+        if ms_utility_mult != 1.0:
+            dps_for_score = dps_result.weighted_dps * ms_utility_mult
+            ms_utility_note = (
+                f"ms utility ON: dps x{ms_utility_mult:.3f} "
+                f"(resolved_ms {float(dps_result.stats.get('ms', 0.0)):.1f} vs "
+                f"base_ms {base_ms:.1f}; fraction {_MS_UTILITY_DPS_FRACTION}, "
+                f"cap {_MS_UTILITY_DPS_CAP})"
+            )
+    hybrid_score = alpha_resolved * dps_for_score + beta_resolved * ehp_for_score
 
     notes: list[str] = []
     notes.append(
@@ -355,6 +424,8 @@ def compute_hybrid(
             f"(fraction {ehp_result.cc_pressure_fraction:.2f}) -> "
             f"cc_blended_ehp {ehp_result.cc_blended_ehp:.0f}"
         )
+    if ms_utility_note:
+        notes.append(ms_utility_note)
 
     return HybridResult(
         champion_id=dps_result.champion_id,
@@ -381,6 +452,7 @@ def compute_hybrid(
         cc_blended_ehp=ehp_result.cc_blended_ehp,
         enemy_champions=enemy_champions_tuple,
         notes=tuple(notes),
+        ms_utility_mult=ms_utility_mult,
     )
 
 
@@ -421,6 +493,11 @@ class HybridRankedItem:
     # that the damage-biased sort rates these low) and 0.0 otherwise; the ranking
     # then sorts by it first, floating those items above the generic AD template.
     survivability_score: float = 0.0
+    # R58 (ENGINE 1.167.0): the candidate build's MS-utility multiplier when
+    # assume_ms_utility=True (1.0 on the default path / no bonus MS). The raw
+    # delta_dps / new_dps surfaces above keep RAW weighted_dps semantics; the
+    # credit lands only in hybrid_delta_pct / hybrid_score.
+    ms_utility_mult: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -442,6 +519,7 @@ class HybridRankedItem:
             "dead_unique_key": self.dead_unique_key,
             "unique_passive_key": self.unique_passive_key,
             "survivability_score": self.survivability_score,
+            "ms_utility_mult": self.ms_utility_mult,
         }
 
 
@@ -620,6 +698,7 @@ def rank_items_by_hybrid(
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
     target_current_hp_pct: float = 1.0,
+    assume_ms_utility: bool = False,
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
@@ -674,6 +753,17 @@ def rank_items_by_hybrid(
     bruiser (hybrid) scorer's DPS axis surfaces the same current-HP model the
     mage/assassin scorers already had. Default 1.0 is an identity multiply ->
     byte-identical.
+
+    ``assume_ms_utility`` (R58, ENGINE 1.167.0, DEFAULT-OFF) credits bonus MS
+    over base as effective bruiser DPS in BOTH the baseline and every
+    candidate via ``_ms_utility_multiplier`` before the normalized
+    ``hybrid_delta_pct`` and the ``hybrid_score`` scalar are composed. The
+    raw row surfaces (``delta_dps`` / ``new_dps`` / ``delta_ehp`` /
+    ``new_ehp``) keep RAW semantics - no double counting with stat-derived
+    DPS procs (e.g. Dead Man's Plate Shipwrecker). A shared multiplier
+    (baseline and candidate at the same bonus MS) cancels in the normalized
+    pct, so only the CANDIDATE's MS delta re-ranks. Default False is
+    byte-identical (the OFF branches are the pre-R58 lines verbatim).
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -771,7 +861,22 @@ def rank_items_by_hybrid(
         if enemy_champions_tuple
         else baseline_ehp_result.blended_ehp
     )
-    baseline_hybrid = alpha_resolved * baseline_dps + beta_resolved * baseline_ehp_for_score
+    # R58 (ENGINE 1.167.0, DEFAULT-OFF): resolve the champion's base MS ONCE
+    # and derive the baseline MS-utility multiplier; the per-candidate loop
+    # below reuses _ms_base. OFF binds nothing - the else keeps the pre-R58
+    # baseline_hybrid line verbatim (byte-identical contract).
+    if assume_ms_utility:
+        _ms_champ_rec = snapshot.champions.get(str(champion_id)) or {}
+        _ms_base = float((_ms_champ_rec.get("stats") or {}).get("movespeed", 0.0) or 0.0)
+        baseline_ms_mult = _ms_utility_multiplier(
+            float(baseline_dps_result.stats.get("ms", 0.0)), _ms_base
+        )
+        baseline_dps_eff = baseline_dps * baseline_ms_mult
+        baseline_hybrid = (
+            alpha_resolved * baseline_dps_eff + beta_resolved * baseline_ehp_for_score
+        )
+    else:
+        baseline_hybrid = alpha_resolved * baseline_dps + beta_resolved * baseline_ehp_for_score
     # Item 237: the EHP normalizer the delta_pct sort key divides by. Default
     # "blended" keeps the PRE-cc baseline (byte-identical); "cc_blended" uses the
     # CC-lockdown-adjusted baseline so a tenacity item's cc-EHP gain re-ranks.
@@ -854,19 +959,41 @@ def rank_items_by_hybrid(
         # CC-lockdown-adjusted delta (+ tenacity) so a tenacity item rises vs a
         # non-saturating CC comp - the bruiser mirror of the item-236 tank mode.
         active_delta_ehp = cc_delta_ehp if score_by == "cc_blended" else delta_ehp
-        delta_pct = _hybrid_delta_pct(
-            delta_dps, active_delta_ehp, baseline_dps, active_baseline_ehp,
-            alpha_resolved, beta_resolved,
-        )
         ehp_scored_for_score = (
             ehp_scored.cc_blended_ehp
             if enemy_champions_tuple
             else ehp_scored.blended_ehp
         )
-        new_hybrid_score = (
-            alpha_resolved * dps_scored.weighted_dps
-            + beta_resolved * ehp_scored_for_score
-        )
+        # R58 (ENGINE 1.167.0, DEFAULT-OFF): when ON, the candidate build's
+        # MS-utility multiplier rescales the DPS term of BOTH the normalized
+        # delta (numerator AND normalizer run on the effective baseline, so a
+        # multiplier shared with the baseline cancels) and the hybrid_score
+        # scalar. delta_dps above stays RAW - no double counting with
+        # stat-derived procs. The else branch is the pre-R58 text verbatim.
+        cand_ms_mult = 1.0
+        if assume_ms_utility:
+            cand_ms_mult = _ms_utility_multiplier(
+                float(dps_scored.stats.get("ms", 0.0)), _ms_base
+            )
+            cand_dps_eff = dps_scored.weighted_dps * cand_ms_mult
+            delta_pct = _hybrid_delta_pct(
+                cand_dps_eff - baseline_dps_eff, active_delta_ehp,
+                baseline_dps_eff, active_baseline_ehp,
+                alpha_resolved, beta_resolved,
+            )
+            new_hybrid_score = (
+                alpha_resolved * cand_dps_eff
+                + beta_resolved * ehp_scored_for_score
+            )
+        else:
+            delta_pct = _hybrid_delta_pct(
+                delta_dps, active_delta_ehp, baseline_dps, active_baseline_ehp,
+                alpha_resolved, beta_resolved,
+            )
+            new_hybrid_score = (
+                alpha_resolved * dps_scored.weighted_dps
+                + beta_resolved * ehp_scored_for_score
+            )
         # Efficiency: weighted percentage gain per 1000 gold.
         # Zero or negative deltas zero out - regression isn't "efficient".
         eff = (delta_pct / (gold / 1000.0)) if (gold > 0 and delta_pct > 0) else 0.0
@@ -893,6 +1020,7 @@ def rank_items_by_hybrid(
             cc_blended_ehp=ehp_scored.cc_blended_ehp,
             delta_cc_blended_ehp=cc_delta_ehp,
             survivability_score=survivability_score,
+            ms_utility_mult=cand_ms_mult,
         ))
 
     def _base_key(r: HybridRankedItem) -> tuple:
