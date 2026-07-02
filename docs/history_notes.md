@@ -218,6 +218,28 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-01 (Gemini headless loop cycle 3 - OQ3 peripheral objective ring-gauge overlay MOCKUP set; overlay-ui, NO ENGINE/DS/Share)
+
+Director picked OQ3 from the operator queue. Full detail in LEDGER 720.
+
+- **OQ3 - 3-variant STATIC mockup set of a peripheral objective ring/arc-gauge overlay widget (`e14eedbd`).** Deliver-to-pick, explicitly NO final build + NO live wire; the build waits on the operator's choice. Ground truth: the current objective surface is a flat TEXT chip strip (`web/js/panels/objective_chips.js`, dragon/baron/herald only); OQ3 is the richer VISUAL exploration adding elder + summs. Orchestrator fan-out: 3 concurrent build agents on disjoint files + Claude sole merger + read-only verifier CONFIRM.
+- **Variants (web/mock/, self-contained static HTML + inline SVG, no JS/API dep):** A `oq3_variant_a.html` Radial Ring Cluster (2x2 full ring dials, exact ETA center - clearest, tallest); B `oq3_variant_b.html` Peripheral Arc Rail (one corner-hugging 90-degree arc, sigils along it - smallest footprint, positional ETA); C `oq3_variant_c.html` Stacked Sigil Gauges (compact 4-badge band + numeric ETA - balanced, wider slot). Gallery `oq3_index.html` (3 iframes + tradeoffs). On-palette: BARON gold #C8AA6E / DRAKE warn #E8A33D / ELDER red #E84057 / SUMMS cyan #0AC8B9.
+- **Serving:** non-frozen `dashboard/routes_static.py` gains a `/mock/` prefix + `.html` content-type (same guard as /css /js /data) so the mocks render at https://legion-rc:8888/mock/oq3_index.html instead of downloading.
+- **Verify:** TDD RED-first `tests/test_oq3_objective_gauge_mocks.py` (10, RED 10 -> GREEN 10); full RC suite 10239 passed / 2 skipped / 193 subtests (0 fail); verifier CONFIRM (oq3 10/0/0 + p2w1 route 5/0/0 + all 4 files ASCII-clean). 5-phase UI audit code-side 0 MUST-FIX; SHOULD-FIX (FUTURE) tokenize B/C 10px labels to --fs-ov-* at build time. Electron-overlay pixel capture OWED (no live game, mode=client). RC :8888 restarted for the route (pid 16072 -> 14772, alive/reload_ok); NO DS bounce / NO Share (ENGINE unchanged).
+- **NEXT.** OQ3 DONE; ORCHESTRATION_PLAN OQ3 flipped DONE (`e14eedbd`). Director picks the next OPEN OQ row (OQ4 = QA45 quiet-by-default motion sweep) top-down. When the OPERATOR picks a variant, a BUILD session extends objective_chips.js (add elder + summs to OBJ_CYCLE, swap the text chips for the picked SVG gauge) wired to liveclient.objective_events. Do NOT re-mock OQ3 (shipped).
+
+---
+
+# 2026-07-01 (Gemini headless loop - OQ2 finish the Peer cross-Claude bridge decommission; infra, NO ENGINE/DS/Share)
+
+Loop relaunched; director picked OQ2 from the operator queue. Full detail in LEDGER 719.
+
+- **OQ2 - finish the Peer cross-Claude bridge decommission (`6edfbd3e`).** PREMISE STALE (verify-before-build): the directive assumed the bridge files still existed + were frozen, but the SOURCE was already removed 2026-06-24 (ADR-012) - all tools/bridge_*, dashboard/routes_bridge_pending.py, ops/RC-BridgeWatcher.xml, core/bridge*.py GONE; RC-BridgeWatcher task NOT registered; CLAUDE.md frozen list already clean. NO frozen edit + no fan-out warranted -> a ~6-file coupled dead-code sweep done inline (R9) behind a read-only verifier gate. SWEPT: prom_metrics.py dead BridgeMetrics namespace (0 consumers); main.js inert peer-bridge-health tooltip (j.peers is server-dead); extract_panels.py bridge_pending.js codegen -> repointed to coach_decisions.js; stale bridge lines in headless-upgrade.md + ROADMAP.md; git rm the 2 orphaned "docs io RC peer/" bridge contract docs. Guard tests/test_bridge_decommissioned_oq2.py (TDD RED 5 -> GREEN 5). Verifier CONFIRM 8/8; targeted blast-radius suite 356 passed; ruff clean; node --check OK. DS Share ritual n/a (no DS path). Full RC suite -> CI (7-min local timeout).
+- **OUT OF SCOPE (left intact - different subsystem):** the local FileBridge/DevRuntime admin gate (admin_bridge_enabled + bridge_poll_interval_seconds, LIVE in frozen main.py + ops/rc_dev_runtime.py) is the shell/process exec gate, NOT the Peer cross-Claude bridge. FUTURE nits: _supervisor_common.py:121 stale WHY-comment cites the removed bridge-watchdog cadence; bridge_poll_interval_seconds may be orphaned now rc_file_bridge.py is gone - a separate local-FileBridge assessment.
+- **NEXT.** OQ2 DONE; ORCHESTRATION_PLAN OQ2 flipped DONE (`6edfbd3e`). Director picks the next OPEN OQ row (OQ3 = QA11 ring-gauge 3-variant mockup set, no build until operator picks) top-down. Do NOT re-pitch a bridge or lessons-sync (ADR-012 + ADR-004 superseded).
+
+---
+
 # 2026-07-01 (Gemini headless R54 cycle + loop STOP + operator work-tracker reconcile + OQ queue seed; lift/docs + Tier-1 frontend, NO ENGINE/DS/Share)
 
 Gemini headless loop cycle 6 ran, then the operator interrupted to reconcile the work tracker + reseed the loop. Full R54 detail in LEDGER 717.
