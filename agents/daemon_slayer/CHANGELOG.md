@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.169.0 (OQ18, 2026-07-02 - live-input wiring across the DS HTTP boundary (item-638
+pattern). No math change: threads the producer-only-orphan live inputs across the
+HTTP routes so each live-gated eyeball (LIVE_GAME_GATED_SYNC B31-B33, B4, B12) becomes
+a pure flag flip, byte-identical when the body omits the input. server.py only (plus
+the version stamp): ``_route_antitank`` gains ``level`` (R17/R39 ramp seam, B12 - scales
+a ramp-seeded row's %max-HP / %current-HP magnitude toward its early endpoint; level=18
+/ omitted is byte-identical) + ``item_ids`` / ``augments`` (P3.2 ``compute_antitank_live``
+live build, B4 - resolves the champion's live AP/AD so a seeded ratio scales; empty /
+omitted stays on the static path). Three NEW routes expose the dsp_live_consumers
+producers: ``/summoner-fight-adj`` -> summoner_fight_adjustments (DSP5, B31, self+enemy
+summoner sets -> EHP/tenacity/MS/DR/antiheal), ``/enemy-rune-threat`` -> enemy_rune_threat
+(DSP6, B32, PtA amp / Conqueror ramp / Grasp poke-sustain / antiheal + ehp_divisor),
+``/ally-protected-ehp`` -> ally_protected_ehp (DSP7, B33, an ally's EHP with its live
+teammates' enchanter shield/heal/resist grants folded in). Every input DEFAULT-OFF/empty
+-> byte-identical; the live default-ON plumb (feeding the real live-client summoner/rune/
+ally set + eyeballing the adjusted readout) stays operator-gated. No engine-math file
+changed (both antitank functions already accepted the args); additive read-only routes.)
+
 1.168.0 (OQ17, 2026-07-02 - /rank* HTTP-boundary seam transport (item-638 pattern).
 No math change: threads the existing ENGINE-ONLY default-OFF seams across the HTTP
 routes so each live eyeball is a pure flag flip, byte-identical when the body omits
