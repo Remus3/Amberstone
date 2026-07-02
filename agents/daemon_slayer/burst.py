@@ -361,6 +361,11 @@ class BurstResult:
     # path is byte-identical - same convention as ``rune_proc_damage``.
     takedown_bonus_ad: float = 0.0
     execute_finisher_damage: float = 0.0
+    # R59 (1.170.0) - target-side Lifeline shield seam. The one-shot low-HP
+    # shield a modeled target (assume_lifeline_shield=True) absorbs, already
+    # SUBTRACTED from ``total_burst_damage``. 0.0 by default so the
+    # assume_lifeline_shield=False path is byte-identical.
+    target_lifeline_shield_absorbed: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -402,6 +407,7 @@ class BurstResult:
             "rune_proc_damage": self.rune_proc_damage,
             "takedown_bonus_ad": self.takedown_bonus_ad,
             "execute_finisher_damage": self.execute_finisher_damage,
+            "target_lifeline_shield_absorbed": self.target_lifeline_shield_absorbed,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -486,6 +492,7 @@ def compute_burst_damage(
     score_completion_runes: bool = False,
     assume_ally_detonation: bool = False,
     assume_passive_reflect: bool = False,
+    assume_lifeline_shield: bool = False,
     gate_target_hp_amp: bool = False,
     gate_caster_hp_amp: bool = False,
     caster_current_hp_pct: float = 1.0,
@@ -1074,6 +1081,23 @@ def compute_burst_damage(
                 reflect_burst_damage = _rproc * mode_mult * _ramp * _rmit * _rhits
                 total_burst += reflect_burst_damage
 
+    # R59 (1.170.0): target-side Lifeline shield seam (companion to
+    # assume_squishy_target target-defense modeling). assume_lifeline_shield
+    # =False -> total_burst unchanged (byte-identical). When True, the modeled
+    # target is assumed to hold a Lifeline item (Immortal Shieldbow 6673
+    # default; Sterak's 3053 / Maw 3156 supported by the shared helper) whose
+    # low-HP shield absorbs its Meraki-exact magnitude once, reducing the burst
+    # actually delivered. min() floors total_burst at 0. Live default-ON flip
+    # operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+    target_lifeline_shield_absorbed = 0.0
+    if assume_lifeline_shield:
+        from ._lifeline_target_shield import target_lifeline_shield as _tls
+
+        _lshield = _tls(level=level)
+        if _lshield > 0.0:
+            target_lifeline_shield_absorbed = min(_lshield, total_burst)
+            total_burst -= target_lifeline_shield_absorbed
+
     primary = _classify_primary_scaling(per_cast, forms_for_classification)
 
     notes: list[str] = list(resolved.notes)
@@ -1089,6 +1113,12 @@ def compute_burst_damage(
             f"on-being-hit reflect +{reflect_burst_damage:.1f} burst "
             f"({resolved.champion_name} returns magic to attackers over the "
             "assumed burst exposure window; assume_passive_reflect seam)"
+        )
+    if target_lifeline_shield_absorbed > 0.0:
+        notes.append(
+            f"target Lifeline shield -{target_lifeline_shield_absorbed:.1f} burst "
+            "(modeled target absorbs a low-HP shield once; "
+            "assume_lifeline_shield seam)"
         )
     if mode == "ARAM" and mode_mult != 1.0:
         notes.append(f"ARAM aramDamageDealt={mode_mult:.3f} on per-cast damage")
@@ -1242,6 +1272,7 @@ def compute_burst_damage(
         rune_proc_damage=rune_proc_damage,
         takedown_bonus_ad=takedown_bonus_ad,
         execute_finisher_damage=execute_finisher_damage,
+        target_lifeline_shield_absorbed=target_lifeline_shield_absorbed,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
