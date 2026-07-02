@@ -138,9 +138,30 @@ def cap_bytes(text, limit, label):
         return text
     return text[:limit] + f"\n...[{label} truncated at {limit} bytes - full text in the repo file]"
 
-# Hard byte budgets for the two unbounded director-context components.
-PLAN_CTX_CAP = 140_000
-LEDGER_CTX_CAP = 40_000
+# Hard byte budgets for the unbounded director-context components.
+# 2026-07-02 re-tighten: gemini CLI silently returns EMPTY stdout above
+# ~80KB stdin (80KB delivered fine, 160KB empty, no stderr error - measured
+# live; the 01:56 outage killed cycles 9-100 of the prior run). The 2026-07-01
+# caps (140K plan alone) still allowed a >160KB total, so every component cap
+# now fits the WHOLE prompt inside GEMINI_STDIN_CAP with headroom.
+PLAN_CTX_CAP = 40_000
+LEDGER_CTX_CAP = 12_000
+ROADMAP_CTX_CAP = 12_000
+
+# Proven-safe gemini stdin ceiling (see above). cap_stdin() backstops EVERY
+# gemini() call (director / auditor / stall) at this size.
+GEMINI_STDIN_CAP = 80_000
+
+def cap_stdin(body, limit=None):
+    """Backstop: keep the HEAD (prompt template + instructions) and the TAIL
+    (directive_suffix / escalation / final rules); cut the expendable middle."""
+    lim = GEMINI_STDIN_CAP if limit is None else limit
+    if len(body) <= lim:
+        return body
+    marker = "\n...[STDIN CAP: middle truncated to fit the gemini CLI stdin limit - head + tail preserved]...\n"
+    keep = lim - len(marker)
+    head = int(keep * 0.6)
+    return body[:head] + marker + body[len(body) - (keep - head):]
 
 # ---- directive-chain continuity (persisted; survives controller restarts) ---
 def directive_title(body):
@@ -209,19 +230,45 @@ def _format_directive_chain(recs):
     return "\n".join(out)
 
 # ---- gemini (read-only, STDIN pipe; mirrors tools/gemini_audit.ps1) ----
+def _read_err(errfile):
+    # PS 5.1 `2>'file'` writes the error stream UTF-16 LE (Out-File default);
+    # the old utf-8 read mojibake'd it, which masked the real API error behind
+    # NUL-interleaved node warnings for the whole 2026-07-02 01:56-11:17 outage.
+    try:
+        raw = errfile.read_bytes()
+    except OSError:
+        return ""
+    enc = "utf-16" if raw[:2] in (b"\xff\xfe", b"\xfe\xff") else "utf-8"
+    return raw.decode(enc, errors="replace").strip()
+
+def _err_summary(txt, cap=400):
+    # Surface the ERROR lines (503 overload / 429 quota) - the node/terminal
+    # warnings that open the stream otherwise crowd them out of a head read.
+    hits = [ln.strip() for ln in txt.splitlines()
+            if any(k in ln.lower() for k in ("error", "unavailable", "exhausted", "quota", "429", "503"))]
+    return (" | ".join(hits) if hits else txt)[:cap]
+
 def gemini(prompt_body, instruction):
     global GEMINI_USD
+    prompt_body = cap_stdin(prompt_body)
     infile = CTL / "_gemini_in.txt"
     errfile = CTL / "_gemini_err.txt"
     awrite(infile, prompt_body)
     model = CFG.get("gemini_model", "gemini-3-pro-preview")
+    # 2026-07-02 outage fix: gemini-3-pro-preview 503-overloads for hours at a
+    # time (big prompts rejected, small ones admitted); 3 empty tries then
+    # advancing burned 92 directive-less cycles. After the primary tries
+    # exhaust, retry on the cheaper fallback model - a flash directive beats
+    # an empty cycle.
+    fallback = CFG.get("gemini_fallback_model", "gemini-2.5-flash")
+    attempts = [model] * 3 + ([fallback] * 2 if fallback and fallback != model else [])
     inst = instruction.replace("'", "''")
-    ps = ("$ErrorActionPreference='Continue';"
-          "$env:GEMINI_API_KEY=[Environment]::GetEnvironmentVariable('GEMINI_API_KEY','User');"
-          f"Get-Content -Raw '{infile}' | "
-          f"{CFG.get('gemini_cmd', 'gemini')} -p '{inst}' -m '{model}' --approval-mode plan --skip-trust 2>'{errfile}' | Out-String")
     out = ""
-    for tryn in range(1, 4):
+    for tryn, m in enumerate(attempts, start=1):
+        ps = ("$ErrorActionPreference='Continue';"
+              "$env:GEMINI_API_KEY=[Environment]::GetEnvironmentVariable('GEMINI_API_KEY','User');"
+              f"Get-Content -Raw '{infile}' | "
+              f"{CFG.get('gemini_cmd', 'gemini')} -p '{inst}' -m '{m}' --approval-mode plan --skip-trust 2>'{errfile}' | Out-String")
         try:
             r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
                                capture_output=True, text=True, timeout=300,
@@ -229,17 +276,13 @@ def gemini(prompt_body, instruction):
             out = (r.stdout or "").strip()
         except Exception as e:  # noqa: BLE001
             out = ""
-            log(f"gemini try {tryn} error: {e}")
+            log(f"gemini try {tryn} ({m}) error: {e}")
         if out:
             break
-        # Empty stdout: surface the captured stderr head so the operator can see
-        # WHY (429 quota, model overload) instead of a bare "NO_WORK / empty".
-        try:
-            err = errfile.read_text(encoding="utf-8", errors="replace").strip()
-        except OSError:
-            err = ""
+        # Empty stdout: surface WHY (decoded + error-line filtered stderr).
+        err = _err_summary(_read_err(errfile))
         if err:
-            log(f"gemini try {tryn} empty stdout; stderr head: {err[:400]}")
+            log(f"gemini try {tryn} ({m}) empty stdout; stderr: {err}")
         time.sleep(8 * tryn)
     gp = CFG.get("gemini_price_per_mtok", {"input": 2.0, "output": 12.0})
     GEMINI_USD += (len(prompt_body) / 4 * gp["input"] + len(out) / 4 * gp["output"]) / 1_000_000
@@ -281,7 +324,8 @@ def build_director_context(last_done, last_audit, *, root=None, ctl=None):
         "If it duplicates a DONE ledger item, a recent commit, or a directive already issued, DISCARD "
         "it and synthesize the next NON-duplicate unit. BUILD ON completed work; never re-narrate or "
         "re-do it."
-        f"\n\n=== ROADMAP.md (open items - high priority at TOP; head read) ===\n{head_lines('ROADMAP.md', 120, root=root)}"
+        f"\n\n=== ROADMAP.md (open items - high priority at TOP; head read) ===\n"
+        f"{cap_bytes(head_lines('ROADMAP.md', 120, root=root), ROADMAP_CTX_CAP, 'ROADMAP head')}"
         f"\n\n=== LAST claude.done ===\n{json.dumps(last_done)}"
         f"\n\n=== LAST AUDIT (if REGRESS, the directive MUST fix it first) ===\n{last_audit or '(none)'}")
     ask = (Path(ctl) if ctl is not None else CTL) / "gemini_ask.txt"
