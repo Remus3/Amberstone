@@ -381,6 +381,17 @@
         </div>
       </div>
     </div>
+    <!-- OQ13 mode-factored digest: weekly Good/Bad/Ugly FACTORED BY GAME
+         MODE (data.weekly_digest, backend slice A). Sibling card directly
+         under Tonight's Pick (same visual family, own row like Last Build)
+         so the week story reads right after the pick hero at 1920x1080.
+         Hidden until the payload carries a non-empty modes list; old or
+         missing-DB payloads lack the key entirely and degrade silently
+         (card stays hidden). Body is filled by _homeRenderWeeklyDigest. -->
+    <div class="home-weekly-digest" id="home-weekly-digest" hidden>
+      <div class="home-weekly-digest-head">THIS WEEK</div>
+      <div id="home-weekly-digest-body"></div>
+    </div>
     <div class="home-coach-build" id="home-coach-build" hidden>
       <div class="home-coach-build-head">LAST BUILD <span class="home-coach-build-sub" id="home-coach-build-sub"></span></div>
       <div class="home-coach-build-items" id="home-coach-build-items"></div>
