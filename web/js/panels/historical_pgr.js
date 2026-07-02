@@ -205,6 +205,28 @@ function _setHero(m, enriched) {
   }
 }
 
+// OQ12 slice B (hpgr-local duplicate of last_match.js's helper):
+// normalized carry-metric benchmark sub-line. metricObj is one of
+// carry_normalized.{kp_pct,dmg_share_pct}: {value,p25,p50,p75,n,band}.
+// Old payloads LACK carry_normalized - any null value/p50 keeps the
+// sub-line hidden. Idempotent (re-render safe).
+function _setBenchSub(elId, metricObj) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.classList.remove("lm-bench-high", "lm-bench-low");
+  if (metricObj && metricObj.value != null && metricObj.p50 != null) {
+    const band = (metricObj.band === "high" || metricObj.band === "low")
+                  ? metricObj.band : "avg";
+    el.textContent = `${band.toUpperCase()} - p50 ${Math.round(metricObj.p50)}`;
+    if (band === "high") el.classList.add("lm-bench-high");
+    else if (band === "low") el.classList.add("lm-bench-low");
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+    el.textContent = "";
+  }
+}
+
 function _setStatsGrid(m, enriched) {
   const cs       = document.getElementById("hpgr-cs");
   const cspm     = document.getElementById("hpgr-cs-per-min");
@@ -230,6 +252,12 @@ function _setStatsGrid(m, enriched) {
     const hs = sup.heal_plus_shield || 0;
     healing.textContent = hs > 0 ? _fmtThousands(hs) : "-";
   }
+
+  // OQ12 slice B: benchmark sub-lines under KP% / Damage (the hpgr grid
+  // has no Gold% cell - the gold bench stays FUTURE).
+  const cn = m.carry_normalized || null;
+  _setBenchSub("hpgr-kp-bench",  cn ? cn.kp_pct        : null);
+  _setBenchSub("hpgr-dmg-bench", cn ? cn.dmg_share_pct : null);
 }
 
 function _scoreTier(score) {
