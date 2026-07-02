@@ -1,4 +1,4 @@
-# arch: OverlayApp orchestrator; tk.Tk() root drives poll loops via root.after() | section=orchestration | frozen=yes
+# arch: OverlayApp orchestrator; asyncio AppLoop scheduler drives poll loops (post-T2 #8, Tk-free) | section=orchestration | frozen=yes
 """
 app/__init__.py - OverlayApp orchestrator (post-T2 #8 asyncio scheduler)
 

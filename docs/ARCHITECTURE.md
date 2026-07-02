@@ -44,7 +44,7 @@ self-grab is on-demand only, never a loop.
 ### Orchestration (all frozen - do not edit without sign-off)
 | File | Role |
 |---|---|
-| `app/__init__.py` | OverlayApp orchestrator; tk.Tk() root drives poll loops via root.after() [FROZEN] |
+| `app/__init__.py` | OverlayApp orchestrator; asyncio AppLoop scheduler drives poll loops (post-T2 #8, Tk-free) [FROZEN] |
 | `app/_game_lifecycle.py` | game start/end transitions, worker management [FROZEN] |
 | `app/_health_monitor.py` | Tk pulse + health state reporting [FROZEN] |
 | `app/_loop.py` | async scheduler (post-tkinter-removal) [FROZEN] |
@@ -56,16 +56,16 @@ self-grab is on-demand only, never a loop.
 ### Vision + data pipeline
 | File | Role |
 |---|---|
-| `core/game_snapshot.py` | raw JSON → snapshot dataclass [FROZEN] |
+| `core/game_snapshot.py` | raw JSON -> snapshot dataclass [FROZEN] |
 | `core/vision_tesseract.py` | OCR pipeline (Tesseract) |
 | `game_reader/__init__.py` | GameReader facade - composes poller + normalizer mixins |
-| `game_reader/mode_router.py` | queue/map → mode-key routing + TFT early-exit |
+| `game_reader/mode_router.py` | queue/map -> mode-key routing + TFT early-exit |
 | `game_reader/poller.py` | Live Client + LCU + relay IO for game state polling |
-| `game_reader/snapshot_normalizer.py` | raw liveclient JSON → coaching state dict + derived fields |
+| `game_reader/snapshot_normalizer.py` | raw liveclient JSON -> coaching state dict + derived fields |
 | `moon_vision_server.py` | vision server entrypoint shim - delegates to vision_server.main |
 | `vision_server/__init__.py` | vision_server package facade + entrypoint |
 | `vision_server/_config.py` | vision server config + Anthropic client |
-| `vision_server/_frame.py` | latest-frame cache + upload handler + 1-PC in-process self-grab fallback (item 276) |
+| `vision_server/_frame.py` | latest-frame cache + upload handler |
 | `vision_server/_http.py` | BaseHTTPRequestHandler routing for :8889 |
 | `vision_server/_inference.py` | Anthropic vision/coach + Tesseract OCR handlers |
 | `vision_server/_relay.py` | LCU + Live Client relays |
@@ -91,17 +91,40 @@ self-grab is on-demand only, never a loop.
 ### Dashboard
 | File | Role |
 |---|---|
+| `dashboard/_adaptation_latch.py` | cs/csd latch for STATS panel |
 | `dashboard/_cs_retention.py` | champ-select snapshot retention across no-draft transition |
+| `dashboard/_deterministic_coaching.py` | deterministic coaching resolver for /api/state |
 | `dashboard/_dispatch.py` | route registration |
+| `dashboard/_party_mains.py` | PARTY MAINS lobby enrichment (Legion-side, Riot Champion-Mastery-V4) |
 | `dashboard/_state_builder.py` | builds /api/state payload |
 | `dashboard/_state_cooldowns.py` | adapts Live Client snapshot -> compute_cooldowns input |
 | `dashboard/api_schema.py` | pydantic v2 schemas for RC dashboard HTTP API shapes |
 | `dashboard/routes_archetype.py` | cs archetype pick rest endpoints |
+| `dashboard/routes_auto_accept.py` | GET/POST /api/lcu/auto-accept (ready-check auto-accept on/off) |
+| `dashboard/routes_build_plan.py` | build-plan panel backend (WP-C5) |
 | `dashboard/routes_cc_blended_ehp_threat.py` | cc_blended_ehp threat panel backend |
 | `dashboard/routes_cc_conditional_pressure.py` | cc_conditional pressure panel backend |
+| `dashboard/routes_cc_pairing.py` | cc_conditional ally-pairing panel backend |
+| `dashboard/routes_champions.py` | GET /api/champions |
+| `dashboard/routes_cooldown_watch.py` | cooldown-watch panel backend |
+| `dashboard/routes_ds_combo.py` | action-queue combo simulator backend |
+| `dashboard/routes_ds_knobs.py` | ds-engine-knobs control panel backend |
+| `dashboard/routes_ds_matchup.py` | DS 1v1 matchup backend |
+| `dashboard/routes_ds_profile.py` | DS champion-profile aggregate backend |
+| `dashboard/routes_ds_relscore.py` | ds relative-score bar backend |
+| `dashboard/routes_ds_shape.py` | ds-shape SHAPED-EMPHASIS preview backend |
+| `dashboard/routes_ds_skill_order.py` | DS ability max-order backend |
+| `dashboard/routes_ds_sweep.py` | DS stat-sweep graph backend |
+| `dashboard/routes_duo_synergy.py` | 101.qq duo-synergy backend |
 | `dashboard/routes_lobby_aux.py` | top8 + mains backend |
+| `dashboard/routes_loop_control.py` | POST /api/loop-control (headless-loop remote control) |
+| `dashboard/routes_loop_monitor.py` | GET /api/loop-monitor (per-tool-call timeline) |
+| `dashboard/routes_loop_status.py` | GET /api/loop-status (headless-loop progress surface) |
 | `dashboard/routes_metrics.py` | /metrics Prometheus endpoint |
+| `dashboard/routes_peel_priority.py` | peel-target verdict backend (item 304 Phase D) |
+| `dashboard/routes_scouting.py` | player-scouting backend (rank fan-out) |
 | `dashboard/routes_spike_curve.py` | power-curve sparkline backend |
+| `dashboard/routes_spike_markers.py` | live power-spike markers backend |
 | `dashboard/routes_team_context.py` | GET /api/team-context + POST /api/team-context/refresh |
 | `dashboard/routes_ward_heat.py` | ward-coverage heat strip backend |
 | `web_dashboard.py` | :8888 HTTPS dashboard server entry |
@@ -109,26 +132,71 @@ self-grab is on-demand only, never a loop.
 ### Core utilities
 | File | Role |
 |---|---|
+| `core/anvil_shadow.py` | arena item-anvil shadow writer |
+| `core/aram_comp_verdict.py` | deterministic ARAM comp-balance verdict |
+| `core/aram_deterministic_coach.py` | deterministic ARAM coach block assembler (Stage 2) |
 | `core/archetype_mismatch.py` | first-purchase archetype mismatch nudge |
 | `core/archetype_picks.py` | cs archetype pick storage + DDragon-tag default resolver |
+| `core/augment_shadow.py` | arena augment-select shadow writer |
+| `core/build_order_precompute.py` | Lane B build-order precompute (comp-archetype table) |
+| `core/build_order_variants.py` | Lane B build-order VARIANTS (anti-tank / anti-squishy, A3-driven) |
+| `core/champ_select_advisor_deterministic.py` | deterministic champ-select pick-advisor |
+| `core/champ_select_shadow.py` | champ-select pick-advisor shadow writer |
+| `core/champion_info_overrides.py` | curated DDragon info.attack/magic overrides for damage-type classification |
 | `core/coaching_payload.py` | pydantic v2 schemas for per-mode coaching JSON payloads |
 | `core/defensive_picks.py` | defensive item ranker |
 | `core/enemy_aware_stats.py` | enemy stats from liveclient items |
+| `core/event_callouts.py` | deterministic event-milestone callout table |
+| `core/heal_threat.py` | deterministic heal-threat / anti-heal nudge |
+| `core/laning_cv_overrides.py` | RC2-P5.1 CV-driven laning verdict overrides (vision_state) |
+| `core/laning_scenario_precompute.py` | Lane A laning-scenario precompute (matchup-engine table) |
+| `core/lcu_pool.py` | pooled loopback HTTPS reuse + min-interval guard (RC2 P6.4 port-safety) |
+| `core/lcu_ranked.py` | LCU ranked-stats read for the rank-identity header |
 | `core/log_setup.py` | log init [FROZEN] |
+| `core/macro_response.py` | RC2-P5.7 deterministic lost-objective + stagnation response |
 | `core/moon_proxy.py` | vision server proxy [FROZEN] |
+| `core/objective_playbook.py` | RC2-P5.5 deterministic objective playbook callout |
+| `core/pickban_targets.py` | deterministic pick/ban targets reader (matchup-engine DB) |
+| `core/precomputed_anvil_advisor.py` | arena item-anvil deterministic substrate |
+| `core/precomputed_build_coach.py` | HZ-C2 precomputed BUILD A/B choice-coach over the HZ-B2 variants table |
+| `core/precomputed_laning_coach.py` | HZ-C1 precomputed A/B choice-coach over the laning + build tables |
 | `core/prom_metrics.py` | zero-dep Counter/Gauge/Histogram |
 | `core/queue_modes.py` | queue_id -> dashboard mode_key |
 | `core/riot_api.py` | Riot Web API client + rate limiter + endpoint wrappers |
 | `core/riot_api_cache.py` | SQLite cache for core/riot_api.py |
+| `core/ward_cue.py` | ward-readiness extractor over the active player's Live Client items |
 | `core/ward_events.py` | ward-coverage rolling-window backend |
 | `core/ward_producer.py` | ward-placement producer over allPlayers inventory delta |
 | `lcu/lcu_client.py` | LCU auth + command client [FROZEN] |
+| `tests/test_coach_choices_characterization_p2_2.py` | P2.2 structured-output hardening - coach_choices wire golden-master |
+| `tests/test_coach_output_p2_2.py` | P2.2 tail - shared coach-output model parity golden master |
 
 ### Tools / ops
 | File | Role |
 |---|---|
+| `Share/src/tools/daemon_slayer_cdragon_spell_extract.py` | cdragon per-spell stat sidecar extractor (character bins -> cdragon_spell_stats.json) |
+| `Share/src/tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
+| `Share/src/tools/daemon_slayer_wiki_stats_extract.py` | lolmath-wiki + cdragon stat sidecar extractor (ChampionData + bin -> wiki_stats.json) |
+| `tools/daemon_slayer_cdragon_ratio_extract.py` | cdragon ability-ratio sidecar extractor (character bins -> cdragon_ability_ratios.json) + Meraki drift |
+| `tools/daemon_slayer_cdragon_spell_extract.py` | cdragon per-spell stat sidecar extractor (character bins -> cdragon_spell_stats.json) |
+| `tools/daemon_slayer_wiki_ability_extract.py` | lolmath-wiki per-ability param sidecar extractor (ChampionData + Template:Data -> wiki_ability_stats.json) |
+| `tools/daemon_slayer_wiki_stats_extract.py` | lolmath-wiki + cdragon stat sidecar extractor (ChampionData + bin -> wiki_stats.json) |
+| `tools/det_coach_shadow_report.py` | B1 deterministic-coaching flip-readiness report over the det shadow log |
 | `tools/gen_state_schema.py` | generates web/js/lib/state_schema.js JSDoc typedefs from pydantic models |
+| `tools/gist_share_sync.py` | secret-gist mirror of the Share/ review package |
+| `tools/hz_mismatch_diagnose.py` | HZ mismatch root-cause diagnosis over the laning-combat shadow log |
+| `tools/hz_shadow_report.py` | HZ-C validation report over the precompute shadow logs |
+| `tools/live_benchmark_band_report.py` | LBAND1 validation report over the live-benchmark-band shadow log |
+| `tools/macro_response_shadow_report.py` | RC2-P5.7 (WS4) macro-response register flip-readiness report over the macro shadow log |
+| `tools/objective_playbook_shadow_report.py` | RC2-P5.5 (WS3) objective-playbook flip-readiness report over the objective shadow log |
 | `tools/rc_facts.py` | live RC health + topology probe |
+| `tools/upstream_drift_check.py` | daily upstream content-drift detector (ddragon / meraki / cdragon) |
+
+### Tests
+| File | Role |
+|---|---|
+| `tests/test_lcu_pool.py` | port-safety pooled-connection + min-interval primitives (RC2 P6.4) |
+| `tests/test_port_cpu_footprint_rc2.py` | consolidated port/CPU footprint regression guard (RC2 P6.6) |
 
 <!-- archmap:end -->
 
@@ -163,7 +231,7 @@ pre-warms the cache; if it dies the self-grab keeps the coaches fed). The
 fallback is a single on-demand GDI BitBlt via `PIL.ImageGrab` - NOT the
 continuous DXGI/bettercam loop, which stays retired (1-PC, ADR-011). Throttled 1/1.5s,
 fail-soft, source-less requests only, disabled on a remote `RC_GAME_HOST`. Live
-in-game validation OWED (no live game to exercise the fallback at ship time).
+self-grab frames have since been PROVEN in-game (LEDGER 685/688/711).
 
 ---
 
@@ -193,14 +261,14 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 | 7 | 2026-05-09 | `scripts/wakeup_prune.py:4` | automate /done section 6c WAKEUP_NOTES archival |
 | 0.13 | - | `ops/rc_self_monitor.py:197` | bounded bootstrap window. |
 | 0.3 | - | `ops/rc_self_monitor.py:236` | monotonic timestamp when worker first seen dead (fix 3) |
-| 0.7 | - | `core/metrics_cache.py:330` | supervisor_state added to status.json; tolerate absence in older files |
+| 0.7 | - | `core/metrics_cache.py:329` | supervisor_state added to status.json; tolerate absence in older files |
 | 0.9 | - | `ops/rc_self_monitor.py:338` | _check_health() returns a (state, detail) tuple |
 | 0.9 | - | `ops/rc_self_monitor.py:546` | _check_health() returns 3-value state string instead of plain bool |
-| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1052` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
-| 1 step 3 | - | `tft/tft_state_reader.py:89` | snapshot factory helper (only path that may produce TftSnapshot) |
-| 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events → match_events migration (coach-decision moments per §9) |
-| 3 step 1.1 | - | `tft/tft_coach_engine.py:772` | write TFT coaching timestamp only after payload write succeeds |
-| 7 P2 | - | `tft/tft_live_analysis.py:163` | C - clear stale choices on augment-select force scan |
+| 1 step 3 | - | `game_reader/snapshot_normalizer.py:1077` | snapshot factory helpers (to_rift_snapshot, to_aram_snapshot) |
+| 1 step 3 | - | `tft/tft_state_reader.py:95` | snapshot factory helper (only path that may produce TftSnapshot) |
+| 3 | - | `agents/agent2_backend/migration_rewind.py:60` | rewind timeline_events -> match_events migration (coach-decision moments per S9) |
+| 3 step 1.1 | - | `tft/tft_coach_engine.py:788` | write TFT coaching timestamp only after payload write succeeds |
+| 7 P2 | - | `tft/tft_live_analysis.py:169` | C - clear stale choices on augment-select force scan |
 
 <!-- phasejournal:end -->
 
@@ -225,7 +293,7 @@ Full decomposition plan: `C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.
 1. **Riot's LCU + Live Client APIs are `127.0.0.1`-only.** Refuse LAN. Hence the Legion-local relay agent pattern (`liveclient_relay` / `lcu_agent` feed `:8889` from localhost).
 2. **`iphlpsvc` portproxy self-loops on port 2999.** When Riot API stops responding, check `netsh interface portproxy show all` before anything else.
 3. **`pythonw.exe` crashes silently on syntax errors.** Always `py_compile` before restart.
-4. **`tk.Tk()` root in `app/__init__.py` is a scheduler, not UI.** Tkinter overlays were fully removed; `root.after()` drives the game polling loop. Full asyncio refactor is Phase T2 #8 (not started).
+4. **`app/__init__.py`'s loop is an asyncio scheduler, not UI.** Tkinter overlays AND the `tk.Tk()` root were fully removed (T2 #8); the asyncio `AppLoop` (`app/_loop.py`) now drives the game polling loop via `self.scheduler.schedule(ms, fn)` instead of `root.after()`. RC is genuinely Tk-free (13 residual `.after()` files remain in unrelated modules).
 5. **Vision server content-type:** hardcodes `image/png`; screen agent sends JPEG. Magic-byte auto-detect `"image/jpeg" if data.startswith("/9j/") else "image/png"`.
 6. **`os.replace` can raise WinError 5** when a reader has the target open. `atomic_write_json` uses 25/50/200ms retry-with-backoff. Don't hand-roll atomic writes.
 7. **`pythonw.exe` PID ≠ child's reported PID under venv.** Supervisors latch `observed_pid` on first valid heartbeat; never match Popen pid.

@@ -18,7 +18,7 @@ Champion select advice. Suggests bans and picks based on what you've actually pl
 
 Match history that you own. Roughly 3,000 of your matches with full timeline data are kept locally; the coach reads from that instead of scraping a third-party tracker.
 
-Modes covered. Summoner's Rift (the standard 5v5), ARAM, Arena, Brawl, and Teamfight Tactics - all wired into the coaching pipeline.
+Modes covered. Summoner's Rift (the standard 5v5), ARAM, Arena, and Teamfight Tactics - all wired into the coaching pipeline.
 
 ---
 
@@ -51,15 +51,13 @@ Coverage today: every purchasable item across all five modes (547 items), 6,142 
 
 ## Where it runs
 
-RC normally runs across two machines on a small private network: one machine runs the brain (the coach, the dashboard, the build engine), the other runs the game and feeds the brain a live screen capture. They communicate over a small bridge service. A single-machine setup is technically possible and is the eventual goal - for now the split is what's documented.
-
-The same bridge architecture also lets a third machine (a separate work-from-home setup) coordinate with RC for non-game projects. That's incidental to the coaching product but explains why some files mention a third hostname.
+RC runs on a single machine: the same PC plays the game and runs the brain (the coach, the dashboard, the build engine), reading the game's local data feed and an in-process screen grab directly. An earlier two-machine split (one for the game, one for the brain, joined by a small bridge service) was consolidated into this single setup, which is the shape the rest of the docs assume.
 
 ---
 
 ## Project status
 
-RC has been in active development for over a year. The in-game coaching loop is functionally complete across all five modes: vision, build engine, dashboard, champion-select advice, and AI coaching are all live and stable.
+RC has been in active development for over a year. The in-game coaching loop is functionally complete across all four modes: vision, build engine, dashboard, champion-select advice, and AI coaching are all live and stable.
 
 Active work right now is mostly polish and validation:
 
@@ -68,7 +66,7 @@ Active work right now is mostly polish and validation:
 - Filling in the per-champion override registry for the long tail of unusual ability mechanics.
 - Iterating on the champion-select page of the dashboard.
 
-Long-term direction is collapsing the two-machine setup into a single-machine install so RC can eventually be packaged for someone other than the author to run.
+Long-term direction is packaging the single-machine install so RC can eventually be run by someone other than the author.
 
 ---
 
