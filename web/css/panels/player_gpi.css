@@ -319,3 +319,33 @@
   color: rgba(255, 255, 255, 0.75);
   line-height: 1.35;
 }
+
+/* This-match overlay (OQ15): one warn-tinted dot per axis at the LAST game's
+ * score, ringed dark so it separates from the baseline polygon fill. r +
+ * stroke-width are SVG user-units inside the radar viewBox, not CSS px - the
+ * same documented exception as the .gpi-ring / .gpi-spoke strokes above. */
+.gpi-match-dot {
+  fill: var(--signal-warn, #f1b04a);
+  stroke: rgba(20, 22, 30, 0.9);
+  stroke-width: 0.8;
+}
+
+/* Legend line under the caption - dim metadata matching .gpi-caption, led by
+ * an inline swatch tinted the same warn token as the dots so "amber dot =
+ * last game" reads without a lookup. The swatch sizes in em so it tracks the
+ * --fs-xs line (no sub-16px hardcoded px). */
+.gpi-match-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.gpi-match-swatch {
+  flex: 0 0 auto;
+  width: 0.6em;
+  height: 0.6em;
+  border-radius: 50%;
+  background: var(--signal-warn, #f1b04a);
+}
