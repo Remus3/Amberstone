@@ -178,8 +178,8 @@ no row carries it.
   OVL1 settings controls (`4d09f8ac`); R33 ward_cue / spike_cue / objective_chips /
   minimap_zoi / minimap_rect (`9eb644c9`); R40 draft_elo chip + ward_heat strip
   (`b06ec877`); W3E callouts + lead_projection; spike-markers live-clock cursor; item 662
-  first-match no-flash confirm. SOURCE: docs/ORCHESTRATION_PLAN.md:81/231/239;
-  ROADMAP.md:55; BACKLOG.md:31; docs/LEDGER.md item 662.
+  first-match no-flash confirm; OQ14 Item Shaper Row4 SHAPER strip (`639e2789`, the in-game build-module emphasis-preview knobs, no live game at author time). SOURCE: docs/ORCHESTRATION_PLAN.md:81/231/239;
+  ROADMAP.md:55; BACKLOG.md:31; docs/LEDGER.md items 662 + 735 (735 owes the OQ14 strip).
 - B25. (PRACTICE-SR) Overlay build-module interaction round-trips: D1 tooltip hover, D2
   right-click radial + zone flip/wedge clicks landing mid-game, D3 override survives a
   re-plan + Defer-Once re-entry + reset (plus the cross-tick LIVE-route Defer-Once
@@ -536,7 +536,7 @@ over normal play across later cycles, not in these sessions.
 
 ---
 
-## Doc hygiene follow-ups (2026-07-01 sweep) - PROPOSALS for the operator / next session, not applied here
+## Doc hygiene follow-ups (2026-07-01 sweep) - PROPOSALS; the (a) ROADMAP / README / ARCHITECTURE / ORCHESTRATION_PLAN rows APPLIED in OQ21 (2026-07-02, README DS counts left as a DS-batch job; ORCHESTRATION_PLAN :42 OQ16-supersedes-OQ3 annotation still open). REMAINING: (a) OPERATIONS / BACKLOG / OVERLAY_BUILD_MASTER_PLAN / RC_WORK_TRACKER / CLAUDE.md-Vision / Share-docs / stale-hash citations + all (b) archive candidates.
 
 (a) Stale rows found in other docs:
 - ROADMAP.md:90/92/105-108 - s220 PGR reframe still listed pending; it shipped (line 76 +
