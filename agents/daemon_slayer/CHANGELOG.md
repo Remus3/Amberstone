@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.171.0 (R60, 2026-07-02 - wielder Heal/Shield Power (HSP) amp seam. Distinct from
+R59 (which scored the TARGET-side Lifeline shield): R60 scores the WIELDER's own
+heal_shield_amp_pct (Redemption / Mikael / Ardent / Moonstone / Staff of Flowing
+Water). NEW agents/daemon_slayer/_hsp_amp.sum_wielder_hsp_pct sums the caster's HSP
+additively across the build (reusing the enchanter_items.json field hps.py reads).
+DEFAULT-OFF assume_hsp_amp seam on ehp.compute_ehp (folds 1 + hsp_pct into the sibling
+shield_amp_mult, amplifying the wielder's own item self-shields - Sterak's / Shieldbow
+/ Maw - alongside Spirit Visage) and sustain.compute_sustain (amplifies REGEN-kind kit
+self-heal only; vamp - LIFESTEAL / OMNIVAMP / SPELLVAMP / DRAIN - is NOT HSP-affected,
+so a vamp-only champion is byte-identical even ON). hsp_pct 0.0 when OFF ->
+BYTE-IDENTICAL to 1.170.0. HZ-B build-order tables re-stamped 1.170.0 -> 1.171.0
+(content byte-identical - default rank math unchanged). Live default-ON flip
+operator-gated (LIVE_GAME_GATED_SYNC B43).)
+
+1.170.0 (R59, 2026-07-02 - target-side Lifeline shield seam in the OFFENSE scorers.
+Where ehp.py already values the WIELDER's own Lifeline shield (Phase 1.5, ENGINE
+1.27.0), this closes the symmetric omission: a modeled TARGET holding a Lifeline item
+(Sterak's 3053 / Maw 3156 / Shieldbow 6673) absorbs part of the incoming burst. NEW
+_lifeline_target_shield.target_lifeline_shield REUSES ItemShield.resolve_magnitude.
+DEFAULT-OFF assume_lifeline_shield on compute_burst_damage (subtracts the shield from
+total_burst_damage) + compute_dps (surfaces the magnitude, rate untouched). Byte-
+identical OFF. Live flip operator-gated (LIVE_GAME_GATED_SYNC B42).)
+
 1.169.0 (OQ18, 2026-07-02 - live-input wiring across the DS HTTP boundary (item-638
 pattern). No math change: threads the producer-only-orphan live inputs across the
 HTTP routes so each live-gated eyeball (LIVE_GAME_GATED_SYNC B31-B33, B4, B12) becomes
