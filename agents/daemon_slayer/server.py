@@ -41,6 +41,7 @@ import json
 import logging
 import math
 import threading
+from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
@@ -79,7 +80,12 @@ from .threatrange import compute_threatrange
 from .zonecontrol import compute_zonecontrol
 from .objdamage import compute_objdamage
 from .allyamp import compute_allyamp
-from .antitank import compute_antitank
+from .antitank import compute_antitank, compute_antitank_live
+from .dsp_live_consumers import (
+    ally_protected_ehp,
+    enemy_rune_threat,
+    summoner_fight_adjustments,
+)
 from .extendedduel import compute_extendedduel
 from .matchup import compute_matchup
 from .rank import SORT_KEYS, rank_items
@@ -134,7 +140,10 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/zone-control</td><td>zone-control / area-denial (denial-weighted persistence score + top kind + controls-terrain flag) for a champion (item 302)</td></tr>
 <tr><td>POST</td><td>/objective-damage</td><td>objective / structure-damage (kind-weighted scope-scaled score + top kind + pressures-structures flag) for a champion (item 303)</td></tr>
 <tr><td>POST</td><td>/ally-amp</td><td>ally-amplification / buff-throughput (kind-weighted reach-scaled score + top kind + saves-ally flag) for a champion (item 304)</td></tr>
-<tr><td>POST</td><td>/anti-tank</td><td>anti-tank / %HP-damage + resist-shred (kind-weighted cadence-scaled score + top kind + shreds-resist flag) for a champion (item 308)</td></tr>
+<tr><td>POST</td><td>/anti-tank</td><td>anti-tank / %HP-damage + resist-shred (kind-weighted cadence-scaled score + top kind + shreds-resist flag) for a champion (item 308; optional live level ramp + item_ids live build, OQ18)</td></tr>
+<tr><td>POST</td><td>/summoner-fight-adj</td><td>DSP5 live summoner-spell combat adjustments - self/enemy summoner sets folded to EHP/tenacity/MS/DR/antiheal (OQ18)</td></tr>
+<tr><td>POST</td><td>/enemy-rune-threat</td><td>DSP6 enemy-rune incoming-threat fold - PtA amp / Conqueror ramp / Grasp poke-sustain / antiheal + ehp_divisor (OQ18)</td></tr>
+<tr><td>POST</td><td>/ally-protected-ehp</td><td>DSP7 ally-enchanter-protected EHP - an ally's EHP with its live teammates' shield/heal/resist grants folded in (OQ18)</td></tr>
 <tr><td>POST</td><td>/extended-duel</td><td>extended-dueling / 1v1 sustained-fight (kind-weighted cadence-scaled score + top kind + ramps flag) for a champion (item 309)</td></tr>
 </table>
 
@@ -214,6 +223,19 @@ def _coerce_str_list(value: Any, field_name: str) -> list[str]:
                 out.append(s)
         return out
     raise _ApiError(400, f"{field_name}: expected list or comma-separated string, got {type(value).__name__}")
+
+
+def _coerce_int_list(value: Any, field_name: str) -> list[int]:
+    """Coerce a list / comma-string of ids to ``list[int]``, dropping any
+    non-numeric token (fail-soft - a junk summoner / rune id contributes 0.0
+    downstream rather than 400-ing the whole request)."""
+    out: list[int] = []
+    for tok in _coerce_str_list(value, field_name):
+        try:
+            out.append(int(tok))
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 def _required_str(body: dict, key: str) -> str:
@@ -1461,13 +1483,123 @@ def _route_antitank(body: dict) -> dict:
     Body:
       * ``champion`` (required)
       * ``mode`` (default SR; carried on the result, does not change output)
-    Additive read-only metric: it perturbs no other route.
+      * ``level`` (optional int, R17/R39 ramp seam - B12): scales a ramp-seeded
+        row's %max-HP / %current-HP magnitude toward its early endpoint. Omitted /
+        ``level=18`` is byte-identical to item 308/315.
+      * ``item_ids`` (optional list, P3.2 live-build seam - B4): when non-empty,
+        resolves the champion's live AP/AD via ``compute_antitank_live`` so a
+        seeded row's ratio (Gwen P / Kog'Maw W AP; Vi W / Camille W AD) scales.
+        Omitted / empty stays on the static (no-stats) path.
+      * ``augments`` (optional list): Arena augments forwarded to the live build.
+    Every input DEFAULT-OFF -> a body omitting level + item_ids is byte-identical
+    to the pre-OQ18 static result. Additive read-only metric.
     """
     snap = _CACHE.get()
     champion = _resolve_champion_id(snap, _required_str(body, "champion"))
     mode = _opt_str(body, "mode", "SR") or "SR"
+    level = _opt_int(body, "level", None)
+    item_ids = _coerce_str_list(body.get("item_ids"), "item_ids")
+    augments = _coerce_str_list(body.get("augments"), "augments")
     try:
-        result = compute_antitank(champion, mode=mode)
+        if item_ids:
+            # P3.2 live-build producer (B4): resolve AP/AD from the live build.
+            # ``level`` sets the build-resolution level (default 18 = full build).
+            result = compute_antitank_live(
+                snap, champion, level if level is not None else 18,
+                item_ids, mode=mode, augments=(augments or None),
+            )
+        else:
+            # R17/R39 level-ramp seam (B12); level=None -> static.
+            result = compute_antitank(champion, mode=mode, level=level)
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
+def _route_summoner_fight_adj(body: dict) -> dict:
+    """POST /summoner-fight-adj - DSP5 live summoner-spell combat adjustments (B31).
+
+    Folds the player's + the ENEMY's live summoner set into one adjustment struct
+    (``dsp_live_consumers.summoner_fight_adjustments``) - self Heal/Barrier EHP,
+    Cleanse tenacity, Ghost/Heal MS, Exhaust incoming-DR; enemy Ignite antiheal.
+    Body:
+      * ``self_spell_ids`` (list of Riot summoner ids; junk ids drop to 0.0)
+      * ``enemy_spell_ids`` (list)
+      * ``level`` (default 1; scales the level-based Heal / Ghost magnitudes)
+    EMPTY sets -> all fields 0.0 (byte-identical no-op). Additive read-only.
+    """
+    self_ids = _coerce_int_list(body.get("self_spell_ids"), "self_spell_ids")
+    enemy_ids = _coerce_int_list(body.get("enemy_spell_ids"), "enemy_spell_ids")
+    level = float(_opt_int(body, "level", 1) or 1)
+    return asdict(summoner_fight_adjustments(self_ids, enemy_ids, level))
+
+
+def _route_enemy_rune_threat(body: dict) -> dict:
+    """POST /enemy-rune-threat - DSP6 enemy-rune incoming-threat fold (B32).
+
+    Folds the enemy's live rune set into one threat struct
+    (``dsp_live_consumers.enemy_rune_threat``): Press the Attack incoming-amp,
+    Conqueror ramp, Grasp/Second Wind poke-sustain, enemy antiheal, and an
+    ``ehp_divisor`` = 1 + amp for a survivability lens.
+    Body:
+      * ``enemy_rune_ids`` (list of Riot perk ids; junk ids drop to 0.0)
+      * ``level`` (default 1; scales Conqueror ramp)
+      * ``antiheal_present`` (bool - any enemy antiheal source; no rune grants it)
+      * ``enemy_max_hp`` / ``enemy_missing_hp`` (floats - for Grasp poke-sustain)
+    EMPTY set + defaults -> amp 0.0, divisor 1.0 (no-op). Additive read-only.
+    """
+    rune_ids = _coerce_int_list(body.get("enemy_rune_ids"), "enemy_rune_ids")
+    level = float(_opt_int(body, "level", 1) or 1)
+    return asdict(enemy_rune_threat(
+        rune_ids,
+        level,
+        antiheal_present=_opt_bool(body, "antiheal_present", False),
+        enemy_max_hp=_opt_float(body, "enemy_max_hp", 0.0),
+        enemy_missing_hp=_opt_float(body, "enemy_missing_hp", 0.0),
+    ))
+
+
+def _route_ally_protected_ehp(body: dict) -> dict:
+    """POST /ally-protected-ehp - DSP7 ally-enchanter-protected EHP (B33).
+
+    Returns an ``EhpResult`` for ``champion`` with its live allies' enchanter
+    grants folded in (``dsp_live_consumers.ally_protected_ehp``): each granter's
+    flat-HP shield/heal (Janna/Lulu/Karma/Yuumi E, Seraphine W, Soraka/Nami W)
+    and resist grant (Orianna E / Braum W / Taric W).
+    Body:
+      * ``champion`` (required)
+      * ``level`` (default 1)
+      * ``item_ids`` (optional list - the protected ally's own build)
+      * ``ally_grant_champions`` (list of the protected ally's LIVE teammates)
+      * ``mode`` (default SR), ``enemy_champions`` (optional list)
+      * ``granter_resists`` (optional dict {granter: [armor, mr, base_armor,
+        base_mr]} for Taric's percent-of-resist grant)
+    EMPTY ``ally_grant_champions`` -> byte-identical to a plain compute_ehp.
+    Additive read-only.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    item_ids = _coerce_str_list(body.get("item_ids"), "item_ids")
+    allies = _coerce_str_list(body.get("ally_grant_champions"), "ally_grant_champions")
+    enemies = _coerce_str_list(body.get("enemy_champions"), "enemy_champions")
+    granter_resists = body.get("granter_resists")
+    if not isinstance(granter_resists, dict):
+        granter_resists = None
+    try:
+        result = ally_protected_ehp(
+            snap,
+            champion,
+            level,
+            item_ids=item_ids,
+            ally_grant_champions=allies,
+            mode=mode,
+            enemy_champions=enemies,
+            granter_resists=granter_resists,
+        )
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
@@ -1839,6 +1971,9 @@ _POST_ROUTES = {
     "/objective-damage": _route_objdamage,
     "/ally-amp": _route_allyamp,
     "/anti-tank": _route_antitank,
+    "/summoner-fight-adj": _route_summoner_fight_adj,
+    "/enemy-rune-threat": _route_enemy_rune_threat,
+    "/ally-protected-ehp": _route_ally_protected_ehp,
     "/extended-duel": _route_extendedduel,
 }
 

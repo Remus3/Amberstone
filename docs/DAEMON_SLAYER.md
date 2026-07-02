@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion × item × target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.168.0 - 7751 tests - patch 16.13.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.169.0 - 7774 tests - patch 16.13.1.
 
 ## Engine substrate & registries
 
@@ -117,7 +117,7 @@ Local DPS-math service on `:8893`. Computes actual damage-per-second for any cha
 | File | Purpose |
 |---|---|
 | `__init__.py` | `ENGINE_VERSION` constant; `start_server()` entry point |
-| `server.py` | Stdlib `ThreadingHTTPServer`; 28 routes - core `/health`, `/snapshot`, `/stats`; the DPS + build rankers `/rank`, `/dps`, `/beam`, `/ehp`; the 6 archetype rankers `/rank-tank`, `/hybrid`, `/rank-bruiser`, `/ability-dps`, `/rank-mage`, `/burst`, `/rank-assassin`, `/hps`, `/rank-enchanter`; the additive scored-axis routes `/anti-tank`, `/extended-duel`, `/sustain`, `/mobility`, `/scaling`, `/waveclear`, `/threat-range`, `/zone-control`, `/objective-damage`, `/cc-output`, `/ally-amp`, `/modifier-summary` |
+| `server.py` | Stdlib `ThreadingHTTPServer`; 31 routes - core `/health`, `/snapshot`, `/stats`; the DPS + build rankers `/rank`, `/dps`, `/beam`, `/ehp`; the 6 archetype rankers `/rank-tank`, `/hybrid`, `/rank-bruiser`, `/ability-dps`, `/rank-mage`, `/burst`, `/rank-assassin`, `/hps`, `/rank-enchanter`; the additive scored-axis routes `/anti-tank`, `/extended-duel`, `/sustain`, `/mobility`, `/scaling`, `/waveclear`, `/threat-range`, `/zone-control`, `/objective-damage`, `/cc-output`, `/ally-amp`, `/modifier-summary`; the DSP live-input producer routes `/summoner-fight-adj`, `/enemy-rune-threat`, `/ally-protected-ehp` (OQ18) |
 | `effects.py` | Re-export facade (s246 split) - the 14 effect-aggregation logic fns (`collect_effects`, `total_*`, `effective_target_armor/mr`) + full public-surface re-export. Logic only |
 | `_effects_types.py` | **s246** - schema types + damage-type constants (`CallContext`, `DamageFn`, `PeriodicProc`, `ItemEffect`, `PHYSICAL/MAGICAL/TRUE`). Zero deps |
 | `_effects_data.py` | **s246** - the `ItemEffect` registry: 547 entries, DDragon purchasable coverage COMPLETE. Patch-pinned per `current.txt`; refresh on patch bump |
