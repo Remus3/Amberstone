@@ -3549,6 +3549,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // _homeRenderCoach decides whether the combo wrapper shows.
         _homeRenderTrends(data.trends || {});
         _homeRenderCoach(data.tonight_pick, data.last_build);
+        _homeRenderWeeklyDigest(data.weekly_digest);
         _homeMirrorAlerts();
       })
       .catch(() => { _HOME.fetching = false; });
@@ -3729,6 +3730,63 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // (trends visibility is set independently by _homeRenderTrends).
     const trendsVisible = !!(trends && !trends.hidden);
     combo.hidden = pickCard.hidden && !trendsVisible;
+  }
+  // OQ13 slice B: THIS WEEK mode-factored digest card. One block per game
+  // mode from data.weekly_digest.modes (backend slice A: sorted games desc
+  // then mode asc), each a "{mode} - {games} games - {kda} KDA" header
+  // plus The Good / The Bad / The Ugly rows reusing the Tonight's Pick
+  // tip-row classes. A row whose string is "" was backend-suppressed -
+  // skip it entirely. Old/missing-DB payloads LACK weekly_digest and an
+  // idle week ships modes: [] - both hide the card silently. Payload
+  // strings land via createElement/textContent (never innerHTML), so no
+  // escaping is needed.
+  function _homeRenderWeeklyDigest(dg) {
+    const card = document.getElementById("home-weekly-digest");
+    const body = document.getElementById("home-weekly-digest-body");
+    if (!card || !body) return;
+    if (!dg || !Array.isArray(dg.modes) || dg.modes.length === 0) {
+      card.hidden = true;
+      return;
+    }
+    // Idempotent re-render (repo convention - the "direct sig on element"
+    // variant of lib/idempotent_render.js): identical payload -> skip the
+    // wipe + rebuild.
+    const sig = JSON.stringify(dg);
+    if (card.dataset.sig === sig) { card.hidden = false; return; }
+    card.dataset.sig = sig;
+    body.textContent = "";
+    for (const m of dg.modes) {
+      if (!m || !m.mode) continue;
+      const block = document.createElement("div");
+      block.className = "home-weekly-digest-mode";
+      const head = document.createElement("div");
+      head.className = "home-weekly-digest-mode-head";
+      const kdaNum = Number(m.avg_kda);
+      const kda = Number.isFinite(kdaNum) ? kdaNum.toFixed(1) : "-";
+      head.textContent = `${m.mode} - ${m.games} games - ${kda} KDA`;
+      block.appendChild(head);
+      const rows = [
+        ["The Good", m.good],
+        ["The Bad", m.bad],
+        ["The Ugly", m.ugly],
+      ];
+      for (const [label, val] of rows) {
+        if (!val || !String(val).trim()) continue;
+        const row = document.createElement("div");
+        row.className = "home-pick-tip-row";
+        const lab = document.createElement("span");
+        lab.className = "home-pick-tip-label";
+        lab.textContent = label;
+        const value = document.createElement("span");
+        value.className = "home-pick-tip-value";
+        value.textContent = String(val);
+        row.appendChild(lab);
+        row.appendChild(value);
+        block.appendChild(row);
+      }
+      body.appendChild(block);
+    }
+    card.hidden = false;
   }
   // Champion motif on the hero bg. Picks the most-played champion from
   // this_week (or the most-recent match as a fallback) and sets the
