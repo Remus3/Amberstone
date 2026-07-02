@@ -38,6 +38,18 @@
     {"champion": "Senna",       "games": 2, "avg_kda": 3.4, "kills": 12, "deaths": 8,  "assists": 27, "cs_total": 0,    "cs_per_min": 0,   "best_grade": "B"},
     {"champion": "RenataGlasc", "games": 1, "avg_kda": 5.7, "kills": 4,  "deaths": 3,  "assists": 13, "cs_total": 0,    "cs_per_min": 0,   "best_grade": "B"}
   ],
+  "weekly_digest": {
+    "window_days": 7,
+    "total_games": 16,
+    "modes": [
+      {"mode": "ARAM", "games": 11, "avg_kda": 5.8, "deaths_pg": 9.1, "cs_per_min": 2.3,
+       "best_grade": "S", "worst_grade": "B",
+       "good": "5.8 KDA over 11 games", "bad": "", "ugly": ""},
+      {"mode": "SR", "games": 5, "avg_kda": 2.4, "deaths_pg": 7.2, "cs_per_min": 5.1,
+       "best_grade": "A", "worst_grade": "D",
+       "good": "1x A-grade game", "bad": "7.2 deaths per game (bench 6 for SR)", "ugly": "2 games graded D"}
+    ]
+  },
   "services": [
     {"name": "Daemon Slayer",   "ok": true,  "detail": "v1.48.0 / 16.10.1"},
     {"name": "Vision Server",   "ok": true,  "detail": "tier 1 OCR"},
