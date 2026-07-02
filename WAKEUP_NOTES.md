@@ -10,7 +10,10 @@ Operator re-invoked /gemini-headless-upgrade pointing at ops/loop/control/direct
 
 - **ROOT CAUSE (reproduced, stderr captured): Gemini API prepay credits DEPLETED** - 429 RESOURCE_EXHAUSTED "Your prepayment credits are depleted", gemini CLI exit 1, stdout 0B. **OPERATOR: top up at https://ai.studio/projects, then relaunch via PART A.** The loop CANNOT run until then.
 - **LOOP FIX 2 (LEDGER 728):** gemini() no longer masks errors as NO_WORK - stderr captured to control/_gemini_err.txt + head logged on empty tries; empty output -> None sentinel -> director ADVANCES (same-sha guard still ends persistent outages); stop only on literal NO_WORK. TDD RED 2 -> GREEN, loop suites 34 passed.
-- Until credits are topped up: continue DIRECT-EXECUTOR top-down on the OQ queue (established fallback). Next OPEN = OQ11 (QA69 static-CD ability-haste consumer).
+- Credits TOPPED UP mid-session (operator message); gemini liveness re-probed PONG. Loop relaunch after the in-flight slices merged.
+- **OQ11 DONE (`aa9c7d90`, LEDGER 729): ENGINE 1.166.0** - static-CD haste gate (first ability_static_cd consumer; plain-number-static only; Amumu Q/Heimer R pinned ungated, Samira R 3.4483 -> 5.0). Dual suite fresh on main: DS 7733 / RC 10274, 0 failed. DS :8893 bounced -> 1.166.0. Share ingest bundle rebuilt (full ds_share_sync).
+- **Operator picked OQ3 variant A** -> OQ16 built live same session (`a5d2719a`, LEDGER 730): objective_gauges overlay widget at (1690,320), SR-live-only, schedule mirror-pinned vs event_callouts. **Live in-game overlay capture OWED** (no game was running).
+- Remaining OPEN queue: OQ12-OQ15.
 
 ---
 
