@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-02 (OQ17 LOOP - /rank* HTTP-boundary seam transport; ENGINE 1.167.0 -> 1.168.0)
+
+Loop directive OQ17 executed by this session (head da6489c1; commit `e73799f3`, LEDGER 739). Thread the ENGINE-ONLY default-OFF seams across the /rank* HTTP boundary so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). NO math change - server.py only + version stamp.
+
+- **Plan-agent spec caught 2 premise drifts** (verify-the-premise): R50 apply_all_out_bonus is a load-time AbilitiesSnapshot flag NOT a per-call compute param -> EXCLUDED (not a pure flag-flip, FUTURE); Phase-D "4 non-every-AA on_hit" is not a distinct seam (3 un-routed categories of apply_passive_damage, already /dps).
+- **Scope call (R30 precedent):** rune-gate seams DSP4/R51/R53 route to /burst not the ranker - a flat keystone amp washes out of the candidate-baseline delta. This DROPPED the planned burst.py ranker slice; OQ17 = single-file server.py change, main-thread + verifier gate.
+- **Wired:** /burst +runes +assume_takedown/assume_ability_amp/score_completion_runes/gate_target_hp_amp/gate_caster_hp_amp/caster_current_hp_pct; /rank-assassin +assume_takedown/assume_squishy_target/assume_ability_amp/target_preset (ranker already forwards); /dps +apply_melee_aa_gate. All DEFAULT-OFF -> byte-identical.
+- **TDD** test_oq17_route_seam_transport.py RED 8/12 divergence -> GREEN 12/12. **Verifier CONFIRM 6/6.** ENGINE 1.168.0 (pins 107/94, 0 stray) + Share --check green 394 files + DS :8893 bounce (pid 22732 -> 1.168.0). Dual suite DS 7763 / RC 10435, 0 real fail (the RC "1 failed" = live-integration engine_version anchor, GREEN post-bounce).
+- **Handoff:** R50 route wiring (needs per-request AbilitiesSnapshot construction); client-helper emit (core/daemon_slayer_client.py). Live flips stay gated -> LIVE_GAME_GATED_SYNC B2/B3/B6/B7/B18/B19/B34.
+- Frozen files untouched. CI green baseline held. Worktree note: C:/RC-CIWatchdog belongs to that scheduled task, untouched.
+
+---
+
 # 2026-07-02 (R58 LOOP - assume_ms_utility seam: MS utility valuation for bruiser/juggernaut; ENGINE 1.166.0 -> 1.167.0)
 
 Loop directive R58 executed by this session (head e7e95653; merge `304c88dd`, slice `9b42acd8`, LEDGER 738). Premise verified FIRST: item MS resolves into stats["ms"] (engine.py:200) but the bruiser/juggernaut scorer consumed it at ZERO (only consumer ability_dps.py:285); DDragon 16.13.1 DMP 3742 + FoN 4401 both 4 pct MS.
