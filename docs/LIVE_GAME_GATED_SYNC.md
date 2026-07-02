@@ -106,9 +106,10 @@ no row carries it.
   reads all three; /burst also reads assume_takedown + assume_ability_amp; ENGINE 1.168.0).
   Client-helper emit + the live default-ON flip still pending. DS `:8893` restart on flip.
 - B4. (PRACTICE-SR) Anti-tank P3.2: wire a survivability/draft surface to call
-  `antitank.compute_antitank_live` with the live build (producer is test-import-only today;
-  `/anti-tank` still calls the static variant) + eyeball scaled %max-HP magnitudes. No DS
-  restart (live-input wire, not a seam flip).
+  `antitank.compute_antitank_live` with the live build + eyeball scaled %max-HP magnitudes.
+  HTTP TRANSPORT WIRED OQ18 (`/anti-tank` now routes to `compute_antitank_live` when the body
+  carries a non-empty `item_ids`; ENGINE 1.169.0) - headless-prep-done; the eyeball (POST a real
+  build + confirm the seeded row scales) stays gated. No DS restart on the live flip.
 - B5. (PRACTICE-SR) DSP2 `exempt_offclass_by_win` flip (transport-plumbed; live callers omit):
   Ezreal surfaces Trinity/Manamune, crit ADCs byte-identical. DS restart.
 - B6. (PRACTICE-SR) DSP4 `score_completion_runes` flip (Shield Bash 8401): burst-NUMBER delta
@@ -132,9 +133,11 @@ no row carries it.
   compute_hybrid / cc-blended-EHP consumer chain (none thread it yet) + floor-model sanity
   for close-range Maokai/Ashe/Hecarim R. DS restart. SOURCE: ledger 2026-06-22 below.
 - B12. (PRACTICE-SR) R17 + R39 anti-tank level-ramp seams (`compute_antitank(level=)`): wire
-  the live champion level (the /anti-tank route still passes none); level-3 < level-16
-  sanity (Aatrox-family ramps + Senna P current-HP ramp). DS restart. SOURCE: ledger
-  2026-06-22 + 2026-06-30 below.
+  the live champion level; level-3 < level-16 sanity (Aatrox-family ramps + Senna P
+  current-HP ramp). HTTP TRANSPORT WIRED OQ18 (`/anti-tank` now reads an optional `level` body
+  param and threads it into `compute_antitank(level=)`; ENGINE 1.169.0) - headless-prep-done;
+  the eyeball (POST the live level + confirm the early-vs-late ramp) stays gated. DS restart
+  on flip. SOURCE: ledger 2026-06-22 + 2026-06-30 below.
 - B13. (PRACTICE-SR) R30/DSV6 `assume_magic_burst` flip (Luden's/Stormsurge/Malignance on an
   AP burst build ranks its on-cast item higher; compute_ability_dps deliberately inert). DS
   restart. SOURCE: ledger 2026-06-27 below.
@@ -208,14 +211,18 @@ no row carries it.
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
 - B31. (REAL-SR) DSP5 summoner-spell plumb + eyeball: player's + ENEMY's live summoner sets
-  into `dsp_live_consumers.summoner_fight_adjustments` (producer-only orphan today);
-  re-anchor wiki magnitudes at flip.
+  into `dsp_live_consumers.summoner_fight_adjustments`; re-anchor wiki magnitudes at flip.
+  HTTP TRANSPORT WIRED OQ18 (NEW POST `/summoner-fight-adj` route reads the producer;
+  ENGINE 1.169.0) - headless-prep-done; the live plumb (feed the real summoner set + eyeball)
+  stays gated.
 - B32. (REAL-SR) DSP6 enemy-rune threat plumb + eyeball: ENEMY's live rune set into
   `dsp_live_consumers.enemy_rune_threat` (PtA/Conqueror/Grasp shifts; no-threat lobby
-  unchanged). Practice tool has NO enemy rune sets.
+  unchanged). Practice tool has NO enemy rune sets. HTTP TRANSPORT WIRED OQ18 (NEW POST
+  `/enemy-rune-threat`; ENGINE 1.169.0) - headless-prep-done; live plumb stays gated.
 - B33. (REAL-SR) DSP7 ally aura/enchanter plumb + eyeball: live ally team into
   `dsp_live_consumers.ally_protected_ehp` (ally beside Janna/Lulu/Soraka shows higher EHP;
-  solo ally unchanged). Practice tool is solo.
+  solo ally unchanged). Practice tool is solo. HTTP TRANSPORT WIRED OQ18 (NEW POST
+  `/ally-protected-ehp`; ENGINE 1.169.0) - headless-prep-done; live plumb stays gated.
 - B34. (REAL-SR) DSP8 `target_preset` derived from the LIVE enemy comp into burst /
   /rank-assassin (lethality vs tank comp, magic pen vs high-CC comp). ENGINE-ONLY -
   /rank-assassin route transport WIRED OQ17 (ENGINE 1.168.0); the live enemy-comp derivation
