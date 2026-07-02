@@ -16,13 +16,29 @@ def gold_share_pct(roster):
     Returns None when the roster has no `is_me` row or the team gold sums to
     zero - the caller renders that as the "-" no-data sentinel.
     """
+    return _team_share_pct(roster, "gold")
+
+
+def dmg_share_pct(roster):
+    """Operator champion damage as a 0-100 percent of their team's total
+    (roster field `damage_to_champs` per `dashboard.builders_lcu_enrich`).
+
+    Mirrors `gold_share_pct` semantics exactly: None when the roster has no
+    `is_me` row or the team total is <= 0; rounded to 1 decimal. OQ12 PGR
+    normalized carry-metrics bundle, slice A.
+    """
+    return _team_share_pct(roster, "damage_to_champs")
+
+
+def _team_share_pct(roster, field):
+    """Shared share math: operator's `field` over their team's sum."""
     rows = roster or []
     me = next((r for r in rows if r.get("is_me")), None)
     if me is None:
         return None
     my_team = me.get("team_id")
-    team_total = sum(int(r.get("gold") or 0)
+    team_total = sum(int(r.get(field) or 0)
                      for r in rows if r.get("team_id") == my_team)
     if team_total <= 0:
         return None
-    return round(100.0 * int(me.get("gold") or 0) / team_total, 1)
+    return round(100.0 * int(me.get(field) or 0) / team_total, 1)
