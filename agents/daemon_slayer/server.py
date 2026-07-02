@@ -367,6 +367,11 @@ def _route_dps(body: dict) -> dict:
     #   apply_target_vuln (R12) - resolve the target-vulnerability damage multiplier.
     assume_passive_as_stacks = _opt_bool(body, "assume_passive_as_stacks", False)
     apply_target_vuln = _opt_bool(body, "apply_target_vuln", False)
+    # OQ17 / B1: apply_melee_aa_gate drops a ranged_only on-hit proc (Runaan's
+    # Wind's Fury bolts) on a melee champ. DEFAULT-OFF -> byte-identical when
+    # omitted; /dps-scoped like R7/R12 (rank_items does NOT forward it). The live
+    # default-ON flip stays EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md).
+    apply_melee_aa_gate = _opt_bool(body, "apply_melee_aa_gate", False)
     if phase is not None and phase not in ("early", "mid", "late"):
         raise _ApiError(400, f"phase: must be early|mid|late, got {phase!r}")
     try:
@@ -380,7 +385,8 @@ def _route_dps(body: dict) -> dict:
                              apply_ability_amps=apply_ability_amps,
                              apply_passive_damage=apply_passive_damage,
                              assume_passive_as_stacks=assume_passive_as_stacks,
-                             apply_target_vuln=apply_target_vuln)
+                             apply_target_vuln=apply_target_vuln,
+                             apply_melee_aa_gate=apply_melee_aa_gate)
     except KeyError as e:
         raise _ApiError(404, str(e))
     except ValueError as e:
@@ -1087,6 +1093,28 @@ def _route_burst(body: dict) -> dict:
     # /burst: rank_items_by_burst does NOT accept assume_magic_burst, only the direct
     # compute_burst_damage does (burst.py:485 - the on-cast magic-burst item proc).
     assume_magic_burst = _opt_bool(body, "assume_magic_burst", False)
+    # OQ17: the rune-proc layer + the /burst-scoped compute-direct seams
+    # (DEFAULT-OFF/None -> byte-identical when omitted). These read the SINGLE-BUILD
+    # burst NUMBER, not a ranker delta (a flat keystone amp washes out of a
+    # candidate-baseline delta), so like R30 assume_magic_burst they live on the
+    # direct /burst route rather than /rank-assassin:
+    #   assume_takedown (DSV2) - Hubris/Collector kill-state offense.
+    #   assume_ability_amp (DSV4) - Spear of Shojin on-cast ability amp.
+    #   score_completion_runes (DSP4) - credit the completion runes (Shield Bash 8401).
+    #   gate_target_hp_amp (R51) - honestly gate Cut Down 8017 / Coup 8014 on target HP.
+    #   gate_caster_hp_amp + caster_current_hp_pct (R53) - gate Last Stand 8299 on caster HP.
+    # The live default-ON flips stay EXCLUDED (docs/LIVE_GAME_GATED_SYNC.md).
+    runes = [
+        int(x)
+        for x in _coerce_str_list(body.get("runes"), "runes")
+        if str(x).strip().lstrip("-").isdigit()
+    ]
+    assume_takedown = _opt_bool(body, "assume_takedown", False)
+    assume_ability_amp = _opt_bool(body, "assume_ability_amp", False)
+    score_completion_runes = _opt_bool(body, "score_completion_runes", False)
+    gate_target_hp_amp = _opt_bool(body, "gate_target_hp_amp", False)
+    gate_caster_hp_amp = _opt_bool(body, "gate_caster_hp_amp", False)
+    caster_current_hp_pct = _opt_float(body, "caster_current_hp_pct", 1.0)
     try:
         result = compute_burst_damage(
             snap, champion_id=champion, level=level,
@@ -1102,6 +1130,13 @@ def _route_burst(body: dict) -> dict:
             combo_sequence=combo_sequence,
             aoe_targets_hit=aoe_targets_hit,
             assume_magic_burst=assume_magic_burst,
+            runes=(runes or None),
+            assume_takedown=assume_takedown,
+            assume_ability_amp=assume_ability_amp,
+            score_completion_runes=score_completion_runes,
+            gate_target_hp_amp=gate_target_hp_amp,
+            gate_caster_hp_amp=gate_caster_hp_amp,
+            caster_current_hp_pct=caster_current_hp_pct,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
@@ -1516,11 +1551,22 @@ def _route_rank_assassin(body: dict) -> dict:
         if str(x).strip().lstrip("-").isdigit()
     ]
     aoe_targets_hit = _opt_int(body, "aoe_targets_hit", 1) or 1
-    # /rank-assassin seam flag (DEFAULT-OFF -> byte-identical when omitted):
+    # /rank-assassin seam flags (DEFAULT-OFF/None -> byte-identical when omitted):
     #   prefer_kit_axis_by_win (DSP11) - float a champ's WIN-anchored kit-axis items.
     # R30 assume_magic_burst is scoped to the /burst route: rank_items_by_burst does
     # NOT accept it (only compute_burst_damage does at burst.py:485).
     prefer_kit_axis_by_win = _opt_bool(body, "prefer_kit_axis_by_win", False)
+    # OQ17: the enemy-comp / kill-state ranking seams the burst ranker already
+    # forwards to compute_burst_damage (assume_takedown/assume_ability_amp) or
+    # resolves itself (assume_squishy_target/target_preset). DEFAULT-OFF/None ->
+    # byte-identical when omitted; an unknown target_preset raises ValueError ->
+    # 422 via the except below. The live default-ON flips stay EXCLUDED
+    # (docs/LIVE_GAME_GATED_SYNC.md). The rune-gate seams (DSP4/R51/R53) are
+    # /burst-scoped instead - they wash out of the candidate-baseline delta.
+    assume_takedown = _opt_bool(body, "assume_takedown", False)
+    assume_squishy_target = _opt_bool(body, "assume_squishy_target", False)
+    assume_ability_amp = _opt_bool(body, "assume_ability_amp", False)
+    target_preset = _opt_str(body, "target_preset", None)
     try:
         result = rank_items_by_burst(
             snap,
@@ -1542,6 +1588,10 @@ def _route_rank_assassin(body: dict) -> dict:
             runes=(runes or None),
             aoe_targets_hit=aoe_targets_hit,
             prefer_kit_axis_by_win=prefer_kit_axis_by_win,
+            assume_takedown=assume_takedown,
+            assume_squishy_target=assume_squishy_target,
+            assume_ability_amp=assume_ability_amp,
+            target_preset=target_preset,
         )
     except KeyError as e:
         raise _ApiError(404, str(e))
