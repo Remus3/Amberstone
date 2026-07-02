@@ -210,6 +210,12 @@ no row carries it.
 
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
+- B42. (REAL-SR) R59 `assume_lifeline_shield` flip (target-side Lifeline shield credit): in a
+  real game where an enemy holds a Lifeline item (Immortal Shieldbow 6673 / Sterak's Gage 3053
+  / Maw of Malmortius 3156), eyeball that the burst scorer crediting the target's absorbed
+  shield re-ranks sanely (a squishy-vs-Shieldbow burst reads lower; the order stays sane)
+  before defaulting ON. Shieldbow is the representative magnitude; DS restart on flip. SOURCE:
+  docs/LEDGER.md item 743; ledger 2026-07-02 below.
 - B31. (REAL-SR) DSP5 summoner-spell plumb + eyeball: player's + ENEMY's live summoner sets
   into `dsp_live_consumers.summoner_fight_adjustments`; re-anchor wiki magnitudes at flip.
   HTTP TRANSPORT WIRED OQ18 (NEW POST `/summoner-fight-adj` route reads the producer;
@@ -610,6 +616,13 @@ over normal play across later cycles, not in these sessions.
   D1 = Arena 6x3 champ-select renders headless via `champ_select_arena.json` + snapshot test
   + committed screenshots + `ops/runtime/ui_recon/recon.py`; ROADMAP:18 VALIDATED, a live
   Arena capture is operator-optional only.
+- 2026-07-02 R59 `assume_lifeline_shield` shipped default-OFF (ENGINE 1.170.0, feat commit
+  `baf52fbf`): target-side Lifeline shield credit for the OFFENSE scorers - `compute_burst_damage`
+  SUBTRACTS a modeled target's one-shot Shieldbow/Sterak/Maw shield from total_burst_damage
+  (floored); `compute_dps` SURFACES the magnitude without touching the DPS rate. Reuses the
+  Phase-1.5 `ItemShield.resolve_magnitude` (ehp.py already values the WIELDER side). Byte-identical
+  OFF (verifier-proven omitted-vs-False equality, new fields 0.0). Flip gated as B42 (REAL-SR
+  enemy-holds-Lifeline burst-scorer re-rank eyeball).
 - 2026-07-02 R58 `assume_ms_utility` shipped default-OFF (ENGINE 1.167.0, commit `304c88dd`):
   MS-utility DPS credit for the bruiser/juggernaut scorer (`compute_hybrid` +
   `rank_items_by_hybrid`, hybrid.py only; 1 pct bonus MS ~= 0.5 pct effective DPS, cap 0.15).
