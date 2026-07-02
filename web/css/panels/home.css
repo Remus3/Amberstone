@@ -1344,3 +1344,41 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .cs-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
 
 .cs-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* OQ13 slice B: THIS WEEK mode-factored weekly digest card. Visual
+ * family = the Tonight's Pick / Last Build cards (surface + border +
+ * radius + compact padding); the head mirrors .home-coach-pick-head.
+ * One grid column per game mode (1-3 modes sit side by side at 1920,
+ * more wrap); the Good/Bad/Ugly rows inside each block reuse
+ * .home-pick-tip-row so the digest reads like the pick card. Hidden
+ * until data.weekly_digest carries a non-empty modes list. All font
+ * sizes via UI_SCALE_SPEC_V2 tokens (nothing below var(--fs-xs)). */
+.home-weekly-digest {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--panel-padding-comp);
+}
+.home-weekly-digest[hidden] { display: none; }
+.home-weekly-digest-head {
+  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
+  color: var(--label); text-transform: uppercase;
+  margin-bottom: var(--space-2);
+}
+#home-weekly-digest-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--panel-padding-loose);
+}
+.home-weekly-digest-mode {
+  display: grid;
+  gap: var(--space-1);
+  align-content: start;
+  min-width: 0; /* let nowrap tip values ellipsize inside the column */
+}
+.home-weekly-digest-mode-head {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.04em;
+}
