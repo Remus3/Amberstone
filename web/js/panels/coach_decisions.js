@@ -120,7 +120,7 @@ async function pollCoachDecisions() {
   if (document.hidden) return;
   try {
     // item 186: dedupFetch coalesces with trigger_pill's parallel
-    // /api/decisions poll (500ms cadence vs this module's 20s; the
+    // /api/decisions poll (500ms cadence vs this module's 1.5s; the
     // 100ms grace TTL covers the typical overlap window).
     const r = await dedupFetch("/api/decisions");
     if (!r.ok) return;
@@ -189,7 +189,13 @@ async function pollRecentCoachCalls() {
     renderRecentCoachCalls(d.entries || []);
   } catch (_) {}
 }
-setInterval(pollRecentCoachCalls, RECENT_CALLS.intervalMs);
-pollRecentCoachCalls();
+// R56: the #recent-coach-calls markup left index.html with the s162
+// lobby v2 (832704a7) - render is a no-op without it, so don't burn a
+// 30s /api/decisions/log poll into a null section. Wiring stays for
+// any page that reintroduces the markup.
+if (RECENT_CALLS.section) {
+  setInterval(pollRecentCoachCalls, RECENT_CALLS.intervalMs);
+  pollRecentCoachCalls();
+}
 
 export { renderCoachDecisions, renderRecentCoachCalls };

@@ -13,8 +13,9 @@
  * per state tick, no animation.
  *
  * Hues (operator OQ3/OQ16 pick, docs/OVERLAY_DOCTRINE.md sec 5): BARON
- * gold --ovx-gold #C8AA6E, ELDER red --ovx-red #E84057, SUMMS cyan
- * --ovx-cyan #0AC8B9 all ride the overlay tokens. DRAKE warn #E8A33D is
+ * gold --ovx-gold, ELDER red --ovx-red, SUMMS cyan --ovx-cyan (hex
+ * values live on the tokens; the OQ6 dark-values ratchet counts hex in
+ * comments too) all ride the overlay tokens. DRAKE warn #E8A33D is
  * the ONE literal: no ovx token carries the warn-amber hue - OQ16
  * operator-directed exception, scoped to this widget's custom prop.
  */
