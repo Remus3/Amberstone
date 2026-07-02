@@ -191,6 +191,12 @@ no row carries it.
 - B30. (PRACTICE-SR) DS ratio-block spot verify vs target dummies (~174/577 flagged;
   DS-batch scoped - sample a handful per session, not a bulk pass). SOURCE:
   docs/DS_COMPLETENESS_GAP.md:79; docs/OVERLAY_BUILD_MASTER_PLAN.md:496.
+- B41. (PRACTICE-SR) R58 `assume_ms_utility` flip (bruiser/juggernaut MS-utility DPS
+  credit): buy Dead Man's Plate 3742 + Force of Nature 4401 on a juggernaut (Darius) in
+  practice tool, eyeball the /rank-bruiser re-rank sanity (MS items gain modest credit,
+  order stays sane; Warmog-class MS-less items unchanged) before defaulting ON; the 0.5
+  fraction / 0.15 cap midpoints are the tunables. DS restart. SOURCE: docs/LEDGER.md
+  item 738; ledger 2026-07-02 below.
 
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
@@ -571,6 +577,12 @@ over normal play across later cycles, not in these sessions.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-07-02 R58 `assume_ms_utility` shipped default-OFF (ENGINE 1.167.0, commit `304c88dd`):
+  MS-utility DPS credit for the bruiser/juggernaut scorer (`compute_hybrid` +
+  `rank_items_by_hybrid`, hybrid.py only; 1 pct bonus MS ~= 0.5 pct effective DPS, cap 0.15).
+  Byte-identical OFF (omitted-vs-False full-dict equality pinned). Flip gated as B41
+  (PRACTICE-SR own-build re-rank eyeball). Stack-ramp MS registry (Shipwrecker +20 flat /
+  Steadfast +6 pct) is a follow-up seam feed, not yet resolved into stats["ms"].
 - 2026-07-01 (SYNC) full-repo gated-item resync: header + play order + sections rebuilt from a
   9-doc read (WAKEUP / ORCHESTRATION_PLAN / LEDGER / ROADMAP / BACKLOG /
   OVERLAY_BUILD_MASTER_PLAN / ARCHITECTURE / OPERATIONS / RC_WORK_TRACKER) + repo sweep +

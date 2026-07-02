@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-01 late night 3 (live-gated-sync full resync + operator decision queue + drain tooling; docs/meta, NO ENGINE/DS/Share)
+
+Operator-directed: refresh docs/LIVE_GAME_GATED_SYNC.md (consolidated headless-impossible checklist) + build reusable drain tooling + answer a local-AI question. Fable-5 orchestrated 46-agent Workflow (11 doc readers + repo grep sweep + git-evidence + seam-flag ground-truth + adversarial done-verify + verifier gate PASS). LEDGER 734.
+
+- **Resync (`26aba81f`):** removed 4 confirmed-done (overlay 598, boots PM7, vision self-heal 685/688/711, packaging), added 78 -> 108 open (86 one-shot + 14 accrual + 8 parked). Every open row env-tagged. Drain: S1 practice SR / S2 real SR / S3 ARAM Mayhem / S4 Arena. ARENA NEEDED: YES (8 items). Est 4 sessions. Ledger section preserved + 1 SYNC entry.
+- **SEAM GROUND TRUTH (code-verified):** ZERO seams wired-on-live. DSP2/DSP11/F2/RF1-3 transport-plumbed, callers omit; DSV/DSP4/DSP8/B1/R50-53/Phase-D engine-only; DSP5/6/7+P3.2 producer/test-only; RC_COMP_HP_LEAN + RC_LANING_CV_SERVED cold.
+- **Decision queue (`df75d18c`):** docs/OPERATOR_DECISION_QUEUE_2026-07-01.md - 12 decide-now + 7 review-first, pro/con/rec each. Top-3 (DSV5 flip ON, DSP11+RF1 flips, doc housekeeping) clear ~35 rows with NO game.
+- **Tooling (LOCAL, gitignored .claude/):** /live-gated-drain command (fable-limit -> opus-4.8 max/ultracode fallback; worktree merge/prune + /done + next-session prompt) + live-gated-resync saved workflow (verifier JSON schema-forced - the live re-gate output was unparseable).
+- **Local-AI analysis (chat + BACKLOG line):** Gemini used in 3 roles - ask+audit already on flash (near-free), ONLY the headless-loop director uses premium gemini-3-pro-preview. Context is CURATED not full-repo (audit ~17K tok deterministic + agentic self-reads bounded by .geminiignore; director ~30-40K tok capped). Swap plan (RC_LLM_BACKEND switch, free-tier ask+audit first, ensemble on advisory roles) logged to BACKLOG.
+- Do NOT redo: the resync is fresh as of 2026-07-01. Next = operator works the decision queue (start DSV5 flip ON).
+
+---
+
 # 2026-07-01 late night 2 (OQ13 - QA17 mode-factored weekly Good/Bad/Ugly digest; backend + ui, NO ENGINE/DS/Share)
 
 Loop directive OQ13 executed by this session (merges `4d2955f4` + `22cc3e80` + audit-fix `acf54c4d`, LEDGER 733). Premise live-verified BEFORE build (ARAM 7d 11.7 deaths/game + 2.0 CS/min vs SR 8.8 + 6.6 - mode-blind tips mis-grade ARAM). 2 parallel worktree agents on disjoint files to a frozen weekly_digest contract -> verifier CONFIRM each (A 24 / B 17 fresh) -> sole merger --no-ff.

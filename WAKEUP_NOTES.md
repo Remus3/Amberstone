@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-07-02 (R58 LOOP - assume_ms_utility seam: MS utility valuation for bruiser/juggernaut; ENGINE 1.166.0 -> 1.167.0)
+
+Loop directive R58 executed by this session (head e7e95653; merge `304c88dd`, slice `9b42acd8`, LEDGER 738). Premise verified FIRST: item MS resolves into stats["ms"] (engine.py:200) but the bruiser/juggernaut scorer consumed it at ZERO (only consumer ability_dps.py:285); DDragon 16.13.1 DMP 3742 + FoN 4401 both 4 pct MS.
+
+- **Seam (hybrid.py ONLY):** DEFAULT-OFF END-appended `assume_ms_utility` on compute_hybrid + rank_items_by_hybrid (spec caught the routing fact: the ranker does NOT call compute_hybrid - both entry points need the flag). `_ms_utility_multiplier` = 1 + min(0.15 cap, bonus_ms_frac * 0.5) - melee attack-uptime model; DPS term only; shared multiplier cancels in the normalized pct; raw dps/delta_dps stay RAW (no Shipwrecker double-count). Worked pin: Darius + DMP + FoN -> 367.2 -> x1.04; zero-DPS FoN gains exactly +0.013 hybrid_delta_pct.
+- **Orchestrated:** Plan spec agent (cites re-verified) -> 1 worktree build agent (TDD RED 16F/2P observed -> GREEN 18 tests) -> verifier CONFIRM 7/7 -> sole merger.
+- **Ship:** ENGINE 1.167.0 (pins 107/94, 0 stray) + DS bounce (live 1.167.0) + Share --check green 393 files SAME commit; Share/CHANGELOG 1.167.0 prepend + backfilled the MISSING 1.165.0->1.166.0 OQ11 entry; DAEMON_SLAYER banner 1.167.0/7751. Fresh dual suite: DS 7751 / RC 10435, 0 failed.
+- **Handoff:** stack-ramp conditional-MS registry (Shipwrecker +20 flat at 100 momentum / Steadfast +6 pct at max stacks) feeds the same seam later. Live default-ON flip -> LIVE_GAME_GATED_SYNC B41 (PRACTICE-SR) + flip-ledger entry.
+- Frozen files untouched. CI green baseline held. Worktree note: C:/RC-CIWatchdog belongs to that scheduled task, untouched.
+
+---
+
 # 2026-07-02 (OQ15 - QA20 this-match dot overlay on GPI radar; backend + ui, NO ENGINE/DS/Share)
 
 Loop directive OQ15 executed by this session (head 744e3e87; merges `b6f6220a` backend + `fd15a9fd` frontend, LEDGER 736). Premise verified first (radar geometry + OQ15 OPEN); Plan-agent spec citation-checked vs source before any build.
@@ -28,16 +40,3 @@ Loop directive OQ14 executed by this session (executor cycle 6, head c89a3e5b; f
 - **Proof:** full RC suite fresh on merged main 10415 passed / 2 skipped / 193 subtests; RC restarted pid 15840 -> 18500 (alive/reload_ok); LIVE ROUTE PROBE end-to-end green Darius dmg+1/surv-1 -> 65/35/0 baseline -> 72/27/0 shaped (both push to damage, sums 1.0, 4ms). 5-phase UI audit PASS 0 MUST-FIX / 0 SHOULD-FIX. In-game overlay pixel capture OWED (no live game - the strip renders only in-game).
 - NO DS path -> no DS bounce, no Share sync, NO ENGINE (precommit confirmed no mirrored source staged). Did NOT stage the pre-existing data/spell_prefs.json drift. Frozen files untouched.
 - Remaining OPEN queue: OQ15 (GPI radar this-match dot). FUTURE (BACKLOG): Item Shaper full re-rank engine seam (3-axis weight surface + ranker threading; do NOT build blind).
-
----
-
-# 2026-07-01 late night 3 (live-gated-sync full resync + operator decision queue + drain tooling; docs/meta, NO ENGINE/DS/Share)
-
-Operator-directed: refresh docs/LIVE_GAME_GATED_SYNC.md (consolidated headless-impossible checklist) + build reusable drain tooling + answer a local-AI question. Fable-5 orchestrated 46-agent Workflow (11 doc readers + repo grep sweep + git-evidence + seam-flag ground-truth + adversarial done-verify + verifier gate PASS). LEDGER 734.
-
-- **Resync (`26aba81f`):** removed 4 confirmed-done (overlay 598, boots PM7, vision self-heal 685/688/711, packaging), added 78 -> 108 open (86 one-shot + 14 accrual + 8 parked). Every open row env-tagged. Drain: S1 practice SR / S2 real SR / S3 ARAM Mayhem / S4 Arena. ARENA NEEDED: YES (8 items). Est 4 sessions. Ledger section preserved + 1 SYNC entry.
-- **SEAM GROUND TRUTH (code-verified):** ZERO seams wired-on-live. DSP2/DSP11/F2/RF1-3 transport-plumbed, callers omit; DSV/DSP4/DSP8/B1/R50-53/Phase-D engine-only; DSP5/6/7+P3.2 producer/test-only; RC_COMP_HP_LEAN + RC_LANING_CV_SERVED cold.
-- **Decision queue (`df75d18c`):** docs/OPERATOR_DECISION_QUEUE_2026-07-01.md - 12 decide-now + 7 review-first, pro/con/rec each. Top-3 (DSV5 flip ON, DSP11+RF1 flips, doc housekeeping) clear ~35 rows with NO game.
-- **Tooling (LOCAL, gitignored .claude/):** /live-gated-drain command (fable-limit -> opus-4.8 max/ultracode fallback; worktree merge/prune + /done + next-session prompt) + live-gated-resync saved workflow (verifier JSON schema-forced - the live re-gate output was unparseable).
-- **Local-AI analysis (chat + BACKLOG line):** Gemini used in 3 roles - ask+audit already on flash (near-free), ONLY the headless-loop director uses premium gemini-3-pro-preview. Context is CURATED not full-repo (audit ~17K tok deterministic + agentic self-reads bounded by .geminiignore; director ~30-40K tok capped). Swap plan (RC_LLM_BACKEND switch, free-tier ask+audit first, ensemble on advisory roles) logged to BACKLOG.
-- Do NOT redo: the resync is fresh as of 2026-07-01. Next = operator works the decision queue (start DSV5 flip ON).
