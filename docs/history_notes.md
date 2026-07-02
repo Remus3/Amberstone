@@ -218,6 +218,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-01 night (R56 gemini-loop DIRECTOR REFILL - coach_decisions + trigger_pill 5-phase fixture audit; ui, NO ENGINE/DS/Share)
+
+Loop directive R56 executed by this session (`2f259dcb`, LEDGER 731). Inline (2 small panels, directive-sanctioned) with RED-first grep-contract lock.
+
+- **MUST-FIXes:** 9 sub-floor hardcoded font-sizes tokenized in coach_decisions.css (11-17px -> var(--fs-md/sm/xs)); map_state.css .trigger-pill 17px -> var(--fs-sm); .coach-decision-btn ~30px -> min-height var(--hit-min, 42px) + var(--radius-sm).
+- **STRUCTURE find:** #recent-coach-calls markup left index.html at s162 lobby v2 (832704a7) - module polled /api/decisions/log every 30s into a null render forever. Poll now gated on section presence; wiring preserved. Restoring a /coach-calls page = operator-gated FUTURE.
+- **Adjacent latent red:** OQ16 objective_gauges.css header comment carried a 0-leading hex breaching the OQ6 dark-values ratchet (ceiling 0). Ratchet runs ONLY in the nightly full suite (push CI = light check job) - tonight's nightly would have gone red. Hex dropped from the comment in-slice.
+- **Proof:** RC suite fresh 10309 passed / 2 skipped / 193 subtests; computed-style proof (title 22 / sub 18 / btn 18 + 42px / pill 18) via the :8810 static-preview synthetic-DOM path (item 656); live :8888 curl-verified serving tokenized CSS (ADR-008, no restart).
+- **FUTURE:** ds-pill/augments-pill 21px hardcoded (siblings, out of scope); dead body[data-view="coach-calls"] rules in header.css.
+
+---
+
 # 2026-07-01 evening (loop false-NO_WORK fix 2 + GEMINI CREDITS DEPLETED; direct-executor continuation)
 
 Operator re-invoked /gemini-headless-upgrade pointing at ops/loop/control/directive.md. Directive was STALE (OQ3, already shipped e14eedbd + docs 7f1dccee) - NOT re-executed. The 17:45 relaunch had STOPPED again on "NO_WORK / empty" with OQ11-OQ15 OPEN. Full detail LEDGER 728.
