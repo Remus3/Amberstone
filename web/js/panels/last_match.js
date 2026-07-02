@@ -1045,6 +1045,48 @@ function _rosterScores(roster) {
   return out;
 }
 
+// OQ12 slice B: normalized carry-metric benchmark sub-line. metricObj is
+// one of carry_normalized.{kp_pct,gold_share_pct,dmg_share_pct} from
+// /api/last-match: {value,p25,p50,p75,n,band}. Renders "HIGH - p50 26"
+// under the stat value; band high/low tints via lm-bench-high/-low (avg
+// is neither). Old payloads LACK carry_normalized entirely - any null
+// value/p50 keeps the sub-line hidden. Idempotent (re-render safe):
+// band classes are stripped up front, hidden+text reset on the null arm.
+function _setBenchSub(elId, metricObj) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.classList.remove("lm-bench-high", "lm-bench-low");
+  if (metricObj && metricObj.value != null && metricObj.p50 != null) {
+    const band = (metricObj.band === "high" || metricObj.band === "low")
+                  ? metricObj.band : "avg";
+    el.textContent = `${band.toUpperCase()} - p50 ${Math.round(metricObj.p50)}`;
+    if (band === "high") el.classList.add("lm-bench-high");
+    else if (band === "low") el.classList.add("lm-bench-low");
+    el.hidden = false;
+  } else {
+    el.hidden = true;
+    el.textContent = "";
+  }
+}
+
+// OQ12: append " vs <bench_key> (n=<kp n>)" to each bench-carrying stat
+// cell's data-tt tooltip. The pristine tooltip is stashed in
+// data-tt-base on first touch so repeated renders re-compose instead of
+// accreting (renderer-idempotency rule).
+function _extendBenchTooltips(cn, benchIds) {
+  const benchKey = cn ? cn.bench_key : null;
+  const n = (cn && cn.kp_pct && cn.kp_pct.n != null) ? cn.kp_pct.n : null;
+  for (const id of benchIds) {
+    const el = document.getElementById(id);
+    const cell = el && el.closest(".lm-hero-stat");
+    if (!cell) continue;
+    if (cell.dataset.ttBase == null) cell.dataset.ttBase = cell.dataset.tt || "";
+    cell.dataset.tt = (benchKey != null)
+      ? `${cell.dataset.ttBase} vs ${benchKey} (n=${n != null ? n : "?"})`
+      : cell.dataset.ttBase;
+  }
+}
+
 function _setStatsGrid(m, enriched) {
   // s219 v6: section 2 of hero - 2 rows x 4 cols. Row 1: Gold% / Vision /
   // CS / Tanked. Row 2: KP% / Damage / CS/min / Heal+Shield.
@@ -1080,6 +1122,14 @@ function _setStatsGrid(m, enriched) {
     const hs = sup.heal_plus_shield || 0;
     healing.textContent = hs > 0 ? _fmtThousands(hs) : "-";
   }
+
+  // OQ12 slice B: benchmark sub-lines under Gold% / KP% / Damage.
+  const cn = m.carry_normalized || null;
+  _setBenchSub("lm-kp-bench",         cn ? cn.kp_pct         : null);
+  _setBenchSub("lm-gold-share-bench", cn ? cn.gold_share_pct : null);
+  _setBenchSub("lm-dmg-bench",        cn ? cn.dmg_share_pct  : null);
+  _extendBenchTooltips(cn,
+    ["lm-kp-bench", "lm-gold-share-bench", "lm-dmg-bench"]);
 }
 
 function _setDsPicks(picks) {

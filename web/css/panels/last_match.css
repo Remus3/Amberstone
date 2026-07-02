@@ -424,6 +424,12 @@
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
+/* OQ12: carry-metric benchmark band tint on the sub-line under Gold% /
+ * KP% / Damage (live) + KP% / Damage (hpgr). avg carries neither class
+ * and inherits --text-faint. Size inherits .lm-hero-stat-sub - no new
+ * font sizes. */
+.lm-bench-high { color: var(--signal-good); }
+.lm-bench-low  { color: var(--signal-bad); }
 
 /* s219 v6: rank-tier comparison panel on the right end of the hero row.
  * 2 rows x 4 columns mirror section 2's stats grid:
