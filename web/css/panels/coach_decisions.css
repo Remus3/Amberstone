@@ -40,12 +40,12 @@
 .coach-decision-text { min-width: 0; }
 .coach-decision-title {
   font-weight: 700;
-  font-size: 17px;
+  font-size: var(--fs-md, 22px);
   color: var(--signal-gold);
   margin: 0 0 2px;
 }
 .coach-decision-sub {
-  font-size: 14px;
+  font-size: var(--fs-sm, 18px);
   color: var(--text-faint);
   margin: 0;
 }
@@ -56,9 +56,10 @@
 }
 .coach-decision-btn {
   padding: 6px 14px;
-  font-size: 15px;
+  min-height: var(--hit-min, 42px);
+  font-size: var(--fs-sm, 18px);
   font-weight: 700;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid currentColor;
   background: transparent;
   cursor: pointer;
@@ -95,14 +96,14 @@
   border-bottom: 1px dashed var(--border-soft);
 }
 .recent-coach-calls-label {
-  font-size: 12px;
+  font-size: var(--fs-xs, 16px);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-dim);
   font-weight: 700;
 }
 .recent-coach-calls-hint {
-  font-size: 12px;
+  font-size: var(--fs-xs, 16px);
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }
@@ -114,11 +115,11 @@
   align-items: center;
   padding: 5px 12px;
   border-bottom: 1px dashed var(--border-soft);
-  font-size: 13px;
+  font-size: var(--fs-sm, 18px);
 }
 .recent-coach-call:last-child { border-bottom: none; }
 .rcc-when {
-  font-size: 12px;
+  font-size: var(--fs-xs, 16px);
   color: var(--text-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -127,7 +128,7 @@
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .rcc-choice {
-  font-size: 11px;
+  font-size: var(--fs-xs, 16px);
   font-weight: 700;
   letter-spacing: 0.06em;
   padding: 2px 7px;
@@ -148,7 +149,7 @@
   border-radius: 999px;
   background: var(--gold);
   color: #000;
-  font-size: 11px;
+  font-size: var(--fs-xs, 16px);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   min-width: 14px;
