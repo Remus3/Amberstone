@@ -218,6 +218,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-02 (R58 LOOP - assume_ms_utility seam: MS utility valuation for bruiser/juggernaut; ENGINE 1.166.0 -> 1.167.0)
+
+Loop directive R58 executed by this session (head e7e95653; merge `304c88dd`, slice `9b42acd8`, LEDGER 738). Premise verified FIRST: item MS resolves into stats["ms"] (engine.py:200) but the bruiser/juggernaut scorer consumed it at ZERO (only consumer ability_dps.py:285); DDragon 16.13.1 DMP 3742 + FoN 4401 both 4 pct MS.
+
+- **Seam (hybrid.py ONLY):** DEFAULT-OFF END-appended `assume_ms_utility` on compute_hybrid + rank_items_by_hybrid (spec caught the routing fact: the ranker does NOT call compute_hybrid - both entry points need the flag). `_ms_utility_multiplier` = 1 + min(0.15 cap, bonus_ms_frac * 0.5) - melee attack-uptime model; DPS term only; shared multiplier cancels in the normalized pct; raw dps/delta_dps stay RAW (no Shipwrecker double-count). Worked pin: Darius + DMP + FoN -> 367.2 -> x1.04; zero-DPS FoN gains exactly +0.013 hybrid_delta_pct.
+- **Orchestrated:** Plan spec agent (cites re-verified) -> 1 worktree build agent (TDD RED 16F/2P observed -> GREEN 18 tests) -> verifier CONFIRM 7/7 -> sole merger.
+- **Ship:** ENGINE 1.167.0 (pins 107/94, 0 stray) + DS bounce (live 1.167.0) + Share --check green 393 files SAME commit; Share/CHANGELOG 1.167.0 prepend + backfilled the MISSING 1.165.0->1.166.0 OQ11 entry; DAEMON_SLAYER banner 1.167.0/7751. Fresh dual suite: DS 7751 / RC 10435, 0 failed.
+- **Handoff:** stack-ramp conditional-MS registry (Shipwrecker +20 flat at 100 momentum / Steadfast +6 pct at max stacks) feeds the same seam later. Live default-ON flip -> LIVE_GAME_GATED_SYNC B41 (PRACTICE-SR) + flip-ledger entry.
+- Frozen files untouched. CI green baseline held. Worktree note: C:/RC-CIWatchdog belongs to that scheduled task, untouched.
+
+---
+
 # 2026-07-02 (OQ15 - QA20 this-match dot overlay on GPI radar; backend + ui, NO ENGINE/DS/Share)
 
 Loop directive OQ15 executed by this session (head 744e3e87; merges `b6f6220a` backend + `fd15a9fd` frontend, LEDGER 736). Premise verified first (radar geometry + OQ15 OPEN); Plan-agent spec citation-checked vs source before any build.
