@@ -931,6 +931,7 @@ def compute_ability_dps(
     assume_ability_amp: bool = False,
     assume_magic_burst: bool = False,
     assume_physical_burst: bool = False,
+    assume_shielded_target: bool = False,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -1298,6 +1299,17 @@ def compute_ability_dps(
     # compute_dps carries nothing either; the ONLY valuation lives in
     # compute_burst_damage.
     _ = assume_physical_burst  # documented-inert seam; see comment above
+    # DSV9 (1.179.0): assume_shielded_target is accepted for caller API
+    # symmetry with compute_burst_damage but is DELIBERATELY INERT here
+    # (byte-identical ON or OFF), mirroring assume_physical_burst above. The
+    # seam values a ONE-TIME Shield Reaver active-shield cut (Serpent's Fang
+    # 6695 / Arena 226695) in the burst window - an event, not a rate;
+    # folding a one-shot shield cut into this per-second metric would be
+    # wrong-units, and a shield cut is not even damage dealt. The sustained
+    # "shields gained within the duration" reduction is utility over time
+    # the engine deliberately does not model, so compute_dps carries nothing
+    # either; the ONLY valuation lives in compute_burst_damage.
+    _ = assume_shielded_target  # documented-inert seam; see comment above
     # DSV1 (P6-G5 residual 1): complete the compute_dps item-handling mirror.
     # The amp + pen layers above (lines ~950-995) already mirror compute_dps so
     # the two scorers agree on item value; the time-based item PERIODIC procs
