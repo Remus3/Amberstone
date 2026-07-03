@@ -575,23 +575,29 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # was incorrect - DDragon shows Shadow is a constant on-hit
         # (30 magic, every basic), and Juxtaposition is the alternating
         # part (Light buff = caster resists, defensive; Dark buff = pen).
-        # In sustained DPS rotations both Light and Dark buffs are up
-        # most of the time (each refreshes every 2 attacks at AS=1.0,
-        # both last 5s). Light's resists are caster-side, ignored;
-        # Dark's pen is modeled at full uptime (10% armor pen + 10%
-        # magic pen) - same sustained-DPS approximation as Black
-        # Cleaver's stacking.
+        # R67 (2026-07-03): Meraki 16.13.1 says Dark hits grant 10%
+        # armor pen AND magic pen per stack, "stacks up to 3 times" =
+        # "30% resistances penetration at maximum stacks". The prior
+        # 0.10 encoded a single stack; per the full-stack sustained-DPS
+        # convention (Black Cleaver 3071 5-stack 0.30 shred, Guinsoo
+        # 3124 4-stack 0.32 cond-AS) the Dark 3-stack steady state pins
+        # at 0.30 armor pen + 0.30 magic pen. Light hits (6-8 bonus
+        # armor+MR per stack, level pp 1;11;14) stay caster-side and
+        # OUT of scope - no item-keyed resist-grant path exists
+        # (_passive_resist_overrides.py is champion-keyed only); FUTURE.
         periodics=(PeriodicProc(
             name="Shadow",
             bonus_damage=30.0,
             damage_type=MAGICAL,
             every_n_attacks=1,
         ),),
-        armor_pen_pct=0.10,
-        magic_pen_pct=0.10,
+        armor_pen_pct=0.30,
+        magic_pen_pct=0.30,
         note=(
             "Terminus: Shadow on-hit ~30 magic damage per attack + "
-            "Juxtaposition Dark sustained 10% armor pen + 10% magic pen"
+            "Juxtaposition Dark 3-stack steady-state 30% armor pen + "
+            "30% magic pen (BC full-stack convention); Light caster-side "
+            "resists not modeled"
         ),
     ),
     "6692": ItemEffect(
@@ -4012,9 +4018,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=MAGICAL,
             every_n_attacks=1,
         ),),
-        armor_pen_pct=0.10,
-        magic_pen_pct=0.10,
-        note="Terminus (Arena 223302): same as SR 3302 - Shadow 30 magic on-hit + Juxtaposition Dark 10% armor+magic pen",
+        armor_pen_pct=0.30,
+        magic_pen_pct=0.30,
+        note="Terminus (Arena 223302): same as SR 3302 - Shadow 30 magic on-hit + Juxtaposition Dark 3-stack steady-state 30% armor+magic pen (BC full-stack convention); Light caster-side resists not modeled",
     ),
     "223508": ItemEffect(
         item_id="223508",
