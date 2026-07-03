@@ -218,6 +218,16 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-03 (R66 LOOP - Guinsoo Seething Strike cond-AS; ENGINE 1.173.0; saturation-claim REFUTED by adversarial workflow)
+
+Loop cycle 4. Directive named 3 "unmodeled" passives (Kraken/Statikk/Hydra) - ALL already modeled (stale-digest family R63/R64). Instead of a 4th CLEAN no-op: scan agent claimed the damage registry SATURATED; a 3-lens adversarial refute workflow (absent/partial/drift) DISPROVED that with 8 cited findings. Shipped #1: Guinsoo 3124 + Arena 223124 `bonus_as_conditional=0.32` (Seething Strike 8%x4, Meraki 16.13.1) on the existing R42 ungated lane - PART C sync gemini ruled NO new seam (Yun Tal no-flag precedent + sec-12); no live-flip row, B44 spot-check appended to LIVE_GAME_GATED_SYNC instead. ENGINE 1.172.0->1.173.0, 95 pin files, Share 401 files --check green, DS :8893 live at 1.173.0. TDD RED-first 9 tests; verifier CONFIRM 10/10; merge `d79ebcb6`.
+
+**Gotcha re-learned (now also in ORCHESTRATION findings):** HZ-B regen after a bump MUST pass the full 173-canonical roster to BOTH generators (`core.build_order_precompute` + `core.build_order_variants`, `--static --mode all --champions <csv>`); the build agent's first regen used the 10-champ SEED default -> 18 axis-parity tests failed on EMPTY orders. OQ19 (221922c5) is the recipe commit.
+
+**Residuals for future ds-sweep cycles:** BACKLOG "DS registry residuals - R66" (Terminus 3-stack under-count top; Thornmail item-reflect; Rocketbelt/Everfrost DSV6 fits; Zeke's/Hollow Radiance/shield-lerp LOW). Director should pick FROM that list, not re-scan.
+
+---
+
 # 2026-07-02 (LIVE-GATED DRAIN - practice SR + ARAM Mayhem; prep-audit + a real ranged-only build bug found live)
 
 Operator-played drain of `docs/LIVE_GAME_GATED_SYNC.md`. Probed no game -> ran the headless PREP phase first: an orchestrated 4-slice read-only audit found the headless prep surface FULLY EXHAUSTED (all 7 OQ17/OQ18 DS routes LIVE-VERIFIED WIRED-OK @1.171.0 via differential POST probes; doc rows current; Phase-D B2 = defer-needs-game). Committed the prep-audit doc sync (`28edea2a`) + cleaned 2 stale worktree-wf branches (content proven-superseded in main).
