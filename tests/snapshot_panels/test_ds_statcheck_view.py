@@ -108,17 +108,21 @@ def test_ds_statcheck_panel_populated(mock_server, pw_browser):
     # test-local mount before driving the renderer.
     page.evaluate(
         """async () => {
-          let el = document.getElementById('csv-ds-statcheck');
-          if (!el) {
-            el = document.createElement('div');
-            el.id = 'csv-ds-statcheck';
-            el.className = 'ds-statcheck';
-            el.hidden = true;
-            const host = document.querySelector(
-              '#view-champ-select .csv-card-suggestions .csv-card-body')
-              || document.body;
-            host.appendChild(el);
-          }
+          // QA 2026-07-03 B22 merge: the REAL mount now lives in the
+          // active-match BUILD pane (slice C), invisible under the
+          // #champ-select hash. Drop it and always inject a test-local mount
+          // in the visible champ-select host so the structure/typography
+          // probes measure a rendered element.
+          const real = document.getElementById('csv-ds-statcheck');
+          if (real) real.remove();
+          const el = document.createElement('div');
+          el.id = 'csv-ds-statcheck';
+          el.className = 'ds-statcheck';
+          el.hidden = true;
+          const host = document.querySelector(
+            '#view-champ-select .csv-card-suggestions .csv-card-body')
+            || document.body;
+          host.appendChild(el);
           const m = await import('/js/panels/ds_statcheck.js');
           if (m._resetDsStatcheck) m._resetDsStatcheck();
           m.renderDsStatcheck(el, { my_champion: 222, queue_id: 420 });
