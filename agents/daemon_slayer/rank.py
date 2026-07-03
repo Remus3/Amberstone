@@ -139,6 +139,53 @@ _NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
 })
 
 
+# Ranged-ONLY item purchasability gate (2026-07-02, patch 16.13.1).
+#
+# A live practice-SR drain surfaced Runaan's Hurricane (3085) ranked #1 in the
+# DPS scorer for Irelia, a MELEE champ. Runaan's carries "Can only be purchased
+# on ranged champions" (wiki.leagueoflegends.com, verified 2026-07-02) - the
+# in-game shop hard-BLOCKS the purchase for melee - so recommending it is a
+# recommendation the champ literally cannot buy. The candidate pool
+# (_filter_candidates) had no gate for this class of shop restriction.
+#
+# This is a PURCHASABILITY gate (the game shop rule), DISTINCT from:
+#   * _is_ranged_marksman (below) - a MARKSMAN off-class deny (Trinity /
+#     Heartsteel stripped from a crit ADC), a different axis that fires only
+#     for ranged marksmen through the DPS scorer.
+#   * dps.apply_melee_aa_gate (default-OFF) - zeroes only the Runaan BOLT DPS
+#     contribution on a melee wielder, never excludes it from the pool.
+#
+# DATA GAP: DDragon item.json carries NO structured ranged-only flag - not in
+# ``tags`` (NonbootsMovement is shared with melee-buyable Navori Flickerblade),
+# ``maps``, ``effect``, ``stats``, or a ``requiredChampion`` field (absent). The
+# only textual signal is the ``plaintext`` prose "Ranged attacks fire two bolts"
+# on the canonical id 3085 (EMPTY on the Arena-mirror alias 223085), and prose-
+# scraping false-positives on Tiamat / Ravenous Hydra ("Melee attacks hit...")
+# which ARE melee-buyable. So this is the smallest defensible EXPLICIT id set,
+# anchored on wiki ground truth, alias-inclusive (3085 canonical + 223085 Arena
+# mirror - the same alias-proof doctrine as OFFCLASS_MARKSMAN_ITEM_NAMES).
+#
+# Runaan's is the ONLY purchase-restricted crit / attack-speed item at 16.13.1;
+# the wiki confirms Rapid Firecannon (3094) and Statikk Shiv (3087) are NOT
+# restricted ("Limited to 1" only), so they are deliberately EXCLUDED from the
+# deny set (a narrow-but-correct set - a wider guess would wrongly strip items
+# melee genuinely builds). Add to this set only on wiki-verified evidence for a
+# future patch.
+RANGED_ONLY_ITEM_IDS: frozenset[str] = frozenset({
+    "3085",     # Runaan's Hurricane - canonical (SR / ARAM / Brawl)
+    "223085",   # Runaan's Hurricane - Arena-mirror alias (map 30)
+})
+
+# Melee/ranged purchasability split. A champion is MELEE (and therefore blocked
+# from the ranged-only items above) when its base attackrange is at or below
+# this threshold. Mirrors the engine's own predicate ``ehp._is_ranged`` (which
+# treats attackrange > 250 as ranged). Deliberately the 250 split, NOT the 500
+# RANGED_MARKSMAN_RANGE_FLOOR: Graves (attackrange 425) and Kindred (500) are
+# ranged marksmen the in-game shop lets buy Runaan's, so they must classify as
+# ranged. Melee at 16.13.1: Irelia 200, Yasuo/Yone/Kayle 175, Jax/Camille 125.
+MELEE_ATTACKRANGE_CEILING: float = 250.0
+
+
 def _is_ranged_marksman(champ_rec: dict) -> bool:
     """True iff this champion is a ranged marksman - the only class for
     which the off-class item deny-set fires through the DPS scorer.
@@ -155,6 +202,25 @@ def _is_ranged_marksman(champ_rec: dict) -> bool:
     rng = (champ_rec.get("stats") or {}).get("attackrange", 0) or 0
     try:
         return float(rng) >= RANGED_MARKSMAN_RANGE_FLOOR
+    except (TypeError, ValueError):
+        return False
+
+
+def _champion_is_melee(champ_rec: Optional[dict]) -> bool:
+    """True iff this champion is MELEE - blocked by the in-game shop from the
+    ranged-only items in ``RANGED_ONLY_ITEM_IDS``.
+
+    Data-driven: base attackrange at or below ``MELEE_ATTACKRANGE_CEILING``
+    (250, the engine's own melee/ranged split - see ``ehp._is_ranged``). An
+    unknown / malformed record fails CLOSED to False (treated as ranged), so a
+    missing champ record never over-filters a real ranged carry's pool; the
+    live bug (a known melee champ, real record) is still caught.
+    """
+    if not isinstance(champ_rec, dict):
+        return False
+    rng = (champ_rec.get("stats") or {}).get("attackrange", 0) or 0
+    try:
+        return float(rng) <= MELEE_ATTACKRANGE_CEILING
     except (TypeError, ValueError):
         return False
 
@@ -424,11 +490,14 @@ def _filter_candidates(
     exclude_names: Optional[frozenset[str]] = None,
     inject_ids: Optional[set[str]] = None,
     cost_ceiling: Optional[int] = None,
+    champion_is_melee: bool = False,
 ) -> list[tuple[str, dict]]:
     """Return ``[(item_id, item_record), ...]`` passing all filters.
 
     Filters applied (in order):
       * already-equipped items skipped (``current_ids``)
+      * non-coachable joke/anvil items skipped (``_NON_COACHABLE_ITEM_IDS``)
+      * ranged-only items skipped when ``champion_is_melee`` (purchasability)
       * ``only_ids`` whitelist - restrict to caller-selected ids when set
       * ``exclude_names`` deny-set by item NAME (alias-proof off-class filter)
       * purchasable + ``gold.total`` > 0
@@ -455,6 +524,15 @@ def _filter_candidates(
     absolute-gain ranking floats to RANK 1 across every comp cell on the
     hybrid/bruiser + ehp/tank scorers (ops/audit/ds_cross_eval/TIER2_REPORT.md F2).
     None (the default) is a byte-identical no-op.
+
+    ``champion_is_melee`` (2026-07-02) is the ranged-only PURCHASABILITY gate:
+    when True, every id in ``RANGED_ONLY_ITEM_IDS`` (Runaan's Hurricane + its
+    Arena alias - items the in-game shop blocks for melee champs) is dropped
+    from the pool. It fires UNCONDITIONALLY like the ``_NON_COACHABLE_ITEM_IDS``
+    deny (every mode, every scorer, BEFORE the ``inject`` force-admit - a
+    ranged-only item can never be a legal melee purchase, so no WIN-table inject
+    should resurrect it) so a melee build never surfaces an unbuyable item.
+    Default False (ranged / unknown) is a byte-identical no-op.
     """
     inject = inject_ids or frozenset()
     out: list[tuple[str, dict]] = []
@@ -462,6 +540,11 @@ def _filter_candidates(
         if item_id in current_ids:
             continue
         if item_id in _NON_COACHABLE_ITEM_IDS:
+            continue
+        # Ranged-only purchasability gate: a melee champ cannot buy these in the
+        # shop, so they never enter the pool - ahead of the inject force-admit
+        # (an unbuyable item must not be resurrected by a WIN-anchored inject).
+        if champion_is_melee and item_id in RANGED_ONLY_ITEM_IDS:
             continue
         forced = item_id in inject
         if not forced:
@@ -757,6 +840,9 @@ def rank_items(
         only_ids=only_ids,
         exclude_names=exclude_names,
         cost_ceiling=cost_ceiling,
+        # Ranged-only purchasability gate: drop Runaan's (+ alias) when the
+        # champ is melee - the in-game shop blocks the purchase (2026-07-02).
+        champion_is_melee=_champion_is_melee(champ_rec),
     )
 
     ranked: list[RankedItem] = []
