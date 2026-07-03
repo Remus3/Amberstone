@@ -1331,6 +1331,28 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.177.0 (R70, 2026-07-03 - Hollow Radiance Desolate champion-takedown eruption
+on the DSV2 seam). Meraki 16.13.1 item 6664 passive "Desolate": "Scoring a
+takedown against an enemy champion within 3 seconds of damaging them causes a
+larger eruption that deals [hollow_ibase*4 = 60] (+ [hollow_ihp*4 = 4]% bonus
+health) magic damage ... within 500 units" (= 400% of Immolate, base 15 + 1%
+bonus HP). Small schema lift on the EXISTING default-OFF assume_takedown seam
+(Hubris/Collector precedent): two END-appended ItemEffect fields
+takedown_eruption_base / takedown_eruption_bonus_hp_ratio, pure helper
+effects.total_takedown_eruption_damage, and a compute_burst_damage fold that
+credits the eruption ONCE as MAGIC damage (MR-mitigated x mode_mult x
+magic_amp - the exact DSV6 assume_magic_burst routing) sourced from
+ctx.caster_bonus_hp; new BurstResult field takedown_eruption_damage + note
+line. Pins: 6664 (SR) + Arena mirror 226664 (60.0 / 0.04; 226664 has no own
+Meraki entry - mirror convention); no ARAM 326664 in the 16.13.1 pool
+(guarded absent, R69 323152 precedent). The 200% NON-champion kill eruption
+stays unmodeled (farm math, not fight math - registry notes document it).
+R59 doctrine holds: burst-only, compute_dps untouched (the Immolate
+PeriodicProc keeps the sustained aura tick - no double-count). Sunfire 3068 +
+Hubris/Collector guarded zero-field. Flag OFF byte-identical. TDD RED-first
+(test_item_takedown_eruption_r70.py, 24 tests RED 17F -> GREEN). 1.176.0 ->
+1.177.0.
+
 1.176.0 (R69, 2026-07-03 - Rocketbelt/Everfrost item-ACTIVE magic burst on the
 DSV6 seam). Meraki 16.13.1 item 3152 Hextech Rocketbelt active "Supersonic":
 dash + rocket arc dealing "100 (+ 10% AP) magic damage ... once per cast";
