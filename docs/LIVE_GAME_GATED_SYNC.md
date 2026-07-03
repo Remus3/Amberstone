@@ -139,7 +139,9 @@ no row carries it.
   the eyeball (POST the live level + confirm the early-vs-late ramp) stays gated. DS restart
   on flip. SOURCE: ledger 2026-06-22 + 2026-06-30 below.
 - B13. (PRACTICE-SR) R30/DSV6 `assume_magic_burst` flip (Luden's/Stormsurge/Malignance on an
-  AP burst build ranks its on-cast item higher; compute_ability_dps deliberately inert). DS
+  AP burst build ranks its on-cast item higher; compute_ability_dps deliberately inert; R69
+  2026-07-03 added item ACTIVES Rocketbelt 3152/223152 + Everfrost 446656 to the same seam -
+  flip check should also confirm an active-holder's burst rank reads sane). DS
   restart. SOURCE: ledger 2026-06-27 below.
 - B14. (PRACTICE-SR) R35 `apply_passive_mitigation` + snapshot flip (Galio/Garen/MasterYi
   percent-DR ranks EHP/defensive items higher; rank-4 + 0.3-uptime assumptions read sane).
@@ -1371,7 +1373,10 @@ over normal play across later cycles, not in these sessions.
 - 2026-06-27 R30 / DSV6 on-cast magic-burst seam (`compute_burst_damage(assume_magic_burst=)`, ENGINE 1.152.0,
   default-OFF). Item on-cast magic procs the per-cast burst combo loop never credited
   (`agents/daemon_slayer/_effects_data.py` magic_burst_base/magic_burst_ap_ratio: Luden's Echo 6655 75+5%AP,
-  Stormsurge Squall 4646 125+10%AP, Malignance Hatefog 3118 180+15%AP one ult-zone). compute_burst_damage stays
+  Stormsurge Squall 4646 125+10%AP, Malignance Hatefog 3118 180+15%AP one ult-zone; EXTENDED R69 / ENGINE
+  1.176.0 2026-07-03 with item ACTIVES riding the same seam - Hextech Rocketbelt 3152/223152 Supersonic
+  100+10%AP, Everfrost Arena 446656 Glaciate 300+85%AP - so a flip validation now also assumes the player
+  presses the active inside the burst window). compute_burst_damage stays
   byte-identical until `assume_magic_burst=True`, when sum(base + ap_ratio*ap) is credited MR-mitigated (MAGIC
   routing) x mode_mult x magic_amp into total_burst (after the rune + execute layers). compute_ability_dps takes
   the same kwarg but is DELIBERATELY INERT (a one-shot magnitude has no place in a per-second metric; compute_dps
