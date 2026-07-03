@@ -4,6 +4,22 @@
 
 ---
 
+# 2026-07-02 (LIVE-GATED DRAIN - practice SR + ARAM Mayhem; prep-audit + a real ranged-only build bug found live)
+
+Operator-played drain of `docs/LIVE_GAME_GATED_SYNC.md`. Probed no game -> ran the headless PREP phase first: an orchestrated 4-slice read-only audit found the headless prep surface FULLY EXHAUSTED (all 7 OQ17/OQ18 DS routes LIVE-VERIFIED WIRED-OK @1.171.0 via differential POST probes; doc rows current; Phase-D B2 = defer-needs-game). Committed the prep-audit doc sync (`28edea2a`) + cleaned 2 stale worktree-wf branches (content proven-superseded in main).
+
+Then the operator played 2 games:
+- **Practice SR (Kai'Sa champ-select -> Irelia in-game):** A1 PASS (RuneWriter lockfile-rotation reconnect after a mid-session League restart, 27f99a95 proven live), A7 PASS (PRACTICETOOL mode-correct rune push), B21 PASS (drake events Fire@403s/Earth@722s), B22 PASS (inhib@702s), B8/R7 eyeball (Irelia +23% at full stacks = sane).
+- **ARAM Mayhem q2400 KIWI (Viego):** A7/E12-L2 PASS (KIWI mode-correct + re-detect on bench-swap), A6 (fast bench-swap re-push), C13 (enemy_spells captured vs a real comp).
+
+**FINDING 1 (real bug, fix built + code-gated, DS-batch DEFERRED to game-end):** DS /rank recommends the RANGED-ONLY Runaan's Hurricane (3085) for MELEE champs - reproduced live on Irelia (#5 SR) + Viego (#8 ARAM). rank.py had no purchasability gate (B1 apply_melee_aa_gate only zeroes bolt DPS, default-OFF). Root-cause fix built in worktree `worktree-agent-abebb195a5e02b357`: `RANGED_ONLY_ITEM_IDS={"3085","223085"}` gated at the shared `_filter_candidates` chokepoint across all 7 ranker lanes; melee=attackrange<=250 (fails CLOSED); 15 RED->GREEN tests; ruff clean; no frozen files; RFC 3094 / Statikk 3087 verified NOT restricted (kept). Backfill correctly none (ephemeral compute). NEXT-SESSION / GAME-END: merge -> ENGINE 1.171.0->1.172.0 -> HZ-B regen -> Share sync -> DS :8893 restart -> full dual suite -> live-verify Viego /rank excludes 3085. Deferred mid-game to avoid a coach blip + CPU contention with the live ARAM game.
+
+**FINDING 2 (needs settled-state confirm):** `cs_archetype_pick` looked STALE in ARAM champ-select (stuck on "Kalista" while the champ cycled Veigar->Viego->Swain; locked=234 Viego). Re-probe on a settled champ-select before root-causing.
+
+Full drain record + still-open rows (A2 spell-push, A8 panels, B1 build-chooser, B23/B24 overlay, E1/E2 physical, C2 comp_verdict) in `docs/LIVE_GAME_GATED_SYNC.md` live-flip ledger (2026-07-02 DRAIN SESSION entry). Verifier subagent was running the fix's dual suite at wrap; fold its verdict in at game-end before the merge.
+
+---
+
 # 2026-07-02 (OQ22 LOOP - 4-slice headless validation + comp-verdict inverted-label FIX; ENGINE-IMPACT NONE)
 
 Loop directive OQ22 executed by this session (head 5d6e50ae; commit `9be09e44`, LEDGER 746). Validate the 4 items the 2026-07-01 resync moved OFF the live-gated checklist, via 4 disjoint parallel read-only analysis subagents (orchestrator = sole merger + verifier; NO worktree - read-only analysis mutates 0 files, OQ20 precedent). Each slice's falsifiable claims re-checked against ground truth (independent code read + live SQL over rewind_history.db) BEFORE its verdict was accepted.
