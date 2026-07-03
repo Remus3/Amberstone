@@ -216,6 +216,13 @@ no row carries it.
   shield re-ranks sanely (a squishy-vs-Shieldbow burst reads lower; the order stays sane)
   before defaulting ON. Shieldbow is the representative magnitude; DS restart on flip. SOURCE:
   docs/LEDGER.md item 743; ledger 2026-07-02 below.
+- B43. (REAL-SR) R60 `assume_hsp_amp` flip (wielder Heal/Shield Power amp): in a real game where
+  the player builds an HSP item (Redemption 3107 / Mikael 3222 / Ardent 3504 / Moonstone 6617 /
+  Staff of Flowing Water 6616) ALONGSIDE an own item self-shield (Sterak's 3053 / Shieldbow 6673 /
+  Maw 3156) or a REGEN-kit champ, eyeball that the EHP shield pool (`shield_amp_mult`) and the
+  REGEN sustain score amp by `1 + summed_hsp` sanely and the build re-rank stays sensible before
+  defaulting ON. Vamp-only sustain must stay unmoved (HSP does not amp vamp). DS restart on flip.
+  SOURCE: docs/LEDGER.md item 745; ledger 2026-07-02 below.
 - B31. (REAL-SR) DSP5 summoner-spell plumb + eyeball: player's + ENEMY's live summoner sets
   into `dsp_live_consumers.summoner_fight_adjustments`; re-anchor wiki magnitudes at flip.
   HTTP TRANSPORT WIRED OQ18 (NEW POST `/summoner-fight-adj` route reads the producer;
@@ -608,6 +615,15 @@ over normal play across later cycles, not in these sessions.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-07-02 R60 `assume_hsp_amp` shipped default-OFF (ENGINE 1.171.0, feat commit `8eefc6ec`):
+  wielder Heal/Shield Power amp. `ehp.compute_ehp` folds `1 + summed_heal_shield_amp_pct` into the
+  sibling `shield_amp_mult`, amplifying the wielder's OWN item self-shields (Sterak's / Shieldbow /
+  Maw) alongside Spirit Visage; `sustain.compute_sustain` (+ optional `item_ids`) amps the REGEN-kind
+  kit self-heal only (vamp is not HSP-affected -> vamp-only champ byte-identical even ON). NEW
+  `_hsp_amp.sum_wielder_hsp_pct` sums HSP additively from `enchanter_items.json` (the hps.py source).
+  Byte-identical OFF (verifier-proven omitted-vs-False equality; hsp_pct 0.0). Distinct from R59
+  (target-side Lifeline shield; this is the WIELDER-side heal/shield stat). Flip gated as B43
+  (REAL-SR HSP-item + self-shield / REGEN-kit re-rank eyeball).
 - 2026-07-02 OQ20 de-book probes (docs-only; no engine / flag / code change): F5 + D1
   DISCHARGED without a game, moved to "Not actually live-gated". F5 = rewind_history.db
   `matches` queue_id=420 is 516 rows with `match_id` 100 pct populated (there is NO `game_id`
