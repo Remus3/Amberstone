@@ -48,6 +48,7 @@ from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
     SORT_KEYS,
+    _champion_is_melee,
     _filter_candidates,
     _is_terminal,
     strip_arena_trinkets,
@@ -905,6 +906,9 @@ def rank_items_by_hybrid(
         # (e.g. 6000g Void Immolation 223069) the absolute weighted-delta floats
         # to rank-1 on the bruiser scorer. None -> byte-identical pool.
         cost_ceiling=cost_ceiling,
+        # Ranged-only purchasability gate: drop Runaan's (+ alias) for a melee
+        # bruiser - the shop blocks the purchase (2026-07-02).
+        champion_is_melee=_champion_is_melee(champ_rec),
     )
 
     ranked: list[HybridRankedItem] = []

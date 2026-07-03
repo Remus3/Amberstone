@@ -34,7 +34,13 @@ from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
 from .dps import compute_dps
-from .rank import MODE_MAP_ID, _filter_candidates, _is_terminal, strip_arena_trinkets
+from .rank import (
+    MODE_MAP_ID,
+    _champion_is_melee,
+    _filter_candidates,
+    _is_terminal,
+    strip_arena_trinkets,
+)
 from .stats import clamp_level
 
 DEFAULT_BEAM_WIDTH = 10
@@ -322,6 +328,12 @@ def beam_search_build(
         budget=None,
         include_components=include_components,
         only_ids=only_ids,
+        # Ranged-only purchasability gate: drop Runaan's (+ alias) when the
+        # beam is searching a melee champ's build - the shop blocks the
+        # purchase (2026-07-02).
+        champion_is_melee=_champion_is_melee(
+            snapshot.champions.get(str(champion_id))
+        ),
     )
     pool: list[tuple[str, dict, int, bool]] = [
         (iid, rec,
