@@ -141,7 +141,7 @@ class TestBurstSeam(unittest.TestCase):
 
 class TestEnginePin(unittest.TestCase):
     def test_engine_version(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.172.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.173.0")
 
 
 if __name__ == "__main__":
