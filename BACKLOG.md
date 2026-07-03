@@ -182,3 +182,14 @@ Full artifact: `docs/COMPETITOR_LIFT_2026-06-30_GUIDE_SITE_Q.md`. Guide Site Q i
 
 **CLOSED (covered / not-distinct):**
 - F2 theorycraft stat-totals (shipped: ds-statcheck, RC's is engine-resolved not a flat item sum), F4 Pros/Cons prose (no author in a solo tool; the DS Profile 8-axis radar covers strengths data-driven), F5 situational-items-with-reasoning (the enemy-reactive build_order + anti-tank hint A3 + damage_mix already deliver the substance), F6 counters / tier list (Aggregator N lift + generic-aggregator CLOSEDs; not Guide Site Q-distinct).
+
+### Competitor lift teardown - 2026-07-03 (Aggregator H, Section 7b deep-dive, R71)
+
+Full artifact: `docs/COMPETITOR_LIFT_2026-07-03_AGGREGATOR_H.md`. Aggregator H tells its whole early/late power story with ONE correlational graph family (Winrate / Game Duration, server-baked inline Flot arrays, zero client math, no explicit early/late tag - the reader infers from slope). F1+F2 SHIPPED in-run: the per-champion filter on the Game Length tab (the `&champion=` param was already live on `/api/duration-winrate` but never sent by `web/js/panels/duration_winrate.js`) + a computed early/flat/late tendency chip (n-weighted half-vs-half winrate delta over non-null buckets) - presentation-only, JS/CSS slice.
+
+**FUTURE (worth noting; condition to act):**
+- **F3 snowball elasticity: WR by (K-D)@10/@20 (TOP candidate, MED)** - quantifies lead conversion per champion (steep = snowball-dependent, flat = comeback-capable). Raw data fully local: `data/rewind_history.db` `timeline_events` carries `event_type, timestamp_ms, killer_id, victim_id` (2954 matches, probed 2026-07-03); NO aggregator exists (only coach prose at `core/lead_projection.py:107`). Build = new `core/` aggregator mirroring `core/duration_winrate.py` (conn-injection seam, MIN_BUCKET_N gate, coarse bins <=-2..>=+2, `core/smoothed_rates.py` laplace shrink) + thin route + Build Insights row. Descriptive only - never fed into DS rank. Trigger: next Build Insights expansion.
+- **F5 personal learning curve: WR by nth game on champ (MED-LOW)** - order matches by `game_creation_ts`, bucket by cumulative game index ("first 10 vs last 10 Nasus games"). Gate on a champ-games histogram first - most champs are <20 games and the readout risks noise-as-signal even with shrink.
+
+**CLOSED (covered / boundary):**
+- F4 stat-vs-duration curves (RC's `core/perf_curve.py` ships gold/CS richer - win/loss split, which Aggregator H lacks), F6 inline-flat delivery pattern (RC discipline parity: precompute + route cache + sig-dedup + ADR-008), F7 correlational-vs-sim merge (DS default rank stays pure simulation - duration surfaces stay descriptive), global cross-player curve basis (single-player tool, deliberate non-goal - same stance as Aggregator B F3).
