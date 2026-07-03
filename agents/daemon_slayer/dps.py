@@ -1102,7 +1102,12 @@ def compute_dps(
     # to the per-hit AA display. A champion with no reflect entry adds 0 even with
     # the flag on. Live default-ON flip EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     if assume_passive_reflect:
-        from ._passive_reflect_overrides import reflect_entry, reflect_per_proc
+        from ._passive_reflect_overrides import (
+            _ITEM_REFLECT_NAMES,
+            item_reflect_entry,
+            reflect_entry,
+            reflect_per_proc,
+        )
 
         _rentry = reflect_entry(resolved.champion_id)
         if _rentry is not None:
@@ -1131,6 +1136,52 @@ def compute_dps(
                         f"on-being-hit reflect {_rentry.attribute} folded to DPS: "
                         f"+{_reflect_dps:.1f} DPS ({_rentry.damage_type}, "
                         f"1 incoming basic / {_rcad:.2g}s; assume_passive_reflect)"
+                    )
+
+        # R68 (1.175.0): ITEM-keyed Thorns reflect (Thornmail 3075 + pool
+        # mirrors 223075/323075, Bramble Vest 3076) on the SAME seam, folded
+        # AFTER the champion stream (Rammus W and item Thorns stack in game
+        # as independent streams). The dedup accessor credits the Thorns
+        # unique passive ONCE - the strongest owned thorn item at the
+        # caster's bonus armor (build armor above base; the same
+        # caster_bonus_armor split computed for Darksteel Talons above).
+        # Incoming-triggered stream -> NOT added to per_attack_on_hit_damage.
+        # The item registry is only read under the flag, so default-OFF
+        # stays byte-identical.
+        _ipick = item_reflect_entry(resolved.item_ids, caster_bonus_armor)
+        if _ipick is not None:
+            _iid, _ientry = _ipick
+            _iproc = reflect_per_proc(
+                _ientry,
+                caster_total_armor=float(stats.get("armor", 0.0)),
+                caster_total_mr=float(stats.get("mr", 0.0)),
+                caster_bonus_armor=caster_bonus_armor,
+            )
+            if _iproc > 0.0:
+                if _ientry.damage_type == "PHYSICAL":
+                    _imit = _armor_factor(target_armor_eff)
+                elif _ientry.damage_type == "TRUE":
+                    _imit = 1.0
+                else:  # MAGIC - mitigated by the attacker's MR, plus magic amp.
+                    _imit = _armor_factor(target_mr_eff) * magic_amp
+                _icad = (
+                    _ientry.reflect_cadence_s
+                    if _ientry.reflect_cadence_s > 0.0
+                    else 1.0
+                )
+                _item_reflect_dps = _iproc * _imit * mode_mult * damage_amp / _icad
+                if _item_reflect_dps > 0.0:
+                    weighted_dps += _item_reflect_dps
+                    phase_dps = {
+                        p: v + _item_reflect_dps for p, v in phase_dps.items()
+                    }
+                    _iname = _ITEM_REFLECT_NAMES.get(_iid, _iid)
+                    notes.append(
+                        f"item {_ientry.attribute} reflect ({_iname} {_iid}) "
+                        f"folded to DPS: +{_item_reflect_dps:.1f} DPS "
+                        f"({_ientry.damage_type}, 1 incoming basic / "
+                        f"{_icad:.2g}s; unique passive counted once; "
+                        "assume_passive_reflect)"
                     )
 
     # R12 (1.149.0): all-source target-vulnerability mark seam. A vulnerability
