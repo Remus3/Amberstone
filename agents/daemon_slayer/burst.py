@@ -103,6 +103,7 @@ from .effects import (
     total_magic_burst_damage,
     total_stacked_ap,
     total_takedown_bonus_ad,
+    total_takedown_eruption_damage,
     total_target_bonus_hp_amp_multiplier,
 )
 from .engine import build_champion
@@ -367,6 +368,12 @@ class BurstResult:
     # SUBTRACTED from ``total_burst_damage``. 0.0 by default so the
     # assume_lifeline_shield=False path is byte-identical.
     target_lifeline_shield_absorbed: float = 0.0
+    # R70 (2026-07-03) - Hollow Radiance Desolate champion-takedown eruption
+    # (assume_takedown seam). The MR-mitigated 400%-Immolate eruption (60 +
+    # 4% caster bonus HP magic, Meraki 16.13.1), already folded into
+    # ``total_burst_damage``. 0.0 by default so the assume_takedown=False
+    # path is byte-identical - same convention as ``execute_finisher_damage``.
+    takedown_eruption_damage: float = 0.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -409,6 +416,7 @@ class BurstResult:
             "takedown_bonus_ad": self.takedown_bonus_ad,
             "execute_finisher_damage": self.execute_finisher_damage,
             "target_lifeline_shield_absorbed": self.target_lifeline_shield_absorbed,
+            "takedown_eruption_damage": self.takedown_eruption_damage,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -532,7 +540,11 @@ def compute_burst_damage(
     AD (15 + 2 * ``_ASSUMED_TAKEDOWN_STACKS``) raises both the AA per-hit and the
     AD-ratio ability damage; (2) the Collector execute is credited as a
     kill-state finisher of 5% target max HP TRUE damage (``execute_finisher_damage``,
-    folded into ``total_burst_damage``) when a ``target_max_hp`` is supplied.
+    folded into ``total_burst_damage``) when a ``target_max_hp`` is supplied;
+    (3) R70: the Hollow Radiance Desolate champion-takedown eruption (400% of
+    Immolate = 60 + 4% caster bonus HP, Meraki 16.13.1) is credited ONCE as
+    MR-mitigated MAGIC damage (``takedown_eruption_damage``, folded into
+    ``total_burst_damage``); the 200% non-champion eruption stays unmodeled.
     Death's Dance contributes nothing on this axis - its takedown payoff is the
     Defy heal, valued on the survivability axis (ehp.py, ENGINE 1.57.0).
 
@@ -994,6 +1006,36 @@ def compute_burst_damage(
             execute_finisher_damage = execute_pct * target_max_hp
             total_burst += execute_finisher_damage
 
+    # R70 (2026-07-03): Hollow Radiance Desolate champion-takedown eruption.
+    # assume_takedown=False -> takedown_eruption_damage stays 0.0, total_burst
+    # unchanged (byte-identical). When True, the 400%-Immolate eruption (60 +
+    # 4% caster bonus HP magic, Meraki 16.13.1 - takedown within 3s of
+    # damaging, 500 units) lands ONCE in the burst window as MAGIC damage:
+    # MR-mitigated (magic routing) + mode_mult + magic_amp - the exact
+    # mitigation shape the DSV6 assume_magic_burst seam applies below.
+    # Caster bonus HP comes from ctx.caster_bonus_hp (AbilityContext.
+    # from_build's stats/base_stats split: max(0, caster_max_hp -
+    # caster_base_hp) - the same signal the Immolate PeriodicProc reads);
+    # the ctx replaces above only touched ap/bonus_ad, so the HP signal is
+    # unchanged. Applied after the rune layer so keystone amps don't amp an
+    # item proc. compute_dps deliberately does NOT credit it (R59 doctrine:
+    # a one-trigger payoff is not a sustained-DPS rate) and the Immolate
+    # PeriodicProc keeps carrying HR's sustained aura tick, so there is no
+    # double-count. The 200% NON-champion eruption stays unmodeled.
+    takedown_eruption_damage = 0.0
+    if assume_takedown:
+        eruption_raw = total_takedown_eruption_damage(
+            item_effects, ctx.caster_bonus_hp
+        )
+        if eruption_raw > 0.0:
+            eruption_mit = _mitigation_factor(
+                "MAGIC", target_armor_eff, target_mr_eff
+            )
+            takedown_eruption_damage = (
+                eruption_raw * mode_mult * magic_amp * eruption_mit
+            )
+            total_burst += takedown_eruption_damage
+
     # DSV6 (1.152.0): on-cast magic-burst seam. assume_magic_burst=False ->
     # magic_burst_damage stays 0.0, total_burst unchanged (byte-identical). When
     # True, the item on-cast magic procs the per-cast combo loop never credited
@@ -1278,6 +1320,12 @@ def compute_burst_damage(
             f"Collector execute finisher +{execute_finisher_damage:.0f} true "
             f"(5% of {target_max_hp:.0f} target max HP, kill-state seam)"
         )
+    if takedown_eruption_damage > 0:
+        notes.append(
+            f"Hollow Radiance Desolate eruption +{takedown_eruption_damage:.0f} "
+            "magic (400% Immolate on champion takedown, assume_takedown "
+            "kill-state seam)"
+        )
     if magic_burst_damage > 0:
         notes.append(
             f"magic on-cast burst +{magic_burst_damage:.0f} "
@@ -1322,6 +1370,7 @@ def compute_burst_damage(
         takedown_bonus_ad=takedown_bonus_ad,
         execute_finisher_damage=execute_finisher_damage,
         target_lifeline_shield_absorbed=target_lifeline_shield_absorbed,
+        takedown_eruption_damage=takedown_eruption_damage,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
