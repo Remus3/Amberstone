@@ -507,12 +507,20 @@ no row carries it.
 
 ## Drain plan 2026-07-01 (operator prefs: practice SR / ARAM Mayhem / Arena only if needed)
 
-PREP (headless, before session 1): plumb the ENGINE-ONLY seams across /rank + client (DSV2/3/4,
-DSP4, DSP8, B1, R50/R51/R53, Phase-D) or lean on `live_flip_eyeball.py` OFF-vs-ON dumps; wire
-the DSP5/6/7 + P3.2 consumers to live inputs; relaunch rc-shell (E3 - picks up the P4.x MAIN
-logic); confirm RC-LiveFlipWatcher armed; regen HZ-B tables to 1.166.0; F5 (rewind game_id) +
-D1 (Arena fixture coverage) PROBED + DISCHARGED headless (OQ20, 2026-07-02) - neither books a
-game; both moved to "Not actually live-gated".
+PREP (headless, before session 1) - STATUS 2026-07-02 (prep-audit; live-flip ledger below):
+HEADLESS PREP FULLY DISCHARGED - nothing headless remains before session 1. DONE: the ENGINE-ONLY
+seam transport is plumbed across /rank-assassin + /burst + /dps + /anti-tank (OQ17) plus the 3 NEW
+DSP5/6/7 routes (OQ18), and ALL 7 routes are LIVE-VERIFIED WIRED-OK on :8893 @ENGINE 1.171.0 via
+differential POST probes (2026-07-02) - so every live eyeball is now a pure flag flip and a failed
+eyeball signals a real scorer bug, NOT a wiring gap; RC-LiveFlipWatcher armed (Running); HZ-B tables
+regenerated + current @1.171.0 (all 173 champs, drift guard 6/6 green - the "to 1.166.0" target in
+the original line is superseded); F5 + D1 probed + discharged headless (OQ20) - neither books a
+game. STILL GATED (NOT headless, do NOT re-chase off-game): the DSP5/6/7 + P3.2 consumers need a
+LIVE game to feed real summoner/rune/ally inputs (GATED-LIVE-GAME); rc-shell E3 MAIN relaunch is a
+DESKTOP action (GATED-DESKTOP). Phase-D /rank exposure (B2) DEFERRED (needs-game): apply_passive_damage
+stays /dps-scoped per the settled R7/R12/OQ17 precedent, the 4 non-every-AA on_hit remainder needs
+net-new cadence math, per-stack assumed_stacks needs a live stack feed - none is a clean headless
+transport plumb and all three re-rank own-build output (unverifiable headless).
 
 SESSION 1 - PRACTICE TOOL SR (1 custom lobby + 1-2 practice games, one sitting).
 Champ-select (practice lobby): A8 panel captures, A1 LCU-push re-confirm (restart League
@@ -634,6 +642,28 @@ over normal play across later cycles, not in these sessions.
 ---
 
 ## Live-flip ledger (loop appends; newest first)
+
+- 2026-07-02 (PREP-AUDIT, no engine/flag/code change) live-gated-drain PREP ground-truth pass:
+  orchestrated 4-slice read-only audit (route-verify / prep-status / doc-currency / phase-d-spec).
+  VERDICT: the HEADLESS prep surface for the drain is FULLY EXHAUSTED (HEADLESS_ACTIONABLE_NOW = []).
+  All 7 OQ17/OQ18 DS :8893 POST routes LIVE-VERIFIED WIRED-OK @ENGINE 1.171.0 via differential POST
+  probes (handler file:line cited in the audit): /rank-assassin (DSV2/3/4 + DSP8 target_preset; an
+  invalid preset -> HTTP 422 enumerating valid presets, a valid preset shifts target resists
+  0/0 -> 22/30 and baseline_burst 186.0 -> 154.68), /burst (gate_target_hp_amp 200.88 -> 186.0,
+  gate_caster_hp_amp 186.0 -> 202.74, score_completion_runes rune_proc 0 -> 5), /dps
+  (apply_melee_aa_gate on melee Yasuo+Runaan 76.20 -> 39.56), /anti-tank (static 0.85 vs live-build
+  0.89), and the 3 NEW OQ18 routes /summoner-fight-adj + /enemy-rune-threat + /ally-protected-ehp
+  (all HTTP 200, non-zero + flag-responsive). Consequence: operator live eyeballs WILL fire - a
+  failed eyeball now signals a real scorer bug, not a transport gap. Doc rows CURRENT + correctly
+  tagged (B41/B42/B43 = R58/R59/R60 present with correct env tags; R61/R62 add no gated row; the
+  OQ22 comp-verdict SOUNDNESS row already discharged). Phase-D B2 = DEFER-NEEDS-GAME (not a clean
+  transport plumb - apply_passive_damage is deliberately /dps-scoped, the on_hit remainder needs
+  net-new cadence math, assumed_stacks needs a live stack feed; own-build re-ranks are unverifiable
+  headless). Tally refresh (APPEND only - the frozen 2026-07-01 SYNC headline of 108/86 stays
+  immutable per feedback_no_history_rewrite): open NOW = 109 = 87 one-shot (+3 for B41/B42/B43) + 14
+  accrual + 8 parked/HOLD. NEXT: the entire remaining drain is live-game / desktop - the operator
+  plays the drain-plan sessions (practice SR -> real SR -> ARAM Mayhem -> Arena); the only off-game
+  task left is the rc-shell E3 MAIN relaunch on the Legion desktop.
 
 - 2026-07-02 R60 `assume_hsp_amp` shipped default-OFF (ENGINE 1.171.0, feat commit `8eefc6ec`):
   wielder Heal/Shield Power amp. `ehp.compute_ehp` folds `1 + summed_heal_shield_amp_pct` into the
