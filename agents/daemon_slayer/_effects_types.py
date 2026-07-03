@@ -792,3 +792,26 @@ class ItemEffect:
     # construction + every existing test).
     magic_burst_base: float = 0.0
     magic_burst_ap_ratio: float = 0.0
+    # R70 (2026-07-03): Hollow Radiance "Desolate" champion-takedown eruption
+    # on the DSV2 takedown / kill-state seam. Meraki 16.13.1 item 6664:
+    # "Scoring a takedown against an enemy champion within 3 seconds of
+    # damaging them causes a larger eruption that deals [hollow_ibase*4 = 60]
+    # (+ [hollow_ihp*4 = 4]% bonus health) magic damage ... within 500 units"
+    # (= 400% of Immolate, whose base is 15 + 1% bonus HP). These fields
+    # carry that one-trigger eruption magnitude: magic damage =
+    # ``takedown_eruption_base + takedown_eruption_bonus_hp_ratio *
+    # caster_bonus_hp``, MR-mitigated by the consumer. Read ONLY when the
+    # consumer runs with ``assume_takedown=True`` - default 0.0 keeps every
+    # existing item + caller byte-identical (the seam is inert until both the
+    # data field AND the flag are set). Read ONLY by the BURST scorer
+    # (compute_burst_damage) per the R59 doctrine: a one-trigger takedown
+    # payoff does NOT map to a sustained-DPS rate, so compute_dps
+    # deliberately does not credit it. No double-count with the Immolate
+    # PeriodicProc: that models HR's sustained aura tick; the eruption is a
+    # separate on-takedown event valued once in the burst window. The
+    # smaller 200% NON-champion eruption (minion/monster kill) stays
+    # unmodeled - farm math, not fight math. Appended at the END per the
+    # dataclass convention (a mid-class insert breaks positional
+    # construction + every existing test).
+    takedown_eruption_base: float = 0.0
+    takedown_eruption_bonus_hp_ratio: float = 0.0
