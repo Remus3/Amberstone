@@ -301,7 +301,11 @@ def comp_verdict(state: dict) -> dict:
                 kw = _AP_VARIANT_KW if detail == "ap" else _AD_VARIANT_KW
                 v = _find_variant(variants, current_variant, kw)
                 if v:
-                    reason = (f"All-{detail.upper()} comp - the {v.get('label') or v['key']} "
+                    # `detail` is the MISSING type; the comp's excess (mono) type
+                    # is its opposite. Label the comp by the excess it has, not
+                    # the type it lacks (LGS2/OQ22 inverted-label fix).
+                    excess = "AD" if detail == "ap" else "AP"
+                    reason = (f"All-{excess} comp - the {v.get('label') or v['key']} "
                               f"variant adds {'magic' if detail == 'ap' else 'physical'} damage.")
                     return _result(True, "variant", "", v["key"], reason, "medium", f)
             if gap == "sustain":
@@ -330,7 +334,10 @@ def _swap_reason(gap: str, detail, pick: str, f: dict) -> str:
         return (f"Only {f['ranged_count']}/{f['n']} ranged - swap to {pick} "
                 f"for poke and disengage range.")
     if gap == "damage":
-        return f"All-{str(detail).upper()} comp - swap to {pick} to mix the damage type."
+        # `detail` is the MISSING type; label the comp by its excess (mono) type,
+        # which is the opposite (LGS2/OQ22 inverted-label fix).
+        excess = "AD" if detail == "ap" else "AP"
+        return f"All-{excess} comp - swap to {pick} to mix the damage type."
     if gap == "frontline":
         return f"No frontline - swap to {pick} to soak and engage."
     if gap == "engage":

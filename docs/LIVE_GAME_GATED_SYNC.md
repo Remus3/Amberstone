@@ -459,10 +459,24 @@ no row carries it.
   SOURCE: docs/LEDGER.md item 732.
 - Comp-verdict SOUNDNESS check (Vex->Garen "all-AD comp - mix damage type" reads inverted):
   code-logic review of `core/aram_comp_verdict.py`. SOURCE: LGS2 findings below.
+  (OQ22 DISCHARGE 2026-07-02: BUG-CONFIRMED + FIXED headless - the reason label named the
+  DEFICIT type not the excess/mono type; both sites `core/aram_comp_verdict.py:304`/`:333`
+  now label by excess (`excess = "AD" if detail == "ap" else "AP"`), 3 TDD regression tests.
+  NOT a flip - deterministic comp engine, plain presentation bug. Full record:
+  docs/research/OQ22_headless_validations.md S1.)
 - champ_select pickban-DB flip counter-quality validation (headless vs the rewind corpus).
   SOURCE: ROADMAP.md:55.
+  (OQ22 2026-07-02: CORPUS-TOO-THIN - rewind is 2954 matches but only 660 SR-classic; sampled
+  pairs median n=2.5, max 7, pooled counter win-rate 49.5% = coin flip; the single densest SR
+  pair is 24 games, below significance. Corpus cannot validate the table. FLIP STAYS
+  operator-gated. docs/research/OQ22_headless_validations.md S2.)
 - ability_hps v2 wiring validation vs real enchanter BUILD data (rewind corpus). SOURCE:
   ROADMAP.md:72.
+  (OQ22 2026-07-02: SUBSTRATE-SOUND-DEFERRED - the BASE ability-HPS fold-in is ALREADY live
+  (`agents/daemon_slayer/hps.py:620-640`); ROADMAP:72 prose is stale. Only the
+  `assume_missing_hp_heal_amp` FLAG (hps.py:499/:828 default OFF) remains, correctly gated =
+  the R5 heal-amp seam. FUTURE: enchanter registry omits 5 corpus-proven winners (Dream Maker/
+  Dawncore/Shurelya/Seraph/Luden). FLIP STAYS operator-gated. OQ22 S3.)
 - item 211 seven residual orphan rows (1640/1633/1519/1518/1517/1506/1487): needs live RC +
   the Riot key + an operator per-row decision - no game. SOURCE: ROADMAP.md:82.
 - UI scale v2.1 pages #11/12/13 + item 212(b) chooser-row captures: the ui_mock/recon.py
@@ -475,6 +489,12 @@ no row carries it.
   operator decision). SOURCE: RC_WORK_TRACKER.md:112.
 - Same-state Haiku-skip fidelity proof: try replay/logged-state validation first; only fall
   back to the C14/D5 live rows if logs prove insufficient. SOURCE: RC_WORK_TRACKER.md:123.
+  (OQ22 2026-07-02: PARTIAL-NEEDS-LIVE - debounce is `_coach_state_signature`
+  (`coaches/aram_coach.py:66`/arena_coach.py:73), default OFF, 45s hard-recall ceiling. Replay
+  of data/coach_trace.jsonl (126 ARAM fired-call rows, 1 match): 2/125 pairs collapsed, both
+  correct skips, ZERO false-skips - but fired-calls-only, vision fields (tower/augments/hp_packs)
+  unrecoverable, no Arena rows. Insufficient for a full headless proof; the C14/D5 live rows are
+  STILL needed. FLIP STAYS operator-gated. OQ22 S4.)
 - item-WPA build-insights view capture (`?ui_mock=1#build-insights` renders from the local
   corpus). SOURCE: BACKLOG.md:35.
 - WP-F4a ward-stack keep-vs-retire (operator decision; Match-V5 carries NO ward positions so
