@@ -1,20 +1,26 @@
 /* web/css/panels/panel_visibility.css
  *
- * RC2 E1: per-panel visibility gate + its settings card.
+ * RC2 E1 + QA slice B (2026-07-03): PER-MODE panel visibility gate + its
+ * settings card.
  *
  * Two halves:
  *   1. The GATE: a panel the operator hid for the current context carries
  *      data-pv-hidden="1" (set by panel_visibility.js per body[data-mode]).
- *      We collapse it to display:none. Scoped to the top-level game panels so
- *      we never touch a panel inside the overlay shell (overlay.css owns that).
- *   2. The SETTINGS CARD: a compact matrix of panels x {In-game, Out-of-game}
- *      checkboxes, reusing the existing .settings-card design tokens.
+ *      We collapse it to display:none.
+ *   2. The SETTINGS CARD: a SR / ARAM / ARENA / TFT / OUT-OF-GAME tab bar
+ *      over a one-column checkbox grid for the selected context, reusing the
+ *      existing .settings-card design tokens.
  */
 
 /* --- 1. the gate --------------------------------------------------------- */
-/* Only the in-game dashboard <main> panels opt in; the [data-shell="overlay"]
- * guard keeps the compact HUD immune to the full-dashboard prefs. */
-body:not([data-shell="overlay"]) main > .panel[data-pv-hidden="1"] {
+/* QA slice B widened the registry beyond the five <main> panels (the
+ * coach-decisions banner, last-match / archive team-context tables, the
+ * active-match spike / ward / ARAM-balance blocks), so the gate is no longer
+ * scoped to `main >`. Safe: data-pv-hidden is set ONLY by
+ * panel_visibility.js, which returns early on the overlay shell - the
+ * [data-shell] guard here is belt-and-suspenders so the compact HUD stays
+ * immune to the full-dashboard prefs even if a stale attribute survives. */
+body:not([data-shell="overlay"]) [data-pv-hidden="1"] {
   display: none !important;
 }
 
@@ -26,15 +32,48 @@ body:not([data-shell="overlay"]) main > .panel[data-pv-hidden="1"] {
   margin-bottom: var(--space-3);
 }
 
+/* Context tab bar (SR / ARAM / ARENA / TFT / OUT-OF-GAME). */
+#panel-visibility-card .pv-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+#panel-visibility-card .pv-tab {
+  min-height: var(--hit-min);
+  min-width: var(--hit-min);
+  padding: 0 var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm, 4px);
+  cursor: pointer;
+}
+
+#panel-visibility-card .pv-tab[aria-selected="true"] {
+  color: var(--clock);
+  border-color: var(--clock);
+}
+
+#panel-visibility-card .pv-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 #panel-visibility-card .pv-table {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
+/* One column per row: panel name + the selected context's checkbox. */
 #panel-visibility-card .pv-row {
   display: grid;
-  grid-template-columns: 1fr 7.5em 7.5em;
+  grid-template-columns: 1fr 7.5em;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) 0;
