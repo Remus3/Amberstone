@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-07-02 (OQ22 LOOP - 4-slice headless validation + comp-verdict inverted-label FIX; ENGINE-IMPACT NONE)
+
+Loop directive OQ22 executed by this session (head 5d6e50ae; commit `9be09e44`, LEDGER 746). Validate the 4 items the 2026-07-01 resync moved OFF the live-gated checklist, via 4 disjoint parallel read-only analysis subagents (orchestrator = sole merger + verifier; NO worktree - read-only analysis mutates 0 files, OQ20 precedent). Each slice's falsifiable claims re-checked against ground truth (independent code read + live SQL over rewind_history.db) BEFORE its verdict was accepted.
+
+- **S1 comp-verdict SOUNDNESS = BUG-CONFIRMED + FIXED (root-cause-first TDD, non-flip).** The LGS2 "All-AD comp - swap to Garen to mix the damage type" read inverted: `_swap_reason` (`core/aram_comp_verdict.py:333`) + the variant path (`:304`) labelled the comp by the DEFICIT type (`detail`, the MISSING type) instead of its EXCESS. Both now compute `excess = "AD" if detail == "ap" else "AP"`. Remedy TARGET was always right (`_bench_addresses` line 223), so ONLY the human label changed - zero ranking change; deterministic engine, NOT a DS live-flip seam = plain presentation bug. 3 RED-first regression tests reproduced the exact string; GREEN after; 102 passed across comp_verdict + 5 siblings. LIVE-VERIFIED post-restart (pid 16652 -> 15160): now returns "All-AP comp - swap to Garen...". Secondary FUTURE: Vex is DDragon-zeroed (`_damage_lean`=hybrid); `champion_info_overrides` resolution is a distinct enhancement.
+- **S2 pickban-DB counter-quality = CORPUS-TOO-THIN.** DB is a single itemless L9 1v1 `compute_matchup` proxy; rewind is 2954 matches but only 660 SR-classic; 50 sampled pairs median n=2.5 / pooled 49.5% (coin flip); densest SR pair 24 games. Cannot validate -> ROADMAP:55 flip stays operator-gated.
+- **S3 ability_hps v2 = SUBSTRATE-SOUND-DEFERRED.** The base ability-HPS fold-in is ALREADY live-wired (`agents/daemon_slayer/hps.py:620-640`) - ROADMAP:72 prose was stale (corrected in-run); only the `assume_missing_hp_heal_amp` flag (hps.py:499/:828 default OFF) remains = the R5 heal-amp seam, correctly gated. FUTURE: the 9-item enchanter registry omits 5 corpus-proven winners (Dream Maker/Dawncore/Shurelya/Seraph/Luden).
+- **S4 same-state Haiku-skip = PARTIAL-NEEDS-LIVE.** Debounce `_coach_state_signature` (aram_coach.py:66 / arena_coach.py:73) default OFF, 45s recall ceiling; coach_trace.jsonl replay (126 ARAM fired-call rows, 1 match) = 2/125 same-sig pairs, both correct skips, 0 false-skips - BUT fired-calls-only + vision fields unrecoverable + no Arena rows -> insufficient headless proof; C14/D5 live rows still needed. Flip stays gated.
+- **NO FLIP FLIPPED.** Verdicts -> `docs/research/OQ22_headless_validations.md`; 4 LIVE_GAME_GATED_SYNC.md rows annotated (S1 DISCHARGE); ORCHESTRATION_PLAN OQ22 DONE + Findings log; ROADMAP:72 corrected. Full RC suite **10444 passed / 2 skipped / 193 subtests / 0 fail** (RC-side only; DS suite unaffected, no DS bounce / Share sync). Frozen files untouched.
+
+---
+
 # 2026-07-02 (OQ21 LOOP - resync doc-hygiene sweep + the OQ14 gap; docs-only, no engine/flag/code)
 
 Loop directive OQ21 executed by this session (head ca131150; commit `<this commit>`, LEDGER 744). Apply the `docs/LIVE_GAME_GATED_SYNC.md` "Doc hygiene follow-ups (2026-07-01 sweep)" (a)-proposals + append the missed OQ14 Item Shaper overlay-capture row. **PREMISE-CHECK first:** the gemini digest line numbers were unreliable, so every prune target was re-derived from the AUTHORITATIVE source spec (the LIVE_GAME_GATED_SYNC.md section itself) - it caught that a raw ROADMAP :90-108 range-prune would have deleted OPEN item 98 + the Arena-1750 don't-redo anchor.
@@ -31,16 +43,3 @@ Loop directive OQ19 executed by this session (head 12d9de2f; commit `221922c5`, 
 - **Implemented main-thread (R9 inline):** deterministic single-slice data regen + one guard test + docs, no disjoint-slice parallelism; the directive's integrity control (verifier-gate, step 4) honored via the read-only `verifier` subagent.
 - **Handoff:** the HZ-C1 live consumer flip (read these tables at coach request time instead of Haiku / live :8893) stays operator-gated behind real-game validation (do-not-flip-blind).
 - Frozen files untouched. server.py untouched (pure data + one test).
-
----
-
-# 2026-07-02 (OQ18 LOOP - live-input wiring across the DS HTTP boundary; ENGINE 1.168.0 -> 1.169.0)
-
-Loop directive OQ18 executed by this session (head 3d7ce104; commit `3a96c0e3`, LEDGER 740). Wire the producer-only-orphan live inputs across the :8893 HTTP routes so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). **NO engine-math file changed - server.py only + version stamp** (both `compute_antitank(level=)` + `compute_antitank_live` already accepted the args; OQ18 is pure transport - the directive's "changes live math" framing = the NEW capability, not a math edit).
-
-- **Ground-truth first (grep-before-scaffold):** ramp-seeded anti-tank champs (Aatrox/Brand/KSante/Mordekaiser/Ornn/Renata/Skarner/Urgot/Zed/Zeri) are DISJOINT from the P3.2 seeded champs (Gwen/Vayne) -> the level-ramp seam never perturbs existing P3.2 tests; Heal 7 / Ignite 14 / PtA 8005 / Janna granter all verified against source before the test was written.
-- **Scope call:** kept the two anti-tank seams ORTHOGONAL at the route (`item_ids` -> compute_antitank_live P3.2 AP/AD; `level` -> compute_antitank ramp) - NOT coupled inside compute_antitank_live, which would break its "naked build byte-identical to static" contract for ramp champs.
-- **Wired (server.py):** /anti-tank +level (R17/R39 ramp, B12) +item_ids/augments (P3.2 live build, B4); 3 NEW additive routes /summoner-fight-adj (DSP5/B31) + /enemy-rune-threat (DSP6/B32) + /ally-protected-ehp (DSP7/B33). Every input DEFAULT-OFF/empty -> byte-identical (test-pinned).
-- **TDD** test_oq18_route_seam_transport.py RED 9/11 -> GREEN 11/11. **Verifier CONFIRM 7/7 + byte-identical TRUE.** ENGINE 1.169.0 (pins 108/95, 0 stray) + Share --check green 395 files + DS :8893 bounce (pid 6332 -> 1.169.0). Dual suite DS 7774 / RC 10434, 0 real fail (the RC "1 failed" = live-integration engine_version anchor, GREEN post-bounce - identical to OQ17). Drift guard test_docs_daemon_slayer_drift CAUGHT the missing routes + stale banner mid-run.
-- **Handoff:** client-helper emit (core/daemon_slayer_client.py typed helpers for the new routes); the default-ON consumer half (a survivability/draft scorer that CALLS these producers with the live set). Live plumbs stay gated -> LIVE_GAME_GATED_SYNC B31-B33 / B4 / B12 (headless-prep-done).
-- Frozen files untouched. CI green baseline held.
