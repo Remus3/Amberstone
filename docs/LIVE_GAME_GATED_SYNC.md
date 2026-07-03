@@ -150,10 +150,13 @@ no row carries it.
 - B16. (PRACTICE-SR) R46 `assume_passive_health_stacks` (Sion W / Cho'Gath R / Swain P;
   stacks farmable on minions in practice tool); ideally later replace the assumed-stack
   curve with a live stack feed. DS restart. SOURCE: ledger 2026-06-30 below.
-- B17. (PRACTICE-SR) R49 `assume_passive_reflect` (Rammus W): practice-tool BOTS do attack,
-  so the 1.0s cadence + 3.0s window assumptions are exercisable; ranking-vs-real-comp is
-  the stricter read (re-check in the Mayhem game). DS restart. SOURCE: ledger 2026-06-30
-  below.
+- B17. (PRACTICE-SR) R49 `assume_passive_reflect` (Rammus W; R68 ENGINE 1.175.0 adds the
+  ITEM Thorns reflect on the SAME seam - Thornmail 3075 + pool mirrors 223075/323075 +
+  Bramble Vest 3076, unique-passive deduped, flat + 10% caster BONUS armor magic;
+  Grievous Wounds not modeled): practice-tool BOTS do attack, so the 1.0s cadence + 3.0s
+  window assumptions are exercisable for BOTH the champion and item streams;
+  ranking-vs-real-comp is the stricter read (re-check in the Mayhem game). DS restart.
+  SOURCE: ledger 2026-06-30 below.
 - B18. (PRACTICE-SR) R51 `gate_target_hp_amp` per-instant consumer (dummy HP is settable) -
   per-instant / stepped scenario eval, NOT a blind burst-scorer flip. Route transport WIRED
   OQ17 (/burst reads it + `target_current_hp_pct`; ENGINE 1.168.0). SOURCE: ledger
