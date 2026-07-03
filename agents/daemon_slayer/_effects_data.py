@@ -1669,11 +1669,22 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3152",
         name="Hextech Rocketbelt",
         defensive_only=True,
-        # Active: dash + arc of 7 rockets, each dealing magic damage.
-        # Cooldown null in Meraki bulk (same blocker as other null-CD actives).
-        # Multi-rocket formula doesn't fit the single-proc periodic model
-        # cleanly; the empowered-ability bonus is ability-cast-bound.
-        note="Hextech Rocketbelt: multi-rocket active (null CD in Meraki, multi-projectile formula; ability-cast empowerment not modeled)",
+        # R69 (1.176.0): Supersonic one-cast burst rides the DSV6
+        # assume_magic_burst seam. Meraki 16.13.1: dash + rocket arc deals
+        # "100 (+ 10% AP) magic damage ... once per cast" - a one-cast
+        # magnitude, exactly what the burst-window seam credits. The DPS
+        # side stays intentionally unmodeled: long-CD active, no
+        # PeriodicProc, so no double-count anywhere. defensive_only stays
+        # True - the flag documents "no sustained-DPS proc", which still
+        # holds; it gates nothing in the engine.
+        magic_burst_base=100.0,
+        magic_burst_ap_ratio=0.10,
+        note=(
+            "Hextech Rocketbelt: Supersonic active 100 (+10% AP) magic once "
+            "per cast - one-cast burst-window magnitude rides the DSV6 "
+            "assume_magic_burst seam; DPS side intentionally unmodeled "
+            "(long-CD active, no PeriodicProc, no double-count)"
+        ),
     ),
     "3073": ItemEffect(
         item_id="3073",
@@ -3023,9 +3034,22 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="446656",
         name="Everfrost",
         defensive_only=True,
+        # R69 (1.176.0): Glaciate one-cast burst rides the DSV6
+        # assume_magic_burst seam. Meraki 16.13.1 (only this DISTRIBUTED
+        # Arena id carries an Everfrost entry - legacy 6656/226656 are
+        # map-disabled with no Meraki truth and stay unpinned): cone deals
+        # "300 magic damage (+ 85% AP)". One cast, one hit per enemy - the
+        # burst-window magnitude. Root/slow CC stays unmodeled (CC utility,
+        # not damage); DPS side intentionally unmodeled (long-CD active,
+        # no PeriodicProc, no double-count). defensive_only stays True -
+        # documentation-only flag, no engine gate.
+        magic_burst_base=300.0,
+        magic_burst_ap_ratio=0.85,
         note=(
-            "Everfrost (Arena 446656): Glaciate active - deals damage in a cone and Roots "
-            "center target. Active-cast ability schema gap; deferred"
+            "Everfrost (Arena 446656): Glaciate active 300 (+85% AP) magic "
+            "cone - one-cast burst-window magnitude rides the DSV6 "
+            "assume_magic_burst seam; root/slow CC and DPS side "
+            "intentionally unmodeled (long-CD active, no PeriodicProc)"
         ),
     ),
     "446671": ItemEffect(
@@ -4223,7 +4247,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223152",
         name="Hextech Rocketbelt",
         defensive_only=True,
-        note="Hextech Rocketbelt (Arena 223152): Supersonic active dash - ability-trigger, no DPS proc",
+        # R69 (1.176.0): Arena map-30 mirror of SR 3152 - same Supersonic
+        # numbers per the mirror convention. One-cast burst-window
+        # magnitude rides the DSV6 assume_magic_burst seam; DPS side
+        # intentionally unmodeled (long-CD active, no PeriodicProc).
+        magic_burst_base=100.0,
+        magic_burst_ap_ratio=0.10,
+        note=(
+            "Hextech Rocketbelt (Arena 223152): Supersonic active 100 "
+            "(+10% AP) magic once per cast - mirrors SR 3152 on the DSV6 "
+            "assume_magic_burst seam; DPS side intentionally unmodeled"
+        ),
     ),
     "223156": ItemEffect(
         item_id="223156",
