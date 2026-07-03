@@ -259,19 +259,31 @@ def test_champ_select_team_analysis_cluster(mock_server, pw_browser):
         res = page.evaluate(
             """() => ({
               bodyHidden: document.getElementById('csv-ta-body').hidden,
+              bodyDisplay: getComputedStyle(
+                document.getElementById('csv-ta-body')).display,
               verdict: document.getElementById('csv-ta-verdict').textContent,
             })"""
         )
         assert res["bodyHidden"] is True, "cluster must default collapsed"
+        # COMPUTED display, not just the attribute: a bare .csv-ta-body
+        # display:flex rule beats the UA [hidden] rule (2026-07-03 audit
+        # MUST-FIX; pinned by .csv-ta-body[hidden] { display: none; }).
+        assert res["bodyDisplay"] == "none", (
+            "collapsed cluster body must compute display:none, "
+            f"got {res['bodyDisplay']!r}"
+        )
         assert res["verdict"].strip() != "", "collapsed header must carry a verdict line"
         page.locator("#csv-ta-head").click()
         res2 = page.evaluate(
             """() => ({
               bodyHidden: document.getElementById('csv-ta-body').hidden,
+              bodyDisplay: getComputedStyle(
+                document.getElementById('csv-ta-body')).display,
               stored: sessionStorage.getItem('csv-ta-open'),
             })"""
         )
         assert res2["bodyHidden"] is False, "click must expand the detail chips"
+        assert res2["bodyDisplay"] == "flex", "expanded body must compute display:flex"
         assert res2["stored"] == "1", "open state must persist via sessionStorage"
     finally:
         page.close()
