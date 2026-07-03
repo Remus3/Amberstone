@@ -104,6 +104,9 @@ no row carries it.
   / `assume_ability_amp` (DSV4) on the BURST scorer `agents/daemon_slayer/burst.py
   rank_items_by_burst` (NOT rank.py). ENGINE-ONLY - route transport WIRED OQ17 (/rank-assassin
   reads all three; /burst also reads assume_takedown + assume_ability_amp; ENGINE 1.168.0).
+  R70 2026-07-03 added the Hollow Radiance Desolate takedown eruption (6664/226664, 60 + 4%
+  bonus HP magic) to the same assume_takedown stream - flip check should also confirm an
+  HR-holder's burst rank reads sane next to Hubris/Collector.
   Client-helper emit + the live default-ON flip still pending. DS `:8893` restart on flip.
 - B4. (PRACTICE-SR) Anti-tank P3.2: wire a survivability/draft surface to call
   `antitank.compute_antitank_live` with the live build + eyeball scaled %max-HP magnitudes.
@@ -140,8 +143,10 @@ no row carries it.
   on flip. SOURCE: ledger 2026-06-22 + 2026-06-30 below.
 - B13. (PRACTICE-SR) R30/DSV6 `assume_magic_burst` flip (Luden's/Stormsurge/Malignance on an
   AP burst build ranks its on-cast item higher; compute_ability_dps deliberately inert; R69
-  2026-07-03 added item ACTIVES Rocketbelt 3152/223152 + Everfrost 446656 to the same seam -
-  flip check should also confirm an active-holder's burst rank reads sane). DS
+  2026-07-03 added item ACTIVES Rocketbelt 3152/223152 + Everfrost 446656 to the same seam;
+  R70 2026-07-03 added Zeke's 3050/223050/323050 Frostfire Tempest 150 flat on ult cast -
+  flip check should also confirm an active/ult-trigger holder's burst rank reads sane +
+  assumes the trigger fires inside the burst window). DS
   restart. SOURCE: ledger 2026-06-27 below.
 - B14. (PRACTICE-SR) R35 `apply_passive_mitigation` + snapshot flip (Galio/Garen/MasterYi
   percent-DR ranks EHP/defensive items higher; rank-4 + 0.3-uptime assumptions read sane).
