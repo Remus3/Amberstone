@@ -24,25 +24,24 @@ ROOT = Path(__file__).resolve().parents[1]
 CSS = ROOT / "web" / "css" / "panels" / "champ_select_view.css"
 
 # Selectors that were flipped to --fs-xs in item 202.
+# QA 2026-07-03 slice A: the .csv-pr-* (YOUR RECORD, A4), ghost-bans
+# (.csv-sugg-ban-name, A2), and ghost pick-order (A2) selectors were
+# removed with their surfaces and left this inventory.
 _AUDIT_FLIPPED_SELECTORS = (
     ".csv-arch-btn .csv-arch-scorer",
-    ".csv-pr-title",
-    ".csv-pr-tag",
     ".csv-pb-role-label",
     ".csv-pb-role-chip",
     ".csv-pb-bans-header",
     ".csv-pb-pick-header",
-    ".csv-sugg-ban-name",
-    ".csv-sugg-pickorder-cell .csv-sugg-pickorder-idx",
     ".csv-build-label",
     ".csv-build-runes",
 )
 
 # Selectors with documented operator-exception sub-floor px values.
 # Tuple is (selector, expected_px, rationale_substring).
+# QA 2026-07-03 slice A: .csv-pr-chip (A4) + .csv-pb-mood-label (A3)
+# were removed with their surfaces.
 _OPERATOR_EXCEPTIONS = (
-    (".csv-pr-chip", 14, "operator-directed"),
-    (".csv-pb-mood-label > span", 14, "10->13px"),  # parent display:none, dead
     (".csv-bench-empty", 13, "item 178"),
     (".csv-build-spell.is-swapped::after", 10, ""),  # tiny badge indicator
     (".csv-build-spell.empty", 11, ""),

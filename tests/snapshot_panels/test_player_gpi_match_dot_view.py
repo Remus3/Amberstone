@@ -129,6 +129,17 @@ def _open_champ_select(pw_browser, mock_server, stub):
 def _show_gpi(page):
     page.evaluate(
         """async () => {
+          let mount = document.getElementById('player-gpi-panel');
+          if (!mount) {
+            mount = document.createElement('section');
+            mount.id = 'player-gpi-panel';
+            mount.className = 'player-gpi';
+            mount.hidden = true;
+            const host = document.querySelector(
+              '#view-champ-select .csv-card-suggestions .csv-card-body')
+              || document.body;
+            host.appendChild(mount);
+          }
           const m = await import('/js/panels/player_gpi.js');
           if (m._resetPlayerGpi) m._resetPlayerGpi();
           m.showPlayerGpi('sr', 'player-gpi-panel');

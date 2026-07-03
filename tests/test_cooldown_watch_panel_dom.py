@@ -1,27 +1,20 @@
 """Regression guards for the matchup cooldown-watch panel (competitor
-lift #5, docs/COMPETITOR_LIFT_2026-05-30.md).
+lift #5) - updated for the 2026-07-03 champ-select QA (slice A, ruling
+B19 in docs/qa/CHAMP_SELECT_QA_2026-07-03.md).
 
-Backend dashboard/routes_cooldown_watch.py + its engine module
-agents/daemon_slayer/cooldown_watch.py ship with their own suites
-(tests/test_routes_cooldown_watch.py +
-agents/daemon_slayer/tests/test_cooldown_watch_2026_05_30.py). This file
-pins the four-file frontend wiring that hooks the card into the
-Suggestions card of champ-select so a future refactor that drops one of
-the wires reverts the surface to invisible:
+B19: the cooldown-watch card was REMOVED from champ select (the overlay
+surfaces the same signal in-game when it matters). The backend
+(dashboard/routes_cooldown_watch.py + agents/daemon_slayer/cooldown_watch.py)
+and the frontend module (web/js/panels/cooldown_watch.js) STAY - only the
+champ-select mount + wiring are gone. This file now pins BOTH directions:
 
-  - web/index.html declares #csv-sugg-cooldown-watch inside
-    .csv-card-suggestions, BELOW #csv-sugg-bans and ABOVE
-    #csv-sugg-pickorder (the CC chips moved to the My Pick card,
-    operator 2026-05-31 #8).
-  - web/js/panels/cooldown_watch.js exports the API contract
-    (fetchCooldownWatch, getCachedCooldownWatch,
-    getCooldownWatchCacheCount, renderCooldownWatch).
-  - web/js/panels/champ_select.js imports the panel + calls
-    _csvRenderCooldownWatch + counts cache state in the section signature.
-  - web/css/panels/cooldown_watch.css is @import'd into dashboard.css.
+  - web/index.html no longer carries #csv-sugg-cooldown-watch.
+  - web/js/panels/champ_select.js no longer imports or renders the panel.
+  - web/js/panels/cooldown_watch.js still exports its full API contract
+    (the module is currently orphaned - champ select was its sole
+    consumer - kept for the in-game overlay follow-up).
 
-Grep-based smoke checks - cheap, fast, enough to catch a missing wire.
-Mirrors test_cc_conditional_pressure_panel_dom.py.
+Grep-based smoke checks - cheap, fast, enough to catch a re-wire drift.
 """
 from __future__ import annotations
 
@@ -33,49 +26,28 @@ WEB = ROOT / "web"
 INDEX_HTML = WEB / "index.html"
 PANEL_JS = WEB / "js" / "panels" / "cooldown_watch.js"
 CHAMP_SELECT_JS = WEB / "js" / "panels" / "champ_select.js"
-PANEL_CSS = WEB / "css" / "panels" / "cooldown_watch.css"
-DASHBOARD_CSS = WEB / "css" / "dashboard.css"
 
 
 def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
 
 
-class ChipMountTests(unittest.TestCase):
+class ChipMountRemovedTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.text = _read(INDEX_HTML)
 
-    def test_mount_present(self) -> None:
-        self.assertIn('id="csv-sugg-cooldown-watch"', self.text)
-        self.assertIn("cooldown-watch", self.text)
-
-    def test_hidden_by_default(self) -> None:
-        idx = self.text.index('id="csv-sugg-cooldown-watch"')
-        self.assertIn("hidden", self.text[idx:idx + 200])
-
-    def test_inside_suggestions_card(self) -> None:
-        sugg_open = self.text.index("csv-card-suggestions")
-        chip_at = self.text.index('id="csv-sugg-cooldown-watch"')
-        pickorder_at = self.text.index('id="csv-sugg-pickorder"')
-        self.assertLess(sugg_open, chip_at)
-        self.assertLess(chip_at, pickorder_at)
-
-    def test_below_bans_section(self) -> None:
-        # Operator 2026-05-31 (#8): the CC chips moved to the My Pick
-        # card, so cooldown-watch now follows the bans section in the
-        # Assessment card (the CC chips no longer sit above it here).
-        bans_at = self.text.index('id="csv-sugg-bans"')
-        cdw_at = self.text.index('id="csv-sugg-cooldown-watch"')
-        self.assertLess(bans_at, cdw_at)
+    def test_mount_removed(self) -> None:
+        self.assertNotIn('id="csv-sugg-cooldown-watch"', self.text)
 
 
-class JsConsumptionTests(unittest.TestCase):
+class JsConsumptionRemovedTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.panel_text = _read(PANEL_JS)
         cls.cs_text = _read(CHAMP_SELECT_JS)
 
+    # The module keeps its API contract (overlay follow-up consumer).
     def test_panel_exports_fetch(self) -> None:
         self.assertIn("export function fetchCooldownWatch", self.panel_text)
 
@@ -90,71 +62,25 @@ class JsConsumptionTests(unittest.TestCase):
     def test_panel_exports_render(self) -> None:
         self.assertIn("export function renderCooldownWatch", self.panel_text)
 
-    def test_champ_select_imports_panel(self) -> None:
-        self.assertIn("from './cooldown_watch.js'", self.cs_text)
-        self.assertIn("fetchCooldownWatch", self.cs_text)
-        self.assertIn("renderCooldownWatch", self.cs_text)
-        self.assertIn("getCachedCooldownWatch", self.cs_text)
-        self.assertIn("getCooldownWatchCacheCount", self.cs_text)
+    # Champ select dropped the import + render + sig fold (B19).
+    def test_champ_select_import_removed(self) -> None:
+        self.assertNotIn("from './cooldown_watch.js'", self.cs_text)
+        self.assertNotIn("fetchCooldownWatch", self.cs_text)
+        self.assertNotIn("renderCooldownWatch", self.cs_text)
 
-    def test_champ_select_calls_renderer(self) -> None:
-        self.assertIn("_csvRenderCooldownWatch(cs)", self.cs_text)
+    def test_champ_select_renderer_removed(self) -> None:
+        self.assertNotIn("function _csvRenderCooldownWatch", self.cs_text)
+        self.assertNotIn("_csvRenderCooldownWatch(cs)", self.cs_text)
 
-    def test_champ_select_reads_their_team(self) -> None:
-        idx = self.cs_text.index("function _csvRenderCooldownWatch")
-        body = self.cs_text[idx:idx + 2000]
-        self.assertIn("cs.their_team", body)
-
-    def test_section_signature_includes_cdw_cache_count(self) -> None:
-        self.assertIn("getCooldownWatchCacheCount", self.cs_text)
-        self.assertIn("cdw:", self.cs_text)
-
-
-class CssTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.panel_css = _read(PANEL_CSS)
-        cls.dashboard_css = _read(DASHBOARD_CSS)
-
-    def test_card_class_present(self) -> None:
-        self.assertIn(".cooldown-watch", self.panel_css)
-        self.assertIn(".cdw-row", self.panel_css)
-        self.assertIn(".cdw-cd", self.panel_css)
-
-    def test_uses_signal_tokens(self) -> None:
-        self.assertIn("var(--signal-warn", self.panel_css)
-
-    def test_dashboard_imports_panel_css(self) -> None:
-        self.assertIn("./panels/cooldown_watch.css", self.dashboard_css)
-
-    def test_hidden_rule_present(self) -> None:
-        self.assertIn("[hidden]", self.panel_css)
-
-    def test_font_sizes_are_tokenized(self) -> None:
-        # Every font-size resolves through a --fs-* token (no sub-floor
-        # hardcoded px). R6 typography audit 2026-06-19.
-        import re
-        decls = re.findall(r"font-size\s*:\s*([^;]+);", self.panel_css)
-        self.assertTrue(decls)
-        for d in decls:
-            self.assertIn(
-                "var(--fs-", d,
-                f"non-token font-size in cooldown_watch.css: {d!r}")
+    def test_section_signature_fold_removed(self) -> None:
+        self.assertNotIn("getCooldownWatchCacheCount", self.cs_text)
+        self.assertNotIn("cdw:", self.cs_text)
 
 
 class AsciiHygieneTests(unittest.TestCase):
-    _BAD = (chr(0x2013), chr(0x2014), chr(0x2018), chr(0x2019),
-            chr(0x201C), chr(0x201D))
-
-    def _scan(self, path: Path) -> list[int]:
-        text = path.read_text(encoding="utf-8")
-        return [i for i, c in enumerate(text) if c in self._BAD]
-
-    def test_panel_js_is_ascii(self) -> None:
-        self.assertEqual(self._scan(PANEL_JS), [])
-
-    def test_panel_css_is_ascii(self) -> None:
-        self.assertEqual(self._scan(PANEL_CSS), [])
+    def test_this_test_file_is_ascii(self) -> None:
+        raw = Path(__file__).read_bytes()
+        self.assertEqual([b for b in raw if b > 0x7F], [])
 
 
 if __name__ == "__main__":

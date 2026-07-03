@@ -36,7 +36,9 @@ PINS = {
     "web/css/panels/build_order.css": 1,
     "web/css/panels/cd_ledger.css": 9,
     "web/css/panels/champ_benchmarks.css": 4,
-    "web/css/panels/champ_select_view.css": 52,
+    # QA 2026-07-03 slice A: 52 -> 47 (ghost bans / mood / YOUR RECORD /
+    # ally-mirror CSS blocks removed took their dark literals with them).
+    "web/css/panels/champ_select_view.css": 47,
     "web/css/panels/coach_choices.css": 2,
     "web/css/panels/coach_decisions.css": 1,
     "web/css/panels/ds_statcheck.css": 3,

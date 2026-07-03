@@ -1,14 +1,11 @@
 """
 tests/snapshot_panels/test_champ_select_view.py
-Champ-select VIEW snapshot coverage - ARAM + Arena (C1, 2026-06-06).
+Champ-select VIEW snapshot coverage - SR + ARAM + Arena.
 
-Renders the full-page champ-select view (#view-champ-select) for ARAM and
-Arena against the ui_mock fixtures through the headless mock-server +
-Playwright harness. This is the reproducible stand-in for the live
-self-signed-HTTPS :8888 visual check: Claude_Preview cannot attach the
-self-signed cert and 1-PC (ADR-011) has no separate-machine MCP visual path,
-so the C-phase visual validation runs here in CI instead of as a one-off
-screenshot. Mirrors test_panel_snapshots.py.
+Renders the full-page champ-select view (#view-champ-select) against the
+ui_mock fixtures through the headless mock-server + Playwright harness.
+This is the reproducible stand-in for the live self-signed-HTTPS :8888
+visual check. Mirrors test_panel_snapshots.py.
 
 Drive path: /?ui_mock=1&mode=<mode>#champ-select. main.js boot flips
 body.dataset.uiMock and clears the manual-view sticky; with an empty SSE
@@ -17,23 +14,67 @@ state the auto-derive lands on "home" (not a mid-flight game surface) so the
 _csMockLoad, which fetches /data/ui_mock/champ_select_<mode>.json and
 re-renders, stamping #view-champ-select[data-cs-mode].
 
-Asserts per mode: the view mounts with the right data-cs-mode, the mode-
-specific structure renders (ARAM = bench-swap strip; Arena = duo row +
-augment slots), the SR-only Pick & Ban card is hidden, and no unhandled JS
-errors fire. Screenshots the view for the audit trail.
+2026-07-03 QA rework (slice A, docs/qa/CHAMP_SELECT_QA_2026-07-03.md):
+asserts the REMOVED elements stay absent (ghost wrappers, mood row, ally
+mirror, cc-pairing, cooldown-watch, GPI, ds profile/knobs/statcheck mounts,
+YOUR RECORD block) and the NEW structure renders (merged build section with
+ordered-sequence strip, compact summoner-spell strip with edit affordance,
+collapsed TEAM ANALYSIS cluster).
 """
 import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 SCREENSHOTS = Path(__file__).parent / "screenshots"
+CSV_JS = ROOT / "web" / "js" / "panels" / "champ_select.js"
+CSV_CSS = ROOT / "web" / "css" / "panels" / "champ_select_view.css"
+INDEX_HTML = ROOT / "web" / "index.html"
 
 # (mode, the selector that only appears once the mock fixture has rendered
 #  that mode's central pane - proves the async _csMockLoad render landed).
 _MODE_CONTENT = {
+    "sr": "#view-champ-select .csv-pb168-pick",
     "aram": "#view-champ-select .csv-bench-cell",
     "arena": "#view-champ-select .csv-duo-cell",
 }
+
+# QA 2026-07-03 slice A: selectors that must be ABSENT from the DOM after
+# the rework (A2/A3/A4/A7, B12, B15, B19, B20, B22, B23).
+_REMOVED_SELECTORS = [
+    # A2 ghosts: hidden Assessment-card bans + pick-order wrappers.
+    ".csv-sugg-bans", "#csv-sugg-bans-grid",
+    ".csv-sugg-pickorder", "#csv-sugg-pickorder-body",
+    # A7: dual-score ban toggle (lived inside the A2 ghost surface).
+    "#csv-sugg-bs-toggle",
+    # A3: mood row/buttons.
+    ".csv-pb-mood-row", ".csv-pb-mood-btn",
+    # A4: deprecated YOUR RECORD block.
+    ".csv-pr", "#csv-sugg-your-record",
+    # B15: ally-picks-by-role mirror.
+    ".csv-allyroles-grid", ".csv-allyroles-row",
+    # B12: CC pairing card mount.
+    "#csv-sugg-cc-pairing",
+    # B19: cooldown-watch card mount.
+    "#csv-sugg-cooldown-watch",
+    # B23: player GPI radar mount.
+    "#player-gpi-panel",
+    # B20/B22: DS profile / knobs / stat-check mounts.
+    "#csv-sugg-ds-profile", "#csv-ds-knobs", "#csv-ds-statcheck",
+]
+
+# New structure that must be PRESENT (static mounts).
+_NEW_STATIC_SELECTORS = [
+    "#csv-team-analysis",
+    "#csv-team-analysis #csv-ta-head",
+    "#csv-team-analysis #csv-ta-body",
+    "#csv-team-analysis #csv-sugg-team-damage",
+    "#csv-team-analysis #csv-sugg-cc-blended-ehp-threat",
+    "#csv-team-analysis #csv-sugg-cc-conditional-pressure",
+    # Kept survivors.
+    "#csv-sugg-ds-skill-order",
+    "#csv-personal-build",
+    "#csv-sugg-counter-picks",
+]
 
 
 def _open_champ_select(pw_browser, mock_server, mode):
@@ -94,6 +135,145 @@ def test_champ_select_view_renders(mode, mock_server, pw_browser):
     assert not errors, f"JS errors [{mode}]: {errors[:3]}"
 
 
+@pytest.mark.parametrize("mode", ["sr", "aram", "arena"])
+def test_champ_select_removed_elements_absent(mode, mock_server, pw_browser):
+    """QA slice A: every removed card/mount is gone from the rendered DOM."""
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, mode)
+    try:
+        counts = page.evaluate(
+            """(sels) => {
+              const out = {};
+              for (const s of sels) out[s] = document.querySelectorAll(s).length;
+              return out;
+            }""",
+            _REMOVED_SELECTORS,
+        )
+        offenders = {s: n for s, n in counts.items() if n > 0}
+        assert not offenders, f"removed elements still in DOM ({mode}): {offenders}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [removed/{mode}]: {errors[:3]}"
+
+
+@pytest.mark.parametrize("mode", ["sr", "aram", "arena"])
+def test_champ_select_new_structure_present(mode, mock_server, pw_browser):
+    """QA slice A: the new cluster + merged-build + kept mounts exist."""
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, mode)
+    try:
+        counts = page.evaluate(
+            """(sels) => {
+              const out = {};
+              for (const s of sels) out[s] = document.querySelectorAll(s).length;
+              return out;
+            }""",
+            _NEW_STATIC_SELECTORS,
+        )
+        missing = {s: n for s, n in counts.items() if n != 1}
+        assert not missing, f"new structure missing/duped ({mode}): {missing}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [new/{mode}]: {errors[:3]}"
+
+
+@pytest.mark.parametrize("mode", ["aram", "arena"])
+def test_champ_select_merged_build_section(mode, mock_server, pw_browser):
+    """B6+B7: ONE build section - the ordered-sequence strip renders INSIDE
+    .csv-builds (no separate sibling bo-card) with a single push control."""
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, mode)
+    try:
+        res = page.evaluate(
+            """() => {
+              const view = document.getElementById('view-champ-select');
+              return {
+                seqInBuilds: view.querySelectorAll('.csv-builds #csv-builds-seq').length,
+                seqOutside: Array.from(view.querySelectorAll('#csv-builds-seq'))
+                  .filter((el) => !el.closest('.csv-builds')).length,
+                pushCtrls: view.querySelectorAll('.csv-builds-push-ctrl').length,
+                pushCbs: view.querySelectorAll('.csv-builds-push-cb').length,
+              };
+            }"""
+        )
+        assert res["seqInBuilds"] == 1, (
+            f"ordered-sequence strip must live inside .csv-builds ({mode}): {res}"
+        )
+        assert res["seqOutside"] == 0, f"stray sequence strip outside builds: {res}"
+        assert res["pushCtrls"] == 1, f"exactly ONE push control ({mode}): {res}"
+        assert res["pushCbs"] == 3, f"Runes/Spells/Build checkboxes kept: {res}"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [build-merge/{mode}]: {errors[:3]}"
+
+
+def test_champ_select_compact_spell_strip(mock_server, pw_browser):
+    """B5: the 9-cell strip compacts to the 2 current D/F spells + an edit
+    affordance; clicking edit expands the full picker inline; picking a
+    spell collapses it again."""
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, "aram")
+    try:
+        sec = page.locator("#csv-summspell-section")
+        assert sec.count() == 1, "compact spell section missing"
+        assert page.locator("#csv-summspell-section .csv-summspell-current").count() == 2, (
+            "compact strip must show exactly the 2 current D/F spells"
+        )
+        edit = page.locator("#csv-summspell-section .csv-summspell-edit")
+        assert edit.count() == 1, "edit affordance missing"
+        assert page.locator("#csv-summspell-section .csv-summspell-cell").count() == 0, (
+            "full picker must be collapsed by default"
+        )
+        # Expand: full 9-cell picker appears inline.
+        edit.click()
+        cells = page.locator("#csv-summspell-section .csv-summspell-cell")
+        assert cells.count() == 9, f"expected 9 picker cells, got {cells.count()}"
+        # Pick a spell -> collapses back to the compact 2-cell strip.
+        cells.first.click()
+        assert page.locator("#csv-summspell-section .csv-summspell-cell").count() == 0, (
+            "picker must collapse after a pick"
+        )
+        assert page.locator("#csv-summspell-section .csv-summspell-current").count() == 2
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [spell-strip]: {errors[:3]}"
+
+
+def test_champ_select_team_analysis_cluster(mock_server, pw_browser):
+    """B8/B9/B18: the TEAM ANALYSIS cluster renders collapsed with a verdict
+    header; clicking the header expands the 3 detail chips and persists the
+    open state in sessionStorage."""
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, "aram")
+    try:
+        # The aram fixture carries allies, so the team-damage chip paints its
+        # placeholder and the cluster is visible.
+        page.wait_for_function(
+            "!document.getElementById('csv-team-analysis').hidden",
+            timeout=10_000,
+        )
+        res = page.evaluate(
+            """() => ({
+              bodyHidden: document.getElementById('csv-ta-body').hidden,
+              verdict: document.getElementById('csv-ta-verdict').textContent,
+            })"""
+        )
+        assert res["bodyHidden"] is True, "cluster must default collapsed"
+        assert res["verdict"].strip() != "", "collapsed header must carry a verdict line"
+        page.locator("#csv-ta-head").click()
+        res2 = page.evaluate(
+            """() => ({
+              bodyHidden: document.getElementById('csv-ta-body').hidden,
+              stored: sessionStorage.getItem('csv-ta-open'),
+            })"""
+        )
+        assert res2["bodyHidden"] is False, "click must expand the detail chips"
+        assert res2["stored"] == "1", "open state must persist via sessionStorage"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [team-analysis]: {errors[:3]}"
+
+
 def test_champ_select_aram_bench_strip(mock_server, pw_browser):
     """ARAM ships a 10-champion bench-swap strip from the fixture bench[]."""
     ctx, page, errors = _open_champ_select(pw_browser, mock_server, "aram")
@@ -124,13 +304,11 @@ def test_personal_build_card_renders(mock_server, pw_browser):
     """The personal best-build card renders its ranked item rows + CSS.
 
     The live fetch -> resolveChampNames -> render path is render-gated on a
-    committed champion + the loaded CHAMPS index (the same limitation that
-    leaves the sibling cooldown-watch card's visual capture OWED in this mock
-    harness). The fetch/resolve WIRING is covered by
-    tests/test_personal_build_panel_dom.py; here we drive renderPersonalBuild
-    directly with a representative payload so the card paints in the REAL
-    champ-select DOM + CSS context, validating the render output and
-    screenshotting it for the UI-audit trail.
+    committed champion + the loaded CHAMPS index. The fetch/resolve WIRING is
+    covered by tests/test_personal_build_panel_dom.py; here we drive
+    renderPersonalBuild directly with a representative payload so the card
+    paints in the REAL champ-select DOM + CSS context, validating the render
+    output and screenshotting it for the UI-audit trail.
     """
     from tests.snapshot_panels.conftest import _PERSONAL_BUILD_FIXTURE
 
@@ -327,8 +505,9 @@ def test_champ_select_counter_pick_hero(mock_server, pw_browser):
 
 def _open_team_damage_box(pw_browser, mock_server):
     """Sibling of _open_counter_box for the LIFT 1b team-damage meter. The
-    #csv-sugg-team-damage container is STATIC in index.html, so we only wait
-    for the page DOM + the module-global renderer/fetch hooks to load."""
+    #csv-sugg-team-damage container is STATIC in index.html (inside the
+    TEAM ANALYSIS cluster), so we only wait for the page DOM + the
+    module-global renderer/fetch hooks to load."""
     from tests.snapshot_panels.conftest import _WS_STUB
 
     mock_server._store["data"] = {}
@@ -354,9 +533,9 @@ def test_champ_select_team_damage_meter(mock_server, pw_browser):
     """LIFT 1b: the ally AD/AP damage-lean meter renders a dual-color bar
     whose segment widths reflect physical_pct / magical_pct, a text label
     carrying "AD <n>%" + "AP <n>%", a >=44px section, and an idempotent DOM.
-    Deterministic via a stubbed fetch helper + a synthetic ally comp (the
-    mock server returns {} for the route, so we inject the payload client-
-    side)."""
+    Deterministic via a stubbed fetch helper + a synthetic ally comp. The
+    meter now lives inside the collapsed TEAM ANALYSIS cluster, so the
+    harness un-hides the cluster + its body before measuring."""
     ctx, page, errors = _open_team_damage_box(pw_browser, mock_server)
     try:
         # Stub the fetch, invoke the renderer, and read back the structure -
@@ -364,6 +543,10 @@ def test_champ_select_team_damage_meter(mock_server, pw_browser):
         # loop (which re-invokes the renderer with the empty real payload)
         # cannot race the readback.
         _SYNTH = """() => {
+              const ta = document.getElementById('csv-team-analysis');
+              if (ta) ta.hidden = false;
+              const tb = document.getElementById('csv-ta-body');
+              if (tb) tb.hidden = false;
               window._csvFetchTeamDamage = function () {
                 return {
                   ok: true, n_champs: 3,
@@ -451,10 +634,83 @@ def test_champ_select_team_damage_meter(mock_server, pw_browser):
     assert not errors, f"JS errors [team-damage]: {errors[:3]}"
 
 
+# -- QA slice A source-level regression guards ------------------------------
+
+def _js_src():
+    return CSV_JS.read_text(encoding="utf-8")
+
+
+def test_capgap_mode_vocab_aligned():
+    """A1: the capability-gap fetch derives its mode from the canonical
+    _csvDsModeFor vocabulary (SR/ARAM/ARENA - queue 2400 = ARAM) instead of
+    a bespoke KIWI mapping that disagreed with _csvDetectMode."""
+    src = _js_src()
+    start = src.index("function _csvRenderCapabilityGap(")
+    end = src.index("\nfunction ", start + 1)
+    body = src[start:end]
+    assert "KIWI" not in body, "capability-gap renderer must not send KIWI"
+    assert "_csvDsModeFor" in body, (
+        "capability-gap renderer must derive mode via _csvDsModeFor"
+    )
+
+
+def test_mood_state_fully_removed():
+    """A3: mood buttons, sessionStorage mood state, and the client-side
+    mood filter are gone. Recs = raw top-3 by score + LAST."""
+    src = _js_src()
+    for needle in ("csv-pb-mood", "_csvMoodGet", "_csvMoodSet",
+                   "_CSV_MOOD_LABELS", "csv-mood", "&mood="):
+        assert needle not in src, f"mood residue in champ_select.js: {needle}"
+    css = CSV_CSS.read_text(encoding="utf-8")
+    assert "csv-pb-mood" not in css, "mood CSS block must be removed"
+
+
+def test_ghost_wrappers_and_dead_paths_removed():
+    """A2/A7/A4/A6 + B12/B19/B20/B22/B23 source-level guards."""
+    src = _js_src()
+    for needle in (
+        # A2: ghost bans grid + pick-order advisory + their fetches.
+        "csv-sugg-bans-grid", "csv-sugg-pickorder-body",
+        "_csvFetchBanSuggestions", "_CSV_BANSUGG_CACHE",
+        "_CSV_PICKORDER_TIPS",
+        # A7: dual-score ban toggle.
+        "fetchBanSuggest", "renderBanSuggestModeChip", "csv-sugg-bs-toggle",
+        # A4: deprecated YOUR RECORD path.
+        "personal-record", "_CSV_PR_CACHE", "_csvRenderPersonalRecordBlock",
+        # A6: dead timer tick.
+        "_csvSetupTimerTick",
+        # B15: ally mirror.
+        "_csvRenderAllyRolesHtml", "csv-allyroles",
+        # B12 / B19 / B23 / B20 / B22 call sites.
+        "fetchCcPairing", "renderCcPairing",
+        "fetchCooldownWatch", "renderCooldownWatch",
+        "showPlayerGpi",
+        "renderDsProfileForChampSelect", "renderDsKnobs", "renderDsStatcheck",
+        # B6+B7: the standalone card renderer is replaced by the merged strip.
+        "buildOrderCardHtml",
+    ):
+        assert needle not in src, f"dead path residue in champ_select.js: {needle}"
+    # B21: DS skill order is the ONE DS card that stays.
+    assert "renderDsSkillOrderForChampSelect" in src, "DS skill order must stay"
+    # A4 note: the enemy WR slot is a DIFFERENT feature and must stay, now
+    # fed by /api/personal-vs.
+    assert "csv-enemy-wr-slot" in src, "enemy WR slot must stay"
+    assert "/api/personal-vs" in src, "enemy WR slot must ride /api/personal-vs"
+    # Index.html mounts for removed cards are gone; skill order mount stays.
+    html = INDEX_HTML.read_text(encoding="utf-8")
+    for needle in ("csv-sugg-cooldown-watch", "csv-sugg-cc-pairing",
+                   "player-gpi-panel", "csv-sugg-ds-profile",
+                   "csv-ds-knobs", "csv-ds-statcheck", "csv-sugg-bs-toggle"):
+        assert needle not in html, f"removed mount residue in index.html: {needle}"
+    assert "csv-sugg-ds-skill-order" in html, "skill-order mount must stay"
+    assert "csv-team-analysis" in html, "TEAM ANALYSIS cluster mount missing"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F."""
     targets = [
         Path(__file__),
+        ROOT / "web" / "data" / "ui_mock" / "champ_select_sr.json",
         ROOT / "web" / "data" / "ui_mock" / "champ_select_aram.json",
         ROOT / "web" / "data" / "ui_mock" / "champ_select_arena.json",
     ]
