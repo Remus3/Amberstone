@@ -431,7 +431,28 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6695",
         name="Serpent's Fang",
         defensive_only=True,
-        note="Serpent's Fang: anti-shield; situational, not DPS-modeled",
+        # R75 DSV9 (1.179.0): Meraki 16.13.1 Shield Reaver, byte-grounded -
+        # "Dealing damage to an enemy champion inflicts them with venom for
+        # 3 seconds, reducing any shields they gain within the duration by
+        # 50%|35% (rd = melee|ranged), and if the target was not already
+        # afflicted by the venom, reducing all of their active shields by
+        # the same amount." Pinned because the one-time ACTIVE-shield cut
+        # on first affliction is a real burst-window magnitude: it is
+        # valued by the NEW DSV9 assume_shielded_target burst seam against
+        # an assumed target shield pool. The sustained shields-gained
+        # reduction within the 3s venom stays UNMODELED (needs live target
+        # shield-income, a CLOSED arc). defensive_only stays True - the
+        # flag is doc-only, zero engine consumers (verified R69,
+        # re-verified R74).
+        shield_cut_melee_pct=0.50,
+        shield_cut_ranged_pct=0.35,
+        note=(
+            "Serpent's Fang: Shield Reaver venom 3s - cuts ACTIVE shields "
+            "once by 50% melee / 35% ranged on first affliction, valued by "
+            "the DSV9 assume_shielded_target seam; the sustained "
+            "shields-gained reduction within the venom stays unmodeled "
+            "(Meraki 16.13.1)"
+        ),
     ),
     "6701": ItemEffect(
         item_id="6701",
@@ -3555,7 +3576,26 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226695",
         name="Serpent's Fang",
         defensive_only=True,
-        note="Serpent's Fang (Arena 226695): Shield Reaver anti-shield - utility, no DPS contribution",
+        # R75 DSV9 (1.179.0): Arena mirror of SR 6695 Shield Reaver.
+        # Meraki 16.13.1 carries NO 226695 entry, so the mirror truth is
+        # DDragon items.json 226695 (map 30 only, same Shield Reaver
+        # passive, explicit melee/ranged performance split) plus the
+        # batch-42 Arena-mirror convention (mirrors share their SR
+        # counterpart's passive coefficients). Pinned identical to SR
+        # 6695: one-time ACTIVE-shield cut on first affliction, valued by
+        # the DSV9 assume_shielded_target seam; the sustained
+        # shields-gained reduction within the 3s venom stays UNMODELED.
+        # defensive_only stays True (doc-only, zero engine consumers -
+        # verified R69, re-verified R74).
+        shield_cut_melee_pct=0.50,
+        shield_cut_ranged_pct=0.35,
+        note=(
+            "Serpent's Fang (Arena 226695): mirrors SR 6695 Shield Reaver - "
+            "venom 3s, cuts ACTIVE shields once by 50% melee / 35% ranged "
+            "on first affliction (DSV9 assume_shielded_target seam); "
+            "sustained shields-gained reduction unmodeled (SR 6695 Meraki "
+            "16.13.1 + DDragon 226695 map-30 mirror)"
+        ),
     ),
 
     # -- Phase 4 batch 42 (2026-05-04): 222xxx/224xxx Arena + 32xxxx ARAM mirrors --
