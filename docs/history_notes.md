@@ -218,6 +218,36 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-02 (OQ21 LOOP - resync doc-hygiene sweep + the OQ14 gap; docs-only, no engine/flag/code)
+
+Loop directive OQ21 executed by this session (head ca131150; commit `<this commit>`, LEDGER 744). Apply the `docs/LIVE_GAME_GATED_SYNC.md` "Doc hygiene follow-ups (2026-07-01 sweep)" (a)-proposals + append the missed OQ14 Item Shaper overlay-capture row. **PREMISE-CHECK first:** the gemini digest line numbers were unreliable, so every prune target was re-derived from the AUTHORITATIVE source spec (the LIVE_GAME_GATED_SYNC.md section itself) - it caught that a raw ROADMAP :90-108 range-prune would have deleted OPEN item 98 + the Arena-1750 don't-redo anchor.
+
+- **Implemented main-thread (R9 inline + anchor-preservation):** destructive doc pruning where a mis-prune silently drops a don't-redo anchor is where the sole-merger needs full context; worktree subagents against the same bad line numbers would raise risk, not lower it. Integrity control = a full git-diff re-read of every deletion + the doc-guard suite.
+- **ROADMAP:** deleted 8 verified-stale pointer carries (s246/s245/s231/s230/s229/s228 PGR-reframe-still-pending + items 275/273) via a prefix-filter script (9 prefixes, each matched exactly once; also cleared 2 lines carrying pre-existing non-ASCII arrows) + the orphaned Peer auto-action-lanes row (ADR-012); RE-MARKED the #11-13 / #89 capture carries headless (inline anchors kept); trimmed :14 slow-tick + :111 ARAM residue + dropped the :130 fleet ENGINE stamp. 82KB budget SAFE (77084 bytes).
+- **README:** dropped Brawl from the modes list (retired champ-select s214) + rewrote the two-machine / third-machine-bridge topology to the 1-PC reality (ADR-011 / ADR-012); DS coverage counts left untouched (DS-batch job).
+- **ARCHITECTURE:** item-276 "in-game validation OWED" -> "PROVEN in-game (LEDGER 685/688/711)"; the T2-#8 "asyncio not started" gotcha corrected to shipped; fixed the stale `# arch:` marker in FROZEN app/__init__.py (comment-only, under the headless grant) then regenned the archmap - a hygiene WIN (also normalized pre-existing non-ASCII arrows to ASCII + synced ~30 real module rows the map had silently lost; `--check` now green).
+- **ORCHESTRATION_PLAN:** Claude_Preview-vs-:8888 -> Playwright ui_recon + :8810 (R2); Game-PC :8892 marked retired. **LIVE_GAME_GATED_SYNC:** OQ14 Item Shaper strip appended to the B24 family + LEDGER 735; Doc-hygiene header annotated APPLIED.
+- **Tier-0 verify (R5 - docs + one inert frozen-comment + a deterministic archmap regen; full engine suite NOT gated, no engine/route/logic touched):** 18 doc-guard tests green (smart-quote/mojibake/u2500 hygiene, architecture-no-stale-engine, doc-size-budget, bare-py-ban) + `gen_archmap.py --check` green + `import app` OK + `py_compile app/__init__.py` OK.
+- **Handoff (FUTURE):** the remaining (a) OPERATIONS/BACKLOG/OVERLAY_BUILD_MASTER_PLAN/RC_WORK_TRACKER/CLAUDE-Vision/Share-docs/stale-hash items + the :42 OQ16-supersedes-OQ3 annotation + all (b) archive candidates.
+- Frozen edit: `app/__init__.py` `# arch:` comment only (headless-upgrade grant, not carried forward).
+
+---
+
+# 2026-07-02 (OQ19 LOOP - HZ-B build-order table regen to live ENGINE 1.169.0; static data, no engine math)
+
+Loop directive OQ19 executed by this session (head 12d9de2f; commit `221922c5`, LEDGER 741). Regen the current-patch (16.13.1) HZ-B precompute tables to the live DS engine via the deterministic `--static` path - the headless prereq for accrual rail G2. No engine math, no live flip.
+
+- **Ground-truth first:** repo `ENGINE_VERSION` (`agents/daemon_slayer/__init__.py:18`) + `:8893/health` both 1.169.0 / patch 16.13.1, but the committed 16.13.1 HZ-B tables (HZ-B1 `build_orders_*` + HZ-B2 `build_order_variants_*`, all 3 modes) were stamped 1.151.0 - an 18-version drift a future consumer (HZ-C1 / accrual rail G2) would read as stale scorer math. Directive named only build_order_precompute but step-3's glob + intent covers variants (also 1.151.0), so BOTH regenerated.
+- **Regen:** `core.build_order_precompute` + `core.build_order_variants`, `--static --mode all`. In-process `_install_static_transport` rebinds `_post_json` to the DS `_POST_ROUTES` handlers (no :8893, no server); output identical to the live path by construction.
+- **GOTCHA caught + fixed in-slice (LEDGER-388 re-proven):** default `--static` (no `--champions`) uses `SEED_CHAMPIONS` (10) and silently TRUNCATED the tables 173 -> 10 - `test_build_order_axis_parity` went RED for 18 non-seed champs. Recovered the EXACT 173 canonical roster from `git show HEAD:...build_orders_sr.json` keys (== `champions.json` data keys), re-ran with `--champions <173 canonical ids>` (canonical NOT display names - display silently skips pairs). Coverage restored 173/file (692 precompute = 173x4 + 346 variant = 173x2 orders, 0 empty). No coverage drift shipped.
+- **TDD** `test_build_order_engine_stamp_sync.py` RED 6/6 (1.151.0) -> GREEN 6/6 (1.169.0) - a durable drift guard (fails on any future bump that leaves the current-patch tables stale; message points at the exact regen command). **Verifier CONFIRM 7/7** (files valid, all 1.169.0, 173 champs each == HEAD, correct schemas, 0 empty, clean-scoped diff).
+- **Gate: DS 7774 / RC 10441 / 83 HZ-B + 138 consumer green, 0 fail.** No ENGINE bump (already 1.169.0). Share `--check` green 395 (the HZ-B data tables are RC-side data, NOT in the Share engine package; the commit hook only restamped `Share/MANIFEST.md`'s "last synced" timestamp).
+- **Implemented main-thread (R9 inline):** deterministic single-slice data regen + one guard test + docs, no disjoint-slice parallelism; the directive's integrity control (verifier-gate, step 4) honored via the read-only `verifier` subagent.
+- **Handoff:** the HZ-C1 live consumer flip (read these tables at coach request time instead of Haiku / live :8893) stays operator-gated behind real-game validation (do-not-flip-blind).
+- Frozen files untouched. server.py untouched (pure data + one test).
+
+---
+
 # 2026-07-02 (OQ18 LOOP - live-input wiring across the DS HTTP boundary; ENGINE 1.168.0 -> 1.169.0)
 
 Loop directive OQ18 executed by this session (head 3d7ce104; commit `3a96c0e3`, LEDGER 740). Wire the producer-only-orphan live inputs across the :8893 HTTP routes so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). **NO engine-math file changed - server.py only + version stamp** (both `compute_antitank(level=)` + `compute_antitank_live` already accepted the args; OQ18 is pure transport - the directive's "changes live math" framing = the NEW capability, not a math edit).

@@ -207,6 +207,12 @@ no row carries it.
   order stays sane; Warmog-class MS-less items unchanged) before defaulting ON; the 0.5
   fraction / 0.15 cap midpoints are the tunables. DS restart. SOURCE: docs/LEDGER.md
   item 738; ledger 2026-07-02 below.
+- B44. (PRACTICE-SR, spot-check not a flip - R66 shipped UNGATED) Guinsoo Seething Strike
+  32% cond-AS live re-rank sanity: on an on-hit champ (Kog'Maw / Varus / Kayle) confirm
+  /rank places Guinsoo 3124 sanely (higher than pre-1.173.0 but not displacing staple
+  first-items absurdly) and a NON-AA mage's ranking is unmoved; the field folds only when
+  Guinsoo is in the evaluated build (R42 lane). Nice-to-have validation; no flag to flip;
+  rollback = registry field revert + bump. SOURCE: docs/LEDGER.md item 753.
 
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
