@@ -217,6 +217,33 @@ class _NormalizerMixin:
         hp_pct = int(100 * hp / max(hp_max, 1))
         mp_pct = int(100 * mp / max(mp_max, 1))
 
+        # R65-A (L9/L10): full championStats combat block for downstream DS
+        # live math - every value through _coerce_num so a NaN/Infinity from
+        # the relay degrades to 0.0 instead of poisoning consumers; a missing
+        # or non-dict championStats yields the all-defaults shape.
+        combat_stats = {
+            "attack_damage":   _coerce_num(stats.get("attackDamage", 0)),
+            "ability_power":   _coerce_num(stats.get("abilityPower", 0)),
+            "armor":           _coerce_num(stats.get("armor", 0)),
+            "magic_resist":    _coerce_num(stats.get("magicResist", 0)),
+            "armor_pen_flat":  _coerce_num(stats.get("physicalLethality", 0)),
+            "armor_pen_pct":   _coerce_num(stats.get("armorPenetrationPercent", 0)),
+            "magic_pen_flat":  _coerce_num(stats.get("magicPenetrationFlat", 0)),
+            "magic_pen_pct":   _coerce_num(stats.get("magicPenetrationPercent", 0)),
+            "ability_haste":   _coerce_num(stats.get("abilityHaste", 0)),
+            "attack_speed":    _coerce_num(stats.get("attackSpeed", 0)),
+            "crit_chance":     _coerce_num(stats.get("critChance", 0)),
+            "crit_damage":     _coerce_num(stats.get("critDamage", 0)),
+            "life_steal":      _coerce_num(stats.get("lifeSteal", 0)),
+            "physical_vamp":   _coerce_num(stats.get("physicalVamp", 0)),
+            "spell_vamp":      _coerce_num(stats.get("spellVamp", 0)),
+            "move_speed":      _coerce_num(stats.get("moveSpeed", 0)),
+            "attack_range":    _coerce_num(stats.get("attackRange", 0)),
+            "tenacity":        _coerce_num(stats.get("tenacity", 0)),
+            "health_regen":    _coerce_num(stats.get("healthRegenRate", 0)),
+            "resource_type":   str(stats.get("resourceType", "")),
+        }
+
         my_level = active.get("level", me.get("level", 1) if me else 1)
         my_gold = int(_coerce_num(active.get("currentGold", 0)))
 
@@ -376,6 +403,10 @@ class _NormalizerMixin:
 
         cs_per_min = round(cs / max(game_time / 60, 0.5), 1)
 
+        # R65-A: fetched once and reused for both runes_full and stat_shards
+        # so the snapshot pays a single /activeplayerrunes GET, not two.
+        runes_full = self._read_my_runes_structured()
+
         return {
             "game_time":          time_str,
             "game_seconds":       game_time,
@@ -432,6 +463,11 @@ class _NormalizerMixin:
             # AUDIT-PHASE-2-RUNE-001: rune fields
             "my_runes":           self._read_my_runes(),
             "enemy_runes":        self._read_enemy_runes(enemies),
+            # R65-A (L9/L10): structured combat/rune/shard ingestion - the
+            # legacy my_runes string stays for existing coach prompts.
+            "combat_stats":       combat_stats,
+            "runes_full":         runes_full,
+            "stat_shards":        runes_full.get("stat_runes", []),
             # API-002: ability cooldowns
             "my_abilities":       self._read_my_abilities(),
             # DS calibration: Riot game_id from LCU relay ('' when no game or agent stale)
@@ -1015,6 +1051,54 @@ class _NormalizerMixin:
         except Exception as exc:  # noqa: BLE001
             _log.debug("swallowed exception: %s", exc)
         return ""
+
+    def _read_my_runes_structured(self) -> dict:
+        """
+        Fetch /activeplayerrunes and return the structured form:
+        {"keystone": {"id": int, "name": str}, "primary_tree": str,
+         "secondary_tree": str, "general_runes": [{"id", "name"}, ...],
+         "stat_runes": [int, ...]}
+        Returns {} on any failure - never raises.
+        """
+        try:
+            data = self._get(f"{LIVE_API}/activeplayerrunes")
+            if not isinstance(data, dict):
+                return {}
+            keystone = data.get("keystone", {})
+            if not isinstance(keystone, dict):
+                keystone = {}
+            primary = data.get("primaryRuneTree", {})
+            secondary = data.get("secondaryRuneTree", {})
+            general = data.get("generalRunes", [])
+            if not isinstance(general, list):
+                general = []
+            shards = data.get("statRunes", [])
+            if not isinstance(shards, list):
+                shards = []
+            # ids through _coerce_num so a single NaN/bad id degrades to 0
+            # instead of int() raising and blanking the whole structure.
+            return {
+                "keystone": {
+                    "id":   int(_coerce_num(keystone.get("id", 0))),
+                    "name": str(keystone.get("displayName", "")),
+                },
+                "primary_tree":   (str(primary.get("displayName", ""))
+                                   if isinstance(primary, dict) else ""),
+                "secondary_tree": (str(secondary.get("displayName", ""))
+                                   if isinstance(secondary, dict) else ""),
+                "general_runes": [
+                    {"id":   int(_coerce_num(r.get("id", 0))),
+                     "name": str(r.get("displayName", ""))}
+                    for r in general if isinstance(r, dict)
+                ],
+                "stat_runes": [
+                    int(_coerce_num(s.get("id", 0)))
+                    for s in shards if isinstance(s, dict)
+                ],
+            }
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("_read_my_runes_structured failed: %s", exc)
+        return {}
 
     def _read_enemy_runes(self, enemies: list) -> dict:
         """
