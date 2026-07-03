@@ -103,11 +103,24 @@ def test_ds_statcheck_panel_populated(mock_server, pw_browser):
 
     # Render the real panel into its live mount with a synthetic locked champ;
     # the stubbed /api/ds-statcheck lands and paints the readout.
+    # QA 2026-07-03 slice A (B22): the stat-check mount left champ select
+    # (the Builds/DS view re-mounts it - slice C), so the harness injects a
+    # test-local mount before driving the renderer.
     page.evaluate(
         """async () => {
+          let el = document.getElementById('csv-ds-statcheck');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'csv-ds-statcheck';
+            el.className = 'ds-statcheck';
+            el.hidden = true;
+            const host = document.querySelector(
+              '#view-champ-select .csv-card-suggestions .csv-card-body')
+              || document.body;
+            host.appendChild(el);
+          }
           const m = await import('/js/panels/ds_statcheck.js');
           if (m._resetDsStatcheck) m._resetDsStatcheck();
-          const el = document.getElementById('csv-ds-statcheck');
           m.renderDsStatcheck(el, { my_champion: 222, queue_id: 420 });
         }"""
     )

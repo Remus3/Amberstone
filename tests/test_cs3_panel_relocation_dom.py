@@ -41,7 +41,16 @@ MOVED_MOUNT_IDS = (
 )
 
 # Panels that STAY on champ-select (must NOT be dragged along).
+# QA 2026-07-03 slice A (docs/qa/CHAMP_SELECT_QA_2026-07-03.md): the DS
+# profile / knobs / stat-check mounts moved OFF champ select to the
+# Builds/DS view (B20/B22, slice C re-mounts) and the cc-pairing card was
+# removed (B12). Only the DS skill-order card stays (B21 KEEP).
 STAY_MOUNT_IDS = (
+    'id="csv-sugg-ds-skill-order"',
+)
+
+# QA 2026-07-03 slice A: mounts that must be GONE from champ select.
+QA_REMOVED_MOUNT_IDS = (
     'id="csv-sugg-ds-profile"',
     'id="csv-ds-knobs"',
     'id="csv-ds-statcheck"',
@@ -98,6 +107,14 @@ class RegionSliceTests(unittest.TestCase):
                 f"{mid} must stay mounted in the champ-select region",
             )
 
+    def test_qa_removed_panels_gone_from_champ_select(self) -> None:
+        # QA 2026-07-03 slice A: B12/B20/B22 removals.
+        for mid in QA_REMOVED_MOUNT_IDS:
+            self.assertNotIn(
+                mid, self.cs_region,
+                f"{mid} was removed from champ select (QA 2026-07-03)",
+            )
+
     def test_stay_panels_not_duplicated_into_active_match(self) -> None:
         for mid in STAY_MOUNT_IDS:
             self.assertNotIn(
@@ -126,16 +143,23 @@ class ChampSelectInvocationTests(unittest.TestCase):
     def test_relscore_invocation_removed(self) -> None:
         self.assertNotIn("renderDsRelscore", self.cs)
 
-    def test_profile_invocation_stays(self) -> None:
-        # ds-profile stays on champ-select - guard against an over-eager cut.
-        self.assertIn("renderDsProfileForChampSelect", self.cs)
+    def test_profile_invocation_removed(self) -> None:
+        # QA 2026-07-03 slice A (B20): ds-profile left champ select (the
+        # Builds/DS view re-mounts it - slice C).
+        self.assertNotIn("renderDsProfileForChampSelect", self.cs)
 
-    def test_knobs_and_statcheck_stay(self) -> None:
-        self.assertIn("renderDsKnobs", self.cs)
-        self.assertIn("renderDsStatcheck", self.cs)
+    def test_knobs_and_statcheck_removed(self) -> None:
+        # QA 2026-07-03 slice A (B22): knobs + stat-check left champ select.
+        self.assertNotIn("renderDsKnobs", self.cs)
+        self.assertNotIn("renderDsStatcheck", self.cs)
 
-    def test_cc_pairing_stays(self) -> None:
-        self.assertIn("renderCcPairing", self.cs)
+    def test_skill_order_stays(self) -> None:
+        # B21 KEEP: the one DS card remaining on champ select.
+        self.assertIn("renderDsSkillOrderForChampSelect", self.cs)
+
+    def test_cc_pairing_removed(self) -> None:
+        # QA 2026-07-03 slice A (B12).
+        self.assertNotIn("renderCcPairing", self.cs)
 
 
 class ActiveMatchInvocationTests(unittest.TestCase):

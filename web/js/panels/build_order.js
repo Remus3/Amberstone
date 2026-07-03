@@ -63,7 +63,9 @@ function _deltaTxt(o) {
 // onLand callback re-renders the consuming view (champ-select passes
 // _csvScheduleRender; in-game the next item_build tick picks up the cache,
 // so null is fine there).
-function fetchBuildOrder(champion, dsMode, archetype, onLand, enemies) {
+// QA 2026-07-03 slice A (B6+B7): exported so champ_select.js can drive the
+// merged build section's ordered-sequence strip off the same data path.
+export function fetchBuildOrder(champion, dsMode, archetype, onLand, enemies) {
   if (!champion || !dsMode) return;
   const key = _boKey(champion, dsMode, archetype, enemies);
   if (_BO_CACHE[key] || _BO_INFLIGHT[key]) return;
