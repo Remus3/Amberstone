@@ -101,6 +101,7 @@ from .effects import (
     total_giant_slayer_multiplier,
     total_magic_amp_multiplier,
     total_magic_burst_damage,
+    total_physical_burst_damage,
     total_stacked_ap,
     total_takedown_bonus_ad,
     total_takedown_eruption_damage,
@@ -505,6 +506,7 @@ def compute_burst_damage(
     gate_target_hp_amp: bool = False,
     gate_caster_hp_amp: bool = False,
     caster_current_hp_pct: float = 1.0,
+    assume_physical_burst: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -1056,6 +1058,36 @@ def compute_burst_damage(
             magic_burst_damage = magic_burst_raw * mode_mult * magic_amp * magic_burst_mit
             total_burst += magic_burst_damage
 
+    # DSV8 (1.178.0): item-active physical-burst seam - the PHYSICAL analogue
+    # of the DSV6 block above. assume_physical_burst=False ->
+    # physical_burst_damage stays 0.0, total_burst unchanged (byte-identical).
+    # When True, an item active that leads with physical damage (Goredrinker
+    # 226630 Thirsting Slash: 175% BASE AD in a 450 radius, Meraki 16.13.1)
+    # lands once in the burst window: pre-mit physical = sum(base +
+    # base_ad_ratio * ctx.base_ad) across items, armor-mitigated (PHYSICAL
+    # routing) + mode_mult. NO amp layer: the engine has no physical analogue
+    # of total_magic_amp_multiplier (magic_amp is magic-typed only - the
+    # periodic layer applies it to MAGIC procs exclusively, dps.py
+    # _periodic_proc_dps), and the DSV6 item-proc block deliberately excludes
+    # the generic build damage_amp so keystone/build amps don't double-amp an
+    # item proc - the physical mirror keeps that exclusion. Added after the
+    # rune + execute layers like DSV6. There is no PeriodicProc for these
+    # long-CD actives, so compute_dps sees nothing (no double-count); the
+    # heal side stays unmodeled.
+    physical_burst_damage = 0.0
+    if assume_physical_burst:
+        physical_burst_raw = total_physical_burst_damage(
+            item_effects, ctx.base_ad
+        )
+        if physical_burst_raw > 0.0:
+            physical_burst_mit = _mitigation_factor(
+                "PHYSICAL", target_armor_eff, target_mr_eff
+            )
+            physical_burst_damage = (
+                physical_burst_raw * mode_mult * physical_burst_mit
+            )
+            total_burst += physical_burst_damage
+
     # R41 (1.156.0): ally mark-detonation seam. assume_ally_detonation=False ->
     # ally_detonation_damage stays 0.0, total_burst unchanged (byte-identical).
     # When True, a champion whose mark an ALLY consumes for bonus damage (Leona P
@@ -1330,6 +1362,12 @@ def compute_burst_damage(
         notes.append(
             f"magic on-cast burst +{magic_burst_damage:.0f} "
             f"(Luden's/Stormsurge/Malignance class item proc, assume_magic_burst seam)"
+        )
+    if physical_burst_damage > 0:
+        notes.append(
+            f"physical item-active burst +{physical_burst_damage:.0f} "
+            f"(Goredrinker Thirsting Slash class item active, "
+            f"assume_physical_burst seam)"
         )
 
     return BurstResult(
