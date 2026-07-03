@@ -123,6 +123,7 @@ from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
     SORT_KEYS,
+    _champion_is_melee,
     _filter_candidates,
     _is_terminal,
     strip_arena_trinkets,
@@ -1805,6 +1806,11 @@ def rank_items_by_burst(
         budget=budget,
         include_components=include_components,
         only_ids=only_ids,
+        # Ranged-only purchasability gate: drop Runaan's (+ alias) for a melee
+        # burst champ - the shop blocks the purchase (2026-07-02).
+        champion_is_melee=_champion_is_melee(
+            snapshot.champions.get(str(champion_id))
+        ),
     )
 
     ranked: list[BurstRankedItem] = []
