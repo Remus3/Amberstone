@@ -164,22 +164,36 @@ class WiringTests(unittest.TestCase):
         idx = self.index.index(_MOUNT_ID)
         self.assertIn("hidden", self.index[idx:idx + 200])
 
-    def test_inside_suggestions_card(self) -> None:
-        sugg_open = self.index.index("csv-card-suggestions")
+    # QA 2026-07-03 (docs/qa/CHAMP_SELECT_QA_2026-07-03.md B20): the DS
+    # profile card moved OFF champ select onto the active-match BUILD pane
+    # (CS3 precedent; receiving side pinned by
+    # tests/test_builds_ds_relocation_dom.py). The consumer is now
+    # active_match.js via the synthetic champ-select-shaped state; champ
+    # select must NOT import the panel.
+
+    def test_inside_active_match_build_pane(self) -> None:
+        am_open = self.index.index('id="view-active-match"')
         chip_at = self.index.index(_MOUNT_ID)
-        self.assertLess(sugg_open, chip_at)
+        self.assertLess(am_open, chip_at)
 
-    def test_champ_select_imports_panel(self) -> None:
-        self.assertIn("from './ds_profile.js'", self.cs)
-        self.assertIn("renderDsProfileForChampSelect", self.cs)
-        self.assertIn("getDsProfileCacheCount", self.cs)
+    def test_champ_select_does_not_import_panel(self) -> None:
+        self.assertNotIn("from './ds_profile.js'", self.cs)
+        self.assertNotIn("renderDsProfileForChampSelect", self.cs)
 
-    def test_champ_select_calls_renderer(self) -> None:
-        self.assertIn("renderDsProfileForChampSelect(cs)", self.cs)
+    def test_active_match_imports_and_calls_renderer(self) -> None:
+        am = _read(WEB / "js" / "panels" / "active_match.js")
+        self.assertIn("from './ds_profile.js'", am)
+        self.assertIn("setDsProfileScheduler", am)
+        self.assertIn(
+            'renderDsProfileForChampSelect(synthetic, "csv-sugg-ds-profile")',
+            am,
+        )
 
-    def test_section_signature_includes_dsp_cache_count(self) -> None:
-        self.assertIn("getDsProfileCacheCount", self.cs)
-        self.assertIn("dsp:", self.cs)
+    def test_section_signature_dsp_fold_removed(self) -> None:
+        # Slice A removed the dsp cache-count fold from the champ-select
+        # render signature along with the call site.
+        self.assertNotIn("getDsProfileCacheCount", self.cs)
+        self.assertNotIn("dsp:", self.cs)
 
     def test_dashboard_imports_panel_css(self) -> None:
         self.assertIn("./panels/ds_profile.css", self.dashboard_css)
