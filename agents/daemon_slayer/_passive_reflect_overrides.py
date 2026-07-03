@@ -68,6 +68,10 @@ class PassiveReflectEntry:
     reflect_cadence_s: float = 1.0
     note: str = ""
     attribute: str = "Reflect"
+    # R68: % of the caster's BONUS armor (build armor above the leveled
+    # base) - the Thornmail Thorns axis. END-appended with a default so
+    # every existing positional construction keeps working.
+    caster_bonus_armor_pct: float = 0.0
 
 
 # (champion_id, key, form_index) -> PassiveReflectEntry.
@@ -100,6 +104,60 @@ _PASSIVE_REFLECT_OVERRIDES: dict[tuple[str, str, int], PassiveReflectEntry] = {
 }
 
 
+# R68 (2026-07-03) - ITEM-keyed Thorns reflect, same seam. Keyed by item-id
+# STRING (the shape resolved.item_ids carries; precedent
+# _target_vulnerability_overrides._ITEM_VULN_OVERRIDES). Seeded against
+# verbatim Meraki 16.13.1 items_meraki.json passives[name="Thorns"].
+# Mirror ids: the DS 16.13.1 pool (items.json data keys) carries Thornmail
+# mirrors 223075 (Arena map-30) + 323075; Bramble mirrors 223076/323076 do
+# NOT exist in the pool, so they are NOT registered (a phantom id the
+# ranker can never surface). Grievous Wounds (3s on champion hit) is NOT
+# modeled here - it is a healing debuff, outside this damage lane.
+_THORNMAIL_ENTRY = PassiveReflectEntry(
+    base=(20.0,),
+    damage_type="MAGIC",
+    reflect_cadence_s=1.0,
+    note=(
+        "Thornmail Thorns: 'When struck by a basic attack [[on-hit]], deal "
+        "20 (+ 10% bonus armor) magic damage to the attacker' (Meraki "
+        "16.13.1); Grievous Wounds (3s vs champions) NOT modeled - healing "
+        "debuff, outside this damage lane; reflect_cadence_s 1.0 = assumed "
+        "1 incoming basic/s (operator-tunable)"
+    ),
+    attribute="Thorns",
+    caster_bonus_armor_pct=10.0,
+)
+_BRAMBLE_ENTRY = PassiveReflectEntry(
+    base=(10.0,),
+    damage_type="MAGIC",
+    reflect_cadence_s=1.0,
+    note=(
+        "Bramble Vest Thorns: 'When struck by a basic attack [[on-hit]], "
+        "deal 10 magic damage to the attacker' (Meraki 16.13.1); Grievous "
+        "Wounds (3s vs champions) NOT modeled - healing debuff, outside "
+        "this damage lane; reflect_cadence_s 1.0 = assumed 1 incoming "
+        "basic/s (operator-tunable)"
+    ),
+    attribute="Thorns",
+)
+
+_ITEM_REFLECT_OVERRIDES: dict[str, PassiveReflectEntry] = {
+    "3075": _THORNMAIL_ENTRY,
+    "223075": _THORNMAIL_ENTRY,  # Arena map-30 Thornmail mirror.
+    "323075": _THORNMAIL_ENTRY,  # 32-prefixed Thornmail mirror in the pool.
+    "3076": _BRAMBLE_ENTRY,
+}
+
+# Display names for consumer notes - the entries share attribute="Thorns"
+# (the unique-passive family name), so the note needs the item name here.
+_ITEM_REFLECT_NAMES: dict[str, str] = {
+    "3075": "Thornmail",
+    "223075": "Thornmail",
+    "323075": "Thornmail",
+    "3076": "Bramble Vest",
+}
+
+
 def reflect_entry(
     champion_id: str, key: str = "W", form_index: int = 0
 ) -> "PassiveReflectEntry | None":
@@ -118,13 +176,16 @@ def reflect_per_proc(
     caster_total_armor: float,
     caster_total_mr: float,
     rank: int = 0,
+    caster_bonus_armor: float = 0.0,
 ) -> float:
     """Pre-mitigation reflect magnitude per incoming attack.
 
     ``base[rank]`` (clamped to the last element) + ``caster_armor_pct`` % of the
     caster's TOTAL armor + ``caster_mr_pct`` % of the caster's TOTAL magic
-    resistance. ``rank`` is the 0-indexed ability rank (rank-flat for the seeded
-    Rammus W, so the default 0 is exact).
+    resistance + ``caster_bonus_armor_pct`` % of the caster's BONUS armor
+    (R68 - the Thornmail Thorns axis; END-appended kwarg so every existing
+    call keeps its meaning). ``rank`` is the 0-indexed ability rank
+    (rank-flat for the seeded Rammus W, so the default 0 is exact).
     """
     if entry is None or not entry.base:
         return 0.0
@@ -132,4 +193,43 @@ def reflect_per_proc(
     proc = float(entry.base[idx])
     proc += entry.caster_armor_pct / 100.0 * max(0.0, float(caster_total_armor))
     proc += entry.caster_mr_pct / 100.0 * max(0.0, float(caster_total_mr))
+    proc += (
+        entry.caster_bonus_armor_pct / 100.0
+        * max(0.0, float(caster_bonus_armor))
+    )
     return proc
+
+
+def item_reflect_entry(
+    item_ids, caster_bonus_armor: float = 0.0
+) -> "tuple[str, PassiveReflectEntry] | None":
+    """Return ``(item_id, entry)`` for the build's strongest thorn item.
+
+    Thorns is a UNIQUE passive (Bramble Vest is Thornmail's component), so
+    a build owning several thorn items is credited ONCE - the strongest
+    per-proc at the given caster bonus armor. Returns ``None`` when the
+    build owns no registered thorn item, so the ``assume_passive_reflect``
+    consumers add nothing (byte-identical for thorn-less builds). Accepts
+    int or string ids (normalized via ``str`` - the
+    ``_target_vulnerability_overrides`` convention).
+    """
+    best: "tuple[str, PassiveReflectEntry] | None" = None
+    best_proc = 0.0
+    seen: set[str] = set()
+    for iid in item_ids or ():
+        sid = str(iid)
+        if sid in seen:
+            continue
+        seen.add(sid)
+        entry = _ITEM_REFLECT_OVERRIDES.get(sid)
+        if entry is None:
+            continue
+        # Item entries scale on bonus armor only (caster_armor_pct ==
+        # caster_mr_pct == 0), so total armor/MR of 0 is exact here.
+        proc = reflect_per_proc(
+            entry, 0.0, 0.0, caster_bonus_armor=caster_bonus_armor
+        )
+        if best is None or proc > best_proc:
+            best = (sid, entry)
+            best_proc = proc
+    return best
