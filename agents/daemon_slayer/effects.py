@@ -346,6 +346,37 @@ def total_execute_max_hp_pct(effects: Iterable[ItemEffect]) -> float:
     return sum(e.execute_max_hp_pct for e in effects)
 
 
+def total_takedown_eruption_damage(
+    effects: Iterable[ItemEffect],
+    caster_bonus_hp: float,
+) -> float:
+    """Sum the champion-takedown eruption magnitude across the build (R70).
+
+    Hollow Radiance's Desolate erupts on a champion takedown within 3s of
+    damaging them for 400% of Immolate's damage (Meraki 16.13.1: 15*4 = 60
+    base + 1%*4 = 4% bonus health, magic, 500 units). Each contributing item
+    adds ``takedown_eruption_base + takedown_eruption_bonus_hp_ratio *
+    caster_bonus_hp`` PRE-mitigation magic damage; the burst consumer
+    (compute_burst_damage) applies the MR factor + mode multiplier + magic
+    amp on top (the same routing as the DSV6 magic-burst seam). Returns 0.0
+    when no item carries the fields. Additive across items (only Hollow
+    Radiance 6664/226664 carry them today; sums commute if another lands
+    later).
+
+    Read ONLY by the BURST scorer under ``assume_takedown=True`` (R59
+    doctrine: a one-trigger payoff is not a sustained-DPS rate, so
+    compute_dps does not credit it). No double-count with the Immolate
+    PeriodicProc - that is the sustained aura tick, this is the separate
+    on-takedown eruption. The 200% NON-champion eruption stays unmodeled.
+    """
+    return sum(
+        e.takedown_eruption_base
+        + e.takedown_eruption_bonus_hp_ratio * caster_bonus_hp
+        for e in effects
+        if (e.takedown_eruption_base or e.takedown_eruption_bonus_hp_ratio)
+    )
+
+
 def total_magic_burst_damage(
     effects: Iterable[ItemEffect],
     caster_ap: float,
