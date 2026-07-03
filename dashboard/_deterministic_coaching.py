@@ -762,6 +762,30 @@ def _live_aram_block(path: Path | None = None) -> dict:
     return {k: data.get(k) for k in keys if k in data}
 
 
+def _live_arena_block(path: Path | None = None) -> dict:
+    """Read the live Arena Haiku block (the seven coach fields) from the
+    artifact.
+
+    Returns just the seven comparison fields from data/arena_coaching_data.json
+    (the live coach writes many more). Fail-soft: a missing / unreadable /
+    malformed artifact -> {} (then log_arena_coach normalizes to all-empty).
+    Never raises. ``path`` overrides the artifact location (test seam)."""
+    target = path if path is not None else (
+        Path(__file__).resolve().parent.parent / "data" / "arena_coaching_data.json"
+    )
+    try:
+        data = json.loads(Path(target).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    keys = (
+        "action", "round_strategy", "fight_rule", "augment_advice",
+        "anvil_advice", "target_priority", "risk",
+    )
+    return {k: data.get(k) for k in keys if k in data}
+
+
 def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
                           *, path=None, live_path=None) -> None:
     """Fail-soft Stage 2 ARAM deterministic-vs-Haiku shadow-log.
@@ -880,6 +904,150 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
 
         from core.aram_coach_shadow import log_aram_coach  # lazy
         log_aram_coach(det_block, live_block, lc, mk, path=path)
+    except Exception:  # noqa: BLE001
+        return
+
+
+def shadow_log_arena_coach(coach: dict, lc: dict | None, mode_key: str,
+                           *, path=None, live_path=None) -> None:
+    """Fail-soft Stage 2 Arena deterministic-vs-Haiku shadow-log.
+
+    Assembles the deterministic Arena block (core.arena_deterministic_coach.
+    build_block) from the available dashboard state + the existing Arena
+    per-round item advisor / CC-threat / frontline surfaces, reads the live
+    Haiku block from data/arena_coaching_data.json, and appends ONE record per
+    distinct coarse state to data/arena_coach_shadow.jsonl so the operator can
+    eyeball the two side-by-side. SHADOW-ONLY: NEVER mutates coach / lc / any
+    served field, never raises, has NO effect on /api/state output.
+
+    Fires only for an Arena in-game tick - mode_key == "arena" AND
+    lc["champion"] present (the item-386 live-game gate; the stale coach file
+    keeps `champion` after a game ends, so coach-side presence alone is not
+    enough). ``path`` overrides the jsonl target and ``live_path`` the
+    live-artifact source (test seams).
+
+    PARTIAL-READ (by design): low_opp_count has NO live source, so
+    decide_action just gets None (the ALL IN promotion stays dormant); a
+    missing CC line / frontline read / build DB degrades the corresponding
+    block fields to empty inside build_block. The assembler works from
+    whatever is present.
+    """
+    try:
+        mk = str(mode_key or "").strip().lower()
+        if mk != "arena":
+            return
+        # Live-game gate (item-386): only a real in-game liveclient tick carries
+        # lc["champion"]. Cheap pre-check before any engine read.
+        if not (isinstance(lc, dict) and lc.get("champion")):
+            return
+
+        gs = _build_game_state(coach, lc, mode_key)
+        champ = gs.get("my_champion")
+        if not champ:
+            return
+
+        # hp_pct: prefer a direct coach hp_pct, else derive from the 0..1
+        # hp_fraction _build_game_state already resolved (lc hp / hp_max).
+        hp_pct = None
+        if isinstance(coach, dict):
+            raw = coach.get("hp_pct")
+            if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+                hp_pct = float(raw)
+        if hp_pct is None:
+            frac = gs.get("hp_fraction")
+            if isinstance(frac, (int, float)) and not isinstance(frac, bool):
+                hp_pct = float(frac) * 100.0
+
+        camp_phase = coach.get("camp_phase") if isinstance(coach, dict) else None
+        round_label = coach.get("round") if isinstance(coach, dict) else None
+        alive_teams = coach.get("alive_teams") if isinstance(coach, dict) else None
+
+        # Alive opponents: the SAME filter the live per-round item advisor uses
+        # (coaches/arena_coach.py) - skip self, partner, and dead cells; fall
+        # back to the liveclient enemy_comp when no scoreboard is present.
+        alive_opps: list[str] = []
+        teams = coach.get("teams") if isinstance(coach, dict) else None
+        if isinstance(teams, list):
+            for t in teams:
+                if not isinstance(t, dict):
+                    continue
+                if t.get("is_you") or t.get("is_partner") or t.get("is_dead"):
+                    continue
+                name = t.get("name")
+                if name:
+                    alive_opps.append(str(name))
+        if not alive_opps:
+            alive_opps = [str(e) for e in (gs.get("enemy_comp") or [])]
+
+        # Enemy-CC threat line (drives fight_rule / risk). Fail-soft to "".
+        cc_line = ""
+        try:
+            from core.enemy_cc_threat_context import enemy_cc_threat_line  # lazy
+            cc_line = enemy_cc_threat_line(alive_opps, "ARENA") or ""
+        except Exception:  # noqa: BLE001
+            cc_line = ""
+
+        # Frontline classification for the kill-order line. Per-name guarded so
+        # one unresolvable name cannot blank the rest. Fail-soft to empty set.
+        frontline_names: set[str] = set()
+        try:
+            from core.aram_comp_verdict import compute_factors  # lazy
+            for name in alive_opps:
+                try:
+                    if compute_factors([name]).get("frontline_count"):
+                        frontline_names.add(name)
+                except Exception:  # noqa: BLE001
+                    continue
+        except Exception:  # noqa: BLE001
+            frontline_names = set()
+
+        # Not-yet-built item names via the live per-round Arena advisor (dedup
+        # vs owned + tank/heal re-rank; NAME strings). gs["items"] carries
+        # display names (arena coach items / liveclient owned_items are both
+        # name lists); a dict entry degrades to its displayName just in case.
+        build_remaining = None
+        try:
+            owned_names = []
+            for it in (gs.get("items") or []):
+                if isinstance(it, dict):
+                    it = it.get("displayName") or it.get("name")
+                if it:
+                    owned_names.append(str(it))
+            gold = gs.get("gold")
+            try:
+                gold_i = int(gold)
+            except (TypeError, ValueError):
+                gold_i = 0
+            hp_i = int(hp_pct) if hp_pct is not None else 100
+            from coaches._arena_item_advisor import recompute_arena_build  # lazy
+            build_remaining = recompute_arena_build(
+                champion=str(champ),
+                current_items=owned_names,
+                gold=gold_i,
+                alive_opponents=alive_opps,
+                hp_pct=hp_i,
+            )
+        except Exception:  # noqa: BLE001
+            build_remaining = None
+
+        from core.arena_deterministic_coach import build_block  # lazy
+        det_block = build_block(
+            hp_pct=hp_pct,
+            camp_phase=camp_phase,
+            low_opp_count=None,  # no live source; ALL IN promotion dormant
+            alive_teams=alive_teams,
+            cc_threat_line=cc_line,
+            alive_opponents=alive_opps,
+            frontline_names=frontline_names,
+            build_remaining=build_remaining,
+        )
+
+        live_block = _live_arena_block(live_path)
+
+        from core.arena_coach_shadow import log_arena_coach  # lazy
+        log_arena_coach(
+            det_block, live_block, lc, mk, round_label=round_label, path=path,
+        )
     except Exception:  # noqa: BLE001
         return
 
