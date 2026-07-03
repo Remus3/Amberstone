@@ -14,8 +14,10 @@ one entirely:
 
   - the 4 mount ids are GONE from the #view-champ-select region of index.html
     and PRESENT in the #view-active-match region.
-  - the 3 panels that STAY on champ-select (ds-profile, ds-knobs, ds-statcheck)
-    plus the CS1 cc-pairing card are still mounted in #view-champ-select.
+  - the stay-set panels are still mounted in #view-champ-select. (QA
+    2026-07-03 B20/B22 later moved ds-profile / ds-knobs / ds-statcheck to
+    the same Builds/DS surface - tests/test_builds_ds_relocation_dom.py pins
+    that follow-up move; they are no longer in the stay-set here.)
   - the render invocations moved from champ_select.js to active_match.js.
 
 Grep + region-slice smoke checks - cheap, fast. Mirrors the sibling
@@ -41,10 +43,12 @@ MOVED_MOUNT_IDS = (
 )
 
 # Panels that STAY on champ-select (must NOT be dragged along).
+# QA 2026-07-03 B20/B22 moved ds-profile / ds-knobs / ds-statcheck onto the
+# Builds/DS (active-match BUILD pane) surface too - they are no longer part
+# of the CS3 stay-set; their relocation is pinned by
+# tests/test_builds_ds_relocation_dom.py. B12 removes the cc-pairing card
+# from champ select entirely (slice A owns that guard).
 STAY_MOUNT_IDS = (
-    'id="csv-sugg-ds-profile"',
-    'id="csv-ds-knobs"',
-    'id="csv-ds-statcheck"',
     'id="csv-sugg-cc-pairing"',
 )
 
