@@ -806,8 +806,10 @@ body[data-shell="overlay"] .ovx-enemyspells .es-chip {
   font-weight: 700;
   letter-spacing: 0.03em;
   /* R38 HIT-TARGETS: deliberately below --hit-min - an operator-tuned compact
-   * in-game tap-tracker (A5-locked); six rows of 42px chips would swamp the
-   * overlay. Sanctioned sub-floor relaxation, like the R36 launcher square. */
+   * in-game tap-tracker (A5-locked); five rows of 42px chips would swamp the
+   * overlay. Sanctioned sub-floor relaxation, like the R36 launcher square.
+   * R72: the 3/5px off-grid compact spacing (.es-row gap/margin, .es-chip
+   * padding) is part of the same A5 lock, not new off-grid drift. */
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -850,6 +852,11 @@ body[data-shell="overlay"] .ovx-statspanel .sp-role {
   /* R38 HIT-TARGETS: the panel's one clickable (role selector) reserves the
    * 42px tap floor, matching the sibling overlay controls. */
   min-height: var(--hit-min);
+}
+/* R72: keyboard-focus indicator on the panel's one clickable (R71 parity). */
+body[data-shell="overlay"] .ovx-statspanel .sp-role:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 body[data-shell="overlay"] .ovx-statspanel .sp-role option {
   color: rgb(var(--ovx-text));
