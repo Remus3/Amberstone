@@ -109,6 +109,52 @@ def git(*args):
 def head():
     return git("rev-parse", "HEAD")
 
+def _rev_parse(ref):
+    """Resolve a git ref to a sha, or '' when it does not exist (e.g. HEAD~2 in a
+    young repo). git() already degrades a bad ref / failure to '' (rev-parse
+    --verify -q prints nothing + exits non-zero), so this never raises."""
+    return git("rev-parse", "--verify", "-q", ref)
+
+def _is_ancestor(a, b):
+    """True iff commit a is an ancestor of (or identical to) commit b. Uses a
+    direct call because the answer is the EXIT CODE, not stdout, and the
+    stdout-only git() helper cannot express it."""
+    if not a or not b:
+        return False
+    try:
+        return subprocess.run(
+            ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", a, b],
+            capture_output=True, timeout=30,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)).returncode == 0
+    except (subprocess.SubprocessError, OSError):
+        return False
+
+def audit_range(clean_sha, new_sha):
+    """base..new_sha the gemini auditor scores each cycle (R61).
+
+    ROOT CAUSE (false-positive REGRESS recursion): the old window was the single
+    cycle's commits (prev_sha..new_sha). A /done docs-sync commit that lands in
+    its OWN cycle was audited in isolation - the auditor saw docs asserting an
+    engine/logic change whose code was committed a cycle earlier and lay OUTSIDE
+    the window, so the lone docs commit read as a regression. That fed a
+    FIX-FIRST directive with nothing to fix, which shipped another docs commit,
+    audited alone again: an infinite REGRESS loop.
+
+    Fix: never audit a lone commit. base = the OLDER of the last-CLEAN anchor and
+    new_sha~2, so (a) a docs commit always carries the commit(s) it documents,
+    and (b) an unresolved REGRESS chain keeps its full context back to the last
+    known-good state. Fallbacks for a young repo: new_sha~2 -> new_sha~1 ->
+    new_sha (a bare sha = a valid whole-tree diff)."""
+    floor = _rev_parse(f"{new_sha}~2")
+    if clean_sha and floor:
+        # keep the clean anchor only while it is OLDER than the 2-commit floor;
+        # otherwise widen to the floor so the window is never a single commit.
+        base = clean_sha if _is_ancestor(clean_sha, floor) else floor
+    else:
+        base = clean_sha or floor
+    base = base or _rev_parse(f"{new_sha}~1")
+    return f"{base}..{new_sha}" if base else new_sha
+
 def tail(rel, n, root=None):
     base = Path(root) if root is not None else ROOT
     p = base / rel
@@ -346,10 +392,10 @@ def director(last_done, last_audit):
     ctx = build_director_context(last_done, last_audit)
     return gemini(tmpl + ctx, "Output ONLY the directive markdown for the next cycle. No preamble.")
 
-def auditor(prev_sha, new_sha):
+def auditor(prev_sha, new_sha, clean_sha=None):
     if not new_sha or prev_sha == new_sha:
         return "VERDICT: CLEAN\n(no new commit this cycle)"
-    rng = f"{prev_sha}..{new_sha}"
+    rng = audit_range(clean_sha, new_sha)
     diff = git("diff", rng)
     if len(diff) > 55000:
         diff = diff[:55000] + "\n...[truncated]"
@@ -468,6 +514,7 @@ def main():
             CFG["session_jsonl"] = str(tops[0])
             log(f"pinned executor session jsonl: {tops[0].name}")
     prev_sha = head()
+    last_clean_sha = prev_sha  # R61: auditor diff base = last known-good sha (loop start is clean)
     last_done, last_audit = {}, ""
     same_sha_streak = 0
     log(f"loop start dry_run={DRY} ceiling={CFG['ceiling_usd']} head={prev_sha[:8]}")
@@ -549,12 +596,17 @@ def main():
             if same_sha_streak >= 2:
                 stop("no progress: same sha 2 cycles")
 
-        verdict = "VERDICT: CLEAN\n(fixed-directive mode: gemini auditor disabled)" if src == "fixed" else auditor(prev_sha, new_sha)
+        verdict = "VERDICT: CLEAN\n(fixed-directive mode: gemini auditor disabled)" if src == "fixed" else auditor(prev_sha, new_sha, last_clean_sha)
         if done.get("regressions"):
             verdict = ("VERDICT: REGRESS\nClaude self-reported it could NOT reach green this "
                        "cycle (regressions flag). Fix this before any new work.\n\n" + verdict)
         last_audit = verdict
         regress = verdict.strip().upper().startswith("VERDICT: REGRESS")
+        # R61: advance the clean anchor only on a CLEAN verdict; a REGRESS keeps
+        # the window open back to the last known-good sha so the eventual fix is
+        # audited WITH the commits it repairs (never a lone docs-sync commit).
+        if not regress:
+            last_clean_sha = new_sha
         log(f"cycle {cycle}: audit -> {'REGRESS' if regress else 'CLEAN'}")
         # Persist the resolved directive to the chain so the NEXT director cycle
         # sees what was already issued + shipped and builds on it (continuity fix).
