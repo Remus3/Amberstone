@@ -223,7 +223,7 @@ class TestS214CascadeAndMultiPick(unittest.TestCase):
         conn = sqlite3.connect(str(self.db_path))
         try:
             picks = routes_pickban._query_performance(
-                conn, "me", "BOTTOM", (420,), mood="comfort", top=3)
+                conn, "me", "BOTTOM", (420,), top=3)
         finally:
             conn.close()
         self.assertEqual(len(picks), 3)
@@ -247,102 +247,12 @@ class TestS214CascadeAndMultiPick(unittest.TestCase):
         conn = sqlite3.connect(str(self.db_path))
         try:
             picks = routes_pickban._query_performance(
-                conn, "me", "BOTTOM", (420,), mood="comfort",
+                conn, "me", "BOTTOM", (420,),
                 exclude_ids=(67,), top=3)
         finally:
             conn.close()
         self.assertEqual(len(picks), 1)
         self.assertEqual(picks[0]["champName"], "Caitlyn")
-
-    def test_synergy_with_allies_scores_joint_games(self):
-        # Operator at BOT with Vayne wins 3/3 alongside ally Lulu (id 117).
-        # Operator at BOT with Caitlyn wins 2/4 alongside Lulu.
-        # Synergy mode with allies=[117] should pick Vayne (higher joint WR).
-        rows = []
-        # 3 Vayne games, all wins, with Lulu on team
-        for i in range(3):
-            rows.append({"match_id": f"v{i}", "puuid": "me",
-                         "team_id": 100, "team_position": "BOTTOM",
-                         "champion_id": 67, "champion_name": "Vayne",
-                         "win": 1})
-            rows.append({"match_id": f"v{i}", "puuid": "lulu_p",
-                         "team_id": 100, "team_position": "UTILITY",
-                         "champion_id": 117, "champion_name": "Lulu",
-                         "win": 1})
-        # 4 Caitlyn games with Lulu, 2 wins
-        for i in range(4):
-            rows.append({"match_id": f"c{i}", "puuid": "me",
-                         "team_id": 100, "team_position": "BOTTOM",
-                         "champion_id": 51, "champion_name": "Caitlyn",
-                         "win": 1 if i < 2 else 0})
-            rows.append({"match_id": f"c{i}", "puuid": "lulu_p",
-                         "team_id": 100, "team_position": "UTILITY",
-                         "champion_id": 117, "champion_name": "Lulu",
-                         "win": 1 if i < 2 else 0})
-        _build_test_db(self.db_path, rows)
-        conn = sqlite3.connect(str(self.db_path))
-        try:
-            picks = routes_pickban._query_performance(
-                conn, "me", "BOTTOM", (420,), mood="synergy",
-                top=3, ally_ids=(117,))
-        finally:
-            conn.close()
-        self.assertTrue(picks)
-        # Highest joint-with-Lulu WR is Vayne (3/3 = 100%).
-        self.assertEqual(picks[0]["champName"], "Vayne")
-        # Reason text reflects the synergy framing.
-        self.assertIn("alongside locked allies", picks[0]["reason"])
-
-    def test_synergy_empty_allies_falls_back_to_recent_form(self):
-        # With ally_ids=() the synergy mode should fall back to the recent-
-        # form proxy. Vayne with 3 wins inside the recent window.
-        import time as _time
-        recent_ts = int((_time.time() - 86400 * 10) * 1000)  # 10 days ago
-        old_ts    = int((_time.time() - 86400 * 200) * 1000)  # 200 days ago
-        conn = sqlite3.connect(str(self.db_path))
-        conn.executescript("""
-            CREATE TABLE matches (
-                match_id TEXT PRIMARY KEY,
-                queue_id INTEGER,
-                game_creation_ts INTEGER
-            );
-            CREATE TABLE participants (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                match_id TEXT, puuid TEXT, team_id INTEGER,
-                team_position TEXT, champion_id INTEGER,
-                champion_name TEXT, win INTEGER
-            );
-        """)
-        # Recent: 3 Vayne wins
-        for i in range(3):
-            conn.execute(
-                "INSERT INTO matches(match_id, queue_id, game_creation_ts) VALUES (?,?,?)",
-                (f"r{i}", 420, recent_ts))
-            conn.execute(
-                "INSERT INTO participants(match_id, puuid, team_id, team_position, "
-                "champion_id, champion_name, win) VALUES (?,?,?,?,?,?,?)",
-                (f"r{i}", "me", 100, "BOTTOM", 67, "Vayne", 1))
-        # Old: 5 Vayne losses (outside the 60-day window - should not count)
-        for i in range(5):
-            conn.execute(
-                "INSERT INTO matches(match_id, queue_id, game_creation_ts) VALUES (?,?,?)",
-                (f"o{i}", 420, old_ts))
-            conn.execute(
-                "INSERT INTO participants(match_id, puuid, team_id, team_position, "
-                "champion_id, champion_name, win) VALUES (?,?,?,?,?,?,?)",
-                (f"o{i}", "me", 100, "BOTTOM", 67, "Vayne", 0))
-        conn.commit()
-        try:
-            picks = routes_pickban._query_performance(
-                conn, "me", "BOTTOM", (420,), mood="synergy", top=3,
-                ally_ids=())
-        finally:
-            conn.close()
-        # Recent-form path: 3 recent wins -> 100% WR, fallback fires.
-        self.assertTrue(picks)
-        self.assertEqual(picks[0]["champName"], "Vayne")
-        self.assertEqual(picks[0]["wr_pct"], 100)
-        self.assertIn("recent form", picks[0]["reason"])
 
     def test_parse_csv_ints_handles_blanks(self):
         # Spot-test the CSV int parser used by the HTTP handler for
@@ -353,129 +263,84 @@ class TestS214CascadeAndMultiPick(unittest.TestCase):
         self.assertEqual(routes_pickban._parse_csv_ints(",,"), ())
 
 
-class TestS238SmoothedSynergyRanking(unittest.TestCase):
-    """s238 (CLAUDE.md #90 decision 2): the synergy mood ranks by the
-    shared Laplace/Beta-smoothed primitive, not raw wins/games. These
-    pin the *behavior change* - a small high-raw-WR record no longer
-    outranks a larger, better-proven one - and the invariant that the
-    displayed `wr_pct` stays the RAW observed rate."""
+class TestMoodParamRemoved(unittest.TestCase):
+    """A3 (QA 2026-07-03, docs/qa/CHAMP_SELECT_QA_2026-07-03.md): the
+    s209 mood system is REMOVED from the backend. The route serves the
+    raw top-N picks by score; a stray legacy ``mood=`` query arg is
+    tolerated (ignored, never a 400); the response carries no ``mood``
+    field; the deleted mood machinery is actually gone."""
 
     def setUp(self):
         self._tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         self._tmp.close()
         self.db_path = Path(self._tmp.name)
+        self._db_patch = mock.patch.object(
+            routes_pickban, "_REWIND_DB", self.db_path,
+        )
+        self._db_patch.start()
 
     def tearDown(self):
+        self._db_patch.stop()
         self.db_path.unlink(missing_ok=True)
 
-    def test_helper_ranks_by_smoothed_not_raw(self):
-        # Raw WR would order Lux (2-0 = 100%) above Ezreal (7-1 = 87.5%).
-        # Laplace: Lux (2+1)/(2+2)=0.75 ; Ezreal (7+1)/(8+2)=0.80 -> the
-        # more-proven champ wins. wr_pct stays the raw observed value.
-        rows = [(99, "Lux", 2, 2), (81, "Ezreal", 8, 7)]
-        ranked = routes_pickban._rank_by_smoothed_wr(rows, "x", top=5)
-        self.assertEqual([r["champName"] for r in ranked], ["Ezreal", "Lux"])
-        self.assertEqual(ranked[0]["wr_pct"], 88)   # raw 7/8, not 80
-        self.assertEqual(ranked[1]["wr_pct"], 100)  # raw 2/2, shown as-is
-        self.assertIn("x", ranked[0]["reason"])
+    def _make_handler(self, path):
+        h = mock.MagicMock()
+        h.path = path
+        return h
 
-    def test_helper_tiebreak_more_games_then_id(self):
-        # Equal smoothed WR (both 1.0 raw, 3-0): more games wins; then
-        # lower champ_id for a stable order.
-        rows = [(50, "B", 3, 3), (10, "A", 5, 5), (10, "A2", 5, 5)]
-        ranked = routes_pickban._rank_by_smoothed_wr(rows, "s", top=5)
-        # A (5 games, smoothed 6/7) and A2 (same) beat B (3 games, 4/5);
-        # A vs A2 equal smoothed+games -> champ_id asc keeps order stable.
-        self.assertEqual(ranked[0]["champName"], "A")
-        self.assertEqual(ranked[-1]["champName"], "B")
-
-    def test_helper_respects_top_slice(self):
-        rows = [(1, "A", 4, 4), (2, "B", 4, 3), (3, "C", 4, 2)]
-        self.assertEqual(len(routes_pickban._rank_by_smoothed_wr(rows, "z", 2)), 2)
-        self.assertEqual(len(routes_pickban._rank_by_smoothed_wr([], "z", 3)), 0)
-
-    def test_synergy_allies_path_uses_smoothing(self):
-        # Operator at BOT alongside ally Lulu (117):
-        #   Lux  2/2 with Lulu (raw 100%, smoothed 0.75)
-        #   Ezreal 7/8 with Lulu (raw 88%, smoothed 0.80)
-        # Old raw proxy -> Lux first; smoothed -> Ezreal first.
+    def _seed_two_champs(self):
+        # Vayne 4/5 (80%) beats Jinx 3/6 (50%) on raw score.
         rows = []
-        for i in range(2):
-            rows.append({"match_id": f"x{i}", "puuid": "me", "team_id": 100,
-                         "team_position": "BOTTOM", "champion_id": 99,
-                         "champion_name": "Lux", "win": 1})
-            rows.append({"match_id": f"x{i}", "puuid": "lulu_p", "team_id": 100,
-                         "team_position": "UTILITY", "champion_id": 117,
-                         "champion_name": "Lulu", "win": 1})
-        for i in range(8):
-            rows.append({"match_id": f"e{i}", "puuid": "me", "team_id": 100,
-                         "team_position": "BOTTOM", "champion_id": 81,
-                         "champion_name": "Ezreal", "win": 1 if i < 7 else 0})
-            rows.append({"match_id": f"e{i}", "puuid": "lulu_p", "team_id": 100,
-                         "team_position": "UTILITY", "champion_id": 117,
-                         "champion_name": "Lulu", "win": 1 if i < 7 else 0})
+        for i in range(5):
+            rows.append({"match_id": f"v{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 67,
+                         "champion_name": "Vayne", "win": 1 if i < 4 else 0})
+        for i in range(6):
+            rows.append({"match_id": f"j{i}", "puuid": "me",
+                         "team_position": "BOTTOM", "champion_id": 222,
+                         "champion_name": "Jinx", "win": 1 if i < 3 else 0})
         _build_test_db(self.db_path, rows)
-        conn = sqlite3.connect(str(self.db_path))
-        try:
-            picks = routes_pickban._query_performance(
-                conn, "me", "BOTTOM", (420,), mood="synergy",
-                top=3, ally_ids=(117,))
-        finally:
-            conn.close()
-        self.assertEqual(picks[0]["champName"], "Ezreal")  # smoothed winner
-        self.assertEqual(picks[0]["wr_pct"], 88)            # raw, not 80
-        self.assertEqual(picks[1]["champName"], "Lux")
-        self.assertEqual(picks[1]["wr_pct"], 100)           # raw shown as-is
-        self.assertIn("alongside locked allies", picks[0]["reason"])
-        self.assertIn("smoothed", picks[0]["reason"])
 
-    def test_synergy_recent_form_path_uses_smoothing(self):
-        # Empty allies -> recent-form fallback, also smoothed.
-        import time as _time
-        recent_ts = int((_time.time() - 86400 * 10) * 1000)
-        conn = sqlite3.connect(str(self.db_path))
-        conn.executescript("""
-            CREATE TABLE matches (
-                match_id TEXT PRIMARY KEY, queue_id INTEGER,
-                game_creation_ts INTEGER
-            );
-            CREATE TABLE participants (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                match_id TEXT, puuid TEXT, team_id INTEGER,
-                team_position TEXT, champion_id INTEGER,
-                champion_name TEXT, win INTEGER
-            );
-        """)
-        # Caitlyn 2-0 (raw 100%, smoothed 0.75) vs Jinx 9-2
-        # (raw 82%, smoothed 10/13 = 0.769) -> smoothed picks Jinx.
-        for i in range(2):
-            conn.execute("INSERT INTO matches VALUES (?,?,?)",
-                         (f"ct{i}", 420, recent_ts))
-            conn.execute(
-                "INSERT INTO participants(match_id,puuid,team_id,"
-                "team_position,champion_id,champion_name,win) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (f"ct{i}", "me", 100, "BOTTOM", 51, "Caitlyn", 1))
-        for i in range(11):
-            conn.execute("INSERT INTO matches VALUES (?,?,?)",
-                         (f"jx{i}", 420, recent_ts))
-            conn.execute(
-                "INSERT INTO participants(match_id,puuid,team_id,"
-                "team_position,champion_id,champion_name,win) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (f"jx{i}", "me", 100, "BOTTOM", 222, "Jinx",
-                 1 if i < 9 else 0))
-        conn.commit()
-        try:
-            picks = routes_pickban._query_performance(
-                conn, "me", "BOTTOM", (420,), mood="synergy", top=3,
-                ally_ids=())
-        finally:
-            conn.close()
-        self.assertEqual(picks[0]["champName"], "Jinx")   # smoothed winner
-        self.assertEqual(picks[0]["wr_pct"], 82)           # raw 9/11
-        self.assertIn("recent form", picks[0]["reason"])
-        self.assertIn("smoothed", picks[0]["reason"])
+    def _request(self, path):
+        h = self._make_handler(path)
+        routes_pickban._serve_pickban_recs(h)
+        code, body, _ctype = h._send.call_args[0]
+        import json as _json
+        return code, _json.loads(body)
+
+    def test_stray_mood_param_is_ignored_not_400(self):
+        self._seed_two_champs()
+        code, payload = self._request(
+            "/api/champ-select/pickban-recs?role=BOT&mood=limit")
+        self.assertEqual(code, 200)
+        self.assertTrue(payload["ok"])
+        # Raw top pick by score regardless of the stray mood arg.
+        self.assertEqual(payload["performance"]["champName"], "Vayne")
+
+    def test_response_has_no_mood_field(self):
+        self._seed_two_champs()
+        code, payload = self._request(
+            "/api/champ-select/pickban-recs?role=BOT")
+        self.assertEqual(code, 200)
+        self.assertNotIn("mood", payload)
+
+    def test_mood_values_do_not_change_picks(self):
+        self._seed_two_champs()
+        results = []
+        for suffix in ("", "&mood=comfort", "&mood=synergy", "&mood=new"):
+            code, payload = self._request(
+                f"/api/champ-select/pickban-recs?role=BOT&top=3{suffix}")
+            self.assertEqual(code, 200)
+            results.append([p["champId"] for p in payload["performance_picks"]])
+        self.assertTrue(all(r == results[0] for r in results), results)
+        self.assertEqual(results[0], [67, 222])  # raw score order
+
+    def test_mood_machinery_is_gone(self):
+        for name in ("_VALID_MOODS", "_MOOD_DEFAULT", "_PERFORMANCE_QUERIES",
+                     "_query_performance_limit", "_query_performance_new",
+                     "_query_performance_synergy", "_rank_by_smoothed_wr"):
+            self.assertFalse(hasattr(routes_pickban, name),
+                             f"{name} should have been removed (QA A3)")
 
 
 class TestBansQuery(unittest.TestCase):

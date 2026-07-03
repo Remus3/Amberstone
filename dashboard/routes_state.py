@@ -521,6 +521,19 @@ _CE_DROPPED: int   = 0
 # the in-process DS engine (split-brain guard vs the live :8893 server).
 _MAX_BUILD_SLOTS = 6
 
+# A1 (QA 2026-07-03 champ-select QA): tolerated aliases -> canonical mode.
+# Canonical vocabulary = agents.daemon_slayer.rank.MODE_MAP_ID keys
+# (SR / ARAM / ARENA / BRAWL; hardcoded here per the split-brain guard
+# above). KIWI is the Live Client gameMode for ARAM Mayhem (queue 2400);
+# CHERRY is Riot's Arena gameMode. Without the alias these fell through
+# the engine's per-mode item-legality filter to allow-all.
+_DS_PREVIEW_MODE_ALIASES = {
+    "KIWI":        "ARAM",
+    "ARAM_5V5":    "ARAM",
+    "ARAM_MAYHEM": "ARAM",
+    "CHERRY":      "ARENA",
+}
+
 
 def _serve_ds_preview_post(h, payload) -> None:
     """POST {champion, mode, level?, items?, archetype?} -> DS top picks.
@@ -540,6 +553,12 @@ def _serve_ds_preview_post(h, payload) -> None:
     field in the payload overrides the persisted pick (CS picker UI uses
     it for hover preview without committing). Response gains ``scorer`` +
     ``archetype`` siblings so the dashboard can label the unit correctly.
+
+    A1 (QA 2026-07-03): canonical ``mode`` vocabulary is SR | ARAM |
+    ARENA | BRAWL (the rank.MODE_MAP_ID key set). Event-mode gameMode
+    strings clients historically sent are tolerated and aliased to
+    canonical (KIWI / ARAM_5V5 / ARAM_MAYHEM -> ARAM, CHERRY -> ARENA)
+    via ``_DS_PREVIEW_MODE_ALIASES``; unknown values pass through.
     """
     try:
         from core.daemon_slayer_client import rank_for_primary_archetype
@@ -555,6 +574,10 @@ def _serve_ds_preview_post(h, payload) -> None:
         # ids (champ-select callers) pass through unchanged.
         champion = canonical_champion_id(champion) or champion
         mode = str(payload.get("mode") or "SR").upper()
+        # A1 (QA 2026-07-03): alias event-mode vocab (KIWI -> ARAM,
+        # CHERRY -> ARENA) to canonical so the per-mode item filter +
+        # ARAM/Arena modifiers apply instead of falling to allow-all.
+        mode = _DS_PREVIEW_MODE_ALIASES.get(mode, mode)
         level = int(payload.get("level") or 6)
         level = max(1, min(18, level))
         items = [str(i) for i in (payload.get("items") or []) if i]
@@ -641,15 +664,17 @@ def _serve_ds_preview_post(h, payload) -> None:
                 )
         except Exception as exc:  # noqa: BLE001
             log.debug("ds-preview defensive resolve: %s", exc)
-        # L4 Phase-D capability-gap surface (default-OFF RC_CAPGAP_SURFACE).
-        # Pure additive consumer of the in-process multi-axis capability-gap
-        # synthesizer (core.ds_capability_gap.build_capability_gap). Never
-        # raises into the envelope - any failure leaves the field None and is
-        # logged at debug. Only populated when the flag is ON, enemies
-        # resolve, and the synthesizer reports applies=True.
+        # L4 Phase-D capability-gap surface (RC_CAPGAP_SURFACE - default ON
+        # since the 2026-07-03 champ-select QA ruling A5; set
+        # RC_CAPGAP_SURFACE=0 in the env to disable). Pure additive consumer
+        # of the in-process multi-axis capability-gap synthesizer
+        # (core.ds_capability_gap.build_capability_gap). Never raises into
+        # the envelope - any failure leaves the field None and is logged at
+        # debug. Only populated when the flag is ON, enemies resolve, and
+        # the synthesizer reports applies=True.
         capability_gap = None
         try:
-            if os.environ.get("RC_CAPGAP_SURFACE", "0").strip().lower() in ("1", "true", "yes", "on"):
+            if os.environ.get("RC_CAPGAP_SURFACE", "1").strip().lower() in ("1", "true", "yes", "on"):
                 from core.ds_capability_gap import build_capability_gap
                 cg_enemies = _resolve_enemy_champions(payload)
                 if cg_enemies:
