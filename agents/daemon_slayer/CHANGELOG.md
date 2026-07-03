@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.172.0 (ranged-only melee build-pool purchasability gate, 2026-07-02 - live-drain bug fix,
+NOT a seam). DS /rank recommended the RANGED-ONLY Runaan's Hurricane (3085) for MELEE champions
+(reproduced live on Irelia #5 SR and Viego #8 ARAM) - an item the in-game shop blocks on melee.
+NEW RANGED_ONLY_ITEM_IDS = {"3085", "223085"} (Runaan's canonical + the Arena map-30 alias ONLY;
+Rapid Firecannon 3094 and Statikk Shiv 3087 verified NOT range-restricted at 16.13.1 and stay
+melee-buildable) is excluded from the candidate pool in the shared rank._filter_candidates builder
+before the inject force-admit, gated by a champion_is_melee flag threaded through all 7 ranker
+lanes (rank / ehp / hybrid / burst / hps / beam / _rank_mage). Melee = base attackrange <= 250
+(mirrors ehp._is_ranged; Graves 425 and Kindred 500 classify ranged and keep Runaan's).
+_champion_is_melee fails CLOSED to ranged so a missing/malformed champ record never over-filters a
+real ranged carry. Purchasability correctness fix, independent of the B1 apply_melee_aa_gate DPS
+seam (which only zeroes Runaan's bolt DPS and is default-OFF). Melee build-order tables change
+(Runaan's removed) - NOT stamp-only. 15 RED->GREEN regression tests
+(test_rank_ranged_only_purchasability.py). No backfill needed (/rank is ephemeral live compute).
+1.171.0 -> 1.172.0.
+
 1.171.0 (R60, 2026-07-02 - wielder Heal/Shield Power (HSP) amp seam. Distinct from
 R59 (which scored the TARGET-side Lifeline shield): R60 scores the WIELDER's own
 heal_shield_amp_pct (Redemption / Mikael / Ardent / Moonstone / Staff of Flowing
