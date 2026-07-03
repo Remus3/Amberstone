@@ -102,6 +102,7 @@ from .effects import (
     total_magic_amp_multiplier,
     total_magic_burst_damage,
     total_physical_burst_damage,
+    total_shield_cut_value,
     total_stacked_ap,
     total_takedown_bonus_ad,
     total_takedown_eruption_damage,
@@ -137,6 +138,15 @@ from .stats import clamp_level
 # R, Diana R, Zed R) plus shadow/blink R execute with one AA before and
 # one AA after the ult lands.
 DEFAULT_COMBO_SEQUENCE: tuple[str, ...] = ("Q", "W", "E", "AA", "R", "AA")
+
+# DSV9 (1.179.0) documented ASSUMED pin - same doctrine as
+# dps._ASSUMED_TAKEDOWN_STACKS: the assume_shielded_target seam values the
+# ONE-TIME Shield Reaver active-shield cut against an assumed target shield
+# pool of 20% of target max HP. A typical mid-game shield pool runs
+# ~300-600 HP on a 2000-3000 HP target (Ornn W / Sterak's / Shield Bash
+# class shields), and RC has no live target-shield telemetry to read a real
+# pool from, so the seam is an assumption pin by construction.
+_ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP = 0.20
 
 # Phase 5.5 (s186, 2026-05-13) - per-champion combo override registry.
 # Same lazy-cache pattern as ability_dps._load_max_priority_table; ships
@@ -507,6 +517,7 @@ def compute_burst_damage(
     gate_caster_hp_amp: bool = False,
     caster_current_hp_pct: float = 1.0,
     assume_physical_burst: bool = False,
+    assume_shielded_target: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -578,6 +589,19 @@ def compute_burst_damage(
     Absolute Focus (8233, gates on HIGH caster HP) still reads ``caster_hp_pct``,
     so the two caster-hp gates do not conflict. The live default-ON flip is
     operator-gated (docs/LIVE_GAME_GATED_SYNC.md) - do not flip blind.
+
+    ``assume_shielded_target`` (DSV9, 1.179.0): the anti-shield (Shield
+    Reaver) valuation seam. Default False -> byte-identical. When True and a
+    ``target_max_hp`` is supplied, an item carrying the Shield Reaver venom
+    (Serpent's Fang 6695 / Arena 226695: melee 50% / ranged 35%, Meraki
+    16.13.1) is credited ONE active-shield cut event against an assumed
+    shield pool of ``_ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP`` x target max HP.
+    Shield HP absorbs POST-mitigation damage, so removing X shield HP is
+    worth X post-mitigation-equivalent damage - NO armor/MR routing, NO
+    mode_mult, NO amp layer (stricter than the DSV8 physical-burst seam: a
+    shield cut is not damage dealt at all). The caster's melee/ranged split
+    picks which rd arm applies. The sustained "shields gained within the
+    duration" reduction stays UNMODELED (utility over time, not burst math).
     """
     if block_strategy not in {"first", "sum", "max"}:
         raise ValueError(
@@ -1088,6 +1112,34 @@ def compute_burst_damage(
             )
             total_burst += physical_burst_damage
 
+    # DSV9 (1.179.0): anti-shield (Shield Reaver) valuation seam.
+    # assume_shielded_target=False -> shield_cut_damage stays 0.0,
+    # total_burst unchanged (byte-identical). When True and a target_max_hp
+    # is supplied, an item carrying the Shield Reaver venom (Serpent's Fang
+    # 6695 / Arena 226695: melee 50% / ranged 35%, Meraki 16.13.1) is
+    # credited ONE active-shield cut event against an assumed pool of
+    # _ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP x target max HP; the caster's
+    # melee/ranged split picks the rd arm (_champion_is_melee - the same
+    # data-driven split the ranged-only purchasability gate uses). Shield HP
+    # absorbs POST-mitigation damage, so removing X shield HP is worth X
+    # post-mitigation-equivalent damage - therefore NO armor/MR routing, NO
+    # mode_mult, NO amp layer (stricter than the DSV8 block above: a shield
+    # cut is not damage dealt at all; the raw value folds straight into the
+    # burst total). The sustained "shields gained within the duration"
+    # reduction stays UNMODELED (utility over time, not burst math); no
+    # PeriodicProc, so compute_dps sees nothing (no double-count).
+    shield_cut_damage = 0.0
+    if assume_shielded_target and target_max_hp > 0:
+        _shield_pool = _ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP * target_max_hp
+        shield_cut_raw = total_shield_cut_value(
+            item_effects,
+            _champion_is_melee(snapshot.champions.get(str(champion_id))),
+            _shield_pool,
+        )
+        if shield_cut_raw > 0.0:
+            shield_cut_damage = shield_cut_raw
+            total_burst += shield_cut_damage
+
     # R41 (1.156.0): ally mark-detonation seam. assume_ally_detonation=False ->
     # ally_detonation_damage stays 0.0, total_burst unchanged (byte-identical).
     # When True, a champion whose mark an ALLY consumes for bonus damage (Leona P
@@ -1368,6 +1420,11 @@ def compute_burst_damage(
             f"physical item-active burst +{physical_burst_damage:.0f} "
             f"(Goredrinker Thirsting Slash class item active, "
             f"assume_physical_burst seam)"
+        )
+    if shield_cut_damage > 0:
+        notes.append(
+            f"anti-shield cut +{shield_cut_damage:.0f} "
+            f"(assume_shielded_target seam)"
         )
 
     return BurstResult(

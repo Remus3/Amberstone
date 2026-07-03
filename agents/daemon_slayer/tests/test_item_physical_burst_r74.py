@@ -93,11 +93,19 @@ class SchemaDefaults(unittest.TestCase):
         self.assertEqual(eff.physical_burst_base_ad_ratio, 0.0)
 
     def test_fields_appended_at_end(self) -> None:
-        # Mid-class insert breaks positional construction (repo convention);
-        # the DSV8 pair must be the LAST two dataclass fields.
+        # Mid-class insert breaks positional construction (repo convention).
+        # R75 DSV9 END-appended its own pair after this one, so the durable
+        # convention check is "contiguous, in order, after the R70 takedown
+        # pair" - a LAST-two pin would go stale on every later seam (the
+        # newest seam's own test owns the last-two assertion).
         names = [f.name for f in dataclasses.fields(ItemEffect)]
+        i = names.index("physical_burst_base")
         self.assertEqual(
-            names[-2:], ["physical_burst_base", "physical_burst_base_ad_ratio"]
+            names[i:i + 2],
+            ["physical_burst_base", "physical_burst_base_ad_ratio"],
+        )
+        self.assertGreater(
+            i, names.index("takedown_eruption_bonus_hp_ratio")
         )
 
 
