@@ -533,6 +533,11 @@ def _open_team_damage_box(pw_browser, mock_server):
     )
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
+    # The meter lives inside the TEAM ANALYSIS cluster, collapsed by default
+    # (QA 2026-07-03 B8/B9/B18). Seed the sanctioned persistence key so the
+    # cluster renders expanded across live re-renders (a one-shot attribute
+    # unhide is re-collapsed by the next _csvScheduleRender pass).
+    page.add_init_script("sessionStorage.setItem('csv-ta-open', '1');")
     errors: list[str] = []
     page.on("pageerror", lambda err: errors.append(str(err)))
 
