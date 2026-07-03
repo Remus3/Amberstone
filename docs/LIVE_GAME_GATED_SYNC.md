@@ -283,6 +283,13 @@ no row carries it.
 - B40. (REAL-SR) Live UI watch standing ritual (items 243/244): tick champ-select + in-game
   dashboard vs `/api/state` each ranked game (standing per-game, not one-shot). SOURCE:
   ROADMAP.md:56.
+- B41. (PRACTICE-SR) R75/DSV9 `assume_shielded_target` flip (Serpent's Fang 6695 holder's
+  burst rank reads sane with the flag ON: the one-time Shield Reaver cut is credited against
+  the ASSUMED pool 0.20 x target max HP - melee 50% / ranged 35% - with NO armor/MR routing,
+  NO mode mult, NO amp; sanity = the credit does not dominate a real-damage item swap, and a
+  shield-heavy enemy comp is where the flip should visibly help). Practice tool suffices
+  (assumed pool, no real enemy shield needed); a REAL game vs Shieldbow/enchanter comps is
+  the stronger eyeball. DS restart on flip. SOURCE: ledger 2026-07-03 below.
 
 ## C. ARAM / ARAM Mayhem (queue 2400, KIWI)
 
@@ -1503,3 +1510,17 @@ over normal play across later cycles, not in these sessions.
   and confirm a Goredrinker-holding bruiser's burst rank reads sane vs a real ARENA game (226630 is Arena-only),
   assuming the active fires inside the burst window. A WRONG burst credit is worse than no credit, so do NOT
   default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-03 R75 / DSV9 anti-shield cut seam (`compute_burst_damage(assume_shielded_target=)`, ENGINE 1.179.0,
+  default-OFF). Serpent's Fang Shield Reaver (SR 6695 + Arena 226695; Meraki 16.13.1 "{{rd|50%|35%}}" = melee
+  0.50 / ranged 0.35; 226695 ABSENT from the Meraki bulk snapshot - pin grounded on the DDragon 226695 text +
+  the batch-42 Arena-mirror convention; 326695/446695 absent everywhere, test-guarded). Registry fields
+  `shield_cut_melee_pct`/`shield_cut_ranged_pct` (END-appended). When True AND `target_max_hp > 0`, the ONE-TIME
+  active-shield cut is credited as `pct x 0.20 x target_max_hp` (`_ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP = 0.20`,
+  a documented ASSUMED pin) with NO armor/MR routing, NO mode_mult, NO amp - shield HP absorbs post-mitigation
+  damage, so removing it is post-mitigation-equivalent value, not damage dealt. The sustained shields-gained
+  reduction inside the 3s venom stays UNMODELED (utility over time, not burst math). compute_ability_dps takes
+  the kwarg DELIBERATELY INERT (DSV6/DSV8 doctrine); compute_dps untouched (no PeriodicProc, no double-count).
+  OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): flip per B41 - a Serpent's Fang
+  holder's burst rank reads sane, the assumed-pool credit does not dominate real-damage item swaps, strongest
+  eyeball vs a shield-heavy comp. A WRONG credit is worse than none - do NOT default-ON until validated. DS
+  `:8893` restart on flip. Does NOT block any further stage.

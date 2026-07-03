@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.179.0 (R75, 2026-07-03 - NEW default-OFF seam DSV9 assume_shielded_target +
+Serpent's Fang 6695/226695 Shield Reaver pins). Meraki 16.13.1 item 6695
+passive "Shield Reaver": "Dealing damage to an enemy champion inflicts them
+with venom for 3 seconds, reducing any shields they gain within the duration
+by {{rd|50%|35%}}, and if the target was not already afflicted by the venom,
+reducing all of their active shields by the same amount." - rd = melee 0.50 /
+ranged 0.35. DSV9 is the anti-shield valuation seam: two END-appended
+ItemEffect fields shield_cut_melee_pct / shield_cut_ranged_pct, pure helper
+effects.total_shield_cut_value(effects, caster_is_melee, target_shield_hp),
+and a compute_burst_damage fold gated on the new default-OFF
+assume_shielded_target kwarg AND target_max_hp > 0. The ONE-TIME active-shield
+cut is valued against an ASSUMED pool _ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP =
+0.20 x target_max_hp; shield HP absorbs POST-mitigation damage, so the cut is
+credited with NO armor/MR routing, NO mode_mult, NO amp (stricter than DSV8 -
+a shield cut is not damage dealt). Caster melee/ranged picks the pct via
+_champion_is_melee. The sustained shields-gained reduction within the 3s venom
+stays UNMODELED (utility over time, not burst math). compute_ability_dps +
+/burst route mirror the DSV8 plumbing (documented-inert kwarg / DEFAULT-OFF
+body flag). Registry: 6695 + Arena 226695 pinned 0.50/0.35 (226695 ABSENT from
+Meraki bulk - grounded on the DDragon items.json 226695 Shield Reaver text +
+batch-42 mirror convention, stated in the registry note); defensive_only
+retained (doc-only); 326695/446695 in neither pool nor Meraki - guarded
+absent. Flag OFF byte-identical. TDD RED-first (test_item_dsv9_r75.py, RED =
+ImportError on total_shield_cut_value; 29 tests). R74's brittle last-two-field
+END-append pin in test_item_physical_burst_r74.py relaxed to a contiguous-
+order check (any later END-append broke it by construction).
+
 1.178.0 (R74, 2026-07-03 - NEW default-OFF seam DSV8 assume_physical_burst +
 Goredrinker 226630 Thirsting Slash pin). Meraki 16.13.1 item 226630 active
 "Thirsting Slash": "Deal 175% '''base''' AD physical damage to enemies in a
