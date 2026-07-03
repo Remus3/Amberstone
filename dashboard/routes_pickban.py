@@ -45,7 +45,6 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from core import champion_info_overrides as _cio
-from core import smoothed_rates as _sr
 
 log = logging.getLogger("rc.web_dashboard")
 
@@ -55,7 +54,7 @@ _DDRAGON_CHAMPS_PATH = Path(__file__).resolve().parent.parent / "data" / "meta" 
 
 # Cost lever 2: both heavy DB handlers below (pickban-recs + personal-record)
 # resolve the operator puuid and run several JOINs per request, and fire on
-# every draft action (mood / hover / lock). rewind_history.db only changes
+# every draft action (hover / lock). rewind_history.db only changes
 # post-game (the catchup writer), so the result is stable for the life of a
 # draft. Cache it on a 300s TTL keyed by the request params AND the db mtime -
 # any write to the db (a new match) busts every key, so a cache hit can never
@@ -378,35 +377,14 @@ _BAN_MIN_LOSS_PCT = 50
 # Summoner-spell id for Cleanse (D), checked by the CC-cleanse advisory.
 _CLEANSE_SUMMONER_ID = 1
 
-# s209: mood-aware re-ranking modes. The champ-select panel has a 4-button
-# mood toggle that pre-s209 just persisted to sessionStorage with no
-# downstream effect. Each mood reshapes the `performance` query:
-#
-#   comfort - operator's highest-WR pick at this role (>=3 games). Default.
-#             "Safe pick - proven track record".
-#   limit   - operator's highest-WR pick within the 1-5 games band. Hits
-#             the "I've tried this a few times and it's working" sweet
-#             spot - a champ they can develop toward mastery.
-#   new     - most-popular role champion the operator has never played
-#             in this role. Operator-never-played + cross-pool popular.
-#   synergy - operator's highest-WR pick at this role limited to matches
-#             from the last 60 days. Proxy for "what's working RIGHT NOW";
-#             true team-comp synergy needs ally-locked context which the
-#             endpoint doesn't yet receive.
-#
-# Bans are unchanged per mood - what threatens the operator at this role
-# is mood-independent.
-_VALID_MOODS = frozenset({"comfort", "limit", "new", "synergy"})
-_MOOD_DEFAULT = "comfort"
-
-# Sliding window for "synergy" (recent form). 60 days picks up the last
-# patch + a buffer for irregular play schedules.
-_SYNERGY_WINDOW_DAYS = 60
-
-# Limit Test sample-size band - narrow enough to exclude mains, wide
-# enough to surface signal beyond a single coin-flip game.
-_LIMIT_GAMES_MIN = 1
-_LIMIT_GAMES_MAX = 5
+# A3 (QA 2026-07-03, docs/qa/CHAMP_SELECT_QA_2026-07-03.md): the s209
+# mood system (comfort / limit / new / synergy re-ranking) is REMOVED.
+# The mood tabs had been hidden in the UI since 2026-05-23 while a stale
+# sessionStorage mood kept filtering pick recs. The endpoint now always
+# serves the raw top-N picks by score (highest observed WR at role,
+# >= _MIN_GAMES_PICK games) plus the mood-invariant last-in-queue row.
+# A stray legacy ``mood=`` query arg is tolerated and IGNORED - never a
+# 400 - so pre-A3 clients keep working during the frontend transition.
 
 
 def _pct(numerator: int, denominator: int) -> int:
@@ -439,12 +417,11 @@ def _normalize_role(raw: str) -> str | None:
 
 # --------------------------------------------------------------------
 # s214: query helpers refactored to return LISTS of picks instead of
-# single dicts, so the LIMIT / NEW / SYNERGY moods can populate all 3
-# panel rows with cascade-filtered same-mood picks. Each query takes
-# ``exclude_ids`` so the caller can pass already-banned + already-picked
-# + already-shown ids to skip; SQL builds a NOT IN clause when present.
-# Each query takes ``top`` for the result list length (default 1 for
-# back-compat with the single-row endpoint shape).
+# single dicts, so the panel rows render cascade-filtered picks. Each
+# query takes ``exclude_ids`` so the caller can pass already-banned +
+# already-picked + already-shown ids to skip; SQL builds a NOT IN
+# clause when present. Each query takes ``top`` for the result list
+# length (default 1 for back-compat with the single-row endpoint shape).
 # --------------------------------------------------------------------
 
 
@@ -467,8 +444,8 @@ def _query_performance_band(conn: sqlite3.Connection, puuid: str, role: str,
                             reason_suffix: str,
                             exclude_ids: tuple[int, ...] = (),
                             top: int = 1) -> list[dict]:
-    """Shared body for the comfort/limit performance moods: operator's
-    top-N highest-WR champions at this role, filtered by a games-count
+    """Shared body for the performance pick query: operator's top-N
+    highest-WR champions at this role, filtered by a games-count
     HAVING predicate (``having_sql`` + ``having_params``). Ties broken by
     higher game count (more reliable signal) then champion_id (stable).
     ``exclude_ids`` skips banned + already-shown ids."""
@@ -519,213 +496,19 @@ def _query_performance_comfort(conn: sqlite3.Connection, puuid: str, role: str,
         reason_suffix="- safe pick", exclude_ids=exclude_ids, top=top)
 
 
-def _query_performance_limit(conn: sqlite3.Connection, puuid: str, role: str,
-                             queue_ids: tuple[int, ...],
-                             exclude_ids: tuple[int, ...] = (),
-                             top: int = 1) -> list[dict]:
-    """Operator's best champions in the 1-5 games "developing" band -
-    enough plays to show signal but not enough to be a true main."""
-    return _query_performance_band(
-        conn, puuid, role, queue_ids,
-        having_sql="games BETWEEN ? AND ?",
-        having_params=(_LIMIT_GAMES_MIN, _LIMIT_GAMES_MAX),
-        reason_suffix="- growth pick (small sample)",
-        exclude_ids=exclude_ids, top=top)
-
-
-def _query_performance_new(conn: sqlite3.Connection, puuid: str, role: str,
-                           queue_ids: tuple[int, ...],
-                           exclude_ids: tuple[int, ...] = (),
-                           top: int = 1) -> list[dict]:
-    """Top-N most-played champions at this role across the DB that the
-    operator has NEVER played in this role. Cross-pool popularity is a
-    rough proxy for meta tier when no live tier-list source is wired.
-    """
-    placeholders = ",".join("?" * len(queue_ids))
-    excl_sql, excl_params = _exclude_clause(exclude_ids)
-    cur = conn.execute(
-        f"""
-        SELECT champion_id, champion_name, COUNT(*) AS pool_games
-        FROM participants
-        WHERE team_position = ?
-          AND match_id IN (
-            SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
-          )
-          AND champion_id NOT IN (
-            SELECT champion_id FROM participants
-            WHERE puuid = ? AND team_position = ?
-          )
-          {excl_sql}
-        GROUP BY champion_id
-        ORDER BY pool_games DESC, champion_id ASC
-        LIMIT ?
-        """,
-        (role, *queue_ids, puuid, role, *excl_params, top),
-    )
-    out: list[dict] = []
-    for champ_id, champ_name, pool_games in cur.fetchall():
-        out.append({
-            "champId":   int(champ_id),
-            "champName": str(champ_name or "?"),
-            "games":     0,
-            "wins":      0,
-            "wr_pct":    0,
-            "reason":    f"never played in role - {pool_games} games in the pool - try them",
-        })
-    return out
-
-
-# s238 (CLAUDE.md #90): the synergy mood was the locked example of
-# "pick/ban synergy - today only a raw recent-form proxy". It now ranks
-# by the shared Laplace/Beta-smoothed primitive instead of raw
-# wins/games, so a 2-0 record no longer outranks a proven 14-8 one. The
-# displayed `wr_pct` stays the RAW observed rate (what the operator sees,
-# "100% WR"); only the ranking key is smoothed. The `HAVING games >= 2`
-# hard floor in the SQL is kept - smoothing softens small-n bias, the
-# floor still excludes single-game flukes outright.
-def _rank_by_smoothed_wr(raw_rows, reason_suffix: str, top: int) -> list[dict]:
-    """(champion_id, champion_name, games, wins) tuples -> ranked row
-    dicts (same shape every mood emits). Primary sort = smoothed WR via
-    ``core.smoothed_rates.laplace_rate``; secondary = more games (more
-    trust); tertiary = champion_id (stable)."""
-    scored: list[tuple[float, int, int, dict]] = []
-    for champ_id, champ_name, games, wins in raw_rows:
-        games = int(games)
-        wins = int(wins)
-        wr_pct = _pct(wins, games)
-        smoothed = _sr.laplace_rate(wins, games)
-        scored.append((
-            smoothed, games, int(champ_id),
-            {
-                "champId":   int(champ_id),
-                "champName": str(champ_name or "?"),
-                "games":     games,
-                "wins":      wins,
-                "wr_pct":    wr_pct,
-                "reason":    f"{wr_pct}% WR - {games} games {reason_suffix}",
-            },
-        ))
-    scored.sort(key=lambda t: (-t[0], -t[1], t[2]))
-    return [d for _, _, _, d in scored[:max(1, top)]]
-
-
-def _query_performance_synergy(conn: sqlite3.Connection, puuid: str, role: str,
-                               queue_ids: tuple[int, ...],
-                               exclude_ids: tuple[int, ...] = (),
-                               top: int = 1,
-                               ally_ids: tuple[int, ...] = ()) -> list[dict]:
-    """Operator's highest-WR champion at this role limited to recent
-    matches OR - when ``ally_ids`` is provided - joint-WR-with-allies
-    scoring across the operator's full history.
-
-    Pre-s214 this mode was just "recent form" (60-day window proxy). The
-    new path: when the panel passes the operator's locked allies via
-    ``allies=cid,cid,...``, we score each candidate by how often the
-    operator won games where they played that candidate AND at least one
-    of the locked allies was on their team. ``games_with_allies>=2``
-    threshold filters out single-game flukes.
-
-    Falls back to the recent-form proxy when ``ally_ids`` is empty (early
-    CS before any ally locks in).
-    """
-    placeholders = ",".join("?" * len(queue_ids))
-    if ally_ids:
-        excl_sql, excl_params = _exclude_clause(exclude_ids, "op.champion_id")
-        # Joint-with-allies path: count matches where operator played
-        # `champion_id` at `role` AND any teammate's champion_id is in
-        # ally_ids on the SAME team. Group by candidate; rank by WR.
-        ally_placeholders = ",".join("?" * len(ally_ids))
-        cur = conn.execute(
-            f"""
-            SELECT op.champion_id, op.champion_name,
-                   COUNT(DISTINCT op.match_id) AS games,
-                   SUM(CASE WHEN op.win=1 THEN 1 ELSE 0 END) AS wins
-            FROM participants op
-            WHERE op.puuid = ?
-              AND op.team_position = ?
-              AND op.match_id IN (
-                SELECT match_id FROM matches WHERE queue_id IN ({placeholders})
-              )
-              {excl_sql}
-              AND EXISTS (
-                SELECT 1 FROM participants ally
-                WHERE ally.match_id = op.match_id
-                  AND ally.team_id = op.team_id
-                  AND ally.puuid != op.puuid
-                  AND ally.champion_id IN ({ally_placeholders})
-              )
-            GROUP BY op.champion_id
-            HAVING games >= 2
-            """,
-            (puuid, role, *queue_ids, *excl_params, *ally_ids),
-        )
-        # s238: smoothed re-rank in Python via the shared primitive
-        # (replaces the SQL `ORDER BY raw-WR ... LIMIT`).
-        return _rank_by_smoothed_wr(
-            cur.fetchall(),
-            "alongside locked allies - comp fit (smoothed)", top,
-        )
-    # Recent-form fallback (pre-s214 behavior, kept for empty-allies path).
-    excl_sql, excl_params = _exclude_clause(exclude_ids, "p.champion_id")
-    cutoff_ms = int((time.time() - _SYNERGY_WINDOW_DAYS * 86400) * 1000)
-    cur = conn.execute(
-        f"""
-        SELECT p.champion_id, p.champion_name,
-               COUNT(*) AS games,
-               SUM(CASE WHEN p.win=1 THEN 1 ELSE 0 END) AS wins
-        FROM participants p
-        JOIN matches m ON m.match_id = p.match_id
-        WHERE p.puuid = ?
-          AND p.team_position = ?
-          AND m.queue_id IN ({placeholders})
-          AND m.game_creation_ts >= ?
-          {excl_sql}
-        GROUP BY p.champion_id
-        HAVING games >= 2
-        """,
-        (puuid, role, *queue_ids, cutoff_ms, *excl_params),
-    )
-    # s238: smoothed re-rank in Python via the shared primitive.
-    return _rank_by_smoothed_wr(
-        cur.fetchall(),
-        f"last {_SYNERGY_WINDOW_DAYS}d - recent form (smoothed)", top,
-    )
-
-
-# Mood -> query dispatcher. Unknown moods fall through to comfort.
-_PERFORMANCE_QUERIES = {
-    "comfort": _query_performance_comfort,
-    "limit":   _query_performance_limit,
-    "new":     _query_performance_new,
-    "synergy": _query_performance_synergy,
-}
-
-
 def _query_performance(conn: sqlite3.Connection, puuid: str, role: str,
                        queue_ids: tuple[int, ...],
-                       mood: str = _MOOD_DEFAULT,
                        exclude_ids: tuple[int, ...] = (),
-                       top: int = 1,
-                       ally_ids: tuple[int, ...] = ()) -> list[dict]:
-    """Mood-aware dispatcher returning a LIST (s214) of up to ``top``
-    picks for the requested mood, with ``exclude_ids`` cascade-filtering
-    out banned + already-picked + already-shown ids. Falls back to
-    comfort when the operator's history is too thin to satisfy the
-    selected mood (e.g. no 1-5 games band for `limit`, no recent matches
-    for `synergy`). When the fallback fires, every result is tagged
-    `fell_back=true` + `requested_mood=<mood>` so the UI can surface
-    "no <mood> data - defaulting to comfort"."""
-    fn = _PERFORMANCE_QUERIES.get(mood, _query_performance_comfort)
-    if fn is _query_performance_synergy:
-        result = fn(conn, puuid, role, queue_ids, exclude_ids, top, ally_ids)
-    else:
-        result = fn(conn, puuid, role, queue_ids, exclude_ids, top)
-    if not result and mood != _MOOD_DEFAULT:
-        result = _query_performance_comfort(conn, puuid, role, queue_ids, exclude_ids, top)
-        for row in result:
-            row["fell_back"] = True
-            row["requested_mood"] = mood
-    return result
+                       top: int = 1) -> list[dict]:
+    """Raw top-N picks by score (A3, QA 2026-07-03): the operator's
+    highest-WR champions at this role with >= _MIN_GAMES_PICK games,
+    with ``exclude_ids`` cascade-filtering out banned + already-picked
+    + already-shown ids. The s209 mood dispatcher (comfort / limit /
+    new / synergy) that used to live here was removed with the mood UI;
+    this is the former "comfort" query, kept under the stable
+    entrypoint name."""
+    return _query_performance_comfort(
+        conn, puuid, role, queue_ids, exclude_ids, top)
 
 
 # --------------------------------------------------------------------
@@ -948,7 +731,7 @@ def _query_bans(conn: sqlite3.Connection, puuid: str, role: str,
 
 # --------------------------------------------------------------------
 # s239 (AUTONOMOUS_AUDIT opportunity #2): the per-user CONTEXTUAL read.
-# The mood queries above RECOMMEND picks; these REPORT the operator's
+# The performance query above RECOMMENDS picks; these REPORT the operator's
 # actual personal record against the champions already on the board in
 # the current draft - "your WR with/against", the differentiator no
 # cohort-averaged SaaS can do per-user.
@@ -1181,15 +964,14 @@ def _open_ro_with_puuid(h):
     return conn, puuid
 
 
-def _build_pickban_recs(conn, puuid, role, queue_ids, mood,
-                        exclude_ids, ally_ids, top):
-    """Run the mood-aware pick query + the dependent ban / last-in-queue /
+def _build_pickban_recs(conn, puuid, role, queue_ids,
+                        exclude_ids, top):
+    """Run the raw top-N pick query + the dependent ban / last-in-queue /
     struggle cascades against an open connection. Returns
     (picks, bans, last_in_queue, struggle_ban)."""
-    picks = _query_performance(conn, puuid, role, queue_ids, mood,
-                               exclude_ids=exclude_ids, top=top,
-                               ally_ids=ally_ids)
-    # s210 v2 / s214: bans follow the FIRST mood-recommended pick - its
+    picks = _query_performance(conn, puuid, role, queue_ids,
+                               exclude_ids=exclude_ids, top=top)
+    # s210 v2 / s214: bans follow the FIRST recommended pick - its
     # hard counters from champion_counters.json, else the operator's
     # role-level worst matchups.
     bans: list[dict] = []
@@ -1224,16 +1006,15 @@ def _serve_pickban_recs(h) -> None:
             _send_json_err(h, 400, "queue must be comma-separated ints")
             return
 
-        # s209: mood param re-weights the performance row. Unknown moods
-        # fall through to comfort; the dispatcher handles thin-data fallback.
-        mood_raw = (qs.get("mood") or [""])[0].lower().strip()
-        mood = mood_raw if mood_raw in _VALID_MOODS else _MOOD_DEFAULT
+        # A3 (QA 2026-07-03): the s209 `mood` query param is REMOVED from
+        # the backend. A stray legacy `mood=` (or `allies=`, which only
+        # ever fed the synergy mood) is tolerated and ignored - never a
+        # 400 - so pre-A3 clients keep working.
 
         # s214: cascade-filter inputs. `exclude` = banned/picked/shown ids;
-        # `allies` = locked teammate ids (synergy joint-WR); `top` = picks to
-        # return (1..5). Item 168: enemies + my_summoners feed the advisory.
+        # `top` = picks to return (1..5). Item 168: enemies + my_summoners
+        # feed the advisory.
         exclude_ids = _parse_csv_ints((qs.get("exclude") or [""])[0])
-        ally_ids    = _parse_csv_ints((qs.get("allies")  or [""])[0])
         enemy_ids   = _parse_csv_ints((qs.get("enemies") or [""])[0])
         my_summs    = _parse_csv_ints((qs.get("my_summoners") or [""])[0])
         try:
@@ -1247,8 +1028,8 @@ def _serve_pickban_recs(h) -> None:
             return
 
         t0 = time.time()
-        cache_key = ("pickban", _db_mtime(), role, queue_ids, mood,
-                     tuple(exclude_ids), tuple(ally_ids), tuple(enemy_ids),
+        cache_key = ("pickban", _db_mtime(), role, queue_ids,
+                     tuple(exclude_ids), tuple(enemy_ids),
                      tuple(my_summs), top)
         if _cache_get(h, cache_key, t0):
             return
@@ -1257,19 +1038,19 @@ def _serve_pickban_recs(h) -> None:
             return
         try:
             picks, bans, last_in_queue, struggle_ban = _build_pickban_recs(
-                conn, puuid, role, queue_ids, mood, exclude_ids, ally_ids, top)
+                conn, puuid, role, queue_ids, exclude_ids, top)
         finally:
             conn.close()
         # Item 168: cleanse advisory composed outside the DB cursor.
         cleanse_advisory = _compose_cleanse_advisory(enemy_ids, my_summs)
 
         # s214 response: `performance` = first pick (back-compat single
-        # dict); `performance_picks` = full mood list for the 3-row layouts.
+        # dict); `performance_picks` = full raw top-N list for the 3-row
+        # layouts. A3: no `mood` field - picks are raw top-N by score.
         payload = {
             "ok": True,
             "role": role,
             "queue_ids": list(queue_ids),
-            "mood": mood,
             "performance": picks[0] if picks else None,
             "performance_picks": picks,
             "performance_bans": bans,
