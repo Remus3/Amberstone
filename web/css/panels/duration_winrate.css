@@ -2,10 +2,18 @@
  * (core.duration_winrate over the local rewind corpus). Tokens per
  * docs/UI_SCALE_SPEC_V2.md v2.1; ASCII only; no hardcoded px below --fs-xs. */
 
+/* R71 header row: mode bar + champion picker + tendency chip share one
+ * wrapping flex line; the row (not the mode bar) carries the bottom gap. */
+#bi-duration-mount .dw-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-4, 16px);
+}
 #bi-duration-mount .dw-modes {
   display: flex;
   gap: var(--space-2, 8px);
-  margin-bottom: var(--space-4, 16px);
 }
 #bi-duration-mount .dw-mode-btn {
   min-height: var(--hit-min, 42px);
@@ -77,3 +85,68 @@
   color: var(--text-faint, #9ca3af);
   padding: var(--space-5, 24px) 0;
 }
+
+/* R71 F1 - champion filter picker (input + datalist + ALL clear). Interactive
+ * accent is the #6cf cyan convention (never the reserved --accent); keyboard
+ * focus uses the shared --focus-ring (tokens.css) like build_insights.css.
+ * New rules reference DEFINED tokens only (--surface-3 / --border-soft /
+ * --text in base.css - NOT the undefined --bg-elevated, whose bare form
+ * computes invalid -> transparent) and carry no dark-hex fallbacks, so the
+ * dark-values ratchet pin (test_dark_values_ratchet_oq6: 4) holds. */
+#bi-duration-mount .dw-champ {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+#bi-duration-mount .dw-champ-input {
+  min-height: var(--hit-min, 42px);
+  width: 13em;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: var(--fs-sm, 18px);
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm, 10px);
+}
+#bi-duration-mount .dw-champ-input:focus {
+  outline: none;
+  border-color: #6cf;
+}
+#bi-duration-mount .dw-champ-input:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+#bi-duration-mount .dw-champ.is-filtered .dw-champ-input {
+  border-color: #6cf;
+}
+#bi-duration-mount .dw-champ-clear {
+  min-height: var(--hit-min, 42px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  font-size: var(--fs-sm, 18px);
+  color: var(--text-faint, #9ca3af);
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--panel-radius-sm, 10px);
+  cursor: pointer;
+}
+#bi-duration-mount .dw-champ-clear:hover {
+  color: #6cf;
+  border-color: #6cf;
+}
+#bi-duration-mount .dw-champ-clear:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* R71 F2 - early/late tendency chip. Descriptive lean label only; reuses the
+ * existing dw-good/dw-bad palette, dw-dim mutes "flat". */
+#bi-duration-mount .dw-chip {
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  font-size: var(--fs-xs, 16px);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+#bi-duration-mount .dw-chip.dw-good { color: var(--signal-good, #6ec977); }
+#bi-duration-mount .dw-chip.dw-bad  { color: var(--signal-bad, #ff5050); }
+#bi-duration-mount .dw-chip.dw-dim  { color: var(--signal-dim, #8a8e9c); }
