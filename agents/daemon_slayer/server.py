@@ -1120,6 +1120,11 @@ def _route_burst(body: dict) -> dict:
     # does NOT accept assume_physical_burst, only the direct compute_burst_damage
     # does (the Goredrinker 226630 Thirsting Slash item-active physical burst).
     assume_physical_burst = _opt_bool(body, "assume_physical_burst", False)
+    # R75 DSV9 seam flag (DEFAULT-OFF -> byte-identical when the body omits it).
+    # Scoped to /burst exactly like assume_magic_burst above: rank_items_by_burst
+    # does NOT accept assume_shielded_target, only the direct compute_burst_damage
+    # does (the Serpent's Fang 6695 Shield Reaver one-time active-shield cut).
+    assume_shielded_target = _opt_bool(body, "assume_shielded_target", False)
     # OQ17: the rune-proc layer + the /burst-scoped compute-direct seams
     # (DEFAULT-OFF/None -> byte-identical when omitted). These read the SINGLE-BUILD
     # burst NUMBER, not a ranker delta (a flat keystone amp washes out of a
@@ -1158,6 +1163,7 @@ def _route_burst(body: dict) -> dict:
             aoe_targets_hit=aoe_targets_hit,
             assume_magic_burst=assume_magic_burst,
             assume_physical_burst=assume_physical_burst,
+            assume_shielded_target=assume_shielded_target,
             runes=(runes or None),
             assume_takedown=assume_takedown,
             assume_ability_amp=assume_ability_amp,
@@ -1691,9 +1697,9 @@ def _route_rank_assassin(body: dict) -> dict:
     aoe_targets_hit = _opt_int(body, "aoe_targets_hit", 1) or 1
     # /rank-assassin seam flags (DEFAULT-OFF/None -> byte-identical when omitted):
     #   prefer_kit_axis_by_win (DSP11) - float a champ's WIN-anchored kit-axis items.
-    # R30 assume_magic_burst + R74 assume_physical_burst are scoped to the /burst
-    # route: rank_items_by_burst does NOT accept them (only compute_burst_damage
-    # does at burst.py:485).
+    # R30 assume_magic_burst + R74 assume_physical_burst + R75
+    # assume_shielded_target are scoped to the /burst route: rank_items_by_burst
+    # does NOT accept them (only compute_burst_damage does at burst.py:485).
     prefer_kit_axis_by_win = _opt_bool(body, "prefer_kit_axis_by_win", False)
     # OQ17: the enemy-comp / kill-state ranking seams the burst ranker already
     # forwards to compute_burst_damage (assume_takedown/assume_ability_amp) or

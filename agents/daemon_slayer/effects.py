@@ -438,6 +438,52 @@ def total_physical_burst_damage(
     )
 
 
+def total_shield_cut_value(
+    effects: Iterable[ItemEffect],
+    caster_is_melee: bool,
+    target_shield_hp: float,
+) -> float:
+    """Sum the one-time active-shield cut value across the build (DSV9 seam).
+
+    Serpent's Fang's Shield Reaver (6695 / Arena 226695, Meraki 16.13.1)
+    inflicts a 3-second venom that, on first affliction, reduces all of the
+    target's ACTIVE shields by {{rd|50%|35%}} - melee 50% / ranged 35%. Each
+    contributing item adds ``(shield_cut_melee_pct if caster_is_melee else
+    shield_cut_ranged_pct) * target_shield_hp``; the caster's melee/ranged
+    split picks the rd arm. Shield HP absorbs POST-mitigation damage, so
+    removing X shield HP is worth X post-mitigation-equivalent damage - the
+    burst consumer (compute_burst_damage) adds the value STRAIGHT to the
+    burst total: NO armor/MR routing, NO mode multiplier, NO amp layer
+    (stricter than the DSV8 physical-burst helper above: a shield cut is
+    not damage dealt at all). Returns 0.0 when no item carries the fields
+    or when ``target_shield_hp`` is not positive; ``None`` entries are
+    skipped. Additive across items (only Serpent's Fang carries the fields
+    today; sums commute if another lands later).
+
+    Read ONLY by the BURST scorer under ``assume_shielded_target=True``
+    against the consumer's assumed shield pool
+    (``burst._ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP`` x target max HP). There
+    is no PeriodicProc, so compute_dps sees nothing and there is no
+    double-count; compute_ability_dps accepts the flag as a
+    documented-inert kwarg for API symmetry only (see its
+    assume_shielded_target comment). The sustained "shields gained within
+    the duration" reduction stays UNMODELED - one-time cut only.
+    """
+    if target_shield_hp <= 0.0:
+        return 0.0
+    return sum(
+        (
+            e.shield_cut_melee_pct
+            if caster_is_melee
+            else e.shield_cut_ranged_pct
+        )
+        * target_shield_hp
+        for e in effects
+        if e is not None
+        and (e.shield_cut_melee_pct or e.shield_cut_ranged_pct)
+    )
+
+
 def total_ability_damage_amp(
     effects: Iterable[ItemEffect],
     assumed_stacks: float,
