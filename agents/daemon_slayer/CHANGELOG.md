@@ -1331,6 +1331,19 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.173.0 (R66, 2026-07-03 - Guinsoo's Rageblade "Seething Strike" conditional AS).
+Meraki 16.13.1 item 3124: basic attacks grant 8% bonus AS for 3s, stacking to 4
+(32% total). Modeled on the EXISTING ungated R42 conditional-AS lane
+(bonus_as_conditional, the field Yun Tal Flurry carries at 0.08 with no flag),
+pinned at the full-stack steady state per repo convention (Black Cleaver 5-stack
+shred, Mejai's full-stack AP): SR 3124 + Arena mirror 223124 both = 0.32. Gemini
+director approved UNGATED (no new seam / flag). Wrath + Phantom Hit periodics
+untouched. The fold is the existing base_as-scaled cond_as fold in compute_dps
+(2.5 AS hard-cap re-clamp applies). New hermetic Meraki-truth characterization
+regexes the per-stack pct + stack cap out of the vendored snapshot text so a
+future patch changing either fails the suite instead of silently drifting
+(test_guinsoo_seething_strike_r66.py, 9 tests RED->GREEN). 1.172.0 -> 1.173.0.
+
 1.172.0 (ranged-only melee build-pool purchasability gate, 2026-07-02 - live-drain bug fix,
 NOT a seam). DS /rank recommended the RANGED-ONLY Runaan's Hurricane (3085) for MELEE champions
 (reproduced live on Irelia #5 SR and Viego #8 ARAM) - an item the in-game shop blocks on melee.
