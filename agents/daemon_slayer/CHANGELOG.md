@@ -1331,6 +1331,34 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.178.0 (R74, 2026-07-03 - NEW default-OFF seam DSV8 assume_physical_burst +
+Goredrinker 226630 Thirsting Slash pin). Meraki 16.13.1 item 226630 active
+"Thirsting Slash": "Deal 175% '''base''' AD physical damage to enemies in a
+... 450 radius centered around you." - the old registry note ("sustain only,
+no DPS contribution") was factually wrong; the active LEADS with damage. DSV8
+is the PHYSICAL analogue of the DSV6 assume_magic_burst seam: two
+END-appended ItemEffect fields physical_burst_base /
+physical_burst_base_ad_ratio (single-cast burst-window magnitude = base +
+ratio * caster BASE AD - Thirsting Slash scales off base AD only, so 226630
+pins ratio=1.75 with no flat term), pure helper
+effects.total_physical_burst_damage, and a compute_burst_damage fold gated on
+the new default-OFF assume_physical_burst kwarg: armor-mitigated (PHYSICAL
+routing via _mitigation_factor) x mode_mult, NO amp layer (the engine has no
+physical analogue of total_magic_amp_multiplier - the periodic layer applies
+magic_amp to MAGIC procs only - and the DSV6 item-proc block deliberately
+excludes the generic build damage_amp; the mirror keeps that exclusion).
+compute_ability_dps + /burst route mirror the assume_magic_burst plumbing
+(documented-inert kwarg / DEFAULT-OFF body flag; rank_items_by_burst does NOT
+accept it). The heal side (20% AD + 8% missing HP per champion hit) stays
+UNMODELED; DPS side intentionally unmodeled (long-CD active, no PeriodicProc,
+no double-count; defensive_only stays True - re-verified doc-only, zero
+engine consumers). Caster-state only (s232 target-state closure holds).
+Variant guards: legacy SR 6630 map-disabled + absent from Meraki - note
+refreshed, stays UNPINNED; 326630/446630 in neither pool nor Meraki -
+guarded absent. Flag OFF byte-identical. TDD RED-first
+(test_item_physical_burst_r74.py, RED = ImportError on
+total_physical_burst_damage -> GREEN). 1.177.0 -> 1.178.0.
+
 1.177.0 (R70, 2026-07-03 - Hollow Radiance Desolate champion-takedown eruption
 on the DSV2 seam). Meraki 16.13.1 item 6664 passive "Desolate": "Scoring a
 takedown against an enemy champion within 3 seconds of damaging them causes a

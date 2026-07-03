@@ -930,6 +930,7 @@ def compute_ability_dps(
     apply_ability_amps: bool = False,
     assume_ability_amp: bool = False,
     assume_magic_burst: bool = False,
+    assume_physical_burst: bool = False,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -1287,6 +1288,16 @@ def compute_ability_dps(
     # compute_burst_damage; compute_ability_dps owns only the sustained ability
     # rotation + ability-DoT burns (the proc layer below, ability_dot_only=True).
     _ = assume_magic_burst  # documented-inert seam; see comment above
+    # DSV8 (1.178.0): assume_physical_burst is accepted for caller API symmetry
+    # with compute_burst_damage but is DELIBERATELY INERT here (byte-identical
+    # ON or OFF), mirroring assume_magic_burst above. The item-active physical
+    # hit the seam values (Goredrinker 226630 Thirsting Slash, 175% base AD) is
+    # a one-shot burst magnitude, not sustained ability-rotation DPS - folding
+    # a one-shot magnitude into this per-second metric would be wrong-units.
+    # Unlike the DSV6 procs there is not even a PeriodicProc for it, so
+    # compute_dps carries nothing either; the ONLY valuation lives in
+    # compute_burst_damage.
+    _ = assume_physical_burst  # documented-inert seam; see comment above
     # DSV1 (P6-G5 residual 1): complete the compute_dps item-handling mirror.
     # The amp + pen layers above (lines ~950-995) already mirror compute_dps so
     # the two scorers agree on item value; the time-based item PERIODIC procs

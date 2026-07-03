@@ -815,3 +815,27 @@ class ItemEffect:
     # construction + every existing test).
     takedown_eruption_base: float = 0.0
     takedown_eruption_bonus_hp_ratio: float = 0.0
+    # DSV8 (1.178.0): physical item-active burst valuation seam - the PHYSICAL
+    # analogue of the DSV6 magic-burst seam above. The per-cast burst combo
+    # loop (compute_burst_damage) sums only ability casts + AA hits, so an
+    # item ACTIVE that leads with physical damage (Goredrinker 226630
+    # Thirsting Slash: "175% base AD physical damage" in a 450 radius, Meraki
+    # 16.13.1) was never credited in a burst window. These fields carry the
+    # single-cast burst-window magnitude: physical damage =
+    # ``physical_burst_base + physical_burst_base_ad_ratio * caster BASE AD``
+    # (BASE AD, not total - Thirsting Slash scales off base AD only),
+    # armor-mitigated by the consumer. Read ONLY when the consumer is called
+    # with ``assume_physical_burst=True``; default 0.0 keeps every existing
+    # item + caller byte-identical (the seam is inert until both the data
+    # field AND the flag are set). Read ONLY by the BURST scorer
+    # (compute_burst_damage): unlike the DSV6 procs there is no PeriodicProc
+    # for these long-CD actives, so compute_dps deliberately sees nothing -
+    # the one-shot magnitude lives only in the burst window (no
+    # double-count). compute_ability_dps accepts the flag as a
+    # documented-inert kwarg for API symmetry only. Caster-state only (no
+    # target-state conditional - the s232 closure holds). The Goredrinker
+    # heal side (20% AD + 8% missing HP per champion hit) stays UNMODELED.
+    # Appended at the END per the dataclass convention (a mid-class insert
+    # breaks positional construction + every existing test).
+    physical_burst_base: float = 0.0
+    physical_burst_base_ad_ratio: float = 0.0
