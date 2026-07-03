@@ -190,13 +190,20 @@ def cap_bytes(text, limit, label):
 # live; the 01:56 outage killed cycles 9-100 of the prior run). The 2026-07-01
 # caps (140K plan alone) still allowed a >160KB total, so every component cap
 # now fits the WHOLE prompt inside GEMINI_STDIN_CAP with headroom.
-PLAN_CTX_CAP = 40_000
-LEDGER_CTX_CAP = 12_000
-ROADMAP_CTX_CAP = 12_000
+# 2026-07-03 re-tighten AGAIN: the threshold DRIFTS - a 79,911-byte director
+# payload (cap_stdin-trimmed to the old 80,000 ceiling) returned silent EMPTY
+# every try (both pro + flash), burning cycles 10-32 directive-less; the SAME
+# payload truncated to 70,000 and 60,000 bytes both delivered (measured live).
+# Treat the ceiling as weather, not physics: sit well under the worst
+# measurement. Component caps compose to ~56KB with the ~16KB template/digest/
+# chain overhead, so a normal prompt never even hits the cap_stdin backstop.
+PLAN_CTX_CAP = 24_000
+LEDGER_CTX_CAP = 8_000
+ROADMAP_CTX_CAP = 8_000
 
 # Proven-safe gemini stdin ceiling (see above). cap_stdin() backstops EVERY
 # gemini() call (director / auditor / stall) at this size.
-GEMINI_STDIN_CAP = 80_000
+GEMINI_STDIN_CAP = 60_000
 
 def cap_stdin(body, limit=None):
     """Backstop: keep the HEAD (prompt template + instructions) and the TAIL
@@ -522,6 +529,12 @@ def main():
     FIXED = CFG.get("fixed_directive")  # fixed-message mode: skip gemini director+auditor entirely
     CYCLE_CMD = CFG.get("cycle_command")  # self-directing slash command typed verbatim; director SKIPPED, auditor KEPT
     for cycle in range(1, CFG["max_cycles"] + 1):
+        # STOP is otherwise only polled inside wait_for/wait_gone, which never
+        # run while the director is erroring - a 2026-07-03 outage spun 20+
+        # directive-less cycles where an operator STOP would have been ignored.
+        if (CTL / "STOP").exists():
+            log("external STOP seen (cycle top)")
+            sys.exit(0)
         override = consume_directive_override()
         src = cycle_source(CFG, override)
         if src == "override":
