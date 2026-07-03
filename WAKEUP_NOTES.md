@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-07-03 (R66 LOOP - Guinsoo Seething Strike cond-AS; ENGINE 1.173.0; saturation-claim REFUTED by adversarial workflow)
+
+Loop cycle 4. Directive named 3 "unmodeled" passives (Kraken/Statikk/Hydra) - ALL already modeled (stale-digest family R63/R64). Instead of a 4th CLEAN no-op: scan agent claimed the damage registry SATURATED; a 3-lens adversarial refute workflow (absent/partial/drift) DISPROVED that with 8 cited findings. Shipped #1: Guinsoo 3124 + Arena 223124 `bonus_as_conditional=0.32` (Seething Strike 8%x4, Meraki 16.13.1) on the existing R42 ungated lane - PART C sync gemini ruled NO new seam (Yun Tal no-flag precedent + sec-12); no live-flip row, B44 spot-check appended to LIVE_GAME_GATED_SYNC instead. ENGINE 1.172.0->1.173.0, 95 pin files, Share 401 files --check green, DS :8893 live at 1.173.0. TDD RED-first 9 tests; verifier CONFIRM 10/10; merge `d79ebcb6`.
+
+**Gotcha re-learned (now also in ORCHESTRATION findings):** HZ-B regen after a bump MUST pass the full 173-canonical roster to BOTH generators (`core.build_order_precompute` + `core.build_order_variants`, `--static --mode all --champions <csv>`); the build agent's first regen used the 10-champ SEED default -> 18 axis-parity tests failed on EMPTY orders. OQ19 (221922c5) is the recipe commit.
+
+**Residuals for future ds-sweep cycles:** BACKLOG "DS registry residuals - R66" (Terminus 3-stack under-count top; Thornmail item-reflect; Rocketbelt/Everfrost DSV6 fits; Zeke's/Hollow Radiance/shield-lerp LOW). Director should pick FROM that list, not re-scan.
+
+---
+
 # 2026-07-02 (LIVE-GATED DRAIN - practice SR + ARAM Mayhem; prep-audit + a real ranged-only build bug found live)
 
 Operator-played drain of `docs/LIVE_GAME_GATED_SYNC.md`. Probed no game -> ran the headless PREP phase first: an orchestrated 4-slice read-only audit found the headless prep surface FULLY EXHAUSTED (all 7 OQ17/OQ18 DS routes LIVE-VERIFIED WIRED-OK @1.171.0 via differential POST probes; doc rows current; Phase-D B2 = defer-needs-game). Committed the prep-audit doc sync (`28edea2a`) + cleaned 2 stale worktree-wf branches (content proven-superseded in main).
@@ -29,33 +39,3 @@ Loop directive OQ22 executed by this session (head 5d6e50ae; commit `9be09e44`, 
 - **S3 ability_hps v2 = SUBSTRATE-SOUND-DEFERRED.** The base ability-HPS fold-in is ALREADY live-wired (`agents/daemon_slayer/hps.py:620-640`) - ROADMAP:72 prose was stale (corrected in-run); only the `assume_missing_hp_heal_amp` flag (hps.py:499/:828 default OFF) remains = the R5 heal-amp seam, correctly gated. FUTURE: the 9-item enchanter registry omits 5 corpus-proven winners (Dream Maker/Dawncore/Shurelya/Seraph/Luden).
 - **S4 same-state Haiku-skip = PARTIAL-NEEDS-LIVE.** Debounce `_coach_state_signature` (aram_coach.py:66 / arena_coach.py:73) default OFF, 45s recall ceiling; coach_trace.jsonl replay (126 ARAM fired-call rows, 1 match) = 2/125 same-sig pairs, both correct skips, 0 false-skips - BUT fired-calls-only + vision fields unrecoverable + no Arena rows -> insufficient headless proof; C14/D5 live rows still needed. Flip stays gated.
 - **NO FLIP FLIPPED.** Verdicts -> `docs/research/OQ22_headless_validations.md`; 4 LIVE_GAME_GATED_SYNC.md rows annotated (S1 DISCHARGE); ORCHESTRATION_PLAN OQ22 DONE + Findings log; ROADMAP:72 corrected. Full RC suite **10444 passed / 2 skipped / 193 subtests / 0 fail** (RC-side only; DS suite unaffected, no DS bounce / Share sync). Frozen files untouched.
-
----
-
-# 2026-07-02 (OQ21 LOOP - resync doc-hygiene sweep + the OQ14 gap; docs-only, no engine/flag/code)
-
-Loop directive OQ21 executed by this session (head ca131150; commit `<this commit>`, LEDGER 744). Apply the `docs/LIVE_GAME_GATED_SYNC.md` "Doc hygiene follow-ups (2026-07-01 sweep)" (a)-proposals + append the missed OQ14 Item Shaper overlay-capture row. **PREMISE-CHECK first:** the gemini digest line numbers were unreliable, so every prune target was re-derived from the AUTHORITATIVE source spec (the LIVE_GAME_GATED_SYNC.md section itself) - it caught that a raw ROADMAP :90-108 range-prune would have deleted OPEN item 98 + the Arena-1750 don't-redo anchor.
-
-- **Implemented main-thread (R9 inline + anchor-preservation):** destructive doc pruning where a mis-prune silently drops a don't-redo anchor is where the sole-merger needs full context; worktree subagents against the same bad line numbers would raise risk, not lower it. Integrity control = a full git-diff re-read of every deletion + the doc-guard suite.
-- **ROADMAP:** deleted 8 verified-stale pointer carries (s246/s245/s231/s230/s229/s228 PGR-reframe-still-pending + items 275/273) via a prefix-filter script (9 prefixes, each matched exactly once; also cleared 2 lines carrying pre-existing non-ASCII arrows) + the orphaned Peer auto-action-lanes row (ADR-012); RE-MARKED the #11-13 / #89 capture carries headless (inline anchors kept); trimmed :14 slow-tick + :111 ARAM residue + dropped the :130 fleet ENGINE stamp. 82KB budget SAFE (77084 bytes).
-- **README:** dropped Brawl from the modes list (retired champ-select s214) + rewrote the two-machine / third-machine-bridge topology to the 1-PC reality (ADR-011 / ADR-012); DS coverage counts left untouched (DS-batch job).
-- **ARCHITECTURE:** item-276 "in-game validation OWED" -> "PROVEN in-game (LEDGER 685/688/711)"; the T2-#8 "asyncio not started" gotcha corrected to shipped; fixed the stale `# arch:` marker in FROZEN app/__init__.py (comment-only, under the headless grant) then regenned the archmap - a hygiene WIN (also normalized pre-existing non-ASCII arrows to ASCII + synced ~30 real module rows the map had silently lost; `--check` now green).
-- **ORCHESTRATION_PLAN:** Claude_Preview-vs-:8888 -> Playwright ui_recon + :8810 (R2); Game-PC :8892 marked retired. **LIVE_GAME_GATED_SYNC:** OQ14 Item Shaper strip appended to the B24 family + LEDGER 735; Doc-hygiene header annotated APPLIED.
-- **Tier-0 verify (R5 - docs + one inert frozen-comment + a deterministic archmap regen; full engine suite NOT gated, no engine/route/logic touched):** 18 doc-guard tests green (smart-quote/mojibake/u2500 hygiene, architecture-no-stale-engine, doc-size-budget, bare-py-ban) + `gen_archmap.py --check` green + `import app` OK + `py_compile app/__init__.py` OK.
-- **Handoff (FUTURE):** the remaining (a) OPERATIONS/BACKLOG/OVERLAY_BUILD_MASTER_PLAN/RC_WORK_TRACKER/CLAUDE-Vision/Share-docs/stale-hash items + the :42 OQ16-supersedes-OQ3 annotation + all (b) archive candidates.
-- Frozen edit: `app/__init__.py` `# arch:` comment only (headless-upgrade grant, not carried forward).
-
----
-
-# 2026-07-02 (OQ19 LOOP - HZ-B build-order table regen to live ENGINE 1.169.0; static data, no engine math)
-
-Loop directive OQ19 executed by this session (head 12d9de2f; commit `221922c5`, LEDGER 741). Regen the current-patch (16.13.1) HZ-B precompute tables to the live DS engine via the deterministic `--static` path - the headless prereq for accrual rail G2. No engine math, no live flip.
-
-- **Ground-truth first:** repo `ENGINE_VERSION` (`agents/daemon_slayer/__init__.py:18`) + `:8893/health` both 1.169.0 / patch 16.13.1, but the committed 16.13.1 HZ-B tables (HZ-B1 `build_orders_*` + HZ-B2 `build_order_variants_*`, all 3 modes) were stamped 1.151.0 - an 18-version drift a future consumer (HZ-C1 / accrual rail G2) would read as stale scorer math. Directive named only build_order_precompute but step-3's glob + intent covers variants (also 1.151.0), so BOTH regenerated.
-- **Regen:** `core.build_order_precompute` + `core.build_order_variants`, `--static --mode all`. In-process `_install_static_transport` rebinds `_post_json` to the DS `_POST_ROUTES` handlers (no :8893, no server); output identical to the live path by construction.
-- **GOTCHA caught + fixed in-slice (LEDGER-388 re-proven):** default `--static` (no `--champions`) uses `SEED_CHAMPIONS` (10) and silently TRUNCATED the tables 173 -> 10 - `test_build_order_axis_parity` went RED for 18 non-seed champs. Recovered the EXACT 173 canonical roster from `git show HEAD:...build_orders_sr.json` keys (== `champions.json` data keys), re-ran with `--champions <173 canonical ids>` (canonical NOT display names - display silently skips pairs). Coverage restored 173/file (692 precompute = 173x4 + 346 variant = 173x2 orders, 0 empty). No coverage drift shipped.
-- **TDD** `test_build_order_engine_stamp_sync.py` RED 6/6 (1.151.0) -> GREEN 6/6 (1.169.0) - a durable drift guard (fails on any future bump that leaves the current-patch tables stale; message points at the exact regen command). **Verifier CONFIRM 7/7** (files valid, all 1.169.0, 173 champs each == HEAD, correct schemas, 0 empty, clean-scoped diff).
-- **Gate: DS 7774 / RC 10441 / 83 HZ-B + 138 consumer green, 0 fail.** No ENGINE bump (already 1.169.0). Share `--check` green 395 (the HZ-B data tables are RC-side data, NOT in the Share engine package; the commit hook only restamped `Share/MANIFEST.md`'s "last synced" timestamp).
-- **Implemented main-thread (R9 inline):** deterministic single-slice data regen + one guard test + docs, no disjoint-slice parallelism; the directive's integrity control (verifier-gate, step 4) honored via the read-only `verifier` subagent.
-- **Handoff:** the HZ-C1 live consumer flip (read these tables at coach request time instead of Haiku / live :8893) stays operator-gated behind real-game validation (do-not-flip-blind).
-- Frozen files untouched. server.py untouched (pure data + one test).
