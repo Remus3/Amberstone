@@ -4,6 +4,14 @@
 
 ---
 
+# 2026-07-03 (R67 LOOP - Terminus Juxtaposition 3-stack Dark pen; ENGINE 1.174.0; residual-list pick worked)
+
+Loop cycle 5. Director picked FROM the R66 residual list as instructed (no re-scan, no stale-digest premise) - the loop-health fix from R66 held. Premise verified vs vendored Meraki 16.13.1: Juxtaposition Dark = 10% armor+magic pen per stack x3 = 30%/30%; registry pinned 1 stack while citing the BC full-stack convention. Shipped SR 3302 + Arena 223302 pen 0.10 -> 0.30 ungated (plain data correction). Light-side caster resists (6-8 armor+MR x3) = schema lift (no item-keyed resist-grant path) -> BACKLOG tail, not built blind. TDD RED-first 14 tests (`test_terminus_juxtaposition_r67.py`); slice `5331c62f`, merge `34255183`; HZ-B regen both generators full-roster OQ19 recipe FIRST TRY (no shrink); DS :8893 live 1.174.0; dual suite DS 7843 + RC 10467, 0 failed; Share 402 files --check green.
+
+**Process note (2nd occurrence):** the worktree build agent's INDEX corrupted again (4133 staged deletions, disk==HEAD blobs) - verifier caught it; merged the commit sha directly, never the worktree state. If a 3rd worktree index corruption appears, root-cause the worktree tooling (same-worktree races memory `feedback_cc_session_perf`).
+
+---
+
 # 2026-07-03 (R66 LOOP - Guinsoo Seething Strike cond-AS; ENGINE 1.173.0; saturation-claim REFUTED by adversarial workflow)
 
 Loop cycle 4. Directive named 3 "unmodeled" passives (Kraken/Statikk/Hydra) - ALL already modeled (stale-digest family R63/R64). Instead of a 4th CLEAN no-op: scan agent claimed the damage registry SATURATED; a 3-lens adversarial refute workflow (absent/partial/drift) DISPROVED that with 8 cited findings. Shipped #1: Guinsoo 3124 + Arena 223124 `bonus_as_conditional=0.32` (Seething Strike 8%x4, Meraki 16.13.1) on the existing R42 ungated lane - PART C sync gemini ruled NO new seam (Yun Tal no-flag precedent + sec-12); no live-flip row, B44 spot-check appended to LIVE_GAME_GATED_SYNC instead. ENGINE 1.172.0->1.173.0, 95 pin files, Share 401 files --check green, DS :8893 live at 1.173.0. TDD RED-first 9 tests; verifier CONFIRM 10/10; merge `d79ebcb6`.
@@ -27,15 +35,3 @@ Then the operator played 2 games:
 **FINDING 2 (needs settled-state confirm):** `cs_archetype_pick` looked STALE in ARAM champ-select (stuck on "Kalista" while the champ cycled Veigar->Viego->Swain; locked=234 Viego). Re-probe on a settled champ-select before root-causing.
 
 Full drain record + still-open rows (A2 spell-push, A8 panels, B1 build-chooser, B23/B24 overlay, E1/E2 physical, C2 comp_verdict) in `docs/LIVE_GAME_GATED_SYNC.md` live-flip ledger (2026-07-02 DRAIN SESSION entry). Verifier subagent was running the fix's dual suite at wrap; fold its verdict in at game-end before the merge.
-
----
-
-# 2026-07-02 (OQ22 LOOP - 4-slice headless validation + comp-verdict inverted-label FIX; ENGINE-IMPACT NONE)
-
-Loop directive OQ22 executed by this session (head 5d6e50ae; commit `9be09e44`, LEDGER 746). Validate the 4 items the 2026-07-01 resync moved OFF the live-gated checklist, via 4 disjoint parallel read-only analysis subagents (orchestrator = sole merger + verifier; NO worktree - read-only analysis mutates 0 files, OQ20 precedent). Each slice's falsifiable claims re-checked against ground truth (independent code read + live SQL over rewind_history.db) BEFORE its verdict was accepted.
-
-- **S1 comp-verdict SOUNDNESS = BUG-CONFIRMED + FIXED (root-cause-first TDD, non-flip).** The LGS2 "All-AD comp - swap to Garen to mix the damage type" read inverted: `_swap_reason` (`core/aram_comp_verdict.py:333`) + the variant path (`:304`) labelled the comp by the DEFICIT type (`detail`, the MISSING type) instead of its EXCESS. Both now compute `excess = "AD" if detail == "ap" else "AP"`. Remedy TARGET was always right (`_bench_addresses` line 223), so ONLY the human label changed - zero ranking change; deterministic engine, NOT a DS live-flip seam = plain presentation bug. 3 RED-first regression tests reproduced the exact string; GREEN after; 102 passed across comp_verdict + 5 siblings. LIVE-VERIFIED post-restart (pid 16652 -> 15160): now returns "All-AP comp - swap to Garen...". Secondary FUTURE: Vex is DDragon-zeroed (`_damage_lean`=hybrid); `champion_info_overrides` resolution is a distinct enhancement.
-- **S2 pickban-DB counter-quality = CORPUS-TOO-THIN.** DB is a single itemless L9 1v1 `compute_matchup` proxy; rewind is 2954 matches but only 660 SR-classic; 50 sampled pairs median n=2.5 / pooled 49.5% (coin flip); densest SR pair 24 games. Cannot validate -> ROADMAP:55 flip stays operator-gated.
-- **S3 ability_hps v2 = SUBSTRATE-SOUND-DEFERRED.** The base ability-HPS fold-in is ALREADY live-wired (`agents/daemon_slayer/hps.py:620-640`) - ROADMAP:72 prose was stale (corrected in-run); only the `assume_missing_hp_heal_amp` flag (hps.py:499/:828 default OFF) remains = the R5 heal-amp seam, correctly gated. FUTURE: the 9-item enchanter registry omits 5 corpus-proven winners (Dream Maker/Dawncore/Shurelya/Seraph/Luden).
-- **S4 same-state Haiku-skip = PARTIAL-NEEDS-LIVE.** Debounce `_coach_state_signature` (aram_coach.py:66 / arena_coach.py:73) default OFF, 45s recall ceiling; coach_trace.jsonl replay (126 ARAM fired-call rows, 1 match) = 2/125 same-sig pairs, both correct skips, 0 false-skips - BUT fired-calls-only + vision fields unrecoverable + no Arena rows -> insufficient headless proof; C14/D5 live rows still needed. Flip stays gated.
-- **NO FLIP FLIPPED.** Verdicts -> `docs/research/OQ22_headless_validations.md`; 4 LIVE_GAME_GATED_SYNC.md rows annotated (S1 DISCHARGE); ORCHESTRATION_PLAN OQ22 DONE + Findings log; ROADMAP:72 corrected. Full RC suite **10444 passed / 2 skipped / 193 subtests / 0 fail** (RC-side only; DS suite unaffected, no DS bounce / Share sync). Frozen files untouched.
