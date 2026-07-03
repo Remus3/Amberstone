@@ -1331,6 +1331,26 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.176.0 (R69, 2026-07-03 - Rocketbelt/Everfrost item-ACTIVE magic burst on the
+DSV6 seam). Meraki 16.13.1 item 3152 Hextech Rocketbelt active "Supersonic":
+dash + rocket arc dealing "100 (+ 10% AP) magic damage ... once per cast";
+item 446656 Everfrost (Arena DISTRIBUTED) active "Glaciate": cone dealing
+"300 (+ 85% AP) magic damage" + 70% slow / center root (CC not in this damage
+lane). Pure DATA pin - no schema lift, no new seam: the one-cast active
+magnitude is exactly the DSV6 single-proc burst-window shape, so 3152 + Arena
+mirror 223152 (100 / 0.10) and 446656 (300 / 0.85) ride the EXISTING
+magic_burst_base/magic_burst_ap_ratio fields read by total_magic_burst_damage
+-> compute_burst_damage ONLY under the default-OFF assume_magic_burst flag
+(MR-mitigated x mode_mult x magic_amp). DPS side intentionally unmodeled (long
+cooldown actives, no PeriodicProc - no double-count; defensive_only stays True,
+verified a doc-only flag with zero engine consumers). Variant guards: no ARAM
+323152 in the 16.13.1 pool; legacy Everfrost 6656/226656 present but all map
+flags False + absent from Meraki - unpinned, test-guarded. Flag OFF
+byte-identical; live default-ON flip stays operator-gated
+(docs/LIVE_GAME_GATED_SYNC.md B13 extended). TDD RED-first
+(test_item_active_magic_burst_r69.py, 21 tests RED 10F -> GREEN). 1.175.0 ->
+1.176.0.
+
 1.175.0 (R68, 2026-07-03 - Thornmail/Bramble ITEM Thorns reflect on the R49 seam).
 Meraki 16.13.1 item 3075 Thornmail passive "Thorns": "When struck by a basic
 attack [[on-hit]], deal 20 (+ 10% bonus armor) magic damage to the attacker";
