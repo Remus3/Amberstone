@@ -137,13 +137,18 @@ def test_champ_select_view_renders(mode, mock_server, pw_browser):
 
 @pytest.mark.parametrize("mode", ["sr", "aram", "arena"])
 def test_champ_select_removed_elements_absent(mode, mock_server, pw_browser):
-    """QA slice A: every removed card/mount is gone from the rendered DOM."""
+    """QA slice A: every removed card/mount is gone from the champ-select
+    region. Scoped to #view-champ-select: slice C legitimately re-mounts the
+    DS profile/knobs/statcheck ids on the active-match BUILD pane (B20/B22,
+    CS3 precedent keeps the same ids; pinned by
+    tests/test_builds_ds_relocation_dom.py)."""
     ctx, page, errors = _open_champ_select(pw_browser, mock_server, mode)
     try:
         counts = page.evaluate(
             """(sels) => {
+              const root = document.querySelector('#view-champ-select');
               const out = {};
-              for (const s of sels) out[s] = document.querySelectorAll(s).length;
+              for (const s of sels) out[s] = root ? root.querySelectorAll(s).length : -1;
               return out;
             }""",
             _REMOVED_SELECTORS,
@@ -696,14 +701,24 @@ def test_ghost_wrappers_and_dead_paths_removed():
     # fed by /api/personal-vs.
     assert "csv-enemy-wr-slot" in src, "enemy WR slot must stay"
     assert "/api/personal-vs" in src, "enemy WR slot must ride /api/personal-vs"
-    # Index.html mounts for removed cards are gone; skill order mount stays.
+    # Index.html mounts for removed cards are gone FROM THE CHAMP-SELECT
+    # REGION; skill order mount stays. Scoped: slice C legitimately re-mounts
+    # the DS profile/knobs/statcheck ids on the active-match BUILD pane
+    # (B20/B22, CS3 precedent keeps the ids; pinned by
+    # tests/test_builds_ds_relocation_dom.py).
     html = INDEX_HTML.read_text(encoding="utf-8")
+    start = html.index('id="view-champ-select"')
+    end = html.index('id="view-active-match"')
+    assert start < end, "champ-select region must precede active-match"
+    cs_region = html[start:end]
     for needle in ("csv-sugg-cooldown-watch", "csv-sugg-cc-pairing",
                    "player-gpi-panel", "csv-sugg-ds-profile",
                    "csv-ds-knobs", "csv-ds-statcheck", "csv-sugg-bs-toggle"):
-        assert needle not in html, f"removed mount residue in index.html: {needle}"
-    assert "csv-sugg-ds-skill-order" in html, "skill-order mount must stay"
-    assert "csv-team-analysis" in html, "TEAM ANALYSIS cluster mount missing"
+        assert needle not in cs_region, (
+            f"removed mount residue in champ-select region: {needle}"
+        )
+    assert "csv-sugg-ds-skill-order" in cs_region, "skill-order mount must stay"
+    assert "csv-team-analysis" in cs_region, "TEAM ANALYSIS cluster mount missing"
 
 
 def test_no_em_dashes_or_smart_quotes():
