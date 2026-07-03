@@ -2,14 +2,16 @@
 
 The route gained an additive ``capability_gap`` field that surfaces the
 in-process multi-axis capability-gap synthesizer
-(``core.ds_capability_gap.build_capability_gap``) behind a default-OFF
-flip flag ``RC_CAPGAP_SURFACE``. These tests prove:
-  - flag ON + a real gap (Lux self-sustain vs a heavy-sustain comp) ->
-    the field is populated and passed through faithfully.
-  - flag OFF (default) -> the field is None.
+(``core.ds_capability_gap.build_capability_gap``) behind the flip flag
+``RC_CAPGAP_SURFACE`` - default ON since the 2026-07-03 champ-select QA
+(ruling A5 in docs/qa/CHAMP_SELECT_QA_2026-07-03.md); an explicit
+``RC_CAPGAP_SURFACE=0`` in the env still disables it. These tests prove:
+  - flag explicitly ON + a real gap (Lux self-sustain vs a heavy-sustain
+    comp) -> the field is populated and passed through faithfully.
+  - env var UNSET (the new default) -> the field is populated (A5 flip).
+  - flag explicitly OFF (env override) -> the field is None.
   - no resolvable enemies -> the field is None.
-  - flag ON but the synthesizer reports applies=False (Aatrox out-sustains
-    the same comp) -> the field is None.
+  - flag ON but the synthesizer reports applies=False -> the field is None.
 
 Only the dispatcher boundary is mocked (no live DS server). The
 synthesizer runs against REAL scorer data, so ``archetype`` is passed
@@ -18,6 +20,7 @@ explicitly in the payload to avoid mocking ``get_archetype_for``.
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from unittest import mock
 
@@ -88,8 +91,29 @@ class DsPreviewCapabilityGapTests(unittest.TestCase):
         self.assertEqual(cg.get("my_champion"), "Lux")
 
     @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
-    def test_capgap_absent_when_flag_off(self, mock_disp):
-        # No env patch -> RC_CAPGAP_SURFACE defaults OFF.
+    def test_capgap_default_on_when_env_unset(self, mock_disp):
+        # A5 flip (QA 2026-07-03): env var UNSET -> the code default is
+        # ON and the field populates for a real gap.
+        mock_disp.return_value = _dispatcher_response("mage", _MAGE_ROWS)
+        env = {k: v for k, v in os.environ.items() if k != "RC_CAPGAP_SURFACE"}
+        h = _Handler()
+        with mock.patch.dict("os.environ", env, clear=True):
+            _serve_ds_preview_post(h, {
+                "champion": "Lux", "mode": "SR", "level": 6,
+                "archetype": "mage",
+                "enemies": ["Vladimir", "Fiddlesticks", "Warwick"],
+            })
+        self.assertEqual(h.status, 200)
+        resp = h.json()
+        cg = resp.get("capability_gap")
+        self.assertIsNotNone(cg)
+        self.assertTrue(cg.get("applies"))
+        self.assertEqual(cg.get("my_champion"), "Lux")
+
+    @mock.patch.dict("os.environ", {"RC_CAPGAP_SURFACE": "0"})
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    def test_capgap_absent_when_flag_explicitly_off(self, mock_disp):
+        # A5: the env override path stays - RC_CAPGAP_SURFACE=0 disables.
         mock_disp.return_value = _dispatcher_response("mage", _MAGE_ROWS)
         h = _Handler()
         _serve_ds_preview_post(h, {
