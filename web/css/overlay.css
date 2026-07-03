@@ -797,6 +797,11 @@ body[data-shell="overlay"] .ovx-enemyspells .es-chip {
   padding: 3px 5px;
   border-radius: 4px;
   border: 1px solid transparent;
+  /* R62 TYPOGRAPHY: --fs-ov-head (11px) is the sanctioned sub-floor here, not the
+   * usual --fs-ov-chip 13px. The chip renders a bold 2-char A5 abbreviation tag
+   * ("FL UP" / "TP 142s"), never prose, so it reads at the same 11px rung the
+   * overlay already accepts for its uppercase pane-head labels; the compaction is
+   * A5-locked (enemy_spells.js:28-32). Sibling of the hit-target note below. */
   font-size: var(--fs-ov-head);
   font-weight: 700;
   letter-spacing: 0.03em;
