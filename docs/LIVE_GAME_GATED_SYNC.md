@@ -352,6 +352,11 @@ no row carries it.
   ROADMAP.md:48.
 - D8. [HOLD 2026-06-20] (ARENA) Arena S2 augment level-up + crafting - trigger on 26.09 PBE
   (separate PBE install). SOURCE: RC_WORK_TRACKER.md:126.
+- D9. (ARENA) R74/DSV8 `assume_physical_burst` flip (Goredrinker 226630 Thirsting Slash 175%
+  base AD physical AoE active - Arena-only prismatic, so this eyeball NEEDS an Arena game: a
+  Goredrinker holder's burst rank reads sane, assuming the active fires inside the burst
+  window; armor-mitigated PHYSICAL routing, deliberately no amp layer). DS restart. SOURCE:
+  ledger 2026-07-03 below.
 
 ## E. Physical / operator-hardware (over a running League game on Legion)
 
@@ -1484,3 +1489,17 @@ over normal play across later cycles, not in these sessions.
   average-current-HP-over-fight measurement (replace the 0.5 midpoint) - the seam is linear in the fraction so the
   value is a single tunable. A WRONG precompute is worse than none, so do NOT default-ON until validated. DS `:8893`
   restart on flip. Does NOT block any further stage.
+- 2026-07-03 R74 / DSV8 physical on-cast burst seam (`compute_burst_damage(assume_physical_burst=)`, ENGINE
+  1.178.0, default-OFF). Physical analogue of DSV6: an item on-cast PHYSICAL active the per-cast burst combo loop
+  never credited. Registry fields `physical_burst_base`/`physical_burst_base_ad_ratio` (END-appended); sole pin
+  Goredrinker 226630 Thirsting Slash 1.75x caster BASE AD (Meraki 16.13.1 "Deal 175% base AD physical damage ...
+  450 radius"; the heal side 20% AD + 8% missing HP stays unmodeled sustain; 6630/326630/446630 absent from the
+  16.13.1 mirror, test-guarded). When True, sum(base + ratio*base_ad) is credited armor-mitigated (PHYSICAL
+  routing) x mode_mult into total_burst after the rune + execute layers - deliberately NO amp layer (the engine
+  has no physical analogue of magic_amp, grep-proven; the DSV6 block's generic-amp exclusion carries over).
+  compute_ability_dps takes the kwarg DELIBERATELY INERT (same wrong-units / partial-double-count doctrine as
+  DSV6); compute_dps untouched (15s-CD active, no PeriodicProc, so no double-count). OWED (operator/Gemini-gated,
+  NOT headless - charter 4b do-not-flip-blind): wire a burst-scoring consumer with `assume_physical_burst=True`
+  and confirm a Goredrinker-holding bruiser's burst rank reads sane vs a real ARENA game (226630 is Arena-only),
+  assuming the active fires inside the burst window. A WRONG burst credit is worse than no credit, so do NOT
+  default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
