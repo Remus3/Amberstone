@@ -2184,9 +2184,28 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3050",
         name="Zeke's Convergence",
         defensive_only=True,
+        # R70 slice A: Frostfire Tempest per-cast total rides the DSV6
+        # assume_magic_burst seam. Meraki 16.13.1: "Upon casting your
+        # ultimate ability, you summon a storm of flame and ice around
+        # you for 5 seconds, dealing 30/4 magic every 0.25s | 30*5 total
+        # magic damage ... within 350 units ... (45 second cooldown,
+        # starts on ultimate cast)" = 150 flat per ult cast, no AP ratio.
+        # SELF-centered storm - 16.13.1 has NO ally tether (the old
+        # "tether-ally" note was stale). Cryocombustion ult haste lives
+        # in _item_ability_haste.py, not here. DPS side intentionally
+        # unmodeled: 45s-CD ult-triggered, no PeriodicProc, no
+        # double-count - the credit rides the burst pin only.
+        # defensive_only stays True - documentation-only flag, no engine
+        # gate, and batch-35 coverage pins it.
+        magic_burst_base=150.0,
+        magic_burst_ap_ratio=0.0,
         note=(
-            "Zeke's Convergence: Frostfire Tempest + Cryocombustion require "
-            "tether-ally proximity (support aura; no caster-DPS contribution)"
+            "Zeke's Convergence: Frostfire Tempest SELF storm on ult cast "
+            "(Meraki 16.13.1: 150 total flat magic over 5s, 45s CD, no "
+            "ally tether) - per-cast total rides the DSV6 "
+            "assume_magic_burst seam; Cryocombustion haste lives in "
+            "_item_ability_haste.py; DPS side intentionally unmodeled "
+            "(long-CD ult-triggered, no PeriodicProc, no double-count)"
         ),
     ),
     "4016": ItemEffect(
@@ -3669,7 +3688,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="323050",
         name="Zeke's Convergence",
         defensive_only=True,
-        note="Zeke's Convergence (ARAM 323050): Conduit ally aura - support, no self DPS",
+        # R70 slice A: ARAM mirror of SR 3050 - same Frostfire Tempest
+        # numbers per the mirror convention (no Meraki entry of its own).
+        # SELF storm on ult cast, NOT the stale "Conduit ally aura".
+        # Cryocombustion haste lives in _item_ability_haste.py; DPS side
+        # intentionally unmodeled (long-CD ult-triggered, no
+        # PeriodicProc, no double-count).
+        magic_burst_base=150.0,
+        magic_burst_ap_ratio=0.0,
+        note=(
+            "Zeke's Convergence (ARAM 323050): Frostfire Tempest SELF "
+            "storm on ult cast (150 flat, mirrors SR 3050) on the DSV6 "
+            "assume_magic_burst seam; Cryocombustion haste lives in "
+            "_item_ability_haste.py; DPS side intentionally unmodeled"
+        ),
     ),
     "323075": ItemEffect(
         item_id="323075",
@@ -4154,7 +4186,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223050",
         name="Zeke's Convergence",
         defensive_only=True,
-        note="Zeke's Convergence (Arena 223050): Conduit ally aura - support, no self DPS",
+        # R70 slice A: Arena map-30 mirror of SR 3050 - same Frostfire
+        # Tempest numbers per the mirror convention (no Meraki entry of
+        # its own). SELF storm on ult cast, NOT the stale "Conduit ally
+        # aura". Cryocombustion haste lives in _item_ability_haste.py;
+        # DPS side intentionally unmodeled (long-CD ult-triggered, no
+        # PeriodicProc, no double-count).
+        magic_burst_base=150.0,
+        magic_burst_ap_ratio=0.0,
+        note=(
+            "Zeke's Convergence (Arena 223050): Frostfire Tempest SELF "
+            "storm on ult cast (150 flat, mirrors SR 3050) on the DSV6 "
+            "assume_magic_burst seam; Cryocombustion haste lives in "
+            "_item_ability_haste.py; DPS side intentionally unmodeled"
+        ),
     ),
     "223065": ItemEffect(
         item_id="223065",
