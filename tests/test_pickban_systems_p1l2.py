@@ -13,8 +13,9 @@ computed score/probability/ordering invariant itself.
 Audit areas:
   1. smoothed_rates self-consistency (monotone / bounded / symmetric /
      n=0 stable - property-style).
-  2. pick/ban vs smoothed_rates (synergy ranks on the smoothed rate;
-     the displayed wr_pct stays the raw observed rate).
+  2. (removed 2026-07-03, QA A3: the mood system incl. the smoothed
+     synergy ranking was deleted from routes_pickban - picks are the
+     raw top-N by score.)
   3. pick/ban vs itself (determinism, disjoint ban/pick, exclude is
      honored, STABLE tie-breaking).
   4. pick/ban vs the coach path (no divergent duplicate WR math; the
@@ -195,61 +196,12 @@ class _DbCase(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 2. pick/ban  vs  smoothed_rates
-# ---------------------------------------------------------------------------
-class PickBanConsumesSmoothedRate(_DbCase):
-    """The synergy mood (the CLAUDE.md #90 locked example of a raw
-    recent-form proxy) must rank on core.smoothed_rates.laplace_rate,
-    not the raw ratio. The displayed wr_pct stays RAW."""
-
-    def test_rank_helper_matches_laplace_formula_exactly(self):
-        # Two records; the ranking key must be exactly laplace_rate, so
-        # a smaller perfect record can lose to a larger strong one.
-        rows = [(99, "Lux", 2, 2), (81, "Ezreal", 8, 7)]
-        ranked = RP._rank_by_smoothed_wr(rows, "x", top=5)
-        # Derive expectation purely from the primitive.
-        lux_s = S.laplace_rate(2, 2)        # 0.75
-        ez_s = S.laplace_rate(7, 8)         # 0.80
-        self.assertGreater(ez_s, lux_s)
-        self.assertEqual([r["champName"] for r in ranked], ["Ezreal", "Lux"])
-        # Displayed wr_pct is the RAW observed rate, not the smoothed one.
-        self.assertEqual(ranked[0]["wr_pct"], round(100 * 7 / 8))
-        self.assertEqual(ranked[1]["wr_pct"], 100)
-
-    def test_synergy_allies_path_orders_by_smoothed(self):
-        # Operator BOT alongside Lulu(117). Raw would rank the 2-0 Lux
-        # over the 7-1 Ezreal; smoothed must invert that.
-        rows = []
-        for i in range(2):
-            rows += [
-                {"match_id": f"x{i}", "puuid": "me", "team_id": 100,
-                 "team_position": "BOTTOM", "champion_id": 99,
-                 "champion_name": "Lux", "win": 1},
-                {"match_id": f"x{i}", "puuid": "lp", "team_id": 100,
-                 "team_position": "UTILITY", "champion_id": 117,
-                 "champion_name": "Lulu", "win": 1}]
-        for i in range(8):
-            w = 1 if i < 7 else 0
-            rows += [
-                {"match_id": f"e{i}", "puuid": "me", "team_id": 100,
-                 "team_position": "BOTTOM", "champion_id": 81,
-                 "champion_name": "Ezreal", "win": w},
-                {"match_id": f"e{i}", "puuid": "lp", "team_id": 100,
-                 "team_position": "UTILITY", "champion_id": 117,
-                 "champion_name": "Lulu", "win": w}]
-        _build_db(self.db_path, rows)
-        conn = sqlite3.connect(str(self.db_path))
-        try:
-            picks = RP._query_performance(conn, "me", "BOTTOM", (420,),
-                                          mood="synergy", top=3,
-                                          ally_ids=(117,))
-        finally:
-            conn.close()
-        self.assertEqual(picks[0]["champName"], "Ezreal")
-        self.assertEqual(picks[0]["wr_pct"], round(100 * 7 / 8))  # raw
-        self.assertIn("smoothed", picks[0]["reason"])
-
-
+# 2. pick/ban vs smoothed_rates - REMOVED 2026-07-03 (QA A3). The synergy
+#    mood (and its smoothed re-ranking consumer _rank_by_smoothed_wr) was
+#    deleted from routes_pickban; picks are the raw top-N by score. The
+#    smoothed_rates primitive itself stays covered by section 1 above and
+#    by its other live consumers (augment_recommender, draft_elo_db,
+#    smoothed_rates_101qq).
 # ---------------------------------------------------------------------------
 # 3. pick/ban  vs  itself  (determinism, disjointness, exclude, ties)
 # ---------------------------------------------------------------------------
@@ -292,7 +244,7 @@ class PickBanSelfConsistency(_DbCase):
         try:
             runs = [
                 [p["champId"] for p in RP._query_performance(
-                    conn, "me", "BOTTOM", (420,), mood="comfort", top=5)]
+                    conn, "me", "BOTTOM", (420,), top=5)]
                 for _ in range(8)]
             bans = [
                 [b["champId"] for b in RP._query_bans(
@@ -320,14 +272,13 @@ class PickBanSelfConsistency(_DbCase):
         conn = sqlite3.connect(str(self.db_path))
         try:
             ids = [p["champId"] for p in RP._query_performance(
-                conn, "me", "MIDDLE", (420,), mood="comfort", top=5)]
+                conn, "me", "MIDDLE", (420,), top=5)]
         finally:
             conn.close()
         # All tied on (wr, games); a stable contract orders by champ_id
-        # ascending (matches the deliberate _rank_by_smoothed_wr
-        # tertiary). Without it SQLite ORDER BY ties are undefined.
+        # ascending. Without it SQLite ORDER BY ties are undefined.
         self.assertEqual(ids, sorted(ids),
-                         "comfort tie order is not champ_id-stable")
+                         "performance tie order is not champ_id-stable")
 
     def test_bans_tie_breaking_is_stable_by_champ_id(self):
         # Two enemies, identical loss-rate (100%) and identical
@@ -353,31 +304,6 @@ class PickBanSelfConsistency(_DbCase):
         self.assertEqual(ids, sorted(ids),
                          "ban tie order is not champ_id-stable")
 
-    def test_new_mood_tie_breaking_is_stable(self):
-        # Two never-played champs with identical pool_games -> must be
-        # champ_id-stable too.
-        rows = []
-        for cid in (700, 400):
-            for i in range(4):
-                rows.append({"match_id": f"{cid}-{i}", "puuid": "other",
-                             "team_id": 100, "team_position": "JUNGLE",
-                             "champion_id": cid, "champion_name": f"P{cid}",
-                             "win": 1})
-        # operator has played a different champ at JUNGLE so the
-        # NOT-IN exclusion does not blank the pool.
-        rows.append({"match_id": "op", "puuid": "me", "team_id": 100,
-                     "team_position": "JUNGLE", "champion_id": 64,
-                     "champion_name": "LeeSin", "win": 1})
-        _build_db(self.db_path, rows)
-        conn = sqlite3.connect(str(self.db_path))
-        try:
-            ids = [p["champId"] for p in RP._query_performance(
-                conn, "me", "JUNGLE", (420,), mood="new", top=5)]
-        finally:
-            conn.close()
-        self.assertEqual(ids, sorted(ids),
-                         "new-mood tie order is not champ_id-stable")
-
     def test_pick_and_ban_lists_are_disjoint_for_excluded(self):
         # Caller passes the already-banned set as exclude_ids; the pick
         # list must never re-suggest a banned champion. (The route does
@@ -387,7 +313,6 @@ class PickBanSelfConsistency(_DbCase):
         try:
             # Ban Vayne(67); picks must exclude it.
             picks = RP._query_performance(conn, "me", "BOTTOM", (420,),
-                                          mood="comfort",
                                           exclude_ids=(67,), top=5)
         finally:
             conn.close()
@@ -395,38 +320,34 @@ class PickBanSelfConsistency(_DbCase):
         self.assertNotIn(67, pick_ids)
         self.assertTrue(pick_ids)               # other champs remain
 
-    def test_excluded_champion_never_resuggested_any_mood(self):
-        # with_ts=True: the synergy ally_ids=() branch joins on
-        # matches.game_creation_ts, which the real rewind_history.db
-        # schema has. Build it so all four moods are exercised.
+    def test_excluded_champions_never_resuggested(self):
+        # Excluding every played champ must yield an empty pick list -
+        # no excluded id may leak back (QA A3: single raw score query).
         rows = self._bot_rows()
         for r in rows:
             r["ts"] = 1  # any non-zero ts; recency not under test here
         _build_db(self.db_path, rows, with_ts=True)
         conn = sqlite3.connect(str(self.db_path))
         try:
-            for mood in ("comfort", "limit", "new", "synergy"):
-                picks = RP._query_performance(
-                    conn, "me", "BOTTOM", (420,), mood=mood,
-                    exclude_ids=(67, 51, 222), top=5, ally_ids=())
-                ids = {p["champId"] for p in picks}
-                self.assertFalse(ids & {67, 51, 222},
-                                 f"{mood} leaked an excluded id: {ids}")
+            picks = RP._query_performance(
+                conn, "me", "BOTTOM", (420,),
+                exclude_ids=(67, 51, 222), top=5)
+            ids = {p["champId"] for p in picks}
+            self.assertFalse(ids & {67, 51, 222},
+                             f"leaked an excluded id: {ids}")
         finally:
             conn.close()
 
     def test_empty_history_no_zero_division(self):
         # Empty DB - every query must return [] (or a 0-game entry for
         # the personal-record helpers), never raise ZeroDivision.
-        # with_ts=True so the synergy fallback's game_creation_ts JOIN
-        # resolves against the real schema even with zero rows.
+        # with_ts=True keeps the fixture on the real rewind_history.db
+        # schema (matches.game_creation_ts) even with zero rows.
         _build_db(self.db_path, [], with_ts=True)
         conn = sqlite3.connect(str(self.db_path))
         try:
-            for mood in ("comfort", "limit", "new", "synergy"):
-                self.assertEqual(
-                    RP._query_performance(conn, "nobody", "TOP", (420,),
-                                          mood=mood, ally_ids=()), [])
+            self.assertEqual(
+                RP._query_performance(conn, "nobody", "TOP", (420,)), [])
             self.assertEqual(RP._query_bans(conn, "nobody", "TOP",
                                             (420,)), [])
             self.assertIsNone(RP._query_champ_record(
