@@ -120,6 +120,14 @@ class TendencyChipJsTests(unittest.TestCase):
         self.assertIn("tendency chip", self.text)
         self.assertIn("not a win probability", self.text)
 
+    def test_degraded_resets_sig(self) -> None:
+        # Audit fix: without a sig reset, a refetch after a transient failure
+        # whose payload matches the pre-failure sig early-returns in _paint
+        # and the degraded text stays stuck on screen.
+        m = re.search(r"function _degraded\([\s\S]*?\n\}", self.text)
+        self.assertIsNotNone(m, "no _degraded function body found")
+        self.assertIn("_sig = ''", m.group(0))
+
 
 class CssTests(unittest.TestCase):
     @classmethod
@@ -144,6 +152,24 @@ class CssTests(unittest.TestCase):
         self.assertIn(".dw-chip.dw-good", self.text)
         self.assertIn(".dw-chip.dw-bad", self.text)
         self.assertIn(".dw-chip.dw-dim", self.text)
+
+    def test_new_controls_use_defined_surface_token(self) -> None:
+        # Audit MUST-FIX: --bg-elevated is never defined under web/, so its
+        # BARE form (no fallback) computes invalid -> transparent background.
+        # New controls must sit on the defined --surface-3 (base.css). The
+        # fallback-carrying var(--bg-elevated, #hex) uses on pre-existing
+        # rules render via fallback and stay RESKIN-CANDIDATE (operator-gated
+        # FUTURE in docs/DARK_VALUES_AUDIT_2026-07-01.md) - only the bare,
+        # invalid-computing form is banned here.
+        self.assertIn("var(--surface-3)", self.text)
+        self.assertNotIn("var(--bg-elevated)", self.text)
+
+    def test_focus_visible_uses_shared_ring(self) -> None:
+        # Sibling convention (build_insights.css): keyboard focus renders the
+        # shared --focus-ring token on both new interactive controls.
+        self.assertIn(".dw-champ-input:focus-visible", self.text)
+        self.assertIn(".dw-champ-clear:focus-visible", self.text)
+        self.assertGreaterEqual(self.text.count("var(--focus-ring)"), 2)
 
     def test_interactive_accent_is_cyan_not_gold(self) -> None:
         self.assertIn("#6cf", self.text)
