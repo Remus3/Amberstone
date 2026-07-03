@@ -1123,9 +1123,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
+        # R70 (2026-07-03): Desolate champion-takedown eruption - Meraki
+        # 16.13.1: takedown within 3s of damaging a champion erupts for
+        # 400% of Immolate (15*4 = 60 base + 1%*4 = 4% bonus health) magic
+        # within 500 units. Burst-only via the default-OFF assume_takedown
+        # seam; the Immolate periodic above is untouched.
+        takedown_eruption_base=60.0,
+        takedown_eruption_bonus_hp_ratio=0.04,
         note=(
             "Hollow Radiance: Immolate 15 + 1% bonus HP magic per second "
-            "to nearby (Meraki 16.10.1; Desolate execute-on-kill not modeled - conditional)"
+            "to nearby (Meraki 16.10.1). Desolate champion-takedown eruption "
+            "modeled R70 on assume_takedown: 400% Immolate = 60 + 4% bonus "
+            "HP magic within 500 (Meraki 16.13.1); the 200% non-champion "
+            "kill eruption stays unmodeled (farm math, not fight math)"
         ),
     ),
 
@@ -3283,7 +3293,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_seconds=1.0,
         ),),
         unique_passive_key="immolate",
-        note="Hollow Radiance (Arena 226664): same as SR 6664 - Immolate 15+1% bonus HP per second (Meraki 16.10.1)",
+        # R70 (2026-07-03): Desolate eruption mirrors SR 6664 exactly (Arena
+        # mirror convention - 226664 has no own Meraki entry).
+        takedown_eruption_base=60.0,
+        takedown_eruption_bonus_hp_ratio=0.04,
+        note=(
+            "Hollow Radiance (Arena 226664): same as SR 6664 - Immolate "
+            "15+1% bonus HP per second (Meraki 16.10.1); Desolate "
+            "champion-takedown eruption modeled R70 on assume_takedown "
+            "(400% Immolate = 60 + 4% bonus HP magic within 500); 200% "
+            "non-champion kill eruption unmodeled"
+        ),
     ),
     "226672": ItemEffect(
         item_id="226672",
