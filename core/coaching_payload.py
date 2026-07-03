@@ -24,6 +24,10 @@ class _Base(BaseModel):
     model_config = ConfigDict(extra="allow", validate_default=False)
     mode: str = ""
     action: str = ""
+    # R65-A (L9/L10): declared on the shared base so every mode payload
+    # type-checks the new championStats + stat-shard ingestion keys.
+    combat_stats: dict[str, Any] = {}
+    stat_shards: list[Any] = []
 
 
 class AramPayload(_Base):
