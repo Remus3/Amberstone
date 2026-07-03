@@ -317,7 +317,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_attacks=3,
             ),
         ),
-        note="Guinsoo's Rageblade: Wrath +30 magic on-hit every AA + Phantom Hit every 3rd attack ~50% bonus AD physical",
+        # R66 (2026-07-03): Seething Strike on the R42 conditional-AS lane,
+        # full-stack steady-state pin (Meraki 16.13.1: 8% bonus AS per basic
+        # attack, stacks to 4 = 32%). Ungated per Gemini director - same
+        # no-flag convention as Yun Tal Flurry on this field.
+        bonus_as_conditional=0.32,
+        note="Guinsoo's Rageblade: Wrath +30 magic on-hit every AA + Phantom Hit every 3rd attack ~50% bonus AD physical + Seething Strike 8%x4 = 32% bonus AS at full stacks (Meraki 16.13.1)",
     ),
 
     # -- Phase 4 expansion: armor pen / reduction --
@@ -3941,7 +3946,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
                 every_n_attacks=3,
             ),
         ),
-        note="Guinsoo's Rageblade (Arena 223124): mirrors SR 3124 - Wrath +30 magic on-hit every AA + Phantom Hit every 3rd ~50% bonus AD",
+        # R66 (2026-07-03): Arena mirror inherits the SR 3124 Seething Strike
+        # full-stack pin (8% x 4 = 32% bonus AS, Meraki 16.13.1) on the
+        # ungated R42 conditional-AS lane.
+        bonus_as_conditional=0.32,
+        note="Guinsoo's Rageblade (Arena 223124): mirrors SR 3124 - Wrath +30 magic on-hit every AA + Phantom Hit every 3rd ~50% bonus AD + Seething Strike 8%x4 = 32% bonus AS at full stacks (Meraki 16.13.1)",
     ),
     "223135": ItemEffect(
         item_id="223135",

@@ -165,7 +165,7 @@ class ThresholdConstantsTests(_Base):
 
 class EngineVersionPinTests(_Base):
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.172.0")
+        self.assertEqual(ENGINE_VERSION, "1.173.0")
 
 
 if __name__ == "__main__":
