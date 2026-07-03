@@ -45,6 +45,10 @@ def _open(pw_browser, mock_server, mode):
     )
     page = ctx.new_page()
     page.add_init_script(_WS_STUB)
+    # team-damage lives inside the TEAM ANALYSIS cluster (QA 2026-07-03 B18),
+    # collapsed by default; seed the sanctioned open key so visibility
+    # assertions see the expanded state.
+    page.add_init_script("sessionStorage.setItem('csv-ta-open', '1');")
     errors: list[str] = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     url = mock_server.url + f"/?ui_mock=1&mode={mode}#champ-select"
