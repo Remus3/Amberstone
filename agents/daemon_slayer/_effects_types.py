@@ -839,3 +839,27 @@ class ItemEffect:
     # breaks positional construction + every existing test).
     physical_burst_base: float = 0.0
     physical_burst_base_ad_ratio: float = 0.0
+    # DSV9 (1.179.0): anti-shield (Shield Reaver) valuation seam. Serpent's
+    # Fang's Shield Reaver (6695 / Arena 226695, Meraki 16.13.1) inflicts a
+    # 3-second venom that, on first affliction, reduces all of the target's
+    # ACTIVE shields by {{rd|50%|35%}} - melee 50% / ranged 35%; these two
+    # fields carry the rd arms and the CASTER's melee/ranged split picks
+    # which pct applies. The consumer (compute_burst_damage) credits ONE
+    # active-shield cut event in the burst window under
+    # ``assume_shielded_target=True`` when a ``target_max_hp`` is supplied
+    # (assumed pool = _ASSUMED_TARGET_SHIELD_PCT_OF_MAX_HP x target max HP);
+    # the sustained "shields gained within the duration" reduction stays
+    # UNMODELED (utility over time, not burst math). Shield HP absorbs
+    # POST-mitigation damage, so removing X shield HP is worth X
+    # post-mitigation-equivalent damage - therefore NO armor/MR routing, NO
+    # mode_mult, NO amp layer (stricter than the DSV8 seam above: a shield
+    # cut is not damage dealt at all). Default 0.0 keeps every existing
+    # item + caller byte-identical (the seam is inert until both the data
+    # field AND the flag are set). Read ONLY by compute_burst_damage: no
+    # PeriodicProc, so compute_dps sees nothing (no double-count);
+    # compute_ability_dps accepts the flag as a documented-inert kwarg for
+    # API symmetry only. Appended at the END per the dataclass convention
+    # (a mid-class insert breaks positional construction + every existing
+    # test).
+    shield_cut_melee_pct: float = 0.0
+    shield_cut_ranged_pct: float = 0.0
