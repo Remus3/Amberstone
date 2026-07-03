@@ -2856,6 +2856,20 @@
   flex-direction: column;
   gap: 6px;
 }
+/* Collapsed-by-default ruling (QA 2026-07-03 B8/B9/B18): the display:flex
+   above beats the UA [hidden] rule, so pin the override explicitly. */
+.csv-ta-body[hidden] { display: none; }
+
+/* QA 2026-07-03 audit MUST-FIX: keyboard focus parity for the new
+   interactive controls (mirrors panel_visibility.css .pv-tab pattern). */
+.csv-builds-push-btn:focus-visible,
+.csv-builds-push-cb:focus-visible,
+.csv-summspell-edit:focus-visible,
+.csv-summspell-cell:focus-visible,
+.csv-ta-head:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 
 /* B5: compact summoner-spell strip (2 current D/F cells + EDIT). */
 .csv-summspell-compact {
