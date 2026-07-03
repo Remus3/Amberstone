@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.174.0 (R67, 2026-07-03 - Terminus "Juxtaposition" Dark 3-stack pen correction).
+Meraki 16.13.1 item 3302: Dark hits grant 10% armor penetration and magic
+penetration per stack, "stacks up to 3 times" = "30% resistances penetration at
+maximum stacks". The registry had encoded a single Dark stack (0.10/0.10); per
+the full-stack sustained-DPS convention (Black Cleaver 3071 5-stack 0.30 shred,
+Guinsoo 3124 4-stack 0.32 cond-AS) SR 3302 + Arena mirror 223302 both move to
+armor_pen_pct=0.30 + magic_pen_pct=0.30. Shadow (constant 30 magic on-hit,
+every attack) untouched on both entries. Light hits (6-8 caster bonus armor+MR
+per stack, level pp 1;11;14) stay OUT of item-schema scope - no item-keyed
+resist-grant path exists (_passive_resist_overrides.py is champion-keyed only);
+logged FUTURE, no schema field added. New hermetic Meraki-truth characterization
+regexes the Dark per-stack pct + stack cap + the 30%-at-max-stacks prose out of
+the vendored snapshot so a future patch changing any of them fails the suite
+instead of silently drifting; property-style pen fold asserts 0.30 pen leaves
+200-resist targets at exactly 140 effective on both axes and strictly beats
+0.10 via _armor_factor monotonicity (test_terminus_juxtaposition_r67.py,
+14 tests RED->GREEN). 1.173.0 -> 1.174.0.
+
 1.173.0 (R66, 2026-07-03 - Guinsoo's Rageblade "Seething Strike" conditional AS).
 Meraki 16.13.1 item 3124: basic attacks grant 8% bonus AS for 3s, stacking to 4
 (32% total). Modeled on the EXISTING ungated R42 conditional-AS lane

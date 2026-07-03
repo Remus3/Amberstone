@@ -2100,9 +2100,12 @@ class TerminusPromotionTests(unittest.TestCase):
         self.assertEqual(proc.resolve_damage(ctx), 30.0)
 
     def test_terminus_armor_and_magic_pen(self) -> None:
+        # R67 (ENGINE 1.174.0): rebaselined 0.10 -> 0.30. Meraki 16.13.1
+        # Juxtaposition Dark stacks to 3 x 10% = 30% armor+magic pen at
+        # max stacks (full-stack sustained convention, like BC 3071).
         e = ITEM_EFFECTS["3302"]
-        self.assertAlmostEqual(e.armor_pen_pct, 0.10, places=3)
-        self.assertAlmostEqual(e.magic_pen_pct, 0.10, places=3)
+        self.assertAlmostEqual(e.armor_pen_pct, 0.30, places=3)
+        self.assertAlmostEqual(e.magic_pen_pct, 0.30, places=3)
 
     def test_terminus_lifts_dps_via_proc(self) -> None:
         # Aatrox + Terminus pre-promotion = 64.92 dps (stat block only).
@@ -5805,10 +5808,12 @@ class Batch43Arena223MirrorTests(unittest.TestCase):
         self.assertAlmostEqual(e.crit_chance_bonus_per_bonus_hp_cap, 3000.0)
 
     def test_223302_terminus_dual_pen_and_proc(self) -> None:
+        # R67 (ENGINE 1.174.0): rebaselined 0.10 -> 0.30 with SR 3302
+        # (Juxtaposition Dark 3-stack max = 30% armor+magic pen).
         e = ITEM_EFFECTS.get("223302")
         self.assertIsNotNone(e, "223302 missing")
-        self.assertAlmostEqual(e.armor_pen_pct, 0.10)
-        self.assertAlmostEqual(e.magic_pen_pct, 0.10)
+        self.assertAlmostEqual(e.armor_pen_pct, 0.30)
+        self.assertAlmostEqual(e.magic_pen_pct, 0.30)
         self.assertEqual(len(e.periodics), 1)
 
     def test_223748_titanic_dual_procs(self) -> None:
@@ -7815,7 +7820,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.173.0")
+        self.assertEqual(ENGINE_VERSION, "1.174.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7876,7 +7881,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.173.0")
+        self.assertEqual(ENGINE_VERSION, "1.174.0")
 
 
 if __name__ == "__main__":
