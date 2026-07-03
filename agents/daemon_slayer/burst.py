@@ -1054,9 +1054,13 @@ def compute_burst_damage(
     # call above leaves the seam OFF, so the reflect is credited once here (no
     # double-count). Live default-ON flip operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
     reflect_burst_damage = 0.0
+    item_reflect_burst_damage = 0.0
+    _item_reflect_label = ""
     if assume_passive_reflect:
         from ._passive_reflect_overrides import (
             _ASSUMED_REFLECT_BURST_WINDOW_S,
+            _ITEM_REFLECT_NAMES,
+            item_reflect_entry,
             reflect_entry,
             reflect_per_proc,
         )
@@ -1081,6 +1085,43 @@ def compute_burst_damage(
                 _rhits = _ASSUMED_REFLECT_BURST_WINDOW_S / _rcad
                 reflect_burst_damage = _rproc * mode_mult * _ramp * _rmit * _rhits
                 total_burst += reflect_burst_damage
+
+        # R68 (1.175.0): ITEM-keyed Thorns reflect (Thornmail 3075 + pool
+        # mirrors 223075/323075, Bramble Vest 3076) on the SAME seam - an
+        # independent stream on top of the champion reflect (they stack in
+        # game). The dedup accessor credits the Thorns unique passive ONCE
+        # (strongest owned thorn item at the caster's bonus armor;
+        # ctx.caster_bonus_armor is the AbilityContext base/bonus split).
+        # Item registry only read under the flag -> default-OFF stays
+        # byte-identical.
+        _ipick = item_reflect_entry(resolved.item_ids, ctx.caster_bonus_armor)
+        if _ipick is not None:
+            _iid, _ientry = _ipick
+            _iproc = reflect_per_proc(
+                _ientry,
+                caster_total_armor=float(resolved.stats.get("armor", 0.0)),
+                caster_total_mr=float(resolved.stats.get("mr", 0.0)),
+                caster_bonus_armor=ctx.caster_bonus_armor,
+            )
+            if _iproc > 0.0:
+                _imit = _mitigation_factor(
+                    _ientry.damage_type, target_armor_eff, target_mr_eff
+                )
+                _iamp = magic_amp if _ientry.damage_type == "MAGIC" else 1.0
+                _icad = (
+                    _ientry.reflect_cadence_s
+                    if _ientry.reflect_cadence_s > 0.0
+                    else 1.0
+                )
+                _ihits = _ASSUMED_REFLECT_BURST_WINDOW_S / _icad
+                item_reflect_burst_damage = (
+                    _iproc * mode_mult * _iamp * _imit * _ihits
+                )
+                total_burst += item_reflect_burst_damage
+                _item_reflect_label = (
+                    f"{_ITEM_REFLECT_NAMES.get(_iid, _iid)} {_iid} "
+                    f"{_ientry.attribute}"
+                )
 
     # R59 (1.170.0): target-side Lifeline shield seam (companion to
     # assume_squishy_target target-defense modeling). assume_lifeline_shield
@@ -1114,6 +1155,13 @@ def compute_burst_damage(
             f"on-being-hit reflect +{reflect_burst_damage:.1f} burst "
             f"({resolved.champion_name} returns magic to attackers over the "
             "assumed burst exposure window; assume_passive_reflect seam)"
+        )
+    if item_reflect_burst_damage > 0.0:
+        notes.append(
+            f"item {_item_reflect_label} reflect "
+            f"+{item_reflect_burst_damage:.1f} burst (unique passive counted "
+            "once, returned to attackers over the assumed burst exposure "
+            "window; assume_passive_reflect seam)"
         )
     if target_lifeline_shield_absorbed > 0.0:
         notes.append(
