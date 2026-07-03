@@ -405,6 +405,39 @@ def total_magic_burst_damage(
     )
 
 
+def total_physical_burst_damage(
+    effects: Iterable[ItemEffect],
+    caster_base_ad: float,
+) -> float:
+    """Sum the item-active physical burst-window magnitude across the build (DSV8 seam).
+
+    Goredrinker's Thirsting Slash (Arena 226630) deals "175% base AD physical
+    damage" to enemies in a 450 radius on active cast (Meraki 16.13.1) - an
+    item-active physical hit the per-cast burst combo loop never credited.
+    Each contributing item adds ``physical_burst_base +
+    physical_burst_base_ad_ratio * caster_base_ad`` PRE-mitigation physical
+    damage (BASE AD, not total AD); the burst consumer (compute_burst_damage)
+    applies the armor factor + mode multiplier on top - NO amp layer, since
+    the engine has no physical analogue of ``total_magic_amp_multiplier`` and
+    the DSV6 item-proc block deliberately excludes build amps. Returns 0.0
+    when no item carries the fields. Additive across items (only Goredrinker
+    226630 carries them today; sums commute if another lands later).
+
+    Read ONLY by the BURST scorer under ``assume_physical_burst=True``. The
+    active has no PeriodicProc, so compute_dps sees nothing and there is no
+    double-count; compute_ability_dps accepts the flag as a documented-inert
+    kwarg for API symmetry only (see its assume_physical_burst comment). The
+    Goredrinker heal side (20% AD + 8% missing HP per champion hit) stays
+    UNMODELED - damage lane only.
+    """
+    return sum(
+        e.physical_burst_base
+        + e.physical_burst_base_ad_ratio * caster_base_ad
+        for e in effects
+        if (e.physical_burst_base or e.physical_burst_base_ad_ratio)
+    )
+
+
 def total_ability_damage_amp(
     effects: Iterable[ItemEffect],
     assumed_stacks: float,
