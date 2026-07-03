@@ -44,6 +44,31 @@ def _seed(root: Path, plan_bytes: int, ledger_line_bytes: int,
     (root / "ROADMAP.md").write_text(rm, encoding="utf-8")
 
 
+def test_stdin_cap_below_measured_cli_threshold(lc):
+    """2026-07-03: the gemini CLI empty-stdout threshold DRIFTS. 80KB stdin
+    delivered fine on 2026-07-02, but a 79,911-byte director payload returned
+    silent EMPTY on 2026-07-03 (the same payload truncated to 70,000 and
+    60,000 bytes both delivered - measured live). Every director call was
+    hitting cap_stdin's 80,000 ceiling, so cycles 10-32 burned directive-less.
+    Pin the backstop under the worst measured ceiling with margin."""
+    assert lc.GEMINI_STDIN_CAP <= 60_000, (
+        f"GEMINI_STDIN_CAP={lc.GEMINI_STDIN_CAP} exceeds the 2026-07-03 "
+        "measured-safe ceiling (79,911 bytes -> empty stdout)"
+    )
+
+
+def test_component_caps_fit_inside_stdin_cap(lc):
+    """The three component caps plus ~16KB of template/digest/chain overhead
+    (measured: 79,911-byte payload with 64,000 bytes of component caps) must
+    compose UNDER the stdin backstop, or every director call gets the
+    middle-cut marker instead of clean component truncation."""
+    overhead = 16_000
+    total = lc.PLAN_CTX_CAP + lc.LEDGER_CTX_CAP + lc.ROADMAP_CTX_CAP + overhead
+    assert total <= lc.GEMINI_STDIN_CAP, (
+        f"component caps + overhead = {total} > GEMINI_STDIN_CAP {lc.GEMINI_STDIN_CAP}"
+    )
+
+
 def test_director_context_fits_gemini_stdin(lc, tmp_path):
     """2026-07-02: gemini CLI returns silent EMPTY stdout above ~80KB stdin
     (80KB delivered, 160KB empty - measured). The assembled context plus the
