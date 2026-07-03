@@ -39,10 +39,19 @@ import {
 } from './ds_sweep.js';
 import { renderDsMatchupForChampSelect, setDsMatchupScheduler } from './ds_matchup.js';
 // WP-B2 Row3: reuse the ds_knobs /api/ds-knobs data layer (champ-NAME based
-// fetch/cache) for the in-game build module's fight-model knob strip. We touch
-// only the exported data fns - the champ-select-bound renderDsKnobs panel is
-// left untouched (test_ds_knobs_panel_dom pins it).
-import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
+// fetch/cache) for the in-game build module's fight-model knob strip.
+// QA 2026-07-03 B22 additionally relocates the full renderDsKnobs card
+// itself onto this surface (see _amRenderDsCluster).
+import { fetchDsKnobs, getCachedDsKnobs, renderDsKnobs } from './ds_knobs.js';
+// QA 2026-07-03 B20/B22: ds-profile / ds-knobs / ds-statcheck relocated off
+// champ-select onto this Builds/DS surface, joining the CS3 family. Same
+// synthetic live-champion cs feed; render fns + backend routes UNCHANGED.
+import {
+  renderDsProfileForChampSelect, setDsProfileScheduler,
+} from './ds_profile.js';
+import {
+  renderDsStatcheck, setDsStatcheckScheduler,
+} from './ds_statcheck.js';
 import { renderShaperStrip } from './ds_shaper.js';
 import {
   fetchDsCombo, getCachedDsCombo, parseSeqInput, renderDsCombo,
@@ -798,7 +807,8 @@ export function renderActiveMatch(payload, ctx) {
   }
 
   // CS3 (2026-06-08): DS combat-analysis cluster (DPS scaling / 1v1 fight
-  // model / combo timeline / relative item power) relocated off champ-select.
+  // model / combo timeline / relative item power) relocated off champ-select,
+  // joined by ds-profile / ds-knobs / ds-statcheck (QA 2026-07-03 B20/B22).
   // Feed each its EXISTING champ-select render path a synthetic cs built from
   // the LIVE champion + the live lane opponent so the panels read the game
   // the operator is actually playing.
@@ -942,19 +952,28 @@ function _amRenderDsCluster(p, ctx, isLive) {
   const matchup  = document.getElementById("csv-sugg-ds-matchup");
   const combo    = document.getElementById("csv-sugg-ds-combo");
   const relscore = document.getElementById("csv-ds-relscore");
+  // QA 2026-07-03 B20/B22: the three cards relocated off champ-select onto
+  // this Builds/DS surface, joining the CS3 family above.
+  const profile   = document.getElementById("csv-sugg-ds-profile");
+  const knobs     = document.getElementById("csv-ds-knobs");
+  const statcheck = document.getElementById("csv-ds-statcheck");
   // Between games / pre-live: hide the cluster (no live champion to read).
   const synthetic = isLive ? _amDsSyntheticCs(p, ctx) : null;
   if (!synthetic) {
-    [sweep, matchup, combo, relscore].forEach((el) => { if (el) el.hidden = true; });
+    [sweep, matchup, combo, relscore, profile, knobs, statcheck]
+      .forEach((el) => { if (el) el.hidden = true; });
     return;
   }
   _AM_DS.p = p;
   _AM_DS.ctx = ctx;
-  // Wire the on-land schedulers once so the sweep / matchup cards repaint the
-  // instant their fetch resolves (idempotent - setters replace the callback).
+  // Wire the on-land schedulers once so the sweep / matchup / profile cards
+  // repaint the instant their fetch resolves, and a statcheck knob edit
+  // replays the cluster (idempotent - setters replace the callback).
   if (!_AM_DS.wiredScheduler) {
     setDsSweepScheduler(_amDsReplay);
     setDsMatchupScheduler(_amDsReplay);
+    setDsProfileScheduler(_amDsReplay);
+    setDsStatcheckScheduler(_amDsReplay);
     _AM_DS.wiredScheduler = true;
   }
   // Sweep + matchup + relscore drive off the synthetic cs via their unchanged
@@ -965,6 +984,13 @@ function _amRenderDsCluster(p, ctx, isLive) {
   // Combo needs the slug + a host wrapper (the panel renders the input row
   // once then leaves the re-fetch cadence to the host).
   if (combo) _amRenderDsCombo(combo, p, ctx);
+  // B20/B22 relocated cards: each existing render fn already gates on
+  // cs.my_champion + resolves the slug itself, so the synthetic cs is a
+  // drop-in. renderDsKnobs self-re-renders on fetch land; statcheck paints
+  // async off its own fetch promise.
+  if (profile)   renderDsProfileForChampSelect(synthetic, "csv-sugg-ds-profile");
+  if (knobs)     renderDsKnobs(knobs, synthetic);
+  if (statcheck) renderDsStatcheck(statcheck, synthetic);
   // L4 capability-gap chip (active-match twin of the item-633 champ-select
   // chip). Rides the SAME /api/ds-preview response (capability_gap field,
   // default-OFF RC_CAPGAP_SURFACE) - no new endpoint. Read-only.
