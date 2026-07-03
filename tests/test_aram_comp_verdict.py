@@ -102,6 +102,47 @@ def test_mono_ad_swaps_to_ap_bench_when_no_ap_variant():
     assert out["swap_to"] == "Soraka"  # the AP-lean bench option
 
 
+def test_mono_ad_swap_reason_labels_comp_as_ad():
+    # Regression (LGS2 / OQ22): the reason must name the comp's EXCESS type, not
+    # the deficit. A mono-AD comp lacks AP, so the deficit is "ap" - but the
+    # human-readable label must read "All-AD comp" (the excess), never "All-AP".
+    team = ["Caitlyn", "Jhin", "Ashe", "Aatrox", "Jax"]  # all AD-lean, 3 ranged
+    variants = [{"key": "default", "label": "Crit", "summary": "AD crit"}]
+    out = cv.comp_verdict(
+        _state(team, my_champion="Jhin", bench=["Soraka", "Darius"], variants=variants)
+    )
+    assert out["recommendation"] == "swap"
+    assert "All-AD comp" in out["reason"], out["reason"]
+    assert "All-AP" not in out["reason"], out["reason"]
+
+
+def test_mono_ap_swap_reason_labels_comp_as_ap():
+    # Mirror regression: a mono-AP comp lacks AD (deficit "ad"); the swap-to-AD
+    # reason must read "All-AP comp" (the excess), never the inverted "All-AD".
+    team = ["Lux", "Ziggs", "Brand"]  # all AP-lean, 3 ranged, no frontline
+    out = cv.comp_verdict(
+        _state(team, my_champion="Lux", bench=["Garen"])
+    )
+    assert out["recommendation"] == "swap"
+    assert out["swap_to"] == "Garen"
+    assert "All-AP comp" in out["reason"], out["reason"]
+    assert "All-AD" not in out["reason"], out["reason"]
+
+
+def test_mono_ap_variant_reason_labels_comp_as_ap():
+    # The variant-path reason has the same label; a mono-AP comp taking an AD
+    # variant must read "All-AP comp ... adds physical damage".
+    team = ["Lux", "Ziggs", "Brand"]  # all AP-lean, 3 ranged
+    variants = [{"key": "ad-onhit", "label": "On-Hit", "summary": "on-hit AD bruiser"}]
+    out = cv.comp_verdict(
+        _state(team, my_champion="Lux", bench=[], variants=variants)
+    )
+    assert out["recommendation"] == "variant"
+    assert "All-AP comp" in out["reason"], out["reason"]
+    assert "physical" in out["reason"], out["reason"]
+    assert "All-AD" not in out["reason"], out["reason"]
+
+
 def test_no_frontline_swaps_to_tank_bench():
     # 3 ranged, mixed damage, but zero frontline; a tank sits on the bench.
     team = ["Caitlyn", "Ahri", "Ashe", "Lux", "Jhin"]  # 5 ranged, no tank
