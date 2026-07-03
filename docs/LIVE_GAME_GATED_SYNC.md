@@ -643,6 +643,38 @@ over normal play across later cycles, not in these sessions.
 
 ## Live-flip ledger (loop appends; newest first)
 
+- 2026-07-02 (DRAIN SESSION, operator-played: practice-tool SR + ARAM Mayhem q2400 KIWI).
+  DRAINED with live evidence: A1 PASS (RuneWriter lockfile-rotation reconnect after a mid-session
+  League restart + rune push on the FIRST champ-select, log 21:16:04 reconnect to port 58494 ->
+  21:17:35 wrote [RC: Kai'Sa SR]; the 27f99a95 fix proven live); A7 PASS (mode-correct push -
+  PRACTICETOOL labeled SR, KIWI labeled ARAM, and E12-L2 re-detects on each ARAM bench-swap:
+  [RC: Viego ARAM] -> [RC: Swain ARAM] -> [RC: Viego ARAM]); A6 (ARAM bench-swap fast re-push,
+  sub-second); B21 PASS (objective_events fired - Fire drake @403.7s, Earth drake @722.2s);
+  B22 PASS (inhib_events fired @702.2s + 6 turret_events); C13 (enemy_spells tap-tracker populated
+  live - Gnar/Hwei/Lee/Annie/Ryze comp); B8/R7 eyeball (Irelia assume_passive_as_stacks /dps
+  38.90 -> 47.96 = +23% at full stacks, reads SANER not random). KEYSTONE re-confirmed (q2400 +
+  is_aram=True -> MODE_ARAM). NOT drained (future practice/SR sitting): A2 spell-push (NO push
+  fired - Flash+Barrier stayed vs the sr_mode=teleport pref; still owed, matches the doc), A8
+  panels (champ-select passed before a lock-capture), B1 build-chooser mid-game push (no log line),
+  B23/B24 overlay pixel capture (frame endpoint 401/000 + game ended before grab), E1/E2 physical
+  hotkeys, C2 comp_verdict (never surfaced in-game).
+  FINDING 1 (real bug, fix built + code-gated, DS-batch DEFERRED to game-end): DS /rank recommends
+  the RANGED-ONLY Runaan's Hurricane (3085) for MELEE champs - reproduced live on Irelia (#5, SR)
+  and Viego (#8, ARAM). rank.py had no purchasability gate (the B1 apply_melee_aa_gate seam only
+  zeroes the bolt DPS, default-OFF, never excludes the item). Root-cause fix built in worktree
+  branch `worktree-agent-abebb195a5e02b357`: `RANGED_ONLY_ITEM_IDS={"3085","223085"}` (Runaan's +
+  Arena alias ONLY - RFC 3094 / Statikk 3087 verified NOT restricted, kept melee-buildable) gated
+  at the shared `_filter_candidates` chokepoint across all 7 ranker lanes; melee = attackrange<=250
+  (fails CLOSED so a missing record never over-filters a real carry); 15 RED->GREEN tests; ruff
+  clean; no frozen files; backfill correctly none (ephemeral live compute). PENDING at game-end:
+  merge -> ENGINE 1.171.0 -> 1.172.0 -> HZ-B regen -> Share sync -> DS :8893 restart -> full dual
+  suite -> live-verify Viego /rank excludes 3085 keeps 3087. (Deferred mid-game to avoid a coach
+  blip + CPU contention with the live ARAM game - no mid-game DS bounce.)
+  FINDING 2 (needs settled-state confirm, not yet filed): `cs_archetype_pick` looked STALE in ARAM
+  champ-select - stuck on champion="Kalista" while the operator cycled Veigar->Viego->Swain via the
+  bench (locked=234 Viego but pick still Kalista). Re-probe on a settled champ-select to confirm it
+  is a refresh/staleness bug vs a fast-swap lag before root-causing.
+
 - 2026-07-02 (PREP-AUDIT, no engine/flag/code change) live-gated-drain PREP ground-truth pass:
   orchestrated 4-slice read-only audit (route-verify / prep-status / doc-currency / phase-d-spec).
   VERDICT: the HEADLESS prep surface for the drain is FULLY EXHAUSTED (HEADLESS_ACTIONABLE_NOW = []).
