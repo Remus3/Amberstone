@@ -4,6 +4,14 @@
 
 ---
 
+# 2026-07-03 (R69 LOOP - Rocketbelt/Everfrost item-ACTIVE magic burst; ENGINE 1.176.0; pure data-pin on the DSV6 seam)
+
+Loop cycle 7. Director picked R66 residual #3 (Rocketbelt); the slice shipped residual #4 (Everfrost) too - same lane. PREMISE PARTIAL: both directive schema branches were moot - `magic_burst_ap_ratio` + `total_magic_burst_damage` + default-OFF `assume_magic_burst` all existed since DSV6 1.152.0, and no NEW `assume_item_actives` seam was needed (a one-cast active magnitude IS the DSV6 single-proc burst-window shape). Pinned vs Meraki 16.13.1: SR 3152 + Arena 223152 Supersonic = 100 + 10% AP; Arena 446656 Everfrost Glaciate = 300 + 85% AP. `defensive_only` verified doc-only (zero engine consumers, left True). Guards: no ARAM 323152 in pool; legacy 6656/226656 unpinned. DPS side intentionally unmodeled (long-CD actives, no double-count). TDD RED-first 21 tests (RED 10F); slice `317e17ba`, merge `57a74f6b`, docs `abd66ad4`; verifier CONFIRM 10/10; ENGINE 1.176.0 (99 pin files); HZ-B regen first-try stamp-only; DS :8893 live 1.176.0; dual suite DS 7895/1skip + RC 10467/2skip, 0 failed; Share 404 --check green; CI green. BACKLOG residuals #3+#4 struck; LIVE_GAME_GATED_SYNC B13 + seam row extended (no new flip row).
+
+**Process notes:** (1) Gist-hook worktree index corruption hit a 4TH time (disk==HEAD, commit intact, merged the SHA directly) - the R68 standalone hook-fix chip is still pending and rising in value. (2) Director-learning note added to ORCHESTRATION_PLAN findings log: residual-list picks are pre-specced data-pins - trust the list's stated fit instead of re-deriving schema options. (3) Remaining R66 residuals: #5 Zeke's 3050, #6 Hollow Radiance 6664, #7 shield-lerp re-check (next patch ingest).
+
+---
+
 # 2026-07-03 (R68 LOOP - Thornmail/Bramble item Thorns reflect; ENGINE 1.175.0; R49 seam gains an item path)
 
 Loop cycle 6. Director picked residual #2 from the R66 list (Thornmail item-reflect); directive's "ENGINE_VERSION in server.py" corrected to `agents/daemon_slayer/__init__.py:18`. Premise verified vs vendored Meraki 16.13.1: 3075 = 20 + 10% BONUS armor magic per incoming AA + GW; 3076 = 10 flat. Shipped the small schema lift: item-keyed registry in `_passive_reflect_overrides.py` (3075/223075/323075 + 3076; 223076/323076 absent from pool, guarded), END-appended `caster_bonus_armor_pct` field + kwarg, dps+burst fold strongest owned Thorns item (dedup one credit) under the existing default-OFF `assume_passive_reflect`. Champion path (Rammus) byte-identical. TDD RED-first 31 tests; slice `404f855b`, merge `59cd622e`; verifier CONFIRM 9/9; HZ-B regen first-try stamp-only (default-OFF seam - orders byte-identical); DS :8893 live 1.175.0; dual suite DS 7874 + RC 10467, 0 real failures; Share 403 --check green (ingest bundle rebuilt on main). No live flip - seam row extended.
@@ -17,13 +25,3 @@ Loop cycle 6. Director picked residual #2 from the R66 list (Thornmail item-refl
 Loop cycle 5. Director picked FROM the R66 residual list as instructed (no re-scan, no stale-digest premise) - the loop-health fix from R66 held. Premise verified vs vendored Meraki 16.13.1: Juxtaposition Dark = 10% armor+magic pen per stack x3 = 30%/30%; registry pinned 1 stack while citing the BC full-stack convention. Shipped SR 3302 + Arena 223302 pen 0.10 -> 0.30 ungated (plain data correction). Light-side caster resists (6-8 armor+MR x3) = schema lift (no item-keyed resist-grant path) -> BACKLOG tail, not built blind. TDD RED-first 14 tests (`test_terminus_juxtaposition_r67.py`); slice `5331c62f`, merge `34255183`; HZ-B regen both generators full-roster OQ19 recipe FIRST TRY (no shrink); DS :8893 live 1.174.0; dual suite DS 7843 + RC 10467, 0 failed; Share 402 files --check green.
 
 **Process note (2nd occurrence):** the worktree build agent's INDEX corrupted again (4133 staged deletions, disk==HEAD blobs) - verifier caught it; merged the commit sha directly, never the worktree state. If a 3rd worktree index corruption appears, root-cause the worktree tooling (same-worktree races memory `feedback_cc_session_perf`).
-
----
-
-# 2026-07-03 (R66 LOOP - Guinsoo Seething Strike cond-AS; ENGINE 1.173.0; saturation-claim REFUTED by adversarial workflow)
-
-Loop cycle 4. Directive named 3 "unmodeled" passives (Kraken/Statikk/Hydra) - ALL already modeled (stale-digest family R63/R64). Instead of a 4th CLEAN no-op: scan agent claimed the damage registry SATURATED; a 3-lens adversarial refute workflow (absent/partial/drift) DISPROVED that with 8 cited findings. Shipped #1: Guinsoo 3124 + Arena 223124 `bonus_as_conditional=0.32` (Seething Strike 8%x4, Meraki 16.13.1) on the existing R42 ungated lane - PART C sync gemini ruled NO new seam (Yun Tal no-flag precedent + sec-12); no live-flip row, B44 spot-check appended to LIVE_GAME_GATED_SYNC instead. ENGINE 1.172.0->1.173.0, 95 pin files, Share 401 files --check green, DS :8893 live at 1.173.0. TDD RED-first 9 tests; verifier CONFIRM 10/10; merge `d79ebcb6`.
-
-**Gotcha re-learned (now also in ORCHESTRATION findings):** HZ-B regen after a bump MUST pass the full 173-canonical roster to BOTH generators (`core.build_order_precompute` + `core.build_order_variants`, `--static --mode all --champions <csv>`); the build agent's first regen used the 10-champ SEED default -> 18 axis-parity tests failed on EMPTY orders. OQ19 (221922c5) is the recipe commit.
-
-**Residuals for future ds-sweep cycles:** BACKLOG "DS registry residuals - R66" (Terminus 3-stack under-count top; Thornmail item-reflect; Rocketbelt/Everfrost DSV6 fits; Zeke's/Hollow Radiance/shield-lerp LOW). Director should pick FROM that list, not re-scan.
