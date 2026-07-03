@@ -218,6 +218,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-02 (OQ18 LOOP - live-input wiring across the DS HTTP boundary; ENGINE 1.168.0 -> 1.169.0)
+
+Loop directive OQ18 executed by this session (head 3d7ce104; commit `3a96c0e3`, LEDGER 740). Wire the producer-only-orphan live inputs across the :8893 HTTP routes so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). **NO engine-math file changed - server.py only + version stamp** (both `compute_antitank(level=)` + `compute_antitank_live` already accepted the args; OQ18 is pure transport - the directive's "changes live math" framing = the NEW capability, not a math edit).
+
+- **Ground-truth first (grep-before-scaffold):** ramp-seeded anti-tank champs (Aatrox/Brand/KSante/Mordekaiser/Ornn/Renata/Skarner/Urgot/Zed/Zeri) are DISJOINT from the P3.2 seeded champs (Gwen/Vayne) -> the level-ramp seam never perturbs existing P3.2 tests; Heal 7 / Ignite 14 / PtA 8005 / Janna granter all verified against source before the test was written.
+- **Scope call:** kept the two anti-tank seams ORTHOGONAL at the route (`item_ids` -> compute_antitank_live P3.2 AP/AD; `level` -> compute_antitank ramp) - NOT coupled inside compute_antitank_live, which would break its "naked build byte-identical to static" contract for ramp champs.
+- **Wired (server.py):** /anti-tank +level (R17/R39 ramp, B12) +item_ids/augments (P3.2 live build, B4); 3 NEW additive routes /summoner-fight-adj (DSP5/B31) + /enemy-rune-threat (DSP6/B32) + /ally-protected-ehp (DSP7/B33). Every input DEFAULT-OFF/empty -> byte-identical (test-pinned).
+- **TDD** test_oq18_route_seam_transport.py RED 9/11 -> GREEN 11/11. **Verifier CONFIRM 7/7 + byte-identical TRUE.** ENGINE 1.169.0 (pins 108/95, 0 stray) + Share --check green 395 files + DS :8893 bounce (pid 6332 -> 1.169.0). Dual suite DS 7774 / RC 10434, 0 real fail (the RC "1 failed" = live-integration engine_version anchor, GREEN post-bounce - identical to OQ17). Drift guard test_docs_daemon_slayer_drift CAUGHT the missing routes + stale banner mid-run.
+- **Handoff:** client-helper emit (core/daemon_slayer_client.py typed helpers for the new routes); the default-ON consumer half (a survivability/draft scorer that CALLS these producers with the live set). Live plumbs stay gated -> LIVE_GAME_GATED_SYNC B31-B33 / B4 / B12 (headless-prep-done).
+- Frozen files untouched. CI green baseline held.
+
+---
+
 # 2026-07-02 (OQ17 LOOP - /rank* HTTP-boundary seam transport; ENGINE 1.167.0 -> 1.168.0)
 
 Loop directive OQ17 executed by this session (head da6489c1; commit `e73799f3`, LEDGER 739). Thread the ENGINE-ONLY default-OFF seams across the /rank* HTTP boundary so each live-gated eyeball is a pure HTTP flag flip (item-638 pattern). NO math change - server.py only + version stamp.
