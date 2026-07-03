@@ -4,6 +4,14 @@
 
 ---
 
+# 2026-07-03 (R68 LOOP - Thornmail/Bramble item Thorns reflect; ENGINE 1.175.0; R49 seam gains an item path)
+
+Loop cycle 6. Director picked residual #2 from the R66 list (Thornmail item-reflect); directive's "ENGINE_VERSION in server.py" corrected to `agents/daemon_slayer/__init__.py:18`. Premise verified vs vendored Meraki 16.13.1: 3075 = 20 + 10% BONUS armor magic per incoming AA + GW; 3076 = 10 flat. Shipped the small schema lift: item-keyed registry in `_passive_reflect_overrides.py` (3075/223075/323075 + 3076; 223076/323076 absent from pool, guarded), END-appended `caster_bonus_armor_pct` field + kwarg, dps+burst fold strongest owned Thorns item (dedup one credit) under the existing default-OFF `assume_passive_reflect`. Champion path (Rammus) byte-identical. TDD RED-first 31 tests; slice `404f855b`, merge `59cd622e`; verifier CONFIRM 9/9; HZ-B regen first-try stamp-only (default-OFF seam - orders byte-identical); DS :8893 live 1.175.0; dual suite DS 7874 + RC 10467, 0 real failures; Share 403 --check green (ingest bundle rebuilt on main). No live flip - seam row extended.
+
+**Process notes:** (1) 3rd worktree-index corruption ROOT-CAUSED: the post-commit gist hook inherits GIT_DIR and its `git add -A` hits the committing worktree's index - spawn-task chip filed for the hook fix (commit/disk unaffected; `git reset --mixed` repairs). (2) Controller cycle deadline 5400s < Tier-2 wall-clock - breached once mid-suite, stall-recovery /diagnose injected, diagnosed not-a-hang, recovered in-cycle; consider raising cycle_deadline_sec for ds-sweep Tier-2 directives. (3) RC suite teardown ERROR = RF5 hermeticity guard catching the LIVE controller.log append mid-suite (external writer, not a test) - expected while the loop runs suites concurrently with the controller.
+
+---
+
 # 2026-07-03 (R67 LOOP - Terminus Juxtaposition 3-stack Dark pen; ENGINE 1.174.0; residual-list pick worked)
 
 Loop cycle 5. Director picked FROM the R66 residual list as instructed (no re-scan, no stale-digest premise) - the loop-health fix from R66 held. Premise verified vs vendored Meraki 16.13.1: Juxtaposition Dark = 10% armor+magic pen per stack x3 = 30%/30%; registry pinned 1 stack while citing the BC full-stack convention. Shipped SR 3302 + Arena 223302 pen 0.10 -> 0.30 ungated (plain data correction). Light-side caster resists (6-8 armor+MR x3) = schema lift (no item-keyed resist-grant path) -> BACKLOG tail, not built blind. TDD RED-first 14 tests (`test_terminus_juxtaposition_r67.py`); slice `5331c62f`, merge `34255183`; HZ-B regen both generators full-roster OQ19 recipe FIRST TRY (no shrink); DS :8893 live 1.174.0; dual suite DS 7843 + RC 10467, 0 failed; Share 402 files --check green.
