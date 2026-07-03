@@ -237,6 +237,10 @@ function _paint(data) {
 function _degraded() {
   const mount = document.getElementById(_MOUNT);
   if (mount) {
+    // Reset the sig: otherwise a refetch after a transient failure whose
+    // payload matches the pre-failure sig early-returns in _paint and the
+    // degraded text stays stuck on screen.
+    _sig = '';
     mount.innerHTML = _head(null) +
       `<div class="dw-empty">Game-length stats unavailable.</div>`;
     _wire(mount);
