@@ -2166,9 +2166,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="6630",
         name="Goredrinker",
         defensive_only=True,
+        # R74: note refreshed - Thirsting Slash leads with physical AoE
+        # damage (not heal-only), but this legacy SR id is map-disabled
+        # (every items.json map flag False) and ABSENT from Meraki 16.13.1,
+        # so there is no truth to pin damage against - it stays UNPINNED.
+        # The obtainable Arena 226630 entry carries the DSV8
+        # assume_physical_burst pin.
         note=(
-            "Goredrinker: Thirsting Slash is an active ability (no passive DPS proc); "
-            "Resolve 8% omnivamp is lifesteal (utility); no DPS contribution"
+            "Goredrinker (legacy SR 6630): Thirsting Slash active leads with "
+            "physical AoE damage plus a heal, but this id is map-disabled + "
+            "absent from Meraki 16.13.1 (unobtainable) - stays UNPINNED; "
+            "Arena 226630 carries the DSV8 pin; Resolve 8% omnivamp is "
+            "lifesteal (utility); no sustained DPS proc"
         ),
     ),
     "6671": ItemEffect(
@@ -3473,7 +3482,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226630",
         name="Goredrinker",
         defensive_only=True,
-        note="Goredrinker (Arena 226630): Thirsting Slash active heal - sustain only, no DPS contribution",
+        # R74 (1.178.0): the old note ("sustain only, no DPS contribution")
+        # was factually wrong - Thirsting Slash LEADS with damage. Meraki
+        # 16.13.1: "Deal 175% '''base''' AD physical damage to enemies in a
+        # 450 radius centered around you." That one-cast active magnitude
+        # rides the NEW DSV8 assume_physical_burst seam (physical analogue
+        # of the R69 Rocketbelt DSV6 pin; scales off BASE AD only, so no
+        # flat term). The heal side (20% AD + 8% missing health per champion
+        # hit) stays UNMODELED. DPS side intentionally unmodeled: long-CD
+        # active, no PeriodicProc, no double-count. defensive_only stays
+        # True - the flag documents "no sustained-DPS proc", which still
+        # holds; it gates nothing in the engine (verified R69, re-verified
+        # R74: doc-only, zero engine consumers).
+        physical_burst_base_ad_ratio=1.75,
+        note=(
+            "Goredrinker (Arena 226630): Thirsting Slash active 175% base AD "
+            "physical AoE (450 radius) once per cast - rides the DSV8 "
+            "assume_physical_burst seam; heal (20% AD + 8% missing HP per "
+            "champion hit) unmodeled; no PeriodicProc (Meraki 16.13.1)"
+        ),
     ),
     "226655": ItemEffect(
         item_id="226655",
