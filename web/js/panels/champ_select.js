@@ -11,12 +11,11 @@ import {
   _ibPushItems, _ibFetchAndRender, _ibSetStatus,
   _ibRenderRows, _ibMarkSelectedRow, _ibSaveChoice,
 } from './item_build.js';
-import { buildOrderCardHtml } from './build_order.js';
+// QA 2026-07-03 slice A (B6+B7): the standalone DS-vs-Enemy-Comp card was
+// merged into the build chooser as a compact ordered-sequence strip; the
+// strip reuses the /api/build-order data path via these two exports.
+import { fetchBuildOrder, getCachedBuildOrder } from './build_order.js';
 import { dedupFetch } from '../lib/dedup_fetch.js';
-import {
-  fetchBanSuggest, getCachedBanSuggest, getBanSuggestCacheCount,
-  renderBanSuggestModeChip, renderBanSuggestList,
-} from './ban_suggest_toggle.js';
 import {
   fetchCcBlendedEhpThreat, getCachedCcBlendedEhpThreat,
   getCcBlendedEhpThreatCacheCount,
@@ -27,10 +26,10 @@ import {
   getCcConditionalPressureCacheCount,
   renderCcConditionalPressure,
 } from './cc_conditional_pressure.js';
-import {
-  fetchCooldownWatch, getCachedCooldownWatch,
-  getCooldownWatchCacheCount, renderCooldownWatch,
-} from './cooldown_watch.js';
+// QA 2026-07-03 slice A (B19): the cooldown-watch card was removed from
+// champ select (the overlay surfaces it in-game when it matters; the
+// backend /api/cooldown-watch route stays). cooldown_watch.js had no other
+// consumer - the module file is orphaned (follow-up, not deleted here).
 // 2026-06-25: personal best-build card (Overlay App E personal-WR build override,
 // local-data half). Reads the operator's OWN locked champion + surfaces the
 // items they win with from rewind_history.db. Backend routes_personal_build.
@@ -38,27 +37,14 @@ import {
   fetchPersonalBuild, getCachedPersonalBuild,
   getPersonalBuildCacheCount, renderPersonalBuild, pbwModeForQueue,
 } from './personal_build.js';
-// CS1 (2026-06-08): ally CC-pairing card. Delimited new block - CS3 will
-// also touch champ_select.js; keep CS1 imports + wiring grouped here.
-import {
-  fetchCcPairing, getCachedCcPairing,
-  getCcPairingCacheCount, renderCcPairing,
-} from './cc_pairing.js';
-// CS3 (2026-06-08): the DPS-scaling sweep, 1v1 fight-model matchup,
-// action-queue combo timeline, and relative-item-power panels were MOVED to
-// the Active Match view (web/js/panels/active_match.js) - they now read the
-// LIVE champion mid-game instead of the locked champ-select pick. Their
-// imports + render invocations left this file with the move. The profile,
-// engine-knobs, and stat-check panels STAY on champ-select.
-import {
-  renderDsProfileForChampSelect, getDsProfileCacheCount, setDsProfileScheduler,
-} from './ds_profile.js';
+// QA 2026-07-03 slice A (B12/B20/B22/B23): the CC-pairing card, DS profile,
+// DS knobs, DS stat-check, and the player-GPI radar were removed from champ
+// select (slice C re-mounts the DS trio on the Builds view; the radar stays
+// on its history/PGR surfaces; the cc-pairing backend stays). Only the DS
+// skill-order card remains here (B21 KEEP).
 import {
   renderDsSkillOrderForChampSelect, setDsSkillOrderScheduler,
 } from './ds_skill_order.js';
-import { showPlayerGpi } from './player_gpi.js';
-import { renderDsKnobs, getDsKnobsCacheCount } from './ds_knobs.js';
-import { renderDsStatcheck, getDsStatcheckCacheCount } from './ds_statcheck.js';
 
 // -- LCU command helper (used by champ-select + build chooser) ------
 function lcuCmd(cmdObj) {
@@ -469,53 +455,42 @@ function _csvHumanPhase(phase) {
 // (default true). ARAM passes `showGuess: false` since roles are
 // random and the (guess) annotation is meaningless; Arena uses a
 // dedicated 2-cell ally renderer instead.
-// Personal-vs threat tag cache. Keyed by champId; values are
+// Personal-vs enemy win-rate cache. Keyed by champId; values are
 // {ts, payload|null|"pending"}. TTL matches the backend cache (60s)
 // so repeat renders inside a single champ-select tick are free.
-const _csvThreatCache = new Map();
-const _CSV_THREAT_TTL_MS = 60 * 1000;
-const _CSV_THREAT_DAYS = 30;
+// QA 2026-07-03 slice A (A4): the deprecated YOUR RECORD block + its
+// aggregate lifetime-record fetch were removed; the enemy WR slot
+// (.csv-enemy-wr-slot, a DIFFERENT feature - KEEP) now rides the
+// per-champion /api/personal-vs route via this cache.
+const _csvWrCache = new Map();
+const _CSV_WR_TTL_MS = 60 * 1000;
+const _CSV_WR_DAYS = 30;
 
-function _csvThreatBandCls(band) {
-  // Defensive: trust the backend but coerce unknowns to "unknown" so
-  // an unexpected value doesn't strip the placeholder styling.
-  if (band === "red" || band === "amber" || band === "green") return band;
-  return "unknown";
-}
-
-function _csvThreatTagApply(el, payload, champNm) {
-  if (!el || !payload || !payload.ok) {
-    if (el) {
-      el.className = "csv-team-cell-threat csv-team-cell-threat--unknown";
-      el.textContent = "n/a";
-      el.title = "no data for " + (champNm || "this champion");
-    }
+function _csvWrSlotApply(el, payload, champNm) {
+  if (!el) return;
+  const n = payload && payload.ok ? (payload.sample_n | 0) : 0;
+  if (!payload || !payload.ok || n <= 0) {
+    el.textContent = "--";
+    el.className = "csv-enemy-wr-slot is-new";
+    el.title = "no games vs " + (champNm || "this champion")
+             + " in last " + _CSV_WR_DAYS + "d";
     return;
   }
-  const band = _csvThreatBandCls(payload.threat_band);
-  el.className = "csv-team-cell-threat csv-team-cell-threat--" + band;
-  const n = payload.sample_n | 0;
-  if (n <= 0) {
-    el.textContent = "0g";
-    el.title = "no games vs " + (payload.champ_name || champNm)
-             + " in last " + (payload.days | 0) + "d";
-    return;
-  }
-  // "5-2 (71%)" - explicit W-L is more readable than just a percentage
-  // when the sample is small (the band already encodes WR colour).
-  el.textContent = (payload.wins | 0) + "-" + (payload.losses | 0)
-                 + " (" + (payload.wr_pct | 0) + "%)";
-  el.title = "personal record vs " + (payload.champ_name || champNm)
+  const wr = payload.wr_pct | 0;
+  el.textContent = wr + "%";
+  el.className = "csv-enemy-wr-slot " + _csvPrTint(wr);
+  el.title = "your record vs " + (payload.champ_name || champNm)
            + " - last " + (payload.days | 0) + "d ("
            + (payload.wins | 0) + "W " + (payload.losses | 0) + "L)";
 }
 
-function _csvThreatTagFetch(champId, champNm, el) {
+function _csvWrSlotFetch(champId, champNm, el) {
   if (!champId || champId <= 0 || !el) return;
-  const cached = _csvThreatCache.get(champId);
+  const cached = _csvWrCache.get(champId);
   const now = Date.now();
-  if (cached && cached.payload && (now - cached.ts) < _CSV_THREAT_TTL_MS) {
-    _csvThreatTagApply(el, cached.payload, champNm);
+  if (cached && cached.payload && cached.payload !== "pending"
+      && (now - cached.ts) < _CSV_WR_TTL_MS) {
+    _csvWrSlotApply(el, cached.payload, champNm);
     return;
   }
   if (cached && cached.payload === "pending") {
@@ -524,25 +499,25 @@ function _csvThreatTagFetch(champId, champNm, el) {
     // with the matching data-champ-id.
     return;
   }
-  _csvThreatCache.set(champId, { ts: now, payload: "pending" });
+  _csvWrCache.set(champId, { ts: now, payload: "pending" });
   const url = "/api/personal-vs?champ_id=" + (champId | 0)
-            + "&days=" + _CSV_THREAT_DAYS;
+            + "&days=" + _CSV_WR_DAYS;
   fetch(url, { credentials: "same-origin", cache: "no-store" })
     .then((r) => r.ok ? r.json() : Promise.reject(new Error("HTTP " + r.status)))
     .then((data) => {
-      _csvThreatCache.set(champId, { ts: Date.now(), payload: data });
-      // Paint every live element for this champion. _csvRenderTeam may
+      _csvWrCache.set(champId, { ts: Date.now(), payload: data });
+      // Paint every live slot for this champion. _csvRenderTeam may
       // have re-rendered the cell since the fetch fired, so query by
       // data-champ-id rather than holding a stale reference.
       document
-        .querySelectorAll(".csv-team-cell-threat[data-champ-id='" + (champId | 0) + "']")
-        .forEach((node) => _csvThreatTagApply(node, data, champNm));
+        .querySelectorAll(".csv-enemy-wr-slot[data-champ-id='" + (champId | 0) + "']")
+        .forEach((node) => _csvWrSlotApply(node, data, champNm));
     })
     .catch(() => {
-      _csvThreatCache.set(champId, { ts: Date.now(), payload: null });
+      _csvWrCache.set(champId, { ts: Date.now(), payload: null });
       document
-        .querySelectorAll(".csv-team-cell-threat[data-champ-id='" + (champId | 0) + "']")
-        .forEach((node) => _csvThreatTagApply(node, null, champNm));
+        .querySelectorAll(".csv-enemy-wr-slot[data-champ-id='" + (champId | 0) + "']")
+        .forEach((node) => _csvWrSlotApply(node, null, champNm));
     });
 }
 
@@ -591,11 +566,16 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
 
     // Operator 2026-05-31 (part 4): on the SR Enemies panel, reserve a
     // fixed-width leading slot for the operator's lifetime win-rate vs
-    // this enemy (filled by _csvInjectEnemyWinRates once the personal-
-    // record fetch lands). First child so every enemy icon stays aligned.
+    // this enemy. First child so every enemy icon stays aligned.
+    // QA 2026-07-03 slice A (A4): fed per-champion by /api/personal-vs
+    // via _csvWrSlotFetch (the aggregate lifetime-record fetch is gone).
     if (isEnemyList && opts && opts.withWinRate) {
       const wrSlot = document.createElement("span");
       wrSlot.className = "csv-enemy-wr-slot";
+      if (cid) {
+        wrSlot.dataset.champId = String(cid);
+        _csvWrSlotFetch(cid, champNm, wrSlot);
+      }
       li.appendChild(wrSlot);
     }
 
@@ -667,9 +647,8 @@ function _csvRenderTeam(listId, team, myCid, timerEndMs, showPickOrder, opts) {
         li.appendChild(tagsEl);
       }
       // Operator 2026-05-31: confidence pill removed (#1); the per-enemy
-      // win-rate is the leading .csv-enemy-wr-slot (via
-      // _csvInjectEnemyWinRates, #2), so the inline threat pill is dropped
-      // too. Tags above stay.
+      // win-rate is the leading .csv-enemy-wr-slot (via _csvWrSlotFetch,
+      // #2), so the inline threat pill is dropped too. Tags above stay.
     }
     list.appendChild(li);
   });
@@ -775,7 +754,8 @@ export function renderChampSelectView(lcu) {
     _csvRenderTeam("csv-enemies-list", cs.their_team, myCid, timerEndMs, showPickOrder, enemyOpts);
   }
 
-  _csvSetupTimerTick();
+  // QA 2026-07-03 slice A (A6): the per-cell timer-tick stub was a
+  // verified no-op since s214 - the call + stub are stripped.
   _csvRenderCentralPane(cs, mode, myCid, myName, locked);
   // s210: render the new Suggestions panel (row 2 right). Has its own
   // fetch path for ban-suggestions; pick-order + DS items pull from
@@ -801,25 +781,17 @@ export function renderChampSelectView(lcu) {
 }
 
 // ARAM/Arena ASSESSMENT card (R30, 2026-06-24 in-game review). The full
-// SR _csvRenderSuggestions does draft-only work (ban suggestions, pick
-// order, DS profile/knobs) that has no meaning without a draft, so non-SR
-// modes get this lean subset instead of an empty card. counter-picks stays
-// SR-DRAFT-only (you can't counter-draft in ARAM/Arena), but the team-
-// damage lean (own roster AD/AP balance) and watch-their-cooldowns (enemy
-// hard-CC timers) read off ANY roster - so they fill the right column with
-// real pre-game intel. Both renderers self-fetch + self-hide off cs, so
-// this is a thin dispatch. The bans / DS-items / pick-order sub-sections
-// are display:none in non-SR (CSS); clear any stale "non-SR mode" stub.
+// SR _csvRenderSuggestions does draft-only work that has no meaning
+// without a draft, so non-SR modes get this lean subset instead of an
+// empty card. counter-picks stays SR-DRAFT-only (you can't counter-draft
+// in ARAM/Arena); the TEAM ANALYSIS cluster (team-damage lean + CC chips)
+// reads off ANY roster so it renders here too. QA 2026-07-03 slice A:
+// the ghost bans/pick-order clears + the cooldown-watch call are gone
+// (A2 wrappers removed from the DOM; B19 card removed from champ select).
 function _csvRenderSuggestionsNonSr(cs) {
   const cp = document.getElementById("csv-sugg-counter-picks");
   if (cp) { cp.hidden = true; cp.innerHTML = ""; }
-  _csvRenderTeamDamage(cs);
-  _csvRenderCooldownWatch(cs);
-  ["csv-sugg-bans-grid", "csv-sugg-items-body", "csv-sugg-pickorder-body"]
-    .forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = "";
-    });
+  _csvRenderTeamAnalysis(cs);
 }
 
 // Renders the center column (My Pick + mode-specific extras). Rebuilds
@@ -903,7 +875,9 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     ? _activeVariant.summoners : (mode === "aram" ? [4, 32] : [4, 7]);
   _csvSpellPair[0] = _activeSpells[0] | 0;
   _csvSpellPair[1] = _activeSpells[1] | 0;
-  const summSpellHtml = _csvSummSpellStripHtml(_csvSpellPair, mode);
+  // QA 2026-07-03 slice A (B5): compact 2-cell D/F strip + inline edit
+  // affordance that expands the full picker (collapses after a pick).
+  const summSpellHtml = _csvSummSpellSectionHtml(_csvSpellPair, mode);
   const buildsTitle = mode === "aram" ? "ARAM build chooser"
                     : mode === "arena" ? "Arena build chooser"
                     : "SR build chooser";
@@ -927,6 +901,23 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
         }).join("")}
       </div>`;
   const _savedSel = _csvSavedSelection(myName);
+  // QA 2026-07-03 slice A (B6+B7): the build chooser + the DS ordered
+  // build-order card are ONE merged section now - variant rows on top, a
+  // compact ordered-sequence strip below (same /api/build-order data path,
+  // engine-enforced unique-passive no-double rule), and a SINGLE push
+  // control (the header PUSH + Runes/Spells/Build checkboxes). The strip
+  // marks the items carried by the SELECTED variant (.is-in-variant).
+  const _boArch = (_csvResolveArchetype(myName) || {}).key || "";
+  // item 213 (2026-05-28): resolve the LIVE enemy comp (numeric LCU
+  // championIds -> DDragon slugs) so the DS-vs-enemy-comp sequence
+  // re-ranks + re-fetches whenever an enemy locks / swaps.
+  const _boEnemyIds = cs
+    ? ((cs.their_team || []).map((p) => (p && (p.championId | 0)) || 0)
+        .filter((x) => x > 0))
+    : [];
+  const _boEnemyNames = resolveChampNames(_boEnemyIds);
+  const seqHtml = _csvBuildSeqStripHtml(
+    myName, _csvDsModeFor(mode), _boArch, _boEnemyNames, variants);
   const buildsHtml = `
     <div class="csv-builds" data-champion="${myName || ""}" data-mode="${mode || "sr"}">
       <div class="csv-builds-head">
@@ -936,30 +927,8 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
       <div class="csv-builds-body" id="csv-builds-body">
         ${_csvBuildVariantRowsHtml(variants, _savedSel.variantKey, _savedSel.runeKey)}
       </div>
+      ${seqHtml}
     </div>`;
-  // Build Order (2026-05-17, plan S6b option B): contextual DS-backed
-  // ordered build with the engine-enforced unique-passive no-double
-  // rule. Sits under the build chooser in the mode-agnostic My Pick
-  // card (matters in ARAM/Arena too - unlike the SR-only Suggestions
-  // panel). The async fetch is cache-keyed (one engine round per
-  // champ+mode+arch per session) and its re-render piggybacks on
-  // _csvScheduleRender, exactly like the DS-builds fetch.
-  const _boArch = (_csvResolveArchetype(myName) || {}).key || "";
-  // item 213 (2026-05-28): resolve the LIVE enemy comp (numeric LCU
-  // championIds -> DDragon slugs) so the DS-vs-enemy-comp build re-ranks
-  // + re-fetches whenever an enemy locks / swaps. resolveChampNames is
-  // the same helper the CC cards use; empty during early CS (the build
-  // plans vs the zero-baseline until enemies lock).
-  const _boEnemyIds = cs
-    ? ((cs.their_team || []).map((p) => (p && (p.championId | 0)) || 0)
-        .filter((x) => x > 0))
-    : [];
-  const _boEnemyNames = resolveChampNames(_boEnemyIds);
-  const boHtml = buildOrderCardHtml(myName, _csvDsModeFor(mode), _boArch, {
-    ver: (ITEMS && ITEMS.version) || "latest",
-    scheduleRender: _csvScheduleRender,
-    enemies: _boEnemyNames,
-  });
 
   // R30 (2026-06-24): Arena pane = duo + augments, then the shared build
   // chooser + ordered build (the archetype picker already rendered into the
@@ -967,7 +936,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   if (mode === "arena") {
     head.textContent = "My Duo + Augments";
     body.className = "csv-card-body";
-    body.innerHTML = _csvArenaPaneHtml(cs, myCid, myName) + buildsHtml + boHtml;
+    body.innerHTML = _csvArenaPaneHtml(cs, myCid, myName) + buildsHtml;
     _csvWireArenaAugments(body, cs);
     _csvWireBuildVariants(body);
     return;
@@ -992,27 +961,12 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     ${extraHtml}
     ${summSpellHtml}
     ${buildsHtml}
-    ${boHtml}
-    <div class="csv-sugg-section cc-blended-ehp-threat" id="csv-sugg-cc-blended-ehp-threat" data-cc-tier="warn" hidden></div>
-    <div class="csv-sugg-section cc-conditional-pressure" id="csv-sugg-cc-conditional-pressure" data-cc-cond-tier="warn" hidden></div>
     <div class="csv-sugg-section capability-gap" id="csv-sugg-capability-gap" hidden></div>`;
-  // Wire click handlers on the summoner-spell strip (idempotent - body
-  // innerHTML rebuild on each render attaches fresh handlers). Click N=1
-  // fills the D slot, click N=2 fills the F slot, then wraps. Skips
-  // when the clicked spell would duplicate the other slot.
-  body.querySelectorAll(".csv-summspell-cell").forEach((cell) => {
-    cell.addEventListener("click", () => {
-      const sid = parseInt(cell.dataset.spellId, 10) | 0;
-      if (!sid) return;
-      const otherIdx = _csvNextSpellSlot === 1 ? 1 : 0;
-      if (sid === _csvSpellPair[otherIdx]) return;
-      const usedSlot = _csvNextSpellSlot;
-      _csvSpellPair[usedSlot - 1] = sid;
-      _csvNextSpellSlot = usedSlot === 1 ? 2 : 1;
-      _csvRefreshSpellBadges(body);
-      try { lcuCmd({ cmd: "set_summoner_spell", slot: usedSlot, spellId: sid }); } catch (_) {}
-    });
-  });
+  // QA 2026-07-03 slice A (B8/B9): the cc-blended-ehp + cc-conditional
+  // chip mounts moved OUT of this rebuilt body into the static TEAM
+  // ANALYSIS cluster in the Assessment card (web/index.html).
+  // B5: wire the compact summoner-spell section (edit toggle + picker).
+  _csvWireSummSpells(body, mode);
 
   // Wire bench cells to fire bench_swap on click. Only ARAM renders
   // the bench block; the wiring is idempotent under re-render since
@@ -1055,236 +1009,33 @@ function _csvBanPhaseComplete(cs) {
 }
 
 function _csvRenderSuggestions(cs, myCid, myName, mode) {
-  // ---- Row 2: bans block ----
-  // Phase-aware: during the ban phase show 4 suggested bans for the
-  // operator to commit; once active_round.type === "pick" (bans
-  // committed, picks underway) switch to a 2-row 5-cell grid showing
-  // ally bans (top) + enemy bans (bottom).
-  // s214: title row dropped - `.csv-sugg-row-label` no longer in the
-  // DOM. The grid alone communicates state via the ALLY / ENEMY side
-  // labels in the banned-list rows + the icon strip in suggestion mode.
-  const bansGrid = document.getElementById("csv-sugg-bans-grid");
-  if (bansGrid) {
-    const allyBans  = (cs.bans && Array.isArray(cs.bans.my_team)) ? cs.bans.my_team : [];
-    const enemyBans = (cs.bans && Array.isArray(cs.bans.their_team)) ? cs.bans.their_team : [];
-    // RC2 E4: ban-phase-complete is the single detection helper now, so the
-    // collapse decision below shares the exact same condition.
-    const isPickPhase = _csvBanPhaseComplete(cs);
-    if (isPickPhase && (allyBans.length || enemyBans.length)) {
-      bansGrid.classList.add("is-banned-grid");
-      bansGrid.classList.remove("is-suggestions-grid");
-      // RC2 E4 (operator-reported): once the ban phase is DONE the banned
-      // list no longer needs full vertical space during the pick window.
-      // Collapse it to a compact summary line via the is-collapsed class
-      // (CSS shrinks the 2x5 icon grid to a single quiet count line); a
-      // click on the header toggles it back open if the operator wants
-      // the full grid. State persists across re-renders via _csvBansOpen.
-      bansGrid.classList.add("is-collapsed");
-      if (_csvBansOpen) bansGrid.classList.remove("is-collapsed");
-      bansGrid.innerHTML = _csvBannedCollapseHeader(allyBans, enemyBans)
-                         + _csvBannedListRow(allyBans, "ALLY")
-                         + _csvBannedListRow(enemyBans, "ENEMY");
-      const hdr = bansGrid.querySelector(".csv-sugg-banned-toggle");
-      if (hdr) {
-        hdr.addEventListener("click", () => {
-          _csvBansOpen = !_csvBansOpen;
-          bansGrid.classList.toggle("is-collapsed", !_csvBansOpen);
-          const caret = hdr.querySelector(".csv-sugg-banned-caret");
-          if (caret) caret.textContent = _csvBansOpen ? "[-]" : "[+]";
-        });
-      }
-    } else {
-      bansGrid.classList.add("is-suggestions-grid");
-      bansGrid.classList.remove("is-banned-grid");
-      bansGrid.classList.remove("is-collapsed");
-      // Collect already-banned ids so the suggestion fetch can skip them.
-      const banned = new Set();
-      allyBans.forEach((id) => banned.add(id | 0));
-      enemyBans.forEach((id) => banned.add(id | 0));
-      const excludedIds = Array.from(banned).filter((x) => x > 0);
-      _csvFetchBanSuggestions(excludedIds);
-      const cached = _CSV_BANSUGG_CACHE[_csvBanSuggKey(excludedIds)];
-      if (cached && Array.isArray(cached.suggestions) && cached.suggestions.length) {
-        bansGrid.innerHTML = cached.suggestions.map((s) => {
-          const isBanned = banned.has(s.champId);
-          // OQ9 (QA26 remainder): why-banned sub-label. `rank` is the
-          // champion's 1-based position in the meta top_bans list
-          // (routes_ban_suggestions.py, additive field) - honest "it's
-          // a top global ban" signal. Older cached payloads without
-          // rank render name-only as before.
-          const rank = s.rank | 0;
-          const reasonHtml = rank > 0
-            ? `<div class="csv-sugg-ban-reason">meta ban #${rank}</div>` : "";
-          const whyTitle = rank > 0
-            ? `Suggest ban: ${s.name} - global top ban #${rank} (patch ${cached.patch || "?"})`
-            : `Suggest ban: ${s.name}`;
-          return `
-            <div class="csv-sugg-ban-card${isBanned ? " is-banned" : ""}"
-                 data-champ-id="${s.champId}"
-                 title="${isBanned ? `${s.name} already banned` : whyTitle}">
-              <div class="csv-sugg-ban-icon">
-                <img src="${s.icon}" alt="${s.name}" onerror="this.style.display='none'">
-              </div>
-              <div class="csv-sugg-ban-name">${s.name}</div>
-              ${reasonHtml}
-            </div>`;
-        }).join("");
-        bansGrid.querySelectorAll(".csv-sugg-ban-card:not(.is-banned)").forEach((card) => {
-          card.addEventListener("click", () => {
-            const cid = parseInt(card.dataset.champId, 10) | 0;
-            if (cid > 0) lcuCmd({ cmd: "set_ban_intent", championId: cid });
-          });
-        });
-      } else {
-        bansGrid.innerHTML = '<div class="csv-sugg-empty">loading global top bans...</div>';
-      }
-      // 2026-05-20 (item 109 carry-forward): HURTS-THEM / HELPS-US
-      // toggle. Renders the dual-score ban-suggest backend ship
-      // 6e7b7e5 inline above the legacy global-top-bans grid. Uses
-      // the same global-top-bans candidate pool (cached) - dual-
-      // scores each candidate vs the operator's current ally + enemy
-      // roster, then renders a sortable list. The mode chip is
-      // visible the moment the cached candidate list lands.
-      _csvRenderBanSuggestToggle(cs, cached);
-    }
-  }
+  // QA 2026-07-03 slice A (A2+A7): the ghost bans grid (hidden since
+  // 2026-05-23), the pick-order advisory, and the dual-score ban toggle
+  // that rendered into display:none wrappers are REMOVED - JS no longer
+  // fetches or renders into invisible DOM. The Pick & Ban card's own
+  // visible bans (csv-pb168-*) are untouched.
   // RC2 E4 (P2): live counter-picks vs the enemy comp. Glanceable
   // "pick into this comp" list for the operator's open slot, driven by
   // the existing counters index via /api/champ-select/counter-picks.
   _csvRenderCounterPicks(cs);
-  // LIFT 1b (2026-06-22): ally team AD/AP damage-lean meter. Glanceable
-  // physical-vs-magic bar for the operator's own team, summed from DDragon
-  // info.attack/info.magic via /api/champ-select/team-damage-mix.
-  _csvRenderTeamDamage(cs);
-  // 2026-05-22 (item 139 carry (a)): FIRST dashboard UI consumer of
-  // cc_blended_ehp. Renders the ally-vs-enemy CC-blended EHP balance
-  // chip beside the legacy bans grid so the operator can see at a
-  // glance whether enemy CC threatens to erode their team faster
-  // than ally CC erodes the enemy team.
-  _csvRenderCcBlendedEhpThreat(cs);
-  // 2026-05-22 (item 144): FIRST dashboard UI consumer of cc_conditional
-  // (5th overall consumer of the cc_conditional ecosystem). Sibling
-  // chip to cc-blended-ehp-threat; surfaces the probability-weighted
-  // CONDITIONAL CC seconds totals so the operator can see at a glance
-  // whether enemy conditional CC threatens to land more lockdown than
-  // ally conditional CC will land on enemies.
-  _csvRenderCcConditionalPressure(cs);
-  // 2026-05-30 (item 218 / competitor lift #5): matchup cooldown-watch.
-  // Per enemy champion, the single highest-threat hard-CC ability + its
-  // max-rank base cooldown ("watch their hook - 16s"). Joins the CC threat
-  // registries to per-rank ability cooldowns from champion_abilities.json.
-  _csvRenderCooldownWatch(cs);
+  // QA 2026-07-03 slice A (B8/B9/B18): team-damage lean + the two CC
+  // chips render inside the collapsed TEAM ANALYSIS cluster.
+  _csvRenderTeamAnalysis(cs);
   // 2026-06-26 (item 633): L4 Phase-D capability-gap surface. For the
   // operator's OWN locked champion vs the live enemy roster, the single
   // highest-severity capability DEFICIT (anti-tank / anti-heal / anti-poke)
-  // from core.ds_capability_gap, surfaced behind the backend default-OFF
-  // RC_CAPGAP_SURFACE flag - the chip stays hidden until the flag is ON
-  // (the route returns capability_gap=null otherwise), so this is inert by
-  // default. Mirrors the my-champion + enemy-roster resolution of
-  // _csvRenderPersonalBuild + _csvRenderCooldownWatch.
+  // from core.ds_capability_gap. Mirrors the my-champion + enemy-roster
+  // resolution of _csvRenderPersonalBuild.
   _csvRenderCapabilityGap(cs);
   // 2026-06-25: personal best-build card. For the operator's OWN locked
   // champion (cs.my_champion), the completed items they win with from their
   // rewind_history.db - a "your best build" read alongside the DS engine
   // recommendation. Hidden until a champion locks. Read-only.
   _csvRenderPersonalBuild(cs);
-  // CS1 (2026-06-08): ally CC-pairing card. Surfaces, for the operator's
-  // OWN roster, which conditional CC entries a TEAMMATE can set up + the
-  // plausible enablers. Read-only join over the existing cc_conditional
-  // registry. Delimited CS1 block (CS3 will also touch this file).
-  _csvRenderCcPairing(cs);
-  // CS3 (2026-06-08): ds-sweep / ds-matchup / ds-combo / ds-relscore render
-  // calls moved to active_match.js (they read the live champion mid-game).
-  // ds-profile / ds-knobs / ds-statcheck stay on champ-select for the pick.
-  setDsProfileScheduler(_csvScheduleRender);
-  renderDsProfileForChampSelect(cs);
+  // B21 KEEP: DS skill order is the one DS card staying on champ select
+  // (profile / knobs / stat-check move to the Builds view - slice C).
   setDsSkillOrderScheduler(_csvScheduleRender);
   renderDsSkillOrderForChampSelect(cs);
-  // GPI radar is history-based (not champ-select-state-driven) so it ignores cs;
-  // the server + client caches make the per-tick re-show idempotent + cheap.
-  showPlayerGpi("sr");
-  { const _dskBlock = document.getElementById("csv-ds-knobs");
-    if (_dskBlock) renderDsKnobs(_dskBlock, cs); }
-  { const _dssBlock = document.getElementById("csv-ds-statcheck");
-    if (_dssBlock) renderDsStatcheck(_dssBlock, cs); }
-  // ---- Row 3: pick-order tips (no header label per s213 v3) ----
-  // Static advisory keyed on operator's assigned role. 3 tips per role
-  // - the third row is the "consider" / strategic depth tip beyond
-  // basic "pick after / pick first" logic.
-  const pickOrderBody = document.getElementById("csv-sugg-pickorder-body");
-  if (pickOrderBody) {
-    const role = _csvResolveRole(cs);
-    const tips = (_CSV_PICKORDER_TIPS[role] || _CSV_PICKORDER_TIPS.DEFAULT).slice();
-    // s214: swap row 3 for a comp-aware tip once at least one ally lock
-    // or enemy commit is visible. Static role tip is preserved as the
-    // fallback when comp data is too thin to derive signal.
-    const compTip = _csvCompAwareTip(cs, role);
-    if (compTip) tips[2] = compTip;
-    pickOrderBody.innerHTML = tips.map((tip, idx) => `
-      <div class="csv-sugg-pickorder-cell">
-        <span class="csv-sugg-pickorder-idx">${idx + 1}</span>
-        <span>${tip}</span>
-      </div>`).join("");
-  }
-  // s211: DS engine item output row removed - the Experimental build
-  // chooser row now carries DS top picks in a richer rune+spell+item
-  // layout, making the duplicate strip here visual noise.
-}
-
-// s213 v3: helper - render a single-row 5-cell banned-list strip for
-// the Suggestions panel's post-ban-phase view. Banned ids come from
-// LCU's cs.bans.my_team / cs.bans.their_team arrays. Pads to 5 cells
-// with placeholder slots when fewer than 5 bans are committed (Riot
-// draft modes vary: 3 bans/side classic, 5 bans/side ranked).
-function _csvBannedListRow(banIds, sideLabel) {
-  const cells = [];
-  for (let i = 0; i < 5; i++) {
-    const cid = banIds[i] | 0;
-    if (cid > 0) {
-      const champ = (CHAMPS && CHAMPS.byId && CHAMPS.byId[String(cid)]) || `cid:${cid}`;
-      const img = _csChampImg(cid);
-      cells.push(`
-        <div class="csv-sugg-ban-card is-banned" data-champ-id="${cid}" title="${champ} banned">
-          <div class="csv-sugg-ban-icon">
-            ${img ? `<img src="${img}" alt="${champ}" onerror="this.style.display='none'">` : ""}
-          </div>
-          <div class="csv-sugg-ban-name">${champ}</div>
-        </div>`);
-    } else {
-      cells.push(`
-        <div class="csv-sugg-ban-card is-empty">
-          <div class="csv-sugg-ban-icon"></div>
-          <div class="csv-sugg-ban-name">-</div>
-        </div>`);
-    }
-  }
-  return `<div class="csv-sugg-banned-row"
-               data-side="${sideLabel.toLowerCase()}">
-            <span class="csv-sugg-banned-side">${sideLabel}</span>
-            <div class="csv-sugg-banned-cells">${cells.join("")}</div>
-          </div>`;
-}
-
-// RC2 E4: collapse-state for the post-ban-phase banned-champions display.
-// Default collapsed (false) so the pick window isn't dominated by a 2x5
-// icon grid the operator has already seen during bans; the header toggle
-// re-opens it. Module-level so it survives the per-tick innerHTML rebuild.
-let _csvBansOpen = false;
-
-// RC2 E4: compact header for the collapsed banned display. Shows a count
-// ("BANS - 8 banned") + a [+]/[-] caret; the whole strip is the click
-// target that toggles _csvBansOpen. When expanded (is-collapsed removed)
-// the 2x5 grid below it shows; when collapsed only this line is visible.
-function _csvBannedCollapseHeader(allyBans, enemyBans) {
-  const n = ((allyBans || []).filter((x) => (x | 0) > 0).length)
-          + ((enemyBans || []).filter((x) => (x | 0) > 0).length);
-  const caret = _csvBansOpen ? "[-]" : "[+]";
-  return `<div class="csv-sugg-banned-toggle" role="button" tabindex="0"
-               title="Show / hide the full banned-champions grid">
-            <span class="csv-sugg-banned-toggle-label">BANS</span>
-            <span class="csv-sugg-banned-toggle-count">${n} banned</span>
-            <span class="csv-sugg-banned-caret">${caret}</span>
-          </div>`;
 }
 
 // RC2 E4 (P2): live counter-picks vs the enemy comp. The single-decision
@@ -1524,118 +1275,9 @@ function _csvVariantBadgeClass(v) {
 // item 213 (2026-05-28): the auto-build chooser row was removed, so
 // its per-archetype default rune table + lookup helper are gone too.
 
-// s210: pick-order advisory blurbs per role. Short tips, ordered from
-// "what to do first" to "what to do at lock-in". s214: row 3 is now
-// dynamically swapped for a comp-aware tip when ally + enemy comps
-// have enough locks to read - see _csvCompAwareTip below. Rows 1+2
-// stay static so the operator always sees the role's "pick order"
-// constants regardless of comp readability.
-const _CSV_PICKORDER_TIPS = {
-  TOP: [
-    "Counterpick - wait for enemy top lock",
-    "Then commit to your matchup pick",
-    "Watch enemy jungler - a gank-heavy comp punishes weak-early lane picks",
-  ],
-  JNG: [
-    "Pick early - clear path matters more than counter",
-    "Avoid blind-picking weak-early junglers",
-    "Match enemy team's tempo - vs poke comp pick gank, vs engage pick disengage",
-  ],
-  MID: [
-    "Flex picks have leverage - hover late",
-    "Lock when enemy team comp is readable",
-    "Save assassins for after enemy ADC + sup lock so you confirm dive targets",
-  ],
-  BOT: [
-    "Pick after support locks - synergy > counter",
-    "Lethality vs squishy comps, crit vs draft",
-    "Hard-CC enemy support? Hover Cleanse before lock-in",
-  ],
-  SUP: [
-    "Lock support pick first - your ADC counts on it",
-    "Engage vs poke comp; peel vs assassin comp",
-    "Vision-heavy supports (Bard, Senna) scale with map awareness - pair carefully",
-  ],
-  DEFAULT: [
-    "Watch enemy hovers before locking",
-    "Comfort > counterpick if matchup is unclear",
-    "Hover your pick to telegraph intent - see if enemy adapts before you commit",
-  ],
-};
-
-// s214: derive a comp-aware tip from the locked allies + enemies tag
-// distribution. Returns null when neither side has any locks (early
-// CS) so the caller falls through to the static row-3 tip. Uses the
-// championTags cache (DDragon Fighter/Mage/Marksman/Tank/Support/
-// Assassin classifications) - same source the enemy-row tag chips
-// + adaptive-summoner classifier read from.
-function _csvCompAwareTip(cs, role) {
-  if (!cs || !championTags) return null;
-  const tagOf = (cid) => {
-    if (!cid) return [];
-    const t = championTags(cid);
-    return Array.isArray(t) ? t : [];
-  };
-  const allyIds = (cs.my_team || [])
-    .filter((p) => p && p.completed && p.championId)
-    .map((p) => p.championId | 0);
-  const enemyIds = (cs.their_team || [])
-    .filter((p) => p && p.championId)
-    .map((p) => p.championId | 0);
-  // Need at least 1 locked ally + 1 enemy commit for the tip to have
-  // signal. Pre-lock state: caller fall-through to static tip.
-  if (!allyIds.length && !enemyIds.length) return null;
-  const tagCount = (ids) => {
-    const c = { Fighter: 0, Mage: 0, Marksman: 0, Tank: 0, Support: 0, Assassin: 0 };
-    ids.forEach((cid) => tagOf(cid).forEach((t) => { if (c[t] != null) c[t] += 1; }));
-    return c;
-  };
-  const ally = tagCount(allyIds);
-  const enemy = tagCount(enemyIds);
-
-  // Damage-profile read: enemy AD = Fighter+Marksman+Assassin (Tank
-  // partial); enemy AP = Mage. When one side is heavily skewed the
-  // tip surfaces a defensive item or summoner spell suggestion.
-  const enemyAD = enemy.Fighter + enemy.Marksman + enemy.Assassin;
-  const enemyAP = enemy.Mage;
-  const enemyCC = enemy.Tank + enemy.Support;  // proxy - full CC scoring lives in adaptive-summoner classifier
-  const allyHasFrontline = (ally.Tank + ally.Fighter) >= 1;
-  const allyHasCarry = (ally.Marksman + ally.Mage + ally.Assassin) >= 1;
-
-  // Role-conditional tip selection - surface the highest-priority
-  // observation for the operator's chosen role.
-  if (role === "BOT") {
-    if (enemyCC >= 3) return "Enemy has 3+ CC threats - hover Cleanse before lock-in";
-    if (enemyAD > enemyAP + 1) return "Enemy comp leans AD - Plated Steelcaps / Tabis path opens up";
-    if (enemyAP > enemyAD) return "Enemy comp leans AP - Mercury's + Maw of Malmortius";
-    if (!allyHasFrontline) return "No locked frontline yet - wait or shift to a self-peeling ADC";
-  } else if (role === "SUP") {
-    if (!allyHasCarry) return "Carry slots still open - hover engage to telegraph aggression";
-    if (enemyAD >= 3) return "Heavy AD enemy comp - Knight's Vow / Locket of Iron Solari shine";
-    if (enemy.Assassin >= 1) return "Enemy has assassin pressure - peel-first supports beat engage here";
-  } else if (role === "TOP") {
-    if (enemy.Marksman + enemy.Mage >= 3) return "Enemy heavy on ranged damage - tank + MR rush";
-    if (enemyAD >= 3) return "Heavy AD top side - armor first (Plated / Randuin's / Sunfire)";
-    if (!allyHasCarry) return "Allies lack scaling carry - consider a self-scaling top (Nasus / Kayle)";
-  } else if (role === "JNG") {
-    if (enemy.Tank >= 2) return "Enemy fields 2+ tanks - bring %-HP or true-damage jungler";
-    if (enemyCC >= 3) return "CC-heavy enemy comp - duelist > engage jungler";
-    if (!allyHasFrontline) return "Allies lack frontline - pick an engage/tank jungler";
-  } else if (role === "MID") {
-    if (enemy.Assassin >= 1) return "Enemy assassin commits to dive - bring Zhonya's window";
-    if (enemyAP >= 2) return "Enemy double-AP - Mercury's first; Maw of Malmortius if you're AD";
-    if (!allyHasCarry) return "No locked carry yet - flex pick keeps options open";
-  } else if (role === "ARAM" || role === "MAYHEM") {
-    if (enemyCC >= 3) return "ARAM CC bomb risk - Mercury's + Cleanse if any ranged carry locks";
-    if (enemyAP > enemyAD + 1) return "Enemy ARAM is AP-heavy - Force of Nature / Spirit Visage";
-    if (enemyAD > enemyAP + 1) return "Enemy ARAM is AD-heavy - Plated / Randuin's path";
-  }
-  // Generic fall-through when nothing above triggered (mixed comp).
-  if (allyHasFrontline && allyHasCarry) {
-    return "Comp shaping up balanced - comfort > counterpick from here";
-  }
-  return null;
-}
+// QA 2026-07-03 slice A (A2): the pick-order advisory tips + the
+// comp-aware tip derivation rendered into the hidden .csv-sugg-pickorder
+// ghost wrapper; both were removed with the wrapper.
 
 // s171: lock button click handler - same shape as the legacy overlay's
 // #cs-lock-btn. Disables the button on click to prevent double-fire,
@@ -1750,8 +1392,8 @@ function _csvBansSig(bans) {
 
 // s209 v2: idempotent render sig. Captures everything renderChampSelectView
 // reads to draw the three panels (allies / center / enemies + pickban).
-// Timer remaining_ms is deliberately excluded - _csvSetupTimerTick owns
-// the countdown text and updates it independently of the innerHTML
+// Timer remaining_ms is deliberately excluded - the global header timer
+// carries the countdown independently of the innerHTML
 // rebuild. DS / user-variant / archetype caches are folded in as a
 // 1-or-0 presence stamp so the render fires once when each cache lands.
 function _csvComputeSig(cs, mode, myCid, myName) {
@@ -1782,31 +1424,18 @@ function _csvComputeSig(cs, mode, myCid, myName) {
   // recommendation arrived" without hashing the whole cache.
   const adaptCount = Object.keys(_CSV_ADAPT_CACHE)
     .filter((k) => k.startsWith(`${myName}|`)).length;
-  // s210: ban-suggestions cache state - count keys so the Suggestions
-  // panel re-renders when the global top-bans fetch lands.
-  const banSuggCount = Object.keys(_CSV_BANSUGG_CACHE).length;
-  // 2026-05-20 (item 109 carry-forward): ban-suggest dual-score cache
-  // state - same pattern, count keys so the HURTS-THEM / HELPS-US
-  // toggle re-renders when the /api/ban-suggest fetch lands.
-  const banSuggDualCount = getBanSuggestCacheCount();
+  // QA 2026-07-03 slice A: the folded counts for the removed cards
+  // (ban-suggestions bsugg, dual-score bsdual, cc-pairing ccpair,
+  // cooldown-watch cdw, ds profile/knobs/statcheck dsp/dsk/dss) are
+  // gone with their render paths. The kept chips stay folded below.
   // 2026-05-22 (item 139 carry (a)): cc-blended-ehp threat cache state
-  // - same pattern, count keys so the threat chip re-renders when
+  // - count keys so the TEAM ANALYSIS cluster re-renders when
   // /api/cc-blended-ehp-threat lands.
   const ccBlendedCount = getCcBlendedEhpThreatCacheCount();
   const ccCondCount = getCcConditionalPressureCacheCount();
-  // CS1 (2026-06-08): ally CC-pairing cache state - count keys so the
-  // pairing card re-renders when /api/cc-pairing lands.
-  const ccPairCount = getCcPairingCacheCount();
-  const cdwCount = getCooldownWatchCacheCount();
   // 2026-06-25: personal best-build cache state - count keys so the card
   // re-renders when /api/personal-build lands.
   const pbwCount = getPersonalBuildCacheCount();
-  // CS3 (2026-06-08): ds-sweep / ds-combo / ds-relscore cache counts dropped
-  // from the champ-select sig - those panels render on active-match now. The
-  // profile / knobs / statcheck counts stay (they still render here).
-  const dspCount = getDsProfileCacheCount();
-  const dskCount = getDsKnobsCacheCount();
-  const dssCount = getDsStatcheckCacheCount();
   // RC2 E4: counter-picks cache state - count keys so the "pick into this
   // comp" list re-renders when /api/champ-select/counter-picks lands.
   const counterCount = Object.keys(_CSV_COUNTER_CACHE).length;
@@ -1826,7 +1455,7 @@ function _csvComputeSig(cs, mode, myCid, myName) {
       : "",
     cs.queue_id | 0,
     mode,
-    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|bsugg:${banSuggCount}|bsdual:${banSuggDualCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|ccpair:${ccPairCount}|cdw:${cdwCount}|pbw:${pbwCount}|dsk:${dskCount}|dss:${dssCount}|dsp:${dspCount}|cnt:${counterCount}`,
+    `ds:${dsKey}|usr:${userKey}|arch:${archKey}|adapt:${adaptCount}|ccbe:${ccBlendedCount}|ccp:${ccCondCount}|pbw:${pbwCount}|cnt:${counterCount}`,
     verdictKey,
   ].join("|");
 }
@@ -1950,11 +1579,8 @@ const _CSV_USER_INFLIGHT = Object.create(null);
 const _CSV_ADAPT_CACHE    = Object.create(null);
 const _CSV_ADAPT_INFLIGHT = Object.create(null);
 
-// s210: ban-suggestions cache keyed on already-banned-set sig. Top-4
-// globally-banned champions filtered against already-banned. Refetches
-// when bans change so the panel stays in sync with the draft.
-const _CSV_BANSUGG_CACHE    = Object.create(null);
-const _CSV_BANSUGG_INFLIGHT = Object.create(null);
+// QA 2026-07-03 slice A (A2): the ban-suggestions cache + fetch were
+// removed with the ghost bans grid.
 
 // Deterministic ARAM comp-verdict cache. Single-slot (the verdict is a
 // function of my pick + my-team comp + the current bench), not a per-key
@@ -2056,66 +1682,8 @@ function _csvCompVerdictHtml() {
     </div>`;
 }
 
-function _csvBanSuggKey(excludedIds) {
-  return (excludedIds || []).slice().sort((a, b) => a - b).join(",");
-}
-
-function _csvFetchBanSuggestions(excludedIds) {
-  const key = _csvBanSuggKey(excludedIds);
-  if (_CSV_BANSUGG_CACHE[key] || _CSV_BANSUGG_INFLIGHT[key]) return;
-  _CSV_BANSUGG_INFLIGHT[key] = true;
-  const url = `/api/champ-select/ban-suggestions?exclude=${encodeURIComponent(key)}&top=4`;
-  fetch(url, { cache: "no-store" })
-    .then((r) => r.ok ? r.json() : null)
-    .then((data) => {
-      _CSV_BANSUGG_INFLIGHT[key] = false;
-      if (data && data.ok) {
-        _CSV_BANSUGG_CACHE[key] = data;
-        _csvScheduleRender();
-      }
-    })
-    .catch(() => { _CSV_BANSUGG_INFLIGHT[key] = false; });
-}
-
-// 2026-05-20 (item 109 carry-forward (a)): HURTS-THEM / HELPS-US toggle
-// wire. Uses the cached global-top-bans list (`bansCached.suggestions`,
-// already filtered against already-banned ids) as the candidate pool,
-// then calls /api/ban-suggest to enrich each candidate with the dual
-// HURTS-THEM / HELPS-US ratings against the operator's current ally +
-// enemy roster. The mode chip + sortable list mount inside the
-// #csv-sugg-bs-toggle block (declared in web/index.html).
-function _csvRenderBanSuggestToggle(cs, bansCached) {
-  const block = document.getElementById("csv-sugg-bs-toggle");
-  if (!block) return;
-  // Need at least one ally locked + a candidate pool to score.
-  const allyIds = (cs.my_team || [])
-    .map((p) => (p && (p.championId | 0)) || 0)
-    .filter((x) => x > 0);
-  if (!allyIds.length) { block.hidden = true; return; }
-  const candidatesMeta = (bansCached && Array.isArray(bansCached.suggestions))
-    ? bansCached.suggestions : [];
-  if (!candidatesMeta.length) { block.hidden = true; return; }
-  block.hidden = false;
-  const enemyIds = (cs.their_team || [])
-    .map((p) => (p && (p.championId | 0)) || 0)
-    .filter((x) => x > 0);
-  const candidateIds = candidatesMeta
-    .map((m) => (m && (m.champId | 0)) || 0)
-    .filter((x) => x > 0);
-  const queue = (cs.queue_id | 0) || null;
-
-  fetchBanSuggest(allyIds, enemyIds, candidateIds, queue, _csvScheduleRender);
-
-  const chipEl = document.getElementById("csv-sugg-bs-mode");
-  const listEl = document.getElementById("csv-sugg-bs-list");
-  if (chipEl) {
-    renderBanSuggestModeChip(chipEl, () => _csvScheduleRender());
-  }
-  if (listEl) {
-    const payload = getCachedBanSuggest(allyIds, enemyIds, candidateIds, queue);
-    renderBanSuggestList(listEl, payload, candidatesMeta);
-  }
-}
+// QA 2026-07-03 slice A (A2+A7): the ban-suggestion fetch + the dual-score
+// HURTS-THEM / HELPS-US toggle wire were removed with the ghost wrappers.
 
 // 2026-05-22 (item 139 carry (a)): FIRST dashboard UI consumer of
 // cc_blended_ehp. Calls /api/cc-blended-ehp-threat with the operator's
@@ -2205,32 +1773,131 @@ function _csvRenderCcConditionalPressure(cs) {
   renderCcConditionalPressure(block, payload);
 }
 
-// 2026-05-30 (item 218 / competitor lift #5): matchup cooldown-watch.
-// ENEMY-only surface (no ally side) - per enemy champion, the single
-// highest-threat hard-CC ability + its max-rank base cooldown. Calls
-// /api/cooldown-watch with the enemy roster, renders the card list inside
-// the #csv-sugg-cooldown-watch block. Hidden until at least one enemy is
-// committed. Mode-agnostic (the route + engine take no mode param - the
-// cooldown is intrinsic to the ability).
-function _csvRenderCooldownWatch(cs) {
-  const block = document.getElementById("csv-sugg-cooldown-watch");
+// QA 2026-07-03 slice A (B19): the cooldown-watch renderer was removed
+// from champ select (backend /api/cooldown-watch stays; the overlay
+// surfaces the same signal in-game).
+
+// -- TEAM ANALYSIS cluster (QA 2026-07-03 slice A, B8/B9/B18) ----------
+// Collapsed block hosting the team-damage lean bar + the CC-blended-EHP
+// chip + the CC-conditional-pressure chip. The header carries ONE
+// actionable verdict line; a click expands the 3 detail chips. Open
+// state persists in sessionStorage. All three fetches keep their
+// existing cache TTLs and both-teams-committed gating (each detail
+// renderer self-fetches + self-hides).
+const _CSV_TA_STORE_KEY = "csv-ta-open";
+function _csvTaOpen() {
+  try { return sessionStorage.getItem(_CSV_TA_STORE_KEY) === "1"; }
+  catch (_) { return false; }
+}
+function _csvTaSetOpen(v) {
+  try { sessionStorage.setItem(_CSV_TA_STORE_KEY, v ? "1" : "0"); }
+  catch (_) {}
+}
+
+// Roster + mode derivation shared by the cluster verdict. Mirrors the
+// chip renderers' own derivations (KIWI stays correct for the CC
+// backends - queue 2400 carries a distinct tenacity model there).
+function _csvTaContext(cs) {
+  const allyIds = (cs && cs.my_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0).filter((x) => x > 0);
+  const enemyIds = (cs && cs.their_team || [])
+    .map((p) => (p && (p.championId | 0)) || 0).filter((x) => x > 0);
+  let ccMode = "ARAM";
+  const q = cs ? (cs.queue_id | 0) : 0;
+  if (q === 2400) ccMode = "KIWI";
+  else if (q === 1700 || q === 1710 || q === 1750) ccMode = "ARENA";
+  else if (q === 420 || q === 400 || q === 430 || q === 700) ccMode = "SR";
+  else if (q === 450 || q === 920) ccMode = "ARAM";
+  return { allyIds, enemyIds, ccMode };
+}
+
+// Deterministic verdict rule (documented; strongest signal wins):
+//   1. CC-chain deficit/edge: cc-blended payload, enemy vs ally
+//      total_cc_seconds differ by > 0.5s.
+//   2. EHP deficit: cc-blended tier === "bad" (enemy erodes you faster).
+//   3. Conditional-CC deficit: cc-conditional payload, enemy chain
+//      exceeds ally chain by > 0.5s.
+//   4. Damage-mix skew: own-team AD or AP share >= 70%.
+//   5. Fallback: balanced (or "reading team profile..." pre-data).
+function _csvTeamAnalysisVerdict(cs) {
+  const { allyIds, enemyIds, ccMode } = _csvTaContext(cs);
+  const allyNames = resolveChampNames(allyIds);
+  const enemyNames = resolveChampNames(enemyIds);
+  const ccb = (allyNames.length && enemyNames.length)
+    ? getCachedCcBlendedEhpThreat(allyNames, enemyNames, ccMode) : null;
+  const ccp = (allyNames.length && enemyNames.length)
+    ? getCachedCcConditionalPressure(allyNames, enemyNames, ccMode) : null;
+  const tdmg = allyIds.length ? _csvTeamDamageFetch(allyIds, null) : null;
+  if (ccb && ccb.ok) {
+    const a = +ccb.ally_total_cc_seconds || 0;
+    const e = +ccb.enemy_total_cc_seconds || 0;
+    if (e > a + 0.5) {
+      return `CC deficit - enemy chains ${e.toFixed(1)}s vs your ${a.toFixed(1)}s`;
+    }
+    if (a > e + 0.5) {
+      return `CC edge - you chain ${a.toFixed(1)}s vs their ${e.toFixed(1)}s`;
+    }
+    if (ccb.tier === "bad") {
+      const allyEhp = Math.round(+ccb.ally_avg_cc_blended_ehp || 0);
+      const enemyEhp = Math.round(+ccb.enemy_avg_cc_blended_ehp || 0);
+      return `EHP deficit - yours ${allyEhp} vs enemy ${enemyEhp} under CC`;
+    }
+  }
+  if (ccp && ccp.ok) {
+    const a = (ccp.ally_total_cc_seconds != null)
+      ? +ccp.ally_total_cc_seconds : (+ccp.ally_conditional_cc_s || 0);
+    const e = (ccp.enemy_total_cc_seconds != null)
+      ? +ccp.enemy_total_cc_seconds : (+ccp.enemy_conditional_cc_s || 0);
+    if (e > a + 0.5) {
+      return `Conditional-CC deficit - enemy setups land ${e.toFixed(1)}s vs your ${a.toFixed(1)}s`;
+    }
+  }
+  if (tdmg && tdmg.ok && (tdmg.n_champs | 0) > 0) {
+    const ad = tdmg.physical_pct | 0;
+    const ap = tdmg.magical_pct | 0;
+    if (ad >= 70 || ap >= 70) {
+      return `Damage skew - your team is AD ${ad}% / AP ${ap}%`;
+    }
+  }
+  if (ccb || ccp || (tdmg && tdmg.ok)) return "Team profile balanced";
+  return "reading team profile...";
+}
+
+function _csvRenderTeamAnalysis(cs) {
+  const block = document.getElementById("csv-team-analysis");
   if (!block) return;
-  const enemyNumericIds = (cs.their_team || [])
-    .map((p) => (p && (p.championId | 0)) || 0)
-    .filter((x) => x > 0);
-  if (!enemyNumericIds.length) {
-    block.hidden = true;
-    return;
+  // Detail chips render first (they self-fetch, self-hide, and re-fire
+  // _csvScheduleRender when their payloads land).
+  _csvRenderTeamDamage(cs);
+  _csvRenderCcBlendedEhpThreat(cs);
+  _csvRenderCcConditionalPressure(cs);
+  const chips = [
+    document.getElementById("csv-sugg-team-damage"),
+    document.getElementById("csv-sugg-cc-blended-ehp-threat"),
+    document.getElementById("csv-sugg-cc-conditional-pressure"),
+  ];
+  const anyVisible = chips.some((el) => el && !el.hidden);
+  block.hidden = !anyVisible;
+  if (!anyVisible) return;
+  const body = document.getElementById("csv-ta-body");
+  const caret = document.getElementById("csv-ta-caret");
+  const verdictEl = document.getElementById("csv-ta-verdict");
+  const open = _csvTaOpen();
+  if (body) body.hidden = !open;
+  if (caret) caret.textContent = open ? "[-]" : "[+]";
+  if (verdictEl) verdictEl.textContent = _csvTeamAnalysisVerdict(cs);
+  const head = document.getElementById("csv-ta-head");
+  if (head && !head.dataset.taWired) {
+    head.dataset.taWired = "1";
+    head.addEventListener("click", () => {
+      const next = !_csvTaOpen();
+      _csvTaSetOpen(next);
+      const b = document.getElementById("csv-ta-body");
+      const c = document.getElementById("csv-ta-caret");
+      if (b) b.hidden = !next;
+      if (c) c.textContent = next ? "[-]" : "[+]";
+    });
   }
-  const enemyNames = resolveChampNames(enemyNumericIds);
-  if (!enemyNames.length) {
-    // CHAMPS index not yet loaded - keep hidden, resolves next tick.
-    block.hidden = true;
-    return;
-  }
-  fetchCooldownWatch(enemyNames, _csvScheduleRender);
-  const payload = getCachedCooldownWatch(enemyNames);
-  renderCooldownWatch(block, payload);
 }
 
 // 2026-06-26 (item 633): L4 Phase-D capability-gap chip. Self-contained
@@ -2330,12 +1997,12 @@ function _csvRenderCapabilityGap(cs) {
     block.hidden = true;
     return;
   }
-  // Map queue_id to mode (same vocabulary as the sibling chips). Default SR.
-  let mode = "SR";
-  const q = cs.queue_id | 0;
-  if (q === 2400) mode = "KIWI";
-  else if (q === 1700 || q === 1710 || q === 1750) mode = "ARENA";
-  else if (q === 450 || q === 920) mode = "ARAM";
+  // QA 2026-07-03 slice A (A1): canonical /api/ds-preview mode vocabulary
+  // is SR / ARAM / ARENA (_csvDsModeFor) - queue 2400 (ARAM Mayhem) maps
+  // to ARAM, matching _csvDetectMode + every other DS call from this
+  // page. The bespoke Mayhem-literal mapping disagreed with the view
+  // classifier (slice D makes the backend tolerant; we send canonical).
+  const mode = _csvDsModeFor(_csvDetectMode(cs));
   _csvFetchCapabilityGap(myChamp, enemyNames, mode, _csvScheduleRender);
   const payload = _csvGetCachedCapabilityGap(myChamp, enemyNames, mode);
   _csvRenderCapabilityGapBlock(block, payload);
@@ -2369,35 +2036,8 @@ function _csvRenderPersonalBuild(cs) {
   renderPersonalBuild(block, payload);
 }
 
-// CS1 (2026-06-08): ally CC-pairing card. Reads the operator's OWN roster
-// (cs.my_team) and renders, per conditional CC entry whose condition a
-// TEAMMATE can set up, the entry + plausible enabler teammates inside the
-// #csv-sugg-cc-pairing block. Mirrors the _csvRenderCooldownWatch shape
-// but on the ALLY side (the cooldown-watch card is the enemy-threat twin).
-// Mode-agnostic (the route + engine take no mode param - the pairing fact
-// is intrinsic to the abilities). Hidden until at least one ally with an
-// ally-enablable conditional CC entry is committed. Delimited CS1 block;
-// CS3 will also touch champ_select.js.
-function _csvRenderCcPairing(cs) {
-  const block = document.getElementById("csv-sugg-cc-pairing");
-  if (!block) return;
-  const allyNumericIds = (cs.my_team || [])
-    .map((p) => (p && (p.championId | 0)) || 0)
-    .filter((x) => x > 0);
-  if (!allyNumericIds.length) {
-    block.hidden = true;
-    return;
-  }
-  const allyNames = resolveChampNames(allyNumericIds);
-  if (!allyNames.length) {
-    // CHAMPS index not yet loaded - keep hidden, resolves next tick.
-    block.hidden = true;
-    return;
-  }
-  fetchCcPairing(allyNames, _csvScheduleRender);
-  const payload = getCachedCcPairing(allyNames);
-  renderCcPairing(block, payload);
-}
+// QA 2026-07-03 slice A (B12): the ally CC-pairing card was removed from
+// champ select (backend /api/cc-pairing stays).
 
 // CS3 (2026-06-08): the action-queue combo host wrapper moved to
 // active_match.js - the combo timeline reads the live champion mid-game now,
@@ -2798,10 +2438,17 @@ function _csvSpellSlotLabel(spellId) {
   if (spellId && spellId === _csvSpellPair[1]) return "F";
   return "";
 }
-function _csvSummSpellStripHtml(currentSpells, mode) {
+// QA 2026-07-03 slice A (B5): the always-on 9-cell strip compacts to the
+// 2 current D/F spells + an EDIT affordance. Clicking EDIT expands the
+// full picker inline; picking a spell fires the same set_summoner_spell
+// LCU wiring and collapses the picker again. Module-level open flag so
+// the state survives the per-tick innerHTML rebuild.
+let _csvSpellEditOpen = false;
+
+function _csvSummSpellPickerCellsHtml(currentSpells, mode) {
   const list = _csvSummSpellListFor(mode);
   const selected = new Set((currentSpells || []).map((s) => s | 0));
-  const cells = list.map((sp) => {
+  return list.map((sp) => {
     const isSel = selected.has(sp.id);
     const slotLbl = _csvSpellSlotLabel(sp.id);
     const url = sumImg(sp.id);
@@ -2819,32 +2466,78 @@ function _csvSummSpellStripHtml(currentSpells, mode) {
         <div class="csv-summspell-pct">${sp.pct}%</div>
       </button>`;
   }).join("");
-  return `<div class="csv-summspell-strip" id="csv-summspell-strip">${cells}</div>`;
 }
-function _csvRefreshSpellBadges(scope) {
-  if (!scope) return;
-  scope.querySelectorAll(".csv-summspell-cell").forEach((cell) => {
-    const sid = parseInt(cell.dataset.spellId, 10) | 0;
-    const slotLbl = _csvSpellSlotLabel(sid);
-    const isSel = !!slotLbl;
-    cell.classList.toggle("is-selected", isSel);
-    let badge = cell.querySelector(".csv-summspell-slot");
-    if (slotLbl) {
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "csv-summspell-slot";
-        const iconEl = cell.querySelector(".csv-summspell-icon");
-        if (iconEl && iconEl.nextSibling) {
-          cell.insertBefore(badge, iconEl.nextSibling);
-        } else {
-          cell.appendChild(badge);
-        }
-      }
-      badge.textContent = slotLbl;
-    } else if (badge) {
-      badge.remove();
+
+function _csvSummSpellSectionInnerHtml(pair, mode) {
+  const currentCells = [0, 1].map((idx) => {
+    const sid = (pair && pair[idx]) | 0;
+    const slot = idx === 0 ? "D" : "F";
+    const nm = sid ? (sumName(sid) || `spell ${sid}`) : "none";
+    const url = sid ? sumImg(sid) : "";
+    const icon = url
+      ? `<img class="csv-summspell-icon" src="${url}" alt="${nm}" onerror="this.style.display='none'">`
+      : `<span class="csv-summspell-icon" aria-hidden="true">?</span>`;
+    return `
+      <span class="csv-summspell-current" data-slot="${slot}" title="${slot}: ${nm}">
+        ${icon}<span class="csv-summspell-slot">${slot}</span>
+      </span>`;
+  }).join("");
+  const pickerHtml = _csvSpellEditOpen
+    ? `<div class="csv-summspell-strip" id="csv-summspell-strip">${
+        _csvSummSpellPickerCellsHtml(pair, mode)}</div>`
+    : "";
+  return `
+    <div class="csv-summspell-compact">
+      ${currentCells}
+      <button type="button" class="csv-summspell-edit"
+              title="${_csvSpellEditOpen ? "Close the spell picker" : "Change summoner spells"}">
+        ${_csvSpellEditOpen ? "CLOSE" : "EDIT"}
+      </button>
+    </div>
+    ${pickerHtml}`;
+}
+
+function _csvSummSpellSectionHtml(pair, mode) {
+  return `<div class="csv-summspell-section" id="csv-summspell-section">${
+    _csvSummSpellSectionInnerHtml(pair, mode)}</div>`;
+}
+
+// Wire the compact section: EDIT toggles the inline picker; a picker
+// cell click assigns the next D/F slot (skipping duplicates), pushes via
+// set_summoner_spell, then collapses the picker. Re-renders the section
+// in place (idempotent - the whole body rebuild re-invokes this).
+function _csvWireSummSpells(scope, mode) {
+  const sec = scope.querySelector("#csv-summspell-section");
+  if (!sec) return;
+  const rerender = () => {
+    sec.innerHTML = _csvSummSpellSectionInnerHtml(_csvSpellPair, mode);
+    wire();
+  };
+  const wire = () => {
+    const editBtn = sec.querySelector(".csv-summspell-edit");
+    if (editBtn) {
+      editBtn.addEventListener("click", () => {
+        _csvSpellEditOpen = !_csvSpellEditOpen;
+        rerender();
+      });
     }
-  });
+    sec.querySelectorAll(".csv-summspell-cell").forEach((cell) => {
+      cell.addEventListener("click", () => {
+        const sid = parseInt(cell.dataset.spellId, 10) | 0;
+        if (!sid) return;
+        const otherIdx = _csvNextSpellSlot === 1 ? 1 : 0;
+        if (sid === _csvSpellPair[otherIdx]) return;
+        const usedSlot = _csvNextSpellSlot;
+        _csvSpellPair[usedSlot - 1] = sid;
+        _csvNextSpellSlot = usedSlot === 1 ? 2 : 1;
+        try { lcuCmd({ cmd: "set_summoner_spell", slot: usedSlot, spellId: sid }); } catch (_) {}
+        // B5: collapse the picker after a pick.
+        _csvSpellEditOpen = false;
+        rerender();
+      });
+    });
+  };
+  wire();
 }
 
 function _csvArchetypePickerHtml(champion) {
@@ -3192,6 +2885,9 @@ function _csvBuildPathRowHtml(variantKey, path, isActive, ver) {
   const label = path.label || path.key || "Variant";
   const archAttr = path._archetype ? ` data-arch="${path._archetype}"` : "";
   const primaryAttr = path._is_primary ? ' data-primary="1"' : "";
+  // B6+B7: carry the path's item ids so a click can re-mark the merged
+  // section's ordered-sequence strip against the newly-selected path.
+  const itemIdsAttr = ` data-item-ids="${(path.item_ids || []).slice(0, 6).join(",")}"`;
   // Item 240 part-3 (3b): carry the card's keystone so a path-row click
   // can re-point the rune panel's amber (recommended) marker to it. The
   // path's keystone falls back to the variant-level keystone (resolver
@@ -3200,10 +2896,91 @@ function _csvBuildPathRowHtml(variantKey, path, isActive, ver) {
   return `
     <div class="csv-build-path-row${isActive ? " is-active" : ""}"
          data-variant="${variantKey}"
-         data-path-key="${path.key || ""}"${archAttr}${primaryAttr}${ksAttr}>
+         data-path-key="${path.key || ""}"${archAttr}${primaryAttr}${ksAttr}${itemIdsAttr}>
       <div class="csv-build-path-label" title="${label}">${label}</div>
       <div class="csv-build-path-items">${items}</div>
     </div>`;
+}
+
+// -- B6+B7 merged-build ordered-sequence strip (QA 2026-07-03 slice A) --
+// Compact buy-order strip under the variant rows inside the ONE merged
+// build section. Reuses the /api/build-order data path (fetchBuildOrder /
+// getCachedBuildOrder from build_order.js - engine-enforced unique-passive
+// no-double rule). Chips carry data-item-id so selection changes in the
+// variant rows re-mark which sequence items the SELECTED variant carries
+// (.is-in-variant). The delegated [data-bo-push] document handler below
+// remains the push seam for the sequence; the merged section's single
+// visible push control is the header PUSH + category checkboxes.
+function _csvSelectedVariantItemIds(champion, mode, variants) {
+  const sel = _csvActiveBuildSelection(champion, mode, variants);
+  if (!sel || !sel.variant) return [];
+  const v = sel.variant;
+  const paths = Array.isArray(v.build_paths) ? v.build_paths : [];
+  if (paths.length) {
+    const pathKey = sel.composedKey.indexOf(":") >= 0
+      ? sel.composedKey.slice(v.key.length + 1) : "";
+    const p = paths.find((x) => x && x.key === pathKey) || paths[0];
+    return ((p && p.item_ids) || []).slice(0, 6).map((x) => String(x));
+  }
+  return (v.item_ids || []).slice(0, 6).map((x) => String(x));
+}
+
+function _csvBuildSeqStripHtml(champion, dsMode, archetype, enemies, variants) {
+  if (!champion || champion === "-" || !dsMode) return "";
+  const data = getCachedBuildOrder(champion, dsMode, archetype, enemies);
+  if (!data) {
+    fetchBuildOrder(champion, dsMode, archetype, _csvScheduleRender, enemies);
+    return `
+      <div class="csv-builds-seq" id="csv-builds-seq" data-bo-state="loading">
+        <span class="csv-boseq-tag">ORDERED SEQUENCE</span>
+        <span class="csv-boseq-msg">computing...</span>
+      </div>`;
+  }
+  const order = Array.isArray(data.order) ? data.order : [];
+  if (!order.length) {
+    return `
+      <div class="csv-builds-seq" id="csv-builds-seq" data-bo-state="empty">
+        <span class="csv-boseq-tag">ORDERED SEQUENCE</span>
+        <span class="csv-boseq-msg">no ordered build</span>
+      </div>`;
+  }
+  const ver = (ITEMS && ITEMS.version) || "latest";
+  const selectedIds = new Set(
+    _csvSelectedVariantItemIds(champion, (dsMode || "SR").toLowerCase(), variants));
+  const chips = order.map((o) => {
+    const inVariant = selectedIds.has(String(o.item_id));
+    const d = Math.round(o.delta || 0);
+    const dt = (d >= 0 ? "+" : "") + d + (o.unit || "dps");
+    const tip = `Slot ${o.slot}: ${escHtml(String(o.item_name || ""))} - `
+              + `${dt}, ${o.gold || 0}g`
+              + (inVariant ? " - in selected variant" : "");
+    return `
+      <span class="csv-boseq-chip${inVariant ? " is-in-variant" : ""}"
+            data-item-id="${o.item_id}" title="${tip}">
+        <span class="csv-boseq-num">${o.slot}</span>
+        <img class="csv-boseq-icon" src="/data/ddragon/${ver}/img/item/${o.item_id}.png"
+             onerror="if(!this.dataset.cdn){this.dataset.cdn=1;this.src='https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${o.item_id}.png'}else{this.style.visibility='hidden'}"
+             alt="">
+      </span>`;
+  }).join("");
+  return `
+    <div class="csv-builds-seq" id="csv-builds-seq" data-bo-state="ready">
+      <span class="csv-boseq-tag">ORDERED SEQUENCE</span>
+      <span class="csv-boseq-chips">${chips}</span>
+    </div>`;
+}
+
+// Re-mark the sequence strip against a freshly-selected variant/path
+// (itemIds = the selection's item id list). Called from the variant +
+// path click handlers so the strip reflects the SELECTED variant live.
+function _csvMarkSeqAgainstVariant(scope, itemIds) {
+  const strip = (scope && scope.querySelector)
+    ? scope.querySelector("#csv-builds-seq") : null;
+  if (!strip) return;
+  const sel = new Set((itemIds || []).map((x) => String(x)));
+  strip.querySelectorAll(".csv-boseq-chip").forEach((chip) => {
+    chip.classList.toggle("is-in-variant", sel.has(chip.dataset.itemId || ""));
+  });
 }
 
 // Item 240 part-3 (3a/3b, 2026-06-01): the nested RUNE panel that sits
@@ -3469,8 +3246,9 @@ function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
     // s211 v2: 2-row card - badge label on row 1, rune main (keystone
     // + primary icon + primary tree name) on row 2. Subtree row dropped;
     // freed vertical room rolls into the larger icon sizes.
+    const rowItemIdsAttr = ` data-item-ids="${(v.item_ids || []).slice(0, 6).join(",")}"`;
     return `
-      <div class="csv-build-row${idx === selectedIdx ? " selected" : ""}" data-variant="${v.key}"${summAttr}${expAttrs}>
+      <div class="csv-build-row${idx === selectedIdx ? " selected" : ""}" data-variant="${v.key}"${summAttr}${expAttrs}${rowItemIdsAttr}>
         ${cb}
         <div class="csv-build-meta">
           <div class="${badgeClass}">${v.label}</div>
@@ -3588,6 +3366,11 @@ function _csvWireBuildVariants(scope) {
       if (outer) outer.dataset.activePath = pathKey;
       const composed = `${variantKey}:${pathKey}`;
       _csvSaveChoice(champion, composed);
+      // B6+B7: re-mark the merged section's ordered-sequence strip
+      // against the newly-selected path's item set.
+      _csvMarkSeqAgainstVariant(
+        prow.closest(".csv-builds") || scope,
+        (prow.dataset.itemIds || "").split(",").filter(Boolean));
       // 3b: re-point the recommended rune (amber) to this card's
       // keystone - the active card's keystone falls back to the
       // variant-level keystone (data-rune-key on the matching opt).
@@ -3688,6 +3471,10 @@ function _csvWireBuildVariants(scope) {
           && variantKey !== "empty"
           && variantKey !== "ds-pending") {
         _csvSaveChoice(champion, variantKey);
+        // B6+B7: re-mark the ordered-sequence strip for this variant.
+        _csvMarkSeqAgainstVariant(
+          row.closest(".csv-builds") || scope,
+          (row.dataset.itemIds || "").split(",").filter(Boolean));
         // s209: fire the actual LCU push - runes + items + summoners.
         // Curated rows pass override_summoners only (when adaptive
         // swapped). item 213 (2026-05-28): experimental override_runes
@@ -3837,11 +3624,8 @@ function _csvRenderEnemiesArena(cs, timerEndMs) {
   });
 }
 
-// s214: per-cell countdown ticker retired alongside the per-cell timers
-// in SR/ARAM/Arena (operator: too much visual noise; the global header
-// timer + active-round border indicator already convey "round ticking
-// down"). Kept as a no-op so existing callers don't error.
-function _csvSetupTimerTick() { /* no-op since s214 */ }
+// QA 2026-07-03 slice A (A6): the per-cell countdown ticker stub (a
+// verified no-op since s214) was stripped with its only call site.
 
 // Align summoner-name column with the "A" of the centered "Allies"
 // header.
@@ -3966,22 +3750,9 @@ function _pbPlaceholdersFor(role) {
   return _PB_PLACEHOLDERS[role] || _PB_PLACEHOLDERS.BOT;
 }
 
-function _csvMoodGet() {
-  try { return sessionStorage.getItem("csv-mood") || "comfort"; }
-  catch (_) { return "comfort"; }
-}
-function _csvMoodSet(v) {
-  try { sessionStorage.setItem("csv-mood", v); } catch (_) {}
-}
-// s211: mood-keyed row title for the Pick & Ban PERFORMANCE row.
-// Mirrors the mood-button labels so the operator can correlate the
-// active button with the row above it.
-const _CSV_MOOD_LABELS = {
-  comfort: "Performance",
-  limit:   "Limit Test",
-  new:     "Something New",
-  synergy: "Comp Synergy",
-};
+// QA 2026-07-03 slice A (A3): mood is removed ENTIRELY - no mood
+// buttons, no sessionStorage mood state, no client-side filtering of
+// the pickban recs. Recs = raw top-3 by score + LAST.
 
 // s170 item #4: live pick&ban recommendations from
 // /api/champ-select/pickban-recs. Cached per (role, queue_id) and
@@ -3992,31 +3763,23 @@ const _CSV_PB_CACHE = {};   // {`${role}|${queue}`: {data, fetchedAt}}
 const _CSV_PB_INFLIGHT = {};
 const _CSV_PB_TTL_MS = 60_000;
 
-function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
+function _csvFetchPickBanRecs(role, queueId, opts, onLoad) {
   // Role here is the dashboard form ("BOT"/"JNG"/etc.) - the endpoint
-  // accepts both forms via its _ROLE_ALIASES map. s209: mood is
-  // included in the cache key + query string so each toggle change
-  // surfaces a distinct rec without invalidating others. s214: opts
-  // adds {exclude:[ids], allies:[ids], top:N} for cascade-filtered
-  // multi-row queries on LIMIT/NEW/SYNERGY moods. The full opts payload
-  // folds into the cache key so a re-fetch with different excludes
-  // doesn't return stale top-N from the prior call.
-  //
-  // Item 168 (2026-05-24): opts.enemies + opts.my_summoners flow to
-  // the backend for the cleanse-advisory composer. Both are included
-  // in the cache key so the advisory shifts as enemies lock + the
-  // operator switches summoner pairs.
+  // accepts both forms via its _ROLE_ALIASES map. QA 2026-07-03 slice A
+  // (A3): the mood parameter is gone - the panel always requests the raw
+  // top-N by score. opts carries {exclude:[ids], top:N} plus
+  // opts.enemies + opts.my_summoners for the cleanse-advisory composer
+  // (item 168); all fold into the cache key so a re-fetch with different
+  // excludes doesn't return stale top-N from the prior call.
   if (!role || role === "-") return null;
-  const m = mood || "comfort";
   const o = opts || {};
   const exclude  = Array.isArray(o.exclude)      ? o.exclude.slice().sort((a, b) => a - b)      : [];
-  const allies   = Array.isArray(o.allies)       ? o.allies.slice().sort((a, b) => a - b)       : [];
   const enemies  = Array.isArray(o.enemies)      ? o.enemies.slice().sort((a, b) => a - b)      : [];
   const mySumms  = Array.isArray(o.my_summoners) ? o.my_summoners.slice().sort((a, b) => a - b) : [];
   const top      = Math.max(1, Math.min(5, o.top | 0 || 1));
   const cacheKey = [
-    role, queueId || 0, m, top,
-    `e:${exclude.join(",")}`, `a:${allies.join(",")}`,
+    role, queueId || 0, top,
+    `e:${exclude.join(",")}`,
     `n:${enemies.join(",")}`, `s:${mySumms.join(",")}`,
   ].join("|");
   const now = Date.now();
@@ -4028,10 +3791,8 @@ function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
   _CSV_PB_INFLIGHT[cacheKey] = true;
   let url = `/api/champ-select/pickban-recs?role=${encodeURIComponent(role)}`
           + (queueId ? `&queue=${queueId}` : "")
-          + `&mood=${encodeURIComponent(m)}`
           + `&top=${top}`;
   if (exclude.length) url += `&exclude=${encodeURIComponent(exclude.join(","))}`;
-  if (allies.length)  url += `&allies=${encodeURIComponent(allies.join(","))}`;
   if (enemies.length) url += `&enemies=${encodeURIComponent(enemies.join(","))}`;
   if (mySumms.length) url += `&my_summoners=${encodeURIComponent(mySumms.join(","))}`;
   fetch(url)
@@ -4047,51 +3808,10 @@ function _csvFetchPickBanRecs(role, queueId, mood, opts, onLoad) {
   return cached ? cached.data : null;
 }
 
-// s239 (AUTONOMOUS_AUDIT opportunity #2): the per-user CONTEXTUAL read.
-// /api/champ-select/personal-record reports the operator's actual
-// lifetime record against the champions ALREADY on the board in this
-// draft - distinct from the mood recs above (which RECOMMEND picks).
-// This is the headline differentiator: "your WR with/against", a
-// per-user signal no cohort-averaged SaaS can produce. Same 60s
-// in-memory dedupe pattern as _csvFetchPickBanRecs (operator history
-// doesn't change mid-champ-select). No queue param by design - the
-// lifetime read spans all SR queues (A7), so a normal-draft lobby
-// still counts the operator's ranked Vayne games.
-const _CSV_PR_CACHE = {};
-const _CSV_PR_INFLIGHT = {};
-const _CSV_PR_TTL_MS = 60_000;
-
-function _csvFetchPersonalRecord(role, champId, allyIds, enemyIds, onLoad) {
-  const a = (allyIds || []).slice().sort((x, y) => x - y);
-  const e = (enemyIds || []).slice().sort((x, y) => x - y);
-  const c = champId | 0;
-  // Nothing on the board yet - no champ hovered + no locks.
-  if (!c && !a.length && !e.length) return null;
-  const cacheKey = [
-    role || "-", c, `a:${a.join(",")}`, `e:${e.join(",")}`,
-  ].join("|");
-  const now = Date.now();
-  const cached = _CSV_PR_CACHE[cacheKey];
-  if (cached && (now - cached.fetchedAt) < _CSV_PR_TTL_MS) return cached.data;
-  if (_CSV_PR_INFLIGHT[cacheKey]) return cached ? cached.data : null;
-  _CSV_PR_INFLIGHT[cacheKey] = true;
-  let url = "/api/champ-select/personal-record?v=1";
-  if (role && role !== "-") url += `&role=${encodeURIComponent(role)}`;
-  if (c) url += `&champ=${c}`;
-  if (a.length) url += `&allies=${encodeURIComponent(a.join(","))}`;
-  if (e.length) url += `&enemies=${encodeURIComponent(e.join(","))}`;
-  fetch(url)
-    .then((r) => r.ok ? r.json() : null)
-    .then((j) => {
-      _CSV_PR_INFLIGHT[cacheKey] = false;
-      if (j && j.ok) {
-        _CSV_PR_CACHE[cacheKey] = { data: j, fetchedAt: Date.now() };
-        if (typeof onLoad === "function") onLoad();
-      }
-    })
-    .catch(() => { _CSV_PR_INFLIGHT[cacheKey] = false; });
-  return cached ? cached.data : null;
-}
+// QA 2026-07-03 slice A (A4): the deprecated YOUR RECORD code path
+// (the aggregate lifetime-record fetch + cache + block renderer + chip
+// helpers) was removed. The enemy WR slot is a different feature and
+// stays - fed by /api/personal-vs (see _csvWrSlotFetch above).
 
 // WR -> tint class. Uniform semantics for both rows: high operator WR is
 // green, low is red. Reads correctly both ways - high "with ally" =
@@ -4100,222 +3820,8 @@ function _csvPrTint(wr) {
   return wr >= 55 ? "is-good" : (wr >= 45 ? "is-mid" : "is-bad");
 }
 
-function _csvPrChip(name, wr, games) {
-  // Legacy text-chip - kept for backwards-compat. The Assessment-panel
-  // VS row now uses _csvPrChipIcon below.
-  const nm = String(name || "?");
-  if (!games) {
-    return `<span class="csv-pr-chip is-new">${nm}<em>first time</em></span>`;
-  }
-  return `<span class="csv-pr-chip ${_csvPrTint(wr)}">`
-       + `${nm}<b>${wr}%</b></span>`;
-}
-
-// Operator (2026-05-23 round 3): chip variant that renders the champion
-// portrait icon (instead of the text name) with the WR % below. Used in
-// the Assessment panel's VS row so the operator scans by face, not by
-// reading champ names. champId is the LCU integer (DDragon-keyed name
-// via CHAMPS.byId).
-function _csvPrChipIcon(champId, wr, games) {
-  const cid = (champId | 0);
-  const url = _csChampImg(cid);
-  const name = _csChampName(cid) || (cid ? "cid:" + cid : "?");
-  if (!games) {
-    return `<span class="csv-pr-chip-icon is-new" title="${name} - first time">`
-         + (url ? `<img class="csv-pr-chip-icon-img" src="${url}" alt="${name}" onerror="this.style.display='none'">` : "")
-         + `<span class="csv-pr-chip-icon-pct">--</span></span>`;
-  }
-  return `<span class="csv-pr-chip-icon ${_csvPrTint(wr)}" title="${name} ${wr}% (${games}g)">`
-       + (url ? `<img class="csv-pr-chip-icon-img" src="${url}" alt="${name}" onerror="this.style.display='none'">` : "")
-       + `<span class="csv-pr-chip-icon-pct">${wr}%</span></span>`;
-}
-
-// Build the foregrounded "YOUR RECORD" headline. Always renders the
-// titled block (foregrounding = a named, present headline, not
-// conditional filler) - falls to a muted hint when the board is empty.
-function _csvRenderPersonalRecordBlock(pr, selfCid) {
-  let inner = "";
-  if (pr && pr.champ) {
-    const c = pr.champ;
-    const sub = `${c.wins}-${c.games - c.wins} (${c.games}g)`;
-    let roleBit = "";
-    if (c.role && c.role_games) {
-      roleBit = ` <span class="csv-pr-champ-role">`
-              + `${_csvShortRole(c.role)} ${c.role_wr_pct}%`
-              + ` (${c.role_games}g)</span>`;
-    }
-    inner += `<div class="csv-pr-champ">`
-           + `<span class="csv-pr-champ-name">${String(c.champName || "?").toUpperCase()}</span>`
-           + `<span class="csv-pr-champ-wr ${_csvPrTint(c.wr_pct)}">${c.wr_pct}%</span>`
-           + `<span class="csv-pr-champ-sub">${sub}</span>${roleBit}</div>`;
-  } else if (selfCid) {
-    const nm = String(_csChampName(selfCid) || "?").toUpperCase();
-    inner += `<div class="csv-pr-champ is-new">`
-           + `<span class="csv-pr-champ-name">${nm}</span>`
-           + `<em>no games on record</em></div>`;
-  }
-  // Operator (2026-05-23 round 3): WITH row dropped entirely; VS row
-  // kept but each chip is now an icon (champion portrait) with WR %
-  // below - not a text name. Operator scans by face, not by name.
-  const enemies = (pr && Array.isArray(pr.vs_enemies)) ? pr.vs_enemies : [];
-  if (enemies.length) {
-    inner += `<div class="csv-pr-row csv-pr-row-vs"><span class="csv-pr-tag">VS</span>`
-           + enemies.map((x) => _csvPrChipIcon(x.champId, x.wr_pct, x.games)).join("")
-           + `</div>`;
-  }
-  if (!inner) {
-    inner = `<div class="csv-pr-hint">your lifetime record vs this draft `
-          + `appears here as champs lock in</div>`;
-  }
-  return `<div class="csv-pr">`
-       + `<div class="csv-pr-title">YOUR RECORD</div>${inner}</div>`;
-}
-
-// Operator 2026-05-31 (part 4): inject the operator's lifetime win-rate
-// vs each enemy into the Enemies panel (left of the icon), replacing the
-// removed YOUR RECORD VS-chip row. Idempotent - clears prior fills first.
-// prData.vs_enemies = [{champId, wr_pct, games}].
-function _csvInjectEnemyWinRates(prData) {
-  const list = document.getElementById("csv-enemies-list");
-  if (!list) return;
-  list.querySelectorAll(".csv-enemy-wr-slot").forEach((el) => {
-    el.textContent = "";
-    el.className = "csv-enemy-wr-slot";
-    el.removeAttribute("title");
-  });
-  const vs = (prData && Array.isArray(prData.vs_enemies)) ? prData.vs_enemies : [];
-  if (!vs.length) return;
-  const byId = Object.create(null);
-  vs.forEach((x) => { if (x && x.champId) byId[x.champId | 0] = x; });
-  list.querySelectorAll("li.csv-team-cell[data-cid]").forEach((li) => {
-    const cid = parseInt(li.dataset.cid, 10) | 0;
-    const rec = cid ? byId[cid] : null;
-    const slot = li.querySelector(".csv-enemy-wr-slot");
-    if (!rec || !slot) return;
-    const tint = (rec.wr_pct != null) ? _csvPrTint(rec.wr_pct) : "is-new";
-    slot.textContent = (rec.wr_pct != null) ? rec.wr_pct + "%" : "--";
-    slot.className = "csv-enemy-wr-slot " + tint;
-    slot.title = `your record vs ${_csChampName(cid) || cid}: `
-               + `${rec.wr_pct}% (${rec.games || 0}g)`;
-  });
-}
-
-function _csvMergePickBanData(role, liveRecs, placeholder) {
-  // Layer live performance over placeholder mastery/meta. When the
-  // live performance row is missing (operator has no SR history at
-  // this role), keep the placeholder so the panel doesn't go blank.
-  const out = {
-    performance: placeholder.performance,
-    mastery:     placeholder.mastery,
-    meta:        placeholder.meta,
-  };
-  if (liveRecs && liveRecs.performance) {
-    const p = liveRecs.performance;
-    out.performance = {
-      champId:   p.champId,
-      champName: p.champName,
-      reason:    p.reason,
-      bans:      (liveRecs.performance_bans || placeholder.performance.bans).map((b) => ({
-        champId: b.champId,
-        name:    b.name,
-        pct:     b.pct,
-      })),
-    };
-    // Backfill bans from placeholder if live returned fewer than 3.
-    while (out.performance.bans.length < 3 && placeholder.performance.bans[out.performance.bans.length]) {
-      out.performance.bans.push(placeholder.performance.bans[out.performance.bans.length]);
-    }
-  }
-  return out;
-}
-
-// item 213 (2026-05-28): the duo-synergy fetcher + its render helper +
-// the ally-bot-sup-state extractor were removed when the bottom panel
-// was reoriented to a live ally-picks-by-role mirror (the ally-roles
-// renderer below). The /api/duo-synergy route + its mock fixture stay
-// for any future re-use; nothing in champ-select calls them now.
-// The champ-name-from-id helper is retained - the ally-roles panel
-// uses it.
-
-// Champion-name lookup from numeric id via CHAMPS.byId. Used to map
-// the operator's allies (LCU returns championId numbers) into the
-// string names the backend route expects.
-function _csvChampNameFromId(cid) {
-  if (!cid) return "";
-  const slug = CHAMPS.byId[String(cid | 0)];
-  if (!slug) return "";
-  return String(slug);
-}
-
-
-
-// item 213 (2026-05-28): ROLE_ORDER for the ally-picks-by-role panel.
-// Canonical SR lane order top -> bottom of the visual list.
-const _CSV_ROLE_ORDER = ["TOP", "JUNGLE", "MIDDLE", "BOTTOM", "UTILITY"];
-const _CSV_ROLE_SHORT = {
-  TOP: "TOP", JUNGLE: "JG", MIDDLE: "MID", BOTTOM: "ADC", UTILITY: "SUP",
-};
-
-// item 213 (2026-05-28): bottom/support panel redesigned to mirror the
-// LIVE ally roster - one row per assigned lane showing which ally is on
-// that role + the champion they LOCKED (solid) or are HOVERING (dimmed),
-// or an empty "picking..." state. Replaces the prior 101.qq.com duo-
-// synergy suggestion grid (disconnected from the actual draft). Reads
-// cs.my_team cells: assignedPosition + (completed ? championId : pick
-// intent) + cellId vs cs.local_cell to flag the operator's own row.
-function _csvRenderAllyRolesHtml(cs, champImg) {
-  const team = (cs && Array.isArray(cs.my_team)) ? cs.my_team : [];
-  if (!team.length) {
-    return '<div class="csv-allyroles-empty">waiting for ally picks...</div>';
-  }
-  // Index cells by assigned position so we render in canonical lane
-  // order regardless of the raw cell ordering.
-  const byPos = Object.create(null);
-  const unassigned = [];
-  for (const p of team) {
-    if (!p) continue;
-    const pos = String(p.assignedPosition || "").toUpperCase();
-    if (pos && _CSV_ROLE_SHORT[pos]) byPos[pos] = p;
-    else unassigned.push(p);
-  }
-  const localCell = cs.local_cell;
-  const rowFor = (pos, cell) => {
-    const isMe = cell && cell.cellId != null && cell.cellId === localCell;
-    const lockedId = (cell && cell.completed && cell.championId)
-      ? (cell.championId | 0) : 0;
-    const hoverId = (cell && (cell.championPickIntent | 0)) || 0;
-    const showId = lockedId || hoverId;
-    let stateCls = "is-empty";
-    let stateTxt = "picking...";
-    if (lockedId) { stateCls = "is-locked"; stateTxt = "LOCKED"; }
-    else if (hoverId) { stateCls = "is-hover"; stateTxt = "hovering"; }
-    const champName = showId ? (_csvChampNameFromId(showId) || "?") : "-";
-    const meCls = isMe ? " is-me" : "";
-    return `
-      <div class="csv-allyroles-row ${stateCls}${meCls}">
-        <span class="csv-allyroles-role">${_CSV_ROLE_SHORT[pos] || pos}</span>
-        <div class="csv-allyroles-icon">${showId ? champImg(showId) : '<span class="csv-allyroles-icon-empty">?</span>'}</div>
-        <span class="csv-allyroles-name">${champName}</span>
-        <span class="csv-allyroles-state">${isMe ? "YOU" : stateTxt}</span>
-      </div>`;
-  };
-  let rows = "";
-  let rendered = 0;
-  for (const pos of _CSV_ROLE_ORDER) {
-    if (byPos[pos]) { rows += rowFor(pos, byPos[pos]); rendered += 1; }
-  }
-  // ARAM / blind / unassigned-position queues: no assignedPosition, so
-  // fall back to one row per cell (no lane label).
-  if (rendered === 0) {
-    rows = team.map((cell, i) =>
-      rowFor("#" + (i + 1), cell)).join("");
-  } else {
-    // Append any extra unassigned cells below the lane rows.
-    rows += unassigned.map((cell, i) =>
-      rowFor("#" + (i + 1), cell)).join("");
-  }
-  return `<div class="csv-allyroles-grid">${rows}</div>`;
-}
+// QA 2026-07-03 slice A (B15): the ally-picks-by-role mirror was
+// removed (it duplicated the ALLIES card).
 
 // OQ9 (QA26 remainder): short why-banned label for a P&B ban cell.
 // Derived ONLY from fields already in the pickban-recs payload:
@@ -4343,8 +3849,6 @@ function _csvRenderPickBan(cs, myCid) {
   const role = _csvResolveRole(cs);
   const ver = CHAMPS.version || "latest";
   const ph = _pbPlaceholdersFor(role);
-  const mood = _csvMoodGet();
-  const perfLabel = _CSV_MOOD_LABELS[mood] || "Performance";
 
   // s214: build the cascade exclude-set - every champion already
   // committed in the draft is off-limits as a recommendation. Source
@@ -4354,9 +3858,6 @@ function _csvRenderPickBan(cs, myCid) {
   //     cs.their_team[].championId (BOTH intent + locked)
   //   - the operator's own current pick intent (don't recommend
   //     yourself a champ you're already hovering)
-  // Plus the row-cascade: as we render rows 1..N for LIMIT/NEW/SYNERGY,
-  // each row's pick id is added to the exclude-set for the next row's
-  // backend call so we never duplicate within the panel.
   const collectIds = (arr) => (arr || []).map((p) => {
     if (typeof p === "number") return p | 0;
     return (p && (p.championId | 0)) || 0;
@@ -4383,61 +3884,35 @@ function _csvRenderPickBan(cs, myCid) {
     ? [myCell.spell1Id, myCell.spell2Id].filter((x) => x > 0)
     : [];
 
-  // Ally ids (LOCKED only - hovers don't count toward team-comp synergy
-  // because they can swap) for the SYNERGY mood backend query.
-  const allyIds = (cs.my_team || [])
-    .filter((p) => p && p.completed && p.championId)
-    .map((p) => p.championId | 0)
-    .filter((x) => x > 0);
-
-  // s239: per-user CONTEXTUAL read. enemyIds mirrors allyIds (locked
-  // only). selfCid = operator's own champ, falling back to the operator
-  // cell's championId / hover intent so the headline populates the
-  // moment they hover - when it's most useful during the draft.
+  // Enemy ids (LOCKED only) feed the cleanse-advisory composer.
+  // QA 2026-07-03 slice A (A4): the lifetime-record fetch + YOUR RECORD
+  // block are gone; the enemy WR slots self-fetch via /api/personal-vs
+  // in _csvRenderTeam.
   const enemyIds = (cs.their_team || [])
     .filter((p) => p && p.completed && p.championId)
     .map((p) => p.championId | 0)
     .filter((x) => x > 0);
-  let selfCid = myCid | 0;
-  if (!selfCid) {
-    const meRow = (cs.my_team || []).find(
-      (p) => p && p.cellId === cs.local_cell);
-    if (meRow) selfCid = (meRow.championId | 0) || (meRow.championPickIntent | 0);
-  }
-  const prData = _csvFetchPersonalRecord(
-    role, selfCid, allyIds, enemyIds,
-    () => _csvRenderPickBan(cs, myCid),
-  );
-  // Operator 2026-05-31 (part 4): YOUR RECORD block removed. The per-
-  // enemy lifetime win-rate now renders in the Enemies panel (left of
-  // each icon) via _csvInjectEnemyWinRates; the prData fetch above still
-  // drives it. Hide the now-removed Assessment container if still present.
-  const yrTarget = document.getElementById("csv-sugg-your-record");
-  if (yrTarget) { yrTarget.innerHTML = ""; yrTarget.hidden = true; }
-  _csvInjectEnemyWinRates(prData);
 
   // -- Item 168 (2026-05-24): 3-stacked-sub-panel layout ------------
-  // Top    : 4 picks (3 role-matching from comfort + 1 last_in_queue).
+  // Top    : 4 picks (raw top-3 by score + 1 last_in_queue).
   // Middle : 4 bans  (3 from performance_bans + 1 struggle_ban).
   // Bottom : dynamic explanation (per-pick reasons + cleanse advisory).
-  // Mood toggle stays in the bottom strip alongside the advisory; it
-  // re-orders the 3 role-matching picks. The 4th pick (last_in_queue)
-  // is mood-invariant by design.
+  // QA 2026-07-03 slice A (A3): mood is gone - the panel always shows
+  // the raw top-3 by score; the 4th pick (last_in_queue) is invariant.
   const opts168 = {
     exclude: Array.from(baseExclude),
     top: 3,
     enemies: enemyIds,
     my_summoners: mySumms,
   };
-  if (mood === "synergy") opts168.allies = allyIds;
   const liveRecs = _csvFetchPickBanRecs(
-    role, cs.queue_id, mood, opts168,
+    role, cs.queue_id, opts168,
     () => _csvRenderPickBan(cs, myCid),
   );
   const liveRoleMatch = (liveRecs && Array.isArray(liveRecs.performance_picks))
     ? liveRecs.performance_picks : [];
   const fallbackPicks = [ph.performance, ph.mastery, ph.meta];
-  // 3 role-matching picks: backend top-3 from current mood, padded with
+  // 3 role-matching picks: backend raw top-3 by score, padded with
   // placeholders so the row keeps its 4-cell geometry on a thin DB.
   const roleMatchPicks = [0, 1, 2].map((i) => {
     const p = liveRoleMatch[i];
@@ -4453,11 +3928,11 @@ function _csvRenderPickBan(cs, myCid) {
     return {
       champId:   fb.champId   || 0,
       champName: fb.champName || "-",
-      reason:    `[no ${mood} data]`,
+      reason:    "[no data]",
       sourceKey: i === 0 ? "performance" : (i === 1 ? "mastery" : "meta"),
     };
   });
-  // 4th pick: last-in-queue (mood-invariant). When backend can't resolve
+  // 4th pick: last-in-queue (score-invariant). When backend can't resolve
   // it (no history in this queue), surface an em-dash placeholder cell.
   const lastInQueue = liveRecs && liveRecs.last_in_queue;
   const fourthPick = lastInQueue
@@ -4533,15 +4008,13 @@ function _csvRenderPickBan(cs, myCid) {
   const explanationLines = [];
   const advisory = liveRecs && liveRecs.cleanse_advisory;
   if (advisory) {
-    explanationLines.push({ cls: "csv-pb-expl-cc", text: advisory });
+    explanationLines.push({ cls: "csv-pb168-expl-cc", text: advisory });
   }
   allPicks.forEach((p) => {
     if (!p.champId) return;
-    const tag = p.sourceKey === "last" ? "last in queue"
-              : (p.sourceKey === "performance" ? perfLabel.toLowerCase()
-                 : p.sourceKey);
+    const tag = p.sourceKey === "last" ? "last in queue" : p.sourceKey;
     explanationLines.push({
-      cls: `csv-pb-expl-pick is-${p.sourceKey}`,
+      cls: `csv-pb168-expl-pick is-${p.sourceKey}`,
       text: `${p.champName}: ${p.reason} (${tag})`,
     });
   });
@@ -4621,14 +4094,14 @@ function _csvRenderPickBan(cs, myCid) {
         ${reasonHtml}
       </div>`;
   }).join("");
-  // Sub-panel 3: item 213 (2026-05-28) - ally-picks-by-role panel.
-  // Replaces the prior 101.qq.com duo-synergy SUGGESTION grid (which
-  // was disconnected from the actual draft) with a LIVE mirror of the
-  // ally roster: one row per assigned lane showing which ally is on
-  // that role + the champion they locked / are hovering. Reads
-  // cs.my_team directly - no backend fetch needed, so it updates every
-  // champ-select tick as allies lock in.
-  const allyRolesHtml = _csvRenderAllyRolesHtml(cs, champImg);
+  // Sub-panel 3 (QA 2026-07-03 slice A): B15 removed the ally-picks-by-
+  // role mirror (it duplicated the ALLIES card); the freed section now
+  // renders the B16 KEEP content - the cleanse advisory + per-pick
+  // reason lines built above.
+  const explHtml = explanationLines.length
+    ? explanationLines.map((l) =>
+        `<div class="${l.cls}">${l.text}</div>`).join("")
+    : '<div class="csv-pb168-expl-empty">reasons appear as picks resolve</div>';
   // Operator (2026-05-25 item 200 Slice D): PICK sub-panel renders into
   // the top-left card (#csv-picks-target inside .csv-card-allies). BAN +
   // DUO SYNERGY stay in #csv-pickban-body (row-2 pickban) with all the
@@ -4645,7 +4118,7 @@ function _csvRenderPickBan(cs, myCid) {
   // (_csvBanPhaseComplete) it can no longer be acted on, so collapse it
   // out of the pick-window eyeline - the CSS .is-collapsed rule hides the
   // 4-cell ban row and leaves a one-line "BAN - locked" header, freeing
-  // the vertical space for PICK + ALLY PICKS BY ROLE during picks.
+  // the vertical space for PICK + the WHY THESE reasons during picks.
   const bansCollapsed = _csvBanPhaseComplete(cs);
   const banSectCls = "csv-pb168-section csv-pb168-bans"
                    + (bansCollapsed ? " is-collapsed" : "");
@@ -4656,28 +4129,16 @@ function _csvRenderPickBan(cs, myCid) {
       <div class="csv-pb168-row">${banCells}</div>
     </div>
     <div class="csv-pb168-section csv-pb168-expl">
-      <div class="csv-pb168-head">ALLY PICKS BY ROLE</div>
-      <div class="csv-pb168-expl-body">${allyRolesHtml}</div>
+      <div class="csv-pb168-head">WHY THESE</div>
+      <div class="csv-pb168-expl-body">${explHtml}</div>
     </div>`;
 
   body.innerHTML = html;
   const picksTarget = document.getElementById("csv-picks-target");
   if (picksTarget) picksTarget.innerHTML = picksHtml;
 
-  // Wire mood toggle. s209: re-render the panel after persisting so the
-  // performance row reflects the new mood (comfort / limit / new /
-  // synergy). The fetch helper caches per (role, queue, mood) so a
-  // toggle back to a previously-loaded mood is instant.
-  body.querySelectorAll(".csv-pb-mood-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const m = btn.dataset.mood;
-      if (!m) return;
-      _csvMoodSet(m);
-      body.querySelectorAll(".csv-pb-mood-btn").forEach((b) =>
-        b.classList.toggle("is-active", b.dataset.mood === m));
-      _csvRenderPickBan(cs, myCid);
-    });
-  });
+  // QA 2026-07-03 slice A (A3): the mood toggle wiring is gone with
+  // the mood row.
   // Item 168: ban + pick click wiring on the new .csv-pb168-* cells.
   // Every click fires `set_ban_intent` / `set_pick_intent` to LCU; the
   // most-recent click gets `.is-selected` while siblings stay

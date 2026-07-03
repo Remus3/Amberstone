@@ -138,18 +138,19 @@ class PickBanCellReasonTests(unittest.TestCase):
 
 
 class SuggestionCardReasonTests(unittest.TestCase):
-    """champ_select.js renders a meta-rank sub-label on the global
-    top-bans suggestion cards."""
+    """QA 2026-07-03 slice A (A2, docs/qa/CHAMP_SELECT_QA_2026-07-03.md):
+    the global top-bans suggestion grid was a hidden ghost (display:none
+    since 2026-05-23) and was REMOVED with its meta-rank sub-label. The
+    P&B ban-cell reason labels (the visible OQ9 surface) stay - guarded
+    by PbBanReasonTests above."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.js = _read(CHAMP_SELECT_JS)
 
-    def test_reason_div_in_suggestion_card_template(self):
-        self.assertIn("csv-sugg-ban-reason", self.js)
-
-    def test_meta_ban_rank_label_text(self):
-        self.assertIn("meta ban #", self.js)
+    def test_ghost_suggestion_card_template_removed(self):
+        self.assertNotIn("csv-sugg-ban-reason", self.js)
+        self.assertNotIn("meta ban #", self.js)
 
 
 class ReasonCssTests(unittest.TestCase):
@@ -168,10 +169,9 @@ class ReasonCssTests(unittest.TestCase):
         self.assertIn("var(--fs-xs)", rule)
         self.assertIn("var(--text-dim)", rule)
 
-    def test_sugg_ban_reason_rule(self):
-        rule = self._rule(".csv-sugg-ban-reason")
-        self.assertIn("var(--fs-xs)", rule)
-        self.assertIn("var(--text-dim)", rule)
+    def test_sugg_ban_reason_rule_removed(self):
+        # QA 2026-07-03 slice A (A2): removed with the ghost grid.
+        self.assertNotIn(".csv-sugg-ban-reason", self.css)
 
 
 class AsciiHygieneTests(unittest.TestCase):

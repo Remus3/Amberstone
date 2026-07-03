@@ -71,9 +71,12 @@ class DsEnemyCompBuildTests(unittest.TestCase):
         self.assertIn("body.enemies", js)
 
     def test_champ_select_passes_live_enemies(self) -> None:
+        # QA 2026-07-03 slice A (B6+B7): the standalone card became the
+        # merged section's ordered-sequence strip; the live enemy comp
+        # still flows into the same /api/build-order data path.
         js = _read(_CS_JS)
         self.assertIn("resolveChampNames(_boEnemyIds)", js)
-        self.assertIn("enemies: _boEnemyNames", js)
+        self.assertIn("_boEnemyNames, variants)", js)
 
     def test_save_push_button_removed(self) -> None:
         # Operator 2026-05-31 (#4): the save+push-to-client button was
@@ -120,22 +123,13 @@ class PickBanReformatTests(unittest.TestCase):
 
 
 class AllyRolesPanelTests(unittest.TestCase):
-    """(E) bottom/support panel mirrors live ally picks by role."""
+    """(E) QA 2026-07-03 slice A (B15): the ally-picks-by-role mirror was
+    removed from champ select (it duplicated the ALLIES card)."""
 
-    def test_ally_roles_renderer_present(self) -> None:
+    def test_ally_roles_renderer_removed(self) -> None:
         js = _read(_CS_JS)
-        self.assertIn("_csvRenderAllyRolesHtml", js)
-        self.assertIn("ALLY PICKS BY ROLE", js)
-
-    def test_ally_roles_reads_my_team_and_assigned_position(self) -> None:
-        js = _read(_CS_JS)
-        head = js.find("function _csvRenderAllyRolesHtml")
-        self.assertGreater(head, 0)
-        body = js[head:head + 2500]
-        self.assertIn("cs.my_team", body)
-        self.assertIn("assignedPosition", body)
-        self.assertIn("championPickIntent", body)
-        self.assertIn("cs.local_cell", body)
+        self.assertNotIn("_csvRenderAllyRolesHtml", js)
+        self.assertNotIn("ALLY PICKS BY ROLE", js)
 
 
 class CcCardClarityTests(unittest.TestCase):

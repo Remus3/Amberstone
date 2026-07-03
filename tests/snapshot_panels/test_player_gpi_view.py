@@ -135,6 +135,17 @@ def test_player_gpi_radar_renders(mock_server, pw_browser):
     # lands and repaints the SVG radar.
     page.evaluate(
         """async () => {
+          let mount = document.getElementById('player-gpi-panel');
+          if (!mount) {
+            mount = document.createElement('section');
+            mount.id = 'player-gpi-panel';
+            mount.className = 'player-gpi';
+            mount.hidden = true;
+            const host = document.querySelector(
+              '#view-champ-select .csv-card-suggestions .csv-card-body')
+              || document.body;
+            host.appendChild(mount);
+          }
           const m = await import('/js/panels/player_gpi.js');
           if (m._resetPlayerGpi) m._resetPlayerGpi();
           m.showPlayerGpi('sr', 'player-gpi-panel');
@@ -233,6 +244,17 @@ def test_player_gpi_champion_drilldown(mock_server, pw_browser):
     ctx, page, errors = _open_champ_select(pw_browser, mock_server, _GPI_STUB)
     page.evaluate(
         """async () => {
+          let mount = document.getElementById('player-gpi-panel');
+          if (!mount) {
+            mount = document.createElement('section');
+            mount.id = 'player-gpi-panel';
+            mount.className = 'player-gpi';
+            mount.hidden = true;
+            const host = document.querySelector(
+              '#view-champ-select .csv-card-suggestions .csv-card-body')
+              || document.body;
+            host.appendChild(mount);
+          }
           const m = await import('/js/panels/player_gpi.js');
           if (m._resetPlayerGpi) m._resetPlayerGpi();
           m.showPlayerGpi('sr', 'player-gpi-panel');
@@ -270,6 +292,17 @@ def test_player_gpi_insufficient_empty_state(mock_server, pw_browser):
     )
     page.evaluate(
         """async () => {
+          let mount = document.getElementById('player-gpi-panel');
+          if (!mount) {
+            mount = document.createElement('section');
+            mount.id = 'player-gpi-panel';
+            mount.className = 'player-gpi';
+            mount.hidden = true;
+            const host = document.querySelector(
+              '#view-champ-select .csv-card-suggestions .csv-card-body')
+              || document.body;
+            host.appendChild(mount);
+          }
           const m = await import('/js/panels/player_gpi.js');
           if (m._resetPlayerGpi) m._resetPlayerGpi();
           m.showPlayerGpi('sr', 'player-gpi-panel');
@@ -301,6 +334,17 @@ def test_player_gpi_503_failsoft(mock_server, pw_browser):
     ctx, page, errors = _open_champ_select(pw_browser, mock_server, _GPI_STUB_503)
     page.evaluate(
         """async () => {
+          let mount = document.getElementById('player-gpi-panel');
+          if (!mount) {
+            mount = document.createElement('section');
+            mount.id = 'player-gpi-panel';
+            mount.className = 'player-gpi';
+            mount.hidden = true;
+            const host = document.querySelector(
+              '#view-champ-select .csv-card-suggestions .csv-card-body')
+              || document.body;
+            host.appendChild(mount);
+          }
           const m = await import('/js/panels/player_gpi.js');
           if (m._resetPlayerGpi) m._resetPlayerGpi();
           m.showPlayerGpi('sr', 'player-gpi-panel');

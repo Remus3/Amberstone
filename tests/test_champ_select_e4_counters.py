@@ -102,11 +102,13 @@ class BanPhaseCollapseTests(unittest.TestCase):
         self.assertIn("active_round", body)
         self.assertIn("BAN_PICK", body)
 
-    def test_suggestions_uses_detection_helper(self) -> None:
+    def test_pickban_uses_detection_helper(self) -> None:
+        # QA 2026-07-03 slice A (A2): the ghost bans grid left
+        # _csvRenderSuggestions; the Pick & Ban card is the remaining
+        # consumer of the ban-phase detection helper.
         js = _read(_CS_JS)
-        block = re.search(r"function _csvRenderSuggestions\([\s\S]*?\n}", js)
-        self.assertIsNotNone(block)
-        self.assertIn("_csvBanPhaseComplete", block.group(0))
+        self.assertIn("function _csvRenderPickBan", js)
+        self.assertIn("_csvBanPhaseComplete", js)
 
     def test_collapse_class_applied(self) -> None:
         js = _read(_CS_JS)

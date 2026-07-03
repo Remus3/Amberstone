@@ -69,6 +69,13 @@ async (p) => {
       el.setAttribute(attr, val);
       el.hidden = true;
       view.appendChild(el);
+    } else if (!view.contains(el)) {
+      // QA 2026-07-03 slice A (B8/B9): the production mounts now live
+      // statically inside the champ-select TEAM ANALYSIS cluster (a
+      // hidden section on #active-match). Re-parent the mount under the
+      // visible Active-Match view so the rendered chips are laid out +
+      // screenshot-able, exactly like the pre-QA synthetic mounts.
+      view.appendChild(el);
     }
     return el;
   }

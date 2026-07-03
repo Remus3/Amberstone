@@ -55,11 +55,14 @@ class MountTests(unittest.TestCase):
         self.assertIn("hidden", self.text[idx:idx + 200])
 
     def test_inside_suggestions_card(self) -> None:
+        # QA 2026-07-03 slice A (A2): the ghost pick-order wrapper that
+        # used to close the card stack is gone; the skill-order mount is
+        # the surviving downstream anchor.
         sugg_open = self.text.index("csv-card-suggestions")
         card_at = self.text.index('id="csv-personal-build"')
-        pickorder_at = self.text.index('id="csv-sugg-pickorder"')
+        skill_at = self.text.index('id="csv-sugg-ds-skill-order"')
         self.assertLess(sugg_open, card_at)
-        self.assertLess(card_at, pickorder_at)
+        self.assertLess(card_at, skill_at)
 
 
 class JsConsumptionTests(unittest.TestCase):

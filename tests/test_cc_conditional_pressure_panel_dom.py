@@ -52,40 +52,37 @@ def _read(p: Path) -> str:
 
 
 class ChipMountTests(unittest.TestCase):
-    # Operator 2026-05-31 (#8): the chip mount moved from web/index.html
-    # (Assessment card) into the champ_select.js My Pick card body render.
+    # QA 2026-07-03 slice A (B9, docs/qa/CHAMP_SELECT_QA_2026-07-03.md):
+    # the chip mount moved into the static TEAM ANALYSIS cluster
+    # (#csv-team-analysis) in the Assessment card of web/index.html.
     @classmethod
     def setUpClass(cls) -> None:
         cls.text = _read(CHAMP_SELECT_JS)
         cls.html = _read(INDEX_HTML)
 
-    def test_chip_mount_present(self) -> None:
-        self.assertIn('id="csv-sugg-cc-conditional-pressure"', self.text)
-        self.assertIn("cc-conditional-pressure", self.text)
+    def test_chip_mount_present_in_cluster(self) -> None:
+        cluster_at = self.html.index('id="csv-team-analysis"')
+        body_at = self.html.index('id="csv-ta-body"')
+        chip_at = self.html.index('id="csv-sugg-cc-conditional-pressure"')
+        self.assertLess(cluster_at, body_at)
+        self.assertLess(body_at, chip_at)
 
-    def test_chip_removed_from_index_html(self) -> None:
-        # Moved out of the Assessment card; must not be duplicated there.
-        self.assertNotIn('id="csv-sugg-cc-conditional-pressure"', self.html)
+    def test_chip_removed_from_mypick_body_render(self) -> None:
+        # The JS-rebuilt My Pick body no longer carries the mount markup.
+        self.assertNotIn('id="csv-sugg-cc-conditional-pressure"', self.text)
 
     def test_chip_hidden_by_default(self) -> None:
-        idx = self.text.index('id="csv-sugg-cc-conditional-pressure"')
-        tail = self.text[idx:idx + 400]
+        idx = self.html.index('id="csv-sugg-cc-conditional-pressure"')
+        tail = self.html[idx:idx + 400]
         self.assertIn("hidden", tail)
 
     def test_chip_carries_initial_data_cc_cond_tier(self) -> None:
-        self.assertIn('data-cc-cond-tier="warn"', self.text)
-
-    def test_chip_below_build_order(self) -> None:
-        # New location: in the My Pick body, after the DS-vs-Enemy-Comp
-        # build (boHtml) so the flow is build -> CC cards.
-        bo_at = self.text.index("${boHtml}")
-        chip_at = self.text.index('id="csv-sugg-cc-conditional-pressure"')
-        self.assertLess(bo_at, chip_at)
+        self.assertIn('data-cc-cond-tier="warn"', self.html)
 
     def test_chip_below_blended_ehp_threat(self) -> None:
-        # cc-blended chip THEN cc-conditional chip in the same render.
-        blended_at = self.text.index('id="csv-sugg-cc-blended-ehp-threat"')
-        cond_at = self.text.index('id="csv-sugg-cc-conditional-pressure"')
+        # cc-blended chip THEN cc-conditional chip in the cluster body.
+        blended_at = self.html.index('id="csv-sugg-cc-blended-ehp-threat"')
+        cond_at = self.html.index('id="csv-sugg-cc-conditional-pressure"')
         self.assertLess(blended_at, cond_at)
 
 

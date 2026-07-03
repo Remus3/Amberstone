@@ -296,14 +296,16 @@ class DuoSynergyFrontendRemovalDriftGuard(unittest.TestCase):
         self.assertNotIn("source: 101.qq.com", self._js_text)
         self.assertNotIn("DUO SYNERGY (101.qq.com)", self._js_text)
 
-    def test_ally_roles_panel_present(self):
-        self.assertIn("_csvRenderAllyRolesHtml", self._js_text,
-                      "ally-picks-by-role panel must replace duo synergy")
-        self.assertIn("ALLY PICKS BY ROLE", self._js_text)
+    def test_ally_roles_mirror_also_removed(self):
+        # QA 2026-07-03 slice A (B15): the ally-picks-by-role mirror that
+        # replaced duo synergy was itself removed (it duplicated the
+        # ALLIES card). Nothing may re-wire either surface.
+        self.assertNotIn("_csvRenderAllyRolesHtml", self._js_text)
+        self.assertNotIn("ALLY PICKS BY ROLE", self._js_text)
 
-    def test_champ_name_helper_retained(self):
-        # _csvChampNameFromId is reused by the ally-roles panel.
-        self.assertIn("function _csvChampNameFromId", self._js_text)
+    def test_champ_name_helper_removed_with_mirror(self):
+        # _csvChampNameFromId's sole consumer was the ally-roles mirror.
+        self.assertNotIn("function _csvChampNameFromId", self._js_text)
 
 
 if __name__ == "__main__":

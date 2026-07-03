@@ -1163,31 +1163,10 @@
                    per-enemy lifetime win-rate now renders in the Enemies
                    panel (left of each icon) via _csvInjectEnemyWinRates. -->
 
-              <!-- s214: row label dropped per operator - the parent
-                   "Suggestions" card head + post-phase per-row visual
-                   already communicate the bans context without the
-                   redundant SUGGESTED BANS / CURRENT BANS title. -->
-              <!-- 2026-05-20 (item 109 carry-forward (a)): HURTS-THEM
-                   / HELPS-US toggle block. Surfaces the dual-score
-                   ban-suggest backend (dashboard/routes_ban_suggest.py
-                   ship 6e7b7e5) as an explicit logic chip. Visible at
-                   ALL TIMES during ban phase so the operator can see
-                   which logic the candidate scores reflect. -->
-              <div class="csv-sugg-section bs-toggle-block"
-                   id="csv-sugg-bs-toggle"
-                   hidden>
-                <div class="bs-mode-chip"
-                     id="csv-sugg-bs-mode"
-                     data-bs-mode="hurts_them"></div>
-                <div class="bs-list" id="csv-sugg-bs-list"
-                     data-bs-state="empty"></div>
-              </div>
-              <div class="csv-sugg-section csv-sugg-bans"
-                   id="csv-sugg-bans">
-                <div class="csv-sugg-bans-grid" id="csv-sugg-bans-grid">
-                  <div class="csv-sugg-empty">waiting for champ-select...</div>
-                </div>
-              </div>
+              <!-- QA 2026-07-03 slice A (A2+A7): the hidden ban-suggestion
+                   wrapper, its dual-score HURTS-THEM/HELPS-US toggle, and
+                   the hidden pick-order advisory wrapper were REMOVED -
+                   they had been display:none ghosts since 2026-05-23. -->
               <!-- RC2 E4 (P2): live counter-picks vs the enemy comp. A
                    glanceable "pick into this comp" list for the operator's
                    open slot, driven by the existing counters index via
@@ -1197,43 +1176,39 @@
               <div class="csv-sugg-section csv-sugg-counter-picks"
                    id="csv-sugg-counter-picks"
                    hidden></div>
-              <!-- LIFT 1b (2026-06-22): ally team AD/AP damage-lean meter.
-                   A glanceable physical-vs-magic bar for the operator's own
-                   team, summed from DDragon info.attack / info.magic via
-                   /api/champ-select/team-damage-mix. Hidden until at least
-                   one ally has a championId committed.
-                   Renderer: _csvRenderTeamDamage in champ_select.js. -->
-              <div class="csv-sugg-section csv-sugg-team-damage"
-                   id="csv-sugg-team-damage"
-                   hidden></div>
-              <!-- Operator 2026-05-31 (#8): the CC CHAIN (cc_blended_ehp)
-                   + CONDITIONAL CC (cc_conditional) mounts moved to the
-                   center My Pick card, below the DS-vs-Enemy-Comp build.
-                   The renderers (_csvRenderCcBlendedEhpThreat /
-                   _csvRenderCcConditionalPressure) still target them by id
-                   so they populate in their new location. -->
-              <!-- 2026-05-30 (item 218 / competitor lift #5): matchup
-                   cooldown-watch. Per enemy champion, the single highest-
-                   threat hard-CC ability + its max-rank BASE cooldown
-                   ("watch their hook - 16s"). Q/W/E base-ability layer;
-                   joins the CC threat registries to the per-rank cooldown
-                   data in champion_abilities.json. Backend:
-                   dashboard/routes_cooldown_watch.py. Hidden until at
-                   least one enemy is committed in champ-select. -->
-              <div class="csv-sugg-section cooldown-watch"
-                   id="csv-sugg-cooldown-watch"
-                   hidden></div>
-              <!-- CS1 (2026-06-08): ally CC-pairing card. For the
-                   operator's OWN roster, which conditional CC entries a
-                   TEAMMATE can set up (dual_enemy / debuffed_target /
-                   terrain / traverse) + the plausible enabler teammates.
-                   Read-only join over the existing cc_conditional
-                   registry. Backend: dashboard/routes_cc_pairing.py.
-                   Hidden until at least one ally with an ally-enablable
-                   conditional CC entry is committed. -->
-              <div class="csv-sugg-section cc-pairing"
-                   id="csv-sugg-cc-pairing"
-                   hidden></div>
+              <!-- QA 2026-07-03 slice A (B8/B9/B18): collapsed TEAM
+                   ANALYSIS cluster. Hosts the ally AD/AP damage-lean
+                   meter + the CC-blended-EHP chip + the CC-conditional-
+                   pressure chip. The header carries ONE actionable
+                   verdict line (deterministic rule in champ_select.js
+                   _csvTeamAnalysisVerdict); a click expands the 3 detail
+                   chips; open state persists via sessionStorage.
+                   Renderer: _csvRenderTeamAnalysis in champ_select.js. -->
+              <div class="csv-sugg-section csv-team-analysis"
+                   id="csv-team-analysis"
+                   hidden>
+                <div class="csv-ta-head" id="csv-ta-head" role="button"
+                     tabindex="0"
+                     title="Show / hide the team analysis detail chips">
+                  <span class="csv-ta-title">TEAM ANALYSIS</span>
+                  <span class="csv-ta-verdict" id="csv-ta-verdict">-</span>
+                  <span class="csv-ta-caret" id="csv-ta-caret">[+]</span>
+                </div>
+                <div class="csv-ta-body" id="csv-ta-body" hidden>
+                  <div class="csv-sugg-section csv-sugg-team-damage"
+                       id="csv-sugg-team-damage"
+                       hidden></div>
+                  <div class="csv-sugg-section cc-blended-ehp-threat"
+                       id="csv-sugg-cc-blended-ehp-threat"
+                       data-cc-tier="warn" hidden></div>
+                  <div class="csv-sugg-section cc-conditional-pressure"
+                       id="csv-sugg-cc-conditional-pressure"
+                       data-cc-cond-tier="warn" hidden></div>
+                </div>
+              </div>
+              <!-- QA 2026-07-03 slice A: the cooldown-watch card (B19) +
+                   the ally CC-pairing card (B12) were removed from champ
+                   select; their backends stay. -->
               <!-- 2026-06-25: personal best-build card. For the operator's
                    OWN locked champion (cs.my_champion), the completed items
                    they actually WIN with from their rewind_history.db -
@@ -1245,36 +1220,13 @@
               <div class="csv-sugg-section personal-build"
                    id="csv-personal-build"
                    hidden></div>
-              <!-- 2026-05-30 competitor lift #1: engine-knobs re-rank strip.
-                   Backend routes_ds_knobs. Render for the LOCKED champion
-                   (cs.my_champion). Hidden until a champion locks.
-                   CS3 (2026-06-08): the DPS-scaling sweep, 1v1 fight-model
-                   matchup, action-queue combo timeline, and relative-item-
-                   power bars were MOVED to the Active Match view (they read
-                   the LIVE champion mid-game, not the champ-select pick). The
-                   profile bars, engine knobs, and stat-check STAY here. -->
-              <div class="ds-profile" id="csv-sugg-ds-profile" hidden></div>
+              <!-- QA 2026-07-03 slice A (B20/B22/B23): the DS profile,
+                   DS knobs, DS stat-check mounts moved to the Builds/DS
+                   view (slice C re-mounts them); the player-GPI radar
+                   left champ select (it lives on the history/PGR
+                   surfaces). B21 KEEP: DS skill order stays - the one
+                   DS card remaining on champ select. -->
               <div class="ds-skill-order" id="csv-sugg-ds-skill-order" hidden></div>
-              <!-- item 450 S3: 8-axis player GPI radar. Player-level (cross-
-                   game) profile over /api/player-profile; rides the same
-                   audited Suggestions card as the DS-profile bars. Hidden on
-                   cold load - showPlayerGpi() reveals it once the first fetch
-                   lands. -->
-              <section class="player-gpi" id="player-gpi-panel" hidden></section>
-              <div class="ds-knobs" id="csv-ds-knobs" hidden></div>
-              <div class="ds-statcheck" id="csv-ds-statcheck" hidden></div>
-              <div class="csv-sugg-section csv-sugg-pickorder"
-                   id="csv-sugg-pickorder">
-                <!-- s213 v3: "SUGGESTED PICK ORDER" label removed per
-                     operator - the tip rows below are self-explanatory
-                     and the label was eating vertical room. -->
-                <div class="csv-sugg-pickorder-body" id="csv-sugg-pickorder-body">
-                  <div class="csv-sugg-empty">-</div>
-                </div>
-              </div>
-              <!-- s211: DS engine item output removed - the build chooser's
-                   Experimental row now carries the same DS top-picks payload
-                   in a richer rune+spell+item layout. -->
 
             </div>
           </div>

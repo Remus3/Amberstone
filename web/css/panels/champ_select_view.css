@@ -77,14 +77,9 @@
 .csv-card-enemies     { grid-area: enemies; }
 .csv-card-suggestions { grid-area: suggestions; min-height: 0; overflow: hidden; }
 
-/* Operator (2026-05-23): SUGGESTIONS panel trimmed to focus on the CC
- * threat balance cards. ALLY/ENEMY ban grids + tips 1/2/3 removed.
- * The cc-blended-ehp-threat + cc-conditional-pressure cards stay
- * (they read at-a-glance + carry signal the operator wants during
- * ban/pick). The hidden sections' JS still writes innerHTML behind
- * the scenes but no one sees it. */
-.csv-card-suggestions .csv-sugg-bans { display: none; }
-.csv-card-suggestions .csv-sugg-pickorder { display: none; }
+/* QA 2026-07-03 slice A (A2): the hidden .csv-sugg-bans /
+ * .csv-sugg-pickorder ghost wrappers were removed from the DOM
+ * (their display:none rules with them). */
 /* Operator 2026-05-31 (#8): tighten the divider space below the
  * ASSESSMENT head - drop the border + most of the bottom margin so the
  * first card sits close under the title. */
@@ -761,31 +756,9 @@
 .csv-team-cell-confidence.is-high { color: #2d7d52; border: 1px solid #053e2a; opacity: 0.55; }
 .csv-team-cell-confidence.is-med  { color: var(--warn); border: 1px solid #b88410; }
 .csv-team-cell-confidence.is-low  { color: var(--text-faint); border: 1px solid var(--border); }
-/* Personal-vs threat tag pill - color-coded by operator's lifetime
- * win-rate vs the enemy champion. Bands defined in
- * dashboard/routes_personal_vs._classify_band; thresholds and
- * sample-size override are intentionally narrow so the eye reads the
- * pill as "danger / even / good" rather than "raw percentage".
- *   red    : wr < 40%
- *   amber  : 40 <= wr <= 55%
- *   green  : wr > 55%
- *   unknown: sample_n < 5 (small-sample override)
- */
-.csv-card-enemies .csv-team-cell-threat {
-  /* UI scale v2.1: 11 -> --fs-xs (16). */
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  padding: 1px 6px;
-  background: var(--surface-2);
-  border-radius: 3px;
-  pointer-events: none;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-}
-.csv-team-cell-threat--red     { color: #ff5555; border: 1px solid #b84141; }
-.csv-team-cell-threat--amber   { color: #ffaa00; border: 1px solid #b88410; }
-.csv-team-cell-threat--green   { color: #55cc55; border: 1px solid #277540; }
-.csv-team-cell-threat--unknown { color: var(--text-faint); border: 1px solid var(--border); }
+/* QA 2026-07-03 slice A (A4): the dormant threat-pill rules were
+ * removed; the enemy WR slot (.csv-enemy-wr-slot, above) is the
+ * personal-vs surface. */
 .csv-team-cell-summ-text {
   flex: 0 1 auto;
   white-space: nowrap;
@@ -1335,146 +1308,8 @@
 .csv-pb168-expl-pick.is-meta        { border-left: 2px solid var(--info); padding-left: 6px; }
 .csv-pb168-expl-pick.is-last        { border-left: 2px solid var(--warn); padding-left: 6px; }
 
-/* s239: foregrounded per-user "YOUR RECORD" headline. Sits at the top
- * of #csv-pickban-body, above the mood recs. Lavender left-accent +
- * lifted background so the per-user model reads as THE headline of
- * this (otherwise header-hidden) card, not buried filler. Font floors
- * respected (>=13px content) - density comes from trimming, not
- * shrinking. WR tint semantics are uniform: green = high operator WR
- * (good synergy / good vs that enemy), red = low (ban-worthy vs). */
-.csv-pr {
-  border-left: 3px solid #a78bfa;
-  background: #181b22;
-  border-radius: 4px;
-  padding: 7px 9px;
-  margin-bottom: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  flex: 0 0 auto;
-}
-.csv-pr-title {
-  /* UI scale v2.1 (item 202 audit MUST FIX): 13 -> --fs-xs (16) floor. */
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  color: #a78bfa;
-}
-.csv-pr-champ {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.csv-pr-champ-name {
-  /* UIX1 audit 2026-06-16: tokenize 18 -> --fs-sm (18px, byte-identical). */
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  color: #e8eaed;
-  letter-spacing: 0.02em;
-}
-.csv-pr-champ-wr   { font-size: var(--fs-sm); font-weight: 800; }  /* UIX1: 18 -> --fs-sm */
-/* UI scale v2.1 (audit MUST FIX 2026-05-23): 13 -> --fs-xs (16) floor. */
-.csv-pr-champ-sub  { font-size: var(--fs-xs); color: var(--text-faint); }
-.csv-pr-champ-role { font-size: var(--fs-xs); color: #b8bdc7; }
-.csv-pr-champ.is-new   { color: var(--text-faint); }
-.csv-pr-champ.is-new em { font-style: italic; font-size: var(--fs-xs); }
-.csv-pr-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-}
-.csv-pr-tag {
-  /* UI scale v2.1 (item 202 audit MUST FIX): 13 -> --fs-xs (16) floor. */
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--text-faint);
-  letter-spacing: 0.06em;
-  min-width: 34px;
-}
-.csv-pr-chip {
-  /* Operator (2026-05-23): pills shrunk per request - tighter padding +
-   * less-rounded shape so multiple per-champ chips fit comfortably on
-   * the WITH/VS rows. font-size kept at 14 (sub-floor by v2.1's --fs-xs
-   * 16 BUT explicitly operator-directed; sits above the v1 13-floor). */
-  font-size: 14px;
-  line-height: 1.15;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--surface-2);
-  color: #d4d7dd;
-  white-space: nowrap;
-}
-.csv-pr-chip b  { margin-left: 5px; font-weight: 800; }
-.csv-pr-chip em { margin-left: 5px; font-style: normal; color: var(--text-faint); font-size: var(--fs-xs); }
-.csv-pr-chip.is-good { background: var(--good-soft); color: #d6f5de; }
-.csv-pr-chip.is-good b { color: var(--good); }
-.csv-pr-chip.is-mid  { background: var(--warn-soft); color: #f6eccf; }
-.csv-pr-chip.is-mid b  { color: var(--warn); }
-.csv-pr-chip.is-bad  { background: var(--bad-soft); color: #f6d6d6; }
-.csv-pr-chip.is-bad b  { color: var(--bad); }
-/* RC2 B3/C5 glyphs: WITH/VS personal-WR chips are colour-banded; prepend a
- * shape so good/bad reads in grayscale (\25B2 up / \25BC down). ASCII CSS
- * escapes; ::before keeps the JS render idempotent. */
-.csv-pr-chip.is-good::before { content: "\25B2 "; font-size: 0.8em; opacity: 0.9; }
-.csv-pr-chip.is-bad::before  { content: "\25BC "; font-size: 0.8em; opacity: 0.9; }
-.csv-pr-chip.is-new {
-  background: transparent;
-  border: 1px dashed var(--accent);
-  color: var(--text-faint);
-}
-.csv-pr-chip.is-new em { margin-left: 5px; color: var(--text-faint); }
-
-/* Operator (2026-05-23 round 3): icon variant of the personal-vs chip.
- * Used in the Assessment panel's VS row - champion portrait stacked
- * over the WR % so the operator scans by face. */
-.csv-pr-chip-icon {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  line-height: 1;
-}
-.csv-pr-chip-icon-img {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-.csv-pr-chip-icon-pct {
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  color: #d4d7dd;
-  letter-spacing: 0.02em;
-}
-.csv-pr-chip-icon.is-good { background: var(--good-soft); border-color: #277540; }
-.csv-pr-chip-icon.is-good .csv-pr-chip-icon-pct { color: var(--good); }
-.csv-pr-chip-icon.is-mid  { background: var(--warn-soft); border-color: #b88410; }
-.csv-pr-chip-icon.is-mid  .csv-pr-chip-icon-pct { color: var(--warn); }
-.csv-pr-chip-icon.is-bad  { background: var(--bad-soft); border-color: #b84141; }
-.csv-pr-chip-icon.is-bad  .csv-pr-chip-icon-pct { color: var(--bad); }
-/* RC2 B3/C5 glyph on the portrait-stacked WR chip (VS row). The glyph sits
- * on the % line so the face + glyph + colour triangulate the matchup. */
-.csv-pr-chip-icon.is-good .csv-pr-chip-icon-pct::before { content: "\25B2"; font-size: 0.8em; margin-right: 2px; }
-.csv-pr-chip-icon.is-bad  .csv-pr-chip-icon-pct::before { content: "\25BC"; font-size: 0.8em; margin-right: 2px; }
-.csv-pr-chip-icon.is-new {
-  background: transparent;
-  border: 1px dashed var(--accent);
-}
-.csv-pr-chip-icon.is-new .csv-pr-chip-icon-pct { color: var(--text-faint); }
-
-.csv-pr-hint {
-  /* UI scale v2.1 (audit MUST FIX): 13 -> --fs-xs (16) floor. */
-  font-size: var(--fs-xs);
-  font-style: italic;
-  color: var(--text-faint);
-}
-
+/* QA 2026-07-03 slice A (A4): the YOUR RECORD (.csv-pr-*) block was
+ * removed with its render path. */
 .csv-pb-role-row {
   /* Same column template as the pick rows below - col 1 gets PICK,
    * col 2 gets CURRENT ROLE chip, col 3 gets BAN slot (with internal
@@ -1727,60 +1562,7 @@
   border-style: dashed;
 }
 
-.csv-pb-mood-row {
-  /* Operator (2026-05-23): mood modifier dropped entirely. The 4 tabs
-   * (Comfort / Limit / New / Synergy) created visual noise without
-   * meaningfully changing the operator's pick logic at decision time.
-   * JS still references the elements; CSS display:none keeps the DOM
-   * intact + the JS no-ops harmlessly. */
-  display: none;
-}
-.csv-pb-mood-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0 8px;
-  line-height: 1.1;
-}
-.csv-pb-mood-label > span {
-  /* s212 v2 (font-floor fix): 10->13px to clear the operator's tertiary
-   * font floor (across-room legibility). */
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.csv-pb-mood-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  /* s212 v2 (font-floor fix): 11->15px - interactive surfaces need to
-   * meet the operator's clickables floor for across-room viewing. */
-  font-size: 16px;
-  font-weight: 700;
-  padding: 4px 4px;
-  background: var(--surface-3);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--dim);
-  cursor: pointer;
-  font-family: inherit;
-  line-height: 1.1;
-  min-height: 36px;
-}
-.csv-pb-mood-btn > span { display: block; }
-.csv-pb-mood-btn.is-active {
-  color: var(--good);
-  border-color: #15803d;
-  background: #1a2a20;
-}
-.csv-pb-mood-btn:hover:not(.is-active) {
-  color: var(--text);
-  border-color: var(--accent);
-}
+/* QA 2026-07-03 slice A (A3): mood row + buttons removed entirely. */
 
 /* --- Mode-conditional layouts (s165) ---------------------------------
  * Champ-select renders different content per game mode. Stamped onto
@@ -2047,149 +1829,9 @@
   font-style: italic;
   padding: 4px 6px;
 }
-/* Row 2: ban-suggestion cards. During the ban phase the grid carries
- * 4 horizontally-arranged cards (.is-suggestions-grid). Post ban phase
- * it switches to .is-banned-grid - 2 stacked rows of 5 cells each,
- * ally bans on top + enemy bans below. s213 v3. */
-.csv-sugg-bans-grid {
-  display: grid;
-  gap: 6px;
-}
-.csv-sugg-bans-grid.is-suggestions-grid {
-  grid-template-columns: repeat(4, 1fr);
-}
-.csv-sugg-bans-grid.is-banned-grid {
-  grid-template-columns: 1fr;
-  gap: 4px;
-}
-.csv-sugg-banned-row {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  align-items: center;
-  gap: 6px;
-}
-.csv-sugg-banned-side {
-  /* UI scale v2.1 (audit MUST FIX): 12 -> --fs-xs (16). */
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  text-align: right;
-}
-.csv-sugg-banned-row[data-side="ally"]  .csv-sugg-banned-side { color: var(--good); }
-.csv-sugg-banned-row[data-side="enemy"] .csv-sugg-banned-side { color: var(--bad); }
-.csv-sugg-banned-cells {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-}
-.csv-sugg-ban-card.is-empty {
-  opacity: 0.35;
-  border-style: dashed;
-  cursor: default;
-}
-.csv-sugg-ban-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 4px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-  /* RC2 audit hit-target: click-to-ban suggestion card pinned to floor. */
-  min-height: var(--hit-min);
-  transition: border-color 0.12s, background 0.12s;
-}
-.csv-sugg-ban-card:hover { border-color: var(--bad); }
-.csv-sugg-ban-card.is-banned {
-  opacity: 0.4;
-  border-style: dashed;
-  cursor: default;
-}
-.csv-sugg-ban-icon {
-  width: 44px; height: 44px;
-  border-radius: 4px;
-  background: var(--surface-3);
-  border: 1px solid var(--border);
-  overflow: hidden;
-}
-.csv-sugg-ban-icon img { width: 100%; height: 100%; object-fit: cover; }
-.csv-sugg-ban-name {
-  /* UI scale v2.1 (item 202 audit MUST FIX): 12 -> --fs-xs (16) floor. */
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--text);
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-}
-/* OQ9 (QA26 remainder): why-banned sub-label on the global-top-bans
- * suggestion card ("meta ban #3"). Dim secondary line under the name. */
-.csv-sugg-ban-reason {
-  font-size: var(--fs-xs);
-  color: var(--text-dim);
-  line-height: 1.1;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-}
-
-/* RC2 E4 (operator-reported): ban-phase-complete COLLAPSE. Once bans are
- * done the banned-champions display no longer needs full vertical space
- * during the pick window. The toggle header is always shown in banned
- * mode; when .is-collapsed is set the 2x5 icon grid below it is hidden so
- * only the one-line "BANS - N banned [+]" summary remains. Clicking the
- * header flips _csvBansOpen which removes .is-collapsed and reveals the
- * full grid. The header is hidden in suggestion mode (ban phase active)
- * since the grid there is the live ban-suggestion list, not committed bans. */
-.csv-sugg-banned-toggle {
-  display: none;            /* shown only in banned mode (rule below) */
-  align-items: center;
-  gap: 8px;
-  padding: 5px 6px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  cursor: pointer;
-  /* Mouse-driven 1920x1080 desktop surface; the full-width strip is the
-   * horizontal click target. Vertical height is the operator's collapse
-   * affordance - sanctioned sub --hit-min relaxation like .csv-lock-btn. */
-  min-height: 30px;
-  transition: border-color 0.12s, background 0.12s;
-}
-.csv-sugg-banned-toggle:hover { border-color: var(--accent); background: var(--surface-2); }
-.csv-sugg-bans-grid.is-banned-grid .csv-sugg-banned-toggle { display: flex; }
-.csv-sugg-banned-toggle-label {
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--dim);
-  text-transform: uppercase;
-}
-.csv-sugg-banned-toggle-count {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-faint);
-  flex: 1 1 auto;
-}
-.csv-sugg-banned-caret {
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  color: var(--text-faint);
-  letter-spacing: 0.04em;
-}
-/* When collapsed, hide the committed-ban rows (the icon grid) but keep the
- * toggle header visible. */
-.csv-sugg-bans-grid.is-banned-grid.is-collapsed .csv-sugg-banned-row {
-  display: none;
-}
+/* QA 2026-07-03 slice A (A2): the ghost ban-suggestion grid rules
+ * (.csv-sugg-bans-grid / .csv-sugg-ban-* / .csv-sugg-banned-*)
+ * were removed with the wrapper. */
 
 /* RC2 E4 (P2): "PICK INTO THIS COMP" counter-pick list. Glanceable
  * top-5 portrait + name + short note; the whole row is a click target
@@ -2414,46 +2056,8 @@
 .csv-tdmg-ap b { color: var(--accent-2); }
 .csv-tdmg-sep { color: var(--dim); }
 
-/* Row 3: pick-order list. s212 v2: stack cells vertically (each tip on
- * its own row, full-width) so they fill the column rather than wrap
- * narrowly. Combined with the font bump this also closes the ~40%
- * bottom-of-panel whitespace the audit flagged. */
-.csv-sugg-pickorder-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.csv-sugg-pickorder-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  /* s213 v3: bumped 14->15px (rows 1+2+3 of pick order) per operator
-   * audit follow-up. Clears the 13px tertiary floor with even more
-   * headroom for across-room viewing distance.
-   * s214 v4: min-height pinned so the 3 tip rows have uniform
-   * vertical rhythm - single-line + wrapped-two-line tips render at
-   * the same height. Audit subagent flagged uneven heights as a
-   * visual-hierarchy distraction. */
-  font-size: 16px;
-  color: var(--text);
-  line-height: 1.35;
-  min-height: 44px;
-}
-.csv-sugg-pickorder-cell .csv-sugg-pickorder-idx {
-  color: var(--text-faint);
-  font-weight: 700;
-  /* s213 v3: bumped 13->14px to scale with the surrounding text.
-   * UI scale v2.1 (item 202 audit MUST FIX): 15 -> --fs-xs (16) floor. */
-  font-size: var(--fs-xs);
-  min-width: 14px;
-  text-align: center;
-}
-/* s211: Row 4 (DS engine item strip) removed - moved to the
- * Experimental row in the build chooser. */
+/* QA 2026-07-03 slice A (A2): the ghost pick-order rules were
+ * removed with the wrapper. */
 
 /* -- Build chooser rows (SR / ARAM / Arena) ------------------------- */
 .csv-builds-body {
@@ -3201,91 +2805,145 @@
      1px  1px 0 #000;
 }
 
-/* ----------------------------------------------------------------
- * item 213 (2026-05-28): Ally-Picks-by-Role panel.
- *
- * Replaces the prior 101.qq.com duo-synergy SUGGESTION grid with a
- * LIVE mirror of the ally roster - one row per assigned lane showing
- * which ally is on that role + the champion they LOCKED (green) or are
- * HOVERING (amber, dimmed) or an empty "picking..." state. The
- * operator's own row is marked YOU + accent-bordered.
- *
- * The .csv-duosyn-* rules above were removed with the suggestion grid.
- * v2.1 tokens throughout: --fs-xs / --fs-sm / --hit-min 42px.
- * ---------------------------------------------------------------- */
-.csv-allyroles-grid {
+/* QA 2026-07-03 slice A (B15): the Ally-Picks-by-Role mirror rules were
+ * removed with the panel (it duplicated the ALLIES card). */
+
+/* -- QA 2026-07-03 slice A additions -------------------------------- */
+
+/* B8/B9/B18: collapsed TEAM ANALYSIS cluster (Assessment card). */
+.csv-team-analysis {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 4px 0;
-}
-/* Operator 2026-05-31 (part 6): match the Enemies panel cell styling
- * (.csv-team-cell) - same icon size, row chrome, and lock/hover treated
- * via the icon border (green locked / amber hovering) instead of a
- * left accent bar. */
-.csv-allyroles-row {
-  display: grid;
-  grid-template-columns: 44px 36px 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 6px;
-  min-height: 38px;
+  gap: 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 4px;
+  padding: 4px 6px;
 }
-.csv-allyroles-row.is-locked .csv-allyroles-icon { border-color: var(--good); }
-.csv-allyroles-row.is-hover  { opacity: 0.82; }
-.csv-allyroles-row.is-hover  .csv-allyroles-icon { border-color: var(--warn); }
-.csv-allyroles-row.is-empty  { opacity: 0.5; }
-.csv-allyroles-row.is-me {
-  background: var(--surface-2);
-  border-color: var(--info);
-}
-.csv-allyroles-role {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--dim);
-  letter-spacing: 0.5px;
-  text-align: center;
-}
-.csv-allyroles-row.is-me .csv-allyroles-role { color: var(--info); }
-.csv-allyroles-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  background: var(--surface-3);
-  overflow: hidden;
-  border: 1px solid var(--border);
+.csv-ta-head {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  min-height: var(--hit-min);
 }
-.csv-allyroles-icon img { width: 100%; height: 100%; object-fit: cover; }
-.csv-allyroles-icon-empty { color: var(--text-faint); font-size: var(--fs-sm); }
-.csv-allyroles-name {
-  font-size: var(--fs-sm);
-  font-weight: 600;
+.csv-ta-head:hover .csv-ta-title { color: var(--text); }
+.csv-ta-title {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex: 0 0 auto;
+}
+.csv-ta-verdict {
+  font-size: var(--fs-xs);
   color: var(--text);
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.csv-allyroles-row.is-empty .csv-allyroles-name { color: var(--text-faint); }
-.csv-allyroles-state {
+.csv-ta-caret {
   font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-faint);
-  letter-spacing: 0.5px;
+  flex: 0 0 auto;
 }
-.csv-allyroles-row.is-locked .csv-allyroles-state { color: var(--good); }
-.csv-allyroles-row.is-hover  .csv-allyroles-state { color: var(--warn); }
-.csv-allyroles-row.is-me     .csv-allyroles-state { color: var(--info); }
-.csv-allyroles-empty {
+.csv-ta-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* B5: compact summoner-spell strip (2 current D/F cells + EDIT). */
+.csv-summspell-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.csv-summspell-current {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: var(--surface-2);
+  border: 2px solid var(--good);
+  border-radius: 4px;
+  min-height: var(--hit-min);
+}
+.csv-summspell-edit {
+  appearance: none; -webkit-appearance: none;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--dim);
+  cursor: pointer;
+  min-height: var(--hit-min);
+}
+.csv-summspell-edit:hover { color: var(--text); border-color: var(--accent); }
+
+/* B6+B7: merged-build ordered-sequence strip. */
+.csv-builds-seq {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  padding: 5px 6px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: var(--panel-radius-sm, 4px);
+}
+.csv-boseq-tag {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex: 0 0 auto;
+}
+.csv-boseq-msg {
   font-size: var(--fs-xs);
   font-style: italic;
   color: var(--text-faint);
-  text-align: center;
-  padding: 6px 0;
 }
-
+.csv-boseq-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.csv-boseq-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.csv-boseq-chip.is-in-variant {
+  border-color: var(--good);
+  background: rgba(74, 222, 128, 0.08);
+}
+.csv-boseq-num {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-faint);
+  min-width: 12px;
+  text-align: center;
+}
+.csv-boseq-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  object-fit: contain;
+}
