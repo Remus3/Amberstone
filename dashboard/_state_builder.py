@@ -494,6 +494,7 @@ def build_state() -> dict:
             shadow_log_precomputed_choices, shadow_log_precomputed_build,
             shadow_log_live_benchmark_band, shadow_log_objective_playbook,
             shadow_log_macro_response, shadow_log_aram_coach,
+            shadow_log_arena_coach,
         )
         det = compute_deterministic(coach, lc, mode_key)
         # Shadow-log BEFORE resolve_choices overwrites coach["choices"] - the
@@ -522,6 +523,10 @@ def build_state() -> dict:
         # field, fail-soft, ARAM in-game ticks only. The live coach flip is a
         # later operator-gated stage; this only writes data/aram_coach_shadow.jsonl.
         shadow_log_aram_coach(coach, lc, mode_key)
+        # Arena Stage 2 (R76): the Arena sibling of the ARAM shadow line above.
+        # SHADOW-ONLY - mutates NO served field, fail-soft, Arena in-game ticks
+        # only; writes data/arena_coach_shadow.jsonl.
+        shadow_log_arena_coach(coach, lc, mode_key)
         coach["choices"] = resolve_choices(coach, det)
     except Exception:  # noqa: BLE001
         det = {"choices": [], "callouts": [], "lead_projection": {}}
