@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.175.0 (R68, 2026-07-03 - Thornmail/Bramble ITEM Thorns reflect on the R49 seam).
+Meraki 16.13.1 item 3075 Thornmail passive "Thorns": "When struck by a basic
+attack [[on-hit]], deal 20 (+ 10% bonus armor) magic damage to the attacker";
+item 3076 Bramble Vest: flat 10 magic damage, same trigger. Both also inflict
+Grievous Wounds (3s vs champions) - NOT modeled (healing debuff, outside this
+damage lane; documented in the registry notes). New ITEM-keyed registry
+_ITEM_REFLECT_OVERRIDES in _passive_reflect_overrides.py (id-string keyed, the
+_target_vulnerability_overrides convention) + PassiveReflectEntry gains an
+END-appended caster_bonus_armor_pct field + reflect_per_proc gains an
+END-appended caster_bonus_armor kwarg (the Thornmail bonus-armor axis).
+item_reflect_entry(item_ids, caster_bonus_armor) dedupes the Thorns UNIQUE
+passive (Bramble is Thornmail's component): a build owning several thorn items
+is credited ONCE - the strongest per-proc at the given stats. Registered ids:
+3075 + pool mirrors 223075 (Arena map-30) / 323075 + 3076; Bramble mirrors
+223076/323076 are NOT in the 16.13.1 DS pool and are NOT registered. Consumers:
+dps.compute_dps + burst.compute_burst_damage fold the item reflect AFTER the
+champion stream inside the EXISTING default-OFF assume_passive_reflect seam
+(independent streams - Rammus W + item Thorns stack in game), MAGIC-mitigated
+by the duel target's effective MR x magic_amp, amortized 1/reflect_cadence_s
+(DPS) / window-scaled over _ASSUMED_REFLECT_BURST_WINDOW_S (burst), NOT added
+to the per-attack on-hit display (incoming-triggered stream). Flag OFF the item
+registry is never read - byte-identical. No new flag; live default-ON flip
+stays operator-gated (docs/LIVE_GAME_GATED_SYNC.md B17 extended). TDD RED-first
+(test_item_reflect_thornmail_r68.py, 31 tests RED->GREEN). 1.174.0 -> 1.175.0.
+
 1.174.0 (R67, 2026-07-03 - Terminus "Juxtaposition" Dark 3-stack pen correction).
 Meraki 16.13.1 item 3302: Dark hits grant 10% armor penetration and magic
 penetration per stack, "stacks up to 3 times" = "30% resistances penetration at
