@@ -442,6 +442,13 @@ no row carries it.
   SOURCE: BACKLOG.md:54.
 - G16. [PARKED] (ACCRUAL) Aggregator N F2 per-slot item win-rate ladder - defer until a richer
   corpus exists. SOURCE: BACKLOG.md:15.
+- G17. (ACCRUAL) R76 Arena deterministic-coach shadow flip gate: accrue real ARENA games into
+  gitignored `data/arena_coach_shadow.jsonl` (round-aware dedup sig; writer
+  `core/arena_coach_shadow.py`, wiring `dashboard/_deterministic_coaching.py` via
+  `dashboard/_state_builder.py`) -> build the arena shadow-report tool (FUTURE, sibling of
+  `tools/hz_shadow_report.py`; the aram side has none either) -> operator OK before any
+  Haiku->deterministic flip of the arena coach block (do-not-flip-blind). SOURCE:
+  docs/LEDGER.md item 763 (2026-07-03, post-R75-sync gap closed same day).
 
 ## PARKED / HOLD (one line each)
 
