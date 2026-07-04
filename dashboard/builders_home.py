@@ -59,6 +59,39 @@ def _lcu_build_items(raw_data: str | None) -> list[int]:
     return []
 
 
+# queueId -> ARAM sub-variant label. The operator's A6 concern (HOME QA
+# 2026-07-04) was distinguishing ARAM Classic (q450) from ARAM Mayhem
+# (q2400 KIWI); modes with no Classic/Mayhem split (SR / Arena) stay None.
+# Derived from the queueId already stored in each ingested row's
+# lcu_match_detail blob (probed 2026-07-04: present on every LCU-ingested
+# row - 98 Mayhem / 47 Ranked / 2 Draft / 1 event in the live DB), so no
+# queue_id column / schema migration is needed. Canonical id list:
+# tools/lcu_agent.py:194-234.
+_QUEUE_SUBTYPE = {
+    450: "Classic",
+    2400: "Mayhem",
+}
+
+
+def _lcu_queue_subtype(raw_data: str | None) -> str | None:
+    """Derive the ARAM sub-variant (Classic vs Mayhem) from the queueId
+    inside a row's stored ``lcu_match_detail`` blob. Returns None for
+    pre-ingest rows (no blob) and for modes with no sub-variant split."""
+    if not raw_data:
+        return None
+    import json
+    try:
+        rd = json.loads(raw_data)
+    except Exception:  # noqa: BLE001
+        return None
+    detail = rd.get("lcu_match_detail") or {}
+    try:
+        qid = int(detail.get("queueId") or 0)
+    except (TypeError, ValueError):
+        return None
+    return _QUEUE_SUBTYPE.get(qid)
+
+
 def _lcu_match_stats(raw_data: str | None) -> dict | None:
     """Resolve the tracked player's ``stats`` dict from a match row's
     ``raw_data`` blob via the same puuid -> participantId -> stats walk
@@ -214,10 +247,12 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
                 "cs": int(cs or 0), "cs_per_min": float(cspm or 0.0),
                 # s219 LCU-ingest build items when present; [] for matches
                 # that predate the ingest pipeline (frontend renders empty
-                # slots). mode_subtype still awaits a queue_id store to
-                # split ARAM Classic from ARAM Mayhem - passthrough hook.
+                # slots). mode_subtype (A6, 2026-07-04) derives the ARAM
+                # Classic/Mayhem split from the queueId already stored in
+                # the lcu_match_detail blob - None for pre-ingest / SR /
+                # Arena rows.
                 "items": _lcu_build_items(raw_data),
-                "mode_subtype": None,
+                "mode_subtype": _lcu_queue_subtype(raw_data),
                 # WIN-CAPTURE keystone (item 77): win/loss from the LCU
                 # ingest blob already in raw_data; None for pre-ingest rows.
                 "win": _lcu_win(raw_data),
