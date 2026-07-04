@@ -124,3 +124,22 @@
   color: var(--accent);
   opacity: .35;
 }
+
+/* ---- hx-card-head: shared uppercase card heading --------------------
+ * The one head-typography treatment for card panels: a letter-spaced
+ * fs-xs label rail over a soft hairline. Panels opt in by adding the
+ * class next to their local -head class and deleting the duplicated
+ * local props (home round-2 M7 is the first consumer). */
+.hx-card-head {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--label);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+}

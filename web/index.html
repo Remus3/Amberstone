@@ -152,7 +152,7 @@
              never a fabricated rank. data-tier drives the CSS accent. -->
         <div class="home-hero-rank" id="home-hero-rank" data-tier="" hidden>
           <span class="home-hero-rank-tier" id="home-hero-rank-tier">Unranked</span>
-          <span class="home-hero-rank-wr"   id="home-hero-rank-wr"></span>
+          <span class="home-hero-rank-wr"   id="home-hero-rank-wr" title="ranked season win rate"></span>
         </div>
         <!-- LIFT 3: last-20 W/L pip strip + recent-form WR. Painted by
              _homeRenderWlStrip from the home payload's last20 dict
@@ -174,7 +174,7 @@
           <span>Find Match</span>
         </button>
       </div>
-      <!-- 3 stat chips with inline 14-day sparklines (V3 redesign
+      <!-- 2 stat chips with inline 14-day sparklines (V3 redesign
            2026-04-30): replaces the standalone trends row. Each chip
            shows a label + latest-day value + tiny inline sparkline.
            GRADES + MODES dropped - they were redundant with the
@@ -241,46 +241,6 @@
       </defs>
     </svg>
 
-    <!-- Quick-action tiles row (HOME_QA X2): 6 single-click shortcuts to a
-         manual view; the JS click handler (main.js _homeWireStartup) calls
-         applyView(target), the same flow the title dropdown menu uses. The
-         Find Match tile was dropped here (HOME_QA X2) because the hero CTA
-         above already covers that action - a second Find Match entry was a
-         duplicate. The surviving 6 (Post Game Review / Session / History /
-         Replay / Builds / Settings) stay wired. -->
-    <div class="home-actions">
-      <button type="button" class="home-action-tile" data-target="last-match">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-swords"/></svg>
-        <span class="home-action-label">Post Game Review</span>
-        <span class="home-action-sub">last match · stats + insights</span>
-      </button>
-      <button type="button" class="home-action-tile" data-target="session">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-clock"/></svg>
-        <span class="home-action-label">Session</span>
-        <span class="home-action-sub">today's play window</span>
-      </button>
-      <button type="button" class="home-action-tile" data-target="history">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-list"/></svg>
-        <span class="home-action-label">History</span>
-        <span class="home-action-sub">match log</span>
-      </button>
-      <button type="button" class="home-action-tile" data-target="replay">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-replay"/></svg>
-        <span class="home-action-label">Replay</span>
-        <span class="home-action-sub">scrub past games</span>
-      </button>
-      <button type="button" class="home-action-tile" data-target="user-builds">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-crystal"/></svg>
-        <span class="home-action-label">Builds</span>
-        <span class="home-action-sub">SR draft theatre</span>
-      </button>
-      <button type="button" class="home-action-tile" data-target="settings">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-gear-clean"/></svg>
-        <span class="home-action-label">Settings</span>
-        <span class="home-action-sub">prefs + flags</span>
-      </button>
-    </div>
-
     <!-- s218 v4: Home-unique Find Match picker. Mirrors the queue
          options from the lobby view's #lv-mode-menu so the operator
          can pick a queue from Home WITHOUT being routed to the lobby
@@ -323,8 +283,8 @@
          (HOME_QA C1: Section 3 "Advisories" was dropped - the footer
           health-dot + advisory badge already carry that signal.) -->
     <div class="home-combo" id="home-combo" hidden>
-      <div class="home-coach-pick" id="home-coach-pick" hidden>
-        <div class="home-coach-pick-head">TONIGHT'S PICK</div>
+      <div class="home-coach-pick hx-card" id="home-coach-pick" hidden>
+        <div class="home-coach-pick-head hx-card-head">TONIGHT'S PICK</div>
         <div class="home-coach-pick-body">
           <div class="home-pick-section home-pick-section-1">
             <img class="home-coach-pick-img" id="home-coach-pick-img" alt="" />
@@ -354,13 +314,13 @@
          Right = this-week champion bar chart (V2 suggestion #5). -->
     <div class="home-body">
       <div class="home-card home-card-recent">
-        <div class="home-card-head">RECENT 5</div>
+        <div class="home-card-head hx-card-head">RECENT 5</div>
         <div class="home-recent-list" id="home-recent-list">
           <div class="home-empty">loading...</div>
         </div>
       </div>
       <div class="home-card home-card-week">
-        <div class="home-card-head">THIS WEEK</div>
+        <div class="home-card-head hx-card-head">THIS WEEK</div>
         <div class="home-week-chart" id="home-week-list">
           <div class="home-empty">loading...</div>
         </div>
@@ -371,6 +331,48 @@
          footer health-dot already aggregates RC + Vision + Supervisor
          status. Element removed entirely; if a service goes down the
          dot in the footer turns yellow/red. -->
+
+    <!-- Quick-action tiles row (HOME_QA X2): 6 single-click shortcuts to a
+         manual view; the JS click handler (main.js _homeWireStartup) calls
+         applyView(target), the same flow the title dropdown menu uses. The
+         Find Match tile was dropped here (HOME_QA X2) because the hero CTA
+         above already covers that action - a second Find Match entry was a
+         duplicate. The surviving 6 (Post Game Review / Session / History /
+         Replay / Builds / Settings) stay wired. HOME round-2 (M3): moved
+         below the Recent5/ThisWeek body so the launcher reads as the page
+         footer rail, not a mid-page interruption. -->
+    <div class="home-actions">
+      <button type="button" class="home-action-tile" data-target="last-match">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-swords"/></svg>
+        <span class="home-action-label">Post Game Review</span>
+        <span class="home-action-sub">last match · stats + insights</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="session">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-clock"/></svg>
+        <span class="home-action-label">Session</span>
+        <span class="home-action-sub">today's play window</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="history">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-list"/></svg>
+        <span class="home-action-label">History</span>
+        <span class="home-action-sub">match log</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="replay">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-replay"/></svg>
+        <span class="home-action-label">Replay</span>
+        <span class="home-action-sub">scrub past games</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="user-builds">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-crystal"/></svg>
+        <span class="home-action-label">Builds</span>
+        <span class="home-action-sub">SR draft theatre</span>
+      </button>
+      <button type="button" class="home-action-tile" data-target="settings">
+        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-gear-clean"/></svg>
+        <span class="home-action-label">Settings</span>
+        <span class="home-action-sub">prefs + flags</span>
+      </button>
+    </div>
   </div>
 
   <!-- Lobby overlay (2026-04-26). Shown when lcu.phase === "Lobby"

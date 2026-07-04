@@ -11,7 +11,7 @@
   margin: var(--space-3) var(--space-5) 0; padding: var(--panel-padding-comp) var(--space-5);
   background: var(--surface); border: 1px solid var(--border-soft);
   border-radius: var(--panel-radius);
-  display: flex; flex-direction: column; gap: var(--panel-gap-tight);
+  display: flex; flex-direction: column; gap: var(--space-3);
   /* Match the view-section flex behavior so the footer stays pinned to
    * the viewport bottom regardless of which view is active. Without
    * this, home-overlay was content-sized and the footer floated up to
@@ -32,15 +32,11 @@
 body[data-view="home"] .home-overlay { display: flex !important; }
 
 /* -- V1 hero banner (Today identity card) ----------------------------
- * RC2 Hextech reskin (priority #4): the Today identity card. The home
- * markup (index.html, foundation-frozen for this slice) does not carry
- * the .hx-card class, so this card replicates the hextech.css bracket
- * motif locally (consuming --accent, same 14px L-stroke geometry) -
- * surface + gold hairline + gold corner brackets - plus a subtle
- * teal->gold accent wash so it reads as the identity band (design home
- * id-head, RC2_DESIGN.html ~:359-368). No overflow:hidden: that would
- * shear the -1px corner brackets, so the motif bg clips via its own
- * mask + rounded corners (below) instead. */
+ * HOME round-2 (M1): demoted to a FLAT identity band - no corner
+ * brackets, no card shadow. Tonight's Pick (.home-coach-pick.hx-card)
+ * is now the ONLY bracketed card on the page so the eye lands there
+ * first; a faint teal wash over surface-2 keeps this band reading as
+ * identity chrome without competing for focal weight. */
 .home-hero {
   position: relative;
   display: grid;
@@ -49,36 +45,11 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   align-items: center;
   padding: var(--panel-padding-comp) var(--panel-padding);
   background: linear-gradient(135deg,
-              color-mix(in srgb, var(--accent-2) 7%, transparent),
-              color-mix(in srgb, var(--accent) 5%, transparent));
-  border: 1px solid var(--border);
+              color-mix(in srgb, var(--accent-2) 6%, transparent),
+              transparent), var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-card-soft);
-  min-height: 120px;
-}
-/* Gold corner brackets (top-left + bottom-right L-strokes) - the
- * signature Hextech frame, mirrored from hextech.css .hx-card so the
- * markup needs no class change. Decorative + pointer-inert. */
-.home-hero::before,
-.home-hero::after {
-  content: "";
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  z-index: 2;
-  border-color: var(--accent);
-  border-style: solid;
-}
-.home-hero::before {
-  top: -1px; left: -1px;
-  border-width: 2px 0 0 2px;
-  border-top-left-radius: var(--radius);
-}
-.home-hero::after {
-  bottom: -1px; right: -1px;
-  border-width: 0 2px 2px 0;
-  border-bottom-right-radius: var(--radius);
+  box-shadow: none;
 }
 /* Champion motif background. JS sets background-image inline based on
  * this-week's top champion (or a fallback). Positioned to bleed out
@@ -125,7 +96,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   margin-top: var(--space-2);
   padding: 2px 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 999px;  /* pill by design (M8 waiver) - not a radius-sm chip */
   background: var(--surface-2);
 }
 .home-hero-rank-tier {
@@ -135,12 +106,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-rank-wr {
   font-size: var(--fs-xs); color: var(--text-faint);
   letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
 }
 .home-hero-rank[data-tier=""] .home-hero-rank-tier { color: var(--text-faint); }
-/* League ranked-tier accents. iron/bronze/silver have no foundation
- * token (genuinely brand-specific tier tints) so they stay literal;
- * gold/platinum/emerald/diamond/master+ route through the foundation
- * palette (accent / accent-2 / good / info) which matches their hue. */
+/* League ranked-tier accents. iron/bronze/silver AND master/grandmaster/
+ * challenger have no foundation token (genuinely brand-specific tier
+ * tints - bronze browns, silver steel, master+ purple), so those hex
+ * literals are waived (M8); gold/platinum/emerald/diamond route through
+ * the foundation palette (accent / accent-2 / good / info) which
+ * matches their hue. */
 .home-hero-rank[data-tier="iron"],
 .home-hero-rank[data-tier="bronze"]   { border-color: #8a5a3b; }
 .home-hero-rank[data-tier="silver"]   { border-color: #9fb0bd; }
@@ -211,11 +185,11 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-family: inherit; font-size: var(--fs-md); font-weight: 800;
   letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--canvas); background: var(--good);
-  border: none; border-radius: var(--panel-radius-sm);
+  border: none; border-radius: var(--radius-sm);
   min-height: var(--hit-min); cursor: pointer;
   transition: background 0.12s, transform 0.06s;
 }
-.home-hero-cta:hover  { background: #94e0ad; transform: scale(1.02); }
+.home-hero-cta:hover  { background: color-mix(in srgb, var(--good) 72%, white); transform: scale(1.02); }
 .home-hero-cta:active { transform: scale(0.98); }
 .home-hero-cta:focus-visible { outline: 2px solid var(--good); outline-offset: 2px; }
 .home-hero-cta-icon { width: 20px; height: 20px; flex: none; }
@@ -231,7 +205,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   border-radius: var(--radius-sm);
 }
 .home-hero-chip-lbl {
-  font-size: var(--fs-xs); letter-spacing: 0.18em; font-weight: 700;
+  font-size: var(--fs-xs); letter-spacing: 0.18em; font-weight: 800;
   color: var(--label); text-transform: uppercase;
 }
 .home-hero-chip-row {
@@ -262,7 +236,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-body {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
-  gap: var(--panel-gap);
+  gap: var(--space-3);
 }
 
 /* ── V1 recent matches as visual cards ────────────────────────────── */
@@ -275,10 +249,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   /* s218 v2: fixed column widths so every row's items / kda / grade
    * line up vertically top-to-bottom. Auto sizing was letting variable
    * KDA-string widths shift downstream columns. */
-  grid-template-columns: 6px 56px 1fr 250px 120px 56px;
+  grid-template-columns: 6px 44px minmax(0, 1fr) 200px 96px 44px;
   gap: var(--space-3);
   align-items: center;
-  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  padding: var(--space-1) var(--space-3) var(--space-1) 0;
   background: var(--surface-3);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
@@ -296,26 +270,25 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   flex: none;
 }
 .home-recent-item-slot {
-  width: 36px; height: 36px;
-  border-radius: var(--panel-radius-sm);
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   border: 1px solid var(--border-soft);
   display: inline-flex; align-items: center; justify-content: center;
   overflow: hidden;
   flex: none;
 }
-.home-recent-item-slot.empty {
-  background: repeating-linear-gradient(45deg,
-              var(--surface), var(--surface) 3px,
-              var(--surface-alt) 3px, var(--surface-alt) 6px);
-  opacity: 0.45;
-}
+/* HOME round-2 (M4): empty item slots hide instead of rendering the old
+ * hatched placeholder - a pre-ingest row shows only its real items. */
+.home-recent-item-slot.empty { display: none; }
 .home-recent-item-icon {
   width: 100%; height: 100%; object-fit: cover;
+  /* M4: item icons recede slightly so the champ + result stay primary. */
+  filter: saturate(0.75) brightness(0.9);
 }
 .home-recent-img {
-  width: 56px; height: 56px;
-  border-radius: var(--panel-radius-sm);
+  width: 44px; height: 44px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   border: 1px solid var(--border-soft);
   background: var(--surface);
@@ -329,7 +302,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * rows with win==null) -> a dim neutral so it reads as "no result", never a
  * guessed outcome. The grade badge still carries the S-F perf read. */
 .home-recent-stripe {
-  width: 6px; height: 100%; min-height: 56px;
+  width: 6px; height: 100%; min-height: 44px;
   background: var(--text-dim);
 }
 .home-recent-stripe.win     { background: var(--good); }
@@ -347,13 +320,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   letter-spacing: 0.04em; text-transform: uppercase;
   margin-top: var(--space-1);
   display: block;
+  /* HOME round-2 (M4): one-line meta - overflow detail rides the card
+   * title (hover) instead of wrapping the compact row. */
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .home-recent-kda {
   font-size: var(--fs-md); font-weight: 700; color: var(--text);
   font-variant-numeric: tabular-nums;
   padding: var(--space-1) var(--space-3);
   background: var(--surface);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   white-space: nowrap;
   /* s218 v2: left-anchored within its fixed-width cell so every row's
    * KDA starts at the same x. justify-self: start prevents the inline-
@@ -362,10 +338,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-align: left;
 }
 .home-recent-grade-badge {
-  width: 44px; height: 44px;
+  width: 36px; height: 36px;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: var(--fs-md); font-weight: 900;
-  border-radius: var(--panel-radius-sm);
+  font-size: var(--fs-sm); font-weight: 900;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-dim);
   border: 1px solid var(--border);
@@ -391,54 +367,27 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-combo[hidden] { display: none; }
 
 /* ── V3 coach row (suggestion #1) - Tonight's Pick lives inside
- * .home-combo. (HOME_QA C3: the Last Build card was removed.) ──────── */
-.home-coach-pick {
-  background: var(--surface);
-  border: 1px solid var(--border);
+ * .home-combo. (HOME_QA C3: the Last Build card was removed.)
+ * HOME round-2 (M1): the ONLY bracketed card on the page - the markup
+ * now carries .hx-card (gold corner brackets + frame from hextech.css)
+ * and this block keeps the teal-tinted border + glow so it reads as
+ * the single focal element. Selector is .home-coach-pick.hx-card ON
+ * PURPOSE: dashboard.css imports home.css BEFORE hextech.css (import
+ * order is frozen), so the compound class lifts specificity to (0,2,0)
+ * and this surface/border/glow beats the later .hx-card base without
+ * reordering imports. ──────── */
+.home-coach-pick.hx-card {
+  position: relative;
+  background: var(--surface-2);
+  border: 1px solid color-mix(in srgb, var(--accent-2) 45%, var(--border));
   border-radius: var(--radius);
   padding: var(--panel-padding-comp);
+  box-shadow: 0 0 14px -3px var(--hextech-glow);
 }
 .home-coach-pick[hidden] { display: none; }
-/* RC2 reskin: Tonight's Pick is the page HERO (gemini direction). The
- * home markup carries no .hx-card class for this slice, so the surface +
- * gold corner brackets are replicated locally (below); here it adds the
- * Hextech teal glow (--glow) + a teal hairline so the eye lands here
- * first, above the identity card. This is the single focal element of
- * the home view. */
-.home-coach-pick {
-  position: relative;
-  border-color: color-mix(in srgb, var(--accent-2) 45%, var(--border));
-  box-shadow: 0 0 18px -2px var(--glow);
-}
-/* Gold corner brackets on the hero (mirrored from hextech.css .hx-card;
- * the markup carries no .hx-card class for this slice). The teal glow
- * above + these gold brackets make Tonight's Pick the single focal
- * element of the home view. Decorative + pointer-inert. */
-.home-coach-pick::before,
-.home-coach-pick::after {
-  content: "";
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  pointer-events: none;
-  border-color: var(--accent);
-  border-style: solid;
-}
-.home-coach-pick::before {
-  top: -1px; left: -1px;
-  border-width: 2px 0 0 2px;
-  border-top-left-radius: var(--radius);
-}
-.home-coach-pick::after {
-  bottom: -1px; right: -1px;
-  border-width: 0 2px 2px 0;
-  border-bottom-right-radius: var(--radius);
-}
-.home-coach-pick-head {
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
-  color: var(--label); text-transform: uppercase;
-  margin-bottom: var(--space-2);
-}
+/* (HOME round-2 M7: the .home-coach-pick-head typography moved to the
+ * shared .hx-card-head primitive in hextech.css - the markup carries
+ * hx-card-head now.) */
 .home-coach-pick-body {
   /* s218 v2: Section 1 sized to its content (champion intro), Sections
    * 2 + 3 share the remaining width. Gives Section 2 a finite boundary
@@ -468,7 +417,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-size: var(--fs-xs);
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.18em;
   color: var(--label);
   white-space: nowrap;
 }
@@ -487,7 +436,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * the section itself.) */
 .home-coach-pick-img {
   width: 72px; height: 72px;
-  border-radius: var(--panel-radius-sm);
+  border-radius: var(--radius-sm);
   border: 1px solid color-mix(in srgb, var(--accent-2) 40%, transparent);
   background: var(--surface);
   object-fit: cover;
@@ -615,32 +564,34 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-find-match-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--scrim);
   z-index: 9100;
 }
 .home-find-match-backdrop.hidden { display: none; }
 
-/* -- V2 quick-action tiles row - HOME_QA X2: RESTORED as a 2-col portrait
- * grid. The reskin had hidden this row (display:none) as a duplicate of the
- * title-dropdown nav, but the operator wants the tiles back on the narrow
- * companion. The Find Match tile was dropped (the hero CTA covers it); the
- * surviving 6 (Post Game Review / Session / History / Replay / Builds /
- * Settings) auto-fit two per row and stay click-wired (_homeWireStartup). */
+/* -- V2 quick-action tiles row - HOME_QA X2 restored the row; HOME
+ * round-2 (M3/M6) turned it into the page-footer launcher rail: one
+ * 6-across row of compact horizontal tiles below the Recent5/ThisWeek
+ * body (the 1200px media block folds it to two even rows of three on
+ * the companion). The Find Match tile stays dropped (the hero CTA
+ * covers it); the surviving 6 (Post Game Review / Session / History /
+ * Replay / Builds / Settings) stay click-wired (_homeWireStartup). */
 .home-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   gap: var(--space-2);
 }
 .home-action-tile {
-  display: flex; flex-direction: column; align-items: center;
-  padding: var(--panel-padding-comp) var(--space-3);
-  background: var(--surface-head);
-  border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
-  min-height: var(--hit-min);
+  display: flex; flex-direction: row; align-items: center;
+  justify-content: flex-start; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  min-height: 48px;
   cursor: pointer;
   font-family: inherit;
-  text-align: center;
+  text-align: left;
   transition: border-color 0.12s, transform 0.12s, background 0.12s;
 }
 .home-action-tile:hover {
@@ -650,8 +601,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-action-tile:active { transform: translateY(0); }
 .home-action-icon {
-  width: 36px; height: 36px;
-  margin-bottom: var(--space-2);
+  width: 24px; height: 24px;
+  margin-bottom: 0;
   color: var(--info);
   transition: color 0.12s, transform 0.12s;
 }
@@ -664,6 +615,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   letter-spacing: 0.02em;
 }
 .home-action-sub {
+  /* HOME round-2 (M6): sub-lines hidden on the compact rail; the markup
+   * keeps the spans so the copy survives for a future roomier layout. */
+  display: none;
   font-size: var(--fs-xs); color: var(--text-faint);
   letter-spacing: 0.06em; text-transform: uppercase;
   margin-top: var(--space-1);
@@ -679,10 +633,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   /* s218 v2: fixed widths so every row's columns line up top-to-bottom
    * regardless of content length. Was auto-sized which let KDA-string
    * width drift shift the CS + grade cells laterally per row. */
-  grid-template-columns: minmax(100px, 1fr) 90px 170px 170px 44px;
+  grid-template-columns: minmax(100px, 1fr) 72px 150px 150px 44px;
   gap: var(--panel-gap-tight);
   align-items: center;
-  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-3);
   min-height: var(--hit-min);
   /* s218 v7: visually demoted - transparent bg + bottom-only border so
    * rows read as a list, not as cards (was background: surface-head +
@@ -702,24 +656,31 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-week-bar-row.grade-tint-C { border-left-color: var(--text-faint); }
 .home-week-bar-row.grade-tint-D { border-left-color: color-mix(in srgb, var(--bad) 70%, transparent); }
 .home-week-bar-row.grade-tint-F { border-left-color: var(--bad); }
-/* Grade badge sits inline at the right of the bar row (not below it),
- * so each week-row is a single visual line. Slightly smaller than the
- * RECENT-card badge since the row height target is tighter. */
+/* Grade letter sits inline at the right of the bar row (not below it),
+ * so each week-row is a single visual line. HOME round-2 (M5): plain
+ * letter, no chip chrome - it is an AGGREGATE tier readout, not a
+ * per-match badge; the 3px grade-tint left stripe keeps the hue. */
 .home-week-bar-row .home-recent-grade-badge {
-  width: 36px; height: 36px;
+  background: transparent;
+  border: none;
+  width: 44px; height: auto;
   font-size: var(--fs-sm);
-  margin-right: 0;
 }
 .home-week-bar-name {
   position: relative;
   font-size: var(--fs-sm); font-weight: 700; color: var(--text);
   letter-spacing: 0.02em;
-  padding: var(--space-2) var(--panel-gap-tight);
+  padding: var(--space-1) 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  border-radius: 4px;
-  background: linear-gradient(to right,
-              var(--info-soft) 0%, var(--info-soft) var(--bar-pct, 50%),
-              transparent var(--bar-pct, 50%), transparent 100%);
+  border-radius: 0;
+  /* HOME round-2 (M5): the games-share bar is de-duped from a full-
+   * height info wash to a 3px Hextech underline; --bar-pct stays JS-fed
+   * (_homeRenderWeek), no JS change. */
+  background-color: transparent;
+  background-image: var(--hextech-fill);
+  background-size: var(--bar-pct, 50%) 3px;
+  background-repeat: no-repeat;
+  background-position: left bottom;
 }
 .home-week-bar-games {
   /* s218: bumped from text-faint → text-dim + weight 700 for legibility. */
@@ -733,7 +694,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-variant-numeric: tabular-nums;
   padding: var(--space-1) var(--panel-gap-tight);
   background: var(--surface);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   min-width: 56px;
   /* s218 v2: left-anchored inside its fixed-width cell so all rows'
    * KDA pills start at the same x. justify-self: start prevents grid
@@ -761,58 +722,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   white-space: nowrap;
 }
 
-/* ── V2 alerts panel (advisory + digest moved out of footer) ──────── */
-.home-alerts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
-}
-.home-alerts-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-2) var(--space-3);
-  min-height: var(--hit-min);
-  background: var(--surface-head);
-  border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
-  cursor: pointer;
-  transition: border-color 0.12s, transform 0.12s;
-}
-.home-alerts-row:hover {
-  border-color: var(--info);
-  transform: translateX(2px);
-}
-.home-alerts-icon {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px;
-  border-radius: var(--panel-radius-sm);
-  font-weight: 900; font-size: var(--fs-md);
-  font-family: inherit;
-}
-.home-alerts-icon.advisory { background: var(--bad-soft);  color: var(--bad); }
-.home-alerts-icon.digest   { background: var(--info-soft); color: var(--info); }
-.home-alerts-row.empty .home-alerts-icon { opacity: 0.5; }
-.home-alerts-text {
-  display: flex; flex-direction: column; min-width: 0;
-}
-.home-alerts-lbl {
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--label);
-}
-.home-alerts-val {
-  font-size: var(--fs-sm); color: var(--text);
-  margin-top: var(--space-1);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.home-alerts-cta {
-  font-size: var(--fs-xs); color: var(--text-faint);
-  letter-spacing: 0.08em; text-transform: uppercase;
-  white-space: nowrap;
-}
-.home-alerts-row:hover .home-alerts-cta { color: var(--info); }
-
+/* (HOME round-2 M9: the V2 .home-alerts family was removed - grep found
+ * zero JS creators and zero markup for it; the footer advisory badge +
+ * digest pills already carry that signal.) */
 /* (HOME_QA A1: the .home-services-strip / -pill / -dot rules were removed
  * with the services snapshot - the footer health-dot already aggregates
  * RC + Vision + Supervisor status.) */
@@ -823,23 +735,17 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-card {
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   padding: var(--panel-padding-comp);
-  min-height: 140px;
   display: flex; flex-direction: column;
   /* s218 v7: explicit stretch so Recent 5 + This Week cards end at the
    * same y when the grid row sizes to the taller card. Without this,
    * align-items default was letting the shorter card content-size. */
   align-self: stretch;
 }
-.home-card-head {
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--label);
-  margin-bottom: var(--space-2);
-  display: flex; align-items: baseline; gap: var(--space-2);
-  border-bottom: 1px solid var(--border-soft);
-  padding-bottom: var(--space-2);
-}
+/* (HOME round-2 M7: the .home-card-head typography moved to the shared
+ * .hx-card-head primitive in hextech.css - the markup carries
+ * hx-card-head now. .home-card-sub below stays panel-local.) */
 .home-card-sub {
   font-size: var(--fs-xs); color: var(--clock); font-weight: 700;
   letter-spacing: 0.06em; margin-left: auto;
@@ -847,14 +753,17 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 /* RC2 reskin: home empty / loading states adopt the shared hx-empty
  * sigil treatment (centered, dim, four-pointed-star glyph above the
  * message) so a quiet panel reads as intentional, not broken. The sigil
- * is the same U+2756 CSS escape hx-empty uses (ASCII source-hygiene). */
+ * is the same U+2756 CSS escape hx-empty uses (ASCII source-hygiene).
+ * HOME round-2 (M9): padding aligned to the hx-empty canonical
+ * (hextech.css .hx-empty is the shared primitive; this local mirror
+ * exists only because the JS emits class="home-empty"). */
 .home-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-5) var(--space-3);
+  padding: var(--space-6) var(--space-4);
   font-size: var(--fs-sm);
   color: var(--dim);
   text-align: center;
@@ -867,29 +776,19 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   color: var(--accent);
   opacity: 0.35;
 }
-.home-today-stats { display: flex; flex-direction: column; gap: var(--space-1); }
-.home-today-row {
-  display: flex; justify-content: space-between; align-items: baseline;
-  font-size: var(--fs-sm);
-}
-.home-today-lbl { color: var(--text-dim); letter-spacing: 0.04em; }
-.home-today-val {
-  color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700;
-}
-.home-recent-list, .home-week-list {
-  list-style: none; padding: 0; margin: 0;
-  display: flex; flex-direction: column; gap: var(--space-2);
-}
-.home-recent-row {
-  display: grid;
-  grid-template-columns: 44px 1fr 90px 32px;
-  align-items: center; gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  background: var(--surface-alt);
-  border-radius: var(--panel-radius-sm);
-  font-size: var(--fs-xs);
-  min-height: var(--hit-min);
-}
+/* (HOME round-2 M4/M9: the dead pre-card home list family was deleted -
+ * .home-today-stats/-row/-lbl/-val, the .home-recent-list,.home-week-list
+ * combined rule, .home-recent-row, the late .home-recent-champ/-meta/
+ * -kda/-mode cascade overrides that were clobbering the card-era styles,
+ * and .home-week-row/-champ/-games/-kda/-grade. Grep-verified zero JS
+ * creators for all of them; the live Recent 5 list is
+ * #home-recent-list.home-recent-list further up.) */
+/* KEPT (not home-dead): the bare .home-recent-grade chip below is
+ * consumed OUTSIDE the home view - the Session + History match rows
+ * build <span class="home-recent-grade X"> (main.js _historyMatchRowEl
+ * ~2168 + the session renderer ~1876) and primitives.css targets
+ * .home-card .home-recent-grade. Restyling/removing it is History/
+ * Session scope, not HOME round-2. */
 .home-recent-grade {
   font-weight: 900; font-size: var(--fs-sm); text-align: center;
   padding: 1px 0; border-radius: 4px;
@@ -901,30 +800,6 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-recent-grade.C { color: var(--text); background: var(--surface-2); }
 .home-recent-grade.D { color: var(--bad); background: var(--bad-soft); }
 .home-recent-grade.F { color: var(--bad); background: var(--bad-soft); }
-.home-recent-champ { color: var(--text); font-weight: 700; }
-.home-recent-meta  { color: var(--text-faint); font-size: var(--fs-xs); }
-.home-recent-kda   { color: var(--text-dim); font-variant-numeric: tabular-nums; text-align: right; }
-.home-recent-mode  {
-  color: var(--info); font-size: var(--fs-xs); font-weight: 700;
-  letter-spacing: 0.08em; text-align: right;
-}
-.home-week-row {
-  display: grid;
-  grid-template-columns: 1fr 64px 44px 44px;
-  align-items: center; gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  background: var(--surface-alt);
-  border-radius: var(--panel-radius-sm);
-  font-size: var(--fs-xs);
-  min-height: var(--hit-min);
-}
-.home-week-champ { color: var(--text); font-weight: 600; }
-.home-week-games { color: var(--text-dim); text-align: right; font-size: var(--fs-xs); }
-.home-week-kda   { color: var(--text); font-variant-numeric: tabular-nums; text-align: right; font-weight: 700; }
-.home-week-grade {
-  text-align: center; font-weight: 800; font-size: var(--fs-xs);
-  padding: 1px 0; border-radius: 4px;
-}
 /* (HOME_QA A1: the legacy .home-services-row / -dot / -name / -detail rules
  * were removed with the services snapshot.) */
 
@@ -939,16 +814,12 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * (never under ~1900) never triggers it. The tall companion (~1316px) has the
  * vertical room for the stacked read. */
 @media (max-width: 1200px) {
-  /* Identity band: greeting / headline / stat chips stack vertically. The
-   * desktop min-height (120px, for 1-row card presence) is below the stacked
-   * height here; as a flex child of .home-overlay that explicit floor lets
-   * flex-shrink collapse the hero to 120px so the headline + chips spill onto
-   * the Tonight's Pick card below. min-height:auto restores the flex
-   * content-based minimum so the hero sizes to its stacked content. */
+  /* Identity band: greeting / headline / stat chips stack vertically.
+   * (HOME round-2 M1: the desktop min-height:120px floor is gone, so the
+   * old min-height:auto reset is no longer needed here.) */
   .home-hero {
     grid-template-columns: 1fr;
     gap: var(--space-3);
-    min-height: auto;
   }
   .home-hero-headline { text-align: left; }
   /* R30: the center column (headline + Find Match CTA) left-aligns with the
@@ -969,10 +840,12 @@ body[data-view="home"] .home-overlay { display: flex !important; }
     grid-template-columns: 1fr;
   }
 
-  /* Alerts grid goes single-column for the narrow read. (HOME_QA: the
-   * .home-trends reflow rule was removed with the standalone trends row -
-   * the 14-day sparklines now live inline in the hero chips.) */
-  .home-alerts { grid-template-columns: 1fr; }
+  /* Launcher rail: the 6-across desktop row folds to two even rows of
+   * three at the companion width (HOME round-2 M6). (HOME_QA: the
+   * .home-trends reflow rule was removed with the standalone trends row;
+   * the .home-alerts single-column rule left with the alerts family in
+   * round-2 M9.) */
+  .home-actions { grid-template-columns: repeat(3, 1fr); }
 }
 
 /* Pre-queue lobby card (2026-04-26). Sits inline above the main grid
