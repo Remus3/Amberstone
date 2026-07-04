@@ -20,9 +20,10 @@ ARAM Mayhem (queue 2400, gameMode KIWI, RC MODE_ARAM) gives real comps but is Ma
 
 The headless loop MAINTAINS this file: every DEFAULT-OFF seam it ships (DSV*/DSP*/RF*/R*)
 appends its live default-ON flip here. The loop NEVER flips these blind (charter 4b
-do-not-flip-blind). SEAM GROUND TRUTH 2026-07-01: NOTHING is wired-on-live - every seam is
-default-OFF at its live call site. DSP2/DSP11/F2/RF1/RF2/RF3 are transport-plumbed across /rank
-(item 638) but every live caller omits the flags; DSV2/3/4, DSP4, DSP8, B1, R50/R51/R53 +
+do-not-flip-blind). SEAM GROUND TRUTH (updated 2026-07-04): DSP11 is now WIRED-ON-LIVE (C4 FLIPPED default-ON,
+523206d6 - the RC-side coach caller archetype_dispatch.py:210 sends it); every OTHER seam stays
+default-OFF at its live call site. DSP2/F2/RF1/RF2/RF3 are transport-plumbed across /rank
+(item 638) but their live callers still omit the flags; DSV2/3/4, DSP4, DSP8, B1, R50/R51/R53 +
 Phase-D are ENGINE-ONLY (need route + client plumbing before any eyeball); DSP5/6/7 + anti-tank
 P3.2 are producer-only orphans (test imports only); env gates RC_COMP_HP_LEAN /
 RC_LANING_CV_SERVED are cold (no supervisor or machine-env wiring).
@@ -306,13 +307,17 @@ no row carries it.
 - C3. (ARAM-MAYHEM) DSP3 ARAM archetype-override flip (`prefer_aram_win_axis=True`): needs a
   tabled Cluster-A champ to roll (Zilean/Shaco/Shyvana/Taric/KogMaw/Kayle). RC-side
   resolver, NO DS restart.
-- C4. (ARAM-MAYHEM) DSP11 kit-axis flip [LIVE-VALIDATED 2026-06-17 - FLIP-READY]: lethality
+- C4. (ARAM-MAYHEM) DSP11 kit-axis flip [FLIPPED DEFAULT-ON 2026-07-04, 523206d6]: lethality
   (Senna) + crit (Quinn) + negative control (Caitlyn) validated live; residual = the
   Ezreal/Corki manamune sub-case [EYEBALLED SANE 2026-07-04 during a live Ezreal ARAM game via
   live_flip_eyeball.py: DSP11 ON floats Essence Reaver + Trinity Force for Ezreal and Trinity Force
   + The Collector for Corki - the kit-axis Sheen/mana items - demoting pure-crit-AS staples (Yun Tal
   / IE); saner not random]. ALL C4 sub-cases now validated (lethality/crit/negative-control + Ezreal
-  /Corki kit-axis); ONLY the operator flip decision remains. DS restart on flip.
+  /Corki kit-axis). FLIPPED default-ON 2026-07-04 at the RC-side coach caller
+  (coach_integration/archetype_dispatch.py:210, 523206d6) - the build-chooser floats kit-axis by
+  default. RC-side caller change so NO ENGINE bump / NO DS restart / NO Share (proven live: Ezreal
+  DEFAULT floats Essence Reaver #1 vs #4 with the flag off). Pass prefer_kit_axis_by_win=False to
+  opt out. C4 CLOSED.
 - C5. (ARAM-MAYHEM) RF1 bruiser survivability flip [LIVE-VALIDATED 2026-06-18 Yasuo -
   FLIP-READY]: 1 of 9 tabled bruisers eyeballed (SANER); flip stays operator-gated + DS
   restart; further tabled rolls (Darius/Udyr) optional.
