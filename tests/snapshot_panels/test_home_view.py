@@ -193,11 +193,15 @@ def test_home_wl_strip(mock_server, pw_browser):
         assert any(s in form for s in wr_strs), (
             f"recent-form label {form!r} missing win_rate {wr}"
         )
-        # The wins-losses record + the L20 tag both render in the label.
+        # The wins-losses record still renders; the "L20" tag is trimmed
+        # (operator ruling, HOME mode-tabs slice 2026-07-04: "last 20" is
+        # inferred from the 20-pip strip itself, the tag was label noise).
         assert f"{last20['wins']}-{last20['losses']}" in form, (
             f"recent-form label {form!r} missing record"
         )
-        assert "L20" in form, f"recent-form label {form!r} missing 'L20'"
+        assert "L20" not in form, (
+            f"recent-form label {form!r} still carries the trimmed 'L20' tag"
+        )
 
         SCREENSHOTS.mkdir(exist_ok=True)
         page.locator("#home-hero-rank-wl").screenshot(
