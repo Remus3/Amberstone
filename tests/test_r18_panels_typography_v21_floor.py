@@ -149,23 +149,18 @@ def test_augment_reco_no_blanket_sub_floor() -> None:
         )
 
 
-def test_archetype_nudge_chip_block_floor_clean() -> None:
-    """The archetype-nudge-chip block (housed in map_state.css) was audited clean
-    at 17px (chip) / 19px (X button) - both above the 16px floor. Pin that so a
-    future edit cannot regress it sub-floor without surfacing here."""
+def test_archetype_nudge_chip_block_stays_removed() -> None:
+    """(2026-07-04) The archetype-nudge-chip surface was retired with header
+    row 2; its map_state.css block was deleted. Absence guard (daf09498
+    removed-surface precedent) so a merge cannot resurrect the orphaned
+    rules - a resurrected chip needs a new render surface + a fresh audit."""
     text = _strip_comments(MAP_STATE_CSS.read_text(encoding="utf-8"))
-    for find_key, floor in (
-        ("\n.archetype-nudge-chip {", 16),
-        ("\n.archetype-nudge-chip-x {", 16),
+    for find_key in (
+        "\n.archetype-nudge-chip {",
+        "\n.archetype-nudge-chip-x {",
     ):
-        block = _block(text, find_key)
-        m = re.search(r"font-size:\s*(\d+)px", block)
-        assert m is not None, (
-            f"map_state.css: {find_key!r} has no hardcoded px font-size"
-        )
-        assert int(m.group(1)) >= floor, (
-            f"map_state.css: {find_key!r} font-size {m.group(1)}px regressed "
-            f"below the {floor}px floor."
+        assert find_key not in text, (
+            f"map_state.css: retired block {find_key!r} resurrected."
         )
 
 

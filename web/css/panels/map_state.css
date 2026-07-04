@@ -46,16 +46,6 @@
 .cs-pill       { display: none; }
 .vis-pill      { display: none; }
 
-/* Mode-scoped hides. Augments are an in-game concept (ARAM Mayhem /
- * Arena / Brawl) - not relevant in the lobby. Hide while body[data-mode]
- * is "client" OR while data-mode hasn't been set yet (initial page load
- * before setMode fires - JS sets dataset.mode lazily on first state
- * tick, so without :not([data-mode]) the pill flashes visible until a
- * mode arrives). JS still populates #augments-pill so the pill restores
- * automatically when a game starts. */
-body[data-mode="client"] .augments-pill,
-body:not([data-mode])   .augments-pill { display: none; }
-
 /* Home-view-scoped hides. The home card is a session-summary surface;
  * the live in-game zone (ZOI) + clock pills add no signal there. JS
  * still updates them so they're correct the moment the user switches
@@ -63,19 +53,17 @@ body:not([data-mode])   .augments-pill { display: none; }
 body[data-view="home"] .zone-pill,
 body[data-view="home"] .game-time { display: none; }
 
-/* (2026-04-30) Same reasoning for CS / vision / gold pills - they're
- * in-game telemetry with no bearing on a session-summary home card. JS
- * still populates the elements (and the in-game/lobby views still show
- * them per their existing rules); only the home-view visual is dropped.
+/* (2026-04-30) Same reasoning for CS / vision pills - they're in-game
+ * telemetry with no bearing on a session-summary home card. JS still
+ * populates the elements (and the in-game/lobby views still show them
+ * per their existing rules); only the home-view visual is dropped.
  * Both bare and `.hidden` forms are listed so the static-pill un-hide
  * rule (`header .X.hidden { display: inline-flex !important }`, 0,2,1)
  * loses to this 0,3,2 + !important. */
 body[data-view="home"] header .cs-pill,
 body[data-view="home"] header .cs-pill.hidden,
 body[data-view="home"] header .vis-pill,
-body[data-view="home"] header .vis-pill.hidden,
-body[data-view="home"] header .gold-pill,
-body[data-view="home"] header .gold-pill.hidden {
+body[data-view="home"] header .vis-pill.hidden {
   display: none !important;
 }
 
@@ -127,161 +115,12 @@ body[data-view="home"] header .gold-pill.hidden {
 .trend-pill.down    { color: var(--bad);  background: var(--bad-soft); }
 .trend-pill.neutral { color: var(--text-dim); }
 
-/* Augments pill - lives on header row 2, right of the trend pill. Row 2
- * has more horizontal room than row 1, so the pill reads larger + wider
- * without increasing the top-bar height. Hard 1-line cap still enforced:
- * overflow ellipsizes so the pill can never wrap onto a 3rd row. */
-.augments-pill {
-  /* (2026-04-26) Auto-expand to text content per user - was clipping
-   * "Goredrink, Ice Cold" + 3rd augment with ellipsis. Removed fixed
-   * width and ellipsis; pill now grows to fit. Soft cap via max-width
-   * keeps it from pushing the heartbeat off the row at 4+ long names. */
-  display: inline-block;
-  vertical-align: middle;
-  line-height: 1.4;
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: var(--gold-soft);
-  color: var(--gold);
-  font-size: 21px;
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  letter-spacing: 0.04em;
-}
-.augments-pill::before {
-  content: "⬢ ";
-  margin-right: 4px;
-  opacity: 0.8;
-}
-.augments-pill.hidden { display: none; }
-/* Not-supported variant: muted colors so it reads as a placeholder rather
- * than "here is your augment advice". */
-.augments-pill.no-support {
-  background: var(--surface-alt);
-  color: var(--text-faint);
-  font-weight: 600;
-}
-
-/* DS pill (2026-05-09): glanceable top DS engine pick. Same shape grammar
- * as the augments pill so the row reads as one unit, but distinct color
- * (info / blue) so the operator can tell at a glance which slot is
- * showing engine math vs which is showing build augments. The em inside
- * carries the +Ndps delta in a smaller weight so the item name dominates.
- * Hidden in client/tft modes (mode-scoped rule mirrors augments). */
-.ds-pill {
-  display: inline-block;
-  vertical-align: middle;
-  line-height: 1.4;
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: var(--info-soft);
-  color: var(--info);
-  font-size: 21px;
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  letter-spacing: 0.04em;
-}
-.ds-pill::before {
-  content: "◆ ";
-  margin-right: 4px;
-  opacity: 0.8;
-}
-.ds-pill em {
-  font-style: normal;
-  font-weight: 600;
-  font-size: 0.78em;
-  margin-left: 6px;
-  opacity: 0.85;
-}
-.ds-pill[hidden] { display: none !important; }
-body[data-mode="client"] .ds-pill,
-body[data-mode="tft"]    .ds-pill,
-body:not([data-mode])    .ds-pill { display: none; }
-
-/* Trigger pill (ADR-007 s169) - decision_detector heartbeat surface.
- * Small, monochrome, glanceable. Green dot indicates loop is evaluating
- * (last eval <5s); amber 5-15s (slow); grey >15s or no eval ever.
- * Counter = eval cycles in current match (resets on new game). Click
- * shows pending count in title. */
-.trigger-pill {
-  display: inline-block;
-  vertical-align: middle;
-  line-height: 1.4;
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: var(--bg-soft, rgba(80, 80, 80, 0.18));
-  color: var(--fg-muted, #9aa);
-  font-size: var(--fs-sm, 18px);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transition: color 240ms ease, background-color 240ms ease;
-}
-.trigger-pill.alive {
-  color: var(--success, #4ade80);
-  background: var(--success-soft, rgba(74, 222, 128, 0.12));
-}
-.trigger-pill.stale {
-  color: var(--warn, #fbbf24);
-  background: var(--warn-soft, rgba(251, 191, 36, 0.12));
-}
-.trigger-pill.dead {
-  color: var(--fg-muted, #6b7280);
-  background: var(--bg-soft, rgba(107, 114, 128, 0.10));
-}
-.trigger-pill.pending {
-  /* When at least one decision is pending - slight emphasis so the
-   * operator notices without the pill becoming jarring. No animation:
-   * the popup banner is the action surface, this is just status. */
-  outline: 1px solid var(--info, #60a5fa);
-}
-body[data-mode="client"] .trigger-pill,
-body[data-mode="tft"]    .trigger-pill,
-body:not([data-mode])    .trigger-pill { display: none; }
-
-/* Archetype-mismatch chip (s184.1, 2026-05-13) - warn-style nudge that
- * fires when the operator's CS archetype pick doesn't match the
- * dispatcher's top-15 for their first completed item. Same hide rules
- * as .ds-pill so the row collapses cleanly in client/tft. Outline +
- * yellow soft fill so it reads as a transient alert rather than a
- * permanent status pill. */
-.archetype-nudge-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  vertical-align: middle;
-  line-height: 1.4;
-  padding: 4px 6px 4px 11px;
-  border-radius: 999px;
-  background: var(--warn-soft, rgba(251, 191, 36, 0.14));
-  color: var(--warn, #fbbf24);
-  font-size: 17px;
-  font-weight: 700;
-  max-width: 100%;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-  outline: 1px solid var(--warn, #fbbf24);
-}
-.archetype-nudge-chip-text { font-variant-numeric: tabular-nums; }
-.archetype-nudge-chip-x {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-size: 19px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 4px;
-  border-radius: 999px;
-  opacity: 0.75;
-}
-.archetype-nudge-chip-x:hover { opacity: 1; }
-.archetype-nudge-chip[hidden] { display: none !important; }
-body[data-mode="client"] .archetype-nudge-chip,
-body[data-mode="tft"]    .archetype-nudge-chip,
-body:not([data-mode])    .archetype-nudge-chip { display: none; }
+/* (2026-07-04) The header row-2 pill styles (augments-pill, ds-pill,
+ * trigger-pill, archetype-nudge-chip) were removed with the row itself
+ * per operator - dead chrome on the companion; in-game glances live on
+ * the ?overlay=1 HUD. Backends (/api/decisions/heartbeat, archetype_nudge
+ * in /api/state, aug_reco) are untouched; #ib-aug-reco-block + #ib-ds-picks
+ * remain the in-panel surfaces. */
 
 .panel {
   background: var(--surface);

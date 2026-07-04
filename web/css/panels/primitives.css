@@ -68,7 +68,6 @@ header[data-compressed="1"] {
   min-height: 44px;
   transition: height 180ms ease;
 }
-header[data-compressed="1"] .header-row.header-row-2 { display: none; }
 header[data-compressed="1"] .header-row.header-row-1 {
   align-items: center;
 }

@@ -1,10 +1,14 @@
-"""Pin the dedup-fetch wire-in across the 4 call sites (item 186).
+"""Pin the dedup-fetch wire-in across the wired call sites (item 186).
 
 web/js/lib/dedup_fetch.js coalesces concurrent identical fetches so
-parallel panels (coach_decisions + trigger_pill on /api/decisions;
-champ_select + item_build on /api/loadout/list) share one in-flight
-request within a small render-storm grace TTL. ~50-150ms saved per
-consolidated fetch.
+parallel panels (coach_decisions on /api/decisions; champ_select +
+item_build on /api/loadout/list) share one in-flight request within a
+small render-storm grace TTL. ~50-150ms saved per consolidated fetch.
+
+(2026-07-04: trigger_pill.js - the 4th wired site - was retired with
+header row 2; its pins were removed rather than converted since the
+whole module is gone. coach_decisions keeps dedupFetch: it still
+coalesces its own render-storm duplicates.)
 
 These grep-pin tests fail CI if a future refactor silently rips a wire
 out (mirrors item 152 WiredSitesGrepTests precedent for the cost-trace
@@ -21,11 +25,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEDUP_LIB = REPO_ROOT / "web" / "js" / "lib" / "dedup_fetch.js"
 
-# 4 call sites that MUST consume dedupFetch (NOT raw fetch) for the
+# Call sites that MUST consume dedupFetch (NOT raw fetch) for the
 # coalesced endpoints. Each entry: (panel file, endpoint substring).
 _WIRED_SITES = (
     ("web/js/panels/coach_decisions.js", "/api/decisions"),
-    ("web/js/panels/trigger_pill.js",   "/api/decisions"),
     ("web/js/panels/champ_select.js",   "/api/loadout/list"),
     ("web/js/panels/item_build.js",     "/api/loadout/list"),
 )
@@ -88,12 +91,6 @@ class WiredSitesGrepTests(unittest.TestCase):
         # /api/decisions. We pin the exact one-line call.
         self.assertIn('dedupFetch("/api/decisions")', src)
 
-    def test_trigger_pill_uses_dedup_fetch_decisions(self):
-        src = self._read("web/js/panels/trigger_pill.js")
-        self.assertIn("import { dedupFetch } from '../lib/dedup_fetch.js'",
-                      src)
-        self.assertIn('dedupFetch("/api/decisions")', src)
-
     def test_champ_select_uses_dedup_fetch_loadout(self):
         src = self._read("web/js/panels/champ_select.js")
         self.assertIn("import { dedupFetch } from '../lib/dedup_fetch.js'",
@@ -120,14 +117,13 @@ class NoRawFetchRegressionTests(unittest.TestCase):
     coalescing benefit is lost in production."""
 
     # (panel file, endpoint, expected raw-fetch count)
-    # /api/decisions: 0 raw fetches in either panel (both wired to dedupFetch).
+    # /api/decisions: 0 raw fetches (wired to dedupFetch).
     # /api/loadout/list: 0 raw fetches in either panel.
     # /api/decisions/heartbeat + /api/decisions/log + /api/decisions/<id>
     # are DIFFERENT endpoints (sub-paths) and intentionally NOT deduped
     # (lower cadence + per-id semantics) - they may still use bare fetch.
     _CASES = (
         ("web/js/panels/coach_decisions.js", r'fetch\("/api/decisions"\)', 0),
-        ("web/js/panels/trigger_pill.js",   r'fetch\("/api/decisions"\)', 0),
         ("web/js/panels/champ_select.js",   r'fetch\("/api/loadout/list"', 0),
         ("web/js/panels/item_build.js",     r'fetch\("/api/loadout/list"', 0),
     )

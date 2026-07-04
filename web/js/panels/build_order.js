@@ -1,17 +1,14 @@
 // DS vs Enemy Comp panel (2026-05-17, OVERNIGHT RUN-1 follow-up; plan §6b B+C).
 //
 // Renders the contextual, match-specific DS-backed item BUILD ORDER from
-// POST /api/build-order (core/build_order.py plan_build_order). Two
-// surfaces:
+// POST /api/build-order (core/build_order.py plan_build_order). Surface:
 //   (B) the champ-select merged build section's ordered-sequence strip
 //       (#csv-builds-seq) - mode-agnostic (sr/aram/arena). champ_select.js
 //       consumes fetchBuildOrder/getCachedBuildOrder directly and renders
 //       the strip itself (QA 2026-07-03 B6+B7 merge; the standalone
 //       buildOrderCardHtml card was superseded and deleted, LEDGER 765).
-//   (C) the in-game #ds-pill glance - buildOrderPill(state) returns the
-//       next-2-in-order + a full-order rich tooltip; item_build.js (which
-//       owns #ds-pill) consumes it and falls back to its top-pick render
-//       when this returns null.
+//   ((C), the in-game #ds-pill glance via buildOrderPill(state), was
+//       removed 2026-07-04 with header row 2.)
 //
 // Cost discipline: the route is N sequential engine calls (opt-in / NOT
 // per-tick - see the plan + archetype_dispatch.with_build_order). A build
@@ -42,21 +39,6 @@ function _enemySig(enemies) {
 
 function _boKey(champion, dsMode, archetype, enemies) {
   return `${champion}|${dsMode}|${archetype || ""}|${_enemySig(enemies)}`;
-}
-
-// Escape for both text nodes and attribute values (data-tt-html / title).
-function _esc(s) {
-  return String(s == null ? "" : s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function _deltaTxt(o) {
-  const unit = o.unit || "dps";
-  const d = Math.round(o.delta || 0);
-  return (d >= 0 ? "+" : "") + d + unit;
 }
 
 // Fire the build-order route once per (champion, dsMode, archetype). The
@@ -105,54 +87,8 @@ export function getCachedBuildOrder(champion, dsMode, archetype, enemies) {
   return _BO_CACHE[_boKey(champion, dsMode, archetype, enemies)] || null;
 }
 
-// ── (C) in-game #ds-pill glance ───────────────────────────────────────
-
-// Returns { html, tt } for the pill, or null when not applicable (not
-// in-game, no champion, or order not cached yet). item_build.js owns
-// #ds-pill; on null it falls back to its existing top-pick render.
-export function buildOrderPill(stateObj) {
-  if (!stateObj) return null;
-  const champ =
-    stateObj.champion ||
-    (stateObj.coach && stateObj.coach.champion) ||
-    "";
-  if (!champ || champ === "-") return null;
-  // In-game we don't have the CS queue id; map from mode flags. Default
-  // SR (the route is still valid; the card (B) is the mode-correct
-  // planned-build surface - this pill is the glance companion).
-  let dsMode = "SR";
-  if (stateObj.aram_mode) dsMode = "ARAM";
-  else if (stateObj.arena_mode) dsMode = "ARENA";
-  const archetype = ""; // backend auto-resolves via core.archetype_picks
-  const data = getCachedBuildOrder(champ, dsMode, archetype);
-  if (!data) {
-    fetchBuildOrder(champ, dsMode, archetype, null);
-    return null;
-  }
-  const order = Array.isArray(data.order) ? data.order : [];
-  if (!order.length) return null;
-  // Advance the cursor past items already owned (client-side; v1 plans
-  // from empty - live re-derivation is the plan's Phase 4).
-  const owned = Array.isArray(stateObj.owned_item_ids)
-    ? stateObj.owned_item_ids.map((x) => String(x))
-    : [];
-  const remaining = order.filter((o) => owned.indexOf(String(o.item_id)) < 0);
-  const next2 = (remaining.length ? remaining : order).slice(0, 2);
-  const html = `▸ ${next2.map((o) => _esc(o.item_name)).join(" → ")}`;
-  const full = order
-    .map(
-      (o) =>
-        `${o.slot}. ${_esc(o.item_name)} (${_esc(_deltaTxt(o))}, ${o.gold || 0}g)`,
-    )
-    .join("<br>");
-  const tt = `Build order${
-    data.unique_passive_safe ? " · no-double ✓" : ""
-  }:<br>${full}`;
-  return { html, tt };
-}
-
 // Test/diagnostic helper - clears caches + collapses the card so the next
-// render fetches + writes unconditionally (mirrors _resetArchetypeNudgeSig).
+// render fetches + writes unconditionally.
 export function _resetBuildOrder() {
   for (const k of Object.keys(_BO_CACHE)) delete _BO_CACHE[k];
   for (const k of Object.keys(_BO_INFLIGHT)) delete _BO_INFLIGHT[k];
