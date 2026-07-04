@@ -466,9 +466,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-pick-tip-row {
   display: grid;
-  /* s218 v3: tightened from 110px → 88px so "The Good/Bad/Ugly"
-   * labels sit closer to the "-" value (operator: was too far). */
-  grid-template-columns: 88px 1fr;
+  /* s218 v3 tightened 110 -> 88px (labels closer to values); round 2:
+   * 88 -> 96px - "THE GOOD" at fs-xs/800 overflows 88 and the "-"
+   * sentinel visually fused with the label. */
+  grid-template-columns: 96px 1fr;
   gap: var(--space-4);
   align-items: baseline;
 }
@@ -488,9 +489,13 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* R30: a tip row whose value the backend suppressed (small-sample Good/Bad)
- * is hidden, not shown as a "-" placeholder. Overrides the grid display. */
-.home-pick-tip-row[hidden] { display: none; }
+/* Operator ruling (round 2, supersedes R30 row-hide): all three tip rows
+ * always occupy their slots - a suppressed tip renders the dim "-"
+ * sentinel (.is-empty) so the card height never shifts with sample size. */
+.home-pick-tip-value.is-empty {
+  color: var(--text-faint);
+  font-style: normal;
+}
 /* (HOME_QA C1: the .home-pick-section-3 "Advisories" rules were removed with
  * the section itself.) */
 .home-coach-pick-img {

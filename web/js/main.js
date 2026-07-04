@@ -3684,17 +3684,21 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           + (pick.grade ? ` · best ${pick.grade}` : "");
       }
       // item 281: Good/Bad/Ugly tips wired from the this_week aggregate
-      // (_home_pick_tips). Fall back to the "-" sentinel when absent.
-      // R30: the backend returns "" for a tip it suppressed (small-sample
-      // Good/Bad over 1-2 games); hide that row entirely instead of showing a
-      // "-" placeholder, so Tonight's Pick never presents noise as a finding.
+      // (_home_pick_tips). The backend returns "" for a tip it suppressed
+      // (small-sample Good/Bad over 1-2 games).
+      // Operator ruling (round 2, supersedes the R30 row-hide): all three
+      // rows ALWAYS occupy their slots - a suppressed tip renders the dim
+      // "-" no-data sentinel instead of hiding, so the card height never
+      // shifts with the sample size (same no-reflow principle as the
+      // reserved L20 strip).
       const setTip = (id, val) => {
         const el = document.getElementById(id);
         if (!el) return;
         const has = !!(val && String(val).trim() && val !== "-");
         const row = el.closest(".home-pick-tip-row");
-        if (row) row.hidden = !has;
+        if (row) row.hidden = false;
         el.textContent = has ? val : "-";
+        el.classList.toggle("is-empty", !has);
       };
       setTip("home-pick-good", pick.tips && pick.tips.good);
       setTip("home-pick-bad", pick.tips && pick.tips.bad);
