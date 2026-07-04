@@ -266,9 +266,12 @@ no row carries it.
   not a pure HTTP flag-flip; burst compute always uses the cached flags-off `load_default()`
   snapshot. Threading it needs per-request snapshot construction (separate task, logged
   FUTURE). SOURCE: ledger 2026-07-01 below.
-- B37. (REAL-SR) L4 capability-gap live validation with `RC_CAPGAP_SURFACE=1` (gap detectors
-  key on real enemy champion identity). SOURCE: ROADMAP.md:16; docs/LEDGER.md items
-  631-634.
+- B37. (REAL-SR) L4 capability-gap live validation (gap detectors key on real enemy champion
+  identity). NOTE 2026-07-03 (LEDGER 765): `RC_CAPGAP_SURFACE` is now DEFAULT-ON in code
+  (operator QA ruling A5; env `RC_CAPGAP_SURFACE=0` still disables) and the served
+  `capability_gap` dict is live-verified on `/api/ds-preview` - the remaining gate is ONLY
+  the in-game eyeball of the chip content vs a real enemy comp. SOURCE: ROADMAP.md:16;
+  docs/LEDGER.md items 631-634 + 765.
 - B38. (REAL-SR) RC2 P3.3/S0 pulse-rationing remaining eyeball: suppressed pulses were all
   benign re-emits AND the Emergency tier / one-shot Urgent cross still glows (lethal cues
   need real combat pressure - the item-598 capture verified only the suppression half).
