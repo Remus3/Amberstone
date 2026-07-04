@@ -46,11 +46,24 @@ from __future__ import annotations
 import math
 
 from core import aram_action_rule, aram_fight_risk
-from core.coach_choices import synthesize_simple_choices, to_jsonable
+from core.coach_choices import CoachChoice, synthesize_simple_choices, to_jsonable
 
 # ARAM has no shop trips mid-lane: the only "reset" is a death back to fountain.
 # This is the standing ARAM fact the reset_item line anchors the next item to.
 _ARAM_NO_RECALL_PREFIX = "No fountain trips"
+
+# Canonical ARAM action label -> its (A label, B label) A/B pair. These are the
+# EXACT 5 labels core.aram_action_rule.decide_action returns; the A/B is ARAM-
+# appropriate (no recall option - ARAM has no shop trips mid-lane). Marks the
+# deterministic ARAM rule with source_tag "aram_rule" so the chip UI can tell it
+# apart from the synth / native / haiku paths.
+_ARAM_CHOICE_LABELS = {
+    "ALL-IN": ("All-in", "Poke instead"),
+    "POKE": ("Poke", "Hold"),
+    "HOLD": ("Hold", "Reposition"),
+    "DISENGAGE": ("Disengage", "Trade back"),
+    "FALL BACK": ("Fall back", "Hold under turret"),
+}
 
 
 def _has_usable_number(value: object) -> bool:
@@ -102,19 +115,47 @@ def _safe_risk(threats: object) -> str:
 def _safe_choices(action: str, fight_rule: str) -> list[dict]:
     """Derive the deterministic A/B choices from the block's own action + fight_rule.
 
-    Reuses core.coach_choices.synthesize_simple_choices - the SAME primitive the
-    served synthesizer fallback uses - so the deterministic choices are shape-
-    identical to the served chip UI. Returns [] when action is empty or has no
-    recognizable binary verb. Of the 5 canonical ARAM action labels only ALL-IN
-    (-> Engage/Disengage) and FALL BACK (-> Recall/Stay) map today; POKE / HOLD /
-    DISENGAGE yield [] until a later ARAM-specific mapping widens this, gated on
-    shadow-agreement evidence. Never raises.
+    Maps ALL 5 canonical ARAM action labels (ALL-IN / POKE / HOLD / DISENGAGE /
+    FALL BACK) through ``_ARAM_CHOICE_LABELS`` to an ARAM-appropriate 2-entry
+    A/B, each tagged source_tag "aram_rule" so the served chip UI can tell the
+    deterministic ARAM rule apart from the synth / native / haiku paths. This
+    SUPERSEDES the earlier narrow reuse of synthesize_simple_choices (which
+    mapped only ALL-IN + FALL BACK), lifting choices coverage toward parity with
+    the live Haiku surface. A B outcome carries the passed fight_rule when
+    present, else a safe default. An EMPTY or UNKNOWN (non-canonical) action
+    falls back to synthesize_simple_choices (which returns [] for empty/unknown),
+    so nothing regresses off the canonical labels. Never raises.
     """
     try:
-        return to_jsonable(
-            synthesize_simple_choices({"action": action, "fight_rule": fight_rule})
+        key = action.strip().upper() if isinstance(action, str) else ""
+        pair = _ARAM_CHOICE_LABELS.get(key)
+        if pair is None:
+            # Empty / unknown action: keep the old synth fallback (-> [] here).
+            return to_jsonable(
+                synthesize_simple_choices({"action": action, "fight_rule": fight_rule})
+            )
+        a_lbl, b_lbl = pair
+        b_outcome = (
+            fight_rule.strip()
+            if isinstance(fight_rule, str) and fight_rule.strip()
+            else "play safe; reassess next tick"
         )
-    except Exception:  # noqa: BLE001
+        choice_a = CoachChoice(
+            key="A",
+            label=a_lbl,
+            expected_outcome="follow the coach call",
+            confidence="mid",
+            source_tag="aram_rule",
+        )
+        choice_b = CoachChoice(
+            key="B",
+            label=b_lbl,
+            expected_outcome=b_outcome,
+            confidence="mid",
+            source_tag="aram_rule",
+        )
+        return to_jsonable([choice_a, choice_b])
+    except Exception:  # noqa: BLE001 - fail-soft contract: never raises
         return []
 
 
