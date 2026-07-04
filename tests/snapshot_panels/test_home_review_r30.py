@@ -92,20 +92,18 @@ def test_no_duplicate_streak_in_tonight_pick(mock_server, pw_browser):
     assert not errors, f"JS errors: {errors[:3]}"
 
 
-def test_advisories_section_hidden_when_empty(mock_server, pw_browser):
+def test_advisories_section_removed(mock_server, pw_browser):
+    """HOME_QA C1 deletion guard: Tonight's Pick Section 3 (Advisories) was
+    removed entirely - the footer health-dot + advisory badge already carry
+    that signal. #home-pick-section-3 must not exist in the DOM."""
     ctx, page, errors = _ctx(pw_browser)
     try:
         _open(page, mock_server)
-        sec3 = page.locator("#home-pick-section-3")
-        assert sec3.count() == 1, "Tonight's Pick Section 3 missing"
-        n = int(
-            (page.locator("#advisory-count").text_content() or "0").strip()
-            or "0"
+        assert page.locator("#home-pick-section-3").count() == 0, (
+            "the removed Advisories section is still in the DOM"
         )
-        # Section 3 is visible iff there is at least one open advisory.
-        assert sec3.is_visible() == (n > 0), (
-            f"advisories section visibility {sec3.is_visible()} != (count {n} "
-            f"> 0); an empty 'Advisories: None' row must not render"
+        assert page.locator("#home-pick-advisories-val").count() == 0, (
+            "the removed advisories value node is still in the DOM"
         )
     finally:
         page.close()
@@ -243,6 +241,99 @@ def test_full_sample_tips_render(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_recent_stripe_encodes_win_loss(mock_server, pw_browser):
+    """HOME_QA A5/B1: the Recent-5 left stripe is a WIN/LOSS signal, not a
+    grade proxy. win===true -> .win, win===false -> .loss, win null/absent ->
+    .neutral. Inject one row of each so the mapping is pinned per-row."""
+    fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    payload = dict(fixture)
+    payload["recent"] = [
+        {"champion": "Jinx", "mode": "ARAM", "kda": "12/3/8", "grade": "F",
+         "win": True, "timestamp": "3:42 PM"},
+        {"champion": "Lux", "mode": "ARAM", "kda": "2/9/4", "grade": "S",
+         "win": False, "timestamp": "3:14 PM"},
+        {"champion": "Sona", "mode": "ARAM", "kda": "1/1/1", "grade": "B",
+         "win": None, "timestamp": "2:50 PM"},
+    ]
+    ctx, page, errors = _ctx(pw_browser)
+    try:
+        _open(page, mock_server, route_payload=payload)
+        page.wait_for_function(
+            "document.querySelectorAll("
+            "'#home-recent-list .home-recent-card').length >= 3",
+            timeout=10_000,
+        )
+        classes = page.evaluate(
+            """() => Array.from(
+                 document.querySelectorAll(
+                   '#home-recent-list .home-recent-stripe'))
+                 .map(el => el.className)"""
+        )
+        assert "win" in classes[0], (
+            f"win row stripe not .win: {classes[0]!r}"
+        )
+        assert "loss" in classes[1], (
+            f"loss row stripe not .loss: {classes[1]!r}"
+        )
+        assert "neutral" in classes[2], (
+            f"unknown-result row stripe not .neutral: {classes[2]!r}"
+        )
+        # The stripe must NOT carry the old grade-tier classes anymore
+        # (an S-grade loss row would otherwise read tier-good / green).
+        for cls in classes[:3]:
+            assert "tier-good" not in cls and "tier-bad" not in cls, (
+                f"stripe still uses a removed grade-tier class: {cls!r}"
+            )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_momentum_headline_gated_to_three_games(mock_server, pw_browser):
+    """HOME_QA H6/FE3: the today-summary headline only shows at >= 3 games
+    today. A 1-2 game day hides the headline entirely (too small a sample to
+    headline); a >= 3 game day shows the "N games - avg KDA" summary."""
+    fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
+
+    def _headline_state(games, avg):
+        payload = dict(fixture)
+        payload["today"] = {
+            "games": games, "total_kda": "10/5/12", "avg_kda": avg,
+            "grades": {}, "modes": {},
+        }
+        ctx, page, errors = _ctx(pw_browser)
+        try:
+            _open(page, mock_server, route_payload=payload)
+            state = page.evaluate(
+                """() => {
+                  const el = document.querySelector('#home-hero-headline');
+                  return { hidden: el.hidden,
+                           text: (el.textContent || '').trim() };
+                }"""
+            )
+        finally:
+            page.close()
+            ctx.close()
+        assert not errors, f"JS errors: {errors[:3]}"
+        return state
+
+    # 2 games today: below the >=3 gate -> headline hidden.
+    two = _headline_state(2, 3.7)
+    assert two["hidden"] is True, (
+        f"2-game-day headline must be hidden, got {two!r}"
+    )
+
+    # 4 games today: at/above the gate -> the summary line shows.
+    four = _headline_state(4, 4.2)
+    assert four["hidden"] is False, (
+        f"4-game-day headline must be visible, got {four!r}"
+    )
+    assert "4 games" in four["text"], (
+        f"4-game-day headline not the summary line: {four!r}"
+    )
 
 
 def test_no_em_dashes_or_smart_quotes():
