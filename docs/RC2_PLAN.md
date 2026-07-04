@@ -95,7 +95,7 @@ TOP-10 answers (from docs/RC2_TODO_QA.md):
 | E8 | Design system: reduced-motion-done-right + status glyphs + threshold statusFor() | DONE | 19f8116f |
 | E9 | Rank/tier/LP header + player scouting (both NOW) | DONE | core/lcu_ranked.py + routes_scouting.py; Riot key = API-Key-Riot.txt via core/riot_api.py |
 | E10 | ASCII retro sweep (all files, frozen) + git-history rewrite + force-push | OPEN | |
-| E11 | Hextech reskin across surfaces (P3/P4 visual cutover) | OPEN (home + champ-select + lobby DONE via operator UI-QA method) | home LEDGER 768; lobby `1cf122e2` (LEDGER 772); remaining = PGR/history/session/user-builds/build-insights/settings + overlay |
+| E11 | Hextech reskin across surfaces (P3/P4 visual cutover) | OPEN (home + champ-select + lobby + PGR DONE via operator UI-QA method) | home LEDGER 768; lobby `1cf122e2` (LEDGER 772); PGR `1771f532` (LEDGER 773 - verified reskin-complete via s220 token-first + R47; BUILD-section dead-code purge); remaining = history/session/user-builds/build-insights/settings + overlay |
 | E12 | Responsiveness levers L1/L2/L4 (SSE/build TTL halve, etc.) | DONE | L1/L4 shipped 6.3; L2 `48fcee51` RuneWriter lobby-mode memoization (per-session _cached_lobby_mode, port-safe fewer LCU GETs, +4 tests) |
 
 TOTAL_stages = 62 (50 base + 12 E-batch).
