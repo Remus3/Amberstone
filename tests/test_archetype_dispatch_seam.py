@@ -117,9 +117,11 @@ def test_dispatch_absent_hp_guard_off(captured_kwargs):
     assert "caster_missing_hp_pct" not in captured_kwargs
 
 
-def test_dispatch_no_hp_args_no_seam_kwargs(captured_kwargs):
-    # Flagless, HP-less call: byte-identical to pre-seam dispatch - no seam
-    # kwargs forwarded at all.
+def test_dispatch_no_hp_args_forwards_only_kit_axis_default(captured_kwargs):
+    # Flagless, HP-less call. Since the C4 flip (2026-07-04) prefer_kit_axis_by_win
+    # (DSP11) defaults ON, so a flagless dispatch forwards it =True (the live
+    # build-chooser floats a champ's WIN-anchored kit-axis items). EVERY OTHER
+    # seam stays default-OFF (byte-identical to pre-seam dispatch).
     ad.dispatch_for_coach(
         "Soraka",
         mode_engine="SR",
@@ -127,13 +129,16 @@ def test_dispatch_no_hp_args_no_seam_kwargs(captured_kwargs):
         item_ids=["1001"],
         enemy_stats=_enemy(),
     )
-    seam = {
-        "exempt_offclass_by_win", "prefer_kit_axis_by_win", "cost_ceiling",
+    # C4 default-ON: prefer_kit_axis_by_win IS forwarded on a flagless call.
+    assert captured_kwargs["prefer_kit_axis_by_win"] is True
+    # All other seams remain default-OFF - not forwarded.
+    still_off = {
+        "exempt_offclass_by_win", "cost_ceiling",
         "prefer_survivability_by_win", "assume_magic_burst",
         "assume_passive_as_stacks", "apply_target_vuln",
         "assume_missing_hp_heal_amp", "caster_missing_hp_pct",
     }
-    assert seam.isdisjoint(captured_kwargs.keys())
+    assert still_off.isdisjoint(captured_kwargs.keys())
 
 
 def test_dispatch_full_hp_no_missing_pct(captured_kwargs):
