@@ -116,7 +116,40 @@ def _lcu_win(raw_data: str | None) -> bool | None:
     return bool(win)
 
 
-def _build_home_summary() -> dict:
+# HOME mode tabs (HOME QA round 1): the only mode values the summary
+# filter honors. Anything else (TFT, garbage, empty) -> unfiltered ALL.
+_HOME_MODE_FILTERS = frozenset({"SR", "ARAM", "ARENA"})
+
+# Per-tab rewind_history.db queue_id sets for the mode-aware last20
+# strip - single source of truth for the BE policy, the FE slice, and
+# tests. ARAM policy: auto-enables when rewind carries Mayhem (2400)
+# rows; until then an ARAM-filtered L20 would show only classic games
+# (Match-V5 403s event modes, so 2400 never lands in rewind today) and
+# the strip is served empty instead.
+_LAST20_QUEUES: dict[str, tuple[int, ...]] = {
+    "SR":    (400, 420, 430, 440, 480, 490),
+    "ARAM":  (450, 2400),
+    "ARENA": (1700, 1710),
+}
+
+
+def _rewind_has_mayhem(rconn) -> bool:
+    """Capability probe: does rewind_history.db carry any ARAM Mayhem
+    (queue 2400) rows yet? One cheap SELECT EXISTS per home-summary
+    call (20s poll cadence). Fail-soft: missing conn or sqlite error
+    reads as False - the ARAM last20 strip stays empty."""
+    if rconn is None:
+        return False
+    try:
+        row = rconn.execute(
+            "SELECT EXISTS(SELECT 1 FROM matches WHERE queue_id = 2400)"
+        ).fetchone()
+        return bool(row and row[0])
+    except sqlite3.Error:
+        return False
+
+
+def _build_home_summary(mode_filter: str | None = None) -> dict:
     """Aggregate read-only data for the dashboard home view.
 
     Source of truth: data/match_history.db (live-captured per game,
@@ -125,9 +158,23 @@ def _build_home_summary() -> dict:
 
     Win/loss is not stored on rows - we surface grade (S-F) instead
     as the per-game performance signal.
+
+    ``mode_filter`` (HOME mode tabs, BE half): one of "SR"/"ARAM"/
+    "ARENA" scopes recent/today/this_week (and therefore tonight_pick)
+    plus trends + streaks to that mode. Anything else, including None,
+    keeps today's exact unfiltered behavior. rank + last20 are identity
+    reads and are NEVER filtered. The payload echoes the applied filter
+    as ``mode_filter`` ("ALL" when unfiltered) for the FE + tests.
     """
     from datetime import datetime, timedelta
+    if mode_filter not in _HOME_MODE_FILTERS:
+        mode_filter = None
+    # Parameterized mode predicate shared by the recent/today/this_week
+    # queries below - empty when unfiltered so no-arg SQL stays identical.
+    mode_pred = " AND mode = ?" if mode_filter else ""
+    mode_args: tuple = (mode_filter,) if mode_filter else ()
     out = {"today": {}, "recent": [], "this_week": []}
+    out["mode_filter"] = mode_filter or "ALL"
     # Rank header is assembled up front so it survives the missing-DB early
     # return below - a clean checkout / CI has no match_history.db, but the home
     # payload must always carry a rank field (graceful-unranked when no LCU).
@@ -153,8 +200,9 @@ def _build_home_summary() -> dict:
             "SELECT timestamp, mode, champion, grade, kda_str, "
             "       game_time_s, kills, deaths, assists, cs, cs_per_min, "
             "       label, raw_data "
-            "FROM matches WHERE mode != 'TFT' "
-            "ORDER BY timestamp DESC LIMIT 5"
+            "FROM matches WHERE mode != 'TFT'" + mode_pred +
+            " ORDER BY timestamp DESC LIMIT 5",
+            mode_args
         )
         for (ts, mode, champ, grade, kda, dur, k, d, a, cs, cspm,
              label, raw_data) in cur:
@@ -180,8 +228,8 @@ def _build_home_summary() -> dict:
         rows = conn.execute(
             "SELECT mode, champion, grade, kills, deaths, assists "
             "FROM matches WHERE timestamp LIKE ? || '%' "
-            "  AND mode != 'TFT'",
-            (today,)
+            "  AND mode != 'TFT'" + mode_pred,
+            (today, *mode_args)
         ).fetchall()
         grades: dict[str, int] = {}
         modes:  dict[str, int] = {}
@@ -206,8 +254,8 @@ def _build_home_summary() -> dict:
         cur = conn.execute(
             "SELECT champion, mode, grade, kills, deaths, assists, cs, cs_per_min, game_time_s "
             "FROM matches WHERE timestamp >= ? AND champion != '' "
-            "  AND mode != 'TFT'",
-            (week_cutoff,)
+            "  AND mode != 'TFT'" + mode_pred,
+            (week_cutoff, *mode_args)
         )
         champ_agg: dict[str, dict] = {}
         for champ, mode, g, k, d, a, cs, cspm, dur in cur:
@@ -241,19 +289,30 @@ def _build_home_summary() -> dict:
         raise
 
     # -- V3 home extras (2026-04-30): tonight_pick, trends, streaks --
+    # tonight_pick derives from this_week so it auto-inherits the filter.
     out["tonight_pick"] = _home_tonight_pick(out["this_week"])
-    out["trends"]       = _home_trends_14d(db_path)
-    out["streaks"]      = _home_streaks(db_path)
+    out["trends"]       = _home_trends_14d(db_path, mode_filter)
+    out["streaks"]      = _home_streaks(db_path, mode_filter)
     # LIFT 3: last-20 W/L pip strip + recent-form WR for the hero, read
     # from rewind_history.db.matches.tracked_win (the clean single-account
     # historical win column). Reuses the History builder's helper so the
     # two surfaces share one computation. Fail-soft: a missing DB / sqlite
     # error yields {} and the frontend hides the strip (never crashes the
     # home payload).
+    # HOME mode tabs: last20 is mode-aware by queue_id. ALL stays the
+    # global trail; SR/ARENA scope to their queue sets; ARAM is DATA-
+    # DRIVEN - auto-enables when rewind carries Mayhem (2400) rows,
+    # until then {} (a classic-450-only trail would misrepresent a
+    # Mayhem-main's form; the FE hides the strip and falls back to the
+    # mode-filtered KDA trend).
     from dashboard.builders import _compute_last20
     rdb = _APP_DIR / "data" / "rewind_history.db"
     rconn = _ro_conn(rdb)
-    out["last20"]       = _compute_last20(rconn)
+    if mode_filter == "ARAM" and not _rewind_has_mayhem(rconn):
+        out["last20"] = {}
+    else:
+        out["last20"] = _compute_last20(
+            rconn, _LAST20_QUEUES.get(mode_filter))
     return out
 
 
@@ -354,10 +413,13 @@ def _home_tonight_pick(this_week: list) -> dict | None:
     }
 
 
-def _home_trends_14d(db_path) -> dict:
+def _home_trends_14d(db_path, mode_filter: str | None = None) -> dict:
     """14-day daily aggregates of cs_per_min, gold_per_min, KDA from
     match_history.db. Each metric is a list of {date, value} entries
-    in chronological order, padded with None for days with no games."""
+    in chronological order, padded with None for days with no games.
+
+    ``mode_filter`` (HOME mode tabs): when set, only rows of that mode
+    feed the series; None keeps today's exact all-modes behavior."""
     from datetime import datetime, timedelta
     out = {"cs_per_min": [], "gold_per_min": [], "kda": []}
     conn = _ro_conn(db_path)
@@ -370,10 +432,13 @@ def _home_trends_14d(db_path) -> dict:
     by_day_kda: dict[str, list] = {d: [] for d in days}
     try:
         cutoff = days[0]
-        cur = conn.execute(
-            "SELECT timestamp, cs_per_min, gold_per_min, kills, deaths, assists "
-            "FROM matches WHERE timestamp >= ?", (cutoff,)
-        )
+        sql = ("SELECT timestamp, cs_per_min, gold_per_min, kills, deaths, assists "
+               "FROM matches WHERE timestamp >= ?")
+        params: tuple = (cutoff,)
+        if mode_filter:
+            sql += " AND mode = ?"
+            params = (cutoff, mode_filter)
+        cur = conn.execute(sql, params)
         for ts, csm, gpm, k, d, a in cur:
             day = (ts or "")[:10]
             if day not in by_day_cs:
@@ -405,11 +470,15 @@ def _home_trends_14d(db_path) -> dict:
     return out
 
 
-def _home_streaks(db_path) -> dict:
+def _home_streaks(db_path, mode_filter: str | None = None) -> dict:
     """Active streak signals derived from match_history.db:
       - play_days: consecutive recent days (counting back from today) with >=1 game
       - good_grades: consecutive most-recent matches at S/A grade
-    Both reset when the chain breaks."""
+    Both reset when the chain breaks.
+
+    ``mode_filter`` (HOME mode tabs): when set, both streak queries only
+    see rows of that mode; None keeps today's exact behavior (which is
+    TFT-inclusive - pre-existing, deliberately unchanged)."""
     from datetime import datetime, timedelta
     out = {"play_days": 0, "good_grades": 0}
     conn = _ro_conn(db_path)
@@ -418,10 +487,14 @@ def _home_streaks(db_path) -> dict:
     try:
         # Distinct days with games, recent cutoff 30 days
         cutoff = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+        days_sql = "SELECT timestamp FROM matches WHERE timestamp >= ?"
+        days_params: tuple = (cutoff,)
+        if mode_filter:
+            days_sql += " AND mode = ?"
+            days_params = (cutoff, mode_filter)
         days_with_games = {
             (r[0] or "")[:10]
-            for r in conn.execute(
-                "SELECT timestamp FROM matches WHERE timestamp >= ?", (cutoff,))
+            for r in conn.execute(days_sql, days_params)
             if r[0]
         }
         today = datetime.now().date()
@@ -437,8 +510,13 @@ def _home_streaks(db_path) -> dict:
         out["play_days"] = streak
         # Latest run of S/A grades
         good = 0
-        for (g,) in conn.execute(
-            "SELECT grade FROM matches ORDER BY timestamp DESC LIMIT 50"):
+        grades_sql = "SELECT grade FROM matches"
+        grades_params: tuple = ()
+        if mode_filter:
+            grades_sql += " WHERE mode = ?"
+            grades_params = (mode_filter,)
+        grades_sql += " ORDER BY timestamp DESC LIMIT 50"
+        for (g,) in conn.execute(grades_sql, grades_params):
             if (g or "").upper() in ("S", "A"):
                 good += 1
             else:
