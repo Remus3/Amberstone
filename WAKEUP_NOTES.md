@@ -20,10 +20,15 @@ collapsed TEAM ANALYSIS block w/ deterministic verdict header, fixed queue-2400 
 (backend alias map + frontend canonical), flipped RC_CAPGAP_SURFACE default ON (live-verified
 capability_gap dict on /api/ds-preview post-restart pid 3644). Panel visibility: per-mode
 contexts (in-game-sr/aram/arena/tft + out-game, brawl->sr), 17-panel registry, tabbed settings
-card, legacy-blob migration. Suite 10566/2skip green; node 25/0. NEXT: same QA method on the
-next page (operator will pick); orphaned modules (cooldown_watch.js, ban_suggest_toggle.js,
-buildOrderCardHtml) + stale ARAM/Arena #csv-picks-target placeholder = follow-up chips; capgap
-in-game eyeball stays B37 (now default-ON phrasing).
+card, legacy-blob migration. Suite 10566/2skip green; node 25/0. FOLLOW-UP CHIPS BOTH LANDED (LEDGER 766):
+orphan cleanup `daf09498` (deleted cooldown_watch.js/ban_suggest_toggle.js/.css + buildOrderCardHtml
+export; backends kept; test files -> deletion guards) + `#csv-picks-target` mode-gate `c80c1d0d`
+(pre-existing bug: item-200 relocation left the SR-only PICK placeholder outside the .csv-card-pickban
+gate -> lingered in ARAM/Arena; one CSS rule + computed-display test, RED-proven, verifier CONFIRM).
+Both CI green. NEXT: run the SAME operator-QA method (6-mapper workflow -> AskUserQuestion advocate
+rounds -> worktree slices + verifier + 5-phase audit) on the HOME page. capgap in-game eyeball stays
+B37 (default-ON). The gemini loop ORUN1-5 rows remain OPEN in ORCHESTRATION_PLAN for a future relaunch
+(controller/AHK are stopped; STOP file present).
 
 # 2026-07-03 (Hexcore galaxy refresh + live-gated 24h audit; docs-only, no engine)
 
