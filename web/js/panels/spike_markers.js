@@ -24,7 +24,7 @@
 // The active_match render call supplies the operator's live champion id
 // (DDragon slug), level, owned item ids, and mode. Discipline: pure ESM,
 // ASCII only, sig-dedup gate, no DOM writes outside renderSpikeMarkers().
-// Mirrors the cooldown_watch.js / spike_curve.js patterns.
+// Mirrors the cc_conditional_pressure.js / spike_curve.js patterns.
 
 const _SPM_CACHE = Object.create(null);     // cacheKey -> response JSON
 const _SPM_INFLIGHT = Object.create(null);

@@ -28,8 +28,8 @@ import {
 } from './cc_conditional_pressure.js';
 // QA 2026-07-03 slice A (B19): the cooldown-watch card was removed from
 // champ select (the overlay surfaces it in-game when it matters; the
-// backend /api/cooldown-watch route stays). cooldown_watch.js had no other
-// consumer - the module file is orphaned (follow-up, not deleted here).
+// backend /api/cooldown-watch route stays). The orphaned frontend module
+// (cooldown_watch.js) was deleted in the follow-up cleanup (LEDGER 765).
 // 2026-06-25: personal best-build card (Overlay App E personal-WR build override,
 // local-data half). Reads the operator's OWN locked champion + surfaces the
 // items they win with from rewind_history.db. Backend routes_personal_build.

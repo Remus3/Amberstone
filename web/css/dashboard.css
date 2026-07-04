@@ -42,12 +42,10 @@
 @import './panels/spike_curve.css';
 @import './panels/ward_heat.css';
 @import './panels/draft_elo.css';
-@import './panels/ban_suggest_toggle.css';
 @import './panels/cc_blended_ehp_threat.css';
 @import './panels/cc_conditional_pressure.css';
 @import './panels/capability_gap.css';
 @import './panels/cc_pairing.css';
-@import './panels/cooldown_watch.css';
 @import './panels/personal_build.css';
 @import './panels/ds_sweep.css';
 @import './panels/ds_profile.css';
