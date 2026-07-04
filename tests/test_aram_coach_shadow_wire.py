@@ -44,10 +44,11 @@ def test_writes_record_for_real_aram_tick(tmp_path):
     row = json.loads(lines[0])
     assert row["champ"] == "Kalista"
     assert "Ashe" in row["enemy_comp"]
-    # both sides present with the six keys
+    # both sides present with the shadow block keys (the six original fields
+    # plus choices, the A/B array captured for shadow comparison).
     assert set(row["deterministic"].keys()) == {
         "action", "fight_rule", "risk", "reset_item",
-        "item_build", "item_build_reasons",
+        "item_build", "item_build_reasons", "choices",
     }
     assert set(row["live_haiku"].keys()) == set(row["deterministic"].keys())
 
