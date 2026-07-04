@@ -4,6 +4,37 @@
 
 ---
 
+# 2026-07-04 (Operator HOME-page QA rework + companion 920x1280 + daf09498 cleanup; LEDGER 767)
+
+Ran the operator per-page UI-QA method on HOME (6-mapper MAP -> 4 AskUserQuestion advocate rounds ->
+one worktree slice + verifier + 5-phase audit SHIP + ui_recon both widths). Rulings in
+docs/qa/HOME_QA_2026-07-04.md. SURFACE VALIDATED: Home renders in the rc-shell COMPANION window
+(mainWindow, plain :8888, out-of-game; main.js:523), NOT the ?overlay=1 HUD (pins active-match,
+main.js:927-929); primary viewport now 920x1280 portrait. Home slice f7951769 (net -982): hero trims
+(greeting/Season-WR/Gold-chip cut, momentum gated >=3 games), 6-tile portrait launcher restored (Find
+Match tile dropped, CTA covers), Recent-5 W/L stripe (wired the unused `win` field; grade->badge),
+dropped Advisories, REMOVED Weekly Digest + Last Build, deleted dead services render +
+.home-trends/.home-grid CSS; backend stripped services/weekly_digest/last_build/season_wr (home-only).
+Resize f71aee0d: config.js standard 923x1316->920x1280 + companion tests + recon (rc-shell 309 +
+companion 11 pass; already-sized window keeps its saved size -> restart rc-shell + Ctrl+2 Standard to
+adopt). Cleanup 7e101de3: completed daf09498 (deleted ban_suggest_toggle.css but left 2 token tests
+pinning it - CI-hidden red, surfaced only in the /done full-suite; watch the exit-code trap - the bg
+bash reported outer-shell exit 0 while pytest exited 1). Pushed f9259068..f71aee0d, CI green.
+
+ARCH DECISION (operator): web/+dashboard/ retired as standalone VISUALS; all UI/UX -> the companion +
+in-game overlays (both rc-shell windows that render web/). rc-shell KEPT (it IS the companion+overlay).
+Path = #1-aggressive-finish (RC2 E11 Hextech reskin + dead-surface prune), NOT #2 native rebuild (RC2
+~90% built; a rewrite = months + parity gap).
+
+NEXT: HOME round-2 - operator says "feels disjointed still" -> a ui/ux agent pass + the RC2 E11 Hextech
+reskin (docs/RC2_PLAN.md E11, greenlit+swarm-mapped). Deferred from HOME_QA_2026-07-04.md: This-Week
+visibility (buried under Recent-5 in the portrait stack), Recent-5 depth, 1-col stack order,
+Recent-meta density, dual-grade repetition. Also owed: the 2 backfill CHIPS (items[] pre-ingest +
+queue_id/mode_subtype) rebase onto this slice. DO NOT redo: Home round-1 shipped (f7951769); companion
+is 920x1280; ban_suggest cleanup done.
+
+---
+
 # 2026-07-03 (Operator champ-select QA rework + per-mode panel visibility; LEDGER 765)
 
 Session pivot: /orchestrated-run bootstrap seeded the ORUN1-5 curated queue + relaunched the
@@ -52,11 +83,3 @@ clean, RAW/DUST/EDG integrity, Playwright zero console errors on WebGL + ?webgl=
 (endpoint `overlay` not a RAW id; runtime parser drops it silently) - left as-is, harmless;
 fix opportunistically on the next hexcore data pass. (2) 9 pre-existing RAW descriptions
 contain ';' and truncate at parse (rca0/4/5/7, g_* nodes) - also pre-existing, same deal.
-
----
-
-# 2026-07-03 (R76 LOOP - Haiku-to-ZERO Lane C: Arena deterministic coach block + shadow; Tier-1, no ENGINE bump)
-
-Loop cycle 5 (post-759 relaunch). Directive: Refill item 4 - advance a NO_LLM_PRECOMPUTE_PLAN lane. Lane state probe: A saturated-offline (v4 regen deferred R37), B full-roster, C shadow shipped ARAM-only, D overlay shipped. Explore agent grounded the frontier: ARENA had ZERO deterministic coach-text fields (arena_coach.py:747 Haiku ~12s tick) while ARAM has the full Stage 1+2 block. Shipped the Arena mirror, SHADOW-only, NO flip: core/arena_action_rule.py (encodes the operator's own prompt rules 137-168; ALL IN promotion dormant - no live opp-HP source) + core/arena_target_rule.py + core/arena_deterministic_coach.py (EXACT 7 artifact keys; augment_advice always-empty v1 degrade) + core/arena_coach_shadow.py (ROUND-AWARE dedup sig - ARAM's round-less sig would eat Arena rounds) -> data/arena_coach_shadow.jsonl (gitignored) + shadow_log_arena_coach/_live_arena_block wiring + one-call _state_builder hook (deep-equal no-served-mutation guard). ARAM `immediate` slice DROPPED on verify-the-premise (field RETIRED, aram_coach.py:326). Brawl skipped (s214 deadcode). 3 worktree slices (ABC `772743f1`, D `63ad1e1f`, E `ef679bec`), verifier CONFIRM each, merges `a687b9a5`/`5cc64ee2`/`17dd361f`. RC 10550/2skip/193sub exit 0 (+50 new); ruff clean; RC restarted pid 9964. LEDGER 763.
-
-**Process notes:** (1) Verifier "REFUTE" on slice ABC was an over-strict ORCHESTRATOR probe (garbage-everywhere -> all-empty expected, but camp_phase=object() is truthy -> BUY ITEMS is the documented spec contract, mirroring the live coach's own truthiness) - write verifier claims from the SPEC contract, not invented strictness; the ruling + reasoning logged before merge. (2) Slice-E worktree spawned at pre-merge HEAD (R75) without the wave-1 modules; agent correctly ff-merged local main first - future wave-2 prompts should state "verify prerequisites present, ff to main if not" (it did this unprompted). (3) No gist-hook index corruption this cycle (3 clean worktree verifies).
