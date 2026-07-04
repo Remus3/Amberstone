@@ -598,9 +598,9 @@ body[data-view="diagnostics"]    #view-diagnostics,
 body[data-view="coach-calls"]    #view-coach-calls,
 body[data-view="bridge-pending"] #view-bridge-pending,
 body[data-view="replay"]         #view-replay { display: block; }
-/* Hide home + lobby overlays when a non-default view is active.
- * In lobby view specifically, the inline #lobby-overlay strip is
- * suppressed since its content moved into #view-lobby. */
+/* Hide the home overlay when a non-default view is active. (E11: the
+ * inline #lobby-overlay strip was removed; #view-lobby is the sole
+ * lobby surface, so only #home-overlay needs suppressing here.) */
 body[data-view="session"]        #home-overlay,
 body[data-view="history"]        #home-overlay,
 body[data-view="historical-pgr"] #home-overlay,
@@ -614,8 +614,10 @@ body[data-view="replay"]         #home-overlay,
 body[data-view="last-match"]     #home-overlay,
 body[data-view="active-match"]   #home-overlay,
 body[data-view="champ-select"]   #home-overlay,
-body[data-view="lobby"]          #home-overlay,
-body[data-view="lobby"]          #lobby-overlay { display: none; }
+body[data-view="lobby"]          #home-overlay { display: none; }
+/* E11: the body[data-view="lobby"] #lobby-overlay mutex was removed with
+ * the #lobby-overlay element itself (the dedicated #view-lobby is the
+ * sole lobby surface now). */
 
 /* Lobby view layout (2026-04-26 v2): replaces the post-match-duped
  * 5-panel grid with a 2x2 lobby-themed grid. Queue card spans 1 col,
@@ -684,14 +686,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   /* default align-self: stretch - fills row 1 height */
   min-height: 0;
 }
-.lobby-view-card-head {
-  /* UI scale v2.1 (2026-05-23): 11 -> --fs-xs (16) for the 16-px floor. */
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
-  text-transform: uppercase; color: var(--label);
-  margin-bottom: var(--space-2); border-bottom: 1px solid var(--border-soft);
-  padding-bottom: 6px;
-  display: flex; align-items: baseline; gap: 8px;
-}
+/* E11: dead .lobby-view-card-head rule removed (no HTML consumer;
+ * panels use .lv-panel-title). */
 .lobby-view-queue-block {
   /* s162 v4: justify-content space-evenly distributes equal vertical
    * space between top→buttons, buttons→CLM, CLM→bottom. Buttons end
@@ -701,18 +697,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   justify-content: space-evenly;
   position: relative;
 }
-/* s162 v2 - Row 1 queue name. Static neutral color across all modes
- * (was --info / lavender, which felt mode-themed). White matches the
- * panel's brand tone without leaning into accent territory. */
-.lobby-view-queue-name {
-  /* UI scale v2.1 (2026-05-23): 16 -> --fs-md (22) - QUEUE name is a
-   * panel title and reads more prominently at viewing distance. The
-   * s162-v4 fit-without-scroll constraint holds because the queue-block
-   * uses justify-content: space-evenly + flex:1 around it. */
-  font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.12em;
-  color: var(--text); text-transform: uppercase;
-  text-align: center; padding: 0;
-}
+/* E11: dead .lobby-view-queue-name rule removed (no HTML consumer;
+ * the live queue title is #lv-queue-name via .lv-panel-title). */
 /* Row 2 controls strip - 6 buttons, equal static sizing. */
 .lobby-view-queue-controls {
   display: flex; align-items: stretch; gap: 8px;
@@ -1067,7 +1053,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--surface-alt);
   border-radius: var(--panel-radius-sm);  /* R30: raw 6px -> token */
   border: 1px solid transparent;
-  font-size: 14px;
+  font-size: var(--fs-xs);  /* E11 audit: 14 -> --fs-xs (16) floor */
   min-height: 30px;
 }
 .lv-top8-row.is-placeholder { opacity: 0.5; border: 1px dashed var(--border-soft); }
@@ -1115,8 +1101,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-size: var(--fs-xs); color: var(--text); text-align: center;  /* legibility: 12 -> 16 floor */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.lv-top8-games  { font-weight: 700; font-size: 14px; }
-.lv-top8-role   { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-size: 14px; }
+.lv-top8-games  { font-weight: 700; font-size: var(--fs-xs); }  /* E11 R4: 14 -> 16 floor */
+.lv-top8-role   { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); font-size: var(--fs-xs); }  /* E11 R4: 14 -> 16 floor */
 .lv-top8-rank   { font-weight: 700; }
 /* s162 v9: rank pill mirrors Party panel's tier color coding via the
  * shared .lv-rank-* color classes (defined further down). The pill
@@ -1131,7 +1117,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: inline-block;
   padding: 1px 4px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--fs-xs);  /* E11 audit: 14 -> --fs-xs (16) floor */
   font-weight: 700;
   letter-spacing: 0;
   white-space: nowrap;
@@ -1140,7 +1126,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
  * - same italic dim treatment as PARTY's .lv-party-empty so the two
  * panels read consistently when a friend hasn't placed yet. */
 .lv-top8-rank-empty {
-  font-size: 14px;
+  font-size: var(--fs-xs);  /* E11 audit: 14 -> --fs-xs (16) floor */
   color: var(--text-faint);
   font-style: italic;
   font-weight: 600;
@@ -1178,8 +1164,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
    * anchors the overlay; the button itself keeps its tight footprint
    * so the row height is unchanged. */
   position: relative;
-  width: 26px; height: 12px;
-  font-size: 11px;
+  width: 26px; height: 14px;
+  font-size: var(--fs-xs); line-height: 1;  /* E11 R4: 11 -> 16 floor (chevron glyph; box nudged to 14px) */
   display: flex; align-items: center; justify-content: center;
   background: var(--surface-head);
   color: var(--text-dim);
@@ -1209,10 +1195,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   padding: 3px 6px;
   background: var(--surface-alt);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--fs-xs);  /* E11 audit: 13 -> --fs-xs (16) floor */
 }
 .lv-fr-name {
-  font-weight: 800; color: var(--text); font-size: 14px;
+  font-weight: 800; color: var(--text); font-size: var(--fs-xs);  /* E11 R4: 14 -> 16 floor */
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .lv-fr-icon {
@@ -1224,11 +1210,11 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-fr-icon img { width: 100%; height: 100%; object-fit: cover; }
 .lv-fr-games {
-  font-size: 12px; color: var(--text); text-align: right;
+  font-size: var(--fs-xs); color: var(--text); text-align: right;  /* E11 R4: 12 -> 16 floor */
   font-weight: 700;
 }
 .lv-fr-role {
-  font-size: 11px; color: var(--text-dim); text-align: center;
+  font-size: var(--fs-xs); color: var(--text-dim); text-align: center;  /* E11 R4: 11 -> 16 floor */
   font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
 }
 .lv-fr-rank {
@@ -1239,18 +1225,30 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   gap: 4px; cursor: help;
 }
 .lv-fr-team-mark {
-  font-size: 13px; font-weight: 900; letter-spacing: 0.08em;
+  font-size: var(--fs-xs); font-weight: 900; letter-spacing: 0.08em;  /* E11 R4: 13 -> 16 floor */
 }
 .lv-fr-team-enemy .lv-fr-team-mark { color: var(--bad); }
 .lv-fr-team-ally  .lv-fr-team-mark { color: var(--good); }
 .lv-fr-team-kda {
-  font-size: 12px; color: var(--text-dim);
+  font-size: var(--fs-xs); color: var(--text-dim);  /* E11 R4: 12 -> 16 floor */
   font-family: "SF Mono", Consolas, monospace;
 }
 .lv-fr-copy,
 .lv-fr-invite {
+  /* E11 V2: keep the compact 24x24 visible button but add a transparent
+   * 44x44 centered ::before so the click target hits the fingertip floor
+   * (mirrors .lv-member-action / .lv-mc-copy). E11 R4: 12px -> --fs-xs. */
+  position: relative;
   width: 24px; height: 24px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
+}
+.lv-fr-copy::before,
+.lv-fr-invite::before {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 44px; height: 44px;
+  transform: translate(-50%, -50%);
 }
 .lv-fr-invite:hover { color: var(--good); border-color: var(--good); }
 
@@ -1550,19 +1548,20 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text);
   background: color-mix(in srgb, var(--bad-soft) 30%, transparent);
 }
-/* 5-column grid: Champion (icon+copy) | Mastery | Recent | Overall | Averaged.
- * Champion column has a copy button next to the icon - shifts content
- * left across the row by giving 76px to that column. */
-.lv-mc-grid-cols {
-  grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
-}
+/* E11: tab-aware 4-column mains grid. The icon column is always 76px
+ * (icon + copy button). YOUR MAINS = icon | Recent | Overall | Form.
+ * PARTY MAINS = icon | Player | Mastery | Recent. Grid tracks are
+ * driven by the container's [data-tab] set by _renderMains. */
+.lv-mc-grid-you   { grid-template-columns: 76px 1.0fr 1.6fr 1.8fr; }
+.lv-mc-grid-party { grid-template-columns: 76px 1.4fr 1.2fr 1.0fr; }
 .lv-mainchamps-categories {
-  display: grid;
-  grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
-  gap: 8px;
   padding: 4px 4px;
   border-bottom: 1px solid var(--border-soft);
 }
+/* Only the header set matching the active tab renders. */
+.lv-mainchamps-categories .lv-mc-cats { display: none; gap: 8px; }
+.lv-mainchamps-categories[data-tab="you"]   .lv-mc-cats-you   { display: grid; grid-template-columns: 76px 1.0fr 1.6fr 1.8fr; }
+.lv-mainchamps-categories[data-tab="party"] .lv-mc-cats-party { display: grid; grid-template-columns: 76px 1.4fr 1.2fr 1.0fr; }
 .lv-mc-cat {
   /* UI scale v2.1: 14 -> --fs-xs (16). */
   font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.10em;
@@ -1576,7 +1575,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-mc-row {
   display: grid;
-  grid-template-columns: 76px 1.0fr 1.0fr 1.6fr 1.8fr;
+  grid-template-columns: 76px 1.0fr 1.6fr 1.8fr;  /* default = you; overridden per data-tab below */
   gap: 8px;
   align-items: center;
   /* UI scale v2.1: min-height pinned to --hit-min for fingertip target;
@@ -1587,6 +1586,9 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-radius: var(--panel-radius-sm);
   border: 1px solid transparent;
 }
+/* E11: per-tab row column tracks (must match the category-header sets). */
+.lv-mainchamps-list[data-tab="you"]   .lv-mc-row { grid-template-columns: 76px 1.0fr 1.6fr 1.8fr; }
+.lv-mainchamps-list[data-tab="party"] .lv-mc-row { grid-template-columns: 76px 1.4fr 1.2fr 1.0fr; }
 /* s162 v4: rank=1 gold border removed per operator. Selection-state
  * highlight (PARTY MAINS only) uses .is-selected instead. */
 .lv-mc-row.is-selected {
@@ -1596,6 +1598,10 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   border-style: dashed;
   border-color: var(--border-soft);
   opacity: 0.65;
+  /* E11 R4: tighten empty reserved rows a touch to offset the tokenized
+   * font bump - the slot still holds its place with "-" sentinels so no
+   * reflow when data lands, just a shorter empty box. */
+  min-height: calc(var(--hit-min) - 6px);
 }
 .lv-mc-summoner-name {
   /* UI scale v2.1: 12 -> --fs-xs (16). */
@@ -1648,7 +1654,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   background: var(--good-soft);
 }
 
-.lv-mc-mastery, .lv-mc-recent {
+.lv-mc-mastery, .lv-mc-recent, .lv-mc-party-id {
   display: flex; flex-direction: column; gap: 2px;
   text-align: center;
   min-width: 0;
@@ -1661,6 +1667,17 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-mc-mastery-points {
   /* UI scale v2.1: 13 -> --fs-xs (16). */
   font-size: var(--fs-xs); color: var(--text-dim);
+}
+/* E11: PARTY MAINS player column = name (uppercase, reuses
+ * .lv-mc-summoner-name) + champ name below it. */
+.lv-mc-party-champ {
+  font-size: var(--fs-xs); color: var(--text-dim);
+  letter-spacing: 0.04em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* E11: PARTY MAINS mastery is the prominent stat - larger level line. */
+.lv-mc-mastery-party .lv-mc-mastery-level {
+  font-size: var(--fs-sm); font-weight: 700;
 }
 .lv-mc-result {
   /* UI scale v2.1: 14 -> --fs-xs (16). */
@@ -1675,14 +1692,16 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-family: "SF Mono", Consolas, monospace;
 }
 
-/* s162 v10: Overall = 2-col × 2-row grid:
- *   [N Games (with mode tooltip)]   [K/D/A - D in red]
- *   [W - L]                          [N.NN KDA]
+/* E11: YOUR MAINS Overall = single-column 3-row stack:
+ *   [N Games (with mode tooltip)]
+ *   [W - L]
+ *   [N.NN KDA]
+ * (the raw K/D/A triplet cell was dropped).
  */
 .lv-mc-overall {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px 8px;
+  grid-template-columns: 1fr;
+  gap: 2px;
   text-align: center;
   min-width: 0;
   align-items: center;
@@ -1690,6 +1709,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-mc-games {
   /* UI scale v2.1: 14 -> --fs-xs (16). */
   font-size: var(--fs-xs); font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums;  /* E11 audit: align stat digits */
   cursor: help;
 }
 .lv-mc-wl {
@@ -1699,27 +1719,21 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-mc-wl .lv-mc-w { color: var(--good); }
 .lv-mc-wl .lv-mc-l { color: var(--bad); }
-.lv-mc-total-kda {
-  /* UI scale v2.1: 13 -> --fs-xs (16). */
-  font-size: var(--fs-xs); color: var(--text-dim);
-  font-family: "SF Mono", Consolas, monospace;
-}
-/* s162 v9: deaths in K/D/A flagged red so the eye lands on it. */
-.lv-mc-deaths {
-  color: var(--bad);
-  font-weight: 800;
-}
+/* E11: .lv-mc-total-kda + .lv-mc-deaths removed - the raw K/D/A triplet
+ * cell was dropped from the Overall column. */
 .lv-mc-kda-score {
   /* UI scale v2.1: 14 -> --fs-xs (16). */
   font-size: var(--fs-xs); font-weight: 800;
   color: var(--text);
   text-align: center;
   letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;  /* E11 audit: align stat digits */
 }
 
-/* s162 v10: Averaged → "AVG / Match". 3-col × 2-row grid:
- *   [KP%]    [Gold]  [CS]
- *   [Vision] [Dmg]   [CS/m]
+/* E11: YOUR MAINS Form column - single row of 3 substats:
+ *   [KP%]  [CS/m]  [Dmg]
+ * (Vision, raw CS count, and AVG-5 grade were dropped). The
+ * .lv-mc-form marker keeps a clean 3-up track.
  */
 .lv-mc-averaged {
   display: grid;
@@ -1734,6 +1748,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lv-mc-avg-val {
   font-size: var(--fs-sm); font-weight: 700; color: var(--text);  /* legibility: 14 -> 18 (secondary floor) */
+  font-variant-numeric: tabular-nums;  /* E11 audit: align KP%/CS-M/DMG digits */
 }
 .lv-mc-avg-lbl {
   /* s162 v14: 9px → 11px (zoom:1.33 → ~14.6px effective). Sub-labels
@@ -1756,22 +1771,8 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .lv-mc-kp-c { color: var(--clock); }
 .lv-mc-kp-d { color: var(--bad); }
 
-/* s162 v17: AVG 5 grade letter - operator's last-5-match performance
- * grade for the listed champion. Bigger + heavier than the standard
- * .lv-mc-avg-val so the letter reads as the primary signal in the
- * cell, with "AVG 5" sitting below in the standard sub-label
- * treatment. Color bands match the KP convention. */
-.lv-mc-avg5-letter {
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1;
-}
-.lv-mc-avg5-s { color: var(--gold); }
-.lv-mc-avg5-a { color: var(--good); }
-.lv-mc-avg5-b { color: var(--info); }
-.lv-mc-avg5-c { color: var(--clock); }
-.lv-mc-avg5-d { color: var(--bad); }
+/* E11: the AVG-5 grade letter (.lv-mc-avg5-*) was removed with the Form
+ * trim - no longer rendered by either mains renderer. */
 
 /* s162 v9: games-cell tooltip - 3-col table (RIFT / ARAM / ARENA)
  * with mode counts and WR%. Renders inside .app-tooltip via
@@ -1789,14 +1790,14 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   text-align: center;
 }
 .lv-mc-games-tip-head > span {
-  font-size: 12px; font-weight: 900; letter-spacing: 0.14em;
+  font-size: var(--fs-xs); font-weight: 900; letter-spacing: 0.14em;  /* E11 R4: 12 -> 16 floor */
   color: var(--text);
   text-transform: uppercase;
   border-bottom: 1px solid var(--border-soft);
   padding-bottom: 2px;
 }
 .lv-mc-games-tip-row:not(.lv-mc-games-tip-head) > span {
-  font-size: 15px; font-weight: 700;
+  font-size: var(--fs-sm); font-weight: 700;  /* E11 R4: 15 -> 18 (data row) */
   font-family: "SF Mono", Consolas, monospace;
   color: var(--text);
 }
@@ -1808,7 +1809,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   display: flex; gap: 10px; align-items: center;
 }
 .lobby-view-tips {
-  font-size: 14px; color: var(--text-dim); line-height: 1.5;
+  font-size: var(--fs-xs); color: var(--text-dim); line-height: 1.5;  /* E11 R4: 14 -> 16 floor */
   display: flex; flex-direction: column; gap: 6px;
 }
 .lobby-view-tips .tip-row {
@@ -1821,12 +1822,12 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .lobby-view-recent-list .lv-recent-row {
   display: grid; grid-template-columns: 32px 1fr 70px 60px;
-  align-items: center; gap: 8px; font-size: 13px;
+  align-items: center; gap: 8px; font-size: var(--fs-xs);  /* E11 R4: 13 -> 16 floor */
   background: var(--surface-alt); border-radius: 4px;
   padding: 5px 8px;
 }
 .lobby-view-recent-list .lv-recent-grade {
-  font-weight: 900; font-size: 14px; text-align: center;
+  font-weight: 900; font-size: var(--fs-xs); text-align: center;  /* E11 R4: 14 -> 16 floor */
   padding: 1px 0; border-radius: 3px;
 }
 

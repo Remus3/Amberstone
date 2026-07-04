@@ -320,6 +320,7 @@ class TestCaptureStateLobby(unittest.TestCase):
                 "gameConfig": {
                     "queueId": queue_id, "gameMode": "CLASSIC",
                     "mapId": 11, "isCustom": is_custom,
+                    "maxLobbySize": 5,
                 },
                 "partyId": "party-xyz",
                 "partyType": party_type,
@@ -423,6 +424,42 @@ class TestCaptureStateLobby(unittest.TestCase):
             state = agent.capture_state()
         self.assertEqual(state["lobby"]["queue_name"], "")
         self.assertEqual(state["lobby"]["queue_id"], 99999)
+
+    # E11 R3: the view reads lobby.party_size + lobby.max_party_size
+    # (web/js/main.js _renderMains / _renderPartyMains / renderLobbyPanel)
+    # but the agent never emitted them. party_size = live member count;
+    # max_party_size = gameConfig.maxLobbySize.
+    def test_party_size_is_member_count(self):
+        rs = self._stub_lobby()  # default stub = 2 members
+        with mock.patch.object(agent, "lcu_request",
+                               side_effect=_patch_lcu(rs)):
+            state = agent.capture_state()
+        lobby = state["lobby"]
+        self.assertEqual(lobby["party_size"], len(lobby["members"]))
+        self.assertEqual(lobby["party_size"], 2)
+
+    def test_max_party_size_from_game_config(self):
+        rs = self._stub_lobby()  # gameConfig.maxLobbySize = 5
+        with mock.patch.object(agent, "lcu_request",
+                               side_effect=_patch_lcu(rs)):
+            state = agent.capture_state()
+        self.assertEqual(state["lobby"]["max_party_size"], 5)
+
+    def test_party_size_tracks_empty_members(self):
+        rs = self._stub_lobby(members=[])
+        with mock.patch.object(agent, "lcu_request",
+                               side_effect=_patch_lcu(rs)):
+            state = agent.capture_state()
+        self.assertEqual(state["lobby"]["party_size"], 0)
+
+    def test_max_party_size_defaults_zero_when_absent(self):
+        # gameConfig without maxLobbySize -> 0 (dashboard renders "Party -").
+        rs = self._stub_lobby()
+        rs[("GET", "/lol-lobby/v2/lobby")]["gameConfig"].pop("maxLobbySize")
+        with mock.patch.object(agent, "lcu_request",
+                               side_effect=_patch_lcu(rs)):
+            state = agent.capture_state()
+        self.assertEqual(state["lobby"]["max_party_size"], 0)
 
 
 if __name__ == "__main__":

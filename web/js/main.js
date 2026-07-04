@@ -173,17 +173,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     setTimeout(tick, 300);
   }
   // ``_lvQueueChangeError`` is the surface used when change_queue_type
-  // returns ok:false. Falls back to _setLobbyStatus if it's wired (the
-  // legacy lobby panel uses it); otherwise drops a console.warn so the
-  // failure is at least diagnosable.
+  // returns ok:false. Writes into the #lv-queue-sub line if present and
+  // drops a console.warn so the failure is at least diagnosable. (The
+  // legacy #lobby-overlay _setLobbyStatus fallback was removed in E11.)
   function _lvQueueChangeError(err) {
     const msg = "Queue change failed: " + (err || "unknown");
-    try {
-      if (typeof _setLobbyStatus === "function") {
-        _setLobbyStatus(msg, "err");
-        return;
-      }
-    } catch (_) {}
     const sub = document.getElementById("lv-queue-sub");
     if (sub) sub.textContent = msg;
     console.warn("[lobby]", msg);
@@ -4137,6 +4131,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       tabParty.classList.toggle("is-deselected", tab !== "party");
       tabParty.setAttribute("aria-selected",     tab === "party" ? "true" : "false");
     }
+    // E11: drive the tab-aware column layout from a data-tab attribute on
+    // the list + category-header containers. The CSS switches
+    // grid-template-columns and which category labels show per tab.
+    const mcList = document.getElementById("lv-mainchamps-list");
+    if (mcList) mcList.dataset.tab = tab;
+    const mcCats = document.querySelector(".lv-mainchamps-categories");
+    if (mcCats) mcCats.dataset.tab = tab;
     if (tab === "you") {
       // s171: prefer server-side /api/mains (joined match_history.db +
       // LCU mastery); fall back to lcu.main_champs when sim fixtures
@@ -4171,29 +4172,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (d === 0) return "Perfect";
     return ((k + a) / d).toFixed(2);
   }
-  function _splitKdaForRender(totalKda) {
-    // Returns { k, d, a, raw } so the deaths can be wrapped in red.
-    if (!totalKda || typeof totalKda !== "string") return null;
-    const parts = totalKda.split("/");
-    if (parts.length !== 3) return null;
-    return { k: parts[0], d: parts[1], a: parts[2], raw: totalKda };
-  }
   function _mcOverallHtml(ov) {
     const wins = ov.wins | 0;
     const losses = ov.losses | 0;
     const totalKda = ov.total_kda || "-";
-    const split = _splitKdaForRender(totalKda);
-    const kdaLine = split
-      ? `${split.k}/<span class="lv-mc-deaths">${split.d}</span>/${split.a}`
-      : (totalKda || "-");
     const kdaScore = _kdaScore(totalKda);
-    // s162 v10: 2-col × 2-row grid layout per operator:
-    //   [N Games]   [K/D/A - D in red]
-    //   [W - L]     [N.NN KDA]
+    // E11: YOUR MAINS OVERALL is a single-column 3-row stack per operator:
+    //   [N Games]
+    //   [W - L]
+    //   [N.NN KDA]
+    // The raw K/D/A triplet line (lv-mc-total-kda) was dropped - the
+    // aggregate KDA score below carries the ratio.
     return (
       '<span class="lv-mc-overall">' +
         _mcGamesCellHtml(ov) +
-        '<span class="lv-mc-total-kda">' + kdaLine + '</span>' +
         '<span class="lv-mc-wl">' +
           '<span class="lv-mc-w">' + wins + 'W</span>' +
           ' - ' +
@@ -4266,62 +4258,29 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (kp >= 40) return "lv-mc-kp-c";
     return "lv-mc-kp-d";
   }
-  // s162 v17: AVG 5 grade tier classes - letter color coding for the
-  // 5-match rating average. Same neo-fintech palette as the KP bands
-  // but tighter: S = gold (top), A = good (great), B = info (good),
-  // C = clock (average), D = bad (poor). Drives a single .lv-mc-avg5-{cls}
-  // class on the bold letter so the label "AVG 5" stays neutral.
-  function _avg5RankClass(grade) {
-    const g = String(grade || "").trim().toUpperCase();
-    if (g === "S") return "lv-mc-avg5-s";
-    if (g === "A") return "lv-mc-avg5-a";
-    if (g === "B") return "lv-mc-avg5-b";
-    if (g === "C") return "lv-mc-avg5-c";
-    if (g === "D") return "lv-mc-avg5-d";
-    return "";
-  }
-  function _mcAveragedHtml(av) {
+  function _mcFormHtml(av) {
+    // E11: YOUR MAINS FORM column - trimmed to the 3 substats the operator
+    // keeps: KP% (color-tiered), CS/m, DMG. Vision, raw CS count, and the
+    // AVG-5 grade were dropped. 3-cell row (.lv-mc-form switches the grid
+    // to a single 3-up track).
     const kp     = (av.kp     != null) ? Math.round(Number(av.kp)) : null;
-    const cs     = (av.cs     != null) ? av.cs : "-";
-    const vis    = (av.vision != null) ? av.vision : "-";
     const dmg    = (av.dmg    != null) ? _fmtK(av.dmg) : "-";
     const cspm   = (av.cs_per_min != null) ? Number(av.cs_per_min).toFixed(1) : "-";
     const kpVal  = kp != null ? kp + "%" : "-";
     const kpCls  = _kpTierClass(kp);
-    const avg5   = av.avg5 || "-";
-    const avg5Cls = _avg5RankClass(avg5);
-    // s162 v17: 3-col × 2-row grid (Gold dropped, Vision moved up):
-    //   [KP%]    [Vision]  [CS]
-    //   [AVG 5]  [Dmg]     [CS/m]
-    // AVG 5 is the operator's last-5-match performance grade (S→D)
-    // for that champion, derived from rewind_history.db. Letter is
-    // bold + color-coded; "AVG 5" label sits below in the standard
-    // sub-label treatment.
     return (
-      '<span class="lv-mc-averaged">' +
+      '<span class="lv-mc-averaged lv-mc-form">' +
         '<span class="lv-mc-avg-cell">' +
           '<span class="lv-mc-avg-val ' + kpCls + '">' + kpVal + '</span>' +
           '<span class="lv-mc-avg-lbl">KP%</span>' +
         '</span>' +
         '<span class="lv-mc-avg-cell">' +
-          '<span class="lv-mc-avg-val">' + vis + '</span>' +
-          '<span class="lv-mc-avg-lbl">Vision</span>' +
-        '</span>' +
-        '<span class="lv-mc-avg-cell">' +
-          '<span class="lv-mc-avg-val">' + cs + '</span>' +
-          '<span class="lv-mc-avg-lbl">CS</span>' +
-        '</span>' +
-        '<span class="lv-mc-avg-cell">' +
-          '<span class="lv-mc-avg-val lv-mc-avg5-letter ' + avg5Cls + '">' + avg5 + '</span>' +
-          '<span class="lv-mc-avg-lbl">AVG 5</span>' +
+          '<span class="lv-mc-avg-val">' + cspm + '</span>' +
+          '<span class="lv-mc-avg-lbl">CS/m</span>' +
         '</span>' +
         '<span class="lv-mc-avg-cell">' +
           '<span class="lv-mc-avg-val">' + dmg + '</span>' +
           '<span class="lv-mc-avg-lbl">Dmg</span>' +
-        '</span>' +
-        '<span class="lv-mc-avg-cell">' +
-          '<span class="lv-mc-avg-val">' + cspm + '</span>' +
-          '<span class="lv-mc-avg-lbl">CS/m</span>' +
         '</span>' +
       '</span>'
     );
@@ -4344,15 +4303,16 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const result = (lm.result || "").trim();
       const resultLow = result.toLowerCase();
       const ov = c.overall || {};
-      const wins  = ov.wins  | 0;
-      const losses = ov.losses | 0;
       const av = c.averaged || {};
-      const overallHtml  = _mcOverallHtml(ov);
-      const averagedHtml = _mcAveragedHtml(av);
+      const overallHtml = _mcOverallHtml(ov);
+      const formHtml    = _mcFormHtml(av);
       const li = document.createElement("li");
       li.className = "lv-mc-row";
       li.dataset.rank = String(rank);
       li.dataset.colorIdx = "0";   // s162 v5: YOUR MAINS always uses self (lavender)
+      // E11: YOUR MAINS columns = [icon] | RECENT | OVERALL | FORM.
+      // The Mastery column was dropped (rewind-DB self data carries no
+      // mastery); the champion name lives above via the panel title.
       li.innerHTML = (
         '<span class="lv-mc-champ">' +
           '<span class="lv-mc-icon">' +
@@ -4362,17 +4322,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           '<button type="button" class="lv-mc-copy" data-copy-rank="' + rank + '" ' +
                   'title="Copy summary for League chat" aria-label="Copy">' + _LV_ICON_COPY + '</button>' +
         '</span>' +
-        '<span class="lv-mc-mastery">' +
-          '<span class="lv-mc-summoner-name">' + escapeHtml(selfName || "-") + '</span>' +
-          '<b class="lv-mc-mastery-level">Mastery ' + (c.mastery_level != null ? c.mastery_level : "-") + '</b>' +
-          '<span class="lv-mc-mastery-points">' + _fmtMasteryPoints(c.mastery_points) + '</span>' +
-        '</span>' +
         '<span class="lv-mc-recent">' +
           '<span class="lv-mc-result lv-mc-result-' + resultLow + '">' + escapeHtml(result || "-") + '</span>' +
           '<span class="lv-mc-kda">' + escapeHtml(lm.kda || "-") + '</span>' +
         '</span>' +
         overallHtml +
-        averagedHtml
+        formHtml
       );
       list.appendChild(li);
     });
@@ -4387,9 +4342,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         const games = ov.games | 0;
         const wins  = ov.wins  | 0;
         const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
-        const points = _fmtMasteryPoints(c.mastery_points);
-        // s162 v5 format: "Summoner - Champion - Mastery N : ## K points · ## Games All-Time · ##% WR"
-        const txt = `${selfName || "-"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
+        // E11: self copy string drops the (absent) mastery term.
+        // "Summoner - Champion - ## Games All-Time - ##% WR"
+        const txt = `${selfName || "-"} - ${c.name} - ${games} Games All-Time${wr != null ? " - " + wr + "% WR" : ""}`;
         try {
           navigator.clipboard.writeText(txt);
           btn.classList.add("is-copied");
@@ -4461,28 +4416,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   if (typeof document !== "undefined") {
     document.addEventListener("click", () => _selectPartyMember(null));
   }
-  function _positionLobbyTitles() {
-    const head = document.querySelector(".lv-section-head-lobby");
-    const queue = document.querySelector(".lobby-view-card-queue");
-    const party = document.querySelector(".lobby-view-card-party");
-    const queueT = document.getElementById("lv-queue-name");
-    const partyT = document.querySelector(".lv-section-party-title");
-    if (!head || !queue || !party || !queueT || !partyT) return;
-    const headRect = head.getBoundingClientRect();
-    if (headRect.width <= 0) return;  // not rendered yet
-    const queueRect = queue.getBoundingClientRect();
-    const partyRect = party.getBoundingClientRect();
-    queueT.style.left  = (queueRect.left - headRect.left) + "px";
-    queueT.style.right = "auto";
-    queueT.style.width = queueRect.width + "px";
-    partyT.style.left  = (partyRect.left - headRect.left) + "px";
-    partyT.style.right = "auto";
-    partyT.style.width = partyRect.width + "px";
-  }
-  if (typeof window !== "undefined") {
-    window.addEventListener("resize", _positionLobbyTitles);
-  }
-
   // s162 v13: SR draft party caps at 5 members. The PARTY panel
   // always renders 5 row slots - filled slots show real members,
   // unfilled slots show dashed placeholder rows. When a member
@@ -4776,18 +4709,14 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         const lm = c.last_match || {};
         const result = (lm.result || "").trim();
         const resultLow = result.toLowerCase();
-        const ov = c.overall || {};
-        const games = ov.games | 0;
-        const wins  = ov.wins  | 0;
-        const losses = ov.losses | 0;
-        const wr = (games > 0) ? Math.round((wins / games) * 100) : null;
-        const totalKda = ov.total_kda || "-";
-        const av = c.averaged || {};
         li.className = "lv-mc-row";
         li.dataset.rank = String(rank);
         li.dataset.memberIdx = String(i);  // for click-to-select sync with party panel
         li.dataset.colorIdx  = String(i + 1);  // matches the party-panel non-self color
         const playerName = c.player || _partyOtherShortName(i) || "-";
+        // E11: PARTY MAINS columns = [icon] | player+champ | MASTERY | RECENT.
+        // Overall/Form dropped (always empty for party members - no
+        // per-member match_history join). Mastery is the prominent stat.
         li.innerHTML = (
           '<span class="lv-mc-champ">' +
             '<span class="lv-mc-icon">' +
@@ -4796,25 +4725,26 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             `<button type="button" class="lv-mc-copy" data-copy-rank="${rank}" ` +
                     'title="Copy summary for League chat" aria-label="Copy">' + _LV_ICON_COPY + '</button>' +
           '</span>' +
-          '<span class="lv-mc-mastery">' +
+          '<span class="lv-mc-party-id">' +
             `<span class="lv-mc-summoner-name">${escapeHtml(playerName)}</span>` +
+            `<span class="lv-mc-party-champ">${escapeHtml(c.name || "-")}</span>` +
+          '</span>' +
+          '<span class="lv-mc-mastery lv-mc-mastery-party">' +
             `<b class="lv-mc-mastery-level">Mastery ${c.mastery_level != null ? c.mastery_level : "-"}</b>` +
             `<span class="lv-mc-mastery-points">${_fmtMasteryPoints(c.mastery_points)}</span>` +
           '</span>' +
           '<span class="lv-mc-recent">' +
             `<span class="lv-mc-result lv-mc-result-${resultLow}">${escapeHtml(result || "-")}</span>` +
             `<span class="lv-mc-kda">${escapeHtml(lm.kda || "-")}</span>` +
-          '</span>' +
-          _mcOverallHtml(ov) +
-          _mcAveragedHtml(av)
+          '</span>'
         );
-        // Wire copy for this party member - same format as YOUR MAINS:
-        // "Summoner - Champion - Mastery N : ## K points · ## Games All-Time · ##% WR"
+        // Wire copy for this party member:
+        // "Summoner - Champion - Mastery N : ## K points"
         const copyBtn = li.querySelector(".lv-mc-copy");
         if (copyBtn) copyBtn.addEventListener("click", (e) => {
           e.stopPropagation();
           const points = _fmtMasteryPoints(c.mastery_points);
-          const txt = `${playerName || "-"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points} · ${games} Games All-Time${wr != null ? " · " + wr + "% WR" : ""}`;
+          const txt = `${playerName || "-"} - ${c.name} - Mastery ${c.mastery_level || "?"} : ${points}`;
           try {
             navigator.clipboard.writeText(txt);
             copyBtn.classList.add("is-copied");
@@ -4822,7 +4752,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           } catch (_) { /* ignore */ }
         });
       } else {
-        // No data → dashed placeholder
+        // No data → dashed placeholder (E11: 4-cell PARTY structure).
         li.className = "lv-mc-row is-placeholder";
         li.dataset.rank = String(rank);
         li.innerHTML = (
@@ -4831,28 +4761,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             `<button type="button" class="lv-mc-copy" data-copy-rank="${rank}" ` +
                     'title="Copy summary for League chat" aria-label="Copy" disabled>' + _LV_ICON_COPY + '</button>' +
           '</span>' +
-          '<span class="lv-mc-mastery">' +
+          '<span class="lv-mc-party-id">' +
             '<span class="lv-mc-summoner-name">-</span>' +
+            '<span class="lv-mc-party-champ">-</span>' +
+          '</span>' +
+          '<span class="lv-mc-mastery lv-mc-mastery-party">' +
             '<b class="lv-mc-mastery-level">-</b>' +
             '<span class="lv-mc-mastery-points">- points</span>' +
           '</span>' +
           '<span class="lv-mc-recent">' +
             '<span class="lv-mc-result">-</span>' +
             '<span class="lv-mc-kda">-</span>' +
-          '</span>' +
-          '<span class="lv-mc-overall">' +
-            '<span class="lv-mc-games">-</span>' +
-            '<span class="lv-mc-total-kda">-</span>' +
-            '<span class="lv-mc-wl">-</span>' +
-            '<span class="lv-mc-kda-score">-</span>' +
-          '</span>' +
-          '<span class="lv-mc-averaged">' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">KP%</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">Vision</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">CS</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">AVG 5</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">Dmg</span></span>' +
-            '<span class="lv-mc-avg-cell"><span class="lv-mc-avg-val">-</span><span class="lv-mc-avg-lbl">CS/m</span></span>' +
           '</span>'
         );
       }
@@ -5047,19 +4966,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           if (r && r.ok === false) _lvQueueChangeError("Cancel: " + (r.err || "failed"));
         });
       });
-    });
-    // ---- Legacy hidden queue switcher (preserved; new dropdown is
-    // .lq-mode-trigger / .lq-mode-menu below). ----
-    const qsel = document.getElementById("lv-queue-select");
-    if (qsel) qsel.addEventListener("change", () => {
-      const qid = parseInt(qsel.value, 10);
-      if (!qid) return;
-      lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
-        lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) _lvQueueChangeError(r.err);
-        });
-      });
-      qsel.value = "";
     });
     // ---- Party Open/Closed toggle (s171 wired; s209 inflight-guarded) ----
     // Pushes lobby.set_party_type to LCU. Optimistically updates the
@@ -5306,11 +5212,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     _renderLanePref("primary",   _LV.prefPrimary,   !lobby);
     _renderLanePref("secondary", _LV.prefSecondary, !lobby);
 
-    const leaderTag = document.getElementById("lv-leader-tag");
-    if (leaderTag) leaderTag.hidden = !(lobby && lobby.is_leader);
-    const qsel = document.getElementById("lv-queue-select");
-    if (qsel) qsel.hidden = !(lobby && lobby.is_leader);
-
     // s162 v2: Find Match always visible (2-line "Find" / "Match"),
     // gold pulse via .is-searching class when LCU reports searching.
     // Cancel Queue always visible too, disabled until searching. Both
@@ -5339,13 +5240,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     _renderMains();
 
     // s162 v5: panel repurposed to "My Top 8" (operator-curated short
-    // list with localStorage persistence). The Recently-Played render
-    // logic (_renderFriendsRecent) is preserved below for reuse on a
-    // future panel - just no longer invoked here.
+    // list, server-backed at /api/top8).
     _renderTop8();
     _top8WireSearchOnce();
-    // s162 v4: re-center NORMAL DRAFT + PARTY titles after layout settles.
-    requestAnimationFrame(_positionLobbyTitles);
   }
   // ---- s162 v5 / s171 reworked: My Top 8 panel ----
   // s171: persistence moved from localStorage (origin-dependent, wiped
@@ -5646,124 +5543,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     addBtn.addEventListener("click", (e) => { e.stopPropagation(); tryAdd(); });
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") tryAdd(); });
   }
-  function _renderFriendsRecent(friends) {
-    const ul = document.getElementById("lv-friends-list");
-    if (!ul) return;
-    // s162 v4: ALWAYS render 8 slots - real entries fill from top,
-    // remaining slots are 50%-opacity placeholders. Filters out anyone
-    // currently in the party (by riot_id / summoner_name match) - they
-    // re-appear here once they leave.
-    const TARGET_SLOTS = 8;
-    const lcuOuter = (state.latest && state.latest.lcu) || {};
-    const partyMembers = (lcuOuter.lobby && Array.isArray(lcuOuter.lobby.members))
-      ? lcuOuter.lobby.members : [];
-    const partyKeys = new Set();
-    partyMembers.forEach((m) => {
-      if (m.riot_id) partyKeys.add(m.riot_id);
-      if (m.summoner_name) partyKeys.add(m.summoner_name);
-    });
-    const safeFriends = Array.isArray(friends) ? friends : [];
-    const online = safeFriends.filter((f) => f.is_online !== false);
-    const notInParty = online.filter((f) =>
-      !(f.riot_id && partyKeys.has(f.riot_id)) &&
-      !(f.summoner_name && partyKeys.has(f.summoner_name))
-    );
-    notInParty.sort((a, b) => (b.games_with_me | 0) - (a.games_with_me | 0));
-    const list = notInParty.slice(0, TARGET_SLOTS);
-    ul.innerHTML = "";
-    list.forEach((f) => {
-      const ign  = f.riot_id || f.summoner_name || "Unknown";
-      const champ = (f.last_match && f.last_match.champion) || "";
-      const champKey = champ ? (_resolveChampId(champ) || champ) : "";
-      const champIcon = champKey ? `/icons/champions/${champKey}.png` : "";
-      const games = f.games_with_me | 0;
-      const gamesLbl = games + (games === 1 ? " Game" : " Games");
-      const role = (f.preferred_role || "").toUpperCase();
-      // Section 5 - rank or "Level NNN : Unranked"
-      let rankHtml;
-      if (f.rank && f.rank.tier) {
-        const rankCls = _rankClass(f.rank.tier);
-        const div = f.rank.division ? " " + f.rank.division : "";
-        const lp = (f.rank.lp != null) ? ` ${f.rank.lp} LP` : "";
-        rankHtml = `<span class="lobby-member-pip lobby-member-pip-rank ${rankCls}">${f.rank.tier}${div}${lp}</span>`;
-      } else {
-        const lvl = (f.summoner_level != null) ? f.summoner_level : "-";
-        rankHtml = `<span class="lv-party-empty">Level ${lvl} : Unranked</span>`;
-      }
-      // Section 6 - team marker [E]/[A] + KDA, with hover tooltip
-      const lm = f.last_match || {};
-      const team = (lm.team || "").toUpperCase();    // "ENEMY" | "ALLY"
-      const result = (lm.result || "").toUpperCase(); // "WON" | "LOST"
-      const teamMark = team === "ENEMY" ? "E" : (team === "ALLY" ? "A" : "-");
-      const teamCls = team === "ENEMY" ? "lv-fr-team-enemy"
-                    : team === "ALLY"  ? "lv-fr-team-ally" : "";
-      // s162 v4: descriptive tooltip per operator spec.
-      let tt = "Unknown team / unknown result";
-      if (team === "ENEMY" && result === "WON")  tt = "This player was on the Enemy Team, You Won against them";
-      else if (team === "ENEMY" && result === "LOST") tt = "This player was on the Enemy Team, You Lost against them";
-      else if (team === "ALLY"  && result === "WON")  tt = "This player was on the Ally Team, You Won with them";
-      else if (team === "ALLY"  && result === "LOST") tt = "This player was on the Ally Team, You Lost with them";
-      const li = document.createElement("li");
-      li.className = "lv-fr-row";
-      li.innerHTML = (
-        `<span class="lv-fr-name">${escapeHtml(ign)}</span>` +
-        `<span class="lv-fr-icon">${champIcon ? `<img src="${escapeHtml(champIcon)}" alt="${escapeHtml(champ)}" onerror="this.style.display='none'" />` : ""}</span>` +
-        `<span class="lv-fr-games">${gamesLbl}</span>` +
-        `<span class="lv-fr-role">${role || "-"}</span>` +
-        `<span class="lv-fr-rank">${rankHtml}</span>` +
-        `<span class="lv-fr-team ${teamCls}" data-tt="${tt}">` +
-          `<span class="lv-fr-team-mark">[${teamMark}]</span>` +
-          `<span class="lv-fr-team-kda">${escapeHtml(lm.kda || "-")}</span>` +
-        `</span>` +
-        `<button type="button" class="lv-fr-copy lv-member-action" data-action="copy" data-ign="${escapeHtml(ign)}" title="Copy summoner name" aria-label="Copy">${_LV_ICON_COPY}</button>` +
-        `<button type="button" class="lv-fr-invite lv-member-action" data-action="invite" data-ign="${escapeHtml(ign)}" title="Invite to lobby" aria-label="Invite">➕</button>`
-      );
-      ul.appendChild(li);
-    });
-    // Pad to TARGET_SLOTS with 50%-opacity empty placeholders.
-    const placeholders = TARGET_SLOTS - list.length;
-    for (let i = 0; i < placeholders; i++) {
-      const li = document.createElement("li");
-      li.className = "lv-fr-row is-placeholder";
-      li.innerHTML = (
-        '<span class="lv-fr-name">-</span>' +
-        '<span class="lv-fr-icon"></span>' +
-        '<span class="lv-fr-games">-</span>' +
-        '<span class="lv-fr-role">-</span>' +
-        '<span class="lv-fr-rank"><span class="lv-party-empty">-</span></span>' +
-        '<span class="lv-fr-team"><span class="lv-fr-team-mark">-</span></span>' +
-        '<button type="button" class="lv-fr-copy lv-member-action" disabled aria-label="Copy">' + _LV_ICON_COPY + '</button>'
-      );
-      ul.appendChild(li);
-    }
-    // Wire copy buttons (only on real entries - placeholders are disabled)
-    ul.querySelectorAll(".lv-fr-row:not(.is-placeholder) .lv-fr-copy").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const ign = btn.dataset.ign;
-        try {
-          navigator.clipboard.writeText(ign);
-          btn.classList.add("is-copied");
-          setTimeout(() => btn.classList.remove("is-copied"), 1200);
-        } catch (_) { /* ignore */ }
-      });
-    });
-    // Wire invite buttons. Phase A: confirm + log. Phase B will push
-    // an LCU command: lcuCmd({ cmd: "lobby.invite_player", riot_id });
-    ul.querySelectorAll(".lv-fr-row:not(.is-placeholder) .lv-fr-invite").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const ign = btn.dataset.ign;
-        if (!window.confirm(`Invite ${ign} to lobby?`)) return;
-        // s171: actually fire the invite (was Phase B placeholder).
-        lcuCmd({ cmd: "lobby.invite_player", riot_id: ign }).then((res) => {
-          lcuPollResult(res && res.id, (r) => {
-            if (r && r.ok === false) _lvQueueChangeError(`Invite ${ign}: ${r.err || "failed"}`);
-          });
-        });
-      });
-    });
-  }
   // Trigger a refresh of view-lobby on every state envelope when it's
   // the active view (so members/queue update without a manual nav).
   function _maybeRefreshLobbyView() {
@@ -5781,7 +5560,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function handleLcuEnvelope(lcu) {
     handleChampSelect(lcu);     // champ-select overlay + state.latest.lcu cache
     _syncAutoAcceptFromConfig(lcu);  // reflect agent CONFIG → both controls
-    renderLobbyPanel(lcu);      // inline lobby overlay (home view)
     renderHomePanel(lcu);       // home-view phase chip
     _viewResolveAndApply(lcu);  // re-derive view based on new phase
     _maybeRefreshLobbyView();   // re-render view-lobby if it's the active surface
@@ -5880,190 +5658,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (sc) sc.addEventListener("change", () => { _setAutoAccept(!!sc.checked); });
   }
 
-  // ── Lobby overlay (2026-04-26) ──────────────────────────────────────
-  // Pre-queue: shows what queue the user is sitting in + a Find Match
-  // button. Hidden during ChampSelect / InProgress (champ-select view
-  // takes over). Find Match is only enabled when localMember.isLeader is true
-  // (LCU restriction); otherwise the button degrades to a status pill
-  // showing "Awaiting party leader". Cancel Search appears when
-  // search_state === "Searching".
-  //
-  // Expected /api/state shape (LCU agent forwards from
-  // /lol-lobby/v2/lobby):
-  //   lcu.lobby = {
-  //     queue_id:        int,    // 920 = ARAM Mayhem, 450 = ARAM, etc.
-  //     queue_name:      str,    // "ARAM Mayhem", "Normal Draft", etc.
-  //     party_size:      int,
-  //     max_party_size:  int,
-  //     is_leader:       bool,   // localMember.isLeader
-  //     can_search:      bool,   // canStartActivity from LCU
-  //     search_state:    "Idle" | "Searching" | "MatchFound"
-  //   }
-  const _LOBBY = { wired: false };
-  function _wireLobbyButtonsOnce() {
-    if (_LOBBY.wired) return;
-    _LOBBY.wired = true;
-    const find = document.getElementById("lobby-find-match");
-    if (find) find.addEventListener("click", () => {
-      if (find.disabled) return;
-      find.disabled = true;
-      _setLobbyStatus("starting...", "searching");
-      lcuCmd({ cmd: "start_matchmaking" }).then((res) => {
-        lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
-        });
-      });
-      setTimeout(() => { find.disabled = false; }, 1500);
-    });
-    const cancel = document.getElementById("lobby-cancel-match");
-    if (cancel) cancel.addEventListener("click", () => {
-      _setLobbyStatus("cancelling...", "");
-      lcuCmd({ cmd: "cancel_matchmaking" }).then((res) => {
-        lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
-        });
-      });
-    });
-    const qsel = document.getElementById("lobby-queue-select");
-    if (qsel) qsel.addEventListener("change", () => {
-      const qid = parseInt(qsel.value, 10);
-      if (!qid) return;
-      _setLobbyStatus("changing queue...", "searching");
-      lcuCmd({ cmd: "change_queue_type", queue_id: qid }).then((res) => {
-        lcuPollResult(res && res.id, (r) => {
-          if (r && r.ok === false) _setLobbyStatus("LCU: " + (r.err || "failed"), "err");
-        });
-      });
-      qsel.value = "";  // reset to placeholder
-    });
-  }
-  // Render the party member list from lcu.lobby.members[]. Each member
-  // shape (forwarded by LCU agent - pending):
-  //   { puuid, summoner_name, is_self, is_leader,
-  //     played_with_me_count, played_with_me_record }  // local match_history join
-  function _renderLobbyMembers(members, meIsLeader) {
-    const wrap = document.getElementById("lobby-members");
-    const ul   = document.getElementById("lobby-members-list");
-    const cnt  = document.getElementById("lobby-members-count");
-    if (!wrap || !ul) return;
-    if (!Array.isArray(members) || !members.length) {
-      wrap.hidden = true;
-      return;
-    }
-    wrap.hidden = false;
-    if (cnt) cnt.textContent = members.length + (members.length === 1 ? " member" : " members");
-    ul.innerHTML = "";
-    members.forEach((m) => {
-      const li = document.createElement("li");
-      const cls = "lobby-member-row" +
-        (m.is_self ? " is-self" : "") +
-        (m.is_leader ? " is-leader" : "");
-      li.className = cls;
-      const tags = [];
-      if (m.is_self)   tags.push('<span class="lobby-member-tag you">YOU</span>');
-      if (m.is_leader) tags.push('<span class="lobby-member-tag leader">★ LEADER</span>');
-      const stats = [];
-      if (m.played_with_me_count > 0) {
-        stats.push(`<span class="lobby-member-stat">${m.played_with_me_count}g together</span>`);
-        if (m.played_with_me_record)
-          stats.push(`<span class="lobby-member-stat">${m.played_with_me_record}</span>`);
-      } else if (!m.is_self) {
-        stats.push(`<span class="lobby-member-stat" style="color:var(--text-faint)">no shared games</span>`);
-      }
-      // Public-stats fallback link (no Riot key - user opens manually).
-      const lookup = (m.summoner_name && !m.is_self)
-        ? `<a class="lobby-member-link" href="https://aggregator-b.invalid/lol/profile/na1/${encodeURIComponent(m.summoner_name)}" target="_blank" rel="noopener">aggregator-b ↗</a>`
-        : "";
-      li.innerHTML =
-        `<div class="lobby-member-name">${escapeHtml(m.summoner_name || "Unknown")}${tags.join("")}</div>` +
-        `<div class="lobby-member-meta">${stats.join("")}${lookup}</div>`;
-      ul.appendChild(li);
-    });
-  }
-  function _setLobbyStatus(text, cls) {
-    const el = document.getElementById("lobby-status");
-    if (!el) return;
-    el.className = "lobby-status" + (cls ? " " + cls : "");
-    el.textContent = text || "";
-  }
-  function renderLobbyPanel(lcu) {
-    const overlay = document.getElementById("lobby-overlay");
-    if (!overlay) return;
-    _wireLobbyButtonsOnce();
-    // s162 (2026-05-10): hard-gate on view. lobby-overlay is the inline
-    // "current lobby" card anchored to the home view. After the
-    // handleChampSelect fix it started firing on every lcu envelope
-    // regardless of active view, leaking the overlay onto Lobby / Dev /
-    // etc. (DOM placement is BEFORE view-content, so it appeared above
-    // every view-section.) Restrict to home view only.
-    const onHomeView = document.body.dataset.view === "home";
-    if (!onHomeView) {
-      overlay.classList.add("hidden");
-      overlay.setAttribute("aria-hidden", "true");
-      return;
-    }
-    const lobby = lcu && lcu.lobby;
-    const phase = lcu && lcu.phase;
-    // Hide whenever we're past the lobby (ChampSelect / loading / in-game)
-    // OR when no lobby data is available. Keep visible during early
-    // game-states ("None"/"Lobby"/"Matchmaking") so the user has an
-    // anchor while waiting on the queue.
-    const phaseAllowsLobby = !phase
-      || phase === "Lobby" || phase === "None"
-      || phase === "Matchmaking" || phase === "ReadyCheck";
-    if (!lobby || !phaseAllowsLobby) {
-      overlay.classList.add("hidden");
-      overlay.setAttribute("aria-hidden", "true");
-      return;
-    }
-    overlay.classList.remove("hidden");
-    overlay.setAttribute("aria-hidden", "false");
-
-    const qLabel = document.getElementById("lobby-queue");
-    if (qLabel) qLabel.textContent = (lobby.queue_name
-      || ("queue " + (lobby.queue_id || "?"))).toUpperCase();
-
-    const party = document.getElementById("lobby-party");
-    if (party) {
-      const size = lobby.party_size | 0;
-      const max  = lobby.max_party_size | 0;
-      party.textContent = max > 0 ? `Party ${size || 1}/${max}` : "Party -";
-    }
-    const leaderTag = document.getElementById("lobby-leader-tag");
-    if (leaderTag) leaderTag.hidden = !lobby.is_leader;
-    // Change-queue dropdown: leader-only
-    const qsel = document.getElementById("lobby-queue-select");
-    if (qsel) qsel.hidden = !lobby.is_leader;
-    // Member list (forwarded by LCU agent in lcu.lobby.members[])
-    _renderLobbyMembers(lobby.members || [], !!lobby.is_leader);
-
-    const find = document.getElementById("lobby-find-match");
-    const findLabel = document.getElementById("lobby-find-match-label");
-    const cancel = document.getElementById("lobby-cancel-match");
-    const searching = lobby.search_state === "Searching";
-    const found     = lobby.search_state === "MatchFound" || phase === "ReadyCheck";
-
-    if (cancel) cancel.hidden = !searching;
-    if (find) {
-      // Leader gating: button only fires when isLeader; otherwise it's
-      // disabled and the status line explains why.
-      const enabled = !!lobby.is_leader && !!lobby.can_search && !searching && !found;
-      find.disabled = !enabled;
-      if (findLabel) {
-        findLabel.textContent = searching ? "Searching..."
-          : found ? "Match Found"
-          : (lobby.is_leader ? "Find Match" : "Leader-only");
-      }
-    }
-    // Status line - reads as a single peripheral signal.
-    if (searching) _setLobbyStatus("Searching...", "searching");
-    else if (found) _setLobbyStatus("Match Found · accept in client", "found");
-    else if (!lobby.is_leader) _setLobbyStatus("Awaiting party leader", "");
-    else if (!lobby.can_search) _setLobbyStatus("Lobby not ready", "err");
-    else _setLobbyStatus("Ready to queue", "");
-  }
-
-
+  // ── Lobby overlay (2026-04-26) - REMOVED E11 ────────────────────────
+  // The superseded inline #lobby-overlay "current lobby" card (and its
+  // renderLobbyPanel / _renderLobbyMembers / _setLobbyStatus /
+  // _wireLobbyButtonsOnce cluster) was deleted in the E11 lobby QA slice.
+  // The dedicated #view-lobby surface (rendered by _lobbyViewRefresh) is
+  // the sole lobby view now. Party-size shape lives on lcu.lobby.
   // Pull /api/env periodically so the adaptation flag, warm indicator,
   // and latency footer stay in sync. Refresh every 15s in the background.
   function refreshEnv() {

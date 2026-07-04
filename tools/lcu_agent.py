@@ -679,19 +679,28 @@ def capture_state() -> dict:
             # /lol-matchmaking/v1/search may 404 when not actively queueing -
             # that's fine, _derive_search_state falls back to phase mapping.
             search, _ = lcu_request("GET", "/lol-matchmaking/v1/search")
+            # E11 R3: the view reads lobby.party_size + lobby.max_party_size
+            # (web/js/main.js). party_size = live member count; max_party_size
+            # = gameConfig.maxLobbySize (0 when absent -> dashboard "Party -").
+            try:
+                _max_party = int(gconf.get("maxLobbySize") or 0)
+            except (TypeError, ValueError):
+                _max_party = 0
             state["lobby"] = {
-                "queue_id":     qid_int,
-                "queue_name":   _LOBBY_QUEUE_NAMES.get(qid_int, ""),
-                "is_custom":    bool(gconf.get("isCustom")),
-                "game_mode":    gconf.get("gameMode") or "",
-                "map_id":       gconf.get("mapId") or 0,
-                "party_id":     str(lob.get("partyId") or ""),
-                "party_type":   str(lob.get("partyType") or "open").lower(),
-                "can_search":   bool(lob.get("canStartActivity")),
-                "is_leader":    bool(local_member and local_member.get("is_leader")),
-                "search_state": _derive_search_state(state["phase"], search),
-                "members":      members,
-                "local_member": local_member,
+                "queue_id":       qid_int,
+                "queue_name":     _LOBBY_QUEUE_NAMES.get(qid_int, ""),
+                "is_custom":      bool(gconf.get("isCustom")),
+                "game_mode":      gconf.get("gameMode") or "",
+                "map_id":         gconf.get("mapId") or 0,
+                "party_id":       str(lob.get("partyId") or ""),
+                "party_type":     str(lob.get("partyType") or "open").lower(),
+                "can_search":     bool(lob.get("canStartActivity")),
+                "is_leader":      bool(local_member and local_member.get("is_leader")),
+                "search_state":   _derive_search_state(state["phase"], search),
+                "members":        members,
+                "local_member":   local_member,
+                "party_size":     len(members),
+                "max_party_size": _max_party,
             }
 
     if state["phase"] in ("ChampSelect", "GameStart", "InProgress"):
