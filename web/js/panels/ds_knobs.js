@@ -27,7 +27,7 @@
 //
 // Discipline: pure ESM, ASCII only, sig-dedup gate on the rows render, no
 // DOM writes outside renderDsKnobs(). Knob-change re-fetches are debounced.
-// Mirrors the cooldown_watch.js / cc_conditional_pressure.js patterns.
+// Mirrors the cc_conditional_pressure.js pattern.
 
 import { resolveChampNames } from './cc_conditional_pressure.js';
 
