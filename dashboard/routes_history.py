@@ -61,12 +61,33 @@ def _serve_loadouts_all(h) -> None:
                 "application/json")
 
 
+# HOME mode tabs (BE half): the ?mode= values /api/home/summary honors.
+# Mirrors builders_home._HOME_MODE_FILTERS - TFT is deliberately absent
+# (TFT rows are excluded from the home view at the read layer).
+_HOME_MODES = frozenset({"SR", "ARAM", "ARENA"})
+
+
+def _parse_home_mode(path: str) -> str | None:
+    """Whitelist-parse the ?mode= query for /api/home/summary.
+
+    Case-insensitive ("aram" -> "ARAM"). Anything outside the whitelist
+    (tft, garbage, empty, absent) returns None so the summary silently
+    falls back to unfiltered ALL - never a 4xx. Pure helper so tests can
+    exercise the parsing without a live handler.
+    """
+    qs = parse_qs(urlparse(path).query or "")
+    mode = (qs.get("mode") or [""])[0].strip().upper()
+    return mode if mode in _HOME_MODES else None
+
+
 def _serve_home_summary(h) -> None:
     # Read-only aggregate for the dashboard's home/lobby view.
     # Pulls from data/match_history.db (the freshest source -
-    # rewind_history.db is stale).
+    # rewind_history.db is stale). Optional ?mode=SR|ARAM|ARENA scopes
+    # the stats sections to one mode (home mode tabs, HOME QA round 1).
     try:
-        h._send(200, json.dumps(_build_home_summary()).encode("utf-8"),
+        mode = _parse_home_mode(h.path)
+        h._send(200, json.dumps(_build_home_summary(mode)).encode("utf-8"),
                 "application/json")
     except Exception as exc:  # noqa: BLE001
         log.warning("api/home/summary: %s", exc)
