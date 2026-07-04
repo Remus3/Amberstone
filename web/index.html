@@ -197,6 +197,23 @@
       </div>
     </div>
 
+    <!-- HOME mode-tab strip (operator ruling, HOME_QA round-2 2026-07-04):
+         SR / ARAM / ARENA filters so modes do not taint each other's stats.
+         Clicking a tab refetches /api/home/summary?mode=<tab> (main.js
+         _homeApplyModeTab); ALL is the unfiltered default. The choice
+         persists in localStorage ("rc-home-mode-tab"). -->
+    <div class="home-mode-tabs" id="home-mode-tabs" role="tablist"
+         aria-label="Game mode filter">
+      <button type="button" class="home-mode-tab active" role="tab"
+              data-hmode="ALL" aria-selected="true">ALL</button>
+      <button type="button" class="home-mode-tab" role="tab"
+              data-hmode="SR" aria-selected="false">SR</button>
+      <button type="button" class="home-mode-tab" role="tab"
+              data-hmode="ARAM" aria-selected="false">ARAM</button>
+      <button type="button" class="home-mode-tab" role="tab"
+              data-hmode="ARENA" aria-selected="false">ARENA</button>
+    </div>
+
     <!-- Inline SVG sprite for the home action-tile icons. League-UI-themed:
          crossed swords (post-game), hex-play badge (queue), keystone rune
          circles (runes/builds), hex-tech gear (settings). All currentColor
