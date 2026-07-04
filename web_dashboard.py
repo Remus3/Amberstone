@@ -79,8 +79,6 @@ from dashboard.builders import (  # noqa: E402
 
     _group_sessions,
 
-    _home_last_build,
-
     _home_streaks,
 
     _home_tonight_pick,

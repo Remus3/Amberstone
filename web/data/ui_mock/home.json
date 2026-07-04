@@ -18,12 +18,6 @@
     "losses": 7,
     "win_rate": 65.0
   },
-  "season_wr": {
-    "wins": 24,
-    "losses": 27,
-    "win_rate": 47.1,
-    "n": 51
-  },
   "recent": [
     {"champion": "Jinx",        "mode": "ARAM",        "kda": "12/3/8",  "grade": "S",  "items": [3094, 3006, 3144, 3072, 3046, 3158], "timestamp": "3:42 PM"},
     {"champion": "Senna",       "mode": "ARAM",        "kda": "5/8/22",  "grade": "A",  "items": [3107, 3504, 3158, 3001, 3050],       "timestamp": "3:14 PM"},
@@ -37,26 +31,6 @@
     {"champion": "Tristana",    "games": 3, "avg_kda": 5.3, "kills": 28, "deaths": 9,  "assists": 19, "cs_total": 580,  "cs_per_min": 6.9, "best_grade": "A"},
     {"champion": "Senna",       "games": 2, "avg_kda": 3.4, "kills": 12, "deaths": 8,  "assists": 27, "cs_total": 0,    "cs_per_min": 0,   "best_grade": "B"},
     {"champion": "RenataGlasc", "games": 1, "avg_kda": 5.7, "kills": 4,  "deaths": 3,  "assists": 13, "cs_total": 0,    "cs_per_min": 0,   "best_grade": "B"}
-  ],
-  "weekly_digest": {
-    "window_days": 7,
-    "total_games": 16,
-    "modes": [
-      {"mode": "ARAM", "games": 11, "avg_kda": 5.8, "deaths_pg": 9.1, "cs_per_min": 2.3,
-       "best_grade": "S", "worst_grade": "B",
-       "good": "5.8 KDA over 11 games", "bad": "", "ugly": ""},
-      {"mode": "SR", "games": 5, "avg_kda": 2.4, "deaths_pg": 7.2, "cs_per_min": 5.1,
-       "best_grade": "A", "worst_grade": "D",
-       "good": "1x A-grade game", "bad": "7.2 deaths per game (bench 6 for SR)", "ugly": "2 games graded D"}
-    ]
-  },
-  "services": [
-    {"name": "Daemon Slayer",   "ok": true,  "detail": "v1.48.0 / 16.10.1"},
-    {"name": "Vision Server",   "ok": true,  "detail": "tier 1 OCR"},
-    {"name": "Bridge (Peer)",    "ok": true,  "detail": "alive 42s"},
-    {"name": "Bridge (Game-PC)","ok": true,  "detail": "alive 12s"},
-    {"name": "LCU Agent",       "ok": true,  "detail": "phase Lobby"},
-    {"name": "Anthropic API",   "ok": true,  "detail": "haiku-4-5"}
   ],
   "trends": {
     "cs_per_min": [
@@ -118,11 +92,6 @@
       "bad": "2.0 deaths per game",
       "ugly": "7.4 CS/min to sharpen"
     }
-  },
-  "last_build": {
-    "champion": "Jinx",
-    "mode": "ARAM",
-    "items": [3094, 3006, 3144, 3072, 3046, 3158]
   },
   "alerts": {
     "advisory": "DDragon patch 16.11 candidate in 2 days - DS engine ready",

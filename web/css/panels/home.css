@@ -31,15 +31,6 @@
  * (0,2,0); !important keeps that win even if a later rule drops in. */
 body[data-view="home"] .home-overlay { display: flex !important; }
 
-/* Legacy 4-card grid kept for any consumer outside home-overlay that
- * might still depend on it. New home V1 layout below uses
- * .home-hero / .home-body / .home-services-strip. */
-.home-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr 1.1fr 0.9fr;
-  gap: var(--panel-gap);
-}
-
 /* -- V1 hero banner (Today identity card) ----------------------------
  * RC2 Hextech reskin (priority #4): the Today identity card. The home
  * markup (index.html, foundation-frozen for this slice) does not carry
@@ -119,11 +110,6 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-headline,
 .home-hero-chips { position: relative; z-index: 1; }
 .home-hero-greet { min-width: 0; }
-.home-hero-time {
-  font-size: var(--fs-lg); font-weight: 800; color: var(--text);
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-}
 .home-hero-sub {
   font-size: var(--fs-sm); color: var(--text-dim);  /* legibility: faint -> dim */
   letter-spacing: 0.06em; text-transform: uppercase;
@@ -198,25 +184,6 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-wl-form {
   font-size: var(--fs-xs); font-weight: 600; color: var(--text-faint);
-  letter-spacing: 0.04em;
-}
-/* QA15b: ranked "season WR" readout, a thin inline row under the L20 pip
- * strip. Ranked (420 Solo/Duo + 440 Flex) win-rate over the 90d season
- * window. A label + a tabular value so it reads as its own metric, never
- * competing with the all-modes L20 form above it. Display-only, sized off
- * the --fs-xs token (the 16px floor). */
-.home-season-wr {
-  display: flex; align-items: baseline; flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-  font-size: var(--fs-xs);
-}
-.home-season-wr-lbl {
-  font-weight: 700; color: var(--label);
-  letter-spacing: 0.14em; text-transform: uppercase;
-}
-.home-season-wr-val {
-  font-weight: 600; color: var(--text-faint);
   letter-spacing: 0.04em;
 }
 .home-hero-headline {
@@ -357,13 +324,17 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   border-color: var(--accent-2);
   transform: translateX(2px);
 }
+/* HOME_QA A5/B1: the Recent-5 stripe is a WIN/LOSS signal, not a grade
+ * proxy. win -> green (--good), loss -> red (--bad), unknown (pre-ingest
+ * rows with win==null) -> a dim neutral so it reads as "no result", never a
+ * guessed outcome. The grade badge still carries the S-F perf read. */
 .home-recent-stripe {
   width: 6px; height: 100%; min-height: 56px;
   background: var(--text-dim);
 }
-.home-recent-stripe.tier-good { background: var(--good); }
-.home-recent-stripe.tier-mid  { background: var(--info); }
-.home-recent-stripe.tier-bad  { background: var(--bad); }
+.home-recent-stripe.win     { background: var(--good); }
+.home-recent-stripe.loss    { background: var(--bad); }
+.home-recent-stripe.neutral { background: var(--text-dim); }
 .home-recent-main { min-width: 0; padding-left: var(--space-1); }
 .home-recent-champ {
   font-size: var(--fs-md); font-weight: 800; color: var(--text);
@@ -419,65 +390,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-combo[hidden] { display: none; }
 
-/* ── V3 trends row (suggestion #5): 14-day sparklines ─────────────── */
-.home-trends {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-}
-.home-trends[hidden] { display: none; }
-.home-trend-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-2) var(--panel-padding-comp);
-  background: var(--surface-head);
-  border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
-}
-.home-trend-lbl {
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
-  color: var(--label); text-transform: uppercase;
-  grid-column: 1; grid-row: 1;
-}
-.home-trend-val {
-  font-size: var(--fs-lg); font-weight: 800; color: var(--text);
-  font-variant-numeric: tabular-nums;
-  grid-column: 1; grid-row: 2;
-  white-space: nowrap;
-}
-.home-trend-spark {
-  grid-column: 2; grid-row: 1 / span 2;
-  width: 100%; height: 36px;
-}
-.home-trend-spark .spark-line {
-  fill: none;
-  stroke: var(--accent-2);
-  stroke-width: 1.5;
-  vector-effect: non-scaling-stroke;
-}
-.home-trend-spark .spark-area {
-  fill: var(--accent-2);
-  opacity: 0.15;
-}
-.home-trend-spark .spark-dot {
-  fill: var(--accent);
-}
-
-/* ── V3 coach row (suggestions #1 + #4) - Tonight's Pick now lives
- * inside .home-combo (with sparklines). Last Build is its own row
- * below, hidden until postgame_stats data exists. ────────────────── */
-.home-coach-pick,
-.home-coach-build {
+/* ── V3 coach row (suggestion #1) - Tonight's Pick lives inside
+ * .home-combo. (HOME_QA C3: the Last Build card was removed.) ──────── */
+.home-coach-pick {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--panel-padding-comp);
 }
-.home-coach-pick[hidden],
-.home-coach-build[hidden] { display: none; }
+.home-coach-pick[hidden] { display: none; }
 /* RC2 reskin: Tonight's Pick is the page HERO (gemini direction). The
  * home markup carries no .hx-card class for this slice, so the surface +
  * gold corner brackets are replicated locally (below); here it adds the
@@ -513,15 +434,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   border-width: 0 2px 2px 0;
   border-bottom-right-radius: var(--radius);
 }
-.home-coach-pick-head,
-.home-coach-build-head {
+.home-coach-pick-head {
   font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
   color: var(--label); text-transform: uppercase;
   margin-bottom: var(--space-2);
-}
-.home-coach-build-sub {
-  font-size: var(--fs-xs); font-weight: 700; color: var(--text-faint);
-  margin-left: var(--space-2); letter-spacing: 0.06em;
 }
 .home-coach-pick-body {
   /* s218 v2: Section 1 sized to its content (champion intro), Sections
@@ -567,34 +483,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 /* R30: a tip row whose value the backend suppressed (small-sample Good/Bad)
  * is hidden, not shown as a "-" placeholder. Overrides the grid display. */
 .home-pick-tip-row[hidden] { display: none; }
-.home-pick-section-3 {
-  display: grid;
-  /* s218 v3: matched Section 2's 88px label column + 16px gap so the
-   * Advisories row sits symmetric with The Good/Bad/Ugly. (R30: Streak row
-   * removed - it duplicated the hero sub-line.) */
-  grid-template-columns: 88px 1fr;
-  column-gap: var(--space-4);
-  row-gap: var(--panel-gap);
-  align-items: baseline;
-}
-/* R30: Section 3 hides entirely when there is no open advisory - the empty
- * "Advisories: None" row was pure noise on the idle home. */
-.home-pick-section-3[hidden] { display: none; }
-.home-pick-meta-label {
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--label);
-  white-space: nowrap;
-}
-.home-pick-meta-value {
-  font-size: var(--fs-sm);
-  color: var(--text);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: left;
-}
+/* (HOME_QA C1: the .home-pick-section-3 "Advisories" rules were removed with
+ * the section itself.) */
 .home-coach-pick-img {
   width: 72px; height: 72px;
   border-radius: var(--panel-radius-sm);
@@ -622,22 +512,6 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-coach-pick-reason {
   font-size: var(--fs-sm); color: var(--text-faint);
   letter-spacing: 0.04em;
-}
-.home-coach-build-items {
-  display: flex; gap: var(--space-2); flex-wrap: wrap;
-}
-.home-coach-build-item {
-  width: 56px; height: 56px;
-  border-radius: var(--panel-radius-sm);
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  object-fit: cover;
-}
-.home-coach-build-item.empty {
-  background: repeating-linear-gradient(45deg,
-              var(--surface), var(--surface) 4px,
-              var(--surface-alt) 4px, var(--surface-alt) 8px);
-  opacity: 0.5;
 }
 
 /* s218 v6: deep-link focus from Recent 5 click. The history match
@@ -746,18 +620,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-find-match-backdrop.hidden { display: none; }
 
-/* -- V2 quick-action tiles row (suggestion #3) - s218: 7 equal tiles --
- * RC2 reskin (gemini direction): this 7-tile row duplicates the header
- * view-menu nav (Find Match / Post Game Review / Session / History /
- * Replay / Builds / Settings are all reachable from the title dropdown),
- * so it is CUT from the home glance to keep the identity + Tonight's
- * Pick focal. This is VISUAL-ONLY: the buttons + their click wiring
- * (main.js _homeWireStartup) stay in the DOM, just hidden, so nothing
- * downstream breaks and the row can be restored by dropping this rule. */
+/* -- V2 quick-action tiles row - HOME_QA X2: RESTORED as a 2-col portrait
+ * grid. The reskin had hidden this row (display:none) as a duplicate of the
+ * title-dropdown nav, but the operator wants the tiles back on the narrow
+ * companion. The Find Match tile was dropped (the hero CTA covers it); the
+ * surviving 6 (Post Game Review / Session / History / Replay / Builds /
+ * Settings) auto-fit two per row and stay click-wired (_homeWireStartup). */
 .home-actions {
-  display: none;
-  grid-template-columns: repeat(7, 1fr);
-  gap: var(--panel-gap-tight);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-2);
 }
 .home-action-tile {
   display: flex; flex-direction: column; align-items: center;
@@ -770,24 +642,6 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   font-family: inherit;
   text-align: center;
   transition: border-color 0.12s, transform 0.12s, background 0.12s;
-}
-/* s218 v7: Find Match is the primary action of this row - accent it
- * with an info-tinted gradient + soft info border so the eye lands
- * there first post-greeting. Other tiles stay neutral. */
-.home-action-tile[data-flow="find-match-launch"] {
-  border-color: var(--info-soft);
-  background: linear-gradient(135deg,
-              color-mix(in srgb, var(--info) 12%, var(--surface-head)) 0%,
-              var(--surface-head) 100%);
-}
-.home-action-tile[data-flow="find-match-launch"] .home-action-icon {
-  color: var(--info);
-}
-.home-action-tile[data-flow="find-match-launch"]:hover {
-  border-color: var(--info);
-  background: linear-gradient(135deg,
-              color-mix(in srgb, var(--info) 18%, var(--surface-head)) 0%,
-              var(--surface) 100%);
 }
 .home-action-tile:hover {
   border-color: var(--info);
@@ -959,36 +813,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-alerts-row:hover .home-alerts-cta { color: var(--info); }
 
-/* ── V1 services strip (replaces the SERVICES card) ───────────────── */
-.home-services-strip {
-  display: flex; flex-wrap: wrap; gap: var(--space-2);
-  padding: var(--space-2) var(--panel-gap-tight);
-  background: var(--surface-head);
-  border: 1px solid var(--border);
-  border-radius: var(--panel-radius-sm);
-  list-style: none; margin: 0;
-}
-.home-services-pill {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface);
-  border: 1px solid var(--border-soft);
-  border-radius: 999px;
-  font-size: var(--fs-xs);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  font-weight: 700;
-  cursor: default;
-}
-.home-services-pill .home-services-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--text-dim);
-  flex: none;
-}
-.home-services-pill.ok  .home-services-dot  { background: var(--good); }
-.home-services-pill.err .home-services-dot  { background: var(--bad); }
-.home-services-pill.err { color: var(--bad); border-color: var(--bad-soft); }
+/* (HOME_QA A1: the .home-services-strip / -pill / -dot rules were removed
+ * with the services snapshot - the footer health-dot already aggregates
+ * RC + Vision + Supervisor status.) */
 /* RC2 reskin: RECENT 5 / THIS WEEK are SECONDARY panels (glance
  * hierarchy - they recede beneath the identity + Tonight's Pick focal
  * pair). They stay flat bordered surfaces with NO gold corner brackets,
@@ -1049,7 +876,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-today-val {
   color: var(--text); font-variant-numeric: tabular-nums; font-weight: 700;
 }
-.home-recent-list, .home-week-list, .home-services-list {
+.home-recent-list, .home-week-list {
   list-style: none; padding: 0; margin: 0;
   display: flex; flex-direction: column; gap: var(--space-2);
 }
@@ -1098,22 +925,8 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   text-align: center; font-weight: 800; font-size: var(--fs-xs);
   padding: 1px 0; border-radius: 4px;
 }
-.home-services-row {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-1) var(--space-2); font-size: var(--fs-xs);
-}
-.home-services-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--text-faint); flex-shrink: 0;
-}
-.home-services-dot.ok { background: var(--good); box-shadow: 0 0 4px color-mix(in srgb, var(--good) 50%, transparent); }
-.home-services-dot.err { background: var(--bad); }
-.home-services-name { color: var(--text); font-weight: 700; }
-.home-services-detail { color: var(--text-faint); font-size: var(--fs-xs); margin-left: auto; }
-
-@media (max-width: 1100px) {
-  .home-grid { grid-template-columns: 1fr 1fr; }
-}
+/* (HOME_QA A1: the legacy .home-services-row / -dot / -name / -detail rules
+ * were removed with the services snapshot.) */
 
 /* Companion-window reflow (rc-shell mainWindow / out-of-game companion -
  * docs/ELECTRON_OVERLAY.md section 3.7 size presets 380-640px, operator runs
@@ -1156,8 +969,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
     grid-template-columns: 1fr;
   }
 
-  /* 14-day trend sparklines + alerts go single-column for the narrow read. */
-  .home-trends { grid-template-columns: 1fr; }
+  /* Alerts grid goes single-column for the narrow read. (HOME_QA: the
+   * .home-trends reflow rule was removed with the standalone trends row -
+   * the 14-day sparklines now live inline in the hero chips.) */
   .home-alerts { grid-template-columns: 1fr; }
 }
 
@@ -1345,40 +1159,6 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 
 .cs-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-/* OQ13 slice B: THIS WEEK mode-factored weekly digest card. Visual
- * family = the Tonight's Pick / Last Build cards (surface + border +
- * radius + compact padding); the head mirrors .home-coach-pick-head.
- * One grid column per game mode (1-3 modes sit side by side at 1920,
- * more wrap); the Good/Bad/Ugly rows inside each block reuse
- * .home-pick-tip-row so the digest reads like the pick card. Hidden
- * until data.weekly_digest carries a non-empty modes list. All font
- * sizes via UI_SCALE_SPEC_V2 tokens (nothing below var(--fs-xs)). */
-.home-weekly-digest {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: var(--panel-padding-comp);
-}
-.home-weekly-digest[hidden] { display: none; }
-.home-weekly-digest-head {
-  font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.18em;
-  color: var(--label); text-transform: uppercase;
-  margin-bottom: var(--space-2);
-}
-#home-weekly-digest-body {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: var(--panel-padding-loose);
-}
-.home-weekly-digest-mode {
-  display: grid;
-  gap: var(--space-1);
-  align-content: start;
-  min-width: 0; /* let nowrap tip values ellipsize inside the column */
-}
-.home-weekly-digest-mode-head {
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: 0.04em;
-}
+/* (HOME_QA C2: the OQ13 "THIS WEEK by mode" weekly-digest card
+ * (.home-weekly-digest*) was removed - the THIS WEEK champ-pool panel
+ * already carries the week story.) */

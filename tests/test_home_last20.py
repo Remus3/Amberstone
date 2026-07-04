@@ -199,95 +199,23 @@ class HomeSummaryLast20Tests(unittest.TestCase):
         self.assertEqual(out.get("last20"), {})
 
 
-class ComputeSeasonWrTests(unittest.TestCase):
-    """_compute_season_wr counts only ranked (420 Solo/Duo, 440 Flex)
-    games inside the season window (repo-canonical best-effort = last 90d),
-    off a throwaway rewind DB with a deterministic injected ``now_ms``.
-    game_creation_ts is epoch MILLISECONDS."""
+class SeasonWrRemovedGuardTests(unittest.TestCase):
+    """HOME_QA H5: the ranked season-WR readout was removed - the
+    _compute_season_wr builder is gone and no season_wr key ships in the
+    home payload. (This file kept its last20 coverage above; the former
+    ComputeSeasonWrTests / HomeSummarySeasonWrTests classes were converted
+    to these deletion guards.)"""
 
-    NOW_MS = 1_782_000_000_000  # fixed "now" for window math (mid-2026)
-    DAY = 86_400_000
-
-    def _season(self, rows, **kw):
+    def test_compute_season_wr_gone(self):
         import dashboard.builders as B
-        with TemporaryDirectory() as td:
-            rw = Path(td) / "rewind_history.db"
-            _make_rewind_db_q(rw, rows)
-            from dashboard._context import ro_conn
-            conn = ro_conn(rw)
-            try:
-                return B._compute_season_wr(conn, now_ms=self.NOW_MS, **kw)
-            finally:
-                _evict(rw)
+        self.assertFalse(hasattr(B, "_compute_season_wr"),
+                         "dashboard.builders still exposes _compute_season_wr")
 
-    def test_counts_ranked_within_window(self):
-        recent = self.NOW_MS - 10 * self.DAY
-        out = self._season([
-            (1, 420, recent), (1, 420, recent), (1, 440, recent),
-            (0, 420, recent),
-        ])
-        self.assertEqual(out["wins"], 3)
-        self.assertEqual(out["losses"], 1)
-        self.assertEqual(out["n"], 4)
-        self.assertEqual(out["win_rate"], 75.0)
-
-    def test_excludes_non_ranked_queue(self):
-        # An ARAM (450) win inside the window is NOT counted as season WR.
-        recent = self.NOW_MS - 5 * self.DAY
-        out = self._season([
-            (1, 420, recent), (1, 450, recent), (1, 450, recent),
-        ])
-        self.assertEqual(out["wins"], 1)
-        self.assertEqual(out["n"], 1)
-
-    def test_excludes_outside_window(self):
-        # A ranked win 120 days ago is outside the 90d season window.
-        old = self.NOW_MS - 120 * self.DAY
-        recent = self.NOW_MS - 3 * self.DAY
-        out = self._season([(1, 420, old), (0, 420, recent)])
-        self.assertEqual(out["wins"], 0)
-        self.assertEqual(out["losses"], 1)
-        self.assertEqual(out["n"], 1)
-        self.assertEqual(out["win_rate"], 0.0)
-
-    def test_no_ranked_games_win_rate_none(self):
-        # DB present but only ARAM -> n=0, win_rate None (frontend hides).
-        recent = self.NOW_MS - 2 * self.DAY
-        out = self._season([(1, 450, recent), (0, 450, recent)])
-        self.assertEqual(out["n"], 0)
-        self.assertIsNone(out["win_rate"])
-
-    def test_custom_window_and_queues(self):
-        # 14d window, custom ranked set -> respects both knobs.
-        in_win = self.NOW_MS - 7 * self.DAY
-        out_win = self.NOW_MS - 20 * self.DAY
-        out = self._season(
-            [(1, 700, in_win), (0, 700, in_win), (1, 700, out_win)],
-            window_days=14, ranked_queues=(700,))
-        self.assertEqual(out["n"], 2)
-        self.assertEqual(out["win_rate"], 50.0)
-
-    def test_none_conn_returns_empty(self):
-        import dashboard.builders as B
-        self.assertEqual(B._compute_season_wr(None), {})
-
-
-class HomeSummarySeasonWrTests(unittest.TestCase):
-    """_build_home_summary embeds season_wr as a dict when rewind is
-    present and degrades to {} on the clean-checkout / CI path."""
-
-    def test_season_wr_present_dict_when_rewind_present(self):
-        t = HomeSummaryLast20Tests()
-        out = t._run(True, rewind_q_rows=[(1, 420, 1_782_000_000_000)])
-        sw = out.get("season_wr")
-        self.assertIsInstance(sw, dict)
-        self.assertTrue(
-            {"wins", "losses", "win_rate", "n"} <= set(sw.keys()))
-
-    def test_season_wr_empty_when_rewind_absent(self):
-        t = HomeSummaryLast20Tests()
-        out = t._run(True, rewind_wins=None)
-        self.assertEqual(out.get("season_wr"), {})
+    def test_season_wr_not_in_payload(self):
+        out = HomeSummaryLast20Tests()._run(
+            True, rewind_q_rows=[(1, 420, 1_782_000_000_000)])
+        self.assertNotIn("season_wr", out,
+                         "home payload still carries season_wr")
 
 
 if __name__ == "__main__":
