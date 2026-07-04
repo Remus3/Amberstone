@@ -218,6 +218,37 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-04 (Operator HOME-page QA rework + companion 920x1280 + daf09498 cleanup; LEDGER 767)
+
+Ran the operator per-page UI-QA method on HOME (6-mapper MAP -> 4 AskUserQuestion advocate rounds ->
+one worktree slice + verifier + 5-phase audit SHIP + ui_recon both widths). Rulings in
+docs/qa/HOME_QA_2026-07-04.md. SURFACE VALIDATED: Home renders in the rc-shell COMPANION window
+(mainWindow, plain :8888, out-of-game; main.js:523), NOT the ?overlay=1 HUD (pins active-match,
+main.js:927-929); primary viewport now 920x1280 portrait. Home slice f7951769 (net -982): hero trims
+(greeting/Season-WR/Gold-chip cut, momentum gated >=3 games), 6-tile portrait launcher restored (Find
+Match tile dropped, CTA covers), Recent-5 W/L stripe (wired the unused `win` field; grade->badge),
+dropped Advisories, REMOVED Weekly Digest + Last Build, deleted dead services render +
+.home-trends/.home-grid CSS; backend stripped services/weekly_digest/last_build/season_wr (home-only).
+Resize f71aee0d: config.js standard 923x1316->920x1280 + companion tests + recon (rc-shell 309 +
+companion 11 pass; already-sized window keeps its saved size -> restart rc-shell + Ctrl+2 Standard to
+adopt). Cleanup 7e101de3: completed daf09498 (deleted ban_suggest_toggle.css but left 2 token tests
+pinning it - CI-hidden red, surfaced only in the /done full-suite; watch the exit-code trap - the bg
+bash reported outer-shell exit 0 while pytest exited 1). Pushed f9259068..f71aee0d, CI green.
+
+ARCH DECISION (operator): web/+dashboard/ retired as standalone VISUALS; all UI/UX -> the companion +
+in-game overlays (both rc-shell windows that render web/). rc-shell KEPT (it IS the companion+overlay).
+Path = #1-aggressive-finish (RC2 E11 Hextech reskin + dead-surface prune), NOT #2 native rebuild (RC2
+~90% built; a rewrite = months + parity gap).
+
+NEXT: HOME round-2 - operator says "feels disjointed still" -> a ui/ux agent pass + the RC2 E11 Hextech
+reskin (docs/RC2_PLAN.md E11, greenlit+swarm-mapped). Deferred from HOME_QA_2026-07-04.md: This-Week
+visibility (buried under Recent-5 in the portrait stack), Recent-5 depth, 1-col stack order,
+Recent-meta density, dual-grade repetition. Also owed: the 2 backfill CHIPS (items[] pre-ingest +
+queue_id/mode_subtype) rebase onto this slice. DO NOT redo: Home round-1 shipped (f7951769); companion
+is 920x1280; ban_suggest cleanup done.
+
+---
+
 # 2026-07-03 (Operator champ-select QA rework + per-mode panel visibility; LEDGER 765)
 
 Session pivot: /orchestrated-run bootstrap seeded the ORUN1-5 curated queue + relaunched the
