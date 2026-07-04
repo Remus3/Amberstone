@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 from core.aram_deterministic_coach import build_block
-from core.coach_choices import synthesize_simple_choices, to_jsonable
 
 _KEYS = (
     "action",
@@ -233,12 +232,24 @@ def test_build_order_garbage_type_keeps_item_build_empty() -> None:
 
 # ---------------------------------------------------------------------------
 # choices - the deterministic A/B array (the ARAM PRIMARY actionable surface).
-# build_block reuses core.coach_choices.synthesize_simple_choices over its own
-# action + fight_rule, so the deterministic choices are shape-identical to the
-# served chip synthesizer. Of the 5 ARAM action labels only ALL-IN (->
-# Engage/Disengage) and FALL BACK (-> Recall/Stay) map today; POKE / HOLD /
-# DISENGAGE yield [] until a later ARAM-specific mapping widens this.
+# build_block maps ALL 5 canonical ARAM action labels (ALL-IN / POKE / HOLD /
+# DISENGAGE / FALL BACK) to an ARAM-appropriate 2-entry A/B via the
+# _ARAM_CHOICE_LABELS map (source_tag "aram_rule"), superseding the earlier
+# narrow reuse of synthesize_simple_choices (which mapped only ALL-IN + FALL
+# BACK). An empty / unknown action still falls back to the synth path (-> []),
+# so non-canonical input never regresses.
 # ---------------------------------------------------------------------------
+
+# Each canonical action label -> its expected (A label, B label) A/B pair.
+_ARAM_LABEL_PAIRS = {
+    "ALL-IN": ("All-in", "Poke instead"),
+    "POKE": ("Poke", "Hold"),
+    "HOLD": ("Hold", "Reposition"),
+    "DISENGAGE": ("Disengage", "Trade back"),
+    "FALL BACK": ("Fall back", "Hold under turret"),
+}
+
+_CHOICE_FIELDS = {"key", "label", "expected_outcome", "confidence", "source_tag"}
 
 
 def test_choices_key_always_a_list() -> None:
@@ -256,49 +267,127 @@ def test_choices_key_always_a_list() -> None:
     assert isinstance(garbage["choices"], list)
 
 
-def test_choices_empty_for_hold_action() -> None:
-    # hp_pct 50 -> action HOLD, which has no recognizable binary verb -> [].
+def test_choices_hold_maps_to_pair() -> None:
+    # hp_pct 50 -> action HOLD, which NOW maps to a 2-entry Hold/Reposition A/B
+    # (previously [] under the narrow synth reuse).
     block = build_block(hp_pct=50.0)
     assert block["action"] == "HOLD"
-    assert block["choices"] == []
+    choices = block["choices"]
+    assert len(choices) == 2
+    assert [e["key"] for e in choices] == ["A", "B"]
+    assert [e["label"] for e in choices] == ["Hold", "Reposition"]
+    for entry in choices:
+        assert entry["source_tag"] == "aram_rule"
 
 
 def test_choices_two_entries_for_all_in_action() -> None:
-    # hp>80 + low>=2 -> ALL-IN, which maps to a 2-entry Engage/Disengage A/B.
+    # hp>80 + low>=2 -> ALL-IN, which maps to a 2-entry All-in/Poke instead A/B.
     block = build_block(hp_pct=90.0, low_enemy_count=2)
     assert block["action"] == "ALL-IN"
     choices = block["choices"]
     assert isinstance(choices, list)
     assert len(choices) == 2
-    _expected_keys = {"key", "label", "expected_outcome", "confidence", "source_tag"}
     for entry in choices:
         assert isinstance(entry, dict)
-        assert _expected_keys.issubset(entry.keys())
-        assert entry["source_tag"] == "synth"
+        assert _CHOICE_FIELDS.issubset(entry.keys())
+        assert entry["source_tag"] == "aram_rule"
     assert [e["key"] for e in choices] == ["A", "B"]
+    assert [e["label"] for e in choices] == ["All-in", "Poke instead"]
 
 
-def test_choices_reuse_pin_all_in() -> None:
-    # ROBUST reuse pin (no hardcoded prose): the block's choices are EXACTLY what
-    # the served synthesizer would produce from the block's own action +
-    # fight_rule - so the deterministic + served chip UIs stay shape-identical.
+def test_choices_all_in_pins_aram_map() -> None:
+    # Pin the exact ALL-IN A/B labels + source_tag from the ARAM map (no longer
+    # equal to the synthesize_simple_choices output, which is now superseded).
     block = build_block(
         hp_pct=90.0,
         low_enemy_count=2,
         cc_threat_line="Enemy CC threats: Ashe 3.0s stun (R)",
     )
-    assert block["choices"] == to_jsonable(
-        synthesize_simple_choices(
-            {"action": block["action"], "fight_rule": block["fight_rule"]}
-        )
-    )
+    a_lbl, b_lbl = _ARAM_LABEL_PAIRS["ALL-IN"]
+    choices = block["choices"]
+    assert [e["label"] for e in choices] == [a_lbl, b_lbl]
+    assert all(e["source_tag"] == "aram_rule" for e in choices)
 
 
-def test_choices_reuse_pin_hold() -> None:
-    # Same reuse pin on a HOLD block (which synthesizes to []): still identical.
+def test_choices_hold_pins_aram_map() -> None:
+    # Pin the exact HOLD A/B labels + source_tag from the ARAM map.
     block = build_block(hp_pct=50.0)
-    assert block["choices"] == to_jsonable(
-        synthesize_simple_choices(
-            {"action": block["action"], "fight_rule": block["fight_rule"]}
-        )
+    a_lbl, b_lbl = _ARAM_LABEL_PAIRS["HOLD"]
+    choices = block["choices"]
+    assert [e["label"] for e in choices] == [a_lbl, b_lbl]
+    assert all(e["source_tag"] == "aram_rule" for e in choices)
+
+
+def test_choices_empty_action_falls_back_to_synth_empty() -> None:
+    # A totally-absent hp_pct yields action "" -> the synth fallback path still
+    # returns [] (the reuse fallback still matters for the empty/unknown case).
+    block = build_block(cc_threat_line="Enemy CC threats: Leona 2.0s stun (R)")
+    assert block["action"] == ""
+    assert block["choices"] == []
+
+
+def test_choices_poke_maps_to_pair() -> None:
+    # hp 70 (60..80 band, no wave shift) -> POKE -> Poke/Hold A/B.
+    block = build_block(hp_pct=70.0)
+    assert block["action"] == "POKE"
+    choices = block["choices"]
+    assert len(choices) == 2
+    assert [e["label"] for e in choices] == ["Poke", "Hold"]
+    for entry in choices:
+        assert entry["source_tag"] == "aram_rule"
+
+
+def test_choices_disengage_maps_to_pair() -> None:
+    # hp 35 (30..<40 band) -> DISENGAGE -> Disengage/Trade back A/B.
+    block = build_block(hp_pct=35.0)
+    assert block["action"] == "DISENGAGE"
+    choices = block["choices"]
+    assert len(choices) == 2
+    assert [e["label"] for e in choices] == ["Disengage", "Trade back"]
+    for entry in choices:
+        assert entry["source_tag"] == "aram_rule"
+
+
+def test_choices_fall_back_maps_to_pair() -> None:
+    # hp 20 (<30 band) -> FALL BACK -> Fall back/Hold under turret A/B.
+    block = build_block(hp_pct=20.0)
+    assert block["action"] == "FALL BACK"
+    choices = block["choices"]
+    assert len(choices) == 2
+    assert [e["label"] for e in choices] == ["Fall back", "Hold under turret"]
+    for entry in choices:
+        assert entry["source_tag"] == "aram_rule"
+
+
+def test_choices_b_outcome_is_fight_rule_when_present() -> None:
+    # B.expected_outcome carries the passed fight_rule verbatim (stripped) when
+    # it is non-empty.
+    block = build_block(
+        hp_pct=70.0,
+        cc_threat_line="Enemy CC threats: Ashe 3.0s stun (R)",
     )
+    assert block["action"] == "POKE"
+    fr = block["fight_rule"]
+    assert fr  # non-empty for this CC line
+    b_entry = block["choices"][1]
+    assert b_entry["expected_outcome"] == fr
+
+
+def test_choices_b_outcome_default_when_no_fight_rule() -> None:
+    # With no CC line the fight_rule is "" -> B falls back to the safe default.
+    block = build_block(hp_pct=70.0)
+    assert block["action"] == "POKE"
+    assert block["fight_rule"] == ""
+    b_entry = block["choices"][1]
+    assert b_entry["expected_outcome"] == "play safe; reassess next tick"
+
+
+def test_choices_a_outcome_is_follow_the_coach_call() -> None:
+    # A.expected_outcome is the fixed "follow the coach call" for every label.
+    for hp in (90.0, 70.0, 50.0, 35.0, 20.0):
+        block = (
+            build_block(hp_pct=hp, low_enemy_count=2)
+            if hp > 80
+            else build_block(hp_pct=hp)
+        )
+        assert block["choices"][0]["expected_outcome"] == "follow the coach call"
