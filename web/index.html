@@ -145,7 +145,6 @@
     <div class="home-hero" id="home-hero">
       <div class="home-hero-bg" id="home-hero-bg" aria-hidden="true"></div>
       <div class="home-hero-greet">
-        <div class="home-hero-time" id="home-hero-time">Welcome back</div>
         <div class="home-hero-sub"  id="home-hero-sub">no games yet today</div>
         <!-- RC 2.0 E9 rank-identity badge. Solo-queue tier/division/LP from
              the local LCU (no Riot key). Operator plays mostly ARAM/Arena/
@@ -161,13 +160,6 @@
              history. W pips are filled good-token, L pips hollow
              bad-token (shape differs, not hue alone - WCAG 1.4.1). -->
         <div class="home-rank-wl" id="home-hero-rank-wl" hidden></div>
-        <!-- QA15b: true season WR - ranked (Solo/Duo + Flex) win-rate over
-             the 90d season window, from the home payload's season_wr dict
-             (rewind tracked_win, queue 420/440). Distinct from the L20
-             form above (all modes). Hidden when there is no ranked game in
-             the window, so the operator's mostly-ARAM sessions never show a
-             misleading 0%. -->
-        <div class="home-season-wr" id="home-hero-season-wr" hidden></div>
       </div>
       <!-- Center column: the momentum headline (idle = recent-form verdict,
            main.js _homeMomentumVerdict) + the primary Find Match CTA. Home's
@@ -199,13 +191,6 @@
           <span class="home-hero-chip-lbl">CS / MIN</span>
           <span class="home-hero-chip-row">
             <span class="home-hero-chip-val" id="home-hero-cs">-</span>
-            <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
-          </span>
-        </span>
-        <span class="home-hero-chip" data-metric="gold_per_min">
-          <span class="home-hero-chip-lbl">GOLD / MIN</span>
-          <span class="home-hero-chip-row">
-            <span class="home-hero-chip-val" id="home-hero-gold">-</span>
             <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
           </span>
         </span>
@@ -256,23 +241,14 @@
       </defs>
     </svg>
 
-    <!-- Quick-action tiles row (s218): 7 equal-width tiles. Each tile is
-         a single-click shortcut to a manual view; the JS click handler
-         (main.js:2346) calls applyView(target) which the dropdown menu
-         also uses.
-         Find Match (data-flow="find-match-launch") - operator wants this
-         to fire the change-lobby-mode picker from the lobby view (forced
-         choice → posts lobby type to the game client → routes UI to the
-         Pre-Game Lobby page). For now it routes to "lobby" and the
-         picker is invoked inside the lobby view. Follow-up wiring: lift
-         the picker into a modal that can be triggered from Home directly. -->
+    <!-- Quick-action tiles row (HOME_QA X2): 6 single-click shortcuts to a
+         manual view; the JS click handler (main.js _homeWireStartup) calls
+         applyView(target), the same flow the title dropdown menu uses. The
+         Find Match tile was dropped here (HOME_QA X2) because the hero CTA
+         above already covers that action - a second Find Match entry was a
+         duplicate. The surviving 6 (Post Game Review / Session / History /
+         Replay / Builds / Settings) stay wired. -->
     <div class="home-actions">
-      <button type="button" class="home-action-tile" data-target="lobby"
-              data-flow="find-match-launch">
-        <svg class="home-action-icon" aria-hidden="true"><use href="#hi-hex-play"/></svg>
-        <span class="home-action-label">Find Match</span>
-        <span class="home-action-sub">queue + party</span>
-      </button>
       <button type="button" class="home-action-tile" data-target="last-match">
         <svg class="home-action-icon" aria-hidden="true"><use href="#hi-swords"/></svg>
         <span class="home-action-label">Post Game Review</span>
@@ -338,16 +314,14 @@
       </div>
     </div>
 
-    <!-- s218: Tonight's Pick re-laid as 3 horizontal sections.
+    <!-- s218: Tonight's Pick laid out as 2 horizontal sections.
          Section 1: champion intro (icon + name + meta).
          Section 2: The Good / The Bad / The Ugly rows. Wired live from
            the this_week match-history aggregate via _home_pick_tips
            (deterministic stats - no Claude/Riot). Empty-state falls back
            to the "-" sentinel when tips are absent (item 281).
-         Section 3: Open Advisories only (R30: the play-streak moved out -
-           it already shows in the hero identity sub-line, so repeating it
-           here was a verbatim duplicate). Hidden entirely when there is no
-           open advisory (an empty "Advisories: None" row was pure noise). -->
+         (HOME_QA C1: Section 3 "Advisories" was dropped - the footer
+          health-dot + advisory badge already carry that signal.) -->
     <div class="home-combo" id="home-combo" hidden>
       <div class="home-coach-pick" id="home-coach-pick" hidden>
         <div class="home-coach-pick-head">TONIGHT'S PICK</div>
@@ -373,30 +347,9 @@
               <span class="home-pick-tip-value" id="home-pick-ugly">-</span>
             </div>
           </div>
-          <div class="home-pick-section home-pick-section-3"
-               id="home-pick-section-3" hidden>
-            <span class="home-pick-meta-label">Advisories</span>
-            <span class="home-pick-meta-value" id="home-pick-advisories-val">-</span>
-          </div>
         </div>
       </div>
     </div>
-    <!-- OQ13 mode-factored digest: weekly Good/Bad/Ugly FACTORED BY GAME
-         MODE (data.weekly_digest, backend slice A). Sibling card directly
-         under Tonight's Pick (same visual family, own row like Last Build)
-         so the week story reads right after the pick hero at 1920x1080.
-         Hidden until the payload carries a non-empty modes list; old or
-         missing-DB payloads lack the key entirely and degrade silently
-         (card stays hidden). Body is filled by _homeRenderWeeklyDigest. -->
-    <div class="home-weekly-digest" id="home-weekly-digest" hidden>
-      <div class="home-weekly-digest-head">THIS WEEK BY MODE</div>
-      <div id="home-weekly-digest-body"></div>
-    </div>
-    <div class="home-coach-build" id="home-coach-build" hidden>
-      <div class="home-coach-build-head">LAST BUILD <span class="home-coach-build-sub" id="home-coach-build-sub"></span></div>
-      <div class="home-coach-build-items" id="home-coach-build-items"></div>
-    </div>
-
     <!-- Body: 2 columns. Left = recent matches as visual cards.
          Right = this-week champion bar chart (V2 suggestion #5). -->
     <div class="home-body">

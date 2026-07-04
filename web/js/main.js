@@ -3098,17 +3098,19 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       return;
     }
     // V1 redesign 2026-04-29: render each match as a visual card with a
-    // colored W/L-proxy stripe on the left (grade tier), champion name +
-    // mode/time meta, KDA pill, and grade badge on the right. Click
-    // routes to the Replay view (graceful no-op if no replay handler).
+    // colored stripe on the left, champion name + mode/time meta, KDA pill,
+    // and grade badge on the right. Click routes to the History view.
+    // HOME_QA A5/B1: the stripe now encodes the real WIN/LOSS (m.win), not a
+    // grade tier - win -> "win" (green), loss -> "loss" (red), unknown
+    // (win==null on pre-ingest rows) -> "neutral" (dim, no guessed result).
     for (const m of rows) {
       const card = document.createElement("div");
       card.className = "home-recent-card";
       card.dataset.matchId = m.match_id || "";
       const gradeRaw = String(m.grade || "-").toUpperCase()[0] || "-";
-      const tier = (gradeRaw === "S" || gradeRaw === "A") ? "tier-good"
-                 : (gradeRaw === "D" || gradeRaw === "F") ? "tier-bad"
-                 : "tier-mid";
+      const stripeCls = (m.win === true) ? "win"
+                      : (m.win === false) ? "loss"
+                      : "neutral";
       // s218: spell out duration as "X Minutes" (was "Xm").
       const dur = m.duration_s
         ? `${Math.floor(m.duration_s / 60)} Minutes`
@@ -3128,7 +3130,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const metaParts = [modeLabel, tsShort, dur, csChip].filter(Boolean).join(" · ");
 
       const stripe = document.createElement("div");
-      stripe.className = `home-recent-stripe ${tier}`;
+      stripe.className = `home-recent-stripe ${stripeCls}`;
       // Champion portrait (DDragon icon, locally mirrored). Falls back
       // to a "?" placeholder if the file is missing. Use _resolveChampId
       // so display names like "Kai'Sa" / "Wukong" / "Renata Glasc" map to
@@ -3319,23 +3321,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
   function _homeRenderToday(t, streaks) {
     // V1 redesign 2026-04-29: populate the hero banner instead of the
-    // previous TODAY card grid. Greeting derives from local hour;
-    // headline is a one-line read of today's volume + perf direction;
-    // chips below carry the detailed numbers.
+    // previous TODAY card grid. The headline is a one-line read of today's
+    // volume + perf direction; chips below carry the detailed numbers.
     // V3 (2026-04-30, suggestion #7): when streaks exist, surface them
     // in the sub-text instead of the bland "no games yet today".
+    // HOME_QA FE1: the greeting line (#home-hero-time) was removed - it read
+    // as filler above the useful sub-line; the sub-line (games today +
+    // streak) is the identity read now.
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
     const games = (t && t.games) || 0;
     const avg = t && t.avg_kda;
 
-    // Time-of-day greeting
-    const hr = new Date().getHours();
-    const greet = hr < 5 ? "Burning the midnight oil"
-                : hr < 12 ? "Good morning"
-                : hr < 17 ? "Good afternoon"
-                : hr < 22 ? "Good evening"
-                          : "Late night session";
-    set("home-hero-time", greet);
     // Streak-aware sub-text: prefer the most useful active streak when
     // available, otherwise fall back to today's game count line.
     const streakParts = [];
@@ -3356,7 +3352,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     }
     set("home-hero-sub", sub);
 
-    // Headline: empty state vs games today
+    // Headline: idle momentum verdict vs today's summary. HOME_QA FE3/H6:
+    // the today-summary headline only shows at >= 3 games today - a 1-2 game
+    // day is too small a sample to headline (it just read "1 game - 3.7 avg
+    // KDA" off a single game). The idle (0-games) recent-form momentum
+    // verdict (R30) is a distinct DIRECTION read and stays; a 1-2 game day
+    // hides the headline entirely so the hero leads with the identity + pick.
     const headline = document.getElementById("home-hero-headline");
     if (headline) {
       headline.classList.remove("up", "down", "flat");
@@ -3366,7 +3367,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         const verdict = _homeMomentumVerdict();
         headline.textContent = verdict.text;
         headline.classList.add(verdict.dir);
-      } else {
+        headline.hidden = false;
+      } else if (games >= 3) {
         const avgStr = avg != null ? avg.toFixed(2) : "-";
         headline.textContent = `${games} game${games===1?"":"s"} · ${avgStr} avg KDA`;
         // s218 v7: always .flat. The prior absolute-threshold classifier
@@ -3375,6 +3377,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // nothing to compare against. Real up/down should wait until
         // a yesterday/avg-of-last-N baseline is wired.
         headline.classList.add("flat");
+        headline.hidden = false;
+      } else {
+        // 1-2 games today: too small to headline - hide it.
+        headline.textContent = "";
+        headline.hidden = true;
       }
     }
 
@@ -3399,32 +3406,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     set("home-today-avg",   avg != null ? avg.toFixed(2) : "-");
     set("home-today-grades", gradeStr || "-");
     set("home-today-modes",  modeStr || "-");
-  }
-  function _homeRenderServices(rows) {
-    // V1 redesign 2026-04-29: render as a thin strip of compact pills
-    // (dot + name) instead of a card-sized bulleted list. Detail string
-    // moves to the title attribute (hover tooltip) - services are a
-    // glance check, not browsable content. Container changed from <ul>
-    // to <div class="home-services-strip"> in the new HTML.
-    const strip = document.getElementById("home-services-list");
-    if (!strip) return;
-    strip.innerHTML = "";
-    if (!rows || !rows.length) {
-      strip.innerHTML = '<span class="home-empty">no services reporting</span>';
-      return;
-    }
-    for (const s of rows) {
-      const pill = document.createElement("span");
-      pill.className = `home-services-pill ${s.ok ? "ok" : "err"}`;
-      if (s.detail) pill.title = s.detail;
-      const dot = document.createElement("span");
-      dot.className = "home-services-dot";
-      const name = document.createElement("span");
-      name.className = "home-services-name";
-      name.textContent = s.name || "?";
-      pill.append(dot, name);
-      strip.appendChild(pill);
-    }
   }
   // UI scale v2.1 page #6 audit ritual step 5 state-coverage mock fixture
   // (2026-05-23). When body.dataset.uiMock === "1" the fetch short-
@@ -3494,28 +3475,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       + `<span class="home-wl-form tabular-nums">${form}</span>`;
     box.hidden = false;
   }
-  // QA15b: paint the ranked "season WR" line beside the L20 pip strip.
-  // `sw` is the home payload's season_wr dict ({wins, losses, win_rate,
-  // n}) - ranked (420/440) over the 90d season window. Hidden when
-  // win_rate is null (no ranked game in the window) so a mostly-ARAM
-  // session never shows a misleading stale 0%. Distinct from the L20 form
-  // (all modes) rendered above.
-  function _homeRenderSeasonWr(sw) {
-    const box = document.getElementById("home-hero-season-wr");
-    if (!box) return;
-    if (!sw || sw.win_rate == null) {
-      box.hidden = true;
-      box.innerHTML = "";
-      return;
-    }
-    const wins = (sw.wins != null) ? sw.wins : 0;
-    const losses = (sw.losses != null) ? sw.losses : 0;
-    box.innerHTML =
-      `<span class="home-season-wr-lbl">Ranked season</span>`
-      + `<span class="home-season-wr-val tabular-nums">`
-      + `${sw.win_rate}% (${wins}-${losses})</span>`;
-    box.hidden = false;
-  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
@@ -3528,8 +3487,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _HOME.fetching = false;
         if (!data) return;
         _HOME.lastFetchAt = Date.now();
-        // s218 v7: cache streaks so _homeMirrorAlerts can read them
-        // when populating Section 3 of Tonight's Pick.
+        // Cache streaks for any later reader (the hero sub-line reads them
+        // via the _homeRenderToday call below).
         _HOME.streaks = data.streaks || {};
         // R30: cache trends + last20 so the idle momentum headline
         // (_homeRenderToday -> _homeMomentumVerdict) can read the recorded W/L
@@ -3539,18 +3498,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _HOME.last20 = data.last20 || {};
         _homeRenderRank(data.rank || null);
         _homeRenderWlStrip(data.last20 || null);
-        _homeRenderSeasonWr(data.season_wr || null);
         _homeRenderToday(data.today || {}, data.streaks || {});
         _homeRenderRecent(data.recent || []);
         _homeRenderWeek(data.this_week || []);
-        _homeRenderServices(data.services || []);
         _homeUpdateHeroMotif(data);
-        // Render trends FIRST so its hidden flag is current when
-        // _homeRenderCoach decides whether the combo wrapper shows.
         _homeRenderTrends(data.trends || {});
-        _homeRenderCoach(data.tonight_pick, data.last_build);
-        _homeRenderWeeklyDigest(data.weekly_digest);
-        _homeMirrorAlerts();
+        _homeRenderCoach(data.tonight_pick);
       })
       .catch(() => { _HOME.fetching = false; });
   }
@@ -3559,22 +3512,25 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // standalone .home-trends row. Each chip carries data-metric on its
   // wrapper so the right SVG gets the right series.
   function _homeRenderTrends(trends) {
-    const series = ["cs_per_min", "gold_per_min", "kda"];
+    // HOME_QA FE4/H8: the Gold/min chip was dropped from the hero (it was the
+    // least-actionable of the three), so only KDA + CS/min chips paint here.
+    // The backend still ships trends.gold_per_min in the payload; it is just
+    // no longer surfaced as a chip.
+    const series = ["cs_per_min", "kda"];
     for (const metric of series) {
       const chip = document.querySelector(`.home-hero-chip[data-metric="${metric}"]`);
       if (!chip) continue;
       const points = trends[metric] || [];
       const svg = chip.querySelector(".home-hero-spark");
       if (!svg) continue;
-      // R30: paint ALL three chip values from their latest non-null trend
-      // point so the chip row is one consistent timeframe (14-day latest day
-      // with data). Previously the KDA chip alone was driven by today's KDA
+      // R30: paint the chip values from their latest non-null trend point so
+      // the chip row is one consistent timeframe (14-day latest day with
+      // data). Previously the KDA chip alone was driven by today's KDA
       // (_homeRenderToday); on an idle day that read "0/0/0" next to a
-      // populated CS/GOLD - a mixed-timeframe row that looked broken.
+      // populated CS - a mixed-timeframe row that looked broken.
       const latest = [...points].reverse().find(p => p && p.value != null);
       if (latest != null) {
         const valId = metric === "cs_per_min" ? "home-hero-cs"
-                    : metric === "gold_per_min" ? "home-hero-gold"
                     : metric === "kda" ? "home-hero-kda" : null;
         if (valId) {
           const valEl = document.getElementById(valId);
@@ -3634,15 +3590,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       }
     }
   }
-  // V3 (suggestions #1 + #4): tonight's pick + last build cards.
-  // After 2026-04-30 redesign, pickCard lives inside #home-combo
-  // (alongside sparklines); buildCard is its own row below.
-  function _homeRenderCoach(pick, build) {
+  // V3 (suggestion #1): Tonight's Pick card. Lives inside #home-combo.
+  // HOME_QA A8/C3: the Last Build half + the Weekly Digest were removed, so
+  // #home-combo now holds ONLY #home-coach-pick and shows iff a pick exists.
+  function _homeRenderCoach(pick) {
     const combo = document.getElementById("home-combo");
     const pickCard = document.getElementById("home-coach-pick");
-    const buildCard = document.getElementById("home-coach-build");
-    const trends = document.getElementById("home-trends");
-    if (!combo || !pickCard || !buildCard) return;
+    if (!combo || !pickCard) return;
     const ver = (typeof CHAMPS !== "undefined" && CHAMPS && CHAMPS.version) ? CHAMPS.version : DDRAGON_FALLBACK_VERSION;
     // Tonight's pick
     if (pick && pick.champion) {
@@ -3696,97 +3650,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     } else {
       pickCard.hidden = true;
     }
-    // Last build (6 item slots, fills with .empty placeholders if <6)
-    if (build && Array.isArray(build.items) && build.items.length) {
-      buildCard.hidden = false;
-      const sub = document.getElementById("home-coach-build-sub");
-      const items = document.getElementById("home-coach-build-items");
-      if (sub) sub.textContent = (build.champion ? `· ${build.champion}` : "")
-                                 + (build.mode ? ` · ${build.mode}` : "");
-      if (items) {
-        items.innerHTML = "";
-        const slots = build.items.slice(0, 6);
-        while (slots.length < 6) slots.push(0);
-        for (const id of slots) {
-          if (id) {
-            const im = document.createElement("img");
-            im.className = "home-coach-build-item";
-            im.alt = "";
-            im.loading = "lazy";
-            im.src = `/data/ddragon/${ver}/img/item/${id}.png`;
-            im.onerror = () => { im.classList.add("empty"); im.removeAttribute("src"); };
-            items.appendChild(im);
-          } else {
-            const sp = document.createElement("span");
-            sp.className = "home-coach-build-item empty";
-            items.appendChild(sp);
-          }
-        }
-      }
-    } else {
-      buildCard.hidden = true;
-    }
-    // Show the combo wrapper if EITHER tonight's-pick or trends has data
-    // (trends visibility is set independently by _homeRenderTrends).
-    const trendsVisible = !!(trends && !trends.hidden);
-    combo.hidden = pickCard.hidden && !trendsVisible;
-  }
-  // OQ13 slice B: THIS WEEK mode-factored digest card. One block per game
-  // mode from data.weekly_digest.modes (backend slice A: sorted games desc
-  // then mode asc), each a "{mode} - {games} games - {kda} KDA" header
-  // plus The Good / The Bad / The Ugly rows reusing the Tonight's Pick
-  // tip-row classes. A row whose string is "" was backend-suppressed -
-  // skip it entirely. Old/missing-DB payloads LACK weekly_digest and an
-  // idle week ships modes: [] - both hide the card silently. Payload
-  // strings land via createElement/textContent (never innerHTML), so no
-  // escaping is needed.
-  function _homeRenderWeeklyDigest(dg) {
-    const card = document.getElementById("home-weekly-digest");
-    const body = document.getElementById("home-weekly-digest-body");
-    if (!card || !body) return;
-    if (!dg || !Array.isArray(dg.modes) || dg.modes.length === 0) {
-      card.hidden = true;
-      return;
-    }
-    // Idempotent re-render (repo convention - the "direct sig on element"
-    // variant of lib/idempotent_render.js): identical payload -> skip the
-    // wipe + rebuild.
-    const sig = JSON.stringify(dg);
-    if (card.dataset.sig === sig) { card.hidden = false; return; }
-    card.dataset.sig = sig;
-    body.textContent = "";
-    for (const m of dg.modes) {
-      if (!m || !m.mode) continue;
-      const block = document.createElement("div");
-      block.className = "home-weekly-digest-mode";
-      const head = document.createElement("div");
-      head.className = "home-weekly-digest-mode-head";
-      const kdaNum = Number(m.avg_kda);
-      const kda = Number.isFinite(kdaNum) ? kdaNum.toFixed(1) : "-";
-      head.textContent = `${m.mode} - ${m.games} games - ${kda} KDA`;
-      block.appendChild(head);
-      const rows = [
-        ["The Good", m.good],
-        ["The Bad", m.bad],
-        ["The Ugly", m.ugly],
-      ];
-      for (const [label, val] of rows) {
-        if (!val || !String(val).trim()) continue;
-        const row = document.createElement("div");
-        row.className = "home-pick-tip-row";
-        const lab = document.createElement("span");
-        lab.className = "home-pick-tip-label";
-        lab.textContent = label;
-        const value = document.createElement("span");
-        value.className = "home-pick-tip-value";
-        value.textContent = String(val);
-        row.appendChild(lab);
-        row.appendChild(value);
-        block.appendChild(row);
-      }
-      body.appendChild(block);
-    }
-    card.hidden = false;
+    // HOME_QA A8: #home-combo now wraps ONLY the pick card, so it shows iff
+    // the pick is present (the old trends-visibility inference referenced a
+    // #home-trends.hidden property that was never set).
+    combo.hidden = pickCard.hidden;
   }
   // Champion motif on the hero bg. Picks the most-played champion from
   // this_week (or the most-recent match as a fallback) and sets the
@@ -3807,27 +3674,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const motifCid = _resolveChampId(champ) || encodeURIComponent(champ);
     bg.style.backgroundImage =
       `url("/data/ddragon/${ver}/img/champion/${motifCid}.png")`;
-  }
-  // Mirror advisory + digest into the icon-button badges on Tonight's
-  // Pick (V3 redesign 2026-04-30). Sets the badge text + toggles
-  // .has-data so CSS recolors the button when the count/label is
-  // non-default. Badge tooltip carries the verbose text.
-  function _homeMirrorAlerts() {
-    // R30: Section 3 of Tonight's Pick now carries ONLY the open-advisories
-    // count, and only when there is one. The play-streak row was removed (it
-    // duplicated the hero identity sub-line verbatim), and an empty
-    // "Advisories: None" row was pure noise - so the whole section hides at 0.
-    // Advisories read live from the footer #advisory-count span (the canonical
-    // store the advisory system updates).
-    const advCount = document.getElementById("advisory-count");
-    const n = advCount ? (parseInt(advCount.textContent || "0", 10) || 0) : 0;
-    const sec3 = document.getElementById("home-pick-section-3");
-    if (sec3) sec3.hidden = (n === 0);
-    const advValEl = document.getElementById("home-pick-advisories-val");
-    if (advValEl && n > 0) {
-      advValEl.textContent = `${n} open`;
-      advValEl.title = `${n} open advisor${n === 1 ? "y" : "ies"}`;
-    }
   }
   function renderHomePanel(lcu) {
     const overlay = document.getElementById("home-overlay");
@@ -3974,29 +3820,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         });
       });
     }
-    // Alerts rows → synthesize click on the original hidden footer
-    // triggers so the existing popout / cycle handlers fire unchanged.
-    const wireAlertRow = (rowId, anchorId) => {
-      const row = document.getElementById(rowId);
-      const anchor = document.getElementById(anchorId);
-      if (!row || !anchor) return;
-      row.addEventListener("click", () => anchor.click());
-      // Keyboard parity for ENTER/SPACE
-      row.tabIndex = 0;
-      row.setAttribute("role", "button");
-      row.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); anchor.click(); }
-      });
-    };
-    // s218 v7: the old advisory + digest pip-buttons that wireAlertRow
-    // targeted were removed in the Tonight's Pick Section-3 redesign.
-    // Streak + Advisories now live as sub-header rows populated by
-    // _homeMirrorAlerts; no per-row click wiring needed.
-    // Initial fetch + recurring tick + alerts mirror.
+    // HOME_QA C1: the advisory mirror (_homeMirrorAlerts) + its Tonight's
+    // Pick Section 3 were removed - the footer health-dot + advisory badge
+    // already carry that signal. Only the home summary fetch + tick remain.
+    // Initial fetch + recurring tick.
     _homeFetchAndRender();
     setInterval(_homeFetchAndRender, _HOME.intervalMs);
-    setInterval(_homeMirrorAlerts, 5000);
-    _homeMirrorAlerts();
     // Personal context (item 124): top-3 recurring death patterns from
     // rewind_history.db, mounted inside the Right Now panel body.
     // 60s polling with mtime-keyed backend cache.
