@@ -217,12 +217,14 @@ no row carries it.
   order stays sane; Warmog-class MS-less items unchanged) before defaulting ON; the 0.5
   fraction / 0.15 cap midpoints are the tunables. DS restart. SOURCE: docs/LEDGER.md
   item 738; ledger 2026-07-02 below.
-- B44. (PRACTICE-SR, spot-check not a flip - R66 shipped UNGATED) Guinsoo Seething Strike
-  32% cond-AS live re-rank sanity: on an on-hit champ (Kog'Maw / Varus / Kayle) confirm
-  /rank places Guinsoo 3124 sanely (higher than pre-1.173.0 but not displacing staple
-  first-items absurdly) and a NON-AA mage's ranking is unmoved; the field folds only when
-  Guinsoo is in the evaluated build (R42 lane). Nice-to-have validation; no flag to flip;
-  rollback = registry field revert + bump. SOURCE: docs/LEDGER.md item 753.
+- B44. [CLOSED 2026-07-04 - ARAM Mayhem live, verifier-CONFIRMED] Guinsoo Seething Strike
+  32% cond-AS re-rank sanity CONFIRMED: live POST /rank Kalista (on-hit ADC) lvl7 ARAM
+  items[3153,1042,1001] (ENGINE 1.179.0) -> Guinsoo 3124 rank #6 delta 116.17, above it ONLY
+  on-hit/crit staples (Runaan's #1 / Kraken #2 / Stormrazor #3 / IE #4 / YunTal #5), no absurd
+  first-item displacement = sane. DOC-PROSE FIX for the resync: at 0-armor default target
+  Guinsoo out-ranks Terminus (#9) + LDR (#20), so the load-bearing "not displacing staple
+  first-items absurdly" claim holds but a "below Terminus/LDR" reading would be wrong. Row
+  can be pruned at the next resync. SOURCE: docs/LEDGER.md item 753.
 
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
@@ -606,6 +608,29 @@ ESTIMATED SESSIONS TO DRAIN ONE-SHOT ITEMS: 4 (practice SR -> real SR -> ARAM Ma
 Arena); scenario-gated residue (C2 VARIANT, A3 CC-pair, tabled-champ rolls, C12 sustain comps,
 B36 K'Sante) may spill into 1-2 extra Mayhem/SR sittings. The accrual tail (G1-G14) closes
 over normal play across later cycles, not in these sessions.
+
+## 2026-07-04 ARAM Mayhem sitting result (2 games: Kalista, Tristana; RC restart pid 18024->9280)
+CLOSED: B44 Guinsoo on-hit re-rank sanity (verifier-CONFIRMED live /rank Kalista).
+ADVANCED (data-path / engine validated live this sitting; render or positive-case half remains, rows stay OPEN):
+  C1 build-chooser + comp-aware MAYHEM reasons (both games; rendered-tip pixel half gated);
+  C11 cc_blended_ehp reacts live to a real CC comp (DS /ehp 5776->2888 vs Nocturne/Annie/Ashe/Hwei;
+  9 consumer surfaces grep-confirmed; served only on the tank/bruiser scorer, not a dps carry -> a
+  full close needs a tank/bruiser pick or the cc panel wired into /api/state);
+  C12 antiheal correctly SILENT on a non-sustain comp (heal_threat.py executed live -> None; the
+  POSITIVE fire still rides a future sustain-heavy comp);
+  C13 enemy_spells data-path (rendered stats_panel pixel half gated).
+ACCRUAL: B20/R55 own-build sanity N=2 of 3 (Kalista + Tristana, both marksman BotRK sane at
+  default-OFF). The R55 assume_archetype_hp_pct flag is NOT a /rank body param (server.py:452-453
+  exposes only exempt_offclass_by_win + prefer_kit_axis_by_win) -> the OFF-vs-ON flip stays DS-restart-gated.
+DEFER (unchanged, champ-gated - NO tabled champ rolled, Kalista/Tristana): all C3-C10 seam flips.
+  C3/DSP3 is additionally NOT eyeball-able (RC-side archetype resolver, excluded from live_flip_eyeball.py).
+  Tristana DSP11 eyeball = NO-OP (not a WIN-anchored kit-axis champ) -> C4-crit stays Quinn-only-validated.
+FINDINGS (out of drain scope, both non-blocking): (1) the :8889 frame endpoint is NOT down - a naive
+  https + no-token probe returns 000; the correct probe is http + X-RC-Token (config/vision_token.txt).
+  (2) /api/state.screen_read is a 46-day-stale no_fresh_frame error but this is BY-DESIGN: screen_read
+  is an operator-click-only sticky field (data/screen_read.json mtime 2026-05-18 = the last SCREEN READ
+  click; state-builder stamps it verbatim, deliberately not clobbered by the coach tick). The continuous
+  coach-vision path is separate + healthy (minimap_dots/zoi live). NOT a bug, no fix.
 
 ---
 
