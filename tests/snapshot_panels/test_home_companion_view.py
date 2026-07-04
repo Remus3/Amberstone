@@ -25,7 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 SCREENSHOTS = Path(__file__).parent / "screenshots"
 
-COMPANION_W, COMPANION_H = 923, 1316
+COMPANION_W, COMPANION_H = 920, 1280
 
 
 def _open_home_at(pw_browser, mock_server, w, h):
