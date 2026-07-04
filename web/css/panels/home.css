@@ -8,10 +8,13 @@
  * .home-* selectors migrated to v2.1 tokens. .lobby-* and .cs-* remain
  * on v1 tokens (those belong to pages #7 + #8-10 in the audit order). */
 .home-overlay {
-  margin: var(--space-3) var(--space-5) 0; padding: var(--panel-padding-comp) var(--space-5);
+  margin: var(--space-2) var(--space-5) 0; padding: var(--panel-padding-comp) var(--space-5);
   background: var(--surface); border: 1px solid var(--border-soft);
   border-radius: var(--panel-radius);
-  display: flex; flex-direction: column; gap: var(--space-3);
+  /* Round-2 fold fix: space-3 -> space-2 inter-section beat - with the
+   * full-data fixture (rank + pips + 3 pick tips) the launcher's second
+   * row must still clear the 1280 companion fold. */
+  display: flex; flex-direction: column; gap: var(--space-2);
   /* Match the view-section flex behavior so the footer stays pinned to
    * the viewport bottom regardless of which view is active. Without
    * this, home-overlay was content-sized and the footer floated up to
@@ -25,6 +28,14 @@
   min-height: 0;
 }
 .home-overlay.hidden { display: none; }
+/* Round-2 fold fix: home-scoped compaction of the shared hx-card-head
+ * primitive (space-2 -> space-1 above/below the rule line, ~8px per head
+ * x3 heads) - the hextech.css primitive itself stays untouched for other
+ * pages. */
+#home-overlay .hx-card-head {
+  padding-bottom: var(--space-1);
+  margin-bottom: var(--space-1);
+}
 /* User request 2026-04-29: when the user manually navigates to the home
  * view, force the overlay visible regardless of _homeShouldShow's
  * mode/lcu-phase gating. Specificity (0,2,1) beats .home-overlay.hidden
@@ -636,7 +647,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
-  min-height: 48px;
+  /* Round-2 fold fix: 48 -> 44px (still the interactive floor) - two
+   * launcher rows must clear the 1280 companion fold. */
+  min-height: 44px;
   cursor: pointer;
   font-family: inherit;
   text-align: left;
@@ -685,7 +698,9 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   gap: var(--panel-gap-tight);
   align-items: center;
   padding: var(--space-1) var(--space-3);
-  min-height: var(--hit-min);
+  /* Round-2 fold fix: week rows carry NO click handler (audit phase 3) -
+   * the 42px interactive floor does not apply; content-sized rows buy
+   * back ~8px each toward the companion fold. */
   /* s218 v7: visually demoted - transparent bg + bottom-only border so
    * rows read as a list, not as cards (was background: surface-head +
    * 1px all-around border). The grade-tint signal moves to a 3px left
@@ -866,20 +881,39 @@ body[data-view="home"] .home-overlay { display: flex !important; }
    * (HOME round-2 M1: the desktop min-height:120px floor is gone, so the
    * old min-height:auto reset is no longer needed here.) */
   .home-hero {
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
+    /* Round-2 fold fix (operator): the stat chips leave the vertical
+     * stack and occupy the hero's EMPTY right zone (over the motif),
+     * reclaiming ~90px so the launcher's second row clears the 1280
+     * fold. Col 1 = greet + headline/CTA rows; col 2 = chips, stacked
+     * vertically, spanning both rows. */
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2) var(--space-3);
   }
+  .home-hero-greet  { grid-column: 1; }
+  .home-hero-center { grid-column: 1; align-items: flex-start; }
   .home-hero-headline { text-align: left; }
-  /* R30: the center column (headline + Find Match CTA) left-aligns with the
-   * rest of the stacked companion hero instead of staying centered. */
-  .home-hero-center { align-items: flex-start; }
-  .home-hero-chips { justify-content: flex-start; }
+  /* Operator (round 2): keep the champion motif VISIBLE now that the
+   * chips occupy the hero's right edge - anchor it left of the chips
+   * column and lift the opacity a notch so it reads through the narrow
+   * band between the headline and the chips. */
+  .home-hero-bg {
+    right: 180px;
+    width: min(300px, 45%);
+    opacity: 0.24;
+  }
+  .home-hero-chips {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    flex-direction: column;
+    justify-content: center;
+    align-self: center;
+  }
 
   /* Tonight's Pick: the intro / good-bad-ugly / streak sections stack so each
    * gets the full companion width instead of three cramped columns. */
   .home-coach-pick-body {
     grid-template-columns: 1fr;
-    gap: var(--panel-gap);
+    gap: var(--space-2);
   }
 
   /* Recent 5 + This Week stack; each row's fixed inner columns (~550-615px)
