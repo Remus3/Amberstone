@@ -67,14 +67,14 @@ def _track_count(page, sel):
 
 @pytest.mark.parametrize("view,sel", COMPANION_CASES)
 def test_companion_single_column(view, sel, mock_server, pw_browser):
-    ctx, page, errors = _open(pw_browser, mock_server, view, 923, 1316)
+    ctx, page, errors = _open(pw_browser, mock_server, view, 920, 1280)
     try:
         page.wait_for_function(
             "(s) => document.querySelector(s) !== null", arg=sel, timeout=10_000
         )
         tracks = _track_count(page, sel)
         assert tracks == 1, (
-            f"{view}: {sel} not single-column at 923px (companion): {tracks} tracks"
+            f"{view}: {sel} not single-column at 920px (companion): {tracks} tracks"
         )
     finally:
         page.close()
