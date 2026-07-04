@@ -225,6 +225,35 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-04 (HEADLESS open items - header row-2 FINISHED + HOME chips A6/A7; LEDGER 770-771)
+
+Closed the drain-session NEXT-block open items (no play needed - all headless).
+- HEADER ROW-2 (item #1, DONE): finished the WIP on worktree-agent-a218a07c4022c7923.
+  The FULL suite caught 2 hidden failures (test_motion_reduce_sweep_oq4 still expected the
+  retired .hp.hp-critical loop) -> fixed to 8 live loops. Squash-merged `bfa78360` (the WIP-
+  snapshot commit kept OUT of main); re-gated on merged main (snapshot_panels 320 + DOM 66);
+  live re-render clean (1 .header-row, 0 row-2 tokens, trigger_pill.js -> 404); overlay
+  unaffected (overlay.css untouched + display:none's the whole header). CI GREEN. Worktree +
+  branch removed.
+- TONIGHT'S PICK floor (item #3, ANSWERED): operator ruled KEEP CURRENT - no >=2-game floor
+  (any champ incl 1-game; the existing "Small sample" tip caveats). No code change.
+- CHIPS A6/A7 (item #2, DONE): NOT a rebase (no branch existed) - fresh data-fix, spec-first
+  via a Plan subagent (spec corrected 3 premises: Recent-3 not 5; rewind CURRENT not stale;
+  only ~28/110 joinable). A6 mode_subtype derives from the queueId already in
+  raw_data.lcu_match_detail (NO schema migration - the spec's queue_id column was redundant);
+  live Recent shows Tristana/Kalista subtype='Mayhem'. A7 NEW
+  tools/backfill_home_items_from_rewind.py (STRICT champion + 10-min join, dry-run default)
+  recovered 22 pre-ingest rows' items from rewind (gap 110 -> 88; 88 kept honest-empty).
+  Both Tier-1, RED-first, consolidated home gate 71 passed.
+
+NEXT: E11 remaining NON-HOME surfaces still OPEN in docs/RC2_PLAN.md (the HOME slice shipped).
+Live-gated drain continuation is a PLAY session (ARAM seam flips are champ-gated:
+Ezreal/Corki/Rakan/KSante/Rell/Cluster-A; ARENA still NEEDED for D2/D3/D7).
+DO NOT redo: header-row-2 (merged bfa78360); A6/A7 (the queue_id column is deliberately NOT
+added - queueId lives in raw_data); Tonight's Pick no-floor is an operator ruling.
+
+---
+
 # 2026-07-04 (/live-gated-drain - ARAM Mayhem sitting; LEDGER 769)
 
 Drained docs/LIVE_GAME_GATED_SYNC.md while the operator played ARAM Mayhem (2 games: Kalista, Tristana).
