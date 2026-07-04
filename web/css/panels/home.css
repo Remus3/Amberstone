@@ -138,6 +138,16 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
+/* Mode-tabs round 2: a tab-filtered-empty strip (ARAM - no rewind Mayhem
+ * rows) keeps its vertical slot so the hero height is identical across
+ * tabs; visibility (not display) preserves the box. min-height mirrors
+ * the populated row's line box (fs-xs form text at ~1.2 line-height,
+ * taller than the 10px pips). A no-data-at-all empty on the ALL tab
+ * still collapses via [hidden]. */
+.home-rank-wl.is-reserved {
+  visibility: hidden;
+  min-height: calc(var(--fs-xs) * 1.2);
+}
 .home-wl-pips {
   display: inline-flex; align-items: center; flex-wrap: wrap;
   gap: var(--space-1);
@@ -186,7 +196,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--canvas); background: var(--good);
   border: none; border-radius: var(--radius-sm);
-  min-height: var(--hit-min); cursor: pointer;
+  /* Audit round-2 MUST-FIX: --hit-min is 42px; the primary CTA holds the
+   * 44px floor the mode tabs adopted (max() keeps the token authoritative
+   * if it ever rises above 44). */
+  min-height: max(var(--hit-min), 44px); cursor: pointer;
   transition: background 0.12s, transform 0.06s;
 }
 .home-hero-cta:hover  { background: color-mix(in srgb, var(--good) 72%, white); transform: scale(1.02); }
@@ -233,7 +246,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-hero-spark .spark-dot { fill: var(--accent); }
 
 /* -- HOME mode-tab strip (SR/ARAM/ARENA filter, 2026-07-04) ----------
- * Sits between the hero and the action tiles. Flat 4-equal-column grid
+ * Sits between the hero and Tonight's Pick. Flat 4-equal-column grid
  * of tab controls; the active tab reads teal text + a gold underline
  * inset (the page's week-bar underline vocabulary), so state is not
  * hue-alone - aria-selected + the inset bar shape carry it. 4 tracks
@@ -281,8 +294,10 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   display: grid;
   /* s218 v2: fixed column widths so every row's items / kda / grade
    * line up vertically top-to-bottom. Auto sizing was letting variable
-   * KDA-string widths shift downstream columns. */
-  grid-template-columns: 6px 44px minmax(0, 1fr) 200px 96px 44px;
+   * KDA-string widths shift downstream columns. (Audit round-2: KDA col
+   * 96 -> 116px so a worst-case "15/11/20" pill keeps breathing room
+   * before the grade badge; fixed width preserves cross-row alignment.) */
+  grid-template-columns: 6px 44px minmax(0, 1fr) 200px 116px 44px;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-1) var(--space-3) var(--space-1) 0;
@@ -399,7 +414,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 }
 .home-combo[hidden] { display: none; }
 
-/* ── V3 coach row (suggestion #1) - Tonight's Pick lives inside
+/* -- V3 coach row (suggestion #1) - Tonight's Pick lives inside
  * .home-combo. (HOME_QA C3: the Last Build card was removed.)
  * HOME round-2 (M1): the ONLY bracketed card on the page - the markup
  * now carries .hx-card (gold corner brackets + frame from hextech.css)
@@ -408,7 +423,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * PURPOSE: dashboard.css imports home.css BEFORE hextech.css (import
  * order is frozen), so the compound class lifts specificity to (0,2,0)
  * and this surface/border/glow beats the later .hx-card base without
- * reordering imports. ──────── */
+ * reordering imports. */
 .home-coach-pick.hx-card {
   position: relative;
   background: var(--surface-2);
@@ -422,12 +437,12 @@ body[data-view="home"] .home-overlay { display: flex !important; }
  * shared .hx-card-head primitive in hextech.css - the markup carries
  * hx-card-head now.) */
 .home-coach-pick-body {
-  /* s218 v2: Section 1 sized to its content (champion intro), Sections
-   * 2 + 3 share the remaining width. Gives Section 2 a finite boundary
-   * to start at (right edge of Section 1's "best B" text) rather than
-   * floating mid-column when Section 1's content is short. */
+  /* s218 v2: Section 1 sized to its content (champion intro), Section 2
+   * takes the remaining width. (Audit round-2: was auto 1fr 1fr - the
+   * third track was dead space after HOME_QA C1 cut the Advisories
+   * section; two tracks now, no dead right third at 1920.) */
   display: grid !important;
-  grid-template-columns: auto 1fr 1fr;
+  grid-template-columns: auto 1fr;
   gap: var(--panel-padding-loose);
   align-items: start;
 }
@@ -591,7 +606,7 @@ body[data-view="home"] .home-overlay { display: flex !important; }
 .home-find-match-picker .lq-mode-item {
   font-size: var(--fs-md);
   padding: var(--space-3) var(--space-2);
-  min-height: var(--hit-min);
+  min-height: max(var(--hit-min), 44px);
 }
 /* Dimmer behind the picker - keeps focus on the queue choice. */
 .home-find-match-backdrop {

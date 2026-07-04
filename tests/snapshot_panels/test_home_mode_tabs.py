@@ -310,6 +310,87 @@ def test_home_momentum_falls_back_to_kda_trend(mock_server, pw_browser):
     assert not errors, f"JS errors [momentum fallback]: {errors[:3]}"
 
 
+def test_home_wl_strip_reserves_slot_on_filtered_tab(
+    mock_server, pw_browser
+):
+    """Operator ruling (round 2): a mode tab whose last20 the backend
+    filtered to empty (ARAM until rewind gains Mayhem rows) RESERVES the
+    pip strip's vertical slot (.is-reserved: visibility hidden, height
+    kept) so the hero does not jump between tabs - while the no-data ALL
+    tab still collapses the row entirely ([hidden]). Same route-injection
+    pattern as the momentum-fallback test above."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    payload["last20"] = {
+        "results": [], "wins": 0, "losses": 0, "win_rate": 0,
+    }
+    body = json.dumps(payload)
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 920, "height": 1280}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+
+    def _fulfill(r):
+        r.fulfill(status=200, content_type="application/json", body=body)
+    page.route("**/data/ui_mock/home.json", _fulfill)
+    page.route("**/api/home/summary", _fulfill)
+    try:
+        page.goto(
+            mock_server.url + "/?ui_mock=1#home",
+            wait_until="domcontentloaded", timeout=15_000,
+        )
+        page.wait_for_function(_TABS_READY, timeout=10_000)
+
+        def _wl_state():
+            return page.evaluate(
+                """() => {
+                  const el =
+                    document.getElementById('home-hero-rank-wl');
+                  const r = el.getBoundingClientRect();
+                  return {
+                    hidden: el.hidden,
+                    reserved: el.classList.contains('is-reserved'),
+                    visibility: getComputedStyle(el).visibility,
+                    height: r.height,
+                  };
+                }"""
+            )
+
+        # ALL tab + no W/L data at all -> fully collapsed, no ghost band.
+        st = _wl_state()
+        assert st["hidden"] and not st["reserved"], (
+            f"ALL-tab empty strip should collapse via [hidden]: {st!r}"
+        )
+
+        # ARAM tab (filter-empty) -> slot reserved, invisible, height kept.
+        page.locator('.home-mode-tab[data-hmode="ARAM"]').click()
+        page.wait_for_function(
+            "document.getElementById('home-hero-rank-wl')"
+            ".classList.contains('is-reserved')",
+            timeout=5_000,
+        )
+        st = _wl_state()
+        assert not st["hidden"], (
+            f"filtered-tab strip must keep its box (not [hidden]): {st!r}"
+        )
+        assert st["visibility"] == "hidden", (
+            f"filtered-tab strip should be visibility:hidden: {st!r}"
+        )
+        assert st["height"] >= 16, (
+            f"reserved strip lost its vertical slot ({st['height']}px)"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [wl strip reserve]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in this
     test file (the fixture is covered by the sibling view tests)."""

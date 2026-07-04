@@ -223,16 +223,23 @@ def test_aram_filter_streaks_computed_over_aram_rows():
 def test_unfiltered_shape_and_tft_exclusions_unchanged():
     out = _build()
     assert out["mode_filter"] == "ALL"
-    # recent-5: newest 5 non-TFT rows, mixed modes, never TFT.
-    assert len(out["recent"]) == 5
+    # recent-3 (round-2 ruling: 5 -> 3, all tabs): the newest 3 non-TFT
+    # rows are today's Garen (SR), Lux + Sona (ARAM) - never TFT.
+    assert len(out["recent"]) == 3
     assert all(r["mode"] != "TFT" for r in out["recent"])
-    assert {r["mode"] for r in out["recent"]} == {"SR", "ARAM", "ARENA"}
-    # today: 4 non-TFT games (SR + 2 ARAM + ARENA).
+    assert [r["champion"] for r in out["recent"]] == ["Garen", "Lux", "Sona"]
+    assert {r["mode"] for r in out["recent"]} == {"SR", "ARAM"}
+    # today: 4 non-TFT games (SR + 2 ARAM + ARENA) - unaffected by the
+    # recent LIMIT.
     assert out["today"]["games"] == 4
     assert out["today"]["modes"] == {"SR": 1, "ARAM": 2, "ARENA": 1}
-    # this_week: all modes' champions present.
+    # this_week: top-3 champs by games (round-2 ruling: 5 -> 3). Lux
+    # leads with 2 games; the 1-game ties fill the remaining 2 slots.
+    assert len(out["this_week"]) == 3
+    assert out["this_week"][0]["champion"] == "Lux"
+    assert out["this_week"][0]["games"] == 2
     champs = {r["champion"] for r in out["this_week"]}
-    assert {"Lux", "Sona", "Garen", "Jax", "Darius"} <= champs | {"Ahri", "Sett"}
+    assert champs <= {"Lux", "Sona", "Garen", "Jax", "Darius", "Ahri", "Sett"}
     assert "Dark Star Vertical" not in champs
 
 
