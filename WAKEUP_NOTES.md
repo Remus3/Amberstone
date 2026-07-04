@@ -4,6 +4,33 @@
 
 ---
 
+# 2026-07-04 (RC2 next lane -> no-live-LLM precompute-DB, slice 1: ARAM coach `choices` shadow-measurable; LEDGER 775, `f5939253`)
+
+Operator picked the no-live-LLM precompute-DB program (ROADMAP L15) as the next RC2 lane over the two
+operator-gated remainders (E10 history-rewrite go/no-go, E2 DS live-flip). Spec-first via a Plan subagent.
+- SPEC CORRECTED 3 stale plan-doc premises vs HEAD: (1) SR is NOT zero-Haiku at the code level -
+  coaches/sr_coach.py -> CoachIntegration -> Haiku at coach_integration/_coach.py:370; (2) the ARAM
+  deterministic block is ALREADY shipped (LEDGER 763); (3) CoachOutput.from_fields is a choices DECODER,
+  not a builder (synthesizer = core/coach_choices.synthesize_simple_choices).
+- REFINED SLICE (`f5939253`, Tier-1, 2 core + 3 test files, 166/13): build_block gained a 7th `choices`
+  key - the PRIMARY A/B surface the live Haiku emits but the deterministic block lacked (a blind flip
+  would delete the operator's decision UI). Reuses synthesize_simple_choices (shape-identical to the
+  served chip UI); of the 5 ARAM labels only ALL-IN + FALL BACK map today, POKE/HOLD/DISENGAGE -> []
+  (widen on shadow evidence). Shadow comparator captures choices on both columns. TDD 12 RED -> green;
+  independent verifier PASS (54 passed / 0 failed). No served change, no engine bump, reuses the
+  default-OFF shadow seam; RC reloaded to arm the capture.
+
+NEXT (precompute tail): an ARAM shadow agreement-report tool (sibling of hz_shadow_report - does NOT
+exist yet; needed before any flip), then the ARAM item_extra/objective deterministic gaps, then Arena's
+remaining Haiku (763 built its block) + the client-side CV vision atlas (bigger, live/hardware-gated -
+the correct SECOND program). The live ARAM Haiku-retirement FLIP is live-gated (docs/LIVE_GAME_GATED_SYNC.md:
+needs live ARAM ticks to fill data/aram_coach_shadow.jsonl + the report tool >=70% + flip auth).
+DO NOT redo: SR is NOT a code-level zero-Haiku template; the ARAM Stage-1/2 block is shipped (763);
+choices reuse of synthesize_simple_choices is deliberate (shape-identity > full 5-label coverage). The
+other RC2 remainders (E10 history-rewrite, E2 DS live-flip) stay operator-gated.
+
+---
+
 # 2026-07-04 (RC2 E11 CLOSED - PGR reskin-complete + BUILD dead-code purge + batched sweep; LEDGER 773-774)
 
 Closed E11 (Hextech reskin across surfaces): OPEN -> DONE. RC2 banner 56/62 -> 57/62 (~92%).
