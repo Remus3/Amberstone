@@ -209,66 +209,62 @@ def test_home_wl_strip(mock_server, pw_browser):
     assert not errors, f"JS errors [home wl-strip]: {errors[:3]}"
 
 
-def test_home_season_wr(mock_server, pw_browser):
-    """QA15b: the ranked "season WR" readout renders below the pip strip.
-
-    Asserts the readout is visible, the label reads "Ranked season", and
-    the value carries the fixture win_rate + record - and that it is the
-    SEASON figure, not the all-modes L20 number (distinct fixtures: season
-    47.1 / 24-27 vs L20 65.0 / 13-7)."""
-    import json
-
-    fixture = json.loads(
-        (ROOT / "web" / "data" / "ui_mock" / "home.json").read_text()
-    )
-    sw = fixture["season_wr"]
-
+def test_home_season_wr_readout_removed(mock_server, pw_browser):
+    """HOME_QA H5 deletion guard: the ranked "season WR" readout was removed
+    from the hero. The #home-hero-season-wr node must not exist in the
+    rendered home view (the L20 pip strip above it stays - covered by
+    test_home_wl_strip)."""
     ctx, page, errors = _open_home(pw_browser, mock_server)
     try:
-        page.wait_for_function(
-            "document.querySelectorAll("
-            "'#home-hero-season-wr .home-season-wr-val').length > 0",
-            timeout=10_000,
-        )
-        box = page.locator("#home-hero-season-wr")
-        assert box.is_visible(), "#home-hero-season-wr not visible"
-
-        lbl = (
-            page.locator("#home-hero-season-wr .home-season-wr-lbl")
-            .text_content() or ""
-        )
-        assert "Ranked season" in lbl, (
-            f"season label {lbl!r} missing 'Ranked season'"
-        )
-
-        val = (
-            page.locator("#home-hero-season-wr .home-season-wr-val")
-            .text_content() or ""
-        )
-        wr = sw["win_rate"]
-        wr_strs = {str(wr)}
-        if float(wr).is_integer():
-            wr_strs.add(str(int(wr)))
-        assert any(s in val for s in wr_strs), (
-            f"season value {val!r} missing win_rate {wr}"
-        )
-        assert f"{sw['wins']}-{sw['losses']}" in val, (
-            f"season value {val!r} missing record"
-        )
-        # Guard against reading the L20 number by mistake: the all-modes
-        # L20 win_rate (65) must NOT appear in the season readout.
-        assert str(fixture["last20"]["win_rate"]).split(".")[0] not in val, (
-            f"season value {val!r} leaked the L20 win_rate"
-        )
-
-        SCREENSHOTS.mkdir(exist_ok=True)
-        page.locator("#home-hero-season-wr").screenshot(
-            path=str(SCREENSHOTS / "home_season-wr.png")
+        assert page.locator("#home-hero-season-wr").count() == 0, (
+            "the removed season-WR readout is still in the DOM"
         )
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [home season-wr]: {errors[:3]}"
+    assert not errors, f"JS errors [home season-wr guard]: {errors[:3]}"
+
+
+def test_home_gold_chip_removed(mock_server, pw_browser):
+    """HOME_QA H8 deletion guard: the Gold/min hero chip was dropped. Only
+    the KDA + CS/min chips remain (2 chips), and #home-hero-gold is gone."""
+    ctx, page, errors = _open_home(pw_browser, mock_server)
+    try:
+        assert page.locator("#home-hero-gold").count() == 0, (
+            "the removed Gold/min chip value node is still in the DOM"
+        )
+        assert page.locator(
+            '.home-hero-chip[data-metric="gold_per_min"]'
+        ).count() == 0, "the removed Gold/min chip is still in the DOM"
+        chips = page.locator(".home-hero-chips .home-hero-chip")
+        assert chips.count() == 2, (
+            f"expected 2 hero chips (KDA + CS/min), got {chips.count()}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [home gold chip guard]: {errors[:3]}"
+
+
+def test_home_action_tiles_restored(mock_server, pw_browser):
+    """HOME_QA X2: the quick-action tiles row is restored (was display:none)
+    with the Find Match tile dropped - 6 surviving tiles, all visible."""
+    ctx, page, errors = _open_home(pw_browser, mock_server)
+    try:
+        actions = page.locator(".home-actions")
+        assert actions.is_visible(), "restored .home-actions row not visible"
+        tiles = page.locator(".home-actions .home-action-tile")
+        assert tiles.count() == 6, (
+            f"expected 6 action tiles (Find Match dropped), got {tiles.count()}"
+        )
+        # The dropped Find Match tile must not be present.
+        assert page.locator(
+            '.home-actions .home-action-tile[data-target="lobby"]'
+        ).count() == 0, "the dropped Find Match tile is still present"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [home action tiles]: {errors[:3]}"
 
 
 def test_no_em_dashes_or_smart_quotes():

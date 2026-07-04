@@ -3,8 +3,7 @@
 Payload-boundary slice of the former monolithic `dashboard.builders`
 (AUTONOMOUS_AUDIT spec 4.C, 2026-05-18). Holds the home summary cluster
 (`_lcu_build_items`, `_build_home_summary`, `_home_tonight_pick`,
-`_home_last_build`, `_home_trends_14d`, `_home_streaks`,
-`_home_weekly_digest`).
+`_home_trends_14d`, `_home_streaks`).
 
 `dashboard.builders` re-exports these names so existing call sites keep
 working without churn. Function bodies are extracted byte-verbatim -
@@ -15,21 +14,8 @@ import sqlite3
 from dashboard._context import (
     APP_DIR as _APP_DIR,
     DB_CONN_LOCAL as _DB_CONN_LOCAL,
-    read_json as _read_json,
     ro_conn as _ro_conn,
 )
-
-# OQ13 slice A: per-mode weekly benchmarks. Mode-blind thresholds mis-grade
-# event modes - live 7d averages: ARAM 11.7 deaths/game + 2.0 CS/min vs SR
-# 8.8 + 6.6, so ARAM deaths/CS are NOT skill signals at SR levels. cspm_lo
-# None = CS is never judged in that mode (ARAM/ARENA/BRAWL); SR stays strict.
-_MODE_BENCH = {
-    "SR":    {"kda_good": 3.0, "deaths_pg_hi": 6.0,  "cspm_lo": 6.0},
-    "ARAM":  {"kda_good": 2.5, "deaths_pg_hi": 12.0, "cspm_lo": None},
-    "ARENA": {"kda_good": 2.5, "deaths_pg_hi": 8.0,  "cspm_lo": None},
-    "BRAWL": {"kda_good": 2.5, "deaths_pg_hi": 10.0, "cspm_lo": None},
-}
-_MODE_BENCH_DEFAULT = {"kda_good": 2.5, "deaths_pg_hi": 8.0, "cspm_lo": None}
 
 
 def _lcu_build_items(raw_data: str | None) -> list[int]:
@@ -141,7 +127,7 @@ def _build_home_summary() -> dict:
     as the per-game performance signal.
     """
     from datetime import datetime, timedelta
-    out = {"today": {}, "recent": [], "this_week": [], "services": []}
+    out = {"today": {}, "recent": [], "this_week": []}
     # Rank header is assembled up front so it survives the missing-DB early
     # return below - a clean checkout / CI has no match_history.db, but the home
     # payload must always carry a rank field (graceful-unranked when no LCU).
@@ -224,11 +210,7 @@ def _build_home_summary() -> dict:
             (week_cutoff,)
         )
         champ_agg: dict[str, dict] = {}
-        # OQ13 slice A: same cursor also feeds the per-MODE weekly digest
-        # (no second SQL query) - collect the raw rows while aggregating.
-        week_rows: list[tuple] = []
         for champ, mode, g, k, d, a, cs, cspm, dur in cur:
-            week_rows.append((mode, g, k, d, a, cs, dur))
             row = champ_agg.setdefault(champ, {
                 "games": 0, "k": 0, "d": 0, "a": 0,
                 "cs_total": 0, "time_total_s": 0.0,
@@ -253,34 +235,13 @@ def _build_home_summary() -> dict:
                 "best_grade": best,
                 "modes": sorted(r["modes"]),
             })
-        # OQ13 slice A: mode-factored weekly Good/Bad/Ugly digest. Absent on
-        # the missing-DB early-return path above (consistent with
-        # tonight_pick etc); the champion != '' filter in the week query is
-        # deliberate and shared.
-        out["weekly_digest"] = _home_weekly_digest(week_rows)
     except sqlite3.Error:
         # Evict poisoned conn so the next call reopens cleanly.
         getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
         raise
-    # Services snapshot - RC + vision + dashboard self.
-    h = _read_json("ops/runtime/health.json")
-    out["services"].append({
-        "name": "RC", "ok": bool(h.get("alive")),
-        "detail": f"pid {h.get('pid','?')} · {h.get('mode','?')}",
-    })
-    # Vision server probe (loopback, fast)
-    try:
-        import urllib.request as _ur
-        with _ur.urlopen("http://127.0.0.1:8889/health", timeout=1) as r:
-            out["services"].append({
-                "name": "Vision", "ok": r.status == 200, "detail": "127.0.0.1:8889",
-            })
-    except Exception:  # noqa: BLE001
-        out["services"].append({"name": "Vision", "ok": False, "detail": "down"})
 
-    # -- V3 home extras (2026-04-30): tonight_pick, last_build, trends, streaks --
+    # -- V3 home extras (2026-04-30): tonight_pick, trends, streaks --
     out["tonight_pick"] = _home_tonight_pick(out["this_week"])
-    out["last_build"]   = _home_last_build()
     out["trends"]       = _home_trends_14d(db_path)
     out["streaks"]      = _home_streaks(db_path)
     # LIFT 3: last-20 W/L pip strip + recent-form WR for the hero, read
@@ -289,16 +250,10 @@ def _build_home_summary() -> dict:
     # two surfaces share one computation. Fail-soft: a missing DB / sqlite
     # error yields {} and the frontend hides the strip (never crashes the
     # home payload).
-    # QA15b: a "true season WR" - ranked (420/440) win-rate over the
-    # repo-canonical 90d season window - beside the L20 form. Same conn,
-    # same fail-soft {} contract (missing DB / no ranked games -> the hero
-    # hides the readout). "season WR" means the ranked ladder; ARAM/Arena/
-    # event modes have no meaningful season figure so they are excluded.
-    from dashboard.builders import _compute_last20, _compute_season_wr
+    from dashboard.builders import _compute_last20
     rdb = _APP_DIR / "data" / "rewind_history.db"
     rconn = _ro_conn(rdb)
     out["last20"]       = _compute_last20(rconn)
-    out["season_wr"]    = _compute_season_wr(rconn)
     return out
 
 
@@ -378,91 +333,6 @@ def _home_pick_tips(pick_row: dict) -> dict:
     return {"good": good, "bad": bad, "ugly": ugly}
 
 
-def _home_weekly_digest(rows) -> dict:
-    """Mode-factored weekly Good/Bad/Ugly digest (OQ13 slice A).
-
-    ``rows`` is the raw 7-day window as (mode, grade, kills, deaths,
-    assists, cs, game_time_s) tuples - the same cursor walk
-    `_build_home_summary` already does for this_week, so no second SQL
-    query. Each mode is judged against its OWN `_MODE_BENCH` row (the
-    sibling `_home_pick_tips` is mode-blind and stays untouched).
-    Deterministic, pure, 7-bit ASCII - no Claude, no Riot API. Empty
-    line strings mean "suppressed" (the frontend hides empty lines);
-    best/worst grade render "-" when a mode has no graded rows.
-    """
-    agg: dict[str, dict] = {}
-    for mode, grade, k, d, a, cs, dur in rows:
-        m = agg.setdefault(mode or "?", {
-            "games": 0, "k": 0, "d": 0, "a": 0,
-            "cs_total": 0, "time_total_s": 0.0, "grades": [],
-        })
-        m["games"] += 1
-        m["k"] += int(k or 0); m["d"] += int(d or 0); m["a"] += int(a or 0)
-        m["cs_total"] += int(cs or 0)
-        m["time_total_s"] += float(dur or 0)
-        g = (grade or "").strip().upper()
-        if g in ("S", "A", "B", "C", "D", "F"):
-            m["grades"].append(g)
-    modes_out = []
-    for mode in sorted(agg, key=lambda mm: (-agg[mm]["games"], mm)):
-        m = agg[mode]
-        games = m["games"]
-        avg_kda = round((m["k"] + m["a"]) / max(m["d"], 1), 2)
-        deaths_pg = round(m["d"] / games, 1)
-        mins = m["time_total_s"] / 60.0
-        cs_per_min = round(m["cs_total"] / mins, 1) if mins > 0 else 0.0
-        grades = m["grades"]
-        if grades:
-            best_grade = min(grades, key="SABCDF".index)
-            worst_grade = max(grades, key="SABCDF".index)
-        else:
-            best_grade = worst_grade = "-"
-        bench = _MODE_BENCH.get(mode, _MODE_BENCH_DEFAULT)
-        game_word = "game" if games == 1 else "games"
-        if games <= 2:
-            # A 1-2 game sample is noise (same rationale as _home_pick_tips
-            # R30): suppress Good + Bad, keep one honest caveat.
-            good = bad = ""
-            ugly = f"Small sample - {games} {game_word} in {mode}"
-        else:
-            if avg_kda >= bench["kda_good"]:
-                good = f"{avg_kda:.1f} KDA over {games} games"
-            elif best_grade in ("S", "A"):
-                n_best = grades.count(best_grade)
-                best_word = "game" if n_best == 1 else "games"
-                good = f"{n_best}x {best_grade}-grade {best_word}"
-            else:
-                good = f"Best grade {best_grade}"
-            if deaths_pg > bench["deaths_pg_hi"]:
-                bad = (f"{deaths_pg:.1f} deaths per game "
-                       f"(bench {bench['deaths_pg_hi']:.0f} for {mode})")
-            elif (bench["cspm_lo"] is not None
-                    and cs_per_min < bench["cspm_lo"]):
-                bad = (f"{cs_per_min:.1f} CS/min under the "
-                       f"{bench['cspm_lo']:.0f} bar")
-            else:
-                bad = ""
-            if any(g in ("D", "F") for g in grades):
-                n_worst = grades.count(worst_grade)
-                worst_word = "game" if n_worst == 1 else "games"
-                ugly = f"{n_worst} {worst_word} graded {worst_grade}"
-            elif avg_kda < 1.0:
-                ugly = "KDA under 1.0 - rough week"
-            else:
-                ugly = ""
-        modes_out.append({
-            "mode": mode, "games": games, "avg_kda": avg_kda,
-            "deaths_pg": deaths_pg, "cs_per_min": cs_per_min,
-            "best_grade": best_grade, "worst_grade": worst_grade,
-            "good": good, "bad": bad, "ugly": ugly,
-        })
-    return {
-        "window_days": 7,
-        "total_games": sum(m["games"] for m in agg.values()),
-        "modes": modes_out,
-    }
-
-
 def _home_tonight_pick(this_week: list) -> dict | None:
     """Top of this_week by avg_kda; tie-broken by games-played. The
     coach-prompt-style "play this tonight" suggestion."""
@@ -481,49 +351,6 @@ def _home_tonight_pick(this_week: list) -> dict | None:
                     + ("s" if (pick.get('games') or 0) != 1 else "")
                     + " this week",
         "tips":     _home_pick_tips(pick),
-    }
-
-
-def _home_last_build() -> dict | None:
-    """Most recent local-player row from postgame_stats.db, joined to its
-    match for captured_at. Walks each mode's tables (aram/sr/arena/brawl),
-    picks the latest by captured_at, returns champ + 6 item ids + spells.
-    Skips item slot 6 (trinket / ward, not a build slot)."""
-    db = _APP_DIR / "data" / "postgame_stats.db"
-    conn = _ro_conn(db)
-    if conn is None:
-        return None
-    best = None  # (captured_at, mode, champion, items, spells)
-    try:
-        for mode in ("aram", "sr", "arena", "brawl"):
-            try:
-                cur = conn.execute(
-                    f"SELECT m.captured_at, p.champion_name, "
-                    f"       p.item0_id, p.item1_id, p.item2_id, "
-                    f"       p.item3_id, p.item4_id, p.item5_id, "
-                    f"       p.spell1_name, p.spell2_name "
-                    f"FROM {mode}_player_stats p "
-                    f"JOIN {mode}_matches m ON m.match_id = p.match_id "
-                    f"WHERE p.is_local_player = 1 AND p.champion_name != '' "
-                    f"ORDER BY m.captured_at DESC LIMIT 1"
-                )
-                row = cur.fetchone()
-                if row and (best is None or (row[0] or "") > (best[0] or "")):
-                    items = [int(x) for x in row[2:8] if x]
-                    best = (row[0], mode, row[1], items,
-                            [row[8] or "", row[9] or ""])
-            except sqlite3.OperationalError:
-                continue
-    except sqlite3.Error:
-        getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db), None)
-        return None
-    if not best:
-        return None
-    captured_at, mode, champion, items, spells = best
-    return {
-        "champion": champion, "mode": mode.upper(),
-        "items": items, "spells": [s for s in spells if s],
-        "captured_at": captured_at,
     }
 
 
