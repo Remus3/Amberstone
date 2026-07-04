@@ -158,6 +158,65 @@ def test_home_desktop_keeps_multicolumn(mock_server, pw_browser):
     assert not errors, f"JS errors [home desktop]: {errors[:3]}"
 
 
+def test_home_actions_three_tracks_companion(mock_server, pw_browser):
+    """HOME round-2 M6: at the companion width the quick-actions launcher
+    folds to two even rows of three (the max-width:1200px media rule sets
+    grid-template-columns: repeat(3, 1fr))."""
+    ctx, page, errors = _open_home_at(
+        pw_browser, mock_server, COMPANION_W, COMPANION_H
+    )
+    try:
+        cols = page.evaluate(
+            "getComputedStyle(document.querySelector('.home-actions'))"
+            ".gridTemplateColumns"
+        )
+        assert _track_count(cols) == 3, (
+            f".home-actions not 3 tracks at {COMPANION_W}px: {cols!r}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [home actions companion]: {errors[:3]}"
+
+
+def test_home_actions_six_tracks_and_below_body_desktop(mock_server,
+                                                        pw_browser):
+    """HOME round-2 M6 + M3: on the 1920 desktop the launcher is a single
+    6-across rail, and (M3 stack reorder) it renders BELOW the Recent5/
+    ThisWeek body - the launcher is the page-footer rail, not a mid-page
+    interruption. The geometry pin locks the index.html DOM move."""
+    ctx, page, errors = _open_home_at(pw_browser, mock_server, 1920, 1080)
+    try:
+        cols = page.evaluate(
+            "getComputedStyle(document.querySelector('.home-actions'))"
+            ".gridTemplateColumns"
+        )
+        assert _track_count(cols) == 6, (
+            f".home-actions not 6 tracks at 1920px: {cols!r}"
+        )
+        geo = page.evaluate(
+            """() => {
+              const actions = document.querySelector('.home-actions');
+              const body = document.querySelector('.home-body');
+              if (!actions || !body) return null;
+              return {
+                actionsTop: actions.getBoundingClientRect().top,
+                bodyTop: body.getBoundingClientRect().top,
+              };
+            }"""
+        )
+        assert geo, ".home-actions / .home-body element missing"
+        assert geo["actionsTop"] > geo["bodyTop"], (
+            "M3 stack reorder regressed: .home-actions top "
+            f"{geo['actionsTop']} is not below .home-body top "
+            f"{geo['bodyTop']}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [home actions desktop]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text in this test file (home.css is
     excluded - it carries pre-existing U+2500 box-drawing comment dividers

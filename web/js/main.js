@@ -3111,9 +3111,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const stripeCls = (m.win === true) ? "win"
                       : (m.win === false) ? "loss"
                       : "neutral";
-      // s218: spell out duration as "X Minutes" (was "Xm").
+      // HOME round-2 (M4): compact 3-part meta - mode, short "14m"
+      // duration, CS rate. The dropped detail (time-of-day, total CS)
+      // moves onto the card title (hover) below.
       const dur = m.duration_s
-        ? `${Math.floor(m.duration_s / 60)} Minutes`
+        ? `${Math.floor(m.duration_s / 60)}m`
         : "";
       const tsShort = _to12((m.timestamp || "").split(" ")[1]?.slice(0,5) || "");
       // s218: mode subtype hook - when backend supplies mode_subtype
@@ -3123,11 +3125,18 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // mode_subtype branch once ingest stops returning null.
       const modeLabel = (m.mode_subtype && m.mode_subtype !== "")
         ? `${m.mode} ${m.mode_subtype}` : (m.mode || "");
-      // CS row chip - DB already carries cs + cs_per_min per match.
+      // CS rate chip - DB already carries cs + cs_per_min per match.
       const csChip = (m.cs != null && m.cs > 0)
-        ? `${m.cs} CS · ${(m.cs_per_min || 0).toFixed(1)}/min`
+        ? `${(m.cs_per_min || 0).toFixed(1)}/min`
         : "";
-      const metaParts = [modeLabel, tsShort, dur, csChip].filter(Boolean).join(" · ");
+      const metaParts = [modeLabel, dur, csChip].filter(Boolean).join(" · ");
+      // Full meta string (adds time-of-day + total CS) rides the card
+      // tooltip so the compact row loses no information.
+      const fullMeta = [modeLabel, tsShort, dur,
+        (m.cs != null && m.cs > 0)
+          ? `${m.cs} CS · ${(m.cs_per_min || 0).toFixed(1)}/min`
+          : ""].filter(Boolean).join(" · ");
+      card.title = fullMeta;
 
       const stripe = document.createElement("div");
       stripe.className = `home-recent-stripe ${stripeCls}`;
@@ -3387,25 +3396,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
     // Chips. R30: home-hero-kda is NO LONGER set from today's KDA here - it
     // is painted from the 14-day KDA trend latest by _homeRenderTrends (which
-    // runs after this), so all three chips share ONE timeframe instead of the
-    // old mixed read (today "0/0/0" next to a 14d CS/GOLD). avg/grades/modes
-    // ids below are legacy no-ops kept for any external reader.
-    set("home-hero-avg", avg != null ? avg.toFixed(2) : "-");
-    const gradeStr = t && t.grades
-      ? Object.entries(t.grades).map(([g,n]) => `${g}×${n}`).join(" ")
-      : "-";
-    set("home-hero-grades", gradeStr || "-");
-    const modeStr = t && t.modes
-      ? Object.entries(t.modes).map(([m,n]) => `${m} ${n}`).join(" · ")
-      : "-";
-    set("home-hero-modes", modeStr || "-");
-
-    // Legacy IDs (set if present so any external reader still works).
-    set("home-today-count", games > 0 ? `${games} game${games===1?"":"s"}` : "");
-    set("home-today-kda",   t && t.total_kda ? t.total_kda : "-");
-    set("home-today-avg",   avg != null ? avg.toFixed(2) : "-");
-    set("home-today-grades", gradeStr || "-");
-    set("home-today-modes",  modeStr || "-");
+    // runs after this), so the chips share ONE timeframe instead of the old
+    // mixed read (today "0/0/0" next to a 14d CS/GOLD).
+    // (HOME round-2 M9: the legacy home-hero-avg/grades/modes and
+    // home-today-* set() calls were dead - those ids left the DOM in the
+    // V3 redesign - so they and their gradeStr/modeStr feeds are removed.)
   }
   // UI scale v2.1 page #6 audit ritual step 5 state-coverage mock fixture
   // (2026-05-23). When body.dataset.uiMock === "1" the fetch short-
