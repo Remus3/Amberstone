@@ -181,14 +181,14 @@
            headline string + duplicate of THIS WEEK panel data. -->
       <div class="home-hero-chips">
         <span class="home-hero-chip" data-metric="kda">
-          <span class="home-hero-chip-lbl">KDA</span>
+          <span class="home-hero-chip-lbl">14D KDA</span>
           <span class="home-hero-chip-row">
             <span class="home-hero-chip-val" id="home-hero-kda">-</span>
             <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
           </span>
         </span>
         <span class="home-hero-chip" data-metric="cs_per_min">
-          <span class="home-hero-chip-lbl">CS / MIN</span>
+          <span class="home-hero-chip-lbl">14D CS / MIN</span>
           <span class="home-hero-chip-row">
             <span class="home-hero-chip-val" id="home-hero-cs">-</span>
             <svg class="home-hero-spark" viewBox="0 0 60 18" preserveAspectRatio="none"></svg>
@@ -331,7 +331,7 @@
          Right = this-week champion bar chart (V2 suggestion #5). -->
     <div class="home-body">
       <div class="home-card home-card-recent">
-        <div class="home-card-head hx-card-head">RECENT 5</div>
+        <div class="home-card-head hx-card-head">RECENT 3</div>
         <div class="home-recent-list" id="home-recent-list">
           <div class="home-empty">loading...</div>
         </div>
@@ -2303,10 +2303,10 @@
          immediately AFTER mode-pill in the footer (carries Claude cost,
          supervisor health, vision uptime in its tooltip). -->
     <span class="mode-pill" id="mode-pill">CLIENT</span>
-    <!-- Advisory + digest pills removed from footer 2026-04-29; their
-         content is now rendered as rows inside .home-alerts at the
-         bottom of the home overlay (still click-to-open the same
-         popouts). The hidden spans remain so JS that updates
+    <!-- Advisory + digest pills removed from footer 2026-04-29 (the
+         .home-alerts rows that replaced them were themselves deleted in
+         the round-2 Hextech pass - the footer health-dot carries the
+         advisory signal now). The hidden spans remain so JS that updates
          #advisory-count / #digest-label keeps writing to defined
          elements without errors; no visual footprint. -->
     <span id="advisory-badge" class="advisory-badge" hidden role="button" aria-label="Open latest advisory"><b id="advisory-count">0</b></span>

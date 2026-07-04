@@ -185,7 +185,8 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
         out["error"] = "match_history.db missing"
         return out
     try:
-        # Recent 5 games. TFT is excluded - those rows store the comp
+        # Recent 3 games (operator ruling 2026-07-04 round 2: 5 -> 3, all
+        # mode tabs). TFT is excluded - those rows store the comp
         # name (e.g. "Dark Star Vertical") in the champion column, which
         # renders as a fake "champion" on the home view. Hidden at the
         # read layer; the rows still exist in match_history.db for any
@@ -201,7 +202,7 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
             "       game_time_s, kills, deaths, assists, cs, cs_per_min, "
             "       label, raw_data "
             "FROM matches WHERE mode != 'TFT'" + mode_pred +
-            " ORDER BY timestamp DESC LIMIT 5",
+            " ORDER BY timestamp DESC LIMIT 3",
             mode_args
         )
         for (ts, mode, champ, grade, kda, dur, k, d, a, cs, cspm,
@@ -245,9 +246,10 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
             "total_kda": f"{tk}/{td}/{ta}",
             "avg_kda": round((tk + ta) / max(td, 1), 2) if rows else 0.0,
         }
-        # This week (last 7 days) - top 5 most-played champions. TFT
-        # rows excluded for the same reason as Recent 5: the "champion"
-        # column carries a comp name, not a champion.
+        # This week (last 7 days) - top 3 most-played champions (operator
+        # ruling 2026-07-04 round 2: 5 -> 3, matches the Recent-3 limit).
+        # TFT rows excluded for the same reason as Recent 3: the
+        # "champion" column carries a comp name, not a champion.
         # s218: aggregate cs + per-champion K/D/A totals so the home
         # view can render "1.8 22/10/18" KDA breakdowns + per-week CS.
         week_cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
@@ -270,11 +272,17 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
             row["time_total_s"] += float(dur or 0)
             row["grades"].append(g or "-")
             row["modes"].add(mode or "?")
-        ranked = sorted(champ_agg.items(), key=lambda kv: -kv[1]["games"])[:5]
+        # Round 2 (5 -> 3): the PANEL shows the top 3 by games, but the
+        # full week aggregate is kept (week_rows) so Tonight's Pick still
+        # scouts every champion played this week - the display cap must
+        # not shrink the pick's candidate pool (a 1-game best-KDA champ
+        # can sit below the top-3 games cut).
+        ranked = sorted(champ_agg.items(), key=lambda kv: -kv[1]["games"])
+        week_rows: list[dict] = []
         for champ, r in ranked:
             best = sorted(r["grades"], key=lambda x: "SABCDF-".index(x) if x in "SABCDF-" else 99)[0]
             mins = r["time_total_s"] / 60.0 if r["time_total_s"] else 0.0
-            out["this_week"].append({
+            week_rows.append({
                 "champion": champ, "games": r["games"],
                 "avg_kda": round((r["k"] + r["a"]) / max(r["d"], 1), 2),
                 "kills": r["k"], "deaths": r["d"], "assists": r["a"],
@@ -283,14 +291,17 @@ def _build_home_summary(mode_filter: str | None = None) -> dict:
                 "best_grade": best,
                 "modes": sorted(r["modes"]),
             })
+        out["this_week"] = week_rows[:3]
     except sqlite3.Error:
         # Evict poisoned conn so the next call reopens cleanly.
         getattr(_DB_CONN_LOCAL, "conns", {}).pop(str(db_path), None)
         raise
 
     # -- V3 home extras (2026-04-30): tonight_pick, trends, streaks --
-    # tonight_pick derives from this_week so it auto-inherits the filter.
-    out["tonight_pick"] = _home_tonight_pick(out["this_week"])
+    # tonight_pick derives from the FULL week aggregate (week_rows, not
+    # the top-3 display slice) so it auto-inherits the mode filter but
+    # never loses a candidate to the panel cap.
+    out["tonight_pick"] = _home_tonight_pick(week_rows)
     out["trends"]       = _home_trends_14d(db_path, mode_filter)
     out["streaks"]      = _home_streaks(db_path, mode_filter)
     # LIFT 3: last-20 W/L pip strip + recent-form WR for the hero, read
