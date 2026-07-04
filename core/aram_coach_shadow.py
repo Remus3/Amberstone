@@ -37,9 +37,9 @@ SHADOW_PATH: Path = _APP_DIR / "data" / "aram_coach_shadow.jsonl"
 # ~500ms; without this the same coarse state would be logged ~2x/sec.
 _LAST_SIG: dict[str, str] = {}
 
-# The six deterministic / live-Haiku fields captured per side, in artifact
+# The seven deterministic / live-Haiku fields captured per side, in artifact
 # order. Used to normalize BOTH blocks so a partial dict still records every
-# column (missing -> "" / {} for reasons).
+# column (missing -> "" / {} for reasons / [] for choices).
 _BLOCK_KEYS = (
     "action",
     "fight_rule",
@@ -47,15 +47,16 @@ _BLOCK_KEYS = (
     "reset_item",
     "item_build",
     "item_build_reasons",
+    "choices",
 )
 
 
 def _norm_block(block: object) -> dict:
-    """Return the six-field block as a plain dict, fail-soft.
+    """Return the seven-field block as a plain dict, fail-soft.
 
     A non-dict input coerces to all-empty fields so a malformed side still
     records a complete (empty) column rather than blocking the row. Only the
-    six known keys are kept (the live artifact carries many more fields).
+    seven known keys are kept (the live artifact carries many more fields).
     """
     src = block if isinstance(block, dict) else {}
     out: dict = {}
@@ -63,6 +64,8 @@ def _norm_block(block: object) -> dict:
         val = src.get(key)
         if key == "item_build_reasons":
             out[key] = val if isinstance(val, dict) else {}
+        elif key == "choices":
+            out[key] = val if isinstance(val, list) else []
         else:
             out[key] = val if isinstance(val, str) else ("" if val is None else val)
     return out

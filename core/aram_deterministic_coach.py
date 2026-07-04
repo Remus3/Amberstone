@@ -2,11 +2,14 @@
 """Deterministic ARAM coach block assembler (Stage 2, Tier-1, no live wiring).
 
 PURPOSE
-    Assemble the WHOLE deterministic per-tick ARAM coach block - the same six
+    Assemble the WHOLE deterministic per-tick ARAM coach block - the same
     fields the live ARAM Haiku call writes to ``data/aram_coaching_data.json``
     (``action`` / ``fight_rule`` / ``risk`` / ``reset_item`` / ``item_build`` /
-    ``item_build_reasons``) - from the Stage 1 pure rules plus the existing
-    ARAM build / hint surfaces. This is the assembler the operator can later
+    ``item_build_reasons`` plus ``choices``, the A/B array) - from the Stage 1
+    pure rules plus the existing ARAM build / hint surfaces. ``choices`` is
+    derived from the block's own action + fight_rule via the SAME
+    core.coach_choices synthesizer the served chip UI uses. This is the
+    assembler the operator can later
     eyeball, shadow-logged side-by-side with the live Haiku block; the live
     coach FLIP is a separate, operator-gated stage. This module changes NO
     served output and makes NO network call.
@@ -43,6 +46,7 @@ from __future__ import annotations
 import math
 
 from core import aram_action_rule, aram_fight_risk
+from core.coach_choices import synthesize_simple_choices, to_jsonable
 
 # ARAM has no shop trips mid-lane: the only "reset" is a death back to fountain.
 # This is the standing ARAM fact the reset_item line anchors the next item to.
@@ -93,6 +97,25 @@ def _safe_risk(threats: object) -> str:
         return out if isinstance(out, str) else ""
     except Exception:  # noqa: BLE001
         return ""
+
+
+def _safe_choices(action: str, fight_rule: str) -> list[dict]:
+    """Derive the deterministic A/B choices from the block's own action + fight_rule.
+
+    Reuses core.coach_choices.synthesize_simple_choices - the SAME primitive the
+    served synthesizer fallback uses - so the deterministic choices are shape-
+    identical to the served chip UI. Returns [] when action is empty or has no
+    recognizable binary verb. Of the 5 canonical ARAM action labels only ALL-IN
+    (-> Engage/Disengage) and FALL BACK (-> Recall/Stay) map today; POKE / HOLD /
+    DISENGAGE yield [] until a later ARAM-specific mapping widens this, gated on
+    shadow-agreement evidence. Never raises.
+    """
+    try:
+        return to_jsonable(
+            synthesize_simple_choices({"action": action, "fight_rule": fight_rule})
+        )
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _clean_str(value: object) -> str:
@@ -218,12 +241,17 @@ def build_block(
 
     Returns:
         dict with exactly the keys action, fight_rule, risk, reset_item,
-        item_build, item_build_reasons.
+        item_build, item_build_reasons, and choices (the A/B array derived
+        from action + fight_rule; [] when no binary verb maps).
     """
     try:
+        # Compute action + fight_rule ONCE so choices reuses them without
+        # double-calling the underlying rules.
+        action = _safe_action(hp_pct, wave_pct, low_enemy_count)
+        fight_rule = _safe_fight_rule(cc_threat_line)
         return {
-            "action": _safe_action(hp_pct, wave_pct, low_enemy_count),
-            "fight_rule": _safe_fight_rule(cc_threat_line),
+            "action": action,
+            "fight_rule": fight_rule,
             "risk": _safe_risk(cc_threat_line),
             "reset_item": _reset_line(next_item_name, next_item_remaining_gold),
             "item_build": _clean_str(item_build) or _build_path_from_order(
@@ -232,6 +260,7 @@ def build_block(
             "item_build_reasons": _build_reasons(
                 item_build_reasons, antitank_hint, heal_threat_line
             ),
+            "choices": _safe_choices(action, fight_rule),
         }
     except Exception:  # noqa: BLE001 - total fail-soft: empty block
         return {
@@ -241,6 +270,7 @@ def build_block(
             "reset_item": "",
             "item_build": "",
             "item_build_reasons": {},
+            "choices": [],
         }
 
 
