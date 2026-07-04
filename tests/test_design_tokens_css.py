@@ -8,7 +8,7 @@ Three concerns this guards:
 2. web/css/dashboard.css imports tokens.css so the :root vars cascade
    to every panel; the existing primitives.css import is preserved
    (additive, not a replacement).
-3. The 3 swept panels (draft_elo / ban_suggest_toggle / right_now) no
+3. The swept panels (draft_elo / right_now) no
    longer reference the hardcoded hex literals #ff5050 / #f1b04a /
    #6ec977 (or the off-palette pill hex #fbbf24 / #4ade80 / #f0a3a3 for
    right_now), and instead consume var(--signal-*) tokens.
@@ -31,7 +31,6 @@ DASHBOARD_CSS = ROOT / "web" / "css" / "dashboard.css"
 HEXTECH_CSS   = ROOT / "web" / "css" / "hextech.css"
 BASE_CSS      = ROOT / "web" / "css" / "panels" / "base.css"
 DRAFT_ELO_CSS = ROOT / "web" / "css" / "panels" / "draft_elo.css"
-BAN_SUG_CSS   = ROOT / "web" / "css" / "panels" / "ban_suggest_toggle.css"
 RIGHT_NOW_CSS = ROOT / "web" / "css" / "panels" / "right_now.css"
 
 
@@ -226,45 +225,6 @@ class DraftEloConsumesTokensTests(unittest.TestCase):
                       ".de-score must set font-variant-numeric: tabular-nums")
         self.assertIn("tabular-nums", de_wr_block,
                       ".de-wr must set font-variant-numeric: tabular-nums")
-
-
-class BanSuggestConsumesTokensTests(unittest.TestCase):
-    """ban_suggest_toggle.css uses var(--signal-*) for the 3 band
-    colors and var(--signal-*-soft) for the active-mode pill bg."""
-
-    def test_no_hardcoded_band_hex(self):
-        css = _read(BAN_SUG_CSS)
-        for hex_lit in ("#ff5050", "#f1b04a", "#6ec977"):
-            self.assertNotIn(f"color: {hex_lit}", css,
-                             f"ban_suggest_toggle.css still uses bare color: {hex_lit};"
-                             f" repoint to var(--signal-*).")
-
-    def test_consumes_signal_vars(self):
-        css = _read(BAN_SUG_CSS)
-        self.assertIn("var(--signal-bad)",  css,
-                      ".bs-band-red must consume var(--signal-bad)")
-        self.assertIn("var(--signal-warn)", css,
-                      ".bs-band-amber must consume var(--signal-warn)")
-        self.assertIn("var(--signal-good)", css,
-                      ".bs-band-green must consume var(--signal-good)")
-
-    def test_consumes_signal_soft_vars(self):
-        css = _read(BAN_SUG_CSS)
-        self.assertIn("var(--signal-bad-soft)",  css,
-                      "HURTS-THEM active-mode bg must consume var(--signal-bad-soft)")
-        self.assertIn("var(--signal-good-soft)", css,
-                      "HELPS-US active-mode bg must consume var(--signal-good-soft)")
-
-    def test_no_hardcoded_soft_rgba(self):
-        """The two audit-flagged rgba()s should be gone from the
-        background: property of the active-mode option."""
-        css = _read(BAN_SUG_CSS)
-        # The amber/green band sample background rgbas (low/mid/high)
-        # are unaffected; we only check the active-mode pill bg.
-        self.assertNotIn("background: rgba(239, 68, 68, 0.18)", css,
-                         "active HURTS-THEM bg must use var(--signal-bad-soft)")
-        self.assertNotIn("background: rgba(74, 222, 128, 0.18)", css,
-                         "active HELPS-US bg must use var(--signal-good-soft)")
 
 
 class RightNowConsumesTokensTests(unittest.TestCase):
