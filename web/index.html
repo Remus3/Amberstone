@@ -355,57 +355,6 @@
     </div>
   </div>
 
-  <!-- Lobby overlay (2026-04-26). Shown when lcu.phase === "Lobby"
-       AND lcu.lobby is populated. Surfaces queue type, party
-       composition, leader status, and a Find Match button. The button
-       degrades to status-only when localMember is not the leader (per
-       LCU's restriction). Expects /api/state to expose:
-         lcu.lobby = { queue_id, queue_name, party_size, max_party_size,
-                       is_leader, can_search, search_state }
-       Data feed = LCU agent polling /lol-lobby/v2/lobby.
-       Moved 2026-04-29 from top-of-body to after </header> for
-       consistency with all other views (header above content). -->
-  <div id="lobby-overlay" class="lobby-overlay hidden" aria-hidden="true">
-    <div class="lobby-card">
-      <div class="lobby-head">
-        <span class="lobby-queue" id="lobby-queue">-</span>
-        <span class="lobby-party" id="lobby-party">-</span>
-        <span class="lobby-leader-tag" id="lobby-leader-tag" hidden>★ LEADER</span>
-        <!-- Change-queue control: triggers a list of common queues
-             (ARAM, ARAM Mayhem, Normal Draft, etc) → posts
-             change_queue_type LCU cmd. Hidden when not leader. -->
-        <select class="lobby-queue-select" id="lobby-queue-select" hidden>
-          <option value="">Change queue...</option>
-          <option value="450">ARAM (450)</option>
-          <option value="2400">ARAM Mayhem (2400)</option>
-          <option value="400">Normal Draft (400)</option>
-          <option value="420">Ranked Solo (420)</option>
-          <option value="440">Ranked Flex (440)</option>
-          <option value="1750">Arena (1750)</option>
-        </select>
-      </div>
-      <div class="lobby-actions">
-        <button type="button" class="lobby-find-match" id="lobby-find-match" disabled>
-          <span id="lobby-find-match-label">Find Match</span>
-        </button>
-        <button type="button" class="lobby-cancel-match" id="lobby-cancel-match" hidden>Cancel Search</button>
-      </div>
-      <div class="lobby-status" id="lobby-status">-</div>
-      <!-- Party member list (2026-04-26 scaffold). Each row =
-           {name, puuid, is_self, is_leader, played_with_me_count}.
-           Meta-stats chips show "played 3 with you · 2W1L" from local
-           match_history.db when puuid matches; "look up on aggregator B" link
-           is the public-stats fallback (no Riot API key). Data feed
-           = LCU agent forwarding lcu.lobby.members[]. -->
-      <div class="lobby-members" id="lobby-members" hidden>
-        <div class="lobby-members-head">PARTY <span class="lobby-members-count" id="lobby-members-count">0</span></div>
-        <ul class="lobby-members-list" id="lobby-members-list">
-          <li class="home-empty">waiting for LCU agent to forward members...</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
   <!-- Coach decisions banner: surfaces coachable moments (objective contest,
        etc.) detected by core/decision_detector. Hidden when no pending
        decisions; populated + animated by the dashboard JS. Per-decision row
@@ -933,13 +882,9 @@
                 </div>
               </div>
               <!-- s162: status text removed per operator (visual noise).
-                   s209: dead `#lv-status` span removed (only consumer was
-                   the noop `_lvSetStatus` helper, also cleaned up). Leader
-                   tag + legacy queue switcher kept as hidden JS targets. -->
-              <span class="lobby-view-leader-tag" id="lv-leader-tag" style="display:none !important" hidden>★ LEADER</span>
-              <select class="lobby-queue-select" id="lv-queue-select" style="display:none !important" hidden>
-                <option value="">Change queue...</option>
-              </select>
+                   s209: dead `#lv-status` span removed. E11: the hidden
+                   #lv-leader-tag + #lv-queue-select legacy stubs were
+                   removed (no live consumers after the overlay purge). -->
             </div>
           </div>
           <div class="lobby-view-card lobby-view-card-party">
@@ -965,16 +910,23 @@
                   PARTY MAINS
                 </button>
               </div>
-              <div class="lv-mainchamps-categories">
-                <!-- R30: the first column is the champion icon (self-evident
-                     under the "YOUR MAINS" title) - its "Champion" header
-                     overflowed the 76px icon track and collided with
-                     "Mastery" at the companion width. Left unlabeled. -->
-                <div class="lv-mc-cat" aria-hidden="true"></div>
-                <div class="lv-mc-cat">Mastery</div>
-                <div class="lv-mc-cat">Recent</div>
-                <div class="lv-mc-cat">Overall</div>
-                <div class="lv-mc-cat">AVG / Match</div>
+              <!-- E11: tab-aware category headers. The first column is the
+                   champion icon (self-evident under the tab title) - left
+                   unlabeled. Both header sets render; CSS shows the set
+                   matching the container's data-tab (you|party). -->
+              <div class="lv-mainchamps-categories" data-tab="you">
+                <div class="lv-mc-cats lv-mc-cats-you">
+                  <div class="lv-mc-cat" aria-hidden="true"></div>
+                  <div class="lv-mc-cat">Recent</div>
+                  <div class="lv-mc-cat">Overall</div>
+                  <div class="lv-mc-cat">Form</div>
+                </div>
+                <div class="lv-mc-cats lv-mc-cats-party">
+                  <div class="lv-mc-cat" aria-hidden="true"></div>
+                  <div class="lv-mc-cat">Player</div>
+                  <div class="lv-mc-cat">Mastery</div>
+                  <div class="lv-mc-cat">Recent</div>
+                </div>
               </div>
               <ul class="lv-mainchamps-list" id="lv-mainchamps-list">
                 <li class="home-empty">main champions populate when LCU mastery data is wired</li>
@@ -986,9 +938,8 @@
                  operator-curated short list of favorites. 8 shell rows
                  (sorted by added date, oldest top; manual reorder
                  persists) + a search row below for adding new entries.
-                 The previous Recently Played render logic
-                 (_renderFriendsRecent) is preserved in main.js for
-                 future reuse on a different panel. -->
+                 E11: the old Recently Played renderer (_renderFriendsRecent)
+                 was removed (dead - zero call sites). -->
             <div class="lv-friends-title"><span class="lv-friends-title-text">My Top 8</span></div>
             <ul class="lv-top8-list" id="lv-top8-list">
               <li class="home-empty">Top 8 populates from search row below</li>
