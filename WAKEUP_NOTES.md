@@ -84,31 +84,3 @@ visibility (buried under Recent-5 in the portrait stack), Recent-5 depth, 1-col 
 Recent-meta density, dual-grade repetition. Also owed: the 2 backfill CHIPS (items[] pre-ingest +
 queue_id/mode_subtype) rebase onto this slice. DO NOT redo: Home round-1 shipped (f7951769); companion
 is 920x1280; ban_suggest cleanup done.
-
----
-
-# 2026-07-03 (Operator champ-select QA rework + per-mode panel visibility; LEDGER 765)
-
-Session pivot: /orchestrated-run bootstrap seeded the ORUN1-5 curated queue + relaunched the
-gemini loop (`7ff688b0`), then the operator halted it (AHK never typed; STOP + AHK killed) and
-ran an INTERACTIVE 4-round QA of the champ-select page with Claude as advocate. All rulings in
-docs/qa/CHAMP_SELECT_QA_2026-07-03.md - the ORUN rows remain OPEN in ORCHESTRATION_PLAN for a
-future loop run. Shipped (4 verifier-CONFIRMED worktree slices + sole-merge + 5-phase audit + 2
-MUST-FIX fixed in-slice + 3 cross-slice test alignments): champ-select cut 7 surfaces (ghost
-bans/pickorder wrappers + dead dual-score toggle, mood system ENTIRELY incl backend, YOUR-RECORD
-path, ally-roles mirror, cc-pairing card, cooldown-watch card, GPI radar), moved DS
-profile/knobs/statcheck to the active-match BUILD pane (CS3 family), merged build chooser+order
-(one PUSH), compacted summ spells (2+EDIT), clustered CC-EHP/CC-pressure/team-damage into a
-collapsed TEAM ANALYSIS block w/ deterministic verdict header, fixed queue-2400 KIWI/aram vocab
-(backend alias map + frontend canonical), flipped RC_CAPGAP_SURFACE default ON (live-verified
-capability_gap dict on /api/ds-preview post-restart pid 3644). Panel visibility: per-mode
-contexts (in-game-sr/aram/arena/tft + out-game, brawl->sr), 17-panel registry, tabbed settings
-card, legacy-blob migration. Suite 10566/2skip green; node 25/0. FOLLOW-UP CHIPS BOTH LANDED (LEDGER 766):
-orphan cleanup `daf09498` (deleted cooldown_watch.js/ban_suggest_toggle.js/.css + buildOrderCardHtml
-export; backends kept; test files -> deletion guards) + `#csv-picks-target` mode-gate `c80c1d0d`
-(pre-existing bug: item-200 relocation left the SR-only PICK placeholder outside the .csv-card-pickban
-gate -> lingered in ARAM/Arena; one CSS rule + computed-display test, RED-proven, verifier CONFIRM).
-Both CI green. NEXT: run the SAME operator-QA method (6-mapper workflow -> AskUserQuestion advocate
-rounds -> worktree slices + verifier + 5-phase audit) on the HOME page. capgap in-game eyeball stays
-B37 (default-ON). The gemini loop ORUN1-5 rows remain OPEN in ORCHESTRATION_PLAN for a future relaunch
-(controller/AHK are stopped; STOP file present).
