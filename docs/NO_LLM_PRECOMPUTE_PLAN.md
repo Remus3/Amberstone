@@ -4,6 +4,27 @@ Status: VISION / planning. Authored 2026-06-27 from an operator directive during
 the live-flip validation session. This is the next-session pickup doc; it bundles
 this session's pending work at the bottom.
 
+## Progress log
+
+- **2026-07-04 - slice 1 SHIPPED (`f5939253`, LEDGER 775):** ARAM deterministic
+  coach `choices` A/B made shadow-measurable. build_block gained a 7th `choices`
+  key (reusing core/coach_choices.synthesize_simple_choices, shape-identical to
+  the served chip UI) + the shadow comparator now captures it on both columns.
+  This closes the last field-gap blocking a future ARAM Haiku-retirement flip.
+  Tier-1, shadow-only, the FLIP stays live-gated. NEXT: an ARAM agreement-report
+  tool (sibling of hz_shadow_report - does NOT exist yet), then the ARAM
+  item_extra/objective gaps, then Arena's remaining Haiku (LEDGER 763 built its
+  deterministic block) + the CV vision atlas.
+
+**Premise corrections (verified vs HEAD 2026-07-04, slice 1 spec pass):**
+(1) SR is NOT zero-Haiku at the code level - coaches/sr_coach.py subclasses
+CoachIntegration which calls Haiku at coach_integration/_coach.py:370, so the
+"zero Haiku" note under "What no-LLM actually requires" below is telemetric, not
+a code guarantee. (2) The ARAM Stage-1/2 deterministic block is ALREADY shipped
+(LEDGER 763): aram_action_rule + aram_fight_risk + aram_deterministic_coach +
+the live-wired shadow seam. (3) CoachOutput.from_fields is a choices DECODER;
+the synthesizer is core/coach_choices.synthesize_simple_choices.
+
 ## North star (operator framing, 2026-06-27, faithful capture)
 
 Bring the WHOLE project to NO live LLM. Build a fast, accurate, rapid-firing
