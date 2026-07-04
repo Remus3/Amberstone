@@ -308,7 +308,11 @@ no row carries it.
   resolver, NO DS restart.
 - C4. (ARAM-MAYHEM) DSP11 kit-axis flip [LIVE-VALIDATED 2026-06-17 - FLIP-READY]: lethality
   (Senna) + crit (Quinn) + negative control (Caitlyn) validated live; residual = the
-  Ezreal/Corki manamune sub-case + the operator flip decision. DS restart on flip.
+  Ezreal/Corki manamune sub-case [EYEBALLED SANE 2026-07-04 during a live Ezreal ARAM game via
+  live_flip_eyeball.py: DSP11 ON floats Essence Reaver + Trinity Force for Ezreal and Trinity Force
+  + The Collector for Corki - the kit-axis Sheen/mana items - demoting pure-crit-AS staples (Yun Tal
+  / IE); saner not random]. ALL C4 sub-cases now validated (lethality/crit/negative-control + Ezreal
+  /Corki kit-axis); ONLY the operator flip decision remains. DS restart on flip.
 - C5. (ARAM-MAYHEM) RF1 bruiser survivability flip [LIVE-VALIDATED 2026-06-18 Yasuo -
   FLIP-READY]: 1 of 9 tabled bruisers eyeballed (SANER); flip stays operator-gated + DS
   restart; further tabled rolls (Darius/Udyr) optional.

@@ -16,6 +16,17 @@ this session's pending work at the bottom.
   item_extra/objective gaps, then Arena's remaining Haiku (LEDGER 763 built its
   deterministic block) + the CV vision atlas.
 
+- **2026-07-04 - slice 2 SHIPPED (`20962f03`, LEDGER 776):** tools/aram_shadow_report.py -
+  the ARAM flip-readiness report (READ-ONLY sibling of tools/hz_shadow_report.py). First live
+  reading over the 948-row shadow log: action agreement 74% (>=70% gate nominally MET) but
+  choices coverage ~1% - the deterministic ACTION verdict already tracks Haiku, the choices
+  surface does not yet (only ALL-IN / FALL BACK map). VERDICT: the next lever is an
+  ARAM-specific choices templater (all 5 action labels -> A/B), NOT a flip. field_presence
+  also flags the silent gaps (reset_item / item_build_reasons / fight_rule / risk populated by
+  Haiku where the deterministic block is empty). Also this session: the C4 / DSP11 kit-axis
+  seam was eyeball-validated live for Ezreal + Corki (docs/LIVE_GAME_GATED_SYNC.md C4) - saner
+  not random - so C4 is fully validated, pending only the operator flip decision.
+
 **Premise corrections (verified vs HEAD 2026-07-04, slice 1 spec pass):**
 (1) SR is NOT zero-Haiku at the code level - coaches/sr_coach.py subclasses
 CoachIntegration which calls Haiku at coach_integration/_coach.py:370, so the
