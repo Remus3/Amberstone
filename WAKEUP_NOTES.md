@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-07-04 (HEADLESS open items - header row-2 FINISHED + HOME chips A6/A7; LEDGER 770-771)
+
+Closed the drain-session NEXT-block open items (no play needed - all headless).
+- HEADER ROW-2 (item #1, DONE): finished the WIP on worktree-agent-a218a07c4022c7923.
+  The FULL suite caught 2 hidden failures (test_motion_reduce_sweep_oq4 still expected the
+  retired .hp.hp-critical loop) -> fixed to 8 live loops. Squash-merged `bfa78360` (the WIP-
+  snapshot commit kept OUT of main); re-gated on merged main (snapshot_panels 320 + DOM 66);
+  live re-render clean (1 .header-row, 0 row-2 tokens, trigger_pill.js -> 404); overlay
+  unaffected (overlay.css untouched + display:none's the whole header). CI GREEN. Worktree +
+  branch removed.
+- TONIGHT'S PICK floor (item #3, ANSWERED): operator ruled KEEP CURRENT - no >=2-game floor
+  (any champ incl 1-game; the existing "Small sample" tip caveats). No code change.
+- CHIPS A6/A7 (item #2, DONE): NOT a rebase (no branch existed) - fresh data-fix, spec-first
+  via a Plan subagent (spec corrected 3 premises: Recent-3 not 5; rewind CURRENT not stale;
+  only ~28/110 joinable). A6 mode_subtype derives from the queueId already in
+  raw_data.lcu_match_detail (NO schema migration - the spec's queue_id column was redundant);
+  live Recent shows Tristana/Kalista subtype='Mayhem'. A7 NEW
+  tools/backfill_home_items_from_rewind.py (STRICT champion + 10-min join, dry-run default)
+  recovered 22 pre-ingest rows' items from rewind (gap 110 -> 88; 88 kept honest-empty).
+  Both Tier-1, RED-first, consolidated home gate 71 passed.
+
+NEXT: E11 remaining NON-HOME surfaces still OPEN in docs/RC2_PLAN.md (the HOME slice shipped).
+Live-gated drain continuation is a PLAY session (ARAM seam flips are champ-gated:
+Ezreal/Corki/Rakan/KSante/Rell/Cluster-A; ARENA still NEEDED for D2/D3/D7).
+DO NOT redo: header-row-2 (merged bfa78360); A6/A7 (the queue_id column is deliberately NOT
+added - queueId lives in raw_data); Tonight's Pick no-floor is an operator ruling.
+
+---
+
 # 2026-07-04 (/live-gated-drain - ARAM Mayhem sitting; LEDGER 769)
 
 Drained docs/LIVE_GAME_GATED_SYNC.md while the operator played ARAM Mayhem (2 games: Kalista, Tristana).
@@ -53,34 +82,3 @@ CARRY-OVER (next session or the one after):
 
 NEXT (operator-declared): live-gated items via ARAM Mayhem - /live-gated-drain against
 docs/LIVE_GAME_GATED_SYNC.md while the operator plays (they were QUEUING at wrap: mode aram, Matchmaking).
-
----
-
-# 2026-07-04 (Operator HOME-page QA rework + companion 920x1280 + daf09498 cleanup; LEDGER 767)
-
-Ran the operator per-page UI-QA method on HOME (6-mapper MAP -> 4 AskUserQuestion advocate rounds ->
-one worktree slice + verifier + 5-phase audit SHIP + ui_recon both widths). Rulings in
-docs/qa/HOME_QA_2026-07-04.md. SURFACE VALIDATED: Home renders in the rc-shell COMPANION window
-(mainWindow, plain :8888, out-of-game; main.js:523), NOT the ?overlay=1 HUD (pins active-match,
-main.js:927-929); primary viewport now 920x1280 portrait. Home slice f7951769 (net -982): hero trims
-(greeting/Season-WR/Gold-chip cut, momentum gated >=3 games), 6-tile portrait launcher restored (Find
-Match tile dropped, CTA covers), Recent-5 W/L stripe (wired the unused `win` field; grade->badge),
-dropped Advisories, REMOVED Weekly Digest + Last Build, deleted dead services render +
-.home-trends/.home-grid CSS; backend stripped services/weekly_digest/last_build/season_wr (home-only).
-Resize f71aee0d: config.js standard 923x1316->920x1280 + companion tests + recon (rc-shell 309 +
-companion 11 pass; already-sized window keeps its saved size -> restart rc-shell + Ctrl+2 Standard to
-adopt). Cleanup 7e101de3: completed daf09498 (deleted ban_suggest_toggle.css but left 2 token tests
-pinning it - CI-hidden red, surfaced only in the /done full-suite; watch the exit-code trap - the bg
-bash reported outer-shell exit 0 while pytest exited 1). Pushed f9259068..f71aee0d, CI green.
-
-ARCH DECISION (operator): web/+dashboard/ retired as standalone VISUALS; all UI/UX -> the companion +
-in-game overlays (both rc-shell windows that render web/). rc-shell KEPT (it IS the companion+overlay).
-Path = #1-aggressive-finish (RC2 E11 Hextech reskin + dead-surface prune), NOT #2 native rebuild (RC2
-~90% built; a rewrite = months + parity gap).
-
-NEXT: HOME round-2 - operator says "feels disjointed still" -> a ui/ux agent pass + the RC2 E11 Hextech
-reskin (docs/RC2_PLAN.md E11, greenlit+swarm-mapped). Deferred from HOME_QA_2026-07-04.md: This-Week
-visibility (buried under Recent-5 in the portrait stack), Recent-5 depth, 1-col stack order,
-Recent-meta density, dual-grade repetition. Also owed: the 2 backfill CHIPS (items[] pre-ingest +
-queue_id/mode_subtype) rebase onto this slice. DO NOT redo: Home round-1 shipped (f7951769); companion
-is 920x1280; ban_suggest cleanup done.
