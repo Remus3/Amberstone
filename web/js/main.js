@@ -3334,13 +3334,17 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       const baseK = pts.slice(0, -1).reduce((s, v) => s + v, 0)
                     / (pts.length - 1);
       const delta = latest - baseK;
+      // Round 2 (operator): compact verbiage - the long "KDA down X.X
+      // over 14d" form wrapped the headline in the narrowed portrait
+      // column and reflowed the hero. Direction is carried by the word +
+      // the +/- sign + the dir class (never hue alone).
       if (delta >= 0.3)
-        return { text: `Form climbing - KDA up ${delta.toFixed(1)} over 14d`,
+        return { text: `Form climbing - KDA +${delta.toFixed(1)} in 14d`,
                  dir: "up" };
       if (delta <= -0.3)
-        return { text: `Form cooling - KDA down ${Math.abs(delta).toFixed(1)} `
-                       + "over 14d", dir: "down" };
-      return { text: `Form steady - KDA near ${latest.toFixed(1)}`,
+        return { text: `Form cooling - KDA -${Math.abs(delta).toFixed(1)} `
+                       + "in 14d", dir: "down" };
+      return { text: `Form steady - ${latest.toFixed(1)} KDA in 14d`,
                dir: "flat" };
     }
     return { text: "Ready when you are", dir: "flat" };
