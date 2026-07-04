@@ -1,5 +1,12 @@
 # RC session history archive
 
+## Relocated 2026-07-04 (E11-lobby /done - keep last 3: lobby + header-row-2/chips + drain)
+
+The "2026-07-04 late (HOME round-2 SHIPPED)" wakeup block was pruned here; full
+content is preserved in LEDGER 768 + docs/qa/HOME_QA_2026-07-04.md section E
+(Hextech cohesion single-focal, SR/ARAM/ARENA mode tabs, RECENT-3/WEEK-3,
+no-reflow x3, 920x1280 fold; commits `e7ab8e86..ae676f97`).
+
 ## Relocated 2026-06-28 (WP-B1 /done - keep last 3 sessions: B1 + A6 + A5)
 
 # 2026-06-28 (overlay-build loop - WP-A4b stats panel vertical "You vs benchmark" frontend; 14effd16)

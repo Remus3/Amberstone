@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-07-04 (RC2 E11 LOBBY surface SHIPPED - operator UI-QA method; LEDGER 772, `1cf122e2`)
+
+Ran the operator per-page UI-QA method on the pregame LOBBY (E11 non-home surface). CI green.
+- SURFACE (router-traced): operator sees the dedicated `#view-lobby` companion VIEW (main.js
+  _lobbyViewRefresh). The inline `#lobby-overlay` was SUPERSEDED legacy - a Lobby phase force-
+  promotes to #view-lobby over any Home manual (main.js:704 + :941-970), so it was only phase-blip
+  reachable (resolved an M1/M6 mapper disagreement by tracing the router). Lobby was ALREADY
+  reskinned (8069d0b9), so this was a REFINEMENT pass.
+- METHOD: 6-mapper MAP -> 4-Q advocate round + 1 confirm -> ONE worktree build agent + verifier
+  (0 orphaned callers) + 5-phase audit (SHIP after 1 MUST-FIX in-slice) + ui_recon both widths.
+- SHIPPED (`1cf122e2`, net -543): R1 mains tab-aware (YOUR MAINS Recent/Overall[dropped the raw
+  KDA triplet]/Form[KP%,CS-m,DMG]; PARTY MAINS Mastery+Recent - dropped always-empty per-tab
+  cols); R2 dead code D1-D5 incl the inline #lobby-overlay cluster; R3 lcu_agent emits party_size
+  + max_party_size (count was always 0; tab auto-switch was dead; TDD RED-first); R4 sub-16px ->
+  --fs-xs floor + tabular-nums; V2 .lv-fr-copy/invite 44px. D5 overlay CSS lived in home.css
+  (-138); HOME verified UNAFFECTED (ui_recon + DOM). Verifier PASS, 355 scoped tests, CI green.
+- QA doc: docs/qa/LOBBY_QA_2026-07-04.md. DEFERRED: G3 live rank enrich (League-V4 DB), G4 ready
+  pip, G5 backend passthrough cleanup, MY-TOP-8 reserved-rows vertical cost.
+
+NEXT: E11 remaining NON-home/lobby surfaces still OPEN (PGR / history / session / user-builds /
+build-insights / settings + overlay). Same operator UI-QA method per surface. DO NOT redo:
+#lobby-overlay is REMOVED (superseded, do not re-add); .lv-rank-* hex is a SANCTIONED brand tint
+(do NOT tokenize); companion font floor = --fs-xs 16px.
+
+---
+
 # 2026-07-04 (HEADLESS open items - header row-2 FINISHED + HOME chips A6/A7; LEDGER 770-771)
 
 Closed the drain-session NEXT-block open items (no play needed - all headless).
@@ -56,29 +82,4 @@ queue_id/mode_subtype) rebase onto HEAD. (3) Operator Q: Tonight's Pick >=2-game
 DO NOT redo: HOME round-2 shipped (LEDGER 768); B44 closed; screen_read by-design. Live-gated drain
 continuation needs more play (ARAM seam flips champ-gated; ARENA still NEEDED for D2/D3/D7).
 
----
-
-# 2026-07-04 late (HOME round-2 SHIPPED - E11 home slice + mode tabs + no-reflow; LEDGER 768)
-
-Round-2 on HOME done end-to-end (operator interactive, 7 commits pushed `e7ab8e86..ae676f97`, CI green):
-Hextech cohesion (single focal Tonight's Pick hx-card, flat hero, stack reorder, Recent/Week compaction,
-hx-card-head primitive), SR/ARAM/ARENA MODE TABS (`/api/home/summary?mode=`; modes never taint each other),
-mode-aware L20 (ARAM strip hidden - rewind has 0 Mayhem rows - AUTO-reintroduces on a queue-2400 probe),
-RECENT 3 + WEEK 3 all tabs (pick pool = FULL week aggregate, decoupled from the display cap), whole page
-inside the 920x1280 fold (chips in the hero right zone), and the NO-REFLOW principle applied 3x (reserved
-L20 slot / tip "-" sentinels / one-line headline; hero pinned ~218px across all 4 tabs; NEW memory
-feedback_no_reflow_on_data_absence). 5-phase audit SHIP (2 MUST-FIX in-slice). Full suite 10248 + snap 317.
-Details: LEDGER 768 + docs/qa/HOME_QA_2026-07-04.md section E.
-
-CARRY-OVER (next session or the one after):
-- HEADER ROW 2 removal IN FLIGHT: operator ruled the shared header's 2nd row drops on ALL pages +
-  contents emptied (dead in-game pills; trigger_pill 2Hz poll dies with it). WIP-snapshot commit sits on
-  branch `worktree-agent-a218a07c4022c7923` (worktree still on disk, 17 files, NOT test-verified).
-  FINISH: complete test updates, run FULL tests/snapshot_panels/, verify overlay=1 unaffected, merge,
-  re-render 2-3 pages, push. Do NOT merge the WIP blind.
-- OPEN operator question: Tonight's Pick >=2-game floor? (pick now scouts every week champ incl 1-game).
-- Backfill chips still owed (items[] pre-ingest + queue_id/mode_subtype) - rebase onto ae676f97.
-- E11 remaining surfaces (non-home) still OPEN in RC2_PLAN.
-
-NEXT (operator-declared): live-gated items via ARAM Mayhem - /live-gated-drain against
-docs/LIVE_GAME_GATED_SYNC.md while the operator plays (they were QUEUING at wrap: mode aram, Matchmaking).
+_(older 2026-07-04 blocks pruned to docs/history_notes.md; keep last 3)_
