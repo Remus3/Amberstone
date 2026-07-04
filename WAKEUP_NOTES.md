@@ -4,30 +4,30 @@
 
 ---
 
-# 2026-07-04 (RC2 next lane -> no-live-LLM precompute-DB, slice 1: ARAM coach `choices` shadow-measurable; LEDGER 775, `f5939253`)
+# 2026-07-04 (RC2 no-live-LLM precompute-DB lane: 3 slices + first-ever DS seam flip; LEDGER 775-778)
 
-Operator picked the no-live-LLM precompute-DB program (ROADMAP L15) as the next RC2 lane over the two
-operator-gated remainders (E10 history-rewrite go/no-go, E2 DS live-flip). Spec-first via a Plan subagent.
-- SPEC CORRECTED 3 stale plan-doc premises vs HEAD: (1) SR is NOT zero-Haiku at the code level -
-  coaches/sr_coach.py -> CoachIntegration -> Haiku at coach_integration/_coach.py:370; (2) the ARAM
-  deterministic block is ALREADY shipped (LEDGER 763); (3) CoachOutput.from_fields is a choices DECODER,
-  not a builder (synthesizer = core/coach_choices.synthesize_simple_choices).
-- REFINED SLICE (`f5939253`, Tier-1, 2 core + 3 test files, 166/13): build_block gained a 7th `choices`
-  key - the PRIMARY A/B surface the live Haiku emits but the deterministic block lacked (a blind flip
-  would delete the operator's decision UI). Reuses synthesize_simple_choices (shape-identical to the
-  served chip UI); of the 5 ARAM labels only ALL-IN + FALL BACK map today, POKE/HOLD/DISENGAGE -> []
-  (widen on shadow evidence). Shadow comparator captures choices on both columns. TDD 12 RED -> green;
-  independent verifier PASS (54 passed / 0 failed). No served change, no engine bump, reuses the
-  default-OFF shadow seam; RC reloaded to arm the capture.
+Operator picked the precompute-DB program (ROADMAP L15) as the next RC2 lane (E10/E2 stay operator-gated).
+Spec-first via Plan subagents; each build verifier-gated. 7 commits, all pushed + CI green.
+- SLICE 1 (`f5939253`, LEDGER 775): ARAM deterministic `build_block` gained a 7th `choices` key - the
+  PRIMARY A/B surface (shadow-measurable). Spec corrected 3 stale plan-doc premises (SR is NOT code-level
+  zero-Haiku; the ARAM Stage-1/2 block was already shipped LEDGER 763; from_fields is a decoder).
+- SLICE 2 (`20962f03`, LEDGER 776): NEW tools/aram_shadow_report.py (sibling of hz_shadow_report) -
+  per-field deterministic-vs-Haiku agreement + dead-state ("WAIT RESPAWN") exclusion. First live reading:
+  action 74% (>=70% gate MET), choices ~1%. ALSO the live C4/Ezreal+Corki DSP11 eyeball = SANE.
+- SLICE 3 (`25955559`, LEDGER 777): widened _safe_choices to all 5 ARAM labels -> A/B (source_tag
+  "aram_rule"), superseding slice-1's 2-label reuse. Coverage lifts as new games accrue.
+- C4 FLIP (`523206d6`, LEDGER 778): DSP11 prefer_kit_axis_by_win DEFAULT-ON. Flipped RC-SIDE at
+  archetype_dispatch.py:210 (NOT the DS server - that entangles the shared /rank passthrough test on
+  Ezreal). RC-side caller change so NO ENGINE bump / NO DS restart / NO Share. Proven live: Ezreal default
+  floats Essence Reaver #1 vs #4 off. FIRST-EVER DS seam flip - precedent set (see the seam memory).
 
-NEXT (precompute tail): an ARAM shadow agreement-report tool (sibling of hz_shadow_report - does NOT
-exist yet; needed before any flip), then the ARAM item_extra/objective deterministic gaps, then Arena's
-remaining Haiku (763 built its block) + the client-side CV vision atlas (bigger, live/hardware-gated -
-the correct SECOND program). The live ARAM Haiku-retirement FLIP is live-gated (docs/LIVE_GAME_GATED_SYNC.md:
-needs live ARAM ticks to fill data/aram_coach_shadow.jsonl + the report tool >=70% + flip auth).
-DO NOT redo: SR is NOT a code-level zero-Haiku template; the ARAM Stage-1/2 block is shipped (763);
-choices reuse of synthesize_simple_choices is deliberate (shape-identity > full 5-label coverage). The
-other RC2 remainders (E10 history-rewrite, E2 DS live-flip) stay operator-gated.
+RC reloaded (pid 21356). docs/LIVE_GAME_GATED_SYNC.md C4 = FLIPPED/CLOSED.
+NEXT: ARAM item_extra/objective deterministic gaps; then Arena's remaining Haiku (763 built its block) +
+the CV vision atlas (the bigger SECOND program). Other C-seams (C5-C13) still champ-gated for eyeballs.
+DO NOT redo: C4 is FLIPPED - the flip point is the RC-side caller (archetype_dispatch.py:210), NOT the DS
+server; do NOT bump ENGINE for a caller-default flip. Slice-1's "reuse synth" don't-redo is SUPERSEDED by
+slice 3. E10/E2 stay operator-gated. A duplicate templater chip-session may exist on the operator side
+(redundant - slice 3 is merged).
 
 ---
 
@@ -77,32 +77,3 @@ NEXT: E11 remaining NON-home/lobby surfaces still OPEN (PGR / history / session 
 build-insights / settings + overlay). Same operator UI-QA method per surface. DO NOT redo:
 #lobby-overlay is REMOVED (superseded, do not re-add); .lv-rank-* hex is a SANCTIONED brand tint
 (do NOT tokenize); companion font floor = --fs-xs 16px.
-
----
-
-# 2026-07-04 (HEADLESS open items - header row-2 FINISHED + HOME chips A6/A7; LEDGER 770-771)
-
-Closed the drain-session NEXT-block open items (no play needed - all headless).
-- HEADER ROW-2 (item #1, DONE): finished the WIP on worktree-agent-a218a07c4022c7923.
-  The FULL suite caught 2 hidden failures (test_motion_reduce_sweep_oq4 still expected the
-  retired .hp.hp-critical loop) -> fixed to 8 live loops. Squash-merged `bfa78360` (the WIP-
-  snapshot commit kept OUT of main); re-gated on merged main (snapshot_panels 320 + DOM 66);
-  live re-render clean (1 .header-row, 0 row-2 tokens, trigger_pill.js -> 404); overlay
-  unaffected (overlay.css untouched + display:none's the whole header). CI GREEN. Worktree +
-  branch removed.
-- TONIGHT'S PICK floor (item #3, ANSWERED): operator ruled KEEP CURRENT - no >=2-game floor
-  (any champ incl 1-game; the existing "Small sample" tip caveats). No code change.
-- CHIPS A6/A7 (item #2, DONE): NOT a rebase (no branch existed) - fresh data-fix, spec-first
-  via a Plan subagent (spec corrected 3 premises: Recent-3 not 5; rewind CURRENT not stale;
-  only ~28/110 joinable). A6 mode_subtype derives from the queueId already in
-  raw_data.lcu_match_detail (NO schema migration - the spec's queue_id column was redundant);
-  live Recent shows Tristana/Kalista subtype='Mayhem'. A7 NEW
-  tools/backfill_home_items_from_rewind.py (STRICT champion + 10-min join, dry-run default)
-  recovered 22 pre-ingest rows' items from rewind (gap 110 -> 88; 88 kept honest-empty).
-  Both Tier-1, RED-first, consolidated home gate 71 passed.
-
-NEXT: E11 remaining NON-HOME surfaces still OPEN in docs/RC2_PLAN.md (the HOME slice shipped).
-Live-gated drain continuation is a PLAY session (ARAM seam flips are champ-gated:
-Ezreal/Corki/Rakan/KSante/Rell/Cluster-A; ARENA still NEEDED for D2/D3/D7).
-DO NOT redo: header-row-2 (merged bfa78360); A6/A7 (the queue_id column is deliberately NOT
-added - queueId lives in raw_data); Tonight's Pick no-floor is an operator ruling.
