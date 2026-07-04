@@ -391,6 +391,60 @@ def test_home_wl_strip_reserves_slot_on_filtered_tab(
     assert not errors, f"JS errors [wl strip reserve]: {errors[:3]}"
 
 
+def test_home_headline_one_line_no_reflow_contract(mock_server, pw_browser):
+    """Round-2 no-reflow: the momentum headline is ONE line always -
+    nowrap + ellipsis (a long trend verdict must not wrap and grow the
+    hero, which shifted every card below on the ARAM tab) - and a hidden
+    headline (1-2 games today) keeps its line box (visibility-hidden
+    reserve), so all tabs share one hero height."""
+    ctx, page, errors = _open_home(pw_browser, mock_server, w=920, h=1280)
+    try:
+        st = page.evaluate(
+            """() => {
+              const h = document.getElementById('home-hero-headline');
+              const cs = getComputedStyle(h);
+              return {
+                nowrap: cs.whiteSpace,
+                overflow: cs.overflow,
+                ellipsis: cs.textOverflow,
+              };
+            }"""
+        )
+        assert st["nowrap"] == "nowrap", (
+            f"headline may wrap (white-space {st['nowrap']!r})"
+        )
+        assert st["ellipsis"] == "ellipsis", (
+            f"headline missing the ellipsis backstop: {st['ellipsis']!r}"
+        )
+        # Hidden state keeps the slot: set [hidden] and confirm the line
+        # box survives with visibility:hidden instead of display:none.
+        reserved = page.evaluate(
+            """() => {
+              const h = document.getElementById('home-hero-headline');
+              h.hidden = true;
+              const cs = getComputedStyle(h);
+              const r = h.getBoundingClientRect();
+              const out = {display: cs.display, visibility: cs.visibility,
+                           height: r.height};
+              h.hidden = false;
+              return out;
+            }"""
+        )
+        assert reserved["display"] != "none", (
+            f"[hidden] headline collapsed (display {reserved['display']!r})"
+        )
+        assert reserved["visibility"] == "hidden", (
+            f"[hidden] headline still visible: {reserved!r}"
+        )
+        assert reserved["height"] >= 20, (
+            f"[hidden] headline lost its line box: {reserved['height']}px"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [headline contract]: {errors[:3]}"
+
+
 def test_no_em_dashes_or_smart_quotes():
     """Hard rule: ASCII-only authored text - 0 bytes above 0x7F in this
     test file (the fixture is covered by the sibling view tests)."""

@@ -186,6 +186,21 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   letter-spacing: 0.01em;
   text-align: center;
   line-height: 1.2;
+  /* Round 2 no-reflow contract: the verdict is ONE line, always - a
+   * long trend string ellipsizes instead of wrapping and growing the
+   * hero (the ARAM tab's "Form cooling" wrap shifted every card below). */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+/* Round 2 no-reflow: the 1-2-games-today state hides the verdict TEXT
+ * but keeps its line box, so tabs with different day-samples share one
+ * hero height ([hidden] would otherwise display:none + collapse). */
+.home-hero-headline[hidden] {
+  display: block;
+  visibility: hidden;
+  min-height: calc(var(--fs-xl) * 1.2);
 }
 .home-hero-headline.up    { color: var(--good); }
 .home-hero-headline.down  { color: var(--bad); }
@@ -895,8 +910,15 @@ body[data-view="home"] .home-overlay { display: flex !important; }
     gap: var(--space-2) var(--space-3);
   }
   .home-hero-greet  { grid-column: 1; }
-  .home-hero-center { grid-column: 1; align-items: flex-start; }
-  .home-hero-headline { text-align: left; }
+  .home-hero-center { grid-column: 1; align-items: flex-start; min-width: 0; }
+  /* Round 2: step the verdict down one tier at the narrowed portrait
+   * column (fs-xl 37px wraps a 37-char trend string in ~603px; fs-lg
+   * keeps every verdict one line - the nowrap ellipsis is the backstop). */
+  .home-hero-headline {
+    text-align: left;
+    font-size: var(--fs-lg);
+  }
+  .home-hero-headline[hidden] { min-height: calc(var(--fs-lg) * 1.2); }
   /* Operator (round 2): keep the champion motif VISIBLE now that the
    * chips occupy the hero's right edge - anchor it left of the chips
    * column and lift the opacity a notch so it reads through the narrow
