@@ -13,7 +13,9 @@ the Home view:
   - the idle (0-games) headline is a recent-form momentum verdict, not the
     decorative "Ready when you are" greeting;
   - a primary Find Match CTA sits in the hero and opens the queue picker;
-  - small-sample (1-2 game) Good/Bad tip rows are hidden, not shown as "-".
+  - small-sample (1-2 game) Good/Bad tips render the dim "-" sentinel in
+    rows that KEEP their slots (round-2 no-reflow ruling; supersedes the
+    original R30 row-hide).
 
 Drives the ui_mock home fixture through the mock-server + Playwright harness
 (conftest.py). The idle + small-sample states are injected with page.route so
@@ -190,7 +192,11 @@ def test_idle_headline_is_momentum_verdict(mock_server, pw_browser):
     assert not errors, f"JS errors: {errors[:3]}"
 
 
-def test_small_sample_good_bad_rows_hidden(mock_server, pw_browser):
+def test_small_sample_good_bad_rows_keep_slots(mock_server, pw_browser):
+    """Operator ruling (round 2, supersedes the R30 row-hide): suppressed
+    small-sample Good/Bad tips render the dim "-" sentinel in rows that
+    KEEP their slots (no [hidden]), so the pick card's height never shifts
+    with the sample size (the no-reflow principle: reserved L20 strip)."""
     fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
     payload = dict(fixture)
     tp = dict(fixture["tonight_pick"])
@@ -203,20 +209,39 @@ def test_small_sample_good_bad_rows_hidden(mock_server, pw_browser):
     ctx, page, errors = _ctx(pw_browser)
     try:
         _open(page, mock_server, route_payload=payload)
-        hidden = page.evaluate(
+        st = page.evaluate(
             """() => {
               const row = id => {
                 const el = document.querySelector('#' + id);
                 const r = el && el.closest('.home-pick-tip-row');
-                return r ? r.hidden : null;
+                if (!r) return null;
+                return {
+                  hidden: r.hidden,
+                  height: r.getBoundingClientRect().height,
+                  text: (el.textContent || '').trim(),
+                  empty: el.classList.contains('is-empty'),
+                };
               };
               return {good: row('home-pick-good'), bad: row('home-pick-bad'),
                       ugly: row('home-pick-ugly')};
             }"""
         )
-        assert hidden["good"] is True, "small-sample Good row not hidden"
-        assert hidden["bad"] is True, "small-sample Bad row not hidden"
-        assert hidden["ugly"] is False, "Ugly caveat row must stay visible"
+        for k in ("good", "bad"):
+            assert st[k] and st[k]["hidden"] is False, (
+                f"suppressed {k} row lost its slot (hidden): {st[k]!r}"
+            )
+            assert st[k]["height"] > 0, (
+                f"suppressed {k} row collapsed to zero height: {st[k]!r}"
+            )
+            assert st[k]["text"] == "-", (
+                f"suppressed {k} tip not the '-' sentinel: {st[k]!r}"
+            )
+            assert st[k]["empty"], (
+                f"suppressed {k} tip missing .is-empty dim class: {st[k]!r}"
+            )
+        assert st["ugly"]["hidden"] is False and st["ugly"]["text"] != "-", (
+            f"Ugly caveat row must stay visible + populated: {st['ugly']!r}"
+        )
     finally:
         page.close()
         ctx.close()
