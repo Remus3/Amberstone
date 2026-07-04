@@ -3114,7 +3114,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // HOME_QA A5/B1: the stripe now encodes the real WIN/LOSS (m.win), not a
     // grade tier - win -> "win" (green), loss -> "loss" (red), unknown
     // (win==null on pre-ingest rows) -> "neutral" (dim, no guessed result).
-    for (const m of rows) {
+    // Round 2: RECENT 3 (operator ruling) - the backend already LIMITs to
+    // 3; this clamp guards stale/mock payloads that still carry 5.
+    for (const m of rows.slice(0, 3)) {
       const card = document.createElement("div");
       card.className = "home-recent-card";
       card.dataset.matchId = m.match_id || "";
@@ -3245,8 +3247,12 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       host.innerHTML = '<div class="home-empty">no games this week</div>';
       return;
     }
-    const maxGames = Math.max(1, ...rows.map(r => r.games || 0));
-    for (const r of rows) {
+    // Round 2: top 3 (operator ruling, matches RECENT 3) - backend
+    // already [:3]s; clamp guards stale/mock payloads, and maxGames
+    // scales the bars over the shown set only.
+    const shown = rows.slice(0, 3);
+    const maxGames = Math.max(1, ...shown.map(r => r.games || 0));
+    for (const r of shown) {
       const row = document.createElement("div");
       row.className = "home-week-bar-row";
       const gradeRaw = String(r.best_grade || "-").toUpperCase()[0] || "-";
@@ -3455,16 +3461,24 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // rank badge in the home hero. `last20` is the home payload's last20
   // dict ({results:["W"/"L",...], wins, losses, win_rate}). Hidden when
   // there is no decided history. Idempotent full innerHTML rebuild.
+  // Operator ruling (mode-tabs round 2): when the strip is empty because
+  // the ACTIVE MODE TAB filtered it away (e.g. ARAM - rewind carries no
+  // Mayhem rows), RESERVE its vertical slot (.is-reserved, visibility
+  // hidden) so the hero height does not jump between tabs. Only a
+  // no-data-at-all ALL-tab empty collapses the row entirely.
   function _homeRenderWlStrip(last20) {
     const box = document.getElementById("home-hero-rank-wl");
     if (!box) return;
     const results = (last20 && Array.isArray(last20.results))
       ? last20.results : [];
     if (!results.length) {
-      box.hidden = true;
+      const filtered = (_HOME.modeTab && _HOME.modeTab !== "ALL");
+      box.classList.toggle("is-reserved", filtered);
+      box.hidden = !filtered;
       box.innerHTML = "";
       return;
     }
+    box.classList.remove("is-reserved");
     const pips = results.slice(0, 20).map((r) => {
       const win = r === "W";
       const cls = win ? "home-wl-pip is-win" : "home-wl-pip is-loss";
