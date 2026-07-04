@@ -22,7 +22,7 @@
 // cs.queue_id, lowercased to the route's sr|aram|arena vocabulary.
 //
 // Discipline: pure ESM, ASCII only, sig-dedup gate on the render, no DOM
-// writes outside renderPersonalBuild(). Mirrors cooldown_watch.js /
+// writes outside renderPersonalBuild(). Mirrors cc_conditional_pressure.js /
 // ds_relscore.js.
 
 const _PBW_CACHE = Object.create(null);     // cacheKey -> response JSON

@@ -25,7 +25,7 @@
 //
 // Discipline: pure ESM, ASCII only, sig-dedup gate on the render, no DOM
 // writes outside renderDsRelscore(). Mirrors the ds_knobs.js /
-// cooldown_watch.js fetch discipline.
+// cc_conditional_pressure.js fetch discipline.
 
 import { resolveChampNames } from './cc_conditional_pressure.js';
 
