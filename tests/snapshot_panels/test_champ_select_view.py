@@ -182,6 +182,42 @@ def test_champ_select_new_structure_present(mode, mock_server, pw_browser):
     assert not errors, f"JS errors [new/{mode}]: {errors[:3]}"
 
 
+@pytest.mark.parametrize("mode,should_show", [
+    ("sr", True), ("aram", False), ("arena", False),
+])
+def test_picks_target_mode_gated(mode, should_show, mock_server, pw_browser):
+    """QA 2026-07-03 audit follow-up: #csv-picks-target (the SR-draft PICK
+    recommendations sub-panel, item-200 relocated into the Allies card) is
+    SR-only - _csvRenderPickBan never runs in ARAM/Arena, so the static
+    "waiting for champ-select data..." placeholder lingered forever there
+    before the CSS mode-gate. The mount stays PRESENT in every mode (static
+    in index.html); assert its COMPUTED display: shown in SR, none in
+    ARAM/Arena (computed, not the attribute - a bare base rule set
+    display:flex, so an attribute check would miss the specificity gate)."""
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, mode)
+    try:
+        disp = page.evaluate(
+            """() => {
+              const el = document.getElementById('csv-picks-target');
+              return el ? getComputedStyle(el).display : 'MISSING';
+            }"""
+        )
+        assert disp != "MISSING", f"#csv-picks-target mount missing ({mode})"
+        if should_show:
+            assert disp != "none", (
+                f"picks-target must render in {mode}, computed display {disp!r}"
+            )
+        else:
+            assert disp == "none", (
+                f"picks-target must be gated off in {mode}, "
+                f"computed display {disp!r}"
+            )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [picks-target/{mode}]: {errors[:3]}"
+
+
 @pytest.mark.parametrize("mode", ["aram", "arena"])
 def test_champ_select_merged_build_section(mode, mock_server, pw_browser):
     """B6+B7: ONE build section - the ordered-sequence strip renders INSIDE
