@@ -12,11 +12,11 @@ Acceptance (plan WP-B1 + Section B intro):
   3. The draft-elo chip's "no draft prior" string is gone (the `de-empty` mount
      class stays - draft_elo.css + test_draft_elo_panel pin it).
 
-Scope note (recorded): the plan also cited `build_order.js:136-140` (ctxLine) as
-a "sibling caption", but that "DS vs Enemy Comp" card renders in CHAMP-SELECT
-(champ_select.js imports buildOrderCardHtml), not the in-game build pane - it is
-outside B1's stated "in-game build pane" goal and champ-select is settled-complete,
-so it is intentionally left untouched here.
+Scope note (recorded): the plan also cited a `build_order.js` ctxLine as a
+"sibling caption", but that "DS vs Enemy Comp" surface renders in CHAMP-SELECT
+(historically via buildOrderCardHtml - superseded by the merged #csv-builds-seq
+strip and deleted, QA 2026-07-03 / LEDGER 765), not the in-game build pane - it
+was outside B1's stated "in-game build pane" goal and intentionally untouched.
 
 Grep-style contract test (no jsdom/node harness for page code), mirroring
 tests/test_overlay_a5_enemy_spells_unname_widen.

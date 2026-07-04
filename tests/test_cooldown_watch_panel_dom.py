@@ -1,20 +1,16 @@
-"""Regression guards for the matchup cooldown-watch panel (competitor
-lift #5) - updated for the 2026-07-03 champ-select QA (slice A, ruling
-B19 in docs/qa/CHAMP_SELECT_QA_2026-07-03.md).
+"""Deletion guards for the champ-select cooldown-watch panel.
 
-B19: the cooldown-watch card was REMOVED from champ select (the overlay
-surfaces the same signal in-game when it matters). The backend
+History: competitor lift #5 shipped the panel; the 2026-07-03 champ-select
+QA (ruling B19 in docs/qa/CHAMP_SELECT_QA_2026-07-03.md) removed the card
+from champ select, which orphaned the frontend module (champ select was
+its sole consumer); the operator-approved follow-up cleanup (LEDGER 765)
+then DELETED web/js/panels/cooldown_watch.js + its CSS. The backend
 (dashboard/routes_cooldown_watch.py + agents/daemon_slayer/cooldown_watch.py)
-and the frontend module (web/js/panels/cooldown_watch.js) STAY - only the
-champ-select mount + wiring are gone. This file now pins BOTH directions:
+STAYS - covered by its own route tests.
 
-  - web/index.html no longer carries #csv-sugg-cooldown-watch.
-  - web/js/panels/champ_select.js no longer imports or renders the panel.
-  - web/js/panels/cooldown_watch.js still exports its full API contract
-    (the module is currently orphaned - champ select was its sole
-    consumer - kept for the in-game overlay follow-up).
-
-Grep-based smoke checks - cheap, fast, enough to catch a re-wire drift.
+These grep guards pin the deleted state so a partial re-wire cannot drift
+back in silently. A future consumer (e.g. an overlay widget) should add a
+NEW module + its own guards, not resurrect the old file ad hoc.
 """
 from __future__ import annotations
 
@@ -25,11 +21,24 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
 INDEX_HTML = WEB / "index.html"
 PANEL_JS = WEB / "js" / "panels" / "cooldown_watch.js"
+PANEL_CSS = WEB / "css" / "panels" / "cooldown_watch.css"
+DASHBOARD_CSS = WEB / "css" / "dashboard.css"
 CHAMP_SELECT_JS = WEB / "js" / "panels" / "champ_select.js"
 
 
 def _read(p: Path) -> str:
     return p.read_text(encoding="utf-8")
+
+
+class ModuleDeletedTests(unittest.TestCase):
+    def test_panel_js_deleted(self) -> None:
+        self.assertFalse(PANEL_JS.exists(), f"{PANEL_JS} should be deleted")
+
+    def test_panel_css_deleted(self) -> None:
+        self.assertFalse(PANEL_CSS.exists(), f"{PANEL_CSS} should be deleted")
+
+    def test_dashboard_css_import_removed(self) -> None:
+        self.assertNotIn("panels/cooldown_watch.css", _read(DASHBOARD_CSS))
 
 
 class ChipMountRemovedTests(unittest.TestCase):
@@ -44,23 +53,7 @@ class ChipMountRemovedTests(unittest.TestCase):
 class JsConsumptionRemovedTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.panel_text = _read(PANEL_JS)
         cls.cs_text = _read(CHAMP_SELECT_JS)
-
-    # The module keeps its API contract (overlay follow-up consumer).
-    def test_panel_exports_fetch(self) -> None:
-        self.assertIn("export function fetchCooldownWatch", self.panel_text)
-
-    def test_panel_exports_get_cached(self) -> None:
-        self.assertIn("export function getCachedCooldownWatch",
-                      self.panel_text)
-
-    def test_panel_exports_cache_count(self) -> None:
-        self.assertIn("export function getCooldownWatchCacheCount",
-                      self.panel_text)
-
-    def test_panel_exports_render(self) -> None:
-        self.assertIn("export function renderCooldownWatch", self.panel_text)
 
     # Champ select dropped the import + render + sig fold (B19).
     def test_champ_select_import_removed(self) -> None:
@@ -75,6 +68,22 @@ class JsConsumptionRemovedTests(unittest.TestCase):
     def test_section_signature_fold_removed(self) -> None:
         self.assertNotIn("getCooldownWatchCacheCount", self.cs_text)
         self.assertNotIn("cdw:", self.cs_text)
+
+    def test_no_other_js_consumer(self) -> None:
+        # Whole-tree guard: no web JS imports the deleted module.
+        for f in (WEB / "js").rglob("*.js"):
+            self.assertNotIn(
+                "from './cooldown_watch.js'", _read(f),
+                f"{f} imports the deleted cooldown_watch.js",
+            )
+
+
+class BackendKeptTests(unittest.TestCase):
+    def test_route_module_still_exists(self) -> None:
+        self.assertTrue(
+            (ROOT / "dashboard" / "routes_cooldown_watch.py").exists(),
+            "backend route module must stay (operator kept all backends)",
+        )
 
 
 class AsciiHygieneTests(unittest.TestCase):

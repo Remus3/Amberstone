@@ -22,7 +22,7 @@
 // before fetching.
 //
 // Discipline: pure ESM, ASCII only, sig-dedup gate, no DOM writes outside
-// renderCcPairing(). Mirrors the cooldown_watch.js pattern exactly.
+// renderCcPairing(). Mirrors the cc_conditional_pressure.js pattern exactly.
 
 const _CCPAIR_CACHE = Object.create(null);     // cacheKey -> response JSON
 const _CCPAIR_INFLIGHT = Object.create(null);

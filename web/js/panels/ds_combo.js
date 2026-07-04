@@ -19,7 +19,7 @@
 //   }
 //
 // Discipline: pure ESM, ASCII only, sig-dedup gate, no DOM writes outside
-// renderDsCombo(). Mirrors the cooldown_watch.js pattern. The sequence
+// renderDsCombo(). Mirrors the cc_conditional_pressure.js pattern. The sequence
 // input is rendered ONCE per block id; subsequent renders only repaint the
 // timeline table so the operator's caret in the input is never clobbered.
 

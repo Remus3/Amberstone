@@ -3,11 +3,11 @@
 // Renders the contextual, match-specific DS-backed item BUILD ORDER from
 // POST /api/build-order (core/build_order.py plan_build_order). Two
 // surfaces:
-//   (B) a collapsible "DS vs Enemy Comp" block inside the champ-select My Pick
-//       card - mode-agnostic (sr/aram/arena), since a build order matters
-//       just as much in ARAM/Arena. buildOrderCardHtml() returns an HTML
-//       string; champ_select.js injects it after the build chooser,
-//       passing the DDragon ver + its rAF re-render callback.
+//   (B) the champ-select merged build section's ordered-sequence strip
+//       (#csv-builds-seq) - mode-agnostic (sr/aram/arena). champ_select.js
+//       consumes fetchBuildOrder/getCachedBuildOrder directly and renders
+//       the strip itself (QA 2026-07-03 B6+B7 merge; the standalone
+//       buildOrderCardHtml card was superseded and deleted, LEDGER 765).
 //   (C) the in-game #ds-pill glance - buildOrderPill(state) returns the
 //       next-2-in-order + a full-order rich tooltip; item_build.js (which
 //       owns #ds-pill) consumes it and falls back to its top-pick render
@@ -103,79 +103,6 @@ export function fetchBuildOrder(champion, dsMode, archetype, onLand, enemies) {
 
 export function getCachedBuildOrder(champion, dsMode, archetype, enemies) {
   return _BO_CACHE[_boKey(champion, dsMode, archetype, enemies)] || null;
-}
-
-// ── (B) champ-select card ─────────────────────────────────────────────
-
-// `opts`: { ver, scheduleRender }. Returns an HTML string for injection
-// into the My Pick card body (after the build chooser). Returns "" when
-// there's no champion yet so the card simply doesn't appear.
-export function buildOrderCardHtml(champion, dsMode, archetype, opts) {
-  opts = opts || {};
-  if (!champion || champion === "-" || !dsMode) return "";
-  // item 213: opts.enemies is the live enemy-comp champion-name list
-  // from champ-select. It keys the cache + drives the backend target
-  // stats so the DS-vs-enemy-comp build re-ranks as enemies lock in.
-  const enemies = Array.isArray(opts.enemies) ? opts.enemies : [];
-  const key = _boKey(champion, dsMode, archetype, enemies);
-  const data = _BO_CACHE[key];
-  if (!data) {
-    fetchBuildOrder(champion, dsMode, archetype, opts.scheduleRender, enemies);
-    return `
-      <div class="bo-card" data-bo-state="loading">
-        <div class="bo-line"><span class="bo-tag">DS vs Enemy Comp</span><span class="bo-msg">computing...</span></div>
-      </div>`;
-  }
-  const order = Array.isArray(data.order) ? data.order : [];
-  if (!order.length) {
-    return `
-      <div class="bo-card" data-bo-state="empty">
-        <div class="bo-line"><span class="bo-tag">DS vs Enemy Comp</span><span class="bo-msg">no ordered build</span></div>
-      </div>`;
-  }
-  const ver = opts.ver || "latest";
-  const ctx = data.context || {};
-  const ctxBits = [];
-  if (ctx.target_armor != null) ctxBits.push(`${Math.round(ctx.target_armor)} armor`);
-  if (ctx.target_mr != null) ctxBits.push(`${Math.round(ctx.target_mr)} MR`);
-  if (ctx.target_max_hp != null) ctxBits.push(`${Math.round(ctx.target_max_hp)} HP`);
-  const ctxLine = ctxBits.length ? `vs ${ctxBits.join(", ")}` : "";
-
-  // Operator 2026-05-31 (part 2): always-on HORIZONTAL ordered build -
-  // no collapse/expand. A wrapping row of compact item chips in buy
-  // order; the full per-slot math stays in each chip's hover tooltip.
-  const rows = order
-    .map((o) => {
-      const dt = _deltaTxt(o);
-      const tip =
-        `Slot ${o.slot}: ${_esc(o.item_name)} - ${_esc(dt)}, ${o.gold || 0}g` +
-        (ctxLine ? ` (${_esc(ctxLine)})` : "") +
-        (o.scorer ? ` - scorer ${_esc(o.scorer)}` : "") +
-        (o.excluded_family
-          ? ` - locks the ${_esc(o.excluded_family)} unique-passive family`
-          : "");
-      return `
-      <div class="bo-slot" data-tt-html="${tip}">
-        <span class="bo-num">${o.slot}</span>
-        <img class="bo-icon" src="/data/ddragon/${ver}/img/item/${o.item_id}.png"
-             onerror="if(!this.dataset.cdn){this.dataset.cdn=1;this.src='https://ddragon.leagueoflegends.com/cdn/${ver}/img/item/${o.item_id}.png'}else{this.style.visibility='hidden'}"
-             alt="">
-        <span class="bo-name">${_esc(o.item_name)}</span>
-        <span class="bo-delta">${_esc(dt)}</span>
-      </div>`;
-    })
-    .join("");
-
-  // Operator 2026-05-31 (#4): the no-double chip + the save+push button
-  // were removed from this card.
-  return `
-    <div class="bo-card" data-bo-state="ready">
-      <div class="bo-line">
-        <span class="bo-tag">DS vs Enemy Comp</span>
-        ${ctxLine ? `<span class="bo-ctx">${_esc(ctxLine)}</span>` : ""}
-      </div>
-      <div class="bo-slots">${rows}</div>
-    </div>`;
 }
 
 // ── (C) in-game #ds-pill glance ───────────────────────────────────────
