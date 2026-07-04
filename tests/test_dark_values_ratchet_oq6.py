@@ -30,7 +30,6 @@ _DARK = re.compile(r"#[0-2][0-9a-fA-F]{5}\b|#[0-2][0-9a-fA-F]{2}\b")
 PINS = {
     "web/css/overlay.css": 5,
     "web/css/panels/active_match.css": 3,
-    "web/css/panels/ban_suggest_toggle.css": 3,
     "web/css/panels/base.css": 7,
     "web/css/panels/build_module.css": 1,
     "web/css/panels/build_order.css": 1,
