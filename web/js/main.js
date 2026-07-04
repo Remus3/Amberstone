@@ -3081,7 +3081,18 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // select active (i.e. between matches or just after RC boot). Pulls
   // /api/home/summary every 20s. Hides during ChampSelect / InProgress
   // so the main panel grid is unobstructed.
-  const _HOME = { lastFetchAt: 0, intervalMs: 20000, fetching: false };
+  // HOME mode-tab filter (operator ruling 2026-07-04): SR/ARAM/ARENA tabs so
+  // modes do not taint each other's stats. Persisted per-browser in
+  // localStorage; whitelisted so a stale/foreign value degrades to ALL.
+  function _homeModeTabLoad() {
+    try {
+      const t = localStorage.getItem("rc-home-mode-tab");
+      if (t === "SR" || t === "ARAM" || t === "ARENA" || t === "ALL") return t;
+    } catch (_) {}
+    return "ALL";
+  }
+  const _HOME = { lastFetchAt: 0, intervalMs: 20000, fetching: false,
+                  modeTab: _homeModeTabLoad() };
   function _homeShouldShow(lcu) {
     if (state.mode !== "client") return false;
     if (lcu && (lcu.phase === "ChampSelect"
@@ -3464,7 +3475,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const wins = (last20.wins != null) ? last20.wins : 0;
     const losses = (last20.losses != null) ? last20.losses : 0;
     const wr = (last20.win_rate != null) ? last20.win_rate : 0;
-    const form = `${wins}-${losses} (${wr}% L20)`;
+    // Operator ruling (HOME mode-tabs slice, 2026-07-04): the "L20" tag is
+    // trimmed - "last 20" is inferred from the 20-pip strip itself.
+    const form = `${wins}-${losses} (${wr}%)`;
     box.innerHTML =
       `<span class="home-wl-pips">${pips}</span>`
       + `<span class="home-wl-form tabular-nums">${form}</span>`;
@@ -3473,9 +3486,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
+    // Mode-tab filter: a non-ALL tab appends ?mode=<tab> (backend contract:
+    // bad/absent mode = unfiltered, payload echoes mode_filter). The mock
+    // path ignores the filter - tabs still switch active state and the mock
+    // payload just re-renders (acceptable fixture behavior).
     const promise = _homeIsMock()
       ? _homeMockLoad()
-      : fetch("/api/home/summary", { cache: "no-store" })
+      : fetch("/api/home/summary"
+              + (_HOME.modeTab !== "ALL" ? "?mode=" + _HOME.modeTab : ""),
+              { cache: "no-store" })
           .then((r) => (r && r.ok ? r.json() : null));
     promise
       .then((data) => {
@@ -3501,6 +3520,30 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _homeRenderCoach(data.tonight_pick);
       })
       .catch(() => { _HOME.fetching = false; });
+  }
+  // HOME mode tabs: apply a tab - whitelist, persist, sync every tab
+  // button's active/aria-selected state, stamp the overlay dataset hook
+  // (#home-overlay[data-mode-tab] - test + debugging surface), then force
+  // an immediate refetch under the new filter. Clearing fetching +
+  // lastFetchAt mirrors the applyView("home") guard reset above so the
+  // refetch passes both the in-flight guard and the renderHomePanel
+  // first-fetch gate. At startup (_homeWireStartup) this fires the first
+  // fetch itself; the unconditional startup tick then no-ops on the
+  // fetching flag, so there is no double-fetch at boot.
+  function _homeApplyModeTab(tab) {
+    tab = (tab === "SR" || tab === "ARAM" || tab === "ARENA") ? tab : "ALL";
+    _HOME.modeTab = tab;
+    try { localStorage.setItem("rc-home-mode-tab", tab); } catch (_) {}
+    document.querySelectorAll(".home-mode-tab").forEach((btn) => {
+      const on = btn.dataset.hmode === tab;
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    const overlay = document.getElementById("home-overlay");
+    if (overlay) overlay.dataset.modeTab = tab;
+    _HOME.fetching = false;
+    _HOME.lastFetchAt = 0;
+    _homeFetchAndRender();
   }
   // V3 (suggestion #5, redesign 2026-04-30): paint sparklines INTO the
   // hero chips (inline next to each chip's value), replacing the prior
@@ -3815,6 +3858,15 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         });
       });
     }
+    // HOME mode tabs (SR/ARAM/ARENA filter): clicks apply + persist; the
+    // startup apply below restores a persisted non-ALL tab and fires the
+    // first fetch itself, so the unconditional tick below no-ops on the
+    // in-flight fetching guard (no double-fetch at boot).
+    overlay.querySelectorAll(".home-mode-tab").forEach((btn) => {
+      btn.addEventListener("click",
+        () => _homeApplyModeTab(btn.dataset.hmode));
+    });
+    _homeApplyModeTab(_HOME.modeTab);
     // HOME_QA C1: the advisory mirror (_homeMirrorAlerts) + its Tonight's
     // Pick Section 3 were removed - the footer health-dot + advisory badge
     // already carry that signal. Only the home summary fetch + tick remain.
