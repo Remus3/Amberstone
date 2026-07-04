@@ -32,7 +32,7 @@ from dashboard._context import (
 SESSION_GAP_S = 2 * 3600   # 2 hours
 
 
-def _compute_last20(rconn) -> dict:
+def _compute_last20(rconn, queue_ids: tuple[int, ...] | None = None) -> dict:
     """Last-20 decided matches as a newest-first W/L pip trail.
 
     Takes an already-open read-only rewind_history.db connection and
@@ -43,16 +43,24 @@ def _compute_last20(rconn) -> dict:
     conn or any sqlite error so callers can render an empty strip without
     a crash. Single source of the last-20 logic shared by ``_build_history``
     (History season block) and ``_build_home_summary`` (home hero strip).
+
+    ``queue_ids`` (HOME mode tabs): when set, only matches whose
+    ``queue_id`` is in the tuple count - the home strip scopes the trail
+    to the active mode tab. None keeps today's exact global behavior
+    (the History call site stays unfiltered).
     """
     if rconn is None:
         return {}
+    sql = ("SELECT tracked_win FROM matches "
+           "WHERE tracked_win IS NOT NULL ")
+    params: tuple = ()
+    if queue_ids:
+        sql += ("AND queue_id IN (" +
+                ",".join("?" * len(queue_ids)) + ") ")
+        params = tuple(queue_ids)
+    sql += "ORDER BY game_creation_ts DESC LIMIT 20"
     try:
-        recent = [
-            int(r[0]) for r in rconn.execute(
-                "SELECT tracked_win FROM matches "
-                "WHERE tracked_win IS NOT NULL "
-                "ORDER BY game_creation_ts DESC LIMIT 20")
-        ]
+        recent = [int(r[0]) for r in rconn.execute(sql, params)]
     except sqlite3.Error as exc:
         _log.debug("last20 compute: %s", exc)
         return {}
