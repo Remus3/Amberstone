@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from core.aram_deterministic_coach import build_block
+from core.coach_choices import synthesize_simple_choices, to_jsonable
 
 _KEYS = (
     "action",
@@ -20,6 +21,7 @@ _KEYS = (
     "reset_item",
     "item_build",
     "item_build_reasons",
+    "choices",
 )
 
 
@@ -227,3 +229,76 @@ def test_build_order_garbage_type_keeps_item_build_empty() -> None:
     ) == ""
     assert build_block(hp_pct=80.0, build_order=12345).get("item_build") == ""
     assert build_block(hp_pct=80.0, build_order=[1, 2, 3]).get("item_build") == ""
+
+
+# ---------------------------------------------------------------------------
+# choices - the deterministic A/B array (the ARAM PRIMARY actionable surface).
+# build_block reuses core.coach_choices.synthesize_simple_choices over its own
+# action + fight_rule, so the deterministic choices are shape-identical to the
+# served chip synthesizer. Of the 5 ARAM action labels only ALL-IN (->
+# Engage/Disengage) and FALL BACK (-> Recall/Stay) map today; POKE / HOLD /
+# DISENGAGE yield [] until a later ARAM-specific mapping widens this.
+# ---------------------------------------------------------------------------
+
+
+def test_choices_key_always_a_list() -> None:
+    # Present on the normal path, the fail-soft empty path, AND the garbage path.
+    assert isinstance(build_block(hp_pct=90.0, low_enemy_count=2)["choices"], list)
+    assert isinstance(build_block()["choices"], list)
+    garbage = build_block(
+        hp_pct="not-a-number",
+        wave_pct=object(),
+        low_enemy_count=[],
+        cc_threat_line=12345,
+        item_build_reasons="not-a-dict",
+        next_item_name=object(),
+    )
+    assert isinstance(garbage["choices"], list)
+
+
+def test_choices_empty_for_hold_action() -> None:
+    # hp_pct 50 -> action HOLD, which has no recognizable binary verb -> [].
+    block = build_block(hp_pct=50.0)
+    assert block["action"] == "HOLD"
+    assert block["choices"] == []
+
+
+def test_choices_two_entries_for_all_in_action() -> None:
+    # hp>80 + low>=2 -> ALL-IN, which maps to a 2-entry Engage/Disengage A/B.
+    block = build_block(hp_pct=90.0, low_enemy_count=2)
+    assert block["action"] == "ALL-IN"
+    choices = block["choices"]
+    assert isinstance(choices, list)
+    assert len(choices) == 2
+    _expected_keys = {"key", "label", "expected_outcome", "confidence", "source_tag"}
+    for entry in choices:
+        assert isinstance(entry, dict)
+        assert _expected_keys.issubset(entry.keys())
+        assert entry["source_tag"] == "synth"
+    assert [e["key"] for e in choices] == ["A", "B"]
+
+
+def test_choices_reuse_pin_all_in() -> None:
+    # ROBUST reuse pin (no hardcoded prose): the block's choices are EXACTLY what
+    # the served synthesizer would produce from the block's own action +
+    # fight_rule - so the deterministic + served chip UIs stay shape-identical.
+    block = build_block(
+        hp_pct=90.0,
+        low_enemy_count=2,
+        cc_threat_line="Enemy CC threats: Ashe 3.0s stun (R)",
+    )
+    assert block["choices"] == to_jsonable(
+        synthesize_simple_choices(
+            {"action": block["action"], "fight_rule": block["fight_rule"]}
+        )
+    )
+
+
+def test_choices_reuse_pin_hold() -> None:
+    # Same reuse pin on a HOLD block (which synthesizes to []): still identical.
+    block = build_block(hp_pct=50.0)
+    assert block["choices"] == to_jsonable(
+        synthesize_simple_choices(
+            {"action": block["action"], "fight_rule": block["fight_rule"]}
+        )
+    )
