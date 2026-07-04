@@ -77,13 +77,23 @@ def test_home_companion_reflows_single_column(mock_server, pw_browser):
         assert _track_count(body_cols) == 1, (
             f"home-body not single-column at {COMPANION_W}px: {body_cols!r}"
         )
-        # .home-hero stacks to one column too.
+        # .home-hero keeps TWO columns at the companion width (round-2
+        # fold fix: the stat chips occupy the hero's empty right zone over
+        # the motif instead of extending the vertical stack).
         hero_cols = page.evaluate(
             "getComputedStyle(document.querySelector('.home-hero'))"
             ".gridTemplateColumns"
         )
-        assert _track_count(hero_cols) == 1, (
-            f"home-hero not single-column at {COMPANION_W}px: {hero_cols!r}"
+        assert _track_count(hero_cols) == 2, (
+            f"home-hero not text+chips two-column at {COMPANION_W}px: "
+            f"{hero_cols!r}"
+        )
+        chips_col = page.evaluate(
+            "getComputedStyle(document.querySelector('.home-hero-chips'))"
+            ".gridColumnStart"
+        )
+        assert chips_col == "2", (
+            f"hero chips not in the right-zone column: {chips_col!r}"
         )
         # The hero box contains its own chips row and ends above the Tonight's
         # Pick card (the min-height floor is dropped so flex-shrink cannot
@@ -177,6 +187,44 @@ def test_home_actions_three_tracks_companion(mock_server, pw_browser):
         page.close()
         ctx.close()
     assert not errors, f"JS errors [home actions companion]: {errors[:3]}"
+
+
+def test_home_full_page_fits_companion_fold(mock_server, pw_browser):
+    """Operator fold ruling (round 2): the WHOLE home page - both launcher
+    rows included - fits the 920x1280 companion viewport under the mock
+    fixture (hero chips relocated into the hero's right zone, Recent 3 +
+    Week 3 caps). The last launcher tile's bottom edge must sit inside the
+    viewport (footer band allowance ~28px) and the document must not
+    scroll vertically."""
+    ctx, page, errors = _open_home_at(
+        pw_browser, mock_server, COMPANION_W, COMPANION_H
+    )
+    try:
+        m = page.evaluate(
+            """() => {
+              const tiles = document.querySelectorAll(
+                '.home-actions .home-action-tile');
+              const last = tiles[tiles.length - 1].getBoundingClientRect();
+              return {
+                lastTileBottom: Math.round(last.bottom),
+                docH: document.documentElement.scrollHeight,
+                vh: document.documentElement.clientHeight,
+              };
+            }"""
+        )
+        assert m["lastTileBottom"] <= m["vh"] - 24, (
+            f"last launcher tile bottom {m['lastTileBottom']} spills past "
+            f"the {m['vh']}px fold (footer allowance 24px) - the second "
+            f"launcher row is hidden again"
+        )
+        assert m["docH"] <= m["vh"] + 2, (
+            f"home page scrolls vertically at {COMPANION_W}x{COMPANION_H}: "
+            f"docH {m['docH']} > viewport {m['vh']}"
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [home fold]: {errors[:3]}"
 
 
 def test_home_actions_six_tracks_and_below_body_desktop(mock_server,
