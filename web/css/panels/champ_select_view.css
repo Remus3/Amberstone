@@ -1580,6 +1580,18 @@
 #view-champ-select[data-cs-mode="arena"] .csv-card-pickban {
   display: none;
 }
+/* The PICK recommendations sub-panel (#csv-picks-target) is SR-draft-only.
+ * Item 200 relocated it from the P&B card into the Allies card, so the
+ * .csv-card-pickban gate above no longer covers it - and _csvRenderPickBan
+ * never runs in ARAM/Arena, so without this gate the static
+ * "waiting for champ-select data..." placeholder lingered forever in the
+ * allies column (2026-07-03 QA audit follow-up). Overrides the base
+ * .csv-card-allies-body #csv-picks-target { display: flex } (higher
+ * specificity: 2 ids + attr beats 1 id + 1 class). */
+#view-champ-select[data-cs-mode="aram"]  #csv-picks-target,
+#view-champ-select[data-cs-mode="arena"] #csv-picks-target {
+  display: none;
+}
 /* Reflow grid: with pickban hidden, allies takes the full left column
  * height. mypick + enemies still flank it.
  * R30 (2026-06-24, in-game review): the pre-R30 override used a SINGLE
