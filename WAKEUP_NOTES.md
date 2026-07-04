@@ -4,6 +4,29 @@
 
 ---
 
+# 2026-07-04 (RC2 E11 CLOSED - PGR reskin-complete + BUILD dead-code purge + batched sweep; LEDGER 773-774)
+
+Closed E11 (Hextech reskin across surfaces): OPEN -> DONE. RC2 banner 56/62 -> 57/62 (~92%).
+- PGR (`1771f532`): 6-mapper MAP found PGR was ALREADY reskin-complete (the s220 reframe built the 4
+  pgr_* sub-panels token-first: var(--hextech-token,#fallback), token wins at runtime; R47 already
+  5-phase-audited them 2026-06-30). Only bare hex = augment rarity tiers (KEPT sanctioned, lobby
+  .lv-rank-* precedent). Operator ruled a THIN hygiene slice: removed the pre-S3 BUILD-section dead
+  code (_setEnrichedBuild + _setDsPicks + 4 orphaned clear-stubs + ~77-line orphaned CSS; 4 ins/142
+  del, ZERO visual delta). Verifier PASS, 444 scoped tests, ui_recon both widths, CI green.
+- HISTORY: verified reskin-complete (R30 `0c0bdc16`; 0 dead JS unlike PGR, 100% tokenized).
+- BATCHED SWEEP (`b242aa28`, operator-chosen over per-surface method): 4 verification mappers confirmed
+  session/user-builds/build-insights/settings ALL Hextech-reskin-COMPLETE, 0 code delta. All 9
+  out-of-game surfaces done. QA docs: docs/qa/{PGR_QA,E11_SWEEP}_2026-07-04.md.
+- recon.py:40 stale PGR selector fixed LOCAL-ONLY (ops/runtime gitignored, scratch harness).
+
+NEXT: E11 is DONE. Remaining RC2 = E10 (ASCII git-history rewrite - destructive force-push, operator
+go/no-go OWED) + E2 (DS 3-game live-flip - needs live games) + Phase 9 drain (when those clear).
+DO NOT redo: every E11 out-of-game surface is Hextech-reskin-COMPLETE (do NOT re-audit for palette);
+the #1c1c2a shared .view-tab:hover shade is sanctioned (do NOT tokenize - it touches every view's tabs);
+the per-page UI-QA method is EXHAUSTED for E11 out-of-game (overlay HUD = separate polish lane, R72).
+
+---
+
 # 2026-07-04 (RC2 E11 LOBBY surface SHIPPED - operator UI-QA method; LEDGER 772, `1cf122e2`)
 
 Ran the operator per-page UI-QA method on the pregame LOBBY (E11 non-home surface). CI green.
@@ -56,30 +79,3 @@ Live-gated drain continuation is a PLAY session (ARAM seam flips are champ-gated
 Ezreal/Corki/Rakan/KSante/Rell/Cluster-A; ARENA still NEEDED for D2/D3/D7).
 DO NOT redo: header-row-2 (merged bfa78360); A6/A7 (the queue_id column is deliberately NOT
 added - queueId lives in raw_data); Tonight's Pick no-floor is an operator ruling.
-
----
-
-# 2026-07-04 (/live-gated-drain - ARAM Mayhem sitting; LEDGER 769)
-
-Drained docs/LIVE_GAME_GATED_SYNC.md while the operator played ARAM Mayhem (2 games: Kalista, Tristana).
-Opus 4.8 max orchestrated (Fable limit). Read-only live validation (5-finder + adversarial verify workflow,
-16 agents; NO DS restart/flip mid-game). Doc-only Tier-0, committed.
-- CLOSED: B44 Guinsoo on-hit re-rank sanity (verifier-CONFIRMED live /rank Kalista -> Guinsoo #6, sane).
-- ADVANCED (data-path/engine live, render halves OPEN): C1 build-chooser comp-aware, C11 cc_blended_ehp
-  (DS /ehp 5776->2888 vs a real CC comp), C12 antiheal correct-silence, C13 enemy_spells.
-- ACCRUAL: B20/R55 N=2 of 3 (marksman BotRK sane; R55 not a /rank body param -> DS-restart-gated).
-- DEFER: all C3-C10 seam flips - NO tabled champ rolled (Kalista/Tristana); Tristana DSP11 = no-op.
-- FINDINGS: screen_read stale=BY-DESIGN (operator-click-only sticky field, data/screen_read.json mtime
-  2026-05-18; NOT a bug, no fix); :8889 frame NOT down (needs http + X-RC-Token, not https).
-- OPS: RC restarted on operator request pid 18024->9280 (verified). Reverted the ad-hoc eyeball report
-  overwrite; deleted merged branch a4934fc1. Targeted doc edit (B44 CLOSED + 2026-07-04 result block); did
-  NOT run the full /live-gated-resync fan-out (small delta, doc fresh 3 days) - available next play-session.
-
-NEXT (headless open items): (1) FINISH header-row-2 removal - WIP on worktree-agent-a218a07c4022c7923
-(unmerged, KEPT, locked): complete tests, FULL tests/snapshot_panels/ gate, verify ?overlay=1 unaffected,
-merge, re-render 2-3 pages, push - do NOT merge blind. (2) Backfill chips (items[] pre-ingest +
-queue_id/mode_subtype) rebase onto HEAD. (3) Operator Q: Tonight's Pick >=2-game floor?
-DO NOT redo: HOME round-2 shipped (LEDGER 768); B44 closed; screen_read by-design. Live-gated drain
-continuation needs more play (ARAM seam flips champ-gated; ARENA still NEEDED for D2/D3/D7).
-
-_(older 2026-07-04 blocks pruned to docs/history_notes.md; keep last 3)_
