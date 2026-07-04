@@ -587,6 +587,29 @@ class RuneWriter:
                 return
 
     def _poll(self) -> None:
+        # Self-heal the shared LcuClient off a dead pre-restart port BEFORE
+        # reading champ select. Mirrors the frozen _auto_accept_tick pattern
+        # (lcu/lcu_client.py:224-226). WHY: after a mid-session League client
+        # restart the sibling spawn_task auto-accept coroutine was observed to
+        # stop ticking (2026-07-04, pid 6440); that tick is what normally
+        # refreshes/reconnects the ONE shared _lcu, so once it went silent the
+        # client stayed pinned to the dead port and get_champ_select() returned
+        # None on every poll -> no rune push. Doing it here makes the writer
+        # independent of the sibling loop. Both methods are mtime-guarded /
+        # idempotent (cheap to call every poll). getattr-guarded so lean test
+        # fakes without these methods stay green; fail-soft so a heal error
+        # never kills the poll.
+        try:
+            refresh = getattr(self._lcu, "_refresh_conn_if_changed", None)
+            if callable(refresh):
+                refresh()
+            if not getattr(self._lcu, "_port", None):
+                connect = getattr(self._lcu, "connect", None)
+                if callable(connect):
+                    connect()
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("RuneWriter: conn self-heal: %s", exc)
+
         session = self._lcu.get_champ_select()
 
         if not session or not isinstance(session, dict):
