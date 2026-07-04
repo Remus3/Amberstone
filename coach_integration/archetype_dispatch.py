@@ -206,8 +206,13 @@ def dispatch_for_coach(
     # rank_for_primary_archetype only when non-default, so a call that omits
     # them is byte-identical to pre-seam dispatch. R5 self-HP is derived
     # from caster_hp / caster_hp_max into caster_missing_hp_pct below.
+    # C4 FLIP (2026-07-04): prefer_kit_axis_by_win (DSP11) now defaults ON - the
+    # live build-chooser floats a champ's WIN-anchored kit-axis items by default
+    # (a byte-identical no-op for the 165 non-tabled champs; operator-validated
+    # live for Ezreal / Corki / Senna / Quinn, LEDGER 776). Pass False to opt
+    # out. Every OTHER seam stays default-OFF.
     exempt_offclass_by_win: bool = False,
-    prefer_kit_axis_by_win: bool = False,
+    prefer_kit_axis_by_win: bool = True,
     cost_ceiling: Optional[int] = None,
     prefer_survivability_by_win: bool = False,
     assume_magic_burst: bool = False,
