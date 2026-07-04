@@ -419,10 +419,10 @@ function renderLastMatch(data) {
 
   _setHero(m, enriched);
   _setStatsGrid(m, enriched);
-  // s219 v3: _setDsPicks + _setEnrichedBuild dropped - operator removed
-  // the BUILD section entirely. Final inventory + summoner spells now
-  // live in the Team Composition card (operator's own row); DS picks
-  // belong on champ-select + active-match, not post-game.
+  // s219 v3: the BUILD section was dropped - final inventory + summoner
+  // spells now live in the Team Composition card (operator's own row);
+  // DS picks belong on champ-select + active-match, not post-game. The
+  // dead _setEnrichedBuild + _setDsPicks renderers were removed (RC2 E11).
   _setTeamComp(enriched);
   // s220 PGR S3: aggregator-G-style operator 0-100 match-score block in the
   // hero. Runs after _setTeamComp so the roster + scores are computed;
@@ -652,37 +652,6 @@ function _setHero(m, enriched) {
       result.dataset.result = "";
     }
   }
-}
-
-function _setEnrichedBuild(enriched) {
-  const wrap = document.getElementById("lm-actual-build");
-  const inv = document.getElementById("lm-inventory");
-  const summ = document.getElementById("lm-summoners");
-  const pending = document.getElementById("lm-build-pending");
-  if (!wrap || !inv || !summ) return;
-  if (!enriched || !enriched.items) {
-    wrap.hidden = true;
-    if (pending) pending.hidden = false;
-    return;
-  }
-  wrap.hidden = false;
-  if (pending) pending.hidden = true;
-  // Inventory: 7 slots (item0-item6). item6 is the trinket. Empty (0) → faded slot.
-  inv.innerHTML = (enriched.items || []).map((iid, idx) => {
-    const isTrinket = idx === 6;
-    const cls = isTrinket ? "lm-item lm-item-trinket" : "lm-item";
-    if (!iid) {
-      return `<div class="${cls} lm-item-empty" aria-label="empty slot"></div>`;
-    }
-    return `<div class="${cls}" title="item ${iid}">${_itemImgTag(iid)}</div>`;
-  }).join("");
-  // Summoner spells: spell1Id + spell2Id (D + F)
-  const sp1 = enriched.spell1_id, sp2 = enriched.spell2_id;
-  summ.innerHTML = [sp1, sp2].map((sid) => {
-    const tag = _summonerImgTag(sid);
-    if (!tag) return `<div class="lm-summ lm-summ-empty" title="spell ${sid || ''}"></div>`;
-    return `<div class="lm-summ" title="spell ${sid}">${tag}</div>`;
-  }).join("");
 }
 
 function _setTeamComp(enriched) {
@@ -1132,31 +1101,6 @@ function _setStatsGrid(m, enriched) {
     ["lm-kp-bench", "lm-gold-share-bench", "lm-dmg-bench"]);
 }
 
-function _setDsPicks(picks) {
-  const root = document.getElementById("lm-ds-picks");
-  if (!root) return;
-  if (!picks || !picks.length) {
-    root.innerHTML = '<span class="lm-empty">no DS data captured for this match</span>';
-    return;
-  }
-  const html = picks.slice(0, 5).map((p) => {
-    const name = String(p.name || "?");
-    const id = String(p.id || "");
-    const delta = (typeof p.delta === "number") ? p.delta
-                 : (typeof p.delta_dps === "number") ? p.delta_dps : null;
-    const scorer = p.scorer || "dps";
-    const unit = _scorerUnit(scorer);
-    const deltaTxt = (delta != null) ? `+${Math.round(delta)}${unit}` : "";
-    const safeName = _escHtml(name);
-    return `<div class="lm-build-item" title="${safeName} (${scorer})">
-      ${id ? _itemImgTag(id, "", safeName) : ""}
-      <span class="lm-build-item-name">${safeName}</span>
-      <span class="lm-build-item-delta">${deltaTxt}</span>
-    </div>`;
-  }).join("");
-  root.innerHTML = html;
-}
-
 // s219 v5: Chart tab - team-aggregate ally vs enemy bars.
 // Derived from enriched.roster (per-player KDA/damage/gold/vision)
 // + enriched.teams (tower/dragon/baron/inhibitor kills). Each row is
@@ -1435,10 +1379,6 @@ function _setEmptyState(errMsg) {
     const c = document.getElementById(id);
     if (c) { c.hidden = true; c.dataset.kind = ""; c.innerHTML = ""; }
   });
-  const dsRoot = document.getElementById("lm-ds-picks");
-  if (dsRoot) dsRoot.innerHTML = '<span class="lm-empty">no match yet</span>';
-  const actual = document.getElementById("lm-actual-build");
-  if (actual) actual.hidden = true;
   const tcTable = document.getElementById("lm-tc-table");
   if (tcTable) { tcTable.hidden = true; tcTable.dataset.aug = ""; }
   const chartWrap = document.getElementById("lm-chart-wrap");
