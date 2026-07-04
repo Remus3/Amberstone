@@ -29,7 +29,6 @@ import { MM, renderMinimap, _tickSpellCooldowns, _tickObjectiveCountdowns, _upda
 import { renderAugmentReco } from './panels/augment_reco.js';
 import { handleChampSelect, renderChampSelectCoach, renderChampSelectView } from './panels/champ_select.js';
 import { renderTeamContext } from './panels/team_context.js';
-import { renderArchetypeNudge } from './panels/archetype_nudge_chip.js';
 import { renderScreenRead } from './panels/screen_read.js';
 import { renderActiveMatch, activeMatchEnabled } from './panels/active_match.js';
 import { renderAramBalance } from './panels/aram_balance.js';
@@ -58,8 +57,6 @@ import { wireLastMatchOnce, fetchAndRenderLastMatch } from './panels/last_match.
 // clobbers the live PGR.
 import { wireHistoricalPgrOnce, renderHistoricalPgr } from './panels/historical_pgr.js';
 import { renderCoachDecisions, renderRecentCoachCalls } from './panels/coach_decisions.js';
-// ADR-007 (s169) - heartbeat pill self-starts on import (own setInterval).
-import './panels/trigger_pill.js';
 import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRender, _diagWireOnce, _replayViewWireOnce, _replayViewRefresh, _replayLoadMatch } from './panels/dev.js';
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
@@ -198,7 +195,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   const modePill = el("mode-pill");
   const gameTime = el("game-time");
   const kdaEl = el("kda");
-  const hpEl = el("hp-bar");
   const hbEl = el("heartbeat");
   const frameCountEl = el("frame-count");
   el("ws-url").textContent = WS_URL;
@@ -450,13 +446,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   }
 
   // state, CADENCE imported from lib/state.js
-  // (spellCds and deadUntil are added to state at runtime below)
+  // (spellCds is added to state at runtime below)
 
   // ── Helpers ─────────────────────────────────────────────────────────
   // The visible connection state now lives in the heartbeat pill's color:
-  // green when connected, muted gray when offline/pending. The old
-  // "status-pill" element was removed so the row 2 right group reads
-  // cleanly as advisory + trend + heartbeat.
+  // green when connected, muted gray when offline/pending.
   function setStatus(label, cls) {
     if (statusPill) {
       statusPill.title = label;
@@ -1032,7 +1026,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const _isInGameView = (_activeView === "active-match");
     if (state.mode === "client" || !_isInGameView) {
       const inGamePills = [
-        "lvl-pill", "vis-pill", "ult-pill", "cs-pill", "gold-pill",
+        "lvl-pill", "vis-pill", "ult-pill", "cs-pill",
         // s162: hide WIN% + ZOI + game-time in pre-game per operator.
         "win-pill", "zone-pill", "game-time",
       ];
@@ -1086,7 +1080,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       }
     }
     const csPill = el("cs-pill"), csVal = el("cs-val");
-    const goldPill = el("gold-pill"), goldVal = el("gold-val");
     if (csPill && csVal) {
       if (typeof p.cs === "number" || typeof p.minions_killed === "number") {
         const cs = Math.round(p.cs ?? p.minions_killed);
@@ -1104,18 +1097,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           );
         }
       } else csPill.classList.add("hidden");
-    }
-    if (goldPill && goldVal) {
-      if (typeof p.gold === "number") {
-        const g = Math.round(p.gold);
-        goldVal.textContent = g >= 1000 ? (g/1000).toFixed(1) + "k" : g;
-        goldPill.classList.remove("hidden");
-        // CSS also - CSS/m (creep-score per minute) as tooltip.
-        if (typeof p.game_time_s === "number" && p.game_time_s > 60 && typeof p.cs === "number") {
-          const cspm = (p.cs / (p.game_time_s / 60)).toFixed(1);
-          goldPill.title = `gold · CS/m ${cspm}`;
-        }
-      } else goldPill.classList.add("hidden");
     }
     // Mode-sensitive visibility: KDA/CS are hidden in TFT (no individual
     // K/D/A + creep score in that mode).
@@ -1181,39 +1162,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       }
     }
 
-    const hpFill = el("hp-bar-fill");
-    // Mana / resource bar - hidden when champion has none (Tryndamere etc)
-    const mpGroup = el("mp-group"), mpBar = el("mp-bar"), mpFill = el("mp-bar-fill");
-    if (mpGroup && mpBar && mpFill) {
-      if (typeof p.mp_pct === "number" && p.mp_pct >= 0) {
-        const v = Math.round(p.mp_pct);
-        mpBar.textContent = `MP ${v}%`;
-        mpFill.style.width = v + "%";
-        mpGroup.classList.remove("hidden");
-      } else {
-        mpGroup.classList.add("hidden");
-      }
-    }
-    if (p.is_dead) {
-      // Dead state: HP pill renders just the countdown number in red; the
-      // "DEAD" word and "s" suffix are elided (the color + bar-empty state
-      // already communicates what's happening). Reads as "18" → "17" ...
-      const tLeft = Math.max(0, Math.round(p.respawn_in_s || 0));
-      hpEl.textContent = tLeft > 0 ? String(tLeft) : "UP";
-      hpEl.className = "hp hp-dead";
-      if (hpFill) { hpFill.style.width = "0%"; hpFill.className = "hp-fill hp-dead"; }
-      state.deadUntil = Date.now() + tLeft * 1000;
-    } else if (p.hp_pct != null) {
-      const v = Math.round(p.hp_pct);
-      hpEl.textContent = `HP ${v}%`;
-      const band = v <= 20 ? "critical" : v <= 40 ? "low" : v <= 75 ? "mid" : "high";
-      hpEl.className = "hp hp-" + band;
-      if (hpFill) {
-        hpFill.style.width = v + "%";
-        hpFill.className = "hp-fill hp-" + band;
-      }
-      state.deadUntil = 0;
-    }
+    // (2026-07-04) HP/MP bar + gold writers removed with header row 2 -
+    // the elements no longer exist; p.hp_pct / p.mp_pct / p.gold stay in
+    // the payload for the overlay HUD + active-match surfaces.
     // Round 45: live champion from state payload overrides the fallback.
     if (p.champion) setChampionPill(p.champion, "live");
     // Render user's own summoner spells from ally_spells[my-champion].
@@ -1522,9 +1473,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // ARAM/Arena-lobby + champ-select preflip onHealth computes "client"
     // while onState correctly carries the preflip mode_key. Both write
     // body[data-mode] on independent cadences → it flaps aram↔client and
-    // every mode-gated header pill (ds/augments/trigger/nudge), the mode
-    // pill, and the panel titles flicker on/off every cycle, on all
-    // views (shared header). /api/state.mode_key is the canonical
+    // every mode-gated surface (the mode pill + the panel titles;
+    // formerly also the row-2 header pills) flickered on/off every
+    // cycle, on all views (shared header). /api/state.mode_key is the canonical
     // resolver - defer the "client" downgrade to it whenever onState
     // recently asserted a preflip/in-game mode. The staleness window
     // still lets a genuine return-to-client through once /api/state
@@ -1539,16 +1490,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     setMode(tag);
     logLine("health", `pid=${p.pid} alive=${p.alive} mode=${tag} reload_ok=${p.last_reload_ok}`);
   }
-
-  // Respawn-timer tick: when state.deadUntil is in the future, update the
-  // HP badge once per second so the number actually counts down between
-  // state-envelope re-emits.
-  setInterval(() => {
-    if (!state.deadUntil) return;
-    const left = Math.max(0, Math.ceil((state.deadUntil - Date.now()) / 1000));
-    hpEl.textContent = left > 0 ? String(left) : "UP";
-    if (left === 0) state.deadUntil = 0;
-  }, 500);
 
   // ── Staleness sweep ─────────────────────────────────────────────────
   function applyStaleness() {
@@ -7087,7 +7028,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
           // history during champ-select via the LCU snapshot.
           handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
-          renderArchetypeNudge(st);
           renderScreenRead(st);
         }
       } catch (_) { /* ignore - WS may come back */ }
@@ -7140,7 +7080,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
                     mode: fileMode, payload: coachPayload });
           if (st.lcu) handleLcuEnvelope(st.lcu);
           renderTeamContext(st);
-          renderArchetypeNudge(st);
           renderScreenRead(st);
         } catch (_) { /* malformed event - skip */ }
       };
@@ -7185,7 +7124,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             state.latest.zoi = st.zoi || null;  // ZOI w-mmrect fill (item 567 slice 3)
             state.latest.callouts = st.callouts || null;
           }
-          if (st) { renderTeamContext(st); renderArchetypeNudge(st); renderScreenRead(st); }
+          if (st) { renderTeamContext(st); renderScreenRead(st); }
         }
       } catch (_) { /* silent */ }
       finally { inflight = false; }
@@ -7712,9 +7651,8 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
 
       // 4.4 - health rollup dot ("claude cost pill" - tooltip carries
       // Claude $/day + supervisor + vision health). 2026-04-29: moved
-      // from header.header-row-2 to the footer (right of mode-pill) per
-      // user - it was visually distracting in the header. Lookup goes
-      // both header AND footer for back-compat with any cached layout.
+      // from the header to the footer (right of mode-pill) per user -
+      // it was visually distracting in the header.
       try {
         let dot = document.querySelector(".health-dot");
         if (!dot) {
@@ -7731,8 +7669,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             footer.appendChild(dot);
           } else {
             // Last-ditch fallback to header so the JS doesn't no-op.
-            const row2 = header.querySelector(".header-row-2");
-            (row2 || header).appendChild(dot);
+            header.appendChild(dot);
           }
         }
         const refreshHealth = () => {

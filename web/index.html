@@ -21,11 +21,13 @@
      data-view to the correct value once the first envelope arrives. -->
 <body data-view="home">
   <header>
-    <!-- Row 1: identity + instantaneous game state (champion, level, ult,
-         zone, clock, KDA, CS, gold, status/heartbeat).
-         Row 2: bars + session-level info (HP/MP, win%, trend, augments).
-         Pills are always present with a "-" placeholder when no data; the
-         static-pill rule means layout never reshuffles across modes. -->
+    <!-- Single header row: identity + instantaneous game state (champion,
+         zone, clock, KDA, CS, vision, win%, status/heartbeat). Pills are
+         always present with a "-" placeholder when no data; the static-pill
+         rule means layout never reshuffles across modes. (The former row 2 -
+         HP/MP bars, gold, augments, DS pill, trigger pill, archetype-nudge
+         chip - was dropped 2026-07-04 per operator: dead chrome on the
+         companion surface; in-game glances live on the ?overlay=1 HUD.) -->
     <div class="header-row header-row-1">
       <!-- Title is the dropdown trigger for the view router (2026-04-26).
            Click to open the menu: Home / Lobby / Post Game Review / Session /
@@ -89,45 +91,6 @@
            .hb's margin-left:auto so the connection-state heartbeat sits
            at a fixed position regardless of which row-1 pills populate. -->
       <span id="heartbeat" class="hb hb-offline">♥ -</span>
-    </div>
-    <div class="header-row header-row-2">
-      <span class="hp-group" id="hp-group">
-        <span class="hp-bar-vis" id="hp-bar-vis" aria-hidden="true"><i id="hp-bar-fill"></i></span>
-        <span class="hp" id="hp-bar">HP -</span>
-      </span>
-      <span class="mp-group" id="mp-group">
-        <span class="mp-bar-vis" id="mp-bar-vis" aria-hidden="true"><i id="mp-bar-fill"></i></span>
-        <span class="mp" id="mp-bar">MP -</span>
-      </span>
-      <span class="gold-pill" id="gold-pill" title="gold"><b id="gold-val">-</b></span>
-      <!-- Mode pill moved to footer 2026-04-29. Row 2 keeps gold + HP/MP
-           groups (the latter hidden in client mode by an existing rule).
-           min-height: 27px keeps the row visually present in client mode
-           so the header doesn't shift when a game starts. -->
-      <span class="augments-pill" id="augments-pill">-</span>
-      <!-- DS pill (2026-05-09): glanceable top DS pick + delta-dps so the
-           operator can read the engine's call without scanning the
-           Item Build panel. Hidden in client/tft modes; populated from
-           coach.daemon_slayer_picks[0] by panels/ds_pill.js. -->
-      <span class="ds-pill" id="ds-pill" hidden title="">-</span>
-      <!-- Archetype-mismatch chip (s184.1, 2026-05-13): yellow warn-style
-           nudge that fires when the operator's CS archetype pick doesn't
-           match the dispatcher's top-15 for their first completed item.
-           Source is /api/state.archetype_nudge (core/archetype_mismatch.py).
-           Hidden in client/tft modes + when phase != "fired"; X-click POSTs
-           /api/archetype-nudge/dismiss (idempotent, restart-wipes). -->
-      <span class="archetype-nudge-chip" id="archetype-nudge-chip" hidden role="status">
-        <span class="archetype-nudge-chip-text" id="archetype-nudge-chip-text">⚠ Mismatch</span>
-        <button type="button" class="archetype-nudge-chip-x" id="archetype-nudge-chip-x" title="dismiss for this game">×</button>
-      </span>
-      <!-- Trigger pill (ADR-007 s169): glanceable decision_detector
-           heartbeat. ● + match-eval counter. Polled by
-           panels/trigger_pill.js from /api/decisions/heartbeat at ~2 Hz.
-           Green when last eval <5s, amber 5-15s, red/grey when stale.
-           Hidden in client/tft modes. -->
-      <span class="trigger-pill" id="trigger-pill" title="decision_detector heartbeat">● 0</span>
-      <!-- 30d trend-pill removed 2026-04-24, advisory + digest moved
-           to the footer 2026-04-25. -->
     </div>
   </header>
 
@@ -636,13 +599,12 @@
           </div>
           <div class="cs-build-list" id="ib-build-list"></div>
         </div>
-        <!-- Augments moved to header (#augments-pill) 2026-04-23 so info panels
-             don't reflow when arena augments appear/disappear. The owned
-             glance stays on the header pill; the data-driven *recommendation*
-             (CLAUDE #88) is foregrounded here as a self-contained toggled
-             block - it only renders during Arena/Mayhem (presence of
-             p.aug_reco is the gate) so it shows/hides as a whole, like
-             #ib-ds-block, without reflowing the static info panels. -->
+        <!-- The data-driven augment *recommendation* (CLAUDE #88) is
+             foregrounded here as a self-contained toggled block - it only
+             renders during Arena/Mayhem (presence of p.aug_reco is the
+             gate) so it shows/hides as a whole, like #ib-ds-block, without
+             reflowing the static info panels. (The header #augments-pill
+             owned-augments glance was dropped with header row 2 2026-07-04.) -->
         <div class="build-section ib-aug-reco-block" id="ib-aug-reco-block" hidden>
           <div class="build-label">
             <span>Augment pick · win-rate ranked</span>

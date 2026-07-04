@@ -1,9 +1,8 @@
 // Item Build panel - owned/recommended tiles, DS picks, in-game build switcher.
-import { el, safe, fmtList, isArenaPayload } from '../lib/helpers.js';
+import { el, safe, isArenaPayload } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
 import { ITEMS, ITEM_COSTS, _resolveItemId, _splitItemList, diffVariantItemIds } from '../lib/items_index.js';
 import { formatDsDelta } from '../lib/scorer_units.js';
-import { buildOrderPill } from './build_order.js';
 import { dedupFetch } from '../lib/dedup_fetch.js';
 
 const IB = {
@@ -12,13 +11,9 @@ const IB = {
   recommended: el("ib-recommended"),
   dsBlock: el("ib-ds-block"),
   dsPicks: el("ib-ds-picks"),
-  // Augments element lives in the header now (#augments-pill), not in the
-  // Item Build panel, to keep info-panel layout stable across modes.
-  augments: el("augments-pill"),
-  // DS pill (header) - peripheral-vision surface for the engine's top
-  // pick. Populated alongside the in-panel #ib-ds-picks chips so the
-  // operator can read the call without scanning down to Item Build.
-  dsPill: el("ds-pill"),
+  // (2026-07-04) The header #augments-pill + #ds-pill glance surfaces were
+  // removed with header row 2; #ib-aug-reco-block and #ib-ds-picks are the
+  // remaining in-panel surfaces for augments + DS picks.
   staleness: document.querySelector('.staleness[data-for="item-build"]'),
 };
 
@@ -238,47 +233,6 @@ function renderItemBuild(p) {
   renderItemTiles(IB.recommended, pathDedup, {
     withArrows: true, currentGold: p.gold, reasons: itemReasons,
   });
-  // Augments pill (header row 2) - always-visible per the static-pill
-  // rule. Content = comma-separated list of augments the player
-  // currently possesses (not advice). Mode-gated:
-  //   arena → always has augments (3 picks per game)
-  //   aram  → assumes Mayhem (user's default ARAM; internal mode code is
-  //           KIWI - see core/game_snapshot.py where KIWI → MODE_ARAM)
-  //   tft   → Set 17+ adds gods + augments; gated later when TFT returns
-  //   other → static "Mode does not support Augments" placeholder
-  if (IB.augments) {
-    const mode = state.mode;
-    const modeSupportsAugments = arena || mode === "aram";   // TODO: tft set 17+
-    let content = "";
-    if (modeSupportsAugments) {
-      const owned = fmtList(p.augments);
-      content = owned || "(none picked yet)";
-      content = content.replace(/\s*\n+\s*/g, ", ").trim();
-    } else {
-      content = "Mode does not have augments";
-    }
-    IB.augments.textContent = content;
-    IB.augments.classList.toggle("hidden", !modeSupportsAugments);
-    IB.augments.classList.toggle("no-support", !modeSupportsAugments);
-    // Data-driven ranking (CLAUDE #88) surfaces in the tooltip - visible
-    // pill text stays the owned-augments glance (static-pill / no-reflow
-    // rule). Confidence = blend weight (how much own-history is trusted;
-    // low early by design - external Mayhem prior dominates cold-start).
-    let augTitle = "";
-    if (modeSupportsAugments && Array.isArray(p.aug_reco) && p.aug_reco.length) {
-      const conf = Math.round((p.aug_reco_conf || 0) * 100);
-      const head = `Pick: ${p.aug_reco_top} (conf ${conf}%)`;
-      const meta = `${p.aug_reco_mode || "?"}`
-        + (p.aug_reco_stage ? ` · stage ${p.aug_reco_stage}` : "")
-        + ` · ${p.aug_reco_n_matches || 0} own games`;
-      const rows = p.aug_reco.slice(0, 4).map((r, i) => {
-        const ext = (r.ext_wr == null) ? "-" : `${Math.round(r.ext_wr * 100)}%`;
-        return `${i + 1}. ${r.name}  ${r.score}  own ${Math.round(r.own_wr * 100)}% / ext ${ext} (n${r.n_own})`;
-      });
-      augTitle = [head, meta, ...rows].join("\n");
-    }
-    IB.augments.title = modeSupportsAugments ? augTitle : content;
-  }
   // DS Engine picks - daemon_slayer_picks: [{id, name, delta_dps, gold, scorer?}, ...]
   // scorer (s182+) flips the unit suffix per archetype (dps/ehp/%/adps/burst/hps).
   const dsPicks = Array.isArray(p.daemon_slayer_picks) ? p.daemon_slayer_picks : [];
@@ -294,44 +248,6 @@ function renderItemBuild(p) {
       IB.dsBlock.hidden = false;
     } else {
       IB.dsBlock.hidden = true;
-    }
-  }
-  // Header DS pill. (C) plan §6b: when an in-game build ORDER is cached,
-  // show the next-2-in-order + a full-order rich tooltip; otherwise fall
-  // back to the flat top-pick render. build_order.js owns the order
-  // fetch + cache - this only consumes it. Mode-gated to in-game via CSS
-  // (hidden client/tft); JS hides when there's nothing to show. The
-  // "BO|" sig prefix guarantees a DOM rewrite when switching modes.
-  if (IB.dsPill) {
-    const bo = buildOrderPill(p);
-    if (bo) {
-      const sig = `BO|${bo.html}`;
-      if (IB.dsPill.dataset.dsSig !== sig) {
-        IB.dsPill.dataset.dsSig = sig;
-        IB.dsPill.innerHTML = bo.html;
-        IB.dsPill.dataset.ttHtml = bo.tt; // app tooltip reads data-tt-html first
-        IB.dsPill.removeAttribute("title");
-      }
-      IB.dsPill.hidden = false;
-    } else {
-      const top = dsPicks[0];
-      if (top && top.name) {
-        const delta = formatDsDelta(top);
-        const sig = `${top.name}|${delta}`;
-        if (IB.dsPill.dataset.dsSig !== sig) {
-          IB.dsPill.dataset.dsSig = sig;
-          const nm = _esc(top.name);
-          IB.dsPill.innerHTML = `${nm}<em>${delta}</em>`;
-          if (IB.dsPill.dataset.ttHtml) delete IB.dsPill.dataset.ttHtml;
-          // title is a DOM attribute set via property, not innerHTML, so the
-          // browser does not re-parse it as markup - raw name is safe here.
-          IB.dsPill.title = `${top.name} · ${delta}` + (top.gold ? ` · ${top.gold}g` : '');
-        }
-        IB.dsPill.hidden = false;
-      } else {
-        IB.dsPill.hidden = true;
-        IB.dsPill.dataset.dsSig = "";
-      }
     }
   }
   state.lastTouch.item_build = Date.now() / 1000;

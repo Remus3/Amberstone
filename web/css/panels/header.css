@@ -51,11 +51,10 @@ header {
  * needed (the body { zoom: 1.33 } scales everything uniformly inside
  * an absolute-positioned tree). */
 .header-row-1 { position: relative; }
-/* Row-2 pills are slightly tighter so the bars + session metrics read
- * cleanly without matching the 34px body-text height of row 1. */
-.header-row-2 {
-  min-height: 27px;
-}
+/* (2026-07-04) Header row 2 removed per operator - HP/MP bars, gold,
+ * augments, DS pill, trigger pill and archetype-nudge chip were dead
+ * chrome on the companion surface; in-game glances live on the
+ * ?overlay=1 HUD (which display:none's the whole header anyway). */
 /* Static-pill rule: every header pill keeps its slot even when its
  * underlying data is missing. `.hidden` toggles on individual pills are
  * no-ops visually - the pill retains its footprint with a "-" placeholder
@@ -66,10 +65,7 @@ header .vis-pill.hidden,
 header .ult-pill.hidden,
 header .zone-pill.hidden,
 header .cs-pill.hidden,
-header .gold-pill.hidden,
 header .kda.hidden,
-header .mp-group.hidden,
-header .hp-group.hidden,
 header .win-pill.hidden,
 header .trend-pill.hidden,
 header .advisory-badge.hidden,
@@ -77,27 +73,10 @@ header .self-spells.hidden {
   display: inline-flex !important;
   opacity: 0.55;   /* faded rather than gone - still readable at a glance */
 }
-/* Augments pill is a mode-indicator, not a data anchor - truly hide it
- * in modes that don't have augments so it doesn't add visual noise. */
-header .augments-pill.hidden { display: none !important; }
-/* (2026-04-25) HP / MP / gold / 30d-trend pills hidden in-game per
- * user - "wasn't looking at them while playing". Visible during
- * client mode (lobby + aftergame) where they help frame post-match
- * review. Wins over the static-pill !important rule above via higher
- * specificity (body[data-mode] + header + .pill = 0,3,2 vs the
- * static-pill 0,2,1) and matched !important. */
-body:not([data-mode="client"]) header .hp-group,
-body:not([data-mode="client"]) header .mp-group,
-body:not([data-mode="client"]) header .gold-pill,
-body:not([data-mode="client"]) header .trend-pill {
-  display: none !important;
-}
-/* (2026-04-26) Also hide HP / MP / WIN pills in CLIENT mode per user -
- * "client panel does not need the hp,mana, win% pills". Visual-only
- * hide; JS still populates #hp-bar / #mp-bar / #win-pct-val so any
- * future ALT-tab indicator or aftergame summary can read the values. */
-body[data-mode="client"] header .hp-group,
-body[data-mode="client"] header .mp-group,
+/* (2026-04-26) Hide the WIN pill in CLIENT mode per user - "client panel
+ * does not need the hp,mana, win% pills". Visual-only hide; JS still
+ * populates #win-pct-val so any future ALT-tab indicator or aftergame
+ * summary can read the value. */
 body[data-mode="client"] header .win-pill {
   display: none !important;
 }
@@ -115,7 +94,6 @@ body[data-mode="client"] header .zone-pill,
 body[data-mode="client"] header .game-time,
 body[data-mode="client"] header .cs-pill,
 body[data-mode="client"] header .vis-pill,
-body[data-mode="client"] header .gold-pill,
 body[data-mode="client"] header .lvl-pill,
 body[data-mode="client"] header .ult-pill {
   display: none !important;
@@ -133,28 +111,9 @@ body:not([data-view="active-match"]):not([data-view="last-match"]) header .zone-
 body:not([data-view="active-match"]):not([data-view="last-match"]) header .game-time,
 body:not([data-view="active-match"]):not([data-view="last-match"]) header .cs-pill,
 body:not([data-view="active-match"]):not([data-view="last-match"]) header .vis-pill,
-body:not([data-view="active-match"]):not([data-view="last-match"]) header .gold-pill,
 body:not([data-view="active-match"]):not([data-view="last-match"]) header .lvl-pill,
 body:not([data-view="active-match"]):not([data-view="last-match"]) header .ult-pill,
 body:not([data-view="active-match"]):not([data-view="last-match"]) header .win-pill {
-  display: none !important;
-}
-/* (2026-05-18) Same view-scoped principle as the s162 block above, but
- * active-match ONLY (no last-match exception). The four row-2 pills are
- * live-game surfaces - DS in-game pick glance, currently-owned augments,
- * decision_detector heartbeat, first-item archetype mismatch - that are
- * meaningless on lobby/home/champ-select/Post-Game-Review. They were
- * only ever mode-gated (client/tft) on the assumption mode=="client"
- * whenever not in a game; but mode is legitimately "aram"/"arena" during
- * the s150 lobby/CS pre-flip (primes the coach panels for the upcoming
- * game), so mode-gating alone leaked them onto every pre-game page once
- * the body[data-mode] flap was fixed. View-gate them like the s162
- * telemetry pills so they show on the active game page only. JS still
- * populates them so they're current the instant the game starts. */
-body:not([data-view="active-match"]) header .ds-pill,
-body:not([data-view="active-match"]) header .augments-pill,
-body:not([data-view="active-match"]) header .trigger-pill,
-body:not([data-view="active-match"]) header .archetype-nudge-chip {
   display: none !important;
 }
 /* (2026-04-26) Win% pill is in-game-only - outcome is known by the
@@ -210,17 +169,6 @@ footer .mode-pill {
   width: auto !important;
   font-weight: 700;
 }
-/* Gold pill scaled to match (moved 2026-04-29). Parent-selector for the
- * same reason - JS sets gold-pill .hidden / .stale classes that would
- * conflict with a fixed in-footer modifier. */
-footer .gold-pill {
-  font-size: 12px !important;
-  padding: 3px 10px !important;
-  width: auto !important;
-  letter-spacing: 0.04em;
-  font-weight: 700;
-}
-footer .gold-pill b { font-size: 12px; }
 /* DEV ⌃ + VOICE buttons + voice-picker reduced to in-footer scale per
  * user 2026-04-29 - they were standing taller than the surrounding
  * pills (advisory / digest / mode / gold). Parent-selector overrides
@@ -260,25 +208,21 @@ footer .prefs-chip:hover { color: var(--text); }
   flex: 0 0 auto;
   box-sizing: border-box;
 }
-/* Row 1 is 43px so the 38px champion portrait fits. Row 2 at 40px
- * comfortably holds 20px text + HP/MP bar without vertical cramp.
+/* Row 1 is 43px so the 38px champion portrait fits.
  * (Heights shrunk 2026-04-24 so heartbeat fits on 1180px iPad viewport.) */
 .header-row-1 > * { height: 43px; }
-.header-row-2 > * { height: 40px; }
 
 /* Font-uniformity rule: every header pill's primary readable text
- * renders at 20px - matching the HP pill so row 1 and row 2 share a
- * visual "size grammar". Internal <b> elements inherit. Sub-labels
- * (WIN, LVL placeholders) sit at 20px too for a cohesive look.
- * (Stepped down 22→20 2026-04-24 so row 2 fits 1180px iPad viewport.) */
+ * renders at 21px so the row shares one visual "size grammar".
+ * Internal <b> elements inherit. Sub-labels (WIN, LVL placeholders)
+ * sit at 21px too for a cohesive look. */
 .title, .mode-pill, .champion-pill, .champ-name,
 .vis-pill, .zone-pill, .game-time, .kda, .cs-pill,
-.hp, .mp, .gold-pill, .win-pill, .advisory-badge,
-.hb, .augments-pill {
+.win-pill, .advisory-badge, .hb {
   font-size: 21px;
 }
 .mode-pill, .title { font-size: 21px; letter-spacing: 0.04em; }
-.vis-pill b, .cs-pill b, .gold-pill b, .win-pill b { font-size: 21px; }
+.vis-pill b, .cs-pill b, .win-pill b { font-size: 21px; }
 
 /* Widths sized for 20px content + tight padding. The WIN label
  * ("WIN" after the number) stays a smaller visual sub-label so the
@@ -290,9 +234,6 @@ footer .prefs-chip:hover { color: var(--text); }
 .game-time      { width: 107px; text-align: center; white-space: nowrap; overflow: hidden; }
 .kda            { width: 125px; text-align: center; }
 .cs-pill        { width: 185px; }
-.hp-group       { width: 178px; }
-.mp-group       { width: 169px; }
-.gold-pill      { width: 89px;  }
 .win-pill       { width: 125px; }
 .advisory-badge { width: 71px;  }
 .hb             { width: 147px; text-align: center; white-space: nowrap; margin-left: auto; }
@@ -302,9 +243,6 @@ footer .prefs-chip:hover { color: var(--text); }
 .hb.hb-connected { color: var(--good); opacity: 1; }
 .hb.hb-offline   { color: var(--text-dim); opacity: 0.55; }
 
-/* HP pill DEAD state is styled by the existing `.hp.hp-dead` rule further
- * down (coral background + dark text + pill padding). This comment is
- * left as a signpost so future tuning doesn't overlap. */
 .title {
   font-size: 21px;
   letter-spacing: 0.04em;
@@ -642,7 +580,6 @@ body[data-view="last-match"] #cs-pill,
 body[data-view="last-match"] #vis-pill,
 body[data-view="last-match"] #lvl-pill,
 body[data-view="last-match"] #ult-pill,
-body[data-view="last-match"] #gold-pill,
 body[data-view="last-match"] #win-pill,
 body[data-view="last-match"] #zone-pill,
 body[data-view="last-match"] #game-time { display: none !important; }
@@ -3202,66 +3139,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 .kda-burst-kill   { background: var(--good-soft); color: var(--good); }
 .kda-burst-assist { background: var(--info-soft); color: var(--info); }
 .kda-burst-death  { background: var(--bad-soft);  color: var(--bad);  }
-.hp-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 3px 11px 3px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-}
-.hp-bar-vis {
-  display: inline-block;
-  width: 70px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--canvas);
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-}
-.hp-bar-vis i {
-  display: block;
-  height: 100%;
-  width: 100%;
-  background: var(--text-dim);
-  border-radius: inherit;
-  transition: width 350ms ease, background-color 250ms ease;
-}
-.hp-fill.hp-critical { background: var(--bad); }
-.hp-fill.hp-low      { background: var(--gold); }
-.hp-fill.hp-mid      { background: var(--good); }
-.hp-fill.hp-high     { background: var(--text-dim); }
-.hp-fill.hp-dead     { background: var(--bad-soft); }
-
-/* Mana / resource - thinner than HP, lavender */
-.mp-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 10px 2px 6px;
-  border-radius: 999px;
-  background: var(--surface);
-}
-.mp-group.hidden { display: none; }
-.mp-bar-vis {
-  display: inline-block;
-  width: 60px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--canvas);
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-}
-.mp-bar-vis i {
-  display: block;
-  height: 100%;
-  width: 100%;
-  background: var(--info);
-  border-radius: inherit;
-  transition: width 350ms ease;
-}
-.mp { font-size: 21px; color: var(--info); font-weight: 900; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
-.cs-pill, .gold-pill, .lvl-pill, .vis-pill {
+.cs-pill, .lvl-pill, .vis-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -3274,7 +3152,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
-.cs-pill.hidden, .gold-pill.hidden, .lvl-pill.hidden, .vis-pill.hidden { display: none; }
+.cs-pill.hidden, .lvl-pill.hidden, .vis-pill.hidden { display: none; }
 .cs-pill.cs-excellent b { color: var(--good); }
 .cs-pill.cs-good      b { color: var(--text); }
 .cs-pill.cs-fair      b { color: var(--gold); }
@@ -3294,7 +3172,7 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
 }
 .vis-pill b { color: var(--info); font-size: 21px; font-weight: 900; }
 .vis-pill .obj-ico { width: 18px; height: 18px; color: var(--info); flex-shrink: 0; }
-.cs-pill b, .gold-pill b { font-size: 21px; }
+.cs-pill b { font-size: 21px; }
 
 /* Ultimate readiness pill - "R · UP" in mint when ready, "R · 42s" in
  * gold when on cooldown. Pulses briefly on transition to ready. */
@@ -3459,35 +3337,9 @@ body[data-view="lobby"]          #lobby-overlay { display: none; }
   font-weight: 700;
   color: var(--text);
 }
-.cs-pill b, .gold-pill b { color: var(--text); font-size: 21px; font-weight: 900; }
-.gold-pill b { color: var(--gold); }
-.gold-pill .g-icon {
-  font-style: normal;
-  color: var(--gold);
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  opacity: 0.7;
-}
-.hp        { font-size: 21px; color: var(--text-dim);  font-weight: 900; letter-spacing: 0.02em; transition: color 180ms ease; }
-.hp.hp-critical { color: var(--bad); text-shadow: 0 0 12px rgba(240,126,139,0.4); animation: hpBlink 1.4s ease-in-out infinite; }
-.hp.hp-low      { color: var(--gold); }
-.hp.hp-mid      { color: var(--good); }
-.hp.hp-high     { color: var(--text-dim); }
-.hp.hp-dead     { color: var(--canvas); background: var(--bad); padding: 3px 11px; border-radius: 999px; letter-spacing: 0.12em; }
-@keyframes hpBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
-/* OQ4 reduced-motion (RC2 D2): stop the opacity blink; hold full-opacity
- * red with a stronger glow so critical HP still screams statically. */
-@media (prefers-reduced-motion: reduce) {
-  .hp.hp-critical {
-    animation: none !important;
-    opacity: 1;
-    text-shadow: 0 0 12px rgba(240,126,139,0.7);
-  }
-}
-
-/* win-pill starts the right-aligned group on header row 2 - auto-margin
- * here pushes it (and everything after: trend, advisory, status, heart)
- * against the right edge of the row. */
+.cs-pill b { color: var(--text); font-size: 21px; font-weight: 900; }
+/* win-pill base rule (the header .header-row-1 .win-pill override above
+ * zeroes the legacy right-pin margin now that it lives on row 1). */
 .win-pill {
   margin-left: auto;
   display: inline-flex;

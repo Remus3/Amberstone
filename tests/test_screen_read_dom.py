@@ -91,15 +91,17 @@ class MainJsWiringTests(unittest.TestCase):
             "import { renderScreenRead } from './panels/screen_read.js';",
             self.t)
 
-    def test_three_callsites_match_archetype_nudge(self) -> None:
+    def test_three_callsites_cover_state_consumers(self) -> None:
         # The feature must render at every /api/state consumption point
-        # the archetype-nudge chip uses (SSE / HTTP fallback / LCU
-        # poller) - otherwise the pill goes stale on whichever path is
-        # live. Assert >= the 3 known callsites.
+        # (SSE / HTTP fallback / LCU poller) - otherwise the pill goes
+        # stale on whichever path is live. Assert >= the 3 known
+        # callsites, parity vs renderTeamContext (the canonical sibling;
+        # the old renderArchetypeNudge comparator was retired with
+        # header row 2, 2026-07-04).
         n_sr = self.t.count("renderScreenRead(st)")
-        n_an = self.t.count("renderArchetypeNudge(st)")
+        n_tc = self.t.count("renderTeamContext(st)")
         self.assertGreaterEqual(n_sr, 3)
-        self.assertEqual(n_sr, n_an)
+        self.assertEqual(n_sr, n_tc)
 
 
 class RightNowCssTests(unittest.TestCase):

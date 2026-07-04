@@ -119,9 +119,9 @@ async function recordChoice(id, choice, li, actions) {
 async function pollCoachDecisions() {
   if (document.hidden) return;
   try {
-    // item 186: dedupFetch coalesces with trigger_pill's parallel
-    // /api/decisions poll (500ms cadence vs this module's 1.5s; the
-    // 100ms grace TTL covers the typical overlap window).
+    // item 186: dedupFetch coalesces concurrent identical /api/decisions
+    // polls within its grace TTL. (The parallel trigger_pill poller was
+    // retired with header row 2, 2026-07-04.)
     const r = await dedupFetch("/api/decisions");
     if (!r.ok) return;
     const d = await r.json();

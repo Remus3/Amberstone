@@ -20,7 +20,6 @@ export const state = {
   lastStateMode: "",   // last env.mode (mode_key) seen by onState
   lastStateModeTs: 0,  // ms timestamp of that observation
   spellCds: {},        // champion|spell → {remaining, anchor} cooldown state
-  deadUntil: 0,        // ms timestamp when respawn timer expires
 };
 
 // Staleness thresholds per panel (seconds from spec §5).

@@ -26,7 +26,7 @@ Invariants:
   B. per-site - each known selector is covered by a same-file reduce block
      containing `animation: none !important`;
   C. the reduce blocks are pure 7-bit ASCII;
-  D. the 10 default loops still exist (the sweep did NOT trim default
+  D. the 8 default loops still exist (the sweep did NOT trim default
      rendering - that would drop live signals; re-litigate via operator).
 """
 from __future__ import annotations
@@ -42,7 +42,9 @@ REDUCE_AT = "@media (prefers-reduced-motion: reduce)"
 # Every infinite-loop site and the selector its reduce block must cover.
 # (panels/primitives.css .rc-skel was in the original 10 but the whole
 # dormant rc-skel mechanism was removed 2026-07-01 - see
-# tests/test_rc_skel_removed.py - leaving 9 live-signal loops.)
+# tests/test_rc_skel_removed.py. The header row-2 removal 2026-07-04 then
+# retired the .hp.hp-critical HP-bar alarm with its element - leaving 8
+# live-signal loops.)
 SITES = {
     "panels/item_build.css": [
         ".item-tile.next-up .item-icon",
@@ -56,7 +58,6 @@ SITES = {
     "panels/header.css": [
         ".lq-find.is-searching",
         ".zone-pill.zone-enemy",
-        ".hp.hp-critical",
         ".advisory-badge.pulse",
     ],
 }
@@ -136,12 +137,14 @@ def test_reduce_blocks_are_ascii():
 # --------------------------------------------------------------------- D
 def test_default_loops_unchanged():
     """The sweep must NOT trim default rendering - the live-signal loops
-    survive for motion-tolerant users (operator can re-litigate). 9 since
-    the dormant rc-skel loop was removed with its whole mechanism."""
+    survive for motion-tolerant users (operator can re-litigate). 8 since
+    the dormant rc-skel loop (2026-07-01) and the .hp.hp-critical HP-bar
+    alarm (2026-07-04 header row-2 removal) were retired with their
+    mechanisms."""
     count = 0
     for rel in SITES:
         css = (CSS_DIR / rel).read_text(encoding="utf-8", errors="replace")
         count += len(_INFINITE.findall(css))
-    assert count == 9, (
-        f"expected the 9 classified default loops to survive, found {count}"
+    assert count == 8, (
+        f"expected the 8 classified default loops to survive, found {count}"
     )

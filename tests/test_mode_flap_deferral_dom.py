@@ -110,49 +110,32 @@ class OnHealthDeferralTests(unittest.TestCase):
 
 
 class RowTwoPillViewGateTests(unittest.TestCase):
-    """Second half of the same bug: with the flap fixed, body[data-mode]
-    is stably "aram"/"arena" during the s150 lobby/CS pre-flip (by
-    design - it primes the coach panels). The four in-game-only row-2
-    pills were only mode-gated (client/tft), so stable-preflip-mode
-    leaked them onto every pre-game page. They must be view-gated to
-    active-match ONLY (no last-match exception - operator: "only the
-    active game page"), mirroring the s162 telemetry-pill view-gate."""
+    """(2026-07-04) Header row 2 was removed on all pages - the four
+    in-game-only row-2 pills (ds / augments / trigger / archetype-nudge)
+    no longer exist, so the s150-era view-gate CSS block went with them.
+    Absence guards so a merge cannot resurrect the orphaned selectors
+    (daf09498 removed-surface precedent). The onState/onHealth deferral
+    above is UNCHANGED - the mode pill + panel titles still need it."""
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.text = _read(HEADER_CSS)
 
-    def test_view_gate_block_present_for_all_four_pills(self) -> None:
+    def test_view_gate_block_absent(self) -> None:
         for sel in (
             'body:not([data-view="active-match"]) header .ds-pill',
             'body:not([data-view="active-match"]) header .augments-pill',
             'body:not([data-view="active-match"]) header .trigger-pill',
             'body:not([data-view="active-match"]) header .archetype-nudge-chip',
         ):
-            self.assertIn(sel, self.text, f"missing view-gate selector: {sel}")
+            self.assertNotIn(sel, self.text,
+                             f"orphaned row-2 view-gate selector resurrected: {sel}")
 
-    def test_view_gate_is_active_match_only_not_last_match(self) -> None:
-        # The four-pill block must NOT carry the :not([data-view="last-
-        # match"]) exception the s162 telemetry block has - these are
-        # meaningless on Post Game Review.
-        idx = self.text.find(
-            'body:not([data-view="active-match"]) header .ds-pill'
-        )
-        self.assertGreater(idx, 0)
-        block = self.text[idx:idx + 400]
-        self.assertNotIn('.ds-pill,\nbody:not([data-view="last-match"])', block)
-        self.assertNotIn(
-            'body:not([data-view="active-match"]):not([data-view="last-match"]) header .ds-pill',
-            self.text,
-        )
-
-    def test_view_gate_hides_with_important(self) -> None:
-        idx = self.text.find(
-            'body:not([data-view="active-match"]) header .archetype-nudge-chip'
-        )
-        self.assertGreater(idx, 0)
-        decl = self.text[idx:idx + 220]
-        self.assertRegex(decl, r"display:\s*none\s*!important;")
+    def test_row_two_pill_classes_absent(self) -> None:
+        for cls_name in (".ds-pill", ".augments-pill", ".trigger-pill",
+                         ".archetype-nudge-chip"):
+            self.assertNotIn(cls_name, self.text,
+                             f"row-2 pill class {cls_name} resurrected in header.css")
 
 
 if __name__ == "__main__":
