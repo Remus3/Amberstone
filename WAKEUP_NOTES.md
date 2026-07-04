@@ -4,6 +4,33 @@
 
 ---
 
+# 2026-07-04 late (HOME round-2 SHIPPED - E11 home slice + mode tabs + no-reflow; LEDGER 768)
+
+Round-2 on HOME done end-to-end (operator interactive, 7 commits pushed `e7ab8e86..ae676f97`, CI green):
+Hextech cohesion (single focal Tonight's Pick hx-card, flat hero, stack reorder, Recent/Week compaction,
+hx-card-head primitive), SR/ARAM/ARENA MODE TABS (`/api/home/summary?mode=`; modes never taint each other),
+mode-aware L20 (ARAM strip hidden - rewind has 0 Mayhem rows - AUTO-reintroduces on a queue-2400 probe),
+RECENT 3 + WEEK 3 all tabs (pick pool = FULL week aggregate, decoupled from the display cap), whole page
+inside the 920x1280 fold (chips in the hero right zone), and the NO-REFLOW principle applied 3x (reserved
+L20 slot / tip "-" sentinels / one-line headline; hero pinned ~218px across all 4 tabs; NEW memory
+feedback_no_reflow_on_data_absence). 5-phase audit SHIP (2 MUST-FIX in-slice). Full suite 10248 + snap 317.
+Details: LEDGER 768 + docs/qa/HOME_QA_2026-07-04.md section E.
+
+CARRY-OVER (next session or the one after):
+- HEADER ROW 2 removal IN FLIGHT: operator ruled the shared header's 2nd row drops on ALL pages +
+  contents emptied (dead in-game pills; trigger_pill 2Hz poll dies with it). WIP-snapshot commit sits on
+  branch `worktree-agent-a218a07c4022c7923` (worktree still on disk, 17 files, NOT test-verified).
+  FINISH: complete test updates, run FULL tests/snapshot_panels/, verify overlay=1 unaffected, merge,
+  re-render 2-3 pages, push. Do NOT merge the WIP blind.
+- OPEN operator question: Tonight's Pick >=2-game floor? (pick now scouts every week champ incl 1-game).
+- Backfill chips still owed (items[] pre-ingest + queue_id/mode_subtype) - rebase onto ae676f97.
+- E11 remaining surfaces (non-home) still OPEN in RC2_PLAN.
+
+NEXT (operator-declared): live-gated items via ARAM Mayhem - /live-gated-drain against
+docs/LIVE_GAME_GATED_SYNC.md while the operator plays (they were QUEUING at wrap: mode aram, Matchmaking).
+
+---
+
 # 2026-07-04 (Operator HOME-page QA rework + companion 920x1280 + daf09498 cleanup; LEDGER 767)
 
 Ran the operator per-page UI-QA method on HOME (6-mapper MAP -> 4 AskUserQuestion advocate rounds ->
@@ -60,26 +87,3 @@ Both CI green. NEXT: run the SAME operator-QA method (6-mapper workflow -> AskUs
 rounds -> worktree slices + verifier + 5-phase audit) on the HOME page. capgap in-game eyeball stays
 B37 (default-ON). The gemini loop ORUN1-5 rows remain OPEN in ORCHESTRATION_PLAN for a future relaunch
 (controller/AHK are stopped; STOP file present).
-
----
-
-# 2026-07-03 (Hexcore galaxy refresh + live-gated 24h audit; docs-only, no engine)
-
-Operator asked: (1) headless-viable open items, (2) was LIVE_GAME_GATED_SYNC audited for the
-past 24h, (3) update HEXCORE_offline with new modules + enhance tooltips/visuals. Answers:
-headless-viable = arena shadow-report tool (R76 FUTURE) / DS cross-eval A-B-F2 / R2 re-baseline
-/ item-WPA capture / WP-F4a retire / RF2-hps inject_ids / doc-hygiene tails (LGGS :602).
-Audit: synced through R75, GAP at R76 -> appended G17 arena det-coach shadow accrual row,
-commit `56f2e0cd`. Hexcore (ultracode workflow, 3 recon + 2 build + 1 verifier agents):
-+1 RAW node m_arenadetcoach + 3 edges, +20 DUST files (236 -> 256, all 17 new non-test .py
-since 355cad01), stale ENGINE 1.154.0 tooltips -> 1.179.0, data mirrored to BOTH
-HEXCORE_offline.html + HEXCORE.html; 7 enhancements offline-only (cursor tooltip nodes+dust,
-CONNECTED neighbor list in detail panel, legend live counts, zoom-adaptive labels, cluster
-hover summary, dust glint, Esc-release + dblclick fly-in). Verifier: node --check 4/4, ASCII
-clean, RAW/DUST/EDG integrity, Playwright zero console errors on WebGL + ?webgl=0. Commit
-`54cccae5`, CI green. LEDGER 764.
-
-**Process notes:** (1) Pre-existing dangling edge `el_shell-overlay` in both hexcore files
-(endpoint `overlay` not a RAW id; runtime parser drops it silently) - left as-is, harmless;
-fix opportunistically on the next hexcore data pass. (2) 9 pre-existing RAW descriptions
-contain ';' and truncate at parse (rca0/4/5/7, g_* nodes) - also pre-existing, same deal.

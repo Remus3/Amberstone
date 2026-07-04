@@ -218,6 +218,29 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-03 (Hexcore galaxy refresh + live-gated 24h audit; docs-only, no engine)
+
+Operator asked: (1) headless-viable open items, (2) was LIVE_GAME_GATED_SYNC audited for the
+past 24h, (3) update HEXCORE_offline with new modules + enhance tooltips/visuals. Answers:
+headless-viable = arena shadow-report tool (R76 FUTURE) / DS cross-eval A-B-F2 / R2 re-baseline
+/ item-WPA capture / WP-F4a retire / RF2-hps inject_ids / doc-hygiene tails (LGGS :602).
+Audit: synced through R75, GAP at R76 -> appended G17 arena det-coach shadow accrual row,
+commit `56f2e0cd`. Hexcore (ultracode workflow, 3 recon + 2 build + 1 verifier agents):
++1 RAW node m_arenadetcoach + 3 edges, +20 DUST files (236 -> 256, all 17 new non-test .py
+since 355cad01), stale ENGINE 1.154.0 tooltips -> 1.179.0, data mirrored to BOTH
+HEXCORE_offline.html + HEXCORE.html; 7 enhancements offline-only (cursor tooltip nodes+dust,
+CONNECTED neighbor list in detail panel, legend live counts, zoom-adaptive labels, cluster
+hover summary, dust glint, Esc-release + dblclick fly-in). Verifier: node --check 4/4, ASCII
+clean, RAW/DUST/EDG integrity, Playwright zero console errors on WebGL + ?webgl=0. Commit
+`54cccae5`, CI green. LEDGER 764.
+
+**Process notes:** (1) Pre-existing dangling edge `el_shell-overlay` in both hexcore files
+(endpoint `overlay` not a RAW id; runtime parser drops it silently) - left as-is, harmless;
+fix opportunistically on the next hexcore data pass. (2) 9 pre-existing RAW descriptions
+contain ';' and truncate at parse (rca0/4/5/7, g_* nodes) - also pre-existing, same deal.
+
+---
+
 # 2026-07-03 (R76 LOOP - Haiku-to-ZERO Lane C: Arena deterministic coach block + shadow; Tier-1, no ENGINE bump)
 
 Loop cycle 5 (post-759 relaunch). Directive: Refill item 4 - advance a NO_LLM_PRECOMPUTE_PLAN lane. Lane state probe: A saturated-offline (v4 regen deferred R37), B full-roster, C shadow shipped ARAM-only, D overlay shipped. Explore agent grounded the frontier: ARENA had ZERO deterministic coach-text fields (arena_coach.py:747 Haiku ~12s tick) while ARAM has the full Stage 1+2 block. Shipped the Arena mirror, SHADOW-only, NO flip: core/arena_action_rule.py (encodes the operator's own prompt rules 137-168; ALL IN promotion dormant - no live opp-HP source) + core/arena_target_rule.py + core/arena_deterministic_coach.py (EXACT 7 artifact keys; augment_advice always-empty v1 degrade) + core/arena_coach_shadow.py (ROUND-AWARE dedup sig - ARAM's round-less sig would eat Arena rounds) -> data/arena_coach_shadow.jsonl (gitignored) + shadow_log_arena_coach/_live_arena_block wiring + one-call _state_builder hook (deep-equal no-served-mutation guard). ARAM `immediate` slice DROPPED on verify-the-premise (field RETIRED, aram_coach.py:326). Brawl skipped (s214 deadcode). 3 worktree slices (ABC `772743f1`, D `63ad1e1f`, E `ef679bec`), verifier CONFIRM each, merges `a687b9a5`/`5cc64ee2`/`17dd361f`. RC 10550/2skip/193sub exit 0 (+50 new); ruff clean; RC restarted pid 9964. LEDGER 763.
