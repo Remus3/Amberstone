@@ -225,6 +225,33 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-04 (/live-gated-drain - ARAM Mayhem sitting; LEDGER 769)
+
+Drained docs/LIVE_GAME_GATED_SYNC.md while the operator played ARAM Mayhem (2 games: Kalista, Tristana).
+Opus 4.8 max orchestrated (Fable limit). Read-only live validation (5-finder + adversarial verify workflow,
+16 agents; NO DS restart/flip mid-game). Doc-only Tier-0, committed.
+- CLOSED: B44 Guinsoo on-hit re-rank sanity (verifier-CONFIRMED live /rank Kalista -> Guinsoo #6, sane).
+- ADVANCED (data-path/engine live, render halves OPEN): C1 build-chooser comp-aware, C11 cc_blended_ehp
+  (DS /ehp 5776->2888 vs a real CC comp), C12 antiheal correct-silence, C13 enemy_spells.
+- ACCRUAL: B20/R55 N=2 of 3 (marksman BotRK sane; R55 not a /rank body param -> DS-restart-gated).
+- DEFER: all C3-C10 seam flips - NO tabled champ rolled (Kalista/Tristana); Tristana DSP11 = no-op.
+- FINDINGS: screen_read stale=BY-DESIGN (operator-click-only sticky field, data/screen_read.json mtime
+  2026-05-18; NOT a bug, no fix); :8889 frame NOT down (needs http + X-RC-Token, not https).
+- OPS: RC restarted on operator request pid 18024->9280 (verified). Reverted the ad-hoc eyeball report
+  overwrite; deleted merged branch a4934fc1. Targeted doc edit (B44 CLOSED + 2026-07-04 result block); did
+  NOT run the full /live-gated-resync fan-out (small delta, doc fresh 3 days) - available next play-session.
+
+NEXT (headless open items): (1) FINISH header-row-2 removal - WIP on worktree-agent-a218a07c4022c7923
+(unmerged, KEPT, locked): complete tests, FULL tests/snapshot_panels/ gate, verify ?overlay=1 unaffected,
+merge, re-render 2-3 pages, push - do NOT merge blind. (2) Backfill chips (items[] pre-ingest +
+queue_id/mode_subtype) rebase onto HEAD. (3) Operator Q: Tonight's Pick >=2-game floor?
+DO NOT redo: HOME round-2 shipped (LEDGER 768); B44 closed; screen_read by-design. Live-gated drain
+continuation needs more play (ARAM seam flips champ-gated; ARENA still NEEDED for D2/D3/D7).
+
+_(older 2026-07-04 blocks pruned to docs/history_notes.md; keep last 3)_
+
+---
+
 # 2026-07-04 (Operator HOME-page QA rework + companion 920x1280 + daf09498 cleanup; LEDGER 767)
 
 Ran the operator per-page UI-QA method on HOME (6-mapper MAP -> 4 AskUserQuestion advocate rounds ->
