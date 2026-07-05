@@ -1,0 +1,165 @@
+"""R80 - item-keyed BASIC-ATTACK damage reduction into the EHP scorer.
+
+Plated Steelcaps (SR 3047 / Arena 223047) "Plating" reduces all incoming
+basic-attack (auto-attack) damage by 10% (Meraki 16.13.1: "Reduces all
+incoming basic damage by 10%", excluding turret attacks). It was registered
+``defensive_only=True`` with a NOTE only - the DS ranker gave its signature
+anti-AA plating ZERO effective-HP credit, though the item's +armor already
+counted. R80 wires an item-keyed physical-denominator multiplier behind the
+default-OFF ``assume_item_aa_dr`` seam, mirroring R77's crit-DR lane: both are
+item-keyed physical-denominator reductions the champion percent-DR family
+(``mitigation_multipliers``, champion_id-keyed) structurally cannot see.
+
+Basic-attack damage is PHYSICAL, so only ``physical_ehp`` moves; magical /
+true are untouched. The basic-attack SHARE of incoming physical is a
+conservative operator-tunable midpoint (``_ASSUMED_INCOMING_AA_SHARE``) - the
+live feed we lack, same class as R77's crit-share and the flat-mitigation
+instance count. The live default-ON flip is live-gated
+(docs/LIVE_GAME_GATED_SYNC.md).
+
+DEFAULT-OFF is byte-identical: ``assume_item_aa_dr=False`` short-circuits to
+the identity multiplier before any item is inspected, and the new
+``ItemEffect.basic_attack_damage_reduction`` field defaults 0.0 so every other
+item passes through unchanged. The R77 crit-DR lane and this AA-DR lane never
+cross-credit (Randuin's AA-DR stays 0.0; Steelcaps crit-DR stays 0.0).
+"""
+from __future__ import annotations
+
+import unittest
+
+import agents.daemon_slayer as daemon_slayer
+from agents.daemon_slayer.data_loader import DataSnapshot
+from agents.daemon_slayer.ehp import (
+    _ASSUMED_INCOMING_AA_SHARE,
+    compute_ehp,
+    item_aa_dr_multiplier,
+)
+from agents.daemon_slayer.effects import ITEM_EFFECTS
+from agents.daemon_slayer._effects_types import ItemEffect
+
+SNAP = DataSnapshot.load()
+STEELCAPS = "3047"
+STEELCAPS_ARENA = "223047"
+RANDUINS = "3143"
+AA_DR = 0.10
+
+
+class ItemAaDrFieldTests(unittest.TestCase):
+    def test_itemeffect_default_field_zero(self):
+        # New field appended at the END with a 0.0 default -> every existing
+        # entry is byte-identical.
+        self.assertEqual(
+            ItemEffect(item_id="x", name="x").basic_attack_damage_reduction, 0.0
+        )
+
+    def test_steelcaps_sr_field_pinned(self):
+        self.assertAlmostEqual(
+            ITEM_EFFECTS[STEELCAPS].basic_attack_damage_reduction, AA_DR
+        )
+
+    def test_steelcaps_arena_mirror_field_pinned(self):
+        self.assertAlmostEqual(
+            ITEM_EFFECTS[STEELCAPS_ARENA].basic_attack_damage_reduction, AA_DR
+        )
+
+    def test_steelcaps_still_defensive_only(self):
+        # The DPS side stays a no-op; the field only adds the EHP-side credit.
+        self.assertTrue(ITEM_EFFECTS[STEELCAPS].defensive_only)
+
+    def test_lanes_do_not_cross_credit(self):
+        # R77 crit-DR and R80 AA-DR are DISTINCT item-keyed lanes - each item
+        # carries only its own reduction, so the two seams never double-dip.
+        self.assertEqual(ITEM_EFFECTS[STEELCAPS].crit_damage_reduction, 0.0)
+        self.assertEqual(ITEM_EFFECTS[RANDUINS].basic_attack_damage_reduction, 0.0)
+
+
+class ItemAaDrMultiplierTests(unittest.TestCase):
+    def _expected(self) -> float:
+        return 1.0 - AA_DR * _ASSUMED_INCOMING_AA_SHARE
+
+    def test_midpoint_bounds(self):
+        # Conservative + bounded: a share in (0, 1] never over-reaches (a 10%
+        # AA-DR cannot reduce more than 10% of physical).
+        self.assertGreater(_ASSUMED_INCOMING_AA_SHARE, 0.0)
+        self.assertLessEqual(_ASSUMED_INCOMING_AA_SHARE, 1.0)
+
+    def test_off_is_identity(self):
+        self.assertEqual(item_aa_dr_multiplier((STEELCAPS,), False), 1.0)
+
+    def test_on_steelcaps_exact(self):
+        self.assertAlmostEqual(
+            item_aa_dr_multiplier((STEELCAPS,), True), self._expected()
+        )
+        self.assertLess(item_aa_dr_multiplier((STEELCAPS,), True), 1.0)
+
+    def test_arena_mirror_same_multiplier(self):
+        self.assertAlmostEqual(
+            item_aa_dr_multiplier((STEELCAPS_ARENA,), True), self._expected()
+        )
+
+    def test_on_without_steelcaps_is_identity(self):
+        self.assertEqual(item_aa_dr_multiplier((RANDUINS, "1001"), True), 1.0)
+
+    def test_empty_build_identity(self):
+        self.assertEqual(item_aa_dr_multiplier((), True), 1.0)
+
+
+class ComputeEhpAaDrTests(unittest.TestCase):
+    CHAMP = "Ashe"
+    LEVEL = 11
+
+    def _off(self, items):
+        return compute_ehp(
+            SNAP, self.CHAMP, self.LEVEL, item_ids=items,
+            assume_item_aa_dr=False,
+        )
+
+    def _on(self, items):
+        return compute_ehp(
+            SNAP, self.CHAMP, self.LEVEL, item_ids=items,
+            assume_item_aa_dr=True,
+        )
+
+    def test_default_off_byte_identical(self):
+        base = compute_ehp(SNAP, self.CHAMP, self.LEVEL, item_ids=(STEELCAPS,))
+        off = self._off((STEELCAPS,))
+        self.assertEqual(base.physical_ehp, off.physical_ehp)
+        self.assertEqual(base.magical_ehp, off.magical_ehp)
+        self.assertEqual(base.true_ehp, off.true_ehp)
+
+    def test_on_raises_physical_ehp_only(self):
+        off = self._off((STEELCAPS,))
+        on = self._on((STEELCAPS,))
+        self.assertGreater(on.physical_ehp, off.physical_ehp)
+        self.assertAlmostEqual(on.magical_ehp, off.magical_ehp)
+        self.assertAlmostEqual(on.true_ehp, off.true_ehp)
+
+    def test_on_physical_ehp_exact_ratio(self):
+        off = self._off((STEELCAPS,))
+        on = self._on((STEELCAPS,))
+        mult = 1.0 - AA_DR * _ASSUMED_INCOMING_AA_SHARE
+        # denominator gains a x``mult`` factor -> physical_ehp scales by 1/mult.
+        self.assertAlmostEqual(
+            on.physical_ehp / off.physical_ehp, 1.0 / mult, places=4
+        )
+
+    def test_build_without_steelcaps_on_is_byte_identical(self):
+        off = self._off((RANDUINS,))
+        on = self._on((RANDUINS,))
+        self.assertEqual(on.physical_ehp, off.physical_ehp)
+
+    def test_no_item_build_on_byte_identical(self):
+        off = compute_ehp(SNAP, self.CHAMP, self.LEVEL, assume_item_aa_dr=False)
+        on = compute_ehp(SNAP, self.CHAMP, self.LEVEL, assume_item_aa_dr=True)
+        self.assertEqual(on.physical_ehp, off.physical_ehp)
+        self.assertEqual(on.magical_ehp, off.magical_ehp)
+        self.assertEqual(on.true_ehp, off.true_ehp)
+
+
+class EngineVersionTests(unittest.TestCase):
+    def test_engine_version_bumped(self):
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.181.0")
+
+
+if __name__ == "__main__":
+    unittest.main()

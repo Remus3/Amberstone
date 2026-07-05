@@ -1331,6 +1331,32 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.181.0 (R80, 2026-07-05 - NEW default-OFF seam assume_item_aa_dr + Plated
+Steelcaps 3047/223047 basic-attack-damage-reduction pin). A fresh adversarial
+Meraki(16.13.1)-vs-registry refute pass found that Plated Steelcaps "Plating"
+("Reduces all incoming basic damage by 10%", excluding turrets) was registered
+defensive_only=True with a NOTE only - the EHP scorer gave its signature
+anti-auto-attack plating ZERO effective-HP credit, even though the item's
++armor already counted. This is the sibling lane R77 foreshadowed: item-keyed
+incoming damage reduction the champion percent-DR family (mitigation_
+multipliers, champion_id-keyed) structurally cannot see, and distinct from
+R77's crit-only crit_damage_reduction and the OFFENSIVE resist-shred fields.
+R80 adds one END-appended ItemEffect field basic_attack_damage_reduction (0.10
+on SR 3047 + Arena 223047), an item-keyed helper ehp.item_aa_dr_multiplier, and
+a physical-only denominator fold in compute_ehp behind the default-OFF
+assume_item_aa_dr seam. Basic-attack damage is PHYSICAL, so only physical_ehp
+moves (magical/true untouched); mit_phys stays the pure champion percent-DR
+value (the item factor is a separate multiplier applied alongside R77's crit-DR
+factor, never cross-crediting). The basic-attack SHARE of incoming physical is
+a conservative operator-tunable midpoint _ASSUMED_INCOMING_AA_SHARE = 0.5 (the
+live feed we lack) -> a 10% AA-DR at 0.5 share = x0.95 physical denominator
+(+5.3% physical EHP) when armed. DEFAULT-OFF is byte-identical (the helper
+short-circuits to 1.0 before inspecting any item; the field defaults 0.0).
+Offline characterization tests test_item_aa_damage_reduction_r80.py (17) + the
+DSV9 end-append guard co-updated; the live default-ON flip is live-gated
+(docs/LIVE_GAME_GATED_SYNC.md). Sources: Riot Data Dragon / CommunityDragon /
+Meraki Analytics item data 16.13.1.
+
 1.180.0 (R77, 2026-07-05 - NEW default-OFF seam assume_item_crit_dr +
 Randuin's Omen 3143/223143 crit-damage-reduction pin). A fresh adversarial
 Meraki(16.13.1)-vs-registry refute pass found that Randuin's Omen Resilience
