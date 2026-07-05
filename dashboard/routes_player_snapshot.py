@@ -131,6 +131,10 @@ def _build_snapshot_model(gpi: dict, mode: str, hours: int) -> dict:
 
 
 def _serve_player_snapshot(h) -> None:
+    # Parsed before the try so the except fallback labels the degraded model
+    # with the actually-requested mode, not a hardcoded "sr".
+    mode = "sr"
+    hours = 24
     try:
         qs = parse_qs(urlparse(h.path).query or "")
         mode = (qs.get("mode") or ["sr"])[0].strip().lower()
@@ -150,7 +154,7 @@ def _serve_player_snapshot(h) -> None:
         # Never leak raw error text; return a friendly empty model.
         empty = {"header": {}, "dial": {"value": 0, "band": "poor", "label": "-"},
                  "minis": [], "bars": [], "tags": [],
-                 "profile_ref": {"mode": "sr", "window": None, "match_id": None},
+                 "profile_ref": {"mode": mode, "window": f"{hours}h", "match_id": None},
                  "confidence": "insufficient", "sample_n": 0, "empty": True}
         try:
             h._send(200, json.dumps(empty).encode("utf-8"), "application/json")
