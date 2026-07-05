@@ -128,19 +128,22 @@ def test_overlay_shell_is_widget_field(mock_server, pw_browser):
         assert page.locator("#am-call-body div").count() > 0, "CALL pane empty"
 
         # All-panels-accessible doctrine (operator 2026-06-28): the panel-set
-        # auto-hide is retired, so the formerly reveal-only build / CDS ledger /
-        # fight-model panes all SHOW by default (per-widget .ovx-hidden is now the
-        # only gate). See test_all_panels_visible_by_default for the focused check.
+        # auto-hide is retired, so the formerly reveal-only build / fight-model
+        # panes all SHOW by default (per-widget .ovx-hidden is now the only gate).
+        # See test_all_panels_visible_by_default for the focused check.
         for sel in (
             "#view-active-match .am-pane-build",
-            "#view-active-match .am-pane-cd",
             "#am-pane-ovds",
         ):
             assert _display(page, sel) != "none", (
                 f"{sel} must be visible by default (all panels accessible)"
             )
-        # The map pane never paints on the HUD.
+        # The map pane never paints on the HUD; the CD ledger (w-threat) was
+        # removed 2026-07-05 (Live Client exposes no cooldowns) so it hides too.
         assert _display(page, ".am-pane-map") == "none", "map pane should hide"
+        assert _display(page, "#view-active-match .am-pane-cd") == "none", (
+            "the removed CD ledger (w-threat) must not paint"
+        )
 
         # Header / footer / every other view is display:none.
         for sel in _HIDDEN_SELECTORS:
@@ -400,16 +403,16 @@ def test_overlay_combat_mode_declutter(mock_server, pw_browser):
 
 
 def test_overlay_new_cue_widgets_are_movable_field_mounts(mock_server, pw_browser):
-    """RC Overlay Doctrine w-trinket + w-spike: the trinket-ready + spike-crossed
-    cues are registered as movable, position-fixed .ovx-widget field mounts at
-    their eye-line default (w-trinket by the avatar 920,540; w-spike bottom-left by
-    the champion stats 360,840). They sit as direct am-grid children (NOT inside a
-    transformed .ovx-widget pane) so position:fixed is viewport-relative, not
-    trapped + clipped by a pane's transform containing block."""
+    """RC Overlay Doctrine w-spike: the spike-crossed cue is registered as a
+    movable, position-fixed .ovx-widget field mount at its eye-line default
+    (w-spike bottom-left by the champion stats 360,840). It sits as a direct
+    am-grid child (NOT inside a transformed .ovx-widget pane) so position:fixed is
+    viewport-relative, not trapped + clipped by a pane's transform containing block.
+    (w-trinket / Ward Cue was removed 2026-07-05: Live Client has no cooldowns, so
+    the ward-ready cue could not turn off.)"""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         for sel, wid, left in (
-            ("#am-ward-cue", "w-trinket", "340px"),
             ("#am-spike-cue", "w-spike", "360px"),
         ):
             assert page.eval_on_selector(
@@ -906,22 +909,25 @@ def _open_overlay_set(pw_browser, mock_server, panelset):
 def test_all_panels_visible_by_default(mock_server, pw_browser):
     """All-panels-accessible doctrine (operator 2026-06-28): the coach/build/threat
     quick-swap auto-hide is RETIRED. A plain ?overlay=1 shows EVERY panel - including
-    the formerly reveal-only build re-rank, CDS ledger, and fight-model panes - plus
-    the primary call. Per-widget .ovx-hidden (the launcher toggle / right-click hide)
-    is now the only visibility gate; no panel-set keys off body[data-panelset]."""
+    the formerly reveal-only build re-rank and fight-model panes - plus the primary
+    call. Per-widget .ovx-hidden (the launcher toggle / right-click hide) is now the
+    only visibility gate; no panel-set keys off body[data-panelset]."""
     ctx, page, errors = _open_overlay(pw_browser, mock_server)
     try:
         for sel in (
             "#view-active-match .am-pane-call",
             "#view-active-match .am-pane-build",
-            "#view-active-match .am-pane-cd",
             "#am-pane-ovds",
         ):
             assert _display(page, sel) != "none", (
                 f"{sel} must be visible by default (all panels accessible)"
             )
-        # The map pane still never paints on the HUD (not part of the field).
+        # The map pane still never paints on the HUD (not part of the field);
+        # the CD ledger (w-threat) was removed 2026-07-05 so it hides too.
         assert _display(page, ".am-pane-map") == "none", "map pane should stay hidden"
+        assert _display(page, "#view-active-match .am-pane-cd") == "none", (
+            "the removed CD ledger (w-threat) must not paint"
+        )
         SCREENSHOTS.mkdir(exist_ok=True)
         page.screenshot(path=str(SCREENSHOTS / "overlay_sr_all_panels.png"))
     finally:
