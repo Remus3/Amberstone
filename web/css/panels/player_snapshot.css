@@ -1,0 +1,305 @@
+/* Player-snapshot card. Compact Hextech-styled self-snapshot: header (name /
+ * rank / level / streak or result), a rating dial (SVG arc gauge, band-tinted
+ * good/ok/poor), 3 mini-stats (KDA / Win-Rate / K-P), 4 composite bars
+ * (INCOME / COMBAT / OBJECTIVES / VISION), 3 behavioral tag chips
+ * (strong/neutral/weak), and a View Profile button that expands the GPI
+ * radar (later task). Mounts on Home (24h window) and PGR (this match) via
+ * per-context adapters over the SAME presentational renderPlayerSnapshot()
+ * (spec docs/superpowers/specs/2026-07-04-player-snapshot-card-design.md).
+ *
+ * Uses ONLY the semantic tokens from web/css/tokens.css (signal colors, the
+ * v2.1 4-tier font scale, 8px spacing, panel/interaction tokens) - no new
+ * hardcoded hex, mirroring player_gpi.css.
+ *
+ * ASCII only (no em / en dashes, no smart quotes).
+ */
+
+.player-snapshot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: var(--space-8);
+  padding: var(--panel-padding);
+  background: rgba(20, 22, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--signal-gold);
+  border-radius: var(--panel-radius-sm);
+}
+
+/* ----- Empty / reserved-height state -------------------------------------
+ * Same min-height as the populated card so mounting/unmounting data never
+ * reflows the surrounding layout (feedback_no_reflow_on_data_absence). */
+.player-snapshot.ps-is-empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.ps-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--space-8);
+}
+
+.ps-sentinel {
+  font-size: var(--fs-display);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--signal-dim);
+}
+
+.ps-empty-msg {
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.55);
+  text-align: center;
+}
+
+/* ----- Header: name / rank / level, streak or match result --------------- */
+.ps-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.ps-header-id {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ps-name {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-rank {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--signal-gold);
+  white-space: nowrap;
+}
+
+.ps-level {
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.ps-header-flags {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+.ps-result {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.ps-streak {
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- Rating dial: SVG arc gauge, band-tinted ---------------------------
+ * Stroke widths are SVG user-units (120-unit viewBox), not CSS px - the
+ * same documented exception as player_gpi.css's .gpi-ring/.gpi-spoke. */
+.ps-dial {
+  align-self: center;
+  position: relative;
+  width: 6em;
+  height: 6em;
+}
+
+.ps-dial-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: rotate(0deg);
+}
+
+.ps-dial-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+
+.ps-dial-fill {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+.ps-dial-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  pointer-events: none;
+}
+
+.ps-dial-value {
+  font-size: var(--fs-xl);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-dial-label {
+  margin-top: var(--space-1);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ----- Mini-stats row: KDA / Win-Rate / K-P -------------------------------
+ * .ps-inferred dims the label slightly so a provenance-tagged (K-P) value
+ * reads as derived, not a direct Riot-truth stat (metric-provenance rule). */
+.ps-minis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.ps-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--panel-radius-sm);
+}
+
+.ps-mini-value {
+  font-size: var(--fs-stat);
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ps-mini-key {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ps-mini.ps-inferred .ps-mini-key {
+  color: var(--signal-info);
+}
+
+/* ----- Composite bars: INCOME / COMBAT / OBJECTIVES / VISION ------------- */
+.ps-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ps-bar {
+  display: grid;
+  grid-template-columns: 6.5em 1fr 2.5em;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ps-bar-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.65);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-bar.ps-inferred .ps-bar-label {
+  color: var(--signal-info);
+}
+
+.ps-bar-track {
+  position: relative;
+  height: var(--space-2);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--panel-radius-sm);
+  overflow: hidden;
+}
+
+.ps-bar-fill {
+  height: 100%;
+  background: var(--hextech-fill);
+  border-radius: var(--panel-radius-sm);
+}
+
+.ps-bar-value {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ----- Behavioral tag chips: exactly 3, [strong, neutral, weak] ---------- */
+.ps-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ps-tag {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid;
+  border-radius: var(--panel-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ----- View Profile expand button ----------------------------------------
+ * --hit-min tall so the click target clears the interaction floor. */
+.ps-viewprofile {
+  align-self: stretch;
+  min-height: var(--hit-min);
+  padding: 0 var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--signal-gold);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hextech-border);
+  border-radius: var(--panel-radius-sm);
+  cursor: pointer;
+}
+
+.ps-viewprofile:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.ps-viewprofile:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
