@@ -54,6 +54,7 @@
 @import './panels/player_gpi.css';
 @import './panels/player_snapshot.css';
 @import './panels/duration_winrate.css';
+@import './panels/snowball_elasticity.css';
 @import './panels/champ_benchmarks.css';
 @import './panels/perf_curve.css';
 @import './panels/op_score.css';

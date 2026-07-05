@@ -34,6 +34,7 @@ import { renderDurationWinrate } from './duration_winrate.js';
 import { renderChampBenchmarks } from './champ_benchmarks.js';
 import { renderPerfCurve } from './perf_curve.js';
 import { renderOpScore } from './op_score.js';
+import { renderSnowballElasticity } from './snowball_elasticity.js';
 
 const ITEM_MOUNT_ID = 'bi-table-mount';
 const SKILL_MOUNT_ID = 'bi-skill-table-mount';
@@ -586,6 +587,7 @@ function _ensureFetched(tab) {
 // flows through the shared table engine.
 function _renderActive() {
   if (_ST.active === 'duration') { renderDurationWinrate(); return; }
+  if (_ST.active === 'snowball') { renderSnowballElasticity(); return; }
   if (_ST.active === 'bench') { renderChampBenchmarks(); return; }
   if (_ST.active === 'flow') { renderPerfCurve(); return; }
   if (_ST.active === 'opscore') { renderOpScore(); return; }

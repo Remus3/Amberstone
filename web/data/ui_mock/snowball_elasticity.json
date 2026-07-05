@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "mode": "sr",
+  "min_bucket_n": 5,
+  "checkpoints": [
+    {
+      "key": "10min",
+      "target_ms": 600000,
+      "n": 630,
+      "buckets": [
+        {"label": "behind_big", "lo": null, "hi": -2500, "wins": 10, "games": 87, "winrate": 11.5, "winrate_smoothed": 12.4},
+        {"label": "behind", "lo": -2500, "hi": -800, "wins": 55, "games": 133, "winrate": 41.4, "winrate_smoothed": 41.5},
+        {"label": "even", "lo": -800, "hi": 800, "wins": 90, "games": 178, "winrate": 50.6, "winrate_smoothed": 50.6},
+        {"label": "ahead", "lo": 800, "hi": 2500, "wins": 104, "games": 148, "winrate": 70.3, "winrate_smoothed": 70.0},
+        {"label": "ahead_big", "lo": 2500, "hi": null, "wins": 74, "games": 84, "winrate": 88.1, "winrate_smoothed": 87.2}
+      ]
+    },
+    {
+      "key": "20min",
+      "target_ms": 1200000,
+      "n": 539,
+      "buckets": [
+        {"label": "behind_big", "lo": null, "hi": -2500, "wins": 9, "games": 82, "winrate": 11.0, "winrate_smoothed": 11.9},
+        {"label": "behind", "lo": -2500, "hi": -800, "wins": 49, "games": 118, "winrate": 41.5, "winrate_smoothed": 41.7},
+        {"label": "even", "lo": -800, "hi": 800, "wins": 75, "games": 118, "winrate": 63.6, "winrate_smoothed": 63.3},
+        {"label": "ahead", "lo": 800, "hi": 2500, "wins": 96, "games": 143, "winrate": 67.1, "winrate_smoothed": 66.9},
+        {"label": "ahead_big", "lo": 2500, "hi": null, "wins": 68, "games": 78, "winrate": 87.2, "winrate_smoothed": 86.2}
+      ]
+    }
+  ],
+  "cached": false,
+  "elapsed_ms": 2
+}
