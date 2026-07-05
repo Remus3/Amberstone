@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-07-05 (R80 - item-keyed basic-attack-DR EHP seam, the R77 sibling lane; LEDGER 791)
+
+Gemini-loop executor cycle 9 (DIRECTOR REFILL rotation 2). Directive: premise-check ORUN3 + ORUN4, then rotate to the REFILL DS-sweep. Commit `bd397d36` (feat) + docs-sync commit. ENGINE 1.180.0 -> 1.181.0, DS :8893 bounced, Share synced.
+- PREMISE: ORUN3 (Aggregator B per-stat PGR strip) + ORUN4 (Aggregator D game-flow strip) are BOTH CLEAN duplicates (verified vs LIVE code) -> flipped DONE-CLEAN. ORUN3 == OQ12 (CS/min lm-rank-cspm last_match.js:520 + KP%/gold-share/dmg-share sub-lines last_match.js:1048 + champ_benchmarks.js); ORUN4 == R16 perf_curve.js + ORUN2 899b5f24 snowball-elasticity.
+- BUILD (R80): fresh Meraki-vs-registry refute -> Plated Steelcaps 3047/223047 Plating 10% basic-attack DR was defensive_only NOTE-only (ZERO EHP credit). NEW ItemEffect.basic_attack_damage_reduction (0.10) + ehp.item_aa_dr_multiplier + physical-only compute_ehp fold behind default-OFF assume_item_aa_dr; mirror of R77 crit-DR, never cross-credits; byte-identical OFF; +5.3% phys EHP armed at the 0.5 midpoint.
+GATE: TDD 17 + DSV9 end-append guard co-fix; DS 8032 pass; verifier CONFIRM 7/7; 123 ENGINE_VERSION pins bumped. CO-FIX (R77 a8302f01 pattern): the ENGINE bump re-fired 6 HZ-B stamp guards + 1 DAEMON_SLAYER doc-drift -> re-stamped HZ-B tables byte-exact 1.181.0 (173 roster preserved; the item-388 --static 10-champ seed footgun caught + reverted per the R78 warning) + the doc banner; RC 293 affected-class re-verify -> 10746 / 0 fail. Share --check green 410 files.
+DO NOT redo: ORUN3 + ORUN4 are CLEAN duplicates (do NOT re-pitch a Aggregator B per-stat strip or a Aggregator D game-flow strip); Steelcaps AA-DR is SHIPPED (do NOT re-pick 3047/223047); Frozen Heart 3110 enemy-AS aura is the next OPEN sibling candidate; the live default-ON flip -> LIVE_GATED B46 (do-not-flip-blind, the 0.5 AA-share midpoint calibration is the accrual tail).
+
+---
+
 # 2026-07-05 (ORUN2 slice 2 - snowball-elasticity Build Insights UI panel; LEDGER 788)
 
 Gemini-loop executor cycle. The deferred UI half of ORUN2 (backend was 9cd38c13). Commit `899b5f24`, pushed. ENGINE-IMPACT NONE (frontend; ADR-008 asset-hash reload, no RC restart / no Share / no DS).
@@ -22,15 +32,3 @@ Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LE
 - S3 lcu_loop_resilience x5: ROOT CAUSE = snapshot_panels Playwright fixtures leave a ProactorEventLoop running on the main thread -> a later bare asyncio.run() raises "cannot be called from a running event loop". Fix = _run_coro daemon-thread pattern (already used by test_p2w1_core_f.py / test_p2w2_ds_h.py). Test-only.
 GATE: full RC suite 10701 passed / 2 skipped / 192 subtests, exit 0. Orchestrator: slice 3 worktree subagent (verifier-gated) + slices 1+2 inline.
 DO NOT redo: the 3 clusters are FIXED; `.lobby-status.searching` is gone by design (E11 purge - do not re-add to SITES); the lcu asyncio-suite immunity is _run_coro (do not revert to bare asyncio.run).
-
----
-
-# 2026-07-05 (operator handoff PHASE 1 - DS/haiku-zero ORUN waves; LEDGER 784-785)
-
-Operator away, Fable-5 competitor-research handoff: run at MAX effort as orchestrator, PHASE 1 = DS lift waves then PHASE 2 = gemini-headless-upgrade. GROUND TRUTH FIRST corrected the premise: the DS ENGINE is genuinely exhausted this patch (ENGINE 1.179.0 / 7997 tests / registries "provably saturated"; the R66 adversarial residual list is EXHAUSTED per R70, do NOT re-pick #1-#6, #7 shield-lerp is next-patch-ingest gated). So "next DS batches" = the director's real OPEN queue (docs/ORCHESTRATION_PLAN.md ORUN1-5), which is what the Gemini director itself reads. Verified-premise + shipped the 2 headless-safe, non-engine ORUN units as separate verifier-gated commits:
-- ORUN1 (`677f5237`): NEW tools/arena_shadow_report.py, the Arena sibling of hz_shadow_report.py (deterministic-vs-Haiku agreement + flip-readiness gate over data/arena_coach_shadow.jsonl; dead-state de-bias; fail-soft awaiting_accrual). Tier-1 tooling, 16 tests, verifier CONFIRM.
-- ORUN5 (`6da64adc`): assume_carry_share_grade default-OFF grade fold on post_game_rubric.py (OR-alias of the pre-existing carry_efficiency fold; byte-identical OFF proven across 7 fixtures). NO ENGINE bump (heuristic rubric). 15 tests, verifier CONFIRM. G18 gated-sync row updated to the shipped state.
-Correct tiers applied per R5: both Tier-1 (NO ENGINE bump / NO Share mirror / NO :8893 restart - the handoff's generic DS-wave ritual does NOT apply to non-engine units). ORCHESTRATION_PLAN ORUN1/ORUN5 marked DONE + Findings entries appended so the Phase-2 loop does not re-pick shipped work.
-
-NEXT: PHASE 2 = invoke the gemini-headless-upgrade skill (turns this session into the ephemeral executor for the Gemini-directed loop; it continues the ORUN queue top-down - ORUN2 snowball-elasticity / ORUN3 Aggregator B per-stat / ORUN4 Aggregator D game-flow strip are the next OPEN rows + the REFILL PROTOCOL when it drains).
-DO NOT redo: the DS engine is exhausted this patch (do NOT fabricate engine lift waves - registries saturated, R66 list exhausted); ORUN1 + ORUN5 are SHIPPED (do NOT re-pick); a DS-sweep refill MUST come from a FRESH adversarial Meraki-vs-registry refute pass, never a re-pick.
