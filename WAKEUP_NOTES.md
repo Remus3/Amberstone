@@ -4,6 +4,21 @@
 
 ---
 
+# 2026-07-05 (card MERGED to main via PR #6 + overlay-polish live-recon; LEDGER 783)
+
+Merged the player-snapshot card + shipped 3 overlay-polish slices while the operator live-recon'd the real Electron overlay (ground truth the agent cannot see headless).
+- MERGE: PR #6 (`feat/player-snapshot-card` -> main), CI green (check 4m39s + benchmarks + CodSpeed), rebase-merged. `main`@`43e9f4c1`, tree byte-identical to old head `f1d46773`. Rebase REWROTE SHAs (`b1a0c3b8`->`cc332a67`, `f1d46773`->`43e9f4c1`); mapping logged in ROADMAP so prose refs still resolve. Branch pruned.
+- Overlay recon technique: `recon.py` renders `ui_mock` fixtures (NOT live) - wrote a throwaway legion-rc-origin live-capture vs live `/api/state` instead. The objective gauges do NOT show in fixtures (no game_time) - only live.
+- SLICE 1 `5d5a33f6`: DS `#ovds` item names were nowrap+ellipsis-clipped to ~5 chars; now wrap + 16px + title attr (overlay slice 131 pass).
+- SLICE 2 `717b1958`: removed 3 broken/unneeded HUD widgets - ward cue (`w-trinket`), threat/CDs ledger (`w-threat`, overlay-only de-register; dashboard cd_ledger kept), SUMMS dial (always UP). Kept DRAKE/BARON/ELDER + ZOI minimap (operator: ZOI DOES show in-game). node 28/28, pytest 162.
+- SLICE 3 `45b51bff`: DRAKE dial suppressed once Elder is up/taken (redundant pit); node 13/13.
+- DS unique-dedup note (LDR/Terminus share a unique) -> chip task_9ea11b0d (its own Tier-2 session).
+
+NEXT (operator LIVE-GATES next session in a live game; Pengu stub is ON + displaying, so Pengu-sourced items qualify): round-1 missing-in-game cluster (`rn-lead`/`rn-choices`/`rn-callouts`/`w-spike` render headless but dark in the real overlay) + bugs (static META row, dead knob +/-, dead item radial) + stats-panel clarify; round-2 the DRAG/MOVE system (finicky anchors far from the widget, drag drops when the cursor leaves, can't move all elements anywhere, border-drag moves the whole screen - `overlay_layout.js` pointer-capture) + context-menu/item tooltip (cropped icon + far) + PR enemy-spell timer + gauges 1-line layout (horizontal/vertical). Root-cause is fine; each fix needs the operator's live Ctrl+Alt+A verify before it lands.
+DO NOT redo: the card is MERGED (do not re-merge); the 3 removed widgets are gone (all broken - no Live Client CD data - do not re-add); the ZOI minimap SHOWS in-game (do not hide); overlay recon must use a LIVE capture (`recon.py` = ui_mock, hides the gauges); the remaining overlay findings are LIVE-GATED.
+
+---
+
 # 2026-07-05 (player-snapshot card SHIPPED - GPI-24h Home + role-rubric PGR; subagent-driven TDD; LEDGER 782)
 
 Built the player-snapshot card end-to-end on branch `feat/player-snapshot-card` (PUSHED, head `b1a0c3b8` + LEDGER `68f37197`; NOT merged) via superpowers subagent-driven-development: 10 tasks, fresh implementer + spec/quality reviewer per task, a verifier gate + an Opus whole-branch review. Spec (2026-07-04) -> plan (`docs/superpowers/plans/2026-07-04-player-snapshot-card.md`) -> build.
@@ -29,35 +44,3 @@ Continuation of the FULL DRAIN (LEDGER 779). Built the 2 caught-bug headless fix
 
 NEXT (live re-validate, operator-paced): restart League mid-session -> champ-select to confirm A1/A2 auto-push (definitive layer-1+2 test); 1 Arena game for D6 seeding + D3 boot-anvil / D9 Goredrinker rolls; opportunistic ARAM Mayhem C11/C12/C3/C15/C16; F3 PGR auto-show recheck. Accrual G1 0.4626 / G2 +3.6% flip_ready=False - HOLD. Unplayed seams B2-B19/B31-B40 via the headless harness.
 DO NOT redo: the loops ALREADY guard Exception (layer-2 is the BaseException split, not a new loop); D6 is in RC-LCUAgent not phase_watcher (dead); the silent-death root cause is UNCONFIRMED (if the re-validate shows the loop still dies -> liveness-watchdog / to_thread-timeout). Duplicate chips task_c122811d + task_660c82b7 could NOT be dismissed (operator already started them) - close those sessions manually.
-
----
-
-# 2026-07-04 (/live-gated-drain FULL DRAIN - 4 queues one sitting; LEDGER 779; layer-1 fix 90b350c8)
-
-Ran the full live-gated drain (ARAM Vayne + practice-SR Zilean + real-SR Ezreal draft-q400 + Arena
-Kai'Sa) in one sitting, Opus 4.8 max orchestrated, live-watch cadence (ScheduleWakeup) between games.
-Evidence: scratch drain_evidence_2026-07-04.md.
-- CLOSED (live evidence): B23 objective gauges, B21 objective callouts (Cloud Drake), E1 ACTIVE knob +
-  E2 panel cycle (signal files 18:01 + operator attest), B28 frames, B5 DSP2 exempt_offclass eyeball
-  SANE (Ezreal floats Trinity Force), F1 PGR + @N (gold@10 3167v3791 / cs@10 64v88), F2 REPLAY1
-  freshness, F4 PGR render, D7 Arena Match-V5 ingest (Kai'Sa - Arena IS eligible), C1 ARAM 3-variant
-  render half.
-- 2 LIVE BUGS CAUGHT: (1) A1/A2 champ-select auto-push REGRESSION - the in-process spawn_task loops
-  (auto-accept + RuneWriter) silently die after a mid-session League restart -> shared LcuClient pinned
-  to the dead port -> no push (operator set spells manually; READ path survived = separate RC-LCUAgent
-  process). LAYER-1 self-heal MERGED 90b350c8 + pushed (RuneWriter._poll re-heals; verifier 62/0;
-  non-frozen); LAYER-2 (frozen lcu_client.py resilient loops, operator-approved) = follow-up task; A1/A2
-  stay OPEN pending re-validate. (2) D6 Arena augment/anvil shadow not seeding - nothing bumps
-  data/force_scan.json on the Cherry augment event so the free-running 20s vision scan misses the
-  transient panel (OCR+writers ARE built); D2 shares it; fix task; gated on a live Arena game.
-- Accrual: B20/R55 3/3; rails G1 laning 0.4626 / build 0.6484 (HOLD), G2 +3.6% flip_ready=False @665 (HOLD).
-
-NEXT: A1/A2 layer-2 (FROZEN lcu_client.py resilient spawn_task loops) + a League-restart re-validate;
-D6 force_scan-on-Cherry-augment-event fix; THEN the full /live-gated-resync structural rebuild (run once
-these closes are in LEDGER - it verifies done-claims against repo state, can't validate live closes).
-Still gated: D2/D3/D9 Arena rolls (D3 no boot anvil / D9 no Goredrinker in 8 rounds), F3 PGR auto-show
-recheck (didn't fire - companion on HOME post-game), ARAM C11/C12/C15/C16 scenario rolls, unplayed-champ
-seams B2-B19/B31-B40 (harness sweep available headless). DO NOT redo: layer-1 is on main (flip point =
-RuneWriter._poll, do NOT rebuild); D6 is a force_scan-TRIGGER gap not an OCR-feed gap; two operator-
-started fix chips (task_c122811d + task_660c82b7) overlap the two refined chips (task_3e9433f2 +
-task_ebbdf78b) - reconcile. RC NOT restarted this session (layer-1 activation + re-validate owed).
