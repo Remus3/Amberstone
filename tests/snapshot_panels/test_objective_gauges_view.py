@@ -10,7 +10,7 @@ not just the mock path (the ui_mock fixture's liveclient carries no
 game_time_s, so the widget stays honestly hidden there).
 
 Covered:
-  1. in-game SR: 4 dials render with the exact schedule ETAs + doctrine
+  1. in-game SR: 3 dials render with the exact schedule ETAs + doctrine
      hues + the ovx-widget field registration.
   2. idle (empty envelope): the widget hides entirely - no placeholder.
   3. non-SR (aram): hidden - ARAM has no epic objectives
@@ -22,19 +22,17 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 SCRATCH = ROOT / "_scratch"
 
 # Expected doctrine hues (operator OQ3/OQ16 pick, docs/OVERLAY_DOCTRINE.md
-# sec 5): DRAKE #E8A33D, BARON #C8AA6E, ELDER #E84057, SUMMS #0AC8B9.
+# sec 5): DRAKE #E8A33D, BARON #C8AA6E, ELDER #E84057.
 _HUES = {
     "drake": "rgb(232, 163, 61)",
     "baron": "rgb(200, 170, 110)",
     "elder": "rgb(232, 64, 87)",
-    "summs": "rgb(10, 200, 185)",
 }
 
 # A live SR envelope at game clock 6:00 (360s):
 #   - drake: elemental (Fire) taken at 5:00 -> respawn 300+300=600 -> 4:00.
 #   - baron: no kill yet -> static first spawn 1200 -> 14:00.
 #   - elder: nominal late marker 2100 -> 29:00.
-#   - summs: one tracked Flash at 90s remaining (window 300) -> 1:30.
 _SR_STATE = {
     "mode_key": "sr",
     "coach": {"action": "Push mid", "immediate": "Group up", "kda": "1/0/0"},
@@ -87,7 +85,7 @@ def _css(page, selector, prop):
 
 
 def test_gauges_render_live_sr_state(mock_server, pw_browser):
-    """A live SR envelope paints all 4 dials with the exact schedule ETAs,
+    """A live SR envelope paints all 3 dials with the exact schedule ETAs,
     per-dial doctrine hues on the ring arc, and the movable ovx-widget
     field registration (w-objgauges)."""
     ctx, page, errors = _open_live(pw_browser, mock_server, dict(_SR_STATE))
@@ -95,12 +93,12 @@ def test_gauges_render_live_sr_state(mock_server, pw_browser):
         page.wait_for_function(
             "() => { const m = document.getElementById('am-obj-gauges');"
             " return m && !m.hidden &&"
-            " m.querySelectorAll('.og-dial').length === 4; }",
+            " m.querySelectorAll('.og-dial').length === 3; }",
             timeout=10_000,
         )
         # Exact ETA centers (canonical schedule + game_time arithmetic).
         for key, eta in (("drake", "4:00"), ("baron", "14:00"),
-                         ("elder", "29:00"), ("summs", "1:30")):
+                         ("elder", "29:00")):
             txt = page.eval_on_selector(
                 f'#am-obj-gauges .og-dial[data-obj="{key}"] .og-eta',
                 "el => el.textContent")
