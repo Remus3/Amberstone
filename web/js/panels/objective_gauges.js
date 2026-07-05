@@ -172,11 +172,15 @@ function computeGauges(mode, lc) {
   const events = Array.isArray(block.objective_events)
     ? block.objective_events
     : [];
-  return [
-    _drakeDial(events, gt),
-    _baronDial(events, gt),
-    _elderDial(events, gt),
-  ];
+  const elder = _elderDial(events, gt);
+  // Operator 2026-07-05: once Elder is up (available) or has been taken, the
+  // pit is Elder - the elemental drake dial is redundant, so suppress it to "-".
+  const elderTaken = _lastKillT(
+    events, (ev) => ev.name === "dragon" && !_isElementalDrake(ev)) !== null;
+  const drake = (elder.state === "up" || elderTaken)
+    ? _dial("drake", "none")
+    : _drakeDial(events, gt);
+  return [drake, _baronDial(events, gt), elder];
 }
 
 // M:SS, floored, never negative (objective_chips.js fmtEta idiom).
@@ -255,6 +259,7 @@ export const __test = {
   OG_SCHED,
   OG_RING_C,
   computeGauges,
+  _drakeDial,
   fmtEta,
   dialHtml,
   gaugesHtml,

@@ -13,7 +13,7 @@ import assert from "node:assert";
 
 import { __test } from "./objective_gauges.js";
 
-const { OG_SCHED, computeGauges, fmtEta, dialHtml, gaugesSig } = __test;
+const { OG_SCHED, computeGauges, _drakeDial, fmtEta, dialHtml, gaugesSig } = __test;
 
 function byKey(dials, key) {
   return dials.find((d) => d.key === key);
@@ -66,14 +66,15 @@ test("drake: kill-anchored respawn = last elemental kill + 300", () => {
 });
 
 test("drake: an Elder kill is NOT an elemental respawn anchor", () => {
-  // Mirror of _last_kill_t(elemental_only=True) - the Elder take must not
-  // move the elemental drake timer.
+  // Mirror of _last_kill_t(elemental_only=True) - the Elder take must not move
+  // the elemental drake timer. Tested on _drakeDial directly: computeGauges now
+  // suppresses the whole drake dial once Elder is taken (the redundant-pit rule),
+  // which would otherwise mask this internal property.
   const ev = [
     { name: "dragon", killer_team: "ally", down_at_s: 300, dragon_type: "Fire" },
     { name: "dragon", killer_team: "enemy", down_at_s: 900, dragon_type: "Elder" },
   ];
-  const dials = computeGauges("sr", { game_time_s: 910, objective_events: ev }, null);
-  assert.strictEqual(byKey(dials, "drake").state, "up"); // 300+300=600 < 910
+  assert.strictEqual(_drakeDial(ev, 910).state, "up"); // 300+300=600 < 910
 });
 
 test("drake: soul secured (4 elemental) suppresses the dial to '-'", () => {
@@ -115,6 +116,22 @@ test("elder: nominal one-shot; post-kill has no canonical timer -> '-'", () => {
                 dragon_type: "Elder" }];
   const after = computeGauges("sr", { game_time_s: 2300, objective_events: ev }, null);
   assert.strictEqual(byKey(after, "elder").state, "none");
+});
+
+test("drake dial suppressed to '-' once Elder is up or taken (redundant pit)", () => {
+  // Elder available (nominal 2100 marker reached) -> the drake pit is Elder, so
+  // the elemental dial is redundant (operator 2026-07-05).
+  const elderUp = computeGauges("sr", { game_time_s: 2100, objective_events: [] });
+  assert.strictEqual(byKey(elderUp, "elder").state, "up");
+  assert.strictEqual(byKey(elderUp, "drake").state, "none");
+  // Elder taken -> drake stays suppressed after the kill.
+  const ev = [{ name: "dragon", killer_team: "ally", down_at_s: 2200,
+                dragon_type: "Elder" }];
+  const elderDead = computeGauges("sr", { game_time_s: 2300, objective_events: ev });
+  assert.strictEqual(byKey(elderDead, "drake").state, "none");
+  // Early game (no Elder yet) -> the drake dial is NOT suppressed.
+  const early = computeGauges("sr", { game_time_s: 60, objective_events: [] });
+  assert.notStrictEqual(byKey(early, "drake").state, "none");
 });
 
 test("fmtEta: M:SS floored, never negative", () => {
