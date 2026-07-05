@@ -48,6 +48,11 @@ import { renderPgrLaneCompare } from './pgr_lane_compare.js';
 // PGR reframe S5: descriptive loadout strip (mode-aware runes/augments +
 // summoner spells). Consumes enriched.runes / arena_augments / spells.
 import { renderPgrLoadout } from './pgr_loadout.js';
+// Task 7 (spec 7.2): PGR player-snapshot adapter. Presentational-only
+// component (Task 5); _buildPgrSnapshotModel assembles its model
+// client-side from the last-match `m` + the /api/post-game-rubric
+// payload already fetched by _setHeroRoleGrade - no new fetch.
+import { renderPlayerSnapshot } from './player_snapshot.js';
 
 // Numeric summoner-spell id → DDragon filename. Covers SR + ARAM common
 // set; Arena (CHERRY) spell ids are not in this map and fall back to a
@@ -813,48 +818,41 @@ function _scoreTier(score) {
 // Source: _rosterScores - same heuristic as the per-row chip + MVP
 // card so the three numbers are mutually consistent. Hidden when
 // LCU enrichment is absent (no roster -> no score).
-function _setHeroScore(m, enriched) {
-  const wrap    = document.getElementById("lm-hero-score");
-  const valueEl = document.getElementById("lm-hero-score-value");
-  const tierEl  = document.getElementById("lm-hero-score-tier");
-  if (!wrap || !valueEl || !tierEl) return;
-  const roster = enriched && enriched.roster;
-  if (!roster || !roster.length) {
-    wrap.hidden = true; wrap.dataset.tier = "";
-    valueEl.textContent = "-"; tierEl.textContent = "-";
-    return;
-  }
-  const me = roster.find((r) => r && r.is_me);
-  if (!me) {
-    wrap.hidden = true; wrap.dataset.tier = "";
-    valueEl.textContent = "-"; tierEl.textContent = "-";
-    return;
-  }
-  const scores = _rosterScores(roster);
-  const sc = scores[me.participant_id] || 0;
-  const tier = _scoreTier(sc);
-  valueEl.textContent = String(Math.round(sc));
-  tierEl.textContent  = tier.label;
-  wrap.dataset.tier   = tier.key;
-  wrap.hidden = false;
+//
+// Task 7 de-dup (spec 7.2): the player-snapshot card above now carries
+// this signal via its dial, so the standalone hero display is SUPPRESSED
+// (always hidden). Its MVP-badge sibling survives untouched - _rosterScores
+// / _renderMvpCard still compute + paint the roster rows + MVP/SVP cards;
+// only this hero-level chip's DOM write is skipped.
+function _setHeroScore(_m, _enriched) {
+  const wrap = document.getElementById("lm-hero-score");
+  if (wrap) { wrap.hidden = true; wrap.dataset.tier = ""; }
 }
 
-// Item 131 Slice A wire: per-role grading rubric chip. Fetches
-// /api/post-game-rubric for the operator's row in this match, paints
-// the S+/S/A/B/C/D grade alongside the role label. The grade is
-// role-aware (sourced from core/post_game_rubric.py); the existing
-// _setHeroScore is lobby-relative. The two compose visually.
+// Item 131 Slice A wire: per-role grading rubric FETCH. Fetches
+// /api/post-game-rubric for the operator's row in this match. The grade
+// is role-aware (sourced from core/post_game_rubric.py).
+//
+// Task 7 de-dup (spec 7.2): the standalone chip DISPLAY is SUPPRESSED
+// (kept in the DOM, always hidden) - the player-snapshot card folds the
+// grade into its dial. The fetch itself is KEPT (this is the sole rubric
+// fetch on the page); its success payload feeds _buildPgrSnapshotModel +
+// renderPlayerSnapshot into #pgr-snapshot-card, right where the old code
+// called _setRubricComponents(data).
 function _setHeroRoleGrade(m) {
   const wrap    = document.getElementById("lm-hero-role-grade");
   const roleEl  = document.getElementById("lm-hero-role-grade-role");
   const valueEl = document.getElementById("lm-hero-role-grade-value");
   const tierEl  = document.getElementById("lm-hero-role-grade-tier");
-  if (!wrap || !roleEl || !valueEl || !tierEl) return;
+  if (wrap) { wrap.hidden = true; wrap.dataset.tier = ""; }
+  const cardEl = document.getElementById("pgr-snapshot-card");
   const matchId = (m && m.id) || "";
   if (!matchId) {
-    wrap.hidden = true; wrap.dataset.tier = "";
-    roleEl.textContent = "-"; valueEl.textContent = "-"; tierEl.textContent = "-";
+    if (roleEl)  roleEl.textContent = "-";
+    if (valueEl) valueEl.textContent = "-";
+    if (tierEl)  tierEl.textContent = "-";
     _setRubricComponents(null);
+    if (cardEl) renderPlayerSnapshot(cardEl, _emptyPgrSnapshotModel());
     return;
   }
   const url = `/api/post-game-rubric?match_id=${encodeURIComponent(matchId)}`;
@@ -862,24 +860,24 @@ function _setHeroRoleGrade(m) {
     .then((r) => r.json())
     .then((data) => {
       if (!data || !data.ok) {
-        wrap.hidden = true; wrap.dataset.tier = "";
         _setRubricComponents(null);
+        if (cardEl) renderPlayerSnapshot(cardEl, _emptyPgrSnapshotModel());
         return;
       }
       const score = Math.round(Number(data.total_score) || 0);
       const grade = String(data.percentile_grade || "-");
       const role  = String(data.role || "-");
-      roleEl.textContent  = role;
-      valueEl.textContent = String(score);
-      tierEl.textContent  = grade;
-      wrap.dataset.tier   = grade;
-      wrap.hidden = false;
+      if (roleEl)  roleEl.textContent  = role;
+      if (valueEl) valueEl.textContent = String(score);
+      if (tierEl)  tierEl.textContent  = grade;
+      if (wrap)    wrap.dataset.tier   = grade;
       _setRubricComponents(data);
+      if (cardEl) renderPlayerSnapshot(cardEl, _buildPgrSnapshotModel(m, data));
     })
     .catch((err) => {
       try { console.warn("[post-game-rubric] fetch failed:", err); } catch (_) {}
-      wrap.hidden = true; wrap.dataset.tier = "";
       _setRubricComponents(null);
+      if (cardEl) renderPlayerSnapshot(cardEl, _emptyPgrSnapshotModel());
     });
 }
 
@@ -902,41 +900,187 @@ const _AXES = [
   { comp: "dpm",                weight: "damage_per_min",  label: "DPM" },
 ];
 
-function _setRubricComponents(data) {
+// Task 7 de-dup (spec 7.2): the standalone 5-bar decomposition is
+// SUPPRESSED - the player-snapshot card's 4 bars (INCOME/COMBAT/
+// OBJECTIVES/VISION) fold in the same components{}/weights_used{}
+// signal via _buildPgrSnapshotModel's _pgrSaturation. This function is
+// kept (its call sites + signature stay, and its axis-saturation
+// formula is the one _buildPgrSnapshotModel reuses) but always no-ops
+// its DOM write so the standalone block never double-renders.
+function _setRubricComponents(_data) {
   const host = document.getElementById("lm-rubric-components");
   if (!host) return;
-  const comps = (data && data.components) || null;
-  const weights = (data && data.weights_used) || {};
-  const hasComps = comps && typeof comps === "object"
-    && Object.keys(comps).length > 0;
-  if (!hasComps) {
-    host.hidden = true;
-    host.innerHTML = "";
-    return;
+  host.hidden = true;
+  host.innerHTML = "";
+}
+
+// Task 7 (spec 7.2): shared axis-saturation formula - identical to the
+// one _setRubricComponents used before its DOM write was suppressed.
+// sat = comp / (2*weight), clamped [0,1]; *100 for a 0..100 bar score.
+function _pgrSaturation(comps, weights, compKey, weightKey) {
+  const comp = Number(comps && comps[compKey]);
+  const w = Number(weights && weights[weightKey]);
+  if (!Number.isFinite(comp) || !Number.isFinite(w) || w <= 0) return 0;
+  let sat = comp / (2 * w);
+  if (sat < 0) sat = 0;
+  if (sat > 1) sat = 1;
+  return sat * 100;
+}
+
+// Task 7 (spec 7.2): dial band thresholds - 65/35 mirrors the rest of
+// the PGR's score-tier conventions (_scoreTier's own 65 "Good" floor).
+function _pgrDialBand(value) {
+  if (value >= 65) return "good";
+  if (value >= 35) return "ok";
+  return "poor";
+}
+
+// Task 7 (spec 7.2): mode inference from the last-match `m` for
+// profile_ref.mode - the same queue_id/game_mode heuristic _setPhases
+// uses elsewhere in this file (isAram/isArena/isSr).
+function _pgrInferMode(m) {
+  const enriched = m && m.enriched;
+  const queueId = (enriched && enriched.queue_id) || 0;
+  const gameMode = ((enriched && enriched.game_mode) || (m && m.mode) || "").toUpperCase();
+  const isAram = queueId === 450 || queueId === 2400 || gameMode === "ARAM" || gameMode === "KIWI";
+  const isArena = queueId === 1700 || queueId === 1710 || queueId === 1750 || gameMode === "CHERRY";
+  if (isAram) return "aram";
+  if (isArena) return "arena";
+  return "sr";
+}
+
+// Task 7 (spec 7.2): the empty/failure-path model - rendered whenever
+// the rubric fetch has no usable payload (no match id / !ok / network
+// error). Mirrors dashboard/routes_player_snapshot.py's own empty shape
+// (see player_snapshot.js's model contract docstring) so the card's
+// existing empty-state rendering (the "-" sentinel, reserved height)
+// applies unchanged.
+function _emptyPgrSnapshotModel() {
+  return {
+    header: { name: null, rank_tier: null, rank_lp: null, level: null,
+              streak: null, champion_id: null, result: null },
+    dial: { value: 0, band: "poor", label: "No grade yet" },
+    minis: [], bars: [], tags: [],
+    profile_ref: { mode: null, window: null, match_id: null },
+    confidence: "insufficient", sample_n: 0, empty: true,
+  };
+}
+
+// Task 7 (spec 7.2): PGR player-snapshot adapter. Assembles the
+// renderPlayerSnapshot model from the last-match `m` (already in scope
+// at the call site) + the /api/post-game-rubric `rubric` payload
+// _setHeroRoleGrade just fetched. No new fetch - both objects are
+// already in hand at the call site (last_match.js:863-877 origin).
+//
+// bars (spec 4.4 PGR): INCOME = cs_per_min saturation; COMBAT = mean of
+// kda + dpm saturation; OBJECTIVES = obj_participation saturation;
+// VISION = vision saturation. All source_truth (computed straight off
+// the rubric, not inferred/estimated).
+//
+// dial: value = round(rubric.total_score); band by 65/35; label = the
+// rubric's own percentile_grade (S+/S/A/B/C/D) - keeps the dial's big
+// number in lock-step with the grade the operator already knows from
+// the (now-hidden) role-grade chip.
+//
+// header: result + champion_id come from the last-match `m.enriched`
+// (win: boolean, champion_id: numeric DDragon id - see the SR fixture
+// web/data/ui_mock/last_match_sr.json's enriched block). A per-match
+// card has no rank/level/name context, so those stay null (the "-"
+// sentinel is correct here per feedback_no_reflow_on_data_absence).
+//
+// minis: KDA from `m.kda_ratio` (source_truth); Win-Rate is null/"-"
+// (single match, no window - never fabricate a rate off n=1); K-P from
+// `m.kp_pct` (this last-match payload's own team-kills-derived field,
+// source_truth - see _setStatsGrid's identical use of m.kp_pct).
+//
+// tags: exactly 3, derived from the rubric's 5 components - the
+// strongest saturation -> a "strong" tag, the weakest -> a "weak" tag,
+// plus a neutral role tag (rubric.role, e.g. "BOTTOM"/"JUNGLE"). This
+// is the brief's suggested v1 heuristic (rubric-based tag mapping was
+// otherwise unclear) - simple, deterministic, and grounded entirely in
+// the rubric payload already in hand.
+const _PGR_AXIS_TAG = {
+  kda: "Sharp Combat", cs_per_min: "Strong Farm",
+  obj_participation: "Objective Focus", vision: "Vision Control",
+  dpm: "High Damage",
+};
+const _PGR_AXIS_TAG_WEAK = {
+  kda: "Combat Shy", cs_per_min: "Farm Behind",
+  obj_participation: "Objective Absent", vision: "Visionless",
+  dpm: "Low Damage",
+};
+
+function _buildPgrSnapshotModel(m, rubric) {
+  const match = m || {};
+  const enriched = match.enriched || null;
+  const comps = (rubric && rubric.components) || {};
+  const weights = (rubric && rubric.weights_used) || {};
+
+  const satCs   = _pgrSaturation(comps, weights, "cs_per_min", "cs_per_min");
+  const satKda  = _pgrSaturation(comps, weights, "kda", "kda");
+  const satObj  = _pgrSaturation(comps, weights, "obj_participation", "obj_participation");
+  const satDpm  = _pgrSaturation(comps, weights, "dpm", "damage_per_min");
+  const satVis  = _pgrSaturation(comps, weights, "vision", "vision_score");
+  const satCombat = (satKda + satDpm) / 2;
+
+  const bars = [
+    { key: "income",     label: "INCOME",     score: satCs,     provenance: "source_truth" },
+    { key: "combat",     label: "COMBAT",     score: satCombat, provenance: "source_truth" },
+    { key: "objectives", label: "OBJECTIVES", score: satObj,    provenance: "source_truth" },
+    { key: "vision",     label: "VISION",     score: satVis,    provenance: "source_truth" },
+  ];
+
+  const dialValue = Math.round(Number(rubric && rubric.total_score) || 0);
+  const dial = {
+    value: dialValue,
+    band: _pgrDialBand(dialValue),
+    label: String((rubric && rubric.percentile_grade) || "-"),
+  };
+
+  const win = enriched && enriched.win != null ? !!enriched.win : null;
+  const result = (win === true) ? "win" : (win === false) ? "loss" : null;
+  const championId = (enriched && enriched.champion_id != null)
+    ? enriched.champion_id : null;
+  const header = {
+    name: null, rank_tier: null, rank_lp: null, level: null, streak: null,
+    champion_id: championId, result: result,
+  };
+
+  const kdaVal = (typeof match.kda_ratio === "number")
+    ? match.kda_ratio.toFixed(2) : "-";
+  const kpVal = (typeof match.kp_pct === "number")
+    ? `${Math.round(match.kp_pct)}%` : "-";
+  const minis = [
+    { key: "kda", value: kdaVal, provenance: "source_truth" },
+    { key: "winrate", value: "-", provenance: "source_truth" },
+    { key: "kp", value: kpVal, provenance: "source_truth" },
+  ];
+
+  const axisScores = [
+    ["kda", satKda], ["cs_per_min", satCs], ["obj_participation", satObj],
+    ["vision", satVis], ["dpm", satDpm],
+  ];
+  let strongest = axisScores[0];
+  let weakest = axisScores[0];
+  for (const pair of axisScores) {
+    if (pair[1] > strongest[1]) strongest = pair;
+    if (pair[1] < weakest[1]) weakest = pair;
   }
-  const rows = _AXES.map((ax) => {
-    const comp = Number(comps[ax.comp]);
-    const w = Number(weights[ax.weight]);
-    let sat = 0;
-    if (Number.isFinite(comp) && Number.isFinite(w) && w > 0) {
-      sat = comp / (2 * w);
-      if (sat < 0) sat = 0;
-      if (sat > 1) sat = 1;
-    }
-    const pct = Math.round(sat * 100);
-    const widthPct = (sat * 100).toFixed(1);
-    return (
-      '<div class="lm-rubric-bar">' +
-        '<span class="lm-rubric-bar-label">' + _escHtml(ax.label) + "</span>" +
-        '<span class="lm-rubric-bar-track">' +
-          '<span class="lm-rubric-bar-fill" style="width:' + widthPct + '%"></span>' +
-        "</span>" +
-        '<span class="lm-rubric-bar-readout">' + pct + "%</span>" +
-      "</div>"
-    );
-  });
-  host.innerHTML = rows.join("");
-  host.hidden = false;
+  const roleTag = String((rubric && rubric.role) || "").trim();
+  const tags = [
+    { label: _PGR_AXIS_TAG[strongest[0]] || "Balanced", tone: "strong" },
+    { label: roleTag || "This Match", tone: "neutral" },
+    { label: _PGR_AXIS_TAG_WEAK[weakest[0]] || "Balanced", tone: "weak" },
+  ];
+
+  const hasRubric = !!(rubric && rubric.ok);
+  return {
+    header, dial, minis, bars, tags,
+    profile_ref: { mode: _pgrInferMode(match), window: null, match_id: match.id || null },
+    confidence: hasRubric ? "high" : "insufficient",
+    sample_n: 1,
+    empty: !hasRubric,
+  };
 }
 
 // s220 PGR S3: render a aggregator-G-style MVP / SVP card above one team's
@@ -1375,6 +1519,10 @@ function _setEmptyState(errMsg) {
     const el = document.getElementById(id);
     if (el) el.textContent = "-";
   });
+  // Task 7 (spec 7.2): clear the player-snapshot card alongside the
+  // legacy chips it folds in - no stale card on the no-data path.
+  const snapshotCard = document.getElementById("pgr-snapshot-card");
+  if (snapshotCard) renderPlayerSnapshot(snapshotCard, _emptyPgrSnapshotModel());
   ["lm-tc-ally-mvp", "lm-tc-enemy-mvp"].forEach((id) => {
     const c = document.getElementById(id);
     if (c) { c.hidden = true; c.dataset.kind = ""; c.innerHTML = ""; }

@@ -160,12 +160,17 @@ def test_last_match_sr_victory_pill(mock_server, pw_browser):
 
 
 def test_last_match_sr_rubric_decomposition(mock_server, pw_browser):
-    """LIFT 2a: the per-role score decomposition renders 5 saturation bars
-    from /api/post-game-rubric components{} + weights_used{}. The SR fixture
-    carries match.id 9003 so _setHeroRoleGrade fires the fetch; page.route
-    intercepts /api/post-game-rubric (mock server returns {}) and fulfills
-    _RUBRIC_PAYLOAD. Asserts exactly 5 bars and the known saturations:
-    KDA ~100% fill, CS/min ~50% fill (read off the inline width style)."""
+    """LIFT 2a + Task 7 de-dup (spec 7.2): the per-role score decomposition
+    (components{} + weights_used{}) still drives the same saturation math,
+    but the standalone 5-bar #lm-rubric-components block is now SUPPRESSED -
+    the player-snapshot card's 4 bars fold in the identical signal via
+    _buildPgrSnapshotModel's _pgrSaturation (same formula, same numbers).
+    UPDATED (Task 7): this test previously asserted directly on
+    #lm-rubric-components .lm-rubric-bar rows; those rows no longer render
+    (host stays hidden, per spec 7.2's explicit "make _setRubricComponents
+    hide its host or no-op its DOM write" directive). Re-targeted at the
+    card's INCOME/COMBAT bars, which carry the same CS/min ~50% and
+    KDA-derived ~100% saturations, plus asserts the old block is gone."""
     from tests.snapshot_panels.conftest import _WS_STUB
 
     mock_server._store["data"] = {}
@@ -198,38 +203,47 @@ def test_last_match_sr_rubric_decomposition(mock_server, pw_browser):
             "document.querySelector('#lm-mode-tag').textContent.trim() !== ''",
             timeout=10_000,
         )
-        # Wait for the decomposition bars to paint (the rubric fetch is async).
+        # Wait for the card's bars to paint (the rubric fetch is async).
         page.wait_for_selector(
-            "#lm-rubric-components .lm-rubric-bar", timeout=10_000
+            "#pgr-snapshot-card .ps-bar", timeout=10_000
         )
 
-        bars = page.locator("#lm-rubric-components .lm-rubric-bar")
-        assert bars.count() == 5, f"expected 5 rubric bars, got {bars.count()}"
+        # Task 7 de-dup: the standalone block is suppressed - stays hidden,
+        # no .lm-rubric-bar rows painted (would be a double-render).
+        rubric_host = page.locator("#lm-rubric-components")
+        assert rubric_host.is_hidden(), (
+            "#lm-rubric-components must stay hidden (spec 7.2 suppress)"
+        )
+        assert page.locator("#lm-rubric-components .lm-rubric-bar").count() == 0, (
+            "standalone rubric bars must not render (folded into the card)"
+        )
 
-        # Read the fill width fraction (fill width / track width) per axis.
-        # KDA is the first axis (~100%), CS/min the second (~50%).
-        def _fill_frac(idx):
-            row = bars.nth(idx)
-            track = row.locator(".lm-rubric-bar-track").bounding_box()
-            fill = row.locator(".lm-rubric-bar-fill").bounding_box()
+        # The card's INCOME bar carries CS/min saturation directly (~50%);
+        # COMBAT is mean(KDA, DPM) saturation - both are 100% in the fixture
+        # payload, so COMBAT reads ~100% too.
+        def _card_fill_frac(key):
+            row = page.locator(f'#pgr-snapshot-card .ps-bar[data-key="{key}"]')
+            track = row.locator(".ps-bar-track").bounding_box()
+            fill = row.locator(".ps-bar-fill").bounding_box()
             assert track and fill and track["width"] > 0
             return fill["width"] / track["width"]
 
-        kda_frac = _fill_frac(0)
-        cs_frac = _fill_frac(1)
-        assert kda_frac > 0.9, f"KDA fill {kda_frac:.3f} not ~100%"
-        assert 0.4 < cs_frac < 0.6, f"CS/min fill {cs_frac:.3f} not ~50%"
+        income_frac = _card_fill_frac("income")
+        combat_frac = _card_fill_frac("combat")
+        assert 0.4 < income_frac < 0.6, f"INCOME fill {income_frac:.3f} not ~50%"
+        assert combat_frac > 0.9, f"COMBAT fill {combat_frac:.3f} not ~100%"
 
-        # Readouts confirm the rounded percentages.
-        kda_read = (bars.nth(0).locator(".lm-rubric-bar-readout").text_content()
-                    or "").strip()
-        cs_read = (bars.nth(1).locator(".lm-rubric-bar-readout").text_content()
-                   or "").strip()
-        assert kda_read == "100%", f"KDA readout {kda_read!r} != '100%'"
-        assert cs_read == "50%", f"CS/min readout {cs_read!r} != '50%'"
+        income_read = (page.locator(
+            '#pgr-snapshot-card .ps-bar[data-key="income"] .ps-bar-value'
+        ).text_content() or "").strip()
+        combat_read = (page.locator(
+            '#pgr-snapshot-card .ps-bar[data-key="combat"] .ps-bar-value'
+        ).text_content() or "").strip()
+        assert income_read == "50", f"INCOME readout {income_read!r} != '50'"
+        assert combat_read == "100", f"COMBAT readout {combat_read!r} != '100'"
 
         SCREENSHOTS.mkdir(exist_ok=True)
-        page.locator("#lm-rubric-components").screenshot(
+        page.locator("#pgr-snapshot-card").screenshot(
             path=str(SCREENSHOTS / "pgr_decomposition.png")
         )
     finally:
@@ -237,6 +251,86 @@ def test_last_match_sr_rubric_decomposition(mock_server, pw_browser):
         ctx.close()
 
     assert not errors, f"JS errors [rubric]: {errors[:3]}"
+
+
+def test_last_match_pgr_snapshot_card_renders(mock_server, pw_browser):
+    """Task 7 (spec 7.2): the PGR player-snapshot card assembles client-side
+    from the last-match `m` + the /api/post-game-rubric `data` already in
+    scope at the _setHeroRoleGrade fold point (last_match.js:863-877). No
+    new fetch - the same page.route stub used by the rubric-decomposition
+    test above feeds this card too. Asserts: the card mounts with the
+    rubric's percentile_grade as the dial label, exactly 4 bars, and the
+    standalone #lm-rubric-components 5-bar block is suppressed (hidden,
+    not double-rendered) since the card's 4 bars fold it in."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+
+    # Register BEFORE navigation so the _setHeroRoleGrade fetch (fired
+    # during the fixture render) hits this stub.
+    page.route(
+        "**/api/post-game-rubric**",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(_RUBRIC_PAYLOAD),
+        ),
+    )
+
+    try:
+        url = mock_server.url + "/?ui_mock=1&mode=sr#last-match"
+        page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_function(
+            "document.querySelector('#lm-mode-tag') && "
+            "document.querySelector('#lm-mode-tag').textContent.trim() !== '-' && "
+            "document.querySelector('#lm-mode-tag').textContent.trim() !== ''",
+            timeout=10_000,
+        )
+        page.wait_for_selector('[data-testid="player-snapshot"]', timeout=10_000)
+
+        root = page.locator('[data-testid="player-snapshot"]')
+        assert root.is_visible(), "PGR player-snapshot card did not render"
+
+        # Dial label == the rubric's percentile_grade ("A" in _RUBRIC_PAYLOAD).
+        dial_label = (page.locator("#pgr-snapshot-card .ps-dial-label").text_content()
+                      or "").strip()
+        assert dial_label == _RUBRIC_PAYLOAD["percentile_grade"], (
+            f"dial label {dial_label!r} != {_RUBRIC_PAYLOAD['percentile_grade']!r}"
+        )
+
+        # Exactly 4 bars (INCOME/COMBAT/OBJECTIVES/VISION), not the rubric's 5.
+        bar_keys = page.eval_on_selector_all(
+            "#pgr-snapshot-card .ps-bar[data-key]",
+            "els => els.map(e => e.getAttribute('data-key'))",
+        )
+        assert set(bar_keys) == {"income", "combat", "objectives", "vision"}, bar_keys
+        assert len(bar_keys) == 4, f"expected 4 bars, got {len(bar_keys)}"
+
+        # De-dup (spec 7.2): the standalone 5-bar rubric block is suppressed.
+        rubric_host = page.locator("#lm-rubric-components")
+        assert rubric_host.is_hidden(), (
+            "#lm-rubric-components must be suppressed - the card folds it in"
+        )
+        rubric_bars = page.locator("#lm-rubric-components .lm-rubric-bar")
+        assert rubric_bars.count() == 0, (
+            f"standalone rubric bars still rendered ({rubric_bars.count()}) - "
+            "double-rendered against the card"
+        )
+
+        SCREENSHOTS.mkdir(exist_ok=True)
+        root.screenshot(path=str(SCREENSHOTS / "pgr_snapshot_card.png"))
+    finally:
+        page.close()
+        ctx.close()
+
+    assert not errors, f"JS errors [pgr snapshot card]: {errors[:3]}"
 
 
 def test_no_em_dashes_or_smart_quotes():
