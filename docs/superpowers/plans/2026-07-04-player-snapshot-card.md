@@ -84,12 +84,12 @@ Selection: GREEN/strong = high word of the strongest of the 6 relative axes; RED
 
 **Frontend (create):**
 - `web/js/panels/player_snapshot.js` - `renderPlayerSnapshot(el, model)` presentational component (ESM, ASCII, idempotent).
-- `web/css/panels/player_snapshot.css` - card layout, composed from `tokens.css` primitives. Linked from `web/index.html` head.
+- `web/css/panels/player_snapshot.css` - card layout, composed from `tokens.css` primitives. Registered via an `@import` line in `web/css/dashboard.css` (the panel-CSS load mechanism; there is no per-panel `<link>` in index.html).
 - `tests/snapshot_panels/test_player_snapshot_view.py` - Playwright snapshot of the card (full / empty / low-confidence fixtures).
 - `tests/test_player_snapshot_dom.py` - DOM-string assertions on `player_snapshot.js` render output.
 
 **Frontend (modify):**
-- `web/index.html` - Home card mount + Home hero absorb (spec 7.1, ~103-356); PGR card mount + PGR hero/rubric refactor (spec 7.2, ~1633-1950); `<link>` the new CSS; ship the GPI radar block behind View Profile.
+- `web/index.html` - Home card mount + Home hero absorb (spec 7.1, ~103-356); PGR card mount + PGR hero/rubric refactor (spec 7.2, ~1633-1950); ship the GPI radar block behind View Profile.
 - `web/js/main.js` - Home adapter (mode-tab fetch + render + hero absorb, ~3036-3607); View-Profile expand mounting `renderPlayerGpi`.
 - `web/js/panels/last_match.js` - PGR adapter (assemble model from in-hand last-match + rubric data; suppress `_setHeroScore` / `_setHeroRoleGrade` / `_setRubricComponents` standalone rows).
 
@@ -765,7 +765,7 @@ git commit -F <ascii-tmpfile>   # "feat(snapshot): /api/player-snapshot route + 
 **Files:**
 - Create: `web/js/panels/player_snapshot.js`
 - Create: `web/css/panels/player_snapshot.css`
-- Modify: `web/index.html` (add `<link rel="stylesheet" href="css/panels/player_snapshot.css?v=...">` in the head, next to the other panel CSS links)
+- Modify: `web/css/dashboard.css` (add `@import './panels/player_snapshot.css';` alongside the other panel imports, ~line 55)
 - Test: `tests/test_player_snapshot_dom.py` (create)
 
 **Interfaces:**
@@ -848,7 +848,7 @@ function _emptyHtml(m) {
 // ... _headerHtml/_dialHtml/_minisHtml/_barsHtml/_tagsHtml/_viewProfileHtml/_esc ...
 ```
 
-Create `web/css/panels/player_snapshot.css` composing only tokens (grid layout for dial + bars, `.ps-tag` chips colored by `--signal-*`, `.ps-empty` reserved height). Add the `<link>` in `web/index.html` head with the `?v=` hash placeholder the other panel CSS links use.
+Create `web/css/panels/player_snapshot.css` composing only tokens (grid layout for dial + bars, `.ps-tag` chips colored by `--signal-*`, `.ps-empty` reserved height). Register it by adding `@import './panels/player_snapshot.css';` to `web/css/dashboard.css` alongside the other `@import './panels/*.css';` lines (that is how every panel CSS loads - there is no per-panel `<link>` in index.html). ADR-008 asset-hash auto-reloads it, no RC restart.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -864,7 +864,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add web/js/panels/player_snapshot.js web/css/panels/player_snapshot.css web/index.html tests/test_player_snapshot_dom.py tests/snapshot_panels/test_player_snapshot_view.py
+git add web/js/panels/player_snapshot.js web/css/panels/player_snapshot.css web/css/dashboard.css tests/test_player_snapshot_dom.py tests/snapshot_panels/test_player_snapshot_view.py
 git commit -F <ascii-tmpfile>   # "feat(ui): presentational renderPlayerSnapshot card + tokens CSS"
 ```
 
