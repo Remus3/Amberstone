@@ -4,6 +4,38 @@
 
 ---
 
+# 2026-07-04 (/live-gated-drain FULL DRAIN - 4 queues one sitting; LEDGER 779; layer-1 fix 90b350c8)
+
+Ran the full live-gated drain (ARAM Vayne + practice-SR Zilean + real-SR Ezreal draft-q400 + Arena
+Kai'Sa) in one sitting, Opus 4.8 max orchestrated, live-watch cadence (ScheduleWakeup) between games.
+Evidence: scratch drain_evidence_2026-07-04.md.
+- CLOSED (live evidence): B23 objective gauges, B21 objective callouts (Cloud Drake), E1 ACTIVE knob +
+  E2 panel cycle (signal files 18:01 + operator attest), B28 frames, B5 DSP2 exempt_offclass eyeball
+  SANE (Ezreal floats Trinity Force), F1 PGR + @N (gold@10 3167v3791 / cs@10 64v88), F2 REPLAY1
+  freshness, F4 PGR render, D7 Arena Match-V5 ingest (Kai'Sa - Arena IS eligible), C1 ARAM 3-variant
+  render half.
+- 2 LIVE BUGS CAUGHT: (1) A1/A2 champ-select auto-push REGRESSION - the in-process spawn_task loops
+  (auto-accept + RuneWriter) silently die after a mid-session League restart -> shared LcuClient pinned
+  to the dead port -> no push (operator set spells manually; READ path survived = separate RC-LCUAgent
+  process). LAYER-1 self-heal MERGED 90b350c8 + pushed (RuneWriter._poll re-heals; verifier 62/0;
+  non-frozen); LAYER-2 (frozen lcu_client.py resilient loops, operator-approved) = follow-up task; A1/A2
+  stay OPEN pending re-validate. (2) D6 Arena augment/anvil shadow not seeding - nothing bumps
+  data/force_scan.json on the Cherry augment event so the free-running 20s vision scan misses the
+  transient panel (OCR+writers ARE built); D2 shares it; fix task; gated on a live Arena game.
+- Accrual: B20/R55 3/3; rails G1 laning 0.4626 / build 0.6484 (HOLD), G2 +3.6% flip_ready=False @665 (HOLD).
+
+NEXT: A1/A2 layer-2 (FROZEN lcu_client.py resilient spawn_task loops) + a League-restart re-validate;
+D6 force_scan-on-Cherry-augment-event fix; THEN the full /live-gated-resync structural rebuild (run once
+these closes are in LEDGER - it verifies done-claims against repo state, can't validate live closes).
+Still gated: D2/D3/D9 Arena rolls (D3 no boot anvil / D9 no Goredrinker in 8 rounds), F3 PGR auto-show
+recheck (didn't fire - companion on HOME post-game), ARAM C11/C12/C15/C16 scenario rolls, unplayed-champ
+seams B2-B19/B31-B40 (harness sweep available headless). DO NOT redo: layer-1 is on main (flip point =
+RuneWriter._poll, do NOT rebuild); D6 is a force_scan-TRIGGER gap not an OCR-feed gap; two operator-
+started fix chips (task_c122811d + task_660c82b7) overlap the two refined chips (task_3e9433f2 +
+task_ebbdf78b) - reconcile. RC NOT restarted this session (layer-1 activation + re-validate owed).
+
+---
+
 # 2026-07-04 (RC2 no-live-LLM precompute-DB lane: 3 slices + first-ever DS seam flip; LEDGER 775-778)
 
 Operator picked the precompute-DB program (ROADMAP L15) as the next RC2 lane (E10/E2 stay operator-gated).
@@ -51,29 +83,3 @@ go/no-go OWED) + E2 (DS 3-game live-flip - needs live games) + Phase 9 drain (wh
 DO NOT redo: every E11 out-of-game surface is Hextech-reskin-COMPLETE (do NOT re-audit for palette);
 the #1c1c2a shared .view-tab:hover shade is sanctioned (do NOT tokenize - it touches every view's tabs);
 the per-page UI-QA method is EXHAUSTED for E11 out-of-game (overlay HUD = separate polish lane, R72).
-
----
-
-# 2026-07-04 (RC2 E11 LOBBY surface SHIPPED - operator UI-QA method; LEDGER 772, `1cf122e2`)
-
-Ran the operator per-page UI-QA method on the pregame LOBBY (E11 non-home surface). CI green.
-- SURFACE (router-traced): operator sees the dedicated `#view-lobby` companion VIEW (main.js
-  _lobbyViewRefresh). The inline `#lobby-overlay` was SUPERSEDED legacy - a Lobby phase force-
-  promotes to #view-lobby over any Home manual (main.js:704 + :941-970), so it was only phase-blip
-  reachable (resolved an M1/M6 mapper disagreement by tracing the router). Lobby was ALREADY
-  reskinned (8069d0b9), so this was a REFINEMENT pass.
-- METHOD: 6-mapper MAP -> 4-Q advocate round + 1 confirm -> ONE worktree build agent + verifier
-  (0 orphaned callers) + 5-phase audit (SHIP after 1 MUST-FIX in-slice) + ui_recon both widths.
-- SHIPPED (`1cf122e2`, net -543): R1 mains tab-aware (YOUR MAINS Recent/Overall[dropped the raw
-  KDA triplet]/Form[KP%,CS-m,DMG]; PARTY MAINS Mastery+Recent - dropped always-empty per-tab
-  cols); R2 dead code D1-D5 incl the inline #lobby-overlay cluster; R3 lcu_agent emits party_size
-  + max_party_size (count was always 0; tab auto-switch was dead; TDD RED-first); R4 sub-16px ->
-  --fs-xs floor + tabular-nums; V2 .lv-fr-copy/invite 44px. D5 overlay CSS lived in home.css
-  (-138); HOME verified UNAFFECTED (ui_recon + DOM). Verifier PASS, 355 scoped tests, CI green.
-- QA doc: docs/qa/LOBBY_QA_2026-07-04.md. DEFERRED: G3 live rank enrich (League-V4 DB), G4 ready
-  pip, G5 backend passthrough cleanup, MY-TOP-8 reserved-rows vertical cost.
-
-NEXT: E11 remaining NON-home/lobby surfaces still OPEN (PGR / history / session / user-builds /
-build-insights / settings + overlay). Same operator UI-QA method per surface. DO NOT redo:
-#lobby-overlay is REMOVED (superseded, do not re-add); .lv-rank-* hex is a SANCTIONED brand tint
-(do NOT tokenize); companion font floor = --fs-xs 16px.
