@@ -241,6 +241,16 @@ during real games; `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-O
   pool, no real enemy shield needed); a REAL game vs Shieldbow/enchanter comps is the stronger
   eyeball. DS restart on flip. NOTE: the doc historically labeled this "B41" a second time -
   renamed B41b this resync to disambiguate from the R58 row above. SOURCE: ledger 2026-07-03 below.
+- B45. (PRACTICE-SR) R77 `assume_item_crit_dr` flip (Randuin's Omen 3143/223143 Resilience 30%
+  reduced crit damage taken -> physical-only EHP credit): confirm a tank build carrying Randuin's
+  up-ranks sanely on the survivability axis when the flag is ON, and that byte-identical OFF holds
+  (default DS output unchanged). The crit-DR is credited against an ASSUMED incoming-crit share
+  (`_ASSUMED_INCOMING_CRIT_SHARE = 0.5`), so the OFF-vs-ON re-rank magnitude can be sanity-eyeballed
+  in practice (Randuin's should gain, but not dominate a real-resist item swap); the 0.5 crit-share
+  midpoint CALIBRATION vs a real crit-heavy enemy comp is the ACCRUAL tail (mirrors B20
+  `assume_archetype_hp_pct` sustained-fraction calibration). A REAL-SR game vs a crit ADC is the
+  stronger eyeball. DS restart on flip. NEVER flip blind (charter 4b). SOURCE: docs/LEDGER.md R77
+  entry + ENGINE 1.180.0 CHANGELOG.
 
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 

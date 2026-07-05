@@ -455,6 +455,50 @@ def _total_heal_amp(item_ids: Iterable[str]) -> float:
     return factor
 
 
+# ENGINE 1.180.0 (R77, 2026-07-05): item-keyed incoming CRIT-DAMAGE REDUCTION.
+# Randuin's Omen (SR 3143 / Arena 223143) Resilience "30% reduced critical
+# strike damage taken" (ItemEffect.crit_damage_reduction=0.30) was a
+# defensive_only NOTE only - the DS ranker gave its signature crit-DR ZERO
+# effective-HP credit despite it being a proven WIN buy (rewind_history.db:
+# 344 builds, 54.7% WR vs 50.0% baseline). Crit damage is PHYSICAL, so the
+# reduction is multiplicative on the physical EHP denominator - the SAME layer
+# as the champion percent-DR family (``mitigation_multipliers``), which is
+# champion_id-keyed and structurally cannot see items.
+#
+# The crit-affected SHARE of incoming physical damage is the live feed we lack
+# (same class as the flat-mitigation instance count / health-stack count) -
+# modeled as a conservative operator-tunable midpoint. A 30% crit-DR at a 0.5
+# share yields a x0.85 physical denominator (+17.6% physical EHP) when armed.
+# ``assume_item_crit_dr`` defaults False -> the helper short-circuits to the
+# identity 1.0 before any item is inspected -> BYTE-IDENTICAL.
+_ASSUMED_INCOMING_CRIT_SHARE = 0.5
+
+
+def item_crit_dr_multiplier(
+    item_ids: Iterable[str],
+    assume_item_crit_dr: bool = False,
+) -> float:
+    """Physical-denominator multiplier from item-keyed crit-damage reduction.
+
+    Returns ``1.0`` (identity) when ``assume_item_crit_dr`` is False or no
+    equipped item carries ``crit_damage_reduction`` - BYTE-IDENTICAL. When
+    armed, each such item contributes ``(1 - crit_damage_reduction *
+    _ASSUMED_INCOMING_CRIT_SHARE)`` multiplicatively (Randuin's is the only
+    carrier today, so no unique-passive stacking question arises). A value
+    ``< 1.0`` shrinks the physical denominator -> larger physical EHP, the
+    correct "less crit damage taken -> survives more" direction.
+    """
+    if not assume_item_crit_dr:
+        return 1.0
+    factor = 1.0
+    for item_id in item_ids:
+        eff = ITEM_EFFECTS.get(str(item_id))
+        if eff is None or eff.crit_damage_reduction <= 0.0:
+            continue
+        factor *= (1.0 - eff.crit_damage_reduction * _ASSUMED_INCOMING_CRIT_SHARE)
+    return factor
+
+
 def _vamp_heal_pool(
     vamp_pct: float,
     ad: float,
@@ -936,6 +980,7 @@ def compute_ehp(
     caster_current_hp_pct: float = 1.0,
     assume_passive_health_stacks: bool = False,
     assume_hsp_amp: bool = False,
+    assume_item_crit_dr: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1141,6 +1186,17 @@ def compute_ehp(
         resolved.champion_id, level, apply_passive_mitigation, snapshot
     )
 
+    # ENGINE 1.180.0 (R77, 2026-07-05): item-keyed incoming CRIT-DAMAGE
+    # REDUCTION (Randuin's Omen Resilience 30% reduced crit damage taken).
+    # Crit is PHYSICAL, so this is a SEPARATE physical-only denominator factor
+    # applied alongside mit_phys (NOT folded into it - mit_phys stays the pure
+    # champion percent-DR value for reporting). ``assume_item_crit_dr`` defaults
+    # False -> identity 1.0 -> BYTE-IDENTICAL. Item-keyed (mit_phys is
+    # champion_id-keyed and cannot see the build's items).
+    item_crit_dr_mult = item_crit_dr_multiplier(
+        resolved.item_ids, assume_item_crit_dr
+    )
+
     # ENGINE 1.148.0 (R9, 2026-06-21): GAP - per-instance FLAT-AMOUNT damage
     # reduction, the sibling the percent mitigation registry deliberately
     # EXCLUDED (Fizz P, Amumu E, Leona W). A flat reduction per damage instance
@@ -1261,7 +1317,7 @@ def compute_ehp(
     # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
     # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
     # byte-identical.
-    physical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys)
+    physical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult)
     magical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
     true_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
@@ -1355,7 +1411,7 @@ def compute_ehp(
         # _blend_with_heal(heal_total) stays exactly blended_ehp (guard-tested);
         # flat_mit_* is 0.0 when the flag is off -> byte-identical.
         p = (hp + ext_flat_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
-            _armor_factor(eff_armor) * safe_mult * mit_phys
+            _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult
         )
         m = (hp + ext_flat_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
             _armor_factor(eff_mr) * safe_mult * mit_mag
