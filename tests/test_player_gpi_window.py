@@ -25,9 +25,11 @@ def _seed(conn, rows):
             "INSERT INTO matches VALUES (?,?,?,1,11,?,100)",
             (r["mid"], 1800, r["ts"], r["champ"]),
         )
+        dmg = r.get("dmg", 18000)
+        vis = r.get("vis", 30)
         conn.execute(
-            "INSERT INTO participants VALUES (?,?,100,180,20,30,12000,18000,?,?,?,?,?,?,?,?)",
-            (r["mid"], r["champ"], r["deaths"], r["kills"], r["assists"],
+            "INSERT INTO participants VALUES (?,?,100,180,20,?,12000,?,?,?,?,?,?,?,?,?)",
+            (r["mid"], r["champ"], vis, dmg, r["deaths"], r["kills"], r["assists"],
              r["drag"], 0, 0, 0, r["win"]),
         )
     conn.commit()
@@ -68,3 +70,31 @@ def test_since_ts_none_is_unchanged_behavior():
     out = player_gpi.compute_gpi(mode="sr", conn=conn)   # no since_ts
     assert out["window_n"] == min(player_gpi.DEFAULT_WINDOW, 20)
     assert out["n_games"] == 20
+
+
+def test_win_streak_winrate_kp_strongest():
+    now = 1_700_000_000_000
+    conn = sqlite3.connect(":memory:")
+    # 15-game baseline. The 3 newest are skewed HIGH damage / LOW vision, so over
+    # a 3h window aggression reads strongest and vision weakest vs the full
+    # baseline. Newest 3 are wins (streak). Single participant with assists=0 ->
+    # team_kills == operator kills and K-P == kills/team_kills == 100%.
+    rows = []
+    for i in range(15):
+        newest = i < 3
+        rows.append({"mid": f"M{i}", "ts": now - i * 3600_000, "champ": 64,
+                     "deaths": 3, "kills": 5, "assists": 0,
+                     "dmg": 30000 if newest else 8000,
+                     "vis": 5 if newest else 40,
+                     "drag": 1, "win": 1 if newest else 0})
+    _seed(conn, rows)
+    # +1ms excludes the boundary game i=3 (Task 1's inclusive >= fix), so the
+    # window is exactly the 3 newest.
+    out = player_gpi.compute_gpi(mode="sr", conn=conn, since_ts=now - 3 * 3600_000 + 1)
+    assert out["window_n"] == 3
+    assert out["win_streak"] == {"kind": "win", "n": 3}
+    assert out["win_rate"] == 1.0
+    assert out["kp_pct"] == 100.0           # kills=5, assists=0, team_kills=5
+    assert out["kda_mean"] is not None
+    assert out["strongest_axis"] == "aggression"   # window skews high-damage
+    assert out["weakest_axis"] == "vision"         # window skews low-vision
