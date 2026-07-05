@@ -66,6 +66,15 @@ def main() -> int:
         log.warning("Port %d already in use - another instance is running. Exiting.", PORT)
         return 0   # clean exit, not error - autostart VBS sees success
 
+    # Port did not answer: reap any wedged/orphaned predecessor instances that
+    # would otherwise co-bind :8889 via SO_REUSEADDR and jam the port so every
+    # connect() is refused (project_liveclient_loopback_regression, 2026-07-05).
+    from ._reap import reap_stale_vision_instances
+    reaped = reap_stale_vision_instances()
+    if reaped:
+        log.warning("cleared %d stale vision-server instance(s) before bind: %s",
+                    len(reaped), reaped)
+
     _get_client()
     log.info("Moon Vision Server on 0.0.0.0:%d  python=%s", PORT, sys.executable)
     # ThreadingHTTPServer (S7, 2026-06-10): the plain HTTPServer serialized
