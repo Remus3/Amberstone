@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-07-05 (player-snapshot card SHIPPED - GPI-24h Home + role-rubric PGR; subagent-driven TDD; LEDGER 782)
+
+Built the player-snapshot card end-to-end on branch `feat/player-snapshot-card` (PUSHED, head `b1a0c3b8` + LEDGER `68f37197`; NOT merged) via superpowers subagent-driven-development: 10 tasks, fresh implementer + spec/quality reviewer per task, a verifier gate + an Opus whole-branch review. Spec (2026-07-04) -> plan (`docs/superpowers/plans/2026-07-04-player-snapshot-card.md`) -> build.
+- TASK 1 corrected a stale recon: rc-shell is a LIVE 2-surface Electron app; the companion window loads the shared `web/` tree from :8888, so v1 mounts in `web/` with ZERO `rc-shell/src` edits. The prior "overlay gone / all :8888" claim was WRONG (MEMORY was right).
+- Backend: `player_gpi.py` `since_ts` window + win/streak/K-P/kda_mean/strongest-axis; new DB-pure `/api/player-snapshot` route (registered in `_dispatch.py`).
+- Frontend: presentational `renderPlayerSnapshot` (tokens-only, ASCII, SVG arc-gauge dial); Home adapter (GPI 24h per mode tab + hero ABSORB); PGR adapter (role-rubric fold, NO new fetch, hero/rubric SUPPRESS); View Profile -> first production mount of the GPI radar.
+- Verify: 5-phase UI audit 0 MUST-FIX; verifier 132/132; snapshot_panels 336; the Opus review caught 1 CRITICAL (PGR radar mounted into a `display:none` subtree) - FIXED `b1a0c3b8` (per-view containers). RC reloaded pid 12284, live `/api/player-snapshot` returns a valid model.
+- Also: appended the operator's session-2 URLs to the canonical `_handoff_competitor_deep_research.md` (memory dir, non-repo per name-scrub); deleted a stray repo-root copy.
+
+NEXT (operator /clears + starts on MAIN): open a PR for `feat/player-snapshot-card` -> main + merge (CI is PR-gated, no branch-push run) OR merge when ready. Then the Fable-5 competitor deep-research fan-out (QUEUED, memory-dir handoff, run in a dedicated Fable-5 session) + the lolmath DS-knob coverage check (separate). Operator-glance owed: dial arc-gauge vs `luna-sever-2.jpg`.
+DO NOT redo: rc-shell IS alive (companion = the :8888 web tree in Electron - do NOT re-pitch "overlay gone"); the card is BUILT + reviewed + pushed on `feat/player-snapshot-card` (do NOT rebuild); the 1 Critical is FIXED; the model contract + 65/35 dial bands + visual-only absorb/suppress are settled.
+
+---
+
 # 2026-07-04 (/live-gated-drain continuation - A1/A2 layer-2 + D6 headless fixes built + armed, full resync rebuilt; LEDGER 780)
 
 Continuation of the FULL DRAIN (LEDGER 779). Built the 2 caught-bug headless fixes spec-first (2 Plan subagents) + worktree build agents + an independent verifier gate + lead frozen-diff review, Opus 4.8 max orchestrated. Both MERGED main + armed live; both still owe a live re-validate.
@@ -47,30 +61,3 @@ seams B2-B19/B31-B40 (harness sweep available headless). DO NOT redo: layer-1 is
 RuneWriter._poll, do NOT rebuild); D6 is a force_scan-TRIGGER gap not an OCR-feed gap; two operator-
 started fix chips (task_c122811d + task_660c82b7) overlap the two refined chips (task_3e9433f2 +
 task_ebbdf78b) - reconcile. RC NOT restarted this session (layer-1 activation + re-validate owed).
-
----
-
-# 2026-07-04 (RC2 no-live-LLM precompute-DB lane: 3 slices + first-ever DS seam flip; LEDGER 775-778)
-
-Operator picked the precompute-DB program (ROADMAP L15) as the next RC2 lane (E10/E2 stay operator-gated).
-Spec-first via Plan subagents; each build verifier-gated. 7 commits, all pushed + CI green.
-- SLICE 1 (`f5939253`, LEDGER 775): ARAM deterministic `build_block` gained a 7th `choices` key - the
-  PRIMARY A/B surface (shadow-measurable). Spec corrected 3 stale plan-doc premises (SR is NOT code-level
-  zero-Haiku; the ARAM Stage-1/2 block was already shipped LEDGER 763; from_fields is a decoder).
-- SLICE 2 (`20962f03`, LEDGER 776): NEW tools/aram_shadow_report.py (sibling of hz_shadow_report) -
-  per-field deterministic-vs-Haiku agreement + dead-state ("WAIT RESPAWN") exclusion. First live reading:
-  action 74% (>=70% gate MET), choices ~1%. ALSO the live C4/Ezreal+Corki DSP11 eyeball = SANE.
-- SLICE 3 (`25955559`, LEDGER 777): widened _safe_choices to all 5 ARAM labels -> A/B (source_tag
-  "aram_rule"), superseding slice-1's 2-label reuse. Coverage lifts as new games accrue.
-- C4 FLIP (`523206d6`, LEDGER 778): DSP11 prefer_kit_axis_by_win DEFAULT-ON. Flipped RC-SIDE at
-  archetype_dispatch.py:210 (NOT the DS server - that entangles the shared /rank passthrough test on
-  Ezreal). RC-side caller change so NO ENGINE bump / NO DS restart / NO Share. Proven live: Ezreal default
-  floats Essence Reaver #1 vs #4 off. FIRST-EVER DS seam flip - precedent set (see the seam memory).
-
-RC reloaded (pid 21356). docs/LIVE_GAME_GATED_SYNC.md C4 = FLIPPED/CLOSED.
-NEXT: ARAM item_extra/objective deterministic gaps; then Arena's remaining Haiku (763 built its block) +
-the CV vision atlas (the bigger SECOND program). Other C-seams (C5-C13) still champ-gated for eyeballs.
-DO NOT redo: C4 is FLIPPED - the flip point is the RC-side caller (archetype_dispatch.py:210), NOT the DS
-server; do NOT bump ENGINE for a caller-default flip. Slice-1's "reuse synth" don't-redo is SUPERSEDED by
-slice 3. E10/E2 stay operator-gated. A duplicate templater chip-session may exist on the operator side
-(redundant - slice 3 is merged).
