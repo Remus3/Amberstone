@@ -104,8 +104,8 @@ class EngineVersion(unittest.TestCase):
     """EXPECTED RED in the engine slice - the orchestrator owns the bump."""
 
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.180.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.180.0")
+        self.assertEqual(ENGINE_VERSION, "1.181.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.181.0")
 
 
 class SchemaDefaults(unittest.TestCase):
@@ -118,16 +118,18 @@ class SchemaDefaults(unittest.TestCase):
 
     def test_fields_appended_at_end(self) -> None:
         # Mid-class insert breaks positional construction (repo convention).
-        # R77 (1.180.0) appended ``crit_damage_reduction`` at the very END, so
-        # it is now the last field; the DSV9 pair is the second-to-last block
-        # and the DSV8 pair third-to-last (order preserved).
+        # R80 (1.181.0) appended ``basic_attack_damage_reduction`` at the very
+        # END -> it is now the last field; R77's ``crit_damage_reduction`` is
+        # second-to-last, the DSV9 shield-cut pair third/fourth-to-last, the
+        # DSV8 physical-burst pair fifth/sixth-to-last (order preserved).
         names = [f.name for f in dataclasses.fields(ItemEffect)]
-        self.assertEqual(names[-1], "crit_damage_reduction")
+        self.assertEqual(names[-1], "basic_attack_damage_reduction")
+        self.assertEqual(names[-2], "crit_damage_reduction")
         self.assertEqual(
-            names[-3:-1], ["shield_cut_melee_pct", "shield_cut_ranged_pct"]
+            names[-4:-2], ["shield_cut_melee_pct", "shield_cut_ranged_pct"]
         )
         self.assertEqual(
-            names[-5:-3],
+            names[-6:-4],
             ["physical_burst_base", "physical_burst_base_ad_ratio"],
         )
 

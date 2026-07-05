@@ -876,3 +876,17 @@ class ItemEffect:
     # (the field AND the flag must both be set); appended at the END per the
     # dataclass convention (a mid-class insert breaks positional construction).
     crit_damage_reduction: float = 0.0
+    # R80 (1.181.0): item-keyed incoming BASIC-ATTACK damage reduction (defensive
+    # EHP). Plated Steelcaps (SR 3047 / Arena 223047) "Plating" reduces all
+    # incoming basic-attack damage by 10% (Meraki 16.13.1) but was a
+    # defensive_only NOTE with no structured value, so the EHP scorer gave its
+    # signature anti-AA plating ZERO credit though the item's armor already
+    # counted. Basic-attack damage is PHYSICAL: the reduction folds into the
+    # physical EHP denominator via ``ehp.item_aa_dr_multiplier`` behind the
+    # default-OFF ``assume_item_aa_dr`` seam (same layer + item-keyed lane as
+    # R77's ``crit_damage_reduction``, which the champion percent-DR family
+    # cannot see). The basic-attack SHARE of incoming physical is a conservative
+    # operator-tunable midpoint in the consumer (the live feed we lack). Default
+    # 0.0 keeps every existing item + caller byte-identical (the field AND the
+    # flag must both be set); appended at the END per the dataclass convention.
+    basic_attack_damage_reduction: float = 0.0
