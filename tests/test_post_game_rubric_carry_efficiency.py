@@ -50,14 +50,17 @@ class DefaultOffByteIdenticalTests(unittest.TestCase):
     """carry_efficiency=False must be byte-identical to the pre-fold grade."""
 
     def test_default_kwarg_is_false(self):
-        # The flag is appended at the END of the signature with a default of
-        # False, so every existing positional caller (routes + postmortem) is
-        # unbroken and lands on the default-off path.
+        # carry_efficiency is a keyword flag defaulting False, so every existing
+        # positional caller (routes + postmortem) is unbroken and lands on the
+        # default-off path. ORUN5 later appended assume_carry_share_grade (its
+        # canonical-named alias) AFTER it at the true END of the signature, so
+        # this pins the default rather than a strict last-position index.
         import inspect
 
         sig = inspect.signature(pgr.compute_role_grade)
         params = list(sig.parameters)
-        self.assertEqual(params[-1], "carry_efficiency")
+        self.assertIn("carry_efficiency", params)
+        self.assertEqual(params[-1], "assume_carry_share_grade")
         self.assertIs(sig.parameters["carry_efficiency"].default, False)
 
     def test_explicit_false_equals_omitted(self):

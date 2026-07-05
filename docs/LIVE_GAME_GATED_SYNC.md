@@ -464,9 +464,14 @@ during real games; `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-O
   operator OK before any Haiku->deterministic flip of the arena coach block (do-not-flip-blind).
   SOURCE: docs/LEDGER.md item 763.
 - G18. (ACCRUAL/REAL-SR) ORUN5 grade-fold refinement (`assume_carry_share_grade` default-OFF
-  seam on `core/post_game_rubric.py`): ships headless byte-identical OFF; the live default-ON
-  flip is a Tier-2 product call needing real-match grade re-ranking validation + operator OK.
-  SOURCE: docs/ORCHESTRATION_PLAN.md:293.
+  seam at `core/post_game_rubric.py:410`, OR-gated with the existing carry_efficiency fold):
+  SHIPPED headless byte-identical OFF (proven by full-dict equality across 7 role/stat
+  fixtures). The live default-ON flip = pass `assume_carry_share_grade=True` at the 3 callers
+  (`dashboard/routes_post_game_rubric.py:244`, `scripts/postmortem_analyze.py:395`,
+  `core/precomputed_replay_narrative.py:434`); a Tier-2 product call needing real-match grade
+  re-ranking validation + operator OK. EYEBALL: a high-gold_share / high-KP carry game must
+  show a >= letter grade / total_score vs OFF (monotonic raise, never lower). SOURCE:
+  docs/ORCHESTRATION_PLAN.md:293.
 
 ## PARKED / HOLD (one line each)
 
