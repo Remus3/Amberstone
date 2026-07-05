@@ -24,7 +24,8 @@ _PART_COLS = (
     "total_minions_killed INTEGER, neutral_minions_killed INTEGER, "
     "vision_score INTEGER, gold_earned INTEGER, total_damage_dealt_to_champs INTEGER, "
     "deaths INTEGER, kills INTEGER, assists INTEGER, dragon_kills INTEGER, "
-    "baron_kills INTEGER, turret_takedowns INTEGER, inhibitor_takedowns INTEGER"
+    "baron_kills INTEGER, turret_takedowns INTEGER, inhibitor_takedowns INTEGER, "
+    "win INTEGER"
 )
 
 
@@ -41,7 +42,7 @@ class _Builder:
 
     def add(self, champ=22, dmg=12000, deaths=6, cs=180, vis=30, gold=12000,
             obj=2, kills=5, assists=8, dur_s=1800, map_id=11, has_stats=1,
-            team=100, dup=False):
+            team=100, dup=False, win=1):
         """Insert one operator game (newest = latest call). ``dup`` adds a
         second participant row sharing the join keys to exercise dedupe."""
         self._mid += 1
@@ -55,9 +56,9 @@ class _Builder:
         for _ in range(rows):
             self._pid += 1
             self.conn.execute(
-                "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (self._pid, mid, champ, team, cs, 0, vis, gold, dmg, deaths,
-                 kills, assists, obj, 0, 0, 0),
+                 kills, assists, obj, 0, 0, 0, win),
             )
         return self
 
