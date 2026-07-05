@@ -225,6 +225,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-05 (FIX-FIRST test red-state recovery - 3 residual clusters; LEDGER 787)
+
+Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LEDGER 786 / the ORUN2 finding deferred, before the ORUN2 UI panel slice proceeds. ENGINE-IMPACT NONE (test + doc only). Commit `4aac77de`, pushed.
+- S1 doc_size_budget: ROADMAP.md 88794 -> 81024B (< 81920) - relocated 3 fully-shipped bullets verbatim to docs/ROADMAP_HISTORY.md (player-snapshot 782 / HOME-E11 768-774 / DS cross-eval 495-497). No rewrite.
+- S2 motion_reduce_sweep_oq4: directive undercounted - TWO failures. `.lobby-status.searching` purged repo-wide by E11 (`1cf122e2`), not just an 8->7 drift. Removed dead home.css SITES entry + assertion 8->7 + docstrings (7 loops: item_build x2 + map_state x2 + header x3).
+- S3 lcu_loop_resilience x5: ROOT CAUSE = snapshot_panels Playwright fixtures leave a ProactorEventLoop running on the main thread -> a later bare asyncio.run() raises "cannot be called from a running event loop". Fix = _run_coro daemon-thread pattern (already used by test_p2w1_core_f.py / test_p2w2_ds_h.py). Test-only.
+GATE: full RC suite 10701 passed / 2 skipped / 192 subtests, exit 0. Orchestrator: slice 3 worktree subagent (verifier-gated) + slices 1+2 inline.
+DO NOT redo: the 3 clusters are FIXED; `.lobby-status.searching` is gone by design (E11 purge - do not re-add to SITES); the lcu asyncio-suite immunity is _run_coro (do not revert to bare asyncio.run).
+
+---
+
 # 2026-07-05 (operator handoff PHASE 1 - DS/haiku-zero ORUN waves; LEDGER 784-785)
 
 Operator away, Fable-5 competitor-research handoff: run at MAX effort as orchestrator, PHASE 1 = DS lift waves then PHASE 2 = gemini-headless-upgrade. GROUND TRUTH FIRST corrected the premise: the DS ENGINE is genuinely exhausted this patch (ENGINE 1.179.0 / 7997 tests / registries "provably saturated"; the R66 adversarial residual list is EXHAUSTED per R70, do NOT re-pick #1-#6, #7 shield-lerp is next-patch-ingest gated). So "next DS batches" = the director's real OPEN queue (docs/ORCHESTRATION_PLAN.md ORUN1-5), which is what the Gemini director itself reads. Verified-premise + shipped the 2 headless-safe, non-engine ORUN units as separate verifier-gated commits:
