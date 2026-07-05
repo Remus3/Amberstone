@@ -16771,3 +16771,19 @@ handed to the operator in chat.
 
 Don't-redo: home/settings/lobby/user-builds/PGR companion-fit SHIPPED (a731c8ce/31f4a327); default window
 size SHIPPED (7117ff19); cc-chips grid-swept (1b159617); replay scroll-wrap verified fine (do NOT "fix" it).
+
+---
+
+## Pruned WAKEUP entries (archived 2026-07-05, weekly-hygiene)
+
+# 2026-07-04 (/live-gated-drain continuation - A1/A2 layer-2 + D6 headless fixes built + armed, full resync rebuilt; LEDGER 780)
+
+Continuation of the FULL DRAIN (LEDGER 779). Built the 2 caught-bug headless fixes spec-first (2 Plan subagents) + worktree build agents + an independent verifier gate + lead frozen-diff review, Opus 4.8 max orchestrated. Both MERGED main + armed live; both still owe a live re-validate.
+- A1/A2 LAYER-2 (`1ab7000e`, FROZEN lcu_client.py + lcu_rune_writer.py): premise REFUTED - the 3 spawn_task loops ALREADY guard Exception, so "add a try/except" would be redundant dead code. Real gap = a BaseException escaping `except Exception` kills the coroutine (postgame collector already handled it; auto-accept + RuneWriter did not). Split the tick-arm into `except CancelledError: return` + `except BaseException: log`. Closes layer-1's caveat. NEW test_lcu_loop_resilience.py (5, RED-first). NOT proven to fix the incident - the root cause (AppLoop-stop / to_thread-starvation) is UNCONFIRMED (no traceback was logged); layer-1 self-heal is the alive-loop mitigation, the League-restart re-validate is definitive.
+- D6 (`79c4e9e9`, tools/lcu_agent.py): phase_watcher is DEAD (do NOT hook there - inert). RC-LCUAgent capture_state gains an Arena-gated /lol-cherry-game-intra-event/v1/augments probe + an edge-latch force_scan bump so the vision scan catches the transient augment panel -> augment/anvil shadow seed. NEW test (8). D2 shares the root cause.
+- Verify: 52 pass / 0 fail fresh, py_compile + frozen import smoke OK, ruff clean. RC pid 6440->24344 (auto-accept + RuneWriter up async, no boot break); RC-LCUAgent restarted.
+- `/live-gated-resync`: rate-limited first attempt (transient server throttle from the 52-agent burst, NOT a usage limit), SUCCEEDED on resume - rebuilt LIVE_GAME_GATED_SYNC.md (1533 lines, ASCII, audit.pass), pruned 11 closed rows, open_now=95, est 4 sessions, ARENA NEEDED=YES, B41 disambiguated -> B41b.
+- Operator live finding (mid-session): user-builds runes have NO hover tooltip -> chip task_9a485b62 (fix candidate build_insights.js _runeImgTag, a DDragon-runesReforged tooltip).
+
+NEXT (live re-validate, operator-paced): restart League mid-session -> champ-select to confirm A1/A2 auto-push (definitive layer-1+2 test); 1 Arena game for D6 seeding + D3 boot-anvil / D9 Goredrinker rolls; opportunistic ARAM Mayhem C11/C12/C3/C15/C16; F3 PGR auto-show recheck. Accrual G1 0.4626 / G2 +3.6% flip_ready=False - HOLD. Unplayed seams B2-B19/B31-B40 via the headless harness.
+DO NOT redo: the loops ALREADY guard Exception (layer-2 is the BaseException split, not a new loop); D6 is in RC-LCUAgent not phase_watcher (dead); the silent-death root cause is UNCONFIRMED (if the re-validate shows the loop still dies -> liveness-watchdog / to_thread-timeout). Duplicate chips task_c122811d + task_660c82b7 could NOT be dismissed (operator already started them) - close those sessions manually.
