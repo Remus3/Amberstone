@@ -67,6 +67,14 @@ def _fetch_frame_direct():
         img = ImageGrab.grab()  # primary virtual screen, single GDI BitBlt
         if img is None:
             return None
+        # Arm single-screen calibration: persist a NATIVE (pre-downscale) reference
+        # frame per HUD profile while a game is live (throttled + game-gated inside).
+        # Fail-soft - never breaks the grab.
+        try:
+            from core.vision_profiles import save_reference_image
+            save_reference_image(img)
+        except Exception:  # noqa: BLE001
+            pass
         if img.width > _SELF_GRAB_MAX_WIDTH:
             ratio = _SELF_GRAB_MAX_WIDTH / img.width
             img = img.resize((_SELF_GRAB_MAX_WIDTH, int(img.height * ratio)))
