@@ -435,8 +435,9 @@ during real games; `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-O
 
 ## G. ACCRUAL rails (many games; re-run the rail, NEVER flip on one game)
 
-- G1. (ACCRUAL) HZ Lane-A laning-agreement flip gate - HOLD: re-run at the 2026-07-04 wrap
-  laning agreement 0.4626 / build 0.6484, both BELOW the >=0.70 flip threshold (coverage grew).
+- G1. (ACCRUAL) HZ Lane-A laning-agreement flip gate - HOLD: re-run 2026-07-05 laning agreement
+  0.4709 (34048 comparable) / build 0.6598 (was 0.4626 / 0.6484 at the 2026-07-04 wrap; both
+  trending up but still BELOW the >=0.70 flip threshold; coverage 0.977 laning / 0.999 build).
   Rail: accrue real SR laning ticks -> `tools/hz_shadow_report.py` -> operator OK. SOURCE:
   ops/audit/HZ_REMEASUREMENT_2026-06-27.md; docs/LEDGER.md item 779.
 - G2. (ACCRUAL) HZ Lane-B build-order flip gate - HOLD (re-run 2026-07-04: +3.6% flip_ready=False
