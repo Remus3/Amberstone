@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-07-05 (R81 - live-game-overlay lift F1 + 3 operator-expansions: research fold-in / LeagueAkari teardown / OBS-CV-minimap plan; LEDGER 792)
+
+Gemini-loop executor cycle 10 (DIRECTOR REFILL rotation 3), operator-expanded 3x mid-run (interrupt = new scope, not stop). ENGINE-IMPACT NONE. Code `901116d4` + `5d9d7132` + `f6f31037`, docs commit. Full RC suite 10767 passed / 2 skipped / 0 fail.
+- R81 F1 SHIPPED: Section-7b deep-dive of a live-companion overlay (name-scrubbed) -> nominee = early/mid/late GREEN/YELLOW/RED power-strength strip, presentation-only over the EXISTING /api/spike-curve arrays. Backend `phases` block (routes_spike_curve.py `_phase_verdict`, comparative ally-vs-enemy 1.05 margin - the vendor's "vs own mean" degenerates on RC's monotonic fraction-normalized curve) + frontend 2x3 stoplight strip on the active-match sparkline. Verifier CONFIRM 9/9; UI-audit caught MF-1 (strip clipped by container height:40px+overflow) -> fixed in-slice (min-height + regression guard). Lift doc docs/COMPETITOR_LIFT_2026-07-05_R81.md; F5/F4/F3 -> BACKLOG FUTURE; F6/F7 CLOSED (no live per-player gold/cd); overlay pixel capture OWED (no live game).
+- EXPANSION 1 (incorporate the broad competitor research doc): RC_COMPETITOR_RESEARCH_2026-07-05.md (Desktop, non-repo, 21 NOW/10 FUTURE/13 CLOSED) -> BACKLOG name-scrubbed across rate-wall / draft / overlay / dev-loop lanes (SGP gateway = top gated lift; zero-API premade-mining + Mastery/League-V4 derived scouting = actionable NOW).
+- EXPANSION 2 (LeagueAkari local teardown): RC_LEAGUEAKARI_TEARDOWN_2026-07-05.md (Desktop, non-repo). v1.4.3 Electron LCU toolkit (GPL, do-not-vendor; renderer plaintext + main-process V8-bytecode string recovery). Full LCU/SGP/RCS/:2999 endpoint map. CONFIRMED the concrete SGP host-map + entitlements-token flow + endpoints -> de-risks the research-doc #1 rate-wall lift to "known recipe pending a Legion NA-host probe." F2 WebSocket-push / F3 pickable-bannable / F4 recommended-runes = NOW LCU lifts; ALL automation CLOSED (ToS). Folded to BACKLOG scrubbed.
+- EXPANSION 3 (OBS + deterministic-CV + minimap): docs/OBS_CV_MINIMAP_PLAN.md (repo). CORRECTED 2 premises - OBS is ALREADY integrated (core/obs_publisher.py OBS-WS v5, TEXT-PUSH only; websockets dep present, no new dep) + the deterministic-CV parsers ALREADY exist (core/vision_tesseract.py bar-fill/ult-sweep/OCR-cd) but UNWIRED from coach TIERED_FIELDS + 173 champ templates on disk. Phased: OBS req/resp GetSourceScreenshot -> OCR-field wiring (shadow-first, each field drops its Sonnet escalation for Haiku-to-ZERO) -> OBS occlusion-proof frames into :8889 -> minimap champion identity via cv2.matchTemplate (opencv the ONLY new heavy dep). Vanguard-safe throughout; nothing ships blind (coach flips live-gated).
+DO NOT redo: R81 F1 SHIPPED (the phase-strength strip exists at /api/spike-curve `phases` + the active-match strip); SGP recipe now KNOWN (probe the NA host live, do NOT re-scope the toolkit for the host-map); toolkit automation CLOSED for RC (no auto-pick/ban/dodge/honor); OBS integrated as text-push (EXTEND core/obs_publisher.py, do NOT re-scaffold an OBS-WS client); CV parsers exist (WIRE into TIERED_FIELDS, do NOT re-author bar-fill/OCR); opencv is the only new dep (minimap identity); the research + toolkit named artifacts stay NON-repo on Desktop.
+
+---
+
 # 2026-07-05 (R80 - item-keyed basic-attack-DR EHP seam, the R77 sibling lane; LEDGER 791)
 
 Gemini-loop executor cycle 9 (DIRECTOR REFILL rotation 2). Directive: premise-check ORUN3 + ORUN4, then rotate to the REFILL DS-sweep. Commit `bd397d36` (feat) + docs-sync commit. ENGINE 1.180.0 -> 1.181.0, DS :8893 bounced, Share synced.
@@ -21,14 +32,3 @@ Gemini-loop executor cycle. The deferred UI half of ORUN2 (backend was 9cd38c13)
 - Faithful mirror of duration_winrate.js but SR-ONLY (no mode bar / champ picker): 2 checkpoint blocks (10min/20min) x 5 signed gold-lead buckets behind_big..ahead_big; bar fill = Laplace-smoothed win%, value = raw win% (or ~smoothed% thin / "-" below min_bucket_n); per-checkpoint elasticity chip (snowball-prone/comeback-prone/elastic) = games-weighted ahead-vs-behind smoothed lean, DESCRIPTIVE not a win probability.
 GATE: 1 build subagent + verifier CONFIRM (targeted 74/74 + full RC suite 10725 passed/0 failed/2 skipped exit 0) + independent 5-phase UI-audit PASS 0 MUST-FIX + ui_recon visual proof clean (companion+desktop, 2 blocks x 5 bars, 0 page errors, no overflow). Live curl shape matched the fixture.
 DO NOT redo: ORUN2 FULLY SHIPPED (backend 9cd38c13 + UI 899b5f24); SR-only by design; next OPEN = ORUN3 (Aggregator B per-stat PGR strip) / ORUN4 (Aggregator D game-flow strip), then REFILL.
-
----
-
-# 2026-07-05 (FIX-FIRST test red-state recovery - 3 residual clusters; LEDGER 787)
-
-Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LEDGER 786 / the ORUN2 finding deferred, before the ORUN2 UI panel slice proceeds. ENGINE-IMPACT NONE (test + doc only). Commit `4aac77de`, pushed.
-- S1 doc_size_budget: ROADMAP.md 88794 -> 81024B (< 81920) - relocated 3 fully-shipped bullets verbatim to docs/ROADMAP_HISTORY.md (player-snapshot 782 / HOME-E11 768-774 / DS cross-eval 495-497). No rewrite.
-- S2 motion_reduce_sweep_oq4: directive undercounted - TWO failures. `.lobby-status.searching` purged repo-wide by E11 (`1cf122e2`), not just an 8->7 drift. Removed dead home.css SITES entry + assertion 8->7 + docstrings (7 loops: item_build x2 + map_state x2 + header x3).
-- S3 lcu_loop_resilience x5: ROOT CAUSE = snapshot_panels Playwright fixtures leave a ProactorEventLoop running on the main thread -> a later bare asyncio.run() raises "cannot be called from a running event loop". Fix = _run_coro daemon-thread pattern (already used by test_p2w1_core_f.py / test_p2w2_ds_h.py). Test-only.
-GATE: full RC suite 10701 passed / 2 skipped / 192 subtests, exit 0. Orchestrator: slice 3 worktree subagent (verifier-gated) + slices 1+2 inline.
-DO NOT redo: the 3 clusters are FIXED; `.lobby-status.searching` is gone by design (E11 purge - do not re-add to SITES); the lcu asyncio-suite immunity is _run_coro (do not revert to bare asyncio.run).
