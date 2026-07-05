@@ -47,6 +47,66 @@
   opacity: 0.6;
 }
 
+/* Phase-strength strip (R81 F1). A compact early/mid/late GREEN/YELLOW/RED
+ * block beneath the sparkline: 2 rows (You / Enemy), each a label + 3 color
+ * cells (E / M / L). Semantic tokens map to the signal palette; literal
+ * fallbacks mirror the tokens.css Hextech hues so the strip still colors when
+ * a bare stylesheet loads. Fail-soft path (no phases) emits no .spk-phases at
+ * all, so this block only styles what is actually rendered - the sparkline
+ * height is unaffected. */
+.spike-curve-container .spk-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.spike-curve-container .spk-phase-row {
+  display: grid;
+  grid-template-columns: auto repeat(3, 1fr);
+  gap: 2px;
+  align-items: center;
+}
+
+.spike-curve-container .spk-phase-label {
+  /* operator-exception: dense active-match/overlay strip label. Matches the
+   * chart-density exception on .spk-empty (line ~40) - the sanctioned overlay
+   * sub-floor --fs-ov-head (11px) keeps the 2-char row tag inside the compact
+   * reserved slot without breaking the pinned sparkline height. */
+  font-size: var(--fs-ov-head, 11px);
+  letter-spacing: 0.04em;
+  color: var(--text-faint, #9ca3af);
+  text-transform: uppercase;
+  padding-right: 4px;
+  white-space: nowrap;
+}
+
+.spike-curve-container .spk-phase {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 12px;
+  border-radius: 2px;
+  /* operator-exception: single-char E/M/L cell tag inside the dense strip;
+   * same --fs-ov-head sub-floor rationale as .spk-phase-label above. */
+  font-size: var(--fs-ov-head, 11px);
+  font-weight: 600;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.72);
+}
+
+.spike-curve-container .spk-phase-green {
+  background: var(--signal-good, #37D08A);
+}
+
+.spike-curve-container .spk-phase-yellow {
+  background: var(--signal-warn, #E8A33D);
+}
+
+.spike-curve-container .spk-phase-red {
+  background: var(--signal-bad, #E84057);
+}
+
 /* Legend chip - tiny inline marker so the operator knows which line is
  * which without hovering. Rendered as a sibling caption row above the
  * SVG when the chrome is desired; the default is no legend (40px is
