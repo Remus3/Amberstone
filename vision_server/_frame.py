@@ -68,8 +68,11 @@ def _fetch_frame_direct():
         if img is None:
             return None
         # Arm single-screen calibration: persist a NATIVE (pre-downscale) reference
-        # frame per HUD profile while a game is live (throttled + game-gated inside).
-        # Fail-soft - never breaks the grab.
+        # frame per HUD profile ONCE, only while a game is live AND League holds the
+        # foreground window (all gating is inside save_reference_image: has_game +
+        # foreground + no-ref-yet). The foreground gate stops an alt-tab from
+        # clobbering the calibrated base with a desktop frame; the once-per-config
+        # gate retires the old 60s re-grab cadence. Fail-soft - never breaks the grab.
         try:
             from core.vision_profiles import save_reference_image
             save_reference_image(img)
