@@ -222,7 +222,7 @@ class RegressionTests(unittest.TestCase):
         self.assertGreater(v.get("P", 0.0), 50.0)
 
     def test_engine_version_pin(self) -> None:
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.179.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.180.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

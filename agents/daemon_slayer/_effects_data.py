@@ -2867,9 +2867,16 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3143",
         name="Randuin's Omen",
         defensive_only=True,
+        # R77 (1.180.0): Resilience 30% reduced critical strike damage taken is
+        # now EHP-credited (crit is physical -> folds into the physical
+        # denominator via the default-OFF assume_item_crit_dr seam). Still
+        # defensive_only (no DPS proc). Humility active 70% AoE slow stays
+        # utility-only. WIN-anchor rewind_history.db: 344 builds, 54.7% WR.
+        crit_damage_reduction=0.30,
         note=(
-            "Randuin's Omen: Resilience 30% reduced crit damage taken + Humility "
-            "active 70% AoE slow - damage mitigation + CC active, no DPS contribution"
+            "Randuin's Omen: Resilience 30% reduced crit damage taken (R77 EHP "
+            "seam assume_item_crit_dr) + Humility active 70% AoE slow - damage "
+            "mitigation + CC active, no DPS contribution"
         ),
     ),
     "8001": ItemEffect(
@@ -4373,7 +4380,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223143",
         name="Randuin's Omen",
         defensive_only=True,
-        note="Randuin's Omen (Arena 223143): Humility crit-damage reduction + active slow - defensive, no DPS",
+        # R77 (1.180.0): Arena mirror of SR 3143 - same 30% crit-DR EHP credit
+        # under the default-OFF assume_item_crit_dr seam.
+        crit_damage_reduction=0.30,
+        note="Randuin's Omen (Arena 223143): Resilience 30% crit-damage reduction (R77 EHP seam) + Humility active slow - defensive, no DPS",
     ),
     "223152": ItemEffect(
         item_id="223152",

@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.180.0 (R77, 2026-07-05 - NEW default-OFF seam assume_item_crit_dr +
+Randuin's Omen 3143/223143 crit-damage-reduction pin). A fresh adversarial
+Meraki(16.13.1)-vs-registry refute pass found that Randuin's Omen Resilience
+"30% reduced critical strike damage taken" was registered defensive_only=True
+with a NOTE only - the EHP scorer gave its signature crit-DR ZERO effective-HP
+credit, even though the champion percent-DR family (mitigation_multipliers)
+already folds champion-side percent-DR into the EHP denominator. That family
+is champion_id-keyed and structurally cannot see the build's items, so item-
+keyed incoming damage-reduction was an unmodeled lane (distinct from the
+OFFENSIVE resist-shred fields armor_reduction_pct / mr_reduction_pct). R77 adds
+one END-appended ItemEffect field crit_damage_reduction (0.30 on SR 3143 +
+Arena 223143; ARAM 323143 absent from the pool, test-guarded), an item-keyed
+helper ehp.item_crit_dr_multiplier, and a physical-only denominator fold in
+compute_ehp behind the default-OFF assume_item_crit_dr seam. Crit damage is
+PHYSICAL, so only physical_ehp moves (magical/true untouched); mit_phys stays
+the pure champion percent-DR value (the item factor is a separate multiplier).
+The crit-affected SHARE of incoming physical is a conservative operator-tunable
+midpoint _ASSUMED_INCOMING_CRIT_SHARE = 0.5 (the live crit-composition feed we
+lack) -> a 30% crit-DR at 0.5 share = x0.85 physical denominator (+17.6%
+physical EHP) when armed. DEFAULT-OFF is byte-identical (the helper short-
+circuits to 1.0 before inspecting any item; the field defaults 0.0). WIN-anchor
+(data/rewind_history.db): Randuin's built = 344 games, 54.7% WR vs the 50.0%
+baseline (+4.7pp). Offline characterization tests test_item_crit_damage_
+reduction_r77.py (18); the live default-ON flip is live-gated
+(docs/LIVE_GAME_GATED_SYNC.md). Sources: Riot Data Dragon / CommunityDragon /
+Meraki Analytics item data 16.13.1.
+
 1.179.0 (R75, 2026-07-03 - NEW default-OFF seam DSV9 assume_shielded_target +
 Serpent's Fang 6695/226695 Shield Reaver pins). Meraki 16.13.1 item 6695
 passive "Shield Reaver": "Dealing damage to an enemy champion inflicts them
