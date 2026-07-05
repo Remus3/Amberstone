@@ -83,6 +83,7 @@ data/champion_loadouts.json.bak-*
 
 # Operator scratch / design docs at repo root (not part of source tree)
 /rc-tutor-decision-matrix.md
+/_handoff_competitor_deep_research.md
 
 # Scraped meta build pages (re-fetchable, large)
 data/meta_build/scraped/
