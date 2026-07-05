@@ -863,3 +863,16 @@ class ItemEffect:
     # test).
     shield_cut_melee_pct: float = 0.0
     shield_cut_ranged_pct: float = 0.0
+    # R77 (1.180.0): item-keyed incoming CRIT-DAMAGE REDUCTION (defensive EHP).
+    # Randuin's Omen (SR 3143 / Arena 223143) Resilience "30% reduced critical
+    # strike damage taken" was a defensive_only NOTE with no structured value,
+    # so the EHP scorer gave its signature crit-DR ZERO credit. Crit damage is
+    # PHYSICAL: the reduction folds into the physical EHP denominator via
+    # ``ehp.item_crit_dr_multiplier`` behind the default-OFF ``assume_item_crit_dr``
+    # seam (same layer as the champion percent-DR family, which is champion_id-
+    # keyed and cannot see items). The crit-affected SHARE of incoming physical
+    # is a conservative operator-tunable midpoint in the consumer (the live feed
+    # we lack). Default 0.0 keeps every existing item + caller byte-identical
+    # (the field AND the flag must both be set); appended at the END per the
+    # dataclass convention (a mid-class insert breaks positional construction).
+    crit_damage_reduction: float = 0.0
