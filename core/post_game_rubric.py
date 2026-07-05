@@ -407,6 +407,7 @@ def compute_role_grade(
     role: str,
     weights: RoleWeights | None = None,
     carry_efficiency: bool = False,
+    assume_carry_share_grade: bool = False,
 ) -> dict:
     """Score a per-match per-role profile.
 
@@ -429,11 +430,19 @@ def compute_role_grade(
             raw_total monotonically (a higher gold_share or KP can only raise,
             never lower, the grade). Enabling it is a grade re-baseline and a
             gated product call; the default-off path is what ships live.
+        assume_carry_share_grade: ORUN5 canonical-named alias of
+            carry_efficiency (docs/ORCHESTRATION_PLAN.md ORUN5). Same
+            DEFAULT-OFF, additive, monotonic seam - the fold fires when EITHER
+            flag is True. Present so the ORUN5 seam and the live default-ON
+            flip (a Tier-2 product call in docs/LIVE_GAME_GATED_SYNC.md G18)
+            reference the parameter by its planned name; the default-off path
+            stays byte-identical.
 
     Returns:
         dict with keys: role, total_score, components (dict), and
         percentile_grade ("S+", "S", "A", "B", "C", or "D"). The components
-        dict gains a `carry_efficiency` entry ONLY when carry_efficiency=True.
+        dict gains a `carry_efficiency` entry ONLY when carry_efficiency or
+        assume_carry_share_grade is True.
     """
     canonical_role = _normalize_role(role)
     role_weights = weights if weights is not None else _DEFAULT_WEIGHTS[canonical_role]
@@ -480,7 +489,9 @@ def compute_role_grade(
     # Because it only ADDS to raw_total, a higher gold_share or KP yields a
     # non-worse grade (monotonic). When the flag is off this block is skipped
     # entirely, so the grade is byte-identical to the pre-fold calibration.
-    if carry_efficiency:
+    # assume_carry_share_grade (ORUN5) is the canonical-named alias - either
+    # flag arms the identical fold.
+    if carry_efficiency or assume_carry_share_grade:
         gold_share = float(stats.get("gold_share_pct", 0) or 0)
         kp = float(stats.get("kp_pct", 0) or 0)
         half_weight = _CARRY_EFFICIENCY_WEIGHT / 2.0
