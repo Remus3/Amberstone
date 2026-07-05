@@ -11,7 +11,10 @@
 
 .spike-curve-container {
   width: 100%;
-  height: 40px;
+  /* min-height (not a hard height) so the optional R81 phase strip below
+   * the SVG is revealed instead of clipped by overflow:hidden. Fail-soft
+   * (no strip) keeps the intrinsic 40px sparkline slot. */
+  min-height: 40px;
   margin: 0 0 6px 0;
   padding: 0;
   position: relative;
@@ -52,8 +55,10 @@
  * cells (E / M / L). Semantic tokens map to the signal palette; literal
  * fallbacks mirror the tokens.css Hextech hues so the strip still colors when
  * a bare stylesheet loads. Fail-soft path (no phases) emits no .spk-phases at
- * all, so this block only styles what is actually rendered - the sparkline
- * height is unaffected. */
+ * all, so this block only styles what is actually rendered. The SVG
+ * sparkline stays 40px; the container is min-height (not a hard height)
+ * so it grows to reveal this strip when phases are present, and stays at
+ * the intrinsic 40px slot on the fail-soft (no-strip) path. */
 .spike-curve-container .spk-phases {
   display: flex;
   flex-direction: column;
