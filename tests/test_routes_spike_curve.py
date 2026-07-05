@@ -303,6 +303,119 @@ class PerChampCurveTests(SpikeCurveBase):
         self.assertIs(c1, c2)
 
 
+class PhaseVerdictTests(SpikeCurveBase):
+    """Direct exercise of the comparative early/mid/late phase-strength
+    verdict helpers. The verdict compares the TWO teams' phase-mean power
+    and colours each cell green/yellow/red per side (R81 F1)."""
+
+    def _curve(self, fn):
+        return [{"minute": i, "power": float(fn(i))} for i in range(41)]
+
+    def test_front_loaded_ally_vs_back_loaded_enemy_early(self):
+        # Ally rises fast (early power dominates); enemy back-loads (quadratic).
+        ally = self._curve(lambda m: min(m / 8.0, 5.0))
+        enemy = self._curve(lambda m: 5.0 * (m / 40.0) ** 2)
+        v = routes_spike_curve._phase_verdict(ally, enemy)
+        self.assertEqual(v["ally"]["early"], "green")
+        self.assertEqual(v["enemy"]["early"], "red")
+
+    def test_asymmetric_ceilings_late_flip(self):
+        # Same shape, different ceilings: ally caps ~4.0, enemy caps ~5.0.
+        ally = self._curve(lambda m: 4.0 * (m / 40.0))
+        enemy = self._curve(lambda m: 5.0 * (m / 40.0))
+        v = routes_spike_curve._phase_verdict(ally, enemy)
+        self.assertEqual(v["enemy"]["late"], "green")
+        self.assertEqual(v["ally"]["late"], "red")
+
+    def test_identical_curves_all_yellow(self):
+        same = self._curve(lambda m: 5.0 * (m / 40.0))
+        v = routes_spike_curve._phase_verdict(same, list(same))
+        for side in ("ally", "enemy"):
+            for phase in ("early", "mid", "late"):
+                self.assertEqual(v[side][phase], "yellow",
+                                 f"{side}/{phase} should be yellow on ties")
+
+    def test_all_zero_curves_all_yellow(self):
+        zero = self._curve(lambda m: 0.0)
+        v = routes_spike_curve._phase_verdict(zero, list(zero))
+        for side in ("ally", "enemy"):
+            for phase in ("early", "mid", "late"):
+                self.assertEqual(v[side][phase], "yellow")
+
+    def test_empty_ally_all_yellow(self):
+        enemy = self._curve(lambda m: 5.0 * (m / 40.0))
+        v = routes_spike_curve._phase_verdict([], enemy)
+        for side in ("ally", "enemy"):
+            for phase in ("early", "mid", "late"):
+                self.assertEqual(v[side][phase], "yellow")
+
+    def test_empty_enemy_all_yellow(self):
+        ally = self._curve(lambda m: 5.0 * (m / 40.0))
+        v = routes_spike_curve._phase_verdict(ally, [])
+        for side in ("ally", "enemy"):
+            for phase in ("early", "mid", "late"):
+                self.assertEqual(v[side][phase], "yellow")
+
+    def test_phase_mean_windows(self):
+        # Power == minute -> early mean is mean(0..14)=7.0, mid mean(15..29)=22.0.
+        curve = self._curve(lambda m: float(m))
+        self.assertAlmostEqual(routes_spike_curve._phase_mean(curve, 0, 14), 7.0)
+        self.assertAlmostEqual(routes_spike_curve._phase_mean(curve, 15, 29), 22.0)
+        self.assertAlmostEqual(routes_spike_curve._phase_mean(curve, 30, 40), 35.0)
+
+    def test_phase_mean_empty_window_is_zero(self):
+        curve = self._curve(lambda m: float(m))
+        self.assertEqual(routes_spike_curve._phase_mean(curve, 100, 200), 0.0)
+
+    def test_phase_pair_margin_flip(self):
+        # A margin under 5% stays yellow; at/over 5% flips.
+        self.assertEqual(routes_spike_curve._phase_pair(1.04, 1.0), ("yellow", "yellow"))
+        self.assertEqual(routes_spike_curve._phase_pair(1.05, 1.0), ("green", "red"))
+        self.assertEqual(routes_spike_curve._phase_pair(1.0, 1.05), ("red", "green"))
+
+    def test_phase_pair_zero_sides(self):
+        self.assertEqual(routes_spike_curve._phase_pair(0.0, 0.0), ("yellow", "yellow"))
+        self.assertEqual(routes_spike_curve._phase_pair(2.0, 0.0), ("green", "red"))
+        self.assertEqual(routes_spike_curve._phase_pair(0.0, 2.0), ("red", "green"))
+
+
+class PhaseRouteIntegrationTests(SpikeCurveBase):
+    """Route-level: a real /api/spike-curve response carries the additive
+    `phases` block AND every prior key stays present."""
+
+    def _ok_call(self):
+        path = (f"/api/spike-curve?ally={','.join(str(i) for i in CARRY_TEAM)}"
+                f"&enemy={','.join(str(i) for i in TANK_TEAM)}")
+        return _do(path)
+
+    def test_response_carries_phases_block(self):
+        body = self._ok_call().parsed()
+        self.assertIn("phases", body)
+        phases = body["phases"]
+        self.assertIn("ally", phases)
+        self.assertIn("enemy", phases)
+        for side in ("ally", "enemy"):
+            for phase in ("early", "mid", "late"):
+                self.assertIn(phase, phases[side])
+                self.assertIn(phases[side][phase], ("green", "yellow", "red"))
+
+    def test_prior_keys_unchanged(self):
+        body = self._ok_call().parsed()
+        for k in ("ok", "mode", "ally", "enemy", "peaks", "cache_key", "cached"):
+            self.assertIn(k, body)
+        self.assertTrue(body["ok"])
+        self.assertEqual(len(body["ally"]), 41)
+        self.assertEqual(len(body["enemy"]), 41)
+
+    def test_cached_hit_inherits_phases(self):
+        path = (f"/api/spike-curve?ally={','.join(str(i) for i in CARRY_TEAM)}"
+                f"&enemy={','.join(str(i) for i in TANK_TEAM)}")
+        _do(path)
+        body2 = _do(path).parsed()
+        self.assertTrue(body2["cached"])
+        self.assertIn("phases", body2)
+
+
 class RouteRegistrationTests(unittest.TestCase):
     """GET_ROUTES should be importable + non-empty so the dispatcher can
     wire the route at module load."""

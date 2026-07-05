@@ -395,6 +395,48 @@ def _peak_minute(curve: list[dict]) -> int:
     return int(curve[-1].get("minute", 0))
 
 
+def _phase_mean(curve, lo, hi):
+    """Arithmetic mean of power over entries with lo <= minute <= hi. 0.0 if none."""
+    vals = [float(e.get("power", 0.0)) for e in curve if lo <= int(e.get("minute", -1)) <= hi]
+    return sum(vals) / len(vals) if vals else 0.0
+
+
+_PHASE_WINDOWS = (("early", 0, 14), ("mid", 15, 29), ("late", 30, 40))
+_PHASE_MARGIN = 1.05  # 5% relative advantage flips a cell off yellow
+
+
+def _phase_pair(da, de):
+    """Compare one phase's ally mean (da) vs enemy mean (de) -> (ally_color, enemy_color)."""
+    if da <= 0.0 and de <= 0.0:
+        return ("yellow", "yellow")
+    if de <= 0.0:
+        return ("green", "red")
+    if da <= 0.0:
+        return ("red", "green")
+    if da >= de * _PHASE_MARGIN:
+        return ("green", "red")
+    if de >= da * _PHASE_MARGIN:
+        return ("red", "green")
+    return ("yellow", "yellow")
+
+
+def _phase_verdict(ally_curve, enemy_curve):
+    """Per-phase (early/mid/late) comparative strength color for both teams.
+    Returns {"ally": {early,mid,late}, "enemy": {...}} with values in
+    green/yellow/red. Empty/short curve on either side -> all yellow."""
+    if (not isinstance(ally_curve, list) or not ally_curve
+            or not isinstance(enemy_curve, list) or not enemy_curve):
+        blank = {"early": "yellow", "mid": "yellow", "late": "yellow"}
+        return {"ally": dict(blank), "enemy": dict(blank)}
+    ally = {}
+    enemy = {}
+    for name, lo, hi in _PHASE_WINDOWS:
+        a, e = _phase_pair(_phase_mean(ally_curve, lo, hi), _phase_mean(enemy_curve, lo, hi))
+        ally[name] = a
+        enemy[name] = e
+    return {"ally": ally, "enemy": enemy}
+
+
 def _parse_csv_ids(raw: str) -> list[int]:
     """Parse '1,2,3' -> [1,2,3]. Drops blanks; raises ValueError on
     non-int tokens so the caller can 400 cleanly rather than silently
@@ -509,6 +551,7 @@ def _serve_spike_curve(h) -> None:
                 "ally":  _peak_minute(ally_curve),
                 "enemy": _peak_minute(enemy_curve),
             },
+            "phases": _phase_verdict(ally_curve, enemy_curve),
             "cache_key":  cache_key,
             "cached":     False,
             "elapsed_ms": int((time.time() - t0) * 1000),
