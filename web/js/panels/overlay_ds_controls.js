@@ -154,7 +154,7 @@ function _rowsHtml(payload) {
   }
   return rows.slice(0, _OVDS_ROW_CAP).map((r) => (
     `<div class="ovds-row">`
-    + `<span class="ovds-item">${_esc(r.name || r.item_id || "")}</span>`
+    + `<span class="ovds-item" title="${_esc(r.name || r.item_id || "")}">${_esc(r.name || r.item_id || "")}</span>`
     + `<span class="ovds-delta">+${Math.round(+r.delta_dps || 0)}</span>`
     + `<span class="ovds-gold">${_goldLabel(r.gold)}g</span>`
     + `</div>`
