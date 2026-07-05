@@ -225,6 +225,41 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-05 (player-snapshot card SHIPPED - GPI-24h Home + role-rubric PGR; subagent-driven TDD; LEDGER 782)
+
+Built the player-snapshot card end-to-end on branch `feat/player-snapshot-card` (PUSHED, head `b1a0c3b8` + LEDGER `68f37197`; NOT merged) via superpowers subagent-driven-development: 10 tasks, fresh implementer + spec/quality reviewer per task, a verifier gate + an Opus whole-branch review. Spec (2026-07-04) -> plan (`docs/superpowers/plans/2026-07-04-player-snapshot-card.md`) -> build.
+- TASK 1 corrected a stale recon: rc-shell is a LIVE 2-surface Electron app; the companion window loads the shared `web/` tree from :8888, so v1 mounts in `web/` with ZERO `rc-shell/src` edits. The prior "overlay gone / all :8888" claim was WRONG (MEMORY was right).
+- Backend: `player_gpi.py` `since_ts` window + win/streak/K-P/kda_mean/strongest-axis; new DB-pure `/api/player-snapshot` route (registered in `_dispatch.py`).
+- Frontend: presentational `renderPlayerSnapshot` (tokens-only, ASCII, SVG arc-gauge dial); Home adapter (GPI 24h per mode tab + hero ABSORB); PGR adapter (role-rubric fold, NO new fetch, hero/rubric SUPPRESS); View Profile -> first production mount of the GPI radar.
+- Verify: 5-phase UI audit 0 MUST-FIX; verifier 132/132; snapshot_panels 336; the Opus review caught 1 CRITICAL (PGR radar mounted into a `display:none` subtree) - FIXED `b1a0c3b8` (per-view containers). RC reloaded pid 12284, live `/api/player-snapshot` returns a valid model.
+- Also: appended the operator's session-2 URLs to the canonical `_handoff_competitor_deep_research.md` (memory dir, non-repo per name-scrub); deleted a stray repo-root copy.
+
+NEXT (operator /clears + starts on MAIN): open a PR for `feat/player-snapshot-card` -> main + merge (CI is PR-gated, no branch-push run) OR merge when ready. Then the Fable-5 competitor deep-research fan-out (QUEUED, memory-dir handoff, run in a dedicated Fable-5 session) + the lolmath DS-knob coverage check (separate). Operator-glance owed: dial arc-gauge vs `luna-sever-2.jpg`.
+DO NOT redo: rc-shell IS alive (companion = the :8888 web tree in Electron - do NOT re-pitch "overlay gone"); the card is BUILT + reviewed + pushed on `feat/player-snapshot-card` (do NOT rebuild); the 1 Critical is FIXED; the model contract + 65/35 dial bands + visual-only absorb/suppress are settled.
+
+---
+
+# 2026-07-05 (weekly-hygiene pass - unattended)
+
+Automated unattended hygiene pass (RC-WeeklyHygiene).
+
+RELOCATED: 2026-07-04 /live-gated-drain (LEDGER 780) -> docs/history_notes.md (verbatim).
+
+MEMORY UPDATE: reference_model_config.md - removed retired Game-PC entry (ADR-011 2026-05-29).
+
+ANOMALY TRIAGE (rc_facts.py 04:17 2026-07-05):
+- :8889 vision not listening -> EXPECTED (no game in progress; self-heals in-process).
+- LCU agent not posting -> EXPECTED (no champ-select in progress).
+- All 18 RC-* tasks Ready/Running, DS :8893 ok patch=16.13.1.
+
+FLAGS FOR OPERATOR:
+1. `_next_session_snapshot_card_build.md` (memory dir) - stale next-session prompt for player-snapshot card build; card is MERGED (LEDGER 782-783). Not indexed in MEMORY.md. Confirm OK to delete?
+2. `reference_gamepc_retired_adr011.md` contains dead cross-link [[reference_bridge_dispatch_target_paths]] - no matching file in memory dir.
+
+DO NOT redo: session 4 relocated verbatim; model_config Game-PC line removed.
+
+---
+
 # 2026-07-04 (/live-gated-drain FULL DRAIN - 4 queues one sitting; LEDGER 779; layer-1 fix 90b350c8)
 
 Ran the full live-gated drain (ARAM Vayne + practice-SR Zilean + real-SR Ezreal draft-q400 + Arena
