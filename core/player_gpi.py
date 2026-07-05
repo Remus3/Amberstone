@@ -89,6 +89,7 @@ def _empty(mode: str, window: int, n_games: int, champion: Optional[int],
         "champion": champion,
         "n_games": n_games,
         "window": window,
+        "window_n": 0,
         "min_games": MIN_GAMES,
         "confidence": confidence,
         "axes": [],
@@ -182,13 +183,13 @@ def _median(vals: list[float]) -> float:
     return (s[mid - 1] + s[mid]) / 2.0
 
 
-def _relative_axis(spec, games: list[dict], window: int) -> dict:
+def _relative_axis(spec, games: list[dict], window: int, recent=None) -> dict:
     key, label, unit, higher, sel = spec
     sign = 1.0 if higher else -1.0
     # Directional baseline (negated for lower-is-better) drives the percentile;
     # the human-readable value + median stay in raw units.
     baseline = sorted(sign * sel(g) for g in games)
-    recent = games[:window]
+    recent = games[:window] if recent is None else recent
     pcts = [_percentile(baseline, sign * sel(g)) for g in recent]
     score = 100.0 * sum(pcts) / len(pcts) if pcts else 50.0
     recent_raw = [sel(g) for g in recent]
@@ -205,12 +206,12 @@ def _relative_axis(spec, games: list[dict], window: int) -> dict:
     }
 
 
-def _versatility_axis(games: list[dict], window: int) -> dict:
+def _versatility_axis(games: list[dict], window: int, recent=None) -> dict:
     """Champion-pool diversity over the recent window via normalized Shannon
     entropy. 1 champion -> 0; an even spread across N distinct champs over N
     games -> 100. A one-trick reads low, a flex-everything player reads high.
     """
-    recent = games[:window]
+    recent = games[:window] if recent is None else recent
     n = len(recent)
     counts: dict[int, int] = {}
     for g in recent:
@@ -233,12 +234,12 @@ def _versatility_axis(games: list[dict], window: int) -> dict:
     }
 
 
-def _consistency_axis(games: list[dict], window: int) -> dict:
+def _consistency_axis(games: list[dict], window: int, recent=None) -> dict:
     """Inverse KDA dispersion over the recent window. Steady KDA game to game
     reads high; boom-or-bust reads low. score = 100*(1 - clamp(cv,0,1)) where
     cv = stdev(kda)/mean(kda).
     """
-    recent = games[:window]
+    recent = games[:window] if recent is None else recent
     kdas = [g["kda"] for g in recent]
     n = len(kdas)
     if n <= 1:
@@ -298,11 +299,18 @@ def _this_match_block(games: list[dict]) -> Optional[dict]:
 
 def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
                 champion: Optional[int] = None,
-                conn: Optional[sqlite3.Connection] = None) -> dict:
+                conn: Optional[sqlite3.Connection] = None,
+                since_ts: Optional[int] = None) -> dict:
     """Build the 8-axis GPI profile. The returned dict is the API/panel
     contract. Never raises on empty/thin history - returns an ok payload with
     ``confidence`` in {high, low, insufficient} and an empty ``axes`` when
     below MIN_GAMES.
+
+    ``since_ts`` (epoch ms), when given, filters the "recent" set that axes
+    are scored over to games at or after that timestamp; the percentile
+    baseline stays the full ``games`` history. When ``since_ts`` is None,
+    behavior is byte-identical to the pre-window-filter code path
+    (``games[:window]``).
     """
     if mode not in MODE_MAPS:
         mode = "sr"
@@ -323,9 +331,14 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     if n_games < MIN_GAMES:
         return _empty(mode, window, n_games, champion, "insufficient")
 
-    axes = [_relative_axis(spec, games, window) for spec in _RELATIVE_AXES]
-    axes.append(_versatility_axis(games, window))
-    axes.append(_consistency_axis(games, window))
+    if since_ts is not None:
+        recent = [g for g in games if g["ts"] and g["ts"] >= since_ts]
+    else:
+        recent = games[:window]
+
+    axes = [_relative_axis(spec, games, window, recent) for spec in _RELATIVE_AXES]
+    axes.append(_versatility_axis(games, window, recent))
+    axes.append(_consistency_axis(games, window, recent))
 
     overall = round(sum(a["score"] for a in axes) / len(axes), 1)
     eff_window = min(window, n_games)
@@ -333,6 +346,7 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     out = _empty(mode, window, n_games, champion, confidence)
     out["axes"] = axes
     out["overall"] = overall
+    out["window_n"] = len(recent)
     out["this_match"] = _this_match_block(games)
 
     # Weakest-axis call-out drives the single improvement tip. Only the relative
