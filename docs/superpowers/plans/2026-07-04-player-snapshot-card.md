@@ -350,6 +350,7 @@ if games:
 out["win_streak"] = streak
 out["win_rate"] = (sum(g["win"] for g in recent) / len(recent)) if recent else None
 out["kp_pct"] = round(100.0 * sum(g["kp"] for g in recent) / len(recent), 1) if recent else None
+out["kda_mean"] = round(sum(g["kda"] for g in recent) / len(recent), 2) if recent else None
 
 # Strongest relative axis (symmetric to weakest_axis; relative axes only).
 rel_axes = [a for a in axes if a["key"] in _AXIS_TIPS]
@@ -357,7 +358,7 @@ strongest = max(rel_axes, key=lambda a: a["score"]) if rel_axes else None
 out["strongest_axis"] = strongest["key"] if strongest else None
 ```
 
-Add `"win_streak": None, "win_rate": None, "kp_pct": None, "strongest_axis": None` to `_empty()` so keys are always present.
+Add `"win_streak": None, "win_rate": None, "kp_pct": None, "kda_mean": None, "strongest_axis": None` to `_empty()` so keys are always present.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -646,16 +647,12 @@ def _build_snapshot_model(gpi: dict, mode: str, hours: int) -> dict:
 
 
 def _fmt_kda(gpi: dict) -> str:
-    a = {x["key"]: x for x in gpi.get("axes", [])}
-    # KDA is not a GPI axis; recompute from the this_match/aggregate is out of
-    # scope - surface the aggression axis recent_value proxy label instead is
-    # wrong. Use the mean KDA the module already tracks via consistency input.
-    # Simplest correct source: gpi carries no mean KDA, so compute at route
-    # time is unavailable -> show "-" when absent (no fabrication).
-    return gpi.get("kda_display") or "-"
+    # kda_mean is surfaced by compute_gpi (Task 2); "-" only when absent.
+    km = gpi.get("kda_mean")
+    return f"{km:.2f}" if km is not None else "-"
 ```
 
-Note for the implementer: `_fmt_kda` needs a real mean-KDA. `compute_gpi` already computes per-game `kda` in each game dict but does not surface a window mean. Add ONE line to Task 2's `compute_gpi` (fold forward): `out["kda_mean"] = round(sum(g["kda"] for g in recent) / len(recent), 2) if recent else None`, and here return `f"{gpi['kda_mean']:.2f}"` when present else `"-"`. Add the failing assertion `assert model["minis"][0]["value"] != "-"` to Step 1 first (TDD), then wire `kda_mean`.
+The `kda_mean` window mean is added to `compute_gpi` in Task 2 (fold-forward). Task 4 Step 1 asserts the KDA mini is real: add `assert next(m for m in model["minis"] if m["key"] == "kda")["value"] != "-"` to `test_build_model_shape_and_bands`.
 
 ```python
 def _top_champ(gpi: dict):
