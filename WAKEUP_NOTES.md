@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-05 (interactive live-gated validation + vision-OCR hardening; 5 commits, LEDGER 793)
+
+Operator-interactive session (playing live ARAM/SR), NOT a headless loop. Shipped `872a6126` + `dc1da7fd` + `96c6d12b` + `eeac82b3` + `578b8acb`.
+- **SGP rate-wall probe: DISSOLVED.** NA host = `usw2-red.pp.sgp.pvp.net` (NOT `na-red.lol` - that 404s match-history-query), Bearer = LCU `league-session-token` (NOT entitlements token, which 403s), puuid = 36-char RSO. Non-self SUMMARY -> 200 + 5 games. Verdict in the non-repo Desktop teardown doc; build operator-gated ToS-HIGHEST.
+- **PGL companion bug FIXED (`872a6126`):** `:8889` was wedged by ORPHANED `moon_vision_server.py` children co-binding via SO_REUSEADDR (NOT the old WFP theory). Fix = `vision_server/_reap.py` reaps stale instances before bind. Memory `project_liveclient_loopback_regression` corrected.
+- **`/vision-calibrator` built (`dc1da7fd`):** draggable OCR-box calibrator over the `:8889` frame. Playwright-verified.
+- **OCR root cause:** 2560x1440 game HALVED to 1280 before OCR crops + regions 1920-calibrated + custom HUD (`ShowTeamFramesOnLeft=0` -> portraits on the RIGHT). Foundations: `core/screen_grab.grab_native` + `core/hud_settings.read_hud_settings` (full game.cfg + the color/gamma layer from PersistedSettings.json). Memory `reference_vision_ocr_capture_pipeline`.
+- **Last piece (`578b8acb`):** `core/vision_profiles.py` (config-keyed profiles, resolved live) + reference-capture armed in `vision_server/_frame.py`. LIVE-VERIFIED: a 720KB 2560x1440 native reference captured during the wrap game (`data/vision_calib_reference/2560x1440_...MinimapScale_1.6200.jpg`).
+- **NEXT (calibration session):** recalibrate the 23 boxes at 2560x1440 via `/vision-calibrator` against the captured reference, save as the profile; then wire native OCR crops + color correction (shadow-first) + a config-keyed region scaffold for other resolutions (operator-deferred).
+- **DO NOT redo:** SGP recipe known; `:8889` reap shipped; grab_native / hud_settings / vision_profiles BUILT (WIRE them, do not re-author); the arming works live. Wrap left MID-GAME (has_game True) - `/clear` waits until the game ends or live coaching dies.
+
+---
+
 # 2026-07-05 (R81 - live-game-overlay lift F1 + 3 operator-expansions: research fold-in / LeagueAkari teardown / OBS-CV-minimap plan; LEDGER 792)
 
 Gemini-loop executor cycle 10 (DIRECTOR REFILL rotation 3), operator-expanded 3x mid-run (interrupt = new scope, not stop). ENGINE-IMPACT NONE. Code `901116d4` + `5d9d7132` + `f6f31037`, docs commit. Full RC suite 10767 passed / 2 skipped / 0 fail.
@@ -22,13 +35,3 @@ Gemini-loop executor cycle 9 (DIRECTOR REFILL rotation 2). Directive: premise-ch
 - BUILD (R80): fresh Meraki-vs-registry refute -> Plated Steelcaps 3047/223047 Plating 10% basic-attack DR was defensive_only NOTE-only (ZERO EHP credit). NEW ItemEffect.basic_attack_damage_reduction (0.10) + ehp.item_aa_dr_multiplier + physical-only compute_ehp fold behind default-OFF assume_item_aa_dr; mirror of R77 crit-DR, never cross-credits; byte-identical OFF; +5.3% phys EHP armed at the 0.5 midpoint.
 GATE: TDD 17 + DSV9 end-append guard co-fix; DS 8032 pass; verifier CONFIRM 7/7; 123 ENGINE_VERSION pins bumped. CO-FIX (R77 a8302f01 pattern): the ENGINE bump re-fired 6 HZ-B stamp guards + 1 DAEMON_SLAYER doc-drift -> re-stamped HZ-B tables byte-exact 1.181.0 (173 roster preserved; the item-388 --static 10-champ seed footgun caught + reverted per the R78 warning) + the doc banner; RC 293 affected-class re-verify -> 10746 / 0 fail. Share --check green 410 files.
 DO NOT redo: ORUN3 + ORUN4 are CLEAN duplicates (do NOT re-pitch a Aggregator B per-stat strip or a Aggregator D game-flow strip); Steelcaps AA-DR is SHIPPED (do NOT re-pick 3047/223047); Frozen Heart 3110 enemy-AS aura is the next OPEN sibling candidate; the live default-ON flip -> LIVE_GATED B46 (do-not-flip-blind, the 0.5 AA-share midpoint calibration is the accrual tail).
-
----
-
-# 2026-07-05 (ORUN2 slice 2 - snowball-elasticity Build Insights UI panel; LEDGER 788)
-
-Gemini-loop executor cycle. The deferred UI half of ORUN2 (backend was 9cd38c13). Commit `899b5f24`, pushed. ENGINE-IMPACT NONE (frontend; ADR-008 asset-hash reload, no RC restart / no Share / no DS).
-- NEW web/js/panels/snowball_elasticity.js (mount bi-snowball-mount, export renderSnowballElasticity) + .css (se- prefix) + web/data/ui_mock/snowball_elasticity.json + tests/test_snowball_elasticity_panel_dom.py; wired via build_insights.js import+dispatch + a "Snowball" tab/pane in index.html + a dashboard.css @import (panel-import parity).
-- Faithful mirror of duration_winrate.js but SR-ONLY (no mode bar / champ picker): 2 checkpoint blocks (10min/20min) x 5 signed gold-lead buckets behind_big..ahead_big; bar fill = Laplace-smoothed win%, value = raw win% (or ~smoothed% thin / "-" below min_bucket_n); per-checkpoint elasticity chip (snowball-prone/comeback-prone/elastic) = games-weighted ahead-vs-behind smoothed lean, DESCRIPTIVE not a win probability.
-GATE: 1 build subagent + verifier CONFIRM (targeted 74/74 + full RC suite 10725 passed/0 failed/2 skipped exit 0) + independent 5-phase UI-audit PASS 0 MUST-FIX + ui_recon visual proof clean (companion+desktop, 2 blocks x 5 bars, 0 page errors, no overflow). Live curl shape matched the fixture.
-DO NOT redo: ORUN2 FULLY SHIPPED (backend 9cd38c13 + UI 899b5f24); SR-only by design; next OPEN = ORUN3 (Aggregator B per-stat PGR strip) / ORUN4 (Aggregator D game-flow strip), then REFILL.
