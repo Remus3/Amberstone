@@ -44,11 +44,13 @@ def test_writes_record_for_real_aram_tick(tmp_path):
     row = json.loads(lines[0])
     assert row["champ"] == "Kalista"
     assert "Ashe" in row["enemy_comp"]
-    # both sides present with the shadow block keys (the six original fields
-    # plus choices, the A/B array captured for shadow comparison).
+    # both sides present with the shadow block keys (the original fields plus
+    # choices, the A/B array, plus the R78 item_extra + objective tail - all
+    # captured for shadow comparison).
     assert set(row["deterministic"].keys()) == {
         "action", "fight_rule", "risk", "reset_item",
         "item_build", "item_build_reasons", "choices",
+        "item_extra", "objective",
     }
     assert set(row["live_haiku"].keys()) == set(row["deterministic"].keys())
 
@@ -158,3 +160,57 @@ def test_failsoft_garbage_inputs_no_raise(tmp_path):
     shadow_log_aram_coach(None, None, None, path=target)
     shadow_log_aram_coach({}, {}, "aram", path=target)
     # No assertion beyond "did not raise".
+
+
+def test_deterministic_objective_from_coach_tower_hp(tmp_path):
+    # The deterministic objective (R78) is filled from the vision tower-HP
+    # echoed on the coach dict (my_tower_hp / enemy_tower_hp - INPUT state, not
+    # a Haiku output, so non-circular). enemy T1 at 0 -> "push to their base".
+    # SHADOW-ONLY: changes only the logged deterministic block.
+    target = tmp_path / "aram_coach_shadow.jsonl"
+    coach = {
+        "champion": "Kalista", "hp_pct": 85,
+        "my_tower_hp": 90, "enemy_tower_hp": 0,
+    }
+    lc = {
+        "champion": "Kalista", "enemy_team": ["Ashe", "Annie"],
+        "hp": 850, "hp_max": 1000,
+    }
+
+    shadow_log_aram_coach(coach, lc, "aram", path=target)
+
+    row = json.loads(_read_lines(target)[0])
+    assert "their base" in row["deterministic"]["objective"].lower()
+
+
+def test_deterministic_objective_empty_without_tower_hp(tmp_path):
+    # No tower HP on the coach dict -> objective degrades to "" (fail-soft, like
+    # wave_pct absent server-side), while the record is still written.
+    target = tmp_path / "aram_coach_shadow.jsonl"
+    coach = {"champion": "Kalista", "hp_pct": 85}
+    lc = {
+        "champion": "Kalista", "enemy_team": ["Ashe"],
+        "hp": 850, "hp_max": 1000,
+    }
+
+    shadow_log_aram_coach(coach, lc, "aram", path=target)
+
+    row = json.loads(_read_lines(target)[0])
+    assert row["deterministic"]["objective"] == ""
+
+
+def test_deterministic_item_extra_is_omit(tmp_path):
+    # owned_item_count is always a known non-negative int in the wired path, so
+    # item_extra (R78) resolves to the safe "omit" - never a fabricated
+    # Pot/Shard consumable (do-not-flip-blind).
+    target = tmp_path / "aram_coach_shadow.jsonl"
+    coach = {"champion": "Kalista", "hp_pct": 85}
+    lc = {
+        "champion": "Kalista", "enemy_team": ["Ashe"],
+        "hp": 850, "hp_max": 1000, "owned_items": ["Berserker's Greaves"],
+    }
+
+    shadow_log_aram_coach(coach, lc, "aram", path=target)
+
+    row = json.loads(_read_lines(target)[0])
+    assert row["deterministic"]["item_extra"] == "omit"
