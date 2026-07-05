@@ -65,8 +65,13 @@ def profile_path(config_key: str) -> Path:
     return PROFILES_DIR / f"{_safe(config_key)}.json"
 
 
-def reference_path(config_key: str) -> Path:
-    return REFERENCE_DIR / f"{_safe(config_key)}.jpg"
+def reference_path(config_key: str, state=None) -> Path:
+    """Reference-still path for a config. ``state`` in {None,"","base"} keeps the
+    backward-compatible ``<safe(ck)>.jpg`` (byte-for-byte the old 1-arg path);
+    any other label yields ``<safe(ck)>__<safe(state)>.jpg`` (a named state)."""
+    if state in (None, "", "base"):
+        return REFERENCE_DIR / f"{_safe(config_key)}.jpg"
+    return REFERENCE_DIR / f"{_safe(config_key)}__{_safe(state)}.jpg"
 
 
 def load_profile(config_key=None) -> dict:
@@ -108,9 +113,10 @@ def save_profile(config_key, regions: dict, base) -> dict:
         return {"ok": False, "count": 0, "config_key": ck}
 
 
-def save_reference_image(img, config_key=None, force: bool = False) -> bool:
+def save_reference_image(img, config_key=None, force: bool = False, state=None) -> bool:
     """Persist an already-grabbed PIL image as this profile's native reference,
-    throttled. Called from the grab hot path - never raises, returns False on
+    throttled. ``state`` selects a named reference file (None/base = the legacy
+    base still). Called from the grab hot path - never raises, returns False on
     skip/failure."""
     global _last_ref_save
     now = time.time()
@@ -123,11 +129,12 @@ def save_reference_image(img, config_key=None, force: bool = False) -> bool:
     try:
         ck = config_key or active_config_key()
         REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
-        p = reference_path(ck)
+        p = reference_path(ck, state)
         tmp = p.with_name(p.name + ".tmp")
         img.convert("RGB").save(tmp, format="JPEG", quality=92, optimize=True)
         tmp.replace(p)
-        meta = {"config_key": ck, "width": img.width, "height": img.height, "ts": now}
+        meta = {"config_key": ck, "width": img.width, "height": img.height,
+                "ts": now, "state": state or "base"}
         mp = p.with_suffix(".json")
         mtmp = mp.with_name(mp.name + ".tmp")
         mtmp.write_text(json.dumps(meta), encoding="utf-8")
@@ -140,8 +147,9 @@ def save_reference_image(img, config_key=None, force: bool = False) -> bool:
         return False
 
 
-def capture_reference(config_key=None, _grabber=None) -> dict:
+def capture_reference(config_key=None, _grabber=None, state=None) -> dict:
     """Grab a FRESH native frame now + save it as the profile reference (force).
+    ``state`` selects a named reference file (None/base = the legacy base still).
     Returns ``{ok, config_key, width, height}``."""
     try:
         if _grabber is None:
@@ -151,19 +159,20 @@ def capture_reference(config_key=None, _grabber=None) -> dict:
         if img is None:
             return {"ok": False, "error": "grab returned no image"}
         ck = config_key or active_config_key()
-        ok = save_reference_image(img, config_key=ck, force=True)
+        ok = save_reference_image(img, config_key=ck, force=True, state=state)
         return {"ok": ok, "config_key": ck, "width": img.width, "height": img.height}
     except Exception as exc:  # noqa: BLE001
         log.debug("capture_reference failed: %s", exc)
         return {"ok": False, "error": "capture failed"}
 
 
-def load_reference(config_key=None) -> dict:
+def load_reference(config_key=None, state=None) -> dict:
     """Load the saved native reference for the active (or given) profile as
-    ``{ok, b64, width, height, age_s, config_key}`` or ``{ok: False}``."""
+    ``{ok, b64, width, height, age_s, config_key}`` or ``{ok: False}``. ``state``
+    selects a named reference file (None/base = the legacy base still)."""
     import base64
     ck = config_key or active_config_key()
-    p = reference_path(ck)
+    p = reference_path(ck, state)
     try:
         raw = p.read_bytes()
     except Exception:  # noqa: BLE001
@@ -182,3 +191,56 @@ def load_reference(config_key=None) -> dict:
         "config_key": ck,
         "format": "jpeg",
     }
+
+
+def list_reference_states(config_key=None) -> list:
+    """Sorted list of reference state names present for the active (or given)
+    config: always ``"base"`` when the base still exists, plus each ingested
+    ``<safe(ck)>__<state>.jpg`` (state parsed back off the filename). Returns
+    ``[]`` when none exist. Fail-soft - never raises."""
+    ck = config_key or active_config_key()
+    states = []
+    try:
+        safe = _safe(ck)
+        if (REFERENCE_DIR / f"{safe}.jpg").exists():
+            states.append("base")
+        prefix = f"{safe}__"
+        for f in REFERENCE_DIR.glob(f"{safe}__*.jpg"):
+            name = f.name[:-len(".jpg")]
+            if name.startswith(prefix):
+                st = name[len(prefix):]
+                if st and st != "base":
+                    states.append(st)
+    except Exception:  # noqa: BLE001
+        return sorted(set(states))
+    return sorted(set(states))
+
+
+def ingest_reference_from_path(src_path, state, config_key=None) -> dict:
+    """Ingest an operator-provided full-screen native screenshot as a NAMED
+    reference state. ``state`` must be a non-empty label other than ``base``
+    (base is the auto-grab). The image must match the profile base dims exactly
+    (prevents silent miscalibration). Returns ``{ok, width, height, state,
+    config_key}`` on success or ``{ok: False, error}``."""
+    from PIL import Image
+    st = (state or "").strip()
+    if not st or st == "base":
+        return {"ok": False,
+                "error": "state must be a non-empty label other than base"}
+    try:
+        img = Image.open(src_path).convert("RGB")
+    except Exception:  # noqa: BLE001
+        return {"ok": False, "error": "cannot read image at that path"}
+    ck = config_key or active_config_key()
+    base = load_profile(ck).get("base", list(_LEGACY_BASE))
+    exp_w = base[0] if base else _LEGACY_BASE[0]
+    exp_h = base[1] if base and len(base) > 1 else _LEGACY_BASE[1]
+    if (img.width, img.height) != (exp_w, exp_h):
+        return {"ok": False,
+                "error": (f"image is {img.width}x{img.height} but the profile "
+                          f"base is {exp_w}x{exp_h} - a full-screen native "
+                          f"capture at base resolution is required"),
+                "width": img.width, "height": img.height}
+    save_reference_image(img, config_key=ck, state=st, force=True)
+    return {"ok": True, "width": img.width, "height": img.height,
+            "state": st, "config_key": ck}
