@@ -26,9 +26,49 @@ control flag from INSIDE the patched tick after N calls."""
 from __future__ import annotations
 
 import asyncio
+import threading
 
 from lcu.lcu_client import LcuClient
 from lcu.lcu_rune_writer import RuneWriter
+
+
+def _run_coro(coro, timeout=10.0):
+    """Run *coro* on a fresh event loop in a dedicated daemon thread.
+
+    Suite-hermeticity guard, NOT a wall-clock wait (the loops here use
+    interval 0). The Playwright sync fixtures in tests/snapshot_panels leave a
+    ProactorEventLoop marked running=True on the MAIN thread for the rest of the
+    session (playwright.sync_api drives a greenlet-backed ProactorEventLoop and
+    never clears the main-thread running-loop marker). A bare asyncio.run() on
+    the main thread then raises "asyncio.run() cannot be called from a running
+    event loop" whenever these tests collect AFTER a snapshot_panels test.
+    Running each coroutine on a private thread sidesteps the marker (a fresh
+    thread has no running loop); the tests pass identically in isolation.
+
+    This is the same immunity the two sibling asyncio-suite files already adopt
+    for this exact polluter class - tests/test_p2w1_core_f.py:_run_coro and
+    tests/test_p2w2_ds_h.py:_run_coro (item 401, cycle-7 obs tests). A worker
+    exception is re-raised on the caller thread so real regressions still fail.
+    """
+    box: dict[str, object] = {}
+
+    def _worker() -> None:
+        loop = asyncio.new_event_loop()
+        try:
+            box["value"] = loop.run_until_complete(coro)
+        except BaseException as exc:  # noqa: BLE001 - re-raised on caller thread
+            box["error"] = exc
+        finally:
+            loop.close()
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        raise TimeoutError(f"coroutine did not finish within {timeout}s")
+    if "error" in box:
+        raise box["error"]  # type: ignore[misc]
+    return box.get("value")
 
 
 class _Boom(BaseException):
@@ -70,7 +110,7 @@ def test_async_auto_accept_survives_exception():
             c._running = False  # self-terminate from inside the tick
 
     c._auto_accept_tick = _tick
-    asyncio.run(c._auto_accept_loop_async(0))
+    _run_coro(c._auto_accept_loop_async(0))
 
     assert calls["n"] >= 3, (
         "auto-accept loop must survive a normal Exception and keep ticking; "
@@ -95,7 +135,7 @@ def test_async_auto_accept_survives_base_exception():
             c._running = False  # self-terminate from inside the tick
 
     c._auto_accept_tick = _tick
-    asyncio.run(c._auto_accept_loop_async(0))
+    _run_coro(c._auto_accept_loop_async(0))
 
     assert calls["n"] >= 3, (
         "auto-accept loop must survive a BaseException subclass and keep "
@@ -143,7 +183,7 @@ def test_async_auto_accept_cancel_stops_loop():
         finally:
             asyncio.to_thread = real_to_thread
 
-    asyncio.run(_drive())
+    _run_coro(_drive())
 
     assert ticks["n"] == 1, (
         "cancel must stop the loop at the tick-arm after exactly one tick; "
@@ -169,7 +209,7 @@ def test_async_runewriter_survives_exception():
             w._stop_event.set()  # self-terminate from inside the poll
 
     w._poll = _poll
-    asyncio.run(w._run_async())
+    _run_coro(w._run_async())
 
     assert calls["n"] >= 3, (
         "RuneWriter poll loop must survive a normal Exception and keep "
@@ -193,7 +233,7 @@ def test_async_runewriter_survives_base_exception():
             w._stop_event.set()  # self-terminate from inside the poll
 
     w._poll = _poll
-    asyncio.run(w._run_async())
+    _run_coro(w._run_async())
 
     assert calls["n"] >= 3, (
         "RuneWriter poll loop must survive a BaseException subclass and keep "

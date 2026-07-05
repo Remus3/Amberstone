@@ -26,7 +26,7 @@ Invariants:
   B. per-site - each known selector is covered by a same-file reduce block
      containing `animation: none !important`;
   C. the reduce blocks are pure 7-bit ASCII;
-  D. the 8 default loops still exist (the sweep did NOT trim default
+  D. the 7 default loops still exist (the sweep did NOT trim default
      rendering - that would drop live signals; re-litigate via operator).
 """
 from __future__ import annotations
@@ -43,14 +43,15 @@ REDUCE_AT = "@media (prefers-reduced-motion: reduce)"
 # (panels/primitives.css .rc-skel was in the original 10 but the whole
 # dormant rc-skel mechanism was removed 2026-07-01 - see
 # tests/test_rc_skel_removed.py. The header row-2 removal 2026-07-04 then
-# retired the .hp.hp-critical HP-bar alarm with its element - leaving 8
-# live-signal loops.)
+# retired the .hp.hp-critical HP-bar alarm with its element, and the
+# 2026-07-05 E11 lobby restructure (dead-code purge, commit 1cf122e2)
+# retired the .lobby-status.searching queue heartbeat with its element -
+# leaving 7 live-signal loops.)
 SITES = {
     "panels/item_build.css": [
         ".item-tile.next-up .item-icon",
         ".item-tile.next-up.can-afford .item-icon",
     ],
-    "panels/home.css": [".lobby-status.searching"],
     "panels/map_state.css": [
         'body[data-zone="deep"] .panel-right-now',
         ".zone-pill.zone-deep",
@@ -137,14 +138,15 @@ def test_reduce_blocks_are_ascii():
 # --------------------------------------------------------------------- D
 def test_default_loops_unchanged():
     """The sweep must NOT trim default rendering - the live-signal loops
-    survive for motion-tolerant users (operator can re-litigate). 8 since
-    the dormant rc-skel loop (2026-07-01) and the .hp.hp-critical HP-bar
-    alarm (2026-07-04 header row-2 removal) were retired with their
+    survive for motion-tolerant users (operator can re-litigate). 7 since
+    the dormant rc-skel loop (2026-07-01), the .hp.hp-critical HP-bar alarm
+    (2026-07-04 header row-2 removal), and the .lobby-status.searching lobby
+    heartbeat (2026-07-05 E11 dead-code purge) were retired with their
     mechanisms."""
     count = 0
     for rel in SITES:
         css = (CSS_DIR / rel).read_text(encoding="utf-8", errors="replace")
         count += len(_INFINITE.findall(css))
-    assert count == 8, (
-        f"expected the 8 classified default loops to survive, found {count}"
+    assert count == 7, (
+        f"expected the 7 classified default loops to survive, found {count}"
     )
