@@ -589,6 +589,18 @@ def test_route_never_leaks_raw_error():
     rps._serve_player_snapshot(h)          # real DB path; must not raise
     assert h.status == 200
     assert h.body.get("empty") in (True, False)   # a valid model either way
+
+
+def test_route_registered_with_dispatch():
+    from dashboard import _dispatch
+    routes = _dispatch._gather_get()       # memoized _GET_CACHE builder
+    def _safe(pred):
+        try:
+            return bool(pred("/api/player-snapshot"))
+        except Exception:  # noqa: BLE001
+            return False
+    assert any(_safe(pred) for pred, _h in routes), \
+        "/api/player-snapshot not registered with dispatch"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -732,8 +744,10 @@ Expected: PASS (all).
 
 - [ ] **Step 5: Verify dispatch registration**
 
-Run: `...python.exe -c "from dashboard import _dispatch; paths=[m.__self__ if hasattr(m,'__self__') else m for (pred,_) in _dispatch._get_get_routes()]; print('registered')"`
-(If `_get_get_routes` is not the accessor name, grep `_dispatch.py` for the function that returns `_GET_CACHE` and call it; assert a predicate matches `/api/player-snapshot`.) Simpler: add a test asserting registration mirroring [test_routes_player_profile.py:231](tests/test_routes_player_profile.py:231).
+Covered by `test_route_registered_with_dispatch` (Step 1): it calls the real accessor `dashboard._dispatch._gather_get()` (the memoized `_GET_CACHE` builder, [_dispatch.py:60](dashboard/_dispatch.py:60)) and asserts a predicate matches `/api/player-snapshot`, mirroring the shipped pattern at [test_routes_player_profile.py:227](tests/test_routes_player_profile.py:227). It fails until the module is added to the import tuple ([_dispatch.py:92](dashboard/_dispatch.py:92)) and the GET-list concat ([_dispatch.py:149](dashboard/_dispatch.py:149)).
+
+Run: `...python.exe -m pytest tests/test_routes_player_snapshot.py::test_route_registered_with_dispatch -v`
+Expected: PASS.
 
 - [ ] **Step 6: py_compile + lint + commit**
 
