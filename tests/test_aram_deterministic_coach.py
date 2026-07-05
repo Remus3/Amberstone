@@ -21,6 +21,8 @@ _KEYS = (
     "item_build",
     "item_build_reasons",
     "choices",
+    "item_extra",
+    "objective",
 )
 
 
@@ -391,3 +393,127 @@ def test_choices_a_outcome_is_follow_the_coach_call() -> None:
             else build_block(hp_pct=hp)
         )
         assert block["choices"][0]["expected_outcome"] == "follow the coach call"
+
+
+# ---------------------------------------------------------------------------
+# item_extra - the ARAM "7th-item else omit" filler (coaches/aram_coach.py:332).
+# The live Haiku emits "omit" when a 7th legendary already fills the slot, else
+# a "Pot: X" / "Shard: X" consumable pick. Our deterministic build caps at 6
+# completed items, so it NEVER produces a 7th item; rather than fabricate a
+# specific consumable (a judgment call we decline - do-not-flip-blind), the
+# assembler emits the safe, non-misleading "omit" whenever the owned-item count
+# is a known non-negative number, and "" when no item-count signal is present.
+# ---------------------------------------------------------------------------
+
+
+def test_item_extra_key_always_present() -> None:
+    # Present on the empty path, the normal path, AND the garbage path.
+    assert "item_extra" in build_block()
+    assert "item_extra" in build_block(hp_pct=80.0, owned_item_count=3)
+    assert "item_extra" in build_block(hp_pct="nope", owned_item_count=object())
+
+
+def test_item_extra_omit_when_item_count_known() -> None:
+    # A usable non-negative owned-item count -> the safe "omit" default (matches
+    # the live-observed 'omit' value; never misleads).
+    for count in (0, 3, 6, 9):
+        block = build_block(hp_pct=80.0, owned_item_count=count)
+        assert block["item_extra"] == "omit"
+
+
+def test_item_extra_empty_when_count_absent() -> None:
+    # No owned-item-count signal -> honest empty (nothing computable), NOT a
+    # fabricated consumable.
+    assert build_block(hp_pct=80.0).get("item_extra") == ""
+    assert build_block(hp_pct=80.0, owned_item_count=None).get("item_extra") == ""
+
+
+def test_item_extra_empty_on_garbage_or_negative_count() -> None:
+    # Non-coercible / negative counts degrade to "" (never raises, never guesses).
+    assert build_block(hp_pct=80.0, owned_item_count="lots").get("item_extra") == ""
+    assert build_block(hp_pct=80.0, owned_item_count=object()).get("item_extra") == ""
+    assert build_block(hp_pct=80.0, owned_item_count=-1).get("item_extra") == ""
+
+
+# ---------------------------------------------------------------------------
+# objective - the deterministic ARAM tower-HP state machine, faithful to the
+# coaches/aram_coach.py:295-298 OBJECTIVE prompt (your-T1-up defend / enemy-T1-
+# dead push to base / enemy-tower-low siege). Keyed purely on my_tower_hp +
+# enemy_tower_hp (0-100 percent, null when not visible). Each side that is
+# absent / non-coercible just drops out of the routing; neither usable -> "".
+# ---------------------------------------------------------------------------
+
+
+def test_objective_key_always_present() -> None:
+    assert "objective" in build_block()
+    assert "objective" in build_block(hp_pct=80.0, my_tower_hp=90, enemy_tower_hp=80)
+    assert "objective" in build_block(my_tower_hp=object(), enemy_tower_hp="x")
+
+
+def test_objective_empty_when_no_tower_signal() -> None:
+    # No tower HP either side -> honest empty (like wave_pct, tower HP is vision-
+    # only and often absent server-side).
+    assert build_block(hp_pct=50.0).get("objective") == ""
+
+
+def test_objective_empty_on_garbage_towers() -> None:
+    block = build_block(hp_pct=50.0, my_tower_hp="nope", enemy_tower_hp=object())
+    assert block["objective"] == ""
+
+
+def test_objective_enemy_tower_dead_says_push_their_base() -> None:
+    # enemy T1 destroyed (0) -> push to their base (prompt branch 2).
+    block = build_block(hp_pct=80.0, my_tower_hp=90, enemy_tower_hp=0)
+    assert "their base" in block["objective"].lower()
+
+
+def test_objective_my_tower_dead_says_hold_inhibitor() -> None:
+    # your T1 destroyed (0) -> fall back and hold the inhibitor, group up.
+    block = build_block(hp_pct=50.0, my_tower_hp=0, enemy_tower_hp=90)
+    assert "inhibitor" in block["objective"].lower()
+
+
+def test_objective_my_tower_in_danger_says_defend() -> None:
+    # your T1 low (<=25) but alive -> defend it; a death to save it is worth it
+    # (prompt branch 1).
+    block = build_block(hp_pct=50.0, my_tower_hp=15, enemy_tower_hp=90)
+    assert "defend" in block["objective"].lower()
+
+
+def test_objective_enemy_tower_low_says_siege() -> None:
+    # enemy T1 low (<=25), yours healthy -> siege it with the team.
+    block = build_block(hp_pct=80.0, my_tower_hp=90, enemy_tower_hp=15)
+    assert "siege" in block["objective"].lower()
+
+
+def test_objective_enemy_tower_alive_says_poke_no_chase() -> None:
+    # both towers healthy -> poke phase; do not chase past T1 without allies.
+    block = build_block(hp_pct=80.0, my_tower_hp=90, enemy_tower_hp=80)
+    assert "chase" in block["objective"].lower()
+
+
+def test_objective_only_my_tower_healthy_holds_for_a_pick() -> None:
+    # only your tower HP known and healthy (enemy not visible) -> hold + poke,
+    # wait for a pick before committing.
+    block = build_block(hp_pct=80.0, my_tower_hp=90)
+    assert "pick" in block["objective"].lower()
+
+
+def test_objective_defensive_priority_when_both_low() -> None:
+    # BOTH T1s in danger -> defending yours wins (losing your tower opens your
+    # base); the defend branch outranks the enemy-low siege branch.
+    block = build_block(hp_pct=50.0, my_tower_hp=15, enemy_tower_hp=15)
+    assert "defend" in block["objective"].lower()
+
+
+def test_item_extra_and_objective_in_total_failure_block() -> None:
+    # The total fail-soft path must still carry both new keys as "".
+    block = build_block(
+        hp_pct="not-a-number",
+        my_tower_hp=object(),
+        enemy_tower_hp=[],
+        owned_item_count={},
+    )
+    assert block["item_extra"] == ""
+    assert block["objective"] == ""
+    assert set(block.keys()) == set(_KEYS)

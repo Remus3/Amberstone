@@ -37,9 +37,11 @@ SHADOW_PATH: Path = _APP_DIR / "data" / "aram_coach_shadow.jsonl"
 # ~500ms; without this the same coarse state would be logged ~2x/sec.
 _LAST_SIG: dict[str, str] = {}
 
-# The seven deterministic / live-Haiku fields captured per side, in artifact
-# order. Used to normalize BOTH blocks so a partial dict still records every
-# column (missing -> "" / {} for reasons / [] for choices).
+# The deterministic / live-Haiku fields captured per side, in artifact order.
+# Used to normalize BOTH blocks so a partial dict still records every column
+# (missing -> "" / {} for reasons / [] for choices). item_extra + objective
+# were added R78 (the Haiku-to-ZERO ARAM tail) so the shadow row carries the
+# WHOLE coach block for the operator to eyeball before a live flip.
 _BLOCK_KEYS = (
     "action",
     "fight_rule",
@@ -48,15 +50,17 @@ _BLOCK_KEYS = (
     "item_build",
     "item_build_reasons",
     "choices",
+    "item_extra",
+    "objective",
 )
 
 
 def _norm_block(block: object) -> dict:
-    """Return the seven-field block as a plain dict, fail-soft.
+    """Return the normalized block as a plain dict, fail-soft.
 
     A non-dict input coerces to all-empty fields so a malformed side still
     records a complete (empty) column rather than blocking the row. Only the
-    seven known keys are kept (the live artifact carries many more fields).
+    known _BLOCK_KEYS are kept (the live artifact carries many more fields).
     """
     src = block if isinstance(block, dict) else {}
     out: dict = {}
@@ -87,9 +91,9 @@ def log_aram_coach(
 
     Args:
         det_block: the deterministic block from
-            core.aram_deterministic_coach.build_block (the six fields).
+            core.aram_deterministic_coach.build_block (the _BLOCK_KEYS fields).
         live_block: the live Haiku block read from
-            data/aram_coaching_data.json (same six fields, plus extras we drop).
+            data/aram_coaching_data.json (same fields, plus extras we drop).
         lc: the liveclient_summary() dict. The gate + champ + enemy_comp are
             read from here. A non-dict / no-champion lc is gated out.
         mode_key: dashboard mode_key (expected "aram"; recorded verbatim).
