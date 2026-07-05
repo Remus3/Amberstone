@@ -267,28 +267,52 @@ git commit -F <ascii-tmpfile>   # message: "feat(gpi): since_ts time-window filt
 
 - [ ] **Step 1: Write the failing test (append to `tests/test_player_gpi_window.py`)**
 
+First, parameterize the Task-1 `_seed` helper so a row can set its own damage and vision (defaults preserve Task 1's fixed values, so Task 1's tests stay green). In `_seed`, change the participants INSERT to read per-row `dmg`/`vis`:
+
+```python
+        dmg = r.get("dmg", 18000)
+        vis = r.get("vis", 30)
+        conn.execute(
+            "INSERT INTO participants VALUES (?,?,100,180,20,?,12000,?,?,?,?,?,?,?,?,?)",
+            (r["mid"], r["champ"], vis, dmg, r["deaths"], r["kills"], r["assists"],
+             r["drag"], 0, 0, 0, r["win"]),
+        )
+```
+
+Column order is match_id, champion_id, team_id=100, total_minions=180, neutral=20, vision_score=vis, gold=12000, damage=dmg, deaths, kills, assists, dragon, baron=0, turret=0, inhib=0, win. Task 1's `_rows` dicts carry no `dmg`/`vis`, so they keep 18000/30 and Task 1's assertions are unaffected.
+
+Then the test:
+
 ```python
 def test_win_streak_winrate_kp_strongest():
     now = 1_700_000_000_000
     conn = sqlite3.connect(":memory:")
-    # Newest 3 games are wins (streak), older ones losses. Team kills = operator
-    # kills only in this seed (single participant), so KP == 1.0.
+    # 15-game baseline. The 3 newest are skewed HIGH damage / LOW vision, so over
+    # a 3h window aggression reads strongest and vision weakest vs the full
+    # baseline. Newest 3 are wins (streak). Single participant with assists=0 ->
+    # team_kills == operator kills and K-P == kills/team_kills == 100%.
     rows = []
     for i in range(15):
+        newest = i < 3
         rows.append({"mid": f"M{i}", "ts": now - i * 3600_000, "champ": 64,
-                     "deaths": 3, "kills": 5, "assists": 5,
-                     "drag": 1, "win": 1 if i < 3 else 0})
+                     "deaths": 3, "kills": 5, "assists": 0,
+                     "dmg": 30000 if newest else 8000,
+                     "vis": 5 if newest else 40,
+                     "drag": 1, "win": 1 if newest else 0})
     _seed(conn, rows)
-    out = player_gpi.compute_gpi(mode="sr", conn=conn, since_ts=now - 24 * 3600_000)
+    # +1ms excludes the boundary game i=3 (Task 1's inclusive >= fix), so the
+    # window is exactly the 3 newest.
+    out = player_gpi.compute_gpi(mode="sr", conn=conn, since_ts=now - 3 * 3600_000 + 1)
+    assert out["window_n"] == 3
     assert out["win_streak"] == {"kind": "win", "n": 3}
-    assert 0.0 <= out["win_rate"] <= 1.0
-    assert out["kp_pct"] == 100.0           # sole participant -> 100% KP
-    assert out["strongest_axis"] in {a["key"] for a in out["axes"]
-                                     if a["scoring"] == "relative"}
-    assert out["strongest_axis"] != out["weakest_axis"]
+    assert out["win_rate"] == 1.0
+    assert out["kp_pct"] == 100.0           # kills=5, assists=0, team_kills=5
+    assert out["kda_mean"] is not None
+    assert out["strongest_axis"] == "aggression"   # window skews high-damage
+    assert out["weakest_axis"] == "vision"         # window skews low-vision
 ```
 
-Note: the K-P team-kill subquery sums all `participants.kills` for the operator's team in the match. The single-participant seed above yields team_kills == operator kills, so KP == 100%. A richer multi-participant fixture belongs in Task 4's route test.
+Note: the K-P team-kill subquery sums all `participants.kills` for the operator's team in the match; the single-participant seed yields team_kills == operator kills. A richer multi-participant KP fixture belongs in Task 4's route test.
 
 - [ ] **Step 2: Run test to verify it fails**
 
