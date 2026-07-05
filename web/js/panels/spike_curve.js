@@ -139,14 +139,70 @@ function _peakTriangle(peakMinute, curve, xFn, yFn, color) {
   return `<polygon points="${p1} ${p2} ${p3}" fill="${color}" stroke="${color}" stroke-width="0.5"></polygon>`;
 }
 
+// Phase-strength strip (R81 F1, competitor lift). A compact early/mid/late
+// GREEN/YELLOW/RED block beneath the sparkline, one row per team. Driven by
+// the ctx.phases field the backend now returns on /api/spike-curve. Purely
+// presentational + fail-soft: a missing / malformed ctx.phases returns "" so
+// the sparkline paints byte-identical to before (no strip, no height change).
+const _PHASE_ORDER = ["early", "mid", "late"];
+const _PHASE_CELL_LABEL = { early: "E", mid: "M", late: "L" };
+// Value -> {class suffix, hover word}. Anything outside this set = invalid.
+const _PHASE_COLOR = {
+  green: { cls: "spk-phase-green", word: "strong" },
+  yellow: { cls: "spk-phase-yellow", word: "even" },
+  red: { cls: "spk-phase-red", word: "weak" },
+};
+
+// Validate one side ({early,mid,late} of color strings). Returns true only
+// when every phase key holds a recognized color literal.
+function _validPhaseSide(side) {
+  if (!side || typeof side !== "object") return false;
+  for (const ph of _PHASE_ORDER) {
+    if (!Object.prototype.hasOwnProperty.call(_PHASE_COLOR, side[ph])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Build one team's row (label + 3 color cells). Assumes ``side`` already
+// passed _validPhaseSide.
+function _phaseRow(rowLabel, side) {
+  let cells = "";
+  for (const ph of _PHASE_ORDER) {
+    const meta = _PHASE_COLOR[side[ph]];
+    const title = `${ph}: ${meta.word}`;
+    cells += `<span class="spk-phase ${meta.cls}" title="${title}">`
+           + `${_PHASE_CELL_LABEL[ph]}</span>`;
+  }
+  return `<div class="spk-phase-row">`
+       + `<span class="spk-phase-label">${rowLabel}</span>${cells}</div>`;
+}
+
+// Render the full 2-row strip. ``phases`` is ctx.phases (may be null /
+// malformed). Returns "" (append nothing) unless BOTH sides validate, so a
+// stale / old-schema payload leaves the sparkline untouched.
+function _phaseStrip(phases) {
+  if (!phases || typeof phases !== "object") return "";
+  const ally = phases.ally;
+  const enemy = phases.enemy;
+  if (!_validPhaseSide(ally) || !_validPhaseSide(enemy)) return "";
+  return `<div class="spk-phases">`
+       + _phaseRow("You", ally)
+       + _phaseRow("Enemy", enemy)
+       + `</div>`;
+}
+
 // Pure render. ``parentEl`` is the mount node; everything else is data.
 // ``itemMinutes`` (optional) renders thin gray vertical ticks at each
 // planned item completion. ``nowMinute`` (optional) renders the dashed
-// gray "you are here" marker.
+// gray "you are here" marker. ``ctx.phases`` (optional) appends the
+// early/mid/late strength strip beneath the sparkline (fail-soft when absent).
 export function renderSpikeCurve(parentEl, ally_curve, enemy_curve, peaks, now_minute, ctx) {
   if (!parentEl) return;
   ctx = ctx || {};
   const itemMinutes = Array.isArray(ctx.item_minutes) ? ctx.item_minutes : [];
+  const phases = (ctx && ctx.phases) || null;
 
   // Fail-soft: null / empty curves render a 'no data' shell so the
   // 40px reserved space doesn't collapse and trigger layout jitter.
@@ -240,8 +296,12 @@ export function renderSpikeCurve(parentEl, ally_curve, enemy_curve, peaks, now_m
       ${peakMarkers}
     </svg>
   `;
+  // Phase strip appended in the SAME innerHTML write so the sparkline + strip
+  // paint atomically (one assignment). Fail-soft: _phaseStrip("") when phases
+  // is null / malformed leaves the sparkline byte-identical to the pre-R81
+  // render.
   parentEl.dataset.spkState = "ready";
-  parentEl.innerHTML = svg;
+  parentEl.innerHTML = svg + _phaseStrip(phases);
 }
 
 // Test / diagnostic helper - clear all caches + sig state.
@@ -260,6 +320,9 @@ export const __test = {
   _scale,
   _polylinePoints,
   _peakTriangle,
+  _phaseStrip,
+  _phaseRow,
+  _validPhaseSide,
   _ALLY_COLOR,
   _ENEMY_COLOR,
   _NOW_COLOR,

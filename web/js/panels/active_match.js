@@ -1587,7 +1587,7 @@ function _renderSpikeCurveFromCtx(ctx) {
     cached.enemy,
     cached.peaks,
     nowMinute,
-    { item_minutes: _SPK_ITEM_MINUTES },
+    { item_minutes: _SPK_ITEM_MINUTES, phases: cached.phases },
   );
 }
 
