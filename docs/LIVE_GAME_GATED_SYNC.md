@@ -556,6 +556,16 @@ no row carries it.
 
 ## Drain plan 2026-07-01 (operator prefs: practice SR / ARAM Mayhem / Arena only if needed)
 
+> EXECUTED 2026-07-04 - the full 4-queue plan ran in one sitting (ARAM Vayne + practice-SR Zilean +
+> real-SR Ezreal + Arena Kai'Sa). See the "2026-07-04 FULL DRAIN sitting result" section below for the
+> closes / findings / still-gated rows. Remaining one-shots after this sitting: the two caught-bug fixes
+> (A1/A2 champ-select push regression - layer-1 merged 90b350c8, layer-2 pending; D6 Arena augment shadow
+> wiring) + their live re-validate, D3/D9 scenario-gated Arena rolls, C11/C12/C15/C16 scenario-gated ARAM
+> rolls, F3 PGR auto-show recheck, and the unplayed-champ seam eyeballs (B2-B19 / B31-B40; headless
+> harness sweep available). ARENA NEEDED: still YES (D2/D6 post-fix re-validate + D3/D9 rolls). A full
+> structural resync-workflow rebuild of this plan is a next-session job (run it once these closes land in
+> docs/LEDGER.md so its verifier can prune them).
+
 PREP (headless, before session 1) - STATUS 2026-07-02 (prep-audit; live-flip ledger below):
 HEADLESS PREP FULLY DISCHARGED - nothing headless remains before session 1. DONE: the ENGINE-ONLY
 seam transport is plumbed across /rank-assassin + /burst + /dps + /anti-tank (OQ17) plus the 3 NEW
@@ -640,6 +650,56 @@ FINDINGS (out of drain scope, both non-blocking): (1) the :8889 frame endpoint i
   is an operator-click-only sticky field (data/screen_read.json mtime 2026-05-18 = the last SCREEN READ
   click; state-builder stamps it verbatim, deliberately not clobbered by the coach tick). The continuous
   coach-vision path is separate + healthy (minimap_dots/zoi live). NOT a bug, no fix.
+
+## 2026-07-04 FULL DRAIN sitting result (4 games: ARAM Vayne, practice-SR Zilean, real-SR Ezreal draft q400, Arena Kai'Sa q1750)
+CLOSED (verified live, recorded evidence in the drain session):
+  B23 OQ16 objective-gauge widget (SR frame: DRAKE/BARON/ELDER/SUMMS rendering in-game);
+  B21 objective-state callouts (SR "SETUP DRAKE NOW" + kill-feed "slain Cloud Drake" - real :2999
+    events firing callouts; prior validation was client-mode only);
+  E1 ACTIVE knob (ops/runtime/overlay_active_toggle.txt stamped 18:01 + operator 20s-revert attest -
+    closes the "NEEDS ADJUDICATION" round-trip); E2 panel-cycle (overlay_panel_cycle.txt 18:01 +
+    operator visible-cycle attest);
+  B28 SR + ARAM HUD vision-region frames captured; B5 DSP2 exempt_offclass eyeball SANE (Ezreal ON
+    surfaces Trinity Force +in / Yun Tal -out, staples stay top-3; live_flip_eyeball.py) - eyeball DONE,
+    the default-ON flip stays DS-restart + operator-gated;
+  F1 PGR visual + @N timeline (companion: ally/enemy boards + LANE MATCHUP GOLD@10 3167v3791 /
+    CS@10 64v88); F2 REPLAY1 freshness (Ezreal ingested ~90s post-end); F4 PGR live render clean
+    (quick 5-phase, matches R47); D7 Arena Match-V5 ingest (Kai'Sa id 6646 mode ARENA - Arena IS
+    Match-V5-eligible, unlike Mayhem);
+  C1 build-chooser RENDER half (ARAM Vayne: 3-variant push BotRK "Anti-Tank"/Kraken/Wit's End +
+    comp-aware "Good Against" portraits + "kite Hecarim" reason in-client) - the pixel half prior
+    sittings left gated.
+ADVANCED / accrual: B20/R55 own-build eyeball 3/3 (Vayne 3rd marksman BotRK#1 sane default-OFF; the
+  R55 flag stays DS-restart-gated); A1 RECONNECT-half confirmed (League restart -> lockfile port
+  63654->59333, RC reconnected); C14 debounce non-stale (coach refreshed coherently 6+ min ARAM);
+  full 20-champ live_flip_eyeball seam sweep generated headless (ops/audit/ds_perm_swarm/report/
+  live_flip_eyeball.{md,json}) - available for the loop, NOT force-closing unplayed champs.
+FINDINGS (2 live bugs caught this sitting, both with fix tasks - do-not-flip-blind respected):
+  (1) A1/A2 champ-select AUTO-PUSH REGRESSION (REAL, was the point of A1): after a mid-session League
+    restart the in-process spawn_task coroutines (auto-accept + RuneWriter) silently STOP TICKING, so
+    the shared LcuClient stays pinned to the dead pre-restart port -> get_champ_select() None every
+    poll -> no runes/spells/items push (operator set spells manually via companion). READ path survived
+    = SEPARATE process (RC-LCUAgent -> :8889 relay). LAYER-1 self-heal (RuneWriter._poll re-heals)
+    MERGED main 90b350c8 + pushed (verifier 62 pass/0 fail, non-frozen, RC NOT yet restarted - live
+    re-validate owed). LAYER-2 systemic resilient-spawn_task-loops (FROZEN lcu_client.py, operator-
+    approved) -> follow-up task. A1 + A2 STAY OPEN pending layer-2 + a League-restart re-validate.
+  (2) D6 Arena augment/anvil shadow NOT SEEDING (accrual rail): augment_shadow.jsonl + anvil_shadow.jsonl
+    ABSENT across 6 live probes. WIRING GAP - the augment-OCR + writers ARE built+wired (arena_coach.py
+    _run_vision:552 -> :914/:1042) but nothing bumps data/force_scan.json on the Cherry augment LCU
+    event, so the free-running 20s vision scan misses the transient panel; the 3rd writer
+    arena_coach_shadow.jsonl DID log 3 rows (from /api/state) isolating the fault. Fix -> follow-up task.
+    D2 shares the root cause (no Cherry augment session surfaced in /api/state). GATED (validation needs
+    a live Arena game).
+STILL GATED / OPEN (not closeable this sitting): A1/A2 (layer-2 + re-validate); A2 spell-push log not
+  isolated; D2 (augment session unsurfaced), D3 (no boot anvil rolled in 8 augment rounds), D6 (finding),
+  D9 (no Goredrinker prismatic rolled), D4/D5 (not attempted); F3 PGR auto-show DID NOT fire (companion
+  on HOME post-game; manual-open works) - soft finding, recheck; ARAM C11 (needs tank/bruiser pick) /
+  C12 (needs sustain comp) / C3 (Cluster-A champ) / C15/C16 (augment-select capture) - none rolled on
+  Vayne; B1 renders but DS returns generic build for Zilean support (correct-by-construction); seam
+  eyeballs B2-B19 / B31-B40 - only B5 (Ezreal) done, others need their champs (harness sweep available).
+NOTE: two duplicate operator-started fix chips overlap the two refined chips (flagged, operator to
+  reconcile). Games logged into the accrual rails (G1 hz_shadow_report + G2 replay_build_order_validate
+  re-run at this wrap).
 
 ---
 
