@@ -579,7 +579,13 @@ class RuneWriter:
         while not self._stop_event.is_set():
             try:
                 await asyncio.to_thread(self._poll)
-            except Exception as exc:  # noqa: BLE001
+            except asyncio.CancelledError:
+                return
+            except BaseException as exc:  # noqa: BLE001
+                # Layer-2: a BaseException escape (not just Exception) must not
+                # kill the poll loop - the 90b350c8 caveat ("if the RuneWriter
+                # poll loop itself died, _poll never runs"). _poll's own
+                # self-heal then re-runs next iteration.
                 _log.debug("RuneWriter poll error: %s", exc)
             try:
                 await asyncio.sleep(self.POLL_INTERVAL)
