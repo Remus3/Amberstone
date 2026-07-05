@@ -12,11 +12,26 @@ cleanly - the go/no-go evidence before dropping a field's Sonnet escalation).
 Routes (all local / tailnet-only, single-operator - same trust model as every
 other :8888 POST):
   GET  /api/vision-regions  -> {"ok": true, "regions": {name: [x1,y1,x2,y2], ...}}
+  GET  /api/vision-regions?source=profile  (source=reference is an alias)
+                             -> the ACTIVE per-HUD-config profile's regions + base
+                             {"ok": true, "regions", "base": [w,h], "source",
+                              "seeded"}. A legacy_seed profile (base 1920x1080)
+                             has its boxes SCALED to the reference base and
+                             "seeded": true.
   POST /api/vision-regions   body {"regions": {...}} -> validate + atomic-write
                              -> {"ok": true, "saved": <n>} ; 400 on a bad shape
                              (an invalid payload never touches the file).
+  POST /api/vision-regions   body {"regions": {...}, "base": [w,h],
+                             "source": "profile"} -> validate + save_profile
+                             -> {"ok": true, "saved": <n>, "config_key",
+                              "target": "profile"} ; 400 on a bad shape
+                             (save_profile is NOT called on an invalid payload).
   GET  /api/vision-frame    -> {"ok": true, "b64", "width", "height", "age_s"}
                              ; {"ok": false, ...} when the :8889 relay is down.
+  GET  /api/vision-frame?source=reference  -> the saved NATIVE reference still
+                             for the active profile {"ok": true, "b64", "width",
+                              "height", "format": "jpeg", "age_s", "base":[w,h]}
+                             ; {"ok": false, "error"} when none captured yet.
   GET  /vision-calibrator   -> the calibrator HTML page.
 
 Never crashes the server; raw exception text stays in the log only (CLAUDE.md
@@ -29,8 +44,22 @@ import logging
 import time
 import urllib.request
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+from core import vision_profiles as vp
 
 log = logging.getLogger("rc.web_dashboard")
+
+_REFERENCE_FALLBACK_BASE = [2560, 1440]  # native-res default when no reference yet
+
+
+def _query_source(path: str):
+    """Return the single ?source= value from a request path (or None). Tolerant
+    of a missing / malformed querystring - never raises."""
+    try:
+        return parse_qs(urlparse(path).query).get("source", [None])[0]
+    except Exception:  # noqa: BLE001
+        return None
 
 _ROOT = Path(__file__).resolve().parent.parent
 REGIONS_PATH = _ROOT / "data" / "vision_regions.json"
@@ -137,18 +166,74 @@ def _send_json(h, code: int, payload: dict) -> None:
     h._send(code, json.dumps(payload).encode("utf-8"), "application/json")
 
 
+def _scale_regions(regions: dict, sx: float, sy: float) -> dict:
+    out = {}
+    for name, box in (regions or {}).items():
+        try:
+            x1, y1, x2, y2 = box
+            out[name] = [round(x1 * sx), round(y1 * sy),
+                         round(x2 * sx), round(y2 * sy)]
+        except Exception:  # noqa: BLE001
+            out[name] = box
+    return out
+
+
+def _profile_regions_payload() -> dict:
+    """Return the active profile's regions + base. A legacy_seed profile
+    (base 1920x1080) is scaled up to the reference base so seeded boxes land on
+    the native-res reference still. ``seeded`` flags a scaled fallback set."""
+    prof = vp.load_profile()
+    regions = prof.get("regions", {})
+    base = prof.get("base", list(_REFERENCE_FALLBACK_BASE))
+    if prof.get("source") == "legacy_seed":
+        ref = vp.load_reference()
+        if ref.get("ok") and ref.get("width") and ref.get("height"):
+            ref_w, ref_h = int(ref["width"]), int(ref["height"])
+        else:
+            ref_w, ref_h = _REFERENCE_FALLBACK_BASE
+        seed_w = base[0] if base and base[0] else 1920
+        seed_h = base[1] if base and len(base) > 1 and base[1] else 1080
+        regions = _scale_regions(regions, ref_w / seed_w, ref_h / seed_h)
+        return {"ok": True, "regions": regions, "base": [ref_w, ref_h],
+                "source": "legacy_seed", "seeded": True}
+    return {"ok": True, "regions": regions, "base": base,
+            "source": prof.get("source", "profile"), "seeded": False}
+
+
 def _serve_regions_get(h) -> None:
     try:
+        if _query_source(h.path) in ("profile", "reference"):
+            _send_json(h, 200, _profile_regions_payload())
+            return
         _send_json(h, 200, {"ok": True, "regions": load_regions()})
     except Exception as exc:  # noqa: BLE001
         log.warning("vision-regions GET: %s", exc)
         _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
 
 
+def _save_profile_from_body(h, body) -> None:
+    """Validate then save a per-profile region set. An invalid payload returns
+    400 and never calls save_profile (mirrors the legacy save_regions guard)."""
+    ok, err, clean = validate_regions(body.get("regions"))
+    if not ok:
+        _send_json(h, 400, {"ok": False, "error": err})
+        return
+    base = body.get("base")
+    res = vp.save_profile(vp.active_config_key(), clean, base)
+    if res.get("ok"):
+        _send_json(h, 200, {"ok": True, "saved": res.get("count", len(clean)),
+                            "config_key": res.get("config_key"), "target": "profile"})
+    else:
+        _send_json(h, 500, {"ok": False, "error": "could not write profile - see logs"})
+
+
 def _serve_regions_post(h, body) -> None:
     try:
         if not isinstance(body, dict) or "regions" not in body:
             _send_json(h, 400, {"ok": False, "error": "body must be {\"regions\": {...}}"})
+            return
+        if body.get("source") == "profile" or "base" in body:
+            _save_profile_from_body(h, body)
             return
         ok, err, count = save_regions(body.get("regions"))
         if ok:
@@ -160,9 +245,33 @@ def _serve_regions_post(h, body) -> None:
         _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
 
 
+def _reference_frame_payload() -> dict:
+    """Remap vp.load_reference() to the frame-endpoint shape (adds base). Passes
+    a {"ok": False, "error"} through unchanged."""
+    ref = vp.load_reference()
+    if not ref.get("ok"):
+        return {"ok": False, "error": ref.get("error", "no reference captured yet")}
+    w, hgt = ref.get("width"), ref.get("height")
+    return {
+        "ok": True,
+        "b64": ref.get("b64"),
+        "width": w,
+        "height": hgt,
+        "format": "jpeg",
+        "age_s": ref.get("age_s"),
+        "base": [w, hgt],
+    }
+
+
 def _serve_frame_get(h) -> None:
     try:
-        _send_json(h, 200, fetch_frame())
+        if _query_source(h.path) == "reference":
+            _send_json(h, 200, _reference_frame_payload())
+            return
+        out = fetch_frame()
+        if out.get("ok") and out.get("width") is not None and out.get("height") is not None:
+            out.setdefault("base", [out["width"], out["height"]])
+        _send_json(h, 200, out)
     except Exception as exc:  # noqa: BLE001
         log.warning("vision-frame GET: %s", exc)
         _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
