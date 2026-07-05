@@ -108,5 +108,29 @@ def test_bad_target_dims_return_none():
     assert compute_minimap_rect(CAL_SCALE, False, -1, -1) is None
 
 
+def test_affine_intercept_minimap_has_a_floor():
+    # The minimap has a real MINIMUM size, not zero: MinimapScale 0.0 renders a
+    # ~238px square at 2560x1440 (live-measured 2026-07-05), neither a collapse to
+    # 0 (old proportional-through-origin) nor the old <=0 -> CAL_SCALE snap to 416.
+    r = compute_minimap_rect(0.0, False, 2560, 1440)
+    assert r is not None
+    assert 225 <= r.w <= 252
+
+
+def test_affine_matches_measured_points_2560x1440():
+    # Live-measured (2026-07-05, operator setup, 2560x1440) minimap side vs the
+    # game.cfg MinimapScale float. The relationship is affine (slope*scale +
+    # floor), not proportional through the origin.
+    assert 328 <= compute_minimap_rect(0.93, False, 2560, 1440).w <= 354  # ~340
+    assert 408 <= compute_minimap_rect(1.62, False, 2560, 1440).w <= 424  # 416 anchor
+    assert 520 <= compute_minimap_rect(2.70, False, 2560, 1440).w <= 550  # ~535
+
+
+def test_low_scale_does_not_undershoot_regression():
+    # Regression for the through-origin bug: the old model gave ~239px at scale
+    # 0.93 (2560x1440) by heading toward 0 at scale 0; the real minimap is ~340px.
+    assert compute_minimap_rect(0.93, False, 2560, 1440).w >= 320
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
