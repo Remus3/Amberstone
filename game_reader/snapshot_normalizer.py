@@ -16,6 +16,8 @@ import logging
 import math
 import urllib.parse
 
+from core.mode_capabilities import has_capability
+
 from .mode_router import is_tft_mode, tower_count_for, tft_minimal_state
 from .poller import LIVE_API
 
@@ -382,8 +384,11 @@ class _NormalizerMixin:
             position_note = ""
 
         try:
-            # AUDIT-PHASE-2-GR-003: ward hints are SR-only
-            if game_mode == "CLASSIC":
+            # AUDIT-PHASE-2-GR-003: ward hints are SR-only. Spec-W
+            # ward-gate: fail-CLOSED capability table replaces the bare
+            # game_mode == "CLASSIC" literal (SR behavior identical -
+            # "CLASSIC" is the only raw string that maps to has_wards).
+            if has_capability(game_mode, "has_wards"):
                 ward_hint = self._ward_hint(game_time, obj_timers_dict)
             else:
                 ward_hint = ""

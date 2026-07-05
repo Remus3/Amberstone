@@ -14,6 +14,7 @@ from core.cc_conditional_impact_context import (
 )
 from core.death_patterns_loader import personal_context_block
 from core.enemy_cc_threat_context import enemy_cc_threat_line
+from core.mode_capabilities import has_capability
 
 logger = logging.getLogger("coach")
 
@@ -435,7 +436,9 @@ def _build_user_prompt(gs: dict, wave_state: str) -> str:
             lines.append(f"Friendly jungler: {friendly_jg}")
         if position_note:
             lines.append(f"Position alert: {position_note}")
-        if ward_hint:
+        # Spec-W ward-gate: never emit ward prompting in a mode without
+        # wards (fail-CLOSED outside SR/CLASSIC).
+        if ward_hint and has_capability(game_mode, "has_wards"):
             lines.append(f"Ward priority: {ward_hint}")
 
     comp_ctx = gs.get("comp_context", "")
