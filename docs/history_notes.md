@@ -225,6 +225,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-05 (operator handoff PHASE 1 - DS/haiku-zero ORUN waves; LEDGER 784-785)
+
+Operator away, Fable-5 competitor-research handoff: run at MAX effort as orchestrator, PHASE 1 = DS lift waves then PHASE 2 = gemini-headless-upgrade. GROUND TRUTH FIRST corrected the premise: the DS ENGINE is genuinely exhausted this patch (ENGINE 1.179.0 / 7997 tests / registries "provably saturated"; the R66 adversarial residual list is EXHAUSTED per R70, do NOT re-pick #1-#6, #7 shield-lerp is next-patch-ingest gated). So "next DS batches" = the director's real OPEN queue (docs/ORCHESTRATION_PLAN.md ORUN1-5), which is what the Gemini director itself reads. Verified-premise + shipped the 2 headless-safe, non-engine ORUN units as separate verifier-gated commits:
+- ORUN1 (`677f5237`): NEW tools/arena_shadow_report.py, the Arena sibling of hz_shadow_report.py (deterministic-vs-Haiku agreement + flip-readiness gate over data/arena_coach_shadow.jsonl; dead-state de-bias; fail-soft awaiting_accrual). Tier-1 tooling, 16 tests, verifier CONFIRM.
+- ORUN5 (`6da64adc`): assume_carry_share_grade default-OFF grade fold on post_game_rubric.py (OR-alias of the pre-existing carry_efficiency fold; byte-identical OFF proven across 7 fixtures). NO ENGINE bump (heuristic rubric). 15 tests, verifier CONFIRM. G18 gated-sync row updated to the shipped state.
+Correct tiers applied per R5: both Tier-1 (NO ENGINE bump / NO Share mirror / NO :8893 restart - the handoff's generic DS-wave ritual does NOT apply to non-engine units). ORCHESTRATION_PLAN ORUN1/ORUN5 marked DONE + Findings entries appended so the Phase-2 loop does not re-pick shipped work.
+
+NEXT: PHASE 2 = invoke the gemini-headless-upgrade skill (turns this session into the ephemeral executor for the Gemini-directed loop; it continues the ORUN queue top-down - ORUN2 snowball-elasticity / ORUN3 Aggregator B per-stat / ORUN4 Aggregator D game-flow strip are the next OPEN rows + the REFILL PROTOCOL when it drains).
+DO NOT redo: the DS engine is exhausted this patch (do NOT fabricate engine lift waves - registries saturated, R66 list exhausted); ORUN1 + ORUN5 are SHIPPED (do NOT re-pick); a DS-sweep refill MUST come from a FRESH adversarial Meraki-vs-registry refute pass, never a re-pick.
+
+---
+
 # 2026-07-05 (card MERGED to main via PR #6 + overlay-polish live-recon; LEDGER 783)
 
 Merged the player-snapshot card + shipped 3 overlay-polish slices while the operator live-recon'd the real Electron overlay (ground truth the agent cannot see headless).
