@@ -225,6 +225,33 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-04 (RC2 no-live-LLM precompute-DB lane: 3 slices + first-ever DS seam flip; LEDGER 775-778)
+
+Operator picked the precompute-DB program (ROADMAP L15) as the next RC2 lane (E10/E2 stay operator-gated).
+Spec-first via Plan subagents; each build verifier-gated. 7 commits, all pushed + CI green.
+- SLICE 1 (`f5939253`, LEDGER 775): ARAM deterministic `build_block` gained a 7th `choices` key - the
+  PRIMARY A/B surface (shadow-measurable). Spec corrected 3 stale plan-doc premises (SR is NOT code-level
+  zero-Haiku; the ARAM Stage-1/2 block was already shipped LEDGER 763; from_fields is a decoder).
+- SLICE 2 (`20962f03`, LEDGER 776): NEW tools/aram_shadow_report.py (sibling of hz_shadow_report) -
+  per-field deterministic-vs-Haiku agreement + dead-state ("WAIT RESPAWN") exclusion. First live reading:
+  action 74% (>=70% gate MET), choices ~1%. ALSO the live C4/Ezreal+Corki DSP11 eyeball = SANE.
+- SLICE 3 (`25955559`, LEDGER 777): widened _safe_choices to all 5 ARAM labels -> A/B (source_tag
+  "aram_rule"), superseding slice-1's 2-label reuse. Coverage lifts as new games accrue.
+- C4 FLIP (`523206d6`, LEDGER 778): DSP11 prefer_kit_axis_by_win DEFAULT-ON. Flipped RC-SIDE at
+  archetype_dispatch.py:210 (NOT the DS server - that entangles the shared /rank passthrough test on
+  Ezreal). RC-side caller change so NO ENGINE bump / NO DS restart / NO Share. Proven live: Ezreal default
+  floats Essence Reaver #1 vs #4 off. FIRST-EVER DS seam flip - precedent set (see the seam memory).
+
+RC reloaded (pid 21356). docs/LIVE_GAME_GATED_SYNC.md C4 = FLIPPED/CLOSED.
+NEXT: ARAM item_extra/objective deterministic gaps; then Arena's remaining Haiku (763 built its block) +
+the CV vision atlas (the bigger SECOND program). Other C-seams (C5-C13) still champ-gated for eyeballs.
+DO NOT redo: C4 is FLIPPED - the flip point is the RC-side caller (archetype_dispatch.py:210), NOT the DS
+server; do NOT bump ENGINE for a caller-default flip. Slice-1's "reuse synth" don't-redo is SUPERSEDED by
+slice 3. E10/E2 stay operator-gated. A duplicate templater chip-session may exist on the operator side
+(redundant - slice 3 is merged).
+
+---
+
 # 2026-07-04 (HEADLESS open items - header row-2 FINISHED + HOME chips A6/A7; LEDGER 770-771)
 
 Closed the drain-session NEXT-block open items (no play needed - all headless).
