@@ -439,7 +439,7 @@ def _has_text_signal(crop, threshold: int = 180, min_lit_pct: float = 0.02) -> b
     return lit >= max(3, int(n * min_lit_pct))
 
 
-def _parse_field(name: str, crop, hp_known: Optional[int] = None):
+def _parse_field(name: str, crop):
     """Single-field parse logic - extracted so it can run in a thread pool."""
     if name == "timer":
         return _ocr_timer(crop)
@@ -456,8 +456,6 @@ def _parse_field(name: str, crop, hp_known: Optional[int] = None):
     if name == "ally_levels":
         lst = _ocr_int_stack(crop)
         return [x for x in lst if 1 <= x <= 18] if lst else None
-    if name == "enemy_deaths":
-        return _ocr_int_stack(crop, channel="R", threshold=130) or None
     if name == "level":
         v = _ocr_int(crop)
         return v if v is not None and 1 <= v <= 18 else None
@@ -469,14 +467,6 @@ def _parse_field(name: str, crop, hp_known: Optional[int] = None):
         if not _has_text_signal(crop):
             return None
         return _ocr_cooldown(crop)
-    if name == "death_timer":
-        # Skip if alive (hp_known > 0) - death timer only renders when dead.
-        if hp_known is not None and hp_known > 0:
-            return None
-        if not _has_text_signal(crop, threshold=150):
-            return None
-        v = _ocr_colored_int(crop, channel="R", threshold=130)
-        return v if v is not None and 0 <= v <= 99 else None
     if name == "score_blue":
         v = _ocr_colored_int(crop, channel="B")
         return v if v is not None and 0 <= v <= 99 else None
@@ -507,8 +497,7 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
       - parallel Tesseract (up to max_workers concurrent calls)
       - tiered cadence: slow fields (timer, score, cs, ping, fps) read
         every Nth call, cached otherwise
-      - conditional skip: skill_*_cd skipped when icon shows no text;
-        death_timer skipped when self hp > 0
+      - conditional skip: skill_*_cd skipped when icon shows no text
       - drop set: caller can pre-mark fields satisfied by Live Client API
 
     Failed fields are omitted (None values not returned).
@@ -532,22 +521,12 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
             continue
         work.append((name, _crop(img, _scale_bbox(bbox, fw, fh))))
 
-    # Pre-pass: own hp (used to skip death_timer). Cheap, just one OCR.
-    hp_known = None
-    for name, crop in work:
-        if name == "hp":
-            try:
-                hp_known = _ocr_hp_mana(crop)
-            except Exception:  # noqa: BLE001
-                hp_known = None
-            break
-
     out: dict = {}
     if parallel and len(work) > 1:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         with ThreadPoolExecutor(max_workers=max_workers) as ex:
             future_to_name = {
-                ex.submit(_parse_field, name, crop, hp_known): name
+                ex.submit(_parse_field, name, crop): name
                 for name, crop in work
             }
             for fut in as_completed(future_to_name):
@@ -561,7 +540,7 @@ def read_fast_fields(img_b64: str, fields: Optional[Iterable[str]] = None,
     else:
         for name, crop in work:
             try:
-                v = _parse_field(name, crop, hp_known)
+                v = _parse_field(name, crop)
                 if v is not None:
                     out[name] = v
             except Exception as exc:  # noqa: BLE001
