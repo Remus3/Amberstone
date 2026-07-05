@@ -251,6 +251,15 @@ during real games; `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-O
   `assume_archetype_hp_pct` sustained-fraction calibration). A REAL-SR game vs a crit ADC is the
   stronger eyeball. DS restart on flip. NEVER flip blind (charter 4b). SOURCE: docs/LEDGER.md R77
   entry + ENGINE 1.180.0 CHANGELOG.
+- B46. (PRACTICE-SR) R80 `assume_item_aa_dr` flip (Plated Steelcaps 3047/223047 Plating 10%
+  reduced basic-attack damage -> physical-only EHP credit): confirm a bruiser/tank carrying
+  Steelcaps up-ranks sanely on the survivability axis vs an AA-heavy (ADC / on-hit) enemy when the
+  flag is ON, and that byte-identical OFF holds (default DS output unchanged). The AA-DR is credited
+  against an ASSUMED incoming basic-attack share (`_ASSUMED_INCOMING_AA_SHARE = 0.5`), so the 0.5
+  midpoint CALIBRATION vs a real AA-heavy comp is the ACCRUAL tail (mirrors B45 crit-share + B20
+  archetype-hp calibration): Steelcaps should gain, but not dominate a real-resist item swap. A
+  REAL-SR game vs a fed auto-attacker is the stronger eyeball. DS restart on flip. NEVER flip blind
+  (charter 4b). SOURCE: docs/LEDGER.md R80 entry + ENGINE 1.181.0 CHANGELOG.
 
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
