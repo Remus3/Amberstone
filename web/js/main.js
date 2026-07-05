@@ -6475,21 +6475,32 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // per-context (in-game / out-of-game) panel toggles. Self-guards on the
   // overlay shell (overlay.css owns that surface). Wires its own re-apply.
   initPanelVisibility();
-  // Task 8 (spec 7.1): View Profile -> GPI radar. Delegated (document-level)
-  // click listener so it survives EITHER player-snapshot card surface's
-  // idempotent re-render (#home-snapshot-card / #pgr-snapshot-card both
-  // rebuild innerHTML on model change, which would drop a per-button
-  // listener). Reads the clicked button's data-mode, reveals the shared
-  // #player-gpi-radar container, and mounts the radar for that mode - the
-  // first production mount of panels/player_gpi.js.
+  // Task 8 (spec 7.1), per-context fix (critfix): View Profile -> GPI radar.
+  // Delegated (document-level) click listener so it survives EITHER
+  // player-snapshot card surface's idempotent re-render (#home-snapshot-card
+  // / #pgr-snapshot-card both rebuild innerHTML on model change, which would
+  // drop a per-button listener). A SINGLE shared "#player-gpi-radar"
+  // container broke cross-view: it lived inside #home-overlay, which is
+  // display:none on every view except Home (home.css .home-overlay.hidden),
+  // so the PGR card's click silently mounted the radar into an invisible
+  // node (radar.hidden = false has no visible effect under a display:none
+  // ancestor). Fix: resolve the ".player-gpi-radar" container RELATIVE to
+  // the clicked button's own view scope (#home-overlay for the Home card,
+  // the enclosing .view-section for every other view-hosted card) so each
+  // view mounts into its OWN, genuinely-visible container. The "|| document"
+  // fallback keeps the isolated-fixture tests working (a bare fixture div
+  // outside any scope still resolves the first ".player-gpi-radar" in
+  // document order). Keeps the "|| sr" dataset.mode fallback - load-bearing
+  // for the PGR empty model where profile_ref.mode is null -> data-mode="".
   document.addEventListener("click", (e) => {
     const btn = e.target && e.target.closest
       ? e.target.closest(".ps-viewprofile") : null;
     if (!btn) return;
-    const radar = document.getElementById("player-gpi-radar");
+    const scope = btn.closest("#home-overlay, .view-section") || document;
+    const radar = scope.querySelector(".player-gpi-radar");
     if (!radar) return;
     radar.hidden = false;
-    showPlayerGpi(btn.dataset.mode || "sr", "player-gpi-radar");
+    showPlayerGpi(btn.dataset.mode || "sr", radar.id);
   });
   // Map underlay brightness override: ?map-br=0.55&map-sat=0.6
   (function mapFilterOverride() {
