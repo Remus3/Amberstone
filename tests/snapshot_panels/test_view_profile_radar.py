@@ -16,6 +16,7 @@ Mirrors test_player_gpi_view.py's /api/player-profile stub (the identical
 (renderPlayerSnapshot is not wired to any one page mount in this test - it is
 driven directly, exactly like the card's own view test does).
 """
+import json
 from pathlib import Path
 
 SCREENSHOTS = Path(__file__).parent / "screenshots"
@@ -136,41 +137,47 @@ def test_view_profile_click_mounts_gpi_radar(mock_server, pw_browser):
         )
 
         # Radar container starts hidden/empty (RED-state proof point).
-        radar = page.locator("#player-gpi-radar")
-        assert radar.count() == 1, "#player-gpi-radar container missing from index.html"
+        # critfix: the container the delegated handler resolves for a
+        # scopeless #ps-fixture button is now #home-gpi-radar (the old
+        # shared "#player-gpi-radar" id was renamed and split per-view;
+        # #ps-fixture sits outside every scope, so the handler's
+        # `|| document` fallback picks the FIRST ".player-gpi-radar" in
+        # document order, which is the Home container).
+        radar = page.locator("#home-gpi-radar")
+        assert radar.count() == 1, "#home-gpi-radar container missing from index.html"
 
         btn.click()
 
         # Wait for the fetch onLand re-render to paint the data polygon.
         page.wait_for_function(
-            "document.querySelectorAll('#player-gpi-radar svg').length > 0",
+            "document.querySelectorAll('#home-gpi-radar svg').length > 0",
             timeout=10_000,
         )
 
-        assert radar.is_visible(), "#player-gpi-radar stayed hidden after click"
+        assert radar.is_visible(), "#home-gpi-radar stayed hidden after click"
 
         # The SVG polygon is the radar's hero element - eight vertices (one
         # per axis), proving the real showPlayerGpi mount fired (not a stub).
         pts = page.eval_on_selector(
-            "#player-gpi-radar .gpi-area", "el => el.getAttribute('points')"
+            "#home-gpi-radar .gpi-area", "el => el.getAttribute('points')"
         )
         verts = [p for p in pts.strip().split(" ") if p]
         assert len(verts) == 8, f"expected 8 polygon vertices, got {len(verts)}: {pts}"
 
         overall = page.eval_on_selector(
-            "#player-gpi-radar .gpi-overall-num", "el => el.textContent.trim()"
+            "#home-gpi-radar .gpi-overall-num", "el => el.textContent.trim()"
         )
         assert overall == "55", f"overall chip != 55: {overall!r}"
 
         # Mode toggle reflects the card's profile_ref.mode ("sr").
         active = page.eval_on_selector_all(
-            "#player-gpi-radar .gpi-mode.gpi-mode-on",
+            "#home-gpi-radar .gpi-mode.gpi-mode-on",
             "els => els.map(e => e.getAttribute('data-gpi-mode'))",
         )
         assert active == ["sr"], f"expected SR active in toggle, got {active}"
 
         SCREENSHOTS.mkdir(exist_ok=True)
-        page.locator("#player-gpi-radar").screenshot(
+        page.locator("#home-gpi-radar").screenshot(
             path=str(SCREENSHOTS / "view-profile_gpi-radar.png")
         )
     finally:
@@ -199,14 +206,190 @@ def test_view_profile_click_wiring_is_delegated(mock_server, pw_browser):
 
         btn = page.locator("#ps-fixture .ps-viewprofile")
         btn.click()
+        # critfix: #home-gpi-radar (see id-rename comment above).
         page.wait_for_function(
-            "document.querySelectorAll('#player-gpi-radar svg').length > 0",
+            "document.querySelectorAll('#home-gpi-radar svg').length > 0",
             timeout=10_000,
         )
-        assert page.locator("#player-gpi-radar").is_visible(), (
+        assert page.locator("#home-gpi-radar").is_visible(), (
             "radar did not mount after a post-rebuild click - "
             "listener is not delegated"
         )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def _open_last_match_real_router(pw_browser, mock_server, mode="sr"):
+    """Drive the REAL page + router (mirrors test_last_match_view.py) so
+    #home-overlay is genuinely display:none (the router's renderHomePanel
+    adds .hidden because body.dataset.view != "home") and #pgr-snapshot-card
+    is populated by the real _setHeroRoleGrade -> renderPlayerSnapshot path -
+    not a bare fixture div. This is the ONLY way to reproduce the bug: a
+    bare #ps-fixture mount (as _mount_card above does) is never inside any
+    hidden ancestor, so it cannot demonstrate the cross-view failure."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    page.add_init_script(_GPI_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+
+    # Route /api/post-game-rubric so _setHeroRoleGrade builds a REAL
+    # profile_ref.mode via _pgrInferMode(match) instead of the empty model
+    # (mirrors _RUBRIC_PAYLOAD in test_last_match_view.py).
+    def _fulfill_rubric(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({
+                "ok": True, "match_id": "NA1_TEST", "role": "BOTTOM",
+                "total_score": 72.0, "percentile_grade": "A",
+                "components": {
+                    "kda": 3.0, "cs_per_min": 1.2, "obj_participation": 0.8,
+                    "vision": 0.5, "dpm": 2.0,
+                },
+                "weights_used": {
+                    "kda": 1.5, "cs_per_min": 1.2, "obj_participation": 0.8,
+                    "vision_score": 0.5, "damage_per_min": 1.0,
+                },
+            }),
+        )
+    page.route("**/api/post-game-rubric*", _fulfill_rubric)
+
+    url = mock_server.url + f"/?ui_mock=1&mode={mode}#last-match"
+    page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+    page.wait_for_function(
+        "document.querySelector('#lm-mode-tag') && "
+        "document.querySelector('#lm-mode-tag').textContent.trim() !== '-' && "
+        "document.querySelector('#lm-mode-tag').textContent.trim() !== ''",
+        timeout=10_000,
+    )
+    # Confirm the reproduction precondition: #home-overlay IS hidden (the
+    # router genuinely hid it because the active view is last-match, not
+    # home) - if this ever stops being true the bug scenario no longer
+    # applies and the test below would be a false negative.
+    page.wait_for_function(
+        "document.getElementById('home-overlay') && "
+        "document.getElementById('home-overlay').classList.contains('hidden')",
+        timeout=10_000,
+    )
+    return ctx, page, errors
+
+
+def test_view_profile_pgr_context_radar_is_visible(mock_server, pw_browser):
+    """CRITICAL cross-view bug (final whole-branch review): the PGR card's
+    View Profile button (#pgr-snapshot-card, #view-last-match) must mount
+    the GPI radar into a container that is ACTUALLY VISIBLE, not merely
+    hidden=false while a #home-overlay ancestor sits display:none. Before
+    the fix this FAILS: the single shared #player-gpi-radar container lives
+    inside #home-overlay (index.html ~line 120), and #home-overlay is
+    display:none on the last-match view (home.css:40 .home-overlay.hidden),
+    so radar.hidden=false has no visible effect - is_visible() stays False."""
+    ctx, page, errors = _open_last_match_real_router(pw_browser, mock_server)
+    try:
+        btn = page.locator("#pgr-snapshot-card .ps-viewprofile")
+        assert btn.count() == 1, "PGR View Profile button missing"
+
+        btn.click()
+
+        # Give the click handler + any re-render a moment to settle, then
+        # assert on ACTUAL VISIBILITY (getBoundingClientRect-backed), not
+        # the .hidden property - that is exactly the distinction the bug
+        # hides behind (hidden=false but display:none via an ancestor).
+        page.wait_for_timeout(300)
+
+        radar = page.locator("#pgr-gpi-radar")
+        if radar.count() == 0:
+            # Pre-fix: no per-view PGR container exists yet: the handler
+            # mounted (or tried to mount) into the single shared
+            # #player-gpi-radar, which is buried in the hidden
+            # #home-overlay. Assert THAT container is not visibly showing
+            # the radar, which is the pre-fix failure mode.
+            shared = page.locator("#player-gpi-radar")
+            assert shared.count() == 1
+            assert not shared.is_visible(), (
+                "pre-fix expectation violated: shared #player-gpi-radar is "
+                "somehow visible from the PGR view - bug may already be "
+                "fixed or environment changed"
+            )
+            raise AssertionError(
+                "#pgr-gpi-radar container does not exist (per-view radar "
+                "container not yet added to #view-last-match) AND the "
+                "shared #player-gpi-radar it fell back to is not visible "
+                "(buried inside display:none #home-overlay) - PGR View "
+                "Profile mounts the radar into an invisible container"
+            )
+
+        assert radar.is_visible(), (
+            "#pgr-gpi-radar exists but is not visible after click - "
+            "still mounting into a hidden-ancestor container"
+        )
+
+        pts = page.eval_on_selector(
+            "#pgr-gpi-radar .gpi-area", "el => el.getAttribute('points')"
+        )
+        verts = [p for p in pts.strip().split(" ") if p]
+        assert len(verts) == 8, f"expected 8 polygon vertices, got {len(verts)}: {pts}"
+
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.locator("#pgr-gpi-radar").screenshot(
+            path=str(SCREENSHOTS / "view-profile_pgr-gpi-radar.png")
+        )
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors: {errors[:3]}"
+
+
+def test_view_profile_home_context_radar_still_visible(mock_server, pw_browser):
+    """Regression companion to the PGR-context test above: the Home card's
+    View Profile must still mount a VISIBLE radar after the per-context fix
+    (Home's own container, id renamed to #home-gpi-radar, lives inside the
+    now-VISIBLE #home-overlay on the home view)."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {}
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    page.add_init_script(_GPI_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    page.goto(
+        mock_server.url + "/?ui_mock=1", wait_until="domcontentloaded", timeout=15_000,
+    )
+    try:
+        # Home view's #home-overlay must be the visible one here (inverse
+        # precondition of the PGR test above).
+        page.wait_for_function(
+            "document.getElementById('home-overlay') && "
+            "!document.getElementById('home-overlay').classList.contains('hidden')",
+            timeout=10_000,
+        )
+        _mount_card(page, _CARD_MODEL)
+        page.wait_for_selector('[data-testid="player-snapshot"]', timeout=10_000)
+
+        btn = page.locator("#ps-fixture .ps-viewprofile")
+        btn.click()
+        page.wait_for_function(
+            "document.querySelectorAll('.player-gpi-radar svg').length > 0",
+            timeout=10_000,
+        )
+        # #ps-fixture is a bare body-level div (not inside #home-overlay),
+        # so the delegated handler's `|| document` fallback resolves the
+        # first `.player-gpi-radar` in document order - the Home container.
+        radar = page.locator("#home-gpi-radar")
+        assert radar.count() == 1, "#home-gpi-radar container missing"
+        assert radar.is_visible(), "#home-gpi-radar not visible after click"
     finally:
         page.close()
         ctx.close()
