@@ -267,3 +267,7 @@ ops/audit/ds_perm_swarm/report/_toast.ps1
 ops/audit/ds_perm_swarm/report/live_verdict.md
 ops/audit/ds_perm_swarm/report/live_verdict.jsonl
 ops/audit/ds_perm_swarm/report/WATCHER_STOP
+
+# Vision calibrator runtime (per-machine HUD profiles + captured native reference frames)
+data/vision_profiles/
+data/vision_calib_reference/
