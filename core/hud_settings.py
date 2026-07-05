@@ -1,31 +1,50 @@
-# arch: parse League game.cfg HUD/resolution settings for region hardening | section=vision | frozen=no
-"""Read the live League ``game.cfg`` so OCR region positions can be HARDENED
-against the actual in-game settings (resolution + HUD scale + layout) instead of
-hardcoded 1920x1080 pixels.
+# arch: parse League game.cfg + PersistedSettings for OCR region + color hardening | section=vision | frozen=no
+"""Read the live League settings so HUD OCR can be HARDENED against them instead
+of hardcoded 1920x1080 pixels + assumed colors.
 
-Root cause this addresses (memory reference_vision_ocr_capture_pipeline): the
-operator plays 2560x1440 with a custom HUD, so 1920-calibrated boxes miss. The
-durable fix is to key region sets by the settings that actually move the HUD -
-resolution + GlobalScale + flip flags - so a config change re-selects the right
-boxes rather than silently misreading. This module is the settings reader; the
-per-config region scaffold + multi-resolution fill is a later session.
+Two independent layers the settings drive (memory
+reference_vision_ocr_capture_pipeline):
 
-Lenient INI-ish parse (League's game.cfg is ``[Section]`` + ``key=value`` with
-no spaces around ``=``). Missing file / section -> ``{"ok": False}``; never raises.
+  POSITION - resolution + HUD scale + layout toggles decide WHERE each element
+  is. Notably ``ShowTeamFramesOnLeft`` (the operator has it 0, which is why the
+  ally/enemy portraits sit on the RIGHT), ``MirroredScoreboard``, ``FlipMiniMap``,
+  ``MinimapScale``, ``GlobalScale``. These form ``config_key`` so a settings
+  change re-selects the right region set rather than silently misreading.
+
+  COLOR - ``ColorBrightness / ColorContrast / ColorGamma / ColorLevel /
+  ColorPalette`` (in PersistedSettings.json) shift the rendered frame's colors +
+  gamma. When non-default, OCR should inverse-correct the crop before Tesseract,
+  and a non-zero ColorPalette (color-blind mode) changes HP/mana bar colors that
+  ``core.vision_tesseract._bar_fill_pct`` hard-matches - so bar detection must
+  adapt. ``color_correction_needed`` / ``colorblind`` flag that.
+
+The FULL game.cfg (every section) is returned under ``cfg`` so any other
+toggle (quality, godray, eye-candy, effects) is available to a correction step.
+Lenient parse; missing files -> friendly zeros, never raises.
 """
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 
 log = logging.getLogger("rc.vision")
 
-_DEFAULT_GAME_CFG = Path(r"C:\Riot Games\League of Legends\Config\game.cfg")
+_CFG_DIR = Path(r"C:\Riot Games\League of Legends\Config")
+_DEFAULT_GAME_CFG = _CFG_DIR / "game.cfg"
+_DEFAULT_PERSISTED = _CFG_DIR / "PersistedSettings.json"
 
-# HUD keys worth recording for a config signature (the ones that move / rescale
-# HUD elements). Extend as the multi-config scaffold needs more.
-_HUD_KEYS = ("GlobalScale", "FlipMiniMap", "MinimapScale", "ShopScale",
-             "ShowAllChampsOnMinimap", "MinimapNeutralJungleColor")
+# Settings that MOVE / RESIZE HUD elements -> part of the position signature.
+_LAYOUT_KEYS = ("GlobalScale", "ShowTeamFramesOnLeft", "MirroredScoreboard",
+                "FlipMiniMap", "MinimapScale")
+# Broader OCR-relevant HUD context (surfaced, not part of the key).
+_HUD_CONTEXT_KEYS = _LAYOUT_KEYS + (
+    "DrawHealthBars", "ShowFPSAndLatency", "ShowPlayerStats",
+    "NumericCooldownFormat", "ShowSummonerNames", "ShopScale")
+# Color / gamma correction settings (PersistedSettings.json).
+_COLOR_KEYS = ("ColorBrightness", "ColorContrast", "ColorGamma",
+               "ColorLevel", "ColorPalette")
+_COLOR_SLIDER_DEFAULT = 0.5  # neutral midpoint for the 4 sliders (ColorPalette default 0)
 
 
 def _parse_cfg(text: str) -> dict:
@@ -45,6 +64,31 @@ def _parse_cfg(text: str) -> dict:
     return out
 
 
+def _read_persisted_flat(path) -> dict:
+    """Flatten PersistedSettings.json (nested files/sections/settings with
+    name/value) to {name: value}. {} on any read/parse failure."""
+    try:
+        d = json.loads(Path(path).read_text(encoding="utf-8", errors="ignore"))
+    except Exception:  # noqa: BLE001
+        return {}
+    flat: dict = {}
+
+    def _walk(o):
+        if isinstance(o, dict):
+            name, val = o.get("name"), o.get("value")
+            if isinstance(name, str) and val is not None and not isinstance(val, (list, dict)):
+                flat.setdefault(name, val)
+            for v in o.values():
+                if isinstance(v, (list, dict)):
+                    _walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                _walk(v)
+
+    _walk(d)
+    return flat
+
+
 def _as_int(d: dict, key, default=None):
     try:
         return int(float(d.get(key, default)))
@@ -52,39 +96,61 @@ def _as_int(d: dict, key, default=None):
         return default
 
 
-def _as_float(d: dict, key, default=None):
+def _as_float(v, default=None):
     try:
-        return float(d.get(key, default))
+        return float(v)
     except (TypeError, ValueError):
         return default
 
 
-def read_hud_settings(path=None) -> dict:
-    """Return the settings that determine HUD element placement:
-    ``{"ok", "width", "height", "global_scale", "flip_minimap", "hud",
-    "config_key"}``. ``config_key`` is a stable string signature of the
-    placement-affecting settings, used to key per-config region sets."""
-    p = Path(path) if path is not None else _DEFAULT_GAME_CFG
+def read_hud_settings(game_cfg=None, persisted=None) -> dict:
+    """Return the position + color settings that drive HUD OCR:
+    ``{ok, width, height, config_key, layout, color, color_correction_needed,
+    colorblind, cfg}``."""
+    p = Path(game_cfg) if game_cfg is not None else _DEFAULT_GAME_CFG
     try:
         text = p.read_text(encoding="utf-8", errors="ignore")
     except Exception:  # noqa: BLE001
-        return {"ok": False, "error": "game.cfg not readable", "config_key": "unknown"}
+        return {"ok": False, "error": "game.cfg not readable", "config_key": "unknown",
+                "layout": {}, "color": {}, "color_correction_needed": False,
+                "colorblind": False, "cfg": {}}
+
     cfg = _parse_cfg(text)
     gen = cfg.get("General", {})
     hud = cfg.get("HUD", {})
     width = _as_int(gen, "Width")
     height = _as_int(gen, "Height")
-    scale = _as_float(hud, "GlobalScale")
-    flip = _as_int(hud, "FlipMiniMap")
-    hud_sel = {k: hud[k] for k in _HUD_KEYS if k in hud}
     ok = bool(width and height)
-    config_key = f"{width}x{height}@scale{scale}@flip{flip}" if ok else "unknown"
+
+    layout = {k: hud[k] for k in _HUD_CONTEXT_KEYS if k in hud}
+    if "RelativeTeamColors" in gen:
+        layout["RelativeTeamColors"] = gen["RelativeTeamColors"]
+
+    pflat = _read_persisted_flat(persisted if persisted is not None else _DEFAULT_PERSISTED)
+    color = {k: pflat[k] for k in _COLOR_KEYS if k in pflat}
+
+    if ok:
+        parts = [f"{width}x{height}"] + [f"{k}={hud.get(k, '?')}" for k in _LAYOUT_KEYS]
+        config_key = "|".join(parts)
+    else:
+        config_key = "unknown"
+
+    needs = False
+    for k in ("ColorBrightness", "ColorContrast", "ColorGamma", "ColorLevel"):
+        cv = _as_float(color.get(k))
+        if cv is not None and abs(cv - _COLOR_SLIDER_DEFAULT) > 0.01:
+            needs = True
+    palette = _as_int(color, "ColorPalette", 0) or 0
+    colorblind = bool(palette)
+
     return {
         "ok": ok,
         "width": width,
         "height": height,
-        "global_scale": scale,
-        "flip_minimap": flip,
-        "hud": hud_sel,
         "config_key": config_key,
+        "layout": layout,
+        "color": color,
+        "color_correction_needed": needs or colorblind,
+        "colorblind": colorblind,
+        "cfg": cfg,
     }
