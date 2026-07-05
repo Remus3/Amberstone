@@ -58,6 +58,67 @@ function _esc(s) {
     .replace(/'/g, "&#39;");
 }
 
+// DDragon rune shortDesc is HTML (e.g. "<b>3</b> attacks" +
+// <lol-uikit-tooltipped-keyword ...>adaptive damage</...>). For a plain-text
+// title= tooltip we strip ALL tags + decode the handful of entities DDragon
+// emits, then collapse whitespace. Null-safe. (This differs from
+// lib/lol_descriptions._cleanLolHtml, which KEEPS <b>/<i>/<br> for an
+// innerHTML tooltip surface - here we want attribute-safe plain text.)
+function _stripHtml(s) {
+  return String(s || "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Compose a rune hover-title: "Name - stripped effect" (name-only when the
+// description is missing/blank). The caller _esc()s the result before it goes
+// into a template-string title="" attribute.
+function _runeTitle(name, shortDesc) {
+  const n = String(name == null ? "" : name);
+  const d = _stripHtml(shortDesc);
+  return d ? (n + " - " + d) : n;
+}
+
+// Rune-effect descriptions for the rune-WPA tab. The /api/rune-wpa rows carry
+// {rune_id, name, icon} with NO description, so we lazy-load the DDragon rune
+// catalog (/api/dictionary/runes - a list of 5 style trees) once and fold the
+// leaf runes' shortDesc into {rune_id -> stripped-text}. When it lands we
+// re-render the rune tab so the rows get their descriptive titles. Failure is
+// silent: the tooltip falls back to the rune NAME only.
+const _RUNE_DESC = { ready: false, loading: null, byId: {} };
+
+function _loadRuneDescs() {
+  if (_RUNE_DESC.ready) return Promise.resolve(_RUNE_DESC.byId);
+  if (_RUNE_DESC.loading) return _RUNE_DESC.loading;
+  _RUNE_DESC.loading = fetch("/api/dictionary/runes", { cache: "force-cache" })
+    .then((r) => (r && r.ok ? r.json() : null))
+    .then((trees) => {
+      const list = Array.isArray(trees) ? trees : [];
+      for (const tree of list) {
+        for (const slot of (tree.slots || [])) {
+          for (const rune of (slot.runes || [])) {
+            if (rune && rune.id != null) {
+              _RUNE_DESC.byId[String(rune.id)] = _stripHtml(rune.shortDesc);
+            }
+          }
+        }
+      }
+      _RUNE_DESC.ready = true;
+      // Re-stamp the rune-tab titles now that descriptions are available (only
+      // if that tab has already loaded its rows; no-op otherwise).
+      if (_ST.runes && _ST.runes.loaded) _render(_RUNES_TAB);
+      return _RUNE_DESC.byId;
+    })
+    .catch(() => { _RUNE_DESC.ready = true; return _RUNE_DESC.byId; });
+  return _RUNE_DESC.loading;
+}
+
 // Item-icon URL: local DDragon mirror first (matches last_match.js +
 // item_build.js); the onerror handler falls back to the official CDN
 // at the same patch, then hides the broken <img> so the name text
@@ -251,8 +312,13 @@ const _RUNES_TAB = {
     const rid = it && (it.rune_id != null ? it.rune_id : '');
     const name = (it && it.name) || ('Rune ' + rid);
     const icon = (it && it.icon) || '';
+    // Descriptive hover: "Name - effect". The desc comes from the lazy-loaded
+    // DDragon catalog keyed by rune_id (empty until it lands -> name-only).
+    // _esc() is mandatory: this value is interpolated into a title="" attr.
+    const desc = (rid !== '') ? (_RUNE_DESC.byId[String(rid)] || '') : '';
+    const title = _esc(_runeTitle(name, desc));
     return (
-      `<td class="bi-c-rune"><span class="bi-rune">${_runeImgTag(icon)}` +
+      `<td class="bi-c-rune"><span class="bi-rune" title="${title}">${_runeImgTag(icon)}` +
       `<span class="bi-rune-name">${_esc(name)}</span></span></td>` +
       `<td class="bi-c-slot">${_slotBadgeHtml(it)}</td>`
     );
@@ -463,6 +529,9 @@ function _fetch(tab) {
   const st = _ST[tab.key];
   if (st.inFlight) return;
   st.inFlight = true;
+  // Warm the DDragon rune-effect catalog in parallel with the rune-WPA rows so
+  // the descriptive hover titles are ready (or re-stamped) as soon as possible.
+  if (tab.key === 'runes') _loadRuneDescs();
   _render(tab);
   const finish = (data) => {
     st.inFlight = false;
@@ -603,4 +672,6 @@ export const __test = {
   _runeImgTag,
   _slotBadgeHtml,
   _spellImgTag,
+  _stripHtml,
+  _runeTitle,
 };
