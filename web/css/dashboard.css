@@ -52,6 +52,7 @@
 @import './panels/ds_skill_order.css';
 @import './panels/ds_shaper.css';
 @import './panels/player_gpi.css';
+@import './panels/player_snapshot.css';
 @import './panels/duration_winrate.css';
 @import './panels/champ_benchmarks.css';
 @import './panels/perf_curve.css';
