@@ -375,6 +375,35 @@
   min-width: 108px;
 }
 
+/* Task 7 (spec 7.2): the 8-stat grid recedes behind a native <details>
+ * "Detailed stats" disclosure - the player-snapshot card above now
+ * carries the headline 4-bar signal. Minimal styling so the native
+ * <details>/<summary> reads as a component, not raw browser chrome. */
+.lm-hero-stats-details {
+  border-left: 1px dashed var(--border-soft);
+  padding: 0 14px 0 18px;
+}
+.lm-hero-stats-summary {
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  color: var(--text-dim, var(--text));
+  user-select: none;
+  list-style: none;
+}
+.lm-hero-stats-summary::-webkit-details-marker { display: none; }
+.lm-hero-stats-summary::before {
+  content: "+ ";
+  color: var(--accent-2, var(--accent));
+}
+.lm-hero-stats-details[open] .lm-hero-stats-summary::before {
+  content: "- ";
+}
+.lm-hero-stats-details .lm-hero-stats-grid {
+  margin-top: 6px;
+  border-left: none;
+  padding: 0;
+}
+
 /* s219 v6: section 2 - operator's match stats laid out as 2 rows x 4 cols
  *   row 1: [blank], Vision, CS, Tanked
  *   row 2: KP%, Damage, CS/min, Heal+Shield

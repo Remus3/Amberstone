@@ -1653,6 +1653,15 @@
       </div>
       <div class="view-section-body lm-body" id="lm-body">
 
+        <!-- Task 7 (spec 7.2): PGR player-snapshot adapter mount. Assembled
+             client-side by _buildPgrSnapshotModel(m, rubric) in last_match.js
+             at the _setHeroRoleGrade fold point - no new fetch, the rubric
+             is already in hand there. Folds in + replaces #lm-hero-score,
+             the standalone #lm-hero-role-grade display, and the 5-bar
+             #lm-rubric-components block (those stay in the DOM for their
+             other consumers/fetches but are visually suppressed below). -->
+        <div id="pgr-snapshot-card"></div>
+
         <!-- R30 page-3 design review: autopsy takeaway headline. The PGR's
              job is to answer "what do I change next game?" - so the single
              most actionable quick_review signal (a recurring my_chronic
@@ -1717,46 +1726,53 @@
             <div class="lm-rubric-components" id="lm-rubric-components" hidden></div>
           </div>
 
-          <div class="lm-hero-stats-grid">
-            <!-- Row 1: Gold share, Vision, CS, Tanked Damage -->
-            <div class="lm-hero-stat" data-tt="Gold share - your gold as a percent of your team's total gold (carry-economy efficiency).">
-              <span class="lm-hero-stat-label">Gold%</span>
-              <span class="lm-hero-stat-value" id="lm-gold-share">-</span>
-              <span class="lm-hero-stat-sub lm-bench-sub" id="lm-gold-share-bench" hidden></span>
-            </div>
-            <div class="lm-hero-stat" data-tt="Vision score - wards placed + wards killed + control wards seen by the team.">
-              <span class="lm-hero-stat-label">Vision</span>
-              <span class="lm-hero-stat-value" id="lm-vision">-</span>
-            </div>
-            <div class="lm-hero-stat" data-tt="Creep score - minions + monsters killed.">
-              <span class="lm-hero-stat-label">CS</span>
-              <span class="lm-hero-stat-value" id="lm-cs">-</span>
-            </div>
-            <div class="lm-hero-stat" data-tt="Total damage taken from champions, minions, monsters, towers.">
-              <span class="lm-hero-stat-label">Tanked</span>
-              <span class="lm-hero-stat-value" id="lm-tank-dmg">-</span>
-            </div>
+          <!-- Task 7 (spec 7.2): the 8-stat grid stays but recedes to a
+               collapsible "Detailed stats" row - the player-snapshot card's
+               4 bars (INCOME/COMBAT/OBJECTIVES/VISION) now carry the
+               headline signal above. Native <details> - no new JS wiring. -->
+          <details class="lm-hero-stats-details" id="lm-hero-stats-details">
+            <summary class="lm-hero-stats-summary">Detailed stats</summary>
+            <div class="lm-hero-stats-grid">
+              <!-- Row 1: Gold share, Vision, CS, Tanked Damage -->
+              <div class="lm-hero-stat" data-tt="Gold share - your gold as a percent of your team's total gold (carry-economy efficiency).">
+                <span class="lm-hero-stat-label">Gold%</span>
+                <span class="lm-hero-stat-value" id="lm-gold-share">-</span>
+                <span class="lm-hero-stat-sub lm-bench-sub" id="lm-gold-share-bench" hidden></span>
+              </div>
+              <div class="lm-hero-stat" data-tt="Vision score - wards placed + wards killed + control wards seen by the team.">
+                <span class="lm-hero-stat-label">Vision</span>
+                <span class="lm-hero-stat-value" id="lm-vision">-</span>
+              </div>
+              <div class="lm-hero-stat" data-tt="Creep score - minions + monsters killed.">
+                <span class="lm-hero-stat-label">CS</span>
+                <span class="lm-hero-stat-value" id="lm-cs">-</span>
+              </div>
+              <div class="lm-hero-stat" data-tt="Total damage taken from champions, minions, monsters, towers.">
+                <span class="lm-hero-stat-label">Tanked</span>
+                <span class="lm-hero-stat-value" id="lm-tank-dmg">-</span>
+              </div>
 
-            <!-- Row 2: KP%, Damage, CS/min, Sustain (heal + shield to teammates) -->
-            <div class="lm-hero-stat" data-tt="Kill participation - share of team kills you took part in.">
-              <span class="lm-hero-stat-label">KP%</span>
-              <span class="lm-hero-stat-value" id="lm-kp">-</span>
-              <span class="lm-hero-stat-sub lm-bench-sub" id="lm-kp-bench" hidden></span>
+              <!-- Row 2: KP%, Damage, CS/min, Sustain (heal + shield to teammates) -->
+              <div class="lm-hero-stat" data-tt="Kill participation - share of team kills you took part in.">
+                <span class="lm-hero-stat-label">KP%</span>
+                <span class="lm-hero-stat-value" id="lm-kp">-</span>
+                <span class="lm-hero-stat-sub lm-bench-sub" id="lm-kp-bench" hidden></span>
+              </div>
+              <div class="lm-hero-stat" data-tt="Damage dealt to enemy champions.">
+                <span class="lm-hero-stat-label">Damage</span>
+                <span class="lm-hero-stat-value" id="lm-damage">-</span>
+                <span class="lm-hero-stat-sub lm-bench-sub" id="lm-dmg-bench" hidden></span>
+              </div>
+              <div class="lm-hero-stat" data-tt="Creep score per minute.">
+                <span class="lm-hero-stat-label">CS/min</span>
+                <span class="lm-hero-stat-value" id="lm-cs-per-min">-</span>
+              </div>
+              <div class="lm-hero-stat" data-tt="Sustain - healing + shielding contributed to teammates (excludes self-heal).">
+                <span class="lm-hero-stat-label">Sustain</span>
+                <span class="lm-hero-stat-value" id="lm-healing">-</span>
+              </div>
             </div>
-            <div class="lm-hero-stat" data-tt="Damage dealt to enemy champions.">
-              <span class="lm-hero-stat-label">Damage</span>
-              <span class="lm-hero-stat-value" id="lm-damage">-</span>
-              <span class="lm-hero-stat-sub lm-bench-sub" id="lm-dmg-bench" hidden></span>
-            </div>
-            <div class="lm-hero-stat" data-tt="Creep score per minute.">
-              <span class="lm-hero-stat-label">CS/min</span>
-              <span class="lm-hero-stat-value" id="lm-cs-per-min">-</span>
-            </div>
-            <div class="lm-hero-stat" data-tt="Sustain - healing + shielding contributed to teammates (excludes self-heal).">
-              <span class="lm-hero-stat-label">Sustain</span>
-              <span class="lm-hero-stat-value" id="lm-healing">-</span>
-            </div>
-          </div>
+          </details>
 
           <div class="lm-hero-rank-compare">
             <!-- s220: 4-column grid mirroring section 2 exactly.
