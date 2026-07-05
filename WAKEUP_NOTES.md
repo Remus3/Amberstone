@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-07-05 (ORUN2 slice 2 - snowball-elasticity Build Insights UI panel; LEDGER 788)
+
+Gemini-loop executor cycle. The deferred UI half of ORUN2 (backend was 9cd38c13). Commit `899b5f24`, pushed. ENGINE-IMPACT NONE (frontend; ADR-008 asset-hash reload, no RC restart / no Share / no DS).
+- NEW web/js/panels/snowball_elasticity.js (mount bi-snowball-mount, export renderSnowballElasticity) + .css (se- prefix) + web/data/ui_mock/snowball_elasticity.json + tests/test_snowball_elasticity_panel_dom.py; wired via build_insights.js import+dispatch + a "Snowball" tab/pane in index.html + a dashboard.css @import (panel-import parity).
+- Faithful mirror of duration_winrate.js but SR-ONLY (no mode bar / champ picker): 2 checkpoint blocks (10min/20min) x 5 signed gold-lead buckets behind_big..ahead_big; bar fill = Laplace-smoothed win%, value = raw win% (or ~smoothed% thin / "-" below min_bucket_n); per-checkpoint elasticity chip (snowball-prone/comeback-prone/elastic) = games-weighted ahead-vs-behind smoothed lean, DESCRIPTIVE not a win probability.
+GATE: 1 build subagent + verifier CONFIRM (targeted 74/74 + full RC suite 10725 passed/0 failed/2 skipped exit 0) + independent 5-phase UI-audit PASS 0 MUST-FIX + ui_recon visual proof clean (companion+desktop, 2 blocks x 5 bars, 0 page errors, no overflow). Live curl shape matched the fixture.
+DO NOT redo: ORUN2 FULLY SHIPPED (backend 9cd38c13 + UI 899b5f24); SR-only by design; next OPEN = ORUN3 (Aggregator B per-stat PGR strip) / ORUN4 (Aggregator D game-flow strip), then REFILL.
+
+---
+
 # 2026-07-05 (FIX-FIRST test red-state recovery - 3 residual clusters; LEDGER 787)
 
 Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LEDGER 786 / the ORUN2 finding deferred, before the ORUN2 UI panel slice proceeds. ENGINE-IMPACT NONE (test + doc only). Commit `4aac77de`, pushed.
@@ -24,18 +34,3 @@ Correct tiers applied per R5: both Tier-1 (NO ENGINE bump / NO Share mirror / NO
 
 NEXT: PHASE 2 = invoke the gemini-headless-upgrade skill (turns this session into the ephemeral executor for the Gemini-directed loop; it continues the ORUN queue top-down - ORUN2 snowball-elasticity / ORUN3 Aggregator B per-stat / ORUN4 Aggregator D game-flow strip are the next OPEN rows + the REFILL PROTOCOL when it drains).
 DO NOT redo: the DS engine is exhausted this patch (do NOT fabricate engine lift waves - registries saturated, R66 list exhausted); ORUN1 + ORUN5 are SHIPPED (do NOT re-pick); a DS-sweep refill MUST come from a FRESH adversarial Meraki-vs-registry refute pass, never a re-pick.
-
----
-
-# 2026-07-05 (card MERGED to main via PR #6 + overlay-polish live-recon; LEDGER 783)
-
-Merged the player-snapshot card + shipped 3 overlay-polish slices while the operator live-recon'd the real Electron overlay (ground truth the agent cannot see headless).
-- MERGE: PR #6 (`feat/player-snapshot-card` -> main), CI green (check 4m39s + benchmarks + CodSpeed), rebase-merged. `main`@`43e9f4c1`, tree byte-identical to old head `f1d46773`. Rebase REWROTE SHAs (`b1a0c3b8`->`cc332a67`, `f1d46773`->`43e9f4c1`); mapping logged in ROADMAP so prose refs still resolve. Branch pruned.
-- Overlay recon technique: `recon.py` renders `ui_mock` fixtures (NOT live) - wrote a throwaway legion-rc-origin live-capture vs live `/api/state` instead. The objective gauges do NOT show in fixtures (no game_time) - only live.
-- SLICE 1 `5d5a33f6`: DS `#ovds` item names were nowrap+ellipsis-clipped to ~5 chars; now wrap + 16px + title attr (overlay slice 131 pass).
-- SLICE 2 `717b1958`: removed 3 broken/unneeded HUD widgets - ward cue (`w-trinket`), threat/CDs ledger (`w-threat`, overlay-only de-register; dashboard cd_ledger kept), SUMMS dial (always UP). Kept DRAKE/BARON/ELDER + ZOI minimap (operator: ZOI DOES show in-game). node 28/28, pytest 162.
-- SLICE 3 `45b51bff`: DRAKE dial suppressed once Elder is up/taken (redundant pit); node 13/13.
-- DS unique-dedup note (LDR/Terminus share a unique) -> chip task_9ea11b0d (its own Tier-2 session).
-
-NEXT (operator LIVE-GATES next session in a live game; Pengu stub is ON + displaying, so Pengu-sourced items qualify): round-1 missing-in-game cluster (`rn-lead`/`rn-choices`/`rn-callouts`/`w-spike` render headless but dark in the real overlay) + bugs (static META row, dead knob +/-, dead item radial) + stats-panel clarify; round-2 the DRAG/MOVE system (finicky anchors far from the widget, drag drops when the cursor leaves, can't move all elements anywhere, border-drag moves the whole screen - `overlay_layout.js` pointer-capture) + context-menu/item tooltip (cropped icon + far) + PR enemy-spell timer + gauges 1-line layout (horizontal/vertical). Root-cause is fine; each fix needs the operator's live Ctrl+Alt+A verify before it lands.
-DO NOT redo: the card is MERGED (do not re-merge); the 3 removed widgets are gone (all broken - no Live Client CD data - do not re-add); the ZOI minimap SHOWS in-game (do not hide); overlay recon must use a LIVE capture (`recon.py` = ui_mock, hides the gauges); the remaining overlay findings are LIVE-GATED.

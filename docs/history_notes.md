@@ -225,6 +225,21 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-05 (card MERGED to main via PR #6 + overlay-polish live-recon; LEDGER 783)
+
+Merged the player-snapshot card + shipped 3 overlay-polish slices while the operator live-recon'd the real Electron overlay (ground truth the agent cannot see headless).
+- MERGE: PR #6 (`feat/player-snapshot-card` -> main), CI green (check 4m39s + benchmarks + CodSpeed), rebase-merged. `main`@`43e9f4c1`, tree byte-identical to old head `f1d46773`. Rebase REWROTE SHAs (`b1a0c3b8`->`cc332a67`, `f1d46773`->`43e9f4c1`); mapping logged in ROADMAP so prose refs still resolve. Branch pruned.
+- Overlay recon technique: `recon.py` renders `ui_mock` fixtures (NOT live) - wrote a throwaway legion-rc-origin live-capture vs live `/api/state` instead. The objective gauges do NOT show in fixtures (no game_time) - only live.
+- SLICE 1 `5d5a33f6`: DS `#ovds` item names were nowrap+ellipsis-clipped to ~5 chars; now wrap + 16px + title attr (overlay slice 131 pass).
+- SLICE 2 `717b1958`: removed 3 broken/unneeded HUD widgets - ward cue (`w-trinket`), threat/CDs ledger (`w-threat`, overlay-only de-register; dashboard cd_ledger kept), SUMMS dial (always UP). Kept DRAKE/BARON/ELDER + ZOI minimap (operator: ZOI DOES show in-game). node 28/28, pytest 162.
+- SLICE 3 `45b51bff`: DRAKE dial suppressed once Elder is up/taken (redundant pit); node 13/13.
+- DS unique-dedup note (LDR/Terminus share a unique) -> chip task_9ea11b0d (its own Tier-2 session).
+
+NEXT (operator LIVE-GATES next session in a live game; Pengu stub is ON + displaying, so Pengu-sourced items qualify): round-1 missing-in-game cluster (`rn-lead`/`rn-choices`/`rn-callouts`/`w-spike` render headless but dark in the real overlay) + bugs (static META row, dead knob +/-, dead item radial) + stats-panel clarify; round-2 the DRAG/MOVE system (finicky anchors far from the widget, drag drops when the cursor leaves, can't move all elements anywhere, border-drag moves the whole screen - `overlay_layout.js` pointer-capture) + context-menu/item tooltip (cropped icon + far) + PR enemy-spell timer + gauges 1-line layout (horizontal/vertical). Root-cause is fine; each fix needs the operator's live Ctrl+Alt+A verify before it lands.
+DO NOT redo: the card is MERGED (do not re-merge); the 3 removed widgets are gone (all broken - no Live Client CD data - do not re-add); the ZOI minimap SHOWS in-game (do not hide); overlay recon must use a LIVE capture (`recon.py` = ui_mock, hides the gauges); the remaining overlay findings are LIVE-GATED.
+
+---
+
 # 2026-07-05 (player-snapshot card SHIPPED - GPI-24h Home + role-rubric PGR; subagent-driven TDD; LEDGER 782)
 
 Built the player-snapshot card end-to-end on branch `feat/player-snapshot-card` (PUSHED, head `b1a0c3b8` + LEDGER `68f37197`; NOT merged) via superpowers subagent-driven-development: 10 tasks, fresh implementer + spec/quality reviewer per task, a verifier gate + an Opus whole-branch review. Spec (2026-07-04) -> plan (`docs/superpowers/plans/2026-07-04-player-snapshot-card.md`) -> build.
