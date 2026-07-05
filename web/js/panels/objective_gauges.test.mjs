@@ -5,8 +5,8 @@
 // Chromium harness (tests/snapshot_panels/test_objective_gauges_view.py);
 // these pin the schedule mirror of core/event_callouts.py (drake soul
 // suppression, kill-anchored respawns, the static cadence + active window,
-// the elder nominal one-shot), the SUMMS rollup, and the honest no-data
-// gates - the same discipline as objective_chips.test.mjs.
+// the elder nominal one-shot) and the honest no-data gates - the same
+// discipline as objective_chips.test.mjs.
 
 import test from "node:test";
 import assert from "node:assert";
@@ -40,8 +40,8 @@ test("computeGauges: honest no-data whole-widget gates", () => {
 });
 
 test("computeGauges: early SR game - static first-spawn countdowns", () => {
-  const dials = computeGauges("sr", { game_time_s: 60, objective_events: [] }, null);
-  assert.strictEqual(dials.length, 4);
+  const dials = computeGauges("sr", { game_time_s: 60, objective_events: [] });
+  assert.strictEqual(dials.length, 3);
   const drake = byKey(dials, "drake");
   assert.strictEqual(drake.state, "eta");
   assert.strictEqual(drake.etaS, 240); // 300 - 60
@@ -51,8 +51,6 @@ test("computeGauges: early SR game - static first-spawn countdowns", () => {
   const elder = byKey(dials, "elder");
   assert.strictEqual(elder.state, "eta");
   assert.strictEqual(elder.etaS, 2040); // 2100 - 60
-  // No cooldown ledger -> the approved "-" sentinel state.
-  assert.strictEqual(byKey(dials, "summs").state, "none");
 });
 
 test("drake: kill-anchored respawn = last elemental kill + 300", () => {
@@ -119,36 +117,6 @@ test("elder: nominal one-shot; post-kill has no canonical timer -> '-'", () => {
   assert.strictEqual(byKey(after, "elder").state, "none");
 });
 
-test("summs rollup: min positive cd wins; all-ready -> UP; no ledger -> '-'", () => {
-  const rows = [
-    { summs: { d_cd_remaining_s: 90, d_used_at_s: 100, d_ready_at_s: 400,
-               f_cd_remaining_s: 0 },
-      ult: { cd_remaining_s: 130, used_at_s: 200, ready_at_s: 330 } },
-    { summs: { d_cd_remaining_s: 0, f_cd_remaining_s: 0 },
-      ult: { cd_remaining_s: 0 } },
-  ];
-  const dials = computeGauges("sr", { game_time_s: 600 }, rows);
-  const summs = byKey(dials, "summs");
-  assert.strictEqual(summs.state, "eta");
-  assert.strictEqual(summs.etaS, 90);
-  // frac = 1 - 90/300 (window = ready - used)
-  assert.ok(Math.abs(summs.frac - 0.7) < 1e-9);
-
-  const ready = [{ summs: { d_cd_remaining_s: 0, f_cd_remaining_s: 0 },
-                   ult: { cd_remaining_s: 0 } }];
-  assert.strictEqual(
-    byKey(computeGauges("sr", { game_time_s: 600 }, ready), "summs").state, "up");
-
-  assert.strictEqual(
-    byKey(computeGauges("sr", { game_time_s: 600 }, null), "summs").state, "none");
-  assert.strictEqual(
-    byKey(computeGauges("sr", { game_time_s: 600 }, []), "summs").state, "none");
-  // Garbage rows (the ui_mock flat shape) degrade to "-", never throw.
-  const flat = [{ slot: "D", name: "Flash", remaining_s: 142 }];
-  assert.strictEqual(
-    byKey(computeGauges("sr", { game_time_s: 600 }, flat), "summs").state, "none");
-});
-
 test("fmtEta: M:SS floored, never negative", () => {
   assert.strictEqual(fmtEta(240), "4:00");
   assert.strictEqual(fmtEta(90.7), "1:30");
@@ -160,7 +128,7 @@ test("dialHtml: states render UP / '-' / M:SS with the state attribute", () => {
   const up = dialHtml({ key: "drake", label: "DRAKE", state: "up", etaS: 0, frac: 1 });
   assert.ok(up.includes('data-og-state="up"'));
   assert.ok(up.includes(">UP<"));
-  const none = dialHtml({ key: "summs", label: "SUMMS", state: "none", etaS: 0, frac: 0 });
+  const none = dialHtml({ key: "elder", label: "ELDER", state: "none", etaS: 0, frac: 0 });
   assert.ok(none.includes(">-<"));
   const eta = dialHtml({ key: "baron", label: "BARON", state: "eta", etaS: 192, frac: 0.5 });
   assert.ok(eta.includes(">3:12<"));

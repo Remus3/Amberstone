@@ -51,23 +51,24 @@ const WIDGETS = [
   { id: "w-call", sel: "#view-active-match .am-pane-call", x: 180, y: 130, tier: "primary", label: "Coach Call" },
   { id: "w-choices", sel: "#rn-choices", x: 760, y: 815, tier: "urgent", label: "A/B Choices" },
   { id: "w-callouts", sel: "#rn-callouts", x: 1486, y: 780, tier: "ambient", label: "Callouts" },
-  { id: "w-threat", sel: "#view-active-match .am-pane-cd", x: 1604, y: 560, tier: "urgent", label: "Threat / CDs", zone: true },
+  // w-threat (Threat / CDs, .am-pane-cd) removed 2026-07-05 (operator): the enemy
+  // CD ledger guessed at cooldowns the Live Client API does not expose - not needed.
   { id: "w-build", sel: "#view-active-match .am-pane-build", x: 70, y: 470, tier: "ambient", label: "Build", tall: true },
   { id: "w-ovds", sel: "#am-pane-ovds", x: 430, y: 80, tier: "ambient", label: "DS Controls" },
-  // New doctrine cues (OVERLAY_DOCTRINE section 4). Both are data-gated (their
-  // renderer un-hides the mount only when actionable) + coach-core (shown in
-  // every panel set). Mounted as direct am-grid children (NOT inside a pane) so
-  // position:fixed is viewport-relative, not trapped by a transformed pane.
-  { id: "w-trinket", sel: "#am-ward-cue", x: 340, y: 600, tier: "urgent", label: "Ward Cue" },
+  // New doctrine cue (OVERLAY_DOCTRINE section 4). Data-gated (its renderer
+  // un-hides the mount only when actionable) + coach-core. Mounted as a direct
+  // am-grid child (NOT inside a pane) so position:fixed is viewport-relative, not
+  // trapped by a transformed pane. (w-trinket / Ward Cue removed 2026-07-05: it
+  // could not turn off on ward cooldown - Live Client exposes no cooldowns.)
   { id: "w-spike", sel: "#am-spike-cue", x: 360, y: 840, tier: "urgent", label: "Spike Cue" },
   // Operator 2026-06-28: the enemy summoner-spell tap-tracker (zone -> tappable
   // mid-game) + the API-backed HP/mana/stats mini-panel. Both overlay-only.
   { id: "w-enemyspells", sel: "#am-enemyspells", x: 1500, y: 120, tier: "urgent", label: "Enemy Spells", zone: true },
   { id: "w-stats", sel: "#am-statspanel", x: 40, y: 250, tier: "ambient", label: "Stats" },
   // OQ16 (OQ3 variant A): peripheral objective gauge cluster (DRAKE/BARON/
-  // ELDER/SUMMS ring dials, panels/objective_gauges.js). Display-only +
-  // data-gated (SR in-game only); peripheral right-edge default above the
-  // threat ledger, clear of the minimap (1600,760) + w-threat (1604,560).
+  // ELDER ring dials, panels/objective_gauges.js). Display-only + data-gated
+  // (SR in-game only); peripheral right-edge default, clear of the minimap
+  // (1600,760). (The SUMMS dial was removed 2026-07-05: no Live Client CD data.)
   { id: "w-objgauges", sel: "#am-obj-gauges", x: 1690, y: 320, tier: "ambient", label: "Objective Gauges" },
 ];
 

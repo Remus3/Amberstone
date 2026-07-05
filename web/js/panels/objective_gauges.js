@@ -1,22 +1,19 @@
 // web/js/panels/objective_gauges.js
 //
 // OQ16 (OQ3 variant A "Radial Ring Cluster"): peripheral objective gauge
-// cluster - a 2x2 grid of full ring dials (DRAKE / BARON / ELDER / SUMMS)
-// with the exact ETA in each ring center; the ring arc fills toward ready
-// (full ring = UP). Source mockup: web/mock/oq3_variant_a.html; hues per
-// the operator OQ3 pick over docs/OVERLAY_DOCTRINE.md sec 5: BARON gold
-// #C8AA6E (--ovx-gold), DRAKE warn #E8A33D, ELDER red #E84057 (--ovx-red),
-// SUMMS cyan #0AC8B9 (--ovx-cyan). CSS: web/css/panels/objective_gauges.css.
+// cluster - a row of full ring dials (DRAKE / BARON / ELDER) with the exact
+// ETA in each ring center; the ring arc fills toward ready (full ring = UP).
+// Source mockup: web/mock/oq3_variant_a.html; hues per the operator OQ3 pick
+// over docs/OVERLAY_DOCTRINE.md sec 5: BARON gold #C8AA6E (--ovx-gold), DRAKE
+// warn #E8A33D, ELDER red #E84057 (--ovx-red). CSS:
+// web/css/panels/objective_gauges.css. (SUMMS dial removed 2026-07-05: the
+// Live Client API exposes no summoner cooldowns, so it always read UP.)
 //
 // Data (all EXISTING /api/state fields - nothing added server-side):
 //   - mode (mode_key)                      -> the SR-only gate.
 //   - liveclient.game_time_s               -> dashboard/_liveclient.py:97.
 //   - liveclient.objective_events          -> dashboard/_liveclient.py:265-301
 //     ({name, killer_team, down_at_s, dragon_type?}).
-//   - summoner_cooldowns ledger rows       -> dashboard/_state_cooldowns.py ->
-//     core/summoner_cooldowns.compute_cooldowns (:317-324): each row carries
-//     summs.{d,f}_cd_remaining_s (+ _used_at_s/_ready_at_s, :219-225) and
-//     ult.cd_remaining_s (:242-247).
 //
 // The objective schedule MIRRORS core/event_callouts.py exactly - no timer
 // is fabricated beyond that canonical schedule + game_time arithmetic:
@@ -36,16 +33,6 @@
 //     or once the nominal marker is long past, the dial is honestly "-".
 //   - kill-anchored respawns keep UP until the next kill event lands (the
 //     objective really is up - same convention as objective_chips.js:66-67).
-//
-// SUMMS is a compact rollup: the SINGLE next tracked spell to come off
-// cooldown (min positive cd_remaining_s across every row's D/F/ult), or UP
-// when all tracked spells are ready. Why not enemy-only: the rows carry
-// side ("blue"/"red") but /api/state does not identify the operator's side
-// inside the ledger, so an enemy filter is not derivable client-side - the
-// all-rows rollup is the honest minimal read. NOTE the Live Client emits no
-// SUMMONER_SPELL_USED events (dashboard/_state_cooldowns.py:14-24), so
-// today every spell reads READY (steady-state UP) until an event source
-// lands; the dial is wired for that future without changes.
 //
 // HONEST NO-DATA: outside a live SR game (mode not "sr", or no liveclient
 // game clock) the widget hides ENTIRELY - no placeholder ghosts. A single
@@ -69,9 +56,9 @@ const OG_SCHED = {
 // Ring geometry: r=36 in an 88x88 viewBox; circumference = 2*pi*36.
 const OG_RING_C = 226.19;
 
-// Render order matches the mockup: DRAKE, BARON, ELDER, SUMMS.
-const OG_ORDER = ["drake", "baron", "elder", "summs"];
-const OG_LABEL = { drake: "DRAKE", baron: "BARON", elder: "ELDER", summs: "SUMMS" };
+// Render order matches the mockup: DRAKE, BARON, ELDER.
+const OG_ORDER = ["drake", "baron", "elder"];
+const OG_LABEL = { drake: "DRAKE", baron: "BARON", elder: "ELDER" };
 
 // --- pure helpers -------------------------------------------------------------
 
@@ -175,44 +162,9 @@ function _elderDial(events, gt) {
   return _dial("elder", "none");
 }
 
-function _summsDial(cooldowns) {
-  if (!Array.isArray(cooldowns) || !cooldowns.length) {
-    return _dial("summs", "none");
-  }
-  let sawTracked = false;
-  let best = null; // { remaining, window }
-  for (const row of cooldowns) {
-    if (!row || typeof row !== "object") continue;
-    const s = row.summs && typeof row.summs === "object" ? row.summs : {};
-    const u = row.ult && typeof row.ult === "object" ? row.ult : {};
-    const slots = [
-      { rem: s.d_cd_remaining_s, used: s.d_used_at_s, ready: s.d_ready_at_s },
-      { rem: s.f_cd_remaining_s, used: s.f_used_at_s, ready: s.f_ready_at_s },
-      { rem: u.cd_remaining_s, used: u.used_at_s, ready: u.ready_at_s },
-    ];
-    for (const slot of slots) {
-      const rem = Number(slot.rem);
-      if (!Number.isFinite(rem)) continue;
-      sawTracked = true;
-      if (rem <= 0) continue;
-      if (best === null || rem < best.remaining) {
-        const used = Number(slot.used);
-        const ready = Number(slot.ready);
-        const w = Number.isFinite(used) && Number.isFinite(ready) && ready > used
-          ? ready - used
-          : rem;
-        best = { remaining: rem, window: w };
-      }
-    }
-  }
-  if (!sawTracked) return _dial("summs", "none");
-  if (best === null) return _dial("summs", "up"); // every tracked spell ready
-  return _dial("summs", "eta", best.remaining, best.window);
-}
-
-// Compute all 4 dials, or null when the widget must hide entirely
+// Compute all 3 dials, or null when the widget must hide entirely
 // (HONEST NO-DATA: not SR, or no live game clock).
-function computeGauges(mode, lc, cooldowns) {
+function computeGauges(mode, lc) {
   if (mode !== "sr") return null;
   const block = lc && typeof lc === "object" ? lc : {};
   const gt = Number(block.game_time_s);
@@ -224,7 +176,6 @@ function computeGauges(mode, lc, cooldowns) {
     _drakeDial(events, gt),
     _baronDial(events, gt),
     _elderDial(events, gt),
-    _summsDial(cooldowns),
   ];
 }
 
@@ -279,7 +230,7 @@ export function renderObjectiveGauges(env) {
     return;
   }
   const e = env && typeof env === "object" ? env : {};
-  const dials = computeGauges(e.mode, e.liveclient, e.cooldowns);
+  const dials = computeGauges(e.mode, e.liveclient);
   if (!dials) {
     if (_sig !== "_hidden") {
       mount.innerHTML = "";

@@ -50,7 +50,7 @@ test("_clampXY never lets the max bound go negative on a tiny viewport", () => {
 test("only the tall BUILD panel carries the bottom-snap flag", () => {
   assert.ok(TALL_IDS.has("w-build"), "BUILD must keep the bottom-corner snap");
   // Sibling panels are free-placed - they must NOT be in the tall set.
-  for (const id of ["w-call", "w-threat", "w-callouts", "w-lead", "w-stats"]) {
+  for (const id of ["w-call", "w-callouts", "w-lead", "w-stats"]) {
     assert.ok(!TALL_IDS.has(id), `${id} should be free-placed, not bottom-snapped`);
   }
   // The flag is sourced from the registry, so the set must match it exactly.
