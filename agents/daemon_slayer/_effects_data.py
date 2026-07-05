@@ -3254,9 +3254,13 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3047",
         name="Plated Steelcaps",
         defensive_only=True,
+        # R80 (1.181.0): Plating 10% incoming basic-attack damage reduction now
+        # carries EHP credit via the physical-denominator item_aa_dr_multiplier
+        # (default-OFF assume_item_aa_dr). Still no DPS proc.
+        basic_attack_damage_reduction=0.10,
         note=(
-            "Plated Steelcaps: Plating - reduces incoming damage from Attacks by 10%. "
-            "Incoming damage reduction, no DPS proc"
+            "Plated Steelcaps: Plating - reduces incoming basic-attack damage by 10% "
+            "(Meraki 16.13.1). Incoming damage reduction, no DPS proc"
         ),
     ),
 
@@ -4254,7 +4258,10 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223047",
         name="Plated Steelcaps",
         defensive_only=True,
-        note="Plated Steelcaps (Arena 223047): Plating 10% incoming attack damage reduction; no DPS proc",
+        # R80 (1.181.0): Arena mirror of SR 3047 - Plating 10% basic-attack DR
+        # credited via item_aa_dr_multiplier behind default-OFF assume_item_aa_dr.
+        basic_attack_damage_reduction=0.10,
+        note="Plated Steelcaps (Arena 223047): Plating 10% incoming basic-attack damage reduction; no DPS proc",
     ),
     "223050": ItemEffect(
         item_id="223050",
