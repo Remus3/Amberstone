@@ -128,6 +128,12 @@ class PanelJsTests(unittest.TestCase):
     def test_wire_once_per_champion_guard(self):
         self.assertIn("data-ovds-champ", self.js)
 
+    def test_item_name_carries_full_title(self):
+        # Glance-first readability (operator live-overlay recon 2026-07-05):
+        # long DS item names wrap in the narrow pane; the row span also
+        # carries a title="<name>" so the full name is available on hover.
+        self.assertIn('class="ovds-item" title="', self.js)
+
 
 class CssTests(unittest.TestCase):
     def setUp(self):
@@ -149,6 +155,16 @@ class CssTests(unittest.TestCase):
 
     def test_inputs_meet_hit_target_floor(self):
         self.assertIn("min-height: var(--hit-min", self.css)
+
+    def test_item_name_wraps_not_ellipsis_clipped(self):
+        # Glance-first readability: long item names must WRAP (show in full),
+        # not nowrap + ellipsis-clip to ~5 chars in the ~210px pane
+        # (operator live-overlay recon 2026-07-05).
+        m = re.search(r"\.ovds-item\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(m)
+        body = m.group(1)
+        self.assertIn("white-space: normal", body)
+        self.assertNotIn("nowrap", body)
 
     def test_dashboard_imports_panel(self):
         self.assertIn("./panels/overlay_ds_controls.css", self.dash)
