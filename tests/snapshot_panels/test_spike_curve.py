@@ -38,6 +38,7 @@ DASHBOARD_CSS = ROOT / "web" / "css" / "dashboard.css"
 INDEX_HTML = ROOT / "web" / "index.html"
 ACTIVE_MATCH_JS = ROOT / "web" / "js" / "panels" / "active_match.js"
 BACKEND_ROUTE = ROOT / "dashboard" / "routes_spike_curve.py"
+MJS_PATH = ROOT / "web" / "js" / "panels" / "spike_curve.test.mjs"
 
 
 def _read(p: Path) -> str:
@@ -244,12 +245,110 @@ def test_no_em_or_en_dashes_in_new_files():
     """Hard rule: 7-bit ASCII authored content across the fleet.
     Smart quotes / em / en dashes break PS 5.1 parsers + operator style."""
     bad = [chr(0x2014), chr(0x2013), chr(0x201C), chr(0x201D), chr(0x2018), chr(0x2019)]
-    for fp in (JS_PATH, CSS_PATH):
+    for fp in (JS_PATH, CSS_PATH, MJS_PATH):
         src = _read(fp)
         for ch in bad:
             assert ch not in src, (
                 f"{fp.name} contains forbidden non-ASCII char U+{ord(ch):04X}"
             )
+
+
+# ---------------------------------------------------------------------------
+# R81 F1 - early/mid/late phase-strength strip (competitor lift). The strip
+# is a presentation-only block beneath the sparkline, driven by a new
+# ctx.phases field the backend now returns on /api/spike-curve. String-grep
+# contract mirrors the harness above; the rendered-HTML assertions (right
+# color class on the right cell + fail-soft byte-compat) live in the sibling
+# node runner web/js/panels/spike_curve.test.mjs (node --test).
+# ---------------------------------------------------------------------------
+
+
+def test_phase_strip_reads_ctx_phases():
+    """renderSpikeCurve must read ctx.phases (no new fetch / route) and
+    guard it fail-soft."""
+    src = _read(JS_PATH)
+    assert re.search(r"const\s+phases\s*=\s*\(ctx\s*&&\s*ctx\.phases\)", src), (
+        "renderSpikeCurve must read `const phases = (ctx && ctx.phases) || null;`"
+    )
+
+
+def test_phase_strip_appended_in_same_innerhtml_write():
+    """The strip must paint in the SAME parentEl.innerHTML assignment as the
+    SVG (one write), so the sig-dedup gate + atomic paint hold. Guard against
+    a second innerHTML write for the strip."""
+    src = _read(JS_PATH)
+    # The single ready-state write concatenates the svg with the strip.
+    assert re.search(r"parentEl\.innerHTML\s*=\s*svg\s*\+\s*_phaseStrip\(", src), (
+        "phase strip must be concatenated onto the svg in one innerHTML write"
+    )
+    # Exactly one innerHTML write in the ready path (the empty-state branch has
+    # its own placeholder write - that is separate + expected).
+    assert src.count("parentEl.innerHTML = svg") == 1
+
+
+def test_phase_strip_color_classes_present():
+    """The three value->class mappings must exist so the CSS colors resolve."""
+    src = _read(JS_PATH)
+    for cls in ("spk-phases", "spk-phase-green", "spk-phase-yellow", "spk-phase-red"):
+        assert cls in src, f"spike_curve.js does not emit {cls!r}"
+    # Class-based, not inline hex, so the UI audit tokenizes cleanly.
+    assert 'class="spk-phase ' in src
+
+
+def test_phase_strip_css_rules_present():
+    """CSS must style the strip container, cells, and the three color
+    classes, mapped to the semantic signal tokens."""
+    css = _read(CSS_PATH)
+    for cls in (".spk-phases", ".spk-phase", ".spk-phase-green",
+                ".spk-phase-yellow", ".spk-phase-red"):
+        assert cls in css, f"spike_curve.css missing rule for {cls!r}"
+    # Semantic tokens (not raw hex-only) drive the cell backgrounds.
+    assert "var(--signal-good" in css
+    assert "var(--signal-warn" in css
+    assert "var(--signal-bad" in css
+
+
+def test_phase_strip_failsoft_returns_empty():
+    """_phaseStrip must fail-soft (return "") on null / malformed phases so
+    an old / cached payload renders NO strip and the sparkline is unchanged."""
+    src = _read(JS_PATH)
+    m = re.search(r"function\s+_phaseStrip\([^)]*\)\s*\{(.*?)\n\}", src, re.DOTALL)
+    assert m, "_phaseStrip helper not found"
+    body = m.group(1)
+    # Guards both a null/non-object phases and per-side validation.
+    assert "return \"\"" in body or "return ''" in body
+    assert "_validPhaseSide" in body
+
+
+def test_phase_strip_titles_ascii_hover():
+    """Each cell carries a title attr for hover context (green=strong /
+    yellow=even / red=weak), ASCII only."""
+    src = _read(JS_PATH)
+    assert "strong" in src and "even" in src and "weak" in src
+    assert 'title="' in src
+
+
+def test_active_match_threads_phases():
+    """The active_match wire-up must pass phases: cached.phases on the live
+    ctx object (the ONLY ctx-line change); the placeholder renderSpikeCurve
+    calls keep their empty {} ctx."""
+    src = _read(ACTIVE_MATCH_JS)
+    assert "phases: cached.phases" in src, (
+        "active_match.js must thread phases: cached.phases into the live ctx"
+    )
+
+
+def test_phase_strip_mjs_exists_and_covers_failsoft():
+    """The sibling node runner exists and pins BOTH the color-class render
+    and the phases-absent fail-soft (byte-compat) path."""
+    assert MJS_PATH.exists(), f"spike_curve.test.mjs missing at {MJS_PATH}"
+    mjs = _read(MJS_PATH)
+    # Executes the real render + the phase helpers.
+    assert "renderSpikeCurve" in mjs
+    assert "_phaseStrip" in mjs
+    # Fail-soft byte-compat coverage: phases absent -> no strip.
+    assert "spk-phases" in mjs
+    assert "ABSENT" in mjs or "absent" in mjs
 
 
 def test_no_inline_label_overflow():
