@@ -295,7 +295,12 @@
   cursor: pointer;
 }
 
-.ps-viewprofile:hover {
+.ps-viewprofile[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.ps-viewprofile:not([aria-disabled="true"]):hover {
   background: rgba(255, 255, 255, 0.09);
 }
 

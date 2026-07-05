@@ -210,7 +210,9 @@ function _viewProfileHtml(profileRef) {
   const win = _esc(ref.window || "");
   const matchId = _esc(ref.match_id == null ? "" : ref.match_id);
   return (
-    '<button type="button" class="ps-viewprofile" ' +
+    // aria-disabled until Task 8 wires the click; Task 8 removes this attribute
+    // (a re-render would otherwise re-add it, so ownership lives in the render).
+    '<button type="button" class="ps-viewprofile" aria-disabled="true" ' +
       'data-mode="' + mode + '" data-window="' + win + '" data-match-id="' + matchId + '">' +
       "View Profile" +
     "</button>"
