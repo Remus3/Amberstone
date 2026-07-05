@@ -101,6 +101,15 @@
        Hidden IDs (#home-today-count etc.) retained as historical pegs
        for any tooling that grepped for them; new IDs are #home-hero-*. -->
   <div id="home-overlay" class="home-overlay hidden" aria-hidden="true">
+    <!-- Player-snapshot card (Task 6, spec 7.1): mounted ABOVE the hero so
+         it is the first identity/rating surface on Home. main.js
+         _renderHomeSnapshot fetches /api/player-snapshot?mode=<tab>&hours=24
+         per active mode tab (SR/ARAM/ARENA; hidden on ALL - no single mode
+         to request) and merges rank_tier/rank_lp from the home-summary
+         `rank` dict already in hand. Absorbs #home-hero-rank-tier,
+         the KDA hero chip, and #home-hero-headline below (visual-only
+         hide - their JS setters keep running, feedback_field_remove_visual_only). -->
+    <div id="home-snapshot-card"></div>
     <!-- Hero banner: greeting + headline + day-summary chips.
          Champion motif background is set inline via JS (--hero-bg-champ
          CSS var resolves to a champion image URL) so the bg rotates
@@ -110,9 +119,10 @@
       <div class="home-hero-greet">
         <div class="home-hero-sub"  id="home-hero-sub">no games yet today</div>
         <!-- RC 2.0 E9 rank-identity badge. Solo-queue tier/division/LP from
-             the local LCU (no Riot key). Operator plays mostly ARAM/Arena/
-             event modes so this is often "Unranked" - a graceful state,
-             never a fabricated rank. data-tier drives the CSS accent. -->
+             the local LCU (no Riot key). ABSORBED into the player-snapshot
+             card header (spec 7.1, Task 6) - hidden here to avoid a
+             duplicate rank read; _homeRenderRank still runs (visual-only
+             hide, feedback_field_remove_visual_only). -->
         <div class="home-hero-rank" id="home-hero-rank" data-tier="" hidden>
           <span class="home-hero-rank-tier" id="home-hero-rank-tier">Unranked</span>
           <span class="home-hero-rank-wr"   id="home-hero-rank-wr" title="ranked season win rate"></span>
@@ -128,9 +138,12 @@
            main.js _homeMomentumVerdict) + the primary Find Match CTA. Home's
            job is "current momentum + immediate next action"; the CTA is the
            action half - it opens the same queue picker the (hidden) action-
-           row Find Match tile used. -->
+           row Find Match tile used. ABSORBED into the player-snapshot card's
+           tag row (spec 7.1, Task 6) - hidden here to avoid a duplicate
+           momentum read; _homeMomentumVerdict / _homeRenderToday still run
+           (visual-only hide, feedback_field_remove_visual_only). -->
       <div class="home-hero-center">
-        <div class="home-hero-headline" id="home-hero-headline">Ready when you are</div>
+        <div class="home-hero-headline" id="home-hero-headline" hidden>Ready when you are</div>
         <button type="button" class="home-hero-cta" id="home-hero-cta"
                 data-flow="find-match-launch">
           <svg class="home-hero-cta-icon" aria-hidden="true"><use href="#hi-hex-play"/></svg>
@@ -141,9 +154,12 @@
            2026-04-30): replaces the standalone trends row. Each chip
            shows a label + latest-day value + tiny inline sparkline.
            GRADES + MODES dropped - they were redundant with the
-           headline string + duplicate of THIS WEEK panel data. -->
+           headline string + duplicate of THIS WEEK panel data.
+           KDA chip ABSORBED into the player-snapshot card (spec 7.1,
+           Task 6 - the card is the 24h KDA value now); CS/min chip stays
+           per spec 7.1's REFACTOR (trajectory-only) ruling. -->
       <div class="home-hero-chips">
-        <span class="home-hero-chip" data-metric="kda">
+        <span class="home-hero-chip" data-metric="kda" hidden>
           <span class="home-hero-chip-lbl">14D KDA</span>
           <span class="home-hero-chip-row">
             <span class="home-hero-chip-val" id="home-hero-kda">-</span>

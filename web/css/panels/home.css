@@ -7,6 +7,16 @@
 /* v2.1 UI scale (docs/UI_SCALE_SPEC_V2.md page #6 Home, 2026-05-23):
  * .home-* selectors migrated to v2.1 tokens. .lobby-* and .cs-* remain
  * on v1 tokens (those belong to pages #7 + #8-10 in the audit order). */
+/* Task 6: player-snapshot card mount, first child of the .home-overlay flex
+ * column. flex-shrink: 0 is load-bearing - without it, .home-overlay's flex
+ * layout (below) compresses the mount's flex-basis below its content's
+ * natural height (the child, which is overflow:visible by design in
+ * player_snapshot.css - a reusable host-agnostic component - then paints
+ * its content, e.g. the ps-viewprofile button, BELOW the mount's own
+ * shrunk box and over whatever sits underneath it (the mode-tab strip),
+ * a real visual defect this Playwright test caught via a genuine click
+ * failure, not a test-harness artifact). */
+#home-snapshot-card { flex-shrink: 0; }
 .home-overlay {
   margin: var(--space-2) var(--space-5) 0; padding: var(--panel-padding-comp) var(--space-5);
   background: var(--surface); border: 1px solid var(--border-soft);
@@ -110,6 +120,14 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   border-radius: 999px;  /* pill by design (M8 waiver) - not a radius-sm chip */
   background: var(--surface-2);
 }
+/* Task 6 (spec 7.1 absorb): the rank badge is absorbed into the
+ * player-snapshot card header, so this box is permanently hidden. The
+ * class's own `display: inline-flex` above outranks the UA [hidden]
+ * default (an author class selector always wins over a UA attribute
+ * selector, regardless of source order), so an explicit override is
+ * required here - the same fix already applied to .home-combo[hidden]
+ * and .home-coach-pick[hidden] below. */
+.home-hero-rank[hidden] { display: none; }
 .home-hero-rank-tier {
   font-size: var(--fs-sm); font-weight: 700; color: var(--text);
   letter-spacing: 0.04em; text-transform: uppercase;
@@ -243,6 +261,12 @@ body[data-view="home"] .home-overlay { display: flex !important; }
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+/* Task 6 (spec 7.1 absorb): the KDA chip (data-metric="kda") is absorbed
+ * into the player-snapshot card (the 24h value replaces the 14D chip); see
+ * the .home-hero-rank[hidden] comment above for why this explicit override
+ * is required against the class's own `display: inline-flex`. The CS/min
+ * chip (data-metric="cs_per_min") is unaffected - it stays per spec 7.1. */
+.home-hero-chip[hidden] { display: none; }
 .home-hero-chip-lbl {
   font-size: var(--fs-xs); letter-spacing: 0.18em; font-weight: 800;
   color: var(--label); text-transform: uppercase;

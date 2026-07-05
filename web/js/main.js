@@ -61,6 +61,9 @@ import { _settingsRefresh, renderSpendGates, renderLoopStatus, _diagFetchAndRend
 import { renderBuildInsights } from './panels/build_insights.js';
 // HZ-D1: overlay-shell change-pulse hook (inert unless ?overlay=1).
 import { initOverlayPulse } from './overlay_pulse.js';
+// Task 6 (spec 7.1): Home player-snapshot adapter over the Task-5
+// presentational card.
+import { renderPlayerSnapshot } from './panels/player_snapshot.js';
 // RC2 4.2: overlay auto-hide (idle recede). Inert unless ?overlay=1.
 import { initOverlayIdle } from './lib/overlay_idle.js';
 import { initOverlayLayout } from './lib/overlay_layout.js';
@@ -3340,6 +3343,13 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     // KDA" off a single game). The idle (0-games) recent-form momentum
     // verdict (R30) is a distinct DIRECTION read and stays; a 1-2 game day
     // hides the headline entirely so the hero leads with the identity + pick.
+    // Task 6 (spec 7.1 absorb): the headline is now folded into the
+    // player-snapshot card's tag row, so this element is permanently hidden
+    // via its index.html `hidden` attribute - the two `hidden = false`
+    // branches below were removed (visual-only hide,
+    // feedback_field_remove_visual_only); textContent/classList population
+    // keeps running unchanged for any other consumer (e.g. the R30 tests
+    // still read .textContent / .get_attribute("class")).
     const headline = document.getElementById("home-hero-headline");
     if (headline) {
       headline.classList.remove("up", "down", "flat");
@@ -3349,7 +3359,6 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         const verdict = _homeMomentumVerdict();
         headline.textContent = verdict.text;
         headline.classList.add(verdict.dir);
-        headline.hidden = false;
       } else if (games >= 3) {
         const avgStr = avg != null ? avg.toFixed(2) : "-";
         headline.textContent = `${games} game${games===1?"":"s"} · ${avgStr} avg KDA`;
@@ -3359,11 +3368,9 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         // nothing to compare against. Real up/down should wait until
         // a yesterday/avg-of-last-N baseline is wired.
         headline.classList.add("flat");
-        headline.hidden = false;
       } else {
         // 1-2 games today: too small to headline - hide it.
         headline.textContent = "";
-        headline.hidden = true;
       }
     }
 
@@ -3399,7 +3406,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     if (!box) return;
     const tierEl = document.getElementById("home-hero-rank-tier");
     const wrEl = document.getElementById("home-hero-rank-wr");
-    box.hidden = false;
+    // Task 6 (spec 7.1 absorb): the rank badge is now shown in the
+    // player-snapshot card header - this box stays hidden (its `hidden`
+    // attribute is authored in index.html and no longer un-set here); the
+    // textContent/dataset population below keeps running unchanged
+    // (visual-only hide, feedback_field_remove_visual_only).
     if (!rank || !rank.ranked) {
       box.dataset.tier = "";
       if (tierEl) tierEl.textContent = (rank && rank.display) || "Unranked";
@@ -3453,6 +3464,50 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       + `<span class="home-wl-form tabular-nums">${form}</span>`;
     box.hidden = false;
   }
+  // Task 6 (spec 7.1): Home player-snapshot adapter. Fetches the
+  // rewind_history.db-pure model (Task 4, dashboard/routes_player_snapshot.py)
+  // per active mode tab and merges the LCU-live rank fields from the
+  // home-summary payload already in hand (the route deliberately leaves
+  // header.rank_tier/rank_lp/level/name null so it stays deterministic -
+  // see routes_player_snapshot.py's own docstring). `rank` here is the
+  // home payload's core.lcu_ranked shape ({ranked, tier, division, lp,
+  // win_rate_pct, display}) - there is no rank_tier/rank_lp key on it
+  // literally, so `display` (e.g. "Gold II") maps to header.rank_tier and
+  // `lp` maps to header.rank_lp. name/level are not available anywhere in
+  // the frontend payload (no summonerName/summonerLevel reaches main.js
+  // from the LCU envelope) - they stay null; the card's own "-" sentinel
+  // covers that with no reflow (feedback_no_reflow_on_data_absence).
+  // ALL has no single mode to request - the card hides entirely there.
+  function _renderHomeSnapshot(mode, rank) {
+    const el = document.getElementById("home-snapshot-card");
+    if (!el) return;
+    if (mode === "ALL") {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    const apiMode = mode.toLowerCase();
+    fetch("/api/player-snapshot?mode=" + encodeURIComponent(apiMode)
+          + "&hours=24", { cache: "no-store" })
+      .then((r) => (r && r.ok ? r.json() : null))
+      .then((model) => {
+        if (!model) {
+          model = { empty: true, dial: { label: "coaching paused - retrying" },
+                    confidence: "insufficient", sample_n: 0 };
+        }
+        if (model.header && rank && rank.ranked) {
+          model.header.rank_tier = rank.display || model.header.rank_tier;
+          model.header.rank_lp = (rank.lp != null) ? rank.lp : model.header.rank_lp;
+        }
+        renderPlayerSnapshot(el, model);
+      })
+      .catch(() => {
+        renderPlayerSnapshot(el, {
+          empty: true, dial: { label: "coaching paused - retrying" },
+          confidence: "insufficient", sample_n: 0,
+        });
+      });
+  }
   function _homeFetchAndRender() {
     if (_HOME.fetching) return;
     _HOME.fetching = true;
@@ -3488,6 +3543,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         _homeUpdateHeroMotif(data);
         _homeRenderTrends(data.trends || {});
         _homeRenderCoach(data.tonight_pick);
+        // Task 6: snapshot card, hooked at the end of the SAME .then that
+        // _homeApplyModeTab's refetch drives, so this covers initial load
+        // AND every mode-tab switch without a separate tab handler.
+        _renderHomeSnapshot(_HOME.modeTab, data.rank || null);
       })
       .catch(() => { _HOME.fetching = false; });
   }
