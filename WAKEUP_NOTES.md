@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-07-05 (FIX-FIRST test red-state recovery - 3 residual clusters; LEDGER 787)
+
+Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LEDGER 786 / the ORUN2 finding deferred, before the ORUN2 UI panel slice proceeds. ENGINE-IMPACT NONE (test + doc only). Commit `4aac77de`, pushed.
+- S1 doc_size_budget: ROADMAP.md 88794 -> 81024B (< 81920) - relocated 3 fully-shipped bullets verbatim to docs/ROADMAP_HISTORY.md (player-snapshot 782 / HOME-E11 768-774 / DS cross-eval 495-497). No rewrite.
+- S2 motion_reduce_sweep_oq4: directive undercounted - TWO failures. `.lobby-status.searching` purged repo-wide by E11 (`1cf122e2`), not just an 8->7 drift. Removed dead home.css SITES entry + assertion 8->7 + docstrings (7 loops: item_build x2 + map_state x2 + header x3).
+- S3 lcu_loop_resilience x5: ROOT CAUSE = snapshot_panels Playwright fixtures leave a ProactorEventLoop running on the main thread -> a later bare asyncio.run() raises "cannot be called from a running event loop". Fix = _run_coro daemon-thread pattern (already used by test_p2w1_core_f.py / test_p2w2_ds_h.py). Test-only.
+GATE: full RC suite 10701 passed / 2 skipped / 192 subtests, exit 0. Orchestrator: slice 3 worktree subagent (verifier-gated) + slices 1+2 inline.
+DO NOT redo: the 3 clusters are FIXED; `.lobby-status.searching` is gone by design (E11 purge - do not re-add to SITES); the lcu asyncio-suite immunity is _run_coro (do not revert to bare asyncio.run).
+
+---
+
 # 2026-07-05 (operator handoff PHASE 1 - DS/haiku-zero ORUN waves; LEDGER 784-785)
 
 Operator away, Fable-5 competitor-research handoff: run at MAX effort as orchestrator, PHASE 1 = DS lift waves then PHASE 2 = gemini-headless-upgrade. GROUND TRUTH FIRST corrected the premise: the DS ENGINE is genuinely exhausted this patch (ENGINE 1.179.0 / 7997 tests / registries "provably saturated"; the R66 adversarial residual list is EXHAUSTED per R70, do NOT re-pick #1-#6, #7 shield-lerp is next-patch-ingest gated). So "next DS batches" = the director's real OPEN queue (docs/ORCHESTRATION_PLAN.md ORUN1-5), which is what the Gemini director itself reads. Verified-premise + shipped the 2 headless-safe, non-engine ORUN units as separate verifier-gated commits:
@@ -28,39 +39,3 @@ Merged the player-snapshot card + shipped 3 overlay-polish slices while the oper
 
 NEXT (operator LIVE-GATES next session in a live game; Pengu stub is ON + displaying, so Pengu-sourced items qualify): round-1 missing-in-game cluster (`rn-lead`/`rn-choices`/`rn-callouts`/`w-spike` render headless but dark in the real overlay) + bugs (static META row, dead knob +/-, dead item radial) + stats-panel clarify; round-2 the DRAG/MOVE system (finicky anchors far from the widget, drag drops when the cursor leaves, can't move all elements anywhere, border-drag moves the whole screen - `overlay_layout.js` pointer-capture) + context-menu/item tooltip (cropped icon + far) + PR enemy-spell timer + gauges 1-line layout (horizontal/vertical). Root-cause is fine; each fix needs the operator's live Ctrl+Alt+A verify before it lands.
 DO NOT redo: the card is MERGED (do not re-merge); the 3 removed widgets are gone (all broken - no Live Client CD data - do not re-add); the ZOI minimap SHOWS in-game (do not hide); overlay recon must use a LIVE capture (`recon.py` = ui_mock, hides the gauges); the remaining overlay findings are LIVE-GATED.
-
----
-
-# 2026-07-05 (player-snapshot card SHIPPED - GPI-24h Home + role-rubric PGR; subagent-driven TDD; LEDGER 782)
-
-Built the player-snapshot card end-to-end on branch `feat/player-snapshot-card` (PUSHED, head `b1a0c3b8` + LEDGER `68f37197`; NOT merged) via superpowers subagent-driven-development: 10 tasks, fresh implementer + spec/quality reviewer per task, a verifier gate + an Opus whole-branch review. Spec (2026-07-04) -> plan (`docs/superpowers/plans/2026-07-04-player-snapshot-card.md`) -> build.
-- TASK 1 corrected a stale recon: rc-shell is a LIVE 2-surface Electron app; the companion window loads the shared `web/` tree from :8888, so v1 mounts in `web/` with ZERO `rc-shell/src` edits. The prior "overlay gone / all :8888" claim was WRONG (MEMORY was right).
-- Backend: `player_gpi.py` `since_ts` window + win/streak/K-P/kda_mean/strongest-axis; new DB-pure `/api/player-snapshot` route (registered in `_dispatch.py`).
-- Frontend: presentational `renderPlayerSnapshot` (tokens-only, ASCII, SVG arc-gauge dial); Home adapter (GPI 24h per mode tab + hero ABSORB); PGR adapter (role-rubric fold, NO new fetch, hero/rubric SUPPRESS); View Profile -> first production mount of the GPI radar.
-- Verify: 5-phase UI audit 0 MUST-FIX; verifier 132/132; snapshot_panels 336; the Opus review caught 1 CRITICAL (PGR radar mounted into a `display:none` subtree) - FIXED `b1a0c3b8` (per-view containers). RC reloaded pid 12284, live `/api/player-snapshot` returns a valid model.
-- Also: appended the operator's session-2 URLs to the canonical `_handoff_competitor_deep_research.md` (memory dir, non-repo per name-scrub); deleted a stray repo-root copy.
-
-NEXT (operator /clears + starts on MAIN): open a PR for `feat/player-snapshot-card` -> main + merge (CI is PR-gated, no branch-push run) OR merge when ready. Then the Fable-5 competitor deep-research fan-out (QUEUED, memory-dir handoff, run in a dedicated Fable-5 session) + the lolmath DS-knob coverage check (separate). Operator-glance owed: dial arc-gauge vs `luna-sever-2.jpg`.
-DO NOT redo: rc-shell IS alive (companion = the :8888 web tree in Electron - do NOT re-pitch "overlay gone"); the card is BUILT + reviewed + pushed on `feat/player-snapshot-card` (do NOT rebuild); the 1 Critical is FIXED; the model contract + 65/35 dial bands + visual-only absorb/suppress are settled.
-
-
----
-
-# 2026-07-05 (weekly-hygiene pass - unattended)
-
-Automated unattended hygiene pass (RC-WeeklyHygiene).
-
-RELOCATED: 2026-07-04 /live-gated-drain (LEDGER 780) -> docs/history_notes.md (verbatim).
-
-MEMORY UPDATE: reference_model_config.md - removed retired Game-PC entry (ADR-011 2026-05-29).
-
-ANOMALY TRIAGE (rc_facts.py 04:17 2026-07-05):
-- :8889 vision not listening -> EXPECTED (no game in progress; self-heals in-process).
-- LCU agent not posting -> EXPECTED (no champ-select in progress).
-- All 18 RC-* tasks Ready/Running, DS :8893 ok patch=16.13.1.
-
-FLAGS FOR OPERATOR:
-1. `_next_session_snapshot_card_build.md` (memory dir) - stale next-session prompt for player-snapshot card build; card is MERGED (LEDGER 782-783). Not indexed in MEMORY.md. Confirm OK to delete?
-2. `reference_gamepc_retired_adr011.md` contains dead cross-link [[reference_bridge_dispatch_target_paths]] - no matching file in memory dir.
-
-DO NOT redo: session 4 relocated verbatim; model_config Game-PC line removed.
