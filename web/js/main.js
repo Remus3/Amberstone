@@ -64,6 +64,10 @@ import { initOverlayPulse } from './overlay_pulse.js';
 // Task 6 (spec 7.1): Home player-snapshot adapter over the Task-5
 // presentational card.
 import { renderPlayerSnapshot } from './panels/player_snapshot.js';
+// Task 8 (spec 7.1): View Profile -> GPI radar mount. showPlayerGpi is the
+// self-fetch + render entry point (player_gpi.js:444) - first production
+// mount of that panel.
+import { showPlayerGpi } from './panels/player_gpi.js';
 // RC2 4.2: overlay auto-hide (idle recede). Inert unless ?overlay=1.
 import { initOverlayIdle } from './lib/overlay_idle.js';
 import { initOverlayLayout } from './lib/overlay_layout.js';
@@ -6471,6 +6475,22 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   // per-context (in-game / out-of-game) panel toggles. Self-guards on the
   // overlay shell (overlay.css owns that surface). Wires its own re-apply.
   initPanelVisibility();
+  // Task 8 (spec 7.1): View Profile -> GPI radar. Delegated (document-level)
+  // click listener so it survives EITHER player-snapshot card surface's
+  // idempotent re-render (#home-snapshot-card / #pgr-snapshot-card both
+  // rebuild innerHTML on model change, which would drop a per-button
+  // listener). Reads the clicked button's data-mode, reveals the shared
+  // #player-gpi-radar container, and mounts the radar for that mode - the
+  // first production mount of panels/player_gpi.js.
+  document.addEventListener("click", (e) => {
+    const btn = e.target && e.target.closest
+      ? e.target.closest(".ps-viewprofile") : null;
+    if (!btn) return;
+    const radar = document.getElementById("player-gpi-radar");
+    if (!radar) return;
+    radar.hidden = false;
+    showPlayerGpi(btn.dataset.mode || "sr", "player-gpi-radar");
+  });
   // Map underlay brightness override: ?map-br=0.55&map-sat=0.6
   (function mapFilterOverride() {
     const q = new URLSearchParams(location.search);
