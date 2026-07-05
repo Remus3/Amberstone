@@ -30,8 +30,9 @@ from core import player_gpi
 ALLOWED_CONFIDENCE = {"high", "low", "insufficient"}
 ALLOWED_SCORING = {"relative", "absolute"}
 EMPTY_KEYS = {
-    "ok", "mode", "champion", "n_games", "window", "min_games",
+    "ok", "mode", "champion", "n_games", "window", "window_n", "min_games",
     "confidence", "axes", "overall", "weakest_axis", "tip", "this_match",
+    "win_streak", "win_rate", "kp_pct", "kda_mean", "strongest_axis",
 }
 
 
@@ -66,7 +67,8 @@ def _make_conn() -> sqlite3.Connection:
             dragon_kills INTEGER,
             baron_kills INTEGER,
             turret_takedowns INTEGER,
-            inhibitor_takedowns INTEGER
+            inhibitor_takedowns INTEGER,
+            win INTEGER
         );
         """
     )
@@ -76,19 +78,19 @@ def _make_conn() -> sqlite3.Connection:
 def _insert_game(conn, *, mid, ts, champ=1, dur=1800, has_stats=1, map_id=11,
                  team=100, minions=180, neutral=20, vis=30, gold=12000,
                  dmg=18000, deaths=4, kills=6, assists=8, drag=1, baron=0,
-                 turret=3, inhib=1, extra_participants=()):
+                 turret=3, inhib=1, win=1, extra_participants=()):
     conn.execute(
         "INSERT INTO matches VALUES (?,?,?,?,?,?,?)",
         (mid, dur, ts, has_stats, map_id, champ, team),
     )
     conn.execute(
-        "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (mid, champ, team, minions, neutral, vis, gold, dmg, deaths, kills,
-         assists, drag, baron, turret, inhib),
+         assists, drag, baron, turret, inhib, win),
     )
     for p in extra_participants:
         conn.execute(
-            "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", p
+            "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", p
         )
 
 
@@ -181,9 +183,9 @@ def test_all_null_metric_columns_no_crash():
             (f"N{i}", 1800, 10_000 - i, 1, 11, 7, 100),
         )
         conn.execute(
-            "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO participants VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (f"N{i}", 7, 100, None, None, None, None, None, None, None,
-             None, None, None, None, None),
+             None, None, None, None, None, None),
         )
     conn.commit()
     out = player_gpi.compute_gpi(mode="sr", conn=conn)
