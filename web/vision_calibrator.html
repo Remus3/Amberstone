@@ -18,6 +18,18 @@
   button:hover { border-color:var(--cyan); color:var(--cyan); }
   #status { color:var(--dim); font-size:13px; margin-left:6px; }
   #hint { color:var(--dim); font-size:12px; margin-left:auto; }
+  #states { display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .stbtn { background:#232a35; color:var(--cyan); border:1px solid var(--cyan);
+           border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; }
+  .stbtn.sel { border-color:var(--gold); color:var(--gold);
+               box-shadow:0 0 0 1px var(--gold); }
+  #ingestbar { display:flex; gap:8px; align-items:center; padding:8px 14px;
+               background:var(--panel); border-bottom:1px solid var(--line);
+               flex-wrap:wrap; }
+  #ingestbar input { background:#232a35; color:var(--fg);
+                     border:1px solid var(--line); border-radius:6px;
+                     padding:6px 10px; font-size:13px; }
+  #ingestPath { flex:1 1 320px; min-width:220px; }
   #wrap { padding:16px; }
   #stage { position:relative; max-width:min(2560px, 94vw); margin:0 auto;
            background:#000; border:1px solid var(--line); user-select:none;
@@ -42,8 +54,14 @@
   <button id="save">Save regions</button>
   <button id="add">Add region</button>
   <button id="del">Delete selected</button>
+  <span id="states"></span>
   <span id="status">loading...</span>
   <span id="hint">drag to move &middot; gold handle to resize &middot; arrows nudge 1px (shift 10px)</span>
+</div>
+<div id="ingestbar">
+  <input id="ingestState" placeholder="state label e.g. self_dead">
+  <input id="ingestPath" placeholder="full path to screenshot">
+  <button id="ingest">Ingest screenshot</button>
 </div>
 <div id="wrap"><div id="stage"><img id="frame" alt="vision frame"></div></div>
 <script>
@@ -52,6 +70,7 @@ const stage = document.getElementById("stage");
 const img = document.getElementById("frame");
 const statusEl = document.getElementById("status");
 let frameW = 1920, frameH = 1080, scale = 1, regions = {}, selected = null, drag = null;
+let curState = "base";
 
 function setStatus(m) { statusEl.textContent = m; }
 
@@ -143,7 +162,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 async function fetchFrame(source) {
-  const q = source ? ("?source=" + source) : "";
+  let q = source ? ("?source=" + source) : "";
+  if (source === "reference" && curState && curState !== "base") {
+    q += "&state=" + encodeURIComponent(curState);
+  }
   return (await fetch("/api/vision-frame" + q)).json();
 }
 
@@ -157,8 +179,51 @@ async function loadFrame() {
     await new Promise((res) => { img.onload = res; img.onerror = res; img.src = "data:image/" + (d.format || "jpeg") + ";base64," + d.b64; });
     recomputeScale();
     layout();
-    setStatus(src + " frame " + frameW + "x" + frameH + ", age " + d.age_s + "s, " + Object.keys(regions).length + " regions");
+    const stLbl = (src === "reference") ? (" [" + curState + "]") : "";
+    setStatus(src + " frame" + stLbl + " " + frameW + "x" + frameH + ", age " + d.age_s + "s, " + Object.keys(regions).length + " regions");
   } catch (err) { setStatus("frame load error"); }
+}
+
+function renderStates(states) {
+  const host = document.getElementById("states");
+  host.innerHTML = "";
+  for (const s of states) {
+    const b = document.createElement("button");
+    b.className = "stbtn" + (s.state === curState ? " sel" : "");
+    b.textContent = s.state;
+    b.onclick = () => { curState = s.state; renderStates(states); loadFrame(); };
+    host.appendChild(b);
+  }
+}
+
+async function loadStates() {
+  try {
+    const d = await (await fetch("/api/vision-reference-states")).json();
+    const states = (d && d.ok && d.states) || [];
+    if (!states.some((s) => s.state === curState)) curState = "base";
+    renderStates(states);
+    return states;
+  } catch (err) { return []; }
+}
+
+async function ingest() {
+  const state = (document.getElementById("ingestState").value || "").trim();
+  const path = (document.getElementById("ingestPath").value || "").trim();
+  if (!state || !path) { setStatus("ingest needs a state label and a path"); return; }
+  try {
+    const d = await (await fetch("/api/vision-reference", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state, path }),
+    })).json();
+    if (d.ok) {
+      curState = d.state || state;
+      await loadStates();
+      await loadFrame();
+      setStatus("INGESTED " + curState + " " + (d.width || "?") + "x" + (d.height || "?"));
+    } else {
+      setStatus("INGEST FAILED: " + (d.error || ""));
+    }
+  } catch (err) { setStatus("ingest error"); }
 }
 
 async function loadRegions() {
@@ -202,9 +267,10 @@ document.getElementById("reload").onclick = loadFrame;
 document.getElementById("save").onclick = save;
 document.getElementById("add").onclick = addRegion;
 document.getElementById("del").onclick = delSelected;
+document.getElementById("ingest").onclick = ingest;
 window.addEventListener("resize", () => { recomputeScale(); layout(); });
 
-(async () => { await loadRegions(); await loadFrame(); })();
+(async () => { await loadStates(); await loadRegions(); await loadFrame(); })();
 </script>
 </body>
 </html>

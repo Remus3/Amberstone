@@ -32,6 +32,17 @@ other :8888 POST):
                              for the active profile {"ok": true, "b64", "width",
                               "height", "format": "jpeg", "age_s", "base":[w,h]}
                              ; {"ok": false, "error"} when none captured yet.
+  GET  /api/vision-frame?source=reference&state=<state>  -> the named reference
+                             state still (multi-state frames); state omitted /
+                             "base" is the legacy base still.
+  GET  /api/vision-reference-states  -> {"ok": true, "states": [{"state",
+                             "exists", "width", "height"}, ...]} for the active
+                             config (base + any ingested states).
+  POST /api/vision-reference  body {"state", "path"} -> ingest an operator-
+                             provided full-screen native screenshot as a named
+                             reference state -> {"ok": true, ...} ; 400 on a
+                             missing field, a dims mismatch, or a base/empty
+                             label (nothing is written on a rejected ingest).
   GET  /vision-calibrator   -> the calibrator HTML page.
 
 Never crashes the server; raw exception text stays in the log only (CLAUDE.md
@@ -53,13 +64,18 @@ log = logging.getLogger("rc.web_dashboard")
 _REFERENCE_FALLBACK_BASE = [2560, 1440]  # native-res default when no reference yet
 
 
-def _query_source(path: str):
-    """Return the single ?source= value from a request path (or None). Tolerant
-    of a missing / malformed querystring - never raises."""
+def _query_param(path: str, key: str):
+    """Return a single ?<key>= value from a request path (or None). Tolerant of a
+    missing / malformed querystring - never raises."""
     try:
-        return parse_qs(urlparse(path).query).get("source", [None])[0]
+        return parse_qs(urlparse(path).query).get(key, [None])[0]
     except Exception:  # noqa: BLE001
         return None
+
+
+def _query_source(path: str):
+    """Return the single ?source= value from a request path (or None)."""
+    return _query_param(path, "source")
 
 _ROOT = Path(__file__).resolve().parent.parent
 REGIONS_PATH = _ROOT / "data" / "vision_regions.json"
@@ -245,10 +261,11 @@ def _serve_regions_post(h, body) -> None:
         _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
 
 
-def _reference_frame_payload() -> dict:
-    """Remap vp.load_reference() to the frame-endpoint shape (adds base). Passes
-    a {"ok": False, "error"} through unchanged."""
-    ref = vp.load_reference()
+def _reference_frame_payload(state=None) -> dict:
+    """Remap vp.load_reference(state) to the frame-endpoint shape (adds base).
+    Passes a {"ok": False, "error"} through unchanged. No state -> the legacy
+    base call (keeps the old 1-arg signature working, byte-for-byte)."""
+    ref = vp.load_reference(state=state) if state else vp.load_reference()
     if not ref.get("ok"):
         return {"ok": False, "error": ref.get("error", "no reference captured yet")}
     w, hgt = ref.get("width"), ref.get("height")
@@ -266,7 +283,7 @@ def _reference_frame_payload() -> dict:
 def _serve_frame_get(h) -> None:
     try:
         if _query_source(h.path) == "reference":
-            _send_json(h, 200, _reference_frame_payload())
+            _send_json(h, 200, _reference_frame_payload(state=_query_param(h.path, "state")))
             return
         out = fetch_frame()
         if out.get("ok") and out.get("width") is not None and out.get("height") is not None:
@@ -274,6 +291,47 @@ def _serve_frame_get(h) -> None:
         _send_json(h, 200, out)
     except Exception as exc:  # noqa: BLE001
         log.warning("vision-frame GET: %s", exc)
+        _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
+
+
+def _serve_reference_states_get(h) -> None:
+    """List the reference states present for the active config as
+    ``{ok, states:[{state, exists, width, height}]}``. A per-state dims read is
+    best-effort (omitted / null when unavailable)."""
+    try:
+        out = []
+        for st in vp.list_reference_states():
+            entry = {"state": st, "exists": True}
+            try:
+                ref = vp.load_reference() if st == "base" else vp.load_reference(state=st)
+                if ref.get("ok"):
+                    entry["width"] = ref.get("width")
+                    entry["height"] = ref.get("height")
+            except Exception:  # noqa: BLE001
+                pass
+            out.append(entry)
+        _send_json(h, 200, {"ok": True, "states": out})
+    except Exception as exc:  # noqa: BLE001
+        log.warning("vision-reference-states GET: %s", exc)
+        _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
+
+
+def _serve_reference_post(h, body) -> None:
+    """Ingest an operator-provided screenshot as a named reference state.
+    body ``{state, path}`` -> vp.ingest_reference_from_path -> 200 ok / 400 error.
+    Never leaks a raw exception (CLAUDE.md error rule)."""
+    try:
+        state = body.get("state") if isinstance(body, dict) else None
+        path = body.get("path") if isinstance(body, dict) else None
+        if not isinstance(state, str) or not state.strip() \
+                or not isinstance(path, str) or not path.strip():
+            _send_json(h, 400, {"ok": False,
+                                "error": "body must be {\"state\": str, \"path\": str}"})
+            return
+        res = vp.ingest_reference_from_path(path, state)
+        _send_json(h, 200 if res.get("ok") else 400, res)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("vision-reference POST: %s", exc)
         _send_json(h, 500, {"ok": False, "error": "internal error - see logs"})
 
 
@@ -295,8 +353,10 @@ def _equals(p: str):
 GET_ROUTES = [
     (_equals("/api/vision-regions"), _serve_regions_get),
     (_equals("/api/vision-frame"), _serve_frame_get),
+    (_equals("/api/vision-reference-states"), _serve_reference_states_get),
     (_equals("/vision-calibrator"), _serve_page_get),
 ]
 POST_ROUTES = [
     (_equals("/api/vision-regions"), _serve_regions_post),
+    (_equals("/api/vision-reference"), _serve_reference_post),
 ]
