@@ -1,6 +1,20 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) + item 376 (2026-06-10 prune) + item 387 + round 2026-06-10-02 + item 394 + audit-cycles-1-5 + cycle-6/item-400 + cycle-8/item-402 + cycle-9/item-403 + cycle-13/item-407 + cycle-14/item-409 + cycle-17/item-412 + cycle-18/item-413 + item-414 + item 434 + cycle 47 (2026-06-11/13/14/16 prunes; full per-cycle records live in docs/LEDGER.md) + 2026-06-29 WP-D1 session (full in LEDGER 670) + R47 UI-audit cycle 16 (2026-06-30, full in LEDGER 702) archived. Only the last 3 sessions kept here.
+> Sessions s27-s137 + s166 + s173.5 + s173.1 + s175 + s176 + s177 + s178 + s179 + s180 + s181 + s193 + s194 + s195 + s197 + s198 + s199 + s200 + s201 + s203 + s204 + s214 + s215 + s225 + s226 + 2026-05-19/20 mid-run summary + 2026-05-20 housekeeping batch + 2026-05-21 items 121-130 + 2026-05-22 items 133-139 + 2026-05-22 items 140-149 + item 181 + item 187 + item 188 + item 189 + item 190 + item 191 + item 192 + item 193 + item 194 + item 195 + item 196 + item 197 + item 198 + item 199 + item 200 + item 204 + item 215 + item 216 + item 227 + item 228 + item 241 + item 242 + item 245 + item 246 + item 247 + item 248 + item 249 + item 250 + 2026-06-01 Share-docs-reconcile (1.86.0) + item 255 + item 256 + item 257 + item 258+259 + item 261 + item 263 + item 264 + items 271-287 (2026-06-03 prune) + 2026-06-03 RC-wide multi-agent (item 299 prune) + item 300 (2026-06-04 wave-clear prune) + item 301 (2026-06-04 threat-range prune) + items 366-369 (2026-06-09 DS-patch-refresh prune) + item 371 (2026-06-09 BACKLOG-batch T1F3/T2F4 prune) + item 376 (2026-06-10 prune) + item 387 + round 2026-06-10-02 + item 394 + audit-cycles-1-5 + cycle-6/item-400 + cycle-8/item-402 + cycle-9/item-403 + cycle-13/item-407 + cycle-14/item-409 + cycle-17/item-412 + cycle-18/item-413 + item-414 + item 434 + cycle 47 (2026-06-11/13/14/16 prunes; full per-cycle records live in docs/LEDGER.md) + 2026-06-29 WP-D1 session (full in LEDGER 670) + R47 UI-audit cycle 16 (2026-06-30, full in LEDGER 702) + E11 sweep (2026-07-04, LEDGER 773-774) archived. Only the last 3 sessions kept here.
+
+---
+
+# 2026-07-04 (/live-gated-drain continuation - A1/A2 layer-2 + D6 headless fixes built + armed, full resync rebuilt; LEDGER 780)
+
+Continuation of the FULL DRAIN (LEDGER 779). Built the 2 caught-bug headless fixes spec-first (2 Plan subagents) + worktree build agents + an independent verifier gate + lead frozen-diff review, Opus 4.8 max orchestrated. Both MERGED main + armed live; both still owe a live re-validate.
+- A1/A2 LAYER-2 (`1ab7000e`, FROZEN lcu_client.py + lcu_rune_writer.py): premise REFUTED - the 3 spawn_task loops ALREADY guard Exception, so "add a try/except" would be redundant dead code. Real gap = a BaseException escaping `except Exception` kills the coroutine (postgame collector already handled it; auto-accept + RuneWriter did not). Split the tick-arm into `except CancelledError: return` + `except BaseException: log`. Closes layer-1's caveat. NEW test_lcu_loop_resilience.py (5, RED-first). NOT proven to fix the incident - the root cause (AppLoop-stop / to_thread-starvation) is UNCONFIRMED (no traceback was logged); layer-1 self-heal is the alive-loop mitigation, the League-restart re-validate is definitive.
+- D6 (`79c4e9e9`, tools/lcu_agent.py): phase_watcher is DEAD (do NOT hook there - inert). RC-LCUAgent capture_state gains an Arena-gated /lol-cherry-game-intra-event/v1/augments probe + an edge-latch force_scan bump so the vision scan catches the transient augment panel -> augment/anvil shadow seed. NEW test (8). D2 shares the root cause.
+- Verify: 52 pass / 0 fail fresh, py_compile + frozen import smoke OK, ruff clean. RC pid 6440->24344 (auto-accept + RuneWriter up async, no boot break); RC-LCUAgent restarted.
+- `/live-gated-resync`: rate-limited first attempt (transient server throttle from the 52-agent burst, NOT a usage limit), SUCCEEDED on resume - rebuilt LIVE_GAME_GATED_SYNC.md (1533 lines, ASCII, audit.pass), pruned 11 closed rows, open_now=95, est 4 sessions, ARENA NEEDED=YES, B41 disambiguated -> B41b.
+- Operator live finding (mid-session): user-builds runes have NO hover tooltip -> chip task_9a485b62 (fix candidate build_insights.js _runeImgTag, a DDragon-runesReforged tooltip).
+
+NEXT (live re-validate, operator-paced): restart League mid-session -> champ-select to confirm A1/A2 auto-push (definitive layer-1+2 test); 1 Arena game for D6 seeding + D3 boot-anvil / D9 Goredrinker rolls; opportunistic ARAM Mayhem C11/C12/C3/C15/C16; F3 PGR auto-show recheck. Accrual G1 0.4626 / G2 +3.6% flip_ready=False - HOLD. Unplayed seams B2-B19/B31-B40 via the headless harness.
+DO NOT redo: the loops ALREADY guard Exception (layer-2 is the BaseException split, not a new loop); D6 is in RC-LCUAgent not phase_watcher (dead); the silent-death root cause is UNCONFIRMED (if the re-validate shows the loop still dies -> liveness-watchdog / to_thread-timeout). Duplicate chips task_c122811d + task_660c82b7 could NOT be dismissed (operator already started them) - close those sessions manually.
 
 ---
 
@@ -60,26 +74,3 @@ DO NOT redo: C4 is FLIPPED - the flip point is the RC-side caller (archetype_dis
 server; do NOT bump ENGINE for a caller-default flip. Slice-1's "reuse synth" don't-redo is SUPERSEDED by
 slice 3. E10/E2 stay operator-gated. A duplicate templater chip-session may exist on the operator side
 (redundant - slice 3 is merged).
-
----
-
-# 2026-07-04 (RC2 E11 CLOSED - PGR reskin-complete + BUILD dead-code purge + batched sweep; LEDGER 773-774)
-
-Closed E11 (Hextech reskin across surfaces): OPEN -> DONE. RC2 banner 56/62 -> 57/62 (~92%).
-- PGR (`1771f532`): 6-mapper MAP found PGR was ALREADY reskin-complete (the s220 reframe built the 4
-  pgr_* sub-panels token-first: var(--hextech-token,#fallback), token wins at runtime; R47 already
-  5-phase-audited them 2026-06-30). Only bare hex = augment rarity tiers (KEPT sanctioned, lobby
-  .lv-rank-* precedent). Operator ruled a THIN hygiene slice: removed the pre-S3 BUILD-section dead
-  code (_setEnrichedBuild + _setDsPicks + 4 orphaned clear-stubs + ~77-line orphaned CSS; 4 ins/142
-  del, ZERO visual delta). Verifier PASS, 444 scoped tests, ui_recon both widths, CI green.
-- HISTORY: verified reskin-complete (R30 `0c0bdc16`; 0 dead JS unlike PGR, 100% tokenized).
-- BATCHED SWEEP (`b242aa28`, operator-chosen over per-surface method): 4 verification mappers confirmed
-  session/user-builds/build-insights/settings ALL Hextech-reskin-COMPLETE, 0 code delta. All 9
-  out-of-game surfaces done. QA docs: docs/qa/{PGR_QA,E11_SWEEP}_2026-07-04.md.
-- recon.py:40 stale PGR selector fixed LOCAL-ONLY (ops/runtime gitignored, scratch harness).
-
-NEXT: E11 is DONE. Remaining RC2 = E10 (ASCII git-history rewrite - destructive force-push, operator
-go/no-go OWED) + E2 (DS 3-game live-flip - needs live games) + Phase 9 drain (when those clear).
-DO NOT redo: every E11 out-of-game surface is Hextech-reskin-COMPLETE (do NOT re-audit for palette);
-the #1c1c2a shared .view-tab:hover shade is sanctioned (do NOT tokenize - it touches every view's tabs);
-the per-page UI-QA method is EXHAUSTED for E11 out-of-game (overlay HUD = separate polish lane, R72).
