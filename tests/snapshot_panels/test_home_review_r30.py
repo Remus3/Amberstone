@@ -318,9 +318,19 @@ def test_recent_stripe_encodes_win_loss(mock_server, pw_browser):
 
 
 def test_momentum_headline_gated_to_three_games(mock_server, pw_browser):
-    """HOME_QA H6/FE3: the today-summary headline only shows at >= 3 games
-    today. A 1-2 game day hides the headline entirely (too small a sample to
-    headline); a >= 3 game day shows the "N games - avg KDA" summary."""
+    """HOME_QA H6/FE3: the today-summary headline text only populates at
+    >= 3 games today. A 1-2 game day leaves the text empty (too small a
+    sample to headline); a >= 3 game day writes the "N games - avg KDA"
+    summary. (Updated 2026-07-05, Task 6 spec 7.1 absorb: the element
+    itself is now permanently hidden via its index.html `hidden` attribute
+    - the momentum headline is folded into the player-snapshot card's tag
+    row - so _homeRenderToday no longer toggles .hidden at all; the
+    original "hidden is True/False" assertions here tested visibility
+    toggling that _homeRenderToday no longer performs. The TEXT-population
+    gating this test actually exists to pin (empty below 3 games, the
+    summary string at/above 3) is untouched and still asserted below -
+    same textContent reads test_chips_consistent_14d_timeframe and
+    test_idle_headline_is_momentum_verdict already use for this element.)"""
     fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
 
     def _headline_state(games, avg):
@@ -345,17 +355,14 @@ def test_momentum_headline_gated_to_three_games(mock_server, pw_browser):
         assert not errors, f"JS errors: {errors[:3]}"
         return state
 
-    # 2 games today: below the >=3 gate -> headline hidden.
+    # 2 games today: below the >=3 gate -> text left empty.
     two = _headline_state(2, 3.7)
-    assert two["hidden"] is True, (
-        f"2-game-day headline must be hidden, got {two!r}"
+    assert two["text"] == "", (
+        f"2-game-day headline text must be empty, got {two!r}"
     )
 
-    # 4 games today: at/above the gate -> the summary line shows.
+    # 4 games today: at/above the gate -> the summary line populates.
     four = _headline_state(4, 4.2)
-    assert four["hidden"] is False, (
-        f"4-game-day headline must be visible, got {four!r}"
-    )
     assert "4 games" in four["text"], (
         f"4-game-day headline not the summary line: {four!r}"
     )
