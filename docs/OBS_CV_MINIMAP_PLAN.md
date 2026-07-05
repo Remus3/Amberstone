@@ -21,9 +21,10 @@ live-gated (a wrong deterministic read is worse than an LLM call; do-not-flip-bl
 - **Deterministic-CV primitives are ALREADY built, mostly UNWIRED.** `core/vision_tesseract.py`
   already implements `_bar_fill_pct` (green/blue/red column fill %), `_ally_ults_strip` (4-slot
   ult-ready bools), `_ult_pct` (circular cooldown-sweep 0-100), `_ocr_cooldown` (spell/summ CD
-  seconds), `death_timer`, `enemy_deaths`, `ally_levels`. `data/vision_regions.json` already
-  carries calibrated regions (`ally_1..4_hp/mana`, `ally_ults`, `ally_levels`, `enemy_deaths`,
-  `death_timer`, `score_blue/red`). The GAP: coaches' `TIERED_FIELDS` do not request the
+  seconds), `ally_levels`. `data/vision_regions.json` already carries calibrated regions
+  (`ally_1..4_hp/mana`, `ally_ults`, `ally_levels`, `score_blue/red`). (`death_timer` +
+  `enemy_deaths` OCR were PRUNED 2026-07-05 - the same respawn data is live from the API's
+  `allPlayers[].respawnTimer`.) The GAP: coaches' `TIERED_FIELDS` do not request the
   deterministic ones - ARAM (`coaches/aram_coach.py`) escalates HUD-adjacent fields to Sonnet.
   The tiered router (`core/vision_routing.py`) runs Tesseract first and escalates only on a
   miss, so wiring a field to a working OCR parser drops its Sonnet calls to zero automatically.
@@ -81,7 +82,7 @@ unless NEW). Ranked by value x determinism x low-risk.
 | 3 | Ally HP bars (party frames) | `_bar_fill_pct` green (built) | ally_1..4_hp (exist) | ZOI ally-strength + peel/dive cues (unconsumed today) | Yes |
 | 4 | Summoner-spell up/down | `_ocr_cooldown` + text-signal gate (built) | NEW summ1_cd, summ2_cd | `core/summoner_cooldowns.py` consumer exists; drives "enemy Flash down -> all-in" | Yes (no current source; :2999 has no CDs) |
 | 5 | Ult ready (self + ally) | `_ult_pct` / `_ally_ults_strip` (built) | ally_ults (exists) + NEW self_ult | spike / all-in cue | Yes |
-| 6 | Death timer / enemy deaths | `death_timer`, `enemy_deaths` (built) | exist | objective-window cue | Yes |
+| 6 | Death timer / enemy deaths | API `respawnTimer` (OCR PRUNED 2026-07-05) | - | `allPlayers[].respawnTimer` + `isDead` -> `vision_state.json` (live; consumed by active_match.js + SR prompt) | N/A - API covers it |
 | 7 | Ability cooldown-sweep = CAST / utilization proxy | `_ult_pct` sweep transition full->0 frame-to-frame | NEW q/w/e_cd | new stateful tracker; :2999 has no cast data so this is the ONLY cast signal | Net-new |
 | 8 | Objective icon + timer (drake/baron/elder) | template-match icons OR OCR the on-screen timer | NEW region | complements `core/event_callouts.py` static schedule with live-spawned truth | Partial |
 | 9 | Recall channel | `_bar_fill_pct` on the cast-bar OR template-match the glyph | NEW recall_bar | tempo cue ("enemy recalling") | Net-new |
