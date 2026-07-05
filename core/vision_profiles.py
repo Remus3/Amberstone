@@ -22,7 +22,6 @@ import logging
 import re
 import time
 from pathlib import Path
-from threading import RLock
 
 log = logging.getLogger("rc.vision")
 
@@ -33,9 +32,7 @@ REFERENCE_DIR = _DATA / "vision_calib_reference"
 _LEGACY_REGIONS = _DATA / "vision_regions.json"
 _LEGACY_BASE = [1920, 1080]
 
-_REF_MIN_INTERVAL_S = 60.0   # throttle auto reference captures on the grab hot path
-_last_ref_save = 0.0
-_lock = RLock()
+_LEAGUE_EXE = "league of legends.exe"   # foreground process gate (case-insensitive)
 
 
 def _safe(config_key: str) -> str:
@@ -48,6 +45,45 @@ def _game_active() -> bool:
     try:
         d = json.loads((_ROOT / "ops" / "runtime" / "health.json").read_text(encoding="utf-8"))
         return bool(d.get("has_game"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _league_is_foreground() -> bool:
+    """True iff the current Windows foreground window belongs to
+    ``League of Legends.exe``. Gates the auto base-reference grab so an alt-tab
+    (has_game still True, but the desktop is focused) cannot clobber the
+    calibrated base still with a desktop frame. Fail-soft: returns False on any
+    error or on a non-Windows / headless host (never raises). Injectable seam -
+    tests monkeypatch this function directly."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+        hwnd = user32.GetForegroundWindow()
+        if not hwnd:
+            return False
+        pid = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if not pid.value:
+            return False
+        # PROCESS_QUERY_LIMITED_INFORMATION (0x1000) - available without full
+        # rights and enough for QueryFullProcessImageNameW.
+        h = kernel32.OpenProcess(0x1000, False, pid.value)
+        if not h:
+            return False
+        try:
+            buf = ctypes.create_unicode_buffer(1024)
+            size = wintypes.DWORD(len(buf))
+            if not kernel32.QueryFullProcessImageNameW(
+                    h, 0, buf, ctypes.byref(size)):
+                return False
+            name = buf.value.rsplit("\\", 1)[-1].lower()
+            return name == _LEAGUE_EXE
+        finally:
+            kernel32.CloseHandle(h)
     except Exception:  # noqa: BLE001
         return False
 
@@ -114,20 +150,38 @@ def save_profile(config_key, regions: dict, base) -> dict:
 
 
 def save_reference_image(img, config_key=None, force: bool = False, state=None) -> bool:
-    """Persist an already-grabbed PIL image as this profile's native reference,
-    throttled. ``state`` selects a named reference file (None/base = the legacy
-    base still). Called from the grab hot path - never raises, returns False on
-    skip/failure."""
-    global _last_ref_save
+    """Persist an already-grabbed PIL image as this profile's native reference.
+    ``state`` selects a named reference file (None/base = the legacy base still).
+    Called from the grab hot path - never raises, returns False on skip/failure.
+
+    AUTO path (``force=False``) saves ONCE PER CONFIG and only when it is safe:
+    (a) a real game is live (``_game_active`` / health.json has_game), AND
+    (b) League is the Windows foreground window (``_league_is_foreground``), so an
+        alt-tab to the desktop cannot clobber the calibrated base, AND
+    (c) no reference file exists yet for this config_key + state.
+    Condition (c) retires the old 60s re-grab cadence - a settings change mints a
+    NEW config_key with no reference, which re-triggers a single foreground-gated
+    grab. ``force=True`` (capture_reference / the manual refresh path) bypasses all
+    three and always overwrites."""
     now = time.time()
-    if not force:
-        with _lock:
-            if (now - _last_ref_save) < _REF_MIN_INTERVAL_S:
-                return False
-        if not _game_active():   # only persist in-game references, not lobby/desktop
-            return False
     try:
         ck = config_key or active_config_key()
+    except Exception:  # noqa: BLE001
+        return False
+    if not force:
+        # only persist in-game references, not a lobby / desktop frame
+        if not _game_active():
+            return False
+        # only while League actually holds foreground (alt-tab clobber guard)
+        if not _league_is_foreground():
+            return False
+        # once per config: never re-grab over an existing reference
+        try:
+            if reference_path(ck, state).exists():
+                return False
+        except Exception:  # noqa: BLE001
+            return False
+    try:
         REFERENCE_DIR.mkdir(parents=True, exist_ok=True)
         p = reference_path(ck, state)
         tmp = p.with_name(p.name + ".tmp")
@@ -139,8 +193,6 @@ def save_reference_image(img, config_key=None, force: bool = False, state=None) 
         mtmp = mp.with_name(mp.name + ".tmp")
         mtmp.write_text(json.dumps(meta), encoding="utf-8")
         mtmp.replace(mp)
-        with _lock:
-            _last_ref_save = now
         return True
     except Exception as exc:  # noqa: BLE001
         log.debug("reference save failed: %s", exc)
