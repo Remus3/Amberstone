@@ -110,14 +110,21 @@
          the KDA hero chip, and #home-hero-headline below (visual-only
          hide - their JS setters keep running, feedback_field_remove_visual_only). -->
     <div id="home-snapshot-card"></div>
-    <!-- Task 8 (spec 7.1): 8-axis GPI radar reveal target. Shared by BOTH
-         player-snapshot card surfaces (#home-snapshot-card here and
-         #pgr-snapshot-card on the last-match view) - main.js wires ONE
-         delegated click listener on ".ps-viewprofile" (survives either
-         card's idempotent re-render) that un-hides this container and calls
-         showPlayerGpi(mode, "player-gpi-radar") from panels/player_gpi.js.
-         First production mount of that panel. Hidden until the first click. -->
-    <div id="player-gpi-radar" class="player-gpi" hidden></div>
+    <!-- Task 8 (spec 7.1), per-context fix (critfix): 8-axis GPI radar
+         reveal target for the Home card (#home-snapshot-card above). The
+         PGR card (#pgr-snapshot-card on the last-match view) has its OWN
+         sibling container (#pgr-gpi-radar in #view-last-match) - a single
+         shared container broke because it lived inside #home-overlay,
+         which is display:none on every other view (home.css .home-overlay
+         .hidden), so the PGR click silently mounted into an invisible
+         node. main.js wires ONE delegated click listener on
+         ".ps-viewprofile" (survives either card's idempotent re-render)
+         that resolves the ".player-gpi-radar" container within the
+         clicked button's own view scope, un-hides it, and calls
+         showPlayerGpi(mode, <that container's id>) from
+         panels/player_gpi.js. First production mount of that panel.
+         Hidden until the first click. -->
+    <div id="home-gpi-radar" class="player-gpi player-gpi-radar" hidden></div>
     <!-- Hero banner: greeting + headline + day-summary chips.
          Champion motif background is set inline via JS (--hero-bg-champ
          CSS var resolves to a champion image URL) so the bg rotates
@@ -1669,6 +1676,12 @@
              #lm-rubric-components block (those stay in the DOM for their
              other consumers/fetches but are visually suppressed below). -->
         <div id="pgr-snapshot-card"></div>
+        <!-- critfix: per-context GPI radar reveal target for the PGR card's
+             View Profile button (see #home-gpi-radar's comment in
+             #home-overlay for the full cross-view bug context). Lives as a
+             sibling of #pgr-snapshot-card so it is inside the VISIBLE
+             #view-last-match .view-section when this view is active. -->
+        <div id="pgr-gpi-radar" class="player-gpi player-gpi-radar" hidden></div>
 
         <!-- R30 page-3 design review: autopsy takeaway headline. The PGR's
              job is to answer "what do I change next game?" - so the single
