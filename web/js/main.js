@@ -2634,6 +2634,20 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
   function _runeIconUrl(rel) {
     return rel ? (_RP_DDRAGON_BASE + rel) : "";
   }
+  // DDragon rune shortDesc is HTML; for a plain-text title= hover we strip all
+  // tags + decode the few entities DDragon emits, then collapse whitespace.
+  // Null-safe. (Same contract as build_insights.js _stripHtml.)
+  function _stripHtml(s) {
+    return String(s || "")
+      .replace(/<[^>]*>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&#39;/g, "'")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
   function _ubRpFetchTrees() {
     if (_RP_TREES) return Promise.resolve(_RP_TREES);
     return fetch("/api/dictionary/runes", { cache: "no-store" })
@@ -2707,7 +2721,10 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       _RP.secondaryMinors.includes(rune.name)
     );
     c.classList.toggle("selected", sel);
-    c.title = rune.name;
+    // Descriptive hover: "Name - effect". rune comes from /api/dictionary/runes
+    // so it already carries shortDesc (HTML) - strip to plain text for the
+    // title. DOM property assignment, so no HTML-escaping needed.
+    c.title = rune.name + (rune.shortDesc ? " - " + _stripHtml(rune.shortDesc) : "");
     const img = document.createElement("img");
     img.src = _runeIconUrl(rune.icon);
     img.alt = rune.name;
