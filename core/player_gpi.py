@@ -97,6 +97,11 @@ def _empty(mode: str, window: int, n_games: int, champion: Optional[int],
         "weakest_axis": None,
         "tip": None,
         "this_match": None,
+        "win_streak": None,
+        "win_rate": None,
+        "kp_pct": None,
+        "kda_mean": None,
+        "strongest_axis": None,
     }
 
 
@@ -125,7 +130,10 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
         "p.total_minions_killed, p.neutral_minions_killed, p.vision_score, "
         "p.gold_earned, p.total_damage_dealt_to_champs, p.deaths, p.kills, "
         "p.assists, p.dragon_kills, p.baron_kills, p.turret_takedowns, "
-        "p.inhibitor_takedowns "
+        "p.inhibitor_takedowns, p.win, "
+        "(SELECT SUM(p2.kills) FROM participants p2 "
+        " WHERE p2.match_id = m.match_id AND p2.team_id = m.tracked_team_id) "
+        "AS team_kills "
         "FROM matches m JOIN participants p ON p.match_id = m.match_id "
         "AND p.champion_id = m.tracked_champion_id "
         "AND p.team_id = m.tracked_team_id "
@@ -136,11 +144,12 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
     games: list[dict] = []
     for row in conn.execute(sql, params):
         (mid, dur_s, ts, champ, minions, neutral, vis, gold, dmg, deaths,
-         kills, assists, drag, baron, turret, inhib) = row
+         kills, assists, drag, baron, turret, inhib, win, team_kills) = row
         if mid in seen:
             continue
         seen.add(mid)
         dur_min = max(float(dur_s or 0), 1.0) / 60.0
+        team_k = float(team_kills or 0)
         games.append({
             "match_id": mid,
             "champion_id": champ,
@@ -154,6 +163,8 @@ def _fetch_operator_games(conn: sqlite3.Connection, mode: str,
             "gpm": float(gold or 0) / dur_min,
             "kda": (float(kills or 0) + float(assists or 0)) / max(1.0,
                                                                    float(deaths or 0)),
+            "win": int(win or 0),
+            "kp": (float(kills or 0) + float(assists or 0)) / team_k if team_k > 0 else 0.0,
         })
     return games
 
@@ -355,6 +366,28 @@ def compute_gpi(mode: str = "sr", window: int = DEFAULT_WINDOW,
     weakest = min(tip_axes, key=lambda a: a["score"]) if tip_axes else None
     out["weakest_axis"] = weakest["key"] if weakest else None
     out["tip"] = _AXIS_TIPS.get(weakest["key"]) if weakest else None
+
+    # Current streak from the newest game backward (full history).
+    streak = None
+    if games:
+        kind = "win" if games[0]["win"] else "loss"
+        want = games[0]["win"]
+        n = 0
+        for g in games:
+            if int(g["win"]) == want:
+                n += 1
+            else:
+                break
+        streak = {"kind": kind, "n": n}
+    out["win_streak"] = streak
+    out["win_rate"] = (sum(g["win"] for g in recent) / len(recent)) if recent else None
+    out["kp_pct"] = round(100.0 * sum(g["kp"] for g in recent) / len(recent), 1) if recent else None
+    out["kda_mean"] = round(sum(g["kda"] for g in recent) / len(recent), 2) if recent else None
+
+    # Strongest relative axis (symmetric to weakest_axis; relative axes only).
+    rel_axes = [a for a in axes if a["key"] in _AXIS_TIPS]
+    strongest = max(rel_axes, key=lambda a: a["score"]) if rel_axes else None
+    out["strongest_axis"] = strongest["key"] if strongest else None
     return out
 
 
