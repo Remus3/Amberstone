@@ -26,7 +26,6 @@ class VisionProfilesTests(unittest.TestCase):
         self._pd, self._rd = vp.PROFILES_DIR, vp.REFERENCE_DIR
         vp.PROFILES_DIR = d / "profiles"
         vp.REFERENCE_DIR = d / "reference"
-        vp._last_ref_save = 0.0
 
     def tearDown(self):
         vp.PROFILES_DIR, vp.REFERENCE_DIR = self._pd, self._rd
@@ -63,22 +62,65 @@ class VisionProfilesTests(unittest.TestCase):
         raw = base64.b64decode(ref["b64"], validate=True)
         self.assertEqual(raw[:3], b"\xff\xd8\xff")   # JPEG magic
 
-    def test_reference_save_is_throttled(self):
-        ck = "throttle_test"
+    def test_forced_save_overwrites_existing_ref(self):
+        # force=True is the manual-refresh path: it saves regardless of
+        # foreground / an already-present reference (item: base-grab clobber fix).
+        ck = "force_overwrite"
         self.assertTrue(vp.save_reference_image(_img(), config_key=ck, force=True))
-        # a second non-forced save within the interval is skipped
-        self.assertFalse(vp.save_reference_image(_img(), config_key=ck, force=False))
+        # a second FORCED save still overwrites (no once-per-config gate on force)
+        self.assertTrue(vp.save_reference_image(_img(), config_key=ck, force=True))
 
-    def test_non_forced_save_requires_active_game(self):
-        vp._last_ref_save = 0.0
-        orig = vp._game_active
+    def test_auto_save_when_game_and_league_foreground_and_no_ref(self):
+        # AUTO (force=False) base grab: has_game + League foreground + no ref -> SAVES.
+        orig_ga, orig_fg = vp._game_active, vp._league_is_foreground
         try:
-            vp._game_active = lambda: False    # lobby / desktop
-            self.assertFalse(vp.save_reference_image(_img(), config_key="g", force=False))
-            vp._game_active = lambda: True      # game live
-            self.assertTrue(vp.save_reference_image(_img(), config_key="g", force=False))
+            vp._game_active = lambda: True
+            vp._league_is_foreground = lambda: True
+            self.assertTrue(
+                vp.save_reference_image(_img(), config_key="auto_ok", force=False))
         finally:
-            vp._game_active = orig
+            vp._game_active, vp._league_is_foreground = orig_ga, orig_fg
+
+    def test_auto_save_skipped_when_league_not_foreground(self):
+        # The clobber regression: game running (has_game) but the operator
+        # alt-tabbed out (desktop is foreground). Must NOT save (would overwrite
+        # the calibrated base with a desktop frame).
+        orig_ga, orig_fg = vp._game_active, vp._league_is_foreground
+        try:
+            vp._game_active = lambda: True
+            vp._league_is_foreground = lambda: False   # alt-tabbed / desktop
+            self.assertFalse(
+                vp.save_reference_image(_img(), config_key="alt_tab", force=False))
+        finally:
+            vp._game_active, vp._league_is_foreground = orig_ga, orig_fg
+
+    def test_auto_save_skipped_when_ref_already_exists(self):
+        # Once-per-config: a reference already exists for this config -> no re-grab
+        # (retires the 60s cadence; a settings change makes a NEW config_key).
+        ck = "already_has_ref"
+        orig_ga, orig_fg = vp._game_active, vp._league_is_foreground
+        try:
+            vp._game_active = lambda: True
+            vp._league_is_foreground = lambda: True
+            # seed the reference via the manual (force) path
+            self.assertTrue(vp.save_reference_image(_img(), config_key=ck, force=True))
+            self.assertTrue(vp.reference_path(ck).exists())
+            # now the AUTO path must be a no-op (ref exists)
+            self.assertFalse(
+                vp.save_reference_image(_img(), config_key=ck, force=False))
+        finally:
+            vp._game_active, vp._league_is_foreground = orig_ga, orig_fg
+
+    def test_auto_save_skipped_when_no_game(self):
+        # has_game False (lobby / desktop) -> never save, even if League foreground.
+        orig_ga, orig_fg = vp._game_active, vp._league_is_foreground
+        try:
+            vp._game_active = lambda: False
+            vp._league_is_foreground = lambda: True
+            self.assertFalse(
+                vp.save_reference_image(_img(), config_key="no_game", force=False))
+        finally:
+            vp._game_active, vp._league_is_foreground = orig_ga, orig_fg
 
     def test_load_reference_missing_is_friendly(self):
         ref = vp.load_reference(config_key="nothing_here")
