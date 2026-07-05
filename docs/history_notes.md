@@ -225,6 +225,16 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-05 (ORUN2 slice 2 - snowball-elasticity Build Insights UI panel; LEDGER 788)
+
+Gemini-loop executor cycle. The deferred UI half of ORUN2 (backend was 9cd38c13). Commit `899b5f24`, pushed. ENGINE-IMPACT NONE (frontend; ADR-008 asset-hash reload, no RC restart / no Share / no DS).
+- NEW web/js/panels/snowball_elasticity.js (mount bi-snowball-mount, export renderSnowballElasticity) + .css (se- prefix) + web/data/ui_mock/snowball_elasticity.json + tests/test_snowball_elasticity_panel_dom.py; wired via build_insights.js import+dispatch + a "Snowball" tab/pane in index.html + a dashboard.css @import (panel-import parity).
+- Faithful mirror of duration_winrate.js but SR-ONLY (no mode bar / champ picker): 2 checkpoint blocks (10min/20min) x 5 signed gold-lead buckets behind_big..ahead_big; bar fill = Laplace-smoothed win%, value = raw win% (or ~smoothed% thin / "-" below min_bucket_n); per-checkpoint elasticity chip (snowball-prone/comeback-prone/elastic) = games-weighted ahead-vs-behind smoothed lean, DESCRIPTIVE not a win probability.
+GATE: 1 build subagent + verifier CONFIRM (targeted 74/74 + full RC suite 10725 passed/0 failed/2 skipped exit 0) + independent 5-phase UI-audit PASS 0 MUST-FIX + ui_recon visual proof clean (companion+desktop, 2 blocks x 5 bars, 0 page errors, no overflow). Live curl shape matched the fixture.
+DO NOT redo: ORUN2 FULLY SHIPPED (backend 9cd38c13 + UI 899b5f24); SR-only by design; next OPEN = ORUN3 (Aggregator B per-stat PGR strip) / ORUN4 (Aggregator D game-flow strip), then REFILL.
+
+---
+
 # 2026-07-05 (FIX-FIRST test red-state recovery - 3 residual clusters; LEDGER 787)
 
 Gemini-loop out-of-band executor cycle. Cleared the 3 residual red tests that LEDGER 786 / the ORUN2 finding deferred, before the ORUN2 UI panel slice proceeds. ENGINE-IMPACT NONE (test + doc only). Commit `4aac77de`, pushed.
