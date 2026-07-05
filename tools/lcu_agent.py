@@ -862,12 +862,29 @@ def capture_state() -> dict:
                 }
     # Capture Riot game_id from gameflow session when a game is live.
     # Used by Legion's DS calibration pipeline for post-game correlation.
+    state["cherry_augment_open"] = False
     if state["phase"] in ("GameStart", "InProgress"):
         gflow, _ = lcu_request("GET", "/lol-gameflow/v1/session")
         if isinstance(gflow, dict):
             gid = str(gflow.get("gameData", {}).get("gameId") or "")
             if gid and gid != "0":
                 state["game_id"] = gid
+            # D6 (2026-07-04): observe the Arena/Cherry augment picker so a
+            # force_scan can be bumped when it opens (seeds augment_shadow.jsonl
+            # / anvil_shadow.jsonl). Gated to Arena queues - the endpoint 404s
+            # elsewhere - reusing the SAME queue-id set as the arena_teams block
+            # above (1700/1710 legacy aliases, 1750 = live CHERRY). Derive the
+            # queue id from the gameflow session already in hand (the champ-
+            # select queue_id local is not in scope during InProgress).
+            _gq = gflow.get("gameData", {}).get("queue", {})
+            _gq_id = _gq.get("id", 0) if isinstance(_gq, dict) else 0
+            if _gq_id in (1700, 1710, 1750):
+                aug, _aug_err = lcu_request(
+                    "GET", "/lol-cherry-game-intra-event/v1/augments")
+                avail = aug.get("available") if isinstance(aug, dict) else None
+                # available[] non-empty == the augment picker is up.
+                state["cherry_augment_open"] = bool(
+                    isinstance(avail, list) and avail)
 
     # Priority 8 (2026-05-10): include LCU mastery for the local player as
     # soon as we're in a session-relevant phase. Cached at MASTERY_TTL_S so
@@ -1907,6 +1924,38 @@ _post_match_ingest_state = {
 # Minimum interval between ingest POSTs even if EndOfGame re-fires.
 POST_MATCH_INGEST_RATE_LIMIT_S = 10.0
 
+_APP_DIR_LCU = Path(__file__).resolve().parent.parent   # repo root (Legion 1-PC)
+
+# D6 edge-latch: bump force_scan exactly on the OFF->ON transition of the
+# Cherry augment picker, deduped within a round, re-armed when it closes so
+# each Arena round (1-4) fires once. Only the state-push thread touches this.
+_augment_scan_state = {"was_open": False}
+
+
+def _write_force_scan_marker() -> None:
+    """Bump data/force_scan.json (tmp+replace, standalone - the agent cannot
+    import core.polled_json). Payload matches dashboard/_writers.force_vision_scan
+    and core.hotkeys: {"force": <ts>}."""
+    p = _APP_DIR_LCU / "data" / "force_scan.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps({"force": time.time()}), encoding="utf-8")
+    tmp.replace(p)
+
+
+def _maybe_force_augment_scan(state: dict) -> None:
+    """Edge-triggered force_scan bump on the Cherry augment picker opening.
+    Fires ONLY on the False->True transition of state['cherry_augment_open'] so
+    the free-running ~20s vision scan is pulled forward to OCR the transient
+    augment panel before it closes (D6). Deduped while open; re-arms on close."""
+    open_now = bool(state.get("cherry_augment_open"))
+    was = _augment_scan_state["was_open"]
+    _augment_scan_state["was_open"] = open_now
+    if open_now and not was:
+        _write_force_scan_marker()
+        print("[augment-scan] force_scan bumped (Cherry picker opened)",
+              flush=True)
+
 # Persisted state path. Survives agent restart so a crash right at game end
 # doesn't cause the next boot to miss the ingest.
 INGEST_STATE_FILE = Path(os.environ.get(
@@ -2153,6 +2202,13 @@ def _state_push_loop():
                 _maybe_ingest_last_match(state)
             except Exception as e:  # noqa: BLE001
                 print(f"  [last-match-ingest err] {e}", flush=True)
+            # D6: edge-fire a force_scan when the Arena/Cherry augment picker
+            # opens so vision OCRs the transient panel before it closes.
+            # Same isolation as the neighbours - MUST NOT affect the push cadence.
+            try:
+                _maybe_force_augment_scan(state)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [augment-scan err] {e}", flush=True)
         except Exception as e:  # noqa: BLE001
             print(f"[state loop err] {e}", flush=True)
         # E7 TODO-1: wake early when the cmd loop drained a latency-sensitive
