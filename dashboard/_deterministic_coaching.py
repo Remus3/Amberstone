@@ -886,6 +886,13 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
             build_order = _full_build_order(champ, "aram")
         except Exception:  # noqa: BLE001
             build_order = []
+        # Tower HP drives the deterministic objective; owned-item count drives
+        # item_extra. Tower HP is vision-only INPUT state echoed on the coach
+        # dict (NOT a Haiku output field, so reading it is non-circular) and is
+        # often absent server-side, like wave_pct - build_block coerces fail-
+        # soft, so an absent / non-numeric value degrades objective to "".
+        my_tower_hp = coach.get("my_tower_hp") if isinstance(coach, dict) else None
+        enemy_tower_hp = coach.get("enemy_tower_hp") if isinstance(coach, dict) else None
         from core.aram_deterministic_coach import build_block  # lazy
         det_block = build_block(
             hp_pct=hp_pct,
@@ -898,6 +905,9 @@ def shadow_log_aram_coach(coach: dict, lc: dict | None, mode_key: str,
             next_item_remaining_gold=next_cost,
             antitank_hint=antitank_hint,
             heal_threat_line=heal_line,
+            owned_item_count=item_count,
+            my_tower_hp=my_tower_hp,
+            enemy_tower_hp=enemy_tower_hp,
         )
 
         live_block = _live_aram_block(live_path)
