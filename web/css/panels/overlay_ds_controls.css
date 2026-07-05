@@ -99,10 +99,11 @@
 .ovds-item {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs-sm, 18px);
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.2;
+  font-size: var(--fs-xs, 16px);
   font-weight: 600;
   color: rgba(255, 255, 255, 0.90);
 }
