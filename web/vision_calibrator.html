@@ -19,7 +19,7 @@
   #status { color:var(--dim); font-size:13px; margin-left:6px; }
   #hint { color:var(--dim); font-size:12px; margin-left:auto; }
   #wrap { padding:16px; }
-  #stage { position:relative; max-width:1280px; margin:0 auto;
+  #stage { position:relative; max-width:min(2560px, 94vw); margin:0 auto;
            background:#000; border:1px solid var(--line); user-select:none;
            touch-action:none; }
   #frame { display:block; width:100%; height:auto; pointer-events:none; }
@@ -142,22 +142,30 @@ document.addEventListener("keydown", (e) => {
   layout();
 });
 
+async function fetchFrame(source) {
+  const q = source ? ("?source=" + source) : "";
+  return (await fetch("/api/vision-frame" + q)).json();
+}
+
 async function loadFrame() {
   try {
-    const d = await (await fetch("/api/vision-frame")).json();
+    let src = "reference";
+    let d = await fetchFrame("reference");
+    if (!d.ok) { d = await fetchFrame(""); src = "live"; }
     if (!d.ok) { setStatus("frame unavailable: " + (d.error || "") + " (boxes still editable)"); recomputeScale(); layout(); return; }
     frameW = d.width || 1920; frameH = d.height || 1080;
     await new Promise((res) => { img.onload = res; img.onerror = res; img.src = "data:image/" + (d.format || "jpeg") + ";base64," + d.b64; });
     recomputeScale();
     layout();
-    setStatus("frame " + frameW + "x" + frameH + ", age " + d.age_s + "s, " + Object.keys(regions).length + " regions");
+    setStatus(src + " frame " + frameW + "x" + frameH + ", age " + d.age_s + "s, " + Object.keys(regions).length + " regions");
   } catch (err) { setStatus("frame load error"); }
 }
 
 async function loadRegions() {
   try {
-    const d = await (await fetch("/api/vision-regions")).json();
+    const d = await (await fetch("/api/vision-regions?source=profile")).json();
     regions = (d && d.regions) || {};
+    if (d && d.seeded) setStatus("seeded " + Object.keys(regions).length + " regions from legacy - drag onto the 2560 HUD + Save");
     render();
   } catch (err) { setStatus("regions load error"); }
 }
@@ -166,9 +174,9 @@ async function save() {
   try {
     const d = await (await fetch("/api/vision-regions", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ regions }),
+      body: JSON.stringify({ regions, base: [frameW, frameH], source: "profile" }),
     })).json();
-    setStatus(d.ok ? ("SAVED " + d.saved + " regions -> data/vision_regions.json") : ("SAVE FAILED: " + (d.error || "")));
+    setStatus(d.ok ? ("SAVED " + d.saved + " regions -> profile " + (d.config_key || "")) : ("SAVE FAILED: " + (d.error || "")));
   } catch (err) { setStatus("save error"); }
 }
 
