@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vision Region Calibrator</title>
+<style>
+  :root { --bg:#12151b; --panel:#1b2029; --line:#2c3440; --fg:#d7dde6;
+          --cyan:#6cf; --gold:#e8b84b; --dim:#8a94a3; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:14px/1.4 "Segoe UI",system-ui,sans-serif; }
+  #toolbar { position:sticky; top:0; z-index:10; display:flex; gap:10px;
+             align-items:center; padding:10px 14px; background:var(--panel);
+             border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  button { background:#232a35; color:var(--fg); border:1px solid var(--line);
+           border-radius:6px; padding:7px 13px; font-size:14px; cursor:pointer; }
+  button:hover { border-color:var(--cyan); color:var(--cyan); }
+  #status { color:var(--dim); font-size:13px; margin-left:6px; }
+  #hint { color:var(--dim); font-size:12px; margin-left:auto; }
+  #wrap { padding:16px; }
+  #stage { position:relative; max-width:1280px; margin:0 auto;
+           background:#000; border:1px solid var(--line); user-select:none;
+           touch-action:none; }
+  #frame { display:block; width:100%; height:auto; pointer-events:none; }
+  .region { position:absolute; border:1.5px solid var(--cyan);
+            background:rgba(102,204,255,0.08); cursor:move; }
+  .region.sel { border-color:var(--gold); background:rgba(232,184,75,0.12);
+                box-shadow:0 0 0 1px var(--gold); }
+  .region .lbl { position:absolute; top:-17px; left:-1px; white-space:nowrap;
+                 font-size:11px; color:var(--cyan); background:rgba(0,0,0,0.72);
+                 padding:0 4px; border-radius:3px; pointer-events:none; }
+  .region.sel .lbl { color:var(--gold); }
+  .region .handle { position:absolute; right:-5px; bottom:-5px; width:11px;
+                    height:11px; background:var(--gold); border:1px solid #000;
+                    border-radius:2px; cursor:nwse-resize; }
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <button id="reload">Reload frame</button>
+  <button id="save">Save regions</button>
+  <button id="add">Add region</button>
+  <button id="del">Delete selected</button>
+  <span id="status">loading...</span>
+  <span id="hint">drag to move &middot; gold handle to resize &middot; arrows nudge 1px (shift 10px)</span>
+</div>
+<div id="wrap"><div id="stage"><img id="frame" alt="vision frame"></div></div>
+<script>
+"use strict";
+const stage = document.getElementById("stage");
+const img = document.getElementById("frame");
+const statusEl = document.getElementById("status");
+let frameW = 1920, frameH = 1080, scale = 1, regions = {}, selected = null, drag = null;
+
+function setStatus(m) { statusEl.textContent = m; }
+
+function recomputeScale() {
+  const dispW = img.clientWidth || stage.clientWidth || 1280;
+  scale = dispW / frameW;
+  stage.style.height = (frameH * scale) + "px";
+}
+
+function layout() {
+  for (const el of stage.querySelectorAll(".region")) {
+    const [x1, y1, x2, y2] = JSON.parse(el.dataset.box);
+    el.style.left = (x1 * scale) + "px";
+    el.style.top = (y1 * scale) + "px";
+    el.style.width = ((x2 - x1) * scale) + "px";
+    el.style.height = ((y2 - y1) * scale) + "px";
+    el.querySelector(".lbl").textContent = el.dataset.name + " [" + [x1, y1, x2, y2].join(",") + "]";
+  }
+}
+
+function addBox(name, box) {
+  const el = document.createElement("div");
+  el.className = "region";
+  el.dataset.name = name;
+  el.dataset.box = JSON.stringify(box);
+  el.innerHTML = '<span class="lbl"></span><span class="handle"></span>';
+  el.addEventListener("pointerdown", onDown);
+  stage.appendChild(el);
+  return el;
+}
+
+function render() {
+  [...stage.querySelectorAll(".region")].forEach(e => e.remove());
+  selected = null;
+  for (const [name, box] of Object.entries(regions)) addBox(name, box);
+  layout();
+}
+
+function select(el) {
+  if (selected) selected.classList.remove("sel");
+  selected = el;
+  if (el) el.classList.add("sel");
+}
+
+function onDown(e) {
+  const el = e.currentTarget;
+  select(el);
+  drag = {
+    el,
+    resize: e.target.classList.contains("handle"),
+    sx: e.clientX, sy: e.clientY,
+    box: JSON.parse(el.dataset.box),
+  };
+  el.setPointerCapture(e.pointerId);
+  e.preventDefault();
+}
+
+stage.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const dx = Math.round((e.clientX - drag.sx) / scale);
+  const dy = Math.round((e.clientY - drag.sy) / scale);
+  let [x1, y1, x2, y2] = drag.box;
+  if (drag.resize) { x2 += dx; y2 += dy; }
+  else { const w = x2 - x1, h = y2 - y1; x1 += dx; y1 += dy; x2 = x1 + w; y2 = y1 + h; }
+  x1 = Math.max(0, x1); y1 = Math.max(0, y1);
+  if (x2 <= x1) x2 = x1 + 2;
+  if (y2 <= y1) y2 = y1 + 2;
+  const box = [x1, y1, x2, y2];
+  drag.el.dataset.box = JSON.stringify(box);
+  regions[drag.el.dataset.name] = box;
+  layout();
+});
+stage.addEventListener("pointerup", () => { drag = null; });
+
+document.addEventListener("keydown", (e) => {
+  if (!selected || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+  e.preventDefault();
+  const s = e.shiftKey ? 10 : 1;
+  let [x1, y1, x2, y2] = JSON.parse(selected.dataset.box);
+  if (e.key === "ArrowLeft") { x1 -= s; x2 -= s; }
+  else if (e.key === "ArrowRight") { x1 += s; x2 += s; }
+  else if (e.key === "ArrowUp") { y1 -= s; y2 -= s; }
+  else if (e.key === "ArrowDown") { y1 += s; y2 += s; }
+  x1 = Math.max(0, x1); y1 = Math.max(0, y1);
+  const box = [x1, y1, x2, y2];
+  selected.dataset.box = JSON.stringify(box);
+  regions[selected.dataset.name] = box;
+  layout();
+});
+
+async function loadFrame() {
+  try {
+    const d = await (await fetch("/api/vision-frame")).json();
+    if (!d.ok) { setStatus("frame unavailable: " + (d.error || "") + " (boxes still editable)"); recomputeScale(); layout(); return; }
+    frameW = d.width || 1920; frameH = d.height || 1080;
+    await new Promise((res) => { img.onload = res; img.onerror = res; img.src = "data:image/" + (d.format || "jpeg") + ";base64," + d.b64; });
+    recomputeScale();
+    layout();
+    setStatus("frame " + frameW + "x" + frameH + ", age " + d.age_s + "s, " + Object.keys(regions).length + " regions");
+  } catch (err) { setStatus("frame load error"); }
+}
+
+async function loadRegions() {
+  try {
+    const d = await (await fetch("/api/vision-regions")).json();
+    regions = (d && d.regions) || {};
+    render();
+  } catch (err) { setStatus("regions load error"); }
+}
+
+async function save() {
+  try {
+    const d = await (await fetch("/api/vision-regions", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ regions }),
+    })).json();
+    setStatus(d.ok ? ("SAVED " + d.saved + " regions -> data/vision_regions.json") : ("SAVE FAILED: " + (d.error || "")));
+  } catch (err) { setStatus("save error"); }
+}
+
+function addRegion() {
+  const name = (prompt("New region name (e.g. hp, cs, gold):") || "").trim();
+  if (!name) return;
+  const box = [100, 100, 220, 140];
+  regions[name] = box;
+  select(addBox(name, box));
+  layout();
+}
+
+function delSelected() {
+  if (!selected) { setStatus("nothing selected"); return; }
+  const name = selected.dataset.name;
+  delete regions[name];
+  selected.remove();
+  selected = null;
+  setStatus("removed " + name + " (not saved yet)");
+}
+
+document.getElementById("reload").onclick = loadFrame;
+document.getElementById("save").onclick = save;
+document.getElementById("add").onclick = addRegion;
+document.getElementById("del").onclick = delSelected;
+window.addEventListener("resize", () => { recomputeScale(); layout(); });
+
+(async () => { await loadRegions(); await loadFrame(); })();
+</script>
+</body>
+</html>
