@@ -29,6 +29,8 @@ _DET = {
         {"key": "A", "label": "Engage", "source_tag": "synth"},
         {"key": "B", "label": "Disengage", "source_tag": "synth"},
     ],
+    "item_extra": "omit",
+    "objective": "Poke the enemy tower; do not chase past T1 range without allies.",
 }
 
 _LIVE = {
@@ -39,6 +41,8 @@ _LIVE = {
     "item_build": "Blade of The Ruined King -> Kraken Slayer",
     "item_build_reasons": {"BorK": "on-hit DPS"},
     "choices": [{"key": "A", "label": "Poke", "source_tag": "haiku"}],
+    "item_extra": "Pot: Refillable",
+    "objective": "Defend your T1; dying to save it buys respawn time.",
 }
 
 
@@ -129,8 +133,8 @@ def test_malformed_inputs_no_raise(tmp_path):
     )
     assert rec is not None
     row = json.loads(_read_lines(target)[-1])
-    # Non-dict sides coerce to the all-empty six-field block (every column
-    # present, never raises) - NOT a bare {} - so the shadow row is uniform.
+    # Non-dict sides coerce to the all-empty block (every column present, never
+    # raises) - NOT a bare {} - so the shadow row is uniform across all keys.
     _empty = {
         "action": "",
         "fight_rule": "",
@@ -139,6 +143,8 @@ def test_malformed_inputs_no_raise(tmp_path):
         "item_build": "",
         "item_build_reasons": {},
         "choices": [],
+        "item_extra": "",
+        "objective": "",
     }
     assert row["deterministic"] == _empty
     assert row["live_haiku"] == _empty
@@ -198,3 +204,41 @@ def test_both_columns_carry_choices(tmp_path):
     assert "choices" in row["live_haiku"]
     assert row["deterministic"]["choices"] == _DET["choices"]
     assert row["live_haiku"]["choices"] == _LIVE["choices"]
+
+
+# ---------------------------------------------------------------------------
+# item_extra + objective columns (R78) - the Haiku-to-ZERO ARAM tail. Both the
+# deterministic block and the live Haiku artifact carry these two string fields,
+# so the shadow row must record them on BOTH sides for the operator to eyeball
+# before a live coach flip.
+# ---------------------------------------------------------------------------
+
+
+def test_norm_block_preserves_item_extra_and_objective():
+    out = _norm_block(
+        {"action": "POKE", "item_extra": "omit", "objective": "Defend your T1."}
+    )
+    assert out["item_extra"] == "omit"
+    assert out["objective"] == "Defend your T1."
+
+
+def test_norm_block_missing_item_extra_and_objective_become_empty():
+    out = _norm_block({"action": "HOLD"})
+    assert out["item_extra"] == ""
+    assert out["objective"] == ""
+
+
+def test_both_columns_carry_item_extra_and_objective(tmp_path):
+    target = tmp_path / "aram_coach_shadow.jsonl"
+    lc = {"champion": "Kalista", "enemy_team": ["Ashe", "Annie"]}
+
+    rec = log_aram_coach(_DET, _LIVE, lc, "aram", path=target, now_iso=_NOW)
+    assert rec is not None
+    row = json.loads(_read_lines(target)[-1])
+    for col in ("deterministic", "live_haiku"):
+        assert "item_extra" in row[col]
+        assert "objective" in row[col]
+    assert row["deterministic"]["item_extra"] == _DET["item_extra"]
+    assert row["deterministic"]["objective"] == _DET["objective"]
+    assert row["live_haiku"]["item_extra"] == _LIVE["item_extra"]
+    assert row["live_haiku"]["objective"] == _LIVE["objective"]

@@ -5,16 +5,16 @@ PURPOSE
     Assemble the WHOLE deterministic per-tick ARAM coach block - the same
     fields the live ARAM Haiku call writes to ``data/aram_coaching_data.json``
     (``action`` / ``fight_rule`` / ``risk`` / ``reset_item`` / ``item_build`` /
-    ``item_build_reasons`` plus ``choices``, the A/B array) - from the Stage 1
-    pure rules plus the existing ARAM build / hint surfaces. ``choices`` is
-    derived from the block's own action + fight_rule via the SAME
-    core.coach_choices synthesizer the served chip UI uses. This is the
-    assembler the operator can later
+    ``item_build_reasons`` / ``item_extra`` / ``objective`` plus ``choices``,
+    the A/B array) - from the Stage 1 pure rules plus the existing ARAM build /
+    hint surfaces. ``choices`` is derived from the block's own action +
+    fight_rule via the SAME core.coach_choices synthesizer the served chip UI
+    uses. This is the assembler the operator can later
     eyeball, shadow-logged side-by-side with the live Haiku block; the live
     coach FLIP is a separate, operator-gated stage. This module changes NO
     served output and makes NO network call.
 
-    The six fields come from:
+    The fields come from:
       * action              <- core.aram_action_rule.decide_action(...)
       * fight_rule / risk   <- core.aram_fight_risk (over the enemy-CC threat
                                line / ranked entries)
@@ -23,6 +23,11 @@ PURPOSE
                                heal-threat reason strings folded into the map
       * reset_item          <- the ARAM-no-recall fact anchored to the next
                                build item
+      * item_extra          <- the ARAM "7th-item else omit" filler, resolved
+                               from the owned-item count (declines to fabricate
+                               a Pot/Shard consumable pick)
+      * objective           <- a deterministic tower-HP state machine over
+                               my_tower_hp / enemy_tower_hp
 
 PURE + PARTIAL-READ + FAIL-SOFT (this is the design, not a bug)
     ``build_block`` takes PRIMITIVES (so it is trivially unit-testable and the
@@ -236,6 +241,94 @@ def _build_reasons(
     return out
 
 
+def _safe_item_extra(owned_item_count: object) -> str:
+    """The ARAM "7th-item else omit" filler, deterministically resolved.
+
+    The live Haiku emits "omit" when a 7th legendary already fills the slot,
+    else a "Pot: X" / "Shard: X" consumable pick (coaches/aram_coach.py:332).
+    Our deterministic build path caps at _MAX_BUILD_ITEMS (6) and never emits a
+    7th item, and picking a SPECIFIC consumable is a judgment call we DECLINE
+    rather than fabricate (do-not-flip-blind: a wrong precompute is worse than a
+    Haiku call). So the safe, never-misleading resolution is: a known
+    non-negative owned-item count -> the literal "omit" (the exact value the
+    live coach itself emits for this state); no count signal / garbage /
+    negative -> "" (honest empty, same as every other absent-input field here).
+    Never raises.
+    """
+    if not _has_usable_number(owned_item_count):
+        return ""
+    try:
+        count = int(float(owned_item_count))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return ""
+    return "omit" if count >= 0 else ""
+
+
+# objective tower-HP thresholds (percent; 0 = tower destroyed, <=25 = in danger).
+_TOWER_DEAD = 0.0
+_TOWER_DANGER = 25.0
+
+# The deterministic ARAM objective lines, one per tower-HP state. Faithful to
+# the coaches/aram_coach.py:295-298 OBJECTIVE prompt (defend your T1 / push once
+# enemy T1 falls / force the Nexus once the inhibitor is open). ARAM exposes one
+# nearest-tower HP per side, so these key on my_tower_hp + enemy_tower_hp only.
+_OBJ_ENEMY_DEAD = (
+    "Enemy tower down - push to their base; group only with a numbers lead."
+)
+_OBJ_MY_DEAD = "Your tower fell - hold the inhibitor; group up, never solo-push."
+_OBJ_MY_DANGER = "Defend your tower - a death to save it (1min+ respawn) is worth it."
+_OBJ_ENEMY_LOW = (
+    "Enemy tower is low - siege it with your team; do not dive without numbers."
+)
+_OBJ_ENEMY_ALIVE = "Poke the enemy tower; do not chase past T1 range without allies."
+_OBJ_MY_HEALTHY = "Hold and poke; wait for a pick before you commit."
+
+
+def _coerce_tower_hp(value: object) -> float | None:
+    """Coerce a tower-HP percent to a float, or None when it is not usable."""
+    if not _has_usable_number(value):
+        return None
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _safe_objective(my_tower_hp: object, enemy_tower_hp: object) -> str:
+    """Deterministic ARAM objective from the two nearest-tower HP percents.
+
+    Priority (first match wins), faithful to the OBJECTIVE prompt:
+      1. enemy T1 destroyed             -> push to their base
+      2. your T1 destroyed              -> hold the inhibitor, group up
+      3. your T1 in danger (<=25)       -> defend it (a death to save it is worth it)
+      4. enemy T1 low (<=25)            -> siege it with the team
+      5. enemy T1 healthy               -> poke phase, do not chase past T1
+      6. only your T1 known + healthy   -> hold and poke for a pick
+    Neither side usable -> "" (tower HP is vision-only and often absent
+    server-side, like wave_pct). The defensive branches (2, 3) OUTRANK the
+    enemy-tower branches so that losing your own tower - which opens your base -
+    is always the higher priority. Never raises.
+    """
+    try:
+        my_hp = _coerce_tower_hp(my_tower_hp)
+        en_hp = _coerce_tower_hp(enemy_tower_hp)
+        if my_hp is None and en_hp is None:
+            return ""
+        if en_hp is not None and en_hp <= _TOWER_DEAD:
+            return _OBJ_ENEMY_DEAD
+        if my_hp is not None and my_hp <= _TOWER_DEAD:
+            return _OBJ_MY_DEAD
+        if my_hp is not None and my_hp <= _TOWER_DANGER:
+            return _OBJ_MY_DANGER
+        if en_hp is not None and en_hp <= _TOWER_DANGER:
+            return _OBJ_ENEMY_LOW
+        if en_hp is not None:
+            return _OBJ_ENEMY_ALIVE
+        return _OBJ_MY_HEALTHY
+    except Exception:  # noqa: BLE001 - fail-soft contract: never raises
+        return ""
+
+
 def build_block(
     hp_pct: object = None,
     wave_pct: object = None,
@@ -249,6 +342,9 @@ def build_block(
     next_item_remaining_gold: object = None,
     antitank_hint: object = None,
     heal_threat_line: object = None,
+    owned_item_count: object = None,
+    my_tower_hp: object = None,
+    enemy_tower_hp: object = None,
 ) -> dict:
     """Assemble the deterministic ARAM coach block (the six live-coach fields).
 
@@ -279,11 +375,20 @@ def build_block(
         next_item_remaining_gold: gold remaining to afford next_item_name.
         antitank_hint: the ds_antitank_hint "hint" string. Folded into reasons.
         heal_threat_line: the heal_threat_callout "line" string. Folded in.
+        owned_item_count: count of COMPLETED items the player owns. Drives
+            item_extra: a known non-negative count -> "omit"; absent /
+            garbage / negative -> "".
+        my_tower_hp: your nearest-tower HP percent 0..100 (vision-only; null
+            when not visible). Drives objective.
+        enemy_tower_hp: enemy nearest-tower HP percent 0..100 (vision-only).
+            Drives objective. Both towers absent -> objective "".
 
     Returns:
         dict with exactly the keys action, fight_rule, risk, reset_item,
-        item_build, item_build_reasons, and choices (the A/B array derived
-        from action + fight_rule; [] when no binary verb maps).
+        item_build, item_build_reasons, choices (the A/B array derived from
+        action + fight_rule; [] when no binary verb maps), item_extra (the
+        ARAM 7th-item "omit" filler), and objective (the deterministic
+        tower-HP state-machine line; "" when no tower HP is known).
     """
     try:
         # Compute action + fight_rule ONCE so choices reuses them without
@@ -302,6 +407,8 @@ def build_block(
                 item_build_reasons, antitank_hint, heal_threat_line
             ),
             "choices": _safe_choices(action, fight_rule),
+            "item_extra": _safe_item_extra(owned_item_count),
+            "objective": _safe_objective(my_tower_hp, enemy_tower_hp),
         }
     except Exception:  # noqa: BLE001 - total fail-soft: empty block
         return {
@@ -312,6 +419,8 @@ def build_block(
             "item_build": "",
             "item_build_reasons": {},
             "choices": [],
+            "item_extra": "",
+            "objective": "",
         }
 
 
