@@ -308,6 +308,26 @@ def test_phase_strip_css_rules_present():
     assert "var(--signal-bad" in css
 
 
+def test_phase_strip_container_not_clipped():
+    """R81 MF-1 regression: the .spike-curve-container base rule must use
+    min-height (not a hard height) so the appended phase strip is REVEALED,
+    not clipped by overflow:hidden. A bare `height: 40px` here would swallow
+    the ~28px strip that renders below the 40px SVG (the shipped-then-fixed
+    audit bug). Fail-soft (no strip) still holds the intrinsic 40px slot."""
+    css = _read(CSS_PATH)
+    m = re.search(r"\.spike-curve-container\s*\{(.*?)\}", css, re.DOTALL)
+    assert m, ".spike-curve-container base rule not found"
+    block = m.group(1)
+    assert "min-height" in block, (
+        "container must be min-height so the phase strip grows the box"
+    )
+    # A bare `height: 40px` in the BASE rule (min-height excluded via the
+    # negative lookbehind) + overflow:hidden clips the strip.
+    assert re.search(r"(?<!min-)height:\s*40px", block) is None, (
+        "container base rule hard-pins height:40px - clips the R81 phase strip"
+    )
+
+
 def test_phase_strip_failsoft_returns_empty():
     """_phaseStrip must fail-soft (return "") on null / malformed phases so
     an old / cached payload renders NO strip and the sparkline is unchanged."""
