@@ -62,39 +62,63 @@ def test_bad_numeric_inputs_neutralish():
 
 
 # --- archetype curve shape ------------------------------------------------
+#
+# These test the CURVE per archetype, which is spec F's actual contract. They
+# force the archetype via a stub instead of naming a live champion, because
+# get_archetype_for consults the operator's persisted per-champion overrides
+# (source "user_cs", a gitignored data file). Those overrides are present in
+# the live checkout but absent in a fresh worktree, so a champion-named
+# assertion is non-hermetic: e.g. Lulu is user-classified "carry" on Legion,
+# which flips test_enchanter under the full suite while it passes in a clean
+# worktree. Stubbing the archetype removes that machine dependency entirely.
 
-def test_assassin_scales_up_with_time():
-    # Zed -> assassin. Late game weight must exceed early game.
-    early = capability_weight("Zed", game_time_s=0)
-    late = capability_weight("Zed", game_time_s=1800)
+def _force_archetype(monkeypatch, primary):
+    """Pin core.zoi_capability.archetype_of to a fixed primary archetype so the
+    curve is exercised independent of live user_cs classification AND of the
+    DDragon known-champion oracle (both of which archetype_of consults)."""
+    import core.zoi_capability as zc
+
+    monkeypatch.setattr(zc, "archetype_of", lambda champ: primary)
+
+
+def test_assassin_scales_up_with_time(monkeypatch):
+    # Assassins scale: late game weight must exceed early game.
+    _force_archetype(monkeypatch, "assassin")
+    early = capability_weight("AnyChamp", game_time_s=0)
+    late = capability_weight("AnyChamp", game_time_s=1800)
     assert late > early
 
 
-def test_carry_scales_up_with_time():
-    # Jinx -> carry. Late game weight must exceed early game.
-    early = capability_weight("Jinx", game_time_s=0)
-    late = capability_weight("Jinx", game_time_s=1800)
+def test_carry_scales_up_with_time(monkeypatch):
+    # Carries scale: late game weight must exceed early game.
+    _force_archetype(monkeypatch, "carry")
+    early = capability_weight("AnyChamp", game_time_s=0)
+    late = capability_weight("AnyChamp", game_time_s=1800)
     assert late > early
 
 
-def test_tank_flat_or_frontloaded():
-    # Malphite -> tank. Tanks frontload: late must NOT exceed early.
-    early = capability_weight("Malphite", game_time_s=0)
-    late = capability_weight("Malphite", game_time_s=1800)
+def test_tank_flat_or_frontloaded(monkeypatch):
+    # Tanks frontload: late must NOT exceed early.
+    _force_archetype(monkeypatch, "tank")
+    early = capability_weight("AnyChamp", game_time_s=0)
+    late = capability_weight("AnyChamp", game_time_s=1800)
     assert late <= early
 
 
-def test_enchanter_flat_or_frontloaded():
-    # Lulu -> enchanter. Frontloaded: late must NOT exceed early.
-    early = capability_weight("Lulu", game_time_s=0)
-    late = capability_weight("Lulu", game_time_s=1800)
+def test_enchanter_flat_or_frontloaded(monkeypatch):
+    # Enchanters frontload: late must NOT exceed early.
+    _force_archetype(monkeypatch, "enchanter")
+    early = capability_weight("AnyChamp", game_time_s=0)
+    late = capability_weight("AnyChamp", game_time_s=1800)
     assert late <= early
 
 
-def test_assassin_late_beats_tank_late():
+def test_assassin_late_beats_tank_late(monkeypatch):
     # By late game an assassin's scaling weight tops a tank's flattened weight.
-    assassin_late = capability_weight("Zed", game_time_s=1800)
-    tank_late = capability_weight("Malphite", game_time_s=1800)
+    _force_archetype(monkeypatch, "assassin")
+    assassin_late = capability_weight("AnyChamp", game_time_s=1800)
+    _force_archetype(monkeypatch, "tank")
+    tank_late = capability_weight("AnyChamp", game_time_s=1800)
     assert assassin_late > tank_late
 
 
