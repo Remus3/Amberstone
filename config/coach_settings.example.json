@@ -3,5 +3,18 @@
   "debounce_seconds": 15,
   "timeout": 20,
   "max_tokens": 700,
-  "tft_pbe": true
+  "tft_pbe": true,
+  "obs": {
+    "enabled": false,
+    "host": "127.0.0.1",
+    "port": 4455,
+    "password": "",
+    "source_name": "RC State",
+    "interval_s": 2.0,
+    "frame_source": false,
+    "frame_source_name": "Game Capture",
+    "frame_timeout_s": 1.5,
+    "frame_width": 0,
+    "frame_max_age_s": 3.0
+  }
 }
