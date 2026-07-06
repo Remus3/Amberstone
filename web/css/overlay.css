@@ -410,10 +410,19 @@ body[data-shell="overlay"] .bm-row.bm-knobs {
  * Tunable live via the SZ slider; adjust --ovx-w here if the operator wants a
  * different band width. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
-  --ovx-w: 350px;
+  /* BATCH A (2026-07-06): widened 350 -> 380 so a full 7-icon build row fits on
+   * one line (the 3-named-row redesign caps rows at 7; boots do not cost a slot). */
+  --ovx-w: 380px;
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
   flex-wrap: nowrap;
+}
+/* BATCH A (2026-07-06): drop the "BUILD" pane-head title bar in-game (operator:
+ * "knows what it is; wastes vertical space"). The widget chrome already labels
+ * it; the dashboard surface keeps its head. Reclaims a full row of height in the
+ * cramped in-game build widget. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .am-pane-head {
+  display: none !important;
 }
 
 /* 4c. DRAG HANDLE - a small gold-dot grab bar (top-right). data-rc-zone makes
