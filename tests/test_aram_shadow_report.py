@@ -147,6 +147,42 @@ def test_summarize_choices_four_rows():
     assert out["label_agreement_rate"] == 1.0
 
 
+def test_summarize_choices_instrumented_excludes_pre_instrumentation_rows():
+    # Rows logged BEFORE the choices instrumentation landed have NO "choices"
+    # key in the deterministic block; they must not drag down the current-code
+    # coverage read. det_coverage_rate (all non-dead) counts them as misses;
+    # det_coverage_rate_instrumented counts only rows the current code touched.
+    rows = [
+        # 2 pre-instrumentation rows (no det choices key at all)
+        {"deterministic": {"action": "POKE"},
+         "live_haiku": {"action": "TRADE"}},
+        {"deterministic": {"action": "HOLD"},
+         "live_haiku": {"action": "HOLD"}},
+        # 2 instrumented rows, both offering choices
+        {"deterministic": {"choices": [{"label": "Poke"}]},
+         "live_haiku": {"action": "TRADE", "choices": []}},
+        {"deterministic": {"choices": [{"label": "Hold"}]},
+         "live_haiku": {"action": "HOLD", "choices": []}},
+    ]
+    out = rep.summarize_choices(rows)
+    assert out["non_dead_total"] == 4
+    assert out["det_present"] == 2
+    assert out["det_instrumented"] == 2
+    # raw rate is dragged down by the 2 pre-instrumentation rows
+    assert out["det_coverage_rate"] == round(2 / 4, 4)
+    # instrumented rate reflects current-code coverage (2/2)
+    assert out["det_coverage_rate_instrumented"] == 1.0
+
+
+def test_summarize_choices_instrumented_zero_safe():
+    # No instrumented rows at all -> rate is 0.0, never a ZeroDivisionError.
+    rows = [{"deterministic": {"action": "POKE"},
+             "live_haiku": {"action": "TRADE"}}]
+    out = rep.summarize_choices(rows)
+    assert out["det_instrumented"] == 0
+    assert out["det_coverage_rate_instrumented"] == 0.0
+
+
 # ---- 8. summarize_field_presence ----
 
 
