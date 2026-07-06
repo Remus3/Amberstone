@@ -1,0 +1,124 @@
+{
+  "mode": "sr",
+  "grid_hint": null,
+  "_comment": "13-district SR grid (operator-approved decision 2). Coordinate frame: box-fraction [0,1], y-down, UNFLIPPED (blue base bottom-left). Keeps the legacy _action_quadrant convention (core/zoi_influence.py:177-203): the base-to-base anti-diagonal corridor is 'river' (half-width 0.16), top_river y<0.5 / bot_river y>=0.5. Array order = point-in-polygon priority (first match wins).",
+  "districts": [
+    {
+      "id": "blue_base",
+      "label": "Blue base",
+      "role": "base",
+      "poly": [[0.0, 0.82], [0.18, 0.82], [0.18, 1.0], [0.0, 1.0]],
+      "adjacent": ["bot_river", "jungle_bot_blue", "bot_lane"],
+      "shortcuts": [],
+      "legacy_label": "ally base"
+    },
+    {
+      "id": "red_base",
+      "label": "Red base",
+      "role": "base",
+      "poly": [[0.82, 0.0], [1.0, 0.0], [1.0, 0.18], [0.82, 0.18]],
+      "adjacent": ["top_river", "jungle_top_red", "top_lane"],
+      "shortcuts": [],
+      "legacy_label": "enemy base"
+    },
+    {
+      "id": "baron_pit",
+      "label": "Baron pit",
+      "role": "river",
+      "poly": [[0.70, 0.24], [0.76, 0.30], [0.70, 0.36], [0.64, 0.30]],
+      "adjacent": ["top_river"],
+      "shortcuts": ["jungle_top_blue", "jungle_top_red"],
+      "legacy_label": "top river"
+    },
+    {
+      "id": "dragon_pit",
+      "label": "Dragon pit",
+      "role": "river",
+      "poly": [[0.30, 0.64], [0.36, 0.70], [0.30, 0.76], [0.24, 0.70]],
+      "adjacent": ["bot_river"],
+      "shortcuts": ["jungle_bot_blue", "jungle_bot_red"],
+      "legacy_label": "bot river / dragon"
+    },
+    {
+      "id": "top_river",
+      "label": "Top river",
+      "role": "river",
+      "poly": [[0.34, 0.50], [0.66, 0.50], [1.0, 0.16], [0.68, 0.16]],
+      "adjacent": ["mid_lane", "baron_pit", "jungle_top_blue", "jungle_top_red", "red_base"],
+      "shortcuts": ["top_lane"],
+      "legacy_label": "top river"
+    },
+    {
+      "id": "bot_river",
+      "label": "Bot river",
+      "role": "river",
+      "poly": [[0.66, 0.50], [0.34, 0.50], [0.0, 0.84], [0.32, 0.84]],
+      "adjacent": ["mid_lane", "dragon_pit", "jungle_bot_blue", "jungle_bot_red", "blue_base"],
+      "shortcuts": ["bot_lane"],
+      "legacy_label": "bot river / dragon"
+    },
+    {
+      "id": "mid_lane",
+      "label": "Mid lane",
+      "role": "mid",
+      "poly": [[0.333, 0.333], [0.667, 0.333], [0.667, 0.667], [0.333, 0.667]],
+      "adjacent": ["top_river", "bot_river", "jungle_top_blue", "jungle_bot_red"],
+      "shortcuts": ["baron_pit", "dragon_pit"],
+      "legacy_label": "mid lane"
+    },
+    {
+      "id": "top_lane",
+      "label": "Top lane",
+      "role": "lane",
+      "poly": [[0.0, 0.0], [0.62, 0.0], [0.62, 0.16], [0.16, 0.16], [0.16, 0.50], [0.0, 0.50]],
+      "adjacent": ["jungle_top_blue", "jungle_bot_blue", "red_base"],
+      "shortcuts": ["top_river", "baron_pit"],
+      "legacy_label": "top lane / topside"
+    },
+    {
+      "id": "bot_lane",
+      "label": "Bot lane",
+      "role": "lane",
+      "poly": [[1.0, 1.0], [0.38, 1.0], [0.38, 0.84], [0.84, 0.84], [0.84, 0.50], [1.0, 0.50]],
+      "adjacent": ["jungle_bot_red", "jungle_top_red", "blue_base"],
+      "shortcuts": ["bot_river", "dragon_pit"],
+      "legacy_label": "bot lane / botside"
+    },
+    {
+      "id": "jungle_bot_blue",
+      "label": "Blue botside jungle",
+      "role": "jungle",
+      "poly": [[0.0, 0.50], [0.20, 0.50], [0.20, 0.64], [0.0, 0.82]],
+      "adjacent": ["blue_base", "bot_river", "top_lane"],
+      "shortcuts": ["dragon_pit"],
+      "legacy_label": "ally botside"
+    },
+    {
+      "id": "jungle_top_red",
+      "label": "Red topside jungle",
+      "role": "jungle",
+      "poly": [[0.80, 0.50], [1.0, 0.50], [1.0, 0.18], [0.80, 0.36]],
+      "adjacent": ["red_base", "top_river", "bot_lane"],
+      "shortcuts": ["baron_pit"],
+      "legacy_label": "enemy topside"
+    },
+    {
+      "id": "jungle_top_blue",
+      "label": "Blue topside jungle",
+      "role": "jungle",
+      "poly": [[0.16, 0.16], [0.56, 0.16], [0.56, 0.56], [0.16, 0.56]],
+      "adjacent": ["top_lane", "mid_lane", "top_river"],
+      "shortcuts": ["baron_pit"],
+      "legacy_label": "top lane / topside"
+    },
+    {
+      "id": "jungle_bot_red",
+      "label": "Red botside jungle",
+      "role": "jungle",
+      "poly": [[0.44, 0.44], [0.84, 0.44], [0.84, 0.84], [0.44, 0.84]],
+      "adjacent": ["bot_lane", "bot_river", "mid_lane"],
+      "shortcuts": ["dragon_pit"],
+      "legacy_label": "bot lane / botside"
+    }
+  ]
+}

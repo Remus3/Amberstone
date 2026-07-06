@@ -1,0 +1,6 @@
+{
+  "mode": "tft",
+  "grid_hint": null,
+  "_comment": "TFT has no spatial minimap grid by design: districts null makes load_grid('tft') return None (never raises); district_of still returns the stub fallback id.",
+  "districts": null
+}
