@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-07-06 (OUT-OF-GAME - gemini-headless loop R86 DS sweep; commit `e4ce737b`, LEDGER 807, ORCH R86)
+
+Gemini-directed executor cycle, operator away. mode_key=client (no live game). Directive: the R80/R85-foreshadowed item-keyed enemy-AS aura sweep (Frozen Heart 3110). Orchestrator single-thread (one indivisible engine slice - ehp/effects/init interdependent, NOT a disjoint fanout); read-only verifier gate pre-commit. Tier-2 (ENGINE bump).
+- **R86 SHIPPED (`e4ce737b`), ENGINE 1.181.0 -> 1.182.0.** GAP CONFIRMED: Frozen Heart "Winter's Caress" -20% nearby enemy AS (DDragon 16.13.1) was defensive_only NOTE-only -> ZERO EHP credit. A 20% enemy AS slow = 20% less incoming basic-attack RATE = same physical-EHP effect as R80's per-hit AA-DR, sourced from rate not magnitude. NEW `ItemEffect.enemy_attack_speed_slow` (0.20 x 3 map variants) + `ehp.item_enemy_as_slow_multiplier` + physical-only compute_ehp fold behind default-OFF `assume_item_enemy_as_slow`. Distinct item-keyed lane from R77 crit-DR + R80 AA-DR (never cross-credit; stack multiplicatively). Byte-identical OFF; armed = +11.1% phys EHP.
+- **Verification:** TDD RED-first (18 tests) + DSV9 end-append guard co-fix; 104 test files re-pinned 1.182.0. DS 8060 green; verifier CONFIRM 6/6; Share --check green 413; DS :8893 live 1.182.0. RC 11191 passed / 4 failed (all PRE-EXISTING Legion-local: archetype-axis x3 + overlay-d2, touch nothing R86). Bump co-fixes: HZ-B stamp x6 (byte-exact string-replace after hitting + reverting the `--static` footgun) + DAEMON_SLAYER doc-drift. Ships DEFAULT-OFF; live flip -> LIVE_GATED B47.
+- **GOTCHA (recurring):** the HZ-B `--static --mode all` regen is a footgun (68k-line roster deletion); the correct stamp bump for a default-OFF seam is a byte-exact string-replace of the single `engine_version` literal in the 6 build_orders JSONs. Memory `reference_hz_precompute_patch_regen` updated with the shortcut - READ it before any HZ-B regen.
+
+**NEXT SESSION:** the item-keyed incoming-physical-DR family is now R77 crit-DR + R80 AA-DR + R86 AS-slow-aura - a future DS refute rotation needs a genuinely NEW item mechanic, NOT one of these three. R86's flip is live-gated (B47, default-OFF pending an AA-heavy-comp eyeball). **DO NOT redo:** Frozen Heart 3110 enemy-AS aura is SHIPPED.
+
+---
+
 # 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `34c46d44`, LEDGER 802)
 
 Operator directive: advance the NO-LLM north star (Arena det-choices slice) AND fold it + adjacent items into the gemini-headless doctrine + skill, then /done, then continue headless via ahk-Gemini. mode_key=client (no live game) throughout. Inline/foreground (TDD, single-thread - 5 tightly-coupled files, interdependent keysets; verifier not needed per R7). DS untouched; no frozen file.
@@ -23,14 +34,3 @@ Headless loop, operator away. mode_key=client (no live game) throughout, so pure
 - **BACKLOG: Arena det choices A/B scoped FUTURE** - symmetric keyset change across 3 test files + needs live-Arena accrual to validate.
 
 **NEXT SESSION:** the readily-shippable headless north-star work is done or live-gated. Options: (1) Arena det-choices slice (needs a live Arena game to validate + symmetric keyset update), (2) the client-side CV vision atlas (the bigger SECOND NO-LLM program), (3) a DS schema-lift (operator-gated). **DO NOT redo:** the ARAM choices lever is CODE-COMPLETE (the 36% was a stale-log artifact - do not re-chase it); `ae579ef0` is shipped + CI green.
-
----
-
-# 2026-07-06 (OUT-OF-GAME - /live-gated-resync #2 + HEXCORE galaxy update+expand + /repo-insights; commit `940cc4b1`, LEDGER 800)
-
-Operator-chained command run: `/live-gated-resync` workflow -> update+expand HEXCORE -> `/repo-insights` -> `/done`. Docs-only, no code/engine/DS/frozen touched, no restart. mode_key=client (no live game) throughout.
-- **LIVE_GAME_GATED_SYNC.md rebuilt (1709 lines; 53-agent workflow, audit pass).** open_now=112 (+11 / -0), arena_needed=YES (D2-D6,D9), est 4 sessions; new Section H CV/OBS (H1-H6); incumbent-hysteresis (`32132f22`/`6f5c27a6`) recorded as the 2nd wired-on-live seam alongside DSP11; stale rank.py:632 cite -> :686; live-flip ledger preserved + one UNDATED (SYNC) resync #2 entry prepended.
-- **HEXCORE_offline.html + HEXCORE.html data-synced (both, item-764 precedent).** Stats panel (commits 3176, head e27c5a3a, 2026-07-06, 5 local branches), ENGINE 1.179.0 -> 1.181.0 tooltips, +4 RAW nodes (ZOI district-macro hub + macro-decision tree + player-snapshot card + snowball model) + 7 edges + 21 DUST leaves = all 25 new source files since the 764 baseline; prose 139 nodes / 277 dust. Verified: referential integrity clean, 0 non-ASCII, both `<script>` blocks node --check green. Enhancements stayed offline-only per 764.
-- **repo-insights** at `~/.claude/usage-data/repo-insights-2026-07-06.html` (window 2026-06-06..07-06, 1432 commits, 174 ledger items). Ephemeral, not committed.
-
-**NEXT SESSION:** the LIVE_GAME_GATED_SYNC drain plan is 4 live sessions (practice SR -> real SR -> ARAM Mayhem -> Arena); arena items D2-D6,D9 NEED a live Arena game. Or run `/live-gated-drain` while playing, else pick the top ROADMAP `NEXT`. **DO NOT redo:** the sync doc + both HEXCORE files are shipped in `940cc4b1`; hexcore stats/ENGINE 1.181/nodes are current as of 2026-07-06.
