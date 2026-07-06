@@ -235,6 +235,20 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-06 (OUT-OF-GAME - UI_OVERLAY_REDESIGN BATCH B + C + DS PD->Kraken stability fix + B45/B46 EHP flips + incumbent frontend wiring; 6 commits `17359ca9`..`32132f22`, LEDGER 799)
+
+Continued the 797/798 spec out-of-game (liveclient empty throughout); inline/foreground; no frozen file touched. Six scoped commits, all pushed.
+- **PGL titles centered (`17359ca9`).** PARTY + My Top 8 flipped from s162 rank-col grid-anchor to plain text-align:center (header.css, hot-reloads).
+- **BATCH B canvas lock (`c51108e1`).** Root-caused the 4 canvas symptoms (#1/#2/#4/#5) to ONE bug - main.js injected the app-region drag strip on the OVERLAY window, so ACTIVE-mode drag moved the whole fullscreen overlay + desynced every widget. Fix: don't inject it on the overlay (companion keeps it). #3 already done (item 567). Stale w-threat test -> w-enemyspells; 309/309.
+- **BATCH C polish (`7f6d034c`).** Gauges 2+1 L-shape -> one horizontal row (+widened w-objgauges); stats default-role now `_detectRole` (SR lane / ARAM champ-class, not hardcoded MID); enemy-chip min-width+wrap (no ellipsis clip); one --ovx-panel-border token. 45 tests.
+- **DS PD->Kraken Tier-2 (`6f5c27a6`).** (a) rank.py item_id tiebreak (module-level `_rank_sort_key`, all 4 branches -> cross-restart stable); (b) `_pick_top_safe` + plan_build_order optional incumbent+3% hysteresis (additive). 13 tests; DS 8039; Share synced; `:8893` restarted (fix-a LIVE); NO ENGINE bump.
+- **B45/B46 EHP flip ON (`90a74972`).** compute_ehp `assume_item_crit_dr` + `assume_item_aa_dr` defaults False->True; Steelcaps+Randuin tank = +23.8% physical EHP (magical untouched). Updated the 2 default-OFF guards. 8126 tests; Share synced; `:8893` restarted (LIVE). ENGINE-default flip lane (NOT the /rank caller-default).
+- **Incumbent frontend wiring (`32132f22`) - fix-b LIVE.** /api/build-order forwards `incumbent`; plan_build_order drops boots/owned; active_match.js META+ULT + build_order.js echo their champ-scoped displayed order (champ_select via fetchBuildOrder). 20 tests; RC reloaded (pid 28708); smoke-test OK.
+
+**NEXT SESSION (mostly LIVE-VERIFY):** (1) In a real game confirm the DS-stability "across a level tick" (the top build pick should NOT flip PD->Kraken on a level-up when two items are within ~3%); eyeball the B45/B46 EHP credit in a live tank game; verify the BATCH B minimap gold border lands on the minimap (needs an rc-shell RELAUNCH first) + the gauge-row / enemy-wrap render. (2) The 2 spawned task chips: ROADMAP.md trim (1.3KB over 80KB) + the stale BATCH-A overlay tests (bm-knobs->bm-shaper, liveStrip zone). **DO NOT redo:** all 6 commits are SHIPPED + pushed + verified; the frontend wiring is DONE (route + 3 panels) - only live-verification remains; the 3 archetype test failures are your LOCAL gitignored picks (CI is GREEN - do NOT "fix" them).
+
+---
+
 # 2026-07-06 (OUT-OF-GAME - executed the deferred UI_OVERLAY_REDESIGN BATCH A + 2 operator DS build-quality fixes; commits `2eb00958` + `385be9e3`, LEDGER 798)
 
 Clean out-of-game session executing the LEDGER-797 spec (`docs/UI_OVERLAY_REDESIGN_SPEC_2026-07-06.md`) BATCH A, plus 2 operator-reported DS build-quality issues surfaced interactively. Live-game-gated throughout: a live ARAM was in progress at session start, so I HELD + auto-resumed on game-end (overlay JS/CSS hot-reloads, so a bad edit breaks a live game). Inline/foreground (background worktree agents died last session per 797). No frozen file touched.
