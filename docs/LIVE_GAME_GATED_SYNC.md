@@ -304,6 +304,16 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   swap; (b) the 0.5 incoming-AA-share midpoint (`_ASSUMED_INCOMING_AA_SHARE`) CALIBRATION vs a
   real AA-heavy comp - a REAL-SR game vs a fed auto-attacker is the stronger eyeball (ACCRUAL).
   SOURCE: docs/LEDGER.md item 799.
+- B47. (PRACTICE-SR) R86 `assume_item_enemy_as_slow` FLIP + CALIBRATION (Frozen Heart
+  3110/323110/223110 Winter's Caress -20% enemy AS -> physical-only EHP credit for the reduced
+  incoming basic-attack RATE). UNLIKE B45/B46, the ENGINE default ships OFF (byte-identical) - the
+  default-ON flip is OWED (operator-gated, do-not-flip-blind): (a) a DS restart with
+  `assume_item_enemy_as_slow=True` armed + own-build sanity that Frozen Heart up-ranks on the
+  survivability axis without dominating a real-resist swap; (b) a practice/real-SR eyeball that a
+  tank carrying Frozen Heart survives sanely vs an AA-heavy enemy; (c) the 0.5 incoming-AA-share
+  midpoint (`_ASSUMED_INCOMING_AA_SHARE`, shared with R80) CALIBRATION vs a real AA comp. The math
+  stacks multiplicatively with B46's Steelcaps per-hit AA-DR on a build with both. SOURCE:
+  docs/LEDGER.md item 807.
 
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
