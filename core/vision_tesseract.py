@@ -77,6 +77,26 @@ def _regions() -> dict:
     global _REGIONS_CACHE, _BASE_CACHE
     if _REGIONS_CACHE is not None:
         return _REGIONS_CACHE
+    # Prefer the ACTIVE per-HUD profile (native-res calibration) when one exists.
+    # This wires the profile store (core/vision_profiles) into the OCR hot path so
+    # a 2560x1440 native calibration is used at its own base (no 1920->native
+    # scaling drift, no halved-frame tiny-text; memory
+    # reference_vision_ocr_capture_pipeline). Fail-soft: any error or an empty /
+    # legacy-seed profile falls through to the legacy vision_regions.json path.
+    try:
+        from core.vision_profiles import load_profile
+        prof = load_profile()
+        regions = prof.get("regions") if isinstance(prof, dict) else None
+        if prof.get("source") == "profile" and regions:
+            base = prof.get("base") or [BASE_W, BASE_H]
+            _BASE_CACHE = (int(base[0]), int(base[1]))
+            _REGIONS_CACHE = {
+                k: list(v) for k, v in regions.items()
+                if isinstance(v, (list, tuple)) and len(v) == 4
+            }
+            return _REGIONS_CACHE
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("vision profile load failed, using legacy regions: %s", exc)
     if _REGIONS_FILE.exists():
         try:
             data = json.loads(_REGIONS_FILE.read_text(encoding="utf-8"))
@@ -160,12 +180,30 @@ def _crop(img, bbox):
     return img.crop(bbox)
 
 
+def _color_correct(img):
+    """Native-res color-correction: histogram-stretch the grayscale so dim HUD
+    glyphs (a native 2560x1440 crop lit by a colored bar or a dark scene behind
+    it can leave the white text well under a fixed 180 threshold) are pulled
+    toward 255 before binarize. autocontrast is monotonic - it never inverts
+    polarity, so bright-on-dark stays bright-on-dark. Fail-soft: on any PIL
+    error the input grayscale is returned unchanged."""
+    g = img.convert("L")
+    try:
+        from PIL import ImageOps
+        return ImageOps.autocontrast(g, cutoff=1)
+    except Exception:  # noqa: BLE001
+        return g
+
+
 def _preprocess(img, scale: int = 4, threshold: int = 180):
-    """Upscale + hard binarize. Tuned for League's white HUD text on
-    colored bars (HP green, mana blue) where contrast-only preprocessing
-    leaves the foreground too thin for Tesseract."""
+    """Color-correct + upscale + hard binarize. Tuned for League's white HUD
+    text on colored bars (HP green, mana blue) where contrast-only
+    preprocessing leaves the foreground too thin for Tesseract. The
+    color-correct step (native-res enhancement, memory
+    reference_vision_ocr_capture_pipeline) stretches dim glyphs above the
+    threshold before binarize so a native crop is not dropped."""
     from PIL import Image
-    g = img.convert("L").resize((img.width * scale, img.height * scale), Image.LANCZOS)
+    g = _color_correct(img).resize((img.width * scale, img.height * scale), Image.LANCZOS)
     return g.point(lambda p: 255 if p > threshold else 0)
 
 
