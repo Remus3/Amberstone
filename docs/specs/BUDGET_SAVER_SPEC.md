@@ -173,6 +173,27 @@ LiteLLM proxy :4000  (pinned safe version, own venv, 127.0.0.1)
   model pulls, venv + verified-clean LiteLLM, config.yaml render, scheduled-task register,
   health checks. Re-running fixes drift, never double-installs. Prints a status banner.
 
+### C11 - Lean budget-saver profile (context-shrink lever stack)
+- Purpose: make the local tier carry a real majority of turns by shrinking RC's OWN
+  per-turn prefix and stretching local context capacity. The big context is mostly RC's
+  doing (100s of MCP tool schemas + large CLAUDE.md sent every turn), so most of the fix
+  is in our control.
+- Levers, largest first:
+  1. Lean profile: a budget-saver Claude Code launch (via C6) enabling only essential MCP
+     servers (git / filesystem / core RC), a trimmed instruction set, and aggressive
+     /clear leaning on RC's file-based memory instead of long history. Cuts the prefix
+     from ~30-100k toward ~8-12k.
+  2. KV-cache quantization: OLLAMA_KV_CACHE_TYPE=q8_0 + flash attention (~half the KV
+     memory), pushing usable local context from ~8k toward ~24-32k on 12 GB.
+  3. Right-size model for headroom: a 7-8B (Q4 ~5 GB) leaves ~6 GB for KV = 32k+ context;
+     often beats a 14B that OOMs on RC turns. Chosen in C9 with context-headroom scored.
+  4. CPU KV-offload: for privacy-sensitive AND large-context turns, offload KV to system
+     RAM (plenty free) - slower but keeps the turn local.
+  5. Route-by-size (C5): whatever still overflows goes to DeepSeek (1M ctx, prefix cache,
+     near-free).
+- Outcome: no fixed promise of 85 percent; C9 measures the real local fraction per
+  (model x KV-setting x profile). Levers 1-3 stacked make a healthy majority realistic.
+
 ## 7. Routing table (initial; tuned by C9)
 
 | Turn kind                                   | Backend                         |
@@ -231,8 +252,10 @@ LiteLLM proxy :4000  (pinned safe version, own venv, 127.0.0.1)
 
 ## 12. Risks + mitigations
 
-- R1 Local context overflow (biggest): mitigate by routing large-context turns to DeepSeek;
-  measure real split in C9; set expectations that local carries small-context/private turns.
+- R1 Local context overflow (biggest): attack with the C11 lever stack (lean profile cuts
+  the prefix; KV-quant + right-sized model stretch capacity; CPU-offload for private big
+  turns; route-by-size sends the rest to DeepSeek). C9 measures the real local fraction;
+  no fixed promise.
 - R2 Local tool-call fidelity: disqualify weak models for agentic turns in C9; keep them
   for summarize/background only.
 - R3 Quality drop on hard tasks: DEFER-TO-CLAUDE queue + guardrails (tests/precommit/
