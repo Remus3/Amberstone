@@ -1,0 +1,16 @@
+{
+  "mode": "brawl",
+  "grid_hint": null,
+  "_comment": "Stub: single whole-map district so the loader round-trips every mode. Brawl has minimap_rect but no zoi (dashboard/_state_builder.py:469 excludes it).",
+  "districts": [
+    {
+      "id": "brawl_map",
+      "label": "Brawl map",
+      "role": "map",
+      "poly": [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+      "adjacent": [],
+      "shortcuts": [],
+      "legacy_label": null
+    }
+  ]
+}
