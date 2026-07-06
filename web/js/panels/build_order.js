@@ -26,6 +26,12 @@ const BO_SLOTS = 7; // operator 2026-05-31 (#7): lane quest reward funds a 7th i
 
 const _BO_CACHE = Object.create(null); // key -> route JSON
 const _BO_INFLIGHT = Object.create(null); // key -> true while fetching
+// Incumbent hysteresis (2026-07-06): the last order we rendered for a champion,
+// echoed back on the next fetch so the planner keeps a shown pick unless a
+// challenger beats it by the margin (damps a PD -> Kraken flip when an enemy
+// comp resolve re-plans). Scoped to the champion so a champ change never carries
+// a stale build in.
+let _boLast = { champion: "", order: [] };
 
 // item 213 (2026-05-28): the cache key now includes a sorted enemy-comp
 // signature so the DS-vs-enemy-comp build LIVE-UPDATES when an enemy
@@ -59,6 +65,10 @@ export function fetchBuildOrder(champion, dsMode, archetype, onLand, enemies) {
     items: [],
     slots: BO_SLOTS,
   };
+  // Echo the order currently displayed for THIS champion as the incumbent.
+  if (_boLast.champion === champion && _boLast.order.length) {
+    body.incumbent = _boLast.order.slice();
+  }
   if (archetype) body.archetype = archetype;
   // item 213: live enemy comp -> backend target-stat resolution.
   if (Array.isArray(enemies) && enemies.length) {
@@ -75,6 +85,10 @@ export function fetchBuildOrder(champion, dsMode, archetype, onLand, enemies) {
       _BO_INFLIGHT[key] = false;
       if (data && data.ok && Array.isArray(data.order) && data.order.length) {
         _BO_CACHE[key] = data;
+        _boLast = {
+          champion,
+          order: data.order.map((s) => String(s.item_id || "")).filter(Boolean),
+        };
         if (typeof onLand === "function") onLand();
       }
     })
@@ -92,4 +106,5 @@ export function getCachedBuildOrder(champion, dsMode, archetype, enemies) {
 export function _resetBuildOrder() {
   for (const k of Object.keys(_BO_CACHE)) delete _BO_CACHE[k];
   for (const k of Object.keys(_BO_INFLIGHT)) delete _BO_INFLIGHT[k];
+  _boLast = { champion: "", order: [] };
 }

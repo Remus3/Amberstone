@@ -948,6 +948,11 @@ def _serve_build_order_post(h, payload) -> None:
         level = max(1, min(18, int(payload.get("level") or 11)))
         items = [str(i) for i in (payload.get("items") or []) if i]
         slots = max(1, min(6, int(payload.get("slots") or 6)))
+        # Incumbent-hysteresis opt-in (2026-07-06): the panel may echo the build
+        # it is CURRENTLY displaying (item_ids in order) so the planner keeps a
+        # shown pick unless a challenger beats it by the margin - damps the
+        # PD -> Kraken flip on a level tick. Absent -> byte-identical greedy plan.
+        incumbent = [str(i) for i in (payload.get("incumbent") or []) if str(i).strip()]
 
         archetype = str(payload.get("archetype") or "").strip().lower()
         if not archetype:
@@ -962,6 +967,7 @@ def _serve_build_order_post(h, payload) -> None:
             target_mr=tgt["target_mr"],
             target_max_hp=tgt["target_max_hp"],
             target_bonus_hp=tgt["target_bonus_hp"],
+            incumbent=incumbent,
         )
         if res is None:
             h._send(503, json.dumps(
