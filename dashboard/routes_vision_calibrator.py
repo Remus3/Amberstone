@@ -228,13 +228,16 @@ def _serve_regions_get(h) -> None:
 
 
 def _save_profile_from_body(h, body) -> None:
-    """Validate then save a per-profile region set. An invalid payload returns
-    400 and never calls save_profile (mirrors the legacy save_regions guard)."""
+    """Validate regions + base then save a per-profile set. An invalid
+    payload returns 400 and never calls save_profile."""
     ok, err, clean = validate_regions(body.get("regions"))
     if not ok:
         _send_json(h, 400, {"ok": False, "error": err})
         return
-    base = body.get("base")
+    ok_b, err_b, base = vp.validate_base(body.get("base"))
+    if not ok_b:
+        _send_json(h, 400, {"ok": False, "error": err_b})
+        return
     res = vp.save_profile(vp.active_config_key(), clean, base)
     if res.get("ok"):
         _send_json(h, 200, {"ok": True, "saved": res.get("count", len(clean)),
