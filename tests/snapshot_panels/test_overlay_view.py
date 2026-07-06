@@ -1104,8 +1104,279 @@ def test_no_em_dashes_or_smart_quotes():
         Path(__file__),
         ROOT / "web" / "css" / "overlay.css",
         ROOT / "web" / "js" / "overlay_pulse.js",
+        ROOT / "web" / "js" / "panels" / "minimap_zoi.js",
     ]
     for p in targets:
         raw = p.read_bytes()
         offenders = [b for b in raw if b > 0x7F]
         assert not offenders, f"non-ASCII byte(s) in {p}: {offenders[:5]}"
+
+
+# ---------------------------------------------------------------------------
+# ZOI Wave 3b (spec G): the ADDITIVE zoi keys (mia rings / fluid dmz / district
+# tints) on web/js/panels/minimap_zoi.js. Each key is independently optional and
+# the render tolerates any subset; a legacy 3-key payload is byte-identical to
+# before. The pure normalizers are exercised through the __test export via the
+# same async-import page-eval pattern the rest of this file uses (no node runner).
+# ---------------------------------------------------------------------------
+
+_ZOI_IMPORT = "async () => (await import('/js/panels/minimap_zoi.js')).__test"
+
+
+def _zoi_eval(page, body):
+    """Run `body` (a JS expression using `t` = the __test namespace) in the
+    overlay page and return the JSON result."""
+    return page.evaluate(
+        "async (b) => { const t = await import('/js/panels/minimap_zoi.js');"
+        " const T = t.__test; return (new Function('T', 'return (' + b + ');'))(T); }",
+        body,
+    )
+
+
+def test_zoi_normmia_shapes_and_drops(mock_server, pw_browser):
+    """normMia coerces the CONTRACT mia block ({rings:[{champion,cx,cy,r_frac,
+    missing_for_s,confidence}],count}) - keeps valid box-fraction rings, drops
+    off-box / non-positive-radius / malformed rings, and returns null when none
+    survive (so the render draws nothing extra + never reflows)."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        # Two valid rings (one with a champion, one bare) + three that must drop.
+        good = (
+            "T.normMia({rings:["
+            "{champion:'Ahri',cx:0.4,cy:0.6,r_frac:0.2,missing_for_s:12,confidence:0.8},"
+            "{champion:null,cx:0.1,cy:0.1,r_frac:0.05,missing_for_s:3,confidence:0.3},"
+            "{champion:'X',cx:1.5,cy:0.5,r_frac:0.1},"          # off-box -> drop
+            "{champion:'Y',cx:0.5,cy:0.5,r_frac:0},"            # r<=0 -> drop
+            "'garbage'"                                          # not an object
+            "]})"
+        )
+        res = _zoi_eval(page, good)
+        assert res is not None, "normMia dropped a valid ring block"
+        assert res["count"] == 2, f"expected 2 surviving rings, got {res['count']}"
+        assert [r["champion"] for r in res["rings"]] == ["Ahri", None]
+        # confidence clamped into [0,1]; missing_for_s coerced non-negative.
+        r0 = res["rings"][0]
+        assert 0.0 <= r0["confidence"] <= 1.0 and r0["missing_for_s"] == 12
+        # No valid ring -> null (independently optional key).
+        assert _zoi_eval(page, "T.normMia({rings:[{cx:2,cy:2,r_frac:0.1}]})") is None
+        assert _zoi_eval(page, "T.normMia(null)") is None
+        assert _zoi_eval(page, "T.normMia({rings:'nope'})") is None
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [normMia]: {errors[:3]}"
+
+
+def test_zoi_normdmz_needs_two_points(mock_server, pw_browser):
+    """normDmz keeps a >=2-point box-fraction path + a clamped band_w_frac, and
+    returns null on a short/degenerate/malformed path so the caller falls back to
+    the legacy straight demarcation."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        ok = _zoi_eval(
+            page,
+            "T.normDmz({path:[[0,0.3],[0.5,0.5],[1,0.7]],band_w_frac:0.08})",
+        )
+        assert ok is not None and len(ok["path"]) == 3
+        assert ok["band_w_frac"] == 0.08
+        # band clamped to [0,1]; out-of-range points dropped, then <2 -> null.
+        assert _zoi_eval(page, "T.normDmz({path:[[0,0.3]]})") is None  # 1 pt
+        assert _zoi_eval(page, "T.normDmz({path:[[2,2],[3,3]]})") is None  # all off-box
+        assert _zoi_eval(page, "T.normDmz(null)") is None
+        # A valid path with a garbage band coerces band to 0 (not null).
+        z = _zoi_eval(page, "T.normDmz({path:[[0,0],[1,1]],band_w_frac:'x'})")
+        assert z is not None and z["band_w_frac"] == 0
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [normDmz]: {errors[:3]}"
+
+
+def test_zoi_normdistricts_prefers_fused_and_drops_empty(mock_server, pw_browser):
+    """normDistricts reads districts_fused (fused_present counts) in preference to
+    districts, keeps only OCCUPIED rows, and returns null when nothing is present.
+    The rows carry NO coordinates (documented tint-geometry fallback)."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        # districts_fused wins; empty rows drop; string district id preserved.
+        fused = (
+            "T.normDistricts({"
+            "districts:[{district:'ignored',ally:9,enemy:9}],"
+            "districts_fused:["
+            "{district:'mid',fused_present:{ally:2,enemy:0},fusion_notes:[]},"
+            "{district:'top',fused_present:{ally:0,enemy:0},fusion_notes:[]},"  # empty -> drop
+            "{district:'bot_river',fused_present:{ally:1,enemy:3}}"
+            "]})"
+        )
+        rows = _zoi_eval(page, fused)
+        assert rows is not None and len(rows) == 2, f"rows={rows}"
+        ids = [r["district"] for r in rows]
+        assert ids == ["mid", "bot_river"], ids
+        assert rows[1]["enemy"] == 3 and rows[1]["ally"] == 1
+        # falls back to plain districts when no fused vector.
+        plain = _zoi_eval(page, "T.normDistricts({districts:[{district:'a',ally:1,enemy:0}]})")
+        assert plain is not None and plain[0]["district"] == "a"
+        # all-empty -> null (no reflow, nothing drawn).
+        assert _zoi_eval(
+            page, "T.normDistricts({districts:[{district:'a',ally:0,enemy:0}]})"
+        ) is None
+        assert _zoi_eval(page, "T.normDistricts(null)") is None
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [normDistricts]: {errors[:3]}"
+
+
+def test_zoi_normzoi_additive_keys_threaded(mock_server, pw_browser):
+    """normZoi threads the additive keys through validated + drops malformed,
+    while a LEGACY 3-key payload yields mia=dmz=districts=null (byte-identical
+    render). The base {bubbles,demarcation,map_control} contract is unchanged."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        legacy = (
+            "T.normZoi({bubbles:[{team:'blue',cx:0.2,cy:0.8,r_frac:0.1,weight:5}],"
+            "demarcation:{x1:0,y1:0.3,x2:1,y2:0.6,ally_side:'bottom'},"
+            "map_control:{ally_control_pct:56}})"
+        )
+        z = _zoi_eval(page, legacy)
+        assert z is not None
+        assert z["mia"] is None and z["dmz"] is None and z["districts"] is None
+        assert len(z["bubbles"]) == 1 and z["demarcation"] is not None
+        # Full additive payload: all three keys populate.
+        full = (
+            "T.normZoi({bubbles:[],demarcation:null,map_control:null,"
+            "mia:{rings:[{champion:'Zed',cx:0.5,cy:0.5,r_frac:0.2,confidence:0.7}]},"
+            "dmz:{path:[[0,0.3],[1,0.7]],band_w_frac:0.06},"
+            "districts_fused:[{district:'mid',fused_present:{ally:1,enemy:0}}]})"
+        )
+        zf = _zoi_eval(page, full)
+        assert zf is not None
+        assert zf["mia"]["count"] == 1
+        assert len(zf["dmz"]["path"]) == 2
+        assert len(zf["districts"]) == 1
+        # An entirely empty zoi is still null.
+        assert _zoi_eval(page, "T.normZoi({bubbles:[],demarcation:null})") is None
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [normZoi additive]: {errors[:3]}"
+
+
+def test_zoi_sig_folds_additive_keys(mock_server, pw_browser):
+    """_sig folds the additive-key cardinality so a mia/dmz/district change forces
+    a redraw even after the EMA settles (the keys do not ride the EMA)."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        base = _zoi_eval(
+            page,
+            "T._sig(T.normZoi({bubbles:[{team:'blue',cx:0.2,cy:0.2,r_frac:0.1,weight:1}]}))",
+        )
+        withmia = _zoi_eval(
+            page,
+            "T._sig(T.normZoi({bubbles:[{team:'blue',cx:0.2,cy:0.2,r_frac:0.1,weight:1}],"
+            "mia:{rings:[{champion:'A',cx:0.5,cy:0.5,r_frac:0.2,confidence:0.5}]}}))",
+        )
+        assert base != withmia, "adding a MIA ring must change the redraw signature"
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [sig additive]: {errors[:3]}"
+
+
+def test_zoi_miaring_alpha_decays_and_capped(mock_server, pw_browser):
+    """_miaRingAlpha decays monotonically with confidence, floors at MIA_RING_
+    ALPHA_MIN, and never exceeds MAX_ALPHA (overlay stays legible)."""
+    ctx, page, errors = _open_overlay(pw_browser, mock_server)
+    try:
+        lo = _zoi_eval(page, "T._miaRingAlpha(0)")
+        hi = _zoi_eval(page, "T._miaRingAlpha(1)")
+        mid = _zoi_eval(page, "T._miaRingAlpha(0.5)")
+        cap = _zoi_eval(page, "T.MAX_ALPHA")
+        fmin = _zoi_eval(page, "T.MIA_RING_ALPHA_MIN")
+        assert lo <= mid <= hi, f"not monotone: {lo} {mid} {hi}"
+        assert abs(lo - fmin) < 1e-9, f"low-confidence ring below floor: {lo}"
+        assert hi <= cap, f"ring alpha {hi} exceeds MAX_ALPHA {cap}"
+        # garbage confidence -> floor, not NaN.
+        assert _zoi_eval(page, "T._miaRingAlpha('x')") == fmin
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [mia alpha]: {errors[:3]}"
+
+
+def test_overlay_zoi_full_additive_fixture_renders(mock_server, pw_browser):
+    """UI-FIXTURE RITUAL fixture (spec G): a FULL zoi payload (legacy bubbles +
+    demarcation + map_control PLUS mia rings + fluid dmz + districts_fused) threads
+    the live SSE envelope and paints WITHOUT error; the canvas stays click-through
+    (pointer-events:none) so the overlay never eats a minimap click. A screenshot
+    is captured for the 5-phase visual audit."""
+    from tests.snapshot_panels.conftest import _WS_STUB
+
+    mock_server._store["data"] = {
+        "mode_key": "sr",
+        "coach": {"action": "Group mid", "immediate": "Ward drake", "kda": "3/1/4"},
+        "liveclient": {"level": 9, "game_time_s": 720},
+        "minimap_rect": {"x": 1600, "y": 761, "w": 312, "h": 312, "flip": False,
+                         "source": "settings", "native_w": 2560, "native_h": 1440},
+        "zoi": {
+            "bubbles": [
+                {"team": "blue", "cx": 0.25, "cy": 0.78, "r_frac": 0.13, "weight": 60},
+                {"team": "red", "cx": 0.72, "cy": 0.28, "r_frac": 0.12, "weight": 55},
+            ],
+            "demarcation": {"x1": 0.0, "y1": 0.35, "x2": 1.0, "y2": 0.65,
+                            "ally_side": "bottom"},
+            "map_control": {"ally_control_pct": 58, "action_quadrant": "mid",
+                            "line": "Map control 58%. Action mid."},
+            # ADDITIVE (spec G)
+            "mia": {"rings": [
+                {"champion": "Khazix", "cx": 0.6, "cy": 0.45, "r_frac": 0.18,
+                 "missing_for_s": 8.0, "confidence": 0.75},
+                {"champion": "Lee", "cx": 0.35, "cy": 0.4, "r_frac": 0.12,
+                 "missing_for_s": 14.0, "confidence": 0.4},
+            ], "count": 2},
+            "dmz": {"path": [[0.0, 0.4], [0.35, 0.52], [0.7, 0.5], [1.0, 0.62]],
+                    "band_w_frac": 0.06},
+            "districts_fused": [
+                {"district": "mid", "fused_present": {"ally": 2, "enemy": 1},
+                 "fusion_notes": []},
+                {"district": "bot_river", "fused_present": {"ally": 0, "enemy": 3},
+                 "fusion_notes": ["objective:dragon:enemy"]},
+                {"district": "top_lane", "fused_present": {"ally": 1, "enemy": 0},
+                 "fusion_notes": []},
+            ],
+        },
+    }
+    ctx = pw_browser.new_context(
+        ignore_https_errors=True, viewport={"width": 1920, "height": 1080}
+    )
+    page = ctx.new_page()
+    page.add_init_script(_WS_STUB)
+    errors: list[str] = []
+    page.on("pageerror", lambda err: errors.append(str(err)))
+    try:
+        page.goto(mock_server.url + "/?overlay=1&mode=sr",
+                  wait_until="domcontentloaded", timeout=15_000)
+        page.wait_for_function(
+            "() => { const m = document.getElementById('am-mmrect');"
+            " const c = document.getElementById('am-zoi-canvas');"
+            " return m && !m.hidden && c && c.width > 0 && c.height > 0; }",
+            timeout=10_000,
+        )
+        # Backing store tracks the threaded box; click-through preserved.
+        assert page.eval_on_selector("#am-zoi-canvas", "e => e.width") == 312
+        assert _css(page, "#am-zoi-canvas", "pointer-events") == "none"
+        # The canvas actually painted non-empty pixels off the full fixture.
+        non_empty = page.evaluate(
+            "() => { const c = document.getElementById('am-zoi-canvas');"
+            " const x = c.getContext('2d');"
+            " const d = x.getImageData(0,0,c.width,c.height).data;"
+            " for (let i=3;i<d.length;i+=4){ if (d[i] !== 0) return true; } return false; }"
+        )
+        assert non_empty, "ZOI canvas painted nothing off the full additive fixture"
+        SCREENSHOTS.mkdir(exist_ok=True)
+        shot = SCREENSHOTS / "zoi_full_additive_fixture.png"
+        page.screenshot(path=str(shot))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [full additive fixture]: {errors[:3]}"

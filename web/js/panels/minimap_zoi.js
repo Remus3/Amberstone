@@ -62,6 +62,32 @@ const OFFSCREEN_CORE_ALPHA = 0.85;
 // MAX_ALPHA team-layer blit (it is folded INTO the blue layer, capped with it).
 const ALLY_TINT_BASE = ALLY_TINT_MAX / MAX_ALPHA;
 
+// -- ADDITIVE ZOI keys (ZOI Wave 3b, spec G) ---------------------------
+// Three NEW additive keys ride the same /api/state.zoi block, each rendered
+// independently + tolerant of any subset. A legacy 3-key {bubbles,demarcation,
+// map_control} payload is byte-identical to before (these keys simply absent):
+//   * mia.rings      -> dashed MIA reachability circles (SR-only by construction)
+//   * dmz.path       -> a soft fluid ribbon that REPLACES the straight demarcation
+//   * districts[_fused] -> a very faint per-district presence cue (see tint note)
+// HIERARCHY (alpha ordering): tints (faintest) < live bubbles < MIA rings < dmz.
+const MIA_RING_ALPHA_MAX = 0.5; // dashed outline stroke ceiling; decays w/ confidence
+const MIA_RING_ALPHA_MIN = 0.12; // floor so a low-confidence ring is still faintly visible
+const MIA_LABEL_PX = 11; // champion-initial label size (>= ~10px legible at 1x per audit)
+const MIA_DASH = [4, 3]; // dashed ring pattern (px)
+const DMZ_STROKE_ALPHA = 0.45; // the fluid DMZ ribbon centerline stroke
+const DMZ_BAND_ALPHA = 0.14; // the soft ribbon fill flanking the centerline (subordinate)
+// District presence cue. The presence rows carry NO coordinates (the contract
+// shape is {district, ally, enemy, ...}), and the district polygon geometry lives
+// in config/minimap_grids/<mode>.json which the browser does NOT fetch (no /config
+// route exists - grep dashboard/server.py). SIMPLEST CORRECT FALLBACK (documented
+// in notes): render each populated district as a small count dot at a STABLE
+// data-derived slot along the canvas top-left edge - a subtle presence tally, NOT
+// a positional overlay (we never invent map coords we do not have). Faintest layer.
+const TINT_DOT_R_PX = 3; // count-dot radius
+const TINT_DOT_ALPHA = 0.28; // dot core alpha inside the offscreen buffer (capped by blit)
+const TINT_ROW_STEP_PX = 9; // vertical spacing of the stable tally column
+const TINT_INSET_PX = 6; // top-left inset of the tally column
+
 // -- pure helpers (unit-tested via __test) -----------------------------
 
 // Exponential moving average. A null/undefined prev seeds straight to next so a
@@ -135,6 +161,102 @@ function _normDemarc(d) {
   };
 }
 
+// -- ADDITIVE key normalizers (spec G, unit-tested via __test) ----------
+
+// Box-fraction coord in [0,1] or null. Clamps finite in-range, rejects garbage.
+function _fracOrNull(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 1) return null;
+  return n;
+}
+
+// Coerce one raw MIA ring into {champion,cx,cy,r_frac,missing_for_s,confidence}
+// or null. cx/cy/r_frac are box-fraction [0,1] per CONTRACT; a ring off the box
+// or with a non-positive radius is dropped. champion is an optional string.
+function _normMiaRing(r) {
+  if (!r || typeof r !== "object") return null;
+  const cx = _fracOrNull(r.cx);
+  const cy = _fracOrNull(r.cy);
+  const rf = _fracOrNull(r.r_frac);
+  if (cx === null || cy === null || rf === null || rf <= 0) return null;
+  const conf = Number(r.confidence);
+  const miss = Number(r.missing_for_s);
+  return {
+    champion: typeof r.champion === "string" && r.champion ? r.champion : null,
+    cx, cy, r_frac: rf,
+    missing_for_s: Number.isFinite(miss) && miss >= 0 ? miss : 0,
+    confidence: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0,
+  };
+}
+
+// Coerce zoi.mia -> {rings:[...],count:int} or null. Drops malformed rings;
+// null whenever no valid ring survives (render nothing extra, no reflow).
+function normMia(mia) {
+  if (!mia || typeof mia !== "object" || Array.isArray(mia)) return null;
+  const raw = Array.isArray(mia.rings) ? mia.rings : [];
+  const rings = raw.map(_normMiaRing).filter(Boolean);
+  if (!rings.length) return null;
+  return { rings, count: rings.length };
+}
+
+// Coerce zoi.dmz -> {path:[[x,y],...],band_w_frac} or null. Needs >= 2 valid
+// box-fraction points; a degenerate/short/malformed path returns null so the
+// caller falls back to the legacy straight demarcation (byte-identical).
+function normDmz(dmz) {
+  if (!dmz || typeof dmz !== "object" || Array.isArray(dmz)) return null;
+  const raw = Array.isArray(dmz.path) ? dmz.path : [];
+  const path = [];
+  for (const p of raw) {
+    if (!Array.isArray(p) || p.length < 2) continue;
+    const x = _fracOrNull(p[0]);
+    const y = _fracOrNull(p[1]);
+    if (x === null || y === null) continue;
+    path.push([x, y]);
+  }
+  if (path.length < 2) return null;
+  let bw = Number(dmz.band_w_frac);
+  if (!Number.isFinite(bw) || bw < 0) bw = 0;
+  if (bw > 1) bw = 1;
+  return { path, band_w_frac: bw };
+}
+
+// Coerce one raw district presence row into {district,ally,enemy} or null.
+// Reads fused_present (district_fusion.py) when present, else the raw ally/enemy
+// counts (minimap_presence.py). A row with no positive presence is dropped so
+// only occupied districts draw a tally dot. NO coordinates exist in the row.
+function _normDistrictRow(d) {
+  if (!d || typeof d !== "object") return null;
+  let ally = 0;
+  let enemy = 0;
+  const fp = d.fused_present;
+  if (fp && typeof fp === "object") {
+    ally = Number(fp.ally);
+    enemy = Number(fp.enemy);
+  } else {
+    ally = Number(d.ally);
+    enemy = Number(d.enemy);
+  }
+  ally = Number.isFinite(ally) && ally > 0 ? Math.floor(ally) : 0;
+  enemy = Number.isFinite(enemy) && enemy > 0 ? Math.floor(enemy) : 0;
+  if (ally <= 0 && enemy <= 0) return null;
+  const id = typeof d.district === "string" && d.district
+    ? d.district
+    : (typeof d.id === "string" ? d.id : "");
+  return { district: id, ally, enemy };
+}
+
+// Coerce zoi.districts_fused (preferred) or zoi.districts -> a stable-ordered
+// list of {district,ally,enemy} occupied rows, or null when none are occupied.
+function normDistricts(zoi) {
+  if (!zoi || typeof zoi !== "object") return null;
+  const src = Array.isArray(zoi.districts_fused)
+    ? zoi.districts_fused
+    : (Array.isArray(zoi.districts) ? zoi.districts : []);
+  const rows = src.map(_normDistrictRow).filter(Boolean);
+  if (!rows.length) return null;
+  return rows;
+}
+
 // Coerce the raw /api/state.zoi into a clean {bubbles,demarcation,map_control}
 // or null. Drops malformed bubbles; preserves a null demarcation as null.
 function normZoi(zoi) {
@@ -152,8 +274,15 @@ function normZoi(zoi) {
       line: typeof mc.line === "string" ? mc.line : "",
     };
   }
-  if (!bubbles.length && !demarcation && !map_control) return null;
-  return { bubbles, demarcation, map_control };
+  // ADDITIVE keys (spec G): each independently optional + validated. A legacy
+  // 3-key payload yields mia=null / dmz=null / districts=null so the render is
+  // byte-identical to before.
+  const mia = normMia(zoi.mia);
+  const dmz = normDmz(zoi.dmz);
+  const districts = normDistricts(zoi);
+  if (!bubbles.length && !demarcation && !map_control
+      && !mia && !dmz && !districts) return null;
+  return { bubbles, demarcation, map_control, mia, dmz, districts };
 }
 
 // A coarse signature of the SHAPE of the smoothed scene (team count + rounded
@@ -164,7 +293,13 @@ function _sig(z) {
   const n = z.bubbles.length;
   const pct = z.map_control ? z.map_control.ally_control_pct : -1;
   const dm = z.demarcation ? 1 : 0;
-  return `${n}|${pct}|${dm}`;
+  // Additive keys (spec G) do NOT ride the EMA (they are discrete overlays, not
+  // jittering centroids), so fold them into the shape signature - any change in
+  // their presence/cardinality must force a redraw even once the EMA has settled.
+  const mia = z.mia ? z.mia.count : 0;
+  const dz = z.dmz ? z.dmz.path.length : 0;
+  const dd = z.districts ? z.districts.length : 0;
+  return `${n}|${pct}|${dm}|${mia}|${dz}|${dd}`;
 }
 
 // -- module-scope render state -----------------------------------------
@@ -295,9 +430,113 @@ function _allySidePath(c, dem, w, h) {
   c.closePath();
 }
 
-function _paint(ctx, scene, demarcRaw, w, h) {
+// Ring stroke alpha from confidence: high confidence -> stronger outline. Clamped
+// into [MIA_RING_ALPHA_MIN, MIA_RING_ALPHA_MAX] then hard-capped at MAX_ALPHA.
+function _miaRingAlpha(conf) {
+  const c = Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0;
+  const a = MIA_RING_ALPHA_MIN + c * (MIA_RING_ALPHA_MAX - MIA_RING_ALPHA_MIN);
+  return _clampAlpha(a);
+}
+
+// District count-tally cue. The rows carry NO map coords + the browser has no
+// district geometry (documented fallback), so paint each occupied district as a
+// small dot in a STABLE data-derived column at the canvas top-left inset - a
+// subtle presence tally that never invents a map position. Faintest layer; drawn
+// at TINT_DOT_ALPHA per dot (well under MAX_ALPHA). ally=blue, enemy=red, mixed
+// blends toward the majority side.
+function _drawDistrictTints(c, districts, w, h) {
+  if (!districts || !districts.length) return;
+  let i = 0;
+  for (const d of districts) {
+    const y = TINT_INSET_PX + i * TINT_ROW_STEP_PX;
+    if (y > h - TINT_INSET_PX) break; // never spill outside the box
+    i += 1;
+    const team = d.enemy > d.ally ? "red" : "blue";
+    const total = Math.min(5, Math.max(1, d.ally + d.enemy));
+    const r = TINT_DOT_R_PX + (total - 1) * 0.6; // more present -> slightly larger
+    c.beginPath();
+    c.arc(TINT_INSET_PX, y, r, 0, Math.PI * 2);
+    c.fillStyle = teamColor(team, TINT_DOT_ALPHA);
+    c.fill();
+  }
+}
+
+// Fluid DMZ ribbon: a soft band (band_w_frac wide) flanking the smoothed path
+// polyline, plus a crisp centerline. Replaces the straight demarcation when a
+// valid dmz.path is present. All box-fraction -> px; band width is a fraction of
+// the box WIDTH (mirrors the bubble radius convention). Subordinate to nothing
+// (top of the hierarchy) but still under MAX_ALPHA.
+function _drawDmz(c, dmz, w, h) {
+  if (!dmz || dmz.path.length < 2) return;
+  const pts = dmz.path.map((p) => [fracToPx(p[0], w), fracToPx(p[1], h)]);
+  const bandPx = Math.max(0, fracToPx(dmz.band_w_frac, w));
+  // 1. soft flanking band (a thick, low-alpha stroke of the same polyline).
+  if (bandPx > 0) {
+    c.save();
+    c.globalAlpha = _clampAlpha(DMZ_BAND_ALPHA);
+    c.strokeStyle = "rgba(230, 230, 240, 1)";
+    c.lineWidth = bandPx;
+    c.lineJoin = "round";
+    c.lineCap = "round";
+    c.beginPath();
+    c.moveTo(pts[0][0], pts[0][1]);
+    for (let k = 1; k < pts.length; k += 1) c.lineTo(pts[k][0], pts[k][1]);
+    c.stroke();
+    c.restore();
+  }
+  // 2. crisp centerline.
+  c.save();
+  c.globalAlpha = _clampAlpha(DMZ_STROKE_ALPHA);
+  c.strokeStyle = "rgba(230, 230, 240, 1)";
+  c.lineWidth = 1.5;
+  c.lineJoin = "round";
+  c.beginPath();
+  c.moveTo(pts[0][0], pts[0][1]);
+  for (let k = 1; k < pts.length; k += 1) c.lineTo(pts[k][0], pts[k][1]);
+  c.stroke();
+  c.restore();
+}
+
+// MIA reachability rings: dashed circle outlines at (cx,cy) radius r_frac (of the
+// box WIDTH), stroke alpha decaying with confidence, an optional champion-initial
+// label. SR-only by construction (the payload is absent in other modes). Drawn
+// ABOVE the live bubbles + tints, BELOW the dmz seam.
+function _drawMiaRings(c, mia, w, h) {
+  if (!mia || !mia.rings || !mia.rings.length) return;
+  for (const ring of mia.rings) {
+    const x = fracToPx(ring.cx, w);
+    const y = fracToPx(ring.cy, h);
+    const r = Math.max(2, fracToPx(ring.r_frac, w));
+    const a = _miaRingAlpha(ring.confidence);
+    c.save();
+    c.globalAlpha = a;
+    c.strokeStyle = "rgba(255, 214, 120, 1)"; // warm amber - reads as a fog/uncertainty cue
+    c.lineWidth = 1.5;
+    if (typeof c.setLineDash === "function") c.setLineDash(MIA_DASH);
+    c.beginPath();
+    c.arc(x, y, r, 0, Math.PI * 2);
+    c.stroke();
+    if (typeof c.setLineDash === "function") c.setLineDash([]);
+    // champion-initial label at the ring center (legible >= ~10px at 1x).
+    if (ring.champion) {
+      c.globalAlpha = _clampAlpha(Math.max(a, MIA_RING_ALPHA_MIN + 0.1));
+      c.fillStyle = "rgba(255, 232, 176, 1)";
+      c.font = `${MIA_LABEL_PX}px sans-serif`;
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillText(ring.champion.charAt(0).toUpperCase(), x, y);
+    }
+    c.restore();
+  }
+}
+
+function _paint(ctx, scene, demarcRaw, w, h, extras) {
   ctx.clearRect(0, 0, w, h);
   ctx.save();
+
+  const mia = extras && extras.mia ? extras.mia : null;
+  const dmz = extras && extras.dmz ? extras.dmz : null;
+  const districts = extras && extras.districts ? extras.districts : null;
 
   // Pre-resolve the demarcation pixel endpoints once. The ally-side tint is
   // folded INTO the blue team layer (below) so tint + ally bubbles are capped
@@ -309,6 +548,13 @@ function _paint(ctx, scene, demarcRaw, w, h) {
       x2: fracToPx(demarcRaw.x2, w), y2: fracToPx(demarcRaw.y2, h),
       side: demarcRaw.ally_side,
     };
+  }
+
+  // 0. District presence tints - the FAINTEST layer (bottom of the hierarchy),
+  //    drawn first so live bubbles + rings + dmz composite ABOVE it.
+  if (districts) {
+    ctx.globalAlpha = 1;
+    _drawDistrictTints(ctx, districts, w, h);
   }
 
   // 1. Team presence bubbles, composited PER TEAM through an offscreen buffer.
@@ -356,8 +602,16 @@ function _paint(ctx, scene, demarcRaw, w, h) {
     _drawTeamBubbles(ctx, scene, "red", w, h, MAX_ALPHA, teamColor);
   }
 
-  // 2. Demarcation line on the main canvas (single thin stroke at the cap).
-  if (dem) {
+  // 2. MIA reachability rings (ABOVE bubbles, BELOW the seam). SR-only by
+  //    construction (payload absent elsewhere).
+  if (mia) _drawMiaRings(ctx, mia, w, h);
+
+  // 3. The zone seam. A valid fluid DMZ path REPLACES the straight demarcation
+  //    (top of the hierarchy). When dmz is null/degenerate the legacy straight
+  //    stroke paints EXACTLY as before (byte-identical fallback).
+  if (dmz) {
+    _drawDmz(ctx, dmz, w, h);
+  } else if (dem) {
     ctx.globalAlpha = _clampAlpha(MAX_ALPHA);
     ctx.strokeStyle = "rgba(230, 230, 240, 1)";
     ctx.lineWidth = 1.5;
@@ -424,7 +678,12 @@ export function renderMinimapZoi(zoi) {
 
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  _paint(ctx, bubbles, demarc, w, h);
+  // The additive spec-G layers (mia rings / fluid dmz / district tints) are
+  // discrete overlays, not EMA-smoothed centroids, so they ride straight off the
+  // normalized scene `z` (already validated + subset-tolerant).
+  _paint(ctx, bubbles, demarc, w, h, {
+    mia: z.mia, dmz: z.dmz, districts: z.districts,
+  });
   if (DEBUG_ZOI) {
     // Ground-truth probe (DEBUG_ZOI ships OFF): a bright magenta border + fill
     // confirms the canvas is opaque + sized + painting (see the DEBUG_ZOI note).
@@ -461,4 +720,14 @@ export const __test = {
   MAX_ALPHA,
   ALLY_TINT_MAX,
   EMA_ALPHA,
+  // spec G additive-key helpers
+  normMia,
+  normDmz,
+  normDistricts,
+  _normMiaRing,
+  _normDistrictRow,
+  _fracOrNull,
+  _miaRingAlpha,
+  MIA_RING_ALPHA_MAX,
+  MIA_RING_ALPHA_MIN,
 };
