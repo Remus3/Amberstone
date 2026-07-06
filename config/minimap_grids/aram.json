@@ -1,0 +1,52 @@
+{
+  "mode": "aram",
+  "grid_hint": null,
+  "_comment": "Howling Abyss single-bridge partition: the bridge is the base-to-base anti-diagonal band; flank brush districts sit either side. Single-lane invariant: NO shortcuts anywhere. Array order = point-in-polygon priority.",
+  "districts": [
+    {
+      "id": "blue_base",
+      "label": "Blue base",
+      "role": "base",
+      "poly": [[0.0, 0.80], [0.20, 0.80], [0.20, 1.0], [0.0, 1.0]],
+      "adjacent": ["aram_bridge"],
+      "shortcuts": [],
+      "legacy_label": null
+    },
+    {
+      "id": "red_base",
+      "label": "Red base",
+      "role": "base",
+      "poly": [[0.80, 0.0], [1.0, 0.0], [1.0, 0.20], [0.80, 0.20]],
+      "adjacent": ["aram_bridge"],
+      "shortcuts": [],
+      "legacy_label": null
+    },
+    {
+      "id": "aram_bridge",
+      "label": "Howling Abyss bridge",
+      "role": "bridge",
+      "poly": [[0.0, 0.82], [0.82, 0.0], [1.0, 0.18], [0.18, 1.0]],
+      "adjacent": ["blue_base", "red_base", "brush_north", "brush_south"],
+      "shortcuts": [],
+      "legacy_label": null
+    },
+    {
+      "id": "brush_north",
+      "label": "North flank brush",
+      "role": "brush",
+      "poly": [[0.0, 0.0], [0.82, 0.0], [0.0, 0.82]],
+      "adjacent": ["aram_bridge"],
+      "shortcuts": [],
+      "legacy_label": null
+    },
+    {
+      "id": "brush_south",
+      "label": "South flank brush",
+      "role": "brush",
+      "poly": [[1.0, 0.18], [1.0, 1.0], [0.18, 1.0]],
+      "adjacent": ["aram_bridge"],
+      "shortcuts": [],
+      "legacy_label": null
+    }
+  ]
+}
