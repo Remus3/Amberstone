@@ -170,6 +170,37 @@ def _native_grab_enabled() -> bool:
         not in ("0", "false", "no", "off", "")
 
 
+def _identity_enabled() -> bool:
+    """RC_ZOI_IDENTITY gates the per-dot champion identity pass (spec E-1,
+    DEFAULT OFF - live template-match quality is live-gated before any flip).
+    Flag off is byte-identical to the pre-identity behavior. Mirrors the
+    RC_ZOI_NATIVE_GRAB env pattern above, with the opposite default."""
+    import os
+    return os.environ.get("RC_ZOI_IDENTITY", "0").strip().lower() \
+        in ("1", "true", "yes", "on")
+
+
+def _live_roster() -> list:
+    """The <=10 champion display names from the Live Client allPlayers list
+    (core/vision_tracker.py:307 naming), via the shared liveclient_cache.
+    Fail-soft: no game / relay down / malformed payload -> []."""
+    try:
+        from core.liveclient_cache import get as _lc_get
+        snap = _lc_get()
+        data = snap.data
+        players = data.get("allPlayers") if isinstance(data, dict) else None
+        out = []
+        for p in players or []:
+            if not isinstance(p, dict):
+                continue
+            champ = p.get("championName")
+            if isinstance(champ, str) and champ.strip():
+                out.append(champ.strip())
+        return out
+    except Exception:  # noqa: BLE001 - roster is best-effort, never blocks dots
+        return []
+
+
 def _scaled_size_bounds(crop_w) -> tuple[int, int]:
     """Rescale (_MIN_PX, _MAX_PX) from the 208px tuning baseline to `crop_w` by
     AREA, so a native 416px crop (2x linear -> 4x area) keeps the same PHYSICAL
@@ -266,11 +297,19 @@ def _grab_frame_minimap(minimap_rect):
         return None
 
 
-def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5) -> list[dict]:
+def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5,
+                         roster: Optional[list] = None) -> list[dict]:
     """Grab the minimap and detect team dots. Prefers the NATIVE full-res grab
     (RC_ZOI_NATIVE_GRAB, default ON) for 4x the pixels; falls back to the :8889
     coaching-frame crop. TTL + rect cached. Returns [] on any failure (no vision
-    server, numpy missing, headless, bad rect) so callers can stamp it blindly."""
+    server, numpy missing, headless, bad rect) so callers can stamp it blindly.
+
+    Spec E-1 (2026-07-05): when RC_ZOI_IDENTITY is on (DEFAULT OFF), an
+    additive champion-identity pass (core/minimap_identity.identify_dots)
+    annotates dots with {"champion", "identity_confidence"} scoped to
+    `roster` (or, when None, the Live Client allPlayers roster). Flag off is
+    byte-identical to prior behavior; an identity failure degrades to the
+    plain presence dots, never []."""
     if np is None or not isinstance(minimap_rect, dict):
         return []
     import time as _time
@@ -288,6 +327,14 @@ def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5) -> li
         else:
             minpx, maxpx = _scaled_size_bounds(crop.shape[1])
             dots = detect_team_dots(crop, min_px=minpx, max_px=maxpx)
+            if dots and _identity_enabled():
+                try:
+                    names = roster if roster is not None else _live_roster()
+                    if names:
+                        from core.minimap_identity import identify_dots as _identify
+                        dots = _identify(crop, dots, names)
+                except Exception:  # noqa: BLE001 - identity is additive, never blocks presence
+                    pass
     except Exception:  # noqa: BLE001 - never let a vision hiccup break /api/state
         dots = _dots_cache["dots"]  # serve last good rather than flicker to []
         _dots_cache["wall"] = now
