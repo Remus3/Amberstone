@@ -281,20 +281,26 @@ def evaluate_named_calculation(
 # ---- Stat-grant calc key -> canonical stat overlay key --------------------
 # When an augment ships a `calculations` entry whose KEY name maps to a
 # canonical stat, the evaluator can produce a stat-grant value that
-# DISPLACES the hand-maintained `_AUGMENT_STAT_OVERLAYS` entry. At cdragon
-# 16.10.1 NO augment ships a stat-named calculation key (every key is
-# damage/heal/shield/conversion), so this map is the door for the next
-# patch - the registry remains the source of truth for today's 137/220
-# overlay-covered augments.
+# DISPLACES the hand-maintained `_AUGMENT_STAT_OVERLAYS` entry. At 16.13.1
+# almost every calc key is damage/heal/shield/conversion; the lone
+# stat-NAMED exception is MasterofDuality (id 54: `ADGained` 3->9 /
+# `APGained` 6->18 by char-level), and it stays OUT of this map on purpose -
+# those are UPTIME-conditional build-up grants (Attacks grant AP, Abilities
+# grant AD, round-scoped), not a static overlay, so pinning a single-stack
+# value would inject an uptime-dependent ranking change. This map is the
+# door for a genuinely-static stat-named key on a future patch - the
+# registry remains the source of truth for today's overlay-covered augments.
 #
 # This is intentionally narrow: only keys that unambiguously land as stat
-# grants (not damage formulas or tooltips that happen to share a stat
-# substring).
+# grants (not damage formulas, uptime-conditional build-ups, or tooltips
+# that happen to share a stat substring).
 STAT_GRANT_CALC_KEYS: dict[str, str] = {
     # No entries today; this map is the seam for the next-patch slice. The
     # absence is the honest signal: the displacement of overlay -> calc
-    # evaluation is wired through, awaiting Riot to ship a stat-named
-    # calc on a future Arena patch.
+    # evaluation is wired through, awaiting Riot to ship a GENUINELY-STATIC
+    # stat-named calc on a future Arena patch. (16.13.1 does ship the
+    # stat-named MasterofDuality ADGained/APGained, but those are
+    # uptime-conditional build-up grants, not a static overlay - excluded.)
 }
 
 
