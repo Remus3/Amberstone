@@ -235,6 +235,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-06 (OUT-OF-GAME - /live-gated-resync #2 + HEXCORE galaxy update+expand + /repo-insights; commit `940cc4b1`, LEDGER 800)
+
+Operator-chained command run: `/live-gated-resync` workflow -> update+expand HEXCORE -> `/repo-insights` -> `/done`. Docs-only, no code/engine/DS/frozen touched, no restart. mode_key=client (no live game) throughout.
+- **LIVE_GAME_GATED_SYNC.md rebuilt (1709 lines; 53-agent workflow, audit pass).** open_now=112 (+11 / -0), arena_needed=YES (D2-D6,D9), est 4 sessions; new Section H CV/OBS (H1-H6); incumbent-hysteresis (`32132f22`/`6f5c27a6`) recorded as the 2nd wired-on-live seam alongside DSP11; stale rank.py:632 cite -> :686; live-flip ledger preserved + one UNDATED (SYNC) resync #2 entry prepended.
+- **HEXCORE_offline.html + HEXCORE.html data-synced (both, item-764 precedent).** Stats panel (commits 3176, head e27c5a3a, 2026-07-06, 5 local branches), ENGINE 1.179.0 -> 1.181.0 tooltips, +4 RAW nodes (ZOI district-macro hub + macro-decision tree + player-snapshot card + snowball model) + 7 edges + 21 DUST leaves = all 25 new source files since the 764 baseline; prose 139 nodes / 277 dust. Verified: referential integrity clean, 0 non-ASCII, both `<script>` blocks node --check green. Enhancements stayed offline-only per 764.
+- **repo-insights** at `~/.claude/usage-data/repo-insights-2026-07-06.html` (window 2026-06-06..07-06, 1432 commits, 174 ledger items). Ephemeral, not committed.
+
+**NEXT SESSION:** the LIVE_GAME_GATED_SYNC drain plan is 4 live sessions (practice SR -> real SR -> ARAM Mayhem -> Arena); arena items D2-D6,D9 NEED a live Arena game. Or run `/live-gated-drain` while playing, else pick the top ROADMAP `NEXT`. **DO NOT redo:** the sync doc + both HEXCORE files are shipped in `940cc4b1`; hexcore stats/ENGINE 1.181/nodes are current as of 2026-07-06.
+
+---
+
 # 2026-07-06 (OUT-OF-GAME - UI_OVERLAY_REDESIGN BATCH B + C + DS PD->Kraken stability fix + B45/B46 EHP flips + incumbent frontend wiring; 6 commits `17359ca9`..`32132f22`, LEDGER 799)
 
 Continued the 797/798 spec out-of-game (liveclient empty throughout); inline/foreground; no frozen file touched. Six scoped commits, all pushed.
