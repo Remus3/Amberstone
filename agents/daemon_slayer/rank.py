@@ -456,6 +456,21 @@ def _is_purchasable(item: dict) -> bool:
     return bool(gold.get("purchasable")) and int(gold.get("total", 0) or 0) > 0
 
 
+def _is_ornn_masterwork(item: dict) -> bool:
+    """True for an Ornn 'masterwork' upgrade (Wooglet's Witchcap etc.) - obtainable
+    ONLY when an Ornn ally upgrades your legendary, NEVER purchasable from the shop,
+    so never a coachable recommendation in any mode. DDragon marks them
+    ``gold.purchasable``=True + ``maps['12']``=True (ARAM), so they leaked into the
+    pool and a from-scratch optimal build recommended them (operator 2026-07-06:
+    Wooglet's surfaced in ARAM). The definitive marker is the ``<ornnBonus>`` stat
+    tag in the description - present on every masterwork, absent on every buyable
+    item. (The 228xxx id namespace is NOT a safe marker: it also holds Arena
+    22-mirror ids - 228001 Anathema's Chains = "22" + 8001, 228009, 228020 - which
+    ARE buyable and must stay in the pool.) Patch-proof - a masterwork added in a
+    future data refresh auto-excludes."""
+    return "<ornnBonus>" in str(item.get("description") or "")
+
+
 def _is_terminal(item: dict) -> bool:
     """Final-tier item - has no ``into`` upgrade path.
 
@@ -540,6 +555,14 @@ def _filter_candidates(
         if item_id in current_ids:
             continue
         if item_id in _NON_COACHABLE_ITEM_IDS:
+            continue
+        # Ornn masterwork deny (operator 2026-07-06): items obtainable ONLY via an
+        # Ornn ally upgrade (Wooglet's Witchcap etc.) are marked gold.purchasable
+        # =True + maps['12']=True in DDragon, so they leaked into the (ARAM) pool
+        # and a from-scratch optimal recommended them - but they cannot be bought.
+        # Deny unconditionally (every mode/scorer, before the inject force-admit),
+        # like the non-coachable + ranged-only gates.
+        if _is_ornn_masterwork(rec):
             continue
         # Ranged-only purchasability gate: a melee champ cannot buy these in the
         # shop, so they never enter the pool - ahead of the inject force-admit
