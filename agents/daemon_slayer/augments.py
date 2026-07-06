@@ -200,8 +200,11 @@ def compute_augment_stats(
          ``STAT_GRANT_CALC_KEYS`` registry, evaluate via
          ``stat_overlay_from_calculations``. This is the seam that, once
          populated, displaces the hand-maintained overlay registry for the
-         augment in question. At cdragon 16.10.1 no calc keys are
-         stat-named so this path returns ``{}`` for every augment.
+         augment in question. At 16.13.1 the registry is still empty so this
+         path returns ``{}`` for every augment: the only stat-named calc key
+         in the data (MasterofDuality ADGained/APGained) is an
+         uptime-conditional build-up grant, deliberately excluded, not a
+         static overlay.
       2. Otherwise fall back to ``_AUGMENT_STAT_OVERLAYS`` (the
          hand-maintained registry, today the source of truth for 11/220
          augments + the 137/220 augments that ship empty calculations).
