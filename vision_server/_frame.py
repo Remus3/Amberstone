@@ -54,11 +54,68 @@ _self_grab_lock = threading.Lock()
 _last_self_grab_attempt = 0.0
 
 
+def _maybe_obs_frame():
+    """OBS occlusion-proof frame provider (ZOI plan spec O, 2026-07-05).
+
+    Config-gated on ``obs.frame_source`` (DEFAULT OFF). When enabled, an OBS
+    GetSourceScreenshot frame REPLACES the GDI self-grab: OBS Game Capture
+    reads the game surface directly, so the RC overlay sitting on top never
+    contaminates the frame. ANY failure (flag off, OBS down, decode error)
+    returns None and the caller falls through to the untouched GDI path -
+    flag off is byte-identical to prior behavior.
+
+    Mirrors the GDI path's contract: downscales to ``_SELF_GRAB_MAX_WIDTH``
+    (the documented coaching width) and returns the cache-shaped dict."""
+    try:
+        from core.obs_frame_source import get_obs_frame, obs_frame_source_enabled
+        if not obs_frame_source_enabled():
+            return None
+        raw = get_obs_frame()
+        if not raw:
+            return None
+        width = height = None
+        try:
+            from PIL import Image
+            img = Image.open(io.BytesIO(raw))
+            img.load()
+            if img.width > _SELF_GRAB_MAX_WIDTH:
+                ratio = _SELF_GRAB_MAX_WIDTH / img.width
+                img = img.resize((_SELF_GRAB_MAX_WIDTH,
+                                  int(img.height * ratio)))
+                buf = io.BytesIO()
+                img.convert("RGB").save(buf, format="JPEG",
+                                        quality=_SELF_GRAB_JPEG_QUALITY,
+                                        optimize=True)
+                raw = buf.getvalue()
+            width, height = img.width, img.height
+        except Exception:  # noqa: BLE001 - PIL absent/undecodable: serve raw as-is
+            pass
+        b64 = _b64.b64encode(raw).decode("ascii")
+        return {
+            "b64":    b64,
+            "size":   len(b64),
+            "width":  width,
+            "height": height,
+            "format": "jpeg",
+            "source": "obs",
+        }
+    except Exception:  # noqa: BLE001 - never let the OBS lane break the grab
+        return None
+
+
 def _fetch_frame_direct():
     """One in-process screen grab. Returns the cache-shaped frame dict (with a
     base64 JPEG ``b64``) or None on any failure (PIL absent, headless session,
     grab error). A single GDI BitBlt via PIL.ImageGrab. Patchable seam for
-    tests."""
+    tests.
+
+    Spec O (2026-07-05): when config ``obs.frame_source`` is on, the OBS
+    occlusion-proof frame is tried FIRST; ANY OBS failure falls back to the
+    GDI BitBlt below. Flag off (the default) short-circuits to None inside
+    ``_maybe_obs_frame`` and this function behaves exactly as before."""
+    obs_frame = _maybe_obs_frame()
+    if obs_frame is not None:
+        return obs_frame
     try:
         from PIL import ImageGrab
     except Exception:  # noqa: BLE001
@@ -123,11 +180,15 @@ def _maybe_self_grab() -> dict | None:
     grabbed = _fetch_frame_direct()
     if not isinstance(grabbed, dict) or not grabbed.get("b64"):
         return None
+    # Spec O: the direct grab may come from OBS ("obs") instead of the GDI
+    # BitBlt ("self_grab"); propagate its label. GDI grabs always stamp
+    # "self_grab" so the flag-off path is byte-identical to before.
+    src = grabbed.get("source") or "self_grab"
     frame = {
         "b64":    grabbed["b64"],
         "ts":     now,
         "size":   grabbed.get("size", len(grabbed["b64"])),
-        "source": "self_grab",
+        "source": src,
         "width":  grabbed.get("width"),
         "height": grabbed.get("height"),
         "format": grabbed.get("format", "jpeg"),
@@ -136,7 +197,7 @@ def _maybe_self_grab() -> dict | None:
     }
     with _frame_lock:
         _latest_frame.update(frame)
-        _frames_by_source["self_grab"] = dict(frame)
+        _frames_by_source[src] = dict(frame)
         return dict(_latest_frame)
 
 
