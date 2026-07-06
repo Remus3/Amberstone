@@ -376,7 +376,9 @@ class BuildStateIntegrationTests(unittest.TestCase):
             sb.lcu_summary = lambda: {}
             sb.liveclient_summary = lambda: {}
             sb.get_team_context = lambda: None
-            dc.compute_deterministic = lambda coach, lc, mk: det_result
+            # zoi kwarg mirrors the live call site (_state_builder passes
+            # zoi=zoi since ZOI Wave 2); the stub accepts + ignores it.
+            dc.compute_deterministic = lambda coach, lc, mk, zoi=None: det_result
             # resolve_choices stays REAL so we test the deterministic-FIRST logic.
             dc.resolve_choices = orig_resolve
             return sb.build_state()

@@ -475,8 +475,45 @@ def build_state() -> dict:
                 my_level=_lc.get("level"),
                 game_time_s=_lc.get("game_time_s"),
             )
+            if zoi is not None:
+                # ZOI Wave 2 (spec B): ADDITIVE per-district presence vector.
+                # current_presence() wraps a module-level tracker (wipes on
+                # new-game/mode-change/stale-gap); it and presence_payload()
+                # are fail-soft (never raise). The nested try keeps the
+                # existing {bubbles, demarcation, map_control} byte-identical
+                # even if the presence import itself fails.
+                try:
+                    from core.minimap_presence import (
+                        current_presence,
+                        presence_payload,
+                    )
+                    zoi["districts"] = presence_payload(
+                        current_presence(
+                            minimap_dots, mode_key, _lc.get("game_time_s")
+                        )
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
         except Exception:  # noqa: BLE001
             zoi = None
+    # ZOI Wave 2 (spec C): API-ground-truth fusion over the CV district
+    # presence vector. The lc event lists live ON lc itself (liveclient_summary
+    # keys turret_events / inhib_events / objective_events / players).
+    # Additive-only: adds zoi["districts_fused"]; every existing zoi key stays
+    # byte-unchanged. Fail-soft: any failure (or a missing districts vector)
+    # leaves zoi exactly as it was.
+    try:
+        if zoi is not None and isinstance(zoi.get("districts"), list):
+            from core.district_fusion import fuse_districts
+            _lc_f = lc or {}
+            zoi["districts_fused"] = fuse_districts(
+                zoi.get("districts"),
+                _lc_f,
+                mode_key,
+                _lc_f.get("game_time_s"),
+            )
+    except Exception:  # noqa: BLE001
+        pass
     _mark("zoi")
 
     # Haiku-elimination wave 3 (item 265 W3A): deterministic-FIRST coaching.
@@ -496,7 +533,7 @@ def build_state() -> dict:
             shadow_log_macro_response, shadow_log_aram_coach,
             shadow_log_arena_coach,
         )
-        det = compute_deterministic(coach, lc, mode_key)
+        det = compute_deterministic(coach, lc, mode_key, zoi=zoi)
         # Shadow-log BEFORE resolve_choices overwrites coach["choices"] - the
         # validation log must capture the NATIVE choices the deterministic flip
         # discards, not the post-flip result.
