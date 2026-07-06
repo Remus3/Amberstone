@@ -1021,8 +1021,14 @@ def compute_ehp(
     caster_current_hp_pct: float = 1.0,
     assume_passive_health_stacks: bool = False,
     assume_hsp_amp: bool = False,
-    assume_item_crit_dr: bool = False,
-    assume_item_aa_dr: bool = False,
+    # B45/B46 (operator flip 2026-07-06): default-ON so the EHP scorer credits
+    # Randuin's crit-DR (~+17.6% physical EHP at the assumed crit share) and
+    # Plated Steelcaps' 10% basic-attack DR (~+5.3% physical EHP at the assumed
+    # 0.5 AA share). Was default-OFF pending live validation; the assumed shares
+    # are conservative midpoints (no live crit/AA-share feed). Pass False at a
+    # call site to opt back out.
+    assume_item_crit_dr: bool = True,
+    assume_item_aa_dr: bool = True,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 

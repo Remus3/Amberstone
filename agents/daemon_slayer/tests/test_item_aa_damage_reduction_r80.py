@@ -120,12 +120,15 @@ class ComputeEhpAaDrTests(unittest.TestCase):
             assume_item_aa_dr=True,
         )
 
-    def test_default_off_byte_identical(self):
+    def test_default_now_on_matches_explicit_on(self):
+        # B46 flip 2026-07-06: assume_item_aa_dr defaults ON now, so a call with
+        # no flag matches the explicitly-armed result (was default-OFF; the
+        # explicit-False opt-out is still covered by the _off-vs-_on tests below).
         base = compute_ehp(SNAP, self.CHAMP, self.LEVEL, item_ids=(STEELCAPS,))
-        off = self._off((STEELCAPS,))
-        self.assertEqual(base.physical_ehp, off.physical_ehp)
-        self.assertEqual(base.magical_ehp, off.magical_ehp)
-        self.assertEqual(base.true_ehp, off.true_ehp)
+        on = self._on((STEELCAPS,))
+        self.assertEqual(base.physical_ehp, on.physical_ehp)
+        self.assertEqual(base.magical_ehp, on.magical_ehp)
+        self.assertEqual(base.true_ehp, on.true_ehp)
 
     def test_on_raises_physical_ehp_only(self):
         off = self._off((STEELCAPS,))
