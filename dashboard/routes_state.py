@@ -639,11 +639,18 @@ def _serve_ds_preview_post(h, payload) -> None:
         # (which caches just the rows, not the response envelope) can map
         # each row's delta to the correct unit suffix. Mirrors the
         # `display_rows` shape from coach_integration.archetype_dispatch.
+        # BATCH A (2026-07-06): forward the engine-supplied unique_passive_key
+        # as ``family`` so the in-game LIVE (Daemon Slayer) row can family-dedupe
+        # its display (drop a 2nd/3rd same-unique-family item, e.g. two
+        # Last-Whisper). The engine no-double rule is authoritative - the client
+        # holds NO family-literal map; it reads this field. "" when the row has
+        # no unique-passive family. Additive; every other consumer ignores it.
         result = [{"item_id": r.get("item_id", ""),
                    "item_name": r.get("item_name", ""),
                    "delta_dps": round(_delta(r), 1),
                    "gold": int(r.get("gold", 0) or 0),
-                   "scorer": scorer}
+                   "scorer": scorer,
+                   "family": str(r.get("unique_passive_key") or "")}
                   for r in ranked_in]
         # s171.6: defensive-pick ranker. Computes the enemy team's
         # threat profile (AD/AP/burst/tank) and recommends defensive
@@ -922,7 +929,7 @@ def _serve_build_order_post(h, payload) -> None:
     chooser will consume.
     """
     try:
-        from core.archetype_picks import get_archetype_for
+        from core.archetype_picks import canonical_champion_id, get_archetype_for
         from core.build_order import plan_build_order
 
         champion = str(payload.get("champion") or "").strip()
@@ -930,6 +937,13 @@ def _serve_build_order_post(h, payload) -> None:
             h._send(400, json.dumps({"error": "champion required"}).encode(),
                      "application/json")
             return
+        # BATCH A (2026-07-06) blank-meta fix: the in-game BUILD panel sends the
+        # coach payload's champion verbatim - a Live Client DISPLAY name ("Kai'Sa",
+        # "Tahm Kench"). DS registries key canonical DDragon ids; without this
+        # bridge plan_build_order silently 0.0-misses and returns an EMPTY order,
+        # so Row2 META wedged on "loading standard build..." forever. ds-preview
+        # already canonicalizes (parity); canonical ids pass through unchanged.
+        champion = canonical_champion_id(champion) or champion
         mode = str(payload.get("mode") or "SR").upper()
         level = max(1, min(18, int(payload.get("level") or 11)))
         items = [str(i) for i in (payload.get("items") or []) if i]
