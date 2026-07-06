@@ -43,6 +43,19 @@
   font-style: italic;
 }
 
+/* BATCH A: reserve the strip height for an empty (not-yet-landed) row so the
+   module does not reflow when a fetch lands - no stuck "loading..." string, just
+   a held-open slot (no-reflow-on-absence). */
+.bm-row .bm-strip:empty {
+  min-height: 46px;
+}
+
+/* BATCH A: the Daemon Slayer (live) row is the headline - its label reads in the
+   #6cf overlay cyan; Meta / Ultimate keep the faint eyebrow above. */
+.bm-live > .bm-row-label {
+  color: #6cf;
+}
+
 /* Row3 - the four DS fight-model knobs in a compact horizontal strip */
 .bm-knobs .bm-knob-strip {
   display: flex;
