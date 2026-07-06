@@ -155,3 +155,51 @@ test("renderMinimapZoi: no-op (no throw) when there is no document / not overlay
   assert.doesNotThrow(() => renderMinimapZoi(null));
   assert.doesNotThrow(() => renderMinimapZoi({ bubbles: [] }));
 });
+
+// -- flicker debounce (ZOI overlay strobe fix, 2026-07-05) --------------------
+// The server minimap-dots grab can transiently miss, emptying /api/state.zoi
+// for a poll or two. The overlay must HOLD the last scene across a transient
+// null instead of blanking ~1 Hz, and clear only after K consecutive nulls (a
+// real out-of-game). The DOM wiring stays in renderMinimapZoi (runtime +
+// Playwright); the counter transition is pure and unit-tested here.
+
+test("_nullDebounceStep: a valid scene resets the null streak", () => {
+  assert.deepStrictEqual(__test._nullDebounceStep(0, true), { streak: 0, clear: false });
+  assert.deepStrictEqual(__test._nullDebounceStep(5, true), { streak: 0, clear: false });
+});
+
+test("_nullDebounceStep: a transient null holds the scene (no clear before K)", () => {
+  const K = __test._NULL_CLEAR_STREAK;
+  assert.ok(K >= 2, `K must debounce at least one null: ${K}`);
+  const first = __test._nullDebounceStep(0, false);
+  assert.deepStrictEqual(first, { streak: 1, clear: false });
+  const second = __test._nullDebounceStep(first.streak, false);
+  assert.strictEqual(second.clear, false); // still holding before K
+});
+
+test("_nullDebounceStep: clears exactly at K consecutive nulls", () => {
+  const K = __test._NULL_CLEAR_STREAK;
+  let s = 0;
+  let step = { streak: 0, clear: false };
+  for (let i = 0; i < K; i++) {
+    step = __test._nullDebounceStep(s, false);
+    s = step.streak;
+  }
+  assert.strictEqual(s, K);
+  assert.strictEqual(step.clear, true);
+});
+
+test("_nullDebounceStep: a valid scene between nulls prevents a premature clear", () => {
+  let step = __test._nullDebounceStep(0, false); // 1
+  step = __test._nullDebounceStep(step.streak, false); // 2
+  assert.strictEqual(step.clear, false);
+  step = __test._nullDebounceStep(step.streak, true); // valid resets
+  assert.deepStrictEqual(step, { streak: 0, clear: false });
+  step = __test._nullDebounceStep(step.streak, false); // back to 1, no clear
+  assert.strictEqual(step.clear, false);
+});
+
+test("_nullDebounceStep: garbage streak fails soft to the first null", () => {
+  assert.deepStrictEqual(__test._nullDebounceStep(NaN, false), { streak: 1, clear: false });
+  assert.deepStrictEqual(__test._nullDebounceStep(undefined, false), { streak: 1, clear: false });
+});

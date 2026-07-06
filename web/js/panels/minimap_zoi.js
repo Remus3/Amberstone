@@ -307,10 +307,28 @@ function _sig(z) {
 // index) so the same logical bubble low-passes tick to tick.
 let _ema_state = null; // { bubbles:[{cx,cy,r,w}], demarc:{x1,y1,x2,y2}, pct }
 let _lastSig = "_unset_";
+let _nullStreak = 0; // consecutive renderMinimapZoi(null/invalid) ticks
+// Debounce a TRANSIENT absent-zoi frame: the server minimap-dots grab can
+// momentarily miss, emptying /api/state.zoi for a poll or two. Hold the last
+// painted scene until this many consecutive nulls (~6s at the 2s poll) so the
+// overlay does not strobe on/off; feedback_no_reflow_on_data_absence.
+const _NULL_CLEAR_STREAK = 3;
 
 function _resetMinimapZoi() {
   _ema_state = null;
   _lastSig = "_unset_";
+  _nullStreak = 0;
+}
+
+// Pure null-debounce transition: given the current consecutive-null streak and
+// whether this tick has a valid scene, return the next streak + whether to
+// clear now. A valid scene resets the streak; a null increments it and signals
+// a clear only at _NULL_CLEAR_STREAK (so 1-2 transient nulls hold the last
+// render). Fail-soft: a non-finite streak restarts at the first null.
+function _nullDebounceStep(streak, hasScene) {
+  if (hasScene) return { streak: 0, clear: false };
+  const next = (Number.isFinite(streak) ? streak : 0) + 1;
+  return { streak: next, clear: next >= _NULL_CLEAR_STREAK };
 }
 
 // Advance the EMA state toward the freshly-normalized scene. Returns the smoothed
@@ -639,9 +657,16 @@ export function renderMinimapZoi(zoi) {
   }
 
   const z = normZoi(zoi);
+  const _dbounce = _nullDebounceStep(_nullStreak, !!z);
+  _nullStreak = _dbounce.streak;
   if (!z) {
-    _clearCanvas();
-    _resetMinimapZoi();
+    // Debounce transient nulls: hold the last scene until _NULL_CLEAR_STREAK
+    // consecutive nulls (a real out-of-game), so a momentary empty
+    // /api/state.zoi does not blank the overlay ~1 Hz.
+    if (_dbounce.clear) {
+      _clearCanvas();
+      _resetMinimapZoi();
+    }
     return;
   }
 
@@ -730,4 +755,7 @@ export const __test = {
   _miaRingAlpha,
   MIA_RING_ALPHA_MAX,
   MIA_RING_ALPHA_MIN,
+  // flicker debounce (transient absent-zoi hold)
+  _nullDebounceStep,
+  _NULL_CLEAR_STREAK,
 };
