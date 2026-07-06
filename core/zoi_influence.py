@@ -255,14 +255,46 @@ def _valid_dot(d):
     }
 
 
-def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5)):
+def _mean_cap(roster, my_level, game_time_s):
+    """Team-mean capability weight over a roster (fail-soft -> 1.0)."""
+    from core.zoi_capability import team_mean_weight
+    try:
+        return team_mean_weight(roster, level=my_level, game_time_s=game_time_s)
+    except Exception:  # noqa: BLE001 - pure fail-soft
+        return 1.0
+
+
+def _dot_cap(champion, my_level, game_time_s):
+    """Per-dot capability weight from an identity-tagged champion (fail-soft)."""
+    from core.zoi_capability import capability_weight
+    try:
+        return capability_weight(champion, level=my_level, game_time_s=game_time_s)
+    except Exception:  # noqa: BLE001 - pure fail-soft
+        return 1.0
+
+
+def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5),
+                ally_roster=None, enemy_roster=None, dot_champions=False):
     """Compute the /api/state.zoi payload from per-team minimap dots.
 
     Pure + fail-soft. Returns None when `dots` is empty/None or every dot is
-    malformed. Otherwise a dict with EXACTLY {bubbles, demarcation, map_control}.
+    malformed. Otherwise a dict with AT LEAST {bubbles, demarcation, map_control}.
     Blue = ally, red = enemy (League default minimap colors; the operator uses
     the default). A zero-presence team falls back to `base_fallback` centroid +
     a forced 50/50 split so there is never a divide-by-zero.
+
+    ADDITIVE capability + DMZ extension (spec F, wave 3b):
+      - `ally_roster` / `enemy_roster`: lists of champion names. When PROVIDED,
+        each dot's radius folds a capability_weight (from core.zoi_capability):
+        per-dot via `dot.get("champion")` when `dot_champions=True`, else the
+        team-mean capability over that team's roster. The payload also gains a
+        "dmz" key = field_dmz(bubbles) (a fluid oil-and-water frontier), which
+        may be None when the field is degenerate (render falls back to the
+        straight demarcation).
+      - When BOTH rosters are None (the default), there is NO capability fold and
+        NO "dmz" key AT ALL (absent, not None) - the output is BYTE-IDENTICAL to
+        the pre-extension behavior. This inertness is test-pinned so the feature
+        is provably dormant until the roster wiring is live-gated on.
     """
     if not dots:
         return None
@@ -270,6 +302,9 @@ def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5)):
     for d in dots:
         nd = _valid_dot(d)
         if nd is not None:
+            # preserve an optional identity tag for per-dot capability
+            if isinstance(d, dict):
+                nd["champion"] = d.get("champion")
             valid.append(nd)
     if not valid:
         return None
@@ -281,12 +316,28 @@ def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5)):
     ally = [d for d in valid if d["team"] == "blue"]
     enemy = [d for d in valid if d["team"] == "red"]
 
+    # Capability fold is active ONLY when a roster is provided. Keeping this
+    # gated (not merely a 1.0 multiply) is what preserves byte-identity at
+    # defaults - the radius call is untouched when rosters are None.
+    caps_active = ally_roster is not None or enemy_roster is not None
+    ally_mean_cap = 1.0
+    enemy_mean_cap = 1.0
+    if caps_active and not dot_champions:
+        ally_mean_cap = _mean_cap(ally_roster, my_level, game_time_s)
+        enemy_mean_cap = _mean_cap(enemy_roster, my_level, game_time_s)
+
     # one bubble per valid dot
     bubbles = []
     for d in valid:
         is_ally = d["team"] == "blue"
         power = ally_pw if is_ally else enemy_pw
         r_frac = _bubble_radius_frac(d["px"], d["confidence"], power, T)
+        if caps_active:
+            if dot_champions:
+                cap = _dot_cap(d.get("champion"), my_level, game_time_s)
+            else:
+                cap = ally_mean_cap if is_ally else enemy_mean_cap
+            r_frac = r_frac * cap
         bubbles.append({
             "team": d["team"],
             "cx": round(d["x_frac"], 4),
@@ -333,7 +384,7 @@ def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5)):
     if len(line) > 120:
         line = line[:120]
 
-    return {
+    result = {
         "bubbles": bubbles,
         "demarcation": demarcation,
         "map_control": {
@@ -342,6 +393,15 @@ def compute_zoi(dots, *, my_level, game_time_s, base_fallback=(0.5, 0.5)):
             "line": line,
         },
     }
+    # Additive DMZ key ONLY when rosters were provided. Key ABSENT (not None)
+    # at defaults so the output stays byte-identical to the pre-extension shape.
+    if caps_active:
+        from core.zoi_field import field_dmz
+        try:
+            result["dmz"] = field_dmz(bubbles)
+        except Exception:  # noqa: BLE001 - pure fail-soft
+            result["dmz"] = None
+    return result
 
 
 def zoi_callout(zoi):
