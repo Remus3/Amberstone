@@ -6,9 +6,16 @@ from agents.daemon_slayer.dps import (
     DPS_CURVE_LEVELS,
     DpsCurvePoint,
     _armor_factor,
+    _rotation_attack_dps,
     _select_phase,
     compute_dps,
     compute_dps_curve,
+)
+from agents.daemon_slayer._effects_types import (
+    CallContext,
+    ItemEffect,
+    PHYSICAL,
+    PeriodicProc,
 )
 from agents.daemon_slayer.effects import ITEM_EFFECTS
 
@@ -324,6 +331,62 @@ class DpsCurveTests(unittest.TestCase):
         curve = compute_dps_curve(self.snap, "Aatrox", levels=(6, 6, 11))
         self.assertEqual(len(curve), 3)
         self.assertAlmostEqual(curve[0].weighted_dps, curve[1].weighted_dps)
+
+
+class RotationTargetsCtxGuardTests(unittest.TestCase):
+    """R84 latency guard - ``_rotation_attack_dps`` skips the frozen-dataclass
+    ``replace`` when the rotation's target count already equals the ctx value.
+
+    The skip must stay byte-identical: a single-target rotation reuses the
+    ctx (fast path) while a multi-target rotation still routes its
+    ``numberOfTargets`` into the proc lambda (replace path). Guards against a
+    mis-optimization that reuses ctx unconditionally and starves AoE procs.
+    """
+
+    def _aoe_effect(self) -> ItemEffect:
+        # AoE-incl-primary proc: damage scales directly with targets_in_rotation.
+        return ItemEffect(
+            item_id="TEST_AOE",
+            name="test_aoe_cleave",
+            periodics=(
+                PeriodicProc(
+                    name="aoe_incl",
+                    bonus_damage=lambda c: c.targets_in_rotation * 100.0,
+                    damage_type=PHYSICAL,
+                    every_n_seconds=1.0,
+                ),
+            ),
+        )
+
+    def _dps(self, n_targets: float) -> float:
+        # ad=0 so base AA DPS is 0 - isolates the proc contribution.
+        stats = {"as": 1.0, "ad": 0.0, "crit": 0.0}
+        rotation = {
+            "duration": 2.0,
+            "basic": 0.0,
+            "basicTime": 2.0,
+            "numberOfTargets": n_targets,
+        }
+        ctx = CallContext(base_ad=60.0, bonus_ad=0.0, level=11)  # targets=1.0
+        return _rotation_attack_dps(
+            stats, rotation,
+            target_armor_for_physical=0.0, target_mr=0.0,
+            mode_dmg_mult=1.0, crit_bonus=DEFAULT_CRIT_BONUS,
+            effects=[self._aoe_effect()], call_ctx=ctx,
+        )
+
+    def test_single_target_fast_path(self) -> None:
+        # n=1 equals ctx default -> reuse path; proc sees 1.0.
+        # 2 procs * 100 / 2.0s duration = 100 DPS.
+        self.assertAlmostEqual(self._dps(1.0), 100.0, places=6)
+
+    def test_multi_target_replace_path_still_scales(self) -> None:
+        # n=3 differs from ctx -> replace fires, proc sees 3.0.
+        # A unconditional-reuse regression would return 100.0 here.
+        self.assertAlmostEqual(self._dps(3.0), 300.0, places=6)
+
+    def test_targets_scale_linearly(self) -> None:
+        self.assertAlmostEqual(self._dps(3.0), 3.0 * self._dps(1.0), places=6)
 
 
 if __name__ == "__main__":
