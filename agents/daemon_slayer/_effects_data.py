@@ -557,7 +557,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3110",
         name="Frozen Heart",
         defensive_only=True,
-        note="Frozen Heart: AS-slow aura + armor; no DPS contribution",
+        # R86 (1.182.0): Winter's Caress -20% nearby enemy AS (DDragon 16.13.1)
+        # -> 20% less incoming basic-attack RATE -> physical-EHP credit behind
+        # the default-OFF ``assume_item_enemy_as_slow`` seam. DPS side stays inert.
+        enemy_attack_speed_slow=0.20,
+        note="Frozen Heart: AS-slow aura (-20% enemy AS) + armor; no DPS contribution",
     ),
     "3011": ItemEffect(
         item_id="3011",
@@ -3803,6 +3807,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="323110",
         name="Frozen Heart",
         defensive_only=True,
+        # R86 (1.182.0): mirror of SR 3110 - -20% nearby enemy AS physical-EHP seam.
+        enemy_attack_speed_slow=0.20,
         note="Frozen Heart (ARAM 323110): Winter's Caress AS-slow aura - defensive, no DPS proc",
     ),
     "323119": ItemEffect(
@@ -4350,6 +4356,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223110",
         name="Frozen Heart",
         defensive_only=True,
+        # R86 (1.182.0): mirror of SR 3110 - -20% nearby enemy AS physical-EHP seam.
+        enemy_attack_speed_slow=0.20,
         note="Frozen Heart (Arena 223110): Winter's Caress AS-slow aura - defensive, no DPS proc",
     ),
     "223116": ItemEffect(

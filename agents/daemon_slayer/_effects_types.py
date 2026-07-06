@@ -890,3 +890,18 @@ class ItemEffect:
     # 0.0 keeps every existing item + caller byte-identical (the field AND the
     # flag must both be set); appended at the END per the dataclass convention.
     basic_attack_damage_reduction: float = 0.0
+    # R86 (1.182.0): item-keyed enemy ATTACK-SPEED-SLOW aura (defensive EHP).
+    # Frozen Heart (SR 3110 / ARAM 323110 / Arena 223110) "Winter's Caress"
+    # reduces nearby enemy Attack Speed by 20% (DDragon 16.13.1) but was a
+    # defensive_only NOTE with no structured value, so the EHP scorer gave its
+    # signature anti-AA aura ZERO credit though the item's armor already counted.
+    # A 20% enemy AS slow drops the RATE of incoming basic attacks 20% - the same
+    # physical-EHP effect as a 20% per-hit basic-attack reduction (R80), sourced
+    # from attack RATE not per-hit magnitude. It folds into the physical EHP
+    # denominator via ``ehp.item_enemy_as_slow_multiplier`` behind the default-OFF
+    # ``assume_item_enemy_as_slow`` seam (a distinct item-keyed lane from R77's
+    # crit-DR and R80's per-hit AA-DR, so the seams never cross-credit). The
+    # basic-attack SHARE of incoming physical reuses R80's midpoint. Default 0.0
+    # keeps every existing item + caller byte-identical (the field AND the flag
+    # must both be set); appended at the END per the dataclass convention.
+    enemy_attack_speed_slow: float = 0.0
