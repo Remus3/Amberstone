@@ -540,6 +540,45 @@ def item_aa_dr_multiplier(
     return factor
 
 
+# ENGINE 1.182.0 (R86, 2026-07-06): item-keyed enemy ATTACK-SPEED-SLOW aura.
+# Frozen Heart (SR 3110 / ARAM 323110 / Arena 223110) "Winter's Caress" reduces
+# nearby enemy Attack Speed by 20% (DDragon 16.13.1) - a defensive_only NOTE with
+# ZERO EHP credit though the item's armor already counted. A 20% enemy AS slow
+# means nearby enemies auto-attack at 0.80x RATE, so the incoming basic-attack
+# damage rate drops 20%: the SAME physical-EHP effect as R80's per-hit AA-DR, just
+# sourced from attack RATE not per-hit magnitude. It folds into the physical EHP
+# denominator behind the default-OFF ``assume_item_enemy_as_slow`` seam - a
+# distinct item-keyed lane from R77's crit-DR and R80's per-hit AA-DR (each item
+# carries only its own reduction, so the lanes never cross-credit and stack
+# multiplicatively). The basic-attack SHARE of incoming physical reuses R80's
+# midpoint ``_ASSUMED_INCOMING_AA_SHARE`` (the live feed we lack). Default False ->
+# identity 1.0 before any item is inspected -> BYTE-IDENTICAL.
+def item_enemy_as_slow_multiplier(
+    item_ids: Iterable[str],
+    assume_item_enemy_as_slow: bool = False,
+) -> float:
+    """Physical-denominator multiplier from item-keyed enemy AS-slow auras.
+
+    Returns ``1.0`` (identity) when ``assume_item_enemy_as_slow`` is False or no
+    equipped item carries ``enemy_attack_speed_slow`` - BYTE-IDENTICAL. When
+    armed, each such item contributes ``(1 - enemy_attack_speed_slow *
+    _ASSUMED_INCOMING_AA_SHARE)`` multiplicatively (Frozen Heart is the only
+    carrier today, so no unique-passive stacking question arises). A value
+    ``< 1.0`` shrinks the physical denominator -> larger physical EHP, the
+    correct "enemy attacks slower -> less basic-attack damage taken -> survives
+    more" direction.
+    """
+    if not assume_item_enemy_as_slow:
+        return 1.0
+    factor = 1.0
+    for item_id in item_ids:
+        eff = ITEM_EFFECTS.get(str(item_id))
+        if eff is None or eff.enemy_attack_speed_slow <= 0.0:
+            continue
+        factor *= (1.0 - eff.enemy_attack_speed_slow * _ASSUMED_INCOMING_AA_SHARE)
+    return factor
+
+
 def _vamp_heal_pool(
     vamp_pct: float,
     ad: float,
@@ -1029,6 +1068,11 @@ def compute_ehp(
     # call site to opt back out.
     assume_item_crit_dr: bool = True,
     assume_item_aa_dr: bool = True,
+    # R86 (1.182.0): item-keyed enemy AS-slow aura (Frozen Heart -20% enemy AS
+    # ~= 20% less incoming basic-attack RATE, ~+11.1% physical EHP at the assumed
+    # 0.5 AA share). Ships DEFAULT-OFF pending its own live-gated flip (unlike the
+    # already-flipped R77/R80); identity multiplier when False -> BYTE-IDENTICAL.
+    assume_item_enemy_as_slow: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1257,6 +1301,18 @@ def compute_ehp(
         resolved.item_ids, assume_item_aa_dr
     )
 
+    # ENGINE 1.182.0 (R86, 2026-07-06): item-keyed enemy ATTACK-SPEED-SLOW aura
+    # (Frozen Heart Winter's Caress -20% enemy AS -> 20% less incoming basic-attack
+    # RATE). Basic-attack damage is PHYSICAL, so this is a SEPARATE physical-only
+    # denominator factor applied alongside item_crit_dr_mult + item_aa_dr_mult (NOT
+    # folded into mit_phys - it stays the pure champion percent-DR value for
+    # reporting). ``assume_item_enemy_as_slow`` defaults False -> identity 1.0 ->
+    # BYTE-IDENTICAL. Distinct item-keyed lane from R77/R80 (never cross-credit;
+    # stacks multiplicatively with Steelcaps' per-hit AA-DR on a build with both).
+    item_enemy_as_slow_mult = item_enemy_as_slow_multiplier(
+        resolved.item_ids, assume_item_enemy_as_slow
+    )
+
     # ENGINE 1.148.0 (R9, 2026-06-21): GAP - per-instance FLAT-AMOUNT damage
     # reduction, the sibling the percent mitigation registry deliberately
     # EXCLUDED (Fizz P, Amumu E, Leona W). A flat reduction per damage instance
@@ -1377,7 +1433,7 @@ def compute_ehp(
     # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
     # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
     # byte-identical.
-    physical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult)
+    physical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult)
     magical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
     true_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
@@ -1471,7 +1527,7 @@ def compute_ehp(
         # _blend_with_heal(heal_total) stays exactly blended_ehp (guard-tested);
         # flat_mit_* is 0.0 when the flag is off -> byte-identical.
         p = (hp + ext_flat_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
-            _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult
+            _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult
         )
         m = (hp + ext_flat_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
             _armor_factor(eff_mr) * safe_mult * mit_mag
