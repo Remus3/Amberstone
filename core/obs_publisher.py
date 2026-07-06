@@ -14,8 +14,22 @@ Disabled by default. To enable, add to `config/coach_settings.json`:
         "port":        4455,
         "password":    "",
         "source_name": "RC State",
-        "interval_s":  2.0
+        "interval_s":  2.0,
+
+        "frame_source":      false,
+        "frame_source_name": "Game Capture",
+        "frame_timeout_s":   1.5,
+        "frame_width":       0,
+        "frame_max_age_s":   3.0
     }
+
+The `frame_*` keys are the OBS occlusion-proof frame provider (ZOI plan
+spec O, 2026-07-05): when `frame_source` is true the publisher loop also
+keeps a GetSourceScreenshot frame warm each tick (see
+`grab_source_screenshot` + the keep-warm slot below), and the sync facade
+`core.obs_frame_source.get_obs_frame` serves it to the vision pipeline.
+DEFAULT OFF - with `frame_source` false (or absent) every existing
+behavior of this module is unchanged.
 
 Then create a Text (GDI+) source in OBS named "RC State" (or whatever
 you set source_name to). The publisher updates that source's text every
@@ -45,6 +59,7 @@ import json
 import logging
 import threading
 import time
+import uuid
 from pathlib import Path
 
 import websockets
@@ -68,6 +83,127 @@ def _load_obs_config() -> dict:
     except Exception as exc:  # noqa: BLE001
         _log.warning("OBS config read failed: %s", exc)
         return {}
+
+
+# -- request/response lane + keep-warm frame slot (spec O, 2026-07-05) -------
+# The original client is fire-and-forget only (_set_text never awaits its
+# op=7 reply; _drain_pending discards everything). Frame grabbing needs a
+# real request/response pair: send an op:6 Request with a unique requestId,
+# await the matching op:7 RequestResponse. Non-matching messages read while
+# waiting are discarded - exactly what _drain_pending would have done.
+# Everything here is fail-soft (returns None, never raises) and is only
+# exercised when config `obs.frame_source` is true.
+
+_REQUEST_TIMEOUT_S = 2.0
+
+_frame_slot_lock = threading.Lock()
+_frame_slot: dict = {"data": None, "mono": 0.0}
+
+
+def store_frame(data) -> None:
+    """Write raw image bytes into the keep-warm slot (monotonic-stamped).
+    Fail-soft no-op on empty/bad input."""
+    if not data:
+        return
+    try:
+        with _frame_slot_lock:
+            _frame_slot["data"] = bytes(data)
+            _frame_slot["mono"] = time.monotonic()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def peek_frame(max_age_s: float = 3.0) -> "bytes | None":
+    """Latest keep-warm frame bytes if fresher than `max_age_s`, else None.
+    The sync facade (core.obs_frame_source) reads this so callers never pay
+    a round-trip while the publisher loop is keeping the slot warm."""
+    try:
+        with _frame_slot_lock:
+            data = _frame_slot["data"]
+            age = time.monotonic() - float(_frame_slot["mono"] or 0.0)
+        if data and age <= float(max_age_s):
+            return data
+        return None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _reset_frame_slot() -> None:
+    """Test helper: clear the keep-warm slot."""
+    with _frame_slot_lock:
+        _frame_slot.update(data=None, mono=0.0)
+
+
+async def request_response(ws, request_type, request_data=None,
+                           timeout_s: float = _REQUEST_TIMEOUT_S):
+    """Send an op:6 Request and await the op:7 RequestResponse whose
+    requestId matches. Returns the op:7 `d` payload dict, or None on
+    timeout / connection error / any failure. Never raises."""
+    rid = "rc-req-" + uuid.uuid4().hex
+    payload: dict = {"op": 6, "d": {"requestType": str(request_type),
+                                    "requestId": rid}}
+    if request_data is not None:
+        payload["d"]["requestData"] = request_data
+    try:
+        await ws.send(json.dumps(payload))
+        deadline = time.monotonic() + max(0.05, float(timeout_s))
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            raw = await asyncio.wait_for(ws.recv(), timeout=remaining)
+            try:
+                msg = json.loads(raw)
+            except Exception:  # noqa: BLE001
+                continue
+            if not isinstance(msg, dict) or msg.get("op") != 7:
+                continue
+            d = msg.get("d") or {}
+            if d.get("requestId") == rid:
+                return d
+    except (asyncio.TimeoutError, TimeoutError):
+        return None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _decode_image_data(image_data) -> "bytes | None":
+    """Decode a GetSourceScreenshot imageData payload (a base64 data URI,
+    e.g. "data:image/jpg;base64,<b64>") to raw image bytes, or None."""
+    try:
+        if not isinstance(image_data, str) or not image_data:
+            return None
+        b64 = image_data.split("base64,", 1)[-1]
+        raw = base64.b64decode(b64)
+        return raw or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+async def grab_source_screenshot(ws, source_name, image_width: int = 0,
+                                 timeout_s: float = _REQUEST_TIMEOUT_S):
+    """GetSourceScreenshot over an already-identified OBS-WS connection.
+    Returns raw JPEG bytes (decoded from the base64 payload) or None; a
+    successful grab also warms the keep-warm slot. `image_width` <= 0 asks
+    OBS for the source's native resolution. Never raises."""
+    data: dict = {"sourceName": str(source_name), "imageFormat": "jpg"}
+    try:
+        w = int(image_width or 0)
+    except (TypeError, ValueError):
+        w = 0
+    if w >= 8:  # OBS-WS v5 rejects widths below 8
+        data["imageWidth"] = w
+    d = await request_response(ws, "GetSourceScreenshot", data,
+                               timeout_s=timeout_s)
+    if not isinstance(d, dict):
+        return None
+    status = d.get("requestStatus") or {}
+    if status.get("result") is False:
+        return None
+    raw = _decode_image_data((d.get("responseData") or {}).get("imageData"))
+    if raw:
+        store_frame(raw)
+    return raw
 
 
 def _render_state() -> str:
@@ -183,6 +319,18 @@ class OBSPublisher:
         source_name = cfg.get("source_name", "RC State")
         interval_s  = float(cfg.get("interval_s", 2.0))
         url = f"ws://{host}:{port}"
+        # Keep-warm frame lane (spec O) - DEFAULT OFF. When obs.frame_source
+        # is false/absent the loop below is byte-identical to the original.
+        frame_source_on = bool(cfg.get("frame_source"))
+        frame_source_name = str(cfg.get("frame_source_name") or "Game Capture")
+        try:
+            frame_width = int(cfg.get("frame_width", 0) or 0)
+        except (TypeError, ValueError):
+            frame_width = 0
+        try:
+            frame_timeout_s = float(cfg.get("frame_timeout_s", 1.5))
+        except (TypeError, ValueError):
+            frame_timeout_s = 1.5
 
         while not self._stop.is_set():
             try:
@@ -205,6 +353,17 @@ class OBSPublisher:
                         # fill up and stall the connection (see
                         # _drain_pending).
                         await self._drain_pending(ws)
+                        if frame_source_on:
+                            # Keep the frame slot warm AFTER the drain so the
+                            # drain cannot eat our op:7; request_response
+                            # discards any stray replies it reads itself.
+                            try:
+                                await grab_source_screenshot(
+                                    ws, frame_source_name,
+                                    image_width=frame_width,
+                                    timeout_s=frame_timeout_s)
+                            except Exception:  # noqa: BLE001
+                                pass
                         await asyncio.sleep(interval_s)
             except (OSError, asyncio.TimeoutError):
                 # OBS not running, wrong port, or handshake timed out.

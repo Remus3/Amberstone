@@ -184,15 +184,50 @@ def _scaled_size_bounds(crop_w) -> tuple[int, int]:
     return minpx, maxpx
 
 
+def _grab_obs_minimap(minimap_rect):
+    """OBS occlusion-proof minimap crop (ZOI plan spec O, 2026-07-05).
+
+    Config-gated on ``obs.frame_source`` (DEFAULT OFF). When enabled, the OBS
+    GetSourceScreenshot frame (source-scoped Game Capture - the RC overlay on
+    top of the game never appears in it) is decoded and cropped exactly like
+    the GDI path. ANY failure (flag off, OBS down, PIL absent, decode error)
+    returns None so the caller falls back to the GDI grab - flag off is
+    byte-identical to prior behavior."""
+    if np is None or not isinstance(minimap_rect, dict):
+        return None
+    try:
+        from core.obs_frame_source import get_obs_frame, obs_frame_source_enabled
+        if not obs_frame_source_enabled():
+            return None
+        raw = get_obs_frame()
+        if not raw:
+            return None
+        import io as _io
+
+        from PIL import Image as _Image
+        img = _Image.open(_io.BytesIO(raw)).convert("RGB")
+        return crop_minimap(np.asarray(img), minimap_rect)
+    except Exception:  # noqa: BLE001 - never let the OBS lane break /api/state
+        return None
+
+
 def _grab_native_minimap(minimap_rect):
     """High-res minimap crop from a NATIVE full-screen grab (no 1280 downscale,
     no JPEG). ~416px vs the 208px coaching-frame crop = 4x the pixels + clearer
     icons. Same single-GDI-BitBlt grab as the vision self-grab
     (vision_server/_frame.py) so there are no new multi-monitor assumptions -
     only the resolution differs. Returns (H, W, 3) uint8 or None (PIL absent /
-    headless / grab error / bad rect)."""
+    headless / grab error / bad rect).
+
+    Spec O (2026-07-05): when config ``obs.frame_source`` is on, the OBS
+    occlusion-proof frame is preferred; ANY OBS failure falls back to the GDI
+    BitBlt below. Flag off (default) short-circuits inside _grab_obs_minimap
+    and this function behaves exactly as before."""
     if np is None or not isinstance(minimap_rect, dict):
         return None
+    obs_crop = _grab_obs_minimap(minimap_rect)
+    if obs_crop is not None:
+        return obs_crop
     try:
         from PIL import ImageGrab
     except Exception:  # noqa: BLE001 - headless / PIL absent
