@@ -20,6 +20,8 @@
 // per-tick repaint never re-hits the route. A fetch error leaves the cells at "-"
 // (degraded), never a raw error string (repo Error-Handling rule).
 
+import { championTags } from "../lib/champion_tags.js";
+
 const _BENCH_URL = "/api/role-bracket-bench";
 const _ROLES = [["top", "Top"], ["jungle", "Jungle"], ["mid", "Mid"], ["bot", "Bot"], ["support", "Support"]];
 const _ROWS = [["lvl", "LVL"], ["cs", "CS"], ["tf", "TF"], ["kda", "KDA"]];
@@ -31,7 +33,8 @@ const _TTL_MS = 5 * 60 * 1000;
 const _BRACKET_EARLY_MAX_S = 1500;
 const _BRACKET_MID_MAX_S = 2100;
 
-let _role = "mid";      // route default; the selector switches it
+let _role = "mid";        // seeded from the detected lane/class on first render; the selector overrides
+let _roleUserSet = false; // true once the operator manually picks a role - stops auto-seeding
 let _bracket = "mid";
 let _lastLc = null;     // remembered so a selector change can repaint immediately
 const _cache = Object.create(null);     // "role|bracket" -> response JSON
@@ -44,6 +47,36 @@ function _bracketFor(secs) {
   if (s < _BRACKET_EARLY_MAX_S) return "early";
   if (s < _BRACKET_MID_MAX_S) return "mid";
   return "late";
+}
+
+// Live Client position (the operator's assigned SR lane) -> compare-role key.
+const _POS_ROLE = { TOP: "top", JUNGLE: "jungle", MIDDLE: "mid", BOTTOM: "bot", UTILITY: "support" };
+// Champion primary class -> compare-role key. The ARAM / no-lane fallback: with
+// no assigned position, lean on the champion's class so Kai'Sa / Aphelios
+// (Marksman) compare against BOT, not a hardcoded MID (operator 2026-07-06).
+// Fuzzy by nature (a Fighter/Tank could be top or jungle) - it is only the
+// starting default; the dropdown override always wins.
+const _CLASS_ROLE = { Marksman: "bot", Support: "support", Mage: "mid", Assassin: "mid", Tank: "top", Fighter: "top" };
+
+// Best-effort detect of the operator's role for the default compare: the SR
+// assigned lane first (Live Client position on the is_active player), else the
+// champion's class in a laneless mode (ARAM). Returns null when neither resolves
+// (the caller then keeps the current default). tagsLookup is injectable for tests;
+// it defaults to the async-lazy championTags cache.
+function _detectRole(lc, tagsLookup) {
+  if (!lc || typeof lc !== "object") return null;
+  const lookup = typeof tagsLookup === "function" ? tagsLookup : championTags;
+  const players = Array.isArray(lc.players) ? lc.players : [];
+  const me = players.find((p) => p && p.is_active);
+  const pos = me && typeof me.position === "string" ? me.position.toUpperCase() : "";
+  if (_POS_ROLE[pos]) return _POS_ROLE[pos];
+  const champ = lc.champion;
+  if (champ) {
+    const entry = lookup(champ);
+    const cls = entry && (entry.primary || (Array.isArray(entry.tags) ? entry.tags[0] : null));
+    if (cls && _CLASS_ROLE[cls]) return _CLASS_ROLE[cls];
+  }
+  return null;
 }
 
 // lc.kda is the "k/d/a" string; the benchmark is the (k+a)/max(d,1) ratio, so the
@@ -94,9 +127,15 @@ function _ensureScaffold(mount) {
     sel.value = _role;
     sel.addEventListener("change", () => {
       _role = sel.value || "mid";
+      _roleUserSet = true;   // an explicit operator pick wins - stop auto-seeding from detection
       renderStatsPanel(_lastLc);
     });
   }
+  // The ARAM/no-lane fallback leans on the champion class, which loads async;
+  // re-seed the compare role once that cache lands (until the operator picks).
+  document.addEventListener("rc:champion-tags-ready", () => {
+    if (!_roleUserSet && _lastLc) renderStatsPanel(_lastLc);
+  });
 }
 
 function _setCell(mount, side, k, text) {
@@ -153,7 +192,16 @@ export function renderStatsPanel(lc) {
     return;
   }
   _lastLc = lc;
+  // Default the compare role to the operator's DETECTED role (SR lane, else the
+  // champion's class in ARAM) instead of a hardcoded MID - until they pick one.
+  if (!_roleUserSet) {
+    const detected = _detectRole(lc);
+    if (detected) _role = detected;
+  }
   _ensureScaffold(mount);
+  // Keep the selector in sync when detection changed _role after the scaffold built.
+  const roleSel = mount.querySelector(".sp-role");
+  if (roleSel && roleSel.value !== _role) roleSel.value = _role;
   // Bracket follows the live clock so the benchmark is same-length games.
   _bracket = _bracketFor(lc.game_time_s);
   const bl = mount.querySelector(".sp-bracket");
@@ -170,9 +218,13 @@ export function renderStatsPanel(lc) {
 
 // Test seam: drop the built-scaffold flag so a fresh render rebuilds.
 export function _resetStatsPanel() {
+  _role = "mid";
+  _roleUserSet = false;
   const mount = document.getElementById("am-statspanel");
   if (mount) {
     mount.dataset.built = "";
     mount.innerHTML = "";
   }
 }
+
+export const __test = { _detectRole, _POS_ROLE, _CLASS_ROLE };

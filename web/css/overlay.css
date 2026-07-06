@@ -55,6 +55,11 @@ body[data-shell="overlay"] {
   --signal-good-soft: rgba(var(--ovx-good), 0.18);
   --signal-bad-soft: rgba(var(--ovx-red), 0.18);
   --signal-warn-soft: rgba(var(--ovx-warn), 0.18);
+  /* The ONE generic panel-container hairline (operator 2026-07-06: unify the
+   * scattered gold border alphas so every panel box reads the same). The
+   * semantic status borders (good/red/warn/cyan) and the head-rule / hover /
+   * minimap-outline accents stay intentional and are NOT routed through this. */
+  --ovx-panel-border: rgba(var(--ovx-gold), 0.70);
 }
 
 /* 1. Transparent canvas. The game shows through; only widgets paint. zoom (not
@@ -170,7 +175,7 @@ body[data-shell="overlay"] .ovx-widget {
    * sand, not the near-invisible 0.30), an inset gold top-bevel for the etched-
    * metal read, and a 1px #0A0E14 dark stroke wrapping the gold so it holds
    * contrast on ANY background (Gemini premium pass). */
-  border: 1px solid rgba(var(--ovx-gold), 0.70);
+  border: 1px solid var(--ovx-panel-border);
   border-radius: 7px;
   box-shadow: inset 0 1px 0 rgba(var(--ovx-gold), 0.45),
               0 0 0 1px rgba(var(--ovx-bg-nested), 1),
@@ -416,6 +421,13 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
   flex-wrap: nowrap;
+}
+/* BATCH C #1 (2026-07-06): the objective gauges are now ONE horizontal row of
+ * 3 dials (objective_gauges.css .og-grid). Three 88px dials + 2x8px gaps need
+ * ~280px; the default --ovx-w:210px clipped the 3rd dial, so widen w-objgauges
+ * to fit the row (still a peripheral right-edge cluster; tunable via the SZ slider). */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-objgauges"] {
+  --ovx-w: 288px;
 }
 /* BATCH A (2026-07-06): drop the "BUILD" pane-head title bar in-game (operator:
  * "knows what it is; wastes vertical space"). The widget chrome already labels
@@ -699,7 +711,7 @@ body[data-shell="overlay"] .ovx-launcher .ovx-launcher-menu {
   overflow-y: auto;
   padding: 6px;
   background: rgba(var(--ovx-bg), 0.96);
-  border: 1px solid rgba(var(--ovx-gold), 0.70);
+  border: 1px solid var(--ovx-panel-border);
   border-radius: 7px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
   z-index: 61;
@@ -788,6 +800,7 @@ body[data-shell="overlay"] .ovx-enemyspells {
 body[data-shell="overlay"] .ovx-enemyspells .es-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap; /* BATCH C #3: a long enemy name wraps the chips instead of clipping them */
   gap: 5px;
   margin: 3px 0;
 }
@@ -821,8 +834,12 @@ body[data-shell="overlay"] .ovx-enemyspells .es-chip {
    * padding) is part of the same A5 lock, not new off-grid drift. */
   cursor: pointer;
   white-space: nowrap;
+  /* BATCH C #3 (2026-07-06): the chip content is always a short A5 tag
+   * ("FL UP" / "TP 142s"), so pin a min-width that always holds the tag and let
+   * the row wrap (.es-row flex-wrap) when a long enemy name squeezes it, rather
+   * than ellipsis-clipping the countdown ("F. P." etc). A clipped CD is useless. */
+  min-width: 3.4rem;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 /* UP = ready (good/green); DOWN = on cooldown (warn/amber, the count). */
 body[data-shell="overlay"] .ovx-enemyspells .es-chip.es-up {
