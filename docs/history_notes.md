@@ -1,5 +1,15 @@
 # RC session history archive
 
+## Relocated 2026-07-05 (ZOI-district program /done - keep last 3: ZOI-exec + ZOI-plan + R81)
+
+# 2026-07-05 (R80 - item-keyed basic-attack-DR EHP seam, the R77 sibling lane; LEDGER 791)
+
+Gemini-loop executor cycle 9 (DIRECTOR REFILL rotation 2). Directive: premise-check ORUN3 + ORUN4, then rotate to the REFILL DS-sweep. Commit `bd397d36` (feat) + docs-sync commit. ENGINE 1.180.0 -> 1.181.0, DS :8893 bounced, Share synced.
+- PREMISE: ORUN3 (Aggregator B per-stat PGR strip) + ORUN4 (Aggregator D game-flow strip) are BOTH CLEAN duplicates (verified vs LIVE code) -> flipped DONE-CLEAN. ORUN3 == OQ12 (CS/min lm-rank-cspm last_match.js:520 + KP%/gold-share/dmg-share sub-lines last_match.js:1048 + champ_benchmarks.js); ORUN4 == R16 perf_curve.js + ORUN2 899b5f24 snowball-elasticity.
+- BUILD (R80): fresh Meraki-vs-registry refute -> Plated Steelcaps 3047/223047 Plating 10% basic-attack DR was defensive_only NOTE-only (ZERO EHP credit). NEW ItemEffect.basic_attack_damage_reduction (0.10) + ehp.item_aa_dr_multiplier + physical-only compute_ehp fold behind default-OFF assume_item_aa_dr; mirror of R77 crit-DR, never cross-credits; byte-identical OFF; +5.3% phys EHP armed at the 0.5 midpoint.
+GATE: TDD 17 + DSV9 end-append guard co-fix; DS 8032 pass; verifier CONFIRM 7/7; 123 ENGINE_VERSION pins bumped. CO-FIX (R77 a8302f01 pattern): the ENGINE bump re-fired 6 HZ-B stamp guards + 1 DAEMON_SLAYER doc-drift -> re-stamped HZ-B tables byte-exact 1.181.0 (173 roster preserved; the item-388 --static 10-champ seed footgun caught + reverted per the R78 warning) + the doc banner; RC 293 affected-class re-verify -> 10746 / 0 fail. Share --check green 410 files.
+DO NOT redo: ORUN3 + ORUN4 are CLEAN duplicates (do NOT re-pitch a Aggregator B per-stat strip or a Aggregator D game-flow strip); Steelcaps AA-DR is SHIPPED (do NOT re-pick 3047/223047); Frozen Heart 3110 enemy-AS aura is the next OPEN sibling candidate; the live default-ON flip -> LIVE_GATED B46 (do-not-flip-blind, the 0.5 AA-share midpoint calibration is the accrual tail).
+
 ## Relocated 2026-07-04 (E11-lobby /done - keep last 3: lobby + header-row-2/chips + drain)
 
 The "2026-07-04 late (HOME round-2 SHIPPED)" wakeup block was pruned here; full
