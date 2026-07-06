@@ -552,7 +552,15 @@ def _rotation_attack_dps(
     # numberOfTargets. Cleave-to-others procs (Ravenous Hydra) reference
     # targets_in_rotation; default 1.0 keeps every other proc unchanged.
     rotation_targets = float(rotation.get("numberOfTargets", 1.0) or 1.0)
-    rotation_ctx = replace(call_ctx, targets_in_rotation=rotation_targets)
+    # Skip the dataclasses.replace (field-introspection heavy, hot: called
+    # once per rotation per candidate build) when the rotation's target count
+    # already equals the ctx value - the replaced object would be field-equal
+    # to call_ctx, and CallContext is frozen + read-only downstream, so reuse
+    # is byte-identical. Most single-target rotations hit this fast path.
+    if rotation_targets == call_ctx.targets_in_rotation:
+        rotation_ctx = call_ctx
+    else:
+        rotation_ctx = replace(call_ctx, targets_in_rotation=rotation_targets)
     proc_dps = _periodic_proc_dps(
         effects, total_attacks, duration,
         target_armor_for_physical, target_mr, mode_dmg_mult, rotation_ctx,
