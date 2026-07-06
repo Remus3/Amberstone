@@ -1,0 +1,36 @@
+model_list:
+  - model_name: rc-local            # local primary, coding + tools
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:14b-instruct
+      api_base: http://127.0.0.1:11434
+  - model_name: rc-background       # local fast, haiku-tier
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:7b-instruct
+      api_base: http://127.0.0.1:11434
+  - model_name: rc-deepseek         # cheap cloud escalation
+    litellm_params:
+      model: deepseek/deepseek-v4-flash
+      api_key: os.environ/DEEPSEEK_API_KEY
+  - model_name: rc-deepseek-pro     # reasoning tier
+    litellm_params:
+      model: deepseek/deepseek-v4-pro
+      api_key: os.environ/DEEPSEEK_API_KEY
+  - model_name: rc-nemotron         # free hosted fallback (rate-capped)
+    litellm_params:
+      model: nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1.5
+      api_key: os.environ/NVIDIA_NIM_API_KEY
+  - model_name: rc-main             # alias Claude Code requests; local-first
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:14b-instruct
+      api_base: http://127.0.0.1:11434
+
+router_settings:
+  fallbacks: [{"rc-main": ["rc-deepseek", "rc-nemotron"]}]
+  context_window_fallbacks: [{"rc-main": ["rc-deepseek"]}]
+
+litellm_settings:
+  callbacks: ["prometheus"]
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

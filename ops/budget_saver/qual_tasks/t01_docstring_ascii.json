@@ -1,0 +1,6 @@
+{
+  "id": "t01_docstring_ascii",
+  "tier": 0,
+  "prompt": "Return ONLY a Python function `slug(s)` that lowercases s and replaces spaces with hyphens. ASCII only.",
+  "oracle": {"kind": "py_exec", "call": "slug('Hello World')", "expect": "hello-world"}
+}
