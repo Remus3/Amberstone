@@ -57,9 +57,9 @@ The LEDGER-795 ZOI/minimap-district finalization ran live. NO gate flipped (do-n
 
 - Z1. (PRACTICE-SR) DONE this session: overlay FLICKER fixed (server hold-last-good in
   `core/minimap_blob_detect.current_minimap_dots` + overlay `_nullDebounceStep` in
-  `web/js/panels/minimap_zoi.js`; 344 consumer tests green). OWED live: operator re-validate the
-  overlay holds steady (no ~1 Hz strobe) next game; the district-tally is a subtle corner cue (a
-  visibility lift is a future UI call).
+  `web/js/panels/minimap_zoi.js`; 344 consumer tests green). RE-VALIDATED live (operator confirmed
+  the shading holds steady, no ~1 Hz strobe - flicker fully closed). The district-tally is a subtle
+  corner cue (a visibility lift is a future UI call).
 - Z2. (BLOCKED-on-CV) macro callout (`kind="macro"`) + `zoi.mia` rings are DEAD on SR:
   `vision_tracker` fog needs coordinate positions the Live Client does not give (roles only), and
   `minimap_identity` is unwired. Both feed fixes are blocked on the ~70-vs-10 minimap-dot
