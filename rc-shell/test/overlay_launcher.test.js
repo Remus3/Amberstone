@@ -130,11 +130,14 @@ test("LAUNCHER is a control widget, never a panel (excluded from WIDGETS)", () =
   assert.strictEqual(inPanels, false, "launcher must NOT appear in the panel list");
 });
 
-test("the spell/CD panel (w-threat) is flagged as a click-through zone", () => {
+// w-threat (the enemy CD ledger) was removed 2026-07-05 (Live Client exposes no
+// cooldowns); the "spell panel is a click-through zone" contract now rides on
+// w-enemyspells (the enemy summoner-spell tap-tracker, interactive while playing).
+test("the enemy-spells panel (w-enemyspells) is flagged as a click-through zone", () => {
   const I = mod._internals;
-  const threat = I.WIDGETS.find((w) => w.id === "w-threat");
-  assert.ok(threat, "w-threat widget exists");
-  assert.strictEqual(threat.zone, true, "w-threat must be a zone (interactive while playing)");
+  const spells = I.WIDGETS.find((w) => w.id === "w-enemyspells");
+  assert.ok(spells, "w-enemyspells widget exists");
+  assert.strictEqual(spells.zone, true, "w-enemyspells must be a zone (interactive while playing)");
 });
 
 // --- _setHidden / _toggleHidden: bidirectional show/hide for the menu ---------
