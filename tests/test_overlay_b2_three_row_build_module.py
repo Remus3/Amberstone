@@ -31,7 +31,14 @@ DASHBOARD_CSS = REPO / "web" / "css" / "dashboard.css"
 
 
 class ThreeRowModule(unittest.TestCase):
-    """_renderAmBuildBody builds a 3-row module container."""
+    """_renderAmBuildBody builds the named-row module container.
+
+    BATCH A (2eb00958, 2026-07-06) dropped the FIGHT MODEL knob row from the
+    build module per the operator EXAMPLE (the full knobs card still lives at
+    csv-ds-knobs), so the module is now the "Daemon Slayer" + "Meta Build"
+    named rows. The former test_knobs_row assertion on bm-knobs was retired
+    with that redesign.
+    """
 
     def setUp(self):
         self.js = ACTIVE_MATCH_JS.read_text(encoding="utf-8")
@@ -44,9 +51,6 @@ class ThreeRowModule(unittest.TestCase):
 
     def test_meta_row(self):
         self.assertIn("bm-meta", self.js)
-
-    def test_knobs_row(self):
-        self.assertIn("bm-knobs", self.js)
 
     def test_horizontal_strip_class(self):
         # Row1 + Row2 are horizontal item strips.
