@@ -28,7 +28,12 @@ _KEYS = (
     "anvil_advice",
     "target_priority",
     "risk",
+    "choices",
 )
+
+# The seven string columns; choices is the eighth (a list) and is asserted
+# separately wherever the all-str invariant is checked.
+_STR_KEYS = tuple(k for k in _KEYS if k != "choices")
 
 _DET = {
     "action": "ALL-IN",
@@ -38,6 +43,10 @@ _DET = {
     "anvil_advice": "Roll the prismatic anvil at 3000g.",
     "target_priority": "Zed first, Lulu last.",
     "risk": "Zed R burst before your shield is up.",
+    "choices": [
+        {"key": "A", "label": "All-in", "source_tag": "arena_rule"},
+        {"key": "B", "label": "Trade and kite", "source_tag": "arena_rule"},
+    ],
 }
 
 _LIVE = {
@@ -48,6 +57,7 @@ _LIVE = {
     "anvil_advice": "Bank for a stat anvil next round.",
     "target_priority": "Lulu first to strip the polymorph.",
     "risk": "Getting chunked before the fight starts.",
+    "choices": [{"key": "A", "label": "Poke", "source_tag": "haiku"}],
 }
 
 
@@ -72,10 +82,12 @@ def test_fresh_write_returns_record_and_one_json_line(tmp_path):
     assert row["champ"] == "Kalista"
     assert row["round"] == 3
     assert row["enemy_comp"] == ["Ashe", "Zed"]
-    # Both sides are the full 7-key all-str columns, verbatim.
+    # Both sides are the full 8-key columns, verbatim: seven all-str fields
+    # plus the list-typed choices column.
     for side in ("deterministic", "live_haiku"):
         assert tuple(row[side].keys()) == _KEYS
-        assert all(isinstance(v, str) for v in row[side].values())
+        assert all(isinstance(row[side][k], str) for k in _STR_KEYS)
+        assert isinstance(row[side]["choices"], list)
     assert row["deterministic"] == _DET
     assert row["live_haiku"] == _LIVE
 
@@ -137,7 +149,8 @@ def test_non_dict_blocks_normalize_to_all_empty(tmp_path):
     # rather than blocking the row - the shadow file stays uniform.
     target = tmp_path / "arena_coach_shadow.jsonl"
     lc = {"champion": "Lux", "enemy_team": ["Brand"]}
-    empty = dict.fromkeys(_KEYS, "")
+    empty = dict.fromkeys(_STR_KEYS, "")
+    empty["choices"] = []  # the list column normalizes to [] not ""
 
     # Distinct rounds so the (all-"") action does not dedup the sub-cases.
     for round_label, block in ((1, None), (2, "garbage"), (3, 42)):
@@ -165,8 +178,10 @@ def test_extra_keys_dropped_missing_keys_empty(tmp_path):
     row = json.loads(_read_lines(target)[0])
     assert tuple(row["deterministic"].keys()) == _KEYS
     assert row["deterministic"]["action"] == "FIGHT"
-    assert "choices" not in row["deterministic"]
-    assert all(row["deterministic"][k] == "" for k in _KEYS if k != "action")
+    # choices is now a KEPT list column - the extra "teams" key is still dropped.
+    assert row["deterministic"]["choices"] == ["a", "b"]
+    assert "teams" not in row["deterministic"]
+    assert all(row["deterministic"][k] == "" for k in _STR_KEYS if k != "action")
 
 
 def test_per_path_dedup_is_independent(tmp_path):
