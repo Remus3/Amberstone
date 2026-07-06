@@ -344,7 +344,11 @@ class BuildOrderResult:
         }
 
 
-def _pick_top_safe(rows: list[dict]) -> tuple[Optional[dict], str, str]:
+def _pick_top_safe(
+    rows: list[dict],
+    incumbent_id: Optional[str] = None,
+    incumbent_margin: float = 0.03,
+) -> tuple[Optional[dict], str, str]:
     """Return (chosen_row, excluded_family, excluded_example).
 
     Chosen row is the highest-ranked candidate that does NOT share a dead
@@ -354,17 +358,48 @@ def _pick_top_safe(rows: list[dict]) -> tuple[Optional[dict], str, str]:
     filter off. The first skipped-for-family row's engine-supplied
     ``dead_unique_key`` / ``item_name`` are surfaced as the slot's
     exclusion example (no family map fabricated here).
+
+    Incumbent hysteresis (2026-07-06): when the caller passes ``incumbent_id``
+    (the item currently DISPLAYED in this slot) and it is still a legal,
+    positive-delta candidate, keep it unless the top challenger beats it by more
+    than ``incumbent_margin`` (relative delta). This damps the greedy top-1 flip
+    (PD -> Kraken) when a level tick crosses two items that are within noise.
+    ADDITIVE: with ``incumbent_id=None`` (every existing caller) the function is
+    byte-identical to the old ``rows[0]`` behavior.
     """
     excluded_family = ""
     excluded_example = ""
+    chosen: Optional[dict] = None
     for r in rows:
         if r.get("shares_dead_unique"):
             if not excluded_family:
                 excluded_family = str(r.get("dead_unique_key") or "")
                 excluded_example = str(r.get("item_name") or "")
             continue
-        return r, excluded_family, excluded_example
-    return None, excluded_family, excluded_example
+        chosen = r
+        break
+    if chosen is None:
+        return None, excluded_family, excluded_example
+
+    if incumbent_id is not None and str(incumbent_id) != str(chosen.get("item_id")):
+        inc = next(
+            (
+                r
+                for r in rows
+                if str(r.get("item_id")) == str(incumbent_id)
+                and not r.get("shares_dead_unique")
+            ),
+            None,
+        )
+        if inc is not None:
+            inc_delta = float(inc.get("delta", inc.get("delta_dps", 0.0)) or 0.0)
+            top_delta = float(chosen.get("delta", chosen.get("delta_dps", 0.0)) or 0.0)
+            # Keep a still-valuable incumbent unless the challenger is decisively
+            # better; a non-positive incumbent (a regression) always yields.
+            if inc_delta > 0.0 and top_delta <= inc_delta * (1.0 + incumbent_margin):
+                return inc, excluded_family, excluded_example
+
+    return chosen, excluded_family, excluded_example
 
 
 def plan_build_order(
@@ -385,6 +420,8 @@ def plan_build_order(
     rank_kwargs: Optional[dict] = None,
     rank_fn: Optional[Callable[..., Optional[dict]]] = None,
     inject_boots: bool = True,
+    incumbent: Optional[Iterable[str]] = None,
+    incumbent_margin: float = 0.03,
 ) -> Optional[BuildOrderResult]:
     """Plan a contextual, match-specific item ORDER for the remaining slots.
 
@@ -484,6 +521,13 @@ def plan_build_order(
     # result.order. Engine picks + boots both increment it.
     next_slot = 1
 
+    # Incumbent hysteresis (2026-07-06): the caller may pass the currently
+    # DISPLAYED engine picks (in engine-pick order, boots excluded) so slot i
+    # keeps its shown item unless a challenger beats it by incumbent_margin -
+    # damps the PD -> Kraken flip on a level tick. None (default, every existing
+    # caller) -> no incumbent -> byte-identical greedy rows[0].
+    incumbent_ids = [str(i) for i in (incumbent or ()) if str(i).strip()]
+
     for engine_call_i in range(1, engine_picks_count + 1):
         call_kwargs = dict(
             level=int(level),
@@ -543,7 +587,14 @@ def plan_build_order(
             )
             break
 
-        chosen, excl_family, excl_example = _pick_top_safe(rows)
+        inc_id = (
+            incumbent_ids[engine_call_i - 1]
+            if (engine_call_i - 1) < len(incumbent_ids)
+            else None
+        )
+        chosen, excl_family, excl_example = _pick_top_safe(
+            rows, incumbent_id=inc_id, incumbent_margin=float(incumbent_margin)
+        )
         if chosen is None:
             result.notes.append(
                 f"engine call {engine_call_i}: all candidates collide with a "
