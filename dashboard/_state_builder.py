@@ -514,6 +514,29 @@ def build_state() -> dict:
             )
     except Exception:  # noqa: BLE001
         pass
+    # ZOI Wave 3 (spec E-2): MIA reachability rings - one growing circle per
+    # fogged (not visible, not dead) enemy, origin at last-seen map position,
+    # radius = missing time x est movespeed (core/mia_reachability.py is the
+    # SOLE zoi.mia producer). SR-gated: shared-vision modes have no fog and
+    # compute_mia is itself fail-CLOSED to SR. enemy_tracks come from the
+    # in-process vision_tracker singleton (state() is {} until first ingest,
+    # so the read is fail-soft). Additive-only: adds zoi["mia"]; every existing
+    # zoi key stays byte-unchanged.
+    try:
+        if zoi is not None and mode_key == "sr":
+            from core.mia_reachability import compute_mia
+            from core.vision_tracker import get_tracker as _vt_get_tracker
+            _vs = _vt_get_tracker().state() or {}
+            _mia = compute_mia(
+                _vs.get("enemies") or {},
+                mode_key,
+                (lc or {}).get("game_time_s"),
+                minimap_rect=minimap_rect,
+            )
+            if _mia is not None:
+                zoi["mia"] = _mia
+    except Exception:  # noqa: BLE001
+        pass
     _mark("zoi")
 
     # Haiku-elimination wave 3 (item 265 W3A): deterministic-FIRST coaching.
