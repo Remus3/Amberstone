@@ -51,6 +51,29 @@ during real games; `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-O
 
 ---
 
+## ZOI-PROGRAM FINALIZATION (2026-07-05 live SR verify - detail in docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md section 9)
+
+The LEDGER-795 ZOI/minimap-district finalization ran live. NO gate flipped (do-not-flip-blind held).
+
+- Z1. (PRACTICE-SR) DONE this session: overlay FLICKER fixed (server hold-last-good in
+  `core/minimap_blob_detect.current_minimap_dots` + overlay `_nullDebounceStep` in
+  `web/js/panels/minimap_zoi.js`; 344 consumer tests green). OWED live: operator re-validate the
+  overlay holds steady (no ~1 Hz strobe) next game; the district-tally is a subtle corner cue (a
+  visibility lift is a future UI call).
+- Z2. (BLOCKED-on-CV) macro callout (`kind="macro"`) + `zoi.mia` rings are DEAD on SR:
+  `vision_tracker` fog needs coordinate positions the Live Client does not give (roles only), and
+  `minimap_identity` is unwired. Both feed fixes are blocked on the ~70-vs-10 minimap-dot
+  OVER-DETECTION. PREREQUISITE = fix the CV precision (tighter blob gating OR live-validated
+  RC_ZOI_IDENTITY), THEN wire the feed via the existing `zoi=`/`districts=` seam. Regression fence
+  added (`test_dead_fog_feed_never_fires_on_live_sr_shape`). Do NOT flip RC_ZOI_IDENTITY /
+  roster-wiring until then.
+- Z3. (PRACTICE-SR) `obs.frame_source` flip CANDIDATE: OBS-WS round-trip VALIDATED live (auth +
+  Game Capture + 412KB frame; `config/coach_settings.json` gitignored, safe for the password) but
+  the flip is geometry-gated (OBS frame dims != desktop grab, so `minimap_rect` needs
+  re-registration) + the grab was intermittent. Do not flip blind.
+
+---
+
 ## A. Champ-select / lobby
 
 - A1. (REAL-SR) LCU push AUTO-FIRE re-validate (RE-OPENED by the 2026-07-04 regression): after a
