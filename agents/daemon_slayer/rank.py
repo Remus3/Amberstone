@@ -630,6 +630,37 @@ def _safe_burst(
         return 0.0
 
 
+def _rank_sort_key(
+    r: RankedItem,
+    *,
+    reweight: bool,
+    sort_by: str,
+    mana_reweight: bool,
+) -> tuple:
+    """Total-order sort key for a RankedItem (rows are sorted reverse=True).
+
+    The metric branch matches the active knob (fight-length reweight / gold
+    efficiency / bounded-mana valuation / the default DPS-delta). ``item_id`` is
+    appended as a STABLE final tiebreak so two rows with an EXACT-tie metric
+    order deterministically and can never flip across a process / :8893 restart
+    (dict iteration order was the only tiebreak before - PD -> Kraken build
+    instability, 2026-07-06). Byte-identical to the pre-tiebreak ordering for any
+    non-tied pair: item_id is consulted only when the metric tuple is equal.
+    """
+    if reweight:
+        # Fight-length knob engaged: order by total-damage-over-fight model.
+        base = (r.effective_score, r.delta_dps)
+    elif sort_by == "efficiency":
+        base = (r.dps_per_1k_gold, r.delta_dps)
+    elif mana_reweight:
+        # Bounded mana valuation knob (ENGINE 1.64.0): order by the mana-adjusted
+        # score so early mana items surface for mana-dependent casters.
+        base = (r.mana_adjusted_score, r.delta_dps)
+    else:
+        base = (r.delta_dps, r.dps_per_1k_gold)
+    return (*base, r.item_id)
+
+
 def rank_items(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -962,26 +993,16 @@ def rank_items(
             )
         )
 
-    def _base_key(r: RankedItem) -> tuple:
-        if reweight:
-            # Fight-length knob engaged: order by total-damage-over-fight model.
-            return (r.effective_score, r.delta_dps)
-        if sort_by == "efficiency":
-            return (r.dps_per_1k_gold, r.delta_dps)
-        if mana_reweight:
-            # Bounded mana valuation knob (ENGINE 1.64.0): order by the
-            # mana-adjusted score so early mana items surface for mana-dependent
-            # casters; delta_dps breaks ties.
-            return (r.mana_adjusted_score, r.delta_dps)
-        return (r.delta_dps, r.dps_per_1k_gold)
-
-    if kit_axis_active:
+    def _key(r: RankedItem) -> tuple:
+        base = _rank_sort_key(
+            r, reweight=reweight, sort_by=sort_by, mana_reweight=mana_reweight
+        )
         # DSP11: float surfaced kit-axis items above the generic template,
         # preserving the model order within each tier. Byte-identical when off
         # (kit_axis_active False -> the prefix term is never added).
-        ranked.sort(key=lambda r: (r.kit_axis_score,) + _base_key(r), reverse=True)
-    else:
-        ranked.sort(key=_base_key, reverse=True)
+        return (r.kit_axis_score, *base) if kit_axis_active else base
+
+    ranked.sort(key=_key, reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
