@@ -40,6 +40,7 @@ from agents.daemon_slayer.rank import (
     _NON_COACHABLE_ITEM_IDS,
     _filter_candidates,
     _is_legal_in_mode,
+    _is_ornn_masterwork,
     _is_purchasable,
     _is_terminal,
     rank_items,
@@ -58,7 +59,10 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
     eligible == purchasable (gold.purchasable AND gold.total>0) AND
     maps[map_id] is truthy AND terminal (no ``into``) AND NOT a
     non-coachable joke/anvil item (item 243 _NON_COACHABLE_ITEM_IDS -
-    e.g. Golden Spatula, which DDragon mis-flags maps['12']=True). This
+    e.g. Golden Spatula, which DDragon mis-flags maps['12']=True) AND NOT
+    an Ornn masterwork upgrade (operator 2026-07-06 _is_ornn_masterwork -
+    Wooglet's Witchcap etc.; DDragon mis-flags gold.purchasable=True +
+    maps['12']=True, but they are only obtainable via an Ornn ally). This
     mirrors _filter_candidates' documented contract but is derived
     independently here from the raw records so the test does not just
     restate the impl.
@@ -75,6 +79,8 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
             continue
         into = rec.get("into")
         if into:  # non-terminal component
+            continue
+        if _is_ornn_masterwork(rec):  # Ornn masterwork - never buyable
             continue
         out.add(item_id)
     return out - _NON_COACHABLE_ITEM_IDS
@@ -272,6 +278,13 @@ class KnownExceptionScopingTests(unittest.TestCase):
             k for k, r in self.snap.items.items()
             if k.startswith("22") and len(k) == 6 and _is_purchasable(r)
             and _is_terminal(r) and (r.get("maps") or {}).get("30")
+            # Exclude Ornn masterwork upgrades (228002-228008): they share the 228
+            # prefix + carry DDragon's map-30 flag, but are NOT buyable Arena
+            # mirrors (operator 2026-07-06 _is_ornn_masterwork - never shop-
+            # purchasable via an Ornn ally upgrade), so the Ornn deny keeps them
+            # out of the Arena pool too. The real 22-mirrors (223xxx, 228001
+            # Anathema's, 228009, 228020) have no <ornnBonus> tag and remain.
+            and not _is_ornn_masterwork(r)
         ]
         self.assertGreater(
             len(mirror_ids), 0, "no purchasable 22-prefixed mirror items"
