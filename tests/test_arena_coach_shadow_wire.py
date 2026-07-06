@@ -25,7 +25,7 @@ from dashboard._deterministic_coaching import shadow_log_arena_coach
 
 BLOCK_KEYS = {
     "action", "round_strategy", "fight_rule", "augment_advice",
-    "anvil_advice", "target_priority", "risk",
+    "anvil_advice", "target_priority", "risk", "choices",
 }
 
 
