@@ -52,6 +52,8 @@ from core.event_callouts import dragon_soul_callout, next_callouts
 from core.heal_threat import heal_threat_callout
 from core.laning_verdicts import laning_choices
 from core.lead_projection import phase_for, project_lead
+from core.macro_context import build_macro_context
+from core.macro_decision_tree import evaluate as macro_tree_evaluate
 from core.macro_response import macro_response_callout
 from core.objective_playbook import playbook_callout
 
@@ -388,14 +390,34 @@ def _build_game_state(coach: dict, lc: dict | None, mode_key: str) -> dict:
 
 def _stamp_vision_summary(gs: dict) -> None:
     """Stamp the fog-model ``summary`` counts onto ``gs`` for the RC2 P5.5
-    objective playbook's CV upgrades + the cache sig. Read ONCE per compute (the
-    spec contract; cheap - ``core.vision_tracker`` writes vision_state.json
-    atomically). Additive + fail-soft: omitted on any error / absent file."""
+    objective playbook's CV upgrades + the cache sig, AND (ZOI Wave-2
+    agent-macro v0) the compact per-enemy fog list ``fog_enemies`` the
+    macro decision tree reads (champion / visible / is_dead /
+    missing_for_s / last_seen_zone - the core.vision_tracker track
+    subset). Read ONCE per compute (the spec contract; cheap -
+    ``core.vision_tracker`` writes vision_state.json atomically).
+    Additive + fail-soft: omitted on any error / absent file."""
     try:
         from core.laning_cv_overrides import load_vision_state  # lazy
-        summary = load_vision_state().get("summary")
+        vs = load_vision_state()
+        summary = vs.get("summary")
         if isinstance(summary, dict) and summary:
             gs["vision_summary"] = summary
+        enemies = vs.get("enemies")
+        if isinstance(enemies, dict) and enemies:
+            fog = []
+            for entry in enemies.values():
+                if not isinstance(entry, dict):
+                    continue
+                fog.append({
+                    "champion": str(entry.get("champion") or ""),
+                    "visible": bool(entry.get("visible")),
+                    "is_dead": bool(entry.get("is_dead")),
+                    "missing_for_s": entry.get("missing_for_s"),
+                    "last_seen_zone": str(entry.get("last_seen_zone") or ""),
+                })
+            if fog:
+                gs["fog_enemies"] = fog
     except Exception:  # noqa: BLE001
         pass
 
@@ -413,6 +435,39 @@ def _vision_sig(gs: dict) -> tuple[int, int, int]:
         return int(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else 0
 
     return (_vc("visible_count"), _vc("missing_count"), _vc("dead_count"))
+
+
+def _fog_sig(gs: dict) -> tuple:
+    """Per-enemy fog key for the cache sig (ZOI Wave-2 agent-macro v0).
+
+    The macro decision tree reads MORE than the (visible, missing, dead)
+    counts _vision_sig carries: per-enemy last_seen_zone and the MIA
+    duration thresholds. Same sig-completeness rule as item ids / inhib /
+    objective events - a zone flip or a threshold-crossing MIA duration
+    must re-compute instead of serving the stale macro row. missing_for_s
+    is bucketed to 10s so the sig does not churn every tick (the 5s
+    game-time bucket already bounds entry lifetime). () when no fog is
+    stamped; fail-soft on malformed entries."""
+    fog = gs.get("fog_enemies")
+    if not isinstance(fog, list):
+        return ()
+    out = []
+    for e in fog:
+        if not isinstance(e, dict):
+            continue
+        m = e.get("missing_for_s")
+        if isinstance(m, (int, float)) and not isinstance(m, bool):
+            m_bucket = int(float(m) // 10.0)
+        else:
+            m_bucket = -1
+        out.append((
+            str(e.get("champion") or ""),
+            bool(e.get("visible")),
+            bool(e.get("is_dead")),
+            str(e.get("last_seen_zone") or ""),
+            m_bucket,
+        ))
+    return tuple(sorted(out))
 
 
 def _cache_sig(gs: dict, mode_key: str) -> tuple:
@@ -485,6 +540,10 @@ def _cache_sig(gs: dict, mode_key: str) -> tuple:
         enemy_items_key,
         ally_items_key,
         _vision_sig(gs),
+        # ZOI Wave-2 agent-macro v0: the macro tree reads per-enemy fog
+        # (zone + MIA duration), so a fog change must invalidate the cache
+        # (sig-completeness rule) - the counts alone miss zone flips.
+        _fog_sig(gs),
     )
 
 
@@ -498,11 +557,16 @@ def _evict_if_full() -> None:
     _CACHE.pop(oldest_key, None)
 
 
-def _compute_uncached(gs: dict, mode_key: str) -> dict:
+def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     """The actual generator fan-out (no cache). Calls laning_choices (network
     via matchup), next_callouts (pure), project_lead (pure). Returns the merged
     dict. Wrapped by compute_deterministic in a try/except so a raise here can
-    never escape."""
+    never escape.
+
+    ``zoi`` (ZOI Wave-2 agent-macro): the district-enrichment seam for the
+    macro decision tree. v0 is fog-only and IGNORES the zoi content - the
+    kwarg is threaded through to build_macro_context/evaluate now so the
+    v1 district wave only changes the pure modules, not this wiring."""
     mk = str(mode_key or "").strip().lower()
     upper = _MODE_KEY_TO_UPPER.get(mk)
     lower = _MODE_KEY_TO_LOWER.get(mk)
@@ -568,6 +632,7 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
     # stagnation calls are SR concepts). Additive (no Haiku replacement, no flip
     # gate). The stagnation window duration comes from the resolver state memory.
     macro = None
+    dt_macro = None
     if lower == "sr":
         lead_state = lead.get("state") if isinstance(lead, dict) else None
         warm_key = (str(gs.get("my_champion") or ""), str(mode_key or ""))
@@ -575,6 +640,25 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
             gs.get("objective_events"), lead, gt, gs.get("inhib_events"),
             stable_for_s=_state_stable_for_s(warm_key, lead_state, gt),
         )
+        # ZOI Wave-2 agent-macro (fog-only v0): the deterministic macro
+        # decision tree (core.macro_decision_tree, registry-of-pure-
+        # predicates) over the per-enemy fog state + objective schedule.
+        # SR-only like the WS4 row above. A live objective-danger/gank read
+        # outranks the WS4 stagnation row in the advisory slot (see the
+        # priority chain below). Fail-soft: any error -> no row, output
+        # byte-identical to the pre-tree path.
+        try:
+            ctx = build_macro_context(
+                "sr", gt,
+                enemies=gs.get("fog_enemies"),
+                objective_events=gs.get("objective_events"),
+                lead=lead, zoi=zoi,
+            )
+            dt_macro = macro_tree_evaluate(ctx, zoi=zoi)
+            if not isinstance(dt_macro, dict):
+                dt_macro = None
+        except Exception:  # noqa: BLE001
+            dt_macro = None
 
     # Heal-threat / anti-heal nudge (pure set-membership over the live item
     # pools). Standing advisory (eta_s None) - keep the 2 most-urgent timed
@@ -593,7 +677,11 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
     # soul-point inflection outweighs an item-counter cue. Naturally SR-only
     # (no dragons feed objective_events off the Rift), gated for symmetry.
     soul = dragon_soul_callout(gs.get("objective_events")) if lower == "sr" else None
-    advisory = macro or soul or heal
+    # Advisory-slot priority: decision_tree > ws4_macro > soul > heal. The
+    # kind="macro" decision-tree row is a LIVE objective-danger/gank read,
+    # so it outranks the WS4 stagnation/lost-objective response; when it is
+    # None the chain (and the served bytes) are unchanged.
+    advisory = dt_macro or macro or soul or heal
     if advisory is not None:
         callouts = callouts[:2] + [advisory]
     else:
@@ -606,7 +694,8 @@ def _compute_uncached(gs: dict, mode_key: str) -> dict:
     }
 
 
-def compute_deterministic(coach: dict, lc: dict | None, mode_key: str) -> dict:
+def compute_deterministic(coach: dict, lc: dict | None, mode_key: str,
+                          zoi: dict | None = None) -> dict:
     """Return ``{choices, callouts, lead_projection}`` for /api/state.
 
     TTL-cached on a coarse game-state signature (3.0s) so the DS matchup call
@@ -618,6 +707,11 @@ def compute_deterministic(coach: dict, lc: dict | None, mode_key: str) -> dict:
         lc: the liveclient_summary() dict (enemy_team / owned_items / ...) or
             None when not in a game.
         mode_key: dashboard mode_key (sr/aram/arena/client/game/...).
+        zoi: the _state_builder zoi block ({bubbles, demarcation,
+            map_control, ...}) or None. ZOI Wave-2 agent-macro seam: v0 is
+            fog-only and IGNORES the content (zoi=None output is byte-
+            identical), but the kwarg lands now so the district-enriched v1
+            only touches the pure modules.
 
     Returns:
         dict with keys ``choices`` (list[dict]), ``callouts`` (list[dict]),
@@ -642,12 +736,12 @@ def compute_deterministic(coach: dict, lc: dict | None, mode_key: str) -> dict:
             # Cold start for this champion/mode: pay the compute inline so
             # the first real tick carries a verdict (and single-call tests
             # keep their synchronous contract).
-            result = _compute_uncached(gs, mode_key)
+            result = _compute_uncached(gs, mode_key, zoi=zoi)
             _store_result(sig, warm_key, result)
             return result
 
         # Warm path: serve the last good result NOW, refresh in background.
-        _spawn_refresh(sig, warm_key, gs, mode_key)
+        _spawn_refresh(sig, warm_key, gs, mode_key, zoi=zoi)
         return hit[1] if hit is not None else last
     except Exception:  # noqa: BLE001
         return dict(_EMPTY_RESULT)
@@ -662,7 +756,7 @@ def _store_result(sig: tuple, warm_key: tuple[str, str], result: dict) -> None:
 
 
 def _spawn_refresh(sig: tuple, warm_key: tuple[str, str], gs: dict,
-                   mode_key: str) -> None:
+                   mode_key: str, zoi: dict | None = None) -> None:
     """Single-flight background recompute. Concurrent /api/state + SSE
     builders that miss the same sig must not stack matchup calls."""
     with _REFRESH_LOCK:
@@ -672,7 +766,7 @@ def _spawn_refresh(sig: tuple, warm_key: tuple[str, str], gs: dict,
 
     def _run() -> None:
         try:
-            result = _compute_uncached(gs, mode_key)
+            result = _compute_uncached(gs, mode_key, zoi=zoi)
             _store_result(sig, warm_key, result)
         except Exception:  # noqa: BLE001
             pass
