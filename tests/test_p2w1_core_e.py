@@ -146,6 +146,11 @@ def test_regions_default_write_creates_valid_file(monkeypatch, tmp_path):
     parseable JSON, no tmp residue, defaults returned."""
     target = tmp_path / "vision_regions.json"
     monkeypatch.setattr(vt, "_REGIONS_FILE", target)
+    # neutralize the profile layer that now sits in front of the legacy path so
+    # this characterizes the legacy vision_regions.json fallback in isolation
+    import core.vision_profiles as _vp
+    monkeypatch.setattr(_vp, "load_profile", lambda config_key=None: {
+        "config_key": "unknown", "base": [1920, 1080], "regions": {}, "source": "legacy_seed"})
     vt.reload_regions()
     try:
         regions = vt._regions()
@@ -166,6 +171,10 @@ def test_regions_reads_existing_file_with_base(monkeypatch, tmp_path):
         encoding="utf-8",
     )
     monkeypatch.setattr(vt, "_REGIONS_FILE", target)
+    # neutralize the profile layer so this characterizes the legacy _base path
+    import core.vision_profiles as _vp
+    monkeypatch.setattr(_vp, "load_profile", lambda config_key=None: {
+        "config_key": "unknown", "base": [1920, 1080], "regions": {}, "source": "legacy_seed"})
     vt.reload_regions()
     try:
         regions = vt._regions()
