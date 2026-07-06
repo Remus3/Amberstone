@@ -455,21 +455,17 @@ footer .prefs-chip:hover { color: var(--text); }
   text-align: center;
   padding: 0 0 4px;
 }
-/* s162 v8: ONLY the PARTY card's title becomes a grid container with
- * the same column template as its rows so the title text can be
- * placed in the rank column (col 4), making it horizontally centered
- * with the row's Rank pip. The queue card's #lv-queue-name also uses
- * .lv-panel-title - leaving the generic rule above (text-align:
- * center) unscoped keeps that one centered as before. */
+/* s162 v8 -> 2026-07-06: the PARTY card title was grid-anchored over
+ * the rank column (col 4) to sit above the Rank pips. Operator wants
+ * it truly panel-centered instead - plain block + text-align center.
+ * The generic .lv-panel-title (queue #lv-queue-name) is unchanged
+ * (already centered by the rule above). */
 .lobby-view-card-party > .lv-panel-title {
-  display: grid;
-  grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 120px;
-  gap: 6px;
+  display: block;
   padding: 0 8px 4px;
-  text-align: initial;
+  text-align: center;
 }
 .lv-panel-title-text {
-  grid-column: 4;
   text-align: center;
 }
 
@@ -1009,24 +1005,21 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 }
 
 /* ---- s162 v4: Friends / Recently Played panel ---- */
-/* s162 v8: title becomes a grid container mirroring .lv-top8-row's
- * 9-col template so the title text can be placed in the rank
- * column (col 4), making it horizontally centered with the Rank
- * pips below. Inner span gets the styled placement. */
+/* s162 v8 -> 2026-07-06: the My Top 8 title was grid-anchored over
+ * the rank column (col 4). Operator wants it truly panel-centered -
+ * plain block + text-align center. */
 .lv-friends-title {
   /* UI scale v2.1 (2026-05-23): 16 -> --fs-md (22) - mirrors PARTY
    * + QUEUE name bumps. */
   font-size: var(--fs-md); font-weight: 900; letter-spacing: 0.12em;
   color: var(--text); text-transform: uppercase;
-  display: grid;
-  grid-template-columns: 1.4fr 0.6fr 0.5fr 1.2fr 0.9fr 14px 26px 26px 26px;
-  gap: 6px;
+  display: block;
+  text-align: center;
   padding: 0 8px 4px;
   border-bottom: 1px solid var(--border-soft);
   margin-bottom: 4px;
 }
 .lv-friends-title-text {
-  grid-column: 4;
   text-align: center;
 }
 .lv-friends-list {
