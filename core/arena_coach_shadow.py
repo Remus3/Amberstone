@@ -37,9 +37,12 @@ SHADOW_PATH: Path = _APP_DIR / "data" / "arena_coach_shadow.jsonl"
 # ~500ms; without this the same coarse state would be logged ~2x/sec.
 _LAST_SIG: dict[str, str] = {}
 
-# The seven live Arena artifact fields captured per side, in artifact order
-# (coaches/arena_coach.py:781-787). Used to normalize BOTH blocks so a partial
-# dict still records every column (missing -> "").
+# The live Arena artifact fields captured per side, in artifact order
+# (coaches/arena_coach.py:781-788). Used to normalize BOTH blocks so a partial
+# dict still records every column (missing -> "" / [] for choices). ``choices``
+# (the deterministic + native A/B array) was added so the shadow row carries the
+# WHOLE coach block for the operator to eyeball before a live flip - mirroring
+# the ARAM shadow schema.
 _BLOCK_KEYS = (
     "action",
     "round_strategy",
@@ -48,23 +51,27 @@ _BLOCK_KEYS = (
     "anvil_advice",
     "target_priority",
     "risk",
+    "choices",
 )
 
 
 def _norm_block(block: object) -> dict:
-    """Return the seven-field block as an all-str dict, fail-soft.
+    """Return the block as a normalized dict, fail-soft.
 
-    Simpler than the ARAM normalizer - the Arena artifact carries no
-    dict-valued field, so every column coerces to a stripped str ("" for
-    missing / non-str) and a malformed side still records a complete (empty)
-    column rather than blocking the row. Only the seven known keys are kept
-    (the live artifact carries many more fields).
+    Every string column coerces to a stripped str ("" for missing / non-str);
+    ``choices`` is the one list-typed column and keeps its list (a non-list /
+    missing choices -> []). A malformed side still records a complete (empty)
+    column rather than blocking the row. Only the known keys are kept (the live
+    artifact carries many more fields).
     """
     src = block if isinstance(block, dict) else {}
     out: dict = {}
     for key in _BLOCK_KEYS:
         val = src.get(key)
-        out[key] = val.strip() if isinstance(val, str) else ""
+        if key == "choices":
+            out[key] = val if isinstance(val, list) else []
+        else:
+            out[key] = val.strip() if isinstance(val, str) else ""
     return out
 
 

@@ -44,6 +44,7 @@ from __future__ import annotations
 import math
 
 from core import aram_fight_risk, arena_action_rule, arena_target_rule
+from core.coach_choices import CoachChoice, synthesize_simple_choices, to_jsonable
 
 # Action label -> the approach clause the round_strategy template ends
 # with. 1:1 with the decide_action vocabulary; ALL IN shares the
@@ -55,6 +56,20 @@ _APPROACH = {
     "PLAY AGGRO": "make plays, take risks",
     "FIGHT SMART": "trade efficiently and kite",
     "ALL IN": "trade efficiently and kite",
+}
+
+# Canonical Arena action label -> its (A label, B label) A/B pair. These are
+# the EXACT five labels core.arena_action_rule.decide_action returns; the A/B
+# is Arena-appropriate (a shop/anvil phase between rounds, no ARAM no-recall
+# constraint). Mirrors core.aram_deterministic_coach._ARAM_CHOICE_LABELS and
+# marks the deterministic Arena rule with source_tag "arena_rule" so the chip
+# UI can tell it apart from the synth / native / haiku paths.
+_ARENA_CHOICE_LABELS = {
+    "BUY ITEMS": ("Buy items now", "Bank for the anvil"),
+    "KITE BACK": ("Kite back", "Disengage fully"),
+    "ALL IN": ("All-in", "Trade and kite"),
+    "PLAY AGGRO": ("Play aggressive", "Play it safe"),
+    "FIGHT SMART": ("Trade efficiently", "Disengage"),
 }
 
 
@@ -174,6 +189,51 @@ def _anvil_line(build_remaining: object) -> str:
     return f"Build toward {head.strip()} next."
 
 
+def _safe_choices(action: str, fight_rule: str) -> list[dict]:
+    """Derive the deterministic A/B choices from the block's own action + fight_rule.
+
+    Mirrors core.aram_deterministic_coach._safe_choices: maps each of the five
+    canonical Arena action labels (BUY ITEMS / KITE BACK / ALL IN / PLAY AGGRO /
+    FIGHT SMART) through ``_ARENA_CHOICE_LABELS`` to an Arena-appropriate 2-entry
+    A/B, each tagged source_tag "arena_rule" so the served chip UI can tell the
+    deterministic Arena rule apart from the synth / native / haiku paths. The B
+    outcome carries the passed fight_rule when present, else a safe default. An
+    EMPTY or UNKNOWN (non-canonical) action falls back to
+    synthesize_simple_choices (which returns [] for empty / unknown), so nothing
+    regresses off the canonical labels. Never raises.
+    """
+    try:
+        key = action.strip().upper() if isinstance(action, str) else ""
+        pair = _ARENA_CHOICE_LABELS.get(key)
+        if pair is None:
+            return to_jsonable(
+                synthesize_simple_choices({"action": action, "fight_rule": fight_rule})
+            )
+        a_lbl, b_lbl = pair
+        b_outcome = (
+            fight_rule.strip()
+            if isinstance(fight_rule, str) and fight_rule.strip()
+            else "play safe; reassess next round"
+        )
+        choice_a = CoachChoice(
+            key="A",
+            label=a_lbl,
+            expected_outcome="follow the coach call",
+            confidence="mid",
+            source_tag="arena_rule",
+        )
+        choice_b = CoachChoice(
+            key="B",
+            label=b_lbl,
+            expected_outcome=b_outcome,
+            confidence="mid",
+            source_tag="arena_rule",
+        )
+        return to_jsonable([choice_a, choice_b])
+    except Exception:  # noqa: BLE001 - fail-soft contract: never raises
+        return []
+
+
 def _safe_target(alive_opponents: object, frontline_names: object) -> str:
     try:
         out = arena_target_rule.target_priority(alive_opponents, frontline_names)
@@ -221,14 +281,19 @@ def build_block(
 
     Returns:
         dict with exactly the keys action, round_strategy, fight_rule,
-        augment_advice, anvil_advice, target_priority, risk.
+        augment_advice, anvil_advice, target_priority, risk, choices. All
+        seven string columns plus ``choices`` (the list-typed A/B array
+        derived from action + fight_rule; [] on no signal).
     """
     try:
+        # Compute action + fight_rule ONCE so choices reuses them without
+        # re-deriving (same shape as the ARAM assembler).
         action = _safe_action(hp_pct, camp_phase, low_opp_count)
+        fight_rule = _safe_fight_rule(cc_threat_line)
         return {
             "action": action,
             "round_strategy": _round_strategy(action, hp_pct, alive_teams),
-            "fight_rule": _safe_fight_rule(cc_threat_line),
+            "fight_rule": fight_rule,
             # augment_advice is a DOCUMENTED v1 degrade: there is no honest
             # per-tick deterministic source for augment PLAY advice (the
             # discrete augment-SELECT event is covered elsewhere), so the
@@ -237,6 +302,9 @@ def build_block(
             "anvil_advice": _anvil_line(build_remaining),
             "target_priority": _safe_target(alive_opponents, frontline_names),
             "risk": _safe_risk(cc_threat_line),
+            # choices: the deterministic A/B array derived from action +
+            # fight_rule (the eighth, list-typed column). Empty on no signal.
+            "choices": _safe_choices(action, fight_rule),
         }
     except Exception:  # noqa: BLE001 - total fail-soft: empty block
         return {
@@ -247,6 +315,7 @@ def build_block(
             "anvil_advice": "",
             "target_priority": "",
             "risk": "",
+            "choices": [],
         }
 
 

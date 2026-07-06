@@ -27,6 +27,29 @@ this session's pending work at the bottom.
   seam was eyeball-validated live for Ezreal + Corki (docs/LIVE_GAME_GATED_SYNC.md C4) - saner
   not random - so C4 is fully validated, pending only the operator flip decision.
 
+- **2026-07-06 - Arena det-choices A/B slice SHIPPED (this session):** the Arena
+  sibling of the ARAM slice-1/3 lever. core/arena_deterministic_coach.build_block
+  gained an 8th `choices` key: NEW `_ARENA_CHOICE_LABELS` maps all five canonical
+  Arena action labels (BUY ITEMS / KITE BACK / ALL IN / PLAY AGGRO / FIGHT SMART)
+  to a 2-entry A/B tagged source_tag "arena_rule", mirroring
+  aram_deterministic_coach._safe_choices exactly (action + fight_rule computed
+  once, reused by choices; empty/unknown action -> synthesize_simple_choices
+  fallback -> []). core/arena_coach_shadow._BLOCK_KEYS + _norm_block now carry the
+  list-typed `choices` column on BOTH sides so the shadow row lines the
+  deterministic and live-Haiku A/B up. The Arena coach prompt already emits a
+  native `choices` array (coaches/arena_coach.py:175/777/788), so the live side
+  serves the key too. All three symmetric keyset tests updated + green
+  (test_arena_deterministic_coach + test_arena_coach_shadow +
+  test_arena_coach_shadow_wire = 35 passed; 43 adjacent Arena tests green; ruff
+  clean). Tier-1, shadow-only, NO served-output change. The Arena FLIP stays
+  live-gated: arena shadow is awaiting_accrual (0/20 rounds) - validate the
+  choices flow into data/arena_coach_shadow.jsonl on a LIVE Arena game only, then
+  read tools/arena_shadow_report.py before any flip. With this, BOTH ARAM and
+  Arena deterministic coach blocks assemble Haiku-free (choices included); the
+  NEXT NO-LLM target is the bigger SECOND program - the client-side CV vision
+  atlas (docs/OBS_CV_MINIMAP_PLAN.md + the OCR-first tier), NOT more det-choices
+  templater work (that lever is now CODE-COMPLETE for ARAM + Arena).
+
 **Premise corrections (verified vs HEAD 2026-07-04, slice 1 spec pass):**
 (1) SR is NOT zero-Haiku at the code level - coaches/sr_coach.py subclasses
 CoachIntegration which calls Haiku at coach_integration/_coach.py:370, so the

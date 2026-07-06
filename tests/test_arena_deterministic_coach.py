@@ -18,7 +18,12 @@ _KEYS = (
     "anvil_advice",
     "target_priority",
     "risk",
+    "choices",
 )
+
+# The seven string columns; choices is the eighth (a list, not a str) and is
+# asserted separately wherever the all-str / all-"" invariants are checked.
+_STR_KEYS = tuple(k for k in _KEYS if k != "choices")
 
 # A realistic enemy_cc_threat_line (core.aram_fight_risk parses this
 # ranked-string form; the first chunk is the top threat).
@@ -44,21 +49,25 @@ class _Nasty:
         raise RuntimeError("boom")
 
 
-def test_no_args_returns_exactly_the_seven_keys_all_empty() -> None:
+def test_no_args_returns_exactly_the_eight_keys_all_empty() -> None:
     block = build_block()
     assert set(block) == set(_KEYS)
-    for key in _KEYS:
+    for key in _STR_KEYS:
         assert block[key] == ""
+    # choices is the list column: no action signal -> no A/B pair.
+    assert block["choices"] == []
 
 
 def test_partial_read_only_cc_threat_line() -> None:
     block = build_block(cc_threat_line=_CC_LINE)
     assert "Ashe" in block["fight_rule"]
     assert "Ashe" in block["risk"]
-    for key in _KEYS:
+    for key in _STR_KEYS:
         if key in ("fight_rule", "risk"):
             continue
         assert block[key] == ""
+    # No action signal (cc line only) -> no A/B pair.
+    assert block["choices"] == []
 
 
 def test_camp_phase_alone_is_a_real_action_signal() -> None:
@@ -172,5 +181,42 @@ def test_whole_block_fail_soft_on_garbage_everything() -> None:
         build_remaining=_Nasty(),
     )
     assert set(block) == set(_KEYS)
-    for key in _KEYS:
+    for key in _STR_KEYS:
         assert block[key] == ""
+    assert block["choices"] == []
+
+
+# choices column - the deterministic Arena A/B surface, mirroring
+# core.aram_deterministic_coach._safe_choices. Every canonical action label
+# maps to a 2-entry A/B tagged source_tag "arena_rule"; an empty / unknown
+# action yields [].
+def test_choices_present_for_every_canonical_action_label() -> None:
+    cases = (
+        ({"camp_phase": True}, "BUY ITEMS"),
+        ({"hp_pct": 10}, "KITE BACK"),
+        ({"hp_pct": 90, "low_opp_count": 1}, "ALL IN"),
+        ({"hp_pct": 90}, "PLAY AGGRO"),
+        ({"hp_pct": 50}, "FIGHT SMART"),
+    )
+    for kwargs, expected_action in cases:
+        block = build_block(**kwargs)
+        assert block["action"] == expected_action
+        choices = block["choices"]
+        assert isinstance(choices, list) and len(choices) == 2
+        assert [c["key"] for c in choices] == ["A", "B"]
+        assert all(c["source_tag"] == "arena_rule" for c in choices)
+        assert all(c["label"].strip() for c in choices)
+
+
+def test_choices_b_outcome_carries_fight_rule_when_present() -> None:
+    block = build_block(hp_pct=50, cc_threat_line=_CC_LINE)
+    b = block["choices"][1]
+    # The B branch outcome echoes the computed fight_rule (a real CC line).
+    assert b["expected_outcome"] == block["fight_rule"]
+    assert b["expected_outcome"]
+
+
+def test_choices_empty_for_no_action() -> None:
+    # No signal at all -> no A/B pair (matches the ARAM synth fallback -> []).
+    assert build_block()["choices"] == []
+    assert build_block(cc_threat_line=_CC_LINE)["choices"] == []
