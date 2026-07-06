@@ -1,0 +1,6 @@
+{
+  "mode": "arena",
+  "grid_hint": {"cols": 3, "rows": 3},
+  "_comment": "Arena (CHERRY): NO hand-authored polygons - a 3x3 cell grid derived from grid_hint at load time (ring + center semantics; cell_1_1 = center). Authored but DORMANT: the zoi gate stays sr/aram this program.",
+  "districts": []
+}
