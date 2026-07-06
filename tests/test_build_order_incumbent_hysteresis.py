@@ -122,6 +122,18 @@ class PlanBuildOrderIncumbentTests(unittest.TestCase):
         )
         self.assertEqual([s.item_id for s in res.order], ["Hexoptics"])
 
+    def test_planner_drops_owned_ids_from_incumbent_so_slots_align(self):
+        # The panel echoes the full displayed order; an already-owned id in it
+        # must be dropped so the remaining incumbent ids line up 1:1 with the
+        # engine picks (the boots id is dropped the same way).
+        eng = _fake_engine({1: [_engine_row("Hexoptics", 124.5), _engine_row("Kraken", 122.3)]})
+        res = plan_build_order(
+            "Jinx", "carry", level=13, owned_item_ids=["1001"], mode="SR",
+            slots=2, inject_boots=False, rank_fn=eng,
+            incumbent=["1001", "Kraken"],  # 1001 owned -> dropped -> Kraken is slot 1
+        )
+        self.assertEqual(res.order[0].item_id, "Kraken")
+
 
 if __name__ == "__main__":
     unittest.main()

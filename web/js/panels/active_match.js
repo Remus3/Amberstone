@@ -244,8 +244,17 @@ function _maybeRefreshBuildPlan(champion, mode, level, items) {
 // Mirrors _maybeRefreshBuildPlan - non-blocking, fail-soft, keyed on the same DS
 // rerank fingerprint. Returns the cached order[] (empty until the first POST
 // resolves; the next render picks up fresh data).
-const _BUILD_ORDER = { lastKey: "", lastFired: 0, order: [], inFlight: false };
+const _BUILD_ORDER = { lastKey: "", lastFired: 0, order: [], inFlight: false, champion: "" };
 const _BUILD_ORDER_COOLDOWN_MS = 8000;
+
+// Incumbent hysteresis (2026-07-06): echo the order currently displayed for THIS
+// champion back to /api/build-order so a level/item tick keeps the shown pick
+// unless a challenger beats it by the margin - damps the PD -> Kraken flip. Pure.
+function _incumbentIds(store, champion) {
+  if (store.champion !== champion || !Array.isArray(store.order)) return null;
+  const ids = store.order.map((s) => String((s && s.item_id) || "")).filter(Boolean);
+  return ids.length ? ids : null;
+}
 
 // WP-B3: META alt-build cycle. metaIndex 0 = the champion's natural build (no
 // archetype param -> the server default = the resolved primary). Right-click on
@@ -271,20 +280,26 @@ function _maybeRefreshBuildOrder(champion, mode, level, items) {
   _BUILD_ORDER.inFlight  = true;
   _BUILD_ORDER.lastKey   = key;
   _BUILD_ORDER.lastFired = now;
+  const _boBody = {
+    champion:  champion,
+    mode:      mode,
+    level:     level | 0,
+    items:     items || [],
+    archetype: arche,
+  };
+  const _inc = _incumbentIds(_BUILD_ORDER, champion);
+  if (_inc) _boBody.incumbent = _inc;
   fetch("/api/build-order", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      champion:  champion,
-      mode:      mode,
-      level:     level | 0,
-      items:     items || [],
-      archetype: arche,
-    }),
+    body: JSON.stringify(_boBody),
   }).then((r) => r.ok ? r.json() : null)
     .then((j) => {
       _BUILD_ORDER.inFlight = false;
-      if (j && j.ok && Array.isArray(j.order)) _BUILD_ORDER.order = j.order;
+      if (j && j.ok && Array.isArray(j.order)) {
+        _BUILD_ORDER.order = j.order;
+        _BUILD_ORDER.champion = champion;
+      }
     })
     .catch(() => { _BUILD_ORDER.inFlight = false; });
   return _BUILD_ORDER.order;
@@ -300,7 +315,7 @@ function _maybeRefreshBuildOrder(champion, mode, level, items) {
 // DS-simulation-derived (Daemon Slayer = live delta-given-owned, Meta =
 // ordered-given-owned, Ultimate = ordered-from-scratch). A true popularity row
 // would need a NEW rewind_history.db aggregate endpoint (FUTURE).
-const _BUILD_ULT = { lastKey: "", lastFired: 0, order: [], inFlight: false };
+const _BUILD_ULT = { lastKey: "", lastFired: 0, order: [], inFlight: false, champion: "" };
 const _BUILD_ULT_COOLDOWN_MS = 30000;
 
 function _maybeRefreshUltimateOrder(champion, mode) {
@@ -314,20 +329,26 @@ function _maybeRefreshUltimateOrder(champion, mode) {
   _BUILD_ULT.inFlight  = true;
   _BUILD_ULT.lastKey   = key;
   _BUILD_ULT.lastFired = now;
+  const _ultBody = {
+    champion:  champion,
+    mode:      mode,
+    level:     18,
+    items:     [],
+    archetype: arche,
+  };
+  const _ultInc = _incumbentIds(_BUILD_ULT, champion);
+  if (_ultInc) _ultBody.incumbent = _ultInc;
   fetch("/api/build-order", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      champion:  champion,
-      mode:      mode,
-      level:     18,
-      items:     [],
-      archetype: arche,
-    }),
+    body: JSON.stringify(_ultBody),
   }).then((r) => r.ok ? r.json() : null)
     .then((j) => {
       _BUILD_ULT.inFlight = false;
-      if (j && j.ok && Array.isArray(j.order)) _BUILD_ULT.order = j.order;
+      if (j && j.ok && Array.isArray(j.order)) {
+        _BUILD_ULT.order = j.order;
+        _BUILD_ULT.champion = champion;
+      }
     })
     .catch(() => { _BUILD_ULT.inFlight = false; });
   return _BUILD_ULT.order;

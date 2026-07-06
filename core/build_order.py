@@ -522,11 +522,17 @@ def plan_build_order(
     next_slot = 1
 
     # Incumbent hysteresis (2026-07-06): the caller may pass the currently
-    # DISPLAYED engine picks (in engine-pick order, boots excluded) so slot i
-    # keeps its shown item unless a challenger beats it by incumbent_margin -
-    # damps the PD -> Kraken flip on a level tick. None (default, every existing
-    # caller) -> no incumbent -> byte-identical greedy rows[0].
+    # DISPLAYED build (item_ids in order) so slot i keeps its shown item unless a
+    # challenger beats it by incumbent_margin - damps the PD -> Kraken flip on a
+    # level tick. None (default, every existing caller) -> no incumbent ->
+    # byte-identical greedy rows[0]. Drop the injected boots id (+ any owned) so
+    # the remaining ids line up 1:1 with the engine picks (boots is not one).
     incumbent_ids = [str(i) for i in (incumbent or ()) if str(i).strip()]
+    if boots_id:
+        incumbent_ids = [i for i in incumbent_ids if i != boots_id]
+    if incumbent_ids:
+        _owned_set = {str(i) for i in owned_item_ids}
+        incumbent_ids = [i for i in incumbent_ids if i not in _owned_set]
 
     for engine_call_i in range(1, engine_picks_count + 1):
         call_kwargs = dict(
