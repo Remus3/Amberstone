@@ -39,6 +39,25 @@ def _safe(config_key: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", str(config_key))[:120] or "unknown"
 
 
+_BASE_MAX = 10000
+
+
+def validate_base(base):
+    """Validate a profile base [width, height]. Returns (ok, err, clean).
+    Rejects None, wrong length, non-numeric, non-positive, or huge."""
+    if not isinstance(base, (list, tuple)) or len(base) != 2:
+        return (False, "base must be [width, height]", None)
+    coords = []
+    for c in base:
+        if isinstance(c, bool) or not isinstance(c, (int, float)):
+            return (False, "base coordinates must be numbers", None)
+        v = int(c)
+        if v <= 0 or v > _BASE_MAX:
+            return (False, "base out of range", None)
+        coords.append(v)
+    return (True, None, coords)
+
+
 def _game_active() -> bool:
     """True when a real game is live (ops/runtime/health.json has_game). Gates
     the auto reference capture so it never saves a lobby / desktop frame."""
