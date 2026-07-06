@@ -1,0 +1,124 @@
+// PRESERVED reference (not run by CI - .txt suffix). Salvaged from the 2026-07-06
+// build-agent that died mid-run. This is the TDD acceptance test for the BATCH A
+// build-panel 3-named-row redesign. Once the _bmComposeRows / _bmFamilyDedupe helpers
+// exist in web/js/panels/active_match.js, rename this to
+// web/js/panels/active_match_buildrows.test.mjs and run `node --test`.
+// See docs/UI_OVERLAY_REDESIGN_SPEC_2026-07-06.md (BATCH A).
+//
+// ---8<--- original ---8<---
+// web/js/panels/active_match_buildrows.test.mjs
+//
+// BUILD-panel 3-named-row redesign (2026-07-05). Run with `node --test`.
+//
+// The in-game BUILD module was redesigned to three NAMED, family-safe build
+// rows - "Daemon Slayer" (live adaptive order[]), "Meta Build" (archetype
+// order[]) and "Ultimate Build" (DS-optimal, family-deduped). These pin the
+// pure assembly + family-dedupe helpers so:
+//   - META never gets stuck on an empty "loading standard build..." strip once
+//     the family-safe order[] has landed (the blank-meta bug).
+//   - a raw DS-optimal delta list carrying two same-unique-family items (e.g.
+//     Lord Dominik's + Mortal Reminder + Serylda, all Last-Whisper) is collapsed
+//     to ONE per family before display (the item-conflict bug), using the
+//     family-safe order[] as the family authority (no client family literal map,
+//     per the engine-authoritative no-double rule).
+//
+// Pure helpers only (no DOM / no fetch) - mirrors active_match_buildflicker's
+// _shouldRetainBuild pinning style.
+
+import test from "node:test";
+import assert from "node:assert";
+
+import {
+  _bmComposeRows,
+  _bmFamilyDedupe,
+} from "./active_match.js";
+
+// A family-safe order[] as /api/build-order returns it: each row carries an
+// item_id + (possibly empty) excluded_family. Two Last-Whisper items can never
+// BOTH appear here (engine no-double), so the LAST-WHISPER family shows once.
+const ORDER_DEFAULT = [
+  { item_id: "3153", item_name: "Blade of The Ruined King", delta: 54, gold: 3200 },
+  { item_id: "3006", item_name: "Berserker's Greaves", delta: 0, gold: 900 },
+  { item_id: "3085", item_name: "Runaan's Hurricane", delta: 40, gold: 2650 },
+  { item_id: "3036", item_name: "Lord Dominik's Regards", delta: 30, gold: 3000,
+    excluded_family: "", locked_family: "lastwhisper" },
+  { item_id: "3031", item_name: "Infinity Edge", delta: 103, gold: 3500 },
+];
+
+const ORDER_META = [
+  { item_id: "3508", item_name: "Essence Reaver", delta: 20, gold: 2900 },
+  { item_id: "3158", item_name: "Ionian Boots of Lucidity", delta: 0, gold: 900 },
+  { item_id: "3036", item_name: "Lord Dominik's Regards", delta: 28, gold: 3000 },
+  { item_id: "3031", item_name: "Infinity Edge", delta: 90, gold: 3500 },
+];
+
+test("_bmComposeRows: three NAMED rows, each carrying its family-safe order[]", () => {
+  const rows = _bmComposeRows({
+    live: ORDER_DEFAULT,
+    meta: ORDER_META,
+    ultimate: ORDER_DEFAULT,
+  });
+  assert.strictEqual(rows.length, 3, "exactly three build rows");
+  assert.deepStrictEqual(
+    rows.map((r) => r.label),
+    ["Daemon Slayer", "Meta Build", "Ultimate Build"],
+  );
+  rows.forEach((r) => assert.ok(Array.isArray(r.items), "items is an array"));
+  assert.ok(rows[0].items.length >= 1, "Daemon Slayer row has items");
+  assert.ok(rows[1].items.length >= 1, "Meta Build row has items");
+});
+
+test("_bmComposeRows: an empty META source yields an empty item list, NOT a stuck placeholder flag", () => {
+  const rows = _bmComposeRows({ live: ORDER_DEFAULT, meta: [], ultimate: ORDER_DEFAULT });
+  const meta = rows.find((r) => r.label === "Meta Build");
+  assert.ok(meta, "Meta Build row present");
+  assert.strictEqual(meta.items.length, 0, "empty until the fetch lands");
+  assert.notStrictEqual(meta.stuck, true, "row is fillable - not a stuck flag");
+});
+
+test("_bmComposeRows: 7-slot cap per row", () => {
+  const big = Array.from({ length: 12 }, (_, i) => ({
+    item_id: String(4000 + i), item_name: "X" + i, delta: i, gold: 1000,
+  }));
+  const rows = _bmComposeRows({ live: big, meta: big, ultimate: big });
+  rows.forEach((r) => assert.ok(r.items.length <= 7, "at most 7 slots"));
+});
+
+test("_bmFamilyDedupe: keeps ONE item per unique family (the item-conflict fix)", () => {
+  const rawOptimal = [
+    { item_id: "3036", item_name: "Lord Dominik's Regards", delta_dps: 40 },
+    { item_id: "3033", item_name: "Mortal Reminder", delta_dps: 38 },
+    { item_id: "6694", item_name: "Serylda's Grudge", delta_dps: 35 },
+    { item_id: "3153", item_name: "Blade of The Ruined King", delta_dps: 54 },
+  ];
+  const familyById = {
+    "3036": "lastwhisper",
+    "3033": "lastwhisper",
+    "6694": "lastwhisper",
+  };
+  const out = _bmFamilyDedupe(rawOptimal, familyById);
+  const ids = out.map((r) => String(r.item_id));
+  assert.ok(ids.includes("3036"), "the highest-delta LW item is kept");
+  assert.ok(!ids.includes("3033"), "second Last-Whisper item dropped");
+  assert.ok(!ids.includes("6694"), "third Last-Whisper item dropped");
+  assert.ok(ids.includes("3153"), "a non-family item is untouched");
+});
+
+test("_bmFamilyDedupe: no family map -> passthrough (fail-open, never blanks the row)", () => {
+  const rawOptimal = [
+    { item_id: "3036", item_name: "LDR", delta_dps: 40 },
+    { item_id: "3033", item_name: "MR", delta_dps: 38 },
+  ];
+  const out = _bmFamilyDedupe(rawOptimal, null);
+  assert.strictEqual(out.length, 2, "no dedupe without a family map");
+});
+
+test("_bmFamilyDedupe: items with an empty/absent family are all kept", () => {
+  const rawOptimal = [
+    { item_id: "3153", item_name: "BoRK", delta_dps: 54 },
+    { item_id: "3031", item_name: "IE", delta_dps: 50 },
+    { item_id: "3085", item_name: "Runaan", delta_dps: 40 },
+  ];
+  const out = _bmFamilyDedupe(rawOptimal, { "9999": "somefamily" });
+  assert.strictEqual(out.length, 3, "unrelated items untouched");
+});
