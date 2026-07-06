@@ -658,10 +658,15 @@ function createOverlayWindow() {
       overlayWindow.showInactive();
     }
   });
-  // Inert while click-through (events forward to the game); once the ACTIVE
-  // hotkey flips interactivity the same strip makes the overlay user-movable.
+  // The overlay is a display-PINNED fullscreen canvas - it must NEVER be
+  // window-dragged. Injecting the -webkit-app-region drag strip here (as the
+  // companion does) let the operator drag the WHOLE overlay window in ACTIVE
+  // mode, which shifts every design-px widget - the minimap gold outline
+  // especially - off the game by the drag offset, and made all panels appear to
+  // move together / hit a display-edge wall (operator 2026-07-06). The drag
+  // strip is companion-only (createWindow); panels move individually via the
+  // per-widget field (web/js/lib/overlay_layout.js), never the whole canvas.
   overlayWindow.webContents.on("did-finish-load", () => {
-    injectDragRegion(overlayWindow);
     injectActiveIndicator(overlayWindow);
     injectClickThroughZones(overlayWindow);
   });
