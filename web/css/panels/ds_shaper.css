@@ -11,13 +11,23 @@
 
 .bm-shaper-strip {
   display: flex;
-  gap: 8px;
+  gap: 16px;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
 }
 
+/* BATCH A counter layout: each axis is a compact 2-row block - the "- value +"
+   counter on top, the cyan axis label directly below (the operator EXAMPLE). */
 .bm-shaper-axis {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.bm-shaper-counter {
+  display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 4px;
 }
@@ -26,9 +36,11 @@
   font-size: var(--fs-xs, 16px);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: rgba(255, 255, 255, 0.65);
-  min-width: 48px;
+  letter-spacing: 0.04em;
+  /* cyan DMG / SURV / UTIL labels (EXAMPLE) - the established #6cf overlay
+     next/pop cyan, not the periwinkle --signal-info the preview lines use. */
+  color: #6cf;
+  text-align: center;
 }
 
 .bm-shaper-btn {

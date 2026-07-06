@@ -125,9 +125,11 @@ function _buildAxis(ax, champion, mode, outEl) {
   wrap.className = 'bm-shaper-axis';
   wrap.dataset.axis = ax.field;
 
-  const label = document.createElement('span');
-  label.className = 'bm-shaper-label';
-  label.textContent = ax.label;
+  // BATCH A counter layout: the "- value +" counter on top, the cyan axis label
+  // directly BELOW it (the operator EXAMPLE - a compact 2-row block), instead of
+  // the old inline "LABEL - value +".
+  const counter = document.createElement('div');
+  counter.className = 'bm-shaper-counter';
 
   const minus = document.createElement('button');
   minus.className = 'bm-shaper-btn';
@@ -156,10 +158,16 @@ function _buildAxis(ax, champion, mode, outEl) {
     _refresh(champion, mode, outEl);
   });
 
+  counter.appendChild(minus);
+  counter.appendChild(val);
+  counter.appendChild(plus);
+
+  const label = document.createElement('span');
+  label.className = 'bm-shaper-label';
+  label.textContent = ax.label;
+
+  wrap.appendChild(counter);
   wrap.appendChild(label);
-  wrap.appendChild(minus);
-  wrap.appendChild(val);
-  wrap.appendChild(plus);
   return wrap;
 }
 
@@ -189,6 +197,11 @@ export function renderShaperStrip(rowEl, champion, mode) {
 
   const strip = document.createElement('div');
   strip.className = 'bm-shaper-strip';
+  // BATCH A dead-counter fix: mark the strip an interactive zone so the in-game
+  // overlay (rc-shell click-through) captures the cursor over the +/- buttons -
+  // without it every click passed through the overlay to the game and the
+  // counters never changed (clickthrough_zones.js ZONE_SELECTOR = [data-rc-zone]).
+  strip.setAttribute('data-rc-zone', '');
 
   const out = document.createElement('div');
   out.className = 'bm-shaper-out';

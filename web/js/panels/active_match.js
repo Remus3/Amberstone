@@ -290,6 +290,49 @@ function _maybeRefreshBuildOrder(champion, mode, level, items) {
   return _BUILD_ORDER.order;
 }
 
+// BATCH A Row3 (ULTIMATE): the full DS-optimal endgame build - /api/build-order
+// planned FROM SCRATCH (owned items ignored, level 18) so it shows the ideal
+// 6-item build the champion should reach vs the live enemy comp, distinct from
+// the owned-context Meta row. It does NOT depend on owned items, so it is keyed
+// on champion+mode+archetype only (long cooldown, rarely changes).
+// GAP NOTE (do NOT re-pitch a "popular meta" row without a new source): RC has
+// no popularity-from-aggregate-match-data build endpoint - all three rows are
+// DS-simulation-derived (Daemon Slayer = live delta-given-owned, Meta =
+// ordered-given-owned, Ultimate = ordered-from-scratch). A true popularity row
+// would need a NEW rewind_history.db aggregate endpoint (FUTURE).
+const _BUILD_ULT = { lastKey: "", lastFired: 0, order: [], inFlight: false };
+const _BUILD_ULT_COOLDOWN_MS = 30000;
+
+function _maybeRefreshUltimateOrder(champion, mode) {
+  if (!champion || !mode) return _BUILD_ULT.order;
+  const arche = _BM_META.metaIndex === 0 ? "" : _BM_META_RING[_BM_META.metaIndex];
+  const key = `${champion}|${mode}|${arche}`;
+  const now = Date.now();
+  const stale = (key !== _BUILD_ULT.lastKey)
+              || ((now - _BUILD_ULT.lastFired) > _BUILD_ULT_COOLDOWN_MS);
+  if (!stale || _BUILD_ULT.inFlight) return _BUILD_ULT.order;
+  _BUILD_ULT.inFlight  = true;
+  _BUILD_ULT.lastKey   = key;
+  _BUILD_ULT.lastFired = now;
+  fetch("/api/build-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      champion:  champion,
+      mode:      mode,
+      level:     18,
+      items:     [],
+      archetype: arche,
+    }),
+  }).then((r) => r.ok ? r.json() : null)
+    .then((j) => {
+      _BUILD_ULT.inFlight = false;
+      if (j && j.ok && Array.isArray(j.order)) _BUILD_ULT.order = j.order;
+    })
+    .catch(() => { _BUILD_ULT.inFlight = false; });
+  return _BUILD_ULT.order;
+}
+
 // WP-B2 Row3 (KNOBS): in-game fight-model knob state. Reuses the ds_knobs.js
 // /api/ds-knobs data layer (champ-NAME based). A null knob => auto / no-cap.
 const _BM_KNOBS = Object.create(null);   // champ -> {armor, mr, budget, fight_length}
@@ -356,6 +399,10 @@ function _bmEmptyStrip(msg) {
 // driving a debounced /api/ds-knobs re-fetch through the reused ds_knobs data
 // layer. Knob state persists in _BM_KNOBS across rebuilds, so a natural
 // sig-change repaint repopulates the input values (a deliberate set is not lost).
+// BATCH A (2026-07-06): UNUSED - the FIGHT MODEL knob row was dropped from the
+// build module per the operator EXAMPLE (the full ds-knobs card at csv-ds-knobs
+// remains the fight-model surface). Retained (not deleted) to keep the diff
+// focused; a follow-up cleanup can prune this + _bmKnobsFor/_bmNumOrNull/_BM_KNOBS.
 function _renderBmKnobs(rowEl, champ, mode, items, level) {
   const knobs = _bmKnobsFor(champ || "");
   const lvl = level || _BM_KNOB_LEVEL;
@@ -455,6 +502,51 @@ export function _shouldRetainBuild(champion, picksLen, metaLen, hasContent) {
   return nothingToPaint && !!hasContent;
 }
 
+// BATCH A (2026-07-06): the in-game BUILD module reshaped to three NAMED,
+// family-safe build rows - "Daemon Slayer" (live adaptive DS order), "Meta
+// Build" (archetype / popular order) and "Ultimate Build" (DS-optimal, family-
+// deduped). These pure helpers assemble + family-dedupe the rows; the DOM render
+// (_renderAmBuildBody) consumes them. Exported for active_match_buildrows.test.mjs.
+// See docs/UI_OVERLAY_REDESIGN_SPEC_2026-07-06.md (BATCH A).
+const _BM_SLOT_CAP = 7;
+
+// Compose the three NAMED build rows from their (already family-safe) sources.
+// Each row carries at most _BM_SLOT_CAP items; an empty / missing source yields
+// items:[] (NOT a stuck-placeholder flag - the blank-meta fix, so META fills in
+// the moment its fetch lands instead of wedging on "loading standard build...").
+export function _bmComposeRows({ live, meta, ultimate } = {}) {
+  const cap = (arr) => (Array.isArray(arr) ? arr.slice(0, _BM_SLOT_CAP) : []);
+  return [
+    { label: "Daemon Slayer", items: cap(live) },
+    { label: "Meta Build", items: cap(meta) },
+    { label: "Ultimate Build", items: cap(ultimate) },
+  ];
+}
+
+// Collapse a raw DS-optimal delta list to ONE item per unique family (drops the
+// 2nd / 3rd Last-Whisper etc.), preserving input order so the highest-delta
+// member - which the caller sorts first - is the one kept. familyById maps an
+// item-id string to its unique-family key (the engine no-double rule is
+// authoritative; there is NO client family-literal map - the family-safe order[]
+// supplies the mapping). A null / absent familyById is a fail-open passthrough
+// (never blanks the row).
+export function _bmFamilyDedupe(rawOptimal, familyById) {
+  const rows = Array.isArray(rawOptimal) ? rawOptimal : [];
+  if (!familyById) return rows.slice();
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    const id = String((r && (r.item_id != null ? r.item_id : r.id)) || "");
+    const fam = familyById[id];
+    if (fam) {
+      if (seen.has(fam)) continue;
+      seen.add(fam);
+    }
+    out.push(r);
+  }
+  return out;
+}
+
 export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // s170 step 2: per-tick rerank. Coach-emitted picks (state.daemon_slayer_picks)
   // are the fallback; the live rerank goes through /api/ds-preview every 4s when
@@ -476,6 +568,28 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   const planStates = _maybeRefreshBuildPlan(champion, mode, level, ownedIds) || {};
   // WP-B2 Row2 META feed - the static standard ordered build.
   const metaOrder  = _maybeRefreshBuildOrder(champion, mode, level, ownedIds) || [];
+  // BATCH A Row3 ULTIMATE feed - the from-scratch DS-optimal endgame build.
+  const ultimateOrder = _maybeRefreshUltimateOrder(champion, mode) || [];
+  // BATCH A item-conflict fix: family-dedupe the LIVE (Daemon Slayer) picks for
+  // display. Family authority = the engine unique_passive_key forwarded as
+  // ``family`` on each ds-preview row, backfilled from the family-safe
+  // build-order rows' locked_family (NO client family-literal map - the engine
+  // no-double rule is authoritative). Fail-open: no family data -> passthrough
+  // (never blanks the row). Collapses two Last-Whisper (LDR + Mortal Reminder +
+  // Serylda) to one before display.
+  const _familyById = {};
+  metaOrder.concat(ultimateOrder).forEach((r) => {
+    const id = String((r && (r.item_id != null ? r.item_id : r.id)) || "");
+    const fam = (r && (r.locked_family || r.family)) || "";
+    if (id && fam) _familyById[id] = fam;
+  });
+  (Array.isArray(picks) ? picks : []).forEach((r) => {
+    const id = String((r && (r.item_id != null ? r.item_id : r.id)) || "");
+    const fam = (r && r.family) || "";
+    if (id && fam) _familyById[id] = fam;
+  });
+  const dedupedPicks = _bmFamilyDedupe(
+    picks, Object.keys(_familyById).length ? _familyById : null);
 
   // Retain-last-good guard (2026-06-29): a transient tick can deliver an empty
   // coach payload mid-game (no champion - e.g. the :8891 WS push of a momentarily
@@ -485,7 +599,8 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // reported random flicker). When there is nothing to draw but the pane already
   // holds a good render, keep it - game-end hides the whole active-match surface
   // upstream, so this never wedges a stale pane after the match.
-  if (_shouldRetainBuild(champion, picks.length, metaOrder.length, !!build.innerHTML)) {
+  if (_shouldRetainBuild(champion, picks.length,
+        metaOrder.length || ultimateOrder.length, !!build.innerHTML)) {
     return;
   }
 
@@ -500,11 +615,14 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // meaningful item buy changes the sig and refreshes the donuts; idle ticks do
   // not, so the resolved icon/donut <img> nodes persist (no flicker).
   const sig = JSON.stringify({
-    p: picks.slice(0, 5).map((r) => (r && (r.id != null ? r.id : (r.item_id != null ? r.item_id : r.name))) || r),
+    // BATCH A: the DISPLAYED (family-deduped) LIVE picks - a dedupe drop repaints.
+    p: dedupedPicks.slice(0, 7).map((r) => (r && (r.id != null ? r.id : (r.item_id != null ? r.item_id : r.name))) || r),
     c: _dsTargetStatsCaption(),
     o: ownedNames,
     // WP-B2: Row2 META order ids, so a standard-build change repaints the strip.
-    m: metaOrder.slice(0, 6).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
+    m: metaOrder.slice(0, 7).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
+    // BATCH A: Row3 ULTIMATE order ids, so the from-scratch build change repaints.
+    u: ultimateOrder.slice(0, 7).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
     // WP-B3: the META alt-cycle index, so a right-click cycle repaints at once.
     mi: _BM_META.metaIndex,
     t: threat ? [threat.summary, threat.burst_threat, threat.ad_threat, threat.ap_threat] : 0,
@@ -512,7 +630,7 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     e: enemyKey,
     // WP-C5: per-pick build-plan state, so a state transition (e.g. an item
     // becoming NEXT or flipping to SWAP) refreshes the strip's badges.
-    bp: picks.slice(0, 5).map((r) => {
+    bp: dedupedPicks.slice(0, 7).map((r) => {
       const id = (r && (r.id != null ? r.id : r.item_id)) || "";
       return planStates[String(id)] || "";
     }),
@@ -534,82 +652,85 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     _renderAmBuildBody(build, p, ctx, lc, ownedIds);
   };
 
-  // WP-B2: the horizontal 3-row build module replaces the old single vertical
-  // picks strip. Row1 LIVE (iterative live plan, owned-aware via planStates),
-  // Row2 META (static standard ordered build from /api/build-order), Row3
-  // FIGHT MODEL (the DS knobs). target_stats still feeds the render sig (the
-  // _dsTargetStatsCaption() call above), so an enemy itemization shift refreshes
-  // the pane. The DEFENSE + THREATS strips follow the module below, unchanged.
-  if (picks.length || metaOrder.length || champion) {
+  // BATCH A (2026-07-06): the in-game BUILD module reshaped to three NAMED,
+  // family-safe build rows via the tested _bmComposeRows helper - "Daemon Slayer"
+  // (live adaptive, family-deduped), "Meta Build" (ordered given owned) and
+  // "Ultimate Build" (from-scratch DS-optimal endgame), followed by the SHAPER
+  // counters. The old "BUILD" title bar (overlay.css) + the FIGHT MODEL knob row
+  // are dropped per the operator EXAMPLE (the full knobs card still lives at
+  // csv-ds-knobs). An empty source renders an empty (fillable) row - NOT a stuck
+  // "loading standard build..." placeholder (the blank-meta fix). target_stats
+  // still feeds the sig above, so an enemy itemization shift refreshes the pane.
+  if (dedupedPicks.length || metaOrder.length || ultimateOrder.length || champion) {
     const mod = document.createElement("div");
     mod.className = "bm-module";
 
-    // Row1 - LIVE (owned greyed + sorted-left; first non-owned = next)
-    const liveRow = _bmRow("bm-live", "LIVE");
-    if (picks.length) {
-      const liveStrip = _bmStrip();
-      // WP-D2: mark the LIVE strip an interactive zone so the in-game overlay
-      // (rc-shell click-through) captures the cursor here - without it the
-      // right-click radial is unreachable in PASSIVE (clickthrough_zones.js
-      // ZONE_SELECTOR). The META strip is already a zone (B3 cycle).
-      liveStrip.setAttribute("data-rc-zone", "");
-      let liveNext = false;
-      // WP-D2: apply the operator's per-item overrides (shift/defer) to the live
-      // plan order BEFORE the owned-first partition, so a reorder survives the
-      // 4s rerank tick. _bmPartitionOwned is stable, so the unowned tail keeps
-      // the override order while owned items stay sorted-left.
-      _bmPartitionOwned(applyItemOverrides(picks.slice(0, 6)), ownedSet).forEach((r) => {
-        const id = (r && (r.id != null ? r.id : r.item_id)) || "";
-        const isNext = !_bmIsOwned(r, ownedSet) && !liveNext;
-        if (isNext) liveNext = true;
-        liveStrip.appendChild(
-          _dsIcon(r, ownedSet, planStates[String(id)] || "", { bm: true, next: isNext, onOverride: _bmReRender }));
-      });
-      liveRow.appendChild(liveStrip);
-    } else {
-      liveRow.appendChild(_bmEmptyStrip("waiting for live plan..."));
-    }
-    mod.appendChild(liveRow);
+    const _BM_ROW_VARIANT = {
+      "Daemon Slayer":  "bm-live",
+      "Meta Build":     "bm-meta",
+      "Ultimate Build": "bm-ult",
+    };
+    const rows = _bmComposeRows({
+      live: dedupedPicks,
+      meta: metaOrder,
+      ultimate: ultimateOrder,
+    });
+    rows.forEach((rowDef) => {
+      const variant = _BM_ROW_VARIANT[rowDef.label] || "";
+      const isLive = variant === "bm-live";
+      const isMeta = variant === "bm-meta";
+      const rowEl = _bmRow(variant, rowDef.label);
+      if (rowDef.items.length) {
+        const strip = _bmStrip();
+        // Mark every build strip an interactive zone so the in-game overlay
+        // (rc-shell click-through) captures the cursor here - the right-click
+        // radial + meta cycle are otherwise unreachable in PASSIVE
+        // (clickthrough_zones.js ZONE_SELECTOR).
+        strip.setAttribute("data-rc-zone", "");
+        // LIVE applies the operator's per-item overrides BEFORE the owned-first
+        // partition (a reorder survives the 4s rerank); Meta/Ultimate are static.
+        const seq = isLive
+          ? _bmPartitionOwned(applyItemOverrides(rowDef.items), ownedSet)
+          : _bmPartitionOwned(rowDef.items, ownedSet);
+        let nextFlag = false;
+        seq.forEach((r) => {
+          const id = (r && (r.id != null ? r.id : r.item_id)) || "";
+          const isNext = !_bmIsOwned(r, ownedSet) && !nextFlag;
+          if (isNext) nextFlag = true;
+          // LIVE keeps its real +Ndps deltas + the right-click radial (steers the
+          // adaptive plan); Meta/Ultimate are static reference builds (noDelta, no
+          // radial - a "+0" on every static item was operator-reported 2026-06-29).
+          const opts = isLive
+            ? { bm: true, next: isNext, onOverride: _bmReRender }
+            : { bm: true, next: isNext, noDelta: true };
+          const planState = isLive ? (planStates[String(id)] || "") : "";
+          strip.appendChild(_dsIcon(r, ownedSet, planState, opts));
+        });
+        // Meta row: right-click cycles the archetype ring (drives BOTH the Meta +
+        // Ultimate from-scratch fetches, which share _BM_META). stopPropagation
+        // keeps the overlay ACTIVE-mode contextmenu handler from dismissing.
+        if (isMeta) {
+          strip.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            _cycleMeta();
+            _BUILD_ULT.lastKey = "";   // re-fetch the ultimate at the new archetype
+            build.dataset.amBuildSig = "";
+            _renderAmBuildBody(build, p, ctx, lc, ownedIds);
+          });
+        }
+        rowEl.appendChild(strip);
+      } else {
+        // Reserve the strip height so the row does not reflow when its fetch
+        // lands (no-reflow-on-absence); blank, NOT a stuck "loading..." string.
+        rowEl.appendChild(_bmStrip());
+      }
+      mod.appendChild(rowEl);
+    });
 
-    // Row2 - META (static standard build; owned greyed; right-click cycles alts)
-    const metaRow = _bmRow("bm-meta", "META");
-    if (metaOrder.length) {
-      const metaStrip = _bmStrip();
-      metaStrip.setAttribute("data-rc-zone", "");  // capture cursor off the ACTIVE hotkey
-      let metaNext = false;
-      _bmPartitionOwned(metaOrder.slice(0, 6), ownedSet).forEach((r) => {
-        const isNext = !_bmIsOwned(r, ownedSet) && !metaNext;
-        if (isNext) metaNext = true;
-        // noDelta: the META row is the static standard build - it carries no DS
-        // rerank delta, so the shared icon's "+Ndps" badge would render a
-        // meaningless "+0" on every item (operator-reported 2026-06-29). Suppress
-        // it here; the LIVE row keeps its real deltas.
-        metaStrip.appendChild(_dsIcon(r, ownedSet, "", { bm: true, next: isNext, noDelta: true }));
-      });
-      // Right-click cycles alternative archetype builds. stopPropagation is
-      // REQUIRED so the overlay_layout ACTIVE-mode contextmenu hide-handler does
-      // not dismiss the overlay on a meta right-click.
-      metaStrip.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        _cycleMeta();
-        build.dataset.amBuildSig = "";
-        _renderAmBuildBody(build, p, ctx, lc, ownedIds);
-      });
-      metaRow.appendChild(metaStrip);
-    } else {
-      metaRow.appendChild(_bmEmptyStrip("loading standard build..."));
-    }
-    mod.appendChild(metaRow);
-
-    // Row3 - FIGHT MODEL knobs (reuses the ds_knobs /api/ds-knobs data layer)
-    const knobRow = _bmRow("bm-knobs", "FIGHT MODEL");
-    _renderBmKnobs(knobRow, champion, mode, ownedIds, level);
-    mod.appendChild(knobRow);
-
-    // Row4 - SHAPER: interactive item-shaper axis knobs (OQ14). Nudges the
-    // archetype emphasis (damage / surv / utility) via core/shaper.apply_shaper
-    // over GET /api/ds-shape. Non-persisting; snaps back on champion change.
+    // SHAPER: interactive DMG / SURV / UTIL emphasis counters. renderShaperStrip
+    // marks its own strip a data-rc-zone (in-game clickability - the dead-counter
+    // fix) and lays the three counters left-to-right with labels below.
     const shaperRow = _bmRow("bm-shaper", "SHAPER");
     renderShaperStrip(shaperRow, champion, mode);
     mod.appendChild(shaperRow);
