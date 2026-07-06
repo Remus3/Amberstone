@@ -1,11 +1,14 @@
 /* web/css/panels/objective_gauges.css
  *
  * OQ16 (OQ3 variant A "Radial Ring Cluster"): peripheral objective gauge
- * cluster (web/js/panels/objective_gauges.js) - a 2x2 grid of full ring
- * dials (DRAKE / BARON / ELDER / SUMMS) with the exact ETA in each center.
- * Geometry follows the source mockup web/mock/oq3_variant_a.html, scaled
- * to fit the fixed 210px .ovx-widget shell (overlay.css --ovx-w), which
- * already provides the Hextech backing + gold hairline frame.
+ * cluster (web/js/panels/objective_gauges.js) - a single horizontal row of
+ * full ring dials (DRAKE / BARON / ELDER) with the exact ETA in each center.
+ * (Was a 2x2 grid built for 4 dials; SUMMS was removed 2026-07-05, leaving 3
+ * in a 2-col grid = an awkward 2+1 L-shape, so 2026-07-06 flips it to one
+ * consistent horizontal axis. The w-objgauges shell is widened in overlay.css
+ * to hold the row.) Geometry follows the source mockup
+ * web/mock/oq3_variant_a.html; the .ovx-widget shell already provides the
+ * Hextech backing + gold hairline frame.
  *
  * Overlay-only: the base rule hides it on the 1920 dashboard; only
  * body[data-shell="overlay"] shows it, and only when objective_gauges.js
@@ -39,8 +42,10 @@ body[data-shell="overlay"] .obj-gauges[hidden] {
 }
 
 .obj-gauges .og-grid {
+  /* One horizontal row of 3 dials (single consistent axis, operator 2026-07-06);
+   * the w-objgauges shell is widened in overlay.css so the row is not clipped. */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   justify-items: center;
 }
