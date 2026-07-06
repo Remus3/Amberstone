@@ -160,5 +160,40 @@ class BuildOrderRouteTests(unittest.TestCase):
         self.assertIn("/api/build-order", _REQUEST_MODELS)
 
 
+class IncumbentPassthroughTests(unittest.TestCase):
+    """The route forwards the panel's echoed `incumbent` to plan_build_order
+    (2026-07-06 incumbent-hysteresis opt-in)."""
+
+    def test_route_forwards_incumbent_to_planner(self):
+        captured: dict = {}
+
+        def _capture(champion, archetype, **kw):
+            captured.update(kw)
+            return None  # the route is fail-soft on a None plan
+
+        with mock.patch("core.build_order.plan_build_order", _capture):
+            h = _Handler()
+            _serve_build_order_post(h, {
+                "champion": "Ezreal", "mode": "SR", "level": 13,
+                "items": [], "incumbent": ["3078", "3508"],
+            })
+        self.assertEqual(captured.get("incumbent"), ["3078", "3508"])
+
+    def test_route_defaults_incumbent_to_empty_when_absent(self):
+        captured: dict = {}
+
+        def _capture(champion, archetype, **kw):
+            captured.update(kw)
+            return None
+
+        with mock.patch("core.build_order.plan_build_order", _capture):
+            h = _Handler()
+            _serve_build_order_post(h, {
+                "champion": "Ezreal", "mode": "SR", "level": 13, "items": [],
+            })
+        # Absent -> [] -> plan_build_order treats it as no incumbent (byte-identical).
+        self.assertEqual(captured.get("incumbent"), [])
+
+
 if __name__ == "__main__":
     unittest.main()
