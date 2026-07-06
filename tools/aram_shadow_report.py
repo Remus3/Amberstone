@@ -258,6 +258,7 @@ def summarize_choices(records: list[dict]) -> dict:
     labels classify."""
     non_dead_total = 0
     det_present = 0
+    det_instrumented = 0
     both_present = 0
     det_only = 0
     live_only = 0
@@ -268,6 +269,12 @@ def summarize_choices(records: list[dict]) -> dict:
         if _is_dead_state(rec):
             continue
         non_dead_total += 1
+        # A row is "instrumented" when its deterministic block carries the
+        # choices KEY at all (present-or-empty). Rows logged before the choices
+        # instrumentation landed lack the key entirely; counting them as
+        # coverage misses drags the raw rate far below current-code coverage.
+        if "choices" in _side(rec, "deterministic"):
+            det_instrumented += 1
         dp = _is_present(_field_value(rec, "deterministic", "choices"))
         lp = _is_present(_field_value(rec, "live_haiku", "choices"))
         if dp:
@@ -294,6 +301,9 @@ def summarize_choices(records: list[dict]) -> dict:
         "det_present": det_present,
         "det_coverage_rate": (
             round(det_present / non_dead_total, 4) if non_dead_total else 0.0),
+        "det_instrumented": det_instrumented,
+        "det_coverage_rate_instrumented": (
+            round(det_present / det_instrumented, 4) if det_instrumented else 0.0),
         "both_present": both_present,
         "det_only": det_only,
         "live_only": live_only,
@@ -344,13 +354,13 @@ def _flip_hint(action: dict, choices: dict, total: int) -> str:
                 "dead-state or unclassified) - keep playing before any flip "
                 "(operator gate)")
     pct = round(100 * action["agreement_rate"])
-    cc = round(100 * choices["det_coverage_rate"])
+    cc = round(100 * choices.get("det_coverage_rate_instrumented", 0.0))
     gate = (">=70% gate MET" if action["agreement_rate"] >= FLIP_GATE
             else "below 70% gate")
     return (f"action agreement {pct}% over {comparable} comparable ticks "
-            f"({gate}); deterministic choices coverage {cc}% - NOT a flip "
-            "authorization (operator gate; live Haiku-retirement stays "
-            "live-gated)")
+            f"({gate}); deterministic choices coverage {cc}% over instrumented "
+            "rows - NOT a flip authorization (operator gate; live "
+            "Haiku-retirement stays live-gated)")
 
 
 def build_report(path) -> dict:
@@ -383,7 +393,9 @@ def _print_human(report: dict) -> None:
           f"dead_state_excluded {act.get('dead_state_excluded', 0)}")
     ch = report.get("choices") or {}
     print(f"[choices] det coverage {ch.get('det_present', 0)}/"
-          f"{ch.get('non_dead_total', 0)} ({ch.get('det_coverage_rate', 0.0)}), "
+          f"{ch.get('non_dead_total', 0)} ({ch.get('det_coverage_rate', 0.0)}) raw, "
+          f"{ch.get('det_present', 0)}/{ch.get('det_instrumented', 0)} "
+          f"({ch.get('det_coverage_rate_instrumented', 0.0)}) instrumented, "
           f"both {ch.get('both_present', 0)}, det_only {ch.get('det_only', 0)}, "
           f"live_only {ch.get('live_only', 0)}, neither {ch.get('neither', 0)}, "
           f"label agree {ch.get('label_agree', 0)}/{ch.get('label_comparable', 0)}")
