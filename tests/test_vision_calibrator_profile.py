@@ -226,6 +226,63 @@ class RegionsPostSourceTests(unittest.TestCase):
         self.assertEqual(calls["obj"], {"hp": [1, 2, 3, 4]})
 
 
+_GOOD_REGIONS = {"hp": [10, 20, 30, 40]}
+
+
+class BaseValidationTests(unittest.TestCase):
+    """POST /api/vision-regions with {source:"profile"} rejects malformed base."""
+
+    def _post(self, body):
+        called = {"n": 0}
+
+        def _save_profile(config_key, regions, base):
+            called["n"] += 1
+            return {"ok": True, "count": len(regions), "config_key": config_key}
+
+        with _patch(vc.vp, "active_config_key", lambda: "cfgX"), \
+                _patch(vc.vp, "save_profile", _save_profile):
+            h = _FakeHandler("/api/vision-regions")
+            vc._serve_regions_post(h, body)
+        code, payload, _ = h.sent
+        return code, payload, called["n"]
+
+    def test_base_none_returns_400(self):
+        code, payload, n = self._post({"regions": _GOOD_REGIONS, "base": None, "source": "profile"})
+        self.assertEqual(code, 400)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(n, 0)
+
+    def test_base_zero_zero_returns_400(self):
+        code, payload, n = self._post({"regions": _GOOD_REGIONS, "base": [0, 0], "source": "profile"})
+        self.assertEqual(code, 400)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(n, 0)
+
+    def test_base_wrong_length_returns_400(self):
+        code, payload, n = self._post({"regions": _GOOD_REGIONS, "base": [1920], "source": "profile"})
+        self.assertEqual(code, 400)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(n, 0)
+
+    def test_base_string_coord_returns_400(self):
+        code, payload, n = self._post({"regions": _GOOD_REGIONS, "base": [1920, "1080"], "source": "profile"})
+        self.assertEqual(code, 400)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(n, 0)
+
+    def test_base_negative_returns_400(self):
+        code, payload, n = self._post({"regions": _GOOD_REGIONS, "base": [-1, 1080], "source": "profile"})
+        self.assertEqual(code, 400)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(n, 0)
+
+    def test_valid_base_returns_200(self):
+        code, payload, n = self._post({"regions": _GOOD_REGIONS, "base": [1920, 1080], "source": "profile"})
+        self.assertEqual(code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(n, 1)
+
+
 class NoBannedCodepointsTests(unittest.TestCase):
     def test_no_banned_codepoints(self):
         text = pathlib.Path(vc.__file__).read_text(encoding="utf-8")
