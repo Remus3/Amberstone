@@ -67,10 +67,15 @@ The LEDGER-795 ZOI/minimap-district finalization ran live. NO gate flipped (do-n
   RC_ZOI_IDENTITY), THEN wire the feed via the existing `zoi=`/`districts=` seam. Regression fence
   added (`test_dead_fog_feed_never_fires_on_live_sr_shape`). Do NOT flip RC_ZOI_IDENTITY /
   roster-wiring until then.
-- Z3. (PRACTICE-SR) `obs.frame_source` flip CANDIDATE: OBS-WS round-trip VALIDATED live (auth +
-  Game Capture + 412KB frame; `config/coach_settings.json` gitignored, safe for the password) but
-  the flip is geometry-gated (OBS frame dims != desktop grab, so `minimap_rect` needs
-  re-registration) + the grab was intermittent. Do not flip blind.
+- Z3. (DONE this session) `obs.frame_source` FLIPPED + live-validated. The OBS source named "Game
+  Capture" was actually a Display Capture (whole monitor incl. the RC overlay); operator switched
+  it to a Window Capture (WGC) of the League game window - occlusion-proof (excludes the overlay),
+  Vanguard-safe (no injection), native 2560x1440 (matches `minimap_rect`, zero re-registration).
+  Live: `/api/state.minimap_dots` dropped 92 -> ~46 (the overlay was ~40 phantom dots), `/api/state`
+  fast, zoi steady. Flipped via `config/coach_settings.json obs.frame_source=true` + password
+  (gitignored; `enabled=false` so the one-shot fetch activates through the 5s config TTL - no
+  reload). RESIDUAL: the raw minimap still over-detects (~46 vs 10 champs), so the blob-gating
+  tightening (the Z2 macro/MIA feed prerequisite) is still owed, now from a cleaner baseline.
 
 ---
 
