@@ -152,12 +152,20 @@ def crop_minimap(frame_rgb, minimap_rect: dict, design_w: int = 1920, design_h: 
 # (1280-downscaled JPEG, ~208px). TTL + rect cached so /api/state (2 Hz) never
 # re-grabs mid-window; fail-soft everywhere -> [] on any error.
 _VISION_URL = "http://127.0.0.1:8889/latest-frame"
-_dots_cache: dict = {"wall": 0.0, "rect": None, "dots": []}
+_dots_cache: dict = {"wall": 0.0, "rect": None, "dots": [], "good_wall": 0.0}
 
 # Size-threshold baseline: _MIN_PX/_MAX_PX were tuned on the 208px coaching-frame
 # crop; _scaled_size_bounds rescales them to the actual crop width so the native
 # 416px crop detects the SAME physical footprints (resolution-invariant).
 _TUNED_CROP_W = 208.0
+
+# Hold last-good dots across a TRANSIENT grab failure (crop is None / an
+# exception) so a momentary miss does not flicker /api/state.zoi (and the
+# overlay) to empty ~1 Hz. Strictly greater than the 1.5s TTL so a real
+# game-end (persistent failure) still expires the hold within ~2 polls. A
+# legit-empty frame (grab succeeded, no champions in view) is NOT held - it
+# passes through as [] so the overlay clears when the game genuinely ends.
+_HOLD_LAST_GOOD_S = 3.0
 
 
 def _native_grab_enabled() -> bool:
@@ -322,7 +330,12 @@ def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5,
         crop = _grab_native_minimap(minimap_rect) if _native_grab_enabled() else None
         if crop is None:
             crop = _grab_frame_minimap(minimap_rect)
-        if crop is None or getattr(crop, "size", 0) == 0:
+        # crop None (or zero-size) => the GRAB failed (both grabbers return None
+        # on failure); a non-None crop that simply detects no champions is a
+        # LEGIT-empty frame. These diverge below: a failed grab holds last-good,
+        # a legit-empty frame clears.
+        grab_failed = crop is None or getattr(crop, "size", 0) == 0
+        if grab_failed:
             dots = []
         else:
             minpx, maxpx = _scaled_size_bounds(crop.shape[1])
@@ -335,9 +348,24 @@ def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5,
                         dots = _identify(crop, dots, names)
                 except Exception:  # noqa: BLE001 - identity is additive, never blocks presence
                     pass
-    except Exception:  # noqa: BLE001 - never let a vision hiccup break /api/state
-        dots = _dots_cache["dots"]  # serve last good rather than flicker to []
-        _dots_cache["wall"] = now
+    except Exception:  # noqa: BLE001 - a grab/detect exception is a failure, not empty
+        grab_failed = True
+        dots = []
+
+    if dots:
+        # Fresh detection: stamp everything incl. the good-frame anchor.
+        _dots_cache.update(wall=now, rect=rect_sig, dots=dots, good_wall=now)
         return dots
-    _dots_cache.update(wall=now, rect=rect_sig, dots=dots)
-    return dots
+    if (grab_failed and _dots_cache["dots"]
+            and _dots_cache["rect"] == rect_sig
+            and (now - _dots_cache["good_wall"]) < _HOLD_LAST_GOOD_S):
+        # Transient grab failure within the hold window: serve last-good so a
+        # momentary miss does not flicker the overlay to empty. Refresh the TTL
+        # wall only - keep good_wall + dots so the window still expires at a
+        # real game-end (persistent failure) instead of holding forever.
+        _dots_cache["wall"] = now
+        return _dots_cache["dots"]
+    # Legit-empty frame (grab succeeded, no champions), OR the hold window has
+    # elapsed, OR the rect changed: clear.
+    _dots_cache.update(wall=now, rect=rect_sig, dots=[])
+    return []

@@ -276,6 +276,27 @@ class EvaluateContractTests(unittest.TestCase):
         b = evaluate(ctx, zoi={"bubbles": []}, districts={"map": 1.0})
         self.assertEqual(a, b)
 
+    def test_dead_fog_feed_never_fires_on_live_sr_shape(self) -> None:
+        # Regression fence for the 2026-07-05 live finding: on SR the
+        # vision_tracker fog feed stamps every enemy missing_for_s=None (Live
+        # Client position is a ROLE string, not coords), so the fog-only macro
+        # tree cannot fire even with a drake in the danger window, and the v1
+        # district seam does NOT rescue it in v0. This LOCKS the feed-deferral:
+        # a future wave that wires a real enemy-localization feed must update
+        # this test deliberately rather than silently regress it.
+        dead = {nm: _enemy(nm) for nm in ("Jinx", "Thresh", "LeeSin")}
+        ctx = build_macro_context("sr", 260.0, enemies=dead,
+                                  objective_events=[])
+        # a drake IS inside the danger window at t=260 (first spawn ~300s),
+        self.assertIsNotNone(ctx.next_dragon_eta_s)
+        self.assertLessEqual(ctx.next_dragon_eta_s, OBJECTIVE_WINDOW_S)
+        # but zero enemies carry a numeric MIA clock, so no macro row fires -
+        # with or without a populated district seam.
+        self.assertIsNone(evaluate(ctx))
+        districts = [{"district": "dragon_pit", "ally": 0, "enemy": 3}]
+        self.assertIsNone(evaluate(ctx, zoi={"districts": districts},
+                                   districts=districts))
+
     def test_no_llm_or_network_imports_in_modules(self) -> None:
         # ZERO LLM/network: the pure modules never import anthropic or any
         # HTTP client.
