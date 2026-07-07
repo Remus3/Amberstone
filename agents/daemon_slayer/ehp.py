@@ -1072,7 +1072,7 @@ def compute_ehp(
     # ~= 20% less incoming basic-attack RATE, ~+11.1% physical EHP at the assumed
     # 0.5 AA share). Ships DEFAULT-OFF pending its own live-gated flip (unlike the
     # already-flipped R77/R80); identity multiplier when False -> BYTE-IDENTICAL.
-    assume_item_enemy_as_slow: bool = False,
+    assume_item_enemy_as_slow: bool = True,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
