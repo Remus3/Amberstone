@@ -83,7 +83,13 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
         if _is_ornn_masterwork(rec):  # Ornn masterwork - never buyable
             continue
         out.add(item_id)
-    return out - _NON_COACHABLE_ITEM_IDS
+    out = out - _NON_COACHABLE_ITEM_IDS
+    # DDragon-override SR-exclude deny (2026-07-06): items DDragon wrongly marks
+    # purchasable on SR (support-quest upgrades) - mirror _filter_candidates.
+    if map_id == "11":
+        from agents.daemon_slayer.rank import _SR_EXCLUDED_ITEM_IDS
+        out = out - _SR_EXCLUDED_ITEM_IDS
+    return out
 
 
 class ModeMapIdWiringTests(unittest.TestCase):
