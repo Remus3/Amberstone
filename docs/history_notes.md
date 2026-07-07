@@ -235,6 +235,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `ae579ef0`, LEDGER 801)
+
+Headless loop, operator away. mode_key=client (no live game) throughout, so pure-backend precompute lanes only. Baseline green (HEAD c74a7fd6, ENGINE 1.181.0 = DS server, CI green, no PRs/unmerged branches). Inline/foreground; DS untouched; no frozen file.
+- **Shadow-report coverage unmasked (`ae579ef0`).** `tools/aram_shadow_report.py` divided det choices coverage by ALL non-dead rows, but 64% of the shadow log predates the choices instrumentation (slice 1 landed 2026-07-04 at row 905). Added `det_instrumented` + `det_coverage_rate_instrumented`; live read is now 91% instrumented (was a misleading 36% raw that understated flip-readiness ~57 pts). 18 tests green, CI green.
+- **Finding (do-not-rechase): ARAM det choices lever is CODE-COMPLETE.** `_safe_choices` maps all 5 labels (verified live). 36% was purely stale-log. No ARAM choices code owed.
+- **Cost/latency sweep CLEAN** - cache_control on all coaches; no sub-500ms polls; haiku interim floor; bundle-parity 41 green.
+- **BACKLOG: Arena det choices A/B scoped FUTURE** - symmetric keyset change across 3 test files + needs live-Arena accrual to validate.
+
+**NEXT SESSION:** the readily-shippable headless north-star work is done or live-gated. Options: (1) Arena det-choices slice (needs a live Arena game to validate + symmetric keyset update), (2) the client-side CV vision atlas (the bigger SECOND NO-LLM program), (3) a DS schema-lift (operator-gated). **DO NOT redo:** the ARAM choices lever is CODE-COMPLETE (the 36% was a stale-log artifact - do not re-chase it); `ae579ef0` is shipped + CI green.
+
+---
+
 # 2026-07-06 (OUT-OF-GAME - /live-gated-resync #2 + HEXCORE galaxy update+expand + /repo-insights; commit `940cc4b1`, LEDGER 800)
 
 Operator-chained command run: `/live-gated-resync` workflow -> update+expand HEXCORE -> `/repo-insights` -> `/done`. Docs-only, no code/engine/DS/frozen touched, no restart. mode_key=client (no live game) throughout.
