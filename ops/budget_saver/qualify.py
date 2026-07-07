@@ -1,3 +1,4 @@
+import builtins
 import glob
 import json
 import os
@@ -8,14 +9,24 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent
 URL = "http://127.0.0.1:4000/v1/messages"
 
+# Restricted builtins for exec of model-generated code in grade() py_exec: excludes
+# open / __import__ / exec / eval so a malicious model output cannot touch the FS or
+# import os during a local eval run. Model output is UNTRUSTED, not a fixture.
+_SAFE_BUILTINS = {n: getattr(builtins, n) for n in (
+    "abs", "all", "any", "bool", "dict", "enumerate", "filter", "float", "int",
+    "len", "list", "map", "max", "min", "print", "range", "repr", "reversed",
+    "round", "set", "sorted", "str", "sum", "tuple", "zip",
+    "Exception", "ValueError", "TypeError", "KeyError", "IndexError")}
+
+
 def grade(oracle: dict, code: str) -> bool:
     kind = oracle["kind"]
     if kind == "contains":
         return oracle["expect"] in code
     if kind == "py_exec":
-        ns = {}
+        ns = {"__builtins__": _SAFE_BUILTINS}
         try:
-            exec(code, ns)                       # sandbox note: fixtures are trusted, local-only
+            exec(code, ns)                       # restricted builtins (no open/import/os) - model output is untrusted
             return str(eval(oracle["call"], ns)) == str(oracle["expect"])
         except Exception:  # noqa: BLE001 - untrusted LLM-generated code can raise anything
             return False

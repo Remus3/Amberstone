@@ -13,5 +13,7 @@ def write(profile: str, model: str, extra: dict | None = None) -> None:
     tmp.replace(STATE_PATH)
 
 def read() -> dict:
-    try: return json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    except FileNotFoundError: return {}
+    try:
+        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {}

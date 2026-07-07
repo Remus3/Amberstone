@@ -9,8 +9,17 @@ def append(item: dict) -> None:
         f.write(json.dumps(item) + "\n")
 
 def load() -> list[dict]:
-    if not QUEUE_PATH.exists(): return []
-    return [json.loads(l) for l in QUEUE_PATH.read_text(encoding="utf-8").splitlines() if l.strip()]
+    if not QUEUE_PATH.exists():
+        return []
+    items = []
+    for line in QUEUE_PATH.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            items.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue  # skip a corrupted line rather than losing the whole queue
+    return items
 
 def drain() -> list[dict]:
     items = load()

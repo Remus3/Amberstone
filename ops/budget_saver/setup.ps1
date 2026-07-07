@@ -40,8 +40,10 @@ if (-not $ollama) { throw "Ollama install failed - install manually from https:/
 [Environment]::SetEnvironmentVariable("OLLAMA_CONTEXT_LENGTH","32768","Machine")
 [Environment]::SetEnvironmentVariable("OLLAMA_HOST","127.0.0.1:11434","Machine")
 $env:OLLAMA_FLASH_ATTENTION="1"; $env:OLLAMA_KV_CACHE_TYPE="q8_0"; $env:OLLAMA_CONTEXT_LENGTH="32768"
+# llama3.1:8b is the DRIVER (reliable structured tool_calls; qwen-coder emits text-only tools
+# and cannot drive Claude Code). It backs rc-main / rc-local / rc-background.
 $tags = (& $ollama list) 2>&1 | Out-String
-foreach ($t in @("qwen2.5-coder:14b-instruct","qwen2.5-coder:7b-instruct")) {
+foreach ($t in @("llama3.1:8b")) {
   if ($tags -notmatch [regex]::Escape($t)) { & $ollama pull $t }
 }
 Write-Output "[setup] Ollama ready (models present, KV-quant + 32K context env set)."
