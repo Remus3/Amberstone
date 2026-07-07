@@ -35,6 +35,7 @@ litellm_settings:
   callbacks: ["prometheus"]
   drop_params: true
   modify_params: true   # drop the Anthropic `thinking` param for local models that lack it (llama3.1)
+  require_auth_for_metrics_endpoint: false   # opens /metrics without DB-auth (127.0.0.1 only). NOTE: litellm prometheus metrics still need a Postgres DB to POPULATE - endpoint stays empty without one (this is a DB-free setup)
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
