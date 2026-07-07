@@ -18,6 +18,7 @@ if (-not (Test-Path $VenvPy)) { & $Py312 -m venv $Venv }
 $have = ""
 try { $have = ((& $VenvPy -m pip show litellm 2>$null | Select-String "Version:") -replace "Version:\s*","").Trim() } catch {}
 if ($have -ne "1.91.0") { & $VenvPy -m pip install "litellm[proxy]==1.91.0" }
+& $VenvPy -m pip install prometheus_client | Out-Null   # metrics dep, not bundled in litellm[proxy]; pip no-op if present
 $site = & $VenvPy -c "import site; print(site.getsitepackages()[0])"
 if (Test-Path (Join-Path $site "litellm_init.pth")) {
   throw "SECURITY: litellm_init.pth stealer signature found - aborting, rotate all keys on this machine."
