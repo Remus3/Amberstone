@@ -6866,6 +6866,22 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
             state.latest.zoi = st.zoi || null;
             renderMinimapRect(state.latest.minimap_rect);
             renderMinimapZoi(state.latest.zoi);
+            // E6 (2026-07-06): lead_projection / callouts / coach.choices /
+            // liveclient are /api/state TOP-LEVEL siblings likewise ABSENT from
+            // the :8891 WS push, so the gated pollers (HTTP-fallback / LCU / SSE)
+            // short-circuit on a fresh in-game feed and these four overlay
+            // widgets never populate (operator: dark in-game, render only in the
+            // ui_mock fixtures). Refresh them off THIS same unconditional 2s
+            // /api/state fetch. Renderers are idempotent (sig-dedup) + overlay-
+            // shell self-gated; spike is level-crossing one-shot.
+            state.latest.lead_projection = st.lead_projection || null;
+            state.latest.callouts = st.callouts || null;
+            state.latest.coach = st.coach || null;
+            state.latest.liveclient = st.liveclient || null;
+            renderLead(st);
+            renderCallouts(st);
+            renderCoachChoices(st);
+            renderSpikeCue(st.liveclient || null);
           }
         }
       } catch (_) { /* silent */ }
