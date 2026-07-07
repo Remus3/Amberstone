@@ -8,6 +8,7 @@ catch { Write-Warning "LiteLLM proxy not reachable on :4000 - run setup.ps1 / st
 $env:ANTHROPIC_BASE_URL            = "http://127.0.0.1:4000"
 $env:ANTHROPIC_AUTH_TOKEN          = $env:LITELLM_MASTER_KEY
 $env:ANTHROPIC_MODEL               = "rc-main"        # local-first, escalates on ctx/error
-$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "rc-background"  # background -> local 7B
+$env:ANTHROPIC_DEFAULT_HAIKU_MODEL = "rc-background"  # background -> local llama3.1
+$env:MAX_THINKING_TOKENS           = "0"             # llama3.1 has no thinking mode - disable so ollama does not 500
 & $Root\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0,r'$Root'); import state; state.write('main','rc-main')"
 claude --strict-mcp-config --mcp-config (Join-Path $Root "lean-mcp.json") --settings (Join-Path $Root "lean-settings.json") @Rest

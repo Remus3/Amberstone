@@ -3,10 +3,12 @@ model_list:
     litellm_params:
       model: ollama_chat/llama3.1:8b
       api_base: http://127.0.0.1:11434
+      num_ctx: 32768
   - model_name: rc-background       # local fast, haiku-tier
     litellm_params:
       model: ollama_chat/llama3.1:8b
       api_base: http://127.0.0.1:11434
+      num_ctx: 32768
   - model_name: rc-deepseek         # cheap cloud escalation
     litellm_params:
       model: deepseek/deepseek-v4-flash
@@ -23,6 +25,7 @@ model_list:
     litellm_params:
       model: ollama_chat/llama3.1:8b
       api_base: http://127.0.0.1:11434
+      num_ctx: 32768
 
 router_settings:
   fallbacks: [{"rc-main": ["rc-deepseek", "rc-nemotron"]}]
@@ -31,6 +34,7 @@ router_settings:
 litellm_settings:
   callbacks: ["prometheus"]
   drop_params: true
+  modify_params: true   # drop the Anthropic `thinking` param for local models that lack it (llama3.1)
 
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

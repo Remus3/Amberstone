@@ -1,0 +1,2 @@
+2026-07-06T19:29:49 [watchdog] no usage_signal.json present - assuming remaining_frac=1.0 (healthy)
+2026-07-06T19:29:49 [watchdog] holding: remaining_frac=1.0000 >= threshold=0.0500
