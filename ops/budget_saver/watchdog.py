@@ -114,12 +114,25 @@ def arm() -> None:
     )
     tmp.replace(FLAG_PATH)
 
-    _set_machine_env("RC_BUDGET_SAVER", "1")
-
     if not already_armed:
+        _set_machine_env("RC_BUDGET_SAVER", "1")
         _toast("RC Budget-Saver ARMED - Claude plan nearly exhausted. Next launch routes local-first.")
     else:
         _log("[watchdog] already armed - flag refreshed, no repeat toast.")
+
+
+def disarm() -> None:
+    """Clear budget-saver mode: remove the flag and set RC_BUDGET_SAVER=0, so the
+    next launch goes back to normal Claude routing. Only acts (and writes env) when
+    currently armed, so it is a cheap no-op on the common healthy poll."""
+    if not FLAG_PATH.exists():
+        return
+    try:
+        FLAG_PATH.unlink()
+    except OSError as e:
+        _log(f"[watchdog] could not remove flag: {e!r}")
+    _set_machine_env("RC_BUDGET_SAVER", "0")
+    _log("[watchdog] DISARMED - budget recovered, next launch routes normal.")
 
 
 def main(argv=None) -> int:
@@ -142,6 +155,7 @@ def main(argv=None) -> int:
         arm()
         _log(f"[watchdog] armed: remaining_frac={remaining:.4f} < threshold={args.threshold:.4f}")
     else:
+        disarm()
         _log(f"[watchdog] holding: remaining_frac={remaining:.4f} >= threshold={args.threshold:.4f}")
     return 0
 
