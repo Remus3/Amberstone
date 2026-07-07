@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-07-06 (RC Budget-Saver SHIPPED - local-LLM fallback for Claude Code; PRs #7 + #8 merged, LEDGER 808)
+
+Operator-directed build (NOT the gemini loop): a local fallback so RC keeps operating when the Claude plan hits 0. Full brainstorm -> spec -> no-placeholder plan -> subagent build -> whole-branch review -> ship. Live game NOT involved. New `ops/budget_saver/`; no frozen file; no DS touch.
+- **SHIPPED + PROVEN LIVE (PRs #7 `88061f7f` + #8 `22a053b4`).** claude -> LiteLLM proxy (:4000 /v1/messages) -> ollama_chat/llama3.1:8b local ($0 default) + deepseek escalation + nvidia nemotron fallback. Still Claude Code end to end (skills/MCP/memory/TDD/git); `budget-saver.ps1` = budget-saver mode. e2e proven: claude --print -> proxy -> llama3.1 -> valid tool_use exit 0. 14/14 unit tests, ruff clean.
+- **Honest ceiling:** llama3.1:8b drives the loop but is weak on RC's heavy CLAUDE.md context. Live bench (qualify.py): local 2/3 (PASS tier-0/1, FAIL tier-2 math), deepseek 3/3 - confirms the R5 boundary. Local = keep-lights-on; DeepSeek (~50-100x < Opus) for real work. Both cloud keys placed + probed PASS. Isolated venv on Python 3.12 (litellm 1.91.0 needs <3.14; RC is 3.14).
+- **Auto-flip wired:** RC-BudgetSaverWatchdog (15-min) + usage_feeder.py (Anthropic cost_report API, opt-in via RC_BUDGET_CEILING_USD) arm/disarm; RC-BudgetSaverProxy autostarts the proxy at logon. HONEST: tracks the API-$ budget, not the subscription plan (no standalone API for that).
+- **5 live-verify fixes:** litellm py3.14-incompat (-> venv on 3.12), prometheus_client unbundled, ollama-died-post-pull, qwen emits TEXT-not-tool_calls (-> llama3.1 driver), Claude Code `thinking` param 500s a non-thinking model (-> MAX_THINKING_TOKENS=0). Whole-branch review: 1 critical (installer pulled qwen not llama3.1) + 4 hardening, all fixed.
+
+**NEXT SESSION:** run the live-gated drain (`docs/LIVE_GAME_GATED_SYNC.md`) ON budget-saver to conserve the Claude plan - launch `powershell -NoProfile -File "C:\Riot Commander\ops\budget_saver\budget-saver.ps1"` then invoke the live-gated-drain skill. Use `budget-saver-smart.ps1` (DeepSeek-primary) for any engine-class turn llama3.1 fails. Optional: `setx RC_BUDGET_CEILING_USD <cap> /M` enables $-auto-flip. **DO NOT redo:** budget-saver is SHIPPED + merged (#7/#8); qwen is off the driver path (text-only tools); subscription-plan auto-flip is manual-by-design (no API).
+
+---
+
 # 2026-07-06 (OUT-OF-GAME - gemini-headless loop R86 DS sweep; commit `e4ce737b`, LEDGER 807, ORCH R86)
 
 Gemini-directed executor cycle, operator away. mode_key=client (no live game). Directive: the R80/R85-foreshadowed item-keyed enemy-AS aura sweep (Frozen Heart 3110). Orchestrator single-thread (one indivisible engine slice - ehp/effects/init interdependent, NOT a disjoint fanout); read-only verifier gate pre-commit. Tier-2 (ENGINE bump).
