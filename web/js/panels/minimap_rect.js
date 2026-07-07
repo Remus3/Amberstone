@@ -52,6 +52,33 @@ const DESIGN_H = 1080;
 const NUDGE_X_PX = 6;
 const NUDGE_Y_PX = 2;
 
+// Size calibration in DESIGN px (applied before _placement, so it is resolution-
+// and ovscale-independent). The game.cfg-derived rect measures a few design px
+// LARGER than the rendered minimap frame at the TOP + LEFT edges (League insets
+// its minimap art inside a beveled frame), so a bottom-right-anchored outline
+// spills up + left. Trim the design rect from the top-left - shrink w/h and push
+// x/y in by the SAME amount - so the bottom-right corner stays pinned. Operator-
+// tunable (mirrors the NUDGE_X/Y path). Measured 2026-07-06 from a live 2560x1440
+// ARAM frame: the served box overshot the real minimap ~18 design px left, ~14
+// design px top.
+const TRIM_LEFT_PX = 18;
+const TRIM_TOP_PX = 14;
+
+// Shrink the (normalized) design rect from the top-left, holding the bottom-right
+// corner fixed: right = (x + tl) + (w - tl) = x + w (unchanged); same for bottom.
+function _applyTrim(r) {
+  if (!r) return r;
+  const tl = TRIM_LEFT_PX;
+  const tt = TRIM_TOP_PX;
+  return {
+    x: r.x + tl,
+    y: r.y + tt,
+    w: Math.max(1, r.w - tl),
+    h: Math.max(1, r.h - tt),
+    flip: r.flip,
+  };
+}
+
 // Live body zoom (ovscale). Mirrors overlay_layout._bodyZoom (module-private
 // there); a non-finite / non-positive zoom degrades to 1.
 function _bodyZoom() {
@@ -103,7 +130,7 @@ export function renderMinimapRect(rect) {
     return;
   }
 
-  const r = normRect(rect);
+  const r = _applyTrim(normRect(rect));
   const z = _bodyZoom();
   const iw = (typeof window !== "undefined" && window.innerWidth) || DESIGN_W;
   const ih = (typeof window !== "undefined" && window.innerHeight) || DESIGN_H;
@@ -142,4 +169,4 @@ export function _resetMinimapRect() {
   _lastSig = "_unset_";
 }
 
-export const __test = { normRect, _sig, _placement, DESIGN_W, DESIGN_H };
+export const __test = { normRect, _applyTrim, _sig, _placement, DESIGN_W, DESIGN_H, TRIM_LEFT_PX, TRIM_TOP_PX };
