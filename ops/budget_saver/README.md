@@ -95,11 +95,24 @@ Local (llama3.1) is tokenless and needs no keys. To enable escalation, put real 
 
 ## Auto-flip watchdog
 
-`RC-BudgetSaverWatchdog` (registered by setup.ps1, 15-min poll) arms budget-saver mode as
-the Claude budget nears 0: it warms the stack and sets a flag + `RC_BUDGET_SAVER=1` for the
-NEXT launch / loop cycle. It does NOT hot-swap a live claude process - it arms the next
-session. The usage signal is read from `usage_signal.json` (feed it from a real budget
-source - e.g. hook RC-CostHealthWatchdog - to make auto-flip fire on real data).
+`RC-BudgetSaverWatchdog` (registered by setup.ps1, 15-min poll) refreshes the budget signal
+then arms budget-saver mode when it drops below 5 percent: it sets a flag + `RC_BUDGET_SAVER=1`
+for the NEXT launch / loop cycle (it does NOT hot-swap a live claude process), and disarms
+again when the budget recovers.
+
+The signal comes from `usage_feeder.py`, which reads month-to-date org API spend from the
+Anthropic cost API (`ANTHROPIC_USAGE_KEY`, Machine-scoped) and computes
+`remaining_frac = 1 - spend / RC_BUDGET_CEILING_USD`. To ENABLE it, set your dollar cap as a
+Machine env var (then the already-running watchdog picks it up):
+
+    setx RC_BUDGET_CEILING_USD 5000 /M
+
+Until that is set the feeder is a no-op and auto-flip stays dark (never false-arms).
+
+CAVEAT: this tracks the API-KEY dollar budget (RC runtime + org API calls), NOT the Claude
+Code SUBSCRIPTION plan (the "N percent remaining" in the CLI) - there is no standalone API
+for the latter. For the subscription case, launch budget-saver manually when the CLI warns
+you are low (the next-session prompt does exactly this).
 
 ## The DEFER-TO-CLAUDE queue
 

@@ -143,6 +143,14 @@ def main(argv=None) -> int:
                          help="report remaining fraction and the arm decision without arming")
     args = parser.parse_args(argv)
 
+    # Refresh the usage signal from the Anthropic cost API (best-effort; a no-op
+    # unless RC_BUDGET_CEILING_USD is set). Must never break the watchdog itself.
+    try:
+        import usage_feeder
+        usage_feeder.main()
+    except Exception as exc:  # noqa: BLE001 - a feeder failure must not stop the poll
+        _log(f"[watchdog] usage-feed refresh skipped: {exc!r}")
+
     remaining = get_remaining_frac()
     would_arm = should_arm(remaining, args.threshold)
 
