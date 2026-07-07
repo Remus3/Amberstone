@@ -16,7 +16,7 @@ import assert from "node:assert";
 
 import { __test } from "./minimap_rect.js";
 
-const { normRect, _placement, DESIGN_W, DESIGN_H } = __test;
+const { normRect, _applyTrim, _placement, DESIGN_W, DESIGN_H, TRIM_LEFT_PX, TRIM_TOP_PX } = __test;
 
 // The live-measured calibration rect at MinimapScale=1.62 on the 1920x1080
 // design canvas (core/minimap_geometry): a 312px square at (1600, 761).
@@ -65,6 +65,21 @@ test("a bad/zero zoom degrades to 1 (never NaN/Infinity placement)", () => {
     assert.strictEqual(p.zoom, 1);
     assert.ok(Number.isFinite(p.left) && Number.isFinite(p.width));
   }
+});
+
+test("_applyTrim shrinks from the top-left and holds the bottom-right corner", () => {
+  const t = _applyTrim(CAL);
+  // top-left pushed IN by the trim amounts
+  assert.strictEqual(t.x, CAL.x + TRIM_LEFT_PX);
+  assert.strictEqual(t.y, CAL.y + TRIM_TOP_PX);
+  // bottom-right corner is invariant (the whole point: box only shrinks up+left)
+  assert.strictEqual(t.x + t.w, CAL.x + CAL.w);
+  assert.strictEqual(t.y + t.h, CAL.y + CAL.h);
+  assert.strictEqual(t.flip, CAL.flip);
+});
+
+test("_applyTrim passes null through (no game / unreadable game.cfg)", () => {
+  assert.strictEqual(_applyTrim(null), null);
 });
 
 test("normRect still coerces a clean rect and rejects garbage", () => {
