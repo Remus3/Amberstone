@@ -67,5 +67,18 @@ if (Test-Path $wd) {
   Write-Output "[setup] watchdog.py not present yet - skipping task registration (re-run setup.ps1 after it lands)."
 }
 
+# 5. Proxy autostart at logon so budget-saver mode is always ready for the next session
+$proxyTask = "RC-BudgetSaverProxy"
+$proxyPs1 = Join-Path $Root "start-proxy.ps1"
+$pxAction = New-ScheduledTaskAction -Execute "powershell.exe" -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $proxyPs1 + '"')
+$pxTrigger = New-ScheduledTaskTrigger -AtLogOn
+$pxSettings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+if (Get-ScheduledTask -TaskName $proxyTask -ErrorAction SilentlyContinue) {
+  Set-ScheduledTask -TaskName $proxyTask -Action $pxAction -Trigger $pxTrigger -Settings $pxSettings | Out-Null
+} else {
+  Register-ScheduledTask -TaskName $proxyTask -Action $pxAction -Trigger $pxTrigger -Settings $pxSettings -RunLevel Highest -User "Administrator" | Out-Null
+}
+Write-Output "[setup] RC-BudgetSaverProxy registered (proxy autostart at logon)."
+
 Write-Output "[setup] DONE. Start proxy: . .\env.local.ps1 ; .\.venv\Scripts\litellm.exe --config .\config.yaml --port 4000"
 Write-Output "[setup] Launch budget-saver: .\budget-saver.ps1   (local-only: .\budget-saver-local.ps1   smart: .\budget-saver-smart.ps1)"
