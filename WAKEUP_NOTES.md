@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-07-06 (LIVE-GATED DRAIN Session 1 — practice SR; budget-saver smart profile; commits `8c5be61a` + `76411845` + `e36eeaea` + `706d8e20`, LEDGER 809-810)
+
+First drain session ON the budget-saver brain (smart = DeepSeek-primary). Practice SR: Caitlyn + Jinx. B47 Frozen Heart default-ON flip shipped (ENGINE 1.183.0). Bloodsong/Zaz'Zak/Atlas SR-exclude deny shipped (ENGINE 1.184.0 + DDragon inversion tracked). A1/A2 RE-VALIDATED live (League-restart->new lobby->RuneWriter push clean, Flash+Cleanse confirmed). E5: Ctrl+Shift+A overlay ACTIVE toggle works (NOT Alt+Shift+A — wrong keys). E6: overlay lead/callouts/choices now feed from 2s poll (was dark in-game). minimap_rect trim calibrated (18px left, 14px top @2560x1440). Accrual rails: G1 HZ-A 52% agreement (below 0.70), G17 Arena shadow 0/20 awaiting_accrual.
+
+Context-shrink: LEAN_CLAUDE.md (80 lines vs 223) auto-swapped by all three shims at launch with crash recovery via try/finally. Biggest quality lever for local model — CLAUDE.md+MEMORY.md+hooks were ~1500 lines of context overhead.
+
+**NEXT SESSION:** launch `budget-saver.ps1` (local-first, NOT smart — remaining drain items are Tier-0/1). Continue drain at Session 2 (REAL SR matchmade game) or repeat Session 1 practice tool for remaining B-seam eyeballs (B1-B19, B24-B30, H4). The smart profile was $X; local-first saves the DeepSeek plan for real engine turns. DO NOT redo: B47 is SHIPPED (ENGINE 1.184.0, 8052 green), SR-exclude is SHIPPED, A1/A2 re-validated, context-swap is automatic.
+
+---
+
 # 2026-07-06 (RC Budget-Saver SHIPPED - local-LLM fallback for Claude Code; PRs #7 + #8 merged, LEDGER 808)
 
 Operator-directed build (NOT the gemini loop): a local fallback so RC keeps operating when the Claude plan hits 0. Full brainstorm -> spec -> no-placeholder plan -> subagent build -> whole-branch review -> ship. Live game NOT involved. New `ops/budget_saver/`; no frozen file; no DS touch.
@@ -34,15 +44,3 @@ Operator directive: advance the NO-LLM north star (Arena det-choices slice) AND 
 - **Doctrine folded:** NO_LLM_PRECOMPUTE_PLAN progress entry + gemini-headless skill §4b Lane C (det-choices CODE-COMPLETE ARAM+Arena) + NEW Lane E (CV vision atlas = next NO-LLM target).
 
 **NEXT SESSION:** the det-choices templater lever is now CODE-COMPLETE for BOTH ARAM + Arena - the next NO-LLM target is the client-side CV vision atlas (the bigger SECOND program; `docs/OBS_CV_MINIMAP_PLAN.md` + the VISION-OCR box recal prereq in flight). **DO NOT redo:** the Arena det-choices slice is shipped (`34c46d44`, CI green) - the only Arena work left is a LIVE-Arena validation of the choices flowing into `data/arena_coach_shadow.jsonl` + `tools/arena_shadow_report.py` >=70% before any flip (arena shadow awaiting_accrual 0/20). Do NOT re-pitch a choices templater for either mode.
-
----
-
-# 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `ae579ef0`, LEDGER 801)
-
-Headless loop, operator away. mode_key=client (no live game) throughout, so pure-backend precompute lanes only. Baseline green (HEAD c74a7fd6, ENGINE 1.181.0 = DS server, CI green, no PRs/unmerged branches). Inline/foreground; DS untouched; no frozen file.
-- **Shadow-report coverage unmasked (`ae579ef0`).** `tools/aram_shadow_report.py` divided det choices coverage by ALL non-dead rows, but 64% of the shadow log predates the choices instrumentation (slice 1 landed 2026-07-04 at row 905). Added `det_instrumented` + `det_coverage_rate_instrumented`; live read is now 91% instrumented (was a misleading 36% raw that understated flip-readiness ~57 pts). 18 tests green, CI green.
-- **Finding (do-not-rechase): ARAM det choices lever is CODE-COMPLETE.** `_safe_choices` maps all 5 labels (verified live). 36% was purely stale-log. No ARAM choices code owed.
-- **Cost/latency sweep CLEAN** - cache_control on all coaches; no sub-500ms polls; haiku interim floor; bundle-parity 41 green.
-- **BACKLOG: Arena det choices A/B scoped FUTURE** - symmetric keyset change across 3 test files + needs live-Arena accrual to validate.
-
-**NEXT SESSION:** the readily-shippable headless north-star work is done or live-gated. Options: (1) Arena det-choices slice (needs a live Arena game to validate + symmetric keyset update), (2) the client-side CV vision atlas (the bigger SECOND NO-LLM program), (3) a DS schema-lift (operator-gated). **DO NOT redo:** the ARAM choices lever is CODE-COMPLETE (the 36% was a stale-log artifact - do not re-chase it); `ae579ef0` is shipped + CI green.
