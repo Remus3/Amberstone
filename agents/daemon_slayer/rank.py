@@ -139,6 +139,18 @@ _NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
 })
 
 
+# DDragon-override deny set for items the DDragon ``maps["11"]=True`` flag wrongly
+# admits onto Summoner's Rift (upstream mislabel). These are Howling Abyss-only
+# support-quest upgrades - deny unconditionally on SR (every scorer), like the
+# non-coachable + Ornn-masterwork gates. Modes other than SR use the DDragon maps
+# flag directly (no-op there).
+_SR_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
+    "3865",  # World Atlas - support quest starter, ARAM-only
+    "3871",  # Zaz'Zak's Realmspike - support quest upgrade, ARAM-only
+    "3877",  # Bloodsong - support quest Spellblade upgrade, ARAM-only
+})
+
+
 # Ranged-ONLY item purchasability gate (2026-07-02, patch 16.13.1).
 #
 # A live practice-SR drain surfaced Runaan's Hurricane (3085) ranked #1 in the
@@ -555,6 +567,11 @@ def _filter_candidates(
         if item_id in current_ids:
             continue
         if item_id in _NON_COACHABLE_ITEM_IDS:
+            continue
+        # DDragon-override SR-exclude deny (2026-07-06): items DDragon wrongly
+        # marks purchasable on SR (support-quest upgrades) - deny unconditionally
+        # on SR BEFORE the inject force-admit, like the non-coachable gate.
+        if mode.upper() == "SR" and item_id in _SR_EXCLUDED_ITEM_IDS:
             continue
         # Ornn masterwork deny (operator 2026-07-06): items obtainable ONLY via an
         # Ornn ally upgrade (Wooglet's Witchcap etc.) are marked gold.purchasable

@@ -133,14 +133,14 @@ class ComputeEhpEnemyAsSlowTests(unittest.TestCase):
             assume_item_enemy_as_slow=True,
         )
 
-    def test_default_is_off_byte_identical(self):
-        # R86 ships default-OFF (unlike the already-flipped R77/R80): a bare
-        # call must equal the explicit-OFF call.
+    def test_default_is_on_armed(self):
+        # R86 flipped default-ON (Live-Gated B47): a bare call must equal
+        # the explicit-ON call.
         base = compute_ehp(SNAP, self.CHAMP, self.LEVEL, item_ids=(FROZEN_HEART,))
-        off = self._off((FROZEN_HEART,))
-        self.assertEqual(base.physical_ehp, off.physical_ehp)
-        self.assertEqual(base.magical_ehp, off.magical_ehp)
-        self.assertEqual(base.true_ehp, off.true_ehp)
+        on = self._on((FROZEN_HEART,))
+        self.assertEqual(base.physical_ehp, on.physical_ehp)
+        self.assertEqual(base.magical_ehp, on.magical_ehp)
+        self.assertEqual(base.true_ehp, on.true_ehp)
 
     def test_on_raises_physical_ehp_only(self):
         off = self._off((FROZEN_HEART,))
@@ -177,7 +177,7 @@ class ComputeEhpEnemyAsSlowTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.182.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.184.0")
 
 
 if __name__ == "__main__":

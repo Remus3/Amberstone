@@ -464,12 +464,14 @@ def test_overlay_minimap_rect_is_clickthrough_outline_widget(mock_server, pw_bro
         assert _css(page, sel, "position") == "fixed", f"{sel} not position:fixed"
         # game.cfg-derived rect placed by WINDOW FRACTION + the operator calibration
         # nudge (2026-06-29: x/1920*innerWidth + 6px right, y/1080*innerHeight + 2px
-        # down; at the 1920x1080 test viewport with bodyZoom=1 -> 1600+6, 760+2). The
-        # box is now ovscale-immune (zoom=1/bodyZoom) - see minimap_rect._placement.
-        assert _css(page, sel, "left") == "1606px", f"{sel} not at settings x"
-        assert _css(page, sel, "top") == "762px", f"{sel} not at settings y"
-        assert _css(page, sel, "width") == "312px", f"{sel} wrong width"
-        assert _css(page, sel, "height") == "312px", f"{sel} wrong height"
+        # down) PLUS the 2026-07-06 top-left trim (minimap_rect._applyTrim: x+18, y+14,
+        # w-18, h-14 design px - corrects the beveled-frame overshoot at 2560x1440). At
+        # the 1920x1080 test viewport with bodyZoom=1 -> x 1600+18+6=1624, y 760+14+2=776,
+        # w 312-18=294, h 312-14=298. Box is ovscale-immune - see minimap_rect._placement.
+        assert _css(page, sel, "left") == "1624px", f"{sel} not at settings x"
+        assert _css(page, sel, "top") == "776px", f"{sel} not at settings y"
+        assert _css(page, sel, "width") == "294px", f"{sel} wrong width"
+        assert _css(page, sel, "height") == "298px", f"{sel} wrong height"
         # click-through (no grab zone over the minimap)
         assert _css(page, sel, "pointer-events") == "none", f"{sel} not click-through"
         # outline-only: transparent backing + a gold hairline (--ovx-gold)
@@ -530,8 +532,8 @@ def test_overlay_minimap_rect_threads_through_live_state(mock_server, pw_browser
             timeout=10_000,
         )
         assert page.eval_on_selector("#am-mmrect", "e => e.dataset.ovxId") == "w-mmrect"
-        # window-fraction placement + the +6px calibration nudge (1600/1920*1920+6).
-        assert _css(page, "#am-mmrect", "left") == "1606px", "box not at the threaded x"
+        # window-fraction placement + the +18px trim + the +6px nudge (1600+18+6=1624).
+        assert _css(page, "#am-mmrect", "left") == "1624px", "box not at the threaded x"
         assert _css(page, "#am-mmrect", "position") == "fixed"
     finally:
         page.close()
@@ -590,9 +592,9 @@ def test_overlay_zoi_threads_through_live_state(mock_server, pw_browser):
             " return m && !m.hidden && c && c.width > 0 && c.height > 0; }",
             timeout=10_000,
         )
-        # The canvas backing store tracks the threaded box width (312px).
+        # The canvas backing store tracks the trimmed box width (312-18=294px).
         cw = page.eval_on_selector("#am-zoi-canvas", "e => e.width")
-        assert cw == 312, f"canvas not sized to the threaded box width: {cw}"
+        assert cw == 294, f"canvas not sized to the threaded box width: {cw}"
         # Belt-and-suspenders: the canvas is click-through (never eats a minimap click).
         assert _css(page, "#am-zoi-canvas", "pointer-events") == "none"
     finally:
@@ -1362,8 +1364,8 @@ def test_overlay_zoi_full_additive_fixture_renders(mock_server, pw_browser):
             " return m && !m.hidden && c && c.width > 0 && c.height > 0; }",
             timeout=10_000,
         )
-        # Backing store tracks the threaded box; click-through preserved.
-        assert page.eval_on_selector("#am-zoi-canvas", "e => e.width") == 312
+        # Backing store tracks the trimmed box (312-18=294); click-through preserved.
+        assert page.eval_on_selector("#am-zoi-canvas", "e => e.width") == 294
         assert _css(page, "#am-zoi-canvas", "pointer-events") == "none"
         # The canvas actually painted non-empty pixels off the full fixture.
         non_empty = page.evaluate(
