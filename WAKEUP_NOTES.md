@@ -4,13 +4,13 @@
 
 ---
 
-# 2026-07-06 (LIVE-GATED DRAIN Session 1 — practice SR; budget-saver smart profile; commits `8c5be61a` + `76411845` + `e36eeaea` + `706d8e20`, LEDGER 809-810)
+# 2026-07-06 (LIVE-GATED DRAIN Session 1  -  practice SR; budget-saver smart profile; commits `8c5be61a` + `76411845` + `e36eeaea` + `706d8e20`, LEDGER 809-810)
 
-First drain session ON the budget-saver brain (smart = DeepSeek-primary). Practice SR: Caitlyn + Jinx. B47 Frozen Heart default-ON flip shipped (ENGINE 1.183.0). Bloodsong/Zaz'Zak/Atlas SR-exclude deny shipped (ENGINE 1.184.0 + DDragon inversion tracked). A1/A2 RE-VALIDATED live (League-restart->new lobby->RuneWriter push clean, Flash+Cleanse confirmed). E5: Ctrl+Shift+A overlay ACTIVE toggle works (NOT Alt+Shift+A — wrong keys). E6: overlay lead/callouts/choices now feed from 2s poll (was dark in-game). minimap_rect trim calibrated (18px left, 14px top @2560x1440). Accrual rails: G1 HZ-A 52% agreement (below 0.70), G17 Arena shadow 0/20 awaiting_accrual.
+First drain session ON the budget-saver brain (smart = DeepSeek-primary). Practice SR: Caitlyn + Jinx. B47 Frozen Heart default-ON flip shipped (ENGINE 1.183.0). Bloodsong/Zaz'Zak/Atlas SR-exclude deny shipped (ENGINE 1.184.0 + DDragon inversion tracked). A1/A2 RE-VALIDATED live (League-restart->new lobby->RuneWriter push clean, Flash+Cleanse confirmed). E5: Ctrl+Shift+A overlay ACTIVE toggle works (NOT Alt+Shift+A  -  wrong keys). E6: overlay lead/callouts/choices now feed from 2s poll (was dark in-game). minimap_rect trim calibrated (18px left, 14px top @2560x1440). Accrual rails: G1 HZ-A 52% agreement (below 0.70), G17 Arena shadow 0/20 awaiting_accrual.
 
-Context-shrink: LEAN_CLAUDE.md (80 lines vs 223) auto-swapped by all three shims at launch with crash recovery via try/finally. Biggest quality lever for local model — CLAUDE.md+MEMORY.md+hooks were ~1500 lines of context overhead.
+Context-shrink: LEAN_CLAUDE.md (80 lines vs 223) auto-swapped by all three shims at launch with crash recovery via try/finally. Biggest quality lever for local model  -  CLAUDE.md+MEMORY.md+hooks were ~1500 lines of context overhead.
 
-**NEXT SESSION:** launch `budget-saver.ps1` (local-first, NOT smart — remaining drain items are Tier-0/1). Continue drain at Session 2 (REAL SR matchmade game) or repeat Session 1 practice tool for remaining B-seam eyeballs (B1-B19, B24-B30, H4). The smart profile was $X; local-first saves the DeepSeek plan for real engine turns. DO NOT redo: B47 is SHIPPED (ENGINE 1.184.0, 8052 green), SR-exclude is SHIPPED, A1/A2 re-validated, context-swap is automatic.
+**NEXT SESSION:** launch `budget-saver.ps1` (local-first, NOT smart  -  remaining drain items are Tier-0/1). Continue drain at Session 2 (REAL SR matchmade game) or repeat Session 1 practice tool for remaining B-seam eyeballs (B1-B19, B24-B30, H4). The smart profile was $X; local-first saves the DeepSeek plan for real engine turns. DO NOT redo: B47 is SHIPPED (ENGINE 1.184.0, 8052 green), SR-exclude is SHIPPED, A1/A2 re-validated, context-swap is automatic.
 
 ---
 
