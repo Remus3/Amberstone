@@ -1,11 +1,11 @@
 model_list:
-  - model_name: rc-local            # local primary, coding + tools
+  - model_name: rc-local            # local driver - llama3.1:8b (reliable tool_calls, ~5GB leaves KV headroom)
     litellm_params:
-      model: ollama_chat/qwen2.5-coder:14b-instruct
+      model: ollama_chat/llama3.1:8b
       api_base: http://127.0.0.1:11434
   - model_name: rc-background       # local fast, haiku-tier
     litellm_params:
-      model: ollama_chat/qwen2.5-coder:7b-instruct
+      model: ollama_chat/llama3.1:8b
       api_base: http://127.0.0.1:11434
   - model_name: rc-deepseek         # cheap cloud escalation
     litellm_params:
@@ -21,7 +21,7 @@ model_list:
       api_key: os.environ/NVIDIA_NIM_API_KEY
   - model_name: rc-main             # alias Claude Code requests; local-first
     litellm_params:
-      model: ollama_chat/qwen2.5-coder:14b-instruct
+      model: ollama_chat/llama3.1:8b
       api_base: http://127.0.0.1:11434
 
 router_settings:
