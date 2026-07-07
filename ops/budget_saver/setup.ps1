@@ -23,7 +23,7 @@ $site = & $VenvPy -c "import site; print(site.getsitepackages()[0])"
 if (Test-Path (Join-Path $site "litellm_init.pth")) {
   throw "SECURITY: litellm_init.pth stealer signature found - aborting, rotate all keys on this machine."
 }
-Write-Output ("[setup] " + (& $VenvPy -m litellm --version))
+Write-Output ("[setup] litellm " + (& $VenvPy -c "import importlib.metadata as m; print(m.version('litellm'))"))
 
 # 3. Ollama (install if missing) + KV/ctx server env + model pulls
 $ollamaLocal = "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe"
