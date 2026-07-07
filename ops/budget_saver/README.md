@@ -85,13 +85,19 @@ Local (llama3.1) is tokenless and needs no keys. To enable escalation, put real 
 
 ## Monitor
 
-- LiteLLM admin UI: `http://127.0.0.1:4000/ui` (login `admin` / your `LITELLM_MASTER_KEY`) -
-  spend, per-model latency, request stream.
-- LiteLLM metrics: `http://127.0.0.1:4000/metrics` (Prometheus; RC already scrapes /metrics).
-- Budget-Saver status page: `http://127.0.0.1:4100` (current profile/model, defer-queue
-  depth, proxy health) - run `.venv\Scripts\pythonw.exe monitor.py`.
-- RC loop-monitor: `https://legion-rc:8888/loop-monitor` - per-tool-call timeline of what the
-  agent is doing.
+This is a DB-free setup, so the LiteLLM admin UI (`/ui`) and its Prometheus `/metrics` do NOT
+work - both require a Postgres database (that is the "Not connected to DB!" login error).
+That is deliberate: a DB is overkill for a local fallback. Use these instead:
+
+- **Budget-Saver status page: `http://127.0.0.1:4100`** - current profile/model, defer-queue
+  depth, proxy health. DB-free, always on (`.venv\Scripts\pythonw.exe monitor.py`).
+- **Proxy console** - per-request logs (model, latency) stream to the `start-proxy.ps1` process.
+- **Spend** - the Anthropic cost API (usage_feeder.py already reads it) or the DeepSeek
+  platform dashboard.
+- **RC loop-monitor: `https://legion-rc:8888/loop-monitor`** - per-tool-call timeline.
+
+To unlock the full LiteLLM UI + metrics later, install Postgres and set
+`general_settings.database_url` in config.yaml, then restart the proxy.
 
 ## Auto-flip watchdog
 
