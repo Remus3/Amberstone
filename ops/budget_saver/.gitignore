@@ -8,3 +8,4 @@ budget_saver_armed.flag
 usage_signal.json
 __pycache__/
 *.pyc
+*.log
