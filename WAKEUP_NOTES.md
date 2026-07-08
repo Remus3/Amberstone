@@ -4,6 +4,48 @@
 
 ---
 
+# 2026-07-07 (LIVE-VERIFY 2026-07-06 overlay+DS work in ARAM Mayhem game; Aphelios; engine 1.184.0)
+
+Live-verified the 5-commit range `c51108e1..32132f22` in a real ARAM Mayhem game on Legion:
+
+(1) DS stability (PD->Kraken flip): PASS. Build order byte-identical across levels 5-11 for Aphelios. Incumbent hysteresis code verified wired (build_order.py:384-400, 3% margin). No close-tie case in Aphelios build (PD vs Kraken ~5% gap, outside 3% threshold), but the hysteresis primitive is present and correct.
+
+(2) B45/B46 EHP (Randuin+Steelcaps): PASS. Live-verified via DS /ehp endpoint. Nautilus lvl 11 ARAM: no-items phys_ehp=2527, Steelcaps=3024 (AA-DR x0.95 confirmed), Steelcaps+Randuin=5957. Full ratio: 5957/4813 = +23.8% phys EHP credit. Crit-DR and AA-DR default-ON in compute_ehp (ehp.py:1069-1070).
+
+(3) BATCH B (canvas lock, minimap gold border): CODE CORRECT, VISUAL PENDING. rc-shell running (PID 13512) but title stale ("17:34" from prior game) - still running pre-commit main.js. Commit c51108e1 dropped injectDragRegion from overlay did-finish-load (kept companion-only). Relaunch rc-shell to pick up.
+
+(4) BATCH C (gauges row, stats role, enemy clips): CODE CORRECT, LIVE DATA FLOWING. Enemy spells populated (5 enemies: Flash/Ghost/Barrier/Mark). Gauges CSS = horizontal row (objective_gauges.css:4). Stats role detection reads lc.champion (Aphelios) -> championTags -> Marksman -> "bot" (stats_panel.js:73-78). Live Client Mayhem mode: players[] lacks champion names but detection falls back to lc.champion correctly.
+
+BUGS NOTED (operator "Aphelios builds are wrong"):
+
+A. Void Immolation (Arena prismatic id 223069) is #1 EHP pick for ARAM Nautilus. Should be ARENA-only excluded from ARAM pool. Impact: rank-tank + build-order for tanks recommend unobtainable Arena item.
+
+B. Aphelios crit-capping: engine caps crit at 100% (dps.py:1289) but Aphelios passive (The Hitman and the Seer) converts excess crit chance to AD. After 4 crit items engine treats 5th+ crit as dead stat; real champion gets AD. Impact: DS undervalues crit items past slot 4 for Aphelios specifically.
+
+C. Aphelios rotation-DPS fallback: all 3 laning-scenario phases have basic=0 (weapon-swap kit in lolmath), so DPS falls back to raw_attack_dps * mode_mult (dps.py:1034). Impact: on-hit procs (Kraken, BoRK) may be under-credited; weapon-specific synergies absent.
+
+D. Aphelios passive stat leveling: picks AD/AS/Lethality per level instead of standard growth. DS uses DDragon base growth. Impact: stat curve diverges from real game at higher levels.
+
+DO NOT redo: all 6 commits SHIPPED + verified (17359ca9..32132f22); incumbent hysteresis + EHP credit + BATCH B/C code = correct. The 3 archetype test failures are LOCAL gitignored cs_archetype_picks.json (CI GREEN).
+
+---
+
+# 2026-07-07 (Session reflection + 3 auto-improvements; commits `29fb5b5b` + `ceb2f584` + `e736a896`)
+
+Transcript analysis of 512 sessions (666 MB, June 3-July 7) -> Desktop/reflection-notes.md. Three highest-leverage fixes built:
+
+1. **edit_lint_check.py ruff surfacing** - the PostToolUse hook ran `ruff check --fix` on every edit but silenced output. Now ruff findings are written to stderr so model sees lint errors immediately. Also fixed `py` launcher -> `sys.executable` (was resolving to bare pythoncore with no ruff installed - hook was silently broken for entire history).
+
+2. **core/hot_reload.py auto-restart** - daemon thread polls non-frozen .py mtimes every 2s. On change: py_compile gate, then atomic-write restart_trigger.txt. Wired in web_dashboard.py. 18 tests green. Verified: touch -> new pid in ~10s. Status: ops/runtime/hot_reload.json. Halt: ops/runtime/hot_reload_halt.txt.
+
+3. **.claude/commands/section-j-dispatch.md** - Workflow skill reads OVERLAY_BUILD_MASTER_PLAN.md Section J, dispatches OPEN WPs to parallel worktree agents.
+
+Edge fixes: budget-saver .claude/settings.local.json bypass flags (was missing), Sibling-A .claude/settings.local.json model=rc-main (was claude-fable-5 hitting Anthropic direct), BLE001 blind-exception cleanup.
+
+**NEXT SESSION:** pick from Section J OPEN WPs (E5 doc sweep, F5-L03 inventory stale, F6c park auto-ops gate) - use `/section-j-dispatch` to fan out. Hot_reload + edit lint are auto now - no manual steps. **DO NOT redo:** the 3 improvements are SHIPPED; ruff hook was historically broken (`py` launcher -> pythoncore) - FIXED; Sibling-A is now on budget-saver routing.
+
+---
+
 # 2026-07-06 (LIVE-GATED DRAIN Session 1  -  practice SR; budget-saver smart profile; commits `8c5be61a` + `76411845` + `e36eeaea` + `706d8e20`, LEDGER 809-810)
 
 First drain session ON the budget-saver brain (smart = DeepSeek-primary). Practice SR: Caitlyn + Jinx. B47 Frozen Heart default-ON flip shipped (ENGINE 1.183.0). Bloodsong/Zaz'Zak/Atlas SR-exclude deny shipped (ENGINE 1.184.0 + DDragon inversion tracked). A1/A2 RE-VALIDATED live (League-restart->new lobby->RuneWriter push clean, Flash+Cleanse confirmed). E5: Ctrl+Shift+A overlay ACTIVE toggle works (NOT Alt+Shift+A  -  wrong keys). E6: overlay lead/callouts/choices now feed from 2s poll (was dark in-game). minimap_rect trim calibrated (18px left, 14px top @2560x1440). Accrual rails: G1 HZ-A 52% agreement (below 0.70), G17 Arena shadow 0/20 awaiting_accrual.
@@ -23,24 +65,3 @@ Operator-directed build (NOT the gemini loop): a local fallback so RC keeps oper
 - **5 live-verify fixes:** litellm py3.14-incompat (-> venv on 3.12), prometheus_client unbundled, ollama-died-post-pull, qwen emits TEXT-not-tool_calls (-> llama3.1 driver), Claude Code `thinking` param 500s a non-thinking model (-> MAX_THINKING_TOKENS=0). Whole-branch review: 1 critical (installer pulled qwen not llama3.1) + 4 hardening, all fixed.
 
 **NEXT SESSION:** run the live-gated drain (`docs/LIVE_GAME_GATED_SYNC.md`) ON budget-saver to conserve the Claude plan - launch `powershell -NoProfile -File "C:\Riot Commander\ops\budget_saver\budget-saver.ps1"` then invoke the live-gated-drain skill. Use `budget-saver-smart.ps1` (DeepSeek-primary) for any engine-class turn llama3.1 fails. Optional: `setx RC_BUDGET_CEILING_USD <cap> /M` enables $-auto-flip. **DO NOT redo:** budget-saver is SHIPPED + merged (#7/#8); qwen is off the driver path (text-only tools); subscription-plan auto-flip is manual-by-design (no API).
-
----
-
-# 2026-07-06 (OUT-OF-GAME - gemini-headless loop R86 DS sweep; commit `e4ce737b`, LEDGER 807, ORCH R86)
-
-Gemini-directed executor cycle, operator away. mode_key=client (no live game). Directive: the R80/R85-foreshadowed item-keyed enemy-AS aura sweep (Frozen Heart 3110). Orchestrator single-thread (one indivisible engine slice - ehp/effects/init interdependent, NOT a disjoint fanout); read-only verifier gate pre-commit. Tier-2 (ENGINE bump).
-- **R86 SHIPPED (`e4ce737b`), ENGINE 1.181.0 -> 1.182.0.** GAP CONFIRMED: Frozen Heart "Winter's Caress" -20% nearby enemy AS (DDragon 16.13.1) was defensive_only NOTE-only -> ZERO EHP credit. A 20% enemy AS slow = 20% less incoming basic-attack RATE = same physical-EHP effect as R80's per-hit AA-DR, sourced from rate not magnitude. NEW `ItemEffect.enemy_attack_speed_slow` (0.20 x 3 map variants) + `ehp.item_enemy_as_slow_multiplier` + physical-only compute_ehp fold behind default-OFF `assume_item_enemy_as_slow`. Distinct item-keyed lane from R77 crit-DR + R80 AA-DR (never cross-credit; stack multiplicatively). Byte-identical OFF; armed = +11.1% phys EHP.
-- **Verification:** TDD RED-first (18 tests) + DSV9 end-append guard co-fix; 104 test files re-pinned 1.182.0. DS 8060 green; verifier CONFIRM 6/6; Share --check green 413; DS :8893 live 1.182.0. RC 11191 passed / 4 failed (all PRE-EXISTING Legion-local: archetype-axis x3 + overlay-d2, touch nothing R86). Bump co-fixes: HZ-B stamp x6 (byte-exact string-replace after hitting + reverting the `--static` footgun) + DAEMON_SLAYER doc-drift. Ships DEFAULT-OFF; live flip -> LIVE_GATED B47.
-- **GOTCHA (recurring):** the HZ-B `--static --mode all` regen is a footgun (68k-line roster deletion); the correct stamp bump for a default-OFF seam is a byte-exact string-replace of the single `engine_version` literal in the 6 build_orders JSONs. Memory `reference_hz_precompute_patch_regen` updated with the shortcut - READ it before any HZ-B regen.
-
-**NEXT SESSION:** the item-keyed incoming-physical-DR family is now R77 crit-DR + R80 AA-DR + R86 AS-slow-aura - a future DS refute rotation needs a genuinely NEW item mechanic, NOT one of these three. R86's flip is live-gated (B47, default-OFF pending an AA-heavy-comp eyeball). **DO NOT redo:** Frozen Heart 3110 enemy-AS aura is SHIPPED.
-
----
-
-# 2026-07-06 (OUT-OF-GAME - headless autonomous loop; PRIMARY north-star; commit `34c46d44`, LEDGER 802)
-
-Operator directive: advance the NO-LLM north star (Arena det-choices slice) AND fold it + adjacent items into the gemini-headless doctrine + skill, then /done, then continue headless via ahk-Gemini. mode_key=client (no live game) throughout. Inline/foreground (TDD, single-thread - 5 tightly-coupled files, interdependent keysets; verifier not needed per R7). DS untouched; no frozen file.
-- **Arena det-choices A/B SHIPPED (`34c46d44`).** Mirrored the ARAM lever onto Arena: `core/arena_deterministic_coach.build_block` 8th `choices` key (`_ARENA_CHOICE_LABELS`, all 5 labels -> A/B source_tag `arena_rule`, action+fight_rule computed once); `core/arena_coach_shadow` carries the list-typed choices column on both sides. Live coach already emits native choices. 3 symmetric keyset tests updated (35 green) + 43 adjacent + 3 hygiene; ruff clean; CI green.
-- **Doctrine folded:** NO_LLM_PRECOMPUTE_PLAN progress entry + gemini-headless skill §4b Lane C (det-choices CODE-COMPLETE ARAM+Arena) + NEW Lane E (CV vision atlas = next NO-LLM target).
-
-**NEXT SESSION:** the det-choices templater lever is now CODE-COMPLETE for BOTH ARAM + Arena - the next NO-LLM target is the client-side CV vision atlas (the bigger SECOND program; `docs/OBS_CV_MINIMAP_PLAN.md` + the VISION-OCR box recal prereq in flight). **DO NOT redo:** the Arena det-choices slice is shipped (`34c46d44`, CI green) - the only Arena work left is a LIVE-Arena validation of the choices flowing into `data/arena_coach_shadow.jsonl` + `tools/arena_shadow_report.py` >=70% before any flip (arena shadow awaiting_accrual 0/20). Do NOT re-pitch a choices templater for either mode.
