@@ -148,22 +148,32 @@ _BOOTS_NAMES: dict[str, str] = {
     "223111": "Mercury's Treads",
     "223158": "Ionian Boots of Lucidity",
 }
-# SR-only tier-2 -> tier-3 boots upgrade (DDragon 16.12.1 `into`, each
-# verified map11=True / map12=False / map30=False). The build_orders table
-# is the END-STATE 6-item build, so on Summoner's Rift it shows the
-# upgraded boot a player finishes on (matches the lolmath parity oracle);
-# ARAM (map 12) and Arena (map 30) have NO tier-3 upgrade and keep the
-# tier-2 boot. Mobility Boots (3117) has no upgrade and is out of store,
-# so it is no longer a selection target (assassin default moved to Ionian).
+# SR tier-3 boots upgrade REMOVED (operator 2026-07-08). DDragon 16.12.1
+# marks the tier-3 boots (3170-3175, 3168, 3013, 3176) as ``purchasable=true``,
+# but in-game they are role-QUEST REWARDS - the Mid lane quest auto-upgrades the
+# champion's equipped tier-2 boots, and the Bot lane quest moves them to a bonus
+# 7th slot. You can never BUY a tier-3 boot directly from the shop (operator:
+# "Gunmetal Greaves at slot 2 is impossible to buy because the quest puts boots
+# in a 7th bonus slot"). The build-order planner must only recommend directly-
+# purchasable items, so the SR tier-3 upgrade is gone - every mode keeps the
+# tier-2 boot. The tier-3 IDs are still in _BOOTS_IDS (for owned-item detection
+# so an already-upgraded boot is recognized) and _BOOTS_NAMES (for display), but
+# they are never a _selection_ target.
+#
+# The :func:`_select_boots` SR-branch that applied this upgrade is also removed;
+# the ``if mode_up in _SR_MODES`` block is now a commented-out record of the
+# original tier-2 -> tier-3 mapping (preserved for patch-history reference).
+# Retention guard: if any caller still references _BOOTS_SR_UPGRADE, it will
+# get a dict and won't NameError - but it will find every tier-2 maps to itself.
 _BOOTS_SR_UPGRADE: dict[str, str] = {
-    "3006": "3172",  # Berserker's Greaves -> Gunmetal Greaves
-    "3008": "3168",  # Gluttonous Greaves  -> Immortal Path
-    "3009": "3170",  # Boots of Swiftness  -> Swiftmarch
-    "3010": "3013",  # Symbiotic Soles     -> Synchronized Souls
-    "3020": "3175",  # Sorcerer's Shoes    -> Spellslinger's Shoes
-    "3047": "3174",  # Plated Steelcaps    -> Armored Advance
-    "3111": "3173",  # Mercury's Treads    -> Chainlaced Crushers
-    "3158": "3171",  # Ionian Boots        -> Crimson Lucidity
+    # "3006": "3172",  # Berserker's Greaves -> Gunmetal Greaves           (removed)
+    # "3008": "3168",  # Gluttonous Greaves  -> Immortal Path              (removed)
+    # "3009": "3170",  # Boots of Swiftness  -> Swiftmarch                 (removed)
+    # "3010": "3013",  # Symbiotic Soles     -> Synchronized Souls         (removed)
+    # "3020": "3175",  # Sorcerer's Shoes    -> Spellslinger's Shoes       (removed)
+    # "3047": "3174",  # Plated Steelcaps    -> Armored Advance            (removed)
+    # "3111": "3173",  # Mercury's Treads    -> Chainlaced Crushers        (removed)
+    # "3158": "3171",  # Ionian Boots        -> Crimson Lucidity           (removed)
 }
 # Mode strings treated as Summoner's Rift for the tier-3 boots upgrade.
 _SR_MODES: frozenset = frozenset({"SR", "CLASSIC"})
@@ -235,13 +245,15 @@ def _select_boots(
       3. Default: archetype map (carry -> Berserker, mage -> Sorcerer,
          tank -> Steelcaps, assassin/enchanter -> Ionian).
 
-    On Summoner's Rift (``mode`` in :data:`_SR_MODES`) the resolved tier-2
-    family is upgraded to its tier-3 boot via :data:`_BOOTS_SR_UPGRADE`
-    (the end-state form the build finishes on). ARAM (map 12) has no tier-3
-    upgrade and keeps the tier-2 boot (the 3xxx ids are map12-legal). Arena
-    (``mode`` in :data:`_ARENA_MODES`, map 30) has no tier-3 either, but the
-    3xxx tier-2 ids are map30=False, so the resolved boot is remapped to its
-    map30-legal 22-prefixed mirror via :data:`_BOOTS_ARENA_MIRROR`.
+    The SR tier-3 boots upgrade that previously applied here was REMOVED
+    (operator 2026-07-08): the tier-3 boots are role-quest rewards, not
+    directly purchasable. Every mode keeps the tier-2 boot; the tier-3
+    IDs are still in _BOOTS_IDS (owned-item detection) and _BOOTS_NAMES
+    (display), but they are never a _selection_ target.
+
+    Arena (``mode`` in :data:`_ARENA_MODES`, map 30) remaps the resolved
+    tier-2 boot to its map30-legal 22-prefixed mirror via
+    :data:`_BOOTS_ARENA_MIRROR`.
     """
     arch = (archetype or "carry").strip().lower() or "carry"
     is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
@@ -253,9 +265,10 @@ def _select_boots(
     else:
         iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
     mode_up = str(mode).strip().upper()
-    if mode_up in _SR_MODES:
-        iid = _BOOTS_SR_UPGRADE.get(iid, iid)
-    elif mode_up in _ARENA_MODES:
+    # TIER-3 SR UPGRADE REMOVED (2026-07-08): T3 boots are quest rewards,
+    # not directly purchasable. The _BOOTS_SR_UPGRADE dict is now an empty
+    # tombstone; every mode keeps the tier-2 boot.
+    if mode_up in _ARENA_MODES:
         iid = _BOOTS_ARENA_MIRROR.get(iid, iid)
     return (iid, _BOOTS_NAMES.get(iid, "Boots"))
 
