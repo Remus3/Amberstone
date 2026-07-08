@@ -65,7 +65,7 @@ def main() -> int:
     py_files = [str(p) for p in paths if p.suffix == ".py"]
     if py_files:
         try:
-            subprocess.run(
+            proc = subprocess.run(
                 ["py", "-m", "ruff", "check", "--fix", *py_files],
                 check=False,
                 capture_output=True,
@@ -73,6 +73,15 @@ def main() -> int:
                 timeout=15,
                 creationflags=_NO_WINDOW,
             )
+            # Surface ruff output so the model sees lint errors immediately
+            # after each edit, not just at commit time via precommit_gate.
+            ruff_out = (proc.stdout or "").strip()
+            ruff_err = (proc.stderr or "").strip()
+            if ruff_out or ruff_err:
+                combined = "\n".join(
+                    s for s in (ruff_out, ruff_err) if s
+                )
+                sys.stderr.write(f"[edit_lint_check] ruff:\n{combined}\n")
         except (OSError, subprocess.SubprocessError):
             pass
 
