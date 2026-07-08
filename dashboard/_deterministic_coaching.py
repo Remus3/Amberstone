@@ -687,6 +687,20 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     else:
         callouts = callouts[:3]
 
+    # ZOI map-control callout from the minimap blob dots (item 567 slice 3).
+    # Appended here inside _compute_uncached so the callouts list is complete
+    # BEFORE it enters the cache - avoids mutation-based accumulation (the
+    # external append in _state_builder.py mutated the cached dict, causing
+    # 5-7x duplication of the map_control row across ticks within the 3s TTL).
+    if zoi is not None:
+        try:
+            from core.zoi_influence import zoi_callout
+            co = zoi_callout(zoi)
+            if co is not None:
+                callouts = callouts + [co]
+        except Exception:  # noqa: BLE001
+            pass
+
     return {
         "choices": choices_json,
         "callouts": callouts,
@@ -797,6 +811,89 @@ def resolve_choices(coach: dict, det: dict) -> list[dict]:
         return to_jsonable(native or synthesize_simple_choices(coach))
     except Exception:  # noqa: BLE001
         return (det or {}).get("choices") or []
+
+
+def resolve_coach_fields(coach: dict, det: dict | None, lc: dict | None,
+                          mode_key: str) -> dict[str, str]:
+    """Synthesize action, immediate, fight_rule, risk from deterministic data.
+
+    These four coach-text fields normally come from the Haiku LLM coach via
+    coaching_data.json. When the deterministic path is active (practice tool,
+    DS engine up but no Haiku call), the Haiku coach is bypassed and these
+    fields are blank in /api/state. This synthesizer fills them from the
+    already-computed deterministic surfaces (callouts, lead_projection, enemy
+    CC threat) so the overlay's coach-text rows never go blank.
+
+    The callout with the highest priority (index 0) provides ``action`` and
+    ``immediate``. ``risk`` is derived from the lead projection state (ahead /
+    even / behind). ``fight_rule`` is derived from the enemy CC threat data
+    when available, else from the lead state.
+
+    Returns:
+        dict with keys action, immediate, fight_rule, risk (all str, never
+        None). Fields are empty strings when no deterministic data is available.
+
+    Fail-soft: any error yields the all-empty dict; never raises.
+    """
+    det = det if isinstance(det, dict) else {}
+    lc = lc if isinstance(lc, dict) else {}
+
+    # --- action + immediate: highest-priority callout line, else A-choice ---
+    action = ""
+    callouts = det.get("callouts")
+    if isinstance(callouts, list) and callouts:
+        first = callouts[0]
+        if isinstance(first, dict):
+            line = first.get("line")
+            if isinstance(line, str) and line.strip():
+                action = line.strip()
+    if not action:
+        choices = det.get("choices")
+        if isinstance(choices, list) and choices:
+            first_c = choices[0]
+            if isinstance(first_c, dict):
+                label = first_c.get("label")
+                if isinstance(label, str) and label.strip():
+                    action = label.strip()
+    immediate = action
+
+    # --- risk: from lead projection state ---
+    lead = det.get("lead_projection")
+    lead_state = "even"
+    if isinstance(lead, dict):
+        lead_state = lead.get("state", "even")
+    risk_map = {"ahead": "LOW", "even": "MEDIUM", "behind": "HIGH"}
+    risk = risk_map.get(lead_state, "MEDIUM")
+
+    # --- fight_rule: from enemy CC threat, else lead-state heuristic ---
+    fight_rule = ""
+    try:
+        enemies = lc.get("enemy_team")
+        if isinstance(enemies, list) and enemies:
+            mk = str(mode_key or "").strip().lower()
+            mode_upper = {"sr": "SR", "aram": "ARAM", "arena": "ARENA"}.get(
+                mk, "SR")
+            from core.enemy_cc_threat_context import enemy_cc_threat_line
+            cc = enemy_cc_threat_line(enemies, mode_upper) or ""
+            if cc:
+                fight_rule = cc
+    except Exception:  # noqa: BLE001
+        pass
+
+    if not fight_rule:
+        rules = {
+            "ahead": "FAIR FIGHT - press advantage, trade on cooldowns",
+            "even": "FAIR FIGHT - trade only on cooldowns, avoid coinflips",
+            "behind": "PICK ONLY - fight with your team, avoid solo engages",
+        }
+        fight_rule = rules.get(lead_state, rules["even"])
+
+    return {
+        "action": action,
+        "immediate": immediate,
+        "fight_rule": fight_rule,
+        "risk": risk,
+    }
 
 
 def shadow_log_det(coach: dict, lc: dict | None, det: dict, mode_key: str,
