@@ -2,24 +2,22 @@
 
 Pinned 2026-05-23 (item 164b - operator directive: boots in EVERY build
 order on EVERY mode). Refreshed 2026-06-15 (P6 G4 - lolmath-parity boots
-pool: DDragon 16.12.1 added SR-only tier-3 upgraded boots, and Mobility
-Boots / Symbiotic Soles left the store). Proves:
+pool). Updated 2026-07-08 (SR tier-3 boots removed: quest rewards, not
+directly purchasable). Proves:
 
   1. Every plan_build_order call returns a result whose ``order``
      contains exactly one boots family entry (id in _BOOTS_IDS).
   2. The selected boots family matches the archetype + enemy AD/AP comp
-     signal, and on Summoner's Rift it is the tier-3 UPGRADE:
-       SR (map 11, the tier-3 end-state form lolmath shows):
-         - carry/dps + balanced comp -> Gunmetal Greaves    (3172)
-         - mage + balanced comp      -> Spellslinger's Shoes (3175)
-         - tank + balanced comp      -> Armored Advance      (3174)
-         - assassin/enchanter        -> Crimson Lucidity     (3171)
-         - high-armor enemy comp     -> Armored Advance      (3174)
-         - high-MR enemy comp        -> Chainlaced Crushers  (3173)
-       ARAM (map 12) - no tier-3, keep tier-2 (3xxx are map12-legal):
-         - carry -> Berserker's (3006), mage -> Sorcerer's (3020), ...
-       Arena (map 30) - no tier-3; the 3xxx tier-2 ids are map30=False so
-       the resolved boot is remapped to its 22-prefixed Arena mirror:
+     signal. SR tier-3 upgrade REMOVED (2026-07-08: T3 boots are quest
+     rewards, not purchasable), so SR keeps tier-2 like ARAM:
+       All modes (SR/ARAM):
+         - carry/dps + balanced comp -> Berserker's Greaves (3006)
+         - mage + balanced comp      -> Sorcerer's Shoes    (3020)
+         - tank + balanced comp      -> Plated Steelcaps    (3047)
+         - assassin/enchanter        -> Ionian Boots        (3158)
+         - high-armor enemy comp     -> Plated Steelcaps    (3047)
+         - high-MR enemy comp        -> Mercury's Treads    (3111)
+       Arena (map 30) - remaps to 22-prefixed mirror:
          - carry -> 223006, mage -> 223020, tank -> 223047, ... (P6-G4 tail)
   3. Boots are NOT injected when the champion is in the bootsless-
      champion exception set (Yuumi, Cassiopeia).
@@ -80,55 +78,51 @@ class _FakeRanker:
 
 
 class SelectBootsSRTests(unittest.TestCase):
-    """Direct tests on _select_boots - SR upgrades to tier-3 (default mode)."""
+    """Direct tests on _select_boots - SR keeps tier-2 (no quest-reward upgrade)."""
 
-    def test_carry_balanced_comp_picks_gunmetal_greaves(self):
-        # Berserker's (3006) -> Gunmetal Greaves (3172) on SR.
+    def test_carry_balanced_comp_picks_berserkers(self):
         iid, _ = _select_boots("carry", 50.0, 30.0)
-        self.assertEqual(iid, "3172")
+        self.assertEqual(iid, "3006")
 
-    def test_mage_balanced_comp_picks_spellslingers(self):
-        # Sorcerer's (3020) -> Spellslinger's Shoes (3175) on SR.
+    def test_mage_balanced_comp_picks_sorcerers(self):
         iid, _ = _select_boots("mage", 50.0, 30.0)
-        self.assertEqual(iid, "3175")
+        self.assertEqual(iid, "3020")
 
-    def test_tank_balanced_comp_picks_armored_advance(self):
-        # Plated Steelcaps (3047) -> Armored Advance (3174) on SR.
+    def test_tank_balanced_comp_picks_steelcaps(self):
         iid, _ = _select_boots("tank", 50.0, 30.0)
-        self.assertEqual(iid, "3174")
+        self.assertEqual(iid, "3047")
 
-    def test_assassin_balanced_comp_picks_crimson_lucidity(self):
-        # No longer Mobility Boots (out of store): Ionian (3158) ->
-        # Crimson Lucidity (3171) on SR.
+    def test_assassin_balanced_comp_picks_ionian(self):
+        # No longer Mobility Boots (out of store): default Ionian (3158).
         iid, _ = _select_boots("assassin", 50.0, 30.0)
-        self.assertEqual(iid, "3171")
+        self.assertEqual(iid, "3158")
 
-    def test_enchanter_balanced_comp_picks_crimson_lucidity(self):
+    def test_enchanter_balanced_comp_picks_ionian(self):
         iid, _ = _select_boots("enchanter", 50.0, 30.0)
-        self.assertEqual(iid, "3171")
+        self.assertEqual(iid, "3158")
 
-    def test_high_armor_swaps_to_armored_advance_for_non_caster(self):
+    def test_high_armor_swaps_to_steelcaps_for_non_caster(self):
         iid, _ = _select_boots("bruiser", 120.0, 30.0)
-        self.assertEqual(iid, "3174")
+        self.assertEqual(iid, "3047")
 
-    def test_high_armor_keeps_spellslingers_for_mage(self):
+    def test_high_armor_keeps_sorcerers_for_mage(self):
         # Mage facing AD-heavy comp: CDR/penetration > armor.
         iid, _ = _select_boots("mage", 120.0, 30.0)
-        self.assertEqual(iid, "3175")
+        self.assertEqual(iid, "3020")
 
-    def test_high_mr_swaps_to_chainlaced_for_non_dps(self):
-        # Tank facing AP-heavy + CC comp -> Mercury's -> Chainlaced Crushers.
+    def test_high_mr_swaps_to_mercurys_for_non_dps(self):
+        # Tank facing AP-heavy + CC comp -> Mercury's Treads.
         iid, _ = _select_boots("tank", 30.0, 70.0)
-        self.assertEqual(iid, "3173")
+        self.assertEqual(iid, "3111")
 
-    def test_high_mr_keeps_gunmetal_for_dps(self):
-        # ADC facing AP comp keeps Berserker's -> Gunmetal Greaves.
+    def test_high_mr_keeps_berserkers_for_dps(self):
+        # ADC facing AP comp keeps Berserker's Greaves.
         iid, _ = _select_boots("carry", 30.0, 70.0)
-        self.assertEqual(iid, "3172")
+        self.assertEqual(iid, "3006")
 
-    def test_unknown_archetype_falls_to_gunmetal(self):
+    def test_unknown_archetype_falls_to_berserkers(self):
         iid, _ = _select_boots("totally-made-up", 0.0, 0.0)
-        self.assertEqual(iid, "3172")
+        self.assertEqual(iid, "3006")
 
     def test_sr_never_returns_mobility_boots(self):
         # 3117 is out of store - no archetype/comp path may select it.
@@ -205,16 +199,16 @@ class SelectBootsArenaMirrorTests(unittest.TestCase):
                           f"selectable tier-2 {iid} missing an Arena mirror")
 
     def test_classic_mode_is_sr(self):
-        # Riot's gameMode for SR is CLASSIC - still upgrades to tier-3.
+        # Riot's gameMode for SR is CLASSIC - keeps tier-2 (no quest upgrade).
         iid, _ = _select_boots("mage", 50.0, 30.0, mode="CLASSIC")
-        self.assertEqual(iid, "3175")
+        self.assertEqual(iid, "3020")
 
 
 class BootsInjectionTests(unittest.TestCase):
     """plan_build_order integration tests - the injection happens AFTER
     the engine's iterative selection completes. Default mode is SR."""
 
-    def test_carry_jinx_gets_gunmetal_at_slot_2(self):
+    def test_carry_jinx_gets_berserkers_at_slot_2(self):
         ranker = _FakeRanker()
         out = plan_build_order(
             "Jinx", "carry",
@@ -228,13 +222,13 @@ class BootsInjectionTests(unittest.TestCase):
         self.assertIsNotNone(out)
         boots_steps = [s for s in out.order if s.item_id in _BOOTS_IDS]
         self.assertEqual(len(boots_steps), 1, "exactly 1 boots step expected")
-        self.assertEqual(boots_steps[0].item_id, "3172",
-                         "carry archetype -> Gunmetal Greaves (SR tier-3)")
+        self.assertEqual(boots_steps[0].item_id, "3006",
+                         "carry archetype -> Berserker's Greaves (tier-2, no quest upgrade)")
         self.assertEqual(boots_steps[0].slot, 2,
                          "boots pinned at position 2 (after slot 1 big item)")
         self.assertTrue(any("boots slot pinned" in n for n in out.notes))
 
-    def test_mage_lux_gets_spellslingers(self):
+    def test_mage_lux_gets_sorcerers(self):
         ranker = _FakeRanker()
         out = plan_build_order(
             "Lux", "mage",
@@ -247,9 +241,9 @@ class BootsInjectionTests(unittest.TestCase):
         )
         boots = [s for s in out.order if s.item_id in _BOOTS_IDS]
         self.assertEqual(len(boots), 1)
-        self.assertEqual(boots[0].item_id, "3175")
+        self.assertEqual(boots[0].item_id, "3020")
 
-    def test_tank_vs_ap_comp_picks_chainlaced(self):
+    def test_tank_vs_ap_comp_picks_mercurys(self):
         ranker = _FakeRanker()
         out = plan_build_order(
             "Malphite", "tank",
@@ -262,8 +256,8 @@ class BootsInjectionTests(unittest.TestCase):
         )
         boots = [s for s in out.order if s.item_id in _BOOTS_IDS]
         self.assertEqual(len(boots), 1)
-        self.assertEqual(boots[0].item_id, "3173",
-                         "tank vs AP comp -> Chainlaced Crushers (SR tier-3)")
+        self.assertEqual(boots[0].item_id, "3111",
+                         "tank vs AP comp -> Mercury's Treads (tier-2)")
 
     def test_yuumi_skips_boots(self):
         ranker = _FakeRanker()
@@ -337,10 +331,12 @@ class BootsInjectionTests(unittest.TestCase):
              "3174", "3175", "3176"],
         )
 
-    def test_sr_upgrade_map_targets_are_known(self):
-        # Every tier-3 upgrade target is a recognized boots id.
-        for tier3 in _BOOTS_SR_UPGRADE.values():
-            self.assertIn(tier3, _BOOTS_IDS)
+    def test_sr_upgrade_map_is_tombstone(self):
+        # The SR tier-3 upgrade was REMOVED (2026-07-08: T3 boots are quest
+        # rewards, not directly purchasable). _BOOTS_SR_UPGRADE is an empty
+        # dict tombstone - every tier-2 boot keeps its own id (no upgrade).
+        self.assertEqual(len(_BOOTS_SR_UPGRADE), 0,
+                         "SR boot upgrade map must be empty (T3 boots are quest rewards)")
 
     def test_arena_mirror_targets_are_known(self):
         # Every Arena mirror target is a recognized + named boots id.
