@@ -140,14 +140,33 @@ _NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
 
 
 # DDragon-override deny set for items the DDragon ``maps["11"]=True`` flag wrongly
-# admits onto Summoner's Rift (upstream mislabel). These are Howling Abyss-only
-# support-quest upgrades - deny unconditionally on SR (every scorer), like the
-# non-coachable + Ornn-masterwork gates. Modes other than SR use the DDragon maps
-# flag directly (no-op there).
+# admits onto Summoner's Rift (upstream mislabel). Two classes of items live here:
+#
+# 1. ARAM-only support-quest upgrades (maps["12"]=True, maps["11"]=True upstream
+#    bug) - deny unconditionally on SR.
+# 2. SR role-quest T3 boot upgrades (3170-3175) - DDragon marks ``purchasable=true``
+#    but in-game these are quest-reward upgrades of the champion's existing T2 boots
+#    (Mid lane: "Upgrade boots to tier 3"; Bot lane: "A bonus item slot for your
+#    boots"). You can never buy them directly from the shop - the quest completes
+#    and auto-upgrades your equipped boots. Recommending them as regular purchase
+#    candidates is a dead end (operator 2026-07-08: Gunmetal Greaves #1 meta build
+#    for Aphelios Bottom, unobtainable via shop).
+#
+# Deny unconditionally on SR (every scorer), like the non-coachable + Ornn-
+# masterwork gates. Modes other than SR use the DDragon maps flag directly (no-op
+# there).
 _SR_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
+    # ---- ARAM-only support-quest items (maps[11]=True upstream bug) ----
     "3865",  # World Atlas - support quest starter, ARAM-only
     "3871",  # Zaz'Zak's Realmspike - support quest upgrade, ARAM-only
     "3877",  # Bloodsong - support quest Spellblade upgrade, ARAM-only
+    # ---- SR role-quest T3 boot upgrades (purchasable=true upstream bug) ----
+    "3170",  # Swiftmarch - T3 Boots of Swiftness (quest reward, not direct-buy)
+    "3171",  # Crimson Lucidity - T3 Ionian Boots (quest reward, not direct-buy)
+    "3172",  # Gunmetal Greaves - T3 Berserker's (quest reward, not direct-buy)
+    "3173",  # Chainlaced Crushers - T3 Mercury's Treads (quest reward)
+    "3174",  # Armored Advance - T3 Plated Steelcaps (quest reward)
+    "3175",  # Spellslinger's Shoes - T3 Sorcerer's Shoes (quest reward)
 })
 
 # DDragon-override deny set for items the DDragon ``maps["12"]=True`` flag wrongly
