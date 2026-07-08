@@ -234,6 +234,7 @@ class Coach(BaseCoach):
             "reset_item": "", "objective": "", "risk": "",
             "event_name": "", "event_timer": 0,
             "my_nexus_hp": 100, "enemy_nexus_hp": 100,
+            "game_id": "",
         }
 
     def _parse_raw_state(self, raw: dict) -> dict:
