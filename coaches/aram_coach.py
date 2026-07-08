@@ -504,6 +504,7 @@ class Coach(BaseCoach):
             "reset_item": "", "risk": "", "item_build": "", "item_extra": "",
             "my_tower_hp": 100, "enemy_tower_hp": 100,
             "wave_pct": 50, "hp_packs": [True, True],
+            "game_id": "",
         }
 
     def _parse_raw_state(self, raw: dict) -> dict:
