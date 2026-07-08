@@ -36,7 +36,11 @@ _VAL_MIN_RED = 110     # min brightness (max channel) for red
 _VAL_MIN_BLUE = 120
 _MIN_PX = 5            # reject sub-pixel noise / lone speckles
 _MAX_PX = 220          # reject large terrain washes that slip through
-_MASK_CAP = 6000       # if either mask exceeds this, the frame is garbage -> bail
+# Mask cap as a FRACTION of total crop pixels (2026-07-08: was a fixed 6000,
+# tuned at the 208px coaching-frame crop / 43K px = 13.9%. The 568px native
+# grab / 323K px was hitting the cap on the normal blue terrain, bailing
+# out the entire detection. A fraction is resolution-independent.)
+_MASK_CAP_FRAC = 0.14  # if either mask exceeds 14% of pixels, frame is garbage
 
 
 def _components(mask, min_px: int, max_px: int):
@@ -97,7 +101,8 @@ def detect_team_dots(
 
     red_mask = (sat > _SAT_MIN) & (mx > _VAL_MIN_RED) & (R == mx) & (R - G > 45) & (R - B > 35)
     blue_mask = (sat > _SAT_MIN) & (mx > _VAL_MIN_BLUE) & (B == mx) & (B - R > 45) & (B - G > 10)
-    if int(red_mask.sum()) > _MASK_CAP or int(blue_mask.sum()) > _MASK_CAP:
+    mask_cap = max(1, int(H * W * _MASK_CAP_FRAC))
+    if int(red_mask.sum()) > mask_cap or int(blue_mask.sum()) > mask_cap:
         return []  # frame is loading / garbage - do not emit noise
 
     dots: list[dict] = []
@@ -180,12 +185,13 @@ def _native_grab_enabled() -> bool:
 
 def _identity_enabled() -> bool:
     """RC_ZOI_IDENTITY gates the per-dot champion identity pass (spec E-1,
-    DEFAULT OFF - live template-match quality is live-gated before any flip).
+    DEFAULT ON since 2026-07-08 - operator asked for minimap identity display).
     Flag off is byte-identical to the pre-identity behavior. Mirrors the
-    RC_ZOI_NATIVE_GRAB env pattern above, with the opposite default."""
+    RC_ZOI_NATIVE_GRAB env pattern above, with the same default (ON).
+    Set RC_ZOI_IDENTITY=0 to disable."""
     import os
-    return os.environ.get("RC_ZOI_IDENTITY", "0").strip().lower() \
-        in ("1", "true", "yes", "on")
+    return os.environ.get("RC_ZOI_IDENTITY", "1").strip().lower() \
+        not in ("0", "false", "no", "off", "")
 
 
 def _live_roster() -> list:
@@ -211,15 +217,17 @@ def _live_roster() -> list:
 
 def _scaled_size_bounds(crop_w) -> tuple[int, int]:
     """Rescale (_MIN_PX, _MAX_PX) from the 208px tuning baseline to `crop_w` by
-    AREA, so a native 416px crop (2x linear -> 4x area) keeps the same PHYSICAL
-    blob-size thresholds. Baseline width -> the tuned bounds unchanged."""
+    LINEAR ratio (2026-07-08: was area / quadratic, but champion minimap icons
+    are FIXED pixel size — they don't scale with crop width). A native 416px
+    crop (2x linear) has the same ~27px icon; a 568px crop also has ~27px.
+    Linear scaling keeps the thresholds anchored to the pixel density, not the
+    area, so the same physical objects pass through."""
     try:
         sc = max(1.0, float(crop_w) / _TUNED_CROP_W)
     except (TypeError, ValueError):
         return _MIN_PX, _MAX_PX
-    area = sc * sc
-    minpx = max(_MIN_PX, int(round(_MIN_PX * area)))
-    maxpx = max(minpx + 1, int(round(_MAX_PX * area)))
+    minpx = max(_MIN_PX, int(round(_MIN_PX * sc)))
+    maxpx = max(minpx + 1, int(round(_MAX_PX * sc)))
     return minpx, maxpx
 
 
