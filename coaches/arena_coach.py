@@ -474,6 +474,7 @@ class Coach(BaseCoach):
             "fight_rule": "", "augment_advice": "", "anvil_advice": "",
             "target_priority": "", "risk": "", "teams": [],
             "round": 0, "rank": "?", "alive_teams": 8, "hp_pct": 100,
+            "game_id": "",
         }
 
     def _parse_raw_state(self, raw: dict) -> dict:

@@ -590,8 +590,11 @@ class BaseCoach(abc.ABC):
     def _ensure_data(self) -> None:
         try:
             self._out.parent.mkdir(parents=True, exist_ok=True)
-            if not self._out.exists():
-                self._write_blank_artifact()
+            # Always blank on init: a new coach instance means a new game.
+            # The old guard (only blank on missing file) left stale
+            # fight_rule / risk / daemon_slayer_picks from the previous
+            # game when the artifact file already existed (BUG #1 ARAM drain).
+            self._write_blank_artifact()
         except Exception as exc:  # noqa: BLE001
             logging.getLogger(f"rc.coaches.{self._MODE_NAME}").warning(
                 "%s data init: %s", self._MODE_NAME, exc
