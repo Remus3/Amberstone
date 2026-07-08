@@ -182,7 +182,7 @@ def main() -> int:
         # interpreter is a bare pythoncore build with no ruff installed; the
         # launcher resolves the project Python that has ruff (mirrors edit_lint_check.py).
         proc = subprocess.run(
-            ["py", "-m", "ruff", "check", "--output-format=json", *pyfiles],
+            [sys.executable, "-m", "ruff", "check", "--output-format=json", *pyfiles],
             cwd=root,
             capture_output=True,
             text=True,
