@@ -257,6 +257,36 @@ function normDistricts(zoi) {
   return rows;
 }
 
+// Spec H (2026-07-08): champion-identity dots from minimap template matching.
+// Each dot has {team,champion,x_frac,y_frac,confidence} — discrete identity
+// markers (NOT the soft team-presence blobs). Rendered as champion-initial
+// labels on top of the ZOI fill.
+function _normChampionDot(d) {
+  if (!d || typeof d !== "object") return null;
+  const team = d.team === "red" ? "red" : d.team === "blue" ? "blue" : null;
+  if (!team) return null;
+  const champ = typeof d.champion === "string" && d.champion ? d.champion : null;
+  if (!champ) return null;
+  const cx = _fracOrNull(d.x_frac);
+  const cy = _fracOrNull(d.y_frac);
+  if (cx === null || cy === null) return null;
+  const conf = Number(d.confidence);
+  return {
+    team,
+    champion: champ,
+    cx, cy,
+    confidence: Number.isFinite(conf) ? Math.min(1, Math.max(0, conf)) : 0,
+  };
+}
+
+function normChampionDots(zoi) {
+  if (!zoi || typeof zoi !== "object") return null;
+  const raw = Array.isArray(zoi.champion_dots) ? zoi.champion_dots : [];
+  const dots = raw.map(_normChampionDot).filter(Boolean);
+  if (!dots.length) return null;
+  return dots;
+}
+
 // Coerce the raw /api/state.zoi into a clean {bubbles,demarcation,map_control}
 // or null. Drops malformed bubbles; preserves a null demarcation as null.
 function normZoi(zoi) {
@@ -280,9 +310,13 @@ function normZoi(zoi) {
   const mia = normMia(zoi.mia);
   const dmz = normDmz(zoi.dmz);
   const districts = normDistricts(zoi);
+  // Spec H (2026-07-08): champion-identity dots - discrete per-champion initial
+  // labels (NOT the soft team-presence shading). Additive only.
+  const championDots = normChampionDots(zoi);
   if (!bubbles.length && !demarcation && !map_control
-      && !mia && !dmz && !districts) return null;
-  return { bubbles, demarcation, map_control, mia, dmz, districts };
+      && !mia && !dmz && !districts
+      && !championDots) return null;
+  return { bubbles, demarcation, map_control, mia, dmz, districts, championDots };
 }
 
 // A coarse signature of the SHAPE of the smoothed scene (team count + rounded
@@ -299,7 +333,10 @@ function _sig(z) {
   const mia = z.mia ? z.mia.count : 0;
   const dz = z.dmz ? z.dmz.path.length : 0;
   const dd = z.districts ? z.districts.length : 0;
-  return `${n}|${pct}|${dm}|${mia}|${dz}|${dd}`;
+  // Spec H: champion-identity dots are discrete identity markers — NOT EMA
+  // smoothed — so their count forces a redraw on arrival/departure.
+  const cd = z.championDots ? z.championDots.length : 0;
+  return `${n}|${pct}|${dm}|${mia}|${dz}|${dd}|${cd}`;
 }
 
 // -- module-scope render state -----------------------------------------
@@ -548,6 +585,42 @@ function _drawMiaRings(c, mia, w, h) {
   }
 }
 
+// Spec H (2026-07-08): champion-identity dots - discrete per-champion initial
+// labels rendered ON TOP of the soft team-presence shading. Each dot is a small
+// filled circle (team-colored) with the champion's first letter inside. Drawn at
+// the exact centroid position (no EMA smoothing — these are discrete identity
+// markers, not jittering presence blobs). Topmost layer; renders above bubbles,
+// MIA rings, and the demarcation seam.
+function _drawChampionDots(c, dots, w, h) {
+  if (!dots || !dots.length) return;
+  const R = 9; // dot radius in px
+  c.save();
+  for (const d of dots) {
+    const cx = fracToPx(d.cx, w);
+    const cy = fracToPx(d.cy, h);
+    const alpha = _clampAlpha(0.45 + d.confidence * 0.40); // 0.45-0.85 based on match confidence
+    // Team-colored filled circle with a dark stroke for contrast on any minimap bg.
+    c.beginPath();
+    c.arc(cx, cy, R, 0, Math.PI * 2);
+    c.fillStyle = d.team === "red"
+      ? `rgba(244, 84, 84, ${alpha})`
+      : `rgba(72, 144, 240, ${alpha})`;
+    c.fill();
+    c.strokeStyle = "rgba(10, 14, 20, 0.90)";
+    c.lineWidth = 1.2;
+    c.stroke();
+    // Champion first initial, centered in the dot.
+    const initial = d.champion.charAt(0).toUpperCase();
+    if (!initial) continue;
+    c.fillStyle = "rgba(255, 255, 255, 0.95)";
+    c.font = "bold 8px sans-serif";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText(initial, cx, cy);
+  }
+  c.restore();
+}
+
 function _paint(ctx, scene, demarcRaw, w, h, extras) {
   ctx.clearRect(0, 0, w, h);
   ctx.save();
@@ -555,6 +628,7 @@ function _paint(ctx, scene, demarcRaw, w, h, extras) {
   const mia = extras && extras.mia ? extras.mia : null;
   const dmz = extras && extras.dmz ? extras.dmz : null;
   const districts = extras && extras.districts ? extras.districts : null;
+  const championDots = extras && extras.championDots ? extras.championDots : null;
 
   // Pre-resolve the demarcation pixel endpoints once. The ally-side tint is
   // folded INTO the blue team layer (below) so tint + ally bubbles are capped
@@ -639,6 +713,12 @@ function _paint(ctx, scene, demarcRaw, w, h, extras) {
     ctx.stroke();
   }
 
+  // 4. Spec H (2026-07-08): champion-identity dots - the TOPMOST minimap layer.
+  //    Discrete per-champion initial labels above the soft presence shading, MIA
+  //    rings, and demarcation. These are the most precise signal — a confident
+  //    "this champion IS here" — so they render on top of everything.
+  if (championDots) _drawChampionDots(ctx, championDots, w, h);
+
   ctx.restore();
 }
 
@@ -708,6 +788,7 @@ export function renderMinimapZoi(zoi) {
   // normalized scene `z` (already validated + subset-tolerant).
   _paint(ctx, bubbles, demarc, w, h, {
     mia: z.mia, dmz: z.dmz, districts: z.districts,
+    championDots: z.championDots,
   });
   if (DEBUG_ZOI) {
     // Ground-truth probe (DEBUG_ZOI ships OFF): a bright magenta border + fill
@@ -758,4 +839,8 @@ export const __test = {
   // flicker debounce (transient absent-zoi hold)
   _nullDebounceStep,
   _NULL_CLEAR_STREAK,
+  // spec H champion-identity dots (2026-07-08)
+  normChampionDots,
+  _normChampionDot,
+  _drawChampionDots,
 };
