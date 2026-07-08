@@ -143,6 +143,10 @@ _OBJECTIVE_MODES: frozenset[str] = frozenset({"sr"})
 # has none, so the instant siege callout never fires there.
 _SIEGE_MODES: frozenset[str] = frozenset({"sr", "aram"})
 
+# Modes where recalling to fountain is a real mechanic. Only Summoner's Rift
+# (ARAM has no recall; Arena has no fountain; Brawl is death-only buy).
+_RECALL_MODES: frozenset[str] = frozenset({"sr"})
+
 # A structure that fell within this many seconds is a LIVE siege moment - the
 # instant deterministic callout fires so coaching is on-screen immediately,
 # bridging the multi-second Haiku coach latency during a base push (the slow
@@ -839,9 +843,11 @@ def next_callouts(
     callouts.extend(_level_spike_callouts(lvl))
     callouts.extend(_item_spike_callouts(items))
 
-    recall = recall_callout(gold, next_item_name, next_item_cost)
-    if recall is not None:
-        callouts.append(recall)
+    # Recall is SR-only (ARAM has no fountain recall; Arena/Brawl are death-buy).
+    if m in _RECALL_MODES:
+        recall = recall_callout(gold, next_item_name, next_item_cost)
+        if recall is not None:
+            callouts.append(recall)
 
     callouts.sort(key=_sort_key)
 

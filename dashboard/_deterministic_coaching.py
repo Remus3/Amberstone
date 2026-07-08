@@ -692,7 +692,10 @@ def _compute_uncached(gs: dict, mode_key: str, zoi: dict | None = None) -> dict:
     # BEFORE it enters the cache - avoids mutation-based accumulation (the
     # external append in _state_builder.py mutated the cached dict, causing
     # 5-7x duplication of the map_control row across ticks within the 3s TTL).
-    if zoi is not None:
+    # SR-only: the quadrant labels (bot river / dragon, top river, etc.) are
+    # Summoner's Rift map concepts with no ARAM equivalent (Howling Abyss is a
+    # single lane with no river, no dragon pit, no top/bot split).
+    if zoi is not None and lower == "sr":
         try:
             from core.zoi_influence import zoi_callout
             co = zoi_callout(zoi)
@@ -855,7 +858,11 @@ def resolve_coach_fields(coach: dict, det: dict | None, lc: dict | None,
                 label = first_c.get("label")
                 if isinstance(label, str) and label.strip():
                     action = label.strip()
-    immediate = action
+    # When the coach already filled action (e.g. "HOLD"), leave immediate
+    # alone even if blank - the coach intentionally retired that slot (ARAM
+    # coach: "Do NOT emit an Immediate prose field"). Only synthesize
+    # immediate when the action field itself needed deterministic fallback.
+    immediate = action if not (coach.get("action") or "").strip() else ""
 
     # --- risk: from lead projection state ---
     lead = det.get("lead_projection")
