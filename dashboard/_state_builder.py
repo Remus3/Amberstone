@@ -576,7 +576,8 @@ def build_state() -> dict:
     det = {"choices": [], "callouts": [], "lead_projection": {}}
     try:
         from dashboard._deterministic_coaching import (
-            compute_deterministic, resolve_choices, shadow_log_det,
+            compute_deterministic, resolve_choices, resolve_coach_fields,
+            shadow_log_det,
             shadow_log_precomputed_choices, shadow_log_precomputed_build,
             shadow_log_live_benchmark_band, shadow_log_objective_playbook,
             shadow_log_macro_response, shadow_log_aram_coach,
@@ -614,22 +615,19 @@ def build_state() -> dict:
         # only; writes data/arena_coach_shadow.jsonl.
         shadow_log_arena_coach(coach, lc, mode_key)
         coach["choices"] = resolve_choices(coach, det)
+        # Synthesize action/immediate/fight_rule/risk from deterministic
+        # data when the Haiku LLM coach did not provide them (practice tool,
+        # DS-engine-only games, etc.). Only fills blank fields so the
+        # Haiku coach's values are always respected when present.
+        det_fields = resolve_coach_fields(coach, det, lc, mode_key)
+        for k in ("action", "immediate", "fight_rule", "risk"):
+            if not coach.get(k):
+                coach[k] = det_fields.get(k, "")
     except Exception:  # noqa: BLE001
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
     _mark("deterministic")
 
-    # ZOI item 567 slice 3: surface the map-control read as a standing callout
-    # (eta_s None -> no ETA chip) alongside the deterministic objective callouts.
-    # Fail-soft + additive: a failure here must NOT disturb the existing det.
-    try:
-        if zoi is not None:
-            from core.zoi_influence import zoi_callout
-            co = zoi_callout(zoi)
-            if co is not None:
-                det["callouts"] = (det.get("callouts") or []) + [co]
-    except Exception:  # noqa: BLE001
-        pass
     _warn_slow_stages(_stages)
 
     return {
