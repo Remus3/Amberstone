@@ -89,6 +89,11 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
     if map_id == "11":
         from agents.daemon_slayer.rank import _SR_EXCLUDED_ITEM_IDS
         out = out - _SR_EXCLUDED_ITEM_IDS
+    # DDragon-override ARAM-exclude deny (2026-07-07): items DDragon wrongly marks
+    # purchasable on ARAM (Arena prismatic mega-items) - mirror _filter_candidates.
+    if map_id == "12":
+        from agents.daemon_slayer.rank import _ARAM_EXCLUDED_ITEM_IDS
+        out = out - _ARAM_EXCLUDED_ITEM_IDS
     return out
 
 

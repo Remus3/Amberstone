@@ -150,6 +150,15 @@ _SR_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
     "3877",  # Bloodsong - support quest Spellblade upgrade, ARAM-only
 })
 
+# DDragon-override deny set for items the DDragon ``maps["12"]=True`` flag wrongly
+# admits onto Howling Abyss (upstream mislabel). These are Arena-only prismatic
+# mega-items (6000g, 223xxx mirror namespace) - deny unconditionally on ARAM
+# (every scorer), like the SR-exclude + Ornn-masterwork gates. Modes other than
+# ARAM use the DDragon maps flag directly (no-op there).
+_ARAM_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
+    "223069",  # Void Immolation - Arena prismatic mega-item (6000g, map 30)
+})
+
 
 # Ranged-ONLY item purchasability gate (2026-07-02, patch 16.13.1).
 #
@@ -572,6 +581,12 @@ def _filter_candidates(
         # marks purchasable on SR (support-quest upgrades) - deny unconditionally
         # on SR BEFORE the inject force-admit, like the non-coachable gate.
         if mode.upper() == "SR" and item_id in _SR_EXCLUDED_ITEM_IDS:
+            continue
+        # DDragon-override ARAM-exclude deny (2026-07-07): items DDragon wrongly
+        # marks purchasable on ARAM (Arena prismatic mega-items in the 223xxx
+        # mirror namespace) - deny unconditionally on ARAM BEFORE the inject
+        # force-admit, like the SR-exclude + non-coachable gates.
+        if mode.upper() == "ARAM" and item_id in _ARAM_EXCLUDED_ITEM_IDS:
             continue
         # Ornn masterwork deny (operator 2026-07-06): items obtainable ONLY via an
         # Ornn ally upgrade (Wooglet's Witchcap etc.) are marked gold.purchasable
