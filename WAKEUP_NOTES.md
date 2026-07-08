@@ -4,6 +4,34 @@
 
 ---
 
+# 2026-07-08 (BATCH B/C visual verify + T3 boots fix + minimap identity dots)
+
+Session 3 -- BATCH B/C live-verify in practice-tool (Aphelios vs Lillia, 2560x1440 borderless):
+- BATCH B (canvas lock): PASS. Minimap gold border sits ON the minimap. Verified per-widget drag still works.
+- BATCH C (gauges row, stats role, enemy wrap): PASS. All 3 checked: horizontal objective row, stats "bot" detected, chips wrap.
+- All 6 commits from prior session SHIPPED + verified. No reverts needed.
+
+T3 boots quest-reward fix (commits 19a76d8b + 415c1795):
+- Gunmetal Greaves (3172) + all 5 other T3 boots hard-excluded from DS candidate pool (quest rewards, NOT direct-buy)
+- _BOOTS_SR_UPGRADE killed in build_order.py -- every mode keeps buyable T2 boots
+- DS restarted 2x; build order now shows Berserker's Greaves (3006) for Aphelios
+- Tests: 36 boots + 13 DS exclude + 56 boot-related = 105 green
+
+Minimap champion identity dots (commit fe37c534 + bc5cdd68):
+- End-to-end: blob detect -> template match (cv2) -> zoi.champion_dots -> overlay canvas
+- 3 engine bugs found + fixed: _MASK_CAP fraction vs fixed, _scaled_size_bounds linear vs area, _template_size fixed px vs fraction
+- _identity_enabled() default ON; match threshold 0.55
+- Live verified: 1 Lillia dot at 0.580 confidence flowing through /api/state.zoi.champion_dots
+- Overlay renders champion initials on minimap gold-border box (toggle ACTIVE to see)
+
+Aphelios crit-capping: REJECTED. Wiki confirms passive grants AD/AS/Lethality from skill points, NOT excess-crit->AD conversion. That mechanic belongs to Yasuo/Yone. The 3 engine gaps (rotation-DPS, passive stat leveling, weapon-swap basic=0) are real but lower priority.
+
+NEXT SESSION: pick from Section J OPEN WPs (E5 doc sweep, F5-L03 inventory stale, F6c park auto-ops gate) or DS engine gaps (rotation-DPS fallback for weapon-swap kits like Aphelios).
+
+DO NOT redo: T3 boot fix (19a76d8b + 415c1795), minimap identity wiring (fe37c534), BATCH B/C verify. Aphelios crit-capping is NOT a real mechanic -- do not re-investigate.
+
+---
+
 # 2026-07-07/08 (LIVE-VERIFY + Void Immolation fix; commits 54f1016f + 3c1b9872 + 16f4fd0f)
 
 Session 1 -- live-verify overlay+DS work in ARAM Mayhem (Aphelios, 18 min game):
@@ -48,19 +76,3 @@ C. Aphelios rotation-DPS fallback: all 3 laning-scenario phases have basic=0 (we
 D. Aphelios passive stat leveling: picks AD/AS/Lethality per level instead of standard growth. DS uses DDragon base growth. Impact: stat curve diverges from real game at higher levels.
 
 DO NOT redo: all 6 commits SHIPPED + verified (17359ca9..32132f22); incumbent hysteresis + EHP credit + BATCH B/C code = correct. The 3 archetype test failures are LOCAL gitignored cs_archetype_picks.json (CI GREEN).
-
----
-
-# 2026-07-07 (Session reflection + 3 auto-improvements; commits `29fb5b5b` + `ceb2f584` + `e736a896`)
-
-Transcript analysis of 512 sessions (666 MB, June 3-July 7) -> Desktop/reflection-notes.md. Three highest-leverage fixes built:
-
-1. **edit_lint_check.py ruff surfacing** - the PostToolUse hook ran `ruff check --fix` on every edit but silenced output. Now ruff findings are written to stderr so model sees lint errors immediately. Also fixed `py` launcher -> `sys.executable` (was resolving to bare pythoncore with no ruff installed - hook was silently broken for entire history).
-
-2. **core/hot_reload.py auto-restart** - daemon thread polls non-frozen .py mtimes every 2s. On change: py_compile gate, then atomic-write restart_trigger.txt. Wired in web_dashboard.py. 18 tests green. Verified: touch -> new pid in ~10s. Status: ops/runtime/hot_reload.json. Halt: ops/runtime/hot_reload_halt.txt.
-
-3. **.claude/commands/section-j-dispatch.md** - Workflow skill reads OVERLAY_BUILD_MASTER_PLAN.md Section J, dispatches OPEN WPs to parallel worktree agents.
-
-Edge fixes: budget-saver .claude/settings.local.json bypass flags (was missing), Sibling-A .claude/settings.local.json model=rc-main (was claude-fable-5 hitting Anthropic direct), BLE001 blind-exception cleanup.
-
-**NEXT SESSION:** pick from Section J OPEN WPs (E5 doc sweep, F5-L03 inventory stale, F6c park auto-ops gate) - use `/section-j-dispatch` to fan out. Hot_reload + edit lint are auto now - no manual steps. **DO NOT redo:** the 3 improvements are SHIPPED; ruff hook was historically broken (`py` launcher -> pythoncore) - FIXED; Sibling-A is now on budget-saver routing.

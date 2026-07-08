@@ -235,6 +235,22 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-07 (Session reflection + 3 auto-improvements; commits `29fb5b5b` + `ceb2f584` + `e736a896`)
+
+Transcript analysis of 512 sessions (666 MB, June 3-July 7) -> Desktop/reflection-notes.md. Three highest-leverage fixes built:
+
+1. **edit_lint_check.py ruff surfacing** - the PostToolUse hook ran `ruff check --fix` on every edit but silenced output. Now ruff findings are written to stderr so model sees lint errors immediately. Also fixed `py` launcher -> `sys.executable` (was resolving to bare pythoncore with no ruff installed - hook was silently broken for entire history).
+
+2. **core/hot_reload.py auto-restart** - daemon thread polls non-frozen .py mtimes every 2s. On change: py_compile gate, then atomic-write restart_trigger.txt. Wired in web_dashboard.py. 18 tests green. Verified: touch -> new pid in ~10s. Status: ops/runtime/hot_reload.json. Halt: ops/runtime/hot_reload_halt.txt.
+
+3. **.claude/commands/section-j-dispatch.md** - Workflow skill reads OVERLAY_BUILD_MASTER_PLAN.md Section J, dispatches OPEN WPs to parallel worktree agents.
+
+Edge fixes: budget-saver .claude/settings.local.json bypass flags (was missing), Sibling-A .claude/settings.local.json model=rc-main (was claude-fable-5 hitting Anthropic direct), BLE001 blind-exception cleanup.
+
+**NEXT SESSION:** pick from Section J OPEN WPs (E5 doc sweep, F5-L03 inventory stale, F6c park auto-ops gate) - use `/section-j-dispatch` to fan out. Hot_reload + edit lint are auto now - no manual steps. **DO NOT redo:** the 3 improvements are SHIPPED; ruff hook was historically broken (`py` launcher -> pythoncore) - FIXED; Sibling-A is now on budget-saver routing.
+
+---
+
 # 2026-07-06 (LIVE-GATED DRAIN Session 1  -  practice SR; budget-saver smart profile; commits `8c5be61a` + `76411845` + `e36eeaea` + `706d8e20`, LEDGER 809-810)
 
 First drain session ON the budget-saver brain (smart = DeepSeek-primary). Practice SR: Caitlyn + Jinx. B47 Frozen Heart default-ON flip shipped (ENGINE 1.183.0). Bloodsong/Zaz'Zak/Atlas SR-exclude deny shipped (ENGINE 1.184.0 + DDragon inversion tracked). A1/A2 RE-VALIDATED live (League-restart->new lobby->RuneWriter push clean, Flash+Cleanse confirmed). E5: Ctrl+Shift+A overlay ACTIVE toggle works (NOT Alt+Shift+A  -  wrong keys). E6: overlay lead/callouts/choices now feed from 2s poll (was dark in-game). minimap_rect trim calibrated (18px left, 14px top @2560x1440). Accrual rails: G1 HZ-A 52% agreement (below 0.70), G17 Arena shadow 0/20 awaiting_accrual.
