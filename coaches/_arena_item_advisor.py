@@ -143,6 +143,11 @@ def _filter_owned(build: list[str], owned: Iterable[str]) -> list[str]:
     """Substring-both-ways dedup. Mirrors `_dedup_build_vs_owned` in
     aram_coach so the same "short form catches long form" rule applies
     (e.g. "Zhonya's" in build matches "Zhonya's Hourglass" in owned).
+
+    Word-boundary match on the owned->build direction: ``o_short`` must
+    match a whole word in ``item_lower``, not a substring. Fixes the
+    "Blade" (BotRK) -> "Rageblade" (Guinsoo's) false positive (BUG #2
+    ARAM drain).
     """
     owned_lower = [o.lower() for o in (owned or []) if o]
     out = []
@@ -151,10 +156,16 @@ def _filter_owned(build: list[str], owned: Iterable[str]) -> list[str]:
             continue
         item_lower = item.lower()
         item_short = item.split()[0].lower()
+        item_words = set(item_lower.split())
         skip = False
         for o in owned_lower:
             o_short = o.split()[0]
-            if (item_short and item_short in o) or (o_short and o_short in item_lower):
+            # (a) build-item first word is substring of owned full name
+            #     (e.g. "Zhonya's" -> "Zhonya's Hourglass")
+            # (b) owned first word matches a WHOLE word in build item
+            #     (e.g. "Lord" -> "Lord Dominik's Regards"; does NOT
+            #     match "Blade" -> "Guinsoo's Rageblade")
+            if (item_short and item_short in o) or (o_short in item_words):
                 skip = True
                 break
         if not skip:
