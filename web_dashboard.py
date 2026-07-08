@@ -54,7 +54,7 @@ _APP_DIR: Path = Path(__file__).parent
 try:
     from core.hot_reload import start_watcher as _start_hot_reload
     _start_hot_reload(_APP_DIR)
-except Exception:
+except ImportError:
     pass  # Non-fatal: RC restarts work fine without it.
 
 
