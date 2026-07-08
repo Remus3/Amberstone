@@ -66,7 +66,7 @@ def main() -> int:
     if py_files:
         try:
             proc = subprocess.run(
-                ["py", "-m", "ruff", "check", "--fix", *py_files],
+                [sys.executable, "-m", "ruff", "check", "--fix", *py_files],
                 check=False,
                 capture_output=True,
                 text=True,

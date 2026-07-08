@@ -138,7 +138,7 @@ def _watch_loop(root: Path, halt_path: Path, status_path: Path) -> None:
     # Initial scan - do NOT trigger on first pass.
     try:
         known = _scan_py_files(root)
-    except Exception:
+    except OSError:
         known = {}
 
     _write_json(status_path, {
@@ -161,7 +161,7 @@ def _watch_loop(root: Path, halt_path: Path, status_path: Path) -> None:
 
         try:
             current = _scan_py_files(root)
-        except Exception:
+        except OSError:
             continue
 
         changed: list[str] = []
