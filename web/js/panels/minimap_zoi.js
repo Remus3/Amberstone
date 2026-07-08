@@ -258,7 +258,7 @@ function normDistricts(zoi) {
 }
 
 // Spec H (2026-07-08): champion-identity dots from minimap template matching.
-// Each dot has {team,champion,x_frac,y_frac,confidence} — discrete identity
+// Each dot has {team,champion,x_frac,y_frac,confidence}  -  discrete identity
 // markers (NOT the soft team-presence blobs). Rendered as champion-initial
 // labels on top of the ZOI fill.
 function _normChampionDot(d) {
@@ -333,8 +333,8 @@ function _sig(z) {
   const mia = z.mia ? z.mia.count : 0;
   const dz = z.dmz ? z.dmz.path.length : 0;
   const dd = z.districts ? z.districts.length : 0;
-  // Spec H: champion-identity dots are discrete identity markers — NOT EMA
-  // smoothed — so their count forces a redraw on arrival/departure.
+  // Spec H: champion-identity dots are discrete identity markers  -  NOT EMA
+  // smoothed  -  so their count forces a redraw on arrival/departure.
   const cd = z.championDots ? z.championDots.length : 0;
   return `${n}|${pct}|${dm}|${mia}|${dz}|${dd}|${cd}`;
 }
@@ -588,7 +588,7 @@ function _drawMiaRings(c, mia, w, h) {
 // Spec H (2026-07-08): champion-identity dots - discrete per-champion initial
 // labels rendered ON TOP of the soft team-presence shading. Each dot is a small
 // filled circle (team-colored) with the champion's first letter inside. Drawn at
-// the exact centroid position (no EMA smoothing — these are discrete identity
+// the exact centroid position (no EMA smoothing  -  these are discrete identity
 // markers, not jittering presence blobs). Topmost layer; renders above bubbles,
 // MIA rings, and the demarcation seam.
 function _drawChampionDots(c, dots, w, h) {
@@ -715,8 +715,8 @@ function _paint(ctx, scene, demarcRaw, w, h, extras) {
 
   // 4. Spec H (2026-07-08): champion-identity dots - the TOPMOST minimap layer.
   //    Discrete per-champion initial labels above the soft presence shading, MIA
-  //    rings, and demarcation. These are the most precise signal — a confident
-  //    "this champion IS here" — so they render on top of everything.
+  //    rings, and demarcation. These are the most precise signal  -  a confident
+  //    "this champion IS here"  -  so they render on top of everything.
   if (championDots) _drawChampionDots(ctx, championDots, w, h);
 
   ctx.restore();
