@@ -454,7 +454,12 @@ def build_state() -> dict:
     if minimap_rect and lc:
         try:
             from core.minimap_blob_detect import current_minimap_dots
-            minimap_dots = current_minimap_dots(minimap_rect)
+            # Spec H (2026-07-08): pass the live roster so the identity pass
+            # can template-match against the actual champions in this game.
+            # _live_roster() reads the raw liveclient_cache which may be stale
+            # or None; the already-built lc summary has enemy_team + ally_team.
+            _roster = (lc.get("enemy_team") or []) + (lc.get("ally_team") or [])
+            minimap_dots = current_minimap_dots(minimap_rect, roster=_roster)
         except Exception:  # noqa: BLE001
             minimap_dots = []
     _mark("minimap_dots")
@@ -476,6 +481,27 @@ def build_state() -> dict:
                 game_time_s=_lc.get("game_time_s"),
             )
             if zoi is not None:
+                # Spec H (2026-07-08): champion-identity dots for the overlay.
+                # Extracted from minimap_dots AFTER the presence bubbles are
+                # built; the discrete per-champion markers are a SEPARATE visual
+                # layer (initial labels on the ZOI canvas), not the soft team
+                # presence shading. Only dots with a champion tag + confidence
+                # above the match threshold pass through. Additive only — every
+                # existing zoi key stays byte-unchanged; absent/no-match champion
+                # dots => zoi["champion_dots"] is an empty list.
+                cdots = [
+                    {
+                        "team": d["team"],
+                        "champion": d["champion"],
+                        "x_frac": d["x_frac"],
+                        "y_frac": d["y_frac"],
+                        "confidence": d.get("identity_confidence", 0.0),
+                    }
+                    for d in minimap_dots
+                    if isinstance(d, dict) and d.get("champion")
+                    and d.get("identity_confidence", 0.0) >= 0.55
+                ]
+                zoi["champion_dots"] = cdots
                 # ZOI Wave 2 (spec B): ADDITIVE per-district presence vector.
                 # current_presence() wraps a module-level tracker (wipes on
                 # new-game/mode-change/stale-gap); it and presence_payload()

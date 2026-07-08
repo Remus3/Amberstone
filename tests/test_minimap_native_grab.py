@@ -47,12 +47,12 @@ def test_scaled_bounds_baseline_208_unchanged():
     assert maxpx == mbd._MAX_PX
 
 
-def test_scaled_bounds_native_416_is_4x():
-    # 416px = 2x linear -> 4x area, so physical size thresholds scale 4x and
-    # detection stays resolution-invariant.
+def test_scaled_bounds_native_416_is_2x():
+    # 416px = 2x linear; champion minimap icons are FIXED pixel size (not
+    # proportional to crop width), so scaling is LINEAR (2026-07-08: was area).
     minpx, maxpx = mbd._scaled_size_bounds(416)
-    assert minpx == mbd._MIN_PX * 4
-    assert maxpx == mbd._MAX_PX * 4
+    assert minpx == mbd._MIN_PX * 2
+    assert maxpx == mbd._MAX_PX * 2
 
 
 def test_current_uses_native_when_available(monkeypatch):

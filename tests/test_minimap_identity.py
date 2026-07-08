@@ -211,11 +211,11 @@ def test_identity_flag_parsing(monkeypatch):
         monkeypatch.setenv("RC_ZOI_IDENTITY", v)
         assert mbd._identity_enabled() is True, v
     monkeypatch.delenv("RC_ZOI_IDENTITY")
-    assert mbd._identity_enabled() is False  # default OFF
+    assert mbd._identity_enabled() is True  # default ON (2026-07-08)
 
 
 def test_flag_off_byte_identical_and_identity_never_called(monkeypatch):
-    monkeypatch.delenv("RC_ZOI_IDENTITY", raising=False)
+    monkeypatch.setenv("RC_ZOI_IDENTITY", "0")  # explicit OFF for this test
     crop = _fixture_crop()
     monkeypatch.setattr(mbd, "_grab_native_minimap", lambda rect: crop)
     monkeypatch.setattr(mbd, "_grab_frame_minimap", lambda rect: None)
