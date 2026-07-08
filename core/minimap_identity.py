@@ -54,12 +54,16 @@ _CHAMPS_PATH = _DATA_DIR / "meta" / "ddragon_champions.json"
 # DIFFERENT champion icons typically land well under 0.5. Below the threshold
 # the dot gets NO champion tag - a missing identity is always safer than a
 # wrong one (the MIA ring origin consumer would anchor on it).
-_MATCH_THRESHOLD = 0.65
+_MATCH_THRESHOLD = 0.55  # live-tuned 2026-07-08: 568px native grab catches real matches at ~0.57
 
-# Icon diameter as a fraction of the crop width. At the native 416px grab a
-# minimap champion icon is ~27px across; at the legacy 208px coaching-frame
-# crop ~14px. LIVE-GATED estimate - verified in a real game before any flip.
-_ICON_FRAC = 0.065
+# Champion minimap icon size in FIXED screen pixels. Minimap icons are drawn at
+# a constant size independent of the minimap scale / crop resolution (unlike the
+# crop itself, which scales with the native render size and minimap zoom). Tuned
+# at the 416px native grab (2560x1440, MinimapScale=1.62): champion icons are
+# ~27px across. Using a FRACTION of crop width (the old _ICON_FRAC=0.065) was
+# wrong: a 2560 render produces a 568px crop and the fraction would request a
+# 37px template, overshooting the real 27px icon and breaking the match.
+_ICON_PX = 27           # fixed template edge length in px
 _MIN_TPL = 8            # below this the portrait carries no signal
 _MAX_TPL = 48
 _SEARCH_PAD = 6         # px searched around the dot centroid (blob-centroid
@@ -164,14 +168,16 @@ def _icon_path(champion):
 
 def _template_size(crop_w) -> int:
     """Icon template edge length (px) for a crop of width `crop_w`, clamped
-    to [_MIN_TPL, _MAX_TPL]. Bad input -> _MIN_TPL."""
+    to [_MIN_TPL, _MAX_TPL]. Returns the FIXED _ICON_PX (2026-07-08: champion
+    minimap icons are constant size, not proportional to the crop). Bad input
+    -> _MIN_TPL."""
     try:
         w = float(crop_w)
     except (TypeError, ValueError):
         return _MIN_TPL
     if w != w or w <= 0:
         return _MIN_TPL
-    return max(_MIN_TPL, min(_MAX_TPL, int(round(w * _ICON_FRAC))))
+    return max(_MIN_TPL, min(_MAX_TPL, _ICON_PX))
 
 
 def _masked_template(champion, size):
