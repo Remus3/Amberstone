@@ -218,7 +218,7 @@ def _live_roster() -> list:
 def _scaled_size_bounds(crop_w) -> tuple[int, int]:
     """Rescale (_MIN_PX, _MAX_PX) from the 208px tuning baseline to `crop_w` by
     LINEAR ratio (2026-07-08: was area / quadratic, but champion minimap icons
-    are FIXED pixel size — they don't scale with crop width). A native 416px
+    are FIXED pixel size  -  they don't scale with crop width). A native 416px
     crop (2x linear) has the same ~27px icon; a 568px crop also has ~27px.
     Linear scaling keeps the thresholds anchored to the pixel density, not the
     area, so the same physical objects pass through."""

@@ -486,7 +486,7 @@ def build_state() -> dict:
                 # built; the discrete per-champion markers are a SEPARATE visual
                 # layer (initial labels on the ZOI canvas), not the soft team
                 # presence shading. Only dots with a champion tag + confidence
-                # above the match threshold pass through. Additive only — every
+                # above the match threshold pass through. Additive only  -  every
                 # existing zoi key stays byte-unchanged; absent/no-match champion
                 # dots => zoi["champion_dots"] is an empty list.
                 cdots = [
