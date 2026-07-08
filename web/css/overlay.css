@@ -429,6 +429,16 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-objgauges"] {
   --ovx-w: 288px;
 }
+/* BATCH C #4 (2026-07-08): widen w-enemyspells so 5 enemy rows (name + 2 spell chips)
+ * fit on ONE line each without wrapping. At default 210px the chips wrap to a
+ * second line per row, doubling the widget height and causing a scrollbar. The
+ * --es-champ-ch column (~140px for "Renata Glasc") + 2 chips (min 54px each) +
+ * gaps need ~245px interior; 280px widget gives 264px interior -- fits without
+ * wrapping. Same width tier as w-objgauges (288px). */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-enemyspells"] {
+  --ovx-w: 280px;
+}
+
 /* BATCH A (2026-07-06): drop the "BUILD" pane-head title bar in-game (operator:
  * "knows what it is; wastes vertical space"). The widget chrome already labels
  * it; the dashboard surface keeps its head. Reclaims a full row of height in the
