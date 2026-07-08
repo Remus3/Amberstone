@@ -50,3 +50,24 @@ Session -- live ARAM drain, 1 Mayhem game (Kai'Sa, enemy Leona/Renata/Kennen/Hwe
 - NEXT: fix stale-artifact bug (blank on game_id change), then continue ARAM Mayhem drain.
 
 DO NOT redo: T3 boot fix, map_control dupe, recall_callout/ARAM leak, HZ build-order, enemy-spells CSS.
+
+---
+
+# 2026-07-08 (FIX stale coach artifact + _filter_owned + Arena drain)
+
+Session -- 2 coach bugs fixed + live Arena drain (Kai'Sa crit/AS Arena):
+- BUG #1 FIXED (b39a9fca): _ensure_data() now ALWAYS blanks on coach init (new instance = new game).
+  Previously only blanked on missing file, leaving fight_rule/risk/daemon_slayer_picks from prior game.
+  Added game_id field to ARAM/Arena/Brawl blank artifact schemas.
+- BUG #2 FIXED (60ddd566): _arena_item_advisor._filter_owned used bare substring matching.
+  "Blade" (BotRK) falsely matched "Rageblade" in "Guinsoo's Rageblade", filtering Guinsoo's from Arena
+  build recs. Changed o_short to word-boundary match (o_short in item_words set).
+- Arena drain D3 PASS (Arena boots 223008 DDragon icon), D4 PASS (mode modifiers active vs SR).
+- Arena coach was KILL-SWITCHED (disabled_coaches ["arena"]) -- needed re-enable via POST /api/coach/toggle.
+  D6 shadow files MISS (augment/anvil phases before LCU agent restart + coach re-enable).
+  D9 MISS (no Goredrinker prismatic roll). D2 MISS (augment pre-coach-enable).
+- NEXT: Arena queue with coach kill-switch ON from game start for D6/D2/D9.
+  Also: stale artifact verification in ARAM Mayhem next game.
+
+DO NOT redo: T3 boots, map_control dupe, recall_callout/ARAM leak, HZ build-order, enemy-spells CSS,
+  stale coach artifact (b39a9fca), filter_owned (60ddd566).
