@@ -47,6 +47,16 @@ except ImportError:
 
 _APP_DIR: Path = Path(__file__).parent
 
+# Hot-reload watchdog: auto-writes restart_trigger.txt when non-frozen
+# .py files change (echoes the old "write restart_trigger" manual step).
+# Starts a daemon background thread - lightweight (2s polling, no deps).
+# Halt: write anything to ops/runtime/hot_reload_halt.txt.
+try:
+    from core.hot_reload import start_watcher as _start_hot_reload
+    _start_hot_reload(_APP_DIR)
+except Exception:
+    pass  # Non-fatal: RC restarts work fine without it.
+
 
 
 # 2026-05-01 (slice 2B): pure-builder helpers + their shared
