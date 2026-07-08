@@ -4,6 +4,27 @@
 
 ---
 
+# 2026-07-07/08 (LIVE-VERIFY + Void Immolation fix; commits 54f1016f + 3c1b9872 + 16f4fd0f)
+
+Session 1 -- live-verify overlay+DS work in ARAM Mayhem (Aphelios, 18 min game):
+(1)-(4) all PASS at code level. rc-shell relaunched (PID 23296, picks up c51108e1 canvas-lock).
+
+Session 2 -- Void Immolation (223069) hard-excluded from ARAM. Arena prismatic leaked via DDragon maps.12=true mislabel. New _ARAM_EXCLUDED_ITEM_IDS frozenset. DS restarted. 28/28 tests green. CROSS-EVAL: rank-tank now Randuin #1 (1554 ehp) instead of VI #1.
+
+Aphelios "builds wrong" diagnosis (3 engine gaps, unchanging):
+A. Crit capped at 100% -- Aphelios passive converts excess->AD. 5th+ crit item undervalued.
+B. Rotation-DPS fallback -- all 3 lolmath phases basic=0 for weapon-swap kit.
+C. Passive stat leveling -- player chooses AD/AS/Lethality, DS uses DDragon growth.
+Gap A is the clearest fix target.
+
+Hygiene: pruned 6 stale _archive/ entries from test_u2500_hygiene.py ASSERTED_CLEAN.
+
+NEXT SESSION: rc-shell is alive on PID 23296. BATCH B/C visual verify: start a practice-tool game, toggle ACTIVE mode (Ctrl+Shift+A), confirm (3) minimap gold border on minimap + (4) gauges row / role detect / enemy chips. Then pick from Aphelios crit-capping fix or Section J OPEN WPs.
+
+DO NOT redo: Void Immolation fix (3c1b9872), live-verify 4 items, hygiene fix. CI for 16f4fd0f in_progress (hygiene fix -- expected green).
+
+---
+
 # 2026-07-07 (LIVE-VERIFY 2026-07-06 overlay+DS work in ARAM Mayhem game; Aphelios; engine 1.184.0)
 
 Live-verified the 5-commit range `c51108e1..32132f22` in a real ARAM Mayhem game on Legion:
@@ -43,25 +64,3 @@ Transcript analysis of 512 sessions (666 MB, June 3-July 7) -> Desktop/reflectio
 Edge fixes: budget-saver .claude/settings.local.json bypass flags (was missing), Sibling-A .claude/settings.local.json model=rc-main (was claude-fable-5 hitting Anthropic direct), BLE001 blind-exception cleanup.
 
 **NEXT SESSION:** pick from Section J OPEN WPs (E5 doc sweep, F5-L03 inventory stale, F6c park auto-ops gate) - use `/section-j-dispatch` to fan out. Hot_reload + edit lint are auto now - no manual steps. **DO NOT redo:** the 3 improvements are SHIPPED; ruff hook was historically broken (`py` launcher -> pythoncore) - FIXED; Sibling-A is now on budget-saver routing.
-
----
-
-# 2026-07-06 (LIVE-GATED DRAIN Session 1  -  practice SR; budget-saver smart profile; commits `8c5be61a` + `76411845` + `e36eeaea` + `706d8e20`, LEDGER 809-810)
-
-First drain session ON the budget-saver brain (smart = DeepSeek-primary). Practice SR: Caitlyn + Jinx. B47 Frozen Heart default-ON flip shipped (ENGINE 1.183.0). Bloodsong/Zaz'Zak/Atlas SR-exclude deny shipped (ENGINE 1.184.0 + DDragon inversion tracked). A1/A2 RE-VALIDATED live (League-restart->new lobby->RuneWriter push clean, Flash+Cleanse confirmed). E5: Ctrl+Shift+A overlay ACTIVE toggle works (NOT Alt+Shift+A  -  wrong keys). E6: overlay lead/callouts/choices now feed from 2s poll (was dark in-game). minimap_rect trim calibrated (18px left, 14px top @2560x1440). Accrual rails: G1 HZ-A 52% agreement (below 0.70), G17 Arena shadow 0/20 awaiting_accrual.
-
-Context-shrink: LEAN_CLAUDE.md (80 lines vs 223) auto-swapped by all three shims at launch with crash recovery via try/finally. Biggest quality lever for local model  -  CLAUDE.md+MEMORY.md+hooks were ~1500 lines of context overhead.
-
-**NEXT SESSION:** launch `budget-saver.ps1` (local-first, NOT smart  -  remaining drain items are Tier-0/1). Continue drain at Session 2 (REAL SR matchmade game) or repeat Session 1 practice tool for remaining B-seam eyeballs (B1-B19, B24-B30, H4). The smart profile was $X; local-first saves the DeepSeek plan for real engine turns. DO NOT redo: B47 is SHIPPED (ENGINE 1.184.0, 8052 green), SR-exclude is SHIPPED, A1/A2 re-validated, context-swap is automatic.
-
----
-
-# 2026-07-06 (RC Budget-Saver SHIPPED - local-LLM fallback for Claude Code; PRs #7 + #8 merged, LEDGER 808)
-
-Operator-directed build (NOT the gemini loop): a local fallback so RC keeps operating when the Claude plan hits 0. Full brainstorm -> spec -> no-placeholder plan -> subagent build -> whole-branch review -> ship. Live game NOT involved. New `ops/budget_saver/`; no frozen file; no DS touch.
-- **SHIPPED + PROVEN LIVE (PRs #7 `88061f7f` + #8 `22a053b4`).** claude -> LiteLLM proxy (:4000 /v1/messages) -> ollama_chat/llama3.1:8b local ($0 default) + deepseek escalation + nvidia nemotron fallback. Still Claude Code end to end (skills/MCP/memory/TDD/git); `budget-saver.ps1` = budget-saver mode. e2e proven: claude --print -> proxy -> llama3.1 -> valid tool_use exit 0. 14/14 unit tests, ruff clean.
-- **Honest ceiling:** llama3.1:8b drives the loop but is weak on RC's heavy CLAUDE.md context. Live bench (qualify.py): local 2/3 (PASS tier-0/1, FAIL tier-2 math), deepseek 3/3 - confirms the R5 boundary. Local = keep-lights-on; DeepSeek (~50-100x < Opus) for real work. Both cloud keys placed + probed PASS. Isolated venv on Python 3.12 (litellm 1.91.0 needs <3.14; RC is 3.14).
-- **Auto-flip wired:** RC-BudgetSaverWatchdog (15-min) + usage_feeder.py (Anthropic cost_report API, opt-in via RC_BUDGET_CEILING_USD) arm/disarm; RC-BudgetSaverProxy autostarts the proxy at logon. HONEST: tracks the API-$ budget, not the subscription plan (no standalone API for that).
-- **5 live-verify fixes:** litellm py3.14-incompat (-> venv on 3.12), prometheus_client unbundled, ollama-died-post-pull, qwen emits TEXT-not-tool_calls (-> llama3.1 driver), Claude Code `thinking` param 500s a non-thinking model (-> MAX_THINKING_TOKENS=0). Whole-branch review: 1 critical (installer pulled qwen not llama3.1) + 4 hardening, all fixed.
-
-**NEXT SESSION:** run the live-gated drain (`docs/LIVE_GAME_GATED_SYNC.md`) ON budget-saver to conserve the Claude plan - launch `powershell -NoProfile -File "C:\Riot Commander\ops\budget_saver\budget-saver.ps1"` then invoke the live-gated-drain skill. Use `budget-saver-smart.ps1` (DeepSeek-primary) for any engine-class turn llama3.1 fails. Optional: `setx RC_BUDGET_CEILING_USD <cap> /M` enables $-auto-flip. **DO NOT redo:** budget-saver is SHIPPED + merged (#7/#8); qwen is off the driver path (text-only tools); subscription-plan auto-flip is manual-by-design (no API).
