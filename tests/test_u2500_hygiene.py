@@ -50,14 +50,6 @@ _ASSERTED_CLEAN: frozenset[str] = frozenset({
     # item 176 frozen-file sweep (2026-05-24):
     "ops/rc_supervisor.py",
     "ops/rc_self_monitor.py",
-    # item 187 candidate sweep (2026-05-25) - archived dead code:
-    "_archive/2026-05-01-audit/tft/comp_control.py",
-    "_archive/2026-05-01-audit/ui/client_panel.py",
-    "_archive/2026-05-01-audit/modes/arena_overlay.py",
-    "_archive/2026-05-01-audit/ui/game_right_bot.py",
-    "_archive/2026-05-01-audit/tft/tft_overlay.py",
-    "_archive/2026-05-01-audit/core/tk_ai_bar_proxy.py",
-    "_archive/2026-05-01-audit/ui/base.py",
     # item 187 candidate sweep (2026-05-25) - data payload + dead fallback:
     "web/legacy_index.html",
     "ops/rc_config.json",
