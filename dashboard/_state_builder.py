@@ -343,6 +343,7 @@ def build_state() -> dict:
     _mark("liveclient")
     # item 281: honor a force-clear sentinel BEFORE the overlay so a cleared
     # artifact can never leak stale game fields into /api/state.
+    _was_cleared = isinstance(coach, dict) and bool(coach.get("cleared_at")) and not lc
     coach = apply_cleared_at(coach, lc)
     if lc:
         for k, v in lc.items():
@@ -618,11 +619,14 @@ def build_state() -> dict:
         # Synthesize action/immediate/fight_rule/risk from deterministic
         # data when the Haiku LLM coach did not provide them (practice tool,
         # DS-engine-only games, etc.). Only fills blank fields so the
-        # Haiku coach's values are always respected when present.
-        det_fields = resolve_coach_fields(coach, det, lc, mode_key)
-        for k in ("action", "immediate", "fight_rule", "risk"):
-            if not coach.get(k):
-                coach[k] = det_fields.get(k, "")
+        # Haiku coach's values are always respected when present. A cleared
+        # artifact (force-clear sentinel + no live game) stays empty - never
+        # resurface synthesized live-looking coaching for it (item 281).
+        if not _was_cleared:
+            det_fields = resolve_coach_fields(coach, det, lc, mode_key)
+            for k in ("action", "immediate", "fight_rule", "risk"):
+                if not coach.get(k):
+                    coach[k] = det_fields.get(k, "")
     except Exception:  # noqa: BLE001
         det = {"choices": [], "callouts": [], "lead_projection": {}}
         coach["choices"] = []
