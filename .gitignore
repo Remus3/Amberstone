@@ -59,6 +59,9 @@ data/arena_coach_shadow.jsonl
 data/live_benchmark_band_shadow.jsonl
 data/objective_playbook_shadow.jsonl
 data/macro_response_shadow.jsonl
+# Durable glob for all coach/augment/anvil shadow telemetry (covers augment +
+# anvil + future writers; supersedes the individual *_shadow.jsonl lines above)
+data/*_shadow.jsonl
 data/placement_heatmap.json
 data/tft_live_data.json
 data/rewind_catchup.state.json
@@ -240,6 +243,8 @@ ops/loop/*.log
 # Transient verify/test scratch dropped at repo root by DS item runs
 # (_verify*.txt, _b1_*.txt, _*_run.txt) + ad-hoc stdout/stderr captures.
 /_*.txt
+# git commit -F <tmpfile> leftovers (commit_tmp.txt etc)
+/commit_*.txt
 /.clone_verify_scaling.txt
 /*_out.log
 /*_err.log
