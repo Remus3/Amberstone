@@ -256,23 +256,16 @@ function _incumbentIds(store, champion) {
   return ids.length ? ids : null;
 }
 
-// WP-B3: META alt-build cycle. metaIndex 0 = the champion's natural build (no
-// archetype param -> the server default = the resolved primary). Right-click on
-// Row2 advances through the canonical archetype ring (mirrors
-// core/archetype_picks.py ARCHETYPES - the b3 test guards drift). Off-archetype
-// builds are fail-soft (an empty / identical order[] just shows the same icons).
-const _BM_META_RING = ["carry", "bruiser", "tank", "mage", "assassin", "enchanter"];
-const _BM_META = { metaIndex: 0 };
-
-function _cycleMeta() {
-  _BM_META.metaIndex = (_BM_META.metaIndex + 1) % _BM_META_RING.length;
-  _BUILD_ORDER.lastKey = "";   // force a re-fetch with the new archetype
-}
+// WP-B3: META + ULTIMATE alt-build rows. The right-click archetype-cycle was
+// removed (LEDGER 823): both rows now always request the server-default scorer
+// (archetype: "") so the in-game overlay matches the champ-select preview and
+// the coach. There is no operator archetype switch on either surface - the
+// user_cs / user_ingame write path that polluted the committed precompute is
+// gone repo-wide.
 
 function _maybeRefreshBuildOrder(champion, mode, level, items) {
   if (!champion || !mode) return _BUILD_ORDER.order;
-  const arche = _BM_META.metaIndex === 0 ? "" : _BM_META_RING[_BM_META.metaIndex];
-  const key = _dsRerankKey(champion, mode, level, items) + "|" + _BM_META.metaIndex;
+  const key = _dsRerankKey(champion, mode, level, items);
   const now = Date.now();
   const stale = (key !== _BUILD_ORDER.lastKey)
               || ((now - _BUILD_ORDER.lastFired) > _BUILD_ORDER_COOLDOWN_MS);
@@ -285,7 +278,7 @@ function _maybeRefreshBuildOrder(champion, mode, level, items) {
     mode:      mode,
     level:     level | 0,
     items:     items || [],
-    archetype: arche,
+    archetype: "",
   };
   const _inc = _incumbentIds(_BUILD_ORDER, champion);
   if (_inc) _boBody.incumbent = _inc;
@@ -320,8 +313,7 @@ const _BUILD_ULT_COOLDOWN_MS = 30000;
 
 function _maybeRefreshUltimateOrder(champion, mode) {
   if (!champion || !mode) return _BUILD_ULT.order;
-  const arche = _BM_META.metaIndex === 0 ? "" : _BM_META_RING[_BM_META.metaIndex];
-  const key = `${champion}|${mode}|${arche}`;
+  const key = `${champion}|${mode}`;
   const now = Date.now();
   const stale = (key !== _BUILD_ULT.lastKey)
               || ((now - _BUILD_ULT.lastFired) > _BUILD_ULT_COOLDOWN_MS);
@@ -334,7 +326,7 @@ function _maybeRefreshUltimateOrder(champion, mode) {
     mode:      mode,
     level:     18,
     items:     [],
-    archetype: arche,
+    archetype: "",
   };
   const _ultInc = _incumbentIds(_BUILD_ULT, champion);
   if (_ultInc) _ultBody.incumbent = _ultInc;
@@ -644,8 +636,6 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     m: metaOrder.slice(0, 7).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
     // BATCH A: Row3 ULTIMATE order ids, so the from-scratch build change repaints.
     u: ultimateOrder.slice(0, 7).map((r) => (r && (r.item_id != null ? r.item_id : r.id)) || ""),
-    // WP-B3: the META alt-cycle index, so a right-click cycle repaints at once.
-    mi: _BM_META.metaIndex,
     t: threat ? [threat.summary, threat.burst_threat, threat.ad_threat, threat.ap_threat] : 0,
     d: Array.isArray(defensive) ? defensive.slice(0, 3).map((r) => (r && (r.id != null ? r.id : r.name)) || r) : 0,
     e: enemyKey,
@@ -699,7 +689,6 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
     rows.forEach((rowDef) => {
       const variant = _BM_ROW_VARIANT[rowDef.label] || "";
       const isLive = variant === "bm-live";
-      const isMeta = variant === "bm-meta";
       const rowEl = _bmRow(variant, rowDef.label);
       if (rowDef.items.length) {
         const strip = _bmStrip();
@@ -727,19 +716,8 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
           const planState = isLive ? (planStates[String(id)] || "") : "";
           strip.appendChild(_dsIcon(r, ownedSet, planState, opts));
         });
-        // Meta row: right-click cycles the archetype ring (drives BOTH the Meta +
-        // Ultimate from-scratch fetches, which share _BM_META). stopPropagation
-        // keeps the overlay ACTIVE-mode contextmenu handler from dismissing.
-        if (isMeta) {
-          strip.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            _cycleMeta();
-            _BUILD_ULT.lastKey = "";   // re-fetch the ultimate at the new archetype
-            build.dataset.amBuildSig = "";
-            _renderAmBuildBody(build, p, ctx, lc, ownedIds);
-          });
-        }
+        // Meta-row right-click archetype-cycle removed (LEDGER 823) - both the
+        // Meta and Ultimate rows now always render the server-default scorer.
         rowEl.appendChild(strip);
       } else {
         // Reserve the strip height so the row does not reflow when its fetch

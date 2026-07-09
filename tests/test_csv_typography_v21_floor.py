@@ -26,9 +26,9 @@ CSS = ROOT / "web" / "css" / "panels" / "champ_select_view.css"
 # Selectors that were flipped to --fs-xs in item 202.
 # QA 2026-07-03 slice A: the .csv-pr-* (YOUR RECORD, A4), ghost-bans
 # (.csv-sugg-ban-name, A2), and ghost pick-order (A2) selectors were
-# removed with their surfaces and left this inventory.
+# removed with their surfaces and left this inventory. LEDGER 823 removed
+# the .csv-arch-* archetype-picker selectors with the picker itself.
 _AUDIT_FLIPPED_SELECTORS = (
-    ".csv-arch-btn .csv-arch-scorer",
     ".csv-pb-role-label",
     ".csv-pb-role-chip",
     ".csv-pb-bans-header",
