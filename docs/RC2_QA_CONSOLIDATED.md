@@ -3,7 +3,7 @@
 > RC 2.0 Phase 8.3 deliverable (`docs/RC2_PLAN.md`). Authored 2026-06-20.
 > ASCII only - no em-dashes, en-dashes, or smart quotes (repo hard rule).
 >
-> PURPOSE: collapse the 97-item raw decision queue in `docs/RC2_TODO_QA.md`
+> PURPOSE: collapse the 97-item raw decision queue in `docs/_archive/RC2_TODO_QA.md`
 > (authored 2026-06-19) into the GENUINE RESIDUE. Since the raw queue was
 > written, the TOP-10 were all decided (-> E-batch E1-E12) and phases 3-7 +
 > E1/E3/E4/E5/E6/E8/E9 shipped. This doc reconciles every item against HEAD so

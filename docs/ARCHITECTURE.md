@@ -244,7 +244,7 @@ self-grab frames have since been PROVEN in-game (LEDGER 685/688/711).
 - **cc_conditional ecosystem** COMPLETE with 5 consumer surfaces: cc_pressure (ENGINE 1.38.0) + compute_ehp (1.39.0) + compute_hybrid (1.39.0) + `core/cc_conditional_impact_context.py` coach prompt (1.40.0) + `dashboard/routes_cc_conditional_pressure.py` dashboard UI (1.40.0). 72 entries (63 primary + 8 sidecar) / 57 champs across waves 0-23; 13 condition tags; `coexists_with_unconditional` flag + consumer MAX-rule semantics.
 - **CS archetype-picker UI** in the champ-select view (My Pick card 6-button grid) + `core/archetype_picks.py` storage + `dashboard/routes_archetype.py`. Coach integration via `coach_integration/archetype_dispatch.py` resolves the archetype via `core.archetype_picks.get_archetype_for` + dispatches to the right scorer; all 4 mode coaches consume the helper. State-builder stamps `state.cs_archetype_pick`; first-purchase mismatch nudge live (`/api/archetype-nudge` + chip renderer).
 
-Full per-ENGINE changelog (V2 substrate wiring 1.64.0-1.74.0 + cc_conditional waves 0-23) in `docs/DAEMON_SLAYER.md`. See `docs/DS_V2_PLAN.md` for the V2 substrate design.
+Full per-ENGINE changelog (V2 substrate wiring 1.64.0-1.74.0 + cc_conditional waves 0-23) in `docs/DAEMON_SLAYER.md`. See `docs/_archive/DS_V2_PLAN.md` for the V2 substrate design.
 
 ---
 
