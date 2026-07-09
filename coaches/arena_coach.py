@@ -433,6 +433,12 @@ class Coach(BaseCoach):
         self._last_event_count  = 0
         self._picked_augments   = []
 
+    # D6 (2026-07-08): Cherry LCU augment endpoint removed in 16.13.
+    # Round-based force_scan trigger replaces the dead LCU path so vision
+    # pulls forward to OCR the ~30s augment picker window. Arena augment
+    # rounds: 2 (silver), 5 (gold), 8 (gold), 11 (prismatic).
+    _AUGMENT_ROUNDS = frozenset({2, 5, 8, 11})
+
     def _on_state_received(self, state: dict) -> None:
         """Inject approximate round number + picked augments into state."""
         state["round"] = self._update_round_from_events(state)
@@ -440,6 +446,27 @@ class Coach(BaseCoach):
         # prompt + daemon_slayer rank call). The list is already apiName-
         # mapped at persistence time.
         state["augments"] = list(self._picked_augments)
+        # D6 round-based force_scan bump: when the approximate round
+        # transitions into an augment round, bump force_scan.json so the
+        # vision loop pulls forward to OCR the transient picker panel.
+        # Replaces the dead Cherry LCU endpoint probe (all /lol-cherry-*
+        # namespaces return 404 on 16.13.1).
+        if (
+            self._event_round_count in self._AUGMENT_ROUNDS
+            and self._event_round_count != self._last_round
+        ):
+            try:
+                import json as _json_d6
+                import time as _time_d6
+                from pathlib import Path as _Path_d6
+                _fp = _Path_d6(__file__).parent.parent / "data" / "force_scan.json"
+                _tmp = _Path_d6(str(_fp) + ".tmp")
+                _tmp.write_text(_json_d6.dumps({"force": _time_d6.time()}),
+                                encoding="utf-8")
+                _tmp.replace(_fp)
+                logger.debug("force_scan bumped for round=%d", self._event_round_count)
+            except Exception:  # noqa: BLE001
+                pass
         # Dynamic debounce: relax polling rate when game state is stable
         prev = self._last_state
         if prev:
