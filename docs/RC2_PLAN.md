@@ -70,7 +70,7 @@ Design GREENLIT: theme = **Hextech Tactical**. P3/P4 redesign code is UNBLOCKED
 target). New global ask: **per-panel visibility toggles, separate for in-game vs
 out-of-game** (Settings).
 
-TOP-10 answers (from docs/RC2_TODO_QA.md):
+TOP-10 answers (from docs/_archive/RC2_TODO_QA.md):
 1. **Dashboard persists in background while overlay active** + add a **pinned-on-top** setting. [P3.4]
 2. **DS 3-game live-flip eyeball pass - APPROVED ("ready to start").** 11 default-OFF seams; needs live games. Prep the flip checklist/harness; flips are operator-played. [P2-DS / docs/LIVE_GAME_GATED_SYNC.md]
 3. **End-of-game win capture - APPROVED.** Keystone (tracked_win on disk, not loaded). Operator note: after a match + honor page, re-entering lobby auto-flipped to PGR - verify the win was captured + that PGR auto-show does not clobber a wanted lobby view. [#3 win-capture]
@@ -187,7 +187,7 @@ so the operator sees gray/blue progress live.
 ### Phase 8 - TODO/FUTURE + DS-COMPLETENESS
 | # | Stage | Status | Out |
 |---|-------|--------|-----|
-| 8.1 | Massive operator-Q/A TODO + future list -> docs/RC2_TODO_QA.md | DONE | docs/RC2_TODO_QA.md (97 items, 9 sections, TOP-10 decisions) |
+| 8.1 | Massive operator-Q/A TODO + future list -> docs/_archive/RC2_TODO_QA.md | DONE | docs/_archive/RC2_TODO_QA.md (97 items, 9 sections, TOP-10 decisions) |
 | 8.2 | DS true-completeness gap analysis -> docs/DS_COMPLETENESS_GAP.md | DONE | docs/DS_COMPLETENESS_GAP.md |
 | 8.3 | Operator Q/A consolidation | DONE | `f05b853d` docs/RC2_QA_CONSOLIDATED.md - 97 items reconciled vs HEAD (33 SHIPPED / 13 GATED-LIVE / 18 GATED / 31 OPEN / 2 CLOSED); 6-agent reconcile, evidence-cited, sample re-verified; raw RC2_TODO_QA.md now points here. Phase 8 COMPLETE |
 
@@ -215,7 +215,7 @@ TOTAL_stages = 50.
 
 - Research: `docs/research/RC2_RESEARCH_*.md`
 - Design HTML (greenlight): `docs/design/RC2_DESIGN.html`
-- Operator Q/A TODO: `docs/RC2_TODO_QA.md`
+- Operator Q/A TODO: `docs/_archive/RC2_TODO_QA.md`
 - DS completeness gap: `docs/DS_COMPLETENESS_GAP.md`
 - Per-item ledger: `docs/LEDGER.md` (RC2-* entries)
 

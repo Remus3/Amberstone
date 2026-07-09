@@ -1,6 +1,6 @@
 """Compare AA-windup sourcing: current sidecar (old) vs offset-derived (new).
 
-Validator for the DS source-layering adoption plan (Desktop todo.md / docs/
+Validator for the DS source-layering adoption plan (Desktop todo.md / docs/_archive/
 DS_SOURCE_ADOPTION_PLAN.md). The current wiki_stats sidecar fills champions that
 lack an absolute attack_cast_time with a flat engine default (0.25s). Most of
 those champions DO carry attack_delay_offset, from which a real per-champ windup

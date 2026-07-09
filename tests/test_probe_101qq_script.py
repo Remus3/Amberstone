@@ -38,7 +38,7 @@ _WRAPPED = _FIXTURES / "hero_rank_double_wrapped.json"
 
 _TOOL_PROBE = _REPO_ROOT / "tools" / "probe_101qq_hero_rank_double.py"
 _TOOL_COMPARE = _REPO_ROOT / "tools" / "compare_101qq_vs_ddragon.py"
-_DOC_INSTRUCTIONS = _REPO_ROOT / "docs" / "CAPTURE_101QQ_INSTRUCTIONS.md"
+_DOC_INSTRUCTIONS = _REPO_ROOT / "docs" / "_archive" / "CAPTURE_101QQ_INSTRUCTIONS.md"
 
 
 class ProbeArgparseContractTests(unittest.TestCase):
