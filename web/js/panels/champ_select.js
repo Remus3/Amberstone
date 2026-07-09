@@ -2148,24 +2148,21 @@ function _csvSetPushFlag(cat, on) {
 
 // --- Phase 3 (s176, 2026-05-12) - archetype scorer picker ---------------
 //
-// Six canonical archetypes; carry/bruiser/tank have real scorers today
-// (ds.dps / ds.hybrid / ds.ehp), the rest are placeholders for Phases
-// 4-6. Order matches core/archetype_picks.ARCHETYPES so the UI is stable
-// across language changes and re-renders. Implemented set tracked
-// separately so we can gray-out the unimplemented ones without removing
-// them - operator sees the full taxonomy.
-// s209: all 6 scorers shipped - flipped `implemented: false -> true` for
-// mage/assassin/enchanter and pointed to their dedicated scorers
-// (ability DPS / burst / HPS) per Phases 4-6 (s179/s180/s181). Pre-s209
-// the dispatcher routed these to ds.dps as a placeholder; that fallback
-// path is gone. Source of truth for unit suffixes is web/js/lib/scorer_units.js.
+// Six canonical archetypes. Order matches core/archetype_picks.ARCHETYPES
+// so the UI is stable across language changes and re-renders. Source of
+// truth for unit suffixes is web/js/lib/scorer_units.js.
+// s209: all 6 scorers shipped - each archetype points to its dedicated
+// scorer (DPS / Hybrid / EHP / Ability DPS / Burst / HPS) per Phases 4-6
+// (s179/s180/s181). The dispatcher has no ds.dps placeholder fallback.
+// Audit 2026-07-09 (Lane 3.6): dropped the now-always-true `implemented`
+// field + its unreachable `placeholder` gray-out guard.
 const _CSV_ARCHETYPES = [
-  { key: "carry",     label: "Carry",     implemented: true, scorer: "DPS" },
-  { key: "bruiser",   label: "Bruiser",   implemented: true, scorer: "Hybrid" },
-  { key: "tank",      label: "Tank",      implemented: true, scorer: "EHP" },
-  { key: "mage",      label: "Mage",      implemented: true, scorer: "Ability DPS" },
-  { key: "assassin",  label: "Assassin",  implemented: true, scorer: "Burst" },
-  { key: "enchanter", label: "Enchanter", implemented: true, scorer: "HPS" },
+  { key: "carry",     label: "Carry",     scorer: "DPS" },
+  { key: "bruiser",   label: "Bruiser",   scorer: "Hybrid" },
+  { key: "tank",      label: "Tank",      scorer: "EHP" },
+  { key: "mage",      label: "Mage",      scorer: "Ability DPS" },
+  { key: "assassin",  label: "Assassin",  scorer: "Burst" },
+  { key: "enchanter", label: "Enchanter", scorer: "HPS" },
 ];
 
 function _csvArchetypeStorageKey(champion) { return "rc-cs-archetype-" + (champion || ""); }
@@ -2546,7 +2543,6 @@ function _csvArchetypePickerHtml(champion) {
   const buttons = _CSV_ARCHETYPES.map((a) => {
     const cls = ["csv-arch-btn"];
     if (a.key === resolved.key) cls.push("active");
-    if (!a.implemented) cls.push("placeholder");
     return `<button class="${cls.join(" ")}" data-arch="${a.key}"`
          + ` title="${a.label} -> ds.${a.scorer.toLowerCase().split(" ")[0]}">`
          + `<span class="csv-arch-label">${a.label}</span>`
@@ -3971,11 +3967,14 @@ function _csvRenderPickBan(cs, myCid) {
       };
     }
     // Use placeholder ban data when backend can't supply 3.
+    // Audit 2026-07-09 (Lane 2.2): placeholder bans have NO sample, so
+    // pct is forced to 0. _csvBanReasonLabel emits "" for pct <= 0, so
+    // the cell renders name-only instead of a fabricated "beats you N%".
     const fbBan = (ph.performance.bans || [])[i] || {};
     return {
       champId:    fbBan.champId || 0,
       name:       fbBan.name    || "-",
-      pct:        fbBan.pct     || 0,
+      pct:        0,
       encounters: 0,
       losses:     0,
       sourceKey:  "counter",

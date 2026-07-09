@@ -523,6 +523,18 @@
   text-align: right;
 }
 .lm-rank-empty[hidden] { display: none; }
+/* Audit 2026-07-09 (Lane 2.3): provenance caption under the rank-tier grid -
+ * the tier averages are hand-curated reference values, not measured. Matches
+ * the .lm-rank-empty muted-caption idiom (fs-xs / text-dim / italic / right). */
+.lm-rank-estimate-note {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.3;
+  text-align: right;
+  margin-top: 4px;
+}
+.lm-rank-estimate-note[hidden] { display: none; }
 /* selector / each cell's grid-area is set inline on the HTML element. */
 /* s220: the selector spans col1 (= the KDA+KP% pair width beneath it).
  * justify-self:stretch overrides the grid's justify-items:end for this
