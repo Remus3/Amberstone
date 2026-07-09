@@ -8,12 +8,12 @@ NAMES but no live cooldown, so the overlay tracker is tap-driven).
 stats: the API-backed championStats the overlay stats mini-panel renders (a HUD
 replacement is impossible - no live cooldowns/buffs/wards in the API).
 
-Same monkeypatch-urlopen harness as test_liveclient_kp.py.
+Same cache-seed harness as test_liveclient_kp.py (HOT-02, 2026-07-09:
+liveclient_summary reads the shared core.liveclient_cache Snapshot).
 """
 from __future__ import annotations
 
 import contextlib
-import json
 import time
 import unittest
 from unittest import mock
@@ -52,22 +52,11 @@ def _agd(active: str, players: list, stats: dict | None = None) -> dict:
 
 @contextlib.contextmanager
 def _patched(agd):
-    wrap = {"ts": time.time(), "data": agd}
-    payload = json.dumps(wrap).encode("utf-8")
-
-    class _Resp:
-        def __enter__(self_inner):
-            return self_inner
-
-        def __exit__(self_inner, *exc):
-            return False
-
-        def read(self_inner):
-            return payload
-
-    with mock.patch.object(
-        _liveclient.urllib.request, "urlopen", return_value=_Resp(),
-    ):
+    # HOT-02 (2026-07-09): seed the shared liveclient cache Snapshot the summary
+    # now reads, instead of mocking a per-call urlopen.
+    from core.liveclient_cache import Snapshot
+    snap = Snapshot(data=agd, ts=time.time())
+    with mock.patch("core.liveclient_cache.get", return_value=snap):
         yield
 
 

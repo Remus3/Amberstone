@@ -16,11 +16,12 @@ team_total_kills > 0 AND the active player is resolvable; otherwise the
 key is OMITTED entirely.
 
 Inputs are built by calling ``liveclient_summary()`` with a realistic
-``allgamedata`` dict - ``urllib.request.urlopen`` is monkeypatched in the
-module namespace to return the vision-server wrap
-``{"ts": <now>, "data": <allgamedata>}`` so the live HTTP read resolves
-to our fixture. ``ts`` is set to ``time.time()`` so it passes the 5 s
-freshness gate.
+``allgamedata`` dict - the shared ``core.liveclient_cache`` Snapshot is
+seeded (via ``mock.patch`` on ``liveclient_cache.get``) with
+``Snapshot(data=<allgamedata>, ts=<now>)`` so the summary resolves to our
+fixture. ``ts`` is set to ``time.time()`` so it passes the 5 s freshness
+gate (HOT-02, 2026-07-09: the summary reads the cache, not a per-call
+urlopen).
 
 Covers:
   * normal roster -> correct "N%"
@@ -34,7 +35,6 @@ from __future__ import annotations
 
 import contextlib
 import io
-import json
 import time
 import unittest
 from unittest import mock
@@ -85,23 +85,15 @@ def _allgamedata(active_name: str, players: list,
 
 @contextlib.contextmanager
 def _patched(allgamedata, ts=None):
-    """Patch the module urlopen so liveclient_summary reads our fixture."""
-    wrap = {"ts": time.time() if ts is None else ts, "data": allgamedata}
-    payload = json.dumps(wrap).encode("utf-8")
+    """Seed the shared liveclient cache so liveclient_summary reads our fixture.
 
-    class _Resp:
-        def __enter__(self_inner):
-            return self_inner
-
-        def __exit__(self_inner, *exc):
-            return False
-
-        def read(self_inner):
-            return payload
-
-    with mock.patch.object(
-        _liveclient.urllib.request, "urlopen", return_value=_Resp(),
-    ):
+    HOT-02 (2026-07-09): liveclient_summary() now sources its frame from
+    core.liveclient_cache.get() (the shared 0.5s background poll) instead of a
+    per-call urlopen, so tests seed the cache Snapshot rather than mocking HTTP.
+    """
+    from core.liveclient_cache import Snapshot
+    snap = Snapshot(data=allgamedata, ts=time.time() if ts is None else ts)
+    with mock.patch("core.liveclient_cache.get", return_value=snap):
         yield
 
 

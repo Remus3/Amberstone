@@ -647,6 +647,7 @@ def compute_dps(
     assume_ally_detonation: bool = False,
     assume_passive_reflect: bool = False,
     assume_lifeline_shield: bool = False,
+    only_phase: Optional[str] = None,
 ) -> DpsResult:
     """Resolve auto-attack DPS for ``champion_id`` at ``level`` with items.
 
@@ -705,6 +706,22 @@ def compute_dps(
         raise ValueError(
             f"phase must be one of {PHASES}, got {selected_phase!r}"
         )
+    # HOT-01 (2026-07-09): opt-in single-phase convolution. The ranker only ever
+    # reads weighted_dps (the selected phase); computing early+mid+late per
+    # candidate discards 2/3 of the work. only_phase is a pure performance hint -
+    # it MUST equal the phase the result is weighted for, so guard a mismatch
+    # loudly rather than KeyError-ing on ``phase_dps[selected_phase]`` below.
+    # only_phase=None (the default) keeps the full 3-phase output byte-identical.
+    if only_phase is not None:
+        if only_phase not in PHASES:
+            raise ValueError(
+                f"only_phase must be one of {PHASES}, got {only_phase!r}"
+            )
+        if only_phase != selected_phase:
+            raise ValueError(
+                f"only_phase {only_phase!r} must match the selected phase "
+                f"{selected_phase!r}"
+            )
 
     resolved = build_champion(
         snapshot, champion_id, level, item_ids=item_ids, mode=mode,
@@ -954,15 +971,33 @@ def compute_dps(
     magic_amp = total_magic_amp_multiplier(item_effects)
 
     rotations_by_phase = _phase_rotations(snapshot, resolved.champion_id)
-    phase_dps = {
-        p: _phase_weighted_dps(
+
+    def _phase_dps_for(p: str) -> float:
+        return _phase_weighted_dps(
             stats_for_rotation, rotations_by_phase[p], target_armor_eff, target_mr_eff,
             mode_mult, crit_bonus, item_effects, call_ctx, damage_amp,
             magic_amp=magic_amp, aa_empower_amp=aa_empower_amp,
             apply_melee_aa_gate=apply_melee_aa_gate,
         )
-        for p in PHASES
-    }
+
+    if only_phase is not None:
+        # HOT-01 fast path. Compute the selected phase first. If it carries DPS,
+        # the all-phases-zero fallback (guarded on ``not any(phase_dps.values())``
+        # below) provably cannot fire, so the other two convolutions are dead
+        # work - skip them. Only when the selected phase is zero do we compute
+        # the remaining phases, so the fallback decision stays byte-identical to
+        # the full 3-phase path (a champion with rotations only in a non-selected
+        # phase must NOT trip the champion-level fallback).
+        _sel_dps = _phase_dps_for(selected_phase)
+        if _sel_dps > 0.0:
+            phase_dps = {selected_phase: _sel_dps}
+        else:
+            phase_dps = {
+                p: (_sel_dps if p == selected_phase else _phase_dps_for(p))
+                for p in PHASES
+            }
+    else:
+        phase_dps = {p: _phase_dps_for(p) for p in PHASES}
     weighted_dps = phase_dps[selected_phase]
 
     crit = crit_total

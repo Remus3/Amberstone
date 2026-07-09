@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 from .data_loader import DataSnapshot
-from .dps import compute_dps
+from .dps import _select_phase, compute_dps
 from .effects import ITEM_EFFECTS
 from .kit_axis_credit import kit_axis_item_ids, kit_axis_item_names
 from .stats import clamp_level
@@ -869,6 +869,12 @@ def rank_items(
     if only_item_ids is not None:
         only_ids = {str(i) for i in only_item_ids}
 
+    # HOT-01 (2026-07-09): the ranker only reads weighted_dps (the selected
+    # phase). Resolve the selected phase HERE - identically to compute_dps's
+    # internal ``phase or _select_phase(level)`` for any in-range level - and
+    # pass it as only_phase so each compute_dps skips the 2 unused phase
+    # convolutions. weighted_dps for the selected phase is byte-identical.
+    _selected_phase = phase or _select_phase(level)
     baseline = compute_dps(
         snapshot,
         champion_id=champion_id,
@@ -883,6 +889,7 @@ def rank_items(
         phase=phase,
         augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
+        only_phase=_selected_phase,
     )
 
     # Baseline burst with the current build (item 219 C). Computed ONCE and
@@ -975,6 +982,7 @@ def rank_items(
                 phase=phase,
                 augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
+                only_phase=_selected_phase,
             )
         except (KeyError, ValueError):
             continue
