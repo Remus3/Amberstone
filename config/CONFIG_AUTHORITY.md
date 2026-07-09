@@ -174,5 +174,8 @@ read constitutes a behavior change and is not permitted.
 - `config/runtime.json` - install-time only; NOT read by the runtime ops stack.
   Written by install.bat; contains install paths for LCU integration. Ignored
   after installation is complete.
-- `config/settings.json` - legacy settings file; read by LCU/UI code only;
-  not part of the ops stack config hierarchy.
+- `config/settings.json` - REMOVED 2026-07-09 (dead-config sweep). It had NO
+  runtime reader anywhere: keys memory_warn_mb / memory_limit_mb /
+  memory_watchdog_interval_s / game_poll_ms / data_poll_ms were never read, and
+  the file was not in config_validator.validate_all(). The watchdog and poll
+  loops use hardcoded defaults.

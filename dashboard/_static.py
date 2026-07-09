@@ -42,7 +42,7 @@ def compute_asset_hash() -> str:
     # dashboard.css / main.js), outside the panels/ walks below, so they
     # are listed explicitly to keep ADR-008 cache-busting honest.
     for rel in ("index.html", "css/dashboard.css", "css/overlay.css",
-                "js/main.js", "js/overlay_pulse.js", "js/ws_client.js"):
+                "js/main.js", "js/overlay_pulse.js"):
         p = web_root / rel
         try:
             parts.append(f"{rel}:{int(p.stat().st_mtime)}")
