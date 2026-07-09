@@ -80,11 +80,11 @@ ops/budget_saver/qualification_scorecard.json
 # Asserts the venv exists, litellm is exactly 1.91.0, and no stealer .pth is present.
 $ErrorActionPreference = "Stop"
 $root = "C:\Riot Commander\ops\budget_saver"
-$py = Join-Path $root ".venv\Scripts\python.exe"
-if (-not (Test-Path $py)) { Write-Error "FAIL: venv python missing"; exit 1 }
-$ver = & $py -m litellm --version 2>&1
+$venvPy = Join-Path $root ".venv\Scripts\python.exe"
+if (-not (Test-Path $venvPy)) { Write-Error "FAIL: venv python missing"; exit 1 }
+$ver = & $venvPy -m litellm --version 2>&1
 if ($ver -notmatch "1\.91\.0") { Write-Error "FAIL: litellm version = $ver (want 1.91.0)"; exit 1 }
-$site = & $py -c "import site,sys; print(site.getsitepackages()[0])"
+$site = & $venvPy -c "import site,sys; print(site.getsitepackages()[0])"
 if (Get-ChildItem -Path $site -Filter "litellm_init.pth" -ErrorAction SilentlyContinue) {
   Write-Error "FAIL: stealer signature litellm_init.pth present - ABORT, rotate keys"; exit 1 }
 Write-Output "PASS: litellm 1.91.0 clean in isolated venv"
