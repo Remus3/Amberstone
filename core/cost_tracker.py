@@ -119,7 +119,11 @@ DEFAULT_DEDUPE_TTL_S = 2.0
 _APP_DIR    = Path(__file__).parent.parent
 _SPEND_DIR  = _APP_DIR / "data" / "spend"
 _COACH_CFG  = _APP_DIR / "config" / "coach_settings.json"
-_RC_CFG     = _APP_DIR / "rc_config.json"
+# ops/rc_config.json is the canonical runtime config authority
+# (CONFIG_AUTHORITY.md); a repo-root rc_config.json never existed, so the
+# old path silently swallowed daily_budget_usd and the spend cap was never
+# enforced (audit 2026-07-09, Lane 2.1).
+_RC_CFG     = _APP_DIR / "ops" / "rc_config.json"
 
 # --- API spend gates (settings-menu kill-switches + per-match cost) --------
 # Each gate is an individually toggleable kill-switch surfaced in the dev
