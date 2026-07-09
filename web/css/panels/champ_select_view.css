@@ -89,10 +89,9 @@
   margin-bottom: 2px;
 }
 
-/* Item 200 Slice D (2026-05-25): top-left card holds the DS Build
- * Archetype picker on top + the PICK sub-panel (moved from Pick & Ban)
- * below. Flex column so picks land in the freed space where the
- * .csv-arch-preview row used to render. */
+/* Top-left card holds the PICK sub-panel (moved from Pick & Ban). Flex
+ * column so the picks fill the card (the DS Build Archetype picker that
+ * used to sit above them was removed - LEDGER 823). */
 .csv-card-allies-body {
   display: flex;
   flex-direction: column;
@@ -335,225 +334,11 @@
 }
 .csv-lock-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
-/* Phase 3 (s176, 2026-05-12) - scorer-archetype picker.
- * Sits between lock button and build chooser. 6 buttons in a 3x2 grid.
- * Unimplemented scorers (mage/assassin/enchanter - Phases 4-6) are
- * grayed and labeled as DPS placeholders, but still clickable so the
- * coach falls back to ds.dps with a fell_back=True tag. */
-.csv-archetype-picker {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  /* s212 v4 (audit consider #3 option 3): bumped top-margin 4->20px so
-   * the picker has breathing room from the LOCKED state above. Stops
-   * the two heavy-outlined elements from visually competing for the
-   * eye in the center column. */
-  margin: 20px 0 12px;
-  padding: 8px;
-  background: var(--surface-3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.csv-archetype-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  /* UI scale v2.1: 12 -> --fs-xs (16). */
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--dim);
-}
-/* s211: source-row container groups the AUTO button + source pill.
- * AUTO sits to the left in matching typography; the source pill keeps
- * a fixed width with centered content so the visual width is stable
- * regardless of whether it reads "auto" or "overridden". */
-.csv-arch-source-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.csv-archetype-title .csv-arch-source {
-  /* UI scale v2.1: 11 -> --fs-xs (16). */
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-faint);
-  text-transform: none;
-  letter-spacing: 0.3px;
-  padding: 1px 6px;
-  background: var(--surface-2);
-  border-radius: 3px;
-  border: 1px solid var(--border);
-  min-width: 72px;       /* fixed width so "auto" / "overridden" don't shift layout */
-  text-align: center;
-  display: inline-block;
-}
-/* s211: AUTO button - same typography as the source pill. When the
- * picker is on the DDragon-tag default (no operator override), the
- * button is `.is-active` with a slight green hue + border so the
- * operator can see "auto mode is engaged". Click reverts to default. */
-.csv-arch-auto {
-  /* UI scale v2.1: 11 -> --fs-xs (16). */
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  color: var(--dim);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 1px 8px;
-  cursor: pointer;
-  text-transform: none;
-  font-family: inherit;
-  transition: border-color 0.12s, background 0.12s, color 0.12s;
-}
-.csv-arch-auto:hover { border-color: var(--good); color: var(--text); }
-.csv-arch-auto.is-active {
-  color: var(--good);
-  background: #0f2820;
-  border-color: #047857;
-  cursor: default;
-}
-.csv-archetype-buttons {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-
-/* Item 168 (2026-05-24): top-3 DS picks preview below the 6 archetype
- * buttons. Fills the empty space the operator flagged. 3-cell
- * horizontal row of item-icon + name; hydrates the moment the
- * /api/ds-preview POST returns (placeholder cells until then). Operator
- * picks a different archetype -> _CSV_DS_CACHE invalidates the old key,
- * the preview repopulates with the new archetype's top 3. */
-.csv-arch-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-.csv-arch-preview-head {
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.10em;
-  color: var(--text-faint);
-  text-align: center;
-}
-.csv-arch-preview-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.csv-arch-preview-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 4px 2px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-}
-.csv-arch-preview-cell.is-empty { opacity: 0.5; }
-.csv-arch-preview-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  background: var(--surface-3);
-  overflow: hidden;
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-faint);
-  font-weight: 700;
-}
-.csv-arch-preview-icon img { width: 100%; height: 100%; object-fit: cover; }
-.csv-arch-preview-name {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  color: #d1d5db;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  text-align: center;
-}
-.csv-arch-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 8px 4px;
-  background: var(--surface-2);
-  /* s212 v4 (audit consider #3 option 1): dropped 2->1px so the inactive
-   * grid reads as a quieter background pattern. Active state below
-   * carries the visual weight via a 4px left-edge accent (option 2)
-   * rather than a heavy 2px border, eliminating the "two heavy
-   * outlines stacked" competition with LOCKED above. */
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  color: #d1d5db;
-  cursor: pointer;
-  transition: 0.12s;
-  font-family: inherit;
-}
-.csv-arch-btn:hover {
-  border-color: var(--accent);
-  background: var(--surface-2);
-}
-.csv-arch-btn .csv-arch-label {
-  /* UI scale v2.1: 14 -> --fs-sm (18). */
-  font-size: var(--fs-sm);
-  font-weight: 800;
-  letter-spacing: 0.3px;
-}
-.csv-arch-btn .csv-arch-scorer {
-  /* UI scale v2.1 (item 202 audit MUST FIX): 11 -> --fs-xs (16) floor. */
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-.csv-arch-btn.active {
-  /* s212 v4 (audit consider #3 options 1-2-4 combined):
-   *   (1) thinner overall border - base button uses 1px now; active
-   *       state keeps that 1px ring so the perimeter isn't competing
-   *       with LOCKED's 2px green portrait outline above.
-   *   (2) 4px left-edge accent - mirrors the color-coded left borders
-   *       on the Pick & Ban rec rows so "active state" reads as the
-   *       same system-wide visual grammar across panels.
-   *   (4) recolor blue -> indigo/violet (#a78bfa / #7c3aed) so the
-   *       archetype picker chromatically separates from LOCKED's
-   *       saturated green AND the Pick & Ban green/purple/blue
-   *       3-color rec stripes. Indigo isn't used anywhere else in
-   *       the column.
-   * border-left grows from 1->4px which inset-shifts the content 3px;
-   * compensate via the same -3px margin-left so the active button
-   * stays grid-aligned with its inactive siblings. */
-  border-color: #4c3a82;
-  border-left: 4px solid #a78bfa;
-  margin-left: -3px;
-  background: linear-gradient(90deg, #1a1230 0%, var(--surface-3) 60%);
-  color: #ddd6fe;
-}
-.csv-arch-btn.active .csv-arch-scorer { color: #a78bfa; }
-.csv-arch-btn.placeholder {
-  opacity: 0.55;
-}
-.csv-arch-btn.placeholder .csv-arch-label { color: var(--dim); }
-.csv-arch-btn.placeholder.active {
-  /* operator chose an unimplemented archetype - still highlights but
-   * dimmer than the implemented ones so the placeholder semantics
-   * stay visible. */
-  opacity: 0.85;
-}
+/* Archetype scorer-picker styles removed (LEDGER 823). The .csv-archetype-*
+ * / .csv-arch-* / .csv-arch-preview / .csv-arch-btn rules styled the
+ * option-button picker that let operators write user_cs picks polluting the
+ * shared committed build-order precompute. The champ-select build preview
+ * now always uses the server-resolved DDragon-tag + kit-axis default. */
 
 /* Team panels - vertical stack of 5 cells. */
 .csv-team-list {
@@ -963,20 +748,9 @@
   margin-bottom: 6px;
 }
 
-/* Operator (2026-05-23 round 3): inside the relocated DS Build
- * Archetype slot (#csv-archetype-target), hide the inner picker's own
- * title row - the card head ".csv-card-head" already names the panel
- * "Daemon Slayer Build Archetype". Pre-fix the title appeared twice. */
-#csv-archetype-target .csv-archetype-title { display: none; }
-#csv-archetype-target .csv-archetype-picker {
-  margin: 0;
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-/* Operator (2026-05-23 round 3): Summoner Spell strip sits BELOW the DS BUILD
- * ARCHETYPE picker + ABOVE the SR BUILD CHOOSER. 9 SR-relevant spells in
+/* Summoner Spell strip sits ABOVE the SR BUILD CHOOSER (the DS Build
+ * Archetype picker that used to sit above it was removed - LEDGER 823).
+ * 9 SR-relevant spells in
  * a single horizontal row; each cell shows icon + name + recommended
  * usage % (operator's match-history-derived; mock defaults for now).
  * Selected cells (matching the active variant's summoners) get a green
@@ -1572,43 +1346,42 @@
  * central pane / enemies pane to mode-specific renderers.
  * s214 v2: Brawl branch retired - mode removed from live rotation.
  *
- * Pick&Ban panel is SR-only - ARAM/Arena have no bans. We hide
- * the entire pickban card and collapse the grid so allies grows to
- * fill row 2.
+ * Pick&Ban panel is SR-only - ARAM/Arena have no bans. LEDGER 823: the
+ * Allies card is ALSO empty in ARAM/Arena now - it held the DS archetype
+ * picker (removed) plus the SR-draft-only #csv-picks-target (hidden below),
+ * and has no allies team-list target. So we hide BOTH left-column cards and
+ * let My Pick span the freed left column (the grid stays 3 tracks).
  */
 #view-champ-select[data-cs-mode="aram"]  .csv-card-pickban,
-#view-champ-select[data-cs-mode="arena"] .csv-card-pickban {
+#view-champ-select[data-cs-mode="arena"] .csv-card-pickban,
+#view-champ-select[data-cs-mode="aram"]  .csv-card-allies,
+#view-champ-select[data-cs-mode="arena"] .csv-card-allies {
   display: none;
 }
 /* The PICK recommendations sub-panel (#csv-picks-target) is SR-draft-only.
- * Item 200 relocated it from the P&B card into the Allies card, so the
- * .csv-card-pickban gate above no longer covers it - and _csvRenderPickBan
- * never runs in ARAM/Arena, so without this gate the static
- * "waiting for champ-select data..." placeholder lingered forever in the
- * allies column (2026-07-03 QA audit follow-up). Overrides the base
- * .csv-card-allies-body #csv-picks-target { display: flex } (higher
- * specificity: 2 ids + attr beats 1 id + 1 class). */
+ * Its parent .csv-card-allies is now hidden above in ARAM/Arena, but keep
+ * this belt-and-suspenders gate so the "waiting for champ-select data..."
+ * placeholder can never surface even if the card hide is later relaxed.
+ * Overrides the base .csv-card-allies-body #csv-picks-target { display: flex }
+ * (higher specificity: 2 ids + attr beats 1 id + 1 class). */
 #view-champ-select[data-cs-mode="aram"]  #csv-picks-target,
 #view-champ-select[data-cs-mode="arena"] #csv-picks-target {
   display: none;
 }
-/* Reflow grid: with pickban hidden, allies takes the full left column
- * height. mypick + enemies still flank it.
- * R30 (2026-06-24, in-game review): the pre-R30 override used a SINGLE
- * "allies mypick enemies" row, which dropped the "suggestions" grid-area
- * entirely - the ASSESSMENT card (grid-area:suggestions) then auto-placed
- * as an ORPHAN block (floating, disconnected) and the lost minmax floor
- * left a large vertical void (worst in Arena). Restore a 2-row template
- * matching SR minus pickban: allies + mypick span both rows; enemies sits
- * top-right (row 1, auto) and suggestions returns under it (row 2, fills),
- * so the ASSESSMENT card is back in the grid and the column fills the
- * viewport instead of leaving dead space. */
+/* Reflow grid: with BOTH left-column cards (pickban + the now-empty allies)
+ * hidden, My Pick (the build decision) spans the freed LEFT column (grid
+ * columns 1-2, both rows) while Enemies (row 1) + the Assessment /
+ * Suggestions card (row 2) stay in the right column. Kept at 3 tracks (the
+ * base 1fr 1.2fr 1fr) so the 1920 desktop layout + the assessment-in-right-
+ * column pins hold. Pre-LEDGER-823 the left column held the archetype
+ * picker; removing it left an empty titled card there, now filled by My
+ * Pick. */
 #view-champ-select[data-cs-mode="aram"]  .csv-grid,
 #view-champ-select[data-cs-mode="arena"] .csv-grid {
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
-    "allies mypick enemies"
-    "allies mypick suggestions";
+    "mypick mypick enemies"
+    "mypick mypick suggestions";
 }
 
 /* R30 (2026-06-24): champ-select companion reflow. The 3-col grid is sized

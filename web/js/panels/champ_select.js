@@ -840,21 +840,13 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     _csvFetchCompVerdict(cs);
     extraHtml = _csvBenchHtml(cs);
   }
-  // Phase 3 (s176): trigger an async fetch for the persisted pick so the
-  // picker re-renders with overridden state once the server replies.
-  // No-op if already cached / inflight. Renders synchronously below.
+  // Archetype-pick UI removed (LEDGER 823 root cause): the option-button
+  // picker let operators write user_cs picks into the shared committed
+  // data/cs_archetype_picks.json that the build-order precompute reads, so
+  // a pick (e.g. Katarina->bruiser) polluted every operator's committed
+  // build tables. The read-only default fetch below stays so the DS build
+  // preview shows the same server-resolved scorer the coach uses.
   if (myName) _csvFetchArchetype(myName);
-  const archetypeHtml = _csvArchetypePickerHtml(myName);
-  // Operator (2026-05-23 round 2): Allies panel re-used as the DS
-  // Build Archetype slot. Render the picker into #csv-archetype-target
-  // + wire its click handlers; the My Pick body below no longer
-  // interpolates archetypeHtml.
-  const archTarget = document.getElementById("csv-archetype-target");
-  if (archTarget) {
-    archTarget.innerHTML = archetypeHtml
-      || '<div class="csv-empty">waiting for champion pick...</div>';
-    _csvWireArchetypePicker(archTarget);
-  }
   const variants = _csvBuildVariantsFor(myCid, myName, mode, cs);
   // Operator (2026-05-23) item 164: push ALL build variants to the LCU
   // client so the in-game item-shop "Recommended Items" dropdown carries
@@ -1401,11 +1393,10 @@ function _csvComputeSig(cs, mode, myCid, myName) {
     if (!p) return "_";
     return `${p.cellId|0}:${p.championId|0}:${p.championPickIntent|0}`;
   }).join(",");
-  // s214: DS cache key folds in the archetype primary alongside mode,
-  // so the sig changes when operator flips archetype mid-CS and the
-  // build chooser re-renders with fresh items.
-  const archForKey = (_CSV_ARCH_CACHE[myName] && _CSV_ARCH_CACHE[myName].primary)
-    || _csvSavedArchetype(myName) || "";
+  // DS cache key folds in the resolved archetype primary alongside mode
+  // so the sig tracks the server-default scorer. The operator archetype
+  // picker was removed (LEDGER 823), so there is no localStorage override.
+  const archForKey = (_CSV_ARCH_CACHE[myName] && _CSV_ARCH_CACHE[myName].primary) || "";
   const dsKey   = _CSV_DS_CACHE[_csvDsCacheKey(myName, _csvDsModeFor(mode), archForKey)] ? "1" : "0";
   const userKey = _CSV_USER_CACHE[`${myName}|${mode || "sr"}`] !== undefined ? "1" : "0";
   // s211 v4: include the archetype's primary + source in the sig so a
@@ -2146,34 +2137,15 @@ function _csvSetPushFlag(cat, on) {
   catch (_) {}
 }
 
-// --- Phase 3 (s176, 2026-05-12) - archetype scorer picker ---------------
+// --- Archetype scorer resolution (read-only) ----------------------------
 //
-// Six canonical archetypes. Order matches core/archetype_picks.ARCHETYPES
-// so the UI is stable across language changes and re-renders. Source of
-// truth for unit suffixes is web/js/lib/scorer_units.js.
-// s209: all 6 scorers shipped - each archetype points to its dedicated
-// scorer (DPS / Hybrid / EHP / Ability DPS / Burst / HPS) per Phases 4-6
-// (s179/s180/s181). The dispatcher has no ds.dps placeholder fallback.
-// Audit 2026-07-09 (Lane 3.6): dropped the now-always-true `implemented`
-// field + its unreachable `placeholder` gray-out guard.
-const _CSV_ARCHETYPES = [
-  { key: "carry",     label: "Carry",     scorer: "DPS" },
-  { key: "bruiser",   label: "Bruiser",   scorer: "Hybrid" },
-  { key: "tank",      label: "Tank",      scorer: "EHP" },
-  { key: "mage",      label: "Mage",      scorer: "Ability DPS" },
-  { key: "assassin",  label: "Assassin",  scorer: "Burst" },
-  { key: "enchanter", label: "Enchanter", scorer: "HPS" },
-];
-
-function _csvArchetypeStorageKey(champion) { return "rc-cs-archetype-" + (champion || ""); }
-function _csvSavedArchetype(champion) {
-  try { return localStorage.getItem(_csvArchetypeStorageKey(champion)) || ""; }
-  catch (_) { return ""; }
-}
-function _csvSaveArchetype(champion, key) {
-  try { localStorage.setItem(_csvArchetypeStorageKey(champion), key); }
-  catch (_) {}
-}
+// The operator-facing archetype PICKER was removed (LEDGER 823): clicking a
+// scorer wrote a user_cs pick into data/cs_archetype_picks.json, a shared
+// committed file the build-order precompute reads - so a pick (e.g.
+// Katarina->bruiser) polluted every operator's committed build tables. What
+// remains is the read-only path below: fetch the server-resolved default
+// scorer (DDragon-tag + kit-axis default) so the champ-select build preview
+// shows the same scorer the coach uses. No write surface, no localStorage.
 
 // Per-champion cached pick from /api/cs-archetype-pick. Map keyed by
 // champion display name. Fetched once per champion change; the picker
@@ -2200,15 +2172,12 @@ function _csvFetchArchetype(champion) {
     .catch(() => { _CSV_ARCH_INFLIGHT[champion] = false; });
 }
 
-// Resolve which archetype to highlight. Priority: localStorage (instant)
-// -> cached fetch (server-side override) -> "" (no selection yet, picker
-// shows nothing pre-selected and the row is dim).
+// Resolve the champion's server-side archetype (the DDragon-tag + kit-axis
+// default from /api/cs-archetype-pick). Feeds the DS build-preview cache key
+// so the preview scorer matches the coach. Returns "" until the fetch lands
+// (the preview then defaults the scorer server-side).
 function _csvResolveArchetype(champion) {
   if (!champion) return { key: "", source: "" };
-  const local = _csvSavedArchetype(champion);
-  if (local && _CSV_ARCHETYPES.some((a) => a.key === local)) {
-    return { key: local, source: "local" };
-  }
   const fetched = _CSV_ARCH_CACHE[champion];
   if (fetched && fetched.primary) {
     return { key: fetched.primary, source: fetched.source || "default" };
@@ -2537,138 +2506,13 @@ function _csvWireSummSpells(scope, mode) {
   wire();
 }
 
-function _csvArchetypePickerHtml(champion) {
-  if (!champion) return "";
-  const resolved = _csvResolveArchetype(champion);
-  const buttons = _CSV_ARCHETYPES.map((a) => {
-    const cls = ["csv-arch-btn"];
-    if (a.key === resolved.key) cls.push("active");
-    return `<button class="${cls.join(" ")}" data-arch="${a.key}"`
-         + ` title="${a.label} -> ds.${a.scorer.toLowerCase().split(" ")[0]}">`
-         + `<span class="csv-arch-label">${a.label}</span>`
-         + `<span class="csv-arch-scorer">${a.scorer}</span>`
-         + `</button>`;
-  }).join("");
-  // s212 v3: dropped the "overridden" / "auto" source pill - duplicate
-  // of the AUTO button's active state (green-active = auto, grey =
-  // overridden). The AUTO button alone carries both signals: when
-  // green it's the active mode; when grey-clickable it means "click
-  // to revert from override". Audit must-fix #2 closed.
-  const isAuto = (resolved.source === "default" || resolved.source === "");
-  const autoBtn = `<button class="csv-arch-auto${isAuto ? " is-active" : ""}"
-                           data-champion="${champion}"
-                           title="${isAuto ? 'currently auto-derived from DDragon tags' : 'click to revert to DDragon-tag default'}">AUTO</button>`;
-  // Operator (2026-05-25 item 200 Slice D): the DS-top-picks preview
-  // row that lived under the 6 archetype buttons (item 168) is removed.
-  // The freed vertical space is filled by the PICK sub-panel moved up
-  // from Pick & Ban into the same top-left card. See `csv-picks-target`
-  // mount in web/index.html + _csvRenderPickBan split below.
-  return `
-    <div class="csv-archetype-picker" data-champion="${champion}">
-      <div class="csv-archetype-title">
-        <span>Daemon Slayer build archetype</span>
-        ${autoBtn}
-      </div>
-      <div class="csv-archetype-buttons">${buttons}</div>
-    </div>`;
-}
-
-function _csvWireArchetypePicker(scope) {
-  const wrap = scope.querySelector(".csv-archetype-picker");
-  if (!wrap) return;
-  const champion = wrap.dataset.champion || "";
-  if (!champion) return;
-  wrap.querySelectorAll(".csv-arch-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const arch = btn.dataset.arch || "";
-      if (!arch) return;
-      // Save locally for instant subsequent renders, then POST to
-      // persist server-side. Match the existing build-chooser pattern.
-      _csvSaveArchetype(champion, arch);
-      // Optimistic update of the cached pick so the next render shows
-      // the active state without waiting for the POST round-trip.
-      _CSV_ARCH_CACHE[champion] = Object.assign(
-        {}, _CSV_ARCH_CACHE[champion] || {},
-        { primary: arch, source: "user_cs", champion },
-      );
-      // s214: invalidate any cached DS entries for OTHER archetypes
-      // on this champion so the experimental row's items refresh with
-      // the new scorer. The DS cache key is `${champion}|${dsMode}|${arch}`
-      // so we drop every entry whose champion+dsMode matches but arch
-      // does not. Net effect: clicking Tank -> Bruiser drops the cached
-      // Tank ranking and triggers a fresh `/api/ds-preview` POST with
-      // `archetype: "bruiser"` next render.
-      Object.keys(_CSV_DS_CACHE).forEach((k) => {
-        if (k.startsWith(`${champion}|`) && !k.endsWith(`|${arch}`)) {
-          delete _CSV_DS_CACHE[k];
-        }
-      });
-      Object.keys(_CSV_DS_INFLIGHT).forEach((k) => {
-        if (k.startsWith(`${champion}|`) && !k.endsWith(`|${arch}`)) {
-          delete _CSV_DS_INFLIGHT[k];
-        }
-      });
-      fetch("/api/cs-archetype-pick", {
-        method: "POST", cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ champion, primary: arch, source: "user_cs" }),
-      })
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          if (data && data.ok && data.pick) {
-            _CSV_ARCH_CACHE[champion] = data.pick;
-          }
-        })
-        .catch(() => { /* localStorage already saved; next reload retries */ });
-      // Update DOM directly so the operator sees the click respond
-      // before the next render tick.
-      wrap.querySelectorAll(".csv-arch-btn").forEach((b) => {
-        b.classList.toggle("active", b.dataset.arch === arch);
-      });
-      _csvScheduleRender();
-    });
-  });
-  // s211: AUTO button -> revert to DDragon-tag default. Clears the
-  // local override, POSTs `{clear: true}` to drop the server-side
-  // record, and re-fetches so the picker re-renders with source="default".
-  const autoBtn = wrap.querySelector(".csv-arch-auto");
-  if (autoBtn) {
-    autoBtn.addEventListener("click", () => {
-      if (autoBtn.classList.contains("is-active")) return;  // already on AUTO
-      try { localStorage.removeItem(_csvArchetypeStorageKey(champion)); } catch (_) {}
-      // s214: drop the user-archetype DS cache so the experimental row
-      // re-fetches with the about-to-be-resolved default archetype.
-      // We don't know which archetype the server will default to yet,
-      // so blow away everything for this champion + dsMode pair.
-      Object.keys(_CSV_DS_CACHE).forEach((k) => {
-        if (k.startsWith(`${champion}|`)) delete _CSV_DS_CACHE[k];
-      });
-      Object.keys(_CSV_DS_INFLIGHT).forEach((k) => {
-        if (k.startsWith(`${champion}|`)) delete _CSV_DS_INFLIGHT[k];
-      });
-      // Drop server-side; the endpoint accepts `{champion, clear: true}`.
-      fetch("/api/cs-archetype-pick", {
-        method: "POST", cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ champion, clear: true }),
-      })
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          // Clear our cache so the next fetch reloads the default.
-          delete _CSV_ARCH_CACHE[champion];
-          delete _CSV_ARCH_INFLIGHT[champion];
-          if (data && data.ok && data.pick) {
-            _CSV_ARCH_CACHE[champion] = data.pick;
-          }
-          _csvScheduleRender();
-        })
-        .catch(() => {
-          delete _CSV_ARCH_CACHE[champion];
-          _csvScheduleRender();
-        });
-    });
-  }
-}
+// _csvArchetypePickerHtml + _csvWireArchetypePicker removed (LEDGER 823):
+// the DS archetype option-button picker + its AUTO button issued two
+// /api/cs-archetype-pick POSTs (save user_cs + clear) that wrote into the
+// shared committed data/cs_archetype_picks.json the build-order precompute
+// reads. That let one operator's champ-select pick pollute the committed
+// build tables for everyone. The read-only default resolution above
+// (_csvFetchArchetype + _csvResolveArchetype) is retained for the preview.
 
 // Convert the view's adapt-mode to the DS engine's mode label.
 function _csvDsModeFor(mode) {

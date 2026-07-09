@@ -1,15 +1,18 @@
-"""Drift guards for item 200 Slice D - PICK section in top-left card +
-DS top-picks carry block removed from archetype picker.
+"""Drift guards for the top-left card PICK section + the LEDGER 823 removal
+of the DS Build Archetype picker.
 
-Operator (2026-05-25) directed: move the PICK sub-panel of Pick & Ban
-into the top-left .csv-card-allies card (under the DS Build Archetype
-picker) and REMOVE the ".csv-arch-preview" DS top-picks carry block
-that previously rendered under the 6 archetype buttons. The bans + duo
-synergy stay in row-2 #csv-pickban-body with the freed vertical space.
+Operator (2026-05-25) moved the PICK sub-panel of Pick & Ban into the
+top-left .csv-card-allies card. LEDGER 823 then REMOVED the DS Build
+Archetype option-button picker (+ its #csv-archetype-target mount + the
+.csv-arch-preview carry block): each button click POSTed a user_cs pick to
+/api/cs-archetype-pick that wrote the shared committed cs_archetype_picks.json
+the build-order precompute reads, so one operator's pick polluted everyone's
+committed build tables. The PICK section now fills the card; the bans + ally
+picks stay in row-2 #csv-pickban-body.
 
 These tests pin the structural contract so a future refactor that
-re-introduces the carry block or reverts the PICK section back into
-#csv-pickban-body fails CI.
+re-introduces the picker / carry block, or reverts the PICK section back
+into #csv-pickban-body, fails CI.
 """
 from __future__ import annotations
 
@@ -28,9 +31,9 @@ def _read(path: Path) -> str:
 
 
 class TopLeftCardMountsTests(unittest.TestCase):
-    """The top-left .csv-card-allies body must mount BOTH the archetype
-    picker target (#csv-archetype-target) AND the PICK sub-panel target
-    (#csv-picks-target), in that order."""
+    """The top-left .csv-card-allies body mounts the PICK sub-panel target
+    (#csv-picks-target). The DS Build Archetype picker mount
+    (#csv-archetype-target) was removed (LEDGER 823)."""
 
     def setUp(self) -> None:
         self.html = _read(INDEX_HTML)
@@ -42,11 +45,14 @@ class TopLeftCardMountsTests(unittest.TestCase):
             "(item 200 Slice D)",
         )
 
-    def test_csv_archetype_target_still_exists(self) -> None:
-        self.assertIn(
+    def test_csv_archetype_target_removed(self) -> None:
+        # LEDGER 823: the DS Build Archetype option-button picker + its
+        # #csv-archetype-target mount were removed - operator clicks wrote
+        # user_cs picks that polluted the shared committed build precompute.
+        self.assertNotIn(
             'id="csv-archetype-target"', self.html,
-            "DS Build Archetype mount #csv-archetype-target must NOT be "
-            "removed (operator-protected per item 168/178)",
+            "DS Build Archetype mount #csv-archetype-target must be removed "
+            "(LEDGER 823 - picker deleted to stop precompute pollution)",
         )
 
     def test_picks_target_lives_under_csv_card_allies(self) -> None:
@@ -56,15 +62,10 @@ class TopLeftCardMountsTests(unittest.TestCase):
         idx_allies = self.html.find('class="csv-card csv-card-allies"')
         idx_pickban = self.html.find('class="csv-card csv-card-pickban"')
         idx_picks_target = self.html.find('id="csv-picks-target"')
-        idx_arch_target = self.html.find('id="csv-archetype-target"')
         self.assertGreater(idx_allies, -1, ".csv-card-allies not found")
         self.assertGreater(idx_pickban, -1, ".csv-card-pickban not found")
         self.assertGreater(
             idx_picks_target, -1, "#csv-picks-target not found",
-        )
-        self.assertGreater(
-            idx_arch_target, idx_allies,
-            "#csv-archetype-target must appear after .csv-card-allies opens",
         )
         self.assertGreater(
             idx_picks_target, idx_allies,
@@ -95,10 +96,9 @@ class TopLeftCardMountsTests(unittest.TestCase):
 
 
 class DsTopPicksCarryRemovedTests(unittest.TestCase):
-    """The .csv-arch-preview DS top-picks carry block (3-cell row that
-    rendered below the 6 archetype buttons per item 168) MUST be removed
-    from _csvArchetypePickerHtml. The DS Build Archetype 6-selectables
-    picker itself stays."""
+    """The .csv-arch-preview DS top-picks carry block MUST be absent from
+    champ_select.js. LEDGER 823 additionally removed the whole DS Build
+    Archetype picker (buttons + AUTO + the two write POSTs)."""
 
     def setUp(self) -> None:
         self.js = _read(CHAMP_SELECT_JS)
@@ -133,16 +133,30 @@ class DsTopPicksCarryRemovedTests(unittest.TestCase):
             "removed (item 200 Slice D scope)",
         )
 
-    def test_archetype_picker_template_still_emits(self) -> None:
-        # The 6-selectables picker stays - operator-protected per item 168.
-        self.assertIn(
+    def test_archetype_picker_template_removed(self) -> None:
+        # LEDGER 823: the 6-selectables picker + AUTO button were removed.
+        self.assertNotIn(
             'class="csv-archetype-picker"', self.js,
-            "DS Build Archetype 6-selectables picker MUST NOT be removed "
-            "(operator-protected per item 168/178)",
+            "DS Build Archetype picker must be removed (LEDGER 823)",
         )
-        self.assertIn(
+        self.assertNotIn(
             'class="csv-archetype-buttons"', self.js,
-            "DS Build Archetype button grid MUST NOT be removed",
+            "DS Build Archetype button grid must be removed (LEDGER 823)",
+        )
+
+    def test_archetype_write_posts_removed(self) -> None:
+        # The two write POSTs (save user_cs + AUTO clear) are gone; only the
+        # read-only GET (?champion=) survives to feed the build preview's
+        # server-default scorer. Assert the data markers of the write path
+        # (not the function name, which the removal note still cites).
+        self.assertNotIn(
+            'source: "user_cs"', self.js,
+            "the user_cs write payload must be gone (LEDGER 823) - operators "
+            "can no longer write picks that pollute the committed precompute",
+        )
+        self.assertNotIn(
+            "clear: true", self.js,
+            "the AUTO-revert clear POST payload must be gone (LEDGER 823)",
         )
 
 
@@ -210,8 +224,8 @@ class PickBanStructurePreservedTests(unittest.TestCase):
 
 
 class CardAlliesBodyStylingTests(unittest.TestCase):
-    """Top-left card now uses a flex column layout to stack the
-    archetype picker + picks mount."""
+    """Top-left card uses a flex column layout so the picks mount fills the
+    card (the archetype picker that used to sit above it is gone - LEDGER 823)."""
 
     def setUp(self) -> None:
         self.css = _read(CHAMP_SELECT_CSS)
@@ -230,7 +244,7 @@ class CardAlliesBodyStylingTests(unittest.TestCase):
             self.css,
             r"\.csv-card-allies-body\s+#csv-picks-target\s*\{[^}]*flex:\s*1 1 auto",
             "#csv-picks-target inside .csv-card-allies-body must flex-grow "
-            "into the freed space below the archetype picker",
+            "to fill the card (LEDGER 823 removed the archetype picker above it)",
         )
 
 
