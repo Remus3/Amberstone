@@ -51,7 +51,6 @@ PINS = {
     "web/css/panels/right_now.css": 3,
     "web/css/panels/spike_curve.css": 1,
     "web/css/panels/ward_heat.css": 1,
-    "web/css/stub.css": 9,
     "web/css/tokens.css": 1,
 }
 

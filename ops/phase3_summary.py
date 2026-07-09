@@ -78,8 +78,6 @@ NON_PY_FILES = [
     "agents/state/lockfile",
     "lib/http/blocklist.json",
     "web/index.html",
-    "web/css/stub.css",
-    "web/js/ws_client.js",
     "ops/phase3_install.ps1",
 ]
 
