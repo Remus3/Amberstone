@@ -48,5 +48,32 @@ Session -- live ARAM drain, 1 Mayhem game (Kai'Sa, enemy Leona/Renata/Kennen/Hwe
   1. STALE COACH ARTIFACT: aram_coaching_data.json fight_rule/risk referenced Annie/Morgana from previous game vs current enemies Leona/Renata/Kennen/Hwei/Ekko. Root cause: _base_coach.py _ensure_data() only writes blank on missing file; stale daemon_slayer_picks/scorer/fight_rule survive game restart. Artifact has no game_id for cross-game invalidation.
   2. VOID IMMOLATION LEAK (symptom of #1): daemon_slayer_picks showed 223069 #1 with scorer="hybrid" for Kai'Sa. DS /rank correctly excludes it. The stale hybrid scorer picks were from a previous bruiser game.
 - NEXT: fix stale-artifact bug (blank on game_id change), then continue ARAM Mayhem drain.
+- DO NOT redo: stale-artifact fix (shipped b39a9fca, verified 2026-07-08 Arena session). D6 force_scan trigger (10374d02 verified working -- 12/12 bumps across 3 Arena games; shadow gap is vision model detection, not trigger).
 
 DO NOT redo: T3 boot fix, map_control dupe, recall_callout/ARAM leak, HZ build-order, enemy-spells CSS.
+
+---
+
+# 2026-07-08 (/live-gated-drain Arena + ARAM Mayhem)
+
+Session -- 1 Arena game (Kai'Sa 11-7) + 1 ARAM Mayhem game (Jinx vs Kog'Maw/Sion/Yuumi/Yasuo/Bard):
+
+Arena items (NO code changes -- observation only):
+- D6 shadow: force_scan trigger fix (10374d02) NOT loaded (committed after RC boot). RC restarted end-of-session.
+- D2: Cherry augment endpoints known-404 on 16.13.1.
+- D3: no boot anvil rolled.
+- D4/D5/D9: no roll/not evaluable (Goredrinker not picked, mode_modifiers GET identical ON/OFF).
+
+ARAM PASS (4 items):
+- C13 enemy_spells: 5 enemies x 2 spells correct
+- C12 antiheal POSITIVE: heal_threat detected (Yuumi Heal + Sion sustain)
+- C1 build logic: BotRK recommended for Jinx (correct on-hit ADC)
+- C14 debounce OFF: coach refreshes coherently (fight_rule = CC threats)
+
+PENDING:
+- CSS visual verify: overlay still hidden at session time
+- Arena retest after RC restart (b39a9fca + 10374d02 now loaded)
+
+Shadow accrual: arena_coach_shadow.jsonl 463 rows / hz_choice_shadow.jsonl 45307.
+
+NEXT: Arena game to test D6 shadow seeding post-restart, or CSS visual verify via overlay snapshot.
