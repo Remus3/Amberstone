@@ -8,8 +8,9 @@ Builds on the B2 3-row module:
     pip (.bm-pip) + a fractional ring (.bm-ring), computed client-side from the
     /api/dictionary/items recipe `from`-graph (items_index.js ITEM_RECIPES +
     componentProgress).
-  - Row2 META right-click cycles alternative archetype builds (metaIndex over the
-    canonical archetype ring, re-fetching /api/build-order with an archetype).
+  - Row2 META + Row3 ULTIMATE always fetch /api/build-order with the server-
+    default scorer (archetype: ""); the old right-click archetype cycle was
+    removed (LEDGER 823) so operators cannot switch the in-game archetype.
 
 Grep-style contract test (no jsdom/node harness for page code), mirroring
 tests/test_overlay_b2_three_row_build_module.
@@ -28,9 +29,6 @@ REPO = Path(__file__).resolve().parent.parent
 ACTIVE_MATCH_JS = REPO / "web" / "js" / "panels" / "active_match.js"
 ITEMS_INDEX_JS = REPO / "web" / "js" / "lib" / "items_index.js"
 BUILD_MODULE_CSS = REPO / "web" / "css" / "panels" / "build_module.css"
-ARCHETYPE_PY = REPO / "core" / "archetype_picks.py"
-
-_ARCHETYPES = ("carry", "bruiser", "tank", "mage", "assassin", "enchanter")
 
 
 def _deficon_slice(js: str) -> str:
@@ -100,31 +98,31 @@ class PartialComponent(unittest.TestCase):
         self.assertIn(".bm-pip", self.css)
 
 
-class MetaAltCycle(unittest.TestCase):
+class MetaAltCycleRemoved(unittest.TestCase):
+    """LEDGER 823: the Row2 META right-click archetype-cycle was removed. Both
+    the Meta and Ultimate rows now always request the server-default scorer
+    (archetype: ""), matching the champ-select preview + the coach. This class
+    is the anti-regression tripwire against the cycle being re-introduced."""
+
     def setUp(self):
         self.js = ACTIVE_MATCH_JS.read_text(encoding="utf-8")
 
-    def test_meta_cycle_state(self):
-        self.assertIn("metaIndex", self.js)
+    def test_meta_cycle_state_removed(self):
+        # The _BM_META / metaIndex / _cycleMeta / ring machinery is gone.
+        self.assertNotIn("_BM_META", self.js)
+        self.assertNotIn("metaIndex", self.js)
+        self.assertNotIn("_cycleMeta", self.js)
 
-    def test_meta_right_click_handler(self):
-        # contextmenu + stopPropagation (coexist with overlay_layout hide menu).
-        self.assertIn("contextmenu", self.js)
-        self.assertIn("stopPropagation", self.js)
+    def test_build_order_sends_default_archetype(self):
+        # The build-order + ultimate fetches still send an archetype field,
+        # now hard-pinned to "" so the server resolves the kit-axis default.
+        self.assertIn('archetype: ""', self.js)
 
-    def test_meta_cycle_zone_optin(self):
+    def test_meta_strip_still_a_zone(self):
+        # The strip stays an in-game clickable zone - the item-override radial
+        # still lives on it (installItemRadial); only the archetype cycle went.
         self.assertIn("data-rc-zone", self.js)
-
-    def test_build_order_sends_archetype(self):
-        self.assertIn("archetype:", self.js)
-
-    def test_archetype_ring_matches_core(self):
-        # Anti-drift: every canonical archetype the JS ring cycles must exist in
-        # core/archetype_picks.py ARCHETYPES.
-        core = ARCHETYPE_PY.read_text(encoding="utf-8")
-        for name in _ARCHETYPES:
-            self.assertIn(f'"{name}"', core, f"{name} missing from archetype_picks")
-            self.assertIn(name, self.js, f"{name} missing from the JS meta ring")
+        self.assertIn("installItemRadial", self.js)
 
 
 class BuildModuleCssB3(unittest.TestCase):
