@@ -235,6 +235,41 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-08 (enemy-spells CSS overflow fix)
+
+Session -- overlay enemy-spells chip wrapping:
+- Root cause: w-enemyspells default --ovx-w:210px too narrow. 5 enemy rows (name ~140px + 2 chips min 54px each) forced chips to wrap to second line per row, inflating height causing scrollbar at 2560x1440.
+- Fix: set --ovx-w:280px on [data-ovx-id="w-enemyspells"] so every row fits name + 2 chips on ONE line. Interior 264px > name (126px) + 2 chips (109px) + gaps (10px) = 245px. No wrap, no scrollbar.
+- 5/5 enemy_spells_abbr tests green.
+- Commit fb08ea23.
+- VISUAL VERIFY PENDING: overlay_visible=false at commit time; verify with /overlay snapshot next time game is foreground.
+
+DO NOT redo: T3 boot fix, map_control dupe, recall_callout/ARAM leak, HZ build-order regen, BATCH B/C verify.
+
+---
+
+# 2026-07-08 (HZ build-order regen + ARAM coach SR-leak fixes)
+
+Session 1 -- HZ build-order table regen + accrual rails:
+- Regen all 3 mode build-order tables (173 champs) from live DS :8893
+- HZ precompute tables (build_orders/16.13.1/) static regen all 173
+- Zero Gunmetal Greaves (3172) in any build_orders_sr.json
+- G1 laning: 98.02% coverage, 46.88% agreement
+- G2 build-order: followed +3.6% winrate, flip_ready=False
+- Commit 268e0952.
+
+Session 2 -- ARAM coach showing SR prompts:
+- recall_callout now gated SR-only via _RECALL_MODES frozenset (ARAM has no fountain recall)
+- ZOI map_control callout gated SR-only in _compute_uncached (quadrant labels "bot river / dragon" are Summoner's Rift concepts)
+- resolve_coach_fields no longer fills blank immediate when coach already filled action (ARAM coach intentionally retires immediate in favor of choices)
+- Commit 2a72be50. All 166 related tests green. CI green.
+
+DO NOT redo: T3 boot fix (19a76d8b + 415c1795), map_control dupe fix (2ddbc331), BATCH B/C verify, recall_callout/ARAM leak (2a72be50), HZ build-order regen (268e0952).
+
+NEXT: Section J OPEN WPs, or DS engine gaps (Aphelios rotation-DPS/A).
+
+---
+
 # 2026-07-08 (/live-gated-drain Arena + ARAM Mayhem)
 
 Session -- 1 Arena game (Kai'Sa 11-7, Aphelios prior) + 1 ARAM Mayhem game (Jinx vs Kog'Maw/Sion/Yuumi/Yasuo/Bard):
