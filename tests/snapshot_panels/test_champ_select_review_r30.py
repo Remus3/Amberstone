@@ -148,26 +148,33 @@ def test_assessment_card_in_right_column(mode, mock_server, pw_browser):
     assert not errors, f"JS errors [{mode}]: {errors[:3]}"
 
 
-def test_arena_renders_archetype_picker(mock_server, pw_browser):
-    """Arena gets the DS archetype picker in the left column. Pre-fix an
-    early-return in _csvRenderCentralPane skipped the archetype render for
-    Arena (left column stuck on 'waiting for champion pick...') even though
-    the fixture carries my_champion=222 + build_variants['Jinx|arena']."""
+def test_arena_archetype_picker_removed(mock_server, pw_browser):
+    """LEDGER 823: the DS archetype option-button picker was removed from the
+    champ-select left column (all modes, Arena included) - operator clicks
+    wrote user_cs picks that polluted the shared committed build precompute.
+    The Arena build chooser (test_arena_renders_build_chooser) still guards
+    that Arena reaches the render path (the R30 no-early-return fix)."""
     ctx, page, errors = _open(pw_browser, mock_server, "arena")
     try:
+        # Wait for the Arena pane to fully render (the build chooser), then
+        # assert the archetype picker + its mount are gone everywhere.
         page.wait_for_function(
-            "document.querySelectorAll("
-            "'#csv-archetype-target .csv-arch-btn').length > 0",
+            "(() => { const b = document.querySelector("
+            "'#view-champ-select .csv-card-mypick .csv-builds');"
+            " return b && b.textContent.indexOf('Arena build chooser') >= 0;"
+            " })()",
             timeout=8_000,
         )
-        btns = page.locator("#csv-archetype-target .csv-arch-btn")
-        assert btns.count() >= 6, (
-            f"expected 6 archetype buttons in Arena, got {btns.count()}"
+        assert page.locator(".csv-arch-btn").count() == 0, (
+            "archetype buttons must be gone (LEDGER 823)"
+        )
+        assert page.locator("#csv-archetype-target").count() == 0, (
+            "the #csv-archetype-target mount must be gone (LEDGER 823)"
         )
     finally:
         page.close()
         ctx.close()
-    assert not errors, f"JS errors [arena archetype]: {errors[:3]}"
+    assert not errors, f"JS errors [arena archetype removed]: {errors[:3]}"
 
 
 def test_arena_renders_build_chooser(mock_server, pw_browser):

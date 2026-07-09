@@ -1008,26 +1008,23 @@
       </div>
       <div class="view-section-body">
         <div class="csv-grid">
-          <!-- Operator (2026-05-23 round 2): Allies panel removed; the
-               Daemon Slayer Build Archetype picker moved into this
-               grid-area slot. The .csv-card-allies class stays so the
-               grid-area: allies template binding still applies; the
-               card head + body content swap to the archetype picker.
-               renderChampSelectView's _csvRenderTeam("csv-allies-list",
-               ...) gracefully no-ops since the ul target is gone. -->
-          <!-- Operator (2026-05-25 item 200 Slice D): top-left card now
-               carries the DS Build Archetype picker PLUS the PICK
-               sub-panel moved up from Pick & Ban (item 168). The
-               DS-top-picks preview row that previously rendered under
-               the archetype picker is REMOVED so the picks land in the
-               freed vertical space. Bans + duo-synergy (101.qq.com)
-               stay in row-2 pickban with the extra space they need. -->
+          <!-- Operator (2026-05-23 round 2): Allies panel removed; this
+               grid-area slot now carries the PICK sub-panel. The
+               .csv-card-allies class stays so the grid-area: allies
+               template binding still applies; renderChampSelectView's
+               _csvRenderTeam("csv-allies-list", ...) gracefully no-ops
+               since the ul target is gone. -->
+          <!-- LEDGER 823: the DS Build Archetype option-button picker
+               that previously mounted here (#csv-archetype-target) was
+               removed - operator clicks wrote user_cs picks into the
+               shared committed cs_archetype_picks.json the build-order
+               precompute reads, polluting everyone's build tables. The
+               champ-select preview now always uses the server-resolved
+               DDragon-tag + kit-axis default scorer. The PICK sub-panel
+               keeps the freed vertical space. -->
           <div class="csv-card csv-card-allies">
-            <div class="csv-card-head">Daemon Slayer Build Archetype + Picks</div>
+            <div class="csv-card-head">Picks</div>
             <div class="csv-card-body csv-card-allies-body">
-              <div id="csv-archetype-target">
-                <div class="csv-empty">waiting for champion pick...</div>
-              </div>
               <div id="csv-picks-target">
                 <div class="csv-empty">waiting for champ-select data...</div>
               </div>

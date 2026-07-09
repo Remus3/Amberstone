@@ -102,10 +102,13 @@ class QqSourceStringRemovedTests(unittest.TestCase):
         self.assertNotIn("csv-duosyn-source", js)
 
     def test_internal_source_data_vars_retained(self) -> None:
-        # resolved.source / fetched.source / "user_cs" are internal data,
-        # NOT UI text - they must stay.
+        # The read-only archetype resolution keeps the internal `source` field
+        # (fetched.source) - that is data, not UI text. The user_cs WRITE
+        # payload was removed with the picker (LEDGER 823), so the literal
+        # `source: "user_cs"` no longer appears.
         js = _read(_CS_JS)
-        self.assertIn('source: "user_cs"', js)
+        self.assertIn("fetched.source", js)
+        self.assertNotIn('source: "user_cs"', js)
 
 
 class PickBanReformatTests(unittest.TestCase):
