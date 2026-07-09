@@ -4257,7 +4257,7 @@
     },
     "2052": {
       "name": "Poro-Snax",
-      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and local Freljordian herbs—picked daily and flash-frozen—contains the essential nutrients necessary to keep your Poro cool and calm.<br><br>All proceeds will be donated towards preserving the habitat of the endangered Spotted Poro.</flavorText></mainText>",
+      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and local Freljordian herbs - picked daily and flash-frozen - contains the essential nutrients necessary to keep your Poro cool and calm.<br><br>All proceeds will be donated towards preserving the habitat of the endangered Spotted Poro.</flavorText></mainText>",
       "colloq": ";",
       "plaintext": "",
       "stacks": 99,
@@ -5517,7 +5517,7 @@
     },
     "220013": {
       "name": "Poro-Snax",
-      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and Freljordian herbs—now finished with a touch of refined Demacian sugarcraft—contains the essential nutrients necessary to keep your Poro positively radiant.<br><br>All proceeds will be donated towards the Cloudfield Youth Choir. Help a Demacian child afford an etwahl, today!</flavorText></mainText>",
+      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and Freljordian herbs - now finished with a touch of refined Demacian sugarcraft - contains the essential nutrients necessary to keep your Poro positively radiant.<br><br>All proceeds will be donated towards the Cloudfield Youth Choir. Help a Demacian child afford an etwahl, today!</flavorText></mainText>",
       "colloq": "",
       "plaintext": "",
       "stacks": 2,
@@ -22106,7 +22106,7 @@
     },
     "4402": {
       "name": "Innervating Locket",
-      "description": "<mainText><stats><attention>30</attention> Attack Damage<br><attention>400</attention> Health<br><attention>300</attention> Mana<br><attention>10</attention> Ability Haste</stats><br><br><br><li><passive>Eternity:</passive> Restore Mana equal to 15% of premitigation damage taken from champions, and Health equal to 25% of Mana spent, up to 20 Health per cast, per second.<li><passive>Innervate:</passive> After using an ability, restore <healing>3% missing Health</healing> and <scaleMana>3% missing Mana</scaleMana> over 3 seconds.<br><br><flavorText>\"Cast down the Noxians\" <br>– Bobdyr, Temple Guardsman</flavorText></mainText>",
+      "description": "<mainText><stats><attention>30</attention> Attack Damage<br><attention>400</attention> Health<br><attention>300</attention> Mana<br><attention>10</attention> Ability Haste</stats><br><br><br><li><passive>Eternity:</passive> Restore Mana equal to 15% of premitigation damage taken from champions, and Health equal to 25% of Mana spent, up to 20 Health per cast, per second.<li><passive>Innervate:</passive> After using an ability, restore <healing>3% missing Health</healing> and <scaleMana>3% missing Mana</scaleMana> over 3 seconds.<br><br><flavorText>\"Cast down the Noxians\" <br> -  Bobdyr, Temple Guardsman</flavorText></mainText>",
       "colloq": ";",
       "plaintext": "Cast spells to heal",
       "from": [
