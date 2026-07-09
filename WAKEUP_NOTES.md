@@ -4,26 +4,37 @@
 
 ---
 
-# 2026-07-09 (deep-audit sweep + next-session plan)
+# 2026-07-09 (deep-audit EXECUTION -- lanes 2-7)
 
-Audit-only session (2 multi-agent workflow passes, 56 agents, adversarial verify per finding).
-- 42 verified findings: orphans/scratch, py dead-code, function verification, optimize/refactor,
-  open-item verification, web-js orphans, config/test health, full entry-point wiring test.
-- Full plan: docs/AUDIT_2026-07-09_NEXT_SESSION_PLAN.md (8 execution lanes).
-- WIRING: all 6 entry points INTACT (66 routes, 16 supervisor-proxy paths, 4 tasks, 11 rc-shell).
-- OPEN ITEMS: legitimately live-gated; ORCHESTRATION_PLAN fully drained.
+Executed docs/AUDIT_2026-07-09_NEXT_SESSION_PLAN.md (Opus 4.8, orchestrated). Lanes 0/1 were already
+done (174c44c9). Full detail: LEDGER 822. Commits 20df6d2b..bafc98a7 (pushed; check-job CI green).
 
-Shipped P1 fixes (commit 174c44c9):
-- Restored CLAUDE.md from a crash-leftover budget-saver lean-swap stub (full context was only in
-  untracked CLAUDE.md.full; a git add -A would have clobbered canonical context). Gitignored /CLAUDE.md.full.
-- DAEMON_SLAYER.md engine banner 1.182.0 -> 1.184.0 (test_docs_daemon_slayer_drift was RED on main, now green).
+Landed (3 verifier-gated worktree slices + inline tails):
+- Lane 2 (Slice A): cost_tracker -> ops/rc_config.json path fix + budget test; champ_select fabricated
+  ban-pct -> 0 (name-only, matches pick path); last_match tier-averages "estimate/reference" caption (+ CSS).
+- Lane 3 (Slice B): deleted ops_ui_actions.py + ws_client.js + stub.css + settings.json (+ hash/pkg entries).
+- Lane 4 (Slice C, behavior-preserving, ENGINE unbumped, Share in-sync): compute_dps(only_phase=),
+  liveclient_summary from core.liveclient_cache, coach _poll_loop via asyncio.to_thread.
+- Lane 3.2/3.3: deleted ward_cue + cc_pairing FRONTENDS (backends stay: /api/cc-pairing, core/ward_cue.py).
+- Lane 6 subset: archived 4 DS plans + 5 one-shots to docs/_archive (back-refs retargeted; 101qq test path fixed).
+- Lane 7: DS_COMPLETENESS_GAP snapshot banner (+2 line-refs renumbered); D6 row refresh (10374d02).
+- Lane 5: rm commit_tmp; data/*_shadow.jsonl + /commit_*.txt gitignore globs; committed budget-saver-unified.ps1;
+  git rm --cached data/force_scan.json + gitignore.
 
-NEXT: run docs/AUDIT_2026-07-09_NEXT_SESSION_PLAN.md on Opus 4.8 max, orchestrated. Lane 0 (CLAUDE.md)
-+ Lane 1 (banner) ALREADY DONE - start at Lane 2 (config correctness) via worktree slices.
+Verify: pre-push = ci.yml `check` scope all green (ruff / DS-share-sync in-sync / hygiene 13 / smoke 512 /
+snapshot_panels 352). RC restarted (pid 5448 -> 9016, last_reload_ok, /api/state builds clean).
 
-Do NOT redo: CLAUDE.md restore, DAEMON_SLAYER banner, the wiring/import/route audit (clean), test/launcher
-health (clean). Pre-existing working-tree changes (agent6 reports, ddragon ASCII, lean-settings, force_scan)
-left for Lane 5 - lean-settings enables bypassPermissions, confirm before committing.
+FLAGS / OWED:
+- nightly-full-suite (schedule-only) is PRE-EXISTING red (~27 tests: pengu/ + top-level _archive/ absent on
+  THIS checkout, build_order_variants stamp drift from the 809 engine bump, a bare-py in docs/specs/
+  BUDGET_SAVER_PLAN.md). NOT this session, NOT in the push/PR gate; RC-CIWatchdog already on it (ci-fix/29013242484).
+  Cheapest real fix: regen `python -m core.build_order_variants --static --mode all` (+ ASCII the BUDGET_SAVER doc).
+- OWED live eyeballs: 2.2 champ-select ban cells (name-only) + 2.3 last_match caption -- need matching game state.
+  Run /live-gated-resync next session to fold these into LIVE_GAME_GATED_SYNC.md (Lane 6/7 touched that doc).
+- DS :8893 perf (only_phase) activates on the next DS restart -- behavior-preserving, live output unchanged now.
+- lean-settings.json bypassPermissions change left uncommitted per operator decision.
+
+Prior 2026-07-09 sweep session (2 workflow passes -> the plan + P1 fixes) = LEDGER 821 (fully executed above).
 
 ---
 
