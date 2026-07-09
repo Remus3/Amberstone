@@ -114,7 +114,6 @@ _CONFIG_INCLUDES = [
     "config/coach_settings.json",
     "config/FEATURE_POLICY.md",
     "config/CONFIG_AUTHORITY.md",
-    "config/settings.json",
     "config/self_monitor_profile.json",
     "config/rc_config.json",    # also at ops/ -- include both if present
 ]

@@ -431,7 +431,7 @@ def _asset_stamp_mtime() -> float:
     root = APP_DIR / "web"
     mtimes = []
     for rel in ("index.html", "css/dashboard.css", "css/overlay.css",
-                "js/main.js", "js/overlay_pulse.js", "js/ws_client.js"):
+                "js/main.js", "js/overlay_pulse.js"):
         p = root / rel
         if p.exists():
             mtimes.append(os.path.getmtime(p))
