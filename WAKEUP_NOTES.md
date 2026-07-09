@@ -32,6 +32,19 @@ LEFT RED (DS-judgment, logged to BACKLOG "DS scorer calibration", NOT fixed blin
   gap (finding A/B family).
 Pre-existing full-suite-LOAD flakes (coach_poll_offload x2, ds_matchdb_mcp auth) all pass in isolation - untouched.
 
+OPERATOR NEXT (2026-07-09, post-wrap interrupt) -- ROOT-CAUSE PREVENTION for the archetype-pick pollution:
+- Remove the DS archetype OPTION BUTTONS from the champ-select menu (the `.csv-archetype-picker` in
+  web/js/panels/champ_select.js:2567 + its two `/api/cs-archetype-pick` POSTs at :2611/:2650; route
+  dashboard/routes_archetype.py, store data/cs_archetype_picks.json). Goal: operators can no longer write
+  user_cs picks that pollute the shared committed precompute tables (Katarina->bruiser was the LEDGER 823
+  root cause).
+- Remove the RIGHT-CLICK archetype switching from the in-game build overlay panel (web/js/panels/ds_shaper.js
+  contextmenu path + overlay_item_radial.js if it carries an archetype swap).
+- Decide existing-pick handling: after removing the UI, either clear data/cs_archetype_picks.json (precompute
+  reverts to kit-default) or keep the picks read-only. Frontend slices -> run the 3b UI-audit ritual before
+  commit. This likely also greens test_build_order_axis_parity[Katarina] + the archetype_axis guards
+  permanently (the scoped-skip from 58ce5397 becomes unnecessary).
+
 ---
 
 # 2026-07-09 (deep-audit EXECUTION -- lanes 2-7)
