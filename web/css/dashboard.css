@@ -34,7 +34,6 @@
 @import './panels/active_match.css';
 @import './panels/build_module.css';
 @import './panels/aram_balance.css';
-@import './panels/ward_cue.css';
 @import './panels/spike_cue.css';
 @import './panels/objective_chips.css';
 @import './panels/objective_gauges.css';
@@ -45,7 +44,6 @@
 @import './panels/cc_blended_ehp_threat.css';
 @import './panels/cc_conditional_pressure.css';
 @import './panels/capability_gap.css';
-@import './panels/cc_pairing.css';
 @import './panels/personal_build.css';
 @import './panels/ds_sweep.css';
 @import './panels/ds_profile.css';

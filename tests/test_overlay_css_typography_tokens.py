@@ -38,7 +38,7 @@ PANELS_CSS = ROOT / "web" / "css" / "panels"
 # verb (--fs-ov-call 14px) and breaks the overlay typographic hierarchy. This is
 # the same overlay-scoped-token doctrine R8 locked for overlay.css (the global
 # tokens.css keeps its >=16px floor; overlay surfaces use the --fs-ov-* scale).
-_OVERLAY_CUE_CSS = ("ward_cue.css", "spike_cue.css", "objective_chips.css")
+_OVERLAY_CUE_CSS = ("spike_cue.css", "objective_chips.css")
 
 # Every property declaration of the shape `font-size: <N>px` (a bare pixel
 # literal, not a var() reference). The token DEFINITIONS (--fs-ov-chip: 13px)
