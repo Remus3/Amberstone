@@ -474,6 +474,25 @@ function renderLastMatch(data) {
 // Cache so the dropdown can re-render without refetching /api/last-match.
 let _lastMatchMode = "";
 
+// Audit 2026-07-09 (Lane 2.3): _RANK_TIER_AVERAGES are hand-curated
+// reference values, NOT a measured rewind_history.db aggregate. Tag the
+// grid with a caption so the invented tier averages are never read as
+// measured numbers. The note sits as a sibling AFTER the grid (not a grid
+// child) so it does not disturb the named grid-area layout. Idempotent.
+function _ensureRankEstimateNote() {
+  const container = document.querySelector(".lm-hero-rank-compare");
+  if (!container) return null;
+  let note = document.getElementById("lm-rank-estimate-note");
+  if (!note) {
+    note = document.createElement("div");
+    note.id = "lm-rank-estimate-note";
+    note.className = "lm-rank-estimate-note";
+    note.textContent = "estimate / reference - not measured";
+    container.insertAdjacentElement("afterend", note);
+  }
+  return note;
+}
+
 function _renderRankCompare(tier) {
   // s219 v6: 8 individual cells (4 row 1 + 4 row 2 minus the selector
   // in col 1 row 1). Populates by ID rather than rewriting the whole
@@ -503,6 +522,10 @@ function _renderRankCompare(tier) {
   const _setEmpty = (isEmpty) => {
     if (container) container.classList.toggle("is-empty", isEmpty);
     if (emptyEl) emptyEl.hidden = !isEmpty;
+    // The estimate/reference caption shows only alongside rendered
+    // averages (a selected tier), hidden in the collapsed empty state.
+    const note = _ensureRankEstimateNote();
+    if (note) note.hidden = isEmpty;
   };
 
   if (!tier) { set({}); _setEmpty(true); return; }
