@@ -370,7 +370,12 @@ class BaseCoach(abc.ABC):
     async def _poll_loop(self) -> None:
         while self._running:
             try:
-                self._poll_tick()
+                # HOT-03 (2026-07-09): _poll_tick does blocking disk IO
+                # (load_json + safe_write, and safe_write has a time.sleep in its
+                # PermissionError retry) on the shared AppLoop thread. Marshal it
+                # to a worker thread so a Defender/AV lock race never stalls the
+                # loop - mirrors the _run_vision offload below.
+                await asyncio.to_thread(self._poll_tick)
             except Exception as exc:  # noqa: BLE001
                 logging.getLogger(f"rc.coaches.{self._MODE_NAME}").debug(
                     "%s poll: %s", self._MODE_NAME, exc

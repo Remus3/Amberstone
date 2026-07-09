@@ -73,17 +73,18 @@ def liveclient_summary() -> dict:
     display."""
     out: dict = {}
     try:
-        req = urllib.request.Request(
-            "http://127.0.0.1:8889/latest-liveclient",
-            headers={"X-RC-Token": _VISION_TOKEN},
-        )
-        with urllib.request.urlopen(req, timeout=1) as r:
-            wrap = json.loads(r.read())
-        if "error" in wrap:
+        # HOT-02 (2026-07-09): reuse the shared background poll instead of a
+        # per-build urlopen. core.liveclient_cache polls the SAME
+        # /latest-liveclient endpoint every 0.5s into an immutable Snapshot; the
+        # dashboard builds /api/state at ~2/s, so its own fetch was a redundant
+        # round-trip that could stall the critical path up to 1s on a hung relay.
+        # Snapshot.data is None (no game / fetch failed / relay "error") or a
+        # stale (>5s) frame both map to the prior "return {}" contract.
+        from core import liveclient_cache
+        snap = liveclient_cache.get()
+        if snap.data is None or snap.age_s > 5:
             return {}
-        if (time.time() - wrap.get("ts", 0)) > 5:
-            return {}
-        d = wrap.get("data", {})
+        d = snap.data
         ap = d.get("activePlayer") or {}
         gd = d.get("gameData") or {}
         cs = ap.get("championStats") or {}

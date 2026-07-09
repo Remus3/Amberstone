@@ -9,13 +9,13 @@ rosters. ``core.macro_response`` keys the lost-objective response on enemy kills
 
 Covers: a normal enemy + ally objective kill (team classification + name map),
 the unknown-killer fallback, non-objective events skipped, malformed-event
-fail-soft, and the ASCII module guard. Reuses the urlopen-monkeypatch fixture
-shape from test_liveclient_kp.py.
+fail-soft, and the ASCII module guard. Reuses the cache-seed fixture shape
+from test_liveclient_kp.py (HOT-02, 2026-07-09: liveclient_summary reads the
+shared core.liveclient_cache Snapshot).
 """
 from __future__ import annotations
 
 import contextlib
-import json
 import time
 import unittest
 from pathlib import Path
@@ -51,21 +51,11 @@ def _allgamedata(active_name: str, players: list, events: list,
 
 @contextlib.contextmanager
 def _patched(allgamedata, ts=None):
-    wrap = {"ts": time.time() if ts is None else ts, "data": allgamedata}
-    payload = json.dumps(wrap).encode("utf-8")
-
-    class _Resp:
-        def __enter__(self_inner):
-            return self_inner
-
-        def __exit__(self_inner, *exc):
-            return False
-
-        def read(self_inner):
-            return payload
-
-    with mock.patch.object(_liveclient.urllib.request, "urlopen",
-                           return_value=_Resp()):
+    # HOT-02 (2026-07-09): seed the shared liveclient cache Snapshot the summary
+    # now reads, instead of mocking a per-call urlopen.
+    from core.liveclient_cache import Snapshot
+    snap = Snapshot(data=allgamedata, ts=time.time() if ts is None else ts)
+    with mock.patch("core.liveclient_cache.get", return_value=snap):
         yield
 
 
