@@ -131,7 +131,7 @@ class OverlayInteractivity(unittest.TestCase):
 
     def test_live_strip_is_zone(self):
         js = ACTIVE_MATCH_JS.read_text(encoding="utf-8")
-        self.assertIn('liveStrip.setAttribute("data-rc-zone"', js,
+        self.assertIn('strip.setAttribute("data-rc-zone"', js,
                       "LIVE strip must be a data-rc-zone for the overlay radial")
 
     def test_zone_selector_covers_data_rc_zone(self):
