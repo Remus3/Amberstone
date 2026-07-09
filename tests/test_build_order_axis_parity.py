@@ -71,6 +71,13 @@ def axes() -> dict[str, str]:
 @pytest.mark.parametrize("champ", FLIPPED)
 def test_mixed_build_axis_matches_kit(champ, table, axes):
     ap._invalidate_axis_cache()
+    # An operator user_cs pick deliberately re-tags a champion's archetype (e.g.
+    # bruiser Katarina), so the committed precompute build legitimately follows
+    # the picked archetype's axis, not the kit axis. This guard protects the
+    # DEFAULT kit-axis builds; skip champs the operator overrode. The separate
+    # bruiser-scorer-is-not-axis-aware-for-AP-kits case is tracked in BACKLOG.
+    if ap.get_archetype_for(champ).get("source") != "default":
+        pytest.skip(f"{champ} has an operator archetype pick; kit-axis guard is default-only")
     champ_id = ap.canonical_champion_id(champ)
     order = (bop.lookup(table, champ_id, "mixed") or {}).get("order") or []
     assert order, f"{champ}: mixed build order is empty"
