@@ -1,5 +1,11 @@
 # Daemon Slayer - Completeness Gap Analysis
 
+> **SNAPSHOT as of 2026-06-19 - the live-count lines below are SUPERSEDED.** Live DS engine
+> is 1.184.0 now (not 1.147.0), and several gated boxes have since flipped (B45/B46/B47,
+> DSP11 C4). Do NOT read the counts in this file as current - see docs/LEDGER.md and
+> docs/LIVE_GAME_GATED_SYNC.md for live state. This doc is a dated snapshot, kept in place
+> (not archived) because it is cross-referenced by line number.
+
 > Authored 2026-06-19 (RC 2.0 Phase 8.2). Answers the operator question: "What is
 > lacking for Daemon Slayer to be TRULY complete - nothing more to add or do, even
 > the smallest things, besides patch updates?" Honest verdict: a build/combat engine

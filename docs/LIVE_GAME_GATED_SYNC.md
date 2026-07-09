@@ -47,9 +47,9 @@ env gates RC_COMP_HP_LEAN / RC_LANING_CV_SERVED are cold (no supervisor or machi
 TWO LIVE BUGS still OPEN 2026-07-04 (both fix-committed, both STILL OPEN pending a live
 re-validate - do NOT mark closed): A1/A2 champ-select AUTO-PUSH regression after a mid-session
 League restart (layer-1 self-heal 90b350c8 + layer-2 resilient spawn_task loops 1ab7000e both
-merged; RC not re-validated); D6 Arena augment/anvil shadow not seeding (force_scan-trigger fix
-79c4e9e9 merged; RC-LCUAgent restart + a live Arena augment phase still owed; both shadow files
-ABSENT on disk).
+merged; RC not re-validated); D6 Arena augment/anvil shadow only partly seeding (force_scan fixes 79c4e9e9 + round-based
+10374d02 merged; RC-LCUAgent restart + a live Arena augment phase still owed; augment_shadow.jsonl
+now seeds 966B but anvil_shadow.jsonl still ABSENT).
 
 How to use: operator runs the drain-plan sessions below; tick each row; report results so the
 loop's next cycle can flip the validated seams default-ON. RC auto-serves UI via ADR-008 (no
@@ -272,7 +272,7 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   first). SOURCE: RC_WORK_TRACKER.md:63/65.
 - B30. (PRACTICE-SR) DS ratio-block spot verify vs target dummies (~174/577 flagged;
   DS-batch scoped - sample a handful per session, not a bulk pass). SOURCE:
-  docs/DS_COMPLETENESS_GAP.md:79; docs/OVERLAY_BUILD_MASTER_PLAN.md:496.
+  docs/DS_COMPLETENESS_GAP.md:85; docs/OVERLAY_BUILD_MASTER_PLAN.md:496.
 - B41. (PRACTICE-SR) R58 `assume_ms_utility` flip (bruiser/juggernaut MS-utility DPS
   credit): buy Dead Man's Plate 3742 + Force of Nature 4401 on a juggernaut (Darius) in
   practice tool, eyeball the /rank-bruiser re-rank sanity (MS items gain modest credit,
@@ -454,11 +454,11 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   allowed alternative - try that first to dodge Arena). NOT attempted 2026-07-04. SOURCE:
   BACKLOG.md:64.
 - D6. (ARENA) Arena augment-select shadow (`data/augment_shadow.jsonl`) + item-anvil shadow
-  (`data/anvil_shadow.jsonl`) seeding + WIRING-GAP re-validate: the force_scan-on-Cherry-augment
-  trigger fix shipped 2026-07-04 (`79c4e9e9`) but RC-LCUAgent (separate ONLOGON process) MUST be
-  restarted and a live Arena augment phase MUST surface for the 20s vision scan to catch the
-  transient panel (both shadow files still ABSENT on disk across the 6 live probes). SOURCE:
-  docs/LEDGER.md item 779; git 79c4e9e9.
+  (`data/anvil_shadow.jsonl`) seeding + WIRING-GAP re-validate: the force_scan trigger shipped
+  2026-07-04 (`79c4e9e9`) then a round-based re-trigger landed (`10374d02`, LEDGER 820); RC-LCUAgent
+  (separate ONLOGON process) restart + a live Arena augment phase are still owed. augment_shadow.jsonl
+  now seeds on disk (966B) but anvil_shadow.jsonl is still ABSENT - keep D6 OPEN. SOURCE:
+  docs/LEDGER.md items 779/820; git 79c4e9e9, 10374d02.
 - D7-hist. (superseded) Arena PGR capture - CLOSED 2026-07-04 (mode ARENA ingested, Arena IS
   Match-V5-eligible). Kept OFF the checklist; see ledger.
 - D8. [HOLD 2026-06-20] (ARENA) Arena S2 augment level-up + crafting - trigger on 26.09 PBE

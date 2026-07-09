@@ -493,7 +493,7 @@ audit7-h01, audit8-m02, audit5 h01/h02/m01, audit6-m01, L-02 orphan gamepc.json.
 | EHP-side enemy-CC consumer aram_tenacity_mult | `agents/daemon_slayer/ability_dps.py:90,694,1015` | DS-batch (Tier-2, gated) |
 | Meraki no ability_haste_flat (item-AH data gap) | `ability_dps.py:71` | DS data note |
 | Arena Silver augment lethality not modeled | `augments.py:130` | DS-batch |
-| ~174/577 ratio blocks need live verify | `docs/DS_COMPLETENESS_GAP.md:79,138` | DS-batch gated |
+| ~174/577 ratio blocks need live verify | `docs/DS_COMPLETENESS_GAP.md:85,144` | DS-batch gated |
 | subtract owned sub-item values (items_recipes.json) | `web/js/panels/item_build.js:120` | RELEVANT - partial-component logic (WP-B3) needs recipe data; ~200 LOC operator-gated |
 | TFT Set 17+ augment support | `item_build.js:251` | DEFER-TFT |
 | Home "Tonight's Pick" hardcoded dummy | `web/js/main.js:3080`, `dashboard/builders_home.py:148,105` | DEFER - wire when queue_id ingest ships |
