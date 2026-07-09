@@ -71,6 +71,10 @@ data/cc_conditional_calibration.json
 data/decisions_heartbeat.json
 data/top8_list.json
 data/cs_archetype_picks.json
+# Runtime arena-scan trigger ({"force":<epoch>}) rewritten every game by
+# dashboard/_writers, coaches/arena_coach, core/hotkeys, tools/lcu_agent.
+# Untracked runtime churn; working-tree file stays, writers keep using it.
+data/force_scan.json
 
 # DB backup snapshots from one-off ops (insurance copies; not source of truth)
 data/*.db.bak
