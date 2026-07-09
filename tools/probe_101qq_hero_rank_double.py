@@ -10,7 +10,7 @@ in champ-select; never in-game) and submits findings via the bridge.
 
 THIS SCRIPT IS RUN AFTER THE OPERATOR CAPTURES (NOT BEFORE):
 - The operator does the one-shot Chrome capture per
-  docs/CAPTURE_101QQ_INSTRUCTIONS.md.
+  docs/_archive/CAPTURE_101QQ_INSTRUCTIONS.md.
 - The captured URL + downloaded JSON file are then handed to this script.
 - The script analyzes URL structure, JSON schema shape, and DDragon-key
   compatibility, and optionally cross-references the operator's own

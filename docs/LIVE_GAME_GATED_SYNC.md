@@ -799,15 +799,15 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
 3. tools/PYTHON_BUNDLING_STRATEGY.md (2026-04-26) - bundling decision long settled.
 4. tools/PEER_ROADMAP_SUGGESTIONS.md (2026-05-18) - Peer bridge decommissioned 2026-06-24; dead artifact.
 5. tools/done-peer.md (2026-05-23) - dead Peer /done ritual mirror.
-6. docs/API_SURFACE_AUDIT.md (2026-05-23) - one-shot generated audit; docs/API.md is canonical.
+6. docs/_archive/API_SURFACE_AUDIT.md (2026-05-23) - one-shot generated audit; docs/API.md is canonical. [ARCHIVED 2026-07-09]
 7. tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md (2026-05-25) - one-shot probe, complete (DEFERRED).
-8. docs/DS_V2_PLAN.md (2026-05-30) - DS V2 plan at ENGINE 1.63.0; long-shipped, many versions past.
-9. docs/DS_GAP_COMPLETION_PLAN.md (2026-05-31) - session executed; unreferenced by living docs.
-10. docs/CAPTURE_101QQ_INSTRUCTIONS.md (2026-06-11) - item 277 live-wired; the capture recipe is history.
-11. docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md (2026-06-11) - explicit SHIPPED 2026-05-27; refs retired Game-PC.
-12. docs/research/GAMEPC_PURGE_SPEC.md (2026-06-20) - Game-PC purge executed 2026-06-20 (ADR-011); spec spent.
+8. docs/_archive/DS_V2_PLAN.md (2026-05-30) - DS V2 plan at ENGINE 1.63.0; long-shipped, many versions past. [ARCHIVED 2026-07-09]
+9. docs/_archive/DS_GAP_COMPLETION_PLAN.md (2026-05-31) - session executed; unreferenced by living docs. [ARCHIVED 2026-07-09]
+10. docs/_archive/CAPTURE_101QQ_INSTRUCTIONS.md (2026-06-11) - item 277 live-wired; the capture recipe is history. [ARCHIVED 2026-07-09]
+11. docs/_archive/LCU_PHASE_CAPTURE_WATCHER_PLAN.md (2026-06-11) - explicit SHIPPED 2026-05-27; refs retired Game-PC. [ARCHIVED 2026-07-09]
+12. docs/_archive/GAMEPC_PURGE_SPEC.md (2026-06-20) - Game-PC purge executed 2026-06-20 (ADR-011); spec spent. [ARCHIVED 2026-07-09]
 13. ops/audit/LOLMATH_VS_DS_SWEEP.md (2026-06-15) - all-champ sweep at ENGINE 1.120.0 / patch 16.12.1; stale.
-14. docs/RC2_TODO_QA.md (2026-06-20) - RAW 97-item queue, explicitly CONSOLIDATED into RC2_QA_CONSOLIDATED.md.
+14. docs/_archive/RC2_TODO_QA.md (2026-06-20) - RAW 97-item queue, explicitly CONSOLIDATED into RC2_QA_CONSOLIDATED.md. [ARCHIVED 2026-07-09]
 15. ops/audit/ds_cross_eval/reports/ - ~172 per-champion reports, program DONE 2026-06-16; archive
     reports/ only, KEEP PROGRAM/REPORT/SYSTEMIC_FINDINGS/TIER2_REPORT. Also the dated
     docs/COMPETITOR_LIFT_2026-06-08..07-03 cluster (~9 files) + docs/research/RC2_RESEARCH_* cohort

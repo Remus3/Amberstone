@@ -8,7 +8,7 @@ for a lane pair so `smoothed_rates_101qq` can run on live data, falling
 back to the committed static seed when the CN endpoint is unreachable.
 
 Endpoint (verified live from Legion 2026-06-02, see
-docs/CAPTURE_101QQ_INSTRUCTIONS.md):
+docs/_archive/CAPTURE_101QQ_INSTRUCTIONS.md):
 
     https://faas-6831.native.qq.com/faas/6831/1371/getRankDouble
       ?championid=&date=<YYYYMMDD>&tier=200&lane1=<lane>&lane2=<lane>

@@ -11,7 +11,7 @@ The bulk of the 7.2 census "archive-candidate" set was RETAINED (not moved)
 because the safety-verification pass found it coupled to live regression tests
 (tests/test_loadout_*, test_thin_aram_*, test_zaahen_*, test_bridge_dispatch_
 enable_lanes, test_probe_101qq_script), living how-to docs
-(docs/CAPTURE_101QQ_INSTRUCTIONS.md), the runtime allowlist
+(docs/_archive/CAPTURE_101QQ_INSTRUCTIONS.md), the runtime allowlist
 (dashboard/routes_static._AGENT_ALLOWED), immutable agent history, or the
 P0/P1 audit baseline (hold til Phase 7 closes). See
 docs/research/RC2_STALE_FILE_CENSUS.md.
