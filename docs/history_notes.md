@@ -235,6 +235,68 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-08 (/live-gated-drain Arena + ARAM Mayhem)
+
+Session -- 1 Arena game (Kai'Sa 11-7, Aphelios prior) + 1 ARAM Mayhem game (Jinx vs Kog'Maw/Sion/Yuumi/Yasuo/Bard):
+
+Arena items (NO code changes -- observation only):
+- D6 shadow: force_scan trigger fix (10374d02) NOT loaded (committed after RC boot). Restart triggered at session end.
+- D2: Cherry augment endpoints known-404 on 16.13.1.
+- D3: no boot anvil rolled this game.
+- D4/D5/D9: no roll/not evaluable (Goredrinker not picked, stampede mode_modifiers identical ON/OFF at GET endpoint).
+
+ARAM PASS (4 items):
+- C13 enemy_spells: 5 enemies x 2 spells correct (Kog'Maw/Sion/Yuumi/Yasuo/Bard)
+- C12 antiheal POSITIVE: heal_threat detected (Yuumi Heal + Sion sustain)
+- C1 build logic: BotRK recommended for Jinx (correct on-hit ADC)
+- C14 debounce OFF: coach refreshes coherently (callouts/immediate/choices update with state, fight_rule = CC threats)
+
+PENDING:
+- CSS visual verify: overlay still hidden at session time
+- Arena retest after RC restart (b39a9fca + 10374d02 now loaded)
+
+Shadow accrual:
+- arena_coach_shadow.jsonl: 463 rows (all null/dead-state)
+- hz_choice_shadow.jsonl: 45307 rows
+
+Next: load the RC restart, test D6 shadow seeding in next Arena game, CSS visual verify via /overlay snapshot.
+
+---
+
+# 2026-07-08 (Arena drain  -  D2/D6/D9 live-gated)
+
+Session  -  2 Arena games (Viktor AP, Kai'Sa on-hit, queue 1750):
+- PASS: coach kill-switch (arena gate enabled), stale-artifact fix verified (b39a9fca blank-on-init, fight_rule refs current enemies, no cross-game leak), DS build adaptation (correct AP/on-hit paths per champion), D4 mode modifiers, D3 Arena boots.
+- D2 set_augment_intent: command pipeline works (dashboard → vision server → LCU agent), but ALL 4 Cherry PATCH/POST endpoints 404 on 16.13.1. Riot removed the /lol-cherry-* namespace. DEAD until a new augment-select surface is discovered.
+- D6 shadow seeding: SAME root cause  -  /lol-cherry-game-intra-event/v1/augments 404, so LCU agent never fires force_scan bump, vision misses ~30s augment picker windows. FIX DEPLOYED (10374d02): round-based force_scan trigger in arena_coach._on_state_received  -  bumps on round transitions into 2/5/8/11 (augment rounds). Replaces dead LCU path. Live verify OWED next Arena game.
+- D9 Goredrinker prismatic burst: N/A  -  both games AP/on-hit champions, no R74 AD item path.
+
+Commit 10374d02.
+
+DO NOT redo: D2 set_augment_intent on 16.13.1 (endpoints dead). D6 Cherry LCU probe (replaced by round-based trigger). T3 boots, map_control dupe, recall_callout leak, HZ build-order, enemy-spells CSS.
+
+NEXT: Live verify D6 round-based force_scan on fresh Arena game (check augment_shadow.jsonl / anvil_shadow.jsonl populate at round 2). Then continue /live-gated-drain for remaining Arena items, or pick next ROADMAP Section J WP.
+
+---
+
+# 2026-07-08 (D6 live-verify -- round-based force_scan trigger)
+
+Session -- live verification of 10374d02 across 3 Arena games:
+- force_scan bump trigger: 12/12 confirmed (round 2/5/8/11 each game). 100% reliable across 3 games (Caitlyn x2, Aphelios x1).
+- Vision pull-forward: confirmed working -- ~3-7s cadence during augment windows (vs normal 20s).
+- augment_shadow.jsonl: MISSING all 3 games (0 bytes, never created).
+- anvil_shadow.jsonl: MISSING all 3 games (0 bytes, never created).
+- Root cause: Sonnet via Moon-PC relay returns augment_select=false + empty anvil_choices in every scan (~60+ calls, zero detections). Vision model not recognizing Arena augment/anvil picker panels. Trigger mechanism is correct; shadow gap is upstream model detection.
+- Cherry LCU probe re-confirmed: /lol-cherry-* namespace dead on 16.13.1 (404), same as prior session.
+
+Verdict: D6 fix (10374d02) VERIFIED. Shadow files stay empty due to vision detection gap, NOT the round-based trigger.
+
+DO NOT redo: D6 force_scan trigger (verified working). D2 Cherry LCU probe (endpoints dead). Shadow file emptiness investigation (vision model detection gap, known limitation).
+
+NEXT: Fix augment/anvil shadow detection -- likely need dedicated vision prompt tuning or higher-res crop for Arena picker panels. Or continue /live-gated-drain for remaining Arena items (D9 Goredrinker prismatic burst needs AD champion). Or pick next ROADMAP Section J WP.
+
+---
+
 # 2026-07-08 (FIX stale coach artifact + _filter_owned + Arena drain)
 
 Session -- 2 coach bugs fixed + live Arena drain (Kai'Sa crit/AS Arena):
