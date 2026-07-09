@@ -4,6 +4,36 @@
 
 ---
 
+# 2026-07-09 (CI baseline repair -- nightly-full-suite red)
+
+Follow-through on item 822's deferred NOTE: the schedule-only nightly-full-suite (14k, NOT in push/PR CI)
+was red on main; RC-CIWatchdog never fixed it (ci-fix/29013242484 had 0 commits ahead). Fixed ~24
+deterministic failures in 4 verified slices. Full detail: LEDGER 823. Commits 40afd582 58ce5397 ccbafd5e
+adcf0cbe (all pushed; push-CI green). Confirmation nightly dispatched on the fixed HEAD.
+
+Slices:
+- S1 40afd582: regen build_order_variants_{sr,aram,arena} at ENGINE 1.184.0 (were 1.182.0 from the 809
+  bump; MUST pass explicit --champions for full-roster 173 cells - bare --mode all yields the 10-champ
+  seed). $py->$venvPy in BUDGET_SAVER_PLAN.md (bare-py regex). liveStrip->strip test literal.
+- S2 58ce5397: made the kit-axis guards hermetic. test_archetype_axis_correction + build_order_axis_parity
+  read the live data/cs_archetype_picks.json; the operator's Katarina->bruiser user_cs pick legitimately
+  overrides the kit axis. Monkeypatch _load_picks to {} in the default tests; skip picked champs in parity.
+- S3 ccbafd5e: u2500-sweep / rc2_p73-quarantine / pengu-skeleton referenced gitignored _archive/ + relocated
+  pengu/ files absent on a fresh checkout -> converted missing-target fails to skips.
+- S4 adcf0cbe (real logic): a force-cleared coach was re-populated with deterministic action by the
+  deterministic layer AFTER apply_cleared_at emptied it -> gated the synthesis on a _was_cleared flag. RC
+  restarted (pid 9016 -> 17632, reload_ok).
+
+LEFT RED (DS-judgment, logged to BACKLOG "DS scorer calibration", NOT fixed blind):
+- test_beam boots_unique=False: 19a76d8b's T3-boot exclusion + frozenset dedup make a multi-boot build
+  unreachable from a boots-only pool. Retire the test or re-scope boots_unique (DS-batch call).
+- test_aram_coach_shadow_wire Kalista IE: the generic on-hit AD template (finding B) drops crit IE - may be
+  meta-correct for on-hit Kalista. DS-meta call. The Katarina AD build = real bruiser-scorer-not-axis-aware
+  gap (finding A/B family).
+Pre-existing full-suite-LOAD flakes (coach_poll_offload x2, ds_matchdb_mcp auth) all pass in isolation - untouched.
+
+---
+
 # 2026-07-09 (deep-audit EXECUTION -- lanes 2-7)
 
 Executed docs/AUDIT_2026-07-09_NEXT_SESSION_PLAN.md (Opus 4.8, orchestrated). Lanes 0/1 were already
@@ -61,18 +91,3 @@ PENDING:
 Shadow accrual: arena_coach_shadow.jsonl 463 rows / hz_choice_shadow.jsonl 45307.
 
 NEXT: Arena game to test D6 shadow seeding post-restart, or CSS visual verify via overlay snapshot.
-
----
-
-# 2026-07-08 (/live-gated-drain ARAM Mayhem Kai'Sa)
-
-Session -- live ARAM drain, 1 Mayhem game (Kai'Sa, enemy Leona/Renata/Kennen/Hwei/Ekko):
-- PASS (4 items): C13 enemy_spells data path (5 enemies x 2 spells correct), A/B choices (3 choices with labels/outcomes), reset_item ARAM-aware ("No fountain"), R78 item_extra shadow-only.
-- NOT CHECKED (wrong conditions): C12 antiheal, C15/C16 augment, C3/C5/C8 (Kai'Sa not tabled), C11 cc ecosystem, B28-DS level-tick stability, C13 pixel capture (overlay hidden).
-- 2 LIVE BUGS FOUND (code patches not yet written):
-  1. STALE COACH ARTIFACT: aram_coaching_data.json fight_rule/risk referenced Annie/Morgana from previous game vs current enemies Leona/Renata/Kennen/Hwei/Ekko. Root cause: _base_coach.py _ensure_data() only writes blank on missing file; stale daemon_slayer_picks/scorer/fight_rule survive game restart. Artifact has no game_id for cross-game invalidation.
-  2. VOID IMMOLATION LEAK (symptom of #1): daemon_slayer_picks showed 223069 #1 with scorer="hybrid" for Kai'Sa. DS /rank correctly excludes it. The stale hybrid scorer picks were from a previous bruiser game.
-- NEXT: fix stale-artifact bug (blank on game_id change), then continue ARAM Mayhem drain.
-- DO NOT redo: stale-artifact fix (shipped b39a9fca, verified 2026-07-08 Arena session). D6 force_scan trigger (10374d02 verified working -- 12/12 bumps across 3 Arena games; shadow gap is vision model detection, not trigger).
-
-DO NOT redo: T3 boot fix, map_control dupe, recall_callout/ARAM leak, HZ build-order, enemy-spells CSS.
