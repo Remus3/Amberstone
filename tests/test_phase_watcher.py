@@ -1,6 +1,6 @@
 """Tests for tools/phase_watcher.py - LCU WAMP event-driven capture.
 
-Item 207: implementation of docs/LCU_PHASE_CAPTURE_WATCHER_PLAN.md. The
+Item 207: implementation of docs/_archive/LCU_PHASE_CAPTURE_WATCHER_PLAN.md. The
 watcher runs Legion-local and fires DXGI capture on phase transitions
 (champ-select / Cherry augment / lobby / InProgress). WaitingForStats is
 intentionally EXCLUDED (2026-05-27 item 209): the WaitingForStats edge
