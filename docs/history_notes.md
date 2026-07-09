@@ -235,6 +235,21 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-08 (/live-gated-drain ARAM Mayhem Kai'Sa)
+
+Session -- live ARAM drain, 1 Mayhem game (Kai'Sa, enemy Leona/Renata/Kennen/Hwei/Ekko):
+- PASS (4 items): C13 enemy_spells data path (5 enemies x 2 spells correct), A/B choices (3 choices with labels/outcomes), reset_item ARAM-aware ("No fountain"), R78 item_extra shadow-only.
+- NOT CHECKED (wrong conditions): C12 antiheal, C15/C16 augment, C3/C5/C8 (Kai'Sa not tabled), C11 cc ecosystem, B28-DS level-tick stability, C13 pixel capture (overlay hidden).
+- 2 LIVE BUGS FOUND (code patches not yet written):
+  1. STALE COACH ARTIFACT: aram_coaching_data.json fight_rule/risk referenced Annie/Morgana from previous game vs current enemies Leona/Renata/Kennen/Hwei/Ekko. Root cause: _base_coach.py _ensure_data() only writes blank on missing file; stale daemon_slayer_picks/scorer/fight_rule survive game restart. Artifact has no game_id for cross-game invalidation.
+  2. VOID IMMOLATION LEAK (symptom of #1): daemon_slayer_picks showed 223069 #1 with scorer="hybrid" for Kai'Sa. DS /rank correctly excludes it. The stale hybrid scorer picks were from a previous bruiser game.
+- NEXT: fix stale-artifact bug (blank on game_id change), then continue ARAM Mayhem drain.
+- DO NOT redo: stale-artifact fix (shipped b39a9fca, verified 2026-07-08 Arena session). D6 force_scan trigger (10374d02 verified working -- 12/12 bumps across 3 Arena games; shadow gap is vision model detection, not trigger).
+
+DO NOT redo: T3 boot fix, map_control dupe, recall_callout/ARAM leak, HZ build-order, enemy-spells CSS.
+
+---
+
 # 2026-07-08 (enemy-spells CSS overflow fix)
 
 Session -- overlay enemy-spells chip wrapping:
