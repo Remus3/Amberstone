@@ -49,6 +49,18 @@ _PERSONAL_BUILD_FIXTURE = {
     "source": "rewind_history.db",
 }
 
+# Deterministic /api/cs-archetype-pick response for the champ-select fixtures
+# (my_champion = 222 / Jinx -> carry). Lets the read-only combat-style archetype
+# chip (R89) render headlessly on the My Pick card. Shape mirrors
+# dashboard.routes_archetype._serve_archetype_get: {ok, champion, pick{...},
+# archetypes}; the chip reads pick.primary.
+_ARCHETYPE_PICK_FIXTURE = {
+    "ok": True,
+    "champion": "Jinx",
+    "pick": {"primary": "carry", "secondary": "", "source": "default"},
+    "archetypes": ["carry", "bruiser", "tank", "mage", "assassin", "enchanter"],
+}
+
 
 def _make_handler(store: dict) -> type:
     """Return an HTTP handler class bound to the shared fixture store."""
@@ -107,6 +119,8 @@ def _make_handler(store: dict) -> type:
                 })
             elif p == "/api/personal-build":
                 self._send_json(_PERSONAL_BUILD_FIXTURE)
+            elif p == "/api/cs-archetype-pick":
+                self._send_json(_ARCHETYPE_PICK_FIXTURE)
             elif p.startswith("/api/"):
                 self._send_json({})
             else:

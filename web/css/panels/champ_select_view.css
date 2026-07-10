@@ -1954,6 +1954,15 @@
 .csv-build-badge-support     { color: #fde68a; background: #2a2010; border-color: #b8800c; }
 .csv-build-badge-experimental{ color: #fb923c; background: #2a1810; border-color: #b8610c; }
 .csv-build-badge-default     { color: #cbd5e1; background: var(--surface-2); border-color: var(--border); }
+
+/* R89 (Aggregator C lift): compact read-only combat-style archetype tag on the My
+ * Pick card. Reuses the .csv-build-badge pill shape + tint family but overrides
+ * the 200px build-badge width so a single archetype word reads as a compact tag
+ * rather than a full-width bar. Font-size inherits --fs-xs (16px) from the base. */
+.csv-archetype-chip {
+  width: auto;
+  max-width: 100%;
+}
 /* 2026-05-28: operator user-curated builds (key "userbuild_<id>") get a
    distinct sky-blue hue so a saved build reads apart from the engine-
    curated + experimental rows in the same chooser. */

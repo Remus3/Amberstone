@@ -15,6 +15,7 @@ import {
 // merged into the build chooser as a compact ordered-sequence strip; the
 // strip reuses the /api/build-order data path via these two exports.
 import { fetchBuildOrder, getCachedBuildOrder } from './build_order.js';
+import { archetypeChipHtml } from './archetype_chip.js';
 import { dedupFetch } from '../lib/dedup_fetch.js';
 import {
   fetchCcBlendedEhpThreat, getCachedCcBlendedEhpThreat,
@@ -947,6 +948,7 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
       <div class="csv-mypick-icon ${iconCls}" id="csv-mypick-icon">${iconHtml}</div>
       <div class="csv-mypick-text">
         <div class="csv-mypick-name" id="csv-mypick-name">${myName}</div>
+        ${archetypeChipHtml(_csvResolveArchetype(myName).key)}
       </div>
     </div>
     ${lockBtnHtml}
