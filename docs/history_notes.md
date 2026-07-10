@@ -235,6 +235,35 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-09 (DS comp-aware boot utility scorer, DEFAULT-OFF; ENGINE 1.186.0)
+
+BACKLOG "DS scorer calibration" enhancement #2 (boot utility-awareness). Full detail: LEDGER 827.
+Tier-2, commit 0aa116af, DS :8893 restarted to 1.186.0 (health engine 1.186.0, patch 16.13.1).
+
+- NEW `agents/daemon_slayer/boot_utility.py`: per-boot utility scorer (normalized axis vectors weighted by
+  enemy AD/AP share + a v1 CC proxy; argmax with archetype-default hysteresis). Two cases: OFFENSIVE champs
+  hold their kit boot unless the comp is lopsided; DEFENSIVE champs (tank/bruiser) pick Steelcaps-vs-AD /
+  Mercury's-vs-AP by damage type. Behind DEFAULT-OFF `assume_boot_utility` in `core/build_order._select_boots`
+  (OFF byte-identical - OFF-parity + ON-neutral==OFF invariant guarded); `plan_build_order` threads the flag.
+  `ops/audit/boot_utility_preview_diff.py` = a NON-committing preview of what would flip if default-ON.
+- The preview earned its keep: it caught a backwards first-pass calibration (tanks biased to armor vs AP);
+  root-cause-reworked to the damage-type model above.
+- ENGINE bump was UNDER-SCOPED at first (only __init__.py) - the read-only verifier FAILED the first
+  commit-attempt on 120 unpropagated pins; completed the repo-wide sweep (105 DS test pins, docs banner,
+  6 precompute stamps byte-level content-identical, Share/src 417 --check clean) before commit.
+- Verify: full dual suite 19298 passed / 17 skipped; the only 2 reds are a PRE-EXISTING coach-poll asyncio
+  isolation flake (`test_coach_poll_offload_hot03`, passes in isolation, unrelated); boot suite 14 RED-first;
+  ruff clean.
+
+NEXT: (a) the default-ON flip (live-game gated; 1-line RC-side caller default per project_ds_live_flip_seams);
+(b) real per-champion enemy CC threaded into `_select_boots` (v1 uses the ap-share proxy, under-crediting
+frontline CC); (c) the flagged SEPARATE finding - the committed full-roster build-order precompute tables
+look STALE vs the generator (task chip "Investigate stale DS precompute build-order tables"; do NOT
+`--mode all` regen, it clobbers to a 10-champ seed). Do NOT re-flag boot utility as unfixed - SHIPPED
+DEFAULT-OFF (LEDGER 827). (WAKEUP prune to 2-3 blocks is due - weekly-hygiene relocate job.)
+
+---
+
 # 2026-07-09 (DS bruiser scorer axis-awareness + retire/relax 2 stale tests; ENGINE 1.185.0)
 
 Closed the 3 DS scorer-calibration reds from LEDGER 823/824 (BACKLOG "DS scorer calibration"). Full

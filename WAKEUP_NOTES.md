@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-07-10 (combat-style archetype chip on champ-select My Pick card - R89 Aggregator C lift; UI slice)
+
+Gemini-loop DIRECTOR REFILL R89. Full detail: LEDGER 830. UI slice, presentation-only, NO ENGINE bump,
+commit `e2ff5982`. No RC restart (asset-hash ADR-008), no DS bounce (ENGINE-IMPACT NONE).
+
+- LIFT: Section-7b competitor teardown of the Aggregator C live companion (docs/COMPETITOR_LIFT_2026-07-10.md;
+  pages fetched via an Apify full-browser render, Cloudflare 403'd WebFetch). Verdict SPLIT: F2 combat-style
+  HIGH/LOW-risk -> SHIPPED; F1 lane-matchup MED -> BACKLOG.
+- F2 shipped: read-only archetype tag chip (CARRY/BRUISER/TANK/MAGE/ASSASSIN/ENCHANTER) on the champ-select
+  My Pick card (SR+ARAM), sourced from the archetype RC already resolves + client-caches
+  (`_CSV_ARCH_CACHE.primary`, `/api/cs-archetype-pick`) but never rendered since the picker was removed
+  (LEDGER 823). New `web/js/panels/archetype_chip.js` reuses the `.csv-build-badge` tint family; one compact
+  `.csv-archetype-chip` CSS rule (width:auto; font inherits --fs-xs). No backend/Claude/schema change.
+- VERIFY: research citations ground-truthed before build (`get_archetype_for` :32->:592 corrected). 5-phase
+  UI audit PASS (MUST-FIX 200px width fixed in-slice); visual champ-select_aram.png = compact CARRY chip
+  under Jinx. TDD: node 7/7 + CI contract 7/7 + a `/api/cs-archetype-pick` conftest fixture. snapshot_panels
+  359 + CS regression 24 + hygiene 13; ruff clean; CI green.
+- Tails (BACKLOG R89): F2a Arena chip parity (LOW); F1a WR best/worst counters list (MED); F1b prose tips +
+  F2b behavioral player badges CLOSED. Don't-redo: the combat-style chip is SHIPPED for SR+ARAM.
+
+---
+
 # 2026-07-10 (DS Armored Advance Plating EHP credit - R86 sibling-carrier; ENGINE 1.187.0)
 
 Gemini-loop DIRECTOR REFILL R88. Full detail: LEDGER 829. Tier-2, commit `b6a64836`, DS `:8893`
@@ -58,32 +80,3 @@ no-bump as the safest + correct option per the no-questions grant, logged for di
   proven passing in isolation) / 22 skipped; DS 8085 passed / 1 skipped / 1943 subtests. done_sentinel
   --tests 11238 --regressions 0. Don't-redo: HZ-B tables FRESH + content-freshness-guarded (do NOT re-flag
   task_27071e90); Belveth AD->AP is a shipped-826 reclassification pending scorer-calibration (FUTURE).
-
----
-
-# 2026-07-09 (DS comp-aware boot utility scorer, DEFAULT-OFF; ENGINE 1.186.0)
-
-BACKLOG "DS scorer calibration" enhancement #2 (boot utility-awareness). Full detail: LEDGER 827.
-Tier-2, commit 0aa116af, DS :8893 restarted to 1.186.0 (health engine 1.186.0, patch 16.13.1).
-
-- NEW `agents/daemon_slayer/boot_utility.py`: per-boot utility scorer (normalized axis vectors weighted by
-  enemy AD/AP share + a v1 CC proxy; argmax with archetype-default hysteresis). Two cases: OFFENSIVE champs
-  hold their kit boot unless the comp is lopsided; DEFENSIVE champs (tank/bruiser) pick Steelcaps-vs-AD /
-  Mercury's-vs-AP by damage type. Behind DEFAULT-OFF `assume_boot_utility` in `core/build_order._select_boots`
-  (OFF byte-identical - OFF-parity + ON-neutral==OFF invariant guarded); `plan_build_order` threads the flag.
-  `ops/audit/boot_utility_preview_diff.py` = a NON-committing preview of what would flip if default-ON.
-- The preview earned its keep: it caught a backwards first-pass calibration (tanks biased to armor vs AP);
-  root-cause-reworked to the damage-type model above.
-- ENGINE bump was UNDER-SCOPED at first (only __init__.py) - the read-only verifier FAILED the first
-  commit-attempt on 120 unpropagated pins; completed the repo-wide sweep (105 DS test pins, docs banner,
-  6 precompute stamps byte-level content-identical, Share/src 417 --check clean) before commit.
-- Verify: full dual suite 19298 passed / 17 skipped; the only 2 reds are a PRE-EXISTING coach-poll asyncio
-  isolation flake (`test_coach_poll_offload_hot03`, passes in isolation, unrelated); boot suite 14 RED-first;
-  ruff clean.
-
-NEXT: (a) the default-ON flip (live-game gated; 1-line RC-side caller default per project_ds_live_flip_seams);
-(b) real per-champion enemy CC threaded into `_select_boots` (v1 uses the ap-share proxy, under-crediting
-frontline CC); (c) the flagged SEPARATE finding - the committed full-roster build-order precompute tables
-look STALE vs the generator (task chip "Investigate stale DS precompute build-order tables"; do NOT
-`--mode all` regen, it clobbers to a 10-champ seed). Do NOT re-flag boot utility as unfixed - SHIPPED
-DEFAULT-OFF (LEDGER 827). (WAKEUP prune to 2-3 blocks is due - weekly-hygiene relocate job.)
