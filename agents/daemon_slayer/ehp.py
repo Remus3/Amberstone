@@ -259,9 +259,11 @@ def _collect_shields(
     bonus_ad: float,
     is_ranged: bool,
     max_hp: float = 0.0,
+    max_mana: float = 0.0,
     assume_kaenic_shield: bool = False,
     assume_eclipse_shield: bool = False,
     assume_chainlaced_shield: bool = False,
+    assume_seraphs_shield: bool = False,
 ) -> tuple[dict[str, float], tuple[tuple[str, str, float], ...]]:
     """Resolve every ``ItemShield`` across the equipped items.
 
@@ -292,14 +294,17 @@ def _collect_shields(
         # uptime); R97 Eclipse (6692 / Arena 226692) rides assume_eclipse_shield
         # (a burst-window shield on a 6s/target CD); R99 Chainlaced Crushers
         # (3173) rides assume_chainlaced_shield (its Noxian Persistence magic
-        # shield triggers only on taking magic damage, 15s CD). None is folded
-        # into the always-on lifeline pool.
+        # shield triggers only on taking magic damage, 15s CD). Seraph's Embrace
+        # (3040 / Arena 223040 / ARAM 323040) rides assume_seraphs_shield (its
+        # Lifeline 18%-max-mana generic shield fires only at <30% HP). None is
+        # folded into the always-on lifeline pool.
         if shield.default_off:
             iid = str(item_id)
             armed = (
                 (assume_kaenic_shield and iid == "2504")
                 or (assume_eclipse_shield and iid in ("6692", "226692"))
                 or (assume_chainlaced_shield and iid == "3173")
+                or (assume_seraphs_shield and iid in ("3040", "223040", "323040"))
             )
             if not armed:
                 continue
@@ -309,6 +314,7 @@ def _collect_shields(
             bonus_ad=bonus_ad,
             is_ranged=is_ranged,
             max_hp=max_hp,
+            max_mana=max_mana,
         )
         if hp <= 0:
             continue
@@ -1099,6 +1105,12 @@ def compute_ehp(
     # default-ON flip is operator-gated. Armed per-shield so it never credits
     # Kaenic/Eclipse.
     assume_chainlaced_shield: bool = False,
+    # Seraph's Embrace (2026-07-10): default-OFF opt-in for Seraph's Embrace
+    # (3040 / Arena 223040 / ARAM 323040) Lifeline - 18% max mana ANY (generic)
+    # shield at <30% HP. Byte-identical OFF (the default_off shield is dropped
+    # from the pool); live default-ON flip is operator-gated. Armed per-shield so
+    # it never credits Kaenic/Eclipse/Chainlaced.
+    assume_seraphs_shield: bool = False,
     # B45/B46 (operator flip 2026-07-06): default-ON so the EHP scorer credits
     # Randuin's crit-DR (~+17.6% physical EHP at the assumed crit share) and
     # Plated Steelcaps' 10% basic-attack DR (~+5.3% physical EHP at the assumed
@@ -1218,6 +1230,9 @@ def compute_ehp(
     bonus_hp = max(0.0, hp - float(base.get("hp", 0.0)))
     bonus_ad = max(0.0, float(stats.get("ad", 0.0)) - float(base.get("ad", 0.0)))
     base_ad = float(base.get("ad", 0.0))
+    # Seraph's Embrace Lifeline scales off TOTAL max mana (stats["mp"] = champion
+    # base mana at level + item flat mp; 0.0 for manaless champs).
+    max_mana = float(stats.get("mp", 0.0))
     is_ranged = _is_ranged(base)
     shield_totals, shield_sources = _collect_shields(
         resolved.item_ids,
@@ -1226,9 +1241,11 @@ def compute_ehp(
         bonus_ad=bonus_ad,
         is_ranged=is_ranged,
         max_hp=hp,
+        max_mana=max_mana,
         assume_kaenic_shield=assume_kaenic_shield,
         assume_eclipse_shield=assume_eclipse_shield,
         assume_chainlaced_shield=assume_chainlaced_shield,
+        assume_seraphs_shield=assume_seraphs_shield,
     )
     shield_any = shield_totals.get(ANY, 0.0)
     shield_phys = shield_totals.get(PHYSICAL, 0.0)

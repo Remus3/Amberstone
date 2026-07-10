@@ -1322,18 +1322,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # - Seraph's adds 1000 bonus mana baseline, so its Awe alone
         # contributes 0.02 * 1000 = 20 AP from the item's own mana, lifting
         # further with each additional mana item in the build.
-        # Lifeline shield (350 + max-mana% shield at <30% HP) is non-DPS;
-        # tagged ``unique_passive_key="lifeline"`` so collect_effects
-        # dedups against Shieldbow / Sterak's / Maw / Phantom Dancer
-        # (which uses Spectral Waltz, NOT lifeline - see batch 12). The
-        # Awe walk lives in engine.py and bypasses collect_effects, so
-        # the AP contribution survives any lifeline dedup.
+        # Lifeline shield (18% max mana generic shield at <30% HP, Meraki
+        # 16.13.1) is non-DPS - it now feeds EHP via the default-off
+        # ItemShield seam (assume_seraphs_shield); tagged
+        # ``unique_passive_key="lifeline"`` so collect_effects dedups against
+        # Shieldbow / Sterak's / Maw / Phantom Dancer (which uses Spectral
+        # Waltz, NOT lifeline - see batch 12). The Awe walk lives in engine.py
+        # and bypasses collect_effects, so the AP contribution survives any
+        # lifeline dedup.
         bonus_ap_pct_bonus_mp=0.02,
         unique_passive_key="lifeline",
+        shield=ItemShield(max_mana_scaling=0.18, damage_type=ANY, default_off=True),
         note=(
-            "Seraph's Embrace: Awe +2% bonus mana as AP + Lifeline "
-            "(low-HP mana shield, deduped - no DPS contribution from "
-            "the shield piece)"
+            "Seraph's Embrace: Awe +2% bonus mana as AP + Lifeline: 18% max "
+            "mana generic shield at <30% HP (Meraki 16.13.1), default-off opt-in"
         ),
     ),
     # -- Phase 4 batch 29 (2026-05-04): coverage batch - defensive_only +
@@ -4960,7 +4962,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Seraph's Embrace",
         bonus_ap_pct_bonus_mp=0.02,
         unique_passive_key="lifeline",
-        note="Seraph's Embrace (Arena 223040): same as SR 3040 - Awe 2% bonus mana as AP + Shurelya lifeline shield",
+        shield=ItemShield(max_mana_scaling=0.18, damage_type=ANY, default_off=True),
+        note="Seraph's Embrace (Arena 223040): same as SR 3040 - Awe 2% bonus mana as AP + Lifeline 18% max mana generic shield at <30% HP (Meraki 16.13.1), default-off opt-in",
     ),
     "223042": ItemEffect(
         item_id="223042",
@@ -5008,7 +5011,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Seraph's Embrace",
         bonus_ap_pct_bonus_mp=0.02,
         unique_passive_key="lifeline",
-        note="Seraph's Embrace (ARAM 323040): same as SR 3040 - Awe 2% bonus mana as AP + lifeline shield",
+        shield=ItemShield(max_mana_scaling=0.18, damage_type=ANY, default_off=True),
+        note="Seraph's Embrace (ARAM 323040): same as SR 3040 - Awe 2% bonus mana as AP + Lifeline 18% max mana generic shield at <30% HP (Meraki 16.13.1), default-off opt-in",
     ),
     "323042": ItemEffect(
         item_id="323042",
