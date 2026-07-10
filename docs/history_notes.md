@@ -235,6 +235,28 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (R94 public-API native-crop regression guard - vision OCR; NO ENGINE bump, Tier-1)
+
+Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `9a5fac79`. No restart/bounce (test-only).
+
+- PREMISE REFUTED (the 3rd re-pitch): "wire native OCR crops + color-correction into vision_tesseract.py" ALREADY
+  shipped LEDGER 793 (_color_correct :183 / _preprocess :198 / _scale_bbox :128 / the vision_profiles hot-path in
+  _regions() :86) + the R91 derive_scaled_regions primitive (LEDGER 832). Fresh grep: NO stubs, NO 1280/frame-halving
+  (the only "halve" token is a comment naming the failure prevented); verifier CONFIRMED vision_tesseract.py UNMODIFIED.
+- SHIPPED the one in-scope residual (WIRING-ONLY): tests/test_vision_tesseract_native_crop_r94.py (4 CI-safe tests,
+  PIL-only, tesseract seams stubbed). The PUBLIC crop path (crop_png_b64 + the read_fast_fields work-list) had ZERO
+  native-profile coverage - the existing wiring test exercises only _regions/_scale_bbox/_color_correct/_preprocess in
+  isolation. Proves a native 2560x1440 frame crops at native coords with no 1920->native downscale drift.
+- GATES: new 4 + vision surface 71 pass / 0 fail; tests/ collection clean (11281); the full RC suite 0-fail through 81%
+  at the 10-min cap (R6 full re-run skipped, test-only); ruff/py_compile/ASCII clean; verifier CONFIRM 4/4. ENGINE-IMPACT NONE.
+- ESCALATED (gemini_ask.txt): the director re-pitched vision-OCR wiring 3x - STOP. Next NO-LLM vision target = Lane E CV
+  template-match atlas OR consume the core.hud_settings COLOR layer (settings-driven inverse-correction + colorblind bar
+  adaptation, genuinely unwired) as a NEW scoped item; else rotate to a DS different-mechanic refute pass.
+- Don't-redo: native-crop + generic color-correction wiring is DONE + now public-API-guarded (do NOT re-pitch a 4th
+  time); the 23-box recalibration is a live-gated operator task, not a loop slice.
+
+---
+
 # 2026-07-10 (DS Darius E Apprehend % armor-penetration anti-tank credit - R93; ENGINE 1.189.0 -> 1.190.0, Tier-2)
 
 Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `874bf871`. DS `:8893` bounced 1.190.0.
