@@ -1115,6 +1115,13 @@ Rules:
         "round_number",
         "augment_select", "augment_choices", "anvil_choices",
         "augment_hud_slots", "camp_phase",
+        # Lane E CV OCR shadow-only numerics (logged, not consumed)
+        "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
+        "gold", "level", "cs", "kda",
+    ]
+    SHADOW_FIELDS = [
+        "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
+        "gold", "level", "cs", "kda",
     ]
     TIERED_VALIDATORS = {
         "round_number":      lambda v: isinstance(v, int) and 1 <= v <= 30,
@@ -1123,6 +1130,14 @@ Rules:
         "anvil_choices":     lambda v: isinstance(v, list),
         "augment_hud_slots": lambda v: isinstance(v, list),
         "camp_phase":        lambda v: isinstance(v, bool),
+        "ally_1_hp":         lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "ally_2_hp":         lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "ally_3_hp":         lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "ally_4_hp":         lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "gold":              lambda v: isinstance(v, int) and 0 <= v <= 99999,
+        "level":             lambda v: isinstance(v, int) and 1 <= v <= 18,
+        "cs":                lambda v: isinstance(v, int) and 0 <= v <= 1000,
+        "kda":               lambda v: isinstance(v, str) and v.count("/") == 2,
     }
 
     def __init__(self, api_key: str):
@@ -1135,6 +1150,7 @@ Rules:
         r.PROMPT  = self.PROMPT
         r.TIERED_FIELDS = self.TIERED_FIELDS
         r.TIERED_VALIDATORS = self.TIERED_VALIDATORS
+        r.SHADOW_FIELDS = self.SHADOW_FIELDS
         self._reader = r
 
     def read(self) -> "dict | None":
