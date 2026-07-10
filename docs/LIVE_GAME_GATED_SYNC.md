@@ -1720,3 +1720,15 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   holder's burst rank reads sane, the assumed-pool credit does not dominate real-damage item swaps, strongest
   eyeball vs a shield-heavy comp. A WRONG credit is worse than none - do NOT default-ON until validated. DS
   `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-10 R92 / Kaenic Rookern (2504) Magebane magic-shield EHP seam
+  (`compute_ehp(assume_kaenic_shield=)` / `ehp._collect_shields(assume_kaenic_shield=)`, ENGINE 1.189.0,
+  default-OFF). `ITEM_EFFECTS['2504']` now carries a `default_off` magic `ItemShield` (`max_hp_scaling=0.15`),
+  credited only when the flag is armed; OFF is byte-identical (the shield is dropped from the always-on
+  `_collect_shields` pool and every other shield's magnitude is unmoved since their `max_hp_scaling` is 0.0).
+  Routed through this opt-in seam rather than the always-on lifeline pool (Sterak/Maw/Shieldbow) because
+  Magebane's "no magic damage for 15s" uptime is ANTI-correlated with the magic-damage fights where the
+  shield would matter. OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): wire an
+  EHP-scoring consumer to pass `assume_kaenic_shield=True` and eyeball across ~2 real games that Kaenic's
+  magical EHP ranks sensibly vs other MR-tank items (Force of Nature / Spirit Visage), given the
+  anti-correlated uptime. A WRONG credit is worse than none - do NOT default-ON until validated. DS `:8893`
+  restart on flip. Does NOT block any further stage.
