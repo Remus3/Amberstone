@@ -3,7 +3,7 @@
 The sibling stamp guard (``test_build_order_engine_stamp_sync``) only checks that
 ``payload["engine_version"] == ENGINE_VERSION`` - the STAMP. It never inspects the
 per-champ CONTENT, so the committed tables can silently drift stale vs the current
-generator while the stamp still reads fresh (the exact gap that let a 1.186.0
+generator while the stamp still reads fresh (the exact gap that let a 1.187.0
 generator bump leave the tables computed under old scorer math).
 
 This module adds two layers over the six committed tables
