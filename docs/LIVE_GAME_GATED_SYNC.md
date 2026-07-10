@@ -1765,3 +1765,19 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   6s/target proc CD - the ItemShield credit is a full-magnitude one-instance shield, not uptime-amortized). A
   WRONG credit is worse than none - do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
   block any further stage.
+- 2026-07-10 Seraph's Embrace (3040 SR + 223040 Arena + 323040 ARAM) Lifeline max-mana-shield EHP seam
+  (`compute_ehp(assume_seraphs_shield=)` / `ehp._collect_shields(assume_seraphs_shield=)`, ENGINE 1.193.0,
+  default-OFF). ITEM_EFFECTS 3040 + 223040 + 323040 each now carry a `default_off` generic (ANY) `ItemShield`
+  (`max_mana_scaling=0.18`) via a NEW `ItemShield.max_mana_scaling` term (mirroring R92's `max_hp_scaling`),
+  with max-mana threaded through `resolve_magnitude` / `_collect_shields` / `compute_ehp` (sourced from
+  `resolved.stats['mp']` = champ base mana + item mp). Meraki 16.13.1 (items['3040'] "Lifeline"): "gain a
+  shield ... that absorbs damage equal to 18% maximum mana" at <30% max HP (the stale registry note claimed
+  "350 + max-mana%" - corrected to a pure 18% max-mana shield, no flat). Credited only when the flag is armed;
+  OFF is byte-identical (the shield is dropped by the shield-specific default-off gate, every other shield's
+  magnitude unmoved). ANY damage_type so all 3 EHP axes benefit (unlike R92/R99 magic-only). Ryze L11 +
+  Seraph's = 1914 max mana -> 344.6 generic shield (verified). OWED (operator/Gemini-gated, NOT headless -
+  charter 4b do-not-flip-blind): wire an EHP-scoring consumer to pass `assume_seraphs_shield=True` and eyeball
+  across ~2 real games that a Seraph's holder's blended EHP ranks sensibly vs other mana/AP survivability
+  items, and that the low-HP-triggered per-fight shield is not over-credited on a sustained clock (the
+  ItemShield credit is a full-magnitude one-instance shield, not uptime-amortized). A WRONG credit is worse
+  than none - do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
