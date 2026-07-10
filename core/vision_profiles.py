@@ -108,10 +108,18 @@ def _league_is_foreground() -> bool:
 
 
 def active_config_key() -> str:
-    """The LIVE HUD config signature (re-read each call -> on-the-fly switching)."""
+    """The LIVE HUD config signature (re-read each call -> on-the-fly switching).
+
+    Also installs the live HUD color layer (colorblind palette + gamma/brightness/
+    contrast) into core.vision_tesseract each call (R95), so bar detection + OCR
+    preprocessing adapt to the same settings that drive region selection. Additive
+    + fail-soft (the except returns "unknown")."""
     try:
         from core.hud_settings import read_hud_settings
-        return read_hud_settings().get("config_key", "unknown")
+        from core.vision_tesseract import configure_hud_color
+        h = read_hud_settings()
+        configure_hud_color(h)
+        return h.get("config_key", "unknown")
     except Exception:  # noqa: BLE001
         return "unknown"
 

@@ -195,16 +195,68 @@ def _color_correct(img):
         return g
 
 
-def _preprocess(img, scale: int = 4, threshold: int = 180):
+def _preprocess(img, scale: int = 4, threshold: int = 180, settings: Optional[dict] = None):
     """Color-correct + upscale + hard binarize. Tuned for League's white HUD
     text on colored bars (HP green, mana blue) where contrast-only
     preprocessing leaves the foreground too thin for Tesseract. The
     color-correct step (native-res enhancement, memory
     reference_vision_ocr_capture_pipeline) stretches dim glyphs above the
-    threshold before binarize so a native crop is not dropped."""
+    threshold before binarize so a native crop is not dropped.
+
+    When the active HUD settings flag ``color_correction_needed`` (a non-neutral
+    ColorBrightness/Contrast/Gamma), the frame is first inverse-corrected toward
+    neutral (R95). ``settings`` overrides the process-wide default installed via
+    ``configure_hud_color``; None uses that default. On the neutral path the body
+    stays byte-identical to the pre-R95 behavior (no correction call)."""
     from PIL import Image
+    s = settings if settings is not None else _HUD_COLOR
+    if s.get("color_correction_needed"):
+        img = _apply_color_correction(img, s.get("color") or {})
     g = _color_correct(img).resize((img.width * scale, img.height * scale), Image.LANCZOS)
     return g.point(lambda p: 255 if p > threshold else 0)
+
+
+def _apply_color_correction(img, color: dict):
+    """Inverse-correct League ColorBrightness/ColorContrast/ColorGamma (0.0-1.0,
+    0.5 neutral) so a game-shifted frame is pulled toward neutral before OCR
+    (R95). Each slider's deviation from 0.5 maps to an inverse enhancement factor
+    (0.5 -> 1.0, i.e. no change); factors are clamped to a modest [0.3, 3.0].
+    Brightness + contrast go through PIL ImageEnhance, gamma through a .point()
+    LUT on the RGB image. Neutral / absent sliders are an effective no-op (the
+    input is returned untouched). Fail-soft: returns ``img`` unchanged on any
+    PIL error."""
+    neutral = 0.5  # League slider midpoint (ColorPalette default 0 handled elsewhere)
+    try:
+        from PIL import ImageEnhance
+
+        def _slider(key):
+            try:
+                return float(color.get(key))
+            except (TypeError, ValueError):
+                return neutral
+
+        def _factor(val):
+            # deviation-from-neutral -> inverse gain (brighter game -> darker fix)
+            f = 1.0 - 2.0 * (val - neutral)
+            return max(0.3, min(3.0, f))
+
+        bright = _factor(_slider("ColorBrightness"))
+        contrast = _factor(_slider("ColorContrast"))
+        gdev = _slider("ColorGamma") - neutral
+        if abs(bright - 1.0) <= 1e-6 and abs(contrast - 1.0) <= 1e-6 and abs(gdev) <= 1e-6:
+            return img  # all-neutral / absent -> true no-op
+        out = img.convert("RGB")
+        if abs(bright - 1.0) > 1e-6:
+            out = ImageEnhance.Brightness(out).enhance(bright)
+        if abs(contrast - 1.0) > 1e-6:
+            out = ImageEnhance.Contrast(out).enhance(contrast)
+        if abs(gdev) > 1e-6:
+            exp = max(0.3, min(3.0, 1.0 + 2.0 * gdev))
+            lut = [max(0, min(255, int(round(((i / 255.0) ** exp) * 255)))) for i in range(256)]
+            out = out.point(lut * 3)
+        return out
+    except Exception:  # noqa: BLE001
+        return img
 
 
 def _ocr_int(img, allowlist: str = "0123456789") -> Optional[int]:
@@ -267,10 +319,18 @@ def _ocr_hp_mana(img) -> Optional[int]:
     return None
 
 
-def _bar_fill_pct(img, color: str = "green") -> Optional[int]:
+def _bar_fill_pct(img, color: str = "green", settings: Optional[dict] = None) -> Optional[int]:
     """Estimate bar fill percentage by counting matching color pixels per
     column. Walks left->right; the rightmost column with >=30% matching
-    pixels marks the fill edge. Returns 0-100 (None if bar not detected)."""
+    pixels marks the fill edge. Returns 0-100 (None if bar not detected).
+
+    When the active HUD settings flag ``colorblind`` (a non-zero ColorPalette
+    re-hues the HP/mana bars), RELAXED thresholds are used so a hue-shifted bar
+    still registers (R95); the strict thresholds are unchanged otherwise.
+    ``settings`` overrides the process-wide default installed via
+    ``configure_hud_color``; None uses that default."""
+    s = settings if settings is not None else _HUD_COLOR
+    colorblind = bool(s.get("colorblind"))
     rgb = img.convert("RGB")
     w, h = rgb.size
     if w < 4 or h < 2:
@@ -278,6 +338,16 @@ def _bar_fill_pct(img, color: str = "green") -> Optional[int]:
     px = rgb.load()
 
     def is_match(r, g, b):
+        if colorblind:
+            # relaxed: lower absolute floor + smaller channel-dominance deltas so
+            # a palette-shifted bar still registers.
+            if color == "green":
+                return g > 90 and g >= r - 5 and g > b + 5
+            if color == "blue":
+                return b > 90 and b >= g - 5 and r < 140
+            if color == "red":
+                return r > 100 and r >= g - 5 and r >= b - 5
+            return False
         if color == "green":
             return g > 110 and g > r + 20 and g > b + 20
         if color == "blue":
@@ -456,12 +526,27 @@ _slow_cache: dict = {}
 # (e.g., Live Client relay). Set via configure_drop_fields().
 _DROP_FIELDS: set = set()
 
+# Active HUD color layer (core.hud_settings.read_hud_settings output). Installed
+# live by core.vision_profiles.active_config_key() so bar detection + OCR
+# preprocessing adapt to the colorblind palette + gamma/brightness/contrast
+# sliders. Empty -> neutral (identical to pre-R95 hardcoded behavior).
+_HUD_COLOR: dict = {}
+
 
 def configure_drop_fields(names: Iterable[str]) -> None:
     """Skip OCR on these fields (caller has authoritative truth elsewhere,
     typically from Live Client API relay). Pass empty set to clear."""
     global _DROP_FIELDS
     _DROP_FIELDS = set(names)
+
+
+def configure_hud_color(settings: Optional[dict]) -> None:
+    """Install active HUD color settings (core.hud_settings.read_hud_settings
+    output) so bar detection + OCR preprocessing adapt to colorblind palette +
+    gamma/brightness/contrast. None/empty clears to neutral (identical to
+    pre-R95 hardcoded behavior)."""
+    global _HUD_COLOR
+    _HUD_COLOR = dict(settings) if settings else {}
 
 
 def _has_text_signal(crop, threshold: int = 180, min_lit_pct: float = 0.02) -> bool:
