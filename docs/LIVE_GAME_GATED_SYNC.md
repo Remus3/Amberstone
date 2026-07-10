@@ -330,6 +330,9 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   REGEN sustain score amp by `1 + summed_hsp` sanely and the build re-rank stays sensible before
   defaulting ON. Vamp-only sustain must stay unmoved (HSP does not amp vamp). DS restart on flip.
   SOURCE: docs/LEDGER.md item 745; ledger 2026-07-02 below.
+  R90 (2026-07-10, ENGINE 1.188.0) extended this seam's registry with Forbidden Idol (3114, +8%
+  HSP - the shared component the five finished carriers build from), so the SAME flip now also
+  covers a build holding the raw component; eyeball a 3114-carrying build at flip too.
 - B31. (REAL-SR) DSP5 summoner-spell plumb + eyeball: player's + ENEMY's live summoner sets
   into `dsp_live_consumers.summoner_fight_adjustments`; re-anchor wiki magnitudes at flip.
   HTTP TRANSPORT WIRED OQ18 (NEW POST `/summoner-fight-adj` route reads the producer;

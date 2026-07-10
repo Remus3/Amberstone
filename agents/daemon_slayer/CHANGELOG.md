@@ -1331,6 +1331,24 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.188.0 (2026-07-10 - Forbidden Idol HSP registry credit, R90 sibling of R60).
+A fresh adversarial Meraki(16.13.1)-vs-registry refute pass on the R60 wielder
+Heal/Shield Power (HSP) amp seam found the shared COMPONENT the five credited
+finished HSP carriers (Ardent 3504 / Staff of Flowing Water 6616 / Redemption
+3107 / Mikael 3222 / Echoes of Helia 6620) all build FROM - Forbidden Idol
+(3114) - was itself ABSENT from the curated enchanter_items.json registry, so a
+build holding the raw component got a 0.0 HSP amp though it grants +8% Heal and
+Shield Power (wiki: V12.14 reduced to 8% from 10%; no later HSP change; the
+finished carriers carry 0.10). FIX is a pure registry data-add of a 3114 entry
+with heal_shield_amp_pct=0.08 - it reuses R60's EXISTING assume_hsp_amp
+default-OFF seam (ehp.py self-shield pool + sustain.py REGEN self-heal), no new
+field/flag/lane. OFF path is byte-identical (assume_hsp_amp defaults False ->
+hsp_pct 0.0); 3114 is a non-terminal component so it never leaks into the
+default rank_items_by_hps candidate output. Armed, a build carrying Forbidden
+Idol now gets its +8% self-heal/shield EHP credit. Live default-ON flip is
+live-game gated. Source data: Meraki 16.13.1 + Riot Data Dragon (Forbidden
+Idol +8% Heal and Shield Power).
+
 1.187.0 (2026-07-10 - Armored Advance Plating EHP credit, R86 sibling-carrier).
 A fresh adversarial DDragon/Meraki(16.13.1)-vs-registry refute pass for the R86
 sibling-carrier seam found Armored Advance (item 3174, the tier-3 upgrade boot of
