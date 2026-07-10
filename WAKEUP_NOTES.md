@@ -4,6 +4,27 @@
 
 ---
 
+# 2026-07-10 (R101-C OCR shadow-report flip-readiness gate - tools/ocr_shadow_report.py - Lane E OCR migration step 2; ENGINE-IMPACT NONE)
+
+Manual /done session (not Gemini-loop), executing the R101 (LEDGER 842) NEXT. Full detail: LEDGER 843. Code commit `6e5a0354`.
+
+- tools/ocr_shadow_report.py: READ-ONLY per-field OCR-vs-Sonnet match-rate report over data/ocr_shadow.jsonl
+  (the {ts,field,ocr_val,sonnet_val,match} log R101 wired). Two-part flip gate mirrors aram_shadow_report: a field
+  is flip-eligible only at >=MIN_SAMPLES rows AND >=MATCH_GATE match (defaults 50 / 0.90, CLI --min-samples/--gate).
+  0.90 > aram's 0.70 because OCR-only replaces Sonnet as the numeric source of truth. Fail-soft (missing/empty/
+  malformed log -> zeroed, never raises); FLAGS readiness only - no flip authorization.
+- KNOWN_FIELDS = the 8 coach shadow numerics (ally_1..4_hp, gold, level, cs, kda), seeded so a zero-row field still
+  renders; present_rate + accuracy_when_present sit beside match_rate so a fail reads miss-vs-mismatch.
+- TDD RED-first (ImportError) -> GREEN 19 tests (tests/test_ocr_shadow_report.py). Tier-1 (one read-only tool, no
+  engine/schema/DS): py_compile + full ruff check . green + hygiene guards + the module slice (32 passed), per R5.
+  Single-thread inline (2 files, under R9); no worktree/subagent. RC NOT restarted (a tool, not RC-loaded); DS
+  untouched (1.192.0). Committed 6e5a0354; docs-sync commit follows.
+- NEXT (live-gated): run the report once data/ocr_shadow.jsonl accrues rows from a live ARAM/Arena game; when a
+  field clears the gate + operator OKs, flip that field OCR-only (~1-line coach-side, NOT re-wiring, NOT blind).
+  Don't-redo: the report + its gate are SHIPPED (do NOT rebuild); the log path/schema are FIXED by R101.
+
+---
+
 # 2026-07-10 (R101 ARAM+Arena OCR shadow-field wiring - Haiku-to-ZERO Lane E CV, shadow-first - vision-cv; ENGINE-IMPACT NONE)
 
 Gemini-loop DIRECTOR REFILL R101 = Haiku-to-ZERO Lane E CV OCR wiring. Full detail: LEDGER 842. Commit `c5301370` (docs `5a383ea3`).
@@ -50,31 +71,3 @@ Gemini-loop DIRECTOR REFILL R100 rotated REFILL PROTOCOL -> #2 (Research + compe
   or rotate to the meatier DS-sweep / Haiku-to-ZERO lanes. done_sentinel --tests 11277 --regressions 0.
 - Don't-redo: Overlay App F + the live-scouting/overlay category is torn down + DRAINED (do NOT re-pitch scouting card/premade/
   tilt/matchup/overlay-timer); the w_l_streak_7 render EXISTS (do NOT re-pitch "render the unrendered streak").
-
----
-
-# 2026-07-10 (R99 Chainlaced Crushers (3173) magic-shield EHP credit + R98 vision-OCR escalation resolve - ds-engine; ENGINE 1.191.0 -> 1.192.0)
-
-Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LEDGER 840. Commit `c335eafb`.
-
-- PART 1 (escalation resolve): retired the ROADMAP "VISION-OCR HARDENING" bullet (relocated verbatim to
-  docs/ROADMAP_HISTORY.md, marked DONE R94-R98) + moved the grab_native() OCR-crop-path seam to
-  docs/LIVE_GAME_GATED_SYNC.md B48 (live-gated Lane E). ROADMAP.md 79731B (budget 81920).
-- PART 2 (ds-sweep refute pass): a research subagent + an independent orchestrator scan CONVERGED - only Ambessa +
-  Annie carry un-registered shred/pen and NEITHER has a clean numeric Meraki field, so the clean-numeric candidate won:
-  Chainlaced Crushers (item 3173) "Noxian Persistence" magic shield was UNCREDITED (bare defensive_only ItemEffect,
-  no shield). Meraki 16.13.1: taking magic damage grants a shield absorbing 100 (L1)->200 (L18) +8% bonus HP for 5s (15s CD).
-- FIX (R92 Kaenic / R97 Eclipse ItemShield precedent, NO schema lift): shield=ItemShield(MAGICAL, flat=100,
-  level_lerp_low=1/high=18/high_value=200, bonus_hp_scaling=0.08, default_off=True) on ITEM_EFFECTS 3173 (SR-only,
-  no Arena mirror) + per-shield arming gate (iid=="3173") threaded through ehp._collect_shields/compute_ehp. Zero
-  cross-contam vs Kaenic/Eclipse.
-- ENGINE 1.191.0->1.192.0 (108 version-pin files). DS :8893 bounced 1.192.0; ds_share_sync 423 files --check green +
-  Share/CHANGELOG entry; 6 HZ-B build-order tables re-stamped (STAMP-ONLY, 0 content lines); DAEMON_SLAYER banner 1.192.0/8158.
-- TDD RED-first test_chainlaced_shield_r99.py (16 tests, 14 RED pre-fix) + VERIFIER GATE 7/7 CONFIRM (OFF byte-identical:
-  magical 2970->3256 ON-only, physical + true unchanged; build-orders stamp-only). GATES: DS 8158/1skip/1943subtests;
-  RC 11277 passed (the only 2 fails = the pre-existing LEDGER-828 coach-poll asyncio flake, pass 2/2 isolated, R99 engine
-  files carry 0 asyncio refs, 0 R99 regressions); ruff + ASCII clean.
-- Live default-ON flip (an EHP consumer passing assume_chainlaced_shield=True) -> LIVE_GATED. Don't-redo: Chainlaced 3173
-  Noxian Persistence shield SHIPPED; Ambessa/Annie pen has no clean numeric Meraki field (rejected this pass); the
-  vision-OCR recalibration + native-crop wiring stays DONE R94-R98 (relocated to ROADMAP_HISTORY; grab_native OCR-path tail
-  = LIVE-GATED Lane E B48, do NOT re-pitch as a headless slice).
