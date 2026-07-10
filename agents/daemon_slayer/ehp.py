@@ -261,6 +261,7 @@ def _collect_shields(
     max_hp: float = 0.0,
     assume_kaenic_shield: bool = False,
     assume_eclipse_shield: bool = False,
+    assume_chainlaced_shield: bool = False,
 ) -> tuple[dict[str, float], tuple[tuple[str, str, float], ...]]:
     """Resolve every ``ItemShield`` across the equipped items.
 
@@ -289,13 +290,16 @@ def _collect_shields(
         # another: R92 Kaenic Rookern (2504) rides assume_kaenic_shield (its
         # Magebane magic shield has an anti-correlated "no magic damage for 15s"
         # uptime); R97 Eclipse (6692 / Arena 226692) rides assume_eclipse_shield
-        # (a burst-window shield on a 6s/target CD). Neither is folded into the
-        # always-on lifeline pool.
+        # (a burst-window shield on a 6s/target CD); R99 Chainlaced Crushers
+        # (3173) rides assume_chainlaced_shield (its Noxian Persistence magic
+        # shield triggers only on taking magic damage, 15s CD). None is folded
+        # into the always-on lifeline pool.
         if shield.default_off:
             iid = str(item_id)
             armed = (
                 (assume_kaenic_shield and iid == "2504")
                 or (assume_eclipse_shield and iid in ("6692", "226692"))
+                or (assume_chainlaced_shield and iid == "3173")
             )
             if not armed:
                 continue
@@ -1089,6 +1093,12 @@ def compute_ehp(
     # Byte-identical OFF (the default_off shield is dropped from the pool); live
     # default-ON flip is operator-gated. Armed per-shield so it never credits Kaenic.
     assume_eclipse_shield: bool = False,
+    # R99 (2026-07-10): default-OFF opt-in for Chainlaced Crushers (3173) Noxian
+    # Persistence magic shield - 100 (L1)->200 (L18) +8% bonus HP, magic-only.
+    # Byte-identical OFF (the default_off shield is dropped from the pool); live
+    # default-ON flip is operator-gated. Armed per-shield so it never credits
+    # Kaenic/Eclipse.
+    assume_chainlaced_shield: bool = False,
     # B45/B46 (operator flip 2026-07-06): default-ON so the EHP scorer credits
     # Randuin's crit-DR (~+17.6% physical EHP at the assumed crit share) and
     # Plated Steelcaps' 10% basic-attack DR (~+5.3% physical EHP at the assumed
@@ -1218,6 +1228,7 @@ def compute_ehp(
         max_hp=hp,
         assume_kaenic_shield=assume_kaenic_shield,
         assume_eclipse_shield=assume_eclipse_shield,
+        assume_chainlaced_shield=assume_chainlaced_shield,
     )
     shield_any = shield_totals.get(ANY, 0.0)
     shield_phys = shield_totals.get(PHYSICAL, 0.0)
