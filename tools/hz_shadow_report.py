@@ -179,6 +179,28 @@ def _normalize_verdict_text(text: str) -> str:
 _NON_LANING_STATE_MARKERS: tuple[str, ...] = ("respawn", "coaching disabled")
 
 
+# Objective / macro map-calls that are NOT laning trade verdicts: mid/late-game
+# directives the live coach emits (SETUP DRAKE, TAKE BARON, DEFEND MID TOWER,
+# CRASH/FREEZE/PUSH a wave, END GAME, CAMP/ROTATE/POSITION for an objective).
+# The precompute laning A/B only ever emits trade/all_in/back_off/even/hold plus
+# an economy recall, so an objective tick has NO laning counterpart. Left in, it
+# biases the flip-readiness gate two ways: its A/B chip carries a hold-ish label
+# scored as a false comparable "hold", or it floods unclassified_native (on the
+# live hz_choice_shadow log: ~8.3k false comparable leaks + ~20.8k mislabeled
+# unclassified). Unlike the STATE markers above (absolute), these are guarded in
+# _is_non_laning_native_state by classify_verdict(action) is None, so a COMPOUND
+# action that itself states a lane verdict ("SETUP LANE TRADE" -> trade, "PUSH
+# LANE POKE" -> trade) is preserved, never over-excluded. Anti-circularity: this
+# de-biases the sample, it is NOT tuned to move the agreement rate (measured
+# effect was a small DROP, macro "hold" leaks were inflating agreement).
+_NON_LANING_ACTION_MARKERS: tuple[str, ...] = (
+    "baron", "drake", "dragon", "herald", "grub", "nexus", "elder",
+    "soul", "siege", "objective", "end game", "camp", "rotate",
+    "defend", "setup", "position", "crash", "freeze", "push",
+    "split", "roam", "gank", "group",
+)
+
+
 def classify_verdict(text) -> Optional[str]:
     """Map free text (a precompute A-label or Haiku prose/chip label) to one
     coarse verdict: "trade" / "all_in" / "back_off" / "recall" / "hold" /
@@ -268,17 +290,28 @@ def classify_build_lean(text) -> Optional[str]:
 
 
 def _is_non_laning_native_state(rec: dict) -> bool:
-    """True when the native (Haiku) signal is a coach status/overlay state
-    (dead player "WAIT RESPAWN", policy "COACHING DISABLED") rather than a
-    laning verdict. Such ticks are not a laning trade decision and are
-    excluded from EVERY agreement metric - they neither count as comparable,
-    as unclassified-native, nor as the uncovered-with-native table-gap
-    denominator (cycle-53 false-0% finding)."""
+    """True when the native (Haiku) signal is not a laning verdict at all -
+    excluded from EVERY agreement metric (neither comparable, unclassified-
+    native, nor the uncovered-with-native table-gap denominator).
+
+    Two classes: (1) a coach status/overlay STATE - a dead player's "WAIT
+    RESPAWN" or a policy "COACHING DISABLED" - matched absolutely (cycle-53
+    false-0% finding). (2) an objective/macro MAP-CALL ("SETUP DRAKE FIGHT",
+    "END GAME", "DEFEND MID TOWER", "CRASH BOT WAVE") that does NOT itself
+    state a lane verdict - guarded on classify_verdict(action) is None so a
+    compound action naming a real lane verdict ("SETUP LANE TRADE" -> trade)
+    is preserved, never over-excluded."""
     action = rec.get("native_action")
     if not isinstance(action, str):
         return False
     norm = _normalize_verdict_text(action)
-    return any(marker in norm for marker in _NON_LANING_STATE_MARKERS)
+    if any(marker in norm for marker in _NON_LANING_STATE_MARKERS):
+        return True
+    if classify_verdict(action) is None and any(
+        marker in norm for marker in _NON_LANING_ACTION_MARKERS
+    ):
+        return True
+    return False
 
 
 def _native_choice_label(rec: dict) -> Optional[str]:
