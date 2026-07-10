@@ -4,6 +4,29 @@
 
 ---
 
+# 2026-07-10 (DS Forbidden Idol HSP registry credit - R90 sibling of R60; ENGINE 1.187.0 -> 1.188.0, Tier-2)
+
+Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `52fa7edb`. DS `:8893` bounced to 1.188.0.
+
+- GAP (adversarial Meraki 16.13.1 vs registry refute on the R60 `assume_hsp_amp` seam): the 5 finished HSP
+  carriers (Ardent 3504 / Staff 6616 / Redemption 3107 / Mikael 3222 / Echoes 6620) are credited in
+  `enchanter_items.json`, but the shared COMPONENT they all build from - Forbidden Idol (3114) - was ABSENT,
+  so `sum_wielder_hsp_pct(['3114'])==0.0` though it grants +8% HSP (wiki V12.14 10%->8%; finished carry 0.10).
+- FIX: pure registry data-add (3114 -> `heal_shield_amp_pct` 0.08) reusing R60's EXISTING default-OFF
+  `assume_hsp_amp` seam (ehp.py self-shield + sustain.py REGEN). NO new field/flag/engine-code. Default-OFF
+  byte-identical; 3114 non-terminal -> no `rank_items_by_hps` leak. Armed -> shield pool + REGEN sustain *1.08.
+- VERIFY: TDD RED-first (test_forbidden_idol_hsp_r90.py, 8 tests, 5 RED pre-fix); read-only verifier CONFIRM
+  all 6 claims + re-reproduced DS 8098/0-fail. Value 0.08 wiki-verified + internal-consistency cross-checked.
+- GATES: DS 8098 passed / 0 fail; RC 11244 passed + 3 transient reds (1 phase8 live-engine stale-anchor GREEN
+  post-bounce, 2 pre-existing coach-poll flake) all pass in isolation, 0 R90 regressions; Share 419 --check green.
+- Tier-2 sync: 105 test pins re-stamped (125 occ), CHANGELOG + DAEMON_SLAYER banner (1.188.0/8098), 6 HZ-B
+  tables stamp-only regen, hps.py docstring 9->10.
+- LIVE: default-ON HSP flip EXCLUDED / operator-gated; LIVE_GATED B43 extended to cover 3114.
+- Don't-redo: wielder-HSP registry now COMPLETE for the SR enchanter line (5 finished + the Forbidden Idol
+  component); next DS-sweep refill = a FRESH Meraki-vs-registry refute of a DIFFERENT mechanic, never HSP.
+
+---
+
 # 2026-07-10 (combat-style archetype chip on champ-select My Pick card - R89 Aggregator C lift; UI slice)
 
 Gemini-loop DIRECTOR REFILL R89. Full detail: LEDGER 830. UI slice, presentation-only, NO ENGINE bump,
@@ -48,35 +71,3 @@ bounced to 1.187.0 (health engine 1.187.0, patch 16.13.1, 173 champs / 706 items
   coach-poll asyncio flake, isolation = 2 passed, baseline == item 828, NOT a regression) / 22 skipped;
   new test 5 pass; verifier CONFIRM; CI green. done_sentinel --tests 19328 --regressions 0. Don't-redo: the
   Plating lane is SATURATED (3047/223047/3174); crit-DR + AS-slow have no siblings this patch.
-
----
-
-# 2026-07-10 (regen STALE HZ-B build-order tables to 1.186.0 + content-freshness guard; NO ENGINE bump)
-
-Executes deferred `task_27071e90` (flagged in LEDGER 827). Full detail: LEDGER 828. Commit `5c149fe0`.
-Data-catchup: NO ENGINE bump (engine already 1.186.0; a table regen is the post-bump FOLLOW-UP the
-stamp-sync guard's own docstring prescribes, not a version change - the directive said BUMP, auto-picked
-no-bump as the safest + correct option per the no-questions grant, logged for director override).
-
-- Stale scope (static regen diff, all 3 modes): precompute `build_orders_*` = {Belveth}; variants
-  `build_order_variants_*` = {Annie, Belveth, Katarina, Lulu, Nilah}. Item 827's "e.g. Annie mage" was the
-  VARIANTS table (Annie precompute is byte-identical). ROOT CAUSE: 827 re-stamped the tables byte-exact
-  (stamp only) but item-826 bruiser damage-axis awareness genuinely changed some orders full-roster; the
-  OQ19 stamp-sync guard checks `engine_version==stamp`, never CONTENT.
-- Prevention (2 parallel worktree slices, disjoint files, read-only verifier CONFIRM 7 claims): NEW
-  `--champions all` full-roster flag on `core/build_order_precompute.py` + `core/build_order_variants.py`
-  (canonical 173 from `data/daemon_slayer/<patch>/champions.json`; heeds the R78 `--static` seed footgun) +
-  fixed the misleading "`--mode all` expands roster" docstrings; NEW `tests/test_build_order_content_freshness.py`
-  (fast per-commit roster/stamp/structure guard + env-gated `RC_BUILD_ORDER_FULL_REGEN=1` slow regen-compare)
-  + fixed the dangerous SEED-clobber `--mode all` regen command in the stamp-sync docstring.
-- Fresh output validated BEFORE commit (wrong precompute > stale): 667112=Flesheater is a real item; the
-  Belveth AD->AP shift is the shipped item-826 bruiser-axis reclassification -> FUTURE scorer-calibration
-  flag, NOT a table bug blocking the sync. All 6 tables stay 173 champs / 1.186.0.
-- SHARE: the HZ-B `build_orders/<patch>/` tables are NOT in the `Share/src` mirror (only the older
-  display-keyed `<patch>/` family is), so no Share content changed; `ds_share_sync --check` green (417 files).
-  No DS `:8893` restart (no engine code changed; :8893 already serves 1.186.0).
-- GATES (verifier-CONFIRMED, fresh): freshness proof 19 passed; build-order blast radius 460 passed; RC full
-  11238 passed / 2 failed (both the PRE-EXISTING coach-poll asyncio-pollution flake, LEDGER 823/824/827,
-  proven passing in isolation) / 22 skipped; DS 8085 passed / 1 skipped / 1943 subtests. done_sentinel
-  --tests 11238 --regressions 0. Don't-redo: HZ-B tables FRESH + content-freshness-guarded (do NOT re-flag
-  task_27071e90); Belveth AD->AP is a shipped-826 reclassification pending scorer-calibration (FUTURE).

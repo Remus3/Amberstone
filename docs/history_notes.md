@@ -235,6 +235,38 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (regen STALE HZ-B build-order tables to 1.186.0 + content-freshness guard; NO ENGINE bump)
+
+Executes deferred `task_27071e90` (flagged in LEDGER 827). Full detail: LEDGER 828. Commit `5c149fe0`.
+Data-catchup: NO ENGINE bump (engine already 1.186.0; a table regen is the post-bump FOLLOW-UP the
+stamp-sync guard's own docstring prescribes, not a version change - the directive said BUMP, auto-picked
+no-bump as the safest + correct option per the no-questions grant, logged for director override).
+
+- Stale scope (static regen diff, all 3 modes): precompute `build_orders_*` = {Belveth}; variants
+  `build_order_variants_*` = {Annie, Belveth, Katarina, Lulu, Nilah}. Item 827's "e.g. Annie mage" was the
+  VARIANTS table (Annie precompute is byte-identical). ROOT CAUSE: 827 re-stamped the tables byte-exact
+  (stamp only) but item-826 bruiser damage-axis awareness genuinely changed some orders full-roster; the
+  OQ19 stamp-sync guard checks `engine_version==stamp`, never CONTENT.
+- Prevention (2 parallel worktree slices, disjoint files, read-only verifier CONFIRM 7 claims): NEW
+  `--champions all` full-roster flag on `core/build_order_precompute.py` + `core/build_order_variants.py`
+  (canonical 173 from `data/daemon_slayer/<patch>/champions.json`; heeds the R78 `--static` seed footgun) +
+  fixed the misleading "`--mode all` expands roster" docstrings; NEW `tests/test_build_order_content_freshness.py`
+  (fast per-commit roster/stamp/structure guard + env-gated `RC_BUILD_ORDER_FULL_REGEN=1` slow regen-compare)
+  + fixed the dangerous SEED-clobber `--mode all` regen command in the stamp-sync docstring.
+- Fresh output validated BEFORE commit (wrong precompute > stale): 667112=Flesheater is a real item; the
+  Belveth AD->AP shift is the shipped item-826 bruiser-axis reclassification -> FUTURE scorer-calibration
+  flag, NOT a table bug blocking the sync. All 6 tables stay 173 champs / 1.186.0.
+- SHARE: the HZ-B `build_orders/<patch>/` tables are NOT in the `Share/src` mirror (only the older
+  display-keyed `<patch>/` family is), so no Share content changed; `ds_share_sync --check` green (417 files).
+  No DS `:8893` restart (no engine code changed; :8893 already serves 1.186.0).
+- GATES (verifier-CONFIRMED, fresh): freshness proof 19 passed; build-order blast radius 460 passed; RC full
+  11238 passed / 2 failed (both the PRE-EXISTING coach-poll asyncio-pollution flake, LEDGER 823/824/827,
+  proven passing in isolation) / 22 skipped; DS 8085 passed / 1 skipped / 1943 subtests. done_sentinel
+  --tests 11238 --regressions 0. Don't-redo: HZ-B tables FRESH + content-freshness-guarded (do NOT re-flag
+  task_27071e90); Belveth AD->AP is a shipped-826 reclassification pending scorer-calibration (FUTURE).
+
+---
+
 # 2026-07-09 (DS comp-aware boot utility scorer, DEFAULT-OFF; ENGINE 1.186.0)
 
 BACKLOG "DS scorer calibration" enhancement #2 (boot utility-awareness). Full detail: LEDGER 827.
