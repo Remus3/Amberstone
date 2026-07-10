@@ -217,6 +217,18 @@ Full artifact: `docs/COMPETITOR_LIFT_2026-07-05_R81.md`. First lift of the LIVE-
 **CLOSED (data-blocked / already owned - do NOT re-pitch):**
 - F6 gold-lead-per-lane overview + F7 ally ult/summ portrait timers - no live per-player gold or cooldown feed from any API RC can read (`core/lead_projection.py:20`; CLAUDE.md live-input note). Epic-objective timers are ALREADY owned via `core/event_callouts.py` + `web/js/panels/objective_gauges.js` (OQ16 live ring gauges).
 
+### Competitor lift teardown - 2026-07-10 (Aggregator C, Section 7b deep-dive, R89)
+
+Full artifact: `docs/COMPETITOR_LIFT_2026-07-10.md`. Two features torn down: F1 lane-matchup tags + F2 player combat-style tags. Aggregator C' web matchup surface is win-rate-driven (a counter table sorted by enemy WR, a curated 3-card "how to play against" prose block, a strong/weak chip row) plus a per-champion Riot-CLASS icon + learning-difficulty word; the GPI is a player-behavior radar. F2 combat-style SHIPPED in-run: a read-only archetype tag chip (CARRY/BRUISER/TANK/MAGE/ASSASSIN/ENCHANTER) on the champ-select My Pick card, sourced from the archetype RC already resolves + client-caches (`_CSV_ARCH_CACHE[champ].primary`, route `/api/cs-archetype-pick`) but never rendered since the picker was removed (LEDGER 823) - new `web/js/panels/archetype_chip.js` reusing the `.csv-build-badge` tint family, presentation-only, no backend / Claude / schema.
+
+**FUTURE (worth noting; condition to act):**
+- **F1a lane-matchup WR "best/worst counters" list (MED)** - Aggregator C sorts a counter table by enemy-vs-you WR + a strong/weak chip row. RC has the WR lanes (`core/smoothed_rates*.py`, `rewind_history.db`) but the champ-select matchup card (`web/js/panels/ds_matchup.js`) is a SIM verdict, not a WR list. Needs the live-WR lane wired into champ-select + a new render (data dependency, cache, rank/region filters). Trigger: next champ-select matchup UI pass.
+- **F2a Arena My Pick chip parity (LOW)** - the archetype chip shipped on the SR/ARAM My Pick body; Arena uses a separate `_csvArenaPaneHtml` layout (`champ_select.js:931`) and did not get the chip. Pure-JS parity add + audit. Trigger: next Arena champ-select pass.
+
+**CLOSED (dependency / already-owned - do NOT re-pitch):**
+- F1b curated "how to play against" prose tip cards - a content / Claude authoring dependency that collides with the no-new-Claude-dependency + Error-Handling guardrails. RC's `/api/ds-matchup` verdict chip (ALL IN / TRADE / BACK OFF / EVEN) already covers the cheap dependency-free half of the matchup read.
+- F2b pre-game behavioral player badges (Fatigue / Hot Streak) - per-summoner history aggregation RC does not compute; out of the presentation-over-DS-math lane. GPI radar already owned (`web/js/panels/player_gpi.js`).
+
 ### Competitor + data-acquisition deep-research fold-in - 2026-07-05 (R81 incorporation)
 
 Operator-directed fold-in of the broad 89-agent competitor + data-acquisition research run (21 NOW / 10 FUTURE / 13 CLOSED). The FULL artifact with competitor names + the 5 cheap probe experiments lives NON-repo on the Legion Desktop (`RC_COMPETITOR_RESEARCH_2026-07-05.md`) per the name-scrub policy (project_pre_release_name_scrub); the technical substance is captured here name-scrubbed. Companion local-tool teardown (an open-source LCU toolkit) also NON-repo on Desktop. None are auto-built - they enter the actionable queue for operator-picked slices.
