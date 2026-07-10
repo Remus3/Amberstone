@@ -235,6 +235,35 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-09 (DS bruiser scorer axis-awareness + retire/relax 2 stale tests; ENGINE 1.185.0)
+
+Closed the 3 DS scorer-calibration reds from LEDGER 823/824 (BACKLOG "DS scorer calibration"). Full
+detail: LEDGER 826. Tier-2 (ENGINE 1.184.0 -> 1.185.0, DS :8893 restarted pid 2408 -> 18292, Share 415
+files --check clean). Operator confirmed (a) fix-now; (b)/(c) resolved on recommendation after framing.
+
+- (a) BRUISER AXIS [real fix]: `hybrid.py` rank_items_by_hybrid + compute_hybrid now score AP-axis champs
+  (DDragon info.magic > info.attack) on ability DPS (compute_ability_dps) instead of auto-attack
+  weighted_dps, so an AP champ routed to the bruiser scorer builds AP (Mordekaiser -> Blackfire/Riftmaker/
+  Rabadon + Randuin/Warmog), AD champs byte-identical. Self-contained axis (no core import, Share-safe).
+  LATENT: archetype_for returns "mage" for every AP champ so no committed comp-archetype cell reaches it as
+  AP (all 6 AD-bruiser champs byte-identical after regen) - defense-in-depth for direct /rank-bruiser
+  callers, not a live-output change. Gwen edge: DDragon attack 7 / magic 5 -> classifies AD (shared with
+  all RC AD/AP consumers). RED-first test_bruiser_axis_awareness.py.
+- (b) KALISTA IE [test relaxed]: no on-hit template exists (carry scorer is pure weighted_dps); on-hit
+  Kalista is DPS-optimal + a real build; IE appears only for crit-passive kits. Test now asserts a coherent
+  ADC core, not IE specifically. On-hit Kalista RATIFIED meta-correct.
+- (c) BEAM boots_unique=False [test retired]: outcome unreachable with real items post-19a76d8b (T2 boots
+  too low-DPS to stack); branch stays live (cli/server), default path still guarded.
+
+Verify: DS-dir 8078 passed / 1 skipped / 1943 subtests; affected tests/ subset green (one pre-restart red
+was the live :8893 lagging, green after restart); read-only verifier PASS 5/5.
+
+NEW BACKLOG (operator-surfaced): situational/alternative builds (crit-vs-on-hit, matchup-keyed); boot
+utility-awareness (MS/tenacity/haste/survival vs comp). OWED (operator-side, not code): rotate the DeepSeek
++ NVIDIA API keys at their provider dashboards.
+
+---
+
 # 2026-07-09 (remove the budget_saver subsystem entirely)
 
 Operator directive (from item 824's NEXT). Executed `docs/BUDGET_SAVER_REMOVAL_PLAN.md` end-to-end.

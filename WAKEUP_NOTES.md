@@ -4,6 +4,31 @@
 
 ---
 
+# 2026-07-10 (DS Armored Advance Plating EHP credit - R86 sibling-carrier; ENGINE 1.187.0)
+
+Gemini-loop DIRECTOR REFILL R88. Full detail: LEDGER 829. Tier-2, commit `b6a64836`, DS `:8893`
+bounced to 1.187.0 (health engine 1.187.0, patch 16.13.1, 173 champs / 706 items).
+
+- REFUTE PASS (inline, DDragon+Meraki 16.13.1 vs registry across all 3 anti-AA lanes x every map mirror):
+  exactly ONE uncredited sibling carrier - Armored Advance (3174, tier-3 Steelcaps upgrade) carries the
+  IDENTICAL "Plating -10% incoming basic-attack damage" that R80 gave Steelcaps 3047/223047, but its entry
+  (`_effects_data.py:5397`) was a bare `defensive_only` NOTE-only -> ZERO EHP credit. crit-DR (Randuin's) +
+  enemy-AS-slow (Frozen Heart) have NO sibling gap; no Arena/ARAM 3174 mirror; 3174 is poolable.
+- FIX (2-file build-slice + verifier gate): set the PRE-EXISTING `basic_attack_damage_reduction=0.10` on
+  3174. NO new field/flag, NO `ehp.py` change - reuses R80's EXISTING `assume_item_aa_dr` seam.
+- LIVE STATUS: `assume_item_aa_dr` is DEFAULT-ON (`ehp.py:1070`, operator flip B45/B46 2026-07-06), so this
+  is a live DATA-COMPLETION (Armored Advance now credited like the already-live Steelcaps), NOT a new gated
+  flip - no LIVE_GATED row owed. (The commit body's "stays LIVE-GATED" line was imprecise; corrected in
+  LEDGER 829 + ORCH R88.) Build orders unchanged (boots picked by `_select_boots`, not the EHP beam).
+- Tier-2: 106 test-pin re-stamps + DAEMON_SLAYER banner 1.187.0/8090 + CHANGELOG 1.187.0 + the 6 HZ-B tables
+  re-stamped (STAMP-ONLY, content byte-identical) + `ds_share_sync` 418 files `--check` green.
+- GATES (fresh): DS 8090 passed / 1 skipped / 1943 subtests; RC 11238 passed / 2 failed (the PRE-EXISTING
+  coach-poll asyncio flake, isolation = 2 passed, baseline == item 828, NOT a regression) / 22 skipped;
+  new test 5 pass; verifier CONFIRM; CI green. done_sentinel --tests 19328 --regressions 0. Don't-redo: the
+  Plating lane is SATURATED (3047/223047/3174); crit-DR + AS-slow have no siblings this patch.
+
+---
+
 # 2026-07-10 (regen STALE HZ-B build-order tables to 1.186.0 + content-freshness guard; NO ENGINE bump)
 
 Executes deferred `task_27071e90` (flagged in LEDGER 827). Full detail: LEDGER 828. Commit `5c149fe0`.
@@ -62,32 +87,3 @@ frontline CC); (c) the flagged SEPARATE finding - the committed full-roster buil
 look STALE vs the generator (task chip "Investigate stale DS precompute build-order tables"; do NOT
 `--mode all` regen, it clobbers to a 10-champ seed). Do NOT re-flag boot utility as unfixed - SHIPPED
 DEFAULT-OFF (LEDGER 827). (WAKEUP prune to 2-3 blocks is due - weekly-hygiene relocate job.)
-
----
-
-# 2026-07-09 (DS bruiser scorer axis-awareness + retire/relax 2 stale tests; ENGINE 1.185.0)
-
-Closed the 3 DS scorer-calibration reds from LEDGER 823/824 (BACKLOG "DS scorer calibration"). Full
-detail: LEDGER 826. Tier-2 (ENGINE 1.184.0 -> 1.185.0, DS :8893 restarted pid 2408 -> 18292, Share 415
-files --check clean). Operator confirmed (a) fix-now; (b)/(c) resolved on recommendation after framing.
-
-- (a) BRUISER AXIS [real fix]: `hybrid.py` rank_items_by_hybrid + compute_hybrid now score AP-axis champs
-  (DDragon info.magic > info.attack) on ability DPS (compute_ability_dps) instead of auto-attack
-  weighted_dps, so an AP champ routed to the bruiser scorer builds AP (Mordekaiser -> Blackfire/Riftmaker/
-  Rabadon + Randuin/Warmog), AD champs byte-identical. Self-contained axis (no core import, Share-safe).
-  LATENT: archetype_for returns "mage" for every AP champ so no committed comp-archetype cell reaches it as
-  AP (all 6 AD-bruiser champs byte-identical after regen) - defense-in-depth for direct /rank-bruiser
-  callers, not a live-output change. Gwen edge: DDragon attack 7 / magic 5 -> classifies AD (shared with
-  all RC AD/AP consumers). RED-first test_bruiser_axis_awareness.py.
-- (b) KALISTA IE [test relaxed]: no on-hit template exists (carry scorer is pure weighted_dps); on-hit
-  Kalista is DPS-optimal + a real build; IE appears only for crit-passive kits. Test now asserts a coherent
-  ADC core, not IE specifically. On-hit Kalista RATIFIED meta-correct.
-- (c) BEAM boots_unique=False [test retired]: outcome unreachable with real items post-19a76d8b (T2 boots
-  too low-DPS to stack); branch stays live (cli/server), default path still guarded.
-
-Verify: DS-dir 8078 passed / 1 skipped / 1943 subtests; affected tests/ subset green (one pre-restart red
-was the live :8893 lagging, green after restart); read-only verifier PASS 5/5.
-
-NEW BACKLOG (operator-surfaced): situational/alternative builds (crit-vs-on-hit, matchup-keyed); boot
-utility-awareness (MS/tenacity/haste/survival vs comp). OWED (operator-side, not code): rotate the DeepSeek
-+ NVIDIA API keys at their provider dashboards.
