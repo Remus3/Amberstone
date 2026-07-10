@@ -4,6 +4,30 @@
 
 ---
 
+# 2026-07-10 (reusable OCR-region resolution-scaling primitive - R91 Vision-OCR Hardening; Tier-1, NO ENGINE bump)
+
+Gemini-loop DIRECTOR REFILL R91 (cycle 6). Full detail: LEDGER 832. Commit `67f4c35a`. No DS bounce (ENGINE-IMPACT NONE).
+
+- PREMISE-CHECK reconciled a partially-stale digest: the "wire color-correction + native crops / replace stubs
+  into vision_tesseract.py" half ALREADY shipped LEDGER 793 (_color_correct/_preprocess/_scale_bbox + the profile
+  hot-path in _regions() - grep found NO stubs), and the 2560x1440 profiles already exist as gitignored per-machine
+  JSON (data/vision_profiles/2560x1440_*.json, guarded by a Legion-local test that SKIPS on CI). vision_tesseract.py
+  left UNTOUCHED.
+- GENUINE net-new: derive_scaled_regions() + derive_profile() + _load_legacy_regions() appended to
+  core/vision_profiles.py (L320/L330/L350) - a pure primitive scaling the hand-calibrated 1920x1080 boxes
+  (data/vision_regions.json) to any native base by per-axis int(coord*dst/src), BYTE-EXACT with
+  vision_tesseract._scale_bbox (verified over all 21 fields), so a derived native-base profile crops the identical
+  rectangle with no downscale drift. Closes the CI gap where the 1.3333x math was only Legion-guarded; seeds future
+  resolutions (3440x1440).
+- VERIFY: TDD RED-first (test_vision_profile_derive.py, 8 tests); read-only verifier CONFIRM all 5 claims (files
+  L320/L330/L350, git additive-only, ruff clean, 21 passed fresh, byte-exact OK 21 fields).
+- GATES: Tier-1 relevant suite 83 passed / 0 fail across the 9 vision_profiles/vision_tesseract consumers; ruff +
+  py_compile + ASCII-clean; CI green 67f4c35a. Additive to vision_profiles.py only.
+- Don't-redo: color-correction + native-crop wiring is DONE (LEDGER 793); the primitive is SHIPPED + CI-tested; the
+  actual per-HUD 2560 box tuning stays LIVE-GATED (needs a live 2560 frame; the *1.3333 seed is not a substitute).
+
+---
+
 # 2026-07-10 (DS Forbidden Idol HSP registry credit - R90 sibling of R60; ENGINE 1.187.0 -> 1.188.0, Tier-2)
 
 Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `52fa7edb`. DS `:8893` bounced to 1.188.0.
@@ -46,28 +70,3 @@ commit `e2ff5982`. No RC restart (asset-hash ADR-008), no DS bounce (ENGINE-IMPA
   359 + CS regression 24 + hygiene 13; ruff clean; CI green.
 - Tails (BACKLOG R89): F2a Arena chip parity (LOW); F1a WR best/worst counters list (MED); F1b prose tips +
   F2b behavioral player badges CLOSED. Don't-redo: the combat-style chip is SHIPPED for SR+ARAM.
-
----
-
-# 2026-07-10 (DS Armored Advance Plating EHP credit - R86 sibling-carrier; ENGINE 1.187.0)
-
-Gemini-loop DIRECTOR REFILL R88. Full detail: LEDGER 829. Tier-2, commit `b6a64836`, DS `:8893`
-bounced to 1.187.0 (health engine 1.187.0, patch 16.13.1, 173 champs / 706 items).
-
-- REFUTE PASS (inline, DDragon+Meraki 16.13.1 vs registry across all 3 anti-AA lanes x every map mirror):
-  exactly ONE uncredited sibling carrier - Armored Advance (3174, tier-3 Steelcaps upgrade) carries the
-  IDENTICAL "Plating -10% incoming basic-attack damage" that R80 gave Steelcaps 3047/223047, but its entry
-  (`_effects_data.py:5397`) was a bare `defensive_only` NOTE-only -> ZERO EHP credit. crit-DR (Randuin's) +
-  enemy-AS-slow (Frozen Heart) have NO sibling gap; no Arena/ARAM 3174 mirror; 3174 is poolable.
-- FIX (2-file build-slice + verifier gate): set the PRE-EXISTING `basic_attack_damage_reduction=0.10` on
-  3174. NO new field/flag, NO `ehp.py` change - reuses R80's EXISTING `assume_item_aa_dr` seam.
-- LIVE STATUS: `assume_item_aa_dr` is DEFAULT-ON (`ehp.py:1070`, operator flip B45/B46 2026-07-06), so this
-  is a live DATA-COMPLETION (Armored Advance now credited like the already-live Steelcaps), NOT a new gated
-  flip - no LIVE_GATED row owed. (The commit body's "stays LIVE-GATED" line was imprecise; corrected in
-  LEDGER 829 + ORCH R88.) Build orders unchanged (boots picked by `_select_boots`, not the EHP beam).
-- Tier-2: 106 test-pin re-stamps + DAEMON_SLAYER banner 1.187.0/8090 + CHANGELOG 1.187.0 + the 6 HZ-B tables
-  re-stamped (STAMP-ONLY, content byte-identical) + `ds_share_sync` 418 files `--check` green.
-- GATES (fresh): DS 8090 passed / 1 skipped / 1943 subtests; RC 11238 passed / 2 failed (the PRE-EXISTING
-  coach-poll asyncio flake, isolation = 2 passed, baseline == item 828, NOT a regression) / 22 skipped;
-  new test 5 pass; verifier CONFIRM; CI green. done_sentinel --tests 19328 --regressions 0. Don't-redo: the
-  Plating lane is SATURATED (3047/223047/3174); crit-DR + AS-slow have no siblings this patch.
