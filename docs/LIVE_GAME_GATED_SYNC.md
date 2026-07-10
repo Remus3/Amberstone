@@ -322,6 +322,16 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   stacks multiplicatively with B46's Steelcaps per-hit AA-DR on a build with both. SOURCE:
   docs/LEDGER.md item 807.
 
+- B48. (PRACTICE-SR, Lane E) Vision-OCR native-res crop path: the live OCR read path still
+  consumes the 1280-HALVED `/latest-frame` (`vision_server/_frame.py` `_SELF_GRAB_MAX_WIDTH=1280`),
+  so the native-2560 OCR boxes get scaled DOWN 0.5x at crop time (re-introduces the halved-frame
+  degradation the native calibration was meant to remove). WIRE `core/screen_grab.grab_native()`
+  into the OCR crop path (skip the 1280 downscale for OCR crops ONLY; keep it for the
+  Sonnet/bandwidth `/latest-frame`), then validate OCR read accuracy vs a real in-game frame (own
+  HUD renders at native res in practice tool). The recalibration + native-crop WIRING is DONE
+  (R94/R95/R96/R98); this is the last live-gated tail. SOURCE: docs/ROADMAP_HISTORY.md (Relocated
+  2026-07-10 R99); docs/LEDGER.md item 793; ROADMAP vision-OCR block (relocated).
+
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
 - B42. (REAL-SR) R59 `assume_lifeline_shield` flip (target-side Lifeline shield credit): in a
