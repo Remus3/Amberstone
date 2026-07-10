@@ -4,6 +4,35 @@
 
 ---
 
+# 2026-07-09 (DS bruiser scorer axis-awareness + retire/relax 2 stale tests; ENGINE 1.185.0)
+
+Closed the 3 DS scorer-calibration reds from LEDGER 823/824 (BACKLOG "DS scorer calibration"). Full
+detail: LEDGER 826. Tier-2 (ENGINE 1.184.0 -> 1.185.0, DS :8893 restarted pid 2408 -> 18292, Share 415
+files --check clean). Operator confirmed (a) fix-now; (b)/(c) resolved on recommendation after framing.
+
+- (a) BRUISER AXIS [real fix]: `hybrid.py` rank_items_by_hybrid + compute_hybrid now score AP-axis champs
+  (DDragon info.magic > info.attack) on ability DPS (compute_ability_dps) instead of auto-attack
+  weighted_dps, so an AP champ routed to the bruiser scorer builds AP (Mordekaiser -> Blackfire/Riftmaker/
+  Rabadon + Randuin/Warmog), AD champs byte-identical. Self-contained axis (no core import, Share-safe).
+  LATENT: archetype_for returns "mage" for every AP champ so no committed comp-archetype cell reaches it as
+  AP (all 6 AD-bruiser champs byte-identical after regen) - defense-in-depth for direct /rank-bruiser
+  callers, not a live-output change. Gwen edge: DDragon attack 7 / magic 5 -> classifies AD (shared with
+  all RC AD/AP consumers). RED-first test_bruiser_axis_awareness.py.
+- (b) KALISTA IE [test relaxed]: no on-hit template exists (carry scorer is pure weighted_dps); on-hit
+  Kalista is DPS-optimal + a real build; IE appears only for crit-passive kits. Test now asserts a coherent
+  ADC core, not IE specifically. On-hit Kalista RATIFIED meta-correct.
+- (c) BEAM boots_unique=False [test retired]: outcome unreachable with real items post-19a76d8b (T2 boots
+  too low-DPS to stack); branch stays live (cli/server), default path still guarded.
+
+Verify: DS-dir 8078 passed / 1 skipped / 1943 subtests; affected tests/ subset green (one pre-restart red
+was the live :8893 lagging, green after restart); read-only verifier PASS 5/5.
+
+NEW BACKLOG (operator-surfaced): situational/alternative builds (crit-vs-on-hit, matchup-keyed); boot
+utility-awareness (MS/tenacity/haste/survival vs comp). OWED (operator-side, not code): rotate the DeepSeek
++ NVIDIA API keys at their provider dashboards.
+
+---
+
 # 2026-07-09 (remove the budget_saver subsystem entirely)
 
 Operator directive (from item 824's NEXT). Executed `docs/BUDGET_SAVER_REMOVAL_PLAN.md` end-to-end.
@@ -70,47 +99,5 @@ ds-share-sync `--check` clean. RC restarted.
 NEXT from this session (remove the budget_saver subsystem) was EXECUTED 2026-07-09 - see the newest
 session block above + LEDGER 825. Do NOT re-pitch a budget-saver / lean-profile / 8B-local fallback.
 Secondary (still open): BACKLOG "Daemon Slayer scorer calibration" - bruiser-scorer axis-awareness, Kalista
-on-hit-vs-IE, beam boots_unique. Each engine fix = Tier-2.
-
----
-
-# 2026-07-09 (CI baseline repair -- nightly-full-suite red)
-
-Follow-through on item 822's deferred NOTE: the schedule-only nightly-full-suite (14k, NOT in push/PR CI)
-was red on main; RC-CIWatchdog never fixed it (ci-fix/29013242484 had 0 commits ahead). Fixed ~24
-deterministic failures in 4 verified slices. Full detail: LEDGER 823. Commits 40afd582 58ce5397 ccbafd5e
-adcf0cbe (all pushed; push-CI green). Confirmation nightly dispatched on the fixed HEAD.
-
-Slices:
-- S1 40afd582: regen build_order_variants_{sr,aram,arena} at ENGINE 1.184.0 (were 1.182.0 from the 809
-  bump; MUST pass explicit --champions for full-roster 173 cells - bare --mode all yields the 10-champ
-  seed). $py->$venvPy in BUDGET_SAVER_PLAN.md (bare-py regex). liveStrip->strip test literal.
-- S2 58ce5397: made the kit-axis guards hermetic. test_archetype_axis_correction + build_order_axis_parity
-  read the live data/cs_archetype_picks.json; the operator's Katarina->bruiser user_cs pick legitimately
-  overrides the kit axis. Monkeypatch _load_picks to {} in the default tests; skip picked champs in parity.
-- S3 ccbafd5e: u2500-sweep / rc2_p73-quarantine / pengu-skeleton referenced gitignored _archive/ + relocated
-  pengu/ files absent on a fresh checkout -> converted missing-target fails to skips.
-- S4 adcf0cbe (real logic): a force-cleared coach was re-populated with deterministic action by the
-  deterministic layer AFTER apply_cleared_at emptied it -> gated the synthesis on a _was_cleared flag. RC
-  restarted (pid 9016 -> 17632, reload_ok).
-
-LEFT RED (DS-judgment, logged to BACKLOG "DS scorer calibration", NOT fixed blind):
-- test_beam boots_unique=False: 19a76d8b's T3-boot exclusion + frozenset dedup make a multi-boot build
-  unreachable from a boots-only pool. Retire the test or re-scope boots_unique (DS-batch call).
-- test_aram_coach_shadow_wire Kalista IE: the generic on-hit AD template (finding B) drops crit IE - may be
-  meta-correct for on-hit Kalista. DS-meta call. The Katarina AD build = real bruiser-scorer-not-axis-aware
-  gap (finding A/B family).
-Pre-existing full-suite-LOAD flakes (coach_poll_offload x2, ds_matchdb_mcp auth) all pass in isolation - untouched.
-
-OPERATOR NEXT (2026-07-09, post-wrap interrupt) -- ROOT-CAUSE PREVENTION for the archetype-pick pollution:
-- Remove the DS archetype OPTION BUTTONS from the champ-select menu (the `.csv-archetype-picker` in
-  web/js/panels/champ_select.js:2567 + its two `/api/cs-archetype-pick` POSTs at :2611/:2650; route
-  dashboard/routes_archetype.py, store data/cs_archetype_picks.json). Goal: operators can no longer write
-  user_cs picks that pollute the shared committed precompute tables (Katarina->bruiser was the LEDGER 823
-  root cause).
-- Remove the RIGHT-CLICK archetype switching from the in-game build overlay panel (web/js/panels/ds_shaper.js
-  contextmenu path + overlay_item_radial.js if it carries an archetype swap).
-- Decide existing-pick handling: after removing the UI, either clear data/cs_archetype_picks.json (precompute
-  reverts to kit-default) or keep the picks read-only. Frontend slices -> run the 3b UI-audit ritual before
-  commit. This likely also greens test_build_order_axis_parity[Katarina] + the archetype_axis guards
-  permanently (the scoped-skip from 58ce5397 becomes unnecessary).
+on-hit-vs-IE, beam boots_unique. Each engine fix = Tier-2. (Those 3 reds CLOSED 2026-07-09 - see the newest
+block at the top + LEDGER 826.)
