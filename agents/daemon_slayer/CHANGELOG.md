@@ -1331,6 +1331,19 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.186.0 (2026-07-09 - comp-aware boot utility scorer, DEFAULT-OFF).
+New agents/daemon_slayer/boot_utility.py: a comp-conditioned per-boot utility
+scorer. Each tier-2 boot carries a normalized utility vector (as/pen/haste/
+armor/mr/tenacity/ms); the enemy comp (enemy_ad_share / enemy_ap_share + a v1
+CC proxy) weights the axes; the boot with the highest dot product wins, but a
+challenger must beat the champion's archetype-default boot by a relative margin
+(hysteresis). Consumed by core/build_order._select_boots behind the DEFAULT-OFF
+assume_boot_utility seam; plan_build_order threads the flag and reads the enemy
+shares from rank_kwargs. OFF path is byte-identical (committed precompute tables
+unchanged) - capability added, live output unchanged, same shape as R58
+assume_ms_utility. Flip default-ON is a follow-up (live-game gated). Source
+data: Riot Data Dragon.
+
 1.185.0 (2026-07-09 - bruiser (hybrid) scorer damage-axis-awareness).
 rank_items_by_hybrid + compute_hybrid scored damage purely by auto-attack
 compute_dps().weighted_dps, so an AP champion routed to the bruiser archetype
