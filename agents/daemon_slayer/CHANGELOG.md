@@ -1331,6 +1331,22 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.187.0 (2026-07-10 - Armored Advance Plating EHP credit, R86 sibling-carrier).
+A fresh adversarial DDragon/Meraki(16.13.1)-vs-registry refute pass for the R86
+sibling-carrier seam found Armored Advance (item 3174, the tier-3 upgrade boot of
+Plated Steelcaps) carrying the IDENTICAL "Plating - Reduces incoming damage from
+Attacks by 10%" passive that R80 already modeled on Steelcaps 3047/223047, but its
+registry entry was a bare defensive_only NOTE-only so its Plating got ZERO EHP
+credit though its armor counted. Full sibling sweep across all three modeled
+anti-AA lanes (Plating basic-AA-DR / R77 crit-DR / R86 enemy-AS-slow) x all map
+mirrors: 3174 is the one and only uncredited sibling carrier. FIX sets the
+pre-existing basic_attack_damage_reduction=0.10 field on 3174 - it reuses R80's
+EXISTING assume_item_aa_dr seam + ehp.item_aa_dr_multiplier, no new field/flag/
+lane. OFF path is byte-identical (assume_item_aa_dr defaults False -> identity
+1.0); armed, an Armored Advance build now gets the same physical-EHP credit as a
+Steelcaps build. Live default-ON flip is live-game gated. Source data: Riot Data
+Dragon 16.13.1 (Plating -10% incoming basic-attack damage).
+
 1.186.0 (2026-07-09 - comp-aware boot utility scorer, DEFAULT-OFF).
 New agents/daemon_slayer/boot_utility.py: a comp-conditioned per-boot utility
 scorer. Each tier-2 boot carries a normalized utility vector (as/pen/haste/

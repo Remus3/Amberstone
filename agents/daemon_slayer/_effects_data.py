@@ -5394,8 +5394,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         defensive_only=True, note="Crimson Lucidity (3171): AH boots - no DPS contribution"),
     "3173": ItemEffect(item_id="3173", name="Chainlaced Crushers",
         defensive_only=True, note="Chainlaced Crushers (3173): MR + tenacity boots - no DPS contribution"),
-    "3174": ItemEffect(item_id="3174", name="Armored Advance",
-        defensive_only=True, note="Armored Advance (3174): Armor boots - no DPS contribution"),
+    "3174": ItemEffect(
+        item_id="3174",
+        name="Armored Advance",
+        defensive_only=True,
+        # R88 (sibling-carrier of R80 3047): Armored Advance is the tier-3
+        # upgrade boot of Plated Steelcaps and carries the IDENTICAL DDragon
+        # 16.13.1 "Plating" passive - reduces incoming basic-attack damage by
+        # 10%. That plating now earns EHP credit via the physical-denominator
+        # item_aa_dr_multiplier (default-OFF assume_item_aa_dr), the SAME
+        # item-keyed lane as 3047. The separate "Noxian Endurance" physical-
+        # shield passive is intentionally UNMODELED (conditional, out of scope).
+        # Still armor boots, no DPS proc.
+        basic_attack_damage_reduction=0.10,
+        note=(
+            "Armored Advance (3174): Plating - reduces incoming basic-attack "
+            "damage by 10% (DDragon 16.13.1). Armor boots, no DPS proc; the "
+            "Noxian Endurance physical-shield passive is intentionally unmodeled"
+        ),
+    ),
     "3176": ItemEffect(item_id="3176", name="Forever Forward",
         defensive_only=True, note="Forever Forward (3176): MS boots variant - no DPS contribution"),
 
