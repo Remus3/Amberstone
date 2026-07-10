@@ -1,6 +1,0 @@
-{
-  "id": "t03_scorer_math",
-  "tier": 2,
-  "prompt": "A champion ability deals 80 base physical damage plus 50 percent of the attacker's bonus attack damage. The attacker has 120 bonus attack damage. The target has 40 armor, which reduces incoming physical damage by a multiplier of 100 / (100 + armor). Compute the final physical damage dealt after armor reduction. Return ONLY the final numeric answer as a plain number (no units, no words).",
-  "oracle": {"kind": "numeric", "expect": 100.0, "eps": 1e-6}
-}
