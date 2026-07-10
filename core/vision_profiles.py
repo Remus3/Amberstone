@@ -315,3 +315,55 @@ def ingest_reference_from_path(src_path, state, config_key=None) -> dict:
     save_reference_image(img, config_key=ck, state=st, force=True)
     return {"ok": True, "width": img.width, "height": img.height,
             "state": st, "config_key": ck}
+
+
+def _load_legacy_regions() -> dict:
+    """The operator's hand-calibrated 1920x1080 baseline regions read from the
+    legacy data/vision_regions.json. Fail-soft: returns {} on any read / parse
+    error so a derive call never raises on a missing or malformed baseline."""
+    try:
+        return json.loads(_LEGACY_REGIONS.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def derive_scaled_regions(regions: dict, src_base, dst_base) -> dict:
+    """Resolution-scale a region map from src_base to dst_base.
+
+    WHY: byte-exact with core.vision_tesseract._scale_bbox so a derived
+    native-base profile crops the identical rectangle the crop-time scaler
+    produces for a native frame, persisted at the true base so there is no
+    downscale drift. One ratio per axis, the same int() truncation toward zero.
+    Returns a NEW dict and never mutates the input; an entry whose box is not a
+    list / tuple of length 4 is skipped."""
+    sx = int(dst_base[0]) / int(src_base[0])
+    sy = int(dst_base[1]) / int(src_base[1])
+    out = {}
+    for name, box in regions.items():
+        if not isinstance(box, (list, tuple)) or len(box) != 4:
+            continue
+        l, t, r, b = box
+        out[name] = [int(l * sx), int(t * sy), int(r * sx), int(b * sy)]
+    return out
+
+
+def derive_profile(dst_base, config_key=None, source_regions=None,
+                   source_base=None) -> dict:
+    """Pure derivation of a full profile dict at dst_base from a source region
+    map (defaults to the legacy 1920x1080 baseline). No disk write.
+
+    Scales every region via derive_scaled_regions (byte-exact with the live
+    crop-time _scale_bbox), so persisting the result yields a native-base
+    profile with no downscale drift. Raises ValueError on an invalid dst_base."""
+    ok, err, clean = validate_base(dst_base)
+    if not ok:
+        raise ValueError(err)
+    if source_regions is not None:
+        src_regions = source_regions
+    else:
+        src_regions = _load_legacy_regions()
+    src_base = source_base if source_base is not None else list(_LEGACY_BASE)
+    regions = derive_scaled_regions(src_regions, src_base, clean)
+    ck = config_key or f"{clean[0]}x{clean[1]}"
+    return {"config_key": ck, "base": [clean[0], clean[1]],
+            "regions": regions, "source": "derived"}
