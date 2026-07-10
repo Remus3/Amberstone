@@ -640,6 +640,18 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=2,
         ),),
+        # R97 (2026-07-10): the uncredited SHIELD half of Ever Rising Moon (the
+        # damage half above is already modeled). Credited via the default-OFF
+        # assume_eclipse_shield seam - a burst-window shield on a 6s/target CD,
+        # conservatively opt-in like Kaenic R92 rather than the always-on pool.
+        shield=ItemShield(
+            damage_type=ANY,
+            flat=160.0,
+            bonus_ad_scaling=0.40,
+            ranged_modifier=0.5,
+            default_off=True,
+            note="Eclipse Ever Rising Moon 160 (+40% bonus AD) generic shield 2s; 0.5x ranged -> 80 (+20%); Meraki 16.13.1",
+        ),
         note="Eclipse: Ever Rising Moon ~6% target max HP every 2 attacks (physical)",
     ),
 
@@ -3408,6 +3420,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=2,
         ),),
+        # R97 (2026-07-10): Arena mirror of 6692's shield half, same seam. The
+        # damage half above is already modeled; the shield rides the default-OFF
+        # assume_eclipse_shield seam identically to SR 6692.
+        shield=ItemShield(
+            damage_type=ANY,
+            flat=160.0,
+            bonus_ad_scaling=0.40,
+            ranged_modifier=0.5,
+            default_off=True,
+            note="Eclipse (Arena 226692) Ever Rising Moon shield; mirrors SR 6692 (Meraki-absent; DDragon + SR-mirror grounding)",
+        ),
         note="Eclipse (Arena 226692): same as SR 6692 - Ever Rising Moon 6% target max HP every 2 attacks",
     ),
     "226693": ItemEffect(
