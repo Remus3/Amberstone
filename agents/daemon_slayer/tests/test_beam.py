@@ -181,27 +181,15 @@ class BeamSearchConstraintTests(unittest.TestCase):
             )
             self.assertLessEqual(boots_count, 1)
 
-    def test_boots_unique_false_can_admit_multiple_boots(self) -> None:
-        # Restrict the candidate pool to terminal SR boots (enchanted feet
-        # variants 3168-3175) - when boots_unique=False, beam search will
-        # double up on them since the pool has nothing else.
-        boots_pool = ["3168", "3170", "3171", "3173", "3174", "3175"]
-        r = beam_search_build(
-            self.snap, "Aatrox", level=11, mode="SR",
-            slot_count=3, beam_width=4, top_n=3,
-            only_item_ids=boots_pool, boots_unique=False,
-        )
-        # At least one of the returned builds should have multiple boots.
-        any_double_boots = False
-        for build in r.ranked:
-            n_boots = sum(
-                1 for iid in build.item_ids
-                if _BOOTS_TAG in (self.snap.items.get(iid, {}).get("tags") or [])
-            )
-            if n_boots >= 2:
-                any_double_boots = True
-                break
-        self.assertTrue(any_double_boots, f"no double-boot build in {[b.item_ids for b in r.ranked]}")
+    # RETIRED 2026-07-09 (LEDGER 826): the boots_unique=False branch is still
+    # live (beam.py:280-360, exposed via cli.py --no-boots-unique + the
+    # server.py :8893 body param), but a BEHAVIORAL test of it is no longer
+    # constructible. It only ever passed because the pool held stat-dense T3
+    # quest-reward boots (3170-3175) that beam WANTED two of; commit 19a76d8b
+    # added those to _SR_EXCLUDED_ITEM_IDS, and no buyable-boot pool reproduces
+    # a multi-boot build - T2 boots are too low-DPS for beam to stack, so it
+    # returns an empty build (verified). The default (boots_unique=True) path is
+    # still guarded by test_boots_unique_default_keeps_at_most_one_boots above.
 
     def test_consumables_excluded_from_search_pool(self) -> None:
         # Tight budget that only fits a few full items - beam search must
