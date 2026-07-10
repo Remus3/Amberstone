@@ -37,7 +37,9 @@ PINS = {
     "web/css/panels/champ_benchmarks.css": 4,
     # QA 2026-07-03 slice A: 52 -> 47 (ghost bans / mood / YOUR RECORD /
     # ally-mirror CSS blocks removed took their dark literals with them).
-    "web/css/panels/champ_select_view.css": 47,
+    # LEDGER 824: 47 -> 44 (the .csv-arch* archetype-picker CSS was removed
+    # and took its dark literals - #a78bfa / #4c3a82 / #1a1230 / ... - with it).
+    "web/css/panels/champ_select_view.css": 44,
     "web/css/panels/coach_choices.css": 2,
     "web/css/panels/coach_decisions.css": 1,
     "web/css/panels/ds_statcheck.css": 3,
