@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-07-10 (R98 Vision-OCR premise re-refuted (4th re-pitch) + native-2560-vs-1280-halved-frame OCR crop guard - vision; ENGINE-IMPACT NONE)
+
+Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibrate 23 boxes at 2560x1440 + wire native OCR crops/color-correction into core/vision_tesseract"). Full detail: LEDGER 839. Commit `1fddb516`.
+
+- BOTH slices REFUTED (verify-before-declare; 4th re-pitch - R94 refuted the wiring half + escalated, R95/R96 advanced past it):
+  - SLICE 1 DONE: data/vision_profiles/2560x1440_...1.6200.json is a real native CUSTOM-HUD calib (34 regions, ally panels at
+    x=2173-2546 RIGHT = ShowTeamFramesOnLeft=0, NOT a naive left-derive), scalar OCR boxes backfilled (test_vision_profile_2560_ocr_boxes.py).
+  - SLICE 2 DONE: vision_tesseract._regions():86 prefers the active native profile + base; _color_correct/_preprocess/
+    _apply_color_correction(R95)/configure_hud_color all wired (profile_wiring + native_crop_r94 + hud_color_r95 guards).
+- GENUINE UNCOVERED SEAM shipped (R94-style residual): the live OCR read path consumes the 1280-HALVED /latest-frame
+  (vision_server/_frame.py _SELF_GRAB_MAX_WIDTH=1280), so a native-2560 profile is scaled DOWN 0.5x at crop time - a production
+  condition no test drove. NEW tests/test_vision_tesseract_halved_frame_r98.py (5 CI-safe PIL-only): native-base install, 0.5x
+  half-scale map, anti-1920-drift sentinel, all boxes inside 1280x720, non-degenerate crop. The failing-first draft REVEALED
+  Legion genuinely re-loads a real 2560 profile post-teardown (native profile IS the live active calib, not a fixture).
+- Tier-1 test-only, ENGINE-IMPACT NONE. R98 5/5 + full vision surface 153/0. ROADMAP Vision-OCR NEXT corrected to DONE + names
+  the only open seam. ESCALATED (gemini_ask.txt): director MUST retire the Vision-OCR NEXT; only tail = wire
+  core/screen_grab.grab_native() into the OCR crop path = LIVE-GATED Lane E, not a blind flip. Next headless lane: Lane A
+  scenario precompute OR a ds-sweep rotation.
+- Don't-redo: 2560x1440 recalibration + native-crop/color-correction wiring are SHIPPED + guarded (4th refutation; do NOT re-pitch).
+
+---
+
 # 2026-07-10 (R97 Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit - ds-engine; ENGINE 1.190.0 -> 1.191.0)
 
 Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b80547ab` (merge) + `7b24a779` (sync). DS :8893 bounced 1.191.0.
@@ -49,23 +71,3 @@ Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No 
   not R96 (2/2 isolated; R96 has 0 asyncio refs). Live template-match quality on real frames = live-gated (do-not-flip-blind).
 - Don't-redo: the Lane E CV template-match FOUNDATION is SHIPPED (do NOT re-pitch match_icon/atlas); vision-OCR wiring stays
   DONE (793/832/835/836); NEXT = live crop-producer wiring + per-champ/objective/item consumers + Live-Client/CV fusion.
-
----
-
-# 2026-07-10 (R95 vision CV consumes core.hud_settings COLOR layer - colorblind + gamma; NO ENGINE bump, Tier-1)
-
-Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `87c3a990`. No restart/bounce (neutral-safe, RC picks up on next restart).
-
-- The net-new item the R94 escalation asked for (consume the hud_settings COLOR layer - genuinely unwired). PREMISE
-  CONFIRMED: core/hud_settings.py:106 read_hud_settings() already returns colorblind/color_correction_needed/color{...},
-  but vision_tesseract consumed it only transitively (profile-key selection), never the color settings.
-- SHIPPED (3 files): vision_tesseract.py new _HUD_COLOR + configure_hud_color() (mirrors _DROP_FIELDS); _bar_fill_pct
-  relaxes green/blue/red match when colorblind (ColorPalette!=0) so a hue-shifted bar registers; _preprocess adds a
-  fail-soft inverse gamma/brightness/contrast (_apply_color_correction) when color_correction_needed. vision_profiles.
-  active_config_key() installs the live layer via configure_hud_color(read_hud_settings()) each call. DEFAULT-NEUTRAL
-  byte-identical (default palette + 0.5 sliders -> both fns unchanged; live OCR path untouched until colorblind/gamma active).
-- ENGINE-IMPACT NONE (client-side CV, no DS math/bump/Share). TDD 7 tests (INV1-INV4 + configure install/clear) +
-  read-only verifier CONFIRM (targeted 29/0, R95 7/7, exactly 3 files). Full RC 11264 passed; the only 2 fails =
-  the LEDGER-828 coach-poll asyncio isolation flake, PROVEN not R95 (passes 2/2 isolated; vision has 0 asyncio refs).
-- Don't-redo: hud_settings COLOR layer is now consumed (do NOT re-pitch); generic OCR crop/native wiring stays DONE
-  (793/832/835, do NOT re-pitch a 5th time); NEXT NO-LLM vision frontier = Lane E CV template-match atlas (BACKLOG:280/283).
