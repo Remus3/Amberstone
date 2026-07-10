@@ -37,9 +37,14 @@ column (grid kept at 3 tracks so the 1920 + assessment-in-right-column pins hold
 Tests: 631 data-consumer/archetype/build-order + 12 champ-select snapshot renders green; ruff/ASCII/
 ds-share-sync `--check` clean. RC restarted.
 
-NEXT (secondary, still open): BACKLOG "Daemon Slayer scorer calibration" - bruiser-scorer axis-awareness
-(why Katarina-under-a-bruiser-pick built AD; now moot for the committed default but the scorer gap remains),
-Kalista on-hit-vs-IE, beam boots_unique. Each engine fix = Tier-2.
+NEXT (operator directive 2026-07-09): REMOVE the budget_saver subsystem entirely - the lean/8B-local
+fallback produced low-quality autonomous work that kept getting redone properly by the full model, so it
+was net-negative. Grounded removal checklist: `docs/BUDGET_SAVER_REMOVAL_PLAN.md` (the `ops/budget_saver/`
+dir + the LEAN_CLAUDE.md auto-swap shims in the 3 launchers + the `RC-BudgetSaverProxy`/`RC-BudgetSaverWatchdog`
+scheduled tasks + `docs/OPERATIONS.md` rows; DISCARD the held-back `ops/budget_saver/lean-settings.json`
+working change, do not commit it). See memory `project_budget_saver_removal`. Do NOT re-pitch a budget-saver.
+Secondary (still open): BACKLOG "Daemon Slayer scorer calibration" - bruiser-scorer axis-awareness, Kalista
+on-hit-vs-IE, beam boots_unique. Each engine fix = Tier-2.
 
 ---
 
