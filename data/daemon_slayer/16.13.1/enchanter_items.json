@@ -174,6 +174,22 @@
       "heal_shield_amp_pct": 0.0,
       "ally_buff_credit_per_second": 10.0,
       "notes": "Sacrifice: redirect 12% of bonded ally's damage taken to self; self-heal 10% of ally's damage dealt. Indirect tank-share for the bonded ally. Buff credit ~10/sec - solid ally EHP boost but only one bonded target."
+    },
+    "3114": {
+      "name": "Forbidden Idol",
+      "heal_per_proc_base": 0.0,
+      "heal_per_proc_per_level": 0.0,
+      "heal_per_proc_ap_scaling": 0.0,
+      "heal_procs_per_second": 0.0,
+      "heal_targets_per_proc": 0.0,
+      "shield_per_proc_base": 0.0,
+      "shield_per_proc_per_level": 0.0,
+      "shield_per_proc_ap_scaling": 0.0,
+      "shield_procs_per_second": 0.0,
+      "shield_targets_per_proc": 0.0,
+      "heal_shield_amp_pct": 0.08,
+      "ally_buff_credit_per_second": 0.0,
+      "notes": "Forbidden Idol - the +8% Heal and Shield Power component that Ardent Censer (3504), Staff of Flowing Water (6616), Redemption (3107), Mikael's Blessing (3222) and Echoes of Helia (6620) all build from. No direct heal/shield output of its own; contributes only the wielder-HSP amp (heal_shield_amp_pct 0.08; wiki V12.14 reduced to 8% from 10%; finished carriers carry 0.10). R90 sibling of R60."
     }
   }
 }
