@@ -168,6 +168,13 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   a non-empty `item_ids`; ENGINE 1.169.0) - headless-prep-done; BUT no dashboard/modes caller POSTs
   a live build (producer-orphan per seam ground-truth), so the eyeball is a code+eyeball slice, not
   a pure flip. No DS restart on the live flip. SOURCE: ORCHESTRATION_PLAN.md:298.
+  R93 (2026-07-10, ENGINE 1.190.0) added Darius E (Apprehend) as a PERCENT_PEN /
+  SUSTAINED registry row (kit-intrinsic 20-40% armor pen), so this SAME anti-tank
+  eyeball now also surfaces Darius' armor shred (compute_antitank('Darius') 0.0 ->
+  0.455, top_kind PERCENT_PEN, shreds_resist True). The /anti-tank route +
+  ds_antitank_hint stay producer-orphans (no live default feeder), so wiring
+  Darius' shred into a live coach surface is the gated flip; the registry row
+  itself is additive (read-by-none) and default-safe. No DS restart on the flip.
 - B5. (PRACTICE-SR) DSP2 `exempt_offclass_by_win` default-ON FLIP (eyeball DONE 2026-07-04 -
   Ezreal ON floats Trinity Force +in / Yun Tal -out, staples stay top-3): the eyeball is closed
   but the DEFAULT-ON flip stays DS-restart + operator-gated (rank.py:686 still defaults False;
