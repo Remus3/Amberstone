@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-07-10 (R94 public-API native-crop regression guard - vision OCR; NO ENGINE bump, Tier-1)
+
+Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `9a5fac79`. No restart/bounce (test-only).
+
+- PREMISE REFUTED (the 3rd re-pitch): "wire native OCR crops + color-correction into vision_tesseract.py" ALREADY
+  shipped LEDGER 793 (_color_correct :183 / _preprocess :198 / _scale_bbox :128 / the vision_profiles hot-path in
+  _regions() :86) + the R91 derive_scaled_regions primitive (LEDGER 832). Fresh grep: NO stubs, NO 1280/frame-halving
+  (the only "halve" token is a comment naming the failure prevented); verifier CONFIRMED vision_tesseract.py UNMODIFIED.
+- SHIPPED the one in-scope residual (WIRING-ONLY): tests/test_vision_tesseract_native_crop_r94.py (4 CI-safe tests,
+  PIL-only, tesseract seams stubbed). The PUBLIC crop path (crop_png_b64 + the read_fast_fields work-list) had ZERO
+  native-profile coverage - the existing wiring test exercises only _regions/_scale_bbox/_color_correct/_preprocess in
+  isolation. Proves a native 2560x1440 frame crops at native coords with no 1920->native downscale drift.
+- GATES: new 4 + vision surface 71 pass / 0 fail; tests/ collection clean (11281); the full RC suite 0-fail through 81%
+  at the 10-min cap (R6 full re-run skipped, test-only); ruff/py_compile/ASCII clean; verifier CONFIRM 4/4. ENGINE-IMPACT NONE.
+- ESCALATED (gemini_ask.txt): the director re-pitched vision-OCR wiring 3x - STOP. Next NO-LLM vision target = Lane E CV
+  template-match atlas OR consume the core.hud_settings COLOR layer (settings-driven inverse-correction + colorblind bar
+  adaptation, genuinely unwired) as a NEW scoped item; else rotate to a DS different-mechanic refute pass.
+- Don't-redo: native-crop + generic color-correction wiring is DONE + now public-API-guarded (do NOT re-pitch a 4th
+  time); the 23-box recalibration is a live-gated operator task, not a loop slice.
+
+---
+
 # 2026-07-10 (DS Darius E Apprehend % armor-penetration anti-tank credit - R93; ENGINE 1.189.0 -> 1.190.0, Tier-2)
 
 Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `874bf871`. DS `:8893` bounced 1.190.0.
@@ -49,27 +71,3 @@ Gemini-loop DIRECTOR REFILL R92. Full detail: LEDGER 833. Commit `6882735c`. DS 
   regressions; TDD 13 (12 RED pre-fix); ruff clean; pre-commit gate passed.
 - Don't-redo: tank/fighter item-keyed byte-identical seams SATURATED (tenacity/reflect/AH/HSP zero room); Kaenic
   SHIPPED; live default-ON flip -> LIVE_GATED R92. Next DS refill needs a FRESH different-mechanic refute pass.
-
----
-
-# 2026-07-10 (reusable OCR-region resolution-scaling primitive - R91 Vision-OCR Hardening; Tier-1, NO ENGINE bump)
-
-Gemini-loop DIRECTOR REFILL R91 (cycle 6). Full detail: LEDGER 832. Commit `67f4c35a`. No DS bounce (ENGINE-IMPACT NONE).
-
-- PREMISE-CHECK reconciled a partially-stale digest: the "wire color-correction + native crops / replace stubs
-  into vision_tesseract.py" half ALREADY shipped LEDGER 793 (_color_correct/_preprocess/_scale_bbox + the profile
-  hot-path in _regions() - grep found NO stubs), and the 2560x1440 profiles already exist as gitignored per-machine
-  JSON (data/vision_profiles/2560x1440_*.json, guarded by a Legion-local test that SKIPS on CI). vision_tesseract.py
-  left UNTOUCHED.
-- GENUINE net-new: derive_scaled_regions() + derive_profile() + _load_legacy_regions() appended to
-  core/vision_profiles.py (L320/L330/L350) - a pure primitive scaling the hand-calibrated 1920x1080 boxes
-  (data/vision_regions.json) to any native base by per-axis int(coord*dst/src), BYTE-EXACT with
-  vision_tesseract._scale_bbox (verified over all 21 fields), so a derived native-base profile crops the identical
-  rectangle with no downscale drift. Closes the CI gap where the 1.3333x math was only Legion-guarded; seeds future
-  resolutions (3440x1440).
-- VERIFY: TDD RED-first (test_vision_profile_derive.py, 8 tests); read-only verifier CONFIRM all 5 claims (files
-  L320/L330/L350, git additive-only, ruff clean, 21 passed fresh, byte-exact OK 21 fields).
-- GATES: Tier-1 relevant suite 83 passed / 0 fail across the 9 vision_profiles/vision_tesseract consumers; ruff +
-  py_compile + ASCII-clean; CI green 67f4c35a. Additive to vision_profiles.py only.
-- Don't-redo: color-correction + native-crop wiring is DONE (LEDGER 793); the primitive is SHIPPED + CI-tested; the
-  actual per-HUD 2560 box tuning stays LIVE-GATED (needs a live 2560 frame; the *1.3333 seed is not a substitute).
