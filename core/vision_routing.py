@@ -49,14 +49,24 @@ def read_or_escalate(
     *,
     escalate_fn: Optional[Callable[[str, list], Optional[dict]]] = None,
     validators: Optional[Dict[str, Callable[[object], bool]]] = None,
+    shadow_fields: Optional[Iterable[str]] = None,
 ) -> Optional[dict]:
     """Route the requested fields through Tesseract first; escalate the
     misses to Sonnet via `escalate_fn(img_b64, missing_fields_list)`.
 
     Returns a merged dict {field: value} or None if both passes failed.
-    Fields with no validator are accepted as-is (truthy = good)."""
+    Fields with no validator are accepted as-is (truthy = good).
+
+    `shadow_fields` (subset of `fields`): OCR-vs-Sonnet telemetry mode. Each
+    shadow field is ALWAYS escalated to Sonnet regardless of its OCR result,
+    and one comparison row (ts, field, ocr_val, sonnet_val, match) is appended
+    to data/ocr_shadow.jsonl per shadow field. The OCR value is logged only -
+    Sonnet's value wins in the returned dict. This is the confidence dataset
+    the Lane E OCR migration needs before any field flips to OCR-only.
+    """
     validators = validators or DEFAULT_VALIDATORS
     targets = list(fields)
+    shadow = set(shadow_fields or ())
     if not targets:
         return {}
 
@@ -70,6 +80,11 @@ def read_or_escalate(
     out: dict = {}
     missing = []
     for f in targets:
+        # Shadow fields always escalate: we want Sonnet's value to compare
+        # against OCR and log the pair. The OCR value is not committed here.
+        if f in shadow:
+            missing.append(f)
+            continue
         v = ocr.get(f)
         ok = False
         if v is not None:
@@ -96,5 +111,47 @@ def read_or_escalate(
     except Exception as exc:  # noqa: BLE001
         _log.warning("vision_routing: escalate_fn raised: %s", exc)
         sonnet = {}
+
+    if shadow:
+        _log_ocr_shadow(ocr, sonnet, shadow)
+
     out.update({k: v for k, v in sonnet.items() if v is not None})
     return out or None
+
+
+def _ocr_shadow_path():
+    """Resolve the OCR shadow-log path. Honors RC_OCR_SHADOW_PATH (tests +
+    ops override), else data/ocr_shadow.jsonl at the repo root."""
+    import os
+    from pathlib import Path
+    override = os.getenv("RC_OCR_SHADOW_PATH")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent.parent / "data" / "ocr_shadow.jsonl"
+
+
+def _log_ocr_shadow(ocr: dict, sonnet: dict, shadow: set) -> None:
+    """Append one OCR-vs-Sonnet comparison row per shadow field to the shadow
+    log (JSONL). Fail-soft - never raises into the live vision path."""
+    try:
+        import json
+        import time
+        ts = time.time()
+        path = _ocr_shadow_path()
+        rows = []
+        for f in sorted(shadow):
+            ov = ocr.get(f)
+            sv = sonnet.get(f)
+            rows.append(json.dumps({
+                "ts": ts,
+                "field": f,
+                "ocr_val": ov,
+                "sonnet_val": sv,
+                "match": ov is not None and ov == sv,
+            }, ensure_ascii=True))
+        if rows:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write("\n".join(rows) + "\n")
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("vision_routing: shadow log failed: %s", exc)
