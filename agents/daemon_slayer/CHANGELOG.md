@@ -1331,6 +1331,26 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.185.0 (2026-07-09 - bruiser (hybrid) scorer damage-axis-awareness).
+rank_items_by_hybrid + compute_hybrid scored damage purely by auto-attack
+compute_dps().weighted_dps, so an AP champion routed to the bruiser archetype
+built full AD (Trinity/Heartsteel/on-hit) - identical to an AD bruiser, zero AP
+items. A self-contained _damage_axis (DDragon info.magic > info.attack on the
+champ record; no core import so the Share mirror stays standalone) now switches
+the damage term to compute_ability_dps().total_ability_dps for AP champions at
+all 3 scoring sites (the compute_hybrid point-scorer + the ranker baseline +
+per-candidate); AD champions take the unchanged branch and are byte-identical.
+An AP bruiser (Mordekaiser/Sylas/Vladimir) now surfaces AP damage + bruiser
+survivability. LATENT: core.build_order_precompute.archetype_for routes every AP
+champion to the mage scorer, so no committed comp-archetype build table changes
+(all AD-bruiser cells byte-identical after a static regen) - a correctness fix
+for a direct /rank-bruiser caller handed an AP champion. Known edge: Gwen
+classifies AD (DDragon attack 7 / magic 5; not in champion_info_overrides, which
+only fixes ZEROED info). Note: the intervening 1.182.0 (R86 Frozen Heart
+enemy-AS EHP seam) + 1.184.0 (Frozen Heart flip + SR-exclude override) bumps
+were not logged in this file in-cycle; their detail is in the per-item ledger.
+Source data: Riot Data Dragon.
+
 1.181.0 (R80, 2026-07-05 - NEW default-OFF seam assume_item_aa_dr + Plated
 Steelcaps 3047/223047 basic-attack-damage-reduction pin). A fresh adversarial
 Meraki(16.13.1)-vs-registry refute pass found that Plated Steelcaps "Plating"
