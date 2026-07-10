@@ -235,6 +235,29 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (DS Forbidden Idol HSP registry credit - R90 sibling of R60; ENGINE 1.187.0 -> 1.188.0, Tier-2)
+
+Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `52fa7edb`. DS `:8893` bounced to 1.188.0.
+
+- GAP (adversarial Meraki 16.13.1 vs registry refute on the R60 `assume_hsp_amp` seam): the 5 finished HSP
+  carriers (Ardent 3504 / Staff 6616 / Redemption 3107 / Mikael 3222 / Echoes 6620) are credited in
+  `enchanter_items.json`, but the shared COMPONENT they all build from - Forbidden Idol (3114) - was ABSENT,
+  so `sum_wielder_hsp_pct(['3114'])==0.0` though it grants +8% HSP (wiki V12.14 10%->8%; finished carry 0.10).
+- FIX: pure registry data-add (3114 -> `heal_shield_amp_pct` 0.08) reusing R60's EXISTING default-OFF
+  `assume_hsp_amp` seam (ehp.py self-shield + sustain.py REGEN). NO new field/flag/engine-code. Default-OFF
+  byte-identical; 3114 non-terminal -> no `rank_items_by_hps` leak. Armed -> shield pool + REGEN sustain *1.08.
+- VERIFY: TDD RED-first (test_forbidden_idol_hsp_r90.py, 8 tests, 5 RED pre-fix); read-only verifier CONFIRM
+  all 6 claims + re-reproduced DS 8098/0-fail. Value 0.08 wiki-verified + internal-consistency cross-checked.
+- GATES: DS 8098 passed / 0 fail; RC 11244 passed + 3 transient reds (1 phase8 live-engine stale-anchor GREEN
+  post-bounce, 2 pre-existing coach-poll flake) all pass in isolation, 0 R90 regressions; Share 419 --check green.
+- Tier-2 sync: 105 test pins re-stamped (125 occ), CHANGELOG + DAEMON_SLAYER banner (1.188.0/8098), 6 HZ-B
+  tables stamp-only regen, hps.py docstring 9->10.
+- LIVE: default-ON HSP flip EXCLUDED / operator-gated; LIVE_GATED B43 extended to cover 3114.
+- Don't-redo: wielder-HSP registry now COMPLETE for the SR enchanter line (5 finished + the Forbidden Idol
+  component); next DS-sweep refill = a FRESH Meraki-vs-registry refute of a DIFFERENT mechanic, never HSP.
+
+---
+
 # 2026-07-10 (combat-style archetype chip on champ-select My Pick card - R89 Aggregator C lift; UI slice)
 
 Gemini-loop DIRECTOR REFILL R89. Full detail: LEDGER 830. UI slice, presentation-only, NO ENGINE bump,
