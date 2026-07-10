@@ -1,6 +1,0 @@
-{
-  "id": "t02_fix_bug",
-  "tier": 1,
-  "prompt": "This Python function is supposed to return the count of vowels (a,e,i,o,u, case-insensitive) in a string, but it has a bug - it only counts lowercase vowels and misses uppercase ones. Return ONLY the corrected Python function `count_vowels(s)`.\n\ndef count_vowels(s):\n    count = 0\n    for ch in s:\n        if ch in 'aeiou':\n            count += 1\n    return count",
-  "oracle": {"kind": "py_exec", "call": "count_vowels('Hello World')", "expect": "3"}
-}

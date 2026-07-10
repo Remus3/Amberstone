@@ -1,7 +1,0 @@
-{
-  "enabledPlugins": {
-    "github": false, "nimble": false, "ralph-loop": false, "pyright-lsp": false,
-    "playwright": false, "chrome-devtools-mcp": false, "firecrawl": false
-  },
-  "disableClaudeAiConnectors": true
-}
