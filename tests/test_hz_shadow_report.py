@@ -187,6 +187,63 @@ def test_summarize_agreement_drops_non_laning_states():
     assert out["uncovered_with_native"] == 0
 
 
+# ---- macro / objective native actions are not laning verdicts ----
+# The live coach also emits map/objective directives ("SETUP DRAKE FIGHT",
+# "END GAME", "DEFEND MID TOWER", "CRASH BOT WAVE") that are NOT laning trade
+# decisions. Left in, they leak into the flip-readiness gate: an objective
+# action whose A/B chip carries a hold-ish label was scored as a comparable
+# laning "hold", and the unclassifiable ones flooded unclassified_native
+# (measured on the live log: 8.3k false-laning leaks + 20.8k mislabeled drops).
+# Same de-bias class as the item-574 native-recall split and the respawn guard.
+
+
+def test_is_non_laning_native_state_macro_objective_dropped():
+    # An objective/macro action that does NOT itself state a lane verdict is a
+    # non-laning tick, excluded from every agreement metric.
+    for action in ("SETUP DRAKE FIGHT", "END GAME", "DEFEND MID TOWER",
+                   "CRASH BOT WAVE", "PUSH BOT LANE", "FREEZE BOT LANE",
+                   "CAMP PHASE", "POSITION BARON SETUP", "SETUP BARON SIEGE"):
+        assert rep._is_non_laning_native_state(
+            {"native_action": action}) is True, action
+
+
+def test_is_non_laning_native_state_preserves_compound_lane_verdict():
+    # A compound directive that STATES a lane verdict is preserved even when it
+    # also names an objective - the guard is classify_verdict(action) is None,
+    # so "SETUP LANE TRADE" (-> trade) and "PUSH LANE POKE" (-> trade) are never
+    # over-excluded. Plain lane verdicts are untouched.
+    for action in ("SETUP LANE TRADE", "PUSH LANE POKE",
+                   "HOLD LANE / WAIT DRAKE", "FALL BACK", "DISENGAGE",
+                   "TRADE", "POKE PHASE", "hold and farm"):
+        assert rep._is_non_laning_native_state(
+            {"native_action": action}) is False, action
+
+
+def test_summarize_agreement_drops_macro_objective_native():
+    records = [
+        # covered macro objective leaking to comparable via a hold-ish chip
+        {"mode": "sr", "covered": True, "choices": [{"label": "Hold position"}],
+         "native_action": "SETUP DRAKE FIGHT",
+         "native_choices": [{"label": "Hold the wave"}]},
+        # covered macro objective, unclassifiable -> was unclassified_native
+        {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "END GAME", "native_choices": []},
+        # uncovered macro -> was uncovered_with_native
+        {"mode": "sr", "covered": False, "choices": [],
+         "native_action": "DEFEND MID TOWER", "native_choices": []},
+        # a compound lane verdict survives (SETUP LANE TRADE -> trade)
+        {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "SETUP LANE TRADE", "native_choices": []},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["comparable_covered"] == 1          # only the compound trade
+    assert out["agree"] == 1
+    assert out["by_native"] == {"trade": {"n": 1, "agree": 1}}
+    assert out["unclassified_native"] == 0         # END GAME dropped, not unclass.
+    assert out["uncovered_with_native"] == 0        # DEFEND MID TOWER dropped
+    assert "hold" not in out["by_native"]           # the SETUP DRAKE chip-leak gone
+
+
 def test_record_agreement_covered_both_classified():
     rec = {"covered": True, "choices": [{"label": "Trade now"}],
            "native_action": "TRADE", "native_choices": []}
