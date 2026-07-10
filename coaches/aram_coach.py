@@ -498,6 +498,41 @@ class Coach(BaseCoach):
     _FAST_PATH_MIN_S    = 5.0
     _HP_DROP_THRESHOLD  = 20.0
 
+    # Tiered vision-reader config lifted from _run_vision to class level so it is
+    # introspectable without an Anthropic key. The trailing block is the Lane E
+    # CV OCR shadow-only numerics - registered for R101-A OCR-vs-Sonnet logging,
+    # never read into the served coaching dict.
+    _ARAM_TIERED_FIELDS = [
+        "timer",               # OCR canary (validates in-game frame)
+        "my_tower_hp", "enemy_tower_hp",
+        "wave_pct", "hp_packs", "fight_state",
+        "augments", "augment_select", "augment_choices",
+        "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
+        "gold", "level", "cs", "kda",
+    ]
+    _ARAM_SHADOW_FIELDS = [
+        "ally_1_hp", "ally_2_hp", "ally_3_hp", "ally_4_hp",
+        "gold", "level", "cs", "kda",
+    ]
+    _ARAM_TIERED_VALIDATORS = {
+        "my_tower_hp":     lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "enemy_tower_hp":  lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "wave_pct":        lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "hp_packs":        lambda v: isinstance(v, list),
+        "fight_state":     lambda v: isinstance(v, str) and bool(v),
+        "augments":        lambda v: isinstance(v, list),
+        "augment_select":  lambda v: isinstance(v, bool),
+        "augment_choices": lambda v: isinstance(v, list),
+        "ally_1_hp":       lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "ally_2_hp":       lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "ally_3_hp":       lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "ally_4_hp":       lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
+        "gold":            lambda v: isinstance(v, int) and 0 <= v <= 99999,
+        "level":           lambda v: isinstance(v, int) and 1 <= v <= 18,
+        "cs":              lambda v: isinstance(v, int) and 0 <= v <= 1000,
+        "kda":             lambda v: isinstance(v, str) and v.count("/") == 2,
+    }
+
     def _blank_artifact_data(self) -> dict:
         return {
             "mode": "aram", "action": "", "immediate": "", "fight_rule": "",
@@ -558,22 +593,9 @@ class Coach(BaseCoach):
             r._model  = "claude-sonnet-4-6"
             r._last   = {}
             r.PROMPT  = _VISION_PROMPT
-            r.TIERED_FIELDS = [
-                "timer",               # OCR canary (validates in-game frame)
-                "my_tower_hp", "enemy_tower_hp",
-                "wave_pct", "hp_packs", "fight_state",
-                "augments", "augment_select", "augment_choices",
-            ]
-            r.TIERED_VALIDATORS = {
-                "my_tower_hp":     lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
-                "enemy_tower_hp":  lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
-                "wave_pct":        lambda v: isinstance(v, (int, float)) and 0 <= v <= 100,
-                "hp_packs":        lambda v: isinstance(v, list),
-                "fight_state":     lambda v: isinstance(v, str) and bool(v),
-                "augments":        lambda v: isinstance(v, list),
-                "augment_select":  lambda v: isinstance(v, bool),
-                "augment_choices": lambda v: isinstance(v, list),
-            }
+            r.TIERED_FIELDS = self._ARAM_TIERED_FIELDS
+            r.SHADOW_FIELDS = self._ARAM_SHADOW_FIELDS
+            r.TIERED_VALIDATORS = self._ARAM_TIERED_VALIDATORS
             state = r.read_tiered()
             if not state:
                 return
