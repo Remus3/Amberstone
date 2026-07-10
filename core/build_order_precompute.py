@@ -51,9 +51,12 @@ WHAT v1 IS (honest scope)
     "do not flip blind" - the table is read by a FUTURE consumer, HZ-C1, after
     real-game validation + operator OK; Haiku / the live :8893 path stays the
     interim floor). The committed table seeds a documented archetype-diverse
-    champion sample (``SEED_CHAMPIONS`` - a SAMPLE, not a tier list);
-    ``--champions`` / ``--mode all`` expand it to the full roster + ARAM / Arena
-    offline (deferred-for-cost, not a code change).
+    champion sample (``SEED_CHAMPIONS`` - a SAMPLE, not a tier list).
+    ``--champions all`` expands the sweep to the full canonical roster (every
+    champion in the active patch's DS registry) offline; ``--mode all`` selects
+    all three modes (sr / aram / arena) and is INDEPENDENT of the champion axis
+    (it does NOT expand the roster). Full-roster offline gen is deferred-for-cost,
+    not a code change.
 
 SHAPE (per mode, atomic write to data/daemon_slayer/build_orders/<patch>/)::
 
@@ -205,7 +208,8 @@ COMP_BIAS: dict[str, dict[str, float]] = {
 # Archetype-diverse laner SAMPLE for the committed seed table. NOT a tier list -
 # a neutral spread of damage types + roles (Garen = manaless bruiser, Annie = AP
 # burst, Caitlyn = AD marksman, Malphite = AP tank, ...). Mirrors the HZ-A1
-# SEED_CHAMPIONS spread. Expand to the full roster offline with --champions.
+# SEED_CHAMPIONS spread. Expand to the full roster offline with
+# ``--champions all`` (see full_roster / resolve_champions below).
 SEED_CHAMPIONS: tuple[str, ...] = (
     "Garen", "Darius", "Annie", "Ahri", "Caitlyn",
     "Ezreal", "Lux", "Malphite", "Jax", "Syndra",
@@ -486,6 +490,65 @@ def _parse_csv(value: str) -> list[str]:
     return [tok.strip() for tok in str(value).split(",") if tok.strip()]
 
 
+# The ONE ``--champions`` value (case-insensitive) that expands the sweep past
+# SEED_CHAMPIONS to the whole canonical roster. ``--mode`` selects sr/aram/arena
+# ONLY - it never touches the champion axis. Keeping this a named constant is the
+# single source of truth both this CLI and the HZ-B2 CLI (build_order_variants)
+# resolve against.
+_ALL_CHAMPIONS_TOKEN = "all"
+
+
+def full_roster() -> list[str]:
+    """Return the FULL canonical champion roster (sorted DDragon ids).
+
+    Sourced from the DS engine champion registry for the active patch,
+    ``data/daemon_slayer/<patch>/champions.json`` - the same per-patch registry
+    the engine plans builds against (also read by
+    ``core.archetype_picks._load_damage_axes``). Every canonical id is yielded
+    (e.g. ``Annie``, ``Belveth``, ``MonkeyKing``), sorted for a stable sweep +
+    diff. This is the ``--champions all`` roster: run a regen over the WHOLE
+    roster with one flag, no hand-maintained 173-name CSV.
+
+    Fail-soft to ``list(SEED_CHAMPIONS)`` (with a loud WARNING) when the registry
+    is missing / unreadable / empty - only a fresh checkout with no DS data hits
+    that path, and a 10-champ seed sweep is safer than a crash. The warning makes
+    the fall-through visible so it is never a silent seed-clobber.
+    """
+    path = _DS_DIR / resolve_patch() / "champions.json"
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        data = raw.get("data", raw) if isinstance(raw, dict) else {}
+        ids = sorted(
+            str(entry["id"])
+            for entry in data.values()
+            if isinstance(entry, dict) and entry.get("id")
+        )
+        if ids:
+            return ids
+    except Exception:  # noqa: BLE001 - fail-soft to the committed seed sample
+        pass
+    logger.warning(
+        "full_roster: DS champion registry %s unreadable/empty - falling back "
+        "to the %d-champ SEED sample (a --champions all regen will NOT cover "
+        "the full roster)", path, len(SEED_CHAMPIONS),
+    )
+    return list(SEED_CHAMPIONS)
+
+
+def resolve_champions(value: str) -> list[str]:
+    """Resolve a ``--champions`` CLI value to the champion list to sweep.
+
+    * ``all`` (case-insensitive, whitespace-tolerant) -> the full canonical
+      roster (``full_roster``).
+    * a non-empty CSV -> those names parsed verbatim (``_parse_csv``), as today.
+    * empty / whitespace-only -> ``SEED_CHAMPIONS`` (backward-compat: the
+      committed seed sample - the default is deliberately UNCHANGED).
+    """
+    if str(value).strip().lower() == _ALL_CHAMPIONS_TOKEN:
+        return full_roster()
+    return _parse_csv(value) or list(SEED_CHAMPIONS)
+
+
 def _count_cells(payload: dict) -> tuple[int, int]:
     """Return (champ_count, nonempty_order_count) for a mode payload."""
     bo = payload.get("build_orders") or {}
@@ -550,10 +613,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
                     choices=("all",) + _MODE_KEYS,
-                    help="Restrict generation to one mode (default: all).")
+                    help="Which MODE(s) to generate: sr/aram/arena or all "
+                         "(default: all). Selects modes ONLY - it does NOT "
+                         "expand the champion roster; use --champions all "
+                         "for the full roster.")
     ap.add_argument("--champions", default="",
-                    help="CSV of champ DDragon display names "
-                         "(default: SEED_CHAMPIONS).")
+                    help="CSV of champ DDragon names, or 'all' for the FULL "
+                         "canonical roster (the active patch's DS registry). "
+                         "'all' is the ONLY full-roster path. Default (empty): "
+                         "the SEED_CHAMPIONS sample.")
     ap.add_argument("--level", type=int, default=DEFAULT_LEVEL,
                     help=f"Build level for the enemy context "
                          f"(default: {DEFAULT_LEVEL}).")
@@ -569,7 +637,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                          "path by construction.")
     args = ap.parse_args(argv)
 
-    champions = _parse_csv(args.champions) or list(SEED_CHAMPIONS)
+    champions = resolve_champions(args.champions)
 
     # Static mode computes in-process via the DS server handlers (no :8893).
     # Otherwise a non-dry run requires the live engine (the planner makes :8893
