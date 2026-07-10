@@ -1331,6 +1331,28 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.190.0 (2026-07-10 - Darius E Apprehend % armor-penetration anti-tank credit, R93).
+A fresh adversarial Meraki(16.13.1)-vs-registry refute pass on the anti-tank
+CHAMPION-ABILITY registry (antitank._ANTITANK_REGISTRY). The directive's example
+shred abilities (Nasus E / Wukong Q / Trundle R / Evelynn W) were ALL already
+credited; a mechanized scan of champion_abilities.json 16.13.1 vs the SHRED /
+PERCENT_PEN rows surfaced the genuine gap - kit-intrinsic PERCENTAGE penetration
+passives (Darius E 20-40% armor, Pantheon R + Ambessa R 10-30% armor, Annie R
+15-20% magic - all confirmed percent from the raw damage_blocks, not flat
+lethality). Shipped ONE: Darius' Apprehend (E) grants an always-on 20% : 40% (per
+E rank) armor penetration, a PERCENT_PEN mechanism that scales with the target's
+armor stack, yet Darius was absent from the (selective) registry entirely
+(compute_antitank("Darius") scored 0.0 / empty). The fix is a single registry row
+- the SUSTAINED %-armor-pen sibling of the existing Mordekaiser E magic-pen row:
+add("Darius", "E", "PERCENT_PEN", "SUSTAINED", magnitude=0.7). Score
+0.65 * 1.0 * 0.7 = 0.455; top_kind PERCENT_PEN, shreds_resist True. Additive - the
+anti-tank axis is standalone and read-by-none (the /anti-tank route is opt-in), so
+no default live surface changes and every other champion is byte-identical. Annie
+was deliberately NOT picked - the item-308 test pins her as a flat-damage
+zero-scorer (her R magic-pen is judged too incidental to seed). The live
+default-ON flip (surfacing Darius' shred in a coach) stays operator-gated
+(docs/LIVE_GAME_GATED_SYNC.md).
+
 1.189.0 (2026-07-10 - Kaenic Rookern (2504) Magebane magic-shield EHP credit, R92).
 A fresh adversarial Meraki(16.13.1)-vs-registry refute pass on the tank/fighter
 item set found Kaenic Rookern (2504), an 80-MR MR-tank item, carried NO

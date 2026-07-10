@@ -241,22 +241,24 @@ class RegistryInvariantTests(unittest.TestCase):
             self.assertEqual(len(pairs), len(set(pairs)), champ)
 
     def test_roster_coverage(self):
-        # Roster fan-out (selective axis): 102 entries / 78 champions; 29 of them
-        # bring a SHRED or PERCENT_PEN mechanism (the shreds_resist set), 5 of
+        # Roster fan-out (selective axis): 103 entries / 79 champions; 30 of them
+        # bring a SHRED or PERCENT_PEN mechanism (the shreds_resist set), 6 of
         # which are kit-intrinsic PERCENT_PEN. Re-running
         # tools/ds_antitank_build.py against a fresh scan updates these.
-        self.assertEqual(len(_ANTITANK_REGISTRY), 78)
+        # R93 (ENGINE 1.190.0) added the 6th PERCENT_PEN row: Darius E Apprehend
+        # (always-on 20-40% armor pen), the SUSTAINED sibling of Mordekaiser E.
+        self.assertEqual(len(_ANTITANK_REGISTRY), 79)
         total = sum(len(v) for v in _ANTITANK_REGISTRY.values())
-        self.assertEqual(total, 102)
+        self.assertEqual(total, 103)
         shred_champs = sum(
             1 for c in _ANTITANK_REGISTRY if compute_antitank(c).shreds_resist
         )
-        self.assertEqual(shred_champs, 29)
+        self.assertEqual(shred_champs, 30)
         pen_count = sum(
             1 for v in _ANTITANK_REGISTRY.values()
             for e in v if e.kind == "PERCENT_PEN"
         )
-        self.assertEqual(pen_count, 5)
+        self.assertEqual(pen_count, 6)
 
 
 class RouteAndVersionTests(unittest.TestCase):
@@ -274,7 +276,7 @@ class RouteAndVersionTests(unittest.TestCase):
             self.assertIn(path, server._POST_ROUTES)
 
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.189.0")
+        self.assertEqual(ENGINE_VERSION, "1.190.0")
 
 
 if __name__ == "__main__":

@@ -1404,10 +1404,10 @@
       "anti_squishy": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.455,
           "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "shreds_resist": true,
+          "top_kind": "PERCENT_PEN"
         },
         "bias": {
           "enemy_ad_share": 0.5,
@@ -1431,18 +1431,18 @@
       "anti_tank": {
         "antitank": {
           "lean_in": false,
-          "my_antitank_score": 0.0,
+          "my_antitank_score": 0.455,
           "recommend_antitank_items": true,
-          "shreds_resist": false,
-          "top_kind": ""
+          "shreds_resist": true,
+          "top_kind": "PERCENT_PEN"
         },
         "bias": {
           "enemy_ad_share": 0.6,
           "enemy_ap_share": 0.4,
           "target_armor": 200.0,
-          "target_bonus_hp": 2700.0,
+          "target_bonus_hp": 2147.2,
           "target_current_hp_pct": 1.0,
-          "target_max_hp": 4200.0,
+          "target_max_hp": 3340.1,
           "target_mr": 130.0
         },
         "order": [
@@ -9697,8 +9697,8 @@
       "anti_squishy"
     ]
   },
-  "engine_version": "1.189.0",
-  "generated_at": "2026-07-10T10:46:04Z",
+  "engine_version": "1.190.0",
+  "generated_at": "2026-07-10T11:31:22Z",
   "mode": "sr",
   "schema": "build_order_variants/v1",
   "version": "16.13.1"
