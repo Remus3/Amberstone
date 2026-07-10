@@ -4,6 +4,38 @@
 
 ---
 
+# 2026-07-10 (regen STALE HZ-B build-order tables to 1.186.0 + content-freshness guard; NO ENGINE bump)
+
+Executes deferred `task_27071e90` (flagged in LEDGER 827). Full detail: LEDGER 828. Commit `5c149fe0`.
+Data-catchup: NO ENGINE bump (engine already 1.186.0; a table regen is the post-bump FOLLOW-UP the
+stamp-sync guard's own docstring prescribes, not a version change - the directive said BUMP, auto-picked
+no-bump as the safest + correct option per the no-questions grant, logged for director override).
+
+- Stale scope (static regen diff, all 3 modes): precompute `build_orders_*` = {Belveth}; variants
+  `build_order_variants_*` = {Annie, Belveth, Katarina, Lulu, Nilah}. Item 827's "e.g. Annie mage" was the
+  VARIANTS table (Annie precompute is byte-identical). ROOT CAUSE: 827 re-stamped the tables byte-exact
+  (stamp only) but item-826 bruiser damage-axis awareness genuinely changed some orders full-roster; the
+  OQ19 stamp-sync guard checks `engine_version==stamp`, never CONTENT.
+- Prevention (2 parallel worktree slices, disjoint files, read-only verifier CONFIRM 7 claims): NEW
+  `--champions all` full-roster flag on `core/build_order_precompute.py` + `core/build_order_variants.py`
+  (canonical 173 from `data/daemon_slayer/<patch>/champions.json`; heeds the R78 `--static` seed footgun) +
+  fixed the misleading "`--mode all` expands roster" docstrings; NEW `tests/test_build_order_content_freshness.py`
+  (fast per-commit roster/stamp/structure guard + env-gated `RC_BUILD_ORDER_FULL_REGEN=1` slow regen-compare)
+  + fixed the dangerous SEED-clobber `--mode all` regen command in the stamp-sync docstring.
+- Fresh output validated BEFORE commit (wrong precompute > stale): 667112=Flesheater is a real item; the
+  Belveth AD->AP shift is the shipped item-826 bruiser-axis reclassification -> FUTURE scorer-calibration
+  flag, NOT a table bug blocking the sync. All 6 tables stay 173 champs / 1.186.0.
+- SHARE: the HZ-B `build_orders/<patch>/` tables are NOT in the `Share/src` mirror (only the older
+  display-keyed `<patch>/` family is), so no Share content changed; `ds_share_sync --check` green (417 files).
+  No DS `:8893` restart (no engine code changed; :8893 already serves 1.186.0).
+- GATES (verifier-CONFIRMED, fresh): freshness proof 19 passed; build-order blast radius 460 passed; RC full
+  11238 passed / 2 failed (both the PRE-EXISTING coach-poll asyncio-pollution flake, LEDGER 823/824/827,
+  proven passing in isolation) / 22 skipped; DS 8085 passed / 1 skipped / 1943 subtests. done_sentinel
+  --tests 11238 --regressions 0. Don't-redo: HZ-B tables FRESH + content-freshness-guarded (do NOT re-flag
+  task_27071e90); Belveth AD->AP is a shipped-826 reclassification pending scorer-calibration (FUTURE).
+
+---
+
 # 2026-07-09 (DS comp-aware boot utility scorer, DEFAULT-OFF; ENGINE 1.186.0)
 
 BACKLOG "DS scorer calibration" enhancement #2 (boot utility-awareness). Full detail: LEDGER 827.
@@ -59,33 +91,3 @@ was the live :8893 lagging, green after restart); read-only verifier PASS 5/5.
 NEW BACKLOG (operator-surfaced): situational/alternative builds (crit-vs-on-hit, matchup-keyed); boot
 utility-awareness (MS/tenacity/haste/survival vs comp). OWED (operator-side, not code): rotate the DeepSeek
 + NVIDIA API keys at their provider dashboards.
-
----
-
-# 2026-07-09 (remove the budget_saver subsystem entirely)
-
-Operator directive (from item 824's NEXT). Executed `docs/BUDGET_SAVER_REMOVAL_PLAN.md` end-to-end.
-Full detail: LEDGER 825. Removal only - no engine/schema/scorer change (Tier-0/1).
-
-Two operator-decisions settled first: (1) DROP the vault program - `git rm` both `docs/specs/*VAULT*` specs
-(RC_KNOWLEDGE + CANONICAL_LLM; they routed INGEST/QUERY through budget-saver); (2) rotate DeepSeek + NVIDIA
-keys operator-side (the LITELLM master key is local-only, moot).
-
-Verified ZERO external coupling before teardown (repo grep of LEAN_CLAUDE / budget-saver / BudgetSaver /
-RC_BUDGET_SAVER: every hit is inside `ops/budget_saver/`, docs, or `.gitignore` - NO production launcher
-shim; the "3 launchers" are the 4 .ps1 variants IN the dir; CLAUDE.md was already full canonical). Torn
-down: unregistered RC-BudgetSaverProxy + RC-BudgetSaverWatchdog (watchdog FIRST - 15-min respawn poll);
-`taskkill /F` LiteLLM `:4000` + all 3 Ollama `:11434` procs; `git rm -r -f ops/budget_saver/` (34 tracked,
-discarded the held-back lean-settings.json); `git clean -fdx` the untracked `.venv`/state; SHRED
-env.local.ps1 (431B x4, never committed); rm CLAUDE.md.full; `git rm` 5 docs (SPEC/PLAN + 2 vault specs +
-the executed removal plan); `.gitignore:256-258` removed; ROADMAP bullet -> a do-not-re-pitch decommission
-blockquote; cleared 4 OLLAMA_* Machine env vars. Memory `project_budget_saver_removal` marked DONE;
-`project_llm_wiki_and_wallpaper_gen_plans` trimmed (vault dropped, independent SDXL lw-gen kept).
-
-Verify: `Get-ScheduledTask RC-BudgetSaver*` empty; no `:4000`/`:11434` listeners; CLAUDE.md git-diff clean;
-hygiene 15/15 + ruff green; zero tests reference budget_saver (nightly-full-suite collection-error surface
-gone). RC (pid 2792) untouched - budget_saver had zero RC coupling, no restart needed.
-
-NEXT (secondary, still open): BACKLOG "Daemon Slayer scorer calibration" - bruiser-scorer axis-awareness
-(the Katarina AD gap), Kalista on-hit-vs-IE, beam boots_unique. Each engine fix = Tier-2 (full dual suite +
-DS `:8893` restart + Share mirror). Also owed: operator confirms DeepSeek + NVIDIA keys rotated.

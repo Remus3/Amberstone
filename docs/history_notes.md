@@ -235,6 +235,36 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-09 (remove the budget_saver subsystem entirely)
+
+Operator directive (from item 824's NEXT). Executed `docs/BUDGET_SAVER_REMOVAL_PLAN.md` end-to-end.
+Full detail: LEDGER 825. Removal only - no engine/schema/scorer change (Tier-0/1).
+
+Two operator-decisions settled first: (1) DROP the vault program - `git rm` both `docs/specs/*VAULT*` specs
+(RC_KNOWLEDGE + CANONICAL_LLM; they routed INGEST/QUERY through budget-saver); (2) rotate DeepSeek + NVIDIA
+keys operator-side (the LITELLM master key is local-only, moot).
+
+Verified ZERO external coupling before teardown (repo grep of LEAN_CLAUDE / budget-saver / BudgetSaver /
+RC_BUDGET_SAVER: every hit is inside `ops/budget_saver/`, docs, or `.gitignore` - NO production launcher
+shim; the "3 launchers" are the 4 .ps1 variants IN the dir; CLAUDE.md was already full canonical). Torn
+down: unregistered RC-BudgetSaverProxy + RC-BudgetSaverWatchdog (watchdog FIRST - 15-min respawn poll);
+`taskkill /F` LiteLLM `:4000` + all 3 Ollama `:11434` procs; `git rm -r -f ops/budget_saver/` (34 tracked,
+discarded the held-back lean-settings.json); `git clean -fdx` the untracked `.venv`/state; SHRED
+env.local.ps1 (431B x4, never committed); rm CLAUDE.md.full; `git rm` 5 docs (SPEC/PLAN + 2 vault specs +
+the executed removal plan); `.gitignore:256-258` removed; ROADMAP bullet -> a do-not-re-pitch decommission
+blockquote; cleared 4 OLLAMA_* Machine env vars. Memory `project_budget_saver_removal` marked DONE;
+`project_llm_wiki_and_wallpaper_gen_plans` trimmed (vault dropped, independent SDXL lw-gen kept).
+
+Verify: `Get-ScheduledTask RC-BudgetSaver*` empty; no `:4000`/`:11434` listeners; CLAUDE.md git-diff clean;
+hygiene 15/15 + ruff green; zero tests reference budget_saver (nightly-full-suite collection-error surface
+gone). RC (pid 2792) untouched - budget_saver had zero RC coupling, no restart needed.
+
+NEXT (secondary, still open): BACKLOG "Daemon Slayer scorer calibration" - bruiser-scorer axis-awareness
+(the Katarina AD gap), Kalista on-hit-vs-IE, beam boots_unique. Each engine fix = Tier-2 (full dual suite +
+DS `:8893` restart + Share mirror). Also owed: operator confirms DeepSeek + NVIDIA keys rotated.
+
+---
+
 # 2026-07-09 (remove archetype-pick UI -> stop committed-precompute pollution)
 
 Operator NEXT from item 823. The DS "Build Archetype" picker let operators write `user_cs` picks into the
