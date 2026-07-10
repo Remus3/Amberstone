@@ -235,6 +235,47 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-09 (remove archetype-pick UI -> stop committed-precompute pollution)
+
+Operator NEXT from item 823. The DS "Build Archetype" picker let operators write `user_cs` picks into the
+shared committed `data/cs_archetype_picks.json` that BOTH build-order precompute tables read via
+`get_archetype_for` -> a Katarina->bruiser pick built Katarina AD in everyone's committed tables. Full
+detail: LEDGER 824.
+
+Removed (2 surfaces):
+- champ-select picker: `_csvArchetypePickerHtml` + `_csvWireArchetypePicker` (the save-user_cs + AUTO-clear
+  POSTs) + `.csv-arch*` CSS + the `#csv-archetype-target` mount. KEPT the read-only GET default-resolution
+  so the build preview uses the same server DDragon-tag+kit-axis default scorer the coach uses.
+- in-game overlay: `active_match.js` `_cycleMeta`/`_BM_META` Row2 right-click cycle; Meta+Ultimate fetches
+  now always send `archetype: ""` (server default). It was VIEW-ONLY (never persisted a pick), so no
+  committed pollution - removed per operator directive.
+
+Data backfill (Data Fixes rule - BOTH tables + Share):
+- cleared `cs_archetype_picks.json` (13 picks) -> `{}`. Only 4 diverged from kit-default: Annie
+  assassin->mage, Katarina bruiser->mage, Lulu carry->enchanter, Nilah carry->bruiser (other 9 already
+  == default = no-op).
+- splice-regen those 4 x sr/aram/arena in the comp-archetype table (`build_orders/`, `--static`) AND the
+  flat table read by the deterministic+laning coaches (`daemon_slayer/<patch>/`, live `:8893`) + ran
+  `ds_share_sync`. Drift-guarded via Caitlyn byte-identical (engine 1.184.0 == stamp) -> the diff is
+  EXACTLY the 4 champs, no drift.
+- removed the `58ce5397` `source != default` skip: `test_build_order_axis_parity` now runs unconditionally
+  (Katarina mixed-cell AP) and is a pollution tripwire.
+
+UI-audit (3b) caught + fixed a regression: with the picker gone the top-left "PICKS" card was EMPTY in
+ARAM/Arena (`#csv-picks-target` is SR-draft-only) -> hid the card + spanned My Pick over the freed left
+column (grid kept at 3 tracks so the 1920 + assessment-in-right-column pins hold). Re-audit PASS all 3 modes.
+
+Tests: 631 data-consumer/archetype/build-order + 12 champ-select snapshot renders green; ruff/ASCII/
+ds-share-sync `--check` clean. RC restarted.
+
+NEXT from this session (remove the budget_saver subsystem) was EXECUTED 2026-07-09 - see the newest
+session block above + LEDGER 825. Do NOT re-pitch a budget-saver / lean-profile / 8B-local fallback.
+Secondary (still open): BACKLOG "Daemon Slayer scorer calibration" - bruiser-scorer axis-awareness, Kalista
+on-hit-vs-IE, beam boots_unique. Each engine fix = Tier-2. (Those 3 reds CLOSED 2026-07-09 - see the newest
+block at the top + LEDGER 826.)
+
+---
+
 # 2026-07-09 (deep-audit EXECUTION -- lanes 2-7)
 
 Executed docs/AUDIT_2026-07-09_NEXT_SESSION_PLAN.md (Opus 4.8, orchestrated). Lanes 0/1 were already
