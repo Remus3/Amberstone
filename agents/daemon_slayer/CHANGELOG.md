@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.191.0 (2026-07-10 - Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit, R97).
+A fresh adversarial Meraki(16.13.1)-vs-registry refute pass. The first pick
+(Alistar R 55/65/75% all-damage DR) was REFUTED live - already folded into EHP
+via the R19/R35 snapshot fold (spell_damage_reduction_pct + mitigation_multipliers,
+which ehp.compute_ehp already passes a snapshot into), so the whole "Damage
+Reduction modifier-block" DR class is covered. The confirmed gap: Eclipse's "Ever
+Rising Moon" proc has two halves; the DAMAGE half (6% target max HP, every 2
+attacks) was already modeled via a PeriodicProc, but the SHIELD half was
+uncredited in EHP (ITEM_EFFECTS['6692'].shield was None; _collect_shields skipped
+it). Meraki 16.13.1: "grants you a shield for 160|80 (+ 40%|20% bonus AD) for 2
+seconds" (melee|ranged). FIX: a shield=ItemShield(damage_type=ANY, flat=160.0,
+bonus_ad_scaling=0.40, ranged_modifier=0.5, default_off=True) on ITEM_EFFECTS
+6692 (SR) + 226692 (Arena mirror; Meraki-absent, grounded on DDragon + the SR
+mirror convention), credited only through a NEW default-OFF assume_eclipse_shield
+seam threaded through ehp._collect_shields / compute_ehp. The default-off gate is
+SHIELD-SPECIFIC (eclipse arms 6692/226692, kaenic arms 2504) so arming one opt-in
+shield never cross-credits another. Byte-identical when OFF (the default). Live
+default-ON flip -> LIVE_GATED.
+
 1.190.0 (2026-07-10 - Darius E Apprehend % armor-penetration anti-tank credit, R93).
 A fresh adversarial Meraki(16.13.1)-vs-registry refute pass on the anti-tank
 CHAMPION-ABILITY registry (antitank._ANTITANK_REGISTRY). The directive's example
