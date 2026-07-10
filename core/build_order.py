@@ -225,11 +225,30 @@ _BOOTSLESS_CHAMPS: frozenset = frozenset({
 })
 
 
+def _select_boots_utility(
+    arch: str,
+    enemy_ad_share: float,
+    enemy_ap_share: float,
+) -> str:
+    """ON-path boot pick: comp-conditioned utility argmax with archetype-default
+    hysteresis. Lazy-imports the DS primitive (byte-identical OFF never touches it)."""
+    from agents.daemon_slayer import boot_utility as bu
+    default_id = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
+    # v1 CC proxy: AP-heavy comps carry more lockdown (real per-champion CC via
+    # enemy_champions is a follow-up; frontline CC is under-credited by this proxy).
+    cc_proxy = float(enemy_ap_share)
+    weights = bu.comp_weights(arch, float(enemy_ad_share), float(enemy_ap_share), cc_proxy)
+    return bu.select_boot(bu.SELECTABLE_TIER2, weights, default_id)
+
+
 def _select_boots(
     archetype: str,
     target_armor: float,
     target_mr: float,
     mode: str = "SR",
+    enemy_ad_share: float = 0.5,
+    enemy_ap_share: float = 0.5,
+    assume_boot_utility: bool = False,
 ) -> tuple[str, str]:
     """Pick the appropriate boots family given the operator's archetype +
     enemy AD/AP comp signal. Returns ``(item_id, item_name)``.
@@ -256,14 +275,19 @@ def _select_boots(
     :data:`_BOOTS_ARENA_MIRROR`.
     """
     arch = (archetype or "carry").strip().lower() or "carry"
-    is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
-    is_caster_axis = arch in ("mage", "burst", "enchanter", "hps", "ability", "support")
-    if target_mr >= 60.0 and not is_dps_axis:
-        iid = "3111"
-    elif target_armor >= 100.0 and not is_caster_axis:
-        iid = "3047"
+    if assume_boot_utility:
+        iid = _select_boots_utility(
+            arch, float(enemy_ad_share), float(enemy_ap_share),
+        )
     else:
-        iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
+        is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
+        is_caster_axis = arch in ("mage", "burst", "enchanter", "hps", "ability", "support")
+        if target_mr >= 60.0 and not is_dps_axis:
+            iid = "3111"
+        elif target_armor >= 100.0 and not is_caster_axis:
+            iid = "3047"
+        else:
+            iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
     mode_up = str(mode).strip().upper()
     # TIER-3 SR UPGRADE REMOVED (2026-07-08): T3 boots are quest rewards,
     # not directly purchasable. The _BOOTS_SR_UPGRADE dict is now an empty
@@ -435,6 +459,7 @@ def plan_build_order(
     inject_boots: bool = True,
     incumbent: Optional[Iterable[str]] = None,
     incumbent_margin: float = 0.03,
+    assume_boot_utility: bool = False,
 ) -> Optional[BuildOrderResult]:
     """Plan a contextual, match-specific item ORDER for the remaining slots.
 
@@ -528,6 +553,9 @@ def plan_build_order(
             float(target_armor),
             float(target_mr),
             mode=str(mode),
+            enemy_ad_share=float(extra.get("enemy_ad_share", 0.5)),
+            enemy_ap_share=float(extra.get("enemy_ap_share", 0.5)),
+            assume_boot_utility=assume_boot_utility,
         )
 
     # next_slot tracks the 1-based slot for the NEXT entry appended to
