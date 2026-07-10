@@ -4,6 +4,32 @@
 
 ---
 
+# 2026-07-10 (R97 Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit - ds-engine; ENGINE 1.190.0 -> 1.191.0)
+
+Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b80547ab` (merge) + `7b24a779` (sync). DS :8893 bounced 1.191.0.
+
+- FRESH adversarial Meraki(16.13.1)-vs-registry refute pass. PICK #1 Alistar R (55/65/75% all-damage DR) REFUTED live
+  (verify-before-build): spell_damage_reduction_pct("Alistar","R")==(55,65,75) is ALREADY folded into EHP by the R19/R35
+  snapshot fold in mitigation_multipliers (ehp.compute_ehp:1292 passes the snapshot); Gragas W + Warwick E fold identically;
+  the _passive_mitigation_overrides.py:70-74 exclusion docstring is STALE (that whole modifier-block DR class is covered).
+- GAP CONFIRMED + SHIPPED (pick #2): Eclipse (6692 SR + 226692 Arena) "Ever Rising Moon" self-shield - the damage half
+  (6% target maxHP PeriodicProc) was modeled but the SHIELD half was uncredited (ITEM_EFFECTS[6692].shield is None;
+  _collect_shields skips it). Meraki "160|80 (+40%|20% bonus AD) 2s". FIX = shield=ItemShield(ANY, flat=160,
+  bonus_ad_scaling=0.40, ranged_modifier=0.5, default_off=True) on both ids + NEW default-OFF assume_eclipse_shield seam
+  (ehp._collect_shields/compute_ehp, 4-spot parallel of assume_kaenic_shield) with a SHIELD-SPECIFIC gate so arming eclipse
+  never cross-credits Kaenic 2504. ItemShield needed no schema lift (bonus_ad_scaling/ranged_modifier/default_off exist R92).
+- Orchestrator + 1 worktree build subagent (TDD RED-first 20 tests, 16 RED) + read-only verifier CONFIRM 8/8 (OFF
+  byte-identical {} 0-credit / ON melee any=200 / ranged=100 / cross-contam ZERO) BEFORE the no-ff merge. Share --check green
+  422; HZ-B stamp-only re-stamp (0 content lines); banner 1.191.0/8142. DS 8142 pass/1skip; RC 11271 pass / 3 fail ALL
+  pre-existing-flake-or-stale (2 = LEDGER-828 coach-poll 2/2 isolated; 1 = doc-drift STALE - suite launched pre-banner-bump,
+  3/3 fresh) / 0 R97 regressions.
+- Also backfilled Share/CHANGELOG 1.186->1.190 (R88/R90/R92/R93; operator chip, commit `a28c0678`) - the entries omitted
+  since --check does not gate CHANGELOG completeness. Live default-ON flip -> LIVE_GATED.
+- Don't-redo: Alistar/Gragas/Warwick + the whole modifier-block DR class is folded via R19/R35 (do NOT re-pitch a percent-DR
+  seam for them); Eclipse Ever Rising Moon shield SHIPPED (do NOT re-pick 6692/226692); the damage half stays modeled + untouched.
+
+---
+
 # 2026-07-10 (R96 Lane E client-side CV template-match atlas FOUNDATION - vision; NO ENGINE bump, Tier-1)
 
 Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No restart/bounce (pure new unused core module).
@@ -43,25 +69,3 @@ Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `87c3a990`. No 
   the LEDGER-828 coach-poll asyncio isolation flake, PROVEN not R95 (passes 2/2 isolated; vision has 0 asyncio refs).
 - Don't-redo: hud_settings COLOR layer is now consumed (do NOT re-pitch); generic OCR crop/native wiring stays DONE
   (793/832/835, do NOT re-pitch a 5th time); NEXT NO-LLM vision frontier = Lane E CV template-match atlas (BACKLOG:280/283).
-
----
-
-# 2026-07-10 (R94 public-API native-crop regression guard - vision OCR; NO ENGINE bump, Tier-1)
-
-Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `9a5fac79`. No restart/bounce (test-only).
-
-- PREMISE REFUTED (the 3rd re-pitch): "wire native OCR crops + color-correction into vision_tesseract.py" ALREADY
-  shipped LEDGER 793 (_color_correct :183 / _preprocess :198 / _scale_bbox :128 / the vision_profiles hot-path in
-  _regions() :86) + the R91 derive_scaled_regions primitive (LEDGER 832). Fresh grep: NO stubs, NO 1280/frame-halving
-  (the only "halve" token is a comment naming the failure prevented); verifier CONFIRMED vision_tesseract.py UNMODIFIED.
-- SHIPPED the one in-scope residual (WIRING-ONLY): tests/test_vision_tesseract_native_crop_r94.py (4 CI-safe tests,
-  PIL-only, tesseract seams stubbed). The PUBLIC crop path (crop_png_b64 + the read_fast_fields work-list) had ZERO
-  native-profile coverage - the existing wiring test exercises only _regions/_scale_bbox/_color_correct/_preprocess in
-  isolation. Proves a native 2560x1440 frame crops at native coords with no 1920->native downscale drift.
-- GATES: new 4 + vision surface 71 pass / 0 fail; tests/ collection clean (11281); the full RC suite 0-fail through 81%
-  at the 10-min cap (R6 full re-run skipped, test-only); ruff/py_compile/ASCII clean; verifier CONFIRM 4/4. ENGINE-IMPACT NONE.
-- ESCALATED (gemini_ask.txt): the director re-pitched vision-OCR wiring 3x - STOP. Next NO-LLM vision target = Lane E CV
-  template-match atlas OR consume the core.hud_settings COLOR layer (settings-driven inverse-correction + colorblind bar
-  adaptation, genuinely unwired) as a NEW scoped item; else rotate to a DS different-mechanic refute pass.
-- Don't-redo: native-crop + generic color-correction wiring is DONE + now public-API-guarded (do NOT re-pitch a 4th
-  time); the 23-box recalibration is a live-gated operator task, not a loop slice.
