@@ -386,6 +386,11 @@ def _build_antitank_registry() -> dict[str, tuple[AntiTankEntry, ...]]:
     add("Chogath", "E", "MAX_HP", "SUSTAINED", magnitude=0.7, cond=True)
     # Corki
     add("Corki", "E", "SHRED", "SUSTAINED", magnitude=0.6)
+    # Darius - E Apprehend passive grants always-on % armor penetration
+    # (20% : 40% by E rank per champion_abilities.json 16.13.1 raw damage_blocks),
+    # a kit-intrinsic PERCENT_PEN that scales with the target's armor stack. The
+    # SUSTAINED sibling of Mordekaiser E's magic-pen row (R93, ENGINE 1.190.0).
+    add("Darius", "E", "PERCENT_PEN", "SUSTAINED", magnitude=0.7)
     # DrMundo
     add("DrMundo", "Q", "CURRENT_HP", "PERIODIC", magnitude=0.7)
     # Elise

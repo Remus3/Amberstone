@@ -45,7 +45,7 @@ _ITEMS = ["3047"]  # Plated Steelcaps - armor boots, a clean Rammus build.
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.189.0")
+        self.assertEqual(ENGINE_VERSION, "1.190.0")
 
 
 class CasterMrScalingTarget(unittest.TestCase):
