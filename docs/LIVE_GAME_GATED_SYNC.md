@@ -1739,3 +1739,19 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   magical EHP ranks sensibly vs other MR-tank items (Force of Nature / Spirit Visage), given the
   anti-correlated uptime. A WRONG credit is worse than none - do NOT default-ON until validated. DS `:8893`
   restart on flip. Does NOT block any further stage.
+- 2026-07-10 R97 / Eclipse (item 6692 SR + 226692 Arena) Ever Rising Moon self-shield EHP seam
+  (`compute_ehp(assume_eclipse_shield=)` / `ehp._collect_shields(assume_eclipse_shield=)`, ENGINE 1.191.0,
+  default-OFF). ITEM_EFFECTS 6692 + 226692 each now carry a `default_off` generic `ItemShield`
+  (`flat=160.0`, `bonus_ad_scaling=0.40`, `ranged_modifier=0.5` -> melee 160 + 40% bonus AD, ranged 80 + 20%;
+  Meraki 16.13.1 "grants you a shield for 160|80 (+ 40%|20% bonus AD) for 2 seconds"). Credited only when the
+  flag is armed; OFF is byte-identical (the shield is dropped from `_collect_shields` by the shield-specific
+  default-off gate, and every other shield's magnitude is unmoved). The damage half (6% target max HP every 2
+  attacks PeriodicProc) was already modeled and is untouched. 226692 is ABSENT from the Meraki bulk snapshot -
+  pin grounded on DDragon 226692 + the SR-6692 mirror convention (its periodic + item-AH already mirror SR);
+  446692/326692 absent everywhere, test-guarded. OWED (operator/Gemini-gated, NOT headless - charter 4b
+  do-not-flip-blind): wire an EHP-scoring consumer to pass `assume_eclipse_shield=True` and eyeball across ~2
+  real games (PRACTICE-SR or Arena) that an Eclipse holder's physical/blended EHP ranks sensibly vs other
+  lethality/bruiser items, and that the burst-window shield is not over-credited on a sustained-fight clock (a
+  6s/target proc CD - the ItemShield credit is a full-magnitude one-instance shield, not uptime-amortized). A
+  WRONG credit is worse than none - do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
+  block any further stage.
