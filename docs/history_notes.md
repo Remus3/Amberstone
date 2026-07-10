@@ -235,6 +235,32 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (R97 Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit - ds-engine; ENGINE 1.190.0 -> 1.191.0)
+
+Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b80547ab` (merge) + `7b24a779` (sync). DS :8893 bounced 1.191.0.
+
+- FRESH adversarial Meraki(16.13.1)-vs-registry refute pass. PICK #1 Alistar R (55/65/75% all-damage DR) REFUTED live
+  (verify-before-build): spell_damage_reduction_pct("Alistar","R")==(55,65,75) is ALREADY folded into EHP by the R19/R35
+  snapshot fold in mitigation_multipliers (ehp.compute_ehp:1292 passes the snapshot); Gragas W + Warwick E fold identically;
+  the _passive_mitigation_overrides.py:70-74 exclusion docstring is STALE (that whole modifier-block DR class is covered).
+- GAP CONFIRMED + SHIPPED (pick #2): Eclipse (6692 SR + 226692 Arena) "Ever Rising Moon" self-shield - the damage half
+  (6% target maxHP PeriodicProc) was modeled but the SHIELD half was uncredited (ITEM_EFFECTS[6692].shield is None;
+  _collect_shields skips it). Meraki "160|80 (+40%|20% bonus AD) 2s". FIX = shield=ItemShield(ANY, flat=160,
+  bonus_ad_scaling=0.40, ranged_modifier=0.5, default_off=True) on both ids + NEW default-OFF assume_eclipse_shield seam
+  (ehp._collect_shields/compute_ehp, 4-spot parallel of assume_kaenic_shield) with a SHIELD-SPECIFIC gate so arming eclipse
+  never cross-credits Kaenic 2504. ItemShield needed no schema lift (bonus_ad_scaling/ranged_modifier/default_off exist R92).
+- Orchestrator + 1 worktree build subagent (TDD RED-first 20 tests, 16 RED) + read-only verifier CONFIRM 8/8 (OFF
+  byte-identical {} 0-credit / ON melee any=200 / ranged=100 / cross-contam ZERO) BEFORE the no-ff merge. Share --check green
+  422; HZ-B stamp-only re-stamp (0 content lines); banner 1.191.0/8142. DS 8142 pass/1skip; RC 11271 pass / 3 fail ALL
+  pre-existing-flake-or-stale (2 = LEDGER-828 coach-poll 2/2 isolated; 1 = doc-drift STALE - suite launched pre-banner-bump,
+  3/3 fresh) / 0 R97 regressions.
+- Also backfilled Share/CHANGELOG 1.186->1.190 (R88/R90/R92/R93; operator chip, commit `a28c0678`) - the entries omitted
+  since --check does not gate CHANGELOG completeness. Live default-ON flip -> LIVE_GATED.
+- Don't-redo: Alistar/Gragas/Warwick + the whole modifier-block DR class is folded via R19/R35 (do NOT re-pitch a percent-DR
+  seam for them); Eclipse Ever Rising Moon shield SHIPPED (do NOT re-pick 6692/226692); the damage half stays modeled + untouched.
+
+---
+
 # 2026-07-10 (R96 Lane E client-side CV template-match atlas FOUNDATION - vision; NO ENGINE bump, Tier-1)
 
 Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No restart/bounce (pure new unused core module).
