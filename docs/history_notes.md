@@ -235,6 +235,28 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (R98 Vision-OCR premise re-refuted (4th re-pitch) + native-2560-vs-1280-halved-frame OCR crop guard - vision; ENGINE-IMPACT NONE)
+
+Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibrate 23 boxes at 2560x1440 + wire native OCR crops/color-correction into core/vision_tesseract"). Full detail: LEDGER 839. Commit `1fddb516`.
+
+- BOTH slices REFUTED (verify-before-declare; 4th re-pitch - R94 refuted the wiring half + escalated, R95/R96 advanced past it):
+  - SLICE 1 DONE: data/vision_profiles/2560x1440_...1.6200.json is a real native CUSTOM-HUD calib (34 regions, ally panels at
+    x=2173-2546 RIGHT = ShowTeamFramesOnLeft=0, NOT a naive left-derive), scalar OCR boxes backfilled (test_vision_profile_2560_ocr_boxes.py).
+  - SLICE 2 DONE: vision_tesseract._regions():86 prefers the active native profile + base; _color_correct/_preprocess/
+    _apply_color_correction(R95)/configure_hud_color all wired (profile_wiring + native_crop_r94 + hud_color_r95 guards).
+- GENUINE UNCOVERED SEAM shipped (R94-style residual): the live OCR read path consumes the 1280-HALVED /latest-frame
+  (vision_server/_frame.py _SELF_GRAB_MAX_WIDTH=1280), so a native-2560 profile is scaled DOWN 0.5x at crop time - a production
+  condition no test drove. NEW tests/test_vision_tesseract_halved_frame_r98.py (5 CI-safe PIL-only): native-base install, 0.5x
+  half-scale map, anti-1920-drift sentinel, all boxes inside 1280x720, non-degenerate crop. The failing-first draft REVEALED
+  Legion genuinely re-loads a real 2560 profile post-teardown (native profile IS the live active calib, not a fixture).
+- Tier-1 test-only, ENGINE-IMPACT NONE. R98 5/5 + full vision surface 153/0. ROADMAP Vision-OCR NEXT corrected to DONE + names
+  the only open seam. ESCALATED (gemini_ask.txt): director MUST retire the Vision-OCR NEXT; only tail = wire
+  core/screen_grab.grab_native() into the OCR crop path = LIVE-GATED Lane E, not a blind flip. Next headless lane: Lane A
+  scenario precompute OR a ds-sweep rotation.
+- Don't-redo: 2560x1440 recalibration + native-crop/color-correction wiring are SHIPPED + guarded (4th refutation; do NOT re-pitch).
+
+---
+
 # 2026-07-10 (R97 Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit - ds-engine; ENGINE 1.190.0 -> 1.191.0)
 
 Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b80547ab` (merge) + `7b24a779` (sync). DS :8893 bounced 1.191.0.

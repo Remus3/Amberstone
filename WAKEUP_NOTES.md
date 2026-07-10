@@ -4,6 +4,33 @@
 
 ---
 
+# 2026-07-10 (R101 ARAM+Arena OCR shadow-field wiring - Haiku-to-ZERO Lane E CV, shadow-first - vision-cv; ENGINE-IMPACT NONE)
+
+Gemini-loop DIRECTOR REFILL R101 = Haiku-to-ZERO Lane E CV OCR wiring. Full detail: LEDGER 842. Commit `c5301370` (docs `5a383ea3`).
+
+- Wire the already-built OCR numeric fields into ARAM + Arena coaches SHADOW-FIRST (log OCR-vs-Sonnet, NON-CONSUMING).
+  Premise verified: SHADOW_FIELDS + ocr_shadow were doc-only (grep-absent from all .py); the pre-existing *_shadow tests are
+  the SEPARATE det-choices coach-block shadow (dashboard._deterministic_coaching), no collision.
+- SLICE A core/vision_routing.py + modes/shared_vision.py: read_or_escalate shadow_fields kwarg (shadow fields ALWAYS
+  escalate to Sonnet even when OCR validates; Sonnet wins in the returned dict, OCR log-only) + _ocr_shadow_path
+  (RC_OCR_SHADOW_PATH override else data/ocr_shadow.jsonl) + _log_ocr_shadow (JSONL {ts,field,ocr_val,sonnet_val,match},
+  fail-soft, ensure_ascii); GameVisionReader.SHADOW_FIELDS class attr (default [] = unchanged) threaded into read_tiered.
+- SLICE B coaches/aram_coach.py + coaches/arena_coach.py: 8 shadow numerics (ally_1..4_hp 0-100, gold, level 1-18,
+  cs 0-1000, kda x/y/z) into SHADOW_FIELDS + TIERED_FIELDS + TIERED_VALIDATORS; ARAM inline _run_vision config LIFTED to
+  class-level _ARAM_TIERED_FIELDS/_ARAM_SHADOW_FIELDS/_ARAM_TIERED_VALIDATORS for testability; NON-CONSUMING (SHADOW_FIELDS
+  strict-subset of TIERED_FIELDS, no served-dict mutation, PROMPT untouched).
+- COST NOTE: ARAM/Arena already escalate to Sonnet most ticks (semantic fields augment_select/fight_state have no OCR
+  region), so shadow-forcing adds negligible live cost - mainly the OCR-vs-Sonnet log seeding the Lane E migration dataset.
+- 2 parallel worktree slices, TDD RED-first, verifier CONFIRM 10/10 (18 new + 85 regression pass, ruff clean, clean tree
+  no ocr_shadow.jsonl pollution, 0 added non-ASCII, exactly 6 files). Integrated: 103 focused + 1150 scoped consumer pass
+  + 59 subtests; full-suite partial 79% 0-fail (Tier-1 per R5). RC :8888 restarted pid 1404 -> 6092 (alive/reload_ok).
+  ENGINE-IMPACT NONE. done_sentinel --tests 1150 --regressions 0.
+- NEXT (live-gated): tools/ocr_shadow_report.py match-rate gate over accrued rows -> validated per-field OCR-only flip
+  (needs shadow accrual + operator OK). Don't-redo: ARAM+Arena OCR shadow wiring SHIPPED (do NOT re-pitch wiring the built
+  OCR fields into the coaches - done shadow-first); the OCR-vs-Sonnet log lives at data/ocr_shadow.jsonl.
+
+---
+
 # 2026-07-10 (R100 Overlay App F Section-7b competitor lift - RESEARCH-ONLY, ship-premise refuted live - competitor-lift; ENGINE-IMPACT NONE / docs-only)
 
 Gemini-loop DIRECTOR REFILL R100 rotated REFILL PROTOCOL -> #2 (Research + competitor lift) after R99 drained the DS sweep. Full detail: LEDGER 841. Commit `(this commit)`.
@@ -51,25 +78,3 @@ Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LE
   Noxian Persistence shield SHIPPED; Ambessa/Annie pen has no clean numeric Meraki field (rejected this pass); the
   vision-OCR recalibration + native-crop wiring stays DONE R94-R98 (relocated to ROADMAP_HISTORY; grab_native OCR-path tail
   = LIVE-GATED Lane E B48, do NOT re-pitch as a headless slice).
-
----
-
-# 2026-07-10 (R98 Vision-OCR premise re-refuted (4th re-pitch) + native-2560-vs-1280-halved-frame OCR crop guard - vision; ENGINE-IMPACT NONE)
-
-Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibrate 23 boxes at 2560x1440 + wire native OCR crops/color-correction into core/vision_tesseract"). Full detail: LEDGER 839. Commit `1fddb516`.
-
-- BOTH slices REFUTED (verify-before-declare; 4th re-pitch - R94 refuted the wiring half + escalated, R95/R96 advanced past it):
-  - SLICE 1 DONE: data/vision_profiles/2560x1440_...1.6200.json is a real native CUSTOM-HUD calib (34 regions, ally panels at
-    x=2173-2546 RIGHT = ShowTeamFramesOnLeft=0, NOT a naive left-derive), scalar OCR boxes backfilled (test_vision_profile_2560_ocr_boxes.py).
-  - SLICE 2 DONE: vision_tesseract._regions():86 prefers the active native profile + base; _color_correct/_preprocess/
-    _apply_color_correction(R95)/configure_hud_color all wired (profile_wiring + native_crop_r94 + hud_color_r95 guards).
-- GENUINE UNCOVERED SEAM shipped (R94-style residual): the live OCR read path consumes the 1280-HALVED /latest-frame
-  (vision_server/_frame.py _SELF_GRAB_MAX_WIDTH=1280), so a native-2560 profile is scaled DOWN 0.5x at crop time - a production
-  condition no test drove. NEW tests/test_vision_tesseract_halved_frame_r98.py (5 CI-safe PIL-only): native-base install, 0.5x
-  half-scale map, anti-1920-drift sentinel, all boxes inside 1280x720, non-degenerate crop. The failing-first draft REVEALED
-  Legion genuinely re-loads a real 2560 profile post-teardown (native profile IS the live active calib, not a fixture).
-- Tier-1 test-only, ENGINE-IMPACT NONE. R98 5/5 + full vision surface 153/0. ROADMAP Vision-OCR NEXT corrected to DONE + names
-  the only open seam. ESCALATED (gemini_ask.txt): director MUST retire the Vision-OCR NEXT; only tail = wire
-  core/screen_grab.grab_native() into the OCR crop path = LIVE-GATED Lane E, not a blind flip. Next headless lane: Lane A
-  scenario precompute OR a ds-sweep rotation.
-- Don't-redo: 2560x1440 recalibration + native-crop/color-correction wiring are SHIPPED + guarded (4th refutation; do NOT re-pitch).
