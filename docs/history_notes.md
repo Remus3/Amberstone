@@ -235,6 +235,30 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (reusable OCR-region resolution-scaling primitive - R91 Vision-OCR Hardening; Tier-1, NO ENGINE bump)
+
+Gemini-loop DIRECTOR REFILL R91 (cycle 6). Full detail: LEDGER 832. Commit `67f4c35a`. No DS bounce (ENGINE-IMPACT NONE).
+
+- PREMISE-CHECK reconciled a partially-stale digest: the "wire color-correction + native crops / replace stubs
+  into vision_tesseract.py" half ALREADY shipped LEDGER 793 (_color_correct/_preprocess/_scale_bbox + the profile
+  hot-path in _regions() - grep found NO stubs), and the 2560x1440 profiles already exist as gitignored per-machine
+  JSON (data/vision_profiles/2560x1440_*.json, guarded by a Legion-local test that SKIPS on CI). vision_tesseract.py
+  left UNTOUCHED.
+- GENUINE net-new: derive_scaled_regions() + derive_profile() + _load_legacy_regions() appended to
+  core/vision_profiles.py (L320/L330/L350) - a pure primitive scaling the hand-calibrated 1920x1080 boxes
+  (data/vision_regions.json) to any native base by per-axis int(coord*dst/src), BYTE-EXACT with
+  vision_tesseract._scale_bbox (verified over all 21 fields), so a derived native-base profile crops the identical
+  rectangle with no downscale drift. Closes the CI gap where the 1.3333x math was only Legion-guarded; seeds future
+  resolutions (3440x1440).
+- VERIFY: TDD RED-first (test_vision_profile_derive.py, 8 tests); read-only verifier CONFIRM all 5 claims (files
+  L320/L330/L350, git additive-only, ruff clean, 21 passed fresh, byte-exact OK 21 fields).
+- GATES: Tier-1 relevant suite 83 passed / 0 fail across the 9 vision_profiles/vision_tesseract consumers; ruff +
+  py_compile + ASCII-clean; CI green 67f4c35a. Additive to vision_profiles.py only.
+- Don't-redo: color-correction + native-crop wiring is DONE (LEDGER 793); the primitive is SHIPPED + CI-tested; the
+  actual per-HUD 2560 box tuning stays LIVE-GATED (needs a live 2560 frame; the *1.3333 seed is not a substitute).
+
+---
+
 # 2026-07-10 (DS Forbidden Idol HSP registry credit - R90 sibling of R60; ENGINE 1.187.0 -> 1.188.0, Tier-2)
 
 Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `52fa7edb`. DS `:8893` bounced to 1.188.0.
