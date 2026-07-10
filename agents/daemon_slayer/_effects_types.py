@@ -265,7 +265,8 @@ class ItemShield:
     requires overheal accrual rather than a single-trigger threshold.
 
     Magnitude resolves as ``flat + bonus_hp_scaling * bonus_hp +
-    bonus_ad_scaling * bonus_ad`` then multiplied by ``ranged_modifier``
+    bonus_ad_scaling * bonus_ad + max_hp_scaling * max_hp`` then multiplied
+    by ``ranged_modifier``
     when the wielder is ranged. The ``flat`` value lerps linearly with
     level when ``level_lerp_high_value`` differs from ``flat`` (or
     equivalently when ``level_lerp_low != level_lerp_high``); the lerp
@@ -290,6 +291,15 @@ class ItemShield:
     level_lerp_high_value: float = 0.0
     ranged_modifier: float = 1.0
     note: str = ""
+    # R92 (2026-07-10): additive fields for Kaenic Rookern (2504) Magebane.
+    # max_hp_scaling credits a shield off TOTAL max HP (Magebane is 15% of
+    # maximum health) rather than the bonus-HP share; default 0.0 leaves every
+    # existing shield byte-identical. default_off marks an opt-in shield
+    # (anti-correlated-uptime conditional): _collect_shields drops it unless the
+    # caller passes assume_kaenic_shield=True, so the always-on lifelines
+    # (default_off False) are unchanged.
+    max_hp_scaling: float = 0.0
+    default_off: bool = False
 
     def __post_init__(self) -> None:
         if self.damage_type not in _SHIELD_TYPES:
@@ -319,6 +329,7 @@ class ItemShield:
         bonus_hp: float = 0.0,
         bonus_ad: float = 0.0,
         is_ranged: bool = False,
+        max_hp: float = 0.0,
     ) -> float:
         """Resolve the shield value at the given context.
 
@@ -339,6 +350,7 @@ class ItemShield:
             level_value
             + self.bonus_hp_scaling * max(0.0, bonus_hp)
             + self.bonus_ad_scaling * max(0.0, bonus_ad)
+            + self.max_hp_scaling * max(0.0, max_hp)
         )
         if is_ranged and self.ranged_modifier != 1.0:
             total *= self.ranged_modifier

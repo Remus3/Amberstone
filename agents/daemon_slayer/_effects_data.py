@@ -1379,6 +1379,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # 400 HP + 80 MR + 100% regen. Magebane: gain magic shield after
         # 15s of not taking magic damage. Pure defensive - no DPS path.
         defensive_only=True,
+        # R92 (2026-07-10): Magebane magic shield = 15% of TOTAL max HP (Meraki
+        # 16.13.1). Credited via the default-OFF assume_kaenic_shield seam
+        # (default_off=True) - the "no magic damage for 15s" uptime is
+        # anti-correlated with magic fights, unlike the always-on lifelines
+        # (Sterak/Maw/Shieldbow), so this credit is conservatively opt-in.
+        shield=ItemShield(
+            damage_type=MAGICAL,
+            max_hp_scaling=0.15,
+            default_off=True,
+            note="Kaenic Rookern Magebane 15% max HP magic shield (Meraki 16.13.1)",
+        ),
         note="Kaenic Rookern: Magebane (low-MR-uptime magic shield); no DPS contribution",
     ),
 
