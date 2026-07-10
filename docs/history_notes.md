@@ -235,6 +235,33 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (DS Darius E Apprehend % armor-penetration anti-tank credit - R93; ENGINE 1.189.0 -> 1.190.0, Tier-2)
+
+Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `874bf871`. DS `:8893` bounced 1.190.0.
+
+- PREMISE CORRECTED: the directive's example shred abilities (Nasus E / Wukong Q / Trundle R / Evelynn W) are ALL
+  already credited (ds_antitank_hint.py is a read-only consumer; the real registry is antitank._ANTITANK_REGISTRY).
+  A MECHANIZED scan of champion_abilities.json 16.13.1 vs the SHRED/PERCENT_PEN rows found the genuine gap = kit
+  % PENETRATION passives: Darius E 20-40% armor, Pantheon R + Ambessa R 10-30% armor, Annie R 15-20% magic (all
+  PERCENT from raw damage_blocks, not flat lethality).
+- SHIPPED ONE: Darius E (Apprehend) always-on % armor pen -> add("Darius","E","PERCENT_PEN","SUSTAINED",magnitude=0.7),
+  the SUSTAINED sibling of Mordekaiser E. Darius was absent from the registry entirely (compute_antitank 0.0 -> 0.455,
+  top_kind PERCENT_PEN, shreds_resist True). Annie NOT picked - item-308 pins her as a flat-damage zero-scorer.
+  Additive/read-by-none (the /anti-tank route is opt-in) -> no default live surface change; Mordekaiser byte-identical.
+- Tier-2: ENGINE 1.189.0 -> 1.190.0; 105 test-pin re-stamps (125 quoted-literal occ, EOL-preserving); item-308
+  coverage pins 78/102/29/5 -> 79/103/30/6; CHANGELOG 1.190.0; DAEMON_SLAYER banner 1.190.0/8122; 6 HZ-B tables regen
+  (build_orders STAMP-ONLY; variants Darius-ONLY content diff, softer anti-tank wall 4200->3340 SR); ds_share_sync 421
+  --check green; DS :8893 bounced 1.190.0. Share/CHANGELOG.md left (periodic batch artifact, R87/R90/R92 precedent).
+- GATES: DS 8122 / 0 fail; RC 11244 pass (11 transient reds - 7 test_ds_share_* raced a concurrent ds_share_sync, 1
+  phase8 pre-bounce stale :8893, 2 coach-poll flake, 1 matchdb conn - ALL cleared clean re-run: cluster 83 + coach-poll
+  2 in isolation), 0 R93 regressions; TDD 11 (10 RED pre-fix); verifier ALL 8 claims CONFIRMED; ruff/py_compile/ASCII clean.
+- LESSON: launched the bg RC suite BEFORE the Share sync + DS bounce settled -> 11 false reds (the CLAUDE.md "wait to
+  settle" warning). Next cycle: Share-sync + bounce THEN the full suite.
+- Don't-redo: anti-tank SHRED registry comprehensive + Darius %pen SHIPPED; Pantheon/Ambessa/Annie %pen are lower-pri
+  FUTURE (ult-tied, smaller %); live default-ON flip -> LIVE_GATED B4. Next DS refill needs a FRESH different-mechanic pass.
+
+---
+
 # 2026-07-10 (DS Kaenic Rookern 2504 Magebane magic-shield EHP credit - R92; ENGINE 1.188.0 -> 1.189.0, Tier-2)
 
 Gemini-loop DIRECTOR REFILL R92. Full detail: LEDGER 833. Commit `6882735c`. DS `:8893` bounced 1.189.0.
