@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Optional
 
+from .ability_dps import compute_ability_dps
 from .data_loader import DataSnapshot
 from .dps import compute_dps
 from .effects import ITEM_EFFECTS
@@ -55,6 +56,57 @@ from .rank import (
 )
 from .stats import clamp_level
 from .survivability_credit import survivability_item_ids
+
+
+# --- Damage-axis awareness (bruiser scorer) --------------------------------
+# The hybrid (bruiser) scorer's damage term must reflect the champion's real
+# damage axis. An AP bruiser routed here (Mordekaiser / Sylas / Vladimir via an
+# archetype request or the /rank-bruiser route) scales its power off ABILITY
+# damage, not auto-attacks; without this the scorer valued only
+# compute_dps().weighted_dps (auto-attack) and built AP champs full AD -
+# identical to an AD bruiser (zero AP items). We classify AD vs AP from the
+# DDragon info.attack / info.magic ratings on the snapshot champ record
+# (magic > attack -> AP). Self-contained (no `core` import) so the Share mirror
+# stays standalone; the few champs DDragon leaves zeroed (Seraphine / Akshan /
+# Rell / Vex / Qiyana) are all non-bruiser archetypes, so raw info suffices for
+# every champion that actually reaches this scorer.
+def _damage_axis(snapshot: DataSnapshot, champion_id: str) -> str:
+    """Return ``"ap"`` when the champion is magic-primary, else ``"ad"``."""
+    rec = snapshot.champions.get(str(champion_id)) or {}
+    info = rec.get("info") or {}
+    attack = int(info.get("attack", 0) or 0)
+    magic = int(info.get("magic", 0) or 0)
+    return "ap" if magic > attack else "ad"
+
+
+def _ability_damage(
+    snapshot: DataSnapshot,
+    champion_id: str,
+    level: int,
+    item_ids,
+    mode: str,
+    target_armor: float,
+    target_mr: float,
+    target_max_hp: float,
+    target_bonus_hp: float,
+    augments,
+    target_current_hp_pct: float = 1.0,
+) -> float:
+    """Ability-DPS scalar (the AP analogue of compute_dps().weighted_dps)."""
+    return compute_ability_dps(
+        snapshot,
+        champion_id=champion_id,
+        level=level,
+        item_ids=item_ids,
+        mode=mode,
+        target_armor=target_armor,
+        target_mr=target_mr,
+        target_max_hp=target_max_hp,
+        target_bonus_hp=target_bonus_hp,
+        target_current_hp_pct=target_current_hp_pct,
+        augments=augments,
+    ).total_ability_dps
+
 
 _ARCHETYPE_WEIGHTS_PATH = Path(__file__).resolve().parent / "archetype_weights.json"
 
@@ -394,7 +446,17 @@ def compute_hybrid(
     # only. OFF path binds the SAME raw value (a name bind, not a float op)
     # so the score line below is byte-identical at the default; ON path with
     # no bonus MS resolves to the exact identity 1.0 and skips the rescale.
-    dps_for_score = dps_result.weighted_dps
+    # Damage-axis awareness: an AP-primary champion (info.magic > info.attack)
+    # is scored on ABILITY damage so AP items surface; AD champions keep
+    # compute_dps().weighted_dps -> byte-identical.
+    if _damage_axis(snapshot, champion_id) == "ap":
+        base_damage = _ability_damage(
+            snapshot, champion_id, level, item_list, mode,
+            target_armor, target_mr, target_max_hp, target_bonus_hp, augments,
+        )
+    else:
+        base_damage = dps_result.weighted_dps
+    dps_for_score = base_damage
     ms_utility_mult = 1.0
     ms_utility_note = ""
     if assume_ms_utility:
@@ -406,7 +468,7 @@ def compute_hybrid(
             float(dps_result.stats.get("ms", 0.0)), base_ms
         )
         if ms_utility_mult != 1.0:
-            dps_for_score = dps_result.weighted_dps * ms_utility_mult
+            dps_for_score = base_damage * ms_utility_mult
             ms_utility_note = (
                 f"ms utility ON: dps x{ms_utility_mult:.3f} "
                 f"(resolved_ms {float(dps_result.stats.get('ms', 0.0)):.1f} vs "
@@ -437,7 +499,7 @@ def compute_hybrid(
         alpha=alpha_resolved,
         beta=beta_resolved,
         alpha_source=alpha_source,
-        dps=dps_result.weighted_dps,
+        dps=base_damage,
         ehp=ehp_result.blended_ehp,
         hybrid_score=hybrid_score,
         target_armor=target_armor,
@@ -818,6 +880,9 @@ def rank_items_by_hybrid(
     if only_item_ids is not None:
         only_ids = {str(i) for i in only_item_ids}
 
+    # Damage-axis awareness (see compute_hybrid): AP champs score on ability DPS.
+    axis = _damage_axis(snapshot, champion_id)
+
     baseline_dps_result = compute_dps(
         snapshot,
         champion_id=champion_id, level=level,
@@ -850,7 +915,15 @@ def rank_items_by_hybrid(
         apply_survival_window=apply_survival_window,
         **_ehp_kwargs_baseline,
     )
-    baseline_dps = baseline_dps_result.weighted_dps
+    baseline_dps = (
+        _ability_damage(
+            snapshot, champion_id, level, current_ids, mode,
+            target_armor, target_mr, target_max_hp, target_bonus_hp,
+            augments, target_current_hp_pct,
+        )
+        if axis == "ap"
+        else baseline_dps_result.weighted_dps
+    )
     # baseline_ehp keeps the blended_ehp semantics for the
     # _hybrid_delta_pct percentage-normalizer below (the ranker compares
     # apples-to-apples: blended_ehp delta over blended_ehp baseline).
@@ -930,6 +1003,15 @@ def rank_items_by_hybrid(
                 phase=phase, augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
             )
+            scored_damage = (
+                _ability_damage(
+                    snapshot, champion_id, level, new_build, mode,
+                    target_armor, target_mr, target_max_hp, target_bonus_hp,
+                    augments, target_current_hp_pct,
+                )
+                if axis == "ap"
+                else dps_scored.weighted_dps
+            )
             # ENGINE 1.39.0 (item 143 Slice B): same conditional kwarg
             # threading pattern as the baseline call above.
             _ehp_kwargs_scored = {}
@@ -955,7 +1037,7 @@ def rank_items_by_hybrid(
         except (KeyError, ValueError):
             continue
         gold = int((rec.get("gold") or {}).get("total", 0) or 0)
-        delta_dps = dps_scored.weighted_dps - baseline_dps
+        delta_dps = scored_damage - baseline_dps
         delta_ehp = ehp_scored.blended_ehp - baseline_ehp
         cc_delta_ehp = ehp_scored.cc_blended_ehp - baseline_ehp_result.cc_blended_ehp
         # Item 237: the active EHP metric drives the delta_pct sort key. Default
@@ -979,7 +1061,7 @@ def rank_items_by_hybrid(
             cand_ms_mult = _ms_utility_multiplier(
                 float(dps_scored.stats.get("ms", 0.0)), _ms_base
             )
-            cand_dps_eff = dps_scored.weighted_dps * cand_ms_mult
+            cand_dps_eff = scored_damage * cand_ms_mult
             delta_pct = _hybrid_delta_pct(
                 cand_dps_eff - baseline_dps_eff, active_delta_ehp,
                 baseline_dps_eff, active_baseline_ehp,
@@ -995,7 +1077,7 @@ def rank_items_by_hybrid(
                 alpha_resolved, beta_resolved,
             )
             new_hybrid_score = (
-                alpha_resolved * dps_scored.weighted_dps
+                alpha_resolved * scored_damage
                 + beta_resolved * ehp_scored_for_score
             )
         # Efficiency: weighted percentage gain per 1000 gold.
@@ -1011,7 +1093,7 @@ def rank_items_by_hybrid(
             gold=gold,
             delta_dps=delta_dps,
             delta_ehp=delta_ehp,
-            new_dps=dps_scored.weighted_dps,
+            new_dps=scored_damage,
             new_ehp=ehp_scored.blended_ehp,
             hybrid_delta_pct=delta_pct,
             hybrid_score=new_hybrid_score,
