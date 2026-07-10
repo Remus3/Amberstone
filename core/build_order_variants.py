@@ -62,7 +62,10 @@ WHAT v1 IS (honest scope)
     real-game validation + operator OK; Haiku / the live :8893 path stays the
     interim floor). The committed table seeds the SAME archetype-diverse champion
     sample HZ-B1 used (``SEED_CHAMPIONS`` imported from HZ-B1 so the two tables
-    line up champ-for-champ); ``--champions`` / ``--mode all`` expand it offline.
+    line up champ-for-champ). ``--champions all`` expands the sweep to the full
+    canonical roster offline (via the shared ``resolve_champions`` / full_roster
+    from HZ-B1); ``--mode all`` selects all three modes ONLY and does NOT expand
+    the roster - the two flags are independent.
 
 SHAPE (per mode, atomic write to data/daemon_slayer/build_orders/<patch>/)::
 
@@ -124,9 +127,10 @@ from core.archetype_picks import canonical_champion_id
 from core.build_order import DEFAULT_SLOTS, plan_build_order
 from core.build_order_precompute import (
     DS_MODE_BY_KEY,
-    SEED_CHAMPIONS,
+    SEED_CHAMPIONS,  # re-exported for parity + tests (bov.SEED_CHAMPIONS)
     archetype_for,
     engine_version,
+    resolve_champions,
     resolve_patch,
     split_bias,
 )
@@ -491,10 +495,6 @@ def lookup(payload: dict, champion: str, variant: str) -> dict:
 # --------------------------------------------------------------------------- #
 # CLI
 # --------------------------------------------------------------------------- #
-def _parse_csv(value: str) -> list[str]:
-    return [tok.strip() for tok in str(value).split(",") if tok.strip()]
-
-
 def _count_cells(payload: dict) -> tuple[int, int]:
     """Return (champ_count, nonempty_order_count) for a mode payload."""
     bo = payload.get("build_orders") or {}
@@ -522,10 +522,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--mode", default="all",
                     choices=("all",) + DS_MODE_KEYS,
-                    help="Restrict generation to one mode (default: all).")
+                    help="Which MODE(s) to generate: sr/aram/arena or all "
+                         "(default: all). Selects modes ONLY - it does NOT "
+                         "expand the champion roster; use --champions all "
+                         "for the full roster.")
     ap.add_argument("--champions", default="",
-                    help="CSV of champ DDragon display names "
-                         "(default: SEED_CHAMPIONS, shared with HZ-B1).")
+                    help="CSV of champ DDragon names, or 'all' for the FULL "
+                         "canonical roster (the active patch's DS registry). "
+                         "'all' is the ONLY full-roster path. Default (empty): "
+                         "the SEED_CHAMPIONS sample (shared with HZ-B1).")
     ap.add_argument("--level", type=int, default=DEFAULT_LEVEL,
                     help=f"Build level for the enemy context "
                          f"(default: {DEFAULT_LEVEL}).")
@@ -541,7 +546,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                          "path by construction.")
     args = ap.parse_args(argv)
 
-    champions = _parse_csv(args.champions) or list(SEED_CHAMPIONS)
+    champions = resolve_champions(args.champions)
 
     # Static mode computes in-process via the DS server handlers (no :8893).
     # Otherwise a non-dry run requires the live engine (the planner makes :8893
