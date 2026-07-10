@@ -4,6 +4,27 @@
 
 ---
 
+# 2026-07-10 (DS Kaenic Rookern 2504 Magebane magic-shield EHP credit - R92; ENGINE 1.188.0 -> 1.189.0, Tier-2)
+
+Gemini-loop DIRECTOR REFILL R92. Full detail: LEDGER 833. Commit `6882735c`. DS `:8893` bounced 1.189.0.
+
+- PREMISE CORRECTED: directive target "tank_items.json/fighter_items.json" does NOT exist; tank/fighter item
+  credits live in the Python ehp/_effects_data ItemShield pool + _passive_*_overrides seams. Refute retargeted there.
+- GAP: Kaenic Rookern (2504, 80-MR MR-tank) had NO shield=ItemShield in ITEM_EFFECTS, so its Magebane magic shield
+  (15% of MAX health) was ZERO magical EHP - unlike lifeline siblings Sterak/Maw/Shieldbow (always-on ItemShield).
+- FIX (NEW default-OFF assume_kaenic_shield seam): additive ItemShield fields max_hp_scaling (15%-of-max exact) +
+  default_off (opt-in gate); ehp._collect_shields/compute_ehp thread max_hp + the flag; 2504 gets
+  shield=ItemShield(MAGICAL, max_hp_scaling=0.15, default_off=True). Routed opt-in (not the always-on pool) because
+  Magebane's no-magic-15s uptime is anti-correlated with magic fights. OFF byte-identical; armed = 15%-max-HP magical EHP.
+- Tier-2: 105 test-pin re-stamps; CHANGELOG 1.189.0; DAEMON_SLAYER banner 1.189.0/8111; 6 HZ-B tables STAMP-ONLY
+  re-stamp; ds_share_sync 420 files --check green; DS :8893 bounced 1.189.0.
+- GATES: DS 8111 / 0 fail; RC 11253 pass (2 pre-existing coach-poll flake, GREEN 2/2 in isolation, LEDGER-828), 0 R92
+  regressions; TDD 13 (12 RED pre-fix); ruff clean; pre-commit gate passed.
+- Don't-redo: tank/fighter item-keyed byte-identical seams SATURATED (tenacity/reflect/AH/HSP zero room); Kaenic
+  SHIPPED; live default-ON flip -> LIVE_GATED R92. Next DS refill needs a FRESH different-mechanic refute pass.
+
+---
+
 # 2026-07-10 (reusable OCR-region resolution-scaling primitive - R91 Vision-OCR Hardening; Tier-1, NO ENGINE bump)
 
 Gemini-loop DIRECTOR REFILL R91 (cycle 6). Full detail: LEDGER 832. Commit `67f4c35a`. No DS bounce (ENGINE-IMPACT NONE).
@@ -48,25 +69,3 @@ Gemini-loop DIRECTOR REFILL R90. Full detail: LEDGER 831. Commit `52fa7edb`. DS 
 - LIVE: default-ON HSP flip EXCLUDED / operator-gated; LIVE_GATED B43 extended to cover 3114.
 - Don't-redo: wielder-HSP registry now COMPLETE for the SR enchanter line (5 finished + the Forbidden Idol
   component); next DS-sweep refill = a FRESH Meraki-vs-registry refute of a DIFFERENT mechanic, never HSP.
-
----
-
-# 2026-07-10 (combat-style archetype chip on champ-select My Pick card - R89 Aggregator C lift; UI slice)
-
-Gemini-loop DIRECTOR REFILL R89. Full detail: LEDGER 830. UI slice, presentation-only, NO ENGINE bump,
-commit `e2ff5982`. No RC restart (asset-hash ADR-008), no DS bounce (ENGINE-IMPACT NONE).
-
-- LIFT: Section-7b competitor teardown of the Aggregator C live companion (docs/COMPETITOR_LIFT_2026-07-10.md;
-  pages fetched via an Apify full-browser render, Cloudflare 403'd WebFetch). Verdict SPLIT: F2 combat-style
-  HIGH/LOW-risk -> SHIPPED; F1 lane-matchup MED -> BACKLOG.
-- F2 shipped: read-only archetype tag chip (CARRY/BRUISER/TANK/MAGE/ASSASSIN/ENCHANTER) on the champ-select
-  My Pick card (SR+ARAM), sourced from the archetype RC already resolves + client-caches
-  (`_CSV_ARCH_CACHE.primary`, `/api/cs-archetype-pick`) but never rendered since the picker was removed
-  (LEDGER 823). New `web/js/panels/archetype_chip.js` reuses the `.csv-build-badge` tint family; one compact
-  `.csv-archetype-chip` CSS rule (width:auto; font inherits --fs-xs). No backend/Claude/schema change.
-- VERIFY: research citations ground-truthed before build (`get_archetype_for` :32->:592 corrected). 5-phase
-  UI audit PASS (MUST-FIX 200px width fixed in-slice); visual champ-select_aram.png = compact CARRY chip
-  under Jinx. TDD: node 7/7 + CI contract 7/7 + a `/api/cs-archetype-pick` conftest fixture. snapshot_panels
-  359 + CS regression 24 + hygiene 13; ruff clean; CI green.
-- Tails (BACKLOG R89): F2a Arena chip parity (LOW); F1a WR best/worst counters list (MED); F1b prose tips +
-  F2b behavioral player badges CLOSED. Don't-redo: the combat-style chip is SHIPPED for SR+ARAM.
