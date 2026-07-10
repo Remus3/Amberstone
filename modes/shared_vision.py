@@ -131,6 +131,12 @@ class GameVisionReader:
     TIERED_FIELDS: list = []
     TIERED_VALIDATORS: dict = {}
 
+    # SHADOW_FIELDS: subset of TIERED_FIELDS run in OCR-vs-Sonnet shadow mode -
+    # always escalated to Sonnet AND logged (OCR value vs Sonnet value) to
+    # data/ocr_shadow.jsonl. Non-consuming telemetry; Sonnet's value still wins
+    # in the returned dict. Empty = no shadowing (unchanged behavior).
+    SHADOW_FIELDS: list = []
+
     def __init__(self, api_key: str):
         import anthropic
         self._client = anthropic.Anthropic(api_key=api_key)
@@ -199,6 +205,7 @@ class GameVisionReader:
             fields=self.TIERED_FIELDS,
             escalate_fn=_escalate,
             validators=validators,
+            shadow_fields=self.SHADOW_FIELDS,
         )
         if raw:
             raw = self._postprocess(raw)
