@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.189.0 (2026-07-10 - Kaenic Rookern (2504) Magebane magic-shield EHP credit, R92).
+A fresh adversarial Meraki(16.13.1)-vs-registry refute pass on the tank/fighter
+item set found Kaenic Rookern (2504), an 80-MR MR-tank item, carried NO
+shield=ItemShield in its ITEM_EFFECTS entry, so its Magebane passive ("after not
+taking magic damage for 15s, gain a shield absorbing magic damage equal to 15% of
+maximum health") was credited as ZERO magical EHP - unlike its lifeline siblings
+Sterak (3053) / Maw (3156) / Shieldbow (6673), which all carry an always-on
+ItemShield. FIX adds two additive ItemShield fields - max_hp_scaling (credits a
+shield off TOTAL max HP, defaults 0.0 so every existing shield stays byte-identical)
+and default_off (marks an opt-in shield) - and a 2504 shield=ItemShield(
+damage_type=MAGICAL, max_hp_scaling=0.15, default_off=True). It is credited via a
+NEW default-OFF assume_kaenic_shield seam (ehp._collect_shields + compute_ehp)
+rather than the always-on lifeline pool, because Magebane's "no magic damage for
+15s" uptime is anti-correlated with the magic fights where the shield matters, so
+the credit is conservatively opt-in. OFF path is byte-identical
+(assume_kaenic_shield defaults False -> 2504's default_off shield is dropped and
+every other shield's magnitude is unmoved). Armed, a build carrying Kaenic gets a
+15%-max-HP magic-shield EHP credit. Live default-ON flip is live-game gated.
+RED-first test_kaenic_rookern_shield_r92.py (13 tests). Source data: Meraki
+16.13.1 + Riot Data Dragon (Kaenic Rookern Magebane 15% max HP magic shield).
+
 1.188.0 (2026-07-10 - Forbidden Idol HSP registry credit, R90 sibling of R60).
 A fresh adversarial Meraki(16.13.1)-vs-registry refute pass on the R60 wielder
 Heal/Shield Power (HSP) amp seam found the shared COMPONENT the five credited

@@ -258,6 +258,8 @@ def _collect_shields(
     bonus_hp: float,
     bonus_ad: float,
     is_ranged: bool,
+    max_hp: float = 0.0,
+    assume_kaenic_shield: bool = False,
 ) -> tuple[dict[str, float], tuple[tuple[str, str, float], ...]]:
     """Resolve every ``ItemShield`` across the equipped items.
 
@@ -280,11 +282,18 @@ def _collect_shields(
         if eff is None or eff.shield is None:
             continue
         shield = eff.shield
+        # R92: default-off (opt-in) shields are dropped unless the caller
+        # explicitly assumes them - Kaenic Rookern's Magebane magic shield has an
+        # anti-correlated "no magic damage for 15s" uptime, so it is credited via
+        # the assume_kaenic_shield seam rather than the always-on lifeline pool.
+        if shield.default_off and not assume_kaenic_shield:
+            continue
         hp = shield.resolve_magnitude(
             level=level,
             bonus_hp=bonus_hp,
             bonus_ad=bonus_ad,
             is_ranged=is_ranged,
+            max_hp=max_hp,
         )
         if hp <= 0:
             continue
@@ -1060,6 +1069,10 @@ def compute_ehp(
     caster_current_hp_pct: float = 1.0,
     assume_passive_health_stacks: bool = False,
     assume_hsp_amp: bool = False,
+    # R92 (2026-07-10): default-OFF opt-in for Kaenic Rookern (2504) Magebane's
+    # 15%-max-HP magic shield. Byte-identical OFF (2504's default_off shield is
+    # dropped from the pool); live default-ON flip is operator-gated.
+    assume_kaenic_shield: bool = False,
     # B45/B46 (operator flip 2026-07-06): default-ON so the EHP scorer credits
     # Randuin's crit-DR (~+17.6% physical EHP at the assumed crit share) and
     # Plated Steelcaps' 10% basic-attack DR (~+5.3% physical EHP at the assumed
@@ -1186,6 +1199,8 @@ def compute_ehp(
         bonus_hp=bonus_hp,
         bonus_ad=bonus_ad,
         is_ranged=is_ranged,
+        max_hp=hp,
+        assume_kaenic_shield=assume_kaenic_shield,
     )
     shield_any = shield_totals.get(ANY, 0.0)
     shield_phys = shield_totals.get(PHYSICAL, 0.0)
