@@ -235,6 +235,28 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (R96 Lane E client-side CV template-match atlas FOUNDATION - vision; NO ENGINE bump, Tier-1)
+
+Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No restart/bounce (pure new unused core module).
+
+- The genuine NEXT NO-LLM vision frontier the R94/R95 escalations queued (Lane E CV template-match atlas), NOT another
+  vision-OCR wiring re-pitch. Ground-truth correction: cv2 5.0.0 + numpy 2.5.0 ARE installed (OBS_CV_MINIMAP_PLAN L40
+  "opencv NOT installed" is STALE - refuted live).
+- SHIPPED new core/vision_template_match.py: generic match_icon(crop, category, roster=None, threshold=None) -> (id, conf)
+  over a lazy in-memory OpenCV atlas of the local DDragon icons (champions 173 / items 36 / spells 18). Two-stage match
+  mirrors minimap_identity._match_score (TM_CCORR_NORMED offset -> masked Pearson conf, threshold 0.6); roster restriction
+  via _name_keys; helpers list_ids/available_categories. HAVE-distinct from minimap_identity (that = minimap-DOT +
+  10-roster identify_dots; R96 = generic single-crop -> full-category inverse, the OBS_CV_MINIMAP_PLAN #8 objective /
+  #10 item substrate).
+- DEFAULT-OFF, NO live wiring (verifier: only the test imports it). ENGINE-IMPACT NONE. Orchestrator + 1 worktree build
+  subagent + read-only verifier CONFIRM (8 tests, ruff/py_compile/ASCII clean, contract sane 173/36) BEFORE the ff-only
+  merge (b54e38eb..406ac0e3). Full RC 11272 passed; the only 2 fails = the LEDGER-828 coach-poll asyncio flake, PROVEN
+  not R96 (2/2 isolated; R96 has 0 asyncio refs). Live template-match quality on real frames = live-gated (do-not-flip-blind).
+- Don't-redo: the Lane E CV template-match FOUNDATION is SHIPPED (do NOT re-pitch match_icon/atlas); vision-OCR wiring stays
+  DONE (793/832/835/836); NEXT = live crop-producer wiring + per-champ/objective/item consumers + Live-Client/CV fusion.
+
+---
+
 # 2026-07-10 (R95 vision CV consumes core.hud_settings COLOR layer - colorblind + gamma; NO ENGINE bump, Tier-1)
 
 Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `87c3a990`. No restart/bounce (neutral-safe, RC picks up on next restart).

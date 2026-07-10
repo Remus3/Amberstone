@@ -4,6 +4,34 @@
 
 ---
 
+# 2026-07-10 (R99 Chainlaced Crushers (3173) magic-shield EHP credit + R98 vision-OCR escalation resolve - ds-engine; ENGINE 1.191.0 -> 1.192.0)
+
+Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LEDGER 840. Commit `c335eafb`.
+
+- PART 1 (escalation resolve): retired the ROADMAP "VISION-OCR HARDENING" bullet (relocated verbatim to
+  docs/ROADMAP_HISTORY.md, marked DONE R94-R98) + moved the grab_native() OCR-crop-path seam to
+  docs/LIVE_GAME_GATED_SYNC.md B48 (live-gated Lane E). ROADMAP.md 79731B (budget 81920).
+- PART 2 (ds-sweep refute pass): a research subagent + an independent orchestrator scan CONVERGED - only Ambessa +
+  Annie carry un-registered shred/pen and NEITHER has a clean numeric Meraki field, so the clean-numeric candidate won:
+  Chainlaced Crushers (item 3173) "Noxian Persistence" magic shield was UNCREDITED (bare defensive_only ItemEffect,
+  no shield). Meraki 16.13.1: taking magic damage grants a shield absorbing 100 (L1)->200 (L18) +8% bonus HP for 5s (15s CD).
+- FIX (R92 Kaenic / R97 Eclipse ItemShield precedent, NO schema lift): shield=ItemShield(MAGICAL, flat=100,
+  level_lerp_low=1/high=18/high_value=200, bonus_hp_scaling=0.08, default_off=True) on ITEM_EFFECTS 3173 (SR-only,
+  no Arena mirror) + per-shield arming gate (iid=="3173") threaded through ehp._collect_shields/compute_ehp. Zero
+  cross-contam vs Kaenic/Eclipse.
+- ENGINE 1.191.0->1.192.0 (108 version-pin files). DS :8893 bounced 1.192.0; ds_share_sync 423 files --check green +
+  Share/CHANGELOG entry; 6 HZ-B build-order tables re-stamped (STAMP-ONLY, 0 content lines); DAEMON_SLAYER banner 1.192.0/8158.
+- TDD RED-first test_chainlaced_shield_r99.py (16 tests, 14 RED pre-fix) + VERIFIER GATE 7/7 CONFIRM (OFF byte-identical:
+  magical 2970->3256 ON-only, physical + true unchanged; build-orders stamp-only). GATES: DS 8158/1skip/1943subtests;
+  RC 11277 passed (the only 2 fails = the pre-existing LEDGER-828 coach-poll asyncio flake, pass 2/2 isolated, R99 engine
+  files carry 0 asyncio refs, 0 R99 regressions); ruff + ASCII clean.
+- Live default-ON flip (an EHP consumer passing assume_chainlaced_shield=True) -> LIVE_GATED. Don't-redo: Chainlaced 3173
+  Noxian Persistence shield SHIPPED; Ambessa/Annie pen has no clean numeric Meraki field (rejected this pass); the
+  vision-OCR recalibration + native-crop wiring stays DONE R94-R98 (relocated to ROADMAP_HISTORY; grab_native OCR-path tail
+  = LIVE-GATED Lane E B48, do NOT re-pitch as a headless slice).
+
+---
+
 # 2026-07-10 (R98 Vision-OCR premise re-refuted (4th re-pitch) + native-2560-vs-1280-halved-frame OCR crop guard - vision; ENGINE-IMPACT NONE)
 
 Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibrate 23 boxes at 2560x1440 + wire native OCR crops/color-correction into core/vision_tesseract"). Full detail: LEDGER 839. Commit `1fddb516`.
@@ -49,25 +77,3 @@ Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b8
   since --check does not gate CHANGELOG completeness. Live default-ON flip -> LIVE_GATED.
 - Don't-redo: Alistar/Gragas/Warwick + the whole modifier-block DR class is folded via R19/R35 (do NOT re-pitch a percent-DR
   seam for them); Eclipse Ever Rising Moon shield SHIPPED (do NOT re-pick 6692/226692); the damage half stays modeled + untouched.
-
----
-
-# 2026-07-10 (R96 Lane E client-side CV template-match atlas FOUNDATION - vision; NO ENGINE bump, Tier-1)
-
-Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No restart/bounce (pure new unused core module).
-
-- The genuine NEXT NO-LLM vision frontier the R94/R95 escalations queued (Lane E CV template-match atlas), NOT another
-  vision-OCR wiring re-pitch. Ground-truth correction: cv2 5.0.0 + numpy 2.5.0 ARE installed (OBS_CV_MINIMAP_PLAN L40
-  "opencv NOT installed" is STALE - refuted live).
-- SHIPPED new core/vision_template_match.py: generic match_icon(crop, category, roster=None, threshold=None) -> (id, conf)
-  over a lazy in-memory OpenCV atlas of the local DDragon icons (champions 173 / items 36 / spells 18). Two-stage match
-  mirrors minimap_identity._match_score (TM_CCORR_NORMED offset -> masked Pearson conf, threshold 0.6); roster restriction
-  via _name_keys; helpers list_ids/available_categories. HAVE-distinct from minimap_identity (that = minimap-DOT +
-  10-roster identify_dots; R96 = generic single-crop -> full-category inverse, the OBS_CV_MINIMAP_PLAN #8 objective /
-  #10 item substrate).
-- DEFAULT-OFF, NO live wiring (verifier: only the test imports it). ENGINE-IMPACT NONE. Orchestrator + 1 worktree build
-  subagent + read-only verifier CONFIRM (8 tests, ruff/py_compile/ASCII clean, contract sane 173/36) BEFORE the ff-only
-  merge (b54e38eb..406ac0e3). Full RC 11272 passed; the only 2 fails = the LEDGER-828 coach-poll asyncio flake, PROVEN
-  not R96 (2/2 isolated; R96 has 0 asyncio refs). Live template-match quality on real frames = live-gated (do-not-flip-blind).
-- Don't-redo: the Lane E CV template-match FOUNDATION is SHIPPED (do NOT re-pitch match_icon/atlas); vision-OCR wiring stays
-  DONE (793/832/835/836); NEXT = live crop-producer wiring + per-champ/objective/item consumers + Live-Client/CV fusion.
