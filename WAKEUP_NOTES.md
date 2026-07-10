@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-07-10 (R100 Overlay App F Section-7b competitor lift - RESEARCH-ONLY, ship-premise refuted live - competitor-lift; ENGINE-IMPACT NONE / docs-only)
+
+Gemini-loop DIRECTOR REFILL R100 rotated REFILL PROTOCOL -> #2 (Research + competitor lift) after R99 drained the DS sweep. Full detail: LEDGER 841. Commit `(this commit)`.
+
+- DEEP-DIVE (1 heavyweight research subagent, 6-point checklist) + orchestrator verify-premises: VERDICT ~90% DUPLICATE.
+  Overlay App F = live pre-game + in-game scouting companion; its whole chain needs a Riot PRODUCTION spectator-v4 key +
+  scraped warehouse (arbitrary-summoner live scout) = CLOSED for RC's personal key (ADR-006; enemies client-hidden until :2999).
+- Pre-game card (rank/LP/WR/mastery/mains/W-L streak) BUILT via FU02 (routes_team_context.py:200-239 + riot_api.py:611-670);
+  premade/playstyle/self-tilt QUEUED via R81; matchup/spike/objective-timers BUILT/queued via R89/R81/event_callouts.
+- VERIFY-PREMISES (decisive): the agent's sole ship candidate - render "unrendered" w_l_streak_7 as dots - REFUTED live;
+  team_context.js:126-133 ALREADY renders it as text ("4W 3L"). NO in-run ship (research-only, R85/R94/R98 tradition).
+- Artifact docs/COMPETITOR_LIFT_2026-07-10_OVERLAY_APP_F.md; 2 residuals -> BACKLOG FUTURE (F1 manual click-to-track enemy
+  summ/ult CD overlay = the one NEW mechanic, MED do-not-build-blind; F2 W-L dots restyle + shrink-guarded tilt hint, LOW,
+  fold into R81's snapshot card). ENGINE-IMPACT NONE (docs-only; DS live 1.192.0 healthy; no code/engine/Share/restart).
+- LOOP-HEALTH: the live-scouting/overlay competitor CATEGORY is DRAINED (FU02+R81+R89+event_callouts); the R100 dup-check
+  compared only vs R89 and missed R81 where ~90% of Overlay App F lives - next competitor pick should target a DIFFERENT category
+  or rotate to the meatier DS-sweep / Haiku-to-ZERO lanes. done_sentinel --tests 11277 --regressions 0.
+- Don't-redo: Overlay App F + the live-scouting/overlay category is torn down + DRAINED (do NOT re-pitch scouting card/premade/
+  tilt/matchup/overlay-timer); the w_l_streak_7 render EXISTS (do NOT re-pitch "render the unrendered streak").
+
+---
+
 # 2026-07-10 (R99 Chainlaced Crushers (3173) magic-shield EHP credit + R98 vision-OCR escalation resolve - ds-engine; ENGINE 1.191.0 -> 1.192.0)
 
 Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LEDGER 840. Commit `c335eafb`.
@@ -51,29 +73,3 @@ Gemini-loop DIRECTOR REFILL R98 re-issued the ROADMAP Vision-OCR NEXT ("recalibr
   core/screen_grab.grab_native() into the OCR crop path = LIVE-GATED Lane E, not a blind flip. Next headless lane: Lane A
   scenario precompute OR a ds-sweep rotation.
 - Don't-redo: 2560x1440 recalibration + native-crop/color-correction wiring are SHIPPED + guarded (4th refutation; do NOT re-pitch).
-
----
-
-# 2026-07-10 (R97 Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit - ds-engine; ENGINE 1.190.0 -> 1.191.0)
-
-Gemini-loop DIRECTOR REFILL R97 (ds-sweep). Full detail: LEDGER 838. Commits `b80547ab` (merge) + `7b24a779` (sync). DS :8893 bounced 1.191.0.
-
-- FRESH adversarial Meraki(16.13.1)-vs-registry refute pass. PICK #1 Alistar R (55/65/75% all-damage DR) REFUTED live
-  (verify-before-build): spell_damage_reduction_pct("Alistar","R")==(55,65,75) is ALREADY folded into EHP by the R19/R35
-  snapshot fold in mitigation_multipliers (ehp.compute_ehp:1292 passes the snapshot); Gragas W + Warwick E fold identically;
-  the _passive_mitigation_overrides.py:70-74 exclusion docstring is STALE (that whole modifier-block DR class is covered).
-- GAP CONFIRMED + SHIPPED (pick #2): Eclipse (6692 SR + 226692 Arena) "Ever Rising Moon" self-shield - the damage half
-  (6% target maxHP PeriodicProc) was modeled but the SHIELD half was uncredited (ITEM_EFFECTS[6692].shield is None;
-  _collect_shields skips it). Meraki "160|80 (+40%|20% bonus AD) 2s". FIX = shield=ItemShield(ANY, flat=160,
-  bonus_ad_scaling=0.40, ranged_modifier=0.5, default_off=True) on both ids + NEW default-OFF assume_eclipse_shield seam
-  (ehp._collect_shields/compute_ehp, 4-spot parallel of assume_kaenic_shield) with a SHIELD-SPECIFIC gate so arming eclipse
-  never cross-credits Kaenic 2504. ItemShield needed no schema lift (bonus_ad_scaling/ranged_modifier/default_off exist R92).
-- Orchestrator + 1 worktree build subagent (TDD RED-first 20 tests, 16 RED) + read-only verifier CONFIRM 8/8 (OFF
-  byte-identical {} 0-credit / ON melee any=200 / ranged=100 / cross-contam ZERO) BEFORE the no-ff merge. Share --check green
-  422; HZ-B stamp-only re-stamp (0 content lines); banner 1.191.0/8142. DS 8142 pass/1skip; RC 11271 pass / 3 fail ALL
-  pre-existing-flake-or-stale (2 = LEDGER-828 coach-poll 2/2 isolated; 1 = doc-drift STALE - suite launched pre-banner-bump,
-  3/3 fresh) / 0 R97 regressions.
-- Also backfilled Share/CHANGELOG 1.186->1.190 (R88/R90/R92/R93; operator chip, commit `a28c0678`) - the entries omitted
-  since --check does not gate CHANGELOG completeness. Live default-ON flip -> LIVE_GATED.
-- Don't-redo: Alistar/Gragas/Warwick + the whole modifier-block DR class is folded via R19/R35 (do NOT re-pitch a percent-DR
-  seam for them); Eclipse Ever Rising Moon shield SHIPPED (do NOT re-pick 6692/226692); the damage half stays modeled + untouched.
