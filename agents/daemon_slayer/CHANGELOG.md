@@ -1331,6 +1331,25 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.192.0 (2026-07-10 - Chainlaced Crushers (3173) Noxian Persistence magic-shield EHP credit, R99).
+A fresh adversarial Meraki(16.13.1)-vs-registry refute pass, ds-sweep rotation.
+The confirmed gap: Chainlaced Crushers (3173), the tier-3 MR + tenacity boot, was
+a bare defensive_only ItemEffect (no shield), so its Noxian Persistence passive
+magic shield earned ZERO EHP. Meraki 16.13.1 (items['3173'] passive "Noxian
+Persistence"): "Taking magic damage from champions grants you a shield that
+absorbs 100 to 200 (+ 8% bonus health) magic damage for 5 seconds" (15s CD). The
+pp|100 to 200 is per-champion-level scaling (100 at L1 -> 200 at L18). FIX: a
+shield=ItemShield(damage_type=MAGICAL, flat=100.0, level_lerp_low=1,
+level_lerp_high=18, level_lerp_high_value=200.0, bonus_hp_scaling=0.08,
+default_off=True) on ITEM_EFFECTS 3173 (SR-only, no Arena mirror), credited only
+through a NEW default-OFF assume_chainlaced_shield seam threaded through
+ehp._collect_shields / compute_ehp. The default-off gate is SHIELD-SPECIFIC
+(chainlaced arms 3173, eclipse arms 6692/226692, kaenic arms 2504) so arming one
+opt-in shield never cross-credits another. Like Kaenic R92, the trigger (taking
+magic damage, 15s CD) is anti-correlated with the fights where the shield matters,
+so it is conservatively opt-in. Byte-identical when OFF (the default). Live
+default-ON flip -> LIVE_GATED.
+
 1.191.0 (2026-07-10 - Eclipse (6692/226692) Ever Rising Moon self-shield EHP credit, R97).
 A fresh adversarial Meraki(16.13.1)-vs-registry refute pass. The first pick
 (Alistar R 55/65/75% all-damage DR) was REFUTED live - already folded into EHP

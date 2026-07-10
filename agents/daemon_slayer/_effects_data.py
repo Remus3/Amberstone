@@ -5427,7 +5427,25 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     "3171": ItemEffect(item_id="3171", name="Crimson Lucidity",
         defensive_only=True, note="Crimson Lucidity (3171): AH boots - no DPS contribution"),
     "3173": ItemEffect(item_id="3173", name="Chainlaced Crushers",
-        defensive_only=True, note="Chainlaced Crushers (3173): MR + tenacity boots - no DPS contribution"),
+        defensive_only=True,
+        # R99 (2026-07-10): the uncredited magic SHIELD of Noxian Persistence.
+        # Meraki 16.13.1: taking magic damage from champions grants a shield
+        # absorbing 100 (L1) -> 200 (L18) + 8% bonus health magic damage for 5s
+        # (15s CD). Credited via the default-OFF assume_chainlaced_shield seam -
+        # like Kaenic R92 the trigger (taking magic damage, 15s CD) is anti-
+        # correlated with the fights where the shield matters, so conservatively
+        # opt-in rather than the always-on lifeline pool. Byte-identical OFF.
+        shield=ItemShield(
+            damage_type=MAGICAL,
+            flat=100.0,
+            level_lerp_low=1,
+            level_lerp_high=18,
+            level_lerp_high_value=200.0,
+            bonus_hp_scaling=0.08,
+            default_off=True,
+            note="Chainlaced Crushers Noxian Persistence 100 (L1)->200 (L18) +8% bonus HP magic shield 5s, 15s CD; Meraki 16.13.1",
+        ),
+        note="Chainlaced Crushers (3173): MR + tenacity boots - no DPS contribution"),
     "3174": ItemEffect(
         item_id="3174",
         name="Armored Advance",
