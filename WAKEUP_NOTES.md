@@ -4,6 +4,26 @@
 
 ---
 
+# 2026-07-10 (R95 vision CV consumes core.hud_settings COLOR layer - colorblind + gamma; NO ENGINE bump, Tier-1)
+
+Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `87c3a990`. No restart/bounce (neutral-safe, RC picks up on next restart).
+
+- The net-new item the R94 escalation asked for (consume the hud_settings COLOR layer - genuinely unwired). PREMISE
+  CONFIRMED: core/hud_settings.py:106 read_hud_settings() already returns colorblind/color_correction_needed/color{...},
+  but vision_tesseract consumed it only transitively (profile-key selection), never the color settings.
+- SHIPPED (3 files): vision_tesseract.py new _HUD_COLOR + configure_hud_color() (mirrors _DROP_FIELDS); _bar_fill_pct
+  relaxes green/blue/red match when colorblind (ColorPalette!=0) so a hue-shifted bar registers; _preprocess adds a
+  fail-soft inverse gamma/brightness/contrast (_apply_color_correction) when color_correction_needed. vision_profiles.
+  active_config_key() installs the live layer via configure_hud_color(read_hud_settings()) each call. DEFAULT-NEUTRAL
+  byte-identical (default palette + 0.5 sliders -> both fns unchanged; live OCR path untouched until colorblind/gamma active).
+- ENGINE-IMPACT NONE (client-side CV, no DS math/bump/Share). TDD 7 tests (INV1-INV4 + configure install/clear) +
+  read-only verifier CONFIRM (targeted 29/0, R95 7/7, exactly 3 files). Full RC 11264 passed; the only 2 fails =
+  the LEDGER-828 coach-poll asyncio isolation flake, PROVEN not R95 (passes 2/2 isolated; vision has 0 asyncio refs).
+- Don't-redo: hud_settings COLOR layer is now consumed (do NOT re-pitch); generic OCR crop/native wiring stays DONE
+  (793/832/835, do NOT re-pitch a 5th time); NEXT NO-LLM vision frontier = Lane E CV template-match atlas (BACKLOG:280/283).
+
+---
+
 # 2026-07-10 (R94 public-API native-crop regression guard - vision OCR; NO ENGINE bump, Tier-1)
 
 Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `9a5fac79`. No restart/bounce (test-only).
@@ -50,24 +70,3 @@ Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `874bf871`. DS 
   settle" warning). Next cycle: Share-sync + bounce THEN the full suite.
 - Don't-redo: anti-tank SHRED registry comprehensive + Darius %pen SHIPPED; Pantheon/Ambessa/Annie %pen are lower-pri
   FUTURE (ult-tied, smaller %); live default-ON flip -> LIVE_GATED B4. Next DS refill needs a FRESH different-mechanic pass.
-
----
-
-# 2026-07-10 (DS Kaenic Rookern 2504 Magebane magic-shield EHP credit - R92; ENGINE 1.188.0 -> 1.189.0, Tier-2)
-
-Gemini-loop DIRECTOR REFILL R92. Full detail: LEDGER 833. Commit `6882735c`. DS `:8893` bounced 1.189.0.
-
-- PREMISE CORRECTED: directive target "tank_items.json/fighter_items.json" does NOT exist; tank/fighter item
-  credits live in the Python ehp/_effects_data ItemShield pool + _passive_*_overrides seams. Refute retargeted there.
-- GAP: Kaenic Rookern (2504, 80-MR MR-tank) had NO shield=ItemShield in ITEM_EFFECTS, so its Magebane magic shield
-  (15% of MAX health) was ZERO magical EHP - unlike lifeline siblings Sterak/Maw/Shieldbow (always-on ItemShield).
-- FIX (NEW default-OFF assume_kaenic_shield seam): additive ItemShield fields max_hp_scaling (15%-of-max exact) +
-  default_off (opt-in gate); ehp._collect_shields/compute_ehp thread max_hp + the flag; 2504 gets
-  shield=ItemShield(MAGICAL, max_hp_scaling=0.15, default_off=True). Routed opt-in (not the always-on pool) because
-  Magebane's no-magic-15s uptime is anti-correlated with magic fights. OFF byte-identical; armed = 15%-max-HP magical EHP.
-- Tier-2: 105 test-pin re-stamps; CHANGELOG 1.189.0; DAEMON_SLAYER banner 1.189.0/8111; 6 HZ-B tables STAMP-ONLY
-  re-stamp; ds_share_sync 420 files --check green; DS :8893 bounced 1.189.0.
-- GATES: DS 8111 / 0 fail; RC 11253 pass (2 pre-existing coach-poll flake, GREEN 2/2 in isolation, LEDGER-828), 0 R92
-  regressions; TDD 13 (12 RED pre-fix); ruff clean; pre-commit gate passed.
-- Don't-redo: tank/fighter item-keyed byte-identical seams SATURATED (tenacity/reflect/AH/HSP zero room); Kaenic
-  SHIPPED; live default-ON flip -> LIVE_GATED R92. Next DS refill needs a FRESH different-mechanic refute pass.
