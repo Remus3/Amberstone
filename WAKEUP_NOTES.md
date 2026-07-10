@@ -4,6 +4,28 @@
 
 ---
 
+# 2026-07-10 (R96 Lane E client-side CV template-match atlas FOUNDATION - vision; NO ENGINE bump, Tier-1)
+
+Gemini-loop DIRECTOR REFILL R96. Full detail: LEDGER 837. Commit `406ac0e3`. No restart/bounce (pure new unused core module).
+
+- The genuine NEXT NO-LLM vision frontier the R94/R95 escalations queued (Lane E CV template-match atlas), NOT another
+  vision-OCR wiring re-pitch. Ground-truth correction: cv2 5.0.0 + numpy 2.5.0 ARE installed (OBS_CV_MINIMAP_PLAN L40
+  "opencv NOT installed" is STALE - refuted live).
+- SHIPPED new core/vision_template_match.py: generic match_icon(crop, category, roster=None, threshold=None) -> (id, conf)
+  over a lazy in-memory OpenCV atlas of the local DDragon icons (champions 173 / items 36 / spells 18). Two-stage match
+  mirrors minimap_identity._match_score (TM_CCORR_NORMED offset -> masked Pearson conf, threshold 0.6); roster restriction
+  via _name_keys; helpers list_ids/available_categories. HAVE-distinct from minimap_identity (that = minimap-DOT +
+  10-roster identify_dots; R96 = generic single-crop -> full-category inverse, the OBS_CV_MINIMAP_PLAN #8 objective /
+  #10 item substrate).
+- DEFAULT-OFF, NO live wiring (verifier: only the test imports it). ENGINE-IMPACT NONE. Orchestrator + 1 worktree build
+  subagent + read-only verifier CONFIRM (8 tests, ruff/py_compile/ASCII clean, contract sane 173/36) BEFORE the ff-only
+  merge (b54e38eb..406ac0e3). Full RC 11272 passed; the only 2 fails = the LEDGER-828 coach-poll asyncio flake, PROVEN
+  not R96 (2/2 isolated; R96 has 0 asyncio refs). Live template-match quality on real frames = live-gated (do-not-flip-blind).
+- Don't-redo: the Lane E CV template-match FOUNDATION is SHIPPED (do NOT re-pitch match_icon/atlas); vision-OCR wiring stays
+  DONE (793/832/835/836); NEXT = live crop-producer wiring + per-champ/objective/item consumers + Live-Client/CV fusion.
+
+---
+
 # 2026-07-10 (R95 vision CV consumes core.hud_settings COLOR layer - colorblind + gamma; NO ENGINE bump, Tier-1)
 
 Gemini-loop DIRECTOR REFILL R95. Full detail: LEDGER 836. Commit `87c3a990`. No restart/bounce (neutral-safe, RC picks up on next restart).
@@ -43,30 +65,3 @@ Gemini-loop DIRECTOR REFILL R94. Full detail: LEDGER 835. Commit `9a5fac79`. No 
   adaptation, genuinely unwired) as a NEW scoped item; else rotate to a DS different-mechanic refute pass.
 - Don't-redo: native-crop + generic color-correction wiring is DONE + now public-API-guarded (do NOT re-pitch a 4th
   time); the 23-box recalibration is a live-gated operator task, not a loop slice.
-
----
-
-# 2026-07-10 (DS Darius E Apprehend % armor-penetration anti-tank credit - R93; ENGINE 1.189.0 -> 1.190.0, Tier-2)
-
-Gemini-loop DIRECTOR REFILL R93. Full detail: LEDGER 834. Commit `874bf871`. DS `:8893` bounced 1.190.0.
-
-- PREMISE CORRECTED: the directive's example shred abilities (Nasus E / Wukong Q / Trundle R / Evelynn W) are ALL
-  already credited (ds_antitank_hint.py is a read-only consumer; the real registry is antitank._ANTITANK_REGISTRY).
-  A MECHANIZED scan of champion_abilities.json 16.13.1 vs the SHRED/PERCENT_PEN rows found the genuine gap = kit
-  % PENETRATION passives: Darius E 20-40% armor, Pantheon R + Ambessa R 10-30% armor, Annie R 15-20% magic (all
-  PERCENT from raw damage_blocks, not flat lethality).
-- SHIPPED ONE: Darius E (Apprehend) always-on % armor pen -> add("Darius","E","PERCENT_PEN","SUSTAINED",magnitude=0.7),
-  the SUSTAINED sibling of Mordekaiser E. Darius was absent from the registry entirely (compute_antitank 0.0 -> 0.455,
-  top_kind PERCENT_PEN, shreds_resist True). Annie NOT picked - item-308 pins her as a flat-damage zero-scorer.
-  Additive/read-by-none (the /anti-tank route is opt-in) -> no default live surface change; Mordekaiser byte-identical.
-- Tier-2: ENGINE 1.189.0 -> 1.190.0; 105 test-pin re-stamps (125 quoted-literal occ, EOL-preserving); item-308
-  coverage pins 78/102/29/5 -> 79/103/30/6; CHANGELOG 1.190.0; DAEMON_SLAYER banner 1.190.0/8122; 6 HZ-B tables regen
-  (build_orders STAMP-ONLY; variants Darius-ONLY content diff, softer anti-tank wall 4200->3340 SR); ds_share_sync 421
-  --check green; DS :8893 bounced 1.190.0. Share/CHANGELOG.md left (periodic batch artifact, R87/R90/R92 precedent).
-- GATES: DS 8122 / 0 fail; RC 11244 pass (11 transient reds - 7 test_ds_share_* raced a concurrent ds_share_sync, 1
-  phase8 pre-bounce stale :8893, 2 coach-poll flake, 1 matchdb conn - ALL cleared clean re-run: cluster 83 + coach-poll
-  2 in isolation), 0 R93 regressions; TDD 11 (10 RED pre-fix); verifier ALL 8 claims CONFIRMED; ruff/py_compile/ASCII clean.
-- LESSON: launched the bg RC suite BEFORE the Share sync + DS bounce settled -> 11 false reds (the CLAUDE.md "wait to
-  settle" warning). Next cycle: Share-sync + bounce THEN the full suite.
-- Don't-redo: anti-tank SHRED registry comprehensive + Darius %pen SHIPPED; Pantheon/Ambessa/Annie %pen are lower-pri
-  FUTURE (ult-tied, smaller %); live default-ON flip -> LIVE_GATED B4. Next DS refill needs a FRESH different-mechanic pass.
