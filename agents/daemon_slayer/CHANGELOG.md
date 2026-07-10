@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.193.0 (2026-07-10 - Seraph's Embrace (3040) Lifeline max-mana shield EHP credit).
+An adversarial Meraki(16.13.1)-vs-registry refute pass, ds-sweep item-shield
+rotation (operator-directed, manual session). The confirmed gap: Seraph's Embrace
+(3040) carried its Awe AP passive but NO shield, so its Lifeline low-HP shield
+earned ZERO EHP; its always-on Lifeline siblings (Sterak 3053, Maw 3156, Shieldbow
+6673, Hexdrinker 3155) were all credited in the Phase-1.5 shield sweep - 3040 was
+skipped because its shield scales on MAX MANA, a term ItemShield lacked. Meraki
+16.13.1 (items['3040'] passive "Lifeline"): "If you would take damage that would
+reduce you below 30% of your maximum health, you first gain a shield for 3 seconds
+that absorbs damage equal to 18% maximum mana" (generic/ANY absorb). The stale
+registry note claimed "350 + max-mana%"; the actual 16.13.1 value is a pure 18%
+max-mana shield, no flat. FIX: a new ItemShield.max_mana_scaling field (mirroring
+R92's max_hp_scaling) + max_mana threaded through resolve_magnitude /
+_collect_shields / compute_ehp (sourced from resolved.stats['mp'] = champ base
+mana + item mp). Added on 3040 + Arena 223040 + ARAM 323040 as a default-OFF
+(opt-in) shield armed by assume_seraphs_shield, so OFF is byte-identical (the
+default_off shield is dropped from the pool) and the live default-ON flip is
+operator-gated. Ryze L11 + Seraph's = 1914 max mana -> 344.6 generic shield
+(verified). ANY damage_type so all three EHP axes benefit, unlike R99's magic-only
+shield.
+
 1.192.0 (2026-07-10 - Chainlaced Crushers (3173) Noxian Persistence magic-shield EHP credit, R99).
 A fresh adversarial Meraki(16.13.1)-vs-registry refute pass, ds-sweep rotation.
 The confirmed gap: Chainlaced Crushers (3173), the tier-3 MR + tenacity boot, was

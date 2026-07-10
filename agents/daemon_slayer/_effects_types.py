@@ -300,6 +300,11 @@ class ItemShield:
     # (default_off False) are unchanged.
     max_hp_scaling: float = 0.0
     default_off: bool = False
+    # Seraph's Embrace (2026-07-10): credits a shield off TOTAL max mana
+    # (Lifeline is 18% of maximum mana). Sibling of max_hp_scaling; default 0.0
+    # leaves every existing shield byte-identical. Appended at the END per the
+    # repo dataclass convention (a mid-class insert breaks positional construction).
+    max_mana_scaling: float = 0.0
 
     def __post_init__(self) -> None:
         if self.damage_type not in _SHIELD_TYPES:
@@ -330,6 +335,7 @@ class ItemShield:
         bonus_ad: float = 0.0,
         is_ranged: bool = False,
         max_hp: float = 0.0,
+        max_mana: float = 0.0,
     ) -> float:
         """Resolve the shield value at the given context.
 
@@ -351,6 +357,7 @@ class ItemShield:
             + self.bonus_hp_scaling * max(0.0, bonus_hp)
             + self.bonus_ad_scaling * max(0.0, bonus_ad)
             + self.max_hp_scaling * max(0.0, max_hp)
+            + self.max_mana_scaling * max(0.0, max_mana)
         )
         if is_ranged and self.ranged_modifier != 1.0:
             total *= self.ranged_modifier
