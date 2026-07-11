@@ -911,6 +911,15 @@ class EhpResult:
     passive_flat_mit_phys: float = 0.0
     passive_flat_mit_mag: float = 0.0
     passive_flat_mit_true: float = 0.0
+    # ENGINE 1.197.0 (R104, 2026-07-10): item-side SPELL-SHIELD block FRACTION - the
+    # ITEM lane of the champion spell-shield axis (Banshee's Veil 3102 / Edge of
+    # Night 3814 / Verdant Barrier 4632 "Annul" = block the next enemy ability).
+    # Sourced from ``_item_spell_shield_overrides`` when ``apply_item_spell_shield``
+    # is True; feeds the SAME cc_blended discount as spell_shield_frac, combining
+    # MULTIPLICATIVELY with it AFTER the tenacity step. Default 0.0 leaves
+    # enemy_cc_pressure_s / cc_blended_ehp byte-identical. Appended at END per the
+    # dataclass field-append convention. NOT an EHP-numerator term.
+    item_spell_shield_frac: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -966,6 +975,7 @@ class EhpResult:
             "ally_grant_flat_hp": self.ally_grant_flat_hp,
             "champion_tenacity_frac": self.champion_tenacity_frac,
             "spell_shield_frac": self.spell_shield_frac,
+            "item_spell_shield_frac": self.item_spell_shield_frac,
             "survival_window_mult": self.survival_window_mult,
             "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
             "ehp_without_sustain": self.ehp_without_sustain,
@@ -1154,6 +1164,17 @@ def compute_ehp(
     # numerator term, NOT a sustain-only credit like omnivamp). Live default-ON flip
     # is operator-gated.
     assume_item_stasis: bool = False,
+    # ENGINE 1.197.0 (R104, 2026-07-10): default-OFF opt-in to credit an item-side
+    # SPELL-SHIELD / block-next-ability passive (Banshee's Veil 3102 / Edge of Night
+    # 3814 / Verdant Barrier 4632 "Annul") to the cc_blended CC-pressure discount.
+    # The item-side lane of the champion spell-shield axis (champion-keyed, so an
+    # item can never match ``champion_spell_shield_fraction``). Negates ONE incoming
+    # CC instance -> shrinks enemy_cc_pressure_s (raising cc_blended_ehp), combining
+    # MULTIPLICATIVELY with the champion spell_shield_frac AFTER the tenacity step.
+    # A block-one CC negation, NOT an EHP-numerator term (that is the item-stasis
+    # lane). Byte-identical OFF (item_spell_shield_frac == 0.0). Live default-ON flip
+    # is operator-gated.
+    apply_item_spell_shield: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1730,6 +1751,14 @@ def compute_ehp(
         champion_spell_shield_fraction(champion_id, level, True)
         if apply_spell_shield else 0.0
     )
+    # ENGINE 1.197.0 (R104): the ITEM-side spell-shield block fraction (0.0 when the
+    # flag is off = byte-identical). The item lane of the champion axis above -
+    # keyed by resolved.item_ids, folded into the SAME cc discount below. Lazy import
+    # mirrors the item-stasis / item-revive item-side lanes.
+    item_spell_shield_frac = 0.0
+    if apply_item_spell_shield:
+        from ._item_spell_shield_overrides import item_spell_shield_fraction
+        item_spell_shield_frac = item_spell_shield_fraction(resolved.item_ids)
     if enemy_champions:
         from .cc_pressure import compute_cc_pressure
 
@@ -1777,6 +1806,12 @@ def compute_ehp(
         # effective_cc_duration tenacity seam. Default-off (frac 0.0) = no-op.
         if apply_spell_shield and spell_shield_frac > 0.0:
             cc_total *= (1.0 - spell_shield_frac)
+        # ENGINE 1.197.0 (R104): the ITEM-side spell-shield block (Banshee / EoN /
+        # Verdant "Annul"), the item lane of the champion block above. A second
+        # block-one negation on the SAME running cc_total product, so it composes
+        # MULTIPLICATIVELY with the champion frac. Default-off (frac 0.0) = no-op.
+        if apply_item_spell_shield and item_spell_shield_frac > 0.0:
+            cc_total *= (1.0 - item_spell_shield_frac)
         enemy_cc_pressure_s = cc_total
         if enemy_cc_pressure_s > 0:
             cc_pressure_fraction = min(
@@ -1947,6 +1982,7 @@ def compute_ehp(
         ally_grant_revive_mult=ext_revive,
         champion_tenacity_frac=champion_tenacity_frac,
         spell_shield_frac=spell_shield_frac,
+        item_spell_shield_frac=item_spell_shield_frac,
         survival_window_mult=survival_window_mult,
         effective_ehp_with_sustain=effective_ehp_with_sustain,
         ehp_without_sustain=ehp_without_sustain,
@@ -2290,6 +2326,7 @@ def rank_items_by_ehp(
     apply_passive_revive: bool = False,
     apply_champion_tenacity: bool = False,
     apply_spell_shield: bool = False,
+    apply_item_spell_shield: bool = False,
     apply_survival_window: bool = False,
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
@@ -2418,6 +2455,7 @@ def rank_items_by_ehp(
         apply_passive_revive=apply_passive_revive,
         apply_champion_tenacity=apply_champion_tenacity,
         apply_spell_shield=apply_spell_shield,
+        apply_item_spell_shield=apply_item_spell_shield,
         apply_survival_window=apply_survival_window,
     )
 
@@ -2470,6 +2508,7 @@ def rank_items_by_ehp(
                 apply_passive_revive=apply_passive_revive,
                 apply_champion_tenacity=apply_champion_tenacity,
                 apply_spell_shield=apply_spell_shield,
+                apply_item_spell_shield=apply_item_spell_shield,
                 apply_survival_window=apply_survival_window,
             )
         except (KeyError, ValueError):
