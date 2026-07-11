@@ -30,10 +30,16 @@ Phase 1 deliberate omissions:
 * Caster-side enemy pen/reduction (Black Cleaver shred ON the tank,
   Void Staff %MR pen ON the tank) - needs enemy build plumbing
 
-Bonus HP amps (Jak'Sho's Voidborne Resilience +6% bonus resists fully
-stacked, Cinderhulk +15% bonus HP) flow through ``build_champion`` already
+Bonus HP amps (Cinderhulk +15% bonus HP) flow through ``build_champion`` already
 via the existing stat schema - no new field needed; EHP picks them up
-automatically because ``stats["hp"]/["armor"]/["mr"]`` reflect the amp.
+automatically because ``stats["hp"]/["armor"]/["mr"]`` reflect the amp. NOTE
+(corrected R106, 2026-07-11): Jak'Sho's Voidborn Resilience (+30% of BONUS armor
++ MR at 5 combat stacks) and Force of Nature's Steadfast (+70 bonus MR at 8
+stacks) do NOT flow through ``build_champion`` - it folds only the items' FLAT
+static resists (Jak'Sho +45/+45, FoN +55 MR), not the stacked combat ramp
+(live-probe R105). That ramp is credited to the armor/MR DENOMINATOR by the
+default-OFF ``apply_item_resist_grants`` seam (``_item_resist_grants``), the
+item-side lane of the champion resist_grants axis.
 
 ENGINE 1.25.0 (2026-05-21) - aram_tenacity_mult consumer wired (closes the
 BACKLOG "Future EHP enemy-CC model" carry from item 113). 17 ARAM champs
@@ -928,6 +934,15 @@ class EhpResult:
     # ally_grant_flat_hp), NOT a cc-only term. Appended at END per the dataclass
     # field-append convention.
     item_mana_health_hp: float = 0.0
+    # ENGINE 1.199.0 (R106, 2026-07-11): item-side conditional RESIST-GRANT (Jak'Sho
+    # 6665 Voidborn +30% bonus armor+MR at 5 stacks / Force of Nature 4401 Steadfast
+    # +70 bonus MR at 8 stacks + Arena mirrors) folded into the armor/MR DENOMINATOR
+    # (eff_armor / eff_mr) when ``apply_item_resist_grants`` is True. Default 0.0
+    # leaves every EHP field byte-identical. Surfaced (like passive_resist_armor/mr)
+    # for observability; amortized by the at-max-stacks midpoint. Appended at END per
+    # the dataclass field-append convention.
+    item_resist_armor: float = 0.0
+    item_resist_mr: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -985,6 +1000,8 @@ class EhpResult:
             "spell_shield_frac": self.spell_shield_frac,
             "item_spell_shield_frac": self.item_spell_shield_frac,
             "item_mana_health_hp": self.item_mana_health_hp,
+            "item_resist_armor": self.item_resist_armor,
+            "item_resist_mr": self.item_resist_mr,
             "survival_window_mult": self.survival_window_mult,
             "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
             "ehp_without_sustain": self.ehp_without_sustain,
@@ -1195,6 +1212,15 @@ def compute_ehp(
     # EXACT (no amortization midpoint). Byte-identical OFF (item_mana_health_hp ==
     # 0.0). Live default-ON flip is operator-gated.
     apply_item_mana_health: bool = False,
+    # ENGINE 1.199.0 (R106, 2026-07-11): credit the item-side conditional / ramping
+    # RESIST GRANT (Jak'Sho 6665 Voidborn +30% bonus armor+MR at 5 combat stacks /
+    # Force of Nature 4401 Steadfast +70 flat bonus MR at 8 magic-damage stacks +
+    # Arena mirrors 226665 / 224401) to the armor/MR DENOMINATOR. The item-side lane
+    # of the champion resist_grants (champion-keyed, so an item can never match it);
+    # build_champion folds only the items' FLAT static resists, NOT the stacked ramp.
+    # Amortized by the at-max-stacks midpoint. Byte-identical OFF (item_resist_* ==
+    # 0.0). Live default-ON flip is operator-gated.
+    apply_item_resist_grants: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1540,8 +1566,34 @@ def compute_ehp(
     # self resist grant. Default 0.0 -> byte-identical to 1.101.0.
     ext_armor = max(0.0, float(external_resist_armor))
     ext_mr = max(0.0, float(external_resist_mr))
-    eff_armor = armor + bonus_armor + ext_armor
-    eff_mr = mr + bonus_mr + ext_mr
+    # ENGINE 1.199.0 (R106, 2026-07-11): item-side conditional RESIST-GRANT credit -
+    # the ITEM analog of resist_grants above (a clean EHP-DENOMINATOR bonus armor/MR
+    # add). Jak'Sho 6665 Voidborn (+30% BONUS armor+MR at 5 combat stacks) + Force of
+    # Nature 4401 Steadfast (+70 flat BONUS MR at 8 magic-damage stacks) [+ Arena
+    # mirrors 226665 / 224401] RAMP to max stacks in combat and are absent from the
+    # resolved stat block: build_champion folds only their FLAT static resists
+    # (Jak'Sho +45/+45, FoN +55 MR), NOT the stacked ramp (live-probe R105). The
+    # champion resist registry is champion-keyed so an item can never match
+    # resist_grants - the structural gap the item-side registries fill. Added to
+    # eff_armor / eff_mr next to bonus_armor / ext_armor (DENOMINATOR, BEFORE the pen
+    # step + the _armor_factor curve), so it flows into every per-type EHP AND the
+    # _blend_with_heal sustain mirror via the eff_* closure - no numerator touch.
+    # ``apply_item_resist_grants`` defaults False -> (0.0, 0.0) -> BYTE-IDENTICAL.
+    # CONDITIONAL (unlike R105's exact mana->HP): each grant is amortized by the
+    # at-max-stacks midpoint inside the registry. The gated lazy import keeps OFF
+    # import-free.
+    item_resist_armor = 0.0
+    item_resist_mr = 0.0
+    if apply_item_resist_grants:
+        from ._item_resist_grants import item_resist_grants as _item_resist_fn
+        item_resist_armor, item_resist_mr = _item_resist_fn(
+            resolved.item_ids,
+            total_armor=armor, total_mr=mr,
+            base_armor=float(base.get("armor", 0.0)),
+            base_mr=float(base.get("mr", 0.0)),
+        )
+    eff_armor = armor + bonus_armor + ext_armor + item_resist_armor
+    eff_mr = mr + bonus_mr + ext_mr + item_resist_mr
     # DSP7 (2026-06-17, ENGINE 1.133.0): ally enchanter SHIELD / HEAL flat-HP
     # grant - the THIRD ally-grant EHP mode (after the resist denominator add +
     # the revive numerator multiplier). The caller sources it from
@@ -2022,6 +2074,8 @@ def compute_ehp(
         spell_shield_frac=spell_shield_frac,
         item_spell_shield_frac=item_spell_shield_frac,
         item_mana_health_hp=item_mana_health_hp,
+        item_resist_armor=item_resist_armor,
+        item_resist_mr=item_resist_mr,
         survival_window_mult=survival_window_mult,
         effective_ehp_with_sustain=effective_ehp_with_sustain,
         ehp_without_sustain=ehp_without_sustain,
@@ -2367,6 +2421,7 @@ def rank_items_by_ehp(
     apply_spell_shield: bool = False,
     apply_item_spell_shield: bool = False,
     apply_item_mana_health: bool = False,
+    apply_item_resist_grants: bool = False,
     apply_survival_window: bool = False,
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
@@ -2497,6 +2552,7 @@ def rank_items_by_ehp(
         apply_spell_shield=apply_spell_shield,
         apply_item_spell_shield=apply_item_spell_shield,
         apply_item_mana_health=apply_item_mana_health,
+        apply_item_resist_grants=apply_item_resist_grants,
         apply_survival_window=apply_survival_window,
     )
 
@@ -2551,6 +2607,7 @@ def rank_items_by_ehp(
                 apply_spell_shield=apply_spell_shield,
                 apply_item_spell_shield=apply_item_spell_shield,
                 apply_item_mana_health=apply_item_mana_health,
+                apply_item_resist_grants=apply_item_resist_grants,
                 apply_survival_window=apply_survival_window,
             )
         except (KeyError, ValueError):
