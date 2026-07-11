@@ -1124,6 +1124,15 @@ def compute_ehp(
     # 0.5 AA share). Ships DEFAULT-OFF pending its own live-gated flip (unlike the
     # already-flipped R77/R80); identity multiplier when False -> BYTE-IDENTICAL.
     assume_item_enemy_as_slow: bool = True,
+    # Riftmaker (2026-07-10): default-OFF opt-in to credit item-passive omnivamp
+    # (Void Corruption 10% melee / 6% ranged AT MAX Void Corruption stacks) to the
+    # EHP SUSTAIN axis. Byte-identical OFF (stats["omnivamp"] stays absent ->
+    # heal_omnivamp == 0.0 -> effective_ehp_with_sustain == blended_ehp). ON injects
+    # the build's summed omnivamp FRACTION so the existing _vamp_heal_pool credit
+    # lands on effective_ehp_with_sustain / sustain_ehp_delta ONLY; blended_ehp is
+    # NOT moved (same posture as lifesteal / spellvamp). Live default-ON flip is
+    # operator-gated.
+    assume_max_stacks_omnivamp: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1234,6 +1243,18 @@ def compute_ehp(
     # base mana at level + item flat mp; 0.0 for manaless champs).
     max_mana = float(stats.get("mp", 0.0))
     is_ranged = _is_ranged(base)
+    # Riftmaker (2026-07-10): default-OFF opt-in item-passive omnivamp credit.
+    # OFF (default) leaves stats["omnivamp"] absent -> the _vamp_heal_pool call
+    # below resolves heal_omnivamp == 0.0 (byte-identical). ON injects the build's
+    # summed omnivamp FRACTION (melee/ranged-picked) so the sustain axis credits
+    # it; blended_ehp is computed downstream WITHOUT this term (sustain-only).
+    # ``stats`` is the fresh per-call dict from build_champion (mutating it is
+    # call-local); the gated lazy import keeps OFF import-cost-free.
+    if assume_max_stacks_omnivamp:
+        from ._item_omnivamp import item_omnivamp_fraction
+        omnivamp_frac = item_omnivamp_fraction(resolved.item_ids, is_ranged)
+        if omnivamp_frac > 0.0:
+            stats["omnivamp"] = stats.get("omnivamp", 0.0) + omnivamp_frac
     shield_totals, shield_sources = _collect_shields(
         resolved.item_ids,
         level=level,
