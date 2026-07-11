@@ -1,5 +1,15 @@
 # RC session history archive
 
+## Relocated 2026-07-10 (DS Meraki-refute R103 /done - keep last 3: R103 + R102 + R100)
+
+# 2026-07-10 (Lane A HZ gate de-bias + DS Meraki-refute Seraph's shield - operator-directed manual session, 2 slices; ENGINE 1.192.0 -> 1.193.0)
+
+Operator picked "lane a and ds meraki-refute rotation" (Lane E OCR flip was live-gated IDLE - no game running). Two slices, both spec-first via Plan subagents + TDD RED-first. Full detail: LEDGER 844 (Lane A) + 845 (Meraki). Commits `70a87318` (Lane A) + `6bef45a4` (Meraki).
+
+- LANE A (Tier-1, tools-only, ENGINE-IMPACT NONE): de-biased tools/hz_shadow_report.py - the precompute-vs-Haiku flip-readiness gate (the do-not-flip-blind gate Lane A's coach flip waits on) was read off a MACRO-polluted sample. Objective map-calls (SETUP DRAKE/BARON, END GAME, DEFEND TOWER, CRASH/FREEZE/PUSH wave, CAMP PHASE) leaked as false comparable "hold" (~8.3k via A/B chip fallback) + flooded unclassified_native (20.8k). NEW _NON_LANING_ACTION_MARKERS + a GUARDED branch in _is_non_laning_native_state: drop only when native_action carries a macro marker AND classify_verdict(action) is None, so a compound "SETUP LANE TRADE"->trade is PRESERVED (over-exclusion verified 0). Live: unclassified 20,810->1,045, comparable 8,975->5,608, rate 0.470->0.459 (DOWN = honest; the macro "hold" leaks were INFLATING it; anti-circularity, not tuned to rise). 44/44 tests.
+- MERAKI-REFUTE (Tier-2, ENGINE 1.192.0->1.193.0): credited Seraph's Embrace (3040) Lifeline shield to EHP - it carried the Awe AP passive but NO ItemShield, so its 18%-max-mana low-HP shield earned ZERO EHP (its always-on lifeline siblings Sterak/Maw/Shieldbow/Hexdrinker were all credited; 3040 was skipped because ItemShield lacked a mana term). NEW ItemShield.max_mana_scaling + max_mana threaded through resolve_magnitude/_collect_shields/compute_ehp (from resolved.stats['mp']); shield on 3040/223040/323040 via a default-OFF assume_seraphs_shield seam (byte-identical OFF, ZERO cross-contam). Meraki 16.13.1 = 18% max mana ANY absorb (stale "350+max-mana%" note corrected). Armed: Ryze L11 -> 344.6 shield, all 3 EHP axes rise. Ceremony: 129 pins, CHANGELOG, banner 8179, build-orders stamp-only, Share 424 --check green, DS :8893 -> 1.193.0. 21 new tests; DS 8179/0-fail, RC 11317 pass (2 reds = pre-existing LEDGER-828 coach-poll asyncio flake, unrelated). Worktree build subagent + verifier gate + merger re-ran fresh.
+- NEXT: the DS Meraki-refute rotation is still LIVE - a refill MUST pick a DIFFERENT mechanic/item (the ItemShield lifeline family is now saturated: Sterak/Maw/Shieldbow/Hexdrinker/Kaenic/Eclipse/Chainlaced/Seraph's all credited - do NOT re-pick a lifeline shield). Lane A's coach FLIP + Meraki's assume_seraphs_shield default-ON flip are BOTH operator/live-gated (do-not-flip-blind; LIVE_GAME_GATED_SYNC.md). Lane E OCR flip stays idle until real ARAM/Arena games accrue data/ocr_shadow.jsonl rows.
+
 ## Relocated 2026-07-05 (ZOI-district program /done - keep last 3: ZOI-exec + ZOI-plan + R81)
 
 # 2026-07-05 (R80 - item-keyed basic-attack-DR EHP seam, the R77 sibling lane; LEDGER 791)
