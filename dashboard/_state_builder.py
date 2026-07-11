@@ -460,7 +460,12 @@ def build_state() -> dict:
             # _live_roster() reads the raw liveclient_cache which may be stale
             # or None; the already-built lc summary has enemy_team + ally_team.
             _roster = (lc.get("enemy_team") or []) + (lc.get("ally_team") or [])
-            minimap_dots = current_minimap_dots(minimap_rect, roster=_roster)
+            # background=True: the ~2s native grab + blob detect must not block
+            # the /api/state hot path (it stalled every poller + timed out the
+            # in-game overlay poll). Stale-while-revalidate serves the cached
+            # dots here and refreshes on a daemon thread.
+            minimap_dots = current_minimap_dots(
+                minimap_rect, roster=_roster, background=True)
         except Exception:  # noqa: BLE001
             minimap_dots = []
     _mark("minimap_dots")
