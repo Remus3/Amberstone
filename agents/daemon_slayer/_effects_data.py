@@ -986,9 +986,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # ap_per_bonus_hp_pct = 0.02 (always-on passive, not gated by
         # combat - DDragon: "Gain 2% of your bonus Health as Ability
         # Power"). Compounds with Heartsteel / Titanic Hydra HP stacks
-        # to lift Lich Bane / Nashor's Tooth proc damage. The omnivamp
-        # at full Void Corruption stacks is intentionally not modeled
-        # (DPS engine doesn't track healing).
+        # to lift Lich Bane / Nashor's Tooth proc damage. The omnivamp at max
+        # Void Corruption stacks (10% melee / 6% ranged) is credited to the EHP
+        # SUSTAIN axis behind ehp.compute_ehp's default-OFF
+        # assume_max_stacks_omnivamp seam (via the _item_omnivamp registry); the
+        # DPS engine still does not model the heal, and this ItemEffect's
+        # damage_amp_pct / ap_per_bonus_hp_pct are unchanged.
         damage_amp_pct=0.08,
         ap_per_bonus_hp_pct=0.02,
         note="Riftmaker: Void Corruption ~8% damage amp at full ramp + Void Infusion 2% bonus HP -> AP (always on)",
