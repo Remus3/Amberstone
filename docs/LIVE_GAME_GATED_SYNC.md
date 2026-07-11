@@ -1826,3 +1826,17 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   `apply_item_mana_health=True`, eyeball a Fimbulwinter/Winter's-Approach holder's blended-EHP ranks across ~2
   real games (deterministic credit, no midpoint - but a build-dependent re-rank if armed in a ranker). DS
   `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-11 item-side conditional RESIST-GRANT EHP-DENOMINATOR seam (`compute_ehp(apply_item_resist_grants=)`,
+  ENGINE 1.199.0, default-OFF; R106). NEW `_item_resist_grants` registry (Jak'Sho 6665 + Arena 226665 = +30% of
+  BONUS armor+MR at 5 combat stacks, percent-of-bonus mode; Force of Nature 4401 + Arena 224401 = +70 flat bonus
+  MR at 8 stacks, MR only), the ITEM-side lane of the champion-keyed `_passive_resist_overrides.resist_grants`.
+  When armed, folds the amortized bonus armor/MR into `eff_armor`/`eff_mr` (the DENOMINATOR, next to the champion
+  `bonus_armor`/`bonus_mr`, before the pen step + the `_armor_factor` curve), so it flows into every per-type EHP
+  + the `_blend_with_heal` sustain mirror via the eff_* closure - no numerator touch. CONDITIONAL (ramps to max
+  stacks), amortized by `_ITEM_RESIST_STACK_PROB` 0.5 (unlike R105's exact mana->HP). OFF byte-identical; ON
+  raises the resisted axes - Ornn L13 + FoN magical_ehp 4720.00 -> 5508.75 (item_resist_mr 35.0, physical
+  unchanged); Ornn L13 + Jak'Sho blended 4785.97 -> 4934.71 (item_resist_armor/mr 6.75 each). OWED
+  (operator-gated, do-not-flip-blind): wire an EHP consumer to pass `apply_item_resist_grants=True`, eyeball a
+  Jak'Sho/FoN holder's blended-EHP ranks across ~2 real games (the 0.5 ramp midpoint is conservative, not
+  over-credited on a short-fight clock; build-dependent re-rank if armed in a ranker - Voidborn's %-of-bonus
+  scales with the rest of the build). DS `:8893` restart on flip. Does NOT block any further stage.

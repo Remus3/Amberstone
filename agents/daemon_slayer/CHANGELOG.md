@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.199.0 (2026-07-11 - item-side conditional RESIST-GRANT credit to the EHP
+denominator (Jak'Sho 6665 Voidborn +30% bonus armor+MR / Force of Nature 4401
+Steadfast +70 bonus MR + Arena mirrors 226665 / 224401), R106).
+The item-side lane of the champion resist_grants (the FOURTH survivability axis),
+exactly as R102/R103/R104/R105 were the item-side lanes of the champion revive /
+survival-window / spell-shield / stacking-HP axes. Meraki 16.13.1: Jak'Sho's
+"Voidborn Resilience" grants +30% of BONUS armor + BONUS magic resist at 5 combat
+stacks (a percent-of-bonus grant); Force of Nature's "Steadfast" grants +70 flat
+bonus magic resist at 8 stacks (MR only; the removed Dissipate magic-DR is not
+credited). build_champion folds only the items' FLAT static resists (Jak'Sho
++45/+45, FoN +55 MR), NOT the stacked combat ramp (live-probe R105); the champion
+_passive_resist_overrides registry is champion-keyed so an item can never match
+resist_grants. NEW _item_resist_grants registry (percent-of-bonus + flat modes,
+family-dedup) + default-OFF apply_item_resist_grants seam folding the amortized
+grant into eff_armor / eff_mr (the DENOMINATOR, next to the champion bonus_armor /
+bonus_mr, before the pen step + the _armor_factor curve), so it flows into every
+per-type EHP and the _blend_with_heal sustain mirror via the eff_* closure - no
+numerator touch. The ramp is CONDITIONAL (unlike R105's exact mana->HP), so each
+grant is amortized by the at-max-stacks midpoint _ITEM_RESIST_STACK_PROB (0.5).
+Threaded through rank_items_by_ehp, hybrid.py, and all four server.py routes; NEW
+item_resist_armor / item_resist_mr EhpResult fields (appended at END) + to_dict.
+Byte-identical OFF (item_resist_* == 0.0). Corrected the stale ehp.py header note
+that claimed Voidborn "flows through build_champion already". Live default-ON flip
+is operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+
 1.198.0 (2026-07-10 - item-side MANA -> MAX-HP "Awe" EHP-numerator credit (Winter's
 Approach 3119 / Fimbulwinter 3121 + Arena/ARAM mirrors), R105).
 The item-side lane of the R46 stacking-HP passive axis, exactly as R102/R103/R104
