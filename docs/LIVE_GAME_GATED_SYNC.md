@@ -340,6 +340,21 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   the 444644 magnitude confirm remains as an Arena tail here. DS restart on flip.
   SOURCE: docs/LEDGER.md items 855 + 856.
 
+- B47c. (REAL-SR) R109 `apply_ability_hsp_amp` FLIP + CALIBRATION (item Heal/Shield-Power amp of
+  the CHAMPION-ABILITY heal/shield throughput fold in `compute_hps`: an enchanter's Ardent Censer
+  3504 / Staff of Flowing Water 6620 / Redemption 3107 / Moonstone 6616 / Mikael 3222 HSP amped her
+  ITEM heals but NOT her ABILITY heals - Soraka Q/W, Janna E, Lulu E - a non-EHP enchanter-HPS-axis
+  under-credit, live-proven delta==0 on 8 enchanters, Soraka +6.65 HPS / ~6.3%). ENGINE default ships
+  OFF (byte-identical) - the default-ON flip is OWED (operator-gated, do-not-flip-blind): (a) pass
+  `apply_ability_hsp_amp=True` at the enchanter-HPS caller(s) + a DS restart, own-build sanity that an
+  Ardent/Staff/Redemption enchanter up-ranks HSP items on the throughput axis without dominating a
+  raw-AP swap; (b) a REAL-SR eyeball that an enchanter's kit-heal throughput reads sanely with HSP up.
+  CALIBRATION NOTE (adversarial-review flag): the amp reuses the item side's PRODUCT convention
+  (`prod(1 + heal_shield_amp_pct)`, `amp_multiplier`) for internal item-vs-ability parity, which
+  diverges from real-League ADDITIVE HSP stacking and from the EHP path's additive
+  `_hsp_amp.sum_wielder_hsp_pct` - a pre-existing item-side asymmetry (NOT a regression, default-OFF);
+  a two-HSP-item build is the calibration case. DS restart on flip. SOURCE: docs/LEDGER.md item 857.
+
 - B48. (PRACTICE-SR, Lane E) Vision-OCR native-res crop path: the live OCR read path still
   consumes the 1280-HALVED `/latest-frame` (`vision_server/_frame.py` `_SELF_GRAB_MAX_WIDTH=1280`),
   so the native-2560 OCR boxes get scaled DOWN 0.5x at crop time (re-introduces the halved-frame
