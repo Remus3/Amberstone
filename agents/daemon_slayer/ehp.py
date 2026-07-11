@@ -943,6 +943,13 @@ class EhpResult:
     # the dataclass field-append convention.
     item_resist_armor: float = 0.0
     item_resist_mr: float = 0.0
+    # ENGINE 1.200.0 (R107, 2026-07-11): item-side BONUS-HP-AMP "Warmog's Vitality"
+    # (Warmog's Armor 3083 + Arena mirror 443083 = +12% of bonus-health-from-items as
+    # bonus max health) folded into the EHP NUMERATOR when ``apply_item_bonus_hp_amp``
+    # is True. Default 0.0 leaves every EHP field byte-identical. A genuine flat max-HP
+    # pool add (sibling of ext_flat_hp / item_mana_health_hp), EXACT (no midpoint).
+    # Appended at END per the dataclass field-append convention.
+    item_bonus_hp_amp_hp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -1002,6 +1009,7 @@ class EhpResult:
             "item_mana_health_hp": self.item_mana_health_hp,
             "item_resist_armor": self.item_resist_armor,
             "item_resist_mr": self.item_resist_mr,
+            "item_bonus_hp_amp_hp": self.item_bonus_hp_amp_hp,
             "survival_window_mult": self.survival_window_mult,
             "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
             "ehp_without_sustain": self.ehp_without_sustain,
@@ -1221,6 +1229,16 @@ def compute_ehp(
     # Amortized by the at-max-stacks midpoint. Byte-identical OFF (item_resist_* ==
     # 0.0). Live default-ON flip is operator-gated.
     apply_item_resist_grants: bool = False,
+    # ENGINE 1.200.0 (R107, 2026-07-11): credit the item-side BONUS-HP-AMP "Warmog's
+    # Vitality" (Warmog's Armor 3083 + Arena mirror 443083 = bonus health equal to 12%
+    # of bonus-health-from-items) to the EHP NUMERATOR. The item twin of the champion
+    # stacking-HP passive (champion-keyed, so an item can never match
+    # passive_health_stack_hp); build_champion folds each item's FLAT health stat but
+    # has NO bonus-HP -> bonus-HP self-amp walk, so the +12% is uncredited. Folds
+    # ``0.12 * bonus_hp_from_items`` (total_hp - base_hp) into every per-type numerator
+    # next to ``item_mana_health_hp``. EXACT (no amortization midpoint). Byte-identical
+    # OFF (item_bonus_hp_amp_hp == 0.0). Live default-ON flip is operator-gated.
+    apply_item_bonus_hp_amp: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1530,6 +1548,27 @@ def compute_ehp(
         bonus_mana = max(0.0, max_mana - float(base.get("mp", 0.0)))
         item_mana_health_hp = _item_mana_health_fn(resolved.item_ids, bonus_mana)
 
+    # ENGINE 1.200.0 (R107, 2026-07-11): item-side BONUS-HP-AMP "Warmog's Vitality"
+    # credit - the item HP -> HP self-amplifier twin of item_mana_health_hp above (a
+    # clean EHP-NUMERATOR flat max-HP term). Warmog's Armor 3083 (+ Arena mirror
+    # 443083) grants bonus max health = 12% of BONUS health from items (Meraki 16.13.1,
+    # passive "Warmog's Vitality"), which is NOT in the resolved stat block:
+    # build_champion folds each item's FLAT health stat and walks bonus-HP -> bonus-AD
+    # (Tyranny) but has NO bonus-HP -> bonus-HP self-amp walk. bonus_hp_from_items =
+    # item-contributed max HP (hp - base hp; the champion's own base health is EXCLUDED,
+    # matching "bonus health from items" and the engine's own bonus_hp_from_items).
+    # ``apply_item_bonus_hp_amp`` defaults False -> 0.0 -> BYTE-IDENTICAL. EXACT
+    # (deterministic, no midpoint). Folded next to item_mana_health_hp in every per-type
+    # numerator (main + the _blend_with_heal mirror) below. The gated lazy import keeps
+    # OFF import-free.
+    item_bonus_hp_amp_hp = 0.0
+    if apply_item_bonus_hp_amp:
+        from ._item_bonus_hp_amp import item_bonus_hp_amp_hp as _item_bonus_hp_amp_fn
+        bonus_hp_from_items = max(0.0, hp - float(base.get("hp", 0.0)))
+        item_bonus_hp_amp_hp = _item_bonus_hp_amp_fn(
+            resolved.item_ids, bonus_hp_from_items
+        )
+
     # ENGINE 1.93.0 (2026-06-02): GAP-2 effects-text passive RESIST-STAT grants.
     # The FOURTH survivability axis - champion-passive bonus armor / MR (Garen W
     # Courage, Wukong P, Shyvana P, Sejuani P, Gwen W, Pantheon E) that is NOT in
@@ -1646,9 +1685,9 @@ def compute_ehp(
     # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
     # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
     # byte-identical.
-    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult)
-    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
-    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
+    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult)
+    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
+    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
@@ -1780,13 +1819,13 @@ def compute_ehp(
         # Mirror the main numerators (incl flat_mit_<type>) so
         # _blend_with_heal(heal_total) stays exactly blended_ehp (guard-tested);
         # flat_mit_* is 0.0 when the flag is off -> byte-identical.
-        p = (hp + ext_flat_hp + item_mana_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
+        p = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
             _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult
         )
-        m = (hp + ext_flat_hp + item_mana_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
+        m = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
             _armor_factor(eff_mr) * safe_mult * mit_mag
         )
-        t = (hp + ext_flat_hp + item_mana_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
+        t = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
             safe_mult * mit_true
         )
         p *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
@@ -2074,6 +2113,7 @@ def compute_ehp(
         spell_shield_frac=spell_shield_frac,
         item_spell_shield_frac=item_spell_shield_frac,
         item_mana_health_hp=item_mana_health_hp,
+        item_bonus_hp_amp_hp=item_bonus_hp_amp_hp,
         item_resist_armor=item_resist_armor,
         item_resist_mr=item_resist_mr,
         survival_window_mult=survival_window_mult,
@@ -2422,6 +2462,7 @@ def rank_items_by_ehp(
     apply_item_spell_shield: bool = False,
     apply_item_mana_health: bool = False,
     apply_item_resist_grants: bool = False,
+    apply_item_bonus_hp_amp: bool = False,
     apply_survival_window: bool = False,
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
@@ -2553,6 +2594,7 @@ def rank_items_by_ehp(
         apply_item_spell_shield=apply_item_spell_shield,
         apply_item_mana_health=apply_item_mana_health,
         apply_item_resist_grants=apply_item_resist_grants,
+        apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
         apply_survival_window=apply_survival_window,
     )
 
@@ -2608,6 +2650,7 @@ def rank_items_by_ehp(
                 apply_item_spell_shield=apply_item_spell_shield,
                 apply_item_mana_health=apply_item_mana_health,
                 apply_item_resist_grants=apply_item_resist_grants,
+                apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
                 apply_survival_window=apply_survival_window,
             )
         except (KeyError, ValueError):
