@@ -1331,6 +1331,30 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.194.0 (2026-07-10 - Riftmaker (4633) max-stacks omnivamp EHP-sustain credit, R100).
+A fresh adversarial Meraki(16.13.1)-vs-registry refute pass (the ItemShield
+lifeline family is saturated, so this rotation picked a DIFFERENT mechanic:
+item-passive omnivamp). The confirmed gap: Riftmaker's Void Corruption grants
+omnivamp at max stacks (Meraki items['4633'] passive "Void Corruption": "At
+maximum stacks, gain {{as|{{rd|10%|6%}} omnivamp}}" = 10% melee / 6% ranged),
+but the DS engine credited ZERO for it - stats.py maps lifesteal + spellvamp but
+has no omnivamp mod, so nothing ever fed stats['omnivamp'], and the already-built
+_vamp_heal_pool consumer at ehp.py resolved heal_omnivamp == 0.0 on every build.
+The Riftmaker ItemEffect even documented the omnivamp as "intentionally not
+modeled (DPS engine doesn't track healing)", a stale reason now that the EHP
+sustain pool exists. FIX: a new _item_omnivamp registry (item_id -> melee/ranged
+fraction, mirroring _item_tenacity) + a default-OFF assume_max_stacks_omnivamp
+seam on compute_ehp that injects the build's summed omnivamp fraction (melee/
+ranged-picked by is_ranged) into stats['omnivamp'] AFTER blended_ehp is otherwise
+determined. OFF is byte-identical (stats['omnivamp'] stays absent -> heal_omnivamp
+0.0 -> effective_ehp_with_sustain == blended_ehp); ON credits the SUSTAIN axis
+only (effective_ehp_with_sustain / sustain_ehp_delta) and leaves blended_ehp
+byte-identical (verified 3600.12 both, Mordekaiser L13 + Riftmaker), the same
+posture as lifesteal / spellvamp. Registered 4633 + Arena mirror 224633; deferred
+conditional siblings (2517 takedown-gated, 3156 Lifeline-proc, 447103
+consumer-not-grant). Armed: Morde L13 heal_omnivamp 44.0, Ezreal (ranged) 26.4.
+The live default-ON flip stays operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+
 1.193.0 (2026-07-10 - Seraph's Embrace (3040) Lifeline max-mana shield EHP credit).
 An adversarial Meraki(16.13.1)-vs-registry refute pass, ds-sweep item-shield
 rotation (operator-directed, manual session). The confirmed gap: Seraph's Embrace
