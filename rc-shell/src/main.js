@@ -1055,7 +1055,13 @@ function pollState(done) {
   try {
     req = mod.request(
       url,
-      { method: "GET", timeout: 1500, rejectUnauthorized: false },
+      // timeout was 1500ms, but /api/state can take ~2.2s in-game (the
+      // minimap_dots ZOI CV stage dominates state-build); at 1500ms every
+      // in-game poll timed out -> finish(false) -> lastInGame never updated ->
+      // the overlay stayed stuck on the companion surface (2026-07-11).
+      // 4000ms clears the ~2.2s build with headroom. Real fix: make
+      // minimap_dots not block /api/state so this can go back to 1500.
+      { method: "GET", timeout: 4000, rejectUnauthorized: false },
       (res) => {
         let data = "";
         res.on("data", (d) => {
