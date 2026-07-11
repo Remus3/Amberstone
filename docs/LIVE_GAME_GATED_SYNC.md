@@ -1781,3 +1781,19 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   items, and that the low-HP-triggered per-fight shield is not over-credited on a sustained clock (the
   ItemShield credit is a full-magnitude one-instance shield, not uptime-amortized). A WRONG credit is worse
   than none - do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-10 Riftmaker (4633 SR + 224633 Arena) max-stacks omnivamp EHP-SUSTAIN seam
+  (`compute_ehp(assume_max_stacks_omnivamp=)`, ENGINE 1.194.0, default-OFF; R100). NEW `_item_omnivamp`
+  registry (`item_id -> (melee_frac, ranged_frac)`, mirroring `_item_tenacity`): 4633 + Arena mirror 224633
+  each = (0.10, 0.06) from Meraki 16.13.1 items['4633'] "Void Corruption" ("At maximum stacks, gain
+  {{as|{{rd|10%|6%}} omnivamp}}"). When armed, compute_ehp injects the build's summed omnivamp fraction
+  (melee/ranged-picked by `is_ranged`) into `stats['omnivamp']` so the already-built `_vamp_heal_pool`
+  consumer credits it to `effective_ehp_with_sustain` / `sustain_ehp_delta`. OFF is byte-identical
+  (`stats['omnivamp']` stays absent -> `heal_omnivamp` 0.0 -> `effective_ehp_with_sustain == blended_ehp`);
+  ON leaves `blended_ehp` byte-identical too (SUSTAIN axis only, same posture as lifesteal/spellvamp -
+  verified Morde L13 blended_ehp 3600.12 both OFF/ON, heal_omnivamp 44.0; Ezreal ranged 26.4). Deferred
+  conditional siblings (2517 takedown-gated, 3156 Lifeline-proc, 447103 consumer-not-grant). OWED
+  (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): wire an EHP-sustain-scoring consumer
+  to pass `assume_max_stacks_omnivamp=True` and eyeball across ~2 real games that a Riftmaker holder's
+  sustain-EHP ranks sensibly vs other sustain items, and that the max-stacks best-case is not over-credited
+  on a short-fight clock (the omnivamp needs full Void Corruption ramp). A WRONG credit is worse than none -
+  do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
