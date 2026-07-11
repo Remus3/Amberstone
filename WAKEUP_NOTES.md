@@ -4,6 +4,18 @@
 
 ---
 
+# 2026-07-10 (DS Meraki-refute R100: Riftmaker (4633) max-stacks omnivamp EHP-sustain credit; ENGINE 1.193.0 -> 1.194.0)
+
+Manual operator-directed session (AskUserQuestion: operator picked "Omnivamp refute" over Lane A; not playing so live-gated drain was out). Spec-first: grounded scout -> worktree build subagent (TDD RED-first) -> read-only verifier gate -> merger. Full detail: LEDGER 846. Commits `860477fc` (build) + `8b28c7f6` (bump) + docs-sync.
+
+- GAP (R100): Riftmaker Void Corruption grants 10% melee / 6% ranged omnivamp at max stacks (Meraki items_meraki.json:44481), but stats.py has no omnivamp mod so `stats['omnivamp']` was never fed -> the already-built `_vamp_heal_pool` consumer (ehp.py:1610) resolved heal_omnivamp 0.0 on every build; the Riftmaker ItemEffect even said "intentionally not modeled" (stale reason).
+- FIX: NEW `_item_omnivamp` registry (mirrors `_item_tenacity`; 4633 + Arena 224633 = (0.10, 0.06)) + default-OFF `assume_max_stacks_omnivamp` seam on compute_ehp injecting `stats['omnivamp']` AFTER blended_ehp. OFF byte-identical; ON credits SUSTAIN axis only (`effective_ehp_with_sustain`/`sustain_ehp_delta`), blended_ehp byte-identical ON vs OFF (verified Morde L13 3600.12 both, heal_omnivamp 44.0; Ezreal ranged 26.4). Deferred conditional siblings 2517/3156/447103.
+- CEREMONY: ENGINE 1.193.0->1.194.0 (130 pins), CHANGELOG, DAEMON_SLAYER banner 8196, 6 build-order tables re-stamped (stamp-only), Share sync (426 files, --check green), DS :8893 -> 1.194.0. 17 new tests. DS 8196/0-fail; RC 11298 pass (the 21 reds ALL pre-commit ceremony artifacts: 19 stamp/Share-sync FIXED post-commit + re-verified in a 41-test re-run, 2 = LEDGER-828 coach-poll flake passing 2/2 in isolation).
+- NEXT: the DS Meraki-refute rotation is still LIVE - a refill MUST pick a DIFFERENT mechanic (BOTH the ItemShield lifeline family AND now omnivamp are saturated - do NOT re-pick either). OR advance Lane A combat-trigger precompute. OR, if playing, drain live-gated flips (the `assume_max_stacks_omnivamp` default-ON flip is operator/live-gated, LIVE_GAME_GATED_SYNC.md). Lane E OCR flip stays idle until real ARAM/Arena games accrue data/ocr_shadow.jsonl.
+- Don't-redo: Riftmaker 4633 omnivamp SHIPPED; `_item_omnivamp` registry exists for any future clean always-on/max-stacks omnivamp item.
+
+---
+
 # 2026-07-10 (Lane A HZ gate de-bias + DS Meraki-refute Seraph's shield - operator-directed manual session, 2 slices; ENGINE 1.192.0 -> 1.193.0)
 
 Operator picked "lane a and ds meraki-refute rotation" (Lane E OCR flip was live-gated IDLE - no game running). Two slices, both spec-first via Plan subagents + TDD RED-first. Full detail: LEDGER 844 (Lane A) + 845 (Meraki). Commits `70a87318` (Lane A) + `6bef45a4` (Meraki).
