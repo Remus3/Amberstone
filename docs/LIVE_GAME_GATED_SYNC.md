@@ -1840,3 +1840,16 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   Jak'Sho/FoN holder's blended-EHP ranks across ~2 real games (the 0.5 ramp midpoint is conservative, not
   over-credited on a short-fight clock; build-dependent re-rank if armed in a ranker - Voidborn's %-of-bonus
   scales with the rest of the build). DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-11 item-side BONUS-HP-AMP "Warmog's Vitality" EHP-NUMERATOR seam (`compute_ehp(apply_item_bonus_hp_amp=)`,
+  ENGINE 1.200.0, default-OFF; R107). NEW `_item_bonus_hp_amp` registry (Warmog's Armor 3083 + Arena mirror 443083
+  = 0.12 of bonus-health-from-items each; MAX over the equipped family, a UNIQUE passive over a shared bonus-HP
+  pool), a genuinely NEW survivability axis (item HP -> HP self-amplifier) distinct from the seven saturated
+  item-side families. When armed, folds `item_bonus_hp_amp_hp = 0.12 * bonus_hp_from_items` (bonus_hp_from_items =
+  total max HP - base max HP) next to `item_mana_health_hp` in every per-type numerator + the `_blend_with_heal`
+  sustain mirror - a genuine flat max-HP pool add, EXACT (no amortization midpoint, like R105). OFF byte-identical;
+  ON RAISES every EHP type - Sion L13 + Warmog/Heartsteel/Sunfire blended_ehp 7453.70 -> 7975.39
+  (item_bonus_hp_amp_hp 270.0); other HP items with no Warmog stay byte-identical (no leak). OWED (operator-gated,
+  do-not-flip-blind): wire an EHP consumer to pass `apply_item_bonus_hp_amp=True`, eyeball a Warmog's holder's
+  blended-EHP ranks across ~2 real games (PRACTICE-SR own-build suffices - buildable vs dummies; deterministic
+  credit, no midpoint - but a build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT
+  block any further stage.
