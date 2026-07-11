@@ -388,12 +388,41 @@ def record_agreement(rec: dict) -> Optional[dict]:
     return {"precompute": precompute, "native": native, "agree": agree}
 
 
+# The report drops covered ticks whose native (Haiku) signal the keyword
+# classifier cannot map (unclassified_native), but the raw count alone gives the
+# next classifier pass no target. These surface the top offenders by count so a
+# recurring unmapped phrase ("ward the river", a build the lean tables miss) is
+# visible instead of silently deflating the flip-readiness denominator. Same
+# diagnostic class as the confusion matrix: show WHERE the gate loses signal.
+_UNCLASSIFIED_SAMPLE_LIMIT = 10  # distinct strings kept in the JSON report
+_SAMPLE_PRINT_HEAD = 8           # distinct strings shown in the human summary
+_SAMPLE_PRINT_WIDTH = 80         # human-print truncation (JSON keeps full text)
+
+
+def _unclassified_native_text(rec: dict) -> Optional[str]:
+    """The native (Haiku) string that failed to classify - the prose action
+    first, then the first native A/B chip label (the same order _native_verdict
+    tried). Used only to surface WHICH phrasings the classifier misses."""
+    text = rec.get("native_action") or _native_choice_label(rec)
+    if not text or not isinstance(text, str):
+        return None
+    return text
+
+
+def _top_samples(counter: Counter, limit: int = _UNCLASSIFIED_SAMPLE_LIMIT) -> list:
+    """Counter -> deterministic [[text, count], ...] ordered count desc then text
+    asc, so the report is byte-stable across runs on the same log."""
+    ranked = sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [[text, n] for text, n in ranked[:limit]]
+
+
 def summarize_agreement(records: list[dict]) -> dict:
     """Precompute-vs-Haiku agreement over the comparable covered sample.
 
     unclassified_native = covered records with a native signal the classifier
-    could not map; uncovered_with_native = records with a native signal the
-    seed table did not cover (the table-gap denominator)."""
+    could not map; unclassified_native_samples = the top unmapped strings by
+    count (the classifier-gap target); uncovered_with_native = records with a
+    native signal the seed table did not cover (the table-gap denominator)."""
     comparable = 0
     agree = 0
     by_mode: dict[str, dict] = {}
@@ -402,6 +431,7 @@ def summarize_agreement(records: list[dict]) -> dict:
     confusion: dict[tuple[str, str], int] = {}
     even_by_native: dict[str, int] = {}
     unclassified_native = 0
+    unclassified_samples: Counter = Counter()
     uncovered_with_native = 0
     native_recall = 0
     economy_precompute_also_recall = 0
@@ -422,6 +452,9 @@ def summarize_agreement(records: list[dict]) -> dict:
             elif (has_native and rec.get("covered")
                     and _native_verdict(rec) is None):
                 unclassified_native += 1
+                text = _unclassified_native_text(rec)
+                if text:
+                    unclassified_samples[text] += 1
             continue
         comparable += 1
         agreed = bool(pair["agree"])
@@ -458,6 +491,7 @@ def summarize_agreement(records: list[dict]) -> dict:
             )
         ],
         "unclassified_native": unclassified_native,
+        "unclassified_native_samples": _top_samples(unclassified_samples),
         "uncovered_with_native": uncovered_with_native,
         "even_precompute_by_native": dict(sorted(even_by_native.items())),
         "economy": {
@@ -478,8 +512,10 @@ def summarize_build_agreement(records: list[dict]) -> dict:
     summarize_agreement so the report + printer treat both lanes uniformly.
 
     unclassified_native = covered records with a precompute lean + a native
-    build signal the classifier could not lean; uncovered_with_native = records
-    with a native build signal the seed table did not cover."""
+    build signal the classifier could not lean; unclassified_native_samples =
+    the top unmapped build strings by count (the lean-classifier-gap target);
+    uncovered_with_native = records with a native build signal the seed table did
+    not cover."""
     comparable = 0
     agree = 0
     by_mode: dict[str, dict] = {}
@@ -487,6 +523,7 @@ def summarize_build_agreement(records: list[dict]) -> dict:
     by_precompute: dict[str, int] = {}
     confusion: dict[tuple[str, str], int] = {}
     unclassified_native = 0
+    unclassified_samples: Counter = Counter()
     uncovered_with_native = 0
     for rec in records:
         native_text = rec.get("native_action")
@@ -500,6 +537,8 @@ def summarize_build_agreement(records: list[dict]) -> dict:
         if native is None:
             if has_native:
                 unclassified_native += 1
+                if isinstance(native_text, str):
+                    unclassified_samples[native_text] += 1
             continue
         comparable += 1
         agreed = precompute == native
@@ -533,6 +572,7 @@ def summarize_build_agreement(records: list[dict]) -> dict:
             )
         ],
         "unclassified_native": unclassified_native,
+        "unclassified_native_samples": _top_samples(unclassified_samples),
         "uncovered_with_native": uncovered_with_native,
     }
 
@@ -645,6 +685,9 @@ def _print_human(report: dict) -> None:
               f"{agr.get('uncovered_with_native', 0)} uncovered-with-native")
         print(f"    native unclassified (covered): "
               f"{agr.get('unclassified_native', 0)}")
+        for text, n in (agr.get("unclassified_native_samples") or [])[:_SAMPLE_PRINT_HEAD]:
+            show = text if len(text) <= _SAMPLE_PRINT_WIDTH else text[:_SAMPLE_PRINT_WIDTH]
+            print(f'      unclassified sample: "{show}" x{n}')
         econ = agr.get("economy")
         if econ:
             print(f"    economy (native recall, off combat axis): "
