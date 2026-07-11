@@ -1133,6 +1133,15 @@ def compute_ehp(
     # NOT moved (same posture as lifesteal / spellvamp). Live default-ON flip is
     # operator-gated.
     assume_max_stacks_omnivamp: bool = False,
+    # ENGINE 1.195.0 (2026-07-10): default-OFF opt-in to credit an item-side
+    # death-triggered REVIVE (Guardian Angel Rebirth = 50% of BASE health) to the
+    # EHP NUMERATOR. The item-side lane of the champion revive (which is
+    # champion-keyed, so an item can never match ``revive_multiplier``). Folds into
+    # ``common_revive`` through NORMAL resists (GA has no egg, unlike Anivia) and
+    # composes multiplicatively with any champion self-revive. Byte-identical OFF
+    # (item_revive_mult == 1.0). ON RAISES blended_ehp (a numerator term, NOT a
+    # sustain-only credit like omnivamp). Live default-ON flip is operator-gated.
+    assume_item_revive: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1578,7 +1587,28 @@ def compute_ehp(
         if egg_mr
         else 1.0
     )
-    common_revive = ext_revive * survival_window_mult
+    # ENGINE 1.195.0 (2026-07-10): item-revive (Guardian Angel) EHP-numerator
+    # credit. The item-side lane of the champion revive (revive_extra above is
+    # champion-keyed; an item can never match it). GA's Rebirth restores 50% of
+    # BASE health after lethal damage on a 300s cooldown - a death-triggered second
+    # life, the SAME EHP-numerator shape as the champion revive. Folded into
+    # common_revive so it runs through NORMAL resists: GA has NO egg (its 4s
+    # invulnerable channel always completes), unlike Anivia, so it must NOT get the
+    # egg_ratio that revive_extra gets. It composes MULTIPLICATIVELY with any
+    # champion self-revive (independent second lives). item_revive_max_hp_fraction
+    # converts the 50%-of-base pool to a max-HP numerator fraction (the multiplier
+    # scales the first life's EHP, proportional to TOTAL max HP). Default False ->
+    # item_revive_mult 1.0 -> BYTE-IDENTICAL. This credit RAISES blended_ehp when ON
+    # (correct - an EHP-numerator term, same as the champion revive), NOT a
+    # sustain-only credit like omnivamp. The gated lazy import keeps OFF import-free.
+    item_revive_mult = 1.0
+    if assume_item_revive:
+        from ._item_revive import item_revive_max_hp_fraction
+        item_revive_frac = item_revive_max_hp_fraction(
+            resolved.item_ids, base_hp=float(base.get("hp", 0.0)), total_hp=hp
+        )
+        item_revive_mult = 1.0 + item_revive_frac
+    common_revive = ext_revive * survival_window_mult * item_revive_mult
     physical_ehp *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
     magical_ehp *= (1.0 + revive_extra * egg_ratio_mag) * common_revive
     true_ehp *= (1.0 + revive_extra) * common_revive
