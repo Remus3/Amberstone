@@ -932,6 +932,7 @@ def compute_ability_dps(
     assume_magic_burst: bool = False,
     assume_physical_burst: bool = False,
     assume_shielded_target: bool = False,
+    assume_item_lowhp_magic_crit: bool = False,
 ) -> AbilityDpsResult:
     """Compute total ability DPS for the resolved build.
 
@@ -1310,6 +1311,17 @@ def compute_ability_dps(
     # the engine deliberately does not model, so compute_dps carries nothing
     # either; the ONLY valuation lives in compute_burst_damage.
     _ = assume_shielded_target  # documented-inert seam; see comment above
+    # R110 (1.203.0): assume_item_lowhp_magic_crit is accepted for caller API
+    # symmetry with compute_burst_damage but is DELIBERATELY INERT here
+    # (byte-identical ON or OFF), mirroring the two seams above. The seam amps a
+    # wielder's MAGIC + TRUE damage vs a sub-40%-HP target (Shadowflame
+    # "Cinderbloom"); it is valued in the BURST scorer only - the amp is gated on
+    # a FIXED target-HP state (target_current_hp_pct < 0.40), which is a burst
+    # convention, so folding it into this per-second sustained metric would be
+    # the wrong model. compute_dps carries nothing, the same burst-only doctrine
+    # as the assume_magic_burst / assume_physical_burst / assume_shielded_target
+    # seams.
+    _ = assume_item_lowhp_magic_crit  # documented-inert seam; see comment above
     # DSV1 (P6-G5 residual 1): complete the compute_dps item-handling mirror.
     # The amp + pen layers above (lines ~950-995) already mirror compute_dps so
     # the two scorers agree on item value; the time-based item PERIODIC procs
