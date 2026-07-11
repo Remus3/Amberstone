@@ -220,7 +220,7 @@ class ComputeEhpIntegrationTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version(self):
-        self.assertEqual(ENGINE_VERSION, "1.195.0")
+        self.assertEqual(ENGINE_VERSION, "1.196.0")
 
 
 class AsciiHygieneTests(unittest.TestCase):

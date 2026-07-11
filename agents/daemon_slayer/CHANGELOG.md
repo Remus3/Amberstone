@@ -1331,6 +1331,35 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.196.0 (2026-07-10 - item-side self-STASIS EHP-numerator credit (Zhonya 3157 /
+Seeker 2420 / Wooglet 228002), R103).
+The item-side lane of the champion survival window, exactly as R102 was the
+item-side lane of the champion revive. The confirmed gap: Zhonya's Hourglass
+(3157) / Seeker's Armguard (2420) / Wooglet's Witchcap (228002) grant a 2.5s Time
+Stop / Stasis active (Meraki 16.13.1) that renders the wielder untargetable +
+invulnerable - an all-damage void - but the DS engine credited ZERO EHP for it:
+_passive_survival_window_overrides.py is champion-keyed (keyed by (champion_id,
+ability_key, form_index)), so an ITEM can never match its
+survival_window_multiplier. A survival window is an EHP-NUMERATOR avoided-fight
+fraction (the same shape as the champion survival window / revive), so the stasis
+items earning nothing understated any stasis build's survivability. FIX: a new
+_item_survival_window registry (item_id -> window_s = 2.5, mirroring _item_revive)
++ a default-OFF assume_item_stasis seam on compute_ehp that folds the summed item
+stasis window into common_revive. Unlike the item revive it runs through NO resist
+curve and needs NO base/total-HP conversion (it voids damage outright, not a
+second HP pool): the credit is min(2.5/6.0, 1.0) * 0.35 per registered item,
+amortized at the _ITEM_STASIS_PROB midpoint (mirrors
+_passive_survival_window_overrides _SURVIVAL_WINDOW_ULT_PROB: a ~120s-cooldown
+deployable defensive active is up rarely but spans the fight when used). It
+composes MULTIPLICATIVELY with any champion survival window / revive (independent
+damage-void windows). OFF is byte-identical (item_stasis_mult 1.0); ON RAISES
+blended_ehp (a numerator term, NOT a sustain-only credit like omnivamp).
+Registered 3157 + Arena mirror 223157 + 2420 + Arena-native Wooglet 228002;
+dropped 323157 / 222420 / 322420 / 22228002 / 32228002 (mirrors not in the item
+index). Not threaded into the item ranker (mirrors assume_item_revive /
+assume_max_stacks_omnivamp), so the ranker stays byte-identical. The live
+default-ON flip stays operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+
 1.195.0 (2026-07-10 - Guardian Angel (3026) Rebirth item-revive EHP-numerator credit, R102).
 A fresh adversarial Meraki(16.13.1)-vs-registry refute pass. The confirmed gap:
 Guardian Angel's Rebirth revives the wielder for 50% of BASE health after lethal
