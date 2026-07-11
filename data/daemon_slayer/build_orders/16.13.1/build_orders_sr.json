@@ -14196,8 +14196,8 @@
     ],
     "level": 11
   },
-  "engine_version": "1.198.0",
-  "generated_at": "2026-07-11T01:38:34Z",
+  "engine_version": "1.199.0",
+  "generated_at": "2026-07-11T05:48:42Z",
   "mode": "sr",
   "schema": "build_order_precompute/v1",
   "version": "16.13.1"
