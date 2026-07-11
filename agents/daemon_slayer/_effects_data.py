@@ -774,7 +774,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3026",
         name="Guardian Angel",
         defensive_only=True,
-        note="Guardian Angel: revive after lethal damage; no DPS contribution",
+        note="Guardian Angel: revive after lethal damage; no DPS contribution (the Rebirth EHP-numerator revive is now credited item-side via the _item_revive registry behind the default-OFF assume_item_revive compute_ehp seam)",
     ),
     "3102": ItemEffect(
         item_id="3102",
@@ -4291,7 +4291,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223026",
         name="Guardian Angel",
         defensive_only=True,
-        note="Guardian Angel (Arena 223026): Rebirth passive revive - no DPS contribution",
+        note="Guardian Angel (Arena 223026): Rebirth passive revive - no DPS contribution (the Rebirth EHP-numerator revive is now credited item-side via the _item_revive registry behind the default-OFF assume_item_revive compute_ehp seam)",
     ),
     "223046": ItemEffect(
         item_id="223046",

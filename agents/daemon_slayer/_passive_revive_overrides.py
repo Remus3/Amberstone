@@ -83,7 +83,10 @@ class):
     death), Ekko R Chronobreak (an ACTIVE heal+dash he casts, not a
     death-triggered second life).
   - ITEM revive (Guardian Angel) is item-side, not a champion passive - out of
-    this registry's (champion, ability_key, form_index) scope.
+    this registry's (champion, ability_key, form_index) scope. It is now credited
+    ITEM-SIDE in the sibling ``_item_revive.py`` registry (keyed by item id),
+    consumed behind the default-OFF ``assume_item_revive`` seam on
+    ``compute_ehp`` (ENGINE 1.195.0); the two compose multiplicatively.
 """
 from __future__ import annotations
 

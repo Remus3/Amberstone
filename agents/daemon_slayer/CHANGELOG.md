@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.195.0 (2026-07-10 - Guardian Angel (3026) Rebirth item-revive EHP-numerator credit, R102).
+A fresh adversarial Meraki(16.13.1)-vs-registry refute pass. The confirmed gap:
+Guardian Angel's Rebirth revives the wielder for 50% of BASE health after lethal
+damage (Meraki items_meraki.json:15505, 300s cooldown), but the DS engine
+credited ZERO EHP for it - _effects_data.py marked GA defensive_only with a "no
+DPS contribution" note (no EHP field), and _passive_revive_overrides.py EXPLICITLY
+excludes item revives from the champion revive registry (that registry is
+champion-keyed, so an item can never match its revive_multiplier). A revive is an
+EHP-NUMERATOR second life (the same shape as the Anivia/Zac champion revive), so
+GA earning nothing understated any GA build's survivability. FIX: a new
+_item_revive registry (item_id -> revived fraction of BASE HP, mirroring
+_item_omnivamp) + a default-OFF assume_item_revive seam on compute_ehp that folds
+the summed item revive into common_revive. It runs through NORMAL resists (GA has
+NO egg - its 4s invulnerable channel always completes, unlike Anivia - so it must
+NOT get the egg_ratio the champion revive gets) and composes MULTIPLICATIVELY with
+any champion self-revive (independent second lives). item_revive_max_hp_fraction
+converts the 50%-of-base pool to a max-HP numerator fraction (base_hp/total_hp),
+amortized by a 0.4 availability midpoint (mirrors _passive_revive_overrides
+_REVIVE_PROB: GA's revive is guaranteed to complete but its 300s cooldown exceeds
+Anivia's 240s, so the same conservative midpoint applies). OFF is byte-identical
+(item_revive_mult 1.0); ON RAISES blended_ehp (a numerator term, NOT a sustain-only
+credit like omnivamp) - verified Garen L13 + GA 3331.93 -> 3998.31 (+20% = 0.5 *
+1.0 * 0.4, base==total for a no-HP-item GA build). Registered 3026 + Arena mirror
+223026; dropped 323026 (ARAM mirror not in the item index). Not threaded into the
+item ranker (mirrors assume_max_stacks_omnivamp), so the ranker stays byte-identical.
+The live default-ON flip stays operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+
 1.194.0 (2026-07-10 - Riftmaker (4633) max-stacks omnivamp EHP-sustain credit, R100).
 A fresh adversarial Meraki(16.13.1)-vs-registry refute pass (the ItemShield
 lifeline family is saturated, so this rotation picked a DIFFERENT mechanic:
