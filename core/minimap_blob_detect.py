@@ -22,6 +22,7 @@ ASCII only (repo hard rule). No em-dashes.
 """
 from __future__ import annotations
 
+import threading
 from typing import Optional
 
 try:
@@ -158,6 +159,13 @@ def crop_minimap(frame_rgb, minimap_rect: dict, design_w: int = 1920, design_h: 
 # re-grabs mid-window; fail-soft everywhere -> [] on any error.
 _VISION_URL = "http://127.0.0.1:8889/latest-frame"
 _dots_cache: dict = {"wall": 0.0, "rect": None, "dots": [], "good_wall": 0.0}
+
+# Background stale-while-revalidate (2026-07-11): the expensive native grab +
+# blob detect (~2s) must not run on the /api/state hot path. current_minimap_dots
+# (background=True) serves the cached value and refreshes on this single daemon
+# worker; _refreshing (guarded by _refresh_lock) caps it to one in-flight pass.
+_refresh_lock = threading.Lock()
+_refreshing = False
 
 # Size-threshold baseline: _MIN_PX/_MAX_PX were tuned on the 208px coaching-frame
 # crop; _scaled_size_bounds rescales them to the actual crop width so the native
@@ -313,27 +321,17 @@ def _grab_frame_minimap(minimap_rect):
         return None
 
 
-def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5,
-                         roster: Optional[list] = None) -> list[dict]:
-    """Grab the minimap and detect team dots. Prefers the NATIVE full-res grab
-    (RC_ZOI_NATIVE_GRAB, default ON) for 4x the pixels; falls back to the :8889
-    coaching-frame crop. TTL + rect cached. Returns [] on any failure (no vision
-    server, numpy missing, headless, bad rect) so callers can stamp it blindly.
-
-    Spec E-1 (2026-07-05): when RC_ZOI_IDENTITY is on (DEFAULT OFF), an
-    additive champion-identity pass (core/minimap_identity.identify_dots)
-    annotates dots with {"champion", "identity_confidence"} scoped to
-    `roster` (or, when None, the Live Client allPlayers roster). Flag off is
-    byte-identical to prior behavior; an identity failure degrades to the
-    plain presence dots, never []."""
-    if np is None or not isinstance(minimap_rect, dict):
-        return []
+def _compute_and_cache_dots(minimap_rect: dict,
+                            roster: Optional[list]) -> list[dict]:
+    """The EXPENSIVE grab + detect + cache-update. Shared by the synchronous
+    path and the background-refresh worker so both stamp _dots_cache the same
+    way. Computes its own wall timestamp so a background refresh stamps the
+    cache at compute time. Returns the fresh dots, last-good on a transient
+    grab failure, or []."""
     import time as _time
     now = _time.time()
     rect_sig = (minimap_rect.get("x"), minimap_rect.get("y"),
                 minimap_rect.get("w"), minimap_rect.get("h"))
-    if (now - _dots_cache["wall"]) < ttl_s and _dots_cache["rect"] == rect_sig:
-        return _dots_cache["dots"]
     try:
         crop = _grab_native_minimap(minimap_rect) if _native_grab_enabled() else None
         if crop is None:
@@ -377,3 +375,69 @@ def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5,
     # elapsed, OR the rect changed: clear.
     _dots_cache.update(wall=now, rect=rect_sig, dots=[])
     return []
+
+
+def _spawn_dots_refresh(minimap_rect: dict, roster: Optional[list]) -> None:
+    """Kick a single daemon thread to recompute the dots off the caller's hot
+    path (stale-while-revalidate). At most one refresh is in flight; a stale
+    call while one runs is a no-op (the running refresh repopulates the cache).
+    daemon=True so a hung grab never blocks interpreter shutdown."""
+    global _refreshing
+    with _refresh_lock:
+        if _refreshing:
+            return
+        _refreshing = True
+
+    def _run():
+        global _refreshing
+        try:
+            _compute_and_cache_dots(minimap_rect, roster)
+        except Exception:  # noqa: BLE001 - the worker must never escape
+            pass
+        finally:
+            with _refresh_lock:
+                _refreshing = False
+
+    threading.Thread(target=_run, name="minimap-dots-refresh",
+                     daemon=True).start()
+
+
+def current_minimap_dots(minimap_rect: Optional[dict], ttl_s: float = 1.5,
+                         roster: Optional[list] = None,
+                         background: bool = False) -> list[dict]:
+    """Grab the minimap and detect team dots. Prefers the NATIVE full-res grab
+    (RC_ZOI_NATIVE_GRAB, default ON) for 4x the pixels; falls back to the :8889
+    coaching-frame crop. TTL + rect cached. Returns [] on any failure (no vision
+    server, numpy missing, headless, bad rect) so callers can stamp it blindly.
+
+    Spec E-1 (2026-07-05): when RC_ZOI_IDENTITY is on (DEFAULT OFF), an
+    additive champion-identity pass (core/minimap_identity.identify_dots)
+    annotates dots with {"champion", "identity_confidence"} scoped to
+    `roster` (or, when None, the Live Client allPlayers roster). Flag off is
+    byte-identical to prior behavior; an identity failure degrades to the
+    plain presence dots, never [].
+
+    background (2026-07-11): when True, a cache miss runs the EXPENSIVE
+    recompute on a daemon thread (stale-while-revalidate) and the call returns
+    the last-cached dots immediately, so the ~2s native grab + blob detect never
+    blocks the caller. dashboard/_state_builder passes background=True: the CV
+    was landing on the /api/state hot path and stalling every poller (the
+    in-game overlay poll timed out -> the HUD never flipped). Default False keeps
+    the synchronous behavior (tests + any inline caller)."""
+    if np is None or not isinstance(minimap_rect, dict):
+        return []
+    import time as _time
+    now = _time.time()
+    rect_sig = (minimap_rect.get("x"), minimap_rect.get("y"),
+                minimap_rect.get("w"), minimap_rect.get("h"))
+    if (now - _dots_cache["wall"]) < ttl_s and _dots_cache["rect"] == rect_sig:
+        return _dots_cache["dots"]
+    if background:
+        # Stale: refresh off the hot path, serve the last value now. Only serve
+        # last-good when the rect still matches (a rect change invalidates the
+        # cached geometry); otherwise [] until the background pass repopulates.
+        _spawn_dots_refresh(minimap_rect, roster)
+        if _dots_cache["rect"] == rect_sig:
+            return _dots_cache["dots"]
+        return []
+    return _compute_and_cache_dots(minimap_rect, roster)
