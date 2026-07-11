@@ -1331,6 +1331,33 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.197.0 (2026-07-10 - item-side Annul SPELL-SHIELD cc_blended credit (Banshee 3102
+/ EoN 3814 / Verdant 4632), R104).
+The item-side lane of the champion spell-shield axis (item 292), exactly as R103
+was the item-side lane of the champion survival window. Banshee's Veil (3102 +
+Arena 223102), Edge of Night (3814 + Arena 223814), and Verdant Barrier (4632, the
+Banshee/EoN component) carry the unique "Annul" passive - a Spell Shield that blocks
+the next enemy ability. Like the champion reactive spell shield (Sivir E / Nocturne
+W), Annul negates ONE incoming CC instance, so it feeds the SAME cc_blended discount
+(cc_total *= (1 - frac)), NOT the EHP numerator (that is the item-stasis lane R103).
+_champion_spell_shield_overrides.py is champion-keyed so an item could never match
+champion_spell_shield_fraction - the exact structural gap _item_revive /
+_item_survival_window fill for the revive / survival-window axes. FIX: a new
+_item_spell_shield_overrides registry (item_id -> block_pct 100.0; midpoint aliased
+to the champion reactive _SPELL_SHIELD_REACTIVE_PROB = 0.2 for independent Phase-D
+retune; multiplicative 1 - prod(1 - eff) combine) + a default-OFF
+apply_item_spell_shield seam on compute_ehp (lazy import + resolved.item_ids). The
+item frac combines MULTIPLICATIVELY with the champion spell_shield_frac (a second
+cc_total *= on the same running product), AFTER the tenacity step. Threaded through
+rank_items_by_ehp, hybrid (compute_hybrid + rank_items_by_hybrid), and all four
+server.py routes. New item_spell_shield_frac EhpResult field (appended at END) +
+to_dict. OFF is byte-identical (item_spell_shield_frac 0.0); ON shrinks
+enemy_cc_pressure_s (raising cc_blended_ehp). Dropped 323102 / 323814 / 224632 /
+324632 (mirrors not in the item index). Cleanses (QSS 3140 / Mercurial 3139 /
+Silvermere 6035 / Mikael's 3222) deliberately EXCLUDED - they REMOVE existing CC,
+not block-next. The live default-ON flip stays operator-gated
+(docs/LIVE_GAME_GATED_SYNC.md).
+
 1.196.0 (2026-07-10 - item-side self-STASIS EHP-numerator credit (Zhonya 3157 /
 Seeker 2420 / Wooglet 228002), R103).
 The item-side lane of the champion survival window, exactly as R102 was the
