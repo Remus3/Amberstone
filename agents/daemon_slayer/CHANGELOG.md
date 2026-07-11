@@ -1331,6 +1331,29 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.200.0 (2026-07-11 - item-side BONUS-HP-AMP "Warmog's Vitality" credit to the EHP
+numerator (Warmog's Armor 3083 + Arena mirror 443083 = +12% of bonus-health-from-
+items as bonus max health), R107). A genuinely NEW survivability axis - an item
+HP -> HP self-amplifier - distinct from the seven saturated item-side survivability
+families (omnivamp / item-shield / item-revive / item-stasis / item-spell-shield /
+item mana->HP R105 / item resist-grant R106). Meraki 16.13.1 passive "Warmog's
+Vitality": "Gain bonus health equal to 12% bonus health from items." build_champion
+folds each item's FLAT health stat and walks bonus-HP -> bonus-AD (Tyranny) but has
+NO bonus-HP -> bonus-HP self-amp walk, so the +12% earned ZERO EHP (a live probe:
+Sion L13 + Warmog/Heartsteel/Sunfire, resolved hp - base_hp == the raw item flat-HP
+sum EXACTLY, +270 HP absent). NEW _item_bonus_hp_amp.py registry (3083 + 443083 @
+0.12; MAX over the equipped family, a UNIQUE passive over a shared bonus-HP pool) +
+a DEFAULT-OFF apply_item_bonus_hp_amp seam on compute_ehp folding
+0.12 * bonus_hp_from_items (bonus_hp_from_items = total_hp - base_hp) into every
+per-type numerator next to item_mana_health_hp + the _blend_with_heal sustain mirror
+- a genuine flat max-HP pool add, EXACT (no amortization midpoint, like R105). NEW
+item_bonus_hp_amp_hp EhpResult field (appended at END) + to_dict; threaded ehp /
+hybrid / server. OFF byte-identical; ON Sion L13 + Warmog/Heartsteel/Sunfire
+blended_ehp 7453.70 -> 7975.39 (item_bonus_hp_amp_hp 270.0). The always-on
+build_champion promotion (which would also feed the Tyranny/Atma/Riftmaker bonus-HP
+consumers, so walk-ordering matters) + the live default-ON flip are separate
+operator-gated decisions. +17 tests. Source data: Meraki Analytics 16.13.1.
+
 1.199.0 (2026-07-11 - item-side conditional RESIST-GRANT credit to the EHP
 denominator (Jak'Sho 6665 Voidborn +30% bonus armor+MR / Force of Nature 4401
 Steadfast +70 bonus MR + Arena mirrors 226665 / 224401), R106).
