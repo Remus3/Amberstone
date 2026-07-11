@@ -110,6 +110,20 @@ function _clampXY(x, y, W, H, minVis = MIN_VISIBLE) {
   };
 }
 
+// A per-panel `zoom: var(--ovx-scale)` (overlay.css) scales a FIXED element's
+// top/left/bottom by the scale as well as its size (empirically verified: a
+// zoom:0.5 fixed element with top:500 renders at viewport 250). So a scaled-down
+// panel's applied position collapses toward the top-left and the operator can no
+// longer drag it to the screen bottom - the draggable "floor" appears to shift
+// up with scale (operator 2026-07-11). Dividing the design-px position by the
+// panel scale cancels the zoom so the panel lands where dropped at ANY scale;
+// size (width / --ovx-maxh) is intentionally left to zoom so the panel shrinks.
+// _scalePos(v, 1) returns v unchanged, so every unscaled panel is untouched.
+function _scalePos(v, scale) {
+  const s = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  return s === 1 ? v : v / s;
+}
+
 let _layout = {};
 let _saveTimer = 0;
 
@@ -173,15 +187,15 @@ function _applyPos(el, p) {
   // clears `bottom` while moving and re-applies this on drop. Recomputed on resize.
   const isTall = TALL_IDS.has(el.dataset && el.dataset.ovxId);
   if (isTall && p.y > H * 0.5) {
-    el.style.left = _clampXY(p.x, 0, W, H).x + "px";
+    el.style.left = _scalePos(_clampXY(p.x, 0, W, H).x, p.scale) + "px";
     el.style.top = "auto";
-    el.style.bottom = "16px";
+    el.style.bottom = _scalePos(16, p.scale) + "px";
     el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(H - 32)) + "px");
   } else {
     const c = _clampXY(p.x, p.y, W, H);
-    el.style.left = c.x + "px";
+    el.style.left = _scalePos(c.x, p.scale) + "px";
     el.style.bottom = "auto";
-    el.style.top = c.y + "px";
+    el.style.top = _scalePos(c.y, p.scale) + "px";
     const availH = H - c.y - 16;
     el.style.setProperty("--ovx-maxh", Math.max(140, Math.round(availH)) + "px");
   }
@@ -312,6 +326,7 @@ function _installDrag(el, w) {
   let startY = 0;
   let originX = 0;
   let originY = 0;
+  let scale = 1;  // panel zoom, captured at drag start (item 9 - see _scalePos)
 
   const begin = (e) => {
     dragging = true;
@@ -320,6 +335,7 @@ function _installDrag(el, w) {
     const p = _posFor(w);
     originX = p.x;
     originY = p.y;
+    scale = Number.isFinite(p.scale) && p.scale > 0 ? p.scale : 1;
     el.classList.add("ovx-dragging");
     try {
       el.setPointerCapture(e.pointerId);
@@ -343,11 +359,13 @@ function _installDrag(el, w) {
       Math.round(originY + (e.clientY - startY) / z),
       W, H);
     _layout[w.id] = { ...(_layout[w.id] || {}), x: c.x, y: c.y };
-    el.style.left = c.x + "px";
+    el.style.left = _scalePos(c.x, scale) + "px";
     // Track by TOP while moving (clear any bottom-anchor from a prior drop) so the
     // panel follows the cursor 1:1; _applyPos on drop re-decides top vs bottom.
+    // Divide by the panel scale: `zoom` scales top/left too (item 9), so an
+    // uncompensated set would drift a scaled panel off the cursor.
     el.style.bottom = "auto";
-    el.style.top = c.y + "px";
+    el.style.top = _scalePos(c.y, scale) + "px";
   });
 
   const end = (e) => {
