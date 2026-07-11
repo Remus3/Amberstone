@@ -357,6 +357,16 @@ class HpsResult:
     ability_heal_hps: float = 0.0
     ability_shield_hps: float = 0.0
     ability_hps_total: float = 0.0
+    # ENGINE 1.202.0 (2026-07-11): the multiplier applied to the folded
+    # champion-ability heal/shield throughput (``ability_hps_total``) inside
+    # ``total_throughput``. 1.0 by default (the ability fold is added RAW,
+    # byte-identical to <= 1.201.0); == ``amp_multiplier`` when the DEFAULT-OFF
+    # ``apply_ability_hsp_amp`` seam is on and a Heal/Shield-Power item is
+    # equipped. ``ability_hps_total`` itself stays PRE-amp for transparency
+    # (matching the item ``healing_hps_raw`` pre-amp convention). New defaulted
+    # field appended at the END so _empty_result + the main return keep their
+    # existing keyword construction.
+    ability_hps_amp_mult: float = 1.0
 
     @property
     def mode_multiplier(self) -> float:
@@ -391,6 +401,7 @@ class HpsResult:
             "ability_heal_hps": self.ability_heal_hps,
             "ability_shield_hps": self.ability_shield_hps,
             "ability_hps_total": self.ability_hps_total,
+            "ability_hps_amp_mult": self.ability_hps_amp_mult,
             "total_throughput": self.total_throughput,
             "items": [i.to_dict() for i in self.items],
             "notes": list(self.notes),
@@ -499,6 +510,7 @@ def compute_hps(
     formulas: Optional[EnchanterFormulasSnapshot] = None,
     assume_missing_hp_heal_amp: bool = False,
     caster_missing_hp_pct: float = 0.0,
+    apply_ability_hsp_amp: bool = False,
 ) -> HpsResult:
     """Compute total healing+shielding+buff throughput for the resolved build.
 
@@ -519,6 +531,21 @@ def compute_hps(
     heal throughput, and therefore ``total_throughput``, is byte-identical to
     today. When ON with a positive ``caster_missing_hp_pct`` the registered
     ability heals are multiplied by ``1 + max_bonus * caster_missing_hp_pct``.
+
+    ENGINE 1.202.0 (2026-07-11): ``apply_ability_hsp_amp`` (DEFAULT-OFF) closes
+    the item-HSP-vs-ability-throughput gap. The item heal/shield throughput is
+    already Heal/Shield-Power amped (``healing_hps = healing_raw * amp_factor``),
+    but the folded champion-ability throughput (``ability_hps_total``) was added
+    RAW at the grand total, so an enchanter's Ardent Censer / Staff of Flowing
+    Water / Redemption / Mikael HSP amped her ITEM heals but NOT her ABILITY heals
+    (Soraka Q/W, Janna E, Lulu E shield, ...). In League, HSP amplifies every
+    heal/shield the wielder outputs, incl. abilities. When OFF (default) the
+    ability fold stays RAW -> ``total_throughput`` is byte-identical to 1.201.0.
+    When ON the ability fold is multiplied by the SAME ``amp_multiplier`` the item
+    heals use (the product ``prod(1 + heal_shield_amp_pct)`` for the one wielder),
+    so an enchanter with no HSP item (amp_multiplier == 1.0) or no ability heal
+    block (ability_hps_total == 0.0) stays byte-identical even ON. The live
+    default-ON flip is operator-gated (mirrors the ehp.py item-side seams).
     """
     level = clamp_level(level)
 
@@ -638,7 +665,18 @@ def compute_hps(
     except Exception:
         ability_hps_failed = True
 
-    total = direct + buff_credit + ability_hps_total
+    # ENGINE 1.202.0 (2026-07-11): item HSP amp of the CHAMPION-ABILITY heal/shield
+    # fold. ``direct`` (item throughput) is already amped by ``amp_factor``
+    # (healing_hps = healing_raw * amp_factor, above); ``ability_hps_total`` was
+    # folded RAW here, so the wielder's HSP items amped her item heals but NOT her
+    # ability heals. ``apply_ability_hsp_amp`` defaults False -> the ability fold
+    # stays RAW -> total_throughput byte-identical. ON multiplies it by the SAME
+    # ``amp_factor`` (product convention, one wielder), applied at THIS single
+    # consumer boundary only (compute_ability_hps stays the pre-amp substrate, so
+    # no double-count). amp_factor == 1.0 (no HSP item) or ability_hps_total == 0.0
+    # (no ability heal block) -> byte-identical even when ON.
+    ability_hps_amp_mult = amp_factor if apply_ability_hsp_amp else 1.0
+    total = direct + buff_credit + ability_hps_total * ability_hps_amp_mult
 
     notes_out: list[str] = []
     if matched_count == 0:
@@ -651,6 +689,12 @@ def compute_hps(
             f"({ability_hps_total:.2f} HPS) - target-relative shields at "
             f"their lower bound"
         )
+        if apply_ability_hsp_amp and ability_hps_amp_mult != 1.0:
+            notes_out.append(
+                f"ability heal/shield throughput HSP-amped x"
+                f"{ability_hps_amp_mult:.3f} (Ardent / Staff / Redemption / "
+                f"Mikael and similar)"
+            )
     if ability_hps_failed:
         notes_out.append(
             "ability heal/shield throughput unavailable (scorer error) - "
@@ -690,6 +734,7 @@ def compute_hps(
         ability_heal_hps=ability_heal_hps,
         ability_shield_hps=ability_shield_hps,
         ability_hps_total=ability_hps_total,
+        ability_hps_amp_mult=ability_hps_amp_mult,
     )
 
 

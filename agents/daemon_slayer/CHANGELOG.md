@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.202.0 (2026-07-11 - item Heal/Shield-Power (HSP) amp of the CHAMPION-ABILITY
+heal/shield throughput fold in compute_hps). A genuinely NEW uncredited mechanic on
+a NON-EHP axis (the enchanter HPS throughput scorer), distinct from the credited EHP
+survivability lanes. The item heal/shield throughput was already HSP-amped
+(healing_hps = healing_raw * amp_factor), but the folded champion-ability throughput
+(ability_hps_total - Soraka Q/W, Janna E, Lulu E shield, ...) was added RAW at the
+grand-total line (hps.py total = direct + buff_credit + ability_hps_total), so an
+enchanter's Ardent Censer 3504 / Staff of Flowing Water 6620 / Redemption 3107 /
+Moonstone 6616 / Mikael 3222 HSP amplified her ITEM heals but NOT her ABILITY heals.
+In League HSP amplifies every heal/shield the wielder outputs incl. abilities. LIVE
+proof (delta==0): compute_hps for 8 enchanters (Soraka/Janna/Lulu/Nami/Sona/Yuumi/
+Karma/Seraphine) at L13 with the 5 HSP items showed amp_multiplier=1.4907,
+ability_hps_total>0, and total == direct + buff + ability_hps_total EXACTLY (the raw
+add, no amp) - Soraka under-credited 6.65 HPS (~6.3%). NEW DEFAULT-OFF
+apply_ability_hsp_amp seam on compute_hps: OFF (default) folds ability_hps_total RAW
+(byte-identical to <= 1.201.0); ON multiplies it by the SAME amp_multiplier the item
+heals use (product prod(1 + heal_shield_amp_pct), one wielder), applied at THIS single
+consumer boundary only (compute_ability_hps stays the pre-amp substrate - no
+double-count). amp_multiplier==1.0 (no HSP item) or ability_hps_total==0.0 (no ability
+heal block, e.g. Zed) -> byte-identical even ON. NEW EhpResult-sibling field
+HpsResult.ability_hps_amp_mult (1.0 OFF; == amp_multiplier ON) surfaced in to_dict +
+a note; ability_hps_total itself stays PRE-amp for transparency. The live default-ON
+flip is operator-gated (mirrors the ehp.py item-side seams). No new registry file -
+reuses the amp_factor already computed in compute_hps.
+
 1.201.0 (2026-07-11 - item-side GENERAL %DR ("Blessing" / "Safeguard") credit to
 ALL THREE EHP denominators (Celestial Opposition 3869 35/25% + Crown of the
 Shattered Queen 664644 40%), R108). A genuinely NEW survivability axis - an
