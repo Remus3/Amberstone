@@ -1142,6 +1142,18 @@ def compute_ehp(
     # (item_revive_mult == 1.0). ON RAISES blended_ehp (a numerator term, NOT a
     # sustain-only credit like omnivamp). Live default-ON flip is operator-gated.
     assume_item_revive: bool = False,
+    # ENGINE 1.196.0 (2026-07-10): default-OFF opt-in to credit an item-side
+    # cast-triggered self-STASIS survival window (Zhonya's Hourglass 3157 / Seeker's
+    # Armguard 2420 / Wooglet's Witchcap 228002 = a 2.5s untargetable+invulnerable
+    # all-damage void) to the EHP NUMERATOR. The item-side lane of the champion
+    # survival window (which is champion-keyed, so an item can never match
+    # ``survival_window_multiplier``). Folds into ``common_revive`` as an
+    # avoided-fight FRACTION (NO resist curve, NO HP pool - unlike the item revive)
+    # and composes multiplicatively with any champion survival window / revive.
+    # Byte-identical OFF (item_stasis_mult == 1.0). ON RAISES blended_ehp (a
+    # numerator term, NOT a sustain-only credit like omnivamp). Live default-ON flip
+    # is operator-gated.
+    assume_item_stasis: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1608,7 +1620,27 @@ def compute_ehp(
             resolved.item_ids, base_hp=float(base.get("hp", 0.0)), total_hp=hp
         )
         item_revive_mult = 1.0 + item_revive_frac
-    common_revive = ext_revive * survival_window_mult * item_revive_mult
+    # ENGINE 1.196.0 (2026-07-10): item-stasis (Zhonya's Hourglass / Seeker's
+    # Armguard / Wooglet's Witchcap) EHP-numerator credit. The item-side lane of
+    # the champion survival window (survival_window_mult above is champion-keyed; an
+    # item can never match it). A 2.5s Time Stop / Stasis active voids ALL incoming
+    # damage while up - a cast-triggered guaranteed-survival window, the SAME
+    # EHP-numerator shape as the champion survival window. Folded into common_revive
+    # as an avoided-fight FRACTION: unlike the item revive it runs through NO resist
+    # curve and needs NO base/total-HP conversion (it voids damage outright, not a
+    # second HP pool). It composes MULTIPLICATIVELY with any champion survival
+    # window / revive (independent damage-void windows). item_survival_window_fraction
+    # returns min(2.5/fight_window, 1.0) * prob per registered item. Default False ->
+    # item_stasis_mult 1.0 -> BYTE-IDENTICAL. This credit RAISES blended_ehp when ON
+    # (correct - an EHP-numerator term, same as the champion survival window), NOT a
+    # sustain-only credit like omnivamp. The gated lazy import keeps OFF import-free.
+    item_stasis_mult = 1.0
+    if assume_item_stasis:
+        from ._item_survival_window import item_survival_window_fraction
+        item_stasis_mult = 1.0 + item_survival_window_fraction(
+            resolved.item_ids, _FIGHT_WINDOW_S
+        )
+    common_revive = ext_revive * survival_window_mult * item_revive_mult * item_stasis_mult
     physical_ehp *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
     magical_ehp *= (1.0 + revive_extra * egg_ratio_mag) * common_revive
     true_ehp *= (1.0 + revive_extra) * common_revive
@@ -1837,6 +1869,14 @@ def compute_ehp(
             f"/stasis/invuln) folded into the EHP numerator (x{survival_window_mult:.3f}"
             f"; window duration exact, avoided fraction window_s/{_FIGHT_WINDOW_S:.0f}s "
             f"amortized at the availability midpoint)"
+        )
+    if assume_item_stasis and item_stasis_mult != 1.0:
+        notes.append(
+            f"item_stasis: item-side cast-triggered self-stasis window (Zhonya/Seeker"
+            f"/Wooglet 2.5s untargetable+invuln) folded into the EHP numerator "
+            f"(x{item_stasis_mult:.3f}; window duration exact, avoided fraction "
+            f"window_s/{_FIGHT_WINDOW_S:.0f}s amortized at the _ITEM_STASIS_PROB "
+            f"availability midpoint; the item-side lane of the champion survival window)"
         )
     if ext_armor != 0.0 or ext_mr != 0.0 or ext_revive != 1.0 or ext_flat_hp != 0.0:
         notes.append(
