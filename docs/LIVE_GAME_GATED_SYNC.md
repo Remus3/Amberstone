@@ -335,9 +335,10 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   shared midpoint is conservative). NOTE: Celestial 3869 is a support-line item + Crown 664644 an
   SR mage item, so build-relevance is medium; the credit is infrastructure for any future item %DR.
   A SEPARATE Arena tail: the Arena mirror 444644 is EXCLUDED pending a live-Arena magnitude confirm
-  (Meraki 50% vs DDragon 90%), and the "Draw Your Sword" augment (id 134, ranged->melee) leaves the
-  Runaan's melee gate augment-blind (background chip, Arena-only cosmetic). DS restart on flip.
-  SOURCE: docs/LEDGER.md item 855.
+  (Meraki 50% vs DDragon 90%). NOTE: the "Draw Your Sword" augment (id 134, ranged->melee) Runaan's-
+  gate blind spot flagged at R108 is now FIXED (LEDGER 856, augment-aware _champion_is_melee) - only
+  the 444644 magnitude confirm remains as an Arena tail here. DS restart on flip.
+  SOURCE: docs/LEDGER.md items 855 + 856.
 
 - B48. (PRACTICE-SR, Lane E) Vision-OCR native-res crop path: the live OCR read path still
   consumes the 1280-HALVED `/latest-frame` (`vision_server/_frame.py` `_SELF_GRAB_MAX_WIDTH=1280`),
