@@ -183,6 +183,19 @@ class OwnedItemsExtractionTests(unittest.TestCase):
     def test_spike_markers_receive_owned_ids(self) -> None:
         self.assertIn("_renderSpikeMarkersFromCtx(ctx, p, ownedIds)", self.src)
 
+    def test_owned_ids_prefer_liveclient_owned_item_ids(self) -> None:
+        # Item 2 (2026-07-11): the live /api/state liveclient block carries a
+        # server-authoritative id list `owned_item_ids` (dashboard/_liveclient.py).
+        # The summarized envelope does NOT carry the full allPlayers[].items that
+        # _amActivePlayerEntry needs, so the me.items path silently fell through
+        # to lossy items_display name-resolution. _amOwnedItemIds must prefer the
+        # server id list when present.
+        body = self.src.split("function _amOwnedItemIds(")[1].split("\n}")[0]
+        self.assertIn(
+            "owned_item_ids", body,
+            "_amOwnedItemIds must read lc.owned_item_ids as the primary "
+            "owned-items source (the live envelope has no allPlayers[].items)")
+
 
 # ---------------------------------------------------------------------------
 # 3. Map pane: text layers independent of the base image + truthful roster

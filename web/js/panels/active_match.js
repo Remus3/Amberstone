@@ -1010,6 +1010,18 @@ function _amActivePlayerEntry(lc) {
 function _amOwnedItemIds(p, lc) {
   const ids = [];
   if (lc) {
+    // Live /api/state envelope: the summarized liveclient block carries a
+    // server-authoritative id list (owned_item_ids, dashboard/_liveclient.py)
+    // but NOT the full allPlayers[].items structure _amActivePlayerEntry needs
+    // - so the me.items path silently fell through to lossy items_display
+    // name-resolution live. Prefer the server list when present (item 2).
+    if (Array.isArray(lc.owned_item_ids) && lc.owned_item_ids.length) {
+      for (const id of lc.owned_item_ids) {
+        const s = String(id == null ? "" : id).trim();
+        if (s) ids.push(s);
+      }
+      if (ids.length) return ids;
+    }
     const me = _amActivePlayerEntry(lc);
     const myItems = (me && Array.isArray(me.items)) ? me.items : [];
     for (const it of myItems) {
