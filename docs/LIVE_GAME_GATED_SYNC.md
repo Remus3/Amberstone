@@ -87,7 +87,7 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
 
 ## A. Champ-select / lobby
 
-- A1. (REAL-SR) LCU push AUTO-FIRE re-validate (RE-OPENED by the 2026-07-04 regression): after a
+- A1. [VALIDATED 2026-07-11, LEDGER 859: a mid-session League restart rotated the lockfile port 51820->64503, RC FOLLOWED it (no stale-port silence), and RuneWriter pushed on Jinx/Kai'Sa/Caitlyn post-restart. A1 CLOSED. The spell-push half (A2) still owed to isolate.] (REAL-SR) LCU push AUTO-FIRE re-validate (RE-OPENED by the 2026-07-04 regression): after a
   mid-session League restart the in-process spawn_task coroutines (auto-accept + RuneWriter)
   silently stopped ticking -> shared LcuClient pinned to the dead port -> NO runes/spells/items
   push on the next champ-select. LAYER-1 self-heal (RuneWriter._poll re-heals, 90b350c8) + LAYER-2
