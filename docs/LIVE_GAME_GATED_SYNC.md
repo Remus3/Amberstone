@@ -1886,3 +1886,18 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   blended-EHP ranks across ~2 real games (PRACTICE-SR own-build suffices - buildable vs dummies; deterministic
   credit, no midpoint - but a build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT
   block any further stage.
+- 2026-07-11 item-side LOW-HP MAGIC/TRUE amp "Cinderbloom" BURST seam (`compute_burst_damage(assume_item_lowhp_magic_crit=)`,
+  ENGINE 1.203.0, default-OFF; R110). NEW `_item_lowhp_magic_crit` registry (Shadowflame 4645 = +0.20 / Arena mirror
+  224645 = +0.15; MAX over carriers, a UNIQUE "Cinderbloom" passive), a genuinely NEW damage-layer axis (item-keyed
+  low-HP gate on MAGIC + TRUE damage) distinct from the always-on magic amp (MAGIC-only) and the INVERSE high-HP
+  anti-tank gates - and it reaches TRUE damage, which no existing amp does. When armed AND target_current_hp_pct <
+  0.40 AND a registered Shadowflame is equipped, multiplies every MAGIC + TRUE burst bucket by (1 + amp) at each
+  existing per-type fold point; physical + the AA path never touched (mirrored INERT on `compute_ability_dps` for
+  API symmetry, per the DSV8/DSV9 convention). OFF byte-identical (LIVE proof: Xerath L11 + [4645] total_burst
+  1797.84 identical at hp_pct 0.41 vs 0.39 - the amp never fires); ON raises burst below 40% by EXACTLY amp x the
+  magic+true portion (item_lowhp_magic_crit_mult 1.20 SR / 1.15 Arena). SCOPE BOUNDARY (matches magic_amp precedent,
+  NOT a gap): untyped rune procs (Electrocute/Comet) are not amped (the engine never routes them through magic_amp
+  either). OWED (operator-gated, do-not-flip-blind): wire a burst/assassin consumer to pass
+  `assume_item_lowhp_magic_crit=True` + a live `target_current_hp_pct`, eyeball a Shadowflame carry's burst ranks vs
+  a sub-40% target across ~2 real games (PRACTICE-SR own-build suffices - deterministic gate, no midpoint;
+  build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT block any further stage.
