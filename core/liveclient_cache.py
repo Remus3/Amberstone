@@ -183,12 +183,57 @@ async def _loop_async(poll_s: float) -> None:
             return
 
 
+def _task_alive() -> bool:
+    """True iff the async poll task exists AND has not finished.
+
+    A task that has ended (``done()`` -> True: cancelled during a mid-game RC
+    restart transition, or an unexpected raise) is treated as DEAD so ``start()``
+    / ``get()`` respawn it. Without this, a finished-but-non-None ``_task`` froze
+    the idempotent guards forever: the cache stopped polling, ``Snapshot.age_s``
+    grew past the 5s bound, ``liveclient_summary()`` collapsed to ``{}``, and the
+    in-game overlay never left the dashboard (the recurring "overlay not showing"
+    bug). An opaque handle without ``done()`` is assumed alive (prior behavior)."""
+    t = _task
+    if t is None:
+        return False
+    done = getattr(t, "done", None)
+    if callable(done):
+        try:
+            return not done()
+        except Exception:  # noqa: BLE001
+            return True
+    return True
+
+
+def _on_task_done(fut: Any) -> None:
+    """Clear ``_task`` when the async poll loop ends so ``get()`` / ``start()`` can
+    respawn it. Runs on the loop thread when the task completes. Only nulls
+    ``_task`` if ``fut`` is still the current task (a newer respawn must win). An
+    unexpected exit (not a plain cancel) is logged so the crash-loop is visible."""
+    global _task
+    if _task is fut:
+        _task = None
+    try:
+        cancelled_fn = getattr(fut, "cancelled", None)
+        if callable(cancelled_fn) and cancelled_fn():
+            return
+        exc_fn = getattr(fut, "exception", None)
+        exc = exc_fn() if callable(exc_fn) else None
+    except Exception:  # noqa: BLE001
+        return
+    if exc is not None:
+        _log.warning(
+            "liveclient_cache poll task ended with %r; will respawn on next get()",
+            exc,
+        )
+
+
 def start(poll_s: float = _DEFAULT_POLL_S) -> None:
     """Launch the background fetcher (idempotent). Prefers spawning on the
     main AppLoop if one exists; falls back to a daemon thread otherwise."""
     global _thread, _task
     with _start_lock:
-        if (_thread is not None and _thread.is_alive()) or _task is not None:
+        if (_thread is not None and _thread.is_alive()) or _task_alive():
             return
         _stop.clear()
         try:
@@ -198,6 +243,11 @@ def start(poll_s: float = _DEFAULT_POLL_S) -> None:
             _sched = None
         if _sched is not None:
             _task = _sched.spawn_task(_loop_async(poll_s))
+            # Self-heal: clear _task when the loop ends so a cancelled/exited task
+            # never wedges the idempotent guard (the overlay-freeze regression).
+            _add_cb = getattr(_task, "add_done_callback", None)
+            if callable(_add_cb):
+                _add_cb(_on_task_done)
             _log.info("liveclient_cache started (poll=%.2fs, async)", poll_s)
         else:
             _thread = threading.Thread(
@@ -222,7 +272,11 @@ def stop() -> None:
 
 
 def get() -> Snapshot:
-    """Return the latest Snapshot. Auto-starts the fetcher on first call."""
-    if _task is None and (_thread is None or not _thread.is_alive()):
+    """Return the latest Snapshot. Auto-starts (or RE-starts) the fetcher.
+
+    Respawns when the async task has finished (``not _task_alive()``), not just
+    when it is None - so a cancelled/exited poll task self-heals on the next read
+    instead of freezing the cache stale (the overlay-not-showing regression)."""
+    if not _task_alive() and (_thread is None or not _thread.is_alive()):
         start()
     return _snapshot
