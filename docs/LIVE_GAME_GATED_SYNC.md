@@ -1815,3 +1815,14 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   ranks across ~2 real games (2.5s stasis amortized at the 0.35 item-active midpoint, not over-credited on a
   short-fight clock; build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT block
   any further stage.
+- 2026-07-11 item-side MANA->MAX-HP "Awe" EHP-NUMERATOR seam (`compute_ehp(apply_item_mana_health=)`, ENGINE
+  1.198.0, default-OFF; R105). NEW `_item_mana_health` registry (Winter's Approach 3119 + Fimbulwinter 3121 +
+  Arena 223119/223121 + ARAM 323119/323121 = 0.15 of BONUS mana each), the ITEM-side lane of the champion-keyed
+  `_passive_health_overrides` stacking-HP axis. When armed, folds `item_mana_health_hp = 0.15 * bonus_mana`
+  (bonus_mana = item-contributed max mana = total - base) next to `ext_flat_hp` in every per-type numerator + the
+  `_blend_with_heal` sustain mirror - a genuine flat max-HP pool add, EXACT (no amortization midpoint). OFF
+  byte-identical; ON RAISES every EHP type - Rell L13 + Fimbulwinter blended_ehp 3711.51 -> 3952.64
+  (item_mana_health_hp 150.0). OWED (operator-gated, do-not-flip-blind): wire an EHP consumer to pass
+  `apply_item_mana_health=True`, eyeball a Fimbulwinter/Winter's-Approach holder's blended-EHP ranks across ~2
+  real games (deterministic credit, no midpoint - but a build-dependent re-rank if armed in a ranker). DS
+  `:8893` restart on flip. Does NOT block any further stage.

@@ -920,6 +920,14 @@ class EhpResult:
     # enemy_cc_pressure_s / cc_blended_ehp byte-identical. Appended at END per the
     # dataclass field-append convention. NOT an EHP-numerator term.
     item_spell_shield_frac: float = 0.0
+    # ENGINE 1.198.0 (R105, 2026-07-10): item-side MANA -> MAX-HP "Awe" credit - the
+    # bonus max HEALTH (15% of BONUS mana; Winter's Approach 3119 / Fimbulwinter 3121
+    # + Arena/ARAM mirrors) folded into the EHP NUMERATOR when
+    # ``apply_item_mana_health`` is True. Default 0.0 leaves every EHP field
+    # byte-identical. A genuine flat max-HP pool add (sibling of ext_flat_hp /
+    # ally_grant_flat_hp), NOT a cc-only term. Appended at END per the dataclass
+    # field-append convention.
+    item_mana_health_hp: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -976,6 +984,7 @@ class EhpResult:
             "champion_tenacity_frac": self.champion_tenacity_frac,
             "spell_shield_frac": self.spell_shield_frac,
             "item_spell_shield_frac": self.item_spell_shield_frac,
+            "item_mana_health_hp": self.item_mana_health_hp,
             "survival_window_mult": self.survival_window_mult,
             "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
             "ehp_without_sustain": self.ehp_without_sustain,
@@ -1175,6 +1184,17 @@ def compute_ehp(
     # lane). Byte-identical OFF (item_spell_shield_frac == 0.0). Live default-ON flip
     # is operator-gated.
     apply_item_spell_shield: bool = False,
+    # ENGINE 1.198.0 (R105, 2026-07-10): default-OFF opt-in to credit an item-side
+    # MANA -> MAX-HP "Awe" passive (Winter's Approach 3119 / Fimbulwinter 3121 +
+    # Arena/ARAM mirrors = bonus health equal to 15% of BONUS mana) to the EHP
+    # NUMERATOR. The item-side lane of the R46 stacking-HP axis (champion-keyed, so
+    # an item can never match ``passive_health_stack_hp``); build_champion folds
+    # mana->AD (Manamune) / mana->AP (Archangel/Seraph) but has NO mana->HP walk, so
+    # the mana-derived HP is uncredited. Folds ``0.15 * bonus_mana`` into every
+    # per-type numerator next to ``ext_flat_hp`` (a genuine flat max-HP pool add),
+    # EXACT (no amortization midpoint). Byte-identical OFF (item_mana_health_hp ==
+    # 0.0). Live default-ON flip is operator-gated.
+    apply_item_mana_health: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1466,6 +1486,24 @@ def compute_ehp(
         resolved.champion_id, level, assume_passive_health_stacks
     )
 
+    # ENGINE 1.198.0 (R105, 2026-07-10): item-side MANA -> MAX-HP "Awe" credit - the
+    # item analog of passive_health_hp above (a clean EHP-NUMERATOR flat max-HP
+    # term), sourced from an ITEM passive. Winter's Approach 3119 / Fimbulwinter 3121
+    # (+ Arena/ARAM mirrors) grant bonus MAX HEALTH = 15% of BONUS mana via "Awe"
+    # (Meraki 16.13.1), which is NOT in the resolved stat block: build_champion folds
+    # mana->AD (Manamune) / mana->AP (Archangel/Seraph) but has NO mana->HP walk.
+    # bonus_mana = item-contributed max mana (max_mana - base max mana; the
+    # champion's own base mana is EXCLUDED, matching the "15% bonus mana" tooltip and
+    # the Awe-AP base). ``apply_item_mana_health`` defaults False -> 0.0 ->
+    # BYTE-IDENTICAL. EXACT (deterministic, no midpoint). Folded next to ext_flat_hp
+    # in every per-type numerator (main + the _blend_with_heal mirror) below. The
+    # gated lazy import keeps OFF import-free.
+    item_mana_health_hp = 0.0
+    if apply_item_mana_health:
+        from ._item_mana_health import item_mana_health_hp as _item_mana_health_fn
+        bonus_mana = max(0.0, max_mana - float(base.get("mp", 0.0)))
+        item_mana_health_hp = _item_mana_health_fn(resolved.item_ids, bonus_mana)
+
     # ENGINE 1.93.0 (2026-06-02): GAP-2 effects-text passive RESIST-STAT grants.
     # The FOURTH survivability axis - champion-passive bonus armor / MR (Garen W
     # Courage, Wukong P, Shyvana P, Sejuani P, Gwen W, Pantheon E) that is NOT in
@@ -1556,9 +1594,9 @@ def compute_ehp(
     # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
     # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
     # byte-identical.
-    physical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult)
-    magical_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
-    true_ehp = (hp + ext_flat_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
+    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult)
+    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
+    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
@@ -1690,13 +1728,13 @@ def compute_ehp(
         # Mirror the main numerators (incl flat_mit_<type>) so
         # _blend_with_heal(heal_total) stays exactly blended_ehp (guard-tested);
         # flat_mit_* is 0.0 when the flag is off -> byte-identical.
-        p = (hp + ext_flat_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
+        p = (hp + ext_flat_hp + item_mana_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
             _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult
         )
-        m = (hp + ext_flat_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
+        m = (hp + ext_flat_hp + item_mana_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
             _armor_factor(eff_mr) * safe_mult * mit_mag
         )
-        t = (hp + ext_flat_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
+        t = (hp + ext_flat_hp + item_mana_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
             safe_mult * mit_true
         )
         p *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
@@ -1983,6 +2021,7 @@ def compute_ehp(
         champion_tenacity_frac=champion_tenacity_frac,
         spell_shield_frac=spell_shield_frac,
         item_spell_shield_frac=item_spell_shield_frac,
+        item_mana_health_hp=item_mana_health_hp,
         survival_window_mult=survival_window_mult,
         effective_ehp_with_sustain=effective_ehp_with_sustain,
         ehp_without_sustain=ehp_without_sustain,
@@ -2327,6 +2366,7 @@ def rank_items_by_ehp(
     apply_champion_tenacity: bool = False,
     apply_spell_shield: bool = False,
     apply_item_spell_shield: bool = False,
+    apply_item_mana_health: bool = False,
     apply_survival_window: bool = False,
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
@@ -2456,6 +2496,7 @@ def rank_items_by_ehp(
         apply_champion_tenacity=apply_champion_tenacity,
         apply_spell_shield=apply_spell_shield,
         apply_item_spell_shield=apply_item_spell_shield,
+        apply_item_mana_health=apply_item_mana_health,
         apply_survival_window=apply_survival_window,
     )
 
@@ -2509,6 +2550,7 @@ def rank_items_by_ehp(
                 apply_champion_tenacity=apply_champion_tenacity,
                 apply_spell_shield=apply_spell_shield,
                 apply_item_spell_shield=apply_item_spell_shield,
+                apply_item_mana_health=apply_item_mana_health,
                 apply_survival_window=apply_survival_window,
             )
         except (KeyError, ValueError):

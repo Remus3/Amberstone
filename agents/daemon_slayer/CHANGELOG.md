@@ -1331,6 +1331,35 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.198.0 (2026-07-10 - item-side MANA -> MAX-HP "Awe" EHP-numerator credit (Winter's
+Approach 3119 / Fimbulwinter 3121 + Arena/ARAM mirrors), R105).
+The item-side lane of the R46 stacking-HP passive axis, exactly as R102/R103/R104
+were the item-side lanes of the champion revive / survival-window / spell-shield
+axes. Winter's Approach (3119 + Arena 223119 + ARAM 323119) and Fimbulwinter (3121 +
+Arena 223121 + ARAM 323121) carry the "Awe" passive: bonus MAX HEALTH equal to 15%
+of BONUS mana (verbatim Meraki 16.13.1, both base tooltips identical). The engine
+folds mana -> bonus AD (Manamune) and bonus mana -> AP (Archangel's / Seraph's) in
+build_champion but has NO mana -> HP walk and no _effects_types field for it, so the
+mana-derived HP earned ZERO EHP (live probe: Rell L13 + Fimbulwinter carried only the
+item's flat health stat, not +0.15 * bonus mana). _passive_health_overrides is
+champion-keyed so an item could never match passive_health_stack_hp - the exact
+structural gap _item_revive / _item_survival_window / _item_spell_shield_overrides
+fill for the champion revive / survival-window / spell-shield axes. FIX: a new
+_item_mana_health registry (item_id -> 0.15 of BONUS mana; the MAX over matched items
+since "Awe" is a unique passive over a shared bonus mana pool, so a synthetic
+double-equip cannot double-count) + a default-OFF apply_item_mana_health seam on
+compute_ehp (lazy import + resolved.item_ids; bonus_mana = max(0, total max mana -
+base max mana)). The credited HP folds into every per-type numerator
+(physical/magical/true) AND the _blend_with_heal sustain mirror, next to ext_flat_hp
+- a genuine flat max-HP pool add (EXACT, no amortization midpoint). Threaded through
+rank_items_by_ehp, hybrid (compute_hybrid + rank_items_by_hybrid), and all four
+server.py routes. New item_mana_health_hp EhpResult field (appended at END) +
+to_dict. OFF is byte-identical (item_mana_health_hp 0.0); ON raises every EHP type.
+Excluded the mana -> DAMAGE Awe twins (Manamune 3004 / Muramana 3042 -> AD;
+Archangel's 3003 / Seraph's 3040 -> AP), Seraph's Lifeline shield, Rod of Ages
+time-stack, Catalyst / Diadem mana-heal. The live default-ON flip stays
+operator-gated (docs/LIVE_GAME_GATED_SYNC.md).
+
 1.197.0 (2026-07-10 - item-side Annul SPELL-SHIELD cc_blended credit (Banshee 3102
 / EoN 3814 / Verdant 4632), R104).
 The item-side lane of the champion spell-shield axis (item 292), exactly as R103
