@@ -104,8 +104,8 @@ class EngineVersion(unittest.TestCase):
     """EXPECTED RED in the engine slice - the orchestrator owns the bump."""
 
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.202.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.202.0")
+        self.assertEqual(ENGINE_VERSION, "1.203.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.203.0")
 
 
 class SchemaDefaults(unittest.TestCase):
@@ -403,8 +403,10 @@ class ComputeDpsSurface(unittest.TestCase):
             inspect.signature(compute_burst_damage).parameters
         )
         dps_params = list(inspect.signature(compute_ability_dps).parameters)
-        self.assertEqual(burst_params[-1], "assume_shielded_target")
-        self.assertEqual(dps_params[-1], "assume_shielded_target")
+        # R110 END-appended a new burst seam on BOTH consumers (inert on dps),
+        # advancing this end marker from assume_shielded_target.
+        self.assertEqual(burst_params[-1], "assume_item_lowhp_magic_crit")
+        self.assertEqual(dps_params[-1], "assume_item_lowhp_magic_crit")
 
 
 class AbilityDpsInertKwarg(unittest.TestCase):
