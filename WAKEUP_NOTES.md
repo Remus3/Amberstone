@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-11 (RC in-game overlay HUD flip FIXED + the minimap_dots /api/state perf root cause + A1 LCU-disconnect VALIDATED live + a 9-item overlay-overhaul backlog for next session)
+
+Operator dogfooded a live SR-practice + ARAM Mayhem session. Full detail: LEDGER 859. Commits `dd7beaec` (overlay poll-timeout stopgap) + `dd843d80` (minimap_dots stale-while-revalidate, the real fix). Both pushed; CI-relevant tests run green locally.
+
+- ROOT CAUSE the in-game overlay HUD would not show: `/api/state` took ~2.2s because `current_minimap_dots` (ZOI CV) ran a SYNCHRONOUS native grab + blob detect on the hot path (`_state_builder.py:233` slow-stage: minimap_dots=2182ms); the Electron overlay poll timed out at 1500ms EVERY poll (`rc-shell/src/main.js:1058`) -> lastInGame never flipped -> overlay window stayed hidden on the companion surface. Localized via Win32 window enumeration after ruling out fullscreen / origin / crash / broken-page.
+- FIX: minimap_dots CV moved off the hot path (`current_minimap_dots(background=True)` stale-while-revalidate daemon worker; sync default byte-identical). LIVE-VALIDATED in-game: `/api/state` 2.2s -> ~10-100ms. Tests 5 new + 76 existing green, ruff clean. The 4000ms stopgap (dd7beaec) can revert to 1500 next session (harmless now).
+- A1 LCU-disconnect VALIDATED live (operator's original question): League restart rotated the lockfile port 51820 -> 64503, RC followed it, RuneWriter pushed on Jinx/Kai'Sa/Caitlyn post-restart. Gated item A1 CLOSED.
+- SELF-INFLICTED + resolved: the A1 push-watcher this session built (`tools/lcu_push_watcher.py`, UNCOMMITTED WIP, 14 unit tests green) held the day-log open across RC's 3MB RotatingFileHandler rollover (Windows share-lock) -> RC file-logging wedged 16:26-16:43; killing it resumed logging. The tail needs a share-delete / rotation-tolerant reopen before re-arming.
+- NEXT SESSION = a dedicated OVERLAY-OVERHAUL session + OCR region calibration. 9-item backlog (code pointers in LEDGER 859): (1) build-chooser variant doesn't push runes (`champ_select.js:3227` push_runes:false); (2) DS "next to buy" ignores owned items (`_amOwnedItemIds` reads thin per-player, not `lc.owned_item_ids`); (3) A/B/Callouts/Spike hidden despite data; (4) DS Controls reorg (need strip-spec); (5) minimap ZOI spam + frame-source staleness; (6) enemy-spell rebuild (name + click->countdown); (7) DMG/SURV/UTIL + shaper knobs no visible effect; (8) phase stuck EARLY at 16min (`ds_scaling_hint.py:19-22` EARLY<14/MID<25); (9) panel SZ scale floor 0.5 + 140px min-height (`overlay_layout.js:270`/`:166`). Plus OCR regions/calibration to bring the other overlay elements up. `ops/runtime/allow_visual.flag` left set (next session's OCR/visual work needs it).
+- Don't-redo: overlay flip + minimap perf SHIPPED + live-validated; A1 CLOSED. Watcher is WIP (share-lock fix owed).
+
+---
+
 # 2026-07-11 (DS Meraki-scan R110: item low-HP MAGIC/TRUE amp "Cinderbloom" (Shadowflame) credited to the BURST scorer - a NEW damage-layer axis; ENGINE 1.202.0 -> 1.203.0)
 
 Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked tracks 1+4+2, opus-4.8 ultracode multi-agent orchestrated + adversarial review + verifier CONFIRM). The EHP + HPS axes are saturated, so the refill went to a NEW damage-layer axis proven LIVE first. 23-agent DISCOVERY workflow (8 lenses -> dedupe -> per-candidate adversarial refute -> ranked synthesis; 14 unique candidates, 8 survivors; two finders converged on the winner) -> main-thread TDD (RED-first) -> verifier CONFIRM (6/6) + adversarial reviewer SHIP. Full detail: LEDGER 858. Commit `ba326d18` (feat) + this docs-sync.
