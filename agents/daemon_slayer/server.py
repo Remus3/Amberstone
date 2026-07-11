@@ -527,6 +527,7 @@ def _route_ehp(body: dict) -> dict:
     apply_item_spell_shield = _opt_bool(body, "apply_item_spell_shield", False)
     apply_item_mana_health = _opt_bool(body, "apply_item_mana_health", False)
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
+    apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
     # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
@@ -550,6 +551,7 @@ def _route_ehp(body: dict) -> dict:
             apply_item_spell_shield=apply_item_spell_shield,
             apply_item_mana_health=apply_item_mana_health,
             apply_item_resist_grants=apply_item_resist_grants,
+            apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             apply_survival_window=apply_survival_window,
             external_resist_armor=external_resist_armor,
             external_resist_mr=external_resist_mr,
@@ -619,6 +621,7 @@ def _route_rank_tank(body: dict) -> dict:
     apply_item_spell_shield = _opt_bool(body, "apply_item_spell_shield", False)
     apply_item_mana_health = _opt_bool(body, "apply_item_mana_health", False)
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
+    apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
     # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
@@ -654,6 +657,7 @@ def _route_rank_tank(body: dict) -> dict:
             apply_item_spell_shield=apply_item_spell_shield,
             apply_item_mana_health=apply_item_mana_health,
             apply_item_resist_grants=apply_item_resist_grants,
+            apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             apply_survival_window=apply_survival_window,
             prefer_survivability_by_win=prefer_survivability_by_win,
             cost_ceiling=cost_ceiling,
@@ -720,6 +724,7 @@ def _route_hybrid(body: dict) -> dict:
     apply_item_spell_shield = _opt_bool(body, "apply_item_spell_shield", False)
     apply_item_mana_health = _opt_bool(body, "apply_item_mana_health", False)
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
+    apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
     # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
@@ -745,6 +750,7 @@ def _route_hybrid(body: dict) -> dict:
             apply_item_spell_shield=apply_item_spell_shield,
             apply_item_mana_health=apply_item_mana_health,
             apply_item_resist_grants=apply_item_resist_grants,
+            apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             apply_survival_window=apply_survival_window,
             alpha=alpha, beta=beta,
         )
@@ -816,6 +822,7 @@ def _route_rank_bruiser(body: dict) -> dict:
     apply_item_spell_shield = _opt_bool(body, "apply_item_spell_shield", False)
     apply_item_mana_health = _opt_bool(body, "apply_item_mana_health", False)
     apply_item_resist_grants = _opt_bool(body, "apply_item_resist_grants", False)
+    apply_item_bonus_hp_amp = _opt_bool(body, "apply_item_bonus_hp_amp", False)
     # ENGINE 1.105.0 (item 293): GAP-2 NINTH survivability axis - the champion's
     # SELF guaranteed-survival window (untargetable / stasis / invuln: Tryndamere R
     # / Kindred R / Taric R / Kayle R self / Lissandra R self / Xayah R / Vladimir W
@@ -855,6 +862,7 @@ def _route_rank_bruiser(body: dict) -> dict:
             apply_item_spell_shield=apply_item_spell_shield,
             apply_item_mana_health=apply_item_mana_health,
             apply_item_resist_grants=apply_item_resist_grants,
+            apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
             apply_survival_window=apply_survival_window,
             score_by=score_by,
             alpha=alpha, beta=beta,
