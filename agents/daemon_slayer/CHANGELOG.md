@@ -1331,6 +1331,31 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.201.0 (2026-07-11 - item-side GENERAL %DR ("Blessing" / "Safeguard") credit to
+ALL THREE EHP denominators (Celestial Opposition 3869 35/25% + Crown of the
+Shattered Queen 664644 40%), R108). A genuinely NEW survivability axis - an
+ITEM-keyed UNTARGETED all-damage-type percent damage reduction - distinct from the
+champion-only R35 percent-mitigation (mit_*, champion_id-keyed so an item can never
+match it) AND from the three item-keyed DR lanes that are all damage-TYPE-specific
+and PHYSICAL-ONLY: R77 crit-DR / R80 basic-attack-DR / R86 enemy-AS-slow. Because
+general DR reduces TRUE damage too, the fold multiplies into the true denominator -
+the credit no R77/R80/R86 fold performs (live proof: Braum L13 + Celestial vs the
+same build without it, the ONLY resolved-stat delta is the item's +200 flat HP and
+true_ehp rose by EXACTLY +200, so the 25-35% general DR earned ZERO on every
+denominator). NEW _item_general_dr.py registry (3869 Meraki 35/25; 664644 DDragon
+40, range-agnostic; both SR maps.11) + a DEFAULT-OFF assume_item_general_dr seam on
+compute_ehp multiplying 1 - max_dr * _GENERAL_DR_UPTIME (0.4) into every per-type
+denominator (main + the _blend_with_heal sustain mirror), MAX over the equipped
+carriers (a UNIQUE "reduce incoming damage" effect over a shared pool). NEW
+item_general_dr_mult EhpResult field (appended at END, default 1.0) + to_dict;
+threaded ehp / hybrid / server. AMORTIZED-MIDPOINT (uptime-gated, NOT EXACT - the
+magnitude is deterministic but the buff is conditional). OFF byte-identical; ON
+Braum L13 + Celestial physical/magical/TRUE/blended EHP all strictly rise. Arena
+mirror 444644 EXCLUDED (Meraki 50% vs DDragon 90% conflict, unresolvable headless);
+Anathema's Chains 228001 EXCLUDED (single-target Nemesis DR, no clean fold). The
+live default-ON flip is operator-gated. Source data: Meraki Analytics + DDragon
+16.13.1.
+
 1.200.0 (2026-07-11 - item-side BONUS-HP-AMP "Warmog's Vitality" credit to the EHP
 numerator (Warmog's Armor 3083 + Arena mirror 443083 = +12% of bonus-health-from-
 items as bonus max health), R107). A genuinely NEW survivability axis - an item

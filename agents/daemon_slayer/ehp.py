@@ -950,6 +950,13 @@ class EhpResult:
     # pool add (sibling of ext_flat_hp / item_mana_health_hp), EXACT (no midpoint).
     # Appended at END per the dataclass field-append convention.
     item_bonus_hp_amp_hp: float = 0.0
+    # ENGINE 1.201.0 (R108, 2026-07-11): item-side GENERAL %DR ("Blessing" /
+    # "Safeguard") ALL-damage-type denominator multiplier - Celestial Opposition
+    # 3869 (35/25%) + Crown of the Shattered Queen 664644 (40%) reduce incoming
+    # champion damage across phys/mag/TRUE. 1.0 (identity) unless
+    # ``assume_item_general_dr`` and a carrier is equipped, so OFF is byte-identical.
+    # Appended at END per the dataclass field-append convention.
+    item_general_dr_mult: float = 1.0
 
     def to_dict(self) -> dict:
         return {
@@ -1010,6 +1017,7 @@ class EhpResult:
             "item_resist_armor": self.item_resist_armor,
             "item_resist_mr": self.item_resist_mr,
             "item_bonus_hp_amp_hp": self.item_bonus_hp_amp_hp,
+            "item_general_dr_mult": self.item_general_dr_mult,
             "survival_window_mult": self.survival_window_mult,
             "effective_ehp_with_sustain": self.effective_ehp_with_sustain,
             "ehp_without_sustain": self.ehp_without_sustain,
@@ -1239,6 +1247,16 @@ def compute_ehp(
     # next to ``item_mana_health_hp``. EXACT (no amortization midpoint). Byte-identical
     # OFF (item_bonus_hp_amp_hp == 0.0). Live default-ON flip is operator-gated.
     apply_item_bonus_hp_amp: bool = False,
+    # ENGINE 1.201.0 (R108, 2026-07-11): credit the item-side GENERAL %DR
+    # ("Blessing" / "Safeguard") - an UNTARGETED, all-damage-type percent damage
+    # reduction - to ALL THREE per-type EHP denominators. The item-keyed lane of
+    # the champion-only R35 percent-mitigation (mit_*, champion_id-keyed so an item
+    # can never match it); genuinely distinct from the physical-ONLY R77 crit-DR /
+    # R80 AA-DR / R86 AS-slow lanes because general DR also reduces TRUE damage.
+    # Multiplies a ``1 - dr * uptime`` factor into every per-type denominator (main
+    # + the _blend_with_heal mirror). Byte-identical OFF (item_general_dr_mult ==
+    # 1.0). AMORTIZED-MIDPOINT (uptime-gated). Live default-ON flip operator-gated.
+    assume_item_general_dr: bool = False,
 ) -> EhpResult:
     """Compute Effective HP for the resolved build under an enemy damage profile.
 
@@ -1500,6 +1518,22 @@ def compute_ehp(
         resolved.item_ids, assume_item_enemy_as_slow
     )
 
+    # ENGINE 1.201.0 (R108, 2026-07-11): item-keyed UNTARGETED GENERAL %DR
+    # (Celestial Opposition 3869 "Blessing" 35/25% + Crown of the Shattered Queen
+    # 664644 "Safeguard" 40%). UNLIKE the physical-only R77/R80/R86 lanes above,
+    # general DR reduces ALL damage types incl TRUE, so this multiplier folds into
+    # every per-type denominator below (the true-damage credit no R77/R80/R86 fold
+    # performs). Applied ALONGSIDE the champion mit_* (item-keyed, never aliased
+    # into the champion percent-DR value). ``assume_item_general_dr`` defaults
+    # False -> identity 1.0 -> BYTE-IDENTICAL. AMORTIZED-MIDPOINT (uptime-gated).
+    # The gated lazy import keeps OFF import-free.
+    item_general_dr_mult = 1.0
+    if assume_item_general_dr:
+        from ._item_general_dr import item_general_dr_multiplier as _item_general_dr_fn
+        item_general_dr_mult = _item_general_dr_fn(
+            resolved.item_ids, not is_ranged, assume_item_general_dr
+        )
+
     # ENGINE 1.148.0 (R9, 2026-06-21): GAP - per-instance FLAT-AMOUNT damage
     # reduction, the sibling the percent mitigation registry deliberately
     # EXCLUDED (Fizz P, Amumu E, Leona W). A flat reduction per damage instance
@@ -1685,9 +1719,9 @@ def compute_ehp(
     # exactly like ``ext_flat_hp`` - it adds RAW to the matching per-type
     # numerator and rides the SAME armor/MR curve. 0.0 when the flag is off ->
     # byte-identical.
-    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult)
-    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag)
-    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true)
+    physical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_total) / (_armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult * item_general_dr_mult)
+    magical_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_total) / (_armor_factor(eff_mr) * safe_mult * mit_mag * item_general_dr_mult)
+    true_ehp = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + passive_health_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_total) / (safe_mult * mit_true * item_general_dr_mult)
 
     # ENGINE 1.101.0 (2026-06-03): GAP-2 effects-text passive REVIVE / second-life.
     # The FIFTH survivability axis and the FIRST EHP-NUMERATOR term: a
@@ -1820,13 +1854,13 @@ def compute_ehp(
         # _blend_with_heal(heal_total) stays exactly blended_ehp (guard-tested);
         # flat_mit_* is 0.0 when the flag is off -> byte-identical.
         p = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_phys + shield_any_amped + shield_phys_amped + heal_scalar) / (
-            _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult
+            _armor_factor(eff_armor) * safe_mult * mit_phys * item_crit_dr_mult * item_aa_dr_mult * item_enemy_as_slow_mult * item_general_dr_mult
         )
         m = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_mag + shield_any_amped + shield_mag_amped + heal_scalar) / (
-            _armor_factor(eff_mr) * safe_mult * mit_mag
+            _armor_factor(eff_mr) * safe_mult * mit_mag * item_general_dr_mult
         )
         t = (hp + ext_flat_hp + item_mana_health_hp + item_bonus_hp_amp_hp + flat_mit_true + shield_any_amped + shield_true_amped + heal_scalar) / (
-            safe_mult * mit_true
+            safe_mult * mit_true * item_general_dr_mult
         )
         p *= (1.0 + revive_extra * egg_ratio_phys) * common_revive
         m *= (1.0 + revive_extra * egg_ratio_mag) * common_revive
@@ -2114,6 +2148,7 @@ def compute_ehp(
         item_spell_shield_frac=item_spell_shield_frac,
         item_mana_health_hp=item_mana_health_hp,
         item_bonus_hp_amp_hp=item_bonus_hp_amp_hp,
+        item_general_dr_mult=item_general_dr_mult,
         item_resist_armor=item_resist_armor,
         item_resist_mr=item_resist_mr,
         survival_window_mult=survival_window_mult,
@@ -2463,6 +2498,7 @@ def rank_items_by_ehp(
     apply_item_mana_health: bool = False,
     apply_item_resist_grants: bool = False,
     apply_item_bonus_hp_amp: bool = False,
+    assume_item_general_dr: bool = False,
     apply_survival_window: bool = False,
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
@@ -2595,6 +2631,7 @@ def rank_items_by_ehp(
         apply_item_mana_health=apply_item_mana_health,
         apply_item_resist_grants=apply_item_resist_grants,
         apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
+        assume_item_general_dr=assume_item_general_dr,
         apply_survival_window=apply_survival_window,
     )
 
@@ -2651,6 +2688,7 @@ def rank_items_by_ehp(
                 apply_item_mana_health=apply_item_mana_health,
                 apply_item_resist_grants=apply_item_resist_grants,
                 apply_item_bonus_hp_amp=apply_item_bonus_hp_amp,
+                assume_item_general_dr=assume_item_general_dr,
                 apply_survival_window=apply_survival_window,
             )
         except (KeyError, ValueError):
