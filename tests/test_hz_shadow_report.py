@@ -638,3 +638,108 @@ def test_summarize_agreement_combat_only_unchanged_by_economy():
 def test_summarize_agreement_economy_zeroed_when_empty():
     assert rep.summarize_agreement([])["economy"] == {
         "native_recall": 0, "precompute_also_recall": 0}
+
+
+# ---- surfaced unclassified native samples (the classifier-gap visibility) ----
+# The report already COUNTS covered ticks whose native (Haiku) signal the
+# keyword classifier could not map (unclassified_native), but never showed WHICH
+# strings - so ~1k laning + ~1.4k build comparable ticks are dropped invisibly
+# and nobody can prioritise the missing keywords. These surface the top offenders
+# by count (deterministic: count desc, then text asc) so the next classifier pass
+# has a target. Same diagnostic class as the confusion matrix (item e8117ec6).
+
+
+def test_summarize_agreement_surfaces_unclassified_samples():
+    records = [
+        # two identical unclassifiable native prose -> counted x2
+        {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "ward the river"},
+        {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "ward the river"},
+        # a different unclassifiable prose -> x1
+        {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "check your minimap"},
+        # a classifiable tick -> NOT a sample (it is comparable, not dropped)
+        {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "TRADE"},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["unclassified_native"] == 3
+    samples = out["unclassified_native_samples"]
+    assert samples[0] == ["ward the river", 2]        # most common first
+    assert ["check your minimap", 1] in samples
+    assert all(s[0] != "TRADE" for s in samples)      # classifiable excluded
+
+
+def test_unclassified_samples_use_native_choice_fallback():
+    # when native_action is absent, the failing A/B chip label is surfaced
+    # ("ward the river" is a proven-unclassifiable string, no verdict keyword)
+    rec = {"mode": "sr", "covered": True, "choices": [{"label": "Trade now"}],
+           "native_action": None,
+           "native_choices": [{"label": "ward the river"}]}
+    out = rep.summarize_agreement([rec])
+    assert out["unclassified_native"] == 1
+    assert out["unclassified_native_samples"] == [["ward the river", 1]]
+
+
+def test_summarize_build_agreement_surfaces_unclassified_samples():
+    records = [
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "Infinity Edge into Phantom Dancer"},
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "Infinity Edge into Phantom Dancer"},
+        {"mode": "aram", "covered": True, "lean": "anti_squishy",
+         "native_action": "Berserker's Greaves rush"},
+        # a classifiable build lean -> not a sample
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "Rush Lord Dominik's vs their tanks"},
+    ]
+    out = rep.summarize_build_agreement(records)
+    assert out["unclassified_native"] == 3
+    samples = out["unclassified_native_samples"]
+    assert samples[0] == ["Infinity Edge into Phantom Dancer", 2]
+    assert ["Berserker's Greaves rush", 1] in samples
+
+
+def test_unclassified_native_samples_empty():
+    assert rep.summarize_agreement([])["unclassified_native_samples"] == []
+    assert rep.summarize_build_agreement([])["unclassified_native_samples"] == []
+
+
+def test_unclassified_native_samples_deterministic_tie_order():
+    # equal counts -> alphabetical by text, so the report is byte-stable run to run
+    records = [
+        {"covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "zzz unknown call"},
+        {"covered": True, "choices": [{"label": "Trade now"}],
+         "native_action": "aaa unknown call"},
+    ]
+    out = rep.summarize_agreement(records)
+    assert out["unclassified_native_samples"] == [
+        ["aaa unknown call", 1], ["zzz unknown call", 1]]
+
+
+def test_main_human_prints_unclassified_samples(tmp_path, capsys):
+    c = tmp_path / "c.jsonl"
+    _write(c, [{"mode": "sr", "my_champion": "A", "band": "L6", "covered": True,
+                "choices": [{"label": "Trade now"}],
+                "native_action": "ward the river"}])
+    rc = rep.main(["--choice-path", str(c),
+                   "--build-path", str(tmp_path / "no.jsonl")])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "unclassified sample" in out
+    assert "ward the river" in out
+
+
+def test_main_json_carries_unclassified_samples(tmp_path, capsys):
+    c = tmp_path / "c.jsonl"
+    _write(c, [{"mode": "sr", "my_champion": "A", "band": "L6", "covered": True,
+                "choices": [{"label": "Trade now"}],
+                "native_action": "ward the river"}])
+    rc = rep.main(["--choice-path", str(c),
+                   "--build-path", str(tmp_path / "no.jsonl"), "--json"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["agreement"]["laning"]["unclassified_native_samples"] == [
+        ["ward the river", 1]]
