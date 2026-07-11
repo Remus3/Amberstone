@@ -95,6 +95,40 @@ class LauncherReachabilityGuard(unittest.TestCase):
         )
 
 
+class ScaledPanelPositionIsZoomCompensated(unittest.TestCase):
+    """Item 9 (2026-07-11): `zoom: var(--ovx-scale)` scales a FIXED panel's
+    top/left/bottom by the scale too (empirically: zoom:0.5 renders top:500 at
+    viewport 250), so a scaled-down panel's position collapses toward the
+    top-left and it can no longer be dragged to the screen bottom (operator: the
+    draggable 'floor' shifted up with scale). The applied position must be divided
+    by the panel scale so the panel lands where dropped at any scale; size stays
+    zoom-scaled so the panel still shrinks. _scalePos(v, 1) == v keeps every
+    existing unscaled panel untouched (zero regression).
+    """
+
+    def setUp(self):
+        self.layout = LAYOUT_JS.read_text(encoding="utf-8")
+
+    def test_scale_compensation_helper_defined(self):
+        self.assertIn("function _scalePos(", self.layout)
+
+    def test_apply_pos_compensates_both_anchors_for_scale(self):
+        body = self.layout.split("function _applyPos(")[1].split("\nfunction ")[0]
+        # bottom-anchor (left, bottom) + top-anchor (left, top) = at least 4
+        # position values routed through the scale-compensating helper.
+        self.assertGreaterEqual(
+            body.count("_scalePos("), 4,
+            "_applyPos must divide left/top/bottom by the panel scale so a "
+            "scaled panel stays reachable to the screen edges")
+
+    def test_drag_move_compensates_for_scale(self):
+        body = self.layout.split("function _installDrag(")[1].split(
+            "\nfunction ")[0]
+        self.assertIn(
+            "_scalePos(", body,
+            "the live drag must track 1:1 for a scaled panel (divide by scale)")
+
+
 class AsciiTests(unittest.TestCase):
     def _assert_ascii(self, path: Path):
         data = path.read_bytes()
