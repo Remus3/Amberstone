@@ -235,6 +235,33 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (R101 ARAM+Arena OCR shadow-field wiring - Haiku-to-ZERO Lane E CV, shadow-first - vision-cv; ENGINE-IMPACT NONE)
+
+Gemini-loop DIRECTOR REFILL R101 = Haiku-to-ZERO Lane E CV OCR wiring. Full detail: LEDGER 842. Commit `c5301370` (docs `5a383ea3`).
+
+- Wire the already-built OCR numeric fields into ARAM + Arena coaches SHADOW-FIRST (log OCR-vs-Sonnet, NON-CONSUMING).
+  Premise verified: SHADOW_FIELDS + ocr_shadow were doc-only (grep-absent from all .py); the pre-existing *_shadow tests are
+  the SEPARATE det-choices coach-block shadow (dashboard._deterministic_coaching), no collision.
+- SLICE A core/vision_routing.py + modes/shared_vision.py: read_or_escalate shadow_fields kwarg (shadow fields ALWAYS
+  escalate to Sonnet even when OCR validates; Sonnet wins in the returned dict, OCR log-only) + _ocr_shadow_path
+  (RC_OCR_SHADOW_PATH override else data/ocr_shadow.jsonl) + _log_ocr_shadow (JSONL {ts,field,ocr_val,sonnet_val,match},
+  fail-soft, ensure_ascii); GameVisionReader.SHADOW_FIELDS class attr (default [] = unchanged) threaded into read_tiered.
+- SLICE B coaches/aram_coach.py + coaches/arena_coach.py: 8 shadow numerics (ally_1..4_hp 0-100, gold, level 1-18,
+  cs 0-1000, kda x/y/z) into SHADOW_FIELDS + TIERED_FIELDS + TIERED_VALIDATORS; ARAM inline _run_vision config LIFTED to
+  class-level _ARAM_TIERED_FIELDS/_ARAM_SHADOW_FIELDS/_ARAM_TIERED_VALIDATORS for testability; NON-CONSUMING (SHADOW_FIELDS
+  strict-subset of TIERED_FIELDS, no served-dict mutation, PROMPT untouched).
+- COST NOTE: ARAM/Arena already escalate to Sonnet most ticks (semantic fields augment_select/fight_state have no OCR
+  region), so shadow-forcing adds negligible live cost - mainly the OCR-vs-Sonnet log seeding the Lane E migration dataset.
+- 2 parallel worktree slices, TDD RED-first, verifier CONFIRM 10/10 (18 new + 85 regression pass, ruff clean, clean tree
+  no ocr_shadow.jsonl pollution, 0 added non-ASCII, exactly 6 files). Integrated: 103 focused + 1150 scoped consumer pass
+  + 59 subtests; full-suite partial 79% 0-fail (Tier-1 per R5). RC :8888 restarted pid 1404 -> 6092 (alive/reload_ok).
+  ENGINE-IMPACT NONE. done_sentinel --tests 1150 --regressions 0.
+- NEXT (live-gated): tools/ocr_shadow_report.py match-rate gate over accrued rows -> validated per-field OCR-only flip
+  (needs shadow accrual + operator OK). Don't-redo: ARAM+Arena OCR shadow wiring SHIPPED (do NOT re-pitch wiring the built
+  OCR fields into the coaches - done shadow-first); the OCR-vs-Sonnet log lives at data/ocr_shadow.jsonl.
+
+---
+
 # 2026-07-10 (R99 Chainlaced Crushers (3173) magic-shield EHP credit + R98 vision-OCR escalation resolve - ds-engine; ENGINE 1.191.0 -> 1.192.0)
 
 Gemini-loop DIRECTOR REFILL R99 = ESCALATION RESOLVE + DS SWEEP. Full detail: LEDGER 840. Commit `c335eafb`.
