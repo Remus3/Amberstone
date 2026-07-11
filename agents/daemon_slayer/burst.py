@@ -385,6 +385,12 @@ class BurstResult:
     # ``total_burst_damage``. 0.0 by default so the assume_takedown=False
     # path is byte-identical - same convention as ``execute_finisher_damage``.
     takedown_eruption_damage: float = 0.0
+    # R110 (1.203.0) - item low-HP magic/true amp ("Cinderbloom", Shadowflame).
+    # The MAGIC/TRUE multiplier applied when assume_item_lowhp_magic_crit is armed
+    # AND the target is below 40% HP AND a registered Shadowflame id (4645 +20% /
+    # 224645 +15%) is equipped; 1.0 (identity) otherwise, so the default-OFF path
+    # is byte-identical - same convention as the other assume_* result fields.
+    item_lowhp_magic_crit_mult: float = 1.0
     stats: dict[str, float] = field(default_factory=dict)
     notes: tuple[str, ...] = field(default_factory=tuple)
 
@@ -428,6 +434,7 @@ class BurstResult:
             "execute_finisher_damage": self.execute_finisher_damage,
             "target_lifeline_shield_absorbed": self.target_lifeline_shield_absorbed,
             "takedown_eruption_damage": self.takedown_eruption_damage,
+            "item_lowhp_magic_crit_mult": self.item_lowhp_magic_crit_mult,
             "stats": dict(self.stats),
             "notes": list(self.notes),
         }
@@ -518,6 +525,7 @@ def compute_burst_damage(
     caster_current_hp_pct: float = 1.0,
     assume_physical_burst: bool = False,
     assume_shielded_target: bool = False,
+    assume_item_lowhp_magic_crit: bool = False,
 ) -> BurstResult:
     """Compute one-combo total burst damage for the resolved build.
 
@@ -745,6 +753,19 @@ def compute_burst_damage(
         item_effects, target_max_hp, ctx.caster_max_hp,
     )
     magic_amp = total_magic_amp_multiplier(item_effects)
+    # R110 (1.203.0): item low-HP MAGIC/TRUE amp ("Cinderbloom", Shadowflame).
+    # assume_item_lowhp_magic_crit=False -> _lowhp_amp is the identity 1.0 and
+    # every MAGIC/TRUE fold below is byte-identical. When armed AND the target is
+    # below 40% HP AND a registered Shadowflame id is equipped, magic + TRUE
+    # damage is amplified (+20% SR 4645 / +15% Arena 224645) - the DDragon
+    # Cinderbloom gate the engine never modeled. MAGIC-AND-TRUE reach (magic_amp
+    # is MAGIC-only) is the distinguishing feature; physical + the AA path are
+    # never touched. Gated on target_current_hp_pct (the fixed target-state
+    # convention this scorer already uses for its keystone / missing-HP amps).
+    from ._item_lowhp_magic_crit import item_lowhp_magic_crit_amp
+    _lowhp_amp = item_lowhp_magic_crit_amp(
+        resolved.item_ids, target_current_hp_pct, assume_item_lowhp_magic_crit,
+    )
 
     # Effective resists - lethality flows through here.
     target_armor_eff = effective_target_armor(target_armor, item_effects, level)
@@ -905,7 +926,8 @@ def compute_burst_damage(
         post_mode = raw * mode_mult
         dt = (form.damage_type or "MAGIC").upper()
         spell_magic_amp = magic_amp if dt == "MAGIC" else 1.0
-        post_amps = post_mode * damage_amp * spell_magic_amp
+        spell_lowhp_amp = _lowhp_amp if dt in ("MAGIC", "TRUE") else 1.0
+        post_amps = post_mode * damage_amp * spell_magic_amp * spell_lowhp_amp
         mit = _mitigation_factor(form.damage_type, target_armor_eff, target_mr_eff)
         final = post_amps * mit
         # item 232 - geometry-aware AoE scaling. Byte-identical at the default
@@ -1029,7 +1051,7 @@ def compute_burst_damage(
     if assume_takedown and target_max_hp > 0:
         execute_pct = total_execute_max_hp_pct(item_effects)
         if execute_pct > 0:
-            execute_finisher_damage = execute_pct * target_max_hp
+            execute_finisher_damage = execute_pct * target_max_hp * _lowhp_amp
             total_burst += execute_finisher_damage
 
     # R70 (2026-07-03): Hollow Radiance Desolate champion-takedown eruption.
@@ -1058,7 +1080,7 @@ def compute_burst_damage(
                 "MAGIC", target_armor_eff, target_mr_eff
             )
             takedown_eruption_damage = (
-                eruption_raw * mode_mult * magic_amp * eruption_mit
+                eruption_raw * mode_mult * magic_amp * eruption_mit * _lowhp_amp
             )
             total_burst += takedown_eruption_damage
 
@@ -1079,7 +1101,9 @@ def compute_burst_damage(
             magic_burst_mit = _mitigation_factor(
                 "MAGIC", target_armor_eff, target_mr_eff
             )
-            magic_burst_damage = magic_burst_raw * mode_mult * magic_amp * magic_burst_mit
+            magic_burst_damage = (
+                magic_burst_raw * mode_mult * magic_amp * magic_burst_mit * _lowhp_amp
+            )
             total_burst += magic_burst_damage
 
     # DSV8 (1.178.0): item-active physical-burst seam - the PHYSICAL analogue
@@ -1165,7 +1189,7 @@ def compute_burst_damage(
             det_mit = _mitigation_factor("MAGIC", target_armor_eff, target_mr_eff)
             ally_detonation_damage = (
                 det_raw * mode_mult * magic_amp * det_mit
-                * _ASSUMED_ALLY_DETONATION_PROB
+                * _ASSUMED_ALLY_DETONATION_PROB * _lowhp_amp
             )
             total_burst += ally_detonation_damage
 
@@ -1203,13 +1227,18 @@ def compute_burst_damage(
                     _rentry.damage_type, target_armor_eff, target_mr_eff
                 )
                 _ramp = magic_amp if _rentry.damage_type == "MAGIC" else 1.0
+                _rlowhp = (
+                    _lowhp_amp if _rentry.damage_type in ("MAGIC", "TRUE") else 1.0
+                )
                 _rcad = (
                     _rentry.reflect_cadence_s
                     if _rentry.reflect_cadence_s > 0.0
                     else 1.0
                 )
                 _rhits = _ASSUMED_REFLECT_BURST_WINDOW_S / _rcad
-                reflect_burst_damage = _rproc * mode_mult * _ramp * _rmit * _rhits
+                reflect_burst_damage = (
+                    _rproc * mode_mult * _ramp * _rmit * _rhits * _rlowhp
+                )
                 total_burst += reflect_burst_damage
 
         # R68 (1.175.0): ITEM-keyed Thorns reflect (Thornmail 3075 + pool
@@ -1234,6 +1263,9 @@ def compute_burst_damage(
                     _ientry.damage_type, target_armor_eff, target_mr_eff
                 )
                 _iamp = magic_amp if _ientry.damage_type == "MAGIC" else 1.0
+                _ilowhp = (
+                    _lowhp_amp if _ientry.damage_type in ("MAGIC", "TRUE") else 1.0
+                )
                 _icad = (
                     _ientry.reflect_cadence_s
                     if _ientry.reflect_cadence_s > 0.0
@@ -1241,7 +1273,7 @@ def compute_burst_damage(
                 )
                 _ihits = _ASSUMED_REFLECT_BURST_WINDOW_S / _icad
                 item_reflect_burst_damage = (
-                    _iproc * mode_mult * _iamp * _imit * _ihits
+                    _iproc * mode_mult * _iamp * _imit * _ihits * _ilowhp
                 )
                 total_burst += item_reflect_burst_damage
                 _item_reflect_label = (
@@ -1466,6 +1498,7 @@ def compute_burst_damage(
         execute_finisher_damage=execute_finisher_damage,
         target_lifeline_shield_absorbed=target_lifeline_shield_absorbed,
         takedown_eruption_damage=takedown_eruption_damage,
+        item_lowhp_magic_crit_mult=_lowhp_amp,
         stats=dict(resolved.stats),
         notes=tuple(notes),
     )
