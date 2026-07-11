@@ -743,3 +743,82 @@ def test_main_json_carries_unclassified_samples(tmp_path, capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["agreement"]["laning"]["unclassified_native_samples"] == [
         ["ward the river", 1]]
+
+
+# ---- build agreement dead-state guard (mirror of the laning cycle-53 guard) ----
+# summarize_build_agreement previously counted a dead-player overlay ("WAIT
+# RESPAWN") / policy-disabled ("COACHING DISABLED") native as an unmapped build,
+# flooding unclassified_native (264x "WAIT RESPAWN" on the live log, surfaced by
+# LEDGER 853). The laning path already drops these via _is_non_laning_native_state
+# at the top of its loop; the build path must too. Pure de-bias: those ticks were
+# never comparable, so comparable_covered + agree are unchanged (no rate move).
+
+
+def test_summarize_build_agreement_drops_dead_state_native():
+    records = [
+        # covered dead-state overlay natives -> dropped, NOT unclassified
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "WAIT RESPAWN"},
+        {"mode": "sr", "covered": True, "lean": "anti_squishy",
+         "native_action": "COACHING DISABLED"},
+        # a genuine unmapped build survives as unclassified (not a state tick)
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "Infinity Edge into Phantom Dancer"},
+    ]
+    out = rep.summarize_build_agreement(records)
+    assert out["unclassified_native"] == 1  # only the real build, not the states
+    assert out["unclassified_native_samples"] == [
+        ["Infinity Edge into Phantom Dancer", 1]]
+    assert all("RESPAWN" not in s[0] for s in out["unclassified_native_samples"])
+
+
+def test_summarize_build_agreement_dead_state_drops_uncovered_too():
+    # an uncovered dead-state native must also NOT inflate uncovered_with_native
+    # (mirror of the laning guard, which drops the state tick before the
+    # uncovered accounting).
+    records = [
+        {"mode": "aram", "covered": False, "lean": None,
+         "native_action": "WAIT RESPAWN"},
+    ]
+    out = rep.summarize_build_agreement(records)
+    assert out["uncovered_with_native"] == 0
+
+
+def test_summarize_build_agreement_real_build_mentioning_respawn_kept():
+    # a REAL build recommendation that merely mentions "respawn" as buy-timing
+    # ("Complete Mortal Reminder on respawn") classifies to a lean (Mortal
+    # Reminder -> anti_tank), so it is a comparable tick and must NOT be dropped
+    # by the dead-state guard. Only a PURE overlay state ("WAIT RESPAWN", no item
+    # keyword -> no lean) is dropped. This guards the orthogonal-axis over-drop
+    # the bare "respawn" substring caused on the build axis (18 real builds on the
+    # live log mention respawn as timing) - the build-lean classifier decides
+    # comparability first, the guard only de-biases non-lean ticks.
+    records = [
+        {"mode": "sr", "covered": True, "lean": "anti_tank",
+         "native_action": "Complete Mortal Reminder on respawn (need 647g)"},
+    ]
+    out = rep.summarize_build_agreement(records)
+    assert out["comparable_covered"] == 1
+    assert out["agree"] == 1
+    assert out["unclassified_native"] == 0
+
+
+def test_summarize_build_agreement_dead_state_no_rate_change():
+    # the guard is a pure de-bias: a comparable build tick (native classifies to
+    # a lean) is untouched, so comparable_covered + agree + rate are identical
+    # whether or not a dead-state tick is interleaved.
+    comparable_only = [
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "Rush Lord Dominik's vs their tanks"},
+    ]
+    with_dead_state = comparable_only + [
+        {"mode": "aram", "covered": True, "lean": "anti_tank",
+         "native_action": "WAIT RESPAWN"},
+        {"mode": "aram", "covered": False, "lean": None,
+         "native_action": "COACHING DISABLED"},
+    ]
+    a = rep.summarize_build_agreement(comparable_only)
+    b = rep.summarize_build_agreement(with_dead_state)
+    assert a["comparable_covered"] == b["comparable_covered"] == 1
+    assert a["agree"] == b["agree"] == 1
+    assert a["agreement_rate"] == b["agreement_rate"] == 1.0
