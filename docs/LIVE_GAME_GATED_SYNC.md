@@ -322,6 +322,23 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   stacks multiplicatively with B46's Steelcaps per-hit AA-DR on a build with both. SOURCE:
   docs/LEDGER.md item 807.
 
+- B47b. (PRACTICE-SR) R108 `assume_item_general_dr` FLIP + CALIBRATION (item UNTARGETED GENERAL
+  %DR: Celestial Opposition 3869 "Blessing" 35% melee / 25% ranged + Crown of the Shattered Queen
+  664644 "Safeguard" 40% -> ALL-damage-type EHP credit incl TRUE, the ONLY item DR lane that
+  touches the true denominator). UNLIKE B45/B46 (already flipped ON) and LIKE B47, the ENGINE
+  default ships OFF (byte-identical) - the default-ON flip is OWED (operator-gated,
+  do-not-flip-blind): (a) a DS restart with `assume_item_general_dr=True` armed + own-build sanity
+  that a Celestial/Crown holder up-ranks on the survivability axis without dominating a real-resist
+  swap; (b) a practice/real-SR eyeball that a carrier survives sanely; (c) the 0.4
+  `_GENERAL_DR_UPTIME` amortization midpoint CALIBRATION vs real fight uptime (Celestial refreshes
+  on every champion hit = high uptime; Crown breaks then a long CD = low uptime, so the single
+  shared midpoint is conservative). NOTE: Celestial 3869 is a support-line item + Crown 664644 an
+  SR mage item, so build-relevance is medium; the credit is infrastructure for any future item %DR.
+  A SEPARATE Arena tail: the Arena mirror 444644 is EXCLUDED pending a live-Arena magnitude confirm
+  (Meraki 50% vs DDragon 90%), and the "Draw Your Sword" augment (id 134, ranged->melee) leaves the
+  Runaan's melee gate augment-blind (background chip, Arena-only cosmetic). DS restart on flip.
+  SOURCE: docs/LEDGER.md item 855.
+
 - B48. (PRACTICE-SR, Lane E) Vision-OCR native-res crop path: the live OCR read path still
   consumes the 1280-HALVED `/latest-frame` (`vision_server/_frame.py` `_SELF_GRAB_MAX_WIDTH=1280`),
   so the native-2560 OCR boxes get scaled DOWN 0.5x at crop time (re-introduces the halved-frame
