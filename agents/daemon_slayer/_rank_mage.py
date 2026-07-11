@@ -296,7 +296,7 @@ def rank_items_by_ability_dps(
         # ability caster (e.g. Diana / Ekko) - the shop blocks the purchase
         # (2026-07-02).
         champion_is_melee=_champion_is_melee(
-            snapshot.champions.get(str(champion_id))
+            snapshot.champions.get(str(champion_id)), augments
         ),
     )
 

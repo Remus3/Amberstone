@@ -2001,7 +2001,7 @@ def rank_items_by_burst(
         # Ranged-only purchasability gate: drop Runaan's (+ alias) for a melee
         # burst champ - the shop blocks the purchase (2026-07-02).
         champion_is_melee=_champion_is_melee(
-            snapshot.champions.get(str(champion_id))
+            snapshot.champions.get(str(champion_id)), augments
         ),
     )
 

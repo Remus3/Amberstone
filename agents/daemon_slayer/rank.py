@@ -246,7 +246,65 @@ def _is_ranged_marksman(champ_rec: dict) -> bool:
         return False
 
 
-def _champion_is_melee(champ_rec: Optional[dict]) -> bool:
+# Arena/Cherry augments that CONVERT the wielder to melee - after which the
+# ranged-only items in ``RANGED_ONLY_ITEM_IDS`` are non-functional (Runaan's
+# bonus bolts do nothing in melee form), so a converted ranged champ must be
+# gated exactly like a base-melee one. The base-range gate keys only on the
+# champion's BASE attackrange and is otherwise augment-blind. Keyed by BOTH
+# apiName (stable) and numeric id (16.13.1 ``arena_augments.json``) so every
+# caller form - ``134`` / ``"134"`` / ``"DrawYourSword"`` / the record dict -
+# resolves without a snapshot lookup. Add to these sets only on wiki/data-
+# verified evidence for a future patch (mirrors ``RANGED_ONLY_ITEM_IDS``).
+_MELEE_CONVERSION_AUGMENT_APINAMES: frozenset[str] = frozenset({
+    "DrawYourSword",  # id 134 (rarity 2, arena_augments.json): "You are now melee."
+})
+_MELEE_CONVERSION_AUGMENT_IDS: frozenset[int] = frozenset({134})
+
+
+def _augment_forces_melee(augments: Optional[Iterable]) -> bool:
+    """True iff any active Arena/Cherry augment converts the wielder to melee.
+
+    Accepts the same heterogeneous augment-list shapes the ranker threads
+    (``Augment`` instances, cdragon record dicts, or id/apiName ``int``|``str``
+    refs) and matches them against the id + apiName conversion sets - no
+    snapshot lookup needed (both forms of the sole entry are registered).
+    ``None`` / empty -> False, so a non-Arena (SR/ARAM) call is a byte-identical
+    no-op and a non-conversion augment never forces melee (no over-filter of a
+    real ranged carry's ranged-only pool).
+    """
+    if not augments:
+        return False
+    for entry in augments:
+        if isinstance(entry, bool):
+            continue
+        if isinstance(entry, int):
+            if entry in _MELEE_CONVERSION_AUGMENT_IDS:
+                return True
+            continue
+        if isinstance(entry, str):
+            if entry in _MELEE_CONVERSION_AUGMENT_APINAMES:
+                return True
+            if entry.isdigit() and int(entry) in _MELEE_CONVERSION_AUGMENT_IDS:
+                return True
+            continue
+        if isinstance(entry, dict):
+            if str(entry.get("apiName") or "") in _MELEE_CONVERSION_AUGMENT_APINAMES:
+                return True
+            try:
+                if int(entry.get("id")) in _MELEE_CONVERSION_AUGMENT_IDS:
+                    return True
+            except (TypeError, ValueError):
+                pass
+            continue
+        api = getattr(entry, "api_name", None)
+        if api is not None and str(api) in _MELEE_CONVERSION_AUGMENT_APINAMES:
+            return True
+    return False
+
+
+def _champion_is_melee(
+    champ_rec: Optional[dict], augments: Optional[Iterable] = None
+) -> bool:
     """True iff this champion is MELEE - blocked by the in-game shop from the
     ranged-only items in ``RANGED_ONLY_ITEM_IDS``.
 
@@ -255,7 +313,15 @@ def _champion_is_melee(champ_rec: Optional[dict]) -> bool:
     unknown / malformed record fails CLOSED to False (treated as ranged), so a
     missing champ record never over-filters a real ranged carry's pool; the
     live bug (a known melee champ, real record) is still caught.
+
+    ALSO melee when an active Arena/Cherry augment converts the wielder to melee
+    (``_augment_forces_melee``; currently only "Draw Your Sword" / id 134). The
+    ``augments`` argument defaults ``None`` so every SR/ARAM + base-melee caller
+    is byte-identical; the conversion check is evaluated FIRST so it holds even
+    if the base champ record is missing/malformed.
     """
+    if _augment_forces_melee(augments):
+        return True
     if not isinstance(champ_rec, dict):
         return False
     rng = (champ_rec.get("stats") or {}).get("attackrange", 0) or 0
@@ -954,7 +1020,7 @@ def rank_items(
         cost_ceiling=cost_ceiling,
         # Ranged-only purchasability gate: drop Runaan's (+ alias) when the
         # champ is melee - the in-game shop blocks the purchase (2026-07-02).
-        champion_is_melee=_champion_is_melee(champ_rec),
+        champion_is_melee=_champion_is_melee(champ_rec, augments),
     )
 
     ranked: list[RankedItem] = []

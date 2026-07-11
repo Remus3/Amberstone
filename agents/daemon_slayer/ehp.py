@@ -2653,7 +2653,7 @@ def rank_items_by_ehp(
         cost_ceiling=cost_ceiling,
         # Ranged-only purchasability gate: drop Runaan's (+ alias) for a melee
         # tank - the shop blocks the purchase (2026-07-02).
-        champion_is_melee=_champion_is_melee(champ_rec),
+        champion_is_melee=_champion_is_melee(champ_rec, augments),
     )
 
     ranked: list[EhpRankedItem] = []
