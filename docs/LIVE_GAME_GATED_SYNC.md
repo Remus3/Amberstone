@@ -1797,3 +1797,21 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   sustain-EHP ranks sensibly vs other sustain items, and that the max-stacks best-case is not over-credited
   on a short-fight clock (the omnivamp needs full Void Corruption ramp). A WRONG credit is worse than none -
   do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-10 Guardian Angel item-revive EHP-NUMERATOR seam (`compute_ehp(assume_item_revive=)`, ENGINE
+  1.195.0, default-OFF; R102). NEW `_item_revive` registry (3026 + Arena 223026 = 0.50 base-HP fraction).
+  When armed, folds `item_revive_mult = 1 + 0.5*(base_hp/total_hp)*0.4` into `common_revive` (through NORMAL
+  resists; GA has no egg). OFF byte-identical; ON RAISES blended_ehp (a NUMERATOR term, unlike omnivamp
+  sustain) - Garen L13 + GA 3331.93 -> 3998.31 (x1.20). OWED (operator-gated, do-not-flip-blind): wire an EHP
+  consumer to pass `assume_item_revive=True`, eyeball a GA holder's blended-EHP ranks across ~2 real games
+  (50%-base second life amortized at 0.4, not over-credited on a short-fight clock; build-dependent re-rank if
+  armed in a ranker). DS `:8893` restart on flip. Does NOT block any further stage.
+- 2026-07-10 item self-STASIS EHP-NUMERATOR seam (`compute_ehp(assume_item_stasis=)`, ENGINE 1.196.0,
+  default-OFF; R103). NEW `_item_survival_window` registry (Zhonya 3157 + Arena 223157, Seeker 2420, Wooglet
+  228002 = 2.5s stasis each), the ITEM-side lane of the champion-keyed `_passive_survival_window_overrides`.
+  When armed, folds `item_stasis_mult = 1 + sum(min(2.5/6,1)*0.35)` into `common_revive` (avoided-damage
+  fraction; composes multiplicatively with the champion survival window + revive). OFF byte-identical; ON
+  RAISES blended_ehp - Garen L13 3157 3376.01 -> 3868.34 (x1.1458). OWED (operator-gated, do-not-flip-blind):
+  wire an EHP consumer to pass `assume_item_stasis=True`, eyeball a Zhonya/Seeker/Wooglet holder's blended-EHP
+  ranks across ~2 real games (2.5s stasis amortized at the 0.35 item-active midpoint, not over-credited on a
+  short-fight clock; build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT block
+  any further stage.
