@@ -245,6 +245,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-11 (DS Meraki-refute R106: item conditional RESIST-GRANT ramp (Jak'Sho 6665 / Force of Nature 4401) -> EHP DENOMINATOR; ENGINE 1.198.0 -> 1.199.0)
+
+ship-batch skill session (DS Meraki-refute rotation refill; the R105 NEXT-flagged CONFIRMED-live gap). Ground-truth verify -> main-thread TDD (RED-first) -> read-only verifier CONFIRM (8/8 fresh). Full detail: LEDGER 851. Commit `bf3bd566`.
+
+- GAP (R106): Jak'Sho 6665/226665 "Voidborn Resilience" (+30% of BONUS armor+MR at 5 combat stacks - a PERCENT-of-bonus grant, NOT the operator's "~+2/+2 per stack" estimate; the Meraki 16.13.1 effects text corrected the spec before any code) + Force of Nature 4401/224401 "Steadfast" (+70 FLAT bonus MR at 8 stacks, MR only; Dissipate magic-DR removed V14.1, not credited) earned ZERO EHP for the stacked ramp. `build_champion` folds only the FLAT static resists (Jak'Sho +45/+45, FoN +55 MR); the champion `resist_grants` is champion-keyed so an item can never match it - the structural gap the item-side registries fill.
+- FIX: NEW `_item_resist_grants.py` (item-keyed; flat + percent-of-BONUS modes, family-dedup so base + Arena mirror credit ONCE; `_ITEM_RESIST_STACK_PROB` 0.5 at-max-stacks midpoint - they ramp then HOLD) + default-OFF `apply_item_resist_grants` seam folding `item_resist_armor`/`item_resist_mr` into `eff_armor`/`eff_mr` (the DENOMINATOR). Folded at the eff_* assembly so it flows into every per-type EHP AND the `_blend_with_heal` sustain mirror via the eff_* CLOSURE - NO numerator touch (cleaner than R105). NEW `item_resist_armor`/`item_resist_mr` EhpResult fields (END) + to_dict; threaded ehp/hybrid/server. ALSO the owed Tier-0 fix: corrected the stale `ehp.py:33-36` "Voidborn flows through build_champion already" note. OFF byte-identical; live-probe EXACT - Ornn L13 + FoN mr+35.0 (magic-only, physical unchanged); + Jak'Sho 6.75/6.75; + BOTH mr 50.0 (Voidborn's 30% correctly scales the pooled bonus incl FoN's +55).
+- CEREMONY: ENGINE 1.198.0 -> 1.199.0 (130 quoted-literal pins / 110 files, 0 residual; 6 build-order stamps STAMP-ONLY; CHANGELOG R106; DAEMON_SLAYER banner 8285). Share sync 436 files, --check green. DS :8893 restarted -> /health 1.199.0 (port-free on /End; HTTP not HTTPS). New test 16/16; DS suite 8285 pass / 1 skip / 1943 subtests (pre+post bump). Full RC `tests/` 11326 pass / 3 NON-regression fails (1 = stale live :8893 RESOLVED by restart+re-run; 2 = the LEDGER-828 coach-poll asyncio flake, pass 2/2 isolated). Verifier CONFIRM (8/8).
+- NEXT: NO refute-confirmed item gap currently queued - the item-side survivability rotation (omnivamp / ItemShield / item-revive / item-stasis / item-spell-shield / item-mana-HP / item-resist-grant) is now ALL saturated. A refill needs a FRESH adversarial Meraki-vs-registry scan of a DIFFERENT mechanic. OR advance Lane A precompute (`tools/hz_shadow_report.py`). OR drain live-gated flips (`docs/LIVE_GAME_GATED_SYNC.md`, incl. this R106 `apply_item_resist_grants` flip + the R105 `apply_item_mana_health` flip).
+- Don't-redo: Jak'Sho/FoN conditional resist ramp SHIPPED; `_item_resist_grants` registry (percent-of-bonus + flat modes) exists for any future clean conditional item resist grant. The ehp.py:33-36 stale Jak'Sho/FoN comment is FIXED.
+
+---
+
 # 2026-07-11 (DS Meraki-refute R105: item-side MANA -> MAX-HP "Awe" (Winter's Approach 3119 / Fimbulwinter 3121 + mirrors) -> EHP numerator; ENGINE 1.197.0 -> 1.198.0)
 
 Orchestrated ultracode session (DS Meraki-refute rotation; operator in a live game). Parallel 4-agent adversarial refute + completeness + schema sweep BEFORE code -> main-thread TDD (RED-first) -> read-only verifier CONFIRM. Full detail: LEDGER 850.
