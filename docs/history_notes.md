@@ -257,6 +257,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-11 (HEXCORE offline viewer - full expansion: 141 nodes, source-grounded tooltips, all-lane pulse flow)
+
+Non-DS docs session. Full + expanded update to `docs/HEXCORE_offline.html` (the self-contained accretion-disk codebase galaxy). Ultracode workflow: 11 parallel agents read real source to rewrite every node description; a gap-finder surfaced new subsystems + flagged stale nodes. Commits `825649a2` + `399d9722`, CI green.
+
+- SHIPPED: node data moved from the fragile RAW ";|"-delimited string to a JSON NODES array + 4-line parser - fixes a latent truncation bug (old parser split on ";" and kept only field[4], so any desc containing a semicolon, e.g. rca*/guidelines nodes, was silently cut in the live viewer). All 130 descriptions rewritten from real files/docs into accurate "what it is / does" tooltips; hover tooltip now shows the desc body (was label+counts only).
+- SHIPPED: 11 new subsystem nodes + 32 edges (coaches/, coach_integration/, tft/, dashboard/routes_* x66, web/js/main.js, panels/* x60, lcu rune-writer + client, vision _inference, build_planner planner, scripts/data_pipeline). Stale fix: m_gamereader relabeled game_reader.py -> game_reader/ (now a package). 130 -> 141 nodes. Pulses now seed on EVERY lane (was ~62%) so flow reaches all nodes + two-dot comet tails. Stats refreshed (ENGINE 1.200.0, commits 3335, patch 16.13.1).
+- VERIFIED: node --check clean on the 600KB script; NODES parses to 141; all edge/dust refs resolve; browser init clean (no console errors); ASCII-only; hygiene gate 13/13; CI green (ci + CodSpeed both success on 399d9722).
+- Don't-redo: HEXCORE_offline.html expansion SHIPPED. Sibling `docs/HEXCORE.html` is an older diverged variant (no hover tooltip) - operator confirmed it is NOT needed, leave it. Live pixel render NOT captured this session (headless browser pane, rAF paused); open in Chrome on Legion to view animation.
+
+---
+
 # 2026-07-11 (DS Meraki-refute R106: item conditional RESIST-GRANT ramp (Jak'Sho 6665 / Force of Nature 4401) -> EHP DENOMINATOR; ENGINE 1.198.0 -> 1.199.0)
 
 ship-batch skill session (DS Meraki-refute rotation refill; the R105 NEXT-flagged CONFIRMED-live gap). Ground-truth verify -> main-thread TDD (RED-first) -> read-only verifier CONFIRM (8/8 fresh). Full detail: LEDGER 851. Commit `bf3bd566`.
