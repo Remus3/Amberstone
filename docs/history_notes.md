@@ -235,6 +235,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-10 (R101-C OCR shadow-report flip-readiness gate - tools/ocr_shadow_report.py - Lane E OCR migration step 2; ENGINE-IMPACT NONE)
+
+Manual /done session (not Gemini-loop), executing the R101 (LEDGER 842) NEXT. Full detail: LEDGER 843. Code commit `6e5a0354` (relocated from WAKEUP 2026-07-10, R102 wrap).
+
+- tools/ocr_shadow_report.py: READ-ONLY per-field OCR-vs-Sonnet match-rate report over data/ocr_shadow.jsonl (the {ts,field,ocr_val,sonnet_val,match} log R101 wired). Two-part flip gate mirrors aram_shadow_report: a field is flip-eligible only at >=MIN_SAMPLES rows AND >=MATCH_GATE match (defaults 50 / 0.90, CLI --min-samples/--gate). 0.90 > aram's 0.70 because OCR-only replaces Sonnet as the numeric source of truth. Fail-soft (missing/empty/malformed log -> zeroed, never raises); FLAGS readiness only - no flip authorization.
+- KNOWN_FIELDS = the 8 coach shadow numerics (ally_1..4_hp, gold, level, cs, kda), seeded so a zero-row field still renders; present_rate + accuracy_when_present sit beside match_rate so a fail reads miss-vs-mismatch.
+- TDD RED-first (ImportError) -> GREEN 19 tests (tests/test_ocr_shadow_report.py). Tier-1 (one read-only tool, no engine/schema/DS): py_compile + full ruff check . green + hygiene guards + the module slice (32 passed), per R5. Single-thread inline (2 files, under R9); no worktree/subagent. RC NOT restarted (a tool, not RC-loaded); DS untouched (1.192.0). Committed 6e5a0354.
+- NEXT (live-gated): run the report once data/ocr_shadow.jsonl accrues rows from a live ARAM/Arena game; when a field clears the gate + operator OKs, flip that field OCR-only (~1-line coach-side, NOT re-wiring, NOT blind). Don't-redo: the report + its gate are SHIPPED (do NOT rebuild); the log path/schema are FIXED by R101.
+
+---
+
 # 2026-07-10 (R101 ARAM+Arena OCR shadow-field wiring - Haiku-to-ZERO Lane E CV, shadow-first - vision-cv; ENGINE-IMPACT NONE)
 
 Gemini-loop DIRECTOR REFILL R101 = Haiku-to-ZERO Lane E CV OCR wiring. Full detail: LEDGER 842. Commit `c5301370` (docs `5a383ea3`).
