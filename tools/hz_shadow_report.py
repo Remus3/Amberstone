@@ -529,11 +529,22 @@ def summarize_build_agreement(records: list[dict]) -> dict:
         native_text = rec.get("native_action")
         has_native = bool(native_text)
         precompute = rec.get("lean") if rec.get("covered") else None
+        native = classify_build_lean(native_text)
+        # Dead-state / macro overlay ("WAIT RESPAWN", "COACHING DISABLED", a
+        # SETUP DRAKE macro call) that is NOT itself a build lean -> drop it from
+        # every bucket, mirroring the laning guard's de-bias intent. GATED on
+        # native is None so a REAL build that merely mentions "respawn"/"setup" as
+        # buy-timing (e.g. "Complete Mortal Reminder on respawn") still classifies
+        # to a lean and stays comparable - the build-lean classifier is the
+        # comparability arbiter here, unlike laning where classify_verdict doubles
+        # as both the verdict AND the guard axis. Pure de-bias: no comparable tick
+        # is ever dropped, so comparable_covered + agree (the rate) never move.
+        if native is None and _is_non_laning_native_state(rec):
+            continue
         if has_native and not rec.get("covered"):
             uncovered_with_native += 1
         if precompute is None:
             continue
-        native = classify_build_lean(native_text)
         if native is None:
             if has_native:
                 unclassified_native += 1
