@@ -911,16 +911,37 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const _boEnemyNames = resolveChampNames(_boEnemyIds);
   const seqHtml = _csvBuildSeqStripHtml(
     myName, _csvDsModeFor(mode), _boArch, _boEnemyNames, variants);
+  // item 1 Phase 2/3: the champ-wide rune SIDE panel (sibling of .csv-builds).
+  // Its selected page FOLLOWS the active item build by precedence
+  // sessionOverride ?? savedDefault ?? recommendedPageId. The rune-page model
+  // is fetched + cached per (champ, mode) like the user variants; an unsaved
+  // override is DISCARDED whenever the active build changes to a different
+  // buildId (do not carry, do not restore later).
+  _csvFetchRunePages(myName, mode || "sr");
+  const _runeModel = _CSV_RUNEPAGES_CACHE[`${myName}|${mode || "sr"}`]
+    || { pages: [], builds: [] };
+  const _activeSel = _csvActiveBuildSelection(myName, mode, variants);
+  const _activeBuildId = _activeSel ? _activeSel.composedKey : "";
+  _CSV_RUNE_OVERRIDE = _csvRuneOverrideOnBuildChange(
+    _CSV_RUNE_OVERRIDE, myName, _activeBuildId);
+  const _runeDefaults = _csvSavedRuneDefault(myName);
+  const _selPageId = _csvSelectedRunePageId(
+    myName, _activeBuildId, _runeModel.builds, _runeDefaults, _CSV_RUNE_OVERRIDE);
+  const runeSideHtml = _csvRuneSidePanelHtml(
+    myName, _activeBuildId, _runeModel.pages, _runeModel.builds, _selPageId);
   const buildsHtml = `
-    <div class="csv-builds" data-champion="${myName || ""}" data-mode="${mode || "sr"}">
-      <div class="csv-builds-head">
-        <div class="csv-builds-title">${buildsTitle}</div>
-        ${_pushCtrlHtml}
+    <div class="csv-builds-row">
+      <div class="csv-builds" data-champion="${myName || ""}" data-mode="${mode || "sr"}">
+        <div class="csv-builds-head">
+          <div class="csv-builds-title">${buildsTitle}</div>
+          ${_pushCtrlHtml}
+        </div>
+        <div class="csv-builds-body" id="csv-builds-body">
+          ${_csvBuildVariantRowsHtml(variants, _savedSel.variantKey, _savedSel.runeKey)}
+        </div>
+        ${seqHtml}
       </div>
-      <div class="csv-builds-body" id="csv-builds-body">
-        ${_csvBuildVariantRowsHtml(variants, _savedSel.variantKey, _savedSel.runeKey)}
-      </div>
-      ${seqHtml}
+      ${runeSideHtml}
     </div>`;
 
   // R30 (2026-06-24): Arena pane = duo + augments, then the shared build
@@ -1567,6 +1588,20 @@ const _CSV_DS_INFLIGHT = Object.create(null);
 const _CSV_USER_CACHE    = Object.create(null);
 const _CSV_USER_INFLIGHT = Object.create(null);
 
+// item 1 Phase 2: parallel cache for the deduped rune-page model from
+// /api/loadout/rune-pages (rune-follows-build). Keyed champion|mode like the
+// user-variant cache above. Value = {pages:[...], builds:[{buildId,
+// recommendedPageId}]}. Feeds the champ-wide rune SIDE panel.
+const _CSV_RUNEPAGES_CACHE    = Object.create(null);
+const _CSV_RUNEPAGES_INFLIGHT = Object.create(null);
+
+// item 1 Phase 2: single in-memory rune-page override slot. A side-panel
+// option click sets it to {champ, buildId, pageId}. It is DISCARDED (not
+// carried, not restored later) when the active build changes to a different
+// buildId, and reset on a fresh champion mount. Precedence at read time is
+// override ?? savedDefault ?? recommendedPageId (see _csvSelectedRunePageId).
+let _CSV_RUNE_OVERRIDE = null;
+
 // s209 v2: adaptive-summoners cache (per champion + enemy-roster sig
 // + base summoner pair). Refetches when enemies lock new champs.
 const _CSV_ADAPT_CACHE    = Object.create(null);
@@ -2139,6 +2174,42 @@ function _csvSetPushFlag(cat, on) {
   catch (_) {}
 }
 
+// item 1 Phase 3: save-as-default rune page per (champion, buildId). Stored
+// GLOBAL under rc-cs-rune-default as a JSON object keyed "<champ>::<buildId>"
+// -> pageId, so a saved default survives games + modes. Mirrors the
+// _csvSavedRuneChoice/_csvSaveRuneChoice pair (item 240) but keyed on the
+// build (composed key) instead of a bare champion, and holding a pageId
+// instead of a keystone. The precedence tier (savedDefault) reads it.
+function _csvRuneDefaultStorageKey() { return "rc-cs-rune-default"; }
+function _csvSavedRuneDefault(champion) {
+  // {buildId: pageId} for THIS champion only (filtered from the global blob).
+  const out = Object.create(null);
+  try {
+    const raw = localStorage.getItem(_csvRuneDefaultStorageKey());
+    if (!raw) return out;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return out;
+    const prefix = (champion || "") + "::";
+    Object.keys(parsed).forEach((k) => {
+      if (k.indexOf(prefix) === 0) out[k.slice(prefix.length)] = parsed[k];
+    });
+  } catch (_) {}
+  return out;
+}
+function _csvSaveRuneDefault(champion, buildId, pageId) {
+  if (!champion || !buildId || !pageId) return;
+  try {
+    let parsed = {};
+    const raw = localStorage.getItem(_csvRuneDefaultStorageKey());
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (p && typeof p === "object") parsed = p;
+    }
+    parsed[champion + "::" + buildId] = pageId;
+    localStorage.setItem(_csvRuneDefaultStorageKey(), JSON.stringify(parsed));
+  } catch (_) {}
+}
+
 // --- Archetype scorer resolution (read-only) ----------------------------
 //
 // The operator-facing archetype PICKER was removed (LEDGER 823): clicking a
@@ -2618,6 +2689,71 @@ function _csvFetchUserVariants(champion, mode) {
     });
 }
 
+// item 1 Phase 2: fetch the deduped rune-page model (coaches.rune_pages via
+// POST /api/loadout/rune-pages) for the champ-wide rune SIDE panel. Cached
+// per (champion, mode) exactly like _csvFetchUserVariants; a landed fetch
+// schedules a render so the side panel fills in on the next tick. The
+// rune-page model is a pure function of champion+mode (deterministic, not
+// game-state), so the fetch runs under ?ui_mock too: the live route
+// populates the mocked champ-select, and a no-API host degrades to the empty
+// model via the .catch below (dedupFetch is one-shot - no retry, no hang).
+function _csvFetchRunePages(champion, mode) {
+  if (!champion || !mode) return;
+  const key = `${champion}|${mode}`;
+  if (_CSV_RUNEPAGES_CACHE[key] !== undefined || _CSV_RUNEPAGES_INFLIGHT[key]) return;
+  _CSV_RUNEPAGES_INFLIGHT[key] = true;
+  dedupFetch("/api/loadout/rune-pages", {
+    method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ champion, mode }),
+  })
+    .then((r) => r.ok ? r.json() : null)
+    .then((data) => {
+      _CSV_RUNEPAGES_INFLIGHT[key] = false;
+      const pages  = (data && Array.isArray(data.pages))  ? data.pages  : [];
+      const builds = (data && Array.isArray(data.builds)) ? data.builds : [];
+      _CSV_RUNEPAGES_CACHE[key] = { pages, builds };
+      if (pages.length) _csvScheduleRender();
+    })
+    .catch(() => {
+      _CSV_RUNEPAGES_INFLIGHT[key] = false;
+      _CSV_RUNEPAGES_CACHE[key] = { pages: [], builds: [] };
+    });
+}
+
+// item 1 Phase 2: the recommended pageId for a build = builds[].recommendedPageId
+// whose buildId matches (builds[].buildId IS the frontend composed key).
+function _csvRecommendedPageId(builds, buildId) {
+  if (!Array.isArray(builds) || !buildId) return "";
+  const b = builds.find((x) => x && x.buildId === buildId);
+  return (b && b.recommendedPageId) || "";
+}
+
+// item 1 Phase 2 (B2): the selected rune page for the active build, by
+// precedence sessionOverride ?? savedDefault ?? recommendedPageId. The
+// override applies ONLY when it is bound to THIS champ + buildId, so an
+// override on build A never leaks onto build B (the discard-on-build-change
+// rule at read time; the active clear is _csvRuneOverrideOnBuildChange).
+function _csvSelectedRunePageId(champion, buildId, builds, savedDefaults, override) {
+  if (override && override.champ === champion
+      && override.buildId === buildId && override.pageId) {
+    return override.pageId;
+  }
+  const sd = savedDefaults || {};
+  if (buildId && sd[buildId]) return sd[buildId];
+  return _csvRecommendedPageId(builds, buildId);
+}
+
+// item 1 Phase 2 (B2): on an active-build change, DISCARD an override that is
+// not bound to the new build (do not carry it, do not restore it later).
+// Returns the slot value to keep (null = discard).
+function _csvRuneOverrideOnBuildChange(override, champion, newBuildId) {
+  if (override && override.champ === champion && override.buildId === newBuildId) {
+    return override;
+  }
+  return null;
+}
+
 // Build chooser variants for the central pane. s171: returns DS-engine-
 // ranked items when available (cached per champion+mode), otherwise a
 // "computing..." placeholder. Mode-specific keystone hints distinguish
@@ -2841,79 +2977,69 @@ function _csvMarkSeqAgainstVariant(scope, itemIds) {
 // Changing the active build card re-points the amber (recommended)
 // marker but does NOT change the sticky selection (3b): the panel's
 // click handler is the only thing that moves green.
-function _csvRunePanelHtml(variant, recommendedRuneKey, savedRuneKey) {
-  const paths = Array.isArray(variant.build_paths) ? variant.build_paths : [];
-  // Collect distinct (keystone) rune options, preserving first-seen
-  // order. Each option records the keystone name + its tree pair so the
-  // click can persist + (later) push the right page. Skip empties.
+// item 1 Phase 2/3: the champ-wide rune SIDE panel (sibling of .csv-builds,
+// promoted out of the per-build-card nested column). Renders ONE selectable
+// option per DEDUPED page in pages[] (from /api/loadout/rune-pages). The
+// option whose pageId === the active build's recommendedPageId ALWAYS carries
+// the star + is-recommended marker - even when a different page is selected
+// (B3, so the operator can still see what the rec was after going situational)
+// - and the selectedPageId carries the green is-selected highlight
+// INDEPENDENTLY. The header holds a Save-as-default button (B4).
+function _csvRuneSidePanelHtml(champion, buildId, pages, builds, selectedPageId) {
+  const list = Array.isArray(pages) ? pages : [];
   const seen = Object.create(null);
   const opts = [];
-  paths.forEach((p) => {
-    const ks = String((p && p.keystone) || variant.keystone || "").trim();
-    if (!ks || seen[ks]) return;
-    seen[ks] = true;
-    opts.push({
-      key:       ks,
-      keystone:  ks,
-      primary:   String((p && p.primary)   || variant.primary   || ""),
-      secondary: String((p && p.secondary) || variant.secondary || ""),
-    });
+  list.forEach((p) => {
+    const pid = String((p && p.pageId) || "");
+    if (!pid || seen[pid]) return;
+    seen[pid] = true;
+    opts.push(p);
   });
-  // Fall back to the variant-level keystone when no path carried one
-  // (defensive - a collapsed variant always has at least the variant
-  // keystone).
-  if (!opts.length && variant.keystone) {
-    opts.push({
-      key:       String(variant.keystone),
-      keystone:  String(variant.keystone),
-      primary:   String(variant.primary || ""),
-      secondary: String(variant.secondary || ""),
-    });
-  }
-  // Ensure the AUTO-APPLIED keystone (the one lcu_rune_writer actually pushes,
-  // from rune_recommendations - see loadout_resolver auto_keystone) is always
-  // a visible option so it can carry the recommended marker even when it is
-  // not one of the build-card keystones (Caitlyn: auto=Arcane Comet, cards=
-  // PTA/Fleet/Lethal Tempo). This is what makes the panel match what the game
-  // actually receives.
-  const autoKs = String(variant.auto_keystone || "").trim();
-  if (autoKs && !seen[autoKs]) {
-    seen[autoKs] = true;
-    opts.unshift({
-      key:       autoKs,
-      keystone:  autoKs,
-      primary:   String(variant.auto_primary || ""),
-      secondary: String(variant.auto_secondary || ""),
-    });
-  }
+  const recId = String(_csvRecommendedPageId(builds, buildId) || "");
+  const selId = String(selectedPageId || "");
+  const headHtml = `
+      <div class="csv-rune-side-head">
+        <div class="csv-rune-side-title">Runes</div>
+        <button type="button" class="csv-rune-save-default" id="csv-rune-save-default"
+                title="Save this rune page as the default for the selected build">Save as default</button>
+      </div>`;
   if (!opts.length) {
-    return '<div class="csv-rune-panel"><div class="csv-empty">no rune options</div></div>';
+    return `
+    <div class="csv-rune-side" data-champion="${champion || ""}" data-build-id="${buildId || ""}">
+      ${headHtml}
+      <div class="csv-rune-side-list"><div class="csv-empty">no rune pages yet</div></div>
+    </div>`;
   }
-  // Whichever option matches the saved rune key is GREEN. The
-  // recommended option is AMBER only when it is NOT the saved one.
-  const onRecommended = !!savedRuneKey && savedRuneKey === recommendedRuneKey;
-  const rows = opts.map((o) => {
-    const isSelected    = !!savedRuneKey && o.key === savedRuneKey;
-    const isRecommended = o.key === recommendedRuneKey && !onRecommended && !isSelected;
-    const icon = _csvKeystoneIcon(o.keystone);
-    const ksHtml = keystoneTooltipHtml(o.keystone);
+  const rows = opts.map((p) => {
+    const pid  = String(p.pageId);
+    const ks   = String(p.keystone || "");
+    const prim = String(p.primary || "");
+    const sec  = String(p.secondary || "");
+    const isSelected    = pid === selId;
+    const isRecommended = pid === recId;   // ALWAYS star the rec (B3).
+    const icon = _csvKeystoneIcon(ks);
+    const ksHtml = keystoneTooltipHtml(ks);
     const ttAttr = ksHtml
       ? ` data-tt-html="${ksHtml.replace(/"/g, "&quot;")}"`
-      : (o.keystone ? ` title="${o.keystone}"` : "");
-    const cls = "csv-rune-opt"
+      : (ks ? ` title="${ks}"` : "");
+    const cls = "csv-rune-side-opt"
       + (isSelected ? " is-selected" : "")
       + (isRecommended ? " is-recommended" : "");
+    const star = isRecommended
+      ? '<span class="csv-rune-side-star" title="Recommended page">*</span>'
+      : "";
+    const treeTxt = (prim || sec) ? `${prim}${sec ? " / " + sec : ""}` : "";
     return `
-      <div class="${cls}" data-rune-key="${o.keystone}"
-           data-rune-primary="${o.primary}" data-rune-secondary="${o.secondary}"${ttAttr}>
-        ${icon ? `<img class="csv-rune-opt-icon" src="${icon}" onerror="this.style.display='none'" alt="">` : '<span class="csv-rune-opt-icon"></span>'}
-        <span class="csv-rune-opt-name">${o.keystone}</span>
+      <div class="${cls}" data-page-id="${pid}"${ttAttr}>
+        ${icon ? `<img class="csv-rune-side-icon" src="${icon}" onerror="this.style.display='none'" alt="">` : '<span class="csv-rune-side-icon"></span>'}
+        <span class="csv-rune-side-name">${ks}${treeTxt ? ` <span class="csv-rune-side-tree">${treeTxt}</span>` : ""}</span>
+        ${star}
       </div>`;
   }).join("");
   return `
-    <div class="csv-rune-panel">
-      <div class="csv-rune-panel-title">Runes</div>
-      <div class="csv-rune-opt-list">${rows}</div>
+    <div class="csv-rune-side" data-champion="${champion || ""}" data-build-id="${buildId || ""}">
+      ${headHtml}
+      <div class="csv-rune-side-list">${rows}</div>
     </div>`;
 }
 
@@ -3052,21 +3178,11 @@ function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
       const pathRowsHtml = buildPaths.map((p) =>
         _csvBuildPathRowHtml(v.key, p, p.key === activePathKey, ver)
       ).join("");
-      // Item 240 part-3 (3a/3b): the recommended rune is the keystone of
-      // the currently-active build card; the nested rune panel renders
-      // to the RIGHT of the cards. The active path's keystone falls back
-      // to the variant-level keystone (build_paths may not carry per-path
-      // runes - the resolver does the same fallback).
-      const activePath = buildPaths.find((p) => p && p.key === activePathKey)
-        || buildPaths.find((p) => p && p._is_primary)
-        || buildPaths[0] || {};
-      // The recommended (amber) rune mirrors what the auto-writer actually
-      // applies (v.auto_keystone, from rune_recommendations) so the panel
-      // matches the game. Falls back to the active build-card keystone when
-      // no auto rec exists for this champion/mode.
-      const recommendedRuneKey =
-        String(v.auto_keystone || activePath.keystone || v.keystone || "");
-      const runePanelHtml = _csvRunePanelHtml(v, recommendedRuneKey, savedRuneKey);
+      // item 1 Phase 2: the nested per-card rune column was PROMOTED to the
+      // one champ-wide rune SIDE panel (sibling of .csv-builds - see
+      // _csvRuneSidePanelHtml). The collapsed card now renders only its
+      // labeled build-path list; the recommended/selected rune tracking
+      // moved to the side panel's follow-the-build precedence.
       return `
         <div class="csv-build-row csv-build-row-collapsed${idx === selectedIdx ? " selected" : ""}"
              data-variant="${v.key}"
@@ -3076,7 +3192,6 @@ function _csvBuildVariantRowsHtml(variants, savedChoice, savedRuneKey) {
           </div>
           <div class="csv-build-collapsed-cols">
             <div class="csv-build-path-list">${pathRowsHtml}</div>
-            ${runePanelHtml}
           </div>
         </div>`;
     }
@@ -3166,24 +3281,6 @@ function _csvWireBuildVariants(scope) {
   const champion = wrap ? (wrap.dataset.champion || "") : "";
   const mode     = wrap ? (wrap.dataset.mode || "sr") : "sr";
 
-  // Item 240 part-3 (3a/3b): re-point the rune panel's AMBER
-  // (recommended) marker to the keystone of the now-active build card,
-  // WITHOUT moving the GREEN (selected) marker. Reads the active card's
-  // keystone from its rune option's sibling cards. Called on a path-row
-  // click so the recommended rune tracks the active card live (3b).
-  function _repointRecommendedRune(scopeRoot, recommendedRuneKey) {
-    const savedRuneKey = _csvSavedRuneChoice(champion);
-    const onRecommended = !!savedRuneKey && savedRuneKey === recommendedRuneKey;
-    scopeRoot.querySelectorAll(".csv-rune-opt").forEach((opt) => {
-      const k = opt.dataset.runeKey || "";
-      const isSelected = !!savedRuneKey && k === savedRuneKey;
-      const isRec = k === recommendedRuneKey && !onRecommended && !isSelected;
-      opt.classList.toggle("is-recommended", isRec);
-      // Keep green authoritative on the selected option.
-      opt.classList.toggle("is-selected", isSelected);
-    });
-  }
-
   // Item 178 (2026-05-24): wire path-row clicks inside collapsed variants
   // BEFORE the legacy single-variant click handler so a nested click is
   // handled by the inner row (and stopPropagation prevents the outer
@@ -3213,12 +3310,10 @@ function _csvWireBuildVariants(scope) {
       _csvMarkSeqAgainstVariant(
         prow.closest(".csv-builds") || scope,
         (prow.dataset.itemIds || "").split(",").filter(Boolean));
-      // 3b: re-point the recommended rune (amber) to this card's
-      // keystone - the active card's keystone falls back to the
-      // variant-level keystone (data-rune-key on the matching opt).
-      const recKey = prow.dataset.cardKeystone || "";
-      const collapsedRoot = outer || scope;
-      if (recKey) _repointRecommendedRune(collapsedRoot, recKey);
+      // item 1 Phase 2: a build-path click changes the active build, so the
+      // rune SIDE panel must re-follow (its precedence recomputes + an
+      // override bound to the OLD build is discarded on the next render).
+      _csvScheduleRender();
       // 3e: auto-push BUILD only when its category box is checked. When
       // unchecked the selection persists but fires NO push.
       const flags = _csvGetPushFlags();
@@ -3229,40 +3324,40 @@ function _csvWireBuildVariants(scope) {
     });
   });
 
-  // Item 240 part-3 (3b/3e): rune-option clicks inside the nested rune
-  // panel move the GREEN (selected/sticky) marker + persist the rune
-  // choice per champion. When the "Runes" box is checked the click also
-  // auto-pushes the rune page (3e). Selecting the option that was amber
-  // (recommended) clears the amber (you are now ON the recommended rune
-  // -> just green per 3b).
-  const runeOpts = scope.querySelectorAll(".csv-rune-opt");
-  runeOpts.forEach((opt) => {
-    opt.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      const runeKey = opt.dataset.runeKey || "";
-      if (!champion || !runeKey) return;
-      _csvSaveRuneChoice(champion, runeKey);
-      const panel = opt.closest(".csv-rune-panel") || scope;
-      panel.querySelectorAll(".csv-rune-opt").forEach((o) => {
-        const isSel = (o.dataset.runeKey || "") === runeKey;
-        o.classList.toggle("is-selected", isSel);
-        // Clear amber on the now-selected option (3b: on the
-        // recommended rune -> green only, no second color).
-        if (isSel) o.classList.remove("is-recommended");
+  // item 1 Phase 2 side-panel wiring (B2/B4): a rune SIDE-panel option click
+  // sets the single in-memory session override for the ACTIVE build and
+  // reschedules a render (the star + green highlight come from the pure
+  // _csvRuneSidePanelHtml render, so no imperative class toggling here). The
+  // Save-as-default button persists the currently-selected page to
+  // rc-cs-rune-default. NO LCU push is wired this session (that is Phase 6;
+  // the push helpers stay defined for it, untouched).
+  const runeSideWrap = scope.querySelector(".csv-rune-side");
+  if (runeSideWrap) {
+    const sideChamp   = runeSideWrap.dataset.champion || champion || "";
+    const sideBuildId = runeSideWrap.dataset.buildId || "";
+    runeSideWrap.querySelectorAll(".csv-rune-side-opt").forEach((opt) => {
+      opt.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const pid = opt.dataset.pageId || "";
+        if (!sideChamp || !sideBuildId || !pid) return;
+        _CSV_RUNE_OVERRIDE = { champ: sideChamp, buildId: sideBuildId, pageId: pid };
+        _csvScheduleRender();
       });
-      // 3e: auto-push RUNES only when its category box is checked. The
-      // active build card's composed key drives the resolver overlay so
-      // the pushed page matches the operator's rune selection's card.
-      const flags = _csvGetPushFlags();
-      if (flags.runes) {
-        // cid=1: _csvBuildVariantsFor uses cid ONLY as a "champion is
-        // picked" guard (the body resolves variants by name+mode from
-        // the warm cache); 0 would hit the empty-placeholder early return.
-        const variants = _csvBuildVariantsFor(1, champion, mode, null);
-        _csvPushCategory(champion, mode, "runes", variants);
-      }
     });
-  });
+    const saveBtn = runeSideWrap.querySelector(".csv-rune-save-default");
+    if (saveBtn) {
+      saveBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (!sideChamp || !sideBuildId) return;
+        const selOpt = runeSideWrap.querySelector(".csv-rune-side-opt.is-selected")
+          || runeSideWrap.querySelector(".csv-rune-side-opt");
+        const pid = selOpt ? (selOpt.dataset.pageId || "") : "";
+        if (!pid) return;
+        _csvSaveRuneDefault(sideChamp, sideBuildId, pid);
+        _csvScheduleRender();
+      });
+    }
+  }
 
   // Item 240 part-3 (3d/3e): header control - the [PUSH] button + the 3
   // category checkboxes. A checkbox going unchecked -> checked persists
@@ -4042,6 +4137,29 @@ try {
       if (typeof ov === "function" && ov !== prev) _csvTeamDamageFetch = ov;
       try { return _csvRenderTeamDamage(cs); }
       finally { _csvTeamDamageFetch = prev; }
+    };
+    // item 1 Phase 2: seed the rune-page cache deterministically + force a
+    // SYNCHRONOUS champ-select re-render, so the snapshot harness can populate
+    // the champ-wide rune SIDE panel (which reads _CSV_RUNEPAGES_CACHE inside
+    // the whole-view render) and read it back in ONE evaluate. The production
+    // fetch path (_csvFetchRunePages) is untouched; this hook only exists
+    // under ?ui_mock=1. Mirrors _csvScheduleRender's rAF body without the
+    // frame wait (restores the cached ChampSelect lcu under mock mode).
+    window.__csvSeedRunePages = function (champ, mode, model) {
+      const key = (champ || "") + "|" + (mode || "sr");
+      _CSV_RUNEPAGES_CACHE[key] = {
+        pages:  Array.isArray(model && model.pages)  ? model.pages  : [],
+        builds: Array.isArray(model && model.builds) ? model.builds : [],
+      };
+      const isMock = !!(document && document.body && document.body.dataset.uiMock === "1");
+      const liveLcu = (state.latest && state.latest.lcu) || null;
+      const lcu = (isMock && (!liveLcu || liveLcu.phase !== "ChampSelect"))
+        ? _csvLastRenderedLcu : liveLcu;
+      if (lcu) {
+        const sec = document.getElementById("view-champ-select");
+        if (sec) sec.dataset.csvSig = "";
+        renderChampSelectView(lcu);
+      }
     };
   }
 } catch (_) { /* non-browser / no window - skip the test hook */ }

@@ -10,10 +10,13 @@ future refactor must not rip out, plus a Python-level round-trip of the
 {variantKey, runeKey} persistence contract's shape.
 
 Coverage:
- 3a - the nested rune panel render fn + the 2-column collapsed layout.
- 3b - GREEN (.is-selected sticky) + AMBER (.is-recommended) border classes;
-      the recommended marker re-points on a build-card click without moving
-      the sticky green; on-recommended -> green-only (no amber).
+ 3a/3b - SUPERSEDED by item-1 Phase 2 (rune-follows-build). The per-build-card
+      nested rune panel + its amber-recommended-vs-green-selected border model
+      were replaced by ONE champ-wide rune SIDE panel (sibling of .csv-builds)
+      whose selected page FOLLOWS the active build and whose recommended page
+      ALWAYS carries the star (independent of selection). New guard =
+      tests/test_champ_select_rune_follows_build.py; the old 3a/3b grep pins
+      (RunePanel3aTests + RuneBorders3bTests) were removed here.
  3c - per-champion {variantKey, runeKey} persistence: variant choice stays in
       the item_build-shared rc-ingame-build-<champ> plain-string key (so the
       in-game build chooser pre-select is unbroken), rune choice in a SEPARATE
@@ -61,116 +64,6 @@ def _fn_body(text: str, sig: str) -> str:
             if depth == 0:
                 return text[open_brace : i + 1]
     raise AssertionError(f"unbalanced braces after {sig!r}")
-
-
-class RunePanel3aTests(unittest.TestCase):
-    """3a: nested rune panel render fn + 2-column collapsed layout."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.js = CHAMP_SELECT_JS.read_text(encoding="utf-8")
-        cls.css = CHAMP_SELECT_CSS.read_text(encoding="utf-8")
-
-    def test_rune_panel_render_fn_exists(self):
-        self.assertIn(
-            "function _csvRunePanelHtml(", self.js,
-            "missing _csvRunePanelHtml - the nested rune panel render fn "
-            "(3a). Without it the cards-right rune column does not render.",
-        )
-
-    def test_collapsed_two_column_wrapper(self):
-        # The collapsed-variant return must wrap the path-list + rune
-        # panel in a 2-column grid (cards left, runes right).
-        body = _fn_body(self.js, "function _csvBuildVariantRowsHtml(")
-        self.assertIn("csv-build-collapsed-cols", body,
-            "collapsed variant must wrap cards + rune panel in the "
-            "csv-build-collapsed-cols 2-column grid (3a).")
-        self.assertIn("_csvRunePanelHtml(", body,
-            "collapsed variant render must mount the rune panel beside "
-            "the build-path cards (3a).")
-
-    def test_css_two_column_grid_present(self):
-        self.assertIn(".csv-build-collapsed-cols", self.css,
-            "missing .csv-build-collapsed-cols CSS - the 2-column grid.")
-        # grid-template-columns gives the cards 1fr + a right rune rail.
-        m = re.search(
-            r"\.csv-build-collapsed-cols\s*\{[^}]*grid-template-columns:[^;]*1fr",
-            self.css, re.DOTALL)
-        self.assertIsNotNone(m,
-            ".csv-build-collapsed-cols must be a grid with a flex-grow "
-            "cards column + a rune rail.")
-
-    def test_css_rune_panel_classes_present(self):
-        for cls in (".csv-rune-panel", ".csv-rune-opt", ".csv-rune-opt-list",
-                    ".csv-rune-opt-name", ".csv-rune-opt-icon"):
-            self.assertIn(cls, self.css, f"missing rune-panel CSS class {cls}")
-
-
-class RuneBorders3bTests(unittest.TestCase):
-    """3b: GREEN sticky + AMBER recommended border classes + re-point."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.js = CHAMP_SELECT_JS.read_text(encoding="utf-8")
-        cls.css = CHAMP_SELECT_CSS.read_text(encoding="utf-8")
-
-    def test_panel_emits_selected_and_recommended_classes(self):
-        body = _fn_body(self.js, "function _csvRunePanelHtml(")
-        self.assertIn("is-selected", body,
-            "rune panel must mark the operator's sticky rune choice "
-            "with is-selected (GREEN, 3b).")
-        self.assertIn("is-recommended", body,
-            "rune panel must mark the active build card's recommended "
-            "rune with is-recommended (AMBER, 3b).")
-
-    def test_on_recommended_suppresses_amber(self):
-        # When the operator is already on the recommended rune, the amber
-        # is withheld (green only). The guard variable is onRecommended.
-        body = _fn_body(self.js, "function _csvRunePanelHtml(")
-        self.assertIn("onRecommended", body,
-            "rune panel must compute onRecommended so the amber is "
-            "withheld when the sticky choice == recommended (3b: green "
-            "only, no second color).")
-        # isRecommended must be gated on NOT onRecommended AND NOT selected.
-        self.assertRegex(
-            body,
-            r"isRecommended\s*=\s*o\.key === recommendedRuneKey && !onRecommended && !isSelected",
-            "is-recommended must be withheld both when the option is the "
-            "sticky selection and when the operator is already on the "
-            "recommended rune (3b).")
-
-    def test_card_click_repoints_recommended_not_selected(self):
-        # The path-row click handler must re-point the amber marker to the
-        # active card's keystone WITHOUT moving the green sticky marker.
-        body = _fn_body(self.js, "function _csvWireBuildVariants(")
-        self.assertIn("_repointRecommendedRune", body,
-            "build-card click must re-point the recommended (amber) rune "
-            "marker (3b).")
-        self.assertIn("data-card-keystone", self.js,
-            "each build-path card must carry data-card-keystone so the "
-            "click can re-point the amber marker to its keystone (3b).")
-
-    def test_css_green_and_amber_borders(self):
-        # RC2 reskin (2026-06-22): the rune-option selection borders were
-        # tokenized onto the Hextech foundation - GREEN -> var(--good)
-        # (#37D08A) and AMBER -> var(--warn) (#E8A33D). The test INTENT is
-        # unchanged ("selected = green, recommended = amber"); accept either
-        # the legacy hex or the foundation token so the signal-color semantics
-        # stay pinned without re-fragilizing on the exact hex.
-        m_sel = re.search(
-            r"\.csv-rune-opt\.is-selected\s*\{[^}]*"
-            r"border-color:\s*(?:#4ade80|var\(--good\))",
-            self.css, re.DOTALL)
-        self.assertIsNotNone(m_sel,
-            ".csv-rune-opt.is-selected must use the GREEN border-color "
-            "(#4ade80 or var(--good)) for the sticky rune choice (3b).")
-        m_rec = re.search(
-            r"\.csv-rune-opt\.is-recommended\s*\{[^}]*"
-            r"border-color:\s*(?:#fbbf24|var\(--warn\))",
-            self.css, re.DOTALL)
-        self.assertIsNotNone(m_rec,
-            ".csv-rune-opt.is-recommended must use the AMBER border-color "
-            "(#fbbf24 or var(--warn)) for the recommended rune (3b).")
 
 
 class HeaderControl3dTests(unittest.TestCase):
@@ -423,7 +316,8 @@ class PersistenceRoundTrip3cTests(unittest.TestCase):
 
 class MockFixture3aTests(unittest.TestCase):
     """The SR mock fixture carries distinct per-path keystones so the
-    rune panel renders >1 option (and the amber-vs-green behavior is
+    champ-wide rune SIDE panel (item-1 Phase 2) resolves >1 distinct
+    selectable page (the multi-page follow-the-build behavior is
     demonstrable in ?ui_mock=1)."""
 
     @classmethod
@@ -438,15 +332,15 @@ class MockFixture3aTests(unittest.TestCase):
         paths = rows[0].get("build_paths") or []
         self.assertGreaterEqual(len(paths), 2,
             "Jinx collapsed variant needs >=2 paths to demo the rune "
-            "panel (3a).")
+            "side panel's multiple selectable pages.")
         keystones = [p.get("keystone") for p in paths]
         self.assertTrue(all(keystones),
             "every mock build path must carry a keystone so the rune "
-            "panel renders per-card runes (3a).")
+            "side panel resolves a page per build.")
         self.assertGreaterEqual(len(set(keystones)), 2,
             "mock build paths must carry >=2 DISTINCT keystones so the "
-            "amber-recommended-vs-green-selected behavior is visible "
-            "(3b).")
+            "side panel offers >=2 distinct selectable pages (the "
+            "follow-the-build + always-star behavior is visible).")
 
 
 class AsciiHygieneTests(unittest.TestCase):
