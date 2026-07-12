@@ -39,7 +39,10 @@ PINS = {
     # ally-mirror CSS blocks removed took their dark literals with them).
     # LEDGER 824: 47 -> 44 (the .csv-arch* archetype-picker CSS was removed
     # and took its dark literals - #a78bfa / #4c3a82 / #1a1230 / ... - with it).
-    "web/css/panels/champ_select_view.css": 44,
+    # LEDGER 863: 44 -> 42 (item-1 Phase 5 removed the in-panel push-control
+    # CSS - the [PUSH] button + .csv-builds-push-* checkboxes - and took its
+    # dark literals with it; the pin was not lowered in that change).
+    "web/css/panels/champ_select_view.css": 42,
     "web/css/panels/coach_choices.css": 2,
     "web/css/panels/coach_decisions.css": 1,
     "web/css/panels/ds_statcheck.css": 3,
