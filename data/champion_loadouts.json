@@ -14501,49 +14501,25 @@
             "sr"
           ],
           "runes": {
-            "keystone": "Fleet Footwork",
-            "primary": "Precision",
-            "secondary": "Sorcery"
+            "keystone": "Arcane Comet",
+            "primary": "Sorcery",
+            "secondary": "Inspiration"
           },
           "summoners": [
             4,
-            21
+            14
           ],
           "items": [
-            "Blade of The Ruined King",
+            "Youmuu's Ghostblade",
             "Boots of Swiftness",
-            "Runaan's Hurricane",
-            "Lord Dominik's Regards",
-            "Infinity Edge",
-            "Yun Tal Wildarrows",
-            "Bloodthirster"
+            "Opportunity",
+            "The Collector",
+            "Serylda's Grudge",
+            "Edge of Night",
+            "Axiom Arc"
           ],
           "_collapsed": true,
           "build_paths": [
-            {
-              "key": "adc-standard",
-              "label": "Standard",
-              "items": [
-                "Blade of The Ruined King",
-                "Boots of Swiftness",
-                "Runaan's Hurricane",
-                "Lord Dominik's Regards",
-                "Infinity Edge",
-                "Yun Tal Wildarrows",
-                "Bloodthirster"
-              ],
-              "runes": {
-                "keystone": "Fleet Footwork",
-                "primary": "Precision",
-                "secondary": "Sorcery"
-              },
-              "summoners": [
-                4,
-                21
-              ],
-              "_source_variant_key": "adc-standard",
-              "_is_primary": true
-            },
             {
               "key": "lethality",
               "label": "Lethality",
@@ -14565,7 +14541,31 @@
                 4,
                 14
               ],
-              "_source_variant_key": "lethality"
+              "_source_variant_key": "lethality",
+              "_is_primary": true
+            },
+            {
+              "key": "adc-standard",
+              "label": "Standard",
+              "items": [
+                "Blade of The Ruined King",
+                "Boots of Swiftness",
+                "Runaan's Hurricane",
+                "Lord Dominik's Regards",
+                "Infinity Edge",
+                "Yun Tal Wildarrows",
+                "Bloodthirster"
+              ],
+              "runes": {
+                "keystone": "Fleet Footwork",
+                "primary": "Precision",
+                "secondary": "Sorcery"
+              },
+              "summoners": [
+                4,
+                21
+              ],
+              "_source_variant_key": "adc-standard"
             }
           ]
         },
