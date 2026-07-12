@@ -874,29 +874,26 @@ body[data-shell="overlay"] .ovx-statspanel .sp-selrow {
   gap: 6px;
   margin-bottom: 6px;
 }
-body[data-shell="overlay"] .ovx-statspanel .sp-role {
+/* Overlay item 8 rework: the in-panel role picker is retired - the rank-tier +
+ * compare-role selectors live in DS Settings now. The right-aligned .sp-src
+ * badge carries the provenance (tier + estimate / live avg) + the empty-state
+ * reason (no benchmark / set rank) so the estimate never reads as ground truth.
+ * Gold accent (the bracket sigil beside it stays cyan). */
+body[data-shell="overlay"] .ovx-statspanel .sp-src {
   flex: 1 1 auto;
   min-width: 0;
+  text-align: right;
+  /* Load-bearing provenance text ("Gold estimate" / "no benchmark") -> the 13px
+   * overlay tertiary floor (--fs-ov-chip), one step above the terse bracket
+   * sigil beside it, so the estimate caveat stays legible at game distance. */
   font-size: var(--fs-ov-chip);
   font-weight: 700;
-  color: rgba(var(--ovx-gold), 0.95);
-  background: rgba(var(--ovx-bg-nested), 0.95);
-  border: 1px solid rgba(var(--ovx-gold), 0.40);
-  border-radius: 3px;
-  padding: 2px 4px;
-  cursor: pointer;
-  /* R38 HIT-TARGETS: the panel's one clickable (role selector) reserves the
-   * 42px tap floor, matching the sibling overlay controls. */
-  min-height: var(--hit-min);
-}
-/* R72: keyboard-focus indicator on the panel's one clickable (R71 parity). */
-body[data-shell="overlay"] .ovx-statspanel .sp-role:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-body[data-shell="overlay"] .ovx-statspanel .sp-role option {
-  color: rgb(var(--ovx-text));
-  background: rgb(var(--ovx-bg-nested));
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: rgba(var(--ovx-gold), 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 body[data-shell="overlay"] .ovx-statspanel .sp-bracket {
   flex: 0 0 auto;
