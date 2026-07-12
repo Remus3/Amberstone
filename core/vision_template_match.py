@@ -302,6 +302,56 @@ def _match_score(cv2, np, crop, tpl, mask):
         return 0.0
 
 
+def score_all(crop, category="champions", roster=None):
+    """Raw (stem, confidence) for EVERY candidate in `category`.
+
+    Returns a list of (stem, confidence_float) in CANDIDATE order (roster order
+    when a non-empty roster is given, else the sorted catalog). confidence is
+    the UNROUNDED masked zero-mean Pearson score in [0.0, 1.0]. A candidate
+    whose template cannot be built is skipped (mirrors the match_icon loop).
+
+    This is the substrate match_icon reduces via argmax + threshold. A caller
+    that needs the full distribution rather than the single best - the offline
+    flip-readiness validator (nearest-confuser margins, a threshold sweep) or a
+    future confidence-weighted Live-Client/CV fusion layer - uses this directly
+    so there is ONE scoring code path.
+
+    Fully fail-soft: bad input, missing cv2/numpy, unknown category, empty
+    atlas, or numeric trouble -> []. Never raises."""
+    try:
+        import cv2
+        import numpy as np
+    except Exception:  # noqa: BLE001 - opencv/numpy optional
+        return []
+    try:
+        if category not in _CATEGORY_DIRS:
+            return []
+        arr = np.asarray(crop)
+        if arr.ndim != 3 or arr.shape[2] < 3:
+            return []
+        if arr.dtype != np.uint8:
+            arr = np.clip(arr, 0, 255).astype(np.uint8)
+        crop_rgb = np.ascontiguousarray(arr[:, :, :3])
+        height, width = int(crop_rgb.shape[0]), int(crop_rgb.shape[1])
+        size = _template_size(height, width)
+        if size is None or height < size or width < size:
+            return []
+        candidates = _candidate_stems(category, roster)
+        if not candidates:
+            return []
+        out = []
+        for stem in candidates:
+            tm = _resized_template(category, stem, size)
+            if tm is None:
+                continue
+            score = _match_score(cv2, np, crop_rgb, tm[0], tm[1])
+            out.append((stem, score))
+        return out
+    except Exception as exc:  # noqa: BLE001 - fail-soft contract
+        _log.debug("vision_template_match: score_all failed soft: %s", exc)
+        return []
+
+
 def match_icon(crop, category="champions", roster=None, threshold=None):
     """Best single icon match for one RGB crop against a category catalog.
 
@@ -316,38 +366,20 @@ def match_icon(crop, category="champions", roster=None, threshold=None):
     Returns (id_or_None, confidence_float). id is the winning stem when the best
     confidence >= threshold, else None; confidence is the best score seen,
     rounded to 3 places and always in [0.0, 1.0]. Fully fail-soft: any bad
-    input, missing dependency, or numeric trouble -> (None, 0.0). Never raises."""
+    input, missing dependency, or numeric trouble -> (None, 0.0). Never raises.
+
+    Thin argmax + threshold reducer over score_all (single scoring path). The
+    argmax uses a strict > so ties keep the first candidate in catalog order."""
     try:
-        import cv2
-        import numpy as np
-    except Exception:  # noqa: BLE001 - opencv/numpy optional
-        return (None, 0.0)
-    try:
-        if category not in _CATEGORY_DIRS:
-            return (None, 0.0)
         thr = _MATCH_THRESHOLD if threshold is None else _num(threshold)
         if thr is None:
             thr = _MATCH_THRESHOLD
-        arr = np.asarray(crop)
-        if arr.ndim != 3 or arr.shape[2] < 3:
-            return (None, 0.0)
-        if arr.dtype != np.uint8:
-            arr = np.clip(arr, 0, 255).astype(np.uint8)
-        crop_rgb = np.ascontiguousarray(arr[:, :, :3])
-        height, width = int(crop_rgb.shape[0]), int(crop_rgb.shape[1])
-        size = _template_size(height, width)
-        if size is None or height < size or width < size:
-            return (None, 0.0)
-        candidates = _candidate_stems(category, roster)
-        if not candidates:
+        scored = score_all(crop, category, roster)
+        if not scored:
             return (None, 0.0)
         best_id = None
         best_conf = 0.0
-        for stem in candidates:
-            tm = _resized_template(category, stem, size)
-            if tm is None:
-                continue
-            score = _match_score(cv2, np, crop_rgb, tm[0], tm[1])
+        for stem, score in scored:
             if score > best_conf:
                 best_conf = score
                 best_id = stem
