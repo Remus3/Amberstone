@@ -60,7 +60,7 @@ function _ensureRadial() {
   // passing through to the game (clickthrough_zones.js ZONE_SELECTOR).
   _radial.setAttribute("data-rc-zone", "");
   _radial.style.cssText = [
-    "position:fixed", "z-index:2147483601", "width:172px", "height:172px",
+    "position:fixed", "z-index:2147483601", "width:140px", "height:140px",
     "visibility:hidden", "left:0", "top:0",
   ].join(";") + ";";
   _WEDGES.forEach((w) => {
