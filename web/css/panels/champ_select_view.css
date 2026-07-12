@@ -2219,27 +2219,36 @@
 }
 .csv-build-path-item img { width: 100%; height: 100%; object-fit: cover; }
 
-/* Item 240 part-3 (3a, 2026-06-01): inside a collapsed SR variant, the
- * build-path cards sit on the LEFT and the nested RUNE panel on the
- * RIGHT (two columns). The cards column flex-grows; the rune panel is a
- * fixed-ish right rail. Wraps to single-column on narrow widths so the
- * My-Pick column never overflows. */
+/* item 1 Phase 2: inside a collapsed SR variant the build-path cards now
+ * fill the width. The nested RUNE column was PROMOTED out to the champ-wide
+ * rune SIDE panel (sibling of .csv-builds - see .csv-rune-side), so this
+ * wrapper is a single flex-grow column holding only the path list (the old
+ * reserved 170px rune rail is gone). */
 .csv-build-collapsed-cols {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 170px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   align-items: start;
 }
-@media (max-width: 560px) {
-  .csv-build-collapsed-cols { grid-template-columns: 1fr; }
+/* item 1 Phase 2: the nested .csv-rune-panel / .csv-rune-opt* styles were
+ * removed with the per-build-card rune panel - superseded by the
+ * .csv-rune-side* champ-wide side panel styles below. */
+
+/* item 1 Phase 2/3: the build column + the champ-wide rune SIDE panel sit in
+ * one flex row. The builds column flex-grows; the rune side panel is a fixed
+ * side rail. */
+.csv-builds-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
 }
-/* Item 240 part-3 (3a/3b): nested rune panel. Each rune option is a
- * keystone icon + name pill. Borders carry the selection signal:
- *   GREEN  (.is-selected)    = operator's sticky rune choice.
- *   AMBER  (.is-recommended) = rune recommended for the active build
- *                              card, shown ONLY when it differs from the
- *                              sticky choice (3b). */
-.csv-rune-panel {
+.csv-builds-row .csv-builds {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.csv-rune-side {
+  flex: 0 0 auto;
+  width: 200px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -2248,23 +2257,41 @@
   border: 1px solid var(--border);
   border-radius: 4px;
 }
-.csv-rune-panel-title {
+.csv-rune-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 2px 2px;
+  border-bottom: 1px solid var(--border);
+}
+.csv-rune-side-title {
   font-size: var(--fs-xs, 16px);
   font-weight: 700;
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0 2px 2px;
-  border-bottom: 1px solid var(--border);
 }
-.csv-rune-opt-list {
+.csv-rune-save-default {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 6px;
+  min-height: var(--hit-min, 42px);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.csv-rune-save-default:hover { border-color: var(--accent); background: #1a2030; }
+.csv-rune-side-list {
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-.csv-rune-opt {
-  display: grid;
-  grid-template-columns: 28px 1fr;
+.csv-rune-side-opt {
+  display: flex;
   align-items: center;
   gap: 6px;
   min-height: var(--hit-min, 42px);
@@ -2275,31 +2302,44 @@
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
 }
-.csv-rune-opt:hover { background: #1a2030; }
-/* GREEN sticky selection (3b). */
-.csv-rune-opt.is-selected {
+.csv-rune-side-opt:hover { background: #1a2030; }
+/* GREEN sticky selection (the page currently in effect). */
+.csv-rune-side-opt.is-selected {
   border-color: var(--good);
   background: #1a2a20;
 }
-/* AMBER recommended-for-active-card (3b). Withheld when the operator is
- * already on the recommended rune (then it is just green). */
-.csv-rune-opt.is-recommended {
+/* AMBER recommended - ALWAYS marked (even when a different page is selected),
+ * so the operator can see what the rec was after going situational (B3). */
+.csv-rune-side-opt.is-recommended {
   border-color: var(--warn);
-  background: #2a2415;
 }
-.csv-rune-opt-icon {
+.csv-rune-side-icon {
+  flex: 0 0 auto;
   width: 26px; height: 26px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--canvas);
 }
-.csv-rune-opt-name {
+.csv-rune-side-name {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--fs-sm, 18px);
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.csv-rune-side-tree {
+  font-size: var(--fs-xs, 16px);
+  font-weight: 500;
+  color: var(--dim);
+}
+.csv-rune-side-star {
+  flex: 0 0 auto;
+  font-size: var(--fs-sm, 18px);
+  font-weight: 700;
+  color: var(--warn);
 }
 
 /* Item 240 part-3 (3d): SR-build-chooser header control - the title on
