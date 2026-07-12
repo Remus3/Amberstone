@@ -17,6 +17,7 @@ import re
 import socket
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -206,11 +207,29 @@ def _atomic_write_json(target: Path, obj: object) -> None:
     to a PID-unique temp in the same dir (so the rename is same-filesystem
     and never collides with a concurrent reclaiming starter), then
     ``os.replace`` - atomic on POSIX and Windows.
+
+    Audit L-02 (2026-07-12): retry ``os.replace`` up to 3 times on transient
+    Windows PermissionError (reference_os_replace_winerror5), then always
+    unlink the ``.tmp`` sibling via finally so a crash or WinError 5 never
+    orphans a per-PID temp file into ``agents/state/``.
     """
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(f"{target.name}.{os.getpid()}.tmp")
     tmp.write_text(json.dumps(obj), encoding="utf-8")
-    os.replace(tmp, target)
+    try:
+        for attempt in range(3):
+            try:
+                os.replace(tmp, target)
+                return
+            except PermissionError:
+                if attempt == 2:
+                    raise
+                time.sleep(0.06)
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def _pid_alive(pid: int) -> bool:
@@ -233,6 +252,29 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
+def _reap_orphan_lockfile_tmps() -> None:
+    """Delete ``lockfile.<pid>.tmp`` files where ``<pid>`` is not a live process.
+
+    Called once at ``acquire_lock()`` startup. Cleans up tmps orphaned by a
+    prior crash or transient WinError 5 before the current supervisor takes
+    ownership (audit L-02, 2026-07-12).
+    """
+    for p in STATE_DIR.glob("lockfile.*.tmp"):
+        stem = p.name  # "lockfile.<pid>.tmp"
+        parts = stem.rsplit(".", 2)
+        if len(parts) != 3:
+            continue
+        try:
+            pid = int(parts[1])
+        except ValueError:
+            continue
+        if not _pid_alive(pid):
+            try:
+                p.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
 def acquire_lock() -> bool:
     """Acquire the supervisor singleton lock.
 
@@ -242,6 +284,7 @@ def acquire_lock() -> bool:
     fails.
     """
     STATE_DIR.mkdir(parents=True, exist_ok=True)
+    _reap_orphan_lockfile_tmps()
     sentinel = STATE_DIR / "lockfile.sentinel"
 
     def _write_lock_metadata() -> None:
