@@ -95,6 +95,7 @@ def _gather_get() -> list:
                                routes_snowball_elasticity,
                                routes_champ_benchmarks,
                                routes_bench_role_bracket,
+                               routes_bench_rank_tier,
                                routes_perf_curve,
                                routes_op_score,
                                routes_personal_vs,
@@ -155,6 +156,7 @@ def _gather_get() -> list:
                       + list(routes_snowball_elasticity.GET_ROUTES)
                       + list(routes_champ_benchmarks.GET_ROUTES)
                       + list(routes_bench_role_bracket.GET_ROUTES)
+                      + list(routes_bench_rank_tier.GET_ROUTES)
                       + list(routes_perf_curve.GET_ROUTES)
                       + list(routes_op_score.GET_ROUTES)
                       + list(routes_personal_vs.GET_ROUTES)

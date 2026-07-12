@@ -90,12 +90,15 @@ Check state: `Get-ScheduledTask -TaskName "RC-*" | Select TaskName, State`
 
 ```powershell
 cd scripts
-python data_pipeline.py all       # full refresh (items + builds + meta)
+python data_pipeline.py all       # full refresh (items + builds + meta + rank_tiers)
 python data_pipeline.py meta      # meta only (faster)
 python data_pipeline.py aram_builds
+python data_pipeline.py rank_tiers  # overlay item 8: stamp live patch onto the rank-tier stats-panel artifact
 ```
 
 Run from `C:\Riot Commander\scripts\`. Patch releases typically Wednesdays - `RC-PatchRefresh` fires automatically.
+
+Overlay item 8 (in-game rank-tier stats panel): the panel benchmarks the operator against a SELECTED rank-tier average (mode-specific SR / ARAM; Arena shows "no benchmark", no seed). Pick the tier in the in-game DS Settings strip (or the Post Game Review / desktop Settings rank row - all three share the `rc-pgr-rank-tier` key). Backend: `GET /api/rank-tier-bench?tier=&mode=&bracket=` reads `core.rank_tier_bench` (committed estimate seed `data/rank_tiers/rank_tier_averages.seed.json`, tagged "estimate-not-measured"; the panel badges provenance). Live overlay is off by default - set `RC_RANK_TIER_LIVE=1` only once a real aggregate endpoint is wired in gitignored `config/rank_tier_source.json`. The deprecated-but-alive `GET /api/role-bracket-bench` (personal-corpus lens) is retained for existing consumers.
 
 DS wiki_stats sidecar (AA windup / missile / mode-modifiers) is re-extracted separately - run from the repo root after a patch bump:
 

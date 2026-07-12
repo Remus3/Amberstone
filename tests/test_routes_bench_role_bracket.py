@@ -35,13 +35,13 @@ def _cell(lvl: float, cs: float, tf: float, kda: float, n: int) -> dict:
 
 
 def _stub_grid() -> dict:
-    """A small role x bracket grid. mid has all three brackets; bot has only
-    mid; top is entirely absent (the empty-cell path)."""
+    """A small role x bracket grid. mid has both brackets; bot has only mid; top
+    is entirely absent (the empty-cell path). The "late" bracket was retired in
+    the overlay item 8 lock-step (early < 14:00, else mid)."""
     return {
         "mid": {
             "early": _cell(12, 150, 55.0, 3.1, 8),
             "mid": _cell(15, 210, 58.0, 3.4, 20),
-            "late": _cell(17, 260, 60.0, 3.0, 5),
         },
         "bot": {"mid": _cell(14, 240, 50.0, 2.8, 30)},
     }
@@ -80,12 +80,12 @@ class ParsingTests(_PatchedCase):
         self.assertIn(p["bracket"], rbb.VALID_BRACKETS)
 
     def test_valid_passthrough(self):
-        h = _RouteHarness("role=mid&bracket=late")
+        h = _RouteHarness("role=mid&bracket=early")
         rbb._serve_role_bracket_bench(h)
         self.assertEqual(h.sent_status, 200)
         p = json.loads(h.sent_body)
         self.assertEqual(p["role"], "mid")
-        self.assertEqual(p["bracket"], "late")
+        self.assertEqual(p["bracket"], "early")
 
     def test_bad_role_400(self):
         h = _RouteHarness("role=wizard&bracket=mid")
