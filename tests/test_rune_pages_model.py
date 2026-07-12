@@ -185,6 +185,110 @@ class UserBuildFold(unittest.TestCase):
         self.assertFalse(any(b.startswith("userbuild_") for b in buildids))
 
 
+class PushPageId(unittest.TestCase):
+    """Phase 6 (item 1 rune-follows-build): each builds[] entry ALSO carries
+    pushPageId = the page resolve(buildId) ACTUALLY produces (the OWN / path /
+    user runes), which for a bare variant can DIFFER from recommendedPageId (the
+    AUTO keystone the frozen writer applies). The manual push seam reverse-maps
+    the selected pageId to the build whose pushPageId matches, so pushPageId must
+    be the resolver's own page - NOT the auto page. recommendedPageId is
+    unchanged (the star still follows it)."""
+
+    def _by_id(self, out):
+        return {b["buildId"]: b for b in out["builds"]}
+
+    def test_bare_variant_pushpage_is_own_not_auto(self):
+        # auto (Lethal Tempo) DIFFERS from own (Press the Attack): the star
+        # follows the AUTO page (recommendedPageId) but the manual push must
+        # target the OWN page (pushPageId) - the resolver never reads auto_*.
+        variants = [
+            {"key": "cait", "keystone": "Press the Attack", "primary": "Precision",
+             "secondary": "Domination", "auto_keystone": "Lethal Tempo",
+             "auto_primary": "Precision", "auto_secondary": "Domination",
+             "build_paths": []},
+        ]
+        with mock.patch.object(rune_pages, "list_variants", return_value=variants), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=[]):
+            out = rune_pages.enumerate_pages("Caitlyn", "SR")
+        b = self._by_id(out)["cait"]
+        auto = rune_pages.resolve_page(*_LT)["pageId"]
+        own = rune_pages.resolve_page(*_PTA)["pageId"]
+        self.assertEqual(b["recommendedPageId"], auto)
+        self.assertEqual(b["pushPageId"], own)
+        self.assertNotEqual(b["recommendedPageId"], b["pushPageId"])
+
+    def test_bare_variant_pushpage_equals_recommended_when_auto_equals_own(self):
+        variants = [
+            {"key": "crit", "keystone": "Lethal Tempo", "primary": "Precision",
+             "secondary": "Domination", "auto_keystone": "Lethal Tempo",
+             "auto_primary": "Precision", "auto_secondary": "Domination",
+             "build_paths": []},
+        ]
+        with mock.patch.object(rune_pages, "list_variants", return_value=variants), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=[]):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        b = self._by_id(out)["crit"]
+        self.assertEqual(b["pushPageId"], b["recommendedPageId"])
+
+    def test_build_path_pushpage_equals_recommended(self):
+        variants = [
+            {"key": "onhit", "keystone": "Press the Attack", "primary": "Precision",
+             "secondary": "Domination", "auto_keystone": "Press the Attack",
+             "auto_primary": "Precision", "auto_secondary": "Domination",
+             "build_paths": [
+                 {"key": "burst", "keystone": "Electrocute",
+                  "primary": "Domination", "secondary": "Precision"}]},
+        ]
+        with mock.patch.object(rune_pages, "list_variants", return_value=variants), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=[]):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        b = self._by_id(out)["onhit:burst"]
+        self.assertEqual(b["pushPageId"], b["recommendedPageId"])
+        self.assertEqual(b["pushPageId"], rune_pages.resolve_page(*_ELEC)["pageId"])
+
+    def test_userbuild_pushpage_equals_recommended(self):
+        ubs = [{"id": "abc123", "runes": {
+            "keystone": "Electrocute", "primary": "Domination",
+            "secondary": "Precision", "minor_primary": [], "minor_secondary": []}}]
+        with mock.patch.object(rune_pages, "list_variants", return_value=[]), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        b = self._by_id(out)["userbuild_abc123"]
+        self.assertEqual(b["pushPageId"], b["recommendedPageId"])
+
+    def test_userbuild_subrune_delta_pushpage_equals_own_recommended(self):
+        # With a minor-rune delta the user page still resolves to its OWN
+        # recommendedPageId (the resolver honors minor_primary/secondary).
+        fake = {"A": 101, "B": 102, "C": 103}
+        ubs = [{"id": "u1", "runes": {
+            "keystone": "Lethal Tempo", "primary": "Precision",
+            "secondary": "Domination",
+            "minor_primary": ["A", "B", "C"], "minor_secondary": []}}]
+        with mock.patch.object(rune_pages, "list_variants", return_value=[]), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs), \
+             mock.patch("lcu.lcu_rune_writer._perk_by_name", return_value=fake):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        b = self._by_id(out)["userbuild_u1"]
+        self.assertEqual(b["pushPageId"], b["recommendedPageId"])
+
+    def test_pushpage_when_set_is_always_a_known_page(self):
+        variants = [
+            {"key": "cait", "keystone": "Press the Attack", "primary": "Precision",
+             "secondary": "Domination", "auto_keystone": "Lethal Tempo",
+             "auto_primary": "Precision", "auto_secondary": "Domination",
+             "build_paths": [
+                 {"key": "burst", "keystone": "Electrocute",
+                  "primary": "Domination", "secondary": "Precision"}]},
+        ]
+        with mock.patch.object(rune_pages, "list_variants", return_value=variants), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=[]):
+            out = rune_pages.enumerate_pages("Caitlyn", "SR")
+        ids = {p["pageId"] for p in out["pages"]}
+        for b in out["builds"]:
+            if b.get("pushPageId"):
+                self.assertIn(b["pushPageId"], ids)
+
+
 class Ascii(unittest.TestCase):
     def test_ascii(self):
         for p in (Path(rune_pages.__file__), Path(__file__)):

@@ -77,12 +77,17 @@ def enumerate_pages(champion: str, mode: str) -> dict:
     build variant + its build_paths + each variant's auto (recommended) page, and
     map each buildId -> its recommendedPageId.
 
-    Returns {"pages": [page, ...], "builds": [{"buildId", "recommendedPageId"}]}.
+    Returns {"pages": [page, ...],
+             "builds": [{"buildId", "recommendedPageId", "pushPageId"}]}.
     Pages are exact-match deduped by pageId. buildId is the variant key, or
     "<variant>:<path-key>" for a build_path (mirrors champ_select.js's composed
-    key). A build whose runes fail to resolve maps to recommendedPageId=None (the
-    caller falls back to the champ's first page). Operator user-curated builds
-    fold in last, keyed "userbuild_<id>" and deduped against the generic pages.
+    key). recommendedPageId is the AUTO page (the keystone the frozen writer
+    applies - the star follows it). pushPageId (Phase 6) is the page the manual
+    resolver ACTUALLY pushes for that buildId: the variant's OWN runes (which
+    can differ from the auto page), or a path/user build's own page (== its
+    recommendedPageId). A build whose runes fail to resolve maps its id to None
+    (the caller falls back). Operator user-curated builds fold in last, keyed
+    "userbuild_<id>" and deduped against the generic pages.
     """
     is_aram = _is_aram(mode)
     pages: dict = {}          # pageId -> page (dedup)
@@ -104,17 +109,25 @@ def enumerate_pages(champion: str, mode: str) -> dict:
         rec = _add(v.get("auto_keystone") or v.get("keystone"),
                    v.get("auto_primary") or v.get("primary"),
                    v.get("auto_secondary") or v.get("secondary"))
-        builds.append({"buildId": vkey, "recommendedPageId": rec})
-        # The variant's own selectable page (deduped against the auto above).
-        _add(v.get("keystone"), v.get("primary"), v.get("secondary"))
-        # Each build_path is its own selectable build with its own page.
+        # Phase 6: pushPageId = the page resolve(vkey) ACTUALLY pushes through
+        # the manual seam = the variant's OWN runes (the resolver never reads
+        # auto_*). For a champ where auto != own this is a DIFFERENT page than
+        # recommendedPageId, so the JS reverse-maps the selected pageId to the
+        # build whose pushPageId matches. The variant's own selectable page is
+        # deduped against the auto page above.
+        own = _add(v.get("keystone"), v.get("primary"), v.get("secondary"))
+        builds.append({"buildId": vkey, "recommendedPageId": rec,
+                       "pushPageId": own})
+        # Each build_path is its own selectable build with its own page. The
+        # resolver overlays the path runes, so pushPageId == recommendedPageId.
         for bp in (v.get("build_paths") or []):
             bp_rec = _add(bp.get("keystone") or v.get("keystone"),
                           bp.get("primary") or v.get("primary"),
                           bp.get("secondary") or v.get("secondary"))
             bkey = bp.get("key") or ""
             bid = f"{vkey}:{bkey}" if bkey else vkey
-            builds.append({"buildId": bid, "recommendedPageId": bp_rec})
+            builds.append({"buildId": bid, "recommendedPageId": bp_rec,
+                           "pushPageId": bp_rec})
 
     # Phase 4: fold operator user-curated builds (coaches/sr_user_builds) into
     # the same model. Each is its own selectable build keyed "userbuild_<id>"
@@ -135,8 +148,11 @@ def enumerate_pages(champion: str, mode: str) -> dict:
             r = rec.get("runes") or {}
             rec_page = _add(r.get("keystone"), r.get("primary"), r.get("secondary"),
                             r.get("minor_primary"), r.get("minor_secondary"))
+            # Phase 6: the resolver (_resolve_user_build) honors the stored
+            # minor runes, so pushPageId == recommendedPageId for a user build.
             builds.append({"buildId": "userbuild_" + uid,
-                           "recommendedPageId": rec_page})
+                           "recommendedPageId": rec_page,
+                           "pushPageId": rec_page})
     except Exception as exc:  # noqa: BLE001
         _log.warning("rune-pages user-build fold for %r: %s", champion, exc)
 
