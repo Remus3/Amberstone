@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-11 (item-1 rune-follows-build Phase 2+3: champ-select rune SIDE panel follows the item build + save-default + the missing Phase-1 route)
+
+Shipped LEDGER 860's NEXT (item-1 Phase 2). Commit `4a03b7e0` (branch feat/item1-phase2-rune-follows-build -> merged to main at wrap). Full detail: LEDGER 861.
+
+- BACKEND: finished Phase 1's owed route - NEW POST /api/loadout/rune-pages (`dashboard/routes_loadout.py`) exposing `coaches.rune_pages.enumerate_pages` (Phase 1 `38625688` was model-only; the route had zero callers). Live-verified: Jinx/sr -> 3 deduped pages, 4 builds.
+- FRONTEND (`champ_select.js`): rune panel promoted to a champ-wide SIDE panel (sibling of `.csv-builds`). Selected page FOLLOWS the item build (sessionOverride ?? savedDefault ?? recommendedPageId); unsaved override discarded on build change; recommended page ALWAYS starred; Save-as-default -> localStorage `rc-cs-rune-default`. NO push wiring (Phase 6). Dropped the `?ui_mock` fetch short-circuit so the mock render populates from the live route.
+- UI-AUDIT found + fixed a grid-`1fr` collapse that truncated keystone names to "L..." (option row -> flex, `min-width:0`). NEW Playwright `test_champ_select_rune_side_panel` + a `__csvSeedRunePages` ui_mock-only seam (the live-browser SSE auto-derives away from champ-select, so the mock harness is the reliable audit path).
+- Gate: 142 pass + hygiene trio + `ruff check .` clean; the 1 RF5 conftest error = live RC `data/*.jsonl` churn (env, not a regression). The frontend build agent FAILED mid-stream (API stall) on the Playwright test; the main thread took over as sole merger.
+- Don't-redo: Phase 2+3 + the route SHIPPED; the `?ui_mock` fetch short-circuit REMOVAL is intentional (deterministic route); `__csvSeedRunePages` is a ui_mock-only test seam (production fetch untouched); the flex option row is the fix for name truncation.
+- NEXT: item-1 Phase 4 (user-build fold-in) / 5 (push toggles -> Settings) / 6 (LCU push via non-frozen `/api/loadout/apply`, last-writer-wins after the frozen RuneWriter). OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend`).
+
+---
+
 # 2026-07-11 (overlay-overhaul session: 2 fixes shipped + 3 items reframed as grounded design specs + item-1 Phase 1 built + lcu_push_watcher share-lock FIXED + TTS default-off)
 
 Worked the LEDGER 859 9-item overlay backlog INTERACTIVELY with the operator (live ARAM in progress - the Terminus bugs below were spotted in-game). 10 commits `7e36f09d..38625688`, all pushed, CI green. Full detail: LEDGER 860.
