@@ -6906,7 +6906,11 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
     const supported = !!(synth && typeof synth.speak === "function");
     let on = false;
     let chosenName = "";
-    try { on = localStorage.getItem("rc-voice-on") === "1"; } catch (_) {}
+    // TTS default OFF for now (operator 2026-07-11): do NOT restore a persisted
+    // "on" - voice starts OFF on every load regardless of a prior rc-voice-on=1.
+    // Restore this read to re-enable persistence:
+    // try { on = localStorage.getItem("rc-voice-on") === "1"; } catch (_) {}
+    on = false;
     try { chosenName = localStorage.getItem("rc-voice-name") || ""; } catch (_) {}
     if (!supported) on = false;
     let _voices = [];
