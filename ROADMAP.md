@@ -110,7 +110,7 @@ _2026-05-23 sweep: shipped items 94-149 (May 19-22 sessions covering CLAUDE.md i
 
 - **Auto-ops verb expansion** - once Phase 3 auto-action success rate clears 95%, add: `tail .* log`, `restart agent .*`, `verify .*` to Legion `auto_ops_verbs`.
 
-- [open, from Mayhem/Arena augment recommender] **NEXT (operator-gated, not provable offline):** live Mayhem augment-select cross-check (OCR→rank vs pick made). (full record: docs/ROADMAP_HISTORY.md)
+- [open, from Mayhem/Arena augment recommender] **NEXT (operator-gated, not provable offline):** live Mayhem augment-select cross-check (OCR→rank vs pick made). Reco-pipeline field-bug FIXED 2026-07-12 (`67519018`, LEDGER 867): the live moon_proxy TFT-relay emitted `is_augment_select` while the ARAM/Arena/Brawl coaches read `augment_select` - aliased at the single chokepoint `modes/shared_vision._postprocess`, deployed live; the reco now fires, so ONLY the on-screen cross-check remains (hold an augment ~25s so a vision tick lands). (full record: docs/ROADMAP_HISTORY.md)
 
 ## Fleet status at a glance
 
