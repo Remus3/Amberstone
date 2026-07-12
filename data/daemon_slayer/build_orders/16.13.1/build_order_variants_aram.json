@@ -2987,12 +2987,12 @@
           "target_mr": 30.0
         },
         "order": [
-          "3153",
-          "3006",
           "3085",
+          "3009",
           "3031",
           "3508",
-          "3036"
+          "3036",
+          "6696"
         ],
         "variant": "anti_squishy"
       },
@@ -3018,7 +3018,7 @@
           "3047",
           "3036",
           "3085",
-          "6694",
+          "3033",
           "3031"
         ],
         "variant": "anti_tank"
@@ -9697,8 +9697,8 @@
       "anti_squishy"
     ]
   },
-  "engine_version": "1.203.0",
-  "generated_at": "2026-07-11T20:17:26Z",
+  "engine_version": "1.204.0",
+  "generated_at": "2026-07-12T19:30:26Z",
   "mode": "aram",
   "schema": "build_order_variants/v1",
   "version": "16.13.1"
