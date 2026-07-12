@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-12 (loadout ranged-only melee gate - Terminus wrong-build bug FIXED at root)
+
+Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11). Commit `d39d50f5` on main; RC restarted + live-verified; docs sync (LEDGER 865).
+
+- ROOT CAUSE: the live DS scorer gates ranged-only items off melee (`rank.py` RANGED_ONLY_ITEM_IDS=Runaan's Hurricane, 2026-07-02) but the PARALLEL static-loadout serve path `coaches/loadout_resolver.py` (feeds the champ-select chooser AND the item-1 LCU item-set push) never got the symmetric gate -> 74 melee served-builds DISPLAYED and PUSHED Runaan's (an item melee cannot buy). "Terminus" was operator conflation - Xin Zhao carries Runaan's + Yun Tal, not Terminus.
+- FIX (2 layers): resolver `_strip_ranged_only` gate in `list_variants` + `resolve` (defense-in-depth) + a data backfill (`tools/hotfix_ranged_only_melee_loadouts.py`) replacing Runaan's 1:1 on 91 melee lists (Kraken / The Collector / Wit's End, archetype-aware, s8 lengths + mirror + axis + no-clash intact). Terminus (melee-LEGAL) NOT gated; Yun Tal (melee-legal) left per tightest-set.
+- TESTS: NEW `test_loadout_ranged_only_melee_gate.py` (serve repro + 74-build sweep + over-filter guards + raw-data recurrence guard); 10/10 green; 200 loadout + 1575 sweep-guard tests green; live-verified (Xin Zhao/Yi/Irelia no Runaan's, Varus keeps it). Tier-1 loadout+data, NO ENGINE bump / no Share.
+- VARUS half = NOT a bug (ranged marksman; Runaan's + Terminus on-hit is legit; next-buy comes from the live scorer, not static loadouts). Left as-is.
+- Don't-redo: the ranged-only gate + backfill are shipped; Terminus is melee-legal (correctly untouched); the resolver gate is defense-in-depth over the now-clean data.
+- NEXT: item-1 rune-follows-build LIVE-GATED validation (the in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. Optionally re-tune the auto-picked melee build substitutes.
+
+---
+
 # 2026-07-12 (item-1 rune-follows-build Phase 6: LCU push of the followed rune page via the manual apply seam - FINAL phase, ALL 6 SHIPPED)
 
 Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `e2e6911e` on main (feat) + the docs sync (LEDGER 864). Built via a TDD build subagent + independent verifier gate (CONFIRMED). Full detail: LEDGER 864.
@@ -27,18 +40,3 @@ Shipped LEDGER 862's NEXT (item-1 Phase 5). Commit `942daa29` on main; web/* onl
 - Tests: NEW `test_csv_push_toggles_phase5.py` (toggles present + under the CHAMP SELECT card, inverted binder, `_csvGetPushFlags` default-ON via node harness, control-removed regression pin, Phase-6 plumbing intact). Reconciled the superseded item-240 pins (`HeaderControl3dTests` + 2 in-panel-wiring 3e tests removed w/ supersession notes; verb pins kept; dropped unused `import re`) + the champ-select snapshot (`pushCtrls`/`pushCbs` now 0 - the mock-harness Playwright IS the panel UI-audit). 68 core + 65 settings/overlay tests pass; ruff + ASCII clean.
 - Don't-redo: Phase 5 SHIPPED; storage = 3 flat keys default-ON (NOT the old blob); the in-panel control is GONE (regression-pinned); the settings toggles live in the dev/settings view (NOT `#view-champ-select`, so the champ-select snapshot can't reach them - grep/behavior-tested); the build-selection auto-push staying + default-ON is intentional.
 - NEXT: Phase 6 (LCU push via the NON-frozen `/api/loadout/apply` seam - reuse `_csvApplyLoadout`; push on champ-select enter / build change / rune override, gated by the default-ON runes flag, last-writer-wins re-push AFTER the frozen auto RuneWriter; validate with `tools/lcu_push_watcher.py`). OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend`).
-
----
-
-# 2026-07-11 (item-1 rune-follows-build Phase 4: fold operator user-curated builds into the champ-select rune-page model + exact-match dedup)
-
-Shipped LEDGER 861's NEXT (item-1 Phase 4). Commit `8fd9b979` on main; RC restarted (pid 17692) + live-verified. Full detail: LEDGER 862.
-
-- BACKEND-ONLY (`coaches/rune_pages.py`): `enumerate_pages` now folds each operator user build (`sr_user_builds.list_for`) into the same model AFTER the generic variants, keyed `userbuild_<id>` (the exact namespacing `routes_loadout` :115 already uses) and exact-match deduped by resolved perk_ids (`_add` threads the stored `minor_primary`/`minor_secondary` into `resolve_page`). Identical perk_ids collapse onto one page; a subrune delta mints a new page. Guarded fold = operator-additive (a broken store never blocks the generic model).
-- NO frontend change: the rune SIDE panel consumes the route generically (`_csvRecommendedPageId(builds, buildId)` is a plain buildId find) + `/api/loadout/list` already surfaces `userbuild_<id>` as selectable, so a user build now FOLLOWS its own rune page (previously fell back to the champ's first page). UI-audit ritual N/A (no `web/*` change, R11).
-- Ground-truth first: read the real `data/daemon_slayer/user_builds.json` (Caitlyn x2 + Vayne) to confirm the record shape before coding, not the mock. Hermeticity fix: the existing `EnumeratePages` tests now mock `_user_builds_for=[]` (they mocked only `list_variants`, so folding the real store in would have made them env-dependent).
-- Tests: NEW `UserBuildFold` (appear / dedup-reuse / unknown-keystone->None / subrune-delta via patched `_perk_by_name` / fold-failure-isolated); 61 pass across rune-pages model+route + champ-select frontend + snapshot; ruff + ASCII clean. Live-verified direct + through the restarted RC (Caitlyn -> 6 pages/6 builds, 2 userbuild rows non-null + distinct). Tier-1 (non-frozen helper, no engine bump, not in Share mirror).
-- Don't-redo: Phase 4 backend SHIPPED; user builds are backend-folded (NO frontend change needed - the panel is generic); dedup key = resolved perk_ids; `userbuild_<id>` mirrors `/api/loadout/list`.
-- NEXT: Phase 5 (move push runes/items/spells toggles to the CHAMP SELECT settings card, default-ON via an inverted `dev.js` binder + flip `_csvGetPushFlags` :2120) then Phase 6 (LCU push via the non-frozen `/api/loadout/apply` seam, last-writer-wins re-push after the frozen auto RuneWriter). OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend`).
-
-(older sessions relocated to the line-3 archive summary; full fidelity in docs/LEDGER.md)

@@ -257,6 +257,21 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-11 (item-1 rune-follows-build Phase 4: fold operator user-curated builds into the champ-select rune-page model + exact-match dedup)
+
+Shipped LEDGER 861's NEXT (item-1 Phase 4). Commit `8fd9b979` on main; RC restarted (pid 17692) + live-verified. Full detail: LEDGER 862.
+
+- BACKEND-ONLY (`coaches/rune_pages.py`): `enumerate_pages` now folds each operator user build (`sr_user_builds.list_for`) into the same model AFTER the generic variants, keyed `userbuild_<id>` (the exact namespacing `routes_loadout` :115 already uses) and exact-match deduped by resolved perk_ids (`_add` threads the stored `minor_primary`/`minor_secondary` into `resolve_page`). Identical perk_ids collapse onto one page; a subrune delta mints a new page. Guarded fold = operator-additive (a broken store never blocks the generic model).
+- NO frontend change: the rune SIDE panel consumes the route generically (`_csvRecommendedPageId(builds, buildId)` is a plain buildId find) + `/api/loadout/list` already surfaces `userbuild_<id>` as selectable, so a user build now FOLLOWS its own rune page (previously fell back to the champ's first page). UI-audit ritual N/A (no `web/*` change, R11).
+- Ground-truth first: read the real `data/daemon_slayer/user_builds.json` (Caitlyn x2 + Vayne) to confirm the record shape before coding, not the mock. Hermeticity fix: the existing `EnumeratePages` tests now mock `_user_builds_for=[]` (they mocked only `list_variants`, so folding the real store in would have made them env-dependent).
+- Tests: NEW `UserBuildFold` (appear / dedup-reuse / unknown-keystone->None / subrune-delta via patched `_perk_by_name` / fold-failure-isolated); 61 pass across rune-pages model+route + champ-select frontend + snapshot; ruff + ASCII clean. Live-verified direct + through the restarted RC (Caitlyn -> 6 pages/6 builds, 2 userbuild rows non-null + distinct). Tier-1 (non-frozen helper, no engine bump, not in Share mirror).
+- Don't-redo: Phase 4 backend SHIPPED; user builds are backend-folded (NO frontend change needed - the panel is generic); dedup key = resolved perk_ids; `userbuild_<id>` mirrors `/api/loadout/list`.
+- NEXT: Phase 5 (move push runes/items/spells toggles to the CHAMP SELECT settings card, default-ON via an inverted `dev.js` binder + flip `_csvGetPushFlags` :2120) then Phase 6 (LCU push via the non-frozen `/api/loadout/apply` seam, last-writer-wins re-push after the frozen auto RuneWriter). OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend`).
+
+(older sessions relocated to the line-3 archive summary; full fidelity in docs/LEDGER.md)
+
+---
+
 # 2026-07-11 (DS Meraki-scan R110: item low-HP MAGIC/TRUE amp "Cinderbloom" (Shadowflame) credited to the BURST scorer - a NEW damage-layer axis; ENGINE 1.202.0 -> 1.203.0)
 
 Fresh adversarial Meraki(16.13.1)-vs-registry scan (operator picked tracks 1+4+2, opus-4.8 ultracode multi-agent orchestrated + adversarial review + verifier CONFIRM). The EHP + HPS axes are saturated, so the refill went to a NEW damage-layer axis proven LIVE first. 23-agent DISCOVERY workflow (8 lenses -> dedupe -> per-candidate adversarial refute -> ranked synthesis; 14 unique candidates, 8 survivors; two finders converged on the winner) -> main-thread TDD (RED-first) -> verifier CONFIRM (6/6) + adversarial reviewer SHIP. Full detail: LEDGER 858. Commit `ba326d18` (feat) + this docs-sync.
