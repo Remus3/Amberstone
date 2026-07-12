@@ -31,6 +31,10 @@ RC_WORK_TRACKER.md
 # Track config/coach_settings.example.json as the template instead.
 config/coach_settings.json
 
+# Rank-tier live aggregate source config (overlay item 8). Real config holds an
+# endpoint + keys; committed template is config/rank_tier_source.example.json.
+config/rank_tier_source.json
+
 # Live coaching state (mutates per game - written by main.py atomically)
 coaching_data.json
 data/aram_coaching_data.json
@@ -232,6 +236,10 @@ data/daemon_slayer/user_builds.json
 # Tencent 101.qq raw scrape payloads - redistributable third-party data, never commit
 data/external/qq_double_raw.json
 data/external/qq_double_*.json
+
+# Rank-tier live/generated averages (overlay item 8). The committed estimate seed
+# is rank_tier_averages.seed.json; the pipeline-generated live file is local-only.
+data/rank_tiers/rank_tier_averages.json
 
 # Gemini auditor (PROVISIONAL) - generated advisory reviews + the IO channel are
 # not source. The runner + prompt + config ARE committed; the nightly output is not.

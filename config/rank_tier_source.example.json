@@ -1,0 +1,6 @@
+{
+  "endpoint": "",
+  "tier_param": "",
+  "enabled": false,
+  "note": "copy to config/rank_tier_source.json (gitignored) and fill for a live rank-tier aggregate source; mirrors config/*.example.json idiom"
+}
