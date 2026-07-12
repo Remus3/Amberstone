@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-12 (item-8 Phase 1 backend + Jhin DS-build bug spec'd + augment C15/C16 reframed)
+
+Live-gated drain continued into a build session. Commits: `66c7ba1a` (item-8 Phase 1) + `c36f32f9` (Jhin spec + gated-doc). CI green, RC healthy. Full detail: LEDGER 869.
+
+- ITEM-8 PHASE 1 SHIPPED: backend rank-tier data adapter (`core/rank_tier_source.py` + `core/rank_tier_bench.py` + `data/rank_tiers/rank_tier_averages.seed.json` estimate seed + config; live-first w/ static-seed fallback, `RC_RANK_TIER_LIVE` kill switch; 26 tests green, independently re-verified). Panel rework + rank selector = later phases (overlay, live-gated).
+- JHIN DS BUILD BUG: reproduced (`beam Jhin --mode SR --level 18` tops Runaan's/Stormrazor/Berserker's - all attack-speed, dead on Jhin's Whisper AS-lock) + FULL file-cited fix spec committed `docs/specs/2026-07-12-jhin-whisper-as-lock-DS-fix-IMPL.md`. Operator FOLDED it to a next-session multi-agent per-champion build-plan sweep (Jhin = pilot #1). Do NOT build standalone - Tier-2 (ENGINE 1.203 -> 1.204 + Share + DS restart) + live-gated. Sibling sweep confirms Jhin UNIQUE (Bel'Veth = the anti-narrow same-perlevel:0 trap).
+- AUGMENT C15/C16 REFRAMED: the `67519018` field-fix is CORRECT + detection deterministic (offline-proven on a saved Kayle augment frame); the on-screen miss is the 25s vision cadence (`coaches/aram_coach.py:495`) skipping the ~10-15s augment window. Memory `open_bug_aram_augment_reco_cadence_miss`; fix (fast early-game poll) DEFERRED by operator.
+- CAPTURED for next session: DMG/SURV/UTIL shaper -> DS Settings panel move (memory item-4); open-gated-item count (~108) added to the LIVE_GAME_GATED_SYNC.md top row (maintain via `/live-gated-resync`).
+- NEXT: UI/UX continuance (item-8 phases 2-5 + DS Settings consolidation) + the PARALLEL multi-agent per-champion DS build-plan sweep + the gated drain. See memory `project_next_ingame_ui_finish` + ROADMAP top.
+- Don't-redo: item-8 Phase 1 shipped+verified; the Jhin fix is SPEC'd not built (build it via the next-session sweep); the augment field-fix is correct - do NOT re-investigate detection, the cadence is the issue.
+
+---
+
 # 2026-07-12 (audit L-02: orphan lockfile.pid.tmp cleanup - Agent 2 backend task)
 
 Agent 6 thirteenth audit found 5 orphaned lockfile.<pid>.tmp files in agents/state/ (2026-07-08 to 2026-07-11). Fixed in `agents/_supervisor_common.py` (commit `afdd20eb`). Full detail: LEDGER 868.
@@ -25,29 +38,3 @@ Live drain (Practice SR Caitlyn + ARAM Mayhem Xayah/Tristana). item-1 rune-follo
 - Coach hit a live credit-balance 400 mid-drain (correct degraded "COACH PAUSED - ADD API CREDITS" render); operator topped up.
 - Don't-redo: item-1 is LIVE-VALIDATED (do not re-run the champ-select push proof). The augment fix is shipped + live - ONLY the on-screen reco eyeball remains. B4/B7/B8/B10/B13/B14/B18/B19 headless soundness is banked; the actual default-ON flips stay operator-gated. B20 is not `/rank`-eyeball-able. TFT `is_augment_select` split = a SEPARATE `tft_vision_reader` path.
 - NEXT: the C15/C16 LIVE augment eyeball (hold an ARAM Mayhem augment ~25s so a vision tick lands + confirm the reco renders vs the pick - fix deployed, only the on-screen confirm remains). OR continue the drain (scenario-gated tank/bruiser/enchanter ARAM rolls for C3/C5/C6/C7, a sustain comp for C12, real-SR for the B/D rows). OR the TFT augment_select split.
-
----
-
-# 2026-07-12 (Lane E CV atlas flip-readiness validator - headless vision-Haiku-to-ZERO slice)
-
-Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ select: mode=client, lcu.phase=None, no game), so per the WAKEUP gate picked a headless lane instead. Commits `a1d7078c` (feat) + `9dfd7201` (docs) on main, CI-green. Full detail: LEDGER 866.
-
-- SHIPPED (Part A, TDD RED-first): NEW `tools/vision_atlas_validate.py` - offline flip-readiness harness for the Lane E CV matcher (`core.vision_template_match.match_icon`, R96 foundation). Added public `score_all()` (raw per-candidate scores) + refactored `match_icon` to a thin argmax+threshold wrapper over it (r96 behavior byte-preserved). Report -> `data/vision_atlas_accuracy.md`.
-- FINDING (de-risks the live-gated CV flip): matcher is SOUND at the pristine ceiling. champions 173/173=100%; items+spells raw dips are ONLY pixel-identical DDragon mode/rework duplicates (Arena Flash, ARAM Snowball, blue-buff2, strikers-flail/guardbreaker) - effective rate 1.0 all three, 0 genuine mis-id, smallest distinct margin 0.299. In-game noise (JPEG/resize/lighting) stays the live-gated risk.
-- Tier-1: default-OFF module, no live importer (grep-confirmed). 14 tests (RED-first) + r96 regression + hygiene trio green (27 this slice).
-- Part B (a ward_cue dead-code cleanup) STOPPED on a FALSE premise + surfaced instead: the ROADMAP called `core/ward_cue.py` "orphaned dead code" but it is LIVE-WIRED (`dashboard/_liveclient.py:216` serves `/api/state.liveclient.ward_cue`); deleting it crashes the serializer. The served field is now consumer-less (renderer removed 2026-07-05) but harmless. Per operator: corrected the ROADMAP breadcrumb (`9dfd7201`, Tier-0) instead of a blind delete; a real ward_cue teardown is a deliberate/live-session job.
-- Don't-redo: score_all + the validator are shipped + green; `pushPageId`/item-1 unchanged. Do NOT blind-delete `core/ward_cue.py` (live producer). The CV live wiring/fusion + in-game accuracy stay live-gated.
-- NEXT: item-1 rune-follows-build LIVE-GATED validation (in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. OR the CV atlas LIVE wiring (per-champ/objective/item read + Live-Client/CV fusion), still live-gated. OR another headless lane.
-
----
-
-# 2026-07-12 (loadout ranged-only melee gate - Terminus wrong-build bug FIXED at root)
-
-Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11). Commit `d39d50f5` on main; RC restarted + live-verified; docs sync (LEDGER 865).
-
-- ROOT CAUSE: the live DS scorer gates ranged-only items off melee (`rank.py` RANGED_ONLY_ITEM_IDS=Runaan's Hurricane, 2026-07-02) but the PARALLEL static-loadout serve path `coaches/loadout_resolver.py` (feeds the champ-select chooser AND the item-1 LCU item-set push) never got the symmetric gate -> 74 melee served-builds DISPLAYED and PUSHED Runaan's (an item melee cannot buy). "Terminus" was operator conflation - Xin Zhao carries Runaan's + Yun Tal, not Terminus.
-- FIX (2 layers): resolver `_strip_ranged_only` gate in `list_variants` + `resolve` (defense-in-depth) + a data backfill (`tools/hotfix_ranged_only_melee_loadouts.py`) replacing Runaan's 1:1 on 91 melee lists (Kraken / The Collector / Wit's End, archetype-aware, s8 lengths + mirror + axis + no-clash intact). Terminus (melee-LEGAL) NOT gated; Yun Tal (melee-legal) left per tightest-set.
-- TESTS: NEW `test_loadout_ranged_only_melee_gate.py` (serve repro + 74-build sweep + over-filter guards + raw-data recurrence guard); 10/10 green; 200 loadout + 1575 sweep-guard tests green; live-verified (Xin Zhao/Yi/Irelia no Runaan's, Varus keeps it). Tier-1 loadout+data, NO ENGINE bump / no Share.
-- VARUS half = NOT a bug (ranged marksman; Runaan's + Terminus on-hit is legit; next-buy comes from the live scorer, not static loadouts). Left as-is.
-- Don't-redo: the ranged-only gate + backfill are shipped; Terminus is melee-legal (correctly untouched); the resolver gate is defense-in-depth over the now-clean data.
-- NEXT: item-1 rune-follows-build LIVE-GATED validation (the in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. Optionally re-tune the auto-picked melee build substitutes.

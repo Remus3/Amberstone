@@ -257,6 +257,32 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-12 (Lane E CV atlas flip-readiness validator - headless vision-Haiku-to-ZERO slice)
+
+Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ select: mode=client, lcu.phase=None, no game), so per the WAKEUP gate picked a headless lane instead. Commits `a1d7078c` (feat) + `9dfd7201` (docs) on main, CI-green. Full detail: LEDGER 866.
+
+- SHIPPED (Part A, TDD RED-first): NEW `tools/vision_atlas_validate.py` - offline flip-readiness harness for the Lane E CV matcher (`core.vision_template_match.match_icon`, R96 foundation). Added public `score_all()` (raw per-candidate scores) + refactored `match_icon` to a thin argmax+threshold wrapper over it (r96 behavior byte-preserved). Report -> `data/vision_atlas_accuracy.md`.
+- FINDING (de-risks the live-gated CV flip): matcher is SOUND at the pristine ceiling. champions 173/173=100%; items+spells raw dips are ONLY pixel-identical DDragon mode/rework duplicates (Arena Flash, ARAM Snowball, blue-buff2, strikers-flail/guardbreaker) - effective rate 1.0 all three, 0 genuine mis-id, smallest distinct margin 0.299. In-game noise (JPEG/resize/lighting) stays the live-gated risk.
+- Tier-1: default-OFF module, no live importer (grep-confirmed). 14 tests (RED-first) + r96 regression + hygiene trio green (27 this slice).
+- Part B (a ward_cue dead-code cleanup) STOPPED on a FALSE premise + surfaced instead: the ROADMAP called `core/ward_cue.py` "orphaned dead code" but it is LIVE-WIRED (`dashboard/_liveclient.py:216` serves `/api/state.liveclient.ward_cue`); deleting it crashes the serializer. The served field is now consumer-less (renderer removed 2026-07-05) but harmless. Per operator: corrected the ROADMAP breadcrumb (`9dfd7201`, Tier-0) instead of a blind delete; a real ward_cue teardown is a deliberate/live-session job.
+- Don't-redo: score_all + the validator are shipped + green; `pushPageId`/item-1 unchanged. Do NOT blind-delete `core/ward_cue.py` (live producer). The CV live wiring/fusion + in-game accuracy stay live-gated.
+- NEXT: item-1 rune-follows-build LIVE-GATED validation (in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. OR the CV atlas LIVE wiring (per-champ/objective/item read + Live-Client/CV fusion), still live-gated. OR another headless lane.
+
+---
+
+# 2026-07-12 (loadout ranged-only melee gate - Terminus wrong-build bug FIXED at root)
+
+Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11). Commit `d39d50f5` on main; RC restarted + live-verified; docs sync (LEDGER 865).
+
+- ROOT CAUSE: the live DS scorer gates ranged-only items off melee (`rank.py` RANGED_ONLY_ITEM_IDS=Runaan's Hurricane, 2026-07-02) but the PARALLEL static-loadout serve path `coaches/loadout_resolver.py` (feeds the champ-select chooser AND the item-1 LCU item-set push) never got the symmetric gate -> 74 melee served-builds DISPLAYED and PUSHED Runaan's (an item melee cannot buy). "Terminus" was operator conflation - Xin Zhao carries Runaan's + Yun Tal, not Terminus.
+- FIX (2 layers): resolver `_strip_ranged_only` gate in `list_variants` + `resolve` (defense-in-depth) + a data backfill (`tools/hotfix_ranged_only_melee_loadouts.py`) replacing Runaan's 1:1 on 91 melee lists (Kraken / The Collector / Wit's End, archetype-aware, s8 lengths + mirror + axis + no-clash intact). Terminus (melee-LEGAL) NOT gated; Yun Tal (melee-legal) left per tightest-set.
+- TESTS: NEW `test_loadout_ranged_only_melee_gate.py` (serve repro + 74-build sweep + over-filter guards + raw-data recurrence guard); 10/10 green; 200 loadout + 1575 sweep-guard tests green; live-verified (Xin Zhao/Yi/Irelia no Runaan's, Varus keeps it). Tier-1 loadout+data, NO ENGINE bump / no Share.
+- VARUS half = NOT a bug (ranged marksman; Runaan's + Terminus on-hit is legit; next-buy comes from the live scorer, not static loadouts). Left as-is.
+- Don't-redo: the ranged-only gate + backfill are shipped; Terminus is melee-legal (correctly untouched); the resolver gate is defense-in-depth over the now-clean data.
+- NEXT: item-1 rune-follows-build LIVE-GATED validation (the in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. Optionally re-tune the auto-picked melee build substitutes.
+
+---
+
 # 2026-07-12 (item-1 rune-follows-build Phase 6: LCU push of the followed rune page via the manual apply seam - FINAL phase, ALL 6 SHIPPED)
 
 Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `e2e6911e` on main (feat) + the docs sync (LEDGER 864). Built via a TDD build subagent + independent verifier gate (CONFIRMED). Full detail: LEDGER 864.
