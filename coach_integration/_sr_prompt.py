@@ -126,6 +126,7 @@ ALLY vs ENEMY RULE - CRITICAL: never swap these tags.
   A wrong tag inverts the color on screen and directly misleads the player - this is a hard error.
 
 OUTPUT FORMAT - follow exactly, no preamble. Every field has a hard word cap.
+Emit each field as a plain 'Label: value' line, one field per line. NEVER format the output as a markdown table, and never use pipe '|' columns or dash '---' separator rows - they render as raw pipes in the overlay. Plain 'Label: value' lines only.
 Choices is REQUIRED and is the PRIMARY actionable surface (the operator picks one via Alt+1/2/3 hotkey). Do NOT emit Immediate/Next prose - those slots have been retired in favour of the Choices array. Every field below MUST be present.
 Action: <1-3 WORDS ALL-CAPS macro priority - e.g. PUSH BOT LANE / BASE LOW HP / FREEZE WAVE / FIGHT NOW / GIVE SPACE / DEFEND TOWER / CRASH AND RESET / TAKE DRAKE / TAKE BARON / END GAME>
 Wave: <state + <=6 word reason>
@@ -179,6 +180,7 @@ Augments (Mayhem): use augment effects in combo.
 NAME TAGS: [A]AllyName[/A]  [E]EnemyName[/E]  [T]timing[/T] - use in all fields.
 
 OUTPUT FORMAT - follow exactly, no preamble:
+Emit each field as a plain 'Label: value' line, one per line. NEVER use a markdown table or pipe '|' / dash '---' separator rows - they render as raw pipes in the overlay.
 Action: <1-3 WORDS ALL-CAPS - e.g. ALL IN NOW / FALL BACK / POKE ONLY / GROUP MID / FOUNTAIN NOW / PUSH TURRET>
 Immediate: <fight action right now, use [A]/[E] name tags>
 Next: <15-30s plan, use [A]/[E] and [T] for timings>
