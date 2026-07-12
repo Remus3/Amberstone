@@ -39,6 +39,25 @@ _DDRAGON_CHAMPS = _ROOT / "data" / "meta" / "ddragon_champions.json"
 _loadouts_cache: dict | None = None
 _items_by_name_cache: dict[str, str] | None = None
 _champ_id_by_name_cache: dict[str, int] | None = None
+_champ_range_by_name_cache: dict[str, float] | None = None
+
+# Ranged-only items the in-game shop blocks for MELEE champions. Mirrors the
+# authoritative set in agents/daemon_slayer/rank.py (RANGED_ONLY_ITEM_IDS) -
+# kept as a tiny local copy so the coaches layer stays independent of the DS
+# engine package (same doctrine as core/build_order.py's _UNIT_SUFFIX copy).
+# This is the STATIC-loadout twin of the live-scorer gate in rank._filter_
+# candidates: without it a melee champion's curated build still DISPLAYED and
+# PUSHED (item-1 rune-follows-build) Runaan's Hurricane, an item melee cannot
+# buy. Add to this set only on wiki-verified evidence (see the rank.py note).
+_RANGED_ONLY_ITEM_IDS: frozenset[str] = frozenset({
+    "3085",     # Runaan's Hurricane - canonical (SR / ARAM / Brawl)
+    "223085",   # Runaan's Hurricane - Arena-mirror alias (map 30)
+})
+
+# Melee = base attackrange at or below this ceiling (mirrors rank.MELEE_
+# ATTACKRANGE_CEILING and ehp._is_ranged's > 250 split). Graves (425) and
+# Kindred (500) are ranged and correctly excluded from the gate.
+_MELEE_ATTACKRANGE_CEILING: float = 250.0
 
 
 def _norm(name: str) -> str:
@@ -113,6 +132,75 @@ def _load_champ_id_by_name() -> dict[str, int]:
     return out
 
 
+def _load_champ_range_by_name() -> dict[str, float]:
+    """name + slug -> base attackrange, from the same DDragon champions file
+    used for champ-id resolution. Dual-keyed so either the display name
+    ("Xin Zhao") or the DDragon slug ("XinZhao") resolves - matching
+    _lookup_champ's name-form tolerance."""
+    global _champ_range_by_name_cache
+    if _champ_range_by_name_cache is not None:
+        return _champ_range_by_name_cache
+    out: dict[str, float] = {}
+    try:
+        d = json.loads(_DDRAGON_CHAMPS.read_text(encoding="utf-8"))
+        for slug, info in (d.get("data") or {}).items():
+            rng = (info.get("stats") or {}).get("attackrange")
+            if rng is None:
+                continue
+            try:
+                fr = float(rng)
+            except (TypeError, ValueError):
+                continue
+            out[slug] = fr
+            nm = info.get("name")
+            if nm:
+                out[nm] = fr
+    except Exception as exc:  # noqa: BLE001
+        # Mirror the other loaders: never poison the cache on a transient read.
+        _log.warning("ddragon champ range load failed: %s", exc)
+        return out
+    _champ_range_by_name_cache = out
+    return out
+
+
+def _champion_is_melee(champion: str) -> bool:
+    """True iff the champion's base attackrange <= the melee ceiling. Unknown
+    champion -> False (fail-open: never over-filter a champ we cannot classify)."""
+    ranges = _load_champ_range_by_name()
+    rng = ranges.get(champion)
+    if rng is None:
+        want = _norm(champion)
+        if want:
+            for k, r in ranges.items():
+                if _norm(k) == want:
+                    rng = r
+                    break
+    if rng is None:
+        return False
+    return rng <= _MELEE_ATTACKRANGE_CEILING
+
+
+def _strip_ranged_only(names: list[str], is_melee: bool) -> list[str]:
+    """Drop ranged-only items (Runaan's Hurricane) from a MELEE champion's
+    build - the STATIC-loadout twin of rank._filter_candidates' melee gate, so
+    the champ-select chooser AND the LCU item-set push never surface an item
+    the in-game shop blocks for melee. No-op for ranged champions. Melee-legal
+    on-hit items (Terminus, Blade of The Ruined King, Wit's End) are untouched.
+    Resolves each name to its ddragon id via the shared name index; a name that
+    does not resolve is kept (it cannot be the ranged-only id)."""
+    if not is_melee or not names:
+        return list(names or [])
+    by_name = _load_items_by_name()
+    out: list[str] = []
+    for nm in names:
+        rid = by_name.get(_norm(nm))
+        if rid and str(rid) in _RANGED_ONLY_ITEM_IDS:
+            _log.debug("loadout: stripped ranged-only %r from melee build", nm)
+            continue
+        out.append(nm)
+    return out
+
+
 def _load_loadouts() -> dict:
     """Load + mtime-check loadouts so hand-edits are picked up live."""
     global _loadouts_cache
@@ -176,9 +264,13 @@ def list_variants(champion: str, mode: str) -> list[dict]:
     _auto = load_rune_rec(champion, _wmode)
     auto_ks, auto_pri, auto_sec = _auto if _auto else ("", "", "")
 
+    # Ranged-only purchasability gate (parity with rank._filter_candidates):
+    # strip items a melee champion cannot buy from every served build below.
+    _is_melee = _champion_is_melee(champion)
+
     def _row(key: str, v: dict, is_default: bool) -> dict:
         runes = v.get("runes") or {}
-        items = list(v.get("items") or [])
+        items = _strip_ranged_only(list(v.get("items") or []), _is_melee)
         summ = v.get("summoners") or []
         try:
             d_id, f_id = (int(summ[0]), int(summ[1])) if len(summ) >= 2 else (0, 0)
@@ -197,7 +289,7 @@ def list_variants(champion: str, mode: str) -> list[dict]:
         for p in build_paths_in:
             if not isinstance(p, dict):
                 continue
-            p_items = list(p.get("items") or [])
+            p_items = _strip_ranged_only(list(p.get("items") or []), _is_melee)
             p_runes = p.get("runes") or {}
             p_summ = p.get("summoners") or []
             try:
@@ -343,6 +435,14 @@ def resolve(champion: str, variant: str, mode: str) -> dict:
         "summ_cmd": None,
         "raw_items": list(v.get("items") or []),
     }
+
+    # Ranged-only purchasability gate (parity with list_variants + rank.
+    # _filter_candidates): a melee champion cannot buy Runaan's Hurricane, so
+    # strip it from raw_items BEFORE the item_cmd is resolved below - this
+    # sanitizes both the LCU item-set push and the UI display list in one place.
+    out["raw_items"] = _strip_ranged_only(
+        out["raw_items"], _champion_is_melee(champion)
+    )
 
     # Runes ----------------------------------------------------------------
     runes = v.get("runes") or {}

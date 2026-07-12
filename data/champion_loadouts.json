@@ -46,7 +46,7 @@
             "Mercury's Treads",
             "Heartsteel",
             "Sterak's Gage",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Overlord's Bloodmail",
             "Death's Dance"
           ],
@@ -60,7 +60,7 @@
                 "Mercury's Treads",
                 "Heartsteel",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Overlord's Bloodmail",
                 "Death's Dance"
               ],
@@ -120,7 +120,7 @@
             "Mercury's Treads",
             "Heartsteel",
             "Sterak's Gage",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Overlord's Bloodmail"
           ],
           "_collapsed": true,
@@ -133,7 +133,7 @@
                 "Mercury's Treads",
                 "Heartsteel",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Overlord's Bloodmail"
               ],
               "runes": {
@@ -1400,7 +1400,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Immortal Shieldbow",
             "Lord Dominik's Regards",
@@ -1414,7 +1414,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Immortal Shieldbow",
                 "Lord Dominik's Regards",
@@ -1441,7 +1441,7 @@
                 "Lord Dominik's Regards",
                 "Bastionbreaker",
                 "Umbral Glaive",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -1474,7 +1474,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Immortal Shieldbow",
             "Lord Dominik's Regards"
@@ -1487,7 +1487,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Immortal Shieldbow",
                 "Lord Dominik's Regards"
@@ -4089,7 +4089,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Wit's End",
             "Kraken Slayer",
             "Lord Dominik's Regards",
             "Yun Tal Wildarrows",
@@ -4103,7 +4103,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Wit's End",
                 "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Yun Tal Wildarrows",
@@ -4152,7 +4152,7 @@
                 "Mercury's Treads",
                 "Heartsteel",
                 "Trinity Force",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Sterak's Gage",
                 "Death's Dance"
               ],
@@ -4190,7 +4190,7 @@
             "Wit's End",
             "Guinsoo's Rageblade",
             "Bloodthirster",
-            "Runaan's Hurricane"
+            "Kraken Slayer"
           ],
           "_collapsed": true,
           "build_paths": [
@@ -4203,7 +4203,7 @@
                 "Wit's End",
                 "Guinsoo's Rageblade",
                 "Bloodthirster",
-                "Runaan's Hurricane"
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Lethal Tempo",
@@ -5201,7 +5201,7 @@
             "Heartsteel",
             "Trinity Force",
             "Sterak's Gage",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Death's Dance"
           ],
           "_collapsed": true,
@@ -5215,7 +5215,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -5765,7 +5765,7 @@
             "Trinity Force",
             "Mercury's Treads",
             "Blade of The Ruined King",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Bloodthirster",
             "Sterak's Gage"
@@ -5779,7 +5779,7 @@
                 "Trinity Force",
                 "Mercury's Treads",
                 "Blade of The Ruined King",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Bloodthirster",
                 "Sterak's Gage"
@@ -5804,7 +5804,7 @@
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
                 "Blade of The Ruined King",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Bastionbreaker",
                 "Youmuu's Ghostblade"
               ],
@@ -5839,7 +5839,7 @@
             "Trinity Force",
             "Mercury's Treads",
             "Blade of The Ruined King",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Bloodthirster"
           ],
@@ -5852,7 +5852,7 @@
                 "Trinity Force",
                 "Mercury's Treads",
                 "Blade of The Ruined King",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Bloodthirster"
               ],
@@ -6826,7 +6826,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster",
@@ -6840,7 +6840,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster",
@@ -6900,7 +6900,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster"
@@ -6913,7 +6913,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster"
@@ -7097,7 +7097,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Immortal Shieldbow",
             "Lord Dominik's Regards",
@@ -7111,7 +7111,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Immortal Shieldbow",
                 "Lord Dominik's Regards",
@@ -7409,7 +7409,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -9354,7 +9354,7 @@
                 "Mercury's Treads",
                 "Blade of The Ruined King",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Bastionbreaker",
                 "Youmuu's Ghostblade"
               ],
@@ -9626,7 +9626,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -10127,7 +10127,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows",
@@ -10141,7 +10141,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows",
@@ -10191,7 +10191,7 @@
                 "Trinity Force",
                 "Heartsteel",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -10225,7 +10225,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows"
@@ -10238,7 +10238,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -10695,7 +10695,7 @@
             "Mercury's Treads",
             "Heartsteel",
             "Sterak's Gage",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Overlord's Bloodmail",
             "Death's Dance"
           ],
@@ -10709,7 +10709,7 @@
                 "Mercury's Treads",
                 "Heartsteel",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Overlord's Bloodmail",
                 "Death's Dance"
               ],
@@ -10769,7 +10769,7 @@
             "Mercury's Treads",
             "Heartsteel",
             "Sterak's Gage",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Overlord's Bloodmail"
           ],
           "_collapsed": true,
@@ -10782,7 +10782,7 @@
                 "Mercury's Treads",
                 "Heartsteel",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Overlord's Bloodmail"
               ],
               "runes": {
@@ -11778,7 +11778,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Bloodthirster",
             "Lord Dominik's Regards",
@@ -11792,7 +11792,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Bloodthirster",
                 "Lord Dominik's Regards",
@@ -12862,7 +12862,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Yun Tal Wildarrows",
             "Lord Dominik's Regards",
@@ -12876,7 +12876,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Yun Tal Wildarrows",
                 "Lord Dominik's Regards",
@@ -12903,7 +12903,7 @@
                 "Lord Dominik's Regards",
                 "Blade of The Ruined King",
                 "Bastionbreaker",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -12936,7 +12936,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Yun Tal Wildarrows",
             "Lord Dominik's Regards"
@@ -12949,7 +12949,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Yun Tal Wildarrows",
                 "Lord Dominik's Regards"
@@ -13675,7 +13675,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Bloodthirster",
             "Lord Dominik's Regards",
@@ -13689,7 +13689,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Bloodthirster",
                 "Lord Dominik's Regards",
@@ -13946,7 +13946,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Trinity Force",
             "Lord Dominik's Regards",
@@ -13960,7 +13960,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Trinity Force",
                 "Lord Dominik's Regards",
@@ -14020,7 +14020,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Trinity Force",
             "Lord Dominik's Regards"
@@ -14033,7 +14033,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Trinity Force",
                 "Lord Dominik's Regards"
@@ -14220,7 +14220,7 @@
             "Lord Dominik's Regards",
             "Blade of The Ruined King",
             "Bastionbreaker",
-            "Runaan's Hurricane",
+            "The Collector",
             "Youmuu's Ghostblade"
           ],
           "_collapsed": true,
@@ -14234,7 +14234,7 @@
                 "Lord Dominik's Regards",
                 "Blade of The Ruined King",
                 "Bastionbreaker",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -14256,7 +14256,7 @@
                 "Trinity Force",
                 "Berserker's Greaves",
                 "Blade of The Ruined King",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Bastionbreaker",
                 "Infinity Edge"
@@ -14317,7 +14317,7 @@
             "Mercury's Treads",
             "Lord Dominik's Regards",
             "Blade of The Ruined King",
-            "Runaan's Hurricane",
+            "The Collector",
             "Youmuu's Ghostblade"
           ],
           "_collapsed": true,
@@ -14330,7 +14330,7 @@
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
                 "Blade of The Ruined King",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -15117,7 +15117,7 @@
                 "Blade of The Ruined King",
                 "Mercury's Treads",
                 "Heartsteel",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Sterak's Gage",
                 "Overlord's Bloodmail",
                 "Death's Dance"
@@ -17000,7 +17000,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Yun Tal Wildarrows",
             "Lord Dominik's Regards",
             "Infinity Edge",
@@ -17014,7 +17014,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Yun Tal Wildarrows",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
@@ -17075,7 +17075,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Yun Tal Wildarrows",
             "Lord Dominik's Regards",
             "Infinity Edge"
@@ -17088,7 +17088,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Yun Tal Wildarrows",
                 "Lord Dominik's Regards",
                 "Infinity Edge"
@@ -17408,7 +17408,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane"
+                "Kraken Slayer"
               ],
               "runes": {
                 "keystone": "Conqueror",
@@ -18358,7 +18358,7 @@
             "Mercury's Treads",
             "Heartsteel",
             "Sterak's Gage",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Overlord's Bloodmail",
             "Death's Dance"
           ],
@@ -18372,7 +18372,7 @@
                 "Mercury's Treads",
                 "Heartsteel",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Overlord's Bloodmail",
                 "Death's Dance"
               ],
@@ -18432,7 +18432,7 @@
             "Mercury's Treads",
             "Heartsteel",
             "Sterak's Gage",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Overlord's Bloodmail"
           ],
           "_collapsed": true,
@@ -18445,7 +18445,7 @@
                 "Mercury's Treads",
                 "Heartsteel",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Overlord's Bloodmail"
               ],
               "runes": {
@@ -19169,7 +19169,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Bloodthirster",
@@ -19183,7 +19183,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Bloodthirster",
@@ -21905,7 +21905,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Yun Tal Wildarrows",
             "Infinity Edge",
@@ -21919,7 +21919,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Yun Tal Wildarrows",
                 "Infinity Edge",
@@ -21943,7 +21943,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Yun Tal Wildarrows",
                 "Lord Dominik's Regards",
@@ -21980,7 +21980,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Yun Tal Wildarrows",
             "Infinity Edge"
@@ -21993,7 +21993,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -23513,7 +23513,7 @@
             "Lord Dominik's Regards",
             "Bastionbreaker",
             "Umbral Glaive",
-            "Runaan's Hurricane",
+            "The Collector",
             "Youmuu's Ghostblade"
           ],
           "_collapsed": true,
@@ -23527,7 +23527,7 @@
                 "Lord Dominik's Regards",
                 "Bastionbreaker",
                 "Umbral Glaive",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -23551,7 +23551,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -23586,7 +23586,7 @@
             "Mercury's Treads",
             "Lord Dominik's Regards",
             "Umbral Glaive",
-            "Runaan's Hurricane",
+            "The Collector",
             "Youmuu's Ghostblade"
           ],
           "_collapsed": true,
@@ -23599,7 +23599,7 @@
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
                 "Umbral Glaive",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -25138,7 +25138,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows",
@@ -25152,7 +25152,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows",
@@ -25202,7 +25202,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -25236,7 +25236,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows"
@@ -25249,7 +25249,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -25433,7 +25433,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Trinity Force",
             "Lord Dominik's Regards",
@@ -25447,7 +25447,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Trinity Force",
                 "Lord Dominik's Regards",
@@ -25474,7 +25474,7 @@
                 "Lord Dominik's Regards",
                 "Essence Reaver",
                 "Bastionbreaker",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -25507,7 +25507,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Bloodthirster",
             "Trinity Force",
             "Lord Dominik's Regards"
@@ -25520,7 +25520,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Trinity Force",
                 "Lord Dominik's Regards"
@@ -25975,7 +25975,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster",
@@ -25989,7 +25989,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster",
@@ -26049,7 +26049,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster"
@@ -26062,7 +26062,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster"
@@ -27123,7 +27123,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -28478,7 +28478,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Trinity Force",
                 "Lord Dominik's Regards",
@@ -28711,7 +28711,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Bloodthirster",
             "Lord Dominik's Regards",
@@ -28725,7 +28725,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Bloodthirster",
                 "Lord Dominik's Regards",
@@ -29524,7 +29524,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster",
@@ -29538,7 +29538,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster",
@@ -29598,7 +29598,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster"
@@ -29611,7 +29611,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster"
@@ -29796,7 +29796,7 @@
             "Blade of The Ruined King",
             "Mercury's Treads",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
+            "The Collector",
             "Infinity Edge",
             "Bastionbreaker",
             "Youmuu's Ghostblade"
@@ -29810,7 +29810,7 @@
                 "Blade of The Ruined King",
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Infinity Edge",
                 "Bastionbreaker",
                 "Youmuu's Ghostblade"
@@ -29833,7 +29833,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Immortal Shieldbow",
                 "Lord Dominik's Regards",
@@ -29870,7 +29870,7 @@
             "Blade of The Ruined King",
             "Mercury's Treads",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
+            "The Collector",
             "Infinity Edge",
             "Youmuu's Ghostblade"
           ],
@@ -29883,7 +29883,7 @@
                 "Blade of The Ruined King",
                 "Mercury's Treads",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Infinity Edge",
                 "Youmuu's Ghostblade"
               ],
@@ -30127,7 +30127,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Bloodthirster",
@@ -32284,7 +32284,7 @@
             "Mercury's Treads",
             "Blade of The Ruined King",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
+            "The Collector",
             "Bastionbreaker",
             "Youmuu's Ghostblade"
           ],
@@ -32298,7 +32298,7 @@
                 "Mercury's Treads",
                 "Blade of The Ruined King",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Bastionbreaker",
                 "Youmuu's Ghostblade"
               ],
@@ -32358,7 +32358,7 @@
             "Mercury's Treads",
             "Blade of The Ruined King",
             "Lord Dominik's Regards",
-            "Runaan's Hurricane",
+            "The Collector",
             "Youmuu's Ghostblade"
           ],
           "_collapsed": true,
@@ -32371,7 +32371,7 @@
                 "Mercury's Treads",
                 "Blade of The Ruined King",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -32591,7 +32591,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Trinity Force",
                 "Lord Dominik's Regards",
@@ -32824,7 +32824,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Bloodthirster",
             "Lord Dominik's Regards",
@@ -32838,7 +32838,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Bloodthirster",
                 "Lord Dominik's Regards",
@@ -33970,7 +33970,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Bloodthirster",
                 "Yun Tal Wildarrows",
@@ -35351,7 +35351,7 @@
                 "Mercury's Treads",
                 "Blade of The Ruined King",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Bastionbreaker",
                 "Youmuu's Ghostblade"
               ],
@@ -37731,7 +37731,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster",
@@ -37745,7 +37745,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster",
@@ -37805,7 +37805,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster"
@@ -37818,7 +37818,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster"
@@ -38002,7 +38002,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Yun Tal Wildarrows",
             "Infinity Edge",
@@ -38016,7 +38016,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Yun Tal Wildarrows",
                 "Infinity Edge",
@@ -38042,7 +38042,7 @@
                 "Mercury's Treads",
                 "Blade of The Ruined King",
                 "Lord Dominik's Regards",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Bastionbreaker",
                 "Youmuu's Ghostblade"
               ],
@@ -38063,7 +38063,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Bloodthirster",
                 "Yun Tal Wildarrows",
                 "Lord Dominik's Regards",
@@ -38100,7 +38100,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Yun Tal Wildarrows",
             "Infinity Edge"
@@ -38113,7 +38113,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Yun Tal Wildarrows",
                 "Infinity Edge"
@@ -40716,7 +40716,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Bloodthirster",
             "Lord Dominik's Regards",
@@ -40730,7 +40730,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Bloodthirster",
                 "Lord Dominik's Regards",
@@ -40988,7 +40988,7 @@
             "Blade of The Ruined King",
             "Mercury's Treads",
             "Manamune",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Manamune",
             "Bloodthirster",
             "Sterak's Gage"
@@ -41002,7 +41002,7 @@
                 "Blade of The Ruined King",
                 "Mercury's Treads",
                 "Manamune",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Manamune",
                 "Bloodthirster",
                 "Sterak's Gage"
@@ -41026,7 +41026,7 @@
                 "Manamune",
                 "Mercury's Treads",
                 "Manamune",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Lord Dominik's Regards",
                 "Bastionbreaker",
                 "Youmuu's Ghostblade"
@@ -41777,7 +41777,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster",
@@ -41791,7 +41791,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster",
@@ -42048,7 +42048,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Bloodthirster",
             "Lord Dominik's Regards",
@@ -42062,7 +42062,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Bloodthirster",
                 "Lord Dominik's Regards",
@@ -42319,7 +42319,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Trinity Force",
             "Lord Dominik's Regards",
             "Bloodthirster",
@@ -42333,7 +42333,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Trinity Force",
                 "Lord Dominik's Regards",
                 "Bloodthirster",
@@ -43132,7 +43132,7 @@
           "items": [
             "Blade of The Ruined King",
             "Mercury's Treads",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Yun Tal Wildarrows",
             "Bloodthirster",
             "Lord Dominik's Regards",
@@ -43146,7 +43146,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Mercury's Treads",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Yun Tal Wildarrows",
                 "Bloodthirster",
                 "Lord Dominik's Regards",
@@ -43403,7 +43403,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows",
@@ -43417,7 +43417,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows",
@@ -43444,7 +43444,7 @@
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Bastionbreaker",
-                "Runaan's Hurricane",
+                "The Collector",
                 "Youmuu's Ghostblade"
               ],
               "runes": {
@@ -43467,7 +43467,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -43501,7 +43501,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows"
@@ -43514,7 +43514,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -43698,7 +43698,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows",
@@ -43712,7 +43712,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows",
@@ -43762,7 +43762,7 @@
                 "Heartsteel",
                 "Trinity Force",
                 "Sterak's Gage",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Death's Dance"
               ],
               "runes": {
@@ -43796,7 +43796,7 @@
           "items": [
             "Blade of The Ruined King",
             "Berserker's Greaves",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Lord Dominik's Regards",
             "Infinity Edge",
             "Yun Tal Wildarrows"
@@ -43809,7 +43809,7 @@
               "items": [
                 "Blade of The Ruined King",
                 "Berserker's Greaves",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Lord Dominik's Regards",
                 "Infinity Edge",
                 "Yun Tal Wildarrows"
@@ -43994,7 +43994,7 @@
             "Blade of The Ruined King",
             "Mercury's Treads",
             "Trinity Force",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Sterak's Gage",
             "Heartsteel",
             "Death's Dance"
@@ -44008,7 +44008,7 @@
                 "Blade of The Ruined King",
                 "Mercury's Treads",
                 "Trinity Force",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Sterak's Gage",
                 "Heartsteel",
                 "Death's Dance"
@@ -44068,7 +44068,7 @@
             "Blade of The Ruined King",
             "Mercury's Treads",
             "Trinity Force",
-            "Runaan's Hurricane",
+            "Kraken Slayer",
             "Sterak's Gage",
             "Heartsteel"
           ],
@@ -44081,7 +44081,7 @@
                 "Blade of The Ruined King",
                 "Mercury's Treads",
                 "Trinity Force",
-                "Runaan's Hurricane",
+                "Kraken Slayer",
                 "Sterak's Gage",
                 "Heartsteel"
               ],
