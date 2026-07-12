@@ -136,6 +136,27 @@ def _serve_loadout_list_post(h, payload) -> None:
         h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
 
 
+def _serve_rune_pages_post(h, payload) -> None:
+    # {champion, mode} -> the deduped rune-page model for rune-follows-build
+    # (item 1 Phase 1). Mirrors _serve_loadout_list_post: mode defaults to
+    # "sr", champion is required, and enumerate_pages(champ, mode) is spliced
+    # back with the echoed champion + mode. coaches.rune_pages is non-frozen
+    # and only IMPORTS the frozen build_perk_ids resolver - it writes nothing.
+    try:
+        from coaches.rune_pages import enumerate_pages
+        champ = (payload.get("champion") or "").strip()
+        mode  = (payload.get("mode")     or "sr").strip()
+        if not champ:
+            h._send(400, b'{"error":"champion required"}', "application/json"); return
+        h._send(200, json.dumps({
+            "champion": champ, "mode": mode,
+            **enumerate_pages(champ, mode),
+        }).encode(), "application/json")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("api/loadout/rune-pages: %s", exc)
+        h._send(500, json.dumps({"error": _GENERIC_ERR}).encode(), "application/json")
+
+
 # item 213 (2026-05-28): the synthetic auto-build chooser row was
 # removed from the champ-select frontend (all champs + all modes). Its
 # inline override-package builder + the dedicated "RC ..." page-name
@@ -395,7 +416,8 @@ GET_ROUTES = [
 ]
 
 POST_ROUTES = [
-    (equals("/api/loadout/apply"),  _serve_loadout_apply_post),
-    (prefix("/api/loadout/list"),   _serve_loadout_list_post),
-    (equals("/api/lcu-cmd"),        _serve_lcu_cmd_post),
+    (equals("/api/loadout/apply"),      _serve_loadout_apply_post),
+    (equals("/api/loadout/rune-pages"), _serve_rune_pages_post),
+    (prefix("/api/loadout/list"),       _serve_loadout_list_post),
+    (equals("/api/lcu-cmd"),            _serve_lcu_cmd_post),
 ]
