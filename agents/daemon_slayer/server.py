@@ -457,6 +457,11 @@ def _route_rank(body: dict) -> dict:
     # /dps (the direct compute_dps route above) still does NOT forward this
     # param per the R7/R12 comment; /rank forwards it via rank_items instead.
     target_current_hp_pct = _opt_float(body, "target_current_hp_pct", 1.0)
+    # Per-champ burst-carry calibration (Jhin pilot): a SHORT fight_length
+    # engages rank_items' burst-vs-sustained blend. Absent -> None -> byte-
+    # identical default ranking (no burst compute paid). The client sets it
+    # from the champion -> fight_length allow-map at the carry chokepoint.
+    fight_length = _opt_float(body, "fight_length", None)
     try:
         result = rank_items(
             snap,
@@ -471,6 +476,7 @@ def _route_rank(body: dict) -> dict:
             only_item_ids=only_ids, sort_by=sort_by,
             augments=augments,
             filter_shared_uniques=filter_shared_uniques,
+            fight_length=fight_length,
             apply_mode_modifiers=apply_mode_modifiers,
             exempt_offclass_by_win=exempt_offclass_by_win,
             prefer_kit_axis_by_win=prefer_kit_axis_by_win,
