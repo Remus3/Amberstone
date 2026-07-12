@@ -1359,7 +1359,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         renderOverlayDsControls(_amMockData.coach || {}, { mode: _amMockData.mode || "sr" });
         renderSpikeCue(_amMockData.liveclient || null);
         renderEnemySpells(_amMockData.liveclient || null);
-        renderStatsPanel(_amMockData.liveclient || null);
+        renderStatsPanel(_amMockData.liveclient || null, { mode: _amMockData.mode || "sr" });
         renderMinimapRect(_amMockData.minimap_rect || null);
         renderMinimapZoi(_amMockData.zoi || null);
         renderObjectiveChips(_amMockData.liveclient || null);
@@ -1415,7 +1415,7 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
       // API-backed stats mini-panel ride the same overlay-gated dispatch off the
       // live block. Both self-gate on body[data-shell="overlay"] - no-op on 1920.
       renderEnemySpells((state.latest && state.latest.liveclient) || null);
-      renderStatsPanel((state.latest && state.latest.liveclient) || null);
+      renderStatsPanel((state.latest && state.latest.liveclient) || null, { mode: state.mode });
       // RC Overlay Doctrine w-spike: the ultimate power-spike crossed cue rides
       // the same overlay-gated dispatch off the live level (lc.level). One-shot
       // + transient; null-safe; no-op out of game / off the overlay shell.
