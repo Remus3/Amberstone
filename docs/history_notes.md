@@ -257,6 +257,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-11 (item-1 rune-follows-build Phase 5: relocate the champ-select auto-push toggles to the CHAMP SELECT settings card + default-ON)
+
+Shipped LEDGER 862's NEXT (item-1 Phase 5). Commit `942daa29` on main; web/* only (ADR-008 asset-hash reload - no RC restart). Full detail: LEDGER 863.
+
+- REMOVED the item-240 in-panel build-chooser push control (the `[PUSH]` button + 3 inline Runes/Spells/Build checkboxes on the chooser title, the `rc-cs-push-flags` opt-in blob, `_csvSetPushFlag`, `_csvPushFlagsStorageKey`, `.csv-builds-push-*` CSS).
+- ADDED 3 toggles to the CHAMP SELECT settings card (`web/index.html`, reusing the audited `.settings-row` markup) wired by an INVERTED `dev.js` binder (extended `cb()` with an `invert` param: checked unless `"0"`). `_csvGetPushFlags` now reads 3 FLAT keys `rc-cs-push-{runes,spells,build}`, each ON unless `"0"` (default-ON opt-OUT) - the SAME keys the toggles write (single source of truth).
+- KEY: the build-selection auto-push (build-path click -> `flags.build` -> push items) is SEPARATE from the removed control and STAYS -> with default-ON, picking a build now auto-pushes its items. `_csvPushCategory`/`_csvPushCheckedCategories` KEPT for Phase 6 (test-pinned; Phase 6 reuses "push all per flags" on champ-select enter).
+- Tests: NEW `test_csv_push_toggles_phase5.py` (toggles present + under the CHAMP SELECT card, inverted binder, `_csvGetPushFlags` default-ON via node harness, control-removed regression pin, Phase-6 plumbing intact). Reconciled the superseded item-240 pins (`HeaderControl3dTests` + 2 in-panel-wiring 3e tests removed w/ supersession notes; verb pins kept; dropped unused `import re`) + the champ-select snapshot (`pushCtrls`/`pushCbs` now 0 - the mock-harness Playwright IS the panel UI-audit). 68 core + 65 settings/overlay tests pass; ruff + ASCII clean.
+- Don't-redo: Phase 5 SHIPPED; storage = 3 flat keys default-ON (NOT the old blob); the in-panel control is GONE (regression-pinned); the settings toggles live in the dev/settings view (NOT `#view-champ-select`, so the champ-select snapshot can't reach them - grep/behavior-tested); the build-selection auto-push staying + default-ON is intentional.
+- NEXT: Phase 6 (LCU push via the NON-frozen `/api/loadout/apply` seam - reuse `_csvApplyLoadout`; push on champ-select enter / build change / rune override, gated by the default-ON runes flag, last-writer-wins re-push AFTER the frozen auto RuneWriter; validate with `tools/lcu_push_watcher.py`). OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend`).
+
+---
+
 # 2026-07-11 (item-1 rune-follows-build Phase 4: fold operator user-curated builds into the champ-select rune-page model + exact-match dedup)
 
 Shipped LEDGER 861's NEXT (item-1 Phase 4). Commit `8fd9b979` on main; RC restarted (pid 17692) + live-verified. Full detail: LEDGER 862.
