@@ -22,20 +22,22 @@ Coverage:
       in-game build chooser pre-select is unbroken), rune choice in a SEPARATE
       sibling rc-cs-rune-<champ> key; back-compat = a champ with no rune key
       returns "".
- 3d - header control: [PUSH] button + 3 inline [x] Runes/Spells/Build
-      checkboxes; GLOBAL push-flag localStorage key; default first-run ALL
-      UNCHECKED (opt-in).
- 3e - push semantics: uncheck->check pushes that category immediately; while
-      checked a subsequent selection change pushes it; uncheck fires no push;
-      [PUSH] force-pushes all checked categories. Per-category LCU verbs:
-      Runes->apply_runes (via the apply route push_runes gate), Spells->
-      set_summoner_spell (both slots), Build->apply_item_sets_batch (via the
-      apply route push_items gate + the colon-form variant key).
+ 3d - SUPERSEDED by item-1 Phase 5 (auto-push toggles relocated to Settings).
+      The in-panel [PUSH] button + 3 header checkboxes + the rc-cs-push-flags
+      opt-in blob were replaced by 3 default-ON toggles in the CHAMP SELECT
+      settings card (flat keys rc-cs-push-{runes,spells,build}, inverted dev.js
+      binder, _csvGetPushFlags default-ON). New guard =
+      tests/test_csv_push_toggles_phase5.py; the HeaderControl3dTests grep pins
+      + the two in-panel-wiring 3e tests were removed here.
+ 3e - push SEMANTICS (per-category LCU verbs) still hold + are pinned below;
+      the in-panel checkbox / [PUSH]-button WIRING pins were removed with 3d
+      (Phase 5). Per-category verbs: Runes->apply_runes (apply route push_runes
+      gate), Spells->set_summoner_spell (both slots), Build->apply_item_sets_batch
+      (apply route push_items gate + the colon-form variant key).
 """
 
 from __future__ import annotations
 
-import re
 import sys
 import unittest
 from pathlib import Path
@@ -66,61 +68,11 @@ def _fn_body(text: str, sig: str) -> str:
     raise AssertionError(f"unbalanced braces after {sig!r}")
 
 
-class HeaderControl3dTests(unittest.TestCase):
-    """3d: [PUSH] button + 3 category checkboxes, RIGHT-aligned, GLOBAL
-    persisted flags, default first-run all-unchecked."""
-
-    @classmethod
-    def setUpClass(cls):
-        cls.js = CHAMP_SELECT_JS.read_text(encoding="utf-8")
-        cls.css = CHAMP_SELECT_CSS.read_text(encoding="utf-8")
-
-    def test_push_button_element_id(self):
-        self.assertIn('id="csv-builds-push-btn"', self.js,
-            "missing the [PUSH] button (#csv-builds-push-btn) on the "
-            "chooser header control (3d).")
-
-    def test_three_category_checkboxes(self):
-        self.assertIn('class="csv-builds-push-cb"', self.js,
-            "missing the per-category push checkboxes (3d).")
-        self.assertIn('data-push-cat=', self.js,
-            "push checkboxes must carry data-push-cat so the wiring "
-            "knows which category to push (3d).")
-        # All three categories must be the iterable source.
-        self.assertRegex(
-            self.js,
-            r'_CSV_PUSH_CATS\s*=\s*\["runes",\s*"spells",\s*"build"\]',
-            "the 3 categories must be runes/spells/build (3d).")
-
-    def test_global_push_flag_storage_key(self):
-        # GLOBAL (not per-champion) key.
-        self.assertIn('"rc-cs-push-flags"', self.js,
-            "push-flag persistence must use a GLOBAL key rc-cs-push-flags "
-            "(3d - not per-champion).")
-        self.assertIn("function _csvGetPushFlags(", self.js)
-        self.assertIn("function _csvSetPushFlag(", self.js)
-
-    def test_default_first_run_all_unchecked(self):
-        # _csvGetPushFlags falls back to all-false on missing/corrupt.
-        body = _fn_body(self.js, "function _csvGetPushFlags(")
-        self.assertRegex(
-            body,
-            r"off\s*=\s*\{\s*runes:\s*false,\s*spells:\s*false,\s*build:\s*false\s*\}",
-            "default first-run push flags MUST be all-false (3d opt-in: "
-            "nothing auto-pushes until the operator checks a box).")
-        # Missing key returns the off blob.
-        self.assertIn("if (!raw) return off;", body,
-            "missing push-flags key must return all-off (3d).")
-
-    def test_css_header_control_right_aligned(self):
-        m = re.search(
-            r"\.csv-builds-head\s*\{[^}]*justify-content:\s*space-between",
-            self.css, re.DOTALL)
-        self.assertIsNotNone(m,
-            ".csv-builds-head must space-between so the push control is "
-            "RIGHT-aligned to the title (3d).")
-        self.assertIn(".csv-builds-push-btn", self.css)
-        self.assertIn(".csv-builds-push-cat", self.css)
+# HeaderControl3dTests (the in-panel [PUSH] button + 3 header checkboxes +
+# the rc-cs-push-flags opt-in blob + the all-false default + the push-ctrl
+# CSS) was REMOVED here - item-1 Phase 5 relocated the auto-push toggles to the
+# CHAMP SELECT settings card (default-ON, flat keys). New guard =
+# tests/test_csv_push_toggles_phase5.py.
 
 
 class PushSemantics3eTests(unittest.TestCase):
@@ -173,22 +125,11 @@ class PushSemantics3eTests(unittest.TestCase):
             "_csvActiveBuildSelection must build the <variant>:<path-key> "
             "colon form so the resolver overlays the active path (3e).")
 
-    def test_checkbox_change_pushes_on_check_only(self):
-        body = _fn_body(self.js, "function _csvWireBuildVariants(")
-        # The change handler persists then pushes ONLY when on==true.
-        self.assertIn("_csvSetPushFlag(cat, on);", body,
-            "checkbox change must persist the flag (3e).")
-        self.assertRegex(
-            body,
-            r"if \(on && champion\) \{[\s\S]*?_csvPushCategory\(champion, mode, cat, variants\)",
-            "uncheck->check must push that category immediately; uncheck "
-            "fires no push (3e).")
-
-    def test_push_button_force_pushes_checked(self):
-        body = _fn_body(self.js, "function _csvWireBuildVariants(")
-        self.assertIn("_csvPushCheckedCategories(champion, mode, variants)", body,
-            "the [PUSH] button must force-push all currently-checked "
-            "categories (3e).")
+    # test_checkbox_change_pushes_on_check_only + test_push_button_force_pushes_
+    # checked were REMOVED here - item-1 Phase 5 deleted the in-panel checkbox /
+    # [PUSH]-button wiring inside _csvWireBuildVariants (the toggles moved to the
+    # settings card). The per-category verbs above + the build-selection auto-
+    # push (flags.build) remain the live push paths.
 
     def test_apply_route_honors_per_category_flags(self):
         # The backend apply route must gate each enqueue on its push flag

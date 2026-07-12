@@ -12,10 +12,13 @@ function _settingsRefresh() {
   window.__settingsWired = true;
   const get = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; }};
   const setLS = (k, v) => { try { localStorage.setItem(k, v); } catch (_) {} };
-  const cb = (id, key, onSet) => {
+  const cb = (id, key, onSet, invert) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.checked = get(key) === "1";
+    // invert=true: checked UNLESS the stored value is "0" (opt-OUT, default
+    // ON) - used by the item-1 Phase 5 push toggles. Default (invert falsy):
+    // checked only when the stored value is "1" (the item-240 opt-in).
+    el.checked = invert ? (get(key) !== "0") : (get(key) === "1");
     el.addEventListener("change", () => {
       setLS(key, el.checked ? "1" : "0");
       if (onSet) onSet(el.checked);
@@ -29,6 +32,13 @@ function _settingsRefresh() {
   // token layer. Mock-data toggle replaces it - dev affordance for
   // panel layout work, default OFF.
   cb("set-ui-mock", "rc-ui-mock", (v) => { document.body.dataset.uiMock = v ? "1" : ""; });
+  // item 1 Phase 5 (2026-07-11): champ-select auto-push toggles, relocated
+  // from the in-panel build-chooser control. INVERTED (checked unless "0") so
+  // they default ON - champ_select._csvGetPushFlags reads the SAME 3 flat keys.
+  // Opt-OUT: uncheck a category to stop auto-pushing it on build select.
+  cb("set-push-runes",  "rc-cs-push-runes",  null, true);
+  cb("set-push-spells", "rc-cs-push-spells", null, true);
+  cb("set-push-build",  "rc-cs-push-build",  null, true);
   // s220: Post Game Review knobs. Rank-tier writes the SAME
   // localStorage key the PGR page's inline dropdown uses
   // (rc-pgr-rank-tier) - Settings is the canonical home, the two stay
