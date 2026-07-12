@@ -22,6 +22,7 @@ from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
 from core.ds_archetype_hp_pct import archetype_target_current_hp_pct
+from core.ds_champion_fight_length import champion_fight_length
 
 logger = logging.getLogger("rc.core.daemon_slayer_client")
 
@@ -138,6 +139,7 @@ def rank_for(
     assume_passive_as_stacks: bool = False,  # R7
     apply_target_vuln: bool = False,         # R12
     target_current_hp_pct: float = 1.0,      # R55
+    fight_length: Optional[float] = None,    # per-champ burst-carry blend (Jhin pilot)
 ) -> Optional[list[RankedItem]]:
     """Call POST /rank and return the parsed top-N rows. None on engine failure.
 
@@ -161,6 +163,14 @@ def rank_for(
     added the carry/dps branch silently ignored the whitelist, so an
     ADC build-order plan restricted to a curated pool would no-op the
     restriction - it now threads through to the server's ``only`` field.
+
+    ``fight_length`` (per-champion burst-carry calibration, Jhin pilot) is the
+    OPTIONAL fight-length-reweight seconds forwarded into the server's
+    ``rank_items`` blend. ``None`` (default) omits the body key entirely, so the
+    request is byte-identical to the pre-calibration path; a positive float
+    engages the burst-vs-sustained blend. Set at the carry chokepoint from the
+    ``core.ds_champion_fight_length`` allow-map (see
+    ``rank_for_primary_archetype``).
     """
     body = {
         "champion": champion,
@@ -192,6 +202,10 @@ def rank_for(
     # R55: emit only when non-default so a call at 1.0 is byte-identical.
     if target_current_hp_pct != 1.0:
         body["target_current_hp_pct"] = float(target_current_hp_pct)
+    # Per-champ burst-carry blend: emit only when set so a call without it is
+    # byte-identical to the pre-calibration request.
+    if fight_length is not None:
+        body["fight_length"] = float(fight_length)
     data = _post_json("/rank", body, timeout=timeout)
     if data is None:
         return None
@@ -1252,6 +1266,13 @@ def rank_for_primary_archetype(
         {"target_current_hp_pct": effective_hp_pct}
         if assume_archetype_hp_pct else {}
     )
+    # Per-champion burst-carry calibration (Jhin pilot): consult the allow-map
+    # for a SHORT fight_length that tilts the carry / ds.dps blend toward the
+    # champ's lethality-crit burst core. A champion ABSENT from the map resolves
+    # to None -> rank_for omits the body key -> byte-identical default ranking.
+    # Applied here at the shared carry chokepoint so BOTH the live per-tick coach
+    # path and the offline build-order / loadout backfill engage it identically.
+    _carry_fight_length = champion_fight_length(champion)
     rows = rank_for(
         champion,
         level=level, item_ids=item_ids, mode=mode,
@@ -1267,6 +1288,7 @@ def rank_for_primary_archetype(
         cost_ceiling=cost_ceiling,
         assume_passive_as_stacks=assume_passive_as_stacks,
         apply_target_vuln=apply_target_vuln,
+        fight_length=_carry_fight_length,
         **_carry_hp_kwargs,
     )
     if rows is None:
