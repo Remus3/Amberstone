@@ -394,6 +394,32 @@ body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div
   overflow: hidden;
   line-height: 1.25;
 }
+/* A coach markdown table that leaked into a field value (active_match.js
+ * _parseCoachTable) renders as clean label:value sub-rows (.am-call-table) rather
+ * than a raw-pipe wall. Clamp each sub-row to 2 lines on the in-game HUD so even a
+ * verbose macro table stays inside the glance budget (same rule-1 bound as the
+ * OBJECTIVE clamp above); the full text stays on the dashboard surface. The row
+ * label eyebrow stays inline at the head of the clamped block. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body .am-call-table > div {
+  /* Compact overlay scale (--fs-ov-chip 13px) so the reformatted rows sit at the
+   * same rung as the other CALL lines, not the base --fs-sm 18px (which is the
+   * dashboard-surface size); !important beats the inline --fs-sm _line sets. */
+  font-size: var(--fs-ov-chip) !important;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.3;
+}
+/* The leaked-table headline verb (.am-call-thead) matches the plain ACTION verb
+ * (--fs-ov-call, white) so the two ACTION-render paths read identically on the
+ * HUD instead of the base --fs-md 22px the dashboard row inherits. */
+body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="action"] .am-call-thead {
+  font-size: var(--fs-ov-call) !important;
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgb(var(--ovx-text)) !important;
+}
 /* NEXT is dashboard-only on the HUD (data-ink). */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-call"] #am-call-body > div[data-call-line="next"] {
   display: none !important;
@@ -416,8 +442,19 @@ body[data-shell="overlay"] .bm-row.bm-knobs {
  * different band width. */
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] {
   /* BATCH A (2026-07-06): widened 350 -> 380 so a full 7-icon build row fits on
-   * one line (the 3-named-row redesign caps rows at 7; boots do not cost a slot). */
-  --ovx-w: 380px;
+   * one line (the 3-named-row redesign caps rows at 7; boots do not cost a slot).
+   * 2026-07-12 overlay-fix: 380px did NOT actually fit 7 icons - the LIVE strip
+   * measured scrollWidth 356 > clientWidth 334 (headless probe), so the 7th icon
+   * (the "+27" pick) overflowed the interior and was clipped by the .am-pane
+   * overflow:hidden (operator: "the scroll bar is being pushed by the 7th item").
+   * A 7-cell strip needs ~356px of interior; 380px only offers ~334px. Bumped to
+   * 412px (interior ~366px) so all 7 cells fit on one line with an ~8px cushion
+   * for sub-pixel / Electron font-metric drift - no horizontal overflow, no
+   * clipped 7th icon, and no overflow-driven scrollbar eating the bottom edge
+   * (which is what stopped the panel sitting flush when dragged to the bottom).
+   * Same widen-to-fit fix as w-objgauges (288px) + w-enemyspells (280px). Tunable
+   * live via the SZ slider. */
+  --ovx-w: 412px;
 }
 body[data-shell="overlay"] .ovx-widget[data-ovx-id="w-build"] .bm-strip {
   flex-wrap: nowrap;
