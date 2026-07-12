@@ -193,6 +193,35 @@
   border-color: var(--signal-info, #8a8cf0);
 }
 
+/* Overlay item 8: the stats-panel benchmark selects (rank tier + compare role).
+ * Reuse the number-input chrome + the token scale; each clears the --hit-min
+ * game-distance floor and shows the spec --focus-ring on keyboard focus (the
+ * relocated home of the retired in-panel .sp-role select's hit-target + focus
+ * guard, tests/test_overlay_stats_role_hit_target.py). */
+.ovset-sel {
+  justify-content: space-between;
+}
+
+.ovset-sel > select {
+  flex: 0 0 auto;
+  min-width: 132px;
+  box-sizing: border-box;
+  min-height: var(--hit-min, 42px);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--panel-radius-sm, 10px);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: var(--fs-sm, 18px);
+  cursor: pointer;
+}
+
+.ovset-sel > select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--signal-info, #8a8cf0);
+}
+
 /* RC2 4.2: opacity slider row. Label left, range right; the row carries the
  * --hit-min floor so the whole strip stays game-distance tappable. */
 .ovset-range {
