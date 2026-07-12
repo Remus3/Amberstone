@@ -1,0 +1,548 @@
+{
+  "schema": 1,
+  "patch": "16.13.1",
+  "generated_at": null,
+  "source": "estimate-not-measured (lifted from last_match.js _RANK_TIER_AVERAGES, hand-curated reference; not measured)",
+  "tiers": {
+    "iron": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 140
+            },
+            "kda": {
+              "avg": 1.7
+            },
+            "kp": {
+              "avg": 50
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 140
+            },
+            "kda": {
+              "avg": 1.7
+            },
+            "kp": {
+              "avg": 50
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 35
+            },
+            "kda": {
+              "avg": 1.6
+            },
+            "kp": {
+              "avg": 55
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 35
+            },
+            "kda": {
+              "avg": 1.6
+            },
+            "kp": {
+              "avg": 55
+            }
+          }
+        }
+      }
+    },
+    "bronze": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 165
+            },
+            "kda": {
+              "avg": 2.0
+            },
+            "kp": {
+              "avg": 53
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 165
+            },
+            "kda": {
+              "avg": 2.0
+            },
+            "kp": {
+              "avg": 53
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 42
+            },
+            "kda": {
+              "avg": 1.9
+            },
+            "kp": {
+              "avg": 58
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 42
+            },
+            "kda": {
+              "avg": 1.9
+            },
+            "kp": {
+              "avg": 58
+            }
+          }
+        }
+      }
+    },
+    "silver": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 185
+            },
+            "kda": {
+              "avg": 2.2
+            },
+            "kp": {
+              "avg": 55
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 185
+            },
+            "kda": {
+              "avg": 2.2
+            },
+            "kp": {
+              "avg": 55
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 48
+            },
+            "kda": {
+              "avg": 2.1
+            },
+            "kp": {
+              "avg": 60
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 48
+            },
+            "kda": {
+              "avg": 2.1
+            },
+            "kp": {
+              "avg": 60
+            }
+          }
+        }
+      }
+    },
+    "gold": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 205
+            },
+            "kda": {
+              "avg": 2.5
+            },
+            "kp": {
+              "avg": 58
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 205
+            },
+            "kda": {
+              "avg": 2.5
+            },
+            "kp": {
+              "avg": 58
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 55
+            },
+            "kda": {
+              "avg": 2.4
+            },
+            "kp": {
+              "avg": 62
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 55
+            },
+            "kda": {
+              "avg": 2.4
+            },
+            "kp": {
+              "avg": 62
+            }
+          }
+        }
+      }
+    },
+    "platinum": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 225
+            },
+            "kda": {
+              "avg": 2.8
+            },
+            "kp": {
+              "avg": 60
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 225
+            },
+            "kda": {
+              "avg": 2.8
+            },
+            "kp": {
+              "avg": 60
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 62
+            },
+            "kda": {
+              "avg": 2.7
+            },
+            "kp": {
+              "avg": 64
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 62
+            },
+            "kda": {
+              "avg": 2.7
+            },
+            "kp": {
+              "avg": 64
+            }
+          }
+        }
+      }
+    },
+    "emerald": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 240
+            },
+            "kda": {
+              "avg": 3.1
+            },
+            "kp": {
+              "avg": 62
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 240
+            },
+            "kda": {
+              "avg": 3.1
+            },
+            "kp": {
+              "avg": 62
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 68
+            },
+            "kda": {
+              "avg": 3.0
+            },
+            "kp": {
+              "avg": 66
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 68
+            },
+            "kda": {
+              "avg": 3.0
+            },
+            "kp": {
+              "avg": 66
+            }
+          }
+        }
+      }
+    },
+    "diamond": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 260
+            },
+            "kda": {
+              "avg": 3.4
+            },
+            "kp": {
+              "avg": 64
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 260
+            },
+            "kda": {
+              "avg": 3.4
+            },
+            "kp": {
+              "avg": 64
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 75
+            },
+            "kda": {
+              "avg": 3.3
+            },
+            "kp": {
+              "avg": 68
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 75
+            },
+            "kda": {
+              "avg": 3.3
+            },
+            "kp": {
+              "avg": 68
+            }
+          }
+        }
+      }
+    },
+    "master": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 280
+            },
+            "kda": {
+              "avg": 3.7
+            },
+            "kp": {
+              "avg": 66
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 280
+            },
+            "kda": {
+              "avg": 3.7
+            },
+            "kp": {
+              "avg": 66
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 80
+            },
+            "kda": {
+              "avg": 3.6
+            },
+            "kp": {
+              "avg": 70
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 80
+            },
+            "kda": {
+              "avg": 3.6
+            },
+            "kp": {
+              "avg": 70
+            }
+          }
+        }
+      }
+    },
+    "grandmaster": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 300
+            },
+            "kda": {
+              "avg": 4.0
+            },
+            "kp": {
+              "avg": 68
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 300
+            },
+            "kda": {
+              "avg": 4.0
+            },
+            "kp": {
+              "avg": 68
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 85
+            },
+            "kda": {
+              "avg": 3.9
+            },
+            "kp": {
+              "avg": 72
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 85
+            },
+            "kda": {
+              "avg": 3.9
+            },
+            "kp": {
+              "avg": 72
+            }
+          }
+        }
+      }
+    },
+    "challenger": {
+      "SR": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 320
+            },
+            "kda": {
+              "avg": 4.3
+            },
+            "kp": {
+              "avg": 70
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 320
+            },
+            "kda": {
+              "avg": 4.3
+            },
+            "kp": {
+              "avg": 70
+            }
+          }
+        }
+      },
+      "ARAM": {
+        "all": {
+          "early": {
+            "cs": {
+              "avg": 90
+            },
+            "kda": {
+              "avg": 4.2
+            },
+            "kp": {
+              "avg": 74
+            }
+          },
+          "mid": {
+            "cs": {
+              "avg": 90
+            },
+            "kda": {
+              "avg": 4.2
+            },
+            "kp": {
+              "avg": 74
+            }
+          }
+        }
+      }
+    }
+  }
+}
