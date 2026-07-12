@@ -257,6 +257,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-12 (item-1 rune-follows-build Phase 6: LCU push of the followed rune page via the manual apply seam - FINAL phase, ALL 6 SHIPPED)
+
+Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `e2e6911e` on main (feat) + the docs sync (LEDGER 864). Built via a TDD build subagent + independent verifier gate (CONFIRMED). Full detail: LEDGER 864.
+
+- CORRECTNESS FACT the spec did not flag: `enumerate_pages` sets `recommendedPageId` from `auto_*` (the keystone the FROZEN writer applies) but `resolve()` pushes a variant's OWN keystone - these DIFFER for champs like Caitlyn (loadout PTA vs auto Comet). So a selected pageId cannot be pushed by matching `recommendedPageId`, and re-pushing the pure-auto case would clobber the writer.
+- FIX (Option B-refined, no backend/frozen change): NEW `builds[].pushPageId` (`coaches/rune_pages.py`) = the page `resolve(buildId)` ACTUALLY produces (variant OWN / build_path / userbuild runes). The JS `_csvPushFollowedRune` reverse-maps the selected pageId to that resolver-producible buildId and pushes it runes-only via `_csvApplyLoadout` -> /api/loadout/apply. A pure-auto page (no pushPageId match) is LEFT to the frozen writer - never push wrong runes, never clobber.
+- Gated on the default-ON runes flag (`_csvGetPushFlags().runes`); a per-champ latch dedups re-pushes across renders; ONE deferred re-assert (~2s) so a saved-default/override lands AFTER the frozen RuneWriter's one-shot enter push (last-writer-wins). Wired at 3 sites: side-panel option click (force), build-path click (force), champ-select enter render (reassert). Legacy single-variant row push untouched. NO frozen file (`lcu_rune_writer`/`lcu_client`/`lcu_agent`) touched; NO backend route change (override_runes stays removed).
+- Tests: `pushPageId` model assertions (auto!=own -> recommendedPageId is the auto page, pushPageId is the own page, they differ; path + userbuild == their recommendedPageId); the Phase-5 `test_side_wiring_wires_no_push` guard REWRITTEN to `test_side_wiring_fires_rune_push` (push IS wired now); a node behavior harness proves the reverse-map picks the right buildId + skips a pure-auto page. 59 pass + the rune-side snapshot regression (1 pass). ruff + ASCII clean. Tier-1 web + non-frozen coaching helper - no engine bump, not in the Share mirror.
+- Don't-redo: ALL 6 PHASES SHIPPED. `pushPageId` (NOT recommendedPageId) is the pushable key; the pure-auto page is the frozen writer's job by design; the deferred re-assert is the last-writer-wins mechanism.
+- NEXT: item-1 rune-follows-build is CODE-COMPLETE. **LIVE-GATED validation remains** - prove the actual in-game LCU push (deduped, last-writer-wins after the RuneWriter) in a REAL champ select via `tools/lcu_push_watcher.py`; RC was mode=client (no game) this session, so the push path is test-proven but not yet live-validated. OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend` - Varus w/ Runaan's owned shows Terminus, melee Xin offered ranged on-hit; build_order/DS-scorer root-cause-fix + grep sibling melee champs).
+
+---
+
 # 2026-07-11 (item-1 rune-follows-build Phase 5: relocate the champ-select auto-push toggles to the CHAMP SELECT settings card + default-ON)
 
 Shipped LEDGER 862's NEXT (item-1 Phase 5). Commit `942daa29` on main; web/* only (ADR-008 asset-hash reload - no RC restart). Full detail: LEDGER 863.
