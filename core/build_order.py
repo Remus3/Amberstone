@@ -225,15 +225,31 @@ _BOOTSLESS_CHAMPS: frozenset = frozenset({
 })
 
 
+# Per-champion boots override, consulted ONLY in the archetype-default branch of
+# boot selection (the situational Mercury/Steelcaps picks still win). Keyed by
+# canonical champion name. Jhin -> Boots of Swiftness (3009): his Whisper passive
+# locks attack speed (Berserker's is wasted) and his kit is an immobile backline
+# carry that leans on the movement speed. Add entries sparingly - only when a
+# champion's kit makes a non-default tier-2 boot the clear archetype baseline.
+_BOOTS_OVERRIDE_BY_CHAMP: dict[str, str] = {
+    "Jhin": "3009",
+}
+
+
 def _select_boots_utility(
     arch: str,
     enemy_ad_share: float,
     enemy_ap_share: float,
+    champion: str = "",
 ) -> str:
     """ON-path boot pick: comp-conditioned utility argmax with archetype-default
-    hysteresis. Lazy-imports the DS primitive (byte-identical OFF never touches it)."""
+    hysteresis. Lazy-imports the DS primitive (byte-identical OFF never touches it).
+
+    ``champion`` (default "") consults the per-champion boots override as the
+    hysteresis default when present (Jhin -> Swiftness); blank / unlisted
+    champions keep the archetype default, so the ON path stays byte-identical."""
     from agents.daemon_slayer import boot_utility as bu
-    default_id = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
+    default_id = _BOOTS_OVERRIDE_BY_CHAMP.get(champion) or _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
     # v1 CC proxy: AP-heavy comps carry more lockdown (real per-champion CC via
     # enemy_champions is a follow-up; frontline CC is under-credited by this proxy).
     cc_proxy = float(enemy_ap_share)
@@ -249,6 +265,7 @@ def _select_boots(
     enemy_ad_share: float = 0.5,
     enemy_ap_share: float = 0.5,
     assume_boot_utility: bool = False,
+    champion: str = "",
 ) -> tuple[str, str]:
     """Pick the appropriate boots family given the operator's archetype +
     enemy AD/AP comp signal. Returns ``(item_id, item_name)``.
@@ -278,6 +295,7 @@ def _select_boots(
     if assume_boot_utility:
         iid = _select_boots_utility(
             arch, float(enemy_ad_share), float(enemy_ap_share),
+            champion=champion,
         )
     else:
         is_dps_axis = arch in ("dps", "carry", "marksman", "adc")
@@ -287,7 +305,7 @@ def _select_boots(
         elif target_armor >= 100.0 and not is_caster_axis:
             iid = "3047"
         else:
-            iid = _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
+            iid = _BOOTS_OVERRIDE_BY_CHAMP.get(champion) or _DEFAULT_BOOTS_BY_ARCHETYPE.get(arch, "3006")
     mode_up = str(mode).strip().upper()
     # TIER-3 SR UPGRADE REMOVED (2026-07-08): T3 boots are quest rewards,
     # not directly purchasable. The _BOOTS_SR_UPGRADE dict is now an empty
@@ -556,6 +574,7 @@ def plan_build_order(
             enemy_ad_share=float(extra.get("enemy_ad_share", 0.5)),
             enemy_ap_share=float(extra.get("enemy_ap_share", 0.5)),
             assume_boot_utility=assume_boot_utility,
+            champion=champ_name_norm,
         )
 
     # next_slot tracks the 1-based slot for the NEXT entry appended to
