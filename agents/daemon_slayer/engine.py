@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Iterable, Optional
 
+from ._passive_as_lock_overrides import as_lock_entry
 from .augments import compute_augment_stats
 from .data_loader import DataSnapshot
 from .effects import ITEM_EFFECTS
@@ -409,6 +410,31 @@ def build_champion(
                 passive_ad_from_bonus_hp += eff.bonus_ad_pct_bonus_hp * bonus_hp_from_items
         if passive_ad_from_bonus_hp > 0:
             item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + passive_ad_from_bonus_hp
+
+    # 2026-07-12: attack-speed LOCK + AS/crit -> base-AD conversion (Jhin's
+    # Whisper). A locked-AS champion never gains item/rune attack speed; instead
+    # a share of that would-be bonus AS - plus a share of crit chance - converts
+    # to bonus AD as a percentage of leveled BASE AD, together with an innate
+    # per-level base-AD bonus. Walked here (like the Sterak's/Manamune/Overlord
+    # base-stat-derived AD walks above) AFTER item aggregation and BEFORE
+    # _combine_items, so the converted AD lands in ad_flat and the zeroed as_pct
+    # makes the AS rebuild resolve back to the leveled base AS. Guarded on
+    # entry is not None -> every non-locked champion is byte-identical. Crit is
+    # only READ (not consumed), so it still feeds crit damage - no double count.
+    as_lock = as_lock_entry(champion_id)
+    if as_lock is not None:
+        base_ad = scaled.get("ad", 0.0)
+        as_frac = item_totals.get("as_pct", 0.0)
+        crit_frac = min(1.0, item_totals.get("crit_flat", 0.0))
+        whisper_ad = base_ad * (
+            as_lock.level_ad_fraction(level)
+            + as_lock.ad_per_bonus_as * as_frac
+            + as_lock.ad_per_crit * crit_frac
+        )
+        if whisper_ad > 0:
+            item_totals["ad_flat"] = item_totals.get("ad_flat", 0.0) + whisper_ad
+        if as_lock.locks_as:
+            item_totals["as_pct"] = 0.0
 
     final = _combine_items(scaled, raw_base, item_totals, level)
     if augment_overlay:

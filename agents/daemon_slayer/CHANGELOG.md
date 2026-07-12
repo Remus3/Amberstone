@@ -1331,6 +1331,27 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.204.0 (2026-07-12 - Jhin Whisper attack-speed LOCK + AS/crit -> base-AD
+conversion, at the build_champion chokepoint). DDragon/Meraki strip Whisper's
+numbers (Jhin's record is prose-only), so the engine over-credited Jhin with item
+attack speed he can never gain (his AS is locked at base 0.625,
+attackspeedperlevel 0) AND under-credited the bonus AD his passive converts that
+attack speed + crit chance into. NEW registry agents/daemon_slayer/
+_passive_as_lock_overrides.py (frozen AsLockEntry keyed by champion id; ONE entry
+Jhin) drives a DEFAULT-ON walk in engine.build_champion, after the Sterak's/
+Manamune/Overlord base-stat-derived AD walks and before _combine_items: bonus AD =
+(level% + 0.30 per 1% bonus AS + 0.35 per 1% crit) of leveled BASE AD folded into
+item_totals["ad_flat"], then item_totals["as_pct"] zeroed so the AS rebuild
+resolves back to the locked base AS. Guarded on as_lock_entry(champion_id) is not
+None -> every non-Jhin champion is byte-identical. Crit is only READ (not
+consumed), still feeding crit damage. Explicit champion-keyed dict, NOT an
+attackspeedperlevel==0 rule: Belveth shares the perlevel==0 signature but has
+UNCAPPED AS scaling and must NOT be locked. Companion core/build_order.py boots
+override (Jhin -> Boots of Swiftness 3009) consulted only in the archetype-default
+branch. Wiki-cited (Template:Data_Jhin/Whisper?action=raw, 16.13.1): level% table
+4;5;6;7;8;9;10;11;12;14;16;20;24;28;32;36;40;44; 0.3% per 1% bonus AS; 0.35% per 1%
+crit; "attack speed cannot increase except by leveling up".
+
 1.202.0 (2026-07-11 - item Heal/Shield-Power (HSP) amp of the CHAMPION-ABILITY
 heal/shield throughput fold in compute_hps). A genuinely NEW uncredited mechanic on
 a NON-EHP axis (the enchanter HPS throughput scorer), distinct from the credited EHP

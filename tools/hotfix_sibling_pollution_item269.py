@@ -117,7 +117,7 @@ _AP = {
 _AD = {
     ("Jhin", "sr-collapsed", "sr-mage"): (
         "lethality", "Lethality",
-        ["Youmuu's Ghostblade", "Berserker's Greaves", "Opportunity",
+        ["Youmuu's Ghostblade", "Boots of Swiftness", "Opportunity",
          "The Collector", "Serylda's Grudge", "Edge of Night",
          "Axiom Arc"]),
     ("Smolder", "sr-collapsed", "sr-mage"): (
