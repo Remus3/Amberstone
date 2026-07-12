@@ -874,25 +874,11 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
   const buildsTitle = mode === "aram" ? "ARAM build chooser"
                     : mode === "arena" ? "Arena build chooser"
                     : "SR build chooser";
-  // Item 240 part-3 (3d): header control on the chooser title - one
-  // small [PUSH] button + 3 inline checkboxes (Runes / Spells / Build),
-  // right-aligned to the title. Checkbox states are GLOBAL + persisted;
-  // default first-run all-unchecked (opt-in). The state is read live so
-  // the boxes render checked on a re-render after the operator marked
-  // them in a prior champ-select.
-  const _pushFlags = _csvGetPushFlags();
-  const _pushCtrlHtml = `
-      <div class="csv-builds-push-ctrl">
-        <button type="button" class="csv-builds-push-btn" id="csv-builds-push-btn"
-                title="Push all checked categories to the client now">PUSH</button>
-        ${_CSV_PUSH_CATS.map((cat) => {
-          const label = cat.charAt(0).toUpperCase() + cat.slice(1);
-          return `<label class="csv-builds-push-cat">
-            <input type="checkbox" class="csv-builds-push-cb" data-push-cat="${cat}"${_pushFlags[cat] ? " checked" : ""}>
-            <span>${label}</span>
-          </label>`;
-        }).join("")}
-      </div>`;
+  // item 1 Phase 5 (2026-07-11): the in-panel header push control ([PUSH]
+  // button + 3 inline checkboxes) was REMOVED - the Runes/Spells/Build
+  // auto-push toggles now live in the CHAMP SELECT settings card (default-ON;
+  // read live by _csvGetPushFlags). The build-selection auto-push below still
+  // reads those flags.
   const _savedSel = _csvSavedSelection(myName);
   // QA 2026-07-03 slice A (B6+B7): the build chooser + the DS ordered
   // build-order card are ONE merged section now - variant rows on top, a
@@ -934,7 +920,6 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
       <div class="csv-builds" data-champion="${myName || ""}" data-mode="${mode || "sr"}">
         <div class="csv-builds-head">
           <div class="csv-builds-title">${buildsTitle}</div>
-          ${_pushCtrlHtml}
         </div>
         <div class="csv-builds-body" id="csv-builds-body">
           ${_csvBuildVariantRowsHtml(variants, _savedSel.variantKey, _savedSel.runeKey)}
@@ -2144,34 +2129,23 @@ function _csvSavedSelection(champion) {
   };
 }
 
-// Item 240 part-3 (3d, 2026-06-01): per-category auto-push checkbox
-// state for the SR-build-chooser header control. GLOBAL (not per-
-// champion) so the operator's "always push my runes" intent rides
-// across champ-selects. DEFAULT first-run = ALL UNCHECKED (opt-in -
-// nothing auto-pushes until the operator marks a category). Stored as
-// a 3-key JSON blob; missing/corrupt -> all-off.
+// item 1 Phase 5 (2026-07-11): per-category auto-push flags. Relocated from
+// the item-240 in-panel build-chooser control to the CHAMP SELECT settings
+// card (web/index.html + the inverted dev.js binder). GLOBAL (not per-champ)
+// so the operator's "always push my runes" intent rides across champ-selects.
+// DEFAULT now ON (opt-OUT): each of the 3 flat keys rc-cs-push-{runes,spells,
+// build} is ON unless explicitly set to "0" - the SAME keys the settings
+// toggles write. The old single-blob key + per-category setter are gone.
 const _CSV_PUSH_CATS = ["runes", "spells", "build"];
-function _csvPushFlagsStorageKey() { return "rc-cs-push-flags"; }
 function _csvGetPushFlags() {
-  const off = { runes: false, spells: false, build: false };
-  try {
-    const raw = localStorage.getItem(_csvPushFlagsStorageKey());
-    if (!raw) return off;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return off;
-    return {
-      runes:  !!parsed.runes,
-      spells: !!parsed.spells,
-      build:  !!parsed.build,
-    };
-  } catch (_) { return off; }
-}
-function _csvSetPushFlag(cat, on) {
-  if (_CSV_PUSH_CATS.indexOf(cat) < 0) return;
-  const flags = _csvGetPushFlags();
-  flags[cat] = !!on;
-  try { localStorage.setItem(_csvPushFlagsStorageKey(), JSON.stringify(flags)); }
-  catch (_) {}
+  const on = (key) => {
+    try { return localStorage.getItem(key) !== "0"; } catch (_) { return true; }
+  };
+  return {
+    runes:  on("rc-cs-push-runes"),
+    spells: on("rc-cs-push-spells"),
+    build:  on("rc-cs-push-build"),
+  };
 }
 
 // item 1 Phase 3: save-as-default rune page per (champion, buildId). Stored
@@ -3359,38 +3333,12 @@ function _csvWireBuildVariants(scope) {
     }
   }
 
-  // Item 240 part-3 (3d/3e): header control - the [PUSH] button + the 3
-  // category checkboxes. A checkbox going unchecked -> checked persists
-  // the flag AND immediately pushes that category (3e). Unchecking
-  // persists the flag + fires NO push. The [PUSH] button force-pushes
-  // every currently-checked category now.
-  const pushBtn = scope.querySelector("#csv-builds-push-btn");
-  if (pushBtn) {
-    pushBtn.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      if (!champion) return;
-      const variants = _csvBuildVariantsFor(0, champion, mode, null);
-      _csvPushCheckedCategories(champion, mode, variants);
-    });
-  }
-  scope.querySelectorAll(".csv-builds-push-cb").forEach((cb) => {
-    cb.addEventListener("change", (ev) => {
-      ev.stopPropagation();
-      const cat = cb.dataset.pushCat || "";
-      if (_CSV_PUSH_CATS.indexOf(cat) < 0) return;
-      const on = !!cb.checked;
-      _csvSetPushFlag(cat, on);
-      // Unchecked -> checked: push that category now. Checked -> unchecked:
-      // no push (stops auto-pushing going forward).
-      if (on && champion) {
-        // cid=1: _csvBuildVariantsFor uses cid ONLY as a "champion is
-        // picked" guard (the body resolves variants by name+mode from
-        // the warm cache); 0 would hit the empty-placeholder early return.
-        const variants = _csvBuildVariantsFor(1, champion, mode, null);
-        _csvPushCategory(champion, mode, cat, variants);
-      }
-    });
-  });
+  // item 1 Phase 5 (2026-07-11): the in-panel [PUSH] button + 3 category
+  // checkboxes were removed - the Runes/Spells/Build auto-push toggles now
+  // live in the CHAMP SELECT settings card (default-ON). _csvGetPushFlags
+  // reads those toggles live, and the build-selection auto-push above already
+  // gates on flags.build. _csvPushCategory / _csvPushCheckedCategories are
+  // kept for Phase 6 (LCU push on champ-select enter / build change).
 
   // Legacy single-variant rows - click selects the variant (non-
   // collapsed shape; ARAM / Arena / experimental).

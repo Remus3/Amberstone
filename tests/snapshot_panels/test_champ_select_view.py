@@ -221,7 +221,8 @@ def test_picks_target_mode_gated(mode, should_show, mock_server, pw_browser):
 @pytest.mark.parametrize("mode", ["aram", "arena"])
 def test_champ_select_merged_build_section(mode, mock_server, pw_browser):
     """B6+B7: ONE build section - the ordered-sequence strip renders INSIDE
-    .csv-builds (no separate sibling bo-card) with a single push control."""
+    .csv-builds (no separate sibling bo-card). item-1 Phase 5 removed the
+    in-panel push control (the auto-push toggles moved to the settings card)."""
     ctx, page, errors = _open_champ_select(pw_browser, mock_server, mode)
     try:
         res = page.evaluate(
@@ -240,8 +241,10 @@ def test_champ_select_merged_build_section(mode, mock_server, pw_browser):
             f"ordered-sequence strip must live inside .csv-builds ({mode}): {res}"
         )
         assert res["seqOutside"] == 0, f"stray sequence strip outside builds: {res}"
-        assert res["pushCtrls"] == 1, f"exactly ONE push control ({mode}): {res}"
-        assert res["pushCbs"] == 3, f"Runes/Spells/Build checkboxes kept: {res}"
+        # item-1 Phase 5: the in-panel push control ([PUSH] button + 3 checkboxes)
+        # was removed - the toggles now live in the CHAMP SELECT settings card.
+        assert res["pushCtrls"] == 0, f"in-panel push control must be gone ({mode}): {res}"
+        assert res["pushCbs"] == 0, f"in-panel push checkboxes must be gone ({mode}): {res}"
     finally:
         page.close()
         ctx.close()
