@@ -72,7 +72,8 @@ class EnumeratePages(unittest.TestCase):
 
     def test_dedups_pages_and_maps_builds(self):
         with mock.patch.object(rune_pages, "list_variants",
-                               return_value=self._variants()):
+                               return_value=self._variants()), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=[]):
             out = rune_pages.enumerate_pages("Jinx", "SR")
         ids = {p["pageId"] for p in out["pages"]}
         self.assertEqual(len(ids), 3)  # Lethal Tempo / Press the Attack / Electrocute
@@ -89,11 +90,99 @@ class EnumeratePages(unittest.TestCase):
                "auto_primary": "Precision", "auto_secondary": "Domination",
                "build_paths": []}
         dup = [{**row, "key": "a"}, {**row, "key": "b"}]
-        with mock.patch.object(rune_pages, "list_variants", return_value=dup):
+        with mock.patch.object(rune_pages, "list_variants", return_value=dup), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=[]):
             out = rune_pages.enumerate_pages("Jinx", "SR")
         self.assertEqual(len(out["pages"]), 1)  # both variants -> one deduped page
         self.assertEqual(out["builds"][0]["recommendedPageId"],
                          out["builds"][1]["recommendedPageId"])
+
+
+class UserBuildFold(unittest.TestCase):
+    """Phase 4: operator user-curated builds (coaches/sr_user_builds) fold into
+    the same rune-page model, keyed "userbuild_<id>" and exact-match deduped by
+    resolved perk_ids. Mirrors routes_loadout._serve_loadout_list_post's
+    userbuild_ namespacing. list_for is patched in every test so the model stays
+    hermetic (the real store is gitignored data/daemon_slayer/user_builds.json)."""
+
+    _CRIT = {"key": "crit", "keystone": "Lethal Tempo", "primary": "Precision",
+             "secondary": "Domination", "auto_keystone": "Lethal Tempo",
+             "auto_primary": "Precision", "auto_secondary": "Domination",
+             "build_paths": []}
+
+    def _ub(self, uid, keystone, primary, secondary,
+            minor_primary=None, minor_secondary=None):
+        return {"id": uid, "runes": {
+            "keystone": keystone, "primary": primary, "secondary": secondary,
+            "minor_primary": minor_primary or [],
+            "minor_secondary": minor_secondary or []}}
+
+    def test_user_build_appears_as_selectable_page(self):
+        ubs = [self._ub("abc123", "Electrocute", "Domination", "Precision")]
+        with mock.patch.object(rune_pages, "list_variants",
+                               return_value=[self._CRIT]), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        builds = {b["buildId"]: b["recommendedPageId"] for b in out["builds"]}
+        self.assertIn("userbuild_abc123", builds)
+        ids = {p["pageId"] for p in out["pages"]}
+        self.assertIn(builds["userbuild_abc123"], ids)
+        # Lethal Tempo variant page + distinct Electrocute user page.
+        self.assertEqual(len(ids), 2)
+
+    def test_user_build_dedups_against_identical_variant(self):
+        # A user build resolving identically to a generic variant collapses onto
+        # that variant's page (exact-match dedup by perk_ids), minting no new page.
+        ubs = [self._ub("dup1", "Lethal Tempo", "Precision", "Domination")]
+        with mock.patch.object(rune_pages, "list_variants",
+                               return_value=[self._CRIT]), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        ids = {p["pageId"] for p in out["pages"]}
+        self.assertEqual(len(ids), 1)
+        builds = {b["buildId"]: b["recommendedPageId"] for b in out["builds"]}
+        self.assertEqual(builds["userbuild_dup1"], builds["crit"])
+
+    def test_user_build_unknown_keystone_maps_to_none(self):
+        ubs = [self._ub("bad1", "Not A Keystone", "Precision", "Domination")]
+        with mock.patch.object(rune_pages, "list_variants", return_value=[]), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        builds = {b["buildId"]: b["recommendedPageId"] for b in out["builds"]}
+        self.assertIsNone(builds["userbuild_bad1"])
+
+    def test_user_build_subrune_delta_mints_distinct_page(self):
+        # Two user builds identical except for minor primary runes resolve to
+        # different perk_ids -> two distinct pages (1-subrune delta = new page).
+        # Patch _perk_by_name so the override resolves without depending on the
+        # ddragon_runes.json data file.
+        fake = {"A": 101, "B": 102, "C": 103, "D": 104, "E": 105, "F": 106}
+        ubs = [
+            self._ub("u1", "Lethal Tempo", "Precision", "Domination",
+                     minor_primary=["A", "B", "C"]),
+            self._ub("u2", "Lethal Tempo", "Precision", "Domination",
+                     minor_primary=["D", "E", "F"]),
+        ]
+        with mock.patch.object(rune_pages, "list_variants", return_value=[]), \
+             mock.patch.object(rune_pages, "_user_builds_for", return_value=ubs), \
+             mock.patch("lcu.lcu_rune_writer._perk_by_name", return_value=fake):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        builds = {b["buildId"]: b["recommendedPageId"] for b in out["builds"]}
+        self.assertNotEqual(builds["userbuild_u1"], builds["userbuild_u2"])
+        self.assertEqual(len({p["pageId"] for p in out["pages"]}), 2)
+
+    def test_user_build_fold_failure_isolated(self):
+        # Operator-additive invariant: a broken user-build store never blocks the
+        # generic build model - the base variants still enumerate.
+        def _boom(champ):
+            raise RuntimeError("store broken")
+        with mock.patch.object(rune_pages, "list_variants",
+                               return_value=[self._CRIT]), \
+             mock.patch.object(rune_pages, "_user_builds_for", side_effect=_boom):
+            out = rune_pages.enumerate_pages("Jinx", "SR")
+        buildids = {b["buildId"] for b in out["builds"]}
+        self.assertIn("crit", buildids)
+        self.assertFalse(any(b.startswith("userbuild_") for b in buildids))
 
 
 class Ascii(unittest.TestCase):
