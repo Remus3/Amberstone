@@ -91,6 +91,12 @@ class OverrideStore(unittest.TestCase):
         # The pure reorder the LIVE render runs so a shift survives a rerank.
         self.assertIn("export function applyItemOverrides", self.js)
 
+    def test_filter_silenced_exported(self):
+        # MUTE (center-Silence) now visually DROPS the item from the LIVE build
+        # rows, not just stops swap suggestions (operator 2026-07-11: "mute
+        # should remove it visually from the build lists").
+        self.assertIn("export function filterSilenced", self.js)
+
     def test_clear_exported(self):
         # D3's reset control + game-end clear hook both call this.
         self.assertIn("export function clearItemOverrides", self.js)
@@ -117,6 +123,15 @@ class RadialWiring(unittest.TestCase):
         nxt = self.js.index("\nfunction ", start + 1)
         self.assertIn("applyItemOverrides", self.js[start:nxt],
                       "applyItemOverrides not used in _renderAmBuildBody")
+
+    def test_silenced_filtered_in_render(self):
+        # The LIVE build render must DROP silenced (muted) items, not merely
+        # reorder them (operator 2026-07-11: mute removes visually).
+        start = self.js.index("function _renderAmBuildBody")
+        nxt = self.js.index("\nfunction ", start + 1)
+        self.assertIn("filterSilenced", self.js[start:nxt],
+                      "filterSilenced not used in _renderAmBuildBody - muted "
+                      "items must be dropped from the LIVE rows")
 
 
 class OverlayInteractivity(unittest.TestCase):
