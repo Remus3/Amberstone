@@ -302,6 +302,32 @@ def test_aram_augment_select_plain_aram_untagged(tmp_path, monkeypatch):
     assert "Mayhem" not in prompt
 
 
+def test_vision_postprocess_aliases_is_augment_select():
+    """Root cause of the 2026-07-12 ARAM Mayhem augment-reco miss: the live
+    vision relay (vision_server/_inference.py TFT prompt) emits the flag as
+    `is_augment_select`, but the ARAM/Arena/Brawl coaches gate on
+    `augment_select` (aram_coach.py:614), so the augment handler never fired.
+    The relay was live-verified to detect the ARAM Mayhem augment cards
+    correctly (is_augment_select=True, augment_choices populated) - only the
+    field name diverged. _postprocess (the single chokepoint every
+    GameVisionReader consumer runs) must alias it."""
+    from modes.shared_vision import GameVisionReader
+    r = GameVisionReader.__new__(GameVisionReader)
+    out = r._postprocess({
+        "is_augment_select": True,
+        "augment_choices": ["Critical Rhythm", "Celestial Body", "Bread and Cheese"],
+    })
+    assert out.get("augment_select") is True
+    assert out.get("augment_choices") == [
+        "Critical Rhythm", "Celestial Body", "Bread and Cheese"]
+    # an explicit augment_select is authoritative - never clobber it
+    out2 = r._postprocess({"augment_select": False, "is_augment_select": True})
+    assert out2.get("augment_select") is False
+    # a dict without either flag is unchanged (no spurious key injected)
+    out3 = r._postprocess({"hp": 50})
+    assert "augment_select" not in out3
+
+
 # ==============================================================================
 # 4. arena augment name map - numeric patch-dir ordering
 # ==============================================================================

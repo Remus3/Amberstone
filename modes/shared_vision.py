@@ -294,4 +294,16 @@ class GameVisionReader:
         return None
 
     def _postprocess(self, d: dict) -> dict:
+        # The live vision relay (vision_server/_inference.py) emits the
+        # augment-select flag as `is_augment_select`; the ARAM/Arena/Brawl
+        # coaches gate on `augment_select` (e.g. aram_coach.py:614), and
+        # `augment_choices` already shares its name. Alias the flag here - the
+        # single chokepoint every GameVisionReader read()/read_tiered() runs -
+        # so the augment-select handler fires. 2026-07-12: live-verified the
+        # relay detects the ARAM Mayhem augment cards correctly; only the field
+        # name diverged (is_augment_select vs augment_select). An explicit
+        # augment_select is authoritative and is never overwritten.
+        if (isinstance(d, dict) and "augment_select" not in d
+                and "is_augment_select" in d):
+            d["augment_select"] = d["is_augment_select"]
         return d
