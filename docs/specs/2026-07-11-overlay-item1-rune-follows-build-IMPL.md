@@ -2,6 +2,8 @@
 
 Status: grounded against real code (Plan agent, 2026-07-11). Design = 2026-07-11-overlay-item1-rune-follows-build-design.md (approved). Re-verify cited anchors at build time.
 
+SHIPPED (commit `4a03b7e0`, 2026-07-11 - LEDGER 861): the missing Phase-1 GET route (POST /api/loadout/rune-pages) + Phase 2 (side panel + follow precedence + override-sticky + always-star) + Phase 3 (save-as-default -> localStorage rc-cs-rune-default). REMAINING: Phase 4 (custom user-build fold-in), Phase 5 (push toggles -> Settings), Phase 6 (LCU push via the non-frozen /api/loadout/apply seam). Anchors below are pre-build; re-verify against current champ_select.js (the panel is now _csvRuneSidePanelHtml, not the removed _csvRunePanelHtml).
+
 ## 0. Ground truth (the two facts that reshape the plan)
 
 A. **Subrunes are DERIVED, not stored.** A build's rune page is a pure function of
