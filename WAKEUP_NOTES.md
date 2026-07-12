@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-12 (Lane E CV atlas flip-readiness validator - headless vision-Haiku-to-ZERO slice)
+
+Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ select: mode=client, lcu.phase=None, no game), so per the WAKEUP gate picked a headless lane instead. Commits `a1d7078c` (feat) + `9dfd7201` (docs) on main, CI-green. Full detail: LEDGER 866.
+
+- SHIPPED (Part A, TDD RED-first): NEW `tools/vision_atlas_validate.py` - offline flip-readiness harness for the Lane E CV matcher (`core.vision_template_match.match_icon`, R96 foundation). Added public `score_all()` (raw per-candidate scores) + refactored `match_icon` to a thin argmax+threshold wrapper over it (r96 behavior byte-preserved). Report -> `data/vision_atlas_accuracy.md`.
+- FINDING (de-risks the live-gated CV flip): matcher is SOUND at the pristine ceiling. champions 173/173=100%; items+spells raw dips are ONLY pixel-identical DDragon mode/rework duplicates (Arena Flash, ARAM Snowball, blue-buff2, strikers-flail/guardbreaker) - effective rate 1.0 all three, 0 genuine mis-id, smallest distinct margin 0.299. In-game noise (JPEG/resize/lighting) stays the live-gated risk.
+- Tier-1: default-OFF module, no live importer (grep-confirmed). 14 tests (RED-first) + r96 regression + hygiene trio green (27 this slice).
+- Part B (a ward_cue dead-code cleanup) STOPPED on a FALSE premise + surfaced instead: the ROADMAP called `core/ward_cue.py` "orphaned dead code" but it is LIVE-WIRED (`dashboard/_liveclient.py:216` serves `/api/state.liveclient.ward_cue`); deleting it crashes the serializer. The served field is now consumer-less (renderer removed 2026-07-05) but harmless. Per operator: corrected the ROADMAP breadcrumb (`9dfd7201`, Tier-0) instead of a blind delete; a real ward_cue teardown is a deliberate/live-session job.
+- Don't-redo: score_all + the validator are shipped + green; `pushPageId`/item-1 unchanged. Do NOT blind-delete `core/ward_cue.py` (live producer). The CV live wiring/fusion + in-game accuracy stay live-gated.
+- NEXT: item-1 rune-follows-build LIVE-GATED validation (in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. OR the CV atlas LIVE wiring (per-champ/objective/item read + Live-Client/CV fusion), still live-gated. OR another headless lane.
+
+---
+
 # 2026-07-12 (loadout ranged-only melee gate - Terminus wrong-build bug FIXED at root)
 
 Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11). Commit `d39d50f5` on main; RC restarted + live-verified; docs sync (LEDGER 865).
@@ -27,16 +40,3 @@ Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `e2e6911e` on 
 - Tests: `pushPageId` model assertions (auto!=own -> recommendedPageId is the auto page, pushPageId is the own page, they differ; path + userbuild == their recommendedPageId); the Phase-5 `test_side_wiring_wires_no_push` guard REWRITTEN to `test_side_wiring_fires_rune_push` (push IS wired now); a node behavior harness proves the reverse-map picks the right buildId + skips a pure-auto page. 59 pass + the rune-side snapshot regression (1 pass). ruff + ASCII clean. Tier-1 web + non-frozen coaching helper - no engine bump, not in the Share mirror.
 - Don't-redo: ALL 6 PHASES SHIPPED. `pushPageId` (NOT recommendedPageId) is the pushable key; the pure-auto page is the frozen writer's job by design; the deferred re-assert is the last-writer-wins mechanism.
 - NEXT: item-1 rune-follows-build is CODE-COMPLETE. **LIVE-GATED validation remains** - prove the actual in-game LCU push (deduped, last-writer-wins after the RuneWriter) in a REAL champ select via `tools/lcu_push_watcher.py`; RC was mode=client (no game) this session, so the push path is test-proven but not yet live-validated. OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend` - Varus w/ Runaan's owned shows Terminus, melee Xin offered ranged on-hit; build_order/DS-scorer root-cause-fix + grep sibling melee champs).
-
----
-
-# 2026-07-11 (item-1 rune-follows-build Phase 5: relocate the champ-select auto-push toggles to the CHAMP SELECT settings card + default-ON)
-
-Shipped LEDGER 862's NEXT (item-1 Phase 5). Commit `942daa29` on main; web/* only (ADR-008 asset-hash reload - no RC restart). Full detail: LEDGER 863.
-
-- REMOVED the item-240 in-panel build-chooser push control (the `[PUSH]` button + 3 inline Runes/Spells/Build checkboxes on the chooser title, the `rc-cs-push-flags` opt-in blob, `_csvSetPushFlag`, `_csvPushFlagsStorageKey`, `.csv-builds-push-*` CSS).
-- ADDED 3 toggles to the CHAMP SELECT settings card (`web/index.html`, reusing the audited `.settings-row` markup) wired by an INVERTED `dev.js` binder (extended `cb()` with an `invert` param: checked unless `"0"`). `_csvGetPushFlags` now reads 3 FLAT keys `rc-cs-push-{runes,spells,build}`, each ON unless `"0"` (default-ON opt-OUT) - the SAME keys the toggles write (single source of truth).
-- KEY: the build-selection auto-push (build-path click -> `flags.build` -> push items) is SEPARATE from the removed control and STAYS -> with default-ON, picking a build now auto-pushes its items. `_csvPushCategory`/`_csvPushCheckedCategories` KEPT for Phase 6 (test-pinned; Phase 6 reuses "push all per flags" on champ-select enter).
-- Tests: NEW `test_csv_push_toggles_phase5.py` (toggles present + under the CHAMP SELECT card, inverted binder, `_csvGetPushFlags` default-ON via node harness, control-removed regression pin, Phase-6 plumbing intact). Reconciled the superseded item-240 pins (`HeaderControl3dTests` + 2 in-panel-wiring 3e tests removed w/ supersession notes; verb pins kept; dropped unused `import re`) + the champ-select snapshot (`pushCtrls`/`pushCbs` now 0 - the mock-harness Playwright IS the panel UI-audit). 68 core + 65 settings/overlay tests pass; ruff + ASCII clean.
-- Don't-redo: Phase 5 SHIPPED; storage = 3 flat keys default-ON (NOT the old blob); the in-panel control is GONE (regression-pinned); the settings toggles live in the dev/settings view (NOT `#view-champ-select`, so the champ-select snapshot can't reach them - grep/behavior-tested); the build-selection auto-push staying + default-ON is intentional.
-- NEXT: Phase 6 (LCU push via the NON-frozen `/api/loadout/apply` seam - reuse `_csvApplyLoadout`; push on champ-select enter / build change / rune override, gated by the default-ON runes flag, last-writer-wins re-push AFTER the frozen auto RuneWriter; validate with `tools/lcu_push_watcher.py`). OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend`).
