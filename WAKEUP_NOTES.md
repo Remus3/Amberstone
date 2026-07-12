@@ -4,6 +4,19 @@
 
 ---
 
+# 2026-07-12 (live-gated drain: item-1 rune-follows-build LIVE-VALIDATED + ARAM Mayhem augment-reco bug FIXED live)
+
+Live drain (Practice SR Caitlyn + ARAM Mayhem Xayah/Tristana). item-1 rune-follows-build (the standing NEXT) is now LIVE-VALIDATED - operator saw the followed runes fire in a real practice champ-select, deduped + last-writer-wins over the frozen auto RuneWriter (log-proven). Augment-fix commit `67519018` on main; RC restarted (pid 18392). Full detail: LEDGER 867.
+
+- CLOSED: A2 (spell push/no-revert - `set_summoner_spells: idempotent skip (4+32 already set)` on every ARAM CS enter), A7 (KIWI->ARAM re-detect + bench-swap), A6 (bench-swap), C13 (enemy_spells stats_panel render), C1 (ARAM build LOGIC comp-aware), B24 (overlay pixel family rendering).
+- BANKED HEADLESS (flip-ready, OFF-vs-ON verified via :8893): B4/B7/B8/B10/B13/B14/B18/B19. B20 REFUTED (R55 is NOT `/rank`-eyeball-able; stays DS-restart-gated).
+- BUG FIXED (C15/C16): ARAM Mayhem augment-reco never fired. Root cause = the live moon_proxy TFT-relay emits `is_augment_select` but the ARAM/Arena/Brawl coaches read `augment_select` (`aram_coach.py:614`); `augment_choices` matched. Detection was FINE (empirically: the relay returns `is_augment_select=True` + the 3 augment names on the captured frame). Fix = one alias in `GameVisionReader._postprocess` (`modes/shared_vision.py:296`), single chokepoint covering all 3 siblings; RED test + 52+3 regression green; no backfill.
+- Coach hit a live credit-balance 400 mid-drain (correct degraded "COACH PAUSED - ADD API CREDITS" render); operator topped up.
+- Don't-redo: item-1 is LIVE-VALIDATED (do not re-run the champ-select push proof). The augment fix is shipped + live - ONLY the on-screen reco eyeball remains. B4/B7/B8/B10/B13/B14/B18/B19 headless soundness is banked; the actual default-ON flips stay operator-gated. B20 is not `/rank`-eyeball-able. TFT `is_augment_select` split = a SEPARATE `tft_vision_reader` path.
+- NEXT: the C15/C16 LIVE augment eyeball (hold an ARAM Mayhem augment ~25s so a vision tick lands + confirm the reco renders vs the pick - fix deployed, only the on-screen confirm remains). OR continue the drain (scenario-gated tank/bruiser/enchanter ARAM rolls for C3/C5/C6/C7, a sustain comp for C12, real-SR for the B/D rows). OR the TFT augment_select split.
+
+---
+
 # 2026-07-12 (Lane E CV atlas flip-readiness validator - headless vision-Haiku-to-ZERO slice)
 
 Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ select: mode=client, lcu.phase=None, no game), so per the WAKEUP gate picked a headless lane instead. Commits `a1d7078c` (feat) + `9dfd7201` (docs) on main, CI-green. Full detail: LEDGER 866.
@@ -27,16 +40,3 @@ Fixed `open_bug_terminus_wrong_build_recommend` (operator saw it live 2026-07-11
 - VARUS half = NOT a bug (ranged marksman; Runaan's + Terminus on-hit is legit; next-buy comes from the live scorer, not static loadouts). Left as-is.
 - Don't-redo: the ranged-only gate + backfill are shipped; Terminus is melee-legal (correctly untouched); the resolver gate is defense-in-depth over the now-clean data.
 - NEXT: item-1 rune-follows-build LIVE-GATED validation (the in-game LCU push, needs a REAL champ select via `tools/lcu_push_watcher.py`) - the only remaining item-1 thread. Optionally re-tune the auto-picked melee build substitutes.
-
----
-
-# 2026-07-12 (item-1 rune-follows-build Phase 6: LCU push of the followed rune page via the manual apply seam - FINAL phase, ALL 6 SHIPPED)
-
-Shipped the WAKEUP NEXT (item-1 Phase 6, the final phase). Commit `e2e6911e` on main (feat) + the docs sync (LEDGER 864). Built via a TDD build subagent + independent verifier gate (CONFIRMED). Full detail: LEDGER 864.
-
-- CORRECTNESS FACT the spec did not flag: `enumerate_pages` sets `recommendedPageId` from `auto_*` (the keystone the FROZEN writer applies) but `resolve()` pushes a variant's OWN keystone - these DIFFER for champs like Caitlyn (loadout PTA vs auto Comet). So a selected pageId cannot be pushed by matching `recommendedPageId`, and re-pushing the pure-auto case would clobber the writer.
-- FIX (Option B-refined, no backend/frozen change): NEW `builds[].pushPageId` (`coaches/rune_pages.py`) = the page `resolve(buildId)` ACTUALLY produces (variant OWN / build_path / userbuild runes). The JS `_csvPushFollowedRune` reverse-maps the selected pageId to that resolver-producible buildId and pushes it runes-only via `_csvApplyLoadout` -> /api/loadout/apply. A pure-auto page (no pushPageId match) is LEFT to the frozen writer - never push wrong runes, never clobber.
-- Gated on the default-ON runes flag (`_csvGetPushFlags().runes`); a per-champ latch dedups re-pushes across renders; ONE deferred re-assert (~2s) so a saved-default/override lands AFTER the frozen RuneWriter's one-shot enter push (last-writer-wins). Wired at 3 sites: side-panel option click (force), build-path click (force), champ-select enter render (reassert). Legacy single-variant row push untouched. NO frozen file (`lcu_rune_writer`/`lcu_client`/`lcu_agent`) touched; NO backend route change (override_runes stays removed).
-- Tests: `pushPageId` model assertions (auto!=own -> recommendedPageId is the auto page, pushPageId is the own page, they differ; path + userbuild == their recommendedPageId); the Phase-5 `test_side_wiring_wires_no_push` guard REWRITTEN to `test_side_wiring_fires_rune_push` (push IS wired now); a node behavior harness proves the reverse-map picks the right buildId + skips a pure-auto page. 59 pass + the rune-side snapshot regression (1 pass). ruff + ASCII clean. Tier-1 web + non-frozen coaching helper - no engine bump, not in the Share mirror.
-- Don't-redo: ALL 6 PHASES SHIPPED. `pushPageId` (NOT recommendedPageId) is the pushable key; the pure-auto page is the frozen writer's job by design; the deferred re-assert is the last-writer-wins mechanism.
-- NEXT: item-1 rune-follows-build is CODE-COMPLETE. **LIVE-GATED validation remains** - prove the actual in-game LCU push (deduped, last-writer-wins after the RuneWriter) in a REAL champ select via `tools/lcu_push_watcher.py`; RC was mode=client (no game) this session, so the push path is test-proven but not yet live-validated. OR the Terminus wrong-build bug (`open_bug_terminus_wrong_build_recommend` - Varus w/ Runaan's owned shows Terminus, melee Xin offered ranged on-hit; build_order/DS-scorer root-cause-fix + grep sibling melee champs).

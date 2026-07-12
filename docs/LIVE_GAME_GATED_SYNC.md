@@ -58,6 +58,15 @@ restart for web changes); engine flips need a DS `:8893` restart.
 during real games; `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-ON top-6 per
 (champ, seam), so most seam eyeballs need NO mid-game DS restart.
 
+## 2026-07-12 DRAIN RESULT (Practice SR + ARAM Mayhem; LEDGER 867 - full row-by-row resync OWED)
+
+Closed / advanced this sitting (surgical note; a `/live-gated-resync` should rebuild the rows below):
+- **item-1 rune-follows-build LIVE-VALIDATED** (practice champ-select, followed page written to client, deduped + last-writer-wins over the frozen auto RuneWriter). Closes the item-1 push thread; A13 push-half.
+- **A2 CLOSED** (summoner-spell push/no-revert - `set_summoner_spells: idempotent skip (4+32)` on every ARAM CS enter + swap, loop alive). **A7 CLOSED** (KIWI->ARAM re-detect + bench-swap re-detect). **A6** bench-swap evidenced.
+- **C13 VALIDATED** (enemy_spells stats_panel renders live - 5 enemies + summoner CDs). **C1** ARAM build LOGIC comp-aware (Shieldbow vs Talon / BotRK vs Graves). **B24** overlay pixel family rendering (settings/stats/portraits/build/minimap).
+- **B4/B7/B8/B10/B13/B14/B18/B19 BANKED HEADLESS** (route-wired DS seam OFF-vs-ON direction-verified, flip-ready; the actual default-ON flips stay operator-gated). **B20 REFUTED** - R55 is NOT `/rank`-eyeball-able (`target_current_hp_pct` no-ops on /rank); stays DS-restart-gated.
+- **C15/C16 BUG FIXED + shipped** (`67519018`): ARAM Mayhem augment-reco never fired - root cause was the moon_proxy TFT-relay emitting `is_augment_select` while the coaches read `augment_select` (fix = alias in `modes/shared_vision.py` `_postprocess`, covers ARAM/Arena/Brawl). Deployed live (RC pid 18392). Only the ON-SCREEN reco eyeball remains (timing-gated: hold an augment ~25s so a vision tick lands).
+
 ## Next-session play order (bundle plan)
 
 The 2026-07-04 FULL DRAIN closed 11 one-shot rows in one sitting; this plan covers the REMAINING
