@@ -1331,6 +1331,28 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.205.0 (2026-07-12 - Jhin lethality-crit BURST via a per-champion fight_length
+blend, layered on the 1.204.0 AS-lock fix). The carry / ds.dps scorer optimizes
+SUSTAINED auto-attack DPS, so it structurally under-values an AS-locked crit ADC
+whose real value is per-shot burst (Jhin: 4th-shot missing-HP execute + AD/
+lethality-scaling Q/W/R). rank_items already shipped the fight_length reweight
+blend (effective = burst_delta + delta_dps * fight_length; item 219 C); this wires
+it to the LIVE coach + backfill path. NEW leaf allow-map core/
+ds_champion_fight_length.py (champion -> fight_length seconds; ONE entry Jhin ->
+0.5) is consulted at the shared carry chokepoint (rank_for_primary_archetype carry
+branch); a champion ABSENT resolves to None -> rank_for omits the body key ->
+byte-identical default ranking. Server _route_rank now parses+forwards a body
+fight_length into rank_items; rank_for gained a fight_length param (emitted only
+when set). 0.5s re-verified in-process on the AS-lock baseline (levels 11/13/16,
+armor 80): surfaces the meta lethality-crit core (IE + Hubris/Collector/Youmuu's/
+Serylda's/Axiom) into the top ~11 with sustained on-hit (Runaan's) pushed below.
+The AS-lock fix converts Jhin's wasted AS into AD, inflating his sustained term,
+so a longer fight_length re-sinks the core - hence the short 0.5s. Orthogonal +
+complementary to 1.204.0 (AS-lock corrects the sustained term's correctness;
+fight_length re-weights burst-vs-sustained). Controls (Jinx/Ashe/Caitlyn/Kog'Maw/
+Twitch/Aphelios) are DELIBERATELY unmapped -> byte-identical. Build-order +
+champion_loadouts backfilled for Jhin only.
+
 1.204.0 (2026-07-12 - Jhin Whisper attack-speed LOCK + AS/crit -> base-AD
 conversion, at the build_champion chokepoint). DDragon/Meraki strip Whisper's
 numbers (Jhin's record is prose-only), so the engine over-credited Jhin with item
