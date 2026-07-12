@@ -61,12 +61,16 @@ ROLE_ALIASES = {
     "support": "support", "sup": "support", "supp": "support", "utility": "support",
 }
 
-# Game-time brackets over match duration (seconds). 25 min / 35 min boundaries -
-# the standard SR short / mid / long split. The panel picks the bracket from the
-# live game time (lc.game_time) so "You" is compared to same-length games.
-VALID_BRACKETS = ("early", "mid", "late")
-_BRACKET_EARLY_MAX_S = 1500   # < 25:00
-_BRACKET_MID_MAX_S = 2100     # 25:00 - 34:59 ; >= 35:00 is "late"
+# Game-time brackets over match duration (seconds). 14 min / 25 min boundaries -
+# the two-bucket early / mid split (overlay item 8 lock-step with
+# core.rank_tier_bench + web/js/panels/stats_panel.js; the old "late" >=35:00
+# bucket is retired). The panel picks the bracket from the live game time
+# (lc.game_time) so "You" is compared to same-length games. This module is now
+# DEPRECATED-ALIVE (the reworked panel reads rank_tier_bench); the boundaries
+# stay aligned so the two never drift.
+VALID_BRACKETS = ("early", "mid")
+_BRACKET_EARLY_MAX_S = 840    # < 14:00
+_BRACKET_MID_MAX_S = 1500     # nominal 14:00 - 24:59 label; >= 840 folds to mid
 
 
 def _bracket_for_duration(secs: float) -> str | None:
@@ -78,9 +82,7 @@ def _bracket_for_duration(secs: float) -> str | None:
         return None
     if s < _BRACKET_EARLY_MAX_S:
         return "early"
-    if s < _BRACKET_MID_MAX_S:
-        return "mid"
-    return "late"
+    return "mid"
 
 
 def normalize_role(raw: str) -> str | None:

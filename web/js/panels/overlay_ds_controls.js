@@ -29,11 +29,37 @@
 
 import { fetchDsKnobs, getCachedDsKnobs } from './ds_knobs.js';
 import { CHAMPS, _resolveItemId } from '../lib/items_index.js';
-import { readOverlaySettings, writeOverlaySettings, hydrateOverlaySettings, sendOverlayAction } from '../lib/overlay_settings.js';
+import {
+  readOverlaySettings, writeOverlaySettings, hydrateOverlaySettings, sendOverlayAction,
+  writeBenchmarkRankTier, writeRoleOverride,
+} from '../lib/overlay_settings.js';
 import { clearItemOverrides } from '../lib/item_overrides.js';
 
 const _OVDS_DEBOUNCE_MS = 350;
 const _OVDS_ROW_CAP = 5;
+
+// Overlay item 8: the DS Settings strip is the new home for the stats-panel
+// rank-tier benchmark selector + the relocated compare-role override (both were
+// previously the in-panel .sp-role select / a PGR-only control). The rank list
+// mirrors core.rank_tier_bench.VALID_TIERS + the index.html rank <select>; the
+// role list mirrors the stats panel's _ROLES. "" is the off / auto option.
+const _OVDS_RANK_TIERS = [
+  ["", "- off -"], ["iron", "Iron"], ["bronze", "Bronze"], ["silver", "Silver"],
+  ["gold", "Gold"], ["platinum", "Platinum"], ["emerald", "Emerald"],
+  ["diamond", "Diamond"], ["master", "Master"], ["grandmaster", "Grandmaster"],
+  ["challenger", "Challenger"],
+];
+const _OVDS_ROLES = [
+  ["", "- auto -"], ["top", "Top"], ["jungle", "Jungle"], ["mid", "Mid"],
+  ["bot", "Bot"], ["support", "Support"],
+];
+
+function _ovdsOptions(pairs, selected) {
+  return pairs.map(
+    ([v, lab]) =>
+      '<option value="' + v + '"' + (v === selected ? " selected" : "") + ">" + lab + "</option>"
+  ).join("");
+}
 
 // Lowercase rc mode string -> DS engine mode. Unknown modes fall back
 // to SR (the engine's default resist curve) rather than hiding the pane.
@@ -234,6 +260,16 @@ function _settingsHtml() {
   return (
     `<div class="ovset" id="ovset">`
     + `<div class="ovset-cap">OVERLAY</div>`
+    // Overlay item 8: stats-panel benchmark controls. The rank-tier selector
+    // drives the in-game "You vs rank average" panel (mirrors the shared
+    // rc-pgr-rank-tier key); the compare-role override is the relocated
+    // in-panel .sp-role select. Both persist via the shared settings helper.
+    + `<label class="ovset-row ovset-sel"><span>Benchmark rank</span>`
+    + `<select id="ovset-rank-tier" aria-label="Benchmark rank tier">`
+    + _ovdsOptions(_OVDS_RANK_TIERS, "") + `</select></label>`
+    + `<label class="ovset-row ovset-sel"><span>Compare role</span>`
+    + `<select id="ovset-role" aria-label="Stats compare role">`
+    + _ovdsOptions(_OVDS_ROLES, "") + `</select></label>`
     // RC2 3.4: keep the full dashboard window available in-game + pin it on top,
     // both toggleable WITHOUT a hotkey (writes mirror to the rc-shell over IPC).
     + `<label class="ovset-row ovset-toggle">`
@@ -334,6 +370,12 @@ function _applySettingsToDom(body, s) {
   }
   // Do not clobber the seconds field while the operator is typing in it.
   if (rev && document.activeElement !== rev) rev.value = String(s.activeRevertSec);
+  // Overlay item 8: reflect the shared rank-tier + role override (do not
+  // clobber a select the operator has focused / is opening).
+  const rank = body.querySelector("#ovset-rank-tier");
+  const role = body.querySelector("#ovset-role");
+  if (rank && document.activeElement !== rank) rank.value = s.benchmarkRankTier || "";
+  if (role && document.activeElement !== role) role.value = s.roleOverride || "";
 }
 
 function _wireSettings(body) {
@@ -366,6 +408,21 @@ function _wireSettings(body) {
   if (zones) {
     zones.addEventListener("change", () => {
       writeOverlaySettings({ clickThroughZones: !!zones.checked });
+    });
+  }
+  // Overlay item 8: rank-tier benchmark selector (mirrors rc-pgr-rank-tier both
+  // ways + fires the same-origin repaint event) + the relocated compare-role
+  // override. Both persist via the shared helper (localStorage + rc-shell IPC).
+  const rank = body.querySelector("#ovset-rank-tier");
+  if (rank) {
+    rank.addEventListener("change", () => {
+      writeBenchmarkRankTier(rank.value || "");
+    });
+  }
+  const role = body.querySelector("#ovset-role");
+  if (role) {
+    role.addEventListener("change", () => {
+      writeRoleOverride(role.value || "");
     });
   }
   const opacity = body.querySelector("#ovset-opacity");
