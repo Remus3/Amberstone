@@ -669,6 +669,9 @@ export function renderChampSelectView(lcu) {
   preloadChampionTags();
   if (!lcu || lcu.phase !== "ChampSelect") {
     _csvSetText("csv-sub", "waiting for champ-select...");
+    // item 1 Phase 6: left champ select - clear the rune-push latch so a fresh
+    // enter re-asserts the followed page after the frozen auto RuneWriter.
+    for (const k in _CSV_LAST_RUNE_PUSH) delete _CSV_LAST_RUNE_PUSH[k];
     return;
   }
   _csvCacheLcuIfChampSelect(lcu);
@@ -915,6 +918,12 @@ function _csvRenderCentralPane(cs, mode, myCid, myName, locked) {
     myName, _activeBuildId, _runeModel.builds, _runeDefaults, _CSV_RUNE_OVERRIDE);
   const runeSideHtml = _csvRuneSidePanelHtml(
     myName, _activeBuildId, _runeModel.pages, _runeModel.builds, _selPageId);
+  // item 1 Phase 6: render-driven push of the followed rune page. Latch-deduped
+  // (one push per champ+pageId across re-render ticks) with a single deferred
+  // re-assert so a saved-default/override lands AFTER the frozen RuneWriter's
+  // one-shot enter push (last-writer-wins). No-ops until the rune-page model
+  // fetch lands (empty builds -> no pushPageId match).
+  _csvPushFollowedRune(myName, _activeBuildId, mode, { reassert: true });
   const buildsHtml = `
     <div class="csv-builds-row">
       <div class="csv-builds" data-champion="${myName || ""}" data-mode="${mode || "sr"}">
@@ -1586,6 +1595,12 @@ const _CSV_RUNEPAGES_INFLIGHT = Object.create(null);
 // buildId, and reset on a fresh champion mount. Precedence at read time is
 // override ?? savedDefault ?? recommendedPageId (see _csvSelectedRunePageId).
 let _CSV_RUNE_OVERRIDE = null;
+
+// item 1 Phase 6: last rune pageId pushed per champion (latch, dedups
+// re-pushes across renders). Cleared on champ-select exit so a fresh enter
+// re-asserts the followed page after the frozen auto RuneWriter.
+const _CSV_LAST_RUNE_PUSH = Object.create(null);
+const _CSV_RUNE_REPUSH_PENDING = Object.create(null); // champ -> true while a deferred re-assert is queued
 
 // s209 v2: adaptive-summoners cache (per champion + enemy-roster sig
 // + base summoner pair). Refetches when enemies lock new champs.
@@ -2409,6 +2424,46 @@ function _csvPushCheckedCategories(champion, mode, variants) {
   _CSV_PUSH_CATS.forEach((cat) => {
     if (flags[cat]) _csvPushCategory(champion, mode, cat, variants);
   });
+}
+
+// item 1 Phase 6: push the FOLLOWED rune page through the manual
+// /api/loadout/apply seam. Followed page = _csvSelectedRunePageId (override
+// ?? savedDefault ?? recommendedPageId). The resolver can only PRODUCE a
+// variant/path/userbuild page, so reverse-map the selected pageId to the build
+// whose resolve() output equals it (builds[].pushPageId) and push THAT buildId
+// runes-only. Skips a pure-auto page (no pushPageId match) - the frozen writer
+// owns it. Gated on the default-ON runes flag. A per-champ latch dedups
+// re-pushes; a single deferred re-assert lands AFTER the frozen writer's
+// one-shot enter push (last-writer-wins).
+function _csvPushFollowedRune(champion, buildId, mode, opts) {
+  if (!champion || !buildId) return;
+  if (!_csvGetPushFlags().runes) return;
+  const model = _CSV_RUNEPAGES_CACHE[`${champion}|${mode || "sr"}`];
+  if (!model) return;
+  const builds = Array.isArray(model.builds) ? model.builds : [];
+  const selPageId = _csvSelectedRunePageId(
+    champion, buildId, builds, _csvSavedRuneDefault(champion), _CSV_RUNE_OVERRIDE);
+  if (!selPageId) return;
+  const pushBuild = builds.find(
+    (b) => b && String(b.pushPageId || b.recommendedPageId || "") === String(selPageId));
+  if (!pushBuild || !pushBuild.buildId) return;  // pure-auto page: writer owns it
+  const force = !!(opts && opts.force);
+  if (!force && _CSV_LAST_RUNE_PUSH[champion] === selPageId) return;
+  _CSV_LAST_RUNE_PUSH[champion] = selPageId;
+  _csvApplyLoadout(champion, pushBuild.buildId, mode, null, null, null,
+    { push_runes: true, push_items: false, push_summoners: false });
+  // Deferred re-assert once, ~2s later, so a saved-default/override lands AFTER
+  // the frozen RuneWriter's ~1s one-shot enter push (last-writer-wins). Guarded
+  // so only one re-assert is pending per champ.
+  if ((opts && opts.reassert) && !_CSV_RUNE_REPUSH_PENDING[champion]
+      && typeof setTimeout === "function") {
+    _CSV_RUNE_REPUSH_PENDING[champion] = true;
+    setTimeout(() => {
+      _CSV_RUNE_REPUSH_PENDING[champion] = false;
+      delete _CSV_LAST_RUNE_PUSH[champion];
+      _csvPushFollowedRune(champion, buildId, mode, { force: true });
+    }, 2000);
+  }
 }
 
 // Operator (2026-05-23): summoner spell strip. Mode-keyed list - SR
@@ -3288,6 +3343,10 @@ function _csvWireBuildVariants(scope) {
       // rune SIDE panel must re-follow (its precedence recomputes + an
       // override bound to the OLD build is discarded on the next render).
       _csvScheduleRender();
+      // item 1 Phase 6: a build-path click changes the active build - push the
+      // followed rune page (runes-only; independent of the Build category flag
+      // below, which gates only the ITEM push). Force: user action.
+      _csvPushFollowedRune(champion, composed, mode, { force: true });
       // 3e: auto-push BUILD only when its category box is checked. When
       // unchecked the selection persists but fires NO push.
       const flags = _csvGetPushFlags();
@@ -3316,6 +3375,11 @@ function _csvWireBuildVariants(scope) {
         if (!sideChamp || !sideBuildId || !pid) return;
         _CSV_RUNE_OVERRIDE = { champ: sideChamp, buildId: sideBuildId, pageId: pid };
         _csvScheduleRender();
+        // item 1 Phase 6 FLIP: a side-panel option pick is a user action, so
+        // push the followed rune page immediately (force, no re-assert - the
+        // frozen writer's one-shot enter push already ran). This inverts the
+        // Phase-5 "side wiring wires no push" invariant.
+        _csvPushFollowedRune(sideChamp, sideBuildId, mode, { force: true });
       });
     });
     const saveBtn = runeSideWrap.querySelector(".csv-rune-save-default");

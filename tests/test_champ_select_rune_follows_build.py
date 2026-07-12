@@ -14,12 +14,14 @@ rc-cs-rune-default.
 Two layers (mirrors the repo's champ_select panel-DOM test convention):
 - StaticSourceGuards: grep-style pins that the side-panel symbols exist, the
   old nested rune render (_csvRunePanelHtml / _repointRecommendedRune /
-  .csv-rune-opt) is gone, the Phase-6 push helpers are left intact, and the
-  side-panel wiring wires NO LCU push this session.
+  .csv-rune-opt) is gone, the Phase-6 push helper (_csvPushFollowedRune) exists
+  and reverse-maps via pushPageId, and the side-panel wiring now FIRES the
+  manual LCU rune push (the Phase-6 flip of the Phase-5 no-push invariant).
 - BehaviorTests: extract the pure helpers from the source and run them in node
   (fake localStorage) to prove precedence, override-discard-on-build-change,
-  always-star, save-default round-trip, and one-option-per-deduped-page.
-  Skipped when node is unavailable.
+  always-star, save-default round-trip, one-option-per-deduped-page, and the
+  Phase-6 pushPageId reverse-map (skip a pure-auto page). Skipped when node is
+  unavailable.
 """
 from __future__ import annotations
 
@@ -107,16 +109,28 @@ class StaticSourceGuards(unittest.TestCase):
         self.assertIn("function _csvSaveRuneChoice", self.src)
         self.assertIn("function _csvSavedRuneChoice", self.src)
 
-    def test_side_wiring_wires_no_push(self) -> None:
-        # The side-panel option click sets the in-memory override + reschedules
-        # a render; it must NOT fire an LCU push this session (no _csvApplyLoadout
-        # / _csvPushCategory inside the wiring block).
+    def test_side_wiring_fires_rune_push(self) -> None:
+        # Phase 6 FLIP: the side-panel option click now DOES fire the manual LCU
+        # rune push (via _csvPushFollowedRune) in addition to setting the
+        # in-memory override + rescheduling a render. This inverts the Phase-5
+        # "side wiring wires no push" invariant.
         block = _balanced_span(self.src, _SIDE_WIRE_ANCHOR, "{", "}")
         self.assertIn("_CSV_RUNE_OVERRIDE = {", block)
         self.assertIn("_csvScheduleRender", block)
         self.assertIn("_csvSaveRuneDefault(", block)
-        self.assertNotIn("_csvApplyLoadout", block)
-        self.assertNotIn("_csvPushCategory", block)
+        self.assertIn("_csvPushFollowedRune(", block)
+
+    def test_phase6_push_helper_present_and_wired(self) -> None:
+        # Phase 6: the manual rune-push helper exists, gates on the default-ON
+        # runes push flag, reverse-maps the selected pageId via pushPageId, and
+        # pushes runes-only through the /api/loadout/apply seam.
+        self.assertIn("function _csvPushFollowedRune", self.src)
+        fn = _balanced_span(self.src, "function _csvPushFollowedRune", "{", "}")
+        self.assertIn("_csvGetPushFlags().runes", fn)
+        self.assertIn("pushPageId", fn)
+        self.assertIn("_csvApplyLoadout(", fn)
+        self.assertIn("push_runes: true", fn)
+        self.assertIn("push_items: false", fn)
 
     def test_side_panel_css_present(self) -> None:
         self.assertIn(".csv-rune-side", self.css)
@@ -187,8 +201,27 @@ class BehaviorTests(unittest.TestCase):
             + "_csvSaveRuneDefault('Lux','A','pX');\n"
             + "const rawStore=_store['rc-cs-rune-default']||'';\n"
             + "const reloaded=_csvSavedRuneDefault('Ezreal');\n"
+            # --- Phase 6 pushPageId reverse-map (skip pure-auto page) -------
+            # Pure mirror of the reverse-map inside _csvPushFollowedRune: pick
+            # the build whose pushPageId (or recommendedPageId fallback for a
+            # snapshot-seeded build) equals the selected pageId; a pure-auto
+            # page (no pushPageId match) picks nothing so the frozen writer
+            # keeps it. The whole helper is not extracted (it touches the cache
+            # + fetch); the StaticSourceGuard pins its presence in source.
+            + "function reverseMap(builds, selPageId){\n"
+            + "  const b=(builds||[]).find((x)=>x &&"
+            + " String(x.pushPageId||x.recommendedPageId||'')===String(selPageId));\n"
+            + "  return b && b.buildId ? b.buildId : null;\n"
+            + "}\n"
+            + "const pushBuilds=[{buildId:'own',pushPageId:'pOwn',recommendedPageId:'pAuto'},"
+            + "{buildId:'path',pushPageId:'pPath',recommendedPageId:'pPath'}];\n"
+            + "const seedBuilds=[{buildId:'seed',recommendedPageId:'pSeed'}];\n"
+            + "const revmap={picksOwn:reverseMap(pushBuilds,'pOwn'),"
+            + "picksPath:reverseMap(pushBuilds,'pPath'),"
+            + "picksNothingForAuto:reverseMap(pushBuilds,'pAuto'),"
+            + "picksSeedViaRecommended:reverseMap(seedBuilds,'pSeed')};\n"
             + "process.stdout.write(JSON.stringify({prec, discard, recNotSel,"
-            + " recIsSel, rawStore, reloaded}));\n"
+            + " recIsSel, rawStore, reloaded, revmap}));\n"
         )
         cls._td = tempfile.mkdtemp()
         cls._harness = Path(cls._td) / "rune_follows_harness.mjs"
@@ -241,6 +274,17 @@ class BehaviorTests(unittest.TestCase):
         self.assertEqual(raw["Lux::A"], "pX")          # other champ coexists
         reloaded = self.result["reloaded"]
         self.assertEqual(reloaded, {"A": "p9"})        # filtered to this champ
+
+    def test_pushpage_reverse_map_and_skip_pure_auto(self) -> None:
+        # Phase 6: reverse-map the selected pageId to the build whose pushPageId
+        # (or recommendedPageId fallback) matches; a pure-auto page picks nothing.
+        rm = self.result["revmap"]
+        self.assertEqual(rm["picksOwn"], "own")       # own page -> own build
+        self.assertEqual(rm["picksPath"], "path")     # path page -> path build
+        self.assertIsNone(rm["picksNothingForAuto"])  # pure-auto page -> skip
+        # A snapshot-seeded build without pushPageId still matches via the
+        # recommendedPageId fallback.
+        self.assertEqual(rm["picksSeedViaRecommended"], "seed")
 
 
 class AsciiHygieneTests(unittest.TestCase):
