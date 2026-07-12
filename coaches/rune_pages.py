@@ -8,18 +8,27 @@ key is the resolved perk_ids tuple: two builds that resolve identically collapse
 to ONE page, and a keystone/tree (or user minor-rune) difference mints a distinct
 page.
 
-NON-frozen: this module only IMPORTS build_perk_ids (the frozen resolver) and
-list_variants (the non-frozen loadout reader). It writes nothing. User-build
-pages fold into the same model in Phase 4 (resolve_page already accepts the
-minor_primary/minor_secondary overrides build_perk_ids honors).
+NON-frozen: this module only IMPORTS build_perk_ids (the frozen resolver),
+list_variants (the non-frozen loadout reader), and list_for (the user-build
+store). It writes nothing. Operator user-curated builds fold into the same
+model (Phase 4) via resolve_page, which honors the stored minor_primary/
+minor_secondary overrides build_perk_ids applies.
 """
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Optional
 
 from lcu.lcu_rune_writer import build_perk_ids
 from coaches.loadout_resolver import list_variants
+# Phase 4: operator user-curated builds fold into the same model. list_for is a
+# leaf reader (no coaches imports at module load), so this top-level import is
+# circular-safe. Bound as _user_builds_for so tests patch it on this module the
+# same way they patch list_variants.
+from coaches.sr_user_builds import list_for as _user_builds_for
+
+_log = logging.getLogger("rc.rune_pages")
 
 # Modes whose shard defaults differ (build_perk_ids is_aram switch). Mirrors the
 # set in lcu_rune_writer.load_rune_rec so a page resolves to the same perk_ids the
@@ -72,14 +81,17 @@ def enumerate_pages(champion: str, mode: str) -> dict:
     Pages are exact-match deduped by pageId. buildId is the variant key, or
     "<variant>:<path-key>" for a build_path (mirrors champ_select.js's composed
     key). A build whose runes fail to resolve maps to recommendedPageId=None (the
-    caller falls back to the champ's first page). User-build pages fold in Phase 4.
+    caller falls back to the champ's first page). Operator user-curated builds
+    fold in last, keyed "userbuild_<id>" and deduped against the generic pages.
     """
     is_aram = _is_aram(mode)
     pages: dict = {}          # pageId -> page (dedup)
     builds: list = []
 
-    def _add(keystone, primary, secondary):
-        pg = resolve_page(keystone or "", primary or "", secondary or "", is_aram)
+    def _add(keystone, primary, secondary,
+             minor_primary=None, minor_secondary=None):
+        pg = resolve_page(keystone or "", primary or "", secondary or "", is_aram,
+                          minor_primary, minor_secondary)
         if pg is None:
             return None
         pages.setdefault(pg["pageId"], pg)
@@ -103,5 +115,29 @@ def enumerate_pages(champion: str, mode: str) -> dict:
             bkey = bp.get("key") or ""
             bid = f"{vkey}:{bkey}" if bkey else vkey
             builds.append({"buildId": bid, "recommendedPageId": bp_rec})
+
+    # Phase 4: fold operator user-curated builds (coaches/sr_user_builds) into
+    # the same model. Each is its own selectable build keyed "userbuild_<id>"
+    # (mirrors routes_loadout._serve_loadout_list_post's namespacing so the
+    # champ-select follow map lines up) whose page carries the stored minor-rune
+    # overrides. Exact-match dedup falls out for free: an identical-perk_ids user
+    # build collapses onto an existing page, a subrune delta mints a new one.
+    # Operator-additive invariant: a broken store never blocks the generic model
+    # (list_for already degrades to [] on a malformed file; the guard covers any
+    # harder failure).
+    try:
+        for rec in _user_builds_for(champion):
+            if not isinstance(rec, dict):
+                continue
+            uid = rec.get("id") or ""
+            if not uid:
+                continue
+            r = rec.get("runes") or {}
+            rec_page = _add(r.get("keystone"), r.get("primary"), r.get("secondary"),
+                            r.get("minor_primary"), r.get("minor_secondary"))
+            builds.append({"buildId": "userbuild_" + uid,
+                           "recommendedPageId": rec_page})
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("rune-pages user-build fold for %r: %s", champion, exc)
 
     return {"pages": list(pages.values()), "builds": builds}
