@@ -692,6 +692,101 @@ def test_champ_select_team_damage_meter(mock_server, pw_browser):
     assert not errors, f"JS errors [team-damage]: {errors[:3]}"
 
 
+def test_champ_select_rune_side_panel(mock_server, pw_browser):
+    """item 1 Phase 2/3: the champ-wide rune SIDE panel renders one option per
+    deduped rune page, ALWAYS stars the recommended page (even when a different
+    page is selected), marks the precedence-selected page (sessionOverride ??
+    savedDefault ?? recommendedPageId), and offers a Save-as-default button.
+
+    Deterministic via the __csvSeedRunePages hook + synthetic pages (the mock
+    server serves no rune-pages payload). The hook seeds _CSV_RUNEPAGES_CACHE +
+    forces a SYNCHRONOUS champ-select re-render, so the seed + readback happen in
+    ONE evaluate and cannot race the live render loop. The production fetch path
+    (_csvFetchRunePages) is untouched; the hook only fires under ?ui_mock=1.
+    """
+    ctx, page, errors = _open_champ_select(pw_browser, mock_server, "sr")
+    try:
+        # Wait for the side panel + a settled (non-empty) active build id so the
+        # recommended-star mapping is deterministic. The SR mock fixture carries
+        # build_variants (Jinx|sr), so an active build lands + data-build-id fills.
+        page.wait_for_function(
+            "(() => { const s = document.querySelector('.csv-rune-side');"
+            " return !!(s && s.dataset.buildId); })()",
+            timeout=10_000,
+        )
+        res = page.evaluate(
+            """() => {
+              const side0 = document.querySelector('.csv-rune-side');
+              const builds = document.querySelector('.csv-builds');
+              const champ = side0.dataset.champion;
+              const buildId = side0.dataset.buildId;
+              const mode = builds ? (builds.dataset.mode || 'sr') : 'sr';
+              // 3 distinct pages; the active build recommends p2. With no saved
+              // default and no override, precedence must select the recommended
+              // p2 (so p2 is BOTH starred and is-selected).
+              window.__csvSeedRunePages(champ, mode, {
+                pages: [
+                  {pageId: 'p1', keystone: 'Lethal Tempo',
+                   primary: 'Precision', secondary: 'Domination', perk_ids: []},
+                  {pageId: 'p2', keystone: 'Fleet Footwork',
+                   primary: 'Precision', secondary: 'Resolve', perk_ids: []},
+                  {pageId: 'p3', keystone: 'Hail of Blades',
+                   primary: 'Domination', secondary: 'Precision', perk_ids: []},
+                ],
+                builds: [{buildId: buildId, recommendedPageId: 'p2'}],
+              });
+              const opts = Array.from(
+                document.querySelectorAll('.csv-rune-side-opt'));
+              const stars = Array.from(
+                document.querySelectorAll('.csv-rune-side-star'));
+              const save = document.querySelector('.csv-rune-save-default');
+              const starOpt = stars.length
+                ? stars[0].closest('.csv-rune-side-opt') : null;
+              const selOpt = opts.find(
+                (o) => o.classList.contains('is-selected'));
+              const h = (el) => el.getBoundingClientRect().height;
+              return {
+                optCount: opts.length,
+                pageIds: opts.map((o) => o.dataset.pageId),
+                starCount: stars.length,
+                starPageId: starOpt ? starOpt.dataset.pageId : null,
+                selPageId: selOpt ? selOpt.dataset.pageId : null,
+                saveText: save ? save.textContent.trim() : null,
+                minOptH: opts.length ? Math.min.apply(null, opts.map(h)) : 0,
+                saveH: save ? h(save) : 0,
+              };
+            }"""
+        )
+        assert res["optCount"] == 3, f"expected 3 deduped page options, got {res}"
+        assert res["pageIds"] == ["p1", "p2", "p3"], (
+            f"one option per deduped page, in order, got {res['pageIds']}"
+        )
+        assert res["starCount"] == 1, (
+            f"exactly one recommended star, got {res['starCount']}"
+        )
+        assert res["starPageId"] == "p2", (
+            f"star must sit on the recommended page p2, got {res['starPageId']}"
+        )
+        assert res["selPageId"] == "p2", (
+            "selection must follow the recommended page p2 with no saved "
+            f"default/override, got {res['selPageId']}"
+        )
+        assert res["saveText"], "Save-as-default button must carry a label"
+        assert res["minOptH"] >= 42, (
+            f"each option must meet the --hit-min 42px floor, got {res['minOptH']}"
+        )
+        assert res["saveH"] >= 42, (
+            f"save button must meet the --hit-min 42px floor, got {res['saveH']}"
+        )
+        SCREENSHOTS.mkdir(exist_ok=True)
+        page.locator(".csv-rune-side").screenshot(
+            path=str(SCREENSHOTS / "champ-select_rune-side.png"))
+    finally:
+        page.close()
+        ctx.close()
+    assert not errors, f"JS errors [rune-side]: {errors[:3]}"
+
+
 # -- QA slice A source-level regression guards ------------------------------
 
 def _js_src():
