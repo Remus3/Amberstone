@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-07-12 (audit L-02: orphan lockfile.pid.tmp cleanup - Agent 2 backend task)
+
+Agent 6 thirteenth audit found 5 orphaned lockfile.<pid>.tmp files in agents/state/ (2026-07-08 to 2026-07-11). Fixed in `agents/_supervisor_common.py` (commit `afdd20eb`). Full detail: LEDGER 868.
+
+- FIX (2 parts): `_atomic_write_json` now retries `os.replace` 3x on PermissionError (60ms backoff, mirrors calibrator pattern) + always unlinks the .tmp via try/finally. NEW `_reap_orphan_lockfile_tmps()` in `acquire_lock()` globs lockfile.*.tmp, checks _pid_alive, unlinks dead-pid files. `import time` added.
+- TESTS: 8 new (test_supervisor_common_l02.py) - success + retry + final-failure-cleans + dead/live/malformed/mixed reap cases; all green.
+- NEXT supervisor restart auto-reaps the 5 existing orphans. No manual rm needed.
+- Don't-redo: fix is committed + pushed; don't re-examine the orphan list.
+
+---
+
 # 2026-07-12 (live-gated drain: item-1 rune-follows-build LIVE-VALIDATED + ARAM Mayhem augment-reco bug FIXED live)
 
 Live drain (Practice SR Caitlyn + ARAM Mayhem Xayah/Tristana). item-1 rune-follows-build (the standing NEXT) is now LIVE-VALIDATED - operator saw the followed runes fire in a real practice champ-select, deduped + last-writer-wins over the frozen auto RuneWriter (log-proven). Augment-fix commit `67519018` on main; RC restarted (pid 18392). Full detail: LEDGER 867.
