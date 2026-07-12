@@ -65,3 +65,16 @@ export function applyItemOverrides(rows) {
   keyed.sort((a, b) => (a.eff - b.eff) || (a.i - b.i));
   return keyed.map((k) => k.r);
 }
+
+// Center-Silence (MUTE) now HIDES the item from the LIVE build rows entirely
+// (operator 2026-07-11: "mute should remove it visually from the build lists").
+// Pure: drops rows whose id is silenced; returns a NEW array, input unmutated.
+// Applied to the LIVE row only - the static META / Ultimate reference rows keep
+// the full canonical order. Un-mute = clearItemOverrides (the reset control).
+export function filterSilenced(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.filter((r) => {
+    const id = String((r && (r.id != null ? r.id : r.item_id)) || "");
+    return !isSilenced(id);
+  });
+}

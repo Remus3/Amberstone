@@ -21,7 +21,7 @@ import {
 import { scorerUnit } from '../lib/scorer_units.js';
 import { installItemTooltip } from '../lib/overlay_tooltip.js';
 import { installItemRadial } from '../lib/overlay_item_radial.js';
-import { applyItemOverrides, clearItemOverrides } from '../lib/item_overrides.js';
+import { applyItemOverrides, filterSilenced, clearItemOverrides } from '../lib/item_overrides.js';
 import { renderThreatDonut } from './threat_donut.js';
 import { classifyAction, escHtml, safe } from '../lib/helpers.js';
 import { renderCooldownLedger, attachCooldownLedgerHandlers } from './cd_ledger.js';
@@ -699,8 +699,11 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
         strip.setAttribute("data-rc-zone", "");
         // LIVE applies the operator's per-item overrides BEFORE the owned-first
         // partition (a reorder survives the 4s rerank); Meta/Ultimate are static.
+        // filterSilenced: MUTE drops the item from the LIVE rows entirely
+        // (operator 2026-07-11), applied after the reorder; the static Meta/
+        // Ultimate reference rows are not filtered.
         const seq = isLive
-          ? _bmPartitionOwned(applyItemOverrides(rowDef.items), ownedSet)
+          ? _bmPartitionOwned(filterSilenced(applyItemOverrides(rowDef.items)), ownedSet)
           : _bmPartitionOwned(rowDef.items, ownedSet);
         let nextFlag = false;
         seq.forEach((r) => {
