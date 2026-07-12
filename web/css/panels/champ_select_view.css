@@ -2342,55 +2342,16 @@
   color: var(--warn);
 }
 
-/* Item 240 part-3 (3d): SR-build-chooser header control - the title on
- * the LEFT, a [PUSH] button + 3 category checkboxes RIGHT-aligned. The
- * checkbox typography matches the title (uppercase, --fs-xs). */
+/* item 1 Phase 5 (2026-07-11): the build-chooser header now holds only the
+ * title - the [PUSH] button + 3 category checkboxes were removed (the
+ * auto-push toggles moved to the CHAMP SELECT settings card). */
 .csv-builds-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
 }
 .csv-builds-head .csv-builds-title { margin-bottom: 0; }
-.csv-builds-push-ctrl {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.csv-builds-push-btn {
-  font-size: var(--fs-xs, 16px);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #c8f2d4;
-  background: #1a2a20;
-  border: 1px solid var(--good);
-  border-radius: 4px;
-  padding: 4px 10px;
-  min-height: var(--hit-min, 42px);
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-.csv-builds-push-btn:hover { background: #224a30; border-color: #6ee79a; }
-.csv-builds-push-cat {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--hit-min, 42px);
-  gap: 4px;
-  font-size: var(--fs-xs, 16px);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--dim);
-  cursor: pointer;
-  user-select: none;
-}
-.csv-builds-push-cb {
-  width: 16px; height: 16px;
-  accent-color: var(--good);
-  cursor: pointer;
-}
 
 /* -- Arena duo + augments (replaces MY PICK central pane) ----------- */
 .csv-duo-row {
@@ -2696,8 +2657,6 @@
 
 /* QA 2026-07-03 audit MUST-FIX: keyboard focus parity for the new
    interactive controls (mirrors panel_visibility.css .pv-tab pattern). */
-.csv-builds-push-btn:focus-visible,
-.csv-builds-push-cb:focus-visible,
 .csv-summspell-edit:focus-visible,
 .csv-summspell-cell:focus-visible,
 .csv-ta-head:focus-visible {
