@@ -1931,6 +1931,71 @@ function _threatRow(pl, mode, level) {
   return row;
 }
 
+// Set the CALL band glyph + color bar on a value span (RC Overlay Doctrine
+// section 5/6). Stamps row.dataset.callBand (overlay.css keys the bar + glyph
+// color off it) and prepends a String.fromCharCode glyph so this file stays
+// 7-bit ASCII while the band reads preattentively without recoloring the verb.
+function _bandInto(row, valSpan, value, band) {
+  row.dataset.callBand = band;
+  const g = document.createElement("span");
+  g.className = "am-call-glyph";
+  g.setAttribute("aria-hidden", "true");
+  // U+26A0 warn / U+2713 check / U+25BA play (condensation spec section 1).
+  g.textContent = String.fromCharCode(
+    band === "urgent" ? 0x26A0 : band === "good" ? 0x2713 : 0x25BA) + " ";
+  valSpan.appendChild(g);
+  valSpan.appendChild(document.createTextNode(value));
+}
+
+// Detect + parse a markdown table that leaked into a coach field value. The
+// Haiku macro coach occasionally emits a `| FIELD | DECISION |` table instead of
+// the `Label: value` line format; coach_integration/_coach.py::_parse_response
+// space-joins the table's continuation lines into ONE field string, so it lands
+// here as e.g. "DEFEND & SETUP | FIELD | DECISION | |---|---| | WAVE | hold... |"
+// and _line rendered it as a raw-pipe WALL that overflowed the card (operator-
+// reported live 2026-07-12). Returns {title, rows:[{label,value}]} when a table
+// is found (so _line can lay it out as clean label:value rows), else null.
+//
+// Robust to the lost newlines: the all-dash SEPARATOR cell is the anchor (the
+// header sits before it, the data rows after it), so a space-joined table still
+// parses. Requires a real dash-separator cell, so a stray single `|` in normal
+// coach prose does NOT false-trigger (that path returns null -> plain text).
+export function _parseCoachTable(value) {
+  const s = String(value == null ? "" : value);
+  if (s.indexOf("|") < 0) return null;
+  const cells = s.split("|");
+  const isSep = (c) => {
+    const t = c.trim();
+    return /-{2,}/.test(t) && /^[\s:-]+$/.test(t);
+  };
+  let sepStart = -1;
+  let sepEnd = -1;
+  for (let i = 0; i < cells.length; i++) {
+    if (isSep(cells[i])) {
+      if (sepStart < 0) sepStart = i;
+      sepEnd = i;
+    }
+  }
+  if (sepStart < 0) return null; // no separator row -> not a table we reformat
+  // Title = the text BEFORE the first pipe (the coach's headline verb), if any.
+  const title = s.slice(0, s.indexOf("|")).trim();
+  const clean = (arr) => arr.map((c) => c.trim()).filter((c) => c.length > 0);
+  // Header cells sit between the title (cells[0]) and the separator; the data
+  // cells follow the separator. Column count comes from the header (min 2).
+  const header = clean(cells.slice(1, sepStart));
+  const data = clean(cells.slice(sepEnd + 1));
+  const cols = Math.max(2, header.length || 2);
+  const rows = [];
+  for (let i = 0; i < data.length; i += cols) {
+    const lab = data[i];
+    const rest = data.slice(i + 1, i + cols).join(" - ");
+    if (rest) rows.push({ label: lab, value: rest });
+    else if (lab) rows.push({ label: "", value: lab });
+  }
+  if (!rows.length) return null;
+  return { title, rows };
+}
+
 function _line(label, value, band) {
   // C2 UI-audit (docs/UI_SCALE_SPEC_V2.md): the CALL pane RIGHT NOW /
   // ACTION / OBJECTIVE / NEXT coach prompts are the dominant readable
@@ -1947,6 +2012,40 @@ function _line(label, value, band) {
   const lbl = document.createElement("span");
   lbl.style.cssText = "color:var(--text-faint);letter-spacing:0.12em;font-size:var(--fs-xs);font-weight:700;display:block;margin-bottom:2px;";
   lbl.textContent = label;
+  row.appendChild(lbl);
+
+  // A leaked markdown table renders as clean label:value rows (strip the
+  // |...|---| scaffolding) instead of a raw-pipe wall - the same tactical
+  // content (wave / objective / fight-rule), compact and glanceable.
+  const table = _parseCoachTable(value);
+  if (table) {
+    row.dataset.callTable = "1";
+    const head = document.createElement("span");
+    head.className = "am-call-thead";
+    head.style.cssText = "color:var(--text);";
+    // The table's headline verb keeps the band glyph + bar (the ACTION channel).
+    if (band && table.title) _bandInto(row, head, table.title, band);
+    else head.textContent = table.title || label;
+    row.appendChild(head);
+    const list = document.createElement("div");
+    list.className = "am-call-table";
+    list.style.cssText = "margin-top:5px;display:flex;flex-direction:column;gap:3px;";
+    table.rows.forEach((r) => {
+      const sub = document.createElement("div");
+      sub.style.cssText = "font-size:var(--fs-sm);line-height:1.35;color:var(--text);";
+      if (r.label) {
+        const k = document.createElement("span");
+        k.style.cssText = "color:var(--text-faint);font-weight:700;letter-spacing:0.04em;margin-right:6px;";
+        k.textContent = r.label + ":";
+        sub.appendChild(k);
+      }
+      sub.appendChild(document.createTextNode(r.value));
+      list.appendChild(sub);
+    });
+    row.appendChild(list);
+    return row;
+  }
+
   const val = document.createElement("span");
   val.style.cssText = "color:var(--text);";
   // RC Overlay Doctrine section 5/6: the PRIMARY CALL action carries a band
@@ -1957,19 +2056,10 @@ function _line(label, value, band) {
   // recoloring the verb. Only the ACTION line passes a band (overlay-gated at the
   // call site) - every other line + the whole dashboard render stays byte-identical.
   if (band) {
-    row.dataset.callBand = band;
-    const g = document.createElement("span");
-    g.className = "am-call-glyph";
-    g.setAttribute("aria-hidden", "true");
-    // U+26A0 warn / U+2713 check / U+25BA play (condensation spec section 1).
-    g.textContent = String.fromCharCode(
-      band === "urgent" ? 0x26A0 : band === "good" ? 0x2713 : 0x25BA) + " ";
-    val.appendChild(g);
-    val.appendChild(document.createTextNode(value));
+    _bandInto(row, val, value, band);
   } else {
     val.textContent = value;
   }
-  row.appendChild(lbl);
   row.appendChild(val);
   return row;
 }

@@ -23,7 +23,12 @@ const _WEDGES = [
   { action: "later",   label: "LATE",  pos: "right:6px;top:50%;transform:translateY(-50%);" },
   { action: "defer",   label: "DEFER", pos: "bottom:6px;left:50%;transform:translateX(-50%);" },
   { action: "keep",    label: "KEEP",  pos: "left:6px;top:50%;transform:translateY(-50%);" },
-  { action: "silence", label: "MUTE",  pos: "top:50%;left:50%;transform:translate(-50%,-50%);" },
+  // center=Silence is a COMPACT dead-center hub (see _wedgeCss `center`): the four
+  // cardinal wedges are ~68px wide, so in the old 140px ring the centered MUTE
+  // (also ~68px) overlapped KEEP (left) and LATE (right) horizontally. The ring is
+  // now 210px wide + MUTE is a 44px circular chip, so the hub clears the side
+  // wedges on both flanks while staying dead-center off the high-accuracy axes.
+  { action: "silence", label: "MUTE",  pos: "top:50%;left:50%;transform:translate(-50%,-50%);", center: true },
 ];
 
 const _ACTION_FN = {
@@ -40,15 +45,36 @@ function _bodyZoom() {
   return Number.isFinite(z) && z > 0 ? z : 1;
 }
 
-function _wedgeCss(pos) {
-  return [
+function _wedgeCss(pos, center) {
+  const base = [
     "position:absolute", pos,
-    "min-width:52px", "padding:5px 7px", "border-radius:6px",
+    "border-radius:6px",
     "background:rgba(20,24,32,0.97)", "border:1px solid #2a2f3a",
     "box-shadow:0 4px 12px rgba(0,0,0,0.55)",
-    "color:#e6e8ee", "font-size:13px", "font-weight:700",
+    "color:#e6e8ee", "font-weight:700",
     "letter-spacing:0.04em", "text-align:center", "cursor:pointer",
-  ].join(";") + ";";
+  ];
+  if (center) {
+    // Compact dead-center MUTE target: a tight 44px circular chip, smaller than
+    // the ~68px cardinal wedges so it never overlaps KEEP (left) / LATE (right).
+    // Reads as the ring hub; the >=44px diameter still clears the touch/flick
+    // target floor. Round-border + centered glyph, no min-width/padding growth.
+    base.push(
+      "width:44px", "height:44px", "padding:0", "box-sizing:border-box",
+      "display:flex", "align-items:center", "justify-content:center",
+      "border-radius:50%", "font-size:13px",
+    );
+  } else {
+    // Cardinal wedges: flex-center the label in a >=44px-tall pill so each clears
+    // the --hit-min 42px tap/flick-target floor (tokens.css) - the old 5px/7px
+    // padding left them ~27px tall, below the floor. Matches the 44px MUTE hub.
+    base.push(
+      "min-width:52px", "min-height:44px", "padding:4px 9px", "box-sizing:border-box",
+      "display:flex", "align-items:center", "justify-content:center",
+      "font-size:13px",
+    );
+  }
+  return base.join(";") + ";";
 }
 
 function _ensureRadial() {
@@ -59,8 +85,14 @@ function _ensureRadial() {
   // while the cursor is over the open ring, so the wedge clicks land instead of
   // passing through to the game (clickthrough_zones.js ZONE_SELECTOR).
   _radial.setAttribute("data-rc-zone", "");
+  // 210x160 ring (was 140x140): widened so the four cardinal wedges + the compact
+  // central MUTE hub separate on the horizontal axis (the old 140px box overlapped
+  // KEEP/MUTE/LATE), and taller so the now-44px-tall EARLY/MUTE/DEFER wedges keep
+  // an 8px vertical gap on the N/S axis. _open() render-then-measures
+  // box.width/height, so the viewport clamp + _bodyZoom() adapt to the new size
+  // with no other change.
   _radial.style.cssText = [
-    "position:fixed", "z-index:2147483601", "width:140px", "height:140px",
+    "position:fixed", "z-index:2147483601", "width:210px", "height:160px",
     "visibility:hidden", "left:0", "top:0",
   ].join(";") + ";";
   _WEDGES.forEach((w) => {
@@ -69,7 +101,7 @@ function _ensureRadial() {
     b.className = "rc-radial-wedge";
     b.setAttribute("data-action", w.action);
     b.textContent = w.label;
-    b.style.cssText = _wedgeCss(w.pos);
+    b.style.cssText = _wedgeCss(w.pos, w.center);
     _radial.appendChild(b);
   });
   // Delegated wedge click: route to the store setter, re-render, close.
