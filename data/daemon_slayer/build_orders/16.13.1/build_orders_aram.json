@@ -4360,11 +4360,11 @@
         "comp_archetype": "burst_heavy",
         "order": [
           "3153",
-          "3006",
+          "3009",
           "3085",
           "3031",
           "3036",
-          "6696"
+          "6676"
         ]
       },
       "frontline_heavy": {
@@ -4400,11 +4400,11 @@
         "comp_archetype": "mixed",
         "order": [
           "3153",
-          "3006",
-          "3036",
+          "3009",
           "3085",
+          "3036",
           "3031",
-          "3508"
+          "3033"
         ]
       },
       "poke": {
@@ -4420,11 +4420,11 @@
         "comp_archetype": "poke",
         "order": [
           "3153",
-          "3006",
+          "3009",
           "3085",
           "3036",
           "3031",
-          "3508"
+          "6676"
         ]
       }
     },
@@ -14196,8 +14196,8 @@
     ],
     "level": 11
   },
-  "engine_version": "1.203.0",
-  "generated_at": "2026-07-11T20:16:21Z",
+  "engine_version": "1.204.0",
+  "generated_at": "2026-07-12T19:30:26Z",
   "mode": "aram",
   "schema": "build_order_precompute/v1",
   "version": "16.13.1"
