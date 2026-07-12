@@ -51,9 +51,35 @@ So the operator can dim the panel background while content stays crisp.
 - Opacity split: today --rc-overlay-opacity dims the whole panel; the split needs the
   panel background as a separate layer from content (CSS restructure) with two vars/sliders.
 
+## F. DS Controls panel + Overlay Options panel + lock model (confirmed 2026-07-11)
+
+### DS Controls panel (overlay_ds_controls.js) - knobs only
+Display ONLY the 4 DS combat knobs: Enemy armor, Enemy MR, Gold cap, Fight len (s).
+REMOVE all else from this panel: reranked item rows (the build panel is enough), reset
+item status (-> the item radial's home), Coach/Build/Threat panel-set, Interact now,
+Re-arrange, Show dashboard, Keep dashboard, Pin on top, Separate windows, Change pulse
+toggle (pulse STAYS ON by default), Auto-passive, Hover to interact. Drop the CONTROLS
+but keep underlying behavior at sane defaults; pin exact defaults at grounding (these
+drive rc-shell/hotkey behavior - visual removal, not feature rip-out, unless dead).
+
+### Overlay Options panel (overlay_layout.js launcher menu) - the hub
+The existing in-game per-panel show/hide/opacity/scale menu becomes the hub for:
+- per-panel show/hide + scale (existing);
+- per-panel OPACITY SPLIT: background opacity + content opacity, two sliders PER PANEL
+  (supersedes section E's "global" framing - it is per-panel, here);
+- the item-8 RANK-TIER SELECTOR + ROLE OVERRIDE (both shifted here; synced to the
+  out-of-game Client Settings per item 8).
+
+### Lock model (replaces the global Hover-to-interact / ACTIVE toggle)
+- Panels are movement-LOCKED by default (no accidental mid-fight drags).
+- Opening the Overlay Options panel globally UNLOCKS all panels for move + rearrange.
+- Closing it re-LOCKS everything.
+- While locked, only specific per-panel elements stay clickable - the interactable
+  element + its hit area defined PER PANEL (the panel-by-panel pass, next).
+
 ## Related tracks
 - Item 1 rune-follows-build moves the push runes/items/spells toggles into Settings
   (default ON) - see 2026-07-11-overlay-item1-rune-follows-build-design.md.
-- Item 8 rank-tier selector + relocated role override land in DS Settings - see
-  2026-07-11-overlay-item8-rank-tier-stats-panel.md.
-- NEXT iteration round: in-game DS Settings panel reorg + other panels.
+- Item 8 rank-tier selector + role override land in the Overlay Options panel (NOT DS
+  Controls) - see 2026-07-11-overlay-item8-rank-tier-stats-panel.md + section F.
+- Items 6 (enemy-spell click->countdown) + 3 land in the panel-by-panel interactable pass.
