@@ -1,5 +1,7 @@
 # Live-Game-Gated Sync Checklist
 
+**OPEN GATED ITEMS: ~108** (env-tagged rows as of 2026-07-12; PRE-RESYNC upper bound - counts every row that opens with an environment tag and may include dupes/sub-items across the summary + bundle-plan sections). Breakdown: PRACTICE-SR 34 | REAL-SR 20 | ARAM-MAYHEM 18 | ACCRUAL 15 | ANY-LOBBY 7 | ARENA 6 | POST-GAME 4 | PHYSICAL 4. A `/live-gated-resync` rebuilds the canonical open list and MAINTAINS this count line (operator-requested top-row count, 2026-07-12).
+
 PURPOSE. One consolidated list of every RC/DS item that CANNOT be finished headless because it
 needs one of: a real live LCU session (lobby/champ-select), live game data on `:2999`, rendered
 in-game pixels (overlay/vision/OCR), a live-flip EYEBALL of a DS seam re-rank vs a real game,
@@ -65,7 +67,7 @@ Closed / advanced this sitting (surgical note; a `/live-gated-resync` should reb
 - **A2 CLOSED** (summoner-spell push/no-revert - `set_summoner_spells: idempotent skip (4+32)` on every ARAM CS enter + swap, loop alive). **A7 CLOSED** (KIWI->ARAM re-detect + bench-swap re-detect). **A6** bench-swap evidenced.
 - **C13 VALIDATED** (enemy_spells stats_panel renders live - 5 enemies + summoner CDs). **C1** ARAM build LOGIC comp-aware (Shieldbow vs Talon / BotRK vs Graves). **B24** overlay pixel family rendering (settings/stats/portraits/build/minimap).
 - **B4/B7/B8/B10/B13/B14/B18/B19 BANKED HEADLESS** (route-wired DS seam OFF-vs-ON direction-verified, flip-ready; the actual default-ON flips stay operator-gated). **B20 REFUTED** - R55 is NOT `/rank`-eyeball-able (`target_current_hp_pct` no-ops on /rank); stays DS-restart-gated.
-- **C15/C16 BUG FIXED + shipped** (`67519018`): ARAM Mayhem augment-reco never fired - root cause was the moon_proxy TFT-relay emitting `is_augment_select` while the coaches read `augment_select` (fix = alias in `modes/shared_vision.py` `_postprocess`, covers ARAM/Arena/Brawl). Deployed live (RC pid 18392). Only the ON-SCREEN reco eyeball remains (timing-gated: hold an augment ~25s so a vision tick lands).
+- **C15/C16 FIELD-FIX shipped (`67519018`) BUT a NEW cadence bug blocks the on-screen reco (2026-07-12 live eyeball).** The alias fix (moon_proxy TFT-relay emits `is_augment_select`, coaches read `augment_select`; aliased in `modes/shared_vision.py` `_postprocess`, covers ARAM/Arena/Brawl) is CORRECT and deployed. But the reco STILL does not fire on-screen. Root-caused offline against a saved live Kayle augment frame: detection deterministic (relay `is_augment_select=True` 4/4) + coach `read_tiered` surfaces `augment_select` 3/3 + `_fetch_game_data` non-None during augment - so alias/detection/path/gate all GOOD. ROOT CAUSE = `coaches/aram_coach.py:495 _VISION_INTERVAL=25.0` skips the ~10-15s early-game augment window (live augment on-screen @12:03:51, first coach vision tick @12:04:02, missed; consistent every game this session). **NEW open bug is vision CADENCE, not fields.** FIX (owed, operator-DEFERRED 2026-07-12 to prioritize UI work): fast early-game vision poll (~5s while gameTime < ~40s, revert to 25s after) in ARAM + Arena/Brawl siblings; full on-screen verify stays live-gated. Repro: scratchpad relay_loop.py / offline_pin.py; see memory `open_bug_aram_augment_reco_cadence_miss`.
 
 ## Next-session play order (bundle plan)
 
