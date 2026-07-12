@@ -8,7 +8,8 @@ Usage:
     python data_pipeline.py meta            # Print current patch version info
     python data_pipeline.py aram_builds     # Update ARAM tier rankings (or verify)
     python data_pipeline.py aram_builds --verify  # Print current tier distribution
-    python data_pipeline.py all             # Run ddragon + runes + icons + aram_builds
+    python data_pipeline.py rank_tiers      # Stamp live patch onto the rank-tier stats-panel artifact
+    python data_pipeline.py all             # Run ddragon + runes + icons + aram_builds + rank_tiers
 
 Downloads to:
     data/meta/ddragon_version.json
@@ -38,6 +39,13 @@ DATA     = ROOT / "data"
 META     = DATA / "meta"
 ICONS    = DATA / "icons"
 LOG_FILE = ROOT / "logs" / "data_pipeline.log"
+
+# Overlay item 8 Phase 2: the rank-tier stats-panel ingest artifact. The seed is
+# committed (a hand-curated estimate); the live file is gitignored + patch-stamped
+# here. Module-level so tests can redirect them into a tmp dir.
+RANK_TIERS_DIR  = DATA / "rank_tiers"
+RANK_TIERS_SEED = RANK_TIERS_DIR / "rank_tier_averages.seed.json"
+RANK_TIERS_LIVE = RANK_TIERS_DIR / "rank_tier_averages.json"
 
 META.mkdir(parents=True, exist_ok=True)
 ICONS.mkdir(parents=True, exist_ok=True)
@@ -630,8 +638,72 @@ def cmd_aram_builds(force: bool = False) -> bool:
     return True
 
 
+def cmd_rank_tiers(force: bool = False) -> bool:
+    """Refresh the rank-tier stats-panel ingest artifact (overlay item 8 Phase 2).
+
+    Stamps the CURRENT live patch onto the gitignored live file
+    data/rank_tiers/rank_tier_averages.json. Today the payload is seeded from the
+    committed estimate seed (rank_tier_averages.seed.json) - a hand-curated
+    "estimate-not-measured" reference; its `source` provenance is carried
+    verbatim so the overlay badges it and coaching never leans on it as ground
+    truth. When a live aggregate source is later configured, this is the
+    subcommand where a fetched payload would land instead of the seed copy.
+
+    Version-aware like the sibling commands: a no-op when the live file already
+    carries the live patch (unless force). Fail-soft:
+      * a missing seed logs a WARNING and returns True (non-fatal, so cmd_all is
+        never aborted over this artifact),
+      * a failed live-version fetch falls back to the seed's own patch stamp.
+    Atomic write (tmp.write + tmp.replace); the emitted JSON stays 7-bit ASCII.
+    """
+    log.info("=== Rank-tier stats-panel ingest ===")
+    if not RANK_TIERS_SEED.exists():
+        log.warning("rank_tier_averages.seed.json missing at %s - skipping (non-fatal)",
+                    RANK_TIERS_SEED)
+        return True
+    try:
+        seed = json.loads(RANK_TIERS_SEED.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        log.warning("rank_tier seed parse failed: %s - skipping (non-fatal)", e)
+        return True
+
+    seed_patch = str(seed.get("patch") or "")
+    try:
+        live_version = _get_live_version()
+    except Exception as e:  # noqa: BLE001 - offline is fine, fall back to seed patch
+        log.info("live version unavailable (%s) - using seed patch %s", e, seed_patch or "(none)")
+        live_version = seed_patch
+    patch = live_version or seed_patch
+
+    # Version-aware skip: don't rewrite when already stamped at the live patch.
+    if RANK_TIERS_LIVE.exists() and not force:
+        try:
+            existing = json.loads(RANK_TIERS_LIVE.read_text(encoding="utf-8"))
+            if existing.get("patch") == patch:
+                log.info("rank_tier_averages.json already at patch %s - skipping (use force=True)",
+                         patch or "(none)")
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+
+    out = dict(seed)
+    out["patch"] = patch
+    out["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    RANK_TIERS_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = RANK_TIERS_LIVE.with_suffix(".json.tmp")
+    # ensure_ascii=True: the artifact must stay 7-bit ASCII (repo hard rule).
+    tmp.write_text(json.dumps(out, indent=2, ensure_ascii=True), encoding="utf-8")
+    tmp.replace(RANK_TIERS_LIVE)
+    n_tiers = len(out.get("tiers") or {})
+    log.info("rank_tier_averages.json: %d tiers, patch %s - written to %s",
+             n_tiers, patch or "(none)", RANK_TIERS_LIVE)
+    return True
+
+
 def cmd_all():
-    """Run full pipeline: ddragon + items_index + runes + icons + aram_builds."""
+    """Run full pipeline: ddragon + items_index + runes + icons + aram_builds
+    + rank_tiers."""
     log.info("=== Full data pipeline run ===")
     ok = True
     ok &= cmd_ddragon()
@@ -641,6 +713,7 @@ def cmd_all():
     ok &= cmd_runes()
     ok &= cmd_icons()
     ok &= cmd_aram_builds()
+    ok &= cmd_rank_tiers()
     if ok:
         log.info("=== Pipeline complete ===")
     else:
@@ -659,6 +732,7 @@ COMMANDS = {
     "icons":           cmd_icons,
     "meta":            cmd_meta,
     "aram_builds":     cmd_aram_builds,
+    "rank_tiers":      cmd_rank_tiers,
     "all":             cmd_all,
 }
 

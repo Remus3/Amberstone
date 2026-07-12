@@ -279,16 +279,34 @@ def send_bridge_note(drift_fields) -> tuple[bool, str]:
 
 
 def trigger_refresh() -> tuple[bool, str]:
-    """Kick the DDragon mirror refresh (--check-changed). Never raises."""
-    try:
-        cmd = [sys.executable, str(ROOT / "tools" / "ddragon_mirror_refresh.py"),
-               "--check-changed"]
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        ok = proc.returncode in (0, 1)
-        return ok, f"rc={proc.returncode}"
-    except Exception as e:  # noqa: BLE001 - side effect must never crash main
-        logger.warning("trigger_refresh failed: %s", e)
-        return False, f"{type(e).__name__}: {e}"
+    """Kick the mid-week refreshers on upstream drift. Never raises.
+
+    Two sub-runs, each fail-soft and folded into one verdict:
+      1. the DDragon mirror refresh (--check-changed), and
+      2. the rank-tier stats-panel ingest (scripts/data_pipeline.py rank_tiers,
+         overlay item 8 Phase 2) so a mid-week patch drift re-stamps the
+         rank-tier artifact too.
+    rc in (0, 1) is a benign changed/no-op exit for both; any other rc or an
+    exception marks that sub-run not-ok. Returns (all_ok, detail)."""
+    runs = (
+        ([sys.executable, str(ROOT / "tools" / "ddragon_mirror_refresh.py"),
+          "--check-changed"], "ddragon"),
+        ([sys.executable, str(ROOT / "scripts" / "data_pipeline.py"),
+          "rank_tiers"], "rank_tiers"),
+    )
+    all_ok = True
+    details: list[str] = []
+    for cmd, label in runs:
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            ok = proc.returncode in (0, 1)
+            all_ok = all_ok and ok
+            details.append(f"{label} rc={proc.returncode}")
+        except Exception as e:  # noqa: BLE001 - side effect must never crash main
+            logger.warning("trigger_refresh %s failed: %s", label, e)
+            all_ok = False
+            details.append(f"{label} err={type(e).__name__}")
+    return all_ok, "; ".join(details)
 
 
 # --------------------------------------------------------------------------- rendering
