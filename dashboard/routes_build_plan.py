@@ -37,7 +37,9 @@ Response contract (state in {owned, next, swap, partial, future}):
                swap_from?} , ... ],     # owned prefix THEN ordered planned tail
     "meta": [ {item_id, item_name, alt_index, n_alts} , ... ],  # alt-build set
     "knobs":     {armor, mr, budget, fight_length},
-    "plan_meta": {stage, clock, scorer, target_stats}
+    "plan_meta": {stage, clock, scorer, target_stats},
+    "counter_hints": [ {criterion, satisfied, severity, label, detail,
+                        suggest_class} , ... ]  # situational C1-C7 as chips
   }
 
 Fail-soft (NEVER a raise into the route):
@@ -286,6 +288,7 @@ def _serve_build_plan(h, payload) -> None:
                 "live": [], "meta": [], "knobs": knobs,
                 "plan_meta": {"stage": "", "clock": 0.0, "scorer": "",
                               "target_stats": {}},
+                "counter_hints": [],
             }).encode("utf-8"), "application/json")
             return
 
@@ -312,6 +315,12 @@ def _serve_build_plan(h, payload) -> None:
         # compute_target_stats_from_items needle, never this file). Best-effort:
         # any failure leaves enemy_profile None (the planner stays DPS-only).
         enemy_profile = _resolve_enemy_profile(enemies, level)
+
+        # WP-R102: project the situational C1-C7 counter-build criteria the
+        # enemy profile warrants into discrete overlay chips (UI transport only
+        # - ZERO DS math). Fail-soft to [] so the key is ALWAYS present and the
+        # projection never raises into the route.
+        counter_hints = _resolve_counter_hints(enemy_profile, owned)
 
         from core.build_planner.replan import ItemOverrideStore, ReplanLoop
 
@@ -375,6 +384,7 @@ def _serve_build_plan(h, payload) -> None:
                 "scorer": str(seed.get("scorer") or "dps"),
                 "target_stats": seed.get("target_stats") or {},
             },
+            "counter_hints": counter_hints,
         }).encode("utf-8"), "application/json")
 
     except Exception as exc:  # noqa: BLE001 - NEVER raise into the route.
@@ -386,6 +396,7 @@ def _serve_build_plan(h, payload) -> None:
                 "knobs": dict(_DEFAULT_KNOBS),
                 "plan_meta": {"stage": "", "clock": 0.0, "scorer": "",
                               "target_stats": {}},
+                "counter_hints": [],
             }).encode("utf-8"), "application/json")
         except Exception:  # noqa: BLE001
             pass
@@ -406,6 +417,26 @@ def _resolve_enemy_profile(enemies: list, level: int):
     except Exception as exc:  # noqa: BLE001 - no profile -> DPS-only plan
         log.debug("build-plan enemy profile: %s", exc)
         return None
+
+
+def _resolve_counter_hints(enemy_profile, owned) -> list:
+    """Project the situational C1-C7 counter-build hints for the OWNED build.
+
+    Maps the pure ``counter_build_hints`` extractor (which mirrors the
+    situational_fit gates, no DS math) into a list of plain JSON dicts the
+    overlay renders as chips. Returns [] when there is no enemy profile, and
+    fail-soft [] on ANY error - this projection NEVER raises into the route.
+    """
+    if enemy_profile is None:
+        return []
+    try:
+        from dataclasses import asdict
+
+        from core.build_planner.situational import counter_build_hints
+        return [asdict(h) for h in counter_build_hints(owned, enemy_profile)]
+    except Exception as exc:  # noqa: BLE001 - no hints -> empty projection
+        log.debug("build-plan counter hints: %s", exc)
+        return []
 
 
 GET_ROUTES: list = []
