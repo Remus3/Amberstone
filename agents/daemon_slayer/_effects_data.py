@@ -340,12 +340,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # (Riftmaker, future Conqueror-style amps).
         target_bonus_hp_amp_max_pct=0.15,
         target_bonus_hp_amp_cap=1500.0,
+        unique_passive_key="last_whisper",
         note="Lord Dominik's Regards: 35% armor pen (physical) + Giant Slayer up to 15% damage scaling with target_bonus_hp (capped at 1500)",
     ),
     "3033": ItemEffect(
         item_id="3033",
         name="Mortal Reminder",
         armor_pen_pct=0.30,
+        unique_passive_key="last_whisper",
         note="Mortal Reminder: 30% armor pen + Grievous Wounds (heal-cut not modeled)",
     ),
     # Phase 4 batch 25 (2026-05-04): Serylda's Grudge added to ITEM_EFFECTS
@@ -358,14 +360,19 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # damaging-ability hits to enemies below 50% HP - pure utility, not
     # damage. Stays unmodeled per the s77/s78 utility-without-damage rule
     # (same call as Stridebreaker's Halting Slash and Iceborn's frost field).
-    # No unique_passive_key - the % pen layer sums across items in current
-    # League (LDR + Serylda would stack to 70% pen if a build carried both;
-    # the build-legality "only one of these archetypes" decision is
-    # ranker-owned, not effect-layer).
+    # unique_passive_key="last_whisper" (2026-07-12): LDR / Mortal Reminder /
+    # Serylda's are the completed members of DDragon MaxGroupOwnable:1 group
+    # "LastWhisper" - only ONE can be owned. The engine's sole no-double hook
+    # is unique_passive_key, so without it the ranker recommended 2-3 of them
+    # vs tanky targets (Jhin + ~9 AD carries). Keying the COMPLETED items only
+    # (NOT the 3035 Last Whisper component, whose component->completed upgrade
+    # must stay recommendable) makes collect_effects dedup the pen (no fantasy
+    # 70% stack) AND filter_shared_uniques drop the 2nd from candidates.
     "6694": ItemEffect(
         item_id="6694",
         name="Serylda's Grudge",
         armor_pen_pct=0.35,
+        unique_passive_key="last_whisper",
         note="Serylda's Grudge: 35% armor pen (physical) + Bitter Cold ability slow on <50% HP targets (utility, not modeled)",
     ),
     "3071": ItemEffect(
@@ -1014,12 +1021,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="3135",
         name="Void Staff",
         magic_pen_pct=0.40,
+        unique_passive_key="void_pen",
         note="Void Staff: 40% magic pen (magical)",
     ),
     "3137": ItemEffect(
         item_id="3137",
         name="Cryptbloom",
         magic_pen_pct=0.30,
+        unique_passive_key="void_pen",
         note="Cryptbloom: 30% magic pen + Life from Death heal-on-takedown (heal not DPS-modeled)",
     ),
     "3020": ItemEffect(
@@ -3448,6 +3457,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="226694",
         name="Serylda's Grudge",
         armor_pen_pct=0.35,
+        unique_passive_key="last_whisper",
         note="Serylda's Grudge (Arena 226694): same as SR 6694 - 35% armor penetration",
     ),
     "226696": ItemEffect(
@@ -3961,6 +3971,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223033",
         name="Mortal Reminder",
         armor_pen_pct=0.30,
+        unique_passive_key="last_whisper",
         note="Mortal Reminder (Arena 223033): same as SR 3033 - Last Whisper 30% armor pen",
     ),
     "223036": ItemEffect(
@@ -3969,6 +3980,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         armor_pen_pct=0.35,
         target_bonus_hp_amp_max_pct=0.15,
         target_bonus_hp_amp_cap=1500.0,
+        unique_passive_key="last_whisper",
         note="Lord Dominik's (Arena 223036): same as SR 3036 - 35% armor pen + Giant Slayer up to 15% at 1500 bonus HP",
     ),
     "223039": ItemEffect(
@@ -4161,12 +4173,14 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223135",
         name="Void Staff",
         magic_pen_pct=0.40,
+        unique_passive_key="void_pen",
         note="Void Staff (Arena 223135): same as SR 3135 - Void Leech 40% magic pen",
     ),
     "223137": ItemEffect(
         item_id="223137",
         name="Cryptbloom",
         magic_pen_pct=0.30,
+        unique_passive_key="void_pen",
         note="Cryptbloom (Arena 223137): same as SR 3137 - Draining Venom 30% magic pen",
     ),
     "223142": ItemEffect(

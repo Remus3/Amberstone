@@ -82,8 +82,8 @@ def _eruption_helper():
 
 class EngineVersion(unittest.TestCase):
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.206.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.206.0")
+        self.assertEqual(ENGINE_VERSION, "1.207.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.207.0")
 
 
 class MerakiTruth(unittest.TestCase):
