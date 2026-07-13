@@ -16,6 +16,20 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-13 (DS crit-burst fix L1-L4 SHIPPED + live-validated; EXECUTOR-DIRECT - Gemini down; self-audited director-proxy; LEDGER 875)
+
+Gemini-headless loop launched but the Gemini DIRECTOR was DOWN (Google-side 503 on gemini-3-pro-preview + fallback 2.5-flash; TCP 443 fine, so Google-side not Legion egress). Operator chose EXECUTOR-DIRECT ("use yourself as pseudo proxy"); loop halted (STOP dropped; controllers + ahk killed). Executed priority (1) = the crit-burst spec, self-auditing as director + auditor proxy since Gemini could not.
+
+5 commits pushed to main: L1 `9708e3bf` (coherence respects burst score) -> L2 `54d5efc8` (ENGINE 1.207->1.208, arm the execute) -> L3 `83624198` (crit-ADC fight_length allow-map) -> L1'/L4 `f2ecafe8` (the DEEP fix) -> backfill `4e00df61`. Full detail: LEDGER 875.
+
+DEEP DISCOVERY: L1/L3 were INERT live - the client `RankedItem.from_dict` DROPPED the server's `effective_score`, so the coherence burst branch read base 0.0 (a target-blind kit-fit sort). An L4 subagent STOPPED + surfaced it (proven: rank_for raw-server differs by target, rank_for_primary_archetype final does not); I verified + authorized the combined fix (parse effective_score + eff-branch dock `_MU_EFF=80` + SQ-70 squishy target at the chokepoint, gated `apply_squishy_burst_target`). Caught + corrected TWO subagent misreports (the "no-op" STOP was the real root cause; a mislabeled "pre-existing" anti_tank regression was actually mine -> the variant opt-out fix). Memory `reference_ds_client_effective_score_parse`.
+
+LIVE-VALIDATED via /api/ds-preview on the restarted RC: Jinx IE#4/Collector#3, Twitch IE#3/Collector#2, ER/Eclipse out of top-8; Vayne (on-hit control)/Lux/Ornn byte-identical. `:8893` @ 1.208.0, Share --check green, consumer set 0 failures (was 12), DS suite 8406 passed.
+
+NEXT: priority (2) the other DS build-reco refactor slices (Step 0/2/3 of `docs/specs/2026-07-13-ds-build-coherence-refactor.md`) + priority (3) per-champ meta research. Spec L5 (fed / comp-aware fight_length) + L6 (Stormrazor 3097 stale-catalog hygiene) are follow-ups. A real IN-GAME crit-ADC eyeball is owed (do-not-flip-blind). If Gemini recovers, the loop can resume.
+
+---
+
 # 2026-07-13 (double percent-pen mutex fix [ENGINE 1.207.0] + live-gated doc-only resync; root-cause-fix, verifier-gated)
 
 Two commits, both pushed to main (`ee43d4ff` + `ded5f354`). Full detail: LEDGER 872.
