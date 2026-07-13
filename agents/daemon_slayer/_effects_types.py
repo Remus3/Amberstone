@@ -924,3 +924,26 @@ class ItemEffect:
     # keeps every existing item + caller byte-identical (the field AND the flag
     # must both be set); appended at the END per the dataclass convention.
     enemy_attack_speed_slow: float = 0.0
+    # R111 (1.209.0): item-keyed caster-missing-HP AD steroid (OFFENSE). This is
+    # the OFFENSE analogue of the item-keyed defensive-EHP family above (R77 crit-
+    # DR / R80 AA-DR / R86 AS-slow), but it folds into the wielder's bonus AD, not
+    # the incoming-damage denominator. Overlord's Bloodmail (SR 2501 / Arena
+    # 447111) "Retribution" grants bonus attack damage equal to {{0 to 12}}% (SR)
+    # / up-to-17.5% (Arena) of the wielder's total AD "from other sources",
+    # ramping linearly 0 -> max as the wielder's MISSING health goes 0% -> 70%
+    # (Meraki 16.13.1 items.2501: "0 to 12 ... 0 to 70 ... missing health"). It
+    # was a defensive/dynamic NOTE with no structured value, so the offense
+    # scorers gave its signature low-HP ramp ZERO credit though the item's flat AD
+    # + bonus_ad_pct_bonus_hp already counted. This field carries the MAX amp
+    # fraction (0.12 on 2501, 0.175 on 447111); the consumer (dps.compute_dps /
+    # burst.compute_burst_damage) folds ``max_pct * realized_missing_hp_share *
+    # total_ad`` into the wielder's bonus AD behind the default-OFF
+    # ``assume_caster_lowhp`` seam - paralleling the DSV2 takedown caster-state
+    # lane. The realized missing-HP share is a conservative operator-tunable
+    # midpoint in the consumer (``_ASSUMED_CASTER_MISSING_HP`` / the
+    # ``_RETRIBUTION_CAP_MISSING_HP`` ramp) - the live HP feed we lack. Caster-
+    # state only (no target-state conditional - the s232 closure holds). Default
+    # 0.0 keeps every existing item + caller byte-identical (the field AND the
+    # flag must both be set); appended at the END per the dataclass convention
+    # (a mid-class insert breaks positional construction + every existing test).
+    missing_hp_ad_amp_max_pct: float = 0.0
