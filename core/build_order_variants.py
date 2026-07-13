@@ -322,6 +322,15 @@ def compute_variant_cell(
     """
     bias = variant_bias_for(champion, variant, mode)
     direct, rank_kwargs = split_bias(bias)
+    # L4 opt-out: every variant supplies its OWN explicit per-variant enemy target
+    # (anti_tank WALL / anti_squishy GLASS comp), so it must NOT be overridden by
+    # the burst-carry squishy-target swap in rank_for_primary_archetype - else a
+    # MAPPED crit ADC's anti_tank cell collapses onto anti_squishy and the LDR /
+    # penetration core is lost. With effective_score now parsed (L1 crit-burst
+    # fix) the two per-variant targets are target-sensitive again and yield
+    # distinct builds. Non-mapped champions are unaffected either way.
+    rank_kwargs = dict(rank_kwargs)
+    rank_kwargs["apply_squishy_burst_target"] = False
     arch = archetype if archetype is not None else archetype_for(champion)
     ds_mode = DS_MODE_BY_KEY.get(str(mode).lower(), str(mode))
     try:

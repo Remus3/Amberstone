@@ -43,9 +43,31 @@ from core.build_planner.kit_synergy import (
 # Twitch / Jinx / Caitlyn / Ashe (ARAM cell). Values live in DPS units: the ER
 # dock is MU*(0.5 AH-waste + 2.0 spellblade-artifact) ~= 25 DPS, enough to clear
 # its raw delta lead on the tightest champ (Jinx) without perturbing the crit
-# core's internal order (those rows carry penalty 0).
+# core's internal order (those rows carry penalty 0). This _MU/_W pair applies
+# ONLY to the raw-delta_dps BASE (fight_length None/<=0 - every non-mapped champ);
+# that branch must stay byte-identical, so DO NOT retune these two constants.
 _MU = 10.0
 _W = 6.0
+
+# Eff-branch dock (L4 crit-burst fix, 2026-07-13, docs/specs/2026-07-13-ds-crit-
+# burst-fix.md). When fight_length is engaged the BASE is the burst-inclusive
+# effective_score (= burst_gain + delta_dps * fight_length, agents.daemon_slayer.
+# rank), which is BURST-dominated: burst_gain is a total-rotation-damage delta in
+# the HUNDREDS, ~8-10x the delta_dps magnitude the _MU/_W pair above was tuned
+# for. Reusing _MU=10 there makes the artifact dock negligible against the base,
+# so Essence Reaver (3508, anti_synergy_penalty 2.5) and Eclipse (6692, penalty
+# 0.5) resurface ABOVE the crit core (Infinity Edge 3031 / The Collector 6676 /
+# Yun Tal 3032). _MU_EFF is sized to the effective_score magnitude: the ER dock
+# (_MU_EFF * 2.5 ~= 200) clears its MEASURED ~20-100 effective_score lead over
+# IE / Collector with margin - live 16.13.1 (engine 1.208.0) at the squishy-carry
+# target, ER + Eclipse fall out of the top-8 for all five crit ADCs (Twitch /
+# Caitlyn / Jinx / Draven / Samira). _W_EFF stays at the _W magnitude ON PURPOSE:
+# the on-axis nudge must remain a LIGHT tiebreak so the crit core's
+# effective_score-driven internal order is preserved, not scrambled (a large
+# _W_EFF would flip IE above Collector, overriding the burst score). These apply
+# ONLY to the effective_score BASE; the delta branch keeps _MU/_W exactly.
+_MU_EFF = 80.0
+_W_EFF = 6.0
 
 # The carry / marksman archetype whose ds.dps ranking this re-rank corrects. Every
 # other archetype early-returns unchanged (tank / bruiser / mage / assassin /
@@ -58,11 +80,17 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None) -> 
 
     The BASE is the burst-inclusive ``effective_score`` when ``fight_length`` is
     engaged (a positive float) - the rank_for / rank_items reweight
-    ``burst_delta + delta_dps * fight_length`` - so the fight-length reweight
+    ``burst_gain + delta_dps * fight_length`` - so the fight-length reweight
     survives the coherence sort. When ``fight_length`` is None or <= 0 (the
     default), the BASE is the raw ``delta_dps`` and the behavior is byte-identical
-    to the pre-L1 re-rank. The artifact dock (- _MU * pen) and on-axis kit nudge
-    (+ _W * fit) are applied on top of the chosen BASE unchanged.
+    to the pre-L1 re-rank.
+
+    The artifact dock (- mu * pen) and on-axis kit nudge (+ w * fit) use a
+    branch-matched (mu, w) pair: (_MU_EFF, _W_EFF) on the effective_score BASE
+    (burst-dominated, ~hundreds) and (_MU, _W) on the raw delta_dps BASE
+    (~tens). This keeps the delta branch BYTE-IDENTICAL while scaling the
+    penalty dock to the effective_score magnitude so the Essence Reaver / Eclipse
+    artifacts stay docked below the crit core on the engaged path (L4).
 
     Resolves the item by ``row.item_id`` through the kit_synergy resolver; an
     unresolvable id (or any metric error) falls back to the chosen BASE so the
@@ -70,8 +98,10 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None) -> 
     """
     if fight_length is not None and fight_length > 0:
         base = float(getattr(row, "effective_score", 0.0) or 0.0)
+        mu, w = _MU_EFF, _W_EFF
     else:
         base = float(getattr(row, "delta_dps", 0.0) or 0.0)
+        mu, w = _MU, _W
     iid = getattr(row, "item_id", None)
     if iid is None:
         return base
@@ -80,7 +110,7 @@ def _coherence_adj(row, champion: str, fight_length: Optional[float] = None) -> 
         pen = anti_synergy_penalty(str(iid), champion)
     except Exception:  # noqa: BLE001 - missing kit data -> raw base, no crash
         return base
-    return base - _MU * pen + _W * fit
+    return base - mu * pen + w * fit
 
 
 def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float] = None):
