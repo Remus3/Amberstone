@@ -21,6 +21,7 @@ from typing import Iterable, Optional
 from urllib.error import URLError, HTTPError
 from urllib.request import Request, urlopen
 
+from core.build_planner.coherence import coherence_rerank
 from core.ds_archetype_hp_pct import archetype_target_current_hp_pct
 from core.ds_champion_fight_length import champion_fight_length
 
@@ -916,6 +917,14 @@ CARRY_RANGED_OFFCLASS_ITEM_NAMES: frozenset = frozenset({
     "Divine Sunderer",
 })
 
+# Carry build-coherence re-rank window (Step 1, 2026-07-13). The metric re-rank
+# (core.build_planner.coherence.coherence_rerank) needs the buried crit core in
+# the candidate window before it can lift it, so the carry branch requests at
+# least this many rows from the engine, then truncates back to the caller's
+# ``top``. Wide enough to contain the crit amplifiers that greedy delta_dps buries
+# at rank ~6-9 (measured on the 16.13.1 ARAM/SR cells).
+CARRY_COHERENCE_WINDOW: int = 40
+
 _DS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
 _champ_attackrange_index: Optional[dict] = None
 
@@ -1273,12 +1282,20 @@ def rank_for_primary_archetype(
     # Applied here at the shared carry chokepoint so BOTH the live per-tick coach
     # path and the offline build-order / loadout backfill engage it identically.
     _carry_fight_length = champion_fight_length(champion)
+    # Carry build-coherence re-rank (Step 1, 2026-07-13): request a WIDER window
+    # so the buried crit AMPLIFIER core (Infinity Edge etc.) is present, then a
+    # metric coherence re-rank (core.build_planner.coherence.coherence_rerank)
+    # docks cross-archetype artifacts (Essence Reaver / Eclipse) below it. The
+    # re-rank truncates back to the caller's ``top`` and is carry-scoped by
+    # control flow (non-carry archetypes return earlier). NOT win-rate, NOT a
+    # hand-blacklist - a continuous metric dock from kit_synergy primitives.
+    _carry_window = max(int(top), CARRY_COHERENCE_WINDOW)
     rows = rank_for(
         champion,
         level=level, item_ids=item_ids, mode=mode,
         target_armor=target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
-        top=top, sort_by=sort_by,
+        top=_carry_window, sort_by=sort_by,
         only_item_ids=only_item_ids,
         augments=augments,
         filter_shared_uniques=filter_shared_uniques,
@@ -1300,6 +1317,9 @@ def rank_for_primary_archetype(
             r for r in rows
             if r.item_name not in CARRY_RANGED_OFFCLASS_ITEM_NAMES
         ]
+    # Coherence re-rank + truncate to the caller's requested top (byte-identical
+    # no-op for a non-carry archetype - see coherence_rerank).
+    rows = coherence_rerank(rows, champion, top=int(top))
     return {
         "ok":        True,
         "scorer":    "dps",
