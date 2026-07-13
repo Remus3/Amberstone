@@ -411,6 +411,15 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   (R94/R95/R96/R98); this is the last live-gated tail. SOURCE: docs/ROADMAP_HISTORY.md (Relocated
   2026-07-10 R99); docs/LEDGER.md item 793; ROADMAP vision-OCR block (relocated).
 
+- B49. (PRACTICE-SR, own-build) R111 `assume_caster_lowhp` flip (Overlord's Bloodmail 2501
+  "Retribution" missing-HP AD steroid): in a practice game where the wielder builds Overlord's
+  Bloodmail and drops to low HP, eyeball that the DS reco/coach crediting the missing-HP-scaled
+  bonus AD (`missing_hp_ad_amp_max_pct` 0.12 SR / 0.175 Arena, folded into compute_dps AND
+  compute_burst behind the seam) re-ranks sanely before defaulting the flag ON. Default-OFF
+  byte-identical today; the seam realizes a conservative 0.5-of-max missing-HP midpoint
+  (`_ASSUMED_CASTER_MISSING_HP` 0.35 / cap 0.70), the live missing-HP feed we lack. DS restart
+  on flip. SOURCE: docs/LEDGER.md item 879; docs/ORCHESTRATION_PLAN.md R111.
+
 ## B (cont). In-game - REAL-SR REQUIRED (real enemies / allies / combat pressure)
 
 - B42. (REAL-SR) R59 `assume_lifeline_shield` flip (target-side Lifeline shield credit): in a

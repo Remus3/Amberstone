@@ -1331,6 +1331,18 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.209.0 (2026-07-13 - Overlord's Bloodmail Retribution caster-missing-HP AD
+steroid (R111): NEW ItemEffect.missing_hp_ad_amp_max_pct (0.12 SR 2501 / 0.175
+Arena 447111) folded into compute_dps + compute_burst behind the default-OFF
+assume_caster_lowhp seam, the caster-self-state parallel of the DSV2 takedown
+offense seam. Retribution bonus AD = 0-12% of the wielder's total AD from other
+sources, ramping to max at 70% missing HP; the consumer realizes a conservative
+0.5-of-max midpoint (_ASSUMED_CASTER_MISSING_HP=0.35 / _RETRIBUTION_CAP_MISSING_HP
+=0.70). Field default 0.0 + flag default False -> byte-identical for every
+existing item and caller. Directive-labeled R104 but renumbered R111 (R104 was
+already the shipped Annul spell-shield feature). Source data: Riot Data Dragon /
+CommunityDragon / Meraki Analytics.)
+
 1.208.0 (2026-07-13 - crit-burst execute in the fight-length term: _safe_burst
 (rank.py, the fight-length reweight's burst probe) now passes assume_takedown=True
 to compute_burst_damage, so the Collector (6676) kill-state execute (5% target
