@@ -10,8 +10,10 @@ dir). Proves:
      set (omitted -> byte-identical request).
   3. rank_for_primary_archetype()'s carry branch consults the allow-map: a Jhin
      dispatch emits fight_length=0.5 in the body; a CONTROL champ dispatch
-     (Jinx/Ashe/Caitlyn/Kog'Maw/Twitch/Aphelios) emits NO fight_length -> their
-     carry ranking request is byte-identical to the pre-calibration path.
+     (Ashe/Kog'Maw/Aphelios - the genuinely-sustained marksmen L3 did NOT add)
+     emits NO fight_length -> their carry ranking request is byte-identical to
+     the pre-calibration path. The L3 crit-burst five (Jinx/Caitlyn/Twitch/
+     Draven/Samira) are covered by tests/test_l3_crit_adc_fight_length.py.
 
 The engine-side value proof (0.5 surfaces the lethality core) lives in
 agents/daemon_slayer/tests/test_jhin_fight_length.py.
@@ -26,16 +28,31 @@ from core.ds_champion_fight_length import (
     champion_fight_length,
 )
 
-_CONTROLS = ["Jinx", "Ashe", "Caitlyn", "KogMaw", "Twitch", "Aphelios"]
+# Genuinely-sustained marksmen: still DELIBERATELY absent from the allow-map.
+# L3 (2026-07-13) added the crit-burst five (Jinx/Caitlyn/Twitch/Draven/Samira)
+# but NOT these - Ashe (slow-stacking Frost Shot, no crit steroid), Kog'Maw
+# (arch=mage, ability-DPS), Aphelios (long-fight gun rotation). Their carry
+# ranking stays byte-identical (no fight_length emitted).
+_CONTROLS = ["Ashe", "KogMaw", "Aphelios"]
 
 
 # --------------------------------------------------------------------------- #
 # 1. allow-map resolver
 # --------------------------------------------------------------------------- #
-def test_allow_map_has_exactly_jhin() -> None:
-    assert set(_CHAMPION_FIGHT_LENGTH) == {"jhin"}
-    assert len(_CHAMPION_FIGHT_LENGTH) == 1
-    assert _CHAMPION_FIGHT_LENGTH["jhin"] == 0.5
+def test_allow_map_contents() -> None:
+    # Jhin pilot (0.5) + the five L3 crit-burst marksmen. draven/samira at the
+    # 0.3 burst floor; twitch/caitlyn/jinx at the calibrated 0.5 (see
+    # core.ds_champion_fight_length + docs/specs/2026-07-13-ds-crit-burst-fix.md).
+    # The per-champ resolution + engagement is exercised in
+    # tests/test_l3_crit_adc_fight_length.py.
+    assert _CHAMPION_FIGHT_LENGTH == {
+        "jhin": 0.5,
+        "draven": 0.3,
+        "samira": 0.3,
+        "twitch": 0.5,
+        "caitlyn": 0.5,
+        "jinx": 0.5,
+    }
 
 
 def test_jhin_resolves_case_insensitive() -> None:
