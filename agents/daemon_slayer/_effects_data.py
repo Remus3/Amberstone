@@ -827,7 +827,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         # ``collect_effects`` first-seen-wins dedup + the ranker's
         # ``shares_dead_unique`` filter handle both layers in one shot.
         unique_passive_key="hydra_cleave",
-        note="Stridebreaker: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
+        physical_burst_total_ad_ratio=0.80,
+        note="Stridebreaker: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets); Breaking Shockwave active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
     ),
     # Phase 4 batch 24 (2026-05-04): Profane Hydra (6698) added to
     # ITEM_EFFECTS as a new entry (was stats-only via item aggregation
@@ -836,9 +837,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # enemies in a 350 radius centered around the target" on every
     # damaging basic on-hit. Same shape and per-rotation isolation as
     # Stridebreaker / Ravenous; coefficient pinned at 40% (melee value)
-    # to match Stridebreaker's call. Heretical Cleave active (~80% AD
-    # AoE) stays not-modeled - Meraki bulk has its cooldown null and
-    # actives-without-CD-pin are deferred per the s77/s78 hand-off rule.
+    # to match Stridebreaker's call. Heretical Cleave active (80% total AD
+    # physical AoE) is NOW modeled on the DSV8 assume_physical_burst seam
+    # (R113, 1.210.0) via ``physical_burst_total_ad_ratio`` - same as
+    # Goredrinker's base-AD Thirsting Slash, which also has a null Meraki
+    # cooldown: the one-cast burst-window shape overrode the earlier s77/s78
+    # actives-without-CD-pin defer.
     # Iter 3 (2026-05-19): Tiamat-tree exclusivity ("Unique - Cleave") is
     # NOW enforced by ``unique_passive_key="hydra_cleave"`` so
     # ``collect_effects`` first-seen-wins drops the second hydra's proc
@@ -862,7 +866,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_attacks=1,
         ),),
         unique_passive_key="hydra_cleave",
-        note="Profane Hydra: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets)",
+        physical_burst_total_ad_ratio=0.80,
+        note="Profane Hydra: Cleave ~40% AD physical to other enemies in 350 radius (melee, scales with rotation targets); Heretical Cleave active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
     ),
 
     # -- Phase 4 batch 3 (2026-05-04): AP-aware CallContext + spellblade --
@@ -1113,7 +1118,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         ),),
         # Iter 3 (2026-05-19): hydra_cleave family - see Stridebreaker.
         unique_passive_key="hydra_cleave",
-        note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets)",
+        physical_burst_total_ad_ratio=0.80,
+        note="Ravenous Hydra: Cleave ~35% AD physical to nearby enemies (melee, scales with rotation targets); Ravenous Crescent active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
     ),
 
     # -- Phase 4 batch 9 (2026-05-04): Immolate items --
@@ -3356,7 +3362,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_attacks=1,
         ),),
         unique_passive_key="hydra_cleave",
-        note="Stridebreaker (Arena 226631): same as SR 6631 - Cleave 40% AD to other enemies",
+        physical_burst_total_ad_ratio=0.80,
+        note="Stridebreaker (Arena 226631): same as SR 6631 - Cleave 40% AD to other enemies; Breaking Shockwave active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
     ),
     "226653": ItemEffect(
         item_id="226653",
@@ -3490,7 +3497,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_attacks=1,
         ),),
         unique_passive_key="hydra_cleave",
-        note="Profane Hydra (Arena 226698): same as SR 6698 - Cleave 40% AD to other enemies",
+        physical_burst_total_ad_ratio=0.80,
+        note="Profane Hydra (Arena 226698): same as SR 6698 - Cleave 40% AD to other enemies; Heretical Cleave active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
     ),
     "226699": ItemEffect(
         item_id="226699",
@@ -4033,7 +4041,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             every_n_attacks=1,
         ),),
         unique_passive_key="hydra_cleave",
-        note="Ravenous Hydra (Arena 223074): same as SR 3074 - Cleave 35% AD to other enemies",
+        physical_burst_total_ad_ratio=0.80,
+        note="Ravenous Hydra (Arena 223074): same as SR 3074 - Cleave 35% AD to other enemies; Ravenous Crescent active 80% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
     ),
     "223078": ItemEffect(
         item_id="223078",
@@ -4547,7 +4556,8 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             damage_type=PHYSICAL,
             every_n_attacks=1,
         ),),
-        note="Tiamat (3077): Cleave 50% total AD to nearby - zero in single-target, scales with targets_in_rotation",
+        physical_burst_total_ad_ratio=0.75,
+        note="Tiamat (3077): Cleave 50% total AD to nearby - zero in single-target, scales with targets_in_rotation; Crescent active 75% total AD physical AoE now modeled - rides the DSV8 assume_physical_burst burst window (Meraki 16.13.1, R113)",
     ),
     "3145": ItemEffect(
         item_id="3145",
