@@ -333,6 +333,7 @@ def reanchor_plan(planned_ids, observed_ids) -> ReanchorResult:
 RESIST_HINT_CUT = 0.55   # dominant damage share that warrants a resist hint
 PEN_HINT_CUT = 0.5       # enemy penetration that warrants the HP-vs-pen hint
 HP_HINT_FLOOR = 300.0    # total build HP that counts the HP-vs-pen hint satisfied
+PEN_SAT_ITEMS = 4.0      # >=2 enemy penetration items -> enemy_pen crosses PEN_HINT_CUT (C4 warrant)
 
 
 @dataclass(frozen=True)
@@ -480,8 +481,11 @@ def build_enemy_profile(
 
     Derives ad_share / ap_share from the defensive_picks threat profile when
     not supplied; kill_target_armor / kill_target_mr from the WORST-CASE enemy
-    (aggregator="max"), NOT the team average. cc_score / heal_sources / fed come
-    from the caller (no live CC API exists). Network-free given a snapshot.
+    (aggregator="max"), NOT the team average; enemy_pen (advisory) from the count
+    of enemy penetration items saturated at PEN_SAT_ITEMS. cc_score /
+    heal_sources / fed come from the caller (no live CC API exists). Network-free
+    given a snapshot. With no enemy items supplied, enemy_pen / kill_target_*
+    stay 0.0 (the champion-only path).
     """
     from core.defensive_picks import compute_threat_profile
     from core.enemy_aware_stats import compute_target_stats_from_items
@@ -514,11 +518,26 @@ def build_enemy_profile(
         kt_armor = float(stats.get("target_armor", 0.0) or 0.0)
         kt_mr = float(stats.get("target_mr", 0.0) or 0.0)
 
+    # enemy_pen (advisory) - count enemy penetration items (lethality OR
+    # percent armor/magic pen) and saturate at PEN_SAT_ITEMS so >=2 clears
+    # PEN_HINT_CUT (0.5) and warrants the C4 hp_vs_pen hint. The None / empty
+    # items path stays enemy_pen=0.0 EXACTLY (today's champion-only behaviour).
+    enemy_pen = 0.0
+    if items:
+        pen_count = 0
+        for player_items in items:
+            for iid in (player_items or []):
+                p = classify_item(iid)
+                if p.is_lethality or p.is_percent_armor_pen or p.is_percent_magic_pen:
+                    pen_count += 1
+        enemy_pen = min(1.0, pen_count / PEN_SAT_ITEMS)
+
     return EnemyProfile(
         ad_share=float(ad_share),
         ap_share=float(ap_share),
         kill_target_armor=kt_armor,
         kill_target_mr=kt_mr,
+        enemy_pen=float(enemy_pen),
         heal_sources=int(heal_sources),
         cc_score=float(cc_score),
         burst_threat=burst,
