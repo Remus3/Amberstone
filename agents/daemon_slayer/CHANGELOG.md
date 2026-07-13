@@ -1331,6 +1331,18 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.208.0 (2026-07-13 - crit-burst execute in the fight-length term: _safe_burst
+(rank.py, the fight-length reweight's burst probe) now passes assume_takedown=True
+to compute_burst_damage, so the Collector (6676) kill-state execute (5% target
+max HP TRUE) and the Hubris / takedown offense seam enter the burst-inclusive
+effective_score. Scoped to the fight_length path ONLY - compute_burst_damage's
+default stays False, so every other caller is byte-identical. This is the L2 half
+of the coordinated crit-burst fix that surfaces the crit / lethality-execute core
+for burst-carry marksmen (Twitch/Caitlyn/Jinx/Draven/Samira); the L1/L3/L4 halves
+are core-side (coherence effective_score re-rank + fight_length allow-map + the
+squishy-carry target). Source data: Riot Data Dragon / CommunityDragon / Meraki
+Analytics.)
+
 1.207.0 (2026-07-12 - double percent-pen mutex: LDR / Mortal Reminder / Serylda's
 (DDragon MaxGroupOwnable:1 group "LastWhisper") and Void Staff / Cryptbloom (group
 "VoidPen") each carried an EMPTY unique_passive_key, so the engine's only no-double
