@@ -257,6 +257,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-12 (Jhin build-plan arc + item-8 Phases 2-4 + 4 overlay UI fixes + coach anti-table prompt; multi-agent)
+
+A long multi-agent session (Jhin DS sweep PILOT + operator live overlay-QA). Main `d0abff62`+ `5147ce0d`, pushed, CI green. Full detail: LEDGER 870.
+
+- JHIN ARC (Tier-2 x2, DS :8893 restarted, LIVE at 1.205): AS-lock (`831a9953`, ENGINE 1.203->1.204; new `_passive_as_lock_overrides.py` converts Jhin's wasted item AS+crit to base-AD + zeros the AS rebuild + boots override 3009) THEN lethality-crit (`e535d8cb`->merge `d0abff62`, 1.204->1.205; new `core/ds_champion_fight_length.py` allow-map {jhin:0.5} wiring the EXISTING-but-unwired rank_items burst-blend through the live coach path). Built as the PILOT for the operator's NEW per-champion DS meta-valuation sweep (memory `feedback_ds_sweep_meta_valuation_research`: research the real-meta valuation THEN calibrate the ranking model). Verifier-gated; agents corrected the spec on evidence (Runaan's is NOT wasted AS - keeps crit+bolts; fight_length 0.5 not the spec's 2.0 on the AS-lock base; stale Stormrazor id 3095->3097).
+- ITEM-8 PHASES 2-4 (`d4227a31`, Tier-1): rank-tier stats panel - pipeline (Ph2) + selector sync (Ph3) + panel rework (Ph4, 840/1500 brackets, new /api/rank-tier-bench route, old role-bracket route deprecated-alive). Verifier caught the agent's inflated "125 passed" (actual 85).
+- 4 OVERLAY UI FIXES + COACH PROMPT (`40b337fc` + `5147ce0d`, Tier-1): operator live-flagged 4 overlay defects (coach pipe-wall -> clean Label:value rows, item-radial center-wedge overlap, build-panel 7th-item scrollbar, flush-to-bottom) - all fixed + 5-phase fixture-audited; PLUS the SR + ARAM coach prompts now forbid markdown tables (arena/brawl already did).
+- OPEN (deferred to next session): the double-Last-Whisper bug (`open_bug_double_last_whisper`) - build plan picks 2-3 Last Whisper vs tanks (illegal); the data-only `unique_passive_key` fix was built (would-be 1.206) but proven INSUFFICIENT - plan_build_order's greedy path in core/build_order.py ignores the key - so the worktree was DISCARDED and the real root cause documented. Also noted: `project_ds_sweep_kaisa_poke_manamune` research.
+- NEXT: (a) land the double-LW fix (root-cause build_order.py's greedy no-double consumer); (b) LIVE-VERIFY in-game (Ctrl+Alt+A) the shipped Jhin arc (boots->Swiftness + lethality ultimate-build) + clean coach output + the 4 overlay fixes - all engine/render-confirmed, but the operator's game ended before the eyeball; (c) continue the DS sweep (crit-class Yasuo/Yone/Vladimir/Zeri per the scout ledger; Kai'Sa poke->Manamune); (d) item-4 DS Settings consolidation (item-8 Phase 5 DONE 2026-07-13 LEDGER 873). See ROADMAP top + memory `project_next_ingame_ui_finish`.
+- Don't-redo: the Jhin arc is SHIPPED + verified + live (do NOT rebuild); the double-LW `unique_passive_key`-only approach is PROVEN insufficient (fix build_order.py's greedy consumer, not just the data); 2 build agents died silently mid-session (caught via git/mtime probes, re-dispatched/salvaged) - a known harness flake, use git/disk probes not "no notification = alive".
+
+---
+
 # 2026-07-12 (item-8 Phase 1 backend + Jhin DS-build bug spec'd + augment C15/C16 reframed)
 
 Live-gated drain continued into a build session. Commits: `66c7ba1a` (item-8 Phase 1) + `c36f32f9` (Jhin spec + gated-doc). CI green, RC healthy. Full detail: LEDGER 869.
