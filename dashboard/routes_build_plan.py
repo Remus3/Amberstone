@@ -300,6 +300,12 @@ def _serve_build_plan(h, payload) -> None:
         owned = [str(i) for i in (payload.get("items") or []) if str(i).strip()]
         archetype = str(payload.get("archetype") or "").strip().lower()
         enemies = [str(x) for x in (payload.get("enemies") or []) if x]
+        # WP-R103: optional per-enemy item-id lists, index-aligned with
+        # ``enemies``. Enriches counter_hints ONLY (a SEPARATE hint profile) -
+        # the champion-only enemy_profile that feeds loop.tick is untouched, so
+        # the DS-scored live[]/meta[] stay byte-identical whether or not
+        # enemy_items is present. None when no enemy owns any item.
+        enemy_items = _coerce_enemy_items(payload.get("enemy_items"))
         try:
             clock_s = float(payload.get("clock_s") or 0.0)
         except (TypeError, ValueError):
@@ -314,13 +320,22 @@ def _serve_build_plan(h, payload) -> None:
         # Pull the enemy threat profile THROUGH the module (situational owns the
         # compute_target_stats_from_items needle, never this file). Best-effort:
         # any failure leaves enemy_profile None (the planner stays DPS-only).
+        # CHAMPION-ONLY (no enemy_items) - this profile feeds loop.tick, so it
+        # MUST NOT react to enemy items or the DS-scored plan would move.
         enemy_profile = _resolve_enemy_profile(enemies, level)
 
-        # WP-R102: project the situational C1-C7 counter-build criteria the
+        # WP-R102/R103: project the situational C1-C7 counter-build criteria the
         # enemy profile warrants into discrete overlay chips (UI transport only
-        # - ZERO DS math). Fail-soft to [] so the key is ALWAYS present and the
-        # projection never raises into the route.
-        counter_hints = _resolve_counter_hints(enemy_profile, owned)
+        # - ZERO DS math). When enemy_items were supplied, project off a SEPARATE
+        # items-enriched profile (enemy_pen -> C4, kill-target armor/MR -> C5);
+        # otherwise reuse the champion-only profile. loop.tick keeps the
+        # champion-only enemy_profile, so live[]/meta[] stay byte-identical.
+        # Fail-soft to [] so the key is ALWAYS present and never raises.
+        hint_profile = (
+            _resolve_enemy_profile(enemies, level, enemy_items=enemy_items)
+            if enemy_items else enemy_profile
+        )
+        counter_hints = _resolve_counter_hints(hint_profile, owned)
 
         from core.build_planner.replan import ItemOverrideStore, ReplanLoop
 
@@ -402,18 +417,37 @@ def _serve_build_plan(h, payload) -> None:
             pass
 
 
-def _resolve_enemy_profile(enemies: list, level: int):
+def _coerce_enemy_items(raw):
+    """Parse the optional enemy_items payload -> list[list[str]] (index-aligned
+    with enemies) or None when no enemy owns any item (so the hint profile then
+    equals the champion-only loop.tick profile - zero behavior change)."""
+    if not isinstance(raw, list):
+        return None
+    out = []
+    total = 0
+    for player in raw:
+        ids = [str(i) for i in player if str(i).strip()] if isinstance(player, list) else []
+        out.append(ids)
+        total += len(ids)
+    return out if total > 0 else None
+
+
+def _resolve_enemy_profile(enemies: list, level: int, enemy_items=None):
     """Best-effort EnemyProfile via the module's IMPURE builder.
 
     Routes the live enemy compute THROUGH core.build_planner.situational
     (which owns the compute_target_stats_from_items call, per P1L4), so this
-    route never holds the needle. Returns None on any failure (DPS-only plan).
+    route never holds the needle. ``enemy_items`` (per-enemy item-id lists,
+    index-aligned with ``enemies``) is OPTIONAL and enriches ONLY the
+    counter-hint profile (enemy_pen -> C4, kill-target armor/MR -> C5); it is
+    NEVER passed to the profile that feeds loop.tick, so the DS plan stays
+    invariant. Returns None on any failure (DPS-only plan).
     """
     if not enemies:
         return None
     try:
         from core.build_planner.situational import build_enemy_profile
-        return build_enemy_profile(enemies, level=level)
+        return build_enemy_profile(enemies, enemy_items or None, level=level)
     except Exception as exc:  # noqa: BLE001 - no profile -> DPS-only plan
         log.debug("build-plan enemy profile: %s", exc)
         return None

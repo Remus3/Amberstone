@@ -26,10 +26,12 @@ import unittest
 from pathlib import Path
 
 from core.build_planner.situational import (
+    PEN_HINT_CUT,
     AllyState,
     CounterHint,
     EnemyProfile,
     ItemProps,
+    build_enemy_profile,
     classify_item,
     counter_build_hints,
     reanchor_plan,
@@ -493,6 +495,42 @@ class CounterBuildHintsTests(unittest.TestCase):
                 seen_med = True
             elif seen_med:
                 self.fail("a high-severity hint followed a med-severity hint")
+
+
+# --------------------------------------------------------------------------- #
+# build_enemy_profile enemy_pen - R103 items-enriched penetration signal. The
+# champion-only path (no enemy items) keeps enemy_pen == 0.0 EXACTLY (today's
+# behaviour); two or more enemy penetration items cross PEN_HINT_CUT so the C4
+# hp_vs_pen hint can warrant. All ids reuse the module-level constants already
+# VERIFIED present in data/meta/ddragon_items.json (PCT_ARMOR 3036 Lord
+# Dominik's, PCT_ARMOR2 6694 Serylda's, ARMOR 3075 Thornmail).
+# --------------------------------------------------------------------------- #
+class BuildEnemyProfilePenTests(unittest.TestCase):
+
+    def test_no_items_keeps_enemy_pen_zero(self):
+        # The None / empty items path is byte-identical to today - pen 0.0.
+        self.assertEqual(build_enemy_profile(["Garen"], None).enemy_pen, 0.0)
+        self.assertEqual(build_enemy_profile(["Garen"], []).enemy_pen, 0.0)
+
+    def test_two_pen_items_warrant_c4(self):
+        # 3036 + 6694 = two pct-armor-pen items -> enemy_pen crosses the cut.
+        ep = build_enemy_profile(["Garen"], [[PCT_ARMOR, PCT_ARMOR2]])
+        self.assertGreaterEqual(ep.enemy_pen, PEN_HINT_CUT)
+
+    def test_single_pen_item_does_not_warrant(self):
+        # One pen item alone stays below PEN_HINT_CUT (no C4 warrant).
+        ep = build_enemy_profile(["Garen"], [[PCT_ARMOR]])
+        self.assertLess(ep.enemy_pen, PEN_HINT_CUT)
+
+    def test_enriched_profile_emits_hp_vs_pen_only_with_resist(self):
+        ep = build_enemy_profile(["Garen"], [[PCT_ARMOR, PCT_ARMOR2]])
+        self.assertTrue(classify_item(ARMOR).is_armor)  # precondition: 3075 armor
+        # enemy_pen >= cut + an owned armor item -> C4 hp_vs_pen fires.
+        with_resist = {h.criterion for h in counter_build_hints([ARMOR], ep)}
+        self.assertIn("hp_vs_pen", with_resist)
+        # No resist owned -> the C4 gate is not warranted (mirrors the scalar).
+        no_resist = {h.criterion for h in counter_build_hints([PLAIN], ep)}
+        self.assertNotIn("hp_vs_pen", no_resist)
 
 
 if __name__ == "__main__":  # pragma: no cover
