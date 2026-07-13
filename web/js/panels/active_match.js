@@ -188,6 +188,7 @@ const _BUILD_PLAN = {
   lastKey:    "",
   lastFired:  0,
   stateById:  null,   // {item_id: state} from the most recent live[]
+  counterHints: null, // R102: counter_hints[] from the most recent /api/build-plan
   inFlight:   false,
 };
 const _BUILD_PLAN_COOLDOWN_MS = 4000;
@@ -210,9 +211,12 @@ function _buildPlanStateMap(live) {
 // items (same fingerprint as the DS rerank). Non-blocking: returns whatever
 // state map is already cached; the next render picks up fresh data once the
 // POST completes. Fail-soft - any error leaves the prior map intact.
-function _maybeRefreshBuildPlan(champion, mode, level, items) {
+function _maybeRefreshBuildPlan(champion, mode, level, items, enemies) {
   if (!champion || !mode) return _BUILD_PLAN.stateById;
-  const key = _dsRerankKey(champion, mode, level, items);
+  // R102: fold the live enemy roster into the fingerprint so a champion swap /
+  // late-pick re-fires the plan - counter_hints are enemy-profile derived.
+  const key = _dsRerankKey(champion, mode, level, items)
+            + `|e:${(enemies || []).join(",")}`;
   const now = Date.now();
   const stale = (key !== _BUILD_PLAN.lastKey)
               || ((now - _BUILD_PLAN.lastFired) > _BUILD_PLAN_COOLDOWN_MS);
@@ -228,6 +232,7 @@ function _maybeRefreshBuildPlan(champion, mode, level, items) {
       mode:     mode,
       level:    level | 0,
       items:    items || [],
+      enemies:  enemies || [],
     }),
   }).then((r) => r.ok ? r.json() : null)
     .then((j) => {
@@ -235,6 +240,9 @@ function _maybeRefreshBuildPlan(champion, mode, level, items) {
       if (j && j.ok && Array.isArray(j.live)) {
         _BUILD_PLAN.stateById = _buildPlanStateMap(j.live);
       }
+      // R102: counter_hints is always present ([] when no data). Cache the
+      // array (null when absent / malformed) so the COUNTER row honestly hides.
+      _BUILD_PLAN.counterHints = (j && Array.isArray(j.counter_hints)) ? j.counter_hints : null;
     })
     .catch(() => { _BUILD_PLAN.inFlight = false; });
   return _BUILD_PLAN.stateById;
@@ -578,7 +586,19 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // WP-C5: adaptive build-plan item states for the Row1 icon badges. Non-
   // blocking; null until the first /api/build-plan POST resolves (icons just
   // render without a state pip until then).
-  const planStates = _maybeRefreshBuildPlan(champion, mode, level, ownedIds) || {};
+  // R102: send the live enemy champion NAMES so the backend resolves the enemy
+  // profile and returns counter_hints. lc absent -> [] -> honest COUNTER hide.
+  const _bpEnemies = [];
+  if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
+    const _bpMyTeam = _resolveMyTeam(lc);
+    for (const pl of lc.allPlayers) {
+      if (!pl || typeof pl !== "object") continue;
+      if (_bpMyTeam && pl.team === _bpMyTeam) continue;
+      const nm = pl.championName || pl.rawChampionName || "";
+      if (nm) _bpEnemies.push(nm);
+    }
+  }
+  const planStates = _maybeRefreshBuildPlan(champion, mode, level, ownedIds, _bpEnemies) || {};
   // WP-B2 Row2 META feed - the static standard ordered build.
   const metaOrder  = _maybeRefreshBuildOrder(champion, mode, level, ownedIds) || [];
   // BATCH A Row3 ULTIMATE feed - the from-scratch DS-optimal endgame build.
@@ -645,6 +665,12 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
       const id = (r && (r.id != null ? r.id : r.item_id)) || "";
       return planStates[String(id)] || "";
     }),
+    // R102: counter_hints fingerprint (criterion + satisfied), so an async
+    // counter-hints land - or a criterion flipping satisfied - repaints the
+    // pane instead of waiting for an unrelated input to churn the sig.
+    ch: Array.isArray(_BUILD_PLAN.counterHints)
+      ? _BUILD_PLAN.counterHints.map((h) => `${(h && h.criterion) || ""}:${(h && h.satisfied) ? 1 : 0}`)
+      : 0,
   });
   // Short-circuit ONLY when the sig matches AND the DOM still holds content. The
   // innerHTML guard is the R27 reshow fix (test_render_dedup_reshow): if an outer
@@ -760,6 +786,20 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
       });
       build.appendChild(defStrip);
     }
+  }
+  // R102: COUNTER row - situational counter-build hints from /api/build-plan's
+  // counter_hints (resist / antiheal / fed / hp_vs_pen / pen_type / tenacity).
+  // Honest no-data hide: only render when the cached array is non-empty. A tick
+  // with no enemy profile (or the mock server) returns [] -> null cache -> the
+  // row is absent entirely (no reserved slot). Each chip flags satisfied (met)
+  // vs gap (buy toward it); high severity gets a stronger border.
+  const _ch = (_BUILD_PLAN && Array.isArray(_BUILD_PLAN.counterHints)) ? _BUILD_PLAN.counterHints : null;
+  if (_ch && _ch.length) {
+    build.appendChild(_line("COUNTER", ""));
+    const cStrip = document.createElement("div");
+    cStrip.className = "counter-strip";
+    _ch.forEach((h) => cStrip.appendChild(_counterChip(h)));
+    build.appendChild(cStrip);
   }
   // UX-2: THREATS strip - per-enemy portrait + inline damage-mix donut. Skips
   // when liveclient/enemies are absent or in shared-vision modes.
@@ -2225,6 +2265,33 @@ function _defIcon(rec, ownedSet) {
   cap.style.cssText = "font-size:10px;font-weight:600;color:#f59e0b;margin-top:2px;text-transform:uppercase;letter-spacing:0.4px;";
   wrap.appendChild(cap);
   return wrap;
+}
+
+// R102: one counter-build hint = a compact chip (bold criterion label + a
+// dimmer live detail). Fed a single /api/build-plan counter_hints entry
+// { criterion, satisfied, severity, label, detail, suggest_class }. Every field
+// is null-safe (defaults ""), so a malformed hint never throws. --ok when the
+// criterion is already met, else --gap (the actionable buy); --high stiffens
+// the border for a high-severity gap. All styling in build_module.css - no
+// inline font-size, so the --fs-xs (16px) floor is never undercut. ASCII only.
+function _counterChip(h) {
+  h = h || {};
+  const chip = document.createElement("div");
+  chip.className = "counter-chip "
+    + (h.satisfied ? "counter-chip--ok" : "counter-chip--gap");
+  if (h.severity === "high") chip.classList.add("counter-chip--high");
+  const lab = document.createElement("span");
+  lab.className = "counter-chip-label";
+  lab.textContent = String(h.label || "");
+  chip.appendChild(lab);
+  const detail = String(h.detail || "");
+  if (detail) {
+    const det = document.createElement("span");
+    det.className = "counter-chip-detail";
+    det.textContent = detail;
+    chip.appendChild(det);
+  }
+  return chip;
 }
 
 function _dsIconFallback(name, id, delta) {
