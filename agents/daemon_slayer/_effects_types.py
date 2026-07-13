@@ -947,3 +947,21 @@ class ItemEffect:
     # flag must both be set); appended at the END per the dataclass convention
     # (a mid-class insert breaks positional construction + every existing test).
     missing_hp_ad_amp_max_pct: float = 0.0
+    # R113 (1.210.0): TOTAL-AD (base + bonus) analogue of the R74 DSV8
+    # ``physical_burst_base_ad_ratio``. The four Tiamat-tree item actives each
+    # fire a once-per-cast physical AoE off the wielder's TOTAL AD (Meraki
+    # 16.13.1 writes plain "AD" = base + bonus, NOT "base AD"): Tiamat 3077
+    # Crescent 75% AD, Ravenous 3074 / Profane 6698 / Stridebreaker 6631 (+ their
+    # Arena mirrors) 80% AD. This field carries that TOTAL-AD ratio; the burst
+    # consumer folds ``physical_burst_total_ad_ratio * (base_ad + bonus_ad)`` into
+    # the physical burst window - armor-mitigated (PHYSICAL routing) x mode_mult,
+    # NO amp layer - riding the SAME default-OFF ``assume_physical_burst`` flag as
+    # the Goredrinker base-AD path (NO new flag). Only the four Hydra ids set it;
+    # Goredrinker 226630 stays on the base-AD field
+    # (``physical_burst_base_ad_ratio``, this field 0.0) and Titanic Hydra
+    # 3748/223748 is EXCLUDED (its active is a %max-HP empowered basic attack, a
+    # different mechanic). Default 0.0 keeps every existing item + caller
+    # byte-identical (the helper's new 3rd arg defaults so 2-arg callers fold
+    # ratio * 0.0 = 0.0); appended at the END per the dataclass convention (a
+    # mid-class insert breaks positional construction + every existing test).
+    physical_burst_total_ad_ratio: float = 0.0
