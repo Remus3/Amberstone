@@ -257,6 +257,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-12 (item-8 Phase 1 backend + Jhin DS-build bug spec'd + augment C15/C16 reframed)
+
+Live-gated drain continued into a build session. Commits: `66c7ba1a` (item-8 Phase 1) + `c36f32f9` (Jhin spec + gated-doc). CI green, RC healthy. Full detail: LEDGER 869.
+
+- ITEM-8 PHASE 1 SHIPPED: backend rank-tier data adapter (`core/rank_tier_source.py` + `core/rank_tier_bench.py` + `data/rank_tiers/rank_tier_averages.seed.json` estimate seed + config; live-first w/ static-seed fallback, `RC_RANK_TIER_LIVE` kill switch; 26 tests green, independently re-verified). Panel rework + rank selector = later phases (overlay, live-gated).
+- JHIN DS BUILD BUG: reproduced (`beam Jhin --mode SR --level 18` tops Runaan's/Stormrazor/Berserker's - all attack-speed, dead on Jhin's Whisper AS-lock) + FULL file-cited fix spec committed `docs/specs/2026-07-12-jhin-whisper-as-lock-DS-fix-IMPL.md`. Operator FOLDED it to a next-session multi-agent per-champion build-plan sweep (Jhin = pilot #1). Do NOT build standalone - Tier-2 (ENGINE 1.203 -> 1.204 + Share + DS restart) + live-gated. Sibling sweep confirms Jhin UNIQUE (Bel'Veth = the anti-narrow same-perlevel:0 trap).
+- AUGMENT C15/C16 REFRAMED: the `67519018` field-fix is CORRECT + detection deterministic (offline-proven on a saved Kayle augment frame); the on-screen miss is the 25s vision cadence (`coaches/aram_coach.py:495`) skipping the ~10-15s augment window. Memory `open_bug_aram_augment_reco_cadence_miss`; fix (fast early-game poll) DEFERRED by operator.
+- CAPTURED for next session: DMG/SURV/UTIL shaper -> DS Settings panel move (memory item-4); open-gated-item count (~108) added to the LIVE_GAME_GATED_SYNC.md top row (maintain via `/live-gated-resync`).
+- NEXT: UI/UX continuance (item-8 phases 2-5 + DS Settings consolidation) + the PARALLEL multi-agent per-champion DS build-plan sweep + the gated drain. See memory `project_next_ingame_ui_finish` + ROADMAP top.
+- Don't-redo: item-8 Phase 1 shipped+verified; the Jhin fix is SPEC'd not built (build it via the next-session sweep); the augment field-fix is correct - do NOT re-investigate detection, the cadence is the issue.
+
+---
+
 # 2026-07-12 (audit L-02: orphan lockfile.pid.tmp cleanup - Agent 2 backend task)
 
 Agent 6 thirteenth audit found 5 orphaned lockfile.<pid>.tmp files in agents/state/ (2026-07-08 to 2026-07-11). Fixed in `agents/_supervisor_common.py` (commit `afdd20eb`). Full detail: LEDGER 868.
