@@ -26,7 +26,11 @@ DEEP DISCOVERY: L1/L3 were INERT live - the client `RankedItem.from_dict` DROPPE
 
 LIVE-VALIDATED via /api/ds-preview on the restarted RC: Jinx IE#4/Collector#3, Twitch IE#3/Collector#2, ER/Eclipse out of top-8; Vayne (on-hit control)/Lux/Ornn byte-identical. `:8893` @ 1.208.0, Share --check green, consumer set 0 failures (was 12), DS suite 8406 passed.
 
-NEXT: priority (2) the other DS build-reco refactor slices (Step 0/2/3 of `docs/specs/2026-07-13-ds-build-coherence-refactor.md`) + priority (3) per-champ meta research. Spec L5 (fed / comp-aware fight_length) + L6 (Stormrazor 3097 stale-catalog hygiene) are follow-ups. A real IN-GAME crit-ADC eyeball is owed (do-not-flip-blind). If Gemini recovers, the loop can resume.
+NIGHTLY CATCH (fixed `9b811356`): the schedule-only full suite caught ONE crit-burst regression the push-CI + my consumer-set filter missed - `test_archetype_dispatcher::test_carry_propagates_target_armor` used Caitlyn (now a mapped burst carry, so L4 correctly swaps her target); retargeted to Vayne + added mapped-swap coverage. Also authored the owed 1.208.0 changelogs (Share + engine + DAEMON_SLAYER status 8403).
+
+PRE-EXISTING nightly reds (NOT crit-burst, do NOT attribute to this session): `test_champion_loadouts_no_unique_clash` (18 double-pen family clashes in `data/champion_loadouts.json` - the LEDGER-872 1.207.0 double-pen fix added the unique keys but never regenerated the curated loadouts; needs a loadout regen + backfill); `test_doc_size_budget::test_roadmap_md_under_budget` (ROADMAP.md 83217 > 81920 bytes - relocate shipped entries to docs/ROADMAP_HISTORY.md); plus runner-only env fails (asyncio.run in a running loop, :8893-down Jhin plan, missing 3858.png icon).
+
+NEXT: (a) regenerate champion_loadouts.json to clear the 18 double-pen clashes; (b) trim ROADMAP.md under budget; (c) priority (2) the other DS build-reco refactor slices (Step 0/2/3 of `docs/specs/2026-07-13-ds-build-coherence-refactor.md`) + priority (3) per-champ meta research. Spec L5 (fed / comp-aware fight_length) + L6 (Stormrazor 3097 stale-catalog hygiene) are follow-ups. A real IN-GAME crit-ADC eyeball is owed (do-not-flip-blind). If Gemini recovers, the loop can resume.
 
 ---
 
