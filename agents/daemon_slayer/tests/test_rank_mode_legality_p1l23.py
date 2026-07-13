@@ -94,6 +94,25 @@ def _source_legal_purchasable_terminal(snap: DataSnapshot, map_id: str) -> set[s
     if map_id == "12":
         from agents.daemon_slayer.rank import _ARAM_EXCLUDED_ITEM_IDS
         out = out - _ARAM_EXCLUDED_ITEM_IDS
+    # DDragon alias-id dedup (operator 2026-07-12): mirror _filter_candidates -
+    # when the same item name survives under two ids of DIFFERENT length, the
+    # strictly-longer id is a DDragon alias variant (the "32xxxx" / "66xxxx"
+    # mirror namespaces) and is dropped; the canonical shortest id is kept.
+    # Derived independently here from the raw records.
+    min_id_len: dict[str, int] = {}
+    for item_id in out:
+        name = (snap.items.get(item_id) or {}).get("name")
+        if name is None:
+            continue
+        length = len(item_id)
+        if name not in min_id_len or length < min_id_len[name]:
+            min_id_len[name] = length
+    out = {
+        item_id
+        for item_id in out
+        if (snap.items.get(item_id) or {}).get("name") is None
+        or len(item_id) <= min_id_len[(snap.items.get(item_id) or {}).get("name")]
+    }
     return out
 
 
