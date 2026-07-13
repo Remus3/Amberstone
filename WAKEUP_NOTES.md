@@ -4,6 +4,18 @@
 
 ---
 
+# OVERNIGHT AUTONOMOUS DIRECTIVE (operator, 2026-07-13, going to sleep) - Gemini-headless loop
+
+Operator granted a full autonomous overnight run (AHK + Gemini headless) with FROZEN-FILE ACCESS ALLOWED + GRANTED. Self-`/done` and continue between phases. Priority chain:
+
+1. **Implement `docs/specs/2026-07-13-ds-crit-burst-fix.md`** (the coordinated crit-burst fix: L1 coherence-respects-burst -> L2 arm the execute [Tier-2 ENGINE bump + Share + :8893] -> L3 fight_length allow-map for crit ADCs -> L4 squishy-target scenario; L5 fed-conditional + L6 stale-catalog are follow-ups). TDD, per-champion, LIVE-path fidelity (the Step-1a lesson: validate against the live ds-preview path, not an in-process fixed cell). Root cause: the sustained-DPS scorer hands crit ADCs an on-hit build; crit's value is short-TTK BURST vs SQUISHY carries when FED. Context: LEDGER 874 (Step 1a shipped) + `docs/specs/2026-07-13-ds-build-coherence-refactor.md` + memory `project_ds_build_reco_optimal_not_winrate`.
+2. **Then the other DS build-reco refactor slices** (from `docs/specs/2026-07-13-ds-build-coherence-refactor.md`): Step 0 seam prunes (DSP11 coach revert is a GATED live-behavior change - coach-picks diff first), Step 2 wire the dormant `situational.py` counter-build into the overlay, Step 3 ally synergy + NL reasoning. Plus DS seams / testing / upgrades broadly.
+3. **If still uninterrupted:** per-champion META BUILD online research (aggregator B/aggregator D/aggregator A via web tools) - compare each champ's meta build to what the engine offers, analyze for divergence/issues; if found, continue fixing headless.
+
+Each phase: verifier-gate before "done" (independent re-probe, NOT subagent counts), commit + push, LEDGER entry, live-verify where possible. Do NOT flip gated live-behavior (DSP11 coach revert, any coach flip) without the eyeball diff. QA baseline: `ops/audit/DS_BUILD_RECO_OVERLAY_QA.md`.
+
+---
+
 # 2026-07-13 (double percent-pen mutex fix [ENGINE 1.207.0] + live-gated doc-only resync; root-cause-fix, verifier-gated)
 
 Two commits, both pushed to main (`ee43d4ff` + `ded5f354`). Full detail: LEDGER 872.
