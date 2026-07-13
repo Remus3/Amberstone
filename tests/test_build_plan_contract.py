@@ -174,6 +174,14 @@ class ContractShapeTests(unittest.TestCase):
             for key in ("item_id", "alt_index", "n_alts"):
                 self.assertIn(key, row, f"meta row missing {key!r}")
 
+    def test_counter_hints_key_always_a_list(self):
+        # R102: the counter_hints projection is ALWAYS present as a list. With
+        # no enemies supplied there is no enemy profile -> honest empty [].
+        resp = _post({"champion": "Miss Fortune", "items": []})
+        self.assertIn("counter_hints", resp, "missing counter_hints key")
+        self.assertIsInstance(resp["counter_hints"], list)
+        self.assertEqual(resp["counter_hints"], [])
+
 
 # --------------------------------------------------------------------------- #
 # Composition: ds-preview ranked + build-order order + module output
