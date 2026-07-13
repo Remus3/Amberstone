@@ -93,6 +93,21 @@ _AXIS_ITEM_IDS: dict[str, set[str]] = {
 
 _MIN_N = 15          # rewind games the item was built in
 _MIN_LIFT = 0.0      # win-rate lift over the champ baseline (>0)
+
+# Fresh-DB re-validation gate (2026-07-13). The buried_winner picks come from the
+# FROZEN dsp10_consolidated.json report; without a re-check they never reflect
+# rewind games that accrued since. This gate re-queries the CURRENT
+# rewind_history.db (ALL modes) per (champ, item) and drops any pick whose
+# current WR no longer clears the champ baseline - so the table stays "anchored
+# to rewind reality" (the module's stated contract), not a stale snapshot.
+#   * buried-winner FLOATS (the "float above the AD template" purpose): current
+#     all-mode WR must be strictly > the champ baseline, over >= _MIN_N games.
+#   * off-class UN-STRIP STAPLES (the "un-strip Trinity Force" purpose): kept
+#     within _STAPLE_BAND of baseline - by construction a hard-stripped staple
+#     rides ~= baseline (its defect is exclusion, not burial), so a strict
+#     >-baseline test would wrongly delete it.
+_STAPLE_BAND = 2.0
+_OFFCLASS_STAPLE_IDS = {"3078"}  # Trinity Force (off-class-stripped caster-ADC staple)
 # Ezreal fell outside the worst-40 anchor window (an SR cross-mode artifact in
 # DSP10), but the directive names him. Anchor him directly against rewind: his
 # staple Trinity (n219, ~baseline - DS HARD-STRIPS it off-class) + the
@@ -122,6 +137,60 @@ def _is_boots(rec: dict) -> bool:
 def _report_rows() -> dict[str, dict]:
     raw = json.loads(_REPORT.read_text(encoding="utf-8"))
     return {r["champion"]: r for r in raw.get("worst", [])}
+
+
+def _champ_wr_all_modes(champ: str) -> tuple[float, int, dict[str, tuple[int, float]]]:
+    """Current all-mode (champ) baseline WR + per-item (n, wr) from rewind_history.db.
+
+    All modes (not the report's SR-anchored window) so the gate reflects how the
+    item actually performs across the operator's real games right now.
+    """
+    db = sqlite3.connect(str(_REWIND))
+    try:
+        c = db.cursor()
+        base = "FROM participants p WHERE p.champion_name=?"
+        n, wsum = c.execute(
+            "SELECT COUNT(*),COALESCE(SUM(p.win),0) " + base, (champ,)
+        ).fetchone()
+        n = int(n or 0)
+        if not n:
+            return 0.0, 0, {}
+        base_wr = 100.0 * wsum / n
+        rows = c.execute(
+            "SELECT p.item0,p.item1,p.item2,p.item3,p.item4,p.item5,p.win " + base,
+            (champ,),
+        ).fetchall()
+        agg: dict[str, list[int]] = {}
+        for r in rows:
+            win = r[6] or 0
+            seen: set[str] = set()
+            for it in r[:6]:
+                if it and str(it) not in seen and int(it) > 0:
+                    seen.add(str(it))
+                    a = agg.setdefault(str(it), [0, 0])
+                    a[0] += 1
+                    a[1] += win
+        per = {iid: (cnt, 100.0 * won / cnt) for iid, (cnt, won) in agg.items()}
+        return base_wr, n, per
+    finally:
+        db.close()
+
+
+def _survives_fresh_gate(
+    base_wr: float, per_item: dict[str, tuple[int, float]], item_id: str
+) -> bool:
+    """True iff ``item_id`` still earns its table slot on the CURRENT DB.
+
+    Off-class un-strip staples keep within ``_STAPLE_BAND`` of baseline; every
+    other (buried-winner float) item must clear baseline outright, over
+    ``_MIN_N`` current games."""
+    st = per_item.get(str(item_id))
+    if not st or st[0] < _MIN_N:
+        return False
+    cnt, wr = st
+    if str(item_id) in _OFFCLASS_STAPLE_IDS:
+        return wr >= base_wr - _STAPLE_BAND
+    return wr > base_wr
 
 
 def _ezreal_from_rewind(items: dict) -> list[dict]:
@@ -205,16 +274,32 @@ def build() -> dict:
                 "rewind_wr": float(b.get("wr") or 0.0),
                 "lift": round(float(b.get("lift_over_baseline") or 0.0), 1),
             })
+        # Fresh-DB gate: re-validate every pick against the CURRENT all-mode
+        # rewind DB and refresh its recorded n/wr/lift to today's reality so the
+        # table records what it is gated on (drops entries that decayed below
+        # baseline since the frozen report - e.g. Ezreal Essence Reaver, Naafiri).
+        if picked:
+            base_wr, _bn, per_item = _champ_wr_all_modes(champ)
+            survivors: list[dict] = []
+            for p in picked:
+                if not _survives_fresh_gate(base_wr, per_item, p["id"]):
+                    continue
+                cnt, wr = per_item[str(p["id"])]
+                p["rewind_n"] = int(cnt)
+                p["rewind_wr"] = round(wr, 1)
+                p["lift"] = round(wr - base_wr, 1)
+                survivors.append(p)
+            picked = survivors
         if picked:
             picked.sort(key=lambda x: x["rewind_n"], reverse=True)
             champs[champ] = {"axis": axis, "items": picked}
     return {
         "_meta": {
             "source": "DSP11 build_kit_axis_item_credit.py",
-            "anchored_to": "ops/audit/ds_perm_swarm/report/dsp10_consolidated.json + rewind_history.db (Ezreal)",
+            "anchored_to": "ops/audit/ds_perm_swarm/report/dsp10_consolidated.json, then fresh-DB gated against rewind_history.db (all modes)",
             "ds_patch": _ds_patch(),
             "min_rewind_n": _MIN_N,
-            "note": "DEFAULT-OFF prefer_kit_axis_by_win seam input. Cluster A excluded (operator-gated).",
+            "note": "DEFAULT-OFF prefer_kit_axis_by_win seam input. Cluster A excluded (operator-gated). Every pick fresh-DB re-validated: buried-winner floats must clear the current all-mode champ baseline, off-class staples keep within the band.",
         },
         "champions": champs,
     }

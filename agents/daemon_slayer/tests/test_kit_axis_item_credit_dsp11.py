@@ -75,6 +75,17 @@ class TestKitAxisLoader(unittest.TestCase):
         ids = kit_axis_credit.kit_axis_item_ids("Ezreal")
         self.assertIn("3078", ids)  # Trinity Force (the hard-stripped staple)
 
+    def test_fresh_db_gate_dropped_anti_justified(self) -> None:
+        # 2026-07-13 fresh-DB gate (build_kit_axis_item_credit): a pick is kept
+        # only if its CURRENT all-mode rewind WR still clears the champ baseline
+        # (off-class un-strip staples keep within a band). The coach-fidelity gate
+        # diff (ops/audit/ds_perm_swarm/report/dsp11_gate_diff.md) showed Naafiri
+        # (Hubris/Collector at/below base) and Ezreal Essence Reaver (40.9% vs
+        # 47.4% base) no longer clear it; Trinity Force (3078) is the staple.
+        self.assertEqual(kit_axis_credit.kit_axis_item_ids("Naafiri"), frozenset())
+        self.assertNotIn("3508", kit_axis_credit.kit_axis_item_ids("Ezreal"))
+        self.assertIn("3078", kit_axis_credit.kit_axis_item_ids("Ezreal"))
+
     def test_unknown_and_blank_empty(self) -> None:
         self.assertEqual(kit_axis_credit.kit_axis_item_ids("Garen"), frozenset())
         self.assertEqual(kit_axis_credit.kit_axis_item_ids(""), frozenset())
