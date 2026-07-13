@@ -257,6 +257,19 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-13 (DDragon alias-pool dedup [ENGINE 1.206] + ZOI Z2 minimap fix; both live-verified in a real Jhin ARAM; subagent-orchestrated)
+
+Operator live-flagged a Jhin reco emitting "The Collector" TWICE. Two disjoint fixes shipped + live-verified + pushed (main `58d8e058`). Full detail: LEDGER 871.
+
+- ALIAS-POOL DEDUP (ENGINE 1.205->1.206, Tier-2): DDragon 16.9.1+ ships dup ids (`32xxxx`/`66xxxx` mirror namespaces wrongly carrying maps[11]=True) -> 21 SR name-collisions double-counted in EVERY archetype's live reco. FIX = keep-shortest-id-per-name at `rank.py` `_filter_candidates` (one chokepoint); same-length pairs (Kalista 3599/3600, jungle pets 1101-1107) untouched -> byte-identical off SR (ARAM control test). No backfill (corruption was live-only; stored build_orders/loadout/pick tables scanned clean). Live-verified on :8893 engine 1.206: Jhin/Soraka dup-free. Memory `reference_ds_alias_pool_dedup`.
+- ZOI Z2 MINIMAP (Tier-1, `875d862b`): blob over-count 62-74 -> <=10 via champ-size floor + per-team clamp (both default-None = byte-identical); count-only, per-champ IDENTITY still unsolved (memory `project_zoi_minimap_reality`). Live-verified: `minimap_dots=10`.
+- Also live-confirmed the shipped Jhin arc on-screen (Swiftness boots + lethality core) - the arc on-screen eyeball is now DONE.
+- tests/ = 11532 passed; the 3 residual "failures" = confirmed environment flakes (live-daemon shadow appends + async timing; all pass in isolation - do NOT re-chase). Share package synced (CHANGELOG 1.206 + a 1.203->1.205 Jhin-arc bridge entry; audit-doc counts refreshed 7144->8387 / 227->310 files).
+- Don't-redo: both fixes shipped + live-verified + pushed; the Jhin-arc on-screen eyeball is DONE. The alias dedup is a DISTINCT class from the double-Last-Whisper bug (still OPEN).
+- NEXT (operator directive 2026-07-13): continue the double-LW fix (`open_bug_double_last_whisper` - root-cause is `core/build_order.py`'s greedy consumer ignoring `unique_passive_key`, NOT an alias) + drain the open live-gated items (`docs/LIVE_GAME_GATED_SYNC.md`, ~108 rows) MULTI-AGENT ORCHESTRATED PARALLEL to capture as many as possible.
+
+---
+
 # 2026-07-12 (Jhin build-plan arc + item-8 Phases 2-4 + 4 overlay UI fixes + coach anti-table prompt; multi-agent)
 
 A long multi-agent session (Jhin DS sweep PILOT + operator live overlay-QA). Main `d0abff62`+ `5147ce0d`, pushed, CI green. Full detail: LEDGER 870.
