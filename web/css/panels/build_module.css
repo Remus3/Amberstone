@@ -190,9 +190,12 @@
 }
 
 /* gap - the criterion needs attention. Cyan #6cf (the overlay next/pop accent)
-   so an open counter reads as the actionable buy. */
+   so an open counter reads as the actionable buy. A DASHED edge carries the
+   gap-vs-ok distinction on a non-color channel too (WCAG 1.4.1 - ok stays solid),
+   mirroring the border-width cue --high already uses. */
 .counter-chip--gap {
   border-color: #6cf;
+  border-style: dashed;
 }
 .counter-chip--gap .counter-chip-label {
   color: #6cf;
