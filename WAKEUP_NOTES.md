@@ -16,6 +16,27 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-13 (R111 gemini-loop cycle 3 - Overlord's Bloodmail Retribution missing-HP AD offense seam; ENGINE 1.209.0; LEDGER 879)
+
+DS-sweep rotation via a fresh adversarial Meraki(16.13.1)-vs-registry refute pass.
+NEW default-OFF `assume_caster_lowhp` seam credits Overlord's Bloodmail (SR 2501 /
+Arena 447111) "Retribution" missing-HP-scaled bonus AD - NEW field
+`missing_hp_ad_amp_max_pct` (0.12 / 0.175) folded into compute_dps + compute_burst,
+the caster-self-state parallel of the DSV2 takedown seam (0.5-of-max ramp midpoint,
+`_ASSUMED_CASTER_MISSING_HP` 0.35 / cap 0.70). Byte-identical OFF. Director labeled
+this "R104" but it was RENUMBERED R111 (R104 = shipped Annul spell-shield 7646e65d;
+the build agent caught the collision). Verifier CONFIRM 7/7; DS 8421 / 0 fresh; RC
+11586 passed / 3 pre-existing (2 coach-poll LEDGER-828 asyncio flake pass-isolated +
+1 R102 `build_module.css` dark-literal ratchet, file untouched by R111 - chipped as a
+separate frontend task) / 0 R111 regressions. HZ-B 6 tables stamp-only re-stamp (guard
+6/6); DS `:8893` bounced 1.209.0 live; `ds_share_sync --check` green 452 files. merge
+`7cf051db`, reconcile `9e61f8a0`. Live default-ON flip -> LIVE_GATED B49 (practice-SR
+own-build eyeball). Don't-redo: 2501/447111 Retribution SHIPPED; the item-keyed
+incoming-DR lane (crit R77 / AA R80 / AS-slow R86) is saturated; R77's Steelcaps
+sibling director-note is STALE (shipped R80).
+
+---
+
 # 2026-07-13 (nightly reds cleared + DSP11 Step-0b gate RESOLVED do-not-revert + kit-axis table fresh-DB refresh; a+b+c chain; LEDGER 876)
 
 Operator "go a+b+c chain" then "/done + continue headless with ahk + gemini". 3 commits pushed to main:
@@ -42,14 +63,3 @@ NIGHTLY CATCH (fixed `9b811356`): the schedule-only full suite caught ONE crit-b
 PRE-EXISTING nightly reds (NOT crit-burst, do NOT attribute to this session): `test_champion_loadouts_no_unique_clash` (18 double-pen family clashes in `data/champion_loadouts.json` - the LEDGER-872 1.207.0 double-pen fix added the unique keys but never regenerated the curated loadouts; needs a loadout regen + backfill); `test_doc_size_budget::test_roadmap_md_under_budget` (ROADMAP.md 83217 > 81920 bytes - relocate shipped entries to docs/ROADMAP_HISTORY.md); plus runner-only env fails (asyncio.run in a running loop, :8893-down Jhin plan, missing 3858.png icon).
 
 NEXT: (a) regenerate champion_loadouts.json to clear the 18 double-pen clashes; (b) trim ROADMAP.md under budget; (c) priority (2) the other DS build-reco refactor slices (Step 0/2/3 of `docs/specs/2026-07-13-ds-build-coherence-refactor.md`) + priority (3) per-champ meta research. Spec L5 (fed / comp-aware fight_length) + L6 (Stormrazor 3097 stale-catalog hygiene) are follow-ups. A real IN-GAME crit-ADC eyeball is owed (do-not-flip-blind). If Gemini recovers, the loop can resume.
-
----
-
-# 2026-07-13 (double percent-pen mutex fix [ENGINE 1.207.0] + live-gated doc-only resync; root-cause-fix, verifier-gated)
-
-Two commits, both pushed to main (`ee43d4ff` + `ded5f354`). Full detail: LEDGER 872.
-
-- DOUBLE-PEN MUTEX (ENGINE 1.206->1.207, Tier-2, `ee43d4ff`): the build plan picked 2-3 same-group percent-pen items vs tanks - LastWhisper (LDR/Mortal/Serylda; Jhin + AD carries) AND the sibling VoidPen (Void Staff/Cryptbloom; mages, caught in the anti-narrow sweep). ROOT CAUSE = empty `unique_passive_key` in `_effects_data.py` (the engine's ONLY no-double hook). **CORRECTED the prior diagnosis**: it was NOT `build_order.py` ignoring the key - plan_build_order delegates dedup to the engine; the earlier data-only attempt failed ONLY because :8893 was never restarted. FIX = data-only keys on the COMPLETED members (SR + Arena mirrors); components 3035/4630 left unkeyed (upgrade path stays recommendable). Backfilled 12 doubled rows in BOTH build-order keyspaces. Verifier: DS suite 8390 passed / 0 failed; live Jhin=1 LW, Syndra=1 VP. Memory `open_bug_double_last_whisper` -> FIXED.
-- LIVE-GATED DOC-ONLY RESYNC (`ded5f354`): the `/live-gated-resync` Workflow STALLED mid-synthesize; harvested its 82 verdicts (67 done / 6 partial / 9 open), spot-verified 8/8 cited commits, and (operator chose doc-only - game had ended) updated `docs/LIVE_GAME_GATED_SYNC.md` count ~108 -> ~15 + a dated DOC-ONLY RESYNC block. ~15 truly live-gated items remain for the next game.
-
-Do NOT redo: double-LW is FIXED (data-only, NOT build_order.py surgery); the 67 closed live-gated rows are git-proven done. NEXT: the ~15 live-gated items need a REAL game; the `/live-gated-resync` Workflow harness stalled (full row-by-row rebuild owed once fixed); DS meta-valuation sweep; item-4 DS Settings (item-8 Phase 5 DONE LEDGER 873; residual = w-stats/w-call default-pos collision, live-gated).
