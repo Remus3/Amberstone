@@ -199,8 +199,12 @@ class CssWidenedAndStyled(unittest.TestCase):
         self.assertNotIn("190px", body)
 
     def test_statspanel_widened(self):
+        # Phase-5 audit fix: the panel width moved from the inert max-width:220
+        # (the .ovx-widget frame is a FIXED width:var(--ovx-w,210px), so
+        # max-width could never widen it) to a per-widget --ovx-w:240px override
+        # so the widest provenance badge ("GRANDMASTER ESTIMATE") fits un-clipped.
         body = _rule(self.css, ".ovx-statspanel {")
-        self.assertIn("max-width: 220px", body)
+        self.assertIn("--ovx-w: 240px", body)
 
     def test_source_badge_styled(self):
         self.assertIn(".sp-src", self.css)

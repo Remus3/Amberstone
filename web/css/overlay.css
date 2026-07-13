@@ -902,7 +902,11 @@ body[data-shell="overlay"] .ovx-enemyspells .es-chip.es-down {
 
 /* --- Stats mini-panel (w-stats): vertical "You vs benchmark" table (WP-A4b) --- */
 body[data-shell="overlay"] .ovx-statspanel {
-  max-width: 220px;
+  /* Per-widget fixed-width override (the .ovx-widget frame is width:var(--ovx-w,
+   * 210px)). 240 (was the 210 default) so the widest bounded provenance badge
+   * ("GRANDMASTER ESTIMATE" / "GRANDMASTER LIVE AVG") fits without ellipsizing
+   * its load-bearing caveat suffix (overlay item 8 Phase-5 audit). */
+  --ovx-w: 240px;
 }
 body[data-shell="overlay"] .ovx-statspanel .sp-selrow {
   display: flex;
@@ -926,7 +930,8 @@ body[data-shell="overlay"] .ovx-statspanel .sp-src {
   font-size: var(--fs-ov-chip);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  /* No letter-spacing here (the bracket sigil beside it keeps 0.06em): the
+   * caveat suffix must fit the panel un-clipped (Phase-5 audit). */
   color: rgba(var(--ovx-gold), 0.92);
   overflow: hidden;
   text-overflow: ellipsis;
