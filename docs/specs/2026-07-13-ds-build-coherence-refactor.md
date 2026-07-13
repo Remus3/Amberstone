@@ -153,6 +153,20 @@ follow-up slices; do NOT touch mage/tank/enchanter (clean).
 
 ## Status (2026-07-13)
 
+- STEP 2 SHIPPED (partial) = the dormant situational counter-build is WIRED to
+  the live overlay (2026-07-13, R102, main `c52d8f2c`/`926f69a5`/`dc4e4555`). NEW
+  pure `counter_build_hints()` (situational.py) surfaces the C1-C7 criteria an
+  EnemyProfile warrants as structured hints; `/api/build-plan` gained a fail-soft
+  `counter_hints[]` payload key (always present); `active_match.js` now SENDS
+  `enemies` so `build_enemy_profile` fires live + renders a COUNTER chip row
+  (honest no-data hide; ok=solid-green / gap=dashed-cyan / high=2px, WCAG 1.4.1).
+  The previously-dormant enemy-profile builder is now on the live overlay path -
+  the `situational.py` "genuinely-dead piece" note above is SUPERSEDED. 14 backend
+  tests + snapshot green, 5-phase UI audit NO-MUST-FIX. FOLLOW-UP (FUTURE): the
+  overlay sends enemy CHAMPIONS only, not enemy ITEMS, so C1 resist-split + the
+  champ-derived hints fire live now, but the enemy-items enrichment that feeds
+  kill_target_armor/mr (C5 pen-type) + enemy_pen (C4 hp-vs-pen) is not yet plumbed
+  through the fetch; each extra criterion lights up automatically once it is.
 - STEP 0b RESOLVED = DO-NOT-REVERT + kit-axis table refreshed (2026-07-13). The
   operator-gated coach-picks diff ran at true coach fidelity (`dispatch_for_coach`
   top-5, frontline/squishy comps SR L14 + ARAM L16, independent rewind_history.db
