@@ -16,6 +16,17 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-13 (nightly reds cleared + DSP11 Step-0b gate RESOLVED do-not-revert + kit-axis table fresh-DB refresh; a+b+c chain; LEDGER 876)
+
+Operator "go a+b+c chain" then "/done + continue headless with ahk + gemini". 3 commits pushed to main:
+- **(a)** `35732e4e` loadout dedup: 18 double-pen unique-family clashes (LastWhisper/VoidPen keys from 1.207.0, LEDGER 872 - loadouts never regenerated). ROOT-CAUSE tool = the item-s8 sweep (`tools/champion_loadout_sweep_item_s8.py`), NOT align.py: the WAKEUP "re-run align.py" hint was STALE - align.py only rewrites `v["items"]`, but 16/18 clashes live in `build_paths[*]["items"]` it never walks. Surgical 25/25 diff; 1646 loadout guards + full suite green.
+- **(b)** `2f90fd28` ROADMAP trim 83217 -> 80955 bytes (< 81920): relocated the stale 2026-06-05 NEXT-UP block verbatim to ROADMAP_HISTORY, kept the P3.2 residual, shortened the P6 stub. test_doc_size_budget green.
+- **(c)** `5081ab91` DSP11 (Step 0b) gate RESOLVED = **DO-NOT-REVERT**. The operator-gated coach-picks diff ran at TRUE coach fidelity (`dispatch_for_coach` top-5 + real frontline/squishy comps + independent rewind re-query; report `ops/audit/ds_perm_swarm/report/dsp11_gate_diff.md`) and REFUTED the spec premise: Step 1a fixes crit-ADC coherence ONLY, not the lethality/assassin/manamune DSP11 champs - reverting drops Pyke's whole lethality core live. Instead kept the mechanism + gave `build_kit_axis_item_credit.py` a fresh-DB re-validation gate + refreshed the table (drops Ezreal-ER [table 56.2%/n16 -> fresh 40.9%/n22] + Naafiri [at/below baseline]; keeps Pyke/Corki/Nilah/Senna + Ezreal-Trinity). Data-only, NO ENGINE bump. Share-synced + `:8893` restarted + live-verified (Naafiri inert, Pyke intact). DS 8404 + consumers 106 + DSP11 12 green.
+
+Gemini director re-tested **UP** (was down last session, executor-direct). NEXT (overnight directive priority 2, continuing headless): Step 0a DSP2 byte-identical prune, Step 2 wire `situational.py` counter-build into the overlay, Step 3 ally synergy + NL reasoning; then priority 3 per-champ meta-build online research (aggregator B/aggregator D/aggregator A vs engine). **Do NOT re-pitch the DSP11 mechanism revert** (gate-closed do-not-revert; spec 0b RESOLVED).
+
+---
+
 # 2026-07-13 (DS crit-burst fix L1-L4 SHIPPED + live-validated; EXECUTOR-DIRECT - Gemini down; self-audited director-proxy; LEDGER 875)
 
 Gemini-headless loop launched but the Gemini DIRECTOR was DOWN (Google-side 503 on gemini-3-pro-preview + fallback 2.5-flash; TCP 443 fine, so Google-side not Legion egress). Operator chose EXECUTOR-DIRECT ("use yourself as pseudo proxy"); loop halted (STOP dropped; controllers + ahk killed). Executed priority (1) = the crit-burst spec, self-auditing as director + auditor proxy since Gemini could not.
@@ -42,16 +53,3 @@ Two commits, both pushed to main (`ee43d4ff` + `ded5f354`). Full detail: LEDGER 
 - LIVE-GATED DOC-ONLY RESYNC (`ded5f354`): the `/live-gated-resync` Workflow STALLED mid-synthesize; harvested its 82 verdicts (67 done / 6 partial / 9 open), spot-verified 8/8 cited commits, and (operator chose doc-only - game had ended) updated `docs/LIVE_GAME_GATED_SYNC.md` count ~108 -> ~15 + a dated DOC-ONLY RESYNC block. ~15 truly live-gated items remain for the next game.
 
 Do NOT redo: double-LW is FIXED (data-only, NOT build_order.py surgery); the 67 closed live-gated rows are git-proven done. NEXT: the ~15 live-gated items need a REAL game; the `/live-gated-resync` Workflow harness stalled (full row-by-row rebuild owed once fixed); DS meta-valuation sweep; item-4 DS Settings (item-8 Phase 5 DONE LEDGER 873; residual = w-stats/w-call default-pos collision, live-gated).
-
----
-
-# 2026-07-13 (DDragon alias-pool dedup [ENGINE 1.206] + ZOI Z2 minimap fix; both live-verified in a real Jhin ARAM; subagent-orchestrated)
-
-Operator live-flagged a Jhin reco emitting "The Collector" TWICE. Two disjoint fixes shipped + live-verified + pushed (main `58d8e058`). Full detail: LEDGER 871.
-
-- ALIAS-POOL DEDUP (ENGINE 1.205->1.206, Tier-2): DDragon 16.9.1+ ships dup ids (`32xxxx`/`66xxxx` mirror namespaces wrongly carrying maps[11]=True) -> 21 SR name-collisions double-counted in EVERY archetype's live reco. FIX = keep-shortest-id-per-name at `rank.py` `_filter_candidates` (one chokepoint); same-length pairs (Kalista 3599/3600, jungle pets 1101-1107) untouched -> byte-identical off SR (ARAM control test). No backfill (corruption was live-only; stored build_orders/loadout/pick tables scanned clean). Live-verified on :8893 engine 1.206: Jhin/Soraka dup-free. Memory `reference_ds_alias_pool_dedup`.
-- ZOI Z2 MINIMAP (Tier-1, `875d862b`): blob over-count 62-74 -> <=10 via champ-size floor + per-team clamp (both default-None = byte-identical); count-only, per-champ IDENTITY still unsolved (memory `project_zoi_minimap_reality`). Live-verified: `minimap_dots=10`.
-- Also live-confirmed the shipped Jhin arc on-screen (Swiftness boots + lethality core) - the arc on-screen eyeball is now DONE.
-- tests/ = 11532 passed; the 3 residual "failures" = confirmed environment flakes (live-daemon shadow appends + async timing; all pass in isolation - do NOT re-chase). Share package synced (CHANGELOG 1.206 + a 1.203->1.205 Jhin-arc bridge entry; audit-doc counts refreshed 7144->8387 / 227->310 files).
-- Don't-redo: both fixes shipped + live-verified + pushed; the Jhin-arc on-screen eyeball is DONE. The alias dedup is a DISTINCT class from the double-Last-Whisper bug (still OPEN).
-- NEXT (operator directive 2026-07-13): continue the double-LW fix (`open_bug_double_last_whisper` - root-cause is `core/build_order.py`'s greedy consumer ignoring `unique_passive_key`, NOT an alias) + drain the open live-gated items (`docs/LIVE_GAME_GATED_SYNC.md`, ~108 rows) MULTI-AGENT ORCHESTRATED PARALLEL to capture as many as possible.
