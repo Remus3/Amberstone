@@ -96,6 +96,18 @@ PHASES: tuple[str, ...] = ("early", "mid", "late")
 # (assume_takedown=False) regardless of this value.
 _ASSUMED_TAKEDOWN_STACKS = 1
 
+# R111 (1.209.0): Overlord's Bloodmail "Retribution" caster-missing-HP AD steroid
+# assumption (OFFENSE, paralleling the DSV2 takedown seam above). Retribution
+# ramps its bonus-AD amp linearly from 0 as the wielder's missing HP goes 0 -> 70%
+# (Meraki 16.13.1 items.2501 "0 to 70"), so _RETRIBUTION_CAP_MISSING_HP is the
+# missing-HP fraction at which the amp maxes. _ASSUMED_CASTER_MISSING_HP is the
+# conservative operator-tunable midpoint the consumer assumes when the
+# ``assume_caster_lowhp`` seam is ON (the live HP feed we lack) - 0.35 realizes
+# 0.35 / 0.70 = 0.5 of the max amp, mirroring the R77/R80 half-share doctrine.
+# Both are inert at the default flag (assume_caster_lowhp=False).
+_RETRIBUTION_CAP_MISSING_HP = 0.70
+_ASSUMED_CASTER_MISSING_HP = 0.35
+
 # DSV4 (1.127.0): Spear of Shojin Focused Will stacks assumed when the ability
 # scorers' ``assume_ability_amp`` seam is ON. 4 = the item's max stacks (a
 # developed fight at full Focused Will), so the steady-state ability scorers
@@ -624,6 +636,44 @@ def _phase_rotations(snapshot: DataSnapshot, champion_id: str) -> dict[str, list
     return out
 
 
+def total_missing_hp_bonus_ad(
+    item_ids: Iterable[str | int],
+    total_ad: float,
+    assume_caster_lowhp: bool = False,
+) -> float:
+    """Sum Overlord's Bloodmail "Retribution" bonus AD across the build (R111).
+
+    Overlord's Bloodmail (SR 2501 / Arena 447111) "Retribution" grants bonus AD
+    equal to up to ``missing_hp_ad_amp_max_pct`` of the wielder's total AD "from
+    other sources", ramping linearly as missing HP goes 0 -> 70%
+    (``_RETRIBUTION_CAP_MISSING_HP``). ``assume_caster_lowhp`` is the consumer's
+    low-HP kill-state assumption: when False (the default) this returns 0.0
+    BEFORE crediting any item, so the seam is byte-identical OFF. When True, each
+    carrier contributes ``max_pct * (_ASSUMED_CASTER_MISSING_HP /
+    _RETRIBUTION_CAP_MISSING_HP) * total_ad`` bonus AD (the realized share of the
+    max amp at the assumed midpoint, capped at 1.0). Returns 0.0 when no item
+    carries the field, so a build without Overlord's Bloodmail contributes
+    nothing even with the seam ON.
+
+    SIMPLIFICATION (WHY): Meraki says "of your total attack damage from other
+    sources", but isolating "other sources" needs a per-source AD decomposition
+    the engine does not surface here; ``total_ad`` (the wielder's resolved total
+    AD) is a conservative stand-in - it slightly over-credits by including
+    Bloodmail's own flat AD, an operator-accepted approximation vs. the live HP
+    feed we lack. Additive across carriers (only 2501/447111 carry the field, no
+    unique-passive stack question), consistent with the engine's stat-stacking.
+    """
+    if not assume_caster_lowhp:
+        return 0.0
+    realized_share = min(
+        1.0, _ASSUMED_CASTER_MISSING_HP / _RETRIBUTION_CAP_MISSING_HP
+    )
+    return sum(
+        e.missing_hp_ad_amp_max_pct * realized_share * total_ad
+        for e in collect_effects(item_ids)
+    )
+
+
 def compute_dps(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -641,6 +691,7 @@ def compute_dps(
     apply_ability_amps: bool = False,
     apply_passive_damage: bool = False,
     assume_takedown: bool = False,
+    assume_caster_lowhp: bool = False,
     apply_melee_aa_gate: bool = False,
     assume_passive_as_stacks: bool = False,
     apply_target_vuln: bool = False,
@@ -807,6 +858,22 @@ def compute_dps(
             item_effects, _ASSUMED_TAKEDOWN_STACKS
         )
         bonus_ad += takedown_bonus_ad
+    # R111 (1.209.0): Overlord's Bloodmail "Retribution" caster-missing-HP AD
+    # steroid (OFFENSE, parallels the DSV2 takedown seam above).
+    # assume_caster_lowhp=False (the default) -> total_missing_hp_bonus_ad returns
+    # 0.0 and every line below is byte-identical. When True, the missing-HP-scaled
+    # bonus AD (max_pct * realized-missing-HP-share * total_ad) folds into the
+    # wielder's bonus AD so it raises both the AA rotation (via
+    # stats_for_rotation["ad"] below) and bonus_ad-scaling procs (via
+    # CallContext.bonus_ad). total_ad here is the pre-steroid wielder total AD
+    # (Meraki "from other sources" - approximated by total_ad; see
+    # total_missing_hp_bonus_ad). A build without Overlord's Bloodmail contributes
+    # 0 even when the flag is set.
+    missing_hp_bonus_ad = total_missing_hp_bonus_ad(
+        resolved.item_ids, total_ad, assume_caster_lowhp
+    )
+    if missing_hp_bonus_ad:
+        bonus_ad += missing_hp_bonus_ad
     ap = float(stats.get("ap", 0.0))
     base_hp = float(resolved.base_stats.get("hp", 0.0)) if resolved.base_stats else 0.0
     caster_max_hp = float(stats.get("hp", 0.0))
@@ -908,6 +975,16 @@ def compute_dps(
             stats_for_rotation = dict(stats)
         stats_for_rotation["ad"] = (
             stats_for_rotation.get("ad", 0.0) + takedown_bonus_ad
+        )
+    # R111 (1.209.0): fold the Retribution missing-HP bonus AD into the rotation
+    # AD so the AA damage reflects Overlord's Bloodmail (same shape as the DSV2
+    # takedown fold above). Gated on > 0 so the OFF path (and any non-Bloodmail
+    # build) never copies stats - byte-identical to pre-R111.
+    if missing_hp_bonus_ad > 0:
+        if stats_for_rotation is stats:
+            stats_for_rotation = dict(stats)
+        stats_for_rotation["ad"] = (
+            stats_for_rotation.get("ad", 0.0) + missing_hp_bonus_ad
         )
     # R7 (1.147.0): per-stack champion self-Attack-Speed passive seam.
     # assume_passive_as_stacks=False (the default) -> passive_as stays 0.0, no
