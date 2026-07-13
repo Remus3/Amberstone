@@ -1318,8 +1318,14 @@ def rank_for_primary_archetype(
             if r.item_name not in CARRY_RANGED_OFFCLASS_ITEM_NAMES
         ]
     # Coherence re-rank + truncate to the caller's requested top (byte-identical
-    # no-op for a non-carry archetype - see coherence_rerank).
-    rows = coherence_rerank(rows, champion, top=int(top))
+    # no-op for a non-carry archetype - see coherence_rerank). Thread the same
+    # per-champion fight_length used above (L1 crit-burst fix, 2026-07-13) so the
+    # re-rank sorts on the burst-inclusive effective_score when the knob is
+    # engaged instead of neutralizing it with a raw-delta_dps re-sort; None /
+    # <= 0 (no allow-map entry) keeps the byte-identical default order.
+    rows = coherence_rerank(
+        rows, champion, top=int(top), fight_length=_carry_fight_length,
+    )
     return {
         "ok":        True,
         "scorer":    "dps",

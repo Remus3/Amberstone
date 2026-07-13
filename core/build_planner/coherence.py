@@ -26,6 +26,8 @@ ASCII only - use " - " for a clause break (repo hard rule).
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from core.build_planner.champ_kit_data import is_caster_marksman
 from core.build_planner.kit_synergy import (
     anti_synergy_penalty,
@@ -51,26 +53,37 @@ _W = 6.0
 _CARRY_ARCHETYPE = "carry"
 
 
-def _coherence_adj(row, champion: str) -> float:
-    """delta_dps docked by the wasted-stat penalty and nudged by kit fit.
+def _coherence_adj(row, champion: str, fight_length: Optional[float] = None) -> float:
+    """A BASE score docked by the wasted-stat penalty and nudged by kit fit.
+
+    The BASE is the burst-inclusive ``effective_score`` when ``fight_length`` is
+    engaged (a positive float) - the rank_for / rank_items reweight
+    ``burst_delta + delta_dps * fight_length`` - so the fight-length reweight
+    survives the coherence sort. When ``fight_length`` is None or <= 0 (the
+    default), the BASE is the raw ``delta_dps`` and the behavior is byte-identical
+    to the pre-L1 re-rank. The artifact dock (- _MU * pen) and on-axis kit nudge
+    (+ _W * fit) are applied on top of the chosen BASE unchanged.
 
     Resolves the item by ``row.item_id`` through the kit_synergy resolver; an
-    unresolvable id (or any metric error) falls back to the raw delta_dps so the
+    unresolvable id (or any metric error) falls back to the chosen BASE so the
     row keeps its engine score and the re-rank can never crash.
     """
-    delta = float(getattr(row, "delta_dps", 0.0) or 0.0)
+    if fight_length is not None and fight_length > 0:
+        base = float(getattr(row, "effective_score", 0.0) or 0.0)
+    else:
+        base = float(getattr(row, "delta_dps", 0.0) or 0.0)
     iid = getattr(row, "item_id", None)
     if iid is None:
-        return delta
+        return base
     try:
         fit = stat_fit(str(iid), champion)
         pen = anti_synergy_penalty(str(iid), champion)
-    except Exception:  # noqa: BLE001 - missing kit data -> raw delta, no crash
-        return delta
-    return delta - _MU * pen + _W * fit
+    except Exception:  # noqa: BLE001 - missing kit data -> raw base, no crash
+        return base
+    return base - _MU * pen + _W * fit
 
 
-def coherence_rerank(rows, champion, top: int = 6):
+def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float] = None):
     """Return the top ``top`` rows re-ranked for carry build coherence.
 
     ``rows`` is a list of ranker rows (rank_items ItemScore or the client's
@@ -92,6 +105,16 @@ def coherence_rerank(rows, champion, top: int = 6):
     AD-marksman artifact class - Lich Bane / Liandry's - this fix does not target;
     that is a separate future slice.) The live client only calls this on the
     carry branch anyway; the gates are a belt-and-suspenders guarantee.
+
+    ``fight_length`` (L1 crit-burst fix, 2026-07-13) is the OPTIONAL
+    fight-length-reweight knob mirrored from the engine. When engaged (a positive
+    float), the re-rank BASE is each row's burst-inclusive ``effective_score``
+    (``burst_delta + delta_dps * fight_length``, set by rank_for / rank_items)
+    so the reweight survives the coherence sort instead of being neutralized by
+    a raw-delta_dps re-sort (root cause #1). When None or <= 0 (the default),
+    the BASE stays raw ``delta_dps`` and the output is byte-identical to the
+    pre-L1 re-rank. The artifact dock + kit nudge and the early-returns are
+    unchanged in both cases.
     """
     rows = list(rows)
     try:
@@ -103,5 +126,9 @@ def coherence_rerank(rows, champion, top: int = 6):
         return rows[:top]
     # Stable sort: equal-adj rows keep their original engine order (Python's
     # sorted is stable and reverse=True does not reorder equal keys).
-    ranked = sorted(rows, key=lambda r: _coherence_adj(r, champion), reverse=True)
+    ranked = sorted(
+        rows,
+        key=lambda r: _coherence_adj(r, champion, fight_length),
+        reverse=True,
+    )
     return ranked[:top]
