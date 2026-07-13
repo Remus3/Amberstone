@@ -257,6 +257,30 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-12 (audit L-02: orphan lockfile.pid.tmp cleanup - Agent 2 backend task)
+
+Agent 6 thirteenth audit found 5 orphaned lockfile.<pid>.tmp files in agents/state/ (2026-07-08 to 2026-07-11). Fixed in `agents/_supervisor_common.py` (commit `afdd20eb`). Full detail: LEDGER 868.
+
+- FIX (2 parts): `_atomic_write_json` now retries `os.replace` 3x on PermissionError (60ms backoff, mirrors calibrator pattern) + always unlinks the .tmp via try/finally. NEW `_reap_orphan_lockfile_tmps()` in `acquire_lock()` globs lockfile.*.tmp, checks _pid_alive, unlinks dead-pid files. `import time` added.
+- TESTS: 8 new (test_supervisor_common_l02.py) - success + retry + final-failure-cleans + dead/live/malformed/mixed reap cases; all green.
+- NEXT supervisor restart auto-reaps the 5 existing orphans. No manual rm needed.
+- Don't-redo: fix is committed + pushed; don't re-examine the orphan list.
+
+---
+
+# 2026-07-12 (live-gated drain: item-1 rune-follows-build LIVE-VALIDATED + ARAM Mayhem augment-reco bug FIXED live)
+
+Live drain (Practice SR Caitlyn + ARAM Mayhem Xayah/Tristana). item-1 rune-follows-build (the standing NEXT) is now LIVE-VALIDATED - operator saw the followed runes fire in a real practice champ-select, deduped + last-writer-wins over the frozen auto RuneWriter (log-proven). Augment-fix commit `67519018` on main; RC restarted (pid 18392). Full detail: LEDGER 867.
+
+- CLOSED: A2 (spell push/no-revert - `set_summoner_spells: idempotent skip (4+32 already set)` on every ARAM CS enter), A7 (KIWI->ARAM re-detect + bench-swap), A6 (bench-swap), C13 (enemy_spells stats_panel render), C1 (ARAM build LOGIC comp-aware), B24 (overlay pixel family rendering).
+- BANKED HEADLESS (flip-ready, OFF-vs-ON verified via :8893): B4/B7/B8/B10/B13/B14/B18/B19. B20 REFUTED (R55 is NOT `/rank`-eyeball-able; stays DS-restart-gated).
+- BUG FIXED (C15/C16): ARAM Mayhem augment-reco never fired. Root cause = the live moon_proxy TFT-relay emits `is_augment_select` but the ARAM/Arena/Brawl coaches read `augment_select` (`aram_coach.py:614`); `augment_choices` matched. Detection was FINE (empirically: the relay returns `is_augment_select=True` + the 3 augment names on the captured frame). Fix = one alias in `GameVisionReader._postprocess` (`modes/shared_vision.py:296`), single chokepoint covering all 3 siblings; RED test + 52+3 regression green; no backfill.
+- Coach hit a live credit-balance 400 mid-drain (correct degraded "COACH PAUSED - ADD API CREDITS" render); operator topped up.
+- Don't-redo: item-1 is LIVE-VALIDATED (do not re-run the champ-select push proof). The augment fix is shipped + live - ONLY the on-screen reco eyeball remains. B4/B7/B8/B10/B13/B14/B18/B19 headless soundness is banked; the actual default-ON flips stay operator-gated. B20 is not `/rank`-eyeball-able. TFT `is_augment_select` split = a SEPARATE `tft_vision_reader` path.
+- NEXT: the C15/C16 LIVE augment eyeball (hold an ARAM Mayhem augment ~25s so a vision tick lands + confirm the reco renders vs the pick - fix deployed, only the on-screen confirm remains). OR continue the drain (scenario-gated tank/bruiser/enchanter ARAM rolls for C3/C5/C6/C7, a sustain comp for C12, real-SR for the B/D rows). OR the TFT augment_select split.
+
+---
+
 # 2026-07-12 (Lane E CV atlas flip-readiness validator - headless vision-Haiku-to-ZERO slice)
 
 Item-1 rune-follows-build LIVE validation was BLOCKED (operator not in a champ select: mode=client, lcu.phase=None, no game), so per the WAKEUP gate picked a headless lane instead. Commits `a1d7078c` (feat) + `9dfd7201` (docs) on main, CI-green. Full detail: LEDGER 866.
