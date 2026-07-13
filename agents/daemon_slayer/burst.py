@@ -86,6 +86,7 @@ from .dps import (
     _ASSUMED_ABILITY_AMP_STACKS,
     _ASSUMED_TAKEDOWN_STACKS,
     compute_dps,
+    total_missing_hp_bonus_ad,
 )
 from .effects import (
     ITEM_EFFECTS,
@@ -514,6 +515,7 @@ def compute_burst_damage(
     game_time_s: float = 0.0,
     aoe_targets_hit: int = 1,
     assume_takedown: bool = False,
+    assume_caster_lowhp: bool = False,
     assume_ability_amp: bool = False,
     assume_magic_burst: bool = False,
     score_completion_runes: bool = False,
@@ -680,6 +682,9 @@ def compute_burst_damage(
         # DSV2: the AA per-hit (avg_attack_dmg) picks up Hubris Eminence's
         # bonus AD when the kill-state seam is ON. Byte-identical when OFF.
         assume_takedown=assume_takedown,
+        # R111: the AA per-hit also picks up Overlord's Bloodmail Retribution
+        # bonus AD when the caster-low-HP seam is ON. Byte-identical when OFF.
+        assume_caster_lowhp=assume_caster_lowhp,
     )
     aa_base_per_hit = max(0.0, float(aa_probe.avg_attack_dmg))
     # Phase 5.6 (s188, 2026-05-13): on-hit proc contribution per AA -
@@ -745,6 +750,23 @@ def compute_burst_damage(
         )
         if takedown_bonus_ad:
             ctx = replace(ctx, bonus_ad=ctx.bonus_ad + takedown_bonus_ad)
+    # R111 (1.209.0): Overlord's Bloodmail "Retribution" caster-missing-HP AD
+    # steroid (OFFENSE, parallels the DSV2 takedown fold above).
+    # assume_caster_lowhp=False (the default) -> total_missing_hp_bonus_ad returns
+    # 0.0, ctx unchanged, every line below byte-identical. When True, the
+    # missing-HP-scaled bonus AD folds into the ability scaling context so
+    # AD-ratio abilities reflect the low-HP power; the AA per-hit already picked
+    # it up via aa_probe. total_ad is the wielder's resolved total AD (Meraki
+    # "from other sources" - approximated by total_ad; see
+    # total_missing_hp_bonus_ad). A build without Overlord's Bloodmail contributes
+    # 0 even when the flag is set.
+    missing_hp_bonus_ad = total_missing_hp_bonus_ad(
+        resolved.item_ids,
+        float(resolved.stats.get("ad", 0.0)),
+        assume_caster_lowhp,
+    )
+    if missing_hp_bonus_ad:
+        ctx = replace(ctx, bonus_ad=ctx.bonus_ad + missing_hp_bonus_ad)
 
     # Build-wide damage amps and target-conditional amps.
     damage_amp = total_damage_amp_multiplier(item_effects)

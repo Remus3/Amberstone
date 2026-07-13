@@ -1855,10 +1855,12 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="2501",
         name="Overlord's Bloodmail",
         bonus_ad_pct_bonus_hp=0.025,
+        missing_hp_ad_amp_max_pct=0.12,
         note=(
             "Overlord's Bloodmail: Tyranny 2.5% bonus HP as bonus AD "
             "(engine resolves at stat-build time via item_totals[hp_flat]). "
-            "Retribution missing-HP-scaled AD not modeled (combat ramp)"
+            "Retribution missing-HP-scaled AD (0-12% of total AD, ramping to 70% "
+            "missing HP) modeled behind the R111 assume_caster_lowhp offense seam"
         ),
     ),
     "4637": ItemEffect(
@@ -2975,15 +2977,17 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
     # Overlord's Bloodmail (447111, Arena variant): Tyranny - gain bonus AD equal to
     # 3% of bonus HP. Same bonus_ad_pct_bonus_hp schema as SR 2501 (2.5%) but higher
     # coefficient. Retribution (up to 17.5% AD increase based on % missing HP) is
-    # dynamic and not modelable in static sustained-DPS; deferred.
+    # modeled behind the R111 assume_caster_lowhp offense seam (missing_hp_ad_amp_max_pct).
     "447111": ItemEffect(
         item_id="447111",
         name="Overlord's Bloodmail",
         bonus_ad_pct_bonus_hp=0.03,
+        missing_hp_ad_amp_max_pct=0.175,
         note=(
             "Overlord's Bloodmail (Arena 447111): Tyranny 3% bonus HP -> bonus AD "
             "(Arena variant; SR 2501 has 2.5%). "
-            "Retribution up-to-17.5% AD based on missing HP deferred (dynamic)"
+            "Retribution up-to-17.5% AD based on missing HP modeled behind the "
+            "R111 assume_caster_lowhp offense seam"
         ),
     ),
     # Atma's Reckoning (663039): Big Hands variant. Same passive as SR 3039 -
