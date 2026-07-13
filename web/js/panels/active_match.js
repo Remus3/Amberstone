@@ -207,16 +207,53 @@ function _buildPlanStateMap(live) {
   return out;
 }
 
+// R103: pull each enemy's champion NAME and OWNED item-id list out of the live
+// allPlayers roster, index-aligned (names[i] <-> items[i]), so /api/build-plan
+// can compute situational counter-build hints (C4/C5). My-team players are
+// excluded (myTeam from _resolveMyTeam). Item id field is itemID with an itemId
+// alias, coerced to strings; a player with no items yields an empty inner list.
+// Pure + exported for unit tests (no DOM / fetch). Fail-soft: a non-array roster
+// returns empty aligned lists.
+export function _extractBpEnemies(allPlayers, myTeam) {
+  const names = [];
+  const items = [];
+  if (!Array.isArray(allPlayers)) return { names, items };
+  for (const pl of allPlayers) {
+    if (!pl || typeof pl !== "object") continue;
+    if (myTeam && pl.team === myTeam) continue;
+    const nm = pl.championName || pl.rawChampionName || "";
+    if (!nm) continue; // keep names + items index-aligned - skip nameless
+    const ids = (Array.isArray(pl.items) ? pl.items : [])
+      .map((it) => String((it && (it.itemID || it.itemId)) || ""))
+      .filter(Boolean);
+    names.push(nm);
+    items.push(ids);
+  }
+  return { names, items };
+}
+
+// R103: stable fingerprint of the enemy item-id lists so an enemy PURCHASE (a
+// new id appended to any inner list) changes the build-plan cache key and re-
+// fires the fetch. Pure + exported. Fail-soft on non-array input.
+export function _bpEnemyItemsKey(enemyItems) {
+  return (Array.isArray(enemyItems) ? enemyItems : [])
+    .map((a) => (Array.isArray(a) ? a : []).join("."))
+    .join("_");
+}
+
 // Schedule a background /api/build-plan refresh keyed on champion/mode/level/
 // items (same fingerprint as the DS rerank). Non-blocking: returns whatever
 // state map is already cached; the next render picks up fresh data once the
 // POST completes. Fail-soft - any error leaves the prior map intact.
-function _maybeRefreshBuildPlan(champion, mode, level, items, enemies) {
+function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItems) {
   if (!champion || !mode) return _BUILD_PLAN.stateById;
   // R102: fold the live enemy roster into the fingerprint so a champion swap /
   // late-pick re-fires the plan - counter_hints are enemy-profile derived.
+  // R103: also fold each enemy's owned items so an enemy PURCHASE re-fires the
+  // plan - situational counter-build hints (C4/C5) depend on live enemy items.
   const key = _dsRerankKey(champion, mode, level, items)
-            + `|e:${(enemies || []).join(",")}`;
+            + `|e:${(enemies || []).join(",")}`
+            + `|ei:${_bpEnemyItemsKey(enemyItems)}`;
   const now = Date.now();
   const stale = (key !== _BUILD_PLAN.lastKey)
               || ((now - _BUILD_PLAN.lastFired) > _BUILD_PLAN_COOLDOWN_MS);
@@ -233,6 +270,8 @@ function _maybeRefreshBuildPlan(champion, mode, level, items, enemies) {
       level:    level | 0,
       items:    items || [],
       enemies:  enemies || [],
+      // R103: index-aligned per-enemy owned item ids for counter-build hints.
+      enemy_items: enemyItems || [],
     }),
   }).then((r) => r.ok ? r.json() : null)
     .then((j) => {
@@ -587,18 +626,17 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // blocking; null until the first /api/build-plan POST resolves (icons just
   // render without a state pip until then).
   // R102: send the live enemy champion NAMES so the backend resolves the enemy
-  // profile and returns counter_hints. lc absent -> [] -> honest COUNTER hide.
-  const _bpEnemies = [];
-  if (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length) {
-    const _bpMyTeam = _resolveMyTeam(lc);
-    for (const pl of lc.allPlayers) {
-      if (!pl || typeof pl !== "object") continue;
-      if (_bpMyTeam && pl.team === _bpMyTeam) continue;
-      const nm = pl.championName || pl.rawChampionName || "";
-      if (nm) _bpEnemies.push(nm);
-    }
-  }
-  const planStates = _maybeRefreshBuildPlan(champion, mode, level, ownedIds, _bpEnemies) || {};
+  // profile and returns counter_hints. R103: also send each enemy's OWNED item
+  // ids (index-aligned with the names) so the backend can compute situational
+  // counter-build hints (C4/C5) and an enemy PURCHASE re-fires the plan. The
+  // guard preserves the lc-absent behavior (_extractBpEnemies is itself fail-
+  // soft, so {names:[],items:[]} == an absent roster -> honest COUNTER hide).
+  const _bpRoster = (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length)
+    ? _extractBpEnemies(lc.allPlayers, _resolveMyTeam(lc))
+    : { names: [], items: [] };
+  const planStates = _maybeRefreshBuildPlan(
+    champion, mode, level, ownedIds, _bpRoster.names, _bpRoster.items,
+  ) || {};
   // WP-B2 Row2 META feed - the static standard ordered build.
   const metaOrder  = _maybeRefreshBuildOrder(champion, mode, level, ownedIds) || [];
   // BATCH A Row3 ULTIMATE feed - the from-scratch DS-optimal endgame build.
