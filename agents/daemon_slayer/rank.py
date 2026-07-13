@@ -704,6 +704,31 @@ def _filter_candidates(
         if cost_ceiling is not None and gold > cost_ceiling:
             continue
         out.append((item_id, rec))
+    # DDragon alias-id dedup (operator 2026-07-12): DDragon 16.9.1+ ships the
+    # same item under two ids - the real 4-digit id AND a strictly-longer alias
+    # variant (the "32xxxx" / "66xxxx" mirror namespaces) that carries
+    # maps["11"]=True, so BOTH survive the SR map-filter and the pool
+    # double-counts the item (live Jhin SR reco emitted "The Collector" via 6676
+    # AND 667666; 21 such SR name-collisions). Keep only the CANONICAL shortest
+    # id per item name; a strictly-longer same-name id is a DDragon alias and is
+    # dropped. Same-length collisions (Kalista's Black Spear 3599/3600, the
+    # jungle-pet tiers 1101-1107 that share a display name) are NOT aliases and
+    # are left untouched, so this pass is byte-identical off SR (ARAM/Arena/Brawl
+    # have only the same-length collision - the alias namespaces map-filter to a
+    # single survivor there).
+    min_id_len: dict[str, int] = {}
+    for item_id, rec in out:
+        name = rec.get("name")
+        if name is None:
+            continue
+        length = len(item_id)
+        if name not in min_id_len or length < min_id_len[name]:
+            min_id_len[name] = length
+    out = [
+        (item_id, rec)
+        for item_id, rec in out
+        if rec.get("name") is None or len(item_id) <= min_id_len[rec.get("name")]
+    ]
     return out
 
 
