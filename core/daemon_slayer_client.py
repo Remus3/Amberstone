@@ -23,6 +23,7 @@ from urllib.request import Request, urlopen
 
 from core.build_planner.coherence import coherence_rerank
 from core.ds_archetype_hp_pct import archetype_target_current_hp_pct
+from core.ds_burst_target import squishy_carry_target
 from core.ds_champion_fight_length import champion_fight_length
 
 logger = logging.getLogger("rc.core.daemon_slayer_client")
@@ -46,6 +47,16 @@ class RankedItem:
     # Phase 4(d): mirrors server unique_passive_key - the positive
     # locked-family signal (collision-independent).
     unique_passive_key: str = ""
+    # L4 crit-burst fix (2026-07-13): mirror the server's burst-inclusive
+    # effective_score (= burst_gain + delta_dps * fight_length,
+    # agents.daemon_slayer.rank). BEFORE L4 this field was dropped, so the carry
+    # coherence re-rank's fight_length-engaged branch
+    # (core.build_planner.coherence._coherence_adj) read a MISSING attribute ->
+    # base 0.0 -> the re-rank collapsed to a target-BLIND kit-fit sort and the
+    # burst reweight (L1/L3) was inert in production. Parsing it here makes the
+    # burst-inclusive, target-sensitive score actually reach coherence_rerank.
+    # Appended at the END with a default so existing construction is unaffected.
+    effective_score: float = 0.0
 
     @classmethod
     def from_dict(cls, d: dict) -> "RankedItem":
@@ -57,6 +68,7 @@ class RankedItem:
             shares_dead_unique=bool(d.get("shares_dead_unique", False)),
             dead_unique_key=str(d.get("dead_unique_key", "")),
             unique_passive_key=str(d.get("unique_passive_key", "")),
+            effective_score=float(d.get("effective_score", 0.0)),
         )
 
 
@@ -1014,6 +1026,7 @@ def rank_for_primary_archetype(
     assume_missing_hp_heal_amp: bool = False,    # enchanter (R5)
     caster_missing_hp_pct: float = 0.0,          # enchanter (R5 input)
     assume_archetype_hp_pct: bool = False,       # carry+bruiser+mage+assassin (R55)
+    apply_squishy_burst_target: bool = True,     # carry (L4) - see the swap below
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
@@ -1282,6 +1295,36 @@ def rank_for_primary_archetype(
     # Applied here at the shared carry chokepoint so BOTH the live per-tick coach
     # path and the offline build-order / loadout backfill engage it identically.
     _carry_fight_length = champion_fight_length(champion)
+    # L4 squishy-carry target swap (2026-07-13, docs/specs/2026-07-13-ds-crit-
+    # burst-fix.md): a MAPPED burst carry (_carry_fight_length engaged) deletes
+    # the enemy CARRY, not the tanky team AVERAGE the caller's target encodes
+    # (coach_integration.enemy_stats). Swap in the squishy-carry stat line
+    # (core.ds_burst_target.squishy_carry_target) so crit / lethality-execute
+    # (Infinity Edge / The Collector) out-value front-loaded current-HP on-hit
+    # (BORK) the way they do against a real squishy. Auto-scoped to the
+    # fight_length allow-map: a NON-mapped champion (_carry_fight_length is None)
+    # keeps the caller's target UNCHANGED (byte-identical). Covers both the live
+    # coach path and the offline build-order backfill (shared chokepoint). mode +
+    # level are in scope here.
+    #
+    # OPT-OUT (apply_squishy_burst_target=False): a caller that supplies its OWN
+    # deliberate enemy target - the build_order_variants anti_tank (a WALL) /
+    # anti_squishy (a GLASS comp) cells - must NOT have that target overridden by
+    # the squishy swap, or the two variants collapse onto each other for a mapped
+    # crit ADC (the anti_tank pen build would be lost). Such callers pass
+    # apply_squishy_burst_target=False and keep their explicit target. The live
+    # per-tick coach path leaves it at the default True (the fix intent).
+    if _carry_fight_length is not None and apply_squishy_burst_target:
+        _sq = squishy_carry_target(mode, level)
+        _tgt_armor = _sq["target_armor"]
+        _tgt_mr = _sq["target_mr"]
+        _tgt_max_hp = _sq["target_max_hp"]
+        _tgt_bonus_hp = _sq["target_bonus_hp"]
+    else:
+        _tgt_armor = target_armor
+        _tgt_mr = target_mr
+        _tgt_max_hp = target_max_hp
+        _tgt_bonus_hp = target_bonus_hp
     # Carry build-coherence re-rank (Step 1, 2026-07-13): request a WIDER window
     # so the buried crit AMPLIFIER core (Infinity Edge etc.) is present, then a
     # metric coherence re-rank (core.build_planner.coherence.coherence_rerank)
@@ -1293,8 +1336,8 @@ def rank_for_primary_archetype(
     rows = rank_for(
         champion,
         level=level, item_ids=item_ids, mode=mode,
-        target_armor=target_armor, target_mr=target_mr,
-        target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+        target_armor=_tgt_armor, target_mr=_tgt_mr,
+        target_max_hp=_tgt_max_hp, target_bonus_hp=_tgt_bonus_hp,
         top=_carry_window, sort_by=sort_by,
         only_item_ids=only_item_ids,
         augments=augments,
