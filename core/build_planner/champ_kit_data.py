@@ -147,6 +147,25 @@ def _resolve_champ(champ) -> dict:
     return {}
 
 
+def is_caster_marksman(champ) -> bool:
+    """True when ``champ`` is a caster / spellblade marksman - a Marksman that
+    ALSO carries the Mage secondary tag (Ezreal, Corki, Kai'Sa, Miss Fortune).
+
+    These kits genuinely charge Sheen-line spellblade procs and build mana / AH
+    on an ability-cast tempo (Ezreal Essence Reaver / Trinity / Manamune), so the
+    carry-coherence spellblade dock must NOT strip their real core - the coherence
+    re-rank excludes them (byte-identical). The pure crit / on-hit ADCs (Jinx /
+    Caitlyn / Ashe / Twitch / Draven / Lucian / Samira / Aphelios / Vayne) carry
+    no Mage tag and stay docked. Metric-derived from the DDragon tags, NOT a
+    hand-blacklist. Fail-soft to False when the champ is unresolved.
+    """
+    entry = _resolve_champ(champ)
+    if not entry:
+        return False
+    tags = set(entry.get("tags") or [])
+    return ("Marksman" in tags) and ("Mage" in tags)
+
+
 def _ability_agg(entry: dict) -> dict[str, float]:
     """Sum ap_pct + total_ad_pct across all spell blocks (top-rank value),
     normalized to fractions. Used only as a secondary AD/AP confirmation."""
@@ -235,7 +254,12 @@ def derive_kit_weights(champ) -> Optional[dict[str, float]]:
     # so discount it heavily for any marksman.
     w["AP"] = _clamp(mag * (0.3 if is_mks else 1.35))
     # bonusAD - archetype-shaped (the cdragon ratios carry no bonus_ad split).
-    w["bonusAD"] = 0.8 if is_asn else (0.5 if is_ftr else (0.3 if is_mks else 0.1))
+    # Marksman identity wins over a SECONDARY Assassin/Fighter tag: a crit / on-
+    # hit marksman (Twitch/Quinn/Akshan/Lucian carry a dual Assassin tag) is a
+    # ranged auto-attacker, not a bonusAD-lethality assassin, so it takes the
+    # marksman bonusAD weight - else the secondary tag inflates it to 0.8 and the
+    # kit-synergy fit over-credits lethality stat-sticks (Essence Reaver/Eclipse).
+    w["bonusAD"] = 0.3 if is_mks else (0.8 if is_asn else (0.5 if is_ftr else 0.1))
     # AS - marksmen value attack speed; floor + attackspeedperlevel bonus.
     if is_mks:
         w["AS"] = _clamp(0.6 + as_pl / 7.5)
@@ -245,13 +269,18 @@ def derive_kit_weights(champ) -> Optional[dict[str, float]]:
     w["crit"] = 1.1 if crit_mks else (0.2 if is_mks else 0.0)
     # on-hit - on-hit-marksmen highest; marksmen + fighters moderate.
     w["on-hit"] = 1.0 if onhit_mks else (0.6 if is_mks else (0.4 if is_ftr else 0.15))
-    # AH - ability reliance.
+    # AH - ability reliance. Marksman identity precedes a SECONDARY Assassin /
+    # Fighter tag (see bonusAD above): a marksman auto-attacker does not stack
+    # ability haste like an assassin, so a dual-tagged crit marksman
+    # (Twitch/Quinn/Akshan/Lucian) takes the low marksman AH weight - the 0.6
+    # assassin value mis-derived it and let ability-haste stat-sticks (Essence
+    # Reaver 15 AH) dodge the kit-synergy AH-waste penalty + spellblade-user flag.
     if is_ench or is_mage_primary:
         w["AH"] = 0.9
-    elif is_asn or is_ftr:
-        w["AH"] = 0.6
     elif is_mks:
         w["AH"] = 0.05 if crit_mks else 0.2
+    elif is_asn or is_ftr:
+        w["AH"] = 0.6
     else:
         w["AH"] = 0.4
     # HP-scaling - frontline durability as offense (tanks/fighters).

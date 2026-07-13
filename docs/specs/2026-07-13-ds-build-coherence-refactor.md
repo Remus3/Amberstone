@@ -1,0 +1,170 @@
+# DS Build-Coherence Refactor - Plan (Steps 0-1)
+
+Grounded against code by two read-only Plan agents (2026-07-13). Motivating QA:
+`ops/audit/DS_BUILD_RECO_OVERLAY_QA.md`. Goal: the overlay shows the NEXT item
+toward the OPTIMAL ULTIMATE build (metric-based sim, comp-aware, dynamic), never
+an item the archetype never builds. Personal win-rate is NOT the anchor.
+
+## Two load-bearing reframes (verify-first corrections)
+
+1. DSP11 is NOT dead code - it is LIVE-ON in the COACH path. The QA missed
+   `coach_integration/archetype_dispatch.py:215`, where the C4 flip (2026-07-04,
+   commit 523206d6, LEDGER 776/778) set `prefer_kit_axis_by_win=True`. All four
+   coaches call `dispatch_for_coach` without overriding it (SR `_coach.py:314`,
+   ARAM `aram_coach.py:784`, Arena `arena_coach.py:676`, Brawl `brawl_coach.py:401`).
+   So DSP11 IS live in the coach LLM-picks path (picks_str + display_rows), just
+   NOT in the overlay (ds-preview / build-order / build-plan are pure-sim).
+   => Pruning DSP11 = REVERTING a live, operator-validated coach behavior for 6
+   tabled champs (Nilah inert). This must be operator-confirmed + coach-eyeball
+   gated, not a silent delete. The other 3 seams (DSP2, F2, RF1/2/3) ARE
+   genuinely unwired live (byte-identical deletion).
+
+2. The Step 1 coherence fix is CORE-side, effectively TIER-1 (not Tier-2). The
+   recommended mechanism lives in `core/build_planner/kit_synergy.py` +
+   `core/daemon_slayer_client.py` (the dashboard process), NOT the :8893 engine.
+   So NO ENGINE_VERSION bump, NO Share mirror, NO :8893 restart - it takes effect
+   on a dashboard reload. Only backfill: regenerate the precomputed build_order
+   tables (they call `plan_build_order` -> the core chokepoint).
+
+## Step 0: prune + decide
+
+### 0a. Byte-identical hygiene prune (DSP2 + F2 + RF1/2/3) - safe, zero behavior change
+All three confirmed unwired live (only tests + `ops/audit/ds_perm_swarm/*` pass
+them True; `archetype_dispatch.py:214/216/217` default them off/None).
+- DSP2 `exempt_offclass_by_win`: drop the inline loader `rank.py:345-390`, param
+  `:828`, usage `:1024-1027`; DELETE `marksman_offclass_exempt.json` + Share twin
+  + builder `ops/audit/ds_perm_swarm/build_marksman_offclass_exempt.py`; client
+  `daemon_slayer_client.py:136,192-193,998,1286`; `server.py:448,452,481`.
+- F2 `cost_ceiling` + RF1/2/3 `prefer_survivability_by_win`: larger cross-scorer
+  surface (F2 spans rank/ehp/hybrid; RF lives in the tank/enchanter/bruiser
+  scorers the operator said do-not-TOUCH - removal is byte-identical plumbing but
+  edits protected files). RECOMMEND a separate clearly-scoped hygiene slice, or
+  leave dormant. Not required for Step 1.
+- The base deny-set `OFFCLASS_MARKSMAN_ITEM_NAMES` (`rank.py:1019`) STAYS (it is
+  the default off-class stripping, not a seam).
+- Tests deleted with the seams (else TypeError reds): `test_rank_offclass_win_exempt.py`,
+  (F2/RF) `test_cost_aware_top_f2.py`, `test_survivability_item_credit_rf{1,2,3,6}.py`;
+  EDIT the multi-seam `test_rank_route_seam_passthrough.py`,
+  `test_archetype_dispatch_seam.py`, `test_daemon_slayer_client_seam_forward.py`.
+- Tier: mechanically Tier-2 (Share + :8893 restart) but byte-identical output.
+
+### 0b. DSP11 revert (kit-axis) - LIVE COACH behavior change, GATED
+Do this AFTER Step 1 (the metric coherence fix covers the crit core in the coach
+path too - the same `rank_for_primary_archetype` chokepoint - so removing DSP11
+leaves NO coverage gap for the 6 champs; it removes a redundant, wrong-basis,
+rewind-artifact-laden hack). Gate: an offline coach-picks OFF-vs-current diff for
+the 6 champs + operator sign-off (mirrors the original C4 flip on the
+LIVE_GAME_GATED_SYNC track). Deletion surface (engine + Share twins + client +
+`archetype_dispatch.py:215,278-279` + `kit_axis_credit.py` + `.json` + builder +
+`test_kit_axis_item_credit_dsp11.py` + the obsolete `test_twitch_crit_kit_axis.py`).
+
+### situational counter-build => WIRE (keep), do NOT prune
+`situational.py` + `replan.py` are load-bearing on the live build-plan path
+(`replan.py:54` imports `classify_item` at module load; ReplanLoop.tick runs it).
+Dormant only because the overlay sends no `enemies`. Wiring surface (Step 2):
+`active_match.js:226-231` add enemies + enemy item-ids to the POST;
+`routes_build_plan.py:299,314,394-405` forward `enemy_items` into
+`build_enemy_profile`. Only C1/C4/C5 (resist/HP/pen-type) fire from live data;
+C2 antiheal / C3 fed / C6 tenacity have no live source yet. `AllyState`
+(`situational.py:137`) is the only genuinely-dead piece - keep dormant unless
+ally synergy is formally cut.
+
+### Obsolete test => DELETE `agents/daemon_slayer/tests/test_twitch_crit_kit_axis.py`
+Tests the abandoned kit-axis direction; will TypeError once DSP11's param is
+removed. The correct inverse (assert ER 3508 + Eclipse 6692 NOT in Twitch top-6)
+ships WITH Step 1, not here.
+
+## Step 1: fix sim coherence (the payload) - core-side, Tier-1 live
+
+### Root cause (confirmed, empirical)
+The AD/carry path scores by pure `delta_dps` (`rank.py:1081`) over the full
+catalog with no coherence term. Essence Reaver (3508) floats to #1-4 for crit
+ADCs: its Spellblade proc is modeled at `every_n_seconds=3.0`
+(`_effects_data.py:730-738`), an ability-cast tempo a pure auto-attacker lacks
+(over-credited), and its 20 AH + mana are DPS-invisible but unpenalized. Eclipse
+(6692) rides flat AD + lethality + a 6% max-HP proc. The greedy per-slot argmax
+(`build_order.py:597,661,681`) then buries the crit AMPLIFIERS (IE 3031 at rank
+6-9) because they pay proportional to accumulated crit a stat-stick-first build
+never accrues.
+
+### kit_synergy.py: the metric lever, but it needs a refinement (load-bearing)
+`core/build_planner/kit_synergy.py` computes a per-champion, metric-based (from
+`champions.json` via `derive_kit_weights`, NOT win-rate) item-vs-kit fit. BUT in
+its current tuning it ranks Essence Reaver #1 for crit ADCs - its effect-flag
+bonuses (spellblade +0.2, bonusAD-match +0.4, on-hit vector credit) reward
+proc-heavy stat-sticks over flag-less pure-stat cores (IE gets zero bonus). A
+naive blend would REINFORCE the bug. REQUIRED refinement: ability-charged
+Spellblade items (`_SPELLBLADE_IDS`, kit_synergy.py:89) must NOT get per-auto
+on-hit / bonusAD credit for a non-spellblade-user kit
+(`champ_kit_traits(champ)["spellblade_user"]` already derived, kit_synergy.py:367-373).
+With that, ER's stat-only fit ranks below IE; Eclipse is already clean.
+
+### Mechanism: soft coherence re-rank at the carry chokepoint
+Insert at `core/daemon_slayer_client.py` `rank_for_primary_archetype`, the carry
+fall-through (~:1293-1302, beside the existing `CARRY_RANGED_OFFCLASS` post-rank
+filter - the established precedent). Request a wider window (top~40) so the buried
+crit core is present, then re-score each row:
+`adj = delta_dps - MU*wasted_stat_penalty(item,champ) + W*stat_fit(item,champ)`
+(both from kit_synergy primitives, DPS-equivalent + delta-dominated so clean
+builds barely move), re-sort, truncate to the caller's top. NOT a hand-blacklist
+(the name deny-sets must not grow); a continuous metric dock.
+
+Clean scorers stay byte-identical BY CONTROL FLOW: the re-rank lives only in the
+carry branch; tank/bruiser/mage/assassin/enchanter branches `return` before it.
+Lux/Ornn/Soraka never execute it - no seam flag needed.
+
+### TDD (per-champion, server-free)
+- RED `tests/test_carry_coherence_rerank.py`: champs Twitch/Jinx/Caitlyn/Ashe,
+  ARAM + SR cells. Assert 3508 + 6692 NOT in top-6; assert 3031 IN top-6 + >=1 of
+  {6676,3032,6673}; control (coherence OFF) asserts >=1 of {3508,6692} IS in top-6.
+- Byte-identical control: Lux (mage) + Ornn (tank) top-8 pinned unchanged.
+- kit_synergy refinement test: `synergy_score(IE,Jinx) > synergy_score(ER,Jinx)`
+  and `> synergy_score(Eclipse,Jinx)`; existing AP/AD profile orderings unchanged.
+- Integration: `plan_build_order("Jinx","carry",...)` order surfaces IE/crit core,
+  excludes ER/Eclipse.
+
+### Tier + backfill
+Core-side = Tier-1 live (no ENGINE bump / Share / :8893 restart). REGENERATE the
+precompute tables `data/daemon_slayer/build_orders/<patch>/` (via
+`core.build_order_precompute`, which routes through the fixed chokepoint). Verify
+whether `tools/daemon_slayer_build_orders_generate.py` bypasses the core client
+(POSTs raw to :8893); if so it needs an engine variant or a re-route.
+Per-champion validation habit: siblings Camille (bruiser) + Rengar (assassin) are
+follow-up slices; do NOT touch mage/tank/enchanter (clean).
+
+## Refined execution order
+
+1. STEP 1 coherence fix (payload, core-side Tier-1, low-risk) - fixes artifacts
+   across BOTH the overlay and the coach path. TDD-first.
+2. STEP 0a byte-identical hygiene prune (DSP2; F2/RF optional/deferred).
+3. STEP 0b DSP11 revert (now redundant after Step 1; coach-eyeball gated).
+4. STEP 2 wire the situational counter-build (enemies + items into the overlay).
+5. STEP 3 ally synergy + NL reasoning + catalog hygiene (Stormrazor 3097).
+
+## Status (2026-07-13)
+
+- STEP 1a SHIPPED (core-side Tier-1): the coherence re-rank + kit_synergy
+  spellblade refinement + derive_kit_weights marksman-precedence fix. NEW
+  `core/build_planner/coherence.py`. FIXED (ER/Eclipse out, IE in): Twitch, Jinx,
+  Caitlyn, Ashe, Vayne, Draven, Samira, Lucian (8 pure-marksman ADCs). PROTECTED
+  byte-identical: Ezreal, Corki (caster-marksmen, Marksman+Mage tag - excluded
+  from the dock after verification caught a v1 regression that stripped their
+  legit Essence Reaver core). Verified independently: 444 passed / 6 skipped on
+  the touched-module sweep. Deleted the obsolete `test_twitch_crit_kit_axis.py`.
+- KNOWN GAPS (next widening, per "narrow first, widen on evidence"):
+  - The Mage-tag gate OVER-EXCLUDES dual-tagged non-caster marksmen: Jhin,
+    Kai'Sa, Miss Fortune revert to raw and KEEP Essence Reaver (baseline, NOT a
+    regression, but not fixed). Tightening the caster-marksman signal so it
+    protects Ezreal/Corki without excluding Jhin/Kai'Sa/MF is the next slice.
+  - Zeri surfaces Lich Bane / Liandry's (a DISTINCT AP-on-AD-marksman artifact
+    class this fix does not target).
+  - KogMaw untouched (arch=mage -> the non-carry early-return).
+- BACKFILL OWED: regenerate the precompute build_order tables
+  (`data/daemon_slayer/build_orders/<patch>/`) - they read plan_build_order. The
+  LIVE overlay + coach are UNAFFECTED (they compute live through the fixed
+  chokepoint); only the HZ-shadow / display-keyed precompute consumers are stale.
+
+## Open decisions (operator)
+- Confirm the refined order (Step 1 before the DSP11 revert).
+- Step 1 Tier: core-side (recommended, Tier-1) vs an in-engine seam (Tier-2).
+- F2/RF hygiene: fold in, separate slice, or leave dormant.
