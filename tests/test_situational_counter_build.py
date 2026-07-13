@@ -27,9 +27,11 @@ from pathlib import Path
 
 from core.build_planner.situational import (
     AllyState,
+    CounterHint,
     EnemyProfile,
     ItemProps,
     classify_item,
+    counter_build_hints,
     reanchor_plan,
     situational_fit,
 )
@@ -338,6 +340,159 @@ class ModulePresenceTests(unittest.TestCase):
         self.assertTrue(hasattr(mod, "situational_fit"))
         self.assertTrue(hasattr(mod, "classify_item"))
         self.assertTrue(hasattr(mod, "reanchor_plan"))
+
+
+# --------------------------------------------------------------------------- #
+# counter_build_hints - the per-criterion C1-C7 projection for the overlay
+# (R102). Mirrors the situational_fit gates exactly; UI transport only.
+# --------------------------------------------------------------------------- #
+_ALLOWED_CRITERIA = {"resist", "antiheal", "fed", "hp_vs_pen", "pen_type",
+                     "tenacity"}
+
+
+class CounterBuildHintsTests(unittest.TestCase):
+
+    def _by_crit(self, hints, criterion):
+        return [h for h in hints if h.criterion == criterion]
+
+    # ---- honest no-data ---- #
+    def test_all_zero_profile_returns_empty_tuple(self):
+        hints = counter_build_hints([ARMOR, MR, HP], EnemyProfile())
+        self.assertIsInstance(hints, tuple)
+        self.assertEqual(hints, ())
+
+    # ---- C1 resist ---- #
+    def test_resist_hint_armor_for_ad_comp(self):
+        ep = EnemyProfile(ad_share=0.8)
+        empty = counter_build_hints([], ep)
+        self.assertEqual(len(empty), 1)
+        self.assertEqual(empty[0].criterion, "resist")
+        self.assertEqual(empty[0].suggest_class, "armor")
+        self.assertEqual(empty[0].severity, "high")  # dominant share >= 0.70
+        self.assertFalse(empty[0].satisfied)         # empty build owns no armor
+        witharmor = self._by_crit(counter_build_hints([ARMOR], ep), "resist")
+        self.assertEqual(len(witharmor), 1)
+        self.assertTrue(witharmor[0].satisfied)      # Thornmail owns the counter
+
+    def test_resist_hint_mr_for_ap_comp(self):
+        ep = EnemyProfile(ap_share=0.8)
+        r = self._by_crit(counter_build_hints([], ep), "resist")
+        self.assertEqual(len(r), 1)
+        self.assertEqual(r[0].suggest_class, "mr")
+        self.assertFalse(r[0].satisfied)
+        self.assertTrue(self._by_crit(counter_build_hints([MR], ep),
+                                      "resist")[0].satisfied)
+
+    def test_resist_not_warranted_below_cut(self):
+        ep = EnemyProfile(ad_share=0.52)  # below RESIST_HINT_CUT (0.55)
+        self.assertEqual(self._by_crit(counter_build_hints([ARMOR], ep),
+                                       "resist"), [])
+
+    # ---- C2 antiheal ---- #
+    def test_antiheal_hint_warranted_and_dedup(self):
+        ep = EnemyProfile(heal_sources=2)
+        ah = self._by_crit(counter_build_hints([ANTIHEAL], ep), "antiheal")
+        self.assertEqual(len(ah), 1)
+        self.assertTrue(ah[0].satisfied)
+        self.assertEqual(ah[0].suggest_class, "antiheal")
+        plain = self._by_crit(counter_build_hints([PLAIN], ep), "antiheal")
+        self.assertEqual(len(plain), 1)
+        self.assertFalse(plain[0].satisfied)
+        # An ally already owning antiheal de-dups the criterion away entirely.
+        deduped = counter_build_hints([PLAIN], ep, AllyState(has_antiheal=True))
+        self.assertEqual(self._by_crit(deduped, "antiheal"), [])
+
+    # ---- C3 fed ---- #
+    def test_fed_hint_satisfied_reflects_survival(self):
+        ep = EnemyProfile(fed=True)
+        pure = self._by_crit(counter_build_hints([PLAIN], ep), "fed")
+        self.assertEqual(len(pure), 1)
+        self.assertFalse(pure[0].satisfied)
+        surv = self._by_crit(counter_build_hints([ARMOR], ep), "fed")
+        self.assertEqual(len(surv), 1)
+        self.assertTrue(surv[0].satisfied)
+
+    # ---- C4 HP vs penetration ---- #
+    def test_hp_vs_pen_hint_and_floor(self):
+        ep = EnemyProfile(enemy_pen=0.9)
+        # Resist present + enemy stacks pen -> the hint fires.
+        armor = self._by_crit(counter_build_hints([ARMOR], ep), "hp_vs_pen")
+        self.assertEqual(len(armor), 1)
+        self.assertEqual(armor[0].suggest_class, "hp")
+        # Resist but below the HP floor (Banshee = 0 hp) -> not satisfied.
+        lo = self._by_crit(counter_build_hints([MR], ep), "hp_vs_pen")
+        self.assertEqual(len(lo), 1)
+        self.assertFalse(lo[0].satisfied)
+        # Resist + Warmog (1000 hp) clears HP_HINT_FLOOR -> satisfied.
+        hi = self._by_crit(counter_build_hints([MR, HP], ep), "hp_vs_pen")
+        self.assertEqual(len(hi), 1)
+        self.assertTrue(hi[0].satisfied)
+        # No resist in the build -> the C4 gate is not warranted at all.
+        self.assertEqual(self._by_crit(counter_build_hints([HP], ep),
+                                       "hp_vs_pen"), [])
+
+    # ---- C5 pen TYPE from the kill target ---- #
+    def test_pen_type_armor_pct_for_tanky_kill_target(self):
+        ep = EnemyProfile(kill_target_armor=180)
+        pt = self._by_crit(counter_build_hints([], ep), "pen_type")
+        self.assertEqual(len(pt), 1)
+        self.assertEqual(pt[0].suggest_class, "pct_armor_pen")
+        self.assertFalse(pt[0].satisfied)
+        self.assertTrue(self._by_crit(counter_build_hints([PCT_ARMOR], ep),
+                                      "pen_type")[0].satisfied)
+
+    def test_pen_type_lethality_for_squishy_kill_target(self):
+        ep = EnemyProfile(kill_target_armor=40)
+        pt = self._by_crit(counter_build_hints([], ep), "pen_type")
+        self.assertEqual(len(pt), 1)
+        self.assertEqual(pt[0].suggest_class, "lethality")
+        self.assertTrue(self._by_crit(counter_build_hints([LETHALITY], ep),
+                                      "pen_type")[0].satisfied)
+
+    def test_pen_type_armor_unknown_emits_nothing(self):
+        ep = EnemyProfile(kill_target_armor=0)  # unknown -> honest no-data
+        self.assertEqual(self._by_crit(counter_build_hints([], ep),
+                                       "pen_type"), [])
+
+    def test_pen_type_magic_pct_for_tanky_mr_kill_target(self):
+        ep = EnemyProfile(kill_target_mr=180)
+        pt = self._by_crit(counter_build_hints([], ep), "pen_type")
+        self.assertEqual(len(pt), 1)
+        self.assertEqual(pt[0].suggest_class, "pct_magic_pen")
+        self.assertTrue(self._by_crit(counter_build_hints([PCT_MAGIC], ep),
+                                      "pen_type")[0].satisfied)
+
+    # ---- C6 tenacity ---- #
+    def test_tenacity_hint_high_cc(self):
+        ep = EnemyProfile(cc_score=8)
+        t = self._by_crit(counter_build_hints([], ep), "tenacity")
+        self.assertEqual(len(t), 1)
+        self.assertEqual(t[0].suggest_class, "tenacity")
+        self.assertFalse(t[0].satisfied)
+        self.assertTrue(self._by_crit(counter_build_hints([TENACITY], ep),
+                                      "tenacity")[0].satisfied)
+
+    # ---- invariants across a saturated profile ---- #
+    def test_every_hint_is_ascii_and_well_formed(self):
+        ep = EnemyProfile(ad_share=0.8, heal_sources=3, fed=True, enemy_pen=0.9,
+                          kill_target_armor=180, kill_target_mr=180, cc_score=9)
+        build = [ARMOR, MR, HP, PCT_ARMOR, PCT_MAGIC, ANTIHEAL, TENACITY]
+        hints = counter_build_hints(build, ep)
+        self.assertIsInstance(hints, tuple)
+        self.assertTrue(hints)
+        seen_med = False
+        for h in hints:
+            self.assertIsInstance(h, CounterHint)
+            self.assertIn(h.criterion, _ALLOWED_CRITERIA)
+            self.assertIn(h.severity, {"high", "med"})
+            for s in (h.label, h.detail, h.suggest_class):
+                self.assertTrue(s.isascii(), repr(s))
+                self.assertTrue(s)  # non-empty
+            # Ordering contract: all high-severity hints precede all med ones.
+            if h.severity == "med":
+                seen_med = True
+            elif seen_med:
+                self.fail("a high-severity hint followed a med-severity hint")
 
 
 if __name__ == "__main__":  # pragma: no cover
