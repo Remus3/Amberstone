@@ -1,6 +1,6 @@
 # Live-Game-Gated Sync Checklist
 
-**OPEN GATED ITEMS: ~108** (env-tagged rows as of 2026-07-12; PRE-RESYNC upper bound - counts every row that opens with an environment tag and may include dupes/sub-items across the summary + bundle-plan sections). Breakdown: PRACTICE-SR 34 | REAL-SR 20 | ARAM-MAYHEM 18 | ACCRUAL 15 | ANY-LOBBY 7 | ARENA 6 | POST-GAME 4 | PHYSICAL 4. A `/live-gated-resync` rebuilds the canonical open list and MAINTAINS this count line (operator-requested top-row count, 2026-07-12).
+**OPEN GATED ITEMS: ~15** (2026-07-12 DOC-ONLY RESYNC, git-closure pass - detail in the dated block below). 67 rows CONFIRMED-DONE + closed this pass (git-cited, 8/8 sampled commits spot-verified real); ~15 truly live-gated rows REMAIN, all needing a real game. Backlog by environment: ANY-LOBBY/overlay 4 (ZOI per-champ minimap IDENTITY - the unsolved core) | ARENA 4 (D6 augment/anvil shadow accrual + A/B lever + Runaan's-augment gate) | ARAM-MAYHEM 1 (augment-reco cadence) | PRACTICE/REAL-SR ~6 (DS live-flip EYEBALL + overlay render tails). The prior ~108 was a PRE-RESYNC upper bound with dupes/sub-items; this git-closure pass replaces it. The detailed A-E section rows below predate this pass - trust the 2026-07-12 DOC-ONLY RESYNC block as the authoritative open set.
 
 PURPOSE. One consolidated list of every RC/DS item that CANNOT be finished headless because it
 needs one of: a real live LCU session (lobby/champ-select), live game data on `:2999`, rendered
@@ -68,6 +68,39 @@ Closed / advanced this sitting (surgical note; a `/live-gated-resync` should reb
 - **C13 VALIDATED** (enemy_spells stats_panel renders live - 5 enemies + summoner CDs). **C1** ARAM build LOGIC comp-aware (Shieldbow vs Talon / BotRK vs Graves). **B24** overlay pixel family rendering (settings/stats/portraits/build/minimap).
 - **B4/B7/B8/B10/B13/B14/B18/B19 BANKED HEADLESS** (route-wired DS seam OFF-vs-ON direction-verified, flip-ready; the actual default-ON flips stay operator-gated). **B20 REFUTED** - R55 is NOT `/rank`-eyeball-able (`target_current_hp_pct` no-ops on /rank); stays DS-restart-gated.
 - **C15/C16 FIELD-FIX shipped (`67519018`) BUT a NEW cadence bug blocks the on-screen reco (2026-07-12 live eyeball).** The alias fix (moon_proxy TFT-relay emits `is_augment_select`, coaches read `augment_select`; aliased in `modes/shared_vision.py` `_postprocess`, covers ARAM/Arena/Brawl) is CORRECT and deployed. But the reco STILL does not fire on-screen. Root-caused offline against a saved live Kayle augment frame: detection deterministic (relay `is_augment_select=True` 4/4) + coach `read_tiered` surfaces `augment_select` 3/3 + `_fetch_game_data` non-None during augment - so alias/detection/path/gate all GOOD. ROOT CAUSE = `coaches/aram_coach.py:495 _VISION_INTERVAL=25.0` skips the ~10-15s early-game augment window (live augment on-screen @12:03:51, first coach vision tick @12:04:02, missed; consistent every game this session). **NEW open bug is vision CADENCE, not fields.** FIX (owed, operator-DEFERRED 2026-07-12 to prioritize UI work): fast early-game vision poll (~5s while gameTime < ~40s, revert to 25s after) in ARAM + Arena/Brawl siblings; full on-screen verify stays live-gated. Repro: scratchpad relay_loop.py / offline_pin.py; see memory `open_bug_aram_augment_reco_cadence_miss`.
+
+## 2026-07-12 DOC-ONLY RESYNC (git-closure pass, NO live capture)
+
+A `/live-gated-resync` workflow stalled mid-synthesize; its 82 done-ness verdicts were harvested
+(67 confirmed-done / 6 partial / 9 still-open) and 8/8 sampled cited commits were git-verified real
+(872a6126 90a74972 8c5be61a dbc99fc0 67519018 875d862b 27f99a95 1ab7000e). The operator chose a
+doc-only pass (the validation game had ended - no live window). 67 rows are CONFIRMED-DONE + CLOSED
+this pass (evidence in git + docs/LEDGER.md; not re-listed here). The authoritative OPEN set is now
+the ~15 rows below - each needs a REAL game.
+
+REMAINING TRULY LIVE-GATED (next-game backlog):
+- (ANY-LOBBY / overlay) ZOI per-champ minimap IDENTITY - the unsolved core. Presence + substrate ship
+  headless but identity classification was never validated live: per-district presence [8b5a358d];
+  MIA reachability rings (BLOCKED - the zoi.mia feed is dead on live, LEDGER-796) [b26514d6]; identity
+  dots default-ON [fe37c534]; circle-masked template-match identity (synthetic-only) [f6d7c685].
+- (ARAM-MAYHEM) augment-reco CADENCE bug - the alias fix shipped (67519018) but
+  coaches/aram_coach.py:495 `_VISION_INTERVAL=25.0` skips the ~10-15s augment window; a fast early-game
+  poll fix is OWED (operator-deferred 2026-07-12); on-screen verify stays live-gated. See memory
+  `open_bug_aram_augment_reco_cadence_miss`.
+- (ARENA) D6 augment/anvil shadow accrual - force_scan (79c4e9e9) + round-based (10374d02) triggers
+  shipped, but anvil_shadow.jsonl is still ABSENT and a live Arena augment round is still owed. Plus
+  the Arena deterministic A/B choices lever [34c46d44] is shadow-only (served coach output unchanged -
+  the live serve flip is gated). Plus DS ranged-only Runaan's melee-gate made augment-aware (Draw Your
+  Sword) [7a970758] - shipped headless, live Arena on-screen validation owed.
+- (PRACTICE-SR / REAL-SR) DS live-flip EYEBALL tails - the offline BUILD halves are DONE with commit
+  shas, but each default-ON flip / in-game eyeball is EXCLUDED per ORCHESTRATION_PLAN.md (the
+  DSV*/DSP*/RF*/R* seam family). Named tails: Jhin AS-lock full lethality eyeball (the Boots of
+  Swiftness flip was live-confirmed) [d0abff62]; overlay item-8 rank-tier stats panel live-render
+  [c839b7a9]; overlay liveclient_cache self-heal live re-verify [1a2a9709].
+
+NOTE: this pass did NOT surgically prune the per-row A-E sections below (reliability over a risky
+1914-line rewrite); those rows are historical. Trust THIS block for the live open set. A future
+`/live-gated-resync` (once the workflow harness is fixed) can do the full row-by-row rebuild.
 
 ## Next-session play order (bundle plan)
 
