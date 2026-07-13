@@ -322,6 +322,144 @@ def reanchor_plan(planned_ids, observed_ids) -> ReanchorResult:
 
 
 # --------------------------------------------------------------------------- #
+# counter_build_hints - surface the C1-C7 counter-build criteria the enemy
+# profile WARRANTS as discrete overlay hints (PURE, UI transport only). This is
+# the per-criterion companion to situational_fit's scalar: it reuses the SAME
+# classify_item + gating constants and adds ZERO DS math. A criterion emits a
+# hint ONLY when the profile actively warrants it; ``satisfied`` flags whether
+# the current build already owns the counter. The scalar situational_fit stays
+# LOCKED - this is a read-only projection of the same gates for the UI.
+# --------------------------------------------------------------------------- #
+RESIST_HINT_CUT = 0.55   # dominant damage share that warrants a resist hint
+PEN_HINT_CUT = 0.5       # enemy penetration that warrants the HP-vs-pen hint
+HP_HINT_FLOOR = 300.0    # total build HP that counts the HP-vs-pen hint satisfied
+
+
+@dataclass(frozen=True)
+class CounterHint:
+    criterion: str        # resist antiheal fed hp_vs_pen pen_type tenacity
+    satisfied: bool       # does the current build ALREADY carry the counter?
+    severity: str         # "high" or "med"
+    label: str            # short ASCII chip label eg "ARMOR"
+    detail: str           # one-line ASCII reason eg "enemy 78% physical"
+    suggest_class: str    # armor mr antiheal hp lethality pct_armor_pen etc
+
+
+def counter_build_hints(build_ids, enemy_profile, ally_state=None, *, stage="mid") -> tuple:
+    """Surface the C1-C7 counter-build criteria the enemy_profile WARRANTS.
+
+    Emit a hint ONLY for a criterion the profile actively warrants (mirrors the
+    situational_fit gates EXACTLY, reusing classify_item + the module
+    constants). ``satisfied`` = the current build already owns the counter.
+    Order: severity high first, then criterion order
+    resist -> antiheal -> fed -> hp_vs_pen -> pen_type -> tenacity. An all-zero
+    EnemyProfile returns an EMPTY tuple (honest no-data). ``stage`` is accepted
+    for signature parity with situational_fit and does not change the hint set.
+    """
+    ids = [str(i) for i in (build_ids or [])]
+    props = [classify_item(i) for i in ids]
+    ep = enemy_profile
+    a = AllyState() if ally_state is None else ally_state
+    _ = stage  # accepted for parity; the warranted hint set is stage-invariant.
+
+    has_armor = any(p.is_armor for p in props)
+    has_mr = any(p.is_magic_resist for p in props)
+    has_antiheal = any(p.is_antiheal for p in props)
+    has_lethality = any(p.is_lethality for p in props)
+    has_pct_armor_pen = any(p.is_percent_armor_pen for p in props)
+    has_pct_magic_pen = any(p.is_percent_magic_pen for p in props)
+    has_tenacity = any(p.is_tenacity for p in props)
+    has_resist = any(p.is_armor or p.is_magic_resist for p in props)
+    any_survival = any(p.is_armor or p.is_magic_resist or p.is_health for p in props)
+    total_hp = sum(p.hp for p in props)
+
+    hints: list = []
+
+    # C1 resist vs enemy damage split - warranted once the dominant damage
+    # share clears RESIST_HINT_CUT. true_share counters nothing so it never
+    # warrants; the LARGER of ad/ap picks the resist type (ad ties -> armor).
+    dom = max(ep.ad_share, ep.ap_share)
+    if dom >= RESIST_HINT_CUT:
+        sev = "high" if dom >= 0.70 else "med"
+        if ep.ad_share >= ep.ap_share:
+            hints.append(CounterHint(
+                criterion="resist", satisfied=has_armor, severity=sev,
+                label="ARMOR",
+                detail=f"enemy {round(ep.ad_share * 100)}% physical",
+                suggest_class="armor"))
+        else:
+            hints.append(CounterHint(
+                criterion="resist", satisfied=has_mr, severity=sev,
+                label="MR",
+                detail=f"enemy {round(ep.ap_share * 100)}% magic",
+                suggest_class="mr"))
+
+    # C2 antiheal - warranted at/above the heal-source threshold and only when
+    # no ally already owns a Grievous-Wounds item (de-dup mirrors the scalar).
+    if ep.heal_sources >= HEAL_THRESHOLD and not a.has_antiheal:
+        hints.append(CounterHint(
+            criterion="antiheal", satisfied=has_antiheal, severity="high",
+            label="ANTIHEAL",
+            detail=f"{ep.heal_sources} enemy heal sources",
+            suggest_class="antiheal"))
+
+    # C3 fed override - a fed enemy warrants itemizing ANY defensive stat now.
+    if ep.fed:
+        hints.append(CounterHint(
+            criterion="fed", satisfied=any_survival, severity="high",
+            label="SURVIVE",
+            detail="fed enemy - itemize defense",
+            suggest_class="resist"))
+
+    # C4 HP vs penetration - warranted only when the build already carries the
+    # resist the enemy is actively shredding (pen shreds resist, not raw HP).
+    if ep.enemy_pen >= PEN_HINT_CUT and has_resist:
+        hints.append(CounterHint(
+            criterion="hp_vs_pen", satisfied=(total_hp >= HP_HINT_FLOOR),
+            severity="med", label="HP",
+            detail="enemy stacks penetration - add HP",
+            suggest_class="hp"))
+
+    # C5 pen TYPE from the kill target - two INDEPENDENT branches. The armor
+    # branch is warranted ONLY when the kill-target armor is KNOWN (> 0); 0
+    # means unknown, so it emits nothing (honest no-data). LETH_CUT == PCT_CUT
+    # so a known armor always resolves to exactly one of pct-pen / lethality.
+    kt_armor = ep.kill_target_armor
+    if kt_armor > 0:
+        if kt_armor >= PCT_CUT:
+            hints.append(CounterHint(
+                criterion="pen_type", satisfied=has_pct_armor_pen,
+                severity="med", label="ARMOR PEN",
+                detail=f"kill target {int(kt_armor)} armor",
+                suggest_class="pct_armor_pen"))
+        elif kt_armor < LETH_CUT:
+            hints.append(CounterHint(
+                criterion="pen_type", satisfied=has_lethality,
+                severity="med", label="LETHALITY",
+                detail=f"kill target {int(kt_armor)} armor",
+                suggest_class="lethality"))
+    if ep.kill_target_mr > MR_CUT:
+        hints.append(CounterHint(
+            criterion="pen_type", satisfied=has_pct_magic_pen,
+            severity="med", label="MAGIC PEN",
+            detail=f"kill target {int(ep.kill_target_mr)} MR",
+            suggest_class="pct_magic_pen"))
+
+    # C6 tenacity vs CC - warranted at/above the CC threshold.
+    if ep.cc_score >= CC_CUT:
+        hints.append(CounterHint(
+            criterion="tenacity", satisfied=has_tenacity, severity="med",
+            label="TENACITY",
+            detail=f"enemy CC {round(ep.cc_score)}/10",
+            suggest_class="tenacity"))
+
+    # Order: severity high first, then the criterion append order (Python's
+    # sort is stable, so within a severity the criterion order is preserved).
+    hints.sort(key=lambda h: 0 if h.severity == "high" else 1)
+    return tuple(hints)
+
+
+# --------------------------------------------------------------------------- #
 # build_enemy_profile - IMPURE dashboard tick builder. NEVER called by
 # score_build. The FORMULA here is advisory; only the EnemyProfile return type
 # is locked. Imports are engine-free at module scope (defensive_picks lazily
