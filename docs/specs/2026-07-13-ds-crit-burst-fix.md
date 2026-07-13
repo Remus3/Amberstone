@@ -1,5 +1,17 @@
 # DS Crit-Burst Fix - Coordinated Spec (surface the crit-burst core for crit ADCs)
 
+> **STATUS 2026-07-13: L1-L4 SHIPPED + live-validated** (LEDGER 875; main
+> 9708e3bf/54d5efc8/83624198/f2ecafe8 + backfill 4e00df61; ENGINE 1.208.0).
+> A deeper root cause than this spec anticipated: the live client
+> RankedItem.from_dict DROPPED the server's effective_score, so L1/L3 were inert
+> until f2ecafe8 parsed it + recalibrated the coherence dock (_MU_EFF) for the
+> effective_score branch. L4 lives at the carry chokepoint (not routes_state) as
+> a fight_length-gated squishy-target swap with an apply_squishy_burst_target
+> opt-out for the offline variants. Live /api/ds-preview: crit ADCs surface
+> IE + Collector; Vayne/Lux/Ornn byte-identical. L5 (fed/comp-aware fight_length)
+> + L6 (Stormrazor 3097 hygiene) remain FOLLOW-UPS; a real in-game eyeball is
+> owed (do-not-flip-blind). See reference_ds_client_effective_score_parse.
+
 Grounded against code + in-process sims + the live API by the a4362a investigation
 (2026-07-13). Follows Step 1a (the coherence artifact-removal, main 77f56d70,
 `docs/specs/2026-07-13-ds-build-coherence-refactor.md`). This is the DEEPER fix:
