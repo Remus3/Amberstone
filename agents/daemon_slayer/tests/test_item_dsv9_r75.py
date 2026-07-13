@@ -104,8 +104,8 @@ class EngineVersion(unittest.TestCase):
     """EXPECTED RED in the engine slice - the orchestrator owns the bump."""
 
     def test_engine_version_bumped(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.208.0")
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.208.0")
+        self.assertEqual(ENGINE_VERSION, "1.209.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.209.0")
 
 
 class SchemaDefaults(unittest.TestCase):
@@ -118,20 +118,22 @@ class SchemaDefaults(unittest.TestCase):
 
     def test_fields_appended_at_end(self) -> None:
         # Mid-class insert breaks positional construction (repo convention).
-        # R86 (1.182.0) appended ``enemy_attack_speed_slow`` at the very END -> it
-        # is now the last field; R80's ``basic_attack_damage_reduction`` is second-
-        # to-last, R77's ``crit_damage_reduction`` third-to-last, the DSV9 shield-cut
-        # pair fourth/fifth-to-last, the DSV8 physical-burst pair sixth/seventh-to-
-        # last (order preserved).
+        # R111 (1.209.0) appended ``missing_hp_ad_amp_max_pct`` at the very END ->
+        # it is now the last field; R86's ``enemy_attack_speed_slow`` is second-
+        # to-last, R80's ``basic_attack_damage_reduction`` third-to-last, R77's
+        # ``crit_damage_reduction`` fourth-to-last, the DSV9 shield-cut pair
+        # fifth/sixth-to-last, the DSV8 physical-burst pair seventh/eighth-to-last
+        # (order preserved).
         names = [f.name for f in dataclasses.fields(ItemEffect)]
-        self.assertEqual(names[-1], "enemy_attack_speed_slow")
-        self.assertEqual(names[-2], "basic_attack_damage_reduction")
-        self.assertEqual(names[-3], "crit_damage_reduction")
+        self.assertEqual(names[-1], "missing_hp_ad_amp_max_pct")
+        self.assertEqual(names[-2], "enemy_attack_speed_slow")
+        self.assertEqual(names[-3], "basic_attack_damage_reduction")
+        self.assertEqual(names[-4], "crit_damage_reduction")
         self.assertEqual(
-            names[-5:-3], ["shield_cut_melee_pct", "shield_cut_ranged_pct"]
+            names[-6:-4], ["shield_cut_melee_pct", "shield_cut_ranged_pct"]
         )
         self.assertEqual(
-            names[-7:-5],
+            names[-8:-6],
             ["physical_burst_base", "physical_burst_base_ad_ratio"],
         )
 
