@@ -408,23 +408,36 @@ def total_magic_burst_damage(
 def total_physical_burst_damage(
     effects: Iterable[ItemEffect],
     caster_base_ad: float,
+    caster_total_ad: float = 0.0,
 ) -> float:
     """Sum the item-active physical burst-window magnitude across the build (DSV8 seam).
 
-    Goredrinker's Thirsting Slash (Arena 226630) deals "175% base AD physical
-    damage" to enemies in a 450 radius on active cast (Meraki 16.13.1) - an
-    item-active physical hit the per-cast burst combo loop never credited.
+    Two item-active shapes contribute (Meraki 16.13.1):
+
+    - Goredrinker's Thirsting Slash (Arena 226630) deals "175% '''base''' AD
+      physical damage" - the BASE-AD path
+      (``physical_burst_base_ad_ratio * caster_base_ad``).
+    - The four Tiamat-tree actives (Tiamat 3077 Crescent 75%, Ravenous 3074 /
+      Profane 6698 / Stridebreaker 6631 + Arena mirrors 80%) deal plain
+      "X% AD physical damage" = TOTAL AD - the TOTAL-AD path
+      (``physical_burst_total_ad_ratio * caster_total_ad``), added R113.
+
     Each contributing item adds ``physical_burst_base +
-    physical_burst_base_ad_ratio * caster_base_ad`` PRE-mitigation physical
-    damage (BASE AD, not total AD); the burst consumer (compute_burst_damage)
-    applies the armor factor + mode multiplier on top - NO amp layer, since
-    the engine has no physical analogue of ``total_magic_amp_multiplier`` and
-    the DSV6 item-proc block deliberately excludes build amps. Returns 0.0
-    when no item carries the fields. Additive across items (only Goredrinker
-    226630 carries them today; sums commute if another lands later).
+    physical_burst_base_ad_ratio * caster_base_ad +
+    physical_burst_total_ad_ratio * caster_total_ad`` PRE-mitigation physical
+    damage; the burst consumer (compute_burst_damage) applies the armor factor
+    + mode multiplier on top - NO amp layer, since the engine has no physical
+    analogue of ``total_magic_amp_multiplier`` and the DSV6 item-proc block
+    deliberately excludes build amps. Returns 0.0 when no item carries the
+    fields. Additive across items.
+
+    ``caster_total_ad`` defaults to 0.0 so 2-arg callers stay byte-identical:
+    a Hydra item passes the widened guard but folds ratio * 0.0 = 0.0 for its
+    total-AD term (crucial for the compute_ability_dps inert path, which calls
+    this 2-arg). Goredrinker's base-AD term is unaffected by the new arg.
 
     Read ONLY by the BURST scorer under ``assume_physical_burst=True``. The
-    active has no PeriodicProc, so compute_dps sees nothing and there is no
+    actives have no PeriodicProc, so compute_dps sees nothing and there is no
     double-count; compute_ability_dps accepts the flag as a documented-inert
     kwarg for API symmetry only (see its assume_physical_burst comment). The
     Goredrinker heal side (20% AD + 8% missing HP per champion hit) stays
@@ -433,8 +446,10 @@ def total_physical_burst_damage(
     return sum(
         e.physical_burst_base
         + e.physical_burst_base_ad_ratio * caster_base_ad
+        + e.physical_burst_total_ad_ratio * caster_total_ad
         for e in effects
-        if (e.physical_burst_base or e.physical_burst_base_ad_ratio)
+        if (e.physical_burst_base or e.physical_burst_base_ad_ratio
+            or e.physical_burst_total_ad_ratio)
     )
 
 
