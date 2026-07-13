@@ -35,12 +35,30 @@ except Exception:  # noqa: BLE001 - numpy missing -> module degrades to no-op
 _SAT_MIN = 0.45        # min HSV saturation (icon vs terrain tint)
 _VAL_MIN_RED = 110     # min brightness (max channel) for red
 _VAL_MIN_BLUE = 120
-_MIN_PX = 5            # reject sub-pixel noise / lone speckles
+_MIN_PX = 5            # reject sub-pixel noise / lone speckles (conf baseline)
 _MAX_PX = 220          # reject large terrain washes that slip through
+# Champion-icon minimum blob size at the 208px tuning baseline. DISTINCT from
+# _MIN_PX (which stays 5 as the confidence baseline + the byte-identical
+# detect_team_dots default): _CHAMP_MIN_PX is the higher CHAMPION floor the live
+# caller applies via detect_team_dots(champ_min_px=...) so minion / ward /
+# structure specks below a champion-icon ring do not inflate the dot count
+# (Z2 over-count fix 2026-07-12: the raw detector counted every team-colored
+# 8-connected blob, 62-74 dots per SR frame). It scales with crop width like
+# _MIN_PX/_MAX_PX (see _champ_floor_px). Kept <= 25 so the 208px fallback-crop
+# tests' 25px champion blob still survives, and kept as a REJECT-ONLY filter
+# (NOT the conf baseline) so the confidence value stays keyed to _MIN_PX and the
+# default detect_team_dots path is byte-identical.
+_CHAMP_MIN_PX = 20
+# Per-team champion cap the live caller applies (detect_team_dots(max_per_team=)).
+# The floor alone cannot reach the Z2 <=10 bar on the corpus frames (a dead-team
+# fight or base still leaves a long noise tail), so the top-N highest-confidence
+# blobs per team are kept and the rest dropped: <=2*_MAX_PER_TEAM dots total.
+_MAX_PER_TEAM = 5
 # Mask cap as a FRACTION of total crop pixels (2026-07-08: was a fixed 6000,
-# tuned at the 208px coaching-frame crop / 43K px = 13.9%. The 568px native
-# grab / 323K px was hitting the cap on the normal blue terrain, bailing
-# out the entire detection. A fraction is resolution-independent.)
+# tuned at the 208px coaching-frame crop / 43K px = 13.9%). The native full-res
+# grab (~416px at 2560x1440 with MinimapScale 1.62 -> a 416x416 crop, ~173K px;
+# NOT the 568px an earlier note assumed) was hitting the old fixed cap on normal
+# blue terrain, bailing the whole detection. A fraction is resolution-independent.
 _MASK_CAP_FRAC = 0.14  # if either mask exceeds 14% of pixels, frame is garbage
 
 
@@ -75,6 +93,8 @@ def detect_team_dots(
     *,
     min_px: int = _MIN_PX,
     max_px: int = _MAX_PX,
+    champ_min_px: Optional[int] = None,
+    max_per_team: Optional[int] = None,
 ) -> list[dict]:
     """Detect per-team colored blobs in an RGB minimap crop.
 
@@ -84,6 +104,18 @@ def detect_team_dots(
          "px": int, "confidence": float}
     x_frac/y_frac are the centroid normalized to [0,1] within the crop.
     Returns [] when numpy is unavailable or the input is unusable.
+
+    champ_min_px (Z2 over-count fix, 2026-07-12): an OPTIONAL champion-icon size
+    floor. When set, components smaller than max(min_px, champ_min_px) are
+    rejected (minion / ward / structure specks). It does NOT feed the confidence
+    formula (which stays keyed to min_px), so the DEFAULT champ_min_px=None is
+    byte-identical to prior behavior. The live caller passes _champ_floor_px().
+
+    max_per_team (Z2 over-count fix, 2026-07-12): an OPTIONAL per-team cap. When
+    set, only the top-N highest-confidence dots per team survive (dots are already
+    conf-sorted, and champions are the largest team-colored blobs). DEFAULT None =
+    no cap = byte-identical. The live caller passes max_per_team=_MAX_PER_TEAM, so
+    SR frames that raw-counted 62-74 team blobs emit at most 2*N dots (<=N/team).
     """
     if np is None:
         return []
@@ -106,9 +138,15 @@ def detect_team_dots(
     if int(red_mask.sum()) > mask_cap or int(blue_mask.sum()) > mask_cap:
         return []  # frame is loading / garbage - do not emit noise
 
+    # champ_min_px raises the component-acceptance floor to a champion-icon
+    # minimum (reject minion / ward / structure specks) WITHOUT altering the
+    # confidence baseline: conf stays keyed to min_px so champ_min_px=None is
+    # byte-identical to the pre-Z2 behavior.
+    floor = min_px if champ_min_px is None else max(int(min_px), int(champ_min_px))
+
     dots: list[dict] = []
     for team, mask in (("red", red_mask), ("blue", blue_mask)):
-        for cx, cy, px in _components(mask, min_px, max_px):
+        for cx, cy, px in _components(mask, floor, max_px):
             # confidence: blob size scaled into [0,1], saturating around a full
             # champion-icon footprint (~60 px at the live 208px crop).
             conf = max(0.0, min(1.0, (px - min_px) / 55.0))
@@ -120,6 +158,22 @@ def detect_team_dots(
                 "confidence": round(conf, 3),
             })
     dots.sort(key=lambda d: d["confidence"], reverse=True)
+    if max_per_team is not None:
+        # Keep the top-N highest-confidence dots PER TEAM (dots is already sorted
+        # by descending confidence). Champions are the largest team-colored blobs,
+        # so the biggest survive and the noise tail is dropped - capping SR from
+        # 62-74 raw dots to <=2*N. The output stays globally conf-sorted (we
+        # iterate + append in sorted order). Byte-identical when max_per_team is
+        # None (the default / every existing caller + test).
+        kept: list[dict] = []
+        per_team: dict = {}
+        for d in dots:
+            t = d["team"]
+            n = per_team.get(t, 0)
+            if n < max_per_team:
+                kept.append(d)
+                per_team[t] = n + 1
+        dots = kept
     return dots
 
 
@@ -239,6 +293,22 @@ def _scaled_size_bounds(crop_w) -> tuple[int, int]:
     return minpx, maxpx
 
 
+def _champ_floor_px(crop_w) -> int:
+    """Champion-icon minimum blob size for `crop_w`, scaled from the 208px
+    baseline with the SAME linear pixel-density model as _scaled_size_bounds
+    (icons are a fixed physical size, so linear not area). Below this a team-
+    colored blob is minion / ward / structure noise, not a champion dot. This is
+    a SEPARATE floor from _scaled_size_bounds so the latter stays pinned to
+    _MIN_PX (its own regression tests assert that); the live caller passes this
+    to detect_team_dots(champ_min_px=...). Never drops below _CHAMP_MIN_PX for
+    small crops; garbage input degrades to the baseline."""
+    try:
+        sc = max(1.0, float(crop_w) / _TUNED_CROP_W)
+    except (TypeError, ValueError):
+        return _CHAMP_MIN_PX
+    return max(_CHAMP_MIN_PX, int(round(_CHAMP_MIN_PX * sc)))
+
+
 def _grab_obs_minimap(minimap_rect):
     """OBS occlusion-proof minimap crop (ZOI plan spec O, 2026-07-05).
 
@@ -345,7 +415,11 @@ def _compute_and_cache_dots(minimap_rect: dict,
             dots = []
         else:
             minpx, maxpx = _scaled_size_bounds(crop.shape[1])
-            dots = detect_team_dots(crop, min_px=minpx, max_px=maxpx)
+            dots = detect_team_dots(
+                crop, min_px=minpx, max_px=maxpx,
+                champ_min_px=_champ_floor_px(crop.shape[1]),
+                max_per_team=_MAX_PER_TEAM,
+            )
             if dots and _identity_enabled():
                 try:
                     names = roster if roster is not None else _live_roster()
