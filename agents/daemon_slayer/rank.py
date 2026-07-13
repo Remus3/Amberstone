@@ -766,6 +766,12 @@ def _safe_burst(
             target_mr=target_mr,
             target_max_hp=target_max_hp,
             target_bonus_hp=target_bonus_hp,
+            # L2 (crit-burst fix, ENGINE 1.208.0): arm the kill-state takedown
+            # seam for the fight-length burst term so the Collector (6676) execute
+            # (5% target max HP true) and the takedown offense credit surface for
+            # crit ADCs. Scoped to THIS caller only - compute_burst_damage's
+            # global default stays False so every other caller is byte-identical.
+            assume_takedown=True,
         )
         return max(0.0, float(getattr(res, "total_burst_damage", 0.0) or 0.0))
     except Exception:
