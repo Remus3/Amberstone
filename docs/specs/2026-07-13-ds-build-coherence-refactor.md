@@ -143,14 +143,31 @@ follow-up slices; do NOT touch mage/tank/enchanter (clean).
 
 ## Status (2026-07-13)
 
-- STEP 1a SHIPPED (core-side Tier-1): the coherence re-rank + kit_synergy
-  spellblade refinement + derive_kit_weights marksman-precedence fix. NEW
-  `core/build_planner/coherence.py`. FIXED (ER/Eclipse out, IE in): Twitch, Jinx,
-  Caitlyn, Ashe, Vayne, Draven, Samira, Lucian (8 pure-marksman ADCs). PROTECTED
-  byte-identical: Ezreal, Corki (caster-marksmen, Marksman+Mage tag - excluded
-  from the dock after verification caught a v1 regression that stripped their
-  legit Essence Reaver core). Verified independently: 444 passed / 6 skipped on
-  the touched-module sweep. Deleted the obsolete `test_twitch_crit_kit_axis.py`.
+- STEP 1a SHIPPED (core-side Tier-1, main 77f56d70): the coherence re-rank +
+  kit_synergy spellblade refinement + derive_kit_weights marksman-precedence fix.
+  NEW `core/build_planner/coherence.py`. Deleted the obsolete
+  `test_twitch_crit_kit_axis.py`. PROTECTED byte-identical: Ezreal, Corki
+  (caster-marksmen, Marksman+Mage tag - excluded from the dock after
+  verification caught a v1 regression that stripped their legit Essence Reaver
+  core).
+- LIVE-VERIFIED REALITY (post-restart ds-preview, the overlay's actual reco row -
+  supersedes the in-process test claims):
+  - WIN: Essence Reaver (3508) + Eclipse (6692) are REMOVED for the crit ADCs
+    (Twitch/Jinx/Caitlyn live-confirmed no ER, no Eclipse). The operator's core
+    complaint (ER on Twitch) is fixed live. No regressions.
+  - PARTIAL / CORRECTION: the crit core (Infinity Edge) does NOT reliably lead
+    live - Twitch/Caitlyn show a pure on-hit build (BORK/Runaan/Kraken/Terminus/
+    LDR), IE absent; only Jinx surfaces IE (#5). The earlier "IE in top-6" claim
+    was from a single in-process test cell (target_armor=60) that does NOT match
+    the live ds-preview path (different target-stat resolution + filtering), so
+    the tests passed while live is more mixed. The greedy-crit-blindness the QA
+    identified is NOT fully resolved by the soft re-rank.
+  - VERIFICATION-FIDELITY GAP (owed): the tests exercise `rank_items` +
+    `coherence_rerank` at a fixed cell, NOT the live `rank_for_primary_archetype`
+    / ds-preview path. Tighten the tests to the live path + the live default
+    target resolution before claiming a champ "fixed".
+  - RESIDUAL artifacts live: AP-on-AD (Liandry's on Jinx) - distinct class;
+    Ezreal keeps ER + Eclipse (caster-marksman exclusion also spares his Eclipse).
 - KNOWN GAPS (next widening, per "narrow first, widen on evidence"):
   - The Mage-tag gate OVER-EXCLUDES dual-tagged non-caster marksmen: Jhin,
     Kai'Sa, Miss Fortune revert to raw and KEEP Essence Reaver (baseline, NOT a
