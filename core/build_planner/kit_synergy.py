@@ -161,6 +161,9 @@ _AH_NOSCALE_PENALTY = 0.5
 _AH_OVERSTACK_PENALTY = 0.8
 _AH_SOFT_CAP = 60.0
 _LIFESTEAL_NOAUTO_PENALTY = 3.0
+# Sheen-line spellblade proc on a non-spellblade-user (the carry-coherence
+# artifact). Penalty-units, in-family with the crit-on-0 / lifesteal-noauto docks.
+_SPELLBLADE_NONUSER_PENALTY = 2.0
 _HIGH_AS_WEIGHT = 0.6  # threshold above which a champ is "high-AS"
 
 # --------------------------------------------------------------------------- #
@@ -496,7 +499,46 @@ def anti_synergy_penalty(item, champ, has_autos: Optional[bool] = None,
         if no_autos:
             total += _LIFESTEAL_NOAUTO_PENALTY * lifesteal
 
+    # Spellblade proc on a non-spellblade-user (the carry-coherence artifact).
+    # An ability-charged Sheen-line item (Essence Reaver / Trinity / Divine
+    # Sunderer / Sheen) has its proc DPS modeled on an ability-cast tempo a pure
+    # auto-attacker (crit / on-hit marksman) never sustains, so the engine
+    # over-credits its delta_dps. Dock the pairing so the coherence re-rank sinks
+    # it below the flag-less crit core (Infinity Edge). A genuine spellblade user
+    # (spellblade_user True - bruisers, Yasuo, casters) is NOT penalized.
+    if "spellblade" in flags and not traits.get("spellblade_user"):
+        total += _SPELLBLADE_NONUSER_PENALTY
+
     return total
+
+
+# --------------------------------------------------------------------------- #
+# stat_fit - champ-aware stat-linear fit (the coherence re-rank lever)
+# --------------------------------------------------------------------------- #
+def stat_fit(item, champ, *, current_as: Optional[float] = None) -> float:
+    """Champ-aware ``dot(item_vector, kit_weights)`` with the spellblade per-auto
+    credit corrected - the metric lever the carry coherence re-rank consumes.
+
+    An ability-charged Spellblade item (``_SPELLBLADE_IDS``) does NOT deliver its
+    per-auto on-hit / bonusAD value to a kit that does not use spellblade procs
+    (``champ_kit_traits(champ)["spellblade_user"]`` is False) - a pure crit / auto
+    marksman never charges the Sheen proc on the ability-cast tempo the DPS model
+    assumes, so those two flag axes are artifact credit. They are dropped from the
+    projected vector for that pairing ONLY; the flat stat axes (AD / crit / AS /
+    AP / HP) are untouched, as is a genuine spellblade user (Yasuo, bruisers).
+
+    This is the load-bearing correction that stops Essence Reaver (3508) and
+    Eclipse (6692) out-fitting Infinity Edge (3031) for a crit ADC. It does NOT
+    mutate the champ-agnostic ``item_vector`` (a private copy is projected), so
+    ``synergy_score`` + every existing caller stay byte-identical.
+    """
+    vec = dict(item_vector(item))
+    flags = item_effect_flags(item)
+    if "spellblade" in flags and not champ_kit_traits(champ).get("spellblade_user"):
+        vec["on-hit"] = 0.0
+        vec["bonusAD"] = 0.0
+    weights = kit_weights(champ, current_as=current_as)
+    return sum(vec[axis] * weights[axis] for axis in AXES)
 
 
 # --------------------------------------------------------------------------- #

@@ -1,0 +1,107 @@
+"""core.build_planner.coherence - carry build-coherence re-rank (Step 1).
+
+The AD/carry ds.dps scorer ranks by pure delta_dps over the full catalog with no
+coherence term, so cross-archetype artifacts surface on crit ADCs: Essence Reaver
+(3508) floats to the top (its Spellblade proc is modeled at an ability-cast tempo
+a pure auto-attacker lacks, and its AH + mana are DPS-invisible but unpenalized),
+Eclipse (6692) rides lethality, and the crit AMPLIFIER core (Infinity Edge 3031)
+is buried (greedy single-item delta_dps cannot see accumulated-crit synergy). See
+ops/audit/DS_BUILD_RECO_OVERLAY_QA.md +
+docs/specs/2026-07-13-ds-build-coherence-refactor.md.
+
+coherence_rerank applies a METRIC (not win-rate, not a hand-blacklist) soft
+re-rank at the carry chokepoint: dock off-axis / wasted-stat items and nudge
+on-axis kit fit, both from core.build_planner.kit_synergy PRIMITIVES -
+stat_fit = dot(item_vector, kit_weights) with the spellblade proc artifact
+corrected, wasted_stat_penalty = anti_synergy_penalty (which now folds the
+spellblade-on-non-user proc-tempo artifact). The adjustment is delta-dominated:
+a coherent item (penalty ~0) only receives the uniform on-axis nudge, so a clean
+build barely re-orders while the artifacts sink and the buried crit core lifts.
+
+Metric-only + carry-scoped by control flow: a non-carry archetype early-returns
+rows[:top] UNCHANGED (byte-identical), so the clean mage / tank / enchanter
+builds never move.
+
+ASCII only - use " - " for a clause break (repo hard rule).
+"""
+from __future__ import annotations
+
+from core.build_planner.champ_kit_data import is_caster_marksman
+from core.build_planner.kit_synergy import (
+    anti_synergy_penalty,
+    champ_kit_traits,
+    stat_fit,
+)
+
+# DPS-equivalent tuning weights (delta-dominated). MU scales the wasted-stat dock
+# (anti_synergy_penalty, which folds the spellblade-proc-artifact term); W scales
+# the on-axis kit-fit nudge. Chosen so a coherent item (penalty ~0) only gets the
+# uniform +W*fit lift while an artifact (Essence Reaver / Eclipse) is docked below
+# the crit core - verified against the live 16.13.1 rank_items rows for
+# Twitch / Jinx / Caitlyn / Ashe (ARAM cell). Values live in DPS units: the ER
+# dock is MU*(0.5 AH-waste + 2.0 spellblade-artifact) ~= 25 DPS, enough to clear
+# its raw delta lead on the tightest champ (Jinx) without perturbing the crit
+# core's internal order (those rows carry penalty 0).
+_MU = 10.0
+_W = 6.0
+
+# The carry / marksman archetype whose ds.dps ranking this re-rank corrects. Every
+# other archetype early-returns unchanged (tank / bruiser / mage / assassin /
+# enchanter are clean - see the QA).
+_CARRY_ARCHETYPE = "carry"
+
+
+def _coherence_adj(row, champion: str) -> float:
+    """delta_dps docked by the wasted-stat penalty and nudged by kit fit.
+
+    Resolves the item by ``row.item_id`` through the kit_synergy resolver; an
+    unresolvable id (or any metric error) falls back to the raw delta_dps so the
+    row keeps its engine score and the re-rank can never crash.
+    """
+    delta = float(getattr(row, "delta_dps", 0.0) or 0.0)
+    iid = getattr(row, "item_id", None)
+    if iid is None:
+        return delta
+    try:
+        fit = stat_fit(str(iid), champion)
+        pen = anti_synergy_penalty(str(iid), champion)
+    except Exception:  # noqa: BLE001 - missing kit data -> raw delta, no crash
+        return delta
+    return delta - _MU * pen + _W * fit
+
+
+def coherence_rerank(rows, champion, top: int = 6):
+    """Return the top ``top`` rows re-ranked for carry build coherence.
+
+    ``rows`` is a list of ranker rows (rank_items ItemScore or the client's
+    rank_for rows), each exposing ``.item_id`` / ``.item_name`` / ``.delta_dps``.
+    The SAME row objects are returned (a re-sorted sub-list) - nothing is
+    reconstructed, so the caller's row type is preserved.
+
+    Two byte-identical early-returns leave a build UNCHANGED (``rows[:top]``):
+      * a non-carry archetype (champ_kit_traits archetype) - the clean mage /
+        tank / enchanter scorers never move (Kog'Maw is arch=mage and lands here);
+      * a caster / spellblade marksman (is_caster_marksman - a Marksman with the
+        Mage tag: Ezreal, Corki, Kai'Sa, Miss Fortune). Those kits genuinely
+        charge Sheen-line spellblade procs + mana on an ability tempo, so the
+        spellblade dock must not strip their real core. Narrowed per the
+        "narrow the fold, widen on test evidence" rule.
+
+    The pure crit / on-hit ADCs (Jinx / Caitlyn / Ashe / Twitch / Draven /
+    Lucian / ...) carry no Mage tag and DO get the dock. (Zeri surfaces an AP-on-
+    AD-marksman artifact class - Lich Bane / Liandry's - this fix does not target;
+    that is a separate future slice.) The live client only calls this on the
+    carry branch anyway; the gates are a belt-and-suspenders guarantee.
+    """
+    rows = list(rows)
+    try:
+        arch = champ_kit_traits(champion).get("archetype")
+        caster_mks = is_caster_marksman(champion)
+    except Exception:  # noqa: BLE001 - unknown champ -> leave untouched
+        arch, caster_mks = None, False
+    if arch != _CARRY_ARCHETYPE or caster_mks:
+        return rows[:top]
+    # Stable sort: equal-adj rows keep their original engine order (Python's
+    # sorted is stable and reverse=True does not reorder equal keys).
+    ranked = sorted(rows, key=lambda r: _coherence_adj(r, champion), reverse=True)
+    return ranked[:top]
