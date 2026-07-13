@@ -238,7 +238,7 @@ class SeraphsEngineVersionPin(unittest.TestCase):
     """The Seraph's shield credit bumps the engine revision."""
 
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.206.0")
+        self.assertEqual(ENGINE_VERSION, "1.207.0")
 
 
 if __name__ == "__main__":

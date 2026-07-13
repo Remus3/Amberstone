@@ -2869,12 +2869,16 @@ class SeryldasGrudgeTests(unittest.TestCase):
         self.assertEqual(e.armor_reduction_pct, 0.0)
         self.assertIn("armor pen", e.note.lower())
 
-    def test_seryldas_no_unique_passive_key(self) -> None:
-        # % pen layer in current engine sums across items (additive). The
-        # in-game Last Whisper exclusivity (only one of LDR / MR / Serylda
-        # at a time) is build-legality, not effect-layer - same call as
-        # Tiamat-tree exclusivity for the hydra family.
-        self.assertEqual(ITEM_EFFECTS["6694"].unique_passive_key, "")
+    def test_seryldas_last_whisper_unique_passive_key(self) -> None:
+        # CORRECTED 2026-07-12 (double-Last-Whisper fix): LDR / Mortal Reminder /
+        # Serylda's are the completed members of DDragon MaxGroupOwnable:1 group
+        # "LastWhisper" - only one can be owned. The engine's ONLY no-double hook
+        # is unique_passive_key, so the prior empty-key decision let the ranker
+        # recommend 2-3 of them vs tanks. They now share key "last_whisper" so
+        # collect_effects dedups the pen and filter_shared_uniques drops the 2nd.
+        self.assertEqual(ITEM_EFFECTS["6694"].unique_passive_key, "last_whisper")
+        self.assertEqual(ITEM_EFFECTS["3036"].unique_passive_key, "last_whisper")
+        self.assertEqual(ITEM_EFFECTS["3033"].unique_passive_key, "last_whisper")
 
     def test_seryldas_no_target_bonus_hp_amp(self) -> None:
         # LDR carries Giant Slayer (target_bonus_hp_amp_max_pct=0.15);
@@ -7820,7 +7824,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.206.0")
+        self.assertEqual(ENGINE_VERSION, "1.207.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7881,7 +7885,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.206.0")
+        self.assertEqual(ENGINE_VERSION, "1.207.0")
 
 
 if __name__ == "__main__":

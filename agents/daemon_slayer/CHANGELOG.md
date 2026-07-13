@@ -1331,6 +1331,21 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.207.0 (2026-07-12 - double percent-pen mutex: LDR / Mortal Reminder / Serylda's
+(DDragon MaxGroupOwnable:1 group "LastWhisper") and Void Staff / Cryptbloom (group
+"VoidPen") each carried an EMPTY unique_passive_key, so the engine's only no-double
+hook (rank_items filter_shared_uniques + collect_effects dedup, both keyed on
+unique_passive_key) could not exclude the 2nd+ member. plan_build_order delegates
+dedup to the engine, so it emitted 2-3 same-group items vs tanky targets (Jhin +
+~9 AD carries got LDR + Mortal Reminder + Serylda's; a mage vs high-MR got Void
+Staff + Cryptbloom). FIX is data-only: the COMPLETED members now share key
+"last_whisper" / "void_pen" (SR + Arena mirrors); components 3035 / 4630 stay
+unkeyed so component->completed upgrades remain recommendable. NO build_order.py
+change (the prior data-only attempt "still returned 3 LW" only because :8893 was
+never restarted). Both HZ-B precompute + display-keyed tables regenerated (12
+doubled rows backfilled). RED test agents/daemon_slayer/tests/test_double_pen_mutex.py
+asserts on plan_build_order output at resist>0 for both families.
+
 1.205.0 (2026-07-12 - Jhin lethality-crit BURST via a per-champion fight_length
 blend, layered on the 1.204.0 AS-lock fix). The carry / ds.dps scorer optimizes
 SUSTAINED auto-attack DPS, so it structurally under-values an AS-locked crit ADC
