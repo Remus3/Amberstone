@@ -48,15 +48,25 @@ them True; `archetype_dispatch.py:214/216/217` default them off/None).
   `test_archetype_dispatch_seam.py`, `test_daemon_slayer_client_seam_forward.py`.
 - Tier: mechanically Tier-2 (Share + :8893 restart) but byte-identical output.
 
-### 0b. DSP11 revert (kit-axis) - LIVE COACH behavior change, GATED
-Do this AFTER Step 1 (the metric coherence fix covers the crit core in the coach
+### 0b. DSP11 revert (kit-axis) - RESOLVED 2026-07-13: DO NOT REVERT (see Status)
+The gate ran (`ops/audit/ds_perm_swarm/report/dsp11_gate_diff.md`) and REFUTED the
+premise below. The mechanism stays; the DATA table was refreshed instead. Original
+plan (kept for context):
+
+~~Do this AFTER Step 1 (the metric coherence fix covers the crit core in the coach
 path too - the same `rank_for_primary_archetype` chokepoint - so removing DSP11
 leaves NO coverage gap for the 6 champs; it removes a redundant, wrong-basis,
-rewind-artifact-laden hack). Gate: an offline coach-picks OFF-vs-current diff for
-the 6 champs + operator sign-off (mirrors the original C4 flip on the
-LIVE_GAME_GATED_SYNC track). Deletion surface (engine + Share twins + client +
-`archetype_dispatch.py:215,278-279` + `kit_axis_credit.py` + `.json` + builder +
-`test_kit_axis_item_credit_dsp11.py` + the obsolete `test_twitch_crit_kit_axis.py`).
+rewind-artifact-laden hack).~~ **FALSE for lethality/assassin/manamune champs** -
+Step 1a fixes CRIT-ADC coherence only; it does not surface Pyke's lethality core /
+Naafiri's Hubris / Corki's Collector. The coach-fidelity gate diff
+(`dispatch_for_coach` top-5, real comps, independent rewind cross-ref) shows DSP11
+OFF DROPS those, and rewind justifies keeping them (Pyke Axiom/Youmuu's/Opp all
+above baseline, big N). A blind revert would be a live regression. Gate: an offline
+coach-picks OFF-vs-current diff for the 6 champs + operator sign-off (mirrors the
+original C4 flip on the LIVE_GAME_GATED_SYNC track). Deletion surface (engine +
+Share twins + client + `archetype_dispatch.py:215,278-279` + `kit_axis_credit.py` +
+`.json` + builder + `test_kit_axis_item_credit_dsp11.py` + the obsolete
+`test_twitch_crit_kit_axis.py`).
 
 ### situational counter-build => WIRE (keep), do NOT prune
 `situational.py` + `replan.py` are load-bearing on the live build-plan path
@@ -143,6 +153,23 @@ follow-up slices; do NOT touch mage/tank/enchanter (clean).
 
 ## Status (2026-07-13)
 
+- STEP 0b RESOLVED = DO-NOT-REVERT + kit-axis table refreshed (2026-07-13). The
+  operator-gated coach-picks diff ran at true coach fidelity (`dispatch_for_coach`
+  top-5, frontline/squishy comps SR L14 + ARAM L16, independent rewind_history.db
+  re-query) - report `ops/audit/ds_perm_swarm/report/dsp11_gate_diff.md`. Finding:
+  DSP11 is LOAD-BEARING (not redundant) - it surfaces Pyke's Axiom Arc #1 +
+  Youmuu's #2, Naafiri's Hubris/Collector, Corki's Collector, none of which Step 1a
+  (crit-only) covers; a blind revert = live regression. BUT the tightened rewind
+  cross-ref exposed 2 anti-justified table entries the baked report hid: Ezreal
+  Essence Reaver (table 56.2%/n16 -> fresh 40.9%/n22) and Naafiri Hubris/Collector
+  (at/below her 45.9% baseline). ACTION: keep the mechanism, refresh the DATA table.
+  `build_kit_axis_item_credit.py` gained a fresh-DB re-validation gate (buried-winner
+  floats must clear the current all-mode baseline; off-class un-strip staples keep
+  within a band); rebuilt table drops Ezreal ER + Naafiri entirely + Corki Muramana
+  / Quinn Collector+Mortal (all live-inert below-baseline), keeps Pyke/Corki-Collector
+  /Nilah/Senna + Ezreal Trinity. Data-only Tier-2 (no ENGINE bump - engine default-OFF
+  is byte-identical; Share sync + :8893 restart). DS suite 8404 + dispatch consumers
+  106 green. The DSP11 mechanism DELETION (original 0b) is CANCELLED.
 - STEP 1a SHIPPED (core-side Tier-1, main 77f56d70): the coherence re-rank +
   kit_synergy spellblade refinement + derive_kit_weights marksman-precedence fix.
   NEW `core/build_planner/coherence.py`. Deleted the obsolete
