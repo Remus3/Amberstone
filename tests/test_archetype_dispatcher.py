@@ -107,14 +107,41 @@ class CarryRoutingTests(unittest.TestCase):
 
     @mock.patch("core.daemon_slayer_client.rank_for")
     def test_carry_propagates_target_armor(self, mock_rank):
+        # Vayne is a carry that is NOT in the fight_length allow-map, so the L4
+        # squishy-carry target swap does not apply and the caller's target
+        # propagates verbatim (this test isolates the propagation plumbing).
+        mock_rank.return_value = _make_dps_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Vayne", "carry", level=11, item_ids=[],
+            target_armor=120.0, target_mr=80.0,
+        )
+        kwargs = mock_rank.call_args.kwargs
+        self.assertEqual(kwargs["target_armor"], 120.0)
+        self.assertEqual(kwargs["target_mr"], 80.0)
+
+    @mock.patch("core.daemon_slayer_client.rank_for")
+    def test_carry_mapped_burst_champ_swaps_to_squishy_target(self, mock_rank):
+        # L4 crit-burst fix: a champion IN the fight_length allow-map (Caitlyn)
+        # is a burst carry that deletes the enemy squishy carry, so the caller's
+        # tanky team-average target is REPLACED with the squishy-carry stat line
+        # before rank_for. The swap is on by default (apply_squishy_burst_target)
+        # and lowers target_armor well below the passed 120.0.
         mock_rank.return_value = _make_dps_rows(1)
         daemon_slayer_client.rank_for_primary_archetype(
             "Caitlyn", "carry", level=11, item_ids=[],
             target_armor=120.0, target_mr=80.0,
         )
         kwargs = mock_rank.call_args.kwargs
-        self.assertEqual(kwargs["target_armor"], 120.0)
-        self.assertEqual(kwargs["target_mr"], 80.0)
+        self.assertLess(kwargs["target_armor"], 120.0)
+        # The opt-out (used by the offline build_order_variants) restores verbatim
+        # propagation even for a mapped champ.
+        mock_rank.reset_mock()
+        mock_rank.return_value = _make_dps_rows(1)
+        daemon_slayer_client.rank_for_primary_archetype(
+            "Caitlyn", "carry", level=11, item_ids=[],
+            target_armor=120.0, target_mr=80.0, apply_squishy_burst_target=False,
+        )
+        self.assertEqual(mock_rank.call_args.kwargs["target_armor"], 120.0)
 
 
 class BruiserRoutingTests(unittest.TestCase):
