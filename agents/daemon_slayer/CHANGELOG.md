@@ -1331,6 +1331,8 @@ ENGINE_VERSION 1.10.0):
 
 ## ENGINE version changelog (former __init__ comment block)
 
+1.210.0 (2026-07-13 - Tiamat-tree item-active TOTAL-AD physical AoE (R113): Tiamat 3077 Crescent 75% AD, Ravenous 3074 / Profane 6698 / Stridebreaker 6631 (+ Arena mirrors) 80% AD once-per-cast actives now ride the DSV8 assume_physical_burst burst window via a new END-appended physical_burst_total_ad_ratio field (TOTAL AD, vs Goredrinker's BASE-AD path). Default-OFF byte-identical. Source: Riot Data Dragon / Meraki 16.13.1.)
+
 1.209.0 (2026-07-13 - Overlord's Bloodmail Retribution caster-missing-HP AD
 steroid (R111): NEW ItemEffect.missing_hp_ad_amp_max_pct (0.12 SR 2501 / 0.175
 Arena 447111) folded into compute_dps + compute_burst behind the default-OFF

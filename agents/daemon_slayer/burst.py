@@ -1132,9 +1132,12 @@ def compute_burst_damage(
     # of the DSV6 block above. assume_physical_burst=False ->
     # physical_burst_damage stays 0.0, total_burst unchanged (byte-identical).
     # When True, an item active that leads with physical damage (Goredrinker
-    # 226630 Thirsting Slash: 175% BASE AD in a 450 radius, Meraki 16.13.1)
-    # lands once in the burst window: pre-mit physical = sum(base +
-    # base_ad_ratio * ctx.base_ad) across items, armor-mitigated (PHYSICAL
+    # 226630 Thirsting Slash: 175% BASE AD in a 450 radius, Meraki 16.13.1;
+    # + R113 (1.210.0) the four Tiamat-tree actives - Tiamat 3077 75% / Ravenous
+    # 3074 / Profane 6698 / Stridebreaker 6631 + Arena mirrors 80% - off TOTAL
+    # AD) lands once in the burst window: pre-mit physical = sum(base +
+    # base_ad_ratio * ctx.base_ad + total_ad_ratio * (ctx.base_ad +
+    # ctx.bonus_ad)) across items, armor-mitigated (PHYSICAL
     # routing) + mode_mult. NO amp layer: the engine has no physical analogue
     # of total_magic_amp_multiplier (magic_amp is magic-typed only - the
     # periodic layer applies it to MAGIC procs exclusively, dps.py
@@ -1147,7 +1150,7 @@ def compute_burst_damage(
     physical_burst_damage = 0.0
     if assume_physical_burst:
         physical_burst_raw = total_physical_burst_damage(
-            item_effects, ctx.base_ad
+            item_effects, ctx.base_ad, ctx.base_ad + ctx.bonus_ad
         )
         if physical_burst_raw > 0.0:
             physical_burst_mit = _mitigation_factor(
