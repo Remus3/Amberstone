@@ -143,3 +143,63 @@
                              rgba(255, 255, 255, 0.12) 0);
   pointer-events: none;
 }
+
+/* R102 - COUNTER row: situational counter-build hints (active_match.js
+   _counterChip, fed by /api/build-plan counter_hints). A horizontal strip of
+   compact chips, each naming a counter criterion (resist / antiheal / pen /
+   tenacity ...) with a short live detail. The honest no-data hide lives in the
+   JS - the row only appends when counter_hints is a non-empty array, so there
+   is no empty-state rule here. ASCII only (repo hard rule). */
+.counter-strip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.counter-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--fs-xs, 16px);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #303040);
+  background: var(--surface-2, #1b1d27);
+}
+
+/* bold criterion label (ARMOR / ANTIHEAL / ...) */
+.counter-chip-label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* dimmer live detail (enemy 78% physical). Inherits the chip font-size, so it
+   stays at the --fs-xs (16px) readable floor - never shrunk below it. */
+.counter-chip-detail {
+  color: var(--text-faint, #9aa0b5);
+}
+
+/* satisfied - the criterion is already met (calmer green edge + label). */
+.counter-chip--ok {
+  border-color: #6ad06a;
+}
+.counter-chip--ok .counter-chip-label {
+  color: #6ad06a;
+}
+
+/* gap - the criterion needs attention. Cyan #6cf (the overlay next/pop accent)
+   so an open counter reads as the actionable buy. */
+.counter-chip--gap {
+  border-color: #6cf;
+}
+.counter-chip--gap .counter-chip-label {
+  color: #6cf;
+}
+
+/* high-severity gap - a stronger 2px border so the urgent counter dominates
+   the strip (redundant with the label color, per WCAG 1.4.1). */
+.counter-chip--high {
+  border-width: 2px;
+}
