@@ -275,5 +275,44 @@ class StructuralGuardTests(unittest.TestCase):
         self.assertNotIn(needle, self._SRC.read_text(encoding="utf-8"))
 
 
+# --------------------------------------------------------------------------- #
+# R103 enemy_items enrichment - counter_hints ONLY; the DS-scored plan stays
+# byte-identical whether or not enemy_items is present (the champion-only
+# profile that feeds loop.tick is never enriched). All ids VERIFIED present in
+# data/meta/ddragon_items.json (3075 Thornmail armor, 3036 Lord Dominik's +
+# 6694 Serylda's pct-armor-pen). These call the REAL situational profile
+# builder (the seed_fn fake only stubs the DS half).
+# --------------------------------------------------------------------------- #
+class EnemyItemsCounterHintTests(unittest.TestCase):
+    def test_enemy_items_do_not_move_the_ds_plan(self):
+        # enemies=[Garen] makes the champion-only profile non-None so
+        # situational_fit engages IDENTICALLY with and without enemy_items -
+        # live[]/meta[] must be byte-identical; only counter_hints reacts.
+        base = {"champion": "Miss Fortune", "items": ["3075"],
+                "enemies": ["Garen"]}
+        resp_a = _post(dict(base))
+        resp_b = _post({**base, "enemy_items": [["3036", "6694"]]})
+        # ENGINE INVARIANCE - the DS plan is untouched by enemy_items.
+        self.assertEqual(resp_a["live"], resp_b["live"])
+        self.assertEqual(resp_a["meta"], resp_b["meta"])
+        # The enemy pen items add the C4 hp_vs_pen chip the no-items response
+        # lacks - proving the enrichment reached counter_hints and nothing else.
+        crit_a = {h["criterion"] for h in resp_a["counter_hints"]}
+        crit_b = {h["criterion"] for h in resp_b["counter_hints"]}
+        self.assertNotIn("hp_vs_pen", crit_a)
+        self.assertIn("hp_vs_pen", crit_b)
+        self.assertTrue(resp_b["counter_hints"])
+
+    def test_enemy_items_surface_positive_counter_hint(self):
+        # Enemy stacks penetration + we own a resist -> a hp_vs_pen (C4) chip;
+        # the chips are plain dicts carrying the ``criterion`` field.
+        resp = _post({"champion": "Miss Fortune", "items": ["3075"],
+                      "enemies": ["Garen"],
+                      "enemy_items": [["3036", "6694"]]})
+        self.assertTrue(resp["ok"])
+        crits = {h["criterion"] for h in resp["counter_hints"]}
+        self.assertIn("hp_vs_pen", crits)
+
+
 if __name__ == "__main__":
     unittest.main()
