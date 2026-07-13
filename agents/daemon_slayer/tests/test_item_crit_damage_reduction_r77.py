@@ -166,7 +166,7 @@ class ComputeEhpCritDrTests(unittest.TestCase):
 
 class EngineVersionTests(unittest.TestCase):
     def test_engine_version_bumped(self):
-        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.205.0")
+        self.assertEqual(daemon_slayer.ENGINE_VERSION, "1.206.0")
 
 
 if __name__ == "__main__":
