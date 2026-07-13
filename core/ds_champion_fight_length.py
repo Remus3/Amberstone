@@ -32,9 +32,12 @@ WHY AN EXPLICIT ALLOW-MAP, not a heuristic
 ------------------------------------------
 Gated per-champion (mirroring the sibling ``_passive_as_lock_overrides`` and the
 ARAM archetype-override table): a champion is calibrated only when its meta is
-verified to be burst-carry. SUSTAINED / on-hit crit marksmen (Jinx, Ashe,
-Caitlyn, Kog'Maw, Twitch, Aphelios) whose value IS integrated DPS are
-DELIBERATELY absent -> ``None`` -> their carry ranking is byte-identical.
+verified to be burst-carry. GENUINELY sustained marksmen whose value IS
+integrated auto-attack DPS - Ashe (slow-stacking Frost Shot, no crit steroid),
+Kog'Maw (arch=mage: ability-DPS, not this scorer), Aphelios (long-fight gun
+rotation) - stay DELIBERATELY absent -> ``None`` -> their carry ranking is
+byte-identical. The crit-burst marksmen Jinx / Caitlyn / Twitch / Draven /
+Samira were ALSO absent until L3 (see below) reversed that on operator evidence.
 
 Jhin (pilot)
 ------------
@@ -55,6 +58,41 @@ combo window is a near-instant 4th-shot execute + R, not a sustained fight). See
 the sibling AS-lock fix (agents/daemon_slayer/_passive_as_lock_overrides.py):
 the two are orthogonal and complementary (AS-lock corrects the sustained term's
 CORRECTNESS; fight_length re-weights burst-vs-sustained).
+
+Crit ADCs (L3, 2026-07-13)
+--------------------------
+The DS crit-burst fix (docs/specs/2026-07-13-ds-crit-burst-fix.md, lever L3)
+adds five crit-burst marksmen. Their real value is a SHORT-TTK crit rotation
+(crit one-shots + execute + Runaan-AoE-through-ult multi-kills) vs squishy
+carries, NOT sustained uptime vs a tank - so the sustained ds.dps scorer hands
+them an on-hit stat-stick build (BORK / Kraken lead; Infinity Edge buried #4-8;
+The Collector deeper). Operator evidence: the crit build (The Collector / IE /
+Yun Tal / Runaan's / Bloodthirster) scored 3 pentas + 2 quadras in one game
+where the on-hit build did not. This REVERSES the "deliberately absent,
+genuinely sustained" exclusion these five previously carried.
+
+Per-champion fight_length, validated in-process (2026-07-13) via
+``rank_for_primary_archetype`` at the live tanky mode-curve target (armor
+105-158 / HP 2430-3260, levels 13 + 16). Engaging ANY fight_length in
+[0.3, 0.75] identically lifts Infinity Edge into the top-4 and demotes BORK off
+#1 (to ~#5); the lift is front-loaded at 0.3 and flat to 0.75, so the pick
+within that band is kit-driven, not metric-forced:
+  * Draven 0.3, Samira 0.3 - pure burst (snowball Q-crit close-out; melee
+    all-in dash + R combo). The spec-confirmed floor; their true fight is
+    near-instant.
+  * Twitch 0.5, Caitlyn 0.5, Jinx 0.5 - retain a real sustained component
+    (Twitch E-venom DoT + ult spray; Caitlyn long-range auto DPS; Jinx
+    rocket-form ramp + Get Excited), so they take the calibrated Jhin-pilot
+    0.5, which yields an IDENTICAL lift to 0.3 in the sweep (zero lift cost)
+    while tilting less aggressively off their sustained value.
+
+L3 takes LIVE effect only because L1 (``core.build_planner.coherence``'s
+``coherence_rerank`` now respects the burst-inclusive ``effective_score`` when
+fight_length is engaged) landed first; before L1 the carry chokepoint re-sorted
+by raw ``delta_dps`` and discarded this knob. The Collector / Yun Tal
+crit-execute core stays buried (~#8-13) at the TANKY target even with
+fight_length engaged - fully surfacing it needs the squishy-carry target
+scenario (lever L4), which is out of L3 scope.
 """
 from __future__ import annotations
 
@@ -62,11 +100,24 @@ from typing import Optional
 
 # champion (normalized, see ``_norm``) -> fight_length seconds for the carry /
 # ds.dps blend. GATED allow-map: a champion ABSENT here resolves to ``None`` ->
-# byte-identical default ranking (no burst term paid). Exactly ONE entry today.
+# byte-identical default ranking (no burst term paid). Six entries: the Jhin
+# pilot + the five L3 crit-burst marksmen (see the module docstring).
 _CHAMPION_FIGHT_LENGTH: dict[str, float] = {
     # Jhin Whisper (AS-locked lethality-crit burst carry). 0.5s re-verified on
     # the AS-lock baseline ENGINE 1.204.0 - see the module docstring.
     "jhin": 0.5,
+    # L3 crit-burst marksmen (2026-07-13, docs/specs/2026-07-13-ds-crit-burst-fix.md).
+    # Per-champ FL validated in-process at the live tanky target (levels 13 + 16):
+    # any FL in [0.3, 0.75] identically lifts Infinity Edge into the top-4 and
+    # demotes BORK off #1; the pick within that flat band is kit-driven.
+    # Pure-burst (snowball Q-crit close-out / melee all-in dash + R) -> 0.3 floor:
+    "draven": 0.3,
+    "samira": 0.3,
+    # Retain a sustained component (venom DoT + ult / long-range auto / rocket
+    # ramp) -> the calibrated Jhin-pilot 0.5 (identical lift to 0.3, gentler tilt):
+    "twitch": 0.5,
+    "caitlyn": 0.5,
+    "jinx": 0.5,
 }
 
 
