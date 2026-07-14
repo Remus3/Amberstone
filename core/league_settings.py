@@ -16,6 +16,8 @@ ASCII only (repo hard rule).
 from __future__ import annotations
 
 import os
+import stat
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -38,6 +40,19 @@ class LeagueHudSettings:
     flip_minimap: bool
     native_w: Optional[int]
     native_h: Optional[int]
+
+
+# Per-resolved-path parse cache for read_hud_settings, keyed on the file's
+# (st_mtime_ns, st_size). WHY mtime-guarded and NOT process-lifetime: game.cfg
+# is live operator HUD settings, not patch-static - the operator can change
+# MinimapScale mid-session, so a lifetime cache would serve a stale minimap. The
+# mtime bump on any edit invalidates the entry and forces a fresh parse. Guarded
+# by a lock because read_hud_settings runs on the dashboard build_state path
+# (concurrent /api/state polls, about once a second). A cached value of None is
+# valid (a readable file with no [HUD] section); a transient read error is never
+# cached, so a hiccup does not poison the entry.
+_CACHE: dict[str, tuple[int, int, Optional[LeagueHudSettings]]] = {}
+_CACHE_LOCK = threading.Lock()
 
 
 def _cfg_path(path: Optional[str]) -> str:
@@ -76,19 +91,35 @@ def read_hud_settings(path: Optional[str] = None) -> Optional[LeagueHudSettings]
     None is also returned when there is no [HUD] section (we cannot ground the
     minimap without it). A present-but-non-numeric MinimapScale degrades to the
     League default 1.0 rather than failing the whole read.
+
+    The result is cached per resolved path, keyed on the file's (st_mtime_ns,
+    st_size); the common file-unchanged call skips the read + INI scan. See the
+    _CACHE comment for why the guard is mtime-based, not process-lifetime.
     """
     p = _cfg_path(path)
+    # os.stat replaces the old is_file() check: a missing file raises OSError
+    # here (fail soft -> None) and the S_ISREG guard preserves the old "regular
+    # files only" semantics (a directory / device yields None, never raises).
     try:
-        if not Path(p).is_file():
-            return None
+        st = os.stat(p)
+    except OSError:
+        return None
+    if not stat.S_ISREG(st.st_mode):
+        return None
+
+    cache_key = (st.st_mtime_ns, st.st_size)
+    with _CACHE_LOCK:
+        cached = _CACHE.get(p)
+        if cached is not None and cached[:2] == cache_key:
+            return cached[2]
+
+    try:
         raw = Path(p).read_text(encoding="utf-8", errors="replace")
     except OSError:
+        # Transient read error: fail soft, but do NOT cache (do not poison it).
         return None
 
     sections = _parse_ini(raw)
-    hud = sections.get("HUD")
-    if not hud:
-        return None
 
     def _flt(section: dict[str, str], key: str, default: float) -> float:
         v = section.get(key)
@@ -108,14 +139,23 @@ def read_hud_settings(path: Optional[str] = None) -> Optional[LeagueHudSettings]
         except (TypeError, ValueError):
             return None
 
-    scale = _flt(hud, "MinimapScale", 1.0)
-    flip = str(hud.get("FlipMiniMap", "0")).strip() in ("1", "true", "True")
-    return LeagueHudSettings(
-        minimap_scale=scale,
-        flip_minimap=flip,
-        native_w=_int("Width"),
-        native_h=_int("Height"),
-    )
+    hud = sections.get("HUD")
+    result: Optional[LeagueHudSettings]
+    if not hud:
+        result = None
+    else:
+        scale = _flt(hud, "MinimapScale", 1.0)
+        flip = str(hud.get("FlipMiniMap", "0")).strip() in ("1", "true", "True")
+        result = LeagueHudSettings(
+            minimap_scale=scale,
+            flip_minimap=flip,
+            native_w=_int("Width"),
+            native_h=_int("Height"),
+        )
+
+    with _CACHE_LOCK:
+        _CACHE[p] = (st.st_mtime_ns, st.st_size, result)
+    return result
 
 
 def minimap_rect_payload(
