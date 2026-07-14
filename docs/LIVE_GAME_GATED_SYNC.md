@@ -1962,3 +1962,5 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   `assume_item_lowhp_magic_crit=True` + a live `target_current_hp_pct`, eyeball a Shadowflame carry's burst ranks vs
   a sub-40% target across ~2 real games (PRACTICE-SR own-build suffices - deterministic gate, no midpoint;
   build-dependent re-rank if armed in a ranker). DS `:8893` restart on flip. Does NOT block any further stage.
+
+- 2026-07-14 CDragon per-instance resource guard for MissFortune R full-channel total (`AbilitiesSnapshot.load(apply_cdragon_resource_guard=True)`, ENGINE 1.213.0, default-OFF; R127). The prefer_cdragon_ratios cutover undercounts MF R ~17.7x by overwriting the Meraki 1050% total with the CDragon 60% per-wave atomic (MF total_ability_dps 14.9 -> 27.4 when guarded). FLIP = set the guard True at the default abilities loader (RC-side coach caller / `abilities.load_default`) + reload; VALIDATE in a live or replayed MissFortune game (R DPS should ~13x, build reco unaffected for other champs) before default-ON.
