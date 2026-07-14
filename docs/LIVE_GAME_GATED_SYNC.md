@@ -1928,6 +1928,12 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   Jak'Sho/FoN holder's blended-EHP ranks across ~2 real games (the 0.5 ramp midpoint is conservative, not
   over-credited on a short-fight clock; build-dependent re-rank if armed in a ranker - Voidborn's %-of-bonus
   scales with the rest of the build). DS `:8893` restart on flip. Does NOT block any further stage.
+  R124 (2026-07-14, ENGINE 1.212.0) extends the SAME flag with its first ALWAYS-ON entries (conditional_probability
+  1.0, no ramp, EXACT): Shield of Molten Stone (443058 / mirror 663058) +20% of TOTAL armor + Cloak of Starry Night
+  (443059 / mirror 663059) +20% of TOTAL MR (prismatic Arena items, DDragon 16.13.1, Meraki-absent), family-deduped
+  base+mirror. When armed these raise an Arena Molten Stone / Starry Night holder's physical (armor) / magical (MR)
+  EHP EXACTLY (no amortization). The operator flip-eyeball for `apply_item_resist_grants` now also covers these
+  prismatic ids; same flag, same DS `:8893` restart on flip.
 - 2026-07-11 item-side BONUS-HP-AMP "Warmog's Vitality" EHP-NUMERATOR seam (`compute_ehp(apply_item_bonus_hp_amp=)`,
   ENGINE 1.200.0, default-OFF; R107). NEW `_item_bonus_hp_amp` registry (Warmog's Armor 3083 + Arena mirror 443083
   = 0.12 of bonus-health-from-items each; MAX over the equipped family, a UNIQUE passive over a shared bonus-HP
