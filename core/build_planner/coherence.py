@@ -124,15 +124,19 @@ def coherence_rerank(rows, champion, top: int = 6, fight_length: Optional[float]
     Two byte-identical early-returns leave a build UNCHANGED (``rows[:top]``):
       * a non-carry archetype (champ_kit_traits archetype) - the clean mage /
         tank / enchanter scorers never move (Kog'Maw is arch=mage and lands here);
-      * a caster / spellblade marksman (is_caster_marksman - a Marksman with the
-        Mage tag: Ezreal, Corki, Kai'Sa, Miss Fortune). Those kits genuinely
-        charge Sheen-line spellblade procs + mana on an ability tempo, so the
-        spellblade dock must not strip their real core. Narrowed per the
-        "narrow the fold, widen on test evidence" rule.
+      * a genuine caster / spellblade marksman (is_caster_marksman - a Marksman
+        with the Mage tag AND heavy ability-AP scaling: Ezreal, Corki, Smolder).
+        Those kits genuinely charge Sheen-line spellblade procs + mana on an
+        ability tempo, so the spellblade dock must not strip their real core.
+        Narrowed per the "narrow the fold, widen on test evidence" rule.
 
     The pure crit / on-hit ADCs (Jinx / Caitlyn / Ashe / Twitch / Draven /
-    Lucian / ...) carry no Mage tag and DO get the dock. (Zeri surfaces an AP-on-
-    AD-marksman artifact class - Lich Bane / Liandry's - this fix does not target;
+    Lucian / ...) carry no Mage tag and DO get the dock. So do the crit / on-hit
+    ADCs that carry an INCIDENTAL secondary Mage tag but no ability-caster core
+    (Jhin / Kai'Sa / Varus / Miss Fortune) - the ability-AP floor in
+    is_caster_marksman stops the tag alone from sparing their Essence Reaver /
+    Eclipse artifact (gate tightened 2026-07-13). (Zeri surfaces an AP-on-AD-
+    marksman artifact class - Lich Bane / Liandry's - this fix does not target;
     that is a separate future slice.) The live client only calls this on the
     carry branch anyway; the gates are a belt-and-suspenders guarantee.
 
