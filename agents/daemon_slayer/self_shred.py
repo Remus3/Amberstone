@@ -48,7 +48,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from .abilities import AbilitiesNotFound, AbilitiesSnapshot, AbilityForm
+from .abilities import AbilitiesNotFound, AbilitiesSnapshot, AbilityForm, load_default
 from .dps import _armor_factor
 from .modifier_blocks import classify_modifier_kind
 
@@ -321,7 +321,7 @@ def compute_self_shred_uplift(
         )
 
     try:
-        snap = snapshot or AbilitiesSnapshot.load()
+        snap = snapshot or load_default()
     except Exception as exc:  # fail-soft: snapshot load issue
         return _no_shred_result(
             champ, lvl, target_armor, target_mr,
