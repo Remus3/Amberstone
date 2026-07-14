@@ -191,7 +191,7 @@ class ChainlacedVersionPinTests(unittest.TestCase):
     """R99 bumps ENGINE_VERSION to 1.192.0."""
 
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.213.0")
+        self.assertEqual(ENGINE_VERSION, "1.214.0")
 
 
 if __name__ == "__main__":
