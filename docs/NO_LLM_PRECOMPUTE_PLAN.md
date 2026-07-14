@@ -50,6 +50,31 @@ this session's pending work at the bottom.
   atlas (docs/OBS_CV_MINIMAP_PLAN.md + the OCR-first tier), NOT more det-choices
   templater work (that lever is now CODE-COMPLETE for ARAM + Arena).
 
+- **2026-07-14 - Lane E CV atlas PERSISTENCE layer SHIPPED (R121, gemini-loop
+  cycle 19):** NEW offline generator core/vision_atlas_precompute.py builds the
+  missing PRECOMPUTED-ATLAS layer this plan calls for ("freeze the atlas,
+  versioned by patch", Architecture-sketch section). The R96 CV template-match
+  tier (core/vision_template_match.py) rescanned data/icons/{champions,items,
+  spells}/*.png every cold start with NO versioned manifest; the generator now
+  emits a deterministic (no-timestamp, stable-diff) versioned JSON index
+  data/daemon_slayer/vision_atlas_manifest.json - schema_version 1, patch
+  16.13.1, per-category stem -> dhash 64-bit hex, 227 icons (173 champions + 36
+  items + 18 spells) - reusing vtm.available_categories/list_ids/_CATEGORY_DIRS
+  so the index can NEVER drift from the matcher's own atlas (verifier confirmed
+  manifest keys == vtm.list_ids per category). Adds a dependency-light Hamming
+  nearest() prefilter (numpy math for the dhash, cv2 only for PNG decode) so a
+  future runtime matcher can shrink candidates before the expensive Pearson
+  slide - the "feature hashes ... for fast nearest-match" the atlas sketch calls
+  for. BUILD + PERSIST ONLY - no coach flip, no live wire, ENGINE-IMPACT NONE;
+  the CV-tier live wiring + the confidence-weighted Live-Client/CV fusion stay
+  operator/live-gated (do-not-flip-blind). TDD tests/test_vision_atlas_
+  precompute.py (15 tests: pure dhash/hamming/hex64/nearest/roundtrip run
+  CI-always + cv2-gated icon/build/self-match). Manifest lives at the
+  data/daemon_slayer/ top level so it stays OUT of the DS Share mirror (mirror
+  carries only current.txt + <patch>/**; ds_share_sync --check green). NEXT Lane
+  E: the OCR region-map atlas (data/vision_regions.json extension) + the
+  confidence-weighted Live-Client/CV PARTIAL-READ fusion layer.
+
 **Premise corrections (verified vs HEAD 2026-07-04, slice 1 spec pass):**
 (1) SR is NOT zero-Haiku at the code level - coaches/sr_coach.py subclasses
 CoachIntegration which calls Haiku at coach_integration/_coach.py:370, so the
