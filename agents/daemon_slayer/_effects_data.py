@@ -1901,8 +1901,9 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Horizon Focus",
         defensive_only=True,
         note=(
-            "Horizon Focus: Hypershot 15% damage amp requires range 600+ and ability "
-            "hit (range conditional + ability-cast schema gap); no sustained DPS contribution"
+            "Horizon Focus: Hypershot reveals ability-hit targets at 600+ range and Focus "
+            "reveals nearby enemies (DDragon 16.13.1); the legacy damage amp was reworked "
+            "out - pure vision/utility, no DPS contribution exists to model (R116)"
         ),
     ),
     "3118": ItemEffect(
@@ -3778,7 +3779,7 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="224628",
         name="Horizon Focus",
         defensive_only=True,
-        note="Horizon Focus (Arena 224628): Hypershot slowed/immobilized amp - ability-trigger; deferred",
+        note="Horizon Focus (Arena 224628): Hypershot reveal-only like SR 4628 (DDragon 16.13.1); legacy slow/immobilize amp reworked out, no DPS contribution exists to model (R116)",
     ),
     "224629": ItemEffect(
         item_id="224629",
