@@ -16,6 +16,12 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-13 (R113-fix gemini-loop cycle - FALSE-POSITIVE REGRESS #5 + RC-suite guard; LEDGER 882)
+
+Directive ordered a "missing" test for the R113 total-AD physical burst seam (auditor flagged HEAD `374e8f44` REGRESS). DISPROVEN vs ground truth: the seam was tested - DS-dir `test_item_hydra_active_burst_r113.py` (447 lines / 27 tests) + Share mirror shipped in the R113 FEAT commit `93cac79c` (verifier 27/27 fresh; LEDGER 881 recorded it). `374e8f44` is the R113 FINALIZE (re-stamp) commit; the auditor diffed it in isolation = same diff-window misattribution as cycle-13 (#4). Now #5 of the cycles-7/8/9/13 family. Root cause OPEN (loop infra): R61's `audit_range` (`d1a143d4`) needs a controller RESTART to activate + a merge second-parent window fix (`93cac79c` enters HEAD via the `b003dac5` merge). ACTION: shipped a legitimate non-duplicative RC-suite guard `tests/test_item_hydra_active_burst_r113.py` (12 tests; RC CI had zero `physical_burst_total_ad_ratio` coverage; not the cycle-13 duplicate anti-pattern). verifier CONFIRM: RC 12/12 + DS-dir 27/27 + collect 11623/0-err + ruff clean + zero engine diffs. Test-only, ENGINE-IMPACT NONE (under `tests/`, no Share/DS bounce). PART C escalation -> `gemini_ask.txt`: fix the audit window + REDIRECT the loop to the operator's overnight priority chain (#1 `docs/specs/2026-07-13-ds-crit-burst-fix.md`). `done_sentinel --tests 12 --regressions 0`.
+
+---
+
 # 2026-07-13 (R111 gemini-loop cycle 3 - Overlord's Bloodmail Retribution missing-HP AD offense seam; ENGINE 1.209.0; LEDGER 879)
 
 DS-sweep rotation via a fresh adversarial Meraki(16.13.1)-vs-registry refute pass.
