@@ -61,6 +61,27 @@ def _log_count(root: Path, rng: str) -> int:
     return len([ln for ln in out.splitlines() if ln.strip()])
 
 
+def _build_merge_repo(root: Path) -> dict:
+    """feat -> merge --no-ff (feature = the merge SECOND parent) -> docs -> test.
+
+    The exact R113 topology that produced FALSE-POSITIVE REGRESS #5: an engine
+    change lands on a feature branch, gets merged via `git merge --no-ff` (so the
+    feature commit is the merge's SECOND parent), then a docs-sync and a test
+    commit sit on top. A first-parent-only `~2` floor walks straight past the
+    second-parent feature, leaving it OUTSIDE the audit window."""
+    _init(root)
+    c0 = _commit(root, "base.txt")                                   # clean baseline
+    main = _run(root, "rev-parse", "--abbrev-ref", "HEAD")
+    _run(root, "checkout", "-q", "-b", "feature")
+    c_feat = _commit(root, "engine.py", "def burst():\n    return 42\n")   # the real engine FIX
+    _run(root, "checkout", "-q", main)
+    _run(root, "merge", "--no-ff", "-m", "merge feature", "feature")       # feature = 2nd parent
+    c_merge = _run(root, "rev-parse", "HEAD")
+    c_docs = _commit(root, "LEDGER.md", "docs sync of the engine seam")    # finalize docs
+    c_test = _commit(root, "test_seam.py", "def test_seam():\n    assert True\n")  # regression guard
+    return {"c0": c0, "feat": c_feat, "merge": c_merge, "docs": c_docs, "test": c_test}
+
+
 # --- the exact false-positive: docs-sync commit following a fix ---------------
 
 def test_docs_after_fix_spans_multiple_commits(lc, tmp_path, monkeypatch):
@@ -127,3 +148,37 @@ def test_auditor_signature_backward_compatible(lc):
             mock.patch.object(lc, "git", return_value="someoutput"):
         verdict = lc.auditor("aaaaaa", "bbbbbb")   # legacy 2-arg call
     assert verdict.startswith("VERDICT: CLEAN")
+
+
+# --- FALSE-POSITIVE REGRESS #5: feature merged via a merge SECOND parent ------
+
+def test_merge_second_parent_feature_in_window(lc, tmp_path, monkeypatch):
+    """feat-then-merge-then-finalize: the second-parent feature (and its diff) MUST
+    be inside the audit window. A first-parent `~2` floor lands on the merge, so
+    the two-dot window excludes the merged engine change; the auditor then sees
+    docs+tests asserting a change with no code in range -> false-positive REGRESS."""
+    r = _build_merge_repo(tmp_path)
+    monkeypatch.setattr(lc, "ROOT", tmp_path)
+    # merge cycle audited CLEAN (clean anchor = the docs commit); the test is HEAD
+    rng = lc.audit_range(r["docs"], r["test"])
+    log_shas = subprocess.run(
+        ["git", "-C", str(tmp_path), "log", "--format=%H", rng],
+        capture_output=True, text=True).stdout
+    assert r["feat"] in log_shas, f"second-parent feature commit must be in {rng}"
+    diff = subprocess.run(
+        ["git", "-C", str(tmp_path), "diff", rng],
+        capture_output=True, text=True).stdout
+    assert "engine.py" in diff, f"the engine change the docs document must be in {rng}"
+
+
+def test_merge_second_parent_in_window_no_clean_anchor(lc, tmp_path, monkeypatch):
+    """Same merge topology with no clean anchor recorded: the bare HEAD~2 floor
+    alone would still skip the second-parent feature. The merge-aware floor must
+    still pull the engine diff into the window."""
+    r = _build_merge_repo(tmp_path)
+    monkeypatch.setattr(lc, "ROOT", tmp_path)
+    rng = lc.audit_range(None, r["test"])
+    diff = subprocess.run(
+        ["git", "-C", str(tmp_path), "diff", rng],
+        capture_output=True, text=True).stdout
+    assert "engine.py" in diff, f"feature diff must be in {rng} even with no clean anchor"
