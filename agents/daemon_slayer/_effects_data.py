@@ -1714,9 +1714,20 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         name="Fimbulwinter",
         defensive_only=True,
         # 400 HP + 1000 mana + 15 AH. Post-transformation form of Winter's
-        # Approach. Everfrost passive: first ability hit in combat freezes
-        # target briefly. CC utility, ability-bound - not a per-auto DPS proc.
-        note="Fimbulwinter: Awe (8% max mana as HP) + Everfrost CC on first ability hit (ability-bound utility); no DPS contribution",
+        # Approach. Awe (8% max mana as HP) is credited separately by the
+        # _item_mana_health seam. Everlasting (Meraki 16.13.1): immobilizing (or
+        # slowing, if melee) an enemy champion grants a 100 (+4.5% current mana)
+        # GENERIC shield for 3s (8s CD). A per-fight-cooldown utility shield, so
+        # opt-in + live-gated (assume_fimbulwinter_shield), NOT the always-on
+        # lifeline pool - hence no unique_passive_key="lifeline" (it is an
+        # independent shield that stacks with a lifeline). "current mana" is
+        # resolved against MAX mana (steady-state convention; the trigger fires
+        # while mana is typically high). The +80% multi-enemy arm is NOT modelled
+        # (conservative base magnitude).
+        shield=ItemShield(
+            flat=100.0, max_mana_scaling=0.045, damage_type=ANY, default_off=True
+        ),
+        note="Fimbulwinter: Awe (8% max mana as HP, separate seam) + Everlasting (100 +4.5% max mana generic shield, opt-in); no DPS contribution",
     ),
     "4401": ItemEffect(
         item_id="4401",
@@ -5166,7 +5177,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="223121",
         name="Fimbulwinter",
         defensive_only=True,
-        note="Fimbulwinter (Arena 223121): same as SR 3121 - shield passive on ability near enemies, no DPS proc",
+        # Mirror of SR 3121 Everlasting (opt-in assume_fimbulwinter_shield).
+        shield=ItemShield(
+            flat=100.0, max_mana_scaling=0.045, damage_type=ANY, default_off=True
+        ),
+        note="Fimbulwinter (Arena 223121): same as SR 3121 - Everlasting 100 +4.5% max mana generic shield (opt-in), no DPS proc",
     ),
     "223158": ItemEffect(
         item_id="223158",
@@ -5280,7 +5295,11 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
         item_id="323121",
         name="Fimbulwinter",
         defensive_only=True,
-        note="Fimbulwinter (ARAM 323121): same as SR 3121 - shield passive, no DPS proc",
+        # Mirror of SR 3121 Everlasting (opt-in assume_fimbulwinter_shield).
+        shield=ItemShield(
+            flat=100.0, max_mana_scaling=0.045, damage_type=ANY, default_off=True
+        ),
+        note="Fimbulwinter (ARAM 323121): same as SR 3121 - Everlasting 100 +4.5% max mana generic shield (opt-in), no DPS proc",
     ),
 
     # -- Phase 4 batch 48 (2026-05-04): Core 1xxx tier-1 components ----------

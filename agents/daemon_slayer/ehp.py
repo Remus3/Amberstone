@@ -270,6 +270,7 @@ def _collect_shields(
     assume_eclipse_shield: bool = False,
     assume_chainlaced_shield: bool = False,
     assume_seraphs_shield: bool = False,
+    assume_fimbulwinter_shield: bool = False,
 ) -> tuple[dict[str, float], tuple[tuple[str, str, float], ...]]:
     """Resolve every ``ItemShield`` across the equipped items.
 
@@ -302,8 +303,11 @@ def _collect_shields(
         # (3173) rides assume_chainlaced_shield (its Noxian Persistence magic
         # shield triggers only on taking magic damage, 15s CD). Seraph's Embrace
         # (3040 / Arena 223040 / ARAM 323040) rides assume_seraphs_shield (its
-        # Lifeline 18%-max-mana generic shield fires only at <30% HP). None is
-        # folded into the always-on lifeline pool.
+        # Lifeline 18%-max-mana generic shield fires only at <30% HP). R129
+        # Fimbulwinter (3121 / Arena 223121 / ARAM 323121) rides
+        # assume_fimbulwinter_shield (its Everlasting 100 +4.5%-max-mana generic
+        # shield fires on immobilizing an enemy, 8s CD). None is folded into the
+        # always-on lifeline pool.
         if shield.default_off:
             iid = str(item_id)
             armed = (
@@ -311,6 +315,7 @@ def _collect_shields(
                 or (assume_eclipse_shield and iid in ("6692", "226692"))
                 or (assume_chainlaced_shield and iid == "3173")
                 or (assume_seraphs_shield and iid in ("3040", "223040", "323040"))
+                or (assume_fimbulwinter_shield and iid in ("3121", "223121", "323121"))
             )
             if not armed:
                 continue
@@ -1163,6 +1168,12 @@ def compute_ehp(
     # from the pool); live default-ON flip is operator-gated. Armed per-shield so
     # it never credits Kaenic/Eclipse/Chainlaced.
     assume_seraphs_shield: bool = False,
+    # R129 (2026-07-14): default-OFF opt-in for Fimbulwinter (3121 / Arena 223121
+    # / ARAM 323121) Everlasting - 100 (+4.5% max mana) ANY (generic) shield on
+    # immobilizing an enemy, 8s CD. Byte-identical OFF (the default_off shield is
+    # dropped from the pool); live default-ON flip is operator-gated. Armed
+    # per-shield so it never credits Kaenic/Eclipse/Chainlaced/Seraphs.
+    assume_fimbulwinter_shield: bool = False,
     # B45/B46 (operator flip 2026-07-06): default-ON so the EHP scorer credits
     # Randuin's crit-DR (~+17.6% physical EHP at the assumed crit share) and
     # Plated Steelcaps' 10% basic-attack DR (~+5.3% physical EHP at the assumed
@@ -1391,6 +1402,7 @@ def compute_ehp(
         assume_eclipse_shield=assume_eclipse_shield,
         assume_chainlaced_shield=assume_chainlaced_shield,
         assume_seraphs_shield=assume_seraphs_shield,
+        assume_fimbulwinter_shield=assume_fimbulwinter_shield,
     )
     shield_any = shield_totals.get(ANY, 0.0)
     shield_phys = shield_totals.get(PHYSICAL, 0.0)
