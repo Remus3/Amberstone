@@ -129,6 +129,34 @@ def _is_ancestor(a, b):
     except (subprocess.SubprocessError, OSError):
         return False
 
+def _is_merge(sha):
+    """True iff sha is a merge commit (2+ parents). `rev-list --parents -n 1`
+    prints '<sha> <p1> <p2> ...', so >2 tokens means a merge."""
+    if not sha:
+        return False
+    return len(git("rev-list", "--parents", "-n", "1", sha).split()) > 2
+
+def _audit_floor(new_sha):
+    """The 2-commit context floor, made MERGE-AWARE.
+
+    `new_sha~2` walks FIRST parents only. A feature landed via `git merge --no-ff`
+    is the merge's SECOND parent, so whenever a docs/test/finalize commit sits on
+    top of the merge, a plain `~2` floor stops at (or just past) the merge and the
+    two-dot `base..new_sha` window EXCLUDES the merged code. The auditor then sees
+    docs asserting an engine change with no code in range -> false-positive
+    REGRESS (#5). Fix: if either of the last two first-parent commits is a merge,
+    lower the floor to that merge's FIRST parent (the pre-feature main tip, an
+    ancestor of the merged branch), so the second-parent feature commits come back
+    into the window. Fallbacks stay '' for a young repo (audit_range degrades)."""
+    floor = _rev_parse(f"{new_sha}~2")
+    for step in (f"{new_sha}~1", f"{new_sha}~2"):
+        sha = _rev_parse(step)
+        if sha and _is_merge(sha):
+            fp = _rev_parse(f"{sha}~1")
+            if fp and (not floor or _is_ancestor(fp, floor)):
+                floor = fp
+    return floor
+
 def audit_range(clean_sha, new_sha):
     """base..new_sha the gemini auditor scores each cycle (R61).
 
@@ -144,8 +172,12 @@ def audit_range(clean_sha, new_sha):
     new_sha~2, so (a) a docs commit always carries the commit(s) it documents,
     and (b) an unresolved REGRESS chain keeps its full context back to the last
     known-good state. Fallbacks for a young repo: new_sha~2 -> new_sha~1 ->
-    new_sha (a bare sha = a valid whole-tree diff)."""
-    floor = _rev_parse(f"{new_sha}~2")
+    new_sha (a bare sha = a valid whole-tree diff).
+
+    The floor is merge-aware (see _audit_floor): a feature merged via a `--no-ff`
+    merge's SECOND parent stays inside the window even when docs/test commits sit
+    on top of the merge (false-positive REGRESS #5)."""
+    floor = _audit_floor(new_sha)
     if clean_sha and floor:
         # keep the clean anchor only while it is OLDER than the 2-commit floor;
         # otherwise widen to the floor so the window is never a single commit.
