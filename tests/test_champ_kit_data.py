@@ -17,7 +17,11 @@ import unittest
 from pathlib import Path
 
 from core.archetype_picks import get_archetype_for  # noqa: F401 - parity import
-from core.build_planner.champ_kit_data import _AXES, derive_kit_weights
+from core.build_planner.champ_kit_data import (
+    _AXES,
+    derive_kit_weights,
+    is_caster_marksman,
+)
 from core.build_planner.kit_synergy import AXES as SYN_AXES
 from core.build_planner.kit_synergy import kit_weights
 
@@ -127,6 +131,38 @@ class WiredIntoKitWeights(unittest.TestCase):
         kw = kit_weights("Annie")
         for a in _AXES:
             self.assertAlmostEqual(kw[a], derived[a], places=6, msg=a)
+
+
+class CasterMarksmanGate(unittest.TestCase):
+    """is_caster_marksman gates the carry-coherence dock exemption. The broad
+    "Marksman + Mage tag" rule over-included crit / on-hit ADCs that merely carry
+    an INCIDENTAL secondary Mage tag (Jhin / Kai'Sa / Varus / Miss Fortune), so
+    the coherence dock wrongly spared their Essence Reaver / Eclipse artifacts
+    (docs/specs/2026-07-13-ds-build-coherence-refactor.md KNOWN GAP, live-
+    confirmed 2026-07-13). Tightened with an ability-AP-scaling floor: a genuine
+    ability-caster (Ezreal / Corki / Smolder) scales heavily off AP on its
+    spells; a crit auto-attacker does not.
+    """
+
+    def test_hybrid_ability_casters_are_caster_marksmen(self):
+        # Genuine spellblade / mana caster-marksmen - protected (dock-exempt).
+        for champ in ("Ezreal", "Corki", "Smolder"):
+            self.assertTrue(is_caster_marksman(champ), champ)
+
+    def test_crit_onhit_mage_tagged_adcs_are_not_caster_marksmen(self):
+        # Crit / on-hit ADCs with an incidental secondary Mage tag - NOT exempt;
+        # the coherence dock must reach them to strip the ER / Eclipse artifact.
+        for champ in ("Jhin", "Kai'Sa", "Varus", "Miss Fortune"):
+            self.assertFalse(is_caster_marksman(champ), champ)
+
+    def test_non_mage_marksmen_are_not_caster_marksmen(self):
+        # No Mage tag at all - never exempt (unchanged behavior).
+        for champ in ("Jinx", "Caitlyn", "Twitch", "Ashe"):
+            self.assertFalse(is_caster_marksman(champ), champ)
+
+    def test_unknown_champ_fail_soft(self):
+        self.assertFalse(is_caster_marksman(""))
+        self.assertFalse(is_caster_marksman("NotARealChampion"))
 
 
 if __name__ == "__main__":

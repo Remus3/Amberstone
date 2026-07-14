@@ -210,13 +210,20 @@ follow-up slices; do NOT touch mage/tank/enchanter (clean).
   - RESIDUAL artifacts live: AP-on-AD (Liandry's on Jinx) - distinct class;
     Ezreal keeps ER + Eclipse (caster-marksman exclusion also spares his Eclipse).
 - KNOWN GAPS (next widening, per "narrow first, widen on evidence"):
-  - The Mage-tag gate OVER-EXCLUDES dual-tagged non-caster marksmen: Jhin,
-    Kai'Sa, Miss Fortune revert to raw and KEEP Essence Reaver (baseline, NOT a
-    regression, but not fixed). Tightening the caster-marksman signal so it
-    protects Ezreal/Corki without excluding Jhin/Kai'Sa/MF is the next slice.
+  - RESOLVED 2026-07-13 (Step 1b, this slice): the Mage-tag gate no longer
+    OVER-EXCLUDES dual-tagged non-caster marksmen. is_caster_marksman
+    (champ_kit_data.py) now gates the Marksman+Mage tag on an ability-AP-scaling
+    floor (_ability_agg "ap" >= 2.0): genuine hybrid casters Ezreal 4.25 /
+    Corki 2.50 / Smolder 2.55 stay exempt; crit / on-hit ADCs Jhin 1.60 /
+    Kai'Sa 1.40 / Varus 1.25 / Miss Fortune 1.20 flip to DOCKED, so their
+    Essence Reaver (+ Eclipse where present) artifact is removed. Live-verified
+    via ds-preview. Core-side Tier-1 (no ENGINE bump / Share / :8893 restart);
+    RC dashboard reload. Tests: tests/test_champ_kit_data.py::CasterMarksmanGate
+    + tests/test_carry_coherence_rerank.py::...::test_mage_tagged_crit_adcs_now_docked.
   - Zeri surfaces Lich Bane / Liandry's (a DISTINCT AP-on-AD-marksman artifact
     class this fix does not target).
-  - KogMaw untouched (arch=mage -> the non-carry early-return).
+  - KogMaw untouched (arch=mage -> the non-carry early-return); Azir / Twisted
+    Fate likewise arch=mage (exempt via the early-return regardless of the gate).
 - BACKFILL OWED: regenerate the precompute build_order tables
   (`data/daemon_slayer/build_orders/<patch>/`) - they read plan_build_order. The
   LIVE overlay + coach are UNAFFECTED (they compute live through the fixed

@@ -147,23 +147,47 @@ def _resolve_champ(champ) -> dict:
     return {}
 
 
+# Ability-AP-scaling floor separating a genuine hybrid ability-caster from a crit
+# / on-hit auto-attacker that merely carries an incidental secondary Mage tag.
+# Measured against the live 16.13.1 cdragon_ability_ratios (_ability_agg "ap" =
+# summed top-rank AP scaling across the kit): genuine casters Ezreal 4.25 /
+# Corki 2.50 / Smolder 2.55 sit well above crit/on-hit ADCs Jhin 1.60 /
+# Kai'Sa 1.40 / Varus 1.25 / Miss Fortune 1.20, a clean 1.60 -> 2.50 gap; 2.0
+# cuts it with margin on both sides. (Mage-archetype Marksman+Mage champs -
+# Azir / Kog'Maw / Twisted Fate - are exempt from the coherence dock anyway via
+# its archetype early-return, so their side of this cut is immaterial.)
+_CASTER_MKS_ABIL_AP_FLOOR = 2.0
+
+
 def is_caster_marksman(champ) -> bool:
-    """True when ``champ`` is a caster / spellblade marksman - a Marksman that
-    ALSO carries the Mage secondary tag (Ezreal, Corki, Kai'Sa, Miss Fortune).
+    """True when ``champ`` is a genuine caster / spellblade marksman - a Marksman
+    that ALSO carries the Mage secondary tag AND scales heavily off ability AP
+    (Ezreal, Corki, Smolder).
 
     These kits genuinely charge Sheen-line spellblade procs and build mana / AH
     on an ability-cast tempo (Ezreal Essence Reaver / Trinity / Manamune), so the
     carry-coherence spellblade dock must NOT strip their real core - the coherence
-    re-rank excludes them (byte-identical). The pure crit / on-hit ADCs (Jinx /
-    Caitlyn / Ashe / Twitch / Draven / Lucian / Samira / Aphelios / Vayne) carry
-    no Mage tag and stay docked. Metric-derived from the DDragon tags, NOT a
+    re-rank excludes them (byte-identical).
+
+    The Marksman + Mage TAG alone is NOT enough: many crit / on-hit ADCs carry an
+    incidental secondary Mage tag (Jhin, Kai'Sa, Varus, Miss Fortune, Teemo) yet
+    build no spellblade / mana core, so the broad tag-only gate wrongly spared
+    their Essence Reaver / Eclipse artifact from the dock (live-confirmed
+    2026-07-13, docs/specs/2026-07-13-ds-build-coherence-refactor.md KNOWN GAP).
+    The ability-AP-scaling floor (_ability_agg "ap" >= _CASTER_MKS_ABIL_AP_FLOOR)
+    distinguishes the genuine hybrid ability-caster (heavy AP scaling on its
+    spells) from a crit auto-attacker (little to none). The pure crit / on-hit
+    ADCs with no Mage tag (Jinx / Caitlyn / Ashe / Twitch / Draven / Lucian) were
+    already docked. Metric-derived (DDragon tags + cdragon ability ratios), NOT a
     hand-blacklist. Fail-soft to False when the champ is unresolved.
     """
     entry = _resolve_champ(champ)
     if not entry:
         return False
     tags = set(entry.get("tags") or [])
-    return ("Marksman" in tags) and ("Mage" in tags)
+    if not (("Marksman" in tags) and ("Mage" in tags)):
+        return False
+    return _ability_agg(entry).get("ap", 0.0) >= _CASTER_MKS_ABIL_AP_FLOOR
 
 
 def _ability_agg(entry: dict) -> dict[str, float]:
