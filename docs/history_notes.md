@@ -257,6 +257,62 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-13 (R113-fix gemini-loop cycle - FALSE-POSITIVE REGRESS #5 + RC-suite guard; LEDGER 882)
+
+Directive ordered a "missing" test for the R113 total-AD physical burst seam (auditor flagged HEAD `374e8f44` REGRESS). DISPROVEN vs ground truth: the seam was tested - DS-dir `test_item_hydra_active_burst_r113.py` (447 lines / 27 tests) + Share mirror shipped in the R113 FEAT commit `93cac79c` (verifier 27/27 fresh; LEDGER 881 recorded it). `374e8f44` is the R113 FINALIZE (re-stamp) commit; the auditor diffed it in isolation = same diff-window misattribution as cycle-13 (#4). Now #5 of the cycles-7/8/9/13 family. Root cause OPEN (loop infra): R61's `audit_range` (`d1a143d4`) needs a controller RESTART to activate + a merge second-parent window fix (`93cac79c` enters HEAD via the `b003dac5` merge). ACTION: shipped a legitimate non-duplicative RC-suite guard `tests/test_item_hydra_active_burst_r113.py` (12 tests; RC CI had zero `physical_burst_total_ad_ratio` coverage; not the cycle-13 duplicate anti-pattern). verifier CONFIRM: RC 12/12 + DS-dir 27/27 + collect 11623/0-err + ruff clean + zero engine diffs. Test-only, ENGINE-IMPACT NONE (under `tests/`, no Share/DS bounce). PART C escalation -> `gemini_ask.txt`: fix the audit window + REDIRECT the loop to the operator's overnight priority chain (#1 `docs/specs/2026-07-13-ds-crit-burst-fix.md`). `done_sentinel --tests 12 --regressions 0`.
+
+---
+
+# 2026-07-13 (R111 gemini-loop cycle 3 - Overlord's Bloodmail Retribution missing-HP AD offense seam; ENGINE 1.209.0; LEDGER 879)
+
+DS-sweep rotation via a fresh adversarial Meraki(16.13.1)-vs-registry refute pass.
+NEW default-OFF `assume_caster_lowhp` seam credits Overlord's Bloodmail (SR 2501 /
+Arena 447111) "Retribution" missing-HP-scaled bonus AD - NEW field
+`missing_hp_ad_amp_max_pct` (0.12 / 0.175) folded into compute_dps + compute_burst,
+the caster-self-state parallel of the DSV2 takedown seam (0.5-of-max ramp midpoint,
+`_ASSUMED_CASTER_MISSING_HP` 0.35 / cap 0.70). Byte-identical OFF. Director labeled
+this "R104" but it was RENUMBERED R111 (R104 = shipped Annul spell-shield 7646e65d;
+the build agent caught the collision). Verifier CONFIRM 7/7; DS 8421 / 0 fresh; RC
+11586 passed / 3 pre-existing (2 coach-poll LEDGER-828 asyncio flake pass-isolated +
+1 R102 `build_module.css` dark-literal ratchet, file untouched by R111 - chipped as a
+separate frontend task) / 0 R111 regressions. HZ-B 6 tables stamp-only re-stamp (guard
+6/6); DS `:8893` bounced 1.209.0 live; `ds_share_sync --check` green 452 files. merge
+`7cf051db`, reconcile `9e61f8a0`. Live default-ON flip -> LIVE_GATED B49 (practice-SR
+own-build eyeball). Don't-redo: 2501/447111 Retribution SHIPPED; the item-keyed
+incoming-DR lane (crit R77 / AA R80 / AS-slow R86) is saturated; R77's Steelcaps
+sibling director-note is STALE (shipped R80).
+
+---
+
+# 2026-07-13 (nightly reds cleared + DSP11 Step-0b gate RESOLVED do-not-revert + kit-axis table fresh-DB refresh; a+b+c chain; LEDGER 876)
+
+Operator "go a+b+c chain" then "/done + continue headless with ahk + gemini". 3 commits pushed to main:
+- **(a)** `35732e4e` loadout dedup: 18 double-pen unique-family clashes (LastWhisper/VoidPen keys from 1.207.0, LEDGER 872 - loadouts never regenerated). ROOT-CAUSE tool = the item-s8 sweep (`tools/champion_loadout_sweep_item_s8.py`), NOT align.py: the WAKEUP "re-run align.py" hint was STALE - align.py only rewrites `v["items"]`, but 16/18 clashes live in `build_paths[*]["items"]` it never walks. Surgical 25/25 diff; 1646 loadout guards + full suite green.
+- **(b)** `2f90fd28` ROADMAP trim 83217 -> 80955 bytes (< 81920): relocated the stale 2026-06-05 NEXT-UP block verbatim to ROADMAP_HISTORY, kept the P3.2 residual, shortened the P6 stub. test_doc_size_budget green.
+- **(c)** `5081ab91` DSP11 (Step 0b) gate RESOLVED = **DO-NOT-REVERT**. The operator-gated coach-picks diff ran at TRUE coach fidelity (`dispatch_for_coach` top-5 + real frontline/squishy comps + independent rewind re-query; report `ops/audit/ds_perm_swarm/report/dsp11_gate_diff.md`) and REFUTED the spec premise: Step 1a fixes crit-ADC coherence ONLY, not the lethality/assassin/manamune DSP11 champs - reverting drops Pyke's whole lethality core live. Instead kept the mechanism + gave `build_kit_axis_item_credit.py` a fresh-DB re-validation gate + refreshed the table (drops Ezreal-ER [table 56.2%/n16 -> fresh 40.9%/n22] + Naafiri [at/below baseline]; keeps Pyke/Corki/Nilah/Senna + Ezreal-Trinity). Data-only, NO ENGINE bump. Share-synced + `:8893` restarted + live-verified (Naafiri inert, Pyke intact). DS 8404 + consumers 106 + DSP11 12 green.
+
+Gemini director re-tested **UP** (was down last session, executor-direct). NEXT (overnight directive priority 2, continuing headless): Step 0a DSP2 byte-identical prune, Step 2 wire `situational.py` counter-build into the overlay, Step 3 ally synergy + NL reasoning; then priority 3 per-champ meta-build online research (aggregator B/aggregator D/aggregator A vs engine). **Do NOT re-pitch the DSP11 mechanism revert** (gate-closed do-not-revert; spec 0b RESOLVED).
+
+---
+
+# 2026-07-13 (DS crit-burst fix L1-L4 SHIPPED + live-validated; EXECUTOR-DIRECT - Gemini down; self-audited director-proxy; LEDGER 875)
+
+Gemini-headless loop launched but the Gemini DIRECTOR was DOWN (Google-side 503 on gemini-3-pro-preview + fallback 2.5-flash; TCP 443 fine, so Google-side not Legion egress). Operator chose EXECUTOR-DIRECT ("use yourself as pseudo proxy"); loop halted (STOP dropped; controllers + ahk killed). Executed priority (1) = the crit-burst spec, self-auditing as director + auditor proxy since Gemini could not.
+
+5 commits pushed to main: L1 `9708e3bf` (coherence respects burst score) -> L2 `54d5efc8` (ENGINE 1.207->1.208, arm the execute) -> L3 `83624198` (crit-ADC fight_length allow-map) -> L1'/L4 `f2ecafe8` (the DEEP fix) -> backfill `4e00df61`. Full detail: LEDGER 875.
+
+DEEP DISCOVERY: L1/L3 were INERT live - the client `RankedItem.from_dict` DROPPED the server's `effective_score`, so the coherence burst branch read base 0.0 (a target-blind kit-fit sort). An L4 subagent STOPPED + surfaced it (proven: rank_for raw-server differs by target, rank_for_primary_archetype final does not); I verified + authorized the combined fix (parse effective_score + eff-branch dock `_MU_EFF=80` + SQ-70 squishy target at the chokepoint, gated `apply_squishy_burst_target`). Caught + corrected TWO subagent misreports (the "no-op" STOP was the real root cause; a mislabeled "pre-existing" anti_tank regression was actually mine -> the variant opt-out fix). Memory `reference_ds_client_effective_score_parse`.
+
+LIVE-VALIDATED via /api/ds-preview on the restarted RC: Jinx IE#4/Collector#3, Twitch IE#3/Collector#2, ER/Eclipse out of top-8; Vayne (on-hit control)/Lux/Ornn byte-identical. `:8893` @ 1.208.0, Share --check green, consumer set 0 failures (was 12), DS suite 8406 passed.
+
+NIGHTLY CATCH (fixed `9b811356`): the schedule-only full suite caught ONE crit-burst regression the push-CI + my consumer-set filter missed - `test_archetype_dispatcher::test_carry_propagates_target_armor` used Caitlyn (now a mapped burst carry, so L4 correctly swaps her target); retargeted to Vayne + added mapped-swap coverage. Also authored the owed 1.208.0 changelogs (Share + engine + DAEMON_SLAYER status 8403).
+
+PRE-EXISTING nightly reds (NOT crit-burst, do NOT attribute to this session): `test_champion_loadouts_no_unique_clash` (18 double-pen family clashes in `data/champion_loadouts.json` - the LEDGER-872 1.207.0 double-pen fix added the unique keys but never regenerated the curated loadouts; needs a loadout regen + backfill); `test_doc_size_budget::test_roadmap_md_under_budget` (ROADMAP.md 83217 > 81920 bytes - relocate shipped entries to docs/ROADMAP_HISTORY.md); plus runner-only env fails (asyncio.run in a running loop, :8893-down Jhin plan, missing 3858.png icon).
+
+NEXT: (a) regenerate champion_loadouts.json to clear the 18 double-pen clashes; (b) trim ROADMAP.md under budget; (c) priority (2) the other DS build-reco refactor slices (Step 0/2/3 of `docs/specs/2026-07-13-ds-build-coherence-refactor.md`) + priority (3) per-champ meta research. Spec L5 (fed / comp-aware fight_length) + L6 (Stormrazor 3097 stale-catalog hygiene) are follow-ups. A real IN-GAME crit-ADC eyeball is owed (do-not-flip-blind). If Gemini recovers, the loop can resume.
+
+---
+
 # 2026-07-13 (double percent-pen mutex fix [ENGINE 1.207.0] + live-gated doc-only resync; root-cause-fix, verifier-gated)
 
 Two commits, both pushed to main (`ee43d4ff` + `ded5f354`). Full detail: LEDGER 872.
