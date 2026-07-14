@@ -43,6 +43,13 @@ _ARAM = dict(
 # Crit ADCs whose real core the sustained-DPS scorer buries.
 _CRIT_ADCS = ("Twitch", "Jinx", "Caitlyn", "Ashe")
 
+# Crit / on-hit ADCs that carry an INCIDENTAL secondary Mage tag. The original
+# is_caster_marksman gate (Marksman + Mage tag) wrongly exempted them from the
+# dock, so their Essence Reaver / Eclipse artifact survived (live-confirmed
+# 2026-07-13). The ability-AP-scaling floor tightening reaches them now. Keyed by
+# canonical DDragon id (rank_items needs the id, not the display name).
+_MAGE_TAGGED_CRIT_ADCS = ("MissFortune", "Jhin", "Kaisa", "Varus")
+
 
 class CarryCoherenceRerankTest(unittest.TestCase):
     @classmethod
@@ -107,6 +114,33 @@ class CarryCoherenceRerankTest(unittest.TestCase):
                 f"{champ}: spellblade/mana core {sorted(_CASTER_CORE)} not "
                 f"retained in coherence top-6: {got}",
             )
+
+    def test_mage_tagged_crit_adcs_now_docked(self):
+        """Gate tightening (2026-07-13): a crit / on-hit ADC with an incidental
+        secondary Mage tag (Miss Fortune / Jhin / Kai'Sa / Varus) is NO LONGER
+        exempt from the dock, so its Essence Reaver / Eclipse artifact is removed
+        from the coherence top-6. Control-gated per champ: only asserts removal of
+        an artifact that was actually in that champ's RAW top-6 (else the check is
+        vacuous), and requires at least one real removal across the set."""
+        removed = []
+        for champ in _MAGE_TAGGED_CRIT_ADCS:
+            rows = self._raw_rows(champ)
+            self.assertTrue(rows, f"{champ}: no engine rows")
+            raw6 = {str(x.item_id) for x in rows[:6]}
+            got = {str(x.item_id) for x in coherence_rerank(rows, champ, top=6)}
+            for art in (_ER, _ECLIPSE):
+                if art in raw6:
+                    removed.append((champ, art))
+                    self.assertNotIn(
+                        art, got,
+                        f"{champ}: artifact {art} still in coherence top-6 after "
+                        f"the gate tightening: {sorted(got)}",
+                    )
+        self.assertTrue(
+            removed,
+            "no Mage-tagged crit ADC had ER/Eclipse in its raw top-6 - the test "
+            f"would not prove the fix (checked {_MAGE_TAGGED_CRIT_ADCS})",
+        )
 
     def test_noncarry_archetype_is_byte_identical_noop(self):
         """Byte-identical control: a mage (Lux) and a tank (Ornn) are NOT the
