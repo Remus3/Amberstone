@@ -257,6 +257,30 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-14 (R119 gemini-loop cycle 17 - DS-sweep Navori Flickerblade phantom-proc refute+fix; ENGINE 1.211.0; LEDGER 893)
+
+DS-sweep rotation via a fresh adversarial Meraki(16.13.1)-vs-registry refute pass (4 parallel
+read-only research agents). REFUTED every candidate NEW offensive lane on ground truth (Navori
+"Impermanence" amp = STALE premise - 6675 is Flickerblade now, no such passive; Hexplate 3073 /
+Axiom 6696 ult-haste = CLOSED item 310 + schema lift; Malignance 3118 MR-shred = ult-gated
+schema lift; Liandry/Blackfire/Demonic burns Meraki-exact) - BUT the sweep FOUND a real bug I
+verified against Meraki MYSELF: SR base item 6675 (Navori Flickerblade) phantom-credited Kraken
+Slayer's "Bring It Down" 120->168 physical every-3rd-attack proc that Meraki 16.13.1 does NOT
+list (6675 = Transcendence CDR only), a 6672-vs-6675 key-collision artifact - inconsistent with
+the item's own already-correct Arena mirror 226675 + the 226672 correction comment. FIX
+(R116-precedent refute+correct, scoring-active proc so ENGINE bump): removed the phantom proc,
+6675 now utility-only (defensive_only) matching Meraki; removes phantom physical over-credit for
+crit-ability carries (Yasuo/Yone/Zeri/Xayah); crit/AS/MS stats unaffected. TDD RED-first (new
+guard test_navori_phantom_proc_refute_r119.py) + updated 2 OLD phantom-encoding tests + fixed a
+latent gold-efficiency Meraki-absent-item (667109 Cruelty) fragility. ENGINE 1.210.0 -> 1.211.0
+(114 pins); build-order precompute + variants regen (full roster); ds_share_sync 454 files
+--check GREEN; DS :8893 bounced to 1.211.0. DS 8449 pass / 1 skip / 1948 subtests; RC 11602 pass
+(24 initial fails were ALL the bump regen cascade + 2 pre-existing coach_poll flakes + 1
+pre-existing roadmap-budget, pruned). No LIVE_GAME_GATED_SYNC row (correctness removal, nothing
+to flip). done_sentinel --tests 8449 --regressions 0.
+
+---
+
 # 2026-07-13 (R113-fix gemini-loop cycle - FALSE-POSITIVE REGRESS #5 + RC-suite guard; LEDGER 882)
 
 Directive ordered a "missing" test for the R113 total-AD physical burst seam (auditor flagged HEAD `374e8f44` REGRESS). DISPROVEN vs ground truth: the seam was tested - DS-dir `test_item_hydra_active_burst_r113.py` (447 lines / 27 tests) + Share mirror shipped in the R113 FEAT commit `93cac79c` (verifier 27/27 fresh; LEDGER 881 recorded it). `374e8f44` is the R113 FINALIZE (re-stamp) commit; the auditor diffed it in isolation = same diff-window misattribution as cycle-13 (#4). Now #5 of the cycles-7/8/9/13 family. Root cause OPEN (loop infra): R61's `audit_range` (`d1a143d4`) needs a controller RESTART to activate + a merge second-parent window fix (`93cac79c` enters HEAD via the `b003dac5` merge). ACTION: shipped a legitimate non-duplicative RC-suite guard `tests/test_item_hydra_active_burst_r113.py` (12 tests; RC CI had zero `physical_burst_total_ad_ratio` coverage; not the cycle-13 duplicate anti-pattern). verifier CONFIRM: RC 12/12 + DS-dir 27/27 + collect 11623/0-err + ruff clean + zero engine diffs. Test-only, ENGINE-IMPACT NONE (under `tests/`, no Share/DS bounce). PART C escalation -> `gemini_ask.txt`: fix the audit window + REDIRECT the loop to the operator's overnight priority chain (#1 `docs/specs/2026-07-13-ds-crit-burst-fix.md`). `done_sentinel --tests 12 --regressions 0`.

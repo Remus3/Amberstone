@@ -16,6 +16,16 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-14 (R129 gemini-loop cycle 28 - Fimbulwinter Everlasting shield EHP credit; ENGINE 1.213.0 -> 1.214.0; LEDGER 903; feat 1c6e1fc1 + docs be9b73ce)
+
+DS sweep vs Meraki truth (REFILL PROTOCOL 1). 3 disjoint read-only hunters (item-stub / champ-spell / scorer) -> picked by clean-numeric + lowest-blast (R99 precedent): Fimbulwinter (3121 / Arena 223121 / ARAM 323121) "Everlasting" shield was shield=None + a stale "Everfrost CC" note (mechanic absent from 16.13.1). Meraki items[3121] (verified line 28242): immobilize (or slow if melee) an enemy -> 100 (+4.5% current mana) GENERIC shield 3s / 8s CD; all 3 mirror ids present in items.json['data']. FIX = ItemShield(flat=100, max_mana_scaling=0.045, ANY, default_off) on all 3 mirrors + NEW default-OFF assume_fimbulwinter_shield seam in _collect_shields / compute_ehp (exact Seraph's assume_seraphs_shield template; NOT lifeline-keyed - independent CC-trigger that stacks with a lifeline). Current mana modeled as MAX mana (steady-state); +80% multi-enemy arm not modeled (conservative base). TDD 22/22 (18 RED pre-fix); verifier CONFIRM 6/6 (OFF byte-identical Sion+3121 EQUAL). ENGINE 1.214.0 (115 py pins); build-orders restamped (orders byte-identical, default-OFF); DAEMON_SLAYER banner 1.214.0/8488; Share --check green 458 + Share/CHANGELOG + source CHANGELOG; DS :8893 bounced 1.214.0. DS suite 8488 pass / 1 skip / 1948 subtests; RC 11669 pass, 10 reconciled to 0 R129 regressions (7 Share-drift green post-sync, 1 LiveEngine green post-bounce, 2 coach_poll LEDGER-828 async flake pass 2/2 isolated). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md B50, needs a live/replayed Fimbulwinter holder).
+
+2 genuine-but-bigger candidates -> BACKLOG FUTURE (do NOT re-hunt as new gaps): Viego R "Heartbreaker" 120% total-AD primary hit dropped by the abilities.py CDragon-vs-Meraki cardinality-mismatch whole-form fallback (compute_ability_dps 0 at full HP) + AD-ult sibling class Pyke/Rengar/Quinn/Yorick R (narrow per-champ override or general append-seam); bruiser/hybrid scorer ability-DPS XOR for AD-axis champs (Riven/Camille/Jarvan) - needs a validated per-champ opt-in table (a blanket AD-bruiser sum double-counts auto-empower Nasus Q / Renekton W / Camille Q / Sett Q / Vi E).
+
+INTERRUPT: operator "halt after this run" mid-cycle -> finished the in-flight R129 slice, ran /done, wrote ops/loop/control/STOP to end the Gemini-headless loop. Loop is HALTED (no next directive will fire).
+
+---
+
 # 2026-07-14 (R127 gemini-loop cycle 26 - CDragon per-instance resource guard: MissFortune R full-channel total; ENGINE 1.212.0 -> 1.213.0; LEDGER 901; commit cc5b0876)
 
 DS sweep vs Meraki/CDragon truth (REFILL PROTOCOL 1). The item-320 prefer_cdragon_ratios cutover (default-ON) overwrote MF R "Bullet Time"'s Meraki full-channel TOTAL (1050/1200/1350% total AD + 350/400/450% AP) with CDragon's per-wave atomic PhysicalDamagePerWave (60% AD / 25% AP) via the single-block direct-pair branch in _apply_cdragon_ratio_preference = ~17.7x undercount, PROVEN live (raw R 3304 -> 187/cast; MF total_ability_dps 27.4 -> 14.9, -45%). FIX (TDD 5/5): default-OFF apply_cdragon_resource_guard on AbilitiesSnapshot.load + _CDRAGON_RESOURCE_EXCLUSIONS = {(MissFortune, R)}; byte-identical OFF (moves exactly that one form), restores the Meraki total ON. ENGINE 1.213.0 (135 pins / 114 files, 6 HZ-B build-order re-stamps, DAEMON_SLAYER banner); ROADMAP trimmed under 80KB (OQ23-25 -> ROADMAP_HISTORY); Share/src --check green (457, 1.213.0) + Share/CHANGELOG; DS :8893 restarted 1.213.0; DS suite 8466 pass / 1948 subtests; RC ritual set 64 pass (2 coach_poll = load flakes); verifier 7/7 CONFIRM. Khazix E / Gangplank E per-instance collapses -> FUTURE (per-champ validation). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md, needs a live/replayed MissFortune game).
@@ -44,27 +54,3 @@ augment_card_*/minimap_fog rects against a real Arena/ARAM frame + wire fuse_rea
 coaches shadow-first (extends the R101 data/ocr_shadow.jsonl lane), then a validated OCR-only flip.
 Competitor-lift/overlay/companion/stat-site family DRAINED 4x (R100/R112/R120/R125) - retired as a
 director rotation target.
-
----
-
-# 2026-07-14 (R119 gemini-loop cycle 17 - DS-sweep Navori Flickerblade phantom-proc refute+fix; ENGINE 1.211.0; LEDGER 893)
-
-DS-sweep rotation via a fresh adversarial Meraki(16.13.1)-vs-registry refute pass (4 parallel
-read-only research agents). REFUTED every candidate NEW offensive lane on ground truth (Navori
-"Impermanence" amp = STALE premise - 6675 is Flickerblade now, no such passive; Hexplate 3073 /
-Axiom 6696 ult-haste = CLOSED item 310 + schema lift; Malignance 3118 MR-shred = ult-gated
-schema lift; Liandry/Blackfire/Demonic burns Meraki-exact) - BUT the sweep FOUND a real bug I
-verified against Meraki MYSELF: SR base item 6675 (Navori Flickerblade) phantom-credited Kraken
-Slayer's "Bring It Down" 120->168 physical every-3rd-attack proc that Meraki 16.13.1 does NOT
-list (6675 = Transcendence CDR only), a 6672-vs-6675 key-collision artifact - inconsistent with
-the item's own already-correct Arena mirror 226675 + the 226672 correction comment. FIX
-(R116-precedent refute+correct, scoring-active proc so ENGINE bump): removed the phantom proc,
-6675 now utility-only (defensive_only) matching Meraki; removes phantom physical over-credit for
-crit-ability carries (Yasuo/Yone/Zeri/Xayah); crit/AS/MS stats unaffected. TDD RED-first (new
-guard test_navori_phantom_proc_refute_r119.py) + updated 2 OLD phantom-encoding tests + fixed a
-latent gold-efficiency Meraki-absent-item (667109 Cruelty) fragility. ENGINE 1.210.0 -> 1.211.0
-(114 pins); build-order precompute + variants regen (full roster); ds_share_sync 454 files
---check GREEN; DS :8893 bounced to 1.211.0. DS 8449 pass / 1 skip / 1948 subtests; RC 11602 pass
-(24 initial fails were ALL the bump regen cascade + 2 pre-existing coach_poll flakes + 1
-pre-existing roadmap-budget, pruned). No LIVE_GAME_GATED_SYNC row (correctness removal, nothing
-to flip). done_sentinel --tests 8449 --regressions 0.
