@@ -2,7 +2,8 @@
 // objective countdowns.
 import { el, safe, fmtList, _formatRelativeAge } from '../lib/helpers.js';
 import { state } from '../lib/state.js';
-import { CHAMPS, SPELLS, _resolveChampId, _resolveSpell } from '../lib/items_index.js';
+import { CHAMPS, SPELLS, ITEM_COSTS, _resolveChampId, _resolveSpell } from '../lib/items_index.js';
+import { teamItemValueDiff } from '../lib/item_value.js';
 
 // State slots initialised here (map_state owns the clock + spell tracking).
 state.gameClock = { startedAt: 0, anchorS: 0, raw: "" };
@@ -507,12 +508,17 @@ function renderMinimapCanvases(p) {
   }
 }
 
-function renderGoldDiff(p) {
+function renderItemValueDiff(p) {
   const wrap = el("gold-diff");
   const fill = el("gold-diff-fill");
   const lbl = el("gold-diff-val");
   if (!wrap || !fill || !lbl) return;
-  const diff = typeof p.team_gold_diff === "number" ? p.team_gold_diff : null;
+  // R117 F1: the dormant team_gold_diff bar can never be fed live - enemy gold
+  // is activePlayer-only over the Live Client API - so repurpose it as the
+  // item-value differential, the one economy lens computable from the public
+  // allPlayers[].items roster. Honest user-facing label is "item value".
+  const lc = (state.latest && state.latest.liveclient) || (p && p.liveclient) || null;
+  const diff = teamItemValueDiff(lc, ITEM_COSTS);
   if (diff == null) {
     wrap.classList.add("hidden");
     return;
@@ -620,7 +626,7 @@ function renderMinimap(p) {
   // Keep self-spell CDs current - feeds the header summoner-spell pill.
   _snapshotSpells(p.ally_spells);
   _tickSpellCooldowns();
-  renderGoldDiff(p);
+  renderItemValueDiff(p);
   renderMinimapCanvases(p);
   // Tower count / team kills / game time chips were removed from the
   // Map State panel 2026-04-23 - those signals live on the header row 2.
