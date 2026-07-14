@@ -16,6 +16,31 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-14 (R126 gemini-loop cycle 24 - Lane E CV substrate: OCR region-map atlas + LiveClient/CV fusion; ENGINE-IMPACT NONE; LEDGER 900)
+
+Haiku-to-ZERO rotation (R125 4th competitor-lift DRAIN -> off competitor sweeps). Built the Lane E
+fusion substrate per docs/NO_LLM_PRECOMPUTE_PLAN.md, the region-map companion to R121's icon atlas.
+2 disjoint build agents + independent ground-truth verifier gate (sole merger). Slice A
+core/vision_region_atlas.py + data/daemon_slayer/vision_region_atlas.json: versioned 25-region atlas
+(21 calibrated HUD rects VERBATIM from vision_regions.json api_gap=false + 4 API-gap slots -
+minimap_fog dynamic via core.minimap_geometry.compute_minimap_rect, augment_card_1/2/3 owed) +
+fail-soft build_atlas/write_atlas/scale_region/api_gap_fields. Slice B core/vision_fusion.py:
+fuse_reads merges LC-exact-1.0 vs CV-heuristic-0.7, api_gap CV-authoritative, 0.6 stale-override,
+never-raises (district_fusion precedent), fuse_with_atlas lazy import. BUILD + PERSIST ONLY, both
+DORMANT (no coach flip, no live wire - a wrong precompute is worse than a Haiku call). Premise-checked
+before build: :2999 (dashboard/_liveclient.py) already emits enemy_item_ids/players, so the TRUE
+structural gaps are augments (no capture-free API) + fog positions (no coords). GATE: Slice A 19 +
+Slice B 14 fresh; RC 11672 passed (the 2 test_coach_poll_offload_hot03 = pre-existing LEDGER-828
+async flake, pass 2/2 isolated, 0 R126 regressions); DS 8461 passed / 1948 subtests
+(baseline-identical, 0 DS impact); ruff clean; 0 non-ASCII; ds_share_sync --check green 456 files;
+CI green. feat `beac83cf` + docs(loop) `29a23da4` -> origin/main. NEXT (live-gated): calibrate the
+augment_card_*/minimap_fog rects against a real Arena/ARAM frame + wire fuse_reads into the ARAM/Arena
+coaches shadow-first (extends the R101 data/ocr_shadow.jsonl lane), then a validated OCR-only flip.
+Competitor-lift/overlay/companion/stat-site family DRAINED 4x (R100/R112/R120/R125) - retired as a
+director rotation target.
+
+---
+
 # 2026-07-14 (R119 gemini-loop cycle 17 - DS-sweep Navori Flickerblade phantom-proc refute+fix; ENGINE 1.211.0; LEDGER 893)
 
 DS-sweep rotation via a fresh adversarial Meraki(16.13.1)-vs-registry refute pass (4 parallel
