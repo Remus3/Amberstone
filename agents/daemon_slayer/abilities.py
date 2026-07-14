@@ -446,6 +446,17 @@ def _load_cdragon_ratio_sidecar(root: Path, patch: str) -> dict[str, dict[str, l
 _CDRAGON_AD_FIELDS: tuple[str, ...] = ("total_ad_pct", "bonus_ad_pct")
 _CDRAGON_HP_FIELDS: tuple[str, ...] = ("caster_max_hp_pct", "target_max_hp_pct")
 
+# (champion_id, key) forms whose Meraki damage block is a baked full-channel
+# TOTAL while their only CDragon mechanical block is a per-instance atomic
+# (PerWave / PerTick / PerShot). The direct-pair re-source would overwrite the
+# total with the atomic (MissFortune R "Bullet Time": Meraki 1050/1200/1350%
+# total AD vs CDragon PhysicalDamagePerWave 60% AD -> ~17.7x undercount).
+# Consulted ONLY when ``apply_cdragon_resource_guard=True``; default-OFF keeps
+# the snapshot byte-identical to the current live cutover behavior.
+_CDRAGON_RESOURCE_EXCLUSIONS: frozenset[tuple[str, str]] = frozenset(
+    {("MissFortune", "R")}
+)
+
 
 def _cdragon_family(field_name: str) -> str:
     """Collapse a scaling field to its stat FAMILY (AD / HP) or itself."""
@@ -609,6 +620,7 @@ class AbilitiesSnapshot:
         apply_passive_shield: bool = False,
         apply_all_out_bonus: bool = False,
         prefer_cdragon_ratios: bool = True,
+        apply_cdragon_resource_guard: bool = False,
         cdragon_root: Path | None = None,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
@@ -718,10 +730,16 @@ class AbilitiesSnapshot:
                     # ON coexist (base mark consume + All Out bonus). Byte-identical OFF.
                     if apply_all_out_bonus:
                         fm = _apply_all_out_bonus_overrides(cid, key, fm)
-                    # Prefer-CDragon mechanical ratios: opt-in, default OFF.
-                    # Primary form only (the sidecar emits one block list per slot,
-                    # no form_index) - transform forms keep Meraki.
-                    if cd_map and fm.form_index == 0:
+                    # Prefer-CDragon mechanical ratios: default-ON since the
+                    # item-320 cutover. Primary form only (the sidecar emits one
+                    # block list per slot, no form_index) - transform forms keep
+                    # Meraki. ``apply_cdragon_resource_guard`` (default-OFF) skips
+                    # the re-source for forms whose CDragon block is a per-instance
+                    # atomic that would clobber a Meraki full-channel total.
+                    if cd_map and fm.form_index == 0 and not (
+                        apply_cdragon_resource_guard
+                        and (cid, key) in _CDRAGON_RESOURCE_EXCLUSIONS
+                    ):
                         cd_slot = (cd_map.get(cid) or {}).get(key)
                         if cd_slot:
                             fm = _apply_cdragon_ratio_preference(fm, cd_slot)
