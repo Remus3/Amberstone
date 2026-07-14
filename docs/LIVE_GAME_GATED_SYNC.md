@@ -1853,6 +1853,18 @@ grep each path repo-wide before moving; several DS_* plan docs may still be a "s
   6s/target proc CD - the ItemShield credit is a full-magnitude one-instance shield, not uptime-amortized). A
   WRONG credit is worse than none - do NOT default-ON until validated. DS `:8893` restart on flip. Does NOT
   block any further stage.
+- 2026-07-14 Fimbulwinter (3121 SR + 223121 Arena + 323121 ARAM) "Everlasting" max-mana-shield EHP seam
+  (`compute_ehp(assume_fimbulwinter_shield=)` / `ehp._collect_shields(assume_fimbulwinter_shield=)`, ENGINE
+  1.214.0, default-OFF, R129). ITEM_EFFECTS 3121 + 223121 + 323121 each now carry a `default_off` generic (ANY)
+  `ItemShield` (`flat=100`, `max_mana_scaling=0.045`) armed per-id via the same shield-specific gate as
+  Seraph's/Chainlaced/Eclipse/Kaenic. Meraki 16.13.1 (items['3121'] "Everlasting"): immobilizing (or slowing, if
+  melee) an enemy champion grants a "100 (+4.5% current mana)" shield for 3s (8s CD). Current mana modeled as MAX
+  mana (steady-state); the +80% multi-enemy arm is NOT modeled (conservative base). ANY damage_type so all 3 EHP
+  axes benefit. Credited only when the flag is armed; OFF is byte-identical (verifier-confirmed Sion+3121 EQUAL,
+  every other shield's magnitude unmoved). NOT lifeline-keyed (independent CC-trigger shield, stacks with a
+  lifeline). OWED (operator/Gemini-gated, NOT headless - charter 4b do-not-flip-blind): wire an EHP-scoring
+  consumer to pass `assume_fimbulwinter_shield=True` and eyeball across ~2 real games that a Fimbulwinter holder's
+  blended EHP ranks sensibly vs other mana/tank survivability. SOURCE: R129 / LEDGER 903 / commit 1c6e1fc1.
 - 2026-07-10 Seraph's Embrace (3040 SR + 223040 Arena + 323040 ARAM) Lifeline max-mana-shield EHP seam
   (`compute_ehp(assume_seraphs_shield=)` / `ehp._collect_shields(assume_seraphs_shield=)`, ENGINE 1.193.0,
   default-OFF). ITEM_EFFECTS 3040 + 223040 + 323040 each now carry a `default_off` generic (ANY) `ItemShield`
