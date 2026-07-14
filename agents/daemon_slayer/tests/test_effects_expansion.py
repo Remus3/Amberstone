@@ -4635,44 +4635,27 @@ class DivineSundererSpellbladeTests(unittest.TestCase):
 
 
 class NavoriFlickerbladeTests(unittest.TestCase):
-    """Navori Flickerblade (6675) Bring It Down every-3rd-attack level-scaling physical proc.
+    """Navori Flickerblade (6675) - utility-only, NO on-hit damage proc.
 
-    Note: batch 35 mistakenly keyed this as "6672" (Kraken Slayer's DDragon ID),
-    silently overwriting Kraken Slayer. Fixed in batch 41 - now correctly at "6675".
+    Meraki 16.13.1 lists a single passive on 6675 - Transcendence (basic
+    attacks reduce basic-ability cooldowns 15%) - plus Quicken (CDR on crit);
+    both are ability-uptime utility with zero on-hit damage. An earlier entry
+    phantom-credited a "Bring It Down" every-3rd-attack physical proc (a
+    6672-vs-6675 key-collision artifact); R119 removed it to match Meraki and
+    the item's own already-correct Arena mirror 226675. Guard:
+    test_navori_phantom_proc_refute_r119.
     """
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.snap = DataSnapshot.load()
 
-    def test_entry_present_and_shape(self) -> None:
+    def test_entry_present_and_no_damage_proc(self) -> None:
         eff = ITEM_EFFECTS.get("6675")
         self.assertIsNotNone(eff)
-        self.assertFalse(eff.defensive_only)
-        self.assertEqual(len(eff.periodics), 1)
-        proc = eff.periodics[0]
-        self.assertEqual(proc.damage_type, "physical")
-        self.assertEqual(proc.every_n_attacks, 3)
-
-    def test_proc_formula_at_level_1(self) -> None:
-        from agents.daemon_slayer.effects import CallContext
-        proc = ITEM_EFFECTS["6675"].periodics[0]
-        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=1)
-        self.assertAlmostEqual(proc.resolve_damage(ctx), 120.0, places=4)
-
-    def test_proc_formula_at_level_11(self) -> None:
-        from agents.daemon_slayer.effects import CallContext
-        proc = ITEM_EFFECTS["6675"].periodics[0]
-        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=11)
-        expected = min(168.0, 120.0 + 4.0 * 10)  # 160
-        self.assertAlmostEqual(proc.resolve_damage(ctx), expected, places=4)
-
-    def test_proc_capped_at_level_18(self) -> None:
-        from agents.daemon_slayer.effects import CallContext
-        proc = ITEM_EFFECTS["6675"].periodics[0]
-        ctx = CallContext(base_ad=100.0, bonus_ad=0.0, level=18)
-        # min(168, 120 + 4*17) = min(168, 188) = 168
-        self.assertAlmostEqual(proc.resolve_damage(ctx), 168.0, places=4)
+        self.assertEqual(eff.name, "Navori Flickerblade")
+        self.assertTrue(eff.defensive_only)
+        self.assertEqual(eff.periodics, ())
 
     def test_dps_lift_over_bare(self) -> None:
         from agents.daemon_slayer.dps import compute_dps
@@ -5525,8 +5508,11 @@ class Batch41Arena226MirrorTests(unittest.TestCase):
         e = ITEM_EFFECTS.get("6675")
         self.assertIsNotNone(e, "6675 Navori Flickerblade missing")
         self.assertEqual(e.name, "Navori Flickerblade")
-        self.assertFalse(e.defensive_only)
-        self.assertEqual(len(e.periodics), 1)
+        # 6675 is utility-only (Transcendence CDR); the phantom "Bring It Down"
+        # proc was removed in R119 to match Meraki 16.13.1. Distinctness from
+        # Kraken 6672 is covered by test_no_key_collision_kraken_navori below.
+        self.assertTrue(e.defensive_only)
+        self.assertEqual(len(e.periodics), 0)
 
     def test_no_key_collision_kraken_navori(self) -> None:
         """6672 and 6675 are now distinct items."""
@@ -7824,7 +7810,7 @@ class Batch63BlockedItemPromotionsTests(unittest.TestCase):
         #          3 flagship seeds (Zoe E / Evelynn Q / Kindred E)
         #          are no-op conversions of shipped unconditional
         #          entries.
-        self.assertEqual(ENGINE_VERSION, "1.210.0")
+        self.assertEqual(ENGINE_VERSION, "1.211.0")
 
 
 class Batch64MalignanceTests(unittest.TestCase):
@@ -7885,7 +7871,7 @@ class Batch64MalignanceTests(unittest.TestCase):
 
     def test_batch64_version(self) -> None:
         from agents.daemon_slayer import ENGINE_VERSION
-        self.assertEqual(ENGINE_VERSION, "1.210.0")
+        self.assertEqual(ENGINE_VERSION, "1.211.0")
 
 
 if __name__ == "__main__":
