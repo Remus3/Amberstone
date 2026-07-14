@@ -16,6 +16,17 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-14 (operator docs session - HEXCORE_offline update + /sync-all-md + /done; docs-only, commit d584e02e; LEDGER 904)
+
+Manual operator chain (NOT the halted Gemini loop): update hexcore_offline -> sync all md -> /done. mode_key=client, no engine/DS/frozen touched, no restart.
+- HEXCORE_offline.html: repo-stats + DS/ledger node descs refreshed to live (engine 1.200.0->1.214.0, 8302->8489 DS tests, ledger 852->903); +16 net-new non-test .py as DUST (277->293); 141 nodes unchanged, DUST 293/293 well-formed, 0 dangling parents, node --check + ASCII clean.
+- sync-all-md: living-doc test/ENGINE congruence vs fresh collect (DS 8489, tests/ 11701, full suite 20,190). CLAUDE.md 1.206.0->1.214.0 + 14,364->20,190; README 6,142->20,190; DAEMON_SLAYER 8488->8489 + 7511->11701. Coverage/match prose left to DS batch; 0 broken refs; hygiene 13/13.
+- Do NOT redo: all four docs current as of 2026-07-14; hexcore DUST/stats shipped in d584e02e. Untracked agents/agent6_auditor/ files = pre-existing audit artifacts, not mine.
+
+NEXT: Gemini-headless loop stays HALTED (R129 wrote ops/loop/control/STOP) unless operator restarts it. Otherwise pick top ROADMAP NEXT, or resume the 2026-07-13 overnight directive chain (docs/specs/2026-07-13-ds-crit-burst-fix.md) if the loop is re-armed.
+
+---
+
 # 2026-07-14 (R129 gemini-loop cycle 28 - Fimbulwinter Everlasting shield EHP credit; ENGINE 1.213.0 -> 1.214.0; LEDGER 903; feat 1c6e1fc1 + docs be9b73ce)
 
 DS sweep vs Meraki truth (REFILL PROTOCOL 1). 3 disjoint read-only hunters (item-stub / champ-spell / scorer) -> picked by clean-numeric + lowest-blast (R99 precedent): Fimbulwinter (3121 / Arena 223121 / ARAM 323121) "Everlasting" shield was shield=None + a stale "Everfrost CC" note (mechanic absent from 16.13.1). Meraki items[3121] (verified line 28242): immobilize (or slow if melee) an enemy -> 100 (+4.5% current mana) GENERIC shield 3s / 8s CD; all 3 mirror ids present in items.json['data']. FIX = ItemShield(flat=100, max_mana_scaling=0.045, ANY, default_off) on all 3 mirrors + NEW default-OFF assume_fimbulwinter_shield seam in _collect_shields / compute_ehp (exact Seraph's assume_seraphs_shield template; NOT lifeline-keyed - independent CC-trigger that stacks with a lifeline). Current mana modeled as MAX mana (steady-state); +80% multi-enemy arm not modeled (conservative base). TDD 22/22 (18 RED pre-fix); verifier CONFIRM 6/6 (OFF byte-identical Sion+3121 EQUAL). ENGINE 1.214.0 (115 py pins); build-orders restamped (orders byte-identical, default-OFF); DAEMON_SLAYER banner 1.214.0/8488; Share --check green 458 + Share/CHANGELOG + source CHANGELOG; DS :8893 bounced 1.214.0. DS suite 8488 pass / 1 skip / 1948 subtests; RC 11669 pass, 10 reconciled to 0 R129 regressions (7 Share-drift green post-sync, 1 LiveEngine green post-bounce, 2 coach_poll LEDGER-828 async flake pass 2/2 isolated). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md B50, needs a live/replayed Fimbulwinter holder).
@@ -29,28 +40,3 @@ INTERRUPT: operator "halt after this run" mid-cycle -> finished the in-flight R1
 # 2026-07-14 (R127 gemini-loop cycle 26 - CDragon per-instance resource guard: MissFortune R full-channel total; ENGINE 1.212.0 -> 1.213.0; LEDGER 901; commit cc5b0876)
 
 DS sweep vs Meraki/CDragon truth (REFILL PROTOCOL 1). The item-320 prefer_cdragon_ratios cutover (default-ON) overwrote MF R "Bullet Time"'s Meraki full-channel TOTAL (1050/1200/1350% total AD + 350/400/450% AP) with CDragon's per-wave atomic PhysicalDamagePerWave (60% AD / 25% AP) via the single-block direct-pair branch in _apply_cdragon_ratio_preference = ~17.7x undercount, PROVEN live (raw R 3304 -> 187/cast; MF total_ability_dps 27.4 -> 14.9, -45%). FIX (TDD 5/5): default-OFF apply_cdragon_resource_guard on AbilitiesSnapshot.load + _CDRAGON_RESOURCE_EXCLUSIONS = {(MissFortune, R)}; byte-identical OFF (moves exactly that one form), restores the Meraki total ON. ENGINE 1.213.0 (135 pins / 114 files, 6 HZ-B build-order re-stamps, DAEMON_SLAYER banner); ROADMAP trimmed under 80KB (OQ23-25 -> ROADMAP_HISTORY); Share/src --check green (457, 1.213.0) + Share/CHANGELOG; DS :8893 restarted 1.213.0; DS suite 8466 pass / 1948 subtests; RC ritual set 64 pass (2 coach_poll = load flakes); verifier 7/7 CONFIRM. Khazix E / Gangplank E per-instance collapses -> FUTURE (per-champ validation). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md, needs a live/replayed MissFortune game).
-
----
-
-# 2026-07-14 (R126 gemini-loop cycle 24 - Lane E CV substrate: OCR region-map atlas + LiveClient/CV fusion; ENGINE-IMPACT NONE; LEDGER 900)
-
-Haiku-to-ZERO rotation (R125 4th competitor-lift DRAIN -> off competitor sweeps). Built the Lane E
-fusion substrate per docs/NO_LLM_PRECOMPUTE_PLAN.md, the region-map companion to R121's icon atlas.
-2 disjoint build agents + independent ground-truth verifier gate (sole merger). Slice A
-core/vision_region_atlas.py + data/daemon_slayer/vision_region_atlas.json: versioned 25-region atlas
-(21 calibrated HUD rects VERBATIM from vision_regions.json api_gap=false + 4 API-gap slots -
-minimap_fog dynamic via core.minimap_geometry.compute_minimap_rect, augment_card_1/2/3 owed) +
-fail-soft build_atlas/write_atlas/scale_region/api_gap_fields. Slice B core/vision_fusion.py:
-fuse_reads merges LC-exact-1.0 vs CV-heuristic-0.7, api_gap CV-authoritative, 0.6 stale-override,
-never-raises (district_fusion precedent), fuse_with_atlas lazy import. BUILD + PERSIST ONLY, both
-DORMANT (no coach flip, no live wire - a wrong precompute is worse than a Haiku call). Premise-checked
-before build: :2999 (dashboard/_liveclient.py) already emits enemy_item_ids/players, so the TRUE
-structural gaps are augments (no capture-free API) + fog positions (no coords). GATE: Slice A 19 +
-Slice B 14 fresh; RC 11672 passed (the 2 test_coach_poll_offload_hot03 = pre-existing LEDGER-828
-async flake, pass 2/2 isolated, 0 R126 regressions); DS 8461 passed / 1948 subtests
-(baseline-identical, 0 DS impact); ruff clean; 0 non-ASCII; ds_share_sync --check green 456 files;
-CI green. feat `beac83cf` + docs(loop) `29a23da4` -> origin/main. NEXT (live-gated): calibrate the
-augment_card_*/minimap_fog rects against a real Arena/ARAM frame + wire fuse_reads into the ARAM/Arena
-coaches shadow-first (extends the R101 data/ocr_shadow.jsonl lane), then a validated OCR-only flip.
-Competitor-lift/overlay/companion/stat-site family DRAINED 4x (R100/R112/R120/R125) - retired as a
-director rotation target.
