@@ -263,8 +263,17 @@ class DeltaPerGoldNormalizationTests(unittest.TestCase):
         )
         positives = 0
         for r in res.ranked:
-            # (a) displayed gold == Meraki total (except known deltas).
-            if r.item_id not in _KNOWN_SOURCE_DELTA_IDS:
+            # (a) displayed gold == Meraki total (except known deltas + items
+            #     absent from the pinned 16.10.1 snapshot). An item Meraki does
+            #     not carry at this snapshot (e.g. 667109 Cruelty, an SR item
+            #     absent from BOTH 16.10.1 and 16.13.1 Meraki bulk) has no
+            #     ground truth to compare - absence is not a source divergence,
+            #     so skip (a) for it; the (b) efficiency-normalization check
+            #     below still covers every ranked row.
+            if (
+                r.item_id not in _KNOWN_SOURCE_DELTA_IDS
+                and r.item_id in self.meraki
+            ):
                 self.assertEqual(
                     r.gold,
                     _meraki_total(self.meraki, r.item_id),

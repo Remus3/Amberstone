@@ -2185,24 +2185,23 @@ ITEM_EFFECTS: dict[str, ItemEffect] = {
             "every ~3s (joins spellblade dedup family; Sandforce heal utility-only)"
         ),
     ),
-    # Navori Flickerblade (6672): Bring It Down - every 3rd basic attack deals bonus
-    # physical damage on-hit, scaling 120->168 (ranged) over levels 1->13.
-    # Quicken (CDR on crit) is utility-only.
+    # Navori Flickerblade (6675): Meraki 16.13.1 lists a SINGLE passive -
+    # Transcendence (basic attacks reduce basic-ability cooldowns 15% on-attack)
+    # plus Quicken (CDR on crit). Both are ability-uptime utility with ZERO
+    # on-hit damage. "Bring It Down" is Kraken Slayer's (6672) proc alone; the
+    # prior 120->168 physical proc here was a 6672-vs-6675 key-collision
+    # artifact (R119 refute), inconsistent with the item's own already-correct
+    # Arena mirror 226675 and the 226672 correction comment below. Removing it
+    # drops the phantom physical over-credit for crit-ability carries building
+    # Navori (Yasuo / Yone / Zeri / Xayah). Navori's crit / AS / MS stats are
+    # unaffected (they come from the raw stat block, not this passive layer).
     "6675": ItemEffect(
         item_id="6675",
         name="Navori Flickerblade",
-        periodics=(
-            PeriodicProc(
-                name="Bring It Down",
-                every_n_attacks=3,
-                bonus_damage=lambda c: min(168.0, 120.0 + 4.0 * (c.level - 1)),
-                damage_type=PHYSICAL,
-            ),
-        ),
+        defensive_only=True,
         note=(
-            "Navori Flickerblade: Bring It Down 120->168 bonus physical every 3rd attack "
-            "(ranged scaling 120 + 4 x (level-1), capped at 168 at level 13+; "
-            "Quicken CDR-on-crit utility-only)"
+            "Navori Flickerblade: Transcendence on-attack basic-ability CDR + "
+            "Quicken CDR-on-crit - ability-uptime utility, no DPS proc (Meraki 16.13.1)"
         ),
     ),
     # Hellfire Hatchet (4017): Char has a 15s CD (Meraki confirmed).
