@@ -10,6 +10,13 @@ never match it - the exact structural gap the ``_item_revive`` /
 registries fill for the champion revive / survival-window / spell-shield / mana-HP
 axes.
 
+Two entry SHAPES share this registry + the one ``apply_item_resist_grants`` seam:
+(1) the RAMPING combat passives below (Jak'Sho / Force of Nature, ``conditional_
+probability`` 0.5 at-max-stacks midpoint); (2) R124 (ENGINE 1.212.0) prismatic
+ALWAYS-ON percent-of-TOTAL self-amps (Shield of Molten Stone +20% armor, Cloak of
+Starry Night +20% MR) at ``conditional_probability=1.0`` (EXACT, no amortization) -
+see their inline block in ``_ITEM_RESIST_GRANTS``.
+
 Mechanic: two current-patch (16.13.1 Meraki) item COMBAT passives grant bonus
 resists that RAMP to max stacks in combat and are ABSENT from the resolved stat
 block. ``build_champion`` folds only the items' FLAT static resists (Jak'Sho
@@ -137,6 +144,36 @@ _ITEM_RESIST_GRANTS: dict[str, ItemResistEntry] = {
     "224401": ItemResistEntry(
         mr=70.0, family="fon",
         note="Force of Nature (Arena mirror; base nominal)",
+    ),
+    # R124 (ENGINE 1.212.0): prismatic ALWAYS-ON percent-of-TOTAL resist self-amps.
+    # Unlike Jak'Sho / FoN (which RAMP to max stacks -> prob 0.5 midpoint), these
+    # are innate permanent passives -> conditional_probability=1.0 (EXACT, no
+    # amortization). Shield of Molten Stone "Immovable as the Earth": +20% of TOTAL
+    # armor (items.json DDragon 16.13.1; Meraki-absent). The secondary armor-scaled
+    # Block Chance carries no DDragon magnitude and is NOT credited.
+    "443058": ItemResistEntry(
+        armor_pct=20.0, pct_base="total", conditional_probability=1.0,
+        family="molten_stone",
+        note="Immovable as the Earth: +20% total armor (always-on); Block Chance secondary uncredited",
+    ),
+    "663058": ItemResistEntry(
+        armor_pct=20.0, pct_base="total", conditional_probability=1.0,
+        family="molten_stone",
+        note="Shield of Molten Stone (mode mirror; base nominal)",
+    ),
+    # Cloak of Starry Night "Limitless as the Stars": +20% of TOTAL MR (items.json
+    # DDragon 16.13.1; Meraki-absent). The secondary MR-scaled non-AA damage
+    # reduction (up to 50% cap) is a separate scaling axis with no flat magnitude
+    # and is NOT credited here.
+    "443059": ItemResistEntry(
+        mr_pct=20.0, pct_base="total", conditional_probability=1.0,
+        family="starry_night",
+        note="Limitless as the Stars: +20% total MR (always-on); MR-scaled non-AA DR secondary uncredited",
+    ),
+    "663059": ItemResistEntry(
+        mr_pct=20.0, pct_base="total", conditional_probability=1.0,
+        family="starry_night",
+        note="Cloak of Starry Night (mode mirror; base nominal)",
     ),
 }
 

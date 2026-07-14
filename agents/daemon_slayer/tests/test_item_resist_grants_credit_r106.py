@@ -62,10 +62,15 @@ def _snap() -> DataSnapshot:
 
 
 class ItemResistRegistryTests(unittest.TestCase):
-    def test_registered_ids_are_exactly_the_four(self) -> None:
+    def test_registered_ids_are_the_expected_set(self) -> None:
+        # R106 ramping combat passives (Jak'Sho / FoN) + R124 prismatic always-on
+        # percent-of-total self-amps (Molten Stone / Starry Night, base + mirror).
         self.assertEqual(
             set(_ITEM_RESIST_GRANTS),
-            {"6665", "226665", "4401", "224401"},
+            {
+                "6665", "226665", "4401", "224401",
+                "443058", "663058", "443059", "663059",
+            },
         )
 
     def test_midpoint_is_half(self) -> None:
