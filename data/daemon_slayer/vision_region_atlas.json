@@ -1,0 +1,291 @@
+{
+  "baseline": {
+    "height": 1080,
+    "width": 1920
+  },
+  "patch": "16.13.1",
+  "regions": {
+    "ally_1_hp": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_1_hp",
+      "kind": "numeric",
+      "rect": [
+        11,
+        225,
+        57,
+        234
+      ]
+    },
+    "ally_1_mana": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_1_mana",
+      "kind": "numeric",
+      "rect": [
+        11,
+        235,
+        57,
+        241
+      ]
+    },
+    "ally_2_hp": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_2_hp",
+      "kind": "numeric",
+      "rect": [
+        11,
+        309,
+        57,
+        318
+      ]
+    },
+    "ally_2_mana": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_2_mana",
+      "kind": "numeric",
+      "rect": [
+        11,
+        319,
+        57,
+        325
+      ]
+    },
+    "ally_3_hp": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_3_hp",
+      "kind": "numeric",
+      "rect": [
+        11,
+        393,
+        57,
+        402
+      ]
+    },
+    "ally_3_mana": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_3_mana",
+      "kind": "numeric",
+      "rect": [
+        11,
+        403,
+        57,
+        409
+      ]
+    },
+    "ally_4_hp": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_4_hp",
+      "kind": "numeric",
+      "rect": [
+        11,
+        477,
+        57,
+        486
+      ]
+    },
+    "ally_4_mana": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_4_mana",
+      "kind": "numeric",
+      "rect": [
+        11,
+        487,
+        57,
+        493
+      ]
+    },
+    "ally_levels": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_levels",
+      "kind": "numeric",
+      "rect": [
+        40,
+        209,
+        60,
+        475
+      ]
+    },
+    "ally_ults": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ally_ults",
+      "kind": "numeric",
+      "rect": [
+        25,
+        165,
+        44,
+        445
+      ]
+    },
+    "augment_card_1": {
+      "api_gap": true,
+      "calibration": "owed",
+      "feeds": "augment_choices",
+      "kind": "text",
+      "rect": null
+    },
+    "augment_card_2": {
+      "api_gap": true,
+      "calibration": "owed",
+      "feeds": "augment_choices",
+      "kind": "text",
+      "rect": null
+    },
+    "augment_card_3": {
+      "api_gap": true,
+      "calibration": "owed",
+      "feeds": "augment_choices",
+      "kind": "text",
+      "rect": null
+    },
+    "cs": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "cs",
+      "kind": "numeric",
+      "rect": [
+        1779,
+        5,
+        1819,
+        25
+      ]
+    },
+    "fps": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "fps",
+      "kind": "numeric",
+      "rect": [
+        1804,
+        34,
+        1834,
+        53
+      ]
+    },
+    "gold": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "gold",
+      "kind": "numeric",
+      "rect": [
+        1097,
+        1055,
+        1162,
+        1075
+      ]
+    },
+    "hp": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "hp",
+      "kind": "numeric",
+      "rect": [
+        865,
+        1044,
+        965,
+        1059
+      ]
+    },
+    "kda": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "kda",
+      "kind": "numeric",
+      "rect": [
+        1662,
+        5,
+        1738,
+        25
+      ]
+    },
+    "level": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "level",
+      "kind": "numeric",
+      "rect": [
+        733,
+        1053,
+        749,
+        1068
+      ]
+    },
+    "mana": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "mana",
+      "kind": "numeric",
+      "rect": [
+        860,
+        1057,
+        960,
+        1072
+      ]
+    },
+    "minimap_fog": {
+      "api_gap": true,
+      "calibration": "dynamic",
+      "dynamic_source": "core.minimap_geometry.compute_minimap_rect",
+      "feeds": "enemy_positions",
+      "kind": "region",
+      "rect": null
+    },
+    "ping": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "ping",
+      "kind": "numeric",
+      "rect": [
+        1862,
+        36,
+        1887,
+        51
+      ]
+    },
+    "score_blue": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "score_blue",
+      "kind": "numeric",
+      "rect": [
+        1551,
+        5,
+        1578,
+        25
+      ]
+    },
+    "score_red": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "score_red",
+      "kind": "numeric",
+      "rect": [
+        1593,
+        5,
+        1620,
+        25
+      ]
+    },
+    "timer": {
+      "api_gap": false,
+      "calibration": "calibrated",
+      "feeds": "timer",
+      "kind": "numeric",
+      "rect": [
+        1857,
+        4,
+        1903,
+        26
+      ]
+    }
+  },
+  "schema_version": 1
+}
