@@ -120,3 +120,24 @@ def test_onhit_ranked_row_splits_are_consistent():
     r = res.ranked[0]
     # new_dps == ability_dps + auto_dps for each row (the sum invariant holds per candidate).
     assert abs(r.new_dps - (r.ability_dps + r.auto_dps)) < 1e-6
+
+
+# --- Slice B Task 3 (2026-07-16) - Gwen P on-hit credit + apply_passive_damage
+# threading ------------------------------------------------------------------
+#
+# compute_onhit_dps gains an apply_passive_damage param (default False,
+# forwarded only into the composed compute_dps call - compute_ability_dps has
+# no such param since it skips the P slot). Gwen ("Gwen", "P", 0) joins
+# _AA_ROUTED_ON_HIT_KEYS so A Thousand Cuts' on-hit magic now routes onto the
+# AUTO-ATTACK cadence when the flag is on, raising auto_dps (and therefore
+# onhit_dps) relative to the flag-off baseline.
+def test_gwen_p_credited_raises_auto_half_when_passive_on():
+    snap = DataSnapshot.load()
+    T = dict(target_armor=105.0, target_mr=52.0, target_max_hp=2430.0)
+    off = compute_onhit_dps(snap, "Gwen", 13, item_ids=("3115",), mode="SR",
+                            apply_passive_damage=False, **T)
+    on = compute_onhit_dps(snap, "Gwen", 13, item_ids=("3115",), mode="SR",
+                           apply_passive_damage=True, **T)
+    # Crediting Gwen P (now allowlisted) raises the auto half via on-hit magic.
+    assert on.auto_dps > off.auto_dps
+    assert on.onhit_dps > off.onhit_dps
