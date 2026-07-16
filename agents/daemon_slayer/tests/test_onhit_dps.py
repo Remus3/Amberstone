@@ -38,3 +38,85 @@ def test_onhit_dps_is_exact_sum_of_two_halves():
     # Both halves are material for an on-hit AP champ (the whole point).
     assert res.ability_dps > 0.0
     assert res.auto_dps > 0.0
+
+
+# --- Slice B Task 2 (2026-07-16) - rank_items_by_onhit ranker tests --------
+#
+# NOTE: the task brief's Step-1 snippet calls a ``load_default_snapshot()``
+# helper that does not exist anywhere in this repo (grepped clean). This
+# module already established the fix directly above (Task 1's own docstring):
+# ``DataSnapshot.load()`` is the real snapshot-loader idiom used across the DS
+# test suite. A module-level singleton (mirrors
+# ``test_hybrid_enemy_champions.py:55`` ``_SNAPSHOT = DataSnapshot.load()``)
+# avoids re-reading the champions/items JSON from disk once per parametrized
+# case.
+import pytest
+
+from agents.daemon_slayer.onhit_dps import rank_items_by_onhit
+
+_NASHORS = "3115"
+_RANK_SNAPSHOT = DataSnapshot.load()
+
+
+# DIAGNOSIS (2026-07-16, Slice B Task 2 - do not delete this xfail without
+# re-reading it): the ranker itself is verified correct (see the row-splits
+# test below + a manual compute_onhit_dps diagnostic cross-check) - it sums
+# ability_dps + auto_dps exactly as designed. The failure is upstream, in the
+# two FROZEN scorers this ranker composes (out of scope for Task 2 to touch):
+#
+#   * Gwen's on-hit passive "A Thousand Cuts" IS registered as a
+#     PassiveDamageEntry (_passive_damage_overrides.py:599, cadence="on_hit"),
+#     but the AA-routing allowlist that would surface it in compute_dps's
+#     weighted_dps (_AA_ROUTED_ON_HIT_KEYS, _passive_damage_overrides.py:1052)
+#     contains ONLY ("Warwick", "P", 0) and ("Orianna", "P", 0) - a deliberate
+#     v1 scope decision per the comment at :1047-1051, not an oversight. So
+#     even compute_dps(apply_passive_damage=True) credits nothing for Gwen.
+#   * Kayle and KogMaw have NO on-hit registry entry anywhere (grepped
+#     _passive_damage_overrides.py + _ability_overrides.py clean) - KogMaw's W
+#     "Bio-Arcane Barrage" on-hit conversion and Kayle's kit are unmodeled.
+#
+# With no kit credit for any of the three, auto_dps degenerates to GENERIC
+# crit/AD/percent-current-health auto-attack math - Blade of the Ruined
+# King's 8%-current-HP proc (delta ~84-109 DPS) and Liandry's Torment's burn
+# (delta ~69-71) dominate Nashor's modest AP+AS package (delta ~24) for ALL
+# THREE champs identically. A Cassiopeia control (a canonical Nashor's-core
+# mage, same target) shows the SAME pattern - Nashor's misses her top-8/10
+# too - confirming this is a systemic auto_dps-axis gap, not champ-specific
+# taste, and not something a per-champ parametrize drop would fix honestly.
+#
+# Fixing this needs new data-registry authoring (extending
+# _AA_ROUTED_ON_HIT_KEYS + wiki-sourced PassiveDamageEntry rows for Kayle/
+# KogMaw) - outside onhit_dps.py and outside the "do not modify the 6 frozen
+# scorers" rule for this task. Per the task brief: do not weaken or delete
+# this assertion - reported DONE_WITH_CONCERNS instead (see
+# .superpowers/sdd/task-2-report.md for the full diagnosis). strict=True so
+# a future engine fix flips this to an XPASS failure, forcing the marker's
+# removal instead of silently rotting.
+@pytest.mark.xfail(
+    reason=(
+        "Engine gap, not a ranker bug: neither compute_dps nor "
+        "compute_ability_dps credits Gwen/Kayle/KogMaw's on-hit-AP kit "
+        "mechanic (Gwen's Thousand Cuts is registered but excluded from "
+        "_AA_ROUTED_ON_HIT_KEYS; Kayle/KogMaw have no entry at all) - see "
+        "the comment above this test and .superpowers/sdd/task-2-report.md"
+    ),
+    strict=True,
+)
+@pytest.mark.parametrize("champ", ["Gwen", "Kayle", "KogMaw"])
+def test_nashors_surfaces_in_onhit_topn(champ):
+    res = rank_items_by_onhit(
+        _RANK_SNAPSHOT, champ, level=13, current_item_ids=(), mode="SR",
+        target_armor=105.0, target_mr=52.0, target_max_hp=2430.0, top_n=8,
+    )
+    ids = [r.item_id for r in res.ranked]
+    assert _NASHORS in ids, f"{champ}: Nashor's absent from onhit top-8: {ids}"
+
+
+def test_onhit_ranked_row_splits_are_consistent():
+    res = rank_items_by_onhit(
+        _RANK_SNAPSHOT, "Gwen", level=13, current_item_ids=(), mode="SR",
+        target_armor=105.0, target_mr=52.0, target_max_hp=2430.0, top_n=8,
+    )
+    r = res.ranked[0]
+    # new_dps == ability_dps + auto_dps for each row (the sum invariant holds per candidate).
+    assert abs(r.new_dps - (r.ability_dps + r.auto_dps)) < 1e-6
