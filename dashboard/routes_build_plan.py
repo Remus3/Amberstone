@@ -338,14 +338,20 @@ def _serve_build_plan(h, payload) -> None:
         # ONLY on the hint profile - NEVER the loop.tick enemy_profile above -
         # so the DS-scored live[]/meta[] stay byte-identical (hint-only).
         from core.build_planner.situational import AllyState
+        from core.cc_threat import compute_cc_score
         from core.heal_threat import ally_has_antiheal, count_heal_sources
         flat_enemy_items = [i for pl in (enemy_items or []) for i in pl]
         heal_sources = count_heal_sources(enemies, flat_enemy_items)
+        # C6 tenacity (2026-07-16): cc_score from the enemy comp (cc_threat
+        # curated hard-CC roster). Populated ONLY on the hint profile - NEVER
+        # the loop.tick enemy_profile above - so the DS-scored live[]/meta[]
+        # stay byte-identical (hint-only, mirrors C2).
+        cc_score = compute_cc_score(enemies)
         ally_state = AllyState(has_antiheal=ally_has_antiheal(ally_items))
         hint_profile = (
             _resolve_enemy_profile(enemies, level, enemy_items=enemy_items,
-                                   heal_sources=heal_sources)
-            if (enemy_items or heal_sources) else enemy_profile
+                                   heal_sources=heal_sources, cc_score=cc_score)
+            if (enemy_items or heal_sources or cc_score) else enemy_profile
         )
         counter_hints = _resolve_counter_hints(hint_profile, owned, ally_state)
 
@@ -454,23 +460,25 @@ def _coerce_ally_items(raw):
 
 
 def _resolve_enemy_profile(enemies: list, level: int, enemy_items=None,
-                           heal_sources=0):
+                           heal_sources=0, cc_score=0.0):
     """Best-effort EnemyProfile via the module's IMPURE builder.
 
     Routes the live enemy compute THROUGH core.build_planner.situational
     (which owns the compute_target_stats_from_items call, per P1L4), so this
     route never holds the needle. ``enemy_items`` (per-enemy item-id lists,
     index-aligned with ``enemies``) is OPTIONAL and enriches ONLY the
-    counter-hint profile (enemy_pen -> C4, kill-target armor/MR -> C5); it is
-    NEVER passed to the profile that feeds loop.tick, so the DS plan stays
-    invariant. Returns None on any failure (DPS-only plan).
+    counter-hint profile (enemy_pen -> C4, kill-target armor/MR -> C5);
+    ``heal_sources`` (C2 antiheal) and ``cc_score`` (C6 tenacity) are likewise
+    hint-only caller inputs. NONE of these is passed to the profile that feeds
+    loop.tick, so the DS plan stays invariant. Returns None on any failure
+    (DPS-only plan).
     """
     if not enemies:
         return None
     try:
         from core.build_planner.situational import build_enemy_profile
         return build_enemy_profile(enemies, enemy_items or None, level=level,
-                                   heal_sources=heal_sources)
+                                   heal_sources=heal_sources, cc_score=cc_score)
     except Exception as exc:  # noqa: BLE001 - no profile -> DPS-only plan
         log.debug("build-plan enemy profile: %s", exc)
         return None
