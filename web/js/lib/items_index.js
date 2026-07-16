@@ -8,7 +8,7 @@
 // guess only 404s into the onerror CDN chain). Single source of truth:
 // tests/test_ddragon_path_version_drift.py bans any other quoted semver
 // literal in web/js, so bump only this line on a patch refresh.
-export const DDRAGON_FALLBACK_VERSION = "16.13.1";
+export const DDRAGON_FALLBACK_VERSION = "16.14.1";
 
 export const ITEMS = { ready: false, version: DDRAGON_FALLBACK_VERSION, byName: {}, byId: {} };
 export const ITEM_COSTS = { ready: false, byId: {} };
