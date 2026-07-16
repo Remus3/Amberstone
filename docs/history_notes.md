@@ -257,6 +257,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-14 (operator docs session - HEXCORE_offline update + /sync-all-md + /done; docs-only, commit d584e02e; LEDGER 904)
+
+Manual operator chain (NOT the halted Gemini loop): update hexcore_offline -> sync all md -> /done. mode_key=client, no engine/DS/frozen touched, no restart.
+- HEXCORE_offline.html: repo-stats + DS/ledger node descs refreshed to live (engine 1.200.0->1.214.0, 8302->8489 DS tests, ledger 852->903); +16 net-new non-test .py as DUST (277->293); 141 nodes unchanged, DUST 293/293 well-formed, 0 dangling parents, node --check + ASCII clean.
+- sync-all-md: living-doc test/ENGINE congruence vs fresh collect (DS 8489, tests/ 11701, full suite 20,190). CLAUDE.md 1.206.0->1.214.0 + 14,364->20,190; README 6,142->20,190; DAEMON_SLAYER 8488->8489 + 7511->11701. Coverage/match prose left to DS batch; 0 broken refs; hygiene 13/13.
+- Do NOT redo: all four docs current as of 2026-07-14; hexcore DUST/stats shipped in d584e02e. Untracked agents/agent6_auditor/ files = pre-existing audit artifacts, not mine.
+
+NEXT: Gemini-headless loop stays HALTED (R129 wrote ops/loop/control/STOP) unless operator restarts it. Otherwise pick top ROADMAP NEXT, or resume the 2026-07-13 overnight directive chain (docs/specs/2026-07-13-ds-crit-burst-fix.md) if the loop is re-armed.
+
+---
+
 # 2026-07-14 (R129 gemini-loop cycle 28 - Fimbulwinter Everlasting shield EHP credit; ENGINE 1.213.0 -> 1.214.0; LEDGER 903; feat 1c6e1fc1 + docs be9b73ce)
 
 DS sweep vs Meraki truth (REFILL PROTOCOL 1). 3 disjoint read-only hunters (item-stub / champ-spell / scorer) -> picked by clean-numeric + lowest-blast (R99 precedent): Fimbulwinter (3121 / Arena 223121 / ARAM 323121) "Everlasting" shield was shield=None + a stale "Everfrost CC" note (mechanic absent from 16.13.1). Meraki items[3121] (verified line 28242): immobilize (or slow if melee) an enemy -> 100 (+4.5% current mana) GENERIC shield 3s / 8s CD; all 3 mirror ids present in items.json['data']. FIX = ItemShield(flat=100, max_mana_scaling=0.045, ANY, default_off) on all 3 mirrors + NEW default-OFF assume_fimbulwinter_shield seam in _collect_shields / compute_ehp (exact Seraph's assume_seraphs_shield template; NOT lifeline-keyed - independent CC-trigger that stacks with a lifeline). Current mana modeled as MAX mana (steady-state); +80% multi-enemy arm not modeled (conservative base). TDD 22/22 (18 RED pre-fix); verifier CONFIRM 6/6 (OFF byte-identical Sion+3121 EQUAL). ENGINE 1.214.0 (115 py pins); build-orders restamped (orders byte-identical, default-OFF); DAEMON_SLAYER banner 1.214.0/8488; Share --check green 458 + Share/CHANGELOG + source CHANGELOG; DS :8893 bounced 1.214.0. DS suite 8488 pass / 1 skip / 1948 subtests; RC 11669 pass, 10 reconciled to 0 R129 regressions (7 Share-drift green post-sync, 1 LiveEngine green post-bounce, 2 coach_poll LEDGER-828 async flake pass 2/2 isolated). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md B50, needs a live/replayed Fimbulwinter holder).

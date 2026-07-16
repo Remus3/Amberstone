@@ -16,6 +16,18 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-16 (DS C6 tenacity counter-hint; LEDGER 909; commits 51e6b6fc + e9487a78)
+
+Interactive session. Task from the prior NEXT-SESSION note: light up the C6 tenacity counter-hint (the C2 follow-up). mode_key=client, no live game. Tier-1 RC-side (no engine/Share/ENGINE bump). Followed brainstorming -> spec -> TDD.
+- **Ground truth verified first:** the C6 gate `situational.py:450` (`cc_score >= CC_CUT 5.0`) was already fully plumbed - `build_enemy_profile` accepts `cc_score=0.0` -> `EnemyProfile.cc_score`, exactly like C2's `heal_sources`. Dead only for lack of an enemy-CC source (`defensive_picks.compute_threat_profile` has no CC metric). So NO situational.py edit; mirror C2 exactly.
+- **Decisions (AskUserQuestion):** C6 over C3 fed (C3 is live-gated - no clean payload signal); cc_score = flat per-champ x2.5 (2+ hard-CC champs -> fires at >=5.0).
+- **Shipped (2 files):** NEW `core/cc_threat.py` (curated hard-CC roster + `compute_cc_score`, mirrors heal_threat.py) + `dashboard/routes_build_plan.py` (cc_score kwarg on `_resolve_enemy_profile`, threaded into the HINT profile ONLY, never loop.tick). No active_match.js edit (it already POSTs `enemies`). Spec: docs/specs/2026-07-16-ds-c6-tenacity-counter-hint-design.md.
+- **Verified:** TDD RED (ModuleNotFoundError) -> GREEN 36 tests; ruff clean; live probe (fresh RC pid 31116): Leona/Malphite/Amumu -> tenacity chip "enemy CC 8/10", live[]/meta[] byte-identical (source-suppress invariant lock). CI green (ci + CodSpeed).
+
+NEXT: only C3 fed remains in the counter-build (live-gated - needs live KDA/gold-lead), OR pick a top ROADMAP item. LIVE-VERIFY OWED: the overlay antiheal + tenacity chip RENDER (Electron, agent-blind; backend proven) + the Locke build eyeball - all want a real-game session. Do NOT redo: C2 antiheal (908) + C6 tenacity (909) shipped/pushed/CI-green; Step 2 situational chips ALREADY shipped (do NOT rebuild - the 2026-07-13 spec is stale on Step 2).
+
+---
+
 # 2026-07-16 (Locke kit-less dps-fallback + DS C2 antiheal counter-hint; LEDGER 907-908; commits d2ed3d47 + fc029b87/d9f0fac4/57354ea0)
 
 Interactive session. Chain: 16.14.1 client-mode build-reco validation -> Locke fix -> DS build-reco re-scope -> C2 antiheal. mode_key=client, no live game. Both fixes Tier-1 RC-side (no engine/Share/ENGINE bump).
@@ -35,14 +47,3 @@ Operator chain: "scan upstream and connections" -> "both" (commit mirror + DS re
 - **Eclipse AH fix** (LEDGER 906, ENGINE 1.214.0 -> 1.215.0, `36129183`): 226692 Arena-mirror pin 10 -> 15 (missed in the 16.12.1 Arena normalization batch) + un-blind `item_ah_drift_check` (hardcoded 16.12.1 -> now resolves current.txt) + NEW CI guard `tests/test_item_ability_haste_ddragon_sync.py`. Sibling sweep: only 226692 drifted (220 pins). 115 test pins + Share + DS/RC bounce. CI green (ci + CodSpeed).
 
 NEXT: patch 16.14.1 fully landed + validated, engine 1.215.0. Live-gated tail: the 16.14 build recos want a real-game eyeball (all client mode this session). Known Meraki-cadence gaps logged NOT fixed (Corki/Yunara AD-growth stale, Locke/Zaahen no ability kit) - resolve when Meraki `latest` advances past 25.15. Do NOT redo: the 226692 AH fix + the patch refresh are shipped + pushed + CI-green; do NOT re-scan upstream (no drift), do NOT re-bump the engine for 226692.
-
----
-
-# 2026-07-14 (operator docs session - HEXCORE_offline update + /sync-all-md + /done; docs-only, commit d584e02e; LEDGER 904)
-
-Manual operator chain (NOT the halted Gemini loop): update hexcore_offline -> sync all md -> /done. mode_key=client, no engine/DS/frozen touched, no restart.
-- HEXCORE_offline.html: repo-stats + DS/ledger node descs refreshed to live (engine 1.200.0->1.214.0, 8302->8489 DS tests, ledger 852->903); +16 net-new non-test .py as DUST (277->293); 141 nodes unchanged, DUST 293/293 well-formed, 0 dangling parents, node --check + ASCII clean.
-- sync-all-md: living-doc test/ENGINE congruence vs fresh collect (DS 8489, tests/ 11701, full suite 20,190). CLAUDE.md 1.206.0->1.214.0 + 14,364->20,190; README 6,142->20,190; DAEMON_SLAYER 8488->8489 + 7511->11701. Coverage/match prose left to DS batch; 0 broken refs; hygiene 13/13.
-- Do NOT redo: all four docs current as of 2026-07-14; hexcore DUST/stats shipped in d584e02e. Untracked agents/agent6_auditor/ files = pre-existing audit artifacts, not mine.
-
-NEXT: Gemini-headless loop stays HALTED (R129 wrote ops/loop/control/STOP) unless operator restarts it. Otherwise pick top ROADMAP NEXT, or resume the 2026-07-13 overnight directive chain (docs/specs/2026-07-13-ds-crit-burst-fix.md) if the loop is re-armed.
