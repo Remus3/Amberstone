@@ -1053,6 +1053,7 @@ _AA_ROUTED_ON_HIT_KEYS: frozenset[tuple[str, str, int]] = frozenset(
     {
         ("Warwick", "P", 0),
         ("Orianna", "P", 0),
+        ("Gwen", "P", 0),  # Slice B: A Thousand Cuts on-hit magic (AS-scaling)
     }
 )
 
