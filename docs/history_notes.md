@@ -257,6 +257,17 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-16 (upstream/patch scan -> 16.14.1 refresh + validation + Eclipse AH fix; commits d081291d + fc09ce0b + 36129183; LEDGER 905-906)
+
+Operator chain: "scan upstream and connections" -> "both" (commit mirror + DS re-extract) -> "what is next to validate" -> validate 1-4 -> "yes" -> "ship a+b" -> /done. mode_key=client, no live game.
+- **Patch refresh 16.13.1 -> 16.14.1** (LEDGER 905): mirror `d081291d` (13 files) + engine snapshot `fc09ce0b` (61 files: 19-file DS dir + 6 HZ tables). Meraki core + abilities (manifest content_patch backfill 25.15) + fresh cdragon_spell (CC swap=5/immob=181 verified) + copy-forward curated/wiki/cdragon-ratios; build_orders + pickban HTTP-scored; Share single-patch handoff. ENGINE UNCHANGED (patch != engine). DS `:8893` + RC bounced to 16.14.1. Dual suite green after triaging 23 patch-drift failures (HZ regen + doc flip + Share `_PATCH`).
+- **Validation 1-4:** shield-lerp pin holds (Shieldbow byte-equal 16.14 Meraki, BACKLOG #7 re-verified); build recos NO data regression (same-engine HZ diff = 0 all modes; the alarming ADC Lane-B shift was engine-GENERATION drift, not 16.14 data - driving items stat-identical); override pins 59/60 match; Meraki-sourced data byte-identical to 16.13.1 (frozen `latest` = content_patch 25.15).
+- **Eclipse AH fix** (LEDGER 906, ENGINE 1.214.0 -> 1.215.0, `36129183`): 226692 Arena-mirror pin 10 -> 15 (missed in the 16.12.1 Arena normalization batch) + un-blind `item_ah_drift_check` (hardcoded 16.12.1 -> now resolves current.txt) + NEW CI guard `tests/test_item_ability_haste_ddragon_sync.py`. Sibling sweep: only 226692 drifted (220 pins). 115 test pins + Share + DS/RC bounce. CI green (ci + CodSpeed).
+
+NEXT: patch 16.14.1 fully landed + validated, engine 1.215.0. Live-gated tail: the 16.14 build recos want a real-game eyeball (all client mode this session). Known Meraki-cadence gaps logged NOT fixed (Corki/Yunara AD-growth stale, Locke/Zaahen no ability kit) - resolve when Meraki `latest` advances past 25.15. Do NOT redo: the 226692 AH fix + the patch refresh are shipped + pushed + CI-green; do NOT re-scan upstream (no drift), do NOT re-bump the engine for 226692.
+
+---
+
 # 2026-07-14 (operator docs session - HEXCORE_offline update + /sync-all-md + /done; docs-only, commit d584e02e; LEDGER 904)
 
 Manual operator chain (NOT the halted Gemini loop): update hexcore_offline -> sync all md -> /done. mode_key=client, no engine/DS/frozen touched, no restart.
