@@ -20,6 +20,7 @@ from .ability_dps import compute_ability_dps
 from .data_loader import DataSnapshot
 from .dps import compute_dps
 from .effects import ITEM_EFFECTS
+from .hybrid import _damage_axis
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -290,6 +291,44 @@ class OnhitDpsRankResult:
         return "\n".join(rows)
 
 
+# --- AP-axis check for the coherence gate (Slice B Task 5) -----------------
+#
+# Starts from hybrid.py's _damage_axis (DDragon info.attack/info.magic "class
+# flavor" split - magic > attack -> "ap"). Verified live against the 16.14.1
+# snapshot: that split misclassifies 2 of Slice B's 3 on-hit-AP champions as
+# AD-axis (Gwen 7atk/5mag, KogMaw 8atk/5mag) even though Tasks 3-4 registered
+# their on-hit passive as AP-scaling magic damage - the split reflects base
+# stat GROWTH, not build reality, and was authored/validated for the bruiser
+# scorer's AD-vs-AP bruiser split (Darius vs Mordekaiser), never for on-hit-AP
+# hybrids. Tuning ap_ad_coherence cannot fix this (it is not a strength
+# problem): axis stays "ad" at any strength, so the gate never fires.
+#
+# Fallback: a champion whose AA-routed on-hit passive (_AA_ROUTED_ON_HIT_KEYS
+# / _passive_damage_overrides.py) carries a BILINEAR ap-per-100 term (the item
+# 248 "X% (+ Y% per 100 AP) of target max HP" schema - a proportional,
+# itemization-relevant AP scaling, not a minor flat-ratio kicker) is AP-axis
+# by construction of that registry, regardless of the coarse stat split. This
+# cleanly separates Gwen/KogMaw (bilinear ap term, zero flat ap_pct) from
+# Warwick/Orianna (flat ap_pct kicker only - 10.0/15.0 - empty bilinear_terms;
+# the pre-Slice-B v1 entries, not on-hit-AP champions) - no numeric threshold,
+# no champion-name list. Kayle does not need the fallback: her flat 20% ap_pct
+# E ratio already resolves "ap" via _damage_axis (7 magic > 6 attack).
+def _onhit_ap_axis(snapshot: DataSnapshot, champion_id: str) -> str:
+    """Return ``"ap"`` when the champion is AP-axis for on-hit-AP purposes."""
+    if _damage_axis(snapshot, champion_id) == "ap":
+        return "ap"
+    from ._passive_damage_overrides import aa_routed_on_hit_entry
+
+    routed = aa_routed_on_hit_entry(str(champion_id))
+    if routed is not None:
+        _key, entry = routed
+        if entry.damage_type == "MAGIC" and any(
+            term[1] == "ap" for term in entry.bilinear_terms
+        ):
+            return "ap"
+    return "ad"
+
+
 def rank_items_by_onhit(
     snapshot: DataSnapshot,
     champion_id: str,
@@ -311,6 +350,7 @@ def rank_items_by_onhit(
     apply_mode_modifiers: bool = False,
     filter_shared_uniques: bool = True,
     apply_passive_damage: bool = True,
+    ap_ad_coherence: float = 0.0,
 ) -> OnhitDpsRankResult:
     """Rank items by combined on-hit AP DPS gain (``compute_onhit_dps``).
 
@@ -337,6 +377,27 @@ def rank_items_by_onhit(
     on-hit passive (e.g. Gwen's A Thousand Cuts, ``_AA_ROUTED_ON_HIT_KEYS``)
     should be credited by default in both the baseline and every candidate
     score. Threaded unchanged into every ``compute_onhit_dps`` call below.
+
+    ``ap_ad_coherence`` (default 0.0 - OFF, byte-identical sort) is an
+    AP/AD axis-coherence penalty. Pure-AD items (Blade of the Ruined King,
+    Trinity Force, Kraken Slayer - no ``SpellDamage`` tag) add raw AD the
+    marginal ranker cannot see is wasted on an AP-axis champion's kit
+    scaling, so they swamp the AP on-hit field (Nashor's Tooth) even after
+    Tasks 3-4 credit the kit on-hit passive. For an AP-axis champion
+    (``_onhit_ap_axis`` - hybrid.py's ``_damage_axis`` DDragon attack/magic
+    split, falling back to the champion's own AA-routed on-hit passive
+    registry when that split says "ad"; see the comment above
+    ``_onhit_ap_axis`` for why the fallback exists), a pure-AD candidate's
+    SORT score is scaled down by ``(1 - ap_ad_coherence)``; at
+    ``ap_ad_coherence >= 1.0`` a positive sort delta is zeroed, effectively
+    dropping it to the bottom of the ranking. Only ever LOWERS a pure-AD
+    candidate's rank - a non-positive delta is left untouched (scaling a
+    negative number toward zero would raise, not lower, its rank).
+    Non-AP-axis (AD) champions are unaffected at any strength - the axis
+    lookup itself only runs when ``ap_ad_coherence > 0.0``, so 0.0 has zero
+    effect on the axis path (byte-identical sort). The raw ``delta_dps`` /
+    ``dps_per_1k_gold`` stored on each returned row are never penalized
+    (transparency) - only the in-function sort key is.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -426,10 +487,43 @@ def rank_items_by_onhit(
             unique_passive_key=cand_key,
         ))
 
+    # AP/AD axis-coherence gate (Slice B Task 5). Only touches the SORT key -
+    # each row's own delta_dps / dps_per_1k_gold fields stay raw (transparency).
+    # Axis is looked up ONLY when the gate is active so ap_ad_coherence=0.0
+    # is provably byte-identical to the pre-Task-5 sort (no axis-lookup effect).
+    axis: Optional[str] = None
+    if ap_ad_coherence > 0.0:
+        axis = _onhit_ap_axis(snapshot, champion_id)
+
+    def _coherence_key(value: float, tags: tuple[str, ...]) -> float:
+        """Sort-only view of ``value`` - never mutates the row itself.
+
+        Only ever lowers a pure-AD candidate's rank for an AP-axis champion:
+        a non-positive value is returned unchanged (scaling a negative
+        number toward zero would raise, not lower, its rank).
+        """
+        if axis != "ap" or "SpellDamage" in tags or value <= 0.0:
+            return value
+        if ap_ad_coherence >= 1.0:
+            return 0.0
+        return value * (1.0 - ap_ad_coherence)
+
     if sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.dps_per_1k_gold, r.delta_dps), reverse=True)
+        ranked.sort(
+            key=lambda r: (
+                _coherence_key(r.dps_per_1k_gold, r.tags),
+                _coherence_key(r.delta_dps, r.tags),
+            ),
+            reverse=True,
+        )
     else:
-        ranked.sort(key=lambda r: (r.delta_dps, r.dps_per_1k_gold), reverse=True)
+        ranked.sort(
+            key=lambda r: (
+                _coherence_key(r.delta_dps, r.tags),
+                _coherence_key(r.dps_per_1k_gold, r.tags),
+            ),
+            reverse=True,
+        )
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]
