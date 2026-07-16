@@ -19,6 +19,7 @@ import assert from "node:assert";
 
 import {
   _extractBpEnemies,
+  _extractBpAllyItems,
   _bpEnemyItemsKey,
 } from "./active_match.js";
 
@@ -105,4 +106,26 @@ test("_bpEnemyItemsKey: non-array input is fail-soft (no throw)", () => {
   assert.strictEqual(_bpEnemyItemsKey(null), "");
   assert.strictEqual(_bpEnemyItemsKey(undefined), "");
   assert.strictEqual(_bpEnemyItemsKey("nope"), "");
+});
+
+// C2 antiheal (2026-07-16): the my-team owned-items extractor. A flat list of
+// ally item ids feeds the backend AllyState.has_antiheal de-dup (an ally
+// Grievous item suppresses the antiheal chip). Enemies are excluded.
+test("_extractBpAllyItems: only my-team item ids, flat, enemies excluded", () => {
+  // ORDER = Ashe (3153) + Lulu (3222); the two CHAOS players are excluded.
+  assert.deepStrictEqual(_extractBpAllyItems(ALL_PLAYERS, "ORDER"), ["3153", "3222"]);
+});
+
+test("_extractBpAllyItems: itemId alias + numeric coercion", () => {
+  const roster = [
+    { team: "ORDER", championName: "Lulu", items: [{ itemId: "3075" }, { itemID: 3222 }] },
+    { team: "CHAOS", championName: "Soraka", items: [{ itemID: "3072" }] },
+  ];
+  assert.deepStrictEqual(_extractBpAllyItems(roster, "ORDER"), ["3075", "3222"]);
+});
+
+test("_extractBpAllyItems: fail-soft on non-array roster / missing myTeam", () => {
+  assert.doesNotThrow(() => _extractBpAllyItems(null, "ORDER"));
+  assert.deepStrictEqual(_extractBpAllyItems(null, "ORDER"), []);
+  assert.deepStrictEqual(_extractBpAllyItems(ALL_PLAYERS, null), []);
 });
