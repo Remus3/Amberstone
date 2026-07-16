@@ -977,6 +977,27 @@ def champion_attackrange(champion: str) -> float:
     return float(_champ_attackrange_index.get(_norm_champ_key(champion), 0.0))
 
 
+# Kit-dependent scorers (ds.ability / ds.burst / ds.hps) need the champion's
+# ability data. A champ released after the frozen Meraki `latest` content_patch
+# has NO ability entries, so those scorers return an identically-zero delta for
+# every item and the ranker degenerates to the cheapest starter items (a useless
+# "+0.0" build - the Locke 16.14.1 symptom). The AA-based scorers (ds.dps /
+# ds.ehp / ds.hybrid) need no kit data, so the dispatcher detects the all-zero
+# case and falls back to ds.dps. RC-side + non-regressive by construction: a real
+# kit always scores > 0 on at least one item, so the guard never fires for a
+# champ that has ability data (byte-identical to pre-fix behavior).
+_KITLESS_DELTA_EPS = 1e-9
+
+
+def _kitless_all_zero(rows, attr: str) -> bool:
+    """True when EVERY ranked row's ``attr`` delta is ~0 (kit-less signal).
+    Non-empty guard: an empty ``rows`` is build-complete / fully filtered,
+    NOT kit-less, so it must not trigger the fallback."""
+    return bool(rows) and all(
+        abs(getattr(r, attr, 0.0) or 0.0) <= _KITLESS_DELTA_EPS for r in rows
+    )
+
+
 def rank_for_primary_archetype(
     champion: str,
     archetype: str,
@@ -1066,6 +1087,10 @@ def rank_for_primary_archetype(
     default-ON flip is EXCLUDED -> docs/LIVE_GAME_GATED_SYNC.md.
     """
     arch = (archetype or "").strip().lower()
+    # Kit-dependent-scorer fallback (see _kitless_all_zero): default False.
+    # The mage / assassin / enchanter branches set it True when they detect a
+    # champ with no ability data (all-zero ranking) and fall through to ds.dps.
+    fell_back = False
 
     # R55 (DEFAULT-OFF): resolve the archetype-aware current-HP fraction the four
     # damage branches use. When the flag is off, keep the caller's value (mage /
@@ -1179,25 +1204,29 @@ def rank_for_primary_archetype(
         )
         if rows is None:
             return None
-        return {
-            "ok":        True,
-            "scorer":    "ability",
-            "archetype": arch,
-            "ranked":    [
-                {
-                    "item_id":            r.item_id,
-                    "item_name":          r.item_name,
-                    "delta":              r.delta_ability_dps,
-                    "new_ability_dps":    r.new_ability_dps,
-                    "gold":               r.gold,
-                    "shares_dead_unique": r.shares_dead_unique,
-                    "dead_unique_key":    r.dead_unique_key,
-                    "unique_passive_key": r.unique_passive_key,
-                }
-                for r in rows
-            ],
-            "fell_back": False,
-        }
+        if not _kitless_all_zero(rows, "delta_ability_dps"):
+            return {
+                "ok":        True,
+                "scorer":    "ability",
+                "archetype": arch,
+                "ranked":    [
+                    {
+                        "item_id":            r.item_id,
+                        "item_name":          r.item_name,
+                        "delta":              r.delta_ability_dps,
+                        "new_ability_dps":    r.new_ability_dps,
+                        "gold":               r.gold,
+                        "shares_dead_unique": r.shares_dead_unique,
+                        "dead_unique_key":    r.dead_unique_key,
+                        "unique_passive_key": r.unique_passive_key,
+                    }
+                    for r in rows
+                ],
+                "fell_back": False,
+            }
+        # Kit-less champ (no ability data in the frozen Meraki snapshot):
+        # fall through to ds.dps below rather than serve an all-zero build.
+        fell_back = True
 
     if arch == "assassin":
         rows = rank_assassin_for(
@@ -1222,25 +1251,29 @@ def rank_for_primary_archetype(
         )
         if rows is None:
             return None
-        return {
-            "ok":        True,
-            "scorer":    "burst",
-            "archetype": arch,
-            "ranked":    [
-                {
-                    "item_id":            r.item_id,
-                    "item_name":          r.item_name,
-                    "delta":              r.delta_burst,
-                    "new_burst":          r.new_burst,
-                    "gold":               r.gold,
-                    "shares_dead_unique": r.shares_dead_unique,
-                    "dead_unique_key":    r.dead_unique_key,
-                    "unique_passive_key": r.unique_passive_key,
-                }
-                for r in rows
-            ],
-            "fell_back": False,
-        }
+        if not _kitless_all_zero(rows, "delta_burst"):
+            return {
+                "ok":        True,
+                "scorer":    "burst",
+                "archetype": arch,
+                "ranked":    [
+                    {
+                        "item_id":            r.item_id,
+                        "item_name":          r.item_name,
+                        "delta":              r.delta_burst,
+                        "new_burst":          r.new_burst,
+                        "gold":               r.gold,
+                        "shares_dead_unique": r.shares_dead_unique,
+                        "dead_unique_key":    r.dead_unique_key,
+                        "unique_passive_key": r.unique_passive_key,
+                    }
+                    for r in rows
+                ],
+                "fell_back": False,
+            }
+        # Kit-less champ (no ability data in the frozen Meraki snapshot):
+        # fall through to ds.dps below rather than serve an all-zero build.
+        fell_back = True
 
     if arch == "enchanter":
         rows = rank_enchanter_for(
@@ -1258,30 +1291,35 @@ def rank_for_primary_archetype(
         )
         if rows is None:
             return None
-        return {
-            "ok":        True,
-            "scorer":    "hps",
-            "archetype": arch,
-            "ranked":    [
-                {
-                    "item_id":            r.item_id,
-                    "item_name":          r.item_name,
-                    "delta":              r.delta_hps,
-                    "new_hps":            r.new_hps,
-                    "gold":               r.gold,
-                    "shares_dead_unique": r.shares_dead_unique,
-                    "dead_unique_key":    r.dead_unique_key,
-                    "unique_passive_key": r.unique_passive_key,
-                }
-                for r in rows
-            ],
-            "fell_back": False,
-        }
+        if not _kitless_all_zero(rows, "delta_hps"):
+            return {
+                "ok":        True,
+                "scorer":    "hps",
+                "archetype": arch,
+                "ranked":    [
+                    {
+                        "item_id":            r.item_id,
+                        "item_name":          r.item_name,
+                        "delta":              r.delta_hps,
+                        "new_hps":            r.new_hps,
+                        "gold":               r.gold,
+                        "shares_dead_unique": r.shares_dead_unique,
+                        "dead_unique_key":    r.dead_unique_key,
+                        "unique_passive_key": r.unique_passive_key,
+                    }
+                    for r in rows
+                ],
+                "fell_back": False,
+            }
+        # Kit-less champ (no ability data in the frozen Meraki snapshot):
+        # fall through to ds.dps below rather than serve an all-zero build.
+        fell_back = True
 
     # carry / anything else -> fall through to ds.dps.
-    # Post-Phase-6 (s181): all 6 archetypes have their own scorer; this
-    # path handles only the catch-all (empty string, unknown labels).
-    fell_back = False
+    # Post-Phase-6 (s181): all 6 archetypes have their own scorer; this path
+    # handles only the catch-all (empty string, unknown labels) AND the
+    # kit-less ability/burst/hps fallback (fell_back was set True above when a
+    # kit-dependent branch produced an all-zero ranking).
     # R55: carry only receives the seam override when the flag is on
     # (byte-identical no-override default otherwise).
     _carry_hp_kwargs = (
@@ -1372,7 +1410,11 @@ def rank_for_primary_archetype(
     return {
         "ok":        True,
         "scorer":    "dps",
-        "archetype": arch or "carry",
+        # On a kit-less fallback (fell_back) the served build IS a ds.dps
+        # carry build, so echo "carry" for a coherent label instead of the
+        # requested-but-unservable mage/assassin/enchanter. Genuine
+        # carry/unknown callers keep the existing "" -> "carry" behavior.
+        "archetype": "carry" if fell_back else (arch or "carry"),
         "ranked":    [
             {
                 "item_id":            r.item_id,
