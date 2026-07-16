@@ -314,5 +314,43 @@ class EnemyItemsCounterHintTests(unittest.TestCase):
         self.assertIn("hp_vs_pen", crits)
 
 
+class CounterHintAntihealTests(unittest.TestCase):
+    """C2 antiheal (2026-07-16): heal_sources (enemy comp + items) + AllyState
+    de-dup, populated on the HINT profile ONLY - the DS plan stays untouched."""
+
+    _HEALERS = ["Soraka", "Aatrox", "Ashe"]   # Soraka + Aatrox curated -> 2 sources
+
+    def test_healer_comp_fires_antiheal_chip(self):
+        resp = _post({"champion": "Miss Fortune", "items": [],
+                      "enemies": self._HEALERS})
+        crits = {h["criterion"] for h in resp["counter_hints"]}
+        self.assertIn("antiheal", crits)
+
+    def test_ally_antiheal_suppresses_chip(self):
+        # Ally owns Thornmail (3075, applies Grievous) -> the chip de-dupes away.
+        resp = _post({"champion": "Miss Fortune", "items": [],
+                      "enemies": self._HEALERS, "ally_items": ["3075"]})
+        crits = {h["criterion"] for h in resp["counter_hints"]}
+        self.assertNotIn("antiheal", crits)
+
+    def test_lone_healer_does_not_fire(self):
+        # 1 curated sustain champ = 1 source < HEAL_THRESHOLD (2) - literal count.
+        resp = _post({"champion": "Miss Fortune", "items": [],
+                      "enemies": ["Soraka", "Ashe", "Jinx"]})
+        crits = {h["criterion"] for h in resp["counter_hints"]}
+        self.assertNotIn("antiheal", crits)
+
+    def test_ally_items_do_not_move_the_ds_plan(self):
+        # ally_items only feed the AllyState de-dup -> live[]/meta[] byte-identical.
+        base = {"champion": "Miss Fortune", "items": [], "enemies": self._HEALERS}
+        resp_a = _post(dict(base))
+        resp_b = _post({**base, "ally_items": ["3075"]})
+        self.assertEqual(resp_a["live"], resp_b["live"])
+        self.assertEqual(resp_a["meta"], resp_b["meta"])
+        # Only the antiheal chip reacts: present without an ally counter, gone with.
+        self.assertIn("antiheal", {h["criterion"] for h in resp_a["counter_hints"]})
+        self.assertNotIn("antiheal", {h["criterion"] for h in resp_b["counter_hints"]})
+
+
 if __name__ == "__main__":
     unittest.main()
