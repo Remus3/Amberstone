@@ -352,5 +352,53 @@ class CounterHintAntihealTests(unittest.TestCase):
         self.assertNotIn("antiheal", {h["criterion"] for h in resp_b["counter_hints"]})
 
 
+class TenacityCounterHintTests(unittest.TestCase):
+    """C6 tenacity (2026-07-16). cc_score (from the enemy comp, via cc_threat)
+    populated on the HINT profile ONLY - the DS plan stays untouched. Fires at
+    cc_score >= CC_CUT (5.0), i.e. 2+ curated hard-CC champs."""
+
+    # Leona + Malphite + Amumu are curated hard-CC (none are heal-sustain
+    # champs, so heal_sources stays 0 - isolates the cc_score path).
+    _HARD_CC = ["Leona", "Malphite", "Amumu"]
+
+    def test_high_cc_comp_fires_tenacity_chip(self):
+        resp = _post({"champion": "Miss Fortune", "items": [],
+                      "enemies": self._HARD_CC})
+        crits = {h["criterion"] for h in resp["counter_hints"]}
+        self.assertIn("tenacity", crits)
+
+    def test_single_hard_cc_champ_does_not_fire(self):
+        # 1 curated champ = 2.5 < CC_CUT (5.0) - literal-count boundary.
+        resp = _post({"champion": "Miss Fortune", "items": [],
+                      "enemies": ["Leona", "Master Yi", "Tryndamere"]})
+        crits = {h["criterion"] for h in resp["counter_hints"]}
+        self.assertNotIn("tenacity", crits)
+
+    def test_off_roster_comp_does_not_fire(self):
+        resp = _post({"champion": "Miss Fortune", "items": [],
+                      "enemies": ["Master Yi", "Tryndamere", "Katarina"]})
+        crits = {h["criterion"] for h in resp["counter_hints"]}
+        self.assertNotIn("tenacity", crits)
+
+    def test_cc_score_does_not_move_the_ds_plan(self):
+        # cc_score feeds the HINT profile only - suppressing it at the source
+        # leaves live[]/meta[] BYTE-IDENTICAL (proves the loop.tick champion-only
+        # profile never receives cc_score); only the tenacity chip reacts.
+        import core.cc_threat as cc
+        payload = {"champion": "Miss Fortune", "items": [],
+                   "enemies": self._HARD_CC}
+        resp_real = _post(dict(payload))
+        orig = cc.compute_cc_score
+        cc.compute_cc_score = lambda *_a, **_k: 0.0
+        try:
+            resp_zero = _post(dict(payload))
+        finally:
+            cc.compute_cc_score = orig
+        self.assertEqual(resp_real["live"], resp_zero["live"])
+        self.assertEqual(resp_real["meta"], resp_zero["meta"])
+        self.assertIn("tenacity", {h["criterion"] for h in resp_real["counter_hints"]})
+        self.assertNotIn("tenacity", {h["criterion"] for h in resp_zero["counter_hints"]})
+
+
 if __name__ == "__main__":
     unittest.main()
