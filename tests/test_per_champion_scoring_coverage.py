@@ -23,7 +23,7 @@ import unittest
 from collections import defaultdict
 from pathlib import Path
 
-from core.archetype_picks import default_for_champion
+from core.archetype_picks import default_for_champion, kit_damage_axis
 from core.build_planner.scoring import score_build
 
 REPO = Path(__file__).resolve().parent.parent
@@ -114,7 +114,22 @@ class PerChampionCoverage(_Base):
                 failures.append((champ, prim, round(own, 3), opp, round(mis, 3)))
         # Every failure must be a documented principled exception. A NEW champ
         # failing (a model regression) trips this loudly.
-        unexpected = [f for f in failures if f[0] not in _EXCEPTIONS]
+        #
+        # AP-kit assassins (Akali / Ekko / Evelynn / Fizz / Katarina / Leblanc /
+        # Diana) are a principled AXIS exception: _AP_ASSASSIN_IDS routes them to
+        # the assassin archetype - the axis-agnostic ds.burst scorer, validated in
+        # test_ap_assassin_override + live - but this test's canonical "assassin"
+        # set is AD-lethality (Youmuu's / Duskblade / Serylda's), which an AP kit
+        # cannot use. An AP assassin therefore correctly scores higher on the AP
+        # (mage) set; the AD-canonical-set comparison is meaningless for it. Its
+        # kit-fit is proven by the ds.burst routing, not this AD set.
+        def _ap_assassin_axis_exception(f):
+            return f[1] == "assassin" and kit_damage_axis(f[0]) == "ap"
+
+        unexpected = [
+            f for f in failures
+            if f[0] not in _EXCEPTIONS and not _ap_assassin_axis_exception(f)
+        ]
         self.assertEqual(unexpected, [], f"unexpected coverage failures: {unexpected}")
 
     def test_within_archetype_score_variation(self):
