@@ -16,6 +16,17 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-16 (upstream/patch scan -> 16.14.1 refresh + validation + Eclipse AH fix; commits d081291d + fc09ce0b + 36129183; LEDGER 905-906)
+
+Operator chain: "scan upstream and connections" -> "both" (commit mirror + DS re-extract) -> "what is next to validate" -> validate 1-4 -> "yes" -> "ship a+b" -> /done. mode_key=client, no live game.
+- **Patch refresh 16.13.1 -> 16.14.1** (LEDGER 905): mirror `d081291d` (13 files) + engine snapshot `fc09ce0b` (61 files: 19-file DS dir + 6 HZ tables). Meraki core + abilities (manifest content_patch backfill 25.15) + fresh cdragon_spell (CC swap=5/immob=181 verified) + copy-forward curated/wiki/cdragon-ratios; build_orders + pickban HTTP-scored; Share single-patch handoff. ENGINE UNCHANGED (patch != engine). DS `:8893` + RC bounced to 16.14.1. Dual suite green after triaging 23 patch-drift failures (HZ regen + doc flip + Share `_PATCH`).
+- **Validation 1-4:** shield-lerp pin holds (Shieldbow byte-equal 16.14 Meraki, BACKLOG #7 re-verified); build recos NO data regression (same-engine HZ diff = 0 all modes; the alarming ADC Lane-B shift was engine-GENERATION drift, not 16.14 data - driving items stat-identical); override pins 59/60 match; Meraki-sourced data byte-identical to 16.13.1 (frozen `latest` = content_patch 25.15).
+- **Eclipse AH fix** (LEDGER 906, ENGINE 1.214.0 -> 1.215.0, `36129183`): 226692 Arena-mirror pin 10 -> 15 (missed in the 16.12.1 Arena normalization batch) + un-blind `item_ah_drift_check` (hardcoded 16.12.1 -> now resolves current.txt) + NEW CI guard `tests/test_item_ability_haste_ddragon_sync.py`. Sibling sweep: only 226692 drifted (220 pins). 115 test pins + Share + DS/RC bounce. CI green (ci + CodSpeed).
+
+NEXT: patch 16.14.1 fully landed + validated, engine 1.215.0. Live-gated tail: the 16.14 build recos want a real-game eyeball (all client mode this session). Known Meraki-cadence gaps logged NOT fixed (Corki/Yunara AD-growth stale, Locke/Zaahen no ability kit) - resolve when Meraki `latest` advances past 25.15. Do NOT redo: the 226692 AH fix + the patch refresh are shipped + pushed + CI-green; do NOT re-scan upstream (no drift), do NOT re-bump the engine for 226692.
+
+---
+
 # 2026-07-14 (operator docs session - HEXCORE_offline update + /sync-all-md + /done; docs-only, commit d584e02e; LEDGER 904)
 
 Manual operator chain (NOT the halted Gemini loop): update hexcore_offline -> sync all md -> /done. mode_key=client, no engine/DS/frozen touched, no restart.
@@ -34,9 +45,3 @@ DS sweep vs Meraki truth (REFILL PROTOCOL 1). 3 disjoint read-only hunters (item
 2 genuine-but-bigger candidates -> BACKLOG FUTURE (do NOT re-hunt as new gaps): Viego R "Heartbreaker" 120% total-AD primary hit dropped by the abilities.py CDragon-vs-Meraki cardinality-mismatch whole-form fallback (compute_ability_dps 0 at full HP) + AD-ult sibling class Pyke/Rengar/Quinn/Yorick R (narrow per-champ override or general append-seam); bruiser/hybrid scorer ability-DPS XOR for AD-axis champs (Riven/Camille/Jarvan) - needs a validated per-champ opt-in table (a blanket AD-bruiser sum double-counts auto-empower Nasus Q / Renekton W / Camille Q / Sett Q / Vi E).
 
 INTERRUPT: operator "halt after this run" mid-cycle -> finished the in-flight R129 slice, ran /done, wrote ops/loop/control/STOP to end the Gemini-headless loop. Loop is HALTED (no next directive will fire).
-
----
-
-# 2026-07-14 (R127 gemini-loop cycle 26 - CDragon per-instance resource guard: MissFortune R full-channel total; ENGINE 1.212.0 -> 1.213.0; LEDGER 901; commit cc5b0876)
-
-DS sweep vs Meraki/CDragon truth (REFILL PROTOCOL 1). The item-320 prefer_cdragon_ratios cutover (default-ON) overwrote MF R "Bullet Time"'s Meraki full-channel TOTAL (1050/1200/1350% total AD + 350/400/450% AP) with CDragon's per-wave atomic PhysicalDamagePerWave (60% AD / 25% AP) via the single-block direct-pair branch in _apply_cdragon_ratio_preference = ~17.7x undercount, PROVEN live (raw R 3304 -> 187/cast; MF total_ability_dps 27.4 -> 14.9, -45%). FIX (TDD 5/5): default-OFF apply_cdragon_resource_guard on AbilitiesSnapshot.load + _CDRAGON_RESOURCE_EXCLUSIONS = {(MissFortune, R)}; byte-identical OFF (moves exactly that one form), restores the Meraki total ON. ENGINE 1.213.0 (135 pins / 114 files, 6 HZ-B build-order re-stamps, DAEMON_SLAYER banner); ROADMAP trimmed under 80KB (OQ23-25 -> ROADMAP_HISTORY); Share/src --check green (457, 1.213.0) + Share/CHANGELOG; DS :8893 restarted 1.213.0; DS suite 8466 pass / 1948 subtests; RC ritual set 64 pass (2 coach_poll = load flakes); verifier 7/7 CONFIRM. Khazix E / Gangplank E per-instance collapses -> FUTURE (per-champ validation). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md, needs a live/replayed MissFortune game).
