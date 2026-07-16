@@ -34,7 +34,7 @@ arming gate keeps arming one opt-in shield from leaking credit into another.
 Fimbulwinter has three mode mirrors: SR 3121, Arena 223121, ARAM 323121 - so
 arming keys on all three ids.
 
-This credit bumps ENGINE_VERSION to 1.214.0 (the seam changes EHP output when
+This credit bumps ENGINE_VERSION to 1.215.0 (the seam changes EHP output when
 armed); the pin at the bottom tracks it.
 """
 from __future__ import annotations
@@ -251,7 +251,7 @@ class FimbulwinterEngineVersionPin(unittest.TestCase):
     """The Fimbulwinter shield credit bumps the engine revision."""
 
     def test_engine_version(self) -> None:
-        self.assertEqual(ENGINE_VERSION, "1.214.0")
+        self.assertEqual(ENGINE_VERSION, "1.215.0")
 
 
 if __name__ == "__main__":

@@ -203,7 +203,7 @@ _ITEM_ABILITY_HASTE: dict[str, float] = {
     "226664":  10.0,  # Hollow Radiance
     "226667":  10.0,  # Radiant Virtue
     "226691":  15.0,  # Duskblade of Draktharr
-    "226692":  10.0,  # Eclipse
+    "226692":  15.0,  # Eclipse (16.13.1 Arena mirror re-valued 10->15 to match base 6692; caught 16.14.1)
     "226693":  15.0,  # Prowler's Claw
     "226694":  15.0,  # Serylda's Grudge (16.12.1: Arena mirror 10->15)
     "226696":  20.0,  # Axiom Arc

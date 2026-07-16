@@ -34,9 +34,10 @@ from agents.daemon_slayer.data_loader import DataSnapshot
 class RegistryShapeTests(unittest.TestCase):
 
     def test_registry_size_pinned_for_patch_16_12_1(self) -> None:
-        # 220 items (count unchanged 16.10.1 -> 16.12.1; the 16.12.1 refresh
-        # re-valued 3 Arena mirror ids without adding/removing entries). If a
-        # patch refresh changes the count, rebaseline this in the same commit.
+        # 220 items (count unchanged 16.10.1 -> 16.14.1; patch refreshes have
+        # only re-valued Arena mirror ids, never added/removed entries). If a
+        # patch refresh changes the count, rebaseline this + the DDragon-sync
+        # guard (tests/test_item_ability_haste_ddragon_sync.py) in one commit.
         self.assertEqual(len(_ITEM_ABILITY_HASTE), 220)
 
     def test_every_entry_is_positive_float(self) -> None:
@@ -79,6 +80,17 @@ class RegistryShapeTests(unittest.TestCase):
         self.assertEqual(_ITEM_ABILITY_HASTE["226694"], 15.0)  # Serylda's Grudge (Arena)
         self.assertEqual(_ITEM_ABILITY_HASTE["6662"], 15.0)    # Iceborn Gauntlet (SR)
         self.assertEqual(_ITEM_ABILITY_HASTE["6694"], 15.0)    # Serylda's Grudge (SR)
+
+    def test_eclipse_arena_mirror_matches_base(self) -> None:
+        # 16.13.1 re-valued Eclipse's Arena mirror 226692 (10 -> 15) to match
+        # base 6692, exactly like the Iceborn / Serylda's normalizations above -
+        # but this one was missed by both the pin and the value tests until the
+        # 16.14.1 refresh audit. The DDragon-derived guard in
+        # tests/test_item_ability_haste_ddragon_sync.py now catches this whole
+        # class; this locks the specific id. Verified vs data/meta_build/
+        # ddragon/16.14.1/item.json (226692 + base 6692 both 15 Ability Haste).
+        self.assertEqual(_ITEM_ABILITY_HASTE["226692"], 15.0)  # Eclipse (Arena)
+        self.assertEqual(_ITEM_ABILITY_HASTE["6692"], 15.0)    # Eclipse (SR)
 
     def test_arena_mirror_ids_present(self) -> None:
         # Arena 22-prefix duplicates should be in the registry; their
