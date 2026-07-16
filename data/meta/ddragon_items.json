@@ -1,6 +1,6 @@
 {
   "type": "item",
-  "version": "16.13.1",
+  "version": "16.14.1",
   "basic": {
     "name": "",
     "rune": {
@@ -4257,7 +4257,7 @@
     },
     "2052": {
       "name": "Poro-Snax",
-      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and local Freljordian herbs - picked daily and flash-frozen - contains the essential nutrients necessary to keep your Poro cool and calm.<br><br>All proceeds will be donated towards preserving the habitat of the endangered Spotted Poro.</flavorText></mainText>",
+      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and local Freljordian herbs—picked daily and flash-frozen—contains the essential nutrients necessary to keep your Poro cool and calm.<br><br>All proceeds will be donated towards preserving the habitat of the endangered Spotted Poro.</flavorText></mainText>",
       "colloq": ";",
       "plaintext": "",
       "stacks": 99,
@@ -5517,7 +5517,7 @@
     },
     "220013": {
       "name": "Poro-Snax",
-      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and Freljordian herbs - now finished with a touch of refined Demacian sugarcraft - contains the essential nutrients necessary to keep your Poro positively radiant.<br><br>All proceeds will be donated towards the Cloudfield Youth Choir. Help a Demacian child afford an etwahl, today!</flavorText></mainText>",
+      "description": "<mainText><stats></stats><br><br><active>Active - Consume:</active> Serves a scrumptious scoop to a nearby Poro, causing it to grow in size.<br><br><flavorText>This savory blend of Avarosan hen and Freljordian herbs—now finished with a touch of refined Demacian sugarcraft—contains the essential nutrients necessary to keep your Poro positively radiant.<br><br>All proceeds will be donated towards the Cloudfield Youth Choir. Help a Demacian child afford an etwahl, today!</flavorText></mainText>",
       "colloq": "",
       "plaintext": "",
       "stacks": 2,
@@ -7211,7 +7211,7 @@
     },
     "223046": {
       "name": "Phantom Dancer",
-      "description": "<mainText><stats><attention>60%</attention> Attack Speed<br><attention>8%</attention> Move Speed<br><attention>25%</attention> Critical Strike Chance</stats><br><br><passive>Spectral Waltz</passive><br>Become <keyword>Ghosted</keyword>.</mainText>",
+      "description": "<mainText><stats><attention>65%</attention> Attack Speed<br><attention>10%</attention> Move Speed<br><attention>25%</attention> Critical Strike Chance</stats><br><br><passive>Spectral Waltz</passive><br>Become <keyword>Ghosted</keyword>.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -7245,8 +7245,8 @@
       },
       "stats": {
         "FlatCritChanceMod": 0.25,
-        "PercentAttackSpeedMod": 0.6,
-        "PercentMovementSpeedMod": 0.08
+        "PercentAttackSpeedMod": 0.65,
+        "PercentMovementSpeedMod": 0.1
       }
     },
     "223047": {
@@ -8029,7 +8029,7 @@
     },
     "223094": {
       "name": "Rapid Firecannon",
-      "description": "<mainText><stats><attention>30%</attention> Attack Speed<br><attention>25%</attention> Critical Strike Chance<br><attention>4%</attention> Move Speed</stats><br><br><passive>Energized</passive><br>Moving and Attacking generates an <keyword>Energized Attack</keyword>.<br><br><passive>Sharpshooter</passive><br>Your <keyword>Energized Attack</keyword> applies <magicDamage>200 bonus magic damage</magicDamage>. In addition, Energized attacks gain up to 35% bonus Attack Range.<br></mainText>",
+      "description": "<mainText><stats><attention>35%</attention> Attack Speed<br><attention>25%</attention> Critical Strike Chance<br><attention>4%</attention> Move Speed</stats><br><br><passive>Energized</passive><br>Moving and Attacking generates an <keyword>Energized Attack</keyword>.<br><br><passive>Sharpshooter</passive><br>Your <keyword>Energized Attack</keyword> applies <magicDamage>200 bonus magic damage</magicDamage>. In addition, Energized attacks gain up to 35% bonus Attack Range.<br></mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -8063,7 +8063,7 @@
       },
       "stats": {
         "FlatCritChanceMod": 0.25,
-        "PercentAttackSpeedMod": 0.3,
+        "PercentAttackSpeedMod": 0.35,
         "PercentMovementSpeedMod": 0.04
       }
     },
@@ -11191,7 +11191,7 @@
     },
     "226672": {
       "name": "Kraken Slayer",
-      "description": "<mainText><stats><attention>50</attention> Attack Damage<br><attention>35%</attention> Attack Speed<br><attention>7%</attention> Move Speed</stats><br><br><passive>Bring It Down</passive><br>Every third Attack deals <physicalDamage>bonus physical damage</physicalDamage> <OnHit>On-Hit</OnHit>, increased based on their missing Health.</mainText>",
+      "description": "<mainText><stats><attention>50</attention> Attack Damage<br><attention>40%</attention> Attack Speed<br><attention>7%</attention> Move Speed</stats><br><br><passive>Bring It Down</passive><br>Every third Attack deals <physicalDamage>bonus physical damage</physicalDamage> <OnHit>On-Hit</OnHit>, increased based on their missing Health.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -11226,7 +11226,7 @@
       },
       "stats": {
         "FlatPhysicalDamageMod": 50,
-        "PercentAttackSpeedMod": 0.35,
+        "PercentAttackSpeedMod": 0.4,
         "PercentMovementSpeedMod": 0.07
       }
     },
@@ -11270,7 +11270,7 @@
     },
     "226675": {
       "name": "Navori Flickerblades",
-      "description": "<mainText><stats><attention>35%</attention> Attack Speed<br><attention>25%</attention> Critical Strike Chance<br><attention>4%</attention> Move Speed</stats><br><br><passive>Transcendence</passive><br>Your Attacks reduce your non-Ultimate Ability cooldowns by <attention>15%</attention> of their remaining cooldown.</mainText>",
+      "description": "<mainText><stats><attention>40%</attention> Attack Speed<br><attention>25%</attention> Critical Strike Chance<br><attention>4%</attention> Move Speed</stats><br><br><passive>Transcendence</passive><br>Your Attacks reduce your non-Ultimate Ability cooldowns by <attention>15%</attention> of their remaining cooldown.</mainText>",
       "colloq": "",
       "plaintext": "",
       "image": {
@@ -11304,7 +11304,7 @@
       },
       "stats": {
         "FlatCritChanceMod": 0.25,
-        "PercentAttackSpeedMod": 0.35,
+        "PercentAttackSpeedMod": 0.4,
         "PercentMovementSpeedMod": 0.04
       },
       "effect": {
@@ -12869,10 +12869,10 @@
         "h": 48
       },
       "gold": {
-        "base": 800,
+        "base": 900,
         "purchasable": true,
-        "total": 2500,
-        "sell": 1750
+        "total": 2600,
+        "sell": 1820
       },
       "tags": [
         "Health",
@@ -14574,6 +14574,7 @@
         "2525",
         "6617",
         "3065",
+        "3152",
         "3119",
         "326620",
         "3190",
@@ -15816,7 +15817,6 @@
         "3003",
         "326616",
         "3107",
-        "3152",
         "3128",
         "3137",
         "8010",
@@ -17235,12 +17235,12 @@
     },
     "3152": {
       "name": "Hextech Rocketbelt",
-      "description": "<mainText><stats><attention>70</attention> Ability Power<br><attention>300</attention> Health<br><attention>20</attention> Ability Haste</stats><br><br><active>Supersonic</active><br>Dash in target direction, unleashing missiles that deal <magicDamage>magic damage</magicDamage>.</mainText>",
+      "description": "<mainText><stats><attention>60</attention> Ability Power<br><attention>350</attention> Health<br><attention>20</attention> Ability Haste</stats><br><br><active>Supersonic</active><br>Dash in target direction, unleashing missiles that deal <magicDamage>magic damage</magicDamage>.</mainText>",
       "colloq": "rocket belt;",
       "plaintext": "Activate to dash forward and unleash a fiery explosion",
       "from": [
         "3145",
-        "3108",
+        "3067",
         "1028"
       ],
       "image": {
@@ -17253,7 +17253,7 @@
         "h": 48
       },
       "gold": {
-        "base": 300,
+        "base": 350,
         "purchasable": true,
         "total": 2650,
         "sell": 1855
@@ -17276,8 +17276,8 @@
         "35": true
       },
       "stats": {
-        "FlatHPPoolMod": 300,
-        "FlatMagicDamageMod": 70
+        "FlatHPPoolMod": 350,
+        "FlatMagicDamageMod": 60
       },
       "depth": 3
     },
@@ -17611,7 +17611,7 @@
     },
     "3168": {
       "name": "Immortal Path",
-      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 0.6% Omnivamp on Champion takedown, stacking up to 10 times.<br><br><passive>Now and Forever</passive><br>While above half Health, deal 5% increased damage. <br><br>While below half Health, gain 15% increased healing, shielding, and regeneration.</mainText>",
+      "description": "<mainText><stats><attention>45</attention> Move Speed<br><attention>4%</attention> Omnivamp</stats><br><br><passive>Slay</passive><br>Gain 0.6% Omnivamp on Champion takedown, stacking up to 10 times.<br><br><passive>Now and Forever</passive><br>While above half Health, deal 4% increased damage. <br><br>While below half Health, gain 12% increased healing, shielding, and regeneration.</mainText>",
       "colloq": "",
       "plaintext": "",
       "from": [
@@ -22106,7 +22106,7 @@
     },
     "4402": {
       "name": "Innervating Locket",
-      "description": "<mainText><stats><attention>30</attention> Attack Damage<br><attention>400</attention> Health<br><attention>300</attention> Mana<br><attention>10</attention> Ability Haste</stats><br><br><br><li><passive>Eternity:</passive> Restore Mana equal to 15% of premitigation damage taken from champions, and Health equal to 25% of Mana spent, up to 20 Health per cast, per second.<li><passive>Innervate:</passive> After using an ability, restore <healing>3% missing Health</healing> and <scaleMana>3% missing Mana</scaleMana> over 3 seconds.<br><br><flavorText>\"Cast down the Noxians\" <br> -  Bobdyr, Temple Guardsman</flavorText></mainText>",
+      "description": "<mainText><stats><attention>30</attention> Attack Damage<br><attention>400</attention> Health<br><attention>300</attention> Mana<br><attention>10</attention> Ability Haste</stats><br><br><br><li><passive>Eternity:</passive> Restore Mana equal to 15% of premitigation damage taken from champions, and Health equal to 25% of Mana spent, up to 20 Health per cast, per second.<li><passive>Innervate:</passive> After using an ability, restore <healing>3% missing Health</healing> and <scaleMana>3% missing Mana</scaleMana> over 3 seconds.<br><br><flavorText>\"Cast down the Noxians\" <br>– Bobdyr, Temple Guardsman</flavorText></mainText>",
       "colloq": ";",
       "plaintext": "Cast spells to heal",
       "from": [
