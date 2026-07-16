@@ -143,6 +143,20 @@ _AD_AXIS_FALLBACK = "carry"
 _AXIS_DOMINANT_MIN = 0.55
 _AXIS_MARGIN_MIN = 0.20
 
+# AP burst-assassin override (2026-07-16 AP-axis sweep, Slice A). DDragon tags +
+# axis_correct_archetype collapse these AP-kit assassins to `mage` (assassin is
+# tagged AD-axis, and _AP_AXIS_ARCHETYPE == "mage"), landing them on the sustained
+# ds.ability scorer (Liandry's-DoT). They are short-window burst assassins; the
+# ds.burst scorer already flows the full AP amp pipeline (see burst.py), so route
+# them there. Canonical DDragon ids. Only the tag DEFAULT is touched - an operator
+# pick (source != default) still wins via get_archetype_for's early return.
+# EXCLUDED and why: Kassadin (scaling mana-assassin - his default already leads
+# Rabadon's not Liandry's, and neither scorer models his mana core); Sylas (AP
+# bruiser - wants sustained Riftmaker, not burst); Vex (ranged control mage).
+_AP_ASSASSIN_IDS: frozenset[str] = frozenset({
+    "Akali", "Ekko", "Evelynn", "Fizz", "Katarina", "Leblanc", "Diana",
+})
+
 _DS_DIR = _DATA_DIR / "daemon_slayer"
 # champion-key (+ stripped variants) -> "ad" | "ap"; built from the active
 # patch's champions.json, cached per process. None until first load.
@@ -454,6 +468,11 @@ def default_for_champion(champion: str) -> tuple[str, str]:
     if corrected != primary:
         secondary = primary
         primary = corrected
+    # Slice A: curated AP burst-assassins are collapsed to mage by the tag path +
+    # axis correction; force them onto the assassin (ds.burst) scorer. Surface the
+    # would-be mage archetype as the alt-view so the operator can flip back.
+    if canonical_champion_id(champion) in _AP_ASSASSIN_IDS:
+        return ("assassin", "mage")
     return (primary, secondary)
 
 

@@ -25,15 +25,17 @@ def _fresh_caches():
     ap._invalidate_picks_cache()
 
 
-# Champions whose tag default was on the WRONG damage axis and must re-base.
-# 11 named by the lolmath-vs-DS sweep + 7 AP assassins the manual sweep missed
-# (assassin scorer is AD/lethality) + Pyke (AD kit on the AP enchanter scorer).
+# Champions whose tag default was on the WRONG damage axis and must re-base to
+# `mage`. The AP burst-assassins (Akali/Ekko/Evelynn/Fizz/Katarina/Leblanc/Diana)
+# used to appear here as "mage" too, but they are now routed to the ds.burst
+# scorer by the curated _AP_ASSASSIN_IDS override (the ds.burst scorer flows AP
+# amp - it is NOT AD-only). Their classification is covered by
+# tests/test_ap_assassin_override.py. Kassadin stays mage (excluded from the
+# override); Pyke is an AD kit corrected off the AP enchanter scorer.
 EXPECTED_FLIPS = {
-    "Gwen": "mage", "Teemo": "mage", "Rumble": "mage", "Diana": "mage",
+    "Gwen": "mage", "Teemo": "mage", "Rumble": "mage",
     "Mordekaiser": "mage", "KogMaw": "mage", "Nidalee": "mage", "Elise": "mage",
-    "Gragas": "mage", "Lillia": "mage",
-    "Akali": "mage", "Ekko": "mage", "Evelynn": "mage", "Fizz": "mage",
-    "Kassadin": "mage", "Katarina": "mage", "Leblanc": "mage",
+    "Gragas": "mage", "Lillia": "mage", "Kassadin": "mage",
     "Pyke": "assassin",
 }
 
