@@ -257,6 +257,12 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-14 (R127 gemini-loop cycle 26 - CDragon per-instance resource guard: MissFortune R full-channel total; ENGINE 1.212.0 -> 1.213.0; LEDGER 901; commit cc5b0876)
+
+DS sweep vs Meraki/CDragon truth (REFILL PROTOCOL 1). The item-320 prefer_cdragon_ratios cutover (default-ON) overwrote MF R "Bullet Time"'s Meraki full-channel TOTAL (1050/1200/1350% total AD + 350/400/450% AP) with CDragon's per-wave atomic PhysicalDamagePerWave (60% AD / 25% AP) via the single-block direct-pair branch in _apply_cdragon_ratio_preference = ~17.7x undercount, PROVEN live (raw R 3304 -> 187/cast; MF total_ability_dps 27.4 -> 14.9, -45%). FIX (TDD 5/5): default-OFF apply_cdragon_resource_guard on AbilitiesSnapshot.load + _CDRAGON_RESOURCE_EXCLUSIONS = {(MissFortune, R)}; byte-identical OFF (moves exactly that one form), restores the Meraki total ON. ENGINE 1.213.0 (135 pins / 114 files, 6 HZ-B build-order re-stamps, DAEMON_SLAYER banner); ROADMAP trimmed under 80KB (OQ23-25 -> ROADMAP_HISTORY); Share/src --check green (457, 1.213.0) + Share/CHANGELOG; DS :8893 restarted 1.213.0; DS suite 8466 pass / 1948 subtests; RC ritual set 64 pass (2 coach_poll = load flakes); verifier 7/7 CONFIRM. Khazix E / Gangplank E per-instance collapses -> FUTURE (per-champ validation). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md, needs a live/replayed MissFortune game).
+
+---
+
 # 2026-07-14 (R126 gemini-loop cycle 24 - Lane E CV substrate: OCR region-map atlas + LiveClient/CV fusion; ENGINE-IMPACT NONE; LEDGER 900)
 
 Haiku-to-ZERO rotation (R125 4th competitor-lift DRAIN -> off competitor sweeps). Built the Lane E
