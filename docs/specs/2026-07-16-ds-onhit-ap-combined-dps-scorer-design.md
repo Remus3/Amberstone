@@ -1,329 +1,203 @@
-# DS AP-axis kit sweep - Slice B: on-hit AP combined-DPS scorer
+# DS AP-axis kit sweep - Slice B: on-hit AP itemization (combined scorer + kit on-hit + axis coherence)
 
 - Date: 2026-07-16
-- Status: APPROVED design (pre-implementation)
+- Status: APPROVED design v2 (pre-implementation). v1 (compose-scorer-only) was
+  proven necessary-but-insufficient by live re-verify; see section 4.
 - Author: brainstorming session (DS meta-valuation sweep lane)
-- Tier: Tier-2. NEW DS engine scorer (7th archetype) + `/rank-onhit` route =>
-  ENGINE_VERSION bump + Share mirror + DS `:8893` restart + full dual suite
-  (DS dir + `tests/`) + live `/api/build-plan` validation. PLUS an RC-side
-  routing change (classifier roster + `default_for_champion`) => RC reload.
+- Tier: Tier-2. NEW DS engine scorer + kit-on-hit crediting + axis-coherence gate
+  => ENGINE_VERSION bump + Share mirror + DS `:8893` restart + full dual suite
+  + live `/api/build-plan` validation. PLUS RC-side routing (classifier roster +
+  `default_for_champion`) => RC reload.
 
 ## 1. Problem
 
-On-hit AP champions (Gwen, Kayle, Kog'Maw-AP) scale their damage off BOTH
-abilities AND attack-speed / on-hit-magic autos. Nashor's Tooth is the bridge
-item: it grants AP + attack speed + ability haste + an on-hit magic proc
-(Icathian Bite, `agents/daemon_slayer/_effects_data.py:929-942`,
-`bonus_damage = 15 + 0.15 * c.ap`). No DS scorer values that bridge, so Nashor's
-never surfaces and these champs are handed a pure burst-mage DoT core.
+On-hit AP champions (Gwen, Kayle, Kog'Maw-AP) scale off BOTH abilities AND
+attack-speed / on-hit-magic autos. Nashor's Tooth is the bridge item (AP + AS +
+ability haste + on-hit magic proc). No DS scorer surfaces it - these champs get
+handed a pure burst-mage DoT core.
 
-Live evidence (probed 2026-07-16 via `POST /api/build-plan {champion, mode:"SR",
-level:13}` + `POST /api/ds-preview {..., archetype}`):
-
-| Champ  | Default lead (scorer)                                              | Nashor's? |
-|--------|-------------------------------------------------------------------|-----------|
-| Gwen   | `Liandry's > Blackfire > Cryptbloom > Rabadon's > Shadowflame ...` (ability) | no |
-| Kayle  | `Liandry's > Cryptbloom > Stormsurge > Blackfire > Rabadon's ...` (ability)  | no |
-| Kog'Maw| (AP) same sustained-DoT ability family                              | no |
-
-Forcing the `carry` / `hybrid` archetype (probed 2026-07-16) gives the opposite
-failure - a pure-AD auto build with still no Nashor's, because that scorer sees
-only autos and none of the ability burst:
-
-| Champ  | Forced `carry` build (scorer=dps)                                       |
-|--------|-------------------------------------------------------------------------|
-| Gwen   | `BotRK > Trinity Force > Kraken Slayer > Essence Reaver > Stormrazor ...`|
-| Kayle  | `BotRK > Kraken Slayer > Eclipse > Stormrazor > Trinity Force ...`       |
-| Kog'Maw| `BotRK > Runaan's Hurricane > Kraken Slayer > Essence Reaver ...`        |
-
-Cross-eval confirms the miss independently: `ops/audit/ds_cross_eval/reports/
-Kayle.md` verdict MISMATCH - scorer top-8 is entirely AP-DoT with ZERO overlap
-with Kayle's empirical above-baseline winners (all on-hit: BotRK, Guinsoo,
-Terminus, Wit's End, Recurve Bow); the one AP winner (Riftmaker) sits at scorer
-rank 10.
-
-This is the AP-axis analog of Slice A's AP-assassin miss, but harder: Slice A
-was a REROUTE to an existing already-correct scorer. Slice B has no correct
-scorer to route to - the combined ability + on-hit-auto DPS term does not exist.
-Validated NOT fixable by reroute (2026-07-16): forcing `bruiser`/`carry` gave AD
-builds; the mage scorer is abilities-only. It is a genuine modeling gap.
+Live evidence (probed 2026-07-16, `POST /api/build-plan {mode:"SR",level:13}`):
+Gwen -> `Liandry's > Blackfire > Cryptbloom > Rabadon's > Shadowflame`; Kayle ->
+`Liandry's > Cryptbloom > Stormsurge > Blackfire > Rabadon's`. No Nashor's.
 
 ## 2. Scope
 
-- **Slice B (THIS spec):** a NEW 7th DS archetype scorer that composes ability
-  DPS + on-hit-inclusive auto DPS into a single combined-DPS score, plus a
-  broad-scan classifier that routes on-hit AP champions to it.
-- **Out of scope:**
-  - The 6 existing scorers (carry/tank/bruiser/mage/assassin/enchanter) are NOT
-    modified. This is additive.
-  - Slice A's AP-assassin reroute (`_AP_ASSASSIN_IDS`, LEDGER 910) is DONE - not
-    touched. The new roster is DISJOINT from it.
-  - Win-rate matching. Per memory `project_ds_build_reco_optimal_not_winrate`,
-    the target is the simulation-optimal build, not the empirical meta table.
-    Success = Nashor's / on-hit-AP items surface AND the build is coherent. For
-    Kayle specifically this may stay more AP-leaning than her empirical
-    on-hit-AD-hybrid meta; that is acceptable and correct-by-simulation.
-  - Zhonya's / defensive-slot buys (a squishy-carry defensive concern, separate).
+- **Slice B (THIS spec):** the validated 3-part fix (section 5) - a new combined
+  on-hit DPS scorer, kit-on-hit crediting for the roster champs, and an AP/AD
+  axis-coherence gate - plus a broad-scan classifier that routes on-hit AP champs
+  to the new scorer.
+- **Out of scope:** the 6 existing scorers stay unmodified (additive). Slice A's
+  AP-assassin reroute (`_AP_ASSASSIN_IDS`, LEDGER 910) untouched; the new roster
+  is disjoint from it. Win-rate matching (target is simulation-optimal, memory
+  `project_ds_build_reco_optimal_not_winrate`). A general burst/fight-length
+  reweight for these champs (proven the WRONG lever, section 4).
 
-## 3. Root cause (validated)
+## 3. Root cause (validated, full picture)
 
-No DS scorer computes ability DPS + on-hit-auto DPS TOGETHER. Each existing
-scorer sees only one half, so Nashor's (which pays off in both halves at once)
-is undervalued everywhere:
+Three compounding gaps, each verified live this session:
 
-- **`/rank-mage` (mage, `agents/daemon_slayer/ability_dps.py`)** - abilities
-  only. `compute_ability_dps` sums per-spell Q/W/E/R DPS and DELIBERATELY
-  excludes the passive + on-hit (docstring lines 44-46 + 198-201: "the
-  `compute_dps` auto-attack scorer covers on-hit passives"). So Nashor's attack
-  speed and its on-hit magic proc are invisible; only its raw AP counts, and
-  Nashor's gives less AP than Rabadon's -> it loses. This is the DEFAULT scorer
-  for these AP champs.
-- **`/rank` (carry, `agents/daemon_slayer/dps.py`)** - autos + item procs +
-  on-hit ONLY, no ability burst. `compute_dps` DOES credit Nashor's on-hit magic
-  (`_periodic_proc_dps`, dps.py:267; per-attack proc for item 3115). But with no
-  ability contribution and no AP items in the auto-optimal build, AD-crit items
-  out-DPS an AP-on-hit build at level 13 -> pure-AD lead, Nashor's buried.
-- **`/rank-bruiser` (hybrid, `agents/daemon_slayer/hybrid.py`)** - already
-  AP-axis-aware (for an AP champ `_damage_axis == "ap"`, hybrid.py:462-469 uses
-  `_ability_damage` = `compute_ability_dps().total_ability_dps` as the damage
-  term). But it scores damage + EHP (alpha/beta ~0.5/0.5), not damage + damage.
-  Wrong axis for a squishy on-hit carry, and it still never sees the on-hit
-  autos.
+1. **No combined ability+on-hit-auto scorer.** `/rank-mage` (ability_dps.py) is
+   abilities-only (excludes on-hit, docstring 44-46 + 198-201). `/rank`
+   (dps.py) is autos-only (no ability burst). `/rank-bruiser` is ability+EHP.
+   Nashor's, which pays off across ability AND auto, is undervalued in each.
+2. **Champion kit on-hit magic is unmodeled.** The real reason to stack AS/on-hit
+   on these champs is their kit's on-hit magic - and it is not credited in either
+   DPS half: Gwen P "A Thousand Cuts" is registered (`_passive_damage_overrides.py:599`,
+   cadence on_hit) but `apply_passive_damage`-gated (default OFF) AND absent from
+   the AA-routed allowlist (`_AA_ROUTED_ON_HIT_KEYS`, dps.py:1052, only
+   Warwick/Orianna); Kayle E and Kog'Maw W on-hit magic have NO registry entry
+   (their passives are explicitly classed non-damage, `_passive_damage_overrides.py:114,163`).
+3. **AD items swamp the AP field.** BotRK (3153) - flat AD + %HP on-hit + AS +
+   lifesteal, and AD so it does not compete for the AP budget - ranks #1 in
+   EVERY autos-counting scorer (carry, bruiser, burst, and the new combined
+   scorer) because the marginal single-item ranker cannot see its AD is wasted on
+   an AP champ.
 
-The two damage halves are NON-OVERLAPPING by design: passive (P) on-hit lives in
-`compute_dps` (dps.py), the four active spells (Q/W/E/R) live in
-`compute_ability_dps` (ability_dps.py). So their SUM is the champion's true total
-sustained DPS with no double count (see 5.7 for the audit).
+## 4. Why 3 parts, not 1 (the re-verify journey)
 
-## 4. Approach decision
+v1 assumed a combined scorer alone would surface Nashor's. Live re-verify
+(throwaway probes reproduced against the live snapshot, numbers inline below)
+disproved that and pinned the real lever:
 
-**Chosen (operator-approved 2026-07-16): a new combined-DPS scorer.** Rejected
-alternatives:
+- **Combined scorer alone:** Nashor's absent from Gwen's top-12; lead is
+  `BotRK > Liandry's > Trinity > Kraken`.
+- **+ kit-on-hit credit (forced Gwen P onto the AA-routed allowlist +
+  apply_passive_damage):** Nashor's rises only to #12. Single-item combined DPS
+  vs the tanky curve (armor105/mr52/hp2430): BotRK 148.6 > Liandry's 139.1 >
+  Nashor's 100.2 > Lich Bane 98.3 > Rabadon's 78.8. BotRK/Liandry's still
+  dominate.
+- **Target is NOT the confound:** vs a squishy (armor60/mr40/hp1900) BotRK
+  159.4 dominates HARDER and Nashor's falls to absent - lower armor amplifies
+  BotRK's raw AD more than its %HP loss costs. A short `fight_length` (the
+  existing Jhin burst blend, `core/ds_champion_fight_length.py`) would push
+  Nashor's DOWN, since it is a SUSTAINED AS item, not burst - the WRONG lever.
+- **Axis-coherence IS the lever:** with the pool restricted to AP-axis items
+  (BotRK/Trinity/Kraken removed) + kit-on-hit credited, Nashor's surfaces at #5:
+  `Liandry's > Dusk&Dawn > Guinsoo > Statikk > Nashor's(38.1) > Blackfire >
+  Lich Bane`.
 
-- *Extend the carry `/rank` scorer* to add ability DPS for on-hit-AP champs -
-  mutates the load-bearing pure-ADC path; the DSP11 kit-axis note
-  (`project_dsp11_gate_do_not_revert`) warns against flipping shared scorers.
-- *Reroute to bruiser + reweight* - bends a damage+EHP scorer into damage+damage;
-  the alpha/beta table has no meaning for a squishy carry, and it still misses
-  the on-hit autos.
-
-**Why this is not a re-pitch of the settled 6-scorer plan.** The CLAUDE.md
-"Settled" note ("the 6-scorer archetype-expansion plan ... is fully wired ... Do
-not re-plan these or re-pitch a scorer") forbids re-litigating the SIX existing
-scorers. This is a NET-NEW 7th scorer for a capability none of the six cover,
-directed by the operator this session - not a re-plan of the six.
-
-**Why a plain SUM, not alpha/beta.** Unlike hybrid.py (which mixes DPS units
-with EHP units and therefore needs normalization + weights), both halves here are
-in the SAME units (sustained damage per second). Their plain sum IS the
-champion's total DPS - no normalization, no weights. v1 ships the plain sum
-(YAGNI); an optional per-champ ability/auto weight is a future lever only if a
-champ proves lopsided, deferred.
+Conclusion: the fix is combined scorer (part 1) + kit-on-hit credit (part 2) +
+AP/AD axis-coherence (part 3). Parts 1-2 make Nashor's *rankable*; part 3 stops
+AD items from burying it.
 
 ## 5. Design
 
-### 5.1 New scorer module - `agents/daemon_slayer/onhit_dps.py`
+### 5.1 Part 1 - combined on-hit scorer (DONE, Tasks 1-2)
 
-Mirrors `hybrid.py`'s compose structure (import both computes, expose a
-`compute_*` + a `rank_items_by_*`).
+`agents/daemon_slayer/onhit_dps.py`: `compute_onhit_dps` = plain sum of
+`compute_ability_dps().total_ability_dps` + `compute_dps().weighted_dps` (same
+DPS units, non-overlapping halves - P in dps.py, QWER in ability_dps.py); plus
+`rank_items_by_onhit`. Built + reviewed (T1 clean, T2 code-complete with xfail
+markers that flip to pass once parts 2-3 land).
 
-- `compute_onhit_dps(snapshot, champion_id, level, item_ids, mode, target_*,
-  augments, ...) -> OnhitDpsResult` where the score is:
-  `onhit_dps = compute_ability_dps(...).total_ability_dps
-             + compute_dps(...).weighted_dps`
-  Both sub-computes already exist; both receive the same target + mode +
-  augments plumbing. `OnhitDpsResult` surfaces the two component DPS values plus
-  the sum (explainability), analogous to `HybridResult`.
-- `rank_items_by_onhit(snapshot, champion_id, level, current_item_ids, ...,
-  target_*, top_n, sort_by, ...) -> OnhitDpsRankResult` - same candidate
-  pipeline as the other rankers (`_filter_candidates`, `_is_terminal`,
-  `strip_arena_trinkets`, melee-gate via `_champion_is_melee`). For each
-  candidate: `delta = compute_onhit_dps(build + cand) - baseline`, sort by
-  `delta` (default) or `delta per 1k gold` (`efficiency`). Reuse the shared
-  `SORT_KEYS`. Inherit `unique_passive_key` + dead-unique dedup exactly as the
-  DPS ranker.
-- Ranked rows carry `delta_dps` (the combined delta), `ability_dps` +
-  `auto_dps` component splits, `gold`, `is_terminal`, `unique_passive_key`,
-  `dps_per_1k_gold` so the RC-side `/api/ds-preview` thin projection
-  (`dashboard/routes_state.py:592-597`) and `core/build_planner/scoring.py`
-  read it with no changes (scoring.py reads `delta_dps` and tolerates absent
-  fields - `core/build_planner/scoring.py:20-24`).
+### 5.2 Part 2 - kit-on-hit credit (engine)
 
-### 5.2 Engine route + client + dispatcher wiring
+Credit the roster champs' on-hit magic in the auto half so AS/on-hit itemization
+pays off. `compute_onhit_dps` calls `compute_dps(apply_passive_damage=True)` (the
+onhit scorer is exactly the scorer for champs whose passive/ability on-hit
+matters - enabling it here is correct, and remains default-OFF for every other
+scorer).
 
-- **Server route:** add `_route_rank_onhit` handler + register
-  `"/rank-onhit": _route_rank_onhit` in the dispatch dict
-  (`agents/daemon_slayer/server.py:2025-2030`, alongside `/rank-mage`
-  `/rank-assassin`). Add the doc-table row (server.py:126-131). Parse the same
-  shared body (target overrides, level, items, slots, top_n, sort_by) the
-  sibling routes use.
-- **Client:** add `rank_onhit_for(...)` in `core/daemon_slayer_client.py`
-  (sibling of `rank_mage_for` at :502 / `rank_assassin_for` at :648), POSTing
-  `/rank-onhit`, same engine-down fail-soft semantics (None on failure) + the
-  same `RankedItem` parse used by the DPS path so `effective_score` /
-  `delta_dps` survive (memory `reference_ds_client_effective_score_parse`).
-- **Dispatcher:** add an `archetype == "onhit"` branch in
-  `rank_for_primary_archetype` (`core/daemon_slayer_client.py:1001`) that calls
-  `rank_onhit_for`. Kit-dependent like ds.ability/ds.burst - the all-zero-kit
-  guard (client.py:980-985) already routes kit-less champs away from
-  kit-dependent scorers; keep `onhit` on the kit-dependent side so a champ with
-  no ability entries does not 0.0-collapse.
+- **Gwen P** (already registered): add `("Gwen","P",0)` to `_AA_ROUTED_ON_HIT_KEYS`.
+  The existing AA-routing (dps.py:1174-1212) then credits it as an AS-scaling
+  on-hit (`per_hit * eff_as`), byte-identical mechanism to Warwick/Orianna.
+- **Kayle E + Kog'Maw W:** author new on-hit-rider entries (sustained
+  approximation of their timed steroids: Kayle E Starfire Spellblade bonus magic
+  on-hit once ranked; Kog'Maw W Bio-Arcane Barrage %max-HP magic on-hit while
+  active, with an uptime discount). These are E/W-slot, but `aa_routed_on_hit_entry`
+  consults only the P-slot in v1 - EXTEND it (or a small dedicated kit-on-hit
+  registry) to route non-P on-hit riders. Each entry validated per-champ live.
 
-### 5.3 Broad-scan classifier + roster - `tools/ds_onhit_ap_prefilter.py`
+### 5.3 Part 3 - AP/AD axis-coherence gate (the real lever)
 
-The operator chose a broad auto-scan (not a hand-pinned set). The scan tool
-(mirrors the `tools/ds_*_prefilter.py` + block-scanner idiom) reads champion
-records + ability/effects data and emits CANDIDATES via a kit-shape predicate,
-which are then live-validated down to the committed roster.
+For AP-axis champs on the onhit scorer, penalize pure-AD items (tag has
+"Damage"/"CriticalStrike"/"AttackSpeed" WITHOUT "SpellDamage") so BotRK / Trinity
+/ Kraken / LDR stop burying the AP on-hit field. Design:
 
-Predicate - a champion is a candidate when BOTH:
+- A **per-champ coherence strength** carried on the roster: HARD for AP-first
+  champs (Gwen - effectively drop pure-AD from the pool, reproducing the #5
+  result) and SOFT / OFF for genuine hybrids (Kayle - she really does build
+  Guinsoo / BotRK / Wit's End alongside Nashor's + Riftmaker, per
+  `ops/audit/ds_cross_eval/reports/Kayle.md`).
+- Implemented as a candidate-pool gate or a scoring penalty in
+  `rank_items_by_onhit`, reusing/extending `core/build_planner/coherence.py`.
+  This lands Slice A's explicitly-deferred "AD-artifact coherence filter"
+  (2026-07-16 AP-assassin spec section 5.4).
+- Strength is a validated per-champ value (like the Jhin fight_length map / the
+  ARAM archetype-override table), NOT a blind heuristic.
 
-1. **AP damage axis** - `info.magic > info.attack` (the `_damage_axis` signal,
-   hybrid.py:73-79). Fallback for DDragon-zeroed-info champs: ability-block
-   classification `_classify_primary_scaling` (ability_dps.py:873) == "AP".
-2. **Attack-speed / on-hit reliance** - ANY of:
-   - a kit on-hit / per-attack MAGIC damage component that scales with AP
-     (Gwen P, Kayle E, Kog'Maw W) - detected from ability data / a small
-     curated on-hit-kit hint list when the ability schema does not tag it
-     cleanly;
-   - an attack-speed steroid ability (large bonus AS on cast);
-   - elevated `stats.attackspeedperlevel` on an AP-axis champ (weak signal,
-     validation-gated).
+### 5.4 Routing / roster
 
-The predicate is deliberately permissive (broad scan). It does NOT need to be
-perfectly precise because (a) the scorer is self-limiting (5.5) and (b) every
-candidate is LIVE-VALIDATED before it enters the roster: probe
-`/api/ds-preview {archetype:"onhit"}` vs the champ's current default, KEEP only
-where an on-hit-AP item (Nashor's / Guinsoo / on-hit family) genuinely surfaces
-AND the build reads coherent (per the CLAUDE.md "Engine / Build Conventions"
-per-champion validation rule). The committed roster is the validated subset,
-written as a registry JSON consumed RC-side (5.4). Re-run on patch refresh (a
-reviewer note, like `_AP_ASSASSIN_IDS`).
+Broad-scan classifier (`tools/ds_onhit_ap_prefilter.py`) emits candidates
+(AP-axis + attack-speed/on-hit-reliant); each is live-validated; the committed
+roster (`core/ds_onhit_ap_roster.json`) carries `{champion: coherence_strength}`.
+`core/archetype_picks.default_for_champion` routes roster champs to `ds.onhit`
+(alongside the Slice A `_AP_ASSASSIN_IDS` check, disjoint from it). The dispatcher
+(`rank_for_primary_archetype`) forwards the per-champ coherence strength +
+`apply_passive_damage`.
 
-### 5.4 RC routing - `core/archetype_picks.py`
+### 5.5 Controls (MUST NOT change)
 
-Add a roster read + a parallel routing check in `default_for_champion`
-(`core/archetype_picks.py:444`), immediately alongside the Slice A
-`_AP_ASSASSIN_IDS` check (archetype_picks.py:475). When
-`canonical_champion_id(champion)` is in the on-hit-AP roster AND the call is the
-default path (an explicit operator pick returns early, unchanged), force
-`primary = "onhit"` and demote the tag-derived primary to `secondary` (so the
-operator can flip back in one tap). The roster is DISJOINT from
-`_AP_ASSASSIN_IDS` (a test asserts no overlap - an AP assassin routes to burst,
-an on-hit AP routes to onhit).
-
-### 5.5 Self-limiting safety argument
-
-The combined scorer is a strict generalization that is SAFE on a false-positive.
-If a pure mage (no AS steroid, no on-hit magic passive, low base AD + low AS) is
-wrongly routed to `onhit`, its `compute_dps().weighted_dps` auto half is
-negligible next to its ability half, so `onhit_dps ~= total_ability_dps` and the
-ranking degenerates to ~the mage answer - Nashor's still loses to Rabadon's.
-The auto half only changes the outcome for champs whose autos are material (the
-real on-hit-AP champs). Over-routing therefore degrades to the current behavior
-by construction, not to a wrong build. This is the backstop behind the
-permissive predicate.
-
-### 5.6 Controls (MUST NOT change)
-
-- Pure sustained AP mages stay effectively as-is: `Syndra, Xerath, Cassiopeia,
-  Vladimir, Vex` (autos negligible -> onhit ~= mage; and most are not even
-  routed by the predicate).
-- AP assassins stay `assassin` (Slice A): `Akali, Ekko, Fizz, Katarina,
-  LeBlanc, Diana`.
+- Pure mages (Syndra/Cassiopeia): autos negligible so onhit ~= mage; not routed.
+- AP assassins (Akali/Ekko, Slice A): stay `assassin` (burst).
 - AD carries stay `carry`; AD assassins stay `assassin`.
-- Operator picks always win (the override is default-path only).
+- Operator picks always win (override is default-path only).
 
-### 5.7 Double-count audit (implementation checkpoint)
+## 6. Acceptance (revised, honest)
 
-Before shipping, confirm no single damage source is counted in BOTH sub-computes
-for each roster champ. Known-clean by design (P in dps.py, QWER in
-ability_dps.py), but dps.py has an opt-in "route an on_hit passive to AA cadence"
-path (dps.py:1162-1207, `aa_routed_on_hit_entry`). Assert the roster champs'
-on-hit passives are credited in exactly one half (add a per-champ test comparing
-`ability_dps + auto_dps` against a hand-computed expected for at least one roster
-champ). If a champ double-counts, prefer keeping the on-hit in dps.py (autos) and
-confirm ability_dps.py excludes it (it excludes P wholesale, so this is the
-expected resolution).
+- Nashor's SURFACES as a viable core AP on-hit option for the roster champs
+  (validated #5 for Gwen with parts 1-3) - NOT necessarily #1 (Liandry's
+  legitimately leads Gwen; that is correct).
+- Kayle gets a hybrid on-hit build with Nashor's in the mix (soft coherence).
+- Controls unchanged. Full dual suite + CI green.
 
-### 5.8 Data flow
-
-`default_for_champion` (roster) -> `get_archetype_for` ->
-`routes_state._serve_ds_preview_post` / `_serve_build_order_post` ->
-`core.daemon_slayer_client.rank_for_primary_archetype(archetype="onhit")` ->
-POST `/rank-onhit` to `:8893` -> `rank_items_by_onhit` -> `compute_onhit_dps`.
-The build-order path (`core/build_order.plan_build_order`) iterates the same
-per-archetype scorer, so the ordered plan flows through `onhit` too once the
-dispatcher branch exists.
-
-## 6. Tests (RED-first, TDD)
+## 7. Tests (RED-first)
 
 Engine (DS dir + Share mirror):
-
-- `compute_onhit_dps` returns `total == ability_dps_component + auto_dps_component`
-  for a fixed Gwen build (exact-sum invariant, the double-count guard of 5.7).
-- `rank_items_by_onhit` surfaces Nashor's Tooth (3115) in the top-N for Gwen /
-  Kayle / Kog'Maw at SR L13 vs the tanky mode-level-curve target. (RED today:
-  no such scorer / route exists.)
-- Route smoke: `/rank-onhit` returns a well-formed ranked list; unknown-kit champ
-  degrades (kit-dependent-guard) rather than 500.
+- `compute_onhit_dps` exact-sum invariant (DONE, T1).
+- With parts 2-3 wired, `rank_items_by_onhit` surfaces Nashor's (3115) in the
+  top-N for Gwen / Kayle / Kog'Maw at SR L13 tanky target (the T2 xfail markers
+  flip to strict-pass).
+- Gwen P AA-routed on-hit adds AS-scaling DPS (per-hit * eff_as) - a numeric
+  check on the credited delta.
+- Kayle E / Kog'Maw W on-hit entries evaluate > 0 and are AS-scaling.
+- Axis-coherence: for an AP-first roster champ, pure-AD items (BotRK 3153) are
+  gated out / penalized below the AP on-hit field; for a soft-coherence champ
+  they are retained.
+- Controls: a pure mage / an AD carry ranking is unchanged by the gate.
 
 RC-side (`tests/`):
+- roster champs -> `default_for_champion` primary `onhit`, secondary demoted.
+- roster disjoint from `_AP_ASSASSIN_IDS`; controls not routed; operator pick wins.
+- `/api/build-plan` for a roster champ returns `scorer == "onhit"` + Nashor's
+  present (assert scorer + presence, not a brittle exact-item list).
 
-- Each validated roster champ: `default_for_champion` -> `primary == "onhit"`,
-  `secondary` = the demoted tag primary.
-- Controls unchanged: `Syndra`/`Cassiopeia` NOT `onhit`; `Akali`/`Ekko`
-  (Slice A) stay `assassin`; a representative AD carry stays `carry`.
-- Roster disjoint from `_AP_ASSASSIN_IDS` (set-intersection empty).
-- Operator pick still wins (a persisted `mage` pick on a roster champ is not
-  overridden).
-- Integration: `/api/build-plan` for a roster champ returns `scorer == "onhit"`
-  and an on-hit-AP-inclusive build (assert scorer + Nashor's presence, NOT a
-  brittle exact-item list).
+## 8. Release (Tier-2)
 
-## 7. Verification + release (Tier-2)
+py_compile -> finish ALL engine edits -> bump `ENGINE_VERSION`
+(`agents/daemon_slayer/__init__.py:18`, `"1.215.0"` -> next minor, quoted literal
+only) -> stage Share mirror in the same commit (the `ds_share_sync` precommit
+hook mirrors staged DS source) -> full dual suite ONCE (trust exit code) ->
+restart DS `:8893` (confirm port free first) -> reload RC via `restart_trigger.txt`
+-> live-validate `/api/build-plan` roster + controls -> verifier subagent gate ->
+LEDGER (newest-first) + DS docs sync (no coverage-% recompute) + LIVE_GAME_GATED
+note (overlay render eyeball).
 
-1. `py_compile` every touched `.py` before any restart (CLAUDE.md hard rule).
-2. Finish ALL DS-engine edits before running the full suite (memory
-   `feedback_finish_ds_edits_before_full_suite`).
-3. Bump `ENGINE_VERSION` in `agents/daemon_slayer/__init__.py:18` (currently
-   `"1.215.0"` -> next minor). Replace only the quoted literal
-   (`feedback_engine_bump_quoted_literal_only`).
-4. Stage the Share mirror in the SAME commit (`feedback_ds_commit_share_test_mirror`);
-   watch tools/Share drift (`feedback_share_mirror_tools_drift`). Regen the dist
-   bundle if a worktree merge is involved (`feedback_ds_worktree_merge_regen_dist_bundle`).
-5. Run the FULL dual suite ONCE (DS dir + `tests/`); trust the exit code (R6).
-   Re-verify fresh before any green claim (Verification Discipline).
-6. Restart DS `:8893` - `schtasks /End` + `/Run RC-DaemonSlayer`, confirm the
-   port is free first (`reference_ds_server_not_supervisor_watched`). Wait for
-   the Share sync + restart to settle before any live probe
-   (`feedback_finish_ds_edits_before_full_suite`).
-7. Reload RC via `restart_trigger.txt`; confirm `health.json` new pid + alive +
-   `last_reload_ok`.
-8. Live-validate `/api/build-plan` on the roster + controls; confirm Nashor's
-   surfaces for roster champs and controls are unchanged.
-9. LEDGER entry (newest-first, `docs/LEDGER.md`) + DS docs sync
-   (`feedback_ds_coverage_prose_recompute` - do NOT recompute coverage % in a
-   general sync).
+## 9. Risks
 
-## 8. Risks
+- **Kit on-hit approximation.** Kayle E / Kog'Maw W are timed steroids modeled as
+  sustained on-hit; an uptime discount keeps it honest. Per-champ live validation.
+- **Coherence over-reach.** A hard gate on a champ who actually wants hybrid
+  on-hit (Kayle) would mis-build her; the per-champ strength (hard Gwen / soft
+  Kayle) + control tests mitigate. Strength is validated, not heuristic.
+- **Extending AA-routing beyond P-slot** touches a load-bearing seam; guard with
+  a byte-identical-when-off test (non-roster champs unchanged).
+- **Patch drift** (new on-hit AP releases / kit changes): roster + coherence
+  re-scan on patch refresh; reviewer note.
+- **Live-gated tail:** overlay RENDER eyeball needs a real game -> LIVE_GAME_GATED_SYNC.
 
-- **Classifier over/under-reach.** Mitigated by the self-limiting scorer (5.5)
-  + per-champ live validation (5.3) + control tests (6). The roster is the
-  VALIDATED subset, not the raw predicate output.
-- **Double count** across the two halves (5.7) - guarded by the exact-sum test.
-- **Patch drift.** New on-hit-AP releases or AS/kit changes need a roster
-  re-scan; guarded by a reviewer note + the scan tool being re-runnable.
-- **Kayle divergence.** Kayle's simulation-optimal onhit build may not match her
-  empirical AD-on-hit-hybrid meta. Per `project_ds_build_reco_optimal_not_winrate`
-  this is acceptable; success is Nashor's surfacing + a coherent build, not a
-  win-rate match. Flagged so it is not mistaken for a defect at validation.
-- **Live-gated tail.** An overlay RENDER eyeball of the new onhit builds needs a
-  real game -> `docs/LIVE_GAME_GATED_SYNC.md` (mirrors Slice A's live tail).
+## 10. Relationship to Slice A
 
-## 9. Relationship to Slice A
-
-Slice A (AP-assassin burst reroute, `_AP_ASSASSIN_IDS`, LEDGER 910) is DONE,
-shipped, CI-green - not touched. Slice B is additive and disjoint: a new scorer +
-a new, non-overlapping roster. The two together close the AP-axis kit-blindness
-that OQ23-25 closed on the AD axis (LEDGER 875/885/886).
+Slice A (AP-assassin burst reroute, LEDGER 910) is DONE, disjoint, untouched.
+Slice B lands the AD-artifact coherence filter Slice A deferred (5.4). Together
+they close the AP-axis kit-blindness OQ23-25 closed on the AD axis (LEDGER 875/885/886).
