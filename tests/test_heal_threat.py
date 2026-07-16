@@ -135,6 +135,33 @@ class CalloutShapeTests(unittest.TestCase):
         self.assertEqual(set(out.keys()), {"tag", "line", "eta_s", "kind"})
 
 
+class HealSourceHelperTests(unittest.TestCase):
+    """C2 antiheal counter-hint sources (2026-07-16). count_heal_sources feeds
+    the situational EnemyProfile.heal_sources int; ally_has_antiheal feeds the
+    AllyState.has_antiheal de-dup. Both reuse the module's curated sets."""
+
+    def test_count_champs_plus_items(self) -> None:
+        # Soraka + Aatrox are curated sustain champs; 3072 Bloodthirster is a
+        # heal item; Ashe + 3031 IE are not. -> 2 + 1 = 3.
+        self.assertEqual(
+            ht.count_heal_sources(["Soraka", "Aatrox", "Ashe"], ["3072", "3031"]), 3)
+
+    def test_count_dedups_items(self) -> None:
+        self.assertEqual(ht.count_heal_sources([], ["3072", "3072"]), 1)
+
+    def test_count_failsoft(self) -> None:
+        self.assertEqual(ht.count_heal_sources(None, None), 0)
+
+    def test_ally_has_antiheal_true(self) -> None:   # 3075 Thornmail applies GW
+        self.assertTrue(ht.ally_has_antiheal(["3075"]))
+
+    def test_ally_has_antiheal_false(self) -> None:
+        self.assertFalse(ht.ally_has_antiheal(["3031"]))
+
+    def test_ally_has_antiheal_failsoft(self) -> None:
+        self.assertFalse(ht.ally_has_antiheal(None))
+
+
 class AsciiHygieneTests(unittest.TestCase):
     def _assert_ascii(self, rel: str) -> None:
         raw = (_ROOT / rel).read_bytes()

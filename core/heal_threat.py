@@ -233,3 +233,22 @@ def heal_threat_callout(
         "eta_s": None,
         "kind": "heal_threat",
     }
+
+
+def count_heal_sources(enemy_comp, enemy_item_ids) -> int:
+    """Count enemy heal SOURCES: matched curated heavy-sustain champions +
+    distinct enemy heal items.
+
+    The int the situational ``EnemyProfile.heal_sources`` consumes (the C2
+    antiheal counter-hint fires at ``>= HEAL_THRESHOLD``). Reuses the same
+    curation the standing callout uses; fail-soft to 0 (the private helpers
+    coerce bad / missing input)."""
+    return len(_matched_sustain_champs(enemy_comp)) + _count_in_set(
+        enemy_item_ids, _HEAL_ITEM_IDS)
+
+
+def ally_has_antiheal(ally_item_ids) -> bool:
+    """True when any ally item applies Grievous Wounds - populates the
+    situational ``AllyState.has_antiheal`` de-dup so the antiheal hint is
+    suppressed when an ally already owns the counter. Fail-soft False."""
+    return _count_in_set(ally_item_ids, _GRIEVOUS_ITEM_IDS) > 0
