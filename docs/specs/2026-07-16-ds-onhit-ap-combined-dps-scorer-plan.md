@@ -1,357 +1,249 @@
-# On-hit AP Combined-DPS Scorer (Slice B) Implementation Plan
+# On-hit AP Itemization (Slice B) Implementation Plan v2
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** Add a 7th DS archetype scorer that sums ability DPS + on-hit-inclusive auto DPS so Nashor's Tooth surfaces for on-hit AP champions (Gwen / Kayle / Kog'Maw-AP), routed by a broad-scan classifier.
+**Goal:** Surface Nashor's Tooth (and the on-hit AP axis) for Gwen / Kayle / Kog'Maw-AP via a new combined-DPS scorer + kit-on-hit crediting + an AP/AD axis-coherence gate.
 
-**Architecture:** A new engine module `onhit_dps.py` composes the two EXISTING damage computes (`compute_ability_dps` + `compute_dps`) into a single combined-DPS score by plain SUM (both are in the same DPS units, unlike hybrid.py's DPS+EHP mismatch). A new `/rank-onhit` server route + RC client + dispatcher branch expose it. A scan tool derives an on-hit-AP roster (validated live) that `core/archetype_picks.default_for_champion` routes to the new `onhit` archetype.
+**Architecture:** v1 (compose scorer alone) was proven insufficient by live re-verify (see spec v2 section 4). The validated 3-part fix: (1) `onhit_dps.py` sums ability + on-hit-auto DPS [DONE, Tasks 1-2]; (2) credit the champs' kit on-hit magic in the auto half so AS/on-hit pays off; (3) an AP/AD axis-coherence gate so AD items (BotRK) stop burying the AP field. Then Nashor's surfaces (validated #5 for Gwen).
 
-**Tech Stack:** Python 3.14, stdlib-only DS engine, mkcert HTTPS dashboard, pytest. DS engine at `agents/daemon_slayer/` (mirrored to `Share/src/agents/daemon_slayer/` by the precommit `ds_share_sync` hook on staged DS source).
+**Tech Stack:** Python 3.14, stdlib-only DS engine (`agents/daemon_slayer/`, mirrored to `Share/` by the `ds_share_sync` precommit hook), pytest, mkcert HTTPS dashboard.
+
+**Spec:** `docs/specs/2026-07-16-ds-onhit-ap-combined-dps-scorer-design.md` (v2). Read it before implementing.
 
 ## Global Constraints
 
-- ASCII only in all authored text - no em/en dashes, no smart quotes. Use ` - ` (spaced hyphen) for a clause break. Backstopped by `tools/precommit_gate.py`.
-- `py_compile` every touched `.py` before any restart (syntax errors crash silently under pythonw).
-- Atomic writes only for any runtime file: `tmp.write_text(...); tmp.replace(target)`.
-- Never `Stop-Process`; use `taskkill /F /PID`.
-- This is Tier-2: NEW engine scorer + ENGINE_VERSION bump + Share mirror + DS `:8893` restart + full dual suite (`agents/daemon_slayer/tests/` + `tests/`) + live `/api/build-plan` validation.
-- ENGINE_VERSION single source of truth: `agents/daemon_slayer/__init__.py:18` (currently `"1.215.0"`). Bump ONLY the quoted literal.
-- DO NOT modify the 6 existing scorers (dps/ehp/hybrid/ability_dps/burst/hps). Additive only.
-- The new roster MUST be disjoint from `core/archetype_picks._AP_ASSASSIN_IDS` (Slice A).
-- Build target is simulation-optimal, NOT win-rate (memory `project_ds_build_reco_optimal_not_winrate`). Success = Nashor's surfaces + coherent build; Kayle may stay AP-leaning vs her empirical AD-hybrid meta - that is acceptable.
-- Finish ALL DS-engine edits before running the full suite (memory `feedback_finish_ds_edits_before_full_suite`); a mid-suite DS bounce fabricates anchor-mismatch fails.
+- ASCII ONLY: no em/en dashes, no smart quotes; ` - ` for a clause break. Precommit hook BLOCKS banned glyphs.
+- `py_compile` every touched `.py` before restart.
+- Atomic writes for runtime files. Never `Stop-Process`; use `taskkill /F /PID`.
+- Tier-2: ENGINE_VERSION bump (`agents/daemon_slayer/__init__.py:18`, currently `"1.215.0"`, quoted-literal-only) + Share mirror + DS `:8893` restart + full dual suite + live validation.
+- Do NOT modify the 6 existing scorers except the ADDITIVE, DEFAULT-OFF-for-others AA-routing extension in Task 4 (which must stay byte-identical for non-roster champs).
+- New roster disjoint from `core/archetype_picks._AP_ASSASSIN_IDS`.
+- Target is simulation-optimal, NOT win-rate. Acceptance = Nashor's SURFACES as a viable core AP on-hit option (not necessarily #1; Liandry's legitimately leads Gwen).
+- Finish ALL DS engine edits before the full suite (a mid-suite DS bounce fabricates fails).
+
+## Progress
+
+- Task 1 (compute_onhit_dps): DONE, commit 5033b339, review clean.
+- Task 2 (rank_items_by_onhit): DONE code-complete, commit f6d935ae. Acceptance tests present as `xfail(strict=True)` (Nashor's absent until parts 2-3 land); they FLIP to strict-pass in Task 5.
 
 ## File Structure
 
-- Create `agents/daemon_slayer/onhit_dps.py` - the compose scorer: `compute_onhit_dps` + `rank_items_by_onhit` + result dataclasses. One responsibility: combined ability+auto DPS.
-- Create `agents/daemon_slayer/tests/test_onhit_dps.py` - engine scorer + ranker unit tests.
-- Modify `agents/daemon_slayer/server.py` - add `_route_rank_onhit` + register `/rank-onhit` + doc row.
-- Modify `core/daemon_slayer_client.py` - add `rank_onhit_for` + `onhit` branch in `rank_for_primary_archetype`.
-- Create `tools/ds_onhit_ap_prefilter.py` - broad-scan classifier that emits roster candidates.
-- Create `core/ds_onhit_ap_roster.json` - the committed, live-validated roster (RC-side data).
-- Modify `core/archetype_picks.py` - roster read + routing in `default_for_champion`.
-- Modify `agents/daemon_slayer/__init__.py:18` - ENGINE_VERSION bump.
-- Create `tests/test_onhit_ap_routing.py` - RC-side routing + control tests.
-- Update `docs/LEDGER.md`, `ROADMAP.md`, `docs/DAEMON_SLAYER.md`, `WAKEUP_NOTES.md`, `docs/LIVE_GAME_GATED_SYNC.md`.
+- `agents/daemon_slayer/onhit_dps.py` - the scorer (exists). Tasks 3+5 modify it (apply_passive_damage threading; axis-coherence).
+- `agents/daemon_slayer/dps.py` - Task 4 extends `aa_routed_on_hit_entry` beyond the P-slot.
+- `agents/daemon_slayer/_passive_damage_overrides.py` - Task 3 adds Gwen to `_AA_ROUTED_ON_HIT_KEYS`; Task 4 adds Kayle E + Kog'Maw W on-hit entries.
+- `agents/daemon_slayer/server.py` - Task 6 adds `/rank-onhit`.
+- `core/daemon_slayer_client.py` - Task 7 adds `rank_onhit_for` + the `onhit` dispatcher branch (forwards coherence + apply_passive_damage).
+- `tools/ds_onhit_ap_prefilter.py` + `core/ds_onhit_ap_roster.json` - Task 9 (roster carries per-champ coherence strength).
+- `core/archetype_picks.py` - Task 10 routing.
+- `agents/daemon_slayer/__init__.py:18` - Task 8 ENGINE bump.
 
-**Reference templates (READ before implementing):**
-- `agents/daemon_slayer/hybrid.py` - the canonical compose-two-computes scorer (`compute_hybrid` at :281, `rank_items_by_hybrid` at :737). Copy its module structure; swap `compute_ehp` -> `compute_ability_dps` and the weighted-sum -> plain sum.
-- `agents/daemon_slayer/_rank_mage.py` - `rank_items_by_ability_dps` is the single-scalar DPS-delta ranker (no alpha/beta). Closest template for `rank_items_by_onhit`.
-- `agents/daemon_slayer/ability_dps.py` - `compute_ability_dps` (:913) returns `AbilityDpsResult` with `.total_ability_dps` + `.champion_id` + `.champion_name`.
-- `agents/daemon_slayer/dps.py` - `compute_dps` returns a result with `.weighted_dps`, `.champion_id`, `.champion_name`, `.phase`, `.mode_multiplier`, `.stats`.
-- `core/daemon_slayer_client.py` - `rank_mage_for` (:502) + `rank_assassin_for` (:648) are the client sibling templates; `rank_for_primary_archetype` (:1001) is the dispatcher.
+**Reference templates (READ before implementing):** `hybrid.py` (compose scorer), `_rank_mage.py` (single-scalar ranker), `dps.py:1162-1212` (AA-routed on-hit mechanism), `_passive_damage_overrides.py:599` (Gwen P entry) + `:1052-1076` (allowlist + `aa_routed_on_hit_entry`), `core/build_planner/coherence.py` (coherence patterns), `core/ds_champion_fight_length.py` (per-champ policy-map idiom for the roster).
 
 ---
 
-## Task 1: Engine `compute_onhit_dps` (the compose core)
+## Task 3: Gwen P kit-on-hit credit + apply_passive_damage threading
 
 **Files:**
-- Create: `agents/daemon_slayer/onhit_dps.py`
+- Modify: `agents/daemon_slayer/_passive_damage_overrides.py:1052` (allowlist)
+- Modify: `agents/daemon_slayer/onhit_dps.py` (thread `apply_passive_damage`)
 - Test: `agents/daemon_slayer/tests/test_onhit_dps.py`
 
 **Interfaces:**
-- Consumes: `compute_ability_dps(snapshot, champion_id, level, item_ids, mode, target_armor, target_mr, target_max_hp, target_bonus_hp, augments) -> AbilityDpsResult` (`.total_ability_dps`); `compute_dps(snapshot, champion_id, level, item_ids, mode, target_armor, target_mr, target_max_hp, target_bonus_hp, phase, augments, apply_mode_modifiers) -> DpsResult` (`.weighted_dps`, `.champion_id`, `.champion_name`, `.phase`, `.mode_multiplier`).
-- Produces: `compute_onhit_dps(snapshot, champion_id, level, item_ids=None, mode="SR", target_armor=0.0, target_mr=0.0, target_max_hp=0.0, target_bonus_hp=0.0, phase=None, augments=None, apply_mode_modifiers=False) -> OnhitDpsResult` with fields `champion_id, champion_name, level, item_ids, mode, ability_dps, auto_dps, onhit_dps, phase, target_armor, target_mr, target_max_hp, target_bonus_hp, notes` and `.to_dict()` + `.format_table()`. `onhit_dps == ability_dps + auto_dps`.
+- Produces: `compute_onhit_dps(..., apply_passive_damage=False)` and `rank_items_by_onhit(..., apply_passive_damage=True)` - the ranker (the on-hit scorer) defaults the flag ON, `compute_onhit_dps` defaults it OFF (preserves the Task 1 exact-sum test). `compute_onhit_dps` forwards the flag to its internal `compute_dps` call.
 
-- [ ] **Step 1: Write the failing test (exact-sum invariant + both halves present)**
+- [ ] **Step 1: Write the failing test (Gwen P adds AS-scaling on-hit)**
 
 ```python
-# agents/daemon_slayer/tests/test_onhit_dps.py
-from agents.daemon_slayer.data_loader import load_default_snapshot
-from agents.daemon_slayer.onhit_dps import compute_onhit_dps
-from agents.daemon_slayer.ability_dps import compute_ability_dps
-from agents.daemon_slayer.dps import compute_dps
-
-# Nashor's Tooth + Rabadon's - an on-hit AP build for Gwen.
-_GWEN_BUILD = ("3115", "3089")
-
-
-def test_onhit_dps_is_exact_sum_of_two_halves():
-    snap = load_default_snapshot()
-    res = compute_onhit_dps(
-        snap, "Gwen", level=13, item_ids=_GWEN_BUILD, mode="SR",
-        target_armor=105.0, target_mr=52.0, target_max_hp=2430.0,
-    )
-    ability = compute_ability_dps(
-        snap, champion_id="Gwen", level=13, item_ids=_GWEN_BUILD, mode="SR",
-        target_armor=105.0, target_mr=52.0, target_max_hp=2430.0,
-    ).total_ability_dps
-    auto = compute_dps(
-        snap, champion_id="Gwen", level=13, item_ids=_GWEN_BUILD, mode="SR",
-        target_armor=105.0, target_mr=52.0, target_max_hp=2430.0,
-    ).weighted_dps
-    assert res.ability_dps == ability
-    assert res.auto_dps == auto
-    assert res.onhit_dps == ability + auto
-    # Both halves are material for an on-hit AP champ (the whole point).
-    assert res.ability_dps > 0.0
-    assert res.auto_dps > 0.0
+# append to test_onhit_dps.py
+def test_gwen_p_credited_raises_auto_half_when_passive_on():
+    snap = DataSnapshot.load()
+    T = dict(target_armor=105.0, target_mr=52.0, target_max_hp=2430.0)
+    off = compute_onhit_dps(snap, "Gwen", 13, item_ids=("3115",), mode="SR",
+                            apply_passive_damage=False, **T)
+    on = compute_onhit_dps(snap, "Gwen", 13, item_ids=("3115",), mode="SR",
+                           apply_passive_damage=True, **T)
+    # Crediting Gwen P (now allowlisted) raises the auto half via on-hit magic.
+    assert on.auto_dps > off.auto_dps
+    assert on.onhit_dps > off.onhit_dps
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py::test_onhit_dps_is_exact_sum_of_two_halves -v`
-Expected: FAIL - `ModuleNotFoundError: agents.daemon_slayer.onhit_dps` (or `load_default_snapshot` import - if that helper name differs, read `data_loader.py` for the real snapshot loader used by `hybrid.py`'s tests and match it).
+Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py::test_gwen_p_credited_raises_auto_half_when_passive_on -v`
+Expected: FAIL - `compute_onhit_dps` has no `apply_passive_damage` param yet (TypeError), OR (once the param exists but Gwen not allowlisted) `on.auto_dps == off.auto_dps`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement**
 
-Read `hybrid.py:1-60` + `:179-280` (imports + `HybridResult`) for the scaffold, then create `onhit_dps.py`. The compute is a plain sum:
-
+(a) In `_passive_damage_overrides.py:1052`, add Gwen to the allowlist:
 ```python
-"""Slice B (2026-07-16) - on-hit AP combined-DPS scorer.
-
-Composes compute_ability_dps().total_ability_dps (Q/W/E/R) with
-compute_dps().weighted_dps (autos + on-hit item procs, incl. Nashor's
-Icathian Bite) into ONE combined-DPS score by PLAIN SUM - both halves are
-in the same DPS units. The two are non-overlapping by design: the passive
-(P) on-hit lives in compute_dps, the four active spells live in
-compute_ability_dps. Neither half alone surfaces Nashor's; their sum is the
-champion's true total sustained DPS. Sibling of hybrid.py (which composes
-dps + EHP with alpha/beta) - here no weights are needed.
-
-ASCII only - use " - " for a clause break (repo hard rule).
-"""
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import Iterable, Optional
-
-from .ability_dps import compute_ability_dps
-from .data_loader import DataSnapshot
-from .dps import compute_dps
-from .stats import clamp_level
-
-
-@dataclass(frozen=True)
-class OnhitDpsResult:
-    champion_id: str
-    champion_name: str
-    level: int
-    item_ids: tuple[str, ...]
-    mode: str
-    ability_dps: float          # compute_ability_dps().total_ability_dps
-    auto_dps: float             # compute_dps().weighted_dps (incl. on-hit procs)
-    onhit_dps: float            # ability_dps + auto_dps (plain sum, same units)
-    phase: str
-    target_armor: float
-    target_mr: float
-    target_max_hp: float
-    target_bonus_hp: float
-    notes: tuple[str, ...] = field(default_factory=tuple)
-
-    def to_dict(self) -> dict:
-        return {
-            "champion_id": self.champion_id,
-            "champion_name": self.champion_name,
-            "level": self.level,
-            "item_ids": list(self.item_ids),
-            "mode": self.mode,
-            "ability_dps": self.ability_dps,
-            "auto_dps": self.auto_dps,
-            "onhit_dps": self.onhit_dps,
-            "phase": self.phase,
-            "target_armor": self.target_armor,
-            "target_mr": self.target_mr,
-            "target_max_hp": self.target_max_hp,
-            "target_bonus_hp": self.target_bonus_hp,
-            "notes": list(self.notes),
-        }
-
-    def format_table(self) -> str:
-        head = (
-            f"{self.champion_name} ({self.champion_id}) - lvl {self.level} "
-            f"- mode {self.mode}  [ON-HIT AP]"
-        )
-        rows = [head, "-" * len(head)]
-        rows.append(f"items: {', '.join(self.item_ids) if self.item_ids else '(none)'}")
-        rows.append(
-            f"  ability_dps  {self.ability_dps:.2f}\n"
-            f"  auto_dps     {self.auto_dps:.2f}\n"
-            f"  onhit_dps    {self.onhit_dps:.2f}  (sum)"
-        )
-        for n in self.notes:
-            rows.append(f"  note: {n}")
-        return "\n".join(rows)
-
-
-def compute_onhit_dps(
-    snapshot: DataSnapshot,
-    champion_id: str,
-    level: int,
-    item_ids: Optional[Iterable[str | int]] = None,
-    mode: str = "SR",
-    target_armor: float = 0.0,
-    target_mr: float = 0.0,
-    target_max_hp: float = 0.0,
-    target_bonus_hp: float = 0.0,
-    phase: Optional[str] = None,
-    augments: Optional[Iterable] = None,
-    apply_mode_modifiers: bool = False,
-) -> OnhitDpsResult:
-    """Combined ability + on-hit-auto DPS for the resolved build (plain sum)."""
-    level = clamp_level(level)
-    item_list = tuple(str(i) for i in (item_ids or ()))
-
-    auto = compute_dps(
-        snapshot, champion_id=champion_id, level=level, item_ids=item_list,
-        mode=mode, target_armor=target_armor, target_mr=target_mr,
-        target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
-        phase=phase, augments=augments, apply_mode_modifiers=apply_mode_modifiers,
-    )
-    ability = compute_ability_dps(
-        snapshot, champion_id=champion_id, level=level, item_ids=item_list,
-        mode=mode, target_armor=target_armor, target_mr=target_mr,
-        target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
-        augments=augments,
-    )
-    ability_dps = float(ability.total_ability_dps)
-    auto_dps = float(auto.weighted_dps)
-    return OnhitDpsResult(
-        champion_id=auto.champion_id,
-        champion_name=auto.champion_name,
-        level=level,
-        item_ids=item_list,
-        mode=mode,
-        ability_dps=ability_dps,
-        auto_dps=auto_dps,
-        onhit_dps=ability_dps + auto_dps,
-        phase=auto.phase,
-        target_armor=target_armor,
-        target_mr=target_mr,
-        target_max_hp=target_max_hp,
-        target_bonus_hp=target_bonus_hp,
-        notes=(f"onhit_dps = ability {ability_dps:.1f} + auto {auto_dps:.1f}",),
-    )
+_AA_ROUTED_ON_HIT_KEYS: frozenset[tuple[str, str, int]] = frozenset(
+    {
+        ("Warwick", "P", 0),
+        ("Orianna", "P", 0),
+        ("Gwen", "P", 0),  # Slice B: A Thousand Cuts on-hit magic (AS-scaling)
+    }
+)
 ```
+(b) In `onhit_dps.py`, add `apply_passive_damage: bool = False` to `compute_onhit_dps` and forward it to the `compute_dps(...)` call. Add `apply_passive_damage: bool = True` to `rank_items_by_onhit` and thread it into every `compute_onhit_dps` call it makes (baseline + each candidate).
 
-Note: if `compute_dps` does NOT accept `target_bonus_hp` or `apply_mode_modifiers` with these exact names, read its signature in `dps.py` and match (hybrid.py:397-411 shows the real call). Do NOT invent kwargs.
+- [ ] **Step 4: Run tests to verify pass**
 
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py::test_onhit_dps_is_exact_sum_of_two_halves -v`
-Expected: PASS.
+Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py -v`
+Expected: the new test PASSES; the Task 1 exact-sum test STILL passes (it uses the default `apply_passive_damage=False`); the Task 2 acceptance xfails STAY xfail (Nashor's still buried by BotRK until Task 5).
 
 - [ ] **Step 5: py_compile + commit**
 
 ```bash
-python -m py_compile agents/daemon_slayer/onhit_dps.py agents/daemon_slayer/tests/test_onhit_dps.py
-git add agents/daemon_slayer/onhit_dps.py agents/daemon_slayer/tests/test_onhit_dps.py
-git commit -m "feat(ds): compute_onhit_dps - combined ability + on-hit-auto DPS (Slice B t1)"
+python -m py_compile agents/daemon_slayer/onhit_dps.py agents/daemon_slayer/_passive_damage_overrides.py
+git add agents/daemon_slayer/onhit_dps.py agents/daemon_slayer/_passive_damage_overrides.py agents/daemon_slayer/tests/test_onhit_dps.py
+git commit -m "feat(ds): credit Gwen P on-hit + apply_passive_damage threading (Slice B t3)"
 ```
 
 ---
 
-## Task 2: Engine `rank_items_by_onhit` (the ranker)
+## Task 4: Kayle E + Kog'Maw W on-hit entries + non-P AA-routing
 
 **Files:**
-- Modify: `agents/daemon_slayer/onhit_dps.py`
+- Modify: `agents/daemon_slayer/_passive_damage_overrides.py` (new entries + allowlist + `aa_routed_on_hit_entry`)
+- Modify: `agents/daemon_slayer/dps.py:1183` (the routing consults the champion's AA-routed entry - already slot-agnostic via `aa_routed_on_hit_entry`, so the extension is inside that accessor)
 - Test: `agents/daemon_slayer/tests/test_onhit_dps.py`
 
 **Interfaces:**
-- Consumes: `compute_onhit_dps` (Task 1); `rank._filter_candidates`, `rank._is_terminal`, `rank.strip_arena_trinkets`, `rank._champion_is_melee`, `rank.DEFAULT_SLOT_COUNT`, `rank.DEFAULT_TOP_N`, `rank.SORT_KEYS`; `effects.ITEM_EFFECTS`.
-- Produces: `rank_items_by_onhit(snapshot, champion_id, level, current_item_ids=None, mode="SR", target_armor=0.0, target_mr=0.0, target_max_hp=0.0, target_bonus_hp=0.0, phase=None, budget=None, slot_count=DEFAULT_SLOT_COUNT, top_n=DEFAULT_TOP_N, include_components=False, only_item_ids=None, sort_by="delta", augments=None, apply_mode_modifiers=False, filter_shared_uniques=True) -> OnhitDpsRankResult` whose `.ranked` is a tuple of `OnhitDpsRankedItem(item_id, item_name, gold, delta_dps, new_dps, ability_dps, auto_dps, is_terminal, tags, unique_passive_key, shares_dead_unique, dead_unique_key, dps_per_1k_gold)`. Sort key `delta` = `delta_dps` desc; `efficiency` = `dps_per_1k_gold` desc.
+- Consumes: `aa_routed_on_hit_entry(champion_id)` (currently P-slot-only, `_passive_damage_overrides.py:1060`).
+- Produces: `aa_routed_on_hit_entry` returns Kayle's E / Kog'Maw's W on-hit rider; non-roster champs still return `None` (byte-identical).
 
-- [ ] **Step 1: Write the failing test (Nashor's surfaces for all three champs)**
+- [ ] **Step 1: Write the failing test (Kayle + Kog on-hit credited)**
 
 ```python
-# append to agents/daemon_slayer/tests/test_onhit_dps.py
-import pytest
-from agents.daemon_slayer.onhit_dps import rank_items_by_onhit
+# append to test_onhit_dps.py
+import pytest as _pytest
 
-_NASHORS = "3115"
-
-
-@pytest.mark.parametrize("champ", ["Gwen", "Kayle", "KogMaw"])
-def test_nashors_surfaces_in_onhit_topn(champ):
-    snap = load_default_snapshot()
-    res = rank_items_by_onhit(
-        snap, champ, level=13, current_item_ids=(), mode="SR",
-        target_armor=105.0, target_mr=52.0, target_max_hp=2430.0, top_n=8,
-    )
-    ids = [r.item_id for r in res.ranked]
-    assert _NASHORS in ids, f"{champ}: Nashor's absent from onhit top-8: {ids}"
-
-
-def test_onhit_ranked_row_splits_are_consistent():
-    snap = load_default_snapshot()
-    res = rank_items_by_onhit(
-        snap, "Gwen", level=13, current_item_ids=(), mode="SR",
-        target_armor=105.0, target_mr=52.0, target_max_hp=2430.0, top_n=8,
-    )
-    r = res.ranked[0]
-    # new_dps == ability_dps + auto_dps for each row (the sum invariant holds per candidate).
-    assert abs(r.new_dps - (r.ability_dps + r.auto_dps)) < 1e-6
+@_pytest.mark.parametrize("champ", ["Kayle", "KogMaw"])
+def test_kit_onhit_credited_for_kayle_kog(champ):
+    snap = DataSnapshot.load()
+    T = dict(target_armor=105.0, target_mr=52.0, target_max_hp=2430.0)
+    off = compute_onhit_dps(snap, champ, 13, item_ids=("3115",), mode="SR",
+                            apply_passive_damage=False, **T)
+    on = compute_onhit_dps(snap, champ, 13, item_ids=("3115",), mode="SR",
+                           apply_passive_damage=True, **T)
+    assert on.auto_dps > off.auto_dps, f"{champ}: kit on-hit not credited"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run to verify it fails**
 
-Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py -k nashors -v`
-Expected: FAIL - `rank_items_by_onhit` not defined.
+Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py -k kit_onhit_credited -v`
+Expected: FAIL - Kayle/Kog have no on-hit entry, so `on.auto_dps == off.auto_dps`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement**
 
-Read `_rank_mage.py` `rank_items_by_ability_dps` in full - it is the single-scalar delta ranker. Mirror its structure exactly (candidate filter loop, dead-unique dedup, sort, top_n, notes) but score each candidate with `compute_onhit_dps(build).onhit_dps`. Key deltas from the mage ranker:
-- baseline = `compute_onhit_dps(snapshot, champ, level, current_ids, ...).onhit_dps`.
-- per candidate `new_build = current_ids + (item_id,)`; `scored = compute_onhit_dps(..., new_build, ...)`; `delta_dps = scored.onhit_dps - baseline`; carry `ability_dps=scored.ability_dps`, `auto_dps=scored.auto_dps`, `new_dps=scored.onhit_dps`.
-- `dps_per_1k_gold = (delta_dps / (gold/1000.0)) if (gold>0 and delta_dps>0) else 0.0`.
-- reuse `_filter_candidates(..., champion_is_melee=_champion_is_melee(champ_rec, augments))`, `strip_arena_trinkets`, `_is_terminal`, the `ITEM_EFFECTS` dead-unique dedup, and `SORT_KEYS` validation exactly as hybrid.py:846-1148.
-- `OnhitDpsRankedItem` + `OnhitDpsRankResult` dataclasses mirror `HybridRankedItem`/`HybridRankResult` (hybrid.py:535-660) minus every EHP/alpha/beta field, plus `ability_dps` + `auto_dps` splits.
+Author Kayle E + Kog'Maw W on-hit rider entries in `_PASSIVE_DAMAGE_OVERRIDES` (verify magnitudes against `data/daemon_slayer/16.14.1/champion_abilities.json` - do NOT invent coefficients). Model each as a `PassiveDamageEntry` with `cadence="on_hit"`, keyed by their real slot (`("Kayle","E",0)`, `("KogMaw","W",0)`). Kog'Maw W is a toggle - apply an uptime discount (document the fraction). Add both keys to `_AA_ROUTED_ON_HIT_KEYS`. Extend `aa_routed_on_hit_entry` to consult the champ's routed slot (not only `"P"`) - iterate the champ's allowlisted keys instead of hardcoding `(champion_id, "P", 0)`. Keep the `entry.cadence == "on_hit"` guard. Confirm non-allowlisted champs still return `None` (byte-identical seam).
 
-Wrap each per-candidate compute in `try: ... except (KeyError, ValueError): continue` (hybrid.py:1062).
-
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run tests to verify pass**
 
 Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py -v`
-Expected: PASS (all - the exact-sum, the 3 Nashor's params, the row-split).
-If Nashor's does NOT surface for a champ, DO NOT weaken the assertion - this is the acceptance signal. Diagnose: confirm the champ is AP-axis and that `compute_dps` credits their kit on-hit; if a champ genuinely does not want Nashor's under simulation, drop it from the parametrize list AND record why (it will also be dropped from the Task 6 roster).
+Expected: the new Kayle/Kog tests PASS; Gwen + exact-sum tests still pass; acceptance xfails still xfail.
+Also run the existing AA-routing regression to prove non-P champs unaffected:
+Run: `python -m pytest agents/daemon_slayer/tests/ -k "passive_damage or aa_routed or warwick or orianna" -v` -> PASS.
+
+- [ ] **Step 5: py_compile + commit**
+
+```bash
+python -m py_compile agents/daemon_slayer/_passive_damage_overrides.py agents/daemon_slayer/dps.py
+git add agents/daemon_slayer/_passive_damage_overrides.py agents/daemon_slayer/dps.py agents/daemon_slayer/tests/test_onhit_dps.py
+git commit -m "feat(ds): Kayle E + Kog'Maw W on-hit riders + non-P AA-routing (Slice B t4)"
+```
+
+---
+
+## Task 5: AP/AD axis-coherence gate + flip acceptance tests
+
+**Files:**
+- Modify: `agents/daemon_slayer/onhit_dps.py` (`rank_items_by_onhit` axis-coherence)
+- Test: `agents/daemon_slayer/tests/test_onhit_dps.py`
+
+**Interfaces:**
+- Produces: `rank_items_by_onhit(..., ap_ad_coherence: float = 0.0)` - 0.0 = off (byte-identical); higher = stronger penalty on pure-AD items (no `SpellDamage` tag) for AP-axis champs. HARD (e.g. 1.0 = effectively drop) surfaces Nashor's for Gwen; SOFT (e.g. 0.3) keeps hybrid on-hit for Kayle.
+
+- [ ] **Step 1: Write the failing acceptance tests (flip the xfails)**
+
+Replace the Task 2 `xfail` acceptance parametrization with a real assertion that passes the per-champ coherence strength:
+
+```python
+# in test_onhit_dps.py - replace the xfail Nashor's test
+@pytest.mark.parametrize("champ,coh", [("Gwen", 1.0), ("Kayle", 0.3), ("KogMaw", 0.6)])
+def test_nashors_surfaces_with_coherence(champ, coh):
+    snap = DataSnapshot.load()
+    T = dict(target_armor=105.0, target_mr=52.0, target_max_hp=2430.0)
+    res = rank_items_by_onhit(snap, champ, 13, current_item_ids=(), mode="SR",
+                              apply_passive_damage=True, ap_ad_coherence=coh,
+                              top_n=8, **T)
+    ids = [r.item_id for r in res.ranked]
+    assert "3115" in ids, f"{champ}: Nashor's absent from onhit top-8: {ids}"
+
+
+def test_coherence_off_is_byte_identical():
+    snap = DataSnapshot.load()
+    T = dict(target_armor=105.0, target_mr=52.0, target_max_hp=2430.0)
+    a = rank_items_by_onhit(snap, "Gwen", 13, current_item_ids=(), mode="SR",
+                            apply_passive_damage=True, ap_ad_coherence=0.0, top_n=12, **T)
+    # A pure-AD item (BotRK 3153) is NOT gated when coherence is off.
+    assert "3153" in [r.item_id for r in a.ranked]
+```
+
+Coherence strengths are seeds - tune per-champ during Step 4 live validation (keep the value that surfaces Nashor's without mis-building the champ).
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py -k "nashors_surfaces_with_coherence or coherence_off" -v`
+Expected: FAIL - `ap_ad_coherence` param does not exist yet.
+
+- [ ] **Step 3: Implement**
+
+In `rank_items_by_onhit`, after computing each candidate's `delta_dps`, apply the coherence penalty: for an AP-axis champ (`_damage_axis(snapshot, champion_id) == "ap"`, mirror hybrid.py:73-79), a candidate whose item tags lack `"SpellDamage"` (pure-AD) has its sort score multiplied by `(1 - ap_ad_coherence)` (or dropped when `ap_ad_coherence >= 1.0`). `ap_ad_coherence == 0.0` leaves the sort byte-identical. Keep the raw `delta_dps` on the row (transparency); apply the penalty only to the sort key. Reuse the tag classification from the AP-only-pool experiment (items tagged `SpellDamage` are AP-axis).
+
+- [ ] **Step 4: Run tests + live-tune**
+
+Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py -v`
+Expected: all PASS, including the (previously xfail) Nashor's-surfaces tests. If a seed coherence value does not surface Nashor's for a champ, adjust the parametrized value (the mechanism is proven; the strength is the tunable). Confirm `test_coherence_off_is_byte_identical` passes (off = no gating).
 
 - [ ] **Step 5: py_compile + commit**
 
 ```bash
 python -m py_compile agents/daemon_slayer/onhit_dps.py
 git add agents/daemon_slayer/onhit_dps.py agents/daemon_slayer/tests/test_onhit_dps.py
-git commit -m "feat(ds): rank_items_by_onhit - Nashor's surfaces for on-hit AP champs (Slice B t2)"
+git commit -m "feat(ds): AP/AD axis-coherence gate - Nashor's surfaces (Slice B t5)"
 ```
 
 ---
 
-## Task 3: Server `/rank-onhit` route
+## Task 6: `/rank-onhit` server route
 
 **Files:**
-- Modify: `agents/daemon_slayer/server.py` (handler near the other `_route_rank_*` at :777/:1081/:1708; dispatch dict at :2025-2030; doc table at :126-131)
+- Modify: `agents/daemon_slayer/server.py` (handler near `_route_rank_mage` :1081; dispatch dict :2025-2030; doc table :126-131)
 - Test: `agents/daemon_slayer/tests/test_onhit_dps.py`
 
 **Interfaces:**
-- Consumes: `rank_items_by_onhit` (Task 2); the existing shared body parser used by `_route_rank_mage` (`server.py:1081`).
-- Produces: `POST /rank-onhit` returning `{"ranked": [row.to_dict()...], ...}` mirroring the `/rank-mage` response envelope.
+- Produces: `POST /rank-onhit` -> `{"ranked": [...], ...}`. Parses the shared body PLUS `apply_passive_damage` (default True) and `ap_ad_coherence` (default 0.0), forwarding both to `rank_items_by_onhit`.
 
-- [ ] **Step 1: Write the failing test (in-process route dispatch)**
+- [ ] **Step 1: Write the failing test**
 
 ```python
-# append to test_onhit_dps.py - mirror how test_* exercises other routes
-from agents.daemon_slayer.server import _DISPATCH  # or the real dispatch symbol
-
 def test_rank_onhit_route_registered():
-    assert "/rank-onhit" in _DISPATCH
+    from agents.daemon_slayer.server import _ROUTES  # confirm the real dispatch symbol name
+    assert "/rank-onhit" in _ROUTES
 ```
+(If the dispatch symbol differs, read server.py:2025 for the real name and match it. If server tests use an HTTP fixture, copy that idiom from an existing `test_*server*` test.)
 
-If server tests are driven by an HTTP client fixture rather than `_DISPATCH`, read an existing `test_*server*.py` (e.g. `tests/test_ds_preview_*`) and copy its route-exercise pattern instead. Match the repo's actual server-test idiom.
-
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run to verify it fails**
 
 Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py::test_rank_onhit_route_registered -v`
-Expected: FAIL - `/rank-onhit` not in dispatch.
+Expected: FAIL - route not registered.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement**
 
-Copy `_route_rank_mage` (server.py:1081) to a new `_route_rank_onhit`, swapping the compute call to `rank_items_by_onhit` and dropping mage-only kwargs (max_priority/block_strategy are ability-scorer knobs; keep whatever the shared parser already supplies, drop what `rank_items_by_onhit` does not accept). Register `"/rank-onhit": _route_rank_onhit` in the dispatch dict (server.py:2025-2030). Add the doc-table row near server.py:126-131:
+Copy `_route_rank_mage` (server.py:1081) to `_route_rank_onhit`; call `rank_items_by_onhit`; parse `apply_passive_damage` + `ap_ad_coherence` from the body (defaults True / 0.0); drop mage-only kwargs (max_priority/block_strategy). Register `"/rank-onhit": _route_rank_onhit` in the dispatch dict. Add the doc-table row (server.py:126-131).
 
-```python
-# in the HTML doc table block
-"<tr><td>POST</td><td>/rank-onhit</td><td>rank items by combined ability+on-hit-auto DPS delta (Slice B)</td></tr>"
-```
-
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run to verify pass**
 
 Run: `python -m pytest agents/daemon_slayer/tests/test_onhit_dps.py -v`
 Expected: PASS.
@@ -361,61 +253,45 @@ Expected: PASS.
 ```bash
 python -m py_compile agents/daemon_slayer/server.py
 git add agents/daemon_slayer/server.py agents/daemon_slayer/tests/test_onhit_dps.py
-git commit -m "feat(ds): /rank-onhit server route (Slice B t3)"
+git commit -m "feat(ds): /rank-onhit server route (Slice B t6)"
 ```
 
 ---
 
-## Task 4: RC client `rank_onhit_for` + dispatcher branch
+## Task 7: RC client `rank_onhit_for` + dispatcher branch
 
 **Files:**
-- Modify: `core/daemon_slayer_client.py` (`rank_mage_for` at :502 is the template; `rank_for_primary_archetype` at :1001 is the dispatcher)
+- Modify: `core/daemon_slayer_client.py` (`rank_mage_for` :502 template; `rank_for_primary_archetype` :1001)
 - Test: `tests/test_onhit_ap_routing.py`
 
 **Interfaces:**
-- Consumes: `_post_json("/rank-onhit", body, timeout)`; the `RankedItem` parse used by `rank_for` / `rank_mage_for` (preserve `effective_score` + `delta_dps`, memory `reference_ds_client_effective_score_parse`).
-- Produces: `rank_onhit_for(champion, level, ...) -> Optional[list[RankedItem]]`; `rank_for_primary_archetype(..., archetype="onhit", ...)` dispatches to it.
+- Produces: `rank_onhit_for(champion, level, ..., ap_ad_coherence=0.0, apply_passive_damage=True, ...) -> Optional[list[RankedItem]]`; `rank_for_primary_archetype(archetype="onhit", ...)` dispatches to it, resolving the per-champ coherence strength from the roster.
 
-- [ ] **Step 1: Write the failing test (dispatcher routes onhit)**
+- [ ] **Step 1: Write the failing test**
 
 ```python
 # tests/test_onhit_ap_routing.py
 from unittest.mock import patch
 import core.daemon_slayer_client as dsc
 
-
-def test_rank_for_primary_archetype_routes_onhit():
-    with patch.object(dsc, "rank_onhit_for", return_value=["SENTINEL"]) as m:
+def test_dispatch_routes_onhit():
+    with patch.object(dsc, "rank_onhit_for", return_value=["X"]) as m:
         out = dsc.rank_for_primary_archetype("Gwen", archetype="onhit", level=13, mode="SR")
-    assert m.called
-    assert out == ["SENTINEL"]
+    assert m.called and out == ["X"]
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run to verify it fails**
 
-Run: `python -m pytest tests/test_onhit_ap_routing.py::test_rank_for_primary_archetype_routes_onhit -v`
-Expected: FAIL - `rank_onhit_for` attribute missing / `onhit` branch absent (may raise on unknown archetype).
+Run: `python -m pytest tests/test_onhit_ap_routing.py::test_dispatch_routes_onhit -v`
+Expected: FAIL - `rank_onhit_for` / `onhit` branch missing.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement**
 
-Copy `rank_mage_for` (daemon_slayer_client.py:502) to `rank_onhit_for`, POSTing `/rank-onhit`, same fail-soft (None on engine failure) + same `RankedItem` parse. In `rank_for_primary_archetype` (:1001), add a branch alongside the ds.ability/ds.burst branches:
+Copy `rank_mage_for` -> `rank_onhit_for` (POST `/rank-onhit`, same fail-soft + `RankedItem` parse preserving `effective_score`/`delta_dps`), adding `ap_ad_coherence` + `apply_passive_damage` to the POST body. Add the `onhit` branch in `rank_for_primary_archetype` (kit-dependent side of the all-zero guard, :980-985); resolve the coherence strength from the roster loader (Task 9/10) - default 0.0 when unmapped.
 
-```python
-    if archetype == "onhit":
-        return rank_onhit_for(
-            champion, level=level, mode=mode,
-            target_armor=target_armor, target_mr=target_mr,
-            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
-            top_n=top_n, timeout=timeout,
-            # forward the same kit-dependent / hp_pct inputs the mage branch uses
-        )
-```
+- [ ] **Step 4: Run to verify pass**
 
-Keep `onhit` on the KIT-DEPENDENT side of the all-zero-kit guard (daemon_slayer_client.py:980-985) so a kit-less champ does not 0.0-collapse. Match the exact kwargs the sibling mage branch forwards.
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `python -m pytest tests/test_onhit_ap_routing.py::test_rank_for_primary_archetype_routes_onhit -v`
+Run: `python -m pytest tests/test_onhit_ap_routing.py::test_dispatch_routes_onhit -v`
 Expected: PASS.
 
 - [ ] **Step 5: py_compile + commit**
@@ -423,240 +299,168 @@ Expected: PASS.
 ```bash
 python -m py_compile core/daemon_slayer_client.py tests/test_onhit_ap_routing.py
 git add core/daemon_slayer_client.py tests/test_onhit_ap_routing.py
-git commit -m "feat(ds): rank_onhit_for client + onhit dispatcher branch (Slice B t4)"
+git commit -m "feat(ds): rank_onhit_for client + onhit dispatcher branch (Slice B t7)"
 ```
 
 ---
 
-## Task 5: Deploy gate - ENGINE bump + Share mirror + DS restart
+## Task 8: Deploy gate - ENGINE bump + Share mirror + DS restart
 
-This task makes `/rank-onhit` LIVE so Task 6 can validate the classifier against it. No new test file - the deliverable is a live, green engine.
+Makes `/rank-onhit` live for Task 9's classifier validation.
 
-**Files:**
-- Modify: `agents/daemon_slayer/__init__.py:18` (ENGINE_VERSION)
+- [ ] **Step 1: Bump ENGINE_VERSION**
 
-- [ ] **Step 1: Bump ENGINE_VERSION (quoted literal only)**
+Edit `agents/daemon_slayer/__init__.py:18`: `"1.215.0"` -> `"1.216.0"` (quoted literal only). Update any version-anchor test that pins the old literal.
 
-Edit `agents/daemon_slayer/__init__.py:18`: `ENGINE_VERSION = "1.215.0"` -> `ENGINE_VERSION = "1.216.0"`. Change ONLY the quoted literal (memory `feedback_engine_bump_quoted_literal_only`).
-
-- [ ] **Step 2: Confirm all engine edits are done, then run the DS-dir suite ONCE**
+- [ ] **Step 2: Full DS-dir suite ONCE**
 
 Run: `python -m pytest agents/daemon_slayer/tests/ -q`
-Expected: PASS (full green). Trust the exit code (R6). If a version-anchor test pins `1.215.0`, update it to `1.216.0` (that is an intended bump, not a regression).
+Expected: PASS. Trust the exit code.
 
-- [ ] **Step 3: Commit (stage Share mirror in the SAME commit)**
-
-The precommit `ds_share_sync` hook mirrors staged `agents/daemon_slayer/` source into `Share/src/agents/daemon_slayer/`. Stage the engine tree so the hook fires:
+- [ ] **Step 3: Commit (Share mirror same commit)**
 
 ```bash
 git add agents/daemon_slayer/ Share/
-git commit -m "feat(ds): ENGINE 1.216.0 - on-hit AP combined-DPS scorer wired (Slice B t5)"
-git status  # confirm Share/src/agents/daemon_slayer/onhit_dps.py is now tracked + clean
+git commit -m "feat(ds): ENGINE 1.216.0 - on-hit AP scorer + kit on-hit + axis coherence (Slice B t8)"
+git status  # confirm Share/src/agents/daemon_slayer/onhit_dps.py + edited files mirrored + clean
 ```
 
-Verify `onhit_dps.py` + `server.py` + the test file mirrored into `Share/src/...` (memory `feedback_ds_commit_share_test_mirror` + `feedback_share_mirror_tools_drift`). If the mirror did not fire, re-run the sync per `docs/OPERATIONS.md`.
+- [ ] **Step 4: Restart DS + confirm live**
 
-- [ ] **Step 4: Restart DS `:8893` + confirm live**
-
-Confirm the port is free first (detached child gotcha, memory `reference_ds_server_not_supervisor_watched`), then:
-
-```bash
-schtasks /End /TN RC-DaemonSlayer
-schtasks /Run /TN RC-DaemonSlayer
-```
-
-Wait for the Share sync + restart to settle, then:
-
-Run: `curl -sk https://127.0.0.1:8893/health` -> expect `patch=16.14.1` and the new engine alive. Then smoke the route:
-Run: `curl -sk -X POST https://127.0.0.1:8893/rank-onhit -H "Content-Type: application/json" -d '{"champion":"Gwen","level":13,"mode":"SR","target_armor":105,"target_mr":52,"target_max_hp":2430}'` -> expect a ranked list containing item 3115.
+Confirm port free first, then `schtasks /End /TN RC-DaemonSlayer` + `schtasks /Run /TN RC-DaemonSlayer`. Wait to settle.
+Run: `curl -sk https://127.0.0.1:8893/health` -> new engine, patch 16.14.1, alive.
+Run: `curl -sk -X POST https://127.0.0.1:8893/rank-onhit -H "Content-Type: application/json" -d '{"champion":"Gwen","level":13,"mode":"SR","target_armor":105,"target_mr":52,"target_max_hp":2430,"apply_passive_damage":true,"ap_ad_coherence":1.0}'` -> Nashor's (3115) present in the ranked list.
 
 ---
 
-## Task 6: Broad-scan classifier + validated roster
+## Task 9: Broad-scan classifier + roster (with coherence strength)
 
 **Files:**
-- Create: `tools/ds_onhit_ap_prefilter.py`
-- Create: `core/ds_onhit_ap_roster.json`
+- Create: `tools/ds_onhit_ap_prefilter.py`, `core/ds_onhit_ap_roster.json`
 - Test: `tests/test_onhit_ap_routing.py`
 
 **Interfaces:**
-- Consumes: the champion snapshot (`agents/daemon_slayer/data_loader`); `hybrid._damage_axis` logic (info.magic > info.attack); live `/rank-onhit` (from Task 5).
-- Produces: `core/ds_onhit_ap_roster.json` = `{"champions": ["Gwen", "Kayle", "KogMaw", ...], "generated": "...", "predicate": "..."}` (canonical DDragon ids). A `load_onhit_ap_roster() -> frozenset[str]` helper (put it in `core/archetype_picks.py` in Task 7, or a small `core/ds_onhit_ap_roster.py` loader - pick one and be consistent).
+- Produces: `core/ds_onhit_ap_roster.json` = `{"champions": {"Gwen": {"coherence": 1.0}, "Kayle": {"coherence": 0.3}, "KogMaw": {"coherence": 0.6}, ...}}`; a `load_onhit_ap_roster()` loader (in `core/archetype_picks.py` or a small `core/ds_onhit_ap_roster.py`) returning `{champ: coherence}`.
 
-- [ ] **Step 1: Write the classifier + emit candidates**
+- [ ] **Step 1: Classifier tool**
 
-Create `tools/ds_onhit_ap_prefilter.py` that iterates the champion snapshot and flags candidates where BOTH hold: (a) AP damage axis (`info.magic > info.attack`, fallback `_classify_primary_scaling == "AP"`); (b) attack-speed / on-hit reliance (a kit on-hit MAGIC component that scales AP, OR an AS-steroid ability, OR elevated `stats.attackspeedperlevel`). Print the candidate list. This is a dev tool (no unit test required for the tool itself; it is validated by its output).
+Create `tools/ds_onhit_ap_prefilter.py` - iterate the champion snapshot, flag candidates that are AP-axis (`info.magic > info.attack`, fallback ability-block AP) AND attack-speed/on-hit-reliant (kit on-hit magic component OR AS steroid OR elevated `attackspeedperlevel`). Print candidates. Dev tool (no unit test).
 
-- [ ] **Step 2: Run the scan + LIVE-validate each candidate**
+- [ ] **Step 2: Scan + live-validate + assign coherence**
 
-Run the tool to list candidates. For EACH candidate, probe the live route and compare to the current default:
+Run the tool; for each candidate probe `POST /api/ds-preview {archetype:"onhit", ...}` at varying `ap_ad_coherence` and KEEP only champs where Nashor's / an AP on-hit item genuinely surfaces AND the build reads coherent. Assign per-champ coherence (hard for AP-first, soft for hybrid). Record kept set + dropped-with-reason.
 
-```bash
-python tools/ds_onhit_ap_prefilter.py   # -> candidate list
-# for each candidate:
-curl -sk -X POST https://127.0.0.1:8888/api/ds-preview -H "Content-Type: application/json" \
-  -d '{"champion":"<C>","mode":"SR","level":13,"archetype":"onhit"}'
-```
+- [ ] **Step 3: Write roster + test**
 
-KEEP a candidate in the roster only when an on-hit-AP item (Nashor's / Guinsoo / on-hit family) genuinely surfaces AND the build reads coherent (per-champion validation, CLAUDE.md "Engine / Build Conventions"). Record the kept set + the reason any candidate was dropped.
-
-- [ ] **Step 3: Write the validated roster + its membership test**
-
-Write `core/ds_onhit_ap_roster.json` with the validated champion ids (seed: `Gwen`, `Kayle`, `KogMaw`, plus any validated additions). Then the test:
+Write `core/ds_onhit_ap_roster.json` (seed: Gwen hard, Kayle soft, KogMaw mid + validated additions). Test:
 
 ```python
-# append to tests/test_onhit_ap_routing.py
+# tests/test_onhit_ap_routing.py
 import json, pathlib
-
-def test_roster_contains_seed_and_is_disjoint_from_ap_assassins():
-    roster = set(json.loads(
-        pathlib.Path("core/ds_onhit_ap_roster.json").read_text(encoding="utf-8")
-    )["champions"])
-    assert {"Gwen", "Kayle", "KogMaw"} <= roster
+def test_roster_seed_and_disjoint():
+    roster = json.loads(pathlib.Path("core/ds_onhit_ap_roster.json").read_text(encoding="utf-8"))["champions"]
+    assert {"Gwen", "Kayle", "KogMaw"} <= set(roster)
     from core.archetype_picks import _AP_ASSASSIN_IDS
-    assert roster.isdisjoint(_AP_ASSASSIN_IDS)
-    # controls must NOT be routed
-    assert "Syndra" not in roster and "Cassiopeia" not in roster
-    assert "Akali" not in roster and "Ekko" not in roster
+    assert set(roster).isdisjoint(_AP_ASSASSIN_IDS)
+    assert "Syndra" not in roster and "Akali" not in roster
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run + commit**
 
-Run: `python -m pytest tests/test_onhit_ap_routing.py::test_roster_contains_seed_and_is_disjoint_from_ap_assassins -v`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
+Run: `python -m pytest tests/test_onhit_ap_routing.py::test_roster_seed_and_disjoint -v` -> PASS.
 ```bash
 python -m py_compile tools/ds_onhit_ap_prefilter.py
 git add tools/ds_onhit_ap_prefilter.py core/ds_onhit_ap_roster.json tests/test_onhit_ap_routing.py
-git commit -m "feat(ds): on-hit AP broad-scan classifier + validated roster (Slice B t6)"
+git commit -m "feat(ds): on-hit AP classifier + validated roster w/ coherence strength (Slice B t9)"
 ```
 
 ---
 
-## Task 7: RC routing in `default_for_champion` + RC reload
+## Task 10: RC routing in `default_for_champion`
 
 **Files:**
-- Modify: `core/archetype_picks.py` (`default_for_champion` at :444; the `_AP_ASSASSIN_IDS` check at :475 is the insertion anchor)
+- Modify: `core/archetype_picks.py` (`default_for_champion` :444; anchor at the `_AP_ASSASSIN_IDS` check :475)
 - Test: `tests/test_onhit_ap_routing.py`
 
 **Interfaces:**
-- Consumes: `core/ds_onhit_ap_roster.json` (Task 6); `canonical_champion_id`.
-- Produces: `default_for_champion(champion)` returns `("onhit", <demoted primary>)` for a roster champ on the default path.
+- Consumes: `load_onhit_ap_roster()` (Task 9); `canonical_champion_id`.
+- Produces: `default_for_champion(roster champ)` -> `("onhit", <demoted primary>)` on the default path.
 
-- [ ] **Step 1: Write the failing tests (routing + controls + operator-pick-wins)**
+- [ ] **Step 1: Failing tests**
 
 ```python
-# append to tests/test_onhit_ap_routing.py
 import pytest
 from core.archetype_picks import default_for_champion
 
-
 @pytest.mark.parametrize("champ", ["Gwen", "Kayle", "KogMaw"])
-def test_onhit_ap_champs_route_to_onhit(champ):
-    primary, secondary = default_for_champion(champ)
-    assert primary == "onhit"
-    assert secondary and secondary != "onhit"
+def test_routes_to_onhit(champ):
+    p, s = default_for_champion(champ)
+    assert p == "onhit" and s and s != "onhit"
 
-
-@pytest.mark.parametrize("champ,expected", [
-    ("Syndra", "mage"), ("Cassiopeia", "mage"),   # pure mages unchanged
-    ("Akali", "assassin"), ("Ekko", "assassin"),  # Slice A AP assassins unchanged
-])
-def test_controls_unchanged(champ, expected):
-    primary, _ = default_for_champion(champ)
-    assert primary == expected
+@pytest.mark.parametrize("champ,exp", [("Syndra","mage"),("Cassiopeia","mage"),("Akali","assassin"),("Ekko","assassin")])
+def test_controls_unchanged(champ, exp):
+    assert default_for_champion(champ)[0] == exp
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [ ] **Step 2: Run to verify fail**
 
-Run: `python -m pytest tests/test_onhit_ap_routing.py -k "route_to_onhit or controls_unchanged" -v`
-Expected: FAIL - roster champs still resolve to `mage` (Gwen/Kayle) today.
+Run: `python -m pytest tests/test_onhit_ap_routing.py -k "routes_to_onhit or controls_unchanged" -v`
+Expected: FAIL - roster champs still resolve to `mage`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement**
 
-In `default_for_champion` (archetype_picks.py:444), add a roster loader (module-level, cached) and a routing check immediately alongside the `_AP_ASSASSIN_IDS` block at :475:
+In `default_for_champion` (:444), after `axis_correct_archetype`, alongside the `_AP_ASSASSIN_IDS` check (:475): if `canonical_champion_id(champion)` in the roster, return `("onhit", primary if primary != "onhit" else secondary)`. Cached, fail-soft loader (missing file -> empty -> byte-identical). Operator pick (early return) untouched.
 
-```python
-    cid = canonical_champion_id(champion)
-    if cid in _load_onhit_ap_roster():
-        # on-hit AP: route the default to the combined-DPS scorer; demote the
-        # tag-derived primary to secondary so the operator can flip back.
-        return ("onhit", primary if primary != "onhit" else secondary)
-```
+- [ ] **Step 4: Run + commit + reload RC**
 
-Place it so an explicit operator pick (which returns early higher in the function) is untouched, and after `axis_correct_archetype` so `primary`/`secondary` are resolved. `_load_onhit_ap_roster` reads `core/ds_onhit_ap_roster.json` once, cached, fail-soft to an empty set (a missing file -> no routing, byte-identical).
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `python -m pytest tests/test_onhit_ap_routing.py -v`
-Expected: PASS (all).
-
-- [ ] **Step 5: py_compile, commit, reload RC**
-
+Run: `python -m pytest tests/test_onhit_ap_routing.py -v` -> PASS.
 ```bash
 python -m py_compile core/archetype_picks.py
 git add core/archetype_picks.py tests/test_onhit_ap_routing.py
-git commit -m "feat(ds): route on-hit AP champs to the onhit scorer (Slice B t7)"
+git commit -m "feat(ds): route on-hit AP champs to the onhit scorer (Slice B t10)"
 echo restart > restart_trigger.txt
 ```
-
-Verify: read `ops/runtime/health.json` - confirm new `pid`, `alive=true`, `last_reload_ok=true`.
+Verify `ops/runtime/health.json`: new pid, alive, last_reload_ok.
 
 ---
 
-## Task 8: Full dual-suite green + live validation + docs
+## Task 11: Full dual-suite + live validation + docs
 
-**Files:**
-- Update: `docs/LEDGER.md`, `ROADMAP.md`, `docs/DAEMON_SLAYER.md`, `WAKEUP_NOTES.md`, `docs/LIVE_GAME_GATED_SYNC.md`
+- [ ] **Step 1: Full dual suite fresh**
 
-- [ ] **Step 1: Run the full dual suite fresh (Verification Discipline - re-verify green)**
+Run: `python -m pytest agents/daemon_slayer/tests/ -q` then `python -m pytest tests/ -q`. Report exact observed counts THIS run. Known pre-existing unrelated fails: coach-poll thread-timing x2 + ROADMAP doc-size - confirm any failure is one of those.
+
+- [ ] **Step 2: Live-validate roster + controls**
 
 ```bash
-python -m pytest agents/daemon_slayer/tests/ -q
-python -m pytest tests/ -q
+for c in Gwen Kayle KogMaw; do curl -sk -X POST https://127.0.0.1:8888/api/build-plan -H "Content-Type: application/json" -d "{\"champion\":\"$c\",\"mode\":\"SR\",\"level\":13}"; echo; done
+for c in Syndra Akali; do curl -sk -X POST https://127.0.0.1:8888/api/build-plan -H "Content-Type: application/json" -d "{\"champion\":\"$c\",\"mode\":\"SR\",\"level\":13}"; echo; done
 ```
-Expected: PASS. Report the exact observed pass/fail counts from THIS run (never carry a prior count forward). Pre-existing unrelated fails known this session: coach-poll thread-timing x2 + ROADMAP doc-size - confirm any failure is one of these, not new.
+Expected: roster champs show Nashor's; Syndra stays AP-DoT; Akali stays burst.
 
-- [ ] **Step 2: Live-validate roster + controls via `/api/build-plan`**
+- [ ] **Step 3: Verifier subagent gate**
 
+Dispatch the `verifier` subagent to independently re-run both suites, confirm cited test files exist, confirm the live probes. Green before done.
+
+- [ ] **Step 4: Docs + LEDGER + push**
+
+Append `docs/LEDGER.md` (max+1) for Slice B; update `docs/DAEMON_SLAYER.md` (7th scorer, ENGINE 1.216.0, no coverage-% recompute); note the overlay-render live-gated tail in `docs/LIVE_GAME_GATED_SYNC.md`; refresh `WAKEUP_NOTES.md` + `ROADMAP.md`.
 ```bash
-for c in Gwen Kayle KogMaw; do
-  curl -sk -X POST https://127.0.0.1:8888/api/build-plan -H "Content-Type: application/json" \
-    -d "{\"champion\":\"$c\",\"mode\":\"SR\",\"level\":13}"; echo; done
-for c in Syndra Akali; do   # controls
-  curl -sk -X POST https://127.0.0.1:8888/api/build-plan -H "Content-Type: application/json" \
-    -d "{\"champion\":\"$c\",\"mode\":\"SR\",\"level\":13}"; echo; done
-```
-Expected: roster champs show Nashor's in the build; Syndra stays AP-DoT; Akali stays burst.
-
-- [ ] **Step 2b: Verifier subagent gate**
-
-Dispatch the `verifier` subagent to independently re-run both suites from clean, confirm every cited test file exists, and confirm the live probes. Do not declare done until it returns green (CLAUDE.md Verification Discipline).
-
-- [ ] **Step 3: Docs sync + LEDGER (append-only, newest-first)**
-
-Append a `docs/LEDGER.md` entry (max-existing +1) describing Slice B. Update `docs/DAEMON_SLAYER.md` (7th scorer, ENGINE 1.216.0) - do NOT recompute coverage % in a general sync (memory `feedback_ds_coverage_prose_recompute`). Note the live-gated overlay RENDER eyeball in `docs/LIVE_GAME_GATED_SYNC.md`. Refresh `WAKEUP_NOTES.md` + `ROADMAP.md` (Slice B done; next Slice if any).
-
-- [ ] **Step 4: Commit docs + push**
-
-```bash
-git add docs/LEDGER.md docs/DAEMON_SLAYER.md ROADMAP.md WAKEUP_NOTES.md docs/LIVE_GAME_GATED_SYNC.md
-git commit -m "docs(ds): sync living docs - Slice B on-hit AP combined-DPS scorer (LEDGER NNN)"
+git add docs/ ROADMAP.md WAKEUP_NOTES.md
+git commit -m "docs(ds): sync living docs - Slice B on-hit AP itemization (LEDGER NNN)"
 git push
 ```
 
-- [ ] **Step 5: Confirm CI green**
+- [ ] **Step 5: CI green**
 
-Watch the push CI to green (memory `reference_ci_billing_fastfail` - a 2-3s fail is a billing block, re-check locally). Declare done only on green.
+Watch CI to green (a 2-3s fail = billing block; re-check locally). Declare done only on green.
 
 ---
 
 ## Self-Review
 
-**Spec coverage:** Section 5.1 (scorer module) -> Tasks 1-2. 5.2 (route+client+dispatcher) -> Tasks 3-4. 5.3 (classifier+roster) -> Task 6. 5.4 (RC routing) -> Task 7. 5.5 (self-limiting) -> validated by Task 6 controls + Task 7 control tests. 5.6 (controls) -> Task 7 tests. 5.7 (double-count audit) -> Task 1 exact-sum test + Task 2 row-split test. 5.8 (data flow) -> Tasks 4/7. Section 6 (tests) -> distributed. Section 7 (release) -> Tasks 5/8. All spec sections covered.
+**Spec coverage:** spec 5.1 (compose scorer) -> T1-2 done. 5.2 (kit on-hit) -> T3 (Gwen) + T4 (Kayle/Kog + non-P routing). 5.3 (axis coherence) -> T5. 5.4 (routing/roster) -> T9-10. 5.5 (controls) -> T10 tests. Acceptance (Nashor's surfaces) -> T5 flip + T11 live. Release -> T8 + T11. All covered.
 
-**Placeholder scan:** No TBD/TODO. Where an exact signature could not be verified from this session's reads (compute_dps kwargs, the server test idiom, the mage-ranker body), the step names the exact template file:line to copy from and warns against inventing kwargs - this is a deliberate "read the template" instruction, not a placeholder.
+**Placeholder scan:** No TBD/TODO. Coefficient/magnitude authoring (T4) and coherence-strength tuning (T5/T9) are explicit "validate against source / live-tune" instructions with a proven mechanism, not placeholders.
 
-**Type consistency:** `onhit_dps` (the scalar) is used consistently in Task 1 (result field), Task 2 (ranker score + `new_dps`), Task 5 (route smoke). `OnhitDpsResult.ability_dps/auto_dps/onhit_dps` names match across Tasks 1/2. `rank_onhit_for` / `/rank-onhit` / `archetype="onhit"` consistent across Tasks 3/4/7. Roster file `core/ds_onhit_ap_roster.json` consistent across Tasks 6/7.
+**Type consistency:** `apply_passive_damage` (compute default False / rank default True) + `ap_ad_coherence` (float, 0.0 off) are consistent across T3/T5/T6/T7. `rank_onhit_for` / `/rank-onhit` / `archetype="onhit"` consistent T6/T7/T10. Roster shape `{champ: {"coherence": float}}` consistent T9/T7/T10.
