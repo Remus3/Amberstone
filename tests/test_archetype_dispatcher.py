@@ -89,6 +89,45 @@ def _make_enchanter_rows(n: int = 2):
     ]
 
 
+def _zero_mage_rows(n: int = 3):
+    """A kit-less champ: the ability scorer returns delta 0.0 for every
+    item (no ability data in the frozen Meraki snapshot), so the ranker
+    surfaces the cheapest starters at +0.0 (the Locke 16.14.1 symptom)."""
+    return [
+        daemon_slayer_client.MageRankedItem(
+            item_id=f"10{i:02d}", item_name=f"Starter{i}",
+            delta_ability_dps=0.0, new_ability_dps=0.0,
+            gold=450 + i * 50,
+            shares_dead_unique=False, dead_unique_key="",
+        )
+        for i in range(n)
+    ]
+
+
+def _zero_assassin_rows(n: int = 3):
+    return [
+        daemon_slayer_client.AssassinRankedItem(
+            item_id=f"10{i:02d}", item_name=f"Starter{i}",
+            delta_burst=0.0, new_burst=0.0,
+            gold=450 + i * 50,
+            shares_dead_unique=False, dead_unique_key="",
+        )
+        for i in range(n)
+    ]
+
+
+def _zero_enchanter_rows(n: int = 3):
+    return [
+        daemon_slayer_client.EnchanterRankedItem(
+            item_id=f"10{i:02d}", item_name=f"Starter{i}",
+            delta_hps=0.0, new_hps=0.0,
+            gold=450 + i * 50,
+            shares_dead_unique=False, dead_unique_key="",
+        )
+        for i in range(n)
+    ]
+
+
 class CarryRoutingTests(unittest.TestCase):
     @mock.patch("core.daemon_slayer_client.rank_for")
     def test_carry_routes_to_rank_for(self, mock_rank):
@@ -433,6 +472,88 @@ class UnknownArchetypeTests(unittest.TestCase):
             "Aatrox", "unknown_archetype", level=11, item_ids=[],
         )
         self.assertEqual(out["scorer"], "dps")
+        self.assertFalse(out["fell_back"])
+
+
+class KitlessFallbackTests(unittest.TestCase):
+    """A champ with NO ability data (released after the frozen Meraki
+    `latest` content_patch, e.g. Locke on 16.14.1) makes the kit-dependent
+    scorers (ability / burst / hps) return an all-zero ranking -> a
+    useless +0.0 starter build. The dispatcher detects the all-zero case
+    and falls back to ds.dps (pure auto-attack, no kit data needed).
+
+    The AA-based scorers (dps / ehp / hybrid) are self-protecting and MUST
+    NOT be touched: a real kit (non-zero deltas) never triggers the
+    fallback, and a partial-zero ranking (some items score, some don't)
+    stays on the requested scorer.
+    """
+
+    @mock.patch("core.daemon_slayer_client.rank_for")
+    @mock.patch("core.daemon_slayer_client.rank_mage_for")
+    def test_mage_kitless_all_zero_falls_back_to_dps(self, mock_mage, mock_dps):
+        mock_mage.return_value = _zero_mage_rows(3)
+        mock_dps.return_value = _make_dps_rows(3)
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Veigar", "mage", level=13, item_ids=[],
+        )
+        self.assertIsNotNone(out)
+        self.assertEqual(out["scorer"], "dps")   # NOT "ability"
+        self.assertEqual(out["archetype"], "carry")  # coherent carry/dps label
+        self.assertTrue(out["fell_back"])
+        self.assertEqual(len(out["ranked"]), 3)
+        self.assertGreater(out["ranked"][0]["delta"], 0.0)
+        mock_dps.assert_called_once()
+
+    @mock.patch("core.daemon_slayer_client.rank_for")
+    @mock.patch("core.daemon_slayer_client.rank_assassin_for")
+    def test_assassin_kitless_all_zero_falls_back_to_dps(self, mock_ass, mock_dps):
+        mock_ass.return_value = _zero_assassin_rows(3)
+        mock_dps.return_value = _make_dps_rows(3)
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Zed", "assassin", level=13, item_ids=[],
+        )
+        self.assertEqual(out["scorer"], "dps")   # NOT "burst"
+        self.assertEqual(out["archetype"], "carry")  # coherent carry/dps label
+        self.assertTrue(out["fell_back"])
+        self.assertGreater(out["ranked"][0]["delta"], 0.0)
+        mock_dps.assert_called_once()
+
+    @mock.patch("core.daemon_slayer_client.rank_for")
+    @mock.patch("core.daemon_slayer_client.rank_enchanter_for")
+    def test_enchanter_kitless_all_zero_falls_back_to_dps(self, mock_ench, mock_dps):
+        mock_ench.return_value = _zero_enchanter_rows(3)
+        mock_dps.return_value = _make_dps_rows(3)
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Soraka", "enchanter", level=13, item_ids=[],
+        )
+        self.assertEqual(out["scorer"], "dps")   # NOT "hps"
+        self.assertEqual(out["archetype"], "carry")  # coherent carry/dps label
+        self.assertTrue(out["fell_back"])
+        self.assertGreater(out["ranked"][0]["delta"], 0.0)
+        mock_dps.assert_called_once()
+
+    @mock.patch("core.daemon_slayer_client.rank_mage_for")
+    def test_mage_partial_zero_stays_ability(self, mock_mage):
+        # Only ALL-zero triggers the fallback. A real kit where one item
+        # happens to score 0 but others score > 0 stays on ds.ability.
+        rows = _make_mage_rows(2)          # deltas 30.0, 27.0
+        rows.append(_zero_mage_rows(1)[0])  # + one 0.0 row
+        mock_mage.return_value = rows
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Veigar", "mage", level=13, item_ids=[],
+        )
+        self.assertEqual(out["scorer"], "ability")
+        self.assertFalse(out["fell_back"])
+
+    @mock.patch("core.daemon_slayer_client.rank_mage_for")
+    def test_mage_with_kit_unchanged(self, mock_mage):
+        # Regression guard: a normal mage (all non-zero) is byte-identical
+        # to pre-fix behavior - stays ability, fell_back False.
+        mock_mage.return_value = _make_mage_rows(3)
+        out = daemon_slayer_client.rank_for_primary_archetype(
+            "Veigar", "mage", level=13, item_ids=[],
+        )
+        self.assertEqual(out["scorer"], "ability")
         self.assertFalse(out["fell_back"])
 
 
