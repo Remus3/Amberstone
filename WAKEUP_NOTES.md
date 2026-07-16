@@ -16,6 +16,17 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-16 (Locke kit-less dps-fallback + DS C2 antiheal counter-hint; LEDGER 907-908; commits d2ed3d47 + fc029b87/d9f0fac4/57354ea0)
+
+Interactive session. Chain: 16.14.1 client-mode build-reco validation -> Locke fix -> DS build-reco re-scope -> C2 antiheal. mode_key=client, no live game. Both fixes Tier-1 RC-side (no engine/Share/ENGINE bump).
+- **16.14.1 validation (client-mode): PASS.** 7 archetypes x SR/ARAM/ARENA render sane + DS-consistent builds via /api/ds-preview; known Meraki gaps (Corki/Yunara stale AD-growth, Locke/Zaahen no kit) confirmed degrading, not crashing.
+- **Locke kit-less dps-fallback (907, d2ed3d47):** kit-dependent scorers (ability/burst/hps) returned all-zero for a champ with NO Meraki ability data -> Locke served Doran's-only at +0.0. Fix: `rank_for_primary_archetype` detects all-zero -> falls through to ds.dps + echoes archetype "carry". GOTCHA (caught by LIVE re-probe, unit test alone missed it): the ds-preview handler echoes its OWN resolved archetype, not the dispatcher's out["archetype"]. +6 tests. Live: Locke -> real BotRK/Heartsteel build.
+- **DS C2 antiheal counter-hint (908):** re-scoped after VERIFYING Step 2 (situational counter-build chips) is ALREADY shipped (WP-R102/R103) - the counter-build has 6 criteria but only C1/C4/C5 fired live; C2 antiheal / C3 fed / C6 tenacity were wired-but-dead. Lit up C2 (hint-only): `heal_threat.py` +2 helpers -> `routes_build_plan` hint-path (heal_sources + AllyState populated, NEVER loop.tick so the plan stays byte-identical) -> `active_match.js` sends ally_items. +13 tests. Live: healer comp -> antiheal chip; ally Grievous -> suppressed; live[]/meta[] byte-identical. Spec: docs/specs/2026-07-16-ds-c2-antiheal-counter-hint-design.md.
+
+NEXT: C6 tenacity (needs net-new hard-CC champ curation - no enemy-CC source; `defensive_picks.compute_threat_profile` has no CC metric) OR C3 fed (needs live KDA/gold). LIVE-VERIFY OWED: the Locke build + the overlay antiheal chip RENDER (Electron, agent-blind) both want a real-game eyeball. Do NOT redo: Locke fix + C2 antiheal shipped/pushed; Step 2 situational chips are ALREADY shipped (do NOT rebuild - the 2026-07-13 spec is stale on this).
+
+---
+
 # 2026-07-16 (upstream/patch scan -> 16.14.1 refresh + validation + Eclipse AH fix; commits d081291d + fc09ce0b + 36129183; LEDGER 905-906)
 
 Operator chain: "scan upstream and connections" -> "both" (commit mirror + DS re-extract) -> "what is next to validate" -> validate 1-4 -> "yes" -> "ship a+b" -> /done. mode_key=client, no live game.
@@ -35,13 +46,3 @@ Manual operator chain (NOT the halted Gemini loop): update hexcore_offline -> sy
 - Do NOT redo: all four docs current as of 2026-07-14; hexcore DUST/stats shipped in d584e02e. Untracked agents/agent6_auditor/ files = pre-existing audit artifacts, not mine.
 
 NEXT: Gemini-headless loop stays HALTED (R129 wrote ops/loop/control/STOP) unless operator restarts it. Otherwise pick top ROADMAP NEXT, or resume the 2026-07-13 overnight directive chain (docs/specs/2026-07-13-ds-crit-burst-fix.md) if the loop is re-armed.
-
----
-
-# 2026-07-14 (R129 gemini-loop cycle 28 - Fimbulwinter Everlasting shield EHP credit; ENGINE 1.213.0 -> 1.214.0; LEDGER 903; feat 1c6e1fc1 + docs be9b73ce)
-
-DS sweep vs Meraki truth (REFILL PROTOCOL 1). 3 disjoint read-only hunters (item-stub / champ-spell / scorer) -> picked by clean-numeric + lowest-blast (R99 precedent): Fimbulwinter (3121 / Arena 223121 / ARAM 323121) "Everlasting" shield was shield=None + a stale "Everfrost CC" note (mechanic absent from 16.13.1). Meraki items[3121] (verified line 28242): immobilize (or slow if melee) an enemy -> 100 (+4.5% current mana) GENERIC shield 3s / 8s CD; all 3 mirror ids present in items.json['data']. FIX = ItemShield(flat=100, max_mana_scaling=0.045, ANY, default_off) on all 3 mirrors + NEW default-OFF assume_fimbulwinter_shield seam in _collect_shields / compute_ehp (exact Seraph's assume_seraphs_shield template; NOT lifeline-keyed - independent CC-trigger that stacks with a lifeline). Current mana modeled as MAX mana (steady-state); +80% multi-enemy arm not modeled (conservative base). TDD 22/22 (18 RED pre-fix); verifier CONFIRM 6/6 (OFF byte-identical Sion+3121 EQUAL). ENGINE 1.214.0 (115 py pins); build-orders restamped (orders byte-identical, default-OFF); DAEMON_SLAYER banner 1.214.0/8488; Share --check green 458 + Share/CHANGELOG + source CHANGELOG; DS :8893 bounced 1.214.0. DS suite 8488 pass / 1 skip / 1948 subtests; RC 11669 pass, 10 reconciled to 0 R129 regressions (7 Share-drift green post-sync, 1 LiveEngine green post-bounce, 2 coach_poll LEDGER-828 async flake pass 2/2 isolated). Live default-ON flip GATED (docs/LIVE_GAME_GATED_SYNC.md B50, needs a live/replayed Fimbulwinter holder).
-
-2 genuine-but-bigger candidates -> BACKLOG FUTURE (do NOT re-hunt as new gaps): Viego R "Heartbreaker" 120% total-AD primary hit dropped by the abilities.py CDragon-vs-Meraki cardinality-mismatch whole-form fallback (compute_ability_dps 0 at full HP) + AD-ult sibling class Pyke/Rengar/Quinn/Yorick R (narrow per-champ override or general append-seam); bruiser/hybrid scorer ability-DPS XOR for AD-axis champs (Riven/Camille/Jarvan) - needs a validated per-champ opt-in table (a blanket AD-bruiser sum double-counts auto-empower Nasus Q / Renekton W / Camille Q / Sett Q / Vi E).
-
-INTERRUPT: operator "halt after this run" mid-cycle -> finished the in-flight R129 slice, ran /done, wrote ops/loop/control/STOP to end the Gemini-headless loop. Loop is HALTED (no next directive will fire).
