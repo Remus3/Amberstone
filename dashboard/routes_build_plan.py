@@ -306,6 +306,8 @@ def _serve_build_plan(h, payload) -> None:
         # the DS-scored live[]/meta[] stay byte-identical whether or not
         # enemy_items is present. None when no enemy owns any item.
         enemy_items = _coerce_enemy_items(payload.get("enemy_items"))
+        # C2 antiheal (2026-07-16): flat ally-owned item ids for the de-dup.
+        ally_items = _coerce_ally_items(payload.get("ally_items"))
         try:
             clock_s = float(payload.get("clock_s") or 0.0)
         except (TypeError, ValueError):
@@ -331,11 +333,21 @@ def _serve_build_plan(h, payload) -> None:
         # otherwise reuse the champion-only profile. loop.tick keeps the
         # champion-only enemy_profile, so live[]/meta[] stay byte-identical.
         # Fail-soft to [] so the key is ALWAYS present and never raises.
+        # C2 antiheal (2026-07-16): heal_sources from the enemy comp + items
+        # (heal_threat curation) + ally-owned antiheal for the de-dup. Populated
+        # ONLY on the hint profile - NEVER the loop.tick enemy_profile above -
+        # so the DS-scored live[]/meta[] stay byte-identical (hint-only).
+        from core.build_planner.situational import AllyState
+        from core.heal_threat import ally_has_antiheal, count_heal_sources
+        flat_enemy_items = [i for pl in (enemy_items or []) for i in pl]
+        heal_sources = count_heal_sources(enemies, flat_enemy_items)
+        ally_state = AllyState(has_antiheal=ally_has_antiheal(ally_items))
         hint_profile = (
-            _resolve_enemy_profile(enemies, level, enemy_items=enemy_items)
-            if enemy_items else enemy_profile
+            _resolve_enemy_profile(enemies, level, enemy_items=enemy_items,
+                                   heal_sources=heal_sources)
+            if (enemy_items or heal_sources) else enemy_profile
         )
-        counter_hints = _resolve_counter_hints(hint_profile, owned)
+        counter_hints = _resolve_counter_hints(hint_profile, owned, ally_state)
 
         from core.build_planner.replan import ItemOverrideStore, ReplanLoop
 
@@ -432,7 +444,17 @@ def _coerce_enemy_items(raw):
     return out if total > 0 else None
 
 
-def _resolve_enemy_profile(enemies: list, level: int, enemy_items=None):
+def _coerce_ally_items(raw):
+    """Flat list of ally-team owned item-id strings (for the C2 antiheal
+    de-dup) or None. Fail-soft: a non-list -> None."""
+    if not isinstance(raw, list):
+        return None
+    out = [str(i) for i in raw if str(i).strip()]
+    return out or None
+
+
+def _resolve_enemy_profile(enemies: list, level: int, enemy_items=None,
+                           heal_sources=0):
     """Best-effort EnemyProfile via the module's IMPURE builder.
 
     Routes the live enemy compute THROUGH core.build_planner.situational
@@ -447,13 +469,14 @@ def _resolve_enemy_profile(enemies: list, level: int, enemy_items=None):
         return None
     try:
         from core.build_planner.situational import build_enemy_profile
-        return build_enemy_profile(enemies, enemy_items or None, level=level)
+        return build_enemy_profile(enemies, enemy_items or None, level=level,
+                                   heal_sources=heal_sources)
     except Exception as exc:  # noqa: BLE001 - no profile -> DPS-only plan
         log.debug("build-plan enemy profile: %s", exc)
         return None
 
 
-def _resolve_counter_hints(enemy_profile, owned) -> list:
+def _resolve_counter_hints(enemy_profile, owned, ally_state=None) -> list:
     """Project the situational C1-C7 counter-build hints for the OWNED build.
 
     Maps the pure ``counter_build_hints`` extractor (which mirrors the
@@ -467,7 +490,8 @@ def _resolve_counter_hints(enemy_profile, owned) -> list:
         from dataclasses import asdict
 
         from core.build_planner.situational import counter_build_hints
-        return [asdict(h) for h in counter_build_hints(owned, enemy_profile)]
+        return [asdict(h)
+                for h in counter_build_hints(owned, enemy_profile, ally_state)]
     except Exception as exc:  # noqa: BLE001 - no hints -> empty projection
         log.debug("build-plan counter hints: %s", exc)
         return []
