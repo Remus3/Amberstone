@@ -874,6 +874,57 @@ _PASSIVE_DAMAGE_OVERRIDES: dict[tuple[str, str, int], PassiveDamageEntry] = {
         note="Colossal Smash: 15 : 115 (based on level) (+ 100% AD) (+ 45% AP) (+ 60% bonus MR) modified magic on the periodic empowered basic attack; crit interaction omitted (AA-crit seam); metadata-only (NOT AA-routed: periodic gate, not every-AA)",
         attribute="Colossal Smash",
     ),
+    # --- Slice B on-hit AP riders (Task 4, 2026-07-16). Two AA-routed on-hit
+    # magic riders keyed at their REAL non-P slot (E / W) so a champion's
+    # attack-speed / on-hit itemization pays off in the on-hit-AP scorer. Both
+    # are authored FLAT at the L13 max-rank value (both abilities are maxed by
+    # the scorer's L13 target): the AA-routing consumer (dps.py:1195) evaluates
+    # the routed entry through a HARDCODED _rank_at_level("P", level) index, so a
+    # flat base + level-independent scaling fields evaluate correctly regardless
+    # of the real E / W slot (identical flat-field pattern to the Gwen P entry).
+    # Magnitudes verified against data/daemon_slayer/16.14.1/champion_abilities.json.
+    #
+    # Kayle E Starfire Spellblade PASSIVE: "Kayle deals bonus magic damage
+    # on-hit" on EVERY basic attack (no cooldown, no gate) = the clean every-AA
+    # rider. Max rank (5) = 35 (+ 10% bonus AD) (+ 20% AP) bonus magic (JSON
+    # damage_blocks[0]: base [15,20,25,30,35], bonus_ad_pct [10], ap_pct [20]).
+    # The E ACTIVE (empowered next attack: 8:10% target-missing-HP + 1.5%/100 AP)
+    # is a cooldown-gated empowered-FIRST-hit, NOT every-AA, and resolves to 0 at
+    # the full-HP scorer ctx - intentionally NOT modeled (same every-AA-only
+    # scope as the :1041-1051 v1 routing note).
+    ("Kayle", "E", 0): PassiveDamageEntry(
+        base=(35.0,),
+        bonus_ad_pct=10.0,
+        ap_pct=20.0,
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Starfire Spellblade (passive on-hit): 35 (+ 10% bonus AD) (+ 20% AP) bonus magic on every basic attack (flat L13 max-rank of base [15,20,25,30,35]); E-active empowered-hit (missing-HP) not modeled (not every-AA; 0 at full-HP ctx)",
+        attribute="Starfire Spellblade",
+    ),
+    # Kog'Maw W Bio-Arcane Barrage: an activated buff (40 mana, 8s duration) that
+    # empowers basic attacks to deal "X% (+ 1% per 100 AP) of the target's
+    # maximum health" bonus magic on-hit. Max rank (5) = 6.0% target max HP + the
+    # bilinear 1%/100-AP-of-max-HP term (JSON damage_blocks[1]: target_max_hp_pct
+    # [3,3.75,4.5,5.25,6], "1 % per 100 AP" on the same block = of max HP, same
+    # bilinear shape as Gwen P). TOGGLE / not always-on: 8s duration on a 17s
+    # cooldown = 8/17 ~= 0.47 steady-state UPTIME (pre-ability-haste,
+    # conservative). Per the design resolution the uptime is folded DIRECTLY into
+    # the authored magnitudes (the 6.0 * 8/17 and 1.0 * 8/17 products are written
+    # inline so the raw max-rank value and the uptime factor stay auditable),
+    # NOT via conditional_probability (reserved for the item-255 conditional-gate
+    # seed set - a non-seed entry there must keep probability 1.0). So a random
+    # basic attack carries the amortized expected on-hit magnitude. The
+    # vs-minion/monster 100 cap is champ-context-uncapped (same precedent as
+    # Gwen).
+    ("KogMaw", "W", 0): PassiveDamageEntry(
+        base=(0.0,),
+        target_max_hp_pct=round(6.0 * 8.0 / 17.0, 6),
+        bilinear_terms=(_per_100(round(1.0 * 8.0 / 17.0, 6), "ap", "target_max_hp"),),
+        damage_type="MAGIC",
+        cadence="on_hit",
+        note="Bio-Arcane Barrage: 6% (+ 1% per 100 AP) of target max HP bonus magic on-hit at max rank (flat L13), scaled by 8s/17s ~= 0.47 toggle uptime = 2.823529% (+ 0.470588% per 100 AP) amortized; vs-minion/monster 100 cap uncapped (champ context)",
+        attribute="Bio-Arcane Barrage",
+    ),
 }
 
 
@@ -1054,6 +1105,8 @@ _AA_ROUTED_ON_HIT_KEYS: frozenset[tuple[str, str, int]] = frozenset(
         ("Warwick", "P", 0),
         ("Orianna", "P", 0),
         ("Gwen", "P", 0),  # Slice B: A Thousand Cuts on-hit magic (AS-scaling)
+        ("Kayle", "E", 0),  # Slice B t4: Starfire Spellblade passive on-hit magic
+        ("KogMaw", "W", 0),  # Slice B t4: Bio-Arcane Barrage on-hit magic (toggle)
     }
 )
 
@@ -1064,14 +1117,25 @@ def aa_routed_on_hit_entry(champion_id: str):
     Returns ``None`` when the champion has no entry on the routing
     allowlist (so the ``compute_dps`` seam adds nothing - byte-identical
     for every non-allowlisted champion) or when the entry's cadence is not
-    ``on_hit``. Only the P-slot is consulted in v1.
+    ``on_hit``.
+
+    Slice B t4: the routed slot is no longer P-hardcoded. The champion's
+    allowlisted key is consulted at WHATEVER slot it was registered (Kayle
+    E, Kog'Maw W), so a non-P on-hit rider routes onto the AA cadence. The
+    consumer (``dps.py``) still evaluates the block through a level-based
+    P-rank index, which is exact for these flat (level-independent) entries.
+    Keys are iterated in sorted order for a deterministic pick; each champion
+    carries exactly one allowlisted key today, so the order is not
+    load-bearing. Non-allowlisted champions match nothing and return ``None``
+    exactly as before (the seam stays byte-identical for them).
     """
     if not champion_id:
         return None
-    key = (champion_id, "P", 0)
-    if key not in _AA_ROUTED_ON_HIT_KEYS:
-        return None
-    entry = _PASSIVE_DAMAGE_OVERRIDES.get(key)
-    if entry is None or entry.cadence != "on_hit":
-        return None
-    return key, entry
+    for key in sorted(_AA_ROUTED_ON_HIT_KEYS):
+        if key[0] != champion_id:
+            continue
+        entry = _PASSIVE_DAMAGE_OVERRIDES.get(key)
+        if entry is None or entry.cadence != "on_hit":
+            continue
+        return key, entry
+    return None
