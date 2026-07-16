@@ -1,11 +1,11 @@
 """Item Ability-Haste registry drift-check (DDragon truth vs engine pin).
 
-The engine's `_item_ability_haste._ITEM_ABILITY_HASTE` is hand-pinned at
-patch 16.10.1 (220 items) and has no committed regen tool. Live patch is
-16.12.1. This probe re-derives the AH dict from the live DDragon item.json
-using the documented parse (`<attention>N</attention> Ability Haste` inside
-the leading `<stats>` block) and diffs it against the engine pin, so a
-two-patch drift surfaces as a concrete add/remove/change list.
+The engine's `_item_ability_haste._ITEM_ABILITY_HASTE` is hand-pinned (220
+items) and has no committed regen tool. This probe re-derives the AH dict
+from the live DDragon item.json (the current patch, resolved from
+current.txt) using the documented parse (`<attention>N</attention> Ability
+Haste` inside the leading `<stats>` block) and diffs it against the engine
+pin, so drift surfaces as a concrete add/remove/change list.
 
 Read-only. Exit 0 = in sync, exit 1 = drift found (prints the diff).
 
@@ -20,7 +20,20 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_ITEM_JSON = ROOT / "data" / "meta_build" / "ddragon" / "16.12.1" / "item.json"
+_CURRENT_TXT = ROOT / "data" / "daemon_slayer" / "current.txt"
+
+
+def _default_item_json() -> Path:
+    """The live-patch DDragon item.json, resolved from current.txt.
+
+    Previously hardcoded to 16.12.1 - a blind default that false-reported
+    IN SYNC because it never tracked the live patch, so the 226692 Eclipse
+    Arena-mirror drift (introduced 16.13.1) went uncaught until the 16.14.1
+    refresh audit. Resolving current.txt keeps the no-arg guard honest.
+    """
+    patch = _CURRENT_TXT.read_text(encoding="utf-8").strip()
+    return ROOT / "data" / "meta_build" / "ddragon" / patch / "item.json"
+
 
 _STATS_BLOCK = re.compile(r"<stats>(.*?)</stats>", re.S)
 _AH = re.compile(r"<attention>([0-9.]+)</attention>\s*Ability Haste")
@@ -42,7 +55,7 @@ def derive_from_ddragon(item_json: Path) -> dict[str, float]:
 
 
 def main() -> int:
-    item_json = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_ITEM_JSON
+    item_json = Path(sys.argv[1]) if len(sys.argv) > 1 else _default_item_json()
     if not item_json.exists():
         print(f"NO DDragon item.json at {item_json}", file=sys.stderr)
         return 2
