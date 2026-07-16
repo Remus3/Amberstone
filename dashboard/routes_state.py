@@ -693,7 +693,12 @@ def _serve_ds_preview_post(h, payload) -> None:
         h._send(200, json.dumps({
             "ok": True, "ranked": result,
             "scorer":          scorer,
-            "archetype":       archetype,
+            # On a kit-less fallback the dispatcher served a ds.dps carry
+            # build (fell_back), so echo "carry" for a coherent champ-select
+            # label instead of the requested-but-unservable mage/assassin/
+            # enchanter. Non-fallback keeps the requested archetype (incl. the
+            # explicit CS-picker override - test_archetype_override_propagates).
+            "archetype":       "carry" if out.get("fell_back") else archetype,
             "target_stats":    tgt,
             "threat":          threat,
             "defensive":       defensive,
