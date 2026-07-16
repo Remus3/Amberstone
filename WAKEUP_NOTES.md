@@ -16,6 +16,18 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-16 (DS meta-valuation sweep - AP-assassin ds.burst reroute + snowball de-hoist; LEDGER 910; pushed b2c5fc65..7b9658af, CI green)
+
+Interactive session. Prior NEXT-SESSION offered (a) live-validation drain (BLOCKED - no live game) or (b) a headless ROADMAP item; operator picked the DS meta-valuation sweep. mode_key=client throughout. Flow: brainstorming -> spec -> writing-plans -> subagent-driven-development (fresh implementer + task-reviewer per task) + root-cause-fix for A.1. RC-side only (no ENGINE / Share / :8893).
+- **Slice A (d736d026):** live probe found the AP `ability` scorer kit-BLIND (every AP champ leads Liandry's DoT). Root cause: `core/archetype_picks.axis_correct_archetype` collapses AP-kit assassins to `mage` on a DISPROVEN "burst scorer is AD-only" premise (burst.py handles AP amp). Fix: curated `_AP_ASSASSIN_IDS` (Akali/Ekko/Evelynn/Fizz/Katarina/Leblanc/Diana) -> ds.burst. Excluded: Kassadin (scaling), Sylas (bruiser), Vex (ranged mage). Live depth=6: all 7 flip to real AP burst cores (Lich Bane/Void/Rabadon's); controls held (Qiyana=burst, Syndra/Gwen/Kassadin=ability, Pyke=assassin).
+- **2 test repoints** for that stale premise: test_archetype_axis_correction (EXPECTED_FLIPS) + test_per_champion_scoring_coverage (made AXIS-AWARE - AP assassins scored AP-vs-AD, since the pinned "assassin" canonical set is AD-lethality; upgraded from a skip to a real assertion per operator guidance).
+- **Slice A.1 (8ddbb5b2 + a7b44aeb):** the reroute surfaced a pre-existing planner bug - `core/build_planner/scoring._gold_term` hoisted cheap snowball Mejai's(3041)/Dark Seal(1082) to build-plan #1. Fix: skip a curated `_SNOWBALL_ITEM_IDS` in the gold term (de-prioritize, NOT exclude). depth=6 production test + teeth.
+- **Verified:** full `tests/` 11737 passed (3 pre-existing fails = coach-poll thread-timing x2 + ROADMAP doc-size; NOT mine). opus whole-branch review = Ready-to-merge (0 Critical/Important). CI green. My A.1 brief had a WRONG id (Dark Seal=2033=Corrupting Potion); the build subagent CAUGHT it + used the verified 1082.
+
+NEXT: Slice B (on-hit AP / Nashor's for Gwen/Kayle) = its OWN spec (proven NOT fixable by reroute - forcing bruiser gave AD, still no Nashor's; needs a NEW on-hit-AP DPS scorer term). Do NOT redo: Slice A + A.1 shipped/pushed/CI-green. Patch-refresh note: `_AP_ASSASSIN_IDS` + `_SNOWBALL_ITEM_IDS` are hand-pinned (drift on roster/item patches). Overlay RENDER eyeball of the new AP-assassin builds = live-gated tail.
+
+---
+
 # 2026-07-16 (DS C6 tenacity counter-hint; LEDGER 909; commits 51e6b6fc + e9487a78)
 
 Interactive session. Task from the prior NEXT-SESSION note: light up the C6 tenacity counter-hint (the C2 follow-up). mode_key=client, no live game. Tier-1 RC-side (no engine/Share/ENGINE bump). Followed brainstorming -> spec -> TDD.
@@ -36,14 +48,3 @@ Interactive session. Chain: 16.14.1 client-mode build-reco validation -> Locke f
 - **DS C2 antiheal counter-hint (908):** re-scoped after VERIFYING Step 2 (situational counter-build chips) is ALREADY shipped (WP-R102/R103) - the counter-build has 6 criteria but only C1/C4/C5 fired live; C2 antiheal / C3 fed / C6 tenacity were wired-but-dead. Lit up C2 (hint-only): `heal_threat.py` +2 helpers -> `routes_build_plan` hint-path (heal_sources + AllyState populated, NEVER loop.tick so the plan stays byte-identical) -> `active_match.js` sends ally_items. +13 tests. Live: healer comp -> antiheal chip; ally Grievous -> suppressed; live[]/meta[] byte-identical. Spec: docs/specs/2026-07-16-ds-c2-antiheal-counter-hint-design.md.
 
 NEXT: C6 tenacity (needs net-new hard-CC champ curation - no enemy-CC source; `defensive_picks.compute_threat_profile` has no CC metric) OR C3 fed (needs live KDA/gold). LIVE-VERIFY OWED: the Locke build + the overlay antiheal chip RENDER (Electron, agent-blind) both want a real-game eyeball. Do NOT redo: Locke fix + C2 antiheal shipped/pushed; Step 2 situational chips are ALREADY shipped (do NOT rebuild - the 2026-07-13 spec is stale on this).
-
----
-
-# 2026-07-16 (upstream/patch scan -> 16.14.1 refresh + validation + Eclipse AH fix; commits d081291d + fc09ce0b + 36129183; LEDGER 905-906)
-
-Operator chain: "scan upstream and connections" -> "both" (commit mirror + DS re-extract) -> "what is next to validate" -> validate 1-4 -> "yes" -> "ship a+b" -> /done. mode_key=client, no live game.
-- **Patch refresh 16.13.1 -> 16.14.1** (LEDGER 905): mirror `d081291d` (13 files) + engine snapshot `fc09ce0b` (61 files: 19-file DS dir + 6 HZ tables). Meraki core + abilities (manifest content_patch backfill 25.15) + fresh cdragon_spell (CC swap=5/immob=181 verified) + copy-forward curated/wiki/cdragon-ratios; build_orders + pickban HTTP-scored; Share single-patch handoff. ENGINE UNCHANGED (patch != engine). DS `:8893` + RC bounced to 16.14.1. Dual suite green after triaging 23 patch-drift failures (HZ regen + doc flip + Share `_PATCH`).
-- **Validation 1-4:** shield-lerp pin holds (Shieldbow byte-equal 16.14 Meraki, BACKLOG #7 re-verified); build recos NO data regression (same-engine HZ diff = 0 all modes; the alarming ADC Lane-B shift was engine-GENERATION drift, not 16.14 data - driving items stat-identical); override pins 59/60 match; Meraki-sourced data byte-identical to 16.13.1 (frozen `latest` = content_patch 25.15).
-- **Eclipse AH fix** (LEDGER 906, ENGINE 1.214.0 -> 1.215.0, `36129183`): 226692 Arena-mirror pin 10 -> 15 (missed in the 16.12.1 Arena normalization batch) + un-blind `item_ah_drift_check` (hardcoded 16.12.1 -> now resolves current.txt) + NEW CI guard `tests/test_item_ability_haste_ddragon_sync.py`. Sibling sweep: only 226692 drifted (220 pins). 115 test pins + Share + DS/RC bounce. CI green (ci + CodSpeed).
-
-NEXT: patch 16.14.1 fully landed + validated, engine 1.215.0. Live-gated tail: the 16.14 build recos want a real-game eyeball (all client mode this session). Known Meraki-cadence gaps logged NOT fixed (Corki/Yunara AD-growth stale, Locke/Zaahen no ability kit) - resolve when Meraki `latest` advances past 25.15. Do NOT redo: the 226692 AH fix + the patch refresh are shipped + pushed + CI-green; do NOT re-scan upstream (no drift), do NOT re-bump the engine for 226692.
