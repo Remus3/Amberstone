@@ -141,3 +141,23 @@ def test_gwen_p_credited_raises_auto_half_when_passive_on():
     # Crediting Gwen P (now allowlisted) raises the auto half via on-hit magic.
     assert on.auto_dps > off.auto_dps
     assert on.onhit_dps > off.onhit_dps
+
+
+# --- Slice B Task 4 (2026-07-16) - Kayle E + Kog'Maw W on-hit credit ---------
+#
+# Kayle E "Starfire Spellblade" passive (bonus magic on every basic attack) and
+# Kog'Maw W "Bio-Arcane Barrage" (% target-max-HP bonus magic on-hit, toggle -
+# uptime-discounted) join _AA_ROUTED_ON_HIT_KEYS at their REAL slots (E / W, not
+# P). aa_routed_on_hit_entry now consults the champ's allowlisted slot (no longer
+# P-hardcoded), so apply_passive_damage=True routes their on-hit magic onto the
+# AUTO-ATTACK cadence, raising auto_dps (and therefore onhit_dps) over the flag-
+# off baseline - so their attack-speed / on-hit itemization finally pays off.
+@pytest.mark.parametrize("champ", ["Kayle", "KogMaw"])
+def test_kit_onhit_credited_for_kayle_kog(champ):
+    snap = DataSnapshot.load()
+    T = dict(target_armor=105.0, target_mr=52.0, target_max_hp=2430.0)
+    off = compute_onhit_dps(snap, champ, 13, item_ids=("3115",), mode="SR",
+                            apply_passive_damage=False, **T)
+    on = compute_onhit_dps(snap, champ, 13, item_ids=("3115",), mode="SR",
+                           apply_passive_damage=True, **T)
+    assert on.auto_dps > off.auto_dps, f"{champ}: kit on-hit not credited"
