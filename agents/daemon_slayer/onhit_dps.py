@@ -97,15 +97,21 @@ def compute_onhit_dps(
     phase: Optional[str] = None,
     augments: Optional[Iterable] = None,
     apply_mode_modifiers: bool = False,
+    apply_passive_damage: bool = False,
 ) -> OnhitDpsResult:
     """Combined ability + on-hit-auto DPS for the resolved build (plain sum).
 
-    ``compute_ability_dps`` has no ``phase`` or ``apply_mode_modifiers``
-    parameter (it is spell-keyed, not rotation-phase-keyed, and has no ARAM
-    dmg_dealt hook of its own) - those two kwargs are forwarded ONLY to
-    ``compute_dps``. Both composed calls share the same snapshot / champion /
-    level / item_ids / mode / target_* / augments so the two halves describe
-    the identical resolved build.
+    ``compute_ability_dps`` has no ``phase``, ``apply_mode_modifiers``, or
+    ``apply_passive_damage`` parameter (it is spell-keyed, not rotation-
+    phase-keyed, has no ARAM dmg_dealt hook of its own, and skips the P slot)
+    - those kwargs are forwarded ONLY to ``compute_dps``. ``apply_passive_damage``
+    defaults False here (preserves the exact-sum invariant test, which relies
+    on the default), routing an allowlisted kit on-hit passive (e.g. Gwen's A
+    Thousand Cuts) onto the AUTO-ATTACK cadence when True - see
+    ``_AA_ROUTED_ON_HIT_KEYS`` / ``dps.py``'s cadence-routing seam. Both
+    composed calls share the same snapshot / champion / level / item_ids /
+    mode / target_* / augments so the two halves describe the identical
+    resolved build.
     """
     level = clamp_level(level)
     item_list = tuple(str(i) for i in (item_ids or ()))
@@ -115,6 +121,7 @@ def compute_onhit_dps(
         mode=mode, target_armor=target_armor, target_mr=target_mr,
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         phase=phase, augments=augments, apply_mode_modifiers=apply_mode_modifiers,
+        apply_passive_damage=apply_passive_damage,
     )
     ability = compute_ability_dps(
         snapshot, champion_id=champion_id, level=level, item_ids=item_list,
@@ -303,6 +310,7 @@ def rank_items_by_onhit(
     augments: Optional[Iterable] = None,
     apply_mode_modifiers: bool = False,
     filter_shared_uniques: bool = True,
+    apply_passive_damage: bool = True,
 ) -> OnhitDpsRankResult:
     """Rank items by combined on-hit AP DPS gain (``compute_onhit_dps``).
 
@@ -323,6 +331,12 @@ def rank_items_by_onhit(
     ``unique_passive_key`` matches a unique already in ``current_item_ids`` -
     matches the other scorers' behavior so this ranker stays consistent with
     the rest of the engine.
+
+    ``apply_passive_damage=True`` (default - opposite of ``compute_onhit_dps``'s
+    own False default) - this IS the on-hit scorer, so an allowlisted kit
+    on-hit passive (e.g. Gwen's A Thousand Cuts, ``_AA_ROUTED_ON_HIT_KEYS``)
+    should be credited by default in both the baseline and every candidate
+    score. Threaded unchanged into every ``compute_onhit_dps`` call below.
     """
     if sort_by not in SORT_KEYS:
         raise ValueError(f"sort_by must be one of {SORT_KEYS}, got {sort_by!r}")
@@ -355,6 +369,7 @@ def rank_items_by_onhit(
         target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
         phase=phase, augments=augments,
         apply_mode_modifiers=apply_mode_modifiers,
+        apply_passive_damage=apply_passive_damage,
     )
 
     champ_rec = snapshot.champions.get(str(champion_id))
@@ -388,6 +403,7 @@ def rank_items_by_onhit(
                 target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
                 phase=phase, augments=augments,
                 apply_mode_modifiers=apply_mode_modifiers,
+                apply_passive_damage=apply_passive_damage,
             )
         except (KeyError, ValueError):
             continue
