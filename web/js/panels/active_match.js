@@ -232,6 +232,24 @@ export function _extractBpEnemies(allPlayers, myTeam) {
   return { names, items };
 }
 
+// C2 antiheal (2026-07-16): flat list of MY-team owned item ids, for the
+// antiheal counter-hint de-dup (an ally Grievous item suppresses the chip).
+// Enemies are excluded (pl.team === myTeam only). itemID with an itemId alias,
+// coerced to strings. Pure + exported for unit tests. Fail-soft: a non-array
+// roster or a missing myTeam -> [].
+export function _extractBpAllyItems(allPlayers, myTeam) {
+  const out = [];
+  if (!Array.isArray(allPlayers) || !myTeam) return out;
+  for (const pl of allPlayers) {
+    if (!pl || typeof pl !== "object" || pl.team !== myTeam) continue;
+    for (const it of (Array.isArray(pl.items) ? pl.items : [])) {
+      const id = String((it && (it.itemID || it.itemId)) || "");
+      if (id) out.push(id);
+    }
+  }
+  return out;
+}
+
 // R103: stable fingerprint of the enemy item-id lists so an enemy PURCHASE (a
 // new id appended to any inner list) changes the build-plan cache key and re-
 // fires the fetch. Pure + exported. Fail-soft on non-array input.
@@ -245,7 +263,7 @@ export function _bpEnemyItemsKey(enemyItems) {
 // items (same fingerprint as the DS rerank). Non-blocking: returns whatever
 // state map is already cached; the next render picks up fresh data once the
 // POST completes. Fail-soft - any error leaves the prior map intact.
-function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItems) {
+function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItems, allyItems) {
   if (!champion || !mode) return _BUILD_PLAN.stateById;
   // R102: fold the live enemy roster into the fingerprint so a champion swap /
   // late-pick re-fires the plan - counter_hints are enemy-profile derived.
@@ -253,7 +271,8 @@ function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItem
   // plan - situational counter-build hints (C4/C5) depend on live enemy items.
   const key = _dsRerankKey(champion, mode, level, items)
             + `|e:${(enemies || []).join(",")}`
-            + `|ei:${_bpEnemyItemsKey(enemyItems)}`;
+            + `|ei:${_bpEnemyItemsKey(enemyItems)}`
+            + `|ai:${(allyItems || []).join(",")}`;
   const now = Date.now();
   const stale = (key !== _BUILD_PLAN.lastKey)
               || ((now - _BUILD_PLAN.lastFired) > _BUILD_PLAN_COOLDOWN_MS);
@@ -272,6 +291,8 @@ function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItem
       enemies:  enemies || [],
       // R103: index-aligned per-enemy owned item ids for counter-build hints.
       enemy_items: enemyItems || [],
+      // C2 (2026-07-16): flat ally-owned item ids for the antiheal de-dup.
+      ally_items: allyItems || [],
     }),
   }).then((r) => r.ok ? r.json() : null)
     .then((j) => {
@@ -631,11 +652,19 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   // counter-build hints (C4/C5) and an enemy PURCHASE re-fires the plan. The
   // guard preserves the lc-absent behavior (_extractBpEnemies is itself fail-
   // soft, so {names:[],items:[]} == an absent roster -> honest COUNTER hide).
-  const _bpRoster = (lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length)
-    ? _extractBpEnemies(lc.allPlayers, _resolveMyTeam(lc))
+  const _hasRoster = lc && Array.isArray(lc.allPlayers) && lc.allPlayers.length;
+  const _bpMyTeam = _hasRoster ? _resolveMyTeam(lc) : null;
+  const _bpRoster = _hasRoster
+    ? _extractBpEnemies(lc.allPlayers, _bpMyTeam)
     : { names: [], items: [] };
+  // C2 (2026-07-16): my-team owned item ids for the antiheal counter-hint
+  // de-dup (an ally Grievous item suppresses the chip). Fail-soft [].
+  const _bpAllyItems = _hasRoster
+    ? _extractBpAllyItems(lc.allPlayers, _bpMyTeam)
+    : [];
   const planStates = _maybeRefreshBuildPlan(
     champion, mode, level, ownedIds, _bpRoster.names, _bpRoster.items,
+    _bpAllyItems,
   ) || {};
   // WP-B2 Row2 META feed - the static standard ordered build.
   const metaOrder  = _maybeRefreshBuildOrder(champion, mode, level, ownedIds) || [];
