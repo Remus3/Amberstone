@@ -105,31 +105,26 @@ class PerChampionCoverage(_Base):
         failures = []
         for champ in self.roster:
             prim = default_for_champion(champ)[0]
+            own_set = prim
             opp = _OPPOSITE.get(prim, "mage")
-            if opp == prim:
-                opp = "carry" if prim != "carry" else "mage"
-            own = score_build(self.canon[prim], champ, [], owned_count=6).total
+            # Slice A split the assassin archetype by damage axis: AP-kit assassins
+            # (Akali / Ekko / Evelynn / Fizz / Katarina / Leblanc / Diana - routed
+            # to the axis-agnostic ds.burst scorer by _AP_ASSASSIN_IDS) build AP,
+            # NOT the AD-lethality canonical "assassin" set (Youmuu's / Duskblade /
+            # Serylda's). Score them on the AP canonical set vs the AD-carry set so
+            # this check validates their real AP-over-AD kit-fit instead of a stale
+            # AD assumption. AD assassins keep the AD "assassin" set vs "mage".
+            if prim == "assassin" and kit_damage_axis(champ) == "ap":
+                own_set, opp = "mage", "carry"
+            if opp == own_set:
+                opp = "carry" if own_set != "carry" else "mage"
+            own = score_build(self.canon[own_set], champ, [], owned_count=6).total
             mis = score_build(self.canon[opp], champ, [], owned_count=6).total
             if not (own > mis):
-                failures.append((champ, prim, round(own, 3), opp, round(mis, 3)))
+                failures.append((champ, own_set, round(own, 3), opp, round(mis, 3)))
         # Every failure must be a documented principled exception. A NEW champ
         # failing (a model regression) trips this loudly.
-        #
-        # AP-kit assassins (Akali / Ekko / Evelynn / Fizz / Katarina / Leblanc /
-        # Diana) are a principled AXIS exception: _AP_ASSASSIN_IDS routes them to
-        # the assassin archetype - the axis-agnostic ds.burst scorer, validated in
-        # test_ap_assassin_override + live - but this test's canonical "assassin"
-        # set is AD-lethality (Youmuu's / Duskblade / Serylda's), which an AP kit
-        # cannot use. An AP assassin therefore correctly scores higher on the AP
-        # (mage) set; the AD-canonical-set comparison is meaningless for it. Its
-        # kit-fit is proven by the ds.burst routing, not this AD set.
-        def _ap_assassin_axis_exception(f):
-            return f[1] == "assassin" and kit_damage_axis(f[0]) == "ap"
-
-        unexpected = [
-            f for f in failures
-            if f[0] not in _EXCEPTIONS and not _ap_assassin_axis_exception(f)
-        ]
+        unexpected = [f for f in failures if f[0] not in _EXCEPTIONS]
         self.assertEqual(unexpected, [], f"unexpected coverage failures: {unexpected}")
 
     def test_within_archetype_score_variation(self):
