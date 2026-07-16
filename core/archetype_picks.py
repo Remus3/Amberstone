@@ -144,8 +144,9 @@ _AXIS_DOMINANT_MIN = 0.55
 _AXIS_MARGIN_MIN = 0.20
 
 # AP burst-assassin override (2026-07-16 AP-axis sweep, Slice A). DDragon tags +
-# axis_correct_archetype collapse these AP-kit assassins to `mage` (assassin is
-# tagged AD-axis, and _AP_AXIS_ARCHETYPE == "mage"), landing them on the sustained
+# axis_correct_archetype collapse these AP-kit assassins to `mage` (their tag
+# primary is AD-axis - assassin for 6, bruiser for Fighter-tagged Diana - and
+# _AP_AXIS_ARCHETYPE == "mage"), landing them on the sustained
 # ds.ability scorer (Liandry's-DoT). They are short-window burst assassins; the
 # ds.burst scorer already flows the full AP amp pipeline (see burst.py), so route
 # them there. Canonical DDragon ids. Only the tag DEFAULT is touched - an operator
