@@ -38,13 +38,14 @@ class _Handler:
         return json.loads(self.body.decode())
 
 
-def _dispatcher_response(scorer: str, rows: list[dict]) -> dict:
+def _dispatcher_response(scorer: str, rows: list[dict],
+                         fell_back: bool = False) -> dict:
     return {
         "ok":        True,
         "scorer":    scorer,
         "archetype": "carry" if scorer == "dps" else scorer,
         "ranked":    rows,
-        "fell_back": False,
+        "fell_back": fell_back,
     }
 
 
@@ -163,6 +164,28 @@ class DsPreviewPerRowScorerStampTests(unittest.TestCase):
         self.assertTrue(resp.get("ok"))
         self.assertEqual(resp.get("scorer"), "dps")
         self.assertEqual(resp.get("ranked"), [])
+
+    @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
+    @mock.patch("core.archetype_picks.get_archetype_for")
+    def test_kitless_fallback_echoes_carry_not_mage(self, mock_arch, mock_disp):
+        """A kit-less champ (no ability data) resolves to mage, but the
+        dispatcher falls back to ds.dps (fell_back=True). The response
+        archetype echoes "carry" so the champ-select label reads
+        coherently with the dps scorer instead of a misleading "mage"
+        (the Locke 16.14.1 fix)."""
+        mock_arch.return_value = {"primary": "mage"}
+        mock_disp.return_value = _dispatcher_response("dps", [
+            {"item_id": "3153", "item_name": "Blade of The Ruined King",
+             "delta": 36.0, "gold": 3200},
+        ], fell_back=True)
+        h = _Handler()
+        _serve_ds_preview_post(h, {"champion": "Locke", "mode": "SR", "level": 13})
+        self.assertEqual(h.status, 200)
+        resp = h.json()
+        self.assertEqual(resp.get("scorer"), "dps")
+        self.assertEqual(resp.get("archetype"), "carry")
+        for r in resp["ranked"]:
+            self.assertEqual(r.get("scorer"), "dps")
 
     @mock.patch("core.daemon_slayer_client.rank_for_primary_archetype")
     @mock.patch("core.archetype_picks.get_archetype_for")
