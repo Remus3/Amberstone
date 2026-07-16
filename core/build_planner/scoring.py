@@ -242,6 +242,31 @@ def _spike_term(build_ids, rows_by_id, stage: str) -> float:
     return frac * decay
 
 
+# Curated conditional-snowball items (task-A1, 2026-07-16): Mejai's
+# Soulstealer (3041) + Dark Seal (1082) are so CHEAP that their delta_dps-per-
+# 1k-gold ratio is inflated far above the value-rank leaders even though their
+# raw DPS + kit-cohesion (kit_synergy.synergy_score) are both lower - the gold
+# term alone was enough to hoist a snowball-first prefix to the FRONT of the
+# beam-searched plan (confirmed via a pre-fix diagnostic probe: subtracting
+# only the gold term from a Mejai's-first single-item build flips it below
+# Void Staff/Rabadon's/Lich Bane; subtracting the spike term does NOT flip
+# it, so spike is untouched - see .superpowers/sdd/task-A1-report.md for the
+# probe output, and tests/test_planner_snowball_ordering.py for the
+# committed regression coverage of this mechanism).
+# Skipped from the gold-efficiency AVERAGE only - never excluded from the
+# candidate pool, dps term, or cohesion term - so they remain fully rankable
+# by real merit at a later slot; they just earn no artificial gold-efficiency
+# reward for being cheap.
+#
+# CORRECTION: the originating task brief named Dark Seal's id as 2033 - that
+# id is actually Corrupting Potion (a starting consumable), confirmed against
+# data/meta/ddragon_items.json (patch 16.14.1),
+# agents/daemon_slayer/_effects_data.py:5344-5345, and
+# core/archetype_mismatch.py:109's curated Consumables list. Dark Seal's real
+# id is 1082 - that is what is curated here.
+_SNOWBALL_ITEM_IDS = frozenset({"3041", "1082"})
+
+
 def _gold_term(build_ids, rows_by_id) -> float:
     """Gold-efficiency proxy: delta_dps per 1k gold, averaged + normalized.
 
@@ -250,11 +275,17 @@ def _gold_term(build_ids, rows_by_id) -> float:
     the other terms. WHY a local heuristic (not a true gold-value table): the
     master plan defers the full EHP/pen gold formulas to WP-C3; here gold is
     only an ordinal tie-breaker favouring cost-effective rows.
+
+    ``_SNOWBALL_ITEM_IDS`` rows are SKIPPED from this average (not zeroed
+    in-place) - a curated conditional-snowball item's inflated per-gold ratio
+    must not reward a build prefix that leads with it (see module comment).
     """
     if not build_ids:
         return 0.0
     vals: list[float] = []
     for iid in build_ids:
+        if iid in _SNOWBALL_ITEM_IDS:
+            continue
         row = rows_by_id.get(iid)
         if row is None:
             continue
