@@ -216,6 +216,34 @@ class PlannerFrontSlotTests(unittest.TestCase):
                           clock_s=300.0)
         self.assertNotEqual(plan.items[0].item_id, _MEJAI)
 
+    def test_ap_assassin_front_slot_not_snowball_at_production_depth(self):
+        # PRODUCTION FIDELITY: the earlier front-slot tests run depth=1, which
+        # degenerates the beam to "single best item" and does NOT exercise the
+        # depth the bug was actually observed at. The live re-plan loop drives
+        # the planner at beam_width=6, depth=6 (core/build_planner/replan.py:569
+        # ReplanLoop.tick defaults). This test pins the fix at those exact
+        # production settings for every AP assassin - the front slot must not
+        # be a snowball item, and (as a bonus assertion of the intended
+        # behavior) the snowball ids must still appear LATER in the full 6-deep
+        # order, proving they were de-prioritized out of the front, not
+        # excluded from the plan. If the _gold_term snowball skip is reverted,
+        # this test goes RED (the beam hoists a snowball id back to slot 0) -
+        # verified during the task-A1 review pass.
+        for champ in _AP_ASSASSINS:
+            with self.subTest(champ=champ):
+                plan = plan_build(champion=champ, seed_fn=make_seed_fn(),
+                                  beam_width=6, depth=6, clock_s=300.0)
+                self.assertTrue(plan.items, f"{champ}: empty plan")
+                self.assertNotIn(plan.items[0].item_id, _SNOWBALL_IDS,
+                                 f"{champ}: production-depth front slot is a "
+                                 f"snowball item {plan.items[0].item_id!r}")
+                # Intended behavior sanity: with a 5-item pool searched 6 deep,
+                # both snowball ids are still in the plan - just not at slot 0.
+                all_ids = {pi.item_id for pi in plan.items}
+                self.assertTrue(set(_SNOWBALL_IDS) <= all_ids,
+                                f"{champ}: snowball ids must remain in the plan "
+                                f"tail (got order {[p.item_id for p in plan.items]})")
+
     def test_snowball_items_still_reachable_later_in_the_build(self):
         # The fix must NOT exclude the snowball ids from the candidate pool -
         # they must remain rankable at a later slot. A 5-item pool searched to
@@ -255,20 +283,31 @@ class ControlTests(unittest.TestCase):
         # Syndra (mage): her candidate pool here never contains the 2
         # snowball ids, so the fix's skip-list branch is UNREACHABLE for this
         # call - her front slot is provably unchanged by the fix (not a
-        # numeric coincidence). She still gets a sensible AP merit leader.
+        # numeric coincidence). Asserting the CONCRETE expected first id (Lich
+        # Bane, 3100 - the highest dps+cohesion AP row for Syndra in this pool)
+        # rather than a mere "not a snowball" tautology, so a future model
+        # regression that reshuffles the mage front slot is actually caught.
         ap_only_catalog = {k: v for k, v in _CATALOG.items() if k not in _SNOWBALL_IDS}
         plan = plan_build(champion="Syndra", seed_fn=make_seed_fn(ap_only_catalog),
                           beam_width=6, depth=1, clock_s=300.0)
         self.assertTrue(plan.items)
+        self.assertEqual(plan.items[0].item_id, "3100",
+                         "Syndra's mage front slot should be Lich Bane (3100) - "
+                         "a shift means the scoring model moved, not this fix")
         self.assertNotIn(plan.items[0].item_id, _SNOWBALL_IDS)
 
     def test_ad_assassin_front_slot_unaffected_by_the_fix(self):
         # Qiyana (AD assassin): a disjoint AD-crit pool that never contains
         # the 2 snowball ids at all - same "provably unreachable code path"
-        # argument as the mage control above.
+        # argument as the mage control above. Concrete expected first id
+        # (Infinity Edge, 3031 - the top AD-crit row for Qiyana here) gives
+        # the control real teeth against a future front-slot regression.
         plan = plan_build(champion="Qiyana", seed_fn=make_seed_fn(_AD_CATALOG),
                           beam_width=6, depth=1, clock_s=300.0)
         self.assertTrue(plan.items)
+        self.assertEqual(plan.items[0].item_id, "3031",
+                         "Qiyana's AD front slot should be Infinity Edge (3031) - "
+                         "a shift means the scoring model moved, not this fix")
         self.assertNotIn(plan.items[0].item_id, _SNOWBALL_IDS)
 
 
