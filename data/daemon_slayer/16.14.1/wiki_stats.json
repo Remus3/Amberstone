@@ -1,0 +1,3796 @@
+{
+ "_cdragon_cast_fills": 12,
+ "_champ_count": 171,
+ "_default_cast_fills": 1,
+ "_errors": [],
+ "_fields": [
+  "attack_cast_time",
+  "attack_total_time",
+  "missile_speed",
+  "mode_modifiers"
+ ],
+ "_note": "OPTIONAL DS overlay. attack_cast_time = AA windup (s); attack_total_time = full AA cycle (s); missile_speed = ranged AA missile speed (melee null). Each scalar carries a <field>_src provenance: 'wiki' (operator-named source, wins) > 'cdragon' (fills wiki nulls) > 'wiki_offset' (windup derived from the wiki attack_delay_offset: (0.300+offset)/as_base, for champs with no explicit cast time; attack_cast_time only) > 'default' (0.25s = combo.py fallback, for champs no source/offset covers; attack_cast_time only) > null. mode_modifiers = per-mode balance changes parsed from the SAME wiki raw module (wiki-sourced only, no _src; {} when a champ has none): aram/urf/nb/ofa/usb store MULTIPLIERS (dmg_dealt 1.05 = +5%), ar (Arena/CHERRY) + swift (Swiftplay) store ADDEND stat-overrides (hp_lvl 17 = +17 hp/level); inner keys stored verbatim, not coerced. Meraki stays authoritative for ratios/CC. A run with _with_cast_measured==0 means the host could not reach either source (edge block) - do NOT commit.",
+ "_offset_cast_fills": 109,
+ "_patch": "16.14.1",
+ "_source": "wiki.leagueoflegends.com Module:ChampionData/data (action=raw + getter fallback) PRIMARY; CommunityDragon character bins BACKFILL of nulls",
+ "_source_mode": "both",
+ "_with_cast_measured": 170,
+ "_with_cast_time": 171,
+ "_with_missile_speed": 82,
+ "_with_mode_modifiers": 170,
+ "champions": {
+  "Aatrox": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.51999998092651,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.7
+    }
+   },
+   "wiki_name": "Aatrox"
+  },
+  "Ahri": {
+   "attack_cast_time": 0.299401,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1750.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "healing": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "usb": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Ahri"
+  },
+  "Akali": {
+   "attack_cast_time": 0.2224,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 2.0
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95,
+     "energyregen_mod": 1.2,
+     "tenacity": 1.2
+    },
+    "nb": {
+     "ability_haste": 20.0,
+     "dmg_taken": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.97
+    },
+    "urf": {
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Akali"
+  },
+  "Akshan": {
+   "attack_cast_time": 0.2,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": 0.7,
+     "hp_lvl": 8.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Akshan"
+  },
+  "Alistar": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "default",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "healing": 0.8
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.97
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Alistar"
+  },
+  "Ambessa": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.6,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Ambessa"
+  },
+  "Amumu": {
+   "attack_cast_time": 0.317722,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Amumu"
+  },
+  "Anivia": {
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.92
+    },
+    "usb": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Anivia"
+  },
+  "Annie": {
+   "attack_cast_time": 0.320975,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": -10.0
+    },
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "shielding": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1,
+     "shielding": 0.9
+    }
+   },
+   "wiki_name": "Annie"
+  },
+  "Aphelios": {
+   "attack_cast_time": 0.23000000417232513,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.08
+    },
+    "urf": {
+     "dmg_dealt": 1.05
+    },
+    "usb": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Aphelios"
+  },
+  "Ashe": {
+   "attack_cast_time": 0.33328,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "usb": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Ashe"
+  },
+  "AurelionSol": {
+   "attack_cast_time": 0.23,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": 4000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ofa": {
+     "ability_haste": -20.0,
+     "dmg_dealt": 1.02,
+     "dmg_taken": 0.92
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "ms_mod": 1.2
+    }
+   },
+   "wiki_name": "Aurelion Sol"
+  },
+  "Aurora": {
+   "attack_cast_time": 0.300202,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1750.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 10.0
+    }
+   },
+   "wiki_name": "Aurora"
+  },
+  "Azir": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 0.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 20.0,
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95,
+     "total_as": 1.025
+    },
+    "ofa": {
+     "dmg_dealt": 1.08,
+     "dmg_taken": 0.9,
+     "ms_mod": 1.05
+    }
+   },
+   "wiki_name": "Azir"
+  },
+  "Bard": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.85,
+     "healing": 1.2
+    },
+    "nb": {
+     "ability_haste": 20.0,
+     "dmg_taken": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.85,
+     "healing": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.85,
+     "healing": 1.2
+    },
+    "usb": {
+     "dmg_dealt": 1.08,
+     "dmg_taken": 0.92,
+     "ms_mod": 1.2
+    }
+   },
+   "wiki_name": "Bard"
+  },
+  "Belveth": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.01,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": 1.0,
+     "hp_base": 50.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "tenacity": 1.2
+    },
+    "usb": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Bel'Veth"
+  },
+  "Blitzcrank": {
+   "attack_cast_time": 0.432,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 30.0
+    },
+    "nb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.06,
+     "dmg_taken": 0.97
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Blitzcrank"
+  },
+  "Brand": {
+   "attack_cast_time": 0.27533,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -10.0,
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.08
+    },
+    "ofa": {
+     "dmg_taken": 1.03
+    },
+    "usb": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Brand"
+  },
+  "Braum": {
+   "attack_cast_time": 0.357143,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "as_lvl": 1.0,
+     "hp_lvl": 20.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.82
+    }
+   },
+   "wiki_name": "Braum"
+  },
+  "Briar": {
+   "attack_cast_time": 0.3,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.553,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "arm_lvl": -1.0,
+     "hp_lvl": -10.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0,
+     "healing": 1.1
+    }
+   },
+   "wiki_name": "Briar"
+  },
+  "Caitlyn": {
+   "attack_cast_time": 0.260034,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Caitlyn"
+  },
+  "Camille": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.55200004577636,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 10.0,
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "healing": 1.2,
+     "shielding": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Camille"
+  },
+  "Cassiopeia": {
+   "attack_cast_time": 0.296754,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": -10.0
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Cassiopeia"
+  },
+  "Chogath": {
+   "attack_cast_time": 0.332827,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.1
+    },
+    "ofa": {
+     "dmg_dealt": 0.98,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Cho'Gath"
+  },
+  "Corki": {
+   "attack_cast_time": 0.18,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.553,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -20.0,
+     "dmg_taken": 0.9
+    },
+    "nb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Corki"
+  },
+  "Darius": {
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.85
+    }
+   },
+   "wiki_name": "Darius"
+  },
+  "Diana": {
+   "attack_cast_time": 0.333333,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Diana"
+  },
+  "DrMundo": {
+   "attack_cast_time": 0.239272,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05,
+     "healing": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "healing": 0.9
+    }
+   },
+   "wiki_name": "Dr. Mundo"
+  },
+  "Draven": {
+   "attack_cast_time": 0.230000004172325,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.47300004959106,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Draven"
+  },
+  "Ekko": {
+   "attack_cast_time": 0.259999990463256,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 22.0
+    },
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 1.0,
+     "tenacity": 1.2
+    },
+    "ofa": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Ekko"
+  },
+  "Elise": {
+   "attack_cast_time": 0.3,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9,
+     "tenacity": 1.1
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.92
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Elise"
+  },
+  "Evelynn": {
+   "attack_cast_time": 0.230000004172325,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "tenacity": 1.2
+    },
+    "nb": {
+     "ability_haste": 20.0,
+     "dmg_taken": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 1.07,
+     "dmg_taken": 0.93
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "usb": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Evelynn"
+  },
+  "Ezreal": {
+   "attack_cast_time": 0.301418,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Ezreal"
+  },
+  "Fiddlesticks": {
+   "attack_cast_time": 0.48,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1750.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.93,
+     "healing": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.85
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Fiddlesticks"
+  },
+  "Fiora": {
+   "attack_cast_time": 0.200000002980232,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.45000004768371,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": -0.5,
+     "hp_lvl": -10.0
+    },
+    "aram": {
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1,
+     "healing": 0.65
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Fiora"
+  },
+  "Fizz": {
+   "attack_cast_time": 0.308511,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 15.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "tenacity": 1.1
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Fizz"
+  },
+  "Galio": {
+   "attack_cast_time": 0.330000013113021,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 10.0
+    },
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Galio"
+  },
+  "Gangplank": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.51999998092651,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Gangplank"
+  },
+  "Garen": {
+   "attack_cast_time": 0.288,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Garen"
+  },
+  "Gnar": {
+   "attack_cast_time": 0.2336,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "total_as": 1.025
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Gnar"
+  },
+  "Gragas": {
+   "attack_cast_time": 0.37037,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Gragas"
+  },
+  "Graves": {
+   "attack_cast_time": 0.010526,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 3800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ofa": {
+     "dmg_dealt": 0.98,
+     "dmg_taken": 1.05
+    },
+    "usb": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Graves"
+  },
+  "Gwen": {
+   "attack_cast_time": 0.300000012,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.52499998,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.02
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Gwen"
+  },
+  "Hecarim": {
+   "attack_cast_time": 0.373134,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 10.0,
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9,
+     "healing": 1.2
+    },
+    "nb": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Hecarim"
+  },
+  "Heimerdinger": {
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    },
+    "ofa": {
+     "dmg_dealt": 0.97
+    }
+   },
+   "wiki_name": "Heimerdinger"
+  },
+  "Hwei": {
+   "attack_cast_time": 0.28,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.495,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Hwei"
+  },
+  "Illaoi": {
+   "attack_cast_time": 0.375,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.75,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": -1.0,
+     "hp_lvl": -10.0
+    },
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "healing": 0.8
+    },
+    "ofa": {
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Illaoi"
+  },
+  "Irelia": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.52499997615814,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 12.0
+    },
+    "aram": {
+     "ability_haste": 20.0,
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.97
+    }
+   },
+   "wiki_name": "Irelia"
+  },
+  "Ivern": {
+   "attack_cast_time": 0.310559,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "shielding": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.93,
+     "shielding": 1.2
+    },
+    "usb": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Ivern"
+  },
+  "Janna": {
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "healing": 0.9,
+     "shielding": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.03
+    }
+   },
+   "wiki_name": "Janna"
+  },
+  "JarvanIV": {
+   "attack_cast_time": 0.266626,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.95
+    },
+    "swift": {
+     "arm_lvl": -0.5
+    },
+    "usb": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Jarvan IV"
+  },
+  "Jax": {
+   "attack_cast_time": 0.326191,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": -0.25
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.97
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.15
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Jax"
+  },
+  "Jayce": {
+   "attack_cast_time": 0.144377,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Jayce"
+  },
+  "Jhin": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.01,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Jhin"
+  },
+  "Jinx": {
+   "attack_cast_time": 0.270000010728836,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2750.0,
+   "missile_speed_src": "cdragon",
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": 0.6,
+     "hp_lvl": 10.0
+    },
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Jinx"
+  },
+  "KSante": {
+   "attack_cast_time": 0.283884,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 15.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "K'Sante"
+  },
+  "Kaisa": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.55200004577636,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.9,
+     "total_as": 1.025
+    },
+    "ofa": {
+     "dmg_dealt": 1.03
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Kai'Sa"
+  },
+  "Kalista": {
+   "attack_cast_time": 0.518732,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_base": -50.0,
+     "hp_lvl": -20.0
+    },
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Kalista"
+  },
+  "Karma": {
+   "attack_cast_time": 0.258333,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Karma"
+  },
+  "Karthus": {
+   "attack_cast_time": 0.55,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.93,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Karthus"
+  },
+  "Kassadin": {
+   "attack_cast_time": 0.234375,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 0.5
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Kassadin"
+  },
+  "Katarina": {
+   "attack_cast_time": 0.227964,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 10.0,
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "tenacity": 1.2
+    },
+    "ofa": {
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Katarina"
+  },
+  "Kayle": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.54999995231628,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 5000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "swift": {
+     "as_lvl": -0.5,
+     "dam_lvl": -0.5
+    },
+    "urf": {
+     "dmg_dealt": 0.85,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Kayle"
+  },
+  "Kayn": {
+   "attack_cast_time": 0.280000001192092,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.49500000476837,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "healing": 0.8,
+     "tenacity": 1.2
+    }
+   },
+   "wiki_name": "Kayn"
+  },
+  "Kennen": {
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1700.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "energyregen_mod": 1.2
+    },
+    "ofa": {
+     "dmg_dealt": 0.98,
+     "dmg_taken": 1.02
+    },
+    "urf": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Kennen"
+  },
+  "Khazix": {
+   "attack_cast_time": 0.300202,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "healing": 1.2,
+     "tenacity": 1.2
+    }
+   },
+   "wiki_name": "Kha'Zix"
+  },
+  "Kindred": {
+   "attack_cast_time": 0.280702,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "as_lvl": -0.5,
+     "dam_lvl": -0.5
+    },
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "total_as": 1.025
+    },
+    "ofa": {
+     "dmg_taken": 0.95
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Kindred"
+  },
+  "Kled": {
+   "attack_cast_time": 0.280000001192092,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Kled"
+  },
+  "KogMaw": {
+   "attack_cast_time": 0.24996,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "as_lvl": -0.4,
+     "dam_lvl": -0.8
+    },
+    "aram": {
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 0.97,
+     "dmg_taken": 1.03
+    },
+    "urf": {
+     "dmg_dealt": 0.85,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Kog'Maw"
+  },
+  "Leblanc": {
+   "attack_cast_time": 0.253293,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1700.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 19.0
+    },
+    "aram": {
+     "ability_haste": 20.0,
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    },
+    "nb": {
+     "ability_haste": 20.0,
+     "dmg_taken": 0.9
+    },
+    "ofa": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "LeBlanc"
+  },
+  "LeeSin": {
+   "attack_cast_time": 0.300019,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_base": 80.0,
+     "hp_lvl": 15.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "energyregen_mod": 1.2,
+     "healing": 1.1,
+     "shielding": 1.2
+    },
+    "ofa": {
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 1.05
+    }
+   },
+   "wiki_name": "Lee Sin"
+  },
+  "Leona": {
+   "attack_cast_time": 0.366667,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Leona"
+  },
+  "Lillia": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.7,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 0.98
+    },
+    "usb": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Lillia"
+  },
+  "Lissandra": {
+   "attack_cast_time": 0.285823,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2200.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Lissandra"
+  },
+  "Lucian": {
+   "attack_cast_time": 0.23511,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 10.0,
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "tenacity": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Lucian"
+  },
+  "Lulu": {
+   "attack_cast_time": 0.3,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1450.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "shielding": 1.0
+    }
+   },
+   "wiki_name": "Lulu"
+  },
+  "Lux": {
+   "attack_cast_time": 0.233558,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 15.0
+    },
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1,
+     "shielding": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Lux"
+  },
+  "Malphite": {
+   "attack_cast_time": 0.339241,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ofa": {
+     "dmg_dealt": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Malphite"
+  },
+  "Malzahar": {
+   "attack_cast_time": 0.304,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    },
+    "swift": {
+     "arm_lvl": -0.5
+    },
+    "urf": {
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.08
+    }
+   },
+   "wiki_name": "Malzahar"
+  },
+  "Maokai": {
+   "attack_cast_time": 0.375,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.85,
+     "dmg_taken": 1.1,
+     "healing": 1.0
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "healing": 0.95,
+     "shielding": 0.95
+    },
+    "ofa": {
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.05,
+     "healing": 0.7
+    }
+   },
+   "wiki_name": "Maokai"
+  },
+  "MasterYi": {
+   "attack_cast_time": 0.358984,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": -0.5
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.0,
+     "healing": 0.8
+    },
+    "usb": {
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Master Yi"
+  },
+  "Mel": {
+   "attack_cast_time": 0.2496,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -10.0
+    },
+    "urf": {
+     "dmg_dealt": 0.9
+    }
+   },
+   "wiki_name": "Mel"
+  },
+  "Milio": {
+   "attack_cast_time": 0.270000010728836,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.57500004768372,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 1900.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -10.0,
+     "healing": 0.95,
+     "shielding": 0.9
+    }
+   },
+   "wiki_name": "Milio"
+  },
+  "MissFortune": {
+   "attack_cast_time": 0.22562,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": 1.2,
+     "hp_lvl": 10.0
+    },
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Miss Fortune"
+  },
+  "MonkeyKing": {
+   "attack_cast_time": 0.301932,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    },
+    "usb": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Wukong"
+  },
+  "Mordekaiser": {
+   "attack_cast_time": 0.5,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 2.36599993705749,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_taken": 0.85
+    },
+    "usb": {
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Mordekaiser"
+  },
+  "Morgana": {
+   "attack_cast_time": 0.224,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Morgana"
+  },
+  "Naafiri": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.45,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 20.0
+    },
+    "aram": {
+     "ability_haste": 10.0,
+     "dmg_dealt": 1.1
+    }
+   },
+   "wiki_name": "Naafiri"
+  },
+  "Nami": {
+   "attack_cast_time": 0.279503,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "healing": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.93,
+     "healing": 1.2
+    }
+   },
+   "wiki_name": "Nami"
+  },
+  "Nasus": {
+   "attack_cast_time": 0.315668,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "nb": {
+     "dmg_dealt": 0.95
+    },
+    "usb": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Nasus"
+  },
+  "Nautilus": {
+   "attack_cast_time": 0.433955,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Nautilus"
+  },
+  "Neeko": {
+   "attack_cast_time": 0.3100000023841858,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.54999995231628,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ofa": {
+     "dmg_dealt": 0.98
+    },
+    "usb": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Neeko"
+  },
+  "Nidalee": {
+   "attack_cast_time": 0.23511,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9,
+     "healing": 1.1,
+     "shielding": 1.1
+    },
+    "ofa": {
+     "dmg_dealt": 1.07,
+     "dmg_taken": 0.95
+    },
+    "swift": {
+     "hp_lvl": 15.0
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.95
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "healing": 1.2
+    }
+   },
+   "wiki_name": "Nidalee"
+  },
+  "Nilah": {
+   "attack_cast_time": 0.315638,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "healing": 1.0
+    },
+    "swift": {
+     "as_lvl": -0.6
+    }
+   },
+   "wiki_name": "Nilah"
+  },
+  "Nocturne": {
+   "attack_cast_time": 0.278134,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "healing": 1.2
+    },
+    "ofa": {
+     "dmg_dealt": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Nocturne"
+  },
+  "Nunu": {
+   "attack_cast_time": 0.309738,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "healing": 1.1,
+     "shielding": 1.2,
+     "tenacity": 1.2
+    },
+    "nb": {
+     "ability_haste": 20.0,
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.92,
+     "healing": 1.05,
+     "shielding": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 1.08,
+     "dmg_taken": 0.95
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "healing": 1.2
+    }
+   },
+   "wiki_name": "Nunu & Willump"
+  },
+  "Olaf": {
+   "attack_cast_time": 0.325521,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05
+    }
+   },
+   "wiki_name": "Olaf"
+  },
+  "Orianna": {
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 15.0
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1,
+     "shielding": 0.8
+    }
+   },
+   "wiki_name": "Orianna"
+  },
+  "Ornn": {
+   "attack_cast_time": 0.349999994039535,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Ornn"
+  },
+  "Pantheon": {
+   "attack_cast_time": 0.289229,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 11.0
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.98,
+     "dmg_taken": 1.02
+    }
+   },
+   "wiki_name": "Pantheon"
+  },
+  "Poppy": {
+   "attack_cast_time": 0.375,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {},
+   "wiki_name": "Poppy"
+  },
+  "Pyke": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_base": 70.0
+    },
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "tenacity": 1.2
+    },
+    "nb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Pyke"
+  },
+  "Qiyana": {
+   "attack_cast_time": 0.230000004172325,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 20.0,
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.9,
+     "tenacity": 1.2
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.92
+    },
+    "swift": {
+     "hp_base": 30.0
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Qiyana"
+  },
+  "Quinn": {
+   "attack_cast_time": 0.262633,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": 1.0,
+     "hp_lvl": 15.0
+    },
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "tenacity": 1.2,
+     "total_as": 1.025
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Quinn"
+  },
+  "Rakan": {
+   "attack_cast_time": 0.270000010728836,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.57500004768371,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 10.0,
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Rakan"
+  },
+  "Rammus": {
+   "attack_cast_time": 0.327381,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 15.0
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.85
+    },
+    "usb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Rammus"
+  },
+  "RekSai": {
+   "attack_cast_time": 0.400000005960464,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": 1.0,
+     "hp_lvl": 20.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    },
+    "nb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.93,
+     "healing": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 1.07,
+     "dmg_taken": 0.93,
+     "healing": 1.2
+    }
+   },
+   "wiki_name": "Rek'Sai"
+  },
+  "Rell": {
+   "attack_cast_time": 0.42,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 2.0,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0,
+     "shielding": 0.9
+    },
+    "ofa": {
+     "dmg_dealt": 1.05
+    },
+    "usb": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Rell"
+  },
+  "Renata": {
+   "attack_cast_time": 0.3008,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05,
+     "shielding": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.95,
+     "shielding": 1.2
+    }
+   },
+   "wiki_name": "Renata Glasc"
+  },
+  "Renekton": {
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "healing": 1.1
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Renekton"
+  },
+  "Rengar": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.5,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.92,
+     "tenacity": 1.2
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "swift": {
+     "dam_lvl": 0.5,
+     "hp_base": 30.0,
+     "hp_lvl": 6.0
+    }
+   },
+   "wiki_name": "Rengar"
+  },
+  "Riven": {
+   "attack_cast_time": 0.266667,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.92,
+     "shielding": 1.0
+    },
+    "nb": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Riven"
+  },
+  "Rumble": {
+   "attack_cast_time": 0.310559,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Rumble"
+  },
+  "Ryze": {
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2400.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 1.03
+    }
+   },
+   "wiki_name": "Ryze"
+  },
+  "Samira": {
+   "attack_cast_time": 0.227964,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "as_lvl": -0.5,
+     "dam_lvl": -0.5
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    },
+    "usb": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.0,
+     "shielding": 0.99
+    }
+   },
+   "wiki_name": "Samira"
+  },
+  "Sejuani": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 30.0
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Sejuani"
+  },
+  "Senna": {
+   "attack_cast_time": 0.5,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 0.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 1.1
+    },
+    "usb": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 1.0,
+     "healing": 1.2
+    }
+   },
+   "wiki_name": "Senna"
+  },
+  "Seraphine": {
+   "attack_cast_time": 0.279522,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -20.0,
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.2,
+     "healing": 0.8,
+     "shielding": 0.8
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "healing": 0.9,
+     "shielding": 0.9
+    },
+    "swift": {
+     "hp_lvl": 5.0
+    },
+    "urf": {
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.0,
+     "healing": 0.8
+    }
+   },
+   "wiki_name": "Seraphine"
+  },
+  "Sett": {
+   "attack_cast_time": 0.375,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.75,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.92
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Sett"
+  },
+  "Shaco": {
+   "attack_cast_time": 0.31917,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Shaco"
+  },
+  "Shen": {
+   "attack_cast_time": 0.266660004854202,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.53600001335144,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Shen"
+  },
+  "Shyvana": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.6,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": -10.0
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_taken": 1.02
+    },
+    "urf": {
+     "dmg_dealt": 0.85
+    }
+   },
+   "wiki_name": "Shyvana"
+  },
+  "Singed": {
+   "attack_cast_time": 0.285714,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.08
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 0.9
+    },
+    "usb": {
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Singed"
+  },
+  "Sion": {
+   "attack_cast_time": 0.366854,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -10.0,
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.92,
+     "shielding": 1.2
+    }
+   },
+   "wiki_name": "Sion"
+  },
+  "Sivir": {
+   "attack_cast_time": 0.192,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1750.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.93,
+     "dmg_taken": 1.05
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "swift": {
+     "as_lvl": 0.5
+    },
+    "urf": {
+     "dmg_dealt": 0.85,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Sivir"
+  },
+  "Skarner": {
+   "attack_cast_time": 0.3,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.6,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_taken": 0.97
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "shielding": 0.9
+    }
+   },
+   "wiki_name": "Skarner"
+  },
+  "Smolder": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.567,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": 1800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -10.0,
+     "dmg_taken": 1.02
+    }
+   },
+   "wiki_name": "Smolder"
+  },
+  "Sona": {
+   "attack_cast_time": 0.266803,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "healing": 0.9,
+     "shielding": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.0,
+     "healing": 0.7
+    }
+   },
+   "wiki_name": "Sona"
+  },
+  "Soraka": {
+   "attack_cast_time": 0.2992,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 10.0,
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "healing": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.03,
+     "dmg_taken": 0.97,
+     "healing": 1.1
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.92
+    }
+   },
+   "wiki_name": "Soraka"
+  },
+  "Swain": {
+   "attack_cast_time": 0.224,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.15,
+     "healing": 0.8
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Swain"
+  },
+  "Sylas": {
+   "attack_cast_time": 0.259999990463256,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.54999995231628,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Sylas"
+  },
+  "Syndra": {
+   "attack_cast_time": 0.284954,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1800.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": 5.0,
+     "dmg_dealt": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Syndra"
+  },
+  "TahmKench": {
+   "attack_cast_time": 0.379999995231628,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.51900005340576,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.2,
+     "dmg_taken": 0.85
+    }
+   },
+   "wiki_name": "Tahm Kench"
+  },
+  "Taliyah": {
+   "attack_cast_time": 0.245377,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2100.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0
+    },
+    "nb": {
+     "ability_haste": -10.0,
+     "dmg_dealt": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Taliyah"
+  },
+  "Talon": {
+   "attack_cast_time": 0.197999998927116,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "tenacity": 1.2
+    }
+   },
+   "wiki_name": "Talon"
+  },
+  "Taric": {
+   "attack_cast_time": 0.288,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 1.1
+    },
+    "ofa": {
+     "dmg_taken": 0.92
+    },
+    "urf": {
+     "healing": 0.85
+    }
+   },
+   "wiki_name": "Taric"
+  },
+  "Teemo": {
+   "attack_cast_time": 0.289855,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -15.0,
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.1
+    },
+    "nb": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Teemo"
+  },
+  "Thresh": {
+   "attack_cast_time": 0.383333,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 0.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 10.0
+    },
+    "aram": {
+     "dmg_taken": 1.05
+    },
+    "nb": {
+     "ability_haste": 20.0,
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "ms_mod": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.87,
+     "shielding": 1.2
+    },
+    "usb": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "ms_mod": 1.2,
+     "shielding": 1.0
+    }
+   },
+   "wiki_name": "Thresh"
+  },
+  "Tristana": {
+   "attack_cast_time": 0.22562,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2250.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Tristana"
+  },
+  "Trundle": {
+   "attack_cast_time": 0.310945,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 1.05,
+     "healing": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.07
+    },
+    "swift": {
+     "as_lvl": -0.7
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 0.95,
+     "healing": 0.8
+    },
+    "usb": {
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Trundle"
+  },
+  "Tryndamere": {
+   "attack_cast_time": 0.283582,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": -1.0
+    },
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "healing": 1.2
+    }
+   },
+   "wiki_name": "Tryndamere"
+  },
+  "TwistedFate": {
+   "attack_cast_time": 0.32,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "urf": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Twisted Fate"
+  },
+  "Twitch": {
+   "attack_cast_time": 0.297373,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 0.98
+    },
+    "urf": {
+     "dmg_dealt": 0.85,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Twitch"
+  },
+  "Udyr": {
+   "attack_cast_time": 0.304615,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.92
+    }
+   },
+   "wiki_name": "Udyr"
+  },
+  "Urgot": {
+   "attack_cast_time": 0.24,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.02
+    },
+    "swift": {
+     "arm_lvl": -0.5
+    },
+    "urf": {
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.85
+    }
+   },
+   "wiki_name": "Urgot"
+  },
+  "Varus": {
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Varus"
+  },
+  "Vayne": {
+   "attack_cast_time": 0.266624,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "as_lvl": -0.3,
+     "dam_lvl": -0.4,
+     "hp_lvl": -10.0
+    },
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 0.97
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Vayne"
+  },
+  "Veigar": {
+   "attack_cast_time": 0.3055,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.93,
+     "dmg_taken": 1.1
+    },
+    "urf": {
+     "dmg_dealt": 0.9
+    }
+   },
+   "wiki_name": "Veigar"
+  },
+  "Velkoz": {
+   "attack_cast_time": 0.311042,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 0.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Vel'Koz"
+  },
+  "Vex": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.6,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 10.0
+    },
+    "aram": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.0
+    }
+   },
+   "wiki_name": "Vex"
+  },
+  "Vi": {
+   "attack_cast_time": 0.360000014305114,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Vi"
+  },
+  "Viego": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.52,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.0,
+     "healing": 0.8
+    }
+   },
+   "wiki_name": "Viego"
+  },
+  "Viktor": {
+   "attack_cast_time": 0.273556,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2300.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0
+    },
+    "swift": {
+     "hp_lvl": -8.0
+    },
+    "urf": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Viktor"
+  },
+  "Vladimir": {
+   "attack_cast_time": 0.300000011920928,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.51999998092651,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.05,
+     "healing": 0.9
+    },
+    "urf": {
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.05,
+     "healing": 1.2
+    }
+   },
+   "wiki_name": "Vladimir"
+  },
+  "Volibear": {
+   "attack_cast_time": 0.48,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "arm_lvl": -1.0
+    },
+    "ofa": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.1,
+     "shielding": 0.8
+    },
+    "urf": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.1,
+     "healing": 0.8
+    }
+   },
+   "wiki_name": "Volibear"
+  },
+  "Warwick": {
+   "attack_cast_time": 0.274295,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "healing": 1.0
+    },
+    "usb": {
+     "dmg_dealt": 0.95
+    }
+   },
+   "wiki_name": "Warwick"
+  },
+  "Xayah": {
+   "attack_cast_time": 0.282999992370605,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "dam_lvl": -0.9,
+     "hp_lvl": -10.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 1.0,
+     "total_as": 1.03
+    },
+    "urf": {
+     "dmg_dealt": 0.85,
+     "dmg_taken": 1.1
+    },
+    "usb": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Xayah"
+  },
+  "Xerath": {
+   "attack_cast_time": 0.303951,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 2000.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.93,
+     "dmg_taken": 1.05
+    },
+    "ofa": {
+     "dmg_dealt": 1.03
+    }
+   },
+   "wiki_name": "Xerath"
+  },
+  "XinZhao": {
+   "attack_cast_time": 0.289999991655349,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.54999995231628,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 0.97,
+     "dmg_taken": 1.02,
+     "healing": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.1
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.05
+    }
+   },
+   "wiki_name": "Xin Zhao"
+  },
+  "Yasuo": {
+   "attack_cast_time": 0.315638,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "total_as": 1.025
+    },
+    "urf": {
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Yasuo"
+  },
+  "Yone": {
+   "attack_cast_time": 0.352,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 10.0
+    },
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.97,
+     "total_as": 1.025
+    },
+    "ofa": {
+     "dmg_dealt": 0.98
+    },
+    "urf": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9,
+     "shielding": 1.2
+    }
+   },
+   "wiki_name": "Yone"
+  },
+  "Yorick": {
+   "attack_cast_time": 0.330000013113021,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "ofa": {
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "swift": {
+     "arm_base": -4.0,
+     "dam_lvl": -0.7
+    }
+   },
+   "wiki_name": "Yorick"
+  },
+  "Yunara": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.538,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 2500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "healing": 1.0,
+     "shielding": 1.0
+    },
+    "urf": {
+     "dmg_dealt": 1.0,
+     "dmg_taken": 1.0,
+     "healing": 1.0
+    },
+    "usb": {
+     "dmg_dealt": 1.0,
+     "healing": 1.0,
+     "shielding": 1.0
+    }
+   },
+   "wiki_name": "Yunara"
+  },
+  "Yuumi": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.60000002384185,
+   "attack_total_time_src": "wiki",
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.0
+    },
+    "ofa": {
+     "dmg_dealt": 1.15,
+     "dmg_taken": 0.8,
+     "healing": 1.2,
+     "shielding": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 0.75,
+     "dmg_taken": 0.9,
+     "healing": 0.7
+    },
+    "usb": {
+     "dmg_dealt": 0.95,
+     "healing": 0.75,
+     "shielding": 0.75
+    }
+   },
+   "wiki_name": "Yuumi"
+  },
+  "Zac": {
+   "attack_cast_time": 0.363000005483627,
+   "attack_cast_time_src": "wiki",
+   "attack_total_time": 1.567999958992,
+   "attack_total_time_src": "wiki",
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_taken": 0.96,
+     "healing": 1.1
+    }
+   },
+   "wiki_name": "Zac"
+  },
+  "Zed": {
+   "attack_cast_time": 0.303525,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": null,
+   "missile_speed_src": null,
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95,
+     "energyregen_mod": 1.2,
+     "tenacity": 1.2
+    },
+    "urf": {
+     "dmg_dealt": 0.85,
+     "dmg_taken": 1.1
+    }
+   },
+   "wiki_name": "Zed"
+  },
+  "Zeri": {
+   "attack_cast_time": 0.25,
+   "attack_cast_time_src": "cdragon",
+   "attack_total_time": 1.6,
+   "attack_total_time_src": "cdragon",
+   "missile_speed": 0.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Zeri"
+  },
+  "Ziggs": {
+   "attack_cast_time": 0.304878,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 17.0
+    },
+    "aram": {
+     "ability_haste": -20.0,
+     "dmg_dealt": 0.92,
+     "dmg_taken": 1.2
+    },
+    "nb": {
+     "ability_haste": -10.0,
+     "dmg_dealt": 0.95
+    },
+    "ofa": {
+     "dmg_taken": 0.95
+    }
+   },
+   "wiki_name": "Ziggs"
+  },
+  "Zilean": {
+   "attack_cast_time": 0.273556,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1500.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.95
+    },
+    "urf": {
+     "dmg_dealt": 1.05,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Zilean"
+  },
+  "Zoe": {
+   "attack_cast_time": 0.245377,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1600.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "ar": {
+     "hp_lvl": 29.0
+    },
+    "aram": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.95
+    },
+    "ofa": {
+     "dmg_dealt": 1.1,
+     "dmg_taken": 0.9
+    }
+   },
+   "wiki_name": "Zoe"
+  },
+  "Zyra": {
+   "attack_cast_time": 0.214146,
+   "attack_cast_time_src": "wiki_offset",
+   "attack_total_time": null,
+   "attack_total_time_src": null,
+   "missile_speed": 1700.0,
+   "missile_speed_src": "wiki",
+   "mode_modifiers": {
+    "aram": {
+     "ability_haste": -10.0,
+     "dmg_dealt": 0.9,
+     "dmg_taken": 1.05
+    },
+    "nb": {
+     "dmg_dealt": 0.95,
+     "dmg_taken": 1.08
+    }
+   },
+   "wiki_name": "Zyra"
+  }
+ }
+}

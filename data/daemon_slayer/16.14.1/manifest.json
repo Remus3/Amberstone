@@ -1,0 +1,54 @@
+{
+  "engine": "daemon_slayer",
+  "phase": 1.5,
+  "extracted_at": "2026-07-16T08:59:07-0500",
+  "ddragon_version": "16.14.1",
+  "ddragon_champion_count": 173,
+  "ddragon_item_count": 706,
+  "sources": {
+    "ddragon_versions": "https://ddragon.leagueoflegends.com/api/versions.json",
+    "ddragon_champions": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/champion.json",
+    "ddragon_items": "https://ddragon.leagueoflegends.com/cdn/16.14.1/data/en_US/item.json",
+    "lolmath_scenarios_chunk": "https://lolmath.net/_next/static/chunks/370vfc_ounngn.js",
+    "lolmath_scenarios_chunk_bytes": 734373,
+    "lolmath_data_chunk": "https://lolmath.net/_next/static/chunks/0jac7ap0mm4u3.js",
+    "lolmath_data_chunk_bytes": 1572899,
+    "meraki_perlevel": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions/<champion>.json",
+    "meraki_items": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json"
+  },
+  "lolmath_counts": {
+    "cooldowns": 173,
+    "roles": 173,
+    "ratings": 173,
+    "lane_positions": 5,
+    "scenarios": 173,
+    "aram_modifiers": 173,
+    "damage_distribution": 173,
+    "skill_orders": 173
+  },
+  "meraki_perlevel_backfill": {
+    "champions_filled": 169,
+    "fields_filled": 169,
+    "fields_targeted": [
+      "attackdamageperlevel"
+    ]
+  },
+  "arena_augments": {
+    "count": 226,
+    "fetched_at": "2026-07-16T08:59:07-0500",
+    "source": "https://raw.communitydragon.org/latest/cdragon/arena/en_us.json"
+  },
+  "meraki_items": {
+    "count": 320,
+    "fetched_at": "2026-07-16T08:59:07-0500",
+    "source": "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/items.json",
+    "content_patch": "25.15"
+  },
+  "outputs": {
+    "champions": "data\\daemon_slayer\\16.14.1\\champions.json",
+    "items": "data\\daemon_slayer\\16.14.1\\items.json",
+    "scenarios": "data\\daemon_slayer\\16.14.1\\scenarios.json",
+    "arena_augments": "data\\daemon_slayer\\16.14.1\\arena_augments.json",
+    "items_meraki": "data\\daemon_slayer\\16.14.1\\items_meraki.json"
+  }
+}
