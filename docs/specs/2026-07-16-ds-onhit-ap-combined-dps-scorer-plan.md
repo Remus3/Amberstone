@@ -24,7 +24,13 @@
 ## Progress
 
 - Task 1 (compute_onhit_dps): DONE, commit 5033b339, review clean.
-- Task 2 (rank_items_by_onhit): DONE code-complete, commit f6d935ae. Acceptance tests present as `xfail(strict=True)` (Nashor's absent until parts 2-3 land); they FLIP to strict-pass in Task 5.
+- Task 2 (rank_items_by_onhit): DONE, commit f6d935ae. Acceptance tests were `xfail(strict)`; flipped in Task 5.
+- Task 3 (Gwen P credit + apply_passive_damage threading): DONE, commit a1300274, review clean.
+- Task 4 (Kayle E + Kog'Maw W on-hit riders + non-P AA-routing): DONE, commit 2e563fb0, opus review Approved (coefficients verified vs champion_abilities.json).
+- Task 5 (AP/AD axis-coherence gate + flip acceptance): DONE, commit 5dcd9f35, opus review Approved. Nashor's surfaces Gwen#5/Kayle#6/Kog#3 at coherence 1.0/0.3/0.6. Deviation: added `_onhit_ap_axis` fallback because DDragon `_damage_axis` misrates Gwen/Kog'Maw as AD (controller-verified).
+- **CHECKPOINT (5/11): engine core done + reviewed. Remaining T6-11 = wiring + deploy + roster + routing + release. Base HEAD 5dcd9f35.**
+- Task 6 (/rank-onhit server route): the route must ALSO parse + forward `apply_passive_damage` (default True) and `ap_ad_coherence` (default 0.0) - these params were added to `rank_items_by_onhit` in Tasks 3+5.
+- Task 7 (client + dispatcher): `rank_onhit_for` + `onhit` branch must forward `ap_ad_coherence` (resolved per-champ from the Task 9 roster) + `apply_passive_damage`.
 
 ## File Structure
 
