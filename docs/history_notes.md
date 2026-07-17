@@ -257,6 +257,18 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-16 (DS meta-valuation sweep - AP-assassin ds.burst reroute + snowball de-hoist; LEDGER 910; pushed b2c5fc65..7b9658af, CI green)
+
+Interactive session. Prior NEXT-SESSION offered (a) live-validation drain (BLOCKED - no live game) or (b) a headless ROADMAP item; operator picked the DS meta-valuation sweep. mode_key=client throughout. Flow: brainstorming -> spec -> writing-plans -> subagent-driven-development (fresh implementer + task-reviewer per task) + root-cause-fix for A.1. RC-side only (no ENGINE / Share / :8893).
+- **Slice A (d736d026):** live probe found the AP `ability` scorer kit-BLIND (every AP champ leads Liandry's DoT). Root cause: `core/archetype_picks.axis_correct_archetype` collapses AP-kit assassins to `mage` on a DISPROVEN "burst scorer is AD-only" premise (burst.py handles AP amp). Fix: curated `_AP_ASSASSIN_IDS` (Akali/Ekko/Evelynn/Fizz/Katarina/Leblanc/Diana) -> ds.burst. Excluded: Kassadin (scaling), Sylas (bruiser), Vex (ranged mage). Live depth=6: all 7 flip to real AP burst cores (Lich Bane/Void/Rabadon's); controls held (Qiyana=burst, Syndra/Gwen/Kassadin=ability, Pyke=assassin).
+- **2 test repoints** for that stale premise: test_archetype_axis_correction (EXPECTED_FLIPS) + test_per_champion_scoring_coverage (made AXIS-AWARE - AP assassins scored AP-vs-AD, since the pinned "assassin" canonical set is AD-lethality; upgraded from a skip to a real assertion per operator guidance).
+- **Slice A.1 (8ddbb5b2 + a7b44aeb):** the reroute surfaced a pre-existing planner bug - `core/build_planner/scoring._gold_term` hoisted cheap snowball Mejai's(3041)/Dark Seal(1082) to build-plan #1. Fix: skip a curated `_SNOWBALL_ITEM_IDS` in the gold term (de-prioritize, NOT exclude). depth=6 production test + teeth.
+- **Verified:** full `tests/` 11737 passed (3 pre-existing fails = coach-poll thread-timing x2 + ROADMAP doc-size; NOT mine). opus whole-branch review = Ready-to-merge (0 Critical/Important). CI green. My A.1 brief had a WRONG id (Dark Seal=2033=Corrupting Potion); the build subagent CAUGHT it + used the verified 1082.
+
+NEXT: Slice B (on-hit AP / Nashor's for Gwen/Kayle) = its OWN spec (proven NOT fixable by reroute - forcing bruiser gave AD, still no Nashor's; needs a NEW on-hit-AP DPS scorer term). Do NOT redo: Slice A + A.1 shipped/pushed/CI-green. Patch-refresh note: `_AP_ASSASSIN_IDS` + `_SNOWBALL_ITEM_IDS` are hand-pinned (drift on roster/item patches). Overlay RENDER eyeball of the new AP-assassin builds = live-gated tail.
+
+---
+
 # 2026-07-16 (DS C6 tenacity counter-hint; LEDGER 909; commits 51e6b6fc + e9487a78)
 
 Interactive session. Task from the prior NEXT-SESSION note: light up the C6 tenacity counter-hint (the C2 follow-up). mode_key=client, no live game. Tier-1 RC-side (no engine/Share/ENGINE bump). Followed brainstorming -> spec -> TDD.
