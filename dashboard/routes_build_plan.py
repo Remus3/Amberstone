@@ -308,6 +308,11 @@ def _serve_build_plan(h, payload) -> None:
         enemy_items = _coerce_enemy_items(payload.get("enemy_items"))
         # C2 antiheal (2026-07-16): flat ally-owned item ids for the de-dup.
         ally_items = _coerce_ally_items(payload.get("ally_items"))
+        # C3 fed (2026-07-17): optional per-enemy scoreboard rows + levels,
+        # index-aligned with ``enemies`` - the fed-estimator inputs. Absent /
+        # malformed -> None, so a payload without them can never fire the chip.
+        enemy_scores = _coerce_enemy_scores(payload.get("enemy_scores"))
+        enemy_levels = _coerce_enemy_levels(payload.get("enemy_levels"))
         try:
             clock_s = float(payload.get("clock_s") or 0.0)
         except (TypeError, ValueError):
@@ -337,6 +342,7 @@ def _serve_build_plan(h, payload) -> None:
         # (heal_threat curation) + ally-owned antiheal for the de-dup. Populated
         # ONLY on the hint profile - NEVER the loop.tick enemy_profile above -
         # so the DS-scored live[]/meta[] stay byte-identical (hint-only).
+        from core.build_planner.fed_threat import assess_fed_threat
         from core.build_planner.situational import AllyState
         from core.cc_threat import compute_cc_score
         from core.heal_threat import ally_has_antiheal, count_heal_sources
@@ -347,13 +353,21 @@ def _serve_build_plan(h, payload) -> None:
         # the loop.tick enemy_profile above - so the DS-scored live[]/meta[]
         # stay byte-identical (hint-only, mirrors C2).
         cc_score = compute_cc_score(enemies)
+        # C3 fed (2026-07-17): combat lead AND estimated-economy lead over ME
+        # (the payload's own items + level are the baseline). Hint-profile
+        # only, same byte-identical discipline as C2/C6.
+        fed_info = assess_fed_threat(enemies, enemy_items, enemy_scores,
+                                     enemy_levels, owned, level)
         ally_state = AllyState(has_antiheal=ally_has_antiheal(ally_items))
         hint_profile = (
             _resolve_enemy_profile(enemies, level, enemy_items=enemy_items,
-                                   heal_sources=heal_sources, cc_score=cc_score)
-            if (enemy_items or heal_sources or cc_score) else enemy_profile
+                                   heal_sources=heal_sources, cc_score=cc_score,
+                                   fed=fed_info is not None)
+            if (enemy_items or heal_sources or cc_score or fed_info)
+            else enemy_profile
         )
-        counter_hints = _resolve_counter_hints(hint_profile, owned, ally_state)
+        counter_hints = _enrich_fed_hint(
+            _resolve_counter_hints(hint_profile, owned, ally_state), fed_info)
 
         from core.build_planner.replan import ItemOverrideStore, ReplanLoop
 
@@ -459,8 +473,62 @@ def _coerce_ally_items(raw):
     return out or None
 
 
+def _coerce_enemy_scores(raw):
+    """Optional per-enemy scoreboard rows (index-aligned with ``enemies``)
+    for the C3 fed estimator, or None. Outer-shape check only - the deep
+    kills/deaths int coercion lives in fed_threat (single source). A non-dict
+    row reads as zeros there, so junk can never fire the chip."""
+    if not isinstance(raw, list):
+        return None
+    return [row if isinstance(row, dict) else {} for row in raw]
+
+
+def _coerce_enemy_levels(raw):
+    """Optional per-enemy levels (index-aligned with ``enemies``) for the C3
+    fed estimator, or None. Fail-soft: a junk entry reads 0 (an honest
+    undercount - a missing level is never guessed)."""
+    if not isinstance(raw, list):
+        return None
+    out = []
+    for lv in raw:
+        try:
+            out.append(int(lv))
+        except (TypeError, ValueError):
+            out.append(0)
+    return out
+
+
+def _enrich_fed_hint(hints: list, fed_info) -> list:
+    """Direct the projected C3 fed hint at the named fed threat's damage axis.
+
+    Rewrites ONLY the criterion=="fed" dict's detail + suggest_class (armor vs
+    a fed AD threat, mr vs a fed AP threat). label / criterion / satisfied /
+    severity stay the locked situational output, and an unknown axis leaves
+    the generic entry untouched (under-inclusion never mis-directs).
+    Operating on the projected dicts keeps situational.py byte-identical
+    (hint-only). Fail-soft: any error returns the hints unchanged."""
+    try:
+        if not fed_info or not isinstance(hints, list):
+            return hints
+        axis = fed_info.get("axis") or ""
+        if axis not in ("ad", "ap"):
+            return hints
+        direction = "armor" if axis == "ad" else "mr"
+        for hint in hints:
+            if isinstance(hint, dict) and hint.get("criterion") == "fed":
+                hint["detail"] = (
+                    f"fed {fed_info.get('champion', '')} "
+                    f"{fed_info.get('kills', 0)}/{fed_info.get('deaths', 0)}"
+                    f" - build {direction}")
+                hint["suggest_class"] = direction
+        return hints
+    except Exception as exc:  # noqa: BLE001 - advisory only, never a raise
+        log.debug("build-plan fed enrich: %s", exc)
+        return hints
+
+
 def _resolve_enemy_profile(enemies: list, level: int, enemy_items=None,
-                           heal_sources=0, cc_score=0.0):
+                           heal_sources=0, cc_score=0.0, fed=False):
     """Best-effort EnemyProfile via the module's IMPURE builder.
 
     Routes the live enemy compute THROUGH core.build_planner.situational
@@ -468,17 +536,18 @@ def _resolve_enemy_profile(enemies: list, level: int, enemy_items=None,
     route never holds the needle. ``enemy_items`` (per-enemy item-id lists,
     index-aligned with ``enemies``) is OPTIONAL and enriches ONLY the
     counter-hint profile (enemy_pen -> C4, kill-target armor/MR -> C5);
-    ``heal_sources`` (C2 antiheal) and ``cc_score`` (C6 tenacity) are likewise
-    hint-only caller inputs. NONE of these is passed to the profile that feeds
-    loop.tick, so the DS plan stays invariant. Returns None on any failure
-    (DPS-only plan).
+    ``heal_sources`` (C2 antiheal), ``cc_score`` (C6 tenacity) and ``fed``
+    (C3 fed) are likewise hint-only caller inputs. NONE of these is passed to
+    the profile that feeds loop.tick, so the DS plan stays invariant. Returns
+    None on any failure (DPS-only plan).
     """
     if not enemies:
         return None
     try:
         from core.build_planner.situational import build_enemy_profile
         return build_enemy_profile(enemies, enemy_items or None, level=level,
-                                   heal_sources=heal_sources, cc_score=cc_score)
+                                   heal_sources=heal_sources, cc_score=cc_score,
+                                   fed=fed)
     except Exception as exc:  # noqa: BLE001 - no profile -> DPS-only plan
         log.debug("build-plan enemy profile: %s", exc)
         return None
