@@ -329,6 +329,20 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-17 (DS meta-valuation sweep - Ezreal GAP; read-only, NO engine change)
+
+Continues the standing DS per-champ meta-valuation sweep (Kai'Sa/Jhin/Varus REFUTE + Miss Fortune GAP now closed; methodology `feedback_ds_sweep_meta_valuation_research`). Candidate: Ezreal. mode_key=client, no live game. Engine-probe run inline (DS :8893); meta-research via a subagent (completed) + an inline web cross-check - both CONVERGED on GAP. Tier-0 docs-only, no .py touched.
+
+**Ezreal = GAP - the sweep's SECOND finding and a COMPOUND one (pool exclusion + missing AD-caster archetype model), deeper than the MF fight_length gap. Spec'd for a future Tier-2 build (ROADMAP RM-36).** Memory `project_ds_sweep_ezreal_adcaster` (RESOLVED-GAP).
+- ROUTING (`core/archetype_picks.py`): Ezreal tags [Marksman,Mage], kit_damage_axis="ad" (no axis correction), not in the AP-assassin/on-hit-AP rosters -> `default_for_champion` = ('carry','mage'), so his DEFAULT coach route is carry / ds.dps (SUSTAINED AUTO-ATTACK DPS).
+- MECHANISM (probe, tanky target): production `rank_for_primary_archetype('Ezreal','carry')` leads an OFF-META crit/on-hit AUTO build he never buys - BotRK 3153 #1, Runaan 3085 #2, Essence Reaver 3508 #3, Kraken 6672 #4, IE 3031 #7. His AD-caster core is absent/buried: Trinity Force 3078 + Spear of Shojin 3161 + Muramana + Iceborn + Divine FILTERED from the SR carry pool (whitelist probe); Manamune 3004 in-pool but #23. The `mage`/ds.ability alt is worse - AP-axis noise (Liandry #1, Blackfire #2, Rabadon #6, low deltas).
+- META (subagent + inline web, patch 16.14 SR ADC): Ezreal's DOMINANT build (~90% play) is the AD-CASTER SPELL-WEAVER path - Trinity Force first (~247k games) -> Manamune/Muramana -> Spear of Shojin -> Serylda's, Lethal Tempo. His Q (Mystic Shot, 160% bonus AD + 50% AP) applies on-hit and carries Sheen (Trinity/ER) + Muramana procs; Q + procs ~50-65% of his damage, autos only ~25-35%. He buys ZERO crit/AS carry items (the AS is from his passive Rising Spell Force). Sources kept out of repo.
+- VERDICT (why GAP): the engine serves a crit-auto build Ezreal never buys and CANNOT recommend his #1 first item (Trinity is pool-filtered); ds.dps optimizes the WRONG damage source (autos, not his Q). Compound: (1) POOL - Trinity + Shojin filtered; (2) ARCHETYPE - no scorer models an AD-caster (ds.dps=auto wrong-source; ds.ability=AP-axis, ignores AD abilities + Sheen/Muramana; ds.onhit=partial but mis-ranks to Kraken/BotRK). Full spec (pool add + AD-caster ability-DPS model) in the memory + RM-36.
+
+**NEXT SESSION: continue the sweep with Lucian** (auto-caster - does his double-tap passive + Q/W ability-weave fit sustained-auto ds.dps, or is he ANOTHER AD-caster gap like Ezreal?), OR generalize the Ezreal AD-caster finding across spell-weaver ADCs (Corki, etc.). Run the read-only GAP-or-REFUTE pass FIRST. FENCED do-NOT-re-pitch: AD-assassin Zed/Talon/Qiyana pure-lethality (DATA-REFUTED, RM-34 / R114-R115 / LEDGER 889). CLOSED: Kai'Sa/Jhin/Varus (REFUTE) + Miss Fortune (GAP, RM-35) + Ezreal (GAP, RM-36) - do NOT re-sweep.
+
+---
+
 # 2026-07-17 (mdclean headless run C1-C8 COMPLETE - gemini AHK loop; LEDGER 912; commits 78c3c018..bbda1e90)
 
 Headless gemini-directed docs-cleanup loop (spec `docs/specs/2026-07-16-md-cleanup-headless-directive.md`). 8 cycles, all gemini audits CLEAN, gemini spend $0.44/$25 ceiling, STOP = max_cycles 8 reached (03:49). Tier-0 docs-only throughout (no suite / no restart / no verifier per spec rule; docs-only pushes skip CI by design - MINUTE SAVER paths-ignore, baseline green).
