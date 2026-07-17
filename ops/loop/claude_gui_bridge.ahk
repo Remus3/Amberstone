@@ -4,8 +4,13 @@ SetTitleMatchMode 2
 ; gemini-headless-upgrade GUI bridge (the HANDS). The ONLY GUI actor.
 ; Polls control\gemini.ready; types its lines into the TARGET window; acks typed.flag.
 ; Target is FILE-DRIVEN (config not code), so this script is never edited between runs:
-;   control\ahk_mode.txt  = "dry" (type into Notepad RC-LOOP-DRYRUN) or "live"
-;   control\target_pid.txt = PID of the dedicated Claude window (live mode)
+;   control\ahk_mode.txt    = "dry" (type into Notepad RC-LOOP-DRYRUN) or "live"
+;   control\target_hwnd.txt = HWND of the dedicated Claude window. ONE claude.exe
+;                             process owns MULTIPLE project windows (Image/RC/Claude,
+;                             2026-07-16), so pid alone is AMBIGUOUS across them -
+;                             the hwnd pins the exact window (LW a703ac1 parity).
+;                             target_pid.txt is informational only.
+; Live mode with a missing/empty target_hwnd.txt ABORTS the bridge outright.
 ; Exits when control\STOP appears.
 
 CTL := "C:\Riot Commander\ops\loop\control"
@@ -13,7 +18,7 @@ READY := CTL "\gemini.ready"
 TYPED := CTL "\typed.flag"
 STOPF := CTL "\STOP"
 MODEF := CTL "\ahk_mode.txt"
-PIDF := CTL "\target_pid.txt"
+HWNDF := CTL "\target_hwnd.txt"
 DRY_TITLE := "RC-LOOP-DRYRUN"
 LINE_PAUSE := 1500
 
@@ -23,15 +28,19 @@ LogMsg(s) {
 }
 
 Target() {
-    global MODEF, PIDF, DRY_TITLE
+    global MODEF, HWNDF, DRY_TITLE
     mode := FileExist(MODEF) ? Trim(FileRead(MODEF)) : "live"
     if (mode = "dry")
         return DRY_TITLE
-    pid := FileExist(PIDF) ? Trim(FileRead(PIDF)) : ""
-    ; live mode is PID-bound ONLY. The old title fallback ("Claude", substring match)
-    ; could type into ANOTHER project's Claude window (Sibling-A runs a sibling
-    ; loop on this desktop, 2026-07-16). No pid file = no target = no typing.
-    return pid ? "ahk_pid " pid : ""
+    hwnd := FileExist(HWNDF) ? Trim(FileRead(HWNDF)) : ""
+    ; live mode is HWND-bound ONLY. Title fallback could type into ANOTHER project's
+    ; Claude window; pid fallback is ambiguous because ONE claude.exe process owns
+    ; ALL project windows (Image/RC/Claude, 2026-07-16). No hwnd = ABORT, no typing.
+    if (hwnd = "") {
+        LogMsg("ABORT: live mode with no target_hwnd.txt (hwnd-only policy, no title/pid fallback)")
+        ExitApp
+    }
+    return "ahk_id " hwnd
 }
 
 LogMsg("ahk bridge start")
