@@ -1,6 +1,19 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-17 (RM-02 live-plumbing session relocated the mdclean C1-C8 block LEDGER 912 to `docs/history_notes.md`; newest 3 kept below).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-17 (Miss Fortune DS-sweep GAP session relocated the headless-orchestrated round LEDGER 914 to `docs/history_notes.md`; newest 3 = Miss Fortune + Varus + RM-02).
+
+---
+
+# 2026-07-17 (DS meta-valuation sweep - Miss Fortune GAP; read-only, NO engine change)
+
+Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin + Varus closed REFUTE the prior two sessions; methodology `feedback_ds_sweep_meta_valuation_research`). Candidate: Miss Fortune. mode_key=client, no live game. Meta-research + engine-probe reconciled in the main thread (both subagents 529-blocked mid-run; engine probe run inline against DS :8893, meta-research inline via web). Tier-0 docs-only, no .py touched.
+
+**Miss Fortune = GAP - the sweep's FIRST non-REFUTE. Spec'd for a future Tier-2 build (ROADMAP RM-35); do NOT ship a bare `_CHAMPION_FIGHT_LENGTH` entry.** Memory `project_ds_sweep_missfortune_lethality_crit` (RESOLVED-GAP).
+- MECHANISM (probe, engine 1.216.0 / patch 16.14.1, tanky target armor 100/mr 60/hp 2500/bonus 1200): MF unmapped in `core/ds_champion_fight_length.py`, so her carry route pays ZERO burst term. Production `rank_for_primary_archetype('MissFortune','carry')` (scorer=dps) leads OFF-META on-hit - BotRK 3153 #1, Runaan 3085 #2, Kraken 6672 #3, IE 3031 #5 (crit mid-pack) - and BURIES her core: Collector 6676 #13, Hubris 6697 ABSENT top-20, Youmuu/Serylda ABSENT. Counterfactual `rank_for('MissFortune', fight_length=0.5)` lifts the core Jhin-style (Collector #2, IE #7, Hubris #13, Serylda #14, Youmuu #20). VALUATION gap, not a pool/data gap.
+- META (research, patch 16.14 SR ADC, Emerald+): MF's DOMINANT build is lethality-crit BURST - Hubris -> The Collector -> Infinity Edge -> Lord Dominik's, First Strike rune, R-keyed (~49.6-53% WR, ~10.3% pick, A-tier). No on-hit build in her meta (Love Tap is crit-scaling; no kit on-hit steroid). Opposite of Varus (whose engine on-hit lead MATCHED his verified primary -> REFUTE); here the engine top-3 is her OFF-meta build and her #1-build first item (Hubris) is absent -> GAP, the Jhin failure mode. Sources kept out of repo per methodology.
+- KEY SPEC CONSTRAINT: the fix is NOT a bare allow-map entry. Raw `fight_length=0.5` ALSO injects severe off-class AP artifacts (Lich Bane #4, Rabadon's #8 dps=0, Gunblade, Mejai's). Needs the L3 crit-burst-table treatment (`docs/specs/2026-07-13-ds-crit-burst-fix.md`) + an AP off-class exclusion so her AD-only lethality-crit core surfaces clean. Full spec in the memory + RM-35.
+
+**NEXT SESSION: continue the sweep with Ezreal** (AD-caster: does the sustained-auto carry route fit a spell-scaling ADC, or should he route ability-DPS?). Run the read-only GAP-or-REFUTE pass FIRST. FENCED do-NOT-re-pitch: AD-assassin Zed/Talon/Qiyana pure-lethality (DATA-REFUTED, ROADMAP RM-34 / R114-R115 / LEDGER 889). CLOSED: Kai'Sa + Jhin + Varus (REFUTE) + Miss Fortune (GAP, RM-35 spec'd) - do NOT re-sweep.
 
 ---
 
@@ -33,19 +46,3 @@ OWED (do-not-flip-blind): the operator eyeballs the antiheal/tenacity/fed/roster
 - **Jhin lethality-crit (the documented pilot gap) = REFUTE, comprehensively CLOSED.** fight_length=0.5 (ds_champion_fight_length.py) + L1 coherence_rerank + L3 crit-burst table + **L4 squishy-carry target swap (daemon_slayer_client.py:1533, default apply_squishy_burst_target=True)** ALL shipped + live. Verified: `rank_for_primary_archetype('Jhin','carry',L16)` surfaces the lethality core - Collector 6676 #2, IE 3031 #7, Youmuu's 3142 #8, Serylda's 6694 #9, Hubris 6697 #10 (vs raw no-fight_length: Collector #11, Youmuu's #31). GOTCHA: tanky==squishy identical rank is INTENDED L4 behavior (mapped burst carries always eval vs squishy_carry_target), NOT a bug - read the code before logging a "target-insensitivity" thread. Memory `project_ds_sweep_jhin_lethality`. Two MINOR cosmetic threads for a future pass: (1) ds_champion_fight_length.py docstring lines ~89-95 say "L4 out of scope / lethality buried at tanky" - STALE, L4 shipped; (2) client effective_score reads 0 (server reorder is correct; see reference_ds_client_effective_score_parse).
 
 **NEXT SESSION (operator directive 2026-07-17): continue the DS meta-valuation sweep with a FRESH champion candidate** (Kai'Sa + Jhin now closed). Candidates: Varus (3 distinct builds lethality-poke / on-hit / crit - rich valuation question), or an AD-assassin / lethality carry not yet swept. Run the read-only research pass FIRST (GAP or REFUTE, per feedback_ds_sweep_meta_valuation_research) before any Tier-2 build; a REFUTE is a valid outcome.
-
----
-
-# 2026-07-17 (headless-upgrade orchestrated round - 6 verifier-gated slices; LEDGER 914; 1e0ecfa6..255e119d)
-
-Full-authority headless run (operator away, model switched to opus-4-8 mid-run via /model - a config change, not an interrupt). mode_key=client, no live game. One merger + 6 worktree slice agents on disjoint file sets, each gated by a read-only verifier CONFIRM, then truth_gate PROCEED (175 pytest/0 fail on the merged tree) before ONE batch push. No ENGINE bump; RC restarted clean (new pid, alive, last_reload_ok, dashboard 200); web slices auto-served (ADR-008). CI run 29572251333 (in_progress at wrap - verify green).
-- **S1 DS C3 fed counter-hint (HINT-ONLY, `1e3cab6c`):** new `core/build_planner/fed_threat.py` lights the dead `fed` criterion; situational.py byte-identical; ranked build unchanged; 104/0 + 27. Chip dark until a JS slice POSTs enemy_scores/enemy_levels.
-- **S2 overlay drag fix (`255e119d`):** all 3 symptoms root-caused in overlay_layout.js (_effectiveXY origin + window pointer capture + handle-only border hit-test); 15/15 + 6/6 + rc-shell 309/309.
-- **S3 enemy-spell cd timer (`905982de`):** upgraded-Smite displayNames + cd=0 sticky "USED" chip; node 11/0 + pytest 28/0.
-- **S6 Lane E fuse_reads shadow-first (`1e0ecfa6`):** per-tick fusion record to data/fusion_shadow.jsonl at read_tiered; served output byte-identical; 49/0. Advances RM-01.
-- **S7 arena/tft mounts (`e880994b`):** S4 read-only DISPROVED the panelset hypothesis (mounts are data-gated); split the E6 poller gate so coaching mounts feed arena/tft; 8 + 11 subtests.
-- **S8 cost lever-4 (`243967e8`):** suppress GET /api/state debug trace (58% of HTTP log volume); S5 sweep found the other 6 levers CLEAN.
-
-OWED live-verify (Electron overlay agent-blind + no live game): S1 fed chip render, S2 drag per-panel + the empty-backing-press-inert behavior call, S3 upgraded-Smite countdown, S7 arena/tft mounts in-game. Do NOT redo: S1-S9 (all pushed + verifier-CONFIRMED + truth_gate PROCEED). Manifest run 2026-07-17-01.
-
-Round 2 (LEDGER 915, `566e472b`): S9 shipped the C3 fed-chip JS POST (active_match.js sends enemy_scores/enemy_levels fail-soft) - completes the S1 vertical. **KEY FINDING (ground-truth-verified):** the browser `liveclient_summary()` (dashboard/_liveclient.py:68) emits derived enemy slices but NO raw `allPlayers` key, and active_match.js:655 guards the counter-hint roster on `lc.allPlayers` - so the WHOLE counter-hint program (C2 antiheal / C6 tenacity / C3 fed / R102/R103 roster) is DARK in every live game and lights only under ui_mock. NOT fixed this run (activates 4+ live surfaces blind; operator away). NEXT = the server-side plumbing fix (add a lean enemy roster with scores+levels+item ids to the browser summary) is now the TOP RM-02 live-gated blocker; land it WITH a real-game eyeball. Also NEXT: accrue real-game fusion_shadow toward the Lane E OCR flip.
