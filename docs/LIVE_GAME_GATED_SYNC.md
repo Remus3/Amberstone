@@ -4,6 +4,8 @@
 
 **2026-07-13 R103 ADDENDUM (+1 open row):** (REAL-SR / ARAM-MAYHEM) R103 enemy-items C4/C5 counter-hint EYEBALL - `/api/build-plan` now computes the `hp_vs_pen` (C4) + `pen_type` (C5) counter-hint chips from LIVE enemy items (frontend `_extractBpEnemies` sends per-enemy itemIDs; backend enriches a hints-only profile, DS plan byte-identical). Code-side + integrated tests green (pytest 175 / node 26, feature head `5334bbcf`); the only thing left is the live pixel proof - confirm the C4/C5 chips actually render on the overlay COUNTER row in a real game where enemies carry penetration / tank items (e.g. an enemy with Lord Dominik's + Serylda's -> HP chip, a tank kill-target -> ARMOR PEN / MAGIC PEN chip). SOURCE: LEDGER 878.
 
+**2026-07-16 SLICE B ADDENDUM (+1 open row):** (REAL-SR / practice) DS Slice B on-hit AP scorer OVERLAY RENDER eyeball - Gwen / Kayle / Kog'Maw now route to the ds.onhit scorer (LEDGER 911, ENGINE 1.216.0) and the live `/api/build-plan` surfaces Nashor's Tooth in their build order. Backend + build-plan PROVEN (live: Gwen/Kayle/Kog'Maw scorer=onhit + Nashor's present; Syndra=ability / Akali=burst controls held). The only thing left is the live pixel proof - confirm the new onhit build order actually renders on the in-game overlay build panel in a real Gwen / Kayle / Kog'Maw game (Electron overlay, agent-blind). SOURCE: LEDGER 911.
+
 PURPOSE. One consolidated list of every RC/DS item that CANNOT be finished headless because it
 needs one of: a real live LCU session (lobby/champ-select), live game data on `:2999`, rendered
 in-game pixels (overlay/vision/OCR), a live-flip EYEBALL of a DS seam re-rank vs a real game,
