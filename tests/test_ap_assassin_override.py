@@ -49,8 +49,8 @@ def test_ap_assassin_get_archetype_for_primary(champ, monkeypatch):
     ("Syndra", "mage"),        # ranged sustained mage - stays mage
     ("Cassiopeia", "mage"),    # DoT mage - stays mage
     ("Pyke", "assassin"),      # AD kit via enchanter->assassin correction - unchanged
-    ("Gwen", "mage"),          # on-hit AP (Slice B owns it) - unchanged
-    ("Kayle", "mage"),         # on-hit AP - unchanged
+    ("Gwen", "onhit"),         # on-hit AP - Slice B Task 10 now owns it (ds.onhit)
+    ("Kayle", "onhit"),        # on-hit AP - Slice B Task 10 now owns it (ds.onhit)
     ("Kassadin", "mage"),      # EXCLUDED: scaling mana-assassin, default already Rabadon's-led
 ])
 def test_controls_unchanged(champ, expected, monkeypatch):
