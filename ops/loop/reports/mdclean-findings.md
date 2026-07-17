@@ -45,6 +45,26 @@ markers alone (sha-level unverified) permit RELOCATE-not-delete but never hard P
   punch-list survives as ROADMAP RM-05 + the verbatim archive copy.
 - Slice-manifest / TaskCreate phases skipped per the directive's Tier-0 single-thread override.
 
+## C3 cycle notes (2026-07-17, BACKLOG.md executed)
+- 30 blocks (37,869 bytes) relocated verbatim to docs/history_notes.md "BACKLOG relocations -
+  2026-07-17 (mdclean C3)" (U+2705 transliterated to [SHIPPED] for ASCII; new BACKLOG.md is now
+  fully 7-bit ASCII). Open tails kept in place as stubs (boot-utility flip, Terminus resists,
+  debounce flip, WPA don't-reopen, GPI Player-Profile tail, rubric CC-axis tail, OBS/CV anchors).
+- UNVERIFIED-SKIP (new): the C1 inventory attributed the cooldown_watch.js + ban_suggest_toggle.js
+  deletions to a "LEDGER 765 orphan sweep" - LEDGER 765 head reads as the champ-select QA rework,
+  not an orphan sweep; attribution dropped. STALE-PATH tags in BACKLOG cite the live absence probe
+  (Test-Path 0, 2026-07-17) instead: web/js/panels/cooldown_watch.js (route
+  dashboard/routes_cooldown_watch.py still exists), web/js/panels/ban_suggest_toggle.js,
+  docs/DS_V2_PLAN.md (now docs/_archive/DS_V2_PLAN.md).
+- L51/L52/L86-88 handled per the C1 relocate-only rule (verbatim relocation, no hard prune; item
+  149./122. anchors confirmed present in docs/history_notes.md).
+- Non-resolving SHA 917cbb89 (HZ-B --static): pruned on the LEDGER 905 anchor instead ("--static
+  regen in production" + shield-lerp "BACKLOG #7 re-verified" both read directly from entry 905).
+- LEDGER 888 (Stormrazor NOT-WARRANTED), 826, 827, 753-757, 905, 506, 507, 511, 885, 874 all
+  confirmed present by entry-header grep; SHAs 42780b3d + ae579ef0 resolve in git.
+- docs/ORCHESTRATION_PLAN.md: still no mdclean row (grep 0 hits) - no sync owed.
+- Slice-manifest / TaskCreate phases skipped per the directive's Tier-0 single-thread override.
+
 ## docs/ORCHESTRATION_PLAN.md (sha-level only; in-doc DONE markers present -> relocate-only OK)
 - L105-L132 | DSP swarm round | 0c2b88e5 not in local git (LEDGER 876/889 do anchor the lane)
 - L133-L157 | 2026-06-17 ROUND 2 | faeaeb4a not in local git
