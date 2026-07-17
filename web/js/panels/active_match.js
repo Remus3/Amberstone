@@ -250,6 +250,42 @@ export function _extractBpAllyItems(allPlayers, myTeam) {
   return out;
 }
 
+// C3 fed (2026-07-17): coerce a scoreboard number to a non-negative int; junk ->
+// 0 (mirrors the backend fed_threat._as_int fail-soft). Module-local + pure.
+function _bpInt(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : 0;
+}
+
+// C3 fed (2026-07-17): per-enemy scoreboard rows + levels from the live
+// allPlayers roster, index-aligned with _extractBpEnemies' names because it
+// applies the IDENTICAL enemy filter (skip my-team, skip nameless). So
+// scores[i] / levels[i] line up with enemies[i] server-side, where
+// fed_threat.assess_fed_threat reads each row by index (kills - deaths gate +
+// per-enemy level in the gold estimate). Each score = {kills,deaths,assists}
+// ints (assists carried for scoreboard-row fidelity; the fed gate uses only
+// kills - deaths); each level an int. Pure + exported for unit tests. Fail-soft:
+// a non-array roster -> empty aligned lists (so the POST omits the fields).
+export function _extractBpEnemyStats(allPlayers, myTeam) {
+  const scores = [];
+  const levels = [];
+  if (!Array.isArray(allPlayers)) return { scores, levels };
+  for (const pl of allPlayers) {
+    if (!pl || typeof pl !== "object") continue;
+    if (myTeam && pl.team === myTeam) continue;
+    const nm = pl.championName || pl.rawChampionName || "";
+    if (!nm) continue; // keep index-aligned with _extractBpEnemies - skip nameless
+    const sc = (pl.scores && typeof pl.scores === "object") ? pl.scores : {};
+    scores.push({
+      kills:   _bpInt(sc.kills),
+      deaths:  _bpInt(sc.deaths),
+      assists: _bpInt(sc.assists),
+    });
+    levels.push(_bpInt(pl.level));
+  }
+  return { scores, levels };
+}
+
 // R103: stable fingerprint of the enemy item-id lists so an enemy PURCHASE (a
 // new id appended to any inner list) changes the build-plan cache key and re-
 // fires the fetch. Pure + exported. Fail-soft on non-array input.
@@ -259,20 +295,66 @@ export function _bpEnemyItemsKey(enemyItems) {
     .join("_");
 }
 
+// C3 fed (2026-07-17): fingerprint each enemy's net-KDA + level so an enemy
+// SNOWBALLING (a kill / death / level tick, even with no new item) changes the
+// build-plan cache key and re-fires the fetch - the exact parity of _bpEnemyItemsKey
+// for enemy purchases, so the fed chip can light promptly when a lead crosses
+// the cut. Pure + exported. Fail-soft on non-array input.
+export function _bpEnemyStatsKey(enemyScores, enemyLevels) {
+  const s = Array.isArray(enemyScores) ? enemyScores : [];
+  const l = Array.isArray(enemyLevels) ? enemyLevels : [];
+  return s.map((r, i) => {
+    const k = _bpInt(r && r.kills);
+    const d = _bpInt(r && r.deaths);
+    return `${k}-${d}-${_bpInt(l[i])}`;
+  }).join(".");
+}
+
+// Build the /api/build-plan POST body. Pure + exported so the byte-level shape
+// is unit-testable (the fetch caller below just JSON.stringify's it). The C3
+// enemy_scores / enemy_levels keys are added ONLY when a live scoreboard is
+// present (non-empty enemyScores); in champ-select / no live game the body is
+// byte-identical to the pre-C3 body, so the route reads their absence as None
+// and the fed chip stays dark (no error). enemy_scores is a list of
+// {kills,deaths,assists} rows (the _coerce_enemy_scores dict-list shape);
+// enemy_levels a list of ints (the _coerce_enemy_levels shape); both are
+// index-aligned with enemies.
+export function _buildPlanPostBody(champion, mode, level, items, enemies, enemyItems, allyItems, enemyScores, enemyLevels) {
+  const body = {
+    champion: champion,
+    mode:     mode,
+    level:    level | 0,
+    items:    items || [],
+    enemies:  enemies || [],
+    // R103: index-aligned per-enemy owned item ids for counter-build hints.
+    enemy_items: enemyItems || [],
+    // C2 (2026-07-16): flat ally-owned item ids for the antiheal de-dup.
+    ally_items: allyItems || [],
+  };
+  if (Array.isArray(enemyScores) && enemyScores.length) {
+    body.enemy_scores = enemyScores;
+    body.enemy_levels = Array.isArray(enemyLevels) ? enemyLevels : [];
+  }
+  return body;
+}
+
 // Schedule a background /api/build-plan refresh keyed on champion/mode/level/
 // items (same fingerprint as the DS rerank). Non-blocking: returns whatever
 // state map is already cached; the next render picks up fresh data once the
 // POST completes. Fail-soft - any error leaves the prior map intact.
-function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItems, allyItems) {
+function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItems, allyItems, enemyScores, enemyLevels) {
   if (!champion || !mode) return _BUILD_PLAN.stateById;
   // R102: fold the live enemy roster into the fingerprint so a champion swap /
   // late-pick re-fires the plan - counter_hints are enemy-profile derived.
   // R103: also fold each enemy's owned items so an enemy PURCHASE re-fires the
   // plan - situational counter-build hints (C4/C5) depend on live enemy items.
+  // C3: also fold each enemy's net-KDA + level so an enemy snowballing re-fires
+  // the plan - the fed counter-hint depends on the live scoreboard lead.
   const key = _dsRerankKey(champion, mode, level, items)
             + `|e:${(enemies || []).join(",")}`
             + `|ei:${_bpEnemyItemsKey(enemyItems)}`
-            + `|ai:${(allyItems || []).join(",")}`;
+            + `|ai:${(allyItems || []).join(",")}`
+            + `|es:${_bpEnemyStatsKey(enemyScores, enemyLevels)}`;
   const now = Date.now();
   const stale = (key !== _BUILD_PLAN.lastKey)
               || ((now - _BUILD_PLAN.lastFired) > _BUILD_PLAN_COOLDOWN_MS);
@@ -283,17 +365,9 @@ function _maybeRefreshBuildPlan(champion, mode, level, items, enemies, enemyItem
   fetch("/api/build-plan", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      champion: champion,
-      mode:     mode,
-      level:    level | 0,
-      items:    items || [],
-      enemies:  enemies || [],
-      // R103: index-aligned per-enemy owned item ids for counter-build hints.
-      enemy_items: enemyItems || [],
-      // C2 (2026-07-16): flat ally-owned item ids for the antiheal de-dup.
-      ally_items: allyItems || [],
-    }),
+    body: JSON.stringify(_buildPlanPostBody(
+      champion, mode, level, items, enemies, enemyItems, allyItems,
+      enemyScores, enemyLevels)),
   }).then((r) => r.ok ? r.json() : null)
     .then((j) => {
       _BUILD_PLAN.inFlight = false;
@@ -662,9 +736,15 @@ export function _renderAmBuildBody(build, p, ctx, lc, ownedIds) {
   const _bpAllyItems = _hasRoster
     ? _extractBpAllyItems(lc.allPlayers, _bpMyTeam)
     : [];
+  // C3 fed (2026-07-17): per-enemy scoreboard rows + levels, index-aligned with
+  // _bpRoster.names (same enemy filter). Empty off a roster -> the POST omits
+  // the fields (byte-identical) and the fed chip stays dark.
+  const _bpStats = _hasRoster
+    ? _extractBpEnemyStats(lc.allPlayers, _bpMyTeam)
+    : { scores: [], levels: [] };
   const planStates = _maybeRefreshBuildPlan(
     champion, mode, level, ownedIds, _bpRoster.names, _bpRoster.items,
-    _bpAllyItems,
+    _bpAllyItems, _bpStats.scores, _bpStats.levels,
   ) || {};
   // WP-B2 Row2 META feed - the static standard ordered build.
   const metaOrder  = _maybeRefreshBuildOrder(champion, mode, level, ownedIds) || [];
