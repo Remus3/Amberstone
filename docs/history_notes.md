@@ -1,5 +1,19 @@
 # RC session history archive
 
+## Relocated 2026-07-17 (Lucian DS-sweep GAP - keep last 3: Lucian + Ezreal + Miss Fortune)
+
+# 2026-07-17 (DS meta-valuation sweep - Varus REFUTE; read-only, NO engine change)
+
+Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin closed last session; methodology `feedback_ds_sweep_meta_valuation_research`). Candidate: Varus. mode_key=client, no live game. Subagent-first: parallel meta-research agent + read-only engine-probe agent; main thread reconciled the split verdict. No .py touched (Tier-0 docs-only).
+
+**Varus = REFUTE. Do NOT add Varus to `_CHAMPION_FIGHT_LENGTH`; do NOT re-research.** The two agents SPLIT and the reconciliation IS the finding:
+- MECHANISM (probe): Varus IS Jhin-shaped - unmapped in `core/ds_champion_fight_length.py`, so his carry route pays ZERO burst term. Production `rank_for_primary_archetype('Varus','carry')` (scorer=dps) leads pure on-hit (BotRK 3153 #1, Runaan 3085 #2, Kraken 6672 #3, Terminus 3302 #4) and BURIES the lethality core (Collector 6676 #16, Serylda 6694 #24, Youmuu 3142 #25, Edge of Night 3814 #34). Counterfactual `rank_for('Varus', fight_length=0.5)` lifts them Jhin-style (Collector +14 -> #3).
+- META (research, patch 16.14 SR ADC): on-hit W-max IS Varus's PRIMARY build (~65-75% play, Lethal Tempo, 51-54% WR); lethality-poke Q-max is SECONDARY (~20-30% play, 45-49% WR); crit negligible.
+- VERDICT: DS correctly serves the primary (sustained on-hit) for the carry pick. Mapping Varus would DEMOTE the correctly-surfaced higher-WR primary to lift a lower-WR secondary = valuation DISTORTION (the Kai'Sa trap). The fight_length map is gated to champs whose meta IS burst-carry (Jhin's Whisper AS-lock); Varus's verified meta is sustained on-hit-carry, so he correctly stays OUT (same class as the deliberately-absent Ashe/Aphelios/Kog'Maw). A Jhin-shaped MECHANISM != a warranted fix; the normative test is meta-reproduction, and mapping fails it. Memory `project_ds_sweep_varus_onhit_primary` (RESOLVED-REFUTE). W Blighted Quiver on-hit %HP is modeled SUSTAINED (antitank.py:528 / extendedduel.py:505), reinforcing the correct valuation.
+- NON-FINDING (checked, do-not-chase): probe flagged Opportunity 6701 filtered from the SR pool - INTENTIONAL + documented (`scripts/validate_build_data.py:62-65`, removed from SR meta 26.9); not a Varus core item anyway.
+
+**NEXT SESSION: continue the sweep with a fresh candidate** (Kai'Sa + Jhin + Varus now closed). Recommended: Miss Fortune (marksman lethality-crit burst - a fight_length candidate in the same class as the L3 crit marksmen; is her meta a map-worthy burst, or sustained crit/on-hit?), OR Ezreal (AD-caster: does the sustained-auto carry route fit a spell-scaling ADC, or should he route ability-DPS?). **FENCED, do NOT re-pitch:** the AD-assassin Zed/Talon/Qiyana pure-lethality path is DATA-REFUTED (ROADMAP RM-34; R114/R115, LEDGER 889) - the `feedback_ds_sweep_meta_valuation_research` "AD assassins (Zed/Talon)" line is STALE on that. Run the read-only GAP-or-REFUTE pass FIRST; a REFUTE is a valid outcome. Pick a candidate whose meta answer is genuinely OPEN (skip obvious REFUTEs like on-hit Vayne).
+
 ## Relocated 2026-07-17 (Ezreal DS-sweep GAP - keep last 3: Ezreal + Miss Fortune + Varus)
 
 # 2026-07-17 (RM-02 counter-hint live-plumbing fix - allPlayers roster in the browser summary; LEDGER 916; 318e7e3a + d8fa0e1c)
