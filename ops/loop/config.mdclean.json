@@ -11,7 +11,7 @@
   "clear_each_cycle": true,
   "session_jsonl": "",
   "directive_suffix": "OPERATOR RUN FOCUS (2026-07-16 md-cleanup, Tier-0 docs-only): docs/specs/2026-07-16-md-cleanup-headless-directive.md is the SOLE work source - follow its cycle plan C1-C8 top-down, one cluster per cycle. Executor window model MUST be opus-4.8 (operator sets /model before launch; never fable). Citation-or-skip on every prune (LEDGER id / commit SHA / live probe, 2-probe cap then UNVERIFIED-SKIP to ops/loop/reports/mdclean-findings.md). NEVER edit docs/LEDGER.md, docs/history_notes.md (append-only relocations allowed), docs/_archive, frozen files, .claude, memory. CLAUDE.md is propose-only -> ops/loop/reports/mdclean-claudemd-proposal.md. No suite runs, no RC restart, no verifier subagent (Tier-0 / R5). ASCII 7-bit, no em/en dashes, strip_em_dashes check on touched files. Commit per cluster (git commit -F tmpfile) + push + CI green; /done on C8. STOP on frozen/LEDGER edit attempt or 3 consecutive UNVERIFIED-SKIP clusters.",
-  "claude_window_title": "RC",
+  "claude_window_title": "Claude",
   "gemini_model": "gemini-3-pro-preview",
   "gemini_cmd": "gemini",
   "transcript_dir": "C:\\Users\\Administrator\\.claude\\projects\\C--Riot-Commander",
