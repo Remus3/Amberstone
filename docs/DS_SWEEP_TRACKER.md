@@ -10,12 +10,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 17 / 173  (GAP 10, REFUTE 4, FENCED/data-refuted 3)
-- Remaining: 156
-- Next up (strict alphabetical): Anivia
+- Resolved: 18 / 173  (GAP 10, REFUTE 5, FENCED/data-refuted 3)
+- Remaining: 155
+- Next up (strict alphabetical): Annie
 
 ## Resolved verdicts
 
+- **Anivia** - REFUTE (the mildest; EXACT inverse of Ahri RM-40) - hybrid sustained-DoT / DoT-zone-control mage with a burst finisher (R Glacial Storm = a persistent DoT zone she parks + grinds in); production mage/ds.ability leads Liandry's #1 -> Blackfire #2 which MATCHES her sustained-DoT damage identity (research explicit: the DoT lead is CORRECT for her, NOT the Ahri over-lead). The mana-first (Rod of Ages) + Zhonya's-defensive structure the engine skips is a class-level ds.ability DPS-scorer scope limit (ranks damage, not mana/defensive), not an Anivia mis-valuation. SAME engine ranking as Annie but OPPOSITE verdict (sustained vs burst) - validates the RM-40 precision
 - **Amumu** - GAP RM-44 (NEW shape, first tank/ds.ehp-scorer gap) - AP magic-damage engage tank / battle-mage-tank hybrid; dominant jungle meta rushes Liandry's Torment FIRST (AP damage) + Abyssal Mask magic-amp (his highest-WR item), but tank/ds.ehp leads PURE durability (Randuin's #1) and never surfaces Liandry's (not an EHP item), ranks Abyssal only #14. His W %HP-magic scales AP + passive amps magic, so the axis-neutral EHP scorer can't value his signature AP-rush. NOT pure durability (unlike Alistar REFUTE), NOT a full-AP flip (mage counterfactual = off-meta)
 - **Ambessa** - GAP RM-43 (batch with Aatrox RM-39) - ability-weaving AD bruiser-skirmisher (Eclipse/Spear of Shojin/Death's Dance core; damage from ABILITIES not autos), routed correctly to bruiser/ds.hybrid but the auto-DPS sub-model leads Blade of the Ruined King on-hit #1 by ~2x and buries her signature Spear of Shojin at rank 47/80 (dead-last #6 even in a whitelist of only her own 6 core items); her bonus-AD abilities + ability haste for cast frequency are unmodeled. NOT pool/burst/coherence. Same shape as Aatrox RM-39
 - **Alistar** - REFUTE (first tank/ds.ehp REFUTE) - durable engage/peel tank support, ZERO damage/AP; production tank/ds.ehp correctly leads axis-neutral durability (Randuin's #1, Warmog's #2, Jak'Sho #3). He builds no damage so there is NO damage build to mis-value; the ability-haste + team-aura (Locket/Zeke's/Knight's Vow on allies' bars) + R active 55-75% DR value is a CLASS-LEVEL tank/enchanter-scorer scope limit shared by all tank supports, not a per-champ gap. Clean contrast with Amumu (same tags/route, GAP)
@@ -43,7 +44,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - [REFUTE] Alistar
 - [GAP RM-43] Ambessa
 - [GAP RM-44] Amumu
-- [ ] Anivia
+- [REFUTE] Anivia
 - [ ] Annie
 - [ ] Aphelios
 - [ ] Ashe
