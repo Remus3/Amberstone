@@ -28,7 +28,10 @@ Target() {
     if (mode = "dry")
         return DRY_TITLE
     pid := FileExist(PIDF) ? Trim(FileRead(PIDF)) : ""
-    return pid ? "ahk_pid " pid : "Claude"
+    ; live mode is PID-bound ONLY. The old title fallback ("Claude", substring match)
+    ; could type into ANOTHER project's Claude window (Sibling-A runs a sibling
+    ; loop on this desktop, 2026-07-16). No pid file = no target = no typing.
+    return pid ? "ahk_pid " pid : ""
 }
 
 LogMsg("ahk bridge start")
@@ -41,6 +44,11 @@ Loop {
         content := FileRead(READY)
         lines := StrSplit(content, "`n", "`r")
         win := Target()
+        if (win = "") {
+            LogMsg("live mode with no target_pid.txt - refusing title fallback (multi-project safety)")
+            Sleep 1500
+            continue
+        }
         if !WinExist(win) {
             LogMsg("target window not found: " win)
             Sleep 1500
