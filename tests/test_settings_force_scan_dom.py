@@ -1,20 +1,13 @@
-"""Regression guards for RC2 P3.5 - the Settings-without-hotkeys surface.
+"""Regression guards for RC2 P3.5 - the Settings force-scan control.
 
-The one action that used to require a hotkey (Ctrl+Tab -> forced coach
-vision scan, core/hotkeys.py) now has a no-hotkey UI control on the
-Settings view. The backend route already existed
-(POST /api/command {command: "force_vision"} -> dashboard/_writers.py
-force_vision_scan); the live dashboard had simply dropped the button the
-legacy dashboard carried (web/legacy_index.html btn-scan).
-
-Four-surface wiring that makes the control usable:
-
-  - web/index.html declares a COACHING ACTIONS settings card with the
-    "Force vision scan" button + a status span, inside #settings-body
-  - web/js/panels/dev.js _settingsRefresh wires the button to POST the
-    force_vision command (token-header aware, cooldown-guarded)
-  - web/css/panels/header.css carries the .set-action-btn style at the
-    --hit-min fingertip floor
+Overlay item 4 Section B (docs/specs/2026-07-11-overlay-item4-client-settings-reorg-design.md
+-> "Coaching actions (not needed / not required)") REMOVED the COACHING
+ACTIONS card - and with it the "Force vision scan" button - from the Settings
+view. This is a VISUAL removal, not a feature rip-out: the dev.js wiring and
+the POST /api/command {command: "force_vision"} backend route are intentionally
+left intact (guarded by `if (fsBtn)`), so the command path survives for a
+possible future re-surfacing and DevJsWiringTests / HeaderCssTests below still
+pass. IndexHtmlTests now guards the REMOVAL from #settings-body.
 
 Grep-based smoke checks - same shape as test_screen_read_dom.py.
 """
@@ -34,30 +27,20 @@ def _read(p: Path) -> str:
 
 
 class IndexHtmlTests(unittest.TestCase):
+    """Item 4 Section B: the COACHING ACTIONS card + force-scan button are
+    removed from the Settings surface. Guard the removal so the card is not
+    re-added without an explicit design decision."""
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.t = _read(INDEX)
 
-    def test_card_and_button_declared(self) -> None:
-        self.assertIn("COACHING ACTIONS", self.t)
-        self.assertIn('id="set-force-scan-btn"', self.t)
-        self.assertIn('id="set-force-scan-status"', self.t)
+    def test_coaching_actions_card_removed(self) -> None:
+        self.assertNotIn("COACHING ACTIONS", self.t)
 
-    def test_button_lives_in_settings_body(self) -> None:
-        body = self.t.index('id="settings-body"')
-        # The settings view ends where the replay view section begins.
-        replay = self.t.index('id="view-replay"')
-        btn = self.t.index('id="set-force-scan-btn"')
-        self.assertTrue(body < btn < replay)
-
-    def test_no_hotkey_note_present(self) -> None:
-        # The surface's whole point: reachable WITHOUT the Ctrl+Tab hotkey.
-        self.assertIn("Ctrl+Tab", self.t)
-
-    def test_button_is_a_real_button(self) -> None:
-        i = self.t.index('id="set-force-scan-btn"')
-        # Look back a little for the opening tag.
-        self.assertIn("<button", self.t[i - 60:i + 20])
+    def test_force_scan_button_removed(self) -> None:
+        self.assertNotIn('id="set-force-scan-btn"', self.t)
+        self.assertNotIn('id="set-force-scan-status"', self.t)
 
 
 class DevJsWiringTests(unittest.TestCase):

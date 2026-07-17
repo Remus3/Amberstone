@@ -2811,6 +2811,23 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   cursor: pointer;
 }
 .settings-row-static { cursor: default; }
+/* Overlay item 4A: sub-groups inside the consolidated CLIENT SETTINGS card.
+   Each moved-in group (Champ Select / Pre-Game Lobby / Post Game Review /
+   Voice) carries a lighter secondary sub-head - the gold .settings-card-head
+   stays the single group announcer, the sub-heads read one tier down. A
+   hairline rule separates stacked sub-groups. The visual audit (deferred to
+   the interactive session) refines this treatment. */
+.settings-subgroup + .settings-subgroup {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-soft);
+}
+.settings-subhead {
+  font-size: var(--fs-sm);
+  font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: var(--space-1);
+}
 /* RC2 P3.5: COACHING ACTIONS - the no-hotkey Force vision scan button
    (the Ctrl+Tab equivalent surfaced in Settings). Mirrors .loop-btn
    chrome + carries the --hit-min fingertip floor. */
