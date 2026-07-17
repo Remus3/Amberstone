@@ -1191,10 +1191,10 @@ def rank_for_primary_archetype(
 ) -> Optional[dict]:
     """Phase 3 + 4c + 5 + 6 (s176/s179/s180/s181, 2026-05-12+) - route to the right scorer per archetype.
 
-    The DS engine ships 6 scorers (ds.dps, ds.ehp, ds.hybrid, ds.ability,
-    ds.burst, ds.hps) - one per archetype branch. This dispatcher exposes
-    a single call shape that the coaches + UI use, routing based on the
-    operator's pick from ``state.cs_archetype_pick.primary``.
+    The DS engine ships 7 scorers (ds.dps, ds.ehp, ds.hybrid, ds.ability,
+    ds.burst, ds.hps, ds.onhit) - one per archetype branch. This dispatcher
+    exposes a single call shape that the coaches + UI use, routing based on
+    the operator's pick from ``state.cs_archetype_pick.primary``.
 
     Returns a dict with shape:
         {
@@ -1205,7 +1205,7 @@ def rank_for_primary_archetype(
             "fell_back":   bool,  # always False post-Phase-6 (all archetypes wired)
         }
     ``ok=False`` means the engine was unreachable. ``fell_back`` is kept
-    for backward compatibility - all 6 archetype branches return
+    for backward compatibility - all 7 archetype branches return
     ``fell_back=False`` now that ds.hps shipped (Phase 6 s181). Unknown
     archetype strings fall through to ds.dps with ``fell_back=False`` too.
 
@@ -1481,6 +1481,7 @@ def rank_for_primary_archetype(
                 {
                     "item_id":            r.item_id,
                     "item_name":          r.item_name,
+                    "delta":              r.delta_dps,
                     "delta_dps":          r.delta_dps,
                     "gold":               r.gold,
                     "shares_dead_unique": r.shares_dead_unique,
