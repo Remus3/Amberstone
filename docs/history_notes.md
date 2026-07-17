@@ -1,5 +1,18 @@
 # RC session history archive
 
+## Relocated 2026-07-17 (Corki DS-sweep GAP - keep last 3: Corki + Lucian + Ezreal)
+
+# 2026-07-17 (DS meta-valuation sweep - Miss Fortune GAP; read-only, NO engine change)
+
+Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin + Varus closed REFUTE the prior two sessions; methodology `feedback_ds_sweep_meta_valuation_research`). Candidate: Miss Fortune. mode_key=client, no live game. Meta-research + engine-probe reconciled in the main thread (both subagents 529-blocked mid-run; engine probe run inline against DS :8893, meta-research inline via web). Tier-0 docs-only, no .py touched.
+
+**Miss Fortune = GAP - the sweep's FIRST non-REFUTE. Spec'd for a future Tier-2 build (ROADMAP RM-35); do NOT ship a bare `_CHAMPION_FIGHT_LENGTH` entry.** Memory `project_ds_sweep_missfortune_lethality_crit` (RESOLVED-GAP).
+- MECHANISM (probe, engine 1.216.0 / patch 16.14.1, tanky target armor 100/mr 60/hp 2500/bonus 1200): MF unmapped in `core/ds_champion_fight_length.py`, so her carry route pays ZERO burst term. Production `rank_for_primary_archetype('MissFortune','carry')` (scorer=dps) leads OFF-META on-hit - BotRK 3153 #1, Runaan 3085 #2, Kraken 6672 #3, IE 3031 #5 (crit mid-pack) - and BURIES her core: Collector 6676 #13, Hubris 6697 ABSENT top-20, Youmuu/Serylda ABSENT. Counterfactual `rank_for('MissFortune', fight_length=0.5)` lifts the core Jhin-style (Collector #2, IE #7, Hubris #13, Serylda #14, Youmuu #20). VALUATION gap, not a pool/data gap.
+- META (research, patch 16.14 SR ADC, Emerald+): MF's DOMINANT build is lethality-crit BURST - Hubris -> The Collector -> Infinity Edge -> Lord Dominik's, First Strike rune, R-keyed (~49.6-53% WR, ~10.3% pick, A-tier). No on-hit build in her meta (Love Tap is crit-scaling; no kit on-hit steroid). Opposite of Varus (whose engine on-hit lead MATCHED his verified primary -> REFUTE); here the engine top-3 is her OFF-meta build and her #1-build first item (Hubris) is absent -> GAP, the Jhin failure mode. Sources kept out of repo per methodology.
+- KEY SPEC CONSTRAINT: the fix is NOT a bare allow-map entry. Raw `fight_length=0.5` ALSO injects severe off-class AP artifacts (Lich Bane #4, Rabadon's #8 dps=0, Gunblade, Mejai's). Needs the L3 crit-burst-table treatment (`docs/specs/2026-07-13-ds-crit-burst-fix.md`) + an AP off-class exclusion so her AD-only lethality-crit core surfaces clean. Full spec in the memory + RM-35.
+
+**NEXT SESSION: continue the sweep with Ezreal** (AD-caster: does the sustained-auto carry route fit a spell-scaling ADC, or should he route ability-DPS?). Run the read-only GAP-or-REFUTE pass FIRST. FENCED do-NOT-re-pitch: AD-assassin Zed/Talon/Qiyana pure-lethality (DATA-REFUTED, ROADMAP RM-34 / R114-R115 / LEDGER 889). CLOSED: Kai'Sa + Jhin + Varus (REFUTE) + Miss Fortune (GAP, RM-35 spec'd) - do NOT re-sweep.
+
 ## Relocated 2026-07-17 (Lucian DS-sweep GAP - keep last 3: Lucian + Ezreal + Miss Fortune)
 
 # 2026-07-17 (DS meta-valuation sweep - Varus REFUTE; read-only, NO engine change)
