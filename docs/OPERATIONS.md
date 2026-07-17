@@ -19,6 +19,9 @@ pytest-less interpreter (a past incident zeroed the test suite). Always spell
 the canonical absolute path (quoted) in commands, hooks, docs, and scheduled
 tasks. Guard test: `tests/test_bare_py_ban.py`.
 
+Use `pythonw.exe` for background daemons (no console window); `python.exe` for
+scripts that need stdout.
+
 ---
 
 ## Quick health check
@@ -56,7 +59,9 @@ taskkill /F /PID <pid>        # never Stop-Process - hangs MCP pipe
 schtasks /Run /TN "RC-Supervisor"
 ```
 
-**Do NOT use** `Stop-Process` or `restart.bat` from an interactive shell - use `taskkill /F /PID`.
+**Never** `Stop-Process` (hangs the MCP pipe) - use `taskkill /F /PID`. `restart.bat` is the
+documented hard fallback AFTER the taskkill (CLAUDE.md "Restart workflow"), not an interactive-shell
+first resort.
 
 ---
 
@@ -73,6 +78,7 @@ schtasks /Run /TN "RC-Supervisor"
 | `RC-HotkeyListener` | At logon | Administrator | Global hotkey listener (`tools/hotkey_listener.py`) |
 | `RC-LCUAgent` | At logon | Administrator | LCU relay agent (`tools/lcu_agent.py`) |
 | `RC-LiveClientRelay` | At logon | Administrator | Live Client `:2999` relay agent (`tools/liveclient_relay.py`) |
+| `RC-LiveFlipWatcher` | At logon | Administrator | DS live-flip seam watcher + toast (`tools/live_flip_watcher.py`) |
 | `RC-PostmortemAnalyze` | Weekly | Administrator | Postmortem analyze + restart (`ops/run_postmortem_with_restart.ps1`) |
 | `RC-UpstreamDriftCheck` | Daily | Administrator | Upstream content-drift detector ddragon/meraki/cdragon (`tools/upstream_drift_check.py`) |
 | `RC-DDragonMirrorRefresh` | Daily 03:30 | Administrator | `tools/ddragon_mirror_refresh.py --check-changed` |
@@ -110,7 +116,7 @@ It re-derives the offset windup tier (109 champs via the wiki attack_delay_offse
 
 ### Data extractors (full list)
 
-Every pipeline that pulls external data into the repo. The first two run on patch day; the DS sidecars are re-extracted per patch (see the per-patch refresh chain order in `reference_patch_refresh_workflow` / the patch-refresh section above - it documents the canonical command sequence; do not duplicate it here).
+Every pipeline that pulls external data into the repo. The first two run on patch day; the DS sidecars are re-extracted per patch (the patch-day sections above document the canonical command sequence; do not duplicate it here).
 
 | Script | Source | Data piece pulled | Output | Consumed by |
 |---|---|---|---|---|
@@ -168,8 +174,8 @@ DS-down and match-DB-missing both degrade to an error dict, never crash.
 curl http://127.0.0.1:8894/health -H "Authorization: Bearer <token>"
 ```
 
-Persistence (operator-gated - it is a new always-on listener; only register
-once a local Claude is actually pointed at it):
+Persistence: REGISTERED and running as `RC-DS-MatchDB-MCP` (ONLOGON; see the
+scheduled-tasks table above). Reinstall if ever removed:
 
 ```
 schtasks /Create /TN "RC-DS-MatchDB-MCP" /SC ONLOGON /RL HIGHEST /F ^
@@ -254,16 +260,6 @@ weekly cadence is enough. ExecutionTimeLimit caps each run at 20 minutes.
 Dashboard cert: `tools/regen_rc_cert.ps1` (run elevated, restarts dashboard).
 
 Riot CA (browser-side only): `install-cert.cmd` (admin-elevated) on the game host. RC itself uses `verify=False`; only browsers need it for port 2999.
-
----
-
-## Python path
-
-```
-C:\Users\Administrator\AppData\Local\Programs\Python\Python314\python.exe
-```
-
-Use `pythonw.exe` for background daemons (no console window). Use `python.exe` for scripts that need stdout.
 
 ---
 

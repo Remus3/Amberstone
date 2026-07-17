@@ -6,14 +6,15 @@ _Living document. Update after topology or module changes. See `docs/_archive/` 
 
 ## Machines
 
-| Machine | Tailnet hostname | Tailnet IP | LAN IP | Role |
-|---|---|---|---|---|
-| **Legion** | `legion-rc` | `100.70.22.55` | `192.168.8.230` | 1-PC (2026-05-29, ADR-011): League + Vanguard + RC main process + vision server `:8889` + dashboard `:8888` + OBS. Relocated agents run local: RC-LCUAgent / RC-LiveClientRelay / RC-HotkeyListener. Windows hostname now `DESKTOP-JKZECV9`; Tailscale node stays `legion-rc` |
-| **Peer** | `peer-host` | `<peer-tailnet-ip>` | - | Separate separate private project machine (RC<->Peer bridge decommissioned 2026-06-24, ADR-012) |
-
-Both in tailnet `tailc150de.ts.net` (Game-PC retired from the League/RC pipeline 2026-05-29, ADR-011). Prefer tailnet hostnames for all cross-machine HTTP.
-
-Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The relocated relay agents (`lcu_agent` / `liveclient_relay` / `screen_agent`) run Legion-local (reading local lockfile + Live Client `:2999`); the live readers find the game host via `core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`) and is retained by design. The relocated-agent rename + Game-PC teardown executed 2026-06-20; the 3 running tasks (RC-LCUAgent/RC-LiveClientRelay/RC-HotkeyListener) launch the renamed Legion-local files.
+Canonical topology table (Legion 1-PC ADR-011 + Peer; tailnet names/IPs) lives in `CLAUDE.md`
+"Topology" - not restated here. Durable architecture facts: the dashboard is viewed locally on
+Legion; the relocated relay agents (`lcu_agent` / `liveclient_relay`) run Legion-local (reading
+the local lockfile + Live Client `:2999`); every live reader finds the game host via
+`core/game_host.py` `RC_GAME_HOST` (default `127.0.0.1`). The in-process vision collapse has
+LANDED - both relay halves self-heal off `:2999`/GDI in-process (items 267/276), so the relay
+agents are non-integral cache pre-warmers, not a dependency. The `:8889` endpoint stays the
+shared self-healing read path for all consumers (poller + dashboard + `core/liveclient_cache`)
+and is retained by design.
 
 ---
 
@@ -21,19 +22,13 @@ Post 1-PC (ADR-011) the dashboard is viewed locally on Legion. The relocated rel
 
 | From | To | Protocol | Purpose | Cadence |
 |---|---|---|---|---|
-| `screen_agent` | `:8889/upload-frame` | HTTP POST (JPEG b64) | Screenshots for vision + OCR - retired in favor of the in-process self-grab relay (single GDI BitBlt fallback, item 276) | n/a |
 | `liveclient_relay` | `:8889/upload-liveclient` | HTTP POST (JSON) | Live game telemetry (Legion-local; self-heals in-process, item 267) | every 1s |
 | `lcu_agent` | `:8889/upload-lcu` | HTTP POST (JSON) | Champ-select, queue, lobby state (Legion-local) | every 1s |
 | `lcu_agent` (local) | `:8889/lcu-cmd-pending` | HTTP GET | Drain queued commands | every 0.5s |
 | Dashboard | `:8889/lcu-cmd` | HTTP POST | Queue a command for LCU (accept, bench, runes) | on user action |
 | Browser (Chrome) | `:8888/` | HTTP GET | Dashboard HTML + state polling | every 500ms |
 
-Post-1-PC (ADR-011) all relay agents run Legion-local. Both relay
-halves now self-heal in-process when stale + host local: liveclient reads `:2999`
-(item 267) and the vision-frame relay grabs one frame via a single GDI BitBlt
-(item 276) - so both are non-integral. The continuous `screen_agent` loop
-is retired in favor of the in-process self-grab relay (1-PC, ADR-011); the
-self-grab is on-demand only, never a loop.
+Self-heal details for both relay halves: "RC relocated agents" below.
 
 ---
 
@@ -223,25 +218,23 @@ The Game-PC `:8892` MCP server was severed with the Game-PC retirement
 feature. A clean archival would prune the deploy allowlist + relocate the
 phase_watcher test - a dedicated cleanup slice, not a blind move.
 
-**Vision-frame in-process self-heal LANDED (item 276):** like the liveclient half
-(item 267), `vision_server/_frame.py` `get_latest_frame()` now grabs ONE frame
-in-process when the cached frame is stale/missing AND the host is local, so the
-retired `:8889/upload-frame` screen-agent is non-integral (the relay agent only
-pre-warms the cache; if it dies the self-grab keeps the coaches fed). The
-fallback is a single on-demand GDI BitBlt via `PIL.ImageGrab` - NOT the
-continuous DXGI/bettercam loop, which stays retired (1-PC, ADR-011). Throttled 1/1.5s,
-fail-soft, source-less requests only, disabled on a remote `RC_GAME_HOST`. Live
-self-grab frames have since been PROVEN in-game (LEDGER 685/688/711).
+**Vision-frame self-heal (item 276, LANDED + live-proven LEDGER 685/688/711):**
+`vision_server/_frame.py` `get_latest_frame()` self-grabs ONE frame in-process
+(single on-demand GDI BitBlt via `PIL.ImageGrab`; throttled 1/1.5s, fail-soft,
+source-less requests only, local `RC_GAME_HOST` only) when the cached frame is
+stale/missing - the retired screen-agent is non-integral. The continuous
+DXGI/bettercam loop stays retired (1-PC, ADR-011). Full ship narrative relocated
+to `docs/history_notes.md` (mdclean C5).
 
 ---
 
 ## Daemon Slayer (`:8893`)
 
-`agents/daemon_slayer/` - 6 archetype scorers + 6 standalone scored axes (offensive CC-output / mobility / sustain / scaling / wave-clear / threat-range, each its own additive `/`-route) + 1v1 matchup engine (`matchup.py` / `/v2/matchup`). All 4 coach modes DS-before-Haiku; deterministic-coaching lanes (laning verdicts / build-order tables / event callouts / lead projection) target zero live Haiku. Live engine identity (ENGINE_VERSION / item-effect count / patch / test count) lives in the drift-guarded `docs/DAEMON_SLAYER.md` status banner - this doc does not restate it (WP-F6a: a hardcoded recital here drifted silently since CI runs no pytest).
+`agents/daemon_slayer/` - 7 archetype scorers + 6 standalone scored axes (offensive CC-output / mobility / sustain / scaling / wave-clear / threat-range, each its own additive `/`-route) + 1v1 matchup engine (`matchup.py` / `/v2/matchup`). All 4 coach modes DS-before-Haiku; deterministic-coaching lanes (laning verdicts / build-order tables / event callouts / lead projection) target zero live Haiku. Live engine identity (ENGINE_VERSION / item-effect count / patch / test count) lives in the drift-guarded `docs/DAEMON_SLAYER.md` status banner - this doc does not restate it (WP-F6a: a hardcoded recital here drifted silently since CI runs no pytest).
 
-- **Six archetype scorers** dispatch via `rank_for_primary_archetype()` in `core/daemon_slayer_client.py` (no fallbacks): carry -> `ds.dps`, tank -> `ds.ehp`, bruiser -> `ds.hybrid` (a*dps + b*ehp; per-champion weights in `archetype_weights.json`), mage -> `ds.ability` (per-spell DPS via `ability_dps.py` + measured cast rates from `spell_cast_rates.json`), assassin -> `ds.burst` (combo-window evaluator in `burst.py`), enchanter -> `ds.hps` (curated formulas in `data/daemon_slayer/<patch>/enchanter_items.json`).
-- **Override registries** cover 73% of the roster: `champion_max_priority.json` / `champion_combo_sequences.json` / `champion_form_index.json` / `champion_block_index.json` (196 entries / 125 champions). Dead-unique candidates (Trinity->ER etc.) filtered by default.
-- **cc_conditional ecosystem** COMPLETE with 5 consumer surfaces: cc_pressure (ENGINE 1.38.0) + compute_ehp (1.39.0) + compute_hybrid (1.39.0) + `core/cc_conditional_impact_context.py` coach prompt (1.40.0) + `dashboard/routes_cc_conditional_pressure.py` dashboard UI (1.40.0). 72 entries (63 primary + 8 sidecar) / 57 champs across waves 0-23; 13 condition tags; `coexists_with_unconditional` flag + consumer MAX-rule semantics.
+- **Seven archetype scorers** dispatch via `rank_for_primary_archetype()` in `core/daemon_slayer_client.py` (no fallbacks): carry -> `ds.dps`, tank -> `ds.ehp`, bruiser -> `ds.hybrid` (a*dps + b*ehp; per-champion weights in `archetype_weights.json`), mage -> `ds.ability` (per-spell DPS via `ability_dps.py` + measured cast rates from `spell_cast_rates.json`), assassin -> `ds.burst` (combo-window evaluator in `burst.py`), enchanter -> `ds.hps` (curated formulas in `data/daemon_slayer/<patch>/enchanter_items.json`), on-hit AP -> `ds.onhit` (ability-DPS + on-hit-auto-DPS summed in one DPS frame, `onhit_dps.py`; LEDGER 911).
+- **Override registries**: `champion_max_priority.json` / `champion_combo_sequences.json` / `champion_form_index.json` / `champion_block_index.json` - live entry/champion counts in the drift-guarded `docs/DAEMON_SLAYER.md` banner (not restated here). Dead-unique candidates (Trinity->ER etc.) filtered by default.
+- **cc_conditional ecosystem** COMPLETE with 5 consumer surfaces: cc_pressure + compute_ehp + compute_hybrid + `core/cc_conditional_impact_context.py` coach prompt + `dashboard/routes_cc_conditional_pressure.py` dashboard UI. Entry/champ counts, wave history, and ENGINE pins live in `docs/DAEMON_SLAYER.md`; `coexists_with_unconditional` flag + consumer MAX-rule semantics.
 - **CS archetype-picker UI** in the champ-select view (My Pick card 6-button grid) + `core/archetype_picks.py` storage + `dashboard/routes_archetype.py`. Coach integration via `coach_integration/archetype_dispatch.py` resolves the archetype via `core.archetype_picks.get_archetype_for` + dispatches to the right scorer; all 4 mode coaches consume the helper. State-builder stamps `state.cs_archetype_pick`; first-purchase mismatch nudge live (`/api/archetype-nudge` + chip renderer).
 
 Full per-ENGINE changelog (V2 substrate wiring 1.64.0-1.74.0 + cc_conditional waves 0-23) in `docs/DAEMON_SLAYER.md`. See `docs/_archive/DS_V2_PLAN.md` for the V2 substrate design.
@@ -274,17 +267,12 @@ _Inline `# arch: phase <id> [(YYYY-MM-DD)] - <note>` markers across the tree, su
 
 ---
 
-## God modules (pending decomposition)
+## God modules - decomposition COMPLETE
 
-| File | LOC | Plan |
-|---|---|---|
-| ~~`web/js/dashboard.js`~~ | ~~8507~~ | ✅ quarantined s236 - dead pre-ESM monolith archived to `docs/_archive/`; live UI is `main.js` + `panels/` |
-| ~~`game_reader.py`~~ | ~~1473~~ | ✅ Phase 2.2 done - root pkg via mixins (poller + normalizer + mode_router) |
-| ~~`coach_integration.py`~~ | ~~1217~~ | ✅ Phase 2.3 done - `_profiles` + `_sr_prompt` + `_coach` |
-| ~~`champion_profiles.py`~~ | ~~902~~ | ✅ Phase 2.1 done - 29 LOC thin loader + `data/champion_profiles/*.json` |
-| ~~`moon_vision_server.py`~~ | ~~710~~ | ✅ Phase 2.4 done - shim + `vision_server/` (6 internal modules) |
-
-Full decomposition plan: `C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md`.
+All five monolith decompositions are done (Phases 2.1-2.4 + the s236
+`dashboard.js` quarantine); the struck-through tracking table was relocated to
+`docs/history_notes.md` (mdclean C5). The old Desktop
+`RC_FUTUREPROOFING_PLAN.md` pointer is retired (file absent).
 
 ---
 
@@ -296,4 +284,4 @@ Full decomposition plan: `C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.
 4. **`app/__init__.py`'s loop is an asyncio scheduler, not UI.** Tkinter overlays AND the `tk.Tk()` root were fully removed (T2 #8); the asyncio `AppLoop` (`app/_loop.py`) now drives the game polling loop via `self.scheduler.schedule(ms, fn)` instead of `root.after()`. RC is genuinely Tk-free (13 residual `.after()` files remain in unrelated modules).
 5. **Vision server content-type:** hardcodes `image/png`; screen agent sends JPEG. Magic-byte auto-detect `"image/jpeg" if data.startswith("/9j/") else "image/png"`.
 6. **`os.replace` can raise WinError 5** when a reader has the target open. `atomic_write_json` uses 25/50/200ms retry-with-backoff. Don't hand-roll atomic writes.
-7. **`pythonw.exe` PID ≠ child's reported PID under venv.** Supervisors latch `observed_pid` on first valid heartbeat; never match Popen pid.
+7. **`pythonw.exe` PID != child's reported PID under venv.** Supervisors latch `observed_pid` on first valid heartbeat; never match Popen pid.
