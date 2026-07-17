@@ -32,6 +32,19 @@ markers alone (sha-level unverified) permit RELOCATE-not-delete but never hard P
 - L127 | 171/172 champions x P/Q/W/E/R | roster count at 16.14.1 unverified; COPY-VERBATIM-ONLY
 - L192-L194 | calibration "Status: accumulating" | core/ds_calibration.py exists; status freshness unprobed
 
+## C2 cycle notes (2026-07-17, ROADMAP.md executed)
+- Kept in place verbatim with RM ids (UNVERIFIED-SKIP per C1; only an `- **RM-NN** ` prefix added):
+  L40->RM-28, L48->RM-27, L56->RM-12, L57->RM-13, L75->RM-15, L95->RM-17.
+- Relocation-target deviation: the directive said docs/history_notes.md; used docs/ROADMAP_HISTORY.md
+  instead - it is ROADMAP.md's self-declared append-only archive ("Entries relocated verbatim") and
+  every prior ROADMAP sweep (2026-06-20 / 2026-06-25 / 2026-07-13) used it; splitting the ROADMAP
+  archive across two files would orphan the existing "(full record: docs/ROADMAP_HISTORY.md)" pointers.
+- docs/ORCHESTRATION_PLAN.md: no mdclean row exists (grep 0 hits) - directive said update "if exists";
+  skipped.
+- L28 punch-list DEDUP -> docs/LIVE_GAME_GATED_SYNC.md deferred to C6 (that doc is C6 scope);
+  punch-list survives as ROADMAP RM-05 + the verbatim archive copy.
+- Slice-manifest / TaskCreate phases skipped per the directive's Tier-0 single-thread override.
+
 ## docs/ORCHESTRATION_PLAN.md (sha-level only; in-doc DONE markers present -> relocate-only OK)
 - L105-L132 | DSP swarm round | 0c2b88e5 not in local git (LEDGER 876/889 do anchor the lane)
 - L133-L157 | 2026-06-17 ROUND 2 | faeaeb4a not in local git
