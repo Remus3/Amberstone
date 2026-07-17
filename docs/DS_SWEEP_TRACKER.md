@@ -10,12 +10,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 16 / 173  (GAP 9, REFUTE 4, FENCED/data-refuted 3)
-- Remaining: 157
-- Next up (strict alphabetical): Amumu
+- Resolved: 17 / 173  (GAP 10, REFUTE 4, FENCED/data-refuted 3)
+- Remaining: 156
+- Next up (strict alphabetical): Anivia
 
 ## Resolved verdicts
 
+- **Amumu** - GAP RM-44 (NEW shape, first tank/ds.ehp-scorer gap) - AP magic-damage engage tank / battle-mage-tank hybrid; dominant jungle meta rushes Liandry's Torment FIRST (AP damage) + Abyssal Mask magic-amp (his highest-WR item), but tank/ds.ehp leads PURE durability (Randuin's #1) and never surfaces Liandry's (not an EHP item), ranks Abyssal only #14. His W %HP-magic scales AP + passive amps magic, so the axis-neutral EHP scorer can't value his signature AP-rush. NOT pure durability (unlike Alistar REFUTE), NOT a full-AP flip (mage counterfactual = off-meta)
 - **Ambessa** - GAP RM-43 (batch with Aatrox RM-39) - ability-weaving AD bruiser-skirmisher (Eclipse/Spear of Shojin/Death's Dance core; damage from ABILITIES not autos), routed correctly to bruiser/ds.hybrid but the auto-DPS sub-model leads Blade of the Ruined King on-hit #1 by ~2x and buries her signature Spear of Shojin at rank 47/80 (dead-last #6 even in a whitelist of only her own 6 core items); her bonus-AD abilities + ability haste for cast frequency are unmodeled. NOT pool/burst/coherence. Same shape as Aatrox RM-39
 - **Alistar** - REFUTE (first tank/ds.ehp REFUTE) - durable engage/peel tank support, ZERO damage/AP; production tank/ds.ehp correctly leads axis-neutral durability (Randuin's #1, Warmog's #2, Jak'Sho #3). He builds no damage so there is NO damage build to mis-value; the ability-haste + team-aura (Locket/Zeke's/Knight's Vow on allies' bars) + R active 55-75% DR value is a CLASS-LEVEL tank/enchanter-scorer scope limit shared by all tank supports, not a per-champ gap. Clean contrast with Amumu (same tags/route, GAP)
 - **Akshan** - GAP RM-42 (mild, closest-to-REFUTE) - crit-marksman/on-hit-hybrid on the correct carry/ds.dps, but leads not-built on-hit (BotRK #1, Runaan's #2) over his crit primary + buries his #2 core Hexoptics C44 #14; his real #1 item Kraken IS surfaced (#3); root cause = reworked Dirty Fighting 200%-crit double-shot unmodeled; same family as Lucian RM-37 (batch)
@@ -41,7 +42,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - [GAP RM-42] Akshan
 - [REFUTE] Alistar
 - [GAP RM-43] Ambessa
-- [ ] Amumu
+- [GAP RM-44] Amumu
 - [ ] Anivia
 - [ ] Annie
 - [ ] Aphelios
