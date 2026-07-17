@@ -176,9 +176,10 @@ def test_operator_pick_champs_absent_from_shipped_table():
 # Resolver seam (default-OFF byte-identical; never touches operator picks).
 # --------------------------------------------------------------------------- #
 def test_seam_off_is_byte_identical_default():
-    # Kayle's kit default is mage (P6-G1 axis correction); OFF must be unchanged.
+    # Kayle's kit default is onhit (Slice B Task 10 on-hit-AP roster, layered on
+    # top of the P6-G1 axis correction's mage default); OFF must be unchanged.
     off = ap.get_archetype_for("Kayle")
-    assert off["primary"] == "mage"
+    assert off["primary"] == "onhit"
     assert off["source"] == "default"
     explicit_off = ap.get_archetype_for("Kayle", prefer_aram_win_axis=False)
     assert explicit_off == off
@@ -187,7 +188,7 @@ def test_seam_off_is_byte_identical_default():
 def test_seam_on_overrides_kayle_to_carry():
     on = ap.get_archetype_for("Kayle", prefer_aram_win_axis=True)
     assert on["primary"] == "carry"
-    assert on["secondary"] == "mage"      # kit default drops to alt-view
+    assert on["secondary"] == "onhit"     # kit default (Slice B onhit) drops to alt-view
     assert on["source"] == ap.SOURCE_ARAM_WIN
 
 
@@ -224,4 +225,4 @@ def test_override_loader_fail_soft(monkeypatch, tmp_path):
     ap._invalidate_aram_overrides_cache()
     assert ap.aram_archetype_override("Kayle") is None
     on = ap.get_archetype_for("Kayle", prefer_aram_win_axis=True)
-    assert on["primary"] == "mage"        # falls back to kit default, no crash
+    assert on["primary"] == "onhit"       # falls back to kit default, no crash
