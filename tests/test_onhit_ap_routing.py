@@ -154,3 +154,25 @@ def test_flatten_non_dict_top_level_returns_empty():
     assert _flatten([]) == {}
     assert _flatten("not-a-dict") == {}
     assert _flatten(None) == {}
+
+
+# --- Slice B Task 10 (2026-07-16) - default_for_champion routing -------------
+#
+# Routes the on-hit-AP roster (Gwen/Kayle/KogMaw) to the ds.onhit scorer by
+# default, adjacent to the existing _AP_ASSASSIN_IDS curated override. Controls
+# prove the AP-assassin path (Akali/Ekko -> assassin) and the plain AP-mage
+# default path (Syndra/Cassiopeia -> mage) are both untouched.
+import pytest
+
+from core.archetype_picks import default_for_champion
+
+
+@pytest.mark.parametrize("champ", ["Gwen", "Kayle", "KogMaw"])
+def test_routes_to_onhit(champ):
+    p, s = default_for_champion(champ)
+    assert p == "onhit" and s and s != "onhit"
+
+
+@pytest.mark.parametrize("champ,exp", [("Syndra","mage"),("Cassiopeia","mage"),("Akali","assassin"),("Ekko","assassin")])
+def test_controls_unchanged(champ, exp):
+    assert default_for_champion(champ)[0] == exp

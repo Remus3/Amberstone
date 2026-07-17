@@ -50,6 +50,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from core.ds_onhit_ap_roster import load_onhit_ap_roster
+
 _log = logging.getLogger("rc.archetype_picks")
 
 # Canonical archetype names. Order matters: UI renders left->right in
@@ -474,6 +476,12 @@ def default_for_champion(champion: str) -> tuple[str, str]:
     # would-be mage archetype as the alt-view so the operator can flip back.
     if canonical_champion_id(champion) in _AP_ASSASSIN_IDS:
         return ("assassin", "mage")
+    # Slice B: on-hit-AP champs (Gwen / Kayle / Kog'Maw-AP) route to the ds.onhit
+    # scorer by default; surface the role-based archetype as the alt-view so the
+    # operator can flip back in one tap. Roster is live-calibrated (Task 9) and
+    # disjoint from _AP_ASSASSIN_IDS. Fail-soft: empty roster -> byte-identical.
+    if canonical_champion_id(champion) in load_onhit_ap_roster():
+        return ("onhit", primary if primary != "onhit" else secondary)
     return (primary, secondary)
 
 
