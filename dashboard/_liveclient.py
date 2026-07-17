@@ -46,6 +46,52 @@ from item_advisor import (
 _VISION_TOKEN = get_vision_token()
 
 
+def _as_int(v) -> int:
+    """Coerce a scoreboard value to a non-negative int; junk -> 0. Mirrors the
+    client-side ``_bpInt`` (active_match.js) so a malformed live frame degrades
+    to 0 rather than raising."""
+    try:
+        return max(0, int(v))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _lean_roster(all_players) -> list:
+    """Project the raw Live Client ``allPlayers`` list down to the lean per-player
+    shape the in-game BUILD panel counter-hint consumers read
+    (``web/js/panels/active_match.js``): ``championName``/``rawChampionName`` +
+    ``team`` + summoner identity (for ``_resolveMyTeam``) + item ids + scores +
+    level. A faithful SUPERSET of the ``ui_mock`` fixture - it adds the
+    live-only ``scores`` + ``level`` fields the C3 fed path needs. Fail-soft: a
+    non-list input or a non-dict entry is skipped; missing fields degrade to
+    empty/zero, never raise."""
+    out: list = []
+    for p in all_players if isinstance(all_players, list) else []:
+        if not isinstance(p, dict):
+            continue
+        sc = p.get("scores") or {}
+        items = [
+            {"itemID": it.get("itemID"), "slot": it.get("slot")}
+            for it in (p.get("items") or [])
+            if isinstance(it, dict)
+        ]
+        out.append({
+            "summonerName":    p.get("summonerName", ""),
+            "riotIdGameName":  p.get("riotIdGameName", ""),
+            "championName":    p.get("championName", ""),
+            "rawChampionName": p.get("rawChampionName", ""),
+            "team":            p.get("team", ""),
+            "level":           _as_int(p.get("level")),
+            "items":           items,
+            "scores": {
+                "kills":   _as_int(sc.get("kills")),
+                "deaths":  _as_int(sc.get("deaths")),
+                "assists": _as_int(sc.get("assists")),
+            },
+        })
+    return out
+
+
 def lcu_summary() -> dict:
     """Read latest LCU snapshot pushed by lcu_agent.py.
     Returns {} if relay isn't running or last push is stale (>5s)."""
@@ -219,6 +265,22 @@ def liveclient_summary() -> dict:
         out["enemy_spells"] = enemy_spells
         out["enemy_item_ids"] = enemy_item_ids
         out["ally_item_ids"]  = ally_item_ids
+        # RM-02 (2026-07-17): raw-ish allPlayers roster + activePlayer identity
+        # for the in-game BUILD panel counter-hint chips. active_match.js keys
+        # ``_hasRoster`` on ``lc.allPlayers``, resolves the operator's team via
+        # ``_resolveMyTeam`` (activePlayer name vs each row's team + name), then
+        # POSTs enemy names/items/scores/levels + ally items to /api/build-plan
+        # (C2 antiheal / C6 tenacity / C3 fed / R102 enemy-profile / R103
+        # counter-build). Emitted independent of ``me_pl`` - _resolveMyTeam does
+        # its own match, so a summoner-name miss still ships the roster. Lean
+        # projection via ``_lean_roster``; an empty list when no live roster ->
+        # _hasRoster false -> honest COUNTER hide (identical to the pre-fix
+        # live-absent behavior).
+        out["allPlayers"] = _lean_roster(d.get("allPlayers") or [])
+        out["activePlayer"] = {
+            "summonerName":   ap.get("summonerName", ""),
+            "riotIdGameName": ap.get("riotIdGameName", ""),
+        }
         # Inhibitor-down events for the respawn-timing callout. Live Client
         # emits InhibKilled with EventTime (s) + the structure name; we surface
         # raw {down_at_s, name} and let core.event_callouts compute the 300s
