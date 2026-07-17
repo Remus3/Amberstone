@@ -22,5 +22,38 @@ def test_dispatch_routes_onhit():
     assert out["ok"] is True and out["scorer"] == "onhit" and out["ranked"] == []
 
 
+def test_dispatch_onhit_row_projects_conventional_delta_key():
+    """Task 7 followup - the per-row projection must carry the generic
+    "delta" key (the convention every other single-metric sibling branch
+    follows: tank/mage/assassin/enchanter + the ds.dps carry fallback).
+    Regression guard for the review finding: onhit used to emit ONLY
+    "delta_dps", so a future direct row["delta"] access would KeyError.
+    """
+    stub_row = dsc.OnhitRankedItem(
+        item_id="3006",
+        item_name="Berserker's Greaves",
+        gold=1100,
+        delta_dps=42.5,
+        new_dps=142.5,
+        ability_dps=20.0,
+        auto_dps=22.5,
+        dps_per_1k_gold=38.6,
+        is_terminal=False,
+        tags=(),
+    )
+    with patch.object(dsc, "rank_onhit_for", return_value=[stub_row]) as m:
+        out = dsc.rank_for_primary_archetype(
+            "Gwen", archetype="onhit", level=13, mode="SR", item_ids=[]
+        )
+    assert m.called
+    assert out["ok"] is True and out["scorer"] == "onhit"
+    row = out["ranked"][0]
+    assert row["delta"] == stub_row.delta_dps
+    assert row["item_id"] == stub_row.item_id
+    # delta_dps stays too (explicit for onhit-aware consumers) - both keys
+    # carry the same value.
+    assert row["delta_dps"] == stub_row.delta_dps
+
+
 def test_onhit_coherence_fail_soft_for_non_roster_champ():
     assert dsc._onhit_coherence_for("Garen") == 0.0
