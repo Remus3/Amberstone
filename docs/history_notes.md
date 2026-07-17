@@ -18429,3 +18429,35 @@ Full phased plan (repo, RC's own architecture): `docs/OBS_CV_MINIMAP_PLAN.md`. O
 - **(FUTURE, the ONLY genuinely new heavy dep) Minimap champion IDENTITY** - `cv2.matchTemplate` (`opencv-python` ~40MB) over the `minimap_blob_detect` centroids vs the ~10 in-game champ templates (candidate set restricted from the `:2999` team lists), circular-masked + calibrated off `core/minimap_geometry.py`; attaches champion+team to each dot -> `core/zoi_influence` true identity -> the roam/gank last-seen-zone prediction lift. Occlusion accuracy caveats; macro-grade not frame-perfect.
 
 Deps: only `opencv-python` is genuinely new (minimap identity); OBS + all OCR wiring reuse present deps. Every capture path is Vanguard-safe (captured pixels, DWM/GDI, no DXGI/injection). Phased: O1 -> OCR numerics wiring -> ally-HP + summoner-CD -> OBS frames -> minimap identity -> the rest. Don't-redo: OBS is integrated (do NOT re-scaffold an OBS-WS client - EXTEND `core/obs_publisher.py`); the CV parsers exist (do NOT re-author bar-fill/OCR - WIRE them into TIERED_FIELDS).
+
+## ARCHITECTURE relocations - 2026-07-17 (mdclean C5)
+
+Two blocks relocated verbatim from docs/ARCHITECTURE.md (kept in-doc: compressed durable state + pointer here).
+
+### Vision-frame in-process self-heal narrative (was "RC relocated agents" trailing block)
+
+**Vision-frame in-process self-heal LANDED (item 276):** like the liveclient half
+(item 267), `vision_server/_frame.py` `get_latest_frame()` now grabs ONE frame
+in-process when the cached frame is stale/missing AND the host is local, so the
+retired `:8889/upload-frame` screen-agent is non-integral (the relay agent only
+pre-warms the cache; if it dies the self-grab keeps the coaches fed). The
+fallback is a single on-demand GDI BitBlt via `PIL.ImageGrab` - NOT the
+continuous DXGI/bettercam loop, which stays retired (1-PC, ADR-011). Throttled 1/1.5s,
+fail-soft, source-less requests only, disabled on a remote `RC_GAME_HOST`. Live
+self-grab frames have since been PROVEN in-game (LEDGER 685/688/711).
+
+### God modules table (was "God modules (pending decomposition)"; all rows struck DONE; [DONE] transliterates U+2705 for ASCII)
+
+| File | LOC | Plan |
+|---|---|---|
+| ~~`web/js/dashboard.js`~~ | ~~8507~~ | [DONE] quarantined s236 - dead pre-ESM monolith archived to `docs/_archive/`; live UI is `main.js` + `panels/` |
+| ~~`game_reader.py`~~ | ~~1473~~ | [DONE] Phase 2.2 done - root pkg via mixins (poller + normalizer + mode_router) |
+| ~~`coach_integration.py`~~ | ~~1217~~ | [DONE] Phase 2.3 done - `_profiles` + `_sr_prompt` + `_coach` |
+| ~~`champion_profiles.py`~~ | ~~902~~ | [DONE] Phase 2.1 done - 29 LOC thin loader + `data/champion_profiles/*.json` |
+| ~~`moon_vision_server.py`~~ | ~~710~~ | [DONE] Phase 2.4 done - shim + `vision_server/` (6 internal modules) |
+
+(The original footer pointer `C:\Users\Administrator\Desktop\RC_FUTUREPROOFING_PLAN.md` was
+already stale - file absent, mdclean C1 ls-verified. The Machines topology table + 2026-06-20
+rename narrative + third relay self-heal paragraph were DEDUPED in place - canonical copies
+live in CLAUDE.md Topology + the ARCHITECTURE relocated-agents section - so no verbatim copy
+is needed beyond this note.)
