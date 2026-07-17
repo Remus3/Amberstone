@@ -1,0 +1,27 @@
+EXECUTION SESSION - LEAP-05 ARAM augment fast-poll. Model claude-opus-4-8, effort high.
+Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
+sessions are typing, not deciding.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-05-aram-augment-cadence-fastpoll.md END TO
+   END. The P3 AMENDMENT block at the top SUPERSEDES body text: add env kill-switch
+   RC_ARAM_FAST_POLL (default "1"; "0" = legacy 25s cadence byte-identical) per the
+   RC_DUO_SYNERGY_LIVE=0 precedent, plus its AC.
+2. Scope: coaches/aram_coach.py ONLY. Mutate instance _VISION_INTERVAL to 6s while
+   game_seconds < 45 AND augment unresolved AND under the 6-scan cap (reuse the _DEBOUNCE_S
+   dynamic-tunable pattern - zero base-class edit); latch back to 25s the instant
+   _handle_augment_select fires. Single read_tiered() call site - the fast poll must NOT
+   add Sonnet escalation paths.
+3. TDD RED-first: cadence unit tests simulating game_time progression (exact per-input
+   interval values per spec ACs); 12s-window coverage test; no-extra-Sonnet test;
+   kill-switch byte-identical test.
+4. Tier-1: py_compile + the aram_coach test module only. NO suite, NO DS touch, NO restart
+   beyond RC restart_trigger.txt at the end to load the change.
+5. LIVE-GATED SPLIT: code + tests + shadow log = this session's DONE. The on-screen reco
+   confirm is NOT claimable - append the confirm row to docs/LIVE_GAME_GATED_SYNC.md and
+   leave it OPEN. Spec's UNVERIFIED-SKIP (periodic later windows) stays a fast-follow note.
+6. Ghost list absolute: LCU augment API dead-end (Settled); vision relay TFT-prompt quirk -
+   do not rely on Sonnet fields for augments; keep the _run_vision gate on _fetch_game_data;
+   core/moon_proxy.py is FROZEN - route around it.
+7. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+8. DONE: commit -F tmpfile (ASCII) + docs/LEDGER.md entry (max id + 1) + LGS row + git pull
+   --rebase + push + CI green + restart_trigger.txt + health.json pid/alive verify.

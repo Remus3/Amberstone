@@ -1,0 +1,23 @@
+EXECUTION SESSION - LEAP-02 KaiSa P routing + Gwen P pins. Model claude-opus-4-8, effort max.
+Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
+sessions are typing, not deciding.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-02-ds-staged-passives-gwen-kaisa.md END TO END.
+   Key premise (already evidence-checked): Gwen P bilinear + KaiSa P stacks SHIPPED long ago
+   (items 248/249); Gwen P already AA-routed by Slice B. The slice = add KaiSa P to
+   _AA_ROUTED_ON_HIT_KEYS (byte-identical default, live flip LGS-queued), regression-pin
+   Gwen P anchors, refresh the 2 stale STAGED markers (DAEMON_SLAYER.md:71 + inline comment).
+2. ENGINE VERSION RULE: read the CURRENT ENGINE_VERSION literal at session start; bump +1
+   minor from current (LEAP-06 may have landed first). Quoted-literal-only replacement.
+   Never hard-pin a version from the spec text.
+3. TDD RED-first: failing per-champion tests from ACCEPTANCE CRITERIA before any engine edit.
+4. Tier-2 DONE ritual, in order: finish ALL edits -> dual suite ONCE (DS dir + tests/) ->
+   Share mirror staged SAME commit (tools/ds_share_sync; the spec's Share-path UNVERIFIED-SKIP
+   resolves via the sync tool + commit hook) -> commit -F tmpfile -> DS :8893 restart
+   (schtasks /End then /Run RC-DaemonSlayer; confirm port free first) -> /health shows new
+   version -> wait for settle BEFORE any re-run. R6: trust the single suite exit code.
+5. Ghost list absolute: Lux/Ziggs/Akali/KhaZix inert rows NOT this slice; ASol W stays STAGED;
+   no Navori Bring-It-Down re-credit; never --force Meraki re-extract; dataclass fields
+   append-at-end-with-default.
+6. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+7. Close: append docs/LEDGER.md entry (max id + 1) + git pull --rebase + push + CI green.
