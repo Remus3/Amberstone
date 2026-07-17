@@ -1,0 +1,22 @@
+EXECUTION SESSION - LEAP-03 onhit consumer completion. Model claude-opus-4-8, effort high.
+Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
+sessions are typing, not deciding.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-03-onhit-consumer-completion.md END TO END.
+   PREMISE (evidence-checked): the 6-button 3x2 picker grid was REMOVED (LEDGER 823) and
+   replaced by a read-only chip. This slice makes the taxonomy + chip onhit-AWARE; re-adding
+   any picker grid is GHOSTED.
+2. Scope: (a) /rank-onhit route + client mode/phase parity - parity template is _route_rank
+   at server.py:431-482 (note /rank-mage ALSO omits the forward; fix per spec scope only);
+   (b) onhit into ARCHETYPES/IMPLEMENTED_SCORERS whitelist + chip tint; (c) two stale
+   Task-7-era comments; (d) DAEMON_SLAYER.md:169-172 seven-archetype fix.
+3. TDD RED-first: route-parity test asserting /rank-onhit honors mode+phase like siblings.
+4. Tier mixed, verify accordingly: server.py route forward = DS suite + Share mirror staged
+   same commit + DS :8893 restart + /health check, but NO ENGINE bump (default output must
+   be byte-identical - assert it); JS chip = asset-only (ADR-008 hot-reload, no RC restart)
+   + 5-phase fixture audit on the changed page; comments/docs = Tier-0.
+5. Ghost list absolute: do NOT re-design the archetype dispatcher; do NOT re-add the picker
+   grid; dashboard.js is dead code; no DS coverage prose recompute; frozen files untouched.
+6. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+7. DONE: commit -F tmpfile (ASCII) + docs/LEDGER.md entry (max id + 1) + git pull --rebase +
+   push + CI green.

@@ -1,0 +1,22 @@
+EXECUTION SESSION - LEAP-01 PGR S2 single-scroll layout. Model claude-opus-4-8, effort high.
+Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
+sessions are typing, not deciding.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-01-pgr-s2.md END TO END before any tool call.
+   The P3 AMENDMENT block at the top SUPERSEDES body text (winprob is SR-only mode-gated -
+   name it in D5; reserve/collapse its slot on ARAM/Arena, no layout hole).
+2. Scope: compose the ALREADY-SHIPPED pgr_* panels into ONE single-scroll aggregator-G-style
+   layout on the last-match page; retire the 3-tab split; reuse the existing hero 0-100.
+   Do NOT author new panels, routes, scoring, or schema. NEW headline score = S3, forbidden here.
+3. TDD RED-first where the spec names DOM tests; asset-only JS/CSS hot-reloads via ADR-008
+   (no RC restart for web/js|css changes).
+4. Tier: UI - NO suite runs beyond the spec's named DOM tests; py_compile only if .py touched.
+   MANDATORY before commit: 5-phase fixture audit (STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/
+   HIERARCHY) on the changed page; resolve every MUST-FIX in this same session.
+5. Design rails: 1920x1080 baseline with Chrome chrome, main flex-grows, no 100vh pinning;
+   font floors ~13/15/18px; no reflow on data absence ("-" sentinel, reserved slots).
+6. Ghost list absolute: dashboard.js is dead code (only /js/main.js loads); frozen files
+   untouched; docs/LEDGER.md append-only; Lane U owns overlay item4/item8 files.
+7. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+8. DONE: commit -F tmpfile (ASCII, no em/en dashes) + append docs/LEDGER.md entry (max id + 1)
+   + git pull --rebase + push + CI green. Update ROADMAP PGR line only if S2 fully lands.
