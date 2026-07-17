@@ -4,6 +4,20 @@
 
 ---
 
+# 2026-07-17 (DS meta-valuation sweep - Varus REFUTE; read-only, NO engine change)
+
+Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin closed last session; methodology `feedback_ds_sweep_meta_valuation_research`). Candidate: Varus. mode_key=client, no live game. Subagent-first: parallel meta-research agent + read-only engine-probe agent; main thread reconciled the split verdict. No .py touched (Tier-0 docs-only).
+
+**Varus = REFUTE. Do NOT add Varus to `_CHAMPION_FIGHT_LENGTH`; do NOT re-research.** The two agents SPLIT and the reconciliation IS the finding:
+- MECHANISM (probe): Varus IS Jhin-shaped - unmapped in `core/ds_champion_fight_length.py`, so his carry route pays ZERO burst term. Production `rank_for_primary_archetype('Varus','carry')` (scorer=dps) leads pure on-hit (BotRK 3153 #1, Runaan 3085 #2, Kraken 6672 #3, Terminus 3302 #4) and BURIES the lethality core (Collector 6676 #16, Serylda 6694 #24, Youmuu 3142 #25, Edge of Night 3814 #34). Counterfactual `rank_for('Varus', fight_length=0.5)` lifts them Jhin-style (Collector +14 -> #3).
+- META (research, patch 16.14 SR ADC): on-hit W-max IS Varus's PRIMARY build (~65-75% play, Lethal Tempo, 51-54% WR); lethality-poke Q-max is SECONDARY (~20-30% play, 45-49% WR); crit negligible.
+- VERDICT: DS correctly serves the primary (sustained on-hit) for the carry pick. Mapping Varus would DEMOTE the correctly-surfaced higher-WR primary to lift a lower-WR secondary = valuation DISTORTION (the Kai'Sa trap). The fight_length map is gated to champs whose meta IS burst-carry (Jhin's Whisper AS-lock); Varus's verified meta is sustained on-hit-carry, so he correctly stays OUT (same class as the deliberately-absent Ashe/Aphelios/Kog'Maw). A Jhin-shaped MECHANISM != a warranted fix; the normative test is meta-reproduction, and mapping fails it. Memory `project_ds_sweep_varus_onhit_primary` (RESOLVED-REFUTE). W Blighted Quiver on-hit %HP is modeled SUSTAINED (antitank.py:528 / extendedduel.py:505), reinforcing the correct valuation.
+- NON-FINDING (checked, do-not-chase): probe flagged Opportunity 6701 filtered from the SR pool - INTENTIONAL + documented (`scripts/validate_build_data.py:62-65`, removed from SR meta 26.9); not a Varus core item anyway.
+
+**NEXT SESSION: continue the sweep with a fresh candidate** (Kai'Sa + Jhin + Varus now closed). Recommended: Miss Fortune (marksman lethality-crit burst - a fight_length candidate in the same class as the L3 crit marksmen; is her meta a map-worthy burst, or sustained crit/on-hit?), OR Ezreal (AD-caster: does the sustained-auto carry route fit a spell-scaling ADC, or should he route ability-DPS?). **FENCED, do NOT re-pitch:** the AD-assassin Zed/Talon/Qiyana pure-lethality path is DATA-REFUTED (ROADMAP RM-34; R114/R115, LEDGER 889) - the `feedback_ds_sweep_meta_valuation_research` "AD assassins (Zed/Talon)" line is STALE on that. Run the read-only GAP-or-REFUTE pass FIRST; a REFUTE is a valid outcome. Pick a candidate whose meta answer is genuinely OPEN (skip obvious REFUTEs like on-hit Vayne).
+
+---
+
 # 2026-07-17 (RM-02 counter-hint live-plumbing fix - allPlayers roster in the browser summary; LEDGER 916; 318e7e3a + d8fa0e1c)
 
 Focused headless fix closing the TOP RM-02 blocker flagged in the orchestrated round's Round-2 note (below). mode_key=client, no live game. TDD RED-first (test-driven-development skill); verified vs ground truth before scaffolding (grepped the JS extractor field shape in active_match.js + the ui_mock fixture contract, confirmed state.liveclient = liveclient_summary() at _state_builder.py:663).
@@ -35,14 +49,3 @@ Full-authority headless run (operator away, model switched to opus-4-8 mid-run v
 OWED live-verify (Electron overlay agent-blind + no live game): S1 fed chip render, S2 drag per-panel + the empty-backing-press-inert behavior call, S3 upgraded-Smite countdown, S7 arena/tft mounts in-game. Do NOT redo: S1-S9 (all pushed + verifier-CONFIRMED + truth_gate PROCEED). Manifest run 2026-07-17-01.
 
 Round 2 (LEDGER 915, `566e472b`): S9 shipped the C3 fed-chip JS POST (active_match.js sends enemy_scores/enemy_levels fail-soft) - completes the S1 vertical. **KEY FINDING (ground-truth-verified):** the browser `liveclient_summary()` (dashboard/_liveclient.py:68) emits derived enemy slices but NO raw `allPlayers` key, and active_match.js:655 guards the counter-hint roster on `lc.allPlayers` - so the WHOLE counter-hint program (C2 antiheal / C6 tenacity / C3 fed / R102/R103 roster) is DARK in every live game and lights only under ui_mock. NOT fixed this run (activates 4+ live surfaces blind; operator away). NEXT = the server-side plumbing fix (add a lean enemy roster with scores+levels+item ids to the browser summary) is now the TOP RM-02 live-gated blocker; land it WITH a real-game eyeball. Also NEXT: accrue real-game fusion_shadow toward the Lane E OCR flip.
-
----
-
-# 2026-07-17 (teardown fold-in + F4 swap-wipe fix + headless queue drain; LEDGER 913; b35783a2..4b4aeb67)
-
-Post-loop interactive-headless hybrid (operator: research doc drop, then "f4 now and continue open tasks headlessly"). mode_key=client, no live game. Subagent-first: read-only trace agent + UI-audit agent + TDD build agent.
-- **Fold-in (b35783a2):** AI-companion teardown (Desktop `research-20260716.md`, non-repo, brands withheld) -> BACKLOG section. NOW-list corrected vs ground truth: F3 grade card = existing s220 PGR reframe; F6 chatbot stays R2-CLOSED (charter); F2/F8/F1 -> FUTURE. Companion family DRAINED 5x - rotate categories.
-- **F4 (the owed swap sanity-check):** parity CONFIRMED by trace; 1 defect FIXED (`4b4aeb67`): build-less swap left old champ's RC-* item sets (wipe below both empty-guards). Hoisted wipe + `_CSV_LAST_WIPE_KEY` dedup + push-latch reset (hover-back re-push crux) + CS-exit clear; 13 RED-first tests, 33 green fresh.
-- **Queue:** L-02 proposal already landed (`afdd20eb`) - artifacts + APPLIED marker committed (`facc01cc`), don't re-implement. LANE-U item-4 Slice 1 merged (`090fc62d`) after fresh 30/30 + the deferred 5-phase audit: MUST-FIX in-slice (`936fcc23` grid `align-items:start` + subhead token inversion); 1 SHOULD + 3 NICE -> FUTURE (handoff doc); id-wiring INTACT; remote branch deleted.
-
-OWED carry-forward: settings-reorg PIXEL capture (browser screenshot pipe stuck; DOM verified live) + the item-4 Sections D/E/F interactive session (handoff doc TODO). NEXT: operator calls from the fold-in - (a) re-open F6 chatbot? (b) schedule the s220 PGR reframe session. Do NOT redo: F4 trace/fix, L-02, lane-U merge (all pushed; CI run 29569968111).
