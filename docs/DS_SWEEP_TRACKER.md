@@ -1,0 +1,204 @@
+# Daemon Slayer per-champion meta-valuation sweep - tracker
+
+Standing operator directive (2026-07-17): sweep ALL 173 champions ALPHABETICALLY from Aatrox,
+fine-detail on the kit damage axis + anything else per champ, and report completed + remaining each session.
+Methodology: memory feedback_ds_sweep_meta_valuation_research. Read-only GAP-or-REFUTE pass FIRST per champ;
+a REFUTE is a valid outcome; NO engine change in the research pass (GAP fixes are operator-gated Tier-2 builds).
+Prior cherry-picked ADCs stay completed. Each verdict has its own project_ds_sweep_<champ>_* memory.
+
+Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resolved no-change  -  [FENCED] data-refuted do-not-re-pitch.
+
+## Summary
+
+- Resolved: 10 / 173  (GAP 4, REFUTE 3, FENCED/data-refuted 3)
+- Remaining: 163
+- Next up (strict alphabetical): Aatrox
+
+## Resolved verdicts
+
+- **Corki** - GAP RM-38 - AD-caster spell-weaver; Trinity/Shojin pool-filtered + no AD-caster model; 14.10 rework = true-per-auto + Sheen-special-cased
+- **Ezreal** - GAP RM-36 - AD-caster spell-weaver mis-routed to sustained auto-DPS; Trinity/Shojin pool-filtered
+- **Jhin** - REFUTE - AS-locked lethality-crit; already mapped fight_length=0.5, correctly served
+- **Kai'Sa** - REFUTE - poke/Manamune not primary; on-hit hybrid correctly served
+- **Lucian** - GAP RM-37 - crit-sustained correctly routed but leads off-meta on-hit + Essence Reaver coherence-docked
+- **Miss Fortune** - GAP RM-35 - lethality-crit burst mis-valued as on-hit; needs L3 crit-burst table + AP-exclusion
+- **Qiyana** - FENCED RM-34 - AD-assassin pure-lethality DATA-REFUTED
+- **Talon** - FENCED RM-34 - AD-assassin pure-lethality DATA-REFUTED
+- **Varus** - REFUTE - on-hit W-max IS his primary; engine on-hit lead MATCHES the meta
+- **Zed** - FENCED RM-34 - AD-assassin pure-lethality DATA-REFUTED (R114/R115)
+
+## Full roster (alphabetical, 173)
+
+- [ ] Aatrox
+- [ ] Ahri
+- [ ] Akali
+- [ ] Akshan
+- [ ] Alistar
+- [ ] Ambessa
+- [ ] Amumu
+- [ ] Anivia
+- [ ] Annie
+- [ ] Aphelios
+- [ ] Ashe
+- [ ] Aurelion Sol
+- [ ] Aurora
+- [ ] Azir
+- [ ] Bard
+- [ ] Bel'Veth
+- [ ] Blitzcrank
+- [ ] Brand
+- [ ] Braum
+- [ ] Briar
+- [ ] Caitlyn
+- [ ] Camille
+- [ ] Cassiopeia
+- [ ] Cho'Gath
+- [GAP RM-38] Corki
+- [ ] Darius
+- [ ] Diana
+- [ ] Dr. Mundo
+- [ ] Draven
+- [ ] Ekko
+- [ ] Elise
+- [ ] Evelynn
+- [GAP RM-36] Ezreal
+- [ ] Fiddlesticks
+- [ ] Fiora
+- [ ] Fizz
+- [ ] Galio
+- [ ] Gangplank
+- [ ] Garen
+- [ ] Gnar
+- [ ] Gragas
+- [ ] Graves
+- [ ] Gwen
+- [ ] Hecarim
+- [ ] Heimerdinger
+- [ ] Hwei
+- [ ] Illaoi
+- [ ] Irelia
+- [ ] Ivern
+- [ ] Janna
+- [ ] Jarvan IV
+- [ ] Jax
+- [ ] Jayce
+- [REFUTE] Jhin
+- [ ] Jinx
+- [ ] K'Sante
+- [REFUTE] Kai'Sa
+- [ ] Kalista
+- [ ] Karma
+- [ ] Karthus
+- [ ] Kassadin
+- [ ] Katarina
+- [ ] Kayle
+- [ ] Kayn
+- [ ] Kennen
+- [ ] Kha'Zix
+- [ ] Kindred
+- [ ] Kled
+- [ ] Kog'Maw
+- [ ] LeBlanc
+- [ ] Lee Sin
+- [ ] Leona
+- [ ] Lillia
+- [ ] Lissandra
+- [ ] Locke
+- [GAP RM-37] Lucian
+- [ ] Lulu
+- [ ] Lux
+- [ ] Malphite
+- [ ] Malzahar
+- [ ] Maokai
+- [ ] Master Yi
+- [ ] Mel
+- [ ] Milio
+- [GAP RM-35] Miss Fortune
+- [ ] Mordekaiser
+- [ ] Morgana
+- [ ] Naafiri
+- [ ] Nami
+- [ ] Nasus
+- [ ] Nautilus
+- [ ] Neeko
+- [ ] Nidalee
+- [ ] Nilah
+- [ ] Nocturne
+- [ ] Nunu & Willump
+- [ ] Olaf
+- [ ] Orianna
+- [ ] Ornn
+- [ ] Pantheon
+- [ ] Poppy
+- [ ] Pyke
+- [FENCED RM-34] Qiyana
+- [ ] Quinn
+- [ ] Rakan
+- [ ] Rammus
+- [ ] Rek'Sai
+- [ ] Rell
+- [ ] Renata Glasc
+- [ ] Renekton
+- [ ] Rengar
+- [ ] Riven
+- [ ] Rumble
+- [ ] Ryze
+- [ ] Samira
+- [ ] Sejuani
+- [ ] Senna
+- [ ] Seraphine
+- [ ] Sett
+- [ ] Shaco
+- [ ] Shen
+- [ ] Shyvana
+- [ ] Singed
+- [ ] Sion
+- [ ] Sivir
+- [ ] Skarner
+- [ ] Smolder
+- [ ] Sona
+- [ ] Soraka
+- [ ] Swain
+- [ ] Sylas
+- [ ] Syndra
+- [ ] Tahm Kench
+- [ ] Taliyah
+- [FENCED RM-34] Talon
+- [ ] Taric
+- [ ] Teemo
+- [ ] Thresh
+- [ ] Tristana
+- [ ] Trundle
+- [ ] Tryndamere
+- [ ] Twisted Fate
+- [ ] Twitch
+- [ ] Udyr
+- [ ] Urgot
+- [REFUTE] Varus
+- [ ] Vayne
+- [ ] Veigar
+- [ ] Vel'Koz
+- [ ] Vex
+- [ ] Vi
+- [ ] Viego
+- [ ] Viktor
+- [ ] Vladimir
+- [ ] Volibear
+- [ ] Warwick
+- [ ] Wukong
+- [ ] Xayah
+- [ ] Xerath
+- [ ] Xin Zhao
+- [ ] Yasuo
+- [ ] Yone
+- [ ] Yorick
+- [ ] Yunara
+- [ ] Yuumi
+- [ ] Zaahen
+- [ ] Zac
+- [FENCED RM-34] Zed
+- [ ] Zeri
+- [ ] Ziggs
+- [ ] Zilean
+- [ ] Zoe
+- [ ] Zyra
