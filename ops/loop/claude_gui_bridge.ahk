@@ -21,6 +21,9 @@ MODEF := CTL "\ahk_mode.txt"
 HWNDF := CTL "\target_hwnd.txt"
 DRY_TITLE := "RC-LOOP-DRYRUN"
 LINE_PAUSE := 1500
+CLEAR_PAUSE := 5000   ; extra settle after a /clear line - the TUI session reset
+                      ; takes a moment; typing the next prompt into the resetting
+                      ; window loses keystrokes (operator directive 2026-07-16)
 
 LogMsg(s) {
     global CTL
@@ -88,6 +91,8 @@ Loop {
             Sleep 350
             Send("{Enter}")
             typed += 1
+            if (SubStr(Trim(lineText), 1, 6) = "/clear")
+                Sleep CLEAR_PAUSE
             Sleep LINE_PAUSE
         }
         FileDelete(READY)              ; READY consumed = the "typed" signal the controller waits on
