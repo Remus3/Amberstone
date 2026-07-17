@@ -71,3 +71,32 @@ markers alone (sha-level unverified) permit RELOCATE-not-delete but never hard P
 - L158-L170 | 2026-06-18 refill | e9f70e7d not in local git
 - L171-L191 | 2026-06-19 refill | SHAs uncheckable in budget
 - L9-L16 | contract summary vs ops/loop/director_prompt.md | no diff performed; dedup unconfirmed
+
+## C5 cycle notes (2026-07-17, ARCH/OPS/API/AGENTS + README executed)
+- ARCHITECTURE: Machines table + 2026-06-20 rename narrative deduped -> CLAUDE.md Topology
+  pointer; retired screen_agent row pruned from active data-flows (item 276); 3rd relay
+  self-heal copy deduped intra-doc; item-276 ship narrative + god-modules table relocated ->
+  docs/history_notes.md (U+2705 -> [DONE]); scorer count 6 -> 7 (ds.onhit; LEDGER 911 +
+  core/daemon_slayer_client.py:952/1458); registry + cc_conditional hardcoded counts / ENGINE
+  pins deduped -> DAEMON_SLAYER.md banner per WP-F6a; U+2260 -> !=. L219-224 deploy-allowlist
+  plan LEFT IN PLACE (C1 UNVERIFIED-SKIP holds).
+- OPERATIONS: restart.bat contradiction resolved to match CLAUDE.md (hard fallback after
+  taskkill); RC-LiveFlipWatcher row added (rc_facts live probe: 18 RC-* tasks, watcher Running);
+  RC-DS-MatchDB-MCP persistence para -> REGISTERED (live probe Running + own L69 row; reinstall
+  cmd kept); memory-topic citation dropped (style restructure); bottom Python-path section
+  folded into the top interpreter section. L247-248 play-cadence LEFT (UNVERIFIED holds).
+- API: regenerated from dashboard/_dispatch.py + per-module GET_ROUTES/POST_ROUTES mechanical
+  extraction (105 GET / 30 POST paths); /api/input dup row removed; /api/sim-state +
+  /api/dev/vision-status DROPPED (repo-wide *.py grep 0 hits - dead references, not just
+  undocumented); U+00B7 -> ' - '.
+- AGENTS: SMB push dropped from live roles (agents/agent2_backend/smb_push.py:3,47-53
+  self-declares retired ADR-011/012; stub note added); stale counts (19-file suite, ~828KB
+  queue) replaced with count-free phrasing; cross-machine framing annotated 1-PC;
+  U+2192/U+00B7 -> ASCII.
+- README: six -> seven scoring modes + On-hit table row (wording from LEDGER 911 'sums
+  ability-DPS + on-hit-auto-DPS in one DPS frame'); U+00D7 -> x; ROADMAP pointer fixed to
+  'open work' + docs/LEDGER.md bullet added. L46 roster prose + L48 item/test counts UNTOUCHED
+  (COPY-VERBATIM-ONLY / sync-all-md job).
+- docs/ORCHESTRATION_PLAN.md: still no mdclean row (grep hits = WP-C5 build-plan rows only) -
+  no sync owed.
+- Slice-manifest / TaskCreate phases skipped per the directive's Tier-0 single-thread override.
