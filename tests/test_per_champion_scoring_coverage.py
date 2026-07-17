@@ -52,9 +52,12 @@ _OPPOSITE = {
     "mage": "carry", "enchanter": "carry", "tank": "carry",
 }
 
-# Documented principled exception: Kog'Maw is archetype-labeled "mage" but is an
-# attack-speed / on-hit MARKSMAN that genuinely builds the AD-carry set over pure
-# AP - the scorer ranking carry > mage for Kog is correct; the label is the quirk.
+# Documented principled exception: Kog'Maw is an attack-speed / on-hit MARKSMAN
+# that genuinely builds the AD-carry set over pure AP - the scorer ranking
+# carry > mage for Kog is correct; the label is the quirk. Kog'Maw was labeled
+# "mage" pre-Slice-B; post-Slice-B (t10) he routes to "onhit" (AP own-set via
+# the onhit branch below), but the AD-over-AP rationale for the exception is
+# unchanged - he still fails the AP-mage-beats-AD-carry check on kit merit.
 _EXCEPTIONS = {"Kog'Maw"}
 
 
@@ -116,6 +119,13 @@ class PerChampionCoverage(_Base):
             # AD assumption. AD assassins keep the AD "assassin" set vs "mage".
             if prim == "assassin" and kit_damage_axis(champ) == "ap":
                 own_set, opp = "mage", "carry"
+            # Slice B (t10): on-hit-AP champs (Gwen / Kayle / Kog'Maw) route to
+            # the ds.onhit scorer but build AP - score their AP set vs the
+            # AD-carry misfit, mirroring the AP-assassin handling above rather
+            # than treating "onhit" as an AD own-set (it is not a canonical
+            # item-set key at all - see _CANON_NAMES).
+            if prim == "onhit":
+                own_set, opp = "mage", "carry"
             if opp == own_set:
                 opp = "carry" if own_set != "carry" else "mage"
             own = score_build(self.canon[own_set], champ, [], owned_count=6).total
@@ -133,7 +143,12 @@ class PerChampionCoverage(_Base):
         byarch = defaultdict(set)
         for champ in self.roster:
             prim = default_for_champion(champ)[0]
-            s = round(score_build(self.canon[prim], champ, [], owned_count=6).total, 3)
+            # Slice B (t10): "onhit" is not a _CANON_NAMES key (no dedicated
+            # item set) - score on-hit-AP champs on the AP "mage" set, same
+            # rationale as the own-archetype check above. byarch stays keyed
+            # by prim so the 3-champ onhit roster is grouped together.
+            canon_key = "mage" if prim == "onhit" else prim
+            s = round(score_build(self.canon[canon_key], champ, [], owned_count=6).total, 3)
             byarch[prim].add(s)
         for arch, scores in byarch.items():
             self.assertGreater(len(scores), 1,
