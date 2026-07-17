@@ -98,6 +98,113 @@ def _capture_screen() -> Optional[str]:
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SONNET_MODEL = "claude-sonnet-4-6"
 
+# -- R126 fusion shadow lane (RM-01 / Lane E, S6 - SHADOW-FIRST) --------------
+# Wires core.vision_fusion.fuse_reads into the tiered vision tick as LOG-ONLY
+# telemetry: one record per read_tiered() when BOTH sources (liveclient cache
+# snapshot + CV reads) exist. Sibling of the R101 OCR shadow lane
+# (core/vision_routing._log_ocr_shadow -> data/ocr_shadow.jsonl) - same
+# env-overridable path + fail-soft append pattern, but per-tick (fusion is a
+# whole-read merge) rather than per-field. The served coach dict is untouched.
+
+# Same staleness bound as coaches/_base_coach._fetch_game_data: past it the
+# coach itself would treat the snapshot as gone, so fusion marks it stale.
+_LIVECLIENT_STALE_S = 12.0
+
+
+def _fusion_shadow_path() -> Path:
+    """Resolve the fusion shadow-log path. Honors RC_FUSION_SHADOW_PATH
+    (tests + ops override), else data/fusion_shadow.jsonl at the repo root."""
+    import os
+    override = os.getenv("RC_FUSION_SHADOW_PATH")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parent.parent / "data" / "fusion_shadow.jsonl"
+
+
+def _liveclient_flat_fields(data: dict) -> dict:
+    """Flatten /allgamedata to the CV-comparable numerics (gold/level/cs/kda).
+
+    Mirrors the coach parse (aram_coach._parse_state) including the
+    summonerName-vs-riotIdGameName active-player match, so fused pairs
+    compare the same player the coach serves. Fields the Live Client
+    structurally lacks (tower HP, fight_state, augments, ally HP bars) are
+    simply not emitted - fuse_reads then records the CV read as fallback.
+    """
+    ap = data.get("activePlayer") or {}
+    all_p = [p for p in (data.get("allPlayers") or []) if isinstance(p, dict)]
+    my_name = (ap.get("summonerName") or ap.get("riotIdGameName") or "").split("#")[0]
+    me = None
+    for p in all_p:
+        pn = (p.get("summonerName") or "").split("#")[0]
+        if pn == my_name or p.get("championName") == ap.get("championName"):
+            me = p
+            break
+    out: dict = {}
+    try:
+        if ap.get("currentGold") is not None:
+            out["gold"] = int(float(ap["currentGold"]))
+        if ap.get("level") is not None:
+            out["level"] = int(ap["level"])
+    except (TypeError, ValueError):
+        # Malformed numerics: drop the field, keep the rest of the read.
+        pass
+    sc = (me or {}).get("scores") or {}
+    if sc:
+        cs = sc.get("creepScore")
+        if isinstance(cs, (int, float)):
+            out["cs"] = int(cs)
+        out["kda"] = (
+            f"{sc.get('kills', 0)}/{sc.get('deaths', 0)}/{sc.get('assists', 0)}"
+        )
+    return out
+
+
+def _log_fusion_shadow(cv_reads) -> None:
+    """Append one fuse_reads shadow record when both sources exist.
+
+    SHADOW-FIRST contract: compute + LOG only - the caller's dict is never
+    modified, so served coach output stays byte-identical. The liveclient
+    snapshot is read passively off the cache module attribute rather than
+    via get(), because get() auto-starts the poll loop and a shadow
+    observer must not spawn threads or polls; in the live process the
+    coach's _fetch_game_data() gate has already warmed the cache before
+    any vision tick reaches this point. Fail-soft: never raises into the
+    coach path.
+    """
+    try:
+        if not isinstance(cv_reads, dict) or not cv_reads:
+            return
+        import core.liveclient_cache as _lcc
+        snap = getattr(_lcc, "_snapshot", None)
+        data = getattr(snap, "data", None)
+        if not isinstance(data, dict):
+            return
+        lc = _liveclient_flat_fields(data)
+        live_stale = float(getattr(snap, "age_s", 0.0)) > _LIVECLIENT_STALE_S
+        from core.vision_fusion import fuse_reads
+        fused = fuse_reads(lc, cv_reads, live_stale=live_stale)
+        disagree = sorted(
+            f for f in lc if f in cv_reads and cv_reads[f] != lc[f]
+        )
+        rec = {
+            "ts": time.time(),
+            "live_stale": live_stale,
+            "live_client": lc,
+            "cv_reads": dict(cv_reads),
+            "fused": fused,
+            "disagree_fields": disagree,
+            "disagreement": bool(disagree),
+        }
+        path = _fusion_shadow_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Single write of one full line: readers of the JSONL lane never
+        # see a torn record (R101 writer precedent).
+        line = json.dumps(rec, ensure_ascii=True, default=str) + "\n"
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(line)
+    except Exception as exc:  # noqa: BLE001 - shadow lane must never raise
+        logger.debug("fusion shadow log failed: %s", exc)
+
 
 class GameVisionReader:
     """
@@ -213,6 +320,9 @@ class GameVisionReader:
             if state_summary:
                 self._last_state_summary = state_summary
                 self._last_result = raw
+            # R126 shadow-first fusion telemetry - log-only, fail-soft;
+            # the returned dict is exactly what it was before this line.
+            _log_fusion_shadow(raw)
         return raw
 
     def last(self) -> dict:
