@@ -1,6 +1,7 @@
 # Electron Shell + In-Game Overlay - Architecture
 
-Status: PLAN (no code yet). Authored 2026-05-28. Owner decision doc for moving
+Status: SHIPPED - the rc-shell/ Electron shell is live (docs/OVERLAY_BUILD_MASTER_PLAN.md
+Section J; overlay-overhaul LEDGER 859/860/867). Authored 2026-05-28 as the decision doc for moving
 RC from "Chrome on a second display" to a stabilized, single-screen, in-client +
 in-game product while development continues.
 

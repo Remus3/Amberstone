@@ -124,3 +124,44 @@ markers alone (sha-level unverified) permit RELOCATE-not-delete but never hard P
   same-change .claude/workflows/live-gated-resync.js edit (writer prompt ~L210 + verifier ~L235
   >400-line + OWED-harvest contract) per in-doc L952-953 + feedback_no_history_rewrite.
 
+
+## C7 cycle notes (2026-07-17, cross-ref sweep + slice G + census executed)
+
+- Slice G (folded in per C1 routing; C6 had no room): OVERLAY_BUILD_MASTER_PLAN.md 72157B ->
+  ~24KB (A-D WP specs, E.1/E.2 disposition tables, Section H wave plan, Section I harness
+  relocated verbatim -> docs/history_notes.md; stubs cite Section J SHAs; F1-01 status-lined
+  LEDGER 685 + dropped from GATED list; F.5 collapsed to open F5-L03 (M04/M05/H02/M01 DONE per
+  Section J); WP-F6a spec -> DONE status line b0720386). RC2_PLAN.md 99403B -> ~22KB (24
+  findings mega-entries + TOP-10 answers + PROGRESS detail line relocated verbatim ->
+  history_notes; pointers to docs/RC2_QA_CONSOLIDATED.md f05b853d + STAGES tables; HARD-PAUSE
+  bullet marked SPENT per in-doc 2026-06-20 GREENLIGHT).
+- Section E handled as RELOCATE-not-prune: C1's "LEDGER 744 applied" citation NOT confirmed and
+  Section J shows WP-E5 still OPEN - tables preserved verbatim in history_notes with an
+  executed-partially note (C2 4ab82200 + C5 86616a9f).
+- Census relocations -> docs/_archive/ (git mv, tracked): 16 COMPETITOR_LIFT_*, OVERLAY_QA_
+  2026-06-29 (LEDGER 686/688), AUDIT_2026-07-09_NEXT_SESSION_PLAN (LEDGER 822),
+  OPERATOR_DECISION_QUEUE_2026-07-01 (LEDGER 734), CHAMP_SELECT_UI_SPEC (SUPERSEDED banner,
+  LEDGER 589), UI_OVERLAY_REDESIGN_SPEC_2026-07-06 (SUPERSEDED banner, LEDGER 860). Disk-move
+  only (untracked/gitignored): 11 EXTERNAL_REVIEW_*. BACKLOG repointed 12 refs to _archive
+  paths; LIVE_GATED hygiene row 15 annotated EXECUTED (body region, ledger untouched).
+- UNVERIFIED-SKIP / deferred (carry-forward):
+  - docs/LOOP_IMPROVEMENTS_2026-06-27.md NOT relocated: tests/test_loop_gemini_timeout.py cites
+    the path; retargeting is a test edit = outside Tier-0 docs-only. Needs a Tier-1 cycle.
+  - ops/loop/prompts/lane_ui_prompt.md cites docs/specs/2026-07-16-ui-worktree-handoff.md which
+    does not exist - it is the EXPECTED OUTPUT of an unfinished FORWARD_LEAP lane, not a broken
+    link; left as-is.
+  - docs/research/COMPETITOR_LIFT_AGGREGATOR_C.md left in place (research/ cohort, not the docs/
+    dated set; no citation for archiving research/).
+- Cross-ref fixes: tools/sync-all-md.md dropped deleted docs/BRIDGE.md from both sync-target
+  lists (ADR-012:34 records deletion; Test-Path 0); docs/ELECTRON_OVERLAY.md stale "Status:
+  PLAN (no code yet)" -> SHIPPED pointer (rc-shell/src on disk + Section J); docs/cost_trace.md
+  disk name normalized to the git-tracked docs/COST_TRACE.md casing (code cites COST_TRACE.md:
+  tools/cost_health_watchdog.py:16,60). False positives NOT edited: Share/docs/0X_* suffix
+  matches, ADR-012 historical deletion statement, sync-all-md.md:87 self-documented CHANGELOG
+  case, GEMINI_* configs citing the EXTERNAL_REVIEW_<date> pattern (future files, writer
+  unchanged; prior review already archived per GEMINI_AUDIT_CONFIG.md:55).
+- CLAUDE.md proposal written to ops/loop/reports/mdclean-claudemd-proposal.md (2 no-change
+  confirmations, 2 optional slims P1/P2). CLAUDE.md untouched.
+- ASCII: all touched files scan clean (0 chars >127 in edited/added content); history_notes C7
+  append verbatim-clean; tools/sync-all-md.md pre-existing glyphs left (operator-gated sweep).
+- Slice-manifest / TaskCreate phases skipped per the directive's Tier-0 single-thread override.
