@@ -1,5 +1,8 @@
 # Champ Select UI redesign spec (page #8, SR)
 
+> SUPERSEDED by docs/RC2_REDESIGN_PLAN.md (full Hextech redesign, LEDGER 589). Archived
+> 2026-07-17 (mdclean C7). Kept for the original six-change rationale.
+
 Operator-directed 2026-05-31. Six changes. Grounded in the live render
 (`web/js/panels/champ_select.js`, `web/css/panels/champ_select_view.css`,
 `web/js/panels/build_order.js` + `.css`, `web/index.html` champ-select grid

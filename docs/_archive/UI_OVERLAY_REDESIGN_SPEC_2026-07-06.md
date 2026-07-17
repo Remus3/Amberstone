@@ -1,5 +1,8 @@
 # Overlay UI redesign + DS-stability - next-session spec (2026-07-06)
 
+> SUPERSEDED by docs/specs/2026-07-11-overlay-item{1,4,8} (LEDGER 860). Archived 2026-07-17
+> (mdclean C7).
+
 Handoff from the 2026-07-05/06 live-ARAM session. The operator flagged a grab-bag
 of overlay issues + a DS build-suggestion instability while playing. The CV-precision
 work (minimap scale 3.0) was resolved or SR-gated; the UI grab-bag was dispatched as 3
