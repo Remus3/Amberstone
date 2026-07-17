@@ -64,14 +64,15 @@ class SettingsCardTogglesTests(unittest.TestCase):
                 f"missing the {tid} push toggle in the settings card (Phase 5).")
 
     def test_toggles_live_under_champ_select_card(self):
-        # Land in today's CHAMP SELECT card (item-4's Client Settings rename is
-        # separate/later). Bound by the next settings-card-head.
-        i = self.html.index("CHAMP SELECT")
-        nxt = self.html.index("settings-card-head", i + 1)
+        # Item-4A consolidated CHAMP SELECT into the CLIENT SETTINGS card as the
+        # "Champ Select" sub-group; the toggles sit under that sub-head, bounded
+        # by the next sub-head (Pre-Game Lobby).
+        i = self.html.index('settings-subhead">Champ Select<')
+        nxt = self.html.index("settings-subhead", i + 1)
         card = self.html[i:nxt]
         for tid in _TOGGLE_IDS:
             self.assertIn(f'id="{tid}"', card,
-                f"{tid} must sit inside the CHAMP SELECT settings card (Phase 5).")
+                f"{tid} must sit inside the Champ Select sub-group (item-4A).")
 
     def test_dev_binder_wires_each_toggle_to_its_flat_key(self):
         for tid, key in zip(_TOGGLE_IDS, _PUSH_KEYS):
