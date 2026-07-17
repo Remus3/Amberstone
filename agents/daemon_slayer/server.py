@@ -88,6 +88,7 @@ from .dsp_live_consumers import (
 )
 from .extendedduel import compute_extendedduel
 from .matchup import compute_matchup
+from .onhit_dps import rank_items_by_onhit
 from .rank import SORT_KEYS, rank_items
 
 _log = logging.getLogger("daemon_slayer.server")
@@ -127,6 +128,7 @@ _INDEX_HTML = """<!doctype html>
 <tr><td>POST</td><td>/rank-bruiser</td><td>rank items by weighted (alpha*dps + beta*ehp) delta (Phase 2)</td></tr>
 <tr><td>POST</td><td>/ability-dps</td><td>per-spell ability DPS for a mage / caster build (Phase 4b)</td></tr>
 <tr><td>POST</td><td>/rank-mage</td><td>rank items by total-ability-DPS delta (Phase 4c)</td></tr>
+<tr><td>POST</td><td>/rank-onhit</td><td>rank items by combined on-hit AP DPS delta (Slice B)</td></tr>
 <tr><td>POST</td><td>/burst</td><td>single-combo total burst damage for an assassin build (Phase 5)</td></tr>
 <tr><td>POST</td><td>/rank-assassin</td><td>rank items by total-burst-damage delta (Phase 5)</td></tr>
 <tr><td>POST</td><td>/hps</td><td>total healing+shielding+buff throughput for an enchanter build (Phase 6)</td></tr>
@@ -1141,6 +1143,67 @@ def _route_rank_mage(body: dict) -> dict:
     return result.to_dict()
 
 
+def _route_rank_onhit(body: dict) -> dict:
+    """POST /rank-onhit - rank items by combined on-hit AP DPS delta.
+
+    Slice B Task 6 (2026-07-16). Body mirrors /rank-mage's shared fields
+    (``target_*`` / ``budget`` / ``slots`` / ``top`` / ``sort`` /
+    ``include_components`` / ``only`` / ``filter_shared_uniques``) plus two
+    Slice-B-only params forwarded straight to ``rank_items_by_onhit``:
+    ``apply_passive_damage`` (default True) and ``ap_ad_coherence`` (default
+    0.0). ``rank_items_by_onhit`` has a narrower signature than
+    ``rank_items_by_ability_dps`` - it has no ``target_current_hp_pct``,
+    ``max_priority``, ``block_strategy``, ``form_index_overrides``,
+    ``block_index_overrides``, or ``apply_ability_amps`` params, so those
+    are not parsed here.
+    """
+    snap = _CACHE.get()
+    champion = _resolve_champion_id(snap, _required_str(body, "champion"))
+    level = _opt_int(body, "level", 1) or 1
+    items = _coerce_str_list(body.get("items"), "items")
+    mode = _opt_str(body, "mode", "SR") or "SR"
+    target_armor = _opt_float(body, "target_armor", 0.0)
+    target_mr = _opt_float(body, "target_mr", 0.0)
+    target_max_hp = _opt_float(body, "target_max_hp", 0.0)
+    target_bonus_hp = _opt_float(body, "target_bonus_hp", 0.0)
+    augments = _coerce_str_list(body.get("augments"), "augments")
+    budget = _opt_int(body, "budget", None)
+    slot_count = _opt_int(body, "slots", 6) or 6
+    top_n = _opt_int(body, "top", 20)
+    if top_n is None:
+        top_n = 20
+    sort_by = _opt_str(body, "sort", "delta") or "delta"
+    if sort_by not in SORT_KEYS:
+        raise _ApiError(400, f"sort: must be one of {list(SORT_KEYS)}, got {sort_by!r}")
+    include_components = _opt_bool(body, "include_components", False)
+    filter_shared_uniques = _opt_bool(body, "filter_shared_uniques", True)
+    apply_passive_damage = _opt_bool(body, "apply_passive_damage", True)
+    ap_ad_coherence = _opt_float(body, "ap_ad_coherence", 0.0)
+    only_ids: Optional[list[str]] = None
+    if "only" in body and body["only"] not in (None, ""):
+        only_ids = _coerce_str_list(body["only"], "only")
+    try:
+        result = rank_items_by_onhit(
+            snap,
+            champion_id=champion, level=level,
+            current_item_ids=items, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            budget=budget, slot_count=slot_count, top_n=top_n,
+            include_components=include_components,
+            only_item_ids=only_ids, sort_by=sort_by,
+            augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
+            apply_passive_damage=apply_passive_damage,
+            ap_ad_coherence=ap_ad_coherence,
+        )
+    except KeyError as e:
+        raise _ApiError(404, str(e))
+    except ValueError as e:
+        raise _ApiError(422, str(e))
+    return result.to_dict()
+
+
 def _route_burst(body: dict) -> dict:
     """POST /burst - single-combo burst damage for the caster build.
 
@@ -2026,6 +2089,7 @@ _POST_ROUTES = {
     "/rank-bruiser": _route_rank_bruiser,
     "/ability-dps": _route_ability_dps,
     "/rank-mage": _route_rank_mage,
+    "/rank-onhit": _route_rank_onhit,
     "/burst": _route_burst,
     "/rank-assassin": _route_rank_assassin,
     "/hps": _route_hps,

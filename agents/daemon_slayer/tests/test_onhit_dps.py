@@ -145,3 +145,13 @@ def test_kit_onhit_credited_for_kayle_kog(champ):
     on = compute_onhit_dps(snap, champ, 13, item_ids=("3115",), mode="SR",
                            apply_passive_damage=True, **T)
     assert on.auto_dps > off.auto_dps, f"{champ}: kit on-hit not credited"
+
+
+# --- Slice B Task 6 (2026-07-16) - /rank-onhit server route ----------------
+#
+# Exposes rank_items_by_onhit over HTTP so later Slice-B tasks can wire the
+# RC client + live-validate. Dispatch symbol is _POST_ROUTES (confirmed at
+# server.py:2018), not the _ROUTES guess in the original task brief.
+def test_rank_onhit_route_registered():
+    from agents.daemon_slayer.server import _POST_ROUTES
+    assert "/rank-onhit" in _POST_ROUTES
