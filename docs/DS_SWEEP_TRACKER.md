@@ -10,12 +10,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 12 / 173  (GAP 6, REFUTE 3, FENCED/data-refuted 3)
-- Remaining: 161
-- Next up (strict alphabetical): Akali
+- Resolved: 13 / 173  (GAP 7, REFUTE 3, FENCED/data-refuted 3)
+- Remaining: 160
+- Next up (strict alphabetical): Akshan
 
 ## Resolved verdicts
 
+- **Akali** - GAP RM-41 (CLASS-LEVEL) - pure-AP burst assassin; production ds.burst serves her damage core but leaks AD-spellblade pollution (Trinity #3, Essence Reaver #4, BotRK #9, IE #12) into a 100%-AP champ + buries Hextech Gunblade #11; hits the whole _AP_ASSASSIN_IDS cohort except Leblanc (Fizz/Katarina Trinity #2); first ds.burst-scorer gap, mirror of RM-35
 - **Aatrox** - GAP RM-39 - ability-centric AD drain-bruiser mis-served by the ds.hybrid auto-DPS sub-model; leads Blade of the Ruined King on-hit #1 + crit ADC items, buries his #1 item Spear of Shojin at rank 51/143; NOT pool/burst/coherence (new shape, first bruiser-scorer gap)
 - **Ahri** - GAP RM-40 (mildest) - burst-combo mage on the correct mage/ds.ability scorer, but the sustained DPS model leads Liandry's #1 (off-meta vs squishy) + buries her universal signature Malignance at #15 (ult-haste->burst unmodeled); most AP core surfaces top-10; NOT pool/wrong-archetype; first mage-scorer gap
 - **Corki** - GAP RM-38 - AD-caster spell-weaver; Trinity/Shojin pool-filtered + no AD-caster model; 14.10 rework = true-per-auto + Sheen-special-cased
@@ -33,7 +34,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 - [GAP RM-39] Aatrox
 - [GAP RM-40] Ahri
-- [ ] Akali
+- [GAP RM-41] Akali
 - [ ] Akshan
 - [ ] Alistar
 - [ ] Ambessa
