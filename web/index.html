@@ -1459,88 +1459,51 @@
                  aria-label="Filter settings" />
           <span class="settings-filter-count" id="settings-filter-count"></span>
         </div>
+        <!-- Overlay item 4A (docs/specs/2026-07-11-overlay-item4-client-settings-reorg-design.md):
+             the former CHAMP SELECT card is renamed CLIENT SETTINGS and consolidates
+             the Champ Select / Pre-Game Lobby / Post Game Review / Voice groups, each
+             a labelled .settings-subgroup. All control ids are unchanged so the
+             dev.js / main.js wiring keyed on them stays intact. -->
         <div class="settings-card">
-          <div class="settings-card-head">VOICE</div>
-          <label class="settings-row">
-            <input type="checkbox" id="set-voice-on" />
-            <span>Voice TTS for Right Now headline</span>
-          </label>
-          <label class="settings-row">
-            <span>Voice picker</span>
-            <select id="set-voice-name"></select>
-          </label>
-        </div>
-        <div class="settings-card">
-          <div class="settings-card-head">CHAMP SELECT</div>
-          <label class="settings-row">
-            <input type="checkbox" id="set-force-flash-snowball" />
-            <span>Force Flash + Snowball in ARAM (default for new champ-selects)</span>
-          </label>
-          <label class="settings-row"
-                 data-tt="Auto-push your selected rune page to the League client when you pick a build in champ select. Default ON; uncheck to stop pushing runes. Last write wins over the automatic recommended-rune page.">
-            <input type="checkbox" id="set-push-runes" />
-            <span>Auto-push runes on build select (default ON)</span>
-          </label>
-          <label class="settings-row"
-                 data-tt="Auto-push the selected build's summoner spells (D + F) to the client on build select. Default ON; uncheck to stop pushing spells.">
-            <input type="checkbox" id="set-push-spells" />
-            <span>Auto-push summoner spells on build select (default ON)</span>
-          </label>
-          <label class="settings-row"
-                 data-tt="Auto-push the selected build's item set to the in-client item shop on build select. Default ON; uncheck to stop pushing items.">
-            <input type="checkbox" id="set-push-build" />
-            <span>Auto-push item build on build select (default ON)</span>
-          </label>
-        </div>
-        <div class="settings-card">
-          <div class="settings-card-head">DISPLAY</div>
-          <label class="settings-row"
-                 data-tt="Render deterministic mock data on panels that have no live game data. Useful during UI work; default OFF for normal operation. Each panel decides per-render whether to honor body[data-ui-mock] - empty live data + mock toggle ON renders the panel's mock fixture instead of the empty state.">
-            <input type="checkbox" id="set-ui-mock" />
-            <span>Dev UI mock data (panels render fixtures when no live game)</span>
-          </label>
-        </div>
-        <div class="settings-card">
-          <div class="settings-card-head">COACHING ACTIONS</div>
-          <div class="settings-row settings-row-static set-action-row">
-            <button type="button" id="set-force-scan-btn" class="set-action-btn"
-                    aria-describedby="set-force-scan-status"
-                    data-tt="Run an immediate coach vision scan now. This is the no-hotkey equivalent of the Ctrl+Tab hotkey - it pokes every active non-TFT coach to re-read the screen on its next loop. Use it from the dashboard (or your phone) when you want a fresh read without touching the keyboard.">Force vision scan</button>
-            <span id="set-force-scan-status" class="dim" aria-live="polite"></span>
+          <div class="settings-card-head">CLIENT SETTINGS</div>
+          <div class="settings-subgroup">
+            <div class="settings-subhead">Champ Select</div>
+            <label class="settings-row">
+              <input type="checkbox" id="set-force-flash-snowball" />
+              <span>Force Flash + Snowball in ARAM (default for new champ-selects)</span>
+            </label>
+            <label class="settings-row" data-tt="Auto-push your selected rune page to the League client when you pick a build in champ select. Default ON; uncheck to stop pushing runes. Last write wins over the automatic recommended-rune page.">
+              <input type="checkbox" id="set-push-runes" />
+              <span>Auto-push runes on build select (default ON)</span>
+            </label>
+            <label class="settings-row" data-tt="Auto-push the selected build's summoner spells (D + F) to the client on build select. Default ON; uncheck to stop pushing spells.">
+              <input type="checkbox" id="set-push-spells" />
+              <span>Auto-push summoner spells on build select (default ON)</span>
+            </label>
+            <label class="settings-row" data-tt="Auto-push the selected build's item set to the in-client item shop on build select. Default ON; uncheck to stop pushing items.">
+              <input type="checkbox" id="set-push-build" />
+              <span>Auto-push item build on build select (default ON)</span>
+            </label>
           </div>
-          <div class="settings-row settings-row-static set-action-note">
-            <span class="dim">No-hotkey equivalent of the Ctrl+Tab force-scan hotkey - triggers an immediate coach vision pass without the keyboard.</span>
+          <div class="settings-subgroup">
+            <div class="settings-subhead">Pre-Game Lobby</div>
+            <label class="settings-row">
+              <input type="checkbox" id="set-lobby-auto-accept" data-tt="Auto-accept ready-check. Source of truth is the LCU agent (it actually accepts the ready-check); synced both ways with the lobby Auto Accept toggle and persistent." />
+              <span>Auto Accept ready-check by default</span>
+            </label>
+            <label class="settings-row">
+              <span>Party default</span>
+              <select id="set-lobby-party-default" data-tt="Remembered party-type preference, synced with the lobby Party toggle. Persists across sessions; not auto-applied - flip it in-lobby when you want it to take effect.">
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+              </select>
+            </label>
           </div>
-        </div>
-        <div class="settings-card">
-          <div class="settings-card-head">API SPEND GATES</div>
-          <label class="settings-row"
-                 data-tt="Reveal the per-gate Anthropic spend kill-switches. Each gate turns its credit-spending calls on or off independently; the choice persists server-side and applies live (no restart). A checked gate is ENABLED (spends credits); unchecking blocks it. The cost beside each gate is USD + tokens averaged over the last 2 full matches.">
-            <input type="checkbox" id="set-dev-mode" />
-            <span>Dev mode (reveal Anthropic spend kill-switches + per-match cost)</span>
-          </label>
-          <div id="spend-gates-list" hidden></div>
-        </div>
-        <div class="settings-card">
-          <div class="settings-card-head">DATA / METRICS</div>
-          <label class="settings-row settings-row-static">
-            <span>Live metric streamer</span>
-            <span id="set-live-metrics-status">-</span>
-            <span class="dim">(env RC_LIVE_METRICS=1 OR config live_metrics_enabled in coach_settings.json - the config switch is re-read live, no restart)</span>
-          </label>
-        </div>
-        <div class="settings-card">
-          <div class="settings-card-head">HEADLESS LOOP</div>
-          <div id="loop-status-body" class="loop-status-body">
-            <div class="home-empty">loading...</div>
-          </div>
-        </div>
-        <div class="settings-card">
-          <div class="settings-card-head">POST GAME REVIEW</div>
-          <label class="settings-row">
-            <span>Rank-tier comparison</span>
-            <select id="set-pgr-rank-tier"
-                    data-tt="Canonical home for the Post Game Review rank-tier comparison. Shares the same setting as the dropdown on that page.">
+          <div class="settings-subgroup">
+            <div class="settings-subhead">Post Game Review</div>
+            <label class="settings-row">
+              <span>Rank-Tier</span>
+              <select id="set-pgr-rank-tier" data-tt="Canonical home for the Post Game Review rank-tier comparison. Shares the same setting as the dropdown on that page.">
               <option value="">- off -</option>
               <option value="iron">Iron</option>
               <option value="bronze">Bronze</option>
@@ -1552,29 +1515,42 @@
               <option value="master">Master</option>
               <option value="grandmaster">Grandmaster</option>
               <option value="challenger">Challenger</option>
-            </select>
-          </label>
-          <label class="settings-row">
-            <span>Baseline window (prior games)</span>
-            <input type="range" id="set-pgr-baseline" min="5" max="50" step="5" />
-            <span id="set-pgr-baseline-val">20</span>
-          </label>
+              </select>
+            </label>
+            <label class="settings-row">
+              <span>Baseline Games</span>
+              <input type="range" id="set-pgr-baseline" min="5" max="50" step="5" />
+              <span id="set-pgr-baseline-val">20</span>
+            </label>
+          </div>
+          <div class="settings-subgroup">
+            <div class="settings-subhead">Voice</div>
+            <label class="settings-row">
+              <input type="checkbox" id="set-voice-on" />
+              <span>Voice TTS for Right Now headline</span>
+            </label>
+            <label class="settings-row">
+              <span>Voice picker</span>
+              <select id="set-voice-name"></select>
+            </label>
+          </div>
         </div>
         <div class="settings-card">
-          <div class="settings-card-head">PRE-GAME LOBBY</div>
-          <label class="settings-row">
-            <input type="checkbox" id="set-lobby-auto-accept"
-                   data-tt="Auto-accept ready-check. Source of truth is the LCU agent (it actually accepts the ready-check); synced both ways with the lobby Auto Accept toggle and persistent." />
-            <span>Auto Accept ready-check by default</span>
+          <div class="settings-card-head">DISPLAY</div>
+          <label class="settings-row" data-tt="Render deterministic mock data on panels that have no live game data. Useful during UI work; default OFF for normal operation. Each panel decides per-render whether to honor body[data-ui-mock] - empty live data + mock toggle ON renders the panel's mock fixture instead of the empty state.">
+            <input type="checkbox" id="set-ui-mock" />
+            <span>Dev UI mock data (panels render fixtures when no live game)</span>
           </label>
-          <label class="settings-row">
-            <span>Party default</span>
-            <select id="set-lobby-party-default"
-                    data-tt="Remembered party-type preference, synced with the lobby Party toggle. Persists across sessions; not auto-applied - flip it in-lobby when you want it to take effect.">
-              <option value="open">Open</option>
-              <option value="closed">Closed</option>
-            </select>
+        </div>
+        <!-- Item 4C: API SPEND GATES stays for now - slated for removal once RC is
+             fully LLM-deterministic (local CV/OCR); do NOT remove yet. -->
+        <div class="settings-card">
+          <div class="settings-card-head">API SPEND GATES</div>
+          <label class="settings-row" data-tt="Reveal the per-gate Anthropic spend kill-switches. Each gate turns its credit-spending calls on or off independently; the choice persists server-side and applies live (no restart). A checked gate is ENABLED (spends credits); unchecking blocks it. The cost beside each gate is USD + tokens averaged over the last 2 full matches.">
+            <input type="checkbox" id="set-dev-mode" />
+            <span>Dev mode (reveal Anthropic spend kill-switches + per-match cost)</span>
           </label>
+          <div id="spend-gates-list" hidden></div>
         </div>
       </div>
     </section>
