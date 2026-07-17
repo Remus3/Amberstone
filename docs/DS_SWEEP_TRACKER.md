@@ -10,12 +10,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 13 / 173  (GAP 7, REFUTE 3, FENCED/data-refuted 3)
-- Remaining: 160
-- Next up (strict alphabetical): Akshan
+- Resolved: 14 / 173  (GAP 8, REFUTE 3, FENCED/data-refuted 3)
+- Remaining: 159
+- Next up (strict alphabetical): Alistar
 
 ## Resolved verdicts
 
+- **Akshan** - GAP RM-42 (mild, closest-to-REFUTE) - crit-marksman/on-hit-hybrid on the correct carry/ds.dps, but leads not-built on-hit (BotRK #1, Runaan's #2) over his crit primary + buries his #2 core Hexoptics C44 #14; his real #1 item Kraken IS surfaced (#3); root cause = reworked Dirty Fighting 200%-crit double-shot unmodeled; same family as Lucian RM-37 (batch)
 - **Akali** - GAP RM-41 (CLASS-LEVEL) - pure-AP burst assassin; production ds.burst serves her damage core but leaks AD-spellblade pollution (Trinity #3, Essence Reaver #4, BotRK #9, IE #12) into a 100%-AP champ + buries Hextech Gunblade #11; hits the whole _AP_ASSASSIN_IDS cohort except Leblanc (Fizz/Katarina Trinity #2); first ds.burst-scorer gap, mirror of RM-35
 - **Aatrox** - GAP RM-39 - ability-centric AD drain-bruiser mis-served by the ds.hybrid auto-DPS sub-model; leads Blade of the Ruined King on-hit #1 + crit ADC items, buries his #1 item Spear of Shojin at rank 51/143; NOT pool/burst/coherence (new shape, first bruiser-scorer gap)
 - **Ahri** - GAP RM-40 (mildest) - burst-combo mage on the correct mage/ds.ability scorer, but the sustained DPS model leads Liandry's #1 (off-meta vs squishy) + buries her universal signature Malignance at #15 (ult-haste->burst unmodeled); most AP core surfaces top-10; NOT pool/wrong-archetype; first mage-scorer gap
@@ -35,7 +36,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - [GAP RM-39] Aatrox
 - [GAP RM-40] Ahri
 - [GAP RM-41] Akali
-- [ ] Akshan
+- [GAP RM-42] Akshan
 - [ ] Alistar
 - [ ] Ambessa
 - [ ] Amumu
