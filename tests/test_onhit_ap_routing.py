@@ -57,3 +57,33 @@ def test_dispatch_onhit_row_projects_conventional_delta_key():
 
 def test_onhit_coherence_fail_soft_for_non_roster_champ():
     assert dsc._onhit_coherence_for("Garen") == 0.0
+
+
+# --- Slice B Task 9 (2026-07-16) - roster + loader ---------------------------
+#
+# Broad-scan classifier (tools/ds_onhit_ap_prefilter.py) scanned all 173
+# champions for (AP-axis via agents.daemon_slayer.onhit_dps._onhit_ap_axis)
+# AND (AS/on-hit-reliant); live-calibrated all 21 flagged candidates against
+# :8893/rank-onhit at coherence 0.0/0.3/0.6/1.0. Only the seed 3 survived the
+# conservative keep bar - see .superpowers/sdd/task-9-report.md for the full
+# per-candidate evidence and drop reasons.
+import json
+import pathlib
+
+
+def test_roster_seed_and_disjoint():
+    roster = json.loads(
+        pathlib.Path("core/ds_onhit_ap_roster.json").read_text(encoding="utf-8")
+    )["champions"]
+    assert {"Gwen", "Kayle", "KogMaw"} <= set(roster)
+    from core.archetype_picks import _AP_ASSASSIN_IDS
+
+    assert set(roster).isdisjoint(_AP_ASSASSIN_IDS)
+    assert "Syndra" not in roster and "Akali" not in roster
+
+
+def test_coherence_resolver_reads_flat_roster():
+    # proves load_onhit_ap_roster flattens the nested json so
+    # _onhit_coherence_for returns a scalar, not a dict-that-fail-softs-to-0.0
+    assert dsc._onhit_coherence_for("Gwen") == 1.0
+    assert dsc._onhit_coherence_for("KogMaw") == 0.6
