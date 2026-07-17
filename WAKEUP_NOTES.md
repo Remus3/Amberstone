@@ -4,6 +4,17 @@
 
 ---
 
+# 2026-07-17 (teardown fold-in + F4 swap-wipe fix + headless queue drain; LEDGER 913; b35783a2..4b4aeb67)
+
+Post-loop interactive-headless hybrid (operator: research doc drop, then "f4 now and continue open tasks headlessly"). mode_key=client, no live game. Subagent-first: read-only trace agent + UI-audit agent + TDD build agent.
+- **Fold-in (b35783a2):** AI-companion teardown (Desktop `research-20260716.md`, non-repo, brands withheld) -> BACKLOG section. NOW-list corrected vs ground truth: F3 grade card = existing s220 PGR reframe; F6 chatbot stays R2-CLOSED (charter); F2/F8/F1 -> FUTURE. Companion family DRAINED 5x - rotate categories.
+- **F4 (the owed swap sanity-check):** parity CONFIRMED by trace; 1 defect FIXED (`4b4aeb67`): build-less swap left old champ's RC-* item sets (wipe below both empty-guards). Hoisted wipe + `_CSV_LAST_WIPE_KEY` dedup + push-latch reset (hover-back re-push crux) + CS-exit clear; 13 RED-first tests, 33 green fresh.
+- **Queue:** L-02 proposal already landed (`afdd20eb`) - artifacts + APPLIED marker committed (`facc01cc`), don't re-implement. LANE-U item-4 Slice 1 merged (`090fc62d`) after fresh 30/30 + the deferred 5-phase audit: MUST-FIX in-slice (`936fcc23` grid `align-items:start` + subhead token inversion); 1 SHOULD + 3 NICE -> FUTURE (handoff doc); id-wiring INTACT; remote branch deleted.
+
+OWED carry-forward: settings-reorg PIXEL capture (browser screenshot pipe stuck; DOM verified live) + the item-4 Sections D/E/F interactive session (handoff doc TODO). NEXT: operator calls from the fold-in - (a) re-open F6 chatbot? (b) schedule the s220 PGR reframe session. Do NOT redo: F4 trace/fix, L-02, lane-U merge (all pushed; CI run 29569968111).
+
+---
+
 # 2026-07-17 (mdclean headless run C1-C8 COMPLETE - gemini AHK loop; LEDGER 912; commits 78c3c018..bbda1e90)
 
 Headless gemini-directed docs-cleanup loop (spec `docs/specs/2026-07-16-md-cleanup-headless-directive.md`). 8 cycles, all gemini audits CLEAN, gemini spend $0.44/$25 ceiling, STOP = max_cycles 8 reached (03:49). Tier-0 docs-only throughout (no suite / no restart / no verifier per spec rule; docs-only pushes skip CI by design - MINUTE SAVER paths-ignore, baseline green).
@@ -23,15 +34,3 @@ Interactive session, continuation of Slice A. Task: surface Nashor's for on-hit 
 - **RESULT:** Nashor's surfaces Gwen#5 / Kayle#6 / Kog#3. Full DS dir 8498 passed. T1-5 all reviewed clean (opus on T4/T5).
 
 SHIPPED - all 11 tasks (this session finished T6-11 via subagent-driven-development; fresh implementer + task-reviewer per task; 3 reviewer-caught Criticals fixed + independent verifier gate). T6 `/rank-onhit` route; T7 `rank_onhit_for` client + `onhit` dispatcher branch (returns the universal `{ok,scorer,archetype,ranked,fell_back}` dict); T8 ENGINE 1.215.0 -> 1.216.0 (136 anchor pins, Share mirror, `:8893` restart) - the full suite caught a MISSED step (the 6 HZ-B build-order tables were not re-stamped; the canonical `core.build_order_precompute/variants --static` regen fixed all 12 stamp tests + refreshed the Slice A + Slice B + Locke routed champs' precomputed builds, which were stale since Slice A skipped the regen); T9 classifier `tools/ds_onhit_ap_prefilter.py` + roster (seed 3 ONLY, 0 additions - conservative precision-over-recall over 21 candidates) + FLAT cached fail-soft loader `core/ds_onhit_ap_roster.py` (the silent-no-op flatten-shape hazard closed by a direct resolver test); T10 `default_for_champion` routes Gwen/Kayle/Kog'Maw to `("onhit", demoted)` + coach display maps - a grep-blindspot Critical (`test_per_champion_scoring_coverage.py` is roster-driven + spells Kog'Maw with an apostrophe -> `KeyError: 'onhit'`) was reviewer-caught + fixed (onhit -> mage-vs-carry remap). Commits `216652f3`..`9113618e` on main. **LIVE E2E (deployed RC :8888 /api/build-plan):** Gwen/Kayle/Kog'Maw `scorer=onhit` + Nashor's in the build; Syndra `ability`, Akali `burst` - controls held. DS-dir 8502 passed; full `tests/` green apart from the 3 known pre-existing (coach_poll x2 + doc_size_budget). LEDGER 911. Live-gated tail: the in-game OVERLAY RENDER eyeball of the new onhit builds (Electron, agent-blind; backend + build-plan proven) -> `docs/LIVE_GAME_GATED_SYNC.md`.
-
----
-
-# 2026-07-16 (DS meta-valuation sweep - AP-assassin ds.burst reroute + snowball de-hoist; LEDGER 910; pushed b2c5fc65..7b9658af, CI green)
-
-Interactive session. Prior NEXT-SESSION offered (a) live-validation drain (BLOCKED - no live game) or (b) a headless ROADMAP item; operator picked the DS meta-valuation sweep. mode_key=client throughout. Flow: brainstorming -> spec -> writing-plans -> subagent-driven-development (fresh implementer + task-reviewer per task) + root-cause-fix for A.1. RC-side only (no ENGINE / Share / :8893).
-- **Slice A (d736d026):** live probe found the AP `ability` scorer kit-BLIND (every AP champ leads Liandry's DoT). Root cause: `core/archetype_picks.axis_correct_archetype` collapses AP-kit assassins to `mage` on a DISPROVEN "burst scorer is AD-only" premise (burst.py handles AP amp). Fix: curated `_AP_ASSASSIN_IDS` (Akali/Ekko/Evelynn/Fizz/Katarina/Leblanc/Diana) -> ds.burst. Excluded: Kassadin (scaling), Sylas (bruiser), Vex (ranged mage). Live depth=6: all 7 flip to real AP burst cores (Lich Bane/Void/Rabadon's); controls held (Qiyana=burst, Syndra/Gwen/Kassadin=ability, Pyke=assassin).
-- **2 test repoints** for that stale premise: test_archetype_axis_correction (EXPECTED_FLIPS) + test_per_champion_scoring_coverage (made AXIS-AWARE - AP assassins scored AP-vs-AD, since the pinned "assassin" canonical set is AD-lethality; upgraded from a skip to a real assertion per operator guidance).
-- **Slice A.1 (8ddbb5b2 + a7b44aeb):** the reroute surfaced a pre-existing planner bug - `core/build_planner/scoring._gold_term` hoisted cheap snowball Mejai's(3041)/Dark Seal(1082) to build-plan #1. Fix: skip a curated `_SNOWBALL_ITEM_IDS` in the gold term (de-prioritize, NOT exclude). depth=6 production test + teeth.
-- **Verified:** full `tests/` 11737 passed (3 pre-existing fails = coach-poll thread-timing x2 + ROADMAP doc-size; NOT mine). opus whole-branch review = Ready-to-merge (0 Critical/Important). CI green. My A.1 brief had a WRONG id (Dark Seal=2033=Corrupting Potion); the build subagent CAUGHT it + used the verified 1082.
-
-NEXT: Slice B (on-hit AP / Nashor's for Gwen/Kayle) = its OWN spec (proven NOT fixable by reroute - forcing bruiser gave AD, still no Nashor's; needs a NEW on-hit-AP DPS scorer term). Do NOT redo: Slice A + A.1 shipped/pushed/CI-green. Patch-refresh note: `_AP_ASSASSIN_IDS` + `_SNOWBALL_ITEM_IDS` are hand-pinned (drift on roster/item patches). Overlay RENDER eyeball of the new AP-assassin builds = live-gated tail.
