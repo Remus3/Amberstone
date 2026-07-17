@@ -902,6 +902,113 @@ def hps_for(
     return _post_json("/hps", body, timeout=timeout)
 
 
+@dataclass(frozen=True)
+class OnhitRankedItem:
+    """Mirror of ``agents.daemon_slayer.onhit_dps.OnhitDpsRankedItem`` -
+    Slice B (2026-07-16) sibling of ``MageRankedItem`` / ``AssassinRankedItem``.
+
+    ``delta_dps`` / ``new_dps`` describe the COMBINED on-hit DPS (ability +
+    auto, plain sum - matches ``OnhitDpsResult.onhit_dps``); ``ability_dps``
+    / ``auto_dps`` are the two halves (``new_dps == ability_dps + auto_dps``
+    per row). There is NO ``effective_score`` field here - the AP/AD
+    axis-coherence penalty (``ap_ad_coherence``) is applied to the sort key
+    SERVER-side, so rows already arrive sorted.
+    """
+    item_id: str
+    item_name: str
+    gold: int
+    delta_dps: float
+    new_dps: float
+    ability_dps: float
+    auto_dps: float
+    dps_per_1k_gold: float
+    is_terminal: bool
+    tags: tuple[str, ...]
+    shares_dead_unique: bool = False
+    dead_unique_key: str = ""
+    # Phase 4(d): mirrors server unique_passive_key - the positive
+    # locked-family signal (collision-independent).
+    unique_passive_key: str = ""
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "OnhitRankedItem":
+        return cls(
+            item_id=str(d.get("item_id", "")),
+            item_name=str(d.get("item_name", "")),
+            gold=int(d.get("gold", 0)),
+            delta_dps=float(d.get("delta_dps", 0.0)),
+            new_dps=float(d.get("new_dps", 0.0)),
+            ability_dps=float(d.get("ability_dps", 0.0)),
+            auto_dps=float(d.get("auto_dps", 0.0)),
+            dps_per_1k_gold=float(d.get("dps_per_1k_gold", 0.0)),
+            is_terminal=bool(d.get("is_terminal", False)),
+            tags=tuple(d.get("tags", ())),
+            shares_dead_unique=bool(d.get("shares_dead_unique", False)),
+            dead_unique_key=str(d.get("dead_unique_key", "")),
+            unique_passive_key=str(d.get("unique_passive_key", "")),
+        )
+
+
+def rank_onhit_for(
+    champion: str,
+    *,
+    level: int,
+    item_ids: Iterable[str],
+    mode: str = "SR",
+    target_armor: float = 0.0,
+    target_mr: float = 0.0,
+    target_max_hp: float = 0.0,
+    target_bonus_hp: float = 0.0,
+    top: int = 8,
+    sort_by: str = "delta",
+    only_item_ids: Optional[Iterable[str]] = None,
+    augments: Optional[Iterable[str]] = None,
+    filter_shared_uniques: bool = True,
+    apply_passive_damage: bool = True,
+    ap_ad_coherence: float = 0.0,
+    timeout: float = DEFAULT_TIMEOUT,
+) -> Optional[list[OnhitRankedItem]]:
+    """Call POST /rank-onhit and return the parsed top-N rows. None on engine failure.
+
+    Slice B (2026-07-16) - on-hit AP combined-DPS scorer, the sibling of
+    ``rank_mage_for`` for champions whose kit needs BOTH ability DPS and
+    on-hit-auto DPS scored together (Gwen, Kayle, Kog'Maw - see
+    ``agents.daemon_slayer.onhit_dps``). Same engine-down semantics as
+    ``rank_for`` (None = unreachable, [] = nothing to recommend). Drops the
+    mage-only ``target_current_hp_pct`` / ``max_priority`` / ``block_strategy``
+    / ``form_index`` params - the on-hit scorer does not use them.
+
+    ``apply_passive_damage`` (default True) routes an allowlisted kit
+    on-hit passive onto the auto-attack cadence server-side.
+    ``ap_ad_coherence`` (default 0.0 = off) is the per-champ AP/AD
+    axis-coherence penalty forwarded to the server ranker's sort key.
+    """
+    body: dict = {
+        "champion": champion,
+        "level": int(level),
+        "items": [str(i) for i in item_ids if i],
+        "mode": mode,
+        "target_armor": float(target_armor),
+        "target_mr": float(target_mr),
+        "target_max_hp": float(target_max_hp),
+        "target_bonus_hp": float(target_bonus_hp),
+        "top": int(top),
+        "sort": sort_by,
+        "filter_shared_uniques": bool(filter_shared_uniques),
+        "apply_passive_damage": bool(apply_passive_damage),
+        "ap_ad_coherence": float(ap_ad_coherence),
+    }
+    if only_item_ids is not None:
+        body["only"] = [str(i) for i in only_item_ids if i]
+    if augments:
+        body["augments"] = [str(a) for a in augments if a]
+    data = _post_json("/rank-onhit", body, timeout=timeout)
+    if data is None:
+        return None
+    ranked = data.get("ranked") or []
+    return [OnhitRankedItem.from_dict(r) for r in ranked]
+
+
 # Ranged-carry off-class gate (item 208 carry, 2026-06-10). The engine's
 # own DPS-pool filter (agents/daemon_slayer/rank.py, item 213) keys on the
 # Marksman tag plus attackrange >= 500, so ranged carries below that floor
@@ -998,6 +1105,39 @@ def _kitless_all_zero(rows, attr: str) -> bool:
     )
 
 
+def _onhit_coherence_for(champion: str) -> float:
+    """Per-champ AP/AD coherence strength from the Task-9 on-hit-AP roster.
+
+    Slice B (2026-07-16). Fail-soft to 0.0 (off) whenever the roster
+    module/loader is absent or the champion is unmapped, so a call made
+    before Task 9 lands stays byte-identical to no gate at all.
+    ``core/ds_onhit_ap_roster.py`` does not exist yet as of Task 7 - the
+    ``except ImportError`` branch below is the ACTIVE path today, so every
+    champion resolves to 0.0 (gate off) until Task 9 ships the roster +
+    loader.
+    """
+    try:
+        from core.ds_onhit_ap_roster import load_onhit_ap_roster
+    except ImportError:
+        return 0.0
+    try:
+        roster = load_onhit_ap_roster()  # {canonical_champ_id: coherence}
+        key = champion
+        try:
+            # Local import mirrors the circular-import-avoidance pattern
+            # already used for this lookup elsewhere in the codebase (e.g.
+            # core/ds_antitank_hint.py) - canonicalize best-effort so a Live
+            # Client display name still resolves against the roster's
+            # DDragon-id keys.
+            from core.archetype_picks import canonical_champion_id
+            key = canonical_champion_id(champion) or champion
+        except ImportError:
+            pass
+        return float(roster.get(key, 0.0))
+    except Exception:  # noqa: BLE001 - fail-soft resolver, never gate on a roster error
+        return 0.0
+
+
 def rank_for_primary_archetype(
     champion: str,
     archetype: str,
@@ -1059,7 +1199,7 @@ def rank_for_primary_archetype(
     Returns a dict with shape:
         {
             "ok":          bool,
-            "scorer":      "dps" | "ehp" | "hybrid" | "ability" | "burst" | "hps",
+            "scorer":      "dps" | "ehp" | "hybrid" | "ability" | "burst" | "hps" | "onhit",
             "archetype":   str,   # the requested archetype (echoed)
             "ranked":      [RankedItem-like dicts],
             "fell_back":   bool,  # always False post-Phase-6 (all archetypes wired)
@@ -1314,6 +1454,43 @@ def rank_for_primary_archetype(
         # Kit-less champ (no ability data in the frozen Meraki snapshot):
         # fall through to ds.dps below rather than serve an all-zero build.
         fell_back = True
+
+    if arch == "onhit":
+        rows = rank_onhit_for(
+            champion,
+            level=level, item_ids=item_ids, mode=mode,
+            target_armor=target_armor, target_mr=target_mr,
+            target_max_hp=target_max_hp, target_bonus_hp=target_bonus_hp,
+            top=top, sort_by=sort_by,
+            only_item_ids=only_item_ids,
+            augments=augments,
+            filter_shared_uniques=filter_shared_uniques,
+            timeout=timeout,
+            apply_passive_damage=True,
+            ap_ad_coherence=_onhit_coherence_for(champion),
+        )
+        if rows is None:
+            return None
+        # No kitless-all-zero fallback for onhit: it scores off autos+abilities,
+        # so a roster champ always has data. None already means engine-down.
+        return {
+            "ok":        True,
+            "scorer":    "onhit",
+            "archetype": arch,
+            "ranked":    [
+                {
+                    "item_id":            r.item_id,
+                    "item_name":          r.item_name,
+                    "delta_dps":          r.delta_dps,
+                    "gold":               r.gold,
+                    "shares_dead_unique": r.shares_dead_unique,
+                    "dead_unique_key":    r.dead_unique_key,
+                    "unique_passive_key": r.unique_passive_key,
+                }
+                for r in rows
+            ],
+            "fell_back": False,
+        }
 
     # carry / anything else -> fall through to ds.dps.
     # Post-Phase-6 (s181): all 6 archetypes have their own scorer; this path
