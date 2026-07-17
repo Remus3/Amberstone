@@ -10,12 +10,13 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 10 / 173  (GAP 4, REFUTE 3, FENCED/data-refuted 3)
-- Remaining: 163
-- Next up (strict alphabetical): Aatrox
+- Resolved: 11 / 173  (GAP 5, REFUTE 3, FENCED/data-refuted 3)
+- Remaining: 162
+- Next up (strict alphabetical): Ahri
 
 ## Resolved verdicts
 
+- **Aatrox** - GAP RM-39 - ability-centric AD drain-bruiser mis-served by the ds.hybrid auto-DPS sub-model; leads Blade of the Ruined King on-hit #1 + crit ADC items, buries his #1 item Spear of Shojin at rank 51/143; NOT pool/burst/coherence (new shape, first bruiser-scorer gap)
 - **Corki** - GAP RM-38 - AD-caster spell-weaver; Trinity/Shojin pool-filtered + no AD-caster model; 14.10 rework = true-per-auto + Sheen-special-cased
 - **Ezreal** - GAP RM-36 - AD-caster spell-weaver mis-routed to sustained auto-DPS; Trinity/Shojin pool-filtered
 - **Jhin** - REFUTE - AS-locked lethality-crit; already mapped fight_length=0.5, correctly served
@@ -29,7 +30,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Full roster (alphabetical, 173)
 
-- [ ] Aatrox
+- [GAP RM-39] Aatrox
 - [ ] Ahri
 - [ ] Akali
 - [ ] Akshan
