@@ -1,5 +1,21 @@
 # RC session history archive
 
+## Relocated 2026-07-17 (Miss Fortune DS-sweep GAP - keep last 3: Miss Fortune + Varus + RM-02)
+
+# 2026-07-17 (headless-upgrade orchestrated round - 6 verifier-gated slices; LEDGER 914; 1e0ecfa6..255e119d)
+
+Full-authority headless run (operator away, model switched to opus-4-8 mid-run via /model - a config change, not an interrupt). mode_key=client, no live game. One merger + 6 worktree slice agents on disjoint file sets, each gated by a read-only verifier CONFIRM, then truth_gate PROCEED (175 pytest/0 fail on the merged tree) before ONE batch push. No ENGINE bump; RC restarted clean (new pid, alive, last_reload_ok, dashboard 200); web slices auto-served (ADR-008). CI run 29572251333 (in_progress at wrap - verify green).
+- **S1 DS C3 fed counter-hint (HINT-ONLY, `1e3cab6c`):** new `core/build_planner/fed_threat.py` lights the dead `fed` criterion; situational.py byte-identical; ranked build unchanged; 104/0 + 27. Chip dark until a JS slice POSTs enemy_scores/enemy_levels.
+- **S2 overlay drag fix (`255e119d`):** all 3 symptoms root-caused in overlay_layout.js (_effectiveXY origin + window pointer capture + handle-only border hit-test); 15/15 + 6/6 + rc-shell 309/309.
+- **S3 enemy-spell cd timer (`905982de`):** upgraded-Smite displayNames + cd=0 sticky "USED" chip; node 11/0 + pytest 28/0.
+- **S6 Lane E fuse_reads shadow-first (`1e0ecfa6`):** per-tick fusion record to data/fusion_shadow.jsonl at read_tiered; served output byte-identical; 49/0. Advances RM-01.
+- **S7 arena/tft mounts (`e880994b`):** S4 read-only DISPROVED the panelset hypothesis (mounts are data-gated); split the E6 poller gate so coaching mounts feed arena/tft; 8 + 11 subtests.
+- **S8 cost lever-4 (`243967e8`):** suppress GET /api/state debug trace (58% of HTTP log volume); S5 sweep found the other 6 levers CLEAN.
+
+OWED live-verify (Electron overlay agent-blind + no live game): S1 fed chip render, S2 drag per-panel + the empty-backing-press-inert behavior call, S3 upgraded-Smite countdown, S7 arena/tft mounts in-game. Do NOT redo: S1-S9 (all pushed + verifier-CONFIRMED + truth_gate PROCEED). Manifest run 2026-07-17-01.
+
+Round 2 (LEDGER 915, `566e472b`): S9 shipped the C3 fed-chip JS POST (active_match.js sends enemy_scores/enemy_levels fail-soft) - completes the S1 vertical. **KEY FINDING (ground-truth-verified):** the browser `liveclient_summary()` (dashboard/_liveclient.py:68) emits derived enemy slices but NO raw `allPlayers` key, and active_match.js:655 guards the counter-hint roster on `lc.allPlayers` - so the WHOLE counter-hint program (C2 antiheal / C6 tenacity / C3 fed / R102/R103 roster) is DARK in every live game and lights only under ui_mock. NOT fixed this run (activates 4+ live surfaces blind; operator away). NEXT = the server-side plumbing fix (add a lean enemy roster with scores+levels+item ids to the browser summary) is now the TOP RM-02 live-gated blocker; land it WITH a real-game eyeball. Also NEXT: accrue real-game fusion_shadow toward the Lane E OCR flip.
+
 ## Relocated 2026-07-17 (Varus DS-sweep /done - keep last 3: Varus + RM-02 + headless-orchestrated)
 
 # 2026-07-17 (teardown fold-in + F4 swap-wipe fix + headless queue drain; LEDGER 913; b35783a2..4b4aeb67)
