@@ -73,11 +73,3 @@ def load_onhit_ap_roster() -> dict[str, float]:
             except Exception:  # noqa: BLE001 - fail-soft loader, never raise
                 _ROSTER_CACHE = {}
         return _ROSTER_CACHE
-
-
-def reset_roster_cache() -> None:
-    """Clear the module-level cache. Test-only seam (mirrors the sibling
-    ``reset_block_index_cache`` / ``reset_form_index_cache`` convention)."""
-    global _ROSTER_CACHE
-    with _ROSTER_LOCK:
-        _ROSTER_CACHE = None
