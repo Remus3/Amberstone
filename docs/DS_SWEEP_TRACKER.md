@@ -10,12 +10,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 19 / 173  (GAP 11, REFUTE 5, FENCED/data-refuted 3)
-- Remaining: 154
-- Next up (strict alphabetical): Aphelios
+- Resolved: 24 / 173  (GAP 14, REFUTE 7, FENCED/data-refuted 3)
+- Remaining: 149
+- Next up (strict alphabetical): Bard. Next GAP spec = RM-49.
 
 ## Resolved verdicts
 
+- **Aphelios** - REFUTE (clean crit-auto hypercarry, correctly served; the same-class CONTRAST to Ashe) - crit-auto-attack sustained-DPS across his 5-weapon rotation, NOT on-hit NOT lethality; production carry/ds.dps leads his crit core (IE #2, Hexoptics C44 #5) with his not-built on-hit correctly BELOW (BotRK #11, Runaan's #19). The only imperfection (Hexoptics C44 #5 not #1) is its positioning-conditional Magnification/Arcane-Aim uniques scoring near-zero in a fixed-range sim = a class-level scope limit, not a per-champ gap. His crits deal FULL damage so ds.dps ranks his crit core right (REFUTE) - the exact inverse of Ashe (crits dead -> on-hit over-led -> GAP)
+- **Ashe** - GAP RM-46 (crit-marksman on-hit-over-lead family of Akshan RM-42 / Lucian RM-37, DISTINCT kit root-cause) - attack-speed CRIT-AUTO marksman (Hexoptics C44/IE -> Phantom Dancer -> IE core, NOT on-hit), but production carry/ds.dps leads NOT-BUILT on-hit HARD (Blade of the Ruined King #1 by ~2x, Runaan's #2, Kraken #3) over her crit-AS core, burying Phantom Dancer #21 (DEAD-LAST in a whitelist of her own 6 core items) + Hexoptics #14, IE #6. Root cause DISTINCT from Akshan's double-shot: her Frost passive means crits deal NO bonus damage (crit-CHANCE converts to flat AD; IE's crit-strike multiplier is DEAD on her) + Ranger's Focus multi-arrow flurry is mis-read as generic on-hit uptime. The CONTRAST twin of the Aphelios REFUTE
+- **Aurelion Sol** - REFUTE (the Anivia twin, an even CLEANER refute; sustained-DoT Liandry's lead is CORRECT) - sustained-DoT / zone-control scaling mage, damage scales target MAX HEALTH + infinite Stardust, decisively NOT burst (Q Breath of Light = channeled burn beam, E Singularity = persistent DoT zone). Production mage/ds.ability leads Liandry's #1 -> Blackfire #2 which MATCHES his %HP-DoT identity (arguably the single best-fit champ in the game for a Liandry's lead); his signature Blackfire surfaces #2 (not buried, cleaner than Anivia). Rylai's #24 under-surfaced = a class-level ds.ability DPS-uptime-utility scope limit, not an ASol mis-valuation. SAME engine ranking as Aurora, OPPOSITE verdict (sustained vs burst)
+- **Aurora** - GAP RM-47 (batch with Ahri RM-40 / Annie RM-45 burst-mage family; THIRD champ in the cohort) - BURST AP skirmisher (Luden's Echo 1st, Electrocute, pure-ability NOT on-hit NOT sustained-DoT), routed correctly to mage/ds.ability but the sustained-DPS model leads Liandry's #1 (a %HP-DoT her meta has ZERO of) + buries her signature Luden's Echo #12 (#5-of-6 in a whitelist of her own core). ds.burst reroute REFUTED - it leads Trinity/Lich Bane/Essence Reaver = the RM-41 Akali AD-spellblade pollution, so the fix STAYS in the mage scorer (NOT an _AP_ASSASSIN_IDS add), exactly like Ahri/Annie. The burst-vs-sustained CONTRAST twin of the same-batch Aurelion Sol REFUTE
+- **Azir** - GAP RM-48 (NEW SHAPE, first battlemage-soldier-DPS gap) - sustained soldier-DPS battlemage with a HARD attack-speed dependency (his W soldiers attack faster as Azir gains AS + soldier attacks apply on-hit at 50%): Nashor's Tooth highest-WR core, Lethal Tempo keystone (the AS identity tell). Production mage/ds.ability leads Liandry's #1 (not his core) + buries his signature Nashor's Tooth #17 (DEAD-LAST in a whitelist of his own core). Routing to ds.onhit does NOT help (STILL leads Liandry's, buries Nashor's) - his soldier attack-speed/on-hit axis is unmodeled in EVERY scorer. NOT the burst-mage family, NOT the crit-marksman family (opposite polarity - here the BURIED axis is attack-speed/on-hit on an AP champ)
 - **Annie** - GAP RM-45 (batch with Ahri RM-40) - classic AP BURST combo mage (Pyromania stun -> Q+W+R Tibbers one-combo delete; Malignance LEADS first item), routed correctly to mage/ds.ability but the sustained-DPS model leads Liandry's #1 (a %HP-DoT her meta has ZERO of) + buries her signature Malignance at #15; ult-haste->more-Tibbers->more-burst unmodeled + Tibbers' negligible aura over-read as continuous damage. Same shape as Ahri; the OPPOSITE-verdict twin of Anivia (same engine ranking, but Annie is burst so Liandry's is WRONG)
 - **Anivia** - REFUTE (the mildest; EXACT inverse of Ahri RM-40) - hybrid sustained-DoT / DoT-zone-control mage with a burst finisher (R Glacial Storm = a persistent DoT zone she parks + grinds in); production mage/ds.ability leads Liandry's #1 -> Blackfire #2 which MATCHES her sustained-DoT damage identity (research explicit: the DoT lead is CORRECT for her, NOT the Ahri over-lead). The mana-first (Rod of Ages) + Zhonya's-defensive structure the engine skips is a class-level ds.ability DPS-scorer scope limit (ranks damage, not mana/defensive), not an Anivia mis-valuation. SAME engine ranking as Annie but OPPOSITE verdict (sustained vs burst) - validates the RM-40 precision
 - **Amumu** - GAP RM-44 (NEW shape, first tank/ds.ehp-scorer gap) - AP magic-damage engage tank / battle-mage-tank hybrid; dominant jungle meta rushes Liandry's Torment FIRST (AP damage) + Abyssal Mask magic-amp (his highest-WR item), but tank/ds.ehp leads PURE durability (Randuin's #1) and never surfaces Liandry's (not an EHP item), ranks Abyssal only #14. His W %HP-magic scales AP + passive amps magic, so the axis-neutral EHP scorer can't value his signature AP-rush. NOT pure durability (unlike Alistar REFUTE), NOT a full-AP flip (mage counterfactual = off-meta)
@@ -47,11 +52,11 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - [GAP RM-44] Amumu
 - [REFUTE] Anivia
 - [GAP RM-45] Annie
-- [ ] Aphelios
-- [ ] Ashe
-- [ ] Aurelion Sol
-- [ ] Aurora
-- [ ] Azir
+- [REFUTE] Aphelios
+- [GAP RM-46] Ashe
+- [REFUTE] Aurelion Sol
+- [GAP RM-47] Aurora
+- [GAP RM-48] Azir
 - [ ] Bard
 - [ ] Bel'Veth
 - [ ] Blitzcrank
