@@ -38,6 +38,10 @@ def _open_settings(pw_browser, mock_server, width=1920, height=1080):
     return ctx, page, errors
 
 
+# Overlay item 4A consolidated the VOICE / CHAMP SELECT / PRE-GAME LOBBY /
+# POST GAME REVIEW cards into one CLIENT SETTINGS card (each a sub-group), so
+# the card-level filter now matches on CLIENT SETTINGS (it carries the Voice
+# text) and DISPLAY is the non-matching card that hides.
 _CARD_STATE_JS = """() => {
   const cards = [...document.querySelectorAll('#settings-body .settings-card')];
   const find = (t) => cards.find(c => {
@@ -46,8 +50,8 @@ _CARD_STATE_JS = """() => {
   });
   const vis = (c) => c ? (!c.hidden && getComputedStyle(c).display !== 'none') : null;
   return {
-    voice: vis(find('VOICE')),
-    champ: vis(find('CHAMP SELECT')),
+    client: vis(find('CLIENT SETTINGS')),
+    display: vis(find('DISPLAY')),
     total: cards.length,
     shown: cards.filter(vis).length,
   };
@@ -66,8 +70,8 @@ def test_settings_filter_hides_nonmatching(mock_server, pw_browser):
             timeout=5_000,
         )
         st = page.evaluate(_CARD_STATE_JS)
-        assert st["voice"] is True, "VOICE card should match 'voice'"
-        assert st["champ"] is False, "CHAMP SELECT should be hidden by 'voice' filter"
+        assert st["client"] is True, "CLIENT SETTINGS card should match 'voice' (Voice group)"
+        assert st["display"] is False, "DISPLAY should be hidden by 'voice' filter"
         assert st["shown"] < st["total"], "filter did not hide any cards"
     finally:
         page.close()
