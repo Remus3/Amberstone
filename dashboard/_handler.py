@@ -123,6 +123,7 @@ _MAX_POST_BYTES = 1 << 20
 # diagnostic value when something breaks). Error/info log calls elsewhere
 # in the handler are unaffected.
 _SUPPRESS_LOG_PATHS = (
+    "GET /api/state",
     "GET /api/decisions",
     "GET /api/decisions/heartbeat",
     "GET /api/vision-state",

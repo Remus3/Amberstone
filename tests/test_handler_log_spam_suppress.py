@@ -41,6 +41,7 @@ class SuppressLogPathsConstantTests(unittest.TestCase):
         # query-string lines so /api/minimap-crop ran unsuppressed at
         # 0.490/sec despite being in the tuple since item 156.
         expected = {
+            "GET /api/state",
             "GET /api/decisions",
             "GET /api/decisions/heartbeat",
             "GET /api/vision-state",
@@ -179,14 +180,15 @@ class LogMessageSuppressionTests(unittest.TestCase):
             mock_debug.assert_not_called()
 
     def test_non_suppressed_path_is_logged(self):
-        # /api/state is a different endpoint - diagnostic value retained.
+        # /api/health/all is a low-frequency endpoint kept unsuppressed so its
+        # request trace retains diagnostic value.
         with patch.object(_handler.log, "debug") as mock_debug:
             _handler.Handler.log_message(
                 _FakeHandler(),
                 '%s - - [%s] "%s" %s %s',
                 "127.0.0.1",
                 "21/May/2026 12:00:00",
-                "GET /api/state HTTP/1.1",
+                "GET /api/health/all HTTP/1.1",
                 "200",
                 "8192",
             )
@@ -195,7 +197,7 @@ class LogMessageSuppressionTests(unittest.TestCase):
             # remain readable; assert the substring rather than an exact
             # match (caller-supplied fmt may evolve).
             (msg,), _kwargs = mock_debug.call_args
-            self.assertIn("/api/state", msg)
+            self.assertIn("/api/health/all", msg)
             self.assertTrue(msg.startswith("HTTP "))
 
     def test_post_endpoint_is_logged(self):
