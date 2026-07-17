@@ -12,7 +12,7 @@ Personal project. Private repo. Not packaged for general use.
 
 Coaching during a match. RC keeps a running picture of the game from Riot's local data feed (your gold, level, KDA, items, the enemy team's items, where champions are on the minimap) and turns that into short, situation-specific tips on the dashboard. When a decision needs visual judgment - minion wave state, fog-of-war inference, an item-spike timing - it sends a screenshot to an AI model for interpretation. Most decisions don't need that, so most ticks are cheap.
 
-Real math, not tier lists. RC ships with a local build engine ("Daemon Slayer") that computes actual damage-per-second, effective HP, ability burst, and healing throughput for any champion × item × enemy combination. The AI coach reads those numbers when it suggests an item, so the recommendation matches *your* matchup rather than a static "best build" guide.
+Real math, not tier lists. RC ships with a local build engine ("Daemon Slayer") that computes actual damage-per-second, effective HP, ability burst, and healing throughput for any champion x item x enemy combination. The AI coach reads those numbers when it suggests an item, so the recommendation matches *your* matchup rather than a static "best build" guide.
 
 Champion select advice. Suggests bans and picks based on what you've actually played well historically, what the enemy team has, and what the patch favors. Writes runes into the client for you automatically.
 
@@ -32,7 +32,7 @@ The build engine runs as a separate local service on a different port. When the 
 
 ## Daemon Slayer build engine
 
-The technical centerpiece. A local service that scores any champion × item × enemy combination using real game math, with one of six scoring modes picked automatically based on your champion's role:
+The technical centerpiece. A local service that scores any champion x item x enemy combination using real game math, with one of seven scoring modes picked automatically based on your champion's role:
 
 | Role | What it scores |
 |---|---|
@@ -42,6 +42,7 @@ The technical centerpiece. A local service that scores any champion × item × e
 | Mage | Per-spell ability damage at your cast cadence |
 | Assassin | Total burst inside a combo window |
 | Enchanter | Healing and shielding throughput |
+| On-hit (AP) | Ability damage plus on-hit auto damage, summed in one DPS frame |
 
 A registry of per-champion overrides handles the unusual mechanics - Nidalee's cougar form, Akali's R recast window, Zed's shadow Q, Renekton's Fury bar, Riven's Wind Slash, and so on. About three-quarters of the roster is covered today, with new entries added in regular small batches.
 
@@ -73,7 +74,8 @@ Long-term direction is packaging the single-machine install so RC can eventually
 ## More
 
 - [`CLAUDE.md`](./CLAUDE.md) - operational context (paths, restart workflow, current priorities)
-- [`ROADMAP.md`](./ROADMAP.md) - full milestone ledger
+- [`ROADMAP.md`](./ROADMAP.md) - open work (NOW / NEXT / LATER)
+- [`docs/LEDGER.md`](./docs/LEDGER.md) - per-item completion ledger
 - [`docs/DAEMON_SLAYER.md`](./docs/DAEMON_SLAYER.md) - build engine deep reference
 - [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) - module map
 - [`docs/adr/`](./docs/adr/) - architectural decisions
