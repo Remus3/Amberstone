@@ -862,7 +862,8 @@ Remaining candidates (original numbering):
 15. ops/audit/ds_cross_eval/reports/ - ~172 per-champion reports, program DONE 2026-06-16; archive
     reports/ only, KEEP PROGRAM/REPORT/SYSTEMIC_FINDINGS/TIER2_REPORT. Also the dated
     docs/COMPETITOR_LIFT_2026-06-08..07-03 cluster (~9 files) + docs/research/RC2_RESEARCH_* cohort
-    (2026-06-19) - one-shot research, findings folded into ROADMAP/LEDGER. EXCLUDE
+    (2026-06-19) - one-shot research, findings folded into ROADMAP/LEDGER [CL half EXECUTED
+    2026-07-17 mdclean C7: ALL docs/-level COMPETITOR_LIFT_* -> docs/_archive/]. EXCLUDE
     ops/audit/ds_perm_swarm/report/live_flip_eyeball.md (re-touched 2026-06-27, ongoing).
 
 ---
