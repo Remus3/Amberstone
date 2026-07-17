@@ -16,6 +16,18 @@ Each phase: verifier-gate before "done" (independent re-probe, NOT subagent coun
 
 ---
 
+# 2026-07-16 (DS Slice B on-hit AP - engine core BUILT + CHECKPOINTED mid-build; NOT yet shipped)
+
+Interactive session, continuation of Slice A. Task: surface Nashor's for on-hit AP champs (Gwen/Kayle/Kog'Maw-AP). Flow: brainstorming -> spec -> writing-plans -> subagent-driven (fresh implementer + task-reviewer per task). mode_key=client, no live game.
+- **PIVOT (the story):** v1 spec (a single new combined-DPS scorer) was BUILT (T1-2) then live re-verify DISPROVED the premise - crediting kit on-hit still left Nashor's mid-pack (BotRK/Liandry's dominate at BOTH tanky + squishy; every scorer incl burst gives BotRK). Root cause was NOT burst under-valuation: AD items swamp the AP field via raw-AD marginal delta the ranker cannot see is off-axis-wasted. Validated (throwaway exp, AP-only pool + kit-on-hit): Nashor's #5 for Gwen. -> re-spec v2 = 3-PART fix.
+- **3-part fix (spec/plan v2, committed 36e66e47 / d86ba6b0):** (1) combined onhit scorer `agents/daemon_slayer/onhit_dps.py` [T1-2]; (2) kit-on-hit credit - Gwen P AA-routed [T3], Kayle E + Kog'Maw W new on-hit riders + non-P AA-routing [T4, opus, coeffs verified vs champion_abilities.json]; (3) AP/AD axis-coherence gate [T5, opus review] - penalize pure-AD (no SpellDamage tag) for AP-axis champs, per-champ strength (Gwen 1.0 / Kayle 0.3 / Kog 0.6).
+- **KEY deviation (controller-verified):** DDragon `_damage_axis` MISRATES Gwen (attack 7 > magic 5) + Kog'Maw (8 > 5) as AD (they are auto-reliant hybrids). T5 added `_onhit_ap_axis` fallback (detect a bilinear-AP on-hit passive); no false positives (Warwick / AD-carries stay ad).
+- **RESULT:** Nashor's surfaces Gwen#5 / Kayle#6 / Kog#3. Full DS dir 8498 passed. T1-5 all reviewed clean (opus on T4/T5).
+
+CHECKPOINT: 5/11 done (engine core). Base HEAD 5dcd9f35. Recovery map: `.superpowers/sdd/progress.md` (gitignored, same-machine). REMAINING T6-11: /rank-onhit route (T6) + rank_onhit_for client + onhit dispatcher branch (T7) + ENGINE 1.216.0 bump + Share + :8893 restart (T8 deploy gate) + broad-scan classifier + roster w/ per-champ coherence strength (T9, needs live :8893) + RC routing in default_for_champion (T10) + full dual suite + live /api/build-plan + docs/LEDGER + push (T11). Plan: `docs/specs/2026-07-16-ds-onhit-ap-combined-dps-scorer-plan.md` (v2). Do NOT redo T1-5. Throwaway probes in `.superpowers/sdd/exp_*.py` (deletable). Live-gated tail: overlay RENDER eyeball of the new onhit builds.
+
+---
+
 # 2026-07-16 (DS meta-valuation sweep - AP-assassin ds.burst reroute + snowball de-hoist; LEDGER 910; pushed b2c5fc65..7b9658af, CI green)
 
 Interactive session. Prior NEXT-SESSION offered (a) live-validation drain (BLOCKED - no live game) or (b) a headless ROADMAP item; operator picked the DS meta-valuation sweep. mode_key=client throughout. Flow: brainstorming -> spec -> writing-plans -> subagent-driven-development (fresh implementer + task-reviewer per task) + root-cause-fix for A.1. RC-side only (no ENGINE / Share / :8893).
