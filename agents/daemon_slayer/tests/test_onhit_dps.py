@@ -155,3 +155,55 @@ def test_kit_onhit_credited_for_kayle_kog(champ):
 def test_rank_onhit_route_registered():
     from agents.daemon_slayer.server import _POST_ROUTES
     assert "/rank-onhit" in _POST_ROUTES
+
+
+# --- Slice B Task 6 followup (2026-07-16) - invocation-level /rank-onhit
+# route coverage --------------------------------------------------------
+#
+# test_rank_onhit_route_registered (above) only asserts dict membership; it
+# never invokes the handler, so it cannot catch a mage-only kwarg leaking
+# into rank_items_by_onhit (runtime TypeError) or apply_passive_damage /
+# ap_ad_coherence being dropped between the HTTP body and the ranker call.
+# In-process, no HTTP - same idiom as test_rank_route_seam_passthrough.py:
+# server._CACHE.set(...) seeds the module-level snapshot holder the route
+# reads (server.py:181-185 _SnapshotCache.get raises RuntimeError if
+# unseeded; server.py:1160 _route_rank_onhit reads snap = _CACHE.get()).
+from agents.daemon_slayer import server
+
+server._CACHE.set(_RANK_SNAPSHOT)
+
+_ONHIT_ROUTE_BODY = {
+    "champion": "Gwen", "level": 13, "mode": "SR",
+    "target_armor": 105.0, "target_mr": 52.0, "target_max_hp": 2430.0,
+}
+
+
+def test_route_rank_onhit_invocation_returns_ranked_list():
+    out = server._route_rank_onhit(dict(_ONHIT_ROUTE_BODY))
+    assert isinstance(out, dict)
+    assert isinstance(out["ranked"], list)
+    assert len(out["ranked"]) > 0
+
+
+def test_route_rank_onhit_forwards_passive_damage_and_coherence():
+    # Mirrors test_nashors_surfaces_with_coherence above, but through the
+    # ROUTE (body -> _route_rank_onhit -> rank_items_by_onhit) - proves the
+    # two Slice-B-only flags actually thread from an HTTP-shaped body, not
+    # just at the ranker-function call site.
+    body = dict(_ONHIT_ROUTE_BODY, apply_passive_damage=True, ap_ad_coherence=1.0)
+    out = server._route_rank_onhit(body)
+    ids = [row["item_id"] for row in out["ranked"]]
+    assert _NASHORS in ids, f"Nashor's absent from routed onhit ranked list: {ids}"
+
+
+def test_route_rank_onhit_ignores_stray_mage_only_keys():
+    # max_priority / block_strategy are parsed by _route_rank_mage (and the
+    # ability-dps/hybrid/tank routes) but _route_rank_onhit's own docstring
+    # (server.py:1154-1158) says rank_items_by_onhit has no such params, so
+    # they are never read off body. A body that carries them anyway (e.g. a
+    # client reusing one options object across rank routes) must not raise -
+    # this would fail if the route ever started blindly forwarding **body.
+    body = dict(_ONHIT_ROUTE_BODY, max_priority="QWE", block_strategy="first")
+    out = server._route_rank_onhit(body)
+    assert isinstance(out, dict)
+    assert "ranked" in out
