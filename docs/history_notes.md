@@ -1,5 +1,16 @@
 # RC session history archive
 
+## Relocated 2026-07-17 (Varus DS-sweep /done - keep last 3: Varus + RM-02 + headless-orchestrated)
+
+# 2026-07-17 (teardown fold-in + F4 swap-wipe fix + headless queue drain; LEDGER 913; b35783a2..4b4aeb67)
+
+Post-loop interactive-headless hybrid (operator: research doc drop, then "f4 now and continue open tasks headlessly"). mode_key=client, no live game. Subagent-first: read-only trace agent + UI-audit agent + TDD build agent.
+- **Fold-in (b35783a2):** AI-companion teardown (Desktop `research-20260716.md`, non-repo, brands withheld) -> BACKLOG section. NOW-list corrected vs ground truth: F3 grade card = existing s220 PGR reframe; F6 chatbot stays R2-CLOSED (charter); F2/F8/F1 -> FUTURE. Companion family DRAINED 5x - rotate categories.
+- **F4 (the owed swap sanity-check):** parity CONFIRMED by trace; 1 defect FIXED (`4b4aeb67`): build-less swap left old champ's RC-* item sets (wipe below both empty-guards). Hoisted wipe + `_CSV_LAST_WIPE_KEY` dedup + push-latch reset (hover-back re-push crux) + CS-exit clear; 13 RED-first tests, 33 green fresh.
+- **Queue:** L-02 proposal already landed (`afdd20eb`) - artifacts + APPLIED marker committed (`facc01cc`), don't re-implement. LANE-U item-4 Slice 1 merged (`090fc62d`) after fresh 30/30 + the deferred 5-phase audit: MUST-FIX in-slice (`936fcc23` grid `align-items:start` + subhead token inversion); 1 SHOULD + 3 NICE -> FUTURE (handoff doc); id-wiring INTACT; remote branch deleted.
+
+OWED carry-forward: settings-reorg PIXEL capture (browser screenshot pipe stuck; DOM verified live) + the item-4 Sections D/E/F interactive session (handoff doc TODO). NEXT: operator calls from the fold-in - (a) re-open F6 chatbot? (b) schedule the s220 PGR reframe session. Do NOT redo: F4 trace/fix, L-02, lane-U merge (all pushed; CI run 29569968111).
+
 ## Relocated 2026-07-11 (DS Meraki-scan R108 /done - keep last 3: R108 + Lane-A + HEXCORE)
 
 # 2026-07-11 (DS Meraki-scan R107: item BONUS-HP-AMP "Warmog's Vitality" (Warmog 3083 / Arena 443083) -> EHP numerator; ENGINE 1.199.0 -> 1.200.0)
