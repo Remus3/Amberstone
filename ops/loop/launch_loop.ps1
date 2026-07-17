@@ -19,7 +19,12 @@ if (-not $Cfg) { $Cfg = if ($Mode -eq "live") { "$root\ops\loop\config.json" } e
 "STOP", "gemini.ready", "typed.flag", "claude.done", "cycle.txt" | ForEach-Object {
   Remove-Item "$ctl\$_" -Force -ErrorAction SilentlyContinue
 }
-Get-Process AutoHotkey64 -ErrorAction SilentlyContinue | ForEach-Object { $_.Kill() }; Start-Sleep -Milliseconds 300
+# kill ONLY this repo's bridge instances - a global AutoHotkey64 kill murders the
+# sibling Sibling-A loop's bridge mid-run (and vice versa). Scoped by cmdline.
+Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" -ErrorAction SilentlyContinue |
+  Where-Object { $_.CommandLine -like "*Riot Commander\ops\loop*" } |
+  ForEach-Object { & taskkill /F /PID $_.ProcessId | Out-Null }
+Start-Sleep -Milliseconds 300
 
 if ($Mode -eq "dry") {
   $sa = @("`"$stub`"")
