@@ -57,6 +57,7 @@ _UNIT_SUFFIX: dict[str, str] = {
     "ability": "adps",
     "burst":   "burst",
     "hps":     "hps",
+    "onhit":   "dps",
 }
 
 # Scorer -> display label for the LLM prompt prefix:
@@ -69,6 +70,7 @@ _DISPLAY_LABEL: dict[str, str] = {
     "ability": "ability-DPS",
     "burst":   "burst",
     "hps":     "HPS",
+    "onhit":   "on-hit DPS",
 }
 
 

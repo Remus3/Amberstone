@@ -31,10 +31,13 @@ def _fresh_caches():
 # scorer by the curated _AP_ASSASSIN_IDS override (the ds.burst scorer flows AP
 # amp - it is NOT AD-only). Their classification is covered by
 # tests/test_ap_assassin_override.py. Kassadin stays mage (excluded from the
-# override); Pyke is an AD kit corrected off the AP enchanter scorer.
+# override); Pyke is an AD kit corrected off the AP enchanter scorer. Gwen and
+# KogMaw used to appear here too, but Slice B (Task 10, 2026-07-16) now routes
+# the on-hit-AP roster to the ds.onhit scorer, layered on top of this axis
+# correction; their classification is covered by tests/test_onhit_ap_routing.py.
 EXPECTED_FLIPS = {
-    "Gwen": "mage", "Teemo": "mage", "Rumble": "mage",
-    "Mordekaiser": "mage", "KogMaw": "mage", "Nidalee": "mage", "Elise": "mage",
+    "Teemo": "mage", "Rumble": "mage",
+    "Mordekaiser": "mage", "Nidalee": "mage", "Elise": "mage",
     "Gragas": "mage", "Lillia": "mage", "Kassadin": "mage",
     "Pyke": "assassin",
 }
@@ -107,10 +110,12 @@ def test_axis_correct_archetype_logic():
 
 def test_flip_surfaces_role_archetype_as_secondary():
     # The corrected champ keeps its tag-based archetype as the alt-view so the
-    # operator can flip back in one tap.
-    primary, secondary = ap.default_for_champion("Gwen")
+    # operator can flip back in one tap. Teemo, not Gwen - Slice B (Task 10) now
+    # layers a further onhit-roster override on Gwen (see
+    # tests/test_onhit_ap_routing.py::test_routes_to_onhit).
+    primary, secondary = ap.default_for_champion("Teemo")
     assert primary == "mage"
-    assert secondary == "bruiser"
+    assert secondary == "carry"
 
 
 def test_operator_pick_overrides_axis_correction(monkeypatch):

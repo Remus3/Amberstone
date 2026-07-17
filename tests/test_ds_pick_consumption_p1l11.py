@@ -337,7 +337,7 @@ class DashboardShapeContractTests(unittest.TestCase):
     every scorer, and empty -> empty."""
 
     def test_backend_emits_superset_of_js_read_keys_every_scorer(self):
-        for scorer in ("dps", "ehp", "hybrid", "ability", "burst", "hps"):
+        for scorer in ("dps", "ehp", "hybrid", "ability", "burst", "hps", "onhit"):
             with self.subTest(scorer=scorer):
                 rows = _build_display_rows(_rows_for(scorer), scorer)
                 self.assertTrue(rows)
@@ -428,7 +428,7 @@ console.log(JSON.stringify(cases));
         truth). A drift means the dashboard shows the wrong unit for a
         non-DPS archetype pick."""
         body = r"""
-const scs = ['dps','ehp','hybrid','ability','burst','hps','bogus',''];
+const scs = ['dps','ehp','hybrid','ability','burst','hps','onhit','bogus',''];
 const m = {};
 for (const s of scs) m[s] = scorerUnit(s);
 console.log(JSON.stringify(m));
@@ -452,7 +452,7 @@ console.log(JSON.stringify(m));
         per-archetype unit. No hardcoded magic numbers (delta + unit both
         come from the Python side)."""
         payload = {}
-        for scorer in ("dps", "ehp", "hybrid", "ability", "burst", "hps"):
+        for scorer in ("dps", "ehp", "hybrid", "ability", "burst", "hps", "onhit"):
             row = _build_display_rows(_rows_for(scorer), scorer)[0]
             payload[scorer] = row
         body = (
@@ -462,7 +462,7 @@ console.log(JSON.stringify(m));
             "console.log(JSON.stringify(out));\n"
         )
         rendered = json.loads(self._run_js(body))
-        for scorer in ("dps", "ehp", "hybrid", "ability", "burst", "hps"):
+        for scorer in ("dps", "ehp", "hybrid", "ability", "burst", "hps", "onhit"):
             row = _build_display_rows(_rows_for(scorer), scorer)[0]
             expected = (
                 f"+{round(row['delta_dps'])}"

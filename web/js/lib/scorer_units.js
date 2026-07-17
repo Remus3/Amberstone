@@ -18,6 +18,7 @@ const SCORER_UNIT = {
   ability: 'adps',
   burst:   'burst',
   hps:     'hps',
+  onhit:   'dps',
 };
 
 export function scorerUnit(scorer) {
