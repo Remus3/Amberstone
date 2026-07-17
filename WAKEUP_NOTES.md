@@ -1,6 +1,18 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-17 mdclean C4 (Locke/C2 session LEDGER 907-908 + the expired 2026-07-13 overnight directive; prior 4.6KB archive-index line restructured to this pointer - full map recoverable at git a13f9e0d).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-17 (RM-02 live-plumbing session relocated the mdclean C1-C8 block LEDGER 912 to `docs/history_notes.md`; newest 3 kept below).
+
+---
+
+# 2026-07-17 (RM-02 counter-hint live-plumbing fix - allPlayers roster in the browser summary; LEDGER 916; 318e7e3a + d8fa0e1c)
+
+Focused headless fix closing the TOP RM-02 blocker flagged in the orchestrated round's Round-2 note (below). mode_key=client, no live game. TDD RED-first (test-driven-development skill); verified vs ground truth before scaffolding (grepped the JS extractor field shape in active_match.js + the ui_mock fixture contract, confirmed state.liveclient = liveclient_summary() at _state_builder.py:663).
+- **Root cause (confirmed):** `liveclient_summary()` (dashboard/_liveclient.py) emitted derived enemy slices (enemy_team/enemy_item_ids/players) but NO raw `allPlayers`; active_match.js:655 `_hasRoster` keys on `lc.allPlayers`, so C2 antiheal / C6 tenacity / C3 fed / R102/R103 chips were DARK in every live game (ui_mock-only).
+- **Fix (`318e7e3a`):** new pure module-scope `_lean_roster` + `_as_int` -> emit `out["allPlayers"]` (championName/rawChampionName/team + summoner identity + level + items[{itemID,slot}] + scores{kills,deaths,assists}) + `out["activePlayer"]`{summonerName,riotIdGameName}. Faithful SUPERSET of the ui_mock fixture (adds the live-only scores+level the C3 fed path needs). Emitted independent of me_pl (the JS _resolveMyTeam does its own active-player match); empty list -> honest COUNTER hide (byte-identical to the pre-fix live-absent path).
+- **TDD:** new tests/test_liveclient_allplayers_roster.py (14 tests) RED (11 fail - roster absent) -> GREEN; replicates _resolveMyTeam + the enemy/ally filters vs the real emitted shape. Verified 14 + 84 sibling + 153 consumer + 380 snapshot_panels + budget green; ruff clean; CI run 29583216769 SUCCESS.
+- **Deploy:** RC restarted live (pid 17296, alive, last_reload_ok); /api/state 200 (liveclient {} = honest hide, no game). Docs `d8fa0e1c`: ROADMAP RM-02 -> CODE-COMPLETE + LEDGER 916.
+
+OWED (do-not-flip-blind): the operator eyeballs the antiheal/tenacity/fed/roster chips in a REAL game (Electron overlay agent-blind). The WHOLE counter-hint program is now CODE-COMPLETE - the JS POST side (S9) + the server routes were already verifier-CONFIRMED, only this summary key was missing. Do NOT redo. NEXT: accrue real-game fusion_shadow toward the Lane E OCR flip (RM-01); the DS meta-valuation per-champ sweep remains the standing headless lane.
 
 ---
 
@@ -28,13 +40,3 @@ Post-loop interactive-headless hybrid (operator: research doc drop, then "f4 now
 - **Queue:** L-02 proposal already landed (`afdd20eb`) - artifacts + APPLIED marker committed (`facc01cc`), don't re-implement. LANE-U item-4 Slice 1 merged (`090fc62d`) after fresh 30/30 + the deferred 5-phase audit: MUST-FIX in-slice (`936fcc23` grid `align-items:start` + subhead token inversion); 1 SHOULD + 3 NICE -> FUTURE (handoff doc); id-wiring INTACT; remote branch deleted.
 
 OWED carry-forward: settings-reorg PIXEL capture (browser screenshot pipe stuck; DOM verified live) + the item-4 Sections D/E/F interactive session (handoff doc TODO). NEXT: operator calls from the fold-in - (a) re-open F6 chatbot? (b) schedule the s220 PGR reframe session. Do NOT redo: F4 trace/fix, L-02, lane-U merge (all pushed; CI run 29569968111).
-
----
-
-# 2026-07-17 (mdclean headless run C1-C8 COMPLETE - gemini AHK loop; LEDGER 912; commits 78c3c018..bbda1e90)
-
-Headless gemini-directed docs-cleanup loop (spec `docs/specs/2026-07-16-md-cleanup-headless-directive.md`). 8 cycles, all gemini audits CLEAN, gemini spend $0.44/$25 ceiling, STOP = max_cycles 8 reached (03:49). Tier-0 docs-only throughout (no suite / no restart / no verifier per spec rule; docs-only pushes skip CI by design - MINUTE SAVER paths-ignore, baseline green).
-- **Cycles:** C1 inventory 155 candidates + 56-file census `78c3c018`; C2 ROADMAP -> NOW/NEXT/LATER stable ids `4ab82200`; C3 BACKLOG prune + path-stale sweep `d8e6ebc9`; C4 WAKEUP relocate-trim to 3 `e11e8f15`; C5 living set ARCH/OPS/API/AGENTS + README `86616a9f`; C6 DS changelog + ORCH rounds relocate + LIVE_GATED refresh `64435871`; C7 cross-ref sweep + slice-G relocate + census archive `b7e8aabe`; C8 CLAUDE.md propose-only audit `bbda1e90` (LEDGER 912 + ORCH C8 findings entry in the same commit).
-- **C8 deliverable:** `ops/loop/reports/mdclean-claudemd-proposal.md` rewritten as the C8 edition superseding C7's (8391B, 0 non-ASCII; single agent, no fan-out per directive). 7 confirmations no-change-owed + 7 operator-gated proposals: P1 slim header DS parenthetical (~600B, WP-F6a); P2 "13 residual .after() files" stale - measured 3, all frozen (app/__init__.py, app/_loop.py, app/_health_monitor.py); P3 vision-pipeline opener stale (screen_agent.py retired for the in-process self-grab relay, item 276); P4 merge "Session-End Ritual" into "Session Wrap-up" (~320B); P5 prune "Style Rules" (both bullets restate the hard rule, ~200B); P6 drop hardcoded "(20,190 tests)" (stale-by-construction); P7 CLAUDE.md-local glyph slice (5 lines carry U+00B7/U+00D7/U+2248/U+2192). Net if all applied ~1.1KB + 2 accuracy fixes; CLAUDE.md untouched (25,362B < 60KB).
-
-NEXT: operator reviews the CLAUDE.md proposal - apply or discard (propose-only rule held; do NOT apply unprompted). Loop control: STOP file left in place as the run record (next `launch_loop.ps1` pre-cleans it). Untracked strays NOT this run's, left alone: `agents/agent6_auditor/{proposals,reports}/20260712-*` + `ops/loop/reports/lane_{research,ui}.{log,done.txt}`.
