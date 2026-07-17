@@ -1,0 +1,13 @@
+{
+  "champions": {
+    "Gwen": {
+      "coherence": 1.0
+    },
+    "Kayle": {
+      "coherence": 0.3
+    },
+    "KogMaw": {
+      "coherence": 0.6
+    }
+  }
+}
