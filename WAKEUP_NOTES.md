@@ -4,6 +4,16 @@
 
 ---
 
+# 2026-07-17 (mdclean headless run C1-C8 COMPLETE - gemini AHK loop; LEDGER 912; commits 78c3c018..bbda1e90)
+
+Headless gemini-directed docs-cleanup loop (spec `docs/specs/2026-07-16-md-cleanup-headless-directive.md`). 8 cycles, all gemini audits CLEAN, gemini spend $0.44/$25 ceiling, STOP = max_cycles 8 reached (03:49). Tier-0 docs-only throughout (no suite / no restart / no verifier per spec rule; docs-only pushes skip CI by design - MINUTE SAVER paths-ignore, baseline green).
+- **Cycles:** C1 inventory 155 candidates + 56-file census `78c3c018`; C2 ROADMAP -> NOW/NEXT/LATER stable ids `4ab82200`; C3 BACKLOG prune + path-stale sweep `d8e6ebc9`; C4 WAKEUP relocate-trim to 3 `e11e8f15`; C5 living set ARCH/OPS/API/AGENTS + README `86616a9f`; C6 DS changelog + ORCH rounds relocate + LIVE_GATED refresh `64435871`; C7 cross-ref sweep + slice-G relocate + census archive `b7e8aabe`; C8 CLAUDE.md propose-only audit `bbda1e90` (LEDGER 912 + ORCH C8 findings entry in the same commit).
+- **C8 deliverable:** `ops/loop/reports/mdclean-claudemd-proposal.md` rewritten as the C8 edition superseding C7's (8391B, 0 non-ASCII; single agent, no fan-out per directive). 7 confirmations no-change-owed + 7 operator-gated proposals: P1 slim header DS parenthetical (~600B, WP-F6a); P2 "13 residual .after() files" stale - measured 3, all frozen (app/__init__.py, app/_loop.py, app/_health_monitor.py); P3 vision-pipeline opener stale (screen_agent.py retired for the in-process self-grab relay, item 276); P4 merge "Session-End Ritual" into "Session Wrap-up" (~320B); P5 prune "Style Rules" (both bullets restate the hard rule, ~200B); P6 drop hardcoded "(20,190 tests)" (stale-by-construction); P7 CLAUDE.md-local glyph slice (5 lines carry U+00B7/U+00D7/U+2248/U+2192). Net if all applied ~1.1KB + 2 accuracy fixes; CLAUDE.md untouched (25,362B < 60KB).
+
+NEXT: operator reviews the CLAUDE.md proposal - apply or discard (propose-only rule held; do NOT apply unprompted). Loop control: STOP file left in place as the run record (next `launch_loop.ps1` pre-cleans it). Untracked strays NOT this run's, left alone: `agents/agent6_auditor/{proposals,reports}/20260712-*` + `ops/loop/reports/lane_{research,ui}.{log,done.txt}`.
+
+---
+
 # 2026-07-16 (DS Slice B on-hit AP - SHIPPED: 7th archetype scorer, Nashor's surfaces for Gwen/Kayle/Kog'Maw; LEDGER 911, ENGINE 1.216.0)
 
 Interactive session, continuation of Slice A. Task: surface Nashor's for on-hit AP champs (Gwen/Kayle/Kog'Maw-AP). Flow: brainstorming -> spec -> writing-plans -> subagent-driven (fresh implementer + task-reviewer per task). mode_key=client, no live game.
@@ -25,15 +35,3 @@ Interactive session. Prior NEXT-SESSION offered (a) live-validation drain (BLOCK
 - **Verified:** full `tests/` 11737 passed (3 pre-existing fails = coach-poll thread-timing x2 + ROADMAP doc-size; NOT mine). opus whole-branch review = Ready-to-merge (0 Critical/Important). CI green. My A.1 brief had a WRONG id (Dark Seal=2033=Corrupting Potion); the build subagent CAUGHT it + used the verified 1082.
 
 NEXT: Slice B (on-hit AP / Nashor's for Gwen/Kayle) = its OWN spec (proven NOT fixable by reroute - forcing bruiser gave AD, still no Nashor's; needs a NEW on-hit-AP DPS scorer term). Do NOT redo: Slice A + A.1 shipped/pushed/CI-green. Patch-refresh note: `_AP_ASSASSIN_IDS` + `_SNOWBALL_ITEM_IDS` are hand-pinned (drift on roster/item patches). Overlay RENDER eyeball of the new AP-assassin builds = live-gated tail.
-
----
-
-# 2026-07-16 (DS C6 tenacity counter-hint; LEDGER 909; commits 51e6b6fc + e9487a78)
-
-Interactive session. Task from the prior NEXT-SESSION note: light up the C6 tenacity counter-hint (the C2 follow-up). mode_key=client, no live game. Tier-1 RC-side (no engine/Share/ENGINE bump). Followed brainstorming -> spec -> TDD.
-- **Ground truth verified first:** the C6 gate `situational.py:450` (`cc_score >= CC_CUT 5.0`) was already fully plumbed - `build_enemy_profile` accepts `cc_score=0.0` -> `EnemyProfile.cc_score`, exactly like C2's `heal_sources`. Dead only for lack of an enemy-CC source (`defensive_picks.compute_threat_profile` has no CC metric). So NO situational.py edit; mirror C2 exactly.
-- **Decisions (AskUserQuestion):** C6 over C3 fed (C3 is live-gated - no clean payload signal); cc_score = flat per-champ x2.5 (2+ hard-CC champs -> fires at >=5.0).
-- **Shipped (2 files):** NEW `core/cc_threat.py` (curated hard-CC roster + `compute_cc_score`, mirrors heal_threat.py) + `dashboard/routes_build_plan.py` (cc_score kwarg on `_resolve_enemy_profile`, threaded into the HINT profile ONLY, never loop.tick). No active_match.js edit (it already POSTs `enemies`). Spec: docs/specs/2026-07-16-ds-c6-tenacity-counter-hint-design.md.
-- **Verified:** TDD RED (ModuleNotFoundError) -> GREEN 36 tests; ruff clean; live probe (fresh RC pid 31116): Leona/Malphite/Amumu -> tenacity chip "enemy CC 8/10", live[]/meta[] byte-identical (source-suppress invariant lock). CI green (ci + CodSpeed).
-
-NEXT: only C3 fed remains in the counter-build (live-gated - needs live KDA/gold-lead), OR pick a top ROADMAP item. LIVE-VERIFY OWED: the overlay antiheal + tenacity chip RENDER (Electron, agent-blind; backend proven) + the Locke build eyeball - all want a real-game session. Do NOT redo: C2 antiheal (908) + C6 tenacity (909) shipped/pushed/CI-green; Step 2 situational chips ALREADY shipped (do NOT rebuild - the 2026-07-13 spec is stale on Step 2).
