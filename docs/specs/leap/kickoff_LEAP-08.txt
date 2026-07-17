@@ -1,0 +1,27 @@
+EXECUTION SESSION - LEAP-08 C3 fed criterion. Model claude-opus-4-8, effort high.
+Chat caveman ultra; real output to files. Goal: front-load the thinking into specs; execution
+sessions are typing, not deciding.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-08-c3-fed-criterion.md END TO END.
+   PREMISE (evidence-checked): the C3 fed gate is ALREADY PLUMBED and dead
+   (situational.py:134 EnemyProfile.fed, :251, :408-413 - route never populates it).
+   situational.py itself needs NO edit - that file is ghosted. The slice FEEDS the gate.
+2. Scope: (a) NEW core/fed_threat.py estimator - est_gold = sum(item gold.total) +
+   LEVEL_GOLD(130) x level; fed(X) = (kills - deaths >= KDA_LEAD_CUT 3) AND (est_gold(X) -
+   est_gold(active) >= GOLD_LEAD_CUT 2000); any fed enemy fires; (b) populate the hint
+   profile in the build_plan route (champion-only vs hint-profile split at
+   routes_build_plan.py:327/:340-356 per spec); (c) shadow-first: RC_FED_SHADOW +
+   RC_FED_HINT both default OFF - chip stays dark until operator live-flip.
+3. TDD RED-first: estimator unit tests from the fixture snapshot; trigger/no-trigger
+   boundary cases (exactly-3 K-D, exactly-2000 lead); payload shadow-field presence test;
+   both-flags-off byte-identical test.
+4. Tier-1 RC-side: py_compile + the new module's tests + the build_plan route tests only.
+   NO DS engine touch, NO ENGINE bump, NO Share, NO DS restart. RC restart_trigger.txt to
+   load; health.json verify.
+5. LIVE-GATED SPLIT: on-screen chip render confirm is NOT claimable - append the LGS row.
+6. Ghost list absolute: Live Client has NO enemy gold / NO positions / NO HUD data - design
+   only against fields cited in the spec; C4/C5 chips are SHIPPED (LGS:5) - do not rebuild;
+   never surface raw API errors in UI.
+7. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+8. DONE: commit -F tmpfile (ASCII) + docs/LEDGER.md entry (max id + 1) + LGS row + git pull
+   --rebase + push + CI green.

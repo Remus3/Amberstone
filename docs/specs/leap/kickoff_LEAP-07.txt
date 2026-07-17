@@ -1,0 +1,25 @@
+EXECUTION SESSION - LEAP-07 coherence calibration r2 (RETIERED). Model claude-opus-4-8,
+effort max. Chat caveman ultra; real output to files. Goal: front-load the thinking into
+specs; execution sessions are typing, not deciding. RUN ONLY AFTER LEAP-04 HAS LANDED.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-07-build-coherence-calibration-r2.md END TO
+   END. The P3 AMENDMENT block at the top is MANDATORY (2/3 judge refute) and SUPERSEDES
+   every Tier-2 instruction in the body: this is a core/-side client coherence slice -
+   NO ENGINE_VERSION bump, NO Share mirror, NO DS :8893 restart. ACs asserting a bump are
+   struck. Precedent: LEDGER 885 shipped a behavior-changing coherence edit with no bump.
+2. Scope (DD1/DD2/DD3 unchanged): DD1 define is_ap_hybrid_marksman class + membership rule,
+   allow-map ships EMPTY (Zeri fails the sim-AP-credit gate at current engine - byte-identical,
+   guards only); DD2 KaiSa Eclipse REGRESSION PIN (already gone at current engine) + bounded
+   dock contingency ONLY if the pin fails RED; DD3 add varus/missfortune at 0.5 to
+   _CHAMPION_FIGHT_LENGTH (the one real behavior change - band-validated per Jhin precedent).
+3. TDD RED-first; the 2 UNVERIFIED-SKIPs (KaiSa live target position, fight_length lift
+   magnitude) are your RED probes - measure, then assert measured values.
+4. Verification (Tier-1-plus-regen): py_compile + core module tests + the build-coherence
+   test files named in the spec; then precompute regen via the LEAP-04 procedure (engine-less,
+   full roster) AFTER core edits; RC restart via restart_trigger.txt; health.json verify.
+5. Ghost list absolute: Stormrazor 3097 coherent - never penalize (LEDGER 888); kit-axis flip
+   forbidden (optimal-not-winrate); DSP11 gate do-not-revert; LEDGER-886 do-not-fix cluster
+   stands except these three cited residuals; per-champion tests, no generic ADC shapes.
+6. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+7. DONE: commit -F tmpfile (ASCII) + docs/LEDGER.md entry (max id + 1) + git pull --rebase +
+   push + CI green.

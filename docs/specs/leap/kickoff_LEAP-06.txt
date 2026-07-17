@@ -1,0 +1,27 @@
+EXECUTION SESSION - LEAP-06 R129 residuals (Viego R + hybrid blend). Model claude-opus-4-8,
+effort max. Chat caveman ultra; real output to files. Goal: front-load the thinking into
+specs; execution sessions are typing, not deciding.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-06-r129-viego-hybrid-xor.md END TO END.
+   The P3 AMENDMENT block at the top SUPERSEDES body text: (a) do NOT hard-pin "1.217.0" -
+   read the CURRENT ENGINE_VERSION literal at session start and bump +1 minor from current;
+   update AC-A8/AC-B9 RED-test literals to that value when writing them; (b) STRIKE the
+   build_orders engine-field re-stamp step (Family A has no such field; orders byte-identical
+   at default-OFF).
+2. Scope, both default-OFF byte-identical, live flips LGS-queued: (A) Viego R load-side
+   allowlist append of the cdragon sidecar 120 percent total-AD block - seed {(Viego,R)};
+   the 5 SURPLUS siblings get semantic-validation + exclusion tests (Yone/Teemo/Shyvana
+   must NOT gain credit) BEFORE any widening, per the narrow-first rule; (B) blend_ability_
+   axis flag summing auto+ability DPS for Riven+Jarvan ONLY (Renekton/Camille/Darius/Nasus/
+   Sett/Vi excluded - auto-empower double-count).
+3. TDD RED-first per champion; assert computed quantities, not cross-item comparisons. The
+   spec's UNVERIFIED-SKIP (pre-fix Riven/Jarvan magnitude) resolves via AC-B2's RED probe -
+   no fabricated magnitudes.
+4. Tier-2 DONE ritual, in order: ALL edits -> dual suite ONCE (DS dir + tests/) -> Share
+   mirror staged SAME commit (tools/ds_share_sync) -> ENGINE bump quoted-literal-only ->
+   commit -F tmpfile -> DS :8893 restart (schtasks /End then /Run RC-DaemonSlayer, port free
+   first) -> /health new version -> settle BEFORE any re-run.
+5. Ghost list absolute: no Navori Bring-It-Down re-credit; Zed/Talon/Qiyana lethality rows
+   LEDGER-889 refuted; no blanket AD-bruiser sum; no extractor edits (load-side only).
+6. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+7. Close: docs/LEDGER.md entry (max id + 1) + 2 LGS flip rows + git pull --rebase + push + CI green.
