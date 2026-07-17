@@ -87,3 +87,70 @@ def test_coherence_resolver_reads_flat_roster():
     # _onhit_coherence_for returns a scalar, not a dict-that-fail-softs-to-0.0
     assert dsc._onhit_coherence_for("Gwen") == 1.0
     assert dsc._onhit_coherence_for("KogMaw") == 0.6
+
+
+# --- Slice B Task 9 followup (2026-07-16) - _flatten malformed-input coverage --
+#
+# Review left two Minor gaps on the loader flatten - the highest-risk surface
+# here (a silent flatten regression no-ops the whole Slice B coherence gate,
+# see the CRITICAL SHAPE CONTRACT note atop core/ds_onhit_ap_roster.py). Task
+# 9's own report flagged this exact hole: "No test currently exercises that
+# skip path specifically." _flatten is a pure function - it never touches the
+# module cache/lock - so every case below calls it directly on in-memory
+# dicts; no file I/O and no cache-reset seam needed. reset_roster_cache()
+# (the report's second Minor: an unused test seam) had zero callers anywhere
+# in the repo and no case below needs cache state cleared, so it was removed
+# as dead code in core/ds_onhit_ap_roster.py rather than kept alive by a test
+# written just to call it.
+from core.ds_onhit_ap_roster import _flatten
+
+
+def test_flatten_happy_path_nested_dict():
+    raw = {
+        "champions": {
+            "Gwen": {"coherence": 1.0},
+            "Kayle": {"coherence": 0.3},
+            "KogMaw": {"coherence": 0.6},
+        }
+    }
+    assert _flatten(raw) == {"Gwen": 1.0, "Kayle": 0.3, "KogMaw": 0.6}
+
+
+def test_flatten_skips_bare_scalar_entry():
+    # entry value is a bare float, not a {"coherence": ...} dict
+    raw = {"champions": {"Bad": 0.5, "Gwen": {"coherence": 1.0}}}
+    out = _flatten(raw)
+    assert "Bad" not in out
+    assert out == {"Gwen": 1.0}
+
+
+def test_flatten_skips_entry_missing_coherence_key():
+    raw = {"champions": {"Bad": {}, "Gwen": {"coherence": 1.0}}}
+    out = _flatten(raw)
+    assert "Bad" not in out
+    assert out == {"Gwen": 1.0}
+
+
+def test_flatten_skips_non_numeric_coherence():
+    raw = {
+        "champions": {
+            "BadString": {"coherence": "not-a-number"},
+            "BadNone": {"coherence": None},
+            "Gwen": {"coherence": 1.0},
+        }
+    }
+    out = _flatten(raw)
+    assert "BadString" not in out
+    assert "BadNone" not in out
+    assert out == {"Gwen": 1.0}
+
+
+def test_flatten_missing_champions_wrapper_returns_empty():
+    assert _flatten({}) == {}
+    assert _flatten({"not_champions": {"Gwen": {"coherence": 1.0}}}) == {}
+
+
+def test_flatten_non_dict_top_level_returns_empty():
+    assert _flatten([]) == {}
+    assert _flatten("not-a-dict") == {}
+    assert _flatten(None) == {}
