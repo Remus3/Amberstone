@@ -79,6 +79,8 @@ runs. No mid-run questions to operator; log ambiguity + move on.
 
 Directive: docs/specs/2026-07-16-md-cleanup-headless-directive.md
 Config: ops/loop/config.mdclean.json (opus executor, cycle cap 8)
-Launch: open the executor Claude window first, set /model opus-4.8, then
-powershell -File "C:\Riot Commander\ops\loop\launch_loop.ps1" -Mode live -Cfg "C:\Riot Commander\ops\loop\config.mdclean.json"
-(launcher self-starts the AHK bridge + controller; verified against launch_loop.ps1 params 2026-07-16.)
+Launch: powershell -File "C:\Riot Commander\ops\loop\launch_mdclean.ps1"
+Pins the AHK bridge STRICTLY to the Claude window titled exactly "RC" (errors out if absent, never
+grabs another window). Self-starts bridge + controller. Chained autonomous start: paste the
+AUTONOMOUS RUN prompt (see git log 2026-07-16 / operator chat) into the RC window - it runs
+PROMPT A then arms this loop itself.
