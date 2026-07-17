@@ -257,6 +257,16 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-17 (mdclean headless run C1-C8 COMPLETE - gemini AHK loop; LEDGER 912; commits 78c3c018..bbda1e90)
+
+Headless gemini-directed docs-cleanup loop (spec `docs/specs/2026-07-16-md-cleanup-headless-directive.md`). 8 cycles, all gemini audits CLEAN, gemini spend $0.44/$25 ceiling, STOP = max_cycles 8 reached (03:49). Tier-0 docs-only throughout (no suite / no restart / no verifier per spec rule; docs-only pushes skip CI by design - MINUTE SAVER paths-ignore, baseline green).
+- **Cycles:** C1 inventory 155 candidates + 56-file census `78c3c018`; C2 ROADMAP -> NOW/NEXT/LATER stable ids `4ab82200`; C3 BACKLOG prune + path-stale sweep `d8e6ebc9`; C4 WAKEUP relocate-trim to 3 `e11e8f15`; C5 living set ARCH/OPS/API/AGENTS + README `86616a9f`; C6 DS changelog + ORCH rounds relocate + LIVE_GATED refresh `64435871`; C7 cross-ref sweep + slice-G relocate + census archive `b7e8aabe`; C8 CLAUDE.md propose-only audit `bbda1e90` (LEDGER 912 + ORCH C8 findings entry in the same commit).
+- **C8 deliverable:** `ops/loop/reports/mdclean-claudemd-proposal.md` rewritten as the C8 edition superseding C7's (8391B, 0 non-ASCII; single agent, no fan-out per directive). 7 confirmations no-change-owed + 7 operator-gated proposals: P1 slim header DS parenthetical (~600B, WP-F6a); P2 "13 residual .after() files" stale - measured 3, all frozen (app/__init__.py, app/_loop.py, app/_health_monitor.py); P3 vision-pipeline opener stale (screen_agent.py retired for the in-process self-grab relay, item 276); P4 merge "Session-End Ritual" into "Session Wrap-up" (~320B); P5 prune "Style Rules" (both bullets restate the hard rule, ~200B); P6 drop hardcoded "(20,190 tests)" (stale-by-construction); P7 CLAUDE.md-local glyph slice (5 lines carry U+00B7/U+00D7/U+2248/U+2192). Net if all applied ~1.1KB + 2 accuracy fixes; CLAUDE.md untouched (25,362B < 60KB).
+
+NEXT: operator reviews the CLAUDE.md proposal - apply or discard (propose-only rule held; do NOT apply unprompted). Loop control: STOP file left in place as the run record (next `launch_loop.ps1` pre-cleans it). Untracked strays NOT this run's, left alone: `agents/agent6_auditor/{proposals,reports}/20260712-*` + `ops/loop/reports/lane_{research,ui}.{log,done.txt}`.
+
+---
+
 # 2026-07-16 (DS Slice B on-hit AP - SHIPPED: 7th archetype scorer, Nashor's surfaces for Gwen/Kayle/Kog'Maw; LEDGER 911, ENGINE 1.216.0)
 
 Interactive session, continuation of Slice A. Task: surface Nashor's for on-hit AP champs (Gwen/Kayle/Kog'Maw-AP). Flow: brainstorming -> spec -> writing-plans -> subagent-driven (fresh implementer + task-reviewer per task). mode_key=client, no live game.
