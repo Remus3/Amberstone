@@ -124,6 +124,22 @@ function _scalePos(v, scale) {
   return s === 1 ? v : v / s;
 }
 
+// Where a widget actually PAINTS for a given stored (x,y) - the same decision
+// _applyPos makes: clamp on-screen, and bottom-anchor a tall widget dropped in
+// the lower half (top = H - 16 - rendered height). Pure so it is unit-testable.
+// The drag used to anchor at the RAW stored (x,y); whenever that differed from
+// the render (stale off-field save, or the tall bottom-anchor) the first move
+// tick teleported the panel away from the cursor or dead-zoned the drag until
+// the cursor crossed the gap (RM-05 round-2 symptom a).
+function _effectiveXY(id, x, y, W, H, hDesign) {
+  const c = _clampXY(x, y, W, H);
+  const ny = Number.isFinite(y) ? y : 0;
+  if (TALL_IDS.has(id) && ny > H * 0.5 && Number.isFinite(hDesign) && hDesign > 0) {
+    return { x: c.x, y: _clampXY(0, H - 16 - hDesign, W, H).y };
+  }
+  return c;
+}
+
 let _layout = {};
 let _saveTimer = 0;
 
@@ -315,11 +331,38 @@ function _installHideMenu(el, w) {
   });
 }
 
+// Guarded window-level listener helpers. The drag attaches its move/up
+// tracking to `window` for the drag's duration (see _installDrag); a headless
+// or locked-down host without add/removeEventListener must degrade to the
+// el-level listeners instead of throwing out of a pointer handler.
+function _winOn(type, fn) {
+  try {
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+      window.addEventListener(type, fn);
+    }
+  } catch (_e) {
+    // el-level listeners still track; window tracking is the robustness layer.
+  }
+}
+function _winOff(type, fn) {
+  try {
+    if (typeof window !== "undefined" && typeof window.removeEventListener === "function") {
+      window.removeEventListener(type, fn);
+    }
+  } catch (_e) {
+    // already gone / locked down; harmless.
+  }
+}
+
 // Drag core. Returns a `begin(e)` starter the caller wires to whichever element
 // should grab the drag: the small handle (always - the passive quick-drag via
 // data-rc-zone) AND, in ACTIVE mode, the whole widget body (operator 2026-06-27:
-// "in ACTIVE I expect to drag the panel, not hunt a 3px grip"). Capture +
-// move/up live on `el` so a drag begun from either trigger tracks identically.
+// "in ACTIVE I expect to drag the panel, not hunt a 3px grip"). Capture is set
+// on `el`, and move/up listeners live on `el` AND (mid-drag only) on `window`:
+// panel renderers rebuild these mounts (replaceWith / innerHTML), and a mount
+// swap mid-drag used to orphan the el-only listeners and silently kill the drag
+// - the same death the operator hit whenever capture failed and the cursor left
+// the 3px handle (RM-05 round-2 symptom b).
 function _installDrag(el, w) {
   let dragging = false;
   let startX = 0;
@@ -327,25 +370,22 @@ function _installDrag(el, w) {
   let originX = 0;
   let originY = 0;
   let scale = 1;  // panel zoom, captured at drag start (item 9 - see _scalePos)
+  let hadZone = false; // el's own [data-rc-zone] state, restored on drop
 
-  const begin = (e) => {
-    dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    const p = _posFor(w);
-    originX = p.x;
-    originY = p.y;
-    scale = Number.isFinite(p.scale) && p.scale > 0 ? p.scale : 1;
-    el.classList.add("ovx-dragging");
+  // The mount can be swapped by its renderer mid-drag; style writes must land
+  // on the node that is actually painting, not the orphaned one we wired.
+  const _liveEl = () => {
     try {
-      el.setPointerCapture(e.pointerId);
+      if (el.isConnected === false && typeof document !== "undefined" && document.querySelector) {
+        return document.querySelector(w.sel) || el;
+      }
     } catch (_e) {
-      // setPointerCapture can throw if the pointer is gone; harmless.
+      // stub / locked-down document: the wired node is all there is.
     }
-    e.preventDefault();
+    return el;
   };
 
-  el.addEventListener("pointermove", (e) => {
+  const onMove = (e) => {
     if (!dragging) return;
     // clientX/Y are screen px; the stored (x,y) are design px, so divide the
     // delta by the body zoom to keep 1:1 cursor tracking at any ovscale.
@@ -359,19 +399,32 @@ function _installDrag(el, w) {
       Math.round(originY + (e.clientY - startY) / z),
       W, H);
     _layout[w.id] = { ...(_layout[w.id] || {}), x: c.x, y: c.y };
-    el.style.left = _scalePos(c.x, scale) + "px";
+    const node = _liveEl();
+    node.style.left = _scalePos(c.x, scale) + "px";
     // Track by TOP while moving (clear any bottom-anchor from a prior drop) so the
     // panel follows the cursor 1:1; _applyPos on drop re-decides top vs bottom.
     // Divide by the panel scale: `zoom` scales top/left too (item 9), so an
     // uncompensated set would drift a scaled panel off the cursor.
-    el.style.bottom = "auto";
-    el.style.top = _scalePos(c.y, scale) + "px";
-  });
+    node.style.bottom = "auto";
+    node.style.top = _scalePos(c.y, scale) + "px";
+  };
 
   const end = (e) => {
     if (!dragging) return;
     dragging = false;
     el.classList.remove("ovx-dragging");
+    // Drop the temporary zone mark unless the widget is a zone in its own
+    // right (w-enemyspells) - stripping that would kill its tap-to-interact.
+    try {
+      if (!hadZone && typeof el.removeAttribute === "function") {
+        el.removeAttribute("data-rc-zone");
+      }
+    } catch (_e) {
+      // locked-down node; the mark dies with it.
+    }
+    _winOff("pointermove", onMove);
+    _winOff("pointerup", end);
+    _winOff("pointercancel", end);
     try {
       el.releasePointerCapture(e.pointerId);
     } catch (_e) {
@@ -379,9 +432,53 @@ function _installDrag(el, w) {
     }
     // Re-apply so a drop into the lower half snaps to the bottom-corner anchor
     // immediately (not only on the next load/resize).
-    _applyPos(el, _posFor(w));
+    _applyPos(_liveEl(), _posFor(w));
     _persist();
   };
+
+  const begin = (e) => {
+    dragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const p = _posFor(w);
+    scale = Number.isFinite(p.scale) && p.scale > 0 ? p.scale : 1;
+    // Anchor at the RENDERED position (clamp + tall bottom-anchor), never the
+    // raw stored (x,y) - see _effectiveXY (RM-05 round-2 symptom a).
+    const z = _bodyZoom() || 1;
+    const W = (window.innerWidth / z) || 1920;
+    const H = (window.innerHeight / z) || 1080;
+    const oh = el.offsetHeight;
+    const eff = _effectiveXY(w.id, p.x, p.y, W, H,
+      Number.isFinite(oh) && oh > 0 ? oh * scale : NaN);
+    originX = eff.x;
+    originY = eff.y;
+    el.classList.add("ovx-dragging");
+    // The rc-shell zone machine (clickthrough_zones.js) hit-tests e.target per
+    // pointermove; once capture retargets moves to `el`, the handle's own
+    // [data-rc-zone] no longer matches and the shell flipped the window back to
+    // click-through MID-DRAG, killing it (RM-05 round-2 symptom b). Marking el
+    // itself a zone for the drag's duration keeps the window interactive via
+    // the zone machine's generic [data-rc-zone] opt-in hook.
+    try {
+      hadZone = typeof el.hasAttribute === "function" && el.hasAttribute("data-rc-zone");
+      if (!hadZone && typeof el.setAttribute === "function") {
+        el.setAttribute("data-rc-zone", "");
+      }
+    } catch (_e) {
+      hadZone = false;
+    }
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch (_e) {
+      // setPointerCapture can throw if the pointer is gone; harmless.
+    }
+    _winOn("pointermove", onMove);
+    _winOn("pointerup", end);
+    _winOn("pointercancel", end);
+    e.preventDefault();
+  };
+
+  el.addEventListener("pointermove", onMove);
   el.addEventListener("pointerup", end);
   el.addEventListener("pointercancel", end);
   return begin;
@@ -413,7 +510,21 @@ function _makeHandle(el, w) {
   // drag the whole panel instead of hunting the small grip).
   el.addEventListener("pointerdown", (e) => {
     if (!_isActiveMode()) return;
-    if (e.target && e.target.closest && e.target.closest(_NO_BODY_DRAG)) return;
+    const t = e.target;
+    if (!t) return;
+    // Border/chrome presses target el ITSELF (content presses target a child).
+    // A press on a panel's edge ring was starting a drag of whatever container
+    // heard it - widgets overlap freely, so the operator got "the whole region"
+    // instead of the intended widget (RM-05 round-2 symptom c). Edge presses
+    // are handle-only; content presses keep the 2026-06-27 body-drag.
+    if (t === el) return;
+    if (t.closest) {
+      if (t.closest(_NO_BODY_DRAG)) return;
+      // A press whose nearest widget is NOT this el belongs to a nested /
+      // overlapping widget - its own wiring must win, never this container.
+      const hitWidget = t.closest(".ovx-widget");
+      if (hitWidget && hitWidget !== el) return;
+    }
     begin(e);
   });
 }
@@ -479,13 +590,19 @@ function _installLauncher(el, w, onTap) {
   let startY = 0;
   let originX = 0;
   let originY = 0;
+  let lscale = 1; // launcher zoom at press time - same item-9 law as _installDrag
   el.addEventListener("pointerdown", (e) => {
     // The OP/SZ sliders + the toggle/reset/done buttons live INSIDE the menu,
     // which is a DOM child of this launcher el - so their pointerdown bubbles
     // here. The handler's e.preventDefault() (below) then blocked the slider's
     // native thumb-drag, so the sliders looked dead (operator 2026-06-29). Let
-    // any interactive control handle its own pointer events.
-    if (e.target && e.target.closest && e.target.closest("input, button, select, textarea")) {
+    // any interactive control handle its own pointer events. The WHOLE menu is
+    // excluded, not just its controls: a press on a row gap / label / border
+    // armed a launcher drag (the menu region moved instead of the intended
+    // panel row) and, un-moved, its release re-fired onTap and toggled the menu
+    // shut under the cursor (RM-05 round-2 symptom c).
+    if (e.target && e.target.closest &&
+        e.target.closest("input, button, select, textarea, .ovx-launcher-menu")) {
       return;
     }
     // The launcher is a click-through ZONE (data-rc-zone), so the rc-shell makes
@@ -498,8 +615,16 @@ function _installLauncher(el, w, onTap) {
     startX = e.clientX;
     startY = e.clientY;
     const p = _posFor(w);
-    originX = p.x;
-    originY = p.y;
+    // Same effective-origin law as _installDrag: a stale off-field save renders
+    // clamped, so the drag must start from the clamped spot or the square
+    // teleports / dead-zones on the first move tick (RM-05 round-2 symptom a).
+    const z0 = _bodyZoom() || 1;
+    const W0 = (window.innerWidth / z0) || 1920;
+    const H0 = (window.innerHeight / z0) || 1080;
+    const c0 = _clampXY(p.x, p.y, W0, H0);
+    originX = c0.x;
+    originY = c0.y;
+    lscale = Number.isFinite(p.scale) && p.scale > 0 ? p.scale : 1;
     try {
       el.setPointerCapture(e.pointerId);
     } catch (_e) {
@@ -524,8 +649,10 @@ function _installLauncher(el, w, onTap) {
       Math.round(originY + (e.clientY - startY) / z),
       W, H);
     _layout[w.id] = { ...(_layout[w.id] || {}), x: c.x, y: c.y };
-    el.style.left = c.x + "px";
-    el.style.top = c.y + "px";
+    // _scalePos keeps a zoomed launcher under the cursor (item 9); a no-op at
+    // the default scale 1, but a hand-edited layout JSON can carry a scale.
+    el.style.left = _scalePos(c.x, lscale) + "px";
+    el.style.top = _scalePos(c.y, lscale) + "px";
   });
   const end = (e) => {
     if (!down) return;
@@ -779,6 +906,7 @@ export const _internals = {
   PANEL_SETS,
   TALL_IDS,
   _clampXY,
+  _effectiveXY,
   MIN_VISIBLE,
   LS_KEY,
   _posFor,
