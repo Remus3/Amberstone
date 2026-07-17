@@ -6860,12 +6860,26 @@ import { initPanelVisibility, applyPanelVisibility } from './panels/panel_visibi
         const r = await fetch("/api/state", { cache: "no-store" });
         if (r.ok) {
           const st = await r.json();
+          // S7 split (2026-07-17): the minimap surfaces (rect / dots / ZOI) are
+          // legitimately SR/ARAM/brawl-only - arena + tft have no minimap ZOI, so
+          // their stamping + renderers stay behind the NARROW gate below. The four
+          // coaching mounts (rn-lead / rn-callouts / rn-choices / w-spike) were
+          // WRONGLY piggybacked onto that same gate: they are DATA-gated ([hidden]
+          // until their sibling is non-empty) and THIS 2s poll is the only
+          // unconditional in-game feed that stamps those siblings, so an in-game
+          // arena/tft overlay starved them and they stayed dark. A second WIDER
+          // gate (adds arena + tft) feeds the coaching siblings + renders only -
+          // the minimap block must NOT widen or its renderers would start firing
+          // on a mode with no minimap. Coaching renderers are fail-soft + data-
+          // gated, so an absent sibling just keeps the mount hidden (no crash).
           if (st && ["sr", "aram", "brawl"].includes(st.mode_key)) {
             state.latest.minimap_rect = st.minimap_rect || null;
             state.latest.minimap_dots = st.minimap_dots || null;
             state.latest.zoi = st.zoi || null;
             renderMinimapRect(state.latest.minimap_rect);
             renderMinimapZoi(state.latest.zoi);
+          }
+          if (st && ["sr", "aram", "brawl", "arena", "tft"].includes(st.mode_key)) {
             // E6 (2026-07-06): lead_projection / callouts / coach.choices /
             // liveclient are /api/state TOP-LEVEL siblings likewise ABSENT from
             // the :8891 WS push, so the gated pollers (HTTP-fallback / LCU / SSE)
