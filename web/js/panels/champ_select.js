@@ -672,6 +672,9 @@ export function renderChampSelectView(lcu) {
     // item 1 Phase 6: left champ select - clear the rune-push latch so a fresh
     // enter re-asserts the followed page after the frozen auto RuneWriter.
     for (const k in _CSV_LAST_RUNE_PUSH) delete _CSV_LAST_RUNE_PUSH[k];
+    // Swap-wipe latch (2026-07-17): clear on exit too so a fresh enter
+    // re-fires the scoped wipe + re-push for the first hovered champ.
+    _CSV_LAST_WIPE_KEY.value = "";
     return;
   }
   _csvCacheLcuIfChampSelect(lcu);
@@ -2255,7 +2258,44 @@ function _csvResolveArchetype(champion) {
 // don't re-PUT the same payload. NOOP in mock mode (LCU agent returns
 // "no summoner" - swallowed).
 const _CSV_LAST_PUSH_KEY = { value: "" };
+// Swap-wipe latch (2026-07-17): champion|mode scope of the last
+// delete_stale_rc_item_sets wipe. Separate from the push latch (which
+// also keys on itemSig) so a swap to a BUILD-LESS champion still wipes
+// the prior champ's RC- sets exactly once per champ change. Cleared on
+// champ-select exit alongside the rune-push latch.
+const _CSV_LAST_WIPE_KEY = { value: "" };
 function _csvMaybePushBuildsToLCU(champion, mode, variants) {
+  // Item 188 Slice B (2026-05-25) pre-push wipe of stale RC- sets that
+  // don't match the current {champion, mode} - HOISTED above the
+  // empty-guards (2026-07-17): a swap to a champ with NO builds (bare
+  // [] userRows from _csvBuildVariantsFor, or variants with no pushable
+  // items) used to return early below, so the OLD champ's
+  // RC-<champ>-<mode>-* sets were never wiped and lingered in the
+  // in-game dropdown. Skips the no-champion placeholder (key "empty" /
+  // "-" sentinel): pre-hover ticks must not wipe against the "-" scope.
+  // Deduped via _CSV_LAST_WIPE_KEY (at most one wipe per champ change,
+  // no per-tick churn). The wipe RESETS the push latch: it deletes
+  // every other champ's RC- sets, so a later hover-back must re-push
+  // even though its champ|mode|itemSig key is unchanged. The wipe
+  // handler keeps operator's own custom (non-RC-) sets + this scope's
+  // RC- sets so the apply_item_sets_batch below stays idempotent.
+  const realChamp = !!champion && champion !== "-" &&
+    !(Array.isArray(variants) &&
+      variants.some((v) => v && v.key === "empty"));
+  if (realChamp) {
+    const wipeKey = `${champion}|${mode || "sr"}`;
+    if (_CSV_LAST_WIPE_KEY.value !== wipeKey) {
+      _CSV_LAST_WIPE_KEY.value = wipeKey;
+      _CSV_LAST_PUSH_KEY.value = "";
+      try {
+        lcuCmd({
+          cmd: "delete_stale_rc_item_sets",
+          active_champion: champion,
+          active_mode: mode || "sr",
+        });
+      } catch (_) {}
+    }
+  }
   if (!champion || !Array.isArray(variants) || !variants.length) return;
   // Item 178 (2026-05-24): flatten collapsed variants into their
   // build_paths so the in-game item-shop dropdown carries one set per
@@ -2307,21 +2347,9 @@ function _csvMaybePushBuildsToLCU(champion, mode, variants) {
     }],
   }));
   if (!sets.length) return;
-  // Item 188 Slice B (2026-05-25): PRE-PUSH wipe of stale RC- sets
-  // that don't match the current {champion, mode}. Without this, each
-  // champ-select swap or mode-switch leaves the prior 4 RC- sets behind
-  // (replace-by-uid only overwrites matching uids), so a session
-  // cycling 2-3 champions across SR/ARAM/Arena accumulates 20+ stale
-  // entries in the in-game item-shop dropdown. The wipe handler keeps
-  // operator's own custom (non-RC-) sets + this scope's RC- sets so
-  // the apply_item_sets_batch right below is idempotent.
-  try {
-    lcuCmd({
-      cmd: "delete_stale_rc_item_sets",
-      active_champion: champion,
-      active_mode: mode || "sr",
-    });
-  } catch (_) {}
+  // The item-188 pre-push wipe of stale RC- sets now fires at the TOP
+  // of this function (ahead of the empty-guards) so build-less swaps
+  // wipe too - see the hoisted block above.
   try { lcuCmd({ cmd: "apply_item_sets_batch", sets }); } catch (_) {}
 }
 
