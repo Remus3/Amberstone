@@ -257,6 +257,31 @@ Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pi
 
 ---
 
+# 2026-07-16 (Locke kit-less dps-fallback + DS C2 antiheal counter-hint; LEDGER 907-908; commits d2ed3d47 + fc029b87/d9f0fac4/57354ea0)
+
+Interactive session. Chain: 16.14.1 client-mode build-reco validation -> Locke fix -> DS build-reco re-scope -> C2 antiheal. mode_key=client, no live game. Both fixes Tier-1 RC-side (no engine/Share/ENGINE bump).
+- **16.14.1 validation (client-mode): PASS.** 7 archetypes x SR/ARAM/ARENA render sane + DS-consistent builds via /api/ds-preview; known Meraki gaps (Corki/Yunara stale AD-growth, Locke/Zaahen no kit) confirmed degrading, not crashing.
+- **Locke kit-less dps-fallback (907, d2ed3d47):** kit-dependent scorers (ability/burst/hps) returned all-zero for a champ with NO Meraki ability data -> Locke served Doran's-only at +0.0. Fix: `rank_for_primary_archetype` detects all-zero -> falls through to ds.dps + echoes archetype "carry". GOTCHA (caught by LIVE re-probe, unit test alone missed it): the ds-preview handler echoes its OWN resolved archetype, not the dispatcher's out["archetype"]. +6 tests. Live: Locke -> real BotRK/Heartsteel build.
+- **DS C2 antiheal counter-hint (908):** re-scoped after VERIFYING Step 2 (situational counter-build chips) is ALREADY shipped (WP-R102/R103) - the counter-build has 6 criteria but only C1/C4/C5 fired live; C2 antiheal / C3 fed / C6 tenacity were wired-but-dead. Lit up C2 (hint-only): `heal_threat.py` +2 helpers -> `routes_build_plan` hint-path (heal_sources + AllyState populated, NEVER loop.tick so the plan stays byte-identical) -> `active_match.js` sends ally_items. +13 tests. Live: healer comp -> antiheal chip; ally Grievous -> suppressed; live[]/meta[] byte-identical. Spec: docs/specs/2026-07-16-ds-c2-antiheal-counter-hint-design.md.
+
+NEXT: C6 tenacity (needs net-new hard-CC champ curation - no enemy-CC source; `defensive_picks.compute_threat_profile` has no CC metric) OR C3 fed (needs live KDA/gold). LIVE-VERIFY OWED: the Locke build + the overlay antiheal chip RENDER (Electron, agent-blind) both want a real-game eyeball. Do NOT redo: Locke fix + C2 antiheal shipped/pushed; Step 2 situational chips are ALREADY shipped (do NOT rebuild - the 2026-07-13 spec is stale on this).
+
+---
+
+## Relocated 2026-07-17 (mdclean C4 - expired operator directive; chain executed per LEDGER 874-911, overnight loop STOP seen 2026-07-14)
+
+# OVERNIGHT AUTONOMOUS DIRECTIVE (operator, 2026-07-13, going to sleep) - Gemini-headless loop
+
+Operator granted a full autonomous overnight run (AHK + Gemini headless) with FROZEN-FILE ACCESS ALLOWED + GRANTED. Self-`/done` and continue between phases. Priority chain:
+
+1. **Implement `docs/specs/2026-07-13-ds-crit-burst-fix.md`** (the coordinated crit-burst fix: L1 coherence-respects-burst -> L2 arm the execute [Tier-2 ENGINE bump + Share + :8893] -> L3 fight_length allow-map for crit ADCs -> L4 squishy-target scenario; L5 fed-conditional + L6 stale-catalog are follow-ups). TDD, per-champion, LIVE-path fidelity (the Step-1a lesson: validate against the live ds-preview path, not an in-process fixed cell). Root cause: the sustained-DPS scorer hands crit ADCs an on-hit build; crit's value is short-TTK BURST vs SQUISHY carries when FED. Context: LEDGER 874 (Step 1a shipped) + `docs/specs/2026-07-13-ds-build-coherence-refactor.md` + memory `project_ds_build_reco_optimal_not_winrate`.
+2. **Then the other DS build-reco refactor slices** (from `docs/specs/2026-07-13-ds-build-coherence-refactor.md`): Step 0 seam prunes (DSP11 coach revert is a GATED live-behavior change - coach-picks diff first), Step 2 wire the dormant `situational.py` counter-build into the overlay, Step 3 ally synergy + NL reasoning. Plus DS seams / testing / upgrades broadly.
+3. **If still uninterrupted:** per-champion META BUILD online research (aggregator B/aggregator D/aggregator A via web tools) - compare each champ's meta build to what the engine offers, analyze for divergence/issues; if found, continue fixing headless.
+
+Each phase: verifier-gate before "done" (independent re-probe, NOT subagent counts), commit + push, LEDGER entry, live-verify where possible. Do NOT flip gated live-behavior (DSP11 coach revert, any coach flip) without the eyeball diff. QA baseline: `ops/audit/DS_BUILD_RECO_OVERLAY_QA.md`.
+
+---
+
 # 2026-07-16 (upstream/patch scan -> 16.14.1 refresh + validation + Eclipse AH fix; commits d081291d + fc09ce0b + 36129183; LEDGER 905-906)
 
 Operator chain: "scan upstream and connections" -> "both" (commit mirror + DS re-extract) -> "what is next to validate" -> validate 1-4 -> "yes" -> "ship a+b" -> /done. mode_key=client, no live game.
