@@ -100,3 +100,27 @@ markers alone (sha-level unverified) permit RELOCATE-not-delete but never hard P
 - docs/ORCHESTRATION_PLAN.md: still no mdclean row (grep hits = WP-C5 build-plan rows only) -
   no sync owed.
 - Slice-manifest / TaskCreate phases skipped per the directive's Tier-0 single-thread override.
+
+## C6 (2026-07-17) - DAEMON_SLAYER + ORCHESTRATION_PLAN + LIVE_GAME_GATED_SYNC
+
+- DAEMON_SLAYER.md 97938B -> 15829B: changelog L17-L113 + pre-compress L15 registry narrative
+  relocated verbatim -> docs/history_notes.md; 34-route refresh (server.py:2097-2098 live grep);
+  dup hybrid.py row deduped; tests row 11701 -> 11754 (LEDGER 911 verbatim); six -> seven
+  archetypes + picker no-manual-onhit caveat (LEDGER 911); brawl row tagged LEGACY (s214);
+  0 non-ASCII remain. Count/coverage prose copied verbatim only.
+- ORCHESTRATION_PLAN.md 351719B -> 36133B: 8 fully-DONE round bodies (LEDGER 763/784/875/876/889/
+  903 + b49ef1a7) + 52 findings entries relocated -> docs/ORCHESTRATION_FINDINGS_ARCHIVE.md
+  (append-at-top); newest-10 findings kept + tail-append ordering fixed; head contract + EXCLUDED
+  kept verbatim. Serves the PLAN_CTX_CAP director budget.
+- LIVE_GAME_GATED_SYNC.md 181474B -> 173886B (body-only, 1980 -> 1922 lines): A1/A2/A7/A13 pruned
+  to a closed-note (LEDGER 859/867); TWO-LIVE-BUGS -> D6-only; drain-result + resync-pruned +
+  play-order compressed to ledger pointers; B45/B46 compressed to calibration tails (LEDGER 799);
+  C15+C16 merged into the cadence-bug row (LEDGER 867); D7-hist dropped; OQ20/OQ22 discharge rows
+  one-lined; hygiene (a) rows executed by C2-C6 struck; hygiene (b) 7 [ARCHIVED 2026-07-09] rows
+  pruned. Live-flip ledger (now L870+) byte-untouched; all diff hunks precede it.
+- UNVERIFIED-SKIP: none this cycle (every prune carried a LEDGER id / SHA / live-grep citation).
+- PROPOSAL (OPERATOR-GATED, not executed): relocate the LIVE_GATED Live-flip ledger (~103KB,
+  now L870-L1922) to an archive sibling keeping OWED-bearing + the 2 SYNC entries. Requires a
+  same-change .claude/workflows/live-gated-resync.js edit (writer prompt ~L210 + verifier ~L235
+  >400-line + OWED-harvest contract) per in-doc L952-953 + feedback_no_history_rewrite.
+

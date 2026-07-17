@@ -26,15 +26,12 @@ sets, NO allies, custom games NEVER appear in Match-V5, no ranked queue. ARAM Ma
 2400, gameMode KIWI, RC MODE_ARAM) gives real comps but is Match-V5 403/excluded - so anything
 Match-V5- or win-anchored is REAL-SR or ACCRUAL.
 
-WHAT THIS RESYNC PRUNED (confirmed-done, verified live; history in the ledger + docs/LEDGER.md):
-already-pruned prior cycle (LEDGER 779, 2026-07-04) B23 objective-gauge widget, B21
-objective-state callouts, E1 ACTIVE-knob round-trip, E2 panel-cycle, B28 vision-region frames,
-F1 PGR @N timeline, F2 REPLAY1 freshness, F4 PGR UI-audit, D7 Arena Match-V5 ingest, B44 Guinsoo
-re-rank sanity, C4/DSP11 kit-axis seam (FLIPPED default-ON 523206d6). This cycle folds LEDGER 799
-(2026-07-06): the B45 R77 crit-DR + B46 R80 AA-DR ENGINE-default flips are now ON + live on :8893
-(90a74972) - so B45/B46 are RE-SCOPED from "flip owed" to the practice/real-SR eyeball + 0.5
-share-midpoint CALIBRATION tail ONLY (the flip is done; do not re-pitch it). Z1 flicker + Z3
-obs.frame_source were live-validated 2026-07-05 (LEDGER 796) and stay recorded in the ZOI block.
+WHAT THIS RESYNC PRUNED: the confirmed-done row set (B23/B21/E1/E2/B28/F1/F2/F4/D7/B44 +
+C4/DSP11 kit-axis FLIPPED 523206d6, prior cycle LEDGER 779). Folding LEDGER 799: the B45/B46
+crit-DR / AA-DR ENGINE flips are ON + live on :8893 (90a74972) - B45/B46 are RE-SCOPED to the
+eyeball + 0.5 share-midpoint CALIBRATION tails ONLY (do not re-pitch the flips). Z1 flicker + Z3
+obs.frame_source were live-validated 2026-07-05 (LEDGER 796). Verbatim detail: the 2026-07-12 SYNC
+entries in the Live-flip ledger below + docs/LEDGER.md.
 
 The headless loop MAINTAINS this file: every DEFAULT-OFF seam it ships (DSV*/DSP*/RF*/R*)
 appends its live default-ON flip here. The loop NEVER flips these blind (charter 4b
@@ -50,12 +47,11 @@ Phase-D are ENGINE-ONLY or /burst-scoped (need route + client plumbing before an
 DSP5/6/7 + anti-tank P3.2 are producer-only orphans (route + test imports only, no live feeder);
 env gates RC_COMP_HP_LEAN / RC_LANING_CV_SERVED are cold (no supervisor or machine-env wiring).
 
-TWO LIVE BUGS still OPEN 2026-07-04 (both fix-committed, both STILL OPEN pending a live
-re-validate - do NOT mark closed): A1/A2 champ-select AUTO-PUSH regression after a mid-session
-League restart (layer-1 self-heal 90b350c8 + layer-2 resilient spawn_task loops 1ab7000e both
-merged; RC not re-validated); D6 Arena augment/anvil shadow only partly seeding (force_scan fixes 79c4e9e9 + round-based
-10374d02 merged; RC-LCUAgent restart + a live Arena augment phase still owed; augment_shadow.jsonl
-now seeds 966B but anvil_shadow.jsonl still ABSENT).
+ONE LIVE BUG still OPEN (fix-committed, pending live re-validate - do NOT mark closed): D6 Arena
+augment/anvil shadow only partly seeding (force_scan 79c4e9e9 + round-based 10374d02 merged;
+RC-LCUAgent restart + a live Arena augment phase still owed; augment_shadow.jsonl seeds 966B,
+anvil_shadow.jsonl still ABSENT). The former second bug - A1/A2 champ-select AUTO-PUSH regression -
+was VALIDATED CLOSED 2026-07-11/12 (LEDGER 859 + 867).
 
 How to use: operator runs the drain-plan sessions below; tick each row; report results so the
 loop's next cycle can flip the validated seams default-ON. RC auto-serves UI via ADR-008 (no
@@ -66,12 +62,12 @@ during real games; `ops/audit/ds_perm_swarm/live_flip_eyeball.py` dumps OFF-vs-O
 
 ## 2026-07-12 DRAIN RESULT (Practice SR + ARAM Mayhem; LEDGER 867 - full row-by-row resync OWED)
 
-Closed / advanced this sitting (surgical note; a `/live-gated-resync` should rebuild the rows below):
-- **item-1 rune-follows-build LIVE-VALIDATED** (practice champ-select, followed page written to client, deduped + last-writer-wins over the frozen auto RuneWriter). Closes the item-1 push thread; A13 push-half.
-- **A2 CLOSED** (summoner-spell push/no-revert - `set_summoner_spells: idempotent skip (4+32)` on every ARAM CS enter + swap, loop alive). **A7 CLOSED** (KIWI->ARAM re-detect + bench-swap re-detect). **A6** bench-swap evidenced.
-- **C13 VALIDATED** (enemy_spells stats_panel renders live - 5 enemies + summoner CDs). **C1** ARAM build LOGIC comp-aware (Shieldbow vs Talon / BotRK vs Graves). **B24** overlay pixel family rendering (settings/stats/portraits/build/minimap).
-- **B4/B7/B8/B10/B13/B14/B18/B19 BANKED HEADLESS** (route-wired DS seam OFF-vs-ON direction-verified, flip-ready; the actual default-ON flips stay operator-gated). **B20 REFUTED** - R55 is NOT `/rank`-eyeball-able (`target_current_hp_pct` no-ops on /rank); stays DS-restart-gated.
-- **C15/C16 FIELD-FIX shipped (`67519018`) BUT a NEW cadence bug blocks the on-screen reco (2026-07-12 live eyeball).** The alias fix (moon_proxy TFT-relay emits `is_augment_select`, coaches read `augment_select`; aliased in `modes/shared_vision.py` `_postprocess`, covers ARAM/Arena/Brawl) is CORRECT and deployed. But the reco STILL does not fire on-screen. Root-caused offline against a saved live Kayle augment frame: detection deterministic (relay `is_augment_select=True` 4/4) + coach `read_tiered` surfaces `augment_select` 3/3 + `_fetch_game_data` non-None during augment - so alias/detection/path/gate all GOOD. ROOT CAUSE = `coaches/aram_coach.py:495 _VISION_INTERVAL=25.0` skips the ~10-15s early-game augment window (live augment on-screen @12:03:51, first coach vision tick @12:04:02, missed; consistent every game this session). **NEW open bug is vision CADENCE, not fields.** FIX (owed, operator-DEFERRED 2026-07-12 to prioritize UI work): fast early-game vision poll (~5s while gameTime < ~40s, revert to 25s after) in ARAM + Arena/Brawl siblings; full on-screen verify stays live-gated. Repro: scratchpad relay_loop.py / offline_pin.py; see memory `open_bug_aram_augment_reco_cadence_miss`.
+Closed / advanced this sitting (full row-by-row detail: docs/LEDGER.md 867): item-1
+rune-follows-build LIVE-VALIDATED (closes the item-1 push thread + the A13 push-half); A2 + A7
+CLOSED; A6 evidenced; C13 / C1 / B24 validated; B4/B7/B8/B10/B13/B14/B18/B19 BANKED HEADLESS
+(default-ON flips stay operator-gated); B20 REFUTED (R55 not /rank-eyeball-able; DS-restart-gated);
+C15/C16 field-fix shipped (67519018) but a NEW vision-CADENCE bug blocks the on-screen reco - see
+the ARAM-MAYHEM row in the DOC-ONLY RESYNC block + memory open_bug_aram_augment_reco_cadence_miss.
 
 ## 2026-07-12 DOC-ONLY RESYNC (git-closure pass, NO live capture)
 
@@ -108,18 +104,14 @@ NOTE: this pass did NOT surgically prune the per-row A-E sections below (reliabi
 
 ## Next-session play order (bundle plan)
 
-The 2026-07-04 FULL DRAIN closed 11 one-shot rows in one sitting; this plan covers the REMAINING
-open one-shots plus the two caught-bug re-validates and the newest overlay/DS-stability eyeballs.
-Session order = PRACTICE SR -> REAL SR -> ARAM MAYHEM -> ARENA. Bundle the two live bugs (A1/A2,
-D6) into Session 1 / Session 4 since their fixes are already merged. Full per-session breakdown is
-the "Drain plan UNDATED" section below.
+Session order = PRACTICE SR -> REAL SR -> ARAM MAYHEM -> ARENA. The authoritative open set is the
+2026-07-12 DOC-ONLY RESYNC block above (+ the R103 / Slice B addenda); per-session breakdown in
+"Drain plan UNDATED" below. A1/A2 are CLOSED (LEDGER 859/867) - bundle D6 into the Arena session.
 
 ---
 
 ## ZOI-PROGRAM FINALIZATION (2026-07-05 live SR verify - detail in docs/ZOI_DISTRICT_ORCHESTRATION_PLAN.md section 9)
 
-Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + closed 2026-07-05
-(LEDGER 796) and are recorded there, not re-listed here. Z2 stays open.
 
 - Z2. [HOLD] (REAL-SR, BLOCKED-on-CV) macro callout (`kind="macro"`) + `zoi.mia` rings are DEAD
   on SR: `vision_tracker` fog needs coordinate positions the Live Client does not give (roles
@@ -135,20 +127,10 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
 
 ## A. Champ-select / lobby
 
-- A1. [VALIDATED 2026-07-11, LEDGER 859: a mid-session League restart rotated the lockfile port 51820->64503, RC FOLLOWED it (no stale-port silence), and RuneWriter pushed on Jinx/Kai'Sa/Caitlyn post-restart. A1 CLOSED. The spell-push half (A2) still owed to isolate.] (REAL-SR) LCU push AUTO-FIRE re-validate (RE-OPENED by the 2026-07-04 regression): after a
-  mid-session League restart the in-process spawn_task coroutines (auto-accept + RuneWriter)
-  silently stopped ticking -> shared LcuClient pinned to the dead port -> NO runes/spells/items
-  push on the next champ-select. LAYER-1 self-heal (RuneWriter._poll re-heals, 90b350c8) + LAYER-2
-  resilient spawn_task loops (1ab7000e) both MERGED; RC NOT yet re-validated. Confirm the push
-  fires on the FIRST champ-select AFTER a deliberate mid-session League restart, and the pushed
-  page matches the DS pick. The read-path RECONNECT half is already confirmed (port 63654->59333,
-  27f99a95). Needs a live LCU champ-select + a real League restart. SOURCE: docs/LEDGER.md item
-  779; WAKEUP_NOTES.md lines 17-22; git 90b350c8 / 1ab7000e.
-- A2. (REAL-SR) CS2 summoner-spell auto-push confirm via `/lol-champ-select/v1/session/
-  my-selection` (`29cd2788`; role-aware mid-pick fix `1aed8f06`). STATUS: shares the A1 regression
-  root cause (spawn_task stall); the spell-push log line was NOT isolated in the 2026-07-04 drain
-  (Flash+Barrier stayed vs the sr_mode=teleport pref, no push fired). The explicit push/no-revert
-  confirm is still owed post the layer-2 fix. SOURCE: docs/LEDGER.md item 779; ORCHESTRATION_PLAN:69.
+- A1/A2/A7/A13 CLOSED (LEDGER 859 + 867): post-restart LCU push re-validated (lockfile-port follow
+  51820->64503, RuneWriter pushed post-restart), summoner-spell push idempotent-skip confirmed,
+  KIWI->ARAM + bench-swap re-detect passed, item-215 push half closed with A1/A2. Rows pruned
+  2026-07-17 (mdclean C6); verbatim history in docs/LEDGER.md 859/867 + the ledger below.
 - A3. (ANY-LOBBY) CC-conditional pairing UI renders on champ-select (`541cd9d3`) - visual
   confirm; scenario-gated (needs a CC-pairing lobby to roll; never rolled 2026-07-04).
 - A4. (ANY-LOBBY) LOBBY1 top-8 friend-invite live verify (`1f4f4118`) + QA24 non-friend invite
@@ -161,11 +143,6 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
 - A6. (ARAM-MAYHEM) E7a bench-swap queue-drain eyeball (`64591d5f`): click a bench champ in a
   real ARAM champ-select and confirm the swap registers visibly faster. SOURCE: ledger
   2026-06-20 below.
-- A7. (ANY-LOBBY) E12-L2 RuneWriter lobby-gameMode memoization eyeball (`48fcee51`):
-  mode-correct runes/spells still push on champ-select enter; a mode change across
-  back-to-back champ-selects re-detects. STATUS: PASSED 2026-07-02 (PRACTICETOOL->SR, KIWI->ARAM,
-  re-detects on bench-swap) but re-confirm alongside the A1 layer-2 re-validate. SOURCE: ledger
-  2026-07-02 below.
 - A8. (PRACTICE-SR) Locked-own-champ champ-select panel captures (a practice/custom lobby
   suffices - self-side data only): ds-sweep graph, ds-relscore bar, ds-statcheck sandbox
   (R52 note: these dashboard panels have no sanctioned audit surface post the 2026-06-27
@@ -185,10 +162,6 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
 - A12. (ANY-LOBBY) Mode-specific overlay layout AUTO-SELECT-ARAM acceptance (queued for
   planning, not yet built): once built, the auto-select needs a live ARAM queue/lobby state;
   per-mode in-game placement wants an eyeball per map. SOURCE: BACKLOG.md:48.
-- A13. (ANY-LOBBY) item 215 carry (a): champ-select rune/item/summoner push + in-game `:2999`
-  reads LIVE VERIFY post 1-PC consolidation. STATUS: :2999 read half re-proven by the
-  2026-06-27..30 + 2026-07-04 live sessions; the PUSH half is re-opened via A1/A2 (the
-  2026-07-04 regression) - close A13 only once A1/A2 re-validate. SOURCE: ROADMAP.md:78.
 
 ## B. In-game - PRACTICE-TOOL-VIABLE (own build / HP / level / stacks; bots + dummies suffice)
 
@@ -343,21 +316,15 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   pool, no real enemy shield needed); a REAL game vs Shieldbow/enchanter comps is the stronger
   eyeball. DS restart on flip. NOTE: the doc historically labeled this "B41" a second time -
   renamed B41b to disambiguate from the R58 row above. SOURCE: ledger 2026-07-03 below.
-- B45. (PRACTICE-SR) R77 `assume_item_crit_dr` CALIBRATION + eyeball tail (Randuin's Omen
-  3143/223143 crit-DR physical-only EHP credit). NOTE: the ENGINE default is ALREADY FLIPPED ON
-  and live-verified on :8893 (LEDGER 799, 90a74972 - Steelcaps+Randuin+Sunfire lvl 13 physical
-  EHP +23.8%, 8126 tests). The flip is DONE - do NOT re-pitch it. REMAINING live-gated tail: (a)
-  a practice/real-SR eyeball that a tank build carrying Randuin's up-ranks sanely on the
-  survivability axis without dominating a real-resist item swap; (b) the 0.5 crit-share midpoint
-  (`_ASSUMED_INCOMING_CRIT_SHARE`) CALIBRATION vs a real crit-heavy enemy comp - a REAL-SR game vs
-  a crit ADC is the stronger eyeball (ACCRUAL, mirrors B20 + G14). SOURCE: docs/LEDGER.md item 799.
-- B46. (PRACTICE-SR) R80 `assume_item_aa_dr` CALIBRATION + eyeball tail (Plated Steelcaps
-  3047/223047 AA-DR physical-only EHP credit). NOTE: the ENGINE default is ALREADY FLIPPED ON and
-  live-verified on :8893 (LEDGER 799, 90a74972, same commit as B45). The flip is DONE - do NOT
-  re-pitch it. REMAINING live-gated tail: (a) a practice/real-SR eyeball that a bruiser/tank
-  carrying Steelcaps up-ranks sanely vs an AA-heavy enemy without dominating a real-resist item
-  swap; (b) the 0.5 incoming-AA-share midpoint (`_ASSUMED_INCOMING_AA_SHARE`) CALIBRATION vs a
-  real AA-heavy comp - a REAL-SR game vs a fed auto-attacker is the stronger eyeball (ACCRUAL).
+- B45. (PRACTICE-SR / ACCRUAL) R77 `assume_item_crit_dr` CALIBRATION tail ONLY - the ENGINE
+  default is FLIPPED ON + live (LEDGER 799, 90a74972; do NOT re-pitch the flip): (a) eyeball that
+  a tank build carrying Randuin's up-ranks sanely on the survivability axis; (b) the 0.5
+  crit-share midpoint (`_ASSUMED_INCOMING_CRIT_SHARE`) calibration vs a real crit-heavy comp
+  (REAL-SR stronger; mirrors B20 + G14). SOURCE: docs/LEDGER.md item 799.
+- B46. (PRACTICE-SR / ACCRUAL) R80 `assume_item_aa_dr` CALIBRATION tail ONLY - flip ON + live
+  (LEDGER 799, 90a74972, same commit): (a) eyeball that a bruiser/tank carrying Steelcaps
+  up-ranks sanely vs an AA-heavy enemy; (b) the 0.5 incoming-AA-share midpoint
+  (`_ASSUMED_INCOMING_AA_SHARE`) calibration vs a real AA-heavy comp (ACCRUAL).
   SOURCE: docs/LEDGER.md item 799.
 - B47. (PRACTICE-SR) R86 `assume_item_enemy_as_slow` FLIP + CALIBRATION (Frozen Heart
   3110/323110/223110 Winter's Caress -20% enemy AS -> physical-only EHP credit for the reduced
@@ -536,11 +503,10 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   coherently 6+ min ARAM 2026-07-04 with the flag OFF, but the DEFAULT-ON flip itself is still
   un-validated (a replayed-game feed is an allowed alternative - try headless first). SOURCE:
   BACKLOG.md:64; docs/LEDGER.md item 779.
-- C15. (ARAM-MAYHEM) Augment recommender OCR -> rank vs the pick made (Mayhem in-game
-  augment-select satisfies it; Arena avoidable for this row; did not roll on Vayne 2026-07-04).
-  SOURCE: ROADMAP.md:122.
-- C16. (ARAM-MAYHEM) s244 carry: live Mayhem augment-select RENDER validation (proven only by
-  snapshot fixtures). SOURCE: ROADMAP.md:94.
+- C15+C16. (ARAM-MAYHEM) augment OCR rank-vs-pick + live render validation - subsumed by the
+  vision-CADENCE bug row in the 2026-07-12 DOC-ONLY RESYNC block (alias fix 67519018 shipped;
+  `_VISION_INTERVAL=25.0` skips the augment window; fast early-game poll OWED). SOURCE: LEDGER 867;
+  memory open_bug_aram_augment_reco_cadence_miss.
 - C17. (ARAM-MAYHEM) R78 ARAM deterministic tail item_extra + objective Haiku->deterministic
   flip (c82b2446): SHIPPED SHADOW-only, NO flip. Needs ARAM (Mayhem) shadow accrual + operator OK
   before flipping the ARAM coach tail off Haiku - a live-flip eyeball vs a real ARAM game.
@@ -569,8 +535,6 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   (separate ONLOGON process) restart + a live Arena augment phase are still owed. augment_shadow.jsonl
   now seeds on disk (966B) but anvil_shadow.jsonl is still ABSENT - keep D6 OPEN. SOURCE:
   docs/LEDGER.md items 779/820; git 79c4e9e9, 10374d02.
-- D7-hist. (superseded) Arena PGR capture - CLOSED 2026-07-04 (mode ARENA ingested, Arena IS
-  Match-V5-eligible). Kept OFF the checklist; see ledger.
 - D8. [HOLD 2026-06-20] (ARENA) Arena S2 augment level-up + crafting - trigger on 26.09 PBE
   (separate PBE install). SOURCE: RC_WORK_TRACKER.md:126.
 - D9. (ARENA) R74/DSV8 `assume_physical_burst` flip (Goredrinker 226630 Thirsting Slash 175%
@@ -740,14 +704,10 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
   operator/release-gated, needs NO game.
 - E10 / QA96 ASCII git-history rewrite + force-push (release-gated) + pre-release name-scrub -
   destructive operator go/no-go, NOT live-game-gated. SOURCE: WAKEUP_NOTES.md:81.
-- D1 (OQ20 DISCHARGE 2026-07-02). Arena 6x3 champ-select is COVERED headless: fixture
-  `web/data/ui_mock/champ_select_arena.json` + snapshot test
-  `tests/snapshot_panels/test_champ_select_view.py` + committed renders + harness
-  `ops/runtime/ui_recon/recon.py`. A live Arena capture beyond the fixture is operator-optional.
-  SOURCE: ORCHESTRATION_PLAN OQ20.
-- F5 (OQ20 DISCHARGE 2026-07-02). rewind_history.db game_id population probe PASSED with no
-  game: the game identifier is column `match_id` (there is NO separate `game_id` column),
-  100 pct populated for queue_id=420 (516/516). SOURCE: ORCHESTRATION_PLAN OQ20.
+- D1 (OQ20 DISCHARGE 2026-07-02): Arena 6x3 champ-select covered headless (ui_mock fixture +
+  snapshot test + recon.py harness); a live Arena capture is operator-optional.
+- F5 (OQ20 DISCHARGE 2026-07-02): rewind game_id probe PASSED headless - the identifier is column
+  `match_id` (no separate game_id), 100 pct populated for queue 420 (516/516).
 - DSV5 RC_COMP_HP_LEAN default-ON flip AUTHORIZATION: the live eyeball is DONE 2026-06-23
   (R24, SANER NOT DIFFERENT); the remainder is ONE operator env / frozen-file decision
   (`ops/rc_supervisor.py` env or machine env) - a non-game decision.
@@ -763,14 +723,12 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
 - OQ13 `#home-weekly-digest` + OQ12 PGR bench sub-lines Electron-COMPANION captures: need
   rc-shell on the Legion desktop, NOT a game (companion hidden in-game). Backends live-proven.
   SOURCE: docs/LEDGER.md items 733 + 732.
-- Comp-verdict SOUNDNESS check: OQ22 DISCHARGE 2026-07-02 - BUG-CONFIRMED + FIXED headless
-  (`core/aram_comp_verdict.py:307`/`:339` now label by excess type), 3 TDD regression tests.
-  Deterministic engine, NOT a DS live-flip seam. SOURCE: docs/research/OQ22_headless_validations.md S1.
-- champ_select pickban-DB flip counter-quality validation (headless vs the rewind corpus).
-  (OQ22: CORPUS-TOO-THIN - 660 SR-classic, median pair n=2.5; FLIP STAYS operator-gated. S2.)
-- ability_hps v2 wiring validation vs real enchanter BUILD data (rewind corpus).
-  (OQ22: SUBSTRATE-SOUND-DEFERRED - base ability-HPS is already live; only the
-  `assume_missing_hp_heal_amp` FLAG remains = the R5 heal-amp seam B9. S3.)
+- Comp-verdict SOUNDNESS: OQ22 DISCHARGE 2026-07-02 - bug confirmed + FIXED headless
+  (`core/aram_comp_verdict.py`), 3 TDD regression tests. Deterministic engine, not a live seam.
+- champ_select pickban-DB flip: OQ22 CORPUS-TOO-THIN (660 SR-classic, median pair n=2.5); FLIP
+  STAYS operator-gated.
+- ability_hps v2 wiring: OQ22 SUBSTRATE-SOUND-DEFERRED - base ability-HPS already live; only the
+  `assume_missing_hp_heal_amp` flag remains (= the R5 heal-amp seam B9).
 - UI scale v2.1 pages #11/12/13 + item 212(b) chooser-row captures: the ui_mock/recon.py
   fixture harness covers these (ROADMAP.md:18).
 - DS cross-eval A/B/F2 rewind-WIN validations (`ops/audit/ds_cross_eval/` harness over
@@ -793,19 +751,15 @@ Z1 (overlay flicker) + Z3 (obs.frame_source WGC flip) were live-validated + clos
 
 ## Drain plan UNDATED (operator prefs: practice SR / ARAM Mayhem / Arena only if needed)
 
-> The 2026-07-04 FULL DRAIN ran the 4-queue plan in one sitting and closed 11 one-shot rows
-> (see the ledger + the "2026-07-04 FULL DRAIN sitting result" prose in docs history). This plan
-> covers the REMAINING open one-shots plus the two caught-bug re-validates + the newest overlay /
-> DS-stability eyeballs. Bundle the two live bugs (A1/A2, D6) into Session 1 / Session 4 since
-> their fixes are already merged. rc-shell MAIN relaunch first each session (BATCH B / gold-border
-> render needs it).
+> Covers the REMAINING open one-shots. A1/A2/A7/A13 are CLOSED (LEDGER 859 + 867) and struck from
+> the session steps; D6 (Arena) is the one remaining caught-bug re-validate. rc-shell MAIN relaunch
+> first each session (BATCH B / gold-border render needs it). A future /live-gated-resync emits a
+> fresh dated plan; trust the 2026-07-12 DOC-ONLY RESYNC block for the authoritative open set.
 
 SESSION 1 - PRACTICE TOOL SR (1 custom lobby + 1-2 practice games, one sitting).
-- FIRST: A1/A2 re-validate. Restart League MID-RC-SESSION, enter champ-select, confirm the
-  auto-accept + RuneWriter loops survived (layer-2 1ab7000e) and the FIRST post-restart
-  champ-select pushes runes/items/spells matching the DS pick (A1) + the summoner spells push /
-  do not revert (A2). This is the primary gate this session. Closes A13 when A1/A2 pass.
-- Champ-select (practice lobby): A8 panel captures, A7 E12-L2 re-detect, A3 CC-pair UI if it rolls.
+- (A1/A2 mid-session-restart push re-validate: CLOSED 2026-07-11/12, LEDGER 859 + 867 - no longer
+  a session gate; A13 closed with it.)
+- Champ-select (practice lobby): A8 panel captures, A3 CC-pair UI if it rolls.
 - In-game: B1 build-chooser mid-game PUSH log line; the practice-viable seam eyeballs B2-B19 +
   B41/B41b (harness dumps + live_flip_watcher toasts; DS restarts batched); B20 OFF-vs-ON re-rank
   (needs a DS restart with the seam armed - own-build sanity is already 3/3); B45/B46 CALIBRATION
@@ -817,7 +771,7 @@ SESSION 1 - PRACTICE TOOL SR (1 custom lobby + 1-2 practice games, one sitting).
   overlay recon punch-list verifies, B39 geometry halves, H1/H2 OBS+CV POC if wired.
 
 SESSION 2 - REAL SR (1 matchmade DRAFT game; make it RANKED q420 to feed rails G6/G8/G9).
-- Champ-select (draft): A9 ban/enemy captures, A4 invite verify pre-queue, A1/A13 close-out.
+- Champ-select (draft): A9 ban/enemy captures, A4 invite verify pre-queue.
 - In-game: B31-B33 DSP5/6/7 - NOTE these are producer-orphans (no live feeder wired), so the
   eyeball is blocked until the caller-side POST is wired; treat as a code+eyeball slice, not a
   pure flip. B34 DSP8 preset; B37 L4 capgap eyeball (flag already default-ON); B35 R9 fight-clock
@@ -833,7 +787,7 @@ SESSION 3 - ARAM MAYHEM (1-2 games, queue 2400, one sitting).
   to drain C6/C7/C3. In-game: C1 build LOGIC across picks; C5 RF1 flip; C8 cost_ceiling; C9
   enemy-pen; C10 R41 if Leona; C11 cc ecosystem (needs a TANK/BRUISER pick vs a real CC comp);
   C12 antiheal POSITIVE (needs a sustain comp); C13 stats_panel pixel capture; C14 debounce
-  default-ON flip; C15 augment OCR rank-vs-pick; C16 augment-select render; C17 R78 ARAM tail
+  default-ON flip; C15+C16 augment cadence-fix verify (post fast-poll fix); C17 R78 ARAM tail
   shadow accrual; B17 R49 stricter read; B26 ARAM flood-tint re-check.
 
 SESSION 4 - ARENA (1 game, queue 1750) - ONLY because open Arena-only items remain.
@@ -866,15 +820,9 @@ sessions.
 ## Doc hygiene follow-ups (UNDATED sweep) - PROPOSALS for the operator/next session, not edits made here
 
 (a) Stale rows found in other docs (proposals, path:line):
-- README.md:48 - DS counts "547 items / 6,142 tests" - the 6,142 test count is stale (CLAUDE.md
-  cites ~14,364; live tests/ dir alone ~9,228 test defs); item count 547 is also below the DS
-  live-truth 706 items / ENGINE 1.181.0. README status prose is a DS-batch docs-sync job.
-  (SOURCE: done_claim_verdict README claim.)
-- README.md:46 - "About three-quarters of the roster is covered" conflicts with the
-  DAEMON_SLAYER deep-ref (173 champs). DS-batch docs-sync.
-- docs/ORCHESTRATION_PLAN.md:29 - OQ3 3-variant-mockup row is SUPERSEDED by OQ16 (variant A
-  built as the live widget, :42); the OQ21 finding already flags ":42 OQ16-supersedes-OQ3" -
-  annotate OQ3 with a "superseded by OQ16" note. (SOURCE: ORCHESTRATION_PLAN doc_updates_needed.)
+- (EXECUTED via mdclean C2-C6, 2026-07-17: the two README count/coverage rows landed in C5; the
+  ORCHESTRATION_PLAN.md:29 OQ3-superseded row is mooted by the C6 round relocation; the BACKLOG
+  HZ-B regen-done head-marking landed in C3.)
 - docs/OVERLAY_BUILD_MASTER_PLAN.md:416 vs :828 - F1-06 (Electron packaging + first GitHub
   Release) is "DEFER - operator/release trigger" at :416 but is listed under the GATED-on-live-game
   verify-pass set at :828; move it out of the live-game set (it is release-gated, NOT game-gated).
@@ -891,9 +839,6 @@ sessions.
   or confirm it is fully covered by QA12.
 - RC_WORK_TRACKER.md:115 - QA Overlay App F post-game warding heatmap is tagged inline CLOSED-not-viable
   (1a3f60fa) yet still listed under OPEN; move to CLOSED/declined.
-- BACKLOG.md:67 - HZ-B row opens as an unqualified FUTURE regen ask ("21 bumps stale") but the
-  same row states SR/ARAM REGENERATED 2026-06-19 (item 506) + Arena current; mark the regen DONE
-  at the head so it does not read as still-open. (SOURCE: BACKLOG doc_updates_needed.)
 - Share/docs/05_AUDIT_AND_REFACTOR.md:20-21 - "7144 tests / 227 files" stale vs the fresh
   7733/7986-passed run at the live ENGINE (DS-batch docs job).
 - Stale-hash citations to correct wherever they appear OUTSIDE append-only ledgers: item 508
@@ -902,22 +847,18 @@ sessions.
   `48fcee51`; G4-boots `c258c4ab` -> `54d0706a`; D7-hist "Kai'Sa id 6646" -> the real
   tracked_champion_id 145. (SOURCE: git_closures + done_claim_verdict findings.)
 
-(b) Archive candidates (top ~15; operator-gated moves to docs/_archive/, links updated on move -
-grep each path repo-wide before moving; several DS_* plan docs may still be a "staged cutover" hook):
+(b) Archive candidates (operator-gated moves to docs/_archive/, links updated on move - grep each
+path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026-07-09]
+(API_SURFACE_AUDIT, DS_V2_PLAN, DS_GAP_COMPLETION_PLAN, CAPTURE_101QQ_INSTRUCTIONS,
+LCU_PHASE_CAPTURE_WATCHER_PLAN, GAMEPC_PURGE_SPEC, RC2_TODO_QA) - pruned 2026-07-17 (mdclean C6).
+Remaining candidates (original numbering):
 1. tools/DISTRIBUTION_LAYOUT.md (2026-04-26) - April distribution-era doc, superseded by ADR-011.
 2. tools/LAUNCH_STRATEGY.md (2026-04-26) - April launch strategy, superseded by supervisor + OPERATIONS.
 3. tools/PYTHON_BUNDLING_STRATEGY.md (2026-04-26) - bundling decision long settled.
 4. tools/PEER_ROADMAP_SUGGESTIONS.md (2026-05-18) - Peer bridge decommissioned 2026-06-24; dead artifact.
 5. tools/done-peer.md (2026-05-23) - dead Peer /done ritual mirror.
-6. docs/_archive/API_SURFACE_AUDIT.md (2026-05-23) - one-shot generated audit; docs/API.md is canonical. [ARCHIVED 2026-07-09]
 7. tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md (2026-05-25) - one-shot probe, complete (DEFERRED).
-8. docs/_archive/DS_V2_PLAN.md (2026-05-30) - DS V2 plan at ENGINE 1.63.0; long-shipped, many versions past. [ARCHIVED 2026-07-09]
-9. docs/_archive/DS_GAP_COMPLETION_PLAN.md (2026-05-31) - session executed; unreferenced by living docs. [ARCHIVED 2026-07-09]
-10. docs/_archive/CAPTURE_101QQ_INSTRUCTIONS.md (2026-06-11) - item 277 live-wired; the capture recipe is history. [ARCHIVED 2026-07-09]
-11. docs/_archive/LCU_PHASE_CAPTURE_WATCHER_PLAN.md (2026-06-11) - explicit SHIPPED 2026-05-27; refs retired Game-PC. [ARCHIVED 2026-07-09]
-12. docs/_archive/GAMEPC_PURGE_SPEC.md (2026-06-20) - Game-PC purge executed 2026-06-20 (ADR-011); spec spent. [ARCHIVED 2026-07-09]
 13. ops/audit/LOLMATH_VS_DS_SWEEP.md (2026-06-15) - all-champ sweep at ENGINE 1.120.0 / patch 16.12.1; stale.
-14. docs/_archive/RC2_TODO_QA.md (2026-06-20) - RAW 97-item queue, explicitly CONSOLIDATED into RC2_QA_CONSOLIDATED.md. [ARCHIVED 2026-07-09]
 15. ops/audit/ds_cross_eval/reports/ - ~172 per-champion reports, program DONE 2026-06-16; archive
     reports/ only, KEEP PROGRAM/REPORT/SYSTEMIC_FINDINGS/TIER2_REPORT. Also the dated
     docs/COMPETITOR_LIFT_2026-06-08..07-03 cluster (~9 files) + docs/research/RC2_RESEARCH_* cohort
