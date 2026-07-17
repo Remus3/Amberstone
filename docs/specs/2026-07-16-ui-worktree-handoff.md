@@ -103,3 +103,25 @@ Grounded anchors for the next build session:
 `git checkout main && git merge --ff-only ui/overlay-item4-item8-20260716`
 AFTER the audit passes. Assets auto-reload via the ADR-008 asset-hash (no RC
 restart for web/css/js-only changes).
+
+## 5-phase audit results (2026-07-17, pre-push gate on merge 090fc62d)
+
+Ran headless code-side; live :8888 DOM-verified (4 sub-heads present, 3 removed
+cards absent); pixel capture OWED (browser screenshot pipe stuck 2x - carry to
+the next live overlay session per ritual rule 3).
+
+- MUST-FIX (resolved in-slice, same push): .settings-body lacked align-items -
+  the 1-row DISPLAY card stretched to the consolidated card's row height.
+  Fix = align-items: start (header.css). Plus the .settings-subhead size
+  inversion (--fs-sm 18 ABOVE the card head's --fs-xs 16, contradicting the
+  slice's "one tier under" claim) -> --fs-xs.
+- SHOULD-FIX (FUTURE): (1) set-voice-name select has zero JS consumers
+  repo-wide (the working picker is #voice-picker, main.js:6903) - populate it
+  from speechSynthesis sharing the rc-voice-name key, or drop the row.
+- NICE (FUTURE): dev.js:81-86 /api/diagnostics fetch fires before its
+  removed-consumer guard (hoist the id-check); index.html:1507-1518 moved PGR
+  option block keeps stale indent; set-voice-on shows persisted checked state
+  while TTS deliberately starts OFF each load (pre-existing).
+- ID-wiring verdict: INTACT (every moved id resolves once; removed-card ids
+  null-guarded at their binders). STRUCTURE/TYPOGRAPHY/HIT-TARGETS/ASCII/
+  HIERARCHY all PASS post-fix; no scroll regression.
