@@ -2701,6 +2701,9 @@ body[data-view="lobby"]          #home-overlay { display: none; }
 .settings-body {
   display: grid; grid-template-columns: 1fr 1fr;
   gap: var(--space-5);             /* R30 page-9 density: 32 -> 24       */
+  align-items: start;              /* item-4 audit MUST-FIX: without this the
+                                      1-row DISPLAY card stretches to the
+                                      consolidated CLIENT SETTINGS row height */
 }
 /* R30 page-9 design review: settings quick-filter bar - a full-width row
  * above the card grid; the count chip reports how many cards match. */
@@ -2823,7 +2826,8 @@ body[data-view="lobby"]          #home-overlay { display: none; }
   border-top: 1px solid var(--border-soft);
 }
 .settings-subhead {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);  /* audit: card head is --fs-xs 16; sub-head must
+                               not exceed it (16 is the token floor) */
   font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--text-dim);
   margin-bottom: var(--space-1);
