@@ -10,12 +10,17 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 24 / 173  (GAP 14, REFUTE 7, FENCED/data-refuted 3)
-- Remaining: 149
-- Next up (strict alphabetical): Bard. Next GAP spec = RM-49.
+- Resolved: 29 / 173  (GAP 15, REFUTE 11, FENCED/data-refuted 3)
+- Remaining: 144
+- Next up (strict alphabetical): Caitlyn. Next GAP spec = RM-50.
 
 ## Resolved verdicts
 
+- **Bard** - REFUTE (roaming utility support, correctly served by enchanter/ds.hps; the Alistar-class enchanter-scorer scope-limit REFUTE) - zero-damage utility/catcher support (Bloodsong + Dead Man's Plate + Locket + Bandlepipes + Mikael's/Redemption, Electrocute off base ratios, NOT AP). Production enchanter/ds.hps serves a heal-shield/aura list (Echoes of Helia #1 -> Ardent Censer #2 -> Staff of Flowing Water #3 -> Locket #4 -> Knight's Vow #5 -> Redemption #6): correct AXIS + it NEVER builds him AP damage (the exact false-positive a naive DPS sim makes chasing his Q/Meep ratios). Heal-shield lead vs his tank-aura/engage meta (Dead Man's/Bandlepipes not even in the 9-item hps pool) = a CLASS-LEVEL enchanter-scorer scope limit shared by all tank-aura/utility supports (Alistar-shared), NOT a Bard mis-valuation
+- **Bel'Veth** - GAP RM-49 (NEW SHAPE, null-valuation mis-route) - AD on-hit(-attack-speed) bruiser-carry (Kraken Slayer signature first ~10:1 pick, on-hit + uncapped-AS core Kraken/BotRK/Stridebreaker/Death's Dance/Wit's End, Conqueror, ZERO dedicated crit). Her DEFAULT route bruiser/ds.hybrid returns ALL-ZERO deltas across all 30 items in all 4 cells (a NULL valuation - garbage AP order Liandry's/Blackfire/Bloodthirster at d=0.00; the hybrid scorer cannot model her true-form on-hit/AS auto stream). REROUTE probe decisive: carry/ds.dps leads Blade of the Ruined King #1, onhit/ds.onhit leads BotRK #1 -> Kraken -> Guinsoo's -> Terminus (her real on-hit core). So on-hit IS her correct primary (NOT the RM-42/46 crit-over-lead - she buys no crit) but her default route NULLS her (unlike the Varus/Kai'Sa REFUTEs whose default route serves them). Fix RM-49 = reroute default archetype to onhit (or carry); distinct from Ezreal/Corki pool mis-routes (those gave real deltas) and from Azir RM-48 (ds.onhit failed for him, SUCCEEDS here)
+- **Blitzcrank** - REFUTE (durability/engage tank support, correctly served by tank/ds.ehp; the Alistar-class REFUTE, twin of Braum) - zero-damage engage tank (World Atlas + Bloodsong/Celestial Opposition + Locket + Zeke's + Bandlepipes/Shurelya's, Glacial Augment, NOT AP; AP-poke Overlay App E off-meta). Production tank/ds.ehp leads axis-neutral self-durability (Randuin's #1 -> Warmog's #2 -> Heartsteel/Jak'Sho/Kaenic Rookern -> Force of Nature -> Spirit Visage): correct AXIS + it NEVER builds damage. Personal-EHP lead vs his utility-aura meta (Locket/Zeke's/Shurelya's) + the Q-hook/E-knockup/R-silence engage value = CLASS-LEVEL tank/enchanter-scorer scope limits shared by every engage/aura tank support (Alistar-shared), NOT a Blitzcrank mis-valuation
+- **Brand** - REFUTE (sustained-DoT/AoE burn mage, correctly served by mage/ds.ability; the Aurelion Sol/Anivia sustained-DoT REFUTE CONTROL wakeup-predicted, OPPOSITE of the Ahri/Annie/Aurora burst GAP) - passive Blaze = %max-HP-per-second burn DoT; core = Liandry's + Rylai's + Blackfire, first item a DoT/burn item in EVERY build, ZERO Luden's/Stormsurge burst-lead. Production mage/ds.ability leads Liandry's Torment #1 (~2x #2) -> Blackfire Torch #2 -> Rabadon's #3 which MATCHES his %max-HP sustained-burn identity (one of the single best-fit champ classes for a Liandry's lead). SAME engine Liandry's-first shape as the Ahri/Annie/Aurora burst GAP, OPPOSITE verdict (sustained CORRECT vs burst WRONG). Rylai's #25 under-surfaced = the SAME class-level ds.ability utility-item scope limit as Aurelion Sol's Rylai's #24 / Anivia's note, NOT a Brand mis-valuation
+- **Braum** - REFUTE (pure durability/peel tank support/warden, correctly served by tank/ds.ehp; the Alistar-class REFUTE, twin of Blitzcrank) - zero-damage warden (Solstice Sleigh signature first + Bandlepipes + Locket + Knight's Vow, Guardian ~90%, HP > armor/MR; damage = un-itemized Concussive Blows stun proc, on-hit/Iceborn Braum DEAD). Production tank/ds.ehp leads axis-neutral self-durability (Randuin's #1 -> Warmog's #2 -> Heartsteel/Kaenic Rookern/Jak'Sho -> Force of Nature -> Spirit Visage): correct AXIS + it NEVER builds damage. TWO Alistar-shared class-level scope caveats, NEITHER a per-champ gap: (a) item-pool mismatch (self-EHP scorer over-ranks Warmog's/Randuin's/Jak'Sho vs his warden/aura core Solstice Sleigh/Bandlepipes/Knight's Vow/Locket); (b) team-EHP scope limit (W ally-resist-grant + E ally-damage-block + Knight's Vow redirect + auras are ally-survivability effects a self-only EHP scorer cannot capture)
 - **Aphelios** - REFUTE (clean crit-auto hypercarry, correctly served; the same-class CONTRAST to Ashe) - crit-auto-attack sustained-DPS across his 5-weapon rotation, NOT on-hit NOT lethality; production carry/ds.dps leads his crit core (IE #2, Hexoptics C44 #5) with his not-built on-hit correctly BELOW (BotRK #11, Runaan's #19). The only imperfection (Hexoptics C44 #5 not #1) is its positioning-conditional Magnification/Arcane-Aim uniques scoring near-zero in a fixed-range sim = a class-level scope limit, not a per-champ gap. His crits deal FULL damage so ds.dps ranks his crit core right (REFUTE) - the exact inverse of Ashe (crits dead -> on-hit over-led -> GAP)
 - **Ashe** - GAP RM-46 (crit-marksman on-hit-over-lead family of Akshan RM-42 / Lucian RM-37, DISTINCT kit root-cause) - attack-speed CRIT-AUTO marksman (Hexoptics C44/IE -> Phantom Dancer -> IE core, NOT on-hit), but production carry/ds.dps leads NOT-BUILT on-hit HARD (Blade of the Ruined King #1 by ~2x, Runaan's #2, Kraken #3) over her crit-AS core, burying Phantom Dancer #21 (DEAD-LAST in a whitelist of her own 6 core items) + Hexoptics #14, IE #6. Root cause DISTINCT from Akshan's double-shot: her Frost passive means crits deal NO bonus damage (crit-CHANCE converts to flat AD; IE's crit-strike multiplier is DEAD on her) + Ranger's Focus multi-arrow flurry is mis-read as generic on-hit uptime. The CONTRAST twin of the Aphelios REFUTE
 - **Aurelion Sol** - REFUTE (the Anivia twin, an even CLEANER refute; sustained-DoT Liandry's lead is CORRECT) - sustained-DoT / zone-control scaling mage, damage scales target MAX HEALTH + infinite Stardust, decisively NOT burst (Q Breath of Light = channeled burn beam, E Singularity = persistent DoT zone). Production mage/ds.ability leads Liandry's #1 -> Blackfire #2 which MATCHES his %HP-DoT identity (arguably the single best-fit champ in the game for a Liandry's lead); his signature Blackfire surfaces #2 (not buried, cleaner than Anivia). Rylai's #24 under-surfaced = a class-level ds.ability DPS-uptime-utility scope limit, not an ASol mis-valuation. SAME engine ranking as Aurora, OPPOSITE verdict (sustained vs burst)
@@ -57,11 +62,11 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - [REFUTE] Aurelion Sol
 - [GAP RM-47] Aurora
 - [GAP RM-48] Azir
-- [ ] Bard
-- [ ] Bel'Veth
-- [ ] Blitzcrank
-- [ ] Brand
-- [ ] Braum
+- [REFUTE] Bard
+- [GAP RM-49] Bel'Veth
+- [REFUTE] Blitzcrank
+- [REFUTE] Brand
+- [REFUTE] Braum
 - [ ] Briar
 - [ ] Caitlyn
 - [ ] Camille
