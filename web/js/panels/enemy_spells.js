@@ -17,12 +17,16 @@
 const LS_KEY = "rc-enemy-spell-cd";
 
 // Summoner-spell base cooldowns in seconds (patch ~16.x). Keys match the Live
-// Client displayName. An unknown spell falls back to 0 -> a plain used/UP toggle
+// Client displayName - including UPGRADED forms, because the API reports the
+// current tier name (RM-05: the jungle-pet Smite tiers were missing, so the
+// enemy jungler's chip fell into the unknown-name path mid-game and never
+// counted down). An unknown spell falls back to 0 -> a plain used/UP toggle
 // with no countdown (still useful as a "burned" marker).
 const SPELL_CD = {
   Flash: 300, Heal: 240, Barrier: 180, Exhaust: 210, Ignite: 180,
   Cleanse: 210, Ghost: 210, Teleport: 360, "Unleashed Teleport": 360,
-  Smite: 90, Clarity: 240, Mark: 80, Dash: 80, Snowball: 80, "To the King!": 80,
+  Smite: 90, "Unleashed Smite": 90, "Primal Smite": 90,
+  Clarity: 240, Mark: 80, Dash: 80, Snowball: 80, "To the King!": 80,
 };
 
 // Compact 2-letter spell labels (operator 2026-06-29: the full displayName +
@@ -33,7 +37,8 @@ const SPELL_CD = {
 const SPELL_ABBR = {
   Flash: "FL", Heal: "HL", Barrier: "BR", Exhaust: "EX", Ignite: "IG",
   Cleanse: "CL", Ghost: "GH", Teleport: "TP", "Unleashed Teleport": "TP",
-  Smite: "SM", Clarity: "CY", Mark: "MK", Dash: "DA", Snowball: "SB",
+  Smite: "SM", "Unleashed Smite": "SM", "Primal Smite": "SM",
+  Clarity: "CY", Mark: "MK", Dash: "DA", Snowball: "SB",
   "To the King!": "TK",
 };
 
@@ -87,14 +92,19 @@ function _toggle(champ, slot) {
   _persist();
 }
 
-// Remaining seconds, or null when UP. Auto-clears an expired entry so a finished
-// countdown reads UP again without a tap.
+// Remaining seconds, Infinity for a no-CD "burned" marker, or null when UP.
+// Auto-clears an expired entry so a finished countdown reads UP again without
+// a tap.
 function _remaining(champ, slot, spellName) {
   if (!_store) return null;
   const k = _key(champ, slot);
   const t = _store.map[k];
   if (!t) return null;
   const cd = SPELL_CD[spellName] || 0;
+  // Unknown spell -> the header's sticky used/UP toggle. Without this the
+  // cd=0 entry hit the expiry branch below on the very next read and the tap
+  // was silently erased (RM-05 "chip starts no cooldown timer").
+  if (!cd) return Infinity;
   const rem = Math.ceil(t + cd - _now());
   if (rem <= 0) {
     delete _store.map[k];
@@ -158,6 +168,12 @@ function _updateTimers(mount) {
       chip.textContent = tag + " UP";
       chip.classList.remove("es-down");
       chip.classList.add("es-up");
+    } else if (!Number.isFinite(rem)) {
+      // Burned marker (unknown base CD): mark used with no countdown; the
+      // next tap toggles it back to UP.
+      chip.textContent = tag + " USED";
+      chip.classList.remove("es-up");
+      chip.classList.add("es-down");
     } else {
       chip.textContent = tag + " " + rem + "s";
       chip.classList.remove("es-up");
