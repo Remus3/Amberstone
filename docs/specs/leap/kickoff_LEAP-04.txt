@@ -1,0 +1,25 @@
+EXECUTION SESSION - LEAP-04 build-order regen + Family A guard. Model claude-opus-4-8,
+effort max. Chat caveman ultra; real output to files. Goal: front-load the thinking into
+specs; execution sessions are typing, not deciding.
+
+1. Read C:\Riot Commander\docs\specs\leap\LEAP-04-build-order-precompute-backfill.md END TO
+   END. The design question is ANSWERED in the spec from code evidence: the generator does
+   NOT bypass the coherence dock (plan_build_order -> rank_for_primary_archetype ->
+   coherence_rerank client-side; :8893 returns raw scores; daemon_slayer_client.py:1523/1585).
+   Do NOT re-derive this. Current 16.14.1 tables are already artifact-free.
+2. Deliverables: (a) confirmatory full-roster regen via tools/daemon_slayer_build_orders_
+   generate.py (engine-less, pass --champions full roster; deterministic); (b) the FIRST
+   Family A staleness/parity guard test (existing content_freshness / engine_stamp_sync /
+   axis_parity tests target Family B / HZ tables - Family A payloads have NO engine_version
+   key; the guard must key on what Family A actually carries: generated_at/mode/version).
+3. TDD RED-first: regen-parity test - N sample champs' first 3 items match live-path ranking
+   with coherence ON; stamp assertions per spec.
+4. Tier-1 actual (generator + data + tests; NO engine source touched): py_compile + the
+   build_order/generator test modules only. NO ENGINE bump, NO Share mirror, NO DS restart.
+   If any agents/daemon_slayer source would need editing, STOP - that is out of scope here.
+5. Ghost list absolute: KaiSa Eclipse dock calibration = LEAP-07, not here; Stormrazor 3097
+   dock refuted (LEDGER 888); no-double-unique family map forbidden (guard test exists);
+   never --force Meraki re-extract.
+6. Ambiguity = UNVERIFIED-SKIP + log; max 2 probes per claim; never ask mid-run.
+7. DONE: commit -F tmpfile (ASCII) + docs/LEDGER.md entry (max id + 1) + git pull --rebase +
+   push + CI green. Note in LEDGER that LEAP-07 is now unblocked (consumes this regen).
