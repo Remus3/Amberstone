@@ -4,7 +4,7 @@ Live League / TFT coaching dashboard. Reads Riot Live Client API, calls Claude H
 
 > **Living docs (read at session start):** `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `ROADMAP.md` · `docs/API.md`
 > **Deep references:** `docs/DAEMON_SLAYER.md` (DS engine - 706 items / 173 champs - ENGINE_VERSION 1.219.0 (patch 16.14.1) - all 7 archetype scorers wired (Slice B on-hit AP ds.onhit) + per-spell CC consumer + cc_blended_ehp ecosystem COMPLETE 4 consumers + per-spell CC wave 9 108/89 + cc_conditional ecosystem COMPLETE 5 consumers wave 6 36/32 + survivability axes heal/shield/DR/resist-grant COMPLETE across both EHP scorers incl flat + rank-scaled-block + percent-of-resist + unlabeled-multi-stat-block + form-occupancy + per-stack-unbounded modes + revive/second-life EHP-numerator multiplier Anivia/Zac) - `docs/AGENTS.md` (Phase 3 framework) - `BACKLOG.md` (aspirational)
-> **Architectural decisions:** `docs/adr/` - before re-litigating a past choice, check here first.
+> **Architectural decisions:** [`docs/adr/README.md`](docs/adr/README.md) (indexed, 12 ADRs) - before re-litigating a past choice, check here first.
 > **Dated artifacts** in `docs/_archive/` (excluded from ripgrep searches).
 
 ## Topology
@@ -214,7 +214,7 @@ Per-item completion ledger relocated to `docs/LEDGER.md` (append-only, newest-fi
 - **`core/smoothed_rates.py` is the shared Laplace/shrink primitive**; the s220 PGR 0-100 score is deferred to ROADMAP-S3 - do NOT pre-build it.
 - **Brawl mode is retired from champ-select** (s214); legacy brawl backend is left as deadcode for a separate cleanup pass.
 - **The Riot Personal key is valid and in-scope.** Match-V5 403/empty on event modes (ARAM Mayhem `gameMode=KIWI`, queue 2400) is EXPECTED, not a key fault; event-mode Match-V5 timeline placeholders are correct and permanent.
-- **`web/js/dashboard.js` is dead code** (no `<script>` reference; only `/js/main.js` loads). The `dashboard.js:5055` `_replayQueueLabel` 920 bug is confirmed-dead legacy - leave it.
+- **`web/js/dashboard.js` is GONE** (quarantined `dab3ca74`; only `/js/main.js` loads). It was dead code - no `<script>` reference - and the `dashboard.js:5055` `_replayQueueLabel` 920 bug died with it. Nothing to leave alone; this line is a closed fence, kept only so the 920 bug is not re-reported against a file that no longer exists.
 - **ADR-008 unified asset-hash:** editing `web/{js,css}/panels/*` auto-reloads via `compute_asset_hash` - no RC restart for asset-only changes.
 - **No-em-dash retroactive purge is done** (s244 `tools/strip_em_dashes.py`, reusable for drift checks); the functional `"-"` no-data sentinel is operator-approved. The smart-quote retro-sweep is NOT yet done (separate operator-gated pass).
 - **Live DS truth = `data/daemon_slayer/current.txt` + `agents/daemon_slayer/__init__.py` + `/health`** (do not trust ledger recollection of patch/ENGINE). DS coverage %/match-row prose is a DS-batch docs-sync job, never recomputed in a general sync (nested registry schema; a flat count mis-parses) - memory `feedback_ds_coverage_prose_recompute`.
