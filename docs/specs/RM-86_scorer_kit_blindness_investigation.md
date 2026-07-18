@@ -199,6 +199,13 @@ conversion:
 
 Concretely, three layers, cheapest first:
 
+> **CORRECTION 2026-07-18 (ENGINE 1.218.0, see section 10).** The sentence
+> below proposing a vector "derived from the champion's own `damage_blocks`" is
+> WRONG and was refuted when L1 was built. No attack-speed, crit, on-hit or DoT
+> key exists in `damage_blocks` for ANY champion. The shipped vector is a
+> curated prose-seeded registry. Read section 10 before acting on this
+> paragraph.
+
 **L1 - conversion gate on the sort key (no objective change).** Reuse the
 existing Slice-B precedent: `ap_ad_coherence` in `onhit_dps.py` already penalises
 off-axis candidates on the SORT key while preserving raw delta on the row
@@ -379,3 +386,91 @@ intersecting RM-86: **for these champions the conversion the gate would need to
 read is not in the data at all**, so L1 cannot reach them regardless of design.
 Any L1 acceptance suite should include one such champion as an explicit
 known-unreachable control rather than a failure.
+
+## 10. L1 BUILT (2026-07-18, ENGINE 1.218.0) - two corrections to this spec
+
+L1 shipped as `agents/daemon_slayer/kit_conversion.py` plus a
+`kit_conversion_strength: float = 0.0` lever on four rankers (`rank_items`,
+`rank_items_by_burst`, `rank_items_by_ability_dps`, `rank_items_by_ehp`).
+Guard: `agents/daemon_slayer/tests/test_kit_conversion_gate_rm86.py`.
+
+### Correction 1 - the derivation source in section 4 is impossible
+
+Section 4 proposed a vector "derived from the champion's own `damage_blocks`
+(does any block carry an AS term? a crit term? a DoT?)". Measured across ALL
+1709 blocks / 171 champions of `data/daemon_slayer/16.14.1/champion_abilities.json`,
+the complete block key set is:
+
+    ap_pct, attribute, attribute_kind, base, bonus_ad_pct, bonus_armor_pct,
+    bonus_mr_pct, caster_armor_pct, caster_bonus_hp_pct, caster_bonus_mp_pct,
+    caster_bonus_ms_pct, caster_max_hp_pct, caster_max_mp_pct, raw_modifiers,
+    target_bonus_hp_pct, target_current_hp_pct, target_max_hp_pct,
+    target_missing_hp_pct, total_ad_pct, unparsed_modifiers
+
+There is NO attack-speed, crit, on-hit or DoT key for any champion. Attack
+speed appears only as `attribute_kind="duration"` (AS the ability GRANTS, never
+a ratio it scales BY); crit appears in 6 `attribute` STRINGS and on-hit in 11,
+out of 570 distinct attribute values of which 439 are singletons and whose
+casing is inconsistent. The real signal is prose (107 of 171 champions mention
+on-hit in `effects_descriptions`) but the loader DROPS that field: `AbilityForm`
+declares 16 fields (`abilities.py:220-235`) and `from_dict` (`:237-263`) parses
+exactly those.
+
+The shipped vector is therefore a hand-seeded champion-keyed registry following
+the `_passive_damage_overrides.py` precedent. This was forced anyway by the
+section-9(iii) requirement that five kits HAVE the term and must not be
+credited at face value - no data file carries cadence.
+
+Note also: the abilities snapshot holds **171** champions, not the 173 in
+`/health` (Locke + Zaahen absent, RM-79).
+
+### Correction 2 - three of the section-8 acceptance anchors are unreachable
+
+L1's transform is `value -> value * factor` with `factor` in `[0,1]`, and the
+identity for non-positive values. **It can only ever LOWER a score.** It can
+never push a good item UP except as a side effect of everything above it
+falling. Measured on live 16.14.1 deltas, reproduced twice (offline simulation
+then the shipped implementation, which agreed item-for-item):
+
+| section-8 anchor | result | verdict |
+|---|---|---|
+| Naafiri BotRK leaves #1 (carry) | #1 -> #24 | REACHED |
+| Naafiri BotRK leaves #1 (assassin) | #1 -> #24 | REACHED |
+| Naafiri Voltaic climbs | #22 -> #12 | REACHED |
+| Orianna Liandry's leaves #1 @ 0.50 | #1 -> #2 | REACHED |
+| Orianna Blackfire NOT suppressed | #2 -> #1, sort value == raw delta | REACHED |
+| Poppy top-10 not degraded | identical | REACHED |
+| Olaf Stridebreaker rises from #34 | #34 -> #41 | **UNREACHABLE** |
+| Pantheon Black Cleaver rises from #29 | #29 -> #28 | **UNREACHABLE** |
+| Pantheon Heartsteel leaves #3 | #3 -> #2 | **UNREACHABLE, wrong direction** |
+
+Note the section-8 baseline "Stridebreaker #33" was STALE; it measured #34.
+
+Why the three are structural, not tuning:
+
+- **Stridebreaker** and BotRK BOTH carry `PercentAttackSpeedMod: 0.25`, so no
+  `attack_speed` fraction separates them. The `on_hit` channel correctly drops
+  BotRK, but Stridebreaker does not RISE because every zero-exposure item above
+  it (Eclipse, Heartsteel, Hullbreaker, Sundered Sky, Bloodthirster, Voltaic,
+  Dead Man's Plate, Sterak's) is equally untouched and leapfrogs it.
+  Stridebreaker's real justification is Halting Slash's engage slow, and no
+  scorer objective contains a term for it.
+- **Heartsteel** is pure HP, and HP is ON-AXIS for the hybrid/bruiser objective
+  by construction, so its exposure is zero on every channel. Its #3 placement is
+  an alpha/beta weighting artifact of `rank_items_by_hybrid`. Adding a "bulk"
+  channel to chase it would penalise HP for every real bruiser - a straight
+  regression. Do not do it.
+
+Both are filed as **L2 objective-coverage** work: they need the objective to
+gain a term it does not have, which is exactly the L1/L2 boundary section 4
+drew. Section 9(iv)'s conclusion that "L1 is necessary and provably
+insufficient" is confirmed, and now has three concrete instances rather than
+one.
+
+### Deferred deliberately
+
+`rank_items_by_hybrid` (bruiser), `rank_items_by_hps` (enchanter) and
+`rank_items_by_onhit` did NOT receive the lever. No approved anchor needs them,
+and the `off_axis_stat` channel is UNVERIFIED on the enchanter and on-hit
+routes. Adding it there without an anchor to validate against would ship an
+unmeasured behaviour change.
