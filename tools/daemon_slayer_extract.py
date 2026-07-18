@@ -57,6 +57,10 @@ LOG_FILE = ROOT / "logs" / "daemon_slayer_extract.log"
 DDRAGON_BASE = "https://ddragon.leagueoflegends.com"
 LOLMATH_ROOT = "https://lolmath.net/"
 MERAKI_BASE = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions"
+# Bulk roster map (171 champions as of 2026-07-18). Preferred over the
+# per-champion endpoint, which 404s for champions Meraki has not published
+# individually - see fetch_meraki_perlevel_overlay.
+MERAKI_BULK_URL = "https://cdn.merakianalytics.com/riot/lol/resources/latest/en-US/champions.json"
 # Phase 4 batch 20 (2026-05-04): Meraki bulk items endpoint. Single 3.2 MB
 # request returns 320 items keyed by id; per-item endpoints (.../items/<id>.json)
 # observed stale on 2026-05-04 (e.g. ER showed only Essence Drain, missing
@@ -637,40 +641,98 @@ def fetch_ddragon() -> DDragonSnapshot:
 # game data and exposes it under `stats.attackDamage.perLevel`. We overlay
 # only this one field; the other zero perlevel fields in DDragon (Jhin AS,
 # Thresh armor, Briar HP-regen, every champion's crit growth) are correct.
-def fetch_meraki_perlevel_overlay(ddragon_ids: set[str]) -> dict[str, dict[str, float]]:
+def _meraki_perlevel_of(payload: Any) -> Any:
+    """Safely read ``stats.attackDamage.perLevel`` out of a Meraki champion."""
+    if not isinstance(payload, dict):
+        return None
+    stats = payload.get("stats")
+    if not isinstance(stats, dict):
+        return None
+    ad = stats.get("attackDamage")
+    if not isinstance(ad, dict):
+        return None
+    return ad.get("perLevel")
+
+
+def _fetch_meraki_bulk() -> dict | None:
+    """Fetch the Meraki BULK champions map (one request for the whole roster)."""
+    try:
+        raw = _fetch_json(MERAKI_BULK_URL, timeout=90)
+    except Exception as e:  # noqa: BLE001 - bulk is best-effort, we fall back
+        log.warning("meraki bulk fetch failed (%s); falling back per-champion", e)
+        return None
+    return raw if isinstance(raw, dict) else None
+
+
+def _fetch_meraki_champion(cid: str) -> dict | None:
+    """Fetch a single champion from the Meraki PER-CHAMPION endpoint."""
+    try:
+        req = urllib.request.Request(
+            f"{MERAKI_BASE}/{cid}.json",
+            headers={"User-Agent": USER_AGENT},
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return json.loads(r.read())
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+        log.warning("meraki fetch failed for %s: %s", cid, e)
+        return None
+
+
+def fetch_meraki_perlevel_overlay(
+    ddragon_ids: set[str],
+    *,
+    _bulk_fn=None,
+    _per_champ_fn=None,
+) -> dict[str, dict[str, float]]:
     """Fetch attackdamageperlevel from Meraki Analytics for each champion.
 
     Returns ``{ddragon_id: {ddragon_field_name: value}}`` only for champions
     where Meraki has a non-zero value. Failures (HTTP errors, missing
     champions) are logged and skipped - extraction continues with whatever
     DDragon shipped for that champion.
+
+    Reads the BULK endpoint first (one request for the whole roster) and only
+    falls back to the per-champion endpoint for champions the bulk map does not
+    cover. 2026-07-18: the per-champion endpoint 404s for champions Meraki has
+    not published individually (Locke, Zaahen, Yunara), and because DDragon
+    ships ``attackdamageperlevel: 0`` for EVERY champion, a failed backfill
+    silently persists a FALSE ZERO. Yunara sits in the bulk map at
+    ``perLevel = 2.5`` while her per-champion URL 404s, so bulk-first recovers
+    her; Locke and Zaahen are absent from Meraki entirely and still miss.
+    Genuine zeros (Senna, who gains AD from Mist souls) stay unwritten via the
+    ``> 0`` guard below.
+
+    ``_bulk_fn`` / ``_per_champ_fn`` are offline test seams.
     """
+    bulk_fn = _bulk_fn or _fetch_meraki_bulk
+    per_champ_fn = _per_champ_fn or _fetch_meraki_champion
+
     overlay: dict[str, dict[str, float]] = {}
     misses: list[str] = []
     log.info("meraki perlevel backfill starting (%d champions)", len(ddragon_ids))
     t0 = time.time()
+
+    bulk = bulk_fn()
+    if not isinstance(bulk, dict):
+        bulk = {}
+    from_bulk = 0
     for cid in sorted(ddragon_ids):
-        try:
-            req = urllib.request.Request(
-                f"{MERAKI_BASE}/{cid}.json",
-                headers={"User-Agent": USER_AGENT},
-            )
-            with urllib.request.urlopen(req, timeout=10) as r:
-                m = json.loads(r.read())
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
-            log.warning("meraki fetch failed for %s: %s", cid, e)
+        m = bulk.get(cid)
+        if m is not None:
+            from_bulk += 1
+        else:
+            m = per_champ_fn(cid)
+        if m is None:
             misses.append(cid)
             continue
-        ad_growth = (
-            m.get("stats", {}).get("attackDamage", {}).get("perLevel")
-            if isinstance(m, dict) else None
-        )
+        ad_growth = _meraki_perlevel_of(m)
         if isinstance(ad_growth, (int, float)) and ad_growth > 0:
             overlay[cid] = {"attackdamageperlevel": float(ad_growth)}
+
     elapsed = time.time() - t0
     log.info(
-        "meraki perlevel backfill: %d filled, %d skipped (%.1fs)",
-        len(overlay), len(misses), elapsed,
+        "meraki perlevel backfill: %d filled (%d from bulk), %d skipped (%.1fs)",
+        len(overlay), from_bulk, len(misses), elapsed,
     )
     if misses:
         log.warning("meraki misses: %s", misses)
