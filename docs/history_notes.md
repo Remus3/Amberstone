@@ -16,6 +16,24 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 
 ---
 
+# 2026-07-18 (DS meta-valuation sweep - LeBlanc..Lissandra batch13, 3 GAP + 2 REFUTE; read-only, NO engine change; strict-alpha A->Z)
+
+Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1 / 173 champs / 706 items confirmed live, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40, plus a HIGH-conf meta-research subagent per champ, 5-10 aggregators + kit/wiki; CONVERGED). Tier-0 docs/memory only, no .py. Resolved 74 -> 79/173 (GAP 52, REFUTE 24, FENCED 3), remaining 94. Probe rebuilt as `probe_batch13.py` (dumps full top-40 to JSON per champ/route/cell). Memories `project_ds_sweep_{leblanc_burst_ludens_buried,leesin_ability_bruiser,leona_tank_support_refute,lillia_sustained_dot_refute,lissandra_burst_mage_rocketbelt}`.
+
+- **LeBlanc GAP RM-77** (MILD, the Ahri RM-40 class. Her assassin/ds.burst route gets TWO things RIGHT: routing is correct (she IS in `_AP_ASSASSIN_IDS`, core/archetype_picks.py:160), and **the Akali RM-41 pre-flag "pollutes EVERY cohort champ except Leblanc" is CONFIRMED TRUE** - Trinity #32-37, ER #34-or-absent, BotRK #31-32, making her the cohort's ONLY clean member; ds.burst also correctly avoids the Liandry's trap at #18. But it BURIES her unanimous (6/6 sites) signature first **Luden's Echo at #12** while her 2nd-5th items correctly hold #1-5 (Shadowflame/Rabadon's/Stormsurge/Mejai's), and over-surfaces **Lich Bane #6** (absent from every SOLO-QUEUE table though a real ~36% PRO pick). Root cause = sustained-DPS models undervalue flat INSTANT PER-CAST procs vs per-second burns; same cause under-credits Shadowflame's sub-40%-HP Cinderbloom + Stormsurge's burst-gated Squall. NON-FINDING: **Malignance #13-15 is CORRECT for her** - it empirically LOSES (46.5% WR) because its Hatefog is a ground DoT she blinks out of; same item + same rank is the BURIED SIGNATURE for Ahri/Lissandra, opposite correctness decided by whether the champ stands in the zone.)
+- **Lee Sin GAP RM-78** (the Aatrox/Hecarim/Jarvan/Illaoi ability-bruiser family with a **NEW root cause**: signature Eclipse (71.6% of first legendaries) surfaced only #4-8, 2nd-core Sundered Sky #17-19, Black Cleaver #29-40, while ds.hybrid over-leads never-built BotRK #1 + **DEAD-signature Trinity #2** (Trinity is 0.000% popularity on him now, ranked ~37th, BELOW Zhonya's) + heavy never-built crit pollution (Stormrazor #5, LDR #6, Kraken #7, IE #8). Root cause = passive **Flurry grants +40% AS on only the next 2 autos after a cast AND no direct damage scaling at all** - its real payload is energy return + **-0.5s non-ult cooldown per Flurry attack**, i.e. his autos are a RESOURCE + COOLDOWN engine - and the auto-DPS sub-model extrapolates that bounded window into steady-state AS. So this is an **OVER-CREDIT of a bounded proc** where Aatrox/Hecarim/Jarvan are an **UNDER-CREDIT of an unmodeled ability-haste axis**: opposite mechanisms, same symptom, meaning **the Aatrox-family fix would NOT repair Lee Sin**. His bruiser path is ~86-89% of legendary slots vs ~10% lethality, so NOT the FENCED lethality case.)
+- **Leona REFUTE** (the Alistar/Blitzcrank/Braum aura-scope-limit class: SUPPORT ~99.6% mono-role, damage 64th of 81 supports, **ZERO damage items in every source/elo/mode incl ARAM**; signature FIRST = Locket (81.35% PR) -> Knight's Vow (56.5% WR). tank/ds.ehp leads self-durability correctly and her filler bricks DO surface (Sunfire #11, Abyssal #13, Thornmail #20, Frozen Heart #21) while her entire best-WR 3-item core is buried (Locket #25, Bandlepipes #35, Knight's Vow #36). REFUTE because **NO separate off-axis DAMAGE core is omitted** - the settled Amumu/Cho'Gath/Galio discriminator - and the AP case is WEAKER than any MIS-VALUED comparable since passive Sunlight has **no AP ratio and no scaling at all** and is ally-proc-only (she cannot proc her own mark). Sharpening note for a future EHP lift: her W grants **+20% BONUS armor and +20% BONUS MR**, so a LINEAR personal-EHP model UNDER-credits its own resist-brick lead - direction undersold, not wrong.)
+- **Lillia REFUTE** (**the STRONGEST sustained-DoT control in the sweep**: she is the single highest-affinity Liandry's user of all 60 champions that build it - **94.09% pick, 52.45% WR** - and her passive Dream Dust is a 6-tick / 0.5s-interval / 3s %maxHP magic DoT structurally IDENTICAL to Liandry's own burn, applied by every ability and refreshed by a 4s Q (~100% uptime, ~16% enemy max HP on the clock at 400 AP). So the ds.ability **Liandry's #1 lead is CORRECT** and passes the bright line. Only scope limits remain: Riftmaker under-ranked #8-10 despite being her clear 2nd core, and Void Staff over-ranked because **~20% of her damage is already TRUE** so magic pen is worth materially less on her than on a pure mage.)
+- **Lissandra GAP RM-40 SHARED** (no new RM - the Ahri **EXACT fingerprint twin**: same scorer, same wrong Liandry's #1 leader, same buried signature item AND rank (**Malignance #15**), same fix -> SHARED per the Karthus->Heimer/Hwei RM-63 precedent. Her kit contains **ZERO damage-over-time** - every source is a single instant instance and the one persistent zone is wiki-hard-capped to one damage instance per cast - so the DoT lead is wrong; **Liandry's is genuinely slot-5/6 for her at 49% WR, BELOW her 50.8% baseline**, absent from six other aggregators and every pro build. EXTRA SEVERITY: the displaced Malignance's value is concentrated in **+20 ULT ability haste** (~80s -> ~53s on her R), which a pure-damage simulator prices at ~zero, so the right item is **structurally unrankable by damage simulation alone**, not merely mis-ordered; Zhonya's is also under-ranked because it is a SECOND STASIS, not a stat stick.)
+- **KEY batch13 insights:** (1) a machine-verified structural result - **ds.ability is near champion-INVARIANT**: LeBlanc-mage vs Lissandra agree on 34/40 positions, LeBlanc vs Lillia 38/40, first divergence at rank 22, so the top-13 is identical across a burst assassin, a sustained-DoT jungler and a control-burst mage. That is the STRUCTURAL REASON the burst-mage-BURIED family keeps recurring - the scorer has almost no per-champ signal to separate burst from DoT. (2) **The sweep's first roster-wide SYSTEMIC measurement, independently re-verified rather than taken on a subagent's word**: in `data/daemon_slayer/16.14.1/build_orders_sr.json` the FIRST-legendary distribution across all 173 champs is **BotRK (3153) 62, Liandry's (6653) 53, Randuin's (3143) 24, Echoes of Helia (6620) 16** - so **115 of 173 (66%) champions are handed one of the exact two items this sweep repeatedly identifies as wrong over-leads**, and **Luden's Echo (6655) appears ZERO times anywhere in the entire table**. Table-level quantification of the two dominant failure families; fix belongs at pool/scorer level, NOT per champ. (3) Same-batch OPPOSITE controls again (Lillia sustained-DoT REFUTE vs Lissandra zero-DoT GAP on a near-identical engine output) re-confirm the Liandry's-lead discriminator is decided purely by damage profile.
+- **METHOD GOTCHAS added this batch:** (a) research subagents may run their OWN raw-endpoint probes that BYPASS candidate filtering and return items the production client path never surfaces (this run: Void Immolation, Divine Sunderer, and the known-pollution **Golden Spatula** from the item-213 cleanup) - always re-probe via `rank_for_primary_archetype` and treat that as authoritative; (b) **a zeroed target silently deletes every %maxHP item** (Eclipse falls out of top-20 at target_max_hp=0) - always use realistic non-zero target HP; (c) `data/daemon_slayer/<patch>/items.json` nests under a **`data`** key and build-order tables nest under **`build_orders`** - a naive top-level parse silently reports 1-2 champs instead of 173; (d) several secondary sites print LeBlanc's base Q using the **Mimic: Sigil** values (overstating early Q by 7-40%); (e) **prefer SOURCED aggregator damage splits over an agent's computed ones** - the first Lee Sin pass computed ~91/9/0 and a second pass found two aggregators agreeing on ~78/14/8; **ability-vs-auto share is genuinely UNAVAILABLE** (Match-V5 exposes only physical/magic/true, not source); (f) **HALLUCINATION CAUGHT** - a WebFetch summarizer claimed "Lee Sin has 90.44% pickrate on Trinity Force", having mis-attributed **Garen's** number; a raw scrape showed Lee Sin does not appear on that item page at all. Treat WebFetch-summarized per-item pick rates as unverified until raw-scraped.
+
+**NEXT SESSION: strict ALPHABETICAL, next-up = Locke**, then Lucian (ALREADY GAP RM-37 - skip), Lulu, Lux, Malphite, Malzahar (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch13.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct NOT `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON; **use non-zero target HP or %maxHP items silently vanish**). Skip resolved (Aatrox..Lissandra + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: **Locke** (VERIFY this is a real current champion before probing - the roster line came from the live DDragon champion list but the name is unfamiliar; if real, resolve tags + default route first); Lulu (enchanter support - expect the Janna/Ivern enchanter/ds.hps REFUTE, Support-primary tag; but CHECK the DDragon primary tag, since a Mage-primary would reproduce the Karma RM-69 default-route GAP); Lux (AP burst mage, Mage/Support dual-role - classic burst-mage-BURIED candidate: watch a Liandry's over-lead with her Luden's/Malignance/Horizon Focus signature buried, i.e. the Ahri RM-40 / Lissandra shape; also check whether her Support share triggers a Karma-style route issue); Malphite (AP-burst-vs-tank two-build champ - Tank primary routes tank/ds.ehp, but an AP Malphite rushing Rocketbelt/Nashor's would reproduce the Amumu RM-44 / Cho'Gath RM-51 / Galio RM-55 AP-tank-RUSH GAP; the discriminator is whether a SEPARATE off-axis AP core is omitted); Malzahar (AP sustained-DoT/DPS mage - Void Swarm + E Malefic Visions DoT + R channel: a strong Brand/Cassiopeia/Lillia sustained-DoT REFUTE candidate where the Liandry's lead would be CORRECT; verify the DoT classification against his actual damage profile). Next GAP spec = RM-79.
+
+---
+
+---
+
 # 2026-07-17 (DS meta-valuation sweep - Gwen..Illaoi batch8, 5 GAP + 0 REFUTE; read-only, NO engine change; strict-alpha A->Z)
 
 Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 49 -> 54/173 (GAP 35, REFUTE 16, FENCED 3), remaining 119. The SECOND GAP-dense batch (5/5 GAP RM-61..64; batch7 was the first). Probe reconstructed as `probe_batch8.py` (scratchpad is session-scoped). Memories `project_ds_sweep_{gwen_onhit_dot_overlead,hecarim_ability_bruiser,heimerdinger_blackfire_underled,hwei_blackfire_underled,illaoi_tentacle_ability_bruiser}`.
@@ -45,6 +63,8 @@ Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sw
 
 ## Relocated 2026-07-17 (Diana..Galio batch5+6 DS-sweep - keep last 3: Irelia..Jax batch9 + Gwen..Illaoi batch8 + Gangplank..Graves batch7)
 
+---
+
 # 2026-07-17 (DS meta-valuation sweep - Diana..Elise + Evelynn..Galio, 7 GAP + 3 REFUTE; read-only, NO engine change; strict-alpha A->Z)
 
 Two batches this session (operator "continue the next 5" x2). Continued the A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + reroute + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 34 -> 44/173 (GAP 25, REFUTE 16, FENCED 3), remaining 129. Commits `e9d7fab8` (batch5 Diana..Elise) + `eba3b596` (batch6 Evelynn..Galio), both pushed; docs-only, CI path-skips. Ezreal skipped (already RM-36). LEDGER 922 + 923.
@@ -58,6 +78,8 @@ Two batches this session (operator "continue the next 5" x2). Continued the A->Z
 
 ## Relocated 2026-07-17 (Bard..Darius B+C-batch DS-sweep - keep last 3: Gwen..Illaoi batch8 + Gangplank..Graves batch7 + Diana..Galio batch5+6)
 
+---
+
 # 2026-07-17 (DS meta-valuation sweep - Bard..Braum + Caitlyn..Darius, 4 GAP + 6 REFUTE; read-only, NO engine change; + Bel'Veth RM-49 mechanism correction)
 
 Two batches this session (operator said "continue the next 5"). Continued the A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky+squishy x L11/L16 + reroute + a HIGH-conf meta-research subagent, 4-5 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only. Resolved 24 -> 34/173 (GAP 18, REFUTE 13, FENCED 3), remaining 139. Commits `7156cb1c` (Bard..Braum) + `a83ee637` (Caitlyn..Darius) + this living-docs sync (docs-only, CI path-skips). Corki skipped (already RM-38). LEDGER 920 + 921.
@@ -69,6 +91,8 @@ Two batches this session (operator said "continue the next 5"). Continued the A-
 **NEXT SESSION: strict ALPHABETICAL, next-up = Diana**, then Dr. Mundo, Draven, Ekko, Elise (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Use the CORRECTED probe (`ds_probe_batch4_fixed.py` reads `hybrid_delta_pct` for hybrid rows; trust the RANK ORDER, not the delta column). Skip resolved (Aatrox..Darius + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Recurring: bruiser cluster splits on Sheen-signature-served (Camille REFUTE) vs non-Sheen/on-hit-over-lead (Aatrox/Darius GAP); AP-tank = Amumu/Cho'Gath magic-tank-AP-rush GAP; sustained-DoT mages REFUTE (Liandry's correct) vs burst mages GAP; a fight_length burst-blend can misfire on a sustained-crit champ (Caitlyn). Next GAP spec = RM-53.
 
 ## Relocated 2026-07-17 (Aphelios..Azir A3-batch DS-sweep - keep last 3: Gangplank..Graves batch7 + Diana..Galio batch5+6 + Bard..Darius)
+
+---
 
 # 2026-07-17 (DS meta-valuation sweep - Aphelios/Ashe/Aurelion Sol/Aurora/Azir, 3 GAP + 2 REFUTE; read-only, NO engine change; strict-alpha A->Z)
 
@@ -83,6 +107,8 @@ Continued the operator A->Z all-173 sweep (methodology `feedback_ds_sweep_meta_v
 **NEXT SESSION: strict ALPHABETICAL, next-up = Bard**, then Bel'Veth, Blitzcrank, Brand, Braum (tracker `docs/DS_SWEEP_TRACKER.md`). Run the read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Skip resolved (Aatrox..Azir + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). NOTE next batch: Bard (enchanter/utility support -> ds.hps, likely REFUTE); Bel'Veth (on-hit AS bruiser/carry - watch the RM-46 attack-speed-scaling + on-hit-primary shape vs the RM-42 crit over-lead); Blitzcrank (engage tank/support -> ds.ehp/hps, likely REFUTE); **Brand (sustained-DoT AP mage -> the Anivia/Aurelion Sol REFUTE control - the Liandry's lead should be CORRECT for him)**; Braum (tank support -> ds.ehp REFUTE-leaning). Recurring: RM-40/45/47 sustained-DoT-over-lead on BURST mages vs CORRECT on sustained-DoT (Brand is the control); RM-46 attack-speed/Frost crit; RM-48 minion/soldier-DPS unmodeled. Next spec = RM-49 if GAP.
 
 ## Relocated 2026-07-17 (Alistar-Annie A2-batch DS-sweep - keep last 3: A2-batch + Aatrox A-batch + Corki)
+
+---
 
 # 2026-07-17 (DS meta-valuation sweep - Lucian GAP; read-only, NO engine change)
 
@@ -100,6 +126,8 @@ Continues the standing DS per-champ meta-valuation sweep (Kai'Sa/Jhin/Varus REFU
 
 ## Relocated 2026-07-17 (Corki DS-sweep GAP - keep last 3: Corki + Lucian + Ezreal)
 
+---
+
 # 2026-07-17 (DS meta-valuation sweep - Miss Fortune GAP; read-only, NO engine change)
 
 Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin + Varus closed REFUTE the prior two sessions; methodology `feedback_ds_sweep_meta_valuation_research`). Candidate: Miss Fortune. mode_key=client, no live game. Meta-research + engine-probe reconciled in the main thread (both subagents 529-blocked mid-run; engine probe run inline against DS :8893, meta-research inline via web). Tier-0 docs-only, no .py touched.
@@ -112,6 +140,8 @@ Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin + Varus 
 **NEXT SESSION: continue the sweep with Ezreal** (AD-caster: does the sustained-auto carry route fit a spell-scaling ADC, or should he route ability-DPS?). Run the read-only GAP-or-REFUTE pass FIRST. FENCED do-NOT-re-pitch: AD-assassin Zed/Talon/Qiyana pure-lethality (DATA-REFUTED, ROADMAP RM-34 / R114-R115 / LEDGER 889). CLOSED: Kai'Sa + Jhin + Varus (REFUTE) + Miss Fortune (GAP, RM-35 spec'd) - do NOT re-sweep.
 
 ## Relocated 2026-07-17 (Lucian DS-sweep GAP - keep last 3: Lucian + Ezreal + Miss Fortune)
+
+---
 
 # 2026-07-17 (DS meta-valuation sweep - Varus REFUTE; read-only, NO engine change)
 
@@ -126,6 +156,8 @@ Continues the standing DS per-champ meta-valuation sweep (Kai'Sa + Jhin closed l
 **NEXT SESSION: continue the sweep with a fresh candidate** (Kai'Sa + Jhin + Varus now closed). Recommended: Miss Fortune (marksman lethality-crit burst - a fight_length candidate in the same class as the L3 crit marksmen; is her meta a map-worthy burst, or sustained crit/on-hit?), OR Ezreal (AD-caster: does the sustained-auto carry route fit a spell-scaling ADC, or should he route ability-DPS?). **FENCED, do NOT re-pitch:** the AD-assassin Zed/Talon/Qiyana pure-lethality path is DATA-REFUTED (ROADMAP RM-34; R114/R115, LEDGER 889) - the `feedback_ds_sweep_meta_valuation_research` "AD assassins (Zed/Talon)" line is STALE on that. Run the read-only GAP-or-REFUTE pass FIRST; a REFUTE is a valid outcome. Pick a candidate whose meta answer is genuinely OPEN (skip obvious REFUTEs like on-hit Vayne).
 
 ## Relocated 2026-07-17 (Ezreal DS-sweep GAP - keep last 3: Ezreal + Miss Fortune + Varus)
+
+---
 
 # 2026-07-17 (RM-02 counter-hint live-plumbing fix - allPlayers roster in the browser summary; LEDGER 916; 318e7e3a + d8fa0e1c)
 
@@ -145,6 +177,8 @@ OWED (do-not-flip-blind): the operator eyeballs the antiheal/tenacity/fed/roster
 
 ## Relocated 2026-07-17 (Miss Fortune DS-sweep GAP - keep last 3: Miss Fortune + Varus + RM-02)
 
+---
+
 # 2026-07-17 (headless-upgrade orchestrated round - 6 verifier-gated slices; LEDGER 914; 1e0ecfa6..255e119d)
 
 Full-authority headless run (operator away, model switched to opus-4-8 mid-run via /model - a config change, not an interrupt). mode_key=client, no live game. One merger + 6 worktree slice agents on disjoint file sets, each gated by a read-only verifier CONFIRM, then truth_gate PROCEED (175 pytest/0 fail on the merged tree) before ONE batch push. No ENGINE bump; RC restarted clean (new pid, alive, last_reload_ok, dashboard 200); web slices auto-served (ADR-008). CI run 29572251333 (in_progress at wrap - verify green).
@@ -161,6 +195,8 @@ Round 2 (LEDGER 915, `566e472b`): S9 shipped the C3 fed-chip JS POST (active_mat
 
 ## Relocated 2026-07-17 (Varus DS-sweep /done - keep last 3: Varus + RM-02 + headless-orchestrated)
 
+---
+
 # 2026-07-17 (teardown fold-in + F4 swap-wipe fix + headless queue drain; LEDGER 913; b35783a2..4b4aeb67)
 
 Post-loop interactive-headless hybrid (operator: research doc drop, then "f4 now and continue open tasks headlessly"). mode_key=client, no live game. Subagent-first: read-only trace agent + UI-audit agent + TDD build agent.
@@ -171,6 +207,8 @@ Post-loop interactive-headless hybrid (operator: research doc drop, then "f4 now
 OWED carry-forward: settings-reorg PIXEL capture (browser screenshot pipe stuck; DOM verified live) + the item-4 Sections D/E/F interactive session (handoff doc TODO). NEXT: operator calls from the fold-in - (a) re-open F6 chatbot? (b) schedule the s220 PGR reframe session. Do NOT redo: F4 trace/fix, L-02, lane-U merge (all pushed; CI run 29569968111).
 
 ## Relocated 2026-07-11 (DS Meraki-scan R108 /done - keep last 3: R108 + Lane-A + HEXCORE)
+
+---
 
 # 2026-07-11 (DS Meraki-scan R107: item BONUS-HP-AMP "Warmog's Vitality" (Warmog 3083 / Arena 443083) -> EHP numerator; ENGINE 1.199.0 -> 1.200.0)
 
@@ -184,6 +222,8 @@ Fresh adversarial Meraki(16.13.1)-vs-registry scan session (operator picked trac
 
 ## Relocated 2026-07-10 (DS Meraki-refute R103 /done - keep last 3: R103 + R102 + R100)
 
+---
+
 # 2026-07-10 (Lane A HZ gate de-bias + DS Meraki-refute Seraph's shield - operator-directed manual session, 2 slices; ENGINE 1.192.0 -> 1.193.0)
 
 Operator picked "lane a and ds meraki-refute rotation" (Lane E OCR flip was live-gated IDLE - no game running). Two slices, both spec-first via Plan subagents + TDD RED-first. Full detail: LEDGER 844 (Lane A) + 845 (Meraki). Commits `70a87318` (Lane A) + `6bef45a4` (Meraki).
@@ -193,6 +233,8 @@ Operator picked "lane a and ds meraki-refute rotation" (Lane E OCR flip was live
 - NEXT: the DS Meraki-refute rotation is still LIVE - a refill MUST pick a DIFFERENT mechanic/item (the ItemShield lifeline family is now saturated: Sterak/Maw/Shieldbow/Hexdrinker/Kaenic/Eclipse/Chainlaced/Seraph's all credited - do NOT re-pick a lifeline shield). Lane A's coach FLIP + Meraki's assume_seraphs_shield default-ON flip are BOTH operator/live-gated (do-not-flip-blind; LIVE_GAME_GATED_SYNC.md). Lane E OCR flip stays idle until real ARAM/Arena games accrue data/ocr_shadow.jsonl rows.
 
 ## Relocated 2026-07-05 (ZOI-district program /done - keep last 3: ZOI-exec + ZOI-plan + R81)
+
+---
 
 # 2026-07-05 (R80 - item-keyed basic-attack-DR EHP seam, the R77 sibling lane; LEDGER 791)
 
@@ -211,6 +253,8 @@ no-reflow x3, 920x1280 fold; commits `e7ab8e86..ae676f97`).
 
 ## Relocated 2026-06-28 (WP-B1 /done - keep last 3 sessions: B1 + A6 + A5)
 
+---
+
 # 2026-06-28 (overlay-build loop - WP-A4b stats panel vertical "You vs benchmark" frontend; 14effd16)
 
 Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W1 WP whose deps are DONE: A4b (T1, deps A4a DONE). The frontend half of WP-A4, consuming last cycle's /api/role-bracket-bench.
@@ -219,211 +263,6 @@ Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section
 - **DO-NOT-REDO / gaps:** (1) TF (kill-participation) has NO live producer (Live Client API, reference_liveclient_no_hud_data) -> You TF cell is an honest "-"; the benchmark column still shows historical KP. (2) renderStatsPanel(lc) consumes the DERIVED liveclient_summary shape (hp_max/game_time_s/kda/level/cs), NOT the raw envelope -> the active_match_sr.json ui_mock (raw shape) does NOT render the panel; live /api/state is its feed. (3) index.html:2206 #am-statspanel mount already correct - no edit. (4) the plan's web/js/test/*.test.js paths do NOT exist; overlay panels are tested by Python grep-contract tests in tests/ (no jsdom/node harness).
 - **G.9 UI-audit PASSED (no MUST-FIX):** RC Web Static preview (:8810) + synthetic derived lc inject (no live game) + preview_inspect computed styles; bracket="early" from game_time_s=1320, You KDA=6.5 from "5/2/8", zero console errors. Verifier CONFIRM (A4b 20/0, regression 41/0); local sweep incl Playwright overlay snapshot = 87 passed.
 - **NEXT (loop):** Section J next OPEN W1 = A5 (enemy-spells widen+unname, T1, deps none), then A6 (remove pane name headers, deps A5), B1 (strip DS-ENGINE caption, T1). C1 (kit-synergy, W2) + E5 (docs sweep, T0) also open. Serialize overlay.css edits A5->A6 (shared file; A4b already off overlay.css this cycle).
-
----
-
-## Relocated 2026-06-28 (WP-A6 /done - keep last 3 sessions: A6 + A5 + A4b)
-
-# 2026-06-28 (electron companion window controls + overlay launcher + WP-A4a role-bracket bench route; 93550a4e + c172f6b5 + b883254c)
-
-Two-part session: operator-direct electron UX, then headless overlay-build-continue WP-A4a. 3 commits, all pushed, CI green. RC restarted (now pid 4808, reload_ok).
-
-- **Companion window controls + launcher (93550a4e).** Desktop "RC Overlay.lnk" -> electron.exe . (no console flash) + rc-shell/launch_overlay.bat. Minimize / Close / always-on-top-toggle top-right in the FRAMELESS companion (not-in-game) titlebar; COMPANION-ONLY (the in-game overlay HUD never gets close/min - focus hazard). NEW pure rc-shell/src/window_controls.js (CSS-drawn ASCII glyphs) + preload bridge (winMinimize/winClose/winToggleAlwaysOnTop/winGetAlwaysOnTop) + ipcMain reusing the existing toggleAlwaysOnTop() so menu checkbox + pin stay coherent (gold chevron when pinned). 299 rc-shell node tests (9 new). Visual proxy via Claude_Preview inject - real electron launch is operator-gated.
-- **WP-A4a /api/role-bracket-bench (c172f6b5).** Operator role x game-time-bracket SR averages (lvl/cs/tf/kda) -> feeds the A4b stats panel. DATA-SOURCE DEVIATION (do-not-redo, in RC_WORK_TRACKER): plan named core.benchmarks but it is per-CHAMPION only (no role/bracket/kda); used data/rewind_history.db tracked-participant rows -> NEW core/role_bracket_bench.py + dashboard/routes_bench_role_bracket.py. Brackets early(<25m)/mid(25-35m)/late(>=35m) over game_duration_s; tf=tracked_kp. Read-only DB connect; empty grid on CI/clean-checkout (route ok:true/n:0, never 500). RED-first tests/test_routes_bench_role_bracket.py 18 green; live 200 {lvl 16.58 cs 224.82 tf 52.67 kda 3.96 n33}, role-correct (support cs~33/KP~63). Tier-2 full tests/ 9748 passed; no DS/ENGINE/Share. Verifier CONFIRM. Section J A4a -> DONE; LEDGER 655.
-- **PRE-EXISTING failures (do-not-redo, NOT A4a regressions; flagged task_72ca84ec):** the full tests/ run had 9 fails + 1 error all UNRELATED - overlay.css [data-panelset] gate drift (RC2 redesign), ROADMAP.md over the 80KB budget, zoi teardown, ds_preview capgap order-flake. PROVEN pre-existing: stash the _dispatch.py edit and they fail identically; the suspect tests grep zero role-bracket.
-- **NEXT (loop):** Section J next OPEN W0 = A4b (stats vertical frontend - deps A4a now DONE -> READY, a UI WP so it needs the G.9 5-phase audit + Claude_Preview vs /api/state), A5 (enemy-spells widen+unname, T1), B1 (strip DS-ENGINE caption, T1), C1 (kit-synergy profiles, W2). E5 docs sweep (T0) still open.
-
----
-
-## Relocated 2026-06-28 (WP-A5 /done - keep last 3 sessions: A5 + A4b + A4a/companion)
-
-# 2026-06-28 (overlay-build loop - WP-A3 coach [t]-tag strip + truncation removal; ea100097 + 68841ce5)
-
-Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W0 WP after A1/A2: A3 (T1, deps none).
-
-- **WP-A3 (ea100097).** NEW helpers.stripCoachTags folded into safe() -> right_now.js + next.js inherit the strip with ZERO edits (both route coach text + the dataset.raw clipboard through safe()); byte-identical for tag-free strings (item refs [Kraken Slayer] / digit refs [3153] preserved). coach_choices.js gets an explicit strip (it slices raw fields, bypassing safe()). CSS: un-clamp .action / .immediate / .action-mid / kv body rows (fixed height -> min-height reserve); the Arena .immediate.is-pregame dense card clip re-stated as a regression guard (it used to inherit the now-removed base clamp). RED-first tests/test_overlay_a3_coach_tag_strip.py 11 -> 18 green; verifier PASS; 68-test regression incl Playwright snapshots, 0 regressions; CI green. LEDGER 654, Section J A3 -> DONE.
-- **Stale-cite corrections (do-not-redo):** the plan's overlay.css:349 .action clamp does NOT exist (overlay reuses right_now.css -> no overlay.css edit, no shared-file collision); the right_now.js "see .action in dashboard.css" comment is stale (no dashboard.css). Bare .action/.immediate selectors live ONLY in right_now.css.
-- **PARKED (out of this loop's scope - F.2 DS-batch):** the DS target-current-HP% lever research (kicked off before the operator redirected to the overlay loop) finished - lolmath ~50% baseline CONFIRMED (enemyAverageCurrentHp field, default 0.5; ONLY the mage/assassin scorers consume target_current_hp_pct; the seam is built default-OFF but UNWIRED across the /rank HTTP boundary). Full spec is in the workflow output file. Do NOT re-run the research; the per-archetype flip is a gated DS-batch Tier-2 (ENGINE bump + 3-game live eyeball), NOT part of the overlay loop.
-- **NEXT (loop):** Section J next OPEN W0 = A4a (role-bracket bench route, T2), E5 (docs sweep, T0), F5-H02, F5-M01; F6a gated on E5.
-
----
-
-## Relocated 2026-06-28 (WP-A4b /done - keep last 3 sessions: A4b + A4a/companion + A3)
-
-# 2026-06-28 (overlay redesign: launcher control-center + all-panels + per-panel opacity/scale + interactive zones + enemy spell tap-tracker + stats panel; live-verified last session's 4 fixes)
-
-Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2026-06-27, then a big operator-driven overlay redesign. 5 commits, all pushed; RC restarted pid 11856.
-
-- **Live-verify (all PASS).** events-path (`7b325e3e`): turret fell -> base-siege callout fired eta_s=0 atop #rn-callouts; dragon -> objective_events populated + dynamic drake row. Mid-pick spells (`1aed8f06`): draft pushed 4+7 Flash+Heal role-aware (NOT 4+12 TP); manual 4+21 Barrier stuck. Hotkeys (`aa008079`): Ctrl+Shift+B + Ctrl+Shift+A both signal via WH_KEYBOARD_LL.
-- **Launcher widget (`6370f7da`).** Draggable HUD-spell-square -> layout control center. The ONLY in-game un-hide path (Alt+Shift+R reset is Electron-globalShortcut-only = dead under League focus).
-- **Build-pane flicker fix (`5af5b17d`).** active_match did `build.innerHTML=""` EVERY tick -> icons/donuts re-fetched + blinked. Extracted `_renderAmBuildBody` with sig-dedup + the R27 reshow guard.
-- **All panels accessible + per-panel opacity/scale (`b16bfce1`).** Retired the coach/build/threat quick-swap auto-hide; all panels show by default; launcher menu = per-panel toggle + opacity + scale sliders.
-- **3 panels interactive while playing (`c79508d2`).** A/B/C (already a zone), launcher (+data-rc-zone, ACTIVE gate dropped), spell/CD (zone:true) work in PASSIVE via hover-to-interact.
-- **Enemy spell tap-tracker + stats panel (`5ff56099`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
-- **DO-NOT-REDO: a HUD *replacement* is impossible.** Live Client API has NO ability/summoner cooldowns, buffs, wards, or XP - only HP/mana/level/CS/stats + spell NAMES (confirmed live on :2999). Overlay AUGMENTS only; can't drive League's Tab-ping (injection-free). Enemy tracker is MANUAL, no auto-feed.
-- **DEPLOY OWED:** operator must Ctrl+Shift+B in-game to reload the overlay (no-store JS = fresh) to see slices 1-4b live; NOT yet confirmed on the Electron overlay (tools can't reach it).
-
----
-
-## Relocated 2026-06-27 (item-640 /done - keep last 3 sessions: item-640 + item-638-tails + ACTUALIZE-637)
-
-# 2026-06-27 (live-flip validation + overlay launcher fix, `2e8abb36`)
-
-Operator-driven live session: Practice Tool games (KSante / Briar / Ezreal) to close the "live half" of the offline-confirmed DS seam flips, tracked via /api/state + game-monitor.
-
-- **KEY FINDING - do NOT re-investigate.** The live-flip DS seams (R5 missing-HP heal-amp, DSP2 off-class exempt, DSP11 kit-axis, and by inference R12/R30/RF1/RF3) are UNWIRED across the DS /rank HTTP boundary. The flags live ONLY in the in-process scorers + tests + offline `live_flip_eyeball.py`; `dispatch_for_coach` (archetype_dispatch.py:232) -> client -> server.py /rank passes NONE of them and /rank does not accept them. The live build-chooser runs every scorer DEFAULT-OFF. PROVEN live: Briar at 7% HP gave byte-identical daemon_slayer_picks to 100% HP. So these are NOT eyeball-able by gameplay - flipping default-ON is multi-file engine wiring (+ self-HP input for R5) + ENGINE bump + Tier-2, not a toggle.
-- R12 Evenshroud is Arena-only (map30) on 16.13.1 - SR-untestable. No in-game build widget on the overlay (build-chooser is dashboard-only).
-- **Ctrl+Shift+A is NOT a focus/keydown bug.** It is an Electron globalShortcut (rc-shell/src/main.js:1063; overlay_state.js:44 tagged "operator's expected combo 2026-06-27"), focus-independent. Shell IS running (1 instance, requestSingleInstanceLock works - the 5 electron.exe are one instance + helpers). Likely an accelerator collision; register() failure is swallowed (main.js:1081). Diagnostic-first next: log the register() booleans.
-- **SHIPPED (`2e8abb36`).** Legion ON/OFF now manage the rc-shell overlay: ON launches it via a cmd-start trampoline (console-detached - closing the launcher terminal no longer kills the overlay; was a coupling bug I introduced) + auto-close window; OFF taskkills rc-shell electron matched by cmdline only (Claude Desktop spared). rc-shell was already idempotent.
-- **Operator vision captured -> `docs/NO_LLM_PRECOMPUTE_PLAN.md`.** Drive the WHOLE project to no live LLM via a client-side CV tier + precomputed "expansive DB" (pay-once-build, runtime API-key-free). Budget is idle: Max 20x at 11%/17% used, Sonnet 0%, $418 credits untouched. Findings detail: `ops/audit/ds_perm_swarm/report/live_input_seam_findings_2026-06-27.md`.
-
-NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. (5) repo cleanup pass - orphan + scratch files (operator-requested 2026-06-27); targets incl stale `.claude/worktrees/agent-*` worktree copies + `gemini_io/` artifacts. **SPARE `docs/HEXCORE_offline.html` + its bundled fonts (intentional, NOT orphans).** (6) hexcore: keep `docs/HEXCORE_offline.html` as the ONLY hexcore HTML viewing file (shipped fonts are intentional, not one-off; likely retire the non-offline `docs/HEXCORE.html`). It is sluggish when viewed on another computer - investigate browser multi-threading to speed it up: Web Workers (compute off main thread) + OffscreenCanvas + WebGL/GPU offload; profile the bottleneck first (CPU-sim vs draw-bound); note a `file://` origin needs Blob-URL inline workers (worker-from-file restrictions). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1. CI flake (not mine): snapshot_panels missing-DDragon-asset Renata.png on `2e8abb36` - prior commit `a2e3e95c` with identical web/ state passed; rerun to clear.
-
----
-
-## Relocated 2026-06-23 (R25 /done - keep last 3 sessions: R25 + R24 + R23)
-
-# 2026-06-23 (R22 DIRECTOR REFILL) - det_coach_shadow agreement aggregator (Haiku-to-ZERO)
-
-Re-probed live state (mode=client / liveclient null - no game), so both carry-forward live-gated
-lanes (RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball; live overlay eye-line + S0-pulse) were no-ops
-this cycle -> headless lane. Interviewed the gemini director (gemini-3-pro-preview, ops/loop/
-loop_controller.gemini() pattern); it picked a Haiku-to-ZERO agreement instrument. Commit 8470c3cc
-(pushed). Tier-1 tooling (2 new files; no engine/DS/Share/ENGINE_VERSION; pre-commit hook skipped
-Share sync, confirming Tier-1).
-
-VERIFY-THE-PREMISE payoff (audit-proposals-are-intent): the directive's premise ("no aggregator
-exists") was GLOBALLY false - hz_shadow_report.py + hz_mismatch_diagnose.py + live_benchmark_band_
-report.py already aggregate other shadow logs. But it held for the SPECIFIC target: an inventory
-(ls data/*shadow*.jsonl + grep readers) found det_coach_shadow.jsonl (22,344 rows, the LARGEST
-shadow log, the B1 deterministic-coach flip substrate) had a WRITER (core/det_coach_shadow.py) and
-NO reader. Re-derived the real metric: det A-choice is always ds-matchup (laning trade) but native
-(Haiku) A-choice is overwhelmingly macro/objective (wave-tempo/objective-*), so a naive label-match
-would false-0% (the cycle-53/item-574 category error). New tools/det_coach_shadow_report.py
-classifies each side's DOMAIN off source_tag (trade/build/macro) -> domain ALIGNMENT rate (headline
-do-not-flip signal: 2% live - Haiku is mostly macro at these ticks), within-trade verdict agreement
-(cross-domain EXCLUDED as domain_divergence, never diluting the denominator; 0/159, Haiku plays
-safer "Farm safe"), build-item overlap (3.1%), coverage. Default flip-hint HOLD. Mirrors
-hz_shadow_report.py conventions. RED-first hermetic test (mock jsonl in tmp; real file gitignored)
-20/20; verifier-gated CONFIRM (9/9 checks).
-
-NEXT: overlay-polish lane stays DRAINED + RC2 tail exhausted; next unit is another gemini-directed
-NON-DS-scorer refill. SAME-LANE off-lane refills ready: macro_response_shadow.jsonl (18,192) +
-objective_playbook_shadow.jsonl (18,858) are the next un-aggregated shadow logs (same domain-aware
-pattern). Carry-forward live-gated lanes still OWED (need the RIGHT live game): RC_COMP_HP_LEAN
-default-ON eyeball (AP mage vs 2+ tanks) + live overlay eye-line + S0-pulse capture. The DS
-scorer-valuation track stays CLOSED (do NOT re-pitch kill-state/carry_share or AP-DoT).
-
-## Relocated 2026-06-21 (continue 9 /done - keep last 3 sessions: continue 9 + 8 + 7)
-
-# 2026-06-21 (headless continue 6) - overlay-polish queue item (1): already shipped, only a stale comment
-
-Gemini director picked overlay-polish ROADMAP queue item (1) = "FIGHT MODEL pane `#am-pane-ovds` clips
-in DEFAULT, gate to build-only." GROUND-TRUTH PROBE FOUND IT ALREADY SHIPPED: the doctrine widget-field
-model (commit `7bd7d6a3`, the cfdc9f22 batch) gates `w-ovds` to the build panelset ONLY - overlay.css
-section 4d hides it in default/coach/threat (L418/421/437) + shows it only in build (L451); the pane is
-a `fit-content` `.ovx-widget` (no height cap, inner `overflow:visible`) so it auto-sizes and no longer
-clips. The 25 Playwright overlay snapshot tests already render-assert `#am-pane-ovds`=none in default +
-shown in build (all 25 PASS this run; the lone teardown ERROR was the session prod-artifact guard
-tripping on the LIVE practice game writing `data/*.jsonl`, NOT an overlay-test failure).
-
-SHIPPED (Tier-0): corrected the one genuinely-stale artifact - the `overlay_ds_controls.css` header
-comment said "base subset + the build panelset" / "section 4b" (both wrong); now reads build-ONLY /
-"section 4d" + documents the deliberate behavior change. ROADMAP queue item (1) marked RESOLVED with the
-evidence + a do-NOT-re-chase-the-662/1305-clip note.
-
-No live rc-shell relaunch: the change is a code comment (zero render delta); the prompt's relaunch
-mandate is for NEW overlay JS/CSS that renders differently, and the gating is CSS-structural (proven by
-the real-browser snapshot suite + live-CDP-verified last cycle for the ZOI canvas itself).
-
-NEXT: the overlay-polish red queue (items 1-5) is now fully DONE/RESOLVED - only minor w-* default-
-position tuning remains, so the "route EVERY cycle here" run is winding down. Re-interview Gemini for the
-next priority: candidates = ZOI slice 4 (champion-only isolation via template matching), the ~88 unwired
-ADAPTATION st-* rows (item 281), or the aggregator-G-style PGR reframe. WAKEUP is at 6 entries - due for a
-weekly-hygiene trim to the last 2-3.
-
-## Relocated 2026-06-21 (continue 8 /done - keep last 3 sessions: continue 8 + 7 + 6)
-
-# 2026-06-21 (headless continue 5) - ZOI SLICE 3: influence bubbles + demarcation + coach feed
-
-ZOI item 567 SLICE 3 shipped + live-verified. Commit `163b76ee` (code) + docs sync, pushed; CI has no pytest gate.
-
-Subagent-first: Gemini consult -> Plan subagent spec (frozen `/api/state.zoi` contract) -> 2 disjoint build
-agents (backend / frontend) -> verifier gate (caught + I fixed a 245x U+2500 box-drawing ASCII violation in
-the JS comment banners) -> UI-audit SHIP-CLEAN.
-
-SHIPPED: `core/zoi_influence.py` (pure, 18 tests) `compute_zoi -> {bubbles, demarcation, map_control}` in
-box-fraction; stamps `/api/state.zoi` + feeds a deterministic map-control callout into `det.callouts` (no
-Haiku). `web/js/panels/minimap_zoi.js` canvas inside `#am-mmrect`: low-alpha team bubbles + weighted-bisector
-demarcation, EMA-smoothed, click-through. Strength is PRESENCE-grounded (dot px*conf + MY ult spikes 6/11/16 +
-game_time) - the Live Client has no enemy level/alive/gold (honest scope). Threaded `zoi` at all 3 main.js poll
-sites; ui_mock fixture + overlay threading test added.
-
-KEY FIX (live CDP pixel sample): raw overlapping bubbles composited to alpha 0.467 (> the 0.25 readability
-cap). Fixed with PER-TEAM OFFSCREEN COMPOSITING (flatten each team, blit at 0.25) -> 99.7% of pixels <= 0.25,
-peak 0.349 only in the thin contested seam.
-
-LIVE-VERIFIED: RC restart -> `/api/state.zoi` 29 bubbles + map_control 60-91% ally + callout in
-`/api/state.callouts`; rc-shell relaunched (no hot-reload) + CDP inspect of `#am-zoi-canvas` (painting over the
-real minimap, pointer-events:none both = click-through). DON'T redo: slices 1+2+3; the offscreen-compositing
-alpha cap; the presence-vs-champion-only scope.
-
-NEXT: ZOI program FOUNDATION+1+2+3 done. Future (no owner): champion-only isolation (template matching);
-richer strength if an enemy-data source appears.
-
-## Relocated 2026-06-21 (weekly-hygiene prune - keep last 2 sessions: continue 6 + continue 5)
-
-# 2026-06-21 (headless continue 4) - ZOI slices 1+2: box renders+frames minimap, blob dots ship
-
-ZOI item 567 advanced 2 slices. 2 commits `f93f5f01` (slice 1) + `d6a853f2` (slice 2), pushed; CI n/a (no pytest in CI).
-
-SLICE 1 (the OWED live-verify - became a 3-bug fix). The foundation box never rendered live + was mis-scaled.
-Diagnosed via the Electron overlay's CDP DOM (the 1px/0.55 gold hairline is invisible in screenshots - DOM
-inspection is the ground truth, not the eye). (a) `minimap_rect` was never threaded into client `state.latest`
-at the 3 poll sites in `web/js/main.js` so renderMinimapRect always got null; the ui_mock test masked it.
-(b) the rc-shell overlay window used the taskbar-excluded WORK AREA -> ovscale 1.3 not 1.333 -> box ~3%
-up-left; fixed to full display BOUNDS. (c) Windows clamped the frameless window to 1400 -> re-assert bounds
-AFTER topmost -> 1440 (bottom reachable). Outline -> 2px/0.85 gold (was invisible). GOTCHA: plain GDI
-BitBlt does NOT capture the layered click-through overlay - use CAPTUREBLT flag or Windows-MCP.
-
-SLICE 2. `core/minimap_blob_detect.py` pure-numpy (numpy 2.5.0 installed for py3.14) team-color blob
-detection -> `/api/state.minimap_dots`. Saturation discriminates icon vs terrain tint; `crop_minimap` maps
-the design-px rect onto the ~1280 frame by fraction (legacy /api/minimap-crop is mis-cropped at scale 1.62,
-bypassed). 11 tests; live 32 dots in 1.6ms. It is a team-PRESENCE detector (incl wards/structures), not
-champion-only (template matching = future).
-
-NEXT (slice 3): low-opacity team-colored ZOI bubbles + demarcation inside the box, weighted by per-team
-strength (alive/dead, gold, spikes), fed to coach; UI-audit ritual. DON'T redo slices 1+2. Also: the Peer
-bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /done ritual (operator).
-
----
-
----
-
-# 2026-06-22 (headless continue 14 / R13) - Active-Match fixture audit (threat_donut sigil exception)
-
-Item 580, commit `0fb91841` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
-no RC restart); no engine / DS / Share / ENGINE bump / overlay render / flip change.
-
-CONTEXT: gemini+ahk loop relaunched 02:46 (head a1b063a0), cycle 1 directive = ORCHESTRATION_PLAN
-R13 ui-audit. 5-phase fixture audit of the 3 un-audited Active Match panels cd_ledger.js /
-cc_blended_ehp_threat.js / threat_donut.js + CSS vs docs/UI_SCALE_SPEC_V2.md.
-
-VERDICT (verifier-gated CONFIRM, 47/0/0): 1 MUST-FIX + 2 panels already clean. threat_donut.js -
-the SVG "?" / "." placeholder hardcoded font-size 12 inside the fixed 28x28 donut (the --fs-xs 16px
-floor would overflow the tile); documented as an inline operator-exception (no token < 16px by
-design; mirrors cd_ledger.css). cd_ledger.css CLEAN (item 184 v2.1 already documented its 11/10/9px
-exceptions); cc_blended_ehp_threat.css CLEAN (fully tokenized). FUTURE: .am-pane-head toggle ~41px,
-1px under --hit-min 42px - shared selector, out of slice scope.
-
-ORCHESTRATOR NOTE: directive mandated worktree fan-out, but the audit found a single 4-line comment
-fix in one file (2 panels already compliant) -> collapsed to inline per R9; verifier-gate still run.
-Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pixel frame OWED
-(RC mode=client).
-
----
-
-(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-B1 /done prune)
 
 ---
 
@@ -15258,6 +15097,258 @@ Don't-redo: item Annul spell-shield SHIPPED; overlay liveclient-freeze SHIPPED (
 
 ---
 
+# 2026-07-17 (DS meta-valuation sweep - Jayce..Karma batch10, 3 GAP + 2 REFUTE; read-only, NO engine change; strict-alpha A->Z)
+
+Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`; skipped Jhin + Kai'Sa, already REFUTE). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40 + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 59 -> 64/173 (GAP 40, REFUTE 21, FENCED 3), remaining 109. THREE GAP + TWO REFUTE. Probe rebuilt as `probe_batch10.py` (scratchpad is session-scoped; dumps full top-40 to JSON so a post-research signature lookup needs no re-probe). Memories `project_ds_sweep_{jayce_adcaster,jinx_crit_burstblend,ksante_tank_refute,kalista_onhit_refute,karma_enchanter_default_gap}`.
+
+- **Jayce GAP RM-67** (the Corki/Ezreal AD-caster family, DEEPEST instance: lethality-poke AD-caster ~77% physical, ZERO crit/on-hit/Sheen, signature Tear->Youmuu's->Manamune/Muramana->Voltaic->Serylda's; production bruiser/ds.hybrid [default route] over-leads Sheen Trinity #1 + Essence Reaver #3 + on-hit BotRK #6 + Dusk&Dawn #5 and BURIES his signature Youmuu's #35 + Manamune NOT-in-40 + Serylda's NOT-in-40 [carry reroute no better; only mage reroute surfaces the lethality line mid-pack while leading never-built Liandry's #1]; deeper than Ezreal/Corki - Manamune fully absent from top-40; the W Hyper-Charge 3-auto burst is a trap that deepens the auto-DPS misread).
+- **Jinx GAP RM-68** (the Caitlyn RM-50 IDENTICAL-numbers twin - crit-auto hypercarry, crits deal FULL 200% dmg [no Ashe neuter], signature Hexoptics C44->IE->Phantom Dancer->LDR; production carry/ds.dps fight_length=0.5 burst-blend leads never-built on-hit BotRK #2 + off-meta lethality Collector #3/Youmuu's #5/Hubris #7/Serylda's #10 [builds ZERO lethality] and BURIES her signature crit Hexoptics C44 #16 [SAME rank as Caitlyn], Yun Tal #19/Runaan's #21 buried; the HIGH-conf research GUESSED REFUTE but the ENGINE PROBE OVERRODE it [Caitlyn/Gnar/Camille precedent]; her 2026 Hexoptics C44 IS in the pool at #16 = NOT stale-pool, the genuine burst-blend defect; Aphelios clean-crit-REFUTE CONTRAST = on-hit BELOW crit vs Jinx BotRK #2 ABOVE).
+- **K'Sante REFUTE** (the Dr. Mundo resist->damage REFUTE, tighter: itemizes PURE TANK, ~100% physical resist-COUPLED [Q +40%bonus-armor+40%bonus-MR, W/passive %maxHP scaled by BOTH resists; 2026 REMOVED the resist->AD conversion, R now sheds 85% resists for AS/pen/omnivamp]; production tank/ds.ehp leads durability AND his real core SURFACES [Jak'Sho #2, Spirit Visage #8, Unending Despair #9, Sunfire #11, Hollow #13] because his resist/HP items ARE his damage; NO separate off-axis core omitted [rules out Amumu/Cho'Gath/Galio], NO bruiser signature buried [his Iceborn/Jak'Sho ARE tank items]; only signature-FIRST Iceborn under-ranked #18 = the class-level EHP-scorer scope limit [Braum Solstice / Mundo Titanic species - the EHP scorer cannot see Iceborn's Spellblade-on-empowered-strike damage], NOT a gap).
+- **Kalista REFUTE** (the Varus/Irelia on-hit-served class + same-batch CONTRAST to Jinx: on-hit/AS marksman [autos+Q plant spears, E Rend detonates scaling bonus-AD; AS/on-hit boosts BOTH DPS AND spear-cadence, crit never touches Rend = trap], ZERO crit; production carry/ds.dps LEADS her real on-hit core BotRK #1 -> Runaan's #2 -> Kraken #3 -> Guinsoo's #7 -> Terminus #9 = AXIS CORRECT [an on-hit lead MATCHES her ground-truth, the INVERSE of the crit-marksman family where a BotRK lead is WRONG], crit IE #5/Yun Tal #6 correctly BELOW; her DEFAULT carry route SERVES her UNLIKE Bel'Veth RM-49; only signature Statikk Shiv #13 under-ranked = energized-item scope limit).
+- **Karma GAP RM-69** (NEW discriminator vs the Janna/Ivern enchanter REFUTEs: ~97% SUPPORT enchanter [Mantra-E shields scale 60% AP as shield-power NOT damage], signature Dream Maker->Moonstone->Helia->Redemption->Dawncore, ZERO offensive AP core; BUT her DDragon PRIMARY tag is MAGE [secondary Support] so default_for_champion routes her to mage/ds.ability which LEADS never-built Liandry's #1 + Blackfire #2 for her dominant enchanter build [Imperial Mandate absent], while the enchanter/ds.hps reroute PERFECTLY serves her real heal-shield core [Helia #1/Ardent #2/Imperial Mandate #7/Moonstone #9]; UNLIKE Janna/Ivern whose Support-primary tag defaults to enchanter and SERVES them; fix = role-aware default [route support-Karma to enchanter], the Galio RM-55 inverted twin + Bel'Veth RM-49 "default-route mis-serves, reroute serves" shape; research LEANED REFUTE, the engine probe's default-mage-mis-route resolved it to GAP).
+- **KEY batch10 insight:** TWO probe-overrides-research this batch - Jinx (research REFUTE -> GAP, the Caitlyn burst-blend defect) + Karma (research REFUTE -> GAP, the default MAGE route mis-serving her dominant enchanter build) - BOTH cases where the research evaluated the RIGHT scorer but the engine's DEFAULT route is the WRONG one (the two-line convergence is exactly what caught them). The AD-caster family (Corki/Ezreal) gains its DEEPEST member (Jayce - Manamune fully absent from top-40); the crit-marksman burst-blend family (Caitlyn/Draven) gains a Caitlyn-IDENTICAL twin (Jinx); the enchanter cluster gains its FIRST default-route GAP (Karma) via the Mage-vs-Support primary-tag discriminator (Support-primary Janna/Ivern = REFUTE, Mage-primary Karma = GAP); and the tank cluster confirms the Mundo resist->damage REFUTE on a second champ (K'Sante), reliably split from the AP-tank-RUSH GAPs by "is a SEPARATE off-axis core omitted."
+
+**NEXT SESSION: strict ALPHABETICAL, next-up = Karthus**, then Kassadin, Katarina, Kayle, Kayn (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch10.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct NOT `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; resolve each champ's primary via `core.archetype_picks.default_for_champion` then `rank_for_primary_archetype` + reroutes at top=40/140; dump full top-40 to JSON for post-research signature lookup). Skip resolved (Aatrox..Karma + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Karthus (AP sustained-DoT mage - R global + E Defile AoE DoT + %HP-ish - REFUTE-leaning Brand/Cassiopeia sustained-DoT [Liandry's lead correct], or a burst/mana-item scope limit?); Kassadin (AP anti-mage burst/assassin - R Riftwalk stacking + mana-hungry Rod-of-Ages/Rylai's core; burst-mage Liandry's over-lead like Gragas, or mana-item scope limit? check if in `_AP_ASSASSIN_IDS`); Katarina (AP burst assassin - the Akali RM-41 note PRE-FLAGGED her as `_AP_ASSASSIN_IDS` cohort "Fizz/Katarina Trinity #2", so likely GAP RM-41 SHARED [no new RM] like Diana/Ekko/Evelynn/Fizz - VERIFY the Trinity/ER AD-pollution rank); Kayle (AP scaling on-hit/ranged hyper-carry - Nashor's + AP + on-hit; watch AP-on-hit mis-route like Gwen RM-61 / Azir RM-48, and her Fighter primary tag may route her to bruiser [physical] = a possible default-route GAP like Karma); Kayn (AD, two forms - Rhaast ability-bruiser drain vs Shadow Assassin lethality; Fighter/Assassin -> bruiser primary; watch ability-bruiser Aatrox-family or lethality-assassin). Next GAP spec = RM-70.
+
+---
+
+# 2026-07-17 (DS meta-valuation sweep - Karthus..Kayn batch11, 5 GAP + 0 REFUTE; read-only, NO engine change; strict-alpha A->Z)
+
+Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40 + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 64 -> 69/173 (GAP 45, REFUTE 21, FENCED 3), remaining 104. FIVE GAP, ZERO REFUTE - the THIRD GAP-dense batch (after batch7/batch8). Probe rebuilt as `probe_batch11.py` (scratchpad is session-scoped; dumps full top-40 to JSON per champ). Memories `project_ds_sweep_{karthus_blackfire_underled,kassadin_mana_stack_burst,katarina_burst_ad_pollution,kayle_onhit_ap_overlead,kayn_twoform_route}`.
+
+- **Karthus GAP RM-63 SHARED** (the Heimerdinger/Hwei ds.ability Blackfire-under-led-by-Liandry's cohort, the DEEPEST instance: sustained-DoT / AoE-poke mage [jungle-primary] whose signature FIRST Blackfire Torch [600 mana + 20 AH + burn] is buried #2 under Liandry's #1; his real 2nd Shadowflame #3 / Rabadon's #4 / Void #7 correctly surfaced, mana items buried [Archangel's #20, Rylai's #25, RoA #35]; DEEPER than Heimer/Hwei because his leader Liandry's is SITUATIONAL-only for him [not a real 2nd-core] and his distinguishing WHY is the E Defile 30-78 mana/sec SINK -> Blackfire's mana+AH is mechanically mandatory, Liandry's gives neither; same defect+fix -> SHARED, no new RM; his sustained-DoT profile IS right [Brand/Cassiopeia family] - only the top-item order + mana-discriminator are off).
+- **Kassadin GAP RM-70** (NEW - the first mana-stack-signature champ: a FRONT-LOADED single-combo AP anti-mage burst-assassin whose DEFAULT mage/ds.ability route [axis-corrected off his Assassin tag] over-leads never-built sustained-DoT Liandry's #1 [the Gragas RM-59 burst-mage shape - WRONG since he is burst not DoT] AND whose signature Rod of Ages #30 + Archangel's #18 + Malignance #10 mana-stack core is buried by EVERY scorer [mana-as-damage unmodeled, stronger than Cassiopeia/Anivia]; the assassin/ds.burst reroute is a better home [Rabadon's #1, Shadowflame #2, no Liandry's-lead; AD-pollution DEEP at Trinity #17 - shallow because his pure-magic kit has near-zero AD-residual, the mechanistic INVERSE of Katarina's Trinity #2] but STILL buries RoA #37; KEY DISCRIMINATOR vs the Cassiopeia sustained-DoT REFUTE = is the Liandry's #1 lead CORRECT for the damage profile? Cassiopeia yes -> REFUTE-scope-limit; Kassadin no -> GAP; fix = reroute to burst/_AP_ASSASSIN_IDS + model mana-stack items).
+- **Katarina GAP RM-41 SHARED** (the `_AP_ASSASSIN_IDS` ds.burst AD-pollution cohort - the Akali pre-flag "Fizz/Katarina Trinity #2" CONFIRMED: pure-AP burst assassin [signature Lich Bane], production assassin/ds.burst leads Rabadon's #1 / Trinity #2 / Lich Bane #3 [signature buried 1 slot behind pollution] / ER #4 / BotRK #6 / IE #11 on a 100%-AP champ, EXACTLY the cohort-probe rank; shared with Akali/Diana/Ekko/Evelynn/Fizz, NO new RM; ROOT-CAUSE NUANCE - her R Death Lotus carries residual bonus-AD/AS/on-hit ratios [old-hybrid relic] so she is the cohort member with the MOST-legitimate AD-residual [least-hallucinated pollution] yet the meta is still 100% AP [optimal-not-winrate: discount the residual]; intra-cohort Lich Bane #3 = mid, between Fizz [#1 led] and Evelynn/Ekko [buried #4+]).
+- **Kayle GAP RM-71** (NEW - the Gwen RM-61 ds.onhit family, a deeper AD-polluted sub-shape: AP-on-hit hybrid hyper-carry whose DEFAULT onhit/ds.onhit route [Slice B roster CORRECTLY routes her here NOT bruiser -> the FIGHTER-tag-mis-route hypothesis REFUTED, Slice B did its job] leads AD/physical-on-hit BotRK #1 / Kraken #4 / Statikk #5 + crit Trinity #6 / IE + %maxHP-DoT Liandry's #3 [all never-built] and buries her signature Nashor's Tooth #7 + 2nd core Dusk and Dawn #11, with her AP-amp core [Rabadon's/Shadowflame/Void] ABSENT from the entire top-40; THREE defects - an AD-off-class leak [the RM-41 analog in ds.onhit, driven by her 27% base-AD auto share] + the shared Gwen %maxHP-DoT over-lead + AP-amp absent; DISTINCT from Gwen [surfaced her AP-on-hit Dusk&Dawn #2-4 high with NO physical-on-hit lead] + Azir RM-48 [ds.onhit fully fails there, serves the axis here]; she is a hybrid AP-caster + on-hit whose scorer must value BOTH AP-amp AND AS/on-hit).
+- **Kayn GAP RM-72** (NEW - the first TWO-FORM/transform champ: a single default bruiser/ds.hybrid route serves NEITHER form - it leads never-built Trinity #1 / on-hit BotRK #2 and buries Rhaast's ability-haste signature Spear of Shojin [ABSENT top-40, the Aatrox/Hecarim/Jarvan family] + Black Cleaver [#30 tanky / absent squishy], AND the PLURALITY + highest-WR Shadow Assassin lethality build is an entirely DIFFERENT unserved archetype [the assassin reroute surfaces the lethality core Youmuu's #6 / Axiom Arc #5 / Serylda's #19 but leads ER #1 / Trinity #2 and is NOT the default]; correction to the watch-hypothesis - Sundered Sky is NOT a current Kayn item; fix = form-aware routing [Rhaast -> ability-bruiser; Shadow Assassin -> lethality/burst; the engine has form_index plumbing]).
+- **KEY batch11 insight:** the K-cohort is the THIRD GAP-dense batch (5/5) with THREE distinct NEW shapes - the first mana-stack-signature champ (Kassadin: RoA/Archangel's/Malignance buried by every scorer, the mana-as-damage scope limit that even a correct burst reroute misses), the first ds.onhit AD-off-class-leak (Kayle: the RM-41 pollution analog for the on-hit scorer, driven by her 27% base-AD auto share), and the first TWO-FORM champ (Kayn: no single default archetype can represent both Rhaast-bruiser + Shadow-Assassin-lethality) - PLUS two shared-RM confirmations (Karthus deepens the Heimer/Hwei RM-63 Blackfire-under-led cohort with a mana-sink WHY; Katarina confirms the Akali RM-41 pre-flag as the cohort's most-legitimate-AD-residual member). Recurring discriminator sharpened: a Liandry's #1 lead is a GAP or a REFUTE depending ONLY on whether the champ's damage profile is sustained-DoT (Karthus/Cassiopeia yes -> right, so REFUTE or a milder one-slot-order GAP) vs front-loaded burst (Kassadin no -> wrong -> GAP). Two-line convergence caught two probe-vs-research contrasts again: Kassadin (research LEANED "mana-item scope limit" -> probe showed the wrong DoT lead makes it a GAP) and Kayn (research flagged both forms -> probe confirmed the default route serves neither).
+
+**NEXT SESSION: strict ALPHABETICAL, next-up = Kennen**, then Kha'Zix, Kindred, Kled, Kog'Maw (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch11.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON for post-research signature lookup). Skip resolved (Aatrox..Kayn + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Kennen (AP on-hit/burst mage-marksman hybrid - Mage/Marksman tags; ranged shuriken + W Lightning Rush on-hit + R Slicing Maelstrom AoE stun-burst; watch AP-on-hit mis-route like Kayle/Gwen [onhit-roster?] OR a burst-mage Liandry's over-lead); Kha'Zix (AD lethality evolve burst assassin - Assassin primary -> ds.burst; watch the Zed/Talon/Qiyana FENCED pure-lethality-data-refuted reasoning [likely REFUTE-leaning] vs a genuine served-carry); Kindred (AD crit/on-hit marksman jungle - Q Dance + W passive-stack on-hit + marks; watch crit-marksman burst-blend over-lead [Caitlyn family GAP] vs on-hit-served [Kalista REFUTE]); Kled (AD bruiser mounted/dismounted - Q Bear Trap + Violent Tendencies AS on-hit; watch ability-bruiser Aatrox-family GAP vs on-hit-served); Kog'Maw (TWO builds like a form-split - AD on-hit hyper-carry [W Bio-Arcane %maxHP-magic on-hit + crit] AND AP artillery [R Living Artillery poke]; the Slice B comment names "Kog'Maw-AP" in the onhit-roster, so watch a two-build routing GAP like Kayn/Kayle). Next GAP spec = RM-73.
+
+---
+
+# 2026-07-18 (DS meta-valuation sweep - Kennen..Kog'Maw batch12, 4 GAP + 1 REFUTE; read-only, NO engine change; strict-alpha A->Z)
+
+Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40 + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 69 -> 74/173 (GAP 49, REFUTE 22, FENCED 3), remaining 99. FOUR GAP + ONE REFUTE. Probe rebuilt as `probe_batch12.py` (dumps full top-40 to JSON per champ). Memories `project_ds_sweep_{kennen_burst_mage_rocketbelt,khazix_lethality_refute,kindred_crit_hybrid_overlead,kled_health_bruiser,kogmaw_twobuild_onhit_route}`.
+
+- **Kennen GAP RM-73** (the Ahri/Annie/Aurora/Elise/Gragas burst-mage-BURIED family, 6th member: full-AP AoE burst DIVER [top ~75%], NO on-hit in the meta, signature FIRST = Hextech Rocketbelt [~25% pick, burst+engage active]; production mage/ds.ability leads Liandry's Torment #1 [%maxHP-DoT, WRONG for a front-loaded burst champ - the Gragas TRAP] + Blackfire #2 and BURIES his signature Rocketbelt #28 [the engine cannot value active-engage utility], his burst core Shadowflame #4/Rabadon's #3/Zhonya's #10/Void #7 DOES surface; TWO issues - HARD Liandry's-over-burst lead + SOFT Rocketbelt-can't-value scope limit [Fiora Ravenous-Hydra species]; Liandry's is FRINGE ~50% WR not core).
+- **Kha'Zix REFUTE** (the Zed/Talon/Qiyana RM-34 FENCED lethality-assassin family, 4th member: AD lethality burst assassin [jungle ~95%], 100% lethality, signature Umbral Glaive -> Voltaic -> Edge of Night -> Youmuu's -> Serylda's, ZERO crit/on-hit/bruiser; production assassin/ds.burst leads ER #1/Trinity #2/BotRK #3/IE #6 over his lethality core [Umbral #5 SURFACED, Youmuu's #8, Collector #13] - EXACTLY the FENCED pattern; his lethality items are high-AD+pen so the carry/burst scorer ranks them WITHOUT a lethality lever, and the pure-lethality-weighting fix is the SAME change DATA-REFUTED [R114 sim-incoherent + R115 win-table buried-losers, LEDGER 889]; his wrinkles [isolation-amp/evolves/W-heal/passive magic] affect burst MAGNITUDE not the item AXIS; do NOT re-pitch lethality-weighting).
+- **Kindred GAP RM-74** (the Caitlyn RM-50/Draven RM-53/Jinx RM-68 crit-marksman burst-blend family, a MILD HYBRID: AD marksman jungle [~97%] that OPENS on-hit Kraken then builds full CRIT [Collector->IE->LDR], BotRK/Runaan's NOT core; production carry/ds.dps burst-blend leads never-built BotRK #1 + Runaan's #2 over her signature Kraken #3 + scatters her crit trio IE #5/Collector #11/LDR #13; MILDER than Caitlyn/Jinx [her Kraken opener IS on-hit so a Kraken-high is partly right + crit surfaced not buried #16] but the bright-line holds [engine #1 BotRK != her real signature Kraken]; the on-hit-served REFUTE CONTRAST Kalista/Varus = THEIR BotRK #1 IS real, Kindred's is not).
+- **Kled GAP RM-75** (NEW health-scaling-bruiser sub-shape of the Aatrox/Hecarim/Jarvan ds.hybrid family: AD health-scaling juggernaut [top ~91%], signature Titanic Hydra [bonus-health on-hit-cleave] + armor-shred Black Cleaver buried #13/#32 while ds.hybrid leads never-built BotRK #1 + off-meta Trinity #3 + crit; KEY = the "FALSE on-hit match" - his W Violent Tendencies IS on-hit so BotRK #1 superficially matches, but his on-hit is HEALTH-scaling [%maxHP] not AS/current-HP so BotRK is NEVER-built; axis = max-health+armor-shred, distinct from ability-HASTE Aatrox/Hecarim/Jarvan [Shojin] + the Camille/Fiora Sheen-REFUTE).
+- **Kog'Maw GAP RM-76** (NEW two-BUILD routing - the Slice B "Kog'Maw-AP" default route serves his MINORITY build: TWO builds - AD on-hit hyper-carry DOMINANT ~85% [signature BotRK/Guinsoo's] + AP artillery MINORITY ~15%; default onhit/ds.onhit [ds_onhit_ap_roster.json coherence 0.6] leads Liandry's #1 [%maxHP-DoT, the AP-artillery item] + AP-on-hit Dusk&Dawn/Nashor's and pushes his DOMINANT AD-on-hit core BELOW [BotRK #6/Kraken #10]; the carry/ds.dps reroute cleanly leads BotRK #1; the Kayn RM-72 two-form / Karma RM-69 default-mis-serves-dominant cousin, but a PARTIAL mismatch [coherence 0.6: on-hit FAMILY routing directionally right + Guinsoo's #2 surfaces + build genuinely uses some AP]).
+- **KEY batch12 insight:** FOUR family-extensions + ONE class-REFUTE - the burst-mage-BURIED family reaches 6 (Kennen, with a can't-value-active-engage Rocketbelt wrinkle), the crit-marksman burst-blend family gains a MILD hybrid (Kindred, whose on-hit Kraken opener makes the lead partly-right), the ds.hybrid bruiser family gains a NEW health-scaling sub-shape (Kled, the "false on-hit match" - health-scaling W-on-hit != item-on-hit), and the two-build-routing family gains a two-BUILD member (Kog'Maw, Slice-B-serves-minority-AP); PLUS the Zed/Talon/Qiyana FENCED lethality-assassin REFUTE is confirmed on a 4th champ (Kha'Zix - the lethality under-lead is a KNOWN data-refuted pattern, NOT a new GAP). Recurring discriminator: a never-built-on-hit/spellblade LEAD is a GAP unless the champ's real signature IS that item (Kalista/Varus REFUTE) OR the fix is the data-refuted lethality-weighting (Kha'Zix/Zed FENCED).
+
+**NEXT SESSION: strict ALPHABETICAL, next-up = LeBlanc**, then Lee Sin, Leona, Lillia, Lissandra (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch12.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON). Skip resolved (Aatrox..Kog'Maw + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: LeBlanc (AP burst assassin/mage - mimic R chain-combo; check `_AP_ASSASSIN_IDS` membership [the Akali cohort note said "except Leblanc", so she may NOT leak the Trinity/ER AD-pollution - verify]; else a burst-mage Liandry's over-lead like the Gragas/Ahri family with her signature Malignance/Luden's/Shadowflame buried); Lee Sin (AD early-game skirmisher jungle - bruiser [Eclipse/Trinity/Black Cleaver/Sundered] OR lethality [Youmuu's/Profane]; watch ability-bruiser Aatrox-family GAP vs the FENCED lethality REFUTE vs served); Leona (tank support - the Alistar/Blitzcrank/Braum tank-support REFUTE, zero damage, engage; tank/ds.ehp self-durability served); Lillia (AP sustained-DoT/burn jungle - passive Dream-Laden Bough %maxHP burn + Liandry's/Blackfire/Riftmaker; watch the Brand/Cassiopeia sustained-DoT REFUTE [Liandry's lead correct] vs a burst-mage GAP); Lissandra (AP burst/control mage - Rocketbelt/Ludens/Liandry's, R self-freeze; watch the Gragas/Kennen burst-mage-BURIED family Liandry's over-lead vs served)). Next GAP spec = RM-77.
+
+---
+
+---
+
+## Relocated 2026-06-28 (WP-A6 /done - keep last 3 sessions: A6 + A5 + A4b)
+
+# 2026-06-28 (electron companion window controls + overlay launcher + WP-A4a role-bracket bench route; 93550a4e + c172f6b5 + b883254c)
+
+Two-part session: operator-direct electron UX, then headless overlay-build-continue WP-A4a. 3 commits, all pushed, CI green. RC restarted (now pid 4808, reload_ok).
+
+- **Companion window controls + launcher (93550a4e).** Desktop "RC Overlay.lnk" -> electron.exe . (no console flash) + rc-shell/launch_overlay.bat. Minimize / Close / always-on-top-toggle top-right in the FRAMELESS companion (not-in-game) titlebar; COMPANION-ONLY (the in-game overlay HUD never gets close/min - focus hazard). NEW pure rc-shell/src/window_controls.js (CSS-drawn ASCII glyphs) + preload bridge (winMinimize/winClose/winToggleAlwaysOnTop/winGetAlwaysOnTop) + ipcMain reusing the existing toggleAlwaysOnTop() so menu checkbox + pin stay coherent (gold chevron when pinned). 299 rc-shell node tests (9 new). Visual proxy via Claude_Preview inject - real electron launch is operator-gated.
+- **WP-A4a /api/role-bracket-bench (c172f6b5).** Operator role x game-time-bracket SR averages (lvl/cs/tf/kda) -> feeds the A4b stats panel. DATA-SOURCE DEVIATION (do-not-redo, in RC_WORK_TRACKER): plan named core.benchmarks but it is per-CHAMPION only (no role/bracket/kda); used data/rewind_history.db tracked-participant rows -> NEW core/role_bracket_bench.py + dashboard/routes_bench_role_bracket.py. Brackets early(<25m)/mid(25-35m)/late(>=35m) over game_duration_s; tf=tracked_kp. Read-only DB connect; empty grid on CI/clean-checkout (route ok:true/n:0, never 500). RED-first tests/test_routes_bench_role_bracket.py 18 green; live 200 {lvl 16.58 cs 224.82 tf 52.67 kda 3.96 n33}, role-correct (support cs~33/KP~63). Tier-2 full tests/ 9748 passed; no DS/ENGINE/Share. Verifier CONFIRM. Section J A4a -> DONE; LEDGER 655.
+- **PRE-EXISTING failures (do-not-redo, NOT A4a regressions; flagged task_72ca84ec):** the full tests/ run had 9 fails + 1 error all UNRELATED - overlay.css [data-panelset] gate drift (RC2 redesign), ROADMAP.md over the 80KB budget, zoi teardown, ds_preview capgap order-flake. PROVEN pre-existing: stash the _dispatch.py edit and they fail identically; the suspect tests grep zero role-bracket.
+- **NEXT (loop):** Section J next OPEN W0 = A4b (stats vertical frontend - deps A4a now DONE -> READY, a UI WP so it needs the G.9 5-phase audit + Claude_Preview vs /api/state), A5 (enemy-spells widen+unname, T1), B1 (strip DS-ENGINE caption, T1), C1 (kit-synergy profiles, W2). E5 docs sweep (T0) still open.
+
+---
+
+## Relocated 2026-06-28 (WP-A5 /done - keep last 3 sessions: A5 + A4b + A4a/companion)
+
+# 2026-06-28 (overlay-build loop - WP-A3 coach [t]-tag strip + truncation removal; ea100097 + 68841ce5)
+
+Headless overlay-build-continue cycle (docs/OVERLAY_BUILD_MASTER_PLAN.md Section J). First OPEN W0 WP after A1/A2: A3 (T1, deps none).
+
+- **WP-A3 (ea100097).** NEW helpers.stripCoachTags folded into safe() -> right_now.js + next.js inherit the strip with ZERO edits (both route coach text + the dataset.raw clipboard through safe()); byte-identical for tag-free strings (item refs [Kraken Slayer] / digit refs [3153] preserved). coach_choices.js gets an explicit strip (it slices raw fields, bypassing safe()). CSS: un-clamp .action / .immediate / .action-mid / kv body rows (fixed height -> min-height reserve); the Arena .immediate.is-pregame dense card clip re-stated as a regression guard (it used to inherit the now-removed base clamp). RED-first tests/test_overlay_a3_coach_tag_strip.py 11 -> 18 green; verifier PASS; 68-test regression incl Playwright snapshots, 0 regressions; CI green. LEDGER 654, Section J A3 -> DONE.
+- **Stale-cite corrections (do-not-redo):** the plan's overlay.css:349 .action clamp does NOT exist (overlay reuses right_now.css -> no overlay.css edit, no shared-file collision); the right_now.js "see .action in dashboard.css" comment is stale (no dashboard.css). Bare .action/.immediate selectors live ONLY in right_now.css.
+- **PARKED (out of this loop's scope - F.2 DS-batch):** the DS target-current-HP% lever research (kicked off before the operator redirected to the overlay loop) finished - lolmath ~50% baseline CONFIRMED (enemyAverageCurrentHp field, default 0.5; ONLY the mage/assassin scorers consume target_current_hp_pct; the seam is built default-OFF but UNWIRED across the /rank HTTP boundary). Full spec is in the workflow output file. Do NOT re-run the research; the per-archetype flip is a gated DS-batch Tier-2 (ENGINE bump + 3-game live eyeball), NOT part of the overlay loop.
+- **NEXT (loop):** Section J next OPEN W0 = A4a (role-bracket bench route, T2), E5 (docs sweep, T0), F5-H02, F5-M01; F6a gated on E5.
+
+---
+
+## Relocated 2026-06-28 (WP-A4b /done - keep last 3 sessions: A4b + A4a/companion + A3)
+
+# 2026-06-28 (overlay redesign: launcher control-center + all-panels + per-panel opacity/scale + interactive zones + enemy spell tap-tracker + stats panel; live-verified last session's 4 fixes)
+
+Live operator session (ranked SR + ARAM). First live-verified the 4 fixes from 2026-06-27, then a big operator-driven overlay redesign. 5 commits, all pushed; RC restarted pid 11856.
+
+- **Live-verify (all PASS).** events-path (`7b325e3e`): turret fell -> base-siege callout fired eta_s=0 atop #rn-callouts; dragon -> objective_events populated + dynamic drake row. Mid-pick spells (`1aed8f06`): draft pushed 4+7 Flash+Heal role-aware (NOT 4+12 TP); manual 4+21 Barrier stuck. Hotkeys (`aa008079`): Ctrl+Shift+B + Ctrl+Shift+A both signal via WH_KEYBOARD_LL.
+- **Launcher widget (`6370f7da`).** Draggable HUD-spell-square -> layout control center. The ONLY in-game un-hide path (Alt+Shift+R reset is Electron-globalShortcut-only = dead under League focus).
+- **Build-pane flicker fix (`5af5b17d`).** active_match did `build.innerHTML=""` EVERY tick -> icons/donuts re-fetched + blinked. Extracted `_renderAmBuildBody` with sig-dedup + the R27 reshow guard.
+- **All panels accessible + per-panel opacity/scale (`b16bfce1`).** Retired the coach/build/threat quick-swap auto-hide; all panels show by default; launcher menu = per-panel toggle + opacity + scale sliders.
+- **3 panels interactive while playing (`c79508d2`).** A/B/C (already a zone), launcher (+data-rc-zone, ACTIVE gate dropped), spell/CD (zone:true) work in PASSIVE via hover-to-interact.
+- **Enemy spell tap-tracker + stats panel (`5ff56099`).** NEW `panels/enemy_spells.js` (manual tap -> base-CD countdown) + `panels/stats_panel.js` (HP/mana/AH/MS/AR/MR); backend `_liveclient.py` emits enemy_spells + stats.
+- **DO-NOT-REDO: a HUD *replacement* is impossible.** Live Client API has NO ability/summoner cooldowns, buffs, wards, or XP - only HP/mana/level/CS/stats + spell NAMES (confirmed live on :2999). Overlay AUGMENTS only; can't drive League's Tab-ping (injection-free). Enemy tracker is MANUAL, no auto-feed.
+- **DEPLOY OWED:** operator must Ctrl+Shift+B in-game to reload the overlay (no-store JS = fresh) to see slices 1-4b live; NOT yet confirmed on the Electron overlay (tools can't reach it).
+
+---
+
+## Relocated 2026-06-27 (item-640 /done - keep last 3 sessions: item-640 + item-638-tails + ACTUALIZE-637)
+
+# 2026-06-27 (live-flip validation + overlay launcher fix, `2e8abb36`)
+
+Operator-driven live session: Practice Tool games (KSante / Briar / Ezreal) to close the "live half" of the offline-confirmed DS seam flips, tracked via /api/state + game-monitor.
+
+- **KEY FINDING - do NOT re-investigate.** The live-flip DS seams (R5 missing-HP heal-amp, DSP2 off-class exempt, DSP11 kit-axis, and by inference R12/R30/RF1/RF3) are UNWIRED across the DS /rank HTTP boundary. The flags live ONLY in the in-process scorers + tests + offline `live_flip_eyeball.py`; `dispatch_for_coach` (archetype_dispatch.py:232) -> client -> server.py /rank passes NONE of them and /rank does not accept them. The live build-chooser runs every scorer DEFAULT-OFF. PROVEN live: Briar at 7% HP gave byte-identical daemon_slayer_picks to 100% HP. So these are NOT eyeball-able by gameplay - flipping default-ON is multi-file engine wiring (+ self-HP input for R5) + ENGINE bump + Tier-2, not a toggle.
+- R12 Evenshroud is Arena-only (map30) on 16.13.1 - SR-untestable. No in-game build widget on the overlay (build-chooser is dashboard-only).
+- **Ctrl+Shift+A is NOT a focus/keydown bug.** It is an Electron globalShortcut (rc-shell/src/main.js:1063; overlay_state.js:44 tagged "operator's expected combo 2026-06-27"), focus-independent. Shell IS running (1 instance, requestSingleInstanceLock works - the 5 electron.exe are one instance + helpers). Likely an accelerator collision; register() failure is swallowed (main.js:1081). Diagnostic-first next: log the register() booleans.
+- **SHIPPED (`2e8abb36`).** Legion ON/OFF now manage the rc-shell overlay: ON launches it via a cmd-start trampoline (console-detached - closing the launcher terminal no longer kills the overlay; was a coupling bug I introduced) + auto-close window; OFF taskkills rc-shell electron matched by cmdline only (Claude Desktop spared). rc-shell was already idempotent.
+- **Operator vision captured -> `docs/NO_LLM_PRECOMPUTE_PLAN.md`.** Drive the WHOLE project to no live LLM via a client-side CV tier + precomputed "expansive DB" (pay-once-build, runtime API-key-free). Budget is idle: Max 20x at 11%/17% used, Sonnet 0%, $418 credits untouched. Findings detail: `ops/audit/ds_perm_swarm/report/live_input_seam_findings_2026-06-27.md`.
+
+NEXT: (1) decide sequencing - wire the DS seams across /rank first vs build the precompute DB first (both feed the build-chooser). (2) Ctrl+Shift+A globalShortcut-collision diagnostic. (3) trace the long coach tick on base-attack (untraced). (4) in-game build widget. (5) repo cleanup pass - orphan + scratch files (operator-requested 2026-06-27); targets incl stale `.claude/worktrees/agent-*` worktree copies + `gemini_io/` artifacts. **SPARE `docs/HEXCORE_offline.html` + its bundled fonts (intentional, NOT orphans).** (6) hexcore: keep `docs/HEXCORE_offline.html` as the ONLY hexcore HTML viewing file (shipped fonts are intentional, not one-off; likely retire the non-offline `docs/HEXCORE.html`). It is sluggish when viewed on another computer - investigate browser multi-threading to speed it up: Web Workers (compute off main thread) + OffscreenCanvas + WebGL/GPU offload; profile the bottleneck first (CPU-sim vs draw-bound); note a `file://` origin needs Blob-URL inline workers (worker-from-file restrictions). Pre-existing anomaly (not mine): RC-LiveFlipWatcher Disabled/result=1. CI flake (not mine): snapshot_panels missing-DDragon-asset Renata.png on `2e8abb36` - prior commit `a2e3e95c` with identical web/ state passed; rerun to clear.
+
+---
+
+## Relocated 2026-06-23 (R25 /done - keep last 3 sessions: R25 + R24 + R23)
+
+# 2026-06-23 (R22 DIRECTOR REFILL) - det_coach_shadow agreement aggregator (Haiku-to-ZERO)
+
+Re-probed live state (mode=client / liveclient null - no game), so both carry-forward live-gated
+lanes (RC_COMP_HP_LEAN AP-mage-vs-2+-tank eyeball; live overlay eye-line + S0-pulse) were no-ops
+this cycle -> headless lane. Interviewed the gemini director (gemini-3-pro-preview, ops/loop/
+loop_controller.gemini() pattern); it picked a Haiku-to-ZERO agreement instrument. Commit 8470c3cc
+(pushed). Tier-1 tooling (2 new files; no engine/DS/Share/ENGINE_VERSION; pre-commit hook skipped
+Share sync, confirming Tier-1).
+
+VERIFY-THE-PREMISE payoff (audit-proposals-are-intent): the directive's premise ("no aggregator
+exists") was GLOBALLY false - hz_shadow_report.py + hz_mismatch_diagnose.py + live_benchmark_band_
+report.py already aggregate other shadow logs. But it held for the SPECIFIC target: an inventory
+(ls data/*shadow*.jsonl + grep readers) found det_coach_shadow.jsonl (22,344 rows, the LARGEST
+shadow log, the B1 deterministic-coach flip substrate) had a WRITER (core/det_coach_shadow.py) and
+NO reader. Re-derived the real metric: det A-choice is always ds-matchup (laning trade) but native
+(Haiku) A-choice is overwhelmingly macro/objective (wave-tempo/objective-*), so a naive label-match
+would false-0% (the cycle-53/item-574 category error). New tools/det_coach_shadow_report.py
+classifies each side's DOMAIN off source_tag (trade/build/macro) -> domain ALIGNMENT rate (headline
+do-not-flip signal: 2% live - Haiku is mostly macro at these ticks), within-trade verdict agreement
+(cross-domain EXCLUDED as domain_divergence, never diluting the denominator; 0/159, Haiku plays
+safer "Farm safe"), build-item overlap (3.1%), coverage. Default flip-hint HOLD. Mirrors
+hz_shadow_report.py conventions. RED-first hermetic test (mock jsonl in tmp; real file gitignored)
+20/20; verifier-gated CONFIRM (9/9 checks).
+
+NEXT: overlay-polish lane stays DRAINED + RC2 tail exhausted; next unit is another gemini-directed
+NON-DS-scorer refill. SAME-LANE off-lane refills ready: macro_response_shadow.jsonl (18,192) +
+objective_playbook_shadow.jsonl (18,858) are the next un-aggregated shadow logs (same domain-aware
+pattern). Carry-forward live-gated lanes still OWED (need the RIGHT live game): RC_COMP_HP_LEAN
+default-ON eyeball (AP mage vs 2+ tanks) + live overlay eye-line + S0-pulse capture. The DS
+scorer-valuation track stays CLOSED (do NOT re-pitch kill-state/carry_share or AP-DoT).
+
+## Relocated 2026-06-21 (continue 9 /done - keep last 3 sessions: continue 9 + 8 + 7)
+
+# 2026-06-21 (headless continue 6) - overlay-polish queue item (1): already shipped, only a stale comment
+
+Gemini director picked overlay-polish ROADMAP queue item (1) = "FIGHT MODEL pane `#am-pane-ovds` clips
+in DEFAULT, gate to build-only." GROUND-TRUTH PROBE FOUND IT ALREADY SHIPPED: the doctrine widget-field
+model (commit `7bd7d6a3`, the cfdc9f22 batch) gates `w-ovds` to the build panelset ONLY - overlay.css
+section 4d hides it in default/coach/threat (L418/421/437) + shows it only in build (L451); the pane is
+a `fit-content` `.ovx-widget` (no height cap, inner `overflow:visible`) so it auto-sizes and no longer
+clips. The 25 Playwright overlay snapshot tests already render-assert `#am-pane-ovds`=none in default +
+shown in build (all 25 PASS this run; the lone teardown ERROR was the session prod-artifact guard
+tripping on the LIVE practice game writing `data/*.jsonl`, NOT an overlay-test failure).
+
+SHIPPED (Tier-0): corrected the one genuinely-stale artifact - the `overlay_ds_controls.css` header
+comment said "base subset + the build panelset" / "section 4b" (both wrong); now reads build-ONLY /
+"section 4d" + documents the deliberate behavior change. ROADMAP queue item (1) marked RESOLVED with the
+evidence + a do-NOT-re-chase-the-662/1305-clip note.
+
+No live rc-shell relaunch: the change is a code comment (zero render delta); the prompt's relaunch
+mandate is for NEW overlay JS/CSS that renders differently, and the gating is CSS-structural (proven by
+the real-browser snapshot suite + live-CDP-verified last cycle for the ZOI canvas itself).
+
+NEXT: the overlay-polish red queue (items 1-5) is now fully DONE/RESOLVED - only minor w-* default-
+position tuning remains, so the "route EVERY cycle here" run is winding down. Re-interview Gemini for the
+next priority: candidates = ZOI slice 4 (champion-only isolation via template matching), the ~88 unwired
+ADAPTATION st-* rows (item 281), or the aggregator-G-style PGR reframe. WAKEUP is at 6 entries - due for a
+weekly-hygiene trim to the last 2-3.
+
+## Relocated 2026-06-21 (continue 8 /done - keep last 3 sessions: continue 8 + 7 + 6)
+
+# 2026-06-21 (headless continue 5) - ZOI SLICE 3: influence bubbles + demarcation + coach feed
+
+ZOI item 567 SLICE 3 shipped + live-verified. Commit `163b76ee` (code) + docs sync, pushed; CI has no pytest gate.
+
+Subagent-first: Gemini consult -> Plan subagent spec (frozen `/api/state.zoi` contract) -> 2 disjoint build
+agents (backend / frontend) -> verifier gate (caught + I fixed a 245x U+2500 box-drawing ASCII violation in
+the JS comment banners) -> UI-audit SHIP-CLEAN.
+
+SHIPPED: `core/zoi_influence.py` (pure, 18 tests) `compute_zoi -> {bubbles, demarcation, map_control}` in
+box-fraction; stamps `/api/state.zoi` + feeds a deterministic map-control callout into `det.callouts` (no
+Haiku). `web/js/panels/minimap_zoi.js` canvas inside `#am-mmrect`: low-alpha team bubbles + weighted-bisector
+demarcation, EMA-smoothed, click-through. Strength is PRESENCE-grounded (dot px*conf + MY ult spikes 6/11/16 +
+game_time) - the Live Client has no enemy level/alive/gold (honest scope). Threaded `zoi` at all 3 main.js poll
+sites; ui_mock fixture + overlay threading test added.
+
+KEY FIX (live CDP pixel sample): raw overlapping bubbles composited to alpha 0.467 (> the 0.25 readability
+cap). Fixed with PER-TEAM OFFSCREEN COMPOSITING (flatten each team, blit at 0.25) -> 99.7% of pixels <= 0.25,
+peak 0.349 only in the thin contested seam.
+
+LIVE-VERIFIED: RC restart -> `/api/state.zoi` 29 bubbles + map_control 60-91% ally + callout in
+`/api/state.callouts`; rc-shell relaunched (no hot-reload) + CDP inspect of `#am-zoi-canvas` (painting over the
+real minimap, pointer-events:none both = click-through). DON'T redo: slices 1+2+3; the offscreen-compositing
+alpha cap; the presence-vs-champion-only scope.
+
+NEXT: ZOI program FOUNDATION+1+2+3 done. Future (no owner): champion-only isolation (template matching);
+richer strength if an enemy-data source appears.
+
+## Relocated 2026-06-21 (weekly-hygiene prune - keep last 2 sessions: continue 6 + continue 5)
+
+# 2026-06-21 (headless continue 4) - ZOI slices 1+2: box renders+frames minimap, blob dots ship
+
+ZOI item 567 advanced 2 slices. 2 commits `f93f5f01` (slice 1) + `d6a853f2` (slice 2), pushed; CI n/a (no pytest in CI).
+
+SLICE 1 (the OWED live-verify - became a 3-bug fix). The foundation box never rendered live + was mis-scaled.
+Diagnosed via the Electron overlay's CDP DOM (the 1px/0.55 gold hairline is invisible in screenshots - DOM
+inspection is the ground truth, not the eye). (a) `minimap_rect` was never threaded into client `state.latest`
+at the 3 poll sites in `web/js/main.js` so renderMinimapRect always got null; the ui_mock test masked it.
+(b) the rc-shell overlay window used the taskbar-excluded WORK AREA -> ovscale 1.3 not 1.333 -> box ~3%
+up-left; fixed to full display BOUNDS. (c) Windows clamped the frameless window to 1400 -> re-assert bounds
+AFTER topmost -> 1440 (bottom reachable). Outline -> 2px/0.85 gold (was invisible). GOTCHA: plain GDI
+BitBlt does NOT capture the layered click-through overlay - use CAPTUREBLT flag or Windows-MCP.
+
+SLICE 2. `core/minimap_blob_detect.py` pure-numpy (numpy 2.5.0 installed for py3.14) team-color blob
+detection -> `/api/state.minimap_dots`. Saturation discriminates icon vs terrain tint; `crop_minimap` maps
+the design-px rect onto the ~1280 frame by fraction (legacy /api/minimap-crop is mis-cropped at scale 1.62,
+bypassed). 11 tests; live 32 dots in 1.6ms. It is a team-PRESENCE detector (incl wards/structures), not
+champion-only (template matching = future).
+
+NEXT (slice 3): low-opacity team-colored ZOI bubbles + demarcation inside the box, weighted by per-team
+strength (alive/dead, gold, spikes), fed to coach; UI-audit ritual. DON'T redo slices 1+2. Also: the Peer
+bridge probe / `/loop /process-bridge-tasks` re-run is now REMOVED from the /done ritual (operator).
+
+---
+
+---
+
+# 2026-06-22 (headless continue 14 / R13) - Active-Match fixture audit (threat_donut sigil exception)
+
+Item 580, commit `0fb91841` (pushed, CI green). Tier-1 frontend (asset-hash auto-reload, ADR-008;
+no RC restart); no engine / DS / Share / ENGINE bump / overlay render / flip change.
+
+CONTEXT: gemini+ahk loop relaunched 02:46 (head a1b063a0), cycle 1 directive = ORCHESTRATION_PLAN
+R13 ui-audit. 5-phase fixture audit of the 3 un-audited Active Match panels cd_ledger.js /
+cc_blended_ehp_threat.js / threat_donut.js + CSS vs docs/UI_SCALE_SPEC_V2.md.
+
+VERDICT (verifier-gated CONFIRM, 47/0/0): 1 MUST-FIX + 2 panels already clean. threat_donut.js -
+the SVG "?" / "." placeholder hardcoded font-size 12 inside the fixed 28x28 donut (the --fs-xs 16px
+floor would overflow the tile); documented as an inline operator-exception (no token < 16px by
+design; mirrors cd_ledger.css). cd_ledger.css CLEAN (item 184 v2.1 already documented its 11/10/9px
+exceptions); cc_blended_ehp_threat.css CLEAN (fully tokenized). FUTURE: .am-pane-head toggle ~41px,
+1px under --hit-min 42px - shared selector, out of slice scope.
+
+ORCHESTRATOR NOTE: directive mandated worktree fan-out, but the audit found a single 4-line comment
+fix in one file (2 panels already compliant) -> collapsed to inline per R9; verifier-gate still run.
+Visual proof = test_active_match_view.py Playwright AM-view snapshot. In-game pixel frame OWED
+(RC mode=client).
+
+---
+
+(older sessions relocated to `docs/history_notes.md` - 2026-06-28 WP-B1 /done prune)
+
+---
+
 ## Relocated 2026-07-17 (mdclean C4 - expired operator directive; chain executed per LEDGER 874-911, overnight loop STOP seen 2026-07-14)
 
 # OVERNIGHT AUTONOMOUS DIRECTIVE (operator, 2026-07-13, going to sleep) - Gemini-headless loop
@@ -19406,50 +19497,3 @@ min). The operator wants the loop to NOT end randomly - to detect a stall and ha
 - **P3.2 SHIPPED (structure/density pass 1)**: (a) `web/js/lib/overlay_priority.js` (`39303acb`) - the pure-logic S0 arbitration primitive: `selectPrimary(state)` single-winner ladder (lethal 100 / objective_steal 90 / urgent_headline 85 / choices 80 / spike 70 / fight 60 / good 40 / none 0) + `shouldPulse(prevCue, sel)` motion rationing (Emergency tier or one-shot-Urgent {spike,choices} on a CUE CROSS only) + `BAND_TIER` map; dual ESM/CJS export (Node 22 require-of-ESM), 21/21 node-driven tests (`tests/test_overlay_priority_rc2.py`, pre-authored untracked, now GREEN). (b) callout 2-row density clamp (`db6f77d4`) - overlay-scoped CSS `#rn-callouts .rc-co-row:nth-child(n+3){display:none}` so the HUD S1 slot shows the 2 nearest-ETA rows (dashboard keeps all 3); +1 snapshot test. **NOT yet wired:** the primitive is not consumed by a rendered panel - re-pointing `right_now.js` `.action` pulse (currently fires all 3 bands on text change, `right_now.js:490-500`) + `overlay_pulse.js` to `shouldPulse` is the spec-flagged BEHAVIOR change, carried to **3.3** (shared dashboard+overlay render path -> needs shadow + the 5-phase UI audit + operator eyeball, not a blind headless flip). DOM slot reorder deferred (current order audited + close to spec S0>S1>S2>S3).
 - **P3.1 SHIPPED**: `docs/research/RC2_OVERLAY_CONDENSATION_SPEC.md`. Reframes the 460px dock as 1 PRIMARY (S0) + 3 SUPPORT (S1-S3) fixed slots with a 3-tier model (Ambient/Urgent/Emergency) mapped onto the existing `classifyAction()` bands (`right_now.js:472`: urgent->Emergency, fight->Urgent, good->Ambient). Adds a deterministic S0 single-winner arbitration (priority 100 lethal -> 0 empty) so exactly ONE pop-out exists at any tick, and NARROWS the pulse channel from every-band-on-text-change to Emergency + one-shot-Urgent-cross only (kills alarm fatigue). 3.2 OWNS new `web/js/lib/overlay_priority.js` (selectPrimary + tier map, TDD fixture table) + callout 2-row clamp; 3.3 OWNS Hextech color-bin bindings (#E84057 lethal reserved for the lone S0 Emergency; gold caution; cyan info; green good) + per-element glance acceptance bars + the 5-phase fixture audit at `?overlay=1`. Open: Q2 lethal-incoming predicate field (grep coach.fight_rule / liveclient hp before wiring), Q1 minimap-anchor projection deferred to P4.1.
 - **P5 coaching** spec = `docs/research/RC2_COACHING_SPEC.md`. The laning Haiku-flip is blocked at 39% det-vs-Haiku agreement by CALIBRATION (precompute verdict vocabulary has no hold/farm band, back_off-biased), NOT games-played (`ops/audit/HZ_HAIKU_CALL_INVENTORY.md:49-108`). Top lever: hold-band + `even` relabel in `core/precomputed_laning_coach.py` `_VERDICT_LABELS` (Tier-1, shadow-logged, 39% -> ~53%+). Then CV overrides (new core/laning_cv_overrides.py reading data/vision_state.json) + objective playbook row.
-
----
-
-# 2026-07-17 (DS meta-valuation sweep - Jayce..Karma batch10, 3 GAP + 2 REFUTE; read-only, NO engine change; strict-alpha A->Z)
-
-Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`; skipped Jhin + Kai'Sa, already REFUTE). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40 + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 59 -> 64/173 (GAP 40, REFUTE 21, FENCED 3), remaining 109. THREE GAP + TWO REFUTE. Probe rebuilt as `probe_batch10.py` (scratchpad is session-scoped; dumps full top-40 to JSON so a post-research signature lookup needs no re-probe). Memories `project_ds_sweep_{jayce_adcaster,jinx_crit_burstblend,ksante_tank_refute,kalista_onhit_refute,karma_enchanter_default_gap}`.
-
-- **Jayce GAP RM-67** (the Corki/Ezreal AD-caster family, DEEPEST instance: lethality-poke AD-caster ~77% physical, ZERO crit/on-hit/Sheen, signature Tear->Youmuu's->Manamune/Muramana->Voltaic->Serylda's; production bruiser/ds.hybrid [default route] over-leads Sheen Trinity #1 + Essence Reaver #3 + on-hit BotRK #6 + Dusk&Dawn #5 and BURIES his signature Youmuu's #35 + Manamune NOT-in-40 + Serylda's NOT-in-40 [carry reroute no better; only mage reroute surfaces the lethality line mid-pack while leading never-built Liandry's #1]; deeper than Ezreal/Corki - Manamune fully absent from top-40; the W Hyper-Charge 3-auto burst is a trap that deepens the auto-DPS misread).
-- **Jinx GAP RM-68** (the Caitlyn RM-50 IDENTICAL-numbers twin - crit-auto hypercarry, crits deal FULL 200% dmg [no Ashe neuter], signature Hexoptics C44->IE->Phantom Dancer->LDR; production carry/ds.dps fight_length=0.5 burst-blend leads never-built on-hit BotRK #2 + off-meta lethality Collector #3/Youmuu's #5/Hubris #7/Serylda's #10 [builds ZERO lethality] and BURIES her signature crit Hexoptics C44 #16 [SAME rank as Caitlyn], Yun Tal #19/Runaan's #21 buried; the HIGH-conf research GUESSED REFUTE but the ENGINE PROBE OVERRODE it [Caitlyn/Gnar/Camille precedent]; her 2026 Hexoptics C44 IS in the pool at #16 = NOT stale-pool, the genuine burst-blend defect; Aphelios clean-crit-REFUTE CONTRAST = on-hit BELOW crit vs Jinx BotRK #2 ABOVE).
-- **K'Sante REFUTE** (the Dr. Mundo resist->damage REFUTE, tighter: itemizes PURE TANK, ~100% physical resist-COUPLED [Q +40%bonus-armor+40%bonus-MR, W/passive %maxHP scaled by BOTH resists; 2026 REMOVED the resist->AD conversion, R now sheds 85% resists for AS/pen/omnivamp]; production tank/ds.ehp leads durability AND his real core SURFACES [Jak'Sho #2, Spirit Visage #8, Unending Despair #9, Sunfire #11, Hollow #13] because his resist/HP items ARE his damage; NO separate off-axis core omitted [rules out Amumu/Cho'Gath/Galio], NO bruiser signature buried [his Iceborn/Jak'Sho ARE tank items]; only signature-FIRST Iceborn under-ranked #18 = the class-level EHP-scorer scope limit [Braum Solstice / Mundo Titanic species - the EHP scorer cannot see Iceborn's Spellblade-on-empowered-strike damage], NOT a gap).
-- **Kalista REFUTE** (the Varus/Irelia on-hit-served class + same-batch CONTRAST to Jinx: on-hit/AS marksman [autos+Q plant spears, E Rend detonates scaling bonus-AD; AS/on-hit boosts BOTH DPS AND spear-cadence, crit never touches Rend = trap], ZERO crit; production carry/ds.dps LEADS her real on-hit core BotRK #1 -> Runaan's #2 -> Kraken #3 -> Guinsoo's #7 -> Terminus #9 = AXIS CORRECT [an on-hit lead MATCHES her ground-truth, the INVERSE of the crit-marksman family where a BotRK lead is WRONG], crit IE #5/Yun Tal #6 correctly BELOW; her DEFAULT carry route SERVES her UNLIKE Bel'Veth RM-49; only signature Statikk Shiv #13 under-ranked = energized-item scope limit).
-- **Karma GAP RM-69** (NEW discriminator vs the Janna/Ivern enchanter REFUTEs: ~97% SUPPORT enchanter [Mantra-E shields scale 60% AP as shield-power NOT damage], signature Dream Maker->Moonstone->Helia->Redemption->Dawncore, ZERO offensive AP core; BUT her DDragon PRIMARY tag is MAGE [secondary Support] so default_for_champion routes her to mage/ds.ability which LEADS never-built Liandry's #1 + Blackfire #2 for her dominant enchanter build [Imperial Mandate absent], while the enchanter/ds.hps reroute PERFECTLY serves her real heal-shield core [Helia #1/Ardent #2/Imperial Mandate #7/Moonstone #9]; UNLIKE Janna/Ivern whose Support-primary tag defaults to enchanter and SERVES them; fix = role-aware default [route support-Karma to enchanter], the Galio RM-55 inverted twin + Bel'Veth RM-49 "default-route mis-serves, reroute serves" shape; research LEANED REFUTE, the engine probe's default-mage-mis-route resolved it to GAP).
-- **KEY batch10 insight:** TWO probe-overrides-research this batch - Jinx (research REFUTE -> GAP, the Caitlyn burst-blend defect) + Karma (research REFUTE -> GAP, the default MAGE route mis-serving her dominant enchanter build) - BOTH cases where the research evaluated the RIGHT scorer but the engine's DEFAULT route is the WRONG one (the two-line convergence is exactly what caught them). The AD-caster family (Corki/Ezreal) gains its DEEPEST member (Jayce - Manamune fully absent from top-40); the crit-marksman burst-blend family (Caitlyn/Draven) gains a Caitlyn-IDENTICAL twin (Jinx); the enchanter cluster gains its FIRST default-route GAP (Karma) via the Mage-vs-Support primary-tag discriminator (Support-primary Janna/Ivern = REFUTE, Mage-primary Karma = GAP); and the tank cluster confirms the Mundo resist->damage REFUTE on a second champ (K'Sante), reliably split from the AP-tank-RUSH GAPs by "is a SEPARATE off-axis core omitted."
-
-**NEXT SESSION: strict ALPHABETICAL, next-up = Karthus**, then Kassadin, Katarina, Kayle, Kayn (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch10.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct NOT `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; resolve each champ's primary via `core.archetype_picks.default_for_champion` then `rank_for_primary_archetype` + reroutes at top=40/140; dump full top-40 to JSON for post-research signature lookup). Skip resolved (Aatrox..Karma + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Karthus (AP sustained-DoT mage - R global + E Defile AoE DoT + %HP-ish - REFUTE-leaning Brand/Cassiopeia sustained-DoT [Liandry's lead correct], or a burst/mana-item scope limit?); Kassadin (AP anti-mage burst/assassin - R Riftwalk stacking + mana-hungry Rod-of-Ages/Rylai's core; burst-mage Liandry's over-lead like Gragas, or mana-item scope limit? check if in `_AP_ASSASSIN_IDS`); Katarina (AP burst assassin - the Akali RM-41 note PRE-FLAGGED her as `_AP_ASSASSIN_IDS` cohort "Fizz/Katarina Trinity #2", so likely GAP RM-41 SHARED [no new RM] like Diana/Ekko/Evelynn/Fizz - VERIFY the Trinity/ER AD-pollution rank); Kayle (AP scaling on-hit/ranged hyper-carry - Nashor's + AP + on-hit; watch AP-on-hit mis-route like Gwen RM-61 / Azir RM-48, and her Fighter primary tag may route her to bruiser [physical] = a possible default-route GAP like Karma); Kayn (AD, two forms - Rhaast ability-bruiser drain vs Shadow Assassin lethality; Fighter/Assassin -> bruiser primary; watch ability-bruiser Aatrox-family or lethality-assassin). Next GAP spec = RM-70.
-
----
-
-# 2026-07-17 (DS meta-valuation sweep - Karthus..Kayn batch11, 5 GAP + 0 REFUTE; read-only, NO engine change; strict-alpha A->Z)
-
-Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40 + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 64 -> 69/173 (GAP 45, REFUTE 21, FENCED 3), remaining 104. FIVE GAP, ZERO REFUTE - the THIRD GAP-dense batch (after batch7/batch8). Probe rebuilt as `probe_batch11.py` (scratchpad is session-scoped; dumps full top-40 to JSON per champ). Memories `project_ds_sweep_{karthus_blackfire_underled,kassadin_mana_stack_burst,katarina_burst_ad_pollution,kayle_onhit_ap_overlead,kayn_twoform_route}`.
-
-- **Karthus GAP RM-63 SHARED** (the Heimerdinger/Hwei ds.ability Blackfire-under-led-by-Liandry's cohort, the DEEPEST instance: sustained-DoT / AoE-poke mage [jungle-primary] whose signature FIRST Blackfire Torch [600 mana + 20 AH + burn] is buried #2 under Liandry's #1; his real 2nd Shadowflame #3 / Rabadon's #4 / Void #7 correctly surfaced, mana items buried [Archangel's #20, Rylai's #25, RoA #35]; DEEPER than Heimer/Hwei because his leader Liandry's is SITUATIONAL-only for him [not a real 2nd-core] and his distinguishing WHY is the E Defile 30-78 mana/sec SINK -> Blackfire's mana+AH is mechanically mandatory, Liandry's gives neither; same defect+fix -> SHARED, no new RM; his sustained-DoT profile IS right [Brand/Cassiopeia family] - only the top-item order + mana-discriminator are off).
-- **Kassadin GAP RM-70** (NEW - the first mana-stack-signature champ: a FRONT-LOADED single-combo AP anti-mage burst-assassin whose DEFAULT mage/ds.ability route [axis-corrected off his Assassin tag] over-leads never-built sustained-DoT Liandry's #1 [the Gragas RM-59 burst-mage shape - WRONG since he is burst not DoT] AND whose signature Rod of Ages #30 + Archangel's #18 + Malignance #10 mana-stack core is buried by EVERY scorer [mana-as-damage unmodeled, stronger than Cassiopeia/Anivia]; the assassin/ds.burst reroute is a better home [Rabadon's #1, Shadowflame #2, no Liandry's-lead; AD-pollution DEEP at Trinity #17 - shallow because his pure-magic kit has near-zero AD-residual, the mechanistic INVERSE of Katarina's Trinity #2] but STILL buries RoA #37; KEY DISCRIMINATOR vs the Cassiopeia sustained-DoT REFUTE = is the Liandry's #1 lead CORRECT for the damage profile? Cassiopeia yes -> REFUTE-scope-limit; Kassadin no -> GAP; fix = reroute to burst/_AP_ASSASSIN_IDS + model mana-stack items).
-- **Katarina GAP RM-41 SHARED** (the `_AP_ASSASSIN_IDS` ds.burst AD-pollution cohort - the Akali pre-flag "Fizz/Katarina Trinity #2" CONFIRMED: pure-AP burst assassin [signature Lich Bane], production assassin/ds.burst leads Rabadon's #1 / Trinity #2 / Lich Bane #3 [signature buried 1 slot behind pollution] / ER #4 / BotRK #6 / IE #11 on a 100%-AP champ, EXACTLY the cohort-probe rank; shared with Akali/Diana/Ekko/Evelynn/Fizz, NO new RM; ROOT-CAUSE NUANCE - her R Death Lotus carries residual bonus-AD/AS/on-hit ratios [old-hybrid relic] so she is the cohort member with the MOST-legitimate AD-residual [least-hallucinated pollution] yet the meta is still 100% AP [optimal-not-winrate: discount the residual]; intra-cohort Lich Bane #3 = mid, between Fizz [#1 led] and Evelynn/Ekko [buried #4+]).
-- **Kayle GAP RM-71** (NEW - the Gwen RM-61 ds.onhit family, a deeper AD-polluted sub-shape: AP-on-hit hybrid hyper-carry whose DEFAULT onhit/ds.onhit route [Slice B roster CORRECTLY routes her here NOT bruiser -> the FIGHTER-tag-mis-route hypothesis REFUTED, Slice B did its job] leads AD/physical-on-hit BotRK #1 / Kraken #4 / Statikk #5 + crit Trinity #6 / IE + %maxHP-DoT Liandry's #3 [all never-built] and buries her signature Nashor's Tooth #7 + 2nd core Dusk and Dawn #11, with her AP-amp core [Rabadon's/Shadowflame/Void] ABSENT from the entire top-40; THREE defects - an AD-off-class leak [the RM-41 analog in ds.onhit, driven by her 27% base-AD auto share] + the shared Gwen %maxHP-DoT over-lead + AP-amp absent; DISTINCT from Gwen [surfaced her AP-on-hit Dusk&Dawn #2-4 high with NO physical-on-hit lead] + Azir RM-48 [ds.onhit fully fails there, serves the axis here]; she is a hybrid AP-caster + on-hit whose scorer must value BOTH AP-amp AND AS/on-hit).
-- **Kayn GAP RM-72** (NEW - the first TWO-FORM/transform champ: a single default bruiser/ds.hybrid route serves NEITHER form - it leads never-built Trinity #1 / on-hit BotRK #2 and buries Rhaast's ability-haste signature Spear of Shojin [ABSENT top-40, the Aatrox/Hecarim/Jarvan family] + Black Cleaver [#30 tanky / absent squishy], AND the PLURALITY + highest-WR Shadow Assassin lethality build is an entirely DIFFERENT unserved archetype [the assassin reroute surfaces the lethality core Youmuu's #6 / Axiom Arc #5 / Serylda's #19 but leads ER #1 / Trinity #2 and is NOT the default]; correction to the watch-hypothesis - Sundered Sky is NOT a current Kayn item; fix = form-aware routing [Rhaast -> ability-bruiser; Shadow Assassin -> lethality/burst; the engine has form_index plumbing]).
-- **KEY batch11 insight:** the K-cohort is the THIRD GAP-dense batch (5/5) with THREE distinct NEW shapes - the first mana-stack-signature champ (Kassadin: RoA/Archangel's/Malignance buried by every scorer, the mana-as-damage scope limit that even a correct burst reroute misses), the first ds.onhit AD-off-class-leak (Kayle: the RM-41 pollution analog for the on-hit scorer, driven by her 27% base-AD auto share), and the first TWO-FORM champ (Kayn: no single default archetype can represent both Rhaast-bruiser + Shadow-Assassin-lethality) - PLUS two shared-RM confirmations (Karthus deepens the Heimer/Hwei RM-63 Blackfire-under-led cohort with a mana-sink WHY; Katarina confirms the Akali RM-41 pre-flag as the cohort's most-legitimate-AD-residual member). Recurring discriminator sharpened: a Liandry's #1 lead is a GAP or a REFUTE depending ONLY on whether the champ's damage profile is sustained-DoT (Karthus/Cassiopeia yes -> right, so REFUTE or a milder one-slot-order GAP) vs front-loaded burst (Kassadin no -> wrong -> GAP). Two-line convergence caught two probe-vs-research contrasts again: Kassadin (research LEANED "mana-item scope limit" -> probe showed the wrong DoT lead makes it a GAP) and Kayn (research flagged both forms -> probe confirmed the default route serves neither).
-
-**NEXT SESSION: strict ALPHABETICAL, next-up = Kennen**, then Kha'Zix, Kindred, Kled, Kog'Maw (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch11.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON for post-research signature lookup). Skip resolved (Aatrox..Kayn + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: Kennen (AP on-hit/burst mage-marksman hybrid - Mage/Marksman tags; ranged shuriken + W Lightning Rush on-hit + R Slicing Maelstrom AoE stun-burst; watch AP-on-hit mis-route like Kayle/Gwen [onhit-roster?] OR a burst-mage Liandry's over-lead); Kha'Zix (AD lethality evolve burst assassin - Assassin primary -> ds.burst; watch the Zed/Talon/Qiyana FENCED pure-lethality-data-refuted reasoning [likely REFUTE-leaning] vs a genuine served-carry); Kindred (AD crit/on-hit marksman jungle - Q Dance + W passive-stack on-hit + marks; watch crit-marksman burst-blend over-lead [Caitlyn family GAP] vs on-hit-served [Kalista REFUTE]); Kled (AD bruiser mounted/dismounted - Q Bear Trap + Violent Tendencies AS on-hit; watch ability-bruiser Aatrox-family GAP vs on-hit-served); Kog'Maw (TWO builds like a form-split - AD on-hit hyper-carry [W Bio-Arcane %maxHP-magic on-hit + crit] AND AP artillery [R Living Artillery poke]; the Slice B comment names "Kog'Maw-AP" in the onhit-roster, so watch a two-build routing GAP like Kayn/Kayle). Next GAP spec = RM-73.
-
----
-
-# 2026-07-18 (DS meta-valuation sweep - Kennen..Kog'Maw batch12, 4 GAP + 1 REFUTE; read-only, NO engine change; strict-alpha A->Z)
-
-Continued the A->Z all-173 sweep (operator "next 5"; methodology `feedback_ds_sweep_meta_valuation_research`; tracker `docs/DS_SWEEP_TRACKER.md`). mode_key=client, no live game. Two-line methodology per champ (production DS :8893 engine-probe, engine 1.216.0 / patch 16.14.1, tanky(armor100/mr60/hp2500/bonus1200)+squishy(30/30/1900/800) x L11/L16 + reroutes at top40 + a HIGH-conf meta-research subagent, 5-7 aggregators + kit/wiki, CONVERGED). Tier-0 docs/memory only, no .py. Resolved 69 -> 74/173 (GAP 49, REFUTE 22, FENCED 3), remaining 99. FOUR GAP + ONE REFUTE. Probe rebuilt as `probe_batch12.py` (dumps full top-40 to JSON per champ). Memories `project_ds_sweep_{kennen_burst_mage_rocketbelt,khazix_lethality_refute,kindred_crit_hybrid_overlead,kled_health_bruiser,kogmaw_twobuild_onhit_route}`.
-
-- **Kennen GAP RM-73** (the Ahri/Annie/Aurora/Elise/Gragas burst-mage-BURIED family, 6th member: full-AP AoE burst DIVER [top ~75%], NO on-hit in the meta, signature FIRST = Hextech Rocketbelt [~25% pick, burst+engage active]; production mage/ds.ability leads Liandry's Torment #1 [%maxHP-DoT, WRONG for a front-loaded burst champ - the Gragas TRAP] + Blackfire #2 and BURIES his signature Rocketbelt #28 [the engine cannot value active-engage utility], his burst core Shadowflame #4/Rabadon's #3/Zhonya's #10/Void #7 DOES surface; TWO issues - HARD Liandry's-over-burst lead + SOFT Rocketbelt-can't-value scope limit [Fiora Ravenous-Hydra species]; Liandry's is FRINGE ~50% WR not core).
-- **Kha'Zix REFUTE** (the Zed/Talon/Qiyana RM-34 FENCED lethality-assassin family, 4th member: AD lethality burst assassin [jungle ~95%], 100% lethality, signature Umbral Glaive -> Voltaic -> Edge of Night -> Youmuu's -> Serylda's, ZERO crit/on-hit/bruiser; production assassin/ds.burst leads ER #1/Trinity #2/BotRK #3/IE #6 over his lethality core [Umbral #5 SURFACED, Youmuu's #8, Collector #13] - EXACTLY the FENCED pattern; his lethality items are high-AD+pen so the carry/burst scorer ranks them WITHOUT a lethality lever, and the pure-lethality-weighting fix is the SAME change DATA-REFUTED [R114 sim-incoherent + R115 win-table buried-losers, LEDGER 889]; his wrinkles [isolation-amp/evolves/W-heal/passive magic] affect burst MAGNITUDE not the item AXIS; do NOT re-pitch lethality-weighting).
-- **Kindred GAP RM-74** (the Caitlyn RM-50/Draven RM-53/Jinx RM-68 crit-marksman burst-blend family, a MILD HYBRID: AD marksman jungle [~97%] that OPENS on-hit Kraken then builds full CRIT [Collector->IE->LDR], BotRK/Runaan's NOT core; production carry/ds.dps burst-blend leads never-built BotRK #1 + Runaan's #2 over her signature Kraken #3 + scatters her crit trio IE #5/Collector #11/LDR #13; MILDER than Caitlyn/Jinx [her Kraken opener IS on-hit so a Kraken-high is partly right + crit surfaced not buried #16] but the bright-line holds [engine #1 BotRK != her real signature Kraken]; the on-hit-served REFUTE CONTRAST Kalista/Varus = THEIR BotRK #1 IS real, Kindred's is not).
-- **Kled GAP RM-75** (NEW health-scaling-bruiser sub-shape of the Aatrox/Hecarim/Jarvan ds.hybrid family: AD health-scaling juggernaut [top ~91%], signature Titanic Hydra [bonus-health on-hit-cleave] + armor-shred Black Cleaver buried #13/#32 while ds.hybrid leads never-built BotRK #1 + off-meta Trinity #3 + crit; KEY = the "FALSE on-hit match" - his W Violent Tendencies IS on-hit so BotRK #1 superficially matches, but his on-hit is HEALTH-scaling [%maxHP] not AS/current-HP so BotRK is NEVER-built; axis = max-health+armor-shred, distinct from ability-HASTE Aatrox/Hecarim/Jarvan [Shojin] + the Camille/Fiora Sheen-REFUTE).
-- **Kog'Maw GAP RM-76** (NEW two-BUILD routing - the Slice B "Kog'Maw-AP" default route serves his MINORITY build: TWO builds - AD on-hit hyper-carry DOMINANT ~85% [signature BotRK/Guinsoo's] + AP artillery MINORITY ~15%; default onhit/ds.onhit [ds_onhit_ap_roster.json coherence 0.6] leads Liandry's #1 [%maxHP-DoT, the AP-artillery item] + AP-on-hit Dusk&Dawn/Nashor's and pushes his DOMINANT AD-on-hit core BELOW [BotRK #6/Kraken #10]; the carry/ds.dps reroute cleanly leads BotRK #1; the Kayn RM-72 two-form / Karma RM-69 default-mis-serves-dominant cousin, but a PARTIAL mismatch [coherence 0.6: on-hit FAMILY routing directionally right + Guinsoo's #2 surfaces + build genuinely uses some AP]).
-- **KEY batch12 insight:** FOUR family-extensions + ONE class-REFUTE - the burst-mage-BURIED family reaches 6 (Kennen, with a can't-value-active-engage Rocketbelt wrinkle), the crit-marksman burst-blend family gains a MILD hybrid (Kindred, whose on-hit Kraken opener makes the lead partly-right), the ds.hybrid bruiser family gains a NEW health-scaling sub-shape (Kled, the "false on-hit match" - health-scaling W-on-hit != item-on-hit), and the two-build-routing family gains a two-BUILD member (Kog'Maw, Slice-B-serves-minority-AP); PLUS the Zed/Talon/Qiyana FENCED lethality-assassin REFUTE is confirmed on a 4th champ (Kha'Zix - the lethality under-lead is a KNOWN data-refuted pattern, NOT a new GAP). Recurring discriminator: a never-built-on-hit/spellblade LEAD is a GAP unless the champ's real signature IS that item (Kalista/Varus REFUTE) OR the fix is the data-refuted lethality-weighting (Kha'Zix/Zed FENCED).
-
-**NEXT SESSION: strict ALPHABETICAL, next-up = LeBlanc**, then Lee Sin, Leona, Lillia, Lissandra (tracker `docs/DS_SWEEP_TRACKER.md`). Read-only GAP-or-REFUTE pass FIRST per champ; a REFUTE is valid. Reconstruct the probe from `probe_batch12.py` (item_ids=[] for the FIRST item, timeout>=30s; ds.hybrid rows key hybrid_delta_pct not `delta`; the row carries `item_name`; fight_length carries sort by a burst-blend - TRUST RANK ORDER; probe hits production :8893, resolve each champ's DEFAULT route via `core.archetype_picks.default_for_champion` [Slice A `_AP_ASSASSIN_IDS` -> assassin/burst; Slice B onhit-roster -> onhit; else axis-corrected tag] then `rank_for_primary_archetype` + reroutes at top=40; dump full top-40 to JSON). Skip resolved (Aatrox..Kog'Maw + Corki/Ezreal/Jhin/Kai'Sa/Lucian/MF/Varus + FENCED Zed/Talon/Qiyana). Per-champ watch: LeBlanc (AP burst assassin/mage - mimic R chain-combo; check `_AP_ASSASSIN_IDS` membership [the Akali cohort note said "except Leblanc", so she may NOT leak the Trinity/ER AD-pollution - verify]; else a burst-mage Liandry's over-lead like the Gragas/Ahri family with her signature Malignance/Luden's/Shadowflame buried); Lee Sin (AD early-game skirmisher jungle - bruiser [Eclipse/Trinity/Black Cleaver/Sundered] OR lethality [Youmuu's/Profane]; watch ability-bruiser Aatrox-family GAP vs the FENCED lethality REFUTE vs served); Leona (tank support - the Alistar/Blitzcrank/Braum tank-support REFUTE, zero damage, engage; tank/ds.ehp self-durability served); Lillia (AP sustained-DoT/burn jungle - passive Dream-Laden Bough %maxHP burn + Liandry's/Blackfire/Riftmaker; watch the Brand/Cassiopeia sustained-DoT REFUTE [Liandry's lead correct] vs a burst-mage GAP); Lissandra (AP burst/control mage - Rocketbelt/Ludens/Liandry's, R self-freeze; watch the Gragas/Kennen burst-mage-BURIED family Liandry's over-lead vs served)). Next GAP spec = RM-77.
-
----

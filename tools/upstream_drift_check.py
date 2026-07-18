@@ -310,6 +310,35 @@ def trigger_refresh() -> tuple[bool, str]:
 
 
 # --------------------------------------------------------------------------- rendering
+def run_staleness_recent(days: int = 7) -> tuple[bool, str]:
+    """RM-81 daily watchdog: re-check champions whose wiki Data pages changed.
+
+    Deliberately NOT drift-gated. A champion's live values can change without
+    any ddragon/meraki/cdragon version moving (and when a version DOES move a
+    full re-extract runs anyway), so gating this on ``any_drift`` would fire it
+    exactly when it is least needed.
+
+    Fail-soft: returns ``(False, reason)`` on any failure and never raises, so
+    an unreachable wiki cannot flip the drift detector's exit code.
+    """
+    try:
+        tools_dir = str(Path(__file__).resolve().parent)
+        if tools_dir not in sys.path:
+            sys.path.insert(0, tools_dir)
+        import ds_wiki_staleness_check as sc
+
+        champs = sc.champions_from_titles(sc.fetch_recent_titles(days=days))
+        if not champs:
+            return True, f"no Data-template edits in {days}d"
+        patch = sc._current_patch()
+        report = sc.run(patch, champs)
+        # checked=champs -> merge, so this narrow pass cannot erase a full sweep.
+        sc.write_report(report, patch, checked=champs)
+        return True, f"checked {len(champs)} champ(s)"
+    except Exception as e:  # noqa: BLE001 - side effect never fatal
+        return False, f"{type(e).__name__}: {e}"
+
+
 def _fmt(val: str | None) -> str:
     return val if val is not None else "-"
 
@@ -341,6 +370,12 @@ def main(argv: list[str] | None = None) -> int:
                         "RC-UpstreamDriftCheck task + tests.")
     p.add_argument("--auto-refresh", action="store_true",
                    help="on drift, trigger the ddragon mirror refresh")
+    p.add_argument("--staleness-recent", action="store_true",
+                   help="RM-81: re-check champions whose wiki ability pages "
+                        "changed recently and refresh ability_staleness.json. "
+                        "Runs regardless of drift; never affects the exit code.")
+    p.add_argument("--staleness-days", type=int, default=7, metavar="N",
+                   help="lookback window for --staleness-recent (default 7)")
     p.add_argument("--json", default=None, metavar="PATH",
                    help="also dump the full structured report to PATH")
     p.add_argument("--patch", default=None, metavar="PIN",
@@ -399,6 +434,16 @@ def main(argv: list[str] | None = None) -> int:
             return 1 if drift else 0
 
         advance_sentinel(previous, current, fields, drift=drift)
+
+        if args.staleness_recent:
+            # run_staleness_recent is already fail-soft, but guard the call site
+            # too (as the bridge-note / auto-refresh sites do) so a refactor that
+            # drops that guarantee cannot turn a wiki outage into exit 2.
+            try:
+                ok, detail = run_staleness_recent(days=args.staleness_days)
+                logger.info("staleness-recent: ok=%s detail=%s", ok, detail)
+            except Exception as e:  # noqa: BLE001 - side effect never fatal
+                logger.warning("staleness-recent raised: %s", e)
 
         if drift:
             changed = ", ".join(f.name for f in fields if f.changed)
