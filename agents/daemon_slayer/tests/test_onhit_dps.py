@@ -88,12 +88,41 @@ def test_nashors_surfaces_with_coherence(champ, coh):
 
 
 def test_coherence_off_is_byte_identical():
-    snap = DataSnapshot.load()
+    """The OFF path must be provably byte-identical, not merely plausible.
+
+    Ranks once with ``ap_ad_coherence`` OMITTED and once with an explicit 0.0,
+    then compares the FULL ordered row list as (item_id, delta_dps) pairs, so a
+    silent reordering OR a delta change is caught. Mirrors the real default-off
+    pattern at ``test_cost_aware_top_f2.py:60-62``.
+
+    Before 2026-07-18 this test asserted only that one item was present after a
+    single ranking call. It never built a second ranking, so it would have
+    stayed green even if the 0.0 path had stopped being byte-identical.
+
+    The final assertion gives the comparison TEETH. Gwen is AP-axis, so an
+    active gate MUST reorder her ranking; without that check a byte-identity
+    assertion can pass vacuously against a comparison that detects nothing.
+    """
     T = dict(target_armor=105.0, target_mr=52.0, target_max_hp=2430.0)
-    a = rank_items_by_onhit(snap, "Gwen", 13, current_item_ids=(), mode="SR",
-                            apply_passive_damage=True, ap_ad_coherence=0.0, top_n=12, **T)
+
+    def _rows(**kw):
+        res = rank_items_by_onhit(
+            _RANK_SNAPSHOT, "Gwen", 13, current_item_ids=(), mode="SR",
+            apply_passive_damage=True, top_n=12, **T, **kw
+        )
+        return [(r.item_id, r.delta_dps) for r in res.ranked]
+
+    omitted = _rows()
+    assert omitted == _rows(ap_ad_coherence=0.0), (
+        "ap_ad_coherence=0.0 is not byte-identical to the omitted default"
+    )
+
     # A pure-AD item (BotRK 3153) is NOT gated when coherence is off.
-    assert "3153" in [r.item_id for r in a.ranked]
+    assert "3153" in [item_id for item_id, _ in omitted]
+
+    assert _rows(ap_ad_coherence=1.0) != omitted, (
+        "comparison is insensitive - it would not catch a broken OFF path"
+    )
 
 
 def test_onhit_ranked_row_splits_are_consistent():
