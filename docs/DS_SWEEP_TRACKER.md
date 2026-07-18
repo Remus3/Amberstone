@@ -12,6 +12,15 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 - Resolved: 104 / 173  (GAP 70, REFUTE 31, FENCED/data-refuted 3)
 - Remaining: 69
+- **COUNT INTEGRITY (fixed 2026-07-18, batch18).** The header count above and the
+  `## Full roster` checkboxes are two independent records and they had silently
+  diverged by 10: batch16 and batch17 wrote their per-champion verdict entries and
+  incremented this count, but never flipped the ten roster checkboxes
+  (Morgana / Naafiri / Nami / Nasus / Nautilus / Neeko / Nidalee / Nilah / Nocturne /
+  Nunu & Willump). Backfilled in batch18; roster and header now agree exactly
+  (70 + 31 + 3 = 104 resolved, 69 pending, 173 total). **Verify the ROSTER, not this
+  line, when reporting progress - and re-run the count after every batch.** One-liner:
+  `grep -c '^- \\[ \\]' docs/DS_SWEEP_TRACKER.md` must equal Remaining.
 - Next up (strict alphabetical): Pyke. Next GAP spec = RM-88.
 - batch16 (2026-07-18): Morgana [GAP RM-84, FIXED], Naafiri [GAP RM-83], Nami [REFUTE], Nasus [GAP RM-85], Nautilus [REFUTE].
 - batch17 (2026-07-18): Neeko [GAP RM-86], Nidalee [GAP RM-86], Nilah [GAP RM-86 + route], Nocturne [GAP RM-86], Nunu [GAP route].
@@ -284,16 +293,16 @@ chain in `docs/specs/DECISION_riot_patch_note_backfill.md`.
 - [REFUTE] Milio
 - [GAP RM-35] Miss Fortune
 - [GAP RM-82] Mordekaiser
-- [ ] Morgana
-- [ ] Naafiri
-- [ ] Nami
-- [ ] Nasus
-- [ ] Nautilus
-- [ ] Neeko
-- [ ] Nidalee
-- [ ] Nilah
-- [ ] Nocturne
-- [ ] Nunu & Willump
+- [GAP RM-84] Morgana
+- [GAP RM-83] Naafiri
+- [REFUTE] Nami
+- [GAP RM-85] Nasus
+- [REFUTE] Nautilus
+- [GAP RM-86] Neeko
+- [GAP RM-86] Nidalee
+- [GAP RM-86] Nilah
+- [GAP RM-86] Nocturne
+- [GAP route] Nunu & Willump
 - [GAP RM-39] Olaf
 - [GAP RM-40] Orianna
 - [GAP RM-87] Ornn
