@@ -1,0 +1,43 @@
+{
+  "_comment": "Slice C (2026-07-18, RM-84) - Support-tag archetype ROUTE corrections. Consumed by core.archetype_picks.default_for_champion via core.ds_support_route_overrides.load_support_route_overrides(). WHY: tag_to_archetype('Support') == 'enchanter', so all 18 Support-tag-first champions route to ds.hps. axis_correct_archetype only resolves AD-vs-AP conflicts, so it rescues Pyke (Assassin) and Senna (Marksman) but CANNOT see an AP-vs-AP misroute. Each entry below is adjudicated per champion against live 16.14 Emerald+ pick-rate data, route-first: an override lands only when the CURRENT route's top-3 items have a ~0% real pick rate AND the target route's pool is the right item family. Champions with no expressible route are deliberately ABSENT (see _held). ASCII only.",
+  "_evidence_patch": "16.14",
+  "_evidence_sources": "aggregator A + aggregator D Emerald+ 16.14; enchanter-pool probe = Echoes of Helia > Ardent Censer > Staff of Flowing Water > Locket > Knight's Vow > Redemption, byte-identical for every champion routed to it",
+  "_held": {
+    "_comment": "Adjudicated and deliberately NOT overridden - no current scorer expresses these kits. Flipping them would swap one anchor violation for another. Tracked for a future scorer, not a routing fix.",
+    "Renata Glasc": "Real build splits tank-engage (Locket ~50%, Knight's Vow ~10%) against utility-mage (Imperial Mandate ~40%, Shurelya's ~25%), with Redemption ~15% genuinely inside the enchanter pool. No single route dominates; tank would drop Mandate/Shurelya's, mage would offer Liandry's/Blackfire which she never builds.",
+    "Zilean": "Real build is AP UTILITY (Solstice Sleigh 57.5%, Shurelya's, Imperial Mandate, Locket, Cosmic Drive). Liandry's, Luden's, Malignance and Rylai's are ALL absent, so the mage route's top-2 (Liandry's > Blackfire) would be a fresh never-build violation; the tank route's Randuin's/Jak'Sho are equally absent. Unrepresentable by any of the 7 scorers."
+  },
+  "champions": {
+    "Morgana": {
+      "primary": "mage",
+      "secondary": "enchanter",
+      "confidence": "high",
+      "evidence": "Liandry's Torment leads her legendaries (45.7% first-item on aggregator D Em+, ~12.6% on aggregator A's slot-1 table) with Blackfire, Rylai's and Zhonya's behind it; the mage route returns exactly that order. Ardent Censer and Staff of Flowing Water - the enchanter route's #2 and #3 - have a literal 0.00% pick rate at every build depth in every role, across aggregator A's full ~19,100-game support table complete down to 0.41%."
+    },
+    "Thresh": {
+      "primary": "tank",
+      "secondary": "enchanter",
+      "confidence": "medium",
+      "evidence": "Tank-engage warden: Solstice Sleigh 53.03% quest, then Locket, Zeke's, Knight's Vow, Thornmail (55.47% WR at 4th). All six heal/shield-throughput legendaries are ZERO. Tank is the right FAMILY; see _aura_caveat."
+    },
+    "Rakan": {
+      "primary": "tank",
+      "secondary": "enchanter",
+      "confidence": "medium",
+      "evidence": "Celestial Opposition 65.19% quest, Solstice Sleigh 28.76%, then Locket + Knight's Vow + Zeke's co-occurring in a 13.35% core build. Only Redemption appears at ~1.4% (227 games, 4th item); the other five enchanter legendaries are ZERO. Single DDragon tag ['Support'], so the tag path had no secondary to fall back to."
+    },
+    "Taric": {
+      "primary": "tank",
+      "secondary": "enchanter",
+      "confidence": "medium",
+      "evidence": "Warden/armor: Solstice Sleigh 31.26% vs Dream Maker 30.16% quest split, then Knight's Vow ~13.9%, Locket ~3.3%, Frozen Heart, Zeke's ~1.7%. All six enchanter LEGENDARIES are ZERO on both sources; the Dream Maker share is a support-quest item, not a legendary, so it does not evidence the ds.hps pool."
+    },
+    "Bard": {
+      "primary": "tank",
+      "secondary": "enchanter",
+      "confidence": "medium-low",
+      "evidence": "Tank-engage: Dead Man's Plate ~11.4%, Locket ~2.9%, Knight's Vow present. Ardent, Staff, Moonstone and Helia are ZERO (Mikael's ~6.4% and Redemption are the only enchanter-pool showings). CAVEAT: the two sources disagree on his quest item - aggregator A reads Bloodsong 58.69% (an AD upgrade), aggregator D reads Solstice Sleigh leading. The legendary tail is tank on both, which is what the route selects; re-check the quest split next sweep."
+    }
+  },
+  "_aura_caveat": "Thresh / Rakan / Taric / Bard really build ALLY-AURA tank items (Locket, Knight's Vow, Zeke's, Solstice Sleigh). The tank route (ds.ehp) values SELF EHP, so it leads with Randuin's / Jak'Sho / Kaenic Rookern / Warmog's instead. That is the SETTLED team-aura scope limit (same limit logged in the Nautilus and Nami REFUTE verdicts), not a new defect. The override is still a strict improvement under the engine anchor: it stops the engine offering Echoes of Helia / Ardent Censer / Staff of Flowing Water as the top 3 to champions who never buy them at any depth."
+}

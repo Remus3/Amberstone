@@ -676,7 +676,7 @@ class AbilitiesSnapshot:
         prefer_cdragon_ratios: bool = True,
         apply_cdragon_resource_guard: bool = False,
         cdragon_root: Path | None = None,
-        strict_cdragon_patch: bool = False,
+        strict_cdragon_patch: bool = True,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -726,15 +726,17 @@ class AbilitiesSnapshot:
         legacy Meraki-only path - the sidecar is never read and forms are
         byte-identical to the pre-cutover behavior.
 
-        ``strict_cdragon_patch`` (default False / OFF) enforces the stale-copy
-        guard in ``_load_cdragon_ratio_sidecar``: when True, a sidecar whose own
-        ``patch`` field does not match ``patch`` is DROPPED and Meraki stays
-        authoritative. The mismatch is logged at WARNING either way - only the
-        enforcement is gated. Default OFF because the live 16.14.1 sidecar is a
-        verbatim 16.11.1 copy that currently overrides Meraki ratios on 49 of 171
-        champions (55 blocks / 75 fields), so flipping this belongs with the
-        16.14 re-extract as one deliberate, diffed change - not as a side effect
-        of adding the detector.
+        ``strict_cdragon_patch`` (default True / ON since the 16.14 re-extract)
+        enforces the stale-copy guard in ``_load_cdragon_ratio_sidecar``: a
+        sidecar whose own ``patch`` field does not match ``patch`` is DROPPED and
+        Meraki stays authoritative. The mismatch is logged at WARNING either way
+        - only the enforcement is gated. It shipped OFF for exactly one commit
+        (the detector, LEDGER 935) because the then-live 16.14.1 sidecar was a
+        verbatim 16.11.1 copy overriding Meraki on 49 of 171 champions (55 blocks
+        / 75 fields); re-extracting at 16.14 made the payload patch match the
+        directory, so enforcement is now a no-op on the shipped data and only
+        bites if a future patch-refresh copies a sidecar forward again. Pass
+        False only to reproduce pre-guard behavior in a test.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:

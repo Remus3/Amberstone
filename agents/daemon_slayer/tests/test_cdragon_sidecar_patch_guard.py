@@ -180,11 +180,23 @@ def test_strict_drops_sidecar_missing_patch(tmp_path: Path) -> None:
     assert _lux_q_ap(snap) == tuple(_MERAKI_AP)
 
 
-def test_default_is_non_strict_byte_identical(tmp_path: Path) -> None:
-    # Deliberate: the stale sidecar STILL applies by default so this guard lands
-    # without moving engine output. Enforcement flips with the 16.14 re-extract.
+def test_default_is_strict_stale_sidecar_dropped(tmp_path: Path) -> None:
+    # Flipped with the 16.14 re-extract: a sidecar whose payload patch does not
+    # match its directory is DROPPED by default and Meraki stays authoritative.
+    # On the shipped 16.14.1 data this is a no-op (payload patch == directory);
+    # it only bites if a future patch-refresh copies a sidecar forward again.
     _write(tmp_path, _STALE)
     snap = AbilitiesSnapshot.load(patch=_PATCH, data_root=tmp_path)
+    assert _lux_q_ap(snap) == tuple(_MERAKI_AP)
+
+
+def test_non_strict_opt_out_still_applies_stale(tmp_path: Path) -> None:
+    # The pre-guard behavior remains reachable for tests that need to reproduce
+    # it; only the DEFAULT moved.
+    _write(tmp_path, _STALE)
+    snap = AbilitiesSnapshot.load(
+        patch=_PATCH, data_root=tmp_path, strict_cdragon_patch=False
+    )
     assert _lux_q_ap(snap) == tuple(_CD_AP)
 
 
