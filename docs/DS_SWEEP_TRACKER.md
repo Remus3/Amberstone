@@ -10,8 +10,11 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 169 / 173  (GAP 132, REFUTE 34, FENCED/data-refuted 3)
-- Remaining: 4
+- Resolved: 173 / 173  (GAP 135, REFUTE 35, FENCED/data-refuted 3)
+- Remaining: 0  -  **ROSTER CLOSED 2026-07-18 (batch32).** The operator-directed
+  all-173 alphabetical sweep that began at Aatrox is COMPLETE. Do NOT re-open it
+  or re-scan for uncovered champions; further growth needs a schema lift, not
+  another roster pass.
 - **COUNT INTEGRITY (fixed 2026-07-18, batch18).** The header count above and the
   `## Full roster` checkboxes are two independent records and they had silently
   diverged by 10: batch16 and batch17 wrote their per-champion verdict entries and
@@ -35,7 +38,8 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   find-and-replace across them silently no-ops. Edit each line individually and
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
-- Next up (strict alphabetical): Ziggs. Next GAP spec = RM-96.
+- Next up (strict alphabetical): NONE - roster closed at Zyra 2026-07-18.
+  Next free GAP spec = RM-98 (RM-96 Zilean + RM-97 Zyra assigned in batch32).
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
   engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
   `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
@@ -89,6 +93,77 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - batch31 (2026-07-18): Yunara [GAP RM-92], Yuumi [GAP RM-92, MOST COMPLETE
   INSTANCE IN THE SWEEP], Zaahen [GAP RM-95 NEW], Zac [GAP RM-92], Zeri [GAP RM-86].
   **Fifteen GAPs, zero REFUTEs - the THIRD consecutive zero-REFUTE batch.**
+- batch32 (2026-07-18): Ziggs [REFUTE], Zilean [GAP RM-96 NEW], Zoe [GAP RM-40],
+  Zyra [GAP RM-97 NEW]. **ROSTER CLOSED - 173/173.** Two new shapes in the final
+  four, both found in the two archetypes the sweep probed LEAST (enchanter/ds.hps
+  and pet-damage), which is itself the finding: the tail of an alphabetical sweep
+  is not diminishing-returns territory when the alphabet does not correlate with
+  the archetype coverage. RM-96 and RM-97 are both SPEC-ONLY - no engine change
+  shipped in the research pass.
+- **BATCH32 HEADLINE - the two new shapes are mirror images across two scorers.**
+  RM-96 (Zilean) is `ds.hps` pricing heal/shield-CONDITIONAL passives at FULL value
+  on a champion who cannot trigger them - an OVER-valuation. RM-97 (Zyra) is
+  `ds.ability` pricing a persistent auto-attacking pet at ZERO because a
+  `damage_block` is a per-cast instantaneous magnitude with no slot for it - an
+  UNDER-valuation. Both are the same root category as RM-92 (the objective cannot
+  represent the thing the item or kit actually does), which now spans four scorers.
+- **RM-96 (NEW SHAPE) - `ds.hps` prices heal/shield-CONDITIONAL item passives at
+  full value regardless of whether the champion can trigger them.** The canonical
+  instance is Zilean, whose live enchanter pool is EXACTLY INVERTED at the #4/#5
+  boundary: ranks #1-#4 (Echoes of Helia, Ardent Censer, Staff of Flowing Water,
+  Knight's Vow) have ZERO real pick rate on two independent sources, and ranks
+  #5-#8 (Locket, Imperial Mandate, Redemption, Mikael's) are every real item that
+  exists in the pool. Mechanism, measured by regex over `items.json`: Echoes,
+  Ardent, Staff and Moonstone ALL gate their unique passive on "Healing or
+  Shielding an ally". `champion_abilities.json` (is_current=True, so NOT an RM-81
+  or RM-95 artifact) shows Zilean has ZERO shield blocks anywhere and exactly ONE
+  heal - R Chronoshift, which fires only on FATAL damage at a 120/90/60s cooldown.
+  Three items whose passive he structurally cannot trigger rank #1/#2/#3.
+  **This is the exact mirror of RM-92:** RM-92 is an item doing something real the
+  objective cannot see; RM-96 is an item doing NOTHING the objective credits anyway.
+  Note it is NOT fixed by the champion-invariance work - the invariance control
+  (Zilean / Soraka / Yuumi / Janna / Lulu return byte-identical #1-#8) shows the
+  order is closed-pool-invariant, so per `project_ds_hps_champion_invariant` the
+  adjudication target is the ROUTE and the CONDITIONALITY, not the order.
+- **RM-97 (NEW SHAPE) - persistent pet / summon damage is structurally unmodelled;
+  a `damage_block` has no slot for it.** The canonical instance is Zyra, whose
+  plants are 55-65 percent of her damage (73 percent while R enrages them) and
+  which the ability scorer prices at exactly ZERO. This is a SCHEMA hole, not a
+  missing formula: a `damage_block` is a per-cast instantaneous magnitude, and a
+  persistent auto-attacking entity has no per-cast magnitude to record. Confirmed
+  to GENERALIZE - the same hole applies to Heimerdinger (turrets), Ivern (Daisy)
+  and Yorick (Maiden + ghouls), so this is a four-champion class, not a Zyra
+  accident. Distinguish it from RM-95: the ability data is PRESENT and CURRENT for
+  all four; the schema simply cannot express what the kit does. **Consequence for
+  the RM-86 L2 plan: a pet-damage term is a numerator the scorer does not have, so
+  no monotone-lowering L1 gate can reach it** - same structural verdict already
+  recorded for RM-91 and RM-92.
+  - **Ziggs** (mage) - REFUTE. His ranked head is byte-identical to Xerath's and
+    Vex's for all ten top items (exact-prefix agreement 10, top-20 set identical),
+    so it carries ZERO champion-specific signal and every divergence from his real
+    Luden's-first build is an already-specced cohort template (RM-86 / RM-90 /
+    RM-94), not a Ziggs finding. His one defining trait IS modelled and modelled
+    well: `objdamage.py` registers ('Ziggs','P','STRUCTURE_BONUS','STRUCTURE',
+    magnitude=0.92) - the highest structure magnitude on the roster (next is Yunara
+    0.68) - in an axis that is architecturally default-inert for all 173, the same
+    shape as the boot-utility scorer already adjudicated not-a-gap. Cohort check
+    per RM-90 (which warns that REFUTEs skipping the shipped build order were judged
+    TOO LENIENT): 45 mage-routed champions collapse to 6 distinct shipped builds,
+    44/45 open Liandry's, and Ziggs shares his EXACT 6-item shipped build with 16
+    other champions - so the template is confirmed at the ARTIFACT layer too, and
+    it is a cohort defect already on the books rather than his.
+  - **Zilean** (enchanter) - GAP RM-96, the canonical instance. See the spec above.
+    Route confirmed correct via `core/archetype_picks.py:83`
+    `_TAG_TO_ARCHETYPE['support']='enchanter'`; the axis correction cannot fire
+    because `_ARCHETYPE_AXIS` already maps enchanter->'ap' and he is 0.836 magical,
+    so this is an AP-vs-AP blind spot rather than a routing error.
+  - **Zoe** (mage) - GAP RM-40, and a CLEANER canonical instance than the previous
+    Orianna: BOTH engine head items are absent from her real build while her
+    ~80%-presence Luden's Echo ranks #13. The mechanism is now PROVEN rather than
+    inferred - exact float ties across her ranked rows show `ds.ability` prices
+    every per-cast proc passive at exactly zero. No new spec number; she is a
+    textbook burst-mage instance of the existing family.
+  - **Zyra** (mage) - GAP RM-97, the canonical instance. See the spec above.
 - **BATCH29/30/31 HEADLINE - the defect is ARCHETYPE INVARIANCE, measured twice.**
   This batch stopped producing per-champion findings and started producing one
   systemic measurement, from two independent directions:
@@ -969,7 +1044,7 @@ chain in `docs/specs/DECISION_riot_patch_note_backfill.md`.
 - [GAP RM-92] Zac
 - [FENCED RM-34] Zed
 - [GAP RM-86] Zeri
-- [ ] Ziggs
-- [ ] Zilean
-- [ ] Zoe
-- [ ] Zyra
+- [REFUTE] Ziggs
+- [GAP RM-96] Zilean
+- [GAP RM-40] Zoe
+- [GAP RM-97] Zyra

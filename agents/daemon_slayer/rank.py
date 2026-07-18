@@ -140,11 +140,22 @@ _NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
 })
 
 
-# DDragon-override deny set for items the DDragon ``maps["11"]=True`` flag wrongly
-# admits onto Summoner's Rift (upstream mislabel). Two classes of items live here:
+# Deny set for items that are SR-LEGAL but are NOT free-slot shop purchases, so a
+# "which item should I buy for this slot" ranking must never surface them. Two
+# classes of items live here, and both are QUEST-REWARD classes:
 #
-# 1. ARAM-only support-quest upgrades (maps["12"]=True, maps["11"]=True upstream
-#    bug) - deny unconditionally on SR.
+# 1. World Atlas support-quest line (3865 + the five Bounty of Worlds upgrades).
+#    NOTE (RM-93, 2026-07-18): the original comment here claimed these were
+#    "ARAM-only ... maps[11]=True upstream bug". That was WRONG - DDragon carries
+#    maps["11"]=True AND maps["12"]=False for all eight line items, i.e. the data
+#    correctly says SR-legal / ARAM-illegal (the World Atlas support quest is a
+#    Summoner's Rift system; Howling Abyss has no support quest). The real reason
+#    to deny them is the one already pinned for the enchanter pool in
+#    tests/test_enchanter_pool_hsp_rm90.py:31-36: they are 400g MUTUALLY EXCLUSIVE
+#    quest-progression upgrades (you pick exactly one when Bounty of Worlds 3867
+#    completes), so ranking them against 3000g legendaries is a category error.
+#    Admitting them was MEASURED to put Bloodsong at rank #2 for Vel'Koz and #3
+#    for Jinx - an RM-92 (non-output item) mispricing, not a real recommendation.
 # 2. SR role-quest T3 boot upgrades (3170-3175) - DDragon marks ``purchasable=true``
 #    but in-game these are quest-reward upgrades of the champion's existing T2 boots
 #    (Mid lane: "Upgrade boots to tier 3"; Bot lane: "A bonus item slot for your
@@ -157,10 +168,16 @@ _NON_COACHABLE_ITEM_IDS: frozenset[str] = frozenset({
 # masterwork gates. Modes other than SR use the DDragon maps flag directly (no-op
 # there).
 _SR_EXCLUDED_ITEM_IDS: frozenset[str] = frozenset({
-    # ---- ARAM-only support-quest items (maps[11]=True upstream bug) ----
-    "3865",  # World Atlas - support quest starter, ARAM-only
-    "3871",  # Zaz'Zak's Realmspike - support quest upgrade, ARAM-only
-    "3877",  # Bloodsong - support quest Spellblade upgrade, ARAM-only
+    # ---- World Atlas support-quest line (SR-legal, quest reward not free slot) ----
+    # SIBLING-COMPLETE (RM-93): the starter + ALL FIVE 3867 "into" upgrades. Denying
+    # a strict subset (the pre-RM-93 state denied only 3871 + 3877) let the other
+    # three rank as a contiguous bottom block on every SR route.
+    "3865",  # World Atlas - support quest starter (400g, auto-upgrades)
+    "3869",  # Celestial Opposition - Bounty of Worlds upgrade choice
+    "3870",  # Dream Maker - Bounty of Worlds upgrade choice
+    "3871",  # Zaz'Zak's Realmspike - Bounty of Worlds upgrade choice
+    "3876",  # Solstice Sleigh - Bounty of Worlds upgrade choice
+    "3877",  # Bloodsong - Bounty of Worlds upgrade choice
     # ---- SR role-quest T3 boot upgrades (purchasable=true upstream bug) ----
     "3170",  # Swiftmarch - T3 Boots of Swiftness (quest reward, not direct-buy)
     "3171",  # Crimson Lucidity - T3 Ionian Boots (quest reward, not direct-buy)
