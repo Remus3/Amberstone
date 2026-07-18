@@ -10,8 +10,8 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 139 / 173  (GAP 102, REFUTE 34, FENCED/data-refuted 3)
-- Remaining: 34
+- Resolved: 154 / 173  (GAP 117, REFUTE 34, FENCED/data-refuted 3)
+- Remaining: 19
 - **COUNT INTEGRITY (fixed 2026-07-18, batch18).** The header count above and the
   `## Full roster` checkboxes are two independent records and they had silently
   diverged by 10: batch16 and batch17 wrote their per-champion verdict entries and
@@ -35,7 +35,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   find-and-replace across them silently no-ops. Edit each line individually and
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
-- Next up (strict alphabetical): Thresh. Next GAP spec = RM-93.
+- Next up (strict alphabetical): Vladimir. Next GAP spec = RM-95.
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
   engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
   `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
@@ -67,6 +67,179 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   mega-templates measured last batch (5 mage/Liandry's, 2 enchanter/Echoes,
   2 tank/Randuin's, 1 carry/BotRK), which is itself corroboration of the RM-90
   re-measurement rather than ten independent defects.
+- batch26 (2026-07-18): Thresh [GAP RM-92], Tristana [GAP RM-92],
+  Trundle [GAP RM-90 + trap-D role], Tryndamere [GAP RM-92],
+  Twisted Fate [GAP RM-92, most extreme this batch].
+- batch27 (2026-07-18): Twitch [GAP RM-92], Udyr [GAP RM-92],
+  Urgot [GAP RM-86 kit-blindness], Vayne [GAP RM-86, BACKFILLED not re-probed],
+  Veigar [GAP RM-94 NEW].
+- batch28 (2026-07-18): Vel'Koz [GAP RM-93 NEW], Vex [GAP RM-40 mage template],
+  Vi [GAP RM-90 + bimodal], Viego [GAP RM-86, best instance in the sweep],
+  Viktor [GAP RM-40].
+  **Fifteen GAPs, zero REFUTEs - the second consecutive zero-REFUTE batch.**
+  Vayne was a ROSTER HOLE, not a pending champion: she already had a closed
+  research verdict in memory (project_ds_vayne_silver_bolts_unmodelled, "do not
+  re-probe"), so her checkbox was backfilled from that evidence and she was
+  excluded from the 14-champion probe. That is the second confirmed instance of
+  the batch21 hole-vs-pending trap, so it is a recurring failure mode, not a one-off.
+- **BATCH26/27/28 METHOD CORRECTIONS - the standing probe recipe is DRIFTED.**
+  (1) `rank_for_primary_archetype` returns its rows under the key **`ranked`**,
+  NOT `rows` / `results`. A recipe-faithful probe returns pool=0 for every
+  champion and looks exactly like a total engine failure. (2) There is **no
+  `champion_has_ability_data` key in the response at all**; the standing recipe
+  says to print it. Currency comes from the separate
+  `core.daemon_slayer_client.champion_ability_data_is_current(champ)`.
+  (3) The tanky-vs-squishy profile pair varies only DPS-side inputs, which
+  `ds.ehp` ignores - so a tank returning an IDENTICAL order across both profiles
+  is CORRECT, not target-blindness. To probe a tank, vary `enemy_ad_share` /
+  `enemy_ap_share` instead (done here: the EHP scorer flips armor-vs-MR items
+  correctly, so it is comp-responsive).
+  (4) Item files have three different shapes and none of them is guessable:
+  `items.json` is DDragon-shaped (`j['data']`, stats keys like
+  `FlatPhysicalDamageMod`), `items_meraki.json` carries no `stats` block at all,
+  and `build_orders_sr.json` nests under `build_orders` with per-champion
+  `{ad_heavy, ap_heavy, balanced}` id lists. Read the shape before indexing it.
+- **RM-93 (NEW SHAPE) - support-quest item CANDIDACY is inconsistent across pools.**
+  The World Atlas 386x-387x line splits three ways and the split is not principled:
+  Dream Maker 3870 / Celestial Opposition 3869 / Solstice Sleigh 3876 ARE candidates
+  on mage + tank (always as a contiguous bottom block - Vel'Koz mage #116-#118,
+  Thresh tank #61-#63) but are absent from the enchanter pool; Zaz'Zak's Realmspike
+  3871 and Bloodsong 3877 are candidates on ZERO routes despite both carrying full
+  modelled damage formulas with an explicit guard suite
+  (`agents/daemon_slayer/tests/test_effects_expansion.py:7197`, AP+HP scaling and
+  AoE-scales-with-targets). So the batch21 Seraphine note needs refining: Dream
+  Maker is excluded from `ds.hps` SPECIFICALLY, not globally. The enchanter pool is
+  10 items and excludes all five, i.e. the one archetype that actually BUYS these
+  items is the one route where none of them are candidates. Canonical instance:
+  **Vel'Koz's real first item is Zaz'Zak's Realmspike at 86.82% presence and it is
+  a candidate nowhere.** This is filter-list work, not L2 objective work.
+- **RM-94 (NEW SHAPE) - snowball-conditional stacks are pinned at FULL value.**
+  `agents/daemon_slayer/_effects_data.py:3257` pins Mejai's Soulstealer at
+  `bonus_ap_stacked=125.0` (25 stacks x 5 AP) under an explicit "same sustained-peak
+  convention as Black Cleaver at full stacks / Riftmaker at full ramp" comment. The
+  convention is defensible for Black Cleaver (5 stacks is reached inside a single
+  fight - Urgot applies all 5 in under two seconds at his fixed 3.0 attack speed)
+  but NOT for Mejai's, where 25 stacks is a GAME-STATE that requires already having
+  won, and which is the cause of the item's win rate rather than its effect.
+  Measured consequence: **Mejai's ranks #6 for all five mages probed this batch**
+  (Twisted Fate / Veigar / Vel'Koz / Vex / Viktor - byte-identical position) against
+  real presence of 2.02% (Veigar mid) to 5.65% (Vex). The fix is to separate
+  "reachable within a fight" from "requires already being ahead", not to delete the
+  pin. Note this is NOT the win-rate-honeypot failure the research line predicted:
+  DS default ranking is pure simulation, so the engine reaches the same wrong answer
+  by a completely different route.
+- **BATCH26/27/28 HEADLINE - RM-92 now has a MECHANICALLY DETECTABLE trigger: the
+  zero-AD Zeal line.** Verified on both lines (research claim, then independently
+  confirmed against `data/daemon_slayer/16.14.1/items.json`). The 2026 Zeal rework
+  left four items with NO `FlatPhysicalDamageMod` at all:
+  Fiendhunter Bolts 2512, Phantom Dancer 3046, Rapid Firecannon 3094,
+  Navori Flickerblade 6675 - each crit .25 / AS / MS and ZERO AD.
+  Controls behave correctly: Infinity Edge 3031 (AD 75) ranks #3-#5, and
+  Statikk Shiv 3087 is AD 45 + AP 45 hybrid, which confirms the batch24 Teemo note.
+  Each zero-AD item ranks DEEP on exactly the champion whose real build is built
+  around it, and each is bought for a NON-OUTPUT property:
+    Twitch       Fiendhunter Bolts  69.70% presence, real 2nd core -> **#76 of 111**
+                 (30 ULTIMATE ability haste = Spray-and-Pray uptime; corroborated by
+                 the Sorcery secondary running Axiom Arcanist at 60.3%, also ult-facing)
+    TwistedFate  Rapid Firecannon   67.30% presence, real 3rd core -> **#121 of 144**
+                 (Sharpshooter +35% energized range, cap +150, pushes the Pick a Card
+                 auto to ~675 range - it is a GOLD CARD STUN DELIVERY item, not damage)
+    Tristana     Navori Flickerblade 79.28% presence, real co-core -> **#34 of 111**
+                 (basic-ability CDR incl. W Rocket Jump, her only mobility/escape)
+    Tryndamere   Phantom Dancer     35.00% presence               -> **#54 of 143**
+                 (MS + self-shield; kiting and survival)
+  This is not a new shape - it is RM-92 with an enumerable instance class sharing ONE
+  stat signature. That matters because the trigger is a detectable statline rather
+  than a per-champion judgement call, which makes it the cheapest RM-92 lead so far.
+- **BATCH26/27/28 PER-CHAMPION EVIDENCE** (probe: live 1.219.0 / 16.14.1, top=200,
+  non-zero target HP, tanky(100/60/2500/1200) + squishy(30/30/1900/800) x L11/L16;
+  all 14 probed returned ok=True / fell_back=False). Format: real presence -> engine rank.
+  - **Thresh** (tank, cohort 28 = generic TANK template). Locket of the Iron Solari
+    88.27% -> #20; Zeke's #18; Knight's Vow #25; Bandlepipes #24; Mikael's #58.
+    Comp-varied probe (enemy_ad_share 0.9 / 0.5 / 0.1) IS responsive - armor and MR
+    items flip correctly - yet no ally-facing item breaks top 10 in ANY comp config.
+    His own damage is ~1/10th of a carry's, so the unpriced axis is ally-facing value,
+    not target typing. Cleanest RM-92 instance of the batch.
+  - **Tristana** (carry). IE #5 correct; Yun Tal #10; LDR #9; Collector #13;
+    Hexoptics C44 #14; Navori 79.28% -> #34. ABILITY DATA DRIFTED.
+  - **Trundle** (bruiser). TRAP-D: most-played top 61.4% @ 49.95% WR vs jungle 30.6%
+    @ 52.85%, and the KEYSTONE INVERTS by role (top Lethal Tempo 82.9% / jungle Press
+    the Attack 59.4%). Engine's Trinity #2 matches his JUNGLE build; Ravenous Hydra
+    72.18% (top) -> #48. Any artifact keyed on most-played role ships the LOSING build
+    to 61.4% of his players. Same shape as Swain, so this is now a pattern. DRIFTED.
+  - **Tryndamere** (bruiser). Ravenous Hydra 57.5% -> #44; Phantom Dancer -> #54;
+    IE #11; LDR #10. Crit demand is hard-capped by his passive (0-50% crit from Fury),
+    so his axis is AS + crit DAMAGE, not crit chance. No tank items in the real build
+    (Death's Dance 3.7%). DRIFTED.
+  - **Twisted Fate** (mage, cohort 17). MOST EXTREME MISS THIS BATCH: not one of his
+    real core items is in the engine top-8. Rapid Firecannon 67.3% -> #121 of 144;
+    Rod of Ages 66.8% -> #43; Lich Bane 80.3% -> #15. Real build is AP-SPELLBLADE plus
+    roam utility (Lich Bane is his highest-presence item), not the generic mage head.
+  - **Twitch** (carry). Engine largely AGREES on the crit core - Collector #2 (real
+    77.2%), IE #3 (real 64.7%), LDR #4 - and correctly demotes Runaan's to #8 (real
+    presence only 28%, displaced from the real 2nd slot). The single miss is
+    Fiendhunter Bolts 69.7% -> #76. Engine's #1 BotRK is absent from his real build.
+  - **Udyr** (bruiser). Spear of Shojin 60.52% -> #51; Sundered Sky #11; Death's Dance
+    #41; Spirit Visage #72. Dual-haste axis (Shojin's BASIC haste on four 6.0s stances
+    with no ultimate, plus Hexplate's ULTIMATE haste which is special-cased to affect
+    Awakened Spirit). Secondary trap: top 18.9% @ 50.43% is bottom-decile and inverts
+    to an AP-tank build with Grasp.
+  - **Urgot** (bruiser). RM-86 KIT-BLINDNESS, strongest non-Viego instance: W Purge
+    fires at a FIXED 3.0 attack speed and halves on-hit, so attack speed is
+    mechanically dead on him - yet the engine ranks BotRK #1, Runaan's Hurricane #4,
+    Stormrazor #7, Guinsoo's #22. Meanwhile Black Cleaver 93.12% -> #31 and Sterak's
+    Gage 69.03% -> #32. Black Cleaver is additionally TEAM-facing (its 30% armor
+    reduction is a debuff on the target, amplifying every ally's physical damage), and
+    Sterak's bonus AD scales off BASE AD so it is near-pure survivability. Also
+    banked: Press the Attack is NO LONGER ally-facing (Exposed removed in 14.10) -
+    do not classify it as team-facing in future verdicts.
+  - **Vayne** (carry) - BACKFILLED, NOT RE-PROBED. Closed 2026-07-18 in
+    project_ds_vayne_silver_bolts_unmodelled: `ds.dps` never imports `abilities` and
+    `damage_blocks` does not appear in the file, so W Silver Bolts is not modelled at
+    all and tank Vayne is unrepresentable. L2 of RM-86. Do not re-probe.
+  - **Veigar** (mage, cohort 17). RM-94 canonical: Mejai's #6 vs 2.02% real presence.
+    Rabadon's engine #3 but real build DELAYS it to third item (12.95% at slot 2 vs
+    38.36% at slot 3) precisely because its +30% TOTAL AP multiplier is worth more
+    against an already-large stacked pool. Rod of Ages 48.73% -> #34; Archangel's
+    46.16% -> #19. Ability haste is explicitly NOT his axis (Ionian 17.48%,
+    Malignance 0.43%). DRIFTED.
+  - **Vel'Koz** (mage, cohort 10). RM-93 canonical: Zaz'Zak's Realmspike 86.82%
+    presence is A CANDIDATE NOWHERE. Luden's Echo 63.67% -> #13. Second finding, a
+    mis-priced STAT rather than a mis-priced item: 24.7-26.7% of his damage is TRUE
+    (passive 3rd-stack detonation at 60% AP, plus a fully-converted ultimate vs a
+    Researched target), so magic penetration is dead weight on a quarter of his
+    output - and measurably so, since Sorcerer's Shoes is the MOST-picked and
+    WORST-winrate boot in all three of his lanes.
+  - **Vex** (mage, cohort 9). Luden's Echo 88.44% -> #13 while the invariant mage head
+    takes #1-#6; Shadowflame 69.62% -> #5 correct; Void Staff engine top-4 vs 6.38%
+    real. She was this batch's best REFUTE candidate (single role 94.3%, one keystone
+    at 91.6%, one first item at 87.8%, and NO non-output item above 60%) and she still
+    fails on the head - which is itself the finding: if the cleanest possible mage
+    cannot be reproduced, the defect is the template, not archetype coverage. DRIFTED.
+  - **Vi** (bruiser). Genuinely BIMODAL - bruiser line ~62% (Sundered Sky 61.95% ->
+    #18, Black Cleaver 43.38% -> #29) vs lethality/crit ~30%, and the keystone splits
+    Conqueror 64.2% / Hail of Blades 33.9% with the MINORITY keystone winning more.
+    Her W (not Q) carries the 20% armor reduction, which stacks multiplicatively with
+    Black Cleaver to ~44% and is why LDR sits at only 14.39% despite a 56% WR.
+    A single "core build" for Vi is a 41-62% plurality at best.
+  - **Viego** (bruiser). BEST RM-86 INSTANCE IN THE SWEEP TO DATE, and it is verifiable
+    from repo data alone: the engine ranks **BotRK #1**, but the ITEM is dead in the
+    real meta at 4.12% presence and a LOSING 46.15% WR - because his Q is literally
+    named Blade of the Ruined King and already applies the same effect. Confirmed in
+    `data/daemon_slayer/16.14.1/champion_abilities.json`: Viego Q damage_blocks carry
+    `target_current_hp_pct [2,3,4,5,6]`. Meanwhile his highest-presence real item,
+    The Collector at 84.77%, ranks **#27**; Kraken Slayer 69.3% -> #4;
+    Immortal Shieldbow 56.56% -> #15. This is kit-blindness in REVERSE: the scorer
+    prices an item's %HP on-hit without checking whether the kit already supplies it,
+    so a duplicated effect is double-counted. It is also a concrete case where the
+    global BotRK over-lead (64 of 173 first legendaries) is provably wrong.
+  - **Viktor** (mage, cohort 17). Blackfire Torch 76.78% (real #1, and first in all six
+    top core sets) -> engine #2, with Liandry's #1 at only 18.15% real presence.
+    Rabadon's engine #3 but real 18.29% and a 4th/5th-slot luxury, NOT a core.
+    Hextech Rocketbelt 36.30% -> #28 is his only mobility in a kit with zero dashes
+    (RM-92, same shape as Sylas). Kit verified NOT unrecognizably reworked. His
+    keystone is Deathfire Touch at 90.75% row-summed - one of the two NEW S2 Sorcery
+    keystones, so any 3-keystone Sorcery model is stale.
 - **RM-92 NOTE (NEW SHAPE) - NON-OUTPUT item value is unpriced.** Every scorer's
   objective is the champion's OWN damage or healing throughput, so an item bought
   for a property that is not self-output scores near zero no matter how universally
@@ -558,22 +731,22 @@ chain in `docs/specs/DECISION_riot_patch_note_backfill.md`.
 - [FENCED RM-34] Talon
 - [GAP RM-92] Taric
 - [GAP RM-86] Teemo
-- [ ] Thresh
-- [ ] Tristana
-- [ ] Trundle
-- [ ] Tryndamere
-- [ ] Twisted Fate
-- [ ] Twitch
-- [ ] Udyr
-- [ ] Urgot
+- [GAP RM-92] Thresh
+- [GAP RM-92] Tristana
+- [GAP RM-90] Trundle
+- [GAP RM-92] Tryndamere
+- [GAP RM-92] Twisted Fate
+- [GAP RM-92] Twitch
+- [GAP RM-92] Udyr
+- [GAP RM-86] Urgot
 - [REFUTE] Varus
-- [ ] Vayne
-- [ ] Veigar
-- [ ] Vel'Koz
-- [ ] Vex
-- [ ] Vi
-- [ ] Viego
-- [ ] Viktor
+- [GAP RM-86] Vayne
+- [GAP RM-94] Veigar
+- [GAP RM-93] Vel'Koz
+- [GAP RM-40] Vex
+- [GAP RM-90] Vi
+- [GAP RM-86] Viego
+- [GAP RM-40] Viktor
 - [ ] Vladimir
 - [ ] Volibear
 - [ ] Warwick
