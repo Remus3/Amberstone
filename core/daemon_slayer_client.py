@@ -1084,15 +1084,67 @@ def champion_attackrange(champion: str) -> float:
     return float(_champ_attackrange_index.get(_norm_champ_key(champion), 0.0))
 
 
+_champ_ability_index: Optional[dict] = None
+
+
+def champion_has_ability_data(champion: str) -> bool:
+    """True when the local DS snapshot carries ability data for ``champion``.
+
+    Champions released after the frozen Meraki ``latest`` content_patch have no
+    entry in ``<patch>/champion_abilities.json`` (16.14.1: Locke, Zaahen - both
+    absent from Meraki's bulk map, which carries 171 of 173). The dispatcher
+    already detects the kit-less case for ds.ability / ds.burst / ds.hps via
+    their all-zero rankings, but ds.hybrid folds ability damage into every row
+    (``hybrid.py`` imports ``compute_ability_dps``) while still producing
+    non-zero auto-DPS + EHP terms - so its output looks healthy and a row-delta
+    check cannot flag it. This champion-level signal is what covers that branch.
+
+    Keys normalize like :func:`champion_attackrange`, so a DDragon id
+    ("LeeSin") and a display name ("Lee Sin") both resolve.
+
+    Fail-soft: an unreadable, missing or empty index returns True for EVERY
+    champion, so a snapshot problem never spuriously flags the whole roster.
+    """
+    global _champ_ability_index
+    if _champ_ability_index is None:
+        index: dict = {}
+        try:
+            patch = (_DS_DATA_DIR / "current.txt").read_text(
+                encoding="utf-8"
+            ).strip()
+            raw = (_DS_DATA_DIR / patch / "champion_abilities.json").read_text(
+                encoding="utf-8"
+            )
+            data = json.loads(raw)
+            data = data.get("data") if isinstance(data.get("data"), dict) else data
+            for cid in (data or {}):
+                index[_norm_champ_key(str(cid))] = True
+        except (OSError, ValueError, AttributeError):
+            index = {}
+        _champ_ability_index = index
+    if not _champ_ability_index:
+        return True
+    return bool(_champ_ability_index.get(_norm_champ_key(champion), False))
+
+
 # Kit-dependent scorers (ds.ability / ds.burst / ds.hps) need the champion's
 # ability data. A champ released after the frozen Meraki `latest` content_patch
 # has NO ability entries, so those scorers return an identically-zero delta for
 # every item and the ranker degenerates to the cheapest starter items (a useless
-# "+0.0" build - the Locke 16.14.1 symptom). The AA-based scorers (ds.dps /
-# ds.ehp / ds.hybrid) need no kit data, so the dispatcher detects the all-zero
-# case and falls back to ds.dps. RC-side + non-regressive by construction: a real
-# kit always scores > 0 on at least one item, so the guard never fires for a
-# champ that has ability data (byte-identical to pre-fix behavior).
+# "+0.0" build - the Locke 16.14.1 symptom). ds.dps and ds.ehp need no kit data,
+# so the dispatcher detects the all-zero case and falls back to ds.dps. RC-side +
+# non-regressive by construction: a real kit always scores > 0 on at least one
+# item, so the guard never fires for a champ that has ability data
+# (byte-identical to pre-fix behavior).
+#
+# CORRECTION 2026-07-18: this comment previously grouped ds.hybrid with the
+# no-kit-data scorers. That is WRONG - agents/daemon_slayer/hybrid.py imports
+# compute_ability_dps and folds ability damage into every row's base damage, so a
+# kit-less champion loses its whole ability term there too. ds.hybrid cannot use
+# _kitless_all_zero to notice (its auto-DPS + EHP terms stay non-zero, so the
+# ranking looks healthy), which is why the bruiser branch flags the degraded case
+# champion-side via champion_has_ability_data(). This matters most for Zaahen,
+# whose DEFAULT route IS bruiser.
 _KITLESS_DELTA_EPS = 1e-9
 
 
@@ -1321,7 +1373,11 @@ def rank_for_primary_archetype(
                 }
                 for r in rows
             ],
-            "fell_back": False,
+            # ds.hybrid folds compute_ability_dps into every row's base damage
+            # (agents/daemon_slayer/hybrid.py), so a kit-less champion silently
+            # loses its whole ability term here. A row-delta check cannot see it
+            # (auto-DPS + EHP are still non-zero), so flag it champion-side.
+            "fell_back": fell_back or not champion_has_ability_data(champion),
         }
 
     if arch == "mage":
