@@ -355,6 +355,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "Cast1Damage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -373,6 +374,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "Cast2DamageMax",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -398,6 +400,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "Cast2DamageMin",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -2783,6 +2786,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -3862,12 +3866,12 @@
       1.0
      ],
      "bonus_ad_pct": [
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0
+      200.0,
+      200.0,
+      200.0,
+      200.0,
+      200.0,
+      200.0
      ],
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
@@ -4644,6 +4648,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalStunDuration",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -4723,6 +4728,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "PassiveTotalDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -4748,6 +4754,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "PassiveTotalHealing",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -4773,6 +4780,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "SpiderlingTotalDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -4784,6 +4792,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationConditional",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "{60195651}",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -4795,6 +4804,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationConditional",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "{84a53877}",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -4806,6 +4816,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "{e5407a95}",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -6677,12 +6688,12 @@
     {
      "ap_pct": null,
      "base": [
-      20.0,
-      35.0,
-      50.0,
-      65.0,
+      30.0,
+      42.5,
+      55.0,
+      67.5,
       80.0,
-      95.0
+      92.5
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -6768,11 +6779,11 @@
      ],
      "base": [
       10.0,
-      13.5,
-      17.0,
-      20.5,
-      24.0,
-      27.5
+      14.0,
+      18.0,
+      22.0,
+      26.0,
+      30.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -7657,12 +7668,12 @@
     },
     {
      "ap_pct": [
-      70.0,
-      70.0,
-      70.0,
-      70.0,
-      70.0,
-      70.0
+      80.0,
+      80.0,
+      80.0,
+      80.0,
+      80.0,
+      80.0
      ],
      "base": [
       50.0,
@@ -7693,12 +7704,12 @@
     },
     {
      "ap_pct": [
-      25.0,
-      25.0,
-      25.0,
-      25.0,
-      25.0,
-      25.0
+      30.0,
+      30.0,
+      30.0,
+      30.0,
+      30.0,
+      30.0
      ],
      "base": [
       60.0,
@@ -7940,7 +7951,6 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
-     "cherry_override": true,
      "name": "DamageIncreaseTooltip",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -7952,7 +7962,6 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
-     "cherry_override": true,
      "name": "TentacleDamageTotal",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -8823,12 +8832,12 @@
     {
      "ap_pct": null,
      "base": [
-      3.5,
-      3.5,
-      3.5,
-      3.5,
-      3.5,
-      3.5
+      4.0,
+      4.0,
+      4.0,
+      4.0,
+      4.0,
+      4.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -9501,22 +9510,22 @@
     {
      "ap_pct": null,
      "base": [
-      80.0,
-      120.0,
-      160.0,
-      200.0,
+      70.0,
+      112.5,
+      155.0,
+      197.5,
       240.0,
-      280.0
+      282.5
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": [
-      15.0,
-      15.0,
-      15.0,
-      15.0,
-      15.0,
-      15.0
+      13.5,
+      13.5,
+      13.5,
+      13.5,
+      13.5,
+      13.5
      ],
      "name": "TotalShield",
      "resolution": "mechanical",
@@ -9699,12 +9708,12 @@
       120.0
      ],
      "base": [
-      70.0,
-      90.0,
-      110.0,
-      130.0,
+      100.0,
       150.0,
-      170.0
+      200.0,
+      250.0,
+      300.0,
+      350.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -10140,7 +10149,6 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
-     "cherry_override": true,
      "name": "QDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -10152,7 +10160,6 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
-     "cherry_override": true,
      "name": "QSingleTargetDamage",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -11929,11 +11936,11 @@
      ],
      "base": [
       70.0,
-      140.0,
-      210.0,
-      280.0,
-      350.0,
-      420.0
+      150.0,
+      230.0,
+      310.0,
+      390.0,
+      470.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -11955,11 +11962,11 @@
      ],
      "base": [
       140.0,
-      280.0,
-      420.0,
-      560.0,
-      700.0,
-      840.0
+      300.0,
+      460.0,
+      620.0,
+      780.0,
+      940.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -11981,11 +11988,11 @@
      ],
      "base": [
       70.0,
-      140.0,
-      210.0,
-      280.0,
-      350.0,
-      420.0
+      150.0,
+      230.0,
+      310.0,
+      390.0,
+      470.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -12007,11 +12014,11 @@
      ],
      "base": [
       140.0,
-      280.0,
-      420.0,
-      560.0,
-      700.0,
-      840.0
+      300.0,
+      460.0,
+      620.0,
+      780.0,
+      940.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -12033,11 +12040,11 @@
      ],
      "base": [
       150.0,
-      300.0,
-      450.0,
-      600.0,
-      750.0,
-      900.0
+      315.0,
+      480.0,
+      645.0,
+      810.0,
+      975.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -12122,12 +12129,12 @@
     {
      "ap_pct": null,
      "base": [
-      65.0,
-      95.0,
-      125.0,
-      155.0,
-      185.0,
-      215.0
+      60.0,
+      90.0,
+      120.0,
+      150.0,
+      180.0,
+      210.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -12136,23 +12143,23 @@
      "resolution": "mechanical",
      "target_max_hp_pct": null,
      "total_ad_pct": [
-      95.0,
-      95.0,
-      95.0,
-      95.0,
-      95.0,
-      95.0
+      90.0,
+      90.0,
+      90.0,
+      90.0,
+      90.0,
+      90.0
      ]
     },
     {
      "ap_pct": null,
      "base": [
-      65.0,
-      95.0,
-      125.0,
-      155.0,
-      185.0,
-      215.0
+      60.0,
+      90.0,
+      120.0,
+      150.0,
+      180.0,
+      210.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -12161,12 +12168,12 @@
      "resolution": "mechanical",
      "target_max_hp_pct": null,
      "total_ad_pct": [
-      95.0,
-      95.0,
-      95.0,
-      95.0,
-      95.0,
-      95.0
+      90.0,
+      90.0,
+      90.0,
+      90.0,
+      90.0,
+      90.0
      ]
     }
    ],
@@ -14452,20 +14459,20 @@
    "E": [
     {
      "ap_pct": [
-      40.0,
-      40.0,
-      40.0,
-      40.0,
-      40.0,
-      40.0
+      45.0,
+      45.0,
+      45.0,
+      45.0,
+      45.0,
+      45.0
      ],
      "base": [
       60.0,
-      75.0,
-      90.0,
-      105.0,
+      80.0,
+      100.0,
       120.0,
-      135.0
+      140.0,
+      160.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -14909,11 +14916,11 @@
      ],
      "base": [
       20.0,
-      30.0,
-      40.0,
+      35.0,
       50.0,
-      60.0,
-      70.0
+      65.0,
+      80.0,
+      95.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -16035,11 +16042,11 @@
      "ap_pct": null,
      "base": [
       65.0,
-      110.0,
-      155.0,
-      200.0,
-      245.0,
-      290.0
+      105.0,
+      145.0,
+      185.0,
+      225.0,
+      265.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -16367,6 +16374,17 @@
    "E": [
     {
      "ap_pct": null,
+     "base": null,
+     "bonus_ad_pct": null,
+     "calc_type": "GameCalculationModified",
+     "caster_max_hp_pct": null,
+     "name": "HealthCostCalc",
+     "resolution": "fallback",
+     "target_max_hp_pct": null,
+     "total_ad_pct": null
+    },
+    {
+     "ap_pct": null,
      "base": [
       70.0,
       115.0,
@@ -16389,17 +16407,6 @@
       50.0,
       50.0
      ]
-    },
-    {
-     "ap_pct": null,
-     "base": null,
-     "bonus_ad_pct": null,
-     "calc_type": "GameCalculationModified",
-     "caster_max_hp_pct": null,
-     "name": "{30412ba3}",
-     "resolution": "fallback",
-     "target_max_hp_pct": null,
-     "total_ad_pct": null
     },
     {
      "ap_pct": null,
@@ -16618,20 +16625,20 @@
    "R": [
     {
      "ap_pct": [
-      95.0,
-      95.0,
-      95.0,
-      95.0,
-      95.0,
-      95.0
+      110.0,
+      110.0,
+      110.0,
+      110.0,
+      110.0,
+      110.0
      ],
      "base": [
-      250.0,
-      400.0,
-      550.0,
-      700.0,
-      850.0,
-      1000.0
+      225.0,
+      350.0,
+      475.0,
+      600.0,
+      725.0,
+      850.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -17776,7 +17783,7 @@
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
      "cherry_override": true,
-     "name": "{a06afe5e}",
+     "name": "TotalDamageMonster",
      "resolution": "fallback",
      "target_max_hp_pct": null,
      "total_ad_pct": null
@@ -18164,14 +18171,28 @@
    "E": [
     {
      "ap_pct": null,
-     "base": null,
+     "base": [
+      70.0,
+      95.0,
+      120.0,
+      145.0,
+      170.0,
+      195.0
+     ],
      "bonus_ad_pct": null,
-     "calc_type": "GameCalculationModified",
+     "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
-     "name": "BaseDamage",
-     "resolution": "fallback",
+     "name": "BaseDamageCalculation",
+     "resolution": "mechanical",
      "target_max_hp_pct": null,
-     "total_ad_pct": null
+     "total_ad_pct": [
+      60.0,
+      60.0,
+      60.0,
+      60.0,
+      60.0,
+      60.0
+     ]
     },
     {
      "ap_pct": null,
@@ -18186,28 +18207,14 @@
     },
     {
      "ap_pct": null,
-     "base": [
-      100.0,
-      135.0,
-      170.0,
-      205.0,
-      240.0,
-      275.0
-     ],
+     "base": null,
      "bonus_ad_pct": null,
-     "calc_type": "GameCalculation",
+     "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
-     "name": "EmpoweredDamage",
-     "resolution": "mechanical",
+     "name": "EmpoweredDamageCalculation",
+     "resolution": "fallback",
      "target_max_hp_pct": null,
-     "total_ad_pct": [
-      80.0,
-      80.0,
-      80.0,
-      80.0,
-      80.0,
-      80.0
-     ]
+     "total_ad_pct": null
     },
     {
      "ap_pct": null,
@@ -19468,20 +19475,20 @@
     },
     {
      "ap_pct": [
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0
+      105.0,
+      105.0,
+      105.0,
+      105.0,
+      105.0,
+      105.0
      ],
      "base": [
-      60.0,
-      85.0,
-      110.0,
-      135.0,
-      160.0,
-      185.0
+      50.0,
+      75.0,
+      100.0,
+      125.0,
+      150.0,
+      175.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -19979,12 +19986,12 @@
     },
     {
      "ap_pct": [
-      50.0,
-      50.0,
-      50.0,
-      50.0,
-      50.0,
-      50.0
+      35.0,
+      35.0,
+      35.0,
+      35.0,
+      35.0,
+      35.0
      ],
      "base": [
       40.0,
@@ -20129,12 +20136,12 @@
    "Q": [
     {
      "ap_pct": [
-      50.0,
-      50.0,
-      50.0,
-      50.0,
-      50.0,
-      50.0
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0
      ],
      "base": [
       60.0,
@@ -20888,6 +20895,17 @@
     },
     {
      "ap_pct": null,
+     "base": null,
+     "bonus_ad_pct": null,
+     "calc_type": "GameCalculationModified",
+     "caster_max_hp_pct": null,
+     "name": "Calc_Max_Health_Dragon_Damage",
+     "resolution": "fallback",
+     "target_max_hp_pct": null,
+     "total_ad_pct": null
+    },
+    {
+     "ap_pct": null,
      "base": [
       200.0,
       200.0,
@@ -20980,17 +20998,6 @@
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
      "name": "DamagePerSecond",
-     "resolution": "fallback",
-     "target_max_hp_pct": null,
-     "total_ad_pct": null
-    },
-    {
-     "ap_pct": null,
-     "base": null,
-     "bonus_ad_pct": null,
-     "calc_type": "GameCalculationModified",
-     "caster_max_hp_pct": null,
-     "name": "{bb85c3b6}",
      "resolution": "fallback",
      "target_max_hp_pct": null,
      "total_ad_pct": null
@@ -21212,6 +21219,17 @@
      "ap_pct": null,
      "base": null,
      "bonus_ad_pct": null,
+     "calc_type": "GameCalculation",
+     "caster_max_hp_pct": null,
+     "name": "Calc_Base_Heal",
+     "resolution": "fallback",
+     "target_max_hp_pct": null,
+     "total_ad_pct": null
+    },
+    {
+     "ap_pct": null,
+     "base": null,
+     "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
      "name": "Calc_Heal_Max",
@@ -21226,6 +21244,17 @@
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
      "name": "Calc_Heal_Min",
+     "resolution": "fallback",
+     "target_max_hp_pct": null,
+     "total_ad_pct": null
+    },
+    {
+     "ap_pct": null,
+     "base": null,
+     "bonus_ad_pct": null,
+     "calc_type": "GameCalculation",
+     "caster_max_hp_pct": null,
+     "name": "Calc_Missing_Health_Heal",
      "resolution": "fallback",
      "target_max_hp_pct": null,
      "total_ad_pct": null
@@ -21309,28 +21338,6 @@
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
      "name": "MoveSpeedTowardsEnemies",
-     "resolution": "fallback",
-     "target_max_hp_pct": null,
-     "total_ad_pct": null
-    },
-    {
-     "ap_pct": null,
-     "base": null,
-     "bonus_ad_pct": null,
-     "calc_type": "GameCalculation",
-     "caster_max_hp_pct": null,
-     "name": "{b35447ff}",
-     "resolution": "fallback",
-     "target_max_hp_pct": null,
-     "total_ad_pct": null
-    },
-    {
-     "ap_pct": null,
-     "base": null,
-     "bonus_ad_pct": null,
-     "calc_type": "GameCalculation",
-     "caster_max_hp_pct": null,
-     "name": "{f468ef05}",
      "resolution": "fallback",
      "target_max_hp_pct": null,
      "total_ad_pct": null
@@ -21467,12 +21474,12 @@
     {
      "ap_pct": null,
      "base": [
-      40.0,
+      30.0,
+      45.0,
       60.0,
-      80.0,
-      100.0,
-      120.0,
-      140.0
+      75.0,
+      90.0,
+      105.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -22574,6 +22581,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "DamageCalc",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -22599,6 +22607,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "DemonflareDamageTotal",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -22631,6 +22640,7 @@
       1.5,
       1.5
      ],
+     "cherry_override": true,
      "name": "HealingCalc",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -22642,6 +22652,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "MinionMonsterHeal",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -22718,20 +22729,20 @@
    "Q": [
     {
      "ap_pct": [
-      40.0,
-      40.0,
-      40.0,
-      40.0,
-      40.0,
-      40.0
+      45.0,
+      45.0,
+      45.0,
+      45.0,
+      45.0,
+      45.0
      ],
      "base": [
       40.0,
-      60.0,
-      80.0,
-      100.0,
-      120.0,
-      140.0
+      65.0,
+      90.0,
+      115.0,
+      140.0,
+      165.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -22830,12 +22841,12 @@
     },
     {
      "ap_pct": [
-      20.0,
-      20.0,
-      20.0,
-      20.0,
-      20.0,
-      20.0
+      30.0,
+      30.0,
+      30.0,
+      30.0,
+      30.0,
+      30.0
      ],
      "base": [
       20.0,
@@ -22893,20 +22904,20 @@
    "Q": [
     {
      "ap_pct": [
-      65.0,
-      65.0,
-      65.0,
-      65.0,
-      65.0,
-      65.0
+      70.0,
+      70.0,
+      70.0,
+      70.0,
+      70.0,
+      70.0
      ],
      "base": [
-      80.0,
-      115.0,
-      150.0,
-      185.0,
-      220.0,
-      255.0
+      90.0,
+      125.0,
+      160.0,
+      195.0,
+      230.0,
+      265.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -25100,16 +25111,17 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalDamageMax",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
      "total_ad_pct": [
-      150.0,
-      150.0,
-      150.0,
-      150.0,
-      150.0,
-      150.0
+      120.0,
+      120.0,
+      120.0,
+      120.0,
+      120.0,
+      120.0
      ]
     },
     {
@@ -25118,6 +25130,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalDamageMinTooltip",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -25129,6 +25142,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "{b3ef3984}",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -25195,12 +25209,12 @@
       25.0
      ],
      "base": [
-      8.0,
-      17.0,
-      26.0,
-      35.0,
-      44.0,
-      53.0
+      4.0,
+      13.0,
+      22.0,
+      31.0,
+      40.0,
+      49.0
      ],
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
@@ -27872,7 +27886,6 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
-     "cherry_override": true,
      "name": "BonusDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -27891,7 +27904,6 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
-     "cherry_override": true,
      "name": "QHeal",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28267,12 +28279,12 @@
     },
     {
      "ap_pct": [
-      30.0,
-      30.0,
-      30.0,
-      30.0,
-      30.0,
-      30.0
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0,
+      40.0
      ],
      "base": [
       65.0,
@@ -28881,6 +28893,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "BonusDamageTotal",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -28892,6 +28905,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "DashSpeed",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28903,6 +28917,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "{93e3e1a0}",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28923,6 +28938,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "ActiveDamageThatCanCrit",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -28941,6 +28957,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "CurrentCritDamage",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28952,6 +28969,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "MinDamage",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28963,6 +28981,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "PassiveExecuteThreshold",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28974,6 +28993,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "PassiveMaxChargePercentHealth",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28985,6 +29005,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "PassiveMaxDamage",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -28998,6 +29019,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "ChainPhysicalDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -29030,6 +29052,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalActiveDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -29062,6 +29085,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalBonusDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -29089,6 +29113,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -29107,6 +29132,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "WallDamage",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -29274,7 +29300,6 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
-     "cherry_override": true,
      "name": "TotalDamage",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -29370,6 +29395,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculationModified",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "MaxDamageTooltip",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -29381,6 +29407,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "TotalDamageTooltip",
      "resolution": "fallback",
      "target_max_hp_pct": null,
@@ -29409,6 +29436,7 @@
      "bonus_ad_pct": null,
      "calc_type": "GameCalculation",
      "caster_max_hp_pct": null,
+     "cherry_override": true,
      "name": "MissileDamageTooltip",
      "resolution": "mechanical",
      "target_max_hp_pct": null,
@@ -29474,6 +29502,6 @@
   }
  },
  "generated_note": "ADDITIVE CDragon-sourced ability damage ratios (re-sourced from the LIVE current-patch game bins to counter frozen-Meraki staleness). NOT an engine cutover - the DS engine keeps reading champion_abilities.json (Meraki); this sidecar is inert until a consumer opts in. resolution=mechanical blocks are fully represented in the percent schema; resolution=fallback blocks reference level/breakpoint/buff/conditional/unknown-stat parts and Meraki stays authoritative there. ratios are percent (fraction*100); base is absolute. A run with 0 mechanical blocks means the host could not reach CDragon - do NOT commit.",
- "patch": "16.11.1",
- "patch_segment": "16.11"
+ "patch": "16.14.1",
+ "patch_segment": "16.14"
 }

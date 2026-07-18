@@ -1,6 +1,6 @@
 {
  "generated_note": "DRIFT report: resolved CDragon ratios vs the committed Meraki damage_blocks. A row exists per champ/ability/field where BOTH carry a mechanical value (delta = max abs per-rank diff). kind=only_cdragon means CDragon resolved a ratio Meraki lacks; n_meraki_only counts Meraki ratio fields with no CDragon mechanical counterpart (often a fallback block). This is a human-review artifact, not an engine input.",
- "patch": "16.11.1",
+ "patch": "16.14.1",
  "rows": [
   {
    "ability": "E",
@@ -3113,15 +3113,15 @@
    "ability": "R",
    "calc": "AttackRefund",
    "cdragon": [
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0
+    200.0,
+    200.0,
+    200.0,
+    200.0,
+    200.0,
+    200.0
    ],
    "champ": "Corki",
-   "delta": 15.0,
+   "delta": 115.0,
    "field": "bonus_ad_pct",
    "kind": "changed",
    "meraki": [
@@ -3134,15 +3134,15 @@
    "ability": "R",
    "calc": "AttackRefund",
    "cdragon": [
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0
+    200.0,
+    200.0,
+    200.0,
+    200.0,
+    200.0,
+    200.0
    ],
    "champ": "Corki",
-   "delta": 70.0,
+   "delta": 30.0,
    "field": "bonus_ad_pct",
    "kind": "changed",
    "meraki": [
@@ -6117,17 +6117,17 @@
    "ability": "Q",
    "calc": "Tooltip_QQDamage",
    "cdragon": [
-    70.0,
-    70.0,
-    70.0,
-    70.0,
-    70.0,
-    70.0
+    80.0,
+    80.0,
+    80.0,
+    80.0,
+    80.0,
+    80.0
    ],
    "champ": "Hwei",
-   "delta": 0.0,
+   "delta": 10.0,
    "field": "ap_pct",
-   "kind": "match",
+   "kind": "changed",
    "meraki": [
     70.0,
     70.0,
@@ -6138,19 +6138,19 @@
   },
   {
    "ability": "Q",
-   "calc": "Tooltip_QWDamage",
+   "calc": "Tooltip_QEDamagePerSecond",
    "cdragon": [
-    25.0,
-    25.0,
-    25.0,
-    25.0,
-    25.0,
-    25.0
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0,
+    24.0
    ],
    "champ": "Hwei",
-   "delta": 0.0,
+   "delta": 1.0,
    "field": "ap_pct",
-   "kind": "match",
+   "kind": "changed",
    "meraki": [
     25.0,
     25.0,
@@ -6255,17 +6255,17 @@
    "ability": "Q",
    "calc": "Tooltip_QQDamage",
    "cdragon": [
-    70.0,
-    70.0,
-    70.0,
-    70.0,
-    70.0,
-    70.0
+    80.0,
+    80.0,
+    80.0,
+    80.0,
+    80.0,
+    80.0
    ],
    "champ": "Hwei",
-   "delta": 10.0,
+   "delta": 0.0,
    "field": "ap_pct",
-   "kind": "changed",
+   "kind": "match",
    "meraki": [
     80.0,
     80.0,
@@ -7611,12 +7611,12 @@
    "ability": "E",
    "calc": "TotalShield",
    "cdragon": [
-    15.0,
-    15.0,
-    15.0,
-    15.0,
-    15.0,
-    15.0
+    13.5,
+    13.5,
+    13.5,
+    13.5,
+    13.5,
+    13.5
    ],
    "champ": "KSante",
    "delta": null,
@@ -9461,12 +9461,12 @@
    "ability": "Q",
    "calc": "InitialDamage",
    "cdragon": [
-    95.0,
-    95.0,
-    95.0,
-    95.0,
-    95.0,
-    95.0
+    90.0,
+    90.0,
+    90.0,
+    90.0,
+    90.0,
+    90.0
    ],
    "champ": "LeeSin",
    "delta": null,
@@ -9478,12 +9478,12 @@
    "ability": "Q",
    "calc": "RecastDamage",
    "cdragon": [
-    95.0,
-    95.0,
-    95.0,
-    95.0,
-    95.0,
-    95.0
+    90.0,
+    90.0,
+    90.0,
+    90.0,
+    90.0,
+    90.0
    ],
    "champ": "LeeSin",
    "delta": null,
@@ -10998,17 +10998,17 @@
    "ability": "E",
    "calc": "TotalDamage",
    "cdragon": [
-    40.0,
-    40.0,
-    40.0,
-    40.0,
-    40.0,
-    40.0
+    45.0,
+    45.0,
+    45.0,
+    45.0,
+    45.0,
+    45.0
    ],
    "champ": "Mordekaiser",
-   "delta": 0.0,
+   "delta": 5.0,
    "field": "ap_pct",
-   "kind": "match",
+   "kind": "changed",
    "meraki": [
     40.0,
     40.0,
@@ -12683,17 +12683,17 @@
    "ability": "R",
    "calc": "TotalDamage",
    "cdragon": [
-    95.0,
-    95.0,
-    95.0,
-    95.0,
-    95.0,
-    95.0
+    110.0,
+    110.0,
+    110.0,
+    110.0,
+    110.0,
+    110.0
    ],
    "champ": "Orianna",
-   "delta": 0.0,
+   "delta": 15.0,
    "field": "ap_pct",
-   "kind": "match",
+   "kind": "changed",
    "meraki": [
     95.0,
     95.0,
@@ -13529,14 +13529,14 @@
   },
   {
    "ability": "E",
-   "calc": "EmpoweredDamage",
+   "calc": "BaseDamageCalculation",
    "cdragon": [
-    80.0,
-    80.0,
-    80.0,
-    80.0,
-    80.0,
-    80.0
+    60.0,
+    60.0,
+    60.0,
+    60.0,
+    60.0,
+    60.0
    ],
    "champ": "RekSai",
    "delta": null,
@@ -14380,15 +14380,15 @@
    "ability": "Q",
    "calc": "FlatDamage",
    "cdragon": [
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0
    ],
    "champ": "Rumble",
-   "delta": 10.0,
+   "delta": 5.0,
    "field": "ap_pct",
    "kind": "changed",
    "meraki": [
@@ -14403,15 +14403,15 @@
    "ability": "Q",
    "calc": "FlatDamage",
    "cdragon": [
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0
    ],
    "champ": "Rumble",
-   "delta": 90.83,
+   "delta": 95.83,
    "field": "ap_pct",
    "kind": "changed",
    "meraki": [
@@ -14426,15 +14426,15 @@
    "ability": "Q",
    "calc": "FlatDamage",
    "cdragon": [
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0
    ],
    "champ": "Rumble",
-   "delta": 65.0,
+   "delta": 60.0,
    "field": "ap_pct",
    "kind": "changed",
    "meraki": [
@@ -14449,15 +14449,15 @@
    "ability": "Q",
    "calc": "FlatDamage",
    "cdragon": [
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0,
-    100.0
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0,
+    105.0
    ],
    "champ": "Rumble",
-   "delta": 86.25,
+   "delta": 91.25,
    "field": "ap_pct",
    "kind": "changed",
    "meraki": [
@@ -14852,12 +14852,12 @@
    "ability": "Q",
    "calc": "TotalHeal",
    "cdragon": [
-    50.0,
-    50.0,
-    50.0,
-    50.0,
-    50.0,
-    50.0
+    35.0,
+    35.0,
+    35.0,
+    35.0,
+    35.0,
+    35.0
    ],
    "champ": "Senna",
    "delta": null,
@@ -14981,17 +14981,17 @@
    "ability": "Q",
    "calc": "ExplosionDamage",
    "cdragon": [
-    50.0,
-    50.0,
-    50.0,
-    50.0,
-    50.0,
-    50.0
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0
    ],
    "champ": "Seraphine",
-   "delta": 0.0,
+   "delta": 10.0,
    "field": "ap_pct",
-   "kind": "match",
+   "kind": "changed",
    "meraki": [
     50.0,
     50.0,
@@ -15004,15 +15004,15 @@
    "ability": "Q",
    "calc": "ExplosionDamage",
    "cdragon": [
-    50.0,
-    50.0,
-    50.0,
-    50.0,
-    50.0,
-    50.0
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0
    ],
    "champ": "Seraphine",
-   "delta": 37.5,
+   "delta": 47.5,
    "field": "ap_pct",
    "kind": "changed",
    "meraki": [
@@ -16679,17 +16679,17 @@
    "ability": "Q",
    "calc": "Damage",
    "cdragon": [
-    40.0,
-    40.0,
-    40.0,
-    40.0,
-    40.0,
-    40.0
+    45.0,
+    45.0,
+    45.0,
+    45.0,
+    45.0,
+    45.0
    ],
    "champ": "Sylas",
-   "delta": 0.0,
+   "delta": 5.0,
    "field": "ap_pct",
-   "kind": "match",
+   "kind": "changed",
    "meraki": [
     40.0,
     40.0,
@@ -16811,15 +16811,15 @@
    "ability": "Q",
    "calc": "TotalDamage",
    "cdragon": [
-    65.0,
-    65.0,
-    65.0,
-    65.0,
-    65.0,
-    65.0
+    70.0,
+    70.0,
+    70.0,
+    70.0,
+    70.0,
+    70.0
    ],
    "champ": "Syndra",
-   "delta": 5.0,
+   "delta": 10.0,
    "field": "ap_pct",
    "kind": "changed",
    "meraki": [
@@ -18333,12 +18333,12 @@
    "ability": "Q",
    "calc": "TotalDamageMax",
    "cdragon": [
-    150.0,
-    150.0,
-    150.0,
-    150.0,
-    150.0,
-    150.0
+    120.0,
+    120.0,
+    120.0,
+    120.0,
+    120.0,
+    120.0
    ],
    "champ": "Varus",
    "delta": null,
@@ -20636,12 +20636,12 @@
    "ability": "E",
    "calc": "TotalShielding",
    "cdragon": [
-    30.0,
-    30.0,
-    30.0,
-    30.0,
-    30.0,
-    30.0
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0,
+    40.0
    ],
    "champ": "Yuumi",
    "delta": null,
@@ -21560,7 +21560,7 @@
  "summary": {
   "n_blocks_compared": 698,
   "n_champs": 170,
-  "n_changed": 319,
+  "n_changed": 324,
   "n_fallback": 577,
   "n_meraki_only": 235,
   "n_only_cdragon": 348

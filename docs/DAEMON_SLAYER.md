@@ -2,7 +2,7 @@
 
 Local DPS-math service on `:8893`. Computes actual damage-per-second for any champion x item x target combination using real stat math. No API cost per query.
 
-**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.216.0 - 8502 tests - patch 16.14.1.
+**Status: FUNCTIONALLY COMPLETE** - ENGINE_VERSION 1.217.0 - 8513 tests - patch 16.14.1.
 
 ## Engine substrate & registries
 
@@ -76,7 +76,7 @@ except Exception as e:
 
 Operator-facing scorer selection lands in three layers:
 
-- **Storage**: `core/archetype_picks.py` - DDragon-tag -> archetype default + per-champion override persisted to `data/cs_archetype_picks.json`. Seven canonical archetypes: `carry`, `bruiser`, `tank`, `mage`, `assassin`, `enchanter`, `onhit` - all seven implemented and wired through `rank_for_primary_archetype()` (carry -> ds.dps, bruiser -> ds.hybrid, tank -> ds.ehp, mage -> ds.ability, assassin -> ds.burst, enchanter -> ds.hps, on-hit AP -> ds.onhit at ENGINE 1.216.0 / LEDGER 911); no dispatcher fallbacks remain (s174-s181).
+- **Storage**: `core/archetype_picks.py` - DDragon-tag -> archetype default + per-champion override. NOTE the two override layers are NOT interchangeable: `data/cs_archetype_picks.json` is **GITIGNORED runtime operator state** (`.gitignore:77`, cleared to `{}` in LEDGER 824 after operator picks polluted the committed precompute), while the git-tracked ROUTE corrections live beside the module as rosters consumed by `default_for_champion` - Slice A `_AP_ASSASSIN_IDS` (inline), Slice B `core/ds_onhit_ap_roster.json`, Slice C `core/ds_support_route_overrides.json` (RM-84, the Support-tag misroute). Seven canonical archetypes: `carry`, `bruiser`, `tank`, `mage`, `assassin`, `enchanter`, `onhit` - all seven implemented and wired through `rank_for_primary_archetype()` (carry -> ds.dps, bruiser -> ds.hybrid, tank -> ds.ehp, mage -> ds.ability, assassin -> ds.burst, enchanter -> ds.hps, on-hit AP -> ds.onhit at ENGINE 1.216.0 / LEDGER 911); no dispatcher fallbacks remain (s174-s181).
 - **REST**: `GET /api/cs-archetype-pick?champion=X` returns merged pick (override OR default). `POST /api/cs-archetype-pick {champion, primary, secondary?, source?}` persists. `POST {champion, clear: true}` rolls back to default.
 - **Dispatch**: `core.daemon_slayer_client.rank_for_primary_archetype(champion, archetype, ...)` returns `{ok, scorer, archetype, ranked, fell_back}`. Coaches read the picked archetype via `coach_integration/archetype_dispatch.py` (s182); all 4 mode coaches inject scorer-aware DS picks before each Haiku call.
 - **UI**: 6-button 3x2 picker grid in the My Pick card of the champ-select view. Clicks save to `localStorage.rc-cs-archetype-<champion>` + POST. Unimplemented scorers grayed but still clickable. NOTE: the grid predates `ds.onhit` - no manual on-hit button yet (LEDGER 911 deferred follow-up); onhit reaches champs via `default_for_champion` roster defaults only.
