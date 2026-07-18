@@ -467,6 +467,82 @@ drew. Section 9(iv)'s conclusion that "L1 is necessary and provably
 insufficient" is confirmed, and now has three concrete instances rather than
 one.
 
+### L2-for-hps is REFUTED - do not build it (2026-07-18)
+
+Section 4 recommended L2 for `ds.hps` FIRST, as the smallest blast radius.
+Section 6 REFUTE condition 2 said: if `rank_items_by_hps` is wired to
+`apply_ability_hsp_amp` and the enchanters STILL return an identical order, the
+invariance is a closed-pool artefact rather than a missing-amp artefact, and
+finding (c) leaves the RC-1 family.
+
+**That condition is now SATISFIED by measurement.** Probed in-process by forcing
+the amp ON via a monkeypatch on `compute_hps` (no file edits), 8 enchanters
+(Soraka / Janna / Lulu / Nami / Sona / Yuumi / Milio / Karma), L16, SR, empty
+build:
+
+| amp | distinct orders across 8 champions | pool size |
+|---|---|---|
+| OFF (shipped) | **1** | 9 |
+| forced ON | **1** | 9 |
+
+Forcing the amp ON does change the order relative to OFF, but by exactly ONE
+adjacent swap - Redemption (3107) and Knight's Vow (3109) trade #5/#6 - and that
+swap is IDENTICAL for every champion. Cross-champion invariance is untouched.
+
+The reason is structural. The score is a one-parameter family
+`score(X) = delta_OFF(X) + A * hsp_X`, where `A` is the champion's ability HPS
+and `hsp_X` is the CANDIDATE's own `heal_shield_amp_pct`. Solving every pairwise
+crossing over the 9-item pool: exactly one crossing is reachable, at A = 2.52,
+which is below every real enchanter (min 5.06, Janna). The SECOND crossing needs
+A = 19.56, roughly 1.9x the highest ability-HPS enchanter in the game
+(Soraka 10.21). Nine generic items scored for every enchanter makes an identical
+order the structurally forced outcome, and no weighting on the sort key can
+change that.
+
+**So finding (c) is RC-2 (pool membership), not RC-1 (scoring permissiveness).**
+It leaves the RC-1 family, exactly as condition 2 specified. This agrees with the
+independent LEDGER 939 / RM-90 cohort finding, which reached the closed-pool
+diagnosis from the build-order artifact side.
+
+Do NOT build L2-for-hps to fix (c). Its measured yield is one adjacent swap,
+identical for every champion, against the full section-4 L2 price (ENGINE bump +
+dual suite + Share mirror + `:8893` + both build-order tables regenerated).
+
+The real fix is extending the curated heal/shield formulas registry. The 16.14.1
+snapshot ALREADY contains the modern enchanter items and all are absent from it:
+Dawncore 6621, Rylai's 3116, Cosmic Drive 4629, Shurelya's 2065, Zaz'Zak's
+Realmspike 3871, Bloodsong 3877, Solstice Sleigh 3876, Celestial Opposition
+3869, Dream Maker 3870, Innervating Locket 4402. Note that simply flipping
+`enchanter_only=False` is NOT the fix either: the pool grows to 144 ranked / 44
+with delta > 0, but non-registry items score only their incidental AP
+contribution, which floats Rabadon's Deathcap (4.370) ABOVE Mikael's Blessing
+(4.167). That is an RC-2 pool spec, out of scope for RC-1 per section 5.
+
+### Two factual errors in section 3 finding (c), corrected
+
+Both were verified by direct read this session:
+
+1. **"`hps.py` imports neither `ability_hps` nor the amp" is FALSE.**
+   `hps.py:648` does `from .ability_hps import compute_ability_hps` - a
+   deliberate function-level import to dodge a circular import documented at
+   `hps.py:630-632`. And `hps.py:513` *defines* `apply_ability_hsp_amp`.
+2. **"The kit is computed and then discarded before ranking" is FALSE.**
+   `hps.py:679` is `total = direct + buff_credit + ability_hps_total *
+   ability_hps_amp_mult`, and the multiplier is 1.0 when the flag is off - so
+   `ability_hps_total` is added UNCONDITIONALLY. The kit term is already live in
+   the shipped sort key via AP scaling; for Moonstone Renewer the kit term IS the
+   entire delta, because it has no direct heal. What L2 would add is only the
+   second-order `A * hsp_X` term.
+
+What IS true and unchanged: the amp is absent from `rank_items_by_hps`
+(`hps.py:856-876`), from both its `compute_hps` call sites (`:969-980`,
+`:1006-1017`), from the dispatcher (`core/daemon_slayer_client.py`, zero
+occurrences) and from `/rank-enchanter` (`server.py:1953-1967`). Wiring it
+remains defensible on CORRECTNESS grounds - amping ability heals by HSP is
+physically right in League, and `docs/LIVE_GAME_GATED_SYNC.md:358-364` already
+tracks that flip as B47c for `compute_hps` - but it must NOT be sold as the fix
+for finding (c).
+
 ### Deferred deliberately
 
 `rank_items_by_hybrid` (bruiser), `rank_items_by_hps` (enchanter) and
