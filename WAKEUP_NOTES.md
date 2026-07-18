@@ -1,8 +1,85 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the batch21-25 sweep session relocated the batch19 block `2026-07-18f` to `docs/history_notes.md`; newest 3 = the batch21-25 sweep session `2026-07-18i` + the RM-86 L1 engine session `2026-07-18h` + batch20 `2026-07-18g`). NOTE: `scripts/wakeup_prune.py` is a silent NO-OP against these headers - its `SESSION_RE` requires a word boundary after the day, so a letter-suffixed header like `# 2026-07-18h` never matches and it reports "nothing to do" at any file size. Relocations are manual until that is fixed (filed as its own task).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the batch26-31 sweep session relocated the batch20 block `2026-07-18g` to `docs/history_notes.md`; newest 3 = the batch26-31 sweep session `2026-07-18j` + batch21-25 `2026-07-18i` + the RM-86 L1 engine session `2026-07-18h`). NOTE: `scripts/wakeup_prune.py` is a silent NO-OP against these headers - its `SESSION_RE` requires a word boundary after the day, so a letter-suffixed header like `# 2026-07-18h` never matches and it reports "nothing to do" at any file size. Relocations are manual until that is fixed (filed as its own task).
 
 ---
+
+# 2026-07-18j (DS_SWEEP batch26-31 -> 169/173: 30 champions in one session; 30 GAP, 0 REFUTE, THREE new shapes, and the archetype-invariance measurement that reframes the whole sweep)
+
+Read-only research, NO engine change. LEDGER 944 + 945. Two commits:
+`6f927b40` batch26/27/28 (Thresh..Viktor, 139 -> 154) and `525ac845`
+batch29/30/31 (Vladimir..Zeri, 154 -> 169). CI is path-filtered for docs-only
+pushes BY DESIGN (`paths-ignore: '**/*.md'`), so no run is expected on either;
+the local ASCII-hygiene gate is the backstop and is green (13 passed), ruff
+clean. **FOUR champions remain: Ziggs / Zilean / Zoe / Zyra.**
+
+THREE NEW SHAPES. **RM-93** - support-quest item CANDIDACY is inconsistent
+across archetype pools: Zaz'Zak's 3871 and Bloodsong 3877 are candidates on
+ZERO routes despite carrying full modelled damage formulas and a guard suite,
+while their three siblings rank on mage+tank but not enchanter. Canonical is
+Xerath (Zaz'Zak's at **94.28% presence**, candidate nowhere, WR below his own
+support average). Filter-list work, not L2. **RM-94** - snowball-conditional
+stacks pinned at FULL value: `_effects_data.py:3257` pins Mejai's at
+`bonus_ap_stacked=125.0` under a "sustained-peak convention" comment that
+conflates "reachable in one fight" (Black Cleaver) with "requires already
+having won" (25 kill stacks). Mejai's ranks **#6 for every mage** at 2-5% real
+presence. NOT win-rate contamination - DS default is pure simulation, so it
+reaches the same wrong item by a different route. **RM-95** - ability-data
+COVERAGE, and it is a DIAGNOSTIC defect, not a scoring one: five champions have
+no reachable ability data (3 alias misses where the data exists -
+Wukong->`MonkeyKing`, Nunu & Willump->`Nunu`, Renata Glasc->`Renata` - plus
+Locke and Zaahen genuinely absent), and `champion_ability_data_is_current()`
+returns True for ALL FIVE because absent data cannot be drifted. The RM-81
+staleness program therefore under-reports by exactly the set it should flag
+hardest.
+
+**THE HEADLINE IS NOT A SHAPE - it is a measurement.** The mage head is EXACTLY
+invariant across seven mages spanning both batches: Liandry's #1, Blackfire #2
+and Mejai's #6 for ALL SEVEN, Luden's Echo #13 for six. And BotRK is #1 on
+**11 of 11** AD-routed champions. Only one of the seven mages (Viktor) has its
+real first legendary at the top. This mechanically explains the standing
+batch15 fact that "Luden's Echo appears ZERO times" as a first legendary across
+173 champions - it ranks #13 invariantly, so it structurally cannot be first,
+while being the real #1 for Xerath (87.10%), Vex (88.44%) and Vel'Koz (63.67%).
+**Framing that matters: the BotRK lead is not uniformly WRONG, it is uniformly
+UNCONDITIONAL** - correct for Warwick (76.95%) and Yone (91.8%), wrong for
+Viego (Q duplicates it; real item dead at 4.12% / 46.15% WR), Zeri (right-click
+applies NO on-hit at all) and Urgot (fixed 3.0 attack speed). A remedy must be
+a DISCRIMINATOR, not a demotion. Also generalized: the zero-AD Zeal class is a
+uniform #20-#43 (carry) / #38-#74 (bruiser) band across 11 champions vs IE at
+#6-#16, so it is a stat-signature effect, not per-champion.
+
+**DO NOT REDO / self-corrections that already landed.** (1) The RM-95 alias
+miss does NOT degrade rankings - display-name vs DDragon-id ranking is
+BYTE-IDENTICAL, only the `fell_back` flag differs (consistent with the closed
+Vayne finding that the scorers never import `abilities`). (2) The batch17
+"Nunu [GAP route]" verdict is NOT mis-attributed - that analysis used the id
+form. Both claims were mine, both were wrong, both were caught by measurement
+before reaching the tracker. (3) The Shieldbow/Hexoptics control does NOT show
+the scorer blind - it separates them 10-11 places in the CORRECT direction, so
+the defect is magnitude, not blindness. (4) "Xin Zhao MISSING from
+champions.json" was a lookup error; the file is DDragon-keyed (`XinZhao`), all
+173 present. (5) **Vayne was a roster HOLE**, backfilled from her closed
+do-not-re-probe memory, not re-probed - second instance of that trap.
+(6) Engine credit recorded so it is not re-flagged as a gap: the shipped
+artifact correctly gives Yuumi NO boots, and BotRK #1 is right for Warwick/Yone.
+
+**PROBE RECIPE IS DRIFTED - fix before reuse.** Result rows live under key
+`ranked`, NOT `rows`/`results` (a faithful probe returns pool=0 for every
+champion and looks like total engine failure); there is NO
+`champion_has_ability_data` response key (use
+`champion_ability_data_is_current()`); the tanky/squishy pair varies only
+DPS-side inputs so an identical TANK order across both is CORRECT, not
+target-blindness (probe tanks via `enemy_ad_share`/`enemy_ap_share`); and the
+three item files have three non-guessable shapes (`items.json` is DDragon
+`j['data']`, `items_meraki.json` has NO stats block, `build_orders_sr.json`
+nests under `build_orders`). Shell hazard: a double-quoted bash string eats
+backticks as command substitution - write memory/doc appends from a Python file.
+
+NEXT: last 4 champions (Ziggs / Zilean / Zoe / Zyra) to close the roster at
+173/173, then the ability-shaping review for champions missing kit attributes
+(note them for upstream sourcing), then decide what to DO with the collected
+champion/build data and land it for live usage.
 
 # 2026-07-18i (DS_SWEEP batch21-25 -> 139/173: 25 champions in one session; 23 GAP + 2 REFUTE, TWO new numbers, ONE self-retraction)
 
@@ -83,77 +160,5 @@ skipped in the B-batch. Roster markers are `[GAP RM-nn]` / `[REFUTE]` / `[ ]`, s
 `grep -c "^- \[x\]"` returns 0 and looks catastrophic - do not panic.
 Two future-proofing chips queued (Arena mirror leakage guard; patch-vintage drift
 guard). Do NOT rewrite `enchanter_items.json` `_meta.patch` 16.9.1 -> 16.14.1.
-
----
-
-# 2026-07-18g (DS_SWEEP batch20 -> 114/173: Rell / Renata Glasc / Renekton / Rengar / Riven; FIVE GAPs, zero REFUTEs, one live user-facing defect, one retraction)
-
-Read-only research pass, NO engine change. LEDGER 939. Fan-out held a fifth session.
-**First all-GAP batch of the sweep.**
-
-**RM-90 IS A COHORT VERDICT AND IT IS THE HEADLINE - 12 of 14 support champions ship
-exactly TWO build orders.** Verified against the shipped artifact
-`data/daemon_slayer/16.14.1/build_orders_sr.json` (DISPLAY-keyed: the key is
-`"Renata Glasc"` WITH a space):
-- GROUP A byte-identical for Renata Glasc / Soraka / Janna / Nami / Lulu / Milio /
-  Sona / Seraphine: Echoes -> Merc Treads -> Ardent -> Staff of Flowing Water ->
-  Redemption -> Moonstone. ad_heavy / ap_heavy / balanced are identical too.
-- GROUP B byte-identical for Bard / Taric / Rakan / Rell: Randuin's -> Merc Treads ->
-  Warmog's -> Sterak's -> Jak'Sho -> Spirit Visage.
-Renata's shipped items are 0.79-5.6% real pick and her core (Locket 69.5%, Imperial
-Mandate 44.8%, Shurelya's 27.8%, Bandlepipes 25.5%) is ABSENT. Rell's are all 0-3%
-and her core (Zeke's 70.6%, Locket 64.1%, Knight's Vow 28.3%) is ABSENT.
-
-**Four layers of cause:** (1) `ds.hps` ranks a CLOSED 9-item pool
-(`enchanter_only=True`) excluding Zeke's / Bandlepipes / Solstice Sleigh / Celestial
-Opposition / Shurelya's / Vigilant Wardstone - `hps.py` ~894-907 documents this
-itself; (2) inside the pool the order is champion-invariant (11 of 12 identical 9/9;
-Locket 11.73, Knight's Vow 10.00, Mikael's 4.17 are CONSTANT for every champion);
-(3) the tank route fails from the other side - self-EHP cannot value ally auras;
-(4) the RF2 escape hatch is default-OFF **and** its table holds ONE champion, Rakan,
-who no longer routes to `ds.hps` after Slice C - **so RF2 fires for nobody.**
-
-**The uncomfortable part, stated plainly: the Alistar / Blitzcrank / Braum / Bard /
-Rakan REFUTEs were too lenient.** The reasoning ("correct axis, builds no damage,
-team-aura is a class-level scope limit") is still true but under-weighted the
-outcome - they receive a shipped build order omitting their 60-70%-pick first
-legendary. New standing rule now in the tracker: **do not rule another team-aura
-support REFUTE without first checking its shipped build order against real pick
-rates.** Filed as its own task, NOT fixed (pool widening is RC-2; RF2 is
-operator-gated).
-
-**Renekton - the most direct falsification of a scorer output yet: the engine's #1
-pick is measurably his WORST item.** BotRK registers 4.2% pick at **48.0% WR, the
-only sub-50% item on him**, while his 66.5% signature Eclipse is #10 behind nine
-never-built items and Black Cleaver (60.6%) is #30. Also banked: **Eclipse lost
-lethality in V14.1 and is now a BRUISER item** - do not read Eclipse-first as
-lethality.
-
-**Riven - the strongest RC-1 statement in the sweep, because the credited mechanic is
-entirely real AND entirely unbuilt.** Runic Blade charged autos genuinely apply
-on-hit, ARE crit-affected, apply lifesteal at 100%, and proc Spellblade cleanly - so
-every precondition behind BotRK / Kraken / IE / Trinity is TRUE and players build none
-of them (research named Trinity Force "the notable trap"). Whole top-10 never-built;
-Axiom Arc #34 / Death's Dance #40 / Endless Hunger #41 buried. Cause is CADENCE not
-mechanics - Q resets the attack timer, ability haste is the real stat, zero AS items
-in her data.
-
-**Rengar** adds the fourth corroboration (max Ferocity is **4**, not 5, so empowered Q
-lands ~once per four casts; Umbral 73.3% at #13, Profane Hydra 70.9% at #38). With
-Rek'Sai, Pantheon and Olaf that is **five kits that HAVE the term and must not be
-credited at face value - the boolean-gate design for RM-86 L1 is now decisively
-refuted.**
-
-**RETRACTION - batch19's Opportunity finding was WRONG; the task chip is withdrawn.**
-Opportunity (id 6701) was removed from SR in patch 26.09; `items.json` carries
-`inStore: false` and `gold.purchasable: false`, and the map-30 alias 226701 is Arena-
-only. The candidate filter was CORRECT. I asserted a defect from engine-side absence
-alone without checking buyability or live-game existence - a straight violation of
-verify-before-declaring-broken, caught by the Rengar research. Banked in the Rengar
-verdict so it is not re-filed.
-
-**NEXT:** Rumble onward (batch21); next GAP spec = RM-91. RM-86 L1 remains the
-highest-value engine work; batch20 hardened its design (continuous, not boolean) and
-RM-90 adds a second RC-2 workstream (the support pool) alongside Quinn's.
 
 ---
