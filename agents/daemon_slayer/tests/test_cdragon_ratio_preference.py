@@ -1,4 +1,4 @@
-# arch: prefer-CDragon-mechanical-ratios load seam (default OFF) | section=ds-tests | frozen=no
+# arch: prefer-CDragon-mechanical-ratios load seam (default ON, item 320) | section=ds-tests | frozen=no
 """DS ability-ratio re-source: prefer mechanical CDragon blocks, fall back to Meraki.
 
 The DS engine's per-ability damage ratios come from the FROZEN Meraki dump
