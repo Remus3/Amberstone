@@ -26,6 +26,8 @@ Adjudicated all 18 per champion: **5 overridden** (Morgana -> mage; Thresh/Rakan
 - **RC-2** (Nasus, does NOT unify): candidate-pool partition. The right items are not in the set being ranked - structurally the inverse of RC-1, and an RC-1 conversion gate makes it slightly worse. Its own spec, do not fold.
 - Spec carries an L1/L2/L3 fix ladder with per-layer blast radius, a recommended sequencing (L1 default-OFF first, then L2 for `ds.hps` alone, then re-measure), and **three explicit REFUTE conditions** so a later session can attack it cheaply. The invariance table is the regression baseline.
 
+**/done found two changelog gaps and closed them.** `Share/CHANGELOG.md` had no entry for 1.216.0 OR 1.217.0, and `agents/daemon_slayer/CHANGELOG.md` had none for 1.217.0 - so the seventh scorer shipped two days ago with no release note anywhere in the external package. Backfilled both. Also fixed the semantic drift the anchor auto-rewrite cannot see: **five places still said "six archetype scorers"** (README x2, 01_OVERVIEW heading + table, 02_FUNCTION_REFERENCE, 04_GAPS_AND_ROADMAP) and the on-hit row was missing from the 01_OVERVIEW scorer table entirely. Lesson for the next DS bump: `ds_share_sync.py --check` going green means the MIRROR and the version ANCHORS are fresh - it says nothing about prose, and prose is where the rot was.
+
 **NEXT:** Olaf onward (batch18); next GAP spec = RM-87. RM-86's L1 is the highest-value engine work on the board and is now specced. Nunu's TANK-tag route gap and Nasus's RC-2 pool partition are both operator-gated and unstarted.
 
 ---
