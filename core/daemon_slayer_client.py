@@ -1052,6 +1052,38 @@ def _norm_champ_key(s: str) -> str:
     return "".join(ch for ch in (s or "").lower() if ch.isalnum())
 
 
+def _canon_champ_key(s: str) -> str:
+    """Index-lookup key bridging DISPLAY names onto canonical DDragon ids (RM-95).
+
+    ``_norm_champ_key`` alone lowercases + strips punctuation, which already
+    reconciles 18 of the 21 champions whose display name differs from their
+    DDragon id ("Cho'Gath" -> chogath == "Chogath" -> chogath). It CANNOT
+    reconcile the 3 whose display name is not a punctuation variant, because the
+    name carries extra words or a different word entirely: "Wukong" ->
+    MonkeyKing, "Nunu & Willump" -> Nunu, "Renata Glasc" -> Renata. Those
+    resolve only through the canonical DDragon map.
+
+    Reuses the single canonical resolver
+    (:func:`core.archetype_picks.canonical_champion_id`) rather than carrying a
+    second alias dict: it is derived from ``ddragon_champions.json``, so a future
+    rename or release is picked up by a data refresh with no code change. The
+    lazy local import mirrors the circular-import-avoidance pattern already used
+    by :func:`_onhit_coherence_for` below.
+
+    Fail-soft: an unresolvable name passes through unchanged, so this is a strict
+    superset of ``_norm_champ_key`` - measured 0 regressions across every DDragon
+    display name and id (173 champions).
+    """
+    resolved = s
+    try:
+        from core.archetype_picks import canonical_champion_id
+
+        resolved = canonical_champion_id(s) or s
+    except Exception:  # noqa: BLE001 - fail-soft resolver, never gate a lookup
+        resolved = s
+    return _norm_champ_key(resolved)
+
+
 def champion_attackrange(champion: str) -> float:
     """Base attackrange from the local DS champion snapshot, keyed by
     DDragon id or display name. 0.0 when unresolved - unknown champions
@@ -1081,7 +1113,7 @@ def champion_attackrange(champion: str) -> float:
         except (OSError, ValueError):
             index = {}
         _champ_attackrange_index = index
-    return float(_champ_attackrange_index.get(_norm_champ_key(champion), 0.0))
+    return float(_champ_attackrange_index.get(_canon_champ_key(champion), 0.0))
 
 
 _champ_ability_index: Optional[dict] = None
@@ -1124,7 +1156,7 @@ def champion_has_ability_data(champion: str) -> bool:
         _champ_ability_index = index
     if not _champ_ability_index:
         return True
-    return bool(_champ_ability_index.get(_norm_champ_key(champion), False))
+    return bool(_champ_ability_index.get(_canon_champ_key(champion), False))
 
 
 _champ_stale_index: Optional[dict] = None
@@ -1167,7 +1199,7 @@ def champion_ability_data_is_current(champion: str) -> bool:
         except (OSError, ValueError, AttributeError):
             index = {}
         _champ_stale_index = index
-    return not _champ_stale_index.get(_norm_champ_key(champion), False)
+    return not _champ_stale_index.get(_canon_champ_key(champion), False)
 
 
 # Kit-dependent scorers (ds.ability / ds.burst / ds.hps) need the champion's

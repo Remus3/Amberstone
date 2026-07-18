@@ -1,0 +1,37 @@
+# Architectural Decision Records - index
+
+`docs/adr/` is a routing destination declared in `CLAUDE.md`: **before re-litigating a
+past choice, check here first.** This index exists because the ADRs were cited 29 times
+across the living docs by NAME and linked ZERO times, so a session that had not already
+read `CLAUDE.md` had no path into them.
+
+Add a new ADR by copying [TEMPLATE.md](TEMPLATE.md), numbering it sequentially, and
+adding a row here in the same commit.
+
+| ADR | Decision | Status |
+|---|---|---|
+| [001](ADR-001-tkinter-removal.md) | Remove tkinter overlays; keep `tk.Tk()` as scheduler | Accepted (superseded in practice - the scheduler is now the asyncio `AppLoop`; RC is tkinter-free) |
+| [002](ADR-002-ds-before-haiku.md) | Daemon Slayer item ranking runs BEFORE the Haiku coaching call | Accepted |
+| [003](ADR-003-in-process-vision-server.md) | Vision server runs in-process on Legion at `127.0.0.1:8889` | Accepted |
+| [004](ADR-004-bridge-watcher-daemon.md) | Bridge tasks processed by an always-on daemon, not `/loop` polling | **Superseded by ADR-012** |
+| [005](ADR-005-tailscale-magicdns.md) | Cross-Claude bridge uses Tailscale MagicDNS hostnames, not LAN IPs | Accepted (bridge itself decommissioned - the MagicDNS preference still stands for the tailnet) |
+| [006](ADR-006-riot-api-key-policy.md) | Riot API key permitted for full-team context enrichment | Accepted (supersedes the earlier no-key stance) |
+| [007](ADR-007-event-coach-pivot.md) | Event-driven coaching pivot | Accepted |
+| [008](ADR-008-unified-asset-hash.md) | Unified asset-hash for cache-busting + auto-reload | Accepted |
+| [009](ADR-009-replay-events-cleanroom.md) | Replay-events sidecar over Match-V5 timeline; `league_record` GPLv3 cleanroom | Accepted |
+| [010](ADR-010-arena-s2-augment-leveling.md) | Arena S2 Augment Level-Up pre-stage doctrine | Accepted |
+| [011](ADR-011-one-pc-consolidation.md) | One-PC consolidation (Game-PC -> Legion) | Accepted |
+| [012](ADR-012-bridge-decommissioned.md) | RC<->Peer cross-Claude bridge + lessons-sync decommissioned | Accepted (supersedes ADR-004) |
+
+## Reading order for a new session
+
+Topology and where things run: **011** (one-PC), **003** (vision in-process),
+**005** (tailnet naming). Coaching pipeline: **002** (DS before Haiku), **007**
+(event-driven pivot), **010** (Arena augments). Data policy: **006** (Riot key),
+**009** (replay cleanroom). Frontend: **008** (asset hash). Retired: **004** ->
+**012** (bridge).
+
+Related routing: open work is `ROADMAP.md`, aspirational is `BACKLOG.md`, the per-item
+completion ledger is `docs/LEDGER.md` (items 325+) with the deep archive in
+`docs/history_notes.md` (items 1-324). Live-gated validation rows live in
+`docs/LIVE_GAME_GATED_SYNC.md`.
