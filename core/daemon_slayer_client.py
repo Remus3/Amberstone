@@ -259,8 +259,8 @@ def rank_tank_for(
     level: int,
     item_ids: Iterable[str],
     mode: str = "SR",
-    enemy_ad_share: float = 0.5,
-    enemy_ap_share: float = 0.5,
+    enemy_ad_share: Optional[float] = None,
+    enemy_ap_share: Optional[float] = None,
     top: int = 8,
     sort_by: str = "delta",
     only_item_ids: Optional[Iterable[str]] = None,
@@ -283,13 +283,16 @@ def rank_tank_for(
     Option B layering - pass the curated defensive item catalog as a whitelist
     so the EHP-driven ranking happens within an operator-vetted pool.
     """
+    _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
+        enemy_ad_share, enemy_ap_share
+    )
     body: dict = {
         "champion": champion,
         "level": int(level),
         "items": [str(i) for i in item_ids if i],
         "mode": mode,
-        "enemy_ad_share": float(enemy_ad_share),
-        "enemy_ap_share": float(enemy_ap_share),
+        "enemy_ad_share": _resolved_ad_share,
+        "enemy_ap_share": _resolved_ap_share,
         "top": int(top),
         "sort": sort_by,
         "filter_shared_uniques": bool(filter_shared_uniques),
@@ -315,8 +318,8 @@ def ehp_for(
     level: int,
     item_ids: Iterable[str],
     mode: str = "SR",
-    enemy_ad_share: float = 0.5,
-    enemy_ap_share: float = 0.5,
+    enemy_ad_share: Optional[float] = None,
+    enemy_ap_share: Optional[float] = None,
     augments: Optional[Iterable[str]] = None,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> Optional[dict]:
@@ -324,13 +327,16 @@ def ehp_for(
 
     Phase 1 sibling of ``dps_for``. See ``rank_tank_for`` for share semantics.
     """
+    _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
+        enemy_ad_share, enemy_ap_share
+    )
     body: dict = {
         "champion": champion,
         "level": int(level),
         "items": [str(i) for i in item_ids if i],
         "mode": mode,
-        "enemy_ad_share": float(enemy_ad_share),
-        "enemy_ap_share": float(enemy_ap_share),
+        "enemy_ad_share": _resolved_ad_share,
+        "enemy_ap_share": _resolved_ap_share,
     }
     if augments:
         body["augments"] = [str(a) for a in augments if a]
@@ -383,8 +389,8 @@ def rank_bruiser_for(
     target_mr: float = 0.0,
     target_max_hp: float = 0.0,
     target_bonus_hp: float = 0.0,
-    enemy_ad_share: float = 0.5,
-    enemy_ap_share: float = 0.5,
+    enemy_ad_share: Optional[float] = None,
+    enemy_ap_share: Optional[float] = None,
     top: int = 8,
     sort_by: str = "delta",
     only_item_ids: Optional[Iterable[str]] = None,
@@ -407,6 +413,9 @@ def rank_bruiser_for(
     lookup server-side; pass explicit floats only when overriding (UI sliders,
     operator mid-game retune).
     """
+    _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
+        enemy_ad_share, enemy_ap_share
+    )
     body: dict = {
         "champion": champion,
         "level": int(level),
@@ -416,8 +425,8 @@ def rank_bruiser_for(
         "target_mr": float(target_mr),
         "target_max_hp": float(target_max_hp),
         "target_bonus_hp": float(target_bonus_hp),
-        "enemy_ad_share": float(enemy_ad_share),
-        "enemy_ap_share": float(enemy_ap_share),
+        "enemy_ad_share": _resolved_ad_share,
+        "enemy_ap_share": _resolved_ap_share,
         "top": int(top),
         "sort": sort_by,
         "filter_shared_uniques": bool(filter_shared_uniques),
@@ -751,8 +760,8 @@ def hybrid_for(
     target_mr: float = 0.0,
     target_max_hp: float = 0.0,
     target_bonus_hp: float = 0.0,
-    enemy_ad_share: float = 0.5,
-    enemy_ap_share: float = 0.5,
+    enemy_ad_share: Optional[float] = None,
+    enemy_ap_share: Optional[float] = None,
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
     augments: Optional[Iterable[str]] = None,
@@ -763,6 +772,9 @@ def hybrid_for(
     Phase 2 sibling of ``dps_for`` and ``ehp_for``. See ``rank_bruiser_for``
     for alpha/beta semantics.
     """
+    _resolved_ad_share, _resolved_ap_share = _resolve_enemy_shares(
+        enemy_ad_share, enemy_ap_share
+    )
     body: dict = {
         "champion": champion,
         "level": int(level),
@@ -772,8 +784,8 @@ def hybrid_for(
         "target_mr": float(target_mr),
         "target_max_hp": float(target_max_hp),
         "target_bonus_hp": float(target_bonus_hp),
-        "enemy_ad_share": float(enemy_ad_share),
-        "enemy_ap_share": float(enemy_ap_share),
+        "enemy_ad_share": _resolved_ad_share,
+        "enemy_ap_share": _resolved_ap_share,
     }
     if alpha is not None:
         body["alpha"] = float(alpha)
@@ -1048,6 +1060,63 @@ _DS_DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "daemon_slayer"
 _champ_attackrange_index: Optional[dict] = None
 
 
+def _resolve_enemy_shares(
+    enemy_ad_share: Optional[float],
+    enemy_ap_share: Optional[float],
+) -> tuple[float, float]:
+    """Resolve the enemy damage-share pair into an engine-legal (ad, ap).
+
+    The engine requires the pair to sum to <= 1.0. Every ranking entry point used
+    to default BOTH sides to 0.5 independently, so a caller supplying only the
+    side it actually knows shipped 0.77 + 0.5 = 1.27, the server rejected the
+    body, and ``_post_json`` mapped that to None - the caller saw "engine
+    unreachable" and rendered NO recommendation at all. A silent total failure
+    from a perfectly reasonable call.
+
+    That path stopped being hypothetical when real enemy compositions started
+    feeding the ranker instead of a synthetic 50/50: measured over the rewind
+    corpus, 50.1 percent of 1286 real team comps carry an AD share outside
+    [0.40, 0.60].
+
+    Rules, in order:
+      * neither supplied -> the neutral (0.5, 0.5) split, so existing calls are
+        byte-identical;
+      * exactly one supplied -> derive the partner as ``1.0 - x``. The shares
+        partition one enemy team's damage, so the complement is the only sensible
+        reading, and a mid-game coach must degrade to a usable answer rather than
+        to nothing;
+      * both supplied -> passed through untouched, INCLUDING a deliberate
+        sub-unit split (a true-damage remainder is real and must survive);
+      * both supplied but summing over 1.0 -> scaled down proportionally rather
+        than rejected, for the same degrade-to-usable reason.
+
+    Inputs are clamped to [0, 1] first, so no caller can produce a body the
+    engine will refuse.
+    """
+
+    def _clamp(x: float) -> float:
+        return 0.0 if x < 0.0 else (1.0 if x > 1.0 else float(x))
+
+    ad = None if enemy_ad_share is None else _clamp(enemy_ad_share)
+    ap = None if enemy_ap_share is None else _clamp(enemy_ap_share)
+
+    if ad is None and ap is None:
+        return (0.5, 0.5)
+    if ap is None:
+        return (ad, _clamp(1.0 - ad))
+    if ad is None:
+        return (_clamp(1.0 - ap), ap)
+
+    total = ad + ap
+    if total > 1.0:
+        # Proportional scale-down keeps the RATIO the caller expressed, which is
+        # the load-bearing part of the signal; the absolute magnitudes are not.
+        if total <= 0.0:
+            return (0.5, 0.5)
+        return (ad / total, ap / total)
+    return (ad, ap)
+
+
 def _norm_champ_key(s: str) -> str:
     return "".join(ch for ch in (s or "").lower() if ch.isalnum())
 
@@ -1278,8 +1347,8 @@ def rank_for_primary_archetype(
     target_max_hp: float = 0.0,
     target_bonus_hp: float = 0.0,
     # EHP-side inputs (used when archetype routes to ds.ehp / ds.hybrid):
-    enemy_ad_share: float = 0.5,
-    enemy_ap_share: float = 0.5,
+    enemy_ad_share: Optional[float] = None,
+    enemy_ap_share: Optional[float] = None,
     # Hybrid-only overrides (silently ignored by other scorers):
     alpha: Optional[float] = None,
     beta: Optional[float] = None,
