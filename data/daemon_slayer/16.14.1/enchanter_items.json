@@ -31,6 +31,38 @@
     ]
   },
   "items": {
+    "6621": {
+      "name": "Dawncore",
+      "heal_per_proc_base": 0.0,
+      "heal_per_proc_per_level": 0.0,
+      "heal_per_proc_ap_scaling": 0.0,
+      "heal_procs_per_second": 0.0,
+      "heal_targets_per_proc": 0.0,
+      "shield_per_proc_base": 0.0,
+      "shield_per_proc_per_level": 0.0,
+      "shield_per_proc_ap_scaling": 0.0,
+      "shield_procs_per_second": 0.0,
+      "shield_targets_per_proc": 0.0,
+      "heal_shield_amp_pct": 0.16,
+      "ally_buff_credit_per_second": 0.0,
+      "notes": "Added 2026-07-18 (RM-90 / RM-86 finding (c) pool omission). 2500g, maps 11/12/21/35, purchasable. DDragon stat line: 45 AP / 16% Heal and Shield Power / 100% Base Mana Regen. Pure AMP item - no direct heal or shield in its text, so every proc field is 0.0. heal_shield_amp_pct takes the STATED flat 16%, matching how every prior entry was curated (Ardent 10% -> 0.10, Staff 10% -> 0.10, Mikael's 12% -> 0.12, Redemption 10% -> 0.10). NOT modeled: the First Light passive, 'Gain 2% Heal and Shield Power and 10 Ability Power per 100% Base Mana Regen'. Its own 100% base mana regen adds +2% (18% solo) and a full enchanter build stacking Ardent/Staff/Helia 125% each pushes it higher, but this field is a FLAT amp with no build-dependent term, so crediting that here would over-count. Documented as known upside rather than invented."
+    },
+    "2526": {
+      "name": "Whispering Circlet",
+      "heal_per_proc_base": 0.0,
+      "heal_per_proc_per_level": 0.0,
+      "heal_per_proc_ap_scaling": 0.0,
+      "heal_procs_per_second": 0.0,
+      "heal_targets_per_proc": 0.0,
+      "shield_per_proc_base": 0.0,
+      "shield_per_proc_per_level": 0.0,
+      "shield_per_proc_ap_scaling": 0.0,
+      "shield_procs_per_second": 0.0,
+      "shield_targets_per_proc": 0.0,
+      "heal_shield_amp_pct": 0.08,
+      "ally_buff_credit_per_second": 0.0,
+      "notes": "Added 2026-07-18 (RM-90 / RM-86 finding (c) pool omission). 2250g, maps 11/12/21/35, purchasable. DDragon stat line: 200 HP / 300 Mana / 8% Heal and Shield Power / 75% Base Mana Regen. Pure AMP item - no direct heal or shield, so every proc field is 0.0. heal_shield_amp_pct takes the stated flat 8%. NOT modeled: the Harmony passive prints 'Gain % Heal and Shield Power' with the magnitude stripped from the DDragon text, so no number is derivable from shipped data and none was guessed. Transforms into Diadem of Songs (2530) at 360 max Mana; 2530 is gold.purchasable=False and is deliberately NOT registered - the candidate filter drops non-purchasable items, and registering a transform target would double-count the line."
+    },
     "6617": {
       "name": "Moonstone Renewer",
       "heal_per_proc_base": 0.0,
