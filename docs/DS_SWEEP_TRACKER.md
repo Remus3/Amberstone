@@ -10,8 +10,8 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 
 ## Summary
 
-- Resolved: 154 / 173  (GAP 117, REFUTE 34, FENCED/data-refuted 3)
-- Remaining: 19
+- Resolved: 169 / 173  (GAP 132, REFUTE 34, FENCED/data-refuted 3)
+- Remaining: 4
 - **COUNT INTEGRITY (fixed 2026-07-18, batch18).** The header count above and the
   `## Full roster` checkboxes are two independent records and they had silently
   diverged by 10: batch16 and batch17 wrote their per-champion verdict entries and
@@ -35,7 +35,7 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   find-and-replace across them silently no-ops. Edit each line individually and
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
-- Next up (strict alphabetical): Vladimir. Next GAP spec = RM-95.
+- Next up (strict alphabetical): Ziggs. Next GAP spec = RM-96.
 - **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
   engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
   `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
@@ -82,6 +82,212 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   re-probe"), so her checkbox was backfilled from that evidence and she was
   excluded from the 14-champion probe. That is the second confirmed instance of
   the batch21 hole-vs-pending trap, so it is a recurring failure mode, not a one-off.
+- batch29 (2026-07-18): Vladimir [GAP RM-92], Volibear [GAP RM-92 + soft trap-D],
+  Warwick [GAP RM-92], Wukong [GAP RM-86], Xayah [GAP RM-92, cleanest paired miss].
+- batch30 (2026-07-18): Xerath [GAP RM-93, new canonical], Xin Zhao [GAP RM-92],
+  Yasuo [GAP RM-86 + TRAP-D], Yone [GAP RM-86], Yorick [GAP RM-92].
+- batch31 (2026-07-18): Yunara [GAP RM-92], Yuumi [GAP RM-92, MOST COMPLETE
+  INSTANCE IN THE SWEEP], Zaahen [GAP RM-95 NEW], Zac [GAP RM-92], Zeri [GAP RM-86].
+  **Fifteen GAPs, zero REFUTEs - the THIRD consecutive zero-REFUTE batch.**
+- **BATCH29/30/31 HEADLINE - the defect is ARCHETYPE INVARIANCE, measured twice.**
+  This batch stopped producing per-champion findings and started producing one
+  systemic measurement, from two independent directions:
+  (1) **The mage head is EXACTLY invariant across 7 mages spanning two batches**
+  (Twisted Fate / Veigar / Vel'Koz / Vex / Viktor / Vladimir / Xerath):
+  Liandry's Torment **#1 for all seven**, Blackfire Torch **#2 for all seven**,
+  Mejai's **#6 for all seven**, Rabadon's and Void Staff merely swapping #3/#4,
+  and Luden's Echo **#13 for six of seven**. Only ONE of the seven has its real
+  first legendary at the top (Viktor, Blackfire 76.78% -> #2).
+  (2) **BotRK ranks #1 on 11 of 11 AD-routed champions** probed this batch -
+  every bruiser and every carry, no exceptions.
+  **This mechanically explains a standing sweep observation.** The precompute
+  histogram has recorded since batch15 that "Luden's Echo appears ZERO times" as
+  a first legendary across all 173 champions, treated until now as a curiosity.
+  The cause is measured: Luden's ranks #13 invariantly, so it can never surface
+  as a first item - while being the real first legendary for Xerath (87.10%),
+  Vex (88.44%) and Vel'Koz (63.67%). The zero is a consequence of the invariant
+  head, not a data quirk.
+  **Framing that keeps this honest: the BotRK lead is not uniformly WRONG, it is
+  uniformly UNCONDITIONAL.** Warwick is the counter-example - BotRK genuinely is
+  his #1 real item at 76.95% presence, and Yone's at 91.8%, so the engine is
+  right for them. Viego (batch26) proves it can be wrong, since his Q already
+  applies the same %HP on-hit and the real item is dead at 4.12% presence and a
+  LOSING 46.15% WR. The defect is not the lead; it is that nothing distinguishes
+  the two cases. This is RM-90's mega-templates observed at the RANKING layer and
+  is the cleanest quantification of RM-86 so far, because the invariance is
+  EXACT rather than approximate.
+- **RM-95 (NEW SHAPE) - ability-data COVERAGE and the staleness checker that
+  hides it. This is a DIAGNOSTIC defect, not a scoring defect - scope it that way.**
+  Surfaced by `fell_back=True` on Wukong and Zaahen, the first two occurrences in
+  29 probed champions. `core/daemon_slayer_client.py:1423` computes
+  `"fell_back": fell_back or not champion_has_ability_data(champion)`.
+  A full-roster scan for "no ability data yet is_current=True" returns FIVE
+  champions - Locke, Nunu & Willump, Renata Glasc, Wukong, Zaahen - splitting in two:
+  **(A) ALIAS MISSES (3), where the data EXISTS and is simply not found.**
+  `champion_abilities.json` is keyed by DDragon id. Punctuation and whitespace
+  normalization works exactly as its docstring claims (verified: Lee Sin/LeeSin and
+  Vel'Koz/Velkoz both resolve), but it cannot handle a SEMANTIC rename:
+  Wukong -> `MonkeyKing`, Nunu & Willump -> `Nunu`, Renata Glasc -> `Renata`.
+  Only these three exist on the roster; a 3-entry alias map fixes it.
+  **(B) GENUINELY ABSENT (2): Locke and Zaahen.** `champion_abilities.json` holds
+  171 champions while `/health` and `champions.json` both report 173.
+  **(C) The real defect is that the staleness checker certifies missing data as
+  clean.** `champion_ability_data_is_current()` returns True for all five, because
+  data that is absent cannot be DRIFTED. Vacuous truth. The RM-81 program
+  (`tools/ds_wiki_staleness_check.py`, `ability_staleness.json`) therefore
+  UNDER-REPORTS by exactly the set it should flag hardest. It needs a third state,
+  "no data", distinct from "not drifted". A verification tool that reports clean on
+  absent data is worse than a scorer gap because it hides the problem.
+  **SCOPE CORRECTION made before this reached the tracker:** the first write-up
+  claimed these champions' RANKINGS were degraded and floated that the batch17
+  "Nunu [GAP route]" verdict was mis-attributed. Both were wrong and are retracted.
+  Ranking by display name vs DDragon id is BYTE-IDENTICAL for all three alias
+  cases (only the `fell_back` flag differs), which is consistent with the closed
+  Vayne finding that `ds.dps`/`ds.ehp`/`ds.hps` never import `abilities` at all;
+  and the batch17 Nunu analysis used the id form, so that verdict stands.
+  `fell_back` is additionally BRANCH-dependent - the tank / enchanter branches
+  hardcode it False (lines 1464, 1511, 1551) - so it cannot detect this in general
+  and surfaced Wukong only by luck.
+- **ZAAHEN - the most complete champion-representation failure found in the sweep,
+  and the reason RM-95 is worth a fix.** Two defects COMPOUND on one champion, both
+  verified in repo data. (1) `champions.json` gives him `attackdamageperlevel = 0`.
+  That is CORRECT upstream data, not corruption: Zaahen (172nd champion, released
+  2025-11-19 patch 25.23) routes all AD growth through his passive Cultivation of
+  War - 12 Determination stacks, each ~1.5-2.95% AD by level, DOUBLING at max stacks
+  to roughly 36-70.87% AD by level. (2) His ability data is absent entirely, so that
+  passive is invisible. **The engine therefore models him as 63 AD that never grows,
+  with no abilities** - at L16 it sees 63 AD where Yasuo (AD/lvl 3.0) has 105. Both
+  halves of his damage model are missing at once and neither can cover for the other.
+  Observable in the output: his real first item is Trinity Force at 70.46% top /
+  81.17% jungle and it ranks **#6**, behind BotRK #1, Heartsteel #2, Stormrazor #3,
+  Kraken #4 and **Liandry's Torment #5 - an AP item on a champion with ZERO AP
+  ratios anywhere in his kit** (physical 22,668 / true 1,636 / magic 1,278). Real
+  2nd/3rd Stridebreaker 46.37% and Death's Dance 35.42% sit at #45 and #33.
+  Generalisable hazard: `attackdamageperlevel = 0` will mis-price ANY champion who
+  routes growth through a passive; worth a targeted roster scan.
+- **BATCH29/30/31 PER-CHAMPION EVIDENCE** (live 1.219.0 / 16.14.1, top=200, corrected
+  recipe; EHP-routed champions additionally swept on `enemy_ad_share`).
+  Format: real presence -> engine rank.
+  - **Yuumi** (enchanter, pool 10) - **NOW THE MOST COMPLETE RM-92 INSTANCE, past
+    Soraka.** Dream Maker **91.4% -> NOT A CANDIDATE** (RM-93); Moonstone Renewer
+    64.9% -> **#10 of 10, dead last**; Mikael's Blessing 59.8% -> #8; Ardent Censer
+    51.0% -> #2. Her Moonstone rank is IDENTICAL to Soraka's because `ds.hps` is
+    champion-invariant, so it is the same #10 for every enchanter. There is no
+    self-output item anywhere in her build: her top four purchases are ally-buff,
+    ally-heal, ally-cleanse and ally-damage-redirection, and her kit passes E's
+    shield and speed to the ally instead of herself. She is also a strict TRAP-D -
+    her only played role loses (48.31-49.38% vs a 51.65% bracket average).
+    **Engine credit where due: the shipped artifact correctly gives her NO boots**
+    (she is Attached and buys none in ~98% of games). She and Cassiopeia are the
+    only two no-boot champions shipped, though this falls out of the enchanter pool
+    excluding boots rather than from a Yuumi-specific rule.
+  - **Xayah** (carry) - cleanest PAIRED miss in the sweep: engine ranks **Runaan's
+    Hurricane #2** while it is absent from her core, absent from every slot table and
+    absent from a 20-deep popularity list, with a mechanical cause (Runaan's bolts do
+    not generate feathers, and her damage is feather-gated) - and simultaneously her
+    **highest-presence legendary, Navori Flickerblade at 87.0%, ranks #30**. Wrong
+    item promoted and right item buried on one champion. Essence Reaver 63.39% -> #17,
+    IE 71.78% -> #6. ABILITY DATA DRIFTED.
+  - **Xerath** (mage) - **new canonical RM-93 instance, stronger than Vel'Koz.**
+    Support builds **Zaz'Zak's Realmspike at 94.28% presence** (vs Vel'Koz 86.82%)
+    and it is a candidate on ZERO routes; its 49.63% WR sits BELOW his support
+    average, independently confirming it is bought for support-quest income and
+    vision rather than output. Mid: Luden's 87.10% -> #13 while engine gives Void
+    Staff #3 (real 11.36%) and Rabadon's #4 (real 35.57%).
+  - **Yasuo** / **Yone** - GAP RM-86, and the batch's best-controlled measurement.
+    Their passive DOUBLES total crit chance, crits deal 180% AD (207% with IE)
+    instead of 200%, and excess crit above 100% converts at 0.5 AD per 1%. Measured
+    consequence: expected crit items in the first five legendaries is **2.18-2.42
+    for Yasuo/Yone against 3.97-4.04 for Caitlyn and Jinx** on the same patch and
+    the same method - almost exactly the halving a 2x multiplier predicts. A scorer
+    pricing crit linearly over-ranks crit items for them ~2x and simultaneously
+    UNDER-ranks the 3rd/4th crit item, whose crit is really 25 bonus AD.
+    They also buy NONE of the zero-AD crit items (RFC 0.00%, Runaan's 0.00%,
+    Phantom Dancer 2.0-2.8%) because once crit caps in two items the marginal crit
+    item is valued as an AD stick. **Yasuo is a confirmed TRAP-D**: mid 63.1% at
+    49.84% versus bottom 10.7% at 52.43%, a +2.6pp swing (upper bound - an off-role
+    that small self-selects for mains). Yone is NOT a trap-D and BotRK #1 is
+    genuinely correct for him at 91.8% presence.
+  - **SHIELDBOW CONTROL - a natural experiment, and it REFINED my hypothesis rather
+    than confirming it.** Immortal Shieldbow and Hexoptics C44 carry byte-identical
+    statlines in the engine's own data (both 55 AD / 25% crit, same gold), yet
+    Yasuo and Yone take Shieldbow 79-93% and Hexoptics 0.00-0.03%, isolating the
+    Lifeline shield as the entire purchase driver. Predicted: the scorer is blind to
+    the difference and ranks them adjacently. **Measured: it is NOT blind** -
+    Shieldbow #19/#20/#16 versus Hexoptics #30/#31/#26 for Yasuo/Yone/Xin Zhao, so
+    the engine separates them by 10-11 places in the CORRECT direction. The real
+    defect is magnitude, not blindness: reality is total substitution while the
+    engine puts Yasuo's ~87%-presence second core at #19 of 143.
+  - **Zeri** (carry) - GAP RM-86, third distinct BotRK kit-blindness instance.
+    Her right-click is a charged shot that is MAGIC, scales with AP and target max
+    health, CANNOT crit, and **does not apply or trigger on-hit effects**; her Q is
+    a spell that applies on-hit to the first enemy only, can crit, and converts
+    attack speed past a 1.5-casts/sec cap into AD at 60%. The engine still leads her
+    with **BotRK #1** - an on-hit %current-HP item on a champion whose basic attack
+    does not apply on-hit. IE 71.22% (her real #1) -> #13; Stormrazor 67.24% -> #4.
+    Her anomalous top-6 (Dusk and Dawn #2, Liandry's #3) traces to base stats: AD/lvl
+    2.0 and AS/lvl 2 against Xayah's 3.5 and 3.9, so a pure auto-attack sim converts
+    AD/crit poorly for her. ABILITY DATA DRIFTED.
+  - **Zac** (tank) - GAP RM-92, heal-AMPLIFICATION unpriced. **Spirit Visage at
+    62.70% presence heals for ZERO by itself**; its entire marginal value on Zac is
+    multiplying a kit heal (passive goo chunks heal 4-8.47% max health each, plus
+    Cell Division's revive). A scorer pricing heal/shield power from an item's own
+    healing output values it at ~0. Engine: Spirit Visage #8, Sunfire Aegis 80.53%
+    -> #11, while Randuin's #1 (real 15.77%) and Warmog's #2 and Heartsteel #5 are
+    all low-presence - the Ornn/Rammus RM-87 shape recurring. His kit has AP ratios
+    on every ability (Q 60%, E 80%, R 100% AP) yet the meta buys ZERO AP, and bonus
+    HP barely feeds his damage (only Q, at 6% of bonus health), so HP is EHP not
+    damage for him. ABILITY DATA DRIFTED.
+  - **Vladimir** (mage) - GAP RM-92 + a clean RM-91 instance. Crimson Pact makes
+    3.333% bonus health into AP and 160% AP into bonus health, so HP and AP are
+    literally the SAME STAT on him. His real #1, Hextech Rocketbelt at 64%, ranks
+    **#26** and is bought for the 275-unit dash - his only mobility besides a
+    self-damaging pool. The tell is an inversion: Rocketbelt is his highest-presence
+    item AND his lowest win rate (50.15%), while Rabadon's at lower presence wins
+    58.34%. Riftmaker 41.83% -> #10, Stormsurge 43.43% -> #7.
+  - **Volibear** (bruiser) - GAP RM-92, sharpest new zero-AD Zeal instance.
+    **Navori Flickerblade at 52.96% presence ranks #61**, and the research line
+    independently observed that its headline 25% crit is near-dead on him because
+    Transcendence has no crit requirement - he buys attack speed and cooldown
+    throughput. Dusk and Dawn 72.13% -> #5. SOFT trap-D (top 74.7% is the worse role
+    on both sources but only sub-50% on one, so flagged soft not confirmed).
+    Row-summing was decisive here: his top keystone row reads 45.06% and the true
+    summed Lethal Tempo share is 60.3%. ABILITY DATA DRIFTED.
+  - **Warwick** (bruiser) - GAP RM-92, but **the engine's #1 is CORRECT**: BotRK is
+    genuinely his top item at 76.95% presence. Stridebreaker 53.3% -> #36 (bought
+    for a 450-radius 35% slow, team-facing CC and his only itemised engage);
+    Spirit Visage 30.39% -> #74. Defensive boots total 84.56% while Berserker's -
+    the boot that would feed his attack-speed axis - sits at 1.69%. Note for future
+    scorers: his damage and healing are the SAME number (R heals 100% of
+    post-mitigation damage, passive heals 100%/250% at low HP), so the terms are
+    coupled, not additive.
+  - **Wukong** (bruiser) - GAP RM-86. Trinity Force 91.26% (real #1) -> #2 and
+    Sundered Sky 73.45% -> #13 are close, but BotRK #1 is not in his real build at
+    all. Black Cleaver 37.72% -> #30. His AoE ultimate does NOT pull the build toward
+    AoE items (the clone procs no item effects) - one of two cases this batch where
+    native kit AoE SUPPRESSES rather than invites AoE item purchases.
+    Also carries the RM-95 alias miss (`MonkeyKing`), which changed his `fell_back`
+    flag but not a single item position.
+  - **Xin Zhao** (bruiser) - GAP RM-92. Sundered Sky 85.3% -> #19, Black Cleaver
+    69.8% -> #29 (its 30% armor shred is a target debuff, so it is team-facing).
+    Boots are ~97.5% pure-defensive with Berserker's at 0.27%. Structural note: he
+    is an **AS-hungry kit with AS-FREE itemization** - the demand is met entirely by
+    E's 38-70% self-buff plus Legend: Alacrity 90.7% and a 98.8% AS shard, never by
+    gold, so a scorer inferring item AS demand from kit AS demand will mis-rank him.
+  - **Yorick** (bruiser) - GAP RM-92. Trinity Force 63.3% -> #2 correct; Spear of
+    Shojin 39.5% -> **#51** (25 basic-ability haste, the same enabler shape as
+    Smolder and Udyr); Serylda's 22.9% -> #35. Summon-scaling verified and it is
+    NOT the axis: Mist Walkers take 20% and the Maiden 30% of bonus AD and
+    **inherit no item or on-hit effects**, so the meta prices his own body. Open
+    thread worth a targeted probe, not asserted: Spear of Shojin's Focused Will
+    reads "Ability and PASSIVE damage", and Mist Walkers are his passive.
+  - **Yunara** (carry) - GAP RM-92. Confirmed NOT a new champion (released patch
+    25.14, 2025-07-16, 57,409 games) so the thin-data caveat does not apply.
+    **Fiendhunter Bolts at 86.3% in slot 2 ranks #34** - bought for 30 ULTIMATE
+    ability haste to raise Transcendent State uptime, the same ult-haste shape as
+    Twitch. Kraken Slayer 92.0% -> #2, IE 67.6% -> #12. Her exact core
+    (Kraken > Fiendhunter > IE) is run by 54.47% of ALL her games - an unusually
+    rigid build that the engine still does not reproduce. ABILITY DATA DRIFTED.
 - **BATCH26/27/28 METHOD CORRECTIONS - the standing probe recipe is DRIFTED.**
   (1) `rank_for_primary_archetype` returns its rows under the key **`ranked`**,
   NOT `rows` / `results`. A recipe-faithful probe returns pool=0 for every
@@ -747,22 +953,22 @@ chain in `docs/specs/DECISION_riot_patch_note_backfill.md`.
 - [GAP RM-90] Vi
 - [GAP RM-86] Viego
 - [GAP RM-40] Viktor
-- [ ] Vladimir
-- [ ] Volibear
-- [ ] Warwick
-- [ ] Wukong
-- [ ] Xayah
-- [ ] Xerath
-- [ ] Xin Zhao
-- [ ] Yasuo
-- [ ] Yone
-- [ ] Yorick
-- [ ] Yunara
-- [ ] Yuumi
-- [ ] Zaahen
-- [ ] Zac
+- [GAP RM-92] Vladimir
+- [GAP RM-92] Volibear
+- [GAP RM-92] Warwick
+- [GAP RM-86] Wukong
+- [GAP RM-92] Xayah
+- [GAP RM-93] Xerath
+- [GAP RM-92] Xin Zhao
+- [GAP RM-86] Yasuo
+- [GAP RM-86] Yone
+- [GAP RM-92] Yorick
+- [GAP RM-92] Yunara
+- [GAP RM-92] Yuumi
+- [GAP RM-95] Zaahen
+- [GAP RM-92] Zac
 - [FENCED RM-34] Zed
-- [ ] Zeri
+- [GAP RM-86] Zeri
 - [ ] Ziggs
 - [ ] Zilean
 - [ ] Zoe
