@@ -749,8 +749,13 @@ path repo-wide before moving). 7 of the original 15 were executed [ARCHIVED 2026
 7. `tools/AUTO_OPS_VERB_EXPANSION_GATE_PROBE.md` (2026-05-25) - one-shot probe, complete.
 13. `ops/audit/LOLMATH_VS_DS_SWEEP.md` (2026-06-15) - all-champ sweep at ENGINE 1.120.0 / patch
     16.12.1; stale (engine is now 1.219.0 / 16.14.1).
-15. `ops/audit/ds_cross_eval/reports/` - ~172 per-champion reports, program DONE 2026-06-16; archive
-    `reports/` ONLY, KEEP PROGRAM/REPORT/SYSTEMIC_FINDINGS/TIER2_REPORT. Plus the
+15. **[DONE 2026-07-18]** `ops/audit/ds_cross_eval/reports/` - 172 per-champion reports, program
+    DONE 2026-06-16; archived to `docs/_archive/2026-07-18-ds-cross-eval-reports/` with
+    PROGRAM/REPORT/SYSTEMIC_FINDINGS/TIER2_REPORT KEPT in place as specified. The 41
+    `agents/agent6_auditor/reports/` files went to
+    `docs/_archive/2026-07-18-agent6-auditor-reports/` in the same pass. The one live citation
+    (`docs/specs/2026-07-16-ds-onhit-ap-combined-dps-scorer-design.md` -> `Kayle.md`) was
+    repointed. STILL OPEN from this row: the
     `docs/research/RC2_RESEARCH_*` cohort (2026-06-19). EXCLUDE
     `ops/audit/ds_perm_swarm/report/live_flip_eyeball.md` (ongoing).
 

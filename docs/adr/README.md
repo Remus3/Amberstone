@@ -10,7 +10,7 @@ adding a row here in the same commit.
 
 | ADR | Decision | Status |
 |---|---|---|
-| [001](ADR-001-tkinter-removal.md) | Remove tkinter overlays; keep `tk.Tk()` as scheduler | Accepted (superseded in practice - the scheduler is now the asyncio `AppLoop`; RC is tkinter-free) |
+| ~~001~~ | Remove tkinter overlays; keep `tk.Tk()` as scheduler | **RETIRED 2026-07-18** - its own "Watch for" note predicted the asyncio migration that has since happened. RC is tkinter-free (scheduler is the asyncio `AppLoop`), so the `tk.Tk()` half was stale guidance. The overlays-removed half is now just how RC works and needs no ADR. Record kept at `docs/_archive/ADR-001-tkinter-removal-RETIRED.md` |
 | [002](ADR-002-ds-before-haiku.md) | Daemon Slayer item ranking runs BEFORE the Haiku coaching call | Accepted |
 | [003](ADR-003-in-process-vision-server.md) | Vision server runs in-process on Legion at `127.0.0.1:8889` | Accepted |
 | [004](ADR-004-bridge-watcher-daemon.md) | Bridge tasks processed by an always-on daemon, not `/loop` polling | **Superseded by ADR-012** |
