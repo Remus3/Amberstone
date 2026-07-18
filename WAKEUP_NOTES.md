@@ -1,6 +1,78 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the DS_SWEEP batch18 session relocated four blocks - the 2026-07-18b four-track session, the RM-81 staleness-detector session, and the batch15 + batch14 sweep sessions - to `docs/history_notes.md`; newest 3 = batch19 + batch18 + the 2026-07-18d four-track session; the 2026-07-18c two-track session was relocated by batch19).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the DS_SWEEP batch18 session relocated four blocks - the 2026-07-18b four-track session, the RM-81 staleness-detector session, and the batch15 + batch14 sweep sessions - to `docs/history_notes.md`; newest 3 = batch20 + batch19 + batch18; the 2026-07-18d four-track session was relocated by batch20).
+
+---
+
+# 2026-07-18g (DS_SWEEP batch20 -> 114/173: Rell / Renata Glasc / Renekton / Rengar / Riven; FIVE GAPs, zero REFUTEs, one live user-facing defect, one retraction)
+
+Read-only research pass, NO engine change. LEDGER 939. Fan-out held a fifth session.
+**First all-GAP batch of the sweep.**
+
+**RM-90 IS A COHORT VERDICT AND IT IS THE HEADLINE - 12 of 14 support champions ship
+exactly TWO build orders.** Verified against the shipped artifact
+`data/daemon_slayer/16.14.1/build_orders_sr.json` (DISPLAY-keyed: the key is
+`"Renata Glasc"` WITH a space):
+- GROUP A byte-identical for Renata Glasc / Soraka / Janna / Nami / Lulu / Milio /
+  Sona / Seraphine: Echoes -> Merc Treads -> Ardent -> Staff of Flowing Water ->
+  Redemption -> Moonstone. ad_heavy / ap_heavy / balanced are identical too.
+- GROUP B byte-identical for Bard / Taric / Rakan / Rell: Randuin's -> Merc Treads ->
+  Warmog's -> Sterak's -> Jak'Sho -> Spirit Visage.
+Renata's shipped items are 0.79-5.6% real pick and her core (Locket 69.5%, Imperial
+Mandate 44.8%, Shurelya's 27.8%, Bandlepipes 25.5%) is ABSENT. Rell's are all 0-3%
+and her core (Zeke's 70.6%, Locket 64.1%, Knight's Vow 28.3%) is ABSENT.
+
+**Four layers of cause:** (1) `ds.hps` ranks a CLOSED 9-item pool
+(`enchanter_only=True`) excluding Zeke's / Bandlepipes / Solstice Sleigh / Celestial
+Opposition / Shurelya's / Vigilant Wardstone - `hps.py` ~894-907 documents this
+itself; (2) inside the pool the order is champion-invariant (11 of 12 identical 9/9;
+Locket 11.73, Knight's Vow 10.00, Mikael's 4.17 are CONSTANT for every champion);
+(3) the tank route fails from the other side - self-EHP cannot value ally auras;
+(4) the RF2 escape hatch is default-OFF **and** its table holds ONE champion, Rakan,
+who no longer routes to `ds.hps` after Slice C - **so RF2 fires for nobody.**
+
+**The uncomfortable part, stated plainly: the Alistar / Blitzcrank / Braum / Bard /
+Rakan REFUTEs were too lenient.** The reasoning ("correct axis, builds no damage,
+team-aura is a class-level scope limit") is still true but under-weighted the
+outcome - they receive a shipped build order omitting their 60-70%-pick first
+legendary. New standing rule now in the tracker: **do not rule another team-aura
+support REFUTE without first checking its shipped build order against real pick
+rates.** Filed as its own task, NOT fixed (pool widening is RC-2; RF2 is
+operator-gated).
+
+**Renekton - the most direct falsification of a scorer output yet: the engine's #1
+pick is measurably his WORST item.** BotRK registers 4.2% pick at **48.0% WR, the
+only sub-50% item on him**, while his 66.5% signature Eclipse is #10 behind nine
+never-built items and Black Cleaver (60.6%) is #30. Also banked: **Eclipse lost
+lethality in V14.1 and is now a BRUISER item** - do not read Eclipse-first as
+lethality.
+
+**Riven - the strongest RC-1 statement in the sweep, because the credited mechanic is
+entirely real AND entirely unbuilt.** Runic Blade charged autos genuinely apply
+on-hit, ARE crit-affected, apply lifesteal at 100%, and proc Spellblade cleanly - so
+every precondition behind BotRK / Kraken / IE / Trinity is TRUE and players build none
+of them (research named Trinity Force "the notable trap"). Whole top-10 never-built;
+Axiom Arc #34 / Death's Dance #40 / Endless Hunger #41 buried. Cause is CADENCE not
+mechanics - Q resets the attack timer, ability haste is the real stat, zero AS items
+in her data.
+
+**Rengar** adds the fourth corroboration (max Ferocity is **4**, not 5, so empowered Q
+lands ~once per four casts; Umbral 73.3% at #13, Profane Hydra 70.9% at #38). With
+Rek'Sai, Pantheon and Olaf that is **five kits that HAVE the term and must not be
+credited at face value - the boolean-gate design for RM-86 L1 is now decisively
+refuted.**
+
+**RETRACTION - batch19's Opportunity finding was WRONG; the task chip is withdrawn.**
+Opportunity (id 6701) was removed from SR in patch 26.09; `items.json` carries
+`inStore: false` and `gold.purchasable: false`, and the map-30 alias 226701 is Arena-
+only. The candidate filter was CORRECT. I asserted a defect from engine-side absence
+alone without checking buyability or live-game existence - a straight violation of
+verify-before-declaring-broken, caught by the Rengar research. Banked in the Rengar
+verdict so it is not re-filed.
+
+**NEXT:** Rumble onward (batch21); next GAP spec = RM-91. RM-86 L1 remains the
+highest-value engine work; batch20 hardened its design (continuous, not boolean) and
+RM-90 adds a second RC-2 workstream (the support pool) alongside Quinn's.
 
 ---
 
@@ -160,31 +232,3 @@ concrete per-champion L1 acceptance anchors, including Poppy/Ornn as negative co
 highest-value engine work on the board and now has per-champion acceptance anchors** -
 that is the recommended next build, not batch19. Ornn RM-87, Nunu's TANK-tag route gap
 and Nasus's RC-2 pool partition are operator-gated and unstarted.
-
----
-
-# 2026-07-18d (FOUR TRACKS, all four SHIPPED: 16.14 re-extract + strict ON, batch17 -> 99/173, RM-84 fixed, RM-86 spec answers the Vayne question)
-
-All four operator tracks completed. LEDGER 936. **Fan-out held**: engine probes in the main thread, exactly 2 flat research agents with a hard no-sub-agent constraint, zero nested spawns, zero limit kills.
-
-**T1 - re-extract + strict flip DONE.** 23 champions / 58 fields moved 16.11 -> 16.14 (NOT the 49/75 in the brief - that was the blast radius of DROPPING the sidecar, a different measurement). Biggest: Kaisa R shield [70,170] -> [100,350], LeBlanc R [140,840] -> [140,940], Orianna R [250,1000]@95%AP -> [225,850]@110%AP, Senna Q heal 50% -> 35% AP, Varus Q 150% -> 120% AD. After re-extract the payload patch matches the directory, so **strict is a no-op on shipped data** - it only bites on a future copy-forward. ENGINE 1.216.0 -> 1.217.0. BACKLOG entry deleted.
-
-**T3 - RM-84 SHIPPED, but the briefed fix path was wrong twice.**
-1. **`data/cs_archetype_picks.json` is GITIGNORED** (`.gitignore:77`). An override there reaches neither CI nor the Share mirror nor any other machine, and re-creates the pollution vector LEDGER 824 removed the UI for. Shipped instead as **Slice C** - git-tracked `core/ds_support_route_overrides.{json,py}`, mirroring the Slice A/B roster precedents.
-2. **Pyke and Senna were never broken.** `axis_correct_archetype` already catches them (AD kit vs AP enchanter is exactly the conflict it resolves). The misroute only survives when the target is AP or axis-neutral.
-Adjudicated all 18 per champion: **5 overridden** (Morgana -> mage; Thresh/Rakan/Taric/Bard -> tank), 9 already correct, 2 correct via axis correction, **2 HELD as unrepresentable** (Renata Glasc, Zilean - flipping either swaps one never-build violation for another; Zilean's real build has Liandry's/Luden's/Malignance/Rylai's ALL absent).
-
-**T3 backfill found an unrelated live defect.** Regenerating both build-order tables and drift-guarding by re-running with Slice C removed attributed the diff cleanly: **5 champions to Slice C, 11 to PRE-EXISTING drift** (Akali/Diana/Ekko/Evelynn/Fizz/Katarina/LeBlanc = the Slice A roster; Gwen/Kayle/Kog'Maw = Slice B; + Locke). **The committed tables were never regenerated after Slice A/B routing shipped (LEDGER 911).** The precompute had been serving MAGE builds for the AP-assassins and pre-on-hit builds for Gwen/Kayle/Kog'Maw for two days. Fixed. Also caught a **forged stamp** my own blanket version bump created - it rewrote `engine_version` inside 6 generated JSON tables that had not been regenerated; both tables were then genuinely regenerated so the stamp is true. **Watch for this on every future ENGINE bump: a literal-replace sweep will silently re-stamp generated data.**
-
-**T2 - batch17, 94 -> 99. Five GAPs, no REFUTEs** - and that is itself the finding: four are the SAME gap. Neeko / Nidalee / Nocturne [GAP RM-86, routes correct, item order is the archetype template], Nilah [GAP RM-86 + ROUTE, worst in batch - engine offers **Heartsteel and Liandry's to a crit marksman**, and the `carry` reroute does NOT rescue her, so a route-only fix cannot close it; the kit-axis INERT entry is CONFIRMED still inert - bruiser is already AD so there is no conflict to resolve], Nunu [GAP ROUTE - routes tank while `kit_damage_axis` returns **ap**; the engine identifies the kit correctly and declines to act because tank is axis-NEUTRAL by contract. Liandry's is a genuine real-meta core for him and is unreachable from the tank pool. NOT auto-flipped - extending Slice C to TANK-tag misroutes is its own operator-gated call]. **Correction: Nocturne IS in the re-extract delta** (Q base [65,290] -> [65,265]); verdict unaffected, and it was measured after T1 landed.
-
-**T4 - RM-86 spec: `docs/specs/RM-86_scorer_kit_blindness_investigation.md`. PARTIAL unification (3 of 4), and THE VAYNE QUESTION IS CLOSED.**
-- **Vayne, answered two ways.** `ds.dps` does not model Silver Bolts *as stat-independent* - it does not model it **at all**. `dps.py` never imports `abilities` and contains no `damage_blocks`. Sweeping target_max_hp 1200/2500/5000: **only BotRK moves (70 -> 120 -> 217)**, because BotRK carries its own %maxHP term; Runaan's/Kraken/Stormrazor are flat. Tank Vayne is unrepresentable regardless of item filters. **Do not carry this a fourth time.**
-- **The standing read is REFUTED IN BOTH DIRECTIONS.** 30 probes, mean top-5 overlap: `ds.ehp` 5.0/5, `ds.ability` 5.0/5, `ds.hps` 5.0/5, `ds.hybrid` 4.5/5, `ds.burst` 2.8/5, **`ds.dps` 2.2/5**. Mages/tanks/enchanters are the MOST invariant, not clean; `ds.dps` is the LEAST invariant, not the sole fault. Every AP champ gets Liandry's > Blackfire whether or not the kit has a DoT (Syndra and Veigar have none).
-- **RC-1** (Naafiri + ds.hps + Vayne): scalar-objective greedy argmax, champion enters as STATS ONLY, no kit-conversion term - an item can raise the score through a stat the kit has no ratio for. Key proof: `ability_dps.py` reads `damage_blocks` 11 times and is STILL 5.0/5 invariant, while `dps.py` reads it zero times and is 2.2/5. **Kit-awareness at the compute layer does not imply it at the ranking layer.** So "make the scorers read the kit" is NOT the fix.
-- **RC-2** (Nasus, does NOT unify): candidate-pool partition. The right items are not in the set being ranked - structurally the inverse of RC-1, and an RC-1 conversion gate makes it slightly worse. Its own spec, do not fold.
-- Spec carries an L1/L2/L3 fix ladder with per-layer blast radius, a recommended sequencing (L1 default-OFF first, then L2 for `ds.hps` alone, then re-measure), and **three explicit REFUTE conditions** so a later session can attack it cheaply. The invariance table is the regression baseline.
-
-**/done found two changelog gaps and closed them.** `Share/CHANGELOG.md` had no entry for 1.216.0 OR 1.217.0, and `agents/daemon_slayer/CHANGELOG.md` had none for 1.217.0 - so the seventh scorer shipped two days ago with no release note anywhere in the external package. Backfilled both. Also fixed the semantic drift the anchor auto-rewrite cannot see: **five places still said "six archetype scorers"** (README x2, 01_OVERVIEW heading + table, 02_FUNCTION_REFERENCE, 04_GAPS_AND_ROADMAP) and the on-hit row was missing from the 01_OVERVIEW scorer table entirely. Lesson for the next DS bump: `ds_share_sync.py --check` going green means the MIRROR and the version ANCHORS are fresh - it says nothing about prose, and prose is where the rot was.
-
-**NEXT:** Olaf onward (batch18); next GAP spec = RM-87. RM-86's L1 is the highest-value engine work on the board and is now specced. Nunu's TANK-tag route gap and Nasus's RC-2 pool partition are both operator-gated and unstarted.
