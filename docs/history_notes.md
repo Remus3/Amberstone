@@ -1,5 +1,79 @@
 # RC session history archive
 
+## Relocated 2026-07-18 (batch26-31 sweep session; keep last 3 = 2026-07-18j + 2026-07-18i + 2026-07-18h)
+
+# 2026-07-18g (DS_SWEEP batch20 -> 114/173: Rell / Renata Glasc / Renekton / Rengar / Riven; FIVE GAPs, zero REFUTEs, one live user-facing defect, one retraction)
+
+Read-only research pass, NO engine change. LEDGER 939. Fan-out held a fifth session.
+**First all-GAP batch of the sweep.**
+
+**RM-90 IS A COHORT VERDICT AND IT IS THE HEADLINE - 12 of 14 support champions ship
+exactly TWO build orders.** Verified against the shipped artifact
+`data/daemon_slayer/16.14.1/build_orders_sr.json` (DISPLAY-keyed: the key is
+`"Renata Glasc"` WITH a space):
+- GROUP A byte-identical for Renata Glasc / Soraka / Janna / Nami / Lulu / Milio /
+  Sona / Seraphine: Echoes -> Merc Treads -> Ardent -> Staff of Flowing Water ->
+  Redemption -> Moonstone. ad_heavy / ap_heavy / balanced are identical too.
+- GROUP B byte-identical for Bard / Taric / Rakan / Rell: Randuin's -> Merc Treads ->
+  Warmog's -> Sterak's -> Jak'Sho -> Spirit Visage.
+Renata's shipped items are 0.79-5.6% real pick and her core (Locket 69.5%, Imperial
+Mandate 44.8%, Shurelya's 27.8%, Bandlepipes 25.5%) is ABSENT. Rell's are all 0-3%
+and her core (Zeke's 70.6%, Locket 64.1%, Knight's Vow 28.3%) is ABSENT.
+
+**Four layers of cause:** (1) `ds.hps` ranks a CLOSED 9-item pool
+(`enchanter_only=True`) excluding Zeke's / Bandlepipes / Solstice Sleigh / Celestial
+Opposition / Shurelya's / Vigilant Wardstone - `hps.py` ~894-907 documents this
+itself; (2) inside the pool the order is champion-invariant (11 of 12 identical 9/9;
+Locket 11.73, Knight's Vow 10.00, Mikael's 4.17 are CONSTANT for every champion);
+(3) the tank route fails from the other side - self-EHP cannot value ally auras;
+(4) the RF2 escape hatch is default-OFF **and** its table holds ONE champion, Rakan,
+who no longer routes to `ds.hps` after Slice C - **so RF2 fires for nobody.**
+
+**The uncomfortable part, stated plainly: the Alistar / Blitzcrank / Braum / Bard /
+Rakan REFUTEs were too lenient.** The reasoning ("correct axis, builds no damage,
+team-aura is a class-level scope limit") is still true but under-weighted the
+outcome - they receive a shipped build order omitting their 60-70%-pick first
+legendary. New standing rule now in the tracker: **do not rule another team-aura
+support REFUTE without first checking its shipped build order against real pick
+rates.** Filed as its own task, NOT fixed (pool widening is RC-2; RF2 is
+operator-gated).
+
+**Renekton - the most direct falsification of a scorer output yet: the engine's #1
+pick is measurably his WORST item.** BotRK registers 4.2% pick at **48.0% WR, the
+only sub-50% item on him**, while his 66.5% signature Eclipse is #10 behind nine
+never-built items and Black Cleaver (60.6%) is #30. Also banked: **Eclipse lost
+lethality in V14.1 and is now a BRUISER item** - do not read Eclipse-first as
+lethality.
+
+**Riven - the strongest RC-1 statement in the sweep, because the credited mechanic is
+entirely real AND entirely unbuilt.** Runic Blade charged autos genuinely apply
+on-hit, ARE crit-affected, apply lifesteal at 100%, and proc Spellblade cleanly - so
+every precondition behind BotRK / Kraken / IE / Trinity is TRUE and players build none
+of them (research named Trinity Force "the notable trap"). Whole top-10 never-built;
+Axiom Arc #34 / Death's Dance #40 / Endless Hunger #41 buried. Cause is CADENCE not
+mechanics - Q resets the attack timer, ability haste is the real stat, zero AS items
+in her data.
+
+**Rengar** adds the fourth corroboration (max Ferocity is **4**, not 5, so empowered Q
+lands ~once per four casts; Umbral 73.3% at #13, Profane Hydra 70.9% at #38). With
+Rek'Sai, Pantheon and Olaf that is **five kits that HAVE the term and must not be
+credited at face value - the boolean-gate design for RM-86 L1 is now decisively
+refuted.**
+
+**RETRACTION - batch19's Opportunity finding was WRONG; the task chip is withdrawn.**
+Opportunity (id 6701) was removed from SR in patch 26.09; `items.json` carries
+`inStore: false` and `gold.purchasable: false`, and the map-30 alias 226701 is Arena-
+only. The candidate filter was CORRECT. I asserted a defect from engine-side absence
+alone without checking buyability or live-game existence - a straight violation of
+verify-before-declaring-broken, caught by the Rengar research. Banked in the Rengar
+verdict so it is not re-filed.
+
+**NEXT:** Rumble onward (batch21); next GAP spec = RM-91. RM-86 L1 remains the
+highest-value engine work; batch20 hardened its design (continuous, not boolean) and
+RM-90 adds a second RC-2 workstream (the support pool) alongside Quinn's.
+
+---
+
 ## Relocated 2026-07-18 (batch21-25 sweep session; keep last 3 = 2026-07-18i + 2026-07-18h + 2026-07-18g)
 
 # 2026-07-18f (DS_SWEEP batch19 -> 109/173: Pyke / Quinn / Rakan / Rammus / Rek'Sai; 4 GAP + 1 REFUTE, TWO new numbers, and one champion that breaks the RM-86 L1 plan)
