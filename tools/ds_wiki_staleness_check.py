@@ -197,26 +197,94 @@ def parse_leveling_bases(wikitext: str) -> dict[str, tuple[float, float]]:
     return out
 
 
+def _floats(seq: Any) -> Optional[list[float]]:
+    """Coerce a stored numeric array to floats, or None if it is not one."""
+    if not isinstance(seq, (list, tuple)) or not seq:
+        return None
+    try:
+        return [float(x) for x in seq]
+    except (TypeError, ValueError):
+        return None
+
+
+def rank_series(
+    vals: list[float], cooldown: Any = None
+) -> tuple[list[float], Optional[dict[str, Any]]]:
+    """Cut a concatenated per-level tail off a per-rank ``base`` series.
+
+    Some stored ``base`` arrays are an N-entry rank series CONCATENATED with a
+    per-level series, so ``vals[-1]`` is a level-scaled number rather than the
+    max-rank base. Mordekaiser Q stores
+    ``[80, 117.6, 155.3, 192.9, 230.6, 13.2, ... 45.0]`` - reading 45.0 as the
+    rank-5 base makes this report cry 389% where the true delta is 4.6%, and
+    those inflated rows are the loudest in the whole sweep, so the bug does not
+    merely add noise, it actively mis-prioritises which champions to re-source.
+
+    The tell is an INTERNAL DROP, not an end-to-end decrease: base damage never
+    falls as rank rises, so the first index where the series decreases is where
+    the foreign tail begins. End-to-end (``vals[-1] < vals[0]``) is NOT
+    sufficient - measured on 16.14.1 it catches only 6 of the 11 concatenated
+    arrays, missing Malzahar W, whose ranks run 17 to 39 and whose tail then
+    climbs to 64.5.
+
+    ``len(cooldown)`` deliberately does NOT drive the index. Measured on
+    16.14.1 it is wrong three separate ways:
+      - Aurelion Sol Q stores 4 base entries against 5 cooldowns, so
+        ``vals[len(cooldown) - 1]`` raises IndexError and kills the sweep;
+      - Sona Q/W, Nidalee Q, Karma W and Heimerdinger E store a rank-invariant
+        1-entry cooldown, so ``vals[0]`` would report the RANK-1 value as the
+        max-rank endpoint (Sona Q 190 read as 50) and manufacture 8 false rows;
+      - Shen Q stores a legitimate 18-entry PER-LEVEL base (10 to 40 based on
+        level) that carries no rank series at all and must not be cut.
+    It is carried in the marker instead, as corroboration a human can eyeball.
+    """
+    for i in range(1, len(vals)):
+        if vals[i] < vals[i - 1] - _TOL:
+            cd = cooldown if isinstance(cooldown, (list, tuple)) else None
+            return vals[:i], {
+                "reason": "concatenated_per_level_tail",
+                "kept_ranks": i,
+                "stored_len": len(vals),
+                "cooldown_ranks": len(cd) if cd else None,
+                "dropped_tail": [round(v, 4) for v in vals[i:]],
+            }
+    return vals, None
+
+
 def meraki_endpoints(entry: dict[str, Any]) -> dict[str, Any]:
-    """Endpoints for one Meraki ability form: cooldown plus each based block."""
+    """Endpoints for one Meraki ability form: cooldown plus each based block.
+
+    ``base`` arrays pass through ``rank_series`` first, so a concatenated
+    per-level tail cannot masquerade as the max-rank value. Cooldown arrays
+    deliberately do NOT: a per-level passive cooldown legitimately DECREASES
+    (Maokai's Sap Magic runs 30 at level 1 down to 20 at level 18), so applying
+    the drop rule there would truncate real data.
+    """
+    cooldown = entry.get("cooldown")
 
     def _ends(seq: Any) -> Optional[tuple[float, float]]:
-        if not isinstance(seq, (list, tuple)) or not seq:
+        vals = _floats(seq)
+        if vals is None:
             return None
-        try:
-            return (float(seq[0]), float(seq[-1]))
-        except (TypeError, ValueError):
-            return None
+        return (vals[0], vals[-1])
 
     bases: dict[str, tuple[float, float]] = {}
+    suspect: dict[str, dict[str, Any]] = {}
     for blk in entry.get("damage_blocks") or []:
         if not isinstance(blk, dict):
             continue
-        pts = _ends(blk.get("base"))
         attr = blk.get("attribute")
-        if pts is not None and attr:
-            bases.setdefault(str(attr), pts)
-    return {"cooldown": _ends(entry.get("cooldown")), "bases": bases}
+        vals = _floats(blk.get("base"))
+        if not attr or vals is None:
+            continue
+        attr = str(attr)
+        if attr in bases:
+            continue
+        kept, marker = rank_series(vals, cooldown)
+        bases[attr] = (kept[0], kept[-1])
+        if marker:
+            suspect[attr] = marker
+    return {"cooldown": _ends(cooldown), "bases": bases, "shape_suspect": suspect}
 
 
 def _differs(a: tuple[float, float], b: tuple[float, float]) -> bool:
@@ -244,19 +312,21 @@ def compare_ability(
         )
 
     wiki_bases = parse_leveling_bases(wikitext)
+    suspect = mine.get("shape_suspect") or {}
     for attr, pts in mine["bases"].items():
         live = wiki_bases.get(attr)
         if live and _differs(pts, live):
-            findings.append(
-                {
-                    "champion": champion,
-                    "ability": slot,
-                    "name": entry.get("name"),
-                    "field": "base:" + attr,
-                    "meraki": list(pts),
-                    "wiki": list(live),
-                }
-            )
+            row = {
+                "champion": champion,
+                "ability": slot,
+                "name": entry.get("name"),
+                "field": "base:" + attr,
+                "meraki": list(pts),
+                "wiki": list(live),
+            }
+            if attr in suspect:
+                row["SHAPE_SUSPECT"] = suspect[attr]
+            findings.append(row)
     return findings
 
 
