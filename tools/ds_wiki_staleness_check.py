@@ -1,0 +1,494 @@
+"""RM-81: flag champions whose stored Meraki ability data predates a rework.
+
+WHY THIS EXISTS
+---------------
+`data/daemon_slayer/<patch>/champion_abilities.json` is sourced from Meraki's
+frozen ``latest`` endpoint, pinned at content patch 25.15 (see
+``daemon_slayer_abilities_extract._EXPECTED_MERAKI_CONTENT_PATCH``) while the
+live game runs ~11 patches ahead. The freeze itself is deliberate and logged,
+and ``upstream_drift_check`` already tracks the field, so this module does NOT
+re-discover that. What was uncovered is the DOWNSTREAM cost: a champion that is
+PRESENT in the map still returns ``champion_has_ability_data() -> True``, so the
+RM-79 kit-less guard stays quiet while the stored values describe a champion who
+no longer exists.
+
+The existing CDragon drift report (`cdragon_ratio_drift.json`) is RATIO-only -
+its 1,046 rows cover ap_pct / total_ad_pct / caster_max_hp_pct / bonus_ad_pct
+and contain zero ``base`` and zero ``cooldown`` rows - so it structurally cannot
+see the two fields that carry the real evidence. This module closes that gap
+using ONLY the wiki source the repo already reads, so it neither needs
+CommunityDragon nor touches the default-off ``prefer_cdragon_ratios`` cutover.
+
+TWO MODES, because they answer different questions
+--------------------------------------------------
+``--recent`` (cheap, 1 API call, meant for a daily task) reads
+Special:RecentChanges for ``Template:Data <Champion>/<Ability>`` edits and
+re-checks only those champions. It is a FORWARD watchdog: it stops NEW drift
+from accumulating silently. It cannot find old drift, because the feed only
+reaches back ~30 days while the Meraki pin is ~11 patches old.
+
+``--full`` (~18 batched requests) sweeps every champion and is what surfaces the
+drift already banked - the RM-81 discovery cases (Maokai, Mel) live here.
+
+CONSERVATIVE BY DESIGN
+----------------------
+A finding is emitted only when BOTH sides carry a parseable value for the SAME
+labelled quantity, compared at its first/last rank endpoints. Wiki damage labels
+that do not match a Meraki ``attribute`` verbatim are skipped rather than
+guessed at, so the report under-reports rather than crying wolf: an editorial
+wiki edit ("fixed typo") moves no number and therefore produces no finding.
+
+Usage:
+    python tools/ds_wiki_staleness_check.py --full [--patch 16.14.1] [--write]
+    python tools/ds_wiki_staleness_check.py --recent [--days 7] [--write]
+    python tools/ds_wiki_staleness_check.py --full --json
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable, Optional
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from daemon_slayer_wiki_ability_extract import (  # noqa: E402
+    DATA_DIR,
+    HEADER_UA,
+    WIKI_API,
+    _AP_WRAPPER_RE,
+    _fetch,
+    _MAX_TITLES_PER_BATCH,
+    _TEMPLATE_PREFIX,
+)
+
+REPORT_NAME = "ability_staleness.json"
+
+# Endpoint equality tolerance. Wiki values are authored to at most 2 decimals;
+# Meraki stores floats, so exact equality would flag pure representation noise.
+_TOL = 1e-2
+
+_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_ST_RE = re.compile(r"\{\{\s*st\s*\|", re.IGNORECASE)
+_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
+
+
+_VARDEFINE_RE = re.compile(r"\{\{#vardefine:\s*([A-Za-z0-9_]+)\s*\|([^}|]*)\}\}")
+_VARREF_RE = re.compile(r"\{\{#var:\s*([A-Za-z0-9_]+)\s*(?:\|[^}]*)?\}\}")
+
+
+def _strip_comments(raw: str) -> str:
+    return _COMMENT_RE.sub("", raw or "")
+
+
+def resolve_wiki_vars(wikitext: str) -> str:
+    """Inline ``{{#vardefine:name|value}}`` values into ``{{#var:name}}`` refs.
+
+    Several Data pages hoist their numbers into MediaWiki variables at the top of
+    the page and reference them indirectly, so the leveling line contains no
+    literal digits (Garen's R is ``{{ap|{{#var:b1}} to {{#var:b3}}}}``). Without
+    this the whole page silently yields no findings - a measured recall miss:
+    Riot's 26.14 notes cut Garen's R from 150/250/350 to 125/200/275 and the
+    detector saw nothing.
+
+    The definitions live on the same page, so this needs no extra API call. A
+    reference with no matching definition is left as-is, which then fails to
+    parse as a number and correctly produces no finding rather than a guess.
+    """
+    text = wikitext or ""
+    varmap = {m.group(1): m.group(2).strip() for m in _VARDEFINE_RE.finditer(text)}
+    if not varmap:
+        return text
+    return _VARREF_RE.sub(
+        lambda m: varmap.get(m.group(1), m.group(0)), text
+    )
+
+
+def parse_param(wikitext: str, name: str) -> Optional[str]:
+    """Return the raw value of a leading-pipe template param, or None.
+
+    Data templates author one param per line (``|cooldown     = {{ap|7 to 5}}``),
+    so a line-anchored match is both sufficient and safe - it cannot run into the
+    next param the way a greedy scan would.
+    """
+    pat = re.compile(
+        r"^\|\s*" + re.escape(name) + r"\s*=\s*(.*)$",
+        re.IGNORECASE | re.MULTILINE,
+    )
+    text = resolve_wiki_vars(wikitext or "")
+    m = pat.search(text)
+    if not m:
+        return None
+    return _strip_comments(m.group(1)).strip() or None
+
+
+def parse_endpoints(raw: Optional[str]) -> Optional[tuple[float, float]]:
+    """``{{ap|X to Y}}`` -> (X, Y); a bare number -> (N, N); else None.
+
+    Endpoints rather than the full interpolated array on purpose: ``{{ap|}}``
+    is a LINEAR macro, but real per-rank values are occasionally non-linear
+    (Mel W is 38/35/33/29/26, not the 38/35/32/29/26 a linear expansion gives),
+    so comparing interiors would manufacture false findings. First and last rank
+    are exact on both sides.
+    """
+    s = _strip_comments(raw or "").strip()
+    if not s:
+        return None
+    m = _AP_WRAPPER_RE.search(s)
+    if m:
+        try:
+            return (float(m.group(1)), float(m.group(2)))
+        except (TypeError, ValueError):
+            return None
+    try:
+        v = float(s)
+    except (TypeError, ValueError):
+        return None
+    return (v, v)
+
+
+def _st_blocks(wikitext: str) -> list[str]:
+    """Return each ``{{st|...}}`` block body, brace-balanced."""
+    out: list[str] = []
+    text = resolve_wiki_vars(_strip_comments(wikitext or ""))
+    for m in _ST_RE.finditer(text):
+        i = m.end()
+        depth = 1
+        while i < len(text) and depth:
+            if text.startswith("{{", i):
+                depth += 1
+                i += 2
+            elif text.startswith("}}", i):
+                depth -= 1
+                i += 2
+            else:
+                i += 1
+        out.append(text[m.end(): i - 2])
+    return out
+
+
+def parse_leveling_bases(wikitext: str) -> dict[str, tuple[float, float]]:
+    """Map each labelled damage line to its BASE endpoints.
+
+    ``{{st|Magic Damage|{{ap|75 to 255}} {{as|(+ 40% AP)}}}}`` -> the base is the
+    value BEFORE the first ``{{as|`` wrapper. The ``{{as|}}`` wrappers hold the
+    scaling terms, so cutting there is what keeps a ratio like
+    ``{{ap|2 to 4}}% of maximum health`` from being read as the base.
+    """
+    out: dict[str, tuple[float, float]] = {}
+    for block in _st_blocks(wikitext):
+        label, sep, rest = block.partition("|")
+        if not sep:
+            continue
+        label = label.strip()
+        head = re.split(r"\{\{\s*as\s*\|", rest, maxsplit=1, flags=re.IGNORECASE)[0]
+        pts = parse_endpoints(head.strip())
+        if label and pts is not None:
+            out.setdefault(label, pts)
+    return out
+
+
+def meraki_endpoints(entry: dict[str, Any]) -> dict[str, Any]:
+    """Endpoints for one Meraki ability form: cooldown plus each based block."""
+
+    def _ends(seq: Any) -> Optional[tuple[float, float]]:
+        if not isinstance(seq, (list, tuple)) or not seq:
+            return None
+        try:
+            return (float(seq[0]), float(seq[-1]))
+        except (TypeError, ValueError):
+            return None
+
+    bases: dict[str, tuple[float, float]] = {}
+    for blk in entry.get("damage_blocks") or []:
+        if not isinstance(blk, dict):
+            continue
+        pts = _ends(blk.get("base"))
+        attr = blk.get("attribute")
+        if pts is not None and attr:
+            bases.setdefault(str(attr), pts)
+    return {"cooldown": _ends(entry.get("cooldown")), "bases": bases}
+
+
+def _differs(a: tuple[float, float], b: tuple[float, float]) -> bool:
+    return abs(a[0] - b[0]) > _TOL or abs(a[1] - b[1]) > _TOL
+
+
+def compare_ability(
+    champion: str, slot: str, entry: dict[str, Any], wikitext: str
+) -> list[dict[str, Any]]:
+    """Compare one stored ability form against its live wiki Data page."""
+    findings: list[dict[str, Any]] = []
+    mine = meraki_endpoints(entry)
+
+    wiki_cd = parse_endpoints(parse_param(wikitext, "cooldown"))
+    if mine["cooldown"] and wiki_cd and _differs(mine["cooldown"], wiki_cd):
+        findings.append(
+            {
+                "champion": champion,
+                "ability": slot,
+                "name": entry.get("name"),
+                "field": "cooldown",
+                "meraki": list(mine["cooldown"]),
+                "wiki": list(wiki_cd),
+            }
+        )
+
+    wiki_bases = parse_leveling_bases(wikitext)
+    for attr, pts in mine["bases"].items():
+        live = wiki_bases.get(attr)
+        if live and _differs(pts, live):
+            findings.append(
+                {
+                    "champion": champion,
+                    "ability": slot,
+                    "name": entry.get("name"),
+                    "field": "base:" + attr,
+                    "meraki": list(pts),
+                    "wiki": list(live),
+                }
+            )
+    return findings
+
+
+def compare_champion(
+    champion: str,
+    meraki_champ: dict[str, Any],
+    wiki_by_name: dict[str, str],
+) -> list[dict[str, Any]]:
+    """Compare every stored ability of one champion, matched by ability NAME."""
+    findings: list[dict[str, Any]] = []
+    for slot, forms in (meraki_champ or {}).items():
+        if not isinstance(forms, list) or not forms:
+            continue
+        entry = forms[0]
+        if not isinstance(entry, dict):
+            continue
+        page = wiki_by_name.get(str(entry.get("name") or ""))
+        if not page:
+            continue
+        findings.extend(compare_ability(champion, slot, entry, page))
+    return findings
+
+
+def champions_from_titles(titles: Iterable[str]) -> set[str]:
+    """``Template:Data Master Yi/Alpha Strike`` -> ``{"Master Yi"}``."""
+    out: set[str] = set()
+    for t in titles or []:
+        s = str(t)
+        if not s.startswith(_TEMPLATE_PREFIX):
+            continue
+        rest = s[len(_TEMPLATE_PREFIX):]
+        champ = rest.split("/", 1)[0].strip()
+        if champ:
+            out.add(champ)
+    return out
+
+
+# --------------------------------------------------------------------------- network
+
+def fetch_recent_titles(days: int = 7, limit: int = 500) -> list[str]:
+    """Template-namespace RecentChanges titles, newest first."""
+    q = {
+        "action": "query",
+        "list": "recentchanges",
+        "rcnamespace": "10",
+        "rclimit": str(limit),
+        "rcprop": "title|timestamp",
+        "rctype": "edit|new",
+        "format": "json",
+    }
+    if days:
+        q["rcend"] = _iso_days_ago(days)
+    doc = json.loads(_fetch(WIKI_API + "?" + urllib.parse.urlencode(q)))
+    return [r.get("title", "") for r in doc.get("query", {}).get("recentchanges", [])]
+
+
+def _iso_days_ago(days: int) -> str:
+    now = datetime.now(timezone.utc).timestamp() - days * 86400
+    return datetime.fromtimestamp(now, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def fetch_pages(titles: list[str]) -> dict[str, str]:
+    """Batched ``action=query`` page fetch -> {title: wikitext}."""
+    out: dict[str, str] = {}
+    for i in range(0, len(titles), _MAX_TITLES_PER_BATCH):
+        batch = titles[i: i + _MAX_TITLES_PER_BATCH]
+        q = {
+            "action": "query",
+            "prop": "revisions",
+            "rvslots": "main",
+            "rvprop": "content",
+            "titles": "|".join(batch),
+            "format": "json",
+        }
+        doc = json.loads(_fetch(WIKI_API + "?" + urllib.parse.urlencode(q)))
+        for page in (doc.get("query", {}).get("pages", {}) or {}).values():
+            revs = page.get("revisions") or []
+            if not revs:
+                continue
+            content = (revs[0].get("slots", {}).get("main", {}) or {}).get("*")
+            if content:
+                out[page.get("title", "")] = content
+    return out
+
+
+# --------------------------------------------------------------------------- driver
+
+def _load_abilities(patch: str) -> dict[str, Any]:
+    return json.loads(
+        (DATA_DIR / patch / "champion_abilities.json").read_text(encoding="utf-8")
+    )
+
+
+def _titles_for(champion: str, champ_data: dict[str, Any]) -> list[str]:
+    names = []
+    for forms in (champ_data or {}).values():
+        if isinstance(forms, list) and forms and isinstance(forms[0], dict):
+            n = forms[0].get("name")
+            if n:
+                names.append(str(n))
+    return [f"{_TEMPLATE_PREFIX}{champion}/{n}" for n in dict.fromkeys(names)]
+
+
+def run(patch: str, champions: Optional[set[str]] = None) -> dict[str, Any]:
+    doc = _load_abilities(patch)
+    data = doc.get("data", {})
+    targets = sorted(c for c in data if champions is None or c in champions)
+
+    titles: list[str] = []
+    for champ in targets:
+        titles.extend(_titles_for(champ, data[champ]))
+    pages = fetch_pages(titles) if titles else {}
+
+    findings: list[dict[str, Any]] = []
+    for champ in targets:
+        by_name = {}
+        prefix = _TEMPLATE_PREFIX + champ + "/"
+        for title, text in pages.items():
+            if title.startswith(prefix):
+                by_name[title[len(prefix):]] = text
+        findings.extend(compare_champion(champ, data[champ], by_name))
+
+    stale = sorted({f["champion"] for f in findings})
+    return {
+        "_patch": patch,
+        "_generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "_meraki_content_patch": doc.get("meraki_content_patch"),
+        "_source": "wiki.leagueoflegends.com Template:Data <Champion>/<Ability>",
+        "_note": (
+            "RM-81 staleness report. A row means the STORED Meraki value and the "
+            "LIVE wiki value disagree at the first/last rank endpoint for the same "
+            "labelled quantity. Conservative: unmatched damage labels are skipped, "
+            "so this UNDER-reports. Absence of a champion is not proof of currency."
+        ),
+        "_checked_champions": len(targets),
+        "_pages_fetched": len(pages),
+        "stale_champions": stale,
+        "findings": findings,
+    }
+
+
+def write_report(
+    report: dict[str, Any],
+    patch: str,
+    checked: Optional[set[str]] = None,
+) -> Path:
+    """Atomically write the staleness report, merging when the run was PARTIAL.
+
+    ``checked=None`` means a full sweep, which replaces the report wholesale.
+    ``checked={...}`` means only those champions were re-examined, so prior
+    findings for everyone else are carried forward - otherwise a ``--recent``
+    pass over a handful of champions would erase what ``--full`` established and
+    silently mark the rest of the roster current.
+    """
+    out = DATA_DIR / patch / REPORT_NAME
+    merged = dict(report)
+    if checked is not None and out.exists():
+        try:
+            prior = json.loads(out.read_text(encoding="utf-8"))
+            kept = [
+                f for f in (prior.get("findings") or [])
+                if f.get("champion") not in checked
+            ]
+            merged["findings"] = kept + list(report.get("findings") or [])
+            merged["stale_champions"] = sorted(
+                {f["champion"] for f in merged["findings"]}
+            )
+            merged["_mode"] = "recent+merged"
+        except (OSError, ValueError, AttributeError, KeyError):
+            merged = dict(report)
+    tmp = out.with_suffix(".tmp")
+    tmp.write_text(json.dumps(merged, indent=1), encoding="utf-8")
+    tmp.replace(out)
+    return out
+
+
+def _current_patch() -> str:
+    """Newest patch dir, ordered numerically.
+
+    ``data/daemon_slayer/`` also holds non-version dirs (``laning_scenarios``),
+    so filter to X.Y.Z and sort on the numeric tuple - a lexical sort would put
+    ``16.9.1`` after ``16.14.1``.
+    """
+    versions = [p.name for p in DATA_DIR.iterdir() if p.is_dir() and _VERSION_RE.match(p.name)]
+    if not versions:
+        raise RuntimeError(f"no patch directories under {DATA_DIR}")
+    return max(versions, key=lambda v: tuple(int(x) for x in v.split(".")))
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    mode = ap.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--full", action="store_true", help="sweep every champion")
+    mode.add_argument(
+        "--recent", action="store_true", help="only champions edited on the wiki"
+    )
+    ap.add_argument("--patch", default=None)
+    ap.add_argument("--days", type=int, default=7)
+    ap.add_argument("--write", action="store_true", help="write the report JSON")
+    ap.add_argument("--json", action="store_true", help="print the full report")
+    args = ap.parse_args(argv)
+
+    patch = args.patch or _current_patch()
+    champions = None
+    if args.recent:
+        champions = champions_from_titles(fetch_recent_titles(days=args.days))
+        print(f"recent-changes candidates ({args.days}d): {len(champions)}")
+        if not champions:
+            print("no Data-template edits in window - nothing to re-check")
+            return 0
+
+    report = run(patch, champions)
+
+    if args.write:
+        print(f"wrote {write_report(report, patch, checked=champions)}")
+
+    if args.json:
+        print(json.dumps(report, indent=1))
+    else:
+        print(
+            f"patch={report['_patch']} meraki={report['_meraki_content_patch']} "
+            f"checked={report['_checked_champions']} "
+            f"pages={report['_pages_fetched']} "
+            f"stale={len(report['stale_champions'])} "
+            f"findings={len(report['findings'])}"
+        )
+        for champ in report["stale_champions"]:
+            rows = [f for f in report["findings"] if f["champion"] == champ]
+            detail = ", ".join(
+                f"{r['ability']} {r['field']} {r['meraki']}->{r['wiki']}" for r in rows
+            )
+            print(f"  STALE {champ}: {detail}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

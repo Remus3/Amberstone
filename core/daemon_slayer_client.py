@@ -1127,6 +1127,49 @@ def champion_has_ability_data(champion: str) -> bool:
     return bool(_champ_ability_index.get(_norm_champ_key(champion), False))
 
 
+_champ_stale_index: Optional[dict] = None
+
+
+def champion_ability_data_is_current(champion: str) -> bool:
+    """False when ``champion``'s stored ability values are known to be STALE (RM-81).
+
+    :func:`champion_has_ability_data` answers "is the champion PRESENT?" - the
+    RM-79 kit-less case. This answers the orthogonal question "are the values
+    still RIGHT?". The Meraki ``latest`` endpoint is frozen at content patch
+    25.15 while the live game runs ~11 patches ahead, so a champion can be
+    present (that guard returns True) while carrying numbers from a kit that no
+    longer exists - e.g. Mel, whose stored W is still the pre-26.03
+    invulnerability with a 35s cooldown against a live 38s shield.
+
+    Reads the report written by ``tools/ds_wiki_staleness_check.py``, which
+    diffs stored base-damage and cooldown endpoints against the live wiki Data
+    templates.
+
+    Fail-soft in BOTH directions and deliberately so: a missing or unreadable
+    report returns True for every champion (absence of evidence is not evidence
+    of staleness, and a report problem must never flag the whole roster), while
+    a champion absent from a PRESENT report also returns True. The report
+    under-reports by design - it skips damage labels it cannot match verbatim -
+    so True means "no drift proven", not "verified current".
+    """
+    global _champ_stale_index
+    if _champ_stale_index is None:
+        index: dict = {}
+        try:
+            patch = (_DS_DATA_DIR / "current.txt").read_text(
+                encoding="utf-8"
+            ).strip()
+            raw = (_DS_DATA_DIR / patch / "ability_staleness.json").read_text(
+                encoding="utf-8"
+            )
+            for cid in json.loads(raw).get("stale_champions") or []:
+                index[_norm_champ_key(str(cid))] = True
+        except (OSError, ValueError, AttributeError):
+            index = {}
+        _champ_stale_index = index
+    return not _champ_stale_index.get(_norm_champ_key(champion), False)
+
+
 # Kit-dependent scorers (ds.ability / ds.burst / ds.hps) need the champion's
 # ability data. A champ released after the frozen Meraki `latest` content_patch
 # has NO ability entries, so those scorers return an identically-zero delta for
