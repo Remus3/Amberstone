@@ -38,6 +38,7 @@ Snapshot layout::
 from __future__ import annotations
 
 import json
+import logging
 from collections import Counter
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -79,7 +80,10 @@ _SCALING_FIELDS: tuple[str, ...] = (
     "caster_bonus_ms_pct",
 )
 
-# CDragon mechanical-ratio sidecar (item: prefer-CDragon re-source, default OFF).
+_LOG = logging.getLogger(__name__)
+
+# CDragon mechanical-ratio sidecar (prefer-CDragon re-source, default ON since
+# item 320 / ENGINE 1.119.0 - see ``AbilitiesSnapshot.load``).
 # Produced by ``tools/daemon_slayer_cdragon_ratio_extract.py`` next to the Meraki
 # snapshot: ``data/daemon_slayer/<patch>/cdragon_ability_ratios.json``.
 _CDRAGON_RATIO_SIDECAR = "cdragon_ability_ratios.json"
@@ -414,7 +418,36 @@ def _apply_passive_shield_overrides(cid: str, key: str, form: AbilityForm) -> Ab
     )
 
 
-def _load_cdragon_ratio_sidecar(root: Path, patch: str) -> dict[str, dict[str, list]]:
+def _read_cdragon_sidecar_doc(root: Path, patch: str) -> dict | None:
+    """Parse ``<root>/<patch>/cdragon_ability_ratios.json``; None if unusable."""
+    path = root / patch / _CDRAGON_RATIO_SIDECAR
+    if not path.exists():
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return None
+    return doc if isinstance(doc, dict) else None
+
+
+def cdragon_sidecar_patch(root: Path, patch: str) -> str | None:
+    """The patch the sidecar under ``<root>/<patch>/`` was actually EXTRACTED at.
+
+    Reads the payload's own ``patch`` field, which is what the patch-refresh
+    ritual does NOT update when it copies a sidecar forward. ``None`` when the
+    sidecar is absent, unreadable, or carries no ``patch`` field (an unprovable
+    vintage, which the loader treats exactly like a mismatch).
+    """
+    doc = _read_cdragon_sidecar_doc(root, patch)
+    if doc is None:
+        return None
+    got = doc.get("patch")
+    return got if isinstance(got, str) and got else None
+
+
+def _load_cdragon_ratio_sidecar(
+    root: Path, patch: str, *, strict: bool = False
+) -> dict[str, dict[str, list]]:
     """Read the CDragon mechanical-ratio sidecar for ``patch``; fail-soft to {}.
 
     The sidecar (``<root>/<patch>/cdragon_ability_ratios.json`` from
@@ -424,17 +457,38 @@ def _load_cdragon_ratio_sidecar(root: Path, patch: str) -> dict[str, dict[str, l
     Meraki ``champion_abilities.json`` ratios unchanged - the CDragon source is a
     PREFERENCE, never a hard dependency.
 
+    STALE-COPY GUARD: the sidecar used to be resolved by DIRECTORY alone, so a
+    patch-refresh commit that copied the previous patch's file forward silently
+    re-armed stale ratios as authoritative (live today: every 16.1x directory
+    ships a byte-identical sidecar whose payload reads ``"patch": "16.11.1"``).
+    The payload's own ``patch`` is now compared against the requested one and any
+    mismatch - including an absent ``patch`` field - is logged at WARNING. With
+    ``strict=True`` the stale sidecar is DROPPED and Meraki stays authoritative,
+    which is what the fail-soft contract above already promises. ``strict``
+    defaults False so detection lands without moving engine output; see
+    ``AbilitiesSnapshot.load``.
+
     Returns ``{champion_id: {slot: [block, ...]}}`` where each block is the raw
     resolver dict (``{name, base, ap_pct, ..., resolution, calc_type}``).
     """
-    path = root / patch / _CDRAGON_RATIO_SIDECAR
-    if not path.exists():
+    doc = _read_cdragon_sidecar_doc(root, patch)
+    if doc is None:
         return {}
-    try:
-        doc = json.loads(path.read_text(encoding="utf-8"))
-    except (ValueError, OSError):
-        return {}
-    champs = doc.get("champions") if isinstance(doc, dict) else None
+    payload_patch = doc.get("patch")
+    if payload_patch != patch:
+        _LOG.warning(
+            "CDragon ratio sidecar under %s/ was extracted at patch %r, not %r - "
+            "stale ratios would override Meraki. %s",
+            patch,
+            payload_patch,
+            patch,
+            "DROPPED (strict); Meraki authoritative."
+            if strict
+            else "APPLIED (non-strict); re-extract at the live patch.",
+        )
+        if strict:
+            return {}
+    champs = doc.get("champions")
     if not isinstance(champs, dict):
         return {}
     return champs
@@ -622,6 +676,7 @@ class AbilitiesSnapshot:
         prefer_cdragon_ratios: bool = True,
         apply_cdragon_resource_guard: bool = False,
         cdragon_root: Path | None = None,
+        strict_cdragon_patch: bool = False,
     ) -> "AbilitiesSnapshot":
         """Load the abilities snapshot for ``patch`` (or current.txt).
 
@@ -670,6 +725,16 @@ class AbilitiesSnapshot:
         the sidecar is read from (defaults to ``data_root``). Set False to force the
         legacy Meraki-only path - the sidecar is never read and forms are
         byte-identical to the pre-cutover behavior.
+
+        ``strict_cdragon_patch`` (default False / OFF) enforces the stale-copy
+        guard in ``_load_cdragon_ratio_sidecar``: when True, a sidecar whose own
+        ``patch`` field does not match ``patch`` is DROPPED and Meraki stays
+        authoritative. The mismatch is logged at WARNING either way - only the
+        enforcement is gated. Default OFF because the live 16.14.1 sidecar is a
+        verbatim 16.11.1 copy that currently overrides Meraki ratios on 49 of 171
+        champions (55 blocks / 75 fields), so flipping this belongs with the
+        16.14 re-extract as one deliberate, diffed change - not as a side effect
+        of adding the detector.
         """
         root = Path(data_root) if data_root else _DEFAULT_DATA_ROOT
         if patch is None:
@@ -697,9 +762,14 @@ class AbilitiesSnapshot:
                 f"(snapshot {patch}) - corrupt or partially written"
             )
         # Prefer-CDragon re-source: read the mechanical-ratio sidecar once
-        # (opt-in, default OFF). Empty map = no sidecar -> Meraki stays authoritative.
+        # (default ON since the item-320 cutover). Empty map = no sidecar, or a
+        # stale sidecar rejected by the patch guard -> Meraki stays authoritative.
         cd_map = (
-            _load_cdragon_ratio_sidecar(Path(cdragon_root) if cdragon_root else root, patch)
+            _load_cdragon_ratio_sidecar(
+                Path(cdragon_root) if cdragon_root else root,
+                patch,
+                strict=strict_cdragon_patch,
+            )
             if prefer_cdragon_ratios
             else {}
         )

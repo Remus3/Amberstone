@@ -17,7 +17,9 @@ its 1,046 rows cover ap_pct / total_ad_pct / caster_max_hp_pct / bonus_ad_pct
 and contain zero ``base`` and zero ``cooldown`` rows - so it structurally cannot
 see the two fields that carry the real evidence. This module closes that gap
 using ONLY the wiki source the repo already reads, so it neither needs
-CommunityDragon nor touches the default-off ``prefer_cdragon_ratios`` cutover.
+CommunityDragon nor touches the ``prefer_cdragon_ratios`` cutover - which is
+default-ON and live (``abilities.py`` ``load(prefer_cdragon_ratios=True)`` since
+item 320 / ENGINE 1.119.0), NOT default-off as this file previously claimed.
 
 TWO MODES, because they answer different questions
 --------------------------------------------------

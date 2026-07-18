@@ -1,5 +1,5 @@
 # arch: prefer-CDragon semantic block-matcher structural invariants | section=ds-tests | frozen=no
-"""Structural invariants for the prefer-CDragon ratio block-matcher (default OFF).
+"""Structural invariants for the prefer-CDragon ratio block-matcher (default ON).
 
 ``_apply_cdragon_ratio_preference`` re-sources Meraki damage-block ratios from the
 CDragon mechanical sidecar. The original positional ``zip`` mis-paired multi-block
