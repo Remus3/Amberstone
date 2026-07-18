@@ -18,6 +18,7 @@ from typing import Iterable, Optional, Sequence
 from .abilities import AbilitiesSnapshot
 from .data_loader import DataSnapshot
 from .effects import ITEM_EFFECTS
+from .kit_conversion import conversion_factor, damage_objective, kit_conversion
 from .rank import (
     DEFAULT_SLOT_COUNT,
     DEFAULT_TOP_N,
@@ -205,6 +206,7 @@ def rank_items_by_ability_dps(
     block_index_overrides: "Optional[dict[str, int | list[int] | dict[str, int | list[int]]]]" = None,
     filter_shared_uniques: bool = True,
     apply_ability_amps: bool = False,
+    kit_conversion_strength: float = 0.0,
 ) -> AbilityDpsRankResult:
     """Rank items by total-ability-DPS gain when added to ``current_item_ids``.
 
@@ -343,10 +345,53 @@ def rank_items_by_ability_dps(
             unique_passive_key=cand_key,
         ))
 
-    if sort_by == "efficiency":
-        ranked.sort(key=lambda r: (r.ability_dps_per_1k_gold, r.delta_ability_dps), reverse=True)
-    else:
-        ranked.sort(key=lambda r: (r.delta_ability_dps, r.ability_dps_per_1k_gold), reverse=True)
+    # RM-86 L1 kit-conversion gate (DEFAULT-OFF). This ranker had NO sort
+    # transform before - raw delta was the key - so _base_key is introduced here
+    # to match the five sibling rankers. Registry consulted ONLY when the lever
+    # is engaged, so 0.0 is provably byte-identical (onhit_dps.py:494-496).
+    #
+    # This is the ranker carrying the Orianna anchor: Liandry's Torment must
+    # leave #1 while Blackfire Torch is NOT suppressed with it. Both carry a burn
+    # passive, so a DoT-keyed gate over-fires; the separation is that Liandry's
+    # spends 800g of its 3000g on HP an ability-DPS objective cannot read, while
+    # Blackfire spends none (its 600 mana is mage-convertible).
+    _conv = (
+        kit_conversion(str(champion_id), snapshot.champions.get(str(champion_id)))
+        if kit_conversion_strength > 0.0 else None
+    )
+    _conv_objective = damage_objective(snapshot, champion_id) if _conv is not None else ""
+    _conv_memo: dict[str, float] = {}
+
+    def _conv_key(value: float, item_id: str) -> float:
+        """Sort-only view of ``value`` - never mutates the row itself.
+
+        Only ever LOWERS: a non-positive value is returned unchanged, because
+        scaling a negative number toward zero would RAISE its rank
+        (the onhit_dps.py:501-504 rule).
+        """
+        if _conv is None or value <= 0.0:
+            return value
+        factor = _conv_memo.get(item_id)
+        if factor is None:
+            factor = conversion_factor(
+                _conv, item_id, snapshot.items.get(item_id) or {},
+                kit_conversion_strength, _conv_objective,
+            )
+            _conv_memo[item_id] = factor
+        return value * factor
+
+    def _base_key(r: AbilityDpsRankedItem) -> tuple:
+        if sort_by == "efficiency":
+            return (
+                _conv_key(r.ability_dps_per_1k_gold, r.item_id),
+                _conv_key(r.delta_ability_dps, r.item_id),
+            )
+        return (
+            _conv_key(r.delta_ability_dps, r.item_id),
+            _conv_key(r.ability_dps_per_1k_gold, r.item_id),
+        )
+
+    ranked.sort(key=_base_key, reverse=True)
 
     if top_n is not None and top_n > 0:
         ranked = ranked[:top_n]

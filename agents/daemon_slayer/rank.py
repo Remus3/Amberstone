@@ -24,6 +24,7 @@ from .data_loader import DataSnapshot
 from .dps import _select_phase, compute_dps
 from .effects import ITEM_EFFECTS
 from .kit_axis_credit import kit_axis_item_ids, kit_axis_item_names
+from .kit_conversion import conversion_factor, damage_objective, kit_conversion
 from .stats import clamp_level
 
 # Mode -> DDragon map id. Items whose ``maps[map_id]`` is False are unbuyable
@@ -835,6 +836,7 @@ def rank_items(
     prefer_kit_axis_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
     target_current_hp_pct: float = 1.0,
+    kit_conversion_strength: float = 0.0,
 ) -> RankResult:
     """Rank items by DPS contribution when added to ``current_item_ids``.
 
@@ -1149,10 +1151,44 @@ def rank_items(
             )
         )
 
+    # RM-86 L1 kit-conversion gate (DEFAULT-OFF). The registry is consulted ONLY
+    # when the lever is engaged, so 0.0 performs no lookup and no arithmetic and
+    # is provably byte-identical, not merely numerically equal - the
+    # onhit_dps.py:494-496 contract.
+    _conv = (
+        kit_conversion(str(champion_id), champ_rec)
+        if kit_conversion_strength > 0.0 else None
+    )
+    _conv_objective = damage_objective(snapshot, champion_id) if _conv is not None else ""
+    _conv_memo: dict[str, float] = {}
+
+    def _conv_key(value: float, item_id: str) -> float:
+        """Sort-only view of ``value`` - never mutates the row itself.
+
+        Only ever LOWERS: a non-positive value is returned unchanged, because
+        scaling a negative number toward zero would RAISE, not lower, its rank
+        (the onhit_dps.py:501-504 rule).
+        """
+        if _conv is None or value <= 0.0:
+            return value
+        factor = _conv_memo.get(item_id)
+        if factor is None:
+            factor = conversion_factor(
+                _conv, item_id, snapshot.items.get(item_id) or {},
+                kit_conversion_strength, _conv_objective,
+            )
+            _conv_memo[item_id] = factor
+        return value * factor
+
     def _key(r: RankedItem) -> tuple:
         base = _rank_sort_key(
             r, reweight=reweight, sort_by=sort_by, mana_reweight=mana_reweight
         )
+        if _conv is not None:
+            # Scale each METRIC element. The trailing item_id stable tiebreak is
+            # a string and must pass through untouched.
+            *metrics, tiebreak = base
+            base = (*(_conv_key(m, r.item_id) for m in metrics), tiebreak)
         # DSP11: float surfaced kit-axis items above the generic template,
         # preserving the model order within each tier. Byte-identical when off
         # (kit_axis_active False -> the prefix term is never added).

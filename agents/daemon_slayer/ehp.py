@@ -137,6 +137,7 @@ from .rank import (
 )
 from .stats import clamp_level
 from .survivability_credit import survivability_item_ids_tank
+from .kit_conversion import conversion_factor, kit_conversion
 from ._hsp_amp import sum_wielder_hsp_pct
 
 
@@ -2514,6 +2515,7 @@ def rank_items_by_ehp(
     apply_survival_window: bool = False,
     prefer_survivability_by_win: bool = False,
     cost_ceiling: Optional[int] = None,
+    kit_conversion_strength: float = 0.0,
 ) -> EhpRankResult:
     """Rank items by blended-EHP contribution when added to ``current_item_ids``.
 
@@ -2744,10 +2746,44 @@ def rank_items_by_ehp(
         else (lambda r: r.delta_ehp)
     )
 
+    # RM-86 L1 kit-conversion gate (DEFAULT-OFF). Objective is "ehp", not the
+    # damage axis: for a tank, health and resists ARE the output, so only raw
+    # damage stats are off-axis. Registry consulted ONLY when the lever is
+    # engaged -> 0.0 is provably byte-identical (onhit_dps.py:494-496).
+    _conv = (
+        kit_conversion(str(champion_id), champ_rec)
+        if kit_conversion_strength > 0.0 else None
+    )
+    _conv_memo: dict[str, float] = {}
+
+    def _conv_key(value: float, item_id: str) -> float:
+        """Sort-only view of ``value`` - never mutates the row itself.
+
+        Only ever LOWERS: a non-positive value is returned unchanged, because
+        scaling a negative number toward zero would RAISE its rank
+        (the onhit_dps.py:501-504 rule).
+        """
+        if _conv is None or value <= 0.0:
+            return value
+        factor = _conv_memo.get(item_id)
+        if factor is None:
+            factor = conversion_factor(
+                _conv, item_id, snapshot.items.get(item_id) or {},
+                kit_conversion_strength, "ehp",
+            )
+            _conv_memo[item_id] = factor
+        return value * factor
+
     def _base_key(r: EhpRankedItem) -> tuple:
         if sort_by == "efficiency":
-            return (r.ehp_per_1k_gold, _active(r))
-        return (_active(r), r.ehp_per_1k_gold)
+            return (
+                _conv_key(r.ehp_per_1k_gold, r.item_id),
+                _conv_key(_active(r), r.item_id),
+            )
+        return (
+            _conv_key(_active(r), r.item_id),
+            _conv_key(r.ehp_per_1k_gold, r.item_id),
+        )
 
     if surv_active:
         # RF3: float surfaced survivability items above the max-EHP ordering,
