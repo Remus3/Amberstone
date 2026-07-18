@@ -14,6 +14,47 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
 - Remaining: 84
 - Next up (strict alphabetical): Morgana. Next GAP spec = RM-83.
 
+## Data-currency caveat (RM-81) - READ BEFORE TRUSTING ANY VERDICT
+
+RM-81 was found during batch15 on two champions and has since been MEASURED across
+the whole roster by `tools/ds_wiki_staleness_check.py --full`, which diffs stored
+base-damage and cooldown endpoints against the live wiki Data templates. Result
+(patch 16.14.1, report at `data/daemon_slayer/16.14.1/ability_staleness.json`):
+
+- **75 of 171 champions (44%) carry at least one drifted ability value**, 123 findings.
+- **39 of the 86 champions already given a sweep verdict (45%) are among them** - Ahri,
+  Akshan, Anivia, Annie, Azir, Blitzcrank, Brand, Braum, Camille, Cassiopeia, Corki,
+  Draven, Fizz, Galio, Gangplank, Garen, Gnar, Graves, Gwen, Hecarim, Heimerdinger,
+  Hwei, Irelia, Jhin, Jinx, Kassadin, Kayle, Kayn, Kennen, Lissandra, Lucian, Lulu,
+  Lux, Malphite, Malzahar, Maokai, Mel, Mordekaiser, Varus.
+- **33 of the 84 still-pending champions** are affected too, including the next batch
+  (Morgana, Naafiri, Nami, Nasus).
+
+RECALL IS MEASURED, not assumed. Riot's own patch notes (reachable directly and
+URL-predictable, e.g. `.../news/game-updates/league-of-legends-patch-26-14-notes/`,
+with the champion list in `h3.change-title`) give an authoritative "who changed in
+patch N" set. Cross-checked against 26.14: the detector catches **7 of the 9**
+checkable champions, and both misses are correct BY-DESIGN exclusions rather than
+bugs - Seraphine's change was an AP RATIO (50% -> 40%, which is the CDragon ratio
+report's job) and Jayce's was a defensive RESIST GRANT, neither being a damage base
+or a cooldown. So recall on in-scope fields is 7/7. Locke is correctly absent, being
+the RM-79 missing-champion case. That cross-check also FOUND a real recall gap since
+fixed: pages that hoist numbers into MediaWiki `#vardefine` variables (Garen's R is
+`{{ap|{{#var:b1}} to {{#var:b3}}}}`) parsed to nothing, hiding Riot's 26.14 cut of
+150/250/350 -> 125/200/275; resolving those variables recovered 4 champions and 14
+findings.
+
+This does NOT auto-invalidate those verdicts: the sweep's bright line compares the
+engine's ITEM ORDER against real-meta build data, and most findings are modest
+base/cooldown deltas that shift magnitudes rather than the kit AXIS. But a verdict
+that turned on a damage MAGNITUDE (front-loaded-vs-sustained splits, %maxHP weight,
+burst-window arithmetic) should be re-checked against the report before being
+treated as settled. `champion_ability_data_is_current()` exposes the same signal at
+runtime, and `--recent` re-checks changed champions daily via RC-UpstreamDriftCheck.
+
+Cause is upstream and unchanged: Meraki's `latest` endpoint is frozen at content
+patch 25.15 (deliberately pinned + logged), roughly 11 patches behind live.
+
 ## Resolved verdicts
 
 - **Maokai** - REFUTE (the Malphite / Dr. Mundo / K'Sante "damage inseparable from durability" class, and its **first HEALTH-coupled instance** - Malphite's coupling is a literal armor ratio, Maokai's is a bonus-HP ratio) - real meta = DDragon PRIMARY **Tank**, **Support 67.1% / Top 18.6% / Jungle 13.1%**, support 52.19% WR Em+ (9,457 games, PR 1.6%, BR 0.18%) vs 51.36% all-ranks over 43,468 (he rewards coordination); top is his worst role (48.45%, D- 106/107). Damage ~**81% magic / 12.6% physical / 6.1% true** (two sources agree to 0.1pp) but only ~13-14% team share with 13.3 assists/game - a utility profile. Signature FIRST legendary = **Locket of the Iron Solari 58.0%** (5,321/9,171, 51.8% WR) then Bandlepipes 23.0% (53.9%); boots **Swiftness 69.0%**; keystone contested (four sources Aftershock for support, one renders Grasp off a page-level aggregate). NEVER builds crit / on-hit / lethality / the Sheen line / AD bruiser - **STRUCTURAL, not preference**: his kit has zero bonus-AD ratios, zero AS scaling, zero armor/MR ratios. Kit: passive heals 4-12.8% max HP with **no AP ratio**; Q 40% AP + 2-4% of **TARGET** max HP (invariant to his own build); W 40% AP; **E 25% AP + 5% CASTER BONUS HP** (brush-enhanced 50% AP + **10% bonus HP**, the only DoT, 3 ticks over 2s); R 75% AP. **No shield, no DR - the "Vengeful Maelstrom 20% DR" that surfaces in search is the pre-2018 ultimate and is NOT live.** DISCRIMINATOR ANSWERED against the Amumu RM-44 / Cho'Gath RM-51 / Galio RM-55 AP-RUSH test: **no separate off-axis AP core is omitted** - an AP legendary opens **2.4%** of games and **LOSES** (Liandry's-first **48.9%**, corroborated **49.2% over 1,852 games**, vs a 52.19% baseline), no AP item appears in any core-slot table, top opens Hollow Radiance and ARAM opens Heartsteel; the one partial exception is **jungle (13.1%, 51.54%, C-) which IS Liandry's-first**, a minority role not the signature. Production tank/ds.ehp leads Randuin's #1 / Warmog's #2 / Heartsteel #3-5 / Kaenic #4 / Jak'Sho #3-5, surfaces Sunfire #11, Hollow Radiance #12, Abyssal #13-14, Iceborn #18, Thornmail #21, and carries **zero AP damage legendaries in the top-40** except Rylai's #37-38 / Bloodletter's #38-39 - CORRECT. SHARPENING in the engine's favour: the ds.ehp HP-heavy lead is **more correct for Maokai than for any other tank in the sweep**, because his E genuinely converts bonus HP into damage. Only imperfection is the SETTLED Alistar / Braum / Leona personal-EHP-vs-team-aura scope limit (Locket #24-25, Bandlepipes #33-35, Knight's Vow #32-36 buried; his first TWO legendaries are aura/utility and his self-EHP bricks are slots 3-5, exactly Leona's shape)
