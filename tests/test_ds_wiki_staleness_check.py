@@ -322,3 +322,199 @@ def test_current_patch_ignores_non_version_dirs_and_sorts_numerically(tmp_path, 
         (tmp_path / name).mkdir()
     monkeypatch.setattr(M, "DATA_DIR", tmp_path)
     assert M._current_patch() == "16.14.1"
+
+
+# --------------------------------------------------------------------------- RM-81 shape
+#
+# Some stored ``base`` arrays are a per-RANK series concatenated with a per-LEVEL
+# series, so the old ``base[-1]`` read returned a level-scaled number in place of
+# the max-rank base. On Mordekaiser Q that turned a real 4.6% drift into a
+# reported 389% one - and because those inflated rows were the loudest in the
+# sweep, the bug did not merely add noise, it mis-ranked which champions were
+# worth re-sourcing.
+#
+# Every fixture below is verbatim from the committed `champion_abilities.json`
+# (patch 16.14.1) and the live wiki Data templates, and the wiki independently
+# confirms the shape rather than the test merely asserting the implementation:
+# Mordekaiser's Data page hoists BOTH series as named variables -
+#
+#     {{#vardefine:p1|0}}    <!-- Level 1 base damage
+#     {{#vardefine:p18|45}}  <!-- Level 18 base damage
+#     {{#vardefine:b1|80}}   <!-- Rank 1 base damage
+#     {{#vardefine:b5|220}}  <!-- Rank 5 base damage
+#
+# so the 45.0 the old code reported as "the rank-5 base" is documented upstream as
+# the LEVEL-18 value, and the true rank-5 endpoint is 220 live / 230.59 stored.
+
+# --------------------------------------------------------------------------- fixtures
+
+# Verbatim champion_abilities.json -> data.Mordekaiser.Q[0]. 18 entries: the 5
+# real ranks, then the 13-entry level-6..18 tail ending at p18 = 45.
+MORDEKAISER_Q_MERAKI = {
+    "key": "Q",
+    "name": "Obliterate",
+    "cooldown": [8.0, 7.0, 6.0, 5.0, 4.0],
+    "damage_blocks": [
+        {
+            "attribute": "Magic Damage",
+            "attribute_kind": "damage",
+            "base": [
+                80.0, 117.6470588235294, 155.2941176470588,
+                192.94117647058823, 230.58823529411765,
+                13.235294117647058, 15.882352941176471, 18.52941176470588,
+                21.176470588235293, 23.823529411764707, 26.470588235294116,
+                29.11764705882353, 31.764705882352942, 34.411764705882355,
+                37.05882352941176, 39.705882352941174, 42.35294117647059,
+                45.0,
+            ],
+        }
+    ],
+}
+
+# Verbatim Template:Data Mordekaiser/Obliterate, #vardefine block preserved.
+MORDEKAISER_Q_WIKI = (
+    "-->{{#vardefine:p1|0}}<!-- Level 1 base damage\n"
+    "-->{{#vardefine:p18|45}}<!-- Level 18 base damage\n"
+    "-->{{#vardefine:b1|80}}<!-- Rank 1 base damage\n"
+    "-->{{#vardefine:b5|220}}<!-- Rank 5 base damage\n"
+    "-->|leveling     = {{st|Magic Damage|{{ap|{{#var:b1}} to {{#var:b5}}}} "
+    "{{as|(+ 70% AP)}}}}\n"
+    "|cooldown     = {{ap|8 to 4}}\n"
+)
+
+# Verbatim data.Malzahar.W[0]. Ranks 17..39, then a tail that CLIMBS to 64.5 -
+# the array does not decrease end to end, which is why the tell has to be an
+# internal drop and not `base[-1] < base[0]`.
+MALZAHAR_W_BASE = [
+    17.0, 22.5, 28.0, 33.5, 39.0,
+    22.5, 26.0, 29.5, 33.0, 36.5, 40.0, 43.5, 47.0, 50.5, 54.0, 57.5, 61.0,
+    64.5,
+]
+
+# Verbatim data.Sona.Q[0]. Sona's Q cooldown is rank-INVARIANT, so Meraki stores
+# a 1-entry cooldown against a 5-entry base. Wiki agrees: `{{ap|50 to 190}}`
+# with a bare `|cooldown = 8`.
+SONA_Q_MERAKI = {
+    "key": "Q",
+    "name": "Hymn of Valor",
+    "cooldown": [8.0],
+    "damage_blocks": [
+        {"attribute": "Magic Damage", "base": [50.0, 85.0, 120.0, 155.0, 190.0]},
+    ],
+}
+SONA_Q_WIKI = (
+    "|leveling     = {{st|Magic Damage|{{ap|50 to 190}} {{as|(+ 40% AP)}}}}\n"
+    "|cooldown     = 8\n"
+)
+
+# Verbatim data.AurelionSol.Q[0]. 4 base entries against 5 cooldowns.
+AURELIONSOL_Q_MERAKI = {
+    "key": "Q",
+    "name": "Breath of Light",
+    "cooldown": [3.0, 3.0, 3.0, 3.0, 3.0],
+    "damage_blocks": [
+        {"attribute": "Total Maximum Magic Damage",
+         "base": [146.25, 195.0, 243.75, 292.5]},
+    ],
+}
+
+# Verbatim data.Shen.Q[0]. A LEGITIMATE 18-entry per-level series with no rank
+# component at all - the wiki writes it `{{pp|10 to 40 for 6|1 to 16}}`, a
+# per-level macro - so 40.0 is the correct endpoint and it must not be cut.
+SHEN_Q_MERAKI = {
+    "key": "Q",
+    "name": "Twilight Assault",
+    "cooldown": [8.0, 7.25, 6.5, 5.75, 5.0],
+    "damage_blocks": [
+        {
+            "attribute": "Bonus Magic Damage",
+            "base": [
+                10.0, 11.764705882352942, 13.529411764705882,
+                15.294117647058822, 17.058823529411764, 18.823529411764707,
+                20.588235294117645, 22.352941176470587, 24.11764705882353,
+                25.88235294117647, 27.647058823529413, 29.41176470588235,
+                31.176470588235293, 32.94117647058823, 34.705882352941174,
+                36.470588235294116, 38.23529411764706, 40.0,
+            ],
+        }
+    ],
+}
+
+
+# --------------------------------------------------------------------------- the bug
+
+def test_concatenated_per_level_tail_is_not_read_as_max_rank():
+    """The core defect. `base[-1]` is 45.0, the LEVEL-18 value, not rank 5."""
+    got = M.meraki_endpoints(MORDEKAISER_Q_MERAKI)
+    lo, hi = got["bases"]["Magic Damage"]
+    assert lo == 80.0
+    assert 230.5 < hi < 230.7, f"expected the rank-5 base ~230.59, got {hi}"
+
+
+def test_mordekaiser_q_delta_is_five_percent_not_three_hundred_eighty_nine():
+    """End to end: the reported magnitude must match the real balance delta."""
+    findings = M.compare_ability(
+        "Mordekaiser", "Q", MORDEKAISER_Q_MERAKI, MORDEKAISER_Q_WIKI
+    )
+    row = next(f for f in findings if f["field"] == "base:Magic Damage")
+    assert row["wiki"] == [80.0, 220.0]
+    delta = abs(row["wiki"][1] - row["meraki"][1]) / row["meraki"][1]
+    assert delta < 0.10, f"reported delta {delta:.1%}, true drift is 4.6%"
+
+
+def test_shape_suspect_marker_is_emitted_for_a_concatenated_row():
+    findings = M.compare_ability(
+        "Mordekaiser", "Q", MORDEKAISER_Q_MERAKI, MORDEKAISER_Q_WIKI
+    )
+    row = next(f for f in findings if f["field"] == "base:Magic Damage")
+    marker = row["SHAPE_SUSPECT"]
+    assert marker["kept_ranks"] == 5
+    assert marker["stored_len"] == 18
+    assert marker["cooldown_ranks"] == 5
+    assert marker["dropped_tail"][-1] == 45.0
+
+
+def test_internal_drop_not_end_to_end_decrease_is_the_tell():
+    """Malzahar W climbs 17..39 then restarts at 22.5 and ends ABOVE rank 1."""
+    assert MALZAHAR_W_BASE[-1] > MALZAHAR_W_BASE[0]
+    kept, marker = M.rank_series(MALZAHAR_W_BASE, [8.0] * 5)
+    assert marker is not None
+    assert kept == [17.0, 22.5, 28.0, 33.5, 39.0]
+
+
+# ------------------------------------------------------- guards on the cure itself
+# len(cooldown) is NOT a usable rank count. These three pin the cases that a
+# cooldown-indexed truncation gets wrong on live 16.14.1 data.
+
+def test_rank_invariant_cooldown_does_not_collapse_base_to_rank_one():
+    """Sona Q: 1 cooldown, 5 ranks. Indexing by len(cooldown) reports 50 for 190."""
+    got = M.meraki_endpoints(SONA_Q_MERAKI)
+    assert got["bases"]["Magic Damage"] == (50.0, 190.0)
+    assert M.compare_ability("Sona", "Q", SONA_Q_MERAKI, SONA_Q_WIKI) == []
+
+
+def test_base_shorter_than_cooldown_does_not_raise():
+    """Aurelion Sol Q: 4 base entries, 5 cooldowns. base[len(cd)-1] IndexErrors."""
+    got = M.meraki_endpoints(AURELIONSOL_Q_MERAKI)
+    assert got["bases"]["Total Maximum Magic Damage"] == (146.25, 292.5)
+
+
+def test_legitimate_per_level_base_is_not_truncated():
+    """Shen Q is per-level all the way down: 40.0 is right, 17.06 is not."""
+    got = M.meraki_endpoints(SHEN_Q_MERAKI)
+    assert got["bases"]["Bonus Magic Damage"] == (10.0, 40.0)
+    assert got["shape_suspect"] == {}
+
+
+def test_clean_rank_series_is_untouched_and_unmarked():
+    got = M.meraki_endpoints(MAOKAI_Q_MERAKI[0])
+    assert got["bases"]["Magic Damage"] == (65.0, 245.0)
+    assert got["shape_suspect"] == {}
+
+
+def test_per_level_passive_cooldown_may_legitimately_decrease():
+    """Cooldowns are exempt from the drop rule - Maokai's passive runs 30 -> 20."""
+    entry = {"key": "P", "name": "Sap Magic",
+             "cooldown": [30.0 - i * (10.0 / 17.0) for i in range(18)],
+             "damage_blocks": []}
+    assert M.meraki_endpoints(entry)["cooldown"] == (30.0, 20.0)
