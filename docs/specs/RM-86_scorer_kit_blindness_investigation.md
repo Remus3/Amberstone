@@ -272,3 +272,42 @@ Stated so a later session can attack it cheaply:
 - Enchanter byte-identity: 7 champions x 3 routes, `rank_for_primary_archetype`.
 - Prior verdicts reused, not re-derived: RM-83 (Naafiri), RM-85 (Nasus), the
   batch16 `ds.hps` invariance finding, memory `project_ds_hps_champion_invariant`.
+
+## 8. Batch18 corroboration (2026-07-18) - RC-1 measured three more ways
+
+Added after the spec was written. None of it changes the L1/L2/L3 ladder; all
+three sharpen the case for L1 and give it better test anchors.
+
+**(i) The invariance table extends from top-5 to top-8, on two more scorers.**
+Ornn and Poppy both route `tank`/`ds.ehp` and return the same top-6 in the same
+order, deltas within 1%. Rerouted to `bruiser`, Ornn / Pantheon / Poppy return an
+identical top-8 item SET (Ornn and Poppy identical 8-of-8 in ORDER; Pantheon with
+slots 6-7 swapped) across a tank, a tank/fighter and an assassin/fighter.
+
+**(ii) Olaf is the control that names the mechanism.** He is also bruiser-routed
+but overlaps the other three only 4-of-8, and the reason is that his base AD and
+base attack speed differ. That is RC-1 as a positive measurement rather than an
+absence: the champion enters the objective through BASE STATS ONLY, so two
+champions with similar base stats receive literally the same build. A test that
+asserts two structurally different champions get DIFFERENT top-8s is the
+cheapest possible regression anchor for L1.
+
+**(iii) Pantheon supplies a numeric conversion factor, which is what L1 needs.**
+Independent meta research reached RC-1's own conclusion unprompted: only his
+empowered W can crit or apply on-hit, and the passive empowers roughly one
+ability per 5-cast cycle, so attack-speed / crit / on-hit convert at roughly a
+FIFTH of face value for him while the sim reads them at face value. This matters
+for L1's design because it argues the conversion vector should be CONTINUOUS
+(a per-stat fraction in [0,1]) rather than the boolean has-an-AS-term /
+has-a-crit-term gate section 4 sketches. A boolean gate would score Pantheon's
+on-hit at either 0 or 1 and both are wrong.
+
+**Suggested extra L1 acceptance anchors** (alongside the Naafiri BotRK check):
+- Olaf: `Stridebreaker` must move up from #33 and BotRK must leave #1.
+- Pantheon: `Black Cleaver` must move up from #29; Heartsteel must leave #3.
+- Orianna: `Liandry's Torment` must leave #1, but `Blackfire Torch` must NOT be
+  penalised with it - it is genuinely 31%-pick meta bought for AP/haste/mana, not
+  for the burn. A gate that suppresses both has over-fired.
+- Poppy and Ornn are the negative controls: Poppy's top-10 must not degrade
+  (she is a REFUTE), and Ornn is explicitly NOT an L1 case (his defect is
+  resist-vs-health weighting inside one pool - RM-87, see the tracker).
