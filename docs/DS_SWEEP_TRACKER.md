@@ -36,6 +36,23 @@ Legend: [ ] PENDING  -  [GAP RM-NN] resolved gap (spec RM-NN)  -  [REFUTE] resol
   ASSERT the replacement count is 1. Both traps were caught only because the counts
   were re-verified AFTER writing rather than inferred from the write succeeding.
 - Next up (strict alphabetical): Rumble. Next GAP spec = RM-91.
+- **RM-86 L1 SHIPPED 2026-07-18 (LEDGER 940, ENGINE 1.218.0)** - the sweep's first
+  engine change. `agents/daemon_slayer/kit_conversion.py` + a default-OFF
+  `kit_conversion_strength` lever on carry / assassin / mage / tank. Two spec
+  corrections landed with it (spec section 10), and BOTH matter for future verdicts:
+  (1) the conversion vector CANNOT be derived from `damage_blocks` - no
+  attack-speed / crit / on-hit / DoT key exists in any of the 1709 blocks across
+  171 champions, and the loader drops `effects_descriptions`, so it is a
+  prose-seeded curated registry;
+  (2) a monotone-lowering sort-key gate can only push bad items DOWN, never push a
+  good item UP past untouched neighbours - so any future verdict whose remedy is
+  "champion X's real item must RISE" is L2 objective-coverage work, NOT an L1 case.
+  Olaf Stridebreaker and Pantheon Black Cleaver / Heartsteel were reclassified that
+  way on measurement. Naafiri, Orianna and the Poppy control were REACHED.
+  Correction for anyone quoting batch18: Olaf's Stridebreaker baseline is **#34**,
+  not #33; Olaf W attack speed is 40/50/60/70/80 pct, not 50-90; and Rek'Sai's
+  "3 autos per Fury cycle" is NOT in 16.14.1 prose - Q reads "Her next basic
+  attack", singular.
 - batch16 (2026-07-18): Morgana [GAP RM-84, FIXED], Naafiri [GAP RM-83], Nami [REFUTE], Nasus [GAP RM-85], Nautilus [REFUTE].
 - batch17 (2026-07-18): Neeko [GAP RM-86], Nidalee [GAP RM-86], Nilah [GAP RM-86 + route], Nocturne [GAP RM-86], Nunu [GAP route].
   All five are GAPs, which is unusual and is itself the finding: four are the SAME
