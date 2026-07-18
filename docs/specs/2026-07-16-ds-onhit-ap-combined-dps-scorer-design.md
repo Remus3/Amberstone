@@ -118,7 +118,9 @@ For AP-axis champs on the onhit scorer, penalize pure-AD items (tag has
   champs (Gwen - effectively drop pure-AD from the pool, reproducing the #5
   result) and SOFT / OFF for genuine hybrids (Kayle - she really does build
   Guinsoo / BotRK / Wit's End alongside Nashor's + Riftmaker, per
-  `ops/audit/ds_cross_eval/reports/Kayle.md`).
+  `docs/_archive/2026-07-18-ds-cross-eval-reports/Kayle.md` - the per-champion
+  reports were archived 2026-07-18; the program docs stay at
+  `ops/audit/ds_cross_eval/`).
 - Implemented as a candidate-pool gate or a scoring penalty in
   `rank_items_by_onhit`, reusing/extending `core/build_planner/coherence.py`.
   This lands Slice A's explicitly-deferred "AD-artifact coherence filter"
