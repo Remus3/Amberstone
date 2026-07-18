@@ -311,3 +311,71 @@ on-hit at either 0 or 1 and both are wrong.
 - Poppy and Ornn are the negative controls: Poppy's top-10 must not degrade
   (she is a REFUTE), and Ornn is explicitly NOT an L1 case (his defect is
   resist-vs-health weighting inside one pool - RM-87, see the tracker).
+
+## 9. Batch19 corroboration (2026-07-18) - the measurement redone at scale, and one champion that breaks the plan
+
+**(i) Section 2's table replicates independently at top-8 on a 32-champion panel.**
+8 champions per scorer, 28 pairs each, forced route, empty build, L16, identical
+target profile. Mean top-8 SET overlap (POSITIONAL match in parentheses):
+
+| scorer | set overlap | positional |
+|---|---|---|
+| `ds.ability` (mage) | **8.00 / 8** | 6.50 / 8 |
+| `ds.ehp` (tank) | 7.57 / 8 | 7.07 / 8 |
+| `ds.hybrid` (bruiser) | 6.04 / 8 | 2.00 / 8 |
+| `ds.dps` (carry) | 4.54 / 8 | 1.89 / 8 |
+
+The ORDERING is identical to section 2's top-5 measurement (ability > ehp >
+hybrid > dps). `ds.ability` is now shown to be **perfectly invariant in set
+terms**: Orianna, Syndra, Veigar, Lux, Xerath, Vex, Zoe and Ziggs all receive the
+same eight items. That is the strongest available statement of the
+"Liandry's-for-everyone" case.
+
+**(ii) `ds.dps` does not vary continuously - it bifurcates.** The carry panel
+splits into an on-hit-led cluster (Quinn / Vayne / Sivir: BotRK, Runaan's, Kraken)
+and a lethality-crit-led cluster (Jinx / Caitlyn / Draven: Lord Dominik's,
+Collector, Infinity Edge, Youmuu's). A champion's recommendation therefore depends
+on which cluster its BASE STATS drop it into. This refines RC-1: the objective is
+not merely kit-blind, it is a piecewise function of base stats.
+
+**(iii) A third and fourth champion confirm the continuous-conversion argument.**
+Rek'Sai's unburrowed Q genuinely applies on-hit AND crits, and she genuinely wants
+attack speed (autos fill Fury) - yet BotRK/Kraken/Trinity/IE are all 0-3% real
+pick, because Q is 3 empowered autos per Fury cycle. Olaf's W grants 50-90% attack
+speed and his passive up to 70% more, so purchased AS has sharply diminishing
+value. With Pantheon's ~1/5 cadence that is **three independent kits that HAVE the
+term and must still not be credited at face value**. A boolean has-an-AS-term gate
+is the wrong shape; the vector must be continuous.
+
+**(iv) Quinn breaks the L1-only plan, and should be the plan's test case.** She is
+the first champion measured carrying BOTH root causes:
+- RC-1: carry/ds.dps leads BotRK #1 / Runaan's #2 / Kraken #3 / Stormrazor #4, all
+  0-2% real pick, because Harrier is priced as attack-speed throughput when its
+  proc rate is **cooldown-gated and attack-speed-independent**, and crit chance is
+  a cooldown scalar that does NOT make it crit.
+- RC-2: her carry pool holds 111 items and **structurally excludes Profane Hydra
+  and Umbral Glaive**, both present in the 144-item assassin/onhit/bruiser pools.
+  Her #2 signature item is not in the set being ranked.
+
+So **a perfect L1 gate would suppress her three bad leads and still never surface
+her real second item.** Section 5 predicted L1 makes RC-2 slightly worse; Quinn is
+the concrete instance. Recommendation unchanged (L1 first, default-OFF) but the
+sequencing note should now read: **L1 is necessary and provably insufficient, and
+RC-2 pool work must follow it rather than being indefinitely deferred.**
+
+**(v) An RC-2-adjacent data defect found in passing, filed separately.** The
+legendary `Opportunity` (id 6701, 2700g, ArmorPenetration) is present in the item
+catalog but enters **zero** ranked pools across 7 champions and 2 archetypes, so it
+can never be recommended to anyone. Sibling lethality items appear normally in the
+same pools, so this is item-specific. Not fixed here.
+
+**(vi) A data-layer limit that bounds what ANY scorer fix can achieve.** Three of
+the five batch19 champions carry their decisive mechanic in
+`effects_descriptions` prose with **empty `damage_blocks`**: Rammus's Spiked Shell
+(15% total armor + 15% total MR as bonus AD), Pyke's Gift of the Drowned Ones
+(bonus health to AD, max health cannot otherwise increase), and Quinn's Harrier
+(15-132 + 40% bonus AD). This is the RM-81 empty-blocks false-negative class
+intersecting RM-86: **for these champions the conversion the gate would need to
+read is not in the data at all**, so L1 cannot reach them regardless of design.
+Any L1 acceptance suite should include one such champion as an explicit
+known-unreachable control rather than a failure.
