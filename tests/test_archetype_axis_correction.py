@@ -51,7 +51,14 @@ EXPECTED_KEEPS = {
     "Annie": "mage",       # AP kit, AP archetype - aligned
     "Caitlyn": "carry",    # AD kit, AD archetype - aligned
     "Malphite": "tank",    # AP kit but tank is axis-neutral - never corrected
-    "Taric": "enchanter",  # AP kit, AP archetype - aligned (lolmath builds AD)
+    # Sona replaced Taric here on 2026-07-18. Taric was the AP-kit/AP-archetype
+    # witness, but Slice C (core/ds_support_route_overrides.json, RM-84) now
+    # routes him to tank DOWNSTREAM of the axis correction, so he is no longer a
+    # valid end-to-end witness for "axis correction left this alone". Sona is the
+    # same shape (AP kit, enchanter archetype, aligned) and is a confirmed-correct
+    # enchanter deliberately absent from the Slice C roster. The Taric override
+    # itself is asserted in tests/test_ds_support_route_overrides.py.
+    "Sona": "enchanter",   # AP kit, AP archetype - aligned
     "XinZhao": "bruiser",  # AD kit, AD archetype - aligned (lolmath builds AP)
 }
 

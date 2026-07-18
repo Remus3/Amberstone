@@ -51,6 +51,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.ds_onhit_ap_roster import load_onhit_ap_roster
+from core.ds_support_route_overrides import load_support_route_overrides
 
 _log = logging.getLogger("rc.archetype_picks")
 
@@ -471,6 +472,18 @@ def default_for_champion(champion: str) -> tuple[str, str]:
     if corrected != primary:
         secondary = primary
         primary = corrected
+    # Slice C (RM-84): Support-tag champions whose real build is NOT heal/shield
+    # throughput. tag_to_archetype("Support") == "enchanter" routes all 18 of
+    # them to ds.hps, and the axis correction above cannot see an AP-vs-AP
+    # (Morgana) or axis-neutral (Thresh/Rakan/Taric/Bard) misroute - it only
+    # resolves AD-vs-AP, which is why Pyke and Senna are already correct and are
+    # deliberately NOT in the roster. Applied after the axis correction so it can
+    # never undo it. Fail-soft: empty roster -> byte-identical.
+    _support_route = load_support_route_overrides().get(canonical_champion_id(champion))
+    if _support_route is None:
+        _support_route = load_support_route_overrides().get(champion)
+    if _support_route is not None:
+        return _support_route
     # Slice A: curated AP burst-assassins are collapsed to mage by the tag path +
     # axis correction; force them onto the assassin (ds.burst) scorer. Surface the
     # would-be mage archetype as the alt-view so the operator can flip back.
