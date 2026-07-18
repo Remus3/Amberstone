@@ -1,6 +1,50 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the DS_SWEEP batch18 session relocated four blocks - the 2026-07-18b four-track session, the RM-81 staleness-detector session, and the batch15 + batch14 sweep sessions - to `docs/history_notes.md`; newest 3 = batch20 + batch19 + batch18; the 2026-07-18d four-track session was relocated by batch20).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the RM-86 L1 session relocated the batch18 block `2026-07-18e` to `docs/history_notes.md`; newest 3 = the RM-86 L1 engine session `2026-07-18h` + batch20 `2026-07-18g` + batch19 `2026-07-18f`). NOTE: `scripts/wakeup_prune.py` is a silent NO-OP against these headers - its `SESSION_RE` requires a word boundary after the day, so a letter-suffixed header like `# 2026-07-18h` never matches and it reports "nothing to do" at any file size. Relocations are manual until that is fixed (filed as its own task).
+
+---
+
+# 2026-07-18h (RM-86 L1 SHIPPED + L2-for-hps REFUTED + enchanter registry closed; ENGINE 1.217.0 -> 1.219.0, 3 engine commits)
+
+First ENGINE work of the RM-86 arc after four read-only research batches.
+Commits: `17ab86ea` (L1 gate, 1.218.0), `09211c10` + `c6980918` (docs), `b7d7096f`
+(enchanter registry, 1.219.0). LEDGER 940 + 941. CI green on 17ab86ea.
+
+**L1 SHIPPED** - `agents/daemon_slayer/kit_conversion.py` + default-OFF
+`kit_conversion_strength` on carry / assassin / mage / tank. Byte-identity proven
+FULL-ROSTER: both build-order tables regenerated 173 champs x 3 modes returned a
+2-line stamp-only diff. Reached: Naafiri BotRK leaves #1 both routes; Orianna
+Liandry's leaves #1 at 0.50 while Blackfire is NOT suppressed; Poppy control held.
+
+**TWO SPEC CORRECTIONS (spec section 10) - do NOT re-derive:**
+1. The vector CANNOT come from `damage_blocks` - no attack-speed / crit / on-hit /
+   DoT key exists in any of the 1709 blocks across 171 champions, and the loader
+   drops `effects_descriptions` (`abilities.py:220-263`). It is a prose-seeded
+   curated registry. Snapshot holds **171** champions, not 173.
+2. A monotone-lowering sort-key gate can only push bad items DOWN, never push a
+   good item UP past untouched neighbours. Olaf Stridebreaker (#34, tied to BotRK
+   by identical `PercentAttackSpeedMod: 0.25`) and Pantheon Black Cleaver #29 /
+   Heartsteel #3 are therefore L2 objective-coverage, NOT L1. Standing rule now in
+   the tracker.
+
+**L2-for-hps is REFUTED - do NOT build it.** Forcing `apply_ability_hsp_amp` ON
+leaves all 8 enchanters byte-identical to each other (one adjacent swap, same for
+everyone). REFUTE condition 2 satisfied -> finding (c) is RC-2 pool, not RC-1.
+Spec section 3 was ALSO factually wrong twice: `hps.py:648` DOES import
+`ability_hps`, and `hps.py:679` adds `ability_hps_total` unconditionally.
+
+**Enchanter registry closed (1.219.0).** The handed list of "10 missing items" was
+~80% wrong; re-derived by scanning the catalog. Only Dawncore 6621 (terminal, pool
+9 -> 10, climbs #9 -> #5 with depth) and Whispering Circlet 2526 (non-terminal,
+registered-but-unranked like Forbidden Idol 3114) belonged. 8 rejections each
+pinned by a guard test. Does NOT fix the invariance - a test pins that.
+
+**NEXT:** DS_SWEEP 15 champions (3 batches of 5). **Briar is an unnoticed hole** -
+`- [ ] Briar` at tracker line 289 with no verdict and no FENCED note, silently
+skipped in the B-batch. Roster markers are `[GAP RM-nn]` / `[REFUTE]` / `[ ]`, so
+`grep -c "^- \[x\]"` returns 0 and looks catastrophic - do not panic.
+Two future-proofing chips queued (Arena mirror leakage guard; patch-vintage drift
+guard). Do NOT rewrite `enchanter_items.json` `_meta.patch` 16.9.1 -> 16.14.1.
 
 ---
 
@@ -159,76 +203,3 @@ Artifacts: 5 verdicts + 1 method note in `docs/DS_SWEEP_TRACKER.md`; new **secti
 **NEXT:** Rell onward (batch20); next GAP spec = RM-90. **RM-86 L1 is still the highest-
 value engine work, now with acceptance anchors AND a proven insufficiency bound - the
 honest framing is L1 + RC-2 pool work, not L1 alone.**
-
----
-
-# 2026-07-18e (DS_SWEEP batch18 -> 104/173: Olaf / Orianna / Ornn / Pantheon / Poppy; 4 GAP + 1 REFUTE, but only ONE new number)
-
-Read-only research pass, NO engine change. LEDGER 937. **Fan-out held for the third
-session running**: every engine probe in the main thread, exactly 5 flat research
-agents each opening with a hard no-sub-agent constraint. Zero nested spawns, zero
-limit kills. DS confirmed live at ENGINE 1.217.0 / patch 16.14.1 BEFORE any probe.
-
-**The convergence from batch17 repeats, harder.** Four GAPs and only one needs a new
-spec number: Olaf + Pantheon are the Aatrox RM-39 ability-bruiser family, Orianna is
-the Ahri RM-40 burst-mage family (sixth champion). RM-87 goes to Ornn alone. The sweep
-is now mostly confirming known families rather than finding new defects - that is a
-signal about where the remaining value is (fixing RM-86 L1, not finding RM-88).
-
-**Olaf is the most extreme RM-39 instance measured.** bruiser/ds.hybrid returns a top-6
-where EVERY item is one he essentially never builds (BotRK #1 <2%, Trinity #2 <2%,
-Kraken #4 ~0%, Heartsteel #9 ~0%, Liandry's #20 on a champ with ZERO AP ratios), while
-his entire real core sits #19-#43 with signature **Stridebreaker #33**. No reroute
-rescues him. Nuance that stops it being plain on-hit blindness: his W grants 50-90% AS
-and his passive up to 70% missing-HP AS, so the kit DOES scale with attack speed - the
-AS just arrives FREE, so purchased AS has sharply diminishing real value.
-
-**Pantheon supplies the numeric anchor RM-86 L1 was missing.** Only his empowered W can
-crit or apply on-hit and the passive empowers ~1 ability per 5-cast cycle, so AS/crit/
-on-hit convert at roughly a FIFTH of face value. The meta researcher reached RC-1's
-conclusion unprompted, without seeing the spec. **This argues L1's conversion vector must
-be CONTINUOUS in [0,1], not the boolean has-an-AS-term gate section 4 sketched** - a
-boolean scores his on-hit at 0 or 1 and both are wrong.
-
-**Orianna splits a standing family belief in two.** Engine leads Liandry's #1 at a 3.3%
-real pick rate and buries her signature Luden's Echo #13 (GAP, textbook). BUT Blackfire
-Torch #2 is NOT a defect - it is genuinely 31%-pick meta that OUT-WINS Luden's, bought
-for AP/haste/mana rather than a burn her kit cannot apply. **The "Liandry's + Blackfire
-lead" is TWO findings, not one.** Every future burst-mage verdict and any L1 acceptance
-test must score them separately or the gate over-fires.
-
-**RM-87 (Ornn) is the one genuinely new shape: the first ds.ehp gap that is an intra-pool
-WEIGHTING defect, not an omitted off-axis core.** He builds zero damage items so tank/
-ds.ehp is the CORRECT axis (NOT the Amumu RM-44 / Cho'Gath RM-51 / Galio RM-55 shape -
-there is nothing off-axis to omit). But four sub-7%-pick items rank above his signature
-Sunfire Aegis #11 (Warmog's #2 at 1.9%, Heartsteel #5, Spirit Visage #8 at 1.0%, Dead
-Man's #10 at 1.7%), with Thornmail #20. Root cause MEASURED: **E Searing Charge scales
-off 40% bonus armor + 40% bonus MR** and passive Living Forge inflates that same resist
-pool +10-30%, so resists pay TWICE while a self-EHP objective counts them once.
-
-**THE BATCH HEADLINE - the Ornn / Poppy matched pair, and what it proves.** Both route
-tank/ds.ehp and return the SAME top-6 in the SAME order. That invariance is CORRECT for
-Poppy (REFUTE: her real core occupies #6/#8/#9/#10, never-built items correctly
-suppressed at BotRK #73 / Liandry's #50 / Trinity #47, and decisively **no Poppy ability
-converts her own bonus HP or resists into damage** - Q reads the TARGET's max HP) and a
-DEFECT for Ornn. **This extends the RM-86 section-2 invariance table from top-5 to top-8
-on two more scorers:** Ornn / Pantheon / Poppy rerouted to bruiser return an identical
-top-8 item SET (Ornn and Poppy 8-of-8 in ORDER) across a tank, a tank/fighter and an
-assassin/fighter - **and Olaf is the control that names the mechanism**, overlapping only
-4-of-8 because his base AD/AS differ. That is RC-1 as a POSITIVE measurement rather than
-an absence: the champion enters the objective through BASE STATS ONLY, so similar base
-stats yield literally the same build.
-
-**Standing rule now in the tracker:** adjudicate every ds.ehp and ds.hybrid verdict on
-whether the SHARED list happens to fit the champion, never on the list being
-champion-specific - it is not. (Companion to the batch16 ds.hps invariance finding.)
-
-Artifacts: 5 verdicts + 2 method notes in `docs/DS_SWEEP_TRACKER.md`; new **section 8**
-in `docs/specs/RM-86_scorer_kit_blindness_investigation.md` (batch18 corroboration + 5
-concrete per-champion L1 acceptance anchors, including Poppy/Ornn as negative controls);
-5 `project_ds_sweep_*` memories.
-
-**NEXT:** Pyke onward (batch19); next GAP spec = RM-88. **RM-86 L1 is still the
-highest-value engine work on the board and now has per-champion acceptance anchors** -
-that is the recommended next build, not batch19. Ornn RM-87, Nunu's TANK-tag route gap
-and Nasus's RC-2 pool partition are operator-gated and unstarted.
