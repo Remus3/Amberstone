@@ -112,6 +112,7 @@ from .effects import (
 from .engine import build_champion
 from .geometry import spell_aoe_multiplier
 from .kit_axis_credit import kit_axis_item_ids
+from .kit_conversion import conversion_factor, damage_objective, kit_conversion
 from .rune_procs import (
     COMPLETION_RUNE_IDS,
     RUNE_PROCS,
@@ -1907,6 +1908,7 @@ def rank_items_by_burst(
     assume_ability_amp: bool = False,
     target_preset: Optional[str] = None,
     prefer_kit_axis_by_win: bool = False,
+    kit_conversion_strength: float = 0.0,
 ) -> BurstRankResult:
     """Rank items by total-burst-damage gain when added to ``current_item_ids``.
 
@@ -2117,10 +2119,44 @@ def rank_items_by_burst(
             kit_axis_score=kit_axis_score,
         ))
 
+    # RM-86 L1 kit-conversion gate (DEFAULT-OFF). Registry consulted ONLY when
+    # the lever is engaged -> 0.0 does no lookup and no arithmetic and is
+    # provably byte-identical (the onhit_dps.py:494-496 contract).
+    _conv = (
+        kit_conversion(str(champion_id), snapshot.champions.get(str(champion_id)))
+        if kit_conversion_strength > 0.0 else None
+    )
+    _conv_objective = damage_objective(snapshot, champion_id) if _conv is not None else ""
+    _conv_memo: dict[str, float] = {}
+
+    def _conv_key(value: float, item_id: str) -> float:
+        """Sort-only view of ``value`` - never mutates the row itself.
+
+        Only ever LOWERS: a non-positive value is returned unchanged, because
+        scaling a negative number toward zero would RAISE its rank
+        (the onhit_dps.py:501-504 rule).
+        """
+        if _conv is None or value <= 0.0:
+            return value
+        factor = _conv_memo.get(item_id)
+        if factor is None:
+            factor = conversion_factor(
+                _conv, item_id, snapshot.items.get(item_id) or {},
+                kit_conversion_strength, _conv_objective,
+            )
+            _conv_memo[item_id] = factor
+        return value * factor
+
     def _base_key(r: BurstRankedItem) -> tuple:
         if sort_by == "efficiency":
-            return (r.burst_per_1k_gold, r.delta_burst)
-        return (r.delta_burst, r.burst_per_1k_gold)
+            return (
+                _conv_key(r.burst_per_1k_gold, r.item_id),
+                _conv_key(r.delta_burst, r.item_id),
+            )
+        return (
+            _conv_key(r.delta_burst, r.item_id),
+            _conv_key(r.burst_per_1k_gold, r.item_id),
+        )
 
     if kit_axis_active:
         # DSP11: float surfaced kit-axis items above the generic template,
