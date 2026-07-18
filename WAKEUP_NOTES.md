@@ -1,6 +1,92 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the DS_SWEEP batch18 session relocated four blocks - the 2026-07-18b four-track session, the RM-81 staleness-detector session, and the batch15 + batch14 sweep sessions - to `docs/history_notes.md`; newest 3 = batch18 + the 2026-07-18d four-track session + the 2026-07-18c two-track session).
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-18 (the DS_SWEEP batch18 session relocated four blocks - the 2026-07-18b four-track session, the RM-81 staleness-detector session, and the batch15 + batch14 sweep sessions - to `docs/history_notes.md`; newest 3 = batch19 + batch18 + the 2026-07-18d four-track session; the 2026-07-18c two-track session was relocated by batch19).
+
+---
+
+# 2026-07-18f (DS_SWEEP batch19 -> 109/173: Pyke / Quinn / Rakan / Rammus / Rek'Sai; 4 GAP + 1 REFUTE, TWO new numbers, and one champion that breaks the RM-86 L1 plan)
+
+Read-only research pass, NO engine change. LEDGER 938. Qiyana skipped (already
+FENCED). **Fan-out held for the fourth session running**: probes main-thread, 5 flat
+research agents with a hard no-sub-agent constraint, zero nested spawns, zero kills.
+
+**QUINN RM-89 IS THE ONE THAT MATTERS - she breaks the L1-only plan.** First champion
+measured carrying BOTH RM-86 root causes at once:
+- **RC-1**: carry/ds.dps leads BotRK #1 / Runaan's #2 / Kraken #3 / Stormrazor #4, every
+  one 0-2% real pick, because **Harrier is priced as attack-speed throughput when its
+  proc rate is cooldown-gated and attack-speed-INDEPENDENT**, and crit chance is a
+  cooldown scalar that does NOT make it crit. No reroute rescues her - all four routes
+  still lead BotRK #1.
+- **RC-2**: her carry pool holds only **111** items and **structurally excludes Profane
+  Hydra and Umbral Glaive**, both present in the 144-item assassin/onhit/bruiser pools.
+  Her #2 signature item is not in the ranked set at all.
+So **a perfect L1 gate would suppress her three bad leads and still never surface her
+real second item.** Section 5 predicted L1 makes RC-2 worse; Quinn is the instance. The
+spec's sequencing note now reads: **L1 is necessary and provably insufficient.** Also:
+her role FLIPPED to jungle ~55% / top ~32% (16.10-16.11 Harrier monster damage, 16.14
+Harrier CD cut) and she is a lethality assassin in ~85-90% of real builds, ~0% on-hit.
+
+**Rammus displaces Ornn as RM-87's canonical example.** ds.ehp is close to rank-INVERTED
+for him: his **92%-pick effectively-mandatory Thornmail is #20** while **three items under
+1.6% combined pick sit #2/#5/#9** (Warmog's 0.35%, Heartsteel 0.85%, Spirit Visage 0.33%).
+Measured mechanism: passive Spiked Shell = 15% TOTAL armor + 15% TOTAL MR as bonus AD; W
+turns armor A into 1.6A+47 at rank 5 so passive AD = 0.24A+7, **about +24 AD per 100
+armor**; **bonus HEALTH contributes ZERO to every damage source in his kit**. A self-EHP
+objective rewards health at high resist values, so it pushes toward exactly what real
+players avoid.
+
+**Pyke RM-88 - new shape: a throughput objective cannot price a discontinuous execute
+threshold plus a gold-and-reset economy.** Lethality QUADRUPLE-dips for him (damage, E
+stun duration, W move speed, R execute threshold at 1.5 per lethality, passive grey-health
+rate); the engine models only the damage dip. ds.burst leads never-built BotRK #1 /
+Trinity #4 / IE #7 over his real Umbral #12 / Youmuu's #15 / Edge of Night #19. **Route is
+CORRECT, do not re-open** - `axis_correct_archetype` catches the Support tag, live-
+confirming that Pyke was never broken. **Correction recorded so it is not re-derived:** his
+bonus-health-to-AD passive is NOT exploited (gold-neutral, zero durability, strictly
+dominated); the load-bearing coupling runs the OTHER way - grey-health cap = 80 + 800%
+bonus AD, so buying AD buys effective HP.
+
+**Rek'Sai - third corroboration that L1's vector must be CONTINUOUS, not boolean.** Her
+unburrowed Q genuinely applies on-hit AND crits and she genuinely wants attack speed, yet
+her ds.hybrid top-9 is entirely never-built and her 67.1%-pick Spear of Shojin sits
+**#48** - because Q is only 3 empowered autos per Fury cycle. With Pantheon (~1/5 cadence)
+and Olaf (free kit AS) that is three kits that HAVE the term and must still not be
+credited at face value.
+
+**Rakan REFUTE doubles as the first post-hoc validation of a Slice C route override** - the
+RM-84 enchanter -> tank move is confirmed at roughly 10:1 (durability ~167% combined
+across slots vs ~16% for the whole heal/shield shelf). Flagged honestly as the WEAKEST
+refute in the Braum/Alistar class: his two real first legendaries are #16 and #23.
+
+**The invariance measurement, redone at scale (32 champs, 4 scorers, 8 per panel, 28 pairs
+each, top-8):** `ds.ability` **8.00/8 set overlap - perfectly invariant, all eight mages
+get the same eight items**; `ds.ehp` 7.57/8; `ds.hybrid` 6.04/8; `ds.dps` 4.54/8. Replicates
+RM-86 section 2's ordering independently on a panel 4x larger, plus a refinement: **ds.dps
+does not vary continuously, it BIFURCATES** into an on-hit-led cluster (Quinn/Vayne/Sivir)
+and a lethality-crit cluster (Jinx/Caitlyn/Draven) - which is exactly how Quinn ends up
+served an on-hit list.
+
+**A data-layer bound on ANY scorer fix:** three of five champions carry their decisive
+mechanic in `effects_descriptions` prose with **EMPTY `damage_blocks`** (Rammus armor->AD,
+Pyke health->AD, Quinn Harrier) - RM-81 intersecting RM-86. For them the conversion an L1
+gate would read is not in the data at all, so L1 cannot reach them by any design. An L1
+acceptance suite should carry one as a known-unreachable control.
+
+**Filed as its own task, NOT fixed:** the legendary **Opportunity** (id 6701, 2700g) is in
+the item catalog but enters **ZERO** ranked pools across 7 champions and 2 archetypes,
+while sibling lethality items appear normally. RC-2 pool-membership defect.
+
+**Process note:** I hit both traps in my own batch18 COUNT INTEGRITY note - a naive
+`split('## Full roster')` grabbed the prose mention, and a multi-line replace across the
+now-non-contiguous Summary lines silently no-opped. Caught only because the count was
+re-verified AFTER writing. The note now documents both.
+
+Artifacts: 5 verdicts + 1 method note in `docs/DS_SWEEP_TRACKER.md`; new **section 9** in
+`docs/specs/RM-86_scorer_kit_blindness_investigation.md`; 5 `project_ds_sweep_*` memories.
+
+**NEXT:** Rell onward (batch20); next GAP spec = RM-90. **RM-86 L1 is still the highest-
+value engine work, now with acceptance anchors AND a proven insufficiency bound - the
+honest framing is L1 + RC-2 pool work, not L1 alone.**
 
 ---
 
@@ -102,31 +188,3 @@ Adjudicated all 18 per champion: **5 overridden** (Morgana -> mage; Thresh/Rakan
 **/done found two changelog gaps and closed them.** `Share/CHANGELOG.md` had no entry for 1.216.0 OR 1.217.0, and `agents/daemon_slayer/CHANGELOG.md` had none for 1.217.0 - so the seventh scorer shipped two days ago with no release note anywhere in the external package. Backfilled both. Also fixed the semantic drift the anchor auto-rewrite cannot see: **five places still said "six archetype scorers"** (README x2, 01_OVERVIEW heading + table, 02_FUNCTION_REFERENCE, 04_GAPS_AND_ROADMAP) and the on-hit row was missing from the 01_OVERVIEW scorer table entirely. Lesson for the next DS bump: `ds_share_sync.py --check` going green means the MIRROR and the version ANCHORS are fresh - it says nothing about prose, and prose is where the rot was.
 
 **NEXT:** Olaf onward (batch18); next GAP spec = RM-87. RM-86's L1 is the highest-value engine work on the board and is now specced. Nunu's TANK-tag route gap and Nasus's RC-2 pool partition are both operator-gated and unstarted.
-
----
-
-# 2026-07-18c (both tracks SHIPPED: P0 sidecar guard + DS-sweep batch16 -> 94/173; two findings that outlive the batch)
-
-Ran the two operator-directed tracks. **Both completed.** LEDGER 935. Commits `4cd3c4c6` (P0, Tier-2) + `c7208965` (batch16).
-
-**Fan-out cap held.** Engine probes ran in the main thread; exactly 3 flat research agents (Morgana / Nami / Nasus meta), each prompt opening with a hard no-sub-agent constraint. Zero nested spawns, zero session-limit events. The prior session's failure mode did not recur.
-
-**TRACK 1 - P0 `task_d665f88b` SHIPPED.** Guard is in and the silence is over. Beyond the reported bug I found the ROOT CAUSE of the copy-forward: `tools/daemon_slayer_cdragon_ratio_extract.py` was **missing from the `docs/OPERATIONS.md` "Data extractors (full list)" table** while its sibling `cdragon_spell_extract` was listed - which is exactly why one artifact gets re-extracted per patch and the other does not. Added + marked ENGINE INPUT.
-- NEW `cdragon_sidecar_patch()` probe + unconditional WARNING on payload-vs-directory patch mismatch + `AbilitiesSnapshot.load(strict_cdragon_patch=False)` hard-drop seam. 10 tests, RED first.
-- **strict is OFF by design.** MEASURED: dropping the stale sidecar moves **49 of 171 champions (55 blocks / 75 fields)**. That belongs with the 16.14 re-extract as one diffed change, not smuggled in beside a doc fix. Filed in BACKLOG with the number.
-- Live-verified: non-strict warns + applies Lux Q 75% AP (the 16.11 value); strict warns + falls back to Meraki 65% - exactly the item-320 re-pin pair.
-- **The briefing was slightly off on one anchor:** `BACKLOG.md:11` carries NO stale default-OFF claim (grep-verified). Corrected the ones that do: `abilities.py` 82+700, `ds_wiki_staleness_check`, WAKEUP, 2 test headers.
-- Sibling sweep: `cdragon_ability_ratios` + `cdragon_ratio_drift` are the ONLY two artifacts stale at 16.11.1; drift is tools-only (zero engine reads). Six artifacts carry no patch field at all = latent same class, logged.
-
-**TRACK 2 - batch16 DONE, 89 -> 94.** Morgana [GAP RM-84], Naafiri [GAP RM-83], Nami [REFUTE], Nasus [GAP RM-85], Nautilus [REFUTE]. Next up **Neeko**, next spec **RM-86**. Full three-line convergence per champion in `docs/DS_SWEEP_TRACKER.md`.
-- **Morgana RM-84** is the cheapest real fix on the board: her engine #2/#3 items (Ardent Censer, Staff of Flowing Water) have a literal **0.00% real pick rate at every depth in every role**, and the `mage` reroute ALREADY returns the correct build. Root cause is one tag lookup - DDragon `["Support","Mage"]` + `tag_to_archetype("Support") == "enchanter"`. **All 20 Support-tag-first champions route to enchanter, including Pyke, an AD lethality assassin.** Fix path = the existing but **EMPTY** `data/cs_archetype_picks.json`. Operator-gated, NOT auto-flip.
-- **Nasus RM-85 inverts the standing framing:** he is a **JUNGLER at 55.6%** with Protoplasm Harness 59.98% first. His real build spans the bruiser and tank pools and NEITHER route can express it.
-
-**TWO FINDINGS THAT OUTLIVE THE BATCH - read before the next sweep session:**
-1. **The standing `item_ids=[]` probe under-ranks AMP-ONLY items.** An amp multiplies throughput an empty build does not have. Moonstone on Nami: 0.4 empty -> 11.0 -> 12.9 -> 14.9, moving 9th to 2nd; Redemption 6th to 1st. I caught this mid-session and re-probed Naafiri at four depths before banking her GAP (it held). **Prior enchanter verdicts banked on empty-build probes should be re-checked at depth.**
-2. **`ds.hps` item ranking is champion-INVARIANT.** Ten enchanters, identical order, every depth and target state, deltas within 0.6. The engine DOES compute per-champion heal/shield throughput (Soraka 10.21/s vs Morgana 2.52/s) but `apply_ability_hsp_amp` - the seam that would let that weight items - exists only on `compute_hps` and is absent from `rank_items_by_hps` AND the dispatcher. **So adjudicate enchanter verdicts on the ROUTE, not the item order.** Memory `project_ds_hps_champion_invariant`.
-Also: **`ds.hybrid` emits NO `delta` key** (`delta_dps`/`delta_ehp`/`hybrid_delta_pct`) - a probe reading `delta` silently gets 0.0 per row while rank order stays valid. The probe recipe in the operator brief lists `delta` as a RankedItem key; that is true for burst/ehp/hps/ability, not hybrid.
-
-**STILL OPEN - the Vayne question, unchanged.** Whether `ds.dps` models Silver Bolts as stat-independent is still unprobed; the operator flagged it as their call, not a task, and did not call it this session. Worth noting the batch found the structurally identical case in `ds.hps` (finding 2 above), which makes the Vayne probe more valuable, not less: if a scorer cannot represent a kit, that is a finding about the scorer.
-
-**NEXT:** Neeko onward (RM-86). The three batch16 GAPs are all operator-gated fixes, not auto-flips.
