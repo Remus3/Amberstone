@@ -1,6 +1,6 @@
 # WAKEUP_NOTES - RC hand-off ledger
 
-> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, the first one performed AUTOMATICALLY by `scripts/wakeup_prune.py` (relocated `2026-07-18k` roster-closed; newest 3 = RM-39 adjudication `2026-07-19b` + AH-slice `2026-07-19a` + Term A `2026-07-18l`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
+> Older sessions live in `docs/history_notes.md` (append-only archive); per-item ledger in `docs/LEDGER.md`. Newest 3 sessions kept here verbatim. Last relocation: 2026-07-19, automatic via `scripts/wakeup_prune.py` (relocated Term A `2026-07-18l`; newest 3 = RM-39 L1 build `2026-07-19c` + RM-39 adjudication `2026-07-19b` + AH-slice `2026-07-19a`). NOTE: `scripts/wakeup_prune.py` **is FIXED as of 2026-07-19** (`2f35163d`) - its `SESSION_RE` no longer requires a word boundary after the day, so letter-suffixed headers like `# 2026-07-19a` match and the prune works at `--keep 3`. Relocations are automatic again; the prior standing "manual until fixed" instruction is retired.
 
 ---
 
@@ -120,44 +120,3 @@ Share gaps flagged not fixed (route tables claim "4 GET + 15 POST" vs a live 31;
 `team_blended` + `kit_conversion_strength` undocumented in the authored half;
 three version anchors uncovered by `_doc_anchor_rules()` - which is why README sat
 72 minors stale while `--check` read green).
-
----
-
-# 2026-07-18l (C1 audit resized Term A + Term A SHIPPED 1.220.0 + a self-inflicted false bug retracted; 2 commits)
-
-**C1 first, and it changed the work.** Re-adjudicated all 21 RM-92 rows at BUILD
-DEPTH (7 parallel agents, live 1.219.0, `/rank-<archetype>`, mode=SR, top=200,
-depths 0-3, cross-checked vs all 3 shipped variants + `gold.purchasable`):
-**21 -> 17 REAL / 2 ARTIFACT / 2 POOL-CANDIDACY.** Deflation is 19%, not the ~33%
-the 6-row sample projected. **Composition was the finding, not the count** -
-ABILITY-HASTE 5 / MOBILITY 4 / ALLY-FACING 3 / CC-UPTIME 2 / OTHER 3. Soraka's
-"#10 of 10 dead last" canonical instance is a PROBE ARTIFACT (#3 at depth, and
-the shipped order already buys it); Yuumi's "most complete instance" too. That
-cut Term A's justification from an assumed 13 champions to **2 measured** ones,
-so the operator swapped the "exactly 13 changed" golden-diff gate (churn) for a
-correctness gate on Taric + Thresh. Re-derivation also found **14 raw `affects`
-hits, not 13** - the old note dropped Nunu.
-
-**Term A SHIPPED** `43a2e0ea` (ENGINE 1.220.0): `score_by="team_blended"` on
-`ds.ehp`, DEFAULT-OFF. Taric Locket #24 -> #6, Thresh #20 -> #5, 12 gated
-champions, verified live on `:8893`. Two NEW modules are both thin - the item
-side is an ADAPTER over the existing curated `enchanter_items.json` (not a new
-registry), the champion side is a BOOLEAN `affects` gate. ZERO new constants.
-The gate is load-bearing: disabled, Locket enters the top-6 for Rammus too.
-
-**I filed a false bug and retracted it** `7b116d50`. Claimed the Arena table
-ships map-30-illegal items; it does not - all 9 tables audit clean, ARAM too. I
-read item NAMES then resolved them to BASE ids; base and mirror share a name
-(Moonstone = 6617 map30=False AND 226617 map30=True) and the table stores the
-mirror. Shipped `tests/test_build_order_map_legality.py` so it cannot recur -
-this also closes RM-04's "correct by luck not construction" gotcha.
-
-**Do NOT redo:** the RM-92 population audit (done, LEDGER 950). Term A (shipped;
-live default-ON flip is the only open tail). The Arena map-30 "bug" (does not
-exist - run the guard test, 1 second). The 2 `coach_poll_offload` failures are a
-load flake that passes standalone.
-
-**Next:** the ABILITY-HASTE class is the largest measured RM-92 residual (5
-champions) but only `ability_dps.py` prices AH - `dps`/`hybrid`/`ehp`/`burst`/
-`hps` carry ZERO, and carry/bruiser have no cooldown model to compress, so it is
-RM-86-sized. Size it before committing.
