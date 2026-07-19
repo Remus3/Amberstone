@@ -412,8 +412,6 @@ def compute_hybrid(
     apply_item_spell_shield: bool = False,
     apply_item_mana_health: bool = False,
     apply_item_resist_grants: bool = False,
-    apply_rune_resist_grants: bool = False,
-    rune_ids: Iterable[str | int] = (),
     apply_item_bonus_hp_amp: bool = False,
     assume_item_general_dr: bool = False,
     apply_survival_window: bool = False,
@@ -423,6 +421,12 @@ def compute_hybrid(
     caster_current_hp_pct: float = 1.0,
     assume_ms_utility: bool = False,
     apply_ad_axis_ability_damage: bool = False,
+    # ENGINE 1.224.0 (R132) seam, forwarded verbatim to ``compute_ehp``. Appended at
+    # the END per compute_ehp's stated convention - a mid-signature insert shifts the
+    # positional index of every later parameter. Guarded by
+    # tests/test_rune_resist_signature_convention_r134.py.
+    apply_rune_resist_grants: bool = False,
+    rune_ids: Iterable[str | int] = (),
 ) -> HybridResult:
     """Compute combined DPS + EHP score for the resolved build.
 
@@ -902,8 +906,6 @@ def rank_items_by_hybrid(
     apply_item_spell_shield: bool = False,
     apply_item_mana_health: bool = False,
     apply_item_resist_grants: bool = False,
-    apply_rune_resist_grants: bool = False,
-    rune_ids: Iterable[str | int] = (),
     apply_item_bonus_hp_amp: bool = False,
     assume_item_general_dr: bool = False,
     apply_survival_window: bool = False,
@@ -916,6 +918,12 @@ def rank_items_by_hybrid(
     target_current_hp_pct: float = 1.0,
     assume_ms_utility: bool = False,
     apply_ad_axis_ability_damage: bool = False,
+    # ENGINE 1.224.0 (R132) seam, forwarded verbatim to ``compute_ehp``. Appended at
+    # the END per compute_ehp's stated convention - a mid-signature insert shifts the
+    # positional index of every later parameter. Guarded by
+    # tests/test_rune_resist_signature_convention_r134.py.
+    apply_rune_resist_grants: bool = False,
+    rune_ids: Iterable[str | int] = (),
 ) -> HybridRankResult:
     """Rank items by weighted (alpha*dps + beta*ehp) delta when added to ``current_item_ids``.
 
