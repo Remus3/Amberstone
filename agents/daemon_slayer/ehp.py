@@ -300,7 +300,8 @@ def _collect_shields(
         # Default-off (opt-in) shields are dropped unless the caller explicitly
         # arms the specific seam for THAT item. The arming is per-shield (keyed by
         # item id) so turning one conditional shield on never leaks credit into
-        # another: R92 Kaenic Rookern (2504) rides assume_kaenic_shield (its
+        # another: R92 Kaenic Rookern (2504 / Arena 222504, mirror armed by
+        # RM-104) rides assume_kaenic_shield (its
         # Magebane magic shield has an anti-correlated "no magic damage for 15s"
         # uptime); R97 Eclipse (6692 / Arena 226692) rides assume_eclipse_shield
         # (a burst-window shield on a 6s/target CD); R99 Chainlaced Crushers
@@ -315,7 +316,7 @@ def _collect_shields(
         if shield.default_off:
             iid = str(item_id)
             armed = (
-                (assume_kaenic_shield and iid == "2504")
+                (assume_kaenic_shield and iid in ("2504", "222504"))
                 or (assume_eclipse_shield and iid in ("6692", "226692"))
                 or (assume_chainlaced_shield and iid == "3173")
                 or (assume_seraphs_shield and iid in ("3040", "223040", "323040"))
